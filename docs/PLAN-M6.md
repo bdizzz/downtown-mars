@@ -130,3 +130,20 @@ Checked in the browser on a migrated v6 save: the migrated bare-rock corridors, 
 - **Small plaza** (added in step 2) gets a glyph.
 - **Room cards** say when a room spans floors, and when it's walk-through (its sides count as corridors) instead of "needs a corridor".
 - **Browser:** a stairwell over a floor-2 farm is refused ("Overlaps Farm"); one in ring 2 goes in on both floors and connects through the corridor above it.
+
+**Step 7, connect, bots, tutorial, balance:**
+- **Connect button:** it carves in the corridor tool's last finish and names it.
+- **Scripted players and tutorial:** the scripted players connect every room they place and retry any that are cut off (step 2). The tutorial teaches placing life support in ring 2, then carving a corridor to it (step 2).
+- **Balance**, from the playthroughs (bare rock only):
+  - The solo hole has 8 corridor pieces (16 rock) by day 30.
+  - Bradbury has 10 (20 rock) and Gale 2 by day 90, with 60 and 28 rooms.
+  - The bots mostly build on the gallery (ring 1), so they need few corridors. With digging keeping rock near its 400 cap, bare rock is close to free, and the dearer finishes are a choice of look.
+
+Open questions for Bryon:
+- **Costs:** should corridors cost more to make them a real budget line? For example: bare rock 6 per 10 m, or a small upkeep, or labour (a build time).
+- **DECISIONS.md** still says "Corridors take slots (spokes and ring segments)". It's read-only here; this plan records the reversal.
+- **Not done yet:**
+  - undo for corridors (⌘Z covers room placement only);
+  - doors on corridors in 3D (the unrolled and plan views have them);
+  - elevators (the stairwell is the only vertical link);
+  - the catalog's larger plazas and grand staircase.

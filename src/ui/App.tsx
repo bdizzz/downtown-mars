@@ -404,7 +404,7 @@ export function App() {
         {snapshot && panel === "people" && <PeoplePanel s={snapshot} onClose={() => setPanel(null)} />}
         {snapshot && panel === "network" && <NetworkPanel s={snapshot} onRoute={route} onClose={() => setPanel(null)} />}
         {snapshot && !panel && selected !== null && (
-          <Inspector s={snapshot} roomId={selected} onCommand={onCommand} onClose={() => setSelected(null)} />
+          <Inspector s={snapshot} finish={lastFinish} roomId={selected} onCommand={onCommand} onClose={() => setSelected(null)} />
         )}
       </div>
       <StatusBar info={hover} snapshot={snapshot} notice={notice} overlay={overlay} />

@@ -7,11 +7,13 @@ import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { network } from "../sim/network";
-import { corridors } from "../sim/corridors";
+import { corridors, finishDef } from "../sim/corridors";
 import { num, resName, signed } from "./format";
 
 interface Props {
   s: Snapshot;
+  /** The finish Connect carves in: the corridor tool's last one. */
+  finish?: string;
   roomId: number;
   onCommand: (cmd: SimCommand) => void;
   onClose: () => void;
@@ -150,7 +152,7 @@ function Controls({ room, s, onCommand }: { room: Snapshot["layout"]["rooms"][nu
   );
 }
 
-export function Inspector({ s, roomId, onCommand, onClose }: Props) {
+export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
   const room = s.layout.rooms.find((r) => r.id === roomId);
   if (!room) return null;
   const def = roomDef(room.type);
@@ -175,8 +177,11 @@ export function Inspector({ s, roomId, onCommand, onClose }: Props) {
       </header>
       <p className={isProblem(room, st) ? "warn" : ""}>{state}</p>
       {!room.connected && room.at.kind === "ring" && (
-        <button onClick={() => onCommand({ type: "connectRoom", roomId: room.id, finish: corridors.defaultFinish })} title="Carve the shortest corridor from the network to this room, in bare rock">
-          Connect with a corridor
+        <button
+          onClick={() => onCommand({ type: "connectRoom", roomId: room.id, finish: finish ?? corridors.defaultFinish })}
+          title="Carve the shortest corridor from the network to this room, along the borders of rooms"
+        >
+          Connect with a corridor ({finishDef(finish ?? corridors.defaultFinish).name.toLowerCase()})
         </button>
       )}
       {spec.staff > 0 && (
