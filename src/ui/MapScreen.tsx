@@ -310,7 +310,10 @@ function SitePanel({
   const checks: [boolean, string][] = [
     [s.mapUnlocked, `The map is open (at ${network.mapUnlockPopulation} colonists)`],
     [s.kit.hasBay, `${s.holeName} has a staging bay`],
-    [s.kit.progress >= 0.999, `Seed kit gathered (${Math.floor(s.kit.progress * 100)}%)`],
+    [
+      s.kit.progress >= 0.999,
+      `Seed kit gathered (${Math.floor(s.kit.progress * 100)}%${s.kit.progress < 0.999 && !s.kit.gathering ? ": ask the staging bay to gather" : ""})`,
+    ],
     [pop - kit.volunteers >= kit.minStayBehind, `${kit.volunteers} volunteers, keeping ${kit.minStayBehind} (${pop} now)`],
     [!taken.some((t) => degreesApart(t, site) < kit.minSpacingDeg), "Far enough from other holes"],
   ];

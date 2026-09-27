@@ -46,6 +46,7 @@ export function hasStagingBay(hole: SimState): boolean {
 export function stepStaging(hole: SimState, cfg: SimConfig): void {
   const bays = hole.layout.rooms.filter((r) => roomDef(r.type).stagesSeedKit && isActive(r));
   if (!bays.length) return;
+  if (!hole.gatheringKit) return;
   const rate = Math.min(1, bays.reduce((s, b) => s + (hole.roomStatus[b.id]?.rate ?? 0), 0));
   if (rate <= 0) return;
   const k = kitCfg();
@@ -60,6 +61,10 @@ export function stepStaging(hole: SimState, cfg: SimConfig): void {
     hole.resources[id] = (hole.resources[id] ?? 0) - take;
     hole.kit[id] = have + take;
     record(hole, id, "out", SEED_KIT, take);
+  }
+  if (Object.entries(k.goods).every(([id, want]) => (hole.kit[id] ?? 0) >= want - 1e-9)) {
+    hole.gatheringKit = false;
+    postMessage(hole, cfg, "The seed kit is ready. Pick a site on the map (M) and send a convoy.", "good");
   }
 }
 
@@ -99,6 +104,7 @@ export function foundHole(world: World, cfg: SimConfig, fromHoleId: number, site
     volunteers: k.volunteers,
   };
   from.kit = {};
+  from.gatheringKit = false; // the next kit waits until the player asks
   from.population.count -= k.volunteers;
   world.convoys.push(convoy);
   const days = ((convoy.arriveTick - convoy.departTick) / cfg.ticksPerDay).toFixed(1);

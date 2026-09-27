@@ -65,6 +65,28 @@ export function roomSpec(room: RoomInstance, cfg: SimConfig): RoomSpec {
   };
 }
 
+/** The stored good a room exists to make, if any: what "stop at" watches. */
+export function mainOutput(room: RoomInstance, cfg: SimConfig): string | null {
+  const id = Object.keys(roomSpec(room, cfg).makes).find((k) => {
+    const def = resourceDefs.find((r) => r.id === k);
+    return def && !def.flow && !def.waste;
+  });
+  return id ?? null;
+}
+
+/** Why a working room is standing down by the player's choice, if it is. */
+export function standDown(room: RoomInstance, state: SimState, cfg: SimConfig): string | null {
+  const res = state.resources;
+  if (room.paused) return "paused";
+  // A staging bay works only while the player has asked for a kit.
+  if (roomDef(room.type).stagesSeedKit && !state.gatheringKit) return "kit";
+  if (room.stopAt !== undefined) {
+    const out = mainOutput(room, cfg);
+    if (out && (res[out] ?? 0) >= room.stopAt) return `stocked:${out}`;
+  }
+  return null;
+}
+
 /** A room does anything only once it's built and reachable. */
 export function isActive(room: RoomInstance): boolean {
   return !room.planned && room.connected;
@@ -93,10 +115,15 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   const specs = new Map(rooms.map((r) => [r.id, roomSpec(r, cfg)]));
   const status: Record<number, RoomStatus> = {};
 
-  // 1. Staff, highest priority first.
+  // 1. Staff, highest priority first. Rooms the player stood down take no one.
   let free = state.population.count;
+  const down = new Map<number, string>();
   for (const r of rooms) {
-    const need = specs.get(r.id)!.staff;
+    const why = standDown(r, state, cfg);
+    if (why) down.set(r.id, why);
+  }
+  for (const r of rooms) {
+    const need = down.has(r.id) ? 0 : specs.get(r.id)!.staff;
     const got = Math.min(need, free);
     free -= got;
     status[r.id] = { staff: got, staffNeeded: need, rate: 0 };
@@ -107,7 +134,11 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   const mod = modifiers(state);
   const producers = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length === 0);
   const others = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length > 0);
-  for (const r of [...producers, ...others]) runRoom(r, specs.get(r.id)!, status[r.id]!, state, caps, cfg, dt, mod);
+  for (const r of [...producers, ...others]) {
+    const why = down.get(r.id);
+    if (why) status[r.id] = { staff: 0, staffNeeded: specs.get(r.id)!.staff, rate: 0, limit: why };
+    else runRoom(r, specs.get(r.id)!, status[r.id]!, state, caps, cfg, dt, mod);
+  }
   state.roomStatus = status;
 
   // 3. Colonists.

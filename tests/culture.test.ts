@@ -77,9 +77,21 @@ describe("opinion", () => {
     w.relations = {};
     gale!.foundedTick = -1e9; // grown up: no grace
     relation(w, home!.holeId, gale!.holeId).given = 200;
+    relation(w, home!.holeId, gale!.holeId).givenUnasked = 200;
     stepCulture(w, config);
     expect(relation(w, gale!.holeId, home!.holeId).opinion).toBeGreaterThan(2);
     expect(relation(w, home!.holeId, gale!.holeId).opinion).toBeLessThan(-2);
+  });
+
+  it("never holds the player's own routes against the giver", () => {
+    const w = twoHoles();
+    const [home, gale] = w.holes;
+    w.relations = {};
+    gale!.foundedTick = -1e9;
+    relation(w, home!.holeId, gale!.holeId).given = 200; // all on the player's routes
+    stepCulture(w, config);
+    expect(relation(w, gale!.holeId, home!.holeId).opinion).toBeGreaterThan(2);
+    expect(relation(w, home!.holeId, gale!.holeId).opinion).toBeGreaterThanOrEqual(0);
   });
 
   it("doesn't hold early aid against a young child", () => {
@@ -87,6 +99,7 @@ describe("opinion", () => {
     const [home, gale] = w.holes;
     w.relations = {};
     relation(w, home!.holeId, gale!.holeId).given = 200;
+    relation(w, home!.holeId, gale!.holeId).givenUnasked = 200;
     stepCulture(w, config);
     expect(relation(w, home!.holeId, gale!.holeId).opinion).toBeGreaterThanOrEqual(0);
   });

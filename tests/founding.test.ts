@@ -22,6 +22,7 @@ function ready(): World {
   if (!r.ok) throw new Error(r.reason);
   home.population.count = 40;
   w.mapUnlocked = true;
+  expect(applyCommand(home, { type: "setGathering", gathering: true }).ok).toBe(true);
   return w;
 }
 
@@ -71,6 +72,7 @@ describe("founding", () => {
     expect(home.population.count).toBe(40 - network.seedKit.volunteers);
     expect(home.kit).toEqual({});
     expect(w.convoys).toHaveLength(1);
+    expect(w.holes[0]!.gatheringKit).toBe(false); // no second kit until asked
     const arrive = w.convoys[0]!.arriveTick;
     while (w.tick < arrive) stepWorld(w, config);
     expect(w.convoys).toHaveLength(0);

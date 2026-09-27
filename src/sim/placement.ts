@@ -33,6 +33,10 @@ export interface RoomInstance {
   priority: Priority;
   /** Farms only. */
   crop?: string;
+  /** Switched off by the player: no staff, no inputs, no output. */
+  paused?: boolean;
+  /** Idle (and release its staff) while its main output is at or above this stock. */
+  stopAt?: number;
   /** When it was placed, for undo. Absent for the landing kit and old saves. */
   builtTick?: number;
 }

@@ -12,7 +12,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 
 type Raw = Record<string, unknown>;
 
@@ -45,6 +45,8 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
     holes: (s.holes as Raw[]).map((h) => ({ ...h, culture: { ...culture.start }, parentHoleId: null, foundedTick: 0 })),
     relations: {},
   }),
+  // v9: the staging bay gathers only when asked. Rooms gained optional pause and stop-at.
+  8: (s) => ({ ...s, holes: (s.holes as Raw[]).map((h) => ({ ...h, gatheringKit: false })) }),
 };
 
 export interface SaveSummary {

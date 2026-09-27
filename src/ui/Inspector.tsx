@@ -1,6 +1,7 @@
+import { useState } from "react";
 import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
-import { roomSpec } from "../sim/economy";
+import { mainOutput, roomSpec } from "../sim/economy";
 import { effectOnRoom, FIELD_TYPES } from "../sim/effects";
 import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
@@ -18,6 +19,9 @@ interface Props {
 function limitText(limit: string | undefined): string {
   if (!limit) return "";
   if (limit === "staff") return "short of staff";
+  if (limit === "paused") return "paused";
+  if (limit === "kit") return "idle until you ask for a seed kit";
+  if (limit.startsWith("stocked:")) return `standing by: ${resName(limit.slice(8)).toLowerCase()} stocked`;
   if (limit.startsWith("full:")) return `idling: ${resName(limit.slice(5)).toLowerCase()} storage full`;
   return `short of ${resName(limit).toLowerCase()}`;
 }
@@ -25,7 +29,7 @@ function limitText(limit: string | undefined): string {
 /** Idling because output storage is full is fine; shortages and missing access aren't. */
 function isProblem(room: { planned: boolean; connected: boolean }, st: { rate: number; limit?: string } | undefined): boolean {
   if (!room.planned && !room.connected) return true;
-  return !!st && st.rate < 0.999 && !st.limit?.startsWith("full:");
+  return !!st && st.rate < 0.999 && !st.limit?.startsWith("full:") && st.limit !== "paused" && st.limit !== "kit" && !st.limit?.startsWith("stocked:");
 }
 
 function Flows({ label, flows }: { label: string; flows: Record<string, number> }) {
@@ -48,7 +52,7 @@ function Neighborhood({ s, room }: { s: Snapshot; room: Snapshot["layout"]["room
   );
 }
 
-function SeedKit({ s }: { s: Snapshot }) {
+function SeedKit({ s, onCommand }: { s: Snapshot; onCommand: Props["onCommand"] }) {
   const goods = Object.entries(network.seedKit.goods);
   return (
     <>
@@ -58,8 +62,17 @@ function SeedKit({ s }: { s: Snapshot }) {
       <p className="k">
         {goods.map(([id, want]) => `${resName(id)} ${num(s.kit.loaded[id] ?? 0)}/${want}`).join(" · ")}
       </p>
+      {s.kit.progress < 0.999 && (
+        <button onClick={() => onCommand({ type: "setGathering", gathering: !s.kit.gathering })}>
+          {s.kit.gathering ? "Stop gathering" : s.kit.progress > 0 ? "Resume gathering" : "Gather a seed kit"}
+        </button>
+      )}
       <p className="k">
-        When it's full, pick a site on the map (M) and send {network.seedKit.volunteers} volunteers to found a new hole.
+        {s.kit.gathering
+          ? "The bay's crew is moving goods into the kit, never leaving less than a reserve in store."
+          : s.kit.progress >= 0.999
+            ? `Ready. Pick a site on the map (M) and send ${network.seedKit.volunteers} volunteers to found a new hole.`
+            : "The bay stands idle, its crew free for other work, until you ask for a kit."}
       </p>
     </>
   );
@@ -93,6 +106,49 @@ function Home({ s, roomId, capacity }: { s: Snapshot; roomId: number; capacity: 
   );
 }
 
+/** Pause a room, or have it stand by while its output is stocked. */
+function Controls({ room, s, onCommand }: { room: Snapshot["layout"]["rooms"][number]; s: Snapshot; onCommand: Props["onCommand"] }) {
+  const out = mainOutput(room, config);
+  const [draft, setDraft] = useState<string | null>(null);
+  const suggested = Math.max(10, Math.round(((s.resources[out ?? ""] ?? 0) + 20) / 10) * 10);
+  return (
+    <div className="controls">
+      <label>
+        <input
+          type="checkbox"
+          checked={!room.paused}
+          onChange={(e) => onCommand({ type: "setRoomControl", roomId: room.id, paused: !e.target.checked })}
+        />
+        Running
+      </label>
+      {out && (
+        <label title="The room stands by, freeing its staff, while there's at least this much in store">
+          <input
+            type="checkbox"
+            checked={room.stopAt !== undefined}
+            onChange={(e) => onCommand({ type: "setRoomControl", roomId: room.id, stopAt: e.target.checked ? suggested : null })}
+          />
+          Stop at
+          <input
+            type="number"
+            min={0}
+            step={10}
+            disabled={room.stopAt === undefined}
+            value={draft ?? room.stopAt ?? suggested}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => {
+              const n = Number(draft);
+              if (draft !== null && Number.isFinite(n)) onCommand({ type: "setRoomControl", roomId: room.id, stopAt: n });
+              setDraft(null);
+            }}
+          />
+          {resName(out).toLowerCase()}
+        </label>
+      )}
+    </div>
+  );
+}
+
 export function Inspector({ s, roomId, onCommand, onClose }: Props) {
   const room = s.layout.rooms.find((r) => r.id === roomId);
   if (!room) return null;
@@ -103,6 +159,9 @@ export function Inspector({ s, roomId, onCommand, onClose }: Props) {
   let state = "";
   if (room.planned) state = "Blueprint: builds when its floor is dug";
   else if (!room.connected) state = "No access: connect it with a corridor";
+  else if (st?.limit === "paused") state = "Paused: its crew is free for other work";
+  else if (st?.limit === "kit") state = "Idle until you ask for a seed kit";
+  else if (st?.limit?.startsWith("stocked:")) state = `Standing by: ${resName(st.limit.slice(8)).toLowerCase()} is stocked to ${num(room.stopAt ?? 0)}`;
   else if (st) state = `Running at ${Math.round(st.rate * 100)}%${st.limit ? ` · ${limitText(st.limit)}` : ""}`;
 
   return (
@@ -123,7 +182,7 @@ export function Inspector({ s, roomId, onCommand, onClose }: Props) {
       <Flows label="Makes/day" flows={spec.makes} />
       <Flows label="Scrubs/day" flows={spec.scrubs} />
       <Flows label="Stores" flows={spec.stores} />
-      {def.stagesSeedKit && <SeedKit s={s} />}
+      {def.stagesSeedKit && <SeedKit s={s} onCommand={onCommand} />}
       {def.houses ? <Home s={s} roomId={room.id} capacity={def.houses} /> : null}
       {spec.sanitation > 0 && (
         <p>
@@ -155,6 +214,7 @@ export function Inspector({ s, roomId, onCommand, onClose }: Props) {
           </select>
         </label>
       )}
+      {spec.staff > 0 && def.buildable && <Controls room={room} s={s} onCommand={onCommand} />}
       {def.buildable && (
         <button className="danger" onClick={() => onCommand({ type: "demolish", roomId: room.id })}>
           Demolish ({room.planned ? "full refund" : `${config.economy.demolishRefund * 100}% refund`})

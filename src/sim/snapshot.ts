@@ -95,7 +95,7 @@ export interface Snapshot {
   /** What the hole you're looking at sits on. */
   holeDeposits: DepositKind[];
   /** This hole's seed kit: gathered so far against what a kit needs. */
-  kit: { loaded: Record<string, number>; progress: number; hasBay: boolean };
+  kit: { loaded: Record<string, number>; progress: number; hasBay: boolean; gathering: boolean };
   /** Founding convoys on their way; the worker fills these in. */
   convoys: ConvoyView[];
   /** Every trade route in the network; the worker fills these in. */
@@ -140,7 +140,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     deposits: [],
     mapUnlocked: false,
     holeDeposits: state.deposits ?? [],
-    kit: { loaded: state.kit ?? {}, progress: kitProgress(state), hasBay: hasStagingBay(state) },
+    kit: { loaded: state.kit ?? {}, progress: kitProgress(state), hasBay: hasStagingBay(state), gathering: state.gatheringKit },
     convoys: [],
     routes: [],
     relations: [],

@@ -30,6 +30,8 @@ export interface SimState {
   deposits: DepositKind[];
   /** Goods loaded into the staging bay's seed kit so far. */
   kit: Record<string, number>;
+  /** The player asked the staging bay to gather a kit; it stops when the kit is full or leaves. */
+  gatheringKit: boolean;
   tick: number;
   rngState: number;
   layout: Layout;
@@ -88,6 +90,7 @@ export function createInitialState(
     site: who.site,
     deposits: who.deposits,
     kit: {},
+    gatheringKit: false,
     tick: 0,
     rngState: who.seed >>> 0,
     layout,

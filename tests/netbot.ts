@@ -18,13 +18,13 @@ import { PLAN, VISIT_ANSWERS } from "./bot";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 const surface = (slot: number): Location => ({ kind: "surface", slot });
-type Plan = { room: string; at: Location; crop?: string };
+type Plan = { room: string; at: Location; crop?: string; stopAt?: number };
 
 /** Once the map opens: industry for the kit, then get ready to found and trade. */
 export const HOME_EXTRA: Plan[] = [
   { room: "corridor", at: ring(5, 1, 4) },
   { room: "smelter", at: ring(5, 1, 5, 4) },
-  { room: "machine_shop", at: ring(5, 2, 7, 2) },
+  { room: "machine_shop", at: ring(5, 2, 7, 2), stopAt: 12 },
   { room: "staging_bay", at: ring(5, 1, 0, 4) },
   { room: "rover_depot", at: surface(9) },
 ];
@@ -82,6 +82,7 @@ function builder(plan: Plan[]) {
         if (!applyCommand(hole, { type: "build", room: p.room, at: p.at }).ok) break;
         const room = hole.layout.rooms.at(-1)!;
         if (p.crop) applyCommand(hole, { type: "setCrop", roomId: room.id, crop: p.crop });
+        if (p.stopAt !== undefined) applyCommand(hole, { type: "setRoomControl", roomId: room.id, stopAt: p.stopAt });
         builtAt.push(day);
         next++;
       }
@@ -133,6 +134,9 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
     const day = world.tick / config.ticksPerDay;
     if (t % 10 === 0) {
       if (world.mapUnlocked) netPlan.step(home, day);
+      if (foundedDay === null && !home.gatheringKit && kitProgress(home) < 0.999) {
+        applyCommand(home, { type: "setGathering", gathering: true });
+      }
       homePlan.step(home, day);
       answerVisits(home);
       const child = world.holes[1];

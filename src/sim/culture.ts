@@ -49,8 +49,14 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 /** How one hole sees another: an opinion, and the value it has sent that way lately. */
 export interface Relation {
   opinion: number;
-  /** Value delivered to the other hole, fading daily. */
+  /** Value delivered to the other hole, fading daily; the other hole is grateful for all of it. */
   given: number;
+  /**
+   * The part the hole sent of its own accord, not on the player's orders.
+   * Only this counts against the other hole when nothing comes back: the
+   * player's own routes never sour the giver.
+   */
+  givenUnasked?: number;
 }
 
 const key = (from: number, to: number) => `${from}>${to}`;
@@ -111,8 +117,10 @@ export function foundFrom(world: World, parent: SimState, child: SimState): void
 }
 
 /** A rover delivered: the gift is remembered, and contact pulls the two cultures together. */
-export function noteDelivery(world: World, from: SimState, to: SimState, resource: string, amount: number): void {
-  relation(world, from.holeId, to.holeId).given += valueOf(resource, amount);
+export function noteDelivery(world: World, from: SimState, to: SimState, resource: string, amount: number, byPlayer = true): void {
+  const rel = relation(world, from.holeId, to.holeId);
+  rel.given += valueOf(resource, amount);
+  if (!byPlayer) rel.givenUnasked = (rel.givenUnasked ?? 0) + valueOf(resource, amount);
   const pull = culture.contactPullPerTrip;
   for (const a of AXES) {
     const d = to.culture[a] - from.culture[a];
@@ -142,7 +150,7 @@ export function stepCulture(world: World, cfg: SimConfig): void {
       const rel = relation(world, a.holeId, b.holeId);
       const back = relation(world, b.holeId, a.holeId);
       const before = tier(rel.opinion);
-      let fairness = o.fairnessPerDay * Math.tanh((back.given - rel.given) / o.fairnessScale);
+      let fairness = o.fairnessPerDay * Math.tanh((back.given - (rel.givenUnasked ?? 0)) / o.fairnessScale);
       // Early aid to a young child doesn't count against it.
       const young = b.parentHoleId === a.holeId && world.tick - b.foundedTick < o.childGraceDays * cfg.ticksPerDay;
       if (young) fairness = Math.max(0, fairness);
@@ -157,5 +165,8 @@ export function stepCulture(world: World, cfg: SimConfig): void {
     }
   }
   // Gifts fade from memory, a little each day.
-  for (const r of Object.values(world.relations)) r.given *= o.givenKeptPerDay;
+  for (const r of Object.values(world.relations)) {
+    r.given *= o.givenKeptPerDay;
+    if (r.givenUnasked) r.givenUnasked *= o.givenKeptPerDay;
+  }
 }
