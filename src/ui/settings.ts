@@ -15,6 +15,8 @@ export interface Settings {
   autosave: boolean;
   /** Which camera the player last used. */
   view: "2d" | "3d";
+  /** 3D detail: high adds walkers and dust and renders at full resolution. */
+  quality3d: "high" | "low";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -25,6 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
   colorBlind: false,
   autosave: true,
   view: "2d",
+  quality3d: "high",
 };
 
 const KEY = "downtown-mars.settings";

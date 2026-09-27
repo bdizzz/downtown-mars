@@ -87,3 +87,121 @@ export function placeLander(lander: THREE.Group, layout: Layout, t: number | nul
   const flame = lander.getObjectByName("flame");
   if (flame) flame.visible = t < 0.97;
 }
+
+// ---- walkers and dust: purely cosmetic, never part of the simulation ----
+
+const WALKER = { max: 60, perColonists: 3, height: 1.6, radius: 0.22, speed: 0.35, colors: [0xd8c0ae, 0x6f93bd, 0x86ad58, 0xc9a456, 0xd48092] };
+const DUST = { count: 260, fall: 0.25, size: 0.12 };
+
+interface Walker {
+  floor: number;
+  angle: number;
+  /** Radians per second, signed: which way round they're walking. */
+  speed: number;
+  /** A little in or out on the ledge, so they don't walk single file. */
+  offset: number;
+}
+
+/** A deterministic scatter for cosmetics, so the same colony looks the same each load. */
+function scatter(seed: number): () => number {
+  let s = seed >>> 0 || 1;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+export class Walkers {
+  readonly mesh: THREE.InstancedMesh;
+  private walkers: Walker[] = [];
+  private hole: Hole | null = null;
+  private readonly m = new THREE.Matrix4();
+
+  constructor() {
+    const body = new THREE.CapsuleGeometry(WALKER.radius, WALKER.height - 2 * WALKER.radius, 3, 6);
+    body.translate(0, WALKER.height / 2, 0);
+    this.mesh = new THREE.InstancedMesh(body, new THREE.MeshStandardMaterial({ roughness: 0.8 }), WALKER.max);
+    this.mesh.count = 0;
+    const c = new THREE.Color();
+    for (let i = 0; i < WALKER.max; i++) this.mesh.setColorAt(i, c.setHex(WALKER.colors[i % WALKER.colors.length]!));
+  }
+
+  /** Match the crowd to the colony: more people, more walkers, spread over the dug floors. */
+  sync(hole: Hole, population: number): void {
+    const want = Math.min(WALKER.max, Math.ceil(population / WALKER.perColonists));
+    if (this.hole === hole && this.walkers.length === want) return;
+    this.hole = hole;
+    const rand = scatter(population * 131 + hole.floors);
+    this.walkers = Array.from({ length: want }, () => ({
+      floor: 1 + Math.floor(rand() * hole.floors),
+      angle: rand() * TAU,
+      speed: (rand() < 0.5 ? -1 : 1) * WALKER.speed * (0.6 + rand() * 0.8),
+      offset: rand() * 1.2,
+    }));
+    this.mesh.count = want;
+    this.place();
+  }
+
+  /** Advance by dt real seconds and update the instances. */
+  step(dt: number): void {
+    for (const w of this.walkers) w.angle += (w.speed * dt) / Math.max(1, this.radiusFor(w));
+    this.place();
+  }
+
+  private radiusFor(w: Walker): number {
+    return this.hole ? openShaftRadius(this.hole) + 0.5 + w.offset : 1;
+  }
+
+  private place(): void {
+    if (!this.hole) return;
+    this.walkers.forEach((w, i) => {
+      const r = this.radiusFor(w);
+      const y = floorSpan(w.floor)[0] + 0.4;
+      this.m.makeTranslation(r * Math.cos(w.angle), y, r * Math.sin(w.angle));
+      this.mesh.setMatrixAt(i, this.m);
+    });
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+
+/** Motes drifting down the open shaft, caught in the lamplight. */
+export class Dust {
+  readonly points: THREE.Points;
+  private readonly positions: Float32Array;
+  private depth = 1;
+  private radius = 1;
+
+  constructor() {
+    this.positions = new Float32Array(DUST.count * 3);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(this.positions, 3));
+    this.points = new THREE.Points(
+      geo,
+      new THREE.PointsMaterial({ color: 0xffe2c0, size: DUST.size, transparent: true, opacity: 0.55, depthWrite: false }),
+    );
+  }
+
+  sync(hole: Hole): void {
+    const depth = -floorSpan(hole.floors + 1)[0];
+    const radius = openShaftRadius(hole) - 0.3;
+    if (depth === this.depth && radius === this.radius) return;
+    this.depth = depth;
+    this.radius = radius;
+    const rand = scatter(hole.floors * 7919);
+    for (let i = 0; i < DUST.count; i++) {
+      const a = rand() * TAU;
+      const r = Math.sqrt(rand()) * radius;
+      this.positions.set([r * Math.cos(a), -rand() * depth, r * Math.sin(a)], i * 3);
+    }
+    this.points.geometry.attributes.position!.needsUpdate = true;
+  }
+
+  step(dt: number): void {
+    for (let i = 0; i < DUST.count; i++) {
+      let y = this.positions[i * 3 + 1]! - DUST.fall * dt;
+      if (y < -this.depth) y += this.depth; // back to the top
+      this.positions[i * 3 + 1] = y;
+    }
+    this.points.geometry.attributes.position!.needsUpdate = true;
+  }
+}

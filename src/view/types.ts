@@ -29,7 +29,11 @@ export interface StageOptions {
   onSelect?: (roomId: number | null) => void;
   /** A click where the room can't go: say why. */
   onInvalid?: (reason: string) => void;
+  /** The view broke after starting (e.g. lost its graphics context). */
+  onError?: (message: string) => void;
 }
+
+export type Quality = "high" | "low";
 
 export interface Stage {
   update(snapshot: Snapshot): void;
@@ -38,6 +42,8 @@ export interface Stage {
   /** Heat map of one neighbor effect over the rooms, or null for none. */
   setOverlay(type: string | null): void;
   setColorBlind(on: boolean): void;
+  /** Detail level; views that have nothing to trade may ignore it. */
+  setQuality(q: Quality): void;
   destroy(): void;
 }
 

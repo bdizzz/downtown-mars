@@ -6,12 +6,12 @@ import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
 import { clickWith, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
-import type { HoverInfo, Pick, Stage, StageOptions, Tool } from "../view/types";
+import type { HoverInfo, Pick, Quality, Stage, StageOptions, Tool } from "../view/types";
 import { FLOOR_H, floorSpan, openShaftRadius, RING_D, TAU } from "./cylinder";
 import { inCarvedRegion, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { buildLayout, disposeLayout, disposeRoomMaterials, roomGeometry, setNightGlow } from "./rooms3d";
-import { galleryLamps, makeLander, placeLander, setLampGlow } from "./scenery3d";
+import { Dust, galleryLamps, makeLander, placeLander, setLampGlow, Walkers } from "./scenery3d";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Three
 // cameras: standing in the shaft looking at the wall, the way someone on the
@@ -79,7 +79,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   } catch {
     throw new Error("3D needs WebGL, which this browser or device doesn't provide.");
   }
-  renderer.setPixelRatio(window.devicePixelRatio);
+  const MAX_PIXEL_RATIO = 2;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
   // Filmic tone mapping keeps the lamp-lit wall from blowing out close up.
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.8;
@@ -143,6 +144,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let lamps: THREE.InstancedMesh | null = null;
   const lander = makeLander();
   scene.add(lander);
+  const walkers = new Walkers();
+  const dust = new Dust();
+  let quality: Quality = "high";
+  /** Real time (ms) the sim last moved; walkers stop when the game is paused. */
+  let lastTickChange = 0;
+  let lastTick = -1;
   let hole: Hole | null = null;
   let holeKey = "";
   let gameId = -1;
@@ -670,11 +677,37 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   });
   resize.observe(host);
 
+  // Ambient life (dust, walkers) animates at up to 30 fps; camera moves and
+  // sim changes still render on the next frame.
+  const AMBIENT_FPS = 30;
+  const clock = new THREE.Clock();
+  let ambient = 0;
   renderer.setAnimationLoop(() => {
+    ambient += Math.min(0.1, clock.getDelta());
+    if (quality === "high" && hole && ambient >= 1 / AMBIENT_FPS) {
+      dust.step(ambient);
+      if (performance.now() - lastTickChange < 400) walkers.step(ambient);
+      ambient = 0;
+      dirty = true;
+    }
     if (!dirty) return;
     dirty = false;
     renderer.render(scene, camera);
   });
+
+  canvas.addEventListener("webglcontextlost", (e) => {
+    e.preventDefault();
+    opts.onError?.("The 3D view lost its graphics context (the GPU may be busy or asleep). Switched to 2D.");
+  });
+
+  function applyQuality(): void {
+    renderer.setPixelRatio(quality === "high" ? Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO) : 1);
+    renderer.setSize(host.clientWidth, host.clientHeight);
+    walkers.mesh.visible = quality === "high";
+    dust.points.visible = quality === "high";
+    dirty = true;
+  }
+  scene.add(walkers.mesh, dust.points);
 
   let latest: Snapshot | null = null;
   applyCamera();
@@ -684,6 +717,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       latest = snapshot;
       layout = snapshot.layout;
       resources = snapshot.resources;
+      if (snapshot.tick !== lastTick) {
+        lastTick = snapshot.tick;
+        lastTickChange = performance.now();
+      }
       if (snapshot.gameId !== gameId) {
         gameId = snapshot.gameId;
         holeKey = "";
@@ -693,6 +730,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         holeKey = key;
         hole = snapshot.layout.hole;
         buildHole(hole);
+        dust.sync(hole);
         applyCamera();
       }
       const lk = `${snapshot.gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}`;
@@ -716,6 +754,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           dirty = true;
         }
       }
+      walkers.sync(snapshot.layout.hole, snapshot.population.count);
       updateSky(snapshot);
       const happy = overlayType === "happiness" ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",") : "";
       const fk = `${overlayType}:${snapshot.gameId}:${snapshot.layout.version}:${happy}:${heat.bad}`;
@@ -739,6 +778,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       selected = id;
       refreshHover(true);
     },
+    setQuality(q) {
+      quality = q;
+      applyQuality();
+    },
     setOverlay(type) {
       overlayType = type;
       fieldKey = "";
@@ -758,6 +801,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       dispose(holeGroup);
       dispose(digFront);
       dispose(lander);
+      dispose(walkers.mesh);
+      dispose(dust.points);
       fieldGroup.traverse((o) => o instanceof THREE.Mesh && o.geometry.dispose());
       disposeRoomMaterials();
       overlayMats.forEach((m) => m.dispose());

@@ -43,6 +43,13 @@ export function SettingsView({ settings, update, onBack }: Props) {
         </select>
       </label>
       <label>
+        <span>3D detail</span>
+        <select value={settings.quality3d} onChange={(e) => update({ quality3d: e.target.value as Settings["quality3d"] })}>
+          <option value="high">High: full resolution, colonists and dust</option>
+          <option value="low">Low: for slower machines</option>
+        </select>
+      </label>
+      <label>
         <input type="checkbox" checked={settings.colorBlind} onChange={(e) => update({ colorBlind: e.target.checked })} />
         <span>Colour-blind friendly overlays (orange and blue)</span>
       </label>
