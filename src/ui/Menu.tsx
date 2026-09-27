@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { describeSave, readSave, SLOTS, slotLabel, type Slot } from "./saves";
+import type { Settings } from "./settings";
+import { SettingsView } from "./SettingsView";
 
 interface Props {
   /** "title" before a game starts; "pause" in the middle of one. */
@@ -13,12 +15,16 @@ interface Props {
   error: string | null;
   tutorialHidden: boolean;
   onShowTutorial: () => void;
+  settings: Settings;
+  updateSettings: (patch: Partial<Settings>) => void;
+  onHelp: () => void;
 }
 
 type Confirm = { text: string; run: () => void } | null;
 
-export function Menu({ mode, onResume, onNewGame, onSave, onLoad, onExport, onImport, error, tutorialHidden, onShowTutorial }: Props) {
-  const [view, setView] = useState<"main" | "save" | "load">("main");
+export function Menu(props: Props) {
+  const { mode, onResume, onNewGame, onSave, onLoad, onExport, onImport, error, tutorialHidden, onShowTutorial } = props;
+  const [view, setView] = useState<"main" | "save" | "load" | "settings">("main");
   const [confirm, setConfirm] = useState<Confirm>(null);
   // Re-read storage on every render: saves change underneath us.
   const saves = Object.fromEntries(SLOTS.map((s) => [s, readSave(s)])) as Record<Slot, ReturnType<typeof readSave>>;
@@ -55,6 +61,8 @@ export function Menu({ mode, onResume, onNewGame, onSave, onLoad, onExport, onIm
             </button>
             <button onClick={() => setConfirm(null)}>No</button>
           </div>
+        ) : view === "settings" ? (
+          <SettingsView settings={props.settings} update={props.updateSettings} onBack={() => setView("main")} />
         ) : view === "main" ? (
           <div className="menu-buttons">
             {inGame && (
@@ -79,6 +87,8 @@ export function Menu({ mode, onResume, onNewGame, onSave, onLoad, onExport, onIm
             {inGame && <button onClick={onExport}>Export save file</button>}
             <button onClick={onImport}>Import save file…</button>
             {inGame && tutorialHidden && <button onClick={onShowTutorial}>Show tutorial</button>}
+            <button onClick={() => setView("settings")}>Settings…</button>
+            <button onClick={props.onHelp}>Controls</button>
           </div>
         ) : (
           <div className="menu-buttons">

@@ -58,8 +58,12 @@ const C = {
   rail: 0x4a3a32,
   landerDark: 0x6b6660,
   flame: 0xffb35c,
-  fieldBad: 0xff4a2e,
-  fieldGood: 0x5fe07a,
+};
+
+/** Overlay colours: red/green, or orange/blue for colour-blind players. */
+export const HEAT = {
+  normal: { bad: 0xff4a2e, good: 0x5fe07a },
+  colorBlind: { bad: 0xf08a24, good: 0x3f8fff },
 };
 
 const FIELD_MAX = 3; // effect strength shown at full colour
@@ -100,6 +104,7 @@ export interface Stage {
   setSelected(roomId: number | null): void;
   /** Heat map of one neighbor effect over the rooms, or null for none. */
   setOverlay(type: string | null): void;
+  setColorBlind(on: boolean): void;
   destroy(): void;
 }
 
@@ -134,6 +139,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let resources: Record<string, number> = {};
   let selected: number | null = null;
   let overlayType: string | null = null;
+  let heat = HEAT.normal;
   let field: EffectField | null = null;
   let happiness: Happiness | null = null;
   let digKey = "";
@@ -172,7 +178,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       // Same scale as the effects: 50 is neutral, 0 and 100 are full colour.
       const v = ((pool.happiness - 50) / 50) * FIELD_MAX;
       const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA;
-      const color = v < 0 ? C.fieldBad : C.fieldGood;
+      const color = v < 0 ? heat.bad : heat.good;
       if (room.at.kind === "surface") fieldCtx.rect(...surfaceRect(room.surfaceCells, layout.surface.length)).fill({ color, alpha });
       else for (const row of cellRows(layout.hole, room.cells)) fieldCtx.rect(...rowRect(layout.hole, row)).fill({ color, alpha });
     }
@@ -193,7 +199,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
           if (Math.abs(v) < 0.05) return;
           const [x0, x1] = slotX(slot, n);
           const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA;
-          fieldCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2).fill({ color: v < 0 ? C.fieldBad : C.fieldGood, alpha });
+          fieldCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2).fill({ color: v < 0 ? heat.bad : heat.good, alpha });
         });
       }
     });
@@ -515,7 +521,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
           const [x0, x1] = slotX(slot, n);
           const y = ringTop(fi + 1, ri + 1, h.ringSlots.length);
           const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA;
-          overlayCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2).fill({ color: v < 0 ? C.fieldBad : C.fieldGood, alpha });
+          overlayCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2).fill({ color: v < 0 ? heat.bad : heat.good, alpha });
         });
       }),
     );
@@ -788,6 +794,12 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     },
     setTool(t) {
       tool = t;
+      refreshHover();
+    },
+    setColorBlind(on) {
+      heat = on ? HEAT.colorBlind : HEAT.normal;
+      drawField();
+      hoverKey = "";
       refreshHover();
     },
     setOverlay(type) {

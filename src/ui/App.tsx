@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type React from "react";
 import type { HoverInfo, Tool } from "../render2d/stage";
 import type { SimCommand } from "../sim/commands";
 import { roomDef, roomDefs } from "../sim/rooms";
 import { BuildPalette, buildTool, DEMOLISH_KEY, HOTKEYS, shapesFor } from "./BuildPalette";
 import { FlowPanel } from "./FlowPanel";
+import { Help } from "./Help";
 import { Hud } from "./Hud";
 import { Inspector } from "./Inspector";
 import { Menu } from "./Menu";
@@ -43,7 +45,8 @@ export function App() {
   const resumeSpeed = useRef(1);
   const [tutorialOn, setTutorialOn] = useState(() => !tutorialHidden());
   const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false });
-  const [settings] = useSettings();
+  const [settings, updateSettings] = useSettings();
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useSounds(snapshot);
   useEffect(() => setAudioSettings(settings), [settings]);
@@ -202,9 +205,17 @@ export function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (menu) return;
       const target = e.target as HTMLElement | null;
       if (target && ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) return;
+      if (e.key === "?" || (e.code === "Slash" && e.shiftKey)) {
+        setHelpOpen((h) => !h);
+        return;
+      }
+      if (helpOpen && e.code === "Escape") {
+        setHelpOpen(false);
+        return;
+      }
+      if (menu || helpOpen) return;
       if (e.code === "Escape") {
         // Esc backs out of whatever is open; with nothing open, it opens the menu.
         if (tool || selected !== null || panel) {
@@ -234,10 +245,13 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, tool, selected, panel, openMenu, undo, rotate]);
+  }, [menu, helpOpen, tool, selected, panel, openMenu, undo, rotate]);
 
   return (
-    <div className="app">
+    <div
+      className={`app${settings.colorBlind ? " color-blind" : ""}`}
+      style={{ "--ui-scale": settings.uiScale } as React.CSSProperties}
+    >
       <Hud
         snapshot={snapshot}
         speed={speed}
@@ -282,6 +296,7 @@ export function App() {
             selected={selected}
             onSelect={(id) => (setSelected(id), id !== null && setPanel(null))}
             onInvalid={(reason) => (flash(reason), play("refuse"))}
+            colorBlind={settings.colorBlind}
             overlay={overlay}
           />
         </div>
@@ -303,8 +318,12 @@ export function App() {
             setTutorialHidden(false);
             startPlaying();
           }}
+          settings={settings}
+          updateSettings={updateSettings}
+          onHelp={() => setHelpOpen(true)}
         />
       )}
+      {helpOpen && <Help onClose={() => setHelpOpen(false)} />}
     </div>
   );
 }

@@ -13,14 +13,15 @@ interface Props {
   onSelect: (roomId: number | null) => void;
   onInvalid: (reason: string) => void;
   overlay: string | null;
+  colorBlind: boolean;
 }
 
-export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay }: Props) {
+export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
-  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay });
-  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay };
+  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind });
+  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind };
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +38,7 @@ export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selecte
       stage.setTool(props.current.tool);
       stage.setSelected(props.current.selected);
       stage.setOverlay(props.current.overlay);
+      stage.setColorBlind(props.current.colorBlind);
       if (props.current.snapshot) stage.update(props.current.snapshot);
     });
     return () => {
@@ -61,6 +63,10 @@ export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selecte
   useEffect(() => {
     stageRef.current?.setOverlay(overlay);
   }, [overlay]);
+
+  useEffect(() => {
+    stageRef.current?.setColorBlind(colorBlind);
+  }, [colorBlind]);
 
   return <div ref={hostRef} className="pixi-host" />;
 }
