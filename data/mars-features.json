@@ -1,0 +1,31 @@
+{
+  "_note": "Major named features for the map. Latitude north, longitude east, in degrees (IAU).",
+  "features": [
+    { "name": "Olympus Mons", "lat": 18.6, "lon": 226.2, "kind": "volcano" },
+    { "name": "Ascraeus Mons", "lat": 11.8, "lon": 255.6, "kind": "volcano" },
+    { "name": "Pavonis Mons", "lat": 1.5, "lon": 247.0, "kind": "volcano" },
+    { "name": "Arsia Mons", "lat": -8.3, "lon": 239.9, "kind": "volcano" },
+    { "name": "Alba Mons", "lat": 40.5, "lon": 250.4, "kind": "volcano" },
+    { "name": "Elysium Mons", "lat": 25.0, "lon": 147.2, "kind": "volcano" },
+    { "name": "Valles Marineris", "lat": -14.0, "lon": 301.0, "kind": "canyon" },
+    { "name": "Noctis Labyrinthus", "lat": -7.0, "lon": 258.0, "kind": "canyon" },
+    { "name": "Hellas Planitia", "lat": -42.4, "lon": 70.5, "kind": "basin" },
+    { "name": "Argyre Planitia", "lat": -49.7, "lon": 316.0, "kind": "basin" },
+    { "name": "Isidis Planitia", "lat": 12.9, "lon": 87.0, "kind": "basin" },
+    { "name": "Utopia Planitia", "lat": 46.7, "lon": 117.5, "kind": "plain" },
+    { "name": "Arcadia Planitia", "lat": 47.2, "lon": 184.3, "kind": "plain" },
+    { "name": "Acidalia Planitia", "lat": 46.7, "lon": 338.0, "kind": "plain" },
+    { "name": "Amazonis Planitia", "lat": 24.8, "lon": 196.0, "kind": "plain" },
+    { "name": "Chryse Planitia", "lat": 28.4, "lon": 319.7, "kind": "plain" },
+    { "name": "Syrtis Major", "lat": 8.4, "lon": 69.5, "kind": "highland" },
+    { "name": "Arabia Terra", "lat": 21.0, "lon": 6.0, "kind": "highland" },
+    { "name": "Meridiani Planum", "lat": 0.2, "lon": 357.5, "kind": "plain" },
+    { "name": "Terra Cimmeria", "lat": -32.0, "lon": 145.0, "kind": "highland" },
+    { "name": "Terra Sirenum", "lat": -39.7, "lon": 209.7, "kind": "highland" },
+    { "name": "Tempe Terra", "lat": 39.7, "lon": 289.0, "kind": "highland" },
+    { "name": "Gale Crater", "lat": -5.4, "lon": 137.8, "kind": "crater" },
+    { "name": "Jezero Crater", "lat": 18.4, "lon": 77.5, "kind": "crater" },
+    { "name": "Planum Boreum", "lat": 86.0, "lon": 15.0, "kind": "polar" },
+    { "name": "Planum Australe", "lat": -84.0, "lon": 160.0, "kind": "polar" }
+  ]
+}

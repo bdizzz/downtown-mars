@@ -32,6 +32,7 @@ function summaries(): HoleSummary[] {
     name: h.name,
     population: h.population.count,
     waiting: h.office.waiting.length,
+    site: h.site,
   }));
 }
 
@@ -45,6 +46,7 @@ function post(): void {
     ...rest,
     gameId,
     holes: summaries(),
+    deposits: world.map.deposits,
     layoutVersion: layout.version,
     ...(fresh ? { layout, effects } : {}),
   };
@@ -95,7 +97,8 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       break;
     }
     case "newGame":
-      replaceWorld(createWorld(config));
+      // Each new game gets its own seed, so the map (and everything else random) differs.
+      replaceWorld(createWorld(config, (Math.random() * 0xffffffff) >>> 0 || 1));
       reply({ type: "loaded", id: msg.id, result: { ok: true } });
       break;
   }

@@ -4,6 +4,7 @@ import { canDig, diggingFloor, ticksToDig } from "./digging";
 import { beds, padReady } from "./earth";
 import { capacities, roomSpec, type Population, type RoomStatus } from "./economy";
 import type { EffectField } from "./effects";
+import type { Deposit } from "./mapgeo";
 import type { Happiness } from "./happiness";
 import { averageFlows, type Flows } from "./ledger";
 import type { Message } from "./messages";
@@ -30,6 +31,7 @@ export interface HoleSummary {
   population: number;
   /** Visitors waiting at that hole's office. */
   waiting: number;
+  site: { lat: number; lon: number } | null;
 }
 
 // What the views get to see: the hole being looked at, in full, plus a line
@@ -41,6 +43,8 @@ export interface Snapshot {
   holeName: string;
   /** Filled in by the worker, which can see the whole world. */
   holes: HoleSummary[];
+  /** Resource deposits on the map; the worker fills these in too. */
+  deposits: Deposit[];
   tick: number;
   time: GameTime;
   layout: Layout;
@@ -76,6 +80,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     holeId: state.holeId,
     holeName: state.name,
     holes: [],
+    deposits: [],
     tick: state.tick,
     time: gameTime(state.tick, cfg),
     layout: state.layout,

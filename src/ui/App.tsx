@@ -8,6 +8,7 @@ import { FlowPanel } from "./FlowPanel";
 import { Help } from "./Help";
 import { Hud } from "./Hud";
 import { Inspector } from "./Inspector";
+import { MapScreen } from "./MapScreen";
 import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
@@ -47,6 +48,7 @@ export function App() {
   const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false, sawThreeD: false });
   const [settings, updateSettings] = useSettings();
   const [helpOpen, setHelpOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
 
   useSounds(snapshot);
   useEffect(() => setAudioSettings(settings), [settings]);
@@ -229,7 +231,8 @@ export function App() {
       if (menu || helpOpen) return;
       if (e.code === "Escape") {
         // Esc backs out of whatever is open; with nothing open, it opens the menu.
-        if (tool || selected !== null || panel) {
+        if (mapOpen) setMapOpen(false);
+        else if (tool || selected !== null || panel) {
           setTool(null);
           setSelected(null);
           setPanel(null);
@@ -242,6 +245,7 @@ export function App() {
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.code === "KeyR") rotate();
+      if (e.code === "KeyM") setMapOpen((m) => !m);
       if (e.code === "KeyV") updateSettings({ view: settings.view === "2d" ? "3d" : "2d" });
       const letter = e.key.toUpperCase();
       if (letter === DEMOLISH_KEY) {
@@ -257,7 +261,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, helpOpen, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings]);
+  }, [menu, helpOpen, mapOpen, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings]);
 
   return (
     <div
@@ -274,6 +278,7 @@ export function App() {
         view={settings.view}
         toggleView={() => updateSettings({ view: settings.view === "2d" ? "3d" : "2d" })}
         setActiveHole={setActiveHole}
+        toggleMap={() => setMapOpen((m) => !m)}
         highlight={highlight}
         openMenu={openMenu}
         keysEnabled={!menu}
@@ -302,6 +307,7 @@ export function App() {
             />
           )}
           <Messages s={snapshot} />
+          {snapshot && mapOpen && <MapScreen s={snapshot} onClose={() => setMapOpen(false)} />}
           <ViewHost
             snapshot={snapshot}
             tool={tool}

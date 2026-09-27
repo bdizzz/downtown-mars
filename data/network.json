@@ -1,4 +1,53 @@
 {
   "_note": "Network-wide settings. Hole names are real Martian craters.",
-  "holeNames": ["Bradbury", "Gale", "Jezero", "Gusev", "Holden", "Eberswalde", "Schiaparelli", "Huygens", "Antoniadi", "Lowell", "Kepler", "Galle", "Newton", "Copernicus", "Herschel", "Cassini"]
+  "holeNames": [
+    "Bradbury",
+    "Gale",
+    "Jezero",
+    "Gusev",
+    "Holden",
+    "Eberswalde",
+    "Schiaparelli",
+    "Huygens",
+    "Antoniadi",
+    "Lowell",
+    "Kepler",
+    "Galle",
+    "Newton",
+    "Copernicus",
+    "Herschel",
+    "Cassini"
+  ],
+  "marsRadiusKm": 3389.5,
+  "deposits": {
+    "_note": "How many deposits of each kind a game places, and their size in degrees. Where they go follows the terrain (src/sim/map.ts).",
+    "ice": {
+      "count": 12,
+      "radius": [
+        3,
+        7
+      ]
+    },
+    "aquifer": {
+      "count": 6,
+      "radius": [
+        2,
+        4
+      ]
+    },
+    "ore": {
+      "count": 8,
+      "radius": [
+        2,
+        5
+      ]
+    },
+    "silica": {
+      "count": 8,
+      "radius": [
+        2,
+        5
+      ]
+    }
+  }
 }
