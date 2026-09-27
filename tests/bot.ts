@@ -54,7 +54,7 @@ export const PLAN: Plan[] = [
   { room: "restroom", at: ring(4, 1, 5) },
 ];
 
-const VISIT_ANSWERS: Record<string, string> = {
+export const VISIT_ANSWERS: Record<string, string> = {
   noise_complaint: "quiet_hours",
   clinic_demand: "promise",
 };

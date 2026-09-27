@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json",
     "test": "vitest run",
     "playtest": "PLAYTEST=1 vitest run tests/playthrough.test.ts --reporter=default --silent=false",
-    "package": "npm run build && node scripts/package.mjs"
+    "package": "npm run build && node scripts/package.mjs",
+    "playtest:net": "PLAYTEST=1 vitest run tests/network-playthrough.test.ts --reporter=default --silent=false"
   },
   "dependencies": {
     "pixi.js": "^8.21.0",
