@@ -1,0 +1,190 @@
+import { describe, expect, it } from "vitest";
+import { applyCommand } from "../src/sim/commands";
+import { config } from "../src/sim/config";
+import { corridorRefusal, corridors, routeToRoom } from "../src/sim/corridors";
+import { edgeById, outsideEdges } from "../src/sim/edges";
+import { computeEffects, effectAt } from "../src/sim/effects";
+import type { Location } from "../src/sim/placement";
+import { deserialize, serialize } from "../src/sim/save";
+import { createInitialState, type SimState } from "../src/sim/state";
+import { createWorld } from "../src/sim/world";
+
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+
+function rich(): SimState {
+  const s = createInitialState(config);
+  s.drill.active = false;
+  Object.assign(s.resources, { rock: 400, brick: 200, metal: 200, marscrete: 100, machinery: 50, electronics: 50 });
+  // Clear the landing kit's battery out of ring 1 so the slots are free.
+  const battery = s.layout.rooms.find((r) => r.type === "battery_bank")!;
+  applyCommand(s, { type: "demolish", roomId: battery.id });
+  return s;
+}
+function build(s: SimState, room: string, at: Location) {
+  const r = applyCommand(s, { type: "build", room, at });
+  if (!r.ok) throw new Error(`${room}: ${r.reason}`);
+  return s.layout.rooms.find((x) => x.id === r.roomId)!;
+}
+const draw = (s: SimState, edges: string[], finish = "rock") => applyCommand(s, { type: "drawCorridors", edges, finish });
+
+describe("where corridors can go", () => {
+  it("along a room's side, but not through rock alone or the middle of a room", () => {
+    const s = rich();
+    build(s, "bunk_dorm", ring(1, 1, 0, 2)); // slots 0–1 of ring 1
+    expect(corridorRefusal(s.layout, "R1.1.0")).toBeNull(); // dorm | rock
+    expect(corridorRefusal(s.layout, "R1.1.1")).toBe("That's the middle of a room");
+    expect(corridorRefusal(s.layout, "R1.1.5")).toMatch(/only rock/);
+    expect(corridorRefusal(s.layout, "R9.1.0")).toMatch(/isn't dug/);
+    draw(s, ["R1.1.0"]);
+    expect(corridorRefusal(s.layout, "R1.1.0")).toBe("Already a corridor");
+  });
+
+  it("costs its finish by length, and refunds half when removed", () => {
+    const s = rich();
+    build(s, "bunk_dorm", ring(1, 1, 0, 2));
+    const brick = s.resources.brick!;
+    expect(draw(s, ["R1.1.0"], "brick").ok).toBe(true);
+    const cost = corridors.finishes.find((f) => f.id === "brick")!.cost.brick!; // a radial edge is 10 m
+    expect(s.resources.brick).toBeCloseTo(brick - cost);
+    expect(s.layout.corridors["R1.1.0"]).toBe("brick");
+    expect(s.ledger.current.brick?.out.Corridors).toBeCloseTo(cost);
+    applyCommand(s, { type: "removeCorridors", edges: ["R1.1.0"] });
+    expect(s.resources.brick).toBeCloseTo(brick - cost * (1 - corridors.refund));
+    expect(s.layout.corridors["R1.1.0"]).toBeUndefined();
+  });
+
+  it("refuses what it can't afford", () => {
+    const s = rich();
+    build(s, "bunk_dorm", ring(1, 1, 0, 2));
+    s.resources.metal = 0;
+    expect(draw(s, ["R1.1.0"], "metal")).toMatchObject({ ok: false, reason: expect.stringMatching(/Needs .* metal/) });
+  });
+});
+
+describe("access", () => {
+  it("ring 1 rooms open onto the gallery; deeper rooms need a linked corridor", () => {
+    const s = rich();
+    const galley = build(s, "galley", ring(1, 1, 0));
+    const dorm = build(s, "bunk_dorm", ring(1, 2, 0, 2));
+    expect(galley.connected).toBe(true);
+    expect(dorm.connected).toBe(false);
+    // A spoke beside the galley reaches the gallery; an arc along the dorm's inner side joins it.
+    draw(s, ["R1.1.0"]);
+    expect(s.layout.corridorLinked?.["R1.1.0"]).toBe(true);
+    const inner = outsideEdges(s.layout.hole, dorm.cells).find((e) => e.kind === "arc" && e.circle === 1 && e.a0 === 0)!;
+    draw(s, [inner.id]);
+    expect(s.layout.rooms.find((r) => r.id === dorm.id)!.connected).toBe(true);
+  });
+
+  it("a corridor that doesn't reach the shaft isn't linked", () => {
+    const s = rich();
+    const dorm = build(s, "bunk_dorm", ring(1, 2, 4, 2));
+    const e = outsideEdges(s.layout.hole, dorm.cells).find((x) => x.kind === "arc" && x.circle === 2)!;
+    draw(s, [e.id]);
+    expect(s.layout.corridorLinked?.[e.id]).toBe(false);
+    expect(s.layout.rooms.find((r) => r.id === dorm.id)!.connected).toBe(false);
+  });
+
+  it("removing a corridor strands what was behind it", () => {
+    const s = rich();
+    build(s, "galley", ring(1, 1, 0));
+    const dorm = build(s, "bunk_dorm", ring(1, 2, 0, 2));
+    expect(applyCommand(s, { type: "connectRoom", roomId: dorm.id, finish: "rock" }).ok).toBe(true);
+    expect(s.layout.rooms.find((r) => r.id === dorm.id)!.connected).toBe(true);
+    applyCommand(s, { type: "removeCorridors", edges: Object.keys(s.layout.corridors) });
+    expect(s.layout.rooms.find((r) => r.id === dorm.id)!.connected).toBe(false);
+  });
+
+  it("a public room counts every side as a corridor", () => {
+    const s = rich();
+    build(s, "small_plaza", ring(1, 1, 0, 2));
+    const dorm = build(s, "bunk_dorm", ring(1, 2, 0, 2)); // right behind the plaza
+    expect(dorm.connected).toBe(true);
+    expect(Object.keys(s.layout.corridors)).toHaveLength(0);
+  });
+
+  it("corridors on the floor being dug don't link until it's dug", () => {
+    const s = rich();
+    const f = s.layout.hole.floors + 1;
+    build(s, "galley", ring(f, 1, 0));
+    draw(s, [`R${f}.1.0`]);
+    expect(s.layout.corridorLinked?.[`R${f}.1.0`]).toBe(false);
+  });
+});
+
+describe("connecting a room", () => {
+  it("finds the shortest route along rooms and draws it", () => {
+    const s = rich();
+    build(s, "galley", ring(1, 1, 0));
+    build(s, "restroom", ring(1, 1, 1));
+    const ls = build(s, "life_support", ring(1, 2, 0, 4));
+    const route = routeToRoom(s.layout, ls, config)!;
+    expect(route.length).toBeGreaterThan(0);
+    expect(route.length).toBeLessThanOrEqual(2);
+    expect(applyCommand(s, { type: "connectRoom", roomId: ls.id, finish: "marscrete" }).ok).toBe(true);
+    expect(s.layout.rooms.find((r) => r.id === ls.id)!.connected).toBe(true);
+    expect(Object.values(s.layout.corridors).every((f) => f === "marscrete")).toBe(true);
+  });
+
+  it("says so when there's nothing to carve along", () => {
+    const s = rich();
+    const far = build(s, "clinic", ring(1, 3, 0)); // rock all the way in
+    expect(routeToRoom(s.layout, far, config)).toBeNull();
+    expect(applyCommand(s, { type: "connectRoom", roomId: far.id, finish: "rock" })).toMatchObject({ ok: false });
+  });
+
+  it("uses existing corridors for free", () => {
+    const s = rich();
+    build(s, "galley", ring(1, 1, 0));
+    const a = build(s, "bunk_dorm", ring(1, 2, 0, 2));
+    applyCommand(s, { type: "connectRoom", roomId: a.id, finish: "rock" });
+    const before = Object.keys(s.layout.corridors).length;
+    const b = build(s, "clinic", ring(1, 2, 2)); // next to the first dorm
+    const route = routeToRoom(s.layout, s.layout.rooms.find((r) => r.id === b.id)!, config)!;
+    expect(route.length).toBeLessThanOrEqual(2);
+    expect(before).toBeGreaterThan(0);
+  });
+});
+
+describe("corridors and effects", () => {
+  it("a corridor between two rooms soaks up noise; health still passes", () => {
+    const s = rich();
+    build(s, "life_support", ring(1, 1, 0, 4)); // noise −2 r2, slots 0–3
+    build(s, "bunk_dorm", ring(1, 1, 4, 2));
+    build(s, "clinic", ring(1, 1, 6)); // health +2 r2
+    const before = effectAt(computeEffects(s.layout), "noise", { floor: 1, ring: 1, slot: 4 });
+    draw(s, ["R1.1.4"]); // between the life support and the dorm
+    const after = computeEffects(s.layout);
+    expect(before).toBeLessThan(0);
+    expect(Math.abs(effectAt(after, "noise", { floor: 1, ring: 1, slot: 4 }))).toBeLessThan(Math.abs(before));
+    draw(s, ["R1.1.6"]); // between the dorm and the clinic
+    expect(effectAt(computeEffects(s.layout), "health", { floor: 1, ring: 1, slot: 5 })).toBeGreaterThan(0);
+  });
+});
+
+describe("old saves", () => {
+  it("turn corridor rooms into corridors along their borders", () => {
+    const w = createWorld(config);
+    const file = JSON.parse(serialize(w));
+    file.version = 11;
+    const layout = file.state.holes[0].layout;
+    delete layout.corridors;
+    // A ring-1 corridor room at slot 1, and a dorm behind it in ring 2 that it served.
+    const id = layout.nextRoomId++;
+    layout.rooms.push({ id, type: "corridor", at: ring(1, 1, 1), cells: [{ floor: 1, ring: 1, slot: 1 }], surfaceCells: [], connected: true, planned: false, priority: "normal" });
+    layout.grid[0][0][1] = id;
+    const dormId = layout.nextRoomId++;
+    const dormCells = [{ floor: 1, ring: 2, slot: 1 }, { floor: 1, ring: 2, slot: 2 }];
+    layout.rooms.push({ id: dormId, type: "bunk_dorm", at: ring(1, 2, 1, 2), cells: dormCells, surfaceCells: [], connected: true, planned: false, priority: "normal" });
+    for (const c of dormCells) layout.grid[0][1][c.slot] = dormId;
+    const loaded = deserialize(JSON.stringify(file));
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    const l = loaded.world.holes[0]!.layout;
+    expect(l.rooms.some((r) => r.type === "corridor")).toBe(false);
+    expect(l.grid[0]![0]![1]).toBe(0);
+    expect(Object.keys(l.corridors).length).toBeGreaterThan(0);
+    expect(Object.keys(l.corridors).every((e) => edgeById(l.hole, e))).toBe(true);
+    expect(l.rooms.find((r) => r.id === dormId)!.connected).toBe(true);
+  });
+});

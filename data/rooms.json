@@ -57,25 +57,6 @@
       "buildable": true
     },
     {
-      "id": "corridor",
-      "name": "Corridor",
-      "short": "",
-      "category": "circulation",
-      "size": "S",
-      "staff": 0,
-      "uses": {},
-      "makes": {},
-      "blocksEffects": [
-        "noise",
-        "smell"
-      ],
-      "effects": [],
-      "cost": {
-        "rock": 5
-      },
-      "buildable": true
-    },
-    {
       "id": "bunk_dorm",
       "name": "Bunk dorm",
       "short": "Dorm",
@@ -635,6 +616,60 @@
       "cost": {
         "brick": 20,
         "rock": 10
+      },
+      "buildable": true
+    },
+    {
+      "id": "concrete_plant",
+      "name": "Concrete plant",
+      "short": "Concrete",
+      "category": "industry",
+      "size": "M",
+      "staff": 3,
+      "uses": {
+        "rock": 5,
+        "water": 2,
+        "power": 2
+      },
+      "makes": {
+        "marscrete": 4
+      },
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -2,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "rock": 15,
+        "metal": 5,
+        "machinery": 1
+      },
+      "buildable": true
+    },
+    {
+      "id": "small_plaza",
+      "name": "Small plaza",
+      "short": "Plaza",
+      "category": "public",
+      "size": "M",
+      "staff": 1,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "public": true,
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": 1,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "rock": 10,
+        "brick": 5
       },
       "buildable": true
     }

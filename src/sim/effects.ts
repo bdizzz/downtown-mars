@@ -1,11 +1,12 @@
 import { overlappingSlots, ringSize, wrapSlot } from "./geometry";
 import type { Cell, Layout, RoomInstance } from "./placement";
 import { roomDef, type EffectType } from "./rooms";
+import { corridorBetween, corridors as corridorCfg } from "./corridors";
 
 // Neighbor effects: every built room radiates its effects outward from its own
 // cells, step by step along the ring, across rings (by angle) and between
 // floors, fading linearly to nothing just past its radius. Sources add up.
-// Corridors soak up noise and smell rather than passing them on.
+// Corridors soak up noise and smell: they don't cross a border that's all corridor.
 
 export const FIELD_TYPES: EffectType[] = ["noise", "smell", "health", "comfort"];
 
@@ -46,11 +47,8 @@ export function falloff(strength: number, radius: number, distance: number): num
   return distance > radius ? 0 : strength * (1 - distance / (radius + 1));
 }
 
-function blocks(layout: Layout, c: Cell, type: EffectType): boolean {
-  const id = layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot];
-  if (!id) return false;
-  const room = layout.rooms.find((r) => r.id === id);
-  return !!room && !!roomDef(room.type).blocksEffects?.includes(type);
+function blocks(layout: Layout, from: Cell, to: Cell, type: EffectType): boolean {
+  return corridorCfg.blocksEffects.includes(type) && corridorBetween(layout, from, to);
 }
 
 function radiate(layout: Layout, field: EffectField, room: RoomInstance): void {
@@ -65,11 +63,11 @@ function radiate(layout: Layout, field: EffectField, room: RoomInstance): void {
       const next: Cell[] = [];
       for (const c of frontier) {
         grid[c.floor - 1]![c.ring - 1]![c.slot]! += falloff(eff.strength, eff.radius, d);
-        // A blocking cell (a corridor) takes the effect but doesn't pass it on.
-        if (d > 0 && blocks(layout, c, eff.type)) continue;
         for (const nb of stepNeighbors(layout, c)) {
           const k = key(nb);
           if (seen.has(k)) continue;
+          // A corridor between them soaks it up; it may still get there another way.
+          if (blocks(layout, c, nb, eff.type)) continue;
           seen.add(k);
           next.push(nb);
         }

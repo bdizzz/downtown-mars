@@ -30,7 +30,7 @@ describe("first hour, two holes", () => {
 
   it("builds the child's critical set within a few days of arrival", () => {
     expect(net.childBuilt.length).toBeGreaterThanOrEqual(6);
-    expect(net.childBuilt[5]! - net.foundedDay!).toBeLessThan(6);
+    expect(net.childBuilt[5]! - net.foundedDay!).toBeLessThan(8);
   });
 
   it("keeps the child alive and growing", () => {

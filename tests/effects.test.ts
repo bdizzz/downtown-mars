@@ -47,26 +47,25 @@ describe("effect field", () => {
     expect(effectAt(f, "health", cell(1, 2, 1))).toBeCloseTo(4 / 3);
   });
 
-  it("a corridor soaks up noise instead of passing it on", () => {
+  it("a corridor along the border soaks up noise instead of passing it across", () => {
     const open = layout();
-    placeRoom(open, "life_support", ring(1, 1, 0, 4));
+    placeRoom(open, "life_support", ring(1, 1, 0, 4)); // slots 0–3
     const walled = layout();
     placeRoom(walled, "life_support", ring(1, 1, 0, 4));
-    placeRoom(walled, "corridor", ring(1, 1, 4));
+    walled.corridors["R1.1.4"] = "rock"; // between slot 3 and slot 4
     const a = computeEffects(open);
     const b = computeEffects(walled);
-    expect(effectAt(b, "noise", cell(1, 1, 4))).toBeCloseTo(-4 / 3); // the corridor itself hears it
-    expect(effectAt(a, "noise", cell(1, 1, 5))).toBeCloseTo(-2 / 3);
-    // Beyond the corridor, only the long way round (via ring 2) still reaches.
-    expect(effectAt(b, "noise", cell(1, 1, 5))).toBeGreaterThan(effectAt(a, "noise", cell(1, 1, 5)));
+    expect(effectAt(a, "noise", cell(1, 1, 4))).toBeCloseTo(-4 / 3);
+    // Across the corridor, only the long way round (via ring 2) still reaches.
+    expect(effectAt(b, "noise", cell(1, 1, 4))).toBeGreaterThan(effectAt(a, "noise", cell(1, 1, 4)));
   });
 
   it("corridors don't block health", () => {
     const l = layout();
     placeRoom(l, "clinic", ring(1, 1, 0));
-    placeRoom(l, "corridor", ring(1, 1, 1));
+    l.corridors["R1.1.1"] = "rock";
     const f = computeEffects(l);
-    expect(effectAt(f, "health", cell(1, 1, 2))).toBeCloseTo(2 / 3);
+    expect(effectAt(f, "health", cell(1, 1, 1))).toBeCloseTo(4 / 3);
   });
 
   it("effects from several rooms add up", () => {

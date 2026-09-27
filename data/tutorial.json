@@ -15,16 +15,16 @@
       "highlight": "room:restroom"
     },
     {
-      "id": "corridor",
-      "text": "Ring 1 fills up fast. Lay a corridor there so we can reach ring 2.",
-      "hint": "Press C and click, or drag to paint several.",
-      "highlight": "room:corridor"
+      "id": "life_support",
+      "text": "Life support makes our oxygen. It's loud, so put it in ring 2, behind the rooms on the shaft.",
+      "hint": "Press L. It takes 4 slots; R rotates it. It won't run until a corridor reaches it: that's next.",
+      "highlight": "room:life_support"
     },
     {
-      "id": "life_support",
-      "text": "Life support makes our oxygen. It's loud, so keep it away from where people will sleep.",
-      "hint": "Press L. It needs 4 slots touching your corridor; R rotates it.",
-      "highlight": "room:life_support"
+      "id": "corridor",
+      "text": "Rooms past ring 1 need a corridor back to the shaft. Carve one along the borders between rooms, from the gallery to the life support.",
+      "hint": "Press C and drag along the borders, or click Connect in the life support's panel.",
+      "highlight": "tool:corridors"
     },
     {
       "id": "water_tank",

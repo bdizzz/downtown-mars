@@ -80,3 +80,21 @@ Decided Sep 27, 2026 (Bryon). This reverses DECISIONS.md "Corridors take slots (
 - **Helpers:** a cell's edges (ring 1's inner side is the gallery, not an edge), a group's outside edges, the edges two cells share, lengths in metres, and the nearest edge to a point for the tool.
 
 Tested: cuts, sides, id round-trips, shared borders, shared vertices, picking, lengths.
+
+**Step 2, corridors in the sim:** `src/sim/corridors.ts`.
+- **Layout:** the layout holds `corridors` (edge id → finish) and a derived `corridorLinked`.
+- **Where they can go** (`corridorRefusal`): a dug floor or the one being dug, a room on at least one side, not the middle of a room, not already a corridor.
+- **Commands:**
+  - `drawCorridors` pays per edge by length (costs in `data/corridors.json`, per 10 m) and logs "Corridors" in the ledger. It carves what it can.
+  - `removeCorridors` refunds half.
+  - `connectRoom` runs a shortest path (Dijkstra by metres over the floor's edges, existing corridors and plaza sides free) from anything linked to the shaft to one of the room's sides, and draws it all or nothing.
+- **Access:** a union-find over vertices. Spokes between ring-1 cells join the shaft. Public rooms count every outside edge, and ring-1 public rooms open onto the gallery. Corridors on the floor being dug don't link until it's dug. Ring-1 rooms are connected as before.
+- **Placement:** placement no longer refuses unconnected rooms; the check reports `unconnected`, and the status bar warns. The Inspector has a "Connect with a corridor" button (bare rock for now) until the views get the tool.
+- **Effects:** noise and smell don't cross a border that's all corridor. They may still arrive the long way round; health and comfort pass.
+- **New content:**
+  - marscrete (a material, capacity 200);
+  - the concrete plant (rock 5 + water 2 + power 2 → marscrete 4, noise −2 r2);
+  - the small plaza (public, comfort +1 r2), in a new Public category.
+- **Retired:** the corridor room is gone. Save version 12 turns each one into bare-rock corridors along its borders with rooms and other old corridor cells, plus a ring-1 cell's spokes to the gallery. The cells become empty (tested with a ring-2 dorm that stays connected).
+- **Tutorial:** life support goes in ring 2 first, then "carve a corridor to it" (met when a linked corridor reaches a room past ring 1).
+- **Scripted players:** they connect each room they place and retry any that are cut off. The playthroughs pass with bounds eased slightly for the rock corridors cost: the child's critical set is up within 8 days of the convoy leaving, and there are 170+ colonists at day 80 (they reach 179).

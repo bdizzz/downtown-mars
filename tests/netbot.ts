@@ -26,7 +26,6 @@ type Plan = { room: string; at: Location; crop?: string; stopAt?: number };
 
 /** Once the map opens: industry for the kit, then get ready to found and trade. */
 export const HOME_EXTRA: Plan[] = [
-  { room: "corridor", at: ring(5, 1, 4) },
   { room: "smelter", at: ring(5, 1, 5, 4) },
   { room: "machine_shop", at: ring(5, 2, 7, 2), stopAt: 12 },
   { room: "staging_bay", at: ring(5, 1, 0, 4) },
@@ -35,11 +34,9 @@ export const HOME_EXTRA: Plan[] = [
 
 /** The child: the critical set, then its own rovers and food. */
 export const CHILD_PLAN: Plan[] = [
-  { room: "corridor", at: ring(1, 1, 1) },
   { room: "galley", at: ring(1, 1, 2) },
   { room: "restroom", at: ring(1, 1, 3) },
   { room: "water_tank", at: ring(1, 1, 6) },
-  { room: "corridor", at: ring(1, 2, 2) },
   { room: "life_support", at: ring(1, 2, 3, 4) },
   { room: "rover_depot", at: surface(9) },
   { room: "solar_array", at: surface(5) },
@@ -96,11 +93,17 @@ function builder(plan: Plan[]) {
         }
         if (p.crop) applyCommand(hole, { type: "setCrop", roomId: r.roomId!, crop: p.crop });
         if (p.stopAt !== undefined) applyCommand(hole, { type: "setRoomControl", roomId: r.roomId!, stopAt: p.stopAt });
+        applyCommand(hole, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
         builtAt.push(day);
         pending.splice(k, 1);
       }
     },
   };
+}
+
+/** Carve corridors to anything still cut off. */
+function reconnect(hole: SimState): void {
+  for (const r of hole.layout.rooms) if (!r.connected && !r.planned) applyCommand(hole, { type: "connectRoom", roomId: r.id, finish: "rock" });
 }
 
 function answerVisits(hole: SimState): void {
@@ -158,6 +161,7 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
         if (built) adapted.push(`d${day.toFixed(0)} ${home.name} ${built}`);
       }
       answerVisits(home);
+      reconnect(home);
       const child = world.holes[1];
       if (child) {
         childPlan.step(child, day);
@@ -166,6 +170,7 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
           if (built) adapted.push(`d${day.toFixed(0)} ${child.name} ${built}`);
         }
         answerVisits(child);
+        reconnect(child);
       }
       if (found && foundedDay === null && world.mapUnlocked && kitProgress(home) >= 0.999) {
         const r = foundHole(world, config, home.holeId, pickSite(world, home));

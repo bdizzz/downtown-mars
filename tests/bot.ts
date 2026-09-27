@@ -18,16 +18,13 @@ type Plan = { room: string; at: Location; crop?: string };
 
 export const PLAN: Plan[] = [
   // Tier 1: the critical set on floor 1.
-  { room: "corridor", at: ring(1, 1, 1) },
   { room: "galley", at: ring(1, 1, 2) },
   { room: "restroom", at: ring(1, 1, 3) },
   { room: "bunk_dorm", at: ring(1, 1, 4, 2) },
   { room: "water_tank", at: ring(1, 1, 6) },
-  { room: "corridor", at: ring(1, 2, 2) },
   { room: "life_support", at: ring(1, 2, 3, 4) },
   // Tier 2: weaning off Earth, mostly on floor 2.
   { room: "farm", at: ring(2, 1, 0, 4), crop: "potatoes" },
-  { room: "corridor", at: ring(2, 1, 4) },
   { room: "farm", at: ring(2, 1, 5, 4), crop: "soybeans" },
   { room: "solar_array", at: surface(5) },
   { room: "water_recycler", at: ring(2, 2, 8, 4) },
@@ -38,7 +35,6 @@ export const PLAN: Plan[] = [
   { room: "galley", at: ring(3, 1, 3) },
   { room: "restroom", at: ring(3, 1, 4) },
   { room: "solar_array", at: surface(6) },
-  { room: "corridor", at: ring(3, 1, 7) },
   { room: "life_support", at: ring(3, 2, 12, 4) },
   { room: "bunk_dorm", at: ring(3, 1, 5, 2) },
   { room: "restroom", at: ring(3, 1, 8) },
@@ -47,7 +43,6 @@ export const PLAN: Plan[] = [
   { room: "galley", at: ring(4, 1, 0) },
   { room: "water_tank", at: ring(4, 1, 1) },
   { room: "water_tank", at: ring(4, 1, 2) },
-  { room: "corridor", at: ring(4, 1, 6) },
   { room: "life_support", at: ring(4, 2, 10, 4) },
   { room: "solar_array", at: surface(8) },
   { room: "bunk_dorm", at: ring(4, 1, 3, 2) },
@@ -95,9 +90,13 @@ export function run(days: number): { state: SimState; log: Day[]; builtAt: Recor
         if (!cmd({ type: "build", room: p.room, at: p.at }).ok) break;
         const room = s.layout.rooms.at(-1)!;
         if (p.crop) cmd({ type: "setCrop", roomId: room.id, crop: p.crop });
+        // Past ring 1, carve the shortest corridor to it.
+        cmd({ type: "connectRoom", roomId: room.id, finish: "rock" });
         builtAt[next] = s.tick / config.ticksPerDay;
         next++;
       }
+      // Anything still cut off (nothing to carve along yet, or short of rock): try again.
+      for (const r of s.layout.rooms) if (!r.connected && !r.planned) cmd({ type: "connectRoom", roomId: r.id, finish: "rock" });
       for (const v of [...s.office.waiting]) {
         const choice = VISIT_ANSWERS[v.kind];
         if (choice && !cmd({ type: "answerVisit", visitId: v.id, choice }).ok) {

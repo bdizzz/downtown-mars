@@ -1,0 +1,52 @@
+{
+  "_note": "Corridors run along the borders between cells (see src/sim/edges.ts). Costs are per 10 m of corridor; short arc pieces cost in proportion. The finish is purely a look for now.",
+  "widthM": 3,
+  "refund": 0.5,
+  "blocksEffects": [
+    "noise",
+    "smell"
+  ],
+  "defaultFinish": "rock",
+  "finishes": [
+    {
+      "id": "rock",
+      "name": "Bare rock",
+      "hint": "Rough-hewn and dark; cheap, from the rock you dig",
+      "cost": {
+        "rock": 3
+      },
+      "color": "#5a3a2c",
+      "accent": "#3e261c"
+    },
+    {
+      "id": "marscrete",
+      "name": "Marscrete",
+      "hint": "Flat grey and utilitarian",
+      "cost": {
+        "marscrete": 2
+      },
+      "color": "#8d8983",
+      "accent": "#6d6a65"
+    },
+    {
+      "id": "brick",
+      "name": "Brick",
+      "hint": "Warm, laid courses",
+      "cost": {
+        "brick": 2
+      },
+      "color": "#a45a3e",
+      "accent": "#7d4130"
+    },
+    {
+      "id": "metal",
+      "name": "Metal",
+      "hint": "Light steel with floor grating: the fancy option",
+      "cost": {
+        "metal": 2
+      },
+      "color": "#b9c2c9",
+      "accent": "#7f8b94"
+    }
+  ]
+}

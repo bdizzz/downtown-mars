@@ -21,6 +21,8 @@ function withRooms(rooms: [string, Location][]): SimState {
   for (const [room, at] of rooms) {
     const r = applyCommand(s, { type: "build", room, at });
     if (!r.ok) throw new Error(`${room}: ${r.reason}`);
+    const c = applyCommand(s, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
+    if (!c.ok) throw new Error(`${room}: ${c.reason}`);
   }
   updateHappiness(s, config, true);
   return s;
@@ -56,8 +58,7 @@ describe("happiness", () => {
   it("ring 1 homes get the shaft view", () => {
     const s = withRooms([
       ["bunk_dorm", ring(1, 1, 1, 2)],
-      ["corridor", ring(1, 1, 3)],
-      ["bunk_dorm", ring(1, 2, 7, 2)],
+      ["bunk_dorm", ring(1, 2, 3, 2)],
     ]);
     const [inner, outer] = s.happiness.pools.filter((p) => s.layout.rooms.find((r) => r.id === p.roomId)!.type === "bunk_dorm");
     expect(inner!.factors.comfort - outer!.factors.comfort).toBeCloseTo(config.happiness.shaftViewComfort);

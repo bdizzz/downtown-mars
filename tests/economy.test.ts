@@ -28,9 +28,10 @@ function criticalSet(): SimState {
   build(s, "bunk_dorm", ring(1, 1, 1, 2));
   build(s, "galley", ring(1, 1, 3));
   build(s, "restroom", ring(1, 1, 4));
-  build(s, "corridor", ring(1, 1, 5));
-  build(s, "life_support", ring(1, 2, 9, 4));
+  const ls = build(s, "life_support", ring(1, 2, 9, 4));
   build(s, "water_tank", ring(1, 2, 8));
+  const c = applyCommand(s, { type: "connectRoom", roomId: ls.id, finish: "rock" });
+  if (!c.ok) throw new Error(c.reason);
   return s;
 }
 

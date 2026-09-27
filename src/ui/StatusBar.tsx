@@ -64,7 +64,8 @@ export function StatusBar({ info, snapshot, notice, overlay }: Props) {
     } else if (info.check?.ok && snapshot) {
       const felt = feltOver(snapshot, info.check.cells);
       const blueprint = info.check.planned ? "Blueprint: builds when this floor is dug · " : "";
-      text = `${blueprint}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
+      const cutOff = info.check.unconnected ? "⚠ No corridor reaches here yet: it won't work until one does · " : "";
+      text = `${cutOff}${blueprint}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
     } else if (info.room) {
       const def = roomDef(info.room.type);
       const blueprint = info.room.planned ? " (blueprint)" : "";

@@ -7,6 +7,7 @@ import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { network } from "../sim/network";
+import { corridors } from "../sim/corridors";
 import { num, resName, signed } from "./format";
 
 interface Props {
@@ -173,6 +174,11 @@ export function Inspector({ s, roomId, onCommand, onClose }: Props) {
         </button>
       </header>
       <p className={isProblem(room, st) ? "warn" : ""}>{state}</p>
+      {!room.connected && room.at.kind === "ring" && (
+        <button onClick={() => onCommand({ type: "connectRoom", roomId: room.id, finish: corridors.defaultFinish })} title="Carve the shortest corridor from the network to this room, in bare rock">
+          Connect with a corridor
+        </button>
+      )}
       {spec.staff > 0 && (
         <p>
           <span className="k">Staff</span> {st?.staff ?? 0} / {spec.staff}

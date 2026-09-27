@@ -7,13 +7,15 @@ import { depositsAt, generateMap, type MapState } from "./map";
 import { network } from "./network";
 import { culture } from "./culture";
 import { addAdults } from "./people";
+import { migrateCorridorRooms } from "./corridors";
+import type { Layout } from "./placement";
 import type { World } from "./world";
 
 // Saves are the whole world as JSON, minus what can be rebuilt (each hole's
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 
 type Raw = Record<string, unknown>;
 
@@ -64,6 +66,15 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
   }),
   // v11 added migration between holes.
   10: (s) => ({ ...s, migrations: [] }),
+  // v12: corridors moved from rooms to the borders between cells.
+  11: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const layout = h.layout as Layout;
+      migrateCorridorRooms(layout);
+      return { ...h, layout };
+    }),
+  }),
 };
 
 export interface SaveSummary {

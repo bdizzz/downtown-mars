@@ -54,6 +54,8 @@ export interface RoomDef {
   caresForElders?: number;
   /** Not buildable until the hole has reached this (see UNLOCKS in costs.ts). */
   unlockedBy?: "children" | "elders";
+  /** Walk-through: every side counts as a corridor, so neighbours open onto it. */
+  public?: boolean;
   /** A working one lets colonists have children. */
   enablesBirths?: boolean;
   /** Rovers this room provides for trade routes. */

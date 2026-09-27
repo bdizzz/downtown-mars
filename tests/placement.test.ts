@@ -50,16 +50,9 @@ describe("placement rules", () => {
     expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 2)).ok).toBe(true);
   });
 
-  it("ring 2 needs a corridor", () => {
-    expect(checkPlacement(layout, "bunk_dorm", ring(1, 2, 0, 2))).toMatchObject({ ok: false, reason: "Needs a corridor or the shaft gallery" });
-    placeRoom(layout, "corridor", ring(1, 1, 0));
-    expect(checkPlacement(layout, "bunk_dorm", ring(1, 2, 0, 2)).ok).toBe(true);
-  });
-
-  it("a spoke of corridors reaches ring 3", () => {
-    placeRoom(layout, "corridor", ring(1, 1, 0));
-    placeRoom(layout, "corridor", ring(1, 2, 0));
-    expect(checkPlacement(layout, "clinic", ring(1, 3, 1)).ok).toBe(true);
+  it("ring 2 rooms can go down before a corridor reaches them, flagged as unconnected", () => {
+    expect(checkPlacement(layout, "bunk_dorm", ring(1, 2, 0, 2))).toMatchObject({ ok: true, unconnected: true });
+    expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 2))).not.toHaveProperty("unconnected");
   });
 
   it("rejects overlaps, locked rings, undug floors and bad shapes", () => {
@@ -77,13 +70,6 @@ describe("placement rules", () => {
     expect(checkPlacement(layout, "solar_array", { kind: "surface", slot: 11 }).ok).toBe(true);
   });
 
-  it("demolishing a corridor strands the rooms behind it", () => {
-    const c = placeRoom(layout, "corridor", ring(1, 1, 0));
-    placeRoom(layout, "bunk_dorm", ring(1, 2, 0, 2));
-    expect(layout.rooms.find((r) => r.type === "bunk_dorm")!.connected).toBe(true);
-    applyCommand({ ...createInitialState(config), layout }, { type: "demolish", roomId: c.id! });
-    expect(layout.rooms.find((r) => r.type === "bunk_dorm")!.connected).toBe(false);
-  });
 });
 
 describe("starting state", () => {

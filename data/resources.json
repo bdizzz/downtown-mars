@@ -104,6 +104,12 @@
       "baseCapacity": 200
     },
     {
+      "id": "marscrete",
+      "name": "Marscrete",
+      "group": "material",
+      "baseCapacity": 200
+    },
+    {
       "id": "metal",
       "name": "Metal",
       "group": "material",

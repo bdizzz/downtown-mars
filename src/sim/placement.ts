@@ -1,5 +1,6 @@
 import { config, type Priority, type SimConfig } from "./config";
 import { overlappingSlots, ringSize, wrapSlot, type Hole } from "./geometry";
+import { recomputeAccess, wouldConnect } from "./corridors";
 import { isRoomType, roomDef } from "./rooms";
 
 // Where rooms can go. A ring room is anchored at its innermost ring and
@@ -50,10 +51,14 @@ export interface Layout {
   /** surface[slot] = room id, or 0 if empty. */
   surface: number[];
   nextRoomId: number;
+  /** Corridors along the borders between cells: edge id (see edges.ts) → finish. */
+  corridors: Record<string, string>;
+  /** Which corridors reach the shaft; recomputed with access. */
+  corridorLinked?: Record<string, boolean>;
 }
 
 export type CheckResult =
-  | { ok: true; cells: Cell[]; surfaceCells: number[]; planned: boolean }
+  | { ok: true; cells: Cell[]; surfaceCells: number[]; planned: boolean; /** No corridor reaches it yet: it can go here, but won't work until one does. */ unconnected?: boolean }
   | { ok: false; reason: string; cells: Cell[]; surfaceCells: number[] };
 
 const EPS = 1e-9;
@@ -66,6 +71,7 @@ export function createLayout(hole: Hole, cfg: SimConfig = config): Layout {
     grid: [],
     surface: new Array(cfg.geometry.surfaceSlots).fill(0),
     nextRoomId: 1,
+    corridors: {},
   };
   ensureFloors(layout);
   return layout;
@@ -119,14 +125,6 @@ export function roomAt(layout: Layout, c: Cell): RoomInstance | undefined {
   return id ? layout.rooms.find((r) => r.id === id) : undefined;
 }
 
-function touchesAccess(layout: Layout, cells: Cell[]): boolean {
-  if (cells.some((c) => c.ring === 1)) return true; // opens onto the shaft gallery
-  return neighborCells(layout.hole, cells).some((c) => {
-    const r = roomAt(layout, c);
-    return r !== undefined && r.type === "corridor" && r.connected;
-  });
-}
-
 export function checkPlacement(layout: Layout, type: string, at: Location, cfg: SimConfig = config): CheckResult {
   const none = { cells: [], surfaceCells: [] };
   if (!isRoomType(type)) return { ok: false, reason: `Unknown room "${type}"`, ...none };
@@ -164,10 +162,9 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
     const other = roomAt(layout, c);
     if (other) return { ok: false, reason: `Overlaps ${roomDef(other.type).name}`, cells, surfaceCells: [] };
   }
-  if (!touchesAccess(layout, cells)) {
-    return { ok: false, reason: "Needs a corridor or the shaft gallery", cells, surfaceCells: [] };
-  }
-  return { ok: true, cells, surfaceCells: [], planned: at.floor > hole.floors };
+  // Rooms can go anywhere; one no corridor reaches yet just won't work until one does.
+  const unconnected = !def.public && !wouldConnect(layout, cells);
+  return { ok: true, cells, surfaceCells: [], planned: at.floor > hole.floors, ...(unconnected ? { unconnected } : {}) };
 }
 
 function nameOf(layout: Layout, id: number): string {
@@ -211,28 +208,4 @@ export function demolishRoom(layout: Layout, id: number): { ok: true } | { ok: f
   return { ok: true };
 }
 
-/**
- * Corridors connect if they touch the gallery or a connected corridor
- * (flood fill). Other rooms connect if they are in ring 1 or touch a
- * connected corridor. Removing a corridor can strand rooms behind it.
- */
-export function recomputeAccess(layout: Layout): void {
-  const corridors = layout.rooms.filter((r) => r.type === "corridor");
-  for (const r of layout.rooms) r.connected = r.at.kind === "surface";
-
-  const queue = corridors.filter((r) => r.cells.some((c) => c.ring === 1));
-  queue.forEach((r) => (r.connected = true));
-  while (queue.length) {
-    const cur = queue.shift()!;
-    for (const c of neighborCells(layout.hole, cur.cells)) {
-      const next = roomAt(layout, c);
-      if (next && next.type === "corridor" && !next.connected) {
-        next.connected = true;
-        queue.push(next);
-      }
-    }
-  }
-  for (const r of layout.rooms) {
-    if (r.at.kind === "ring" && r.type !== "corridor") r.connected = touchesAccess(layout, r.cells);
-  }
-}
+export { recomputeAccess };

@@ -7,6 +7,8 @@ import type { Priority } from "./config";
 import { enact, repeal } from "./ordinances";
 import { isCrop } from "./resources";
 import { mainOutput } from "./economy";
+import { corridorCost, corridorRefusal, corridors as corridorCfg, CORRIDORS, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
+import { edgeById } from "./edges";
 import { holeGates } from "./people";
 import { answerVisit } from "./visits";
 import { roomDef } from "./rooms";
@@ -23,6 +25,11 @@ export type SimCommand =
   | { type: "setRoomControl"; roomId: number; paused?: boolean; stopAt?: number | null }
   | { type: "answerVisit"; visitId: number; choice: string }
   | { type: "setOrdinance"; id: string; enacted: boolean }
+  /** Carve corridors along these borders (edge ids, see edges.ts), in a finish. Skips any that can't go. */
+  | { type: "drawCorridors"; edges: string[]; finish: string }
+  | { type: "removeCorridors"; edges: string[] }
+  /** Draw the shortest corridor that connects this room to the network. */
+  | { type: "connectRoom"; roomId: number; finish: string }
   /** Start or stop the staging bay gathering a seed kit. */
   | { type: "setGathering"; gathering: boolean };
 
@@ -33,6 +40,41 @@ export function applyCommand(state: SimState, cmd: SimCommand): CommandResult {
   const result = apply(state, cmd);
   state.effects = refreshEffects(state.layout, state.effects);
   return result;
+}
+
+/**
+ * Carve corridors, paying for each in the finish. With `all`, it's all or
+ * nothing (a route is no use half built); otherwise whatever can go, goes.
+ */
+function drawCorridors(state: SimState, edges: string[], finish: string, all = false): CommandResult {
+  const layout = state.layout;
+  if (!isFinish(finish)) return { ok: false, reason: `Unknown finish "${finish}"` };
+  const ok = edges.filter((id, i) => edges.indexOf(id) === i && corridorRefusal(layout, id) === null);
+  if (!ok.length) return { ok: false, reason: corridorRefusal(layout, edges[0] ?? "") ?? "Nothing to carve" };
+  if (all) {
+    const short = shortfall(state.resources, totalCost(layout.hole, ok, finish, config));
+    if (short) return { ok: false, reason: short };
+  }
+  let built = 0;
+  let firstShort: string | null = null;
+  for (const id of ok) {
+    const cost = corridorCost(layout.hole, edgeById(layout.hole, id)!, finish, config);
+    const short = shortfall(state.resources, cost);
+    if (short) {
+      firstShort ??= short;
+      continue;
+    }
+    for (const [r, v] of Object.entries(cost)) {
+      state.resources[r] = (state.resources[r] ?? 0) - v;
+      record(state, r, "out", CORRIDORS, v);
+    }
+    layout.corridors[id] = finish;
+    built++;
+  }
+  if (!built) return { ok: false, reason: firstShort ?? "Nothing to carve" };
+  recomputeAccess(layout);
+  layout.version++;
+  return { ok: true };
 }
 
 function apply(state: SimState, cmd: SimCommand): CommandResult {
@@ -64,6 +106,30 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       const result = demolishRoom(layout, cmd.roomId);
       if (result.ok) refund(state.resources, room.type, 1);
       return result;
+    }
+    case "drawCorridors":
+      return drawCorridors(state, cmd.edges, cmd.finish);
+    case "removeCorridors": {
+      const gone = cmd.edges.filter((id) => layout.corridors[id]);
+      if (!gone.length) return { ok: false, reason: "No corridor there" };
+      for (const id of gone) {
+        const e = edgeById(layout.hole, id)!;
+        for (const [r, v] of Object.entries(corridorCost(layout.hole, e, layout.corridors[id]!, config))) {
+          state.resources[r] = (state.resources[r] ?? 0) + v * corridorCfg.refund;
+        }
+        delete layout.corridors[id];
+      }
+      recomputeAccess(layout);
+      layout.version++;
+      return { ok: true };
+    }
+    case "connectRoom": {
+      const room = layout.rooms.find((r) => r.id === cmd.roomId);
+      if (!room) return { ok: false, reason: "No such room" };
+      const path = routeToRoom(layout, room, config);
+      if (path === null) return { ok: false, reason: "No way to reach it along rooms on this floor: build toward it first" };
+      if (!path.length) return { ok: true };
+      return drawCorridors(state, path, cmd.finish, true);
     }
     case "setDrill":
       state.drill.active = cmd.active;

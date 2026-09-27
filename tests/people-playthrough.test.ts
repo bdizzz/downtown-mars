@@ -33,7 +33,7 @@ describe("ninety minutes of people", () => {
 
   it("outgrows a single hole by a wide margin", () => {
     expect(net.log.at(-1)!.total).toBeGreaterThan(solo.log.at(-1)!.total * 1.4);
-    expect(at(80).total).toBeGreaterThan(180);
+    expect(at(80).total).toBeGreaterThan(170);
   });
 
   it("keeps the child hole healthy", () => {

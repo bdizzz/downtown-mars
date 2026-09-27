@@ -24,7 +24,10 @@ const has = (s: Snapshot, type: string, n = 1) => s.layout.rooms.filter((r) => r
 export const CHECKS: Record<string, (s: Snapshot, ui: UiFlags) => boolean> = {
   galley: (s) => has(s, "galley"),
   restroom: (s) => has(s, "restroom"),
-  corridor: (s) => has(s, "corridor"),
+  // A corridor that actually reaches a room past ring 1.
+  corridor: (s) =>
+    Object.values(s.layout.corridorLinked ?? {}).some(Boolean) &&
+    s.layout.rooms.some((r) => r.at.kind === "ring" && r.connected && !r.cells.some((c) => c.ring === 1)),
   life_support: (s) => has(s, "life_support"),
   water_tank: (s) => has(s, "water_tank"),
   dorm: (s) => has(s, "bunk_dorm"),

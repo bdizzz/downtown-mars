@@ -16,12 +16,14 @@ describe("first month playthrough", () => {
     console.log("messages:", state.messages.map((m) => `d${(m.tick / config.ticksPerDay).toFixed(1)} ${m.text}`));
   }
 
+  const at = (room: string) => builtAt[PLAN.findIndex((p) => p.room === room)]!;
+
   it("builds the critical set on day 1", () => {
-    expect(builtAt[6]).toBeLessThan(1);
+    expect(at("life_support")).toBeLessThan(1);
   });
 
   it("finishes tier 2 within about two weeks", () => {
-    expect(builtAt[13]).toBeLessThan(15);
+    expect(at("admin_office")).toBeLessThan(15);
   });
 
   it("reaches about 50 colonists within the month", () => {
