@@ -4,3 +4,4 @@ dist
 *.log
 release
 public/dev-save.json
+public/dev-save-40.json

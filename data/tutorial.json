@@ -2,19 +2,90 @@
   "_note": "The first-30-minutes tutorial. Each goal's check is in src/ui/tutorial.ts, keyed by id. {name} is the deputy.",
   "intro": "I'm {name}, your deputy. Twenty of us, one pod, and a hole that goes nowhere yet. Let's make it a home.",
   "goals": [
-    { "id": "galley", "text": "Twenty people and nowhere to cook. Put a galley in ring 1, on the shaft.", "hint": "Press G, then click a free slot in ring 1.", "highlight": "room:galley" },
-    { "id": "restroom", "text": "Next, a restroom. It turns used water into gray water we can recycle later.", "hint": "Press W and place it in ring 1.", "highlight": "room:restroom" },
-    { "id": "corridor", "text": "Ring 1 fills up fast. Lay a corridor there so we can reach ring 2.", "hint": "Press C and click, or drag to paint several.", "highlight": "room:corridor" },
-    { "id": "life_support", "text": "Life support makes our oxygen. It's loud, so keep it away from where people will sleep.", "hint": "Press L. It needs 4 slots touching your corridor; R rotates it.", "highlight": "room:life_support" },
-    { "id": "water_tank", "text": "Earth ships water, and it has to go somewhere. A water tank holds 200.", "hint": "Press T.", "highlight": "room:water_tank" },
-    { "id": "dorm", "text": "The pod is cramped. Build a bunk dorm somewhere quiet.", "hint": "Press D. While placing, the status bar shows the noise a spot already has.", "highlight": "room:bunk_dorm" },
-    { "id": "noise", "text": "Check your work: turn on the noise overlay. Red is where people won't sleep.", "hint": "Overlay → Noise, at the bottom left.", "highlight": "overlay:noise" },
-    { "id": "drop", "text": "We're running. Speed things up and wait for Earth's first supply drop.", "hint": "Press 2× or 4×. Space pauses.", "highlight": "hud:speed" },
-    { "id": "farms", "text": "Rations won't last forever. Build two farms and grow different crops: potatoes and soybeans make a start.", "hint": "Press F. Click a farm to change its crop. Farms need soil, water, power and CO2.", "highlight": "room:farm" },
-    { "id": "visit", "text": "Someone's waiting at the office. Hear them out: people remember how you treat them.", "hint": "Click Office in the top bar.", "highlight": "hud:office" },
-    { "id": "flows", "text": "Water keeps vanishing. Open Flows to see where it goes.", "hint": "Click Flows in the top bar, then the Water tab.", "highlight": "hud:flows" },
-    { "id": "recycler", "text": "Most of it goes down the drain as gray water. A water recycler brings it back.", "hint": "Press Y. It needs metal and machinery from Earth.", "highlight": "room:water_recycler" },
-    { "id": "clinic", "text": "Last one: a clinic keeps people healthy and makes the neighborhood feel safer.", "hint": "Press K.", "highlight": "room:clinic" }
+    {
+      "id": "galley",
+      "text": "Twenty people and nowhere to cook. Put a galley in ring 1, on the shaft.",
+      "hint": "Press G, then click a free slot in ring 1.",
+      "highlight": "room:galley"
+    },
+    {
+      "id": "restroom",
+      "text": "Next, a restroom. It turns used water into gray water we can recycle later.",
+      "hint": "Press W and place it in ring 1.",
+      "highlight": "room:restroom"
+    },
+    {
+      "id": "corridor",
+      "text": "Ring 1 fills up fast. Lay a corridor there so we can reach ring 2.",
+      "hint": "Press C and click, or drag to paint several.",
+      "highlight": "room:corridor"
+    },
+    {
+      "id": "life_support",
+      "text": "Life support makes our oxygen. It's loud, so keep it away from where people will sleep.",
+      "hint": "Press L. It needs 4 slots touching your corridor; R rotates it.",
+      "highlight": "room:life_support"
+    },
+    {
+      "id": "water_tank",
+      "text": "Earth ships water, and it has to go somewhere. A water tank holds 200.",
+      "hint": "Press T.",
+      "highlight": "room:water_tank"
+    },
+    {
+      "id": "dorm",
+      "text": "The pod is cramped. Build a bunk dorm somewhere quiet.",
+      "hint": "Press D. While placing, the status bar shows the noise a spot already has.",
+      "highlight": "room:bunk_dorm"
+    },
+    {
+      "id": "noise",
+      "text": "Check your work: turn on the noise overlay. Red is where people won't sleep.",
+      "hint": "Overlay → Noise, at the bottom left.",
+      "highlight": "overlay:noise"
+    },
+    {
+      "id": "drop",
+      "text": "We're running. Speed things up and wait for Earth's first supply drop.",
+      "hint": "Press 2× or 4×. Space pauses.",
+      "highlight": "hud:speed"
+    },
+    {
+      "id": "farms",
+      "text": "Rations won't last forever. Build two farms and grow different crops: potatoes and soybeans make a start.",
+      "hint": "Press F. Click a farm to change its crop. Farms need soil, water, power and CO2.",
+      "highlight": "room:farm"
+    },
+    {
+      "id": "visit",
+      "text": "Someone's waiting at the office. Hear them out: people remember how you treat them.",
+      "hint": "Click Office in the top bar.",
+      "highlight": "hud:office"
+    },
+    {
+      "id": "flows",
+      "text": "Water keeps vanishing. Open Flows to see where it goes.",
+      "hint": "Click Flows in the top bar, then the Water tab.",
+      "highlight": "hud:flows"
+    },
+    {
+      "id": "recycler",
+      "text": "Most of it goes down the drain as gray water. A water recycler brings it back.",
+      "hint": "Press Y. It needs metal and machinery from Earth.",
+      "highlight": "room:water_recycler"
+    },
+    {
+      "id": "clinic",
+      "text": "Last one: a clinic keeps people healthy and makes the neighborhood feel safer.",
+      "hint": "Press K.",
+      "highlight": "room:clinic"
+    },
+    {
+      "id": "three_d",
+      "text": "Now step back and look at what you've built: switch to the 3D view and try Cutaway to see every ring.",
+      "hint": "Press V, or click 3D view in the top bar. Drag to look around; V again to come back.",
+      "highlight": "hud:view"
+    }
   ],
   "outro": "That's a working colony. From here, every colonist we can support is a point on the board. Keep digging."
 }

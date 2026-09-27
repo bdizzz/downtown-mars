@@ -44,7 +44,7 @@ export function App() {
   const [menuError, setMenuError] = useState<string | null>(null);
   const resumeSpeed = useRef(1);
   const [tutorialOn, setTutorialOn] = useState(() => !tutorialHidden());
-  const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false });
+  const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false, sawThreeD: false });
   const [settings, updateSettings] = useSettings();
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -190,7 +190,7 @@ export function App() {
     lastDay.current = null;
     undoStack.current = [];
     setCanUndo(false);
-    setFlags({ sawNoise: false, openedFlows: false });
+    setFlags({ sawNoise: false, openedFlows: false, sawThreeD: false });
   }, [gameId]);
 
   // The tutorial watches for things only the UI knows about.
@@ -200,6 +200,9 @@ export function App() {
   useEffect(() => {
     if (panel === "flows") setFlags((f) => (f.openedFlows ? f : { ...f, openedFlows: true }));
   }, [panel]);
+  useEffect(() => {
+    if (settings.view === "3d") setFlags((f) => (f.sawThreeD ? f : { ...f, sawThreeD: true }));
+  }, [settings.view]);
   const goal = snapshot && tutorialOn ? currentGoal(snapshot, flags) : null;
   const highlight = goal?.highlight ?? null;
 

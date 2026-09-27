@@ -83,7 +83,7 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleF
           Office{snapshot.office.waiting.length ? ` · ${snapshot.office.waiting.length} waiting` : ""}
         </button>
       )}
-      <button className="office-btn" onClick={toggleView} title="Switch between the unrolled 2D view and the 3D shaft (V)">
+      <button className={`office-btn${pulse("view")}`} onClick={toggleView} title="Switch between the unrolled 2D view and the 3D shaft (V)">
         {view === "2d" ? "3D view" : "2D view"}
       </button>
       <button className={`office-btn${pulse("flows")}`} onClick={toggleFlows} title="Where resources come from and go">

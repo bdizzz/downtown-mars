@@ -15,6 +15,7 @@ export const tutorial = raw as { intro: string; goals: Goal[]; outro: string };
 export interface UiFlags {
   sawNoise: boolean;
   openedFlows: boolean;
+  sawThreeD: boolean;
 }
 
 const has = (s: Snapshot, type: string, n = 1) => s.layout.rooms.filter((r) => r.type === type).length >= n;
@@ -34,6 +35,7 @@ export const CHECKS: Record<string, (s: Snapshot, ui: UiFlags) => boolean> = {
   flows: (_, ui) => ui.openedFlows,
   recycler: (s) => has(s, "water_recycler"),
   clinic: (s) => has(s, "clinic"),
+  three_d: (_, ui) => ui.sawThreeD,
 };
 
 const KEY = "downtown-mars.tutorial.hidden";

@@ -144,6 +144,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let lamps: THREE.InstancedMesh | null = null;
   const lander = makeLander();
   scene.add(lander);
+  // Timing for the dev console (window.__stage3d in dev builds only).
+  const stats = { buildMs: 0, frameMs: 0, calls: 0, triangles: 0 };
   const walkers = new Walkers();
   const dust = new Dust();
   let quality: Quality = "high";
@@ -692,7 +694,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
     if (!dirty) return;
     dirty = false;
+    const t0 = performance.now();
     renderer.render(scene, camera);
+    stats.frameMs = performance.now() - t0;
+    stats.calls = renderer.info.render.calls;
+    stats.triangles = renderer.info.render.triangles;
   });
 
   canvas.addEventListener("webglcontextlost", (e) => {
@@ -716,6 +722,24 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     update(snapshot) {
       latest = snapshot;
       layout = snapshot.layout;
+      if (import.meta.env.DEV) {
+        // For the dev console: timings, plus a synchronous render timed through the GPU.
+        (window as unknown as { __stage3d: unknown }).__stage3d = {
+          ...stats,
+          measure(): number {
+            const gl = renderer.getContext();
+            const t0 = performance.now();
+            renderer.render(scene, camera);
+            gl.finish();
+            return performance.now() - t0;
+          },
+          setMode(m: Mode) {
+            view.mode = m;
+            syncBar();
+            applyCamera();
+          },
+        };
+      }
       resources = snapshot.resources;
       if (snapshot.tick !== lastTick) {
         lastTick = snapshot.tick;
@@ -738,7 +762,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         layoutKey = lk;
         scene.remove(layoutGroup);
         disposeLayout(layoutGroup);
+        const t0 = performance.now();
         layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray);
+        stats.buildMs = performance.now() - t0;
         scene.add(layoutGroup);
         dirty = true;
       }

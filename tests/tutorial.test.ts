@@ -5,7 +5,7 @@ import { createInitialState } from "../src/sim/state";
 import { CHECKS, tutorial } from "../src/ui/tutorialGoals";
 import { run } from "./bot";
 
-const flags = { sawNoise: true, openedFlows: true };
+const flags = { sawNoise: true, openedFlows: true, sawThreeD: true };
 
 describe("tutorial", () => {
   it("every goal has a check", () => {
@@ -14,7 +14,7 @@ describe("tutorial", () => {
 
   it("nothing is done at the start (except UI-only goals)", () => {
     const s = makeSnapshot(createInitialState(config), config);
-    const done = tutorial.goals.filter((g) => CHECKS[g.id]!(s, { sawNoise: false, openedFlows: false }));
+    const done = tutorial.goals.filter((g) => CHECKS[g.id]!(s, { sawNoise: false, openedFlows: false, sawThreeD: false }));
     expect(done).toEqual([]);
   });
 

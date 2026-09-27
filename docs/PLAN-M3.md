@@ -42,3 +42,11 @@ Decided Sep 27, 2026 (Bryon): milestone 3 is the 3D view. When the network map c
 **Step 5, overlays and light:** the overlay picker now works in 3D. Effect overlays tint every cell of the dug floors in the unlocked rings, grouped into strength bands (one mesh per band) and drawn just proud of the cells so they show in front of the rock; happiness tints homes (and a disc under the pod). At night the shaft windows glow and warm lamps along every gallery railing light up (one instanced mesh for the whole hole). The Earth lander (`src/render3d/scenery3d.ts`) descends onto the pad with a flame in the hours before a drop, like the 2D one.
 
 **Step 6, life and polish:** colonists walk the gallery ledges (one per three colonists, up to 60, one instanced mesh; they stop when the game is paused) and dust drifts down the open shaft; both are cosmetic and use their own seeded scatter, so the sim stays deterministic. Ambient animation runs at up to 30 fps. A **3D detail** setting (High/Low) trades full-resolution rendering, walkers and dust for speed on slow machines. Pixel ratio is capped at 2. If the browser drops the WebGL context, the game says so and switches to 2D.
+
+**Step 7, tests and performance:** a stress colony (40 floors, rings 1–3 full: 1,296 rooms) was loaded in 3D and timed with a dev-only hook (`window.__stage3d` in dev builds: `measure()` renders once and waits for the GPU). Frames: median 1.3 ms in the shaft, 3.4 ms in cutaway, 9.5 ms from the top, against a 16.7 ms budget; the first frame after switching modes can take up to ~200 ms while shaders compile. Layout rebuilds were ~200 ms, a visible hitch on every build; label materials are now shared by text and room solids and outlines are cached between rebuilds (freed when unused), bringing rebuilds to ~30 ms. The first build of that colony on load is ~0.6 s. The tutorial gained a last goal, looking at the colony in 3D, and the README covers the 3D view. Tests cover cell geometry, 2D/3D agreement, room solids, and ray picking (119 in all).
+
+## Still to decide
+
+- Whether 3D should become the default view once it has been playtested.
+- Real art for rooms in 3D (see `docs/ART.md`); the current look is code-drawn.
+- Shader warm-up on mode switches, if the one-time hitch bothers playtesters.

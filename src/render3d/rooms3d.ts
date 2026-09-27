@@ -124,6 +124,16 @@ export function setNightGlow(night: number): void {
 export function disposeRoomMaterials(): void {
   materialCache.forEach((m) => m.dispose());
   materialCache.clear();
+  labelCache.forEach(({ material }) => {
+    material.map?.dispose();
+    material.dispose();
+  });
+  labelCache.clear();
+  shapeCache.forEach(({ geo, edges }) => {
+    geo.dispose();
+    edges.dispose();
+  });
+  shapeCache.clear();
 }
 
 function roomMaterial(color: number, planned: boolean, faint = false): THREE.Material {
@@ -140,8 +150,23 @@ function roomMaterial(color: number, planned: boolean, faint = false): THREE.Mat
   );
 }
 
+/** Label materials are shared by text: a colony has hundreds of rooms but few distinct names. */
+const labelCache = new Map<string, { material: THREE.SpriteMaterial; aspect: number }>();
+
 /** A name floating in front of the room, readable from across the shaft. */
 function label(text: string, color: string): THREE.Sprite {
+  const key = `${text}|${color}`;
+  let cached = labelCache.get(key);
+  if (!cached) {
+    cached = drawLabel(text, color);
+    labelCache.set(key, cached);
+  }
+  const sprite = new THREE.Sprite(cached.material);
+  sprite.scale.set(LABEL.heightM * cached.aspect, LABEL.heightM, 1);
+  return sprite;
+}
+
+function drawLabel(text: string, color: string): { material: THREE.SpriteMaterial; aspect: number } {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d")!;
   ctx.font = `600 ${LABEL.px}px system-ui, sans-serif`;
@@ -158,9 +183,25 @@ function label(text: string, color: string): THREE.Sprite {
   ctx.fillText(text, 12, canvas.height / 2 + 2);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: true, transparent: true }));
-  sprite.scale.set((LABEL.heightM * w) / canvas.height, LABEL.heightM, 1);
-  return sprite;
+  return { material: new THREE.SpriteMaterial({ map: tex, depthTest: true, transparent: true }), aspect: w / canvas.height };
+}
+
+/**
+ * Room solids and outlines, kept between rebuilds: most layout changes touch
+ * one room, so the other few hundred reuse what they had. Entries not used by
+ * the latest build are freed.
+ */
+const shapeCache = new Map<string, { geo: THREE.BufferGeometry; edges: THREE.EdgesGeometry }>();
+
+function roomShape(layout: Layout, room: RoomInstance): { geo: THREE.BufferGeometry; edges: THREE.EdgesGeometry; key: string } {
+  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}`;
+  let shape = shapeCache.get(key);
+  if (!shape) {
+    const geo = roomGeometry(layout, room.cells);
+    shape = { geo, edges: new THREE.EdgesGeometry(geo, 30) };
+    shapeCache.set(key, shape);
+  }
+  return { ...shape, key };
 }
 
 // ---- surface props, standing on y = 0 around the rim ----
@@ -243,6 +284,7 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   wallMesh.userData = { pickable: true, wall: true, faint: xray };
   group.add(wallMesh);
 
+  const used = new Set<string>();
   const glass = material("glass", () => new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.2, metalness: 0.3, side: THREE.DoubleSide }));
   const door = material("door", () => new THREE.MeshStandardMaterial({ color: DOOR.color, roughness: 0.9, side: THREE.DoubleSide }));
   const strandedLine = material(`stranded:${colors.stranded}`, () => new THREE.LineBasicMaterial({ color: colors.stranded })) as THREE.LineBasicMaterial;
@@ -257,12 +299,14 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
       group.add(prop);
       continue;
     }
-    const geo = roomGeometry(layout, room.cells);
+    const shape = roomShape(layout, room);
+    used.add(shape.key);
     const faint = xray && room.cells.some((c) => c.ring === 1);
-    const mesh = new THREE.Mesh(geo, roomMaterial(room.type === "corridor" ? 0x8a7466 : color, room.planned, faint));
-    mesh.userData = { pickable: true, roomId: room.id, faint };
+    const mesh = new THREE.Mesh(shape.geo, roomMaterial(room.type === "corridor" ? 0x8a7466 : color, room.planned, faint));
+    mesh.userData = { pickable: true, roomId: room.id, faint, cached: true };
     group.add(mesh);
-    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), room.connected ? edgeLine : strandedLine);
+    const edges = new THREE.LineSegments(shape.edges, room.connected ? edgeLine : strandedLine);
+    edges.userData = { cached: true };
     group.add(edges);
 
     if (!room.planned && !faint && room.type !== "corridor") {
@@ -290,21 +334,23 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
       const sprite = label(room.connected ? def.short : `${def.short} ⚠`, room.planned ? "#d8c0ae" : "#f6efe6");
       const a = (a0 + a1) / 2;
       sprite.position.set((r0 - 0.6) * Math.cos(a), y1 - 0.8, (r0 - 0.6) * Math.sin(a));
-      sprite.userData.label = true;
+      sprite.userData = { label: true, cached: true };
       group.add(sprite);
     }
+  }
+  for (const [key, shape] of shapeCache) {
+    if (used.has(key)) continue;
+    shape.geo.dispose();
+    shape.edges.dispose();
+    shapeCache.delete(key);
   }
   return group;
 }
 
-/** Free what a layout group owns: geometry and label textures. Materials are shared and cached. */
+/** Free what a layout group owns outright. Cached shapes, labels and materials live on for reuse. */
 export function disposeLayout(group: THREE.Object3D): void {
   group.traverse((o) => {
-    if (o instanceof THREE.Sprite) {
-      o.material.map?.dispose();
-      o.material.dispose();
-    } else if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) {
-      o.geometry.dispose();
-    }
+    if (o.userData.cached) return;
+    if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) o.geometry.dispose();
   });
 }
