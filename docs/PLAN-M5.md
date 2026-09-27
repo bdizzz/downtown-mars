@@ -50,3 +50,11 @@ Coverage (`src/sim/care.ts`) is weighted by working staff:
 - **Uncared elders:** each weighs on 2 people's health, down to −1.5.
 
 The Inspector shows teaching and care places against the hole's children and elders.
+
+**Step 5, People panel:** a People button in the HUD opens a panel with:
+- a stacked bar and counts of children, adults and elders, with how many adults are employed;
+- births: the expected pace, a checklist (working clinic, happiness 55+ with the current value, a free bed with beds used), and how many were born here;
+- school and care coverage in words;
+- the next five cohorts to move on ("5 adults retire in 83 days").
+
+The snapshot gained `stages`, `care`, `births` (blockers, per day, born) and `upcoming`.

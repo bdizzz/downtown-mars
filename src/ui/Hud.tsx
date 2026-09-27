@@ -10,6 +10,7 @@ interface Props {
   toggleOffice: () => void;
   toggleFlows: () => void;
   toggleNetwork: () => void;
+  togglePeople: () => void;
   view: "2d" | "3d";
   toggleView: () => void;
   setActiveHole: (holeId: number) => void;
@@ -29,7 +30,7 @@ function gameDuration(ticks: number): string {
   return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
 }
 
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, toggleNetwork, view, toggleView, setActiveHole, toggleMap, openMenu, keysEnabled, highlight }: Props) {
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, toggleNetwork, togglePeople, view, toggleView, setActiveHole, toggleMap, openMenu, keysEnabled, highlight }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
   // Space toggles pause, remembering the last running speed.
   const resumeRef = useRef(1);
@@ -107,6 +108,9 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleF
       </button>
       <button className={`office-btn${pulse("map")}`} onClick={toggleMap} title="The planet: terrain, deposits and your holes (M)">
         Map
+      </button>
+      <button className="office-btn" onClick={togglePeople} title="Children, adults and elders; births and what's coming">
+        People
       </button>
       <button className={`office-btn${pulse("flows")}`} onClick={toggleFlows} title="Where resources come from and go">
         Flows

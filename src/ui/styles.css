@@ -334,3 +334,17 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .inspector .controls label { display: flex; align-items: center; gap: 6px; }
 .inspector .controls input[type="number"] { width: 56px; font: inherit; background: #2f1c16; color: var(--text); border: 1px solid #000; border-radius: 4px; padding: 1px 4px; }
 .inspector .controls input[type="number"]:disabled { opacity: 0.5; }
+
+/* People panel */
+.people { width: 300px; }
+.people h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 12px 0 4px; }
+.people .stages { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: #0005; margin: 6px 0 4px; }
+.people .child, .people .legend i.child { background: #e0c050; }
+.people .adult, .people .legend i.adult { background: #6fb3c9; }
+.people .elder, .people .legend i.elder { background: #b48ad8; }
+.people .legend { display: flex; gap: 12px; font-size: 13px; margin: 0; }
+.people .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; }
+.people ul { list-style: none; padding: 0; margin: 4px 0; font-size: 13px; }
+.people .checks li { color: #e0503a; }
+.people .checks li.ok { color: #7cc47a; }
+.people .upcoming li { padding: 1px 0; }

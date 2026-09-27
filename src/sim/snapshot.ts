@@ -9,6 +9,7 @@ import { hasStagingBay, kitProgress } from "./founding";
 import type { Happiness } from "./happiness";
 import { holeGates, stageCounts, type Stage } from "./people";
 import { elderCoverage, schoolCoverage, type Coverage } from "./care";
+import { birthBlockers, birthsPerDay } from "./births";
 import type { Culture } from "./culture";
 import { averageFlows, type Flows } from "./ledger";
 import type { Message } from "./messages";
@@ -123,6 +124,9 @@ export interface Snapshot {
   stages: Record<Stage, number>;
   /** Places for children and elders. */
   care: { school: Coverage; elders: Coverage };
+  births: { blockers: string[]; perDay: number; born: number };
+  /** Cohorts moving on next, soonest first. */
+  upcoming: { stage: Stage; count: number; daysLeft: number }[];
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
   earth: { ticksToDrop: number; waiting: boolean; padReady: boolean; landed: number };
@@ -170,6 +174,11 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     population: state.population,
     stages: stageCounts(state),
     care: { school: schoolCoverage(state), elders: elderCoverage(state) },
+    births: { blockers: birthBlockers(state), perDay: birthsPerDay(state), born: state.population.born ?? 0 },
+    upcoming: [...state.population.cohorts]
+      .sort((a, b) => a.until - b.until)
+      .slice(0, 5)
+      .map((c) => ({ stage: c.stage, count: c.count, daysLeft: Math.max(0, (c.until - state.tick) / cfg.ticksPerDay) })),
     workforce: state.workforce,
     roomStatus: state.roomStatus,
     earth: {

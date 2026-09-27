@@ -10,6 +10,7 @@ import { Hud } from "./Hud";
 import { Inspector } from "./Inspector";
 import { MapScreen, type SitePick } from "./MapScreen";
 import { NetworkPanel } from "./NetworkPanel";
+import { PeoplePanel } from "./PeoplePanel";
 import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
@@ -35,9 +36,9 @@ export function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [overlay, setOverlay] = useState<string | null>(null);
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
-  const [panel, setPanel] = useState<"office" | "flows" | "network" | null>(null);
+  const [panel, setPanel] = useState<"office" | "flows" | "network" | "people" | null>(null);
   const officeOpen = panel === "office";
-  const togglePanel = (p: "office" | "flows" | "network") => {
+  const togglePanel = (p: "office" | "flows" | "network" | "people") => {
     setPanel((cur) => (cur === p ? null : p));
     setSelected(null);
   };
@@ -286,6 +287,7 @@ export function App() {
         toggleOffice={() => togglePanel("office")}
         toggleFlows={() => togglePanel("flows")}
         toggleNetwork={() => togglePanel("network")}
+        togglePeople={() => togglePanel("people")}
         view={settings.view}
         toggleView={() => updateSettings({ view: settings.view === "2d" ? "3d" : "2d" })}
         setActiveHole={setActiveHole}
@@ -353,6 +355,7 @@ export function App() {
         </div>
         {snapshot && officeOpen && <Office s={snapshot} onCommand={onCommand} onClose={() => setPanel(null)} />}
         {snapshot && panel === "flows" && <FlowPanel s={snapshot} onClose={() => setPanel(null)} />}
+        {snapshot && panel === "people" && <PeoplePanel s={snapshot} onClose={() => setPanel(null)} />}
         {snapshot && panel === "network" && <NetworkPanel s={snapshot} onRoute={route} onClose={() => setPanel(null)} />}
         {snapshot && !panel && selected !== null && (
           <Inspector s={snapshot} roomId={selected} onCommand={onCommand} onClose={() => setSelected(null)} />
