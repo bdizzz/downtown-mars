@@ -1,5 +1,7 @@
 import raw from "../../data/rooms.json";
 
+import type { DepositKind } from "./mapgeo";
+
 export type RoomSize = "S" | "M" | "L" | "H" | "surface";
 export type EffectType = "noise" | "smell" | "health" | "comfort" | "airQuality" | "heat" | "safety";
 
@@ -40,6 +42,8 @@ export interface RoomDef {
   ordinanceSlots?: number;
   /** Colonists a clinic can look after. */
   cares?: number;
+  /** Only buildable in a hole that sits on this deposit. */
+  requiresDeposit?: DepositKind;
 }
 
 // JSON imports widen literal types, so the shape is checked in tests/rooms.test.ts.

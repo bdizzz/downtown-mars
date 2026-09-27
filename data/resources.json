@@ -116,6 +116,12 @@
       "baseCapacity": 50
     },
     {
+      "id": "wafers",
+      "name": "Silicon wafers",
+      "group": "material",
+      "baseCapacity": 100
+    },
+    {
       "id": "electronics",
       "name": "Electronics",
       "group": "material",

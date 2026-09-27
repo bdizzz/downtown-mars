@@ -3,7 +3,8 @@ import type React from "react";
 import { CATEGORY_COLORS, cssColor } from "../render2d/palette";
 import type { Tool } from "../view/types";
 import { config } from "../sim/config";
-import { missingCost } from "../sim/costs";
+import { missingCost, siteRefusal } from "../sim/costs";
+import type { DepositKind } from "../sim/mapgeo";
 import { roomDefs, type RoomDef } from "../sim/rooms";
 import { RoomCard } from "./RoomCard";
 
@@ -22,10 +23,15 @@ export const HOTKEYS: Record<string, string> = {
   battery_bank: "B",
   solar_array: "S",
   landing_pad: "P",
+  deep_well_pump: "U",
+  smelter: "O",
+  machine_shop: "H",
+  silicon_refinery: "I",
+  electronics_fab: "N",
 };
 export const DEMOLISH_KEY = "X";
 
-const CATEGORY_ORDER = ["circulation", "housing", "food", "water", "air", "power", "health", "admin", "logistics"];
+const CATEGORY_ORDER = ["circulation", "housing", "food", "water", "air", "power", "health", "admin", "industry", "logistics"];
 const CATEGORY_NAMES: Record<string, string> = {
   circulation: "Access",
   housing: "Housing",
@@ -35,6 +41,7 @@ const CATEGORY_NAMES: Record<string, string> = {
   power: "Power",
   health: "Health",
   admin: "Administration",
+  industry: "Industry",
   logistics: "Logistics",
 };
 
@@ -56,9 +63,11 @@ interface Props {
   undo: () => void;
   /** Tutorial highlight, e.g. "room:galley". */
   highlight: string | null;
+  /** What this hole sits on: rooms needing a deposit it lacks are greyed out. */
+  deposits: DepositKind[];
 }
 
-export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo, highlight }: Props) {
+export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo, highlight, deposits }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
   const buildable = roomDefs.filter((d) => d.buildable);
   const selected = tool?.kind === "build" ? tool.room : null;
@@ -75,7 +84,7 @@ export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo, 
             <h2>{CATEGORY_NAMES[cat] ?? cat}</h2>
             {defs.map((def) => {
               const on = def.id === selected;
-              const missing = missingCost(resources, def.id);
+              const missing = siteRefusal(def.id, deposits) ?? missingCost(resources, def.id);
               return (
                 <button
                   key={def.id}
@@ -111,6 +120,7 @@ export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo, 
         <RoomCard
           def={shownDef}
           resources={resources}
+          siteNote={siteRefusal(shownDef.id, deposits)}
           shape={tool?.kind === "build" && tool.room === shownDef.id ? tool.shape : shapesFor(shownDef)[0]!}
           onRotate={tool?.kind === "build" && tool.room === shownDef.id && shapesFor(shownDef).length > 1 ? rotate : undefined}
         />

@@ -7,6 +7,8 @@ interface Props {
   resources: Record<string, number>;
   shape: [number, number];
   onRotate?: () => void;
+  /** Why this hole can't have the room at all (e.g. no ore under it). */
+  siteNote?: string | null;
 }
 
 const SIZE_NAMES: Record<string, string> = { S: "Small", M: "Medium", L: "Large", H: "Huge", surface: "Surface" };
@@ -25,7 +27,7 @@ const flows = (r: Record<string, number>) =>
     .join(", ");
 
 /** Everything a player needs to decide where a room goes, before placing it. */
-export function RoomCard({ def, resources, shape, onRotate }: Props) {
+export function RoomCard({ def, resources, shape, onRotate, siteNote }: Props) {
   return (
     <div className="room-card">
       <h3>{def.name}</h3>
@@ -61,6 +63,7 @@ export function RoomCard({ def, resources, shape, onRotate }: Props) {
         </p>
       ))}
       {def.blocksEffects && <p className="good">Blocks {def.blocksEffects.join(" and ")} passing through</p>}
+      {siteNote && <p className="bad">{siteNote}.</p>}
       {def.size !== "surface" && def.id !== "corridor" && <p className="k">Needs the gallery (ring 1) or a corridor.</p>}
     </div>
   );

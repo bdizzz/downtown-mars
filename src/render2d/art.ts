@@ -91,6 +91,41 @@ const GLYPHS: Record<string, Glyph> = {
     for (const dx of [-0.2, 0, 0.2]) g.moveTo(cx + dx * s, cy - s * 0.08).lineTo(cx + dx * s, cy + s * 0.22).stroke(line(1.5, c));
     g.moveTo(cx - s * 0.32, cy + s * 0.28).lineTo(cx + s * 0.32, cy + s * 0.28).stroke(line(1.5, c));
   },
+  deep_well_pump: (g, cx, cy, s, c) => {
+    // A droplet rising from a pipe.
+    g.moveTo(cx, cy + s * 0.32).lineTo(cx, cy - s * 0.02).stroke(line(1.5, c));
+    g.moveTo(cx, cy - s * 0.32).quadraticCurveTo(cx + s * 0.18, cy - s * 0.1, cx, cy - s * 0.05).quadraticCurveTo(cx - s * 0.18, cy - s * 0.1, cx, cy - s * 0.32).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.25, cy + s * 0.32).lineTo(cx + s * 0.25, cy + s * 0.32).stroke(line(1.5, c));
+  },
+  smelter: (g, cx, cy, s, c) => {
+    // A crucible over a flame.
+    g.moveTo(cx - s * 0.28, cy - s * 0.2).lineTo(cx - s * 0.2, cy + s * 0.08).lineTo(cx + s * 0.2, cy + s * 0.08).lineTo(cx + s * 0.28, cy - s * 0.2).stroke(line(1.5, c));
+    g.moveTo(cx, cy + s * 0.34).quadraticCurveTo(cx + s * 0.14, cy + s * 0.22, cx, cy + s * 0.14).quadraticCurveTo(cx - s * 0.14, cy + s * 0.22, cx, cy + s * 0.34).stroke(line(1.2, c));
+  },
+  machine_shop: (g, cx, cy, s, c) => {
+    // A gear.
+    g.circle(cx, cy, s * 0.18).stroke(line(1.5, c));
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      g.moveTo(cx + Math.cos(a) * s * 0.18, cy + Math.sin(a) * s * 0.18).lineTo(cx + Math.cos(a) * s * 0.3, cy + Math.sin(a) * s * 0.3).stroke(line(2, c));
+    }
+  },
+  silicon_refinery: (g, cx, cy, s, c) => {
+    // A crystal.
+    g.poly([cx, cy - s * 0.32, cx + s * 0.2, cy - s * 0.08, cx, cy + s * 0.32, cx - s * 0.2, cy - s * 0.08]).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.2, cy - s * 0.08).lineTo(cx + s * 0.2, cy - s * 0.08).stroke(line(1.2, c));
+  },
+  electronics_fab: (g, cx, cy, s, c) => {
+    // A chip.
+    g.rect(cx - s * 0.18, cy - s * 0.18, s * 0.36, s * 0.36).stroke(line(1.5, c));
+    for (const d of [-0.1, 0, 0.1]) {
+      g.moveTo(cx + d * s, cy - s * 0.18).lineTo(cx + d * s, cy - s * 0.3);
+      g.moveTo(cx + d * s, cy + s * 0.18).lineTo(cx + d * s, cy + s * 0.3);
+      g.moveTo(cx - s * 0.18, cy + d * s).lineTo(cx - s * 0.3, cy + d * s);
+      g.moveTo(cx + s * 0.18, cy + d * s).lineTo(cx + s * 0.3, cy + d * s);
+    }
+    g.stroke(line(1.2, c));
+  },
   battery_bank: (g, cx, cy, s, c) => {
     g.rect(cx - s * 0.3, cy - s * 0.15, s * 0.55, s * 0.3).stroke(line(1.5, c));
     g.rect(cx + s * 0.25, cy - s * 0.07, s * 0.06, s * 0.14).fill(c);

@@ -1,94 +1,499 @@
 {
-  "_note": "Amounts are per game day. Values from ROOMS.md (★ rooms) unless marked placeholder.",
+  "_note": "Amounts are per game day. Values from ROOMS.md (\u2605 rooms) unless marked placeholder. requiresDeposit: the hole must sit on that deposit (Unlock column in ROOMS.md).",
   "rooms": [
     {
-      "id": "landing_pod", "name": "Landing pod", "short": "Pod", "category": "housing",
-      "size": "surface", "surfaceSlots": 2, "staff": 0,
-      "uses": {}, "makes": {}, "houses": 20, "ordinanceSlots": 1,
-      "effects": [], "cost": {}, "buildable": false, "placeholder": true
+      "id": "landing_pod",
+      "name": "Landing pod",
+      "short": "Pod",
+      "category": "housing",
+      "size": "surface",
+      "surfaceSlots": 2,
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "houses": 20,
+      "ordinanceSlots": 1,
+      "effects": [],
+      "cost": {},
+      "buildable": false,
+      "placeholder": true
     },
     {
-      "id": "landing_pad", "name": "Landing pad", "short": "Pad", "category": "logistics",
-      "size": "surface", "surfaceSlots": 2, "staff": 3,
-      "uses": { "power": 1 }, "makes": {},
-      "effects": [], "cost": { "rock": 20, "metal": 10 }, "buildable": true
+      "id": "landing_pad",
+      "name": "Landing pad",
+      "short": "Pad",
+      "category": "logistics",
+      "size": "surface",
+      "surfaceSlots": 2,
+      "staff": 3,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "effects": [],
+      "cost": {
+        "rock": 20,
+        "metal": 10
+      },
+      "buildable": true
     },
     {
-      "id": "solar_array", "name": "Solar array", "short": "Solar", "category": "power",
-      "size": "surface", "surfaceSlots": 1, "staff": 1,
-      "uses": {}, "makes": { "power": 10 },
-      "effects": [], "cost": { "metal": 10, "electronics": 4 }, "buildable": true
+      "id": "solar_array",
+      "name": "Solar array",
+      "short": "Solar",
+      "category": "power",
+      "size": "surface",
+      "surfaceSlots": 1,
+      "staff": 1,
+      "uses": {},
+      "makes": {
+        "power": 10
+      },
+      "effects": [],
+      "cost": {
+        "metal": 10,
+        "electronics": 4
+      },
+      "buildable": true
     },
     {
-      "id": "corridor", "name": "Corridor", "short": "", "category": "circulation",
-      "size": "S", "staff": 0, "uses": {}, "makes": {},
-      "blocksEffects": ["noise", "smell"],
-      "effects": [], "cost": { "rock": 5 }, "buildable": true
+      "id": "corridor",
+      "name": "Corridor",
+      "short": "",
+      "category": "circulation",
+      "size": "S",
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "blocksEffects": [
+        "noise",
+        "smell"
+      ],
+      "effects": [],
+      "cost": {
+        "rock": 5
+      },
+      "buildable": true
     },
     {
-      "id": "bunk_dorm", "name": "Bunk dorm", "short": "Dorm", "category": "housing",
-      "size": "M", "staff": 0, "uses": { "power": 1 }, "makes": {}, "houses": 16,
-      "effects": [{ "type": "comfort", "strength": -1, "radius": 0, "residentsOnly": true }],
-      "cost": { "rock": 20 }, "buildable": true
+      "id": "bunk_dorm",
+      "name": "Bunk dorm",
+      "short": "Dorm",
+      "category": "housing",
+      "size": "M",
+      "staff": 0,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "houses": 16,
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": -1,
+          "radius": 0,
+          "residentsOnly": true
+        }
+      ],
+      "cost": {
+        "rock": 20
+      },
+      "buildable": true
     },
     {
-      "id": "galley", "name": "Galley", "short": "Galley", "category": "food",
-      "size": "S", "staff": 2,
-      "uses": { "rawFood": 25, "water": 2, "power": 2 }, "makes": { "meals": 25, "organicWaste": 2 },
-      "substitutes": { "rawFood": ["rations"] },
-      "effects": [{ "type": "smell", "strength": -1, "radius": 1 }],
-      "cost": { "rock": 10, "metal": 5 }, "buildable": true
+      "id": "galley",
+      "name": "Galley",
+      "short": "Galley",
+      "category": "food",
+      "size": "S",
+      "staff": 2,
+      "uses": {
+        "rawFood": 25,
+        "water": 2,
+        "power": 2
+      },
+      "makes": {
+        "meals": 25,
+        "organicWaste": 2
+      },
+      "substitutes": {
+        "rawFood": [
+          "rations"
+        ]
+      },
+      "effects": [
+        {
+          "type": "smell",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "rock": 10,
+        "metal": 5
+      },
+      "buildable": true
     },
     {
-      "id": "farm", "name": "Farm", "short": "Farm", "category": "food",
-      "size": "L", "staff": 6,
-      "uses": { "water": 4, "soil": 2, "power": 3, "co2": 2 }, "makes": { "rawFood": 12, "o2": 2 },
-      "growsCrops": true, "defaultCrop": "potatoes",
-      "effects": [{ "type": "smell", "strength": -1, "radius": 1 }],
-      "cost": { "rock": 30, "metal": 10, "machinery": 2 }, "buildable": true
+      "id": "farm",
+      "name": "Farm",
+      "short": "Farm",
+      "category": "food",
+      "size": "L",
+      "staff": 6,
+      "uses": {
+        "water": 4,
+        "soil": 2,
+        "power": 3,
+        "co2": 2
+      },
+      "makes": {
+        "rawFood": 12,
+        "o2": 2
+      },
+      "growsCrops": true,
+      "defaultCrop": "potatoes",
+      "effects": [
+        {
+          "type": "smell",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "rock": 30,
+        "metal": 10,
+        "machinery": 2
+      },
+      "buildable": true
     },
     {
-      "id": "water_tank", "name": "Water tank", "short": "Tank", "category": "water",
-      "size": "S", "staff": 0, "uses": {}, "makes": {}, "stores": { "water": 200 },
-      "effects": [], "cost": { "rock": 10, "metal": 5 }, "buildable": true
+      "id": "water_tank",
+      "name": "Water tank",
+      "short": "Tank",
+      "category": "water",
+      "size": "S",
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "stores": {
+        "water": 200
+      },
+      "effects": [],
+      "cost": {
+        "rock": 10,
+        "metal": 5
+      },
+      "buildable": true
     },
     {
-      "id": "water_recycler", "name": "Water recycler", "short": "Recycler", "category": "water",
-      "size": "L", "staff": 3,
-      "uses": { "grayWater": 40, "power": 3 }, "makes": { "water": 36, "solidWaste": 1 },
-      "effects": [{ "type": "noise", "strength": -1, "radius": 1 }, { "type": "smell", "strength": -1, "radius": 1 }],
-      "cost": { "metal": 20, "machinery": 4 }, "buildable": true
+      "id": "water_recycler",
+      "name": "Water recycler",
+      "short": "Recycler",
+      "category": "water",
+      "size": "L",
+      "staff": 3,
+      "uses": {
+        "grayWater": 40,
+        "power": 3
+      },
+      "makes": {
+        "water": 36,
+        "solidWaste": 1
+      },
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        },
+        {
+          "type": "smell",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "metal": 20,
+        "machinery": 4
+      },
+      "buildable": true
     },
     {
-      "id": "restroom", "name": "Restroom", "short": "WC", "category": "water",
-      "size": "S", "staff": 1, "uses": {}, "makes": {},
-      "sanitation": 25, "returnsWater": { "grayWater": 0.75, "blackWater": 0.25 },
-      "effects": [{ "type": "smell", "strength": -1, "radius": 1 }],
-      "cost": { "rock": 8, "metal": 2 }, "buildable": true
+      "id": "restroom",
+      "name": "Restroom",
+      "short": "WC",
+      "category": "water",
+      "size": "S",
+      "staff": 1,
+      "uses": {},
+      "makes": {},
+      "sanitation": 25,
+      "returnsWater": {
+        "grayWater": 0.75,
+        "blackWater": 0.25
+      },
+      "effects": [
+        {
+          "type": "smell",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "rock": 8,
+        "metal": 2
+      },
+      "buildable": true
     },
     {
-      "id": "life_support", "name": "Life support", "short": "Life sup.", "category": "air",
-      "size": "L", "staff": 4,
-      "uses": { "water": 6, "power": 5 }, "makes": { "o2": 30 }, "scrubs": { "co2": 30 },
+      "id": "life_support",
+      "name": "Life support",
+      "short": "Life sup.",
+      "category": "air",
+      "size": "L",
+      "staff": 4,
+      "uses": {
+        "water": 6,
+        "power": 5
+      },
+      "makes": {
+        "o2": 30
+      },
+      "scrubs": {
+        "co2": 30
+      },
       "priority": "critical",
-      "effects": [{ "type": "noise", "strength": -2, "radius": 2 }],
-      "cost": { "metal": 25, "machinery": 5, "electronics": 2 }, "buildable": true
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -2,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "metal": 25,
+        "machinery": 5,
+        "electronics": 2
+      },
+      "buildable": true
     },
     {
-      "id": "clinic", "name": "Clinic", "short": "Clinic", "category": "health",
-      "size": "S", "staff": 2, "uses": { "power": 1, "water": 1 }, "makes": {}, "cares": 50,
-      "effects": [{ "type": "health", "strength": 2, "radius": 2 }],
-      "cost": { "brick": 10, "metal": 5, "electronics": 1 }, "buildable": true
+      "id": "clinic",
+      "name": "Clinic",
+      "short": "Clinic",
+      "category": "health",
+      "size": "S",
+      "staff": 2,
+      "uses": {
+        "power": 1,
+        "water": 1
+      },
+      "makes": {},
+      "cares": 50,
+      "effects": [
+        {
+          "type": "health",
+          "strength": 2,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "brick": 10,
+        "metal": 5,
+        "electronics": 1
+      },
+      "buildable": true
     },
     {
-      "id": "admin_office", "name": "Admin office", "short": "Admin", "category": "admin",
-      "size": "M", "staff": 2, "uses": { "power": 1 }, "makes": {}, "ordinanceSlots": 2,
-      "effects": [], "cost": { "rock": 10, "brick": 5 }, "buildable": true
+      "id": "admin_office",
+      "name": "Admin office",
+      "short": "Admin",
+      "category": "admin",
+      "size": "M",
+      "staff": 2,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "ordinanceSlots": 2,
+      "effects": [],
+      "cost": {
+        "rock": 10,
+        "brick": 5
+      },
+      "buildable": true
     },
     {
-      "id": "battery_bank", "name": "Battery bank", "short": "Battery", "category": "power",
-      "size": "S", "staff": 0, "uses": {}, "makes": {}, "stores": { "power": 50 },
-      "effects": [], "cost": { "metal": 5, "electronics": 5 }, "buildable": true
+      "id": "battery_bank",
+      "name": "Battery bank",
+      "short": "Battery",
+      "category": "power",
+      "size": "S",
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "stores": {
+        "power": 50
+      },
+      "effects": [],
+      "cost": {
+        "metal": 5,
+        "electronics": 5
+      },
+      "buildable": true
+    },
+    {
+      "id": "deep_well_pump",
+      "name": "Deep well pump",
+      "short": "Well",
+      "category": "water",
+      "size": "M",
+      "staff": 2,
+      "uses": {
+        "power": 4
+      },
+      "makes": {
+        "water": 40
+      },
+      "requiresDeposit": "aquifer",
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "metal": 15,
+        "machinery": 3
+      },
+      "buildable": true
+    },
+    {
+      "id": "smelter",
+      "name": "Smelter",
+      "short": "Smelter",
+      "category": "industry",
+      "size": "L",
+      "staff": 5,
+      "uses": {
+        "ore": 6,
+        "power": 6
+      },
+      "makes": {
+        "metal": 3
+      },
+      "requiresDeposit": "ore",
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -2,
+          "radius": 2
+        },
+        {
+          "type": "heat",
+          "strength": 1,
+          "radius": 2
+        },
+        {
+          "type": "airQuality",
+          "strength": -1,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "brick": 20,
+        "metal": 10,
+        "machinery": 3
+      },
+      "buildable": true
+    },
+    {
+      "id": "machine_shop",
+      "name": "Machine shop",
+      "short": "Machines",
+      "category": "industry",
+      "size": "M",
+      "staff": 4,
+      "uses": {
+        "metal": 3,
+        "power": 3
+      },
+      "makes": {
+        "machinery": 1
+      },
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -2,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "brick": 15,
+        "metal": 10,
+        "machinery": 2
+      },
+      "buildable": true
+    },
+    {
+      "id": "silicon_refinery",
+      "name": "Silicon refinery",
+      "short": "Refinery",
+      "category": "industry",
+      "size": "L",
+      "staff": 5,
+      "uses": {
+        "silica": 6,
+        "water": 2,
+        "power": 6
+      },
+      "makes": {
+        "wafers": 2
+      },
+      "requiresDeposit": "silica",
+      "effects": [
+        {
+          "type": "heat",
+          "strength": 1,
+          "radius": 2
+        },
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "brick": 20,
+        "metal": 15,
+        "machinery": 4
+      },
+      "buildable": true
+    },
+    {
+      "id": "electronics_fab",
+      "name": "Electronics fab",
+      "short": "Fab",
+      "category": "industry",
+      "size": "M",
+      "staff": 4,
+      "uses": {
+        "metal": 1,
+        "wafers": 1,
+        "power": 4
+      },
+      "makes": {
+        "electronics": 1
+      },
+      "effects": [],
+      "cost": {
+        "metal": 15,
+        "machinery": 3,
+        "electronics": 2
+      },
+      "buildable": true
     }
   ]
 }
