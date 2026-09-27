@@ -2,7 +2,8 @@
 import { applyCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { deserialize, serialize, summarize } from "../sim/save";
-import { makeSnapshot, type HoleSummary, type RouteView } from "../sim/snapshot";
+import { makeSnapshot, type HoleSummary, type RelationView, type RouteView } from "../sim/snapshot";
+import { cultureTarget, loadFactor, relation, tier } from "../sim/culture";
 import { foundHole, travelTicks } from "../sim/founding";
 import { addRoute, removeRoute, routesFrom, roversAt, TRADEABLE } from "../sim/rovers";
 import { degreesApart } from "../sim/mapgeo";
@@ -41,7 +42,20 @@ function summaries(): HoleSummary[] {
     deposits: h.deposits ?? [],
     rovers: roversAt(h),
     stock: Object.fromEntries(TRADEABLE.map((r) => [r, h.resources[r] ?? 0])),
+    culture: h.culture,
+    cultureTarget: cultureTarget(h, config),
   }));
+}
+
+function relationViews(): RelationView[] {
+  return world.holes.flatMap((a) =>
+    world.holes
+      .filter((b) => b !== a)
+      .map((b) => {
+        const opinion = relation(world, a.holeId, b.holeId).opinion;
+        return { from: a.holeId, to: b.holeId, opinion, tier: tier(opinion) };
+      }),
+  );
 }
 
 function routeViews(): RouteView[] {
@@ -61,6 +75,7 @@ function routeViews(): RouteView[] {
       progress: r.phase === "loading" ? 0 : Math.min(1, (world.tick - r.legStartTick) / span),
       legDays: legTicks / config.ticksPerDay,
       idle: !!from && routesFrom(world, from.holeId).indexOf(r) >= roversAt(from),
+      loadFactor: from && to ? loadFactor(world, from, to) : 1,
     };
   });
 }
@@ -91,6 +106,7 @@ function post(): void {
       daysLeft: (c.arriveTick - world.tick) / config.ticksPerDay,
     })),
     routes: routeViews(),
+    relations: relationViews(),
     mapUnlocked: world.mapUnlocked,
     // News from every hole, so nothing elsewhere goes unnoticed.
     messages: networkMessages(world, config.messages.keep),

@@ -80,10 +80,15 @@ export function removeRoute(world: World, routeId: number): CommandResult {
   return { ok: true };
 }
 
-/** A small nudge to how much gets loaded, from how the two holes feel (step 8 fills this in). */
+/** A nudge to how much gets loaded, from how the two holes feel about each other. */
 export type LoadFactor = (from: SimState, to: SimState) => number;
 
-export function stepRoutes(world: World, cfg: SimConfig, loadFactor: LoadFactor = () => 1): void {
+export function stepRoutes(
+  world: World,
+  cfg: SimConfig,
+  loadFactor: LoadFactor = () => 1,
+  onDelivery: (from: SimState, to: SimState, resource: string, amount: number) => void = () => {},
+): void {
   for (const route of world.routes) {
     const from = holeById(world, route.fromHoleId);
     const to = holeById(world, route.toHoleId);
@@ -102,6 +107,7 @@ export function stepRoutes(world: World, cfg: SimConfig, loadFactor: LoadFactor 
       const mine = routesFrom(world, from.holeId);
       if (mine.indexOf(route) >= roversAt(from)) continue;
       const want = route.amountPerTrip * loadFactor(from, to);
+      if (want <= 0) continue; // they won't load for a hole they can't stand
       const load = Math.min(want, from.resources[route.resource] ?? 0);
       if (load < Math.min(1, want)) continue; // wait for goods
       from.resources[route.resource] = (from.resources[route.resource] ?? 0) - load;
@@ -114,6 +120,7 @@ export function stepRoutes(world: World, cfg: SimConfig, loadFactor: LoadFactor 
       // Anything past the destination's storage is lost as overflow by the economy, like an Earth drop.
       to.resources[route.resource] = (to.resources[route.resource] ?? 0) + route.cargo;
       record(to, route.resource, "in", `Rover from ${from.name}`, route.cargo);
+      onDelivery(from, to, route.resource, route.cargo);
       route.cargo = 0;
       route.phase = "returning";
       route.legStartTick = world.tick;

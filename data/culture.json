@@ -1,0 +1,42 @@
+{
+  "_note": "Culture and opinion (DESIGN.md, Cultural drift model). Sliders run from -1 (left pole) to +1 (right pole).",
+  "axes": [
+    { "id": "work", "left": "Work", "right": "Leisure" },
+    { "id": "order", "left": "Order", "right": "Freedom" },
+    { "id": "identity", "left": "Earth", "right": "Mars" },
+    { "id": "openness", "left": "Open", "right": "Insular" }
+  ],
+  "start": { "work": -0.2, "order": 0, "identity": -0.6, "openness": 0 },
+  "target": {
+    "_note": "work: (idleShare - 0.5) * workSpan, so full employment pulls toward Work. order: freedomBase plus ordinance pushes. identity: identitySpan * (1 - 2 * share of goods from Earth). openness: insularBase - openPerTradeShare * share of goods moved by rover.",
+    "workSpan": 1.6,
+    "freedomBase": 0.4,
+    "identitySpan": 0.9,
+    "identityGoods": ["rations", "rawFood", "water", "brick", "metal", "machinery", "electronics"],
+    "insularBase": 0.5,
+    "openPerTradeShare": 4
+  },
+  "goodsValue": { "water": 0.2, "rock": 0.1, "ore": 0.5, "silica": 0.5, "soil": 0.5, "rations": 1, "rawFood": 0.8, "meals": 1.2, "o2": 0.5, "brick": 1, "metal": 2, "wafers": 4, "machinery": 8, "electronics": 10 },
+  "driftPerDay": 0.08,
+  "contactPullPerTrip": 0.03,
+  "opinion": {
+    "childOfParent": 40,
+    "parentOfChild": 20,
+    "fairnessPerDay": 4,
+    "fairnessScale": 100,
+    "givenKeptPerDay": 0.9,
+    "childGraceDays": 30,
+    "similarityThreshold": 0.3,
+    "similarityPerDay": 6,
+    "decayPerDay": 0.03,
+    "loadSwing": 0.25,
+    "refuseBelow": -60
+  },
+  "tiers": [
+    { "min": 60, "name": "Allied" },
+    { "min": 20, "name": "Friendly" },
+    { "min": -20, "name": "Neutral" },
+    { "min": -60, "name": "Wary" },
+    { "min": -100, "name": "Hostile" }
+  ]
+}

@@ -16,6 +16,8 @@ export interface OrdinanceDef {
   /** Added to every home's comfort and health factors. */
   comfort?: number;
   health?: number;
+  /** Nudges the hole's culture target while enacted. */
+  culture?: Partial<Record<"work" | "order" | "identity" | "openness", number>>;
 }
 
 export const ordinanceDefs: OrdinanceDef[] = raw.ordinances as OrdinanceDef[];

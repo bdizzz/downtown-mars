@@ -11,6 +11,7 @@ import { network } from "./network";
 import { createNotables } from "./notables";
 import { capacities } from "./economy";
 import { roomDef } from "./rooms";
+import { foundFrom } from "./culture";
 import { createInitialState, type Site, type SimState } from "./state";
 import { holeById, holeSeed, nextHoleName, type World } from "./world";
 
@@ -129,6 +130,7 @@ export function stepConvoys(world: World, cfg: SimConfig): void {
     hole.earth.nextDropTick = world.tick + hole.earth.nextDropTick;
     world.holes.push(hole);
     const parent = holeById(world, c.fromHoleId);
+    if (parent) foundFrom(world, parent, hole);
     const msg = `The convoy reached ${c.name}. A new hole is founded, ${Math.round(distanceKm(parent?.site ?? c.site, c.site)).toLocaleString()} km from ${parent?.name ?? "home"}.`;
     // Posted once, in the new hole; the network-wide feed shows it everywhere.
     postMessage(hole, cfg, msg, "good");

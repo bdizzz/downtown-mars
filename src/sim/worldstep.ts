@@ -3,6 +3,7 @@ import { stepConvoys, stepStaging } from "./founding";
 import { postMessage } from "./messages";
 import { network } from "./network";
 import { stepRoutes } from "./rovers";
+import { loadFactor, noteDelivery, stepCulture } from "./culture";
 import { step } from "./step";
 import { totalPopulation, type World } from "./world";
 
@@ -17,7 +18,13 @@ export function stepWorld(world: World, cfg: SimConfig): void {
     stepStaging(hole, cfg);
   }
   stepConvoys(world, cfg);
-  stepRoutes(world, cfg);
+  stepRoutes(
+    world,
+    cfg,
+    (from, to) => loadFactor(world, from, to),
+    (from, to, res, n) => noteDelivery(world, from, to, res, n),
+  );
+  if (world.tick % cfg.ticksPerDay === 0) stepCulture(world, cfg);
   if (!world.mapUnlocked && totalPopulation(world) >= network.mapUnlockPopulation) {
     world.mapUnlocked = true;
     postMessage(world.holes[0]!, cfg, "The map is open: scout a site for a second hole. Somewhere with what this one lacks.", "good");

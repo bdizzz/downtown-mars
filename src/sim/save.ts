@@ -5,13 +5,14 @@ import type { SimState } from "./state";
 import { config, type SimConfig } from "./config";
 import { depositsAt, generateMap, type MapState } from "./map";
 import { network } from "./network";
+import { culture } from "./culture";
 import type { World } from "./world";
 
 // Saves are the whole world as JSON, minus what can be rebuilt (each hole's
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 type Raw = Record<string, unknown>;
 
@@ -38,6 +39,12 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
   5: (s) => ({ ...s, holes: (s.holes as Raw[]).map((h) => ({ ...h, kit: {} })), convoys: [] }),
   // v7 added rover trade routes.
   6: (s) => ({ ...s, routes: [], nextRouteId: 1 }),
+  // v8 added culture and opinion.
+  7: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => ({ ...h, culture: { ...culture.start }, parentHoleId: null, foundedTick: 0 })),
+    relations: {},
+  }),
 };
 
 export interface SaveSummary {

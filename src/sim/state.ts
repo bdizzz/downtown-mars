@@ -12,6 +12,7 @@ import { createHole } from "./geometry";
 import { createLayout, placeRoom, type Layout } from "./placement";
 import type { DepositKind } from "./mapgeo";
 import { roomDef } from "./rooms";
+import { culture, type Culture } from "./culture";
 
 /** Where a hole is on Mars, in degrees. */
 export interface Site {
@@ -50,6 +51,11 @@ export interface SimState {
   /** Enacted ordinance ids. */
   ordinances: string[];
   ledger: Ledger;
+  /** Culture sliders, -1 to +1 each; they drift toward a target daily. */
+  culture: Culture;
+  /** The hole that founded this one, if any. */
+  parentHoleId: number | null;
+  foundedTick: number;
 }
 
 export interface HoleIdentity {
@@ -99,6 +105,9 @@ export function createInitialState(
     office: createOffice(),
     ordinances: [],
     ledger: createLedger(),
+    culture: { ...culture.start },
+    parentHoleId: null,
+    foundedTick: 0,
   };
   createNotables(state);
   updateHappiness(state, cfg, true);

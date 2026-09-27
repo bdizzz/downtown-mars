@@ -7,6 +7,7 @@ import type { EffectField } from "./effects";
 import type { Deposit, DepositKind } from "./mapgeo";
 import { hasStagingBay, kitProgress } from "./founding";
 import type { Happiness } from "./happiness";
+import type { Culture } from "./culture";
 import { averageFlows, type Flows } from "./ledger";
 import type { Message } from "./messages";
 import type { Notable } from "./notables";
@@ -48,6 +49,15 @@ export interface RouteView {
   legDays: number;
   /** Beyond the hole's rovers, so parked. */
   idle: boolean;
+  /** How opinion scales each load: above 1 for friends, 0 when they refuse. */
+  loadFactor: number;
+}
+
+export interface RelationView {
+  from: number;
+  to: number;
+  opinion: number;
+  tier: string;
 }
 
 /** One line per hole, for the hole picker and anything network-wide. */
@@ -64,6 +74,9 @@ export interface HoleSummary {
   rovers: number;
   /** Tradeable stock, for choosing routes. */
   stock: Record<string, number>;
+  culture: Culture;
+  /** Where the culture is heading. */
+  cultureTarget: Culture;
 }
 
 // What the views get to see: the hole being looked at, in full, plus a line
@@ -87,6 +100,8 @@ export interface Snapshot {
   convoys: ConvoyView[];
   /** Every trade route in the network; the worker fills these in. */
   routes: RouteView[];
+  /** How each hole sees each other hole. */
+  relations: RelationView[];
   tick: number;
   time: GameTime;
   layout: Layout;
@@ -128,6 +143,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     kit: { loaded: state.kit ?? {}, progress: kitProgress(state), hasBay: hasStagingBay(state) },
     convoys: [],
     routes: [],
+    relations: [],
     tick: state.tick,
     time: gameTime(state.tick, cfg),
     layout: state.layout,

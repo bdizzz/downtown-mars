@@ -308,3 +308,23 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .network .warn { color: #e0503a; margin: 0; }
 .network .new-route button.primary { background: var(--accent); border: 1px solid var(--accent); color: #1a0f0d; font-weight: 600; border-radius: 4px; padding: 4px; cursor: pointer; font: inherit; }
 .network .new-route button.primary:disabled { opacity: 0.5; cursor: default; }
+.network .dot, .network .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+.network .axis { display: grid; grid-template-columns: 52px 1fr 52px; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin: 3px 0; }
+.network .axis > span:last-child { text-align: right; }
+.network .track { position: relative; height: 12px; }
+.network .track::before { content: ""; position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: #0006; }
+.network .track::after { content: ""; position: absolute; left: 50%; top: 2px; width: 1px; height: 8px; background: #fff3; }
+.network .track i { position: absolute; top: 1px; width: 10px; height: 10px; border-radius: 50%; margin-left: -5px; box-sizing: border-box; }
+.network .track i.target { border: 1.5px solid; background: transparent; opacity: 0.7; }
+.network .track i.now { box-shadow: 0 0 0 1px #1a0f0d; }
+.network .legend { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.network .opinion { display: grid; grid-template-columns: 1fr 70px 88px; align-items: center; gap: 6px; font-size: 12px; margin: 3px 0; }
+.network .opinion .bar { position: relative; height: 6px; background: #0005; border-radius: 3px; }
+.network .opinion .bar::after { content: ""; position: absolute; left: 50%; top: -2px; width: 1px; height: 10px; background: #fff4; }
+.network .opinion .bar > div { position: absolute; top: 0; height: 100%; border-radius: 3px; }
+.network .opinion .pos { background: #7cc47a; }
+.network .opinion .neg { background: #e0503a; }
+.network .opinion .tier { text-align: right; }
+.network .tier.allied, .network .tier.friendly { color: #7cc47a; }
+.network .tier.wary { color: #e0a03a; }
+.network .tier.hostile { color: #e0503a; }
