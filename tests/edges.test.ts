@@ -11,9 +11,11 @@ describe("the edge grid", () => {
   it("cuts each circle at the slot boundaries of the rings on both sides", () => {
     // Between the rings of a pair (1 and 2) the slots line up: one cut per slot.
     expect(circleCuts(hole, 1)).toHaveLength(ringSize(hole, 1));
-    // Between pairs (ring 2, 9 slots, and ring 3, 22), 0 is shared and everything else is distinct.
+    // Between pairs (ring 2, 9 slots, and ring 3, 18) every ring-2 border runs on into ring 3:
+    // the circle is cut only where ring 3's slots meet, and those crossings are four-way.
     const cuts = circleCuts(hole, 2);
-    expect(cuts.length).toBe(ringSize(hole, 2) + ringSize(hole, 3) - 1);
+    expect(cuts.length).toBe(ringSize(hole, 3));
+    expect(ringSize(hole, 3) % ringSize(hole, 2)).toBe(0);
     const turns = cuts.map(([p, q]) => p / q);
     expect([...turns].sort((a, b) => a - b)).toEqual(turns);
   });

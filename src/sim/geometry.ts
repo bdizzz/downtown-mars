@@ -17,7 +17,13 @@ export function slotsInRing(shaftRadiusM: number, ring: number, geo: GeometryCon
   // Paired rings: an even ring has the same slots as the odd ring inside it.
   if (geo.pairedRings && ring % 2 === 0) return slotsInRing(shaftRadiusM, ring - 1, geo);
   const midRadius = shaftRadiusM + (ring - 0.5) * geo.roomDepthM;
-  return Math.round((2 * Math.PI * midRadius) / geo.slotWidthM);
+  const natural = Math.round((2 * Math.PI * midRadius) / geo.slotWidthM);
+  // Nested pairs: the nearest whole multiple (at least 1) of the pair inside.
+  if (geo.pairedRings && geo.nestedPairs && ring > 2) {
+    const inside = slotsInRing(shaftRadiusM, ring - 2, geo);
+    return inside * Math.max(1, Math.round(natural / inside));
+  }
+  return natural;
 }
 
 export function createHole(

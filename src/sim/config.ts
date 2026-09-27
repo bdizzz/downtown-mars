@@ -14,6 +14,12 @@ export interface GeometryConfig {
    * cost of larger slots in the even rings.
    */
   pairedRings?: boolean;
+  /**
+   * Each pair of rings has a whole multiple of the slots of the pair inside
+   * it (the nearest one), so every border of an inner pair runs on outward and
+   * borders meet in four-way crossings.
+   */
+  nestedPairs?: boolean;
 }
 
 export type Priority = "critical" | "high" | "normal" | "low";

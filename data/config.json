@@ -13,6 +13,7 @@
     "floorHeightM": 4,
     "galleryWidthM": 2,
     "pairedRings": true,
+    "nestedPairs": true,
     "surfaceSlots": 12
   },
   "shapes": {

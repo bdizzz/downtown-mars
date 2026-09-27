@@ -31,9 +31,9 @@ describe("footprint", () => {
   });
 
   it("a deep room across a pair boundary widens into a wedge", () => {
-    // Ring 2 slots 0–1 span 0°–80°; ring 3 (22 slots) has slot centres at 8.2°, 24.5°, 40.9°, 57.3°, 73.6°.
+    // Ring 2 slots 0–1 span 0°–80°; ring 3 has twice the slots (18), so exactly four of them.
     const cells = footprint(hole(), 1, 2, 0, 2, 2);
-    expect(cells.filter((c) => c.ring === 3).map((c) => c.slot)).toEqual([0, 1, 2, 3, 4]);
+    expect(cells.filter((c) => c.ring === 3).map((c) => c.slot)).toEqual([0, 1, 2, 3]);
   });
 
   it("neighbouring deep rooms never claim the same outer slot", () => {

@@ -177,3 +177,4 @@ Open questions for Bryon:
   - The shaft wall opens at a corridor's mouth onto the gallery.
   - The carving is now one helper (`carveCell`), shared by rooms and the cap.
   - The corridor tool's ghost sits on the floor too.
+- **Nested pairs:** each pair of rings has the nearest whole multiple (at least 1) of the slots of the pair inside it (`geometry.nestedPairs`). A narrow hole has 9, 9, 18, 18, 36, 36 slots; a wide one (R = 40 m) 28, 28, 28, 28, 56, 56. Every border of an inner pair runs straight on outward, so borders meet in four-way crossings, and the circle between two pairs is cut only at the outer pair's slots. Old saves keep their own geometry. Playthroughs are unchanged from paired rings: at one hour the network has 112 against the solo player's 113; at 90 days 184 against 132, with 18 births.

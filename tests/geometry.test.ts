@@ -18,9 +18,16 @@ describe("slots per ring", () => {
   });
 
   it("paired rings: each even ring has the slots of the odd ring inside it", () => {
-    const paired = { ...config.geometry, pairedRings: true };
+    const paired = { ...config.geometry, pairedRings: true, nestedPairs: false };
     expect(rings(10, paired)).toEqual([9, 9, 22, 22, 35, 35]);
     expect(config.geometry.pairedRings).toBe(true); // the game's setting
+  });
+
+  it("nested pairs: each pair has the nearest whole multiple of the pair inside it", () => {
+    const nested = { ...config.geometry, pairedRings: true, nestedPairs: true };
+    expect(rings(10, nested)).toEqual([9, 9, 18, 18, 36, 36]); // 22 → 2 × 9, 35 → 2 × 18
+    expect(rings(40, nested)).toEqual([28, 28, 28, 28, 56, 56]); // 41 → 1 × 28, 53 → 2 × 28
+    expect(config.geometry.nestedPairs).toBe(true); // the game's setting
   });
 });
 

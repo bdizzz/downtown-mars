@@ -16,8 +16,8 @@ describe("pick", () => {
 
   it("finds the slot under a point", () => {
     const y = ringTop(2, 3, 6) + RING_H / 2;
-    // Ring 3 has 22 slots; the middle of the turn is slot 11.
-    expect(pick(hole, TURN_W / 2 + 1, y)).toMatchObject({ kind: "slot", floor: 2, ring: 3, slot: 11, locked: false });
+    // Ring 3 has 18 slots; the middle of the turn is slot 9.
+    expect(pick(hole, TURN_W / 2 + 1, y)).toMatchObject({ kind: "slot", floor: 2, ring: 3, slot: 9, locked: false });
   });
 
   it("wraps x in both directions", () => {
