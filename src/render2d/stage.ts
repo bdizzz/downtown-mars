@@ -3,7 +3,7 @@ import type { SimCommand } from "../sim/commands";
 import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
 import { checkBuild } from "../sim/costs";
-import { roomAt, type Cell, type CheckResult, type Layout, type Location, type RoomInstance } from "../sim/placement";
+import { neighborCells, roomAt, type Cell, type CheckResult, type Layout, type Location, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
 import type { Happiness } from "../sim/happiness";
@@ -21,6 +21,7 @@ import {
   worldHeight,
   type Pick,
 } from "./layout";
+import { drawGlyph, drawHills, drawLandingPad, drawPod, drawSolarArray, shade, STARS, tint } from "./art";
 import { CATEGORY_COLORS } from "./palette";
 
 // The unrolled view. One full turn of the hole is drawn into shared graphics
@@ -49,6 +50,12 @@ const C = {
   digRock: 0x3a2018,
   digFront: 0xe07a3f,
   lander: 0xd9d4cc,
+  hillsNight: 0x1c0f12,
+  hillsDay: 0x9a5a3a,
+  star: 0xf6efe6,
+  window: 0x9fd2ff,
+  door: 0x2a1a14,
+  rail: 0x4a3a32,
   landerDark: 0x6b6660,
   flame: 0xffb35c,
   fieldBad: 0xff4a2e,
@@ -138,14 +145,20 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     const f = s.time.dayFraction;
     // Daylight 0..1: up at 06:00, peak at noon, down at 18:00.
     const light = f > 0.25 && f < 0.75 ? Math.sin((Math.PI * (f - 0.25)) / 0.5) : 0;
+    const groundY = SURFACE_H - GROUND_H;
     skyCtx.clear();
     skyCtx.rect(0, 0, TURN_W, SURFACE_H).fill(mix(C.nightSky, C.daySky, light));
+    const starAlpha = 1 - Math.min(1, light * 3);
+    if (starAlpha > 0) {
+      for (const [sx, sy, r] of STARS) skyCtx.circle(sx * TURN_W, sy * (groundY - 30), r).fill({ color: C.star, alpha: starAlpha * 0.8 });
+    }
     if (light > 0) {
       const x = ((f - 0.25) / 0.5) * TURN_W;
       skyCtx.circle(x, SURFACE_H - 60 - light * (SURFACE_H - 80), 12).fill(C.sun);
     }
-    skyCtx.rect(0, SURFACE_H - GROUND_H, TURN_W, GROUND_H).fill(C.ground);
-    skyCtx.rect(0, SURFACE_H - GROUND_H, 2, GROUND_H).fill(C.seam); // 0° marker
+    drawHills(skyCtx, TURN_W, groundY, mix(C.hillsNight, C.hillsDay, light));
+    skyCtx.rect(0, groundY, TURN_W, GROUND_H).fill(C.ground);
+    skyCtx.rect(0, groundY, 2, GROUND_H).fill(C.seam); // 0° marker
   }
 
   /** Red where an effect hurts, green where it helps, stronger for bigger values. */
@@ -212,6 +225,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     for (let floor = 1; floor <= lastFloor; floor++) {
       const top = floorTop(floor, maxRings);
       holeCtx.rect(0, top, TURN_W, GALLERY_H).fill(C.gallery);
+      // The gallery's railing, facing the open shaft.
+      holeCtx.rect(0, top + 2, TURN_W, 1.5).fill(C.rail);
+      for (let x = 0; x < TURN_W; x += HATCH_STEP) holeCtx.rect(x, top + 2, 1.5, 6).fill(C.rail);
       holeCtx.rect(0, top + GALLERY_H - 2, TURN_W, 2).fill(C.galleryEdge);
 
       for (let ring = 1; ring <= maxRings; ring++) {
@@ -291,19 +307,117 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
   function drawRooms(l: Layout): void {
     roomsCtx.clear();
+    const groundY = SURFACE_H - GROUND_H;
     for (const room of l.rooms) {
-      const color = CATEGORY_COLORS[roomDef(room.type).category] ?? C.label;
+      const def = roomDef(room.type);
+      const color = CATEGORY_COLORS[def.category] ?? C.label;
       if (room.at.kind === "surface") {
-        roomsCtx.rect(...surfaceRect(room.surfaceCells, l.surface.length)).fill(color).stroke({ color: C.roomText, width: 2 });
+        const [x, , w] = surfaceRect(room.surfaceCells, l.surface.length);
+        if (room.type === "solar_array") drawSolarArray(roomsCtx, x, w, groundY, color);
+        else if (room.type === "landing_pad") drawLandingPad(roomsCtx, x, w, groundY, color);
+        else if (room.type === "landing_pod") drawPod(roomsCtx, x, w, groundY, color);
+        else roomsCtx.rect(...surfaceRect(room.surfaceCells, l.surface.length)).fill(color);
         continue;
       }
-      for (const row of cellRows(l.hole, room.cells)) {
+      const rows = cellRows(l.hole, room.cells);
+      for (const row of rows) {
         const r = roomsCtx.rect(...rowRect(l.hole, row));
         if (room.planned) r.fill({ color, alpha: 0.3 }).stroke({ color, width: 2 });
-        else r.fill(color);
-        if (!room.connected) r.stroke({ color: C.bad, width: 3 });
+        else r.fill(room.type === "corridor" ? shade(color, 0.15) : color);
+      }
+      if (room.type === "corridor") drawCorridorFloor(l, room, color);
+      else if (!room.planned) drawFrontage(l, room, rows, color);
+      drawRoomGlyph(l, room, rows, color);
+      if (!room.connected) for (const row of rows) roomsCtx.rect(...rowRect(l.hole, row)).stroke({ color: C.bad, width: 3 });
+    }
+  }
+
+  const isCorridor = (l: Layout, c: Cell) => roomAt(l, c)?.type === "corridor";
+
+  /**
+   * Frontage, picked from each face's neighbor like auto-tiling: windows on
+   * the shaft side of ring 1, a door wherever a face meets a corridor, plain
+   * wall against other rooms.
+   */
+  function drawFrontage(l: Layout, room: RoomInstance, rows: ReturnType<typeof cellRows>, color: number): void {
+    const h = l.hole;
+    const maxRings = h.ringSlots.length;
+    const wall = shade(color, 0.45);
+    for (const row of rows) {
+      const [x, y, w, hh] = rowRect(h, row);
+      roomsCtx.rect(x, y, w, hh).stroke({ color: wall, width: 1.5, alpha: 0.9 });
+      if (row.ring === 1) {
+        // Shaft windows, with the door onto the gallery in the middle.
+        const mid = x + w / 2;
+        for (let wx = x + 5; wx + 10 < x + w - 4; wx += 13) {
+          if (Math.abs(wx + 5 - mid) < 9) continue;
+          roomsCtx.rect(wx, y + 3, 10, 5).fill({ color: C.window, alpha: 0.85 });
+        }
+        roomsCtx.rect(mid - 5, y, 10, 11).fill(C.door);
       }
     }
+    const own = new Set(room.cells.map((c) => `${c.ring}:${c.slot}`));
+    for (const nb of neighborCells(h, room.cells)) {
+      if (!isCorridor(l, nb)) continue;
+      // Find the room cell this corridor touches, to place the door on the shared edge.
+      for (const c of room.cells) {
+        const n = h.ringSlots[c.ring - 1]!;
+        const [cx0, cx1] = slotX(c.slot, n);
+        const top = ringTop(c.floor, c.ring, maxRings);
+        if (nb.ring === c.ring) {
+          const left = (c.slot - 1 + n) % n === nb.slot && !own.has(`${c.ring}:${nb.slot}`);
+          const right = (c.slot + 1) % n === nb.slot && !own.has(`${c.ring}:${nb.slot}`);
+          if (left) roomsCtx.rect(cx0, top + RING_H / 2 - 7, 5, 14).fill(C.door);
+          if (right) roomsCtx.rect(cx1 - 5, top + RING_H / 2 - 7, 5, 14).fill(C.door);
+          if (left || right) break;
+        } else if (Math.abs(nb.ring - c.ring) === 1) {
+          const m = h.ringSlots[nb.ring - 1]!;
+          const [nx0, nx1] = slotX(nb.slot, m);
+          const lo = Math.max(cx0, nx0);
+          const hi = Math.min(cx1, nx1);
+          if (hi - lo < 8) continue;
+          const doorY = nb.ring < c.ring ? top : top + RING_H - 5;
+          roomsCtx.rect((lo + hi) / 2 - 6, doorY, 12, 5).fill(C.door);
+          break;
+        }
+      }
+    }
+  }
+
+  /** Floor markings along the way a corridor runs: out from the shaft, around the ring, or both. */
+  function drawCorridorFloor(l: Layout, room: RoomInstance, color: number): void {
+    const h = l.hole;
+    const mark = { color: tint(color, 0.35), width: 1.5, alpha: 0.8 };
+    for (const c of room.cells) {
+      const n = h.ringSlots[c.ring - 1]!;
+      const [x0, x1] = slotX(c.slot, n);
+      const top = ringTop(c.floor, c.ring, h.ringSlots.length);
+      const nbs = neighborCells(h, [c]);
+      const radial = c.ring === 1 || nbs.some((nb) => nb.ring !== c.ring && isCorridor(l, nb));
+      const around = nbs.some((nb) => nb.ring === c.ring && isCorridor(l, nb));
+      const cx = (x0 + x1) / 2;
+      const cy = top + RING_H / 2;
+      if (radial || !around) for (let y = top + 4; y < top + RING_H - 6; y += 8) roomsCtx.moveTo(cx, y).lineTo(cx, y + 4).stroke(mark);
+      if (around) for (let x = x0 + 4; x < x1 - 6; x += 8) roomsCtx.moveTo(x, cy).lineTo(x + 4, cy).stroke(mark);
+    }
+  }
+
+  function drawRoomGlyph(l: Layout, room: RoomInstance, rows: ReturnType<typeof cellRows>, color: number): void {
+    const ink = room.planned ? color : shade(color, 0.55);
+    if (room.type === "farm") {
+      // Rows of crops across the whole farm.
+      for (const row of rows) {
+        const [x, y, w, hh] = rowRect(l.hole, row);
+        for (let gx = x + 18; gx < x + w - 10; gx += 26) drawGlyph(roomsCtx, "farm", gx, y + hh / 2 + 6, 22, ink);
+      }
+      return;
+    }
+    const row = rows[0];
+    if (!row) return;
+    const [x, y, w, hh] = rowRect(l.hole, row);
+    const size = Math.min(26, w * 0.5, hh - 14);
+    const cx = w > 70 ? x + w - size / 2 - 8 : x + w / 2;
+    drawGlyph(roomsCtx, room.type, cx, y + hh / 2 + 6, size, ink);
   }
 
   function roomLabels(l: Layout): Container {

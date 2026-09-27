@@ -1,0 +1,46 @@
+# Art direction (placeholder)
+
+What the game should look like, written so the code-drawn placeholders in `src/render2d/art.ts` and `stage.ts` can be swapped for real art without changing how the view works. Nothing here is decided with Bryon yet; "Art and audio direction" is still open in DECISIONS.md. Treat this as a proposal to react to.
+
+## Mood
+
+A warm, lived-in city inside a cold, rusty planet. SimTower's cutaway clarity, with Frostpunk's lamplight against the dark. Chill, not grim.
+
+- **Outside is cold and vast.** Dusty rust ground, a butterscotch day sky that falls to a violet-black night full of stars. Hills are silhouettes, never detail.
+- **Inside is warm and small.** Rooms glow in category colours against dark rock. Light spills from shaft windows.
+- **The shaft is the showpiece.** Ring 1 windows face it; the gallery railing frames it. A future 3D view looks down it.
+
+## Readability rules
+
+These matter more than style, because the game is a placement puzzle.
+
+1. **Category colour is sacred.** Every room's fill is its category colour (`src/render2d/palette.ts`), so a glance reads "that floor is all water and air". Art may add texture and light, but the hue family must survive.
+2. **One glyph per room type,** in a single ink colour, readable at 20 px. Glyphs say what a room *is*; labels say which one.
+3. **Frontage is auto-tiled from neighbors,** never hand-placed: shaft windows on ring 1, a door wherever a face meets a corridor, plain wall against other rooms. Future art needs a tile for each face type and each room size.
+4. **Overlays sit on top of the art,** so art must stay mid-value: no pure black or white fills that would swallow a red or green heat-map tint.
+5. **Blueprints are outlines,** translucent fill in the category colour. Stranded rooms get a red outline and a warning mark.
+
+## Palette
+
+| Use | Colour |
+| --- | --- |
+| Rock | `#2a1510` |
+| Ground | `#7a3b22` |
+| Day sky | `#c98a5e` |
+| Night sky | `#120a14` |
+| Accent (UI, dig front, seam) | `#e07a3f` |
+| Shaft windows | `#9fd2ff` |
+| Housing / Food / Water / Air | `#6f93bd` / `#86ad58` / `#4f9fc8` / `#8cc8cf` |
+| Health / Admin / Power / Logistics / Access | `#d48092` / `#c9a456` / `#e0bf4a` / `#a08fb0` / `#9a8574` |
+
+## What a real artist would make
+
+- **Room interiors** per type and size (S, M, L; wide and deep variants of L), with 3–4 frames of idle life: steam from the galley, a turning fan in life support, sprouts that sway in farms.
+- **Frontage tiles:** shaft window strip, gallery door, side door, top and bottom door, plain wall, corner pieces, storefront (for later shops).
+- **Surface props:** solar arrays (tilting with the sun), landing pad with lights, the pod, lander with a landing plume, rovers later.
+- **Colonists:** tiny figures walking the gallery and corridors, more of them when busier. Purely cosmetic.
+- **UI:** a condensed technical sans for numbers, warm panels, one accent colour.
+
+## Audio (for step 6)
+
+Soft and diegetic: the hum of life support, a distant drill, the thump of a supply drop, a two-note chime when someone waits at the office. No music at first; a sparse ambient bed later.
