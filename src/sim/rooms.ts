@@ -46,6 +46,12 @@ export interface RoomDef {
   requiresDeposit?: DepositKind;
   /** Gathers the seed kit for founding a new hole. */
   stagesSeedKit?: boolean;
+  /** Children it teaches. */
+  teaches?: number;
+  /** Elders it looks after. */
+  caresForElders?: number;
+  /** Not buildable until the hole has reached this (see UNLOCKS in costs.ts). */
+  unlockedBy?: "children" | "elders";
   /** A working one lets colonists have children. */
   enablesBirths?: boolean;
   /** Rovers this room provides for trade routes. */

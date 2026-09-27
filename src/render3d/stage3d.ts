@@ -563,7 +563,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function hoverInfo(): HoverInfo | null {
     if (!layout || !pointer) return null;
     rayAt(pointer.clientX, pointer.clientY);
-    return hoverInfoFor(layout, resources, tool, pickRay(raycaster.ray), latest?.holeDeposits ?? []);
+    return hoverInfoFor(layout, resources, tool, pickRay(raycaster.ray), latest?.holeGates ?? []);
   }
 
   function refreshHover(force = false): void {

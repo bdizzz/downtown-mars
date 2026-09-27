@@ -2,7 +2,7 @@ import type { SimConfig } from "./config";
 import { beds } from "./earth";
 import { isActive } from "./economy";
 import { postMessage } from "./messages";
-import { countStage, people, syncCount } from "./people";
+import { countStage, people, syncCount, unlock } from "./people";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
@@ -43,6 +43,7 @@ export function stepBirths(state: SimState, cfg: SimConfig): void {
   else pop.cohorts.push({ stage: "child", count: 1, until });
   syncCount(state);
   pop.born = (pop.born ?? 0) + 1;
+  unlock(state, "children");
   if (pop.born === 1) {
     postMessage(state, cfg, `The first child is born in ${state.name}! Children don't work; they'll want a school.`, "good");
   }

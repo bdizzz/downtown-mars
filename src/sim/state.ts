@@ -31,6 +31,8 @@ export interface SimState {
   deposits: DepositKind[];
   /** Goods loaded into the staging bay's seed kit so far. */
   kit: Record<string, number>;
+  /** Milestones that unlock rooms: "children" (first birth), "elders" (first retirement). */
+  unlocks?: string[];
   /** The player asked the staging bay to gather a kit; it stops when the kit is full or leaves. */
   gatheringKit: boolean;
   tick: number;

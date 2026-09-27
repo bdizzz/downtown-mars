@@ -7,6 +7,7 @@ import type { Priority } from "./config";
 import { enact, repeal } from "./ordinances";
 import { isCrop } from "./resources";
 import { mainOutput } from "./economy";
+import { holeGates } from "./people";
 import { answerVisit } from "./visits";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
@@ -38,7 +39,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
   const layout = state.layout;
   switch (cmd.type) {
     case "build": {
-      const check = checkBuild(layout, state.resources, cmd.room, cmd.at, config, state.deposits ?? []);
+      const check = checkBuild(layout, state.resources, cmd.room, cmd.at, config, holeGates(state));
       if (!check.ok) return { ok: false, reason: check.reason };
       const r = placeRoom(layout, cmd.room, cmd.at);
       if (!r.ok) return { ok: false, reason: r.reason };

@@ -184,6 +184,18 @@ export function Inspector({ s, roomId, onCommand, onClose }: Props) {
       <Flows label="Stores" flows={spec.stores} />
       {def.stagesSeedKit && <SeedKit s={s} onCommand={onCommand} />}
       {def.houses ? <Home s={s} roomId={room.id} capacity={def.houses} /> : null}
+      {def.teaches ? (
+        <p>
+          <span className="k">Teaches</span> up to {def.teaches} children · {s.care.school.who} in the hole,{" "}
+          {s.care.school.missing > 0 ? `${num(s.care.school.missing)} without a place` : "all with a place"}
+        </p>
+      ) : null}
+      {def.caresForElders ? (
+        <p>
+          <span className="k">Cares for</span> up to {def.caresForElders} elders · {s.care.elders.who} in the hole,{" "}
+          {s.care.elders.missing > 0 ? `${num(s.care.elders.missing)} without care` : "all cared for"}
+        </p>
+      ) : null}
       {spec.sanitation > 0 && (
         <p>
           <span className="k">Sanitation for</span> {num(spec.sanitation)}

@@ -3,6 +3,7 @@ import { isActive } from "./economy";
 import { effectOnRoom } from "./effects";
 import type { RoomInstance } from "./placement";
 import { modifiers } from "./ordinances";
+import { careFactors } from "./care";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
@@ -57,8 +58,10 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   const h = cfg.happiness;
   const lim = h.factorLimit;
   const mod = modifiers(state);
-  const shared = needsHealth(state, cfg) + (1 - careCoverage(state)) * h.noCareHealth + mod.health;
-  if (!room) return { noise: 0, comfort: clamp(h.homelessComfort + mod.comfort, -lim, lim), health: clamp(shared, -lim, lim) };
+  const care = careFactors(state);
+  const shared = needsHealth(state, cfg) + (1 - careCoverage(state)) * h.noCareHealth + mod.health + care.health;
+  const sharedComfort = mod.comfort + care.comfort;
+  if (!room) return { noise: 0, comfort: clamp(h.homelessComfort + sharedComfort, -lim, lim), health: clamp(shared, -lim, lim) };
 
   const field = state.effects.field;
   const def = roomDef(room.type);
@@ -66,7 +69,7 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   const view = room.cells.some((c) => c.ring === 1) ? h.shaftViewComfort : 0;
   return {
     noise: clamp(effectOnRoom(field, "noise", room) * mod.noiseFactor, -lim, lim),
-    comfort: clamp(own + view + mod.comfort + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
+    comfort: clamp(own + view + sharedComfort + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
     health: clamp(effectOnRoom(field, "health", room) + shared, -lim, lim),
   };
 }

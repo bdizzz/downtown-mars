@@ -4,7 +4,6 @@ import { CATEGORY_COLORS, cssColor } from "../render2d/palette";
 import type { Tool } from "../view/types";
 import { config } from "../sim/config";
 import { missingCost, siteRefusal } from "../sim/costs";
-import type { DepositKind } from "../sim/mapgeo";
 import { roomDefs, type RoomDef } from "../sim/rooms";
 import { RoomCard } from "./RoomCard";
 
@@ -19,6 +18,8 @@ export const HOTKEYS: Record<string, string> = {
   restroom: "W",
   life_support: "L",
   clinic: "K",
+  school: "E",
+  elder_care: "Q",
   admin_office: "A",
   battery_bank: "B",
   solar_array: "S",
@@ -39,7 +40,7 @@ const CATEGORY_NAMES: Record<string, string> = {
   water: "Water",
   air: "Air",
   power: "Power",
-  health: "Health",
+  health: "Health and care",
   admin: "Administration",
   industry: "Industry",
   logistics: "Logistics",
@@ -64,7 +65,7 @@ interface Props {
   /** Tutorial highlight, e.g. "room:galley". */
   highlight: string | null;
   /** What this hole sits on: rooms needing a deposit it lacks are greyed out. */
-  deposits: DepositKind[];
+  deposits: string[];
 }
 
 export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo, highlight, deposits }: Props) {

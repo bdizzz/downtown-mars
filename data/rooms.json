@@ -538,6 +538,57 @@
         "machinery": 4
       },
       "buildable": true
+    },
+    {
+      "id": "school",
+      "name": "School",
+      "short": "School",
+      "category": "health",
+      "size": "M",
+      "staff": 3,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "teaches": 40,
+      "unlockedBy": "children",
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "brick": 15
+      },
+      "buildable": true
+    },
+    {
+      "id": "elder_care",
+      "name": "Elder care",
+      "short": "Elders",
+      "category": "health",
+      "size": "M",
+      "staff": 3,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "caresForElders": 30,
+      "unlockedBy": "elders",
+      "effects": [
+        {
+          "type": "health",
+          "strength": 1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "brick": 15,
+        "metal": 5
+      },
+      "buildable": true
     }
   ]
 }

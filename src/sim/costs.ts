@@ -15,10 +15,22 @@ export function missingCost(resources: Record<string, number>, type: string): st
 
 const DEPOSIT_NAMES: Record<DepositKind, string> = { ice: "ice", aquifer: "an aquifer", ore: "ore", silica: "silica" };
 
-/** Why this hole can't have a room at all, whatever the spot (e.g. no ore under it), or null. */
-export function siteRefusal(type: string, deposits: DepositKind[]): string | null {
-  const need = roomDef(type).requiresDeposit;
-  return need && !deposits.includes(need) ? `Needs a site on ${DEPOSIT_NAMES[need]}: this hole doesn't sit on any` : null;
+const UNLOCKS: Record<string, string> = {
+  children: "Unlocks with the first child born here",
+  elders: "Unlocks when the first colonists retire",
+};
+
+/**
+ * Why this hole can't have a room at all, whatever the spot, or null.
+ * `gates` lists what the hole has: the deposits under it (e.g. no ore, no
+ * smelter) and what it has unlocked (e.g. "children" for a school).
+ */
+export function siteRefusal(type: string, gates: string[]): string | null {
+  const def = roomDef(type);
+  const need = def.requiresDeposit;
+  if (need && !gates.includes(need)) return `Needs a site on ${DEPOSIT_NAMES[need]}: this hole doesn't sit on any`;
+  if (def.unlockedBy && !gates.includes(def.unlockedBy)) return UNLOCKS[def.unlockedBy]!;
+  return null;
 }
 
 /** Placement rules, the site, and cost: what the build preview and the build command both use. */
@@ -28,11 +40,11 @@ export function checkBuild(
   type: string,
   at: Location,
   cfg: SimConfig = config,
-  deposits: DepositKind[] = [],
+  gates: string[] = [],
 ): CheckResult {
   const check = checkPlacement(layout, type, at, cfg);
   if (!check.ok) return check;
-  const site = siteRefusal(type, deposits);
+  const site = siteRefusal(type, gates);
   if (site) return { ok: false, reason: site, cells: check.cells, surfaceCells: check.surfaceCells };
   const missing = missingCost(resources, type);
   return missing ? { ok: false, reason: missing, cells: check.cells, surfaceCells: check.surfaceCells } : check;

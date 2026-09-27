@@ -22,5 +22,15 @@
     "_note": "Births need a working clinic, a happy enough hole and a free bed.",
     "minHappiness": 55,
     "perAdultPerDay": 0.006
+  },
+  "school": {
+    "_note": "Each unschooled child upsets their family (familySize people, child included): comfort falls in proportion, down to unschooledComfort when every family is affected.",
+    "familySize": 3,
+    "unschooledComfort": -1.5
+  },
+  "elderCare": {
+    "_note": "Elders without a place in elder care, plus someone looking after each, weigh on health.",
+    "affectedPerElder": 2,
+    "uncaredHealth": -1.5
   }
 }

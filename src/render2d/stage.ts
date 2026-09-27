@@ -4,7 +4,6 @@ import { config } from "../sim/config";
 import { neighborCells, roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
-import type { DepositKind } from "../sim/mapgeo";
 import { clickWith, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
 import type { HoverInfo, Stage, StageOptions, Tool } from "../view/types";
 import type { Happiness } from "../sim/happiness";
@@ -106,7 +105,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let gameId = "";
   let drill: DrillView | null = null;
   let resources: Record<string, number> = {};
-  let deposits: DepositKind[] = [];
+  let deposits: string[] = [];
   let selected: number | null = null;
   let overlayType: string | null = null;
   let heat = HEAT.normal;
@@ -726,7 +725,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       drawSky(snapshot);
       drawLander(snapshot);
       resources = snapshot.resources;
-      deposits = snapshot.holeDeposits;
+      deposits = snapshot.holeGates;
       refreshHover(); // affordability may have changed
     },
     setTool(t) {

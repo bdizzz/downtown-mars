@@ -38,3 +38,15 @@ Decided Sep 27, 2026 (Bryon): the game starts with only working adults. Children
 **Step 2, aging:** each tick, cohorts whose time has come move on (`stepAging`, after Earth drops). Adults retire into elders for 30–60 days, and elders then pass away peacefully, with a message in each case; the first retirement says elders will want elder care. Elders don't work. Colonists' needs, waste and restroom water are weighted by stage (`needsWeight`: children 0.7, elders 1, from `data/people.json`), and so is Earth's estimate of what the hole is short of.
 
 **Step 3, births and children:** `src/sim/births.ts`. Births need a working clinic (rooms can declare `enablesBirths`), average happiness of at least 55, a free bed, and two adults. While all four hold, adults have children at 0.6% a day, accumulated each tick. Everyone born on the same day shares one child cohort, which grows into working adults after 40 days (with a fresh working span and a message). The first birth in a hole is announced. `birthBlockers` gives the reasons births are held back, for the People panel. Children need 70% of an adult's food, water and air.
+
+**Step 4, school and elder care:** two rooms from ROOMS.md in the Health and care group:
+- **School:** M, 3 staff, power 1, teaches 40, noise −1 r1, brick 15; hotkey E.
+- **Elder care:** M, 3 staff, power 1, cares for 30 elders, health +1 r1, brick 15, metal 5; hotkey Q.
+
+Each has a glyph. Holes record unlocks ("children" at the first birth, "elders" at the first retirement), and rooms declare `unlockedBy`. The build check folds deposits and unlocks into one list of "gates", so the palette, previews and build command share one refusal ("Unlocks with the first child born here").
+
+Coverage (`src/sim/care.ts`) is weighted by working staff:
+- **Unschooled children:** each upsets a family of 3, and hole-wide comfort falls in proportion, down to −1.5 when every family is affected.
+- **Uncared elders:** each weighs on 2 people's health, down to −1.5.
+
+The Inspector shows teaching and care places against the hole's children and elders.

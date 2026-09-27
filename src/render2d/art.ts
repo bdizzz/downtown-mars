@@ -85,6 +85,20 @@ const GLYPHS: Record<string, Glyph> = {
     const b = s * 0.28;
     g.poly([cx - a, cy - b, cx + a, cy - b, cx + a, cy - a, cx + b, cy - a, cx + b, cy + a, cx + a, cy + a, cx + a, cy + b, cx - a, cy + b, cx - a, cy + a, cx - b, cy + a, cx - b, cy - a, cx - a, cy - a]).stroke(line(1.5, c));
   },
+  school: (g, cx, cy, s, c) => {
+    // An open book.
+    g.moveTo(cx, cy - s * 0.18).lineTo(cx, cy + s * 0.24).stroke(line(1.5, c));
+    g.moveTo(cx, cy - s * 0.18).quadraticCurveTo(cx - s * 0.16, cy - s * 0.26, cx - s * 0.32, cy - s * 0.18).lineTo(cx - s * 0.32, cy + s * 0.2).quadraticCurveTo(cx - s * 0.16, cy + s * 0.14, cx, cy + s * 0.24).stroke(line(1.5, c));
+    g.moveTo(cx, cy - s * 0.18).quadraticCurveTo(cx + s * 0.16, cy - s * 0.26, cx + s * 0.32, cy - s * 0.18).lineTo(cx + s * 0.32, cy + s * 0.2).quadraticCurveTo(cx + s * 0.16, cy + s * 0.14, cx, cy + s * 0.24).stroke(line(1.5, c));
+  },
+  elder_care: (g, cx, cy, s, c) => {
+    // A walking cane beside a small heart.
+    g.moveTo(cx - s * 0.08, cy + s * 0.32).lineTo(cx - s * 0.08, cy - s * 0.16).quadraticCurveTo(cx - s * 0.08, cy - s * 0.3, cx - s * 0.22, cy - s * 0.3).stroke(line(1.8, c));
+    const hx = cx + s * 0.16;
+    const hy = cy - s * 0.02;
+    const r = s * 0.08;
+    g.moveTo(hx, hy + r * 2).lineTo(hx - r * 1.6, hy).arc(hx - r * 0.8, hy - r * 0.4, r, Math.PI * 0.8, Math.PI * 1.95).arc(hx + r * 0.8, hy - r * 0.4, r, Math.PI * 1.05, Math.PI * 0.2).lineTo(hx, hy + r * 2).stroke(line(1.4, c));
+  },
   admin_office: (g, cx, cy, s, c) => {
     // A pediment and columns.
     g.moveTo(cx - s * 0.32, cy - s * 0.12).lineTo(cx, cy - s * 0.32).lineTo(cx + s * 0.32, cy - s * 0.12).closePath().stroke(line(1.5, c));

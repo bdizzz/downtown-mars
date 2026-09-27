@@ -23,6 +23,8 @@ export const people = raw as unknown as {
   child: { days: number; needsFactor: number };
   elder: { days: [number, number]; needsFactor: number };
   births: { minHappiness: number; perAdultPerDay: number };
+  school: { familySize: number; unschooledComfort: number };
+  elderCare: { affectedPerElder: number; uncaredHealth: number };
 };
 
 /** 0..1 from a few integers, stable across runs and platforms. */
@@ -94,6 +96,17 @@ export function setAdults(state: SimState, n: number, cfg: SimConfig): void {
   addAdults(state, n, cfg);
 }
 
+/** What a hole has for rooms that need something: deposits under it, and stages reached. */
+export function holeGates(state: SimState): string[] {
+  return [...(state.deposits ?? []), ...(state.unlocks ?? [])];
+}
+
+/** Record that a hole has reached something that unlocks rooms (first child, first elder). */
+export function unlock(state: SimState, what: "children" | "elders"): void {
+  state.unlocks ??= [];
+  if (!state.unlocks.includes(what)) state.unlocks.push(what);
+}
+
 /** Colonists weighted by what they eat, drink and breathe: children need less. */
 export function needsWeight(state: SimState): number {
   return state.population.cohorts.reduce(
@@ -125,7 +138,8 @@ export function stepAging(state: SimState, cfg: SimConfig): void {
   }
   state.population.cohorts = state.population.cohorts.filter((c) => c.count > 0);
   syncCount(state);
-  const first = retired > 0 && countStage(state, "elder") === retired;
+  const first = retired > 0 && !(state.unlocks ?? []).includes("elders");
+  if (retired) unlock(state, "elders");
   if (retired) {
     postMessage(
       state,

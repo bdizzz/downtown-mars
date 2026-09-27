@@ -7,7 +7,8 @@ import type { EffectField } from "./effects";
 import type { Deposit, DepositKind } from "./mapgeo";
 import { hasStagingBay, kitProgress } from "./founding";
 import type { Happiness } from "./happiness";
-import { stageCounts, type Stage } from "./people";
+import { holeGates, stageCounts, type Stage } from "./people";
+import { elderCoverage, schoolCoverage, type Coverage } from "./care";
 import type { Culture } from "./culture";
 import { averageFlows, type Flows } from "./ledger";
 import type { Message } from "./messages";
@@ -95,6 +96,8 @@ export interface Snapshot {
   mapUnlocked: boolean;
   /** What the hole you're looking at sits on. */
   holeDeposits: DepositKind[];
+  /** Deposits and unlocks together, for which rooms this hole can build. */
+  holeGates: string[];
   /** This hole's seed kit: gathered so far against what a kit needs. */
   kit: { loaded: Record<string, number>; progress: number; hasBay: boolean; gathering: boolean };
   /** Founding convoys on their way; the worker fills these in. */
@@ -118,6 +121,8 @@ export interface Snapshot {
   population: Population;
   /** Head counts by life stage. */
   stages: Record<Stage, number>;
+  /** Places for children and elders. */
+  care: { school: Coverage; elders: Coverage };
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
   earth: { ticksToDrop: number; waiting: boolean; padReady: boolean; landed: number };
@@ -143,6 +148,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     deposits: [],
     mapUnlocked: false,
     holeDeposits: state.deposits ?? [],
+    holeGates: holeGates(state),
     kit: { loaded: state.kit ?? {}, progress: kitProgress(state), hasBay: hasStagingBay(state), gathering: state.gatheringKit },
     convoys: [],
     routes: [],
@@ -163,6 +169,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     power: powerFlow(state, cfg),
     population: state.population,
     stages: stageCounts(state),
+    care: { school: schoolCoverage(state), elders: elderCoverage(state) },
     workforce: state.workforce,
     roomStatus: state.roomStatus,
     earth: {

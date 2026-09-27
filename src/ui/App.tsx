@@ -301,7 +301,7 @@ export function App() {
           setTool={(t) => (setTool(t), setSelected(null))}
           resources={snapshot?.resources ?? {}}
           highlight={highlight}
-          deposits={snapshot?.holeDeposits ?? []}
+          deposits={snapshot?.holeGates ?? []}
           rotate={rotate}
           canUndo={canUndo}
           undo={undo}

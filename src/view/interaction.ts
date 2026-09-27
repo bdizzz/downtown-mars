@@ -1,7 +1,6 @@
 import type { SimCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { checkBuild } from "../sim/costs";
-import type { DepositKind } from "../sim/mapgeo";
 import { roomAt, type Layout, type Location } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { HoverInfo, Pick, StageOptions, Tool } from "./types";
@@ -23,11 +22,11 @@ export function locationFor(p: Pick, t: Extract<Tool, { kind: "build" }>, layout
   return { kind: "ring", floor: p.floor, ring: p.ring, slot: p.slot, w: t.shape[0], d: t.shape[1] };
 }
 
-export function hoverInfoFor(layout: Layout, resources: Record<string, number>, tool: Tool, p: Pick, deposits: DepositKind[] = []): HoverInfo {
+export function hoverInfoFor(layout: Layout, resources: Record<string, number>, tool: Tool, p: Pick, gates: string[] = []): HoverInfo {
   const info: HoverInfo = { pick: p };
   if (tool?.kind === "build") {
     const at = locationFor(p, tool, layout);
-    if (at) info.check = checkBuild(layout, resources, tool.room, at, config, deposits);
+    if (at) info.check = checkBuild(layout, resources, tool.room, at, config, gates);
     return info;
   }
   if (p.kind === "slot") info.room = roomAt(layout, p);
