@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
-import { roomGeometry } from "../src/render3d/rooms3d";
+import { roomGeometry, shaftFaces } from "../src/render3d/rooms3d";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 // Each curved face is split into 4 arc steps of 2 triangles; a radial side is 2 triangles.
@@ -93,5 +93,30 @@ describe("public rooms", () => {
     expect(triangles(roomGeometry(l, room.cells, undefined, true, true))).toBe(open - SIDE);
     // A private room keeps its wall on a corridor side.
     expect(triangles(roomGeometry(l, room.cells))).toBe(walled);
+  });
+});
+
+describe("windows", () => {
+  it("pull back with the wall when a corridor is carved along a side, and return when it's gone", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 2)); // ring-1 slots 2–3
+    const room = l.rooms.find((x) => x.id === r.id)!;
+    const span = () => {
+      const faces = shaftFaces(l, room);
+      return [Math.min(...faces.map((f) => f.a0)), Math.max(...faces.map((f) => f.a1))];
+    };
+    const [a0, a1] = span();
+    l.corridors["R1.1.2"] = "rock"; // along its left side
+    const [b0, b1] = span();
+    expect(b0 - a0).toBeCloseTo((1.5 - 0.06) / 15, 6); // back by half a corridor, less the hairline
+    expect(b1).toBeCloseTo(a1, 9);
+    // The windows stay inside the room's walls.
+    const geo = roomGeometry(l, room.cells);
+    const pos = geo.getAttribute("position");
+    let minA = Infinity;
+    for (let i = 0; i < pos.count; i++) minA = Math.min(minA, Math.atan2(pos.getZ(i), pos.getX(i)));
+    expect(b0).toBeGreaterThanOrEqual(minA - 1e-9);
+    delete l.corridors["R1.1.2"];
+    expect(span()[0]).toBeCloseTo(a0, 9);
   });
 });

@@ -39,7 +39,7 @@ describe("where corridors can go", () => {
     expect(corridorRefusal(s.layout, "R1.1.0")).toBe("Already a corridor");
   });
 
-  it("costs its finish by length, and refunds half when removed", () => {
+  it("costs its finish by length, and costs the same again to fill in", () => {
     const s = rich();
     build(s, "bunk_dorm", ring(1, 1, 0, 2));
     const brick = s.resources.brick!;
@@ -49,8 +49,13 @@ describe("where corridors can go", () => {
     expect(s.layout.corridors["R1.1.0"]).toBe("brick");
     expect(s.ledger.current.brick?.out.Corridors).toBeCloseTo(cost);
     applyCommand(s, { type: "removeCorridors", edges: ["R1.1.0"] });
-    expect(s.resources.brick).toBeCloseTo(brick - cost * (1 - corridors.refund));
+    expect(s.resources.brick).toBeCloseTo(brick - 2 * cost); // rebuilding the walls costs as much again
     expect(s.layout.corridors["R1.1.0"]).toBeUndefined();
+    // And it needs the materials to do it.
+    draw(s, ["R1.1.0"], "brick");
+    s.resources.brick = 0;
+    expect(applyCommand(s, { type: "removeCorridors", edges: ["R1.1.0"] })).toMatchObject({ ok: false, reason: expect.stringMatching(/Needs .* brick/) });
+    expect(s.layout.corridors["R1.1.0"]).toBe("brick");
   });
 
   it("refuses what it can't afford", () => {

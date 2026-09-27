@@ -99,7 +99,7 @@ function CorridorTool({ tool, setTool, resources }: Pick<Props, "tool" | "setToo
           })}
           <button
             className={`finish erase${tool.erase ? " on" : ""}`}
-            title="Remove corridors (half refund). Or hold Shift while drawing."
+            title="Fill corridors in. It costs as much as carving them: the walls around them are rebuilt. Or hold Shift while drawing."
             onClick={() => setTool({ ...tool, erase: !tool.erase })}
           >
             <span className="name">Erase</span>

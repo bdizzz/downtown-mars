@@ -7,7 +7,7 @@ import type { Priority } from "./config";
 import { enact, repeal } from "./ordinances";
 import { isCrop } from "./resources";
 import { mainOutput } from "./economy";
-import { corridorCost, corridorRefusal, corridors as corridorCfg, CORRIDORS, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
+import { corridorCost, corridorRefusal, CORRIDORS, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById } from "./edges";
 import { holeGates } from "./people";
 import { answerVisit } from "./visits";
@@ -114,15 +114,26 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     case "drawCorridors":
       return drawCorridors(state, cmd.edges, cmd.finish);
     case "removeCorridors": {
-      const gone = cmd.edges.filter((id) => layout.corridors[id]);
+      // Filling a corridor in costs what carving it did: the walls around it are rebuilt.
+      const gone = cmd.edges.filter((id, i) => layout.corridors[id] && cmd.edges.indexOf(id) === i);
       if (!gone.length) return { ok: false, reason: "No corridor there" };
+      let removed = 0;
+      let firstShort: string | null = null;
       for (const id of gone) {
-        const e = edgeById(layout.hole, id)!;
-        for (const [r, v] of Object.entries(corridorCost(layout.hole, e, layout.corridors[id]!, config))) {
-          state.resources[r] = (state.resources[r] ?? 0) + v * corridorCfg.refund;
+        const cost = corridorCost(layout.hole, edgeById(layout.hole, id)!, layout.corridors[id]!, config);
+        const short = shortfall(state.resources, cost);
+        if (short) {
+          firstShort ??= short;
+          continue;
+        }
+        for (const [r, v] of Object.entries(cost)) {
+          state.resources[r] = (state.resources[r] ?? 0) - v;
+          record(state, r, "out", CORRIDORS, v);
         }
         delete layout.corridors[id];
+        removed++;
       }
+      if (!removed) return { ok: false, reason: firstShort ?? "No corridor there" };
       recomputeAccess(layout);
       layout.version++;
       return { ok: true };

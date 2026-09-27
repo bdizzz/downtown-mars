@@ -389,9 +389,16 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const [x, y, w, hh] = rowRect(h, row);
       roomsCtx.rect(x, y, w, hh).stroke({ color: wall, width: 1.5, alpha: 0.9 });
       if (row.ring === 1) {
-        // Shaft windows, with the door onto the gallery in the middle.
-        const mid = x + w / 2;
-        for (let wx = x + 5; wx + 10 < x + w - 4; wx += 13) {
+        // Shaft windows, with the door onto the gallery in the middle. They keep clear of
+        // corridors carved along either end, so they move with the room's walls.
+        const n = h.ringSlots[0]!;
+        const startSlot = Math.round((row.x0 / TURN_W) * n) % n;
+        const endSlot = Math.round((row.x1 / TURN_W) * n) % n;
+        const cut = (slot: number) => (l.corridors[`R${row.floor}.1.${slot}`] ? BAND / 2 : 0);
+        const xs = x + cut(startSlot);
+        const xe = x + w - cut(endSlot);
+        const mid = (xs + xe) / 2;
+        for (let wx = xs + 5; wx + 10 < xe - 4; wx += 13) {
           if (Math.abs(wx + 5 - mid) < 9) continue;
           roomsCtx.rect(wx, y + 3, 10, 5).fill({ color: C.window, alpha: 0.85 });
         }

@@ -25,7 +25,6 @@ export interface FinishDef {
 
 export const corridors = raw as unknown as {
   widthM: number;
-  refund: number;
   blocksEffects: string[];
   defaultFinish: string;
   finishes: FinishDef[];

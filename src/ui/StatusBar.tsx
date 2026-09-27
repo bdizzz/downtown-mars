@@ -68,7 +68,7 @@ export function StatusBar({ info, snapshot, notice, overlay }: Props) {
       if (e.refusal) {
         text = `${e.refusal}${here ? ` · ${here}` : ""} · ${text}`;
         bad = true;
-      } else if (e.erase) text = `Remove this ${here.toLowerCase()} (half refund) · ${text}`;
+      } else if (e.erase) text = `Fill in this ${here.toLowerCase()}, rebuilding the walls: ${cost} · ${text}`;
       else text = `Carve a corridor here: ${cost} · ${text}`;
     } else if (info.check && !info.check.ok) {
       text = `${info.check.reason} · ${text}`;

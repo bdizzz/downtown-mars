@@ -48,8 +48,9 @@ export function edgeHoverFor(layout: Layout, resources: Record<string, number>, 
   let refusal: string | null;
   if (removing) refusal = finish ? null : "No corridor here to remove";
   else refusal = corridorRefusal(layout, edge.id);
-  const cost = finish ? {} : corridorCost(layout.hole, edge, tool.finish, config);
-  if (!removing && !refusal) refusal = shortfall(resources, cost);
+  // Drawing costs the chosen finish; removing costs the corridor's own (rebuilding the walls).
+  const cost = removing ? (finish ? corridorCost(layout.hole, edge, finish, config) : {}) : finish ? {} : corridorCost(layout.hole, edge, tool.finish, config);
+  if (!refusal) refusal = shortfall(resources, cost);
   info.edge = { id: edge.id, refusal, cost, erase: removing, ...(finish ? { finish, linked: !!layout.corridorLinked?.[edge.id] } : {}) };
   return info;
 }

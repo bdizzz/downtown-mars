@@ -141,15 +141,28 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
 /** Half a corridor's width: what a room gives up on a side a corridor runs along. */
 const HALL = corridors.widthM / 2;
 
-/** Ring-1 cells: the face the shaft sees, for windows and doors. */
-function shaftFaces(layout: Layout, room: RoomInstance): { a0: number; a1: number; y0: number; r: number }[] {
+/**
+ * Ring-1 cells: the face the shaft sees, for windows and doors. It ends where
+ * the room's side walls stand, so a corridor carved along a side pulls the
+ * windows back with it (the same angles `roomGeometry` uses).
+ */
+export function shaftFaces(layout: Layout, room: RoomInstance): { a0: number; a1: number; y0: number; r: number }[] {
   const hole = layout.hole;
   const n = hole.ringSlots[0]!;
+  const [r0, r1] = ringRadii(hole, 1);
+  const rMid = (r0 + r1) / 2;
+  const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+  const pullBack = (c: Cell, slot: number, edge: number) => {
+    if (own.has(`${c.floor}:1:${(slot + n) % n}`)) return 0; // the room carries on: no wall here
+    return (layout.corridors?.[`R${c.floor}.1.${edge % n}`] ? HALL : INSET) / rMid;
+  };
   return room.cells
     .filter((c) => c.ring === 1)
     .map((c) => {
-      const [a0, a1] = slotAngles(c.slot, n);
-      return { a0, a1, y0: floorSpan(c.floor)[0], r: ringRadii(hole, 1)[0] };
+      const [s0, s1] = slotAngles(c.slot, n);
+      const a0 = s0 + pullBack(c, c.slot - 1, c.slot);
+      const a1 = s1 - pullBack(c, c.slot + 1, c.slot + 1);
+      return { a0, a1, y0: floorSpan(c.floor)[0], r: r0 };
     });
 }
 

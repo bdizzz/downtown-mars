@@ -10,7 +10,7 @@ This is an early playtest build: a hole or two, the first hour or so of play. To
 
 Start a new game and follow your deputy's tutorial, or dive in:
 
-- **Build:** pick a room on the left (or press its key), then click a slot. Green means it fits; red says why not. Ring 1 opens onto the shaft; deeper rooms need a **corridor** back to it. Press C and drag along the borders between rooms (Shift erases), pick a finish (bare rock, marscrete, brick or metal), or click **Connect** on a cut-off room.
+- **Build:** pick a room on the left (or press its key), then click a slot. Green means it fits; red says why not. Ring 1 opens onto the shaft; deeper rooms need a **corridor** back to it. Press C and drag along the borders between rooms (Shift fills a corridor back in, which costs as much as carving it), pick a finish (bare rock, marscrete, brick or metal), or click **Connect** on a cut-off room.
 - **Watch the bar at the top:** oxygen, water, meals and power, with how fast they're changing. Red means it runs out in under two days.
 - **Earth** sends supply drops every few days until you can stand on your own.
 - **Office:** colonists visit with problems. What you promise, they remember.
