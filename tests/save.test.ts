@@ -37,6 +37,20 @@ describe("saves", () => {
     expect(deserialize(s)).toMatchObject({ ok: false, reason: expect.stringMatching(/different version/) });
   });
 
+  it("upgrades a v1 save (no flow ledger) and plays on", () => {
+    const s = createInitialState(config);
+    run(s, 50);
+    const v1 = JSON.parse(serialize(s));
+    v1.version = 1;
+    delete v1.state.ledger;
+    const loaded = deserialize(JSON.stringify(v1));
+    expect(loaded.ok).toBe(true);
+    if (loaded.ok) {
+      expect(loaded.state.ledger).toEqual({ current: {}, days: [] });
+      expect(() => run(loaded.state, 300)).not.toThrow();
+    }
+  });
+
   it("refuses rooms this build doesn't know", () => {
     const s = serialize(createInitialState(config)).replace('"type":"landing_pad"', '"type":"space_elevator"');
     expect(deserialize(s)).toMatchObject({ ok: false, reason: expect.stringMatching(/space_elevator/) });

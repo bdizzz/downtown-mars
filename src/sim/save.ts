@@ -1,13 +1,22 @@
 import type { SimConfig } from "./config";
 import { refreshEffects } from "./effects";
+import { createLedger } from "./ledger";
 import { isRoomType } from "./rooms";
 import type { SimState } from "./state";
 
 // Saves are the whole sim state as JSON, minus what can be rebuilt (the
-// effect field). The version guards against loading a save whose shape this
-// build doesn't understand; bump it whenever SimState changes shape.
+// effect field). Bump the version whenever SimState changes shape, and add a
+// migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
+
+type RawState = Record<string, unknown>;
+
+/** MIGRATIONS[n] upgrades a version-n state to version n + 1. */
+const MIGRATIONS: Record<number, (s: RawState) => RawState> = {
+  // v2 added the flow ledger.
+  1: (s) => ({ ...s, ledger: createLedger() }),
+};
 
 export interface SaveSummary {
   day: number;
@@ -45,9 +54,13 @@ export function deserialize(json: string): LoadResult {
     return { ok: false, reason: "That file isn't a save: it isn't valid JSON." };
   }
   if (file.game !== "downtown-mars" || !file.state) return { ok: false, reason: "That file isn't a Downtown Mars save." };
-  if (file.version !== SAVE_VERSION) {
+  let version = file.version ?? 0;
+  let raw = file.state as unknown as RawState;
+  while (version < SAVE_VERSION && MIGRATIONS[version]) raw = MIGRATIONS[version++]!(raw);
+  if (version !== SAVE_VERSION) {
     return { ok: false, reason: `That save is from a different version (save v${file.version}, game v${SAVE_VERSION}).` };
   }
+  file.state = raw as unknown as SaveFile["state"];
   const unknown = file.state.layout?.rooms.find((r) => !isRoomType(r.type));
   if (unknown) return { ok: false, reason: `That save has a room this version doesn't know: "${unknown.type}".` };
   const layout = file.state.layout!;
