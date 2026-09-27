@@ -9,7 +9,9 @@ import { clickWith, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../v
 import type { HoverInfo, Pick, Stage, StageOptions, Tool } from "../view/types";
 import { FLOOR_H, floorSpan, openShaftRadius, RING_D, TAU } from "./cylinder";
 import { inCarvedRegion, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
-import { buildLayout, disposeLayout, disposeRoomMaterials, roomGeometry } from "./rooms3d";
+import { config } from "../sim/config";
+import { buildLayout, disposeLayout, disposeRoomMaterials, roomGeometry, setNightGlow } from "./rooms3d";
+import { galleryLamps, makeLander, placeLander, setLampGlow } from "./scenery3d";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Three
 // cameras: standing in the shaft looking at the wall, the way someone on the
@@ -66,6 +68,9 @@ function saveView(v: { mode: Mode; xray: boolean }): void {
 
 const HOVER = { ok: 0x7fd67f, bad: 0xe0503a, hover: 0xffe2b0, selected: 0xffffff };
 const FIELD_MAX = 3;
+/** Overlay tints sit just proud of the cells, in front of the rock and around rooms. */
+const FIELD_OUTSET = -0.04;
+const FIELD_ALPHA = 0.55;
 
 export async function createStage3D(host: HTMLElement, opts: StageOptions = {}): Promise<Stage> {
   let renderer: THREE.WebGLRenderer;
@@ -130,6 +135,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let layout: Layout | null = null;
   let resources: Record<string, number> = {};
   let hoverKey = "";
+  // The heat-map overlay: rebuilt when the overlay, the effects or happiness change.
+  let fieldGroup = new THREE.Group();
+  scene.add(fieldGroup);
+  let overlayType: string | null = null;
+  let fieldKey = "";
+  let lamps: THREE.InstancedMesh | null = null;
+  const lander = makeLander();
+  scene.add(lander);
   let hole: Hole | null = null;
   let holeKey = "";
   let gameId = -1;
@@ -260,6 +273,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     shell.visible = view.mode === "cutaway";
     holeGroup.add(shell);
 
+    lamps = galleryLamps(h);
+    holeGroup.add(lamps);
+
     // The surface around the rim.
     const ground = new THREE.Mesh(
       new THREE.RingGeometry(R, 600, 96, 1),
@@ -280,6 +296,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // Deep in the shaft, daylight matters less than the lamps; keep it gentle.
     hemi.intensity = 0.45 + 0.35 * light;
     sun.intensity = 0.15 + 0.9 * light;
+    // At night, windows and the gallery lamps glow.
+    setNightGlow(1 - light);
+    if (lamps) setLampGlow(lamps, 1 - light);
     // The sun crosses the sky once a day.
     const a = (f - 0.25) * TAU;
     sun.position.set(Math.cos(a) * 100, Math.max(5, Math.sin(a) * 100), 30);
@@ -439,6 +458,56 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       return;
     }
     if (p.kind === "slot") outline([p as Cell], HOVER.hover);
+  }
+
+  /** Tint cells by an effect, or homes by happiness, banded so each band is one mesh. */
+  function buildField(s: Snapshot): void {
+    scene.remove(fieldGroup);
+    fieldGroup.traverse((o) => o instanceof THREE.Mesh && o.geometry.dispose());
+    fieldGroup = new THREE.Group();
+    scene.add(fieldGroup);
+    dirty = true;
+    if (!overlayType) return;
+    const l = s.layout;
+    const bands = new Map<number, Cell[]>();
+    const add = (v: number, cells: Cell[]) => {
+      if (Math.abs(v) < 0.05) return;
+      const band = Math.round(v * 2) / 2;
+      if (!bands.has(band)) bands.set(band, []);
+      bands.get(band)!.push(...cells);
+    };
+    if (overlayType === "happiness") {
+      for (const pool of s.happiness.pools) {
+        const room = l.rooms.find((r) => r.id === pool.roomId);
+        if (!room) continue;
+        const v = ((pool.happiness - 50) / 50) * FIELD_MAX;
+        if (room.at.kind === "surface") {
+          const color = v < 0 ? heat.bad : heat.good;
+          const total = l.surface.length;
+          const mid = ((Math.min(...room.surfaceCells) + room.surfaceCells.length / 2) / total) * TAU;
+          const r = l.hole.shaftRadiusM + 16;
+          const disc = new THREE.Mesh(new THREE.CircleGeometry(8, 32), solid(color, Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA));
+          disc.rotation.x = -Math.PI / 2;
+          disc.position.set(r * Math.cos(mid), 0.2, r * Math.sin(mid));
+          fieldGroup.add(disc);
+        } else add(v, room.cells);
+      }
+    } else {
+      const grid = s.effects[overlayType];
+      grid?.forEach((rings, fi) => {
+        for (let ring = 1; ring <= l.hole.unlockedRings; ring++) {
+          rings[ring - 1]?.forEach((v, slot) => add(v, [{ floor: fi + 1, ring, slot }]));
+        }
+      });
+    }
+    for (const [v, cells] of bands) {
+      const color = v < 0 ? heat.bad : heat.good;
+      const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA;
+      const mat = overlayMat(`f:${color}:${alpha}`, () =>
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, depthWrite: false, side: THREE.DoubleSide }),
+      );
+      fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET), mat));
+    }
   }
 
   let pointer: { clientX: number; clientY: number } | null = null;
@@ -648,6 +717,18 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         }
       }
       updateSky(snapshot);
+      const happy = overlayType === "happiness" ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",") : "";
+      const fk = `${overlayType}:${snapshot.gameId}:${snapshot.layout.version}:${happy}:${heat.bad}`;
+      if (fk !== fieldKey) {
+        fieldKey = fk;
+        buildField(snapshot);
+      }
+      const e = snapshot.earth;
+      const descent = config.earth.descentDays * config.ticksPerDay;
+      const landing = e.padReady && !e.waiting && e.ticksToDrop <= descent;
+      const wasVisible = lander.visible;
+      placeLander(lander, snapshot.layout, landing ? 1 - e.ticksToDrop / descent : null);
+      if (landing || wasVisible) dirty = true;
       refreshHover(); // affordability or the layout may have changed
     },
     setTool(t: Tool) {
@@ -658,9 +739,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       selected = id;
       refreshHover(true);
     },
-    setOverlay() {},
+    setOverlay(type) {
+      overlayType = type;
+      fieldKey = "";
+      if (latest) stage.update(latest);
+    },
     setColorBlind(on) {
       heat = on ? HEAT.colorBlind : HEAT.normal;
+      fieldKey = "";
+      if (latest) stage.update(latest);
       refreshHover(true);
     },
     destroy() {
@@ -670,6 +757,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       disposeLayout(layoutGroup);
       dispose(holeGroup);
       dispose(digFront);
+      dispose(lander);
+      fieldGroup.traverse((o) => o instanceof THREE.Mesh && o.geometry.dispose());
       disposeRoomMaterials();
       overlayMats.forEach((m) => m.dispose());
       renderer.dispose();

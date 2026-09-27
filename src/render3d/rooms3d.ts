@@ -15,6 +15,7 @@ const WINDOW = { bottom: 1.4, top: 3.0, inset: 0.03, color: 0x2d4f6e };
 const DOOR = { width: 1.3, height: 2.3, color: 0x2a1a14 };
 const SURFACE_RING_M = 16; // how far from the rim surface props stand
 const LABEL = { px: 40, heightM: 1.1 };
+const GLOW = { windowBoost: 5 };
 
 export interface RoomColors {
   rock: number;
@@ -63,7 +64,7 @@ function geometry(pos: number[]): THREE.BufferGeometry {
  * rooms that touch never share a plane (which would flicker) and a hairline of
  * rock shows between them.
  */
-export function roomGeometry(layout: Layout, cells: Cell[]): THREE.BufferGeometry {
+export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET): THREE.BufferGeometry {
   const hole = layout.hole;
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
   const own = new Set(cells.map(key));
@@ -78,13 +79,13 @@ export function roomGeometry(layout: Layout, cells: Cell[]): THREE.BufferGeometr
     let [y0, y1] = floorSpan(c.floor);
     const openLeft = !own.has(key({ ...c, slot: (c.slot - 1 + n) % n }));
     const openRight = !own.has(key({ ...c, slot: (c.slot + 1) % n }));
-    if (c.ring === inner) r0 += INSET;
-    if (c.ring === outer) r1 -= INSET;
-    if (openLeft) a0 += INSET / r0;
-    if (openRight) a1 -= INSET / r0;
-    y0 += INSET;
+    if (c.ring === inner) r0 += inset;
+    if (c.ring === outer) r1 -= inset;
+    if (openLeft) a0 += inset / r0;
+    if (openRight) a1 -= inset / r0;
+    y0 += inset;
     // Floor-1 roofs sit just under the ground, so the two surfaces don't fight.
-    y1 -= c.floor === 1 ? Math.max(INSET, ROOF_GAP) : INSET;
+    y1 -= c.floor === 1 ? Math.max(inset, ROOF_GAP) : inset;
     if (c.ring === inner) curvedFace(pos, r0, a0, a1, y0, y1);
     if (c.ring === outer) curvedFace(pos, r1, a0, a1, y0, y1);
     flatRing(pos, r0, r1, a0, a1, y0);
@@ -112,6 +113,12 @@ function material(key: string, make: () => THREE.Material): THREE.Material {
   let m = materialCache.get(key);
   if (!m) materialCache.set(key, (m = make()));
   return m;
+}
+
+/** Windows glow brighter as the sky darkens: 0 at noon, 1 at night. */
+export function setNightGlow(night: number): void {
+  const glass = materialCache.get("glass") as THREE.MeshStandardMaterial | undefined;
+  if (glass) glass.emissiveIntensity = 1 + night * GLOW.windowBoost;
 }
 
 export function disposeRoomMaterials(): void {
@@ -236,7 +243,7 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   wallMesh.userData = { pickable: true, wall: true, faint: xray };
   group.add(wallMesh);
 
-  const glass = material("glass", () => new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x16283a, roughness: 0.2, metalness: 0.3, side: THREE.DoubleSide }));
+  const glass = material("glass", () => new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.2, metalness: 0.3, side: THREE.DoubleSide }));
   const door = material("door", () => new THREE.MeshStandardMaterial({ color: DOOR.color, roughness: 0.9, side: THREE.DoubleSide }));
   const strandedLine = material(`stranded:${colors.stranded}`, () => new THREE.LineBasicMaterial({ color: colors.stranded })) as THREE.LineBasicMaterial;
   const edgeLine = material("edges", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.5 })) as THREE.LineBasicMaterial;
