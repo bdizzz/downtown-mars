@@ -39,6 +39,8 @@ const MIN_DIST = 2;
 const CLICK_SLOP = 5;
 const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25 };
 const TOP = { min: 20, max: 300, start: 80 };
+/** How much of the surface still shows in x-ray: enough to keep your bearings. */
+const XRAY_GROUND_OPACITY = 0.2;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
 const SHELL_MARGIN = 6;
 
@@ -124,6 +126,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(digFront);
 
   const view = loadView();
+  // The surface: see-through in x-ray, so rooms under it show from above.
+  const groundMat = new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 });
+  function applyGroundXray(): void {
+    groundMat.transparent = view.xray;
+    groundMat.opacity = view.xray ? XRAY_GROUND_OPACITY : 1;
+    groundMat.depthWrite = !view.xray;
+    groundMat.needsUpdate = true;
+    dirty = true;
+  }
   // The cutaway slices along a plane through the shaft's axis, facing away from the camera.
   const clip = new THREE.Plane(new THREE.Vector3(1, 0, 0), 0);
   let shell: THREE.Object3D | null = null;
@@ -286,10 +297,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     holeGroup.add(lamps);
 
     // The surface around the rim.
-    const ground = new THREE.Mesh(
-      new THREE.RingGeometry(R, 600, 96, 1),
-      new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 }),
-    );
+    const ground = new THREE.Mesh(new THREE.RingGeometry(R, 600, 96, 1), groundMat);
     ground.rotation.x = -Math.PI / 2;
     holeGroup.add(ground);
 
@@ -348,11 +356,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       else offer(hit.distance, () => pickPast(h, ray, hit.distance));
       break;
     }
-    // The ground around the rim, for surface buildings.
-    offer(rayPlane(ray, ground), () => {
-      const p = ray.at(rayPlane(ray, ground)!, new THREE.Vector3());
+    // The ground around the rim, for surface buildings. In x-ray you're looking
+    // through it, so it only counts when placing a surface building or when
+    // nothing underneath was hit.
+    const tGround = rayPlane(ray, ground);
+    const groundPick = (): Pick => {
+      const p = ray.at(tGround!, new THREE.Vector3());
       return Math.hypot(p.x, p.z) > h.shaftRadiusM ? surfacePickAt(p) : { kind: "rock" };
-    });
+    };
+    const placingOnSurface = tool?.kind === "build" && roomDef(tool.room).size === "surface";
+    if (!view.xray || placingOnSurface) offer(tGround, groundPick);
     if (view.mode === "shaft" && !view.xray) {
       // Empty wall faces are part of the wall mesh; nothing more to add.
     } else if (view.mode === "shaft" && view.xray) {
@@ -365,6 +378,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (t !== null && inCarvedRegion(h, ray.at(t, new THREE.Vector3()))) offer(t, () => pickPast(h, ray, t - 0.2));
     }
     const b = best as { t: number; pick: Pick } | null;
+    if (!b && tGround !== null) return groundPick();
     return b ? b.pick : { kind: "rock" };
   }
 
@@ -649,6 +663,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     saveView(view);
     syncBar();
     layoutKey = ""; // rebuild with the new materials on the next update
+    applyGroundXray();
     if (latest) stage.update(latest);
   };
   bar.appendChild(xrayButton);
@@ -667,6 +682,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     else readout.textContent = cam.y >= 0 ? "Surface" : `Floor ${Math.floor(-cam.y / FLOOR_H) + 1}`;
   }
   syncBar();
+  applyGroundXray();
 
   const resize = new ResizeObserver(() => {
     const w = host.clientWidth;
@@ -827,6 +843,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       dispose(holeGroup);
       dispose(digFront);
       dispose(lander);
+      groundMat.dispose();
       dispose(walkers.mesh);
       dispose(dust.points);
       fieldGroup.traverse((o) => o instanceof THREE.Mesh && o.geometry.dispose());
