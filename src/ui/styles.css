@@ -1,0 +1,54 @@
+:root {
+  --bg: #1a0f0d;
+  --panel: #2a1814;
+  --text: #f0e0d0;
+  --muted: #a88d7c;
+  --accent: #e07a3f;
+  font-family: system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+html, body, #root { margin: 0; height: 100%; }
+.app { display: flex; flex-direction: column; height: 100%; }
+.hud {
+  display: flex; align-items: center; gap: 20px;
+  padding: 8px 16px; background: var(--panel);
+  border-bottom: 1px solid #000;
+}
+.title { font-weight: 700; letter-spacing: 0.02em; }
+.clock { font-variant-numeric: tabular-nums; min-width: 120px; }
+.tick { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.speeds { display: flex; gap: 4px; }
+.speeds button {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--muted); border-radius: 4px;
+  padding: 3px 10px; cursor: pointer; font: inherit;
+}
+.speeds button.on { background: var(--accent); border-color: var(--accent); color: #1a0f0d; }
+.pixi-host { flex: 1; min-height: 0; overflow: hidden; }
+.status {
+  padding: 6px 16px; background: var(--panel); border-top: 1px solid #000;
+  color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.status.bad { color: #f08a70; }
+.main { flex: 1; min-height: 0; display: flex; }
+.main .pixi-host { flex: 1; }
+.palette {
+  width: 180px; flex-shrink: 0; overflow-y: auto;
+  background: var(--panel); border-right: 1px solid #000;
+  padding: 8px; display: flex; flex-direction: column; gap: 3px;
+}
+.palette h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 4px 4px 6px; }
+.room-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: transparent; color: var(--text); font: inherit; font-size: 13px;
+  border: 1px solid transparent; border-radius: 4px; padding: 4px 6px; cursor: pointer; text-align: left;
+}
+.room-btn:hover { background: #3a241d; }
+.room-btn.on { border-color: var(--accent); background: #3a241d; }
+.room-btn .name { flex: 1; }
+.room-btn .size { color: var(--muted); font-size: 11px; }
+.room-btn .swatch { width: 10px; height: 10px; border-radius: 2px; background: var(--cat); }
+.room-btn.demolish { margin-top: 8px; color: #f08a70; }
+.hint { color: var(--muted); font-size: 11px; margin: 4px 6px; }
+kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-size: 10px; }

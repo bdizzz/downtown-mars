@@ -1,0 +1,35 @@
+{
+  "ticksPerDay": 240,
+  "startHour": 6,
+  "ticksPerSecondAt1x": 4,
+  "speeds": [0, 1, 2, 4],
+  "snapshotsPerSecond": 20,
+  "maxTicksPerFrame": 64,
+  "seed": 1,
+  "geometry": {
+    "slotWidthM": 10,
+    "roomDepthM": 10,
+    "maxRings": 6,
+    "surfaceSlots": 12
+  },
+  "shapes": {
+    "S": [[1, 1]],
+    "M": [[2, 1]],
+    "L": [[4, 1], [2, 2]]
+  },
+  "starterHole": {
+    "shaftRadiusM": 10,
+    "floors": 3,
+    "unlockedRings": 3
+  },
+  "landingKit": {
+    "surface": [
+      { "room": "landing_pod", "slot": 0 },
+      { "room": "landing_pad", "slot": 2 },
+      { "room": "solar_array", "slot": 4 }
+    ],
+    "ring": [
+      { "room": "battery_bank", "floor": 1, "ring": 1, "slot": 0 }
+    ]
+  }
+}
