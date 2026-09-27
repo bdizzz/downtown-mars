@@ -53,6 +53,8 @@ export interface SimConfig {
     /** A room can be undone for a full refund this long after it was placed. */
     undoWindowTicks: number;
     rateSmoothingDays: number;
+    /** Complete days the flow diagram averages over. */
+    ledgerDays: number;
     /** Slots a room of each size nominally covers; deep rooms covering more scale up. */
     nominalSlots: Record<string, number>;
   };

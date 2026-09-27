@@ -5,6 +5,7 @@ import { beds, padReady } from "./earth";
 import { capacities, roomSpec, type Population, type RoomStatus } from "./economy";
 import type { EffectField } from "./effects";
 import type { Happiness } from "./happiness";
+import { averageFlows, type Flows } from "./ledger";
 import type { Message } from "./messages";
 import type { Notable } from "./notables";
 import { ordinanceSlots } from "./ordinances";
@@ -49,6 +50,8 @@ export interface Snapshot {
   office: Office;
   ordinances: string[];
   ordinanceSlots: number;
+  /** Per-day flows by resource, averaged over recent days, for the flow diagram. */
+  flows: Flows;
 }
 
 export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
@@ -85,6 +88,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     office: state.office,
     ordinances: state.ordinances,
     ordinanceSlots: ordinanceSlots(state),
+    flows: averageFlows(state, cfg),
   };
 }
 

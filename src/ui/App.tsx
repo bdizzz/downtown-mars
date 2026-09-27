@@ -3,6 +3,7 @@ import type { HoverInfo, Tool } from "../render2d/stage";
 import type { SimCommand } from "../sim/commands";
 import { roomDef, roomDefs } from "../sim/rooms";
 import { BuildPalette, buildTool, DEMOLISH_KEY, HOTKEYS, shapesFor } from "./BuildPalette";
+import { FlowPanel } from "./FlowPanel";
 import { Hud } from "./Hud";
 import { Inspector } from "./Inspector";
 import { Menu } from "./Menu";
@@ -24,7 +25,13 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [overlay, setOverlay] = useState<string | null>(null);
-  const [officeOpen, setOfficeOpen] = useState(false);
+  // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
+  const [panel, setPanel] = useState<"office" | "flows" | null>(null);
+  const officeOpen = panel === "office";
+  const togglePanel = (p: "office" | "flows") => {
+    setPanel((cur) => (cur === p ? null : p));
+    setSelected(null);
+  };
   // "title" until the player starts or continues a game; then the pause menu opens over play.
   const [menu, setMenu] = useState<"title" | "pause" | null>("title");
   const [menuError, setMenuError] = useState<string | null>(null);
@@ -90,7 +97,7 @@ export function App() {
     setMenu(null);
     setTool(null);
     setSelected(null);
-    setOfficeOpen(false);
+    setPanel(null);
     setHover(null);
     setSpeed(resumeSpeed.current);
   }, [setSpeed]);
@@ -163,10 +170,10 @@ export function App() {
       if (target && ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) return;
       if (e.code === "Escape") {
         // Esc backs out of whatever is open; with nothing open, it opens the menu.
-        if (tool || selected !== null || officeOpen) {
+        if (tool || selected !== null || panel) {
           setTool(null);
           setSelected(null);
-          setOfficeOpen(false);
+          setPanel(null);
         } else openMenu();
       }
       if ((e.metaKey || e.ctrlKey) && e.code === "KeyZ") {
@@ -190,7 +197,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, tool, selected, officeOpen, openMenu, undo, rotate]);
+  }, [menu, tool, selected, panel, openMenu, undo, rotate]);
 
   return (
     <div className="app">
@@ -199,7 +206,8 @@ export function App() {
         speed={speed}
         setSpeed={setSpeed}
         setDrill={(active) => onCommand({ type: "setDrill", active })}
-        toggleOffice={() => (setOfficeOpen((o) => !o), setSelected(null))}
+        toggleOffice={() => togglePanel("office")}
+        toggleFlows={() => togglePanel("flows")}
         openMenu={openMenu}
         keysEnabled={!menu}
       />
@@ -223,12 +231,13 @@ export function App() {
             onCommand={onCommand}
             onCancel={() => setTool(null)}
             selected={selected}
-            onSelect={(id) => (setSelected(id), id !== null && setOfficeOpen(false))}
+            onSelect={(id) => (setSelected(id), id !== null && setPanel(null))}
             overlay={overlay}
           />
         </div>
-        {snapshot && officeOpen && <Office s={snapshot} onCommand={onCommand} onClose={() => setOfficeOpen(false)} />}
-        {snapshot && !officeOpen && selected !== null && (
+        {snapshot && officeOpen && <Office s={snapshot} onCommand={onCommand} onClose={() => setPanel(null)} />}
+        {snapshot && panel === "flows" && <FlowPanel s={snapshot} onClose={() => setPanel(null)} />}
+        {snapshot && !panel && selected !== null && (
           <Inspector s={snapshot} roomId={selected} onCommand={onCommand} onClose={() => setSelected(null)} />
         )}
       </div>

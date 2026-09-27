@@ -4,6 +4,7 @@ import { stepEarth } from "./earth";
 import { stepEconomy, updateRates } from "./economy";
 import { refreshEffects } from "./effects";
 import { stepHappiness } from "./happiness";
+import { stepLedger } from "./ledger";
 import { stepVisits } from "./visits";
 import type { SimState } from "./state";
 
@@ -19,4 +20,5 @@ export function step(state: SimState, cfg: SimConfig): void {
   stepEarth(state, cfg);
   stepHappiness(state, cfg);
   stepVisits(state, cfg);
+  stepLedger(state, cfg);
 }

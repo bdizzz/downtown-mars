@@ -191,3 +191,14 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
   margin-left: 6px; background: transparent; color: var(--text); font: inherit; font-size: 11px;
   border: 1px solid var(--muted); border-radius: 3px; padding: 0 5px; cursor: pointer;
 }
+.flows { width: 340px; }
+.flows .tabs { display: flex; gap: 2px; flex-wrap: wrap; }
+.flows .tabs button {
+  background: transparent; color: var(--text); font: inherit; font-size: 12px;
+  border: 1px solid transparent; border-radius: 3px; padding: 2px 7px; cursor: pointer;
+}
+.flows .tabs button.on { border-color: var(--accent); color: var(--accent); }
+.river { border-top: 1px solid #000; padding-top: 6px; }
+.river h4 { margin: 0 0 4px; font-size: 13px; }
+.river h4 .k { font-weight: 400; font-size: 11px; }
+.river svg .lbl { fill: var(--text); font-size: 9.5px; font-family: system-ui, sans-serif; }

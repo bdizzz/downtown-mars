@@ -3,6 +3,7 @@ import type { Drill } from "./digging";
 import { createEarth, type EarthState } from "./earth";
 import { refreshEffects, type Effects } from "./effects";
 import { createHappiness, updateHappiness, type Happiness } from "./happiness";
+import { createLedger, type Ledger } from "./ledger";
 import { createNotables, type Notable } from "./notables";
 import { createOffice, type Office } from "./visits";
 import type { Message } from "./messages";
@@ -32,6 +33,7 @@ export interface SimState {
   office: Office;
   /** Enacted ordinance ids. */
   ordinances: string[];
+  ledger: Ledger;
 }
 
 export function createInitialState(cfg: SimConfig): SimState {
@@ -63,6 +65,7 @@ export function createInitialState(cfg: SimConfig): SimState {
     notables: [],
     office: createOffice(),
     ordinances: [],
+    ledger: createLedger(),
   };
   createNotables(state);
   updateHappiness(state, cfg, true);

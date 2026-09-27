@@ -1,5 +1,6 @@
 import type { SimConfig } from "./config";
 import { capacities, isActive, roomSpec } from "./economy";
+import { LABELS, record } from "./ledger";
 import { postMessage } from "./messages";
 import { addNotable } from "./notables";
 import { resourceDef } from "./resources";
@@ -95,6 +96,7 @@ function land(state: SimState, cfg: SimConfig): Record<string, number> {
     if (fit <= 0) return;
     res[id] = (res[id] ?? 0) + fit;
     contents[id] = (contents[id] ?? 0) + fit;
+    record(state, id, "in", LABELS.earth, fit);
   };
 
   // Colonists step off first, so the top-ups below include them.

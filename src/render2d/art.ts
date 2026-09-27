@@ -59,8 +59,11 @@ const GLYPHS: Record<string, Glyph> = {
   water_recycler: (g, cx, cy, s, c) => {
     // Two arrows chasing each other.
     const r = s * 0.25;
-    g.arc(cx, cy, r, -Math.PI * 0.9, -Math.PI * 0.1).stroke(line(1.5, c));
-    g.arc(cx, cy, r, Math.PI * 0.1, Math.PI * 0.9).stroke(line(1.5, c));
+    // Start each arc at its own first point, or Pixi joins it to the last path drawn.
+    const arc = (from: number, to: number) =>
+      g.moveTo(cx + Math.cos(from) * r, cy + Math.sin(from) * r).arc(cx, cy, r, from, to).stroke(line(1.5, c));
+    arc(-Math.PI * 0.9, -Math.PI * 0.1);
+    arc(Math.PI * 0.1, Math.PI * 0.9);
     g.moveTo(cx + r * 0.95, cy - r * 0.55).lineTo(cx + r * 0.95, cy - r * 0.05).lineTo(cx + r * 0.5, cy - r * 0.3).stroke(line(1.5, c));
     g.moveTo(cx - r * 0.95, cy + r * 0.55).lineTo(cx - r * 0.95, cy + r * 0.05).lineTo(cx - r * 0.5, cy + r * 0.3).stroke(line(1.5, c));
   },

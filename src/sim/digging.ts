@@ -1,4 +1,5 @@
 import type { SimConfig } from "./config";
+import { LABELS, record } from "./ledger";
 import { ensureFloors, recomputeAccess } from "./placement";
 import type { SimState } from "./state";
 
@@ -37,7 +38,9 @@ export function stepDigging(state: SimState, cfg: SimConfig): void {
   const needed = ticksToDig(floor, cfg);
 
   state.drill.progress += 1;
-  state.resources.rock = (state.resources.rock ?? 0) + rockPerFloor(state, cfg) / needed;
+  const rock = rockPerFloor(state, cfg) / needed;
+  state.resources.rock = (state.resources.rock ?? 0) + rock;
+  record(state, "rock", "in", LABELS.digging, rock);
   if (state.drill.progress < needed) return;
 
   const layout = state.layout;

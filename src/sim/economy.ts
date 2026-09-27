@@ -1,5 +1,6 @@
 import type { SimConfig } from "./config";
 import type { RoomInstance } from "./placement";
+import { LABELS, record } from "./ledger";
 import { modifiers, type Modifiers } from "./ordinances";
 import { cropDef, resourceDef, resourceDefs } from "./resources";
 import { roomDef } from "./rooms";
@@ -115,7 +116,10 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   // 4. Storage limits; the excess is lost.
   for (const [id, v] of Object.entries(res)) {
     const cap = caps[id] ?? Infinity;
-    if (v > cap) res[id] = cap;
+    if (v > cap) {
+      record(state, id, "out", LABELS.lost, v - cap);
+      res[id] = cap;
+    }
   }
 }
 
@@ -123,11 +127,14 @@ function available(res: Record<string, number>, id: string, subs: string[] = [])
   return [id, ...subs].reduce((sum, k) => sum + (res[k] ?? 0), 0);
 }
 
-function consume(res: Record<string, number>, id: string, amount: number, subs: string[] = []): void {
+/** Take an input, falling back to substitutes; records what was actually used. */
+function consume(state: SimState, id: string, amount: number, subs: string[], label: string): void {
+  const res = state.resources;
   let left = amount;
   for (const k of [id, ...subs]) {
     const take = Math.min(left, res[k] ?? 0);
     res[k] = (res[k] ?? 0) - take;
+    record(state, k, "out", label, take);
     left -= take;
     if (left <= 0) break;
   }
@@ -191,11 +198,16 @@ function runRoom(
     limit = `full:${fullOf}`;
   }
 
-  for (const [id, perDay] of Object.entries(spec.uses)) consume(res, id, perDay * rate * dt, subs[id]);
-  for (const [id, perDay] of Object.entries(spec.makes)) res[id] = (res[id] ?? 0) + perDay * rate * dt;
+  const label = roomDef(room.type).name;
+  for (const [id, perDay] of Object.entries(spec.uses)) consume(state, id, perDay * rate * dt, subs[id] ?? [], label);
+  for (const [id, perDay] of Object.entries(spec.makes)) {
+    res[id] = (res[id] ?? 0) + perDay * rate * dt;
+    record(state, id, "in", label, perDay * rate * dt);
+  }
   for (const [id, perDay] of Object.entries(spec.scrubs)) {
     const take = Math.min(perDay * rate * dt, Math.max(0, (res[id] ?? 0) - scrubFloor(id, cfg)));
     res[id] = (res[id] ?? 0) - take;
+    record(state, id, "out", label, take);
   }
 
   st.rate = rate;
@@ -229,9 +241,13 @@ function stepColonists(
     const want = pop.count * perDay * (mod.needsMultiplier[id] ?? 1) * dt;
     const got = Math.min(want, res[id] ?? 0);
     res[id] = (res[id] ?? 0) - got;
+    record(state, id, "out", LABELS.colonists, got);
     met[id] = want > 0 ? got / want : 1;
   }
-  for (const [id, perDay] of Object.entries(c.makesPerDay)) res[id] = (res[id] ?? 0) + pop.count * perDay * dt;
+  for (const [id, perDay] of Object.entries(c.makesPerDay)) {
+    res[id] = (res[id] ?? 0) + pop.count * perDay * dt;
+    record(state, id, "in", LABELS.colonists, pop.count * perDay * dt);
+  }
 
   // Restrooms turn the water people drink into gray and black water.
   let seats = 0;
@@ -244,7 +260,10 @@ function stepColonists(
   }
   const covered = Math.min(1, seats / pop.count);
   const drunk = pop.count * (c.needsPerDay.water ?? 0) * (mod.needsMultiplier.water ?? 1) * dt * (met.water ?? 1);
-  for (const [id, share] of Object.entries(split)) res[id] = (res[id] ?? 0) + drunk * covered * share;
+  for (const [id, share] of Object.entries(split)) {
+    res[id] = (res[id] ?? 0) + drunk * covered * share;
+    record(state, id, "in", LABELS.restrooms, drunk * covered * share);
+  }
 
   let loss = 0;
   for (const [id, m] of Object.entries(met)) loss += (1 - m) * (c.healthLossPerDay[id] ?? 0);

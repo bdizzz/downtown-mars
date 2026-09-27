@@ -30,6 +30,9 @@ export function charge(resources: Record<string, number>, type: string): void {
   for (const [id, amt] of Object.entries(roomDef(type).cost)) resources[id] = (resources[id] ?? 0) - amt;
 }
 
+/** The ledger label for building (and, negatively, for refunds). */
+export const CONSTRUCTION = "Construction";
+
 export function refund(resources: Record<string, number>, type: string, fraction: number): void {
   for (const [id, amt] of Object.entries(roomDef(type).cost)) resources[id] = (resources[id] ?? 0) + amt * fraction;
 }

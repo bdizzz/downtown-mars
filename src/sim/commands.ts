@@ -1,5 +1,6 @@
 import { config } from "./config";
-import { charge, checkBuild, refund } from "./costs";
+import { charge, checkBuild, CONSTRUCTION, refund } from "./costs";
+import { record } from "./ledger";
 import { refreshEffects } from "./effects";
 import { demolishRoom, placeRoom, type Location } from "./placement";
 import type { Priority } from "./config";
@@ -37,6 +38,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       const r = placeRoom(layout, cmd.room, cmd.at);
       if (!r.ok) return { ok: false, reason: r.reason };
       charge(state.resources, cmd.room);
+      for (const [id, amt] of Object.entries(roomDef(cmd.room).cost)) record(state, id, "out", CONSTRUCTION, amt);
       layout.rooms.find((x) => x.id === r.id)!.builtTick = state.tick;
       return { ok: true, roomId: r.id! };
     }

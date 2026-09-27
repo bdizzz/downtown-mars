@@ -8,6 +8,7 @@ interface Props {
   setSpeed: (speed: number) => void;
   setDrill: (active: boolean) => void;
   toggleOffice: () => void;
+  toggleFlows: () => void;
   openMenu: () => void;
   /** Off while a menu is open, so Space can't unpause behind it. */
   keysEnabled: boolean;
@@ -21,7 +22,7 @@ function gameDuration(ticks: number): string {
   return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
 }
 
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, openMenu, keysEnabled }: Props) {
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, openMenu, keysEnabled }: Props) {
   // Space toggles pause, remembering the last running speed.
   const resumeRef = useRef(1);
   if (speed) resumeRef.current = speed;
@@ -77,6 +78,9 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, openMen
           Office{snapshot.office.waiting.length ? ` · ${snapshot.office.waiting.length} waiting` : ""}
         </button>
       )}
+      <button className="office-btn" onClick={toggleFlows} title="Where resources come from and go">
+        Flows
+      </button>
       <span className="tick">tick {snapshot?.tick ?? 0}</span>
     </header>
   );
