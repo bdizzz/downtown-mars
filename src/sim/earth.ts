@@ -2,7 +2,7 @@ import type { SimConfig } from "./config";
 import { capacities, isActive, roomSpec } from "./economy";
 import { LABELS, record } from "./ledger";
 import { postMessage } from "./messages";
-import { addAdults } from "./people";
+import { addAdults, needsWeight } from "./people";
 import { addNotable } from "./notables";
 import { resourceDef } from "./resources";
 import { roomDef } from "./rooms";
@@ -39,7 +39,7 @@ export function beds(state: SimState): number {
 
 /** Per-day shortfall of what colonists need that the hole doesn't make yet. */
 export function dailyGaps(state: SimState, cfg: SimConfig): Record<string, number> {
-  const pop = state.population.count;
+  const pop = needsWeight(state);
   const needs = cfg.colonists.needsPerDay;
   let waterUse = pop * (needs.water ?? 0);
   let waterMade = 0;

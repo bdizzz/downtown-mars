@@ -1,5 +1,6 @@
 import raw from "../../data/people.json";
 import type { SimConfig } from "./config";
+import { postMessage } from "./messages";
 import type { SimState } from "./state";
 
 // A hole's colonists as a few cohorts: a life stage, a head count, and the
@@ -90,4 +91,45 @@ export function takeAdults(state: SimState, n: number): Cohort[] {
 export function setAdults(state: SimState, n: number, cfg: SimConfig): void {
   state.population.cohorts = state.population.cohorts.filter((c) => c.stage !== "adult");
   addAdults(state, n, cfg);
+}
+
+/** Colonists weighted by what they eat, drink and breathe: children need less. */
+export function needsWeight(state: SimState): number {
+  return state.population.cohorts.reduce(
+    (n, c) => n + c.count * (c.stage === "child" ? people.child.needsFactor : c.stage === "elder" ? people.elder.needsFactor : 1),
+    0,
+  );
+}
+
+/** Cohorts whose time has come move on: adults retire into elders, and elders pass away. */
+export function stepAging(state: SimState, cfg: SimConfig): void {
+  const due = state.population.cohorts.filter((c) => c.until <= state.tick);
+  if (!due.length) return;
+  let retired = 0;
+  let passed = 0;
+  for (const c of due) {
+    if (c.stage === "adult") {
+      c.stage = "elder";
+      c.until = state.tick + spanTicks(people.elder.days, cfg, state.holeId, state.tick, c.count, 7);
+      retired += c.count;
+    } else if (c.stage === "elder") {
+      passed += c.count;
+      c.count = 0;
+    }
+  }
+  state.population.cohorts = state.population.cohorts.filter((c) => c.count > 0);
+  syncCount(state);
+  const first = retired > 0 && countStage(state, "elder") === retired;
+  if (retired) {
+    postMessage(
+      state,
+      cfg,
+      first
+        ? `The first colonists have retired: ${retired} ${retired === 1 ? "elder" : "elders"} who no longer work, and will want elder care.`
+        : `${retired} ${retired === 1 ? "colonist has" : "colonists have"} retired and joined the elders.`,
+    );
+  }
+  if (passed) {
+    postMessage(state, cfg, `${passed} ${passed === 1 ? "elder has" : "elders have"} passed away peacefully, after a long life on Mars.`);
+  }
 }

@@ -6,6 +6,7 @@ import { refreshEffects } from "./effects";
 import { stepHappiness } from "./happiness";
 import { stepLedger } from "./ledger";
 import { stepVisits } from "./visits";
+import { stepAging } from "./people";
 import type { SimState } from "./state";
 
 // Advance the simulation by one fixed tick. Mutates state in place.
@@ -18,6 +19,7 @@ export function step(state: SimState, cfg: SimConfig): void {
   // Rates show the hole's own production and use, so measure before drops land.
   updateRates(state, before, cfg);
   stepEarth(state, cfg);
+  stepAging(state, cfg);
   stepHappiness(state, cfg);
   stepVisits(state, cfg);
   stepLedger(state, cfg);

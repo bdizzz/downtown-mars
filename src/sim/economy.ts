@@ -5,7 +5,7 @@ import { modifiers, type Modifiers } from "./ordinances";
 import { cropDef, resourceDef, resourceDefs } from "./resources";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
-import { countStage, type Cohort } from "./people";
+import { countStage, needsWeight, type Cohort } from "./people";
 
 // The per-tick economy: staff the rooms, run them, feed the colonists, cap
 // storage. Every amount in the data is per game day, so each tick moves
@@ -271,18 +271,19 @@ function stepColonists(
   const pop = state.population;
   const res = state.resources;
   if (pop.count <= 0) return;
+  const weight = needsWeight(state);
 
   const met: Record<string, number> = {};
   for (const [id, perDay] of Object.entries(c.needsPerDay)) {
-    const want = pop.count * perDay * (mod.needsMultiplier[id] ?? 1) * dt;
+    const want = weight * perDay * (mod.needsMultiplier[id] ?? 1) * dt;
     const got = Math.min(want, res[id] ?? 0);
     res[id] = (res[id] ?? 0) - got;
     record(state, id, "out", LABELS.colonists, got);
     met[id] = want > 0 ? got / want : 1;
   }
   for (const [id, perDay] of Object.entries(c.makesPerDay)) {
-    res[id] = (res[id] ?? 0) + pop.count * perDay * dt;
-    record(state, id, "in", LABELS.colonists, pop.count * perDay * dt);
+    res[id] = (res[id] ?? 0) + weight * perDay * dt;
+    record(state, id, "in", LABELS.colonists, weight * perDay * dt);
   }
 
   // Restrooms turn the water people drink into gray and black water.
@@ -295,7 +296,7 @@ function stepColonists(
     split = roomDef(r.type).returnsWater ?? split;
   }
   const covered = Math.min(1, seats / pop.count);
-  const drunk = pop.count * (c.needsPerDay.water ?? 0) * (mod.needsMultiplier.water ?? 1) * dt * (met.water ?? 1);
+  const drunk = weight * (c.needsPerDay.water ?? 0) * (mod.needsMultiplier.water ?? 1) * dt * (met.water ?? 1);
   for (const [id, share] of Object.entries(split)) {
     res[id] = (res[id] ?? 0) + drunk * covered * share;
     record(state, id, "in", LABELS.restrooms, drunk * covered * share);
