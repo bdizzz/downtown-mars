@@ -150,7 +150,7 @@ function runRoom(
   // Unhappy colonists work slower; rooms with no staff aren't affected.
   if (spec.staff > 0 && state.happiness.productivity < 1) {
     rate *= state.happiness.productivity;
-    limit ??= "morale";
+    if (state.happiness.productivity < NOTICEABLE) limit ??= "morale";
   }
   if (mod.noisyRoomOutput < 1 && roomDef(room.type).effects.some((e) => e.type === "noise")) {
     rate *= mod.noisyRoomOutput;
@@ -167,30 +167,47 @@ function runRoom(
     }
   }
 
-  // Don't make what can't be stored. Waste and power don't hold a room back.
+  // Don't make what can't be stored: slow down only when every main output is
+  // full (a full byproduct, like a farm's oxygen, is just lost). Waste and
+  // power never hold a room back. A room with air to scrub keeps running for
+  // that alone, venting whatever it makes.
+  let outputF = -1;
+  let fullOf = "";
   for (const [id, perDay] of Object.entries(spec.makes)) {
     const def = resourceDef(id);
     if (def.waste || def.flow) continue;
     const make = perDay * rate * dt;
     if (make <= 0) continue;
-    const room = (caps[id] ?? Infinity) - (res[id] ?? 0);
-    const f = room / make;
-    if (f < 1) {
-      rate *= Math.max(0, f);
-      limit = `full:${id}`;
-    }
+    const f = Math.max(0, (caps[id] ?? Infinity) - (res[id] ?? 0)) / make;
+    if (f > outputF) outputF = f;
+    if (f < 1) fullOf ||= id;
+  }
+  for (const [id, perDay] of Object.entries(spec.scrubs)) {
+    const want = perDay * rate * dt;
+    if (want > 0) outputF = Math.max(outputF, (Math.max(0, (res[id] ?? 0) - scrubFloor(id, cfg))) / want);
+  }
+  if (outputF >= 0 && outputF < 1) {
+    rate *= outputF;
+    limit = `full:${fullOf}`;
   }
 
   for (const [id, perDay] of Object.entries(spec.uses)) consume(res, id, perDay * rate * dt, subs[id]);
   for (const [id, perDay] of Object.entries(spec.makes)) res[id] = (res[id] ?? 0) + perDay * rate * dt;
   for (const [id, perDay] of Object.entries(spec.scrubs)) {
-    const floor = id === "co2" ? cfg.economy.co2ScrubFloor : 0;
-    const take = Math.min(perDay * rate * dt, Math.max(0, (res[id] ?? 0) - floor));
+    const take = Math.min(perDay * rate * dt, Math.max(0, (res[id] ?? 0) - scrubFloor(id, cfg)));
     res[id] = (res[id] ?? 0) - take;
   }
 
   st.rate = rate;
   if (limit) st.limit = limit;
+}
+
+/** Below this, a slowdown is worth naming in the room's status. */
+const NOTICEABLE = 0.99;
+
+/** Life support leaves a little CO2 in the air for farms. */
+function scrubFloor(id: string, cfg: SimConfig): number {
+  return id === "co2" ? cfg.economy.co2ScrubFloor : 0;
 }
 
 function stepColonists(

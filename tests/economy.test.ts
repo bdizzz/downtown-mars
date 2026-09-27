@@ -135,6 +135,35 @@ describe("rooms", () => {
     expect(roomSpec(farm, config).makes.rawFood).toBe(8);
   });
 
+  it("a farm keeps growing food when oxygen storage is full", () => {
+    const s = createInitialState(config);
+    const farm = build(s, "farm", ring(1, 1, 1, 4));
+    s.resources.o2 = 1e6; // far over capacity: full
+    days(s, 0.1);
+    expect(s.roomStatus[farm.id]!.rate).toBeGreaterThan(0.9);
+  });
+
+  it("life support keeps scrubbing CO2 when oxygen storage is full", () => {
+    const s = criticalSet();
+    s.resources.co2 = 150;
+    s.resources.o2 = 200;
+    days(s, 1);
+    // Scrubs 30 a day against 20 breathed out.
+    expect(s.resources.co2).toBeCloseTo(140, 0);
+    const ls = s.layout.rooms.find((r) => r.type === "life_support")!;
+    expect(s.roomStatus[ls.id]!.rate).toBe(1);
+  });
+
+  it("life support idles once the air is clean and oxygen is full", () => {
+    const s = criticalSet();
+    s.resources.o2 = 200;
+    days(s, 1);
+    const ls = s.layout.rooms.find((r) => r.type === "life_support")!;
+    // Just enough to scrub what 20 colonists breathe out: 20 of 30.
+    expect(s.roomStatus[ls.id]!.rate).toBeCloseTo(2 / 3, 1);
+    expect(s.roomStatus[ls.id]!.limit).toBe("full:o2");
+  });
+
   it("is deterministic", () => {
     const a = criticalSet();
     const b = criticalSet();

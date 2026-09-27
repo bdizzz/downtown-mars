@@ -81,6 +81,13 @@ Goal: prove the adjacency puzzle is fun inside one hole. Each step ends with som
 - Unanswered visitors leave after 2 days with a loyalty and happiness penalty.
 - Ordinances (`data/ordinances.json`): Quiet hours, Water rationing, Ration cards. Slots from the biggest working admin room: the pod's desk 1, admin office 2. Effects apply at once (no settling-in period yet) and repealing has no penalty yet.
 
+**Balance pass (step 10, Sep 27):**
+- `tests/playthrough.test.ts` scripts a first month: the critical set on day 1, tier 2 as drops and digging pay for it, then homes, galleys, restrooms, tanks, solar and life support as people arrive, answering visits along the way. `npm run playtest` prints a daily table.
+- Result: critical set day 0, tier 2 done by day 7, 50 colonists on day 19, health 95–100 all month, happiness 50–61, CO2 steady.
+- Fixes it found: farms stopped when oxygen was full (a full byproduct no longer stops a room; only all main outputs being full does), and life support stopped scrubbing CO2 when oxygen was full (it now runs for scrubbing alone and vents the oxygen).
+- Tuned: colonists per drop 8 → 6, so 50 arrives around day 19–23 (the docs' "minutes 20–30" at 1x).
+- Learned: metal from Earth (25 per drop) paces tier 2; every ~25 colonists need another galley and restroom; one life support carries about 30; a hole past 50 needs 2–3 water tanks to bridge the 4 days between drops; tier 2 plus growth needs a third solar array.
+
 **Gap fills:** Earth supply drops bring colonists and soil; the pod's starter drill digs slowly, costing time and yielding rock.
 
 ## Steps

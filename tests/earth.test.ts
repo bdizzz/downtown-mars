@@ -53,9 +53,10 @@ describe("Earth supply drops", () => {
     s.resources.rations = 0;
     ticks(s, firstDrop);
     const food = (s.resources.rations ?? 0) + (s.resources.meals ?? 0) + (s.resources.rawFood ?? 0);
-    // 28 colonists × (4 + 1) days, less what they've eaten since landing.
-    expect(s.population.count).toBe(28);
-    expect(food).toBeGreaterThan(135);
+    // Everyone × (4 + 1) days, less what they've eaten since landing.
+    const pop = 20 + config.earth.colonistsPerDrop;
+    expect(s.population.count).toBe(pop);
+    expect(food).toBeGreaterThan(pop * 5 - 5);
   });
 
   it("waits in orbit without a working landing pad", () => {
