@@ -4,6 +4,7 @@ import { config, type SimConfig } from "../src/sim/config";
 import type { Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { setAdults } from "../src/sim/people";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 const noDelays: SimConfig = { ...config, earth: { ...config.earth, delayChance: 0 } };
@@ -61,7 +62,7 @@ describe("Earth supply drops", () => {
 
   it("waits in orbit without a working landing pad", () => {
     const s = start();
-    s.population.count = 0; // nobody to staff the pad
+    setAdults(s, 0, config); // nobody to staff the pad
     const metal = s.resources.metal;
     ticks(s, firstDrop + 5);
     expect(s.resources.metal).toBe(metal);

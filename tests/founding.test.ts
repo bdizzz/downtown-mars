@@ -6,6 +6,7 @@ import { network } from "../src/sim/network";
 import { deserialize, serialize } from "../src/sim/save";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
+import { setAdults } from "../src/sim/people";
 
 const days = (w: World, n: number) => {
   for (let i = 0; i < n * config.ticksPerDay; i++) stepWorld(w, config);
@@ -20,7 +21,7 @@ function ready(): World {
   Object.assign(home.resources, { metal: 150, machinery: 30, electronics: 30, brick: 100, rations: 180, water: 240, soil: 60 });
   const r = applyCommand(home, { type: "build", room: "staging_bay", at: { kind: "ring", floor: 1, ring: 1, slot: 1, w: 4, d: 1 } });
   if (!r.ok) throw new Error(r.reason);
-  home.population.count = 40;
+  setAdults(home, 40, config);
   w.mapUnlocked = true;
   expect(applyCommand(home, { type: "setGathering", gathering: true }).ok).toBe(true);
   return w;
@@ -51,7 +52,7 @@ describe("the staging bay", () => {
     const w = ready();
     expect(foundingRefusal(w, w.holes[0]!, site)).toMatch(/seed kit/);
     gather(w);
-    w.holes[0]!.population.count = 25;
+    setAdults(w.holes[0]!, 25, config);
     expect(foundingRefusal(w, w.holes[0]!, site)).toMatch(/needs 32 colonists/);
   });
 

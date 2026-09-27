@@ -7,6 +7,7 @@ import type { EffectField } from "./effects";
 import type { Deposit, DepositKind } from "./mapgeo";
 import { hasStagingBay, kitProgress } from "./founding";
 import type { Happiness } from "./happiness";
+import { stageCounts, type Stage } from "./people";
 import type { Culture } from "./culture";
 import { averageFlows, type Flows } from "./ledger";
 import type { Message } from "./messages";
@@ -115,6 +116,8 @@ export interface Snapshot {
   /** Power is a flow, so show what's made and used rather than a net rate. */
   power: { made: number; used: number };
   population: Population;
+  /** Head counts by life stage. */
+  stages: Record<Stage, number>;
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
   earth: { ticksToDrop: number; waiting: boolean; padReady: boolean; landed: number };
@@ -159,6 +162,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     rates: state.rates,
     power: powerFlow(state, cfg),
     population: state.population,
+    stages: stageCounts(state),
     workforce: state.workforce,
     roomStatus: state.roomStatus,
     earth: {

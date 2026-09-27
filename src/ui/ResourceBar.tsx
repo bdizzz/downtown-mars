@@ -25,6 +25,19 @@ function Stock({ id, s }: { id: string; s: Snapshot }) {
   );
 }
 
+/** "38 adults, 4 children, 2 elders", leaving out stages nobody is in yet. */
+function stagesText(st: { child: number; adult: number; elder: number }): string {
+  const parts = [
+    [st.adult, "adult", "adults"],
+    [st.child, "child", "children"],
+    [st.elder, "elder", "elders"],
+  ] as const;
+  return parts
+    .filter(([n]) => n > 0)
+    .map(([n, one, many]) => `${n} ${n === 1 ? one : many}`)
+    .join(", ") || "nobody";
+}
+
 export function ResourceBar({ s }: { s: Snapshot | null }) {
   if (!s) return <div className="resbar" />;
   const { made, used } = s.power;
@@ -33,7 +46,7 @@ export function ResourceBar({ s }: { s: Snapshot | null }) {
   return (
     <div className="resbar">
       <span className="group">
-        <span className={`res${pop.health < 70 ? " warn" : ""}`} title={`Colonists / beds · health from oxygen, water, meals, sanitation and CO2`}>
+        <span className={`res${pop.health < 70 ? " warn" : ""}`} title={`Colonists / beds: ${stagesText(s.stages)} · health from oxygen, water, meals, sanitation and CO2`}>
           <span className="label">Colonists</span>
           <span className="val">
             {pop.count}/{s.beds}

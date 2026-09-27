@@ -68,3 +68,9 @@ Open questions for Bryon:
 - **Converter rooms can't be paused** or given a stock target, so a machine shop turns every bit of metal into machinery.
 - **The staging bay starts gathering a second kit right after a convoy leaves,** holding goods back until it's demolished.
 - **The parent's opinion of its child slowly sours** once the 30-day grace ends if trade is one-way. That's by design, but it may feel harsh for aid the player chose to send.
+
+**Follow-ups (Bryon's calls, Sep 27):**
+- **Room controls:** any staffed room can be paused, or set to "stop at" a stock of its main output (the first stored good it makes). A room that stands down takes no staff and no inputs. The Inspector has a Running checkbox and a Stop at field.
+- **Seed kit on request:** the staging bay gathers a seed kit only when you ask ("Gather a seed kit" in its Inspector), and stops when every good is full or a convoy leaves. Until then it stands idle and its crew is free.
+- **Player routes:** deliveries on the player's own routes make the receiver grateful but never count against the giver (`givenUnasked` holds only deliveries sent without the player's orders, which don't exist yet).
+- The two-hole bot sets its machine shop to stop at 12 machinery. Save version 9.

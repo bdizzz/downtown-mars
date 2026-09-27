@@ -7,6 +7,7 @@ import { record } from "./ledger";
 export const SEED_KIT = "Seed kit";
 import { degreesApart, depositsAt, distanceKm } from "./mapgeo";
 import { postMessage } from "./messages";
+import { addCohorts, countStage, takeAdults, type Cohort } from "./people";
 import { network } from "./network";
 import { createNotables } from "./notables";
 import { capacities } from "./economy";
@@ -28,6 +29,8 @@ export interface Convoy {
   arriveTick: number;
   goods: Record<string, number>;
   volunteers: number;
+  /** Who they are: adult cohorts, youngest first. */
+  people: Cohort[];
 }
 
 const kitCfg = () => network.seedKit;
@@ -74,7 +77,7 @@ export function foundingRefusal(world: World, from: SimState, site: Site): strin
   if (!world.mapUnlocked) return `The map opens at ${network.mapUnlockPopulation} colonists`;
   if (!hasStagingBay(from)) return `${from.name} needs a staging bay`;
   if (kitProgress(from) < 0.999) return `The seed kit is ${Math.floor(kitProgress(from) * 100)}% gathered`;
-  if (from.population.count - k.volunteers < k.minStayBehind) {
+  if (countStage(from, "adult") < k.volunteers || from.population.count - k.volunteers < k.minStayBehind) {
     return `${from.name} needs ${k.volunteers + k.minStayBehind} colonists to send ${k.volunteers} and keep ${k.minStayBehind}`;
   }
   const taken = [...world.holes.flatMap((h) => (h.site ? [h.site] : [])), ...world.convoys.map((c) => c.site)];
@@ -102,10 +105,11 @@ export function foundHole(world: World, cfg: SimConfig, fromHoleId: number, site
     arriveTick: world.tick + travelTicks(from.site ?? site, site, cfg),
     goods: { ...from.kit },
     volunteers: k.volunteers,
+    people: [],
   };
   from.kit = {};
   from.gatheringKit = false; // the next kit waits until the player asks
-  from.population.count -= k.volunteers;
+  convoy.people = takeAdults(from, k.volunteers);
   world.convoys.push(convoy);
   const days = ((convoy.arriveTick - convoy.departTick) / cfg.ticksPerDay).toFixed(1);
   postMessage(from, cfg, `${k.volunteers} volunteers set off to found ${name}: ${days} days by convoy.`, "good");
@@ -130,7 +134,8 @@ export function stepConvoys(world: World, cfg: SimConfig): void {
       hole.resources[id] = Math.min(v, caps[id] ?? v);
       record(hole, id, "in", SEED_KIT, hole.resources[id]!);
     }
-    hole.population.count = c.volunteers;
+    hole.population.cohorts = [];
+    addCohorts(hole, c.people);
     hole.notables = [];
     createNotables(hole);
     hole.earth.nextDropTick = world.tick + hole.earth.nextDropTick;

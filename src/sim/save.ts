@@ -6,13 +6,14 @@ import { config, type SimConfig } from "./config";
 import { depositsAt, generateMap, type MapState } from "./map";
 import { network } from "./network";
 import { culture } from "./culture";
+import { addAdults } from "./people";
 import type { World } from "./world";
 
 // Saves are the whole world as JSON, minus what can be rebuilt (each hole's
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 type Raw = Record<string, unknown>;
 
@@ -47,6 +48,20 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
   }),
   // v9: the staging bay gathers only when asked. Rooms gained optional pause and stop-at.
   8: (s) => ({ ...s, holes: (s.holes as Raw[]).map((h) => ({ ...h, gatheringKit: false })) }),
+  // v10: colonists became cohorts. Everyone already there is a working adult; convoys carry adults.
+  9: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const pop = h.population as { count: number };
+      const hole = { ...h, population: { ...pop, count: 0, cohorts: [] } } as unknown as SimState;
+      addAdults(hole, pop.count, config);
+      return hole as unknown as Raw;
+    }),
+    convoys: ((s.convoys as Raw[] | undefined) ?? []).map((c) => ({
+      ...c,
+      people: [{ stage: "adult", count: c.volunteers, until: (c.arriveTick as number) + 120 * config.ticksPerDay }],
+    })),
+  }),
 };
 
 export interface SaveSummary {

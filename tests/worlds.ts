@@ -3,6 +3,7 @@ import { config } from "../src/sim/config";
 import { foundHole } from "../src/sim/founding";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
+import { setAdults } from "../src/sim/people";
 
 const site = { lat: -5, lon: 140 };
 
@@ -12,7 +13,7 @@ export function twoHoles(): World {
   const home = w.holes[0]!;
   home.drill.active = false;
   home.earth.nextDropTick = 1e9;
-  home.population.count = 40;
+  setAdults(home, 40, config);
   w.mapUnlocked = true;
   home.kit = { ...(home.kit ?? {}) };
   // Skip the staging: hand the kit over directly.

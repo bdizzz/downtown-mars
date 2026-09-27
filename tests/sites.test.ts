@@ -4,6 +4,7 @@ import { depositsAt } from "../src/sim/map";
 import { network } from "../src/sim/network";
 import { createWorld, totalPopulation } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
+import { setAdults } from "../src/sim/people";
 
 describe("the first site", () => {
   it("sits on ice with ore or silica, for any seed", () => {
@@ -43,7 +44,7 @@ describe("the map", () => {
   it("opens once the network reaches 50 colonists, with a message", () => {
     const w = createWorld(config, 42);
     expect(w.mapUnlocked).toBe(false);
-    w.holes[0]!.population.count = network.mapUnlockPopulation;
+    setAdults(w.holes[0]!, network.mapUnlockPopulation, config);
     expect(totalPopulation(w)).toBe(50);
     stepWorld(w, config);
     expect(w.mapUnlocked).toBe(true);

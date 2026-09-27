@@ -6,6 +6,7 @@ import type { Location } from "../src/sim/placement";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { setAdults } from "../src/sim/people";
 
 // No Earth drops here: these tests are about what the hole does on its own.
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
@@ -94,7 +95,7 @@ describe("the 20-colonist start on the critical set", () => {
 describe("rooms", () => {
   it("staff go to critical rooms first", () => {
     const s = criticalSet();
-    s.population.count = 5;
+    setAdults(s, 5, config);
     days(s, 0.1);
     const ls = s.layout.rooms.find((r) => r.type === "life_support")!;
     expect(s.roomStatus[ls.id]).toMatchObject({ staff: 4, staffNeeded: 4 });
@@ -102,7 +103,7 @@ describe("rooms", () => {
 
   it("an understaffed room runs at part rate", () => {
     const s = criticalSet();
-    s.population.count = 2;
+    setAdults(s, 2, config);
     s.layout.rooms.find((r) => r.type === "life_support")!.priority = "low";
     days(s, 0.1);
     const ls = s.layout.rooms.find((r) => r.type === "life_support")!;

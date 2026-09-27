@@ -6,6 +6,7 @@ import { modifiers } from "../src/sim/ordinances";
 import type { Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { setAdults } from "../src/sim/people";
 
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
@@ -30,7 +31,7 @@ function noisyDorm(): SimState {
   const s = rich();
   build(s, "life_support", ring(1, 1, 1, 4));
   build(s, "bunk_dorm", ring(1, 1, 5, 2));
-  s.population.count = 36;
+  setAdults(s, 36, config);
   updateHappiness(s, config, true);
   return s;
 }

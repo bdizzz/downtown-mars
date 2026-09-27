@@ -5,6 +5,7 @@ import { modifiers, type Modifiers } from "./ordinances";
 import { cropDef, resourceDef, resourceDefs } from "./resources";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
+import { countStage, type Cohort } from "./people";
 
 // The per-tick economy: staff the rooms, run them, feed the colonists, cap
 // storage. Every amount in the data is per game day, so each tick moves
@@ -29,7 +30,9 @@ export interface RoomStatus {
 }
 
 export interface Population {
+  /** Everyone, all stages: kept in step with cohorts (see people.ts). */
   count: number;
+  cohorts: Cohort[];
   /** 0..100, hole-wide, from how well needs are met. */
   health: number;
   /** 0..1 per need, last tick. */
@@ -116,7 +119,9 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   const status: Record<number, RoomStatus> = {};
 
   // 1. Staff, highest priority first. Rooms the player stood down take no one.
-  let free = state.population.count;
+  // Only adults work.
+  const adults = countStage(state, "adult");
+  let free = adults;
   const down = new Map<number, string>();
   for (const r of rooms) {
     const why = standDown(r, state, cfg);
@@ -128,7 +133,7 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
     free -= got;
     status[r.id] = { staff: got, staffNeeded: need, rate: 0 };
   }
-  state.workforce = { total: state.population.count, employed: state.population.count - free };
+  state.workforce = { total: adults, employed: adults - free };
 
   // 2. Run rooms. Pure producers (solar) go first so power is there for the rest.
   const mod = modifiers(state);

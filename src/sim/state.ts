@@ -13,6 +13,7 @@ import { createLayout, placeRoom, type Layout } from "./placement";
 import type { DepositKind } from "./mapgeo";
 import { roomDef } from "./rooms";
 import { culture, type Culture } from "./culture";
+import { addAdults } from "./people";
 
 /** Where a hole is on Mars, in degrees. */
 export interface Site {
@@ -97,7 +98,7 @@ export function createInitialState(
     drill: { active: true, progress: 0 },
     resources: { ...cfg.startingStock },
     rates: {},
-    population: { count: cfg.colonists.start, health: 100, needsMet: {}, sanitation: 1 },
+    population: { count: 0, cohorts: [], health: 100, needsMet: {}, sanitation: 1 },
     workforce: { total: cfg.colonists.start, employed: 0 },
     roomStatus: {},
     earth: createEarth(cfg),
@@ -112,6 +113,7 @@ export function createInitialState(
     parentHoleId: null,
     foundedTick: 0,
   };
+  addAdults(state, cfg.colonists.start, cfg); // the game starts with working adults only
   createNotables(state);
   updateHappiness(state, cfg, true);
   return state;
