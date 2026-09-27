@@ -46,6 +46,8 @@ export interface RoomDef {
   requiresDeposit?: DepositKind;
   /** Gathers the seed kit for founding a new hole. */
   stagesSeedKit?: boolean;
+  /** A working one lets colonists have children. */
+  enablesBirths?: boolean;
   /** Rovers this room provides for trade routes. */
   rovers?: number;
 }

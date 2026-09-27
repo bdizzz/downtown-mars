@@ -22,6 +22,7 @@ export const people = raw as unknown as {
   adult: { workSpanDays: [number, number] };
   child: { days: number; needsFactor: number };
   elder: { days: [number, number]; needsFactor: number };
+  births: { minHappiness: number; perAdultPerDay: number };
 };
 
 /** 0..1 from a few integers, stable across runs and platforms. */
@@ -107,8 +108,13 @@ export function stepAging(state: SimState, cfg: SimConfig): void {
   if (!due.length) return;
   let retired = 0;
   let passed = 0;
+  let grown = 0;
   for (const c of due) {
-    if (c.stage === "adult") {
+    if (c.stage === "child") {
+      c.stage = "adult";
+      c.until = state.tick + spanTicks(people.adult.workSpanDays, cfg, state.holeId, state.tick, c.count, 3);
+      grown += c.count;
+    } else if (c.stage === "adult") {
       c.stage = "elder";
       c.until = state.tick + spanTicks(people.elder.days, cfg, state.holeId, state.tick, c.count, 7);
       retired += c.count;
@@ -127,6 +133,14 @@ export function stepAging(state: SimState, cfg: SimConfig): void {
       first
         ? `The first colonists have retired: ${retired} ${retired === 1 ? "elder" : "elders"} who no longer work, and will want elder care.`
         : `${retired} ${retired === 1 ? "colonist has" : "colonists have"} retired and joined the elders.`,
+    );
+  }
+  if (grown) {
+    postMessage(
+      state,
+      cfg,
+      `${grown} ${grown === 1 ? "child has" : "children have"} grown up on Mars and joined the workforce.`,
+      "good",
     );
   }
   if (passed) {

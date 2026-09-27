@@ -33,6 +33,10 @@ export interface Population {
   /** Everyone, all stages: kept in step with cohorts (see people.ts). */
   count: number;
   cohorts: Cohort[];
+  /** Fraction of the next birth accumulated so far. */
+  birthProgress?: number;
+  /** Children born in this hole, ever. */
+  born?: number;
   /** 0..100, hole-wide, from how well needs are met. */
   health: number;
   /** 0..1 per need, last tick. */

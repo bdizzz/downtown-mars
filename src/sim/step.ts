@@ -7,6 +7,7 @@ import { stepHappiness } from "./happiness";
 import { stepLedger } from "./ledger";
 import { stepVisits } from "./visits";
 import { stepAging } from "./people";
+import { stepBirths } from "./births";
 import type { SimState } from "./state";
 
 // Advance the simulation by one fixed tick. Mutates state in place.
@@ -20,6 +21,7 @@ export function step(state: SimState, cfg: SimConfig): void {
   updateRates(state, before, cfg);
   stepEarth(state, cfg);
   stepAging(state, cfg);
+  stepBirths(state, cfg);
   stepHappiness(state, cfg);
   stepVisits(state, cfg);
   stepLedger(state, cfg);

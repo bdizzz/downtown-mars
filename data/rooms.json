@@ -1,5 +1,5 @@
 {
-  "_note": "Amounts are per game day. Values from ROOMS.md (\u2605 rooms) unless marked placeholder. requiresDeposit: the hole must sit on that deposit (Unlock column in ROOMS.md).",
+  "_note": "Amounts are per game day. Values from ROOMS.md (★ rooms) unless marked placeholder. requiresDeposit: the hole must sit on that deposit (Unlock column in ROOMS.md).",
   "rooms": [
     {
       "id": "landing_pod",
@@ -303,7 +303,8 @@
         "metal": 5,
         "electronics": 1
       },
-      "buildable": true
+      "buildable": true,
+      "enablesBirths": true
     },
     {
       "id": "admin_office",

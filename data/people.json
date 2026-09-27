@@ -1,7 +1,26 @@
 {
   "_note": "Life stages, births, aging and migration (DESIGN.md, Population growth). Days are game days; a game day is a real minute at 1x.",
   "cohortSize": 5,
-  "adult": { "workSpanDays": [60, 180] },
-  "child": { "days": 40, "needsFactor": 0.7 },
-  "elder": { "days": [30, 60], "needsFactor": 1 }
+  "adult": {
+    "workSpanDays": [
+      60,
+      180
+    ]
+  },
+  "child": {
+    "days": 40,
+    "needsFactor": 0.7
+  },
+  "elder": {
+    "days": [
+      30,
+      60
+    ],
+    "needsFactor": 1
+  },
+  "births": {
+    "_note": "Births need a working clinic, a happy enough hole and a free bed.",
+    "minHappiness": 55,
+    "perAdultPerDay": 0.006
+  }
 }
