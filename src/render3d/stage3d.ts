@@ -396,7 +396,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (u.surface) offer(hit.distance, () => surfacePickAt(hit.point));
       // A corridor floor, or a room's floor seen from above (rooms have no ceilings):
       // what's just above it, on its floor, not the floor below.
-      else if ((u.hall && !u.onCut) || (u.roomId !== undefined && Math.abs(hit.face?.normal.y ?? 0) > 0.9 && ray.direction.y < 0)) {
+      else if (u.hall || (u.roomId !== undefined && Math.abs(hit.face?.normal.y ?? 0) > 0.9 && ray.direction.y < 0)) {
         offer(hit.distance, () => pickPast(h, ray, hit.distance - 0.3), hit.distance - 0.3 + NUDGE);
       }
       else offer(hit.distance, () => pickPast(h, ray, hit.distance));
@@ -548,8 +548,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (info.edge) {
       const e = edgeById(layout.hole, info.edge.id);
       if (!e) return;
-      const [y0, y1] = floorSpan(e.floor);
-      const y = floorLimit === e.floor ? y1 : y0 + 0.08;
+      const y = floorSpan(e.floor)[0] + 0.08; // on the floor, where the corridor will be
       const color = info.edge.refusal || info.edge.erase ? HOVER.bad : HOVER.ok;
       const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y), solid(color, 0.55));
       strip.renderOrder = 9;

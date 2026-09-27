@@ -171,3 +171,9 @@ Open questions for Bryon:
   - At one hour the network and the solo player are even (112 against 113), down from +11%.
   - At 90 days the network leads by 39% (184 against 132), with 18 births, down from 27.
   - Bounds were relaxed to match (network ≥ 0.95× solo at an hour, ≥ 1.3× at 90 days, 15+ births). Retuning waits for the adjustments to come.
+- **Corridors have no ceilings in 3D, even in the floor-cut view:**
+  - Corridor floors always lie on the floor. They used to sit on the cut when a floor was chosen, which read as a lid.
+  - The rock cap over empty cells is carved like a room (half a corridor on each side one runs), with rock walls from the cap down to the corridor floor where it cuts into rock.
+  - The shaft wall opens at a corridor's mouth onto the gallery.
+  - The carving is now one helper (`carveCell`), shared by rooms and the cap.
+  - The corridor tool's ghost sits on the floor too.

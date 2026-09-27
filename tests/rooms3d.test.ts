@@ -101,7 +101,7 @@ describe("windows", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 2)); // ring-1 slots 2–3
     const room = l.rooms.find((x) => x.id === r.id)!;
-    const span = () => {
+    const span = (): [number, number] => {
       const faces = shaftFaces(l, room);
       return [Math.min(...faces.map((f) => f.a0)), Math.max(...faces.map((f) => f.a1))];
     };
