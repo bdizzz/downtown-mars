@@ -11,15 +11,16 @@ interface Props {
   onCancel: () => void;
   selected: number | null;
   onSelect: (roomId: number | null) => void;
+  onInvalid: (reason: string) => void;
   overlay: string | null;
 }
 
-export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, overlay }: Props) {
+export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
-  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, overlay });
-  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, overlay };
+  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay });
+  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay };
 
   useEffect(() => {
     let cancelled = false;
@@ -28,6 +29,7 @@ export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selecte
       onCommand: (c, quiet) => props.current.onCommand(c, quiet),
       onCancel: () => props.current.onCancel(),
       onSelect: (id) => props.current.onSelect(id),
+      onInvalid: (reason) => props.current.onInvalid(reason),
     }).then((stage) => {
       // StrictMode mounts twice; the first stage may resolve after cleanup.
       if (cancelled) return stage.destroy();

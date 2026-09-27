@@ -16,7 +16,10 @@ import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot }
 import { StatusBar } from "./StatusBar";
 import { currentGoal, Tutorial } from "./Tutorial";
 import { setTutorialHidden, tutorialHidden, type UiFlags } from "./tutorialGoals";
+import { play, setAudioSettings, unlockAudio } from "../audio/sound";
+import { useSettings } from "./settings";
 import { useSim } from "./useSim";
+import { useSounds } from "./useSounds";
 
 const NOTICE_MS = 3000;
 
@@ -40,6 +43,20 @@ export function App() {
   const resumeSpeed = useRef(1);
   const [tutorialOn, setTutorialOn] = useState(() => !tutorialHidden());
   const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false });
+  const [settings] = useSettings();
+
+  useSounds(snapshot);
+  useEffect(() => setAudioSettings(settings), [settings]);
+  // Browsers only allow sound after the player does something.
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
   const noticeTimer = useRef<number>(undefined);
 
   const flash = useCallback((text: string) => {
@@ -56,11 +73,15 @@ export function App() {
     async (cmd: SimCommand, quiet = false) => {
       const result = await send(cmd);
       if (!result.ok) {
-        if (!quiet) flash(result.reason);
+        if (!quiet) {
+          flash(result.reason);
+          play("refuse");
+        }
       } else if (result.roomId !== undefined) {
         undoStack.current.push(result.roomId);
         setCanUndo(true);
-      }
+        play("build");
+      } else if (cmd.type === "demolish") play("demolish");
     },
     [send, flash],
   );
@@ -70,6 +91,7 @@ export function App() {
     setCanUndo(undoStack.current.length > 0);
     if (roomId === undefined) return;
     const result = await send({ type: "undoBuild", roomId });
+    if (result.ok) play("demolish");
     if (!result.ok) {
       flash(result.reason);
       undoStack.current = []; // older ones are older still
@@ -153,11 +175,11 @@ export function App() {
   const day = snapshot?.time.day;
   useEffect(() => {
     if (day === undefined || menu) return;
-    if (lastDay.current !== null && day !== lastDay.current) {
+    if (lastDay.current !== null && day !== lastDay.current && settings.autosave) {
       saveTo("autosave").then((ok) => ok || flash("Autosave failed: browser storage is unavailable."));
     }
     lastDay.current = day;
-  }, [day, menu, saveTo, flash]);
+  }, [day, menu, saveTo, flash, settings.autosave]);
 
   // A different game (new or loaded) invalidates day tracking.
   const gameId = snapshot?.gameId;
@@ -259,6 +281,7 @@ export function App() {
             onCancel={() => setTool(null)}
             selected={selected}
             onSelect={(id) => (setSelected(id), id !== null && setPanel(null))}
+            onInvalid={(reason) => (flash(reason), play("refuse"))}
             overlay={overlay}
           />
         </div>

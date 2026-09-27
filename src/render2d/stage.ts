@@ -90,6 +90,8 @@ export interface StageOptions {
   onCommand?: (cmd: SimCommand, quiet?: boolean) => void;
   onCancel?: () => void;
   onSelect?: (roomId: number | null) => void;
+  /** A click where the room can't go: say why. */
+  onInvalid?: (reason: string) => void;
 }
 
 export interface Stage {
@@ -659,6 +661,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     if (tool?.kind === "build") {
       const at = locationFor(info.pick, tool, layout);
       if (at && info.check?.ok) opts.onCommand?.({ type: "build", room: tool.room, at });
+      else if (info.check && !info.check.ok) opts.onInvalid?.(info.check.reason);
     } else if (tool?.kind === "demolish" && info.room) {
       opts.onCommand?.({ type: "demolish", roomId: info.room.id });
     } else if (!tool) {
