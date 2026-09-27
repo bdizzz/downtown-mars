@@ -5,12 +5,13 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
-import { clickWith, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
+import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
+import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import type { HoverInfo, Pick, Quality, Stage, StageOptions, Tool } from "../view/types";
 import { FLOOR_H, floorSpan, openShaftRadius, RING_D, TAU } from "./cylinder";
-import { inCarvedRegion, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
+import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
-import { buildLayout, disposeLayout, disposeRoomMaterials, roomGeometry, setNightGlow } from "./rooms3d";
+import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, roomGeometry, setNightGlow } from "./rooms3d";
 import { Dust, galleryLamps, makeLander, placeLander, setLampGlow, Walkers } from "./scenery3d";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Four
@@ -369,13 +370,18 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     return raycaster.ray;
   }
 
+  /** Where along the ray the last pick was read: the corridor tool finds the nearest border to that point. */
+  let pickedAt: THREE.Vector3 | null = null;
+
   /** The nearest thing the ray meets that this camera mode lets you pick. */
   function pickRay(ray: THREE.Ray): Pick {
+    pickedAt = null;
     if (!hole) return { kind: "rock" };
     const h = hole;
-    let best: { t: number; pick: Pick } | null = null;
-    const offer = (t: number | null, make: () => Pick) => {
-      if (t !== null && (!best || t < best.t)) best = { t, pick: make() };
+    let best: { t: number; pick: Pick; at: number } | null = null;
+    // `at` is the distance whose point the pick describes (usually just past the hit).
+    const offer = (t: number | null, make: () => Pick, at = (t ?? 0) + NUDGE) => {
+      if (t !== null && (!best || t < best.t)) best = { t, pick: make(), at };
     };
 
     const pickables: THREE.Object3D[] = [];
@@ -388,6 +394,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (view.xray && u.faint) continue;
       // The cap over a chosen floor: pick the cell just under it.
       if (u.surface) offer(hit.distance, () => surfacePickAt(hit.point));
+      // A corridor floor: what's just above it, on its floor (not the floor below).
+      else if (u.hall && !u.onCut) offer(hit.distance, () => pickPast(h, ray, hit.distance - 0.3), hit.distance - 0.3 + NUDGE);
       else offer(hit.distance, () => pickPast(h, ray, hit.distance));
       break;
     }
@@ -415,8 +423,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const t = rayPlane(ray, clip);
       if (t !== null && inCarvedRegion(h, ray.at(t, new THREE.Vector3()))) offer(t, () => pickPast(h, ray, t - 0.2));
     }
-    const b = best as { t: number; pick: Pick } | null;
+    const b = best as { t: number; pick: Pick; at: number } | null;
     if (!b && tGround !== null && surfaceShown) return groundPick();
+    if (b) pickedAt = ray.at(b.at, new THREE.Vector3());
     return b ? b.pick : { kind: "rock" };
   }
 
@@ -505,6 +514,21 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (sel) markRoom(sel, HOVER.selected);
     if (!info) return;
     const p = info.pick;
+    if (info.edge) {
+      const e = edgeById(layout.hole, info.edge.id);
+      if (!e) return;
+      const [y0, y1] = floorSpan(e.floor);
+      const y = floorLimit === e.floor ? y1 : y0 + 0.08;
+      const color = info.edge.refusal || info.edge.erase ? HOVER.bad : HOVER.ok;
+      const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y), solid(color, 0.55));
+      strip.renderOrder = 9;
+      overlay.add(strip);
+      // Outlined, so it reads against any finish.
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(strip.geometry), lines(color));
+      edges.renderOrder = 10;
+      overlay.add(edges);
+      return;
+    }
     if (tool?.kind === "build" && info.check) {
       const color = info.check.ok ? HOVER.ok : HOVER.bad;
       const cells = info.check.cells.length ? info.check.cells : p.kind === "slot" ? [p as Cell] : [];
@@ -567,16 +591,29 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const mat = overlayMat(`f:${color}:${alpha}`, () =>
         new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, depthWrite: false, side: THREE.DoubleSide }),
       );
-      fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET), mat));
+      fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET, false), mat));
     }
   }
 
   let pointer: { clientX: number; clientY: number } | null = null;
 
+  /** Shift erases with the corridor tool. */
+  let shift = false;
+
+  /** The border nearest the point the last pick landed on. */
+  function edgeAtPick(p: Pick): Edge | null {
+    if (!hole || !pickedAt || (p.kind !== "slot" && p.kind !== "gallery")) return null;
+    const r = Math.hypot(pickedAt.x, pickedAt.z);
+    const rings = Math.max(0.001, (r - hole.shaftRadiusM) / RING_D);
+    return nearestEdge(hole, p.floor, rings, Math.atan2(pickedAt.z, pickedAt.x) / TAU, RING_D);
+  }
+
   function hoverInfo(): HoverInfo | null {
     if (!layout || !pointer) return null;
     rayAt(pointer.clientX, pointer.clientY);
-    return hoverInfoFor(layout, resources, tool, pickRay(raycaster.ray), latest?.holeGates ?? []);
+    const p = pickRay(raycaster.ray);
+    if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, p, edgeAtPick(p), shift);
+    return hoverInfoFor(layout, resources, tool, p, latest?.holeGates ?? []);
   }
 
   function refreshHover(force = false): void {
@@ -606,6 +643,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
     pointer = e; // a tap may arrive with no move before it
+    shift = e.shiftKey;
     canvas.setPointerCapture(e.pointerId);
     if (paints(tool)) {
       painting = true;
@@ -617,6 +655,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   };
   const onPointerMove = (e: PointerEvent) => {
     pointer = e;
+    shift = e.shiftKey;
     if (painting) paint();
     if (!drag) {
       refreshHover();
@@ -671,6 +710,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     applyCamera();
   };
 
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key !== "Shift" || shift === (e.type === "keydown")) return;
+    shift = e.type === "keydown";
+    refreshHover(true);
+  };
+  window.addEventListener("keydown", onKey);
+  window.addEventListener("keyup", onKey);
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
@@ -913,6 +959,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     },
     destroy() {
       renderer.setAnimationLoop(null);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKey);
       resize.disconnect();
       canvas.removeEventListener("wheel", onWheel);
       disposeLayout(layoutGroup);

@@ -111,3 +111,15 @@ Tested: cuts, sides, id round-trips, shared borders, shared vertices, picking, l
 Checked in the browser on a migrated v6 save: the migrated bare-rock corridors, a brick corridor dragged between the galley and the life support (doors on both sides), and a Shift-click erase that left the remaining piece hatched as unlinked.
 
 **Step 4, plan view:** corridors are strips of their true 3 m width that follow real geometry: out along a spoke, or around an arc at the ring boundary (`corridorStrip` in `corridorArt.ts`, the general form of the unrolled band). They carry the same finish patterns, doors (dots on each room side of a linked corridor) and red outlines when unlinked. The corridor tool works the same as in the unrolled view: nearest border by true metres from the pointer, ghost strip, Shift or Erase to remove, drag to paint. Room cells now fill edge to edge, so a room reads as one piece and its outline marks where it ends.
+
+**Step 5, 3D view:**
+- **Carving:** room solids are carved by the corridors along them (`roomGeometry`).
+  - A side with a corridor gives up half its width (1.5 m) instead of the few-centimetre hairline inset.
+  - Where the inner or outer side is split into arc pieces and only some carry a corridor, the cell is split at the corridor's ends and gets a small step wall there. Uncarved sides stay one piece, so triangle counts don't grow.
+  - The shape cache keys on the corridors along a room's sides.
+
+  Tested: a side corridor pulls the room back by (1.5 − 0.06)/r; a corridor along part of a side carves only that part.
+- **Corridor floors:** strips 3 m wide (`corridorStripGeometry`), one mesh per finish. Rock is rough, marscrete and brick matte, metal shiny. Corridors not linked to the shaft are red.
+  - They lie just above the floor. With a floor chosen from above, they lie on the cut, over the rock cap.
+  - They're pickable: a hit on a floor strip reads the point just above it, so the floor below isn't picked by mistake.
+- **Tool:** the raycast remembers the point it read, and the corridor tool takes the nearest border to that point. A ghost strip (green, or red with the reason) shows where it goes, and Shift erases.

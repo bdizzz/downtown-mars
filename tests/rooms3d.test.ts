@@ -38,3 +38,45 @@ describe("3D room geometry", () => {
     }
   });
 });
+
+describe("carved by corridors", () => {
+  const extent = (g: ReturnType<typeof roomGeometry>) => {
+    const pos = g.getAttribute("position");
+    let minA = Infinity;
+    let maxA = -Infinity;
+    let minR = Infinity;
+    let maxR = -Infinity;
+    for (let i = 0; i < pos.count; i++) {
+      const a = Math.atan2(pos.getZ(i), pos.getX(i));
+      const r = Math.hypot(pos.getX(i), pos.getZ(i));
+      minA = Math.min(minA, a);
+      maxA = Math.max(maxA, a);
+      minR = Math.min(minR, r);
+      maxR = Math.max(maxR, r);
+    }
+    return { minA, maxA, minR, maxR };
+  };
+
+  it("a room gives up half a corridor's width on the side a corridor runs along", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const r = placeRoom(l, "clinic", ring(1, 1, 1));
+    const room = l.rooms.find((x) => x.id === r.id)!;
+    const before = extent(roomGeometry(l, room.cells));
+    l.corridors["R1.1.1"] = "rock"; // its left side
+    const after = extent(roomGeometry(l, room.cells));
+    const rMid = 15;
+    expect(after.minA - before.minA).toBeCloseTo((1.5 - 0.06) / rMid, 3);
+    expect(after.maxA).toBeCloseTo(before.maxA, 6);
+  });
+
+  it("a corridor along part of a side carves just that part, with a step", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const r = placeRoom(l, "clinic", ring(1, 1, 1)); // ring-1 slot 1: its outer side is cut into pieces
+    const room = l.rooms.find((x) => x.id === r.id)!;
+    const plain = roomGeometry(l, room.cells);
+    l.corridors["A1.1.1/9"] = "metal"; // the first piece of its outer side
+    const carved = roomGeometry(l, room.cells);
+    expect(extent(carved).maxR).toBeCloseTo(extent(plain).maxR, 6); // the rest of the side is untouched
+    expect(carved.getAttribute("position").count).toBeGreaterThan(plain.getAttribute("position").count); // a step wall
+  });
+});
