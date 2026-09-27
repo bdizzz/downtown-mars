@@ -1,0 +1,27 @@
+# Milestone 2 plan: polish and persistence
+
+Goal: make the milestone 1 hole shareable for playtests (itch.io). Nothing new in the simulation's scope; everything around it gets good enough that a stranger can pick it up, understand it, keep their progress and come back.
+
+Decided Sep 27, 2026 (Bryon): milestone 2 is polish and persistence. The network layer comes later and will use real Mars terrain for its map.
+
+## Defaults (chosen, not yet confirmed)
+
+- **Saves:** the whole sim state as versioned JSON. Derived data (the effect field) is rebuilt on load. Stored in the browser's localStorage: one autosave written every game day, plus 3 manual slots. Export and import as `.json` files, as DESIGN.md's tech plan says. A save from an incompatible version is refused with a clear message, not half-loaded.
+- **Menus:** a title screen (Continue, New game, Load) and an in-game menu (Esc when nothing is selected, or the Menu button) that pauses the game.
+- **Build mode:** keep the side palette, but make it a proper catalog: rooms grouped by category, cards with cost, staff, inputs, outputs and neighbor effects, number-key hotkeys, a rotate button, a live halo preview of the room's neighbor effects while placing, drag to paint corridors, and undo for the last placement.
+- **Art:** still drawn in code, no image assets. Auto-tiled frontage (shaft windows, doors on corridors, plain walls between rooms) and a simple glyph per room type. Direction written up in `docs/ART.md` for a future artist.
+- **Flow diagram:** a river-style (Sankey) panel per resource, showing sources on the left and uses on the right, averaged per day. The water view links clean, gray and black water so the recycling loop shows.
+- **Tutorial:** a deputy notable walks through the first 30 minutes as a short checklist of goals. It can be dismissed, and it remembers it was dismissed.
+- **Audio:** synthesized with Web Audio, no files: UI clicks, build, demolish, drop landing, visitor chime, alert. Volume and mute persisted in settings.
+- **Packaging:** relative asset paths, Pixi split into its own chunk, and `npm run package` producing a zip ready for itch.io. Nothing is uploaded automatically.
+
+## Steps
+
+1. **Save and load.** Versioned save format, worker save/load messages, autosave, slots, export/import, title screen and in-game menu. *See:* quit, reload, continue where you were.
+2. **Build-mode UI.** Categorized catalog with room cards, hotkeys, rotate button, effect halo preview, corridor painting, undo. *See:* placing rooms feels deliberate and informed.
+3. **Frontage and room art.** Auto-tiled walls, windows and doors; per-room glyphs; nicer surface; `docs/ART.md`. *See:* the hole reads at a glance.
+4. **Flow diagram.** Per-resource ledger in the sim; Sankey panel; linked water view. *See:* where every drop of water goes.
+5. **Tutorial.** Deputy notable, goal checklist, highlights, dismiss and remember. *See:* a new player gets through the first 30 minutes unaided.
+6. **Audio.** Synthesized SFX and ambient hum; volume settings. *See (hear):* builds, drops, visitors.
+7. **Settings and help.** Settings panel (volume, UI scale, colour-blind-safe overlay palette, autosave on/off), keyboard shortcuts overlay. *See:* the game adapts to the player.
+8. **Playtest packaging.** Relative base, chunking, version stamp, `npm run package` zip, README with controls. *See:* a zip that runs from a static host.
