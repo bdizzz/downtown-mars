@@ -147,7 +147,11 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
     return { ok: false, reason: `${def.name} can't be ${at.w}×${at.d}`, ...none };
   }
   // The floor below the deepest dug one is being excavated and can be planned.
-  if (at.floor < 1 || at.floor > hole.floors + 1) return { ok: false, reason: "That floor isn't dug yet", ...none };
+  const height = def.floors ?? 1;
+  const bottom = at.floor + height - 1;
+  if (at.floor < 1 || bottom > hole.floors + 1) {
+    return { ok: false, reason: height > 1 ? `${def.name} spans ${height} floors: the lower one isn't dug yet` : "That floor isn't dug yet", ...none };
+  }
   if (at.ring < 1) return { ok: false, reason: "Not a ring", ...none };
 
   const lastRing = at.ring + at.d - 1;
@@ -157,14 +161,16 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
   }
   if (at.w > ringSize(hole, at.ring)) return { ok: false, reason: "Too wide for this ring", ...none };
 
-  const cells = footprint(hole, at.floor, at.ring, at.slot, at.w, at.d);
+  // Tall rooms repeat their footprint on each floor they span.
+  const cells: Cell[] = [];
+  for (let f = at.floor; f <= bottom; f++) cells.push(...footprint(hole, f, at.ring, at.slot, at.w, at.d));
   for (const c of cells) {
     const other = roomAt(layout, c);
     if (other) return { ok: false, reason: `Overlaps ${roomDef(other.type).name}`, cells, surfaceCells: [] };
   }
   // Rooms can go anywhere; one no corridor reaches yet just won't work until one does.
   const unconnected = !def.public && !wouldConnect(layout, cells);
-  return { ok: true, cells, surfaceCells: [], planned: at.floor > hole.floors, ...(unconnected ? { unconnected } : {}) };
+  return { ok: true, cells, surfaceCells: [], planned: bottom > hole.floors, ...(unconnected ? { unconnected } : {}) };
 }
 
 function nameOf(layout: Layout, id: number): string {

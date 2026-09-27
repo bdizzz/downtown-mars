@@ -62,9 +62,13 @@ export function RoomCard({ def, resources, shape, onRotate, siteNote }: Props) {
           {effectText(e)}
         </p>
       ))}
-      {def.blocksEffects && <p className="good">Blocks {def.blocksEffects.join(" and ")} passing through</p>}
       {siteNote && <p className="bad">{siteNote}.</p>}
-      {def.size !== "surface" && def.id !== "corridor" && <p className="k">Needs the gallery (ring 1) or a corridor.</p>}
+      {(def.floors ?? 1) > 1 && <p>Spans {def.floors} floors, linking them</p>}
+      {def.public ? (
+        <p className="good">Walk-through: its sides count as corridors, so neighbours open onto it</p>
+      ) : (
+        def.size !== "surface" && <p className="k">Needs the gallery (ring 1) or a corridor to one side.</p>
+      )}
     </div>
   );
 }

@@ -188,3 +188,34 @@ describe("old saves", () => {
     expect(l.rooms.find((r) => r.id === dormId)!.connected).toBe(true);
   });
 });
+
+describe("stairs", () => {
+  it("a stairwell spans two floors, and its sides are walkable on both", () => {
+    const s = rich();
+    s.layout.hole.floors = 2; // floor 2 dug
+    const grid = s.layout.grid;
+    while (grid.length < 3) grid.push(s.layout.hole.ringSlots.map((n) => new Array(n).fill(0)));
+    // A stairwell in ring 1 on floors 1–2: on floor 1 it opens onto the gallery.
+    const stairs = build(s, "stairwell", ring(1, 1, 4));
+    expect(new Set(stairs.cells.map((c) => c.floor))).toEqual(new Set([1, 2]));
+    // On floor 2, a dorm in ring 2 right behind the stairwell's floor-2 cell.
+    const dorm = build(s, "bunk_dorm", ring(2, 2, 7, 2));
+    // The stairwell's floor-2 sides count as corridors, so the dorm behind it is connected.
+    expect(s.layout.rooms.find((r) => r.id === dorm.id)!.connected).toBe(true);
+    // A stairwell whose lower floor isn't dug yet is refused.
+    expect(applyCommand(s, { type: "build", room: "stairwell", at: ring(3, 1, 0) })).toMatchObject({ ok: false, reason: expect.stringMatching(/spans 2 floors/) });
+  });
+
+  it("a stairwell deep in the rock links two floors' corridors", () => {
+    const s = rich();
+    s.layout.hole.floors = 2;
+    while (s.layout.grid.length < 3) s.layout.grid.push(s.layout.hole.ringSlots.map((n) => new Array(n).fill(0)));
+    // Floor 1: galley on the gallery, a dorm behind it connected by corridor, stairs behind the dorm's neighbour.
+    build(s, "galley", ring(1, 1, 0));
+    const stairs = build(s, "stairwell", ring(1, 2, 0));
+    expect(applyCommand(s, { type: "connectRoom", roomId: stairs.id, finish: "rock" }).ok).toBe(true);
+    // Floor 2: a clinic next to the stairwell's floor-2 cell, no corridor on floor 2 at all.
+    const clinic = build(s, "clinic", ring(2, 2, 1));
+    expect(s.layout.rooms.find((r) => r.id === clinic.id)!.connected).toBe(true);
+  });
+});

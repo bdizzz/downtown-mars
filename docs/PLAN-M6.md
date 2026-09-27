@@ -123,3 +123,10 @@ Checked in the browser on a migrated v6 save: the migrated bare-rock corridors, 
   - They lie just above the floor. With a floor chosen from above, they lie on the cut, over the rock cap.
   - They're pickable: a hit on a floor strip reads the point just above it, so the floor below isn't picked by mistake.
 - **Tool:** the raycast remembers the point it read, and the corridor tool takes the nearest border to that point. A ghost strip (green, or red with the reason) shows where it goes, and Shift erases.
+
+**Step 6, public rooms and stairs:**
+- **Tall rooms:** rooms can be several floors tall (`floors` in `data/rooms.json`). The footprint repeats on each floor down from the one it's placed on. A tall room is refused if its lowest floor isn't dug ("spans 2 floors: the lower one isn't dug yet") and is a blueprint while it's being dug. The unrolled view draws each floor's part.
+- **Stairwell** (from the catalog): S, 2 floors, rock 8, public, in the Access group, with a glyph. Its sides on both floors count as corridors, and its floors join one network, so a corridor reaching it on one floor links the rooms beside it on the other. Tested with a ring-2 stairwell connected on floor 1 and a clinic beside its floor-2 part.
+- **Small plaza** (added in step 2) gets a glyph.
+- **Room cards** say when a room spans floors, and when it's walk-through (its sides count as corridors) instead of "needs a corridor".
+- **Browser:** a stairwell over a floor-2 farm is refused ("Overlaps Farm"); one in ring 2 goes in on both floors and connects through the corridor above it.

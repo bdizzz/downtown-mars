@@ -672,6 +672,23 @@
         "brick": 5
       },
       "buildable": true
+    },
+    {
+      "id": "stairwell",
+      "name": "Stairwell",
+      "short": "Stairs",
+      "category": "circulation",
+      "size": "S",
+      "floors": 2,
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "public": true,
+      "effects": [],
+      "cost": {
+        "rock": 8
+      },
+      "buildable": true
     }
   ]
 }

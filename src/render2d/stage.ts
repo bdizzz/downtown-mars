@@ -248,26 +248,29 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     digCtx.rect(0, front - 1, TURN_W, 3).fill({ color: C.digFront, alpha: d.active ? 1 : 0.4 });
   }
 
-  /** One rect per ring row the cells cover. x may run past TURN_W; the next copy shows it. */
+  /** One rect per ring row the cells cover (per floor, for tall rooms). x may run past TURN_W; the next copy shows it. */
   function cellRows(h: Hole, cells: Cell[]): { floor: number; ring: number; x0: number; x1: number; first: boolean; last: boolean }[] {
-    const rings = [...new Set(cells.map((c) => c.ring))].sort((a, b) => a - b);
     const out = [];
-    for (const ring of rings) {
-      const n = h.ringSlots[ring - 1]!;
-      const slots = new Set(cells.filter((c) => c.ring === ring).map((c) => c.slot));
-      for (const s of slots) {
-        if (slots.has((s - 1 + n) % n) && slots.size < n) continue; // not the start of a run
-        let len = 1;
-        while (len < n && slots.has((s + len) % n)) len++;
-        out.push({
-          floor: cells[0]!.floor,
-          ring,
-          x0: (s / n) * TURN_W,
-          x1: ((s + len) / n) * TURN_W,
-          first: ring === rings[0],
-          last: ring === rings[rings.length - 1],
-        });
-        if (slots.size === n) break;
+    for (const floor of [...new Set(cells.map((c) => c.floor))].sort((a, b) => a - b)) {
+      const here = cells.filter((c) => c.floor === floor);
+      const rings = [...new Set(here.map((c) => c.ring))].sort((a, b) => a - b);
+      for (const ring of rings) {
+        const n = h.ringSlots[ring - 1]!;
+        const slots = new Set(here.filter((c) => c.ring === ring).map((c) => c.slot));
+        for (const s of slots) {
+          if (slots.has((s - 1 + n) % n) && slots.size < n) continue; // not the start of a run
+          let len = 1;
+          while (len < n && slots.has((s + len) % n)) len++;
+          out.push({
+            floor,
+            ring,
+            x0: (s / n) * TURN_W,
+            x1: ((s + len) / n) * TURN_W,
+            first: ring === rings[0],
+            last: ring === rings[rings.length - 1],
+          });
+          if (slots.size === n) break;
+        }
       }
     }
     return out;

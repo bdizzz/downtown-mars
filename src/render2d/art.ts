@@ -92,6 +92,20 @@ const GLYPHS: Record<string, Glyph> = {
     g.moveTo(cx, cy - s * 0.08).quadraticCurveTo(cx - s * 0.2, cy - s * 0.12, cx - s * 0.2, cy - s * 0.3).quadraticCurveTo(cx - s * 0.04, cy - s * 0.26, cx, cy - s * 0.08).stroke(line(1.2, c));
     g.moveTo(cx, cy - s * 0.14).quadraticCurveTo(cx + s * 0.2, cy - s * 0.18, cx + s * 0.2, cy - s * 0.34).quadraticCurveTo(cx + s * 0.04, cy - s * 0.3, cx, cy - s * 0.14).stroke(line(1.2, c));
   },
+  stairwell: (g, cx, cy, s, c) => {
+    // Steps going down.
+    const st = s * 0.15;
+    g.moveTo(cx - s * 0.3, cy - s * 0.3);
+    for (let i = 0; i < 4; i++) g.lineTo(cx - s * 0.3 + st * (i + 1), cy - s * 0.3 + st * i).lineTo(cx - s * 0.3 + st * (i + 1), cy - s * 0.3 + st * (i + 1));
+    g.stroke(line(1.5, c));
+  },
+  small_plaza: (g, cx, cy, s, c) => {
+    // A tree over a bench.
+    g.circle(cx, cy - s * 0.12, s * 0.16).stroke(line(1.5, c));
+    g.moveTo(cx, cy + s * 0.04).lineTo(cx, cy + s * 0.18).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.3, cy + s * 0.22).lineTo(cx + s * 0.3, cy + s * 0.22).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.24, cy + s * 0.22).lineTo(cx - s * 0.24, cy + s * 0.32).moveTo(cx + s * 0.24, cy + s * 0.22).lineTo(cx + s * 0.24, cy + s * 0.32).stroke(line(1.2, c));
+  },
   crypt: (g, cx, cy, s, c) => {
     // An arched doorway.
     g.moveTo(cx - s * 0.22, cy + s * 0.3).lineTo(cx - s * 0.22, cy - s * 0.06).arc(cx, cy - s * 0.06, s * 0.22, Math.PI, 0).lineTo(cx + s * 0.22, cy + s * 0.3).stroke(line(1.5, c));

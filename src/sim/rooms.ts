@@ -24,7 +24,6 @@ export interface RoomDef {
   makes: Record<string, number>;
   stores?: Record<string, number>;
   houses?: number;
-  blocksEffects?: EffectType[];
   effects: EffectDef[];
   cost: Record<string, number>;
   buildable: boolean;
@@ -54,6 +53,8 @@ export interface RoomDef {
   caresForElders?: number;
   /** Not buildable until the hole has reached this (see UNLOCKS in costs.ts). */
   unlockedBy?: "children" | "elders";
+  /** Floors tall, counting down from the floor it's placed on (default 1). */
+  floors?: number;
   /** Walk-through: every side counts as a corridor, so neighbours open onto it. */
   public?: boolean;
   /** A working one lets colonists have children. */
