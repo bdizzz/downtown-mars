@@ -3,7 +3,7 @@ import type { SimCommand } from "../sim/commands";
 import type { Hole } from "../sim/geometry";
 import { checkPlacement, roomAt, type Cell, type CheckResult, type Layout, type Location, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
-import type { Snapshot } from "../sim/snapshot";
+import type { DrillView, Snapshot } from "../sim/snapshot";
 import {
   FLOOR_GAP,
   GALLERY_H,
@@ -41,6 +41,8 @@ const C = {
   roomText: 0x1a0f0d,
   ok: 0x7fd67f,
   bad: 0xe0503a,
+  digRock: 0x3a2018,
+  digFront: 0xe07a3f,
 };
 
 
@@ -87,6 +89,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
   const skyCtx = new GraphicsContext();
   const holeCtx = new GraphicsContext();
+  const digCtx = new GraphicsContext();
   const roomsCtx = new GraphicsContext();
   const overlayCtx = new GraphicsContext();
 
@@ -97,6 +100,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let layout: Layout | null = null;
   let holeKey = "";
   let layoutVersion = -1;
+  let drill: DrillView | null = null;
+  let digKey = "";
   let tool: Tool = null;
   let hoverKey = "";
   const cam = { x: 0, y: -EDGE_MARGIN / 2, zoom: 1 };
@@ -117,10 +122,12 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     skyCtx.rect(0, SURFACE_H - GROUND_H, 2, GROUND_H).fill(C.seam); // 0° marker
   }
 
-  function drawHole(h: Hole): void {
+  /** Dug floors, plus the floor being dug (its rock cover is drawn separately). */
+  function drawHole(h: Hole, digFloor: number | null): void {
     const maxRings = h.ringSlots.length;
+    const lastFloor = digFloor ?? h.floors;
     holeCtx.clear();
-    for (let floor = 1; floor <= h.floors; floor++) {
+    for (let floor = 1; floor <= lastFloor; floor++) {
       const top = floorTop(floor, maxRings);
       holeCtx.rect(0, top, TURN_W, GALLERY_H).fill(C.gallery);
       holeCtx.rect(0, top + GALLERY_H - 2, TURN_W, 2).fill(C.galleryEdge);
@@ -145,9 +152,20 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       }
     }
     // Seam line at 0° through every floor.
-    const bottom = floorTop(h.floors + 1, maxRings) - FLOOR_GAP;
+    const bottom = floorTop(lastFloor + 1, maxRings) - FLOOR_GAP;
     holeCtx.rect(0, SURFACE_H, 2, bottom - SURFACE_H).fill({ color: C.seam, alpha: 0.5 });
     holeCtx.rect(0, bottom, TURN_W, worldHeight(h) - bottom).fill(C.undug);
+  }
+
+  /** Rock still to be dug on the floor being excavated, cleared top-down as the drill works. */
+  function drawDig(h: Hole, d: DrillView | null): void {
+    digCtx.clear();
+    if (!d?.floor) return;
+    const top = floorTop(d.floor, h.ringSlots.length);
+    const height = floorTop(d.floor + 1, h.ringSlots.length) - FLOOR_GAP - top;
+    const front = top + height * d.progress;
+    digCtx.rect(0, front, TURN_W, top + height - front).fill({ color: C.digRock, alpha: 0.85 });
+    digCtx.rect(0, front - 1, TURN_W, 3).fill({ color: C.digFront, alpha: d.active ? 1 : 0.4 });
   }
 
   /** One rect per ring row the cells cover. x may run past TURN_W; the next copy shows it. */
@@ -198,7 +216,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         continue;
       }
       for (const row of cellRows(l.hole, room.cells)) {
-        const r = roomsCtx.rect(...rowRect(l.hole, row)).fill(color);
+        const r = roomsCtx.rect(...rowRect(l.hole, row));
+        if (room.planned) r.fill({ color, alpha: 0.3 }).stroke({ color, width: 2 });
+        else r.fill(color);
         if (!room.connected) r.stroke({ color: C.bad, width: 3 });
       }
     }
@@ -211,7 +231,11 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       if (!def.short) continue;
       const text = new Text({
         text: room.connected ? def.short : `${def.short} ⚠`,
-        style: { fill: C.roomText, fontSize: LABEL_PX, fontWeight: "600" },
+        style: {
+          fill: room.planned ? (CATEGORY_COLORS[def.category] ?? C.label) : C.roomText,
+          fontSize: LABEL_PX,
+          fontWeight: "600",
+        },
       });
       if (room.at.kind === "surface") {
         const [x, y] = surfaceRect(room.surfaceCells, l.surface.length);
@@ -264,23 +288,29 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
   }
 
-  function rebuildFloorLabels(h: Hole): void {
+  function rebuildFloorLabels(h: Hole, digFloor: number | null): void {
     floorLabels.removeChildren().forEach((c) => c.destroy());
-    for (let floor = 1; floor <= h.floors; floor++) {
+    for (let floor = 1; floor <= (digFloor ?? h.floors); floor++) {
       floorLabels.addChild(new Text({ text: `F${floor}`, style: { fill: C.label, fontSize: 13, fontWeight: "700" } }));
     }
   }
 
+  function updateDigLabel(d: DrillView | null): void {
+    if (!d?.floor) return;
+    const label = floorLabels.children[d.floor - 1] as Text | undefined;
+    if (label) label.text = `F${d.floor} ⛏ ${Math.floor(d.progress * 100)}%${d.active ? "" : " (paused)"}`;
+  }
+
   // ---- camera ----
 
-  // Each copy: sky, hole, rooms, room labels, overlay.
-  const LABELS_INDEX = 3;
+  // Each copy: sky, hole, dig, rooms, room labels, overlay.
+  const LABELS_INDEX = 4;
 
   function ensureCopies(): void {
     const needed = Math.ceil(app.screen.width / (TURN_W * cam.zoom)) + 2;
     while (world.children.length < needed) {
       const copy = new Container();
-      copy.addChild(new Graphics(skyCtx), new Graphics(holeCtx), new Graphics(roomsCtx));
+      copy.addChild(new Graphics(skyCtx), new Graphics(holeCtx), new Graphics(digCtx), new Graphics(roomsCtx));
       copy.addChild(layout ? roomLabels(layout) : new Container());
       copy.addChild(new Graphics(overlayCtx));
       copy.x = world.children.length * TURN_W;
@@ -454,11 +484,20 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     update(snapshot) {
       const l = snapshot.layout;
       layout = l;
-      const key = JSON.stringify(l.hole);
+      drill = snapshot.drill;
+      const key = JSON.stringify([l.hole, drill.floor]);
       if (key !== holeKey) {
         holeKey = key;
-        drawHole(l.hole);
-        rebuildFloorLabels(l.hole);
+        drawHole(l.hole, drill.floor);
+        rebuildFloorLabels(l.hole, drill.floor);
+        applyCamera();
+      }
+      // Redraw the dig front only when it has visibly moved.
+      const dk = `${drill.floor}:${Math.floor(drill.progress * 200)}:${drill.active}`;
+      if (dk !== digKey) {
+        digKey = dk;
+        drawDig(l.hole, drill);
+        updateDigLabel(drill);
       }
       if (l.version !== layoutVersion) {
         layoutVersion = l.version;

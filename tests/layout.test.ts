@@ -9,7 +9,9 @@ describe("pick", () => {
   it("finds the surface, gallery and rock", () => {
     expect(pick(hole, 0, 10).kind).toBe("surface");
     expect(pick(hole, 0, SURFACE_H + 1)).toMatchObject({ kind: "gallery", floor: 1 });
-    expect(pick(hole, 0, SURFACE_H + 3 * bandHeight(6) + 5).kind).toBe("rock");
+    // Floors 1–3 are dug and floor 4 is being dug, so rock starts below floor 4.
+    expect(pick(hole, 0, SURFACE_H + 3 * bandHeight(6) + GALLERY_H + 1)).toMatchObject({ kind: "slot", floor: 4, digging: true });
+    expect(pick(hole, 0, SURFACE_H + 4 * bandHeight(6) + 5).kind).toBe("rock");
   });
 
   it("finds the slot under a point", () => {

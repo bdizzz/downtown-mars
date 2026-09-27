@@ -19,8 +19,17 @@
   },
   "starterHole": {
     "shaftRadiusM": 10,
-    "floors": 3,
+    "floors": 1,
     "unlockedRings": 3
+  },
+  "digging": {
+    "ticksForFirstFloor": 360,
+    "depthGrowth": 0.15,
+    "rockPerSlot": 1,
+    "maxFloors": 40
+  },
+  "startingStock": {
+    "rock": 0
   },
   "landingKit": {
     "surface": [

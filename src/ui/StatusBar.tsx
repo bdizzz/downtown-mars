@@ -10,13 +10,14 @@ function where(info: HoverInfo, hole: Hole): string {
     case "surface":
       return `Surface · ${Math.round(p.angle)}°`;
     case "gallery":
-      return `Floor ${p.floor} · shaft gallery`;
+      return `Floor ${p.floor}${p.digging ? " (being dug)" : ""} · shaft gallery`;
     case "rock":
       return "Solid rock";
     case "slot": {
       const n = hole.ringSlots[p.ring - 1]!;
       const lock = p.locked ? " · locked (needs reinforcement frames)" : "";
-      return `Floor ${p.floor} · ring ${p.ring} · slot ${p.slot + 1} of ${n} · ${deg(p.slot / n)}–${deg((p.slot + 1) / n)}${lock}`;
+      const dig = p.digging ? " (being dug)" : "";
+      return `Floor ${p.floor}${dig} · ring ${p.ring} · slot ${p.slot + 1} of ${n} · ${deg(p.slot / n)}–${deg((p.slot + 1) / n)}${lock}`;
     }
   }
 }
@@ -38,9 +39,12 @@ export function StatusBar({ info, hole, notice }: Props) {
     if (info.check && !info.check.ok) {
       text = `${info.check.reason} · ${text}`;
       bad = true;
+    } else if (info.check?.planned) {
+      text = `Blueprint: builds when this floor is dug · ${text}`;
     } else if (info.room) {
       const def = roomDef(info.room.type);
-      text = `${def.name}${info.room.connected ? "" : " · no access: connect it with a corridor"} · ${text}`;
+      const blueprint = info.room.planned ? " (blueprint)" : "";
+      text = `${def.name}${blueprint}${info.room.connected ? "" : " · no access: connect it with a corridor"} · ${text}`;
       bad = !info.room.connected;
     }
   }

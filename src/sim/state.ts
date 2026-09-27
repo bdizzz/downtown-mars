@@ -1,4 +1,5 @@
 import type { SimConfig } from "./config";
+import type { Drill } from "./digging";
 import { createHole } from "./geometry";
 import { createLayout, placeRoom, type Layout } from "./placement";
 import { roomDef } from "./rooms";
@@ -7,6 +8,9 @@ export interface SimState {
   tick: number;
   rngState: number;
   layout: Layout;
+  drill: Drill;
+  /** Stockpiles by resource id. Fractional amounts accumulate between ticks. */
+  resources: Record<string, number>;
 }
 
 export function createInitialState(cfg: SimConfig): SimState {
@@ -21,7 +25,13 @@ export function createInitialState(cfg: SimConfig): SimState {
     must(placeRoom(layout, k.room, { kind: "ring", floor: k.floor, ring: k.ring, slot: k.slot, w, d }, cfg), k.room);
   }
   layout.version = 0;
-  return { tick: 0, rngState: cfg.seed >>> 0, layout };
+  return {
+    tick: 0,
+    rngState: cfg.seed >>> 0,
+    layout,
+    drill: { active: true, progress: 0 },
+    resources: { ...cfg.startingStock },
+  };
 }
 
 function must(result: { ok: boolean; reason?: string }, what: string): void {

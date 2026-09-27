@@ -67,7 +67,7 @@ describe("placement rules", () => {
     expect(checkPlacement(layout, "clinic", ring(1, 1, 3))).toMatchObject({ ok: false, reason: "Overlaps Galley" });
     expect(checkPlacement(layout, "clinic", ring(1, 4, 0))).toMatchObject({ ok: false, reason: "Ring 4+ needs reinforcement frames" });
     expect(checkPlacement(layout, "farm", ring(1, 2, 0, 2, 3))).toMatchObject({ ok: false });
-    expect(checkPlacement(layout, "clinic", ring(4, 1, 0))).toMatchObject({ ok: false, reason: "That floor isn't dug yet" });
+    expect(checkPlacement(layout, "clinic", ring(5, 1, 0))).toMatchObject({ ok: false, reason: "That floor isn't dug yet" });
     expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 1, 2))).toMatchObject({ ok: false, reason: "Bunk dorm can't be 1×2" });
   });
 
@@ -81,7 +81,7 @@ describe("placement rules", () => {
     const c = placeRoom(layout, "corridor", ring(1, 1, 0));
     placeRoom(layout, "bunk_dorm", ring(1, 2, 0, 2));
     expect(layout.rooms.find((r) => r.type === "bunk_dorm")!.connected).toBe(true);
-    applyCommand({ tick: 0, rngState: 0, layout }, { type: "demolish", roomId: c.id! });
+    applyCommand({ tick: 0, rngState: 0, layout, drill: { active: false, progress: 0 }, resources: {} }, { type: "demolish", roomId: c.id! });
     expect(layout.rooms.find((r) => r.type === "bunk_dorm")!.connected).toBe(false);
   });
 });

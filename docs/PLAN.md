@@ -25,6 +25,12 @@ Goal: prove the adjacency puzzle is fun inside one hole. Each step ends with som
 - Surface: 12 slots of 30°. Pod and pad take 2, solar takes 1.
 - Build costs aren't charged yet; that comes with resources in step 5.
 
+**Digging (step 4, Sep 27):**
+- Start with 1 floor dug; the drill immediately works on the next one and keeps going until paused.
+- Floor 2 takes 360 ticks (1.5 days, 90 s at 1x); each deeper floor takes 15% longer. Max 40 floors.
+- Rock comes out gradually: 1 per unlocked ring slot per floor (47 for the starter hole).
+- The floor being dug can hold blueprints, which switch on when it's done.
+
 **Gap fills:** Earth supply drops bring colonists and soil; the pod's starter drill digs slowly, costing time and yielding rock.
 
 ## Steps

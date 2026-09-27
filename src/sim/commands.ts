@@ -3,7 +3,8 @@ import type { SimState } from "./state";
 
 export type SimCommand =
   | { type: "build"; room: string; at: Location }
-  | { type: "demolish"; roomId: number };
+  | { type: "demolish"; roomId: number }
+  | { type: "setDrill"; active: boolean };
 
 export type CommandResult = { ok: true } | { ok: false; reason: string };
 
@@ -15,5 +16,8 @@ export function applyCommand(state: SimState, cmd: SimCommand): CommandResult {
     }
     case "demolish":
       return demolishRoom(state.layout, cmd.roomId);
+    case "setDrill":
+      state.drill.active = cmd.active;
+      return { ok: true };
   }
 }

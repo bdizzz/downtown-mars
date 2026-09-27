@@ -23,8 +23,9 @@ export function ringTop(floor: number, ring: number, maxRings: number): number {
   return floorTop(floor, maxRings) + GALLERY_H + (ring - 1) * RING_H;
 }
 
+/** Everything down to the floor being dug, plus some rock below it. */
 export function worldHeight(hole: Hole): number {
-  return floorTop(hole.floors + 1, hole.ringSlots.length) + UNDUG_H;
+  return floorTop(hole.floors + 2, hole.ringSlots.length) + UNDUG_H;
 }
 
 export function slotX(slot: number, n: number): [number, number] {
@@ -33,8 +34,8 @@ export function slotX(slot: number, n: number): [number, number] {
 
 export type Pick =
   | { kind: "surface"; angle: number }
-  | { kind: "gallery"; floor: number; angle: number }
-  | { kind: "slot"; floor: number; ring: number; slot: number; locked: boolean; angle: number }
+  | { kind: "gallery"; floor: number; angle: number; digging: boolean }
+  | { kind: "slot"; floor: number; ring: number; slot: number; locked: boolean; digging: boolean; angle: number }
   | { kind: "rock" };
 
 /** What sits at world point (x, y)? x may be any value; it wraps. */
@@ -46,14 +47,15 @@ export function pick(hole: Hole, x: number, y: number): Pick {
   const maxRings = hole.ringSlots.length;
   const band = bandHeight(maxRings);
   const floor = Math.floor((y - SURFACE_H) / band) + 1;
-  if (floor > hole.floors) return { kind: "rock" };
+  if (floor > hole.floors + 1) return { kind: "rock" };
+  const digging = floor === hole.floors + 1;
 
   const inBand = y - floorTop(floor, maxRings);
-  if (inBand < GALLERY_H) return { kind: "gallery", floor, angle };
+  if (inBand < GALLERY_H) return { kind: "gallery", floor, angle, digging };
   const ring = Math.floor((inBand - GALLERY_H) / RING_H) + 1;
   if (ring > maxRings) return { kind: "rock" }; // the gap between floors
 
   const n = hole.ringSlots[ring - 1]!;
   const slot = Math.min(Math.floor(turn * n), n - 1);
-  return { kind: "slot", floor, ring, slot, locked: ring > hole.unlockedRings, angle };
+  return { kind: "slot", floor, ring, slot, locked: ring > hole.unlockedRings, digging, angle };
 }

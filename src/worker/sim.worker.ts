@@ -26,7 +26,7 @@ function frame(): void {
   // If we fall far behind (tab hidden, slow machine), drop the backlog
   // rather than freezing to catch up.
   const due = Math.min(Math.floor(tickDebt), config.maxTicksPerFrame);
-  for (let i = 0; i < due; i++) step(state);
+  for (let i = 0; i < due; i++) step(state, config);
   tickDebt = due === config.maxTicksPerFrame ? 0 : tickDebt - due;
 
   post();

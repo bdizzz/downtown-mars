@@ -22,10 +22,20 @@ export interface SimConfig {
     floors: number;
     unlockedRings: number;
   };
+  digging: {
+    /** Ticks to dig floor 2; each deeper floor takes depthGrowth longer. */
+    ticksForFirstFloor: number;
+    depthGrowth: number;
+    /** Rock yielded per unlocked ring slot dug out. */
+    rockPerSlot: number;
+    maxFloors: number;
+  };
+  startingStock: Record<string, number>;
   landingKit: {
     surface: { room: string; slot: number }[];
     ring: { room: string; floor: number; ring: number; slot: number }[];
   };
 }
 
-export const config: SimConfig = raw as SimConfig;
+// JSON imports widen tuples to arrays, so cast via unknown; tests check the values.
+export const config: SimConfig = raw as unknown as SimConfig;

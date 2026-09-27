@@ -6,11 +6,18 @@ interface Props {
   snapshot: Snapshot | null;
   speed: number;
   setSpeed: (speed: number) => void;
+  setDrill: (active: boolean) => void;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-export function Hud({ snapshot, speed, setSpeed }: Props) {
+/** Game-time estimate, e.g. "~1.2 days" or "~5 h". */
+function gameDuration(ticks: number): string {
+  const days = ticks / config.ticksPerDay;
+  return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
+}
+
+export function Hud({ snapshot, speed, setSpeed, setDrill }: Props) {
   // Space toggles pause, remembering the last running speed.
   const resumeRef = useRef(1);
   if (speed) resumeRef.current = speed;
@@ -25,6 +32,7 @@ export function Hud({ snapshot, speed, setSpeed }: Props) {
   }, [speed, setSpeed]);
 
   const t = snapshot?.time;
+  const drill = snapshot?.drill;
   return (
     <header className="hud">
       <span className="title">Downtown Mars</span>
@@ -38,6 +46,23 @@ export function Hud({ snapshot, speed, setSpeed }: Props) {
           </button>
         ))}
       </span>
+      <span className="stock" title="Rock">
+        Rock {Math.floor(snapshot?.resources.rock ?? 0)}
+      </span>
+      {drill && (
+        <span className="drill">
+          {drill.floor ? (
+            <>
+              <span title={`${gameDuration(drill.ticksLeft)} left`}>
+                ⛏ F{drill.floor} {Math.floor(drill.progress * 100)}%
+              </span>
+              <button onClick={() => setDrill(!drill.active)}>{drill.active ? "Pause drill" : "Resume drill"}</button>
+            </>
+          ) : (
+            "⛏ Max depth"
+          )}
+        </span>
+      )}
       <span className="tick">tick {snapshot?.tick ?? 0}</span>
     </header>
   );

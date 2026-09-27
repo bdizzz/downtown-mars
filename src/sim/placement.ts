@@ -27,6 +27,8 @@ export interface RoomInstance {
   surfaceCells: number[];
   /** Reachable from the shaft gallery. Surface rooms always are. */
   connected: boolean;
+  /** A blueprint on the floor still being dug; switches on when it's done. */
+  planned: boolean;
 }
 
 export interface Layout {
@@ -40,7 +42,9 @@ export interface Layout {
   nextRoomId: number;
 }
 
-export type CheckResult = { ok: true; cells: Cell[]; surfaceCells: number[] } | { ok: false; reason: string; cells: Cell[]; surfaceCells: number[] };
+export type CheckResult =
+  | { ok: true; cells: Cell[]; surfaceCells: number[]; planned: boolean }
+  | { ok: false; reason: string; cells: Cell[]; surfaceCells: number[] };
 
 const EPS = 1e-9;
 
@@ -57,9 +61,9 @@ export function createLayout(hole: Hole, cfg: SimConfig = config): Layout {
   return layout;
 }
 
-/** Grow the grid to match hole.floors (for newly dug floors). */
+/** Grow the grid to cover every dug floor plus the one being dug. */
 export function ensureFloors(layout: Layout): void {
-  while (layout.grid.length < layout.hole.floors) {
+  while (layout.grid.length < layout.hole.floors + 1) {
     layout.grid.push(layout.hole.ringSlots.map((n) => new Array(n).fill(0)));
   }
 }
@@ -126,7 +130,7 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
     const surfaceCells = Array.from({ length: width }, (_, i) => wrapSlot(at.slot + i, n));
     const hit = surfaceCells.map((s) => layout.surface[s]).find((id) => id);
     if (hit) return { ok: false, reason: `Overlaps ${nameOf(layout, hit)}`, cells: [], surfaceCells };
-    return { ok: true, cells: [], surfaceCells };
+    return { ok: true, cells: [], surfaceCells, planned: false };
   }
 
   if (def.size === "surface") return { ok: false, reason: `${def.name} goes on the surface`, ...none };
@@ -134,7 +138,8 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
   if (!shapes.some(([w, d]) => w === at.w && d === at.d)) {
     return { ok: false, reason: `${def.name} can't be ${at.w}×${at.d}`, ...none };
   }
-  if (at.floor < 1 || at.floor > hole.floors) return { ok: false, reason: "That floor isn't dug yet", ...none };
+  // The floor below the deepest dug one is being excavated and can be planned.
+  if (at.floor < 1 || at.floor > hole.floors + 1) return { ok: false, reason: "That floor isn't dug yet", ...none };
   if (at.ring < 1) return { ok: false, reason: "Not a ring", ...none };
 
   const lastRing = at.ring + at.d - 1;
@@ -152,7 +157,7 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
   if (!touchesAccess(layout, cells)) {
     return { ok: false, reason: "Needs a corridor or the shaft gallery", cells, surfaceCells: [] };
   }
-  return { ok: true, cells, surfaceCells: [] };
+  return { ok: true, cells, surfaceCells: [], planned: at.floor > hole.floors };
 }
 
 function nameOf(layout: Layout, id: number): string {
@@ -164,7 +169,7 @@ export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimCo
   const check = checkPlacement(layout, type, at, cfg);
   if (!check.ok) return check;
   const id = layout.nextRoomId++;
-  layout.rooms.push({ id, type, at, cells: check.cells, surfaceCells: check.surfaceCells, connected: true });
+  layout.rooms.push({ id, type, at, cells: check.cells, surfaceCells: check.surfaceCells, connected: true, planned: check.planned });
   for (const c of check.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = id;
   for (const s of check.surfaceCells) layout.surface[s] = id;
   recomputeAccess(layout);

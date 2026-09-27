@@ -47,7 +47,7 @@ export function App() {
 
   return (
     <div className="app">
-      <Hud snapshot={snapshot} speed={speed} setSpeed={setSpeed} />
+      <Hud snapshot={snapshot} speed={speed} setSpeed={setSpeed} setDrill={(active) => onCommand({ type: "setDrill", active })} />
       <div className="main">
         <BuildPalette tool={tool} setTool={setTool} />
         <PixiView snapshot={snapshot} tool={tool} onHover={setHover} onCommand={onCommand} onCancel={() => setTool(null)} />

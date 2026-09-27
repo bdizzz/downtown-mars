@@ -32,7 +32,7 @@ describe("determinism", () => {
 
   it("step advances one tick", () => {
     const s = createInitialState(config);
-    for (let i = 0; i < 10; i++) step(s);
+    for (let i = 0; i < 10; i++) step(s, config);
     expect(s.tick).toBe(10);
   });
 });
