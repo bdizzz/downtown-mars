@@ -41,7 +41,7 @@ describe("3D cell geometry", () => {
   });
 
   it("agrees with the 2D view about which slot is at an angle", () => {
-    for (const deg of [0.5, 45, 100, 179.9, 200, 359.5]) {
+    for (const deg of [0.5, 45, 100, 179.9, 205, 359.5]) {
       const a = (deg / 360) * TAU;
       const [x, y, z] = polar(25, a, -FLOOR_H * 1.5);
       const three = pickAt(hole, x, y, z);

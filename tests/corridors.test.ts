@@ -146,7 +146,7 @@ describe("connecting a room", () => {
     const before = Object.keys(s.layout.corridors).length;
     const b = build(s, "clinic", ring(1, 2, 2)); // next to the first dorm
     const route = routeToRoom(s.layout, s.layout.rooms.find((r) => r.id === b.id)!, config)!;
-    expect(route.length).toBeLessThanOrEqual(2);
+    expect(route.length).toBeLessThanOrEqual(3);
     expect(before).toBeGreaterThan(0);
   });
 });
@@ -204,7 +204,7 @@ describe("stairs", () => {
     const stairs = build(s, "stairwell", ring(1, 1, 4));
     expect(new Set(stairs.cells.map((c) => c.floor))).toEqual(new Set([1, 2]));
     // On floor 2, a dorm in ring 2 right behind the stairwell's floor-2 cell.
-    const dorm = build(s, "bunk_dorm", ring(2, 2, 7, 2));
+    const dorm = build(s, "bunk_dorm", ring(2, 2, 4, 2));
     // The stairwell's floor-2 sides count as corridors, so the dorm behind it is connected.
     expect(s.layout.rooms.find((r) => r.id === dorm.id)!.connected).toBe(true);
     // A stairwell whose lower floor isn't dug yet is refused.

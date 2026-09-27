@@ -71,10 +71,10 @@ describe("carved by corridors", () => {
 
   it("a corridor along part of a side carves just that part, with a step", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = placeRoom(l, "clinic", ring(1, 1, 1)); // ring-1 slot 1: its outer side is cut into pieces
+    const r = placeRoom(l, "clinic", ring(1, 2, 1)); // ring-2 slot 1: ring 3 beyond has more slots, so its outer side is in pieces
     const room = l.rooms.find((x) => x.id === r.id)!;
     const plain = roomGeometry(l, room.cells);
-    l.corridors["A1.1.1/9"] = "metal"; // the first piece of its outer side
+    l.corridors["A1.2.1/9"] = "metal"; // the first piece of its outer side
     const carved = roomGeometry(l, room.cells);
     expect(extent(carved).maxR).toBeCloseTo(extent(plain).maxR, 6); // the rest of the side is untouched
     expect(carved.getAttribute("position").count).toBeGreaterThan(plain.getAttribute("position").count); // a step wall

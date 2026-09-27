@@ -14,6 +14,8 @@ export interface Hole {
 
 /** slots(n) = round(2π · (R + (n − 0.5) · d) / w) */
 export function slotsInRing(shaftRadiusM: number, ring: number, geo: GeometryConfig): number {
+  // Paired rings: an even ring has the same slots as the odd ring inside it.
+  if (geo.pairedRings && ring % 2 === 0) return slotsInRing(shaftRadiusM, ring - 1, geo);
   const midRadius = shaftRadiusM + (ring - 0.5) * geo.roomDepthM;
   return Math.round((2 * Math.PI * midRadius) / geo.slotWidthM);
 }

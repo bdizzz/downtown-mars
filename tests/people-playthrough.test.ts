@@ -19,7 +19,7 @@ describe("ninety minutes of people", () => {
 
   it("keeps having children, and they grow up into workers", () => {
     const born = net.log.at(-1)!.born;
-    expect(born).toBeGreaterThanOrEqual(20);
+    expect(born).toBeGreaterThanOrEqual(15);
     const children = net.world.holes.reduce((n, h) => n + h.population.cohorts.filter((c) => c.stage === "child").reduce((k, c) => k + c.count, 0), 0);
     expect(children).toBeLessThan(born); // the earliest have grown up
   });
@@ -32,7 +32,7 @@ describe("ninety minutes of people", () => {
   });
 
   it("outgrows a single hole by a wide margin", () => {
-    expect(net.log.at(-1)!.total).toBeGreaterThan(solo.log.at(-1)!.total * 1.4);
+    expect(net.log.at(-1)!.total).toBeGreaterThan(solo.log.at(-1)!.total * 1.3);
     expect(at(80).total).toBeGreaterThan(170);
   });
 

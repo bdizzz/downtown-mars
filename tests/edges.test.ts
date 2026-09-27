@@ -9,11 +9,11 @@ const D = config.geometry.roomDepthM;
 
 describe("the edge grid", () => {
   it("cuts each circle at the slot boundaries of the rings on both sides", () => {
-    const n1 = ringSize(hole, 1);
-    const n2 = ringSize(hole, 2);
-    const cuts = circleCuts(hole, 1);
-    // 0 is shared by both rings; everything else is distinct for 9 and 16.
-    expect(cuts.length).toBe(n1 + n2 - 1);
+    // Between the rings of a pair (1 and 2) the slots line up: one cut per slot.
+    expect(circleCuts(hole, 1)).toHaveLength(ringSize(hole, 1));
+    // Between pairs (ring 2, 9 slots, and ring 3, 22), 0 is shared and everything else is distinct.
+    const cuts = circleCuts(hole, 2);
+    expect(cuts.length).toBe(ringSize(hole, 2) + ringSize(hole, 3) - 1);
     const turns = cuts.map(([p, q]) => p / q);
     expect([...turns].sort((a, b) => a - b)).toEqual(turns);
   });

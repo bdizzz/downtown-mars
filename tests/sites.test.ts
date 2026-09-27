@@ -34,8 +34,8 @@ describe("regional digging", () => {
     for (let i = 0; i < config.digging.ticksForFirstFloor; i++) stepWorld(w, config);
     const got = (id: string) => (hole.resources[id] ?? 0) - (before[id] ?? 0);
     const mineral = hole.deposits.includes("ore") ? "ore" : "silica";
-    // 47 slots × 0.4 per slot for one floor.
-    expect(got(mineral)).toBeCloseTo(47 * 0.4, 0);
+    // 40 slots (9 + 9 + 22 in rings 1–3) × 0.4 per slot for one floor.
+    expect(got(mineral)).toBeCloseTo(40 * 0.4, 0);
     expect(hole.ledger.days.concat([hole.ledger.current]).some((d) => (d.water?.in.Digging ?? 0) > 0)).toBe(true);
   });
 });

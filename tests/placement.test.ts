@@ -24,11 +24,16 @@ describe("footprint", () => {
     expect(footprint(hole(), 1, 1, 7, 4, 1).map((c) => c.slot)).toEqual([7, 8, 0, 1]);
   });
 
-  it("a deep room widens into a wedge in the outer ring", () => {
-    // Ring 1 slots 0–1 span 0°–80°; ring 2 slot centres at 11.25°, 33.75°, 56.25°, 78.75°.
+  it("a deep room in a ring pair lines up slot for slot", () => {
     const cells = footprint(hole(), 1, 1, 0, 2, 2);
     expect(cells.filter((c) => c.ring === 1).map((c) => c.slot)).toEqual([0, 1]);
-    expect(cells.filter((c) => c.ring === 2).map((c) => c.slot)).toEqual([0, 1, 2, 3]);
+    expect(cells.filter((c) => c.ring === 2).map((c) => c.slot)).toEqual([0, 1]);
+  });
+
+  it("a deep room across a pair boundary widens into a wedge", () => {
+    // Ring 2 slots 0–1 span 0°–80°; ring 3 (22 slots) has slot centres at 8.2°, 24.5°, 40.9°, 57.3°, 73.6°.
+    const cells = footprint(hole(), 1, 2, 0, 2, 2);
+    expect(cells.filter((c) => c.ring === 3).map((c) => c.slot)).toEqual([0, 1, 2, 3, 4]);
   });
 
   it("neighbouring deep rooms never claim the same outer slot", () => {

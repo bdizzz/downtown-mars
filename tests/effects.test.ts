@@ -42,9 +42,12 @@ describe("effect field", () => {
     const l = layout();
     placeRoom(l, "clinic", ring(1, 1, 0)); // health +2 r2
     const f = computeEffects(l);
-    // Ring 1 slot 0 (0°–40°) overlaps ring 2 slots 0 and 1.
+    // Rings 1 and 2 share their slots: ring 1 slot 0 sits right on ring 2 slot 0.
     expect(effectAt(f, "health", cell(1, 2, 0))).toBeCloseTo(4 / 3);
-    expect(effectAt(f, "health", cell(1, 2, 1))).toBeCloseTo(4 / 3);
+    expect(effectAt(f, "health", cell(1, 2, 1))).toBeCloseTo(2 / 3);
+    // Ring 3 has more slots: ring 2 slot 0 (0°–40°) overlaps several of them.
+    expect(effectAt(f, "health", cell(1, 3, 0))).toBeCloseTo(2 / 3);
+    expect(effectAt(f, "health", cell(1, 3, 1))).toBeCloseTo(2 / 3);
   });
 
   it("a corridor along the border soaks up noise instead of passing it across", () => {

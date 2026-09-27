@@ -8,6 +8,12 @@ export interface GeometryConfig {
   floorHeightM: number;
   /** Width of the walkway ledge ringing the shaft, used by the 3D view. */
   galleryWidthM: number;
+  /**
+   * Rings come in pairs that share a slot count: ring 2 has ring 1's, ring 4
+   * ring 3's, ring 6 ring 5's. Fewer, simpler borders between them, at the
+   * cost of larger slots in the even rings.
+   */
+  pairedRings?: boolean;
 }
 
 export type Priority = "critical" | "high" | "normal" | "low";

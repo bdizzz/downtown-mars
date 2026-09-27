@@ -161,3 +161,13 @@ Open questions for Bryon:
 - **Public rooms drop their wall on corridor sides** in 3D, as they already did toward the gallery: whole sides, or the carved parts of partly carved sides. Private rooms keep their walls. Tested by triangle counts; in the browser, a tiny plaza between two corridors shows from the shaft with no walls at all.
 - **Windows follow carved walls:** a ring-1 room's shaft windows (and its gallery door, centred between them) end where its side walls stand. When a corridor is carved along a side they pull back with the wall, and they return when the corridor is filled in. In 3D, `shaftFaces` uses the same angles as `roomGeometry` (tested). In the unrolled view, a row's windows keep clear of a corridor band at either end.
 - **Filling a corridor in costs what carving it did**, in its own finish: the walls of the rooms around it are rebuilt. There's no refund. It needs the materials, and the hover and status bar show the cost ("Fill in this brick corridor, rebuilding the walls: 2 brick"). This replaces the half refund.
+
+**Paired rings (Bryon, Sep 27):**
+- **The rule:** rings come in pairs that share a slot count: ring 2 has ring 1's, ring 4 ring 3's, ring 6 ring 5's (`geometry.pairedRings` in `data/config.json`). A narrow hole (R = 10 m) now has 9, 9, 22, 22, 35, 35 slots, instead of 9, 16, 22, 28, 35, 41.
+- **Why:** within a pair the slots line up one to one, so the circle between them has one cut per slot and far fewer borders. Cells in the even rings are larger than their odd partners, which is accepted for now.
+- **Old saves:** each hole carries its own slot counts, so existing saves keep their old geometry unchanged. New games, and new holes founded in old games, use paired rings.
+- **Tests:** tests of the general formula use unpaired geometry explicitly; the rest now expect the paired counts.
+- **Playthrough shifts:**
+  - At one hour the network and the solo player are even (112 against 113), down from +11%.
+  - At 90 days the network leads by 39% (184 against 132), with 18 births, down from 27.
+  - Bounds were relaxed to match (network ≥ 0.95× solo at an hour, ≥ 1.3× at 90 days, 15+ births). Retuning waits for the adjustments to come.

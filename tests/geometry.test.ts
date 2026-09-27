@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole, overlappingSlots, slotsInRing, wrapSlot } from "../src/sim/geometry";
 
-const geo = config.geometry;
-const rings = (R: number) => [1, 2, 3, 4, 5, 6].map((n) => slotsInRing(R, n, geo));
+// The general formula, each ring on its own (the game pairs them; see below).
+const geo = { ...config.geometry, pairedRings: false };
+const rings = (R: number, g = geo) => [1, 2, 3, 4, 5, 6].map((n) => slotsInRing(R, n, g));
 
 describe("slots per ring", () => {
   it("narrow hole (R = 10 m)", () => {
@@ -14,6 +15,12 @@ describe("slots per ring", () => {
   it("wide hole (R = 40 m)", () => {
     const r = rings(40);
     expect([r[0], r[2], r[5]]).toEqual([28, 41, 60]);
+  });
+
+  it("paired rings: each even ring has the slots of the odd ring inside it", () => {
+    const paired = { ...config.geometry, pairedRings: true };
+    expect(rings(10, paired)).toEqual([9, 9, 22, 22, 35, 35]);
+    expect(config.geometry.pairedRings).toBe(true); // the game's setting
   });
 });
 

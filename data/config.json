@@ -12,6 +12,7 @@
     "maxRings": 6,
     "floorHeightM": 4,
     "galleryWidthM": 2,
+    "pairedRings": true,
     "surfaceSlots": 12
   },
   "shapes": {
