@@ -4,6 +4,7 @@ import type { Convoy } from "./founding";
 import type { Message } from "./messages";
 import type { Route } from "./rovers";
 import type { Relation } from "./culture";
+import type { Migration } from "./migration";
 import { network } from "./network";
 import { createInitialState, type SimState } from "./state";
 
@@ -26,6 +27,8 @@ export interface World {
   nextRouteId: number;
   /** How each hole sees each other hole, keyed "from>to". */
   relations: Record<string, Relation>;
+  /** Colonists on the road from one hole to another. */
+  migrations: Migration[];
 }
 
 export { network };
@@ -51,7 +54,7 @@ export function createWorld(cfg: SimConfig, seed = cfg.seed): World {
     deposits: depositsAt(map, site),
     seed: holeSeed(seed, 1),
   });
-  return { seed, tick: 0, holes: [first], nextHoleId: 2, map, mapUnlocked: false, convoys: [], routes: [], nextRouteId: 1, relations: {} };
+  return { seed, tick: 0, holes: [first], nextHoleId: 2, map, mapUnlocked: false, convoys: [], routes: [], nextRouteId: 1, relations: {}, migrations: [] };
 }
 
 export function totalPopulation(world: World): number {

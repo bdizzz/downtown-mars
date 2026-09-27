@@ -13,7 +13,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 
 type Raw = Record<string, unknown>;
 
@@ -62,6 +62,8 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       people: [{ stage: "adult", count: c.volunteers, until: (c.arriveTick as number) + 120 * config.ticksPerDay }],
     })),
   }),
+  // v11 added migration between holes.
+  10: (s) => ({ ...s, migrations: [] }),
 };
 
 export interface SaveSummary {

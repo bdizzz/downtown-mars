@@ -211,6 +211,19 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       g.fillStyle = r.phase === "outbound" ? "#6fb3c9" : "#9aa7ab";
       g.fill();
     }
+    // Colonists moving between holes: a small violet dot on the way.
+    for (const m of s.migrations) {
+      const a = siteOf(m.from);
+      const b = siteOf(m.to);
+      if (!a || !b) continue;
+      const [x0, y0] = toXY(a.lat, a.lon);
+      const [x1, y1] = toXY(b.lat, b.lon);
+      const t = Math.min(1, Math.max(0, m.progress));
+      g.beginPath();
+      g.arc(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, 3, 0, Math.PI * 2);
+      g.fillStyle = "#b48ad8";
+      g.fill();
+    }
     for (const h of s.holes) {
       if (!h.site) continue;
       const [x, y] = toXY(h.site.lat, h.site.lon);
@@ -225,7 +238,7 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       g.font = "700 12px system-ui, sans-serif";
       g.fillText(h.name, x, y - 10);
     }
-  }, [image, size, s.deposits, s.holes, s.holeId, s.convoys, s.routes, shown, site]);
+  }, [image, size, s.deposits, s.holes, s.holeId, s.convoys, s.routes, s.migrations, shown, site]);
 
   const info = useMemo(() => {
     if (!hover) return null;

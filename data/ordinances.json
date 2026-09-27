@@ -35,6 +35,15 @@
       "culture": {
         "order": -0.4
       }
+    },
+    {
+      "id": "closed_borders",
+      "name": "Closed borders",
+      "description": "Colonists from other holes may not settle here.",
+      "closedBorders": true,
+      "culture": {
+        "openness": 0.4
+      }
     }
   ]
 }

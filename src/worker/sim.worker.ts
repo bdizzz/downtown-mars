@@ -4,6 +4,7 @@ import { config } from "../sim/config";
 import { deserialize, serialize, summarize } from "../sim/save";
 import { makeSnapshot, type HoleSummary, type RelationView, type RouteView } from "../sim/snapshot";
 import { cultureTarget, loadFactor, relation, tier } from "../sim/culture";
+import { destination } from "../sim/migration";
 import { foundHole, travelTicks } from "../sim/founding";
 import { addRoute, removeRoute, routesFrom, roversAt, TRADEABLE } from "../sim/rovers";
 import { degreesApart } from "../sim/mapgeo";
@@ -106,6 +107,14 @@ function post(): void {
       daysLeft: (c.arriveTick - world.tick) / config.ticksPerDay,
     })),
     routes: routeViews(),
+    migrations: world.migrations.map((m) => ({
+      from: m.fromHoleId,
+      to: m.toHoleId,
+      count: m.people.reduce((n, c) => n + c.count, 0),
+      progress: (world.tick - m.departTick) / Math.max(1, m.arriveTick - m.departTick),
+      daysLeft: (m.arriveTick - world.tick) / config.ticksPerDay,
+    })),
+    leavingFor: destination(world, hole)?.name ?? null,
     relations: relationViews(),
     mapUnlocked: world.mapUnlocked,
     // News from every hole, so nothing elsewhere goes unnoticed.

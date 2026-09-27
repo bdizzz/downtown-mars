@@ -51,6 +51,12 @@ export function PeoplePanel({ s, onClose }: { s: Snapshot; onClose: () => void }
         Adults work ({s.workforce.employed} of {s.workforce.total} employed). Children and elders don't, but need beds, food, water and air.
       </p>
 
+      {s.leavingFor && (
+        <p className="warn">
+          Morale is low: colonists are leaving for {s.leavingFor}, a few each day. Raise happiness above 45 to keep them.
+        </p>
+      )}
+
       <h3>Births</h3>
       {b.blockers.length === 0 ? (
         <p>About one child every {Math.max(1, Math.round(1 / Math.max(b.perDay, 1e-6)))} days.</p>

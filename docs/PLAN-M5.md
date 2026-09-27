@@ -58,3 +58,12 @@ The Inspector shows teaching and care places against the hole's children and eld
 - the next five cohorts to move on ("5 adults retire in 83 days").
 
 The snapshot gained `stages`, `care`, `births` (blockers, per day, born) and `upcoming`.
+
+**Step 6, migration:** `src/sim/migration.ts`. At each midnight, a hole whose average happiness is below 45 loses adults to the happiest hole that:
+- is at least 10 points happier,
+- has free beds (counting people already on the way),
+- hasn't enacted Closed borders.
+
+It loses 5% of its adults, at most 3 a day, and always keeps 4. They are the youngest adults, and they travel at rover speed. On arrival they pull the host's culture toward home in proportion to their share of the host. Both ends get a message.
+
+Closed borders is a new ordinance: it turns immigrants away and pushes culture toward Insular. The People panel warns when colonists are leaving and where to, the Network panel lists people on the move, and the map shows them as violet dots. Save version 11.

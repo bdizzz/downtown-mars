@@ -32,5 +32,14 @@
     "_note": "Elders without a place in elder care, plus someone looking after each, weigh on health.",
     "affectedPerElder": 2,
     "uncaredHealth": -1.5
+  },
+  "migration": {
+    "_note": "Once a day, adults in an unhappy hole may leave for a clearly happier one with free beds. They travel at rover speed.",
+    "leaveBelow": 45,
+    "happierBy": 10,
+    "sharePerDay": 0.05,
+    "maxPerDay": 3,
+    "minAdultsLeft": 4,
+    "culturePull": 1
   }
 }

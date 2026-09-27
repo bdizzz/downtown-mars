@@ -25,6 +25,14 @@ export const people = raw as unknown as {
   births: { minHappiness: number; perAdultPerDay: number };
   school: { familySize: number; unschooledComfort: number };
   elderCare: { affectedPerElder: number; uncaredHealth: number };
+  migration: {
+    leaveBelow: number;
+    happierBy: number;
+    sharePerDay: number;
+    maxPerDay: number;
+    minAdultsLeft: number;
+    culturePull: number;
+  };
 };
 
 /** 0..1 from a few integers, stable across runs and platforms. */

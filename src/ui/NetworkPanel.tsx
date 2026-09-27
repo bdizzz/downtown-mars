@@ -126,6 +126,17 @@ export function NetworkPanel({
         </div>
       ))}
 
+      {s.migrations.length > 0 && (
+        <>
+          <h3>On the move</h3>
+          {s.migrations.map((m, i) => (
+            <p key={i} className="k">
+              {m.count} {m.count === 1 ? "colonist" : "colonists"} moving from {name(m.from)} to {name(m.to)} · {Math.max(0, m.daysLeft).toFixed(1)} d
+            </p>
+          ))}
+        </>
+      )}
+
       <h3>Routes</h3>
       {s.routes.length === 0 && <p className="k">No routes yet.</p>}
       {s.routes.map((r) => (

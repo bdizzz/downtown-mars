@@ -125,6 +125,10 @@ export interface Snapshot {
   /** Places for children and elders. */
   care: { school: Coverage; elders: Coverage };
   births: { blockers: string[]; perDay: number; born: number };
+  /** Colonists on the road between holes; the worker fills these in. */
+  migrations: { from: number; to: number; count: number; progress: number; daysLeft: number }[];
+  /** Where this hole's unhappy colonists are leaving for, if anywhere (worker). */
+  leavingFor: string | null;
   /** Cohorts moving on next, soonest first. */
   upcoming: { stage: Stage; count: number; daysLeft: number }[];
   workforce: { total: number; employed: number };
@@ -174,6 +178,8 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     population: state.population,
     stages: stageCounts(state),
     care: { school: schoolCoverage(state), elders: elderCoverage(state) },
+    migrations: [],
+    leavingFor: null,
     births: { blockers: birthBlockers(state), perDay: birthsPerDay(state), born: state.population.born ?? 0 },
     upcoming: [...state.population.cohorts]
       .sort((a, b) => a.until - b.until)
