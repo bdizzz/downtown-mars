@@ -6,6 +6,7 @@ import { BuildPalette, shapesFor } from "./BuildPalette";
 import { Hud } from "./Hud";
 import { Inspector } from "./Inspector";
 import { Messages } from "./Messages";
+import { OverlayPicker } from "./OverlayPicker";
 import { PixiView } from "./PixiView";
 import { ResourceBar } from "./ResourceBar";
 import { StatusBar } from "./StatusBar";
@@ -19,6 +20,7 @@ export function App() {
   const [tool, setTool] = useState<Tool>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
+  const [overlay, setOverlay] = useState<string | null>(null);
   const noticeTimer = useRef<number>(undefined);
 
   const onCommand = useCallback(
@@ -59,6 +61,7 @@ export function App() {
       <div className="main">
         <BuildPalette tool={tool} setTool={(t) => (setTool(t), setSelected(null))} resources={snapshot?.resources ?? {}} />
         <div className="view">
+          <OverlayPicker overlay={overlay} setOverlay={setOverlay} />
           <Messages s={snapshot} />
           <PixiView
             snapshot={snapshot}
@@ -68,13 +71,14 @@ export function App() {
             onCancel={() => setTool(null)}
             selected={selected}
             onSelect={setSelected}
+            overlay={overlay}
           />
         </div>
         {snapshot && selected !== null && (
           <Inspector s={snapshot} roomId={selected} onCommand={onCommand} onClose={() => setSelected(null)} />
         )}
       </div>
-      <StatusBar info={hover} snapshot={snapshot} notice={notice} />
+      <StatusBar info={hover} snapshot={snapshot} notice={notice} overlay={overlay} />
     </div>
   );
 }

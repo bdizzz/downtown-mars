@@ -5,6 +5,7 @@ import { config } from "../sim/config";
 import { checkBuild } from "../sim/costs";
 import { roomAt, type Cell, type CheckResult, type Layout, type Location, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
+import type { EffectField } from "../sim/effects";
 import type { DrillView, Snapshot } from "../sim/snapshot";
 import {
   FLOOR_GAP,
@@ -49,7 +50,12 @@ const C = {
   lander: 0xd9d4cc,
   landerDark: 0x6b6660,
   flame: 0xffb35c,
+  fieldBad: 0xff4a2e,
+  fieldGood: 0x5fe07a,
 };
+
+const FIELD_MAX = 3; // effect strength shown at full colour
+const FIELD_ALPHA = 0.75;
 
 
 const MIN_ZOOM = 0.3;
@@ -81,6 +87,8 @@ export interface Stage {
   update(snapshot: Snapshot): void;
   setTool(tool: Tool): void;
   setSelected(roomId: number | null): void;
+  /** Heat map of one neighbor effect over the rooms, or null for none. */
+  setOverlay(type: string | null): void;
   destroy(): void;
 }
 
@@ -101,6 +109,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   const roomsCtx = new GraphicsContext();
   const overlayCtx = new GraphicsContext();
   const landerCtx = new GraphicsContext();
+  const fieldCtx = new GraphicsContext();
 
   const world = new Container();
   const floorLabels = new Container();
@@ -112,6 +121,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let drill: DrillView | null = null;
   let resources: Record<string, number> = {};
   let selected: number | null = null;
+  let overlayType: string | null = null;
+  let field: EffectField | null = null;
   let digKey = "";
   let tool: Tool = null;
   let hoverKey = "";
@@ -131,6 +142,27 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
     skyCtx.rect(0, SURFACE_H - GROUND_H, TURN_W, GROUND_H).fill(C.ground);
     skyCtx.rect(0, SURFACE_H - GROUND_H, 2, GROUND_H).fill(C.seam); // 0° marker
+  }
+
+  /** Red where an effect hurts, green where it helps, stronger for bigger values. */
+  function drawField(): void {
+    fieldCtx.clear();
+    if (!layout || !field || !overlayType) return;
+    const grid = field[overlayType];
+    if (!grid) return;
+    const h = layout.hole;
+    grid.forEach((rings, fi) => {
+      for (let ring = 1; ring <= h.unlockedRings; ring++) {
+        const n = h.ringSlots[ring - 1]!;
+        const y = ringTop(fi + 1, ring, h.ringSlots.length);
+        rings[ring - 1]!.forEach((v, slot) => {
+          if (Math.abs(v) < 0.05) return;
+          const [x0, x1] = slotX(slot, n);
+          const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA;
+          fieldCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2).fill({ color: v < 0 ? C.fieldBad : C.fieldGood, alpha });
+        });
+      }
+    });
   }
 
   /** The Earth lander coming down onto the pad in the last hours before a drop. */
@@ -341,14 +373,14 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
   // ---- camera ----
 
-  // Each copy: sky, hole, dig, rooms, room labels, lander, overlay.
-  const LABELS_INDEX = 4;
+  // Each copy: sky, hole, dig, rooms, effect field, room labels, lander, overlay.
+  const LABELS_INDEX = 5;
 
   function ensureCopies(): void {
     const needed = Math.ceil(app.screen.width / (TURN_W * cam.zoom)) + 2;
     while (world.children.length < needed) {
       const copy = new Container();
-      copy.addChild(new Graphics(skyCtx), new Graphics(holeCtx), new Graphics(digCtx), new Graphics(roomsCtx));
+      copy.addChild(new Graphics(skyCtx), new Graphics(holeCtx), new Graphics(digCtx), new Graphics(roomsCtx), new Graphics(fieldCtx));
       copy.addChild(layout ? roomLabels(layout) : new Container());
       copy.addChild(new Graphics(landerCtx), new Graphics(overlayCtx));
       copy.x = world.children.length * TURN_W;
@@ -539,6 +571,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         drawDig(l.hole, drill);
         updateDigLabel(drill);
       }
+      if (snapshot.effects !== field) {
+        field = snapshot.effects;
+        drawField();
+      }
       if (l.version !== layoutVersion) {
         layoutVersion = l.version;
         drawRooms(l);
@@ -553,6 +589,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     setTool(t) {
       tool = t;
       refreshHover();
+    },
+    setOverlay(type) {
+      overlayType = type;
+      drawField();
     },
     setSelected(id) {
       selected = id;

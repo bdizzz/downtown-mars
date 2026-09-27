@@ -1,6 +1,8 @@
 import type { HoverInfo } from "../render2d/stage";
 import type { Hole } from "../sim/geometry";
+import { effectAt, FIELD_TYPES } from "../sim/effects";
 import type { Snapshot } from "../sim/snapshot";
+import { signed } from "./format";
 import { roomDef } from "../sim/rooms";
 
 const deg = (turns: number) => `${Math.round(turns * 360)}°`;
@@ -27,9 +29,18 @@ interface Props {
   info: HoverInfo | null;
   snapshot: Snapshot | null;
   notice: string | null;
+  overlay: string | null;
 }
 
-export function StatusBar({ info, snapshot, notice }: Props) {
+/** "noise −1.3 · health +0.7" for a slot, skipping effects that are ~0. */
+function effectsHere(s: Snapshot, cell: { floor: number; ring: number; slot: number }): string {
+  return FIELD_TYPES.map((t) => [t, effectAt(s.effects, t, cell)] as const)
+    .filter(([, v]) => Math.abs(v) >= 0.05)
+    .map(([t, v]) => `${t} ${signed(v)}`)
+    .join(" · ");
+}
+
+export function StatusBar({ info, snapshot, notice, overlay }: Props) {
   const hole = snapshot?.layout.hole;
   let text = "Drag to pan · scroll to move · pinch or ctrl+scroll to zoom";
   let bad = false;
@@ -51,6 +62,9 @@ export function StatusBar({ info, snapshot, notice }: Props) {
       text = `${def.name}${blueprint}${running}${info.room.connected ? "" : " · no access: connect it with a corridor"} · click for details · ${text}`;
       bad = !info.room.connected;
     }
+  }
+  if (!notice && overlay && snapshot && info?.pick.kind === "slot") {
+    text = `${effectsHere(snapshot, info.pick) || "no effects here"} · ${text}`;
   }
   return <footer className={`status${bad ? " bad" : ""}`}>{text}</footer>;
 }

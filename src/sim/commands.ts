@@ -1,5 +1,6 @@
 import { config } from "./config";
 import { charge, checkBuild, refund } from "./costs";
+import { refreshEffects } from "./effects";
 import { demolishRoom, placeRoom, type Location } from "./placement";
 import type { Priority } from "./config";
 import { isCrop } from "./resources";
@@ -16,6 +17,12 @@ export type SimCommand =
 export type CommandResult = { ok: true } | { ok: false; reason: string };
 
 export function applyCommand(state: SimState, cmd: SimCommand): CommandResult {
+  const result = apply(state, cmd);
+  state.effects = refreshEffects(state.layout, state.effects);
+  return result;
+}
+
+function apply(state: SimState, cmd: SimCommand): CommandResult {
   const layout = state.layout;
   switch (cmd.type) {
     case "build": {

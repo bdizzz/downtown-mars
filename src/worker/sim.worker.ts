@@ -4,7 +4,7 @@ import { config } from "../sim/config";
 import { makeSnapshot } from "../sim/snapshot";
 import { createInitialState } from "../sim/state";
 import { step } from "../sim/step";
-import type { FromWorker, ToWorker } from "./protocol";
+import type { FromWorker, ToWorker, WireSnapshot } from "./protocol";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -13,8 +13,14 @@ let speed = 1;
 let tickDebt = 0; // fractional ticks owed to real time
 let last = performance.now();
 
+let sentLayoutVersion = -1;
+
 function post(): void {
-  const msg: FromWorker = { type: "snapshot", snapshot: makeSnapshot(state, config), speed };
+  const { layout, effects, ...rest } = makeSnapshot(state, config);
+  const fresh = layout.version !== sentLayoutVersion;
+  sentLayoutVersion = layout.version;
+  const snapshot: WireSnapshot = { ...rest, layoutVersion: layout.version, ...(fresh ? { layout, effects } : {}) };
+  const msg: FromWorker = { type: "snapshot", snapshot, speed };
   self.postMessage(msg);
 }
 

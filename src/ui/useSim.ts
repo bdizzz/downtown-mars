@@ -8,6 +8,7 @@ export function useSim() {
   const pending = useRef(new Map<number, (r: CommandResult) => void>());
   const nextId = useRef(1);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const lastLayout = useRef<Pick<Snapshot, "layout" | "effects"> | null>(null);
   const [speed, setSpeedState] = useState(1);
 
   useEffect(() => {
@@ -15,7 +16,10 @@ export function useSim() {
     worker.onmessage = (e: MessageEvent<FromWorker>) => {
       const msg = e.data;
       if (msg.type === "snapshot") {
-        setSnapshot(msg.snapshot);
+        const { layout, effects, layoutVersion: _, ...rest } = msg.snapshot;
+        if (layout && effects) lastLayout.current = { layout, effects };
+        if (!lastLayout.current) return;
+        setSnapshot({ ...rest, ...lastLayout.current });
         setSpeedState(msg.speed);
       } else if (msg.type === "commandResult") {
         pending.current.get(msg.id)?.(msg.result);

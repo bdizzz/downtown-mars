@@ -1,10 +1,11 @@
 import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
 import { roomSpec } from "../sim/economy";
+import { effectOnRoom, FIELD_TYPES } from "../sim/effects";
 import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
-import { num, resName } from "./format";
+import { num, resName, signed } from "./format";
 
 interface Props {
   s: Snapshot;
@@ -32,6 +33,16 @@ function Flows({ label, flows }: { label: string; flows: Record<string, number> 
   return (
     <p>
       <span className="k">{label}</span> {entries.map(([id, v]) => `${resName(id)} ${num(v)}`).join(", ")}
+    </p>
+  );
+}
+
+function Neighborhood({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
+  const felt = FIELD_TYPES.map((t) => [t, effectOnRoom(s.effects, t, room)] as const).filter(([, v]) => Math.abs(v) >= 0.05);
+  return (
+    <p>
+      <span className="k">Felt here</span>
+      {felt.length ? felt.map(([t, v]) => `${t} ${signed(v)}`).join(", ") : "nothing"}
     </p>
   );
 }
@@ -76,6 +87,7 @@ export function Inspector({ s, roomId, onCommand, onClose }: Props) {
           <span className="k">Sanitation for</span> {num(spec.sanitation)}
         </p>
       )}
+      {room.at.kind === "ring" && <Neighborhood s={s} room={room} />}
       {def.growsCrops && (
         <label>
           <span className="k">Crop</span>

@@ -96,3 +96,18 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .msg { background: rgba(30, 17, 13, 0.92); border: 1px solid #000; border-left: 3px solid var(--muted); padding: 6px 10px; border-radius: 4px; font-size: 13px; }
 .msg.good { border-left-color: #8fcf6f; }
 .msg.warn { border-left-color: #ff7a5c; }
+.overlay-picker {
+  position: absolute; bottom: 10px; left: 12px; z-index: 2;
+  display: flex; align-items: center; gap: 4px; font-size: 12px;
+  background: rgba(30, 17, 13, 0.92); border: 1px solid #000; border-radius: 4px; padding: 4px 8px;
+}
+.overlay-picker .k { color: var(--muted); margin-right: 4px; }
+.overlay-picker button {
+  background: transparent; color: var(--text); font: inherit; border: 1px solid transparent;
+  border-radius: 3px; padding: 2px 6px; cursor: pointer;
+}
+.overlay-picker button.on { border-color: var(--accent); color: var(--accent); }
+.overlay-picker .legend { color: var(--muted); margin-left: 6px; display: inline-flex; align-items: center; gap: 4px; }
+.overlay-picker .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.overlay-picker .legend i.bad { background: #ff4a2e; }
+.overlay-picker .legend i.good { background: #5fe07a; margin-left: 6px; }

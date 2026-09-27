@@ -3,6 +3,7 @@ import type { SimConfig } from "./config";
 import { canDig, diggingFloor, ticksToDig } from "./digging";
 import { beds, padReady } from "./earth";
 import { capacities, roomSpec, type Population, type RoomStatus } from "./economy";
+import type { EffectField } from "./effects";
 import type { Message } from "./messages";
 import type { Layout } from "./placement";
 import type { SimState } from "./state";
@@ -22,6 +23,8 @@ export interface Snapshot {
   tick: number;
   time: GameTime;
   layout: Layout;
+  /** Neighbor effects per cell; changes only with the layout. */
+  effects: EffectField;
   drill: DrillView;
   resources: Record<string, number>;
   capacities: Record<string, number>;
@@ -44,6 +47,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     tick: state.tick,
     time: gameTime(state.tick, cfg),
     layout: state.layout,
+    effects: state.effects.field,
     drill: {
       active: state.drill.active,
       floor,

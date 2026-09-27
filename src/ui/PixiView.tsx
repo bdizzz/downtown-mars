@@ -11,14 +11,15 @@ interface Props {
   onCancel: () => void;
   selected: number | null;
   onSelect: (roomId: number | null) => void;
+  overlay: string | null;
 }
 
-export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect }: Props) {
+export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, overlay }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
-  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect });
-  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect };
+  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, overlay });
+  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, overlay };
 
   useEffect(() => {
     let cancelled = false;
@@ -33,6 +34,7 @@ export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selecte
       stageRef.current = stage;
       stage.setTool(props.current.tool);
       stage.setSelected(props.current.selected);
+      stage.setOverlay(props.current.overlay);
       if (props.current.snapshot) stage.update(props.current.snapshot);
     });
     return () => {
@@ -53,6 +55,10 @@ export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selecte
   useEffect(() => {
     stageRef.current?.setSelected(selected);
   }, [selected]);
+
+  useEffect(() => {
+    stageRef.current?.setOverlay(overlay);
+  }, [overlay]);
 
   return <div ref={hostRef} className="pixi-host" />;
 }

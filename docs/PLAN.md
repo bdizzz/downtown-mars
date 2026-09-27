@@ -53,6 +53,15 @@ Goal: prove the adjacency puzzle is fun inside one hole. Each step ends with som
 - Per-day rates are measured before drops land, so they show the hole's own balance.
 - Messages (landings, delays, waiting) show over the view and fade after a game day.
 
+**Neighbor effects (step 7, Sep 27):**
+- Built rooms (not blueprints) radiate each effect from their own cells. One step = along the ring, across rings by angle, or straight up/down a floor.
+- Falloff: strength × (1 − distance / (radius + 1)), zero past the radius. Sources add.
+- Corridors take noise and smell but don't pass them on; other effects go through.
+- Effects marked residentsOnly (the dorm's comfort −1) are for the room's own residents, handled with happiness in step 8.
+- Surface rooms don't radiate into the hole.
+- The field is recomputed only when the layout changes; the worker sends layout and field only when they change.
+- Overlays: noise, smell, health, comfort. Red hurts, green helps, full colour at ±3.
+
 **Gap fills:** Earth supply drops bring colonists and soil; the pod's starter drill digs slowly, costing time and yielding rock.
 
 ## Steps
