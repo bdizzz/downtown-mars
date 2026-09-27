@@ -12,3 +12,9 @@ export const CATEGORY_COLORS: Record<string, number> = {
 };
 
 export const cssColor = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
+
+/** Overlay colours: red/green, or orange/blue for colour-blind players. */
+export const HEAT = {
+  normal: { bad: 0xff4a2e, good: 0x5fe07a },
+  colorBlind: { bad: 0xf08a24, good: 0x3f8fff },
+};

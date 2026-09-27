@@ -9,7 +9,7 @@ import { floorSpan, ringRadii, slotAngles, TAU } from "./cylinder";
 // changes; everything here is plain geometry, no per-frame work.
 
 const ARC_STEPS = 4;
-const ROOF_GAP = 0.05;
+const ROOF_GAP = 0.3;
 const INSET = 0.06;
 const WINDOW = { bottom: 1.4, top: 3.0, inset: 0.03, color: 0x2d4f6e };
 const DOOR = { width: 1.3, height: 2.3, color: 0x2a1a14 };
@@ -232,7 +232,9 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
       curvedFace(wall, hole.shaftRadiusM, a0, a1, y0, y1);
     }
   }
-  group.add(new THREE.Mesh(geometry(wall), rock));
+  const wallMesh = new THREE.Mesh(geometry(wall), rock);
+  wallMesh.userData = { pickable: true, wall: true, faint: xray };
+  group.add(wallMesh);
 
   const glass = material("glass", () => new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x16283a, roughness: 0.2, metalness: 0.3, side: THREE.DoubleSide }));
   const door = material("door", () => new THREE.MeshStandardMaterial({ color: DOOR.color, roughness: 0.9, side: THREE.DoubleSide }));
@@ -243,13 +245,15 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     const def = roomDef(room.type);
     const color = CATEGORY_COLORS[def.category] ?? 0x888888;
     if (room.at.kind === "surface") {
-      group.add(surfaceProp(room, layout, color));
+      const prop = surfaceProp(room, layout, color);
+      prop.traverse((o) => (o.userData = { pickable: true, roomId: room.id, surface: true }));
+      group.add(prop);
       continue;
     }
     const geo = roomGeometry(layout, room.cells);
     const faint = xray && room.cells.some((c) => c.ring === 1);
     const mesh = new THREE.Mesh(geo, roomMaterial(room.type === "corridor" ? 0x8a7466 : color, room.planned, faint));
-    mesh.userData.roomId = room.id;
+    mesh.userData = { pickable: true, roomId: room.id, faint };
     group.add(mesh);
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), room.connected ? edgeLine : strandedLine);
     group.add(edges);

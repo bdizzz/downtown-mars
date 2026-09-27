@@ -1,10 +1,10 @@
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
-import { checkBuild } from "../sim/costs";
-import { neighborCells, roomAt, type Cell, type Layout, type Location, type RoomInstance } from "../sim/placement";
+import { neighborCells, roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
+import { clickWith, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
 import type { HoverInfo, Stage, StageOptions, Tool } from "../view/types";
 import type { Happiness } from "../sim/happiness";
 import type { DrillView, Snapshot } from "../sim/snapshot";
@@ -19,12 +19,11 @@ import {
   ringTop,
   slotX,
   worldHeight,
-  type Pick,
 } from "./layout";
 
 export type { HoverInfo, Stage, StageOptions, Tool };
 import { drawGlyph, drawHills, drawLandingPad, drawPod, drawSolarArray, shade, STARS, tint } from "./art";
-import { CATEGORY_COLORS } from "./palette";
+import { CATEGORY_COLORS, HEAT } from "./palette";
 
 // The unrolled view. One full turn of the hole is drawn into shared graphics
 // contexts, and several copies sit side by side so panning wraps seamlessly.
@@ -62,11 +61,6 @@ const C = {
   flame: 0xffb35c,
 };
 
-/** Overlay colours: red/green, or orange/blue for colour-blind players. */
-export const HEAT = {
-  normal: { bad: 0xff4a2e, good: 0x5fe07a },
-  colorBlind: { bad: 0xf08a24, good: 0x3f8fff },
-};
 
 const FIELD_MAX = 3; // effect strength shown at full colour
 const FIELD_ALPHA = 0.75;
@@ -581,72 +575,36 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     return [cam.x + (e.clientX - r.left) / cam.zoom, cam.y + (e.clientY - r.top) / cam.zoom];
   }
 
-  function locationFor(p: Pick, t: Extract<Tool, { kind: "build" }>, l: Layout): Location | null {
-    if (roomDef(t.room).size === "surface") {
-      if (p.kind !== "surface") return null;
-      return { kind: "surface", slot: Math.floor((p.angle / 360) * l.surface.length) % l.surface.length };
-    }
-    if (p.kind !== "slot") return null;
-    return { kind: "ring", floor: p.floor, ring: p.ring, slot: p.slot, w: t.shape[0], d: t.shape[1] };
-  }
-
   function hoverInfo(): HoverInfo | null {
     if (!layout || !pointer) return null;
-    const p = pick(layout.hole, ...screenToWorld(pointer));
-    const info: HoverInfo = { pick: p };
-    if (tool?.kind === "build") {
-      const at = locationFor(p, tool, layout);
-      if (at) info.check = checkBuild(layout, resources, tool.room, at);
-      return info;
-    }
-    if (p.kind === "slot") info.room = roomAt(layout, p);
-    if (p.kind === "surface") {
-      const id = layout.surface[Math.floor((p.angle / 360) * layout.surface.length) % layout.surface.length];
-      info.room = layout.rooms.find((r) => r.id === id);
-    }
-    return info;
+    return hoverInfoFor(layout, resources, tool, pick(layout.hole, ...screenToWorld(pointer)));
   }
 
   function refreshHover(): void {
     const info = hoverInfo();
-    // The cursor's exact angle only matters on the surface, where it picks a surface slot.
-    const p = info?.pick;
-    const coarse = p && p.kind !== "surface" && "angle" in p ? { ...p, angle: undefined } : p;
-    const key = JSON.stringify([coarse, info?.room?.id, info?.check, tool, layoutVersion, selected]);
+    const key = hoverKeyFor(info, tool, layoutVersion, selected);
     if (key === hoverKey) return;
     hoverKey = key;
     drawOverlay(info);
     opts.onHover?.(info);
   }
 
-  /** With the corridor tool, dragging lays a corridor on every cell it crosses. */
-  const paints = () => tool?.kind === "build" && tool.room === "corridor";
   let paintedKey = "";
 
   function paint(): void {
-    if (!layout || !pointer || tool?.kind !== "build") return;
+    if (!layout || !pointer) return;
     const p = pick(layout.hole, ...screenToWorld(pointer));
     if (p.kind !== "slot") return;
     const key = `${p.floor}:${p.ring}:${p.slot}`;
     if (key === paintedKey) return;
     paintedKey = key;
-    // Send it even if our copy of the layout says no: the corridor just
-    // painted may not have reached us yet, and the sim decides anyway.
-    opts.onCommand?.({ type: "build", room: tool.room, at: { kind: "ring", floor: p.floor, ring: p.ring, slot: p.slot, w: 1, d: 1 } }, true);
+    const cmd = paintCommand(tool, p);
+    if (cmd) opts.onCommand?.(cmd, true);
   }
 
   function click(): void {
     const info = hoverInfo();
-    if (!info || !layout) return;
-    if (tool?.kind === "build") {
-      const at = locationFor(info.pick, tool, layout);
-      if (at && info.check?.ok) opts.onCommand?.({ type: "build", room: tool.room, at });
-      else if (info.check && !info.check.ok) opts.onInvalid?.(info.check.reason);
-    } else if (tool?.kind === "demolish" && info.room) {
-      opts.onCommand?.({ type: "demolish", roomId: info.room.id });
-    } else if (!tool) {
-      opts.onSelect?.(info.room?.id ?? null);
-    }
+    if (info && layout) clickWith(layout, tool, info, opts);
   }
 
   // ---- input ----
@@ -655,7 +613,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     if (e.button !== 0) return;
     pointer = e; // a tap may arrive with no move before it
     canvas.setPointerCapture(e.pointerId);
-    if (paints()) {
+    if (paints(tool)) {
       painting = true;
       paintedKey = "";
       paint();

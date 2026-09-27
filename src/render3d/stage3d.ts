@@ -1,9 +1,15 @@
 import * as THREE from "three";
+import { previewEffects } from "../sim/effects";
 import type { Hole } from "../sim/geometry";
+import type { Cell, Layout, RoomInstance } from "../sim/placement";
+import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
-import type { Stage, StageOptions, Tool } from "../view/types";
+import { HEAT } from "../render2d/palette";
+import { clickWith, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
+import type { HoverInfo, Pick, Stage, StageOptions, Tool } from "../view/types";
 import { FLOOR_H, floorSpan, openShaftRadius, RING_D, TAU } from "./cylinder";
-import { buildLayout, disposeLayout, disposeRoomMaterials } from "./rooms3d";
+import { inCarvedRegion, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
+import { buildLayout, disposeLayout, disposeRoomMaterials, roomGeometry } from "./rooms3d";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Three
 // cameras: standing in the shaft looking at the wall, the way someone on the
@@ -58,7 +64,10 @@ function saveView(v: { mode: Mode; xray: boolean }): void {
   }
 }
 
-export async function createStage3D(host: HTMLElement, _opts: StageOptions = {}): Promise<Stage> {
+const HOVER = { ok: 0x7fd67f, bad: 0xe0503a, hover: 0xffe2b0, selected: 0xffffff };
+const FIELD_MAX = 3;
+
+export async function createStage3D(host: HTMLElement, opts: StageOptions = {}): Promise<Stage> {
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -112,6 +121,15 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
   // The cutaway slices along a plane through the shaft's axis, facing away from the camera.
   const clip = new THREE.Plane(new THREE.Vector3(1, 0, 0), 0);
   let shell: THREE.Object3D | null = null;
+  // Hover, ghost, halo and selection: rebuilt whenever what they show changes.
+  let overlay = new THREE.Group();
+  scene.add(overlay);
+  let tool: Tool = null;
+  let selected: number | null = null;
+  let heat = HEAT.normal;
+  let layout: Layout | null = null;
+  let resources: Record<string, number> = {};
+  let hoverKey = "";
   let hole: Hole | null = null;
   let holeKey = "";
   let gameId = -1;
@@ -165,11 +183,20 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
       camera.lookAt(0, -depth(), 0);
     }
     renderer.clippingPlanes = view.mode === "cutaway" ? [clip] : [];
+    // Far-off cameras need a farther near plane, or the depth buffer can't tell
+    // the ground from the roofs just under it.
+    const near = view.mode === "shaft" ? 0.1 : Math.max(0.5, (view.mode === "top" ? cam.height : cam.out) / 100);
+    if (camera.near !== near) {
+      camera.near = near;
+      camera.updateProjectionMatrix();
+    }
     lamp.visible = view.mode === "shaft";
     fill.intensity = view.mode === "shaft" ? 0.15 : 0.7;
     if (shell) shell.visible = view.mode === "cutaway";
     updateReadout();
     dirty = true;
+    // The world moved under a still pointer, so what it points at may have changed.
+    if (pointer && layout) refreshHover();
   }
 
   // ---- building the hole ----
@@ -259,17 +286,215 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
     dirty = true;
   }
 
+  // ---- picking ----
+
+  const raycaster = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+  function rayAt(clientX: number, clientY: number): THREE.Ray {
+    const r = canvas.getBoundingClientRect();
+    ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+    raycaster.setFromCamera(ndc, camera);
+    return raycaster.ray;
+  }
+
+  /** The nearest thing the ray meets that this camera mode lets you pick. */
+  function pickRay(ray: THREE.Ray): Pick {
+    if (!hole) return { kind: "rock" };
+    const h = hole;
+    let best: { t: number; pick: Pick } | null = null;
+    const offer = (t: number | null, make: () => Pick) => {
+      if (t !== null && (!best || t < best.t)) best = { t, pick: make() };
+    };
+
+    const pickables: THREE.Object3D[] = [];
+    layoutGroup.traverse((o) => o.userData.pickable && (o as THREE.Mesh).isMesh && pickables.push(o));
+    for (const hit of raycaster.intersectObjects(pickables, false)) {
+      const u = hit.object.userData;
+      // The raycaster ignores clipping: skip what the cutaway has sliced away.
+      if (view.mode === "cutaway" && clip.distanceToPoint(hit.point) < -0.01) continue;
+      // In x-ray the wall and ring 1 are see-through: pick what's behind them.
+      if (view.xray && u.faint) continue;
+      if (u.surface) offer(hit.distance, () => surfacePickAt(hit.point));
+      else offer(hit.distance, () => pickPast(h, ray, hit.distance));
+      break;
+    }
+    // The ground around the rim, for surface buildings.
+    offer(rayPlane(ray, ground), () => {
+      const p = ray.at(rayPlane(ray, ground)!, new THREE.Vector3());
+      return Math.hypot(p.x, p.z) > h.shaftRadiusM ? surfacePickAt(p) : { kind: "rock" };
+    });
+    if (view.mode === "shaft" && !view.xray) {
+      // Empty wall faces are part of the wall mesh; nothing more to add.
+    } else if (view.mode === "shaft" && view.xray) {
+      // Just behind ring 1: ring 2's inner face.
+      const t = rayCylinder(ray, h.shaftRadiusM + RING_D);
+      if (t !== null && inCarvedRegion(h, ray.at(t + 0.1, new THREE.Vector3()))) offer(t, () => pickPast(h, ray, t));
+    } else if (view.mode === "cutaway") {
+      // The sliced section itself: how you reach rings 2 and 3 from outside.
+      const t = rayPlane(ray, clip);
+      if (t !== null && inCarvedRegion(h, ray.at(t, new THREE.Vector3()))) offer(t, () => pickPast(h, ray, t - 0.2));
+    }
+    const b = best as { t: number; pick: Pick } | null;
+    return b ? b.pick : { kind: "rock" };
+  }
+
+  // ---- hover, ghost, halo, selection ----
+
+  const overlayMats = new Map<string, THREE.Material>();
+  function overlayMat(key: string, make: () => THREE.Material): THREE.Material {
+    let m = overlayMats.get(key);
+    if (!m) overlayMats.set(key, (m = make()));
+    return m;
+  }
+  const solid = (color: number, opacity: number) =>
+    // Drawn over everything, so a ghost or halo shows even inside a room or behind the wall.
+    overlayMat(`s:${color}:${opacity}`, () => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
+  const lines = (color: number) => overlayMat(`l:${color}`, () => new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true }));
+
+  function outline(cells: Cell[], color: number): void {
+    if (!layout || !cells.length) return;
+    const geo = roomGeometry(layout, cells);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), lines(color));
+    edges.renderOrder = 10;
+    overlay.add(edges);
+    geo.dispose();
+  }
+
+  function fillCells(cells: Cell[], color: number, opacity: number): void {
+    if (!layout || !cells.length) return;
+    const mesh = new THREE.Mesh(roomGeometry(layout, cells), solid(color, opacity));
+    mesh.renderOrder = 9;
+    overlay.add(mesh);
+  }
+
+  function surfaceMarker(slots: number[], color: number): void {
+    if (!layout || !hole) return;
+    const total = layout.surface.length;
+    const mid = ((Math.min(...slots) + slots.length / 2) / total) * TAU;
+    const r = hole.shaftRadiusM + 16;
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(4 + 3 * slots.length, 32), solid(color, 0.35));
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.set(r * Math.cos(mid), 0.15, r * Math.sin(mid));
+    overlay.add(disc);
+  }
+
+  function markRoom(room: RoomInstance, color: number): void {
+    if (room.at.kind === "surface") surfaceMarker(room.surfaceCells, color);
+    else outline(room.cells, color);
+  }
+
+  /** The room's strongest effect, spread the way the sim spreads it, as tinted cells. */
+  function drawHalo(type: string, cells: Cell[]): void {
+    if (!layout) return;
+    const effects = roomDef(type).effects.filter((e) => !e.residentsOnly && e.radius > 0);
+    if (!effects.length) return;
+    const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
+    const grid = previewEffects(layout, type, cells)[main.type];
+    if (!grid) return;
+    const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+    // Group cells by strength so each band is one mesh.
+    const bands = new Map<number, Cell[]>();
+    grid.forEach((rings, fi) =>
+      rings.forEach((slots, ri) =>
+        slots.forEach((v, slot) => {
+          if (Math.abs(v) < 0.05 || own.has(`${fi + 1}:${ri + 1}:${slot}`)) return;
+          const band = Math.round(v * 3) / 3;
+          if (!bands.has(band)) bands.set(band, []);
+          bands.get(band)!.push({ floor: fi + 1, ring: ri + 1, slot });
+        }),
+      ),
+    );
+    for (const [v, list] of bands) {
+      const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * 0.6;
+      for (const c of list) fillCells([c], v < 0 ? heat.bad : heat.good, alpha);
+    }
+  }
+
+  function drawOverlay(info: HoverInfo | null): void {
+    scene.remove(overlay);
+    overlay.traverse((o) => {
+      if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) o.geometry.dispose();
+    });
+    overlay = new THREE.Group();
+    scene.add(overlay);
+    dirty = true;
+    if (!layout) return;
+    const sel = selected !== null ? layout.rooms.find((r) => r.id === selected) : undefined;
+    if (sel) markRoom(sel, HOVER.selected);
+    if (!info) return;
+    const p = info.pick;
+    if (tool?.kind === "build" && info.check) {
+      const color = info.check.ok ? HOVER.ok : HOVER.bad;
+      const cells = info.check.cells.length ? info.check.cells : p.kind === "slot" ? [p as Cell] : [];
+      fillCells(cells, color, 0.4);
+      outline(cells, color);
+      if (info.check.surfaceCells.length) surfaceMarker(info.check.surfaceCells, color);
+      if (info.check.ok && cells.length) drawHalo(tool.room, cells);
+      return;
+    }
+    if (info.room) {
+      if (info.room.id !== selected || tool?.kind === "demolish") markRoom(info.room, tool?.kind === "demolish" ? HOVER.bad : HOVER.hover);
+      return;
+    }
+    if (p.kind === "slot") outline([p as Cell], HOVER.hover);
+  }
+
+  let pointer: { clientX: number; clientY: number } | null = null;
+
+  function hoverInfo(): HoverInfo | null {
+    if (!layout || !pointer) return null;
+    rayAt(pointer.clientX, pointer.clientY);
+    return hoverInfoFor(layout, resources, tool, pickRay(raycaster.ray));
+  }
+
+  function refreshHover(force = false): void {
+    const info = hoverInfo();
+    const key = hoverKeyFor(info, tool, layout?.version ?? -1, selected) + view.mode + view.xray;
+    if (!force && key === hoverKey) return;
+    hoverKey = key;
+    drawOverlay(info);
+    opts.onHover?.(info);
+  }
+
+  let painting = false;
+  let paintedKey = "";
+  function paint(): void {
+    const info = hoverInfo();
+    if (!info) return;
+    const p = info.pick;
+    if (p.kind !== "slot") return;
+    const key = `${p.floor}:${p.ring}:${p.slot}`;
+    if (key === paintedKey) return;
+    paintedKey = key;
+    const cmd = paintCommand(tool, p);
+    if (cmd) opts.onCommand?.(cmd, true);
+  }
+
   // ---- input ----
 
   let drag: { x: number; y: number; moved: number } | null = null;
 
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
-    drag = { x: e.clientX, y: e.clientY, moved: 0 };
+    pointer = e; // a tap may arrive with no move before it
     canvas.setPointerCapture(e.pointerId);
+    if (paints(tool)) {
+      painting = true;
+      paintedKey = "";
+      paint();
+      return;
+    }
+    drag = { x: e.clientX, y: e.clientY, moved: 0 };
   };
   const onPointerMove = (e: PointerEvent) => {
-    if (!drag) return;
+    pointer = e;
+    if (painting) paint();
+    if (!drag) {
+      refreshHover();
+      return;
+    }
     const dx = e.clientX - drag.x;
     const dy = e.clientY - drag.y;
     drag.moved += Math.abs(dx) + Math.abs(dy);
@@ -282,7 +507,13 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
     applyCamera();
   };
   const onPointerUp = (e: PointerEvent) => {
+    pointer = e;
+    if (drag && drag.moved <= CLICK_SLOP && layout) {
+      const info = hoverInfo();
+      if (info) clickWith(layout, tool, info, opts);
+    }
     drag = null;
+    painting = false;
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
     canvas.style.cursor = "";
   };
@@ -305,7 +536,15 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
   canvas.addEventListener("wheel", onWheel, { passive: false });
-  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+  canvas.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    opts.onCancel?.();
+  });
+  const onPointerLeave = () => {
+    pointer = null;
+    refreshHover();
+  };
+  canvas.addEventListener("pointerleave", onPointerLeave);
 
   // ---- camera toolbar (owned by this view) ----
 
@@ -374,6 +613,8 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
   const stage: Stage = {
     update(snapshot) {
       latest = snapshot;
+      layout = snapshot.layout;
+      resources = snapshot.resources;
       if (snapshot.gameId !== gameId) {
         gameId = snapshot.gameId;
         holeKey = "";
@@ -407,11 +648,21 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
         }
       }
       updateSky(snapshot);
+      refreshHover(); // affordability or the layout may have changed
     },
-    setTool(_t: Tool) {},
-    setSelected() {},
+    setTool(t: Tool) {
+      tool = t;
+      refreshHover(true);
+    },
+    setSelected(id) {
+      selected = id;
+      refreshHover(true);
+    },
     setOverlay() {},
-    setColorBlind() {},
+    setColorBlind(on) {
+      heat = on ? HEAT.colorBlind : HEAT.normal;
+      refreshHover(true);
+    },
     destroy() {
       renderer.setAnimationLoop(null);
       resize.disconnect();
@@ -420,6 +671,7 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
       dispose(holeGroup);
       dispose(digFront);
       disposeRoomMaterials();
+      overlayMats.forEach((m) => m.dispose());
       renderer.dispose();
       canvas.remove();
       bar.remove();
