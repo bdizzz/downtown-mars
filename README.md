@@ -15,7 +15,7 @@ Start a new game and follow your deputy's tutorial, or dive in:
 - **Earth** sends supply drops every few days until you can stand on your own.
 - **Office:** colonists visit with problems. What you promise, they remember.
 - **Overlays** (bottom left) show noise, smell, health, comfort and happiness. **Flows** (top) shows where every resource comes from and goes.
-- **3D view** (V): stand in the shaft, slice the hole open with **Cutaway** to reach rings 2 and 3, or look straight down from the **Top**. **X-ray** fades ring 1 so you can see behind it. Everything you can do in 2D works in 3D.
+- **3D view** (V): stand in the shaft, look anywhere from its centre with **Free** (drag to aim), slice the hole open with **Cutaway** to reach rings 2 and 3, or look straight down from the **Top**. **X-ray** fades ring 1 so you can see behind it. Everything you can do in 2D works in 3D.
 
 ### Controls
 

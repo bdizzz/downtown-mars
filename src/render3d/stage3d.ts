@@ -13,10 +13,11 @@ import { config } from "../sim/config";
 import { buildLayout, disposeLayout, disposeRoomMaterials, roomGeometry, setNightGlow } from "./rooms3d";
 import { Dust, galleryLamps, makeLander, placeLander, setLampGlow, Walkers } from "./scenery3d";
 
-// The 3D view: the same hole as the 2D view, as a real cylinder. Three
+// The 3D view: the same hole as the 2D view, as a real cylinder. Four
 // cameras: standing in the shaft looking at the wall, the way someone on the
-// gallery would; outside the hole with the near half sliced away (cutaway);
-// and straight down the shaft from above. X-ray fades the shaft wall and
+// gallery would; free look from the shaft's axis, aimed anywhere by dragging;
+// outside the hole with the near half sliced away (cutaway); and straight
+// down the shaft from above. X-ray fades the shaft wall and
 // ring 1 so deeper rings show from inside.
 
 const C = {
@@ -39,14 +40,17 @@ const MIN_DIST = 2;
 const CLICK_SLOP = 5;
 const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25 };
 const TOP = { min: 20, max: 300, start: 80 };
+/** Free look: pitch stops just short of straight up or down; zoom narrows the field of view. */
+const FREE = { maxPitch: Math.PI / 2 - 0.02, minFov: 20, maxFov: 90, turn: 0.004 };
 /** How much of the surface still shows in x-ray: enough to keep your bearings. */
 const XRAY_GROUND_OPACITY = 0.2;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
 const SHELL_MARGIN = 6;
 
-type Mode = "shaft" | "cutaway" | "top";
+type Mode = "shaft" | "free" | "cutaway" | "top";
 const MODES: { id: Mode; name: string; hint: string }[] = [
   { id: "shaft", name: "Shaft", hint: "Stand in the shaft and look at the wall" },
+  { id: "free", name: "Free", hint: "Stand at the centre of the shaft and drag to look anywhere" },
   { id: "cutaway", name: "Cutaway", hint: "Look at the hole from outside, sliced open" },
   { id: "top", name: "Top", hint: "Look straight down the shaft" },
 ];
@@ -175,7 +179,17 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
    * `dist` metres away across the shaft. Cutaway: `out` metres from the axis,
    * facing it. Top: `height` metres above the rim, looking down.
    */
-  const cam = { theta: Math.PI / 2, y: -FLOOR_H + EYE_HEIGHT, dist: 14, out: CUTAWAY.start, height: TOP.start };
+  const cam = {
+    theta: Math.PI / 2,
+    y: -FLOOR_H + EYE_HEIGHT,
+    dist: 14,
+    out: CUTAWAY.start,
+    height: TOP.start,
+    /** Free look: where the camera on the axis is pointing, and its field of view. */
+    yaw: Math.PI / 2,
+    pitch: 0,
+    fov: FOV,
+  };
 
   function maxDist(): number {
     // Stay inside the shaft: no further back than just short of the opposite ledge.
@@ -190,6 +204,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     cam.dist = Math.min(maxDist(), Math.max(MIN_DIST, cam.dist));
     cam.out = Math.min(CUTAWAY.max, Math.max(CUTAWAY.min, cam.out));
     cam.height = Math.min(TOP.max, Math.max(TOP.min, cam.height));
+    cam.pitch = Math.min(FREE.maxPitch, Math.max(-FREE.maxPitch, cam.pitch));
+    cam.fov = Math.min(FREE.maxFov, Math.max(FREE.minFov, cam.fov));
     const bottom = -depth() + EYE_HEIGHT;
     cam.y = Math.min(FLOOR_H * 3, Math.max(bottom, cam.y));
   }
@@ -204,6 +220,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const target = out.clone().multiplyScalar(R).setY(cam.y - 0.3 - Math.max(0, cam.y) * 2);
       camera.position.copy(target).addScaledVector(out, -cam.dist).setY(cam.y);
       camera.lookAt(target);
+    } else if (view.mode === "free") {
+      // On the shaft's axis, looking wherever the player has turned.
+      camera.position.set(0, cam.y, 0);
+      const cp = Math.cos(cam.pitch);
+      camera.lookAt(Math.cos(cam.yaw) * cp, cam.y + Math.sin(cam.pitch), Math.sin(cam.yaw) * cp);
     } else if (view.mode === "cutaway") {
       camera.position.copy(out).multiplyScalar(cam.out).setY(cam.y + cam.out * CUTAWAY.lift);
       camera.lookAt(0, cam.y, 0);
@@ -218,13 +239,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     renderer.clippingPlanes = view.mode === "cutaway" ? [clip] : [];
     // Far-off cameras need a farther near plane, or the depth buffer can't tell
     // the ground from the roofs just under it.
-    const near = view.mode === "shaft" ? 0.1 : Math.max(0.5, (view.mode === "top" ? cam.height : cam.out) / 100);
-    if (camera.near !== near) {
+    const inside = view.mode === "shaft" || view.mode === "free";
+    const near = inside ? 0.1 : Math.max(0.5, (view.mode === "top" ? cam.height : cam.out) / 100);
+    const fov = view.mode === "free" ? cam.fov : FOV;
+    if (camera.near !== near || camera.fov !== fov) {
       camera.near = near;
+      camera.fov = fov;
       camera.updateProjectionMatrix();
     }
-    lamp.visible = view.mode === "shaft";
-    fill.intensity = view.mode === "shaft" ? 0.15 : 0.7;
+    lamp.visible = inside;
+    fill.intensity = inside ? 0.15 : 0.7;
     if (shell) shell.visible = view.mode === "cutaway";
     updateReadout();
     dirty = true;
@@ -366,9 +390,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     };
     const placingOnSurface = tool?.kind === "build" && roomDef(tool.room).size === "surface";
     if (!view.xray || placingOnSurface) offer(tGround, groundPick);
-    if (view.mode === "shaft" && !view.xray) {
+    const inShaft = view.mode === "shaft" || view.mode === "free";
+    if (inShaft && !view.xray) {
       // Empty wall faces are part of the wall mesh; nothing more to add.
-    } else if (view.mode === "shaft" && view.xray) {
+    } else if (inShaft && view.xray) {
       // Just behind ring 1: ring 2's inner face.
       const t = rayCylinder(ray, h.shaftRadiusM + RING_D);
       if (t !== null && inCarvedRegion(h, ray.at(t + 0.1, new THREE.Vector3()))) offer(t, () => pickPast(h, ray, t));
@@ -591,9 +616,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const dy = e.clientY - drag.y;
     drag.moved += Math.abs(dx) + Math.abs(dy);
     if (drag.moved > CLICK_SLOP) canvas.style.cursor = "grabbing";
-    // Grab the world: dragging left turns you right, dragging up takes you down.
-    cam.theta += dx * 0.005;
-    if (view.mode !== "top") cam.y += dy * (view.mode === "cutaway" ? 0.15 : 0.05);
+    if (view.mode === "free") {
+      // Grab the view: the world follows the pointer, so dragging up looks down.
+      cam.yaw += dx * FREE.turn * (cam.fov / FOV);
+      cam.pitch += dy * FREE.turn * (cam.fov / FOV);
+    } else {
+      // Grab the world: dragging left turns you right, dragging up takes you down.
+      cam.theta += dx * 0.005;
+      if (view.mode !== "top") cam.y += dy * (view.mode === "cutaway" ? 0.15 : 0.05);
+    }
     drag.x = e.clientX;
     drag.y = e.clientY;
     applyCamera();
@@ -613,7 +644,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     e.preventDefault();
     const zoom = Math.exp(e.deltaY * 0.01);
     if (view.mode === "top") cam.height *= e.ctrlKey ? zoom : Math.exp(e.deltaY * 0.003);
-    else if (e.ctrlKey) {
+    else if (view.mode === "free") {
+      if (e.ctrlKey) cam.fov *= zoom;
+      else {
+        cam.yaw += e.deltaX * 0.003;
+        cam.y -= e.deltaY * 0.03;
+      }
+    } else if (e.ctrlKey) {
       if (view.mode === "shaft") cam.dist *= zoom;
       else cam.out *= zoom;
     } else if (e.shiftKey) cam.theta += e.deltaY * 0.003;
@@ -647,6 +684,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     b.textContent = m.name;
     b.title = m.hint;
     b.onclick = () => {
+      // Coming from the shaft view, keep facing the same way.
+      if (m.id === "free" && view.mode !== "free") {
+        cam.yaw = cam.theta;
+        cam.pitch = 0;
+      }
       view.mode = m.id;
       saveView(view);
       syncBar();
