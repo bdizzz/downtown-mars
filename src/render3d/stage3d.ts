@@ -2,7 +2,8 @@ import * as THREE from "three";
 import type { Hole } from "../sim/geometry";
 import type { Snapshot } from "../sim/snapshot";
 import type { Stage, StageOptions, Tool } from "../view/types";
-import { FLOOR_H, floorSpan, openShaftRadius, slotAngles, TAU } from "./cylinder";
+import { FLOOR_H, floorSpan, openShaftRadius, TAU } from "./cylinder";
+import { buildLayout, disposeLayout, disposeRoomMaterials } from "./rooms3d";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. The camera
 // stands in the shaft and looks at the wall, the way someone on the gallery
@@ -15,12 +16,12 @@ const C = {
   ledge: 0x8f7a6c,
   rail: 0x8a7466,
   ground: 0x7a3b22,
+  stranded: 0xe0503a,
+  digFront: 0xe07a3f,
   nightSky: 0x120a14,
   daySky: 0xc98a5e,
 };
 
-/** Segments per slot face: enough that a narrow hole still looks round. */
-const ARC_STEPS = 4;
 const LEDGE_THICKNESS = 0.4;
 const RAIL_HEIGHT = 1.1;
 const EYE_HEIGHT = 1.7;
@@ -36,6 +37,9 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
     throw new Error("3D needs WebGL, which this browser or device doesn't provide.");
   }
   renderer.setPixelRatio(window.devicePixelRatio);
+  // Filmic tone mapping keeps the lamp-lit wall from blowing out close up.
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.8;
   renderer.setSize(host.clientWidth, host.clientHeight);
   host.appendChild(renderer.domElement);
   const canvas = renderer.domElement;
@@ -48,7 +52,7 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
   scene.add(new THREE.AmbientLight(0xffe0c0, 0.25));
   // A warm lamp that travels with the camera, like a colonist's headlamp,
   // so the shaft reads at night too. Proper lighting comes with rooms.
-  const lamp = new THREE.PointLight(0xffd8a8, 250, 60, 1.2);
+  const lamp = new THREE.PointLight(0xffd8a8, 40, 60, 1.2);
   camera.add(lamp);
   scene.add(camera);
   const sun = new THREE.DirectionalLight(0xfff0dd, 1.2);
@@ -58,6 +62,17 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
   // Everything built from the hole's shape lives in one group, rebuilt when the hole changes.
   let holeGroup = new THREE.Group();
   scene.add(holeGroup);
+  // Rooms, the shaft wall around them and surface props: rebuilt when the layout changes.
+  let layoutGroup = new THREE.Group();
+  scene.add(layoutGroup);
+  let layoutKey = "";
+  // The dig front: a glowing line that sinks down the wall of the floor being dug.
+  const digFront = new THREE.Mesh(
+    new THREE.TorusGeometry(1, 0.06, 6, 128),
+    new THREE.MeshStandardMaterial({ color: C.digFront, emissive: C.digFront, emissiveIntensity: 1.5 }),
+  );
+  digFront.rotation.x = Math.PI / 2;
+  scene.add(digFront);
 
   let hole: Hole | null = null;
   let holeKey = "";
@@ -103,21 +118,6 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
     });
   }
 
-  /** A curved vertical face at radius r between two angles and two heights, facing the axis. */
-  function wallFace(r: number, a0: number, a1: number, y0: number, y1: number): THREE.BufferGeometry {
-    const pos: number[] = [];
-    for (let i = 0; i < ARC_STEPS; i++) {
-      const b0 = a0 + ((a1 - a0) * i) / ARC_STEPS;
-      const b1 = a0 + ((a1 - a0) * (i + 1)) / ARC_STEPS;
-      const p = (a: number, y: number) => [r * Math.cos(a), y, r * Math.sin(a)];
-      pos.push(...p(b0, y0), ...p(b1, y0), ...p(b1, y1), ...p(b0, y0), ...p(b1, y1), ...p(b0, y1));
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    g.computeVertexNormals();
-    return g;
-  }
-
   function buildHole(h: Hole): void {
     scene.remove(holeGroup);
     dispose(holeGroup);
@@ -125,20 +125,12 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
 
     const R = h.shaftRadiusM;
     const rOpen = openShaftRadius(h);
-    const n1 = h.ringSlots[0]!;
-    const rock = new THREE.MeshStandardMaterial({ color: C.rock, roughness: 0.95, side: THREE.DoubleSide });
     const rockDark = new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.DoubleSide });
     const ledge = new THREE.MeshStandardMaterial({ color: C.ledge, roughness: 0.8 });
     const rail = new THREE.MeshStandardMaterial({ color: C.rail, metalness: 0.4, roughness: 0.5 });
 
-    // The shaft wall, one face per ring-1 slot per floor, so rooms can replace them later.
     for (let floor = 1; floor <= h.floors; floor++) {
-      const [y0, y1] = floorSpan(floor);
-      for (let slot = 0; slot < n1; slot++) {
-        const [a0, a1] = slotAngles(slot, n1);
-        holeGroup.add(new THREE.Mesh(wallFace(R, a0, a1, y0, y1), rock));
-      }
-
+      const [y0] = floorSpan(floor);
       // The gallery: a ledge ringing the shaft at the floor's base, with a railing on the open side.
       const ring = new THREE.Mesh(new THREE.RingGeometry(rOpen, R, 64), ledge);
       ring.rotation.x = -Math.PI / 2;
@@ -153,12 +145,8 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
       holeGroup.add(railing);
     }
 
-    // The floor being dug: rock walls around, rough rock underfoot.
-    const [dy0, dy1] = floorSpan(h.floors + 1);
-    for (let slot = 0; slot < n1; slot++) {
-      const [a0, a1] = slotAngles(slot, n1);
-      holeGroup.add(new THREE.Mesh(wallFace(R, a0, a1, dy0, dy1), rockDark));
-    }
+    // Rough rock underfoot at the bottom of the floor being dug.
+    const [dy0] = floorSpan(h.floors + 1);
     const bottom = new THREE.Mesh(new THREE.CircleGeometry(R, 64), rockDark);
     bottom.rotation.x = -Math.PI / 2;
     bottom.position.y = dy0;
@@ -181,8 +169,9 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
     const light = f > 0.25 && f < 0.75 ? Math.sin((Math.PI * (f - 0.25)) / 0.5) : 0;
     const sky = new THREE.Color(C.nightSky).lerp(new THREE.Color(C.daySky), light);
     scene.background = sky;
-    hemi.intensity = 0.55 + 0.6 * light;
-    sun.intensity = 0.2 + 1.2 * light;
+    // Deep in the shaft, daylight matters less than the lamps; keep it gentle.
+    hemi.intensity = 0.45 + 0.35 * light;
+    sun.intensity = 0.15 + 0.9 * light;
     // The sun crosses the sky once a day.
     const a = (f - 0.25) * TAU;
     sun.position.set(Math.cos(a) * 100, Math.max(5, Math.sin(a) * 100), 30);
@@ -265,6 +254,27 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
         buildHole(hole);
         applyCamera();
       }
+      const lk = `${snapshot.gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}`;
+      if (lk !== layoutKey) {
+        layoutKey = lk;
+        scene.remove(layoutGroup);
+        disposeLayout(layoutGroup);
+        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded });
+        scene.add(layoutGroup);
+        dirty = true;
+      }
+      const d = snapshot.drill;
+      digFront.visible = d.floor !== null;
+      if (d.floor !== null) {
+        const [, top] = floorSpan(d.floor);
+        const r = snapshot.layout.hole.shaftRadiusM - 0.05;
+        digFront.scale.set(r, r, 1);
+        const y = top - d.progress * FLOOR_H;
+        if (Math.abs(digFront.position.y - y) > 0.01) {
+          digFront.position.y = y;
+          dirty = true;
+        }
+      }
       updateSky(snapshot);
     },
     setTool(_t: Tool) {},
@@ -275,7 +285,10 @@ export async function createStage3D(host: HTMLElement, _opts: StageOptions = {})
       renderer.setAnimationLoop(null);
       resize.disconnect();
       canvas.removeEventListener("wheel", onWheel);
-      dispose(scene);
+      disposeLayout(layoutGroup);
+      dispose(holeGroup);
+      dispose(digFront);
+      disposeRoomMaterials();
       renderer.dispose();
       canvas.remove();
     },
