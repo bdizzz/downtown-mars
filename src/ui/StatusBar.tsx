@@ -2,7 +2,8 @@ import type { HoverInfo } from "../view/types";
 import type { Hole } from "../sim/geometry";
 import { effectAt, FIELD_TYPES } from "../sim/effects";
 import type { Snapshot } from "../sim/snapshot";
-import { signed } from "./format";
+import { num, resName, signed } from "./format";
+import { finishDef } from "../sim/corridors";
 import { roomDef } from "../sim/rooms";
 
 const deg = (turns: number) => `${Math.round(turns * 360)}°`;
@@ -58,7 +59,18 @@ export function StatusBar({ info, snapshot, notice, overlay }: Props) {
     bad = true;
   } else if (info && hole) {
     text = where(info, hole);
-    if (info.check && !info.check.ok) {
+    const e = info.edge;
+    if (e) {
+      const cost = Object.entries(e.cost)
+        .map(([id, v]) => `${num(v)} ${resName(id).toLowerCase()}`)
+        .join(", ");
+      const here = e.finish ? `${finishDef(e.finish).name} corridor${e.linked ? "" : ", not linked to the shaft yet"}` : "";
+      if (e.refusal) {
+        text = `${e.refusal}${here ? ` · ${here}` : ""} · ${text}`;
+        bad = true;
+      } else if (e.erase) text = `Remove this ${here.toLowerCase()} (half refund) · ${text}`;
+      else text = `Carve a corridor here: ${cost} · ${text}`;
+    } else if (info.check && !info.check.ok) {
       text = `${info.check.reason} · ${text}`;
       bad = true;
     } else if (info.check?.ok && snapshot) {

@@ -98,3 +98,14 @@ Tested: cuts, sides, id round-trips, shared borders, shared vertices, picking, l
 - **Retired:** the corridor room is gone. Save version 12 turns each one into bare-rock corridors along its borders with rooms and other old corridor cells, plus a ring-1 cell's spokes to the gallery. The cells become empty (tested with a ring-2 dorm that stays connected).
 - **Tutorial:** life support goes in ring 2 first, then "carve a corridor to it" (met when a linked corridor reaches a room past ring 1).
 - **Scripted players:** they connect each room they place and retry any that are cut off. The playthroughs pass with bounds eased slightly for the rock corridors cost: the child's critical set is up within 8 days of the convoy leaving, and there are 170+ colonists at day 80 (they reach 179).
+
+**Step 3, unrolled view:**
+- **Bands:** corridors are bands 3 m thick at the ring scale (14 px), centred on their border and drawn over the rooms and rock on either side, so a room loses exactly the strip a corridor runs along, even along part of a side. Radial corridors run the full height of their ring, so ring-1 spokes meet the gallery.
+- **Finishes** (`src/render2d/corridorArt.ts`): bare rock is speckled (lightened after the first look), marscrete has expansion joints, brick has staggered courses, metal has grating and rails.
+- **Doors and warnings:** a linked corridor gets a door notch into each room it runs beside (not public rooms, which are open). An unlinked one gets red hatching and a red outline. Corridors on the floor being dug are faint.
+- **Tool:** the palette's Access group has a Corridors entry (C) with the four finishes, each with its cost per 10 m (greyed when short), and an Erase toggle. Shift erases too.
+- **Hover:** the border nearest the pointer in the cell under it. A ghost band shows the finish (green when it can go, red with the reason when not), and the status bar gives the cost or the refusal.
+- **Drag** draws or erases along every border it crosses.
+- The corridor-room drawing and door logic are gone.
+
+Checked in the browser on a migrated v6 save: the migrated bare-rock corridors, a brick corridor dragged between the galley and the life support (doors on both sides), and a Shift-click erase that left the remaining piece hatched as unlinked.

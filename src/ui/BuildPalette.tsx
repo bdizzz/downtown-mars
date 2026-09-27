@@ -6,10 +6,11 @@ import { config } from "../sim/config";
 import { missingCost, siteRefusal } from "../sim/costs";
 import { roomDefs, type RoomDef } from "../sim/rooms";
 import { RoomCard } from "./RoomCard";
+import { corridors } from "../sim/corridors";
+import { resName } from "./format";
 
 /** Keyboard shortcuts for the build tools. R, X, Z and Space are taken. */
 export const HOTKEYS: Record<string, string> = {
-  corridor: "C",
   bunk_dorm: "D",
   galley: "G",
   farm: "F",
@@ -32,10 +33,12 @@ export const HOTKEYS: Record<string, string> = {
   electronics_fab: "N",
 };
 export const DEMOLISH_KEY = "X";
+export const CORRIDOR_KEY = "C";
 
-const CATEGORY_ORDER = ["circulation", "housing", "food", "water", "air", "power", "health", "admin", "industry", "logistics"];
+const CATEGORY_ORDER = ["circulation", "public", "housing", "food", "water", "air", "power", "health", "admin", "industry", "logistics"];
 const CATEGORY_NAMES: Record<string, string> = {
   circulation: "Access",
+  public: "Public spaces",
   housing: "Housing",
   food: "Food",
   water: "Water",
@@ -67,16 +70,60 @@ interface Props {
   highlight: string | null;
   /** What this hole sits on: rooms needing a deposit it lacks are greyed out. */
   deposits: string[];
+  /** The finish the corridor tool last used. */
+  lastFinish: string;
 }
 
-export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo, highlight, deposits }: Props) {
+/** The corridor tool, its finishes and costs, and the eraser. */
+function CorridorTool({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" | "resources">) {
+  const on = tool?.kind === "corridor";
+  return (
+    <>
+      {on && (
+        <div className="finishes">
+          {corridors.finishes.map((f) => {
+            const short = Object.entries(f.cost).some(([id, v]) => (resources[id] ?? 0) < v);
+            const picked = tool.finish === f.id && !tool.erase;
+            return (
+              <button
+                key={f.id}
+                className={`finish${picked ? " on" : ""}${short ? " short" : ""}`}
+                title={f.hint}
+                onClick={() => setTool({ kind: "corridor", finish: f.id, erase: false })}
+              >
+                <span className="chip" style={{ background: f.color, borderColor: f.accent }} />
+                <span className="name">{f.name}</span>
+                <span className="k">{Object.entries(f.cost).map(([id, v]) => `${v} ${resName(id).toLowerCase()}`).join(", ")}</span>
+              </button>
+            );
+          })}
+          <button
+            className={`finish erase${tool.erase ? " on" : ""}`}
+            title="Remove corridors (half refund). Or hold Shift while drawing."
+            onClick={() => setTool({ ...tool, erase: !tool.erase })}
+          >
+            <span className="name">Erase</span>
+            <kbd>⇧</kbd>
+          </button>
+          <p className="k">Per 10 m. Drag along the borders between rooms; each finish is just a look, for now.</p>
+        </div>
+      )}
+    </>
+  );
+}
+
+export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo, highlight, deposits, lastFinish }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
   const buildable = roomDefs.filter((d) => d.buildable);
   const selected = tool?.kind === "build" ? tool.room : null;
   const shown = hovered ?? selected;
   const shownDef = shown ? roomDefs.find((d) => d.id === shown) : undefined;
 
-  const groups = CATEGORY_ORDER.map((cat) => [cat, buildable.filter((d) => d.category === cat)] as const).filter(([, ds]) => ds.length);
+  // Access always shows, for the corridor tool.
+  const groups = CATEGORY_ORDER.map((cat) => [cat, buildable.filter((d) => d.category === cat)] as const).filter(
+    ([cat, ds]) => ds.length || cat === "circulation",
+  );
+  const corridorOn = tool?.kind === "corridor";
 
   return (
     <aside className="palette">
@@ -84,6 +131,21 @@ export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo, 
         {groups.map(([cat, defs]) => (
           <section key={cat}>
             <h2>{CATEGORY_NAMES[cat] ?? cat}</h2>
+            {cat === "circulation" && (
+              <>
+                <button
+                  className={`room-btn${corridorOn ? " on" : ""}${highlight === "tool:corridors" && !corridorOn ? " pulse" : ""}`}
+                  style={{ "--cat": cssColor(CATEGORY_COLORS.circulation!) } as React.CSSProperties}
+                  onClick={() => setTool(corridorOn ? null : { kind: "corridor", finish: lastFinish, erase: false })}
+                  title="Carve corridors along the borders between rooms, back to the shaft"
+                >
+                  <span className="swatch" />
+                  <span className="name">Corridors</span>
+                  <kbd>{CORRIDOR_KEY}</kbd>
+                </button>
+                <CorridorTool tool={tool} setTool={setTool} resources={resources} />
+              </>
+            )}
             {defs.map((def) => {
               const on = def.id === selected;
               const missing = siteRefusal(def.id, deposits) ?? missingCost(resources, def.id);
@@ -129,7 +191,7 @@ export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo, 
       )}
       {!shownDef && (
         <p className="hint">
-          Pick a room, or press its key. <kbd>R</kbd> rotates, <kbd>Esc</kbd> or right-click cancels. Drag to paint corridors.
+          Pick a room, or press its key. <kbd>R</kbd> rotates, <kbd>Esc</kbd> or right-click cancels. Rooms past ring 1 need a corridor (<kbd>C</kbd>) back to the shaft.
         </p>
       )}
     </aside>

@@ -1,10 +1,13 @@
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
-import { neighborCells, roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
+import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
+import { edgeById, edgeSides, nearestEdge, type Edge } from "../sim/edges";
+import { corridors } from "../sim/corridors";
+import { corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
-import { clickWith, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
+import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
 import type { HoverInfo, Stage, StageOptions, Tool } from "../view/types";
 import type { Happiness } from "../sim/happiness";
 import type { DrillView, Snapshot } from "../sim/snapshot";
@@ -22,7 +25,7 @@ import {
 } from "./layout";
 
 export type { HoverInfo, Stage, StageOptions, Tool };
-import { drawGlyph, drawHills, drawLandingPad, drawPod, drawRoverDepot, drawSolarArray, shade, STARS, tint } from "./art";
+import { drawGlyph, drawHills, drawLandingPad, drawPod, drawRoverDepot, drawSolarArray, shade, STARS } from "./art";
 import { CATEGORY_COLORS, HEAT } from "./palette";
 
 // The unrolled view. One full turn of the hole is drawn into shared graphics
@@ -75,6 +78,8 @@ const SURFACE_ROOM_H = 34;
 const GROUND_H = 10;
 const MIN_LABEL_PX = 11; // room labels never render smaller than this on screen
 const LABEL_PX = 12;
+/** A corridor band's thickness: 3 m, at the scale of a ring's depth. */
+const BAND = RING_H * (corridors.widthM / config.geometry.roomDepthM);
 
 export async function createStage(host: HTMLElement, opts: StageOptions = {}): Promise<Stage> {
   const app = new Application();
@@ -301,25 +306,71 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       for (const row of rows) {
         const r = roomsCtx.rect(...rowRect(l.hole, row));
         if (room.planned) r.fill({ color, alpha: 0.3 }).stroke({ color, width: 2 });
-        else r.fill(room.type === "corridor" ? shade(color, 0.15) : color);
+        else r.fill(color);
       }
-      if (room.type === "corridor") drawCorridorFloor(l, room, color);
-      else if (!room.planned) drawFrontage(l, room, rows, color);
+      if (!room.planned) drawFrontage(l, rows, color);
       drawRoomGlyph(l, room, rows, color);
       if (!room.connected) for (const row of rows) roomsCtx.rect(...rowRect(l.hole, row)).stroke({ color: C.bad, width: 3 });
     }
+    drawCorridors(l);
   }
 
-  const isCorridor = (l: Layout, c: Cell) => roomAt(l, c)?.type === "corridor";
+  /** Where a corridor's band sits: centred on its border, carving into both sides. */
+  function bandOf(h: Hole, e: Edge): { x: number; y: number; len: number; along: "h" | "v" } {
+    const maxRings = h.ringSlots.length;
+    if (e.kind === "radial") return { x: e.turn * TURN_W - BAND / 2, y: ringTop(e.floor, e.ring, maxRings), len: RING_H, along: "v" };
+    return { x: e.a0 * TURN_W, y: ringTop(e.floor, e.circle, maxRings) + RING_H - BAND / 2, len: (e.a1 - e.a0) * TURN_W, along: "h" };
+  }
 
   /**
-   * Frontage, picked from each face's neighbor like auto-tiling: windows on
-   * the shaft side of ring 1, a door wherever a face meets a corridor, plain
-   * wall against other rooms.
+   * Corridors, drawn over the rooms: a band in its finish, carved out of
+   * whatever it runs between. A door wherever a linked corridor meets a room;
+   * red hatching on corridors that don't reach the shaft yet.
    */
-  function drawFrontage(l: Layout, room: RoomInstance, rows: ReturnType<typeof cellRows>, color: number): void {
+  function drawCorridors(l: Layout): void {
     const h = l.hole;
-    const maxRings = h.ringSlots.length;
+    for (const [id, finish] of Object.entries(l.corridors)) {
+      const e = edgeById(h, id);
+      if (!e) continue;
+      const planned = e.floor > h.floors;
+      const linked = !!l.corridorLinked?.[id];
+      const b = bandOf(h, e);
+      corridorBand(roomsCtx, b.x, b.y, b.len, BAND, b.along, finish, planned ? 0.45 : 1);
+      const [w, hh] = b.along === "h" ? [b.len, BAND] : [BAND, b.len];
+      if (!linked && !planned) {
+        for (let t = 0; t < b.len; t += 8) {
+          const [x0, y0] = b.along === "h" ? [b.x + t, b.y + BAND] : [b.x, b.y + t + BAND];
+          roomsCtx.moveTo(x0, y0).lineTo(x0 + BAND * 0.7, y0 - BAND * 0.7);
+        }
+        roomsCtx.stroke({ color: C.bad, width: 1.5, alpha: 0.8 });
+        roomsCtx.rect(b.x, b.y, w, hh).stroke({ color: C.bad, width: 1.5 });
+        continue;
+      }
+      // Doors into the rooms on either side (public rooms are open anyway).
+      const [a, z] = edgeSides(h, e);
+      const opens = (c: Cell | null) => {
+        const r = c ? roomAt(l, c) : undefined;
+        return !!r && !r.planned && !roomDef(r.type).public;
+      };
+      if (b.along === "v") {
+        const y = b.y + RING_H / 2 - 7;
+        if (opens(a)) roomsCtx.rect(b.x - 3, y, 3, 14).fill(C.door);
+        if (opens(z)) roomsCtx.rect(b.x + BAND, y, 3, 14).fill(C.door);
+      } else {
+        const mid = b.x + b.len / 2 - 7;
+        if (b.len < 18) continue;
+        if (opens(a)) roomsCtx.rect(mid, b.y - 3, 14, 3).fill(C.door);
+        if (opens(z)) roomsCtx.rect(mid, b.y + BAND, 14, 3).fill(C.door);
+      }
+    }
+  }
+
+  /**
+   * Frontage: windows on the shaft side of ring 1, with a door onto the
+   * gallery; plain wall elsewhere. Doors onto corridors come with the corridors.
+   */
+  function drawFrontage(l: Layout, rows: ReturnType<typeof cellRows>, color: number): void {
+    const h = l.hole;
     const wall = shade(color, 0.45);
     for (const row of rows) {
       const [x, y, w, hh] = rowRect(h, row);
@@ -333,50 +384,6 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         }
         roomsCtx.rect(mid - 5, y, 10, 11).fill(C.door);
       }
-    }
-    const own = new Set(room.cells.map((c) => `${c.ring}:${c.slot}`));
-    for (const nb of neighborCells(h, room.cells)) {
-      if (!isCorridor(l, nb)) continue;
-      // Find the room cell this corridor touches, to place the door on the shared edge.
-      for (const c of room.cells) {
-        const n = h.ringSlots[c.ring - 1]!;
-        const [cx0, cx1] = slotX(c.slot, n);
-        const top = ringTop(c.floor, c.ring, maxRings);
-        if (nb.ring === c.ring) {
-          const left = (c.slot - 1 + n) % n === nb.slot && !own.has(`${c.ring}:${nb.slot}`);
-          const right = (c.slot + 1) % n === nb.slot && !own.has(`${c.ring}:${nb.slot}`);
-          if (left) roomsCtx.rect(cx0, top + RING_H / 2 - 7, 5, 14).fill(C.door);
-          if (right) roomsCtx.rect(cx1 - 5, top + RING_H / 2 - 7, 5, 14).fill(C.door);
-          if (left || right) break;
-        } else if (Math.abs(nb.ring - c.ring) === 1) {
-          const m = h.ringSlots[nb.ring - 1]!;
-          const [nx0, nx1] = slotX(nb.slot, m);
-          const lo = Math.max(cx0, nx0);
-          const hi = Math.min(cx1, nx1);
-          if (hi - lo < 8) continue;
-          const doorY = nb.ring < c.ring ? top : top + RING_H - 5;
-          roomsCtx.rect((lo + hi) / 2 - 6, doorY, 12, 5).fill(C.door);
-          break;
-        }
-      }
-    }
-  }
-
-  /** Floor markings along the way a corridor runs: out from the shaft, around the ring, or both. */
-  function drawCorridorFloor(l: Layout, room: RoomInstance, color: number): void {
-    const h = l.hole;
-    const mark = { color: tint(color, 0.35), width: 1.5, alpha: 0.8 };
-    for (const c of room.cells) {
-      const n = h.ringSlots[c.ring - 1]!;
-      const [x0, x1] = slotX(c.slot, n);
-      const top = ringTop(c.floor, c.ring, h.ringSlots.length);
-      const nbs = neighborCells(h, [c]);
-      const radial = c.ring === 1 || nbs.some((nb) => nb.ring !== c.ring && isCorridor(l, nb));
-      const around = nbs.some((nb) => nb.ring === c.ring && isCorridor(l, nb));
-      const cx = (x0 + x1) / 2;
-      const cy = top + RING_H / 2;
-      if (radial || !around) for (let y = top + 4; y < top + RING_H - 6; y += 8) roomsCtx.moveTo(cx, y).lineTo(cx, y + 4).stroke(mark);
-      if (around) for (let x = x0 + 4; x < x1 - 6; x += 8) roomsCtx.moveTo(x, cy).lineTo(x + 4, cy).stroke(mark);
     }
   }
 
@@ -441,6 +448,17 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     if (!info) return;
     const h = layout.hole;
     const p = info.pick;
+
+    if (info.edge) {
+      const e = edgeById(h, info.edge.id);
+      if (!e) return;
+      const b = bandOf(h, e);
+      const [w, hh] = b.along === "h" ? [b.len, BAND] : [BAND, b.len];
+      const color = info.edge.refusal ? C.bad : info.edge.erase ? C.bad : C.ok;
+      if (!info.edge.erase && !info.edge.refusal && tool?.kind === "corridor") corridorBand(overlayCtx, b.x, b.y, b.len, BAND, b.along, tool.finish, 0.7);
+      overlayCtx.rect(b.x, b.y, w, hh).fill({ color, alpha: info.edge.erase ? 0.35 : 0.15 }).stroke({ color, width: 2.5 });
+      return;
+    }
 
     if (tool?.kind === "build" && info.check) {
       const color = info.check.ok ? C.ok : C.bad;
@@ -577,9 +595,25 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     return [cam.x + (e.clientX - r.left) / cam.zoom, cam.y + (e.clientY - r.top) / cam.zoom];
   }
 
+  /** Shift erases with the corridor tool. */
+  let shift = false;
+
+  /** The border nearest a world point, if it's in a ring. */
+  function edgeAt(x: number, y: number): Edge | null {
+    if (!layout) return null;
+    const h = layout.hole;
+    const p = pick(h, x, y);
+    if (p.kind !== "slot") return null;
+    const v = (y - ringTop(p.floor, p.ring, h.ringSlots.length)) / RING_H;
+    return nearestEdge(h, p.floor, p.ring - 1 + v, x / TURN_W, config.geometry.roomDepthM);
+  }
+
   function hoverInfo(): HoverInfo | null {
     if (!layout || !pointer) return null;
-    return hoverInfoFor(layout, resources, tool, pick(layout.hole, ...screenToWorld(pointer)), deposits);
+    const [x, y] = screenToWorld(pointer);
+    const p = pick(layout.hole, x, y);
+    if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, p, edgeAt(x, y), shift);
+    return hoverInfoFor(layout, resources, tool, p, deposits);
   }
 
   function refreshHover(): void {
@@ -594,15 +628,13 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let paintedKey = "";
 
   function paint(): void {
-    if (!layout || !pointer) return;
-    const p = pick(layout.hole, ...screenToWorld(pointer));
-    if (p.kind !== "slot") return;
-    const key = `${p.floor}:${p.ring}:${p.slot}`;
-    if (key === paintedKey) return;
-    paintedKey = key;
-    const cmd = paintCommand(tool, p);
+    const e = hoverInfo()?.edge;
+    if (!e || e.id === paintedKey) return;
+    paintedKey = e.id;
+    const cmd = paintCommand(tool, e);
     if (cmd) opts.onCommand?.(cmd, true);
   }
+
 
   function click(): void {
     const info = hoverInfo();
@@ -614,6 +646,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
     pointer = e; // a tap may arrive with no move before it
+    shift = e.shiftKey;
     canvas.setPointerCapture(e.pointerId);
     if (paints(tool)) {
       painting = true;
@@ -625,6 +658,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   };
   const onPointerMove = (e: PointerEvent) => {
     pointer = e;
+    shift = e.shiftKey;
     if (painting) paint();
     if (drag) {
       const dx = e.clientX - drag.x;
@@ -673,6 +707,14 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     applyCamera();
   };
 
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key !== "Shift" || shift === (e.type === "keydown")) return;
+    shift = e.type === "keydown";
+    hoverKey = "";
+    refreshHover();
+  };
+  window.addEventListener("keydown", onKey);
+  window.addEventListener("keyup", onKey);
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
@@ -755,6 +797,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     },
     destroy() {
       canvas.removeEventListener("wheel", onWheel);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKey);
       app.destroy({ removeView: true }, { children: true, context: true });
     },
   };

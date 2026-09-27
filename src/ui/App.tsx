@@ -3,7 +3,8 @@ import type React from "react";
 import type { HoverInfo, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import { roomDef, roomDefs } from "../sim/rooms";
-import { BuildPalette, buildTool, DEMOLISH_KEY, HOTKEYS, shapesFor } from "./BuildPalette";
+import { BuildPalette, buildTool, CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, shapesFor } from "./BuildPalette";
+import { corridors } from "../sim/corridors";
 import { FlowPanel } from "./FlowPanel";
 import { Help } from "./Help";
 import { Hud } from "./Hud";
@@ -109,6 +110,12 @@ export function App() {
       setCanUndo(false);
     }
   }, [send, flash]);
+
+  // The corridor tool remembers its finish between uses.
+  const [lastFinish, setLastFinish] = useState(corridors.defaultFinish);
+  useEffect(() => {
+    if (tool?.kind === "corridor") setLastFinish(tool.finish);
+  }, [tool]);
 
   const rotate = useCallback(() => {
     setTool((t) => {
@@ -284,6 +291,10 @@ export function App() {
         stepFloor(e.code === "PageDown" ? 1 : -1);
       }
       const letter = e.key.toUpperCase();
+      if (letter === CORRIDOR_KEY) {
+        setSelected(null);
+        setTool((t) => (t?.kind === "corridor" ? null : { kind: "corridor", finish: lastFinish, erase: false }));
+      }
       if (letter === DEMOLISH_KEY) {
         setSelected(null);
         setTool((t) => (t?.kind === "demolish" ? null : { kind: "demolish" }));
@@ -297,7 +308,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, helpOpen, mapOpen, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor]);
+  }, [menu, helpOpen, mapOpen, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish]);
 
   return (
     <div
@@ -325,6 +336,7 @@ export function App() {
       <div className="main">
         <BuildPalette
           tool={tool}
+          lastFinish={lastFinish}
           setTool={(t) => (setTool(t), setSelected(null))}
           resources={snapshot?.resources ?? {}}
           highlight={highlight}

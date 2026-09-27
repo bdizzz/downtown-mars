@@ -591,16 +591,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let painting = false;
   let paintedKey = "";
   function paint(): void {
-    const info = hoverInfo();
-    if (!info) return;
-    const p = info.pick;
-    if (p.kind !== "slot") return;
-    const key = `${p.floor}:${p.ring}:${p.slot}`;
-    if (key === paintedKey) return;
-    paintedKey = key;
-    const cmd = paintCommand(tool, p);
+    const e = hoverInfo()?.edge;
+    if (!e || e.id === paintedKey) return;
+    paintedKey = e.id;
+    const cmd = paintCommand(tool, e);
     if (cmd) opts.onCommand?.(cmd, true);
   }
+
 
   // ---- input ----
 

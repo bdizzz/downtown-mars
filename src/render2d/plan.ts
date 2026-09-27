@@ -342,14 +342,13 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   }
 
   function paint(): void {
-    const p = pickHere();
-    if (p.kind !== "slot") return;
-    const key = `${p.floor}:${p.ring}:${p.slot}`;
-    if (key === paintedKey) return;
-    paintedKey = key;
-    const cmd = paintCommand(tool, p);
+    const e = hoverInfo()?.edge;
+    if (!e || e.id === paintedKey) return;
+    paintedKey = e.id;
+    const cmd = paintCommand(tool, e);
     if (cmd) opts.onCommand?.(cmd, true);
   }
+
 
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;

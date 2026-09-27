@@ -13,12 +13,32 @@ export type Pick =
   | { kind: "slot"; floor: number; ring: number; slot: number; locked: boolean; digging: boolean; angle: number }
   | { kind: "rock" };
 
-export type Tool = { kind: "build"; room: string; shape: [number, number] } | { kind: "demolish" } | null;
+export type Tool =
+  | { kind: "build"; room: string; shape: [number, number] }
+  | { kind: "demolish" }
+  /** Draw corridors along borders, in a finish; with erase, remove them. */
+  | { kind: "corridor"; finish: string; erase: boolean }
+  | null;
+
+/** The border under the pointer, with the corridor tool. */
+export interface EdgeHover {
+  id: string;
+  /** Already a corridor, and in which finish. */
+  finish?: string;
+  /** Why a corridor can't be drawn here (null: it can). */
+  refusal: string | null;
+  cost: Record<string, number>;
+  /** Linked to the shaft (for existing corridors). */
+  linked?: boolean;
+  /** Removing rather than drawing (erase mode, or Shift held). */
+  erase: boolean;
+}
 
 export interface HoverInfo {
   pick: Pick;
   room?: RoomInstance;
   check?: CheckResult;
+  edge?: EdgeHover;
 }
 
 export interface StageOptions {

@@ -3,7 +3,9 @@ import { config } from "../sim/config";
 import { checkBuild } from "../sim/costs";
 import { roomAt, type Layout, type Location } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
-import type { HoverInfo, Pick, StageOptions, Tool } from "./types";
+import { corridorCost, corridorRefusal, shortfall } from "../sim/corridors";
+import type { Edge } from "../sim/edges";
+import type { EdgeHover, HoverInfo, Pick, StageOptions, Tool } from "./types";
 
 // The rules for turning "what's under the pointer" into hover info and
 // actions. Both views use these, so building, demolishing and selecting
@@ -37,17 +39,42 @@ export function hoverInfoFor(layout: Layout, resources: Record<string, number>, 
   return info;
 }
 
+/** Hover info for the corridor tool: the border under the pointer, and what drawing (or erasing) it would do. */
+export function edgeHoverFor(layout: Layout, resources: Record<string, number>, tool: Extract<Tool, { kind: "corridor" }>, p: Pick, edge: Edge | null, erase: boolean): HoverInfo {
+  const info: HoverInfo = { pick: p };
+  if (!edge) return info;
+  const finish = layout.corridors[edge.id];
+  const removing = erase || tool.erase;
+  let refusal: string | null;
+  if (removing) refusal = finish ? null : "No corridor here to remove";
+  else refusal = corridorRefusal(layout, edge.id);
+  const cost = finish ? {} : corridorCost(layout.hole, edge, tool.finish, config);
+  if (!removing && !refusal) refusal = shortfall(resources, cost);
+  info.edge = { id: edge.id, refusal, cost, erase: removing, ...(finish ? { finish, linked: !!layout.corridorLinked?.[edge.id] } : {}) };
+  return info;
+}
+
+/** The command for drawing (or erasing) a corridor on the border under the pointer. */
+export function corridorCommand(tool: Tool, edge: EdgeHover | undefined): SimCommand | null {
+  if (tool?.kind !== "corridor" || !edge) return null;
+  return edge.erase ? { type: "removeCorridors", edges: [edge.id] } : { type: "drawCorridors", edges: [edge.id], finish: tool.finish };
+}
+
 /** Changes only when what's shown for the hover would change, so views redraw sparingly. */
 export function hoverKeyFor(info: HoverInfo | null, tool: Tool, layoutVersion: number, selected: number | null): string {
   const p = info?.pick;
   // The pointer's exact angle only matters on the surface, where it picks a surface slot.
   const coarse = p && p.kind !== "surface" && "angle" in p ? { ...p, angle: undefined } : p;
-  return JSON.stringify([coarse, info?.room?.id, info?.check, tool, layoutVersion, selected]);
+  return JSON.stringify([coarse, info?.room?.id, info?.check, info?.edge, tool, layoutVersion, selected]);
 }
 
 /** What a click does with the current tool. */
 export function clickWith(layout: Layout, tool: Tool, info: HoverInfo, opts: StageOptions): void {
-  if (tool?.kind === "build") {
+  if (tool?.kind === "corridor") {
+    const cmd = corridorCommand(tool, info.edge);
+    if (cmd && !info.edge?.refusal) opts.onCommand?.(cmd);
+    else if (info.edge?.refusal) opts.onInvalid?.(info.edge.refusal);
+  } else if (tool?.kind === "build") {
     const at = locationFor(info.pick, tool, layout);
     if (at && info.check?.ok) opts.onCommand?.({ type: "build", room: tool.room, at });
     else if (info.check && !info.check.ok) opts.onInvalid?.(info.check.reason);
@@ -58,17 +85,16 @@ export function clickWith(layout: Layout, tool: Tool, info: HoverInfo, opts: Sta
   }
 }
 
-/** With the corridor tool, dragging lays a corridor on every cell it crosses. */
+/** With the corridor tool, dragging draws (or erases) a corridor along every border it crosses. */
 export function paints(tool: Tool): boolean {
-  return tool?.kind === "build" && tool.room === "corridor";
+  return tool?.kind === "corridor";
 }
 
 /**
- * The command for painting onto a cell. It's sent even if our copy of the
- * layout says no: the corridor just painted may not have reached us yet,
- * and the sim decides anyway.
+ * The command for painting a border while dragging. It's sent even if our
+ * copy of the layout says no: the corridor just drawn beside it may not
+ * have reached us yet, and the sim decides anyway.
  */
-export function paintCommand(tool: Tool, p: Pick): SimCommand | null {
-  if (tool?.kind !== "build" || p.kind !== "slot") return null;
-  return { type: "build", room: tool.room, at: { kind: "ring", floor: p.floor, ring: p.ring, slot: p.slot, w: 1, d: 1 } };
+export function paintCommand(tool: Tool, edge: EdgeHover | undefined): SimCommand | null {
+  return corridorCommand(tool, edge);
 }

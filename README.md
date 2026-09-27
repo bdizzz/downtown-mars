@@ -10,7 +10,7 @@ This is an early playtest build: a hole or two, the first hour or so of play. To
 
 Start a new game and follow your deputy's tutorial, or dive in:
 
-- **Build:** pick a room on the left (or press its key), then click a slot. Green means it fits; red says why not. Ring 1 opens onto the shaft; deeper rings need a corridor.
+- **Build:** pick a room on the left (or press its key), then click a slot. Green means it fits; red says why not. Ring 1 opens onto the shaft; deeper rooms need a **corridor** back to it. Press C and drag along the borders between rooms (Shift erases), pick a finish (bare rock, marscrete, brick or metal), or click **Connect** on a cut-off room.
 - **Watch the bar at the top:** oxygen, water, meals and power, with how fast they're changing. Red means it runs out in under two days.
 - **Earth** sends supply drops every few days until you can stand on your own.
 - **Office:** colonists visit with problems. What you promise, they remember.
@@ -28,7 +28,8 @@ Start a new game and follow your deputy's tutorial, or dive in:
 | Space | Pause / resume |
 | Esc | Cancel, close a panel, or open the menu |
 | R | Rotate the room you're placing |
-| C D G F T Y W L K A B S P | Corridor, dorm, galley, farm, tank, recycler, restroom, life support, clinic, admin office, battery, solar, landing pad |
+| C | Corridor tool (drag along borders; Shift erases) |
+| D G F T Y W L K A B S P | Dorm, galley, farm, tank, recycler, restroom, life support, clinic, admin office, battery, solar, landing pad |
 | E Q | School, elder care (unlock with the first child and the first elder) |
 | J | Composter: organic waste and black water into soil |
 | U O H I N | Deep well pump, smelter, machine shop, silicon refinery, electronics fab (some need the right site) |
