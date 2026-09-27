@@ -23,10 +23,24 @@ export interface DrillView {
   ticksLeft: number;
 }
 
-// What the views get to see. Plain data, safe to structured-clone.
+/** One line per hole, for the hole picker and anything network-wide. */
+export interface HoleSummary {
+  id: number;
+  name: string;
+  population: number;
+  /** Visitors waiting at that hole's office. */
+  waiting: number;
+}
+
+// What the views get to see: the hole being looked at, in full, plus a line
+// for every hole. Plain data, safe to structured-clone.
 export interface Snapshot {
   /** Changes when a new game starts or a save loads; the worker sets it. */
   gameId: number;
+  holeId: number;
+  holeName: string;
+  /** Filled in by the worker, which can see the whole world. */
+  holes: HoleSummary[];
   tick: number;
   time: GameTime;
   layout: Layout;
@@ -59,6 +73,9 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
   const needed = floor ? ticksToDig(floor, cfg) : 1;
   return {
     gameId: 0,
+    holeId: state.holeId,
+    holeName: state.name,
+    holes: [],
     tick: state.tick,
     time: gameTime(state.tick, cfg),
     layout: state.layout,

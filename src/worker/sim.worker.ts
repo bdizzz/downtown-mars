@@ -2,14 +2,15 @@
 import { applyCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { deserialize, serialize, summarize } from "../sim/save";
-import { makeSnapshot } from "../sim/snapshot";
-import { createInitialState, type SimState } from "../sim/state";
-import { step } from "../sim/step";
+import { makeSnapshot, type HoleSummary } from "../sim/snapshot";
+import { createWorld, holeById, stepWorld, type World } from "../sim/world";
 import type { FromWorker, ToWorker, WireSnapshot } from "./protocol";
 
 declare const self: DedicatedWorkerGlobalScope;
 
-let state: SimState = createInitialState(config);
+let world: World = createWorld(config);
+/** The hole the player is looking at: commands go to it and snapshots describe it. */
+let activeHoleId = world.holes[0]!.holeId;
 /** Bumps on every new game or load, so views drop what they cached. */
 let gameId = 1;
 let speed = 1;
@@ -21,12 +22,32 @@ function reply(msg: FromWorker): void {
   self.postMessage(msg);
 }
 
+function active() {
+  return holeById(world, activeHoleId) ?? world.holes[0]!;
+}
+
+function summaries(): HoleSummary[] {
+  return world.holes.map((h) => ({
+    id: h.holeId,
+    name: h.name,
+    population: h.population.count,
+    waiting: h.office.waiting.length,
+  }));
+}
+
 function post(): void {
-  const { layout, effects, ...rest } = makeSnapshot(state, config);
-  const key = `${gameId}:${layout.version}`;
+  const hole = active();
+  const { layout, effects, ...rest } = makeSnapshot(hole, config);
+  const key = `${gameId}:${hole.holeId}:${layout.version}`;
   const fresh = key !== sentLayout;
   sentLayout = key;
-  const snapshot: WireSnapshot = { ...rest, gameId, layoutVersion: layout.version, ...(fresh ? { layout, effects } : {}) };
+  const snapshot: WireSnapshot = {
+    ...rest,
+    gameId,
+    holes: summaries(),
+    layoutVersion: layout.version,
+    ...(fresh ? { layout, effects } : {}),
+  };
   reply({ type: "snapshot", snapshot, speed });
 }
 
@@ -38,14 +59,15 @@ function frame(): void {
   // If we fall far behind (tab hidden, slow machine), drop the backlog
   // rather than freezing to catch up.
   const due = Math.min(Math.floor(tickDebt), config.maxTicksPerFrame);
-  for (let i = 0; i < due; i++) step(state, config);
+  for (let i = 0; i < due; i++) stepWorld(world, config);
   tickDebt = due === config.maxTicksPerFrame ? 0 : tickDebt - due;
 
   post();
 }
 
-function replaceState(next: SimState): void {
-  state = next;
+function replaceWorld(next: World): void {
+  world = next;
+  activeHoleId = world.holes[0]!.holeId;
   gameId++;
   tickDebt = 0;
 }
@@ -56,21 +78,24 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     case "setSpeed":
       if (config.speeds.includes(msg.speed)) speed = msg.speed;
       break;
+    case "setActiveHole":
+      if (holeById(world, msg.holeId)) activeHoleId = msg.holeId;
+      break;
     case "command":
       // Applied between ticks, so building works while paused.
-      reply({ type: "commandResult", id: msg.id, result: applyCommand(state, msg.command) });
+      reply({ type: "commandResult", id: msg.id, result: applyCommand(active(), msg.command) });
       break;
     case "save":
-      reply({ type: "saved", id: msg.id, data: serialize(state), summary: summarize(state, config) });
+      reply({ type: "saved", id: msg.id, data: serialize(world), summary: summarize(world, config) });
       break;
     case "load": {
       const r = deserialize(msg.data);
-      if (r.ok) replaceState(r.state);
+      if (r.ok) replaceWorld(r.world);
       reply({ type: "loaded", id: msg.id, result: r.ok ? { ok: true } : { ok: false, reason: r.reason } });
       break;
     }
     case "newGame":
-      replaceState(createInitialState(config));
+      replaceWorld(createWorld(config));
       reply({ type: "loaded", id: msg.id, result: { ok: true } });
       break;
   }

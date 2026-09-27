@@ -11,6 +11,7 @@ interface Props {
   toggleFlows: () => void;
   view: "2d" | "3d";
   toggleView: () => void;
+  setActiveHole: (holeId: number) => void;
   openMenu: () => void;
   /** Tutorial highlight, e.g. "hud:office". */
   highlight: string | null;
@@ -26,7 +27,7 @@ function gameDuration(ticks: number): string {
   return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
 }
 
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, view, toggleView, openMenu, keysEnabled, highlight }: Props) {
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, view, toggleView, setActiveHole, openMenu, keysEnabled, highlight }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
   // Space toggles pause, remembering the last running speed.
   const resumeRef = useRef(1);
@@ -49,6 +50,18 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleF
         ☰
       </button>
       <span className="title">Downtown Mars</span>
+      {snapshot && snapshot.holes.length > 1 ? (
+        <select className="hole-picker" value={snapshot.holeId} onChange={(e) => setActiveHole(Number(e.target.value))} title="Which hole you're looking at">
+          {snapshot.holes.map((h) => (
+            <option key={h.id} value={h.id}>
+              {h.name} · {h.population}
+              {h.waiting ? ` · ${h.waiting} waiting` : ""}
+            </option>
+          ))}
+        </select>
+      ) : (
+        snapshot && <span className="hole-name">{snapshot.holeName}</span>
+      )}
       <span className="clock">
         {t ? `Day ${t.day} · ${pad(t.hour)}:${pad(t.minute)}` : "Connecting…"}
       </span>

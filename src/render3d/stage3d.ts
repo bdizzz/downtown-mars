@@ -169,7 +169,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let lastTick = -1;
   let hole: Hole | null = null;
   let holeKey = "";
-  let gameId = -1;
+  let gameId = "";
   let dirty = true;
 
   // ---- camera ----
@@ -803,9 +803,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         lastTick = snapshot.tick;
         lastTickChange = performance.now();
       }
-      if (snapshot.gameId !== gameId) {
-        gameId = snapshot.gameId;
+      const identity = `${snapshot.gameId}:${snapshot.holeId}`;
+      if (identity !== gameId) {
+        // A new game, a loaded save or another hole: rebuild from scratch.
+        gameId = identity;
         holeKey = "";
+        layoutKey = "";
+        fieldKey = "";
+        selected = null;
       }
       const key = JSON.stringify(snapshot.layout.hole);
       if (key !== holeKey) {
@@ -815,7 +820,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         dust.sync(hole);
         applyCamera();
       }
-      const lk = `${snapshot.gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}`;
+      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}`;
       if (lk !== layoutKey) {
         layoutKey = lk;
         scene.remove(layoutGroup);
@@ -841,7 +846,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       walkers.sync(snapshot.layout.hole, snapshot.population.count);
       updateSky(snapshot);
       const happy = overlayType === "happiness" ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",") : "";
-      const fk = `${overlayType}:${snapshot.gameId}:${snapshot.layout.version}:${happy}:${heat.bad}`;
+      const fk = `${overlayType}:${gameId}:${snapshot.layout.version}:${happy}:${heat.bad}`;
       if (fk !== fieldKey) {
         fieldKey = fk;
         buildField(snapshot);

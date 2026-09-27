@@ -102,7 +102,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let layout: Layout | null = null;
   let holeKey = "";
   let layoutVersion = -1;
-  let gameId = -1;
+  let gameId = "";
   let drill: DrillView | null = null;
   let resources: Record<string, number> = {};
   let selected: number | null = null;
@@ -681,9 +681,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
   return {
     update(snapshot) {
-      if (snapshot.gameId !== gameId) {
-        // A new game or a loaded save: forget everything drawn from the old one.
-        gameId = snapshot.gameId;
+      const identity = `${snapshot.gameId}:${snapshot.holeId}`;
+      if (identity !== gameId) {
+        // A new game, a loaded save or another hole: forget everything drawn from the old one.
+        gameId = identity;
         holeKey = "";
         layoutVersion = -1;
         digKey = "";

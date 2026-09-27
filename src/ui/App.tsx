@@ -26,7 +26,7 @@ import { useSounds } from "./useSounds";
 const NOTICE_MS = 3000;
 
 export function App() {
-  const { snapshot, speed, setSpeed, send, save, load, newGame } = useSim();
+  const { snapshot, speed, setSpeed, setActiveHole, send, save, load, newGame } = useSim();
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [tool, setTool] = useState<Tool>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -184,6 +184,14 @@ export function App() {
     lastDay.current = day;
   }, [day, menu, saveTo, flash, settings.autosave]);
 
+  // Another hole: selections and undo belong to the old one.
+  const holeId = snapshot?.holeId;
+  useEffect(() => {
+    undoStack.current = [];
+    setCanUndo(false);
+    setSelected(null);
+  }, [holeId]);
+
   // A different game (new or loaded) invalidates day tracking.
   const gameId = snapshot?.gameId;
   useEffect(() => {
@@ -265,6 +273,7 @@ export function App() {
         toggleFlows={() => togglePanel("flows")}
         view={settings.view}
         toggleView={() => updateSettings({ view: settings.view === "2d" ? "3d" : "2d" })}
+        setActiveHole={setActiveHole}
         highlight={highlight}
         openMenu={openMenu}
         keysEnabled={!menu}

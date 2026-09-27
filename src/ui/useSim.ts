@@ -50,6 +50,7 @@ export function useSim() {
   );
 
   const setSpeed = useCallback((s: number) => post({ type: "setSpeed", speed: s }), []);
+  const setActiveHole = useCallback((holeId: number) => post({ type: "setActiveHole", holeId }), []);
 
   const send = useCallback(
     async (command: SimCommand): Promise<CommandResult> =>
@@ -74,5 +75,5 @@ export function useSim() {
     [ask],
   );
 
-  return { snapshot, speed, setSpeed, send, save, load, newGame };
+  return { snapshot, speed, setSpeed, setActiveHole, send, save, load, newGame };
 }

@@ -47,7 +47,8 @@ export function slotLabel(slot: Slot): string {
 
 export function describeSave(s: StoredSave): string {
   const when = new Date(s.savedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-  return `Day ${s.summary.day} · ${s.summary.population} colonists · ${s.summary.floors} floors · ${when}`;
+  const holes = (s.summary.holes ?? 1) > 1 ? ` · ${s.summary.holes} holes` : "";
+  return `Day ${s.summary.day} · ${s.summary.population} colonists${holes} · ${s.summary.floors} floors · ${when}`;
 }
 
 /** Offer a save as a .json download. */

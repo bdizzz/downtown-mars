@@ -7,7 +7,8 @@ export type ToWorker =
   | { type: "command"; id: number; command: SimCommand }
   | { type: "save"; id: number }
   | { type: "load"; id: number; data: string }
-  | { type: "newGame"; id: number };
+  | { type: "newGame"; id: number }
+  | { type: "setActiveHole"; holeId: number };
 
 /**
  * The layout and effect field change rarely, so the worker only sends them

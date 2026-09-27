@@ -32,3 +32,7 @@ Decided Sep 27, 2026 (Bryon): milestone 4 is the network (two holes). The map us
 7. **Rovers and trade routes.** Rover depot, routes, trips, ledger entries, a Network panel to set routes. *See:* metal flowing from the ore hole to the other.
 8. **Culture and opinion.** Sliders, drift, opinion from fairness, similarity and decay, shown in the Network panel; opinion nudges trade. *See:* two holes starting to feel differently.
 9. **Balance and tests.** A scripted two-hole playthrough, tuning, and tests for everything that crosses holes. *See:* the network pays off within the first hour.
+
+## Notes as built
+
+**Step 1, world:** `src/sim/world.ts` holds `World { tick, holes, nextHoleId }`; each hole is the existing `SimState`, which gained `holeId`, `name` (Martian craters from `data/network.json`, in order) and `site`. Each hole has its own random stream (the game seed for the first, mixed with the id for the rest), and `stepWorld` steps holes in id order, so the world stays deterministic. The worker keeps an active hole: commands go to it and snapshots describe it, plus a one-line summary per hole. Both views treat (game, hole) as their identity, so switching holes redraws from scratch; the undo list and selection clear too. Saves are version 3: a world; version 1 and 2 single-hole saves upgrade into a world of one (tested). The HUD shows the hole's name, and a picker once there's more than one.
