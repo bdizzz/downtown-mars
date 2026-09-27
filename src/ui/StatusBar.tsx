@@ -1,5 +1,6 @@
 import type { HoverInfo } from "../render2d/stage";
 import type { Hole } from "../sim/geometry";
+import type { Snapshot } from "../sim/snapshot";
 import { roomDef } from "../sim/rooms";
 
 const deg = (turns: number) => `${Math.round(turns * 360)}°`;
@@ -24,11 +25,12 @@ function where(info: HoverInfo, hole: Hole): string {
 
 interface Props {
   info: HoverInfo | null;
-  hole: Hole | undefined;
+  snapshot: Snapshot | null;
   notice: string | null;
 }
 
-export function StatusBar({ info, hole, notice }: Props) {
+export function StatusBar({ info, snapshot, notice }: Props) {
+  const hole = snapshot?.layout.hole;
   let text = "Drag to pan · scroll to move · pinch or ctrl+scroll to zoom";
   let bad = false;
   if (notice) {
@@ -44,7 +46,9 @@ export function StatusBar({ info, hole, notice }: Props) {
     } else if (info.room) {
       const def = roomDef(info.room.type);
       const blueprint = info.room.planned ? " (blueprint)" : "";
-      text = `${def.name}${blueprint}${info.room.connected ? "" : " · no access: connect it with a corridor"} · ${text}`;
+      const st = snapshot?.roomStatus[info.room.id];
+      const running = st && !info.room.planned && info.room.connected ? ` · ${Math.round(st.rate * 100)}%` : "";
+      text = `${def.name}${blueprint}${running}${info.room.connected ? "" : " · no access: connect it with a corridor"} · click for details · ${text}`;
       bad = !info.room.connected;
     }
   }

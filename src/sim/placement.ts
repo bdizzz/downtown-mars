@@ -1,4 +1,4 @@
-import { config, type SimConfig } from "./config";
+import { config, type Priority, type SimConfig } from "./config";
 import { overlappingSlots, ringSize, wrapSlot, type Hole } from "./geometry";
 import { isRoomType, roomDef } from "./rooms";
 
@@ -29,6 +29,10 @@ export interface RoomInstance {
   connected: boolean;
   /** A blueprint on the floor still being dug; switches on when it's done. */
   planned: boolean;
+  /** Who gets workers and inputs first during a shortage. */
+  priority: Priority;
+  /** Farms only. */
+  crop?: string;
 }
 
 export interface Layout {
@@ -169,7 +173,18 @@ export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimCo
   const check = checkPlacement(layout, type, at, cfg);
   if (!check.ok) return check;
   const id = layout.nextRoomId++;
-  layout.rooms.push({ id, type, at, cells: check.cells, surfaceCells: check.surfaceCells, connected: true, planned: check.planned });
+  const def = roomDef(type);
+  layout.rooms.push({
+    id,
+    type,
+    at,
+    cells: check.cells,
+    surfaceCells: check.surfaceCells,
+    connected: true,
+    planned: check.planned,
+    priority: def.priority ?? cfg.economy.defaultPriority,
+    ...(def.defaultCrop ? { crop: def.defaultCrop } : {}),
+  });
   for (const c of check.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = id;
   for (const s of check.surfaceCells) layout.surface[s] = id;
   recomputeAccess(layout);

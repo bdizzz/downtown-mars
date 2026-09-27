@@ -6,6 +6,8 @@ export interface GeometryConfig {
   maxRings: number;
 }
 
+export type Priority = "critical" | "high" | "normal" | "low";
+
 export interface SimConfig {
   ticksPerDay: number;
   startHour: number;
@@ -31,6 +33,27 @@ export interface SimConfig {
     maxFloors: number;
   };
   startingStock: Record<string, number>;
+  colonists: {
+    start: number;
+    needsPerDay: Record<string, number>;
+    makesPerDay: Record<string, number>;
+    /** Health lost per day when a need goes entirely unmet (scaled by the shortfall). */
+    healthLossPerDay: Record<string, number>;
+    noSanitationHealthLossPerDay: number;
+    co2DangerLevel: number;
+    co2HealthLossPerDay: number;
+    healthRecoveryPerDay: number;
+  };
+  economy: {
+    priorities: Priority[];
+    defaultPriority: Priority;
+    /** Life support leaves this much CO2 in the air for farms. */
+    co2ScrubFloor: number;
+    demolishRefund: number;
+    rateSmoothingDays: number;
+    /** Slots a room of each size nominally covers; deep rooms covering more scale up. */
+    nominalSlots: Record<string, number>;
+  };
   landingKit: {
     surface: { room: string; slot: number }[];
     ring: { room: string; floor: number; ring: number; slot: number }[];

@@ -1,7 +1,8 @@
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import type { SimCommand } from "../sim/commands";
 import type { Hole } from "../sim/geometry";
-import { checkPlacement, roomAt, type Cell, type CheckResult, type Layout, type Location, type RoomInstance } from "../sim/placement";
+import { checkBuild } from "../sim/costs";
+import { roomAt, type Cell, type CheckResult, type Layout, type Location, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { DrillView, Snapshot } from "../sim/snapshot";
 import {
@@ -37,6 +38,7 @@ const C = {
   hatch: 0x3f2820,
   seam: 0xe07a3f,
   hover: 0xffe2b0,
+  selected: 0xffffff,
   label: 0xd8c0ae,
   roomText: 0x1a0f0d,
   ok: 0x7fd67f,
@@ -68,11 +70,13 @@ export interface StageOptions {
   onHover?: (info: HoverInfo | null) => void;
   onCommand?: (cmd: SimCommand) => void;
   onCancel?: () => void;
+  onSelect?: (roomId: number | null) => void;
 }
 
 export interface Stage {
   update(snapshot: Snapshot): void;
   setTool(tool: Tool): void;
+  setSelected(roomId: number | null): void;
   destroy(): void;
 }
 
@@ -101,6 +105,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let holeKey = "";
   let layoutVersion = -1;
   let drill: DrillView | null = null;
+  let resources: Record<string, number> = {};
+  let selected: number | null = null;
   let digKey = "";
   let tool: Tool = null;
   let hoverKey = "";
@@ -250,9 +256,21 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     return c;
   }
 
+  function outlineRoom(room: RoomInstance, color: number, width: number): void {
+    if (!layout) return;
+    if (room.at.kind === "surface") {
+      overlayCtx.rect(...surfaceRect(room.surfaceCells, layout.surface.length)).stroke({ color, width });
+    } else {
+      for (const row of cellRows(layout.hole, room.cells)) overlayCtx.rect(...rowRect(layout.hole, row)).stroke({ color, width });
+    }
+  }
+
   function drawOverlay(info: HoverInfo | null): void {
     overlayCtx.clear();
-    if (!layout || !info) return;
+    if (!layout) return;
+    const sel = selected !== null ? layout.rooms.find((r) => r.id === selected) : undefined;
+    if (sel) outlineRoom(sel, C.selected, 3);
+    if (!info) return;
     const h = layout.hole;
     const p = info.pick;
 
@@ -269,12 +287,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
 
     if (info.room) {
-      const color = tool?.kind === "demolish" ? C.bad : C.hover;
-      if (info.room.at.kind === "surface") {
-        overlayCtx.rect(...surfaceRect(info.room.surfaceCells, layout.surface.length)).stroke({ color, width: 3 });
-      } else {
-        for (const row of cellRows(h, info.room.cells)) overlayCtx.rect(...rowRect(h, row)).stroke({ color, width: 3 });
-      }
+      if (info.room.id !== selected || tool?.kind === "demolish") outlineRoom(info.room, tool?.kind === "demolish" ? C.bad : C.hover, 3);
       return;
     }
 
@@ -382,7 +395,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     const info: HoverInfo = { pick: p };
     if (tool?.kind === "build") {
       const at = locationFor(p, tool, layout);
-      if (at) info.check = checkPlacement(layout, tool.room, at);
+      if (at) info.check = checkBuild(layout, resources, tool.room, at);
       return info;
     }
     if (p.kind === "slot") info.room = roomAt(layout, p);
@@ -398,7 +411,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     // The cursor's exact angle only matters on the surface, where it picks a surface slot.
     const p = info?.pick;
     const coarse = p && p.kind !== "surface" && "angle" in p ? { ...p, angle: undefined } : p;
-    const key = JSON.stringify([coarse, info?.room?.id, info?.check, tool, layoutVersion]);
+    const key = JSON.stringify([coarse, info?.room?.id, info?.check, tool, layoutVersion, selected]);
     if (key === hoverKey) return;
     hoverKey = key;
     drawOverlay(info);
@@ -413,6 +426,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       if (at && info.check?.ok) opts.onCommand?.({ type: "build", room: tool.room, at });
     } else if (tool?.kind === "demolish" && info.room) {
       opts.onCommand?.({ type: "demolish", roomId: info.room.id });
+    } else if (!tool) {
+      opts.onSelect?.(info.room?.id ?? null);
     }
   }
 
@@ -506,9 +521,16 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         applyCamera();
       }
       drawSky(snapshot);
+      resources = snapshot.resources;
+      refreshHover(); // affordability may have changed
     },
     setTool(t) {
       tool = t;
+      refreshHover();
+    },
+    setSelected(id) {
+      selected = id;
+      hoverKey = ""; // force a redraw of the selection outline
       refreshHover();
     },
     destroy() {

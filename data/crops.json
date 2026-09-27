@@ -1,0 +1,12 @@
+{
+  "_note": "Per L farm per day, from ROOMS.md Crops. Replaces the farm's rawFood output and its water and power use. Grow time is not modelled yet.",
+  "crops": [
+    { "id": "potatoes", "name": "Potatoes", "group": "staple", "yield": 12, "water": 4, "power": 3 },
+    { "id": "soybeans", "name": "Soybeans", "group": "protein", "yield": 8, "water": 4, "power": 3 },
+    { "id": "wheat", "name": "Wheat", "group": "staple", "yield": 9, "water": 3, "power": 3 },
+    { "id": "barley", "name": "Barley", "group": "staple", "yield": 9, "water": 3, "power": 3 },
+    { "id": "leafyGreens", "name": "Leafy greens", "group": "produce", "yield": 7, "water": 3, "power": 2 },
+    { "id": "mushrooms", "name": "Mushrooms", "group": "protein", "yield": 8, "water": 2, "power": 1 },
+    { "id": "algae", "name": "Algae", "group": "staple", "yield": 14, "water": 6, "power": 2 }
+  ]
+}

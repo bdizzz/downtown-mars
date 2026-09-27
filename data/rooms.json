@@ -34,8 +34,8 @@
     {
       "id": "galley", "name": "Galley", "short": "Galley", "category": "food",
       "size": "S", "staff": 2,
-      "uses": { "rawFood": 25, "water": 2, "power": 2 }, "makes": { "organicWaste": 2 },
-      "serves": 25, "acceptsRations": true,
+      "uses": { "rawFood": 25, "water": 2, "power": 2 }, "makes": { "meals": 25, "organicWaste": 2 },
+      "substitutes": { "rawFood": ["rations"] },
       "effects": [{ "type": "smell", "strength": -1, "radius": 1 }],
       "cost": { "rock": 10, "metal": 5 }, "buildable": true
     },
@@ -43,7 +43,7 @@
       "id": "farm", "name": "Farm", "short": "Farm", "category": "food",
       "size": "L", "staff": 6,
       "uses": { "water": 4, "soil": 2, "power": 3, "co2": 2 }, "makes": { "rawFood": 12, "o2": 2 },
-      "growsCrops": true,
+      "growsCrops": true, "defaultCrop": "potatoes",
       "effects": [{ "type": "smell", "strength": -1, "radius": 1 }],
       "cost": { "rock": 30, "metal": 10, "machinery": 2 }, "buildable": true
     },
@@ -70,7 +70,7 @@
       "id": "life_support", "name": "Life support", "short": "Life sup.", "category": "air",
       "size": "L", "staff": 4,
       "uses": { "water": 6, "power": 5 }, "makes": { "o2": 30 }, "scrubs": { "co2": 30 },
-      "defaultPriority": "critical",
+      "priority": "critical",
       "effects": [{ "type": "noise", "strength": -2, "radius": 2 }],
       "cost": { "metal": 25, "machinery": 5, "electronics": 2 }, "buildable": true
     },

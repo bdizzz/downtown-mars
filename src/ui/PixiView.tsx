@@ -9,14 +9,16 @@ interface Props {
   onHover: (info: HoverInfo | null) => void;
   onCommand: (cmd: SimCommand) => void;
   onCancel: () => void;
+  selected: number | null;
+  onSelect: (roomId: number | null) => void;
 }
 
-export function PixiView({ snapshot, tool, onHover, onCommand, onCancel }: Props) {
+export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
-  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel });
-  props.current = { snapshot, tool, onHover, onCommand, onCancel };
+  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect });
+  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect };
 
   useEffect(() => {
     let cancelled = false;
@@ -24,11 +26,13 @@ export function PixiView({ snapshot, tool, onHover, onCommand, onCancel }: Props
       onHover: (i) => props.current.onHover(i),
       onCommand: (c) => props.current.onCommand(c),
       onCancel: () => props.current.onCancel(),
+      onSelect: (id) => props.current.onSelect(id),
     }).then((stage) => {
       // StrictMode mounts twice; the first stage may resolve after cleanup.
       if (cancelled) return stage.destroy();
       stageRef.current = stage;
       stage.setTool(props.current.tool);
+      stage.setSelected(props.current.selected);
       if (props.current.snapshot) stage.update(props.current.snapshot);
     });
     return () => {
@@ -45,6 +49,10 @@ export function PixiView({ snapshot, tool, onHover, onCommand, onCancel }: Props
   useEffect(() => {
     stageRef.current?.setTool(tool);
   }, [tool]);
+
+  useEffect(() => {
+    stageRef.current?.setSelected(selected);
+  }, [selected]);
 
   return <div ref={hostRef} className="pixi-host" />;
 }

@@ -26,6 +26,18 @@ export interface RoomDef {
   effects: EffectDef[];
   cost: Record<string, number>;
   buildable: boolean;
+  /** Inputs that can stand in when the main one runs out, used in order. */
+  substitutes?: Record<string, string[]>;
+  /** Removed from the air, above a reserve left for farms. */
+  scrubs?: Record<string, number>;
+  /** Colonists served by restrooms. */
+  sanitation?: number;
+  /** Share of users' water returned as each kind of wastewater. */
+  returnsWater?: Record<string, number>;
+  growsCrops?: boolean;
+  defaultCrop?: string;
+  priority?: "critical" | "high" | "normal" | "low";
+  ordinanceSlots?: number;
 }
 
 // JSON imports widen literal types, so the shape is checked in tests/rooms.test.ts.

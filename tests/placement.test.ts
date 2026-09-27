@@ -81,7 +81,7 @@ describe("placement rules", () => {
     const c = placeRoom(layout, "corridor", ring(1, 1, 0));
     placeRoom(layout, "bunk_dorm", ring(1, 2, 0, 2));
     expect(layout.rooms.find((r) => r.type === "bunk_dorm")!.connected).toBe(true);
-    applyCommand({ tick: 0, rngState: 0, layout, drill: { active: false, progress: 0 }, resources: {} }, { type: "demolish", roomId: c.id! });
+    applyCommand({ ...createInitialState(config), layout }, { type: "demolish", roomId: c.id! });
     expect(layout.rooms.find((r) => r.type === "bunk_dorm")!.connected).toBe(false);
   });
 });

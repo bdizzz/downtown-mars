@@ -29,7 +29,26 @@
     "maxFloors": 40
   },
   "startingStock": {
-    "rock": 0
+    "rations": 100, "water": 240, "o2": 120, "soil": 40,
+    "rock": 60, "brick": 20, "metal": 60, "machinery": 10, "electronics": 10
+  },
+  "colonists": {
+    "start": 20,
+    "needsPerDay": { "o2": 1, "water": 2, "meals": 1 },
+    "makesPerDay": { "co2": 1, "solidWaste": 1 },
+    "healthLossPerDay": { "o2": 60, "water": 20, "meals": 10 },
+    "noSanitationHealthLossPerDay": 5,
+    "co2DangerLevel": 100,
+    "co2HealthLossPerDay": 15,
+    "healthRecoveryPerDay": 10
+  },
+  "economy": {
+    "priorities": ["critical", "high", "normal", "low"],
+    "defaultPriority": "normal",
+    "co2ScrubFloor": 10,
+    "demolishRefund": 0.5,
+    "rateSmoothingDays": 0.25,
+    "nominalSlots": { "S": 1, "M": 2, "L": 4, "H": 8 }
   },
   "landingKit": {
     "surface": [

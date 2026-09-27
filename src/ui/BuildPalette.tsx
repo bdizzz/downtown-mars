@@ -2,6 +2,7 @@ import { CATEGORY_COLORS, cssColor } from "../render2d/palette";
 import type { Tool } from "../render2d/stage";
 import type React from "react";
 import { config } from "../sim/config";
+import { missingCost } from "../sim/costs";
 import { roomDefs, type RoomDef } from "../sim/rooms";
 
 const COST_ABBR: Record<string, string> = { rock: "R", brick: "B", metal: "M", machinery: "Mc", electronics: "E" };
@@ -19,9 +20,10 @@ export function shapesFor(def: RoomDef): [number, number][] {
 interface Props {
   tool: Tool;
   setTool: (t: Tool) => void;
+  resources: Record<string, number>;
 }
 
-export function BuildPalette({ tool, setTool }: Props) {
+export function BuildPalette({ tool, setTool, resources }: Props) {
   const buildable = roomDefs.filter((d) => d.buildable);
   const selected = tool?.kind === "build" ? tool.room : null;
 
@@ -30,13 +32,14 @@ export function BuildPalette({ tool, setTool }: Props) {
       <h2>Build</h2>
       {buildable.map((def) => {
         const on = def.id === selected;
+        const missing = missingCost(resources, def.id);
         return (
           <button
             key={def.id}
-            className={`room-btn${on ? " on" : ""}`}
+            className={`room-btn${on ? " on" : ""}${missing ? " short" : ""}`}
             style={{ "--cat": cssColor(CATEGORY_COLORS[def.category] ?? 0x888888) } as React.CSSProperties}
             onClick={() => setTool(on ? null : { kind: "build", room: def.id, shape: shapesFor(def)[0]! })}
-            title={costText(def)}
+            title={`Cost: ${costText(def) || "free"}${missing ? ` · ${missing}` : ""}`}
           >
             <span className="swatch" />
             <span className="name">{def.name}</span>

@@ -25,21 +25,23 @@ describe("digging", () => {
 
   it("finishes floor 2 after the right number of ticks and yields its rock", () => {
     const s = createInitialState(config);
+    const rock0 = s.resources.rock ?? 0;
     const needed = ticksToDig(2, config);
     run(s, needed - 1);
     expect(s.layout.hole.floors).toBe(1);
     run(s, 1);
     expect(s.layout.hole.floors).toBe(2);
-    expect(s.resources.rock).toBeCloseTo(rockPerFloor(s, config));
+    expect(s.resources.rock! - rock0).toBeCloseTo(rockPerFloor(s, config));
     expect(makeSnapshot(s, config).drill).toMatchObject({ floor: 3, progress: 0 });
   });
 
   it("stops when paused", () => {
     const s = createInitialState(config);
+    const rock0 = s.resources.rock;
     applyCommand(s, { type: "setDrill", active: false });
     run(s, 50);
     expect(s.drill.progress).toBe(0);
-    expect(s.resources.rock ?? 0).toBe(0);
+    expect(s.resources.rock).toBe(rock0);
   });
 
   it("blueprints on the floor being dug switch on when it's done", () => {

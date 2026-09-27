@@ -46,9 +46,6 @@ export function Hud({ snapshot, speed, setSpeed, setDrill }: Props) {
           </button>
         ))}
       </span>
-      <span className="stock" title="Rock">
-        Rock {Math.floor(snapshot?.resources.rock ?? 0)}
-      </span>
       {drill && (
         <span className="drill">
           {drill.floor ? (

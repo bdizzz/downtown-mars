@@ -20,7 +20,7 @@ Goal: prove the adjacency puzzle is fun inside one hole. Each step ends with som
 
 **Placement (step 3, Sep 27):**
 - Shapes: S 1×1, M 2×1 (along the ring), L 4×1 or 2×2 (wide × deep). No multi-floor rooms in milestone 1.
-- A room's anchor is its innermost ring and lowest slot. Deep rooms take every outer-ring slot whose centre falls in their angle range (the wedge), so a 2×2 farm in rings 1–2 uses 2 + 4 slots.
+- A room's anchor is its innermost ring and lowest slot. Deep rooms take every outer-ring slot whose centre falls in their angle range (the wedge), so a 2×2 farm in rings 1–2 uses 2 + 3 or 4 slots.
 - Access: ring 1 opens onto the gallery; elsewhere a room must touch a corridor that chains back to the gallery. Demolishing a corridor flags stranded rooms instead of deleting them.
 - Surface: 12 slots of 30°. Pod and pad take 2, solar takes 1.
 - Build costs aren't charged yet; that comes with resources in step 5.
@@ -30,6 +30,20 @@ Goal: prove the adjacency puzzle is fun inside one hole. Each step ends with som
 - Floor 2 takes 360 ticks (1.5 days, 90 s at 1x); each deeper floor takes 15% longer. Max 40 floors.
 - Rock comes out gradually: 1 per unlocked ring slot per floor (47 for the starter hole).
 - The floor being dug can hold blueprints, which switch on when it's done.
+
+**Resources and colonists (step 5, Sep 27):**
+- One pool per resource with a capacity: the pod's base storage (`data/resources.json`) plus tanks and batteries. Overflow is lost at the end of each tick.
+- Each tick: staff rooms by priority → run pure producers (solar) → run other rooms by priority at `staffing × scarcest input`, throttled when a non-waste output is full → colonists eat, drink, breathe → cap storage.
+- Power is a flow; only batteries carry it between ticks. No day/night solar curve yet.
+- Galley turns raw food, or Earth rations when there is none, into meals. Colonists eat meals.
+- Life support scrubs CO2 only above a reserve of 10, which farms draw on.
+- Restrooms return drunk water as 75% gray, 25% black, for up to 25 users each.
+- Health (0–100, hole-wide) falls with unmet oxygen, water, meals, sanitation or CO2 over 100, and recovers when all is well. No deaths in milestone 1.
+- Deep rooms scale staff, inputs and outputs by slots covered ÷ nominal slots.
+- Farms pick a crop (`data/crops.json`); switching is instant for now (no grow cycle).
+- Build costs are charged on placement; demolish refunds 50%, blueprints 100%.
+- Starting stock (5 days for 20): rations 100, water 240, O2 120, soil 40, rock 60, brick 20, metal 60, machinery 10, electronics 10. The critical set is affordable on day 1; tier 2 needs Earth drops and digging.
+- Gray and black water use the pod's small built-in tanks; choosing a water tank's type is deferred.
 
 **Gap fills:** Earth supply drops bring colonists and soil; the pod's starter drill digs slowly, costing time and yielding rock.
 

@@ -1,0 +1,22 @@
+{
+  "_note": "baseCapacity is what the landing pod stores before any tanks, batteries or warehouses.",
+  "resources": [
+    { "id": "power", "name": "Power", "group": "power", "baseCapacity": 0, "flow": true },
+    { "id": "o2", "name": "Oxygen", "group": "air", "baseCapacity": 200 },
+    { "id": "co2", "name": "CO2", "group": "air", "baseCapacity": 300, "waste": true },
+    { "id": "water", "name": "Water", "group": "water", "baseCapacity": 250 },
+    { "id": "grayWater", "name": "Gray water", "group": "water", "baseCapacity": 60, "waste": true },
+    { "id": "blackWater", "name": "Black water", "group": "water", "baseCapacity": 30, "waste": true },
+    { "id": "meals", "name": "Meals", "group": "food", "baseCapacity": 30 },
+    { "id": "rawFood", "name": "Raw food", "group": "food", "baseCapacity": 200 },
+    { "id": "rations", "name": "Earth rations", "group": "food", "baseCapacity": 200 },
+    { "id": "soil", "name": "Soil", "group": "food", "baseCapacity": 100 },
+    { "id": "organicWaste", "name": "Organic waste", "group": "waste", "baseCapacity": 50, "waste": true },
+    { "id": "solidWaste", "name": "Solid waste", "group": "waste", "baseCapacity": 100, "waste": true },
+    { "id": "rock", "name": "Rock", "group": "material", "baseCapacity": 400 },
+    { "id": "brick", "name": "Brick", "group": "material", "baseCapacity": 200 },
+    { "id": "metal", "name": "Metal", "group": "material", "baseCapacity": 200 },
+    { "id": "machinery", "name": "Machinery", "group": "material", "baseCapacity": 50 },
+    { "id": "electronics", "name": "Electronics", "group": "material", "baseCapacity": 50 }
+  ]
+}

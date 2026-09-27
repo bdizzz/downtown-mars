@@ -4,7 +4,9 @@ import type { SimCommand } from "../sim/commands";
 import { roomDef } from "../sim/rooms";
 import { BuildPalette, shapesFor } from "./BuildPalette";
 import { Hud } from "./Hud";
+import { Inspector } from "./Inspector";
 import { PixiView } from "./PixiView";
+import { ResourceBar } from "./ResourceBar";
 import { StatusBar } from "./StatusBar";
 import { useSim } from "./useSim";
 
@@ -15,6 +17,7 @@ export function App() {
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [tool, setTool] = useState<Tool>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
   const noticeTimer = useRef<number>(undefined);
 
   const onCommand = useCallback(
@@ -31,7 +34,10 @@ export function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === "Escape") setTool(null);
+      if (e.code === "Escape") {
+        setTool(null);
+        setSelected(null);
+      }
       if (e.code === "KeyR") {
         setTool((t) => {
           if (t?.kind !== "build") return t;
@@ -48,11 +54,23 @@ export function App() {
   return (
     <div className="app">
       <Hud snapshot={snapshot} speed={speed} setSpeed={setSpeed} setDrill={(active) => onCommand({ type: "setDrill", active })} />
+      <ResourceBar s={snapshot} />
       <div className="main">
-        <BuildPalette tool={tool} setTool={setTool} />
-        <PixiView snapshot={snapshot} tool={tool} onHover={setHover} onCommand={onCommand} onCancel={() => setTool(null)} />
+        <BuildPalette tool={tool} setTool={(t) => (setTool(t), setSelected(null))} resources={snapshot?.resources ?? {}} />
+        <PixiView
+          snapshot={snapshot}
+          tool={tool}
+          onHover={setHover}
+          onCommand={onCommand}
+          onCancel={() => setTool(null)}
+          selected={selected}
+          onSelect={setSelected}
+        />
+        {snapshot && selected !== null && (
+          <Inspector s={snapshot} roomId={selected} onCommand={onCommand} onClose={() => setSelected(null)} />
+        )}
       </div>
-      <StatusBar info={hover} hole={snapshot?.layout.hole} notice={notice} />
+      <StatusBar info={hover} snapshot={snapshot} notice={notice} />
     </div>
   );
 }

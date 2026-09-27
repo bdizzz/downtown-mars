@@ -1,5 +1,6 @@
 import type { SimConfig } from "./config";
 import type { Drill } from "./digging";
+import type { Population, RoomStatus } from "./economy";
 import { createHole } from "./geometry";
 import { createLayout, placeRoom, type Layout } from "./placement";
 import { roomDef } from "./rooms";
@@ -11,6 +12,11 @@ export interface SimState {
   drill: Drill;
   /** Stockpiles by resource id. Fractional amounts accumulate between ticks. */
   resources: Record<string, number>;
+  /** Smoothed net change per game day, by resource id. */
+  rates: Record<string, number>;
+  population: Population;
+  workforce: { total: number; employed: number };
+  roomStatus: Record<number, RoomStatus>;
 }
 
 export function createInitialState(cfg: SimConfig): SimState {
@@ -31,6 +37,10 @@ export function createInitialState(cfg: SimConfig): SimState {
     layout,
     drill: { active: true, progress: 0 },
     resources: { ...cfg.startingStock },
+    rates: {},
+    population: { count: cfg.colonists.start, health: 100, needsMet: {}, sanitation: 1 },
+    workforce: { total: cfg.colonists.start, employed: 0 },
+    roomStatus: {},
   };
 }
 
