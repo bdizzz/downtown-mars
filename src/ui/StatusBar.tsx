@@ -1,4 +1,4 @@
-import type { HoverInfo } from "../render2d/stage";
+import type { HoverInfo } from "../view/types";
 import type { Hole } from "../sim/geometry";
 import { effectAt, FIELD_TYPES } from "../sim/effects";
 import type { Snapshot } from "../sim/snapshot";

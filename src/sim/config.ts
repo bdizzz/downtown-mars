@@ -4,6 +4,10 @@ export interface GeometryConfig {
   slotWidthM: number;
   roomDepthM: number;
   maxRings: number;
+  /** Height of one floor, used by the 3D view. */
+  floorHeightM: number;
+  /** Width of the walkway ledge ringing the shaft, used by the 3D view. */
+  galleryWidthM: number;
 }
 
 export type Priority = "critical" | "high" | "normal" | "low";

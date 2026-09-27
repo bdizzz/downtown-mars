@@ -1,4 +1,7 @@
 import type { Hole } from "../sim/geometry";
+import type { Pick } from "../view/types";
+
+export type { Pick };
 
 // Unrolled view layout in world pixels (before zoom). x is angle: one full
 // turn spans TURN_W for every ring, so vertically aligned slots really are
@@ -32,11 +35,6 @@ export function slotX(slot: number, n: number): [number, number] {
   return [(slot / n) * TURN_W, ((slot + 1) / n) * TURN_W];
 }
 
-export type Pick =
-  | { kind: "surface"; angle: number }
-  | { kind: "gallery"; floor: number; angle: number; digging: boolean }
-  | { kind: "slot"; floor: number; ring: number; slot: number; locked: boolean; digging: boolean; angle: number }
-  | { kind: "rock" };
 
 /** What sits at world point (x, y)? x may be any value; it wraps. */
 export function pick(hole: Hole, x: number, y: number): Pick {

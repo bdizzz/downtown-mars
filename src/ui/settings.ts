@@ -13,6 +13,8 @@ export interface Settings {
   /** Orange/blue instead of red/green in overlays. */
   colorBlind: boolean;
   autosave: boolean;
+  /** Which camera the player last used. */
+  view: "2d" | "3d";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -22,6 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
   uiScale: 1,
   colorBlind: false,
   autosave: true,
+  view: "2d",
 };
 
 const KEY = "downtown-mars.settings";

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type React from "react";
 import { CATEGORY_COLORS, cssColor } from "../render2d/palette";
-import type { Tool } from "../render2d/stage";
+import type { Tool } from "../view/types";
 import { config } from "../sim/config";
 import { missingCost } from "../sim/costs";
 import { roomDefs, type RoomDef } from "../sim/rooms";

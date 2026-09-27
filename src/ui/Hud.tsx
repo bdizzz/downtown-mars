@@ -9,6 +9,8 @@ interface Props {
   setDrill: (active: boolean) => void;
   toggleOffice: () => void;
   toggleFlows: () => void;
+  view: "2d" | "3d";
+  toggleView: () => void;
   openMenu: () => void;
   /** Tutorial highlight, e.g. "hud:office". */
   highlight: string | null;
@@ -24,7 +26,7 @@ function gameDuration(ticks: number): string {
   return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
 }
 
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, openMenu, keysEnabled, highlight }: Props) {
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, view, toggleView, openMenu, keysEnabled, highlight }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
   // Space toggles pause, remembering the last running speed.
   const resumeRef = useRef(1);
@@ -81,6 +83,9 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleF
           Office{snapshot.office.waiting.length ? ` · ${snapshot.office.waiting.length} waiting` : ""}
         </button>
       )}
+      <button className="office-btn" onClick={toggleView} title="Switch between the unrolled 2D view and the 3D shaft (V)">
+        {view === "2d" ? "3D view" : "2D view"}
+      </button>
       <button className={`office-btn${pulse("flows")}`} onClick={toggleFlows} title="Where resources come from and go">
         Flows
       </button>

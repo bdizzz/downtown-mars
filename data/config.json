@@ -10,6 +10,8 @@
     "slotWidthM": 10,
     "roomDepthM": 10,
     "maxRings": 6,
+    "floorHeightM": 4,
+    "galleryWidthM": 2,
     "surfaceSlots": 12
   },
   "shapes": {

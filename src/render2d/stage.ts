@@ -1,11 +1,11 @@
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
-import type { SimCommand } from "../sim/commands";
 import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
 import { checkBuild } from "../sim/costs";
-import { neighborCells, roomAt, type Cell, type CheckResult, type Layout, type Location, type RoomInstance } from "../sim/placement";
+import { neighborCells, roomAt, type Cell, type Layout, type Location, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
+import type { HoverInfo, Stage, StageOptions, Tool } from "../view/types";
 import type { Happiness } from "../sim/happiness";
 import type { DrillView, Snapshot } from "../sim/snapshot";
 import {
@@ -21,6 +21,8 @@ import {
   worldHeight,
   type Pick,
 } from "./layout";
+
+export type { HoverInfo, Stage, StageOptions, Tool };
 import { drawGlyph, drawHills, drawLandingPad, drawPod, drawSolarArray, shade, STARS, tint } from "./art";
 import { CATEGORY_COLORS } from "./palette";
 
@@ -79,34 +81,6 @@ const SURFACE_ROOM_H = 34;
 const GROUND_H = 10;
 const MIN_LABEL_PX = 11; // room labels never render smaller than this on screen
 const LABEL_PX = 12;
-
-export type Tool = { kind: "build"; room: string; shape: [number, number] } | { kind: "demolish" } | null;
-
-export interface HoverInfo {
-  pick: Pick;
-  room?: RoomInstance;
-  check?: CheckResult;
-}
-
-export interface StageOptions {
-  onHover?: (info: HoverInfo | null) => void;
-  /** quiet: a failure isn't worth telling the player about (e.g. painting over existing rooms). */
-  onCommand?: (cmd: SimCommand, quiet?: boolean) => void;
-  onCancel?: () => void;
-  onSelect?: (roomId: number | null) => void;
-  /** A click where the room can't go: say why. */
-  onInvalid?: (reason: string) => void;
-}
-
-export interface Stage {
-  update(snapshot: Snapshot): void;
-  setTool(tool: Tool): void;
-  setSelected(roomId: number | null): void;
-  /** Heat map of one neighbor effect over the rooms, or null for none. */
-  setOverlay(type: string | null): void;
-  setColorBlind(on: boolean): void;
-  destroy(): void;
-}
 
 export async function createStage(host: HTMLElement, opts: StageOptions = {}): Promise<Stage> {
   const app = new Application();

@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
-import { createStage, type HoverInfo, type Stage, type Tool } from "../render2d/stage";
+import { createStage } from "../render2d/stage";
+import { createStage3D } from "../render3d/stage3d";
+import type { HoverInfo, Stage, StageOptions, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import type { Snapshot } from "../sim/snapshot";
 
@@ -14,18 +16,28 @@ interface Props {
   onInvalid: (reason: string) => void;
   overlay: string | null;
   colorBlind: boolean;
+  /** Which camera: the unrolled 2D view or the 3D cylinder. */
+  mode: "2d" | "3d";
+  /** The chosen view couldn't start (e.g. no WebGL for 3D). */
+  onViewError: (message: string) => void;
 }
 
-export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind }: Props) {
+const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => Promise<Stage>> = {
+  "2d": createStage,
+  "3d": createStage3D,
+};
+
+/** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
+export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, onViewError }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
-  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind });
-  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind };
+  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, onViewError });
+  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, onViewError };
 
   useEffect(() => {
     let cancelled = false;
-    createStage(hostRef.current!, {
+    CREATE[mode](hostRef.current!, {
       onHover: (i) => props.current.onHover(i),
       onCommand: (c, quiet) => props.current.onCommand(c, quiet),
       onCancel: () => props.current.onCancel(),
@@ -40,13 +52,15 @@ export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selecte
       stage.setOverlay(props.current.overlay);
       stage.setColorBlind(props.current.colorBlind);
       if (props.current.snapshot) stage.update(props.current.snapshot);
+    }, (err: unknown) => {
+      if (!cancelled) props.current.onViewError(err instanceof Error ? err.message : String(err));
     });
     return () => {
       cancelled = true;
       stageRef.current?.destroy();
       stageRef.current = null;
     };
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     if (snapshot) stageRef.current?.update(snapshot);

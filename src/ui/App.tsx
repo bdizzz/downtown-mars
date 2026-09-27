@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type React from "react";
-import type { HoverInfo, Tool } from "../render2d/stage";
+import type { HoverInfo, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import { roomDef, roomDefs } from "../sim/rooms";
 import { BuildPalette, buildTool, DEMOLISH_KEY, HOTKEYS, shapesFor } from "./BuildPalette";
@@ -12,7 +12,7 @@ import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
 import { OverlayPicker } from "./OverlayPicker";
-import { PixiView } from "./PixiView";
+import { ViewHost } from "./ViewHost";
 import { ResourceBar } from "./ResourceBar";
 import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
 import { StatusBar } from "./StatusBar";
@@ -231,6 +231,7 @@ export function App() {
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.code === "KeyR") rotate();
+      if (e.code === "KeyV") updateSettings({ view: settings.view === "2d" ? "3d" : "2d" });
       const letter = e.key.toUpperCase();
       if (letter === DEMOLISH_KEY) {
         setSelected(null);
@@ -245,7 +246,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, helpOpen, tool, selected, panel, openMenu, undo, rotate]);
+  }, [menu, helpOpen, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings]);
 
   return (
     <div
@@ -259,6 +260,8 @@ export function App() {
         setDrill={(active) => onCommand({ type: "setDrill", active })}
         toggleOffice={() => togglePanel("office")}
         toggleFlows={() => togglePanel("flows")}
+        view={settings.view}
+        toggleView={() => updateSettings({ view: settings.view === "2d" ? "3d" : "2d" })}
         highlight={highlight}
         openMenu={openMenu}
         keysEnabled={!menu}
@@ -287,7 +290,7 @@ export function App() {
             />
           )}
           <Messages s={snapshot} />
-          <PixiView
+          <ViewHost
             snapshot={snapshot}
             tool={tool}
             onHover={setHover}
@@ -297,6 +300,11 @@ export function App() {
             onSelect={(id) => (setSelected(id), id !== null && setPanel(null))}
             onInvalid={(reason) => (flash(reason), play("refuse"))}
             colorBlind={settings.colorBlind}
+            mode={settings.view}
+            onViewError={(message) => {
+              flash(message);
+              updateSettings({ view: "2d" });
+            }}
             overlay={overlay}
           />
         </div>

@@ -5,6 +5,7 @@ const GENERAL: [string, string][] = [
   ["Space", "Pause / resume"],
   ["Esc", "Cancel, close a panel, or open the menu"],
   ["R", "Rotate the room you're placing"],
+  ["V", "Switch between the 2D and 3D views"],
   [DEMOLISH_KEY, "Demolish tool"],
   ["⌘Z / Ctrl+Z", "Undo your last placement"],
   ["?", "Show or hide this help"],
