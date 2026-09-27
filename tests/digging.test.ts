@@ -46,7 +46,7 @@ describe("digging", () => {
 
   it("blueprints on the floor being dug switch on when it's done", () => {
     const s = createInitialState(config);
-    expect(applyCommand(s, { type: "build", room: "clinic", at: ring(2, 1, 3) })).toEqual({ ok: true });
+    expect(applyCommand(s, { type: "build", room: "clinic", at: ring(2, 1, 3) })).toMatchObject({ ok: true });
     expect(applyCommand(s, { type: "build", room: "clinic", at: ring(3, 1, 3) })).toMatchObject({ ok: false });
     const clinic = () => s.layout.rooms.find((r) => r.type === "clinic")!;
     expect(clinic().planned).toBe(true);

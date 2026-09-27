@@ -1,66 +1,123 @@
+import { useState } from "react";
+import type React from "react";
 import { CATEGORY_COLORS, cssColor } from "../render2d/palette";
 import type { Tool } from "../render2d/stage";
-import type React from "react";
 import { config } from "../sim/config";
 import { missingCost } from "../sim/costs";
 import { roomDefs, type RoomDef } from "../sim/rooms";
+import { RoomCard } from "./RoomCard";
 
-const COST_ABBR: Record<string, string> = { rock: "R", brick: "B", metal: "M", machinery: "Mc", electronics: "E" };
+/** Keyboard shortcuts for the build tools. R, X, Z and Space are taken. */
+export const HOTKEYS: Record<string, string> = {
+  corridor: "C",
+  bunk_dorm: "D",
+  galley: "G",
+  farm: "F",
+  water_tank: "T",
+  water_recycler: "Y",
+  restroom: "W",
+  life_support: "L",
+  clinic: "K",
+  admin_office: "A",
+  battery_bank: "B",
+  solar_array: "S",
+  landing_pad: "P",
+};
+export const DEMOLISH_KEY = "X";
 
-const costText = (def: RoomDef) =>
-  Object.entries(def.cost)
-    .map(([k, v]) => `${COST_ABBR[k] ?? k} ${v}`)
-    .join(", ");
+const CATEGORY_ORDER = ["circulation", "housing", "food", "water", "air", "power", "health", "admin", "logistics"];
+const CATEGORY_NAMES: Record<string, string> = {
+  circulation: "Access",
+  housing: "Housing",
+  food: "Food",
+  water: "Water",
+  air: "Air",
+  power: "Power",
+  health: "Health",
+  admin: "Administration",
+  logistics: "Logistics",
+};
 
 export function shapesFor(def: RoomDef): [number, number][] {
   if (def.size === "surface") return [[1, 1]];
   return config.shapes[def.size] ?? [[1, 1]];
 }
 
+export function buildTool(def: RoomDef): Tool {
+  return { kind: "build", room: def.id, shape: shapesFor(def)[0]! };
+}
+
 interface Props {
   tool: Tool;
   setTool: (t: Tool) => void;
   resources: Record<string, number>;
+  rotate: () => void;
+  canUndo: boolean;
+  undo: () => void;
 }
 
-export function BuildPalette({ tool, setTool, resources }: Props) {
+export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo }: Props) {
+  const [hovered, setHovered] = useState<string | null>(null);
   const buildable = roomDefs.filter((d) => d.buildable);
   const selected = tool?.kind === "build" ? tool.room : null;
+  const shown = hovered ?? selected;
+  const shownDef = shown ? roomDefs.find((d) => d.id === shown) : undefined;
+
+  const groups = CATEGORY_ORDER.map((cat) => [cat, buildable.filter((d) => d.category === cat)] as const).filter(([, ds]) => ds.length);
 
   return (
     <aside className="palette">
-      <h2>Build</h2>
-      {buildable.map((def) => {
-        const on = def.id === selected;
-        const missing = missingCost(resources, def.id);
-        return (
+      <div className="palette-list">
+        {groups.map(([cat, defs]) => (
+          <section key={cat}>
+            <h2>{CATEGORY_NAMES[cat] ?? cat}</h2>
+            {defs.map((def) => {
+              const on = def.id === selected;
+              const missing = missingCost(resources, def.id);
+              return (
+                <button
+                  key={def.id}
+                  className={`room-btn${on ? " on" : ""}${missing ? " short" : ""}`}
+                  style={{ "--cat": cssColor(CATEGORY_COLORS[def.category] ?? 0x888888) } as React.CSSProperties}
+                  onClick={() => setTool(on ? null : buildTool(def))}
+                  onMouseEnter={() => setHovered(def.id)}
+                  onMouseLeave={() => setHovered(null)}
+                >
+                  <span className="swatch" />
+                  <span className="name">{def.name}</span>
+                  {HOTKEYS[def.id] && <kbd>{HOTKEYS[def.id]}</kbd>}
+                </button>
+              );
+            })}
+          </section>
+        ))}
+        <section>
           <button
-            key={def.id}
-            className={`room-btn${on ? " on" : ""}${missing ? " short" : ""}`}
-            style={{ "--cat": cssColor(CATEGORY_COLORS[def.category] ?? 0x888888) } as React.CSSProperties}
-            onClick={() => setTool(on ? null : { kind: "build", room: def.id, shape: shapesFor(def)[0]! })}
-            title={`Cost: ${costText(def) || "free"}${missing ? ` · ${missing}` : ""}`}
+            className={`room-btn demolish${tool?.kind === "demolish" ? " on" : ""}`}
+            onClick={() => setTool(tool?.kind === "demolish" ? null : { kind: "demolish" })}
           >
-            <span className="swatch" />
-            <span className="name">{def.name}</span>
-            <span className="size">{def.size === "surface" ? "surf" : def.size}</span>
+            <span className="name">Demolish</span>
+            <kbd>{DEMOLISH_KEY}</kbd>
           </button>
-        );
-      })}
-      {tool?.kind === "build" && shapesFor(roomDefs.find((d) => d.id === tool.room)!).length > 1 && (
+          <button className="room-btn" disabled={!canUndo} onClick={undo} title="Undo your last placement for a full refund, within a few game hours">
+            <span className="name">Undo placement</span>
+            <kbd>⌘Z</kbd>
+          </button>
+        </section>
+      </div>
+      {shownDef && (
+        <RoomCard
+          def={shownDef}
+          resources={resources}
+          shape={tool?.kind === "build" && tool.room === shownDef.id ? tool.shape : shapesFor(shownDef)[0]!}
+          onRotate={tool?.kind === "build" && tool.room === shownDef.id && shapesFor(shownDef).length > 1 ? rotate : undefined}
+        />
+      )}
+      {!shownDef && (
         <p className="hint">
-          Shape {tool.shape[0]} wide × {tool.shape[1]} deep · <kbd>R</kbd> to rotate
+          Pick a room, or press its key. <kbd>R</kbd> rotates, <kbd>Esc</kbd> or right-click cancels. Drag to paint corridors.
         </p>
       )}
-      <button
-        className={`room-btn demolish${tool?.kind === "demolish" ? " on" : ""}`}
-        onClick={() => setTool(tool?.kind === "demolish" ? null : { kind: "demolish" })}
-      >
-        <span className="name">Demolish</span>
-      </button>
-      <p className="hint">
-        <kbd>Esc</kbd> or right-click to cancel
-      </p>
     </aside>
   );
 }

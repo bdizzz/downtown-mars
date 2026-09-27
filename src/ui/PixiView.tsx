@@ -7,7 +7,7 @@ interface Props {
   snapshot: Snapshot | null;
   tool: Tool;
   onHover: (info: HoverInfo | null) => void;
-  onCommand: (cmd: SimCommand) => void;
+  onCommand: (cmd: SimCommand, quiet?: boolean) => void;
   onCancel: () => void;
   selected: number | null;
   onSelect: (roomId: number | null) => void;
@@ -25,7 +25,7 @@ export function PixiView({ snapshot, tool, onHover, onCommand, onCancel, selecte
     let cancelled = false;
     createStage(hostRef.current!, {
       onHover: (i) => props.current.onHover(i),
-      onCommand: (c) => props.current.onCommand(c),
+      onCommand: (c, quiet) => props.current.onCommand(c, quiet),
       onCancel: () => props.current.onCancel(),
       onSelect: (id) => props.current.onSelect(id),
     }).then((stage) => {

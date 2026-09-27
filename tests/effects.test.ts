@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
-import { computeEffects, effectAt, effectOnRoom, falloff } from "../src/sim/effects";
+import { computeEffects, effectAt, effectOnRoom, falloff, previewEffects } from "../src/sim/effects";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Layout, type Location } from "../src/sim/placement";
 
@@ -92,5 +92,15 @@ describe("effect field", () => {
     const dorm = placeRoom(l, "bunk_dorm", ring(1, 1, 4, 2));
     const room = l.rooms.find((r) => r.id === dorm.id)!;
     expect(effectOnRoom(computeEffects(l), "noise", room)).toBeCloseTo(-1);
+  });
+});
+
+describe("placement preview", () => {
+  it("shows only the new room's halo", () => {
+    const l = layout();
+    placeRoom(l, "clinic", ring(1, 1, 5)); // an unrelated source, not in the preview
+    const f = previewEffects(l, "life_support", [cell(1, 1, 0), cell(1, 1, 1), cell(1, 1, 2), cell(1, 1, 3)]);
+    expect(effectAt(f, "noise", cell(1, 1, 4))).toBeCloseTo(-4 / 3);
+    expect(effectAt(f, "health", cell(1, 1, 5))).toBe(0);
   });
 });

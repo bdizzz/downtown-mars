@@ -12,13 +12,15 @@ import type { SimState } from "./state";
 export type SimCommand =
   | { type: "build"; room: string; at: Location }
   | { type: "demolish"; roomId: number }
+  | { type: "undoBuild"; roomId: number }
   | { type: "setDrill"; active: boolean }
   | { type: "setCrop"; roomId: number; crop: string }
   | { type: "setPriority"; roomId: number; priority: Priority }
   | { type: "answerVisit"; visitId: number; choice: string }
   | { type: "setOrdinance"; id: string; enacted: boolean };
 
-export type CommandResult = { ok: true } | { ok: false; reason: string };
+/** roomId is set when a build succeeds, so the UI can offer undo. */
+export type CommandResult = { ok: true; roomId?: number } | { ok: false; reason: string };
 
 export function applyCommand(state: SimState, cmd: SimCommand): CommandResult {
   const result = apply(state, cmd);
@@ -35,13 +37,24 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       const r = placeRoom(layout, cmd.room, cmd.at);
       if (!r.ok) return { ok: false, reason: r.reason };
       charge(state.resources, cmd.room);
-      return { ok: true };
+      layout.rooms.find((x) => x.id === r.id)!.builtTick = state.tick;
+      return { ok: true, roomId: r.id! };
     }
     case "demolish": {
       const room = layout.rooms.find((r) => r.id === cmd.roomId);
       const result = demolishRoom(layout, cmd.roomId);
       // Blueprints were never built, so they refund in full.
       if (result.ok && room) refund(state.resources, room.type, room.planned ? 1 : config.economy.demolishRefund);
+      return result;
+    }
+    case "undoBuild": {
+      const room = layout.rooms.find((r) => r.id === cmd.roomId);
+      if (!room) return { ok: false, reason: "Nothing to undo" };
+      if (room.builtTick === undefined || state.tick - room.builtTick > config.economy.undoWindowTicks) {
+        return { ok: false, reason: "Too late to undo: demolish it instead" };
+      }
+      const result = demolishRoom(layout, cmd.roomId);
+      if (result.ok) refund(state.resources, room.type, 1);
       return result;
     }
     case "setDrill":

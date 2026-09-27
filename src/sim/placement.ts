@@ -33,6 +33,8 @@ export interface RoomInstance {
   priority: Priority;
   /** Farms only. */
   crop?: string;
+  /** When it was placed, for undo. Absent for the landing kit and old saves. */
+  builtTick?: number;
 }
 
 export interface Layout {

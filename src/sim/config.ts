@@ -50,6 +50,8 @@ export interface SimConfig {
     /** Life support leaves this much CO2 in the air for farms. */
     co2ScrubFloor: number;
     demolishRefund: number;
+    /** A room can be undone for a full refund this long after it was placed. */
+    undoWindowTicks: number;
     rateSmoothingDays: number;
     /** Slots a room of each size nominally covers; deep rooms covering more scale up. */
     nominalSlots: Record<string, number>;

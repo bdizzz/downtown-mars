@@ -79,6 +79,26 @@ function radiate(layout: Layout, field: EffectField, room: RoomInstance): void {
   }
 }
 
+/**
+ * What a room would radiate if it were placed on these cells: the halo shown
+ * while placing. Only this room's own effects, on an otherwise empty field.
+ */
+export function previewEffects(layout: Layout, type: string, cells: Cell[]): EffectField {
+  const field = emptyField(layout);
+  const ghost: RoomInstance = {
+    id: -1,
+    type,
+    at: { kind: "ring", floor: cells[0]?.floor ?? 1, ring: cells[0]?.ring ?? 1, slot: cells[0]?.slot ?? 0, w: 1, d: 1 },
+    cells,
+    surfaceCells: [],
+    connected: true,
+    planned: false,
+    priority: "normal",
+  };
+  radiate(layout, field, ghost);
+  return field;
+}
+
 export function computeEffects(layout: Layout): EffectField {
   const field = emptyField(layout);
   for (const room of layout.rooms) {

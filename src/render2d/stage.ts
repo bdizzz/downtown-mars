@@ -5,7 +5,7 @@ import { config } from "../sim/config";
 import { checkBuild } from "../sim/costs";
 import { roomAt, type Cell, type CheckResult, type Layout, type Location, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
-import type { EffectField } from "../sim/effects";
+import { previewEffects, type EffectField } from "../sim/effects";
 import type { Happiness } from "../sim/happiness";
 import type { DrillView, Snapshot } from "../sim/snapshot";
 import {
@@ -79,7 +79,8 @@ export interface HoverInfo {
 
 export interface StageOptions {
   onHover?: (info: HoverInfo | null) => void;
-  onCommand?: (cmd: SimCommand) => void;
+  /** quiet: a failure isn't worth telling the player about (e.g. painting over existing rooms). */
+  onCommand?: (cmd: SimCommand, quiet?: boolean) => void;
   onCancel?: () => void;
   onSelect?: (roomId: number | null) => void;
 }
@@ -352,6 +353,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     if (tool?.kind === "build" && info.check) {
       const color = info.check.ok ? C.ok : C.bad;
       const cells = info.check.cells.length ? info.check.cells : p.kind === "slot" ? [p as Cell] : [];
+      if (info.check.ok && cells.length) drawHalo(tool.room, cells);
       for (const row of cellRows(h, cells)) {
         overlayCtx.rect(...rowRect(h, row)).fill({ color, alpha: 0.35 }).stroke({ color, width: 3 });
       }
@@ -374,6 +376,33 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     } else if (p.kind === "gallery") {
       overlayCtx.rect(0, floorTop(p.floor, h.ringSlots.length), TURN_W, GALLERY_H).fill({ color: C.hover, alpha: 0.25 });
     }
+  }
+
+  /**
+   * While placing, show what the room would radiate: its strongest effect,
+   * spread exactly as the sim would spread it.
+   */
+  function drawHalo(type: string, cells: Cell[]): void {
+    if (!layout) return;
+    const effects = roomDef(type).effects.filter((e) => !e.residentsOnly && e.radius > 0);
+    if (!effects.length) return;
+    const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
+    const grid = previewEffects(layout, type, cells)[main.type];
+    if (!grid) return;
+    const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+    const h = layout.hole;
+    grid.forEach((rings, fi) =>
+      rings.forEach((slots, ri) => {
+        const n = h.ringSlots[ri]!;
+        slots.forEach((v, slot) => {
+          if (Math.abs(v) < 0.05 || own.has(`${fi + 1}:${ri + 1}:${slot}`)) return;
+          const [x0, x1] = slotX(slot, n);
+          const y = ringTop(fi + 1, ri + 1, h.ringSlots.length);
+          const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA;
+          overlayCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2).fill({ color: v < 0 ? C.fieldBad : C.fieldGood, alpha });
+        });
+      }),
+    );
   }
 
   function rebuildFloorLabels(h: Hole, digFloor: number | null): void {
@@ -449,6 +478,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   const canvas = app.canvas;
   let drag: { x: number; y: number; moved: number } | null = null;
   let pointer: { clientX: number; clientY: number } | null = null;
+  let painting = false;
 
   function screenToWorld(e: { clientX: number; clientY: number }): [number, number] {
     const r = canvas.getBoundingClientRect();
@@ -493,6 +523,22 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     opts.onHover?.(info);
   }
 
+  /** With the corridor tool, dragging lays a corridor on every cell it crosses. */
+  const paints = () => tool?.kind === "build" && tool.room === "corridor";
+  let paintedKey = "";
+
+  function paint(): void {
+    if (!layout || !pointer || tool?.kind !== "build") return;
+    const p = pick(layout.hole, ...screenToWorld(pointer));
+    if (p.kind !== "slot") return;
+    const key = `${p.floor}:${p.ring}:${p.slot}`;
+    if (key === paintedKey) return;
+    paintedKey = key;
+    // Send it even if our copy of the layout says no: the corridor just
+    // painted may not have reached us yet, and the sim decides anyway.
+    opts.onCommand?.({ type: "build", room: tool.room, at: { kind: "ring", floor: p.floor, ring: p.ring, slot: p.slot, w: 1, d: 1 } }, true);
+  }
+
   function click(): void {
     const info = hoverInfo();
     if (!info || !layout) return;
@@ -511,11 +557,18 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
     pointer = e; // a tap may arrive with no move before it
-    drag = { x: e.clientX, y: e.clientY, moved: 0 };
     canvas.setPointerCapture(e.pointerId);
+    if (paints()) {
+      painting = true;
+      paintedKey = "";
+      paint();
+      return;
+    }
+    drag = { x: e.clientX, y: e.clientY, moved: 0 };
   };
   const onPointerMove = (e: PointerEvent) => {
     pointer = e;
+    if (painting) paint();
     if (drag) {
       const dx = e.clientX - drag.x;
       const dy = e.clientY - drag.y;
@@ -532,6 +585,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     pointer = e;
     if (drag && drag.moved <= CLICK_SLOP) click();
     drag = null;
+    painting = false;
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
     canvas.style.cursor = "";
   };

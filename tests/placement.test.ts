@@ -98,3 +98,25 @@ describe("starting state", () => {
     expect(applyCommand(s, { type: "demolish", roomId: pod.id })).toMatchObject({ ok: false });
   });
 });
+
+describe("undo", () => {
+  const at = { kind: "ring" as const, floor: 1, ring: 1, slot: 3, w: 1, d: 1 };
+
+  it("refunds in full shortly after building", () => {
+    const s = createInitialState(config);
+    const metal = s.resources.metal!;
+    const r = applyCommand(s, { type: "build", room: "water_tank", at });
+    expect(r).toMatchObject({ ok: true, roomId: expect.any(Number) });
+    const roomId = r.ok ? r.roomId! : -1;
+    expect(applyCommand(s, { type: "undoBuild", roomId })).toEqual({ ok: true });
+    expect(s.resources.metal).toBe(metal);
+    expect(s.layout.rooms.some((x) => x.id === roomId)).toBe(false);
+  });
+
+  it("refuses once the window has passed", () => {
+    const s = createInitialState(config);
+    const r = applyCommand(s, { type: "build", room: "water_tank", at });
+    s.tick += config.economy.undoWindowTicks + 1;
+    expect(applyCommand(s, { type: "undoBuild", roomId: r.ok ? r.roomId! : -1 })).toMatchObject({ ok: false });
+  });
+});

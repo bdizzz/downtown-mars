@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HoverInfo, Tool } from "../render2d/stage";
 import type { SimCommand } from "../sim/commands";
-import { roomDef } from "../sim/rooms";
-import { BuildPalette, shapesFor } from "./BuildPalette";
+import { roomDef, roomDefs } from "../sim/rooms";
+import { BuildPalette, buildTool, DEMOLISH_KEY, HOTKEYS, shapesFor } from "./BuildPalette";
 import { Hud } from "./Hud";
 import { Inspector } from "./Inspector";
 import { Menu } from "./Menu";
@@ -37,13 +37,43 @@ export function App() {
     noticeTimer.current = window.setTimeout(() => setNotice(null), NOTICE_MS);
   }, []);
 
+  // Rooms placed this session, newest last, for undo.
+  const undoStack = useRef<number[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+
   const onCommand = useCallback(
-    async (cmd: SimCommand) => {
+    async (cmd: SimCommand, quiet = false) => {
       const result = await send(cmd);
-      if (!result.ok) flash(result.reason);
+      if (!result.ok) {
+        if (!quiet) flash(result.reason);
+      } else if (result.roomId !== undefined) {
+        undoStack.current.push(result.roomId);
+        setCanUndo(true);
+      }
     },
     [send, flash],
   );
+
+  const undo = useCallback(async () => {
+    const roomId = undoStack.current.pop();
+    setCanUndo(undoStack.current.length > 0);
+    if (roomId === undefined) return;
+    const result = await send({ type: "undoBuild", roomId });
+    if (!result.ok) {
+      flash(result.reason);
+      undoStack.current = []; // older ones are older still
+      setCanUndo(false);
+    }
+  }, [send, flash]);
+
+  const rotate = useCallback(() => {
+    setTool((t) => {
+      if (t?.kind !== "build") return t;
+      const shapes = shapesFor(roomDef(t.room));
+      const i = shapes.findIndex(([w, d]) => w === t.shape[0] && d === t.shape[1]);
+      return { ...t, shape: shapes[(i + 1) % shapes.length]! };
+    });
+  }, []);
 
   // The sim stays paused behind any menu.
   useEffect(() => {
@@ -122,11 +152,15 @@ export function App() {
   const gameId = snapshot?.gameId;
   useEffect(() => {
     lastDay.current = null;
+    undoStack.current = [];
+    setCanUndo(false);
   }, [gameId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (menu) return;
+      const target = e.target as HTMLElement | null;
+      if (target && ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) return;
       if (e.code === "Escape") {
         // Esc backs out of whatever is open; with nothing open, it opens the menu.
         if (tool || selected !== null || officeOpen) {
@@ -135,18 +169,28 @@ export function App() {
           setOfficeOpen(false);
         } else openMenu();
       }
-      if (e.code === "KeyR") {
-        setTool((t) => {
-          if (t?.kind !== "build") return t;
-          const shapes = shapesFor(roomDef(t.room));
-          const i = shapes.findIndex(([w, d]) => w === t.shape[0] && d === t.shape[1]);
-          return { ...t, shape: shapes[(i + 1) % shapes.length]! };
-        });
+      if ((e.metaKey || e.ctrlKey) && e.code === "KeyZ") {
+        e.preventDefault();
+        undo();
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.code === "KeyR") rotate();
+      const letter = e.key.toUpperCase();
+      if (letter === DEMOLISH_KEY) {
+        setSelected(null);
+        setTool((t) => (t?.kind === "demolish" ? null : { kind: "demolish" }));
+      }
+      const room = Object.entries(HOTKEYS).find(([, k]) => k === letter)?.[0];
+      const def = room ? roomDefs.find((d) => d.id === room && d.buildable) : undefined;
+      if (def) {
+        setSelected(null);
+        setTool((t) => (t?.kind === "build" && t.room === def.id ? null : buildTool(def)));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, tool, selected, officeOpen, openMenu]);
+  }, [menu, tool, selected, officeOpen, openMenu, undo, rotate]);
 
   return (
     <div className="app">
@@ -161,7 +205,14 @@ export function App() {
       />
       <ResourceBar s={snapshot} />
       <div className="main">
-        <BuildPalette tool={tool} setTool={(t) => (setTool(t), setSelected(null))} resources={snapshot?.resources ?? {}} />
+        <BuildPalette
+          tool={tool}
+          setTool={(t) => (setTool(t), setSelected(null))}
+          resources={snapshot?.resources ?? {}}
+          rotate={rotate}
+          canUndo={canUndo}
+          undo={undo}
+        />
         <div className="view">
           <OverlayPicker overlay={overlay} setOverlay={setOverlay} />
           <Messages s={snapshot} />

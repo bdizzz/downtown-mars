@@ -40,6 +40,15 @@ function effectsHere(s: Snapshot, cell: { floor: number; ring: number; slot: num
     .join(" · ");
 }
 
+/** Average effects over some cells: what a room placed there would live with. */
+function feltOver(s: Snapshot, cells: { floor: number; ring: number; slot: number }[]): string {
+  if (!cells.length) return "";
+  return FIELD_TYPES.map((t) => [t, cells.reduce((sum, c) => sum + effectAt(s.effects, t, c), 0) / cells.length] as const)
+    .filter(([, v]) => Math.abs(v) >= 0.05)
+    .map(([t, v]) => `${t} ${signed(v)}`)
+    .join(", ");
+}
+
 export function StatusBar({ info, snapshot, notice, overlay }: Props) {
   const hole = snapshot?.layout.hole;
   let text = "Drag to pan · scroll to move · pinch or ctrl+scroll to zoom";
@@ -52,8 +61,10 @@ export function StatusBar({ info, snapshot, notice, overlay }: Props) {
     if (info.check && !info.check.ok) {
       text = `${info.check.reason} · ${text}`;
       bad = true;
-    } else if (info.check?.planned) {
-      text = `Blueprint: builds when this floor is dug · ${text}`;
+    } else if (info.check?.ok && snapshot) {
+      const felt = feltOver(snapshot, info.check.cells);
+      const blueprint = info.check.planned ? "Blueprint: builds when this floor is dug · " : "";
+      text = `${blueprint}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
     } else if (info.room) {
       const def = roomDef(info.room.type);
       const blueprint = info.room.planned ? " (blueprint)" : "";
