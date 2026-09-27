@@ -13,6 +13,7 @@ export const HOTKEYS: Record<string, string> = {
   bunk_dorm: "D",
   galley: "G",
   farm: "F",
+  composter: "J",
   water_tank: "T",
   water_recycler: "Y",
   restroom: "W",

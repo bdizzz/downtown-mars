@@ -41,5 +41,12 @@
     "maxPerDay": 3,
     "minAdultsLeft": 4,
     "culturePull": 1
+  },
+  "death": {
+    "_note": "Elders who pass away rest in a crypt. With no crypt space, grief weighs on comfort until it fades. Under 'Return to the soil' they become soil instead.",
+    "soilPerPerson": 10,
+    "griefPerUnrested": 0.3,
+    "griefMaxComfort": -1.5,
+    "griefFadePerDay": 0.1
   }
 }

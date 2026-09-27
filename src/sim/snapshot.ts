@@ -7,7 +7,8 @@ import type { EffectField } from "./effects";
 import type { Deposit, DepositKind } from "./mapgeo";
 import { hasStagingBay, kitProgress } from "./founding";
 import type { Happiness } from "./happiness";
-import { holeGates, stageCounts, type Stage } from "./people";
+import { cryptSpace, holeGates, stageCounts, type Stage } from "./people";
+import { ordinanceDef } from "./ordinances";
 import { elderCoverage, schoolCoverage, type Coverage } from "./care";
 import { birthBlockers, birthsPerDay } from "./births";
 import type { Culture } from "./culture";
@@ -125,6 +126,8 @@ export interface Snapshot {
   /** Places for children and elders. */
   care: { school: Coverage; elders: Coverage };
   births: { blockers: string[]; perDay: number; born: number };
+  /** Where the dead go: crypt places left, how many rest there, grief, and whether they return to the soil. */
+  rest: { space: number; interred: number; grief: number; composting: boolean };
   /** Colonists on the road between holes; the worker fills these in. */
   migrations: { from: number; to: number; count: number; progress: number; daysLeft: number }[];
   /** Where this hole's unhappy colonists are leaving for, if anywhere (worker). */
@@ -180,6 +183,12 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     care: { school: schoolCoverage(state), elders: elderCoverage(state) },
     migrations: [],
     leavingFor: null,
+    rest: {
+      space: cryptSpace(state),
+      interred: state.population.interred ?? 0,
+      grief: state.population.grief ?? 0,
+      composting: state.ordinances.some((id) => ordinanceDef(id).composeDead),
+    },
     births: { blockers: birthBlockers(state), perDay: birthsPerDay(state), born: state.population.born ?? 0 },
     upcoming: [...state.population.cohorts]
       .sort((a, b) => a.until - b.until)

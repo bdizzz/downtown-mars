@@ -190,6 +190,11 @@ export function Inspector({ s, roomId, onCommand, onClose }: Props) {
           {s.care.school.missing > 0 ? `${num(s.care.school.missing)} without a place` : "all with a place"}
         </p>
       ) : null}
+      {def.rests ? (
+        <p>
+          <span className="k">Rests</span> up to {def.rests} · {s.rest.interred} laid to rest here, {s.rest.space} places left
+        </p>
+      ) : null}
       {def.caresForElders ? (
         <p>
           <span className="k">Cares for</span> up to {def.caresForElders} elders · {s.care.elders.who} in the hole,{" "}

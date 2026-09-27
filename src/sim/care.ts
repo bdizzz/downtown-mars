@@ -1,5 +1,5 @@
 import { isActive } from "./economy";
-import { countStage, people } from "./people";
+import { countStage, griefComfort, people } from "./people";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
@@ -44,5 +44,5 @@ export function careFactors(state: SimState): { comfort: number; health: number 
   const e = people.elderCare;
   const families = Math.min(1, (schoolCoverage(state).missing * s.familySize) / pop);
   const burdened = Math.min(1, (elderCoverage(state).missing * e.affectedPerElder) / pop);
-  return { comfort: families * s.unschooledComfort, health: burdened * e.uncaredHealth };
+  return { comfort: families * s.unschooledComfort + griefComfort(state), health: burdened * e.uncaredHealth };
 }

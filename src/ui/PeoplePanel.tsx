@@ -90,6 +90,18 @@ export function PeoplePanel({ s, onClose }: { s: Snapshot; onClose: () => void }
             : `all ${s.care.elders.who} cared for`}
       </p>
 
+      <h3>The departed</h3>
+      <p>
+        {s.rest.composting
+          ? "Under Return to the soil, the dead become soil for the farms."
+          : s.rest.space > 0
+            ? `${s.rest.space} places left in the crypt${s.rest.interred ? `, where ${s.rest.interred} rest` : ""}.`
+            : s.stages.elder > 0 || s.rest.interred > 0
+              ? "No crypt space: those who pass away will have nowhere to rest."
+              : "Nobody has passed away here."}
+      </p>
+      {s.rest.grief >= 0.5 && <p className="warn">The hole grieves for dead with nowhere to rest: comfort is down.</p>}
+
       <h3>Coming up</h3>
       <ul className="upcoming">
         {s.upcoming.map((u, i) => (

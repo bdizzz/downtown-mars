@@ -94,3 +94,15 @@ The one-hour two-hole test now compares against the adaptive solo player, which 
 - **Labor is the late squeeze.** Children, elders and elder care all draw on the same adults, and a hole of 130 can run out of hands for its sixth life support. That's the design's intent, but the spiral from short air to low health to low morale to slower rooms is fast: health can go from 86 to 14 in 4 days.
 - **Soil is the next ceiling.** Farms stall on soil, which only comes from Earth at 15 a drop, so food caps a hole around 130. The catalog's soil sources belong to the full balancing pass.
 - **Old age:** elders pass away peacefully after 30–60 days. Alternatives: they stay until a later milestone adds deaths from events, or they "retire to Earth".
+
+**Follow-ups (Bryon's calls, Sep 27):**
+- **CO2 damage halved:** health now falls 7.5 a day while CO2 is above the danger level, down from 15.
+- **Composter** from ROOMS.md: M, 2 staff, organic waste 4 + black water 2 + power 1 → soil 3, smell −2 r2, rock 15 + metal 5; food group, hotkey J, glyph. The catalog's "Pop 100" unlock isn't modelled, like the other population unlocks.
+- **Crypt** (new; not in the catalog): M, no staff, power 1, holds 40 of the dead for good, brick 20 + rock 10; unlocks with the first elders.
+  - Elders who pass away rest in a crypt if there's space.
+  - Otherwise each unrested death adds grief, which costs 0.3 comfort hole-wide (at most 1.5) and fades 10% a day.
+- **"Return to the soil"** (new ordinance): the dead become 10 soil each (ledger label "Return to the soil") instead of needing a crypt. It costs 0.3 comfort and pushes culture 0.3 toward Mars.
+- **Where it shows:** the People panel has a "The departed" section, and the Inspector shows crypt places. The adaptive bot builds composters when soil runs low and crypts when elders outnumber crypt places.
+- **Effect:** the solo ceiling rose from 123 to 132, and the network reached 205 by day 100.
+- **The next ceiling is power.** Each solar array needs 4 electronics, and Earth sends 3 per drop, so a lone hole browns out around 130 people unless it trades for electronics (silica, wafers, fab). That's the design's "can't grow alone", and it belongs to the full balancing pass.
+- Founding in the bot slipped to about day 45 because the composters compete for metal; the one-hour test bound is now day 50.

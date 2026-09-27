@@ -4,6 +4,7 @@ import { elderCoverage, schoolCoverage } from "../src/sim/care";
 import { beds } from "../src/sim/earth";
 import { careCoverage } from "../src/sim/happiness";
 import { roomDef } from "../src/sim/rooms";
+import { countStage, cryptSpace } from "../src/sim/people";
 import type { SimState } from "../src/sim/state";
 
 // A scripted player that reacts: once a day it looks at what its hole is
@@ -54,6 +55,8 @@ export function wants(hole: SimState): { room: string; crop?: string }[] {
   if (count(hole, "galley") * 25 < pop) out.push({ room: "galley" });
   if (count(hole, "farm") * 12 < pop * 0.6) out.push({ room: "farm", crop: "potatoes" });
   if (hole.population.sanitation < 0.99) out.push({ room: "restroom" });
+  if ((res.soil ?? 0) < 20 && count(hole, "farm") > 0 && (res.organicWaste ?? 0) > 10) out.push({ room: "composter" });
+  if (countStage(hole, "elder") > cryptSpace(hole)) out.push({ room: "crypt" });
   if (careCoverage(hole) < 1) out.push({ room: "clinic" });
   if (schoolCoverage(hole).missing > 0) out.push({ room: "school" });
   if (elderCoverage(hole).missing > 0) out.push({ room: "elder_care" });

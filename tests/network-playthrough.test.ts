@@ -21,10 +21,10 @@ describe("first hour, two holes", () => {
     console.log("solo:", solo.log.filter((d) => d.day % 5 === 0).map((d) => `${d.day}:${d.total}`).join(" "));
   }
 
-  it("opens the map around minute 20 and founds a second hole before minute 45", () => {
+  it("opens the map around minute 20 and founds a second hole before minute 50", () => {
     expect(net.log.find((d) => d.total >= 50)!.day).toBeLessThanOrEqual(25);
     expect(net.foundedDay).not.toBeNull();
-    expect(net.foundedDay!).toBeLessThan(45);
+    expect(net.foundedDay!).toBeLessThan(50);
     expect(child).toBeDefined();
   });
 

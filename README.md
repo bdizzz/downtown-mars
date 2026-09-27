@@ -14,7 +14,7 @@ Start a new game and follow your deputy's tutorial, or dive in:
 - **Watch the bar at the top:** oxygen, water, meals and power, with how fast they're changing. Red means it runs out in under two days.
 - **Earth** sends supply drops every few days until you can stand on your own.
 - **Office:** colonists visit with problems. What you promise, they remember.
-- **People:** everyone starts as a working adult. With a clinic and a happy hole, children are born (they need a school); adults eventually retire as elders (who want elder care). Only adults work. The **People** panel shows what's holding births back, and colonists in a miserable hole move to a happier one.
+- **People:** everyone starts as a working adult. With a clinic and a happy hole, children are born (they need a school); adults eventually retire as elders (who want elder care), and elders pass away in time: build a crypt, or enact Return to the soil. Only adults work. The **People** panel shows what's holding births back, and colonists in a miserable hole move to a happier one.
 - **Room controls:** pause any staffed room, or have it stop at a stock level, from its details panel.
 - **Overlays** (bottom left) show noise, smell, health, comfort and happiness. **Flows** (top) shows where every resource comes from and goes.
 - **More holes:** once the network reaches 50 colonists the map opens. Build a staging bay to gather a seed kit, pick a site on the Map (M) and send a convoy. With two holes, a **rover depot** gives a hole 2 rovers, and the **Network** panel sets up trade routes between holes.
@@ -29,6 +29,7 @@ Start a new game and follow your deputy's tutorial, or dive in:
 | R | Rotate the room you're placing |
 | C D G F T Y W L K A B S P | Corridor, dorm, galley, farm, tank, recycler, restroom, life support, clinic, admin office, battery, solar, landing pad |
 | E Q | School, elder care (unlock with the first child and the first elder) |
+| J | Composter: organic waste and black water into soil |
 | U O H I N | Deep well pump, smelter, machine shop, silicon refinery, electronics fab (some need the right site) |
 | M | Map of Mars |
 | [ ] | Previous / next hole, once you have more than one |

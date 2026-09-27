@@ -589,6 +589,54 @@
         "metal": 5
       },
       "buildable": true
+    },
+    {
+      "id": "composter",
+      "name": "Composter",
+      "short": "Compost",
+      "category": "food",
+      "size": "M",
+      "staff": 2,
+      "uses": {
+        "organicWaste": 4,
+        "blackWater": 2,
+        "power": 1
+      },
+      "makes": {
+        "soil": 3
+      },
+      "effects": [
+        {
+          "type": "smell",
+          "strength": -2,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "rock": 15,
+        "metal": 5
+      },
+      "buildable": true
+    },
+    {
+      "id": "crypt",
+      "name": "Crypt",
+      "short": "Crypt",
+      "category": "health",
+      "size": "M",
+      "staff": 0,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "rests": 40,
+      "unlockedBy": "elders",
+      "effects": [],
+      "cost": {
+        "brick": 20,
+        "rock": 10
+      },
+      "buildable": true
     }
   ]
 }

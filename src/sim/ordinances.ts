@@ -16,6 +16,8 @@ export interface OrdinanceDef {
   /** Added to every home's comfort and health factors. */
   comfort?: number;
   health?: number;
+  /** The dead become soil rather than needing a crypt. */
+  composeDead?: boolean;
   /** Turns away colonists moving from other holes. */
   closedBorders?: boolean;
   /** Nudges the hole's culture target while enacted. */

@@ -1,6 +1,9 @@
 import raw from "../../data/people.json";
 import type { SimConfig } from "./config";
+import { record } from "./ledger";
 import { postMessage } from "./messages";
+import { ordinanceDef } from "./ordinances";
+import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
 // A hole's colonists as a few cohorts: a life stage, a head count, and the
@@ -25,6 +28,7 @@ export const people = raw as unknown as {
   births: { minHappiness: number; perAdultPerDay: number };
   school: { familySize: number; unschooledComfort: number };
   elderCare: { affectedPerElder: number; uncaredHealth: number };
+  death: { soilPerPerson: number; griefPerUnrested: number; griefMaxComfort: number; griefFadePerDay: number };
   migration: {
     leaveBelow: number;
     happierBy: number;
@@ -166,6 +170,47 @@ export function stepAging(state: SimState, cfg: SimConfig): void {
     );
   }
   if (passed) {
-    postMessage(state, cfg, `${passed} ${passed === 1 ? "elder has" : "elders have"} passed away peacefully, after a long life on Mars.`);
+    const where = layToRest(state, passed);
+    postMessage(state, cfg, `${passed} ${passed === 1 ? "elder has" : "elders have"} passed away peacefully, after a long life on Mars. ${where}`);
   }
+}
+
+/** Crypt places left in working crypts. */
+export function cryptSpace(state: SimState): number {
+  const cap = state.layout.rooms.reduce((n, r) => n + (!r.planned && r.connected ? (roomDef(r.type).rests ?? 0) : 0), 0);
+  return Math.max(0, cap - (state.population.interred ?? 0));
+}
+
+/** Where the dead go: back to the soil if the hole has chosen that, else a crypt, else nowhere, and grief. */
+function layToRest(state: SimState, n: number): string {
+  const d = people.death;
+  if (state.ordinances.some((id) => ordinanceDef(id).composeDead)) {
+    const soil = n * d.soilPerPerson;
+    state.resources.soil = (state.resources.soil ?? 0) + soil;
+    record(state, "soil", "in", RETURN_TO_SOIL, soil);
+    return `They return to the soil: ${soil} for the farms.`;
+  }
+  const rest = Math.min(n, cryptSpace(state));
+  state.population.interred = (state.population.interred ?? 0) + rest;
+  const unrested = n - rest;
+  if (unrested > 0) {
+    state.population.grief = (state.population.grief ?? 0) + unrested;
+    return rest > 0 ? "The crypt is full now: build another so the dead can rest." : "There's no crypt to lay them in, and the hole grieves.";
+  }
+  return "They rest in the crypt.";
+}
+
+export const RETURN_TO_SOIL = "Return to the soil";
+
+/** Comfort lost to grief for the dead with nowhere to rest; fades a little each day. */
+export function griefComfort(state: SimState): number {
+  const d = people.death;
+  return Math.max(d.griefMaxComfort, -(state.population.grief ?? 0) * d.griefPerUnrested);
+}
+
+export function stepGrief(state: SimState, cfg: SimConfig): void {
+  const g = state.population.grief ?? 0;
+  if (g <= 0) return;
+  const next = g * (1 - people.death.griefFadePerDay / cfg.ticksPerDay);
+  state.population.grief = next < 0.05 ? 0 : next;
 }

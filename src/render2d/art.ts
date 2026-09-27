@@ -85,6 +85,18 @@ const GLYPHS: Record<string, Glyph> = {
     const b = s * 0.28;
     g.poly([cx - a, cy - b, cx + a, cy - b, cx + a, cy - a, cx + b, cy - a, cx + b, cy + a, cx + a, cy + a, cx + a, cy + b, cx - a, cy + b, cx - a, cy + a, cx - b, cy + a, cx - b, cy - a, cx - a, cy - a]).stroke(line(1.5, c));
   },
+  composter: (g, cx, cy, s, c) => {
+    // A sprout rising from a mound.
+    g.moveTo(cx - s * 0.32, cy + s * 0.28).quadraticCurveTo(cx, cy + s * 0.02, cx + s * 0.32, cy + s * 0.28).closePath().stroke(line(1.5, c));
+    g.moveTo(cx, cy + s * 0.12).lineTo(cx, cy - s * 0.18).stroke(line(1.5, c));
+    g.moveTo(cx, cy - s * 0.08).quadraticCurveTo(cx - s * 0.2, cy - s * 0.12, cx - s * 0.2, cy - s * 0.3).quadraticCurveTo(cx - s * 0.04, cy - s * 0.26, cx, cy - s * 0.08).stroke(line(1.2, c));
+    g.moveTo(cx, cy - s * 0.14).quadraticCurveTo(cx + s * 0.2, cy - s * 0.18, cx + s * 0.2, cy - s * 0.34).quadraticCurveTo(cx + s * 0.04, cy - s * 0.3, cx, cy - s * 0.14).stroke(line(1.2, c));
+  },
+  crypt: (g, cx, cy, s, c) => {
+    // An arched doorway.
+    g.moveTo(cx - s * 0.22, cy + s * 0.3).lineTo(cx - s * 0.22, cy - s * 0.06).arc(cx, cy - s * 0.06, s * 0.22, Math.PI, 0).lineTo(cx + s * 0.22, cy + s * 0.3).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.32, cy + s * 0.3).lineTo(cx + s * 0.32, cy + s * 0.3).stroke(line(1.5, c));
+  },
   school: (g, cx, cy, s, c) => {
     // An open book.
     g.moveTo(cx, cy - s * 0.18).lineTo(cx, cy + s * 0.24).stroke(line(1.5, c));

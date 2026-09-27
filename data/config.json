@@ -46,7 +46,7 @@
     "healthLossPerDay": { "o2": 60, "water": 20, "meals": 10 },
     "noSanitationHealthLossPerDay": 5,
     "co2DangerLevel": 100,
-    "co2HealthLossPerDay": 15,
+    "co2HealthLossPerDay": 7.5,
     "healthRecoveryPerDay": 10
   },
   "economy": {

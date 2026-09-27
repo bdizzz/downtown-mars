@@ -48,6 +48,8 @@ export interface RoomDef {
   stagesSeedKit?: boolean;
   /** Children it teaches. */
   teaches?: number;
+  /** The dead it can hold, for good. */
+  rests?: number;
   /** Elders it looks after. */
   caresForElders?: number;
   /** Not buildable until the hole has reached this (see UNLOCKS in costs.ts). */

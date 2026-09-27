@@ -44,6 +44,16 @@
       "culture": {
         "openness": 0.4
       }
+    },
+    {
+      "id": "return_to_soil",
+      "name": "Return to the soil",
+      "description": "The dead are composted into soil for the farms instead of laid in a crypt. Comfort down slightly: not everyone is at ease with it.",
+      "composeDead": true,
+      "comfort": -0.3,
+      "culture": {
+        "identity": 0.3
+      }
     }
   ]
 }
