@@ -23,13 +23,16 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(`v${pkg.version} · ${commit()}`),
   },
   build: {
-    // Pixi alone is ~535 kB (~155 kB gzipped) and already in its own chunk.
+    // Pixi alone is ~535 kB (~155 kB gzipped); it and Three.js each get their own chunk.
     chunkSizeWarningLimit: 600,
     rolldownOptions: {
       output: {
         // Pixi is most of the download and changes rarely: give it its own chunk.
         codeSplitting: {
-          groups: [{ name: (id: string) => (id.includes("node_modules/pixi.js") || id.includes("node_modules/@pixi") ? "pixi" : null) }],
+          groups: [
+            { name: (id: string) => (id.includes("node_modules/pixi.js") || id.includes("node_modules/@pixi") ? "pixi" : null) },
+            { name: (id: string) => (id.includes("node_modules/three") ? "three" : null) },
+          ],
         },
       },
     },

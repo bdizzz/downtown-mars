@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { createStage } from "../render2d/stage";
-import { createStage3D } from "../render3d/stage3d";
 import type { HoverInfo, Stage, StageOptions, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import type { Snapshot } from "../sim/snapshot";
@@ -24,7 +23,8 @@ interface Props {
 
 const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => Promise<Stage>> = {
   "2d": createStage,
-  "3d": createStage3D,
+  // Loaded on first use, so players who stay in 2D never download Three.js.
+  "3d": async (host, opts) => (await import("../render3d/stage3d")).createStage3D(host, opts),
 };
 
 /** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
