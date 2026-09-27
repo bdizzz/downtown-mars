@@ -394,8 +394,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (view.xray && u.faint) continue;
       // The cap over a chosen floor: pick the cell just under it.
       if (u.surface) offer(hit.distance, () => surfacePickAt(hit.point));
-      // A corridor floor: what's just above it, on its floor (not the floor below).
-      else if (u.hall && !u.onCut) offer(hit.distance, () => pickPast(h, ray, hit.distance - 0.3), hit.distance - 0.3 + NUDGE);
+      // A corridor floor, or a room's floor seen from above (rooms have no ceilings):
+      // what's just above it, on its floor, not the floor below.
+      else if ((u.hall && !u.onCut) || (u.roomId !== undefined && Math.abs(hit.face?.normal.y ?? 0) > 0.9 && ray.direction.y < 0)) {
+        offer(hit.distance, () => pickPast(h, ray, hit.distance - 0.3), hit.distance - 0.3 + NUDGE);
+      }
       else offer(hit.distance, () => pickPast(h, ray, hit.distance));
       break;
     }

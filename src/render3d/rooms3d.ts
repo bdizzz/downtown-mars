@@ -61,15 +61,17 @@ function geometry(pos: number[]): THREE.BufferGeometry {
 }
 
 /**
- * One solid for a room: every cell a wedge, without the faces its own cells
- * share. The solid is inset a few centimetres on every outside face, so two
- * rooms that touch never share a plane (which would flicker) and a hairline of
- * rock shows between them. Where a corridor runs along an outside edge, the
- * room gives up half the corridor's width on that side instead, even along
- * part of a side, so corridors look carved out of the rooms they pass.
- * With `carve` off (overlay tints), corridors are ignored.
+ * One room: a floor and walls for every cell, without the faces its own cells
+ * share, and no ceiling, so you can always see in. It's inset a few
+ * centimetres on every outside face, so two rooms that touch never share a
+ * plane (which would flicker) and a hairline of rock shows between them.
+ * Where a corridor runs along an outside edge, the room gives up half the
+ * corridor's width on that side instead, even along part of a side, so
+ * corridors look carved out of the rooms they pass. A public room has no wall
+ * where it opens onto the gallery or a corridor. With `carve` off (overlay
+ * tints), corridors are ignored.
  */
-export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve = true, openToShaft = false): THREE.BufferGeometry {
+export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve = true, publicRoom = false): THREE.BufferGeometry {
   const hole = layout.hole;
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
   const own = new Set(cells.map(key));
@@ -91,7 +93,7 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
     const a0 = s0 + (openLeft ? (hall(leftId) ? HALL : inset) / rMid : 0);
     const a1 = s1 - (openRight ? (hall(rightId) ? HALL : inset) / rMid : 0);
     y0 += inset;
-    // Floor-1 roofs sit just under the ground, so the two surfaces don't fight.
+    // Floor-1 walls stop just under the ground, so the two surfaces don't fight.
     y1 -= c.floor === 1 ? Math.max(inset, ROOF_GAP) : inset;
 
     // The inner and outer sides may be cut into pieces (outer rings have more
@@ -113,13 +115,15 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
       if (b1 - b0 < 1e-9) continue;
       const mid = (b0 + b1) / 2;
       // A public room on the gallery has no wall there: it runs right up to the shaft.
-      const open = openToShaft && c.ring === 1;
-      const rr0 = r0 + (c.ring === inner && !open ? (hallAt(innerPieces, mid) ? HALL : inset) : 0);
-      const rr1 = r1 - (c.ring === outer ? (hallAt(outerPieces, mid) ? HALL : inset) : 0);
-      if (c.ring === inner && !open) curvedFace(pos, rr0, b0, b1, y0, y1);
-      if (c.ring === outer) curvedFace(pos, rr1, b0, b1, y0, y1);
+      const onGallery = publicRoom && c.ring === 1;
+      const innerHall = hallAt(innerPieces, mid);
+      const outerHall = hallAt(outerPieces, mid);
+      const rr0 = r0 + (c.ring === inner && !onGallery ? (innerHall ? HALL : inset) : 0);
+      const rr1 = r1 - (c.ring === outer ? (outerHall ? HALL : inset) : 0);
+      // Walls, except where a public room opens onto the gallery or a corridor.
+      if (c.ring === inner && !onGallery && !(publicRoom && innerHall)) curvedFace(pos, rr0, b0, b1, y0, y1);
+      if (c.ring === outer && !(publicRoom && outerHall)) curvedFace(pos, rr1, b0, b1, y0, y1);
       flatRing(pos, rr0, rr1, b0, b1, y0);
-      flatRing(pos, rr0, rr1, b0, b1, y1);
       // A step where a corridor starts or stops partway along a side.
       if (prev) {
         if (prev[0] !== rr0) radialSide(pos, Math.min(prev[0], rr0), Math.max(prev[0], rr0), b0, y0, y1);
@@ -128,8 +132,8 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
       prev = [rr0, rr1];
       first ??= [rr0, rr1];
     }
-    if (openLeft && first) radialSide(pos, first[0], first[1], a0, y0, y1);
-    if (openRight && prev) radialSide(pos, prev[0], prev[1], a1, y0, y1);
+    if (openLeft && first && !(publicRoom && hall(leftId))) radialSide(pos, first[0], first[1], a0, y0, y1);
+    if (openRight && prev && !(publicRoom && hall(rightId))) radialSide(pos, prev[0], prev[1], a1, y0, y1);
   }
   return geometry(pos);
 }

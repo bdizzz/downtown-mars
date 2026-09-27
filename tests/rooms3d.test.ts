@@ -13,16 +13,16 @@ const triangles = (g: ReturnType<typeof roomGeometry>) => g.getAttribute("positi
 describe("3D room geometry", () => {
   const layout = createLayout(createHole(10, 3, 3, config.geometry));
 
-  it("a one-slot room is a closed wedge: inner, outer, top, bottom and two sides", () => {
+  it("a one-slot room is an open-topped wedge: inner, outer, floor and two sides, no ceiling", () => {
     const r = placeRoom(layout, "clinic", ring(2, 1, 0));
     const room = layout.rooms.find((x) => x.id === r.id)!;
-    expect(triangles(roomGeometry(layout, room.cells))).toBe(4 * CURVED + 2 * SIDE);
+    expect(triangles(roomGeometry(layout, room.cells))).toBe(3 * CURVED + 2 * SIDE);
   });
 
   it("a wide room has no walls between its own slots", () => {
     const r = placeRoom(layout, "life_support", ring(2, 1, 3, 4));
     const room = layout.rooms.find((x) => x.id === r.id)!;
-    expect(triangles(roomGeometry(layout, room.cells))).toBe(4 * 4 * CURVED + 2 * SIDE);
+    expect(triangles(roomGeometry(layout, room.cells))).toBe(4 * 3 * CURVED + 2 * SIDE);
   });
 
   it("stays within its cells' radii and floor", () => {
@@ -78,5 +78,20 @@ describe("carved by corridors", () => {
     const carved = roomGeometry(l, room.cells);
     expect(extent(carved).maxR).toBeCloseTo(extent(plain).maxR, 6); // the rest of the side is untouched
     expect(carved.getAttribute("position").count).toBeGreaterThan(plain.getAttribute("position").count); // a step wall
+  });
+});
+
+describe("public rooms", () => {
+  it("have no wall onto the gallery, or on a side with a corridor", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const r = placeRoom(l, "tiny_plaza", ring(1, 1, 2));
+    const room = l.rooms.find((x) => x.id === r.id)!;
+    const walled = triangles(roomGeometry(l, room.cells)); // as a private room would be
+    const open = triangles(roomGeometry(l, room.cells, undefined, true, true));
+    expect(walled - open).toBe(CURVED); // no inner wall onto the gallery
+    l.corridors["R1.1.2"] = "metal"; // its left side
+    expect(triangles(roomGeometry(l, room.cells, undefined, true, true))).toBe(open - SIDE);
+    // A private room keeps its wall on a corridor side.
+    expect(triangles(roomGeometry(l, room.cells))).toBe(walled);
   });
 });
