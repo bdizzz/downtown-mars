@@ -34,6 +34,8 @@ export interface SimConfig {
     depthGrowth: number;
     /** Rock yielded per unlocked ring slot dug out. */
     rockPerSlot: number;
+    /** Extra yield per slot when the hole sits on a deposit, e.g. ore → { ore: 0.4 }. */
+    depositYieldsPerSlot: Record<string, Record<string, number>>;
     maxFloors: number;
   };
   startingStock: Record<string, number>;

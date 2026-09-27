@@ -10,6 +10,7 @@ import type { Message } from "./messages";
 import type { Population, RoomStatus } from "./economy";
 import { createHole } from "./geometry";
 import { createLayout, placeRoom, type Layout } from "./placement";
+import type { DepositKind } from "./mapgeo";
 import { roomDef } from "./rooms";
 
 /** Where a hole is on Mars, in degrees. */
@@ -24,6 +25,8 @@ export interface SimState {
   name: string;
   /** Null until the map exists (older saves) or before a site is chosen. */
   site: Site | null;
+  /** What's in the ground here: digging yields it, and regional rooms need it. */
+  deposits: DepositKind[];
   tick: number;
   rngState: number;
   layout: Layout;
@@ -51,13 +54,14 @@ export interface HoleIdentity {
   holeId: number;
   name: string;
   site: Site | null;
+  deposits: DepositKind[];
   /** Each hole has its own random stream, so holes never disturb each other's luck. */
   seed: number;
 }
 
 export function createInitialState(
   cfg: SimConfig,
-  who: HoleIdentity = { holeId: 1, name: "Bradbury", site: null, seed: cfg.seed },
+  who: HoleIdentity = { holeId: 1, name: "Bradbury", site: null, deposits: [], seed: cfg.seed },
 ): SimState {
   const h = cfg.starterHole;
   const layout = createLayout(createHole(h.shaftRadiusM, h.floors, h.unlockedRings, cfg.geometry), cfg);
@@ -74,6 +78,7 @@ export function createInitialState(
     holeId: who.holeId,
     name: who.name,
     site: who.site,
+    deposits: who.deposits,
     tick: 0,
     rngState: who.seed >>> 0,
     layout,

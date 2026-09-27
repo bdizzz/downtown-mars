@@ -28,6 +28,11 @@
     "ticksForFirstFloor": 360,
     "depthGrowth": 0.15,
     "rockPerSlot": 1,
+    "depositYieldsPerSlot": {
+      "ore": { "ore": 0.4 },
+      "silica": { "silica": 0.4 },
+      "ice": { "water": 0.5 }
+    },
     "maxFloors": 40
   },
   "startingStock": {

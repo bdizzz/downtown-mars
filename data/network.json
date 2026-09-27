@@ -49,5 +49,14 @@
         5
       ]
     }
+  },
+  "mapUnlockPopulation": 50,
+  "roverKmPerDay": 600,
+  "scoutRadiusDeg": 12,
+  "firstSite": {
+    "_note": "The first hole sits on northern-lowland ice between these latitudes, with ore or silica under it.",
+    "minLat": 30,
+    "maxLat": 62,
+    "extraDepositRadiusDeg": 1.5
   }
 }

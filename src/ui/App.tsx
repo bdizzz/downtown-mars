@@ -8,7 +8,7 @@ import { FlowPanel } from "./FlowPanel";
 import { Help } from "./Help";
 import { Hud } from "./Hud";
 import { Inspector } from "./Inspector";
-import { MapScreen } from "./MapScreen";
+import { MapScreen, type SitePick } from "./MapScreen";
 import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
@@ -49,6 +49,7 @@ export function App() {
   const [settings, updateSettings] = useSettings();
   const [helpOpen, setHelpOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [plannedSite, setPlannedSite] = useState<SitePick | null>(null);
 
   useSounds(snapshot);
   useEffect(() => setAudioSettings(settings), [settings]);
@@ -307,7 +308,7 @@ export function App() {
             />
           )}
           <Messages s={snapshot} />
-          {snapshot && mapOpen && <MapScreen s={snapshot} onClose={() => setMapOpen(false)} />}
+          {snapshot && mapOpen && <MapScreen s={snapshot} onClose={() => setMapOpen(false)} site={plannedSite} onSite={setPlannedSite} />}
           <ViewHost
             snapshot={snapshot}
             tool={tool}

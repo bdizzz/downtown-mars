@@ -3,7 +3,7 @@ import { createLedger } from "./ledger";
 import { isRoomType } from "./rooms";
 import type { SimState } from "./state";
 import { config, type SimConfig } from "./config";
-import { generateMap } from "./map";
+import { depositsAt, generateMap, type MapState } from "./map";
 import { network } from "./network";
 import type { World } from "./world";
 
@@ -11,7 +11,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 type Raw = Record<string, unknown>;
 
@@ -27,6 +27,13 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
   }),
   // v4 gave the world a seed and a map; older games get the default seed's map.
   3: (s) => ({ ...s, seed: config.seed, map: generateMap(config.seed) }),
+  // v5 recorded what each hole sits on, and whether the map is open.
+  4: (s) => {
+    const map = s.map as MapState;
+    const holes = (s.holes as Raw[]).map((h): Raw => ({ ...h, deposits: h.site ? depositsAt(map, h.site as { lat: number; lon: number }) : [] }));
+    const pop = holes.reduce((n, h) => n + ((h.population as { count: number } | undefined)?.count ?? 0), 0);
+    return { ...s, holes, mapUnlocked: pop >= network.mapUnlockPopulation };
+  },
 };
 
 export interface SaveSummary {

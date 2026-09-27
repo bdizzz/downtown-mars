@@ -1,5 +1,5 @@
 import elevationData from "../../data/mars-elevation.json";
-import { degreesApart, DEPOSIT_KINDS, wrapLon, type Deposit, type DepositKind, type MapState } from "./mapgeo";
+import { degreesApart, DEPOSIT_KINDS, depositsAt, wrapLon, type Deposit, type DepositKind, type MapState } from "./mapgeo";
 import { network } from "./network";
 
 export * from "./mapgeo";
@@ -62,4 +62,26 @@ export function generateMap(seed: number): MapState {
     }
   }
   return { deposits };
+}
+
+/**
+ * The first hole's site: on northern-lowland ice (water to survive), with ore
+ * or silica underneath (something to grow on, but not everything). If the
+ * map doesn't happen to put either there, a small deposit is added, so the
+ * design's "survives alone, can't grow alone" always holds.
+ */
+export function chooseFirstSite(map: MapState, seed: number): { lat: number; lon: number } {
+  const rand = rng(seed ^ 0xf1257);
+  const fs = network.firstSite;
+  const ice = map.deposits.filter((d) => d.kind === "ice");
+  const lowland = ice.filter((d) => d.lat >= fs.minLat && d.lat <= fs.maxLat);
+  const pool = lowland.length ? lowland : ice.filter((d) => Math.abs(d.lat) < 75);
+  const pick = pool[Math.floor(rand() * pool.length)] ?? ice[0];
+  const site = pick ? { lat: pick.lat, lon: pick.lon } : { lat: 45, lon: 185 };
+  const under = depositsAt(map, site);
+  if (!under.includes("ice")) map.deposits.push({ kind: "ice", ...site, radiusDeg: fs.extraDepositRadiusDeg });
+  if (!under.includes("ore") && !under.includes("silica")) {
+    map.deposits.push({ kind: rand() < 0.5 ? "ore" : "silica", ...site, radiusDeg: fs.extraDepositRadiusDeg });
+  }
+  return site;
 }

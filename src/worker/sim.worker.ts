@@ -3,6 +3,8 @@ import { applyCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { deserialize, serialize, summarize } from "../sim/save";
 import { makeSnapshot, type HoleSummary } from "../sim/snapshot";
+import { degreesApart } from "../sim/mapgeo";
+import { network } from "../sim/network";
 import { createWorld, holeById, stepWorld, type World } from "../sim/world";
 import type { FromWorker, ToWorker, WireSnapshot } from "./protocol";
 
@@ -33,7 +35,15 @@ function summaries(): HoleSummary[] {
     population: h.population.count,
     waiting: h.office.waiting.length,
     site: h.site,
+    deposits: h.deposits ?? [],
   }));
+}
+
+/** Everything once the map is open; before that, only what's near a hole. */
+function knownDeposits() {
+  if (world.mapUnlocked) return world.map.deposits;
+  const sites = world.holes.flatMap((h) => (h.site ? [h.site] : []));
+  return world.map.deposits.filter((d) => sites.some((s) => degreesApart(s, d) <= network.scoutRadiusDeg + d.radiusDeg));
 }
 
 function post(): void {
@@ -46,7 +56,8 @@ function post(): void {
     ...rest,
     gameId,
     holes: summaries(),
-    deposits: world.map.deposits,
+    deposits: knownDeposits(),
+    mapUnlocked: world.mapUnlocked,
     layoutVersion: layout.version,
     ...(fresh ? { layout, effects } : {}),
   };

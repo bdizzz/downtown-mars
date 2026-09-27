@@ -41,6 +41,15 @@ export function stepDigging(state: SimState, cfg: SimConfig): void {
   const rock = rockPerFloor(state, cfg) / needed;
   state.resources.rock = (state.resources.rock ?? 0) + rock;
   record(state, "rock", "in", LABELS.digging, rock);
+  // Whatever the hole sits on comes up with the rock: ore, silica, ice.
+  const slots = rockPerFloor(state, cfg) / cfg.digging.rockPerSlot;
+  for (const kind of state.deposits ?? []) {
+    for (const [id, perSlot] of Object.entries(cfg.digging.depositYieldsPerSlot[kind] ?? {})) {
+      const amount = (slots * perSlot) / needed;
+      state.resources[id] = (state.resources[id] ?? 0) + amount;
+      record(state, id, "in", LABELS.digging, amount);
+    }
+  }
   if (state.drill.progress < needed) return;
 
   const layout = state.layout;

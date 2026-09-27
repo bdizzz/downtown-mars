@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { DEPOSIT_KINDS, depositsAt, features, nearestFeature, wrapLon, type DepositKind } from "../sim/mapgeo";
+import { degreesApart, DEPOSIT_KINDS, depositsAt, distanceKm, features, nearestFeature, wrapLon, type DepositKind } from "../sim/mapgeo";
+import { network } from "../sim/network";
 import type { Snapshot } from "../sim/snapshot";
 
 // The planet from above: MOLA relief (loaded when the map first opens),
@@ -62,12 +63,19 @@ function relief(d: Elevation): ImageData {
   return img;
 }
 
+export type SitePick = { lat: number; lon: number };
+
 interface Props {
   s: Snapshot;
   onClose: () => void;
+  /** The site the player has picked, if any, for founding a hole there. */
+  site: SitePick | null;
+  onSite: (site: SitePick | null) => void;
 }
 
-export function MapScreen({ s, onClose }: Props) {
+const fmtLat = (lat: number) => `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? "N" : "S"}`;
+
+export function MapScreen({ s, onClose, site, onSite }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [image, setImage] = useState<HTMLCanvasElement | null>(null);
@@ -130,14 +138,33 @@ export function MapScreen({ s, onClose }: Props) {
       g.fill();
       g.stroke();
     }
-    g.font = "600 11px system-ui, sans-serif";
+    // Labels shrink with the map, and the small-feature names drop out when it's narrow.
+    const labelPx = Math.max(8, Math.min(12, size.w / 70));
+    g.font = `600 ${labelPx}px system-ui, sans-serif`;
     g.textAlign = "center";
     for (const f of features) {
+      if (size.w < 700 && (f.kind === "crater" || f.kind === "canyon")) continue;
       const [x, y] = toXY(f.lat, f.lon);
       g.fillStyle = "rgba(20,10,8,0.55)";
       g.fillText(f.name, x + 1, y + 1);
       g.fillStyle = "#f6efe6";
       g.fillText(f.name, x, y);
+    }
+    if (site) {
+      const [x, y] = toXY(site.lat, site.lon);
+      g.strokeStyle = "#e07a3f";
+      g.lineWidth = 2;
+      g.beginPath();
+      g.arc(x, y, 9, 0, Math.PI * 2);
+      g.moveTo(x - 14, y);
+      g.lineTo(x - 4, y);
+      g.moveTo(x + 4, y);
+      g.lineTo(x + 14, y);
+      g.moveTo(x, y - 14);
+      g.lineTo(x, y - 4);
+      g.moveTo(x, y + 4);
+      g.lineTo(x, y + 14);
+      g.stroke();
     }
     for (const h of s.holes) {
       if (!h.site) continue;
@@ -153,7 +180,7 @@ export function MapScreen({ s, onClose }: Props) {
       g.font = "700 12px system-ui, sans-serif";
       g.fillText(h.name, x, y - 10);
     }
-  }, [image, size, s.deposits, s.holes, s.holeId, shown]);
+  }, [image, size, s.deposits, s.holes, s.holeId, shown, site]);
 
   const info = useMemo(() => {
     if (!hover) return null;
@@ -185,6 +212,13 @@ export function MapScreen({ s, onClose }: Props) {
           ×
         </button>
       </header>
+      {!s.mapUnlocked && (
+        <p className="map-locked">
+          Only the ground near your holes is known yet. The map opens at {network.mapUnlockPopulation} colonists (you have{" "}
+          {s.holes.reduce((n, h) => n + h.population, 0)}).
+        </p>
+      )}
+      <div className="map-body">
       <div className="map-wrap" ref={wrapRef}>
         {!image && <p className="k">Loading the planet…</p>}
         <canvas
@@ -195,7 +229,13 @@ export function MapScreen({ s, onClose }: Props) {
             setHover({ lat: 90 - ((e.clientY - r.top) / r.height) * 180, lon: ((e.clientX - r.left) / r.width) * 360 });
           }}
           onMouseLeave={() => setHover(null)}
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            onSite({ lat: 90 - ((e.clientY - r.top) / r.height) * 180, lon: ((e.clientX - r.left) / r.width) * 360 });
+          }}
         />
+      </div>
+      {site && <SitePanel s={s} site={site} elevation={elevation} onClear={() => onSite(null)} />}
       </div>
       <footer className="k">
         {info
@@ -203,5 +243,56 @@ export function MapScreen({ s, onClose }: Props) {
           : "Elevation: NASA Mars Global Surveyor MOLA. Deposits differ every game."}
       </footer>
     </div>
+  );
+}
+
+function SitePanel({ s, site, elevation, onClear }: { s: Snapshot; site: SitePick; elevation: Elevation | null; onClear: () => void }) {
+  const near = nearestFeature(site);
+  const known = s.mapUnlocked || s.holes.some((h) => h.site && degreesApart(h.site, site) <= network.scoutRadiusDeg);
+  const here = depositsAt({ deposits: s.deposits }, site);
+  const e = elevation
+    ? elevation.elevation[Math.min(elevation.height - 1, Math.floor(90 - site.lat)) * elevation.width + (Math.floor(wrapLon(site.lon)) % elevation.width)]! *
+      elevation.unitMeters
+    : null;
+  return (
+    <aside className="site-panel">
+      <header>
+        <h3>Site</h3>
+        <button onClick={onClear} aria-label="Clear site">
+          ×
+        </button>
+      </header>
+      <p>
+        {fmtLat(site.lat)} {wrapLon(site.lon).toFixed(1)}°E{e !== null && ` · ${Math.round(e).toLocaleString()} m`}
+      </p>
+      <p className="k">{near.km < 600 ? `At ${near.feature.name}` : `${Math.round(near.km).toLocaleString()} km from ${near.feature.name}`}</p>
+      <h4>In the ground</h4>
+      {!known ? (
+        <p className="k">Not scouted yet.</p>
+      ) : here.length ? (
+        <ul>
+          {here.map((k) => (
+            <li key={k}>
+              <i style={{ background: DEPOSIT_STYLE[k].color }} /> {DEPOSIT_STYLE[k].name}: {DEPOSIT_STYLE[k].hint.split(": ")[1]}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="k">Nothing special: rock only.</p>
+      )}
+      <h4>From your holes</h4>
+      <ul>
+        {s.holes
+          .filter((h) => h.site)
+          .map((h) => {
+            const km = distanceKm(h.site!, site);
+            return (
+              <li key={h.id}>
+                {h.name}: {Math.round(km).toLocaleString()} km · {(km / network.roverKmPerDay).toFixed(1)} days by rover
+              </li>
+            );
+          })}
+      </ul>
+    </aside>
   );
 }

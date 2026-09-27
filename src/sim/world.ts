@@ -1,5 +1,6 @@
 import type { SimConfig } from "./config";
-import { generateMap, type MapState } from "./map";
+import { chooseFirstSite, depositsAt, generateMap, type MapState } from "./map";
+import { postMessage } from "./messages";
 import { network } from "./network";
 import { createInitialState, type SimState } from "./state";
 import { step } from "./step";
@@ -15,6 +16,8 @@ export interface World {
   holes: SimState[];
   nextHoleId: number;
   map: MapState;
+  /** The whole map is known once the network is big enough to reach for it. */
+  mapUnlocked: boolean;
 }
 
 export { network };
@@ -31,8 +34,20 @@ export function nextHoleName(world: Pick<World, "holes">): string {
 }
 
 export function createWorld(cfg: SimConfig, seed = cfg.seed): World {
-  const first = createInitialState(cfg, { holeId: 1, name: network.holeNames[0]!, site: null, seed: holeSeed(seed, 1) });
-  return { seed, tick: 0, holes: [first], nextHoleId: 2, map: generateMap(seed) };
+  const map = generateMap(seed);
+  const site = chooseFirstSite(map, seed);
+  const first = createInitialState(cfg, {
+    holeId: 1,
+    name: network.holeNames[0]!,
+    site,
+    deposits: depositsAt(map, site),
+    seed: holeSeed(seed, 1),
+  });
+  return { seed, tick: 0, holes: [first], nextHoleId: 2, map, mapUnlocked: false };
+}
+
+export function totalPopulation(world: World): number {
+  return world.holes.reduce((n, h) => n + h.population.count, 0);
 }
 
 export function holeById(world: World, id: number): SimState | undefined {
@@ -43,4 +58,8 @@ export function holeById(world: World, id: number): SimState | undefined {
 export function stepWorld(world: World, cfg: SimConfig): void {
   world.tick += 1;
   for (const hole of world.holes) step(hole, cfg);
+  if (!world.mapUnlocked && totalPopulation(world) >= network.mapUnlockPopulation) {
+    world.mapUnlocked = true;
+    postMessage(world.holes[0]!, cfg, "The map is open: scout a site for a second hole. Somewhere with what this one lacks.", "good");
+  }
 }

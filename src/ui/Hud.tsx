@@ -61,7 +61,11 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleF
           ))}
         </select>
       ) : (
-        snapshot && <span className="hole-name">{snapshot.holeName}</span>
+        snapshot && (
+          <span className="hole-name" title={snapshot.holeDeposits.length ? `Sits on: ${snapshot.holeDeposits.join(", ")}` : "Sits on plain rock"}>
+            {snapshot.holeName}
+          </span>
+        )
       )}
       <span className="clock">
         {t ? `Day ${t.day} · ${pad(t.hour)}:${pad(t.minute)}` : "Connecting…"}

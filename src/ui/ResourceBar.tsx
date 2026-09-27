@@ -5,6 +5,8 @@ import { daysLeft, num, resName, signed } from "./format";
 const LIFE = ["o2", "water", "meals"] as const;
 const FOOD = ["rations", "rawFood", "soil"] as const;
 const MATERIALS = ["rock", "brick", "metal", "machinery", "electronics"] as const;
+/** Shown only where there's some: they come from the ground under certain sites. */
+const REGIONAL = ["ore", "silica"] as const;
 const WARN_DAYS = 2;
 
 function Stock({ id, s }: { id: string; s: Snapshot }) {
@@ -74,6 +76,9 @@ export function ResourceBar({ s }: { s: Snapshot | null }) {
       </span>
       <span className="group">
         {MATERIALS.map((id) => (
+          <Stock key={id} id={id} s={s} />
+        ))}
+        {REGIONAL.filter((id) => (s.resources[id] ?? 0) > 0 || s.holeDeposits.includes(id)).map((id) => (
           <Stock key={id} id={id} s={s} />
         ))}
       </span>
