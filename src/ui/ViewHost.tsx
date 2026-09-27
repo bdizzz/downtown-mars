@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import { createStage } from "../render2d/stage";
+import { createPlanStage } from "../render2d/plan";
+import type { ViewMode } from "./settings";
 import type { HoverInfo, Quality, Stage, StageOptions, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import type { Snapshot } from "../sim/snapshot";
@@ -15,8 +17,10 @@ interface Props {
   onInvalid: (reason: string) => void;
   overlay: string | null;
   colorBlind: boolean;
-  /** Which camera: the unrolled 2D view or the 3D cylinder. */
-  mode: "2d" | "3d";
+  /** Which view: the unrolled wall, one floor from above, or the 3D cylinder. */
+  mode: ViewMode;
+  /** The floor the plan and 3D views focus on (null: every floor, in 3D). */
+  floor: number | null;
   quality: Quality;
   /** The chosen view couldn't start (e.g. no WebGL for 3D). */
   onViewError: (message: string) => void;
@@ -24,17 +28,18 @@ interface Props {
 
 const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => Promise<Stage>> = {
   "2d": createStage,
+  plan: createPlanStage,
   // Loaded on first use, so players who stay in 2D never download Three.js.
   "3d": async (host, opts) => (await import("../render3d/stage3d")).createStage3D(host, opts),
 };
 
 /** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
-export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, quality, onViewError }: Props) {
+export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, quality, onViewError }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
-  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, onViewError });
-  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, onViewError };
+  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, floor, onViewError });
+  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, floor, onViewError };
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +59,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
       stage.setOverlay(props.current.overlay);
       stage.setColorBlind(props.current.colorBlind);
       stage.setQuality(props.current.quality);
+      stage.setFloor(props.current.floor);
       if (props.current.snapshot) stage.update(props.current.snapshot);
     }, (err: unknown) => {
       if (!cancelled) props.current.onViewError(err instanceof Error ? err.message : String(err));
@@ -88,6 +94,10 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
   useEffect(() => {
     stageRef.current?.setQuality(quality);
   }, [quality]);
+
+  useEffect(() => {
+    stageRef.current?.setFloor(floor);
+  }, [floor]);
 
   return <div ref={hostRef} className="pixi-host" />;
 }

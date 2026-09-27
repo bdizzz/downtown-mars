@@ -275,7 +275,13 @@ function surfaceProp(room: RoomInstance, layout: Layout, color: number): THREE.O
  * Everything that depends on the layout: rooms, the shaft wall where no room
  * faces it, and surface props. digFloor is the floor being dug, if any.
  */
-export function buildLayout(layout: Layout, digFloor: number | null, colors: RoomColors, xray = false): THREE.Group {
+/**
+ * Everything that depends on the layout. With `topFloor`, nothing above that
+ * floor is built (shallower floors and surface props), and the floor's empty
+ * cells get a rock cap, so from above it reads as a plan and its empty cells
+ * can be picked.
+ */
+export function buildLayout(layout: Layout, digFloor: number | null, colors: RoomColors, xray = false, topFloor: number | null = null): THREE.Group {
   const group = new THREE.Group();
   const hole = layout.hole;
   const n1 = hole.ringSlots[0]!;
@@ -288,7 +294,7 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   // The shaft wall, wherever a built room doesn't replace it.
   const lastFloor = digFloor ?? hole.floors;
   const wall: number[] = [];
-  for (let floor = 1; floor <= lastFloor; floor++) {
+  for (let floor = topFloor ?? 1; floor <= lastFloor; floor++) {
     const [y0, y1] = floorSpan(floor);
     for (let slot = 0; slot < n1; slot++) {
       const id = layout.grid[floor - 1]?.[0]?.[slot];
@@ -308,7 +314,12 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   const strandedLine = material(`stranded:${colors.stranded}`, () => new THREE.LineBasicMaterial({ color: colors.stranded })) as THREE.LineBasicMaterial;
   const edgeLine = material("edges", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.5 })) as THREE.LineBasicMaterial;
 
-  for (const room of layout.rooms) {
+  if (topFloor !== null) group.add(...floorCap(layout, topFloor));
+
+  for (const whole of layout.rooms) {
+    // Above the chosen floor there's nothing; tall rooms keep only the part at or below it.
+    const room = topFloor === null ? whole : { ...whole, cells: whole.cells.filter((c) => c.floor >= topFloor) };
+    if (topFloor !== null && (room.at.kind === "surface" || !room.cells.length)) continue;
     const def = roomDef(room.type);
     const color = CATEGORY_COLORS[def.category] ?? 0x888888;
     if (room.at.kind === "surface") {
@@ -363,6 +374,51 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     shapeCache.delete(key);
   }
   return group;
+}
+
+const CAP = { rock: 0x4a2a1e, locked: 0x33201a, beyond: 0x241410, lift: 0.02, beyondM: 30 };
+
+/**
+ * A rock lid over the chosen floor's empty cells, just under its ceiling:
+ * carved cells in rock, locked rings darker, and solid rock past the last
+ * ring. Carved and locked cells are pickable, so they can be built on from above.
+ */
+function floorCap(layout: Layout, floor: number): THREE.Object3D[] {
+  const hole = layout.hole;
+  const y = floorSpan(floor)[1] - CAP.lift;
+  const open: number[] = [];
+  const locked: number[] = [];
+  hole.ringSlots.forEach((n, ri) => {
+    const [r0, r1] = ringRadii(hole, ri + 1);
+    for (let slot = 0; slot < n; slot++) {
+      const id = layout.grid[floor - 1]?.[ri]?.[slot];
+      if (id) continue;
+      const [a0, a1] = slotAngles(slot, n);
+      flatRing(ri + 1 > hole.unlockedRings ? locked : open, r0, r1, a0, a1, y);
+    }
+  });
+  const outer = ringRadii(hole, hole.ringSlots.length)[1];
+  const beyond: number[] = [];
+  flatRing(beyond, outer, outer + CAP.beyondM, 0, TAU, y);
+  const mat = (c: number) => material(`cap:${c}`, () => new THREE.MeshStandardMaterial({ color: c, roughness: 1, side: THREE.DoubleSide }));
+  const openMesh = new THREE.Mesh(geometry(open), mat(CAP.rock));
+  openMesh.userData = { pickable: true, cap: true };
+  const lockedMesh = new THREE.Mesh(geometry(locked), mat(CAP.locked));
+  lockedMesh.userData = { pickable: true, cap: true };
+  const beyondMesh = new THREE.Mesh(geometry(beyond), mat(CAP.beyond));
+  // Hairline slot edges on the carved cells, so the grid reads from above.
+  const grid: number[] = [];
+  hole.ringSlots.slice(0, hole.unlockedRings).forEach((n, ri) => {
+    const [r0, r1] = ringRadii(hole, ri + 1);
+    for (let slot = 0; slot < n; slot++) {
+      const [a] = slotAngles(slot, n);
+      grid.push(...at(r0, a, y + 0.01), ...at(r1, a, y + 0.01));
+    }
+  });
+  const gridGeo = new THREE.BufferGeometry();
+  gridGeo.setAttribute("position", new THREE.Float32BufferAttribute(grid, 3));
+  const gridLines = new THREE.LineSegments(gridGeo, material("capGrid", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.6 })));
+  return [openMesh, lockedMesh, beyondMesh, gridLines];
 }
 
 /** Free what a layout group owns outright. Cached shapes, labels and materials live on for reuse. */

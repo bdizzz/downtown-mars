@@ -4,6 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 // can fail (private windows, blocked storage); the game then just uses the
 // defaults for this session.
 
+export type ViewMode = "2d" | "plan" | "3d";
+export const VIEW_MODES: { id: ViewMode; name: string; hint: string }[] = [
+  { id: "2d", name: "Unrolled", hint: "Every floor, the ring unrolled flat" },
+  { id: "plan", name: "Plan", hint: "One floor from above, rings around the shaft" },
+  { id: "3d", name: "3D", hint: "The hole as a real cylinder" },
+];
+
 export interface Settings {
   volume: number;
   sfx: boolean;
@@ -13,8 +20,8 @@ export interface Settings {
   /** Orange/blue instead of red/green in overlays. */
   colorBlind: boolean;
   autosave: boolean;
-  /** Which camera the player last used. */
-  view: "2d" | "3d";
+  /** Which view the player last used: the unrolled wall, one floor from above, or 3D. */
+  view: ViewMode;
   /** 3D detail: high adds walkers and dust and renders at full resolution. */
   quality3d: "high" | "low";
 }
@@ -35,7 +42,8 @@ const KEY = "downtown-mars.settings";
 export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) } : DEFAULT_SETTINGS;
+    const s = raw ? { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) } : DEFAULT_SETTINGS;
+    return VIEW_MODES.some((m) => m.id === s.view) ? s : { ...s, view: DEFAULT_SETTINGS.view };
   } catch {
     return DEFAULT_SETTINGS;
   }

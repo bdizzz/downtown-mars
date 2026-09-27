@@ -169,6 +169,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let lastTick = -1;
   let hole: Hole | null = null;
   let holeKey = "";
+  /** Show only this floor and those below it, i.e. deeper (null: every floor). */
+  let floorLimit: number | null = null;
+  let groundMesh: THREE.Mesh | null = null;
   let gameId = "";
   let dirty = true;
 
@@ -194,6 +197,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function maxDist(): number {
     // Stay inside the shaft: no further back than just short of the opposite ledge.
     return hole ? hole.shaftRadiusM + openShaftRadius(hole) - 0.5 : 14;
+  }
+
+  /** y of the chosen floor's ceiling, or the surface. */
+  function cutTop(): number {
+    return floorLimit === null ? 0 : floorSpan(floorLimit)[1];
   }
 
   function depth(): number {
@@ -231,7 +239,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       // Keep what's behind the axis from the camera's point of view.
       clip.normal.copy(out).negate();
     } else {
-      camera.position.set(0, cam.height, 0);
+      // With a floor chosen, look down on it from the same height above its ceiling.
+      camera.position.set(0, cam.height + cutTop(), 0);
       // Rotating the "up" direction turns the view around the shaft.
       camera.up.copy(out);
       camera.lookAt(0, -depth(), 0);
@@ -285,14 +294,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const ring = new THREE.Mesh(new THREE.RingGeometry(rOpen, R, 64), ledge);
       ring.rotation.x = -Math.PI / 2;
       ring.position.y = y0 + LEDGE_THICKNESS;
-      holeGroup.add(ring);
       const edge = new THREE.Mesh(new THREE.CylinderGeometry(rOpen, rOpen, LEDGE_THICKNESS, 64, 1, true), ledge);
       edge.position.y = y0 + LEDGE_THICKNESS / 2;
-      holeGroup.add(edge);
       const railing = new THREE.Mesh(new THREE.TorusGeometry(rOpen + 0.1, 0.05, 6, 96), rail);
       railing.rotation.x = Math.PI / 2;
       railing.position.y = y0 + LEDGE_THICKNESS + RAIL_HEIGHT;
-      holeGroup.add(railing);
+      for (const m of [ring, edge, railing]) m.userData.floor = floor;
+      holeGroup.add(ring, edge, railing);
     }
 
     // Rough rock underfoot at the bottom of the floor being dug.
@@ -324,6 +332,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const ground = new THREE.Mesh(new THREE.RingGeometry(R, 600, 96, 1), groundMat);
     ground.rotation.x = -Math.PI / 2;
     holeGroup.add(ground);
+    groundMesh = ground;
+    applyFloorCut();
 
     scene.add(holeGroup);
     dirty = true;
@@ -376,6 +386,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (view.mode === "cutaway" && clip.distanceToPoint(hit.point) < -0.01) continue;
       // In x-ray the wall and ring 1 are see-through: pick what's behind them.
       if (view.xray && u.faint) continue;
+      // The cap over a chosen floor: pick the cell just under it.
       if (u.surface) offer(hit.distance, () => surfacePickAt(hit.point));
       else offer(hit.distance, () => pickPast(h, ray, hit.distance));
       break;
@@ -389,7 +400,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       return Math.hypot(p.x, p.z) > h.shaftRadiusM ? surfacePickAt(p) : { kind: "rock" };
     };
     const placingOnSurface = tool?.kind === "build" && roomDef(tool.room).size === "surface";
-    if (!view.xray || placingOnSurface) offer(tGround, groundPick);
+    // With a floor chosen, the surface is hidden: nothing up there to pick.
+    const surfaceShown = floorLimit === null;
+    if (surfaceShown && (!view.xray || placingOnSurface)) offer(tGround, groundPick);
     const inShaft = view.mode === "shaft" || view.mode === "free";
     if (inShaft && !view.xray) {
       // Empty wall faces are part of the wall mesh; nothing more to add.
@@ -403,7 +416,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (t !== null && inCarvedRegion(h, ray.at(t, new THREE.Vector3()))) offer(t, () => pickPast(h, ray, t - 0.2));
     }
     const b = best as { t: number; pick: Pick } | null;
-    if (!b && tGround !== null) return groundPick();
+    if (!b && tGround !== null && surfaceShown) return groundPick();
     return b ? b.pick : { kind: "rock" };
   }
 
@@ -720,7 +733,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
 
   function updateReadout(): void {
-    if (view.mode === "top") readout.textContent = "Looking down the shaft";
+    if (floorLimit !== null) readout.textContent = `Floor ${floorLimit}${view.mode === "top" ? " from above" : " and below"}`;
+    else if (view.mode === "top") readout.textContent = "Looking down the shaft";
     else readout.textContent = cam.y >= 0 ? "Surface" : `Floor ${Math.floor(-cam.y / FLOOR_H) + 1}`;
   }
   syncBar();
@@ -764,12 +778,22 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     opts.onError?.("The 3D view lost its graphics context (the GPU may be busy or asleep). Switched to 2D.");
   });
 
+  /** Hide what sits above the chosen floor: ledges, lamps, walkers, the surface. */
+  function applyFloorCut(): void {
+    holeGroup.traverse((o) => {
+      if (typeof o.userData.floor === "number") o.visible = floorLimit === null || o.userData.floor >= floorLimit;
+    });
+    if (groundMesh) groundMesh.visible = floorLimit === null;
+    if (lamps) lamps.visible = floorLimit === null;
+    walkers.mesh.visible = quality === "high" && floorLimit === null;
+    dust.points.visible = quality === "high" && floorLimit === null;
+    dirty = true;
+  }
+
   function applyQuality(): void {
     renderer.setPixelRatio(quality === "high" ? Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO) : 1);
     renderer.setSize(host.clientWidth, host.clientHeight);
-    walkers.mesh.visible = quality === "high";
-    dust.points.visible = quality === "high";
-    dirty = true;
+    applyFloorCut();
   }
   scene.add(walkers.mesh, dust.points);
 
@@ -820,19 +844,19 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         dust.sync(hole);
         applyCamera();
       }
-      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}`;
+      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}:${floorLimit}`;
       if (lk !== layoutKey) {
         layoutKey = lk;
         scene.remove(layoutGroup);
         disposeLayout(layoutGroup);
         const t0 = performance.now();
-        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray);
+        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray, floorLimit);
         stats.buildMs = performance.now() - t0;
         scene.add(layoutGroup);
         dirty = true;
       }
       const d = snapshot.drill;
-      digFront.visible = d.floor !== null;
+      digFront.visible = d.floor !== null && (floorLimit === null || d.floor >= floorLimit);
       if (d.floor !== null) {
         const [, top] = floorSpan(d.floor);
         const r = snapshot.layout.hole.shaftRadiusM - 0.05;
@@ -855,7 +879,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const descent = config.earth.descentDays * config.ticksPerDay;
       const landing = e.padReady && !e.waiting && e.ticksToDrop <= descent;
       const wasVisible = lander.visible;
-      placeLander(lander, snapshot.layout, landing ? 1 - e.ticksToDrop / descent : null);
+      placeLander(lander, snapshot.layout, landing && floorLimit === null ? 1 - e.ticksToDrop / descent : null);
       if (landing || wasVisible) dirty = true;
       refreshHover(); // affordability or the layout may have changed
     },
@@ -870,6 +894,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     setQuality(q) {
       quality = q;
       applyQuality();
+    },
+    setFloor(f) {
+      if (f === floorLimit) return;
+      floorLimit = f;
+      layoutKey = ""; // rebuild without the floors above
+      applyFloorCut();
+      applyCamera();
+      if (latest) stage.update(latest);
     },
     setOverlay(type) {
       overlayType = type;

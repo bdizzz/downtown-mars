@@ -22,7 +22,8 @@ import { StatusBar } from "./StatusBar";
 import { currentGoal, Tutorial } from "./Tutorial";
 import { setTutorialHidden, tutorialHidden, type UiFlags } from "./tutorialGoals";
 import { play, setAudioSettings, unlockAudio } from "../audio/sound";
-import { useSettings } from "./settings";
+import { useSettings, VIEW_MODES } from "./settings";
+import { FloorPicker, shownFloor } from "./FloorPicker";
 import { useSim } from "./useSim";
 import { useSounds } from "./useSounds";
 
@@ -35,6 +36,8 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [overlay, setOverlay] = useState<string | null>(null);
+  /** The floor the plan and 3D views focus on; null shows every floor in 3D. */
+  const [viewFloor, setViewFloor] = useState<number | null>(null);
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
   const [panel, setPanel] = useState<"office" | "flows" | "network" | "people" | null>(null);
   const officeOpen = panel === "office";
@@ -219,6 +222,20 @@ export function App() {
   const goal = snapshot && tutorialOn ? currentGoal(snapshot, flags) : null;
   const highlight = goal?.highlight ?? null;
 
+  // Floors the plan and 3D views can focus on: every dug floor, plus the one being dug.
+  const floorCount = snapshot ? (snapshot.drill.floor ?? snapshot.layout.hole.floors) : 1;
+  const stepFloor = useCallback(
+    (d: number) =>
+      setViewFloor((f) => {
+        const cur = shownFloor(f, floorCount, settings.view === "plan");
+        if (cur === null) return d > 0 ? 1 : null;
+        const next = cur + d;
+        if (next < 1) return settings.view === "3d" ? null : 1;
+        return Math.min(floorCount, next);
+      }),
+    [floorCount, settings.view],
+  );
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -257,7 +274,15 @@ export function App() {
         const n = snapshot.holes.length;
         setActiveHole(snapshot.holes[(i + (next ? 1 : n - 1)) % n]!.id);
       }
-      if (e.code === "KeyV") updateSettings({ view: settings.view === "2d" ? "3d" : "2d" });
+      if (e.code === "KeyV") {
+        const i = VIEW_MODES.findIndex((m) => m.id === settings.view);
+        updateSettings({ view: VIEW_MODES[(i + 1) % VIEW_MODES.length]!.id });
+      }
+      // Page Up / Page Down step through floors in the plan and 3D views.
+      if ((e.code === "PageUp" || e.code === "PageDown") && snapshot && settings.view !== "2d") {
+        e.preventDefault();
+        stepFloor(e.code === "PageDown" ? 1 : -1);
+      }
       const letter = e.key.toUpperCase();
       if (letter === DEMOLISH_KEY) {
         setSelected(null);
@@ -272,7 +297,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, helpOpen, mapOpen, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole]);
+  }, [menu, helpOpen, mapOpen, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor]);
 
   return (
     <div
@@ -289,7 +314,7 @@ export function App() {
         toggleNetwork={() => togglePanel("network")}
         togglePeople={() => togglePanel("people")}
         view={settings.view}
-        toggleView={() => updateSettings({ view: settings.view === "2d" ? "3d" : "2d" })}
+        setView={(view) => updateSettings({ view })}
         setActiveHole={setActiveHole}
         toggleMap={() => setMapOpen((m) => !m)}
         highlight={highlight}
@@ -334,7 +359,16 @@ export function App() {
               }}
             />
           )}
+          {snapshot && settings.view !== "2d" && (
+            <FloorPicker
+              floors={floorCount}
+              floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
+              allowAll={settings.view === "3d"}
+              onPick={setViewFloor}
+            />
+          )}
           <ViewHost
+            floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
             snapshot={snapshot}
             tool={tool}
             onHover={setHover}

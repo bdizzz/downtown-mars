@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
+import { VIEW_MODES, type ViewMode } from "./settings";
 
 interface Props {
   snapshot: Snapshot | null;
@@ -11,8 +12,8 @@ interface Props {
   toggleFlows: () => void;
   toggleNetwork: () => void;
   togglePeople: () => void;
-  view: "2d" | "3d";
-  toggleView: () => void;
+  view: ViewMode;
+  setView: (v: ViewMode) => void;
   setActiveHole: (holeId: number) => void;
   toggleMap: () => void;
   openMenu: () => void;
@@ -30,7 +31,7 @@ function gameDuration(ticks: number): string {
   return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
 }
 
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, toggleNetwork, togglePeople, view, toggleView, setActiveHole, toggleMap, openMenu, keysEnabled, highlight }: Props) {
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, toggleNetwork, togglePeople, view, setView, setActiveHole, toggleMap, openMenu, keysEnabled, highlight }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
   // Space toggles pause, remembering the last running speed.
   const resumeRef = useRef(1);
@@ -103,9 +104,13 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleF
           Office{snapshot.office.waiting.length ? ` · ${snapshot.office.waiting.length} waiting` : ""}
         </button>
       )}
-      <button className={`office-btn${pulse("view")}`} onClick={toggleView} title="Switch between the unrolled 2D view and the 3D shaft (V)">
-        {view === "2d" ? "3D view" : "2D view"}
-      </button>
+      <span className={`view-switch${pulse("view")}`} role="group" aria-label="View">
+        {VIEW_MODES.map((m) => (
+          <button key={m.id} className={view === m.id ? "on" : ""} onClick={() => setView(m.id)} title={`${m.hint} (V cycles)`}>
+            {m.name}
+          </button>
+        ))}
+      </span>
       <button className={`office-btn${pulse("map")}`} onClick={toggleMap} title="The planet: terrain, deposits and your holes (M)">
         Map
       </button>

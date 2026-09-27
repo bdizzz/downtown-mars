@@ -735,6 +735,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     setQuality() {
       // The 2D view is cheap at any detail; nothing to trade.
     },
+    setFloor() {
+      // The unrolled view shows every floor at once.
+    },
     setColorBlind(on) {
       heat = on ? HEAT.colorBlind : HEAT.normal;
       drawField();

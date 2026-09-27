@@ -50,3 +50,9 @@ Decided Sep 27, 2026 (Bryon): milestone 3 is the 3D view. When the network map c
 - Whether 3D should become the default view once it has been playtested.
 - Real art for rooms in 3D (see `docs/ART.md`); the current look is code-drawn.
 - Shader warm-up on mode switches, if the one-time hitch bothers playtesters.
+
+**Later addition (Sep 27, Bryon): floor selector and plan view.**
+- **Floor strip:** a strip of floors beside the Plan and 3D views ("All" plus each dug floor, and the one being dug). Page Up / Page Down step through it. The choice lives in the app, so it carries between Plan and 3D.
+- **3D:** picking a floor removes everything above it: shallower rooms (tall rooms keep their lower part), the shallower gallery ledges, the surface and its props, lamps, walkers and the lander. A rock cap covers the chosen floor's empty cells (carved, locked, and solid rock past the last ring), with hairline slot edges. The Top camera looks down from the same height above that floor's ceiling. The cap is pickable, so empty cells can be built on from above, and the surface isn't picked while it's hidden. The readout says "Floor N from above" or "Floor N and below".
+- **Plan view:** a third view (`src/render2d/plan.ts`, PixiJS) that draws one floor from above: the open shaft, the gallery ledge, every ring as a band of slot wedges (locked rings darker, the 0° seam marked), rooms as filled sectors with outlines, glyphs and labels, and disconnected rooms in red. It uses the 3D view's metres and `pickAt`, so slots sit where they do in the 3D top view. Hover, ghosts, effect halos, painting corridors, building, demolishing, selection and overlays all go through the shared interaction rules. It fits the carved rings on screen until you pan or zoom; drag pans and pinch or ctrl+scroll zooms. Surface rooms still need the Unrolled or 3D view.
+- The HUD's view button became a three-way switch (Unrolled, Plan, 3D), and V cycles through the three.

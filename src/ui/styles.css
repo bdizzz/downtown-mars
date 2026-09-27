@@ -348,3 +348,18 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .people .checks li { color: #e0503a; }
 .people .checks li.ok { color: #7cc47a; }
 .people .upcoming li { padding: 1px 0; }
+
+/* View switch in the HUD */
+.view-switch { display: inline-flex; border: 1px solid #000; border-radius: 6px; overflow: hidden; }
+.view-switch button { background: #2f1c16; color: var(--text); border: none; border-right: 1px solid #000; padding: 4px 9px; font: inherit; cursor: pointer; }
+.view-switch button:last-child { border-right: none; }
+.view-switch button.on { background: var(--accent); color: #1a0f0d; font-weight: 600; }
+
+/* Floor picker beside the plan and 3D views */
+.floor-picker {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 5;
+  display: flex; flex-direction: column; gap: 2px; max-height: 80%; overflow-y: auto;
+  background: #1a0f0dcc; border: 1px solid #000; border-radius: 6px; padding: 4px;
+}
+.floor-picker button { background: #2f1c16; color: var(--text); border: 1px solid transparent; border-radius: 4px; padding: 2px 8px; font: inherit; font-size: 12px; cursor: pointer; }
+.floor-picker button.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }

@@ -42,6 +42,12 @@ export interface Stage {
   /** Heat map of one neighbor effect over the rooms, or null for none. */
   setOverlay(type: string | null): void;
   setColorBlind(on: boolean): void;
+  /**
+   * Focus on one floor: the plan view draws it alone, the 3D view hides
+   * everything above it (the shallower floors and the surface). null shows
+   * every floor. The unrolled view ignores it.
+   */
+  setFloor(floor: number | null): void;
   /** Detail level; views that have nothing to trade may ignore it. */
   setQuality(q: Quality): void;
   destroy(): void;

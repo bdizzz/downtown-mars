@@ -18,7 +18,8 @@ Start a new game and follow your deputy's tutorial, or dive in:
 - **Room controls:** pause any staffed room, or have it stop at a stock level, from its details panel.
 - **Overlays** (bottom left) show noise, smell, health, comfort and happiness. **Flows** (top) shows where every resource comes from and goes.
 - **More holes:** once the network reaches 50 colonists the map opens. Build a staging bay to gather a seed kit, pick a site on the Map (M) and send a convoy. With two holes, a **rover depot** gives a hole 2 rovers, and the **Network** panel sets up trade routes between holes.
-- **3D view** (V): stand in the shaft, look anywhere from its centre with **Free** (drag to aim), slice the hole open with **Cutaway** to reach rings 2 and 3, or look straight down from the **Top**. **X-ray** fades ring 1 so you can see behind it. Everything you can do in 2D works in 3D.
+- **Plan view:** one floor from above, rings around the shaft. Pick the floor from the strip on the right (or Page Up / Page Down); everything you can do in the unrolled view works here too.
+- **3D view**: stand in the shaft, look anywhere from its centre with **Free** (drag to aim), slice the hole open with **Cutaway** to reach rings 2 and 3, or look straight down from the **Top**. Pick a floor on the right to hide everything above it: from the Top it becomes a clear plan you can build on. **X-ray** fades ring 1 so you can see behind it. Everything you can do in 2D works in 3D.
 
 ### Controls
 
@@ -34,7 +35,8 @@ Start a new game and follow your deputy's tutorial, or dive in:
 | M | Map of Mars |
 | [ ] | Previous / next hole, once you have more than one |
 | X | Demolish |
-| V | Switch between the 2D and 3D views |
+| V | Cycle views: Unrolled, Plan, 3D |
+| Page Up / Page Down | Previous / next floor in the Plan and 3D views |
 | ⌘Z / Ctrl+Z | Undo your last placement |
 | ? | Controls help |
 | Drag / scroll | Pan (drag paints corridors with the corridor tool) |
