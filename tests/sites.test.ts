@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { depositsAt } from "../src/sim/map";
 import { network } from "../src/sim/network";
-import { createWorld, stepWorld, totalPopulation } from "../src/sim/world";
+import { createWorld, totalPopulation } from "../src/sim/world";
+import { stepWorld } from "../src/sim/worldstep";
 
 describe("the first site", () => {
   it("sits on ice with ore or silica, for any seed", () => {

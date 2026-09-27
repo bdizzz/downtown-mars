@@ -8,7 +8,8 @@ export type ToWorker =
   | { type: "save"; id: number }
   | { type: "load"; id: number; data: string }
   | { type: "newGame"; id: number }
-  | { type: "setActiveHole"; holeId: number };
+  | { type: "setActiveHole"; holeId: number }
+  | { type: "found"; id: number; site: { lat: number; lon: number } };
 
 /**
  * The layout and effect field change rarely, so the worker only sends them

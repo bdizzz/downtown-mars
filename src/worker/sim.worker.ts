@@ -3,9 +3,11 @@ import { applyCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { deserialize, serialize, summarize } from "../sim/save";
 import { makeSnapshot, type HoleSummary } from "../sim/snapshot";
+import { foundHole } from "../sim/founding";
 import { degreesApart } from "../sim/mapgeo";
 import { network } from "../sim/network";
-import { createWorld, holeById, stepWorld, type World } from "../sim/world";
+import { createWorld, holeById, type World } from "../sim/world";
+import { stepWorld } from "../sim/worldstep";
 import type { FromWorker, ToWorker, WireSnapshot } from "./protocol";
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -57,6 +59,13 @@ function post(): void {
     gameId,
     holes: summaries(),
     deposits: knownDeposits(),
+    convoys: world.convoys.map((c) => ({
+      name: c.name,
+      from: holeById(world, c.fromHoleId)?.site ?? null,
+      to: c.site,
+      progress: (world.tick - c.departTick) / Math.max(1, c.arriveTick - c.departTick),
+      daysLeft: (c.arriveTick - world.tick) / config.ticksPerDay,
+    })),
     mapUnlocked: world.mapUnlocked,
     layoutVersion: layout.version,
     ...(fresh ? { layout, effects } : {}),
@@ -93,6 +102,10 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       break;
     case "setActiveHole":
       if (holeById(world, msg.holeId)) activeHoleId = msg.holeId;
+      break;
+    case "found":
+      // Founded from the hole you're looking at.
+      reply({ type: "commandResult", id: msg.id, result: foundHole(world, config, activeHoleId, msg.site) });
       break;
     case "command":
       // Applied between ticks, so building works while paused.

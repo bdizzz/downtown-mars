@@ -494,6 +494,29 @@
         "electronics": 2
       },
       "buildable": true
+    },
+    {
+      "id": "staging_bay",
+      "name": "Staging bay",
+      "short": "Staging",
+      "category": "logistics",
+      "size": "L",
+      "staff": 2,
+      "uses": {},
+      "makes": {},
+      "stagesSeedKit": true,
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "metal": 15,
+        "machinery": 2
+      },
+      "buildable": true
     }
   ]
 }

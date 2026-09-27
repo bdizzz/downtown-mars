@@ -58,5 +58,23 @@
     "minLat": 30,
     "maxLat": 62,
     "extraDepositRadiusDeg": 1.5
+  },
+  "seedKit": {
+    "_note": "What a staging bay gathers before a new hole can be founded, and how long a fully staffed bay takes to gather it. It never takes a hole below reserveFraction of a kit's worth of anything. Oxygen is in the kit because a new hole has no life support yet.",
+    "goods": {
+      "o2": 60,
+      "machinery": 6,
+      "electronics": 4,
+      "metal": 40,
+      "brick": 20,
+      "rations": 80,
+      "water": 160,
+      "soil": 20
+    },
+    "volunteers": 12,
+    "minStayBehind": 20,
+    "fillDays": 3,
+    "reserveFraction": 0.5,
+    "minSpacingDeg": 5
   }
 }

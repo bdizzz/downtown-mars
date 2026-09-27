@@ -12,4 +12,16 @@ export const network = raw as unknown as {
   /** Before the map unlocks, deposits this close to a hole are known. */
   scoutRadiusDeg: number;
   firstSite: { minLat: number; maxLat: number; extraDepositRadiusDeg: number };
+  seedKit: {
+    goods: Record<string, number>;
+    volunteers: number;
+    /** A parent never sends so many that fewer than this stay. */
+    minStayBehind: number;
+    /** Days a fully staffed bay takes to gather a whole kit. */
+    fillDays: number;
+    /** Never take a hole below this share of a kit's worth of anything. */
+    reserveFraction: number;
+    /** New holes can't be closer than this to an existing one. */
+    minSpacingDeg: number;
+  };
 };

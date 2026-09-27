@@ -279,3 +279,10 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .site-panel ul { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
 .site-panel i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .site-panel header button { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+.site-panel .checks li.ok { color: #9fcf86; }
+.site-panel .checks li.no { color: var(--muted); }
+.found-btn {
+  margin-top: 8px; width: 100%; background: var(--accent); color: #1a0f0d; font: inherit; font-weight: 600;
+  border: none; border-radius: 5px; padding: 7px; cursor: pointer;
+}
+.found-btn:disabled { background: #3a241d; color: var(--muted); cursor: not-allowed; }

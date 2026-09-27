@@ -5,6 +5,7 @@ import { beds, padReady } from "./earth";
 import { capacities, roomSpec, type Population, type RoomStatus } from "./economy";
 import type { EffectField } from "./effects";
 import type { Deposit, DepositKind } from "./mapgeo";
+import { hasStagingBay, kitProgress } from "./founding";
 import type { Happiness } from "./happiness";
 import { averageFlows, type Flows } from "./ledger";
 import type { Message } from "./messages";
@@ -22,6 +23,15 @@ export interface DrillView {
   progress: number;
   /** Real ticks left on the current floor. */
   ticksLeft: number;
+}
+
+export interface ConvoyView {
+  name: string;
+  from: { lat: number; lon: number } | null;
+  to: { lat: number; lon: number };
+  /** 0 at departure, 1 on arrival. */
+  progress: number;
+  daysLeft: number;
 }
 
 /** One line per hole, for the hole picker and anything network-wide. */
@@ -51,6 +61,10 @@ export interface Snapshot {
   mapUnlocked: boolean;
   /** What the hole you're looking at sits on. */
   holeDeposits: DepositKind[];
+  /** This hole's seed kit: gathered so far against what a kit needs. */
+  kit: { loaded: Record<string, number>; progress: number; hasBay: boolean };
+  /** Founding convoys on their way; the worker fills these in. */
+  convoys: ConvoyView[];
   tick: number;
   time: GameTime;
   layout: Layout;
@@ -89,6 +103,8 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     deposits: [],
     mapUnlocked: false,
     holeDeposits: state.deposits ?? [],
+    kit: { loaded: state.kit ?? {}, progress: kitProgress(state), hasBay: hasStagingBay(state) },
+    convoys: [],
     tick: state.tick,
     time: gameTime(state.tick, cfg),
     layout: state.layout,

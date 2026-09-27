@@ -27,7 +27,7 @@ import { useSounds } from "./useSounds";
 const NOTICE_MS = 3000;
 
 export function App() {
-  const { snapshot, speed, setSpeed, setActiveHole, send, save, load, newGame } = useSim();
+  const { snapshot, speed, setSpeed, setActiveHole, send, found, save, load, newGame } = useSim();
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [tool, setTool] = useState<Tool>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -309,7 +309,19 @@ export function App() {
             />
           )}
           <Messages s={snapshot} />
-          {snapshot && mapOpen && <MapScreen s={snapshot} onClose={() => setMapOpen(false)} site={plannedSite} onSite={setPlannedSite} />}
+          {snapshot && mapOpen && (
+            <MapScreen
+              s={snapshot}
+              onClose={() => setMapOpen(false)}
+              site={plannedSite}
+              onSite={setPlannedSite}
+              onFound={async (site) => {
+                const r = await found(site);
+                if (r.ok) setPlannedSite(null);
+                else flash(r.reason);
+              }}
+            />
+          )}
           <ViewHost
             snapshot={snapshot}
             tool={tool}

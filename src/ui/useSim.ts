@@ -75,5 +75,11 @@ export function useSim() {
     [ask],
   );
 
-  return { snapshot, speed, setSpeed, setActiveHole, send, save, load, newGame };
+  const found = useCallback(
+    async (site: { lat: number; lon: number }): Promise<CommandResult> =>
+      (await ask<Extract<Reply, { type: "commandResult" }>>((id) => ({ type: "found", id, site }))).result,
+    [ask],
+  );
+
+  return { snapshot, speed, setSpeed, setActiveHole, send, found, save, load, newGame };
 }

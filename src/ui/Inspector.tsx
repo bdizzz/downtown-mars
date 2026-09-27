@@ -5,6 +5,7 @@ import { effectOnRoom, FIELD_TYPES } from "../sim/effects";
 import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
+import { network } from "../sim/network";
 import { num, resName, signed } from "./format";
 
 interface Props {
@@ -44,6 +45,23 @@ function Neighborhood({ s, room }: { s: Snapshot; room: Snapshot["layout"]["room
       <span className="k">Felt here</span>
       {felt.length ? felt.map(([t, v]) => `${t} ${signed(v)}`).join(", ") : "nothing"}
     </p>
+  );
+}
+
+function SeedKit({ s }: { s: Snapshot }) {
+  const goods = Object.entries(network.seedKit.goods);
+  return (
+    <>
+      <p>
+        <span className="k">Seed kit</span> {Math.floor(s.kit.progress * 100)}% gathered
+      </p>
+      <p className="k">
+        {goods.map(([id, want]) => `${resName(id)} ${num(s.kit.loaded[id] ?? 0)}/${want}`).join(" · ")}
+      </p>
+      <p className="k">
+        When it's full, pick a site on the map (M) and send {network.seedKit.volunteers} volunteers to found a new hole.
+      </p>
+    </>
   );
 }
 
@@ -105,6 +123,7 @@ export function Inspector({ s, roomId, onCommand, onClose }: Props) {
       <Flows label="Makes/day" flows={spec.makes} />
       <Flows label="Scrubs/day" flows={spec.scrubs} />
       <Flows label="Stores" flows={spec.stores} />
+      {def.stagesSeedKit && <SeedKit s={s} />}
       {def.houses ? <Home s={s} roomId={room.id} capacity={def.houses} /> : null}
       {spec.sanitation > 0 && (
         <p>

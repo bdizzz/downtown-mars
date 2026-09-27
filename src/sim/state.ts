@@ -27,6 +27,8 @@ export interface SimState {
   site: Site | null;
   /** What's in the ground here: digging yields it, and regional rooms need it. */
   deposits: DepositKind[];
+  /** Goods loaded into the staging bay's seed kit so far. */
+  kit: Record<string, number>;
   tick: number;
   rngState: number;
   layout: Layout;
@@ -79,6 +81,7 @@ export function createInitialState(
     name: who.name,
     site: who.site,
     deposits: who.deposits,
+    kit: {},
     tick: 0,
     rngState: who.seed >>> 0,
     layout,

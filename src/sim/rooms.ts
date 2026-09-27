@@ -44,6 +44,8 @@ export interface RoomDef {
   cares?: number;
   /** Only buildable in a hole that sits on this deposit. */
   requiresDeposit?: DepositKind;
+  /** Gathers the seed kit for founding a new hole. */
+  stagesSeedKit?: boolean;
 }
 
 // JSON imports widen literal types, so the shape is checked in tests/rooms.test.ts.

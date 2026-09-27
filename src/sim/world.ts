@@ -1,9 +1,8 @@
 import type { SimConfig } from "./config";
 import { chooseFirstSite, depositsAt, generateMap, type MapState } from "./map";
-import { postMessage } from "./messages";
+import type { Convoy } from "./founding";
 import { network } from "./network";
 import { createInitialState, type SimState } from "./state";
-import { step } from "./step";
 
 // The world: shared time and every hole. Each hole is a SimState that the
 // existing systems run on unchanged; things that happen between holes
@@ -18,6 +17,8 @@ export interface World {
   map: MapState;
   /** The whole map is known once the network is big enough to reach for it. */
   mapUnlocked: boolean;
+  /** Founding convoys on their way to new sites. */
+  convoys: Convoy[];
 }
 
 export { network };
@@ -43,7 +44,7 @@ export function createWorld(cfg: SimConfig, seed = cfg.seed): World {
     deposits: depositsAt(map, site),
     seed: holeSeed(seed, 1),
   });
-  return { seed, tick: 0, holes: [first], nextHoleId: 2, map, mapUnlocked: false };
+  return { seed, tick: 0, holes: [first], nextHoleId: 2, map, mapUnlocked: false, convoys: [] };
 }
 
 export function totalPopulation(world: World): number {
@@ -52,14 +53,4 @@ export function totalPopulation(world: World): number {
 
 export function holeById(world: World, id: number): SimState | undefined {
   return world.holes.find((h) => h.holeId === id);
-}
-
-/** Advance every hole one tick, in id order, so the world stays deterministic. */
-export function stepWorld(world: World, cfg: SimConfig): void {
-  world.tick += 1;
-  for (const hole of world.holes) step(hole, cfg);
-  if (!world.mapUnlocked && totalPopulation(world) >= network.mapUnlockPopulation) {
-    world.mapUnlocked = true;
-    postMessage(world.holes[0]!, cfg, "The map is open: scout a site for a second hole. Somewhere with what this one lacks.", "good");
-  }
 }

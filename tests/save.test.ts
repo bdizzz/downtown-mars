@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { deserialize, SAVE_VERSION, serialize, summarize } from "../src/sim/save";
-import { createWorld, stepWorld, type World } from "../src/sim/world";
+import { createWorld, type World } from "../src/sim/world";
+import { stepWorld } from "../src/sim/worldstep";
 
 const run = (w: World, ticks: number) => {
   for (let i = 0; i < ticks; i++) stepWorld(w, config);

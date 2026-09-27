@@ -71,11 +71,13 @@ interface Props {
   /** The site the player has picked, if any, for founding a hole there. */
   site: SitePick | null;
   onSite: (site: SitePick | null) => void;
+  /** Send a convoy from the hole you're looking at to found a hole at this site. */
+  onFound: (site: SitePick) => void;
 }
 
 const fmtLat = (lat: number) => `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? "N" : "S"}`;
 
-export function MapScreen({ s, onClose, site, onSite }: Props) {
+export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [image, setImage] = useState<HTMLCanvasElement | null>(null);
@@ -166,6 +168,28 @@ export function MapScreen({ s, onClose, site, onSite }: Props) {
       g.lineTo(x, y + 14);
       g.stroke();
     }
+    // Convoys: a dashed line from home to the new site, with the convoy along it.
+    for (const c of s.convoys) {
+      if (!c.from) continue;
+      const [x0, y0] = toXY(c.from.lat, c.from.lon);
+      const [x1, y1] = toXY(c.to.lat, c.to.lon);
+      g.setLineDash([5, 4]);
+      g.strokeStyle = "#e07a3f";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(x0, y0);
+      g.lineTo(x1, y1);
+      g.stroke();
+      g.setLineDash([]);
+      const t = Math.min(1, Math.max(0, c.progress));
+      g.beginPath();
+      g.arc(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, 4, 0, Math.PI * 2);
+      g.fillStyle = "#e07a3f";
+      g.fill();
+      g.fillStyle = "#fff";
+      g.font = "600 11px system-ui, sans-serif";
+      g.fillText(`${c.name} · ${c.daysLeft.toFixed(1)} d`, x1, y1 - 10);
+    }
     for (const h of s.holes) {
       if (!h.site) continue;
       const [x, y] = toXY(h.site.lat, h.site.lon);
@@ -180,7 +204,7 @@ export function MapScreen({ s, onClose, site, onSite }: Props) {
       g.font = "700 12px system-ui, sans-serif";
       g.fillText(h.name, x, y - 10);
     }
-  }, [image, size, s.deposits, s.holes, s.holeId, shown, site]);
+  }, [image, size, s.deposits, s.holes, s.holeId, s.convoys, shown, site]);
 
   const info = useMemo(() => {
     if (!hover) return null;
@@ -235,7 +259,7 @@ export function MapScreen({ s, onClose, site, onSite }: Props) {
           }}
         />
       </div>
-      {site && <SitePanel s={s} site={site} elevation={elevation} onClear={() => onSite(null)} />}
+      {site && <SitePanel s={s} site={site} elevation={elevation} onClear={() => onSite(null)} onFound={() => onFound(site)} />}
       </div>
       <footer className="k">
         {info
@@ -246,7 +270,30 @@ export function MapScreen({ s, onClose, site, onSite }: Props) {
   );
 }
 
-function SitePanel({ s, site, elevation, onClear }: { s: Snapshot; site: SitePick; elevation: Elevation | null; onClear: () => void }) {
+function SitePanel({
+  s,
+  site,
+  elevation,
+  onClear,
+  onFound,
+}: {
+  s: Snapshot;
+  site: SitePick;
+  elevation: Elevation | null;
+  onClear: () => void;
+  onFound: () => void;
+}) {
+  const kit = network.seedKit;
+  const pop = s.holes.find((h) => h.id === s.holeId)?.population ?? 0;
+  const taken = [...s.holes.flatMap((h) => (h.site ? [h.site] : [])), ...s.convoys.map((c) => c.to)];
+  const checks: [boolean, string][] = [
+    [s.mapUnlocked, `The map is open (at ${network.mapUnlockPopulation} colonists)`],
+    [s.kit.hasBay, `${s.holeName} has a staging bay`],
+    [s.kit.progress >= 0.999, `Seed kit gathered (${Math.floor(s.kit.progress * 100)}%)`],
+    [pop - kit.volunteers >= kit.minStayBehind, `${kit.volunteers} volunteers, keeping ${kit.minStayBehind} (${pop} now)`],
+    [!taken.some((t) => degreesApart(t, site) < kit.minSpacingDeg), "Far enough from other holes"],
+  ];
+  const ready = checks.every(([ok]) => ok);
   const near = nearestFeature(site);
   const known = s.mapUnlocked || s.holes.some((h) => h.site && degreesApart(h.site, site) <= network.scoutRadiusDeg);
   const here = depositsAt({ deposits: s.deposits }, site);
@@ -293,6 +340,17 @@ function SitePanel({ s, site, elevation, onClear }: { s: Snapshot; site: SitePic
             );
           })}
       </ul>
+      <h4>Found a hole here</h4>
+      <ul className="checks">
+        {checks.map(([ok, text]) => (
+          <li key={text} className={ok ? "ok" : "no"}>
+            {ok ? "✓" : "·"} {text}
+          </li>
+        ))}
+      </ul>
+      <button className="found-btn" disabled={!ready} onClick={onFound}>
+        Send a convoy from {s.holeName}
+      </button>
     </aside>
   );
 }
