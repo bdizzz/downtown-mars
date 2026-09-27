@@ -247,6 +247,14 @@ export function App() {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.code === "KeyR") rotate();
       if (e.code === "KeyM") setMapOpen((m) => !m);
+      // [ and ] step through the holes.
+      const next = e.code === "BracketRight" || e.key === "]";
+      const prev = e.code === "BracketLeft" || e.key === "[";
+      if ((next || prev) && snapshot && snapshot.holes.length > 1) {
+        const i = snapshot.holes.findIndex((h) => h.id === snapshot.holeId);
+        const n = snapshot.holes.length;
+        setActiveHole(snapshot.holes[(i + (next ? 1 : n - 1)) % n]!.id);
+      }
       if (e.code === "KeyV") updateSettings({ view: settings.view === "2d" ? "3d" : "2d" });
       const letter = e.key.toUpperCase();
       if (letter === DEMOLISH_KEY) {
@@ -262,7 +270,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, helpOpen, mapOpen, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings]);
+  }, [menu, helpOpen, mapOpen, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole]);
 
   return (
     <div

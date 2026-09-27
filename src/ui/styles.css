@@ -286,3 +286,4 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
   border: none; border-radius: 5px; padding: 7px; cursor: pointer;
 }
 .found-btn:disabled { background: #3a241d; color: var(--muted); cursor: not-allowed; }
+.msg .from { color: var(--accent); }

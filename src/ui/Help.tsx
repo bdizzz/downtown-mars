@@ -7,6 +7,7 @@ const GENERAL: [string, string][] = [
   ["R", "Rotate the room you're placing"],
   ["V", "Switch between the 2D and 3D views"],
   ["M", "Open or close the map of Mars"],
+  ["[ ]", "Previous / next hole"],
   [DEMOLISH_KEY, "Demolish tool"],
   ["⌘Z / Ctrl+Z", "Undo your last placement"],
   ["?", "Show or hide this help"],

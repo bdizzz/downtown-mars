@@ -11,7 +11,8 @@ export function Messages({ s }: { s: Snapshot | null }) {
   return (
     <div className="messages">
       {recent.map((m) => (
-        <div key={`${m.tick}:${m.text}`} className={`msg ${m.kind}`} style={{ opacity: 1 - ((s.tick - m.tick) / SHOW_TICKS) ** 3 }}>
+        <div key={`${m.holeId ?? 0}:${m.tick}:${m.text}`} className={`msg ${m.kind}`} style={{ opacity: 1 - ((s.tick - m.tick) / SHOW_TICKS) ** 3 }}>
+          {m.holeId !== undefined && m.holeId !== s.holeId && <strong className="from">{m.holeName}: </strong>}
           {m.text}
         </div>
       ))}

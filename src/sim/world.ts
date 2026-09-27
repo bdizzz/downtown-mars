@@ -1,6 +1,7 @@
 import type { SimConfig } from "./config";
 import { chooseFirstSite, depositsAt, generateMap, type MapState } from "./map";
 import type { Convoy } from "./founding";
+import type { Message } from "./messages";
 import { network } from "./network";
 import { createInitialState, type SimState } from "./state";
 
@@ -53,4 +54,12 @@ export function totalPopulation(world: World): number {
 
 export function holeById(world: World, id: number): SimState | undefined {
   return world.holes.find((h) => h.holeId === id);
+}
+
+/** Every hole's recent messages in one feed, newest last, each tagged with its hole. */
+export function networkMessages(world: World, keep: number): Message[] {
+  return world.holes
+    .flatMap((h) => h.messages.map((m) => ({ ...m, holeId: h.holeId, holeName: h.name })))
+    .sort((a, b) => a.tick - b.tick || (a.holeId ?? 0) - (b.holeId ?? 0))
+    .slice(-keep);
 }

@@ -6,7 +6,7 @@ import { makeSnapshot, type HoleSummary } from "../sim/snapshot";
 import { foundHole } from "../sim/founding";
 import { degreesApart } from "../sim/mapgeo";
 import { network } from "../sim/network";
-import { createWorld, holeById, type World } from "../sim/world";
+import { createWorld, holeById, networkMessages, type World } from "../sim/world";
 import { stepWorld } from "../sim/worldstep";
 import type { FromWorker, ToWorker, WireSnapshot } from "./protocol";
 
@@ -67,6 +67,8 @@ function post(): void {
       daysLeft: (c.arriveTick - world.tick) / config.ticksPerDay,
     })),
     mapUnlocked: world.mapUnlocked,
+    // News from every hole, so nothing elsewhere goes unnoticed.
+    messages: networkMessages(world, config.messages.keep),
     layoutVersion: layout.version,
     ...(fresh ? { layout, effects } : {}),
   };

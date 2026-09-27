@@ -97,3 +97,29 @@ describe("founding", () => {
     expect(loaded.ok && loaded.world.holes.map((h) => h.name)).toEqual(["Bradbury", "Gale"]);
   });
 });
+
+describe("two holes at once", () => {
+  it("shows news from every hole in one feed, tagged with its hole", async () => {
+    const { networkMessages } = await import("../src/sim/world");
+    const w = ready();
+    gather(w);
+    foundHole(w, config, 1, site);
+    while (w.convoys.length) stepWorld(w, config);
+    const feed = networkMessages(w, 20);
+    expect(feed.some((m) => m.holeName === "Gale" && /new hole is founded/.test(m.text))).toBe(true);
+    expect(feed.some((m) => m.holeName === "Bradbury")).toBe(true);
+    expect([...feed].sort((a, b) => a.tick - b.tick)).toEqual(feed);
+  });
+
+  it("each hole gets its own Earth drops", () => {
+    const w = ready();
+    gather(w);
+    foundHole(w, config, 1, site);
+    while (w.convoys.length) stepWorld(w, config);
+    const child = w.holes[1]!;
+    const dropAt = child.earth.nextDropTick;
+    expect(dropAt).toBeGreaterThan(w.tick);
+    while (w.tick <= dropAt) stepWorld(w, config);
+    expect(child.messages.some((m) => /Supply drop landed/.test(m.text))).toBe(true);
+  });
+});

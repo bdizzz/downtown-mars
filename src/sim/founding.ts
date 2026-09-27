@@ -130,8 +130,8 @@ export function stepConvoys(world: World, cfg: SimConfig): void {
     world.holes.push(hole);
     const parent = holeById(world, c.fromHoleId);
     const msg = `The convoy reached ${c.name}. A new hole is founded, ${Math.round(distanceKm(parent?.site ?? c.site, c.site)).toLocaleString()} km from ${parent?.name ?? "home"}.`;
+    // Posted once, in the new hole; the network-wide feed shows it everywhere.
     postMessage(hole, cfg, msg, "good");
-    if (parent) postMessage(parent, cfg, msg, "good");
   }
   world.convoys = world.convoys.filter((x) => world.tick < x.arriveTick);
 }

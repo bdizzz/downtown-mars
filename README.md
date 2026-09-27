@@ -27,6 +27,7 @@ Start a new game and follow your deputy's tutorial, or dive in:
 | C D G F T Y W L K A B S P | Corridor, dorm, galley, farm, tank, recycler, restroom, life support, clinic, admin office, battery, solar, landing pad |
 | U O H I N | Deep well pump, smelter, machine shop, silicon refinery, electronics fab (some need the right site) |
 | M | Map of Mars |
+| [ ] | Previous / next hole, once you have more than one |
 | X | Demolish |
 | V | Switch between the 2D and 3D views |
 | ⌘Z / Ctrl+Z | Undo your last placement |

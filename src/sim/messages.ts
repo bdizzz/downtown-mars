@@ -5,6 +5,9 @@ export interface Message {
   tick: number;
   text: string;
   kind: "info" | "good" | "warn";
+  /** Set when messages from several holes are shown together. */
+  holeId?: number;
+  holeName?: string;
 }
 
 export function postMessage(state: SimState, cfg: SimConfig, text: string, kind: Message["kind"] = "info"): void {
