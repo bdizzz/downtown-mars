@@ -14,6 +14,8 @@ Start a new game and follow your deputy's tutorial, or dive in:
 - **Watch the bar at the top:** oxygen, water, meals and power, with how fast they're changing. Red means it runs out in under two days.
 - **Earth** sends supply drops every few days until you can stand on your own.
 - **Office:** colonists visit with problems. What you promise, they remember.
+- **People:** everyone starts as a working adult. With a clinic and a happy hole, children are born (they need a school); adults eventually retire as elders (who want elder care). Only adults work. The **People** panel shows what's holding births back, and colonists in a miserable hole move to a happier one.
+- **Room controls:** pause any staffed room, or have it stop at a stock level, from its details panel.
 - **Overlays** (bottom left) show noise, smell, health, comfort and happiness. **Flows** (top) shows where every resource comes from and goes.
 - **More holes:** once the network reaches 50 colonists the map opens. Build a staging bay to gather a seed kit, pick a site on the Map (M) and send a convoy. With two holes, a **rover depot** gives a hole 2 rovers, and the **Network** panel sets up trade routes between holes.
 - **3D view** (V): stand in the shaft, look anywhere from its centre with **Free** (drag to aim), slice the hole open with **Cutaway** to reach rings 2 and 3, or look straight down from the **Top**. **X-ray** fades ring 1 so you can see behind it. Everything you can do in 2D works in 3D.

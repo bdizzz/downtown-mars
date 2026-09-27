@@ -73,6 +73,8 @@ export interface SimConfig {
     fixed: Record<string, number>;
     /** Upper limit; arrivals also need free beds. */
     colonistsPerDrop: number;
+    /** Earth sends no colonists while the hole's health is below this. */
+    colonistsNeedHealth: number;
     delayChance: number;
     delayDays: number;
     /** How often a drop waiting for a working landing pad tries again. */

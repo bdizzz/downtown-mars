@@ -67,3 +67,30 @@ The snapshot gained `stages`, `care`, `births` (blockers, per day, born) and `up
 It loses 5% of its adults, at most 3 a day, and always keeps 4. They are the youngest adults, and they travel at rover speed. On arrival they pull the host's culture toward home in proportion to their share of the host. Both ends get a message.
 
 Closed borders is a new ordinance: it turns immigrants away and pushes culture toward Insular. The People panel warns when colonists are leaving and where to, the Network panel lists people on the move, and the map shows them as violet dots. Save version 11.
+
+**Step 7, balance and tests:**
+
+*Bot.* `tests/adaptive.ts` is a scripted player that reacts. Once its opening plan is done, it checks its hole once a day and builds the fitting room in the first free ring-1 spot. In order of urgency it covers:
+- air, power and water;
+- galleys and farms, restrooms and clinics;
+- school and elder care;
+- dorms, only while the hole is healthy and content, leaving room for births.
+
+It skips rooms nobody is free to staff, and when air is short it pauses industry (machine shop, smelter, rover depot, staging bay) to free hands. Both holes in the two-hole bot use it after their opening plans. The bot's routes now carry metal only: shipping water had dried out the parent.
+
+*Tuning:*
+- **Birth threshold 55 → 50.** Well-run holes sit at 50–55 happiness, so at 55 births almost never happened (9 in 90 days); at 50 there are 27.
+- **Earth health gate.** Earth no longer sends colonists into a hole whose health is below 50 (`earth.colonistsNeedHealth`), since that only deepened a failing hole's trouble. Supplies still come.
+
+*Results* (seed 42; `tests/people-playthrough.test.ts`, 90 days):
+- first birth by day 15; 27 births across both holes, and the first-born are working by day 55;
+- the first elders retire on day 83;
+- the network reaches 199 colonists, against 123 for the same player staying solo, whose single hole levels off from day 70;
+- when Bradbury's morale sinks near the end, six colonists move to Gale.
+
+The one-hour two-hole test now compares against the adaptive solo player, which is a much stronger baseline: the network is +11% at day 60, down from +38% against the old fixed-plan bot. The gap widens after that.
+
+*Open questions for Bryon:*
+- **Labor is the late squeeze.** Children, elders and elder care all draw on the same adults, and a hole of 130 can run out of hands for its sixth life support. That's the design's intent, but the spiral from short air to low health to low morale to slower rooms is fast: health can go from 86 to 14 in 4 days.
+- **Soil is the next ceiling.** Farms stall on soil, which only comes from Earth at 15 a drop, so food caps a hole around 130. The catalog's soil sources belong to the full balancing pass.
+- **Old age:** elders pass away peacefully after 30–60 days. Alternatives: they stay until a later milestone adds deaths from events, or they "retire to Earth".

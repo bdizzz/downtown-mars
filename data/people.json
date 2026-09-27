@@ -20,7 +20,7 @@
   },
   "births": {
     "_note": "Births need a working clinic, a happy enough hole and a free bed.",
-    "minHappiness": 55,
+    "minHappiness": 50,
     "perAdultPerDay": 0.006
   },
   "school": {

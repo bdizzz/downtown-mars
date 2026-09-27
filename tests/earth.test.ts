@@ -44,8 +44,22 @@ describe("Earth supply drops", () => {
     ticks(s, firstDrop);
     expect(s.population.count).toBe(20); // the pod is full
     applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 2) });
-    ticks(s, config.earth.intervalDays * config.ticksPerDay);
+    for (let i = 0; i < config.earth.intervalDays * config.ticksPerDay; i++) {
+      s.population.health = 100; // this hole has no galley or life support; beds are the point here
+      ticks(s, 1);
+    }
     expect(s.population.count).toBe(20 + config.earth.colonistsPerDrop);
+  });
+
+  it("sends nobody into a hole whose people are in poor health", () => {
+    const s = start();
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 2) });
+    for (let i = 0; i < firstDrop; i++) {
+      s.population.health = config.earth.colonistsNeedHealth - 10;
+      ticks(s, 1);
+    }
+    expect(s.population.count).toBe(20);
+    expect(s.messages.some((m) => /Supply drop landed/.test(m.text))).toBe(true); // supplies still come
   });
 
   it("sizes the top-ups for the colonists who just arrived", () => {

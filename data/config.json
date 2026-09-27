@@ -65,6 +65,7 @@
     "coverBufferDays": 1,
     "fixed": { "metal": 25, "brick": 10, "machinery": 3, "electronics": 3, "soil": 15 },
     "colonistsPerDrop": 6,
+    "colonistsNeedHealth": 50,
     "delayChance": 0.15,
     "delayDays": 1,
     "retryDays": 0.25,

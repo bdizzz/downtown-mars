@@ -9,12 +9,16 @@ import { addRoute } from "../src/sim/rovers";
 import type { SimState } from "../src/sim/state";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
+import { adapt } from "./adaptive";
 import { PLAN, VISIT_ANSWERS } from "./bot";
+import { beds } from "../src/sim/earth";
+import { stageCounts } from "../src/sim/people";
 
 // A scripted player for the first hour (60 game days) across two holes:
 // the first hole follows the one-hole bot, then, once the map opens, builds a
 // staging bay and a rover depot, founds a second hole on a deposit the first
-// lacks, builds that hole's critical set, and runs rovers both ways.
+// lacks, builds that hole's critical set, and runs rovers both ways. Past
+// their opening plans, both holes build whatever is short (adaptive.ts).
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 const surface = (slot: number): Location => ({ kind: "surface", slot });
@@ -45,10 +49,7 @@ export const CHILD_PLAN: Plan[] = [
 ];
 
 /** Routes to set up once both holes have rovers: [from, to, resource, per trip]. */
-const HOME_ROUTES: [string, number][] = [
-  ["water", 40],
-  ["metal", 20],
-];
+const HOME_ROUTES: [string, number][] = [["metal", 20]];
 
 export interface NetDay {
   day: number;
@@ -66,25 +67,37 @@ export interface NetDay {
   childFood: number;
   childHealth: number;
   childHappy: number;
+  homeHappy: number;
+  /** Children/adults/elders per hole. */
+  stages: string;
+  born: number;
+  beds: string;
 }
 
+/** Builds a plan strictly in order, except that rooms not yet unlocked wait without holding up the rest. */
 function builder(plan: Plan[]) {
-  let next = 0;
+  const pending = plan.map((p, i) => ({ ...p, i }));
   const builtAt: number[] = [];
   return {
     get done() {
-      return next;
+      return plan.length - pending.length;
     },
     builtAt,
     step(hole: SimState, day: number) {
-      while (next < plan.length) {
-        const p = plan[next]!;
-        if (!applyCommand(hole, { type: "build", room: p.room, at: p.at }).ok) break;
-        const room = hole.layout.rooms.at(-1)!;
-        if (p.crop) applyCommand(hole, { type: "setCrop", roomId: room.id, crop: p.crop });
-        if (p.stopAt !== undefined) applyCommand(hole, { type: "setRoomControl", roomId: room.id, stopAt: p.stopAt });
+      for (let k = 0; k < pending.length; ) {
+        const p = pending[k]!;
+        const r = applyCommand(hole, { type: "build", room: p.room, at: p.at });
+        if (!r.ok) {
+          if (r.reason.startsWith("Unlocks with")) {
+            k++;
+            continue;
+          }
+          break;
+        }
+        if (p.crop) applyCommand(hole, { type: "setCrop", roomId: r.roomId!, crop: p.crop });
+        if (p.stopAt !== undefined) applyCommand(hole, { type: "setRoomControl", roomId: r.roomId!, stopAt: p.stopAt });
         builtAt.push(day);
-        next++;
+        pending.splice(k, 1);
       }
     },
   };
@@ -123,6 +136,7 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
   // A player gets ready to found as soon as the map opens, alongside the rest.
   const netPlan = builder(HOME_EXTRA);
   const childPlan = builder(CHILD_PLAN);
+  const adapted: string[] = [];
   const log: NetDay[] = [];
   const events: string[] = [];
   let foundedDay: number | null = null;
@@ -138,10 +152,19 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
         applyCommand(home, { type: "setGathering", gathering: true });
       }
       homePlan.step(home, day);
+      // Past the opening plan, the player reacts to what's short, once a day.
+      if (homePlan.done === PLAN.length && t % config.ticksPerDay === 0) {
+        const built = adapt(home);
+        if (built) adapted.push(`d${day.toFixed(0)} ${home.name} ${built}`);
+      }
       answerVisits(home);
       const child = world.holes[1];
       if (child) {
         childPlan.step(child, day);
+        if (childPlan.done === CHILD_PLAN.length && t % config.ticksPerDay === 0) {
+          const built = adapt(child);
+          if (built) adapted.push(`d${day.toFixed(0)} ${child.name} ${built}`);
+        }
         answerVisits(child);
       }
       if (found && foundedDay === null && world.mapUnlocked && kitProgress(home) >= 0.999) {
@@ -191,8 +214,21 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
         childFood: Math.round((r.rations ?? 0) + (r.rawFood ?? 0) + (r.meals ?? 0)),
         childHealth: Math.round(child?.population.health ?? 0),
         childHappy: Math.round(child?.happiness.average ?? 0),
+        homeHappy: Math.round(home.happiness.average),
+        stages: world.holes.map((h) => { const s = stageCounts(h); return `${s.child}/${s.adult}/${s.elder}`; }).join(" "),
+        born: world.holes.reduce((n, h) => n + (h.population.born ?? 0), 0),
+        beds: world.holes.map((h) => beds(h)).join("/"),
       });
     }
   }
-  return { world, log, events, foundedDay, homeBuilt: homePlan.builtAt, netBuilt: netPlan.builtAt, childBuilt: childPlan.builtAt };
+  return {
+    world,
+    log,
+    events,
+    foundedDay,
+    homeBuilt: homePlan.builtAt,
+    netBuilt: netPlan.builtAt,
+    childBuilt: childPlan.builtAt,
+    adapted,
+  };
 }

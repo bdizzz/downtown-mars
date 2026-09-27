@@ -103,8 +103,10 @@ function land(state: SimState, cfg: SimConfig): Record<string, number> {
     record(state, id, "in", LABELS.earth, fit);
   };
 
-  // Colonists step off first, so the top-ups below include them.
-  const arrivals = Math.max(0, Math.min(ec.colonistsPerDrop, beds(state) - state.population.count));
+  // Colonists step off first, so the top-ups below include them. Earth won't
+  // send anyone into a hole whose people are already in poor health.
+  const healthy = state.population.health >= ec.colonistsNeedHealth;
+  const arrivals = healthy ? Math.max(0, Math.min(ec.colonistsPerDrop, beds(state) - state.population.count)) : 0;
   if (arrivals > 0) {
     addAdults(state, arrivals, cfg);
     contents.colonists = arrivals;
