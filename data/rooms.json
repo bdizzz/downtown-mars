@@ -517,6 +517,26 @@
         "machinery": 2
       },
       "buildable": true
+    },
+    {
+      "id": "rover_depot",
+      "name": "Rover depot",
+      "short": "Rovers",
+      "category": "logistics",
+      "size": "surface",
+      "surfaceSlots": 2,
+      "staff": 4,
+      "uses": {
+        "power": 3
+      },
+      "makes": {},
+      "rovers": 2,
+      "effects": [],
+      "cost": {
+        "metal": 20,
+        "machinery": 4
+      },
+      "buildable": true
     }
   ]
 }

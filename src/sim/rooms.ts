@@ -46,6 +46,8 @@ export interface RoomDef {
   requiresDeposit?: DepositKind;
   /** Gathers the seed kit for founding a new hole. */
   stagesSeedKit?: boolean;
+  /** Rovers this room provides for trade routes. */
+  rovers?: number;
 }
 
 // JSON imports widen literal types, so the shape is checked in tests/rooms.test.ts.

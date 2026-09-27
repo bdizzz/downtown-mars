@@ -2,6 +2,7 @@ import type { SimConfig } from "./config";
 import { chooseFirstSite, depositsAt, generateMap, type MapState } from "./map";
 import type { Convoy } from "./founding";
 import type { Message } from "./messages";
+import type { Route } from "./rovers";
 import { network } from "./network";
 import { createInitialState, type SimState } from "./state";
 
@@ -20,6 +21,8 @@ export interface World {
   mapUnlocked: boolean;
   /** Founding convoys on their way to new sites. */
   convoys: Convoy[];
+  routes: Route[];
+  nextRouteId: number;
 }
 
 export { network };
@@ -45,7 +48,7 @@ export function createWorld(cfg: SimConfig, seed = cfg.seed): World {
     deposits: depositsAt(map, site),
     seed: holeSeed(seed, 1),
   });
-  return { seed, tick: 0, holes: [first], nextHoleId: 2, map, mapUnlocked: false, convoys: [] };
+  return { seed, tick: 0, holes: [first], nextHoleId: 2, map, mapUnlocked: false, convoys: [], routes: [], nextRouteId: 1 };
 }
 
 export function totalPopulation(world: World): number {

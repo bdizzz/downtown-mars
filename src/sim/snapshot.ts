@@ -34,6 +34,22 @@ export interface ConvoyView {
   daysLeft: number;
 }
 
+export interface RouteView {
+  id: number;
+  fromHoleId: number;
+  toHoleId: number;
+  resource: string;
+  amountPerTrip: number;
+  phase: "loading" | "outbound" | "returning";
+  cargo: number;
+  /** 0..1 through the current leg. */
+  progress: number;
+  /** Days for one way. */
+  legDays: number;
+  /** Beyond the hole's rovers, so parked. */
+  idle: boolean;
+}
+
 /** One line per hole, for the hole picker and anything network-wide. */
 export interface HoleSummary {
   id: number;
@@ -44,6 +60,10 @@ export interface HoleSummary {
   site: { lat: number; lon: number } | null;
   /** What that hole sits on. */
   deposits: DepositKind[];
+  /** Working rovers (from rover depots). */
+  rovers: number;
+  /** Tradeable stock, for choosing routes. */
+  stock: Record<string, number>;
 }
 
 // What the views get to see: the hole being looked at, in full, plus a line
@@ -65,6 +85,8 @@ export interface Snapshot {
   kit: { loaded: Record<string, number>; progress: number; hasBay: boolean };
   /** Founding convoys on their way; the worker fills these in. */
   convoys: ConvoyView[];
+  /** Every trade route in the network; the worker fills these in. */
+  routes: RouteView[];
   tick: number;
   time: GameTime;
   layout: Layout;
@@ -105,6 +127,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     holeDeposits: state.deposits ?? [],
     kit: { loaded: state.kit ?? {}, progress: kitProgress(state), hasBay: hasStagingBay(state) },
     convoys: [],
+    routes: [],
     tick: state.tick,
     time: gameTime(state.tick, cfg),
     layout: state.layout,

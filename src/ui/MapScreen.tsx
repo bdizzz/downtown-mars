@@ -190,6 +190,27 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       g.font = "600 11px system-ui, sans-serif";
       g.fillText(`${c.name} · ${c.daysLeft.toFixed(1)} d`, x1, y1 - 10);
     }
+    // Trade routes: a faint line between the holes, each rover a dot on it.
+    const siteOf = (id: number) => s.holes.find((h) => h.id === id)?.site ?? null;
+    for (const r of s.routes) {
+      const a = siteOf(r.fromHoleId);
+      const b = siteOf(r.toHoleId);
+      if (!a || !b) continue;
+      const [x0, y0] = toXY(a.lat, a.lon);
+      const [x1, y1] = toXY(b.lat, b.lon);
+      g.strokeStyle = "rgba(111, 179, 201, 0.6)";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(x0, y0);
+      g.lineTo(x1, y1);
+      g.stroke();
+      if (r.idle || r.phase === "loading") continue;
+      const t = r.phase === "outbound" ? r.progress : 1 - r.progress;
+      g.beginPath();
+      g.arc(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, 3, 0, Math.PI * 2);
+      g.fillStyle = r.phase === "outbound" ? "#6fb3c9" : "#9aa7ab";
+      g.fill();
+    }
     for (const h of s.holes) {
       if (!h.site) continue;
       const [x, y] = toXY(h.site.lat, h.site.lon);
@@ -204,7 +225,7 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       g.font = "700 12px system-ui, sans-serif";
       g.fillText(h.name, x, y - 10);
     }
-  }, [image, size, s.deposits, s.holes, s.holeId, s.convoys, shown, site]);
+  }, [image, size, s.deposits, s.holes, s.holeId, s.convoys, s.routes, shown, site]);
 
   const info = useMemo(() => {
     if (!hover) return null;

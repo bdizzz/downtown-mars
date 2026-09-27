@@ -4,7 +4,7 @@
 
 A real-time city builder on Mars. Each city is a borehole: dig a shaft down, carve rooms into its walls in rings and floors, and keep everyone breathing, fed and sane. Rooms affect their neighbors, so where you put the noisy life support matters as much as whether you build it.
 
-This is an early playtest build: one hole, the first 30 minutes or so of play. Total population supported is your score.
+This is an early playtest build: a hole or two, the first hour or so of play. Total population supported is your score.
 
 ## Playing
 
@@ -15,6 +15,7 @@ Start a new game and follow your deputy's tutorial, or dive in:
 - **Earth** sends supply drops every few days until you can stand on your own.
 - **Office:** colonists visit with problems. What you promise, they remember.
 - **Overlays** (bottom left) show noise, smell, health, comfort and happiness. **Flows** (top) shows where every resource comes from and goes.
+- **More holes:** once the network reaches 50 colonists the map opens. Build a staging bay to gather a seed kit, pick a site on the Map (M) and send a convoy. With two holes, a **rover depot** gives a hole 2 rovers, and the **Network** panel sets up trade routes between holes.
 - **3D view** (V): stand in the shaft, look anywhere from its centre with **Free** (drag to aim), slice the hole open with **Cutaway** to reach rings 2 and 3, or look straight down from the **Top**. **X-ray** fades ring 1 so you can see behind it. Everything you can do in 2D works in 3D.
 
 ### Controls

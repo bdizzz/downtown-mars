@@ -9,6 +9,7 @@ import { Help } from "./Help";
 import { Hud } from "./Hud";
 import { Inspector } from "./Inspector";
 import { MapScreen, type SitePick } from "./MapScreen";
+import { NetworkPanel } from "./NetworkPanel";
 import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
@@ -27,16 +28,16 @@ import { useSounds } from "./useSounds";
 const NOTICE_MS = 3000;
 
 export function App() {
-  const { snapshot, speed, setSpeed, setActiveHole, send, found, save, load, newGame } = useSim();
+  const { snapshot, speed, setSpeed, setActiveHole, send, found, route, save, load, newGame } = useSim();
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [tool, setTool] = useState<Tool>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [overlay, setOverlay] = useState<string | null>(null);
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
-  const [panel, setPanel] = useState<"office" | "flows" | null>(null);
+  const [panel, setPanel] = useState<"office" | "flows" | "network" | null>(null);
   const officeOpen = panel === "office";
-  const togglePanel = (p: "office" | "flows") => {
+  const togglePanel = (p: "office" | "flows" | "network") => {
     setPanel((cur) => (cur === p ? null : p));
     setSelected(null);
   };
@@ -284,6 +285,7 @@ export function App() {
         setDrill={(active) => onCommand({ type: "setDrill", active })}
         toggleOffice={() => togglePanel("office")}
         toggleFlows={() => togglePanel("flows")}
+        toggleNetwork={() => togglePanel("network")}
         view={settings.view}
         toggleView={() => updateSettings({ view: settings.view === "2d" ? "3d" : "2d" })}
         setActiveHole={setActiveHole}
@@ -351,6 +353,7 @@ export function App() {
         </div>
         {snapshot && officeOpen && <Office s={snapshot} onCommand={onCommand} onClose={() => setPanel(null)} />}
         {snapshot && panel === "flows" && <FlowPanel s={snapshot} onClose={() => setPanel(null)} />}
+        {snapshot && panel === "network" && <NetworkPanel s={snapshot} onRoute={route} onClose={() => setPanel(null)} />}
         {snapshot && !panel && selected !== null && (
           <Inspector s={snapshot} roomId={selected} onCommand={onCommand} onClose={() => setSelected(null)} />
         )}

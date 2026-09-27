@@ -23,7 +23,7 @@ import {
 } from "./layout";
 
 export type { HoverInfo, Stage, StageOptions, Tool };
-import { drawGlyph, drawHills, drawLandingPad, drawPod, drawSolarArray, shade, STARS, tint } from "./art";
+import { drawGlyph, drawHills, drawLandingPad, drawPod, drawRoverDepot, drawSolarArray, shade, STARS, tint } from "./art";
 import { CATEGORY_COLORS, HEAT } from "./palette";
 
 // The unrolled view. One full turn of the hole is drawn into shared graphics
@@ -294,6 +294,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         if (room.type === "solar_array") drawSolarArray(roomsCtx, x, w, groundY, color);
         else if (room.type === "landing_pad") drawLandingPad(roomsCtx, x, w, groundY, color);
         else if (room.type === "landing_pod") drawPod(roomsCtx, x, w, groundY, color);
+        else if (room.type === "rover_depot") drawRoverDepot(roomsCtx, x, w, groundY, color);
         else roomsCtx.rect(...surfaceRect(room.surfaceCells, l.surface.length)).fill(color);
         continue;
       }

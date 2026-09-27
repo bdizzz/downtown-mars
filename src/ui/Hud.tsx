@@ -9,6 +9,7 @@ interface Props {
   setDrill: (active: boolean) => void;
   toggleOffice: () => void;
   toggleFlows: () => void;
+  toggleNetwork: () => void;
   view: "2d" | "3d";
   toggleView: () => void;
   setActiveHole: (holeId: number) => void;
@@ -28,7 +29,7 @@ function gameDuration(ticks: number): string {
   return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
 }
 
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, view, toggleView, setActiveHole, toggleMap, openMenu, keysEnabled, highlight }: Props) {
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, toggleNetwork, view, toggleView, setActiveHole, toggleMap, openMenu, keysEnabled, highlight }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
   // Space toggles pause, remembering the last running speed.
   const resumeRef = useRef(1);
@@ -110,6 +111,11 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleF
       <button className={`office-btn${pulse("flows")}`} onClick={toggleFlows} title="Where resources come from and go">
         Flows
       </button>
+      {snapshot && snapshot.holes.length > 1 && (
+        <button className="office-btn" onClick={toggleNetwork} title="Your holes, rovers and trade routes">
+          Network
+        </button>
+      )}
       <span className="tick">tick {snapshot?.tick ?? 0}</span>
     </header>
   );

@@ -183,3 +183,18 @@ export const STARS: [number, number, number][] = Array.from({ length: 70 }, (_, 
   const b = Math.sin(i * 78.233) * 12345.6789;
   return [a - Math.floor(a), b - Math.floor(b), 0.6 + ((i * 7) % 5) * 0.25];
 });
+
+/** A low garage with two rovers parked beside it. */
+export function drawRoverDepot(g: GraphicsContext, x: number, w: number, y: number, color: number): void {
+  const gw = Math.min(w * 0.45, 60);
+  g.rect(x + 4, y - 18, gw, 18).fill(shade(color, 0.6)).stroke(line(1, shade(color, 0.35)));
+  g.rect(x + 4 + gw * 0.2, y - 12, gw * 0.6, 12).fill(shade(color, 0.3));
+  const room = w - gw - 12;
+  for (let i = 0; i < 2; i++) {
+    const rx = x + gw + 10 + (i * room) / 2;
+    const rw = Math.min(room / 2 - 6, 26);
+    g.roundRect(rx, y - 13, rw, 8, 2).fill(color).stroke(line(1, shade(color, 0.4)));
+    g.rect(rx + rw * 0.55, y - 17, rw * 0.35, 4).fill(tint(0x9fd2ff, 0.3));
+    for (const wx of [0.2, 0.8]) g.circle(rx + rw * wx, y - 3, 3).fill(0x2a2220);
+  }
+}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommandResult, SimCommand } from "../sim/commands";
 import type { SaveSummary } from "../sim/save";
 import type { Snapshot } from "../sim/snapshot";
-import type { FromWorker, ToWorker } from "../worker/protocol";
+import type { FromWorker, RouteAction, ToWorker } from "../worker/protocol";
 
 type Reply = Extract<FromWorker, { id: number }>;
 
@@ -81,5 +81,11 @@ export function useSim() {
     [ask],
   );
 
-  return { snapshot, speed, setSpeed, setActiveHole, send, found, save, load, newGame };
+  const route = useCallback(
+    async (action: RouteAction): Promise<CommandResult> =>
+      (await ask<Extract<Reply, { type: "commandResult" }>>((id) => ({ type: "route", id, action }))).result,
+    [ask],
+  );
+
+  return { snapshot, speed, setSpeed, setActiveHole, send, found, route, save, load, newGame };
 }

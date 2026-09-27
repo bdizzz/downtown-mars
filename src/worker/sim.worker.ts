@@ -2,8 +2,9 @@
 import { applyCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { deserialize, serialize, summarize } from "../sim/save";
-import { makeSnapshot, type HoleSummary } from "../sim/snapshot";
-import { foundHole } from "../sim/founding";
+import { makeSnapshot, type HoleSummary, type RouteView } from "../sim/snapshot";
+import { foundHole, travelTicks } from "../sim/founding";
+import { addRoute, removeRoute, routesFrom, roversAt, TRADEABLE } from "../sim/rovers";
 import { degreesApart } from "../sim/mapgeo";
 import { network } from "../sim/network";
 import { createWorld, holeById, networkMessages, type World } from "../sim/world";
@@ -38,7 +39,30 @@ function summaries(): HoleSummary[] {
     waiting: h.office.waiting.length,
     site: h.site,
     deposits: h.deposits ?? [],
+    rovers: roversAt(h),
+    stock: Object.fromEntries(TRADEABLE.map((r) => [r, h.resources[r] ?? 0])),
   }));
+}
+
+function routeViews(): RouteView[] {
+  return world.routes.map((r) => {
+    const from = holeById(world, r.fromHoleId);
+    const to = holeById(world, r.toHoleId);
+    const legTicks = from?.site && to?.site ? travelTicks(from.site, to.site, config) : 0;
+    const span = Math.max(1, r.legEndTick - r.legStartTick);
+    return {
+      id: r.id,
+      fromHoleId: r.fromHoleId,
+      toHoleId: r.toHoleId,
+      resource: r.resource,
+      amountPerTrip: r.amountPerTrip,
+      phase: r.phase,
+      cargo: r.cargo,
+      progress: r.phase === "loading" ? 0 : Math.min(1, (world.tick - r.legStartTick) / span),
+      legDays: legTicks / config.ticksPerDay,
+      idle: !!from && routesFrom(world, from.holeId).indexOf(r) >= roversAt(from),
+    };
+  });
 }
 
 /** Everything once the map is open; before that, only what's near a hole. */
@@ -66,6 +90,7 @@ function post(): void {
       progress: (world.tick - c.departTick) / Math.max(1, c.arriveTick - c.departTick),
       daysLeft: (c.arriveTick - world.tick) / config.ticksPerDay,
     })),
+    routes: routeViews(),
     mapUnlocked: world.mapUnlocked,
     // News from every hole, so nothing elsewhere goes unnoticed.
     messages: networkMessages(world, config.messages.keep),
@@ -109,6 +134,13 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       // Founded from the hole you're looking at.
       reply({ type: "commandResult", id: msg.id, result: foundHole(world, config, activeHoleId, msg.site) });
       break;
+    case "route": {
+      const a = msg.action;
+      const result =
+        a.kind === "add" ? addRoute(world, a.fromHoleId, a.toHoleId, a.resource, a.amountPerTrip) : removeRoute(world, a.routeId);
+      reply({ type: "commandResult", id: msg.id, result });
+      break;
+    }
     case "command":
       // Applied between ticks, so building works while paused.
       reply({ type: "commandResult", id: msg.id, result: applyCommand(active(), msg.command) });

@@ -247,6 +247,24 @@ function surfaceProp(room: RoomInstance, layout: Layout, color: number): THREE.O
       frame.rotation.z = 0.5;
       g.add(frame);
     }
+  } else if (room.type === "rover_depot") {
+    const garage = new THREE.Mesh(new THREE.BoxGeometry(5, 2.6, 6), mat(color));
+    garage.position.set(0, 1.3, -4);
+    g.add(garage);
+    for (const dz of [2, 6]) {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.9, 3.2), mat(0xd8c8b0));
+      body.position.set(0, 0.9, dz);
+      g.add(body);
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 1.2), mat(0x9fd2ff, { emissive: 0x2a4a66 }));
+      cab.position.set(0, 1.6, dz + 0.8);
+      g.add(cab);
+      for (const [wx, wz] of [[-1.1, -1], [1.1, -1], [-1.1, 1], [1.1, 1]] as const) {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.3, 12), mat(0x2a2220));
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(wx, 0.45, dz + wz);
+        g.add(wheel);
+      }
+    }
   } else {
     g.add(new THREE.Mesh(new THREE.BoxGeometry(6, 3, 6), mat(color)));
   }

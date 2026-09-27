@@ -15,7 +15,7 @@ const TABS: { id: string; name: string; resources: string[] }[] = [
   { id: "air", name: "Air", resources: ["o2", "co2"] },
   { id: "food", name: "Food", resources: ["rawFood", "rations", "meals"] },
   { id: "power", name: "Power", resources: ["power"] },
-  { id: "materials", name: "Materials", resources: ["rock", "metal", "brick", "machinery", "electronics"] },
+  { id: "materials", name: "Materials", resources: ["rock", "metal", "brick", "machinery", "electronics", "ore", "silica", "wafers"] },
 ];
 
 const FIXED_COLORS: Record<string, string> = {
@@ -29,6 +29,7 @@ const FIXED_COLORS: Record<string, string> = {
 
 function colorOf(label: string): string {
   if (FIXED_COLORS[label]) return FIXED_COLORS[label]!;
+  if (label.startsWith("Rover ")) return "#6fb3c9";
   const def = roomDefs.find((d) => d.name === label);
   return cssColor(def ? (CATEGORY_COLORS[def.category] ?? 0x888888) : 0x888888);
 }

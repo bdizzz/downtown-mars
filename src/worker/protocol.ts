@@ -9,7 +9,12 @@ export type ToWorker =
   | { type: "load"; id: number; data: string }
   | { type: "newGame"; id: number }
   | { type: "setActiveHole"; holeId: number }
-  | { type: "found"; id: number; site: { lat: number; lon: number } };
+  | { type: "found"; id: number; site: { lat: number; lon: number } }
+  | { type: "route"; id: number; action: RouteAction };
+
+export type RouteAction =
+  | { kind: "add"; fromHoleId: number; toHoleId: number; resource: string; amountPerTrip: number }
+  | { kind: "remove"; routeId: number };
 
 /**
  * The layout and effect field change rarely, so the worker only sends them
