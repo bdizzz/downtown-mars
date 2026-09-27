@@ -8,7 +8,7 @@ import { HEAT } from "../render2d/palette";
 import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import type { HoverInfo, Pick, Quality, Stage, StageOptions, Tool } from "../view/types";
-import { FLOOR_H, floorSpan, openShaftRadius, RING_D, TAU } from "./cylinder";
+import { FLOOR_H, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, roomGeometry, setNightGlow } from "./rooms3d";
@@ -442,6 +442,34 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     overlayMat(`s:${color}:${opacity}`, () => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
   const lines = (color: number) => overlayMat(`l:${color}`, () => new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true }));
 
+  let plusMat: THREE.SpriteMaterial | null = null;
+  /** A plus in a disc, drawn once: "this adds to what's there". */
+  function plusMaterial(): THREE.SpriteMaterial {
+    if (plusMat) return plusMat;
+    const c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const g = c.getContext("2d")!;
+    g.fillStyle = "rgba(26, 15, 13, 0.8)";
+    g.strokeStyle = "#7fd67f";
+    g.lineWidth = 5;
+    g.beginPath();
+    g.arc(32, 32, 28, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.lineWidth = 8;
+    g.lineCap = "round";
+    g.beginPath();
+    g.moveTo(18, 32);
+    g.lineTo(46, 32);
+    g.moveTo(32, 18);
+    g.lineTo(32, 46);
+    g.stroke();
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    plusMat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+    return plusMat;
+  }
+
   function outline(cells: Cell[], color: number): void {
     if (!layout || !cells.length) return;
     const geo = roomGeometry(layout, cells);
@@ -536,6 +564,20 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       outline(cells, color);
       if (info.check.surfaceCells.length) surfaceMarker(info.check.surfaceCells, color);
       if (info.check.ok && cells.length) drawHalo(tool.room, cells);
+      // Extending stairs or an elevator: a plus floating on the piece being added.
+      if (info.check.ok && info.check.merges && p.kind === "slot") {
+        const n = layout.hole.ringSlots[p.ring - 1]!;
+        const [a0, a1] = slotAngles(p.slot, n);
+        const [r0, r1] = ringRadii(layout.hole, p.ring);
+        const [y0, y1] = floorSpan(p.floor);
+        const a = (a0 + a1) / 2;
+        const r = p.ring === 1 ? r0 - 0.4 : (r0 + r1) / 2;
+        const plus = new THREE.Sprite(plusMaterial());
+        plus.scale.set(2.2, 2.2, 1);
+        plus.position.set(r * Math.cos(a), (y0 + y1) / 2, r * Math.sin(a));
+        plus.renderOrder = 11;
+        overlay.add(plus);
+      }
       return;
     }
     if (info.room) {
@@ -973,6 +1015,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       fieldGroup.traverse((o) => o instanceof THREE.Mesh && o.geometry.dispose());
       disposeRoomMaterials();
       overlayMats.forEach((m) => m.dispose());
+      plusMat?.map?.dispose();
+      plusMat?.dispose();
       renderer.dispose();
       canvas.remove();
       bar.remove();

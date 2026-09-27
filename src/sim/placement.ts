@@ -58,7 +58,18 @@ export interface Layout {
 }
 
 export type CheckResult =
-  | { ok: true; cells: Cell[]; surfaceCells: number[]; planned: boolean; /** No corridor reaches it yet: it can go here, but won't work until one does. */ unconnected?: boolean }
+  | {
+      ok: true;
+      cells: Cell[];
+      surfaceCells: number[];
+      planned: boolean;
+      /** No corridor reaches it yet: it can go here, but won't work until one does. */
+      unconnected?: boolean;
+      /** Stacking rooms: existing stairs (or elevators) this piece joins onto. */
+      merges?: number[];
+      /** What the placement does, when it isn't obvious ("Extend stairs to cover floors 1–3"). */
+      note?: string;
+    }
   | { ok: false; reason: string; cells: Cell[]; surfaceCells: number[] };
 
 const EPS = 1e-9;
@@ -147,10 +158,12 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
     return { ok: false, reason: `${def.name} can't be ${at.w}×${at.d}`, ...none };
   }
   // The floor below the deepest dug one is being excavated and can be planned.
+  // Tall rooms (stairs, elevators) reach down to floors that must already be dug.
   const height = def.floors ?? 1;
   const bottom = at.floor + height - 1;
-  if (at.floor < 1 || bottom > hole.floors + 1) {
-    return { ok: false, reason: height > 1 ? `${def.name} spans ${height} floors: the lower one isn't dug yet` : "That floor isn't dug yet", ...none };
+  if (at.floor < 1 || at.floor > hole.floors + 1) return { ok: false, reason: "That floor isn't dug yet", ...none };
+  if (height > 1 && bottom > hole.floors) {
+    return { ok: false, reason: `The floor below (floor ${bottom}) isn't excavated yet`, ...none };
   }
   if (at.ring < 1) return { ok: false, reason: "Not a ring", ...none };
 
@@ -164,13 +177,67 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
   // Tall rooms repeat their footprint on each floor they span.
   const cells: Cell[] = [];
   for (let f = at.floor; f <= bottom; f++) cells.push(...footprint(hole, f, at.ring, at.slot, at.w, at.d));
+  const merges = new Set<number>();
+  let fresh = 0;
   for (const c of cells) {
     const other = roomAt(layout, c);
-    if (other) return { ok: false, reason: `Overlaps ${roomDef(other.type).name}`, cells, surfaceCells: [] };
+    if (!other) {
+      fresh++;
+      continue;
+    }
+    // Stairs and elevators chain: a piece may sit on an existing one of the same kind and join it.
+    if (def.stacks && other.type === type && other.at.kind === "ring" && other.at.ring === at.ring && other.at.slot === at.slot) {
+      merges.add(other.id);
+      continue;
+    }
+    const where = c.floor === at.floor ? "Overlaps" : `Floor ${c.floor} below: overlaps`;
+    return { ok: false, reason: `${where} ${roomDef(other.type).name}`, cells, surfaceCells: [] };
+  }
+  if (!fresh) return { ok: false, reason: `Already ${def.stackNoun ?? def.name.toLowerCase()} here`, cells, surfaceCells: [] };
+  // A piece that meets a stack end to end (just above its top, or just below its bottom) joins it too.
+  if (def.stacks) {
+    for (const f of [at.floor - 1, bottom + 1]) {
+      const r = f >= 1 ? roomAt(layout, { floor: f, ring: at.ring, slot: at.slot }) : undefined;
+      if (r && r.type === type) merges.add(r.id);
+    }
+  }
+  let note: string | undefined;
+  if (merges.size) {
+    const floors = [...cells, ...layout.rooms.filter((r) => merges.has(r.id)).flatMap((r) => r.cells)].map((c) => c.floor);
+    const top = Math.min(...floors);
+    const low = Math.max(...floors);
+    if (def.maxFloors && low - top + 1 > def.maxFloors) {
+      return { ok: false, reason: `${def.name} can span at most ${def.maxFloors} floors`, cells, surfaceCells: [] };
+    }
+    note = `Extend ${def.stackNoun ?? def.name.toLowerCase()} to cover floors ${top}–${low}`;
   }
   // Rooms can go anywhere; one no corridor reaches yet just won't work until one does.
   const unconnected = !def.public && !wouldConnect(layout, cells);
-  return { ok: true, cells, surfaceCells: [], planned: bottom > hole.floors, ...(unconnected ? { unconnected } : {}) };
+  return {
+    ok: true,
+    cells,
+    surfaceCells: [],
+    planned: bottom > hole.floors,
+    ...(unconnected ? { unconnected } : {}),
+    ...(merges.size ? { merges: [...merges].sort((a, b) => a - b), note } : {}),
+  };
+}
+
+/** Join a new stair (or elevator) piece onto the stacks it touches: one room, spanning them all. */
+function extendStack(layout: Layout, check: Extract<CheckResult, { ok: true }>): CheckResult & { id?: number; extended?: boolean } {
+  const [keep, ...others] = check.merges!.map((id) => layout.rooms.find((r) => r.id === id)!);
+  const room = keep!;
+  const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+  const cells = new Map(room.cells.map((c) => [key(c), c]));
+  for (const other of others) for (const c of other!.cells) cells.set(key(c), c);
+  for (const c of check.cells) cells.set(key(c), c);
+  room.cells = [...cells.values()].sort((a, b) => a.floor - b.floor);
+  if (room.at.kind === "ring") room.at = { ...room.at, floor: room.cells[0]!.floor };
+  layout.rooms = layout.rooms.filter((r) => !others.includes(r));
+  for (const c of room.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = room.id;
+  recomputeAccess(layout);
+  layout.version++;
+  return { ...check, id: room.id, extended: true };
 }
 
 function nameOf(layout: Layout, id: number): string {
@@ -181,6 +248,7 @@ function nameOf(layout: Layout, id: number): string {
 export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimConfig = config): CheckResult & { id?: number } {
   const check = checkPlacement(layout, type, at, cfg);
   if (!check.ok) return check;
+  if (check.merges?.length) return extendStack(layout, check);
   const id = layout.nextRoomId++;
   const def = roomDef(type);
   layout.rooms.push({

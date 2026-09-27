@@ -69,7 +69,7 @@ function geometry(pos: number[]): THREE.BufferGeometry {
  * part of a side, so corridors look carved out of the rooms they pass.
  * With `carve` off (overlay tints), corridors are ignored.
  */
-export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve = true): THREE.BufferGeometry {
+export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve = true, openToShaft = false): THREE.BufferGeometry {
   const hole = layout.hole;
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
   const own = new Set(cells.map(key));
@@ -112,9 +112,11 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
       const b1 = cuts[k + 1]!;
       if (b1 - b0 < 1e-9) continue;
       const mid = (b0 + b1) / 2;
-      const rr0 = r0 + (c.ring === inner ? (hallAt(innerPieces, mid) ? HALL : inset) : 0);
+      // A public room on the gallery has no wall there: it runs right up to the shaft.
+      const open = openToShaft && c.ring === 1;
+      const rr0 = r0 + (c.ring === inner && !open ? (hallAt(innerPieces, mid) ? HALL : inset) : 0);
       const rr1 = r1 - (c.ring === outer ? (hallAt(outerPieces, mid) ? HALL : inset) : 0);
-      if (c.ring === inner) curvedFace(pos, rr0, b0, b1, y0, y1);
+      if (c.ring === inner && !open) curvedFace(pos, rr0, b0, b1, y0, y1);
       if (c.ring === outer) curvedFace(pos, rr1, b0, b1, y0, y1);
       flatRing(pos, rr0, rr1, b0, b1, y0);
       flatRing(pos, rr0, rr1, b0, b1, y1);
@@ -241,7 +243,7 @@ function roomShape(layout: Layout, room: RoomInstance): { geo: THREE.BufferGeome
   const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}`;
   let shape = shapeCache.get(key);
   if (!shape) {
-    const geo = roomGeometry(layout, room.cells);
+    const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public);
     shape = { geo, edges: new THREE.EdgesGeometry(geo, 30) };
     shapeCache.set(key, shape);
   }
@@ -383,7 +385,7 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     edges.userData = { cached: true };
     group.add(edges);
 
-    if (!room.planned && !faint && room.type !== "corridor") {
+    if (!room.planned && !faint && !def.public) {
       // Shaft frontage: a window band on every ring-1 face, a door in the middle of the room's run.
       const faces = shaftFaces(layout, room);
       const win: number[] = [];

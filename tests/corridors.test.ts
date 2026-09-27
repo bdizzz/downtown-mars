@@ -4,7 +4,7 @@ import { config } from "../src/sim/config";
 import { corridorRefusal, corridors, routeToRoom } from "../src/sim/corridors";
 import { edgeById, outsideEdges } from "../src/sim/edges";
 import { computeEffects, effectAt } from "../src/sim/effects";
-import type { Location } from "../src/sim/placement";
+import { checkPlacement, type Location } from "../src/sim/placement";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { createWorld } from "../src/sim/world";
@@ -203,7 +203,7 @@ describe("stairs", () => {
     // The stairwell's floor-2 sides count as corridors, so the dorm behind it is connected.
     expect(s.layout.rooms.find((r) => r.id === dorm.id)!.connected).toBe(true);
     // A stairwell whose lower floor isn't dug yet is refused.
-    expect(applyCommand(s, { type: "build", room: "stairwell", at: ring(3, 1, 0) })).toMatchObject({ ok: false, reason: expect.stringMatching(/spans 2 floors/) });
+    expect(applyCommand(s, { type: "build", room: "stairwell", at: ring(3, 1, 0) })).toMatchObject({ ok: false, reason: "The floor below (floor 4) isn't excavated yet" });
   });
 
   it("a stairwell deep in the rock links two floors' corridors", () => {
@@ -217,5 +217,70 @@ describe("stairs", () => {
     // Floor 2: a clinic next to the stairwell's floor-2 cell, no corridor on floor 2 at all.
     const clinic = build(s, "clinic", ring(2, 2, 1));
     expect(s.layout.rooms.find((r) => r.id === clinic.id)!.connected).toBe(true);
+  });
+});
+
+describe("stacking stairs and elevators", () => {
+  /** A hole with floors 1–4 dug. */
+  function deep(): SimState {
+    const s = rich();
+    s.layout.hole.floors = 4;
+    while (s.layout.grid.length < 5) s.layout.grid.push(s.layout.hole.ringSlots.map((n) => new Array(n).fill(0)));
+    return s;
+  }
+  const stairsAt = (s: SimState) => s.layout.rooms.filter((r) => r.type === "stairwell");
+
+  it("a stair piece needs the floor below dug, and free", () => {
+    const s = deep();
+    expect(checkPlacement(s.layout, "stairwell", ring(4, 1, 0))).toMatchObject({ ok: false, reason: "The floor below (floor 5) isn't excavated yet" });
+    build(s, "galley", ring(3, 1, 0));
+    expect(checkPlacement(s.layout, "stairwell", ring(2, 1, 0))).toMatchObject({ ok: false, reason: "Floor 3 below: overlaps Galley" });
+  });
+
+  it("chains: a piece on the bottom of existing stairs extends them into one room", () => {
+    const s = deep();
+    const first = build(s, "stairwell", ring(1, 1, 3)); // floors 1–2
+    const check = checkPlacement(s.layout, "stairwell", ring(2, 1, 3));
+    expect(check).toMatchObject({ ok: true, merges: [first.id], note: "Extend stairs to cover floors 1–3" });
+    const rock = s.resources.rock!;
+    const r = applyCommand(s, { type: "build", room: "stairwell", at: ring(2, 1, 3) });
+    expect(r).toEqual({ ok: true }); // no undo for an extension
+    expect(s.resources.rock).toBe(rock - 8);
+    expect(stairsAt(s)).toHaveLength(1);
+    expect(new Set(stairsAt(s)[0]!.cells.map((c) => c.floor))).toEqual(new Set([1, 2, 3]));
+    // Demolishing refunds half of every piece.
+    const probe = JSON.parse(JSON.stringify(s)) as SimState;
+    const before = probe.resources.rock!;
+    applyCommand(probe, { type: "demolish", roomId: stairsAt(probe)[0]!.id });
+    expect(probe.resources.rock).toBe(before + 8); // two pieces × 8 × half
+    // Placing on its top floor again adds nothing.
+    expect(checkPlacement(s.layout, "stairwell", ring(1, 1, 3))).toMatchObject({ ok: false, reason: "Already stairs here" });
+  });
+
+  it("a piece meeting a stack end to end joins it", () => {
+    const s = deep();
+    build(s, "stairwell", ring(1, 1, 3)); // 1–2
+    expect(checkPlacement(s.layout, "stairwell", ring(3, 1, 3))).toMatchObject({ ok: true, note: "Extend stairs to cover floors 1–4" });
+    build(s, "stairwell", ring(3, 1, 3));
+    expect(stairsAt(s)).toHaveLength(1);
+    expect(new Set(stairsAt(s)[0]!.cells.map((c) => c.floor))).toEqual(new Set([1, 2, 3, 4]));
+  });
+
+  it("only stacks with its own kind, in the same spot", () => {
+    const s = deep();
+    build(s, "stairwell", ring(1, 1, 3));
+    expect(checkPlacement(s.layout, "elevator", ring(2, 1, 3))).toMatchObject({ ok: false, reason: "Overlaps Stairwell" });
+  });
+
+  it("an elevator stacks up to its limit", () => {
+    const s = rich();
+    s.layout.hole.floors = 12;
+    while (s.layout.grid.length < 13) s.layout.grid.push(s.layout.hole.ringSlots.map((n) => new Array(n).fill(0)));
+    Object.assign(s.resources, { metal: 500, machinery: 50 });
+    for (let f = 1; f <= 7; f++) expect(applyCommand(s, { type: "build", room: "elevator", at: ring(f, 1, 5) }).ok).toBe(true);
+    const lift = s.layout.rooms.filter((r) => r.type === "elevator");
+    expect(lift).toHaveLength(1);
+    expect(new Set(lift[0]!.cells.map((c) => c.floor)).size).toBe(8);
+    expect(checkPlacement(s.layout, "elevator", ring(8, 1, 5))).toMatchObject({ ok: false, reason: "Elevator can span at most 8 floors" });
   });
 });

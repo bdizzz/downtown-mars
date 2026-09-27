@@ -19,6 +19,9 @@ export function tint(c: number, t: number): number {
   return (ch(16) << 16) | (ch(8) << 8) | ch(0);
 }
 
+/** Rooms that share another's glyph. */
+const ALIASES: Record<string, string> = { tiny_plaza: "small_plaza" };
+
 type Glyph = (g: GraphicsContext, cx: number, cy: number, s: number, color: number) => void;
 
 const line = (w: number, color: number, alpha = 1) => ({ color, width: w, alpha, cap: "round" as const, join: "round" as const });
@@ -99,6 +102,12 @@ const GLYPHS: Record<string, Glyph> = {
     for (let i = 0; i < 4; i++) g.lineTo(cx - s * 0.3 + st * (i + 1), cy - s * 0.3 + st * i).lineTo(cx - s * 0.3 + st * (i + 1), cy - s * 0.3 + st * (i + 1));
     g.stroke(line(1.5, c));
   },
+  elevator: (g, cx, cy, s, c) => {
+    // A car in its shaft, with up and down arrows.
+    g.rect(cx - s * 0.2, cy - s * 0.3, s * 0.4, s * 0.6).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.1, cy - s * 0.05).lineTo(cx, cy - s * 0.18).lineTo(cx + s * 0.1, cy - s * 0.05).stroke(line(1.3, c));
+    g.moveTo(cx - s * 0.1, cy + s * 0.05).lineTo(cx, cy + s * 0.18).lineTo(cx + s * 0.1, cy + s * 0.05).stroke(line(1.3, c));
+  },
   small_plaza: (g, cx, cy, s, c) => {
     // A tree over a bench.
     g.circle(cx, cy - s * 0.12, s * 0.16).stroke(line(1.5, c));
@@ -174,7 +183,7 @@ const GLYPHS: Record<string, Glyph> = {
 };
 
 export function drawGlyph(g: GraphicsContext, type: string, cx: number, cy: number, size: number, color: number): void {
-  GLYPHS[type]?.(g, cx, cy, size, color);
+  (GLYPHS[type] ?? GLYPHS[ALIASES[type] ?? ""])?.(g, cx, cy, size, color);
 }
 
 // ---- surface props: drawn standing on the ground line at y ----
@@ -237,4 +246,11 @@ export function drawRoverDepot(g: GraphicsContext, x: number, w: number, y: numb
     g.rect(rx + rw * 0.55, y - 17, rw * 0.35, 4).fill(tint(0x9fd2ff, 0.3));
     for (const wx of [0.2, 0.8]) g.circle(rx + rw * wx, y - 3, 3).fill(0x2a2220);
   }
+}
+
+/** A bold plus in a disc: "this adds to what's there" (extending stairs or an elevator). */
+export function drawPlus(g: GraphicsContext, cx: number, cy: number, size: number, color: number): void {
+  g.circle(cx, cy, size / 2).fill({ color: 0x1a0f0d, alpha: 0.75 }).stroke({ color, width: 2 });
+  const a = size * 0.28;
+  g.moveTo(cx - a, cy).lineTo(cx + a, cy).moveTo(cx, cy - a).lineTo(cx, cy + a).stroke(line(3, color));
 }

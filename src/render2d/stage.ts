@@ -25,7 +25,7 @@ import {
 } from "./layout";
 
 export type { HoverInfo, Stage, StageOptions, Tool };
-import { drawGlyph, drawHills, drawLandingPad, drawPod, drawRoverDepot, drawSolarArray, shade, STARS } from "./art";
+import { drawGlyph, drawHills, drawLandingPad, drawPlus, drawPod, drawRoverDepot, drawSolarArray, shade, STARS } from "./art";
 import { CATEGORY_COLORS, HEAT } from "./palette";
 
 // The unrolled view. One full turn of the hole is drawn into shared graphics
@@ -307,11 +307,21 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       }
       const rows = cellRows(l.hole, room.cells);
       for (const row of rows) {
-        const r = roomsCtx.rect(...rowRect(l.hole, row));
+        let [x, y, w, hh] = rowRect(l.hole, row);
+        // Public rooms on the gallery have no wall there: they open right onto it.
+        const open = def.public && row.ring === 1;
+        if (open) [y, hh] = [y - 3, hh + 3];
+        const r = roomsCtx.rect(x, y, w, hh);
         if (room.planned) r.fill({ color, alpha: 0.3 }).stroke({ color, width: 2 });
         else r.fill(color);
+        if (def.public && !room.planned) {
+          const wall = { color: shade(color, 0.45), width: 1.5, alpha: 0.9 };
+          roomsCtx.moveTo(x, y).lineTo(x, y + hh).lineTo(x + w, y + hh).lineTo(x + w, y);
+          if (!open) roomsCtx.lineTo(x, y);
+          roomsCtx.stroke(wall);
+        }
       }
-      if (!room.planned) drawFrontage(l, rows, color);
+      if (!room.planned && !def.public) drawFrontage(l, rows, color);
       drawRoomGlyph(l, room, rows, color);
       if (!room.connected) for (const row of rows) roomsCtx.rect(...rowRect(l.hole, row)).stroke({ color: C.bad, width: 3 });
     }
@@ -469,6 +479,12 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       if (info.check.ok && cells.length) drawHalo(tool.room, cells);
       for (const row of cellRows(h, cells)) {
         overlayCtx.rect(...rowRect(h, row)).fill({ color, alpha: 0.35 }).stroke({ color, width: 3 });
+      }
+      // Extending stairs or an elevator: a plus on the piece being added.
+      if (info.check.ok && info.check.merges && p.kind === "slot") {
+        const n = h.ringSlots[p.ring - 1]!;
+        const [x0, x1] = slotX(p.slot, n);
+        drawPlus(overlayCtx, (x0 + x1) / 2, ringTop(p.floor, p.ring, h.ringSlots.length) + RING_H / 2, 18, color);
       }
       if (info.check.surfaceCells.length) {
         overlayCtx.rect(...surfaceRect(info.check.surfaceCells, layout.surface.length)).fill({ color, alpha: 0.35 }).stroke({ color, width: 3 });

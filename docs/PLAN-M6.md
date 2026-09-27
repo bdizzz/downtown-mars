@@ -147,3 +147,13 @@ Open questions for Bryon:
   - doors on corridors in 3D (the unrolled and plan views have them);
   - elevators (the stairwell is the only vertical link);
   - the catalog's larger plazas and grand staircase.
+
+**Follow-ups (Bryon, Sep 27):**
+- **Tiny plaza** (new, not in the catalog): S (1×1), public, comfort +1 r1, rock 5 + brick 2, no staff or power. It shares the small plaza's glyph.
+- **Public rooms open onto the shaft:** in ring 1 they have no wall, windows or door on the gallery side. In 3D the solid has no inner face and reaches the shaft edge. In the unrolled view the fill runs up to the gallery with side and bottom walls only. In the plan it fills over the gallery's edge line, with no inner outline.
+- **Stairs:**
+  - A piece takes the floor it's placed on and the one below. The floor below must be dug, not just being dug: "The floor below (floor N) isn't excavated yet". It must also be free: "Floor N below: overlaps Farm".
+  - **Chaining:** a piece may sit on a stack of the same kind in the same slot, and one meeting a stack end to end (just above its top or below its bottom) joins it too. The result is one room spanning every floor. The hover shows a green ghost with a plus (all three views) and "＋ Extend stairs to cover floors 1–3". A piece with nothing new to cover is refused ("Already stairs here").
+  - **Cost and undo:** each piece costs the room's price. An extension can't be undone as a room (it isn't one); demolishing a stack refunds half of every piece.
+- **Elevator** (the catalog's local elevator): S, stacks like stairs up to 8 floors, power 1, noise −1 r1, metal 10 + machinery 2, public. Stairwells and elevators are both public, so their sides count as corridors on every floor they span, and they link those floors.
+- **Browser check (plan view):** stairs placed on floor 6 show on floor 7 open to the shaft; hovering them on floor 7 offers "Extend stairs to cover floors 6–8", the click extends them, floor 8 then offers 6–9, and floor 10 (being dug) refuses.

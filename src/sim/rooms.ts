@@ -55,6 +55,12 @@ export interface RoomDef {
   unlockedBy?: "children" | "elders";
   /** Floors tall, counting down from the floor it's placed on (default 1). */
   floors?: number;
+  /** Pieces chain: a new one placed on the bottom of an existing one extends it (stairs, elevators). */
+  stacks?: boolean;
+  /** How the hover names it when extending ("stairs", "the elevator"). */
+  stackNoun?: string;
+  /** The most floors one stack may span. */
+  maxFloors?: number;
   /** Walk-through: every side counts as a corridor, so neighbours open onto it. */
   public?: boolean;
   /** A working one lets colonists have children. */

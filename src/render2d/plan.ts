@@ -8,7 +8,7 @@ import type { DrillView } from "../sim/snapshot";
 import { FLOOR_H, openShaftRadius, pickAt, ringRadii, slotAngles } from "../render3d/cylinder";
 import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
 import type { HoverInfo, Pick, Stage, StageOptions, Tool } from "../view/types";
-import { drawGlyph, shade } from "./art";
+import { drawGlyph, drawPlus, shade } from "./art";
 import { corridorStrip } from "./corridorArt";
 import { config } from "../sim/config";
 import { corridors } from "../sim/corridors";
@@ -76,6 +76,13 @@ function cellSector(hole: Hole, c: { ring: number; slot: number }, inset = 0): n
   const [r0, r1] = ringRadii(hole, c.ring);
   const da = inset / r0;
   return sector(r0 + inset, r1 - inset, a0 + da, a1 - da);
+}
+
+/** A cell's sector, from a given inner radius (metres). */
+function cellSectorFrom(hole: Hole, c: { ring: number; slot: number }, rInner: number): number[] {
+  const n = hole.ringSlots[c.ring - 1]!;
+  const [a0, a1] = slotAngles(c.slot, n);
+  return sector(rInner, ringRadii(hole, c.ring)[1], a0, a1);
 }
 
 /** Where on this floor a room's cells sit: their mean angle at their mean radius, and a size that fits the smallest cell. */
@@ -172,11 +179,12 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       const color = CATEGORY_COLORS[def.category] ?? 0x888888;
       // Cells fill edge to edge, so a room reads as one piece; its outline marks where it ends.
       for (const c of cells) {
-        const poly = cellSector(h, c);
+        // Public rooms on the gallery open onto it: fill over the gallery's edge line.
+        const poly = def.public && c.ring === 1 ? cellSectorFrom(h, c, h.shaftRadiusM - 0.3) : cellSector(h, c);
         if (room.planned) roomsCtx.poly(poly).fill({ color, alpha: 0.3 });
         else roomsCtx.poly(poly).fill(color);
       }
-      outlineCells(roomsCtx, cells, room.connected ? shade(color, 0.45) : C.bad, room.connected ? 1.5 : 3);
+      outlineCells(roomsCtx, cells, room.connected ? shade(color, 0.45) : C.bad, room.connected ? 1.5 : 3, !!def.public);
       const centre = roomCentre(h, cells);
       const ink = room.planned ? color : shade(color, 0.55);
       drawGlyph(roomsCtx, room.type, centre.x, centre.y + 5, Math.min(26, centre.size * 0.55), ink);
@@ -245,7 +253,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   }
 
   /** The outline of a group of cells: arcs on the ring edges they don't share, sides where the next slot isn't theirs. */
-  function outlineCells(g: GraphicsContext, cells: Cell[], color: number, width: number): void {
+  function outlineCells(g: GraphicsContext, cells: Cell[], color: number, width: number, openToShaft = false): void {
     if (!layout) return;
     const h = layout.hole;
     const own = new Set(cells.map((c) => `${c.ring}:${c.slot}`));
@@ -263,7 +271,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
         for (let i = 1; i <= steps; i++) g.lineTo(...xy(r, a0 + ((a1 - a0) * i) / steps));
         g.stroke(style);
       };
-      if (c.ring === inner) arc(r0 + 0.15);
+      if (c.ring === inner && !(openToShaft && c.ring === 1)) arc(r0 + 0.15);
       if (c.ring === outer) arc(r1 - 0.15);
       if (!own.has(`${c.ring}:${(c.slot - 1 + n) % n}`)) g.moveTo(...xy(r0, a0)).lineTo(...xy(r1, a0)).stroke(style);
       if (!own.has(`${c.ring}:${(c.slot + 1) % n}`)) g.moveTo(...xy(r0, a1)).lineTo(...xy(r1, a1)).stroke(style);
@@ -340,6 +348,10 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       if (info.check.ok && cells.length) drawHalo(tool.room, cells);
       for (const c of cells) overlayCtx.poly(cellSector(h, c, 0.15)).fill({ color, alpha: 0.35 });
       if (cells.length) outlineCells(overlayCtx, cells, color, 3);
+      if (info.check.ok && info.check.merges && cells.length) {
+        const centre = roomCentre(h, cells);
+        drawPlus(overlayCtx, centre.x, centre.y, Math.min(24, centre.size * 0.6), color);
+      }
       return;
     }
     if (info.room) {

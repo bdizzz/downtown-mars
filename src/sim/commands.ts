@@ -87,14 +87,18 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       if (!r.ok) return { ok: false, reason: r.reason };
       charge(state.resources, cmd.room);
       for (const [id, amt] of Object.entries(roomDef(cmd.room).cost)) record(state, id, "out", CONSTRUCTION, amt);
+      // Extending stairs or an elevator isn't a new room: nothing to undo as one.
+      if ("extended" in r && r.extended) return { ok: true };
       layout.rooms.find((x) => x.id === r.id)!.builtTick = state.tick;
       return { ok: true, roomId: r.id! };
     }
     case "demolish": {
       const room = layout.rooms.find((r) => r.id === cmd.roomId);
       const result = demolishRoom(layout, cmd.roomId);
-      // Blueprints were never built, so they refund in full.
-      if (result.ok && room) refund(state.resources, room.type, room.planned ? 1 : config.economy.demolishRefund);
+      // Blueprints were never built, so they refund in full. Stairs and elevators refund every piece:
+      // the first spans two floors, each extension one more.
+      const pieces = room && roomDef(room.type).stacks ? Math.max(1, new Set(room.cells.map((c) => c.floor)).size - 1) : 1;
+      if (result.ok && room) refund(state.resources, room.type, (room.planned ? 1 : config.economy.demolishRefund) * pieces);
       return result;
     }
     case "undoBuild": {

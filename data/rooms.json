@@ -649,6 +649,29 @@
       "buildable": true
     },
     {
+      "id": "tiny_plaza",
+      "name": "Tiny plaza",
+      "short": "Plaza",
+      "category": "public",
+      "size": "S",
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "public": true,
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": 1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "rock": 5,
+        "brick": 2
+      },
+      "buildable": true
+    },
+    {
       "id": "small_plaza",
       "name": "Small plaza",
       "short": "Plaza",
@@ -687,6 +710,37 @@
       "effects": [],
       "cost": {
         "rock": 8
+      },
+      "buildable": true,
+      "stacks": true,
+      "stackNoun": "stairs"
+    },
+    {
+      "id": "elevator",
+      "name": "Elevator",
+      "short": "Lift",
+      "category": "circulation",
+      "size": "S",
+      "floors": 2,
+      "stacks": true,
+      "stackNoun": "the elevator",
+      "maxFloors": 8,
+      "staff": 0,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "public": true,
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "metal": 10,
+        "machinery": 2
       },
       "buildable": true
     }
