@@ -10,6 +10,7 @@ import { floorSpan, ringRadii, slotAngles, TAU } from "./cylinder";
 
 const ARC_STEPS = 4;
 const ROOF_GAP = 0.05;
+const INSET = 0.06;
 const WINDOW = { bottom: 1.4, top: 3.0, inset: 0.03, color: 0x2d4f6e };
 const DOOR = { width: 1.3, height: 2.3, color: 0x2a1a14 };
 const SURFACE_RING_M = 16; // how far from the rim surface props stand
@@ -19,6 +20,9 @@ export interface RoomColors {
   rock: number;
   stranded: number;
 }
+
+/** How faint the shaft wall and ring-1 rooms get in x-ray, so deeper rings show. */
+const XRAY = { wall: 0.1, ring1: 0.28 };
 
 /** Vertices for a curved face at radius r, or a flat radial side, as triangles. */
 function push(pos: number[], ...pts: number[][]): void {
@@ -53,7 +57,12 @@ function geometry(pos: number[]): THREE.BufferGeometry {
   return g;
 }
 
-/** One solid for a room: every cell a wedge, without the faces its own cells share. */
+/**
+ * One solid for a room: every cell a wedge, without the faces its own cells
+ * share. The solid is inset a few centimetres on every outside face, so two
+ * rooms that touch never share a plane (which would flicker) and a hairline of
+ * rock shows between them.
+ */
 export function roomGeometry(layout: Layout, cells: Cell[]): THREE.BufferGeometry {
   const hole = layout.hole;
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
@@ -64,16 +73,24 @@ export function roomGeometry(layout: Layout, cells: Cell[]): THREE.BufferGeometr
   const pos: number[] = [];
   for (const c of cells) {
     const n = hole.ringSlots[c.ring - 1]!;
-    const [a0, a1] = slotAngles(c.slot, n);
-    const [r0, r1] = ringRadii(hole, c.ring);
-    const [y0, y1] = floorSpan(c.floor);
+    let [a0, a1] = slotAngles(c.slot, n);
+    let [r0, r1] = ringRadii(hole, c.ring);
+    let [y0, y1] = floorSpan(c.floor);
+    const openLeft = !own.has(key({ ...c, slot: (c.slot - 1 + n) % n }));
+    const openRight = !own.has(key({ ...c, slot: (c.slot + 1) % n }));
+    if (c.ring === inner) r0 += INSET;
+    if (c.ring === outer) r1 -= INSET;
+    if (openLeft) a0 += INSET / r0;
+    if (openRight) a1 -= INSET / r0;
+    y0 += INSET;
+    // Floor-1 roofs sit just under the ground, so the two surfaces don't fight.
+    y1 -= c.floor === 1 ? Math.max(INSET, ROOF_GAP) : INSET;
     if (c.ring === inner) curvedFace(pos, r0, a0, a1, y0, y1);
     if (c.ring === outer) curvedFace(pos, r1, a0, a1, y0, y1);
     flatRing(pos, r0, r1, a0, a1, y0);
-    // Floor-1 roofs sit just under the ground, so the two surfaces don't fight.
-    flatRing(pos, r0, r1, a0, a1, c.floor === 1 ? y1 - ROOF_GAP : y1);
-    if (!own.has(key({ ...c, slot: (c.slot - 1 + n) % n }))) radialSide(pos, r0, r1, a0, y0, y1);
-    if (!own.has(key({ ...c, slot: (c.slot + 1) % n }))) radialSide(pos, r0, r1, a1, y0, y1);
+    flatRing(pos, r0, r1, a0, a1, y1);
+    if (openLeft) radialSide(pos, r0, r1, a0, y0, y1);
+    if (openRight) radialSide(pos, r0, r1, a1, y0, y1);
   }
   return geometry(pos);
 }
@@ -102,10 +119,16 @@ export function disposeRoomMaterials(): void {
   materialCache.clear();
 }
 
-function roomMaterial(color: number, planned: boolean): THREE.Material {
-  return material(`room:${color}:${planned}`, () =>
-    planned
-      ? new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide })
+function roomMaterial(color: number, planned: boolean, faint = false): THREE.Material {
+  return material(`room:${color}:${planned}:${faint}`, () =>
+    planned || faint
+      ? new THREE.MeshStandardMaterial({
+          color,
+          transparent: true,
+          opacity: planned ? 0.3 : XRAY.ring1,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        })
       : new THREE.MeshStandardMaterial({ color, roughness: 0.75, side: THREE.DoubleSide }),
   );
 }
@@ -186,11 +209,15 @@ function surfaceProp(room: RoomInstance, layout: Layout, color: number): THREE.O
  * Everything that depends on the layout: rooms, the shaft wall where no room
  * faces it, and surface props. digFloor is the floor being dug, if any.
  */
-export function buildLayout(layout: Layout, digFloor: number | null, colors: RoomColors): THREE.Group {
+export function buildLayout(layout: Layout, digFloor: number | null, colors: RoomColors, xray = false): THREE.Group {
   const group = new THREE.Group();
   const hole = layout.hole;
   const n1 = hole.ringSlots[0]!;
-  const rock = material(`rock:${colors.rock}`, () => new THREE.MeshStandardMaterial({ color: colors.rock, roughness: 0.95, side: THREE.DoubleSide }));
+  const rock = material(`rock:${colors.rock}:${xray}`, () =>
+    xray
+      ? new THREE.MeshStandardMaterial({ color: colors.rock, transparent: true, opacity: XRAY.wall, depthWrite: false, side: THREE.DoubleSide })
+      : new THREE.MeshStandardMaterial({ color: colors.rock, roughness: 0.95, side: THREE.DoubleSide }),
+  );
 
   // The shaft wall, wherever a built room doesn't replace it.
   const lastFloor = digFloor ?? hole.floors;
@@ -220,13 +247,14 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
       continue;
     }
     const geo = roomGeometry(layout, room.cells);
-    const mesh = new THREE.Mesh(geo, roomMaterial(room.type === "corridor" ? 0x8a7466 : color, room.planned));
+    const faint = xray && room.cells.some((c) => c.ring === 1);
+    const mesh = new THREE.Mesh(geo, roomMaterial(room.type === "corridor" ? 0x8a7466 : color, room.planned, faint));
     mesh.userData.roomId = room.id;
     group.add(mesh);
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), room.connected ? edgeLine : strandedLine);
     group.add(edges);
 
-    if (!room.planned && room.type !== "corridor") {
+    if (!room.planned && !faint && room.type !== "corridor") {
       // Shaft frontage: a window band on every ring-1 face, a door in the middle of the room's run.
       const faces = shaftFaces(layout, room);
       const win: number[] = [];
