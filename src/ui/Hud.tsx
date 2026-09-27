@@ -8,6 +8,9 @@ interface Props {
   setSpeed: (speed: number) => void;
   setDrill: (active: boolean) => void;
   toggleOffice: () => void;
+  openMenu: () => void;
+  /** Off while a menu is open, so Space can't unpause behind it. */
+  keysEnabled: boolean;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -18,24 +21,27 @@ function gameDuration(ticks: number): string {
   return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
 }
 
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice }: Props) {
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, openMenu, keysEnabled }: Props) {
   // Space toggles pause, remembering the last running speed.
   const resumeRef = useRef(1);
   if (speed) resumeRef.current = speed;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code !== "Space") return;
+      if (e.code !== "Space" || !keysEnabled) return;
       e.preventDefault();
       setSpeed(speed ? 0 : resumeRef.current);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [speed, setSpeed]);
+  }, [speed, setSpeed, keysEnabled]);
 
   const t = snapshot?.time;
   const drill = snapshot?.drill;
   return (
     <header className="hud">
+      <button className="menu-btn" onClick={openMenu} title="Menu (Esc)">
+        ☰
+      </button>
       <span className="title">Downtown Mars</span>
       <span className="clock">
         {t ? `Day ${t.day} · ${pad(t.hour)}:${pad(t.minute)}` : "Connecting…"}

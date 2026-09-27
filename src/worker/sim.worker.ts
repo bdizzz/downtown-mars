@@ -1,27 +1,33 @@
 /// <reference lib="webworker" />
 import { applyCommand } from "../sim/commands";
 import { config } from "../sim/config";
+import { deserialize, serialize, summarize } from "../sim/save";
 import { makeSnapshot } from "../sim/snapshot";
-import { createInitialState } from "../sim/state";
+import { createInitialState, type SimState } from "../sim/state";
 import { step } from "../sim/step";
 import type { FromWorker, ToWorker, WireSnapshot } from "./protocol";
 
 declare const self: DedicatedWorkerGlobalScope;
 
-const state = createInitialState(config);
+let state: SimState = createInitialState(config);
+/** Bumps on every new game or load, so views drop what they cached. */
+let gameId = 1;
 let speed = 1;
 let tickDebt = 0; // fractional ticks owed to real time
 let last = performance.now();
+let sentLayout = "";
 
-let sentLayoutVersion = -1;
+function reply(msg: FromWorker): void {
+  self.postMessage(msg);
+}
 
 function post(): void {
   const { layout, effects, ...rest } = makeSnapshot(state, config);
-  const fresh = layout.version !== sentLayoutVersion;
-  sentLayoutVersion = layout.version;
-  const snapshot: WireSnapshot = { ...rest, layoutVersion: layout.version, ...(fresh ? { layout, effects } : {}) };
-  const msg: FromWorker = { type: "snapshot", snapshot, speed };
-  self.postMessage(msg);
+  const key = `${gameId}:${layout.version}`;
+  const fresh = key !== sentLayout;
+  sentLayout = key;
+  const snapshot: WireSnapshot = { ...rest, gameId, layoutVersion: layout.version, ...(fresh ? { layout, effects } : {}) };
+  reply({ type: "snapshot", snapshot, speed });
 }
 
 function frame(): void {
@@ -38,14 +44,35 @@ function frame(): void {
   post();
 }
 
+function replaceState(next: SimState): void {
+  state = next;
+  gameId++;
+  tickDebt = 0;
+}
+
 self.onmessage = (e: MessageEvent<ToWorker>) => {
   const msg = e.data;
-  if (msg.type === "setSpeed" && config.speeds.includes(msg.speed)) {
-    speed = msg.speed;
-  } else if (msg.type === "command") {
-    // Applied between ticks, so building works while paused.
-    const reply: FromWorker = { type: "commandResult", id: msg.id, result: applyCommand(state, msg.command) };
-    self.postMessage(reply);
+  switch (msg.type) {
+    case "setSpeed":
+      if (config.speeds.includes(msg.speed)) speed = msg.speed;
+      break;
+    case "command":
+      // Applied between ticks, so building works while paused.
+      reply({ type: "commandResult", id: msg.id, result: applyCommand(state, msg.command) });
+      break;
+    case "save":
+      reply({ type: "saved", id: msg.id, data: serialize(state), summary: summarize(state, config) });
+      break;
+    case "load": {
+      const r = deserialize(msg.data);
+      if (r.ok) replaceState(r.state);
+      reply({ type: "loaded", id: msg.id, result: r.ok ? { ok: true } : { ok: false, reason: r.reason } });
+      break;
+    }
+    case "newGame":
+      replaceState(createInitialState(config));
+      reply({ type: "loaded", id: msg.id, result: { ok: true } });
+      break;
   }
   post();
 };

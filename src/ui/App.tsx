@@ -5,43 +5,135 @@ import { roomDef } from "../sim/rooms";
 import { BuildPalette, shapesFor } from "./BuildPalette";
 import { Hud } from "./Hud";
 import { Inspector } from "./Inspector";
+import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
 import { OverlayPicker } from "./OverlayPicker";
 import { PixiView } from "./PixiView";
 import { ResourceBar } from "./ResourceBar";
+import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
 import { StatusBar } from "./StatusBar";
 import { useSim } from "./useSim";
 
 const NOTICE_MS = 3000;
 
 export function App() {
-  const { snapshot, speed, setSpeed, send } = useSim();
+  const { snapshot, speed, setSpeed, send, save, load, newGame } = useSim();
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [tool, setTool] = useState<Tool>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [overlay, setOverlay] = useState<string | null>(null);
   const [officeOpen, setOfficeOpen] = useState(false);
+  // "title" until the player starts or continues a game; then the pause menu opens over play.
+  const [menu, setMenu] = useState<"title" | "pause" | null>("title");
+  const [menuError, setMenuError] = useState<string | null>(null);
+  const resumeSpeed = useRef(1);
   const noticeTimer = useRef<number>(undefined);
+
+  const flash = useCallback((text: string) => {
+    setNotice(text);
+    window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(null), NOTICE_MS);
+  }, []);
 
   const onCommand = useCallback(
     async (cmd: SimCommand) => {
       const result = await send(cmd);
-      if (!result.ok) {
-        setNotice(result.reason);
-        window.clearTimeout(noticeTimer.current);
-        noticeTimer.current = window.setTimeout(() => setNotice(null), NOTICE_MS);
-      }
+      if (!result.ok) flash(result.reason);
     },
-    [send],
+    [send, flash],
   );
+
+  // The sim stays paused behind any menu.
+  useEffect(() => {
+    if (menu) setSpeed(0);
+  }, [menu, setSpeed]);
+
+  const openMenu = useCallback(() => {
+    resumeSpeed.current = speed || resumeSpeed.current;
+    setMenuError(null);
+    setMenu("pause");
+  }, [speed]);
+
+  const startPlaying = useCallback(() => {
+    setMenu(null);
+    setTool(null);
+    setSelected(null);
+    setOfficeOpen(false);
+    setHover(null);
+    setSpeed(resumeSpeed.current);
+  }, [setSpeed]);
+
+  const saveTo = useCallback(
+    async (slot: Slot) => {
+      const { data, summary } = await save();
+      const ok = writeSave(slot, { data, summary, savedAt: Date.now() });
+      return ok;
+    },
+    [save],
+  );
+
+  const menuActions = {
+    onResume: startPlaying,
+    onNewGame: async () => {
+      await newGame();
+      resumeSpeed.current = 1;
+      startPlaying();
+    },
+    onSave: async (slot: Slot) => {
+      if (await saveTo(slot)) {
+        startPlaying();
+        flash(`Saved to ${slotLabel(slot)}.`);
+      } else setMenuError("Couldn't save: this browser isn't letting the game use storage. Try Export instead.");
+    },
+    onLoad: async (slot: Slot) => {
+      const stored = readSave(slot);
+      if (!stored) return setMenuError(`${slotLabel(slot)} is empty.`);
+      const r = await load(stored.data);
+      if (r.ok) startPlaying();
+      else setMenuError(r.reason);
+    },
+    onExport: async () => {
+      const { data, summary } = await save();
+      downloadSave({ data, summary, savedAt: Date.now() });
+    },
+    onImport: async () => {
+      const text = await pickSaveFile();
+      if (text === null) return;
+      const r = await load(text);
+      if (r.ok) startPlaying();
+      else setMenuError(r.reason);
+    },
+  };
+
+  // Autosave at the start of every game day.
+  const lastDay = useRef<number | null>(null);
+  const day = snapshot?.time.day;
+  useEffect(() => {
+    if (day === undefined || menu) return;
+    if (lastDay.current !== null && day !== lastDay.current) {
+      saveTo("autosave").then((ok) => ok || flash("Autosave failed: browser storage is unavailable."));
+    }
+    lastDay.current = day;
+  }, [day, menu, saveTo, flash]);
+
+  // A different game (new or loaded) invalidates day tracking.
+  const gameId = snapshot?.gameId;
+  useEffect(() => {
+    lastDay.current = null;
+  }, [gameId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (menu) return;
       if (e.code === "Escape") {
-        setTool(null);
-        setSelected(null);
+        // Esc backs out of whatever is open; with nothing open, it opens the menu.
+        if (tool || selected !== null || officeOpen) {
+          setTool(null);
+          setSelected(null);
+          setOfficeOpen(false);
+        } else openMenu();
       }
       if (e.code === "KeyR") {
         setTool((t) => {
@@ -54,7 +146,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [menu, tool, selected, officeOpen, openMenu]);
 
   return (
     <div className="app">
@@ -64,6 +156,8 @@ export function App() {
         setSpeed={setSpeed}
         setDrill={(active) => onCommand({ type: "setDrill", active })}
         toggleOffice={() => (setOfficeOpen((o) => !o), setSelected(null))}
+        openMenu={openMenu}
+        keysEnabled={!menu}
       />
       <ResourceBar s={snapshot} />
       <div className="main">
@@ -88,6 +182,7 @@ export function App() {
         )}
       </div>
       <StatusBar info={hover} snapshot={snapshot} notice={notice} overlay={overlay} />
+      {menu && <Menu mode={menu} {...menuActions} error={menuError} />}
     </div>
   );
 }

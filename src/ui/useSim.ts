@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommandResult, SimCommand } from "../sim/commands";
+import type { SaveSummary } from "../sim/save";
 import type { Snapshot } from "../sim/snapshot";
 import type { FromWorker, ToWorker } from "../worker/protocol";
 
+type Reply = Extract<FromWorker, { id: number }>;
+
 export function useSim() {
   const workerRef = useRef<Worker | null>(null);
-  const pending = useRef(new Map<number, (r: CommandResult) => void>());
+  const pending = useRef(new Map<number, (r: Reply) => void>());
   const nextId = useRef(1);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const lastLayout = useRef<Pick<Snapshot, "layout" | "effects"> | null>(null);
@@ -21,8 +24,8 @@ export function useSim() {
         if (!lastLayout.current) return;
         setSnapshot({ ...rest, ...lastLayout.current });
         setSpeedState(msg.speed);
-      } else if (msg.type === "commandResult") {
-        pending.current.get(msg.id)?.(msg.result);
+      } else {
+        pending.current.get(msg.id)?.(msg);
         pending.current.delete(msg.id);
       }
     };
@@ -35,17 +38,41 @@ export function useSim() {
 
   const post = (msg: ToWorker) => workerRef.current?.postMessage(msg);
 
-  const setSpeed = useCallback((s: number) => post({ type: "setSpeed", speed: s }), []);
-
-  const send = useCallback(
-    (command: SimCommand) =>
-      new Promise<CommandResult>((resolve) => {
+  /** Send a message with an id and wait for the worker's reply to it. */
+  const ask = useCallback(
+    <T extends Reply>(make: (id: number) => ToWorker) =>
+      new Promise<T>((resolve) => {
         const id = nextId.current++;
-        pending.current.set(id, resolve);
-        post({ type: "command", id, command });
+        pending.current.set(id, (r) => resolve(r as T));
+        post(make(id));
       }),
     [],
   );
 
-  return { snapshot, speed, setSpeed, send };
+  const setSpeed = useCallback((s: number) => post({ type: "setSpeed", speed: s }), []);
+
+  const send = useCallback(
+    async (command: SimCommand): Promise<CommandResult> =>
+      (await ask<Extract<Reply, { type: "commandResult" }>>((id) => ({ type: "command", id, command }))).result,
+    [ask],
+  );
+
+  const save = useCallback(
+    async (): Promise<{ data: string; summary: SaveSummary }> =>
+      ask<Extract<Reply, { type: "saved" }>>((id) => ({ type: "save", id })),
+    [ask],
+  );
+
+  const load = useCallback(
+    async (data: string): Promise<CommandResult> =>
+      (await ask<Extract<Reply, { type: "loaded" }>>((id) => ({ type: "load", id, data }))).result,
+    [ask],
+  );
+
+  const newGame = useCallback(
+    async (): Promise<CommandResult> => (await ask<Extract<Reply, { type: "loaded" }>>((id) => ({ type: "newGame", id }))).result,
+    [ask],
+  );
+
+  return { snapshot, speed, setSpeed, send, save, load, newGame };
 }

@@ -24,6 +24,8 @@ export interface DrillView {
 
 // What the views get to see. Plain data, safe to structured-clone.
 export interface Snapshot {
+  /** Changes when a new game starts or a save loads; the worker sets it. */
+  gameId: number;
   tick: number;
   time: GameTime;
   layout: Layout;
@@ -53,6 +55,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
   const floor = canDig(state, cfg) ? diggingFloor(state) : null;
   const needed = floor ? ticksToDig(floor, cfg) : 1;
   return {
+    gameId: 0,
     tick: state.tick,
     time: gameTime(state.tick, cfg),
     layout: state.layout,

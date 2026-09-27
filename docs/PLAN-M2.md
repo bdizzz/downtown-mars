@@ -25,3 +25,7 @@ Decided Sep 27, 2026 (Bryon): milestone 2 is polish and persistence. The network
 6. **Audio.** Synthesized SFX and ambient hum; volume settings. *See (hear):* builds, drops, visitors.
 7. **Settings and help.** Settings panel (volume, UI scale, colour-blind-safe overlay palette, autosave on/off), keyboard shortcuts overlay. *See:* the game adapts to the player.
 8. **Playtest packaging.** Relative base, chunking, version stamp, `npm run package` zip, README with controls. *See:* a zip that runs from a static host.
+
+## Notes as built
+
+**Step 1, saves:** `src/sim/save.ts` writes `{ game, version, state }` without the effect field; loading rebuilds it and refuses other games, other versions and unknown room types. A loaded game continues tick-for-tick like the original (tested). The worker bumps a `gameId` on new game and load so the view drops its caches. Browser storage keys are `downtown-mars.save.<slot>`; autosave happens when the game day changes. Esc closes whatever is open, and opens the menu when nothing is. Menus pause the sim.
