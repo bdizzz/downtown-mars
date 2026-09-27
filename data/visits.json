@@ -1,0 +1,75 @@
+{
+  "_note": "Citizen visits. Triggers are in src/sim/visits.ts, keyed by id; everything else is here. Placeholders: {name}, {home}, {floor}.",
+  "checkEveryTicks": 10,
+  "waitingRoomSize": 3,
+  "visits": [
+    {
+      "id": "noise_complaint",
+      "title": "Noise complaint",
+      "text": "{name} is here about the {home} on floor {floor}. \"Nobody in our block has slept properly in days. Something has to give.\"",
+      "cooldownDays": 3,
+      "patienceDays": 2,
+      "ignored": { "loyalty": -10, "homeHappiness": -5, "message": "{name} gave up waiting. The {home} is grumbling about the noise." },
+      "choices": [
+        {
+          "id": "promise",
+          "label": "I'll fix it within 3 days",
+          "hint": "Move the noise away or buffer it with a corridor.",
+          "loyalty": 5,
+          "promise": {
+            "check": "noiseFixed",
+            "days": 3,
+            "kept": { "loyalty": 15, "homeHappiness": 10, "message": "{name} thanks you: the {home} is sleeping again." },
+            "broken": { "loyalty": -20, "homeHappiness": -10, "message": "{name} says you broke your promise about the noise." }
+          }
+        },
+        {
+          "id": "quiet_hours",
+          "label": "Enact quiet hours",
+          "hint": "Ordinance: noise felt at home halved; noisy rooms 5% slower.",
+          "enact": "quiet_hours",
+          "loyalty": 5,
+          "homeHappiness": 5,
+          "message": "Quiet hours are in force."
+        },
+        {
+          "id": "refuse",
+          "label": "Refuse",
+          "hint": "\"That noise is the sound of air.\"",
+          "loyalty": -10,
+          "homeHappiness": -5
+        }
+      ]
+    },
+    {
+      "id": "clinic_demand",
+      "title": "Room demand: a clinic",
+      "text": "{name} speaks for the colonists: \"Someone is going to get hurt down here, and there's nowhere to go. We need a clinic.\"",
+      "minDay": 4,
+      "cooldownDays": 4,
+      "patienceDays": 2,
+      "ignored": { "loyalty": -10, "allHappiness": -3, "message": "{name} left the office without an answer. People are asking why." },
+      "choices": [
+        {
+          "id": "promise",
+          "label": "You'll have one within 5 days",
+          "hint": "Build a clinic (needs brick, metal and electronics).",
+          "loyalty": 5,
+          "promise": {
+            "check": "clinicBuilt",
+            "days": 5,
+            "kept": { "loyalty": 10, "allHappiness": 5, "message": "The clinic is open. {name} is telling everyone you kept your word." },
+            "broken": { "loyalty": -15, "allHappiness": -5, "message": "Still no clinic. {name} is telling everyone you broke your word." }
+          }
+        },
+        {
+          "id": "refuse",
+          "label": "Not yet: there are bigger priorities",
+          "hint": "Loyalty and happiness drop a little.",
+          "loyalty": -10,
+          "allHappiness": -3
+        }
+      ]
+    }
+  ]
+}

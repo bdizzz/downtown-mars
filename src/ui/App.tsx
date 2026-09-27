@@ -6,6 +6,7 @@ import { BuildPalette, shapesFor } from "./BuildPalette";
 import { Hud } from "./Hud";
 import { Inspector } from "./Inspector";
 import { Messages } from "./Messages";
+import { Office } from "./Office";
 import { OverlayPicker } from "./OverlayPicker";
 import { PixiView } from "./PixiView";
 import { ResourceBar } from "./ResourceBar";
@@ -21,6 +22,7 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [overlay, setOverlay] = useState<string | null>(null);
+  const [officeOpen, setOfficeOpen] = useState(false);
   const noticeTimer = useRef<number>(undefined);
 
   const onCommand = useCallback(
@@ -56,7 +58,13 @@ export function App() {
 
   return (
     <div className="app">
-      <Hud snapshot={snapshot} speed={speed} setSpeed={setSpeed} setDrill={(active) => onCommand({ type: "setDrill", active })} />
+      <Hud
+        snapshot={snapshot}
+        speed={speed}
+        setSpeed={setSpeed}
+        setDrill={(active) => onCommand({ type: "setDrill", active })}
+        toggleOffice={() => (setOfficeOpen((o) => !o), setSelected(null))}
+      />
       <ResourceBar s={snapshot} />
       <div className="main">
         <BuildPalette tool={tool} setTool={(t) => (setTool(t), setSelected(null))} resources={snapshot?.resources ?? {}} />
@@ -70,11 +78,12 @@ export function App() {
             onCommand={onCommand}
             onCancel={() => setTool(null)}
             selected={selected}
-            onSelect={setSelected}
+            onSelect={(id) => (setSelected(id), id !== null && setOfficeOpen(false))}
             overlay={overlay}
           />
         </div>
-        {snapshot && selected !== null && (
+        {snapshot && officeOpen && <Office s={snapshot} onCommand={onCommand} onClose={() => setOfficeOpen(false)} />}
+        {snapshot && !officeOpen && selected !== null && (
           <Inspector s={snapshot} roomId={selected} onCommand={onCommand} onClose={() => setSelected(null)} />
         )}
       </div>

@@ -4,6 +4,7 @@ import { stepEarth } from "./earth";
 import { stepEconomy, updateRates } from "./economy";
 import { refreshEffects } from "./effects";
 import { stepHappiness } from "./happiness";
+import { stepVisits } from "./visits";
 import type { SimState } from "./state";
 
 // Advance the simulation by one fixed tick. Mutates state in place.
@@ -17,4 +18,5 @@ export function step(state: SimState, cfg: SimConfig): void {
   updateRates(state, before, cfg);
   stepEarth(state, cfg);
   stepHappiness(state, cfg);
+  stepVisits(state, cfg);
 }

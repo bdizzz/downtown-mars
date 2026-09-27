@@ -3,6 +3,8 @@ import type { Drill } from "./digging";
 import { createEarth, type EarthState } from "./earth";
 import { refreshEffects, type Effects } from "./effects";
 import { createHappiness, updateHappiness, type Happiness } from "./happiness";
+import { createNotables, type Notable } from "./notables";
+import { createOffice, type Office } from "./visits";
 import type { Message } from "./messages";
 import type { Population, RoomStatus } from "./economy";
 import { createHole } from "./geometry";
@@ -26,6 +28,10 @@ export interface SimState {
   /** Derived from the layout; recomputed only when layout.version changes. */
   effects: Effects;
   happiness: Happiness;
+  notables: Notable[];
+  office: Office;
+  /** Enacted ordinance ids. */
+  ordinances: string[];
 }
 
 export function createInitialState(cfg: SimConfig): SimState {
@@ -54,7 +60,11 @@ export function createInitialState(cfg: SimConfig): SimState {
     messages: [],
     effects: refreshEffects(layout, null),
     happiness: createHappiness(),
+    notables: [],
+    office: createOffice(),
+    ordinances: [],
   };
+  createNotables(state);
   updateHappiness(state, cfg, true);
   return state;
 }

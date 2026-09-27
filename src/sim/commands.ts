@@ -3,7 +3,9 @@ import { charge, checkBuild, refund } from "./costs";
 import { refreshEffects } from "./effects";
 import { demolishRoom, placeRoom, type Location } from "./placement";
 import type { Priority } from "./config";
+import { enact, repeal } from "./ordinances";
 import { isCrop } from "./resources";
+import { answerVisit } from "./visits";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
@@ -12,7 +14,9 @@ export type SimCommand =
   | { type: "demolish"; roomId: number }
   | { type: "setDrill"; active: boolean }
   | { type: "setCrop"; roomId: number; crop: string }
-  | { type: "setPriority"; roomId: number; priority: Priority };
+  | { type: "setPriority"; roomId: number; priority: Priority }
+  | { type: "answerVisit"; visitId: number; choice: string }
+  | { type: "setOrdinance"; id: string; enacted: boolean };
 
 export type CommandResult = { ok: true } | { ok: false; reason: string };
 
@@ -51,6 +55,14 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       layout.version++;
       return { ok: true };
     }
+    case "answerVisit":
+      return answerVisit(state, config, cmd.visitId, cmd.choice);
+    case "setOrdinance":
+      if (!cmd.enacted) {
+        repeal(state, cmd.id);
+        return { ok: true };
+      }
+      return enact(state, cmd.id);
     case "setPriority": {
       const room = layout.rooms.find((r) => r.id === cmd.roomId);
       if (!room) return { ok: false, reason: "No such room" };

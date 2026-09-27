@@ -111,3 +111,39 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .overlay-picker .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 .overlay-picker .legend i.bad { background: #ff4a2e; }
 .overlay-picker .legend i.good { background: #5fe07a; margin-left: 6px; }
+.office-btn {
+  background: transparent; color: var(--text); font: inherit; font-size: 13px;
+  border: 1px solid var(--muted); border-radius: 4px; padding: 3px 10px; cursor: pointer;
+}
+.office-btn.waiting { border-color: var(--accent); background: var(--accent); color: #1a0f0d; font-weight: 600; }
+.office { width: 300px; }
+.office h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 10px 0 2px; }
+.office h3 .k { text-transform: none; letter-spacing: 0; margin-left: 6px; }
+.visit { border: 1px solid #000; background: #22130f; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.visit .who { display: flex; gap: 8px; align-items: center; }
+.visit .title { font-weight: 600; color: var(--accent); }
+.face {
+  width: 34px; height: 34px; border-radius: 50%; background: #5b3a2e; color: var(--text);
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0;
+}
+.face.small { width: 26px; height: 26px; font-size: 11px; }
+.choice {
+  text-align: left; background: #2f1c16; color: var(--text); font: inherit;
+  border: 1px solid var(--muted); border-radius: 4px; padding: 5px 8px; cursor: pointer;
+}
+.choice:hover:not(:disabled) { border-color: var(--accent); }
+.choice:disabled { opacity: 0.5; cursor: not-allowed; }
+.choice .hint { display: block; color: var(--muted); font-size: 11px; }
+.ordinance { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.ordinance button {
+  background: transparent; color: var(--text); font: inherit; font-size: 12px;
+  border: 1px solid var(--muted); border-radius: 4px; padding: 2px 8px; cursor: pointer; flex-shrink: 0;
+}
+.ordinance button.on { border-color: var(--accent); color: var(--accent); }
+.ordinance button:disabled { opacity: 0.5; cursor: not-allowed; }
+.notable { display: flex; gap: 8px; align-items: center; }
+.notable .grow { flex: 1; }
+.loyalty { width: 50px; height: 6px; background: #3a241d; border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+.loyalty span { display: block; height: 100%; background: var(--accent); }
+.hud { flex-wrap: wrap; row-gap: 6px; }
+.hud > * { white-space: nowrap; }

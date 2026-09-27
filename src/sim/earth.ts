@@ -1,6 +1,7 @@
 import type { SimConfig } from "./config";
 import { capacities, isActive, roomSpec } from "./economy";
 import { postMessage } from "./messages";
+import { addNotable } from "./notables";
 import { resourceDef } from "./resources";
 import { roomDef } from "./rooms";
 import { nextRandom } from "./rng";
@@ -101,6 +102,7 @@ function land(state: SimState, cfg: SimConfig): Record<string, number> {
   if (arrivals > 0) {
     state.population.count += arrivals;
     contents.colonists = arrivals;
+    addNotable(state);
   }
 
   const cover = ec.intervalDays + ec.coverBufferDays;

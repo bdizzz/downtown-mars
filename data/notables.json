@@ -1,0 +1,10 @@
+{
+  "_note": "Name pools and roles for generated notables. Traits from DESIGN.md, Notables.",
+  "firstNames": ["Ana", "Tomas", "Priya", "Kofi", "Mei", "Lars", "Amara", "Diego", "Yuki", "Oren", "Sana", "Ivo", "Nadia", "Rafe", "Leila", "Bo", "Esther", "Kian", "Marisol", "Teodor", "Ines", "Jun", "Farah", "Callum"],
+  "lastNames": ["Ruiz", "Okafor", "Lindqvist", "Tanaka", "Haddad", "Novak", "Mensah", "Petrova", "Castillo", "Reyes", "Achebe", "Moreau", "Sato", "Kowalski", "Osei", "Varga", "Nakamura", "Adeyemi", "Horvat", "Silva"],
+  "roles": ["worker", "organizer", "scientist", "doctor", "merchant", "administrator"],
+  "traits": ["Populist", "Cautious", "Industrialist", "Idealist", "Greedy", "Charismatic", "Hothead", "Pragmatist", "Earth Loyalist", "Martian-born"],
+  "startCount": 6,
+  "maxCount": 20,
+  "startLoyalty": 50
+}

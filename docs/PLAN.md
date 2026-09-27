@@ -72,6 +72,15 @@ Goal: prove the adjacency puzzle is fun inside one hole. Each step ends with som
 - Productivity: below 50 average happiness, staffed rooms slow linearly, to 75% at 0.
 - The starting pod sits at about 52, so a noisy or unserved hole tips below 50 quickly.
 
+**Office visits (step 9, Sep 27):**
+- Notables: 6 at the start and 1 more with each drop that brings colonists (max 20), from `data/notables.json`. Each has a role, two different traits and loyalty 0–100 (start 50). Traits and roles are flavour for now, except that clinic demands come from a doctor when there is one.
+- Visits live in `data/visits.json` (text, choices, outcomes); triggers live in `src/sim/visits.ts`. Checked every game hour, one of each kind waiting at a time, with cooldowns and a 3-person waiting room.
+  - Noise complaint: a lived-in home with noise at −1 or worse. Promise a fix within 3 days, enact Quiet hours, or refuse.
+  - Clinic demand: from day 4 if there's no clinic. Promise one within 5 days, or refuse.
+- Promises are checked every hour and settle early when kept. Kept or broken changes loyalty and happiness.
+- Unanswered visitors leave after 2 days with a loyalty and happiness penalty.
+- Ordinances (`data/ordinances.json`): Quiet hours, Water rationing, Ration cards. Slots from the biggest working admin room: the pod's desk 1, admin office 2. Effects apply at once (no settling-in period yet) and repealing has no penalty yet.
+
 **Gap fills:** Earth supply drops bring colonists and soil; the pod's starter drill digs slowly, costing time and yielding rock.
 
 ## Steps

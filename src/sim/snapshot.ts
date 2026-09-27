@@ -6,6 +6,9 @@ import { capacities, roomSpec, type Population, type RoomStatus } from "./econom
 import type { EffectField } from "./effects";
 import type { Happiness } from "./happiness";
 import type { Message } from "./messages";
+import type { Notable } from "./notables";
+import { ordinanceSlots } from "./ordinances";
+import type { Office } from "./visits";
 import type { Layout } from "./placement";
 import type { SimState } from "./state";
 
@@ -40,6 +43,10 @@ export interface Snapshot {
   beds: number;
   messages: Message[];
   happiness: Happiness;
+  notables: Notable[];
+  office: Office;
+  ordinances: string[];
+  ordinanceSlots: number;
 }
 
 export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
@@ -71,6 +78,10 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     beds: beds(state),
     messages: state.messages,
     happiness: state.happiness,
+    notables: state.notables,
+    office: state.office,
+    ordinances: state.ordinances,
+    ordinanceSlots: ordinanceSlots(state),
   };
 }
 

@@ -1,0 +1,27 @@
+{
+  "_note": "Milestone 1 subset of DESIGN.md Ordinances. Effects apply hole-wide while enacted.",
+  "ordinances": [
+    {
+      "id": "quiet_hours",
+      "name": "Quiet hours",
+      "description": "Noise felt at home halved; noisy rooms run 5% slower.",
+      "noiseFactor": 0.5,
+      "noisyRoomOutput": 0.95
+    },
+    {
+      "id": "water_rationing",
+      "name": "Water rationing",
+      "description": "Colonists use 25% less water; comfort and health down slightly.",
+      "needsMultiplier": { "water": 0.75 },
+      "comfort": -0.5,
+      "health": -0.5
+    },
+    {
+      "id": "ration_cards",
+      "name": "Ration cards",
+      "description": "Colonists eat 15% less; comfort down.",
+      "needsMultiplier": { "meals": 0.85 },
+      "comfort": -0.5
+    }
+  ]
+}

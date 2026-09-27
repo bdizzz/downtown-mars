@@ -1,5 +1,6 @@
 import type { SimConfig } from "./config";
 import type { RoomInstance } from "./placement";
+import { modifiers, type Modifiers } from "./ordinances";
 import { cropDef, resourceDef, resourceDefs } from "./resources";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
@@ -102,13 +103,14 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   state.workforce = { total: state.population.count, employed: state.population.count - free };
 
   // 2. Run rooms. Pure producers (solar) go first so power is there for the rest.
+  const mod = modifiers(state);
   const producers = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length === 0);
   const others = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length > 0);
-  for (const r of [...producers, ...others]) runRoom(r, specs.get(r.id)!, status[r.id]!, state, caps, cfg, dt);
+  for (const r of [...producers, ...others]) runRoom(r, specs.get(r.id)!, status[r.id]!, state, caps, cfg, dt, mod);
   state.roomStatus = status;
 
   // 3. Colonists.
-  stepColonists(state, rooms, specs, status, cfg, dt);
+  stepColonists(state, rooms, specs, status, cfg, dt, mod);
 
   // 4. Storage limits; the excess is lost.
   for (const [id, v] of Object.entries(res)) {
@@ -139,6 +141,7 @@ function runRoom(
   caps: Record<string, number>,
   cfg: SimConfig,
   dt: number,
+  mod: Modifiers,
 ): void {
   const res = state.resources;
   const subs = roomDef(room.type).substitutes ?? {};
@@ -148,6 +151,10 @@ function runRoom(
   if (spec.staff > 0 && state.happiness.productivity < 1) {
     rate *= state.happiness.productivity;
     limit ??= "morale";
+  }
+  if (mod.noisyRoomOutput < 1 && roomDef(room.type).effects.some((e) => e.type === "noise")) {
+    rate *= mod.noisyRoomOutput;
+    limit ??= "ordinance";
   }
 
   for (const [id, perDay] of Object.entries(spec.uses)) {
@@ -193,6 +200,7 @@ function stepColonists(
   status: Record<number, RoomStatus>,
   cfg: SimConfig,
   dt: number,
+  mod: Modifiers,
 ): void {
   const c = cfg.colonists;
   const pop = state.population;
@@ -201,7 +209,7 @@ function stepColonists(
 
   const met: Record<string, number> = {};
   for (const [id, perDay] of Object.entries(c.needsPerDay)) {
-    const want = pop.count * perDay * dt;
+    const want = pop.count * perDay * (mod.needsMultiplier[id] ?? 1) * dt;
     const got = Math.min(want, res[id] ?? 0);
     res[id] = (res[id] ?? 0) - got;
     met[id] = want > 0 ? got / want : 1;
@@ -218,7 +226,7 @@ function stepColonists(
     split = roomDef(r.type).returnsWater ?? split;
   }
   const covered = Math.min(1, seats / pop.count);
-  const drunk = pop.count * (c.needsPerDay.water ?? 0) * dt * (met.water ?? 1);
+  const drunk = pop.count * (c.needsPerDay.water ?? 0) * (mod.needsMultiplier.water ?? 1) * dt * (met.water ?? 1);
   for (const [id, share] of Object.entries(split)) res[id] = (res[id] ?? 0) + drunk * covered * share;
 
   let loss = 0;

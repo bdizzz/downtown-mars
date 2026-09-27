@@ -7,6 +7,7 @@ interface Props {
   speed: number;
   setSpeed: (speed: number) => void;
   setDrill: (active: boolean) => void;
+  toggleOffice: () => void;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -17,7 +18,7 @@ function gameDuration(ticks: number): string {
   return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
 }
 
-export function Hud({ snapshot, speed, setSpeed, setDrill }: Props) {
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice }: Props) {
   // Space toggles pause, remembering the last running speed.
   const resumeRef = useRef(1);
   if (speed) resumeRef.current = speed;
@@ -64,6 +65,11 @@ export function Hud({ snapshot, speed, setSpeed, setDrill }: Props) {
         <span className={`drop${snapshot.earth.waiting ? " warn" : ""}`} title="Next Earth supply drop">
           {snapshot.earth.waiting ? "🚀 Drop waiting: pad needs staff and power" : `🚀 Drop in ${gameDuration(snapshot.earth.ticksToDrop)}`}
         </span>
+      )}
+      {snapshot && (
+        <button className={`office-btn${snapshot.office.waiting.length ? " waiting" : ""}`} onClick={toggleOffice}>
+          Office{snapshot.office.waiting.length ? ` · ${snapshot.office.waiting.length} waiting` : ""}
+        </button>
       )}
       <span className="tick">tick {snapshot?.tick ?? 0}</span>
     </header>

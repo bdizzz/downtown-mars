@@ -22,12 +22,13 @@ describe("Earth supply drops", () => {
   it("the first drop lands on schedule and says what it brought", () => {
     const s = start();
     ticks(s, firstDrop - 1);
-    expect(s.messages).toHaveLength(0);
+    expect(s.messages.some((m) => m.text.startsWith("Supply drop"))).toBe(false);
     const metal = s.resources.metal!;
     ticks(s, 1);
     expect(s.resources.metal).toBe(metal + config.earth.fixed.metal!);
-    expect(s.messages.at(-1)).toMatchObject({ kind: "good" });
-    expect(s.messages.at(-1)!.text).toMatch(/^Supply drop landed: .*metal 25/);
+    const landed = s.messages.find((m) => m.text.startsWith("Supply drop landed"));
+    expect(landed).toMatchObject({ kind: "good" });
+    expect(landed!.text).toMatch(/metal 25/);
   });
 
   it("tops up rations to cover the food gap", () => {
@@ -64,16 +65,17 @@ describe("Earth supply drops", () => {
     ticks(s, firstDrop + 5);
     expect(s.resources.metal).toBe(metal);
     expect(s.earth.waiting).toBe(true);
-    expect(s.messages.at(-1)!.kind).toBe("warn");
+    expect(s.messages.find((m) => /orbit/.test(m.text))).toMatchObject({ kind: "warn" });
   });
 
   it("can be delayed a day, but only once per drop", () => {
     const always: SimConfig = { ...config, earth: { ...config.earth, delayChance: 1 } };
     const s = createInitialState(always);
     ticks(s, firstDrop, always);
-    expect(s.messages.at(-1)!.text).toMatch(/delayed/);
+    expect(s.messages.some((m) => /delayed/.test(m.text))).toBe(true);
+    expect(s.messages.some((m) => /landed/.test(m.text))).toBe(false);
     ticks(s, config.ticksPerDay, always);
-    expect(s.messages.at(-1)!.text).toMatch(/landed/);
+    expect(s.messages.some((m) => /landed/.test(m.text))).toBe(true);
   });
 
   it("shrinks the water top-up once the hole makes its own", () => {
@@ -82,7 +84,8 @@ describe("Earth supply drops", () => {
     const b = start();
     b.resources.water = 400; // well stocked: less to send
     ticks(b, firstDrop);
-    const sent = (s: SimState) => Number(/water (\d+)/.exec(s.messages.at(-1)!.text)?.[1] ?? 0);
+    const landed = (s: SimState) => s.messages.find((m) => m.text.startsWith("Supply drop landed"))!.text;
+    const sent = (s: SimState) => Number(/water (\d+)/.exec(landed(s))?.[1] ?? 0);
     expect(sent(b)).toBeLessThan(sent(a));
   });
 });
