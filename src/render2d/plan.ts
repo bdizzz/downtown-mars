@@ -6,9 +6,14 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { DrillView } from "../sim/snapshot";
 import { FLOOR_H, openShaftRadius, pickAt, ringRadii, slotAngles } from "../render3d/cylinder";
-import { clickWith, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
+import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
 import type { HoverInfo, Pick, Stage, StageOptions, Tool } from "../view/types";
 import { drawGlyph, shade } from "./art";
+import { corridorStrip } from "./corridorArt";
+import { config } from "../sim/config";
+import { corridors } from "../sim/corridors";
+import { edgeById, edgeSides, nearestEdge, type Edge } from "../sim/edges";
+import { roomAt } from "../sim/placement";
 import { CATEGORY_COLORS, HEAT } from "./palette";
 
 // The plan view: one floor seen from above, drawn flat. The shaft in the
@@ -33,6 +38,7 @@ const C = {
   ok: 0x7fd67f,
   bad: 0xe0503a,
   dig: 0xe07a3f,
+  door: 0x2a1a14,
 };
 
 /** Pixels per metre at zoom 1. */
@@ -47,6 +53,10 @@ const LABEL_PX = 12;
 const MIN_LABEL_PX = 10;
 /** Margin of rock shown around the outermost ring, in metres. */
 const RIM_M = 8;
+const RING_D = config.geometry.roomDepthM;
+const TAU = Math.PI * 2;
+/** A corridor's width on the plan: its true 3 m. */
+const BAND = corridors.widthM * PX;
 
 /** Screen position (px, before zoom) of a point r metres out at angle a. */
 const xy = (r: number, a: number): [number, number] => [r * PX * Math.cos(a), r * PX * Math.sin(a)];
@@ -159,14 +169,14 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       const cells = onFloor(room.cells);
       if (!cells.length) continue;
       const def = roomDef(room.type);
-      const color = room.type === "corridor" ? 0x8a7466 : (CATEGORY_COLORS[def.category] ?? 0x888888);
+      const color = CATEGORY_COLORS[def.category] ?? 0x888888;
+      // Cells fill edge to edge, so a room reads as one piece; its outline marks where it ends.
       for (const c of cells) {
-        const poly = cellSector(h, c, 0.15);
+        const poly = cellSector(h, c);
         if (room.planned) roomsCtx.poly(poly).fill({ color, alpha: 0.3 });
         else roomsCtx.poly(poly).fill(color);
       }
       outlineCells(roomsCtx, cells, room.connected ? shade(color, 0.45) : C.bad, room.connected ? 1.5 : 3);
-      if (room.type === "corridor") continue;
       const centre = roomCentre(h, cells);
       const ink = room.planned ? color : shade(color, 0.55);
       drawGlyph(roomsCtx, room.type, centre.x, centre.y + 5, Math.min(26, centre.size * 0.55), ink);
@@ -179,6 +189,58 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
         text.position.set(centre.x, centre.y - Math.min(10, centre.size * 0.25));
         labels.addChild(text);
       }
+    }
+    drawCorridors(l);
+  }
+
+  /** A corridor's centreline on the plan, in px: out along a spoke, or around an arc. */
+  function stripOf(h: Hole, e: Edge): { at: (t: number) => [number, number]; normal: (t: number) => [number, number]; len: number; mid: number } {
+    if (e.kind === "radial") {
+      const a = e.turn * TAU;
+      const [r0] = ringRadii(h, e.ring);
+      const dir: [number, number] = [Math.cos(a), Math.sin(a)];
+      return { at: (t) => xy(r0 + t / PX, a), normal: () => [-dir[1], dir[0]], len: RING_D * PX, mid: (RING_D * PX) / 2 };
+    }
+    const r = ringRadii(h, e.circle)[1];
+    const a0 = e.a0 * TAU;
+    const len = (e.a1 - e.a0) * TAU * r * PX;
+    return {
+      at: (t) => xy(r, a0 + t / (r * PX)),
+      normal: (t) => [Math.cos(a0 + t / (r * PX)), Math.sin(a0 + t / (r * PX))],
+      len,
+      mid: len / 2,
+    };
+  }
+
+  /** Corridors on this floor, carved over the rooms, with doors and unlinked warnings (as in the unrolled view). */
+  function drawCorridors(l: Layout): void {
+    const h = l.hole;
+    for (const [id, finish] of Object.entries(l.corridors)) {
+      const e = edgeById(h, id);
+      if (!e || e.floor !== floor) continue;
+      const s = stripOf(h, e);
+      const planned = e.floor > h.floors;
+      const poly = corridorStrip(roomsCtx, s.at, s.normal, s.len, BAND, finish, planned ? 0.45 : 1);
+      if (!l.corridorLinked?.[id] && !planned) {
+        roomsCtx.poly(poly).stroke({ color: C.bad, width: 2 });
+        continue;
+      }
+      const [a, z] = edgeSides(h, e);
+      const opens = (c: Cell | null) => {
+        const r = c ? roomAt(l, c) : undefined;
+        return !!r && !r.planned && !roomDef(r.type).public;
+      };
+      if (s.len < 16) continue;
+      const [mx, my] = s.at(s.mid);
+      const [nx, ny] = s.normal(s.mid);
+      const door = (sign: number) => {
+        const cx = mx + nx * sign * (BAND / 2 + 2);
+        const cy = my + ny * sign * (BAND / 2 + 2);
+        roomsCtx.circle(cx, cy, 3).fill(C.door);
+      };
+      // Side 0 is the inner / earlier cell; the normal points outward (arcs) or to the later slot (spokes).
+      if (opens(a)) door(-1);
+      if (opens(z)) door(1);
     }
   }
 
@@ -260,6 +322,18 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     if (sel) markRoom(sel, C.selected);
     if (!info) return;
     const p = info.pick;
+    if (info.edge) {
+      const e = edgeById(h, info.edge.id);
+      if (!e) return;
+      const s = stripOf(h, e);
+      const color = info.edge.refusal || info.edge.erase ? C.bad : C.ok;
+      const poly =
+        !info.edge.erase && !info.edge.refusal && tool?.kind === "corridor"
+          ? corridorStrip(overlayCtx, s.at, s.normal, s.len, BAND, tool.finish, 0.7)
+          : corridorStrip(overlayCtx, s.at, s.normal, s.len, BAND, info.edge.finish ?? "rock", 0);
+      overlayCtx.poly(poly).fill({ color, alpha: info.edge.erase ? 0.35 : 0.15 }).stroke({ color, width: 2.5 });
+      return;
+    }
     if (tool?.kind === "build" && info.check) {
       const color = info.check.ok ? C.ok : C.bad;
       const cells = onFloor(info.check.cells.length ? info.check.cells : p.kind === "slot" ? [p as Cell] : []);
@@ -327,8 +401,22 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     return pickAt(layout.hole, px / PX, -(floor - 0.5) * FLOOR_H, py / PX);
   }
 
+  /** Shift erases with the corridor tool. */
+  let shift = false;
+
+  /** The border nearest the pointer, on this floor. */
+  function edgeHere(): Edge | null {
+    if (!layout || !pointer) return null;
+    const h = layout.hole;
+    const [px, py] = screenToPlan(pointer);
+    const r = Math.hypot(px, py) / PX;
+    const rings = (r - h.shaftRadiusM) / RING_D;
+    return nearestEdge(h, floor, rings, Math.atan2(py, px) / TAU, RING_D);
+  }
+
   function hoverInfo(): HoverInfo | null {
     if (!layout || !pointer) return null;
+    if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, pickHere(), edgeHere(), shift);
     return hoverInfoFor(layout, resources, tool, pickHere(), gates);
   }
 
@@ -353,6 +441,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
     pointer = e;
+    shift = e.shiftKey;
     canvas.setPointerCapture(e.pointerId);
     if (paints(tool)) {
       painting = true;
@@ -364,6 +453,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   };
   const onPointerMove = (e: PointerEvent) => {
     pointer = e;
+    shift = e.shiftKey;
     if (painting) paint();
     if (drag) {
       const dx = e.clientX - drag.x;
@@ -417,6 +507,13 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     applyCamera();
   };
 
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key !== "Shift" || shift === (e.type === "keydown")) return;
+    shift = e.type === "keydown";
+    refreshHover(true);
+  };
+  window.addEventListener("keydown", onKey);
+  window.addEventListener("keyup", onKey);
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
@@ -502,6 +599,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     },
     destroy() {
       canvas.removeEventListener("wheel", onWheel);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKey);
       app.destroy({ removeView: true }, { children: true, context: true });
     },
   };
