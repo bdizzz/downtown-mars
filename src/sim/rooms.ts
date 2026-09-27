@@ -38,6 +38,8 @@ export interface RoomDef {
   defaultCrop?: string;
   priority?: "critical" | "high" | "normal" | "low";
   ordinanceSlots?: number;
+  /** Colonists a clinic can look after. */
+  cares?: number;
 }
 
 // JSON imports widen literal types, so the shape is checked in tests/rooms.test.ts.

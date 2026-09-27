@@ -61,6 +61,18 @@
     "retryDays": 0.25,
     "descentDays": 0.3
   },
+  "happiness": {
+    "base": 60,
+    "weights": { "noise": 8, "comfort": 8, "health": 8 },
+    "factorLimit": 3,
+    "shaftViewComfort": 1,
+    "homelessComfort": -3,
+    "noCareHealth": -1,
+    "easeDays": 1,
+    "updateEveryTicks": 10,
+    "productivityAtZero": 0.75,
+    "productivityFullAt": 50
+  },
   "messages": { "keep": 20 },
   "landingKit": {
     "surface": [

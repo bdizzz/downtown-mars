@@ -4,6 +4,7 @@ import { canDig, diggingFloor, ticksToDig } from "./digging";
 import { beds, padReady } from "./earth";
 import { capacities, roomSpec, type Population, type RoomStatus } from "./economy";
 import type { EffectField } from "./effects";
+import type { Happiness } from "./happiness";
 import type { Message } from "./messages";
 import type { Layout } from "./placement";
 import type { SimState } from "./state";
@@ -38,6 +39,7 @@ export interface Snapshot {
   earth: { ticksToDrop: number; waiting: boolean; padReady: boolean };
   beds: number;
   messages: Message[];
+  happiness: Happiness;
 }
 
 export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
@@ -68,6 +70,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     },
     beds: beds(state),
     messages: state.messages,
+    happiness: state.happiness,
   };
 }
 

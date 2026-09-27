@@ -2,6 +2,7 @@ import type { SimConfig } from "./config";
 import type { Drill } from "./digging";
 import { createEarth, type EarthState } from "./earth";
 import { refreshEffects, type Effects } from "./effects";
+import { createHappiness, updateHappiness, type Happiness } from "./happiness";
 import type { Message } from "./messages";
 import type { Population, RoomStatus } from "./economy";
 import { createHole } from "./geometry";
@@ -24,6 +25,7 @@ export interface SimState {
   messages: Message[];
   /** Derived from the layout; recomputed only when layout.version changes. */
   effects: Effects;
+  happiness: Happiness;
 }
 
 export function createInitialState(cfg: SimConfig): SimState {
@@ -38,7 +40,7 @@ export function createInitialState(cfg: SimConfig): SimState {
     must(placeRoom(layout, k.room, { kind: "ring", floor: k.floor, ring: k.ring, slot: k.slot, w, d }, cfg), k.room);
   }
   layout.version = 0;
-  return {
+  const state: SimState = {
     tick: 0,
     rngState: cfg.seed >>> 0,
     layout,
@@ -51,7 +53,10 @@ export function createInitialState(cfg: SimConfig): SimState {
     earth: createEarth(cfg),
     messages: [],
     effects: refreshEffects(layout, null),
+    happiness: createHappiness(),
   };
+  updateHappiness(state, cfg, true);
+  return state;
 }
 
 function must(result: { ok: boolean; reason?: string }, what: string): void {

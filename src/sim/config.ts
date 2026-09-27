@@ -70,6 +70,24 @@ export interface SimConfig {
     /** How long the lander is visible coming down before it lands. */
     descentDays: number;
   };
+  happiness: {
+    /** Happiness with every factor at 0. */
+    base: number;
+    /** Happiness points per unit of each factor (factors run −factorLimit..+factorLimit). */
+    weights: Record<"noise" | "comfort" | "health", number>;
+    factorLimit: number;
+    /** Comfort for homes in ring 1, which look out over the shaft. */
+    shaftViewComfort: number;
+    homelessComfort: number;
+    /** Health factor when no clinic covers anyone; scaled by the uncovered share. */
+    noCareHealth: number;
+    /** Roughly how long happiness takes to settle on its target. */
+    easeDays: number;
+    updateEveryTicks: number;
+    /** Room output multiplier at 0 happiness, rising to 1 at productivityFullAt. */
+    productivityAtZero: number;
+    productivityFullAt: number;
+  };
   messages: { keep: number };
   landingKit: {
     surface: { room: string; slot: number }[];

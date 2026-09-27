@@ -6,6 +6,7 @@ import { checkBuild } from "../sim/costs";
 import { roomAt, type Cell, type CheckResult, type Layout, type Location, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { EffectField } from "../sim/effects";
+import type { Happiness } from "../sim/happiness";
 import type { DrillView, Snapshot } from "../sim/snapshot";
 import {
   FLOOR_GAP,
@@ -123,6 +124,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let selected: number | null = null;
   let overlayType: string | null = null;
   let field: EffectField | null = null;
+  let happiness: Happiness | null = null;
   let digKey = "";
   let tool: Tool = null;
   let hoverKey = "";
@@ -145,8 +147,23 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   }
 
   /** Red where an effect hurts, green where it helps, stronger for bigger values. */
+  function drawHappiness(): void {
+    if (!layout || !happiness) return;
+    for (const pool of happiness.pools) {
+      const room = layout.rooms.find((r) => r.id === pool.roomId);
+      if (!room) continue;
+      // Same scale as the effects: 50 is neutral, 0 and 100 are full colour.
+      const v = ((pool.happiness - 50) / 50) * FIELD_MAX;
+      const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA;
+      const color = v < 0 ? C.fieldBad : C.fieldGood;
+      if (room.at.kind === "surface") fieldCtx.rect(...surfaceRect(room.surfaceCells, layout.surface.length)).fill({ color, alpha });
+      else for (const row of cellRows(layout.hole, room.cells)) fieldCtx.rect(...rowRect(layout.hole, row)).fill({ color, alpha });
+    }
+  }
+
   function drawField(): void {
     fieldCtx.clear();
+    if (overlayType === "happiness") return drawHappiness();
     if (!layout || !field || !overlayType) return;
     const grid = field[overlayType];
     if (!grid) return;
@@ -571,10 +588,12 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         drawDig(l.hole, drill);
         updateDigLabel(drill);
       }
-      if (snapshot.effects !== field) {
+      if (snapshot.effects !== field || (overlayType === "happiness" && snapshot.happiness.pools !== happiness?.pools)) {
         field = snapshot.effects;
+        happiness = snapshot.happiness;
         drawField();
       }
+      happiness = snapshot.happiness;
       if (l.version !== layoutVersion) {
         layoutVersion = l.version;
         drawRooms(l);

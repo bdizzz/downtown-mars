@@ -47,6 +47,34 @@ function Neighborhood({ s, room }: { s: Snapshot; room: Snapshot["layout"]["room
   );
 }
 
+function Home({ s, roomId, capacity }: { s: Snapshot; roomId: number; capacity: number }) {
+  const pool = s.happiness.pools.find((p) => p.roomId === roomId);
+  if (!pool) {
+    return (
+      <p>
+        <span className="k">Houses</span> {capacity}
+      </p>
+    );
+  }
+  const f = pool.factors;
+  const trend = pool.target > pool.happiness + 1 ? " ↑" : pool.target < pool.happiness - 1 ? " ↓" : "";
+  return (
+    <>
+      <p>
+        <span className="k">Residents</span> {pool.residents} / {capacity}
+      </p>
+      <p className={pool.happiness < 50 ? "warn" : ""}>
+        <span className="k">Happiness</span> {Math.round(pool.happiness)}
+        {trend} (heading for {Math.round(pool.target)})
+      </p>
+      <p>
+        <span className="k">Noise</span> {signed(f.noise)} <span className="k">Comfort</span> {signed(f.comfort)}{" "}
+        <span className="k">Health</span> {signed(f.health)}
+      </p>
+    </>
+  );
+}
+
 export function Inspector({ s, roomId, onCommand, onClose }: Props) {
   const room = s.layout.rooms.find((r) => r.id === roomId);
   if (!room) return null;
@@ -77,11 +105,7 @@ export function Inspector({ s, roomId, onCommand, onClose }: Props) {
       <Flows label="Makes/day" flows={spec.makes} />
       <Flows label="Scrubs/day" flows={spec.scrubs} />
       <Flows label="Stores" flows={spec.stores} />
-      {def.houses ? (
-        <p>
-          <span className="k">Houses</span> {def.houses}
-        </p>
-      ) : null}
+      {def.houses ? <Home s={s} roomId={room.id} capacity={def.houses} /> : null}
       {spec.sanitation > 0 && (
         <p>
           <span className="k">Sanitation for</span> {num(spec.sanitation)}

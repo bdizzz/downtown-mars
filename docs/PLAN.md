@@ -62,6 +62,16 @@ Goal: prove the adjacency puzzle is fun inside one hole. Each step ends with som
 - The field is recomputed only when the layout changes; the worker sends layout and field only when they change.
 - Overlays: noise, smell, health, comfort. Red hurts, green helps, full colour at ±3.
 
+**Happiness (step 8, Sep 27):**
+- Each housing room (pod, dorms) is a pool. Colonists fill the homes with the best target first; anyone without a bed is homeless (comfort −3).
+- Three factors, each clamped to −3..+3, averaged over the home's cells:
+  - Noise: the noise field.
+  - Comfort: the room's own residents-only comfort (dorm −1) + shaft view (+1 in ring 1) + comfort field + smell field.
+  - Health: health field + needs (0 at full health, −3 at none) + clinic coverage (−1 when no clinic covers anyone).
+- Target = 60 + 8 × (noise + comfort + health), clamped 0–100. Updated every game hour, easing toward the target over about a day.
+- Productivity: below 50 average happiness, staffed rooms slow linearly, to 75% at 0.
+- The starting pod sits at about 52, so a noisy or unserved hole tips below 50 quickly.
+
 **Gap fills:** Earth supply drops bring colonists and soil; the pod's starter drill digs slowly, costing time and yielding rock.
 
 ## Steps

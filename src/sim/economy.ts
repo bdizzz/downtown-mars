@@ -144,6 +144,11 @@ function runRoom(
   const subs = roomDef(room.type).substitutes ?? {};
   let rate = spec.staff > 0 ? st.staff / spec.staff : 1;
   let limit: string | undefined = rate < 1 ? "staff" : undefined;
+  // Unhappy colonists work slower; rooms with no staff aren't affected.
+  if (spec.staff > 0 && state.happiness.productivity < 1) {
+    rate *= state.happiness.productivity;
+    limit ??= "morale";
+  }
 
   for (const [id, perDay] of Object.entries(spec.uses)) {
     const need = perDay * rate * dt;

@@ -3,6 +3,7 @@ import { stepDigging } from "./digging";
 import { stepEarth } from "./earth";
 import { stepEconomy, updateRates } from "./economy";
 import { refreshEffects } from "./effects";
+import { stepHappiness } from "./happiness";
 import type { SimState } from "./state";
 
 // Advance the simulation by one fixed tick. Mutates state in place.
@@ -15,4 +16,5 @@ export function step(state: SimState, cfg: SimConfig): void {
   // Rates show the hole's own production and use, so measure before drops land.
   updateRates(state, before, cfg);
   stepEarth(state, cfg);
+  stepHappiness(state, cfg);
 }
