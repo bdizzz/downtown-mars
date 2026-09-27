@@ -18,6 +18,8 @@ export interface EarthState {
   delayed: boolean;
   /** Waiting in orbit for a working landing pad. */
   waiting: boolean;
+  /** Drops landed so far (absent in older saves). */
+  landed?: number;
 }
 
 export function createEarth(cfg: SimConfig): EarthState {
@@ -82,6 +84,7 @@ export function stepEarth(state: SimState, cfg: SimConfig): void {
   postMessage(state, cfg, `Supply drop landed: ${listed.join(", ") || "nothing needed"}.`, "good");
 
   e.nextDropTick = state.tick + ec.intervalDays * cfg.ticksPerDay;
+  e.landed = (e.landed ?? 0) + 1;
   e.delayed = false;
   e.waiting = false;
 }

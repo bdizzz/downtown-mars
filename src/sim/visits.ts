@@ -74,6 +74,8 @@ export interface Office {
   /** Last tick each kind of visit arrived, for cooldowns. */
   lastVisit: Record<string, number>;
   nextVisitId: number;
+  /** Visits answered so far (absent in older saves). */
+  answered?: number;
 }
 
 export const visitDefs: VisitDef[] = raw.visits as VisitDef[];
@@ -227,6 +229,7 @@ export function answerVisit(
   }
 
   state.office.waiting = state.office.waiting.filter((v) => v !== visit);
+  state.office.answered = (state.office.answered ?? 0) + 1;
   applyOutcome(state, cfg, choice, visit.notableId, visit.roomId);
   if (choice.promise) {
     state.office.promises.push({

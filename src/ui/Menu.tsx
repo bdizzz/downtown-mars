@@ -11,11 +11,13 @@ interface Props {
   onExport: () => void;
   onImport: () => void;
   error: string | null;
+  tutorialHidden: boolean;
+  onShowTutorial: () => void;
 }
 
 type Confirm = { text: string; run: () => void } | null;
 
-export function Menu({ mode, onResume, onNewGame, onSave, onLoad, onExport, onImport, error }: Props) {
+export function Menu({ mode, onResume, onNewGame, onSave, onLoad, onExport, onImport, error, tutorialHidden, onShowTutorial }: Props) {
   const [view, setView] = useState<"main" | "save" | "load">("main");
   const [confirm, setConfirm] = useState<Confirm>(null);
   // Re-read storage on every render: saves change underneath us.
@@ -76,6 +78,7 @@ export function Menu({ mode, onResume, onNewGame, onSave, onLoad, onExport, onIm
             <button onClick={() => setView("load")}>Load…</button>
             {inGame && <button onClick={onExport}>Export save file</button>}
             <button onClick={onImport}>Import save file…</button>
+            {inGame && tutorialHidden && <button onClick={onShowTutorial}>Show tutorial</button>}
           </div>
         ) : (
           <div className="menu-buttons">

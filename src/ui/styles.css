@@ -202,3 +202,26 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .river h4 { margin: 0 0 4px; font-size: 13px; }
 .river h4 .k { font-weight: 400; font-size: 11px; }
 .river svg .lbl { fill: var(--text); font-size: 9.5px; font-family: system-ui, sans-serif; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(224, 122, 63, 0.9); } 50% { box-shadow: 0 0 0 4px rgba(224, 122, 63, 0); } }
+.pulse { animation: pulse 1.4s ease-in-out infinite; border-color: var(--accent) !important; border-radius: 4px; }
+.tutorial {
+  position: absolute; right: 12px; bottom: 10px; z-index: 3; width: 300px;
+  background: rgba(30, 17, 13, 0.96); border: 1px solid #000; border-left: 3px solid var(--accent);
+  border-radius: 6px; padding: 10px 12px; font-size: 13px; display: flex; flex-direction: column; gap: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+.tutorial p { margin: 0; }
+.tutorial .say { font-size: 14px; }
+.tutorial .k { color: var(--muted); font-size: 12px; }
+.tutorial .who { display: flex; align-items: center; gap: 8px; }
+.tutorial .who > span:nth-child(2) { flex: 1; }
+.tutorial .icon, .tutorial .link { background: none; border: none; color: var(--muted); cursor: pointer; font: inherit; }
+.tutorial .link { align-self: flex-end; font-size: 12px; text-decoration: underline; padding: 0; }
+.tutorial .progress { display: flex; gap: 3px; }
+.tutorial .progress span { flex: 1; height: 4px; border-radius: 2px; background: #3a241d; }
+.tutorial .progress span.done { background: var(--accent); }
+.tutorial .progress span.now { background: #8a5a40; }
+.tutorial-pill {
+  position: absolute; right: 12px; bottom: 10px; z-index: 3; background: rgba(30, 17, 13, 0.96);
+  color: var(--text); border: 1px solid var(--accent); border-radius: 12px; padding: 4px 12px; font: inherit; font-size: 12px; cursor: pointer;
+}

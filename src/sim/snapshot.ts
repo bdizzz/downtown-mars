@@ -42,7 +42,7 @@ export interface Snapshot {
   population: Population;
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
-  earth: { ticksToDrop: number; waiting: boolean; padReady: boolean };
+  earth: { ticksToDrop: number; waiting: boolean; padReady: boolean; landed: number };
   beds: number;
   messages: Message[];
   happiness: Happiness;
@@ -80,6 +80,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
       ticksToDrop: Math.max(0, state.earth.nextDropTick - state.tick),
       waiting: state.earth.waiting,
       padReady: padReady(state),
+      landed: state.earth.landed ?? 0,
     },
     beds: beds(state),
     messages: state.messages,

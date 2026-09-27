@@ -54,9 +54,11 @@ interface Props {
   rotate: () => void;
   canUndo: boolean;
   undo: () => void;
+  /** Tutorial highlight, e.g. "room:galley". */
+  highlight: string | null;
 }
 
-export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo }: Props) {
+export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo, highlight }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
   const buildable = roomDefs.filter((d) => d.buildable);
   const selected = tool?.kind === "build" ? tool.room : null;
@@ -77,7 +79,7 @@ export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo }
               return (
                 <button
                   key={def.id}
-                  className={`room-btn${on ? " on" : ""}${missing ? " short" : ""}`}
+                  className={`room-btn${on ? " on" : ""}${missing ? " short" : ""}${highlight === `room:${def.id}` && !on ? " pulse" : ""}`}
                   style={{ "--cat": cssColor(CATEGORY_COLORS[def.category] ?? 0x888888) } as React.CSSProperties}
                   onClick={() => setTool(on ? null : buildTool(def))}
                   onMouseEnter={() => setHovered(def.id)}

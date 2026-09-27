@@ -10,6 +10,8 @@ interface Props {
   toggleOffice: () => void;
   toggleFlows: () => void;
   openMenu: () => void;
+  /** Tutorial highlight, e.g. "hud:office". */
+  highlight: string | null;
   /** Off while a menu is open, so Space can't unpause behind it. */
   keysEnabled: boolean;
 }
@@ -22,7 +24,8 @@ function gameDuration(ticks: number): string {
   return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
 }
 
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, openMenu, keysEnabled }: Props) {
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, openMenu, keysEnabled, highlight }: Props) {
+  const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
   // Space toggles pause, remembering the last running speed.
   const resumeRef = useRef(1);
   if (speed) resumeRef.current = speed;
@@ -47,7 +50,7 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleF
       <span className="clock">
         {t ? `Day ${t.day} · ${pad(t.hour)}:${pad(t.minute)}` : "Connecting…"}
       </span>
-      <span className="speeds">
+      <span className={`speeds${pulse("speed")}`}>
         {config.speeds.map((s) => (
           <button key={s} className={s === speed ? "on" : ""} onClick={() => setSpeed(s)}>
             {s === 0 ? "❚❚" : `${s}×`}
@@ -74,11 +77,11 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleF
         </span>
       )}
       {snapshot && (
-        <button className={`office-btn${snapshot.office.waiting.length ? " waiting" : ""}`} onClick={toggleOffice}>
+        <button className={`office-btn${snapshot.office.waiting.length ? " waiting" : ""}${pulse("office")}`} onClick={toggleOffice}>
           Office{snapshot.office.waiting.length ? ` · ${snapshot.office.waiting.length} waiting` : ""}
         </button>
       )}
-      <button className="office-btn" onClick={toggleFlows} title="Where resources come from and go">
+      <button className={`office-btn${pulse("flows")}`} onClick={toggleFlows} title="Where resources come from and go">
         Flows
       </button>
       <span className="tick">tick {snapshot?.tick ?? 0}</span>

@@ -14,6 +14,8 @@ import { PixiView } from "./PixiView";
 import { ResourceBar } from "./ResourceBar";
 import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
 import { StatusBar } from "./StatusBar";
+import { currentGoal, Tutorial } from "./Tutorial";
+import { setTutorialHidden, tutorialHidden, type UiFlags } from "./tutorialGoals";
 import { useSim } from "./useSim";
 
 const NOTICE_MS = 3000;
@@ -36,6 +38,8 @@ export function App() {
   const [menu, setMenu] = useState<"title" | "pause" | null>("title");
   const [menuError, setMenuError] = useState<string | null>(null);
   const resumeSpeed = useRef(1);
+  const [tutorialOn, setTutorialOn] = useState(() => !tutorialHidden());
+  const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false });
   const noticeTimer = useRef<number>(undefined);
 
   const flash = useCallback((text: string) => {
@@ -161,7 +165,18 @@ export function App() {
     lastDay.current = null;
     undoStack.current = [];
     setCanUndo(false);
+    setFlags({ sawNoise: false, openedFlows: false });
   }, [gameId]);
+
+  // The tutorial watches for things only the UI knows about.
+  useEffect(() => {
+    if (overlay === "noise") setFlags((f) => (f.sawNoise ? f : { ...f, sawNoise: true }));
+  }, [overlay]);
+  useEffect(() => {
+    if (panel === "flows") setFlags((f) => (f.openedFlows ? f : { ...f, openedFlows: true }));
+  }, [panel]);
+  const goal = snapshot && tutorialOn ? currentGoal(snapshot, flags) : null;
+  const highlight = goal?.highlight ?? null;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -208,6 +223,7 @@ export function App() {
         setDrill={(active) => onCommand({ type: "setDrill", active })}
         toggleOffice={() => togglePanel("office")}
         toggleFlows={() => togglePanel("flows")}
+        highlight={highlight}
         openMenu={openMenu}
         keysEnabled={!menu}
       />
@@ -217,12 +233,23 @@ export function App() {
           tool={tool}
           setTool={(t) => (setTool(t), setSelected(null))}
           resources={snapshot?.resources ?? {}}
+          highlight={highlight}
           rotate={rotate}
           canUndo={canUndo}
           undo={undo}
         />
         <div className="view">
-          <OverlayPicker overlay={overlay} setOverlay={setOverlay} />
+          <OverlayPicker overlay={overlay} setOverlay={setOverlay} highlight={highlight} />
+          {snapshot && tutorialOn && !menu && (
+            <Tutorial
+              s={snapshot}
+              flags={flags}
+              onHide={() => {
+                setTutorialOn(false);
+                setTutorialHidden(true);
+              }}
+            />
+          )}
           <Messages s={snapshot} />
           <PixiView
             snapshot={snapshot}
@@ -242,7 +269,19 @@ export function App() {
         )}
       </div>
       <StatusBar info={hover} snapshot={snapshot} notice={notice} overlay={overlay} />
-      {menu && <Menu mode={menu} {...menuActions} error={menuError} />}
+      {menu && (
+        <Menu
+          mode={menu}
+          {...menuActions}
+          error={menuError}
+          tutorialHidden={!tutorialOn}
+          onShowTutorial={() => {
+            setTutorialOn(true);
+            setTutorialHidden(false);
+            startPlaying();
+          }}
+        />
+      )}
     </div>
   );
 }
