@@ -54,6 +54,23 @@ export interface SimConfig {
     /** Slots a room of each size nominally covers; deep rooms covering more scale up. */
     nominalSlots: Record<string, number>;
   };
+  earth: {
+    firstDropDay: number;
+    intervalDays: number;
+    /** Drops cover the food, water and O2 gap for the interval plus this many days. */
+    coverBufferDays: number;
+    /** Sent every drop regardless of need. */
+    fixed: Record<string, number>;
+    /** Upper limit; arrivals also need free beds. */
+    colonistsPerDrop: number;
+    delayChance: number;
+    delayDays: number;
+    /** How often a drop waiting for a working landing pad tries again. */
+    retryDays: number;
+    /** How long the lander is visible coming down before it lands. */
+    descentDays: number;
+  };
+  messages: { keep: number };
   landingKit: {
     surface: { room: string; slot: number }[];
     ring: { room: string; floor: number; ring: number; slot: number }[];

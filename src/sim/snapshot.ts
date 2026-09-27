@@ -1,7 +1,9 @@
 import { gameTime, type GameTime } from "./clock";
 import type { SimConfig } from "./config";
 import { canDig, diggingFloor, ticksToDig } from "./digging";
+import { beds, padReady } from "./earth";
 import { capacities, roomSpec, type Population, type RoomStatus } from "./economy";
+import type { Message } from "./messages";
 import type { Layout } from "./placement";
 import type { SimState } from "./state";
 
@@ -30,6 +32,9 @@ export interface Snapshot {
   population: Population;
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
+  earth: { ticksToDrop: number; waiting: boolean; padReady: boolean };
+  beds: number;
+  messages: Message[];
 }
 
 export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
@@ -52,6 +57,13 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     population: state.population,
     workforce: state.workforce,
     roomStatus: state.roomStatus,
+    earth: {
+      ticksToDrop: Math.max(0, state.earth.nextDropTick - state.tick),
+      waiting: state.earth.waiting,
+      padReady: padReady(state),
+    },
+    beds: beds(state),
+    messages: state.messages,
   };
 }
 

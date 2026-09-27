@@ -45,6 +45,14 @@ Goal: prove the adjacency puzzle is fun inside one hole. Each step ends with som
 - Starting stock (5 days for 20): rations 100, water 240, O2 120, soil 40, rock 60, brick 20, metal 60, machinery 10, electronics 10. The critical set is affordable on day 1; tier 2 needs Earth drops and digging.
 - Gray and black water use the pod's small built-in tanks; choosing a water tank's type is deferred.
 
+**Earth supply drops (step 6, Sep 27):**
+- First drop on day 3, then every 4 days. Needs a staffed, powered landing pad; otherwise it holds in orbit and retries every quarter day.
+- Contents: colonists first (up to 8, limited by free beds), then food, water and O2 topped up to cover the hole's daily shortfall for 5 days (interval + 1), then a fixed bundle: metal 25, brick 10, machinery 3, electronics 3, soil 15.
+- Drops shrink on their own as farms, the recycler and life support close the gaps.
+- 15% chance a drop is delayed a day ("Delayed supply drop" from EVENTS.md), at most once per drop, using the seeded RNG.
+- Per-day rates are measured before drops land, so they show the hole's own balance.
+- Messages (landings, delays, waiting) show over the view and fade after a game day.
+
 **Gap fills:** Earth supply drops bring colonists and soil; the pod's starter drill digs slowly, costing time and yielding rock.
 
 ## Steps

@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
-import { config } from "../src/sim/config";
+import { config as baseConfig, type SimConfig } from "../src/sim/config";
 import { roomSpec } from "../src/sim/economy";
 import type { Location } from "../src/sim/placement";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+
+// No Earth drops here: these tests are about what the hole does on its own.
+const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 const days = (s: SimState, n: number) => {

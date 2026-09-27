@@ -1,0 +1,88 @@
+import { describe, expect, it } from "vitest";
+import { applyCommand } from "../src/sim/commands";
+import { config, type SimConfig } from "../src/sim/config";
+import type { Location } from "../src/sim/placement";
+import { createInitialState, type SimState } from "../src/sim/state";
+import { step } from "../src/sim/step";
+
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const noDelays: SimConfig = { ...config, earth: { ...config.earth, delayChance: 0 } };
+const ticks = (s: SimState, n: number, cfg = noDelays) => {
+  for (let i = 0; i < n; i++) step(s, cfg);
+};
+const firstDrop = config.earth.firstDropDay * config.ticksPerDay;
+
+function start(): SimState {
+  const s = createInitialState(noDelays);
+  s.drill.active = false;
+  return s;
+}
+
+describe("Earth supply drops", () => {
+  it("the first drop lands on schedule and says what it brought", () => {
+    const s = start();
+    ticks(s, firstDrop - 1);
+    expect(s.messages).toHaveLength(0);
+    const metal = s.resources.metal!;
+    ticks(s, 1);
+    expect(s.resources.metal).toBe(metal + config.earth.fixed.metal!);
+    expect(s.messages.at(-1)).toMatchObject({ kind: "good" });
+    expect(s.messages.at(-1)!.text).toMatch(/^Supply drop landed: .*metal 25/);
+  });
+
+  it("tops up rations to cover the food gap", () => {
+    const s = start();
+    ticks(s, firstDrop);
+    // 20 colonists × 1 meal × (4 + 1) days, with no farms yet.
+    expect(s.resources.rations! + s.resources.meals!).toBeGreaterThanOrEqual(99);
+  });
+
+  it("brings colonists only when there are free beds", () => {
+    const s = start();
+    ticks(s, firstDrop);
+    expect(s.population.count).toBe(20); // the pod is full
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 2) });
+    ticks(s, config.earth.intervalDays * config.ticksPerDay);
+    expect(s.population.count).toBe(20 + config.earth.colonistsPerDrop);
+  });
+
+  it("sizes the top-ups for the colonists who just arrived", () => {
+    const s = start();
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 2) });
+    s.resources.rations = 0;
+    ticks(s, firstDrop);
+    const food = (s.resources.rations ?? 0) + (s.resources.meals ?? 0) + (s.resources.rawFood ?? 0);
+    // 28 colonists × (4 + 1) days, less what they've eaten since landing.
+    expect(s.population.count).toBe(28);
+    expect(food).toBeGreaterThan(135);
+  });
+
+  it("waits in orbit without a working landing pad", () => {
+    const s = start();
+    s.population.count = 0; // nobody to staff the pad
+    const metal = s.resources.metal;
+    ticks(s, firstDrop + 5);
+    expect(s.resources.metal).toBe(metal);
+    expect(s.earth.waiting).toBe(true);
+    expect(s.messages.at(-1)!.kind).toBe("warn");
+  });
+
+  it("can be delayed a day, but only once per drop", () => {
+    const always: SimConfig = { ...config, earth: { ...config.earth, delayChance: 1 } };
+    const s = createInitialState(always);
+    ticks(s, firstDrop, always);
+    expect(s.messages.at(-1)!.text).toMatch(/delayed/);
+    ticks(s, config.ticksPerDay, always);
+    expect(s.messages.at(-1)!.text).toMatch(/landed/);
+  });
+
+  it("shrinks the water top-up once the hole makes its own", () => {
+    const a = start();
+    ticks(a, firstDrop);
+    const b = start();
+    b.resources.water = 400; // well stocked: less to send
+    ticks(b, firstDrop);
+    const sent = (s: SimState) => Number(/water (\d+)/.exec(s.messages.at(-1)!.text)?.[1] ?? 0);
+    expect(sent(b)).toBeLessThan(sent(a));
+  });
+});

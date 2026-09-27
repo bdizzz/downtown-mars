@@ -31,9 +31,11 @@ export function ResourceBar({ s }: { s: Snapshot | null }) {
   return (
     <div className="resbar">
       <span className="group">
-        <span className={`res${pop.health < 70 ? " warn" : ""}`} title="Colonists · health from oxygen, water, meals, sanitation and CO2">
+        <span className={`res${pop.health < 70 ? " warn" : ""}`} title={`Colonists / beds · health from oxygen, water, meals, sanitation and CO2`}>
           <span className="label">Colonists</span>
-          <span className="val">{pop.count}</span>
+          <span className="val">
+            {pop.count}/{s.beds}
+          </span>
           <span className="rate">♥ {Math.round(pop.health)}</span>
         </span>
         <span className="res" title="Workers employed / total">

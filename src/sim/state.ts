@@ -1,5 +1,7 @@
 import type { SimConfig } from "./config";
 import type { Drill } from "./digging";
+import { createEarth, type EarthState } from "./earth";
+import type { Message } from "./messages";
 import type { Population, RoomStatus } from "./economy";
 import { createHole } from "./geometry";
 import { createLayout, placeRoom, type Layout } from "./placement";
@@ -17,6 +19,8 @@ export interface SimState {
   population: Population;
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
+  earth: EarthState;
+  messages: Message[];
 }
 
 export function createInitialState(cfg: SimConfig): SimState {
@@ -41,6 +45,8 @@ export function createInitialState(cfg: SimConfig): SimState {
     population: { count: cfg.colonists.start, health: 100, needsMet: {}, sanitation: 1 },
     workforce: { total: cfg.colonists.start, employed: 0 },
     roomStatus: {},
+    earth: createEarth(cfg),
+    messages: [],
   };
 }
 

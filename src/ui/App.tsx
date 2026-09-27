@@ -5,6 +5,7 @@ import { roomDef } from "../sim/rooms";
 import { BuildPalette, shapesFor } from "./BuildPalette";
 import { Hud } from "./Hud";
 import { Inspector } from "./Inspector";
+import { Messages } from "./Messages";
 import { PixiView } from "./PixiView";
 import { ResourceBar } from "./ResourceBar";
 import { StatusBar } from "./StatusBar";
@@ -57,15 +58,18 @@ export function App() {
       <ResourceBar s={snapshot} />
       <div className="main">
         <BuildPalette tool={tool} setTool={(t) => (setTool(t), setSelected(null))} resources={snapshot?.resources ?? {}} />
-        <PixiView
-          snapshot={snapshot}
-          tool={tool}
-          onHover={setHover}
-          onCommand={onCommand}
-          onCancel={() => setTool(null)}
-          selected={selected}
-          onSelect={setSelected}
-        />
+        <div className="view">
+          <Messages s={snapshot} />
+          <PixiView
+            snapshot={snapshot}
+            tool={tool}
+            onHover={setHover}
+            onCommand={onCommand}
+            onCancel={() => setTool(null)}
+            selected={selected}
+            onSelect={setSelected}
+          />
+        </div>
         {snapshot && selected !== null && (
           <Inspector s={snapshot} roomId={selected} onCommand={onCommand} onClose={() => setSelected(null)} />
         )}

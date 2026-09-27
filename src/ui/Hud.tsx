@@ -60,6 +60,11 @@ export function Hud({ snapshot, speed, setSpeed, setDrill }: Props) {
           )}
         </span>
       )}
+      {snapshot && (
+        <span className={`drop${snapshot.earth.waiting ? " warn" : ""}`} title="Next Earth supply drop">
+          {snapshot.earth.waiting ? "🚀 Drop waiting: pad needs staff and power" : `🚀 Drop in ${gameDuration(snapshot.earth.ticksToDrop)}`}
+        </span>
+      )}
       <span className="tick">tick {snapshot?.tick ?? 0}</span>
     </header>
   );

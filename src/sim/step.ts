@@ -1,5 +1,6 @@
 import type { SimConfig } from "./config";
 import { stepDigging } from "./digging";
+import { stepEarth } from "./earth";
 import { stepEconomy, updateRates } from "./economy";
 import type { SimState } from "./state";
 
@@ -9,5 +10,7 @@ export function step(state: SimState, cfg: SimConfig): void {
   const before = { ...state.resources };
   stepDigging(state, cfg);
   stepEconomy(state, cfg);
+  // Rates show the hole's own production and use, so measure before drops land.
   updateRates(state, before, cfg);
+  stepEarth(state, cfg);
 }

@@ -1,6 +1,7 @@
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import type { SimCommand } from "../sim/commands";
 import type { Hole } from "../sim/geometry";
+import { config } from "../sim/config";
 import { checkBuild } from "../sim/costs";
 import { roomAt, type Cell, type CheckResult, type Layout, type Location, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
@@ -45,6 +46,9 @@ const C = {
   bad: 0xe0503a,
   digRock: 0x3a2018,
   digFront: 0xe07a3f,
+  lander: 0xd9d4cc,
+  landerDark: 0x6b6660,
+  flame: 0xffb35c,
 };
 
 
@@ -96,6 +100,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   const digCtx = new GraphicsContext();
   const roomsCtx = new GraphicsContext();
   const overlayCtx = new GraphicsContext();
+  const landerCtx = new GraphicsContext();
 
   const world = new Container();
   const floorLabels = new Container();
@@ -126,6 +131,26 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
     skyCtx.rect(0, SURFACE_H - GROUND_H, TURN_W, GROUND_H).fill(C.ground);
     skyCtx.rect(0, SURFACE_H - GROUND_H, 2, GROUND_H).fill(C.seam); // 0° marker
+  }
+
+  /** The Earth lander coming down onto the pad in the last hours before a drop. */
+  function drawLander(s: Snapshot): void {
+    landerCtx.clear();
+    const descent = config.earth.descentDays * config.ticksPerDay;
+    const e = s.earth;
+    if (!e.padReady || e.waiting || e.ticksToDrop > descent) return;
+    const pad = s.layout.rooms.find((r) => r.type === "landing_pad");
+    if (!pad) return;
+    const [px, py, pw] = surfaceRect(pad.surfaceCells, s.layout.surface.length);
+    const t = 1 - e.ticksToDrop / descent; // 0 high up .. 1 touching down
+    const w = 26;
+    const h = 22;
+    const x = px + pw / 2 - w / 2;
+    const y = -h + (py - 6 - (-h)) * (1 - (1 - t) * (1 - t)); // eases in to land
+    landerCtx.moveTo(x + w / 2, y - 10).lineTo(x + w, y).lineTo(x, y).closePath().fill(C.lander);
+    landerCtx.rect(x, y, w, h).fill(C.lander).stroke({ color: C.landerDark, width: 2 });
+    landerCtx.moveTo(x + 2, y + h).lineTo(x - 4, y + h + 6).moveTo(x + w - 2, y + h).lineTo(x + w + 4, y + h + 6).stroke({ color: C.landerDark, width: 2 });
+    if (t < 0.97) landerCtx.moveTo(x + 7, y + h + 2).lineTo(x + w / 2, y + h + 14 + 6 * Math.sin(t * 90)).lineTo(x + w - 7, y + h + 2).closePath().fill({ color: C.flame, alpha: 0.9 });
   }
 
   /** Dug floors, plus the floor being dug (its rock cover is drawn separately). */
@@ -316,7 +341,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
   // ---- camera ----
 
-  // Each copy: sky, hole, dig, rooms, room labels, overlay.
+  // Each copy: sky, hole, dig, rooms, room labels, lander, overlay.
   const LABELS_INDEX = 4;
 
   function ensureCopies(): void {
@@ -325,7 +350,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const copy = new Container();
       copy.addChild(new Graphics(skyCtx), new Graphics(holeCtx), new Graphics(digCtx), new Graphics(roomsCtx));
       copy.addChild(layout ? roomLabels(layout) : new Container());
-      copy.addChild(new Graphics(overlayCtx));
+      copy.addChild(new Graphics(landerCtx), new Graphics(overlayCtx));
       copy.x = world.children.length * TURN_W;
       world.addChild(copy);
     }
@@ -521,6 +546,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         applyCamera();
       }
       drawSky(snapshot);
+      drawLander(snapshot);
       resources = snapshot.resources;
       refreshHover(); // affordability may have changed
     },
