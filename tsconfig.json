@@ -14,5 +14,5 @@
     "skipLibCheck": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "tests", "data", "vite.config.ts"]
+  "include": ["src", "tests", "data"]
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { describeSave, readSave, SLOTS, slotLabel, type Slot } from "./saves";
 import type { Settings } from "./settings";
 import { SettingsView } from "./SettingsView";
+import { APP_VERSION } from "./version";
 
 interface Props {
   /** "title" before a game starts; "pause" in the middle of one. */
@@ -112,6 +113,7 @@ export function Menu(props: Props) {
             <button onClick={() => setView("main")}>Back</button>
           </div>
         )}
+        <p className="menu-version">{APP_VERSION}</p>
       </div>
     </div>
   );

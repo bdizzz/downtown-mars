@@ -243,3 +243,4 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 @media (max-width: 560px) { .help-cols { grid-template-columns: 1fr; } }
 /* Sit above the overlay picker's row so neither hides the other. */
 .tutorial, .tutorial-pill { bottom: calc(52px * var(--ui-scale, 1)); }
+.menu-version { margin: 0; font-size: 11px; color: var(--muted); text-align: right; }

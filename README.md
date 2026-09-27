@@ -1,0 +1,49 @@
+# Downtown Mars
+
+*Hole sweet hole.*
+
+A real-time city builder on Mars. Each city is a borehole: dig a shaft down, carve rooms into its walls in rings and floors, and keep everyone breathing, fed and sane. Rooms affect their neighbors, so where you put the noisy life support matters as much as whether you build it.
+
+This is an early playtest build: one hole, the first 30 minutes or so of play. Total population supported is your score.
+
+## Playing
+
+Start a new game and follow your deputy's tutorial, or dive in:
+
+- **Build:** pick a room on the left (or press its key), then click a slot. Green means it fits; red says why not. Ring 1 opens onto the shaft; deeper rings need a corridor.
+- **Watch the bar at the top:** oxygen, water, meals and power, with how fast they're changing. Red means it runs out in under two days.
+- **Earth** sends supply drops every few days until you can stand on your own.
+- **Office:** colonists visit with problems. What you promise, they remember.
+- **Overlays** (bottom left) show noise, smell, health, comfort and happiness. **Flows** (top) shows where every resource comes from and goes.
+
+### Controls
+
+| Key | Action |
+| --- | --- |
+| Space | Pause / resume |
+| Esc | Cancel, close a panel, or open the menu |
+| R | Rotate the room you're placing |
+| C D G F T Y W L K A B S P | Corridor, dorm, galley, farm, tank, recycler, restroom, life support, clinic, admin office, battery, solar, landing pad |
+| X | Demolish |
+| ⌘Z / Ctrl+Z | Undo your last placement |
+| ? | Controls help |
+| Drag / scroll | Pan (drag paints corridors with the corridor tool) |
+| Pinch / Ctrl+scroll | Zoom |
+
+The game autosaves every game day in your browser. Use the menu to save to a slot or export a save file to keep it somewhere safe.
+
+## Developing
+
+Requires Node 20+.
+
+```bash
+npm install
+npm run dev        # play at http://localhost:5173
+npm test           # simulation tests
+npm run playtest   # scripted first month, printed day by day
+npm run package    # build and zip for a playtest upload
+```
+
+`npm run package` writes `release/downtown-mars-v<version>.zip` with `index.html` at the top. To publish on itch.io: create an HTML project, upload the zip, and tick "This file will be played in the browser". Nothing is uploaded automatically.
+
+Design documents live in `docs/`: start with `DECISIONS.md`, then `DESIGN.md` and the catalogs. Build plans are `docs/PLAN.md` (milestone 1) and `docs/PLAN-M2.md` (milestone 2). `CLAUDE.md` has the architecture rules: the simulation is pure TypeScript in a Web Worker, deterministic, with all numbers in `data/*.json`.
