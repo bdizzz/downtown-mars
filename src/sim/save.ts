@@ -8,14 +8,15 @@ import { network } from "./network";
 import { culture } from "./culture";
 import { addAdults } from "./people";
 import { migrateCorridorRooms } from "./corridors";
-import type { Layout } from "./placement";
+import { ensureFloors, type Layout } from "./placement";
+import { openCells } from "./excavation";
 import type { World } from "./world";
 
 // Saves are the whole world as JSON, minus what can be rebuilt (each hole's
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 14;
+export const SAVE_VERSION = 15;
 
 type Raw = Record<string, unknown>;
 
@@ -87,6 +88,19 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
         pod.allocation = { ...LEGACY_CAPACITY };
         pod.storageUnits = Object.values(LEGACY_CAPACITY).reduce((a, b) => a + b, 0);
       }
+      return { ...h, layout };
+    }),
+  }),
+  // v15: cells are rock until excavated. Old drills paid out every cell's rock already, but only the
+  // cells under rooms are dug out; the rest stays rock. Their shafts still link every floor (no stairs needed).
+  14: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const layout = h.layout as Layout;
+      delete layout.open;
+      ensureFloors(layout);
+      for (const r of layout.rooms) if (!r.planned) openCells(layout, [...r.cells, ...(r.pendingCells ?? [])]);
+      layout.openShaft = true;
       return { ...h, layout };
     }),
   }),

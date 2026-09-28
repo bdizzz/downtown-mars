@@ -2,6 +2,7 @@ import { config, type Priority, type SimConfig } from "./config";
 import { overlappingSlots, ringSize, wrapSlot, type Hole } from "./geometry";
 import { corridorsInside, recomputeAccess, strandedBy, wouldConnect } from "./corridors";
 import { isRoomType, roomDef } from "./rooms";
+import { openCells } from "./excavation";
 
 // Where rooms can go. A ring room is anchored at its innermost ring and
 // lowest slot, and spans w slots along that ring and d rings outward. Outer
@@ -56,6 +57,10 @@ export interface Layout {
   rooms: RoomInstance[];
   /** grid[floor - 1][ring - 1][slot] = room id, or 0 if empty. */
   grid: number[][][];
+  /** open[floor - 1][ring - 1][slot] = 1 once excavated (a room or empty space), 0 while solid rock. */
+  open?: number[][][];
+  /** Old saves (v14 and older): the shaft still links every floor, as it did before stairs mattered. */
+  openShaft?: boolean;
   /** surface[slot] = room id, or 0 if empty. */
   surface: number[];
   nextRoomId: number;
@@ -108,6 +113,8 @@ export function ensureFloors(layout: Layout): void {
   while (layout.grid.length < layout.hole.floors + 1) {
     layout.grid.push(layout.hole.ringSlots.map((n) => new Array(n).fill(0)));
   }
+  layout.open ??= [];
+  while (layout.open.length < layout.grid.length) layout.open.push(layout.hole.ringSlots.map((n) => new Array(n).fill(0)));
 }
 
 export function footprint(hole: Hole, floor: number, ring: number, slot: number, w: number, d: number): Cell[] {
@@ -288,6 +295,7 @@ export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimCo
   });
   for (const c of check.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = id;
   for (const s of check.surfaceCells) layout.surface[s] = id;
+  if (!check.planned) openCells(layout, check.cells);
   recomputeAccess(layout);
   layout.version++;
   return { ...check, id };
@@ -298,6 +306,7 @@ export function demolishRoom(layout: Layout, id: number): { ok: true } | { ok: f
   if (!room) return { ok: false, reason: "No such room" };
   const def = roomDef(room.type);
   if (!def.buildable) return { ok: false, reason: `The ${def.name.toLowerCase()} can't be demolished` };
+  // What was dug stays dug: the room's cells are empty space now (a blueprint's rock stays rock).
   for (const c of room.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = 0;
   for (const s of room.surfaceCells) layout.surface[s] = 0;
   layout.rooms = layout.rooms.filter((r) => r.id !== id);

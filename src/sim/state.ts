@@ -10,6 +10,7 @@ import type { Message } from "./messages";
 import type { Population, RoomStatus } from "./economy";
 import { createHole } from "./geometry";
 import { createLayout, placeRoom, type Layout } from "./placement";
+import { openCells } from "./excavation";
 import type { DepositKind } from "./mapgeo";
 import { roomDef } from "./rooms";
 import { culture, type Culture } from "./culture";
@@ -81,6 +82,10 @@ export function createInitialState(
 ): SimState {
   const h = cfg.starterHole;
   const layout = createLayout(createHole(h.shaftRadiusM, h.floors, h.unlockedRings, cfg.geometry), cfg);
+  // The landing crew has blasted out the first rings of floor 1; the rest is rock.
+  for (let ring = 1; ring <= h.openRings; ring++) {
+    openCells(layout, Array.from({ length: layout.hole.ringSlots[ring - 1]! }, (_, slot) => ({ floor: 1, ring, slot })));
+  }
 
   for (const k of cfg.landingKit.surface) {
     must(placeRoom(layout, k.room, { kind: "surface", slot: k.slot }, cfg), k.room);

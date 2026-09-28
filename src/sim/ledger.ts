@@ -17,6 +17,7 @@ export const LABELS = {
   colonists: "Colonists",
   digging: "Digging",
   earth: "Earth drops",
+  excavation: "Excavation",
   lost: "Overflow",
   restrooms: "Restrooms",
 } as const;

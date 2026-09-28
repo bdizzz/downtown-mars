@@ -24,7 +24,8 @@
   "starterHole": {
     "shaftRadiusM": 10,
     "floors": 1,
-    "unlockedRings": 3
+    "unlockedRings": 3,
+  "openRings": 2
   },
   "digging": {
     "ticksForFirstFloor": 720,

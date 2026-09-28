@@ -8,6 +8,7 @@ import { checkPlacement, type Location } from "../src/sim/placement";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { createWorld } from "../src/sim/world";
+import { allRock } from "./worlds";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 
@@ -18,6 +19,8 @@ function rich(): SimState {
   // Clear the landing kit's battery out of ring 1 so the slots are free.
   const battery = s.layout.rooms.find((r) => r.type === "battery_bank")!;
   applyCommand(s, { type: "demolish", roomId: battery.id });
+  // These tests are about corridors through rock: no empty space to walk through.
+  allRock(s.layout);
   return s;
 }
 function build(s: SimState, room: string, at: Location) {

@@ -1,0 +1,82 @@
+import { describe, expect, it } from "vitest";
+import { applyCommand } from "../src/sim/commands";
+import { config } from "../src/sim/config";
+import { emptyCells, isOpen, openCells, shaftSlots } from "../src/sim/excavation";
+import { rockPerFloor, ticksToDig } from "../src/sim/digging";
+import { recomputeAccess, type Location } from "../src/sim/placement";
+import { deserialize, serialize, SAVE_VERSION } from "../src/sim/save";
+import { createInitialState, type SimState } from "../src/sim/state";
+import { step } from "../src/sim/step";
+import { createWorld } from "../src/sim/world";
+import { allRock } from "./worlds";
+
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+
+function rich(): SimState {
+  const s = createInitialState(config);
+  s.drill.active = false;
+  Object.assign(s.resources, { rock: 400, brick: 200, metal: 200, machinery: 50, electronics: 50 });
+  return s;
+}
+
+describe("excavation and empty space", () => {
+  it("starts with rings 1 and 2 of floor 1 dug out, and the rest solid rock", () => {
+    const s = createInitialState(config);
+    expect(isOpen(s.layout, { floor: 1, ring: 1, slot: 4 })).toBe(true);
+    expect(isOpen(s.layout, { floor: 1, ring: 2, slot: 4 })).toBe(true);
+    expect(isOpen(s.layout, { floor: 1, ring: 3, slot: 4 })).toBe(false);
+  });
+
+  it("the drill brings up only the shaft's rock, and leaves the new floor's cells as rock", () => {
+    const s = createInitialState(config);
+    const rock0 = s.resources.rock!;
+    for (let i = 0; i < ticksToDig(2, config); i++) step(s, config);
+    expect(s.layout.hole.floors).toBe(2);
+    expect(rockPerFloor(s, config)).toBeCloseTo(shaftSlots(s.layout, config) * config.digging.rockPerSlot);
+    // Far less than the 36 slots of rings 1–3 would hold.
+    expect(rockPerFloor(s, config)).toBeLessThan(36 * config.digging.rockPerSlot * 0.2);
+    expect(s.resources.rock! - rock0).toBeGreaterThan(0);
+    expect(isOpen(s.layout, { floor: 2, ring: 1, slot: 0 })).toBe(false);
+  });
+
+  it("demolishing leaves empty space, not rock", () => {
+    const s = rich();
+    allRock(s.layout);
+    const r = applyCommand(s, { type: "build", room: "clinic", at: ring(1, 3, 5) });
+    expect(r.ok).toBe(true);
+    applyCommand(s, { type: "demolish", roomId: r.ok ? r.roomId! : 0 });
+    expect(isOpen(s.layout, { floor: 1, ring: 3, slot: 5 })).toBe(true);
+    expect(emptyCells(s.layout)).toContainEqual({ floor: 1, ring: 3, slot: 5 });
+  });
+
+  it("empty space is walk-through: a room beside it is reached like beside a plaza", () => {
+    const s = rich();
+    allRock(s.layout);
+    // A ring-3 room with rock between it and the gallery: cut off.
+    const r = applyCommand(s, { type: "build", room: "clinic", at: ring(1, 3, 4) });
+    const room = s.layout.rooms.find((x) => x.id === (r.ok ? r.roomId : 0))!;
+    expect(room.connected).toBe(false);
+    // Dig out the cells between it and the gallery (ring 3 slot 4 sits against slot 2 of rings 2 and 1).
+    openCells(s.layout, [{ floor: 1, ring: 1, slot: 2 }, { floor: 1, ring: 2, slot: 2 }]);
+    recomputeAccess(s.layout);
+    expect(room.connected).toBe(true);
+  });
+
+  it("saves keep the dug cells; old saves keep their open shaft and only their rooms' cells dug", () => {
+    const w = createWorld(config, 42);
+    const back = deserialize(serialize(w));
+    expect(back.ok && back.world.holes[0]!.layout.open).toEqual(w.holes[0]!.layout.open);
+    expect(SAVE_VERSION).toBe(15);
+    const old = JSON.parse(serialize(w));
+    old.version = 14;
+    for (const h of old.state.holes) delete h.layout.open;
+    const migrated = deserialize(JSON.stringify(old));
+    expect(migrated.ok).toBe(true);
+    if (!migrated.ok) return;
+    const layout = migrated.world.holes[0]!.layout;
+    expect(layout.openShaft).toBe(true);
+    const battery = layout.rooms.find((r) => r.type === "battery_bank")!;
+    expect(isOpen(layout, battery.cells[0]!)).toBe(true);
+    expect(isOpen(layout, { floor: 1, ring: 2, slot: 5 })).toBe(false);
+  });
+});

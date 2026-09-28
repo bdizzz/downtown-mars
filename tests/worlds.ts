@@ -7,6 +7,7 @@ import { foundHole } from "../src/sim/founding";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
 import { setAdults } from "../src/sim/people";
+import { recomputeAccess, type Layout } from "../src/sim/placement";
 
 const site = { lat: -5, lon: 140 };
 
@@ -52,4 +53,10 @@ export function withStorage(): void {
   afterAll(() => {
     storage.unlimited = true;
   });
+}
+
+/** Every cell without a room back to solid rock (no empty space to walk through). */
+export function allRock(layout: Layout): void {
+  layout.open = layout.open?.map((floor, f) => floor.map((ring, ri) => ring.map((_, slot) => (layout.grid[f]?.[ri]?.[slot] ? 1 : 0))));
+  recomputeAccess(layout);
 }

@@ -1,10 +1,11 @@
 import type { SimConfig } from "./config";
-import { LABELS, record } from "./ledger";
+import { openCells, shaftSlots, yieldRock } from "./excavation";
+import { LABELS } from "./ledger";
 import { ensureFloors, recomputeAccess } from "./placement";
 import type { SimState } from "./state";
 
 // The starter drill digs the floor below the deepest one, a little each tick.
-// Rock comes out as it goes. When the floor is done, blueprints on it switch on.
+// The shaft's rock comes out as it goes (rooms are excavated separately). When the floor is done, blueprints on it switch on.
 
 export interface Drill {
   active: boolean;
@@ -18,10 +19,9 @@ export function ticksToDig(floor: number, cfg: SimConfig): number {
   return Math.round(d.ticksForFirstFloor * Math.pow(1 + d.depthGrowth, floor - 2));
 }
 
+/** Rock from one floor of the drill: the shaft's share only (rooms are excavated separately). */
 export function rockPerFloor(state: SimState, cfg: SimConfig): number {
-  const hole = state.layout.hole;
-  const slots = hole.ringSlots.slice(0, hole.unlockedRings).reduce((a, b) => a + b, 0);
-  return slots * cfg.digging.rockPerSlot;
+  return shaftSlots(state.layout, cfg) * cfg.digging.rockPerSlot;
 }
 
 export function diggingFloor(state: SimState): number {
@@ -38,25 +38,17 @@ export function stepDigging(state: SimState, cfg: SimConfig): void {
   const needed = ticksToDig(floor, cfg);
 
   state.drill.progress += 1;
-  const rock = rockPerFloor(state, cfg) / needed;
-  state.resources.rock = (state.resources.rock ?? 0) + rock;
-  record(state, "rock", "in", LABELS.digging, rock);
-  // Whatever the hole sits on comes up with the rock: ore, silica, ice.
-  const slots = rockPerFloor(state, cfg) / cfg.digging.rockPerSlot;
-  for (const kind of state.deposits ?? []) {
-    for (const [id, perSlot] of Object.entries(cfg.digging.depositYieldsPerSlot[kind] ?? {})) {
-      const amount = (slots * perSlot) / needed;
-      state.resources[id] = (state.resources[id] ?? 0) + amount;
-      record(state, id, "in", LABELS.digging, amount);
-    }
-  }
+  yieldRock(state, cfg, shaftSlots(state.layout, cfg) / needed, LABELS.digging);
   if (state.drill.progress < needed) return;
 
   const layout = state.layout;
   layout.hole.floors = floor;
   ensureFloors(layout);
   for (const r of layout.rooms) {
-    if (r.planned && r.at.kind === "ring" && r.at.floor === floor) r.planned = false;
+    if (r.planned && r.at.kind === "ring" && r.at.floor === floor) {
+      r.planned = false;
+      openCells(layout, r.cells);
+    }
   }
   recomputeAccess(layout);
   layout.version++;

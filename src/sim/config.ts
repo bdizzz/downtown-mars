@@ -39,12 +39,14 @@ export interface SimConfig {
     shaftRadiusM: number;
     floors: number;
     unlockedRings: number;
+    /** Rings of floor 1 already excavated at the start; the rest is rock. */
+    openRings: number;
   };
   digging: {
     /** Ticks to dig floor 2; each deeper floor takes depthGrowth longer. */
     ticksForFirstFloor: number;
     depthGrowth: number;
-    /** Rock yielded per unlocked ring slot dug out. */
+    /** Rock yielded per slot dug out: the shaft's area by the drill, a room's cells by excavation. */
     rockPerSlot: number;
     /** Extra yield per slot when the hole sits on a deposit, e.g. ore → { ore: 0.4 }. */
     depositYieldsPerSlot: Record<string, Record<string, number>>;

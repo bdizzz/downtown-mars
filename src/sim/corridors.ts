@@ -5,6 +5,7 @@ import { ringSize, type Hole } from "./geometry";
 import { resourceDef } from "./resources";
 import { roomDef } from "./rooms";
 import type { Cell, Layout, RoomInstance } from "./placement";
+import { emptyCells } from "./excavation";
 
 // Corridors run along the borders between cells, carved out of the rooms and
 // rock on either side. They join up at shared vertices, and a corridor is
@@ -12,6 +13,7 @@ import type { Cell, Layout, RoomInstance } from "./placement";
 // cells touches the gallery. Public rooms (plazas) count every side as a
 // corridor. A room is connected if it's in ring 1 (it opens onto the
 // gallery) or one of its sides is a linked corridor or a linked public room.
+// Empty space (excavated cells with no room) is walk-through like a plaza.
 
 export interface FinishDef {
   id: string;
@@ -130,6 +132,13 @@ function network(layout: Layout): { sets: Sets; publicEdges: Map<string, number>
     }
     // Ring-1 public rooms open onto the gallery too.
     if (first && room.cells.some((c) => c.ring === 1)) sets.union(first, SHAFT);
+  }
+  // Empty space (excavated, no room) is walk-through too, one cell at a time.
+  for (const cell of emptyCells(layout)) {
+    for (const e of cellEdges(hole, cell)) {
+      join(sets, hole, e);
+      if (!publicEdges.has(e.id)) publicEdges.set(e.id, 0);
+    }
   }
   return { sets, publicEdges };
 }
