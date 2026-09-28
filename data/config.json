@@ -30,11 +30,11 @@
   "digging": {
     "ticksForFirstFloor": 720,
     "depthGrowth": 0.2,
-    "rockPerSlot": 2,
+    "rockPerSlot": 6,
     "depositYieldsPerSlot": {
-      "ore": { "ore": 0.8 },
-      "silica": { "silica": 0.8 },
-      "ice": { "water": 1 }
+      "ore": { "ore": 2 },
+      "silica": { "silica": 2 },
+      "ice": { "water": 2.5 }
     },
     "maxFloors": 40
   },

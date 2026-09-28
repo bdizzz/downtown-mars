@@ -143,3 +143,21 @@ Decided Sep 28, 2026 (Bryon):
 - **Excavating phase:** progress labels read "⛏ 40%" in all three views while a job is digging.
 - **New glyphs:** entrance (a hatch with a wheel), cargo elevator (a crate on a platform, arrow up), empty rooms (a pick).
 - **Browser check:** a new game shows the entrance, airlock, empty rings 1–2 and rock in ring 3 in all three views. An empty room queued in ring 3 dug out with "⛏" and rock coming in.
+
+**Step 6, balance and tests:**
+- **Yields:** the drill's rock is now a small share of the economy, so each dug-out slot yields more. The drill still uses the same numbers for the shaft's area.
+  - Rock: 6 per slot (was 2).
+  - Ore and silica: 2 per slot (were 0.8).
+  - Water from ice: 2.5 per slot (was 1).
+  - A room on rock brings back most of its rock cost: a farm's 4 slots yield 24 of its 30. The drill brings up about 19 rock per floor.
+- **Scripted players (tests/adaptive.ts):**
+  - `ensureStairs` extends a stairwell stack down ring 1's last slot, which every plan leaves free. It only goes deeper when a room waits on a floor it doesn't reach, or ring 1 is full on every floor it does.
+  - `placeAnywhere` and storage only use floors the stairs reach.
+  - `quarry` digs out an empty room in ring 3 and out when a build fails for want of rock (one at a time).
+  - The fixed plans moved off the stair column: the second farm to slots 4–7, the admin office to ring 2 slots 1–2, a floor-3 restroom to slot 7, and the smelter to slots 4–7.
+- **Results** (seed 42):
+  - First month: 67 colonists, floor 7 dug, and health never below 85. The stair stack reached floor 6.
+  - First hour, two holes: founding comes on day 45.9, and the network ends at 104 against the solo player's 84.
+  - At 90 days: 182 against 116, with 15 births.
+- **Bounds:** no test bounds changed. Every playthrough passes as it was written.
+- **README:** covers digging, empty rooms, the entrance, stairs and the cargo elevator.

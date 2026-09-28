@@ -9,13 +9,66 @@ import { network } from "../src/sim/network";
 import { allocated, spaceOf, STORABLE, storageCaps } from "../src/sim/storage";
 import { countStage, cryptSpace } from "../src/sim/people";
 import type { SimState } from "../src/sim/state";
+import { floorLinked } from "../src/sim/corridors";
+import { footprint } from "../src/sim/placement";
 
 // A scripted player that reacts: once a day it looks at what its hole is
 // short of and builds the room that fixes it, in the first free spot on the
-// gallery (ring 1) of any dug floor. Used after the fixed opening plans, so
+// gallery (ring 1) of any floor its stairs reach (keeping ring 1's last slot
+// for the stairs themselves, which follow the drill down). Used after the fixed opening plans, so
 // long playtests measure the game's systems rather than a stale build list.
 
-/** Build a room wherever it fits: on the surface, or on ring 1 of the shallowest floor with room. */
+/** The ring-1 slot every scripted player keeps for its stairs: the last one. */
+export const stairSlot = (hole: SimState) => hole.layout.hole.ringSlots[0]! - 1;
+
+/**
+ * Stairs down to the deepest dug floor: a stack in ring 1's last slot, one
+ * floor at a time, starting from floor 1 (next to the entrance's floor).
+ * Returns true if it queued a piece.
+ */
+export function ensureStairs(hole: SimState): boolean {
+  if (!wantsDeeper(hole)) return false;
+  const slot = stairSlot(hole);
+  const stairs = hole.layout.rooms.find((r) => r.type === "stairwell" && r.at.kind === "ring" && r.at.ring === 1 && r.at.slot === slot);
+  const floors = stairs ? [...stairs.cells, ...(stairs.pendingCells ?? [])].map((c) => c.floor) : [];
+  const bottom = floors.length ? Math.max(...floors) : 1;
+  if (bottom >= hole.layout.hole.floors) return false;
+  return applyCommand(hole, { type: "build", room: "stairwell", at: { kind: "ring", floor: bottom, ring: 1, slot, w: 1, d: 1 } }).ok;
+}
+
+/** Does the hole need its stairs to go deeper: a room waiting on a floor they don't reach, or ring 1 full where they do? */
+function wantsDeeper(hole: SimState): boolean {
+  const l = hole.layout;
+  if (l.rooms.some((r) => r.at.kind === "ring" && r.cells.some((c) => !floorLinked(l, c.floor)))) return true;
+  const slot = stairSlot(hole);
+  for (let floor = 1; floor <= l.hole.floors; floor++) {
+    if (!floorLinked(l, floor)) continue;
+    for (let s = 0; s < l.hole.ringSlots[0]!; s++) if (s !== slot && !l.grid[floor - 1]?.[0]?.[s]) return false;
+  }
+  return true;
+}
+
+/**
+ * Short of rock: dig out an empty room for it (unless one's already being dug),
+ * in the rock of ring 3 and out, on floors the stairs reach. Returns true if it queued one.
+ */
+export function quarry(hole: SimState): boolean {
+  const l = hole.layout;
+  if (hole.construction.queue.some((j) => roomDef(l.rooms.find((r) => r.id === j.roomId)?.type ?? "entrance").excavationOnly)) return false;
+  const [w, d] = config.shapes.M![0]!;
+  for (let floor = 1; floor <= l.hole.floors; floor++) {
+    if (!floorLinked(l, floor)) continue;
+    for (let ring = l.hole.unlockedRings; ring >= 2; ring--) {
+      for (let slot = 0; slot < l.hole.ringSlots[ring - 1]!; slot += 2) {
+        const r = applyCommand(hole, { type: "build", room: "empty_room_m", at: { kind: "ring", floor, ring, slot, w, d } });
+        if (r.ok) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Build a room wherever it fits: on the surface, or on ring 1 of the shallowest floor the stairs reach, with room. */
 export function placeAnywhere(hole: SimState, room: string, crop?: string): boolean {
   const def = roomDef(room);
   if (def.size === "surface") {
@@ -27,13 +80,16 @@ export function placeAnywhere(hole: SimState, room: string, crop?: string): bool
   const [w, d] = config.shapes[def.size as keyof typeof config.shapes]![0]!;
   const slots = hole.layout.hole.ringSlots[0]!;
   for (let floor = 1; floor <= hole.layout.hole.floors; floor++) {
+    if (!floorLinked(hole.layout, floor)) continue; // no way down yet
     for (let slot = 0; slot < slots; slot++) {
+      if (footprint(hole.layout.hole, floor, 1, slot, w, d).some((c) => c.ring === 1 && c.slot === stairSlot(hole))) continue;
       const r = applyCommand(hole, { type: "build", room, at: { kind: "ring", floor, ring: 1, slot, w, d } });
       if (r.ok) {
         if (crop) applyCommand(hole, { type: "setCrop", roomId: r.roomId!, crop });
         return true;
       }
-      // Can't afford it anywhere: stop looking.
+      // Can't afford it anywhere: stop looking (short of rock, dig some out).
+      if (/more rock/.test(r.reason)) quarry(hole);
       if (/^(Needs|Not enough|Unlocks)/.test(r.reason)) return false;
     }
   }
@@ -142,6 +198,7 @@ function placeStorage(hole: SimState): boolean {
   for (const ring of [3, 2]) {
     if (ring > hole.layout.hole.unlockedRings) continue;
     for (let floor = 1; floor <= hole.layout.hole.floors; floor++) {
+      if (!floorLinked(hole.layout, floor)) continue;
       for (let slot = 0; slot < hole.layout.hole.ringSlots[ring - 1]!; slot++) {
         const r = applyCommand(hole, { type: "build", room: "warehouse", at: { kind: "ring", floor, ring, slot, w, d } });
         if (r.ok) {

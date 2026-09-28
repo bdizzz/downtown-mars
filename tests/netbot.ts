@@ -9,7 +9,7 @@ import { addRoute } from "../src/sim/rovers";
 import type { SimState } from "../src/sim/state";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
-import { adapt, tendStorage } from "./adaptive";
+import { ensureStairs, quarry, adapt, tendStorage } from "./adaptive";
 import { PLAN, VISIT_ANSWERS } from "./bot";
 import { beds } from "../src/sim/earth";
 import { stageCounts } from "../src/sim/people";
@@ -26,7 +26,7 @@ type Plan = { room: string; at: Location; crop?: string; stopAt?: number };
 
 /** Once the map opens: industry for the kit, then get ready to found and trade. */
 export const HOME_EXTRA: Plan[] = [
-  { room: "smelter", at: ring(5, 1, 5, 4) },
+  { room: "smelter", at: ring(5, 1, 4, 4) },
   { room: "machine_shop", at: ring(5, 2, 7, 2), stopAt: 12 },
   { room: "staging_bay", at: ring(5, 1, 0, 4) },
   { room: "rover_depot", at: surface(9) },
@@ -86,6 +86,8 @@ function builder(plan: Plan[]) {
         const p = pending[k]!;
         const r = applyCommand(hole, { type: "build", room: p.room, at: p.at });
         if (!r.ok) {
+          // Short of rock: dig some out while waiting.
+          if (/more rock/.test(r.reason)) quarry(hole);
           if (r.reason.startsWith("Unlocks with")) {
             k++;
             continue;
@@ -167,6 +169,7 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
         if (built) adapted.push(`d${day.toFixed(0)} ${home.name} ${built}`);
       }
       answerVisits(home);
+      ensureStairs(home);
       reconnect(home);
       tend(home, t);
       const child = world.holes[1];
@@ -177,6 +180,7 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
           if (built) adapted.push(`d${day.toFixed(0)} ${child.name} ${built}`);
         }
         answerVisits(child);
+        ensureStairs(child);
         reconnect(child);
         tend(child, t);
       }
