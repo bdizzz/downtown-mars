@@ -65,10 +65,10 @@ npm run package    # build and zip for a playtest upload
 
 Design documents live in `docs/`: start with `DECISIONS.md`, then `DESIGN.md` and the catalogs. Build plans are `docs/PLAN.md` (milestone 1) and `docs/PLAN-M2.md` to `docs/PLAN-M8.md` (milestones 2 to 7, and storage). `CLAUDE.md` has the architecture rules: the simulation is pure TypeScript in a Web Worker, deterministic, with all numbers in `data/*.json`.
 
+### Furnishing tool
+
+Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture models (Catalogue) and lay out the template for any room type and shape (Templates). Preview the fit in any ring, with or without a corridor along a side. Drag items in the plan, set their wall, offsets, turn, repeat and priority, and save: the tool writes `data/layouts.json`. Models live in `data/furniture.json`; see `docs/FURNITURE.md`.
+
 ## Credits
 
 Mars elevation: NASA Mars Global Surveyor, Mars Orbiter Laser Altimeter (MOLA) Mission Experiment Gridded Data Record `MEGT90N000CB` (PDS Geosciences Node), public domain. `scripts/build-elevation.mjs` averages it to 1° for `data/mars-elevation.json`.
-
-## Furnishing tool (dev builds)
-
-Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture models (Catalogue) and lay out the template for any room type and shape (Templates). Preview the fit in any ring, with or without a corridor along a side. Drag items in the plan, set their wall, offsets, turn, repeat and priority, and save: the tool writes `data/layouts.json`. Models live in `data/furniture.json`; see `docs/FURNITURE.md`.
