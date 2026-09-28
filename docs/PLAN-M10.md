@@ -63,3 +63,10 @@ Decided Sep 28, 2026 (Bryon):
   - Parts fit their footprint and stand on the floor.
   - Only defined colours are used.
   - Nothing is taller than a floor.
+
+**Step 2, models:** `src/render3d/furniture3d.ts`.
+- **Building:** each part is a unit box, cylinder (12 sides) or sphere (10 × 8), scaled, rotated and moved into place.
+- **Merging:** `furnitureMeshes` merges every placed item's parts into one mesh per material, so a room's furniture is a handful of draw calls, and eight bunks cost what one does.
+- **Materials** are shared by colour. Glowing parts share emissive materials that `setFurnitureGlow` brightens at night.
+- **Tests:** every item builds, with one mesh per colour and within its footprint. Placing and a quarter turn (width and depth swap) work. A room's worth merges.
+- **The dev tool starts here:** `?furnish` in the dev build (`src/devtools/`, loaded only in dev, so it isn't bundled into a release). For now it has a catalogue: pick a room type, or all items, and orbit its models on floor tiles. Checked in the browser: the dorm's items and all 76.
