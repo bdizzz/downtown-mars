@@ -556,16 +556,22 @@ export function outlineGeometry(geo: THREE.BufferGeometry): THREE.EdgesGeometry 
     }
   }
   const ep = edges.getAttribute("position");
+  const kept: number[] = [];
   const a1: number[] = [];
   const a2: number[] = [];
   for (let i = 0; i < ep.count; i += 2) {
     const id = pair(key(ep.getX(i), ep.getY(i), ep.getZ(i)), key(ep.getX(i + 1), ep.getY(i + 1), ep.getZ(i + 1)));
     const [w1, w2] = bySide.get(id) ?? [];
+    // Only the lines a wall makes (its top, its corners, where it meets the floor). The floor's own rim runs a
+    // hairline past the walls, and would otherwise hang in the air at the top of a lowered wall on the floor below.
+    if (!w1) continue;
     for (let j = 0; j < 2; j++) {
-      a1.push(...(w1 ?? [0, 0, 0, 0]));
+      kept.push(ep.getX(i + j), ep.getY(i + j), ep.getZ(i + j));
+      a1.push(...w1);
       a2.push(w2?.[0] ?? 0, w2?.[1] ?? 0);
     }
   }
+  edges.setAttribute("position", new THREE.Float32BufferAttribute(kept, 3));
   edges.setAttribute("aWall", new THREE.Float32BufferAttribute(a1, 4));
   edges.setAttribute("aWall2", new THREE.Float32BufferAttribute(a2, 2));
   return edges;

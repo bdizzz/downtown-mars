@@ -101,3 +101,4 @@ Decided Sep 27, 2026 (Bryon): milestone 3 is the 3D view. When the network map c
   3. **Corridor to gallery.** The gallery ledge stands 0.4 m proud with no face down its back, so you could see under it from a corridor. It now has a face along its outer edge.
 - **Cost:** a layout rebuild takes about 110 ms in the dev save.
 - **Browser check:** Shaft view into rooms on floor 3 with walls up and down, and Iso.
+- **Outline fix (Bryon, Sep 28):** with walls down, a thin dark line hung along the top of lowered walls. It was the outline of the floor above: since the seam fix, a room's floor runs a hairline past its walls, so its rim was an edge on its own, bordering no wall and never lowered. Room outlines now keep only the lines a wall makes (its top, its corners, and where it meets the floor).
