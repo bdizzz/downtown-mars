@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { Cell, Layout, RoomInstance } from "../sim/placement";
+import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
 import { FLOOR_H, floorSpan, ringRadii, slotAngles, TAU } from "./cylinder";
@@ -45,7 +45,16 @@ export interface Cut {
   side: 1 | -1;
   y0?: number;
   y1?: number;
+  /**
+   * Something to see on the wall's other side (a neighbouring room, empty
+   * space, a corridor, the gallery), not rock. Seen from its own side, such a
+   * wall hides that neighbour, so with walls down it's lowered from either side.
+   * A curved wall can face several cells: then it's asked per segment, by angle.
+   */
+  across?: boolean | ((angle: number) => boolean);
 }
+/** How a wall with something to see across it is tagged: its normal at this length instead of 1. */
+const ACROSS = 2;
 /** Vertex arrays that carry wall tags (`aWall`: interior normal x, z, then base and top y). */
 const wallTags = new WeakMap<number[], number[]>();
 function tagged(): number[] {
@@ -65,7 +74,9 @@ function curvedFace(pos: number[], r: number, a0: number, a1: number, y0: number
     push(pos, at(r, b0, y0), at(r, b1, y0), at(r, b1, y1), at(r, b0, y0), at(r, b1, y1), at(r, b0, y1));
     // One normal per segment (at its middle), so all six corners agree on whether it's cut.
     const m = (b0 + b1) / 2;
-    if (cut) tag(pos, 6, cut.side * Math.cos(m), cut.side * Math.sin(m), cut.y0 ?? y0, cut.y1 ?? y1);
+    const across = typeof cut?.across === "function" ? cut.across(m) : cut?.across;
+    const k = cut ? cut.side * (across ? ACROSS : 1) : 0;
+    if (cut) tag(pos, 6, k * Math.cos(m), k * Math.sin(m), cut.y0 ?? y0, cut.y1 ?? y1);
     else tag(pos, 6);
   }
 }
@@ -81,7 +92,9 @@ function flatRing(pos: number[], r0: number, r1: number, a0: number, a1: number,
 
 function radialSide(pos: number[], r0: number, r1: number, a: number, y0: number, y1: number, cut?: Cut): void {
   push(pos, at(r0, a, y0), at(r1, a, y0), at(r1, a, y1), at(r0, a, y0), at(r1, a, y1), at(r0, a, y1));
-  if (cut) tag(pos, 6, -cut.side * Math.sin(a), cut.side * Math.cos(a), cut.y0 ?? y0, cut.y1 ?? y1);
+  const across = typeof cut?.across === "function" ? cut.across(a) : cut?.across;
+  const k = cut ? cut.side * (across ? ACROSS : 1) : 0;
+  if (cut) tag(pos, 6, -k * Math.sin(a), k * Math.cos(a), cut.y0 ?? y0, cut.y1 ?? y1);
   else tag(pos, 6);
 }
 
@@ -243,26 +256,45 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
     // A public room on the gallery has no wall there: it runs right up to the shaft.
     const onGallery = publicRoom && c.ring === 1;
     const cut = carveCell(layout, c, own, inner, outer, inset, carve, onGallery, joints);
+    // What's across each wall, looked for just past the cell's edge.
+    const [cr0, cr1] = ringRadii(layout.hole, c.ring);
+    const [s0, s1] = slotAngles(c.slot, layout.hole.ringSlots[c.ring - 1]!);
+    const cMid = (cr0 + cr1) / 2;
+    const across = (r: number, a: number) => seeThrough(layout, own, c.floor, r, a);
     let prev: Piece | null = null;
     for (const p of cut.pieces) {
-      // Walls, except where a public room opens onto the gallery or a corridor.
-      if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) curvedFace(pos, p.rr0, p.b0, p.b1, y0, y1, { side: 1 });
-      if (c.ring === outer && !(publicRoom && p.outerHall)) curvedFace(pos, p.rr1, p.b0, p.b1, y0, y1, { side: -1 });
+      // Walls, except where a public room opens onto the gallery or a corridor. What's across is asked segment by segment.
+      if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) curvedFace(pos, p.rr0, p.b0, p.b1, y0, y1, { side: 1, across: p.innerHall || ((a) => across(cr0 - 0.5, a)) });
+      if (c.ring === outer && !(publicRoom && p.outerHall)) curvedFace(pos, p.rr1, p.b0, p.b1, y0, y1, { side: -1, across: p.outerHall || ((a) => across(cr1 + 0.5, a)) });
       flatRing(pos, p.rr0, p.rr1, p.b0, p.b1, y0);
       // A step where a corridor starts or stops partway along a side.
       if (prev) {
         // The room is on the side of whichever piece reaches further in (or out).
-        if (prev.rr0 !== p.rr0) radialSide(pos, Math.min(prev.rr0, p.rr0), Math.max(prev.rr0, p.rr0), p.b0, y0, y1, { side: prev.rr0 < p.rr0 ? -1 : 1 });
-        if (prev.rr1 !== p.rr1) radialSide(pos, Math.min(prev.rr1, p.rr1), Math.max(prev.rr1, p.rr1), p.b0, y0, y1, { side: prev.rr1 > p.rr1 ? -1 : 1 });
+        // Across a step is the corridor that carved it.
+        if (prev.rr0 !== p.rr0) radialSide(pos, Math.min(prev.rr0, p.rr0), Math.max(prev.rr0, p.rr0), p.b0, y0, y1, { side: prev.rr0 < p.rr0 ? -1 : 1, across: true });
+        if (prev.rr1 !== p.rr1) radialSide(pos, Math.min(prev.rr1, p.rr1), Math.max(prev.rr1, p.rr1), p.b0, y0, y1, { side: prev.rr1 > p.rr1 ? -1 : 1, across: true });
       }
       prev = p;
     }
     const first = cut.pieces[0];
     const last = cut.pieces.at(-1);
-    if (cut.openLeft && first && !(publicRoom && cut.hallLeft)) radialSide(pos, first.rr0, first.rr1, cut.a0, y0, y1, { side: 1 });
-    if (cut.openRight && last && !(publicRoom && cut.hallRight)) radialSide(pos, last.rr0, last.rr1, cut.a1, y0, y1, { side: -1 });
+    if (cut.openLeft && first && !(publicRoom && cut.hallLeft)) radialSide(pos, first.rr0, first.rr1, cut.a0, y0, y1, { side: 1, across: cut.hallLeft || across(cMid, s0 - 0.5 / cMid) });
+    if (cut.openRight && last && !(publicRoom && cut.hallRight)) radialSide(pos, last.rr0, last.rr1, cut.a1, y0, y1, { side: -1, across: cut.hallRight || across(cMid, s1 + 0.5 / cMid) });
   }
   return geometry(pos);
+}
+
+/** Is there something to see at (r, a) on this floor, past a room's wall: the gallery, another room, empty space? Not rock. */
+function seeThrough(layout: Layout, own: Set<string>, floor: number, r: number, a: number): boolean {
+  const hole = layout.hole;
+  if (r < hole.shaftRadiusM) return true; // the gallery
+  const ring = Math.floor((r - hole.shaftRadiusM) / (ringRadii(hole, 1)[1] - ringRadii(hole, 1)[0])) + 1;
+  if (ring > hole.unlockedRings) return false;
+  const n = hole.ringSlots[ring - 1]!;
+  const turn = (((a / TAU) % 1) + 1) % 1;
+  const c = { floor, ring, slot: Math.min(Math.floor(turn * n), n - 1) };
+  if (own.has(`${c.floor}:${c.ring}:${c.slot}`)) return false;
+  return !!layout.grid[floor - 1]?.[ring - 1]?.[c.slot] || isOpen(layout, c);
 }
 
 /** Half a corridor's width: what a room gives up on a side a corridor runs along. */
@@ -316,22 +348,31 @@ export function setWallsDown(on: boolean): void {
 }
 
 /**
- * Is a wall at `p`, bounding the side `n` points to, seen from its back by a
- * camera at `cam`? Then it's in the way, and with walls down it's lowered.
- * (The same test as the shader below.)
+ * Is a wall at `p`, bounding the side `n` points to, in the way of a camera at
+ * `cam`: seen from its back, or (tagged with a longer normal) with something
+ * to see across it? Then with walls down it's lowered. (The same test as the
+ * shader below.)
  */
 function inTheWay(nx: number, nz: number, px: number, pz: number, cam: THREE.Vector3): boolean {
-  return (nx !== 0 || nz !== 0) && (cam.x - px) * nx + (cam.z - pz) * nz < 0;
+  const n2 = nx * nx + nz * nz;
+  if (n2 === 0) return false;
+  // Something to see across it: in the way from either side.
+  return n2 > 2 || (cam.x - px) * nx + (cam.z - pz) * nz < 0;
 }
 
-// Per vertex: lowered walls are squashed down to their stub. A line (a room's
-// outline) may border two walls (`aWall2`), and only drops if both are lowered.
-// Missing attributes read as zero, which never lowers anything.
+// Per vertex: lowered walls are squashed down to their stub. A wall is in the
+// way when it's seen from behind (it hides its own room), or when there's
+// something to see across it (tagged with a longer normal: it hides the
+// neighbour from its own side). A line (a room's outline) may border two walls
+// (`aWall2`), and only drops if both are lowered. Missing attributes read as
+// zero, which never lowers anything.
 const WALLS_GLSL = /* glsl */ `
   if (uWallsDown > 0.5 && dot(aWall.xy, aWall.xy) > 0.0) {
     vec2 toCam = cameraPosition.xz - (modelMatrix * vec4(transformed, 1.0)).xz;
-    bool second = dot(aWall2.xy, aWall2.xy) == 0.0 || dot(toCam, aWall2.xy) < 0.0;
-    if (dot(toCam, aWall.xy) < 0.0 && second) transformed.y = min(transformed.y, mix(aWall.z, aWall.w, uWallStub));
+    float n2 = dot(aWall2.xy, aWall2.xy);
+    bool second = n2 == 0.0 || n2 > 2.0 || dot(toCam, aWall2.xy) < 0.0;
+    bool first = dot(aWall.xy, aWall.xy) > 2.0 || dot(toCam, aWall.xy) < 0.0;
+    if (first && second) transformed.y = min(transformed.y, mix(aWall.z, aWall.w, uWallStub));
   }
 `;
 
@@ -493,7 +534,11 @@ function roomShape(layout: Layout, room: RoomInstance): { geo: THREE.BufferGeome
     ...outside.filter((e) => layout.corridors?.[e.id]).map((e) => e.id),
     ...[...new Set(outside.flatMap((e) => edgeVertices(layout.hole, e)))].filter((v) => joints.has(v)),
   ].join(",");
-  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}`;
+  // What's around it (rock, or something to see) decides which walls can come down.
+  const around = neighborCells(layout.hole, room.cells)
+    .map((c) => (layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] || isOpen(layout, c) ? 1 : 0))
+    .join("");
+  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}`;
   let shape = shapeCache.get(key);
   if (!shape) {
     const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public);
@@ -667,7 +712,7 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
       const faces = shaftFaces(layout, room);
       const win = tagged();
       // They go down with the wall they're set in.
-      const inWall = (f: { y0: number }): Cut => ({ side: 1, y0: f.y0, y1: f.y0 + FLOOR_H });
+      const inWall = (f: { y0: number }): Cut => ({ side: 1, y0: f.y0, y1: f.y0 + FLOOR_H, across: true });
       for (const f of faces) curvedFace(win, f.r - WINDOW.inset, f.a0 + 0.02, f.a1 - 0.02, f.y0 + WINDOW.bottom, f.y0 + WINDOW.top, inWall(f));
       if (win.length) group.add(new THREE.Mesh(geometry(win), glass));
       const mid = faces[Math.floor(faces.length / 2)];

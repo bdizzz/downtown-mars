@@ -82,3 +82,11 @@ Decided Sep 27, 2026 (Bryon): milestone 3 is the 3D view. When the network map c
   - **No building while walking:** the stage tells the app (`onWalking`), which hides the build palette, clears the tool, and ignores the build shortcuts (room keys, C, X, R rotate). Selecting rooms, the map, views, holes and floors still work.
   - **Iso is the default:** Iso is the 3D camera's default mode, and new players start in the 3D view. A saved choice still wins.
   - **Fix:** a stage that React's development double mount throws away no longer reports "not walking" after the real one says it is. The view host reports it when it tears a stage down.
+- **More changes (Bryon, Sep 28):**
+  - **Iso** comes first on the camera toolbar. Scrolling sideways turns the hole, as in the cutaway.
+  - **Walls down also clears neighbours:**
+    - **Rule:** a wall now comes down if it hides its own room (seen from behind, as before) or if there's something to see across it: a neighbouring room, empty space, a corridor, or the gallery. Such a wall hides that neighbour from its own side, so it comes down from either side.
+    - **Rock:** a wall with only rock behind it comes down only when it hides its own room, so a floor keeps its outer outline.
+    - **How:** each wall segment asks what's just past it, so a wall facing two cells in the next ring can be half down. It's tagged by a doubled normal, read by the shader and by picking. Windows count the gallery as behind them. A room's cached shape now depends on what's around it.
+    - **Tested:** an outer wall with a room behind it comes down from inside the room; the inner wall, with rock behind, stays up.
+    - **Browser check:** Iso, walls up and down, before and after a sideways scroll.

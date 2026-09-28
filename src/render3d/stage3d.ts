@@ -56,11 +56,11 @@ const SHELL_MARGIN = 6;
 
 type Mode = "shaft" | "free" | "cutaway" | "top" | "iso" | "walk";
 const MODES: { id: Mode; name: string; hint: string }[] = [
+  { id: "iso", name: "Iso", hint: "One floor from above and off to one side, so you see all of it (pick the floor on the right; drag to turn, scroll to zoom)" },
   { id: "shaft", name: "Shaft", hint: "Stand in the shaft and look at the wall" },
   { id: "free", name: "Free", hint: "Stand at the centre of the shaft and drag to look anywhere" },
   { id: "cutaway", name: "Cutaway", hint: "Look at the hole from outside, sliced open" },
   { id: "top", name: "Top", hint: "Look straight down the shaft" },
-  { id: "iso", name: "Iso", hint: "One floor from above and off to one side, so you see all of it (pick the floor on the right; drag to turn, scroll to zoom)" },
   { id: "walk", name: "First person", hint: "Walk the galleries, corridors and public spaces: WASD to move, Q and E to turn, drag to look (Tab for mouse look), R and F to take stairs up or down" },
 ];
 
@@ -1023,6 +1023,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const zoom = Math.exp(e.deltaY * 0.01);
     if (view.mode === "walk") return;
     if (view.mode === "iso") {
+      // Sideways scrolling turns the hole, as in the cutaway; up and down zooms (Shift turns instead).
+      cam.theta += e.deltaX * 0.003;
       if (e.shiftKey) cam.theta += e.deltaY * 0.003;
       else cam.iso *= Math.exp(e.deltaY * 0.003);
       applyCamera();

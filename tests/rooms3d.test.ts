@@ -218,3 +218,33 @@ describe("walls down", () => {
     setWallsDown(false);
   });
 });
+
+describe("walls down, with neighbours", () => {
+  it("a wall with a room across it comes down from its own side too; one against rock doesn't", () => {
+    const layout = createLayout(createHole(10, 3, 3, config.geometry));
+    const placed = placeRoom(layout, "clinic", ring(2, 2, 1));
+    expect(placed.ok ? "" : placed.reason).toBe("");
+    const near = layout.rooms.find((x) => x.id === placed.id)!;
+    const behind = placeRoom(layout, "galley", ring(2, 3, 2)); // ring 3, behind slot 1's outer wall
+    expect(behind.ok ? "" : behind.reason).toBe("");
+    const geo = roomGeometry(layout, near.cells);
+    const pos = geo.getAttribute("position");
+    const walls = geo.getAttribute("aWall");
+    const [r0, r1] = ringRadii(layout.hole, 2);
+    // The camera inside the near room: its outer wall (a room behind) comes down, its inner wall (rock behind) stays.
+    const [a0, a1] = slotAngles(1, layout.hole.ringSlots[1]!);
+    const mid = (a0 + a1) / 2;
+    const inside = new THREE.Vector3(((r0 + r1) / 2) * Math.cos(mid), floorSpan(2)[1], ((r0 + r1) / 2) * Math.sin(mid));
+    const face = (r: number) => [...Array(pos.count).keys()].find((k) => Math.abs(Math.hypot(pos.getX(k), pos.getZ(k)) - r) < 0.2 && (walls.getX(k) !== 0 || walls.getY(k) !== 0))!;
+    const hitAt = (i: number) => {
+      const a = Math.atan2(pos.getZ(i), pos.getX(i));
+      const r = Math.hypot(pos.getX(i), pos.getZ(i));
+      const f = { a: i, b: i, c: i, normal: new THREE.Vector3(), materialIndex: 0 };
+      return { distance: 1, point: new THREE.Vector3(r * Math.cos(a), floorSpan(2)[1] - 0.2, r * Math.sin(a)), face: f, object: new THREE.Mesh(geo) } as THREE.Intersection;
+    };
+    setWallsDown(true);
+    expect(loweredAt(hitAt(face(r1)), inside)).toBe(true);
+    expect(loweredAt(hitAt(face(r0)), inside)).toBe(false);
+    setWallsDown(false);
+  });
+});
