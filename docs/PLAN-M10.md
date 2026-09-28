@@ -1,0 +1,65 @@
+# Milestone 10 plan: furnishing rooms in 3D
+
+Goal: rooms in the 3D view look lived in. Each room type has a short list of items that belong there (bunks and lockers in a dorm, planters in a farm, a furnace in the smelter). A saved layout template for each room says where they go, so rooms read as deliberate: not crowded, and not a random scatter.
+
+Decided Sep 28, 2026 (Bryon):
+- **Items are code-built low-poly models.** Each is a small list of simple shapes (boxes, cylinders, spheres) with colours, in `data/furniture.json`, assembled at runtime like the surface props. There are no asset files, and the data carries over to Godot.
+- **Templates are anchored to walls.** There's one template per room type and shape (for example `bunk_dorm:2x1`). Each item is pinned to a wall (back, front, left or right) or the centre, with offsets in metres. Items keep their size and stay against their wall as the room stretches from ring 1 to ring 6. What doesn't fit in a small room is left out, in the template's priority order.
+- **A dev tool** places items into templates and saves them into the project files.
+
+## Defaults (chosen, not yet confirmed)
+
+- **Which rooms:** every room built inside the hole, except empty rooms and stairs and elevators (their shapes are the furniture). That's 31 room types. Surface buildings already have their props.
+- **When:** only built rooms are furnished. Blueprints and rooms under construction stay bare, apart from their construction stripes.
+- **The room's frame:**
+  - **Walls:** a room is an annular sector. Its front wall faces the shaft (ring 1) or the inner ring, its back wall is the outer one, and left and right are its sides. Sides stand parallel to their borders, as the walls do.
+  - **Placements:** each placement names its wall and gives `x` (along the wall from its middle, in metres), `y` (out from the wall to the item's back) and an optional extra turn. A centre placement's `y` runs out from the room's middle toward the back.
+  - **Facing:** items face away from their wall, into the room.
+- **Repeats:** a placement can repeat along its wall every so many metres, as many times as fit (up to a limit). That's how rows of bunks, planters, shelves and desks fill a wide room without a template per width.
+- **Fitting:**
+  - An item must lie inside the room's floor, with 0.15 m to spare from the walls.
+  - It must keep a 0.5 m aisle clear of items already placed.
+  - It must keep the doorway clear: ring-1 rooms have a door in the middle of the shaft face.
+  - Items are placed in template order, skipping any that don't fit, until items cover 35% of the floor (the crowding cap).
+- **Models:**
+  - Parts use shared named colours ("metal", "dark", "panel", "plant", "glow" and so on), and "accent" is the room's category colour, so category colour survives into the furniture.
+  - Screens and lights glow a little at night, like the windows.
+  - Furniture isn't pickable, so clicks land on the room.
+- **Performance:** each room's furniture is merged into one mesh per material and cached like room shapes, so it's rebuilt only when that room changes.
+- **The dev tool:**
+  - **Where:** a dev-only page (`?furnish` in the dev build), not part of the shipped game.
+  - **Layout:** a top-down 2D editor of the room's shape on the left, a live 3D preview on the right, the room type, shape and ring to preview, and the room's item list.
+  - **Editing:** click an item to add it, drag to move (it snaps to walls), rotate, set repeats, reorder priority, and delete.
+  - **Saving:** a small Vite dev-server endpoint writes `data/layouts.json`.
+  - **Previewing:** the preview can switch rings to show how the template fits rooms of every size.
+
+## Steps
+
+1. **The catalogue.**
+   - Items and their models in `data/furniture.json`, and the list of items per room type.
+   - `docs/FURNITURE.md` lists them.
+   - Tests: every furnished room type has items, and every item's parts fit its footprint.
+2. **Models.** Build items from their parts in 3D (`src/render3d/furniture3d.ts`), with shared materials and night glow.
+3. **Layout and fitting.**
+   - The template format.
+   - The room frame (walls, sides, doorway).
+   - Placing, repeating, and fitting with priority and the crowding cap, in `src/view/furnish.ts`, with no Three.js.
+   - Tests: items stay inside and apart, the doorway stays clear, small rooms drop low-priority items, and repeats fill wide rooms.
+4. **Furnished rooms in the game.** Built rooms on visible floors get their furniture, cached per room. It hides with floor cuts, and walls down doesn't touch it.
+5. **The dev tool.** The editor and preview, saving through the dev server.
+6. **Templates for every room.**
+   - One per room type and shape, 39 in all (the eight L rooms have two shapes each).
+   - Checked across rings 1–6 in the tool and in the game, and tuned for crowding.
+   - README and notes.
+
+## Notes as built
+**Step 1, the catalogue:** `data/furniture.json`, `src/view/furniture.ts`, `docs/FURNITURE.md`.
+- **Items:** 76, each a few parts (box, cylinder or sphere) with a centre, size, colour and optional rotation. "Glow" parts light up at night.
+- **Colours:** 23 named colours: metals, panel, composite, plants, water, rust, hazard orange, screen glow, grow-light pink, fire, lamp and so on. "accent" is the room's category colour, so a dorm's bunks are housing blue and a clinic's trim is health pink.
+- **Rooms:** 31 furnished room types, each listing 2–6 items that belong there. `isFurnished` leaves out surface buildings, empty rooms, and stairs and elevators.
+- **Footprints** always cover their parts: a part's box is computed after its rotation, in the same Euler order as Three.js (`partBounds`).
+- **Tests:**
+  - Every furnished room has items, and every listed room and item is real.
+  - Parts fit their footprint and stand on the floor.
+  - Only defined colours are used.
+  - Nothing is taller than a floor.
