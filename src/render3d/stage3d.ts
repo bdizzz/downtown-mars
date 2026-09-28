@@ -12,7 +12,7 @@ import type { HoverInfo, Pick, Proposal, Quality, Stage, StageOptions, Tool, War
 import { FLOOR_H, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
-import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, roomGeometry, setNightGlow } from "./rooms3d";
+import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, withWallsDown } from "./rooms3d";
 import { Dust, galleryLamps, makeLander, placeLander, setLampGlow, Walkers } from "./scenery3d";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Four
@@ -58,15 +58,21 @@ const MODES: { id: Mode; name: string; hint: string }[] = [
 ];
 
 const VIEW_KEY = "downtown-mars.view3d";
-function loadView(): { mode: Mode; xray: boolean } {
+interface ViewPrefs {
+  mode: Mode;
+  xray: boolean;
+  /** Walls between the camera and the rooms behind them lowered to a stub, as in The Sims. */
+  wallsDown: boolean;
+}
+function loadView(): ViewPrefs {
   try {
-    const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? "{}") as Partial<{ mode: Mode; xray: boolean }>;
-    return { mode: MODES.some((m) => m.id === v.mode) ? v.mode! : "shaft", xray: !!v.xray };
+    const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? "{}") as Partial<ViewPrefs>;
+    return { mode: MODES.some((m) => m.id === v.mode) ? v.mode! : "shaft", xray: !!v.xray, wallsDown: !!v.wallsDown };
   } catch {
-    return { mode: "shaft", xray: false };
+    return { mode: "shaft", xray: false, wallsDown: false };
   }
 }
-function saveView(v: { mode: Mode; xray: boolean }): void {
+function saveView(v: ViewPrefs): void {
   try {
     localStorage.setItem(VIEW_KEY, JSON.stringify(v));
   } catch {
@@ -393,6 +399,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (view.mode === "cutaway" && clip.distanceToPoint(hit.point) < -0.01) continue;
       // In x-ray the wall and ring 1 are see-through: pick what's behind them.
       if (view.xray && u.faint) continue;
+      // With walls down, a lowered wall isn't there: pick the room behind it.
+      if (loweredAt(hit, camera.position)) continue;
       // The cap over a chosen floor: pick the cell just under it.
       if (u.surface) offer(hit.distance, () => surfacePickAt(hit.point));
       // A corridor floor, or a room's floor seen from above (rooms have no ceilings):
@@ -445,6 +453,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // Drawn over everything, so a ghost or halo shows even inside a room or behind the wall.
     overlayMat(`s:${color}:${opacity}`, () => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
   const lines = (color: number) => overlayMat(`l:${color}`, () => new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true }));
+  // Halos and tints over rooms lower with the walls they cover.
+  const wallSolid = (color: number, opacity: number) =>
+    overlayMat(`ws:${color}:${opacity}`, () => withWallsDown(new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, depthTest: false, side: THREE.DoubleSide })));
+  const wallLines = (color: number) => overlayMat(`wl:${color}`, () => withWallsDown(new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true })));
 
   // "45%" over rooms under construction, updated as the crews work.
   const progressGroup = new THREE.Group();
@@ -530,7 +542,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function outline(cells: Cell[], color: number): void {
     if (!layout || !cells.length) return;
     const geo = roomGeometry(layout, cells);
-    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), lines(color));
+    const edges = new THREE.LineSegments(outlineGeometry(geo), wallLines(color));
     edges.renderOrder = 10;
     overlay.add(edges);
     geo.dispose();
@@ -538,7 +550,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   function fillCells(cells: Cell[], color: number, opacity: number): void {
     if (!layout || !cells.length) return;
-    const mesh = new THREE.Mesh(roomGeometry(layout, cells), solid(color, opacity));
+    const mesh = new THREE.Mesh(roomGeometry(layout, cells), wallSolid(color, opacity));
     mesh.renderOrder = 9;
     overlay.add(mesh);
   }
@@ -705,7 +717,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const color = v < 0 ? heat.bad : heat.good;
       const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA;
       const mat = overlayMat(`f:${color}:${alpha}`, () =>
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, depthWrite: false, side: THREE.DoubleSide }),
+        withWallsDown(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, depthWrite: false, side: THREE.DoubleSide })),
       );
       fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET, false), mat));
     }
@@ -910,6 +922,18 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (latest) stage.update(latest);
   };
   bar.appendChild(xrayButton);
+  const wallsButton = document.createElement("button");
+  wallsButton.textContent = "Walls down";
+  wallsButton.title = "Lower the walls between you and the rooms behind them, to see inside";
+  wallsButton.onclick = () => {
+    view.wallsDown = !view.wallsDown;
+    saveView(view);
+    syncBar();
+    setWallsDown(view.wallsDown);
+    dirty = true;
+    if (pointer && layout) refreshHover();
+  };
+  bar.appendChild(wallsButton);
   const readout = document.createElement("span");
   readout.className = "k";
   bar.appendChild(readout);
@@ -918,6 +942,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function syncBar(): void {
     modeButtons.forEach((b, i) => b.classList.toggle("on", MODES[i]!.id === view.mode));
     xrayButton.classList.toggle("on", view.xray);
+    wallsButton.classList.toggle("on", view.wallsDown);
   }
 
   function updateReadout(): void {
@@ -927,6 +952,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
   syncBar();
   applyGroundXray();
+  setWallsDown(view.wallsDown);
 
   const resize = new ResizeObserver(() => {
     const w = host.clientWidth;

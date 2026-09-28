@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
-import { roomGeometry, shaftFaces } from "../src/render3d/rooms3d";
+import * as THREE from "three";
+import { loweredAt, outlineGeometry, roomGeometry, setWallsDown, shaftFaces, WALLS_DOWN } from "../src/render3d/rooms3d";
+import { floorSpan, ringRadii, slotAngles } from "../src/render3d/cylinder";
 import { corridorJoints } from "../src/sim/corridors";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
@@ -146,5 +148,73 @@ describe("corridor corners", () => {
     expect(corridorJoints(l).size).toBe(0);
     l.corridors["A1.1.1/3"] = "rock"; // and a turn along the circle
     expect(corridorJoints(l).size).toBe(1);
+  });
+});
+
+describe("walls down", () => {
+  const layout = createLayout(createHole(10, 3, 3, config.geometry));
+  const r = placeRoom(layout, "clinic", ring(2, 2, 1));
+  const room = layout.rooms.find((x) => x.id === r.id)!;
+  const geo = roomGeometry(layout, room.cells);
+  const pos = geo.getAttribute("position");
+  const walls = geo.getAttribute("aWall");
+  const [r0, r1] = ringRadii(layout.hole, 2);
+  const [a0, a1] = slotAngles(1, layout.hole.ringSlots[1]!);
+
+  it("tags every wall with the side its room is on, and floors not at all", () => {
+    let tagged = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const [nx, nz] = [walls.getX(i), walls.getY(i)];
+      if (nx === 0 && nz === 0) continue;
+      tagged++;
+      // A step along the tag from any wall corner lands inside the room.
+      const x = pos.getX(i) + nx * 0.5;
+      const z = pos.getZ(i) + nz * 0.5;
+      const rad = Math.hypot(x, z);
+      const ang = (Math.atan2(z, x) + 2 * Math.PI) % (2 * Math.PI);
+      expect(rad).toBeGreaterThan(r0);
+      expect(rad).toBeLessThan(r1);
+      expect(ang).toBeGreaterThan(a0);
+      expect(ang).toBeLessThan(a1);
+      expect([walls.getZ(i), walls.getW(i)].every((y) => y >= floorSpan(2)[0] && y <= floorSpan(2)[1])).toBe(true);
+    }
+    // Inner, outer and two sides; the floor is untagged.
+    expect(tagged).toBe((2 * CURVED + 2 * SIDE) * 3);
+  });
+
+  it("gives the outline the walls each line borders", () => {
+    const edges = outlineGeometry(geo);
+    const w1 = edges.getAttribute("aWall");
+    const ep = edges.getAttribute("position");
+    let top = 0;
+    for (let i = 0; i < ep.count; i += 2) {
+      // Every line along a wall's top belongs to exactly that wall.
+      if (ep.getY(i) > floorSpan(2)[1] - 0.5 && ep.getY(i + 1) > floorSpan(2)[1] - 0.5) {
+        top++;
+        expect(w1.getX(i) !== 0 || w1.getY(i) !== 0).toBe(true);
+      }
+    }
+    expect(top).toBeGreaterThan(0);
+  });
+
+  it("only lowers walls seen from behind, and only above the stub", () => {
+    // The inner wall, seen from the shaft (behind it) and from inside the room.
+    const mid = (a0 + a1) / 2;
+    const i = [...Array(pos.count).keys()].find((k) => walls.getX(k) * Math.cos(mid) + walls.getY(k) * Math.sin(mid) > 0.9 && Math.abs(Math.hypot(pos.getX(k), pos.getZ(k)) - r0) < 0.2)!;
+    const face = { a: i, b: i, c: i, normal: new THREE.Vector3(), materialIndex: 0 };
+    const [y0, y1] = [walls.getZ(i), walls.getW(i)];
+    const at = (y: number) => new THREE.Vector3(r0 * Math.cos(mid), y, r0 * Math.sin(mid));
+    const hit = (y: number) => ({ distance: 1, point: at(y), face, object: new THREE.Mesh(geo) }) as THREE.Intersection;
+    const inShaft = new THREE.Vector3(0, y1, 0);
+    const inRoom = at(y1).multiplyScalar(((r0 + r1) / 2) / r0);
+    const high = y0 + (y1 - y0) * 0.8;
+    const low = y0 + (y1 - y0) * WALLS_DOWN.stub * 0.5;
+    setWallsDown(false);
+    expect(loweredAt(hit(high), inShaft)).toBe(false);
+    setWallsDown(true);
+    expect(loweredAt(hit(high), inShaft)).toBe(true);
+    expect(loweredAt(hit(low), inShaft)).toBe(false);
+    expect(loweredAt(hit(high), inRoom)).toBe(false);
+    setWallsDown(false);
   });
 });

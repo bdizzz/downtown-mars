@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
-import { floorSpan, ringRadii, slotAngles, TAU } from "./cylinder";
+import { FLOOR_H, floorSpan, ringRadii, slotAngles, TAU } from "./cylinder";
 import { cellEdges, edgeById, edgeVertices, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef } from "../sim/corridors";
 
@@ -33,11 +33,39 @@ function push(pos: number[], ...pts: number[][]): void {
 }
 const at = (r: number, a: number, y: number) => [r * Math.cos(a), y, r * Math.sin(a)];
 
-function curvedFace(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number): void {
+/**
+ * Walls down: which side of a wall the room (or shaft) it bounds lies on, and
+ * the wall's full height, per vertex. With walls down, a wall seen from its
+ * back (so it stands between the camera and what it bounds) drops to a stub.
+ * `side` is +1 when that side is outward (curved faces) or toward larger
+ * angles (radial sides), −1 the other way; `y0`/`y1` default to the face's own.
+ */
+export interface Cut {
+  side: 1 | -1;
+  y0?: number;
+  y1?: number;
+}
+/** Vertex arrays that carry wall tags (`aWall`: interior normal x, z, then base and top y). */
+const wallTags = new WeakMap<number[], number[]>();
+function tagged(): number[] {
+  const pos: number[] = [];
+  wallTags.set(pos, []);
+  return pos;
+}
+function tag(pos: number[], count: number, nx = 0, nz = 0, y0 = 0, y1 = 0): void {
+  const t = wallTags.get(pos);
+  if (t) for (let i = 0; i < count; i++) t.push(nx, nz, y0, y1);
+}
+
+function curvedFace(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number, cut?: Cut): void {
   for (let i = 0; i < ARC_STEPS; i++) {
     const b0 = a0 + ((a1 - a0) * i) / ARC_STEPS;
     const b1 = a0 + ((a1 - a0) * (i + 1)) / ARC_STEPS;
     push(pos, at(r, b0, y0), at(r, b1, y0), at(r, b1, y1), at(r, b0, y0), at(r, b1, y1), at(r, b0, y1));
+    // One normal per segment (at its middle), so all six corners agree on whether it's cut.
+    const m = (b0 + b1) / 2;
+    if (cut) tag(pos, 6, cut.side * Math.cos(m), cut.side * Math.sin(m), cut.y0 ?? y0, cut.y1 ?? y1);
+    else tag(pos, 6);
   }
 }
 
@@ -46,11 +74,14 @@ function flatRing(pos: number[], r0: number, r1: number, a0: number, a1: number,
     const b0 = a0 + ((a1 - a0) * i) / ARC_STEPS;
     const b1 = a0 + ((a1 - a0) * (i + 1)) / ARC_STEPS;
     push(pos, at(r0, b0, y), at(r1, b0, y), at(r1, b1, y), at(r0, b0, y), at(r1, b1, y), at(r0, b1, y));
+    tag(pos, 6);
   }
 }
 
-function radialSide(pos: number[], r0: number, r1: number, a: number, y0: number, y1: number): void {
+function radialSide(pos: number[], r0: number, r1: number, a: number, y0: number, y1: number, cut?: Cut): void {
   push(pos, at(r0, a, y0), at(r1, a, y0), at(r1, a, y1), at(r0, a, y0), at(r1, a, y1), at(r0, a, y1));
+  if (cut) tag(pos, 6, -cut.side * Math.sin(a), cut.side * Math.cos(a), cut.y0 ?? y0, cut.y1 ?? y1);
+  else tag(pos, 6);
 }
 
 function geometry(pos: number[]): THREE.BufferGeometry {
@@ -60,6 +91,8 @@ function geometry(pos: number[]): THREE.BufferGeometry {
   const uv: number[] = [];
   for (let i = 0; i < pos.length; i += 3) uv.push((pos[i]! + pos[i + 2]!) * UV_SCALE, pos[i + 1]! * UV_SCALE);
   g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  const tags = wallTags.get(pos);
+  if (tags) g.setAttribute("aWall", new THREE.Float32BufferAttribute(tags, 4));
   g.computeVertexNormals();
   return g;
 }
@@ -200,7 +233,7 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
   const inner = Math.min(...rings);
   const outer = Math.max(...rings);
   const joints = carve ? new Set(corridorJoints(layout).keys()) : new Set<string>();
-  const pos: number[] = [];
+  const pos = tagged();
   for (const c of cells) {
     let [y0, y1] = floorSpan(c.floor);
     y0 += inset;
@@ -212,20 +245,21 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
     let prev: Piece | null = null;
     for (const p of cut.pieces) {
       // Walls, except where a public room opens onto the gallery or a corridor.
-      if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) curvedFace(pos, p.rr0, p.b0, p.b1, y0, y1);
-      if (c.ring === outer && !(publicRoom && p.outerHall)) curvedFace(pos, p.rr1, p.b0, p.b1, y0, y1);
+      if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) curvedFace(pos, p.rr0, p.b0, p.b1, y0, y1, { side: 1 });
+      if (c.ring === outer && !(publicRoom && p.outerHall)) curvedFace(pos, p.rr1, p.b0, p.b1, y0, y1, { side: -1 });
       flatRing(pos, p.rr0, p.rr1, p.b0, p.b1, y0);
       // A step where a corridor starts or stops partway along a side.
       if (prev) {
-        if (prev.rr0 !== p.rr0) radialSide(pos, Math.min(prev.rr0, p.rr0), Math.max(prev.rr0, p.rr0), p.b0, y0, y1);
-        if (prev.rr1 !== p.rr1) radialSide(pos, Math.min(prev.rr1, p.rr1), Math.max(prev.rr1, p.rr1), p.b0, y0, y1);
+        // The room is on the side of whichever piece reaches further in (or out).
+        if (prev.rr0 !== p.rr0) radialSide(pos, Math.min(prev.rr0, p.rr0), Math.max(prev.rr0, p.rr0), p.b0, y0, y1, { side: prev.rr0 < p.rr0 ? -1 : 1 });
+        if (prev.rr1 !== p.rr1) radialSide(pos, Math.min(prev.rr1, p.rr1), Math.max(prev.rr1, p.rr1), p.b0, y0, y1, { side: prev.rr1 > p.rr1 ? -1 : 1 });
       }
       prev = p;
     }
     const first = cut.pieces[0];
     const last = cut.pieces.at(-1);
-    if (cut.openLeft && first && !(publicRoom && cut.hallLeft)) radialSide(pos, first.rr0, first.rr1, cut.a0, y0, y1);
-    if (cut.openRight && last && !(publicRoom && cut.hallRight)) radialSide(pos, last.rr0, last.rr1, cut.a1, y0, y1);
+    if (cut.openLeft && first && !(publicRoom && cut.hallLeft)) radialSide(pos, first.rr0, first.rr1, cut.a0, y0, y1, { side: 1 });
+    if (cut.openRight && last && !(publicRoom && cut.hallRight)) radialSide(pos, last.rr0, last.rr1, cut.a1, y0, y1, { side: -1 });
   }
   return geometry(pos);
 }
@@ -264,6 +298,105 @@ function material(key: string, make: () => THREE.Material): THREE.Material {
   if (!m) materialCache.set(key, (m = make()));
   return m;
 }
+/** A material for tagged geometry (rooms, the shaft wall, windows, outlines), which lowers with walls down. */
+function wallMaterial(key: string, make: () => THREE.Material): THREE.Material {
+  return material(key, () => withWallsDown(make()));
+}
+
+// ---- walls down ----
+
+/** How much of a lowered wall still stands. */
+export const WALLS_DOWN = { stub: 0.15 };
+const wallsDown = { uWallsDown: { value: 0 }, uWallStub: { value: WALLS_DOWN.stub } };
+
+/** Lower or raise the walls that stand between the camera and what's behind them. */
+export function setWallsDown(on: boolean): void {
+  wallsDown.uWallsDown.value = on ? 1 : 0;
+}
+
+/**
+ * Is a wall at `p`, bounding the side `n` points to, seen from its back by a
+ * camera at `cam`? Then it's in the way, and with walls down it's lowered.
+ * (The same test as the shader below.)
+ */
+function inTheWay(nx: number, nz: number, px: number, pz: number, cam: THREE.Vector3): boolean {
+  return (nx !== 0 || nz !== 0) && (cam.x - px) * nx + (cam.z - pz) * nz < 0;
+}
+
+// Per vertex: lowered walls are squashed down to their stub. A line (a room's
+// outline) may border two walls (`aWall2`), and only drops if both are lowered.
+// Missing attributes read as zero, which never lowers anything.
+const WALLS_GLSL = /* glsl */ `
+  if (uWallsDown > 0.5 && dot(aWall.xy, aWall.xy) > 0.0) {
+    vec2 toCam = cameraPosition.xz - (modelMatrix * vec4(transformed, 1.0)).xz;
+    bool second = dot(aWall2.xy, aWall2.xy) == 0.0 || dot(toCam, aWall2.xy) < 0.0;
+    if (dot(toCam, aWall.xy) < 0.0 && second) transformed.y = min(transformed.y, mix(aWall.z, aWall.w, uWallStub));
+  }
+`;
+
+export function withWallsDown<T extends THREE.Material>(m: T): T {
+  m.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, wallsDown);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute vec4 aWall;\nattribute vec2 aWall2;\nuniform float uWallsDown;\nuniform float uWallStub;")
+      .replace("#include <begin_vertex>", `#include <begin_vertex>\n${WALLS_GLSL}`);
+  };
+  m.customProgramCacheKey = () => "walls-down";
+  return m;
+}
+
+/** Did the ray hit part of a wall that's lowered right now (so it isn't there to click)? */
+export function loweredAt(hit: THREE.Intersection, cam: THREE.Vector3): boolean {
+  if (!wallsDown.uWallsDown.value || !hit.face) return false;
+  const attr = (hit.object as THREE.Mesh).geometry?.getAttribute("aWall");
+  if (!attr) return false;
+  const i = hit.face.a;
+  const [nx, nz, y0, y1] = [attr.getX(i), attr.getY(i), attr.getZ(i), attr.getW(i)];
+  if (!inTheWay(nx, nz, hit.point.x, hit.point.z, cam)) return false;
+  return hit.point.y > y0 + (y1 - y0) * WALLS_DOWN.stub + 1e-3;
+}
+
+/**
+ * A room's outline, with each segment knowing the walls it borders, so the
+ * outline drops with them. Segments are matched to the triangles they came from.
+ */
+export function outlineGeometry(geo: THREE.BufferGeometry): THREE.EdgesGeometry {
+  const edges = new THREE.EdgesGeometry(geo, 30);
+  const pos = geo.getAttribute("position");
+  const walls = geo.getAttribute("aWall");
+  if (!walls) return edges;
+  const key = (x: number, y: number, z: number) => `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
+  const vkey = (i: number) => key(pos.getX(i), pos.getY(i), pos.getZ(i));
+  const pair = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  // Every triangle side on a wall: the walls it belongs to.
+  const bySide = new Map<string, number[][]>();
+  for (let t = 0; t < pos.count; t += 3) {
+    if (walls.getX(t) === 0 && walls.getY(t) === 0) continue;
+    const w = [walls.getX(t), walls.getY(t), walls.getZ(t), walls.getW(t)];
+    const k = [vkey(t), vkey(t + 1), vkey(t + 2)];
+    for (const [a, b] of [[0, 1], [1, 2], [2, 0]] as const) {
+      const id = pair(k[a]!, k[b]!);
+      const list = bySide.get(id) ?? [];
+      // One entry per wall: the two triangles of a face agree.
+      if (!list.some((x) => x[0] === w[0] && x[1] === w[1])) list.push(w);
+      bySide.set(id, list);
+    }
+  }
+  const ep = edges.getAttribute("position");
+  const a1: number[] = [];
+  const a2: number[] = [];
+  for (let i = 0; i < ep.count; i += 2) {
+    const id = pair(key(ep.getX(i), ep.getY(i), ep.getZ(i)), key(ep.getX(i + 1), ep.getY(i + 1), ep.getZ(i + 1)));
+    const [w1, w2] = bySide.get(id) ?? [];
+    for (let j = 0; j < 2; j++) {
+      a1.push(...(w1 ?? [0, 0, 0, 0]));
+      a2.push(w2?.[0] ?? 0, w2?.[1] ?? 0);
+    }
+  }
+  edges.setAttribute("aWall", new THREE.Float32BufferAttribute(a1, 4));
+  edges.setAttribute("aWall2", new THREE.Float32BufferAttribute(a2, 2));
+  return edges;
+}
 
 /** Windows glow brighter as the sky darkens: 0 at noon, 1 at night. */
 export function setNightGlow(night: number): void {
@@ -291,11 +424,11 @@ export function disposeRoomMaterials(): void {
 function roomMaterial(color: number, planned: boolean, faint = false, building = false): THREE.Material {
   // Under construction: the room's colour through semi-opaque diagonal stripes.
   if (building && !faint) {
-    return material(`building:${color}`, () =>
+    return wallMaterial(`building:${color}`, () =>
       new THREE.MeshStandardMaterial({ color, map: stripes(), transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9 }),
     );
   }
-  return material(`room:${color}:${planned}:${faint}`, () =>
+  return wallMaterial(`room:${color}:${planned}:${faint}`, () =>
     planned || faint
       ? new THREE.MeshStandardMaterial({
           color,
@@ -363,7 +496,7 @@ function roomShape(layout: Layout, room: RoomInstance): { geo: THREE.BufferGeome
   let shape = shapeCache.get(key);
   if (!shape) {
     const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public);
-    shape = { geo, edges: new THREE.EdgesGeometry(geo, 30) };
+    shape = { geo, edges: outlineGeometry(geo) };
     shapeCache.set(key, shape);
   }
   return { ...shape, key };
@@ -450,7 +583,7 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   const group = new THREE.Group();
   const hole = layout.hole;
   const n1 = hole.ringSlots[0]!;
-  const rock = material(`rock:${colors.rock}:${xray}`, () =>
+  const rock = wallMaterial(`rock:${colors.rock}:${xray}`, () =>
     xray
       ? new THREE.MeshStandardMaterial({ color: colors.rock, transparent: true, opacity: XRAY.wall, depthWrite: false, side: THREE.DoubleSide })
       : new THREE.MeshStandardMaterial({ color: colors.rock, roughness: 0.95, side: THREE.DoubleSide }),
@@ -458,7 +591,7 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
 
   // The shaft wall, wherever a built room doesn't replace it.
   const lastFloor = digFloor ?? hole.floors;
-  const wall: number[] = [];
+  const wall = tagged();
   for (let floor = topFloor ?? 1; floor <= lastFloor; floor++) {
     const [y0, y1] = floorSpan(floor);
     for (let slot = 0; slot < n1; slot++) {
@@ -470,7 +603,7 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
       const mouth = (i: number) => (layout.corridors?.[`R${floor}.1.${i % n1}`] ? HALL / hole.shaftRadiusM : 0);
       const a0 = s0 + mouth(slot);
       const a1 = s1 - mouth(slot + 1);
-      if (a1 > a0) curvedFace(wall, hole.shaftRadiusM, a0, a1, y0, y1);
+      if (a1 > a0) curvedFace(wall, hole.shaftRadiusM, a0, a1, y0, y1, { side: -1 }); // open toward the shaft
     }
   }
   const wallMesh = new THREE.Mesh(geometry(wall), rock);
@@ -478,10 +611,10 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   group.add(wallMesh);
 
   const used = new Set<string>();
-  const glass = material("glass", () => new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.2, metalness: 0.3, side: THREE.DoubleSide }));
-  const door = material("door", () => new THREE.MeshStandardMaterial({ color: DOOR.color, roughness: 0.9, side: THREE.DoubleSide }));
-  const strandedLine = material(`stranded:${colors.stranded}`, () => new THREE.LineBasicMaterial({ color: colors.stranded })) as THREE.LineBasicMaterial;
-  const edgeLine = material("edges", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.5 })) as THREE.LineBasicMaterial;
+  const glass = wallMaterial("glass", () => new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.2, metalness: 0.3, side: THREE.DoubleSide }));
+  const door = wallMaterial("door", () => new THREE.MeshStandardMaterial({ color: DOOR.color, roughness: 0.9, side: THREE.DoubleSide }));
+  const strandedLine = wallMaterial(`stranded:${colors.stranded}`, () => new THREE.LineBasicMaterial({ color: colors.stranded })) as THREE.LineBasicMaterial;
+  const edgeLine = wallMaterial("edges", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.5 })) as THREE.LineBasicMaterial;
 
   if (topFloor !== null) group.add(...floorCap(layout, topFloor));
   group.add(...corridorFloors(layout, topFloor));
@@ -511,15 +644,17 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     if (!room.planned && !faint && !def.public) {
       // Shaft frontage: a window band on every ring-1 face, a door in the middle of the room's run.
       const faces = shaftFaces(layout, room);
-      const win: number[] = [];
-      for (const f of faces) curvedFace(win, f.r - WINDOW.inset, f.a0 + 0.02, f.a1 - 0.02, f.y0 + WINDOW.bottom, f.y0 + WINDOW.top);
+      const win = tagged();
+      // They go down with the wall they're set in.
+      const inWall = (f: { y0: number }): Cut => ({ side: 1, y0: f.y0, y1: f.y0 + FLOOR_H });
+      for (const f of faces) curvedFace(win, f.r - WINDOW.inset, f.a0 + 0.02, f.a1 - 0.02, f.y0 + WINDOW.bottom, f.y0 + WINDOW.top, inWall(f));
       if (win.length) group.add(new THREE.Mesh(geometry(win), glass));
       const mid = faces[Math.floor(faces.length / 2)];
       if (mid) {
         const a = (mid.a0 + mid.a1) / 2;
         const half = DOOR.width / 2 / mid.r;
-        const d: number[] = [];
-        curvedFace(d, mid.r - WINDOW.inset * 2, a - half, a + half, mid.y0 + 0.4, mid.y0 + 0.4 + DOOR.height);
+        const d = tagged();
+        curvedFace(d, mid.r - WINDOW.inset * 2, a - half, a + half, mid.y0 + 0.4, mid.y0 + 0.4 + DOOR.height, inWall(mid));
         group.add(new THREE.Mesh(geometry(d), door));
       }
     }
