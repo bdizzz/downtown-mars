@@ -77,7 +77,7 @@ describe("saves", () => {
 
   it("summarizes the whole world for the load menu", () => {
     const w = createWorld(config);
-    run(w, config.ticksPerDay * 2);
-    expect(summarize(w, config)).toEqual({ day: 3, population: 20, floors: 2, holes: 1 });
+    run(w, config.ticksPerDay * 4); // the drill takes 3 days for floor 2
+    expect(summarize(w, config)).toEqual({ day: 5, population: 20, floors: 2, holes: 1 });
   });
 });

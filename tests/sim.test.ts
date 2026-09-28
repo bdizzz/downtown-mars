@@ -15,8 +15,8 @@ describe("clock", () => {
     expect(gameTime(239, { ticksPerDay: 240, startHour: 0 })).toMatchObject({ day: 1, hour: 23, minute: 54 });
   });
 
-  it("a day at 1x takes 60 real seconds", () => {
-    expect(config.ticksPerDay / config.ticksPerSecondAt1x).toBe(60);
+  it("a day at 1x takes 2 real minutes", () => {
+    expect(config.ticksPerDay / config.ticksPerSecondAt1x).toBe(120);
   });
 });
 

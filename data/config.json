@@ -1,7 +1,7 @@
 {
   "ticksPerDay": 240,
   "startHour": 6,
-  "ticksPerSecondAt1x": 4,
+  "ticksPerSecondAt1x": 2,
   "speeds": [0, 1, 2, 4],
   "snapshotsPerSecond": 20,
   "maxTicksPerFrame": 64,
@@ -27,13 +27,13 @@
     "unlockedRings": 3
   },
   "digging": {
-    "ticksForFirstFloor": 360,
-    "depthGrowth": 0.15,
-    "rockPerSlot": 1,
+    "ticksForFirstFloor": 720,
+    "depthGrowth": 0.2,
+    "rockPerSlot": 2,
     "depositYieldsPerSlot": {
-      "ore": { "ore": 0.4 },
-      "silica": { "silica": 0.4 },
-      "ice": { "water": 0.5 }
+      "ore": { "ore": 0.8 },
+      "silica": { "silica": 0.8 },
+      "ice": { "water": 1 }
     },
     "maxFloors": 40
   },

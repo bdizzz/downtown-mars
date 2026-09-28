@@ -33,3 +33,14 @@ Decided (Bryon):
   - Bradbury builds 7 warehouses and Gale 4.
 
 Tests (`tests/storage.test.ts`): which goods need storage; the pod holds the starting stock; allocations add up; limits on allocation; overflow is lost; per-room fill; old saves.
+
+## Follow-up: a slower clock and drill (Bryon, Sep 27)
+
+Space came too fast in real time, so:
+- **Ticks:** 2 per second at 1× (was 4), so a game day is 2 real minutes (was 1). The speeds (1×, 2×, 4×) are unchanged, and everything timed in game days (Earth drops, births, construction, rovers) takes twice as long in real time.
+- **Drill:** 720 ticks for floor 2 (was 360), and each floor 20% longer than the last (was 15%). Floor 10 now takes about 62 game days (about 2 real hours at 1×), against about 25 real minutes before.
+- **Yields per floor doubled** so the rock and mineral economy per game day stays about where it was: 2 rock per slot (was 1), ore and silica 0.8 per slot (was 0.4), water from ice 1 (was 0.5). Without this, the scripted players starved for rock and health dipped to 56 in the first month.
+- **Results** (seed 42):
+  - First month: floor 7 by day 30, 68 colonists, and health never below 89.
+  - First hour, two holes: the kit starts around day 33, and the network ends at 104 against the solo player's 84.
+- Tests read the day length and yields from config rather than fixed numbers.
