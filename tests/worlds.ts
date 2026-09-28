@@ -1,5 +1,6 @@
 import { afterAll, beforeAll } from "vitest";
 import { construction } from "../src/sim/construction";
+import { storage } from "../src/sim/storage";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { foundHole } from "../src/sim/founding";
@@ -40,5 +41,15 @@ export function withConstructionTime(): void {
   });
   afterAll(() => {
     construction.instant = true;
+  });
+}
+
+/** Run a block of tests with real storage limits (the setup file lifts them for the rest). */
+export function withStorage(): void {
+  beforeAll(() => {
+    storage.unlimited = false;
+  });
+  afterAll(() => {
+    storage.unlimited = true;
   });
 }

@@ -10,9 +10,9 @@
     {
       "id": "rock",
       "name": "Bare rock",
-      "hint": "Rough-hewn and dark; cheap, from the rock you dig",
+      "hint": "Rough-hewn and dark; cheap, from the rock you dig, but digging it out takes work",
       "cost": {
-        "rock": 3
+        "rock": 5
       },
       "color": "#8a6650",
       "accent": "#5c4031"

@@ -15,7 +15,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 13;
+export const SAVE_VERSION = 14;
 
 type Raw = Record<string, unknown>;
 
@@ -77,7 +77,23 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
   }),
   // v13: construction time. What was already there is built.
   12: (s) => ({ ...s, holes: (s.holes as Raw[]).map((h) => ({ ...h, construction: { queue: [], nextJobId: 1 } })) }),
+  // v14: dry goods live in storage rooms. What the hole could hold before now sits in the landing pod.
+  13: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const layout = h.layout as Layout;
+      const pod = layout.rooms.find((r) => r.type === "landing_pod");
+      if (pod) {
+        pod.allocation = { ...LEGACY_CAPACITY };
+        pod.storageUnits = Object.values(LEGACY_CAPACITY).reduce((a, b) => a + b, 0);
+      }
+      return { ...h, layout };
+    }),
+  }),
 };
+
+/** What a hole could hold of each dry good before storage rooms (save v13 and older). */
+const LEGACY_CAPACITY: Record<string, number> = {meals:  30, rawFood:  200, rations:  200, soil:  100, rock:  400, ore:  300, silica:  300, brick:  200, marscrete:  200, metal:  200, machinery:  50, wafers:  100, electronics:  50};
 
 export interface SaveSummary {
   day: number;

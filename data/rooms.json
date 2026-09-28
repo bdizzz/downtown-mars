@@ -16,7 +16,19 @@
       "effects": [],
       "cost": {},
       "buildable": false,
-      "placeholder": true
+      "placeholder": true,
+      "storage": 400,
+      "defaultAllocation": {
+        "rations": 120,
+        "meals": 30,
+        "rawFood": 20,
+        "soil": 50,
+        "rock": 80,
+        "metal": 60,
+        "brick": 20,
+        "machinery": 10,
+        "electronics": 10
+      }
     },
     {
       "id": "landing_pad",
@@ -833,6 +845,69 @@
         "machinery": 3
       },
       "buildHours": 30,
+      "buildable": true
+    },
+    {
+      "id": "storeroom",
+      "name": "Storeroom",
+      "short": "Store",
+      "category": "storage",
+      "size": "S",
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "storage": 90,
+      "effects": [],
+      "cost": {
+        "rock": 8,
+        "metal": 2
+      },
+      "buildHours": 5,
+      "buildable": true
+    },
+    {
+      "id": "warehouse",
+      "name": "Warehouse",
+      "short": "Warehouse",
+      "category": "storage",
+      "size": "M",
+      "staff": 1,
+      "uses": {},
+      "makes": {},
+      "storage": 200,
+      "effects": [],
+      "cost": {
+        "rock": 15,
+        "metal": 5
+      },
+      "buildHours": 10,
+      "buildable": true
+    },
+    {
+      "id": "depot",
+      "name": "Depot",
+      "short": "Depot",
+      "category": "storage",
+      "size": "L",
+      "staff": 2,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "storage": 440,
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "rock": 30,
+        "metal": 10,
+        "machinery": 1
+      },
+      "buildHours": 20,
       "buildable": true
     }
   ]

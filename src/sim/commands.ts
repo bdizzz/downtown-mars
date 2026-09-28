@@ -11,6 +11,7 @@ import { corridorCost, corridorRefusal, CORRIDORS, isFinish, recomputeAccess, ro
 import { edgeById } from "./edges";
 import { dropCorridors, dropRoomJobs, prioritize, queueCorridors, queueExtension, queueFill, queueRoom } from "./construction";
 import { holeGates } from "./people";
+import { allocationRefusal } from "./storage";
 import { answerVisit } from "./visits";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
@@ -37,6 +38,8 @@ export type SimCommand =
   | { type: "prioritize"; jobId: number }
   /** Take a job out of the queue before it's done, with a full refund. */
   | { type: "cancelJob"; jobId: number }
+  /** Share a storage room's space among goods (units per good; the rest is left free). */
+  | { type: "setAllocation"; roomId: number; allocation: Record<string, number> }
   /** Start or stop the staging bay gathering a seed kit. */
   | { type: "setGathering"; gathering: boolean };
 
@@ -270,6 +273,15 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       if (!room) return { ok: false, reason: "No such room" };
       if (!config.economy.priorities.includes(cmd.priority)) return { ok: false, reason: "Unknown priority" };
       room.priority = cmd.priority;
+      layout.version++;
+      return { ok: true };
+    }
+    case "setAllocation": {
+      const room = layout.rooms.find((r) => r.id === cmd.roomId);
+      if (!room) return { ok: false, reason: "No such room" };
+      const refusal = allocationRefusal(room, cmd.allocation);
+      if (refusal) return { ok: false, reason: refusal };
+      room.allocation = Object.fromEntries(Object.entries(cmd.allocation).filter(([, v]) => v > 0));
       layout.version++;
       return { ok: true };
     }

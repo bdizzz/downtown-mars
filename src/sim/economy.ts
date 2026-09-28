@@ -6,6 +6,7 @@ import { cropDef, resourceDef, resourceDefs } from "./resources";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 import { countStage, needsWeight, type Cohort } from "./people";
+import { storageCaps } from "./storage";
 
 // The per-tick economy: staff the rooms, run them, feed the colonists, cap
 // storage. Every amount in the data is per game day, so each tick moves
@@ -107,10 +108,11 @@ export function capacities(state: SimState, cfg: SimConfig): Record<string, numb
   const caps: Record<string, number> = {};
   for (const r of resourceDefs) caps[r.id] = r.baseCapacity;
   for (const room of state.layout.rooms) {
-    if (room.planned) continue;
+    if (room.planned || room.building) continue;
     for (const [id, v] of Object.entries(roomSpec(room, cfg).stores)) caps[id] = (caps[id] ?? 0) + v;
   }
-  return caps;
+  // Dry goods live in storage rooms: only as much as they've space allocated for.
+  return { ...caps, ...storageCaps(state) };
 }
 
 function priorityOrder(cfg: SimConfig) {

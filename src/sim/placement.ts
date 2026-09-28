@@ -38,6 +38,10 @@ export interface RoomInstance {
   building?: boolean;
   /** Stairs or an elevator reaching further: cells held for floors still being built. */
   pendingCells?: Cell[];
+  /** Storage rooms: space per good, in units (none by default). */
+  allocation?: Record<string, number>;
+  /** Storage space overriding the room's own (old saves' landing pod). */
+  storageUnits?: number;
   /** Switched off by the player: no staff, no inputs, no output. */
   paused?: boolean;
   /** Idle (and release its staff) while its main output is at or above this stock. */
@@ -280,6 +284,7 @@ export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimCo
     planned: check.planned,
     priority: def.priority ?? cfg.economy.defaultPriority,
     ...(def.defaultCrop ? { crop: def.defaultCrop } : {}),
+    ...(def.defaultAllocation ? { allocation: { ...def.defaultAllocation } } : {}),
   });
   for (const c of check.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = id;
   for (const s of check.surfaceCells) layout.surface[s] = id;

@@ -53,6 +53,10 @@ export interface RoomDef {
   caresForElders?: number;
   /** Not buildable until the hole has reached this (see UNLOCKS in costs.ts). */
   unlockedBy?: "children" | "elders";
+  /** Units of storage for dry goods (data/storage.json). */
+  storage?: number;
+  /** How its storage starts out allocated (the landing pod); otherwise empty. */
+  defaultAllocation?: Record<string, number>;
   /** Work-hours to build it; otherwise its size's hours (data/construction.json). */
   buildHours?: number;
   /** Construction bandwidth it adds at full staff (construction offices). */

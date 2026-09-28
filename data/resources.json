@@ -1,5 +1,5 @@
 {
-  "_note": "baseCapacity is what the landing pod stores before any tanks, batteries or warehouses.",
+  "_note": "baseCapacity is what the landing pod stores before any tanks, batteries or warehouses. Dry goods (food and materials) have no base capacity: storage rooms decide it (data/storage.json).",
   "resources": [
     {
       "id": "power",
@@ -45,25 +45,25 @@
       "id": "meals",
       "name": "Meals",
       "group": "food",
-      "baseCapacity": 30
+      "baseCapacity": 0
     },
     {
       "id": "rawFood",
       "name": "Raw food",
       "group": "food",
-      "baseCapacity": 200
+      "baseCapacity": 0
     },
     {
       "id": "rations",
       "name": "Earth rations",
       "group": "food",
-      "baseCapacity": 200
+      "baseCapacity": 0
     },
     {
       "id": "soil",
       "name": "Soil",
       "group": "food",
-      "baseCapacity": 100
+      "baseCapacity": 0
     },
     {
       "id": "organicWaste",
@@ -83,55 +83,55 @@
       "id": "rock",
       "name": "Rock",
       "group": "material",
-      "baseCapacity": 400
+      "baseCapacity": 0
     },
     {
       "id": "ore",
       "name": "Ore",
       "group": "material",
-      "baseCapacity": 300
+      "baseCapacity": 0
     },
     {
       "id": "silica",
       "name": "Silica",
       "group": "material",
-      "baseCapacity": 300
+      "baseCapacity": 0
     },
     {
       "id": "brick",
       "name": "Brick",
       "group": "material",
-      "baseCapacity": 200
+      "baseCapacity": 0
     },
     {
       "id": "marscrete",
       "name": "Marscrete",
       "group": "material",
-      "baseCapacity": 200
+      "baseCapacity": 0
     },
     {
       "id": "metal",
       "name": "Metal",
       "group": "material",
-      "baseCapacity": 200
+      "baseCapacity": 0
     },
     {
       "id": "machinery",
       "name": "Machinery",
       "group": "material",
-      "baseCapacity": 50
+      "baseCapacity": 0
     },
     {
       "id": "wafers",
       "name": "Silicon wafers",
       "group": "material",
-      "baseCapacity": 100
+      "baseCapacity": 0
     },
     {
       "id": "electronics",
       "name": "Electronics",
       "group": "material",
-      "baseCapacity": 50
+      "baseCapacity": 0
     }
   ]
 }
