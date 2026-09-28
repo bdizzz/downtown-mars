@@ -124,3 +124,5 @@ Each adds `constructionBandwidth` times its running rate (staffing × morale), s
 
 **Follow-ups (Bryon, Sep 27):**
 - **Corridors through rock** (reverses "only next to a room"): a corridor may run along any border in a dug floor (or the one being dug) and the unlocked rings, with rock on both sides if need be. Borders touching a locked ring are refused, including the outer edge of the last unlocked ring ("Ring 4+ needs reinforcement frames"). The middle of a room is still off limits. Connect can now dig through rock to reach any room.
+- **Filling in takes construction time:** filling a corridor in (paid on commit, as before) is now a queue job ("Filling in corridors (n segments)"), by length like carving. The corridor stays in use, taped in orange, until the job is done. Hovering a corridor already queued to be filled in says so.
+- **Cancel from the queue:** a new `cancelJob` command, and a ✕ on every job in the Construction panel, take any job out of the queue with a full refund. A room is removed, corridors not yet carved are dropped, a fill-in leaves the corridor where it was, and a waiting stair floor is let go.

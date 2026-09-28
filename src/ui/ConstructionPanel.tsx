@@ -34,11 +34,16 @@ export function ConstructionPanel({ s, onCommand, onSelect, onClose }: { s: Snap
                 <span>{j.label}</span>
               )}
               <span className="k">{j.hoursLeft === null ? "waits for its floor" : hoursText(j.hoursLeft)}</span>
-              {i > 0 && (
-                <button className="up" onClick={() => onCommand({ type: "prioritize", jobId: j.id })} title="Priority construction: move it to the front">
-                  ⤒
+              <span className="actions">
+                {i > 0 && (
+                  <button className="up" onClick={() => onCommand({ type: "prioritize", jobId: j.id })} title="Priority construction: move it to the front">
+                    ⤒
+                  </button>
+                )}
+                <button className="up" onClick={() => onCommand({ type: "cancelJob", jobId: j.id })} title="Cancel it, with a full refund">
+                  ✕
                 </button>
-              )}
+              </span>
             </div>
             <div className="bar">
               <div style={{ width: `${Math.round(j.progress * 100)}%` }} />

@@ -115,6 +115,48 @@ describe("construction time", () => {
     expect(s.construction.queue.some((j) => j.kind === "corridors")).toBe(false);
   });
 
+  it("filling a corridor in takes construction time; it stays in use until it's done", () => {
+    const s = site();
+    build(s, "galley", ring(1, 1, 2));
+    applyCommand(s, { type: "drawCorridors", edges: ["R1.1.2"], finish: "rock" });
+    hours(s, 12);
+    expect(s.layout.corridorLinked?.["R1.1.2"]).toBe(true);
+    expect(applyCommand(s, { type: "removeCorridors", edges: ["R1.1.2"] }).ok).toBe(true);
+    const job = s.construction.queue.at(-1)!;
+    expect(job).toMatchObject({ kind: "fill", edges: ["R1.1.2"] });
+    expect(s.layout.corridorLinked?.["R1.1.2"]).toBe(true); // still there
+    hours(s, job.work + 0.2);
+    expect(s.layout.corridors["R1.1.2"]).toBeUndefined();
+  });
+
+  it("cancelling a fill-in keeps the corridor and refunds it", () => {
+    const s = site();
+    build(s, "galley", ring(1, 1, 2));
+    applyCommand(s, { type: "drawCorridors", edges: ["R1.1.2"], finish: "rock" });
+    hours(s, 12);
+    const rock = s.resources.rock!;
+    applyCommand(s, { type: "removeCorridors", edges: ["R1.1.2"] });
+    const job = s.construction.queue.at(-1)!;
+    expect(applyCommand(s, { type: "cancelJob", jobId: job.id }).ok).toBe(true);
+    expect(s.resources.rock).toBeCloseTo(rock, 6);
+    expect(s.layout.corridors["R1.1.2"]).toBe("rock");
+    expect(s.layout.corridorsFilling?.["R1.1.2"]).toBeUndefined();
+  });
+
+  it("cancelling any job refunds it: a room, corridors, another floor of stairs", () => {
+    const s = site();
+    const metal = s.resources.metal!;
+    const g = build(s, "galley", ring(1, 1, 2));
+    applyCommand(s, { type: "cancelJob", jobId: s.construction.queue[0]!.id });
+    expect(room(s, g.id)).toBeUndefined();
+    expect(s.resources.metal).toBe(metal);
+    const rock = s.resources.rock!;
+    applyCommand(s, { type: "drawCorridors", edges: ["R1.1.5"], finish: "rock" });
+    applyCommand(s, { type: "cancelJob", jobId: s.construction.queue[0]!.id });
+    expect(s.layout.corridors["R1.1.5"]).toBeUndefined();
+    expect(s.resources.rock).toBeCloseTo(rock, 6);
+  });
+
   it("stairs reach their new floor when the extension is built", () => {
     const s = site();
     s.layout.hole.floors = 4;

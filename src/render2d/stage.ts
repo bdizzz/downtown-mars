@@ -377,8 +377,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const building = l.corridorsBuilding?.[id] !== undefined;
       corridorBand(roomsCtx, b.x, b.y, b.len, BAND, b.along, finish, planned || building ? 0.45 : 1);
       const [w, hh] = b.along === "h" ? [b.len, BAND] : [BAND, b.len];
-      if (building) {
-        // Not built yet: a dashed orange outline, like tape around a dig.
+      if (building || l.corridorsFilling?.[id] !== undefined) {
+        // Not built yet, or about to be filled in: a dashed orange outline, like tape around a dig.
         for (let t = 0; t < b.len; t += 8) {
           const [x0, y0, x1, y1] = b.along === "h" ? [b.x + t, b.y, b.x + Math.min(t + 4, b.len), b.y] : [b.x, b.y + t, b.x, b.y + Math.min(t + 4, b.len)];
           roomsCtx.moveTo(x0, y0).lineTo(x1, y1);
@@ -386,7 +386,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
           else roomsCtx.moveTo(x0 + BAND, y0).lineTo(x1 + BAND, y1);
         }
         roomsCtx.stroke({ color: C.build, width: 2 });
-        continue;
+        if (building) continue;
       }
       if (!linked && !planned) {
         for (let t = 0; t < b.len; t += 8) {

@@ -397,5 +397,6 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .construction { width: 300px; }
 .construction .queue { list-style: none; padding: 0; margin: 6px 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .construction .row { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; align-items: center; margin-bottom: 2px; }
+.construction .actions { display: flex; gap: 3px; }
 .construction button.link { background: none; border: none; color: var(--text); padding: 0; font: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted; }
 .build-chip { border-color: #e0a03a !important; }

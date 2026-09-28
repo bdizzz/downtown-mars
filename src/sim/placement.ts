@@ -61,6 +61,8 @@ export interface Layout {
   corridorLinked?: Record<string, boolean>;
   /** Corridors still in the construction queue: edge id → job id. */
   corridorsBuilding?: Record<string, number>;
+  /** Corridors being filled in (still usable until the job's done): edge id → job id. */
+  corridorsFilling?: Record<string, number>;
 }
 
 export type CheckResult =

@@ -23,8 +23,8 @@ export const construction = raw as unknown as {
 
 export interface Job {
   id: number;
-  /** A room, a set of corridor segments, or more floors for stairs or an elevator. */
-  kind: "room" | "corridors" | "extend";
+  /** A room, corridor segments to carve or to fill in, or more floors for stairs or an elevator. */
+  kind: "room" | "corridors" | "fill" | "extend";
   roomId?: number;
   edges?: string[];
   /** Work needed and done, in work-hours. */
@@ -101,6 +101,17 @@ export function queueCorridors(state: SimState, edges: string[], cfg: SimConfig)
   for (const id of edges) layout.corridorsBuilding[id] = job.id;
 }
 
+/** Corridors to fill in: they stay usable until the crews get to them. Returns false if it happened at once (instant). */
+export function queueFill(state: SimState, edges: string[], cfg: SimConfig): boolean {
+  if (!edges.length) return false;
+  const job = add(state, { kind: "fill", edges: [...edges], work: corridorWork(state.layout, edges, cfg) });
+  if (!job) return false;
+  const layout = state.layout;
+  layout.corridorsFilling ??= {};
+  for (const id of edges) layout.corridorsFilling[id] = job.id;
+  return true;
+}
+
 /** The job building this room (or extending it), if any. */
 export function jobForRoom(state: SimState, roomId: number): Job | undefined {
   return state.construction?.queue.find((j) => j.roomId === roomId);
@@ -108,7 +119,7 @@ export function jobForRoom(state: SimState, roomId: number): Job | undefined {
 
 /** Can the crews work on this job yet? A blueprint on a floor still being dug waits. */
 function workable(state: SimState, job: Job): boolean {
-  if (job.kind === "corridors") return (job.edges ?? []).every((id) => (edgeById(state.layout.hole, id)?.floor ?? 0) <= state.layout.hole.floors);
+  if (job.kind === "corridors" || job.kind === "fill") return (job.edges ?? []).every((id) => (edgeById(state.layout.hole, id)?.floor ?? 0) <= state.layout.hole.floors);
   const room = state.layout.rooms.find((r) => r.id === job.roomId);
   return !!room && !room.planned;
 }
@@ -122,9 +133,16 @@ function finish(state: SimState, job: Job, cfg: SimConfig): void {
     delete room.pendingCells;
   }
   if (job.kind === "corridors") for (const id of job.edges ?? []) if (layout.corridorsBuilding?.[id] === job.id) delete layout.corridorsBuilding[id];
+  if (job.kind === "fill") {
+    for (const id of job.edges ?? []) {
+      if (layout.corridorsFilling?.[id] !== job.id) continue;
+      delete layout.corridorsFilling[id];
+      delete layout.corridors[id];
+    }
+  }
   recomputeAccess(layout);
   layout.version++;
-  if (job.kind !== "corridors" && room) postMessage(state, cfg, `${roomDef(room.type).name} ${job.kind === "extend" ? "extended" : "built"}.`);
+  if (job.kind !== "corridors" && job.kind !== "fill" && room) postMessage(state, cfg, `${roomDef(room.type).name} ${job.kind === "extend" ? "extended" : "built"}.`);
 }
 
 /** Each tick: bandwidth goes to the first job that can be worked, any left over to the next. */
@@ -202,9 +220,12 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
   const jobs = (state.construction?.queue ?? []).map((job): JobView => {
     const room = job.roomId !== undefined ? state.layout.rooms.find((r) => r.id === job.roomId) : undefined;
     const name = room ? roomDef(room.type).name : "";
+    const n = job.edges?.length ?? 0;
     const label =
       job.kind === "corridors"
-        ? `Corridors (${job.edges?.length ?? 0} ${(job.edges?.length ?? 0) === 1 ? "segment" : "segments"})`
+        ? `Corridors (${n} ${n === 1 ? "segment" : "segments"})`
+        : job.kind === "fill"
+          ? `Filling in corridors (${n} ${n === 1 ? "segment" : "segments"})`
         : job.kind === "extend"
           ? `${name}: another floor`
           : name;

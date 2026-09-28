@@ -46,7 +46,7 @@ export function edgeHoverFor(layout: Layout, resources: Record<string, number>, 
   const finish = layout.corridors[edge.id];
   const removing = erase || tool.erase;
   let refusal: string | null;
-  if (removing) refusal = finish ? null : "No corridor here to remove";
+  if (removing) refusal = !finish ? "No corridor here to remove" : layout.corridorsFilling?.[edge.id] !== undefined ? "Already being filled in" : null;
   else refusal = corridorRefusal(layout, edge.id);
   // Drawing costs the chosen finish; removing costs the corridor's own (rebuilding the walls).
   const cost = removing ? (finish ? corridorCost(layout.hole, edge, finish, config) : {}) : finish ? {} : corridorCost(layout.hole, edge, tool.finish, config);

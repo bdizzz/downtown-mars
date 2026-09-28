@@ -240,9 +240,9 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       const planned = e.floor > h.floors;
       const building = l.corridorsBuilding?.[id] !== undefined;
       const poly = corridorStrip(roomsCtx, s.at, s.normal, s.len, BAND, finish, planned || building ? 0.45 : 1);
-      if (building) {
+      if (building || l.corridorsFilling?.[id] !== undefined) {
         roomsCtx.poly(poly).stroke({ color: C.build, width: 2 });
-        continue;
+        if (building) continue;
       }
       if (!l.corridorLinked?.[id] && !planned) {
         roomsCtx.poly(poly).stroke({ color: C.bad, width: 2 });

@@ -9,7 +9,7 @@ import { isCrop } from "./resources";
 import { mainOutput } from "./economy";
 import { corridorCost, corridorRefusal, CORRIDORS, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById } from "./edges";
-import { dropCorridors, dropRoomJobs, prioritize, queueCorridors, queueExtension, queueRoom } from "./construction";
+import { dropCorridors, dropRoomJobs, prioritize, queueCorridors, queueExtension, queueFill, queueRoom } from "./construction";
 import { holeGates } from "./people";
 import { answerVisit } from "./visits";
 import { roomDef } from "./rooms";
@@ -34,6 +34,8 @@ export type SimCommand =
   | { type: "connectRoom"; roomId: number; finish: string }
   /** Move a construction job to the front of the queue. */
   | { type: "prioritize"; jobId: number }
+  /** Take a job out of the queue before it's done, with a full refund. */
+  | { type: "cancelJob"; jobId: number }
   /** Start or stop the staging bay gathering a seed kit. */
   | { type: "setGathering"; gathering: boolean };
 
@@ -138,6 +140,32 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       }
       return result;
     }
+    case "cancelJob": {
+      const job = state.construction?.queue.find((j) => j.id === cmd.jobId);
+      if (!job) return { ok: false, reason: "Nothing in the queue by that number" };
+      if (job.kind === "room" && job.roomId !== undefined) return apply(state, { type: "demolish", roomId: job.roomId });
+      if (job.kind === "corridors") return apply(state, { type: "removeCorridors", edges: job.edges ?? [] });
+      if (job.kind === "fill") {
+        // The corridors stay; what was paid to fill them in comes back.
+        for (const id of job.edges ?? []) {
+          const finish = layout.corridors[id];
+          if (finish) for (const [r, v] of Object.entries(corridorCost(layout.hole, edgeById(layout.hole, id)!, finish, config))) state.resources[r] = (state.resources[r] ?? 0) + v;
+          delete layout.corridorsFilling?.[id];
+        }
+      } else if (job.kind === "extend" && job.roomId !== undefined) {
+        // The waiting floors are let go, and their piece refunded.
+        const room = layout.rooms.find((r) => r.id === job.roomId);
+        for (const c of room?.pendingCells ?? []) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = 0;
+        if (room) {
+          delete room.pendingCells;
+          refund(state.resources, room.type, 1);
+        }
+      }
+      state.construction.queue = state.construction.queue.filter((j) => j !== job);
+      recomputeAccess(layout);
+      layout.version++;
+      return { ok: true };
+    }
     case "prioritize":
       return prioritize(state, cmd.jobId) ? { ok: true } : { ok: false, reason: "Nothing in the queue by that number" };
     case "drawCorridors":
@@ -153,7 +181,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         }
         delete layout.corridors[id];
       }
-      const gone = all.filter((id) => layout.corridors[id]);
+      const gone = all.filter((id) => layout.corridors[id] && layout.corridorsFilling?.[id] === undefined);
       if (!gone.length) {
         recomputeAccess(layout);
         layout.version++;
@@ -168,6 +196,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         if (short) return { ok: false, reason: short };
       }
       let removed = 0;
+      const filled: string[] = [];
       let firstShort: string | null = null;
       for (const id of gone) {
         const cost = corridorCost(layout.hole, edgeById(layout.hole, id)!, layout.corridors[id]!, config);
@@ -180,10 +209,12 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
           state.resources[r] = (state.resources[r] ?? 0) - v;
           record(state, r, "out", CORRIDORS, v);
         }
-        delete layout.corridors[id];
+        filled.push(id);
         removed++;
       }
       if (!removed) return { ok: false, reason: firstShort ?? "No corridor there" };
+      // Filling in takes construction time too; until then the corridor stays in use.
+      if (!queueFill(state, filled, config)) for (const id of filled) delete layout.corridors[id];
       recomputeAccess(layout);
       layout.version++;
       return { ok: true };
