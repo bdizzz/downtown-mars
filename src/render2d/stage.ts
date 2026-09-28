@@ -7,8 +7,9 @@ import { corridors } from "../sim/corridors";
 import { corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
-import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
-import type { HoverInfo, Stage, StageOptions, Tool } from "../view/types";
+import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
+import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
+import type { HoverInfo, Proposal, Stage, StageOptions, Tool } from "../view/types";
 import type { Happiness } from "../sim/happiness";
 import type { DrillView, Snapshot } from "../sim/snapshot";
 import {
@@ -460,23 +461,41 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
   }
 
+  /** A border highlighted: its band outlined in a colour, with the finish previewed if given. */
+  function ghostEdge(id: string, color: number, finish: string | null, alpha: number): void {
+    if (!layout) return;
+    const e = edgeById(layout.hole, id);
+    if (!e) return;
+    const b = bandOf(layout.hole, e);
+    const [w, hh] = b.along === "h" ? [b.len, BAND] : [BAND, b.len];
+    if (finish) corridorBand(overlayCtx, b.x, b.y, b.len, BAND, b.along, finish, 0.7);
+    overlayCtx.rect(b.x, b.y, w, hh).fill({ color, alpha }).stroke({ color, width: 2.5 });
+  }
+
   function drawOverlay(info: HoverInfo | null): void {
     overlayCtx.clear();
     if (!layout) return;
     const sel = selected !== null ? layout.rooms.find((r) => r.id === selected) : undefined;
     if (sel) outlineRoom(sel, C.selected, 3);
-    if (!info) return;
     const h = layout.hole;
+    // A snaked chain (while dragging, or waiting for confirmation): every border highlighted.
+    const shown = snaking ? { edges: chain.edges, erase: chainErase } : proposal;
+    if (shown?.edges.length) {
+      for (const id of shown.edges) {
+        const existing = !!layout.corridors[id];
+        if (shown.erase) ghostEdge(id, C.bad, null, 0.35);
+        else if (existing) ghostEdge(id, C.hover, null, 0.1); // already there: rides along free
+        else ghostEdge(id, C.ok, tool?.kind === "corridor" ? tool.finish : null, 0.15);
+      }
+      return;
+    }
+    if (!info) return;
     const p = info.pick;
 
     if (info.edge) {
-      const e = edgeById(h, info.edge.id);
-      if (!e) return;
-      const b = bandOf(h, e);
-      const [w, hh] = b.along === "h" ? [b.len, BAND] : [BAND, b.len];
       const color = info.edge.refusal ? C.bad : info.edge.erase ? C.bad : C.ok;
-      if (!info.edge.erase && !info.edge.refusal && tool?.kind === "corridor") corridorBand(overlayCtx, b.x, b.y, b.len, BAND, b.along, tool.finish, 0.7);
-      overlayCtx.rect(b.x, b.y, w, hh).fill({ color, alpha: info.edge.erase ? 0.35 : 0.15 }).stroke({ color, width: 2.5 });
+      const preview = !info.edge.erase && !info.edge.refusal && tool?.kind === "corridor" ? tool.finish : null;
+      ghostEdge(info.edge.id, color, preview, info.edge.erase ? 0.35 : 0.15);
       return;
     }
 
@@ -614,7 +633,6 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   const canvas = app.canvas;
   let drag: { x: number; y: number; moved: number } | null = null;
   let pointer: { clientX: number; clientY: number } | null = null;
-  let painting = false;
 
   function screenToWorld(e: { clientX: number; clientY: number }): [number, number] {
     const r = canvas.getBoundingClientRect();
@@ -651,14 +669,35 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     opts.onHover?.(info);
   }
 
-  let paintedKey = "";
+  // Snaking corridors: the chain grows and shrinks under the pointer while the button is held.
+  let snaking = false;
+  let chain: Chain = EMPTY_CHAIN;
+  let chainErase = false;
+  let proposal: Proposal | null = null;
 
-  function paint(): void {
-    const e = hoverInfo()?.edge;
-    if (!e || e.id === paintedKey) return;
-    paintedKey = e.id;
-    const cmd = paintCommand(tool, e);
-    if (cmd) opts.onCommand?.(cmd, true);
+  function edgeUnderPointer(): Edge | null {
+    if (!layout || !pointer) return null;
+    return edgeAt(...screenToWorld(pointer));
+  }
+
+  function snake(): void {
+    if (!layout) return;
+    const next = extendChain(layout, chain, edgeUnderPointer(), chainErase);
+    if (next === chain) return;
+    chain = next;
+    hoverKey = "";
+    refreshHover();
+  }
+
+  /** Released: a chain goes to the player to confirm; a single border is just drawn (or filled in). */
+  function endSnake(): void {
+    snaking = false;
+    const done = chain;
+    chain = EMPTY_CHAIN;
+    if (done.edges.length > 1) opts.onPropose?.({ edges: done.edges, erase: chainErase });
+    else if (done.edges.length === 1) click();
+    hoverKey = "";
+    refreshHover();
   }
 
 
@@ -674,10 +713,11 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     pointer = e; // a tap may arrive with no move before it
     shift = e.shiftKey;
     canvas.setPointerCapture(e.pointerId);
-    if (paints(tool)) {
-      painting = true;
-      paintedKey = "";
-      paint();
+    if (paints(tool) && tool?.kind === "corridor") {
+      snaking = true;
+      chainErase = shift || tool.erase;
+      chain = EMPTY_CHAIN;
+      snake();
       return;
     }
     drag = { x: e.clientX, y: e.clientY, moved: 0 };
@@ -685,7 +725,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   const onPointerMove = (e: PointerEvent) => {
     pointer = e;
     shift = e.shiftKey;
-    if (painting) paint();
+    if (snaking) snake();
     if (drag) {
       const dx = e.clientX - drag.x;
       const dy = e.clientY - drag.y;
@@ -702,7 +742,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     pointer = e;
     if (drag && drag.moved <= CLICK_SLOP) click();
     drag = null;
-    painting = false;
+    if (snaking) endSnake();
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
     canvas.style.cursor = "";
   };
@@ -805,6 +845,11 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     },
     setFloor() {
       // The unrolled view shows every floor at once.
+    },
+    setProposal(p) {
+      proposal = p;
+      hoverKey = "";
+      refreshHover();
     },
     setColorBlind(on) {
       heat = on ? HEAT.colorBlind : HEAT.normal;

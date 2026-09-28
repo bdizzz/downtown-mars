@@ -5,9 +5,10 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
-import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paintCommand, paints } from "../view/interaction";
+import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
+import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
-import type { HoverInfo, Pick, Quality, Stage, StageOptions, Tool } from "../view/types";
+import type { HoverInfo, Pick, Proposal, Quality, Stage, StageOptions, Tool } from "../view/types";
 import { FLOOR_H, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
@@ -532,6 +533,20 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
   }
 
+  /** A border highlighted on its floor, where the corridor is (or will be), outlined so it reads against any finish. */
+  function ghostEdge(id: string, color: number): void {
+    if (!layout) return;
+    const e = edgeById(layout.hole, id);
+    if (!e) return;
+    const y = floorSpan(e.floor)[0] + 0.08;
+    const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y), solid(color, 0.55));
+    strip.renderOrder = 9;
+    overlay.add(strip);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(strip.geometry), lines(color));
+    edges.renderOrder = 10;
+    overlay.add(edges);
+  }
+
   function drawOverlay(info: HoverInfo | null): void {
     scene.remove(overlay);
     overlay.traverse((o) => {
@@ -543,20 +558,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!layout) return;
     const sel = selected !== null ? layout.rooms.find((r) => r.id === selected) : undefined;
     if (sel) markRoom(sel, HOVER.selected);
+    // A snaked chain (while dragging, or waiting for confirmation): every border highlighted.
+    const shown = snaking ? { edges: chain.edges, erase: chainErase } : proposal;
+    if (shown?.edges.length) {
+      for (const id of shown.edges) ghostEdge(id, shown.erase ? HOVER.bad : layout.corridors[id] ? HOVER.hover : HOVER.ok);
+      return;
+    }
     if (!info) return;
     const p = info.pick;
     if (info.edge) {
-      const e = edgeById(layout.hole, info.edge.id);
-      if (!e) return;
-      const y = floorSpan(e.floor)[0] + 0.08; // on the floor, where the corridor will be
-      const color = info.edge.refusal || info.edge.erase ? HOVER.bad : HOVER.ok;
-      const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y), solid(color, 0.55));
-      strip.renderOrder = 9;
-      overlay.add(strip);
-      // Outlined, so it reads against any finish.
-      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(strip.geometry), lines(color));
-      edges.renderOrder = 10;
-      overlay.add(edges);
+      ghostEdge(info.edge.id, info.edge.refusal || info.edge.erase ? HOVER.bad : HOVER.ok);
       return;
     }
     if (tool?.kind === "build" && info.check) {
@@ -669,15 +680,39 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     opts.onHover?.(info);
   }
 
-  let painting = false;
-  let paintedKey = "";
-  function paint(): void {
-    const e = hoverInfo()?.edge;
-    if (!e || e.id === paintedKey) return;
-    paintedKey = e.id;
-    const cmd = paintCommand(tool, e);
-    if (cmd) opts.onCommand?.(cmd, true);
+  // Snaking corridors: the chain grows and shrinks under the pointer while the button is held.
+  let snaking = false;
+  let chain: Chain = EMPTY_CHAIN;
+  let chainErase = false;
+  let proposal: Proposal | null = null;
+
+  function edgeUnderPointer(): Edge | null {
+    if (!layout || !pointer) return null;
+    rayAt(pointer.clientX, pointer.clientY);
+    return edgeAtPick(pickRay(raycaster.ray));
   }
+
+  function snake(): void {
+    if (!layout) return;
+    const next = extendChain(layout, chain, edgeUnderPointer(), chainErase);
+    if (next === chain) return;
+    chain = next;
+    refreshHover(true);
+  }
+
+  /** Released: a chain goes to the player to confirm; a single border is just drawn (or filled in). */
+  function endSnake(): void {
+    snaking = false;
+    const done = chain;
+    chain = EMPTY_CHAIN;
+    if (done.edges.length > 1) opts.onPropose?.({ edges: done.edges, erase: chainErase });
+    else if (done.edges.length === 1 && layout) {
+      const info = hoverInfo();
+      if (info) clickWith(layout, tool, info, opts);
+    }
+    refreshHover(true);
+  }
+
 
 
   // ---- input ----
@@ -689,10 +724,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     pointer = e; // a tap may arrive with no move before it
     shift = e.shiftKey;
     canvas.setPointerCapture(e.pointerId);
-    if (paints(tool)) {
-      painting = true;
-      paintedKey = "";
-      paint();
+    if (paints(tool) && tool?.kind === "corridor") {
+      snaking = true;
+      chainErase = shift || tool.erase;
+      chain = EMPTY_CHAIN;
+      snake();
       return;
     }
     drag = { x: e.clientX, y: e.clientY, moved: 0 };
@@ -700,7 +736,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const onPointerMove = (e: PointerEvent) => {
     pointer = e;
     shift = e.shiftKey;
-    if (painting) paint();
+    if (snaking) {
+      snake();
+      return;
+    }
     if (!drag) {
       refreshHover();
       return;
@@ -729,7 +768,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (info) clickWith(layout, tool, info, opts);
     }
     drag = null;
-    painting = false;
+    if (snaking) endSnake();
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
     canvas.style.cursor = "";
   };
@@ -976,6 +1015,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     },
     setSelected(id) {
       selected = id;
+      refreshHover(true);
+    },
+    setProposal(p) {
+      proposal = p;
       refreshHover(true);
     },
     setQuality(q) {

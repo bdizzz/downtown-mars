@@ -41,7 +41,15 @@ export interface HoverInfo {
   edge?: EdgeHover;
 }
 
+/** A snaked chain of corridors waiting for the player to confirm: to carve, or (erase) to fill in. */
+export interface Proposal {
+  edges: string[];
+  erase: boolean;
+}
+
 export interface StageOptions {
+  /** A corridor chain was snaked out and the button released: ask the player to confirm it. */
+  onPropose?: (p: Proposal) => void;
   onHover?: (info: HoverInfo | null) => void;
   /** quiet: a failure isn't worth telling the player about (e.g. painting over existing rooms). */
   onCommand?: (cmd: SimCommand, quiet?: boolean) => void;
@@ -68,6 +76,8 @@ export interface Stage {
    * every floor. The unrolled view ignores it.
    */
   setFloor(floor: number | null): void;
+  /** The chain the confirm popup is asking about, kept on show until it's answered (null: none). */
+  setProposal(p: Proposal | null): void;
   /** Detail level; views that have nothing to trade may ignore it. */
   setQuality(q: Quality): void;
   destroy(): void;

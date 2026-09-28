@@ -373,3 +373,17 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .finishes .finish.erase { grid-template-columns: 1fr auto; }
 .finishes .finish.erase.on { border-color: #e0503a; color: #e0503a; }
 .finishes p.k { margin: 2px 0 0; font-size: 11px; }
+
+/* Confirming a snaked corridor */
+.corridor-confirm {
+  position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); z-index: 6;
+  background: #1a0f0de8; border: 1px solid var(--accent); border-radius: 8px; padding: 10px 14px; min-width: 260px;
+  box-shadow: 0 6px 20px #0008; font-size: 13px;
+}
+.corridor-confirm h3 { margin: 0 0 4px; font-size: 14px; }
+.corridor-confirm p { margin: 2px 0; }
+.corridor-confirm .warn { color: #e0503a; }
+.corridor-confirm .buttons { display: flex; gap: 8px; margin-top: 8px; }
+.corridor-confirm button { font: inherit; padding: 4px 10px; border-radius: 4px; border: 1px solid #000; background: #2f1c16; color: var(--text); cursor: pointer; }
+.corridor-confirm button.primary { background: var(--accent); color: #1a0f0d; font-weight: 600; }
+.corridor-confirm button:disabled { opacity: 0.5; cursor: default; }

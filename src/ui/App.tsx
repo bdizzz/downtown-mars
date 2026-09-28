@@ -25,6 +25,8 @@ import { setTutorialHidden, tutorialHidden, type UiFlags } from "./tutorialGoals
 import { play, setAudioSettings, unlockAudio } from "../audio/sound";
 import { useSettings, VIEW_MODES } from "./settings";
 import { FloorPicker, shownFloor } from "./FloorPicker";
+import { CorridorConfirm } from "./CorridorConfirm";
+import type { Proposal } from "../view/types";
 import { useSim } from "./useSim";
 import { useSounds } from "./useSounds";
 
@@ -37,6 +39,8 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [overlay, setOverlay] = useState<string | null>(null);
+  /** A snaked corridor chain waiting for the player to confirm. */
+  const [proposal, setProposal] = useState<Proposal | null>(null);
   /** The floor the plan and 3D views focus on; null shows every floor in 3D. */
   const [viewFloor, setViewFloor] = useState<number | null>(null);
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
@@ -379,7 +383,25 @@ export function App() {
               onPick={setViewFloor}
             />
           )}
+          {snapshot && proposal && (
+            <CorridorConfirm
+              proposal={proposal}
+              layout={snapshot.layout}
+              resources={snapshot.resources}
+              finish={lastFinish}
+              onAccept={() => {
+                const cmd: SimCommand = proposal.erase
+                  ? { type: "removeCorridors", edges: proposal.edges, all: true }
+                  : { type: "drawCorridors", edges: proposal.edges, finish: lastFinish, all: true };
+                onCommand(cmd);
+                setProposal(null);
+              }}
+              onCancel={() => setProposal(null)}
+            />
+          )}
           <ViewHost
+            proposal={proposal}
+            onPropose={setProposal}
             floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
             snapshot={snapshot}
             tool={tool}

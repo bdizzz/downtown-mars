@@ -26,8 +26,9 @@ export type SimCommand =
   | { type: "answerVisit"; visitId: number; choice: string }
   | { type: "setOrdinance"; id: string; enacted: boolean }
   /** Carve corridors along these borders (edge ids, see edges.ts), in a finish. Skips any that can't go. */
-  | { type: "drawCorridors"; edges: string[]; finish: string }
-  | { type: "removeCorridors"; edges: string[] }
+  /** With `all`, carve every one or none (a snaked chain is no use half built). */
+  | { type: "drawCorridors"; edges: string[]; finish: string; all?: boolean }
+  | { type: "removeCorridors"; edges: string[]; all?: boolean }
   /** Draw the shortest corridor that connects this room to the network. */
   | { type: "connectRoom"; roomId: number; finish: string }
   /** Start or stop the staging bay gathering a seed kit. */
@@ -112,11 +113,19 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       return result;
     }
     case "drawCorridors":
-      return drawCorridors(state, cmd.edges, cmd.finish);
+      return drawCorridors(state, cmd.edges, cmd.finish, cmd.all);
     case "removeCorridors": {
       // Filling a corridor in costs what carving it did: the walls around it are rebuilt.
       const gone = cmd.edges.filter((id, i) => layout.corridors[id] && cmd.edges.indexOf(id) === i);
       if (!gone.length) return { ok: false, reason: "No corridor there" };
+      if (cmd.all) {
+        const total: Record<string, number> = {};
+        for (const id of gone) {
+          for (const [r, v] of Object.entries(corridorCost(layout.hole, edgeById(layout.hole, id)!, layout.corridors[id]!, config))) total[r] = (total[r] ?? 0) + v;
+        }
+        const short = shortfall(state.resources, total);
+        if (short) return { ok: false, reason: short };
+      }
       let removed = 0;
       let firstShort: string | null = null;
       for (const id of gone) {

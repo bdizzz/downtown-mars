@@ -10,7 +10,7 @@ This is an early playtest build: a hole or two, the first hour or so of play. To
 
 Start a new game and follow your deputy's tutorial, or dive in:
 
-- **Build:** pick a room on the left (or press its key), then click a slot. Green means it fits; red says why not. Ring 1 opens onto the shaft; deeper rooms need a **corridor** back to it. Press C and drag along the borders between rooms (Shift fills a corridor back in, which costs as much as carving it), pick a finish (bare rock, marscrete, brick or metal), or click **Connect** on a cut-off room.
+- **Build:** pick a room on the left (or press its key), then click a slot. Green means it fits; red says why not. Ring 1 opens onto the shaft; deeper rooms need a **corridor** back to it. Press C and drag to snake a corridor along the borders between rooms: it follows the pointer, retracing takes it back, and on release you confirm the segments and cost (Shift snakes a fill-in instead, which costs as much as carving). A plain click carves one segment. pick a finish (bare rock, marscrete, brick or metal), or click **Connect** on a cut-off room.
 - **Watch the bar at the top:** oxygen, water, meals and power, with how fast they're changing. Red means it runs out in under two days.
 - **Earth** sends supply drops every few days until you can stand on your own.
 - **Office:** colonists visit with problems. What you promise, they remember.
@@ -28,7 +28,7 @@ Start a new game and follow your deputy's tutorial, or dive in:
 | Space | Pause / resume |
 | Esc | Cancel, close a panel, or open the menu |
 | R | Rotate the room you're placing |
-| C | Corridor tool (drag along borders; Shift erases) |
+| C | Corridor tool (drag to snake a corridor, confirm on release; Shift fills in) |
 | D G F T Y W L K A B S P | Dorm, galley, farm, tank, recycler, restroom, life support, clinic, admin office, battery, solar, landing pad |
 | E Q | School, elder care (unlock with the first child and the first elder) |
 | J | Composter: organic waste and black water into soil |

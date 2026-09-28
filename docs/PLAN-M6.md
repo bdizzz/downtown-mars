@@ -178,3 +178,11 @@ Open questions for Bryon:
   - The carving is now one helper (`carveCell`), shared by rooms and the cap.
   - The corridor tool's ghost sits on the floor too.
 - **Nested pairs:** each pair of rings has the nearest whole multiple (at least 1) of the slots of the pair inside it (`geometry.nestedPairs`). A narrow hole has 9, 9, 18, 18, 36, 36 slots; a wide one (R = 40 m) 28, 28, 28, 28, 56, 56. Every border of an inner pair runs straight on outward, so borders meet in four-way crossings, and the circle between two pairs is cut only at the outer pair's slots. Old saves keep their own geometry. Playthroughs are unchanged from paired rings: at one hour the network has 112 against the solo player's 113; at 90 days 184 against 132, with 18 births.
+- **Snaking corridors:** with the corridor tool, press and drag to snake out a chain (`src/view/corridorPlan.ts`).
+  - The chain follows the borders under the pointer and is always one continuous path: no branches, no loops, no gaps. A skip of up to 6 borders is filled in by the shortest way from the chain's end.
+  - Moving back over the chain trims it to that point, so a path can be drawn, taken back and redrawn in one gesture. A border off the side of the chain is ignored.
+  - It uses only borders a corridor may go on. Existing corridors ride along free. Shift (or Erase) snakes over existing corridors to fill them in.
+  - On release, a chain of two or more goes to a popup: segments, metres, cost or shortfall, then Build (Enter) or Cancel (Escape). The views keep showing it until you answer. Confirmed chains are all-or-nothing (`all` on both corridor commands).
+  - A plain click still carves one segment at once.
+
+  Tested (`tests/corridorPlan.test.ts`): growing, retracing, bridging a skip, refusing a branch, rock-only borders, erase mode. In the browser (plan view): a snake along ring 1's outer edge, retraced to 4 segments, confirmed at 7.2 rock.

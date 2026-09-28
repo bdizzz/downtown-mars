@@ -12,7 +12,7 @@ const GENERAL: [string, string][] = [
   ["⌘Z / Ctrl+Z", "Undo your last placement"],
   ["?", "Show or hide this help"],
   ["Drag", "Pan the view (draws corridors with the corridor tool)"],
-  ["C", "Corridor tool: drag along the borders between rooms; Shift erases"],
+  ["C", "Corridor tool: drag to snake a corridor along the borders, confirm on release; Shift fills in"],
   ["Scroll", "Pan up, down and around"],
   ["Pinch / Ctrl+scroll", "Zoom"],
   ["Right-click", "Cancel the current tool"],
