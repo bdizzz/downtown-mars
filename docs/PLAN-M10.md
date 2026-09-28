@@ -101,3 +101,15 @@ Decided Sep 28, 2026 (Bryon):
 - **Rugs:** items no taller than 10 cm lie on the floor. Others stand on them, and they don't count toward the crowding cap (tested).
 - **A first template,** `bunk_dorm:2x1`: bunks along the back wall with footlockers in front, three lockers on each side, and a table with stools on a rug in the middle.
 - **Browser check:** the dev save's dorm on floor 1 in Iso, furnished.
+
+**Step 5, the dev tool:** `?furnish` in the dev build (`src/devtools/`), with a Templates tab and a Catalogue tab.
+- **Picking what to edit:** a room type, one of its shapes, and the ring to preview (1–6), with an optional corridor along the left or right side to see how the fit changes.
+- **Plan view:** the room from above: its floor, the ring-1 doorway (dashed), which side is the front (shaft side), back, left and right, and the fitted items with a tick marking each one's front. Drag an item to move its placement; a repeated item moves as a row. The drag goes through `unplace` (the inverse of `place`), snapped to 10 cm.
+- **Sidebar:**
+  - The room's items, to add.
+  - The template's placements in priority order, each with how many copies fitted, or "doesn't fit".
+  - The selected placement's wall, along (x), out (y), turn, snug, and repeat (every, at most), with Earlier, Later, Duplicate and Delete.
+- **3D preview:** the room's shell as the game draws it, with its fitted furniture, looked at from the shaft side. Orbit it.
+- **Save** posts every template to a dev-server endpoint (the `saveLayouts` plugin in `vite.config.ts`, serve only). It checks items and walls, and writes `data/layouts.json` with one placement per line. The game picks it up on reload.
+- **Snug placements** (added here): chairs at a desk and stools at a table go with their neighbours. They only keep 5 cm from them, not the 0.5 m aisle.
+- **Browser check:** the dorm template in ring 1, with a table dragged across the plan and saved to the file (then put back).

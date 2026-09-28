@@ -2,23 +2,32 @@ import { useState } from "react";
 import { furniture, itemDef } from "../view/furniture";
 import { roomDef } from "../sim/rooms";
 import { Catalogue } from "./Catalogue";
+import { TemplateEditor } from "./TemplateEditor";
 import "./devtools.css";
 
-// The furnishing tool (dev builds only, at ?furnish): look at the furniture
-// models, and lay out the templates that furnish each room type.
+// The furnishing tool (dev builds only, at ?furnish): lay out the templates
+// that furnish each room type, and look at the furniture models.
 
 const ROOMS = Object.keys(furniture.rooms);
 
 export function FurnishTool() {
-  const [room, setRoom] = useState<string | null>(ROOMS[0] ?? null);
+  const [room, setRoom] = useState<string>(ROOMS[0]!);
+  const [tab, setTab] = useState<"templates" | "catalogue">("templates");
   return (
     <div className="dev-tool">
       <aside className="dev-side">
         <h1>Furnishing</h1>
+        <div className="dev-row">
+          <button className={tab === "templates" ? "on" : ""} onClick={() => setTab("templates")}>
+            Templates
+          </button>
+          <button className={tab === "catalogue" ? "on" : ""} onClick={() => setTab("catalogue")}>
+            Catalogue
+          </button>
+        </div>
         <label>
           Room{" "}
-          <select value={room ?? ""} onChange={(e) => setRoom(e.target.value || null)}>
-            <option value="">All items</option>
+          <select value={room} onChange={(e) => setRoom(e.target.value)}>
             {ROOMS.map((r) => (
               <option key={r} value={r}>
                 {roomDef(r).name}
@@ -27,7 +36,7 @@ export function FurnishTool() {
           </select>
         </label>
         <ul className="dev-items">
-          {(room ? (furniture.rooms[room] ?? []) : Object.keys(furniture.items)).map((id) => {
+          {(furniture.rooms[room] ?? []).map((id) => {
             const [w, d, h] = itemDef(id).size;
             return (
               <li key={id}>
@@ -36,9 +45,9 @@ export function FurnishTool() {
             );
           })}
         </ul>
-        <p className="k">Drag to turn, scroll to zoom.</p>
+        <p className="k">In the 3D views, drag to turn and scroll to zoom.</p>
       </aside>
-      <Catalogue room={room} />
+      {tab === "templates" ? <TemplateEditor key={room} room={room} /> : <Catalogue room={room} />}
     </div>
   );
 }

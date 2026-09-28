@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Layout, type Location } from "../src/sim/placement";
-import { FIT, fit, frameOf, furnish, inside, tooClose, type Template } from "../src/view/furnish";
+import { FIT, fit, frameOf, furnish, inside, place, tooClose, unplace, type Template } from "../src/view/furnish";
 import { itemDef } from "../src/view/furniture";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
@@ -96,5 +96,20 @@ describe("rugs", () => {
     const r = room(layout, "bunk_dorm", ring(1, 2, 0, 2));
     const items = fit(frameOf(layout, r)!, [{ item: "rug", wall: "center" }, { item: "table", wall: "center" }]);
     expect(items.map((i) => i.item)).toEqual(["rug", "table"]);
+  });
+});
+
+describe("dragging in the editor", () => {
+  it("unplace undoes place, for every wall", () => {
+    const layout = createLayout(createHole(10, 3, 3, config.geometry));
+    const r = room(layout, "bunk_dorm", ring(1, 2, 0, 2));
+    const frame = frameOf(layout, r)!;
+    for (const wall of ["back", "front", "left", "right", "center"] as const) {
+      const p = { item: "table", wall, x: 0.7, y: 0.4 };
+      const at = place(frame, p);
+      const back = unplace(frame, p, [at.x, at.z]);
+      expect(back.x, wall).toBeCloseTo(0.7, 6);
+      expect(back.y, wall).toBeCloseTo(0.4, 6);
+    }
   });
 });

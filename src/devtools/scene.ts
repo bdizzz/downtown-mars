@@ -13,8 +13,8 @@ export function accentFor(room: string): string {
  * Orbit a camera around a point on the floor: drag to turn and tilt, scroll
  * to zoom. Calls `render` after each move. Returns a function that stops it.
  */
-export function orbitCamera(el: HTMLElement, camera: THREE.PerspectiveCamera, distance: number, render: () => void, target = new THREE.Vector3()): () => void {
-  const view = { theta: Math.PI / 4, phi: 0.9, dist: distance };
+export function orbitCamera(el: HTMLElement, camera: THREE.PerspectiveCamera, distance: number, render: () => void, target = new THREE.Vector3(), theta = Math.PI / 4): () => void {
+  const view = { theta, phi: 0.9, dist: distance };
   const apply = () => {
     const r = view.dist;
     camera.position.set(target.x + r * Math.sin(view.phi) * Math.cos(view.theta), target.y + r * Math.cos(view.phi), target.z + r * Math.sin(view.phi) * Math.sin(view.theta));

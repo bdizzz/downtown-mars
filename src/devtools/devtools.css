@@ -19,3 +19,12 @@
 .dev-side .k { color: #a89080; font-size: 12px; }
 .dev-canvas { flex: 1; min-width: 0; position: relative; }
 .dev-canvas canvas { display: block; }
+.dev-side-right { order: 2; border-right: none; border-left: 1px solid #000; width: 300px; }
+.dev-views { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dev-plan { flex: 1; min-height: 0; width: 100%; background: #1a0f0d; touch-action: none; }
+.dev-preview { flex: 1; min-height: 0; border-top: 1px solid #000; }
+.dev-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 6px 0; }
+.dev-add { display: flex; flex-wrap: wrap; gap: 4px; }
+.dev-items li { cursor: pointer; }
+.dev-props { border: 1px solid #3a2418; border-radius: 4px; padding: 6px 8px; margin: 8px 0; }
+.dev-side code { color: #e07a3f; }

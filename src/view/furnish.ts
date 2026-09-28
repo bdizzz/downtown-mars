@@ -30,6 +30,8 @@ export interface Placement {
   turn?: number;
   /** Repeat along the wall every so many metres (out from x both ways), up to max copies. */
   repeat?: { every: number; max?: number };
+  /** Goes with its neighbours (chairs at a desk, stools at a table): it only has to not overlap them, not keep an aisle. */
+  snug?: boolean;
 }
 
 export type Template = Placement[];
@@ -57,6 +59,8 @@ export const FIT = {
   wallGap: 0.15,
   /** Kept clear between two items: room to walk. */
   aisle: 0.5,
+  /** Kept between a snug item (a chair at its desk) and its neighbours. */
+  snug: 0.05,
   /** The doorway kept clear on a ring-1 room's shaft face: width along the wall, depth into the room. */
   door: { width: 1.8, depth: 1.6 },
   /** Items stop once their footprints cover this share of the floor. */
@@ -201,6 +205,24 @@ export function place(frame: Frame, p: Placement, dx = 0): Omit<Fitted, "placeme
   return { item: p.item, x: px, y: frame.y, z: pz, turn, corners };
 }
 
+/**
+ * The other way round, for dragging in the editor: the offsets (x along the
+ * wall, y out from it) that put a placement's item centre at a point on the
+ * floor. Undoes `place` for the placement's wall.
+ */
+export function unplace(frame: Frame, p: Placement, [px, pz]: [number, number]): { x: number; y: number } {
+  const [, d] = itemDef(p.item).size;
+  const r = Math.hypot(px, pz);
+  const a = unwrap(Math.atan2(pz, px), frame.left(r) - Math.PI);
+  const mid = (frame.left(r) + frame.right(r)) / 2;
+  const rMid = (frame.rIn + frame.rOut) / 2;
+  if (p.wall === "back") return { x: (a - mid) * r, y: frame.rOut - r - d / 2 };
+  if (p.wall === "front") return { x: (a - mid) * r, y: r - frame.rIn - d / 2 };
+  if (p.wall === "left") return { x: r - rMid, y: (a - frame.left(r)) * r - d / 2 };
+  if (p.wall === "right") return { x: r - rMid, y: (frame.right(r) - a) * r - d / 2 };
+  return { x: (a - mid) * r, y: r - rMid };
+}
+
 /** Is a point on the room's floor, inside its walls? */
 export function inside(frame: Frame, [x, z]: [number, number]): boolean {
   const r = Math.hypot(x, z);
@@ -257,7 +279,8 @@ export function fit(frame: Frame, template: Template): Fitted[] {
     if (!f.corners.every((c) => inside(frame, c))) return "outside";
     // A rug lies under whatever stands on it: only standing items keep apart, and out of the doorway.
     if (!flat && door && tooClose(f.corners, door, 0)) return "blocked";
-    if (!flat && out.some((o) => !isFlat(o.item) && tooClose(f.corners, o.corners, FIT.aisle))) return "blocked";
+    const gap = p.snug ? FIT.snug : FIT.aisle;
+    if (!flat && out.some((o) => !isFlat(o.item) && tooClose(f.corners, o.corners, gap))) return "blocked";
     if (flat && out.some((o) => isFlat(o.item) && tooClose(f.corners, o.corners, 0))) return "blocked";
     out.push({ ...f, placement: i });
     if (!flat) covered += w * d;
