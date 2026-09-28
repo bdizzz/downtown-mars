@@ -109,3 +109,15 @@ Each adds `constructionBandwidth` times its running rate (staffing × morale), s
 - **Construction panel** (HUD): bandwidth, then the queue in order with progress bars, time left and a move-to-front button. Clicking a room selects it. The HUD button reads "🏗 2 · 10.8 h" while there's a queue.
 - **Estimates:** room cards show work-hours to build and the bandwidth an office adds. The corridor confirm popup shows the construction work.
 - **Browser check:** a site office and a water tank queued in the dev save, with scaffolding, the office's bar filling, and the panel's times.
+
+**Step 4, balance and tests:**
+- **Scripted players:** the playthrough tests (first month, first hour with two holes, 90 days of people, tutorial goals) now run with construction time; unit tests stay instant. The scripted players now:
+  - build a site office right after the critical set, in both holes;
+  - push a queued life support to the front when air is short;
+  - put up a construction office when the queue backs up past a day of work;
+  - build only essentials (air, crews) past three days of backlog.
+- **Results** (seed 42):
+  - First month: health stays at 92–100, and oxygen dips to 71 on day 3 while life support is being built, then recovers.
+  - 90 days: the network reaches 187 against 132 solo (+42%), with 24 births.
+  - The child hole's health dips into the high 50s around days 80–90 as it grows, and recovers.
+- **Bounds:** child health above 50 (was 60), and 160+ colonists at day 80 (was 170).

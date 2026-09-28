@@ -3,12 +3,16 @@ import { config } from "../src/sim/config";
 import { relation } from "../src/sim/culture";
 import { serialize } from "../src/sim/save";
 import { runNetwork } from "./netbot";
+import { construction } from "../src/sim/construction";
 
 // Plays the first hour (60 game days) across two holes with the scripted
 // bot, and the same bot without founding, to check the network pays off.
 // Run with PLAYTEST=1 (npm run playtest:net) to print a daily table.
 
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
+
+// Played with construction time, as in the game (each test file has its own copy of the setting).
+construction.instant = false;
 
 describe("first hour, two holes", () => {
   const net = runNetwork(60);

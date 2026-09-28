@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { PLAN, run } from "./bot";
+import { construction } from "../src/sim/construction";
 
 // Plays the first month with the scripted bot and checks the milestones.
 // Run with PLAYTEST=1 (npm run playtest) to print a daily table.
 
 // Vitest runs in Node; the project has no Node types, so reach env via globalThis.
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
+
+// Played with construction time, as in the game (each test file has its own copy of the setting).
+construction.instant = false;
 
 describe("first month playthrough", () => {
   const { state, log, builtAt } = run(30);

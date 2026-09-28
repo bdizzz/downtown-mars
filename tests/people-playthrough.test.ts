@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { runNetwork } from "./netbot";
+import { construction } from "../src/sim/construction";
 
 // Ninety minutes (90 game days) with the two-hole bot, which builds what's
 // short once its opening plans are done, against the same bot staying solo.
 // Checks the people systems: births carry growth, children grow up, the
 // first elders retire and get care, and the network outgrows one hole.
+
+// Played with construction time, as in the game (each test file has its own copy of the setting).
+construction.instant = false;
 
 describe("ninety minutes of people", () => {
   const net = runNetwork(90);
@@ -33,11 +37,11 @@ describe("ninety minutes of people", () => {
 
   it("outgrows a single hole by a wide margin", () => {
     expect(net.log.at(-1)!.total).toBeGreaterThan(solo.log.at(-1)!.total * 1.3);
-    expect(at(80).total).toBeGreaterThan(170);
+    expect(at(80).total).toBeGreaterThan(160);
   });
 
   it("keeps the child hole healthy", () => {
-    expect(child!.population.health).toBeGreaterThan(60);
+    expect(child!.population.health).toBeGreaterThan(50);
     expect(child!.population.count).toBeGreaterThan(50);
   });
 });

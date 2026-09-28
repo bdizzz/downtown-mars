@@ -4,6 +4,7 @@ import { elderCoverage, schoolCoverage } from "../src/sim/care";
 import { beds } from "../src/sim/earth";
 import { careCoverage } from "../src/sim/happiness";
 import { roomDef } from "../src/sim/rooms";
+import { bandwidth } from "../src/sim/construction";
 import { countStage, cryptSpace } from "../src/sim/people";
 import type { SimState } from "../src/sim/state";
 
@@ -69,9 +70,23 @@ export function wants(hole: SimState): { room: string; crop?: string }[] {
 const EXPENDABLE = ["machine_shop", "smelter", "rover_depot", "staging_bay"];
 
 /** Once a day, build the most urgent thing it can staff, freeing hands from industry if air is short. */
+/** Hours of work waiting in the construction queue, at today's bandwidth. */
+function backlog(hole: SimState): number {
+  return hole.construction.queue.reduce((h, j) => h + j.work - j.done, 0) / bandwidth(hole);
+}
+
 export function adapt(hole: SimState): string | null {
   let freeHands = hole.workforce.total - hole.workforce.employed;
-  const list = wants(hole);
+  let list = wants(hole);
+  // Air first: a life support already in the queue goes to the front.
+  if (list[0]?.room === "life_support") {
+    const queued = hole.construction.queue.find((j) => hole.layout.rooms.find((r) => r.id === j.roomId)?.type === "life_support");
+    if (queued && hole.construction.queue[0] !== queued) applyCommand(hole, { type: "prioritize", jobId: queued.id });
+  }
+  // A long queue: more construction crews before anything else, and only essentials on top of it.
+  const late = backlog(hole);
+  if (late > 24 && count(hole, "construction_office") === 0) list = [{ room: "construction_office" }, ...list];
+  if (late > 72) list = list.filter((w) => w.room === "life_support" || w.room === "construction_office");
   if (list[0]?.room === "life_support" && freeHands < roomDef("life_support").staff) {
     const spare = hole.layout.rooms.find((r) => EXPENDABLE.includes(r.type) && !r.paused && (hole.roomStatus[r.id]?.staff ?? 0) > 0);
     if (spare) {

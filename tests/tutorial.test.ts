@@ -4,8 +4,12 @@ import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState } from "../src/sim/state";
 import { CHECKS, tutorial } from "../src/ui/tutorialGoals";
 import { run } from "./bot";
+import { construction } from "../src/sim/construction";
 
 const flags = { sawNoise: true, openedFlows: true, sawThreeD: true };
+
+// Played with construction time, as in the game (each test file has its own copy of the setting).
+construction.instant = false;
 
 describe("tutorial", () => {
   it("every goal has a check", () => {

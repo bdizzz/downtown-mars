@@ -38,6 +38,7 @@ export const CHILD_PLAN: Plan[] = [
   { room: "restroom", at: ring(1, 1, 3) },
   { room: "water_tank", at: ring(1, 1, 6) },
   { room: "life_support", at: ring(1, 2, 3, 4) },
+  { room: "site_office", at: ring(1, 1, 1) },
   { room: "rover_depot", at: surface(9) },
   { room: "solar_array", at: surface(5) },
   { room: "farm", at: ring(2, 1, 0, 4), crop: "potatoes" },

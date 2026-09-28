@@ -23,6 +23,8 @@ export const PLAN: Plan[] = [
   { room: "bunk_dorm", at: ring(1, 1, 4, 2) },
   { room: "water_tank", at: ring(1, 1, 6) },
   { room: "life_support", at: ring(1, 2, 3, 4) },
+  // Construction crews, so the rest doesn't take forever.
+  { room: "site_office", at: ring(1, 1, 1) },
   // Tier 2: weaning off Earth, mostly on floor 2.
   { room: "farm", at: ring(2, 1, 0, 4), crop: "potatoes" },
   { room: "farm", at: ring(2, 1, 5, 4), crop: "soybeans" },
