@@ -68,9 +68,10 @@ describe("snaking a corridor", () => {
     expect(c.edges).toEqual(["R1.1.3", "R1.2.3", "A1.2.1/3"]);
   });
 
-  it("won't cross rock with nothing beside it; erasing only follows existing corridors", () => {
+  it("crosses rock, but not locked rings; erasing only follows existing corridors", () => {
     const s = createInitialState(config);
-    expect(walk(s, ["R1.3.5"]).edges).toEqual([]); // rock both sides
+    expect(walk(s, ["R1.3.5"]).edges).toEqual(["R1.3.5"]); // rock both sides: fine
+    expect(walk(s, ["R1.4.5"]).edges).toEqual([]); // a locked ring
     const t = town();
     applyCommand(t, { type: "drawCorridors", edges: ["R1.1.3", "R1.2.3"], finish: "rock" });
     expect(walk(t, ["R1.1.3", "R1.2.3", "A1.2.1/3"], true).edges).toEqual(["R1.1.3", "R1.2.3"]);

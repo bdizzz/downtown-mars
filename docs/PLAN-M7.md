@@ -121,3 +121,6 @@ Each adds `constructionBandwidth` times its running rate (staffing × morale), s
   - 90 days: the network reaches 187 against 132 solo (+42%), with 24 births.
   - The child hole's health dips into the high 50s around days 80–90 as it grows, and recovers.
 - **Bounds:** child health above 50 (was 60), and 160+ colonists at day 80 (was 170).
+
+**Follow-ups (Bryon, Sep 27):**
+- **Corridors through rock** (reverses "only next to a room"): a corridor may run along any border in a dug floor (or the one being dug) and the unlocked rings, with rock on both sides if need be. Borders touching a locked ring are refused, including the outer edge of the last unlocked ring ("Ring 4+ needs reinforcement frames"). The middle of a room is still off limits. Connect can now dig through rock to reach any room.

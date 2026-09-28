@@ -49,8 +49,10 @@ export function corridorRefusal(layout: Layout, edgeId: string): string | null {
   if (!e) return "Not a border";
   if (e.floor < 1 || e.floor > hole.floors + 1) return "That floor isn't dug yet";
   if (layout.corridors[edgeId]) return "Already a corridor";
-  const [a, b] = edgeSides(hole, e).map((c) => roomIdAt(layout, c));
-  if (!a && !b) return "Corridors run along rooms: there's only rock here";
+  // Through rock is fine, but only where the hole reaches: both sides in unlocked rings.
+  const sides = edgeSides(hole, e);
+  if (sides.some((c) => !c || c.ring > hole.unlockedRings)) return `Ring ${hole.unlockedRings + 1}+ needs reinforcement frames`;
+  const [a, b] = sides.map((c) => roomIdAt(layout, c));
   if (a && a === b) return "That's the middle of a room";
   return null;
 }

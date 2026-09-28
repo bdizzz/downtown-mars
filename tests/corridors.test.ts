@@ -28,12 +28,14 @@ function build(s: SimState, room: string, at: Location) {
 const draw = (s: SimState, edges: string[], finish = "rock") => applyCommand(s, { type: "drawCorridors", edges, finish });
 
 describe("where corridors can go", () => {
-  it("along a room's side, but not through rock alone or the middle of a room", () => {
+  it("along any border in the dug floors and unlocked rings, but not through the middle of a room", () => {
     const s = rich();
     build(s, "bunk_dorm", ring(1, 1, 0, 2)); // slots 0–1 of ring 1
     expect(corridorRefusal(s.layout, "R1.1.0")).toBeNull(); // dorm | rock
     expect(corridorRefusal(s.layout, "R1.1.1")).toBe("That's the middle of a room");
-    expect(corridorRefusal(s.layout, "R1.1.5")).toMatch(/only rock/);
+    expect(corridorRefusal(s.layout, "R1.1.5")).toBeNull(); // rock on both sides: fine
+    expect(corridorRefusal(s.layout, "R1.4.0")).toMatch(/reinforcement/); // a locked ring
+    expect(corridorRefusal(s.layout, `A1.${s.layout.hole.unlockedRings}.0/1`)).toMatch(/reinforcement/); // the edge of the unlocked rings
     expect(corridorRefusal(s.layout, "R9.1.0")).toMatch(/isn't dug/);
     draw(s, ["R1.1.0"]);
     expect(corridorRefusal(s.layout, "R1.1.0")).toBe("Already a corridor");
@@ -131,11 +133,13 @@ describe("connecting a room", () => {
     expect(Object.values(s.layout.corridors).every((f) => f === "marscrete")).toBe(true);
   });
 
-  it("says so when there's nothing to carve along", () => {
+  it("digs through rock to reach a room with nothing around it", () => {
     const s = rich();
     const far = build(s, "clinic", ring(1, 3, 0)); // rock all the way in
-    expect(routeToRoom(s.layout, far, config)).toBeNull();
-    expect(applyCommand(s, { type: "connectRoom", roomId: far.id, finish: "rock" })).toMatchObject({ ok: false });
+    const route = routeToRoom(s.layout, far, config)!;
+    expect(route.length).toBeGreaterThan(1);
+    expect(applyCommand(s, { type: "connectRoom", roomId: far.id, finish: "rock" }).ok).toBe(true);
+    expect(s.layout.rooms.find((r) => r.id === far.id)!.connected).toBe(true);
   });
 
   it("uses existing corridors for free", () => {
