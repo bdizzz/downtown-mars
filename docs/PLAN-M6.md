@@ -192,3 +192,12 @@ Open questions for Bryon:
   - In 3D, rooms and the rock cap give up a half-corridor notch at the outer corner of a turn (a side piece without a corridor, next to a joint, unless the cell's side there is already carved), so the joint doesn't overlap them. Joints near a room are part of its shape-cache key.
 
   Tested: joints found only at turns; a room notched at the outer corner of a turn, and unchanged by a turn elsewhere.
+
+**Follow-up, radial corridors keep their width in 3D (Bryon, Sep 28):**
+- **The problem:** a corridor along a radial border is a strip of constant width, but rooms gave way to it by a fixed angle, so their carved edge was a line from the centre. Near the shaft that angle covered less than half a corridor, and the room overlapped the corridor. Further out it covered more, and a gap opened.
+- **The fix:** a room now pulls a side back by asin(d / r) at each radius r, where d is half a corridor (or the hairline inset). The side stands parallel to its border, d metres away along its whole length.
+  - `carveCell` gives each side's angle as a function of radius.
+  - A room's inner and outer walls, its floor and its side walls use it. A side wall is now a straight slanted quad, tagged with its true perpendicular for walls down.
+  - The rock cap's carved cells and the ring-1 window and door edges use it too.
+- **Ring corridors** (constant radius) were already right: rooms give way to them by a fixed distance in radius.
+- **Tests:** the side is 1.5 m (half a corridor) from the corridor's centreline at the room's inner end and outer end. The windows pull back to where the side meets the shaft face.

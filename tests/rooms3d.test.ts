@@ -66,10 +66,22 @@ describe("carved by corridors", () => {
     const room = l.rooms.find((x) => x.id === r.id)!;
     const before = extent(roomGeometry(l, room.cells));
     l.corridors["R1.1.1"] = "rock"; // its left side
-    const after = extent(roomGeometry(l, room.cells));
-    const rMid = 15;
-    expect(after.minA - before.minA).toBeCloseTo((1.5 - 0.06) / rMid, 3);
+    const geo = roomGeometry(l, room.cells);
+    const after = extent(geo);
     expect(after.maxA).toBeCloseTo(before.maxA, 6);
+    // The side stands parallel to the corridor: half its width from the centreline at the room's inner end and outer end alike.
+    const [s0] = slotAngles(1, l.hole.ringSlots[0]!);
+    const pos = geo.getAttribute("position");
+    const gap = (near: (r: number) => boolean) => {
+      let d = Infinity;
+      for (let i = 0; i < pos.count; i++) {
+        const r = Math.hypot(pos.getX(i), pos.getZ(i));
+        if (near(r)) d = Math.min(d, r * Math.sin(Math.atan2(pos.getZ(i), pos.getX(i)) - s0));
+      }
+      return d;
+    };
+    expect(gap((r) => r < 10.2)).toBeCloseTo(1.5, 3);
+    expect(gap((r) => r > 19.8)).toBeCloseTo(1.5, 3);
   });
 
   it("a corridor along part of a side carves just that part, with a step", () => {
@@ -111,7 +123,8 @@ describe("windows", () => {
     const [a0, a1] = span();
     l.corridors["R1.1.2"] = "rock"; // along its left side
     const [b0, b1] = span();
-    expect(b0 - a0).toBeCloseTo((1.5 - 0.06) / 15, 6); // back by half a corridor, less the hairline
+    // Back to where the side wall meets the shaft face (r = 10): half a corridor from the border, where there was only the hairline.
+    expect(b0 - a0).toBeCloseTo(Math.asin(1.5 / 10) - Math.asin(0.06 / 10), 6);
     expect(b1).toBeCloseTo(a1, 9);
     // The windows stay inside the room's walls.
     const geo = roomGeometry(l, room.cells);

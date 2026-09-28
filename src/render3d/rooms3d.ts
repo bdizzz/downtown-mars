@@ -98,6 +98,44 @@ function radialSide(pos: number[], r0: number, r1: number, a: number, y0: number
   else tag(pos, 6);
 }
 
+/** A floor between radii r0 and r1 whose ends stand at different angles inside ([i0, i1]) and out ([o0, o1]). */
+function flatPiece(pos: number[], r0: number, r1: number, [i0, i1]: [number, number], [o0, o1]: [number, number], y: number): void {
+  for (let i = 0; i < ARC_STEPS; i++) {
+    const t0 = i / ARC_STEPS;
+    const t1 = (i + 1) / ARC_STEPS;
+    const bi0 = i0 + (i1 - i0) * t0;
+    const bi1 = i0 + (i1 - i0) * t1;
+    const bo0 = o0 + (o1 - o0) * t0;
+    const bo1 = o0 + (o1 - o0) * t1;
+    push(pos, at(r0, bi0, y), at(r1, bo0, y), at(r1, bo1, y), at(r0, bi0, y), at(r1, bo1, y), at(r0, bi1, y));
+    tag(pos, 6);
+  }
+}
+
+/**
+ * A side wall from (r0, a0) to (r1, a1): straight, and not necessarily
+ * radial (a side kept parallel to a corridor slants). Its wall tag is its true
+ * perpendicular, turned toward larger angles for side +1.
+ */
+function sideWall(pos: number[], r0: number, a0: number, r1: number, a1: number, y0: number, y1: number, cut?: Cut): void {
+  push(pos, at(r0, a0, y0), at(r1, a1, y0), at(r1, a1, y1), at(r0, a0, y0), at(r1, a1, y1), at(r0, a0, y1));
+  if (!cut) {
+    tag(pos, 6);
+    return;
+  }
+  const [x0, , z0] = at(r0, a0, 0);
+  const [x1, , z1] = at(r1, a1, 0);
+  const len = Math.hypot(x1! - x0!, z1! - z0!) || 1;
+  let nx = -(z1! - z0!) / len;
+  let nz = (x1! - x0!) / len;
+  // Toward larger angles: the direction a circle turns at the wall's middle.
+  const m = (a0 + a1) / 2;
+  if (nx * -Math.sin(m) + nz * Math.cos(m) < 0) [nx, nz] = [-nx, -nz];
+  const across = typeof cut.across === "function" ? cut.across(m) : cut.across;
+  const k = cut.side * (across ? ACROSS : 1);
+  tag(pos, 6, k * nx, k * nz, cut.y0 ?? y0, cut.y1 ?? y1);
+}
+
 function geometry(pos: number[]): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
@@ -168,7 +206,18 @@ function carveCell(
   carve: boolean,
   openInner = false,
   joints: Set<string> = new Set(),
-): { a0: number; a1: number; pieces: Piece[]; openLeft: boolean; openRight: boolean; hallLeft: boolean; hallRight: boolean } {
+): {
+  a0: number;
+  a1: number;
+  /** Where the left and right sides stand at radius r (see `sideAngle`). */
+  left: (r: number) => number;
+  right: (r: number) => number;
+  pieces: Piece[];
+  openLeft: boolean;
+  openRight: boolean;
+  hallLeft: boolean;
+  hallRight: boolean;
+} {
   const hole = layout.hole;
   const key = (x: Cell) => `${x.floor}:${x.ring}:${x.slot}`;
   const hall = (id: string) => carve && !!layout.corridors?.[id];
@@ -180,8 +229,11 @@ function carveCell(
   const hallRight = hall(`R${c.floor}.${c.ring}.${(c.slot + 1) % n}`);
   const openLeft = !own.has(key({ ...c, slot: (c.slot - 1 + n) % n }));
   const openRight = !own.has(key({ ...c, slot: (c.slot + 1) % n }));
-  const a0 = s0 + (openLeft ? (hallLeft ? HALL : inset) / rMid : 0);
-  const a1 = s1 - (openRight ? (hallRight ? HALL : inset) / rMid : 0);
+  // Each open side stands parallel to its border, pulled back by a fixed distance (half a corridor, or the inset).
+  const left = (r: number) => s0 + (openLeft ? sideAngle(hallLeft ? HALL : inset, r) : 0);
+  const right = (r: number) => s1 - (openRight ? sideAngle(hallRight ? HALL : inset, r) : 0);
+  const a0 = left(rMid);
+  const a1 = right(rMid);
   const arcs = cellEdges(hole, c).filter((e): e is ArcEdge => e.kind === "arc");
   // Where corridors turn, the joint's square fills the outer corner: a side piece without a corridor
   // gives up a half-corridor notch next to it (unless the cell's own side there is a corridor, which carves it anyway).
@@ -226,7 +278,22 @@ function carveCell(
     const rr1 = r1 - (c.ring === outer ? (outerHall ? HALL : inset) : 0);
     pieces.push({ b0, b1, rr0, rr1, innerHall, outerHall });
   }
-  return { a0, a1, pieces, openLeft, openRight, hallLeft, hallRight };
+  return { a0, a1, left, right, pieces, openLeft, openRight, hallLeft, hallRight };
+}
+
+/**
+ * How far round (radians) to pull a side back so it stands `d` metres from a
+ * radial border at radius r. A fixed angle would make a wedge: too close to
+ * the border near the shaft and too far out at the back. This keeps a side
+ * parallel to its border, so a corridor along it has the same width all the way.
+ */
+function sideAngle(d: number, r: number): number {
+  return Math.asin(Math.min(0.99, d / r));
+}
+
+/** A piece's angles at radius r: its first and last pieces end where the cell's sides stand at that radius. */
+function pieceAt(cut: ReturnType<typeof carveCell>, p: Piece, r: number): [number, number] {
+  return [p === cut.pieces[0] ? cut.left(r) : p.b0, p === cut.pieces.at(-1) ? cut.right(r) : p.b1];
 }
 
 /**
@@ -264,9 +331,12 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
     let prev: Piece | null = null;
     for (const p of cut.pieces) {
       // Walls, except where a public room opens onto the gallery or a corridor. What's across is asked segment by segment.
-      if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) curvedFace(pos, p.rr0, p.b0, p.b1, y0, y1, { side: 1, across: p.innerHall || ((a) => across(cr0 - 0.5, a)) });
-      if (c.ring === outer && !(publicRoom && p.outerHall)) curvedFace(pos, p.rr1, p.b0, p.b1, y0, y1, { side: -1, across: p.outerHall || ((a) => across(cr1 + 0.5, a)) });
-      flatRing(pos, p.rr0, p.rr1, p.b0, p.b1, y0);
+      // A piece's ends move with radius where a side stands parallel to a corridor.
+      const inside = pieceAt(cut, p, p.rr0);
+      const outside = pieceAt(cut, p, p.rr1);
+      if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) curvedFace(pos, p.rr0, ...inside, y0, y1, { side: 1, across: p.innerHall || ((a) => across(cr0 - 0.5, a)) });
+      if (c.ring === outer && !(publicRoom && p.outerHall)) curvedFace(pos, p.rr1, ...outside, y0, y1, { side: -1, across: p.outerHall || ((a) => across(cr1 + 0.5, a)) });
+      flatPiece(pos, p.rr0, p.rr1, inside, outside, y0);
       // A step where a corridor starts or stops partway along a side.
       if (prev) {
         // The room is on the side of whichever piece reaches further in (or out).
@@ -278,8 +348,12 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
     }
     const first = cut.pieces[0];
     const last = cut.pieces.at(-1);
-    if (cut.openLeft && first && !(publicRoom && cut.hallLeft)) radialSide(pos, first.rr0, first.rr1, cut.a0, y0, y1, { side: 1, across: cut.hallLeft || across(cMid, s0 - 0.5 / cMid) });
-    if (cut.openRight && last && !(publicRoom && cut.hallRight)) radialSide(pos, last.rr0, last.rr1, cut.a1, y0, y1, { side: -1, across: cut.hallRight || across(cMid, s1 + 0.5 / cMid) });
+    if (cut.openLeft && first && !(publicRoom && cut.hallLeft)) {
+      sideWall(pos, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y1, { side: 1, across: cut.hallLeft || across(cMid, s0 - 0.5 / cMid) });
+    }
+    if (cut.openRight && last && !(publicRoom && cut.hallRight)) {
+      sideWall(pos, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y1, { side: -1, across: cut.hallRight || across(cMid, s1 + 0.5 / cMid) });
+    }
   }
   return geometry(pos);
 }
@@ -308,12 +382,12 @@ const HALL = corridors.widthM / 2;
 export function shaftFaces(layout: Layout, room: RoomInstance): { a0: number; a1: number; y0: number; r: number }[] {
   const hole = layout.hole;
   const n = hole.ringSlots[0]!;
-  const [r0, r1] = ringRadii(hole, 1);
-  const rMid = (r0 + r1) / 2;
+  const [r0] = ringRadii(hole, 1);
   const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+  // The side walls stand parallel to their borders: where they meet the shaft face, at r0.
   const pullBack = (c: Cell, slot: number, edge: number) => {
     if (own.has(`${c.floor}:1:${(slot + n) % n}`)) return 0; // the room carries on: no wall here
-    return (layout.corridors?.[`R${c.floor}.1.${edge % n}`] ? HALL : INSET) / rMid;
+    return sideAngle(layout.corridors?.[`R${c.floor}.1.${edge % n}`] ? HALL : INSET, r0);
   };
   return room.cells
     .filter((c) => c.ring === 1)
@@ -966,14 +1040,16 @@ function floorCap(layout: Layout, floor: number): THREE.Object3D[] {
       const c = { floor, ring, slot };
       const cut = carveCell(layout, c, new Set([`${floor}:${ring}:${slot}`]), ring, ring, 0, true, false, joints);
       for (const p of cut.pieces) {
-        flatRing(ring > hole.unlockedRings ? locked : open, p.rr0, p.rr1, p.b0, p.b1, y);
-        if (p.innerHall) curvedFace(cutWalls, p.rr0, p.b0, p.b1, y0, y);
-        if (p.outerHall) curvedFace(cutWalls, p.rr1, p.b0, p.b1, y0, y);
+        const inside = pieceAt(cut, p, p.rr0);
+        const outside = pieceAt(cut, p, p.rr1);
+        flatPiece(ring > hole.unlockedRings ? locked : open, p.rr0, p.rr1, inside, outside, y);
+        if (p.innerHall) curvedFace(cutWalls, p.rr0, ...inside, y0, y);
+        if (p.outerHall) curvedFace(cutWalls, p.rr1, ...outside, y0, y);
       }
       const first = cut.pieces[0];
       const last = cut.pieces.at(-1);
-      if (cut.hallLeft && first) radialSide(cutWalls, first.rr0, first.rr1, cut.a0, y0, y);
-      if (cut.hallRight && last) radialSide(cutWalls, last.rr0, last.rr1, cut.a1, y0, y);
+      if (cut.hallLeft && first) sideWall(cutWalls, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y);
+      if (cut.hallRight && last) sideWall(cutWalls, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y);
     }
   });
   const outer = ringRadii(hole, hole.ringSlots.length)[1];
