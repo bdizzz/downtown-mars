@@ -161,3 +161,8 @@ Decided Sep 28, 2026 (Bryon):
   - At 90 days: 182 against 116, with 15 births.
 - **Bounds:** no test bounds changed. Every playthrough passes as it was written.
 - **README:** covers digging, empty rooms, the entrance, stairs and the cargo elevator.
+
+**Follow-ups (Bryon, Sep 28):**
+- **Confirmed:** the cargo elevator goes only to its one floor, while standard elevators stop at every floor they span (as built). Empty space can't be filled back in for now.
+- **More starting rock:** 160 (was 60), about what rings 1 and 2 of floor 1 would have yielded. The landing pod's storage grows to 500 units, with 180 for rock (was 400 and 80).
+- **Scripted player:** once a hole has 30 people and its water is down to about two days' worth, the adaptive player builds a water recycler if it's short of one. Without this, the child hole ran dry between drops, life support stalled, CO2 built up, and health fell to 21 by day 90. Now it stays at 74 or above.

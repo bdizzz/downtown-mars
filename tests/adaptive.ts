@@ -110,6 +110,9 @@ export function wants(hole: SimState): { room: string; crop?: string }[] {
   if (limited(hole, "power")) out.push({ room: "solar_array" });
   if ((met.water ?? 1) < 1 || limited(hole, "water")) {
     out.push({ room: count(hole, "water_recycler") * 36 < pop * 1.5 ? "water_recycler" : "water_tank" });
+  } else if (pop >= 30 && (res.water ?? 0) < pop * 4 && count(hole, "water_recycler") * 36 < pop * 1.5) {
+    // Water down to about two days' worth: stop leaning on Earth before it runs dry between drops.
+    out.push({ room: "water_recycler" });
   }
   if (count(hole, "galley") * 25 < pop) out.push({ room: "galley" });
   if (count(hole, "farm") * 12 < pop * 0.6) out.push({ room: "farm", crop: "potatoes" });

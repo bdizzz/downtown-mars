@@ -40,7 +40,7 @@
   },
   "startingStock": {
     "rations": 100, "water": 240, "o2": 120, "soil": 40,
-    "rock": 60, "brick": 20, "metal": 60, "machinery": 10, "electronics": 10
+    "rock": 160, "brick": 20, "metal": 60, "machinery": 10, "electronics": 10
   },
   "colonists": {
     "start": 20,
