@@ -33,7 +33,11 @@ describe("fitting furniture into a room", () => {
       expect(items.length).toBeGreaterThan(2);
       for (const it of items) for (const c of it.corners) expect(inside(frame, c)).toBe(true);
       for (let i = 0; i < items.length; i++) {
-        for (let j = i + 1; j < items.length; j++) expect(tooClose(items[i]!.corners, items[j]!.corners, FIT.aisle - 1e-6)).toBe(false);
+        for (let j = i + 1; j < items.length; j++) {
+          // Copies in one repeated row keep the row's gap; anything else keeps the aisle.
+          const gap = items[i]!.placement === items[j]!.placement ? FIT.row : FIT.aisle;
+          expect(tooClose(items[i]!.corners, items[j]!.corners, gap - 1e-6)).toBe(false);
+        }
       }
     }
   });

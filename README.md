@@ -67,7 +67,7 @@ Design documents live in `docs/`: start with `DECISIONS.md`, then `DESIGN.md` an
 
 ### Furnishing tool
 
-Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture models (Catalogue) and lay out the template for any room type and shape (Templates). Preview the fit in any ring, with or without a corridor along a side. Drag items in the plan, set their wall, offsets, turn, repeat and priority, and save: the tool writes `data/layouts.json`. Models live in `data/furniture.json`; see `docs/FURNITURE.md`.
+Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture models (Catalogue) and lay out the template for any room type and shape (Templates). Preview the fit in any ring, with or without a corridor along a side. Drag items in the plan, set their wall, offsets, turn, repeat and priority, and save: the tool writes `data/layouts.json`. **Overview** shows every template side by side, or one up close. Models are built in `scripts/furniture.mjs` (run `node scripts/furniture.mjs` to write `data/furniture.json`); see `docs/FURNITURE.md`.
 
 ## Credits
 

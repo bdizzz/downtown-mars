@@ -524,9 +524,12 @@ function inTheWay(nx: number, nz: number, px: number, pz: number, cam: THREE.Vec
 const WALLS_GLSL = /* glsl */ `
   if (uWallsDown > 0.5 && dot(aWall.xy, aWall.xy) > 0.0) {
     vec2 toCam = cameraPosition.xz - (modelMatrix * vec4(transformed, 1.0)).xz;
+    // The tags are in the model's own frame: turn them with it (a turned model, as in the dev tool's overview).
+    vec2 n1 = (modelMatrix * vec4(aWall.x, 0.0, aWall.y, 0.0)).xz;
+    vec2 m2 = (modelMatrix * vec4(aWall2.x, 0.0, aWall2.y, 0.0)).xz;
     float n2 = dot(aWall2.xy, aWall2.xy);
-    bool second = n2 == 0.0 || n2 > 2.0 || dot(toCam, aWall2.xy) < 0.0;
-    bool first = dot(aWall.xy, aWall.xy) > 2.0 || dot(toCam, aWall.xy) < 0.0;
+    bool second = n2 == 0.0 || n2 > 2.0 || dot(toCam, m2) < 0.0;
+    bool first = dot(aWall.xy, aWall.xy) > 2.0 || dot(toCam, n1) < 0.0;
     if (first && second) transformed.y = min(transformed.y, mix(aWall.z, aWall.w, uWallStub));
   }
 `;

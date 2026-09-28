@@ -61,6 +61,8 @@ export const FIT = {
   aisle: 0.5,
   /** Kept between a snug item (a chair at its desk) and its neighbours. */
   snug: 0.05,
+  /** Kept between copies in one repeated row (planters, racks, tables): a row can stand closer than the aisle. */
+  row: 0.3,
   /** The doorway kept clear on a ring-1 room's shaft face: width along the wall, depth into the room. */
   door: { width: 1.8, depth: 1.6 },
   /** Items stop once their footprints cover this share of the floor. */
@@ -315,7 +317,8 @@ export function fit(frame: Frame, template: Template): Fitted[] {
     // A rug lies under whatever stands on it: only standing items keep apart, and out of the doorway.
     if (!flat && door && tooClose(f.corners, door, 0)) return "blocked";
     const gap = p.snug ? FIT.snug : FIT.aisle;
-    if (!flat && out.some((o) => !isFlat(o.item) && tooClose(f.corners, o.corners, gap))) return "blocked";
+    const between = (o: Fitted) => (o.placement === i ? Math.min(gap, FIT.row) : gap);
+    if (!flat && out.some((o) => !isFlat(o.item) && tooClose(f.corners, o.corners, between(o)))) return "blocked";
     if (flat && out.some((o) => isFlat(o.item) && tooClose(f.corners, o.corners, 0))) return "blocked";
     out.push({ ...f, placement: i });
     if (!flat) covered += w * d;

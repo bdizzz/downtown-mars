@@ -26,8 +26,11 @@ describe("furniture meshes", () => {
     const def = itemDef("bunk_bed");
     const g = furnitureMeshes([{ item: "bunk_bed", x: 5, y: -4, z: 2, turn: Math.PI / 2 }], "#6f93bd");
     const b = bounds(g);
-    expect(b.max.x - b.min.x).toBeCloseTo(def.size[1], 1);
-    expect(b.max.z - b.min.z).toBeCloseTo(def.size[0], 1);
+    // Its depth now runs along x, its width along z (within the footprint, which is rounded up).
+    expect(b.max.x - b.min.x).toBeLessThanOrEqual(def.size[1] + 0.01);
+    expect(b.max.x - b.min.x).toBeGreaterThan(def.size[1] - 0.1);
+    expect(b.max.z - b.min.z).toBeLessThanOrEqual(def.size[0] + 0.01);
+    expect(b.max.z - b.min.z).toBeGreaterThan(def.size[0] - 0.1);
     expect((b.max.x + b.min.x) / 2).toBeCloseTo(5, 1);
     expect(b.min.y).toBeCloseTo(-4, 1);
   });

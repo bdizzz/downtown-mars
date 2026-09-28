@@ -145,3 +145,30 @@ Decided Sep 28, 2026 (Bryon):
 - **Dev tool:** for stairwells and elevators, Floor buttons (any, top, bottom) pick which template to edit and preview that floor. "Copy from any floor" starts a role's own template. The sample hole is now three floors deep, and its corridors run along every floor the room spans. The save endpoint accepts role keys.
 - **Tests:** templates are checked on the floors that use them; the coverage test now fails properly on a missing template.
 - **Browser check:** the stairwell's flight and the elevator's bottom floor in the tool.
+
+**Second pass, furniture (Bryon, Sep 28):** "a second refinement pass at all the furniture": the pieces, their models, and the layouts.
+- **Models from a script:** `scripts/furniture.mjs` builds every model from small helpers (legs, tables, chairs, monitors, foliage) and writes `data/furniture.json` (`node scripts/furniture.mjs`). Footprints are measured from the turned parts, rounded up to 5 cm. Edit the script, not the JSON.
+- **Items:** 108, up from 81.
+  - Most existing models were redone with more detail: legs and frames, screens, trim, lit panels.
+  - New pieces: privacy partitions, floor lamps, TV units, coat racks, laundry machines, a serving counter, water dispensers and coolers, hydroponic racks, seedling benches, duct risers, a welding station, a 3D printer, a crystal puller, component cabinets, a conveyor, pallet jacks, barrels, scaffolding, a decontamination arch, a reception desk, cubbies, a body scanner, vending machines, bins, kiosks and candle stands.
+  - The stair flight is now open, with stringers.
+  - Two new colours: rubber and cream.
+- **Room lists:** every room now has 3–12 items that belong there.
+- **Layouts:** all 43 templates were rewritten in zones rather than as rows against walls.
+  - Dorm bunks sit head to the wall between partitions, with footlockers, and have a lounge corner.
+  - The admin office has reception by the door and desks with chairs facing the room.
+  - The clinic has screened beds with monitors, a staff desk and a visitor chair.
+  - The galley has a cooking line, a serving counter and dining tables.
+  - The farm has planter rows between hydroponic racks and a seedling bench.
+  - The school's desks face the board.
+  - Elder care has beds along the back, a lounge, and a dining table on the other side of the door.
+  - Plazas have benches around their centrepiece.
+  - Coverage is about 5–28%.
+  - A few front-corner extras step aside for ring 1's narrow front and doorway.
+- **Rows can stand closer:** copies in one repeated row (planters, racks, tables) keep `FIT.row` (0.3 m) from each other rather than the 0.5 m aisle. On a curved wall, neighbouring copies lean together at their inner corners, and the aisle was dropping every other one.
+- **Fixes:**
+  - Furniture stood 6 cm below the room's floor (hiding rugs). It now sits on it (`frameOf`'s `y`).
+  - Walls down now turns wall normals by the model matrix, so a turned room (the Overview's) lowers the right walls.
+- **Dev tool, Overview:** a tab with every template fitted in the chosen ring, side by side, with walls down. Pick one to zoom in on it.
+- **Tests:** the aisle test allows `FIT.row` within a row. The turn test allows footprints that aren't symmetric.
+- **Browser check:** the Overview in rings 1–3: dorm, admin, clinic, galley, school, farm, life support, smelter, plaza, entrance and elder care.
