@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { itemDef, partColor, type Part } from "../view/furniture";
+import type { Placed } from "../view/furnish";
 
 // Furniture as meshes. An item is built from its parts (data/furniture.json);
 // a room's worth of placed items is merged into one mesh per colour, so a
@@ -10,15 +11,7 @@ import { itemDef, partColor, type Part } from "../view/furniture";
 const SEGMENTS = { cyl: 12, sphW: 10, sphH: 8 };
 const GLOW = { day: 0.35, nightBoost: 1.6 };
 
-/** A placed item: where its footprint's centre stands (x, z on the floor at height y) and which way its front faces (radians about y). */
-export interface Placed {
-  item: string;
-  x: number;
-  y: number;
-  z: number;
-  /** Rotation about y: 0 faces +z. */
-  turn: number;
-}
+export type { Placed };
 
 /** Unit shapes, scaled per part. */
 const unit = {

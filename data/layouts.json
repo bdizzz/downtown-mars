@@ -1,0 +1,4 @@
+{
+  "_note": "Furniture layout templates (docs/PLAN-M10.md), one per room type and shape (\"type:WxD\"), in priority order. Each placement pins an item to a wall (back, front, left, right) or the centre: x runs along the wall from its middle (front, back and centre: toward larger angles; left and right: toward the back), y out from the wall to the item's back (centre: from the middle toward the back), turn adds degrees, and repeat copies it along the wall every so many metres. Edited with the dev tool (?furnish).",
+  "templates": {}
+}

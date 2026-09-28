@@ -70,3 +70,24 @@ Decided Sep 28, 2026 (Bryon):
 - **Materials** are shared by colour. Glowing parts share emissive materials that `setFurnitureGlow` brightens at night.
 - **Tests:** every item builds, with one mesh per colour and within its footprint. Placing and a quarter turn (width and depth swap) work. A room's worth merges.
 - **The dev tool starts here:** `?furnish` in the dev build (`src/devtools/`, loaded only in dev, so it isn't bundled into a release). For now it has a catalogue: pick a room type, or all items, and orbit its models on floor tiles. Checked in the browser: the dorm's items and all 76.
+
+**Step 3, layout and fitting:** `src/view/furnish.ts` (no Three.js), `data/layouts.json`.
+- **Templates:** keyed `type:WxD`, as a list of placements in priority order. A placement names an item, a wall (back, front, left, right or centre), `x` along the wall from its middle, `y` out from the wall, an optional `turn`, and an optional `repeat` (every so many metres, up to a limit, working out from `x` both ways).
+- **The room's frame (`frameOf`):**
+  - The floor's annular sector, pulled in from each wall by the walls' own hairline (or half a corridor where one runs along that side), plus a 0.15 m gap.
+  - Its left and right walls stand parallel to their borders, as in 3D.
+  - A ring-1 room that isn't public has a doorway in the middle of its shaft face, where the 3D view draws the door.
+  - A cargo elevator is furnished at its stop.
+- **Placing (`place`):** an item's back goes against its wall and its front faces into the room (a centre item faces the front).
+  - Back and front items sit `x` metres round the wall at their own radius.
+  - Left and right items sit `x` metres toward the back from the room's middle radius.
+- **Fitting (`fit`):** placements are tried in order. An item must have every corner inside the walls, stay a 0.5 m aisle from the items already placed (a separating-axis test with the gap added), and keep out of the doorway (1.8 m wide, 1.6 m deep). Items stop once they cover 35% of the floor. A repeat stops each way at the first copy past the walls or the cap, skipping copies that are only blocked. Numbers are in `FIT`.
+- **`furnish`** gives a built room's items. Blueprints, rooms under construction, and room types or shapes without a template get none.
+- **Tests:**
+  - Inside the walls and an aisle apart, in ring 1 and ring 2.
+  - More repeats in the wider room.
+  - Items face away from their wall.
+  - The doorway is kept clear (and only ring-1 rooms have one).
+  - What doesn't fit is skipped, and the crowding cap holds.
+  - A corridor pulls a wall back.
+  - Only built rooms with a template are furnished.
