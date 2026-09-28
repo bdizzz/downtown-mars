@@ -14,6 +14,7 @@ import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt }
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, withWallsDown } from "./rooms3d";
 import { Dust, galleryLamps, makeLander, placeLander, setLampGlow, Walkers } from "./scenery3d";
+import { stairsHere, step as walkStep } from "../view/walk";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Four
 // cameras: standing in the shaft looking at the wall, the way someone on the
@@ -42,6 +43,10 @@ const MIN_DIST = 2;
 const CLICK_SLOP = 5;
 const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25 };
 const TOP = { min: 20, max: 300, start: 80 };
+/** Iso: distance to the floor's centre (a multiple of the floor's radius to start), and how steeply it looks down. */
+const ISO = { start: 1.6, min: 12, max: 400, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
+/** First person: eye height off the floor, walking and running speed (m/s), and how fast dragging turns the head. */
+const WALK = { eye: 1.8, speed: 3, run: 7, turn: 0.004 };
 /** Free look: pitch stops just short of straight up or down; zoom narrows the field of view. */
 const FREE = { maxPitch: Math.PI / 2 - 0.02, minFov: 20, maxFov: 90, turn: 0.004 };
 /** How much of the surface still shows in x-ray: enough to keep your bearings. */
@@ -49,12 +54,14 @@ const XRAY_GROUND_OPACITY = 0.2;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
 const SHELL_MARGIN = 6;
 
-type Mode = "shaft" | "free" | "cutaway" | "top";
+type Mode = "shaft" | "free" | "cutaway" | "top" | "iso" | "walk";
 const MODES: { id: Mode; name: string; hint: string }[] = [
   { id: "shaft", name: "Shaft", hint: "Stand in the shaft and look at the wall" },
   { id: "free", name: "Free", hint: "Stand at the centre of the shaft and drag to look anywhere" },
   { id: "cutaway", name: "Cutaway", hint: "Look at the hole from outside, sliced open" },
   { id: "top", name: "Top", hint: "Look straight down the shaft" },
+  { id: "iso", name: "Iso", hint: "One floor from above and off to one side, so you see all of it (pick the floor on the right; drag to turn, scroll to zoom)" },
+  { id: "walk", name: "First person", hint: "Walk the galleries, corridors and public spaces: WASD to move, drag to look, Q and E to take stairs" },
 ];
 
 const VIEW_KEY = "downtown-mars.view3d";
@@ -177,8 +184,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let lastTick = -1;
   let hole: Hole | null = null;
   let holeKey = "";
-  /** Show only this floor and those below it, i.e. deeper (null: every floor). */
-  let floorLimit: number | null = null;
+  /** The floor picked on the right (null: every floor). */
+  let pickedFloor: number | null = null;
+  /** Show only this floor and those below it, i.e. deeper (null: every floor). Iso always looks at one floor. */
+  const cut = (): number | null => pickedFloor ?? (view.mode === "iso" ? 1 : null);
   let groundMesh: THREE.Mesh | null = null;
   let gameId = "";
   let dirty = true;
@@ -200,7 +209,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     yaw: Math.PI / 2,
     pitch: 0,
     fov: FOV,
+    /** Iso: distance from the floor's centre (0 until first used) and elevation in radians. */
+    iso: 0,
+    isoElev: ISO.elev,
   };
+  /** First person: where the walker stands (metres), on which floor, and where they look. */
+  const walker = { x: 0, z: 0, floor: 1, yaw: 0, pitch: 0 };
 
   function maxDist(): number {
     // Stay inside the shaft: no further back than just short of the opposite ledge.
@@ -209,7 +223,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   /** y of the chosen floor's ceiling, or the surface. */
   function cutTop(): number {
-    return floorLimit === null ? 0 : floorSpan(floorLimit)[1];
+    const f = cut();
+    return f === null ? 0 : floorSpan(f)[1];
+  }
+
+  /** The outer edge of the unlocked rings. */
+  function outerRadius(): number {
+    return hole ? ringRadii(hole, hole.unlockedRings)[1] : 40;
   }
 
   function depth(): number {
@@ -222,6 +242,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     cam.height = Math.min(TOP.max, Math.max(TOP.min, cam.height));
     cam.pitch = Math.min(FREE.maxPitch, Math.max(-FREE.maxPitch, cam.pitch));
     cam.fov = Math.min(FREE.maxFov, Math.max(FREE.minFov, cam.fov));
+    // Iso's distance stays 0 ("not set yet") until the mode is first used and sizes it to the floor.
+    if (cam.iso) cam.iso = Math.min(ISO.max, Math.max(ISO.min, cam.iso));
+    cam.isoElev = Math.min(ISO.maxElev, Math.max(ISO.minElev, cam.isoElev));
+    walker.pitch = Math.min(FREE.maxPitch, Math.max(-FREE.maxPitch, walker.pitch));
     const bottom = -depth() + EYE_HEIGHT;
     cam.y = Math.min(FLOOR_H * 3, Math.max(bottom, cam.y));
   }
@@ -246,6 +270,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       camera.lookAt(0, cam.y, 0);
       // Keep what's behind the axis from the camera's point of view.
       clip.normal.copy(out).negate();
+    } else if (view.mode === "iso") {
+      // Above the floor and off to one side, looking across it (a little past its centre, so the far rooms fill the view).
+      const y = floorSpan(cut() ?? 1)[0];
+      camera.position.copy(out).multiplyScalar(cam.iso * Math.cos(cam.isoElev)).setY(y + cam.iso * Math.sin(cam.isoElev));
+      const past = outerRadius() * ISO.lookPast;
+      camera.lookAt(-out.x * past, y, -out.z * past);
+    } else if (view.mode === "walk") {
+      camera.position.set(walker.x, floorSpan(walker.floor)[0] + WALK.eye, walker.z);
+      const cp = Math.cos(walker.pitch);
+      camera.lookAt(walker.x + Math.cos(walker.yaw) * cp, camera.position.y + Math.sin(walker.pitch), walker.z + Math.sin(walker.yaw) * cp);
     } else {
       // With a floor chosen, look down on it from the same height above its ceiling.
       camera.position.set(0, cam.height + cutTop(), 0);
@@ -256,8 +290,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     renderer.clippingPlanes = view.mode === "cutaway" ? [clip] : [];
     // Far-off cameras need a farther near plane, or the depth buffer can't tell
     // the ground from the roofs just under it.
-    const inside = view.mode === "shaft" || view.mode === "free";
-    const near = inside ? 0.1 : Math.max(0.5, (view.mode === "top" ? cam.height : cam.out) / 100);
+    const inside = view.mode === "shaft" || view.mode === "free" || view.mode === "walk";
+    const near = inside ? 0.1 : Math.max(0.5, (view.mode === "top" ? cam.height : view.mode === "iso" ? cam.iso : cam.out) / 100);
     const fov = view.mode === "free" ? cam.fov : FOV;
     if (camera.near !== near || camera.fov !== fov) {
       camera.near = near;
@@ -421,9 +455,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     };
     const placingOnSurface = tool?.kind === "build" && roomDef(tool.room).size === "surface";
     // With a floor chosen, the surface is hidden: nothing up there to pick.
-    const surfaceShown = floorLimit === null;
+    const surfaceShown = cut() === null;
     if (surfaceShown && (!view.xray || placingOnSurface)) offer(tGround, groundPick);
-    const inShaft = view.mode === "shaft" || view.mode === "free";
+    const inShaft = view.mode === "shaft" || view.mode === "free" || view.mode === "walk";
     if (inShaft && !view.xray) {
       // Empty wall faces are part of the wall mesh; nothing more to add.
     } else if (inShaft && view.xray) {
@@ -486,15 +520,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     return m;
   }
   function drawProgress(s: Snapshot): void {
-    const key = `${s.layout.version}:${floorLimit}:` + s.construction.jobs.map((j) => `${j.roomId}:${j.phase}:${Math.floor(j.progress * 100)}`).join(",");
+    const key = `${s.layout.version}:${cut()}:` + s.construction.jobs.map((j) => `${j.roomId}:${j.phase}:${Math.floor(j.progress * 100)}`).join(",");
     if (key === progressKey) return;
     progressKey = key;
     progressGroup.clear();
     const h = s.layout.hole;
+    const cf = cut();
     for (const job of s.construction.jobs) {
       const room = job.roomId !== undefined ? s.layout.rooms.find((r) => r.id === job.roomId) : undefined;
       if (!room || room.at.kind !== "ring") continue;
-      const cells = (job.kind === "extend" ? (room.pendingCells ?? []) : room.cells).filter((c) => floorLimit === null || c.floor >= floorLimit);
+      const cells = (job.kind === "extend" ? (room.pendingCells ?? []) : room.cells).filter((c) => cf === null || c.floor >= cf);
       const c = cells[0];
       if (!c) continue;
       const n = h.ringSlots[c.ring - 1]!;
@@ -792,12 +827,100 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
 
 
+  // ---- first person ----
+
+  const held = new Set<string>();
+  let walkerPlaced = false;
+
+  /** Stand on the gallery of the floor you were looking at, facing along it. */
+  function placeWalker(): void {
+    if (!hole || !layout) return;
+    const floor = Math.min(hole.floors, Math.max(1, pickedFloor ?? Math.floor(-cam.y / FLOOR_H) + 1));
+    const r = (openShaftRadius(hole) + hole.shaftRadiusM) / 2;
+    walker.floor = floor;
+    walker.x = r * Math.cos(cam.theta);
+    walker.z = r * Math.sin(cam.theta);
+    walker.yaw = cam.theta + Math.PI / 2;
+    walker.pitch = 0;
+    walkerPlaced = true;
+  }
+
+  /** What the readout says while walking: where, and what the keys do. */
+  function walkReadout(): string {
+    const stairs = layout ? stairsHere(layout, walker.floor, walker.x, walker.z) : null;
+    const flights = stairs ? ` · ${[stairs.up !== null ? "Q up" : "", stairs.down !== null ? "E down" : ""].filter(Boolean).join(", ")}` : "";
+    return `Floor ${walker.floor} · WASD to move, drag to look, Shift to run${flights}`;
+  }
+
+  /** Switching camera mode: set the new one up, and rebuild if what's hidden changed. */
+  function enterMode(before: Mode): void {
+    if (view.mode === "iso" && !cam.iso) cam.iso = outerRadius() * ISO.start;
+    if (view.mode === "walk" && before !== "walk") placeWalker();
+    if (before === "walk") held.clear();
+    applyFloorCut();
+    applyCamera();
+    if (latest) stage.update(latest);
+  }
+
+  /** Take the stairs (or an elevator) you're standing in, up or down a floor. */
+  function takeStairs(dir: "up" | "down"): void {
+    if (!layout) return;
+    const to = stairsHere(layout, walker.floor, walker.x, walker.z)?.[dir];
+    if (to === null || to === undefined) return;
+    walker.floor = to;
+    applyCamera();
+  }
+
+  const WALK_KEYS = new Set(["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "shift", "q", "e"]);
+  // Captured before the rest of the app sees them, so walking doesn't pick rooms by their keys.
+  const onWalkKey = (e: KeyboardEvent) => {
+    if (view.mode !== "walk") return;
+    const target = e.target as HTMLElement | null;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+    const k = e.key.toLowerCase();
+    if (!WALK_KEYS.has(k)) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.type === "keyup") {
+      held.delete(k);
+      return;
+    }
+    if (!e.repeat && k === "q") takeStairs("up");
+    else if (!e.repeat && k === "e") takeStairs("down");
+    else held.add(k);
+  };
+  window.addEventListener("keydown", onWalkKey, { capture: true });
+  window.addEventListener("keyup", onWalkKey, { capture: true });
+  // Keys let go while the window is away never send a keyup: stop walking.
+  const onBlur = () => held.clear();
+  window.addEventListener("blur", onBlur);
+
+  /** One frame's walking: returns true if the walker moved. */
+  function walkFrame(dt: number): boolean {
+    if (view.mode !== "walk" || !layout || !held.size) return false;
+    const fwd = (held.has("w") || held.has("arrowup") ? 1 : 0) - (held.has("s") || held.has("arrowdown") ? 1 : 0);
+    const side = (held.has("d") || held.has("arrowright") ? 1 : 0) - (held.has("a") || held.has("arrowleft") ? 1 : 0);
+    if (!fwd && !side) return false;
+    const speed = (held.has("shift") ? WALK.run : WALK.speed) * dt;
+    const len = Math.hypot(fwd, side);
+    const [fx, fz] = [Math.cos(walker.yaw), Math.sin(walker.yaw)];
+    // Right of facing (fx, fz) is (−fz, fx).
+    const dx = ((fwd * fx - side * fz) / len) * speed;
+    const dz = ((fwd * fz + side * fx) / len) * speed;
+    const [x, z] = walkStep(layout, walker.floor, walker.x, walker.z, dx, dz);
+    if (x === walker.x && z === walker.z) return false;
+    walker.x = x;
+    walker.z = z;
+    return true;
+  }
+
   // ---- input ----
 
   let drag: { x: number; y: number; moved: number } | null = null;
 
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
+
     pointer = e; // a tap may arrive with no move before it
     shift = e.shiftKey;
     canvas.setPointerCapture(e.pointerId);
@@ -829,10 +952,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       // Grab the view: the world follows the pointer, so dragging up looks down.
       cam.yaw += dx * FREE.turn * (cam.fov / FOV);
       cam.pitch += dy * FREE.turn * (cam.fov / FOV);
+    } else if (view.mode === "walk") {
+      // Turn your head: drag right to look right, up to look up.
+      walker.yaw += dx * WALK.turn;
+      walker.pitch -= dy * WALK.turn;
     } else {
-      // Grab the world: dragging left turns you right, dragging up takes you down.
+      // Grab the world: dragging left turns you right, dragging up takes you down (or, in iso, looks from higher up).
       cam.theta += dx * 0.005;
-      if (view.mode !== "top") cam.y += dy * (view.mode === "cutaway" ? 0.15 : 0.05);
+      if (view.mode === "iso") cam.isoElev += dy * 0.004;
+      else if (view.mode !== "top") cam.y += dy * (view.mode === "cutaway" ? 0.15 : 0.05);
     }
     drag.x = e.clientX;
     drag.y = e.clientY;
@@ -852,6 +980,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
     const zoom = Math.exp(e.deltaY * 0.01);
+    if (view.mode === "walk") return;
+    if (view.mode === "iso") {
+      if (e.shiftKey) cam.theta += e.deltaY * 0.003;
+      else cam.iso *= Math.exp(e.deltaY * 0.003);
+      applyCamera();
+      return;
+    }
     if (view.mode === "top") cam.height *= e.ctrlKey ? zoom : Math.exp(e.deltaY * 0.003);
     else if (view.mode === "free") {
       if (e.ctrlKey) cam.fov *= zoom;
@@ -905,10 +1040,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         cam.yaw = cam.theta;
         cam.pitch = 0;
       }
+      const before = view.mode;
       view.mode = m.id;
       saveView(view);
       syncBar();
-      applyCamera();
+      enterMode(before);
     };
     bar.appendChild(b);
     return b;
@@ -949,7 +1085,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
 
   function updateReadout(): void {
-    if (floorLimit !== null) readout.textContent = `Floor ${floorLimit}${view.mode === "top" ? " from above" : " and below"}`;
+    const f = cut();
+    if (view.mode === "walk") readout.textContent = walkReadout();
+    else if (view.mode === "iso") readout.textContent = `Floor ${f}, isometric`;
+    else if (f !== null) readout.textContent = `Floor ${f}${view.mode === "top" ? " from above" : " and below"}`;
     else if (view.mode === "top") readout.textContent = "Looking down the shaft";
     else readout.textContent = cam.y >= 0 ? "Surface" : `Floor ${Math.floor(-cam.y / FLOOR_H) + 1}`;
   }
@@ -974,7 +1113,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const clock = new THREE.Clock();
   let ambient = 0;
   renderer.setAnimationLoop(() => {
-    ambient += Math.min(0.1, clock.getDelta());
+    const dt = Math.min(0.1, clock.getDelta());
+    ambient += dt;
+    if (walkFrame(dt)) {
+      applyCamera();
+      updateReadout();
+    }
     if (quality === "high" && hole && ambient >= 1 / AMBIENT_FPS) {
       dust.step(ambient);
       if (performance.now() - lastTickChange < 400) walkers.step(ambient);
@@ -998,12 +1142,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** Hide what sits above the chosen floor: ledges, lamps, walkers, the surface. */
   function applyFloorCut(): void {
     holeGroup.traverse((o) => {
-      if (typeof o.userData.floor === "number") o.visible = floorLimit === null || o.userData.floor >= floorLimit;
+      const f = cut();
+      if (typeof o.userData.floor === "number") o.visible = f === null || o.userData.floor >= f;
     });
-    if (groundMesh) groundMesh.visible = floorLimit === null;
-    if (lamps) lamps.visible = floorLimit === null;
-    walkers.mesh.visible = quality === "high" && floorLimit === null;
-    dust.points.visible = quality === "high" && floorLimit === null;
+    if (groundMesh) groundMesh.visible = cut() === null;
+    if (lamps) lamps.visible = cut() === null;
+    walkers.mesh.visible = quality === "high" && cut() === null;
+    dust.points.visible = quality === "high" && cut() === null;
     dirty = true;
   }
 
@@ -1061,19 +1206,30 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         dust.sync(hole);
         applyCamera();
       }
-      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}:${floorLimit}`;
+      // Remembered in iso: frame the floor once there's a hole to frame.
+      if (view.mode === "iso" && !cam.iso) {
+        cam.iso = outerRadius() * ISO.start;
+        applyCamera();
+      }
+      // Remembered in first person: stand somewhere once there's a hole to stand in.
+      if (view.mode === "walk" && !walkerPlaced) {
+        placeWalker();
+        applyCamera();
+      }
+      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}:${cut()}`;
       if (lk !== layoutKey) {
         layoutKey = lk;
         scene.remove(layoutGroup);
         disposeLayout(layoutGroup);
         const t0 = performance.now();
-        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray, floorLimit);
+        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray, cut());
         stats.buildMs = performance.now() - t0;
         scene.add(layoutGroup);
         dirty = true;
       }
       const d = snapshot.drill;
-      digFront.visible = d.floor !== null && (floorLimit === null || d.floor >= floorLimit);
+      const cf = cut();
+      digFront.visible = d.floor !== null && (cf === null || d.floor >= cf);
       if (d.floor !== null) {
         const [, top] = floorSpan(d.floor);
         const r = snapshot.layout.hole.shaftRadiusM - 0.05;
@@ -1096,7 +1252,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const descent = config.earth.descentDays * config.ticksPerDay;
       const landing = e.padReady && !e.waiting && e.ticksToDrop <= descent;
       const wasVisible = lander.visible;
-      placeLander(lander, snapshot.layout, landing && floorLimit === null ? 1 - e.ticksToDrop / descent : null);
+      placeLander(lander, snapshot.layout, landing && cut() === null ? 1 - e.ticksToDrop / descent : null);
       if (landing || wasVisible) dirty = true;
       drawProgress(snapshot);
       refreshHover(); // affordability or the layout may have changed
@@ -1122,8 +1278,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       applyQuality();
     },
     setFloor(f) {
-      if (f === floorLimit) return;
-      floorLimit = f;
+      if (f === pickedFloor) return;
+      pickedFloor = f;
       layoutKey = ""; // rebuild without the floors above
       applyFloorCut();
       applyCamera();
@@ -1142,6 +1298,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     },
     destroy() {
       renderer.setAnimationLoop(null);
+      window.removeEventListener("keydown", onWalkKey, { capture: true });
+      window.removeEventListener("keyup", onWalkKey, { capture: true });
+      window.removeEventListener("blur", onBlur);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("keyup", onKey);
       resize.disconnect();

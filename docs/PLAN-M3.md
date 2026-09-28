@@ -64,3 +64,15 @@ Decided Sep 27, 2026 (Bryon): milestone 3 is the 3D view. When the network map c
 - **Picking** goes through a lowered wall to the floor behind it (`loweredAt`).
 - **Tests:** tags point into the room and floors carry none; outlines along a wall's top carry that wall; a wall is lowered only when seen from behind, and only above its stub.
 - **Browser check:** Shaft and Cutaway views, walls up and down.
+
+**Follow-up, Iso and First person (Bryon, Sep 28):** two more modes on the 3D camera toolbar.
+- **Iso:** above the picked floor (floor 1 if none is picked), and off to one side. It looks across the floor, a little past its centre, from 1.6× the floor's radius at about 43°, so the whole floor is in view.
+  - Everything above that floor is hidden, as when a floor is picked. The stage now separates the picked floor (`pickedFloor`) from what's hidden (`cut()`).
+  - Drag turns it and tilts it (30°–80°). Scroll zooms; Shift+scroll turns.
+- **First person:** eye height 1.8 m above a floor, starting on the gallery of the floor you were looking at, facing along it.
+  - **Controls:** WASD or the arrow keys walk (3 m/s, 7 with Shift), and dragging turns the head. Clicks act on what's under the pointer, as in every view.
+  - **Keys:** while walking, these keys are caught before the rest of the app sees them, so W doesn't pick a room.
+  - **Where you can walk:** the gallery (not over the railing), public rooms, empty space, and bands along built corridors. Private rooms and rock are behind walls, and a walker slides along them rather than stopping dead. The rules live in `src/view/walk.ts` (tested in `tests/walk.test.ts`).
+  - **Stairs:** standing in stairs or an elevator, Q goes up and E goes down to the floors it reaches. The readout says which.
+  - **No pointer lock:** it isn't available everywhere (not in the in-app browser), so looking is by dragging.
+- **Browser check:** Iso on floors 1 and 2, with and without walls down. Walked floor 1's gallery in first person until the wall stopped the walker.
