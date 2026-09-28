@@ -838,6 +838,36 @@
       "buildHours": 10
     },
     {
+      "id": "cargo_elevator",
+      "name": "Cargo elevator",
+      "short": "Cargo",
+      "category": "circulation",
+      "size": "S",
+      "staff": 1,
+      "uses": {
+        "power": 3
+      },
+      "makes": {},
+      "public": true,
+      "surfaceLink": true,
+      "cargoShaft": true,
+      "unlockedBy": "cargo",
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "metal": 40,
+        "machinery": 8,
+        "electronics": 4
+      },
+      "buildable": true,
+      "buildHours": 40
+    },
+    {
       "id": "site_office",
       "name": "Site office",
       "short": "Site",

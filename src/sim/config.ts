@@ -115,6 +115,10 @@ export interface SimConfig {
     productivityFullAt: number;
   };
   messages: { keep: number };
+  unlocks: {
+    /** Colonists in a hole before it can build a cargo elevator. */
+    cargoPopulation: number;
+  };
   landingKit: {
     surface: { room: string; slot: number }[];
     ring: { room: string; floor: number; ring: number; slot: number }[];

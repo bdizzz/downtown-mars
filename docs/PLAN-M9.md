@@ -21,7 +21,7 @@ Decided Sep 28, 2026 (Bryon):
 - **The start:** the landing crew has blasted out rings 1 and 2 of floor 1, so the critical set can go straight in. The rest is rock.
 - **The entrance:** S, ring 1, floor 1, slot 0, public, free. The battery bank from the landing kit moves to ring 2. At the surface, an airlock stands on the rim above it and takes the surface slots over it.
 - **Old saves** keep an open shaft that links every floor, since their players built without stairs. New games need stairs.
-- **The cargo elevator:** S, in any ring. It unlocks at 100 colonists in the hole. It stops at the surface and at its floor. The cells above (floor 1 down to the floor above its stop) must be rock or empty space, and become its shaft. It costs metal 40, machinery 8 and electronics 4, takes 40 hours plus a stretch per floor, and uses 3 power. A headframe stands on the rim above it.
+- **The cargo elevator:** S, in any ring. It unlocks at 100 colonists in the hole. It stops at the surface and at its floor. The cells above (floor 1 down to the floor above its stop) must be rock or empty space, and become its shaft. It costs metal 40, machinery 8 and electronics 4, takes 40 hours (plus digging out its column), and uses 3 power. A headframe stands on the rim above it.
 - **Empty room:** three sizes (1, 2 and 4 slots, rotatable like other rooms). It costs nothing, and only its rock cells need excavating. Once the job is done it isn't a room at all: its cells are empty space.
 
 ## Shape of the change
@@ -120,3 +120,10 @@ Decided Sep 28, 2026 (Bryon):
   - Stairs that miss floor 1 don't reach the surface.
   - An old open shaft reaches everything.
   - The entrance can't be demolished.
+
+**Step 4, the cargo elevator:** `cargo_elevator` in `data/rooms.json`.
+- **The room:** S, 1 staff, 3 power, noise −1 r1. It costs metal 40, machinery 8 and electronics 4, and takes 40 h. It's public and `surfaceLink`, with `cargoShaft`.
+- **Unlock:** it unlocks with the "cargo" gate. `stepUnlocks` sets the gate once a day when the hole reaches `unlocks.cargoPopulation` (100) colonists, with a message.
+- **Placement:** placed on its stop floor, which must be dug and below floor 1. It takes the same cell on every floor from 1 down to the stop. Every cell above the stop must be free of rooms ("Floor 2 above: its shaft overlaps Clinic"). Rock or empty space is fine. The column's rock is dug out first, like any room.
+- **Access:** it opens only at its stop (`openTo`). That floor's corridors and gallery (if it's in ring 1) join the surface. The floors it passes through gain nothing.
+- **Tests:** the unlock; its stop reached without stairs while the floors above aren't; a clear column; a stop below floor 1 on a dug floor.

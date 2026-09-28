@@ -52,7 +52,7 @@ export interface RoomDef {
   /** Elders it looks after. */
   caresForElders?: number;
   /** Not buildable until the hole has reached this (see UNLOCKS in costs.ts). */
-  unlockedBy?: "children" | "elders";
+  unlockedBy?: "children" | "elders" | "cargo";
   /** Units of storage for dry goods (data/storage.json). */
   storage?: number;
   /** How its storage starts out allocated (the landing pod); otherwise empty. */
@@ -71,6 +71,8 @@ export interface RoomDef {
   maxFloors?: number;
   /** Opens onto the surface: how people and goods get in and out (the entrance, a cargo elevator's stop). */
   surfaceLink?: boolean;
+  /** A shaft from the surface down to the floor it's placed on: it stops only there, and every floor above must be clear. */
+  cargoShaft?: boolean;
   /** Only digs out rock: when the job's done, the room is gone and its cells are empty space. */
   excavationOnly?: boolean;
   /** Walk-through: every side counts as a corridor, so neighbours open onto it. */

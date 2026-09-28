@@ -6,7 +6,7 @@ import { refreshEffects } from "./effects";
 import { stepHappiness } from "./happiness";
 import { stepLedger } from "./ledger";
 import { stepVisits } from "./visits";
-import { stepAging, stepGrief } from "./people";
+import { stepAging, stepGrief, stepUnlocks } from "./people";
 import { stepBirths } from "./births";
 import { stepConstruction } from "./construction";
 import type { SimState } from "./state";
@@ -25,6 +25,7 @@ export function step(state: SimState, cfg: SimConfig): void {
   stepAging(state, cfg);
   stepGrief(state, cfg);
   stepBirths(state, cfg);
+  stepUnlocks(state, cfg);
   stepHappiness(state, cfg);
   stepVisits(state, cfg);
   stepLedger(state, cfg);

@@ -114,7 +114,7 @@ export function holeGates(state: SimState): string[] {
 }
 
 /** Record that a hole has reached something that unlocks rooms (first child, first elder). */
-export function unlock(state: SimState, what: "children" | "elders"): void {
+export function unlock(state: SimState, what: "children" | "elders" | "cargo"): void {
   state.unlocks ??= [];
   if (!state.unlocks.includes(what)) state.unlocks.push(what);
 }
@@ -213,4 +213,13 @@ export function stepGrief(state: SimState, cfg: SimConfig): void {
   if (g <= 0) return;
   const next = g * (1 - people.death.griefFadePerDay / cfg.ticksPerDay);
   state.population.grief = next < 0.05 ? 0 : next;
+}
+
+/** Once a day: milestones reached by size (a big enough hole can have a cargo elevator). */
+export function stepUnlocks(state: SimState, cfg: SimConfig): void {
+  if (state.tick % cfg.ticksPerDay !== 0) return;
+  if (state.population.count >= cfg.unlocks.cargoPopulation && !(state.unlocks ?? []).includes("cargo")) {
+    unlock(state, "cargo");
+    postMessage(state, cfg, `${state.name} is big enough for a cargo elevator: straight from the surface to a floor of your choosing.`, "good");
+  }
 }

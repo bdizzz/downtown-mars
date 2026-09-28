@@ -132,7 +132,7 @@ function network(layout: Layout): { sets: Sets; publicEdges: Map<string, number>
   for (const room of layout.rooms) {
     if (room.planned || room.building || room.at.kind !== "ring" || !roomDef(room.type).public) continue;
     let first: string | null = null;
-    for (const e of outsideEdges(hole, room.cells)) {
+    for (const e of outsideEdges(hole, openTo(room))) {
       join(sets, hole, e);
       publicEdges.set(e.id, room.id);
       const [v0] = edgeVertices(hole, e);
@@ -140,7 +140,7 @@ function network(layout: Layout): { sets: Sets; publicEdges: Map<string, number>
       else first = v0;
     }
     // Ring-1 public rooms open onto the gallery too, on every floor they span.
-    for (const c of room.cells) if (first && c.ring === 1) sets.union(first, gallery(c.floor));
+    for (const c of openTo(room)) if (first && c.ring === 1) sets.union(first, gallery(c.floor));
     // The entrance opens onto the surface.
     if (first && roomDef(room.type).surfaceLink) sets.union(first, SURFACE);
   }
@@ -154,6 +154,13 @@ function network(layout: Layout): { sets: Sets; publicEdges: Map<string, number>
     }
   }
   return { sets, publicEdges };
+}
+
+/** The cells a public room opens from: all of them, except a cargo elevator, which opens only at its stop. */
+export function openTo(room: RoomInstance): Cell[] {
+  if (!roomDef(room.type).cargoShaft) return room.cells;
+  const stop = Math.max(...room.cells.map((c) => c.floor));
+  return room.cells.filter((c) => c.floor === stop);
 }
 
 /** Does this group of cells open onto a reachable gallery, corridor or public room? */

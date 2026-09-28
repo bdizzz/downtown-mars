@@ -192,6 +192,9 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
     return { ok: false, reason: `The floor below (floor ${bottom}) isn't excavated yet`, ...none };
   }
   if (at.ring < 1) return { ok: false, reason: "Not a ring", ...none };
+  // A cargo elevator runs from the surface down to its stop, which must be below the entrance's floor, and dug.
+  if (def.cargoShaft && at.floor < 2) return { ok: false, reason: "Its stop goes below floor 1: the entrance serves floor 1", ...none };
+  if (def.cargoShaft && at.floor > hole.floors) return { ok: false, reason: "That floor isn't dug yet", ...none };
 
   const lastRing = at.ring + at.d - 1;
   if (lastRing > hole.unlockedRings) {
@@ -200,9 +203,10 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
   }
   if (at.w > ringSize(hole, at.ring)) return { ok: false, reason: "Too wide for this ring", ...none };
 
-  // Tall rooms repeat their footprint on each floor they span.
+  // Tall rooms repeat their footprint on each floor they span; a cargo shaft on every floor above its stop too.
   const cells: Cell[] = [];
-  for (let f = at.floor; f <= bottom; f++) cells.push(...footprint(hole, f, at.ring, at.slot, at.w, at.d));
+  const top = def.cargoShaft ? 1 : at.floor;
+  for (let f = top; f <= bottom; f++) cells.push(...footprint(hole, f, at.ring, at.slot, at.w, at.d));
   const merges = new Set<number>();
   let fresh = 0;
   for (const c of cells) {
@@ -216,7 +220,7 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
       merges.add(other.id);
       continue;
     }
-    const where = c.floor === at.floor ? "Overlaps" : `Floor ${c.floor} below: overlaps`;
+    const where = c.floor === at.floor ? "Overlaps" : c.floor < at.floor ? `Floor ${c.floor} above: its shaft overlaps` : `Floor ${c.floor} below: overlaps`;
     return { ok: false, reason: `${where} ${roomDef(other.type).name}`, cells, surfaceCells: [] };
   }
   if (!fresh) return { ok: false, reason: `Already ${def.stackNoun ?? def.name.toLowerCase()} here`, cells, surfaceCells: [] };
