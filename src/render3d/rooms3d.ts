@@ -6,6 +6,8 @@ import { FLOOR_H, floorSpan, RING_D, ringRadii, slotAngles, TAU } from "./cylind
 import { cellEdges, edgeById, edgeSides, edgeVertices, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
+import { furnish } from "../view/furnish";
+import { disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow } from "./furniture3d";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
 // no room faces it, plus props on the surface. Rebuilt whenever the layout
@@ -415,6 +417,28 @@ function rockFaces(layout: Layout, topFloor: number | null): number[] {
   return pos;
 }
 
+/**
+ * A built room's furniture, fitted from its template (src/view/furnish.ts)
+ * and merged into a few meshes. Cached like its shape: the room's shape key
+ * already changes with everything the fit depends on (its cells, and the
+ * corridors along it). Null when it has none.
+ */
+const furnitureCache = new Map<string, THREE.Group>();
+function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, color: number): THREE.Group | null {
+  const key = `furniture:${shapeKey}`;
+  let g = furnitureCache.get(key);
+  if (!g) {
+    const fitted = furnish(layout, room);
+    if (!fitted.length) return null;
+    g = furnitureMeshes(fitted, `#${color.toString(16).padStart(6, "0")}`);
+    // Which floor it's on (for hiding floors above a chosen one), and its cache key.
+    g.userData = { cached: true, key, floor: Math.round(-fitted[0]!.y / FLOOR_H) };
+    g.traverse((o) => (o.userData.cached = true));
+    furnitureCache.set(key, g);
+  }
+  return g;
+}
+
 /** Is there something to see at (r, a) on this floor, past a room's wall: the gallery, another room, empty space? Not rock. */
 function seeThrough(layout: Layout, own: Set<string>, floor: number, r: number, a: number): boolean {
   const hole = layout.hole;
@@ -581,6 +605,7 @@ export function outlineGeometry(geo: THREE.BufferGeometry): THREE.EdgesGeometry 
 export function setNightGlow(night: number): void {
   const glass = materialCache.get("glass") as THREE.MeshStandardMaterial | undefined;
   if (glass) glass.emissiveIntensity = 1 + night * GLOW.windowBoost;
+  setFurnitureGlow(night);
 }
 
 export function disposeRoomMaterials(): void {
@@ -598,6 +623,9 @@ export function disposeRoomMaterials(): void {
     edges.dispose();
   });
   shapeCache.clear();
+  furnitureCache.forEach((g) => disposeFurniture(g));
+  furnitureCache.clear();
+  disposeFurnitureMaterials();
 }
 
 function roomMaterial(color: number, planned: boolean, faint = false, building = false): THREE.Material {
@@ -848,6 +876,14 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     const edges = new THREE.LineSegments(shape.edges, room.connected ? edgeLine : strandedLine);
     edges.userData = { cached: true };
     group.add(edges);
+    // Its furniture, once it's built (not in x-ray's faded ring 1, nor above a chosen floor).
+    if (!faint && !whole.planned && !whole.building) {
+      const furniture = roomFurniture(layout, whole, shape.key, color);
+      if (furniture && (topFloor === null || furniture.userData.floor >= topFloor)) {
+        used.add(furniture.userData.key);
+        group.add(furniture);
+      }
+    }
 
     if (!room.planned && !faint && !def.public) {
       // Shaft frontage: a window band on every ring-1 face, a door in the middle of the room's run.
@@ -885,6 +921,11 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     shape.geo.dispose();
     shape.edges.dispose();
     shapeCache.delete(key);
+  }
+  for (const [key, g] of furnitureCache) {
+    if (used.has(key)) continue;
+    disposeFurniture(g);
+    furnitureCache.delete(key);
   }
   return group;
 }

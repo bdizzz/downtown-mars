@@ -1,4 +1,67 @@
 {
   "_note": "Furniture layout templates (docs/PLAN-M10.md), one per room type and shape (\"type:WxD\"), in priority order. Each placement pins an item to a wall (back, front, left, right) or the centre: x runs along the wall from its middle (front, back and centre: toward larger angles; left and right: toward the back), y out from the wall to the item's back (centre: from the middle toward the back), turn adds degrees, and repeat copies it along the wall every so many metres. Edited with the dev tool (?furnish).",
-  "templates": {}
+  "templates": {
+    "bunk_dorm:2x1": [
+      {
+        "item": "bunk_bed",
+        "wall": "back",
+        "y": 0.1,
+        "repeat": {
+          "every": 2.8,
+          "max": 8
+        }
+      },
+      {
+        "item": "locker",
+        "wall": "left",
+        "x": -1.5,
+        "y": 0.1,
+        "repeat": {
+          "every": 0.8,
+          "max": 3
+        }
+      },
+      {
+        "item": "locker",
+        "wall": "right",
+        "x": -1.5,
+        "y": 0.1,
+        "repeat": {
+          "every": 0.8,
+          "max": 3
+        }
+      },
+      {
+        "item": "rug",
+        "wall": "center",
+        "y": -0.5
+      },
+      {
+        "item": "table",
+        "wall": "center",
+        "y": -0.5
+      },
+      {
+        "item": "stool",
+        "wall": "center",
+        "x": -1.1,
+        "y": -0.5
+      },
+      {
+        "item": "stool",
+        "wall": "center",
+        "x": 1.1,
+        "y": -0.5
+      },
+      {
+        "item": "footlocker",
+        "wall": "back",
+        "y": 1.5,
+        "repeat": {
+          "every": 2.8,
+          "max": 8
+        }
+      }
+    ]
+  }
 }

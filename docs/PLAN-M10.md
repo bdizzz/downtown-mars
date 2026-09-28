@@ -91,3 +91,13 @@ Decided Sep 28, 2026 (Bryon):
   - What doesn't fit is skipped, and the crowding cap holds.
   - A corridor pulls a wall back.
   - Only built rooms with a template are furnished.
+
+**Step 4, furnished rooms in the game:** `roomFurniture` in `src/render3d/rooms3d.ts`.
+- **Which rooms:** every built room gets its template fitted and merged into meshes. Blueprints, rooms under construction, and rooms faded in X-ray get none.
+- **Caching:** by the room's shape key, which already changes with its cells and the corridors along it. The cache is freed like shapes.
+- **Floors:** furniture on a floor above the chosen one is hidden with it.
+- **Glow:** glowing parts follow the windows at night (`setNightGlow` calls `setFurnitureGlow`).
+- **Not solid:** furniture isn't pickable, so clicks land on the room's floor, and first-person walking goes through it for now.
+- **Rugs:** items no taller than 10 cm lie on the floor. Others stand on them, and they don't count toward the crowding cap (tested).
+- **A first template,** `bunk_dorm:2x1`: bunks along the back wall with footlockers in front, three lockers on each side, and a table with stools on a rug in the middle.
+- **Browser check:** the dev save's dorm on floor 1 in Iso, furnished.

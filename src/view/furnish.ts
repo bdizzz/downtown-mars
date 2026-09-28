@@ -63,7 +63,11 @@ export const FIT = {
   crowding: 0.35,
   /** The most copies a repeat makes, if its placement doesn't say. */
   maxRepeat: 12,
+  /** Items no taller than this (rugs) lie on the floor: others stand on them, and they don't count toward crowding. */
+  flat: 0.1,
 };
+
+const isFlat = (item: string) => itemDef(item).size[2] <= FIT.flat;
 
 /** What a room gives up on a side: half a corridor where one runs, else the walls' hairline (as in 3D). */
 const HALL = corridors.widthM / 2;
@@ -247,13 +251,16 @@ export function fit(frame: Frame, template: Template): Fitted[] {
   const cap = frame.area * FIT.crowding;
   const tryPlace = (p: Placement, i: number, dx: number): "ok" | "outside" | "blocked" | "full" => {
     const [w, d] = itemDef(p.item).size;
-    if (covered + w * d > cap) return "full";
+    const flat = isFlat(p.item);
+    if (!flat && covered + w * d > cap) return "full";
     const f = place(frame, p, dx);
     if (!f.corners.every((c) => inside(frame, c))) return "outside";
-    if (door && tooClose(f.corners, door, 0)) return "blocked";
-    if (out.some((o) => tooClose(f.corners, o.corners, FIT.aisle))) return "blocked";
+    // A rug lies under whatever stands on it: only standing items keep apart, and out of the doorway.
+    if (!flat && door && tooClose(f.corners, door, 0)) return "blocked";
+    if (!flat && out.some((o) => !isFlat(o.item) && tooClose(f.corners, o.corners, FIT.aisle))) return "blocked";
+    if (flat && out.some((o) => isFlat(o.item) && tooClose(f.corners, o.corners, 0))) return "blocked";
     out.push({ ...f, placement: i });
-    covered += w * d;
+    if (!flat) covered += w * d;
     return "ok";
   };
   template.forEach((p, i) => {

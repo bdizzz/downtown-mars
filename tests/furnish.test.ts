@@ -89,3 +89,12 @@ describe("fitting furniture into a room", () => {
     expect(furnish(l, r, { "bunk_dorm:2x1": DORM })).toEqual([]);
   });
 });
+
+describe("rugs", () => {
+  it("lie under what stands on them, and don't crowd the room", () => {
+    const layout = createLayout(createHole(10, 3, 3, config.geometry));
+    const r = room(layout, "bunk_dorm", ring(1, 2, 0, 2));
+    const items = fit(frameOf(layout, r)!, [{ item: "rug", wall: "center" }, { item: "table", wall: "center" }]);
+    expect(items.map((i) => i.item)).toEqual(["rug", "table"]);
+  });
+});
