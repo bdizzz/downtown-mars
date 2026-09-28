@@ -338,11 +338,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       ring.position.y = y0 + LEDGE_THICKNESS;
       const edge = new THREE.Mesh(new THREE.CylinderGeometry(rOpen, rOpen, LEDGE_THICKNESS, 64, 1, true), ledge);
       edge.position.y = y0 + LEDGE_THICKNESS / 2;
+      // Its back edge, where a corridor or a room's floor meets it: a step up, not a slot under the ledge.
+      const back = new THREE.Mesh(new THREE.CylinderGeometry(R, R, LEDGE_THICKNESS, 64, 1, true), ledge);
+      back.position.y = y0 + LEDGE_THICKNESS / 2;
       const railing = new THREE.Mesh(new THREE.TorusGeometry(rOpen + 0.1, 0.05, 6, 96), rail);
       railing.rotation.x = Math.PI / 2;
       railing.position.y = y0 + LEDGE_THICKNESS + RAIL_HEIGHT;
-      for (const m of [ring, edge, railing]) m.userData.floor = floor;
-      holeGroup.add(ring, edge, railing);
+      for (const m of [ring, edge, back, railing]) m.userData.floor = floor;
+      holeGroup.add(ring, edge, back, railing);
     }
 
     // Rough rock underfoot at the bottom of the floor being dug.

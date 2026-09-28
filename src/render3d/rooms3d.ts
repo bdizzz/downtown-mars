@@ -2,8 +2,8 @@ import * as THREE from "three";
 import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
-import { FLOOR_H, floorSpan, ringRadii, slotAngles, TAU } from "./cylinder";
-import { cellEdges, edgeById, edgeVertices, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
+import { FLOOR_H, floorSpan, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { cellEdges, edgeById, edgeSides, edgeVertices, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
 
@@ -318,11 +318,14 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
   for (const c of cells) {
     let [y0, y1] = floorSpan(c.floor);
     y0 += inset;
-    // Floor-1 walls stop just under the ground, so the two surfaces don't fight.
-    y1 -= c.floor === 1 ? Math.max(inset, ROOF_GAP) : inset;
+    // Walls reach the floor above (whose rock or floor closes the room over), except on
+    // floor 1, where they stop just under the ground so the two surfaces don't fight.
+    if (c.floor === 1) y1 -= Math.max(inset, ROOF_GAP);
     // A public room on the gallery has no wall there: it runs right up to the shaft.
     const onGallery = publicRoom && c.ring === 1;
     const cut = carveCell(layout, c, own, inner, outer, inset, carve, onGallery, joints);
+    // The floor runs out to the cell's edges (only the walls keep the hairline), so no gap shows between two rooms.
+    const floorCut = carveCell(layout, c, own, inner, outer, 0, carve, onGallery, joints);
     // What's across each wall, looked for just past the cell's edge.
     const [cr0, cr1] = ringRadii(layout.hole, c.ring);
     const [s0, s1] = slotAngles(c.slot, layout.hole.ringSlots[c.ring - 1]!);
@@ -336,7 +339,6 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
       const outside = pieceAt(cut, p, p.rr1);
       if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) curvedFace(pos, p.rr0, ...inside, y0, y1, { side: 1, across: p.innerHall || ((a) => across(cr0 - 0.5, a)) });
       if (c.ring === outer && !(publicRoom && p.outerHall)) curvedFace(pos, p.rr1, ...outside, y0, y1, { side: -1, across: p.outerHall || ((a) => across(cr1 + 0.5, a)) });
-      flatPiece(pos, p.rr0, p.rr1, inside, outside, y0);
       // A step where a corridor starts or stops partway along a side.
       if (prev) {
         // The room is on the side of whichever piece reaches further in (or out).
@@ -354,8 +356,63 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
     if (cut.openRight && last && !(publicRoom && cut.hallRight)) {
       sideWall(pos, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y1, { side: -1, across: cut.hallRight || across(cMid, s1 + 0.5 / cMid) });
     }
+    for (const p of floorCut.pieces) flatPiece(pos, p.rr0, p.rr1, pieceAt(floorCut, p, p.rr0), pieceAt(floorCut, p, p.rr1), y0);
   }
   return geometry(pos);
+}
+
+/**
+ * Solid rock, where it meets something you can see: its underside as the
+ * ceiling over a room or empty space on the floor below, and its sides
+ * facing rooms, empty space and the corridors carved into it. (Its top is
+ * always under a floor, the ground, or a chosen floor's lid; its side onto
+ * the gallery is the shaft wall.) Rock faces are tagged like walls whose
+ * room is the open side, so with walls down they drop when they're in the way.
+ */
+function rockFaces(layout: Layout, topFloor: number | null): number[] {
+  const hole = layout.hole;
+  const pos = tagged();
+  const joints = new Set(corridorJoints(layout).keys());
+  const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+  const rock = (c: Cell | null) =>
+    !c || c.floor < 1 || c.floor > hole.floors || (!layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] && !isOpen(layout, c));
+  for (let floor = topFloor ?? 1; floor <= hole.floors; floor++) {
+    const [y0, y1] = floorSpan(floor);
+    hole.ringSlots.forEach((n, ri) => {
+      const ring = ri + 1;
+      const [r0, r1] = ringRadii(hole, ring);
+      for (let slot = 0; slot < n; slot++) {
+        const c = { floor, ring, slot };
+        if (!rock(c)) continue;
+        const [s0, s1] = slotAngles(slot, n);
+        // A ceiling over whatever's been dug out below.
+        if (floor < hole.floors && !rock({ floor: floor + 1, ring, slot })) flatRing(pos, r0, r1, s0, s1, y0);
+        // Corridors carved into it: rock walls half a corridor back, facing the corridor.
+        const cut = carveCell(layout, c, new Set([key(c)]), ring, ring, 0, true, false, joints);
+        for (const p of cut.pieces) {
+          if (p.innerHall) curvedFace(pos, p.rr0, ...pieceAt(cut, p, p.rr0), y0, y1, { side: -1 });
+          if (p.outerHall) curvedFace(pos, p.rr1, ...pieceAt(cut, p, p.rr1), y0, y1, { side: 1 });
+        }
+        const first = cut.pieces[0];
+        const last = cut.pieces.at(-1);
+        if (cut.hallLeft && first) sideWall(pos, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y1, { side: -1 });
+        if (cut.hallRight && last) sideWall(pos, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y1, { side: 1 });
+        // A face on each border with something dug out beyond it (and no corridor there, which carves instead).
+        for (const e of cellEdges(hole, c)) {
+          if (layout.corridors?.[e.id]) continue;
+          const [a, b] = edgeSides(hole, e);
+          const beyondFirst = !!a && key(a) !== key(c);
+          const other = beyondFirst ? a : b;
+          if (!other || key(other) === key(c) || rock(other)) continue;
+          // The open side is toward smaller angles (or inward) when it's the edge's first side.
+          const side = beyondFirst ? -1 : 1;
+          if (e.kind === "arc") curvedFace(pos, hole.shaftRadiusM + e.circle * RING_D, e.a0 * TAU, e.a1 * TAU, y0, y1, { side });
+          else sideWall(pos, r0, e.turn * TAU, r1, e.turn * TAU, y0, y1, { side });
+        }
+      }
+    });
+  }
+  return pos;
 }
 
 /** Is there something to see at (r, a) on this floor, past a room's wall: the gallery, another room, empty space? Not rock. */
@@ -731,6 +788,11 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   const wallMesh = new THREE.Mesh(geometry(wall), rock);
   wallMesh.userData = { pickable: true, wall: true, faint: xray };
   group.add(wallMesh);
+  // Solid rock where it meets dug-out space, so nothing shows through behind or above a room. X-ray looks past it.
+  if (!xray) {
+    const faces = rockFaces(layout, topFloor);
+    if (faces.length) group.add(new THREE.Mesh(geometry(faces), rock));
+  }
 
   const used = new Set<string>();
   const glass = wallMaterial("glass", () => new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.2, metalness: 0.3, side: THREE.DoubleSide }));
@@ -738,7 +800,7 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   const strandedLine = wallMaterial(`stranded:${colors.stranded}`, () => new THREE.LineBasicMaterial({ color: colors.stranded })) as THREE.LineBasicMaterial;
   const edgeLine = wallMaterial("edges", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.5 })) as THREE.LineBasicMaterial;
 
-  if (topFloor !== null) group.add(...floorCap(layout, topFloor));
+  if (topFloor !== null) group.add(...floorCap(layout, topFloor, xray));
   // No corridors yet: add() with nothing to add is an error in three.js.
   const halls = corridorFloors(layout, topFloor);
   if (halls.length) group.add(...halls);
@@ -1021,7 +1083,7 @@ const CAP = { rock: 0x4a2a1e, locked: 0x33201a, beyond: 0x241410, lift: 0.02, be
  * carved cells in rock, locked rings darker, and solid rock past the last
  * ring. Carved and locked cells are pickable, so they can be built on from above.
  */
-function floorCap(layout: Layout, floor: number): THREE.Object3D[] {
+function floorCap(layout: Layout, floor: number, xray = false): THREE.Object3D[] {
   const hole = layout.hole;
   const [y0, y1] = floorSpan(floor);
   const y = y1 - CAP.lift;
@@ -1043,13 +1105,14 @@ function floorCap(layout: Layout, floor: number): THREE.Object3D[] {
         const inside = pieceAt(cut, p, p.rr0);
         const outside = pieceAt(cut, p, p.rr1);
         flatPiece(ring > hole.unlockedRings ? locked : open, p.rr0, p.rr1, inside, outside, y);
-        if (p.innerHall) curvedFace(cutWalls, p.rr0, ...inside, y0, y);
-        if (p.outerHall) curvedFace(cutWalls, p.rr1, ...outside, y0, y);
+        // Outside x-ray the rock's own faces (rockFaces) wall the corridors in.
+        if (xray && p.innerHall) curvedFace(cutWalls, p.rr0, ...inside, y0, y);
+        if (xray && p.outerHall) curvedFace(cutWalls, p.rr1, ...outside, y0, y);
       }
       const first = cut.pieces[0];
       const last = cut.pieces.at(-1);
-      if (cut.hallLeft && first) sideWall(cutWalls, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y);
-      if (cut.hallRight && last) sideWall(cutWalls, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y);
+      if (xray && cut.hallLeft && first) sideWall(cutWalls, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y);
+      if (xray && cut.hallRight && last) sideWall(cutWalls, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y);
     }
   });
   const outer = ringRadii(hole, hole.ringSlots.length)[1];

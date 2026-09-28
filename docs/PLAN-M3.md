@@ -90,3 +90,14 @@ Decided Sep 27, 2026 (Bryon): milestone 3 is the 3D view. When the network map c
     - **How:** each wall segment asks what's just past it, so a wall facing two cells in the next ring can be half down. It's tagged by a doubled normal, read by the shader and by picking. Windows count the gallery as behind them. A room's cached shape now depends on what's around it.
     - **Tested:** an outer wall with a room behind it comes down from inside the room; the inner wall, with rock behind, stays up.
     - **Browser check:** Iso, walls up and down, before and after a sideways scroll.
+- **Seams (Bryon, Sep 28):** three places you could see through the model:
+  1. **Between two rooms.** Each room is inset 6 cm on its outside faces so no two walls share a plane, and nothing filled the gap. Room floors now run out to the cell's edges (carved by corridors as before, but with no inset). Only the walls keep the hairline.
+  2. **Above a room's back wall.** Walls stopped 6 cm short of the floor above, and solid rock wasn't drawn at all.
+     - Walls now reach the floor above (floor 1's still stop just under the ground).
+     - `rockFaces` draws solid rock wherever it meets dug-out space: its underside as the ceiling over a room or empty space below, its sides onto rooms and empty space at the cell borders, and walls half a corridor back where corridors are carved into it. Rock tops are always covered, and its side onto the gallery is the shaft wall.
+     - Rock faces are tagged like walls whose room is the open side, so walls down lowers them when they're in the way.
+     - X-ray skips them.
+     - The chosen floor's lid only draws its own corridor walls in X-ray, so the two don't overlap.
+  3. **Corridor to gallery.** The gallery ledge stands 0.4 m proud with no face down its back, so you could see under it from a corridor. It now has a face along its outer edge.
+- **Cost:** a layout rebuild takes about 110 ms in the dev save.
+- **Browser check:** Shaft view into rooms on floor 3 with walls up and down, and Iso.
