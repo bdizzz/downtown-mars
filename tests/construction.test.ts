@@ -142,3 +142,37 @@ describe("construction time", () => {
     expect(loaded.ok && loaded.world.holes[0]!.construction.queue).toEqual(s.construction.queue);
   });
 });
+
+describe("construction offices", () => {
+  withConstructionTime();
+
+  it("add bandwidth by size, scaled by how they're staffed", () => {
+    const s = site();
+    const office = build(s, "site_office", ring(1, 1, 2));
+    hours(s, roomWork("site_office") + 0.5);
+    step(s, config);
+    expect(bandwidth(s)).toBeCloseTo(construction.baseBandwidth + 1 * s.roomStatus[office.id]!.rate);
+    // A bigger office adds more.
+    build(s, "construction_office", ring(1, 1, 3, 2));
+    hours(s, roomWork("construction_office") / bandwidth(s) + 0.5);
+    step(s, config);
+    expect(bandwidth(s)).toBeGreaterThan(construction.baseBandwidth + 3);
+    // Paused: it adds nothing.
+    applyCommand(s, { type: "setRoomControl", roomId: office.id, paused: true });
+    step(s, config);
+    expect(bandwidth(s)).toBeLessThan(construction.baseBandwidth + 3);
+  });
+
+  it("speed the queue up", () => {
+    const slow = site();
+    const fast = site();
+    build(fast, "construction_office", ring(1, 1, 5, 2));
+    hours(fast, roomWork("construction_office") + 0.5); // the office is up and staffed
+    const a = build(slow, "life_support", ring(1, 1, 1, 4));
+    const b = build(fast, "life_support", ring(1, 1, 1, 4));
+    hours(slow, 12);
+    hours(fast, 12);
+    const progress = (s: SimState, id: number) => s.construction.queue.find((j) => j.roomId === id)?.done ?? Infinity; // done: gone from the queue
+    expect(progress(fast, b.id)).toBeGreaterThan(progress(slow, a.id) * 2);
+  });
+});

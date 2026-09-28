@@ -760,6 +760,80 @@
       },
       "buildable": true,
       "buildHours": 10
+    },
+    {
+      "id": "site_office",
+      "name": "Site office",
+      "short": "Site",
+      "category": "construction",
+      "size": "S",
+      "staff": 2,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "constructionBandwidth": 1,
+      "effects": [],
+      "cost": {
+        "rock": 10,
+        "metal": 5
+      },
+      "buildHours": 6,
+      "buildable": true
+    },
+    {
+      "id": "construction_office",
+      "name": "Construction office",
+      "short": "Builders",
+      "category": "construction",
+      "size": "M",
+      "staff": 4,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "constructionBandwidth": 2.5,
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "brick": 15,
+        "metal": 10,
+        "machinery": 1
+      },
+      "buildHours": 12,
+      "buildable": true
+    },
+    {
+      "id": "construction_yard",
+      "name": "Construction yard",
+      "short": "Yard",
+      "category": "construction",
+      "size": "L",
+      "staff": 8,
+      "uses": {
+        "power": 2
+      },
+      "makes": {},
+      "constructionBandwidth": 5,
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -2,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "brick": 30,
+        "metal": 20,
+        "machinery": 3
+      },
+      "buildHours": 30,
+      "buildable": true
     }
   ]
 }

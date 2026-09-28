@@ -89,3 +89,13 @@ Large holes build a lot, far from the queue's first days. Ideas for speeding con
 - **Sandbox switch:** `data/construction.json` has an `instant` switch. The test setup turns it on for unit tests; `withConstructionTime()` turns it off where construction is under test.
 - **Save version 13:** everything already there is built.
 - **Tests:** held but inactive, one at a time in order, priority, refunds, blueprints not blocking, corridor jobs by length that link when built, stair extensions, base bandwidth, the queue in saves.
+
+**Step 2, construction offices:** three rooms in a new Construction group, each with a glyph:
+
+| Office | Size | Staff | Power | Bandwidth | Noise | Cost | Work |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Site office | S | 2 | 1 | +1 | — | rock 10, metal 5 | 6 h |
+| Construction office | M | 4 | 1 | +2.5 | −1 r1 | brick 15, metal 10, machinery 1 | 12 h |
+| Construction yard | L | 8 | 2 | +5 | −2 r1 | brick 30, metal 20, machinery 3 | 30 h |
+
+Each adds `constructionBandwidth` times its running rate (staffing × morale), so a paused or understaffed office adds less or nothing, and one still being built adds nothing. Tested: bandwidth by size and staffing, a paused office, and an office at least doubling progress on the same job.

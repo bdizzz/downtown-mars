@@ -20,7 +20,7 @@ export function tint(c: number, t: number): number {
 }
 
 /** Rooms that share another's glyph. */
-const ALIASES: Record<string, string> = { tiny_plaza: "small_plaza" };
+const ALIASES: Record<string, string> = { tiny_plaza: "small_plaza", construction_yard: "construction_office" };
 
 type Glyph = (g: GraphicsContext, cx: number, cy: number, s: number, color: number) => void;
 
@@ -94,6 +94,20 @@ const GLYPHS: Record<string, Glyph> = {
     g.moveTo(cx, cy + s * 0.12).lineTo(cx, cy - s * 0.18).stroke(line(1.5, c));
     g.moveTo(cx, cy - s * 0.08).quadraticCurveTo(cx - s * 0.2, cy - s * 0.12, cx - s * 0.2, cy - s * 0.3).quadraticCurveTo(cx - s * 0.04, cy - s * 0.26, cx, cy - s * 0.08).stroke(line(1.2, c));
     g.moveTo(cx, cy - s * 0.14).quadraticCurveTo(cx + s * 0.2, cy - s * 0.18, cx + s * 0.2, cy - s * 0.34).quadraticCurveTo(cx + s * 0.04, cy - s * 0.3, cx, cy - s * 0.14).stroke(line(1.2, c));
+  },
+  site_office: (g, cx, cy, s, c) => {
+    // A hard hat.
+    g.moveTo(cx - s * 0.3, cy + s * 0.1).lineTo(cx + s * 0.3, cy + s * 0.1).stroke(line(1.8, c));
+    g.moveTo(cx - s * 0.22, cy + s * 0.1).quadraticCurveTo(cx - s * 0.22, cy - s * 0.25, cx, cy - s * 0.25).quadraticCurveTo(cx + s * 0.22, cy - s * 0.25, cx + s * 0.22, cy + s * 0.1).stroke(line(1.5, c));
+    g.moveTo(cx, cy - s * 0.25).lineTo(cx, cy - s * 0.05).stroke(line(1.2, c));
+  },
+  construction_office: (g, cx, cy, s, c) => {
+    // A crane.
+    g.moveTo(cx - s * 0.1, cy + s * 0.32).lineTo(cx - s * 0.1, cy - s * 0.28).lineTo(cx + s * 0.32, cy - s * 0.28).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.1, cy - s * 0.28).lineTo(cx - s * 0.3, cy - s * 0.2).stroke(line(1.5, c));
+    g.moveTo(cx + s * 0.24, cy - s * 0.28).lineTo(cx + s * 0.24, cy - s * 0.02).stroke(line(1.2, c));
+    g.rect(cx + s * 0.18, cy - s * 0.02, s * 0.12, s * 0.1).stroke(line(1.2, c));
+    g.moveTo(cx - s * 0.25, cy + s * 0.32).lineTo(cx + s * 0.05, cy + s * 0.32).stroke(line(1.5, c));
   },
   stairwell: (g, cx, cy, s, c) => {
     // Steps going down.
