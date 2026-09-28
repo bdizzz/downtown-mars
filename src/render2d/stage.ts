@@ -2,6 +2,7 @@ import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js
 import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
 import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
+import { isOpen } from "../sim/excavation";
 import { edgeById, edgeSides, nearestEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors } from "../sim/corridors";
 import { constructionStripes, corridorBand } from "./corridorArt";
@@ -26,7 +27,7 @@ import {
 } from "./layout";
 
 export type { HoverInfo, Stage, StageOptions, Tool };
-import { drawGlyph, drawHills, drawLandingPad, drawPlus, drawPod, drawRoverDepot, drawSolarArray, shade, STARS } from "./art";
+import { drawAirlock, drawEmptySpace, drawGlyph, drawHeadframe, drawHills, drawLandingPad, drawPlus, drawPod, drawRockCell, drawRoverDepot, drawSolarArray, shade, STARS } from "./art";
 import { CATEGORY_COLORS, HEAT } from "./palette";
 
 // The unrolled view. One full turn of the hole is drawn into shared graphics
@@ -53,6 +54,9 @@ const C = {
   ok: 0x7fd67f,
   bad: 0xe0503a,
   digRock: 0x3a2018,
+  /** A cell still solid rock, and one dug out with nothing in it. */
+  rockCell: 0x341e17,
+  empty: 0x6e5445,
   digFront: 0xe07a3f,
   lander: 0xd9d4cc,
   hillsNight: 0x1c0f12,
@@ -187,7 +191,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   /** Progress bars on rooms under construction, updated as the crews work. */
   let buildKey = "";
   function drawBuild(s: Snapshot): void {
-    const key = s.construction.jobs.map((j) => `${j.id}:${Math.floor(j.progress * 50)}`).join(",") + s.layout.version;
+    const key = s.construction.jobs.map((j) => `${j.id}:${j.phase}:${Math.floor(j.progress * 50)}`).join(",") + s.layout.version;
     if (key === buildKey) return;
     buildKey = key;
     buildCtx.clear();
@@ -202,7 +206,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const bar = { x: x + 6, y: y + hh - 9, w: w - 12 };
       buildCtx.rect(bar.x, bar.y, bar.w, 5).fill({ color: 0x1a0f0d, alpha: 0.8 });
       buildCtx.rect(bar.x, bar.y, bar.w * job.progress, 5).fill(C.build);
-      labels.push({ text: `${Math.floor(job.progress * 100)}%`, x: x + w / 2, y: y + hh / 2 - 4 });
+      labels.push({ text: `${job.phase === "excavating" ? "⛏ " : ""}${Math.floor(job.progress * 100)}%`, x: x + w / 2, y: y + hh / 2 - 4 });
     }
     // The percentage, in every copy of the turn.
     for (const copy of world.children as Container[]) {
@@ -329,8 +333,27 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     return [start * w + 3, SURFACE_H - GROUND_H - SURFACE_ROOM_H, slots.length * w - 6, SURFACE_ROOM_H];
   }
 
+  /** Every cell of the dug floors that isn't a room: solid rock, or dug-out empty space with pillars. */
+  function drawCells(l: Layout): void {
+    const h = l.hole;
+    for (let floor = 1; floor <= h.floors; floor++) {
+      for (let ring = 1; ring <= h.unlockedRings; ring++) {
+        const n = h.ringSlots[ring - 1]!;
+        const y = ringTop(floor, ring, h.ringSlots.length);
+        for (let slot = 0; slot < n; slot++) {
+          const c = { floor, ring, slot };
+          if (roomAt(l, c)) continue;
+          const [x0, x1] = slotX(slot, n);
+          if (isOpen(l, c)) drawEmptySpace(roomsCtx, x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2, C.empty);
+          else drawRockCell(roomsCtx, x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2, C.rockCell, (floor * 64 + ring) * 512 + slot);
+        }
+      }
+    }
+  }
+
   function drawRooms(l: Layout): void {
     roomsCtx.clear();
+    drawCells(l);
     const groundY = SURFACE_H - GROUND_H;
     for (const room of l.rooms) {
       const def = roomDef(room.type);
@@ -344,7 +367,16 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         else roomsCtx.rect(...surfaceRect(room.surfaceCells, l.surface.length)).fill(color);
         continue;
       }
-      const rows = cellRows(l.hole, room.cells);
+      // A cargo elevator's shaft: a dark column with its cables down to the stop.
+      const stop = def.cargoShaft ? Math.max(...room.cells.map((c) => c.floor)) : 0;
+      if (def.cargoShaft) {
+        for (const row of cellRows(l.hole, room.cells.filter((c) => c.floor < stop))) {
+          const [x, y, w, hh] = rowRect(l.hole, row);
+          roomsCtx.rect(x, y, w, hh).fill(shade(color, room.building || room.planned ? 0.25 : 0.35));
+          for (const cx of [x + w * 0.35, x + w * 0.65]) roomsCtx.moveTo(cx, y).lineTo(cx, y + hh).stroke({ color: shade(color, 0.7), width: 1.5 });
+        }
+      }
+      const rows = cellRows(l.hole, def.cargoShaft ? room.cells.filter((c) => c.floor === stop) : room.cells);
       for (const row of rows) {
         let [x, y, w, hh] = rowRect(l.hole, row);
         // Public rooms on the gallery have no wall there: they open right onto it.
@@ -366,6 +398,18 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       if (!room.planned && !room.building && !def.public) drawFrontage(l, rows, color);
       drawRoomGlyph(l, room, rows, color);
       if (!room.connected) for (const row of rows) roomsCtx.rect(...rowRect(l.hole, row)).stroke({ color: C.bad, width: 3 });
+    }
+    // At the rim, in front of the surface buildings (nearer the shaft): the entrance's airlock, and cargo headframes.
+    for (const room of l.rooms) {
+      const def = roomDef(room.type);
+      if (!def.surfaceLink || room.at.kind !== "ring") continue;
+      const row = cellRows(l.hole, room.cells.filter((c) => c.floor === 1))[0];
+      if (!row) continue;
+      const color = CATEGORY_COLORS[def.category] ?? C.label;
+      const w = Math.max(row.x1 - row.x0, 40);
+      const x = (row.x0 + row.x1) / 2 - w / 2;
+      if (def.cargoShaft) drawHeadframe(roomsCtx, x, w, groundY + 4, room.building || room.planned ? shade(color, 0.6) : color);
+      else drawAirlock(roomsCtx, x, w, groundY + 4, color);
     }
     drawCorridors(l);
   }

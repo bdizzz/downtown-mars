@@ -9,7 +9,8 @@ import { FLOOR_H, openShaftRadius, pickAt, ringRadii, slotAngles } from "../rend
 import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
-import { drawGlyph, drawPlus, shade } from "./art";
+import { drawGlyph, drawPlus, shade, tint } from "./art";
+import { isOpen } from "../sim/excavation";
 import { constructionStripes, corridorStrip } from "./corridorArt";
 import { config } from "../sim/config";
 import { corridorJoints, corridors } from "../sim/corridors";
@@ -41,6 +42,10 @@ const C = {
   dig: 0xe07a3f,
   door: 0x2a1a14,
   build: 0xe0a03a,
+  /** A cell still solid rock, and one dug out with nothing in it. */
+  rockCell: 0x341e17,
+  empty: 0x6e5445,
+  pillar: 0x3d2b22,
 };
 
 /** Pixels per metre at zoom 1. */
@@ -174,12 +179,51 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     labels = new Container();
     world.addChildAt(labels, 3);
     const h = l.hole;
+    // Cells with no room: solid rock (speckled), or dug-out empty space with a pillar at each corner.
+    if (floor <= h.floors) {
+      for (let ring = 1; ring <= h.unlockedRings; ring++) {
+        const n = h.ringSlots[ring - 1]!;
+        const [r0, r1] = ringRadii(h, ring);
+        for (let slot = 0; slot < n; slot++) {
+          const c = { floor, ring, slot };
+          if (roomAt(l, c)) continue;
+          const [a0, a1] = slotAngles(slot, n);
+          if (isOpen(l, c)) {
+            roomsCtx.poly(cellSector(h, c, 0.3)).fill(C.empty);
+            for (const [r, a] of [[r0 + 1, a0 + 1 / r0], [r0 + 1, a1 - 1 / r0], [r1 - 1, a0 + 1 / r1], [r1 - 1, a1 - 1 / r1]] as const) {
+              const [x, y] = xy(r, a);
+              roomsCtx.circle(x, y, 0.55 * PX).fill(C.pillar);
+            }
+          } else {
+            roomsCtx.poly(cellSector(h, c, 0.3)).fill(C.rockCell);
+            let seed = ((ring * 97 + slot) * 2654435761) >>> 0;
+            for (let i = 0; i < 3; i++) {
+              seed = (seed * 1103515245 + 12345) >>> 0;
+              const t = seed / 4294967296;
+              seed = (seed * 1103515245 + 12345) >>> 0;
+              const u = seed / 4294967296;
+              const [x, y] = xy(r0 + 1.5 + t * (r1 - r0 - 3), a0 + (0.15 + 0.7 * u) * (a1 - a0));
+              roomsCtx.circle(x, y, 0.3 * PX).fill(tint(C.rockCell, 0.15));
+            }
+          }
+        }
+      }
+    }
     for (const room of l.rooms) {
       if (room.at.kind !== "ring") continue;
       const cells = onFloor(room.cells);
       if (!cells.length) continue;
       const def = roomDef(room.type);
       const color = CATEGORY_COLORS[def.category] ?? 0x888888;
+      // A cargo elevator passing through this floor: just its shaft, with the cables.
+      if (def.cargoShaft && floor < Math.max(...room.cells.map((c) => c.floor))) {
+        for (const c of cells) {
+          roomsCtx.poly(cellSector(h, c, 0.3)).fill(shade(color, 0.35));
+          const centre = roomCentre(h, [c]);
+          roomsCtx.circle(centre.x - 4, centre.y, 2).circle(centre.x + 4, centre.y, 2).fill(shade(color, 0.75));
+        }
+        continue;
+      }
       // Cells fill edge to edge, so a room reads as one piece; its outline marks where it ends.
       for (const c of cells) {
         // Public rooms on the gallery open onto it: fill over the gallery's edge line.
@@ -412,9 +456,9 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
 
   /** "45%" on each room under construction on this floor, as the crews work. */
   let progressKey = "";
-  function drawProgress(s: { construction: { jobs: { roomId?: number; kind: string; progress: number }[] } }): void {
+  function drawProgress(s: { construction: { jobs: { roomId?: number; kind: string; progress: number; phase: string }[] } }): void {
     if (!layout) return;
-    const key = `${floor}:${layout.version}:` + s.construction.jobs.map((j) => `${j.roomId}:${Math.floor(j.progress * 100)}`).join(",");
+    const key = `${floor}:${layout.version}:` + s.construction.jobs.map((j) => `${j.roomId}:${j.phase}:${Math.floor(j.progress * 100)}`).join(",");
     if (key === progressKey) return;
     progressKey = key;
     progressLabels.removeChildren().forEach((c) => c.destroy());
@@ -424,7 +468,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       const cells = onFloor(job.kind === "extend" ? (room.pendingCells ?? []) : room.cells);
       if (!cells.length) continue;
       const centre = roomCentre(layout.hole, cells);
-      const t = new Text({ text: `${Math.floor(job.progress * 100)}%`, style: { fill: 0xffffff, fontSize: 14, fontWeight: "800", stroke: { color: 0x1a0f0d, width: 4 } } });
+      const t = new Text({ text: `${job.phase === "excavating" ? "⛏ " : ""}${Math.floor(job.progress * 100)}%`, style: { fill: 0xffffff, fontSize: 14, fontWeight: "800", stroke: { color: 0x1a0f0d, width: 4 } } });
       t.anchor.set(0.5);
       t.position.set(centre.x, centre.y + 12);
       progressLabels.addChild(t);

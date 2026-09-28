@@ -405,7 +405,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (u.surface) offer(hit.distance, () => surfacePickAt(hit.point));
       // A corridor floor, or a room's floor seen from above (rooms have no ceilings):
       // what's just above it, on its floor, not the floor below.
-      else if (u.hall || (u.roomId !== undefined && Math.abs(hit.face?.normal.y ?? 0) > 0.9 && ray.direction.y < 0)) {
+      else if (u.hall || u.empty || (u.roomId !== undefined && Math.abs(hit.face?.normal.y ?? 0) > 0.9 && ray.direction.y < 0)) {
         offer(hit.distance, () => pickPast(h, ray, hit.distance - 0.3), hit.distance - 0.3 + NUDGE);
       }
       else offer(hit.distance, () => pickPast(h, ray, hit.distance));
@@ -467,7 +467,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     let m = percentMats.get(text);
     if (m) return m;
     const c = document.createElement("canvas");
-    c.width = 96;
+    // Room for "⛏ 100%" while digging.
+    c.width = 144;
     c.height = 48;
     const g = c.getContext("2d")!;
     g.font = "800 30px system-ui, sans-serif";
@@ -475,9 +476,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     g.textBaseline = "middle";
     g.lineWidth = 7;
     g.strokeStyle = "#1a0f0d";
-    g.strokeText(text, 48, 25);
+    g.strokeText(text, 72, 25);
     g.fillStyle = "#ffffff";
-    g.fillText(text, 48, 25);
+    g.fillText(text, 72, 25);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     m = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
@@ -485,7 +486,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     return m;
   }
   function drawProgress(s: Snapshot): void {
-    const key = `${s.layout.version}:${floorLimit}:` + s.construction.jobs.map((j) => `${j.roomId}:${Math.floor(j.progress * 100)}`).join(",");
+    const key = `${s.layout.version}:${floorLimit}:` + s.construction.jobs.map((j) => `${j.roomId}:${j.phase}:${Math.floor(j.progress * 100)}`).join(",");
     if (key === progressKey) return;
     progressKey = key;
     progressGroup.clear();
@@ -502,8 +503,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const [y0, y1] = floorSpan(c.floor);
       const a = (a0 + a1) / 2;
       const r = c.ring === 1 ? r0 - 0.8 : (r0 + r1) / 2;
-      const sprite = new THREE.Sprite(percentMaterial(`${Math.floor(job.progress * 100)}%`));
-      sprite.scale.set(2.4, 1.2, 1);
+      const sprite = new THREE.Sprite(percentMaterial(`${job.phase === "excavating" ? "⛏" : ""}${Math.floor(job.progress * 100)}%`));
+      sprite.scale.set(3.6, 1.2, 1);
       sprite.position.set(r * Math.cos(a), (y0 + y1) / 2, r * Math.sin(a));
       sprite.renderOrder = 11;
       progressGroup.add(sprite);

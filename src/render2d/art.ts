@@ -20,7 +20,7 @@ export function tint(c: number, t: number): number {
 }
 
 /** Rooms that share another's glyph. */
-const ALIASES: Record<string, string> = { tiny_plaza: "small_plaza", construction_yard: "construction_office", storeroom: "warehouse", depot: "warehouse" };
+const ALIASES: Record<string, string> = { empty_room_s: "empty_room", empty_room_m: "empty_room", empty_room_l: "empty_room", tiny_plaza: "small_plaza", construction_yard: "construction_office", storeroom: "warehouse", depot: "warehouse" };
 
 type Glyph = (g: GraphicsContext, cx: number, cy: number, s: number, color: number) => void;
 
@@ -124,6 +124,24 @@ const GLYPHS: Record<string, Glyph> = {
     g.moveTo(cx - s * 0.3, cy - s * 0.3);
     for (let i = 0; i < 4; i++) g.lineTo(cx - s * 0.3 + st * (i + 1), cy - s * 0.3 + st * i).lineTo(cx - s * 0.3 + st * (i + 1), cy - s * 0.3 + st * (i + 1));
     g.stroke(line(1.5, c));
+  },
+  entrance: (g, cx, cy, s, c) => {
+    // An airlock door: a round-cornered hatch with a wheel, and an arrow in.
+    g.roundRect(cx - s * 0.26, cy - s * 0.34, s * 0.52, s * 0.62, s * 0.14).stroke(line(1.6, c));
+    g.circle(cx, cy - s * 0.04, s * 0.11).stroke(line(1.3, c));
+    g.moveTo(cx - s * 0.11, cy - s * 0.04).lineTo(cx + s * 0.11, cy - s * 0.04).moveTo(cx, cy - s * 0.15).lineTo(cx, cy + s * 0.07).stroke(line(1, c));
+  },
+  cargo_elevator: (g, cx, cy, s, c) => {
+    // A crate on a platform, with an arrow up to the surface.
+    g.rect(cx - s * 0.2, cy - s * 0.02, s * 0.4, s * 0.28).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.2, cy - s * 0.02).lineTo(cx + s * 0.2, cy + s * 0.26).stroke(line(1, c));
+    g.moveTo(cx - s * 0.3, cy + s * 0.3).lineTo(cx + s * 0.3, cy + s * 0.3).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.1, cy - s * 0.2).lineTo(cx, cy - s * 0.34).lineTo(cx + s * 0.1, cy - s * 0.2).stroke(line(1.4, c));
+  },
+  empty_room: (g, cx, cy, s, c) => {
+    // A pick: dig it out ahead.
+    g.moveTo(cx - s * 0.3, cy - s * 0.12).quadraticCurveTo(cx, cy - s * 0.36, cx + s * 0.3, cy - s * 0.12).stroke(line(1.6, c));
+    g.moveTo(cx, cy - s * 0.24).lineTo(cx, cy + s * 0.32).stroke(line(1.6, c));
   },
   elevator: (g, cx, cy, s, c) => {
     // A car in its shaft, with up and down arrows.
@@ -276,4 +294,50 @@ export function drawPlus(g: GraphicsContext, cx: number, cy: number, size: numbe
   g.circle(cx, cy, size / 2).fill({ color: 0x1a0f0d, alpha: 0.75 }).stroke({ color, width: 2 });
   const a = size * 0.28;
   g.moveTo(cx - a, cy).lineTo(cx + a, cy).moveTo(cx, cy - a).lineTo(cx, cy + a).stroke(line(3, color));
+}
+
+/** The entrance's airlock at the rim: a long low hall with round hatches, and a ramp down to the ground. */
+export function drawAirlock(g: GraphicsContext, x: number, w: number, y: number, color: number): void {
+  const h = 16;
+  g.poly([x, y, x + 6, y - 6, x + 6, y]).fill(shade(color, 0.5));
+  g.roundRect(x + 6, y - h, w - 12, h, 6).fill(color).stroke(line(1.5, shade(color, 0.4)));
+  g.poly([x + w - 6, y, x + w - 6, y - 6, x + w, y]).fill(shade(color, 0.5));
+  const hatches = Math.max(2, Math.floor((w - 12) / 22));
+  for (let i = 0; i < hatches; i++) {
+    const hx = x + 6 + ((i + 0.5) * (w - 12)) / hatches;
+    g.circle(hx, y - h / 2, 4).fill(shade(color, 0.35)).stroke(line(1, tint(color, 0.4)));
+  }
+  // A beacon on top.
+  g.rect(x + w / 2 - 1, y - h - 6, 2, 6).fill(shade(color, 0.4));
+  g.circle(x + w / 2, y - h - 7, 2).fill(0xe07a3f);
+}
+
+/** A cargo elevator's headframe: an A-frame over the shaft with its sheave wheel. */
+export function drawHeadframe(g: GraphicsContext, x: number, w: number, y: number, color: number): void {
+  const cx = x + w / 2;
+  const h = 30;
+  const leg = Math.min(w / 2 - 2, 14);
+  g.moveTo(cx - leg, y).lineTo(cx, y - h).lineTo(cx + leg, y).stroke(line(2.5, shade(color, 0.45)));
+  g.moveTo(cx - leg * 0.5, y - h * 0.5).lineTo(cx + leg * 0.5, y - h * 0.5).stroke(line(1.5, shade(color, 0.45)));
+  g.circle(cx, y - h, 5).fill(color).stroke(line(1.5, shade(color, 0.4)));
+  g.moveTo(cx, y - h).lineTo(cx, y).stroke(line(1, tint(color, 0.3)));
+}
+
+/** Empty space: excavated, no walls, the roof held up by pillars. */
+export function drawEmptySpace(g: GraphicsContext, x: number, y: number, w: number, h: number, color: number): void {
+  g.rect(x, y, w, h).fill(color);
+  // A floor line, and pillars at each end holding up the rock above.
+  g.rect(x, y + h - 3, w, 3).fill(shade(color, 0.7));
+  for (const px of [x + 3, x + w - 7]) {
+    g.rect(px, y, 4, h - 3).fill(shade(color, 0.55));
+    g.rect(px - 1, y, 6, 2).fill(shade(color, 0.45));
+  }
+}
+
+/** Solid rock in a cell: a darker fill with a few specks, the same every time for a given cell. */
+export function drawRockCell(g: GraphicsContext, x: number, y: number, w: number, h: number, color: number, seed: number): void {
+  g.rect(x, y, w, h).fill(color);
+  let r = (seed * 2654435761) >>> 0;
+  const next = () => ((r = (r * 1103515245 + 12345) >>> 0) / 4294967296);
+  for (let i = 0; i < 4; i++) g.rect(x + 3 + next() * (w - 8), y + 3 + next() * (h - 8), 2, 2).fill(tint(color, 0.15));
 }

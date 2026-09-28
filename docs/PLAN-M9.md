@@ -127,3 +127,19 @@ Decided Sep 28, 2026 (Bryon):
 - **Placement:** placed on its stop floor, which must be dug and below floor 1. It takes the same cell on every floor from 1 down to the stop. Every cell above the stop must be free of rooms ("Floor 2 above: its shaft overlaps Clinic"). Rock or empty space is fine. The column's rock is dug out first, like any room.
 - **Access:** it opens only at its stop (`openTo`). That floor's corridors and gallery (if it's in ring 1) join the surface. The floors it passes through gain nothing.
 - **Tests:** the unlock; its stop reached without stairs while the floors above aren't; a clear column; a stop below floor 1 on a dug floor.
+
+**Step 5, the look:**
+- **Unrolled view:**
+  - Every cell of the dug floors that isn't a room is drawn as solid rock (dark, with a few specks, the same each time) or as empty space (a lighter floor with a pillar at each end). Both redraw as cells are dug.
+  - A cargo elevator's floors above its stop are a dark column with its cables. The stop is drawn as a room.
+  - At the rim, drawn in front of the surface buildings (nearer the shaft, as seen from the wall): the entrance's airlock (a long low hall with round hatches, ramps and a beacon) and cargo headframes (an A-frame and sheave wheel).
+- **Plan view:** rock cells are speckled. Empty cells get a pillar at each corner. A cargo shaft passing through the floor shows as a dark cell with two cable ends.
+- **3D:**
+  - Empty space gets a bare floor (pickable: building on it from above picks the cell) and four square pillars per cell. No walls.
+  - The shaft wall opens where empty space meets the gallery.
+  - Floor caps skip dug cells.
+  - A cargo elevator is a dark metal column down to its stop, which is built like a room, with a headframe over it on the surface.
+  - The entrance gets an airlock at the rim lip, 4 m out: a capsule hall with hatches facing the shaft, a ramp and a beacon.
+- **Excavating phase:** progress labels read "⛏ 40%" in all three views while a job is digging.
+- **New glyphs:** entrance (a hatch with a wheel), cargo elevator (a crate on a platform, arrow up), empty rooms (a pick).
+- **Browser check:** a new game shows the entrance, airlock, empty rings 1–2 and rock in ring 3 in all three views. An empty room queued in ring 3 dug out with "⛏" and rock coming in.

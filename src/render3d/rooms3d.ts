@@ -5,6 +5,7 @@ import { CATEGORY_COLORS } from "../render2d/palette";
 import { FLOOR_H, floorSpan, ringRadii, slotAngles, TAU } from "./cylinder";
 import { cellEdges, edgeById, edgeVertices, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef } from "../sim/corridors";
+import { isOpen } from "../sim/excavation";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
 // no room faces it, plus props on the surface. Rebuilt whenever the layout
@@ -598,6 +599,8 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
       const id = layout.grid[floor - 1]?.[0]?.[slot];
       const room = id ? layout.rooms.find((r) => r.id === id) : undefined;
       if (room && !room.planned) continue;
+      // Dug-out empty space opens right onto the gallery.
+      if (!room && floor <= hole.floors && isOpen(layout, { floor, ring: 1, slot })) continue;
       // A corridor's mouth: the wall stops half a corridor short of the spoke on either side.
       const [s0, s1] = slotAngles(slot, n1);
       const mouth = (i: number) => (layout.corridors?.[`R${floor}.1.${i % n1}`] ? HALL / hole.shaftRadiusM : 0);
@@ -620,10 +623,11 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   // No corridors yet: add() with nothing to add is an error in three.js.
   const halls = corridorFloors(layout, topFloor);
   if (halls.length) group.add(...halls);
+  group.add(...emptySpace(layout, topFloor));
 
   for (const whole of layout.rooms) {
     // Above the chosen floor there's nothing; tall rooms keep only the part at or below it.
-    const room = topFloor === null ? whole : { ...whole, cells: whole.cells.filter((c) => c.floor >= topFloor) };
+    const room = topFloor === null ? { ...whole } : { ...whole, cells: whole.cells.filter((c) => c.floor >= topFloor) };
     if (topFloor !== null && (room.at.kind === "surface" || !room.cells.length)) continue;
     const def = roomDef(room.type);
     const color = CATEGORY_COLORS[def.category] ?? 0x888888;
@@ -633,6 +637,20 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
       group.add(prop);
       continue;
     }
+    // A cargo elevator: a dark shaft down through the floors above its stop, and the stop itself as a room.
+    if (def.cargoShaft) {
+      const stop = Math.max(...whole.cells.map((c) => c.floor));
+      const shaftCells = room.cells.filter((c) => c.floor < stop);
+      if (shaftCells.length) {
+        const column = new THREE.Mesh(roomGeometry(layout, shaftCells, INSET, false), material(`cargoShaft:${color}`, () => new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(0.35), roughness: 0.6, metalness: 0.4, side: THREE.DoubleSide })));
+        column.userData = { pickable: true, roomId: room.id };
+        group.add(column);
+      }
+      if (topFloor === null) group.add(headframe(layout, whole, color));
+      room.cells = room.cells.filter((c) => c.floor === stop);
+      if (!room.cells.length) continue;
+    }
+    if (def.surfaceLink && !def.cargoShaft && topFloor === null) group.add(airlock(layout, room, color));
     const shape = roomShape(layout, room);
     used.add(shape.key);
     const faint = xray && room.cells.some((c) => c.ring === 1);
@@ -681,6 +699,122 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     shapeCache.delete(key);
   }
   return group;
+}
+
+// ---- empty space, and what stands at the rim ----
+
+const PILLAR = { half: 0.3, inset: 0.9, color: 0x5a4235 };
+const EMPTY_FLOOR = 0x6e5445;
+
+/** A square pillar from y0 to y1, as triangles. */
+function pillar(pos: number[], x: number, z: number, y0: number, y1: number, h: number): void {
+  const c = [[x - h, z - h], [x + h, z - h], [x + h, z + h], [x - h, z + h]] as const;
+  for (let i = 0; i < 4; i++) {
+    const [ax, az] = c[i]!;
+    const [bx, bz] = c[(i + 1) % 4]!;
+    push(pos, [ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y0, az], [bx, y1, bz], [ax, y1, az]);
+  }
+}
+
+/**
+ * Dug-out cells with no room: a bare floor you can build on (picked like a
+ * room's floor), and a pillar at each corner holding up the rock above. No walls.
+ */
+function emptySpace(layout: Layout, topFloor: number | null): THREE.Object3D[] {
+  const hole = layout.hole;
+  const floorPos: number[] = [];
+  const pillars: number[] = [];
+  for (let floor = topFloor ?? 1; floor <= hole.floors; floor++) {
+    const [y0, y1] = floorSpan(floor);
+    for (let ring = 1; ring <= hole.unlockedRings; ring++) {
+      const n = hole.ringSlots[ring - 1]!;
+      const [r0, r1] = ringRadii(hole, ring);
+      for (let slot = 0; slot < n; slot++) {
+        const c = { floor, ring, slot };
+        if (!isOpen(layout, c) || layout.grid[floor - 1]?.[ring - 1]?.[slot]) continue;
+        const [a0, a1] = slotAngles(slot, n);
+        flatRing(floorPos, r0 + INSET, r1 - INSET, a0 + INSET / r0, a1 - INSET / r1, y0 + 0.02);
+        for (const r of [r0 + PILLAR.inset, r1 - PILLAR.inset]) {
+          for (const a of [a0 + PILLAR.inset / r, a1 - PILLAR.inset / r]) pillar(pillars, r * Math.cos(a), r * Math.sin(a), y0, y1 - (floor === 1 ? ROOF_GAP : 0), PILLAR.half);
+        }
+      }
+    }
+  }
+  if (!floorPos.length) return [];
+  const floorMesh = new THREE.Mesh(geometry(floorPos), material("emptyFloor", () => new THREE.MeshStandardMaterial({ color: EMPTY_FLOOR, roughness: 1, side: THREE.DoubleSide })));
+  floorMesh.userData = { pickable: true, empty: true };
+  const pillarMesh = new THREE.Mesh(geometry(pillars), material("pillar", () => new THREE.MeshStandardMaterial({ color: PILLAR.color, roughness: 0.9 })));
+  return [floorMesh, pillarMesh];
+}
+
+/** Where a ring room meets the rim, above its floor-1 cells: the angle, and just outside the shaft's edge. */
+function rimSpot(layout: Layout, room: RoomInstance): { a: number; r: number } {
+  const hole = layout.hole;
+  const top = room.cells.filter((c) => c.floor === Math.min(...room.cells.map((x) => x.floor)));
+  let x = 0;
+  let z = 0;
+  let r = 0;
+  for (const c of top) {
+    const [a0, a1] = slotAngles(c.slot, hole.ringSlots[c.ring - 1]!);
+    const a = (a0 + a1) / 2;
+    const [r0, r1] = ringRadii(hole, c.ring);
+    x += Math.cos(a);
+    z += Math.sin(a);
+    r += (r0 + r1) / 2;
+  }
+  return { a: Math.atan2(z, x), r: r / Math.max(1, top.length) };
+}
+
+/** The entrance's airlock on the surface: a long low hall along the rim, with round hatches and a ramp. */
+function airlock(layout: Layout, room: RoomInstance, color: number): THREE.Object3D {
+  const { a } = rimSpot(layout, room);
+  const r = layout.hole.shaftRadiusM + 4;
+  const g = new THREE.Group();
+  g.position.set(r * Math.cos(a), 0, r * Math.sin(a));
+  g.rotation.y = -a;
+  const mat = (c: number, extra: THREE.MeshStandardMaterialParameters = {}) =>
+    material(`prop:${c}:${JSON.stringify(extra)}`, () => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...extra }));
+  const hall = new THREE.Mesh(new THREE.CapsuleGeometry(1.6, 7, 6, 16), mat(color));
+  hall.rotation.x = Math.PI / 2;
+  hall.position.y = 1.6;
+  g.add(hall);
+  for (const dz of [-2.5, 0, 2.5]) {
+    const hatch = new THREE.Mesh(new THREE.CircleGeometry(0.7, 16), mat(0x3a2a22, { metalness: 0.4 }));
+    hatch.position.set(-1.62, 1.6, dz);
+    hatch.rotation.y = -Math.PI / 2;
+    g.add(hatch);
+  }
+  const ramp = new THREE.Mesh(new THREE.BoxGeometry(3, 0.3, 3), mat(new THREE.Color(color).multiplyScalar(0.6).getHex()));
+  ramp.position.set(2.6, 0.15, 0);
+  g.add(ramp);
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), mat(0xe07a3f, { emissive: 0xe07a3f }));
+  beacon.position.set(0, 3.5, 0);
+  g.add(beacon);
+  g.traverse((o) => (o.userData = { pickable: true, roomId: room.id, surface: true }));
+  return g;
+}
+
+/** A cargo elevator's headframe: an A-frame over its shaft, with the sheave wheel on top. */
+function headframe(layout: Layout, room: RoomInstance, color: number): THREE.Object3D {
+  const { a, r } = rimSpot(layout, room);
+  const g = new THREE.Group();
+  g.position.set(r * Math.cos(a), 0, r * Math.sin(a));
+  g.rotation.y = -a;
+  const steel = material(`prop:${color}:frame`, () => new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(0.55), metalness: 0.5, roughness: 0.5 }));
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 9), steel);
+    leg.position.set(0, 4.2, s * 1.8);
+    leg.rotation.x = s * 0.22;
+    g.add(leg);
+  }
+  const wheel = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.18, 6, 20), material(`prop:${color}:{}`, () => new THREE.MeshStandardMaterial({ color, roughness: 0.7 })));
+  wheel.position.set(0, 8.6, 0);
+  g.add(wheel);
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.6, 0.6, 16), steel);
+  collar.position.y = 0.3;
+  g.add(collar);
+  g.traverse((o) => (o.userData = { pickable: true, roomId: room.id, surface: true }));
+  return g;
 }
 
 /** How each finish looks in 3D: its colour, and a surface to match. */
@@ -780,7 +914,8 @@ function floorCap(layout: Layout, floor: number): THREE.Object3D[] {
     const ring = ri + 1;
     for (let slot = 0; slot < n; slot++) {
       const id = layout.grid[floor - 1]?.[ri]?.[slot];
-      if (id) continue;
+      // Rooms, and dug-out empty space (its own floor and pillars), have no lid.
+      if (id || isOpen(layout, { floor, ring, slot })) continue;
       // The cap has no lid over corridors: it's carved like a room, by half a corridor on each side one runs.
       const c = { floor, ring, slot };
       const cut = carveCell(layout, c, new Set([`${floor}:${ring}:${slot}`]), ring, ring, 0, true, false, joints);
