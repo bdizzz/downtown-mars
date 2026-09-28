@@ -8,6 +8,7 @@ import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { network } from "../sim/network";
 import { corridors, finishDef } from "../sim/corridors";
+import { STORABLE } from "../sim/storage";
 import { hoursText, num, ordinal, resName, signed } from "./format";
 
 interface Props {
@@ -109,6 +110,83 @@ function Home({ s, roomId, capacity }: { s: Snapshot; roomId: number; capacity: 
   );
 }
 
+/**
+ * A storage room's space, shared among the goods chosen for it. Ticking a
+ * good gives it the free space (or an even share, if there's none left);
+ * the numbers can be set by hand.
+ */
+function StorageEditor({ s, room, onCommand }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number]; onCommand: Props["onCommand"] }) {
+  const space = room.storageUnits ?? roomDef(room.type).storage ?? 0;
+  const alloc = room.allocation ?? {};
+  const used = Object.values(alloc).reduce((a, b) => a + b, 0);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const set = (next: Record<string, number>) => onCommand({ type: "setAllocation", roomId: room.id, allocation: next });
+  const toggle = (id: string, on: boolean) => {
+    const next = { ...alloc };
+    if (!on) delete next[id];
+    else {
+      const free = space - used;
+      if (free >= 1) next[id] = Math.floor(free);
+      else {
+        // No free space: share it evenly among everything chosen, the new good included.
+        const ids = [...Object.keys(next), id];
+        const each = Math.floor(space / ids.length);
+        for (const k of ids) next[k] = each;
+      }
+    }
+    set(next);
+  };
+  const even = () => {
+    const ids = Object.keys(alloc);
+    if (!ids.length) return;
+    const each = Math.floor(space / ids.length);
+    set(Object.fromEntries(ids.map((k) => [k, each])));
+  };
+  // How full: this room's share of the hole's stock of each good.
+  const fill = (id: string) => {
+    const cap = s.capacities[id] ?? 0;
+    return cap > 0 && Number.isFinite(cap) ? Math.min(alloc[id] ?? 0, ((s.resources[id] ?? 0) * (alloc[id] ?? 0)) / cap) : 0;
+  };
+  const stored = Object.keys(alloc).reduce((n, id) => n + fill(id), 0);
+  return (
+    <div className="storage">
+      <p className="summary">
+        <span className="k">Storage</span> {num(stored)} stored · {num(used)} of {space} set aside
+      </p>
+      {STORABLE.map((id) => {
+        const on = alloc[id] !== undefined;
+        const f = fill(id);
+        return (
+          <div key={id} className={`good${on ? "" : " off"}`}>
+            <input type="checkbox" checked={on} onChange={(e) => toggle(id, e.target.checked)} aria-label={`Store ${resName(id)}`} />
+            <span>{resName(id)}</span>
+            <input
+              type="number"
+              min={0}
+              step={10}
+              disabled={!on}
+              value={draft[id] ?? String(alloc[id] ?? 0)}
+              onChange={(e) => setDraft({ ...draft, [id]: e.target.value })}
+              onBlur={() => {
+                const n = Math.max(0, Math.floor(Number(draft[id])));
+                if (draft[id] !== undefined && Number.isFinite(n)) set({ ...alloc, [id]: Math.min(n, space - used + (alloc[id] ?? 0)) });
+                const { [id]: _, ...rest } = draft;
+                setDraft(rest);
+              }}
+            />
+            {on && (
+              <div className="fill" title={`${num(f)} / ${alloc[id]}`}>
+                <div className={f >= (alloc[id] ?? 0) * 0.97 ? "full" : ""} style={{ width: `${(alloc[id] ? f / alloc[id]! : 0) * 100}%` }} />
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {Object.keys(alloc).length > 1 && <button onClick={even}>Share evenly</button>}
+    </div>
+  );
+}
+
 /** A room (or its next floor) waiting in the construction queue: progress, place, time left, and moving it up. */
 function UnderConstruction({ s, roomId, onCommand }: { s: Snapshot; roomId: number; onCommand: Props["onCommand"] }) {
   const index = s.construction.jobs.findIndex((j) => j.roomId === roomId);
@@ -202,6 +280,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
       </header>
       <p className={isProblem(room, st) ? "warn" : ""}>{state}</p>
       <UnderConstruction s={s} roomId={room.id} onCommand={onCommand} />
+      {(room.storageUnits ?? def.storage) ? <StorageEditor s={s} room={room} onCommand={onCommand} /> : null}
       {!room.connected && room.at.kind === "ring" && (
         <button
           onClick={() => onCommand({ type: "connectRoom", roomId: room.id, finish: finish ?? corridors.defaultFinish })}

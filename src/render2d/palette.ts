@@ -12,6 +12,7 @@ export const CATEGORY_COLORS: Record<string, number> = {
   industry: 0xb48a6a,
   public: 0xd9a870,
   construction: 0xd98c3a,
+  storage: 0x9c8a6a,
 };
 
 export const cssColor = (c: number) => `#${c.toString(16).padStart(6, "0")}`;

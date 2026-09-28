@@ -5,6 +5,8 @@ import { beds } from "../src/sim/earth";
 import { careCoverage } from "../src/sim/happiness";
 import { roomDef } from "../src/sim/rooms";
 import { bandwidth } from "../src/sim/construction";
+import { network } from "../src/sim/network";
+import { allocated, spaceOf, STORABLE, storageCaps } from "../src/sim/storage";
 import { countStage, cryptSpace } from "../src/sim/people";
 import type { SimState } from "../src/sim/state";
 
@@ -99,4 +101,56 @@ export function adapt(hole: SimState): string | null {
     if (placeAnywhere(hole, w.room, w.crop)) return w.room;
   }
   return null;
+}
+
+/**
+ * Keep storage ahead of the goods: anything filling up (or coming in with
+ * nowhere to go) gets free space in a storage room; with none free, a
+ * warehouse goes on the list. Once a day.
+ */
+export function tendStorage(hole: SimState): boolean {
+  const caps = storageCaps(hole);
+  const day = hole.ledger.days.at(-1) ?? hole.ledger.current;
+  const inflow = (id: string) => Object.values(day[id]?.in ?? {}).reduce((a, b) => a + b, 0);
+  // Gathering a seed kit: room for the kit on top of what the hole needs.
+  const kit = hole.gatheringKit ? network.seedKit.goods : {};
+  const tight = STORABLE.filter((id) => {
+    const cap = caps[id] ?? 0;
+    if (!Number.isFinite(cap)) return false;
+    if ((kit[id] ?? 0) * 2.5 > cap) return true;
+    return inflow(id) > 0 && (hole.resources[id] ?? 0) >= cap * 0.75 - 1;
+  });
+  let needMore = false;
+  for (const id of tight) {
+    const room = hole.layout.rooms.find((r) => !r.building && !r.planned && spaceOf(r) - allocated(r) >= 10);
+    if (!room) {
+      needMore = true;
+      continue;
+    }
+    const give = Math.min(spaceOf(room) - allocated(room), 60);
+    applyCommand(hole, { type: "setAllocation", roomId: room.id, allocation: { ...(room.allocation ?? {}), [id]: (room.allocation?.[id] ?? 0) + give } });
+  }
+  // Nothing free: more storage (unless one's already on the way).
+  const onTheWay = hole.layout.rooms.some((r) => r.building && spaceOf(r) > 0);
+  if (needMore && !onTheWay) return placeStorage(hole);
+  return false;
+}
+
+/** A warehouse out of the way (ring 3, then ring 2, of any dug floor), with a corridor carved to it. */
+function placeStorage(hole: SimState): boolean {
+  const [w, d] = config.shapes.M![0]!;
+  for (const ring of [3, 2]) {
+    if (ring > hole.layout.hole.unlockedRings) continue;
+    for (let floor = 1; floor <= hole.layout.hole.floors; floor++) {
+      for (let slot = 0; slot < hole.layout.hole.ringSlots[ring - 1]!; slot++) {
+        const r = applyCommand(hole, { type: "build", room: "warehouse", at: { kind: "ring", floor, ring, slot, w, d } });
+        if (r.ok) {
+          applyCommand(hole, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
+          return true;
+        }
+        if (/^(Needs|Not enough)/.test(r.reason)) return false;
+      }
+    }
+  }
+  return false;
 }

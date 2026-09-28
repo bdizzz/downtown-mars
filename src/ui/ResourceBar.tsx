@@ -1,5 +1,6 @@
 import type { Snapshot } from "../sim/snapshot";
 import { daysLeft, num, resName, signed } from "./format";
+import { isStorable } from "../sim/storage";
 
 // The stocks a player watches, left to right: life, then food, then materials.
 const LIFE = ["o2", "water", "meals"] as const;
@@ -8,6 +9,8 @@ const MATERIALS = ["rock", "brick", "metal", "machinery", "electronics"] as cons
 /** Shown only where there's some: they come from the ground under certain sites. */
 const REGIONAL = ["ore", "silica"] as const;
 const WARN_DAYS = 2;
+/** Storage this full, with more coming in, shows as full. */
+const FULL_AT = 0.97;
 
 function Stock({ id, s }: { id: string; s: Snapshot }) {
   const v = s.resources[id] ?? 0;
@@ -15,9 +18,14 @@ function Stock({ id, s }: { id: string; s: Snapshot }) {
   const rate = s.rates[id] ?? 0;
   const left = daysLeft(v, rate);
   const warn = left !== null && left < WARN_DAYS;
-  const title = `${resName(id)}: ${num(v)} / ${num(cap)} · ${signed(rate)}/day${left !== null ? ` · runs out in ${left.toFixed(1)} days` : ""}`;
+  // Dry goods: storage may be full (what arrives is lost) or missing altogether.
+  const stored = isStorable(id) && Number.isFinite(cap);
+  const full = stored && cap > 0 && v >= cap * FULL_AT && rate > 0;
+  const none = stored && cap <= 0;
+  const storeNote = !stored ? "" : none ? " · no storage set aside for it" : full ? " · storage full: more is lost" : "";
+  const title = `${resName(id)}: ${num(v)} / ${num(cap)} · ${signed(rate)}/day${left !== null ? ` · runs out in ${left.toFixed(1)} days` : ""}${storeNote}`;
   return (
-    <span className={`res${warn ? " warn" : ""}`} title={title}>
+    <span className={`res${warn ? " warn" : ""}${full || (none && rate > 0) ? " full" : ""}`} title={title}>
       <span className="label">{resName(id)}</span>
       <span className="val">{num(v)}</span>
       {Math.abs(rate) >= 0.05 && <span className={`rate ${rate < 0 ? "neg" : "pos"}`}>{signed(rate)}</span>}

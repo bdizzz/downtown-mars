@@ -9,7 +9,7 @@ import { addRoute } from "../src/sim/rovers";
 import type { SimState } from "../src/sim/state";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
-import { adapt } from "./adaptive";
+import { adapt, tendStorage } from "./adaptive";
 import { PLAN, VISIT_ANSWERS } from "./bot";
 import { beds } from "../src/sim/earth";
 import { stageCounts } from "../src/sim/people";
@@ -103,6 +103,11 @@ function builder(plan: Plan[]) {
 }
 
 /** Carve corridors to anything still cut off. */
+/** Once a day: storage kept ahead of the goods. */
+function tend(hole: SimState, t: number): void {
+  if (t % config.ticksPerDay === 0) tendStorage(hole);
+}
+
 function reconnect(hole: SimState): void {
   for (const r of hole.layout.rooms) if (!r.connected && !r.planned) applyCommand(hole, { type: "connectRoom", roomId: r.id, finish: "rock" });
 }
@@ -163,6 +168,7 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
       }
       answerVisits(home);
       reconnect(home);
+      tend(home, t);
       const child = world.holes[1];
       if (child) {
         childPlan.step(child, day);
@@ -172,6 +178,7 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
         }
         answerVisits(child);
         reconnect(child);
+        tend(child, t);
       }
       if (found && foundedDay === null && world.mapUnlocked && kitProgress(home) >= 0.999) {
         const r = foundHole(world, config, home.holeId, pickSite(world, home));

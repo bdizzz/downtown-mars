@@ -20,7 +20,7 @@ export function tint(c: number, t: number): number {
 }
 
 /** Rooms that share another's glyph. */
-const ALIASES: Record<string, string> = { tiny_plaza: "small_plaza", construction_yard: "construction_office" };
+const ALIASES: Record<string, string> = { tiny_plaza: "small_plaza", construction_yard: "construction_office", storeroom: "warehouse", depot: "warehouse" };
 
 type Glyph = (g: GraphicsContext, cx: number, cy: number, s: number, color: number) => void;
 
@@ -94,6 +94,15 @@ const GLYPHS: Record<string, Glyph> = {
     g.moveTo(cx, cy + s * 0.12).lineTo(cx, cy - s * 0.18).stroke(line(1.5, c));
     g.moveTo(cx, cy - s * 0.08).quadraticCurveTo(cx - s * 0.2, cy - s * 0.12, cx - s * 0.2, cy - s * 0.3).quadraticCurveTo(cx - s * 0.04, cy - s * 0.26, cx, cy - s * 0.08).stroke(line(1.2, c));
     g.moveTo(cx, cy - s * 0.14).quadraticCurveTo(cx + s * 0.2, cy - s * 0.18, cx + s * 0.2, cy - s * 0.34).quadraticCurveTo(cx + s * 0.04, cy - s * 0.3, cx, cy - s * 0.14).stroke(line(1.2, c));
+  },
+  warehouse: (g, cx, cy, s, c) => {
+    // Stacked crates.
+    g.rect(cx - s * 0.3, cy, s * 0.28, s * 0.28).stroke(line(1.5, c));
+    g.rect(cx + s * 0.02, cy, s * 0.28, s * 0.28).stroke(line(1.5, c));
+    g.rect(cx - s * 0.14, cy - s * 0.28, s * 0.28, s * 0.28).stroke(line(1.5, c));
+    for (const [x, y] of [[cx - s * 0.3, cy], [cx + s * 0.02, cy], [cx - s * 0.14, cy - s * 0.28]] as const) {
+      g.moveTo(x, y).lineTo(x + s * 0.28, y + s * 0.28).stroke(line(1, c, 0.7));
+    }
   },
   site_office: (g, cx, cy, s, c) => {
     // A hard hat.

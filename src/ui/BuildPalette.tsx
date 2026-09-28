@@ -35,11 +35,12 @@ export const HOTKEYS: Record<string, string> = {
 export const DEMOLISH_KEY = "X";
 export const CORRIDOR_KEY = "C";
 
-const CATEGORY_ORDER = ["circulation", "construction", "public", "housing", "food", "water", "air", "power", "health", "admin", "industry", "logistics"];
+const CATEGORY_ORDER = ["circulation", "construction", "storage", "public", "housing", "food", "water", "air", "power", "health", "admin", "industry", "logistics"];
 const CATEGORY_NAMES: Record<string, string> = {
   circulation: "Access",
   public: "Public spaces",
   construction: "Construction",
+  storage: "Storage",
   housing: "Housing",
   food: "Food",
   water: "Water",

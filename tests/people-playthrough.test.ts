@@ -2,14 +2,16 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { runNetwork } from "./netbot";
 import { construction } from "../src/sim/construction";
+import { storage } from "../src/sim/storage";
 
 // Ninety minutes (90 game days) with the two-hole bot, which builds what's
 // short once its opening plans are done, against the same bot staying solo.
 // Checks the people systems: births carry growth, children grow up, the
 // first elders retire and get care, and the network outgrows one hole.
 
-// Played with construction time, as in the game (each test file has its own copy of the setting).
+// Played with construction time and storage limits, as in the game (each test file has its own copy of the setting).
 construction.instant = false;
+storage.unlimited = false;
 
 describe("ninety minutes of people", () => {
   const net = runNetwork(90);

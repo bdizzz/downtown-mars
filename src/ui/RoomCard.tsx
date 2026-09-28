@@ -51,6 +51,7 @@ export function RoomCard({ def, resources, shape, onRotate, siteNote }: Props) {
         {!Object.keys(def.cost).length && <span>Free</span>}
       </p>
       <p className="k">Takes {roomWork(def.id)} work-hours to build</p>
+      {def.storage ? <p className="good">Stores {def.storage} units of goods, shared among those you choose</p> : null}
       {def.constructionBandwidth ? <p className="good">Adds {def.constructionBandwidth} to construction bandwidth at full staff</p> : null}
       {def.staff > 0 && <p>Staff {def.staff}</p>}
       {Object.keys(def.uses).length > 0 && <p>Uses {flows(def.uses)} a day</p>}

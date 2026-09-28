@@ -400,3 +400,15 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .construction .actions { display: flex; gap: 3px; }
 .construction button.link { background: none; border: none; color: var(--text); padding: 0; font: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted; }
 .build-chip { border-color: #e0a03a !important; }
+.res.full .val, .res.full .label { color: #e0a03a; }
+
+/* Storage allocation */
+.storage { margin: 6px 0; font-size: 13px; }
+.storage .summary { margin: 2px 0 6px; }
+.storage .good { display: grid; grid-template-columns: 18px 1fr 64px; align-items: center; gap: 6px; margin: 2px 0; }
+.storage .good.off { opacity: 0.6; }
+.storage .good input[type="number"] { width: 60px; font: inherit; background: #2f1c16; color: var(--text); border: 1px solid #000; border-radius: 4px; padding: 1px 4px; }
+.storage .good .fill { grid-column: 2 / 4; height: 4px; background: #0005; border-radius: 2px; overflow: hidden; }
+.storage .good .fill > div { height: 100%; background: #9c8a6a; }
+.storage .good .fill > div.full { background: #e0a03a; }
+.storage button { font: inherit; font-size: 12px; background: #2f1c16; color: var(--text); border: 1px solid #000; border-radius: 4px; padding: 2px 8px; cursor: pointer; margin-top: 4px; }
