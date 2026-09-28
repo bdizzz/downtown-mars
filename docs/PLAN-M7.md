@@ -99,3 +99,13 @@ Large holes build a lot, far from the queue's first days. Ideas for speeding con
 | Construction yard | L | 8 | 2 | +5 | −2 r1 | brick 30, metal 20, machinery 3 | 30 h |
 
 Each adds `constructionBandwidth` times its running rate (staffing × morale), so a paused or understaffed office adds less or nothing, and one still being built adds nothing. Tested: bandwidth by size and staffing, a paused office, and an office at least doubling progress on the same job.
+
+**Step 3, construction in the UI:**
+- **Snapshot:** it carries the queue (`queueView`): bandwidth, then each job's label, progress, work and hours until done, counting the jobs ahead of it (null while it waits for its floor to be dug).
+- **Unrolled view:** rooms under construction are faint with scaffolding (poles and planks) and an orange outline, with a progress bar that updates on its own layer. Stairs or elevator floors waiting to be built show as scaffolding too. Corridors under construction are faint with orange tape along their edges, and get no doors yet.
+- **Plan view:** the same faint fill with orange outlines, for rooms, waiting stair floors and corridors.
+- **3D view:** rooms under construction are see-through like blueprints, and so are corridors being built.
+- **Inspector:** "Under construction", with a progress bar, "45% · 2nd in the queue · done in about 3 h" (or "waits for its floor to be dug"), Priority construction when it isn't first, and "Cancel construction (full refund)" instead of Demolish.
+- **Construction panel** (HUD): bandwidth, then the queue in order with progress bars, time left and a move-to-front button. Clicking a room selects it. The HUD button reads "🏗 2 · 10.8 h" while there's a queue.
+- **Estimates:** room cards show work-hours to build and the bandwidth an office adds. The corridor confirm popup shows the construction work.
+- **Browser check:** a site office and a water tank queued in the dev save, with scaffolding, the office's bar filling, and the panel's times.

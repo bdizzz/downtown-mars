@@ -11,6 +11,7 @@ import { cryptSpace, holeGates, stageCounts, type Stage } from "./people";
 import { ordinanceDef } from "./ordinances";
 import { elderCoverage, schoolCoverage, type Coverage } from "./care";
 import { birthBlockers, birthsPerDay } from "./births";
+import { queueView, type JobView } from "./construction";
 import type { Culture } from "./culture";
 import { averageFlows, type Flows } from "./ledger";
 import type { Message } from "./messages";
@@ -132,6 +133,8 @@ export interface Snapshot {
   migrations: { from: number; to: number; count: number; progress: number; daysLeft: number }[];
   /** Where this hole's unhappy colonists are leaving for, if anywhere (worker). */
   leavingFor: string | null;
+  /** The construction queue, in order, and the hole's bandwidth. */
+  construction: { bandwidth: number; jobs: JobView[] };
   /** Cohorts moving on next, soonest first. */
   upcoming: { stage: Stage; count: number; daysLeft: number }[];
   workforce: { total: number; employed: number };
@@ -183,6 +186,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     care: { school: schoolCoverage(state), elders: elderCoverage(state) },
     migrations: [],
     leavingFor: null,
+    construction: queueView(state),
     rest: {
       space: cryptSpace(state),
       interred: state.population.interred ?? 0,

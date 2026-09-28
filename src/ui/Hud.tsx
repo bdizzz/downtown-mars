@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
 import { VIEW_MODES, type ViewMode } from "./settings";
+import { hoursText } from "./format";
 
 interface Props {
   snapshot: Snapshot | null;
@@ -12,6 +13,7 @@ interface Props {
   toggleFlows: () => void;
   toggleNetwork: () => void;
   togglePeople: () => void;
+  toggleConstruction: () => void;
   view: ViewMode;
   setView: (v: ViewMode) => void;
   setActiveHole: (holeId: number) => void;
@@ -31,7 +33,7 @@ function gameDuration(ticks: number): string {
   return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
 }
 
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, toggleNetwork, togglePeople, view, setView, setActiveHole, toggleMap, openMenu, keysEnabled, highlight }: Props) {
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, toggleNetwork, togglePeople, toggleConstruction, view, setView, setActiveHole, toggleMap, openMenu, keysEnabled, highlight }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
   // Space toggles pause, remembering the last running speed.
   const resumeRef = useRef(1);
@@ -114,6 +116,17 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleF
       <button className={`office-btn${pulse("map")}`} onClick={toggleMap} title="The planet: terrain, deposits and your holes (M)">
         Map
       </button>
+      {snapshot && (
+        <button
+          className={`office-btn${snapshot.construction.jobs.length ? " build-chip" : ""}`}
+          onClick={toggleConstruction}
+          title="The construction queue: what's being built, in order"
+        >
+          {snapshot.construction.jobs.length
+            ? `🏗 ${snapshot.construction.jobs.length} · ${hoursText(snapshot.construction.jobs.reduce((m, j) => Math.max(m, j.hoursLeft ?? 0), 0))}`
+            : "Construction"}
+        </button>
+      )}
       <button className="office-btn" onClick={togglePeople} title="Children, adults and elders; births and what's coming">
         People
       </button>

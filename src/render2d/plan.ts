@@ -40,6 +40,7 @@ const C = {
   bad: 0xe0503a,
   dig: 0xe07a3f,
   door: 0x2a1a14,
+  build: 0xe0a03a,
 };
 
 /** Pixels per metre at zoom 1. */
@@ -183,9 +184,17 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
         // Public rooms on the gallery open onto it: fill over the gallery's edge line.
         const poly = def.public && c.ring === 1 ? cellSectorFrom(h, c, h.shaftRadiusM - 0.3) : cellSector(h, c);
         if (room.planned) roomsCtx.poly(poly).fill({ color, alpha: 0.3 });
+        else if (room.building) roomsCtx.poly(poly).fill({ color, alpha: 0.4 });
         else roomsCtx.poly(poly).fill(color);
       }
-      outlineCells(roomsCtx, cells, room.connected ? shade(color, 0.45) : C.bad, room.connected ? 1.5 : 3, !!def.public);
+      // Under construction: an orange outline, like tape around the works.
+      if (room.building) outlineCells(roomsCtx, cells, C.build, 2.5, !!def.public);
+      else outlineCells(roomsCtx, cells, room.connected ? shade(color, 0.45) : C.bad, room.connected ? 1.5 : 3, !!def.public);
+      const waiting = onFloor(room.pendingCells ?? []);
+      if (waiting.length) {
+        for (const c of waiting) roomsCtx.poly(cellSector(h, c)).fill({ color, alpha: 0.4 });
+        outlineCells(roomsCtx, waiting, C.build, 2.5, !!def.public);
+      }
       const centre = roomCentre(h, cells);
       const ink = room.planned ? color : shade(color, 0.55);
       drawGlyph(roomsCtx, room.type, centre.x, centre.y + 5, Math.min(26, centre.size * 0.55), ink);
@@ -229,7 +238,12 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       if (!e || e.floor !== floor) continue;
       const s = stripOf(h, e);
       const planned = e.floor > h.floors;
-      const poly = corridorStrip(roomsCtx, s.at, s.normal, s.len, BAND, finish, planned ? 0.45 : 1);
+      const building = l.corridorsBuilding?.[id] !== undefined;
+      const poly = corridorStrip(roomsCtx, s.at, s.normal, s.len, BAND, finish, planned || building ? 0.45 : 1);
+      if (building) {
+        roomsCtx.poly(poly).stroke({ color: C.build, width: 2 });
+        continue;
+      }
       if (!l.corridorLinked?.[id] && !planned) {
         roomsCtx.poly(poly).stroke({ color: C.bad, width: 2 });
         continue;

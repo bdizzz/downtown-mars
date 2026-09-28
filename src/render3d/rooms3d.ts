@@ -434,7 +434,7 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     const shape = roomShape(layout, room);
     used.add(shape.key);
     const faint = xray && room.cells.some((c) => c.ring === 1);
-    const mesh = new THREE.Mesh(shape.geo, roomMaterial(room.type === "corridor" ? 0x8a7466 : color, room.planned, faint));
+    const mesh = new THREE.Mesh(shape.geo, roomMaterial(color, room.planned || !!room.building, faint));
     mesh.userData = { pickable: true, roomId: room.id, faint, cached: true };
     group.add(mesh);
     const edges = new THREE.LineSegments(shape.edges, room.connected ? edgeLine : strandedLine);
@@ -522,7 +522,9 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
     // Corridors have no ceiling: always on the floor, open to the sky or the cut above.
     const y = floorSpan(e.floor)[0] + 0.05;
     const linked = !!layout.corridorLinked?.[id] || e.floor > hole.floors;
-    const key = `${finish}:${linked}`;
+    // Not built yet: see-through, like a blueprint.
+    const building = layout.corridorsBuilding?.[id] !== undefined;
+    const key = `${finish}:${linked || building}:${building}`;
     const geo = corridorStripGeometry(layout, e, y);
     const arr = geo.getAttribute("position").array as Float32Array;
     if (!groups.has(key)) groups.set(key, []);
@@ -531,10 +533,11 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
   }
   const out: THREE.Object3D[] = [];
   for (const [key, pos] of groups) {
-    const [finish, linked] = key.split(":");
+    const [finish, linked, building] = key.split(":");
     const f = finishDef(finish!);
     const color = linked === "true" ? parseInt(f.color.slice(1), 16) : UNLINKED;
-    const mat = material(`hall:${finish}:${linked}`, () => new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, ...FINISH_LOOK[finish!] }));
+    const see = building === "true" ? { transparent: true, opacity: 0.35, depthWrite: false } : {};
+    const mat = material(`hall:${key}`, () => new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, ...FINISH_LOOK[finish!], ...see }));
     const mesh = new THREE.Mesh(geometry(pos), mat);
     mesh.userData = { pickable: true, hall: true };
     out.push(mesh);

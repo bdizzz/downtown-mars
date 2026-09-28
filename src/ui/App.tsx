@@ -12,6 +12,7 @@ import { Inspector } from "./Inspector";
 import { MapScreen, type SitePick } from "./MapScreen";
 import { NetworkPanel } from "./NetworkPanel";
 import { PeoplePanel } from "./PeoplePanel";
+import { ConstructionPanel } from "./ConstructionPanel";
 import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
@@ -44,9 +45,9 @@ export function App() {
   /** The floor the plan and 3D views focus on; null shows every floor in 3D. */
   const [viewFloor, setViewFloor] = useState<number | null>(null);
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
-  const [panel, setPanel] = useState<"office" | "flows" | "network" | "people" | null>(null);
+  const [panel, setPanel] = useState<"office" | "flows" | "network" | "people" | "construction" | null>(null);
   const officeOpen = panel === "office";
-  const togglePanel = (p: "office" | "flows" | "network" | "people") => {
+  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction") => {
     setPanel((cur) => (cur === p ? null : p));
     setSelected(null);
   };
@@ -328,6 +329,7 @@ export function App() {
         toggleFlows={() => togglePanel("flows")}
         toggleNetwork={() => togglePanel("network")}
         togglePeople={() => togglePanel("people")}
+        toggleConstruction={() => togglePanel("construction")}
         view={settings.view}
         setView={(view) => updateSettings({ view })}
         setActiveHole={setActiveHole}
@@ -424,6 +426,9 @@ export function App() {
         {snapshot && officeOpen && <Office s={snapshot} onCommand={onCommand} onClose={() => setPanel(null)} />}
         {snapshot && panel === "flows" && <FlowPanel s={snapshot} onClose={() => setPanel(null)} />}
         {snapshot && panel === "people" && <PeoplePanel s={snapshot} onClose={() => setPanel(null)} />}
+        {snapshot && panel === "construction" && (
+          <ConstructionPanel s={snapshot} onCommand={onCommand} onSelect={(id) => (setSelected(id), setPanel(null))} onClose={() => setPanel(null)} />
+        )}
         {snapshot && panel === "network" && <NetworkPanel s={snapshot} onRoute={route} onClose={() => setPanel(null)} />}
         {snapshot && !panel && selected !== null && (
           <Inspector s={snapshot} finish={lastFinish} roomId={selected} onCommand={onCommand} onClose={() => setSelected(null)} />

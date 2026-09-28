@@ -4,7 +4,8 @@ import { corridorCost, finishDef, shortfall } from "../sim/corridors";
 import { edgeById, edgeLengthM } from "../sim/edges";
 import type { Layout } from "../sim/placement";
 import type { Proposal } from "../view/types";
-import { num, resName } from "./format";
+import { hoursText, num, resName } from "./format";
+import { corridorWork } from "../sim/construction";
 
 // Asks before carving (or filling in) a snaked chain of corridors: how many
 // segments, how long, and what it costs.
@@ -60,6 +61,7 @@ export function CorridorConfirm({ proposal, layout, resources, finish, onAccept,
         {segments.length} {segments.length === 1 ? "segment" : "segments"} · {Math.round(length)} m
         {riding > 0 && !proposal.erase ? ` · ${riding} already there` : ""}
       </p>
+      {!proposal.erase && segments.length > 0 && <p className="k">About {hoursText(corridorWork(layout, segments, config))} of construction work</p>}
       <p className={short ? "warn" : ""}>{segments.length ? (short ?? `Costs ${costText}${proposal.erase ? ", rebuilding the walls" : ""}`) : "Nothing new to carve."}</p>
       <div className="buttons">
         <button className="primary" disabled={!ok} onClick={onAccept}>

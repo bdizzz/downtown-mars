@@ -63,6 +63,7 @@ const C = {
   rail: 0x4a3a32,
   landerDark: 0x6b6660,
   flame: 0xffb35c,
+  build: 0xe0a03a,
 };
 
 
@@ -99,6 +100,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   const roomsCtx = new GraphicsContext();
   const overlayCtx = new GraphicsContext();
   const landerCtx = new GraphicsContext();
+  const buildCtx = new GraphicsContext();
   const fieldCtx = new GraphicsContext();
 
   const world = new Container();
@@ -178,6 +180,26 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         });
       }
     });
+  }
+
+  /** Progress bars on rooms under construction, updated as the crews work. */
+  let buildKey = "";
+  function drawBuild(s: Snapshot): void {
+    const key = s.construction.jobs.map((j) => `${j.id}:${Math.floor(j.progress * 50)}`).join(",") + s.layout.version;
+    if (key === buildKey) return;
+    buildKey = key;
+    buildCtx.clear();
+    for (const job of s.construction.jobs) {
+      const room = job.roomId !== undefined ? s.layout.rooms.find((r) => r.id === job.roomId) : undefined;
+      if (!room || room.at.kind !== "ring") continue;
+      const cells = job.kind === "extend" ? (room.pendingCells ?? []) : room.cells;
+      const row = cellRows(s.layout.hole, cells)[0];
+      if (!row) continue;
+      const [x, y, w, hh] = rowRect(s.layout.hole, row);
+      const bar = { x: x + 6, y: y + hh - 9, w: w - 12 };
+      buildCtx.rect(bar.x, bar.y, bar.w, 5).fill({ color: 0x1a0f0d, alpha: 0.8 });
+      buildCtx.rect(bar.x, bar.y, bar.w * job.progress, 5).fill(C.build);
+    }
   }
 
   /** The Earth lander coming down onto the pad in the last hours before a drop. */
@@ -314,15 +336,18 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         if (open) [y, hh] = [y - 3, hh + 3];
         const r = roomsCtx.rect(x, y, w, hh);
         if (room.planned) r.fill({ color, alpha: 0.3 }).stroke({ color, width: 2 });
+        else if (room.building) scaffold(x, y, w, hh, color);
         else r.fill(color);
-        if (def.public && !room.planned) {
+        if (def.public && !room.planned && !room.building) {
           const wall = { color: shade(color, 0.45), width: 1.5, alpha: 0.9 };
           roomsCtx.moveTo(x, y).lineTo(x, y + hh).lineTo(x + w, y + hh).lineTo(x + w, y);
           if (!open) roomsCtx.lineTo(x, y);
           roomsCtx.stroke(wall);
         }
       }
-      if (!room.planned && !def.public) drawFrontage(l, rows, color);
+      // Stairs or an elevator reaching further: the new floors under scaffolding.
+      for (const row of cellRows(l.hole, room.pendingCells ?? [])) scaffold(...rowRect(l.hole, row), color);
+      if (!room.planned && !room.building && !def.public) drawFrontage(l, rows, color);
       drawRoomGlyph(l, room, rows, color);
       if (!room.connected) for (const row of rows) roomsCtx.rect(...rowRect(l.hole, row)).stroke({ color: C.bad, width: 3 });
     }
@@ -349,8 +374,20 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const planned = e.floor > h.floors;
       const linked = !!l.corridorLinked?.[id];
       const b = bandOf(h, e);
-      corridorBand(roomsCtx, b.x, b.y, b.len, BAND, b.along, finish, planned ? 0.45 : 1);
+      const building = l.corridorsBuilding?.[id] !== undefined;
+      corridorBand(roomsCtx, b.x, b.y, b.len, BAND, b.along, finish, planned || building ? 0.45 : 1);
       const [w, hh] = b.along === "h" ? [b.len, BAND] : [BAND, b.len];
+      if (building) {
+        // Not built yet: a dashed orange outline, like tape around a dig.
+        for (let t = 0; t < b.len; t += 8) {
+          const [x0, y0, x1, y1] = b.along === "h" ? [b.x + t, b.y, b.x + Math.min(t + 4, b.len), b.y] : [b.x, b.y + t, b.x, b.y + Math.min(t + 4, b.len)];
+          roomsCtx.moveTo(x0, y0).lineTo(x1, y1);
+          if (b.along === "h") roomsCtx.moveTo(x0, y0 + BAND).lineTo(x1, y1 + BAND);
+          else roomsCtx.moveTo(x0 + BAND, y0).lineTo(x1 + BAND, y1);
+        }
+        roomsCtx.stroke({ color: C.build, width: 2 });
+        continue;
+      }
       if (!linked && !planned) {
         for (let t = 0; t < b.len; t += 8) {
           const [x0, y0] = b.along === "h" ? [b.x + t, b.y + BAND] : [b.x, b.y + t + BAND];
@@ -377,6 +414,14 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         if (opens(z)) roomsCtx.rect(mid, b.y + BAND, 14, 3).fill(C.door);
       }
     }
+  }
+
+  /** Under construction: faint, with a scaffold of poles and planks over it. */
+  function scaffold(x: number, y: number, w: number, hh: number, color: number): void {
+    roomsCtx.rect(x, y, w, hh).fill({ color, alpha: 0.4 }).stroke({ color: C.build, width: 2 });
+    for (let px = x + 8; px < x + w - 4; px += 16) roomsCtx.moveTo(px, y + 2).lineTo(px, y + hh - 2);
+    for (const py of [y + hh * 0.35, y + hh * 0.7]) roomsCtx.moveTo(x + 2, py).lineTo(x + w - 2, py);
+    roomsCtx.stroke({ color: C.build, width: 1.5, alpha: 0.8 });
   }
 
   /**
@@ -584,7 +629,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const copy = new Container();
       copy.addChild(new Graphics(skyCtx), new Graphics(holeCtx), new Graphics(digCtx), new Graphics(roomsCtx), new Graphics(fieldCtx));
       copy.addChild(layout ? roomLabels(layout) : new Container());
-      copy.addChild(new Graphics(landerCtx), new Graphics(overlayCtx));
+      copy.addChild(new Graphics(landerCtx), new Graphics(buildCtx), new Graphics(overlayCtx));
       copy.x = world.children.length * TURN_W;
       world.addChild(copy);
     }
@@ -832,6 +877,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       }
       drawSky(snapshot);
       drawLander(snapshot);
+      drawBuild(snapshot);
       resources = snapshot.resources;
       deposits = snapshot.holeGates;
       refreshHover(); // affordability may have changed

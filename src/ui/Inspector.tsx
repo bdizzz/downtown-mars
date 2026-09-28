@@ -8,7 +8,7 @@ import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { network } from "../sim/network";
 import { corridors, finishDef } from "../sim/corridors";
-import { num, resName, signed } from "./format";
+import { hoursText, num, ordinal, resName, signed } from "./format";
 
 interface Props {
   s: Snapshot;
@@ -109,6 +109,30 @@ function Home({ s, roomId, capacity }: { s: Snapshot; roomId: number; capacity: 
   );
 }
 
+/** A room (or its next floor) waiting in the construction queue: progress, place, time left, and moving it up. */
+function UnderConstruction({ s, roomId, onCommand }: { s: Snapshot; roomId: number; onCommand: Props["onCommand"] }) {
+  const index = s.construction.jobs.findIndex((j) => j.roomId === roomId);
+  const job = s.construction.jobs[index];
+  if (!job) return null;
+  return (
+    <div className="under-construction">
+      <div className="bar">
+        <div style={{ width: `${Math.round(job.progress * 100)}%` }} />
+      </div>
+      <p className="k">
+        {job.kind === "extend" ? "Another floor: " : ""}
+        {Math.round(job.progress * 100)}% · {ordinal(index + 1)} in the queue ·{" "}
+        {job.hoursLeft === null ? "waits for its floor to be dug" : `done in about ${hoursText(job.hoursLeft)}`}
+      </p>
+      {index > 0 && (
+        <button onClick={() => onCommand({ type: "prioritize", jobId: job.id })} title="Move it to the front of the construction queue">
+          Priority construction
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Pause a room, or have it stand by while its output is stocked. */
 function Controls({ room, s, onCommand }: { room: Snapshot["layout"]["rooms"][number]; s: Snapshot; onCommand: Props["onCommand"] }) {
   const out = mainOutput(room, config);
@@ -161,6 +185,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
 
   let state = "";
   if (room.planned) state = "Blueprint: builds when its floor is dug";
+  else if (room.building) state = "Under construction";
   else if (!room.connected) state = "No access: connect it with a corridor";
   else if (st?.limit === "paused") state = "Paused: its crew is free for other work";
   else if (st?.limit === "kit") state = "Idle until you ask for a seed kit";
@@ -176,6 +201,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
         </button>
       </header>
       <p className={isProblem(room, st) ? "warn" : ""}>{state}</p>
+      <UnderConstruction s={s} roomId={room.id} onCommand={onCommand} />
       {!room.connected && room.at.kind === "ring" && (
         <button
           onClick={() => onCommand({ type: "connectRoom", roomId: room.id, finish: finish ?? corridors.defaultFinish })}
@@ -245,7 +271,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
       {spec.staff > 0 && def.buildable && <Controls room={room} s={s} onCommand={onCommand} />}
       {def.buildable && (
         <button className="danger" onClick={() => onCommand({ type: "demolish", roomId: room.id })}>
-          Demolish ({room.planned ? "full refund" : `${config.economy.demolishRefund * 100}% refund`})
+          {room.building ? "Cancel construction (full refund)" : `Demolish (${room.planned ? "full refund" : `${config.economy.demolishRefund * 100}% refund`})`}
         </button>
       )}
     </aside>

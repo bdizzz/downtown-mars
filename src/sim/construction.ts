@@ -182,3 +182,43 @@ export function finishAll(state: SimState, cfg: SimConfig): void {
   for (const job of [...(state.construction?.queue ?? [])]) finish(state, job, cfg);
   if (state.construction) state.construction.queue = [];
 }
+
+export interface JobView {
+  id: number;
+  kind: Job["kind"];
+  roomId?: number;
+  label: string;
+  /** 0..1. */
+  progress: number;
+  work: number;
+  /** Hours until it's done at today's bandwidth, counting the jobs ahead of it; null while it can't be worked. */
+  hoursLeft: number | null;
+}
+
+/** The queue as the UI sees it: in order, with progress and when each will be done. */
+export function queueView(state: SimState): { bandwidth: number; jobs: JobView[] } {
+  const b = bandwidth(state);
+  let ahead = 0;
+  const jobs = (state.construction?.queue ?? []).map((job): JobView => {
+    const room = job.roomId !== undefined ? state.layout.rooms.find((r) => r.id === job.roomId) : undefined;
+    const name = room ? roomDef(room.type).name : "";
+    const label =
+      job.kind === "corridors"
+        ? `Corridors (${job.edges?.length ?? 0} ${(job.edges?.length ?? 0) === 1 ? "segment" : "segments"})`
+        : job.kind === "extend"
+          ? `${name}: another floor`
+          : name;
+    const canWork = workable(state, job);
+    if (canWork) ahead += job.work - job.done;
+    return {
+      id: job.id,
+      kind: job.kind,
+      ...(job.roomId !== undefined ? { roomId: job.roomId } : {}),
+      label,
+      progress: job.work > 0 ? job.done / job.work : 1,
+      work: job.work,
+      hoursLeft: canWork ? ahead / b : null,
+    };
+  });
+  return { bandwidth: b, jobs };
+}

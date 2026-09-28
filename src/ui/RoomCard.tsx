@@ -1,3 +1,4 @@
+import { roomWork } from "../sim/construction";
 import type { EffectDef, RoomDef } from "../sim/rooms";
 import { resourceDef } from "../sim/resources";
 import { num, resName } from "./format";
@@ -49,6 +50,8 @@ export function RoomCard({ def, resources, shape, onRotate, siteNote }: Props) {
         ))}
         {!Object.keys(def.cost).length && <span>Free</span>}
       </p>
+      <p className="k">Takes {roomWork(def.id)} work-hours to build</p>
+      {def.constructionBandwidth ? <p className="good">Adds {def.constructionBandwidth} to construction bandwidth at full staff</p> : null}
       {def.staff > 0 && <p>Staff {def.staff}</p>}
       {Object.keys(def.uses).length > 0 && <p>Uses {flows(def.uses)} a day</p>}
       {Object.keys(def.makes).length > 0 && <p>Makes {flows(def.makes)} a day</p>}
