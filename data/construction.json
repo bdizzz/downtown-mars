@@ -1,5 +1,5 @@
 {
-  "_note": "Construction time (docs/PLAN-M7.md). Work is in work-hours; bandwidth is work-hours per game hour. Rooms may override their size's hours with buildHours in rooms.json.",
+  "_note": "Construction time (docs/PLAN-M7.md). Work is in work-hours; bandwidth is work-hours per game hour. Rooms may override their size's hours with buildHours in rooms.json. A room on solid rock is excavated first: excavationHoursPerSlot per rock cell, ahead of its building hours.",
   "instant": false,
   "baseBandwidth": 1,
   "hoursBySize": {
@@ -9,5 +9,6 @@
     "H": 48,
     "surface": 12
   },
-  "corridorHoursPer10m": 1.5
+  "corridorHoursPer10m": 1.5,
+  "excavationHoursPerSlot": 3
 }

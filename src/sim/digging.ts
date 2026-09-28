@@ -1,5 +1,6 @@
 import type { SimConfig } from "./config";
-import { openCells, shaftSlots, yieldRock } from "./excavation";
+import { shaftSlots, yieldRock } from "./excavation";
+import { blueprintReady } from "./construction";
 import { LABELS } from "./ledger";
 import { ensureFloors, recomputeAccess } from "./placement";
 import type { SimState } from "./state";
@@ -44,10 +45,10 @@ export function stepDigging(state: SimState, cfg: SimConfig): void {
   const layout = state.layout;
   layout.hole.floors = floor;
   ensureFloors(layout);
-  for (const r of layout.rooms) {
+  for (const r of [...layout.rooms]) {
     if (r.planned && r.at.kind === "ring" && r.at.floor === floor) {
       r.planned = false;
-      openCells(layout, r.cells);
+      blueprintReady(state, r, cfg);
     }
   }
   recomputeAccess(layout);

@@ -69,6 +69,8 @@ export interface RoomDef {
   stackNoun?: string;
   /** The most floors one stack may span. */
   maxFloors?: number;
+  /** Only digs out rock: when the job's done, the room is gone and its cells are empty space. */
+  excavationOnly?: boolean;
   /** Walk-through: every side counts as a corridor, so neighbours open onto it. */
   public?: boolean;
   /** A working one lets colonists have children. */

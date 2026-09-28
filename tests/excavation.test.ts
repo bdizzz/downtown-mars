@@ -3,12 +3,14 @@ import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { emptyCells, isOpen, openCells, shaftSlots } from "../src/sim/excavation";
 import { rockPerFloor, ticksToDig } from "../src/sim/digging";
-import { recomputeAccess, type Location } from "../src/sim/placement";
+import { checkPlacement, recomputeAccess, type Location } from "../src/sim/placement";
 import { deserialize, serialize, SAVE_VERSION } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { createWorld } from "../src/sim/world";
-import { allRock } from "./worlds";
+import { allRock, withConstructionTime } from "./worlds";
+import { construction, queueView, roomWork } from "../src/sim/construction";
+import { roomDef } from "../src/sim/rooms";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 
@@ -78,5 +80,71 @@ describe("excavation and empty space", () => {
     const battery = layout.rooms.find((r) => r.type === "battery_bank")!;
     expect(isOpen(layout, battery.cells[0]!)).toBe(true);
     expect(isOpen(layout, { floor: 1, ring: 2, slot: 5 })).toBe(false);
+  });
+});
+
+describe("excavating, then building", () => {
+  withConstructionTime();
+  const HOUR = config.ticksPerDay / 24;
+  const hours = (s: SimState, h: number) => {
+    for (let i = 0; i < Math.round(h * HOUR); i++) step(s, config);
+  };
+  const dig = () => construction.excavationHoursPerSlot;
+  function site(): SimState {
+    const s = rich();
+    s.earth.nextDropTick = 1e9;
+    return s;
+  }
+
+  it("a room on rock is dug out first, cell by cell, bringing up rock as it goes", () => {
+    const s = site();
+    const rock0 = s.resources.rock!;
+    const r = applyCommand(s, { type: "build", room: "water_tank", at: ring(1, 3, 5) });
+    expect(r.ok).toBe(true);
+    const job = s.construction.queue[0]!;
+    expect(job.dig).toBe(dig());
+    expect(job.work).toBe(dig() + roomWork("water_tank"));
+    expect(queueView(s).jobs[0]).toMatchObject({ phase: "excavating", label: "Water tank (excavating)" });
+    hours(s, dig() / 2);
+    expect(isOpen(s.layout, { floor: 1, ring: 3, slot: 5 })).toBe(false);
+    const cost = roomDef("water_tank").cost.rock ?? 0;
+    expect(s.resources.rock!).toBeGreaterThan(rock0 - cost);
+    hours(s, dig() / 2 + 0.2);
+    expect(isOpen(s.layout, { floor: 1, ring: 3, slot: 5 })).toBe(true);
+    expect(s.resources.rock!).toBeCloseTo(rock0 - cost + config.digging.rockPerSlot, 0);
+    expect(queueView(s).jobs[0]).toMatchObject({ phase: "building", label: "Water tank" });
+  });
+
+  it("on empty space there's nothing to dig, and nothing gained", () => {
+    const s = site();
+    const r = applyCommand(s, { type: "build", room: "water_tank", at: ring(1, 2, 5) }); // ring 2 starts dug out
+    expect(r.ok).toBe(true);
+    const job = s.construction.queue[0]!;
+    expect(job.dig).toBeUndefined();
+    expect(job.work).toBe(roomWork("water_tank"));
+  });
+
+  it("an empty room digs ahead: when it's done it's gone, leaving empty space", () => {
+    const s = site();
+    expect(checkPlacement(s.layout, "empty_room_s", ring(1, 2, 5))).toMatchObject({ ok: false, reason: "Already dug out" });
+    const r = applyCommand(s, { type: "build", room: "empty_room_m", at: ring(1, 3, 6, 2) });
+    expect(r.ok).toBe(true);
+    expect(s.construction.queue[0]!.work).toBe(2 * dig());
+    hours(s, 2 * dig() + 0.2);
+    expect(s.layout.rooms.find((x) => x.type === "empty_room_m")).toBeUndefined();
+    expect(emptyCells(s.layout)).toEqual(expect.arrayContaining([{ floor: 1, ring: 3, slot: 6 }, { floor: 1, ring: 3, slot: 7 }]));
+    // A room there now goes straight to building.
+    applyCommand(s, { type: "build", room: "water_tank", at: ring(1, 3, 6) });
+    expect(s.construction.queue[0]!.dig).toBeUndefined();
+  });
+
+  it("cancelled partway through, what's dug stays dug", () => {
+    const s = site();
+    const r = applyCommand(s, { type: "build", room: "empty_room_m", at: ring(1, 3, 6, 2) });
+    expect(r.ok).toBe(true);
+    hours(s, dig() + 0.2);
+    applyCommand(s, { type: "cancelJob", jobId: s.construction.queue[0]!.id });
+    expect(isOpen(s.layout, { floor: 1, ring: 3, slot: 6 })).toBe(true);
+    expect(isOpen(s.layout, { floor: 1, ring: 3, slot: 7 })).toBe(false);
   });
 });

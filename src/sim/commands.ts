@@ -121,12 +121,12 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       const room = layout.rooms.find((x) => x.id === r.id)!;
       // Extending stairs or an elevator isn't a new room: nothing to undo as one.
       if (r.extended) {
-        queueExtension(state, room, r.fresh ?? []);
+        queueExtension(state, room, r.fresh ?? [], config);
         recomputeAccess(layout);
         return { ok: true };
       }
       room.builtTick = state.tick;
-      queueRoom(state, room);
+      queueRoom(state, room, config);
       recomputeAccess(layout);
       layout.version++;
       return { ok: true, roomId: r.id! };

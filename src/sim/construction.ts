@@ -5,6 +5,7 @@ import { edgeById, edgeLengthM } from "./edges";
 import { isActive } from "./economy";
 import { postMessage } from "./messages";
 import type { Cell, Layout, RoomInstance } from "./placement";
+import { openCells, rockCells, yieldRock } from "./excavation";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
@@ -13,12 +14,18 @@ import type { SimState } from "./state";
 // bandwidth (work-hours per game hour). Construction offices add bandwidth.
 // Until a job is done, its room holds its slots but doesn't run, and its
 // corridors don't join the network.
+//
+// A room on solid rock is excavated first: the crews dig out its rock cells
+// one at a time (each opens when its hours are done, and brings up its rock
+// as it goes), then build. On empty space there's nothing to dig.
 
 export const construction = raw as unknown as {
   instant: boolean;
   baseBandwidth: number;
   hoursBySize: Record<string, number>;
   corridorHoursPer10m: number;
+  /** Work-hours to dig out one slot of solid rock, before building. */
+  excavationHoursPerSlot: number;
 };
 
 export interface Job {
@@ -27,9 +34,12 @@ export interface Job {
   kind: "room" | "corridors" | "fill" | "extend";
   roomId?: number;
   edges?: string[];
-  /** Work needed and done, in work-hours. */
+  /** Work needed and done, in work-hours (excavation included). */
   work: number;
   done: number;
+  /** The first `dig` hours of the work are excavation, of these rock cells in order. */
+  dig?: number;
+  digCells?: Cell[];
 }
 
 export interface ConstructionState {
@@ -75,16 +85,46 @@ function add(state: SimState, job: Omit<Job, "id" | "done">): Job | null {
   return full;
 }
 
-/** A room just committed: under construction until its job is done. */
-export function queueRoom(state: SimState, room: RoomInstance): void {
-  const job = add(state, { kind: "room", roomId: room.id, work: roomWork(room.type) });
+/** The excavation part of a job for these cells: the rock ones, and their hours. */
+function digFor(state: SimState, cells: Cell[]): { dig?: number; digCells?: Cell[] } {
+  const rock = rockCells(state.layout, cells);
+  return rock.length ? { dig: rock.length * construction.excavationHoursPerSlot, digCells: rock } : {};
+}
+
+/** Dig these cells out at once, with their rock (sandbox, and blueprints when their floor is dug). */
+export function excavateNow(state: SimState, cells: Cell[], cfg: SimConfig): void {
+  const rock = rockCells(state.layout, cells);
+  openCells(state.layout, rock);
+  yieldRock(state, cfg, rock.length);
+}
+
+/** A room just committed: excavated if need be, then under construction until its job is done. */
+export function queueRoom(state: SimState, room: RoomInstance, cfg: SimConfig): void {
+  const dig = room.planned ? { dig: room.cells.length * construction.excavationHoursPerSlot, digCells: room.cells } : digFor(state, room.cells);
+  const job = add(state, { kind: "room", roomId: room.id, work: (dig.dig ?? 0) + roomWork(room.type), ...dig });
   if (job) room.building = true;
+  else if (!room.planned) finishInstantly(state, room, cfg);
+}
+
+/** Sandbox: dug and built at once. An empty room leaves only its empty space. */
+function finishInstantly(state: SimState, room: RoomInstance, cfg: SimConfig): void {
+  excavateNow(state, room.cells, cfg);
+  if (roomDef(room.type).excavationOnly) removeRoom(state.layout, room);
+}
+
+/** A blueprint's floor is dug: in the sandbox (nothing queued), it's dug out and built there and then. */
+export function blueprintReady(state: SimState, room: RoomInstance, cfg: SimConfig): void {
+  if (!room.building) finishInstantly(state, room, cfg);
 }
 
 /** Stairs or an elevator reaching further: the new floors join when built. */
-export function queueExtension(state: SimState, room: RoomInstance, cells: Cell[]): void {
-  const job = add(state, { kind: "extend", roomId: room.id, work: roomWork(room.type) });
-  if (!job) return;
+export function queueExtension(state: SimState, room: RoomInstance, cells: Cell[], cfg: SimConfig): void {
+  const dig = digFor(state, cells);
+  const job = add(state, { kind: "extend", roomId: room.id, work: (dig.dig ?? 0) + roomWork(room.type), ...dig });
+  if (!job) {
+    excavateNow(state, cells, cfg);
+    return;
+  }
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
   const fresh = new Set(cells.map(key));
   room.pendingCells = [...(room.pendingCells ?? []), ...room.cells.filter((c) => fresh.has(key(c)))];
@@ -124,9 +164,42 @@ function workable(state: SimState, job: Job): boolean {
   return !!room && !room.planned;
 }
 
+/** A job's phase: digging out rock, or building. */
+export function phaseOf(job: Job): "excavating" | "building" {
+  return job.dig && job.done < job.dig - 1e-9 ? "excavating" : "building";
+}
+
+/** Dig out the job's rock cells whose hours are done, bringing up their rock. */
+function excavate(state: SimState, job: Job, before: number, cfg: SimConfig): void {
+  if (!job.dig || !job.digCells) return;
+  const dug = Math.min(job.done, job.dig) - Math.min(before, job.dig);
+  if (dug <= 0) return;
+  yieldRock(state, cfg, dug / construction.excavationHoursPerSlot);
+  const cells = Math.min(job.digCells.length, Math.floor(Math.min(job.done, job.dig) / construction.excavationHoursPerSlot + 1e-9));
+  const fresh = rockCells(state.layout, job.digCells.slice(0, cells));
+  if (!fresh.length) return;
+  openCells(state.layout, fresh);
+  state.layout.version++;
+}
+
+/** Take a room out of the layout, leaving what's been dug as empty space. */
+function removeRoom(layout: Layout, room: RoomInstance): void {
+  for (const c of room.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = 0;
+  layout.rooms = layout.rooms.filter((r) => r !== room);
+  recomputeAccess(layout);
+  layout.version++;
+}
+
 function finish(state: SimState, job: Job, cfg: SimConfig): void {
   const layout = state.layout;
   const room = job.roomId !== undefined ? layout.rooms.find((r) => r.id === job.roomId) : undefined;
+  if (job.digCells) openCells(layout, job.digCells);
+  // An empty room is only ever a hole in the rock: done, it's empty space.
+  if (job.kind === "room" && room && roomDef(room.type).excavationOnly) {
+    removeRoom(layout, room);
+    postMessage(state, cfg, `${roomDef(room.type).name} dug out.`);
+    return;
+  }
   if (job.kind === "room" && room) room.building = false;
   if (job.kind === "extend" && room) {
     room.cells = [...room.cells, ...(room.pendingCells ?? [])].sort((a, b) => a.floor - b.floor);
@@ -154,8 +227,10 @@ export function stepConstruction(state: SimState, cfg: SimConfig): void {
     if (budget <= 0) break;
     if (!workable(state, job)) continue;
     const use = Math.min(budget, job.work - job.done);
+    const before = job.done;
     job.done += use;
     budget -= use;
+    excavate(state, job, before, cfg);
     if (job.done >= job.work - 1e-9) {
       c.queue = c.queue.filter((j) => j !== job);
       finish(state, job, cfg);
@@ -197,7 +272,12 @@ export function dropCorridors(state: SimState, edges: string[], cfg: SimConfig):
 
 /** Finish everything at once (sandbox, tests, and old saves). */
 export function finishAll(state: SimState, cfg: SimConfig): void {
-  for (const job of [...(state.construction?.queue ?? [])]) finish(state, job, cfg);
+  for (const job of [...(state.construction?.queue ?? [])]) {
+    const before = job.done;
+    job.done = job.work;
+    excavate(state, job, before, cfg);
+    finish(state, job, cfg);
+  }
   if (state.construction) state.construction.queue = [];
 }
 
@@ -208,6 +288,8 @@ export interface JobView {
   label: string;
   /** 0..1. */
   progress: number;
+  /** Digging out rock first, or building. */
+  phase: "excavating" | "building";
   work: number;
   /** Hours until it's done at today's bandwidth, counting the jobs ahead of it; null while it can't be worked. */
   hoursLeft: number | null;
@@ -228,7 +310,9 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
           ? `Filling in corridors (${n} ${n === 1 ? "segment" : "segments"})`
         : job.kind === "extend"
           ? `${name}: another floor`
-          : name;
+          : phaseOf(job) === "excavating" && room && !roomDef(room.type).excavationOnly
+            ? `${name} (excavating)`
+            : name;
     const canWork = workable(state, job);
     if (canWork) ahead += job.work - job.done;
     return {
@@ -237,6 +321,7 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
       ...(job.roomId !== undefined ? { roomId: job.roomId } : {}),
       label,
       progress: job.work > 0 ? job.done / job.work : 1,
+      phase: phaseOf(job),
       work: job.work,
       hoursLeft: canWork ? ahead / b : null,
     };

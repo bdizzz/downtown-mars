@@ -77,3 +77,21 @@ Decided Sep 28, 2026 (Bryon):
 - **Save v15:** only the cells under an old save's rooms are dug. The old drill already paid out their rock. `openShaft` is set for step 3.
 - **Tests:** `tests/excavation.test.ts`. Corridor tests call `allRock` (tests/worlds.ts) so they stay about rock.
 - **Known failing until step 6:** the scripted playthroughs (first month, network, people, tutorial). They starve for rock now that the drill yields only the shaft's share.
+
+**Step 2, two-phase construction:** `src/sim/construction.ts`.
+- **Jobs:** a room or stair-extension job on rock carries `dig` (3 work-hours per rock cell, `excavationHoursPerSlot` in `data/construction.json`) and `digCells`, ahead of its building hours.
+- **Excavating:** while the job is in the dig phase, rock and deposits come in with the hours worked (`yieldRock`), and each cell opens as its hours are done. A blueprint on a floor still being dug digs every cell once its floor is ready.
+- **On empty space** there's no dig part and no yield. The job goes straight to building.
+- **Empty rooms:** `empty_room_s`, `empty_room_m` and `empty_room_l` (S, M, L; free) sit in a new Excavation group of the palette.
+  - They're `excavationOnly`: when the job is done, the room is removed and its cells are empty space ("Empty room dug out.").
+  - Placing one where everything is already dug is refused ("Already dug out").
+- **Cancelling** partway (cancel, demolish or undo) leaves the cells dug so far open, and keeps their rock.
+- **Sandbox (`instant`):** a room is dug and built on the spot, rock included. Blueprints are dug when their floor is.
+- **Placement** reports `rock`, the cells still to dig, for the hover.
+- **UI:** the queue shows each job's `phase`, and its label reads "Water tank (excavating)". The Inspector says "Excavating · 40%".
+- **Tests:**
+  - Dug cell by cell with rock coming in.
+  - No dig on empty space.
+  - An empty room leaves empty space, which the next room builds on straight away.
+  - Cancelling keeps what's dug.
+  - Stair tests updated for the rock their new floors bring up.

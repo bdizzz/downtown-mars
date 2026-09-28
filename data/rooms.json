@@ -1,5 +1,5 @@
 {
-  "_note": "Amounts are per game day. Values from ROOMS.md (★ rooms) unless marked placeholder. requiresDeposit: the hole must sit on that deposit (Unlock column in ROOMS.md).",
+  "_note": "Amounts are per game day. Values from ROOMS.md (\u2605 rooms) unless marked placeholder. requiresDeposit: the hole must sit on that deposit (Unlock column in ROOMS.md).",
   "rooms": [
     {
       "id": "landing_pod",
@@ -674,6 +674,54 @@
       },
       "buildable": true,
       "buildHours": 18
+    },
+    {
+      "id": "empty_room_s",
+      "name": "Small empty room",
+      "short": "Empty",
+      "category": "excavation",
+      "size": "S",
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "public": true,
+      "excavationOnly": true,
+      "effects": [],
+      "cost": {},
+      "buildable": true,
+      "buildHours": 0
+    },
+    {
+      "id": "empty_room_m",
+      "name": "Empty room",
+      "short": "Empty",
+      "category": "excavation",
+      "size": "M",
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "public": true,
+      "excavationOnly": true,
+      "effects": [],
+      "cost": {},
+      "buildable": true,
+      "buildHours": 0
+    },
+    {
+      "id": "empty_room_l",
+      "name": "Large empty room",
+      "short": "Empty",
+      "category": "excavation",
+      "size": "L",
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "public": true,
+      "excavationOnly": true,
+      "effects": [],
+      "cost": {},
+      "buildable": true,
+      "buildHours": 0
     },
     {
       "id": "tiny_plaza",

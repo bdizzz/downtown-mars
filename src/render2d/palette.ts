@@ -9,6 +9,7 @@ export const CATEGORY_COLORS: Record<string, number> = {
   power: 0xe0bf4a,
   logistics: 0xa08fb0,
   circulation: 0x9a8574,
+  excavation: 0x7a6a5e,
   industry: 0xb48a6a,
   public: 0xd9a870,
   construction: 0xd98c3a,

@@ -199,6 +199,7 @@ function UnderConstruction({ s, roomId, onCommand }: { s: Snapshot; roomId: numb
       </div>
       <p className="k">
         {job.kind === "extend" ? "Another floor: " : ""}
+        {job.phase === "excavating" ? "Excavating · " : ""}
         {Math.round(job.progress * 100)}% · {ordinal(index + 1)} in the queue ·{" "}
         {job.hoursLeft === null ? "waits for its floor to be dug" : `done in about ${hoursText(job.hoursLeft)}`}
       </p>

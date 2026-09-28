@@ -161,13 +161,15 @@ describe("construction time", () => {
     const s = site();
     s.layout.hole.floors = 4;
     while (s.layout.grid.length < 5) s.layout.grid.push(s.layout.hole.ringSlots.map((n) => new Array(n).fill(0)));
+    // Floor 2's cell is rock: it's dug out first.
+    const dig = construction.excavationHoursPerSlot;
     const stairs = build(s, "stairwell", ring(1, 1, 3));
-    hours(s, roomWork("stairwell") + 0.2);
+    hours(s, dig + roomWork("stairwell") + 0.2);
     applyCommand(s, { type: "build", room: "stairwell", at: ring(2, 1, 3) });
     const floors = () => new Set(room(s, stairs.id)!.cells.map((c) => c.floor));
     expect(floors()).toEqual(new Set([1, 2]));
     expect(room(s, stairs.id)!.pendingCells?.map((c) => c.floor)).toEqual([3]);
-    hours(s, roomWork("stairwell") + 0.2);
+    hours(s, dig + roomWork("stairwell") + 0.2);
     expect(floors()).toEqual(new Set([1, 2, 3]));
   });
 

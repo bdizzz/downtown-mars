@@ -2,7 +2,7 @@ import { config, type Priority, type SimConfig } from "./config";
 import { overlappingSlots, ringSize, wrapSlot, type Hole } from "./geometry";
 import { corridorsInside, recomputeAccess, strandedBy, wouldConnect } from "./corridors";
 import { isRoomType, roomDef } from "./rooms";
-import { openCells } from "./excavation";
+import { rockCells } from "./excavation";
 
 // Where rooms can go. A ring room is anchored at its innermost ring and
 // lowest slot, and spans w slots along that ring and d rings outward. Outer
@@ -86,6 +86,8 @@ export type CheckResult =
       merges?: number[];
       /** What the placement does, when it isn't obvious ("Extend stairs to cover floors 1–3"). */
       note?: string;
+      /** Cells still solid rock: they're excavated first. */
+      rock?: number;
       /** Corridors inside the footprint that placing it would fill in, and what that would cut off. */
       destroys?: string[];
       strands?: { rooms: number[]; corridors: string[] };
@@ -233,6 +235,8 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
     }
     note = `Extend ${def.stackNoun ?? def.name.toLowerCase()} to cover floors ${top}–${low}`;
   }
+  const rock = rockCells(layout, cells).length;
+  if (def.excavationOnly && !rock) return { ok: false, reason: "Already dug out", cells, surfaceCells: [] };
   // Rooms can go anywhere; one no corridor reaches yet just won't work until one does.
   const unconnected = !def.public && !wouldConnect(layout, cells);
   // A room laid over corridors fills them in; say so, and what it would cut off.
@@ -243,6 +247,7 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
     surfaceCells: [],
     planned: bottom > hole.floors,
     ...(unconnected ? { unconnected } : {}),
+    ...(rock ? { rock } : {}),
     ...(merges.size ? { merges: [...merges].sort((a, b) => a - b), note } : {}),
     ...(destroys.length ? { destroys, strands: strandedBy(layout, destroys) } : {}),
   };
@@ -295,7 +300,6 @@ export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimCo
   });
   for (const c of check.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = id;
   for (const s of check.surfaceCells) layout.surface[s] = id;
-  if (!check.planned) openCells(layout, check.cells);
   recomputeAccess(layout);
   layout.version++;
   return { ...check, id };

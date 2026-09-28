@@ -257,7 +257,8 @@ describe("stacking stairs and elevators", () => {
     const rock = s.resources.rock!;
     const r = applyCommand(s, { type: "build", room: "stairwell", at: ring(2, 1, 3) });
     expect(r).toEqual({ ok: true }); // no undo for an extension
-    expect(s.resources.rock).toBe(rock - 8);
+    // It costs 8 rock, and digging out the new floor's cell brings some up.
+    expect(s.resources.rock).toBeCloseTo(rock - 8 + config.digging.rockPerSlot);
     expect(stairsAt(s)).toHaveLength(1);
     expect(new Set(stairsAt(s)[0]!.cells.map((c) => c.floor))).toEqual(new Set([1, 2, 3]));
     // Demolishing refunds half of every piece.
