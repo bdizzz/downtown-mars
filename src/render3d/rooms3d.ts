@@ -56,8 +56,40 @@ function radialSide(pos: number[], r0: number, r1: number, a: number, y0: number
 function geometry(pos: number[]): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  // Texture coordinates from position, so a pattern (construction stripes) tiles across walls and floors alike.
+  const uv: number[] = [];
+  for (let i = 0; i < pos.length; i += 3) uv.push((pos[i]! + pos[i + 2]!) * UV_SCALE, pos[i + 1]! * UV_SCALE);
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
   g.computeVertexNormals();
   return g;
+}
+
+const UV_SCALE = 0.35;
+
+let stripeTexture: THREE.CanvasTexture | null = null;
+/** Diagonal hazard stripes for rooms under construction. */
+function stripes(): THREE.CanvasTexture {
+  if (stripeTexture) return stripeTexture;
+  const size = 32;
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#ffffff";
+  g.fillRect(0, 0, size, size);
+  g.fillStyle = "#e0a03a";
+  for (const o of [-size, 0, size]) {
+    g.beginPath();
+    g.moveTo(o, 0);
+    g.lineTo(o + size / 2, 0);
+    g.lineTo(o + size * 1.5, size);
+    g.lineTo(o + size, size);
+    g.closePath();
+    g.fill();
+  }
+  stripeTexture = new THREE.CanvasTexture(c);
+  stripeTexture.wrapS = stripeTexture.wrapT = THREE.RepeatWrapping;
+  stripeTexture.colorSpace = THREE.SRGBColorSpace;
+  return stripeTexture;
 }
 
 /** One piece of a cell between corridor changes: its angles, and its inner and outer radius after carving. */
@@ -242,6 +274,8 @@ export function setNightGlow(night: number): void {
 export function disposeRoomMaterials(): void {
   materialCache.forEach((m) => m.dispose());
   materialCache.clear();
+  stripeTexture?.dispose();
+  stripeTexture = null;
   labelCache.forEach(({ material }) => {
     material.map?.dispose();
     material.dispose();
@@ -254,7 +288,13 @@ export function disposeRoomMaterials(): void {
   shapeCache.clear();
 }
 
-function roomMaterial(color: number, planned: boolean, faint = false): THREE.Material {
+function roomMaterial(color: number, planned: boolean, faint = false, building = false): THREE.Material {
+  // Under construction: the room's colour through semi-opaque diagonal stripes.
+  if (building && !faint) {
+    return material(`building:${color}`, () =>
+      new THREE.MeshStandardMaterial({ color, map: stripes(), transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9 }),
+    );
+  }
   return material(`room:${color}:${planned}:${faint}`, () =>
     planned || faint
       ? new THREE.MeshStandardMaterial({
@@ -461,7 +501,7 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     const shape = roomShape(layout, room);
     used.add(shape.key);
     const faint = xray && room.cells.some((c) => c.ring === 1);
-    const mesh = new THREE.Mesh(shape.geo, roomMaterial(color, room.planned || !!room.building, faint));
+    const mesh = new THREE.Mesh(shape.geo, roomMaterial(color, room.planned, faint, !!room.building));
     mesh.userData = { pickable: true, roomId: room.id, faint, cached: true };
     group.add(mesh);
     const edges = new THREE.LineSegments(shape.edges, room.connected ? edgeLine : strandedLine);

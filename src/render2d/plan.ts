@@ -10,7 +10,7 @@ import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paints } from "../v
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool } from "../view/types";
 import { drawGlyph, drawPlus, shade } from "./art";
-import { corridorStrip } from "./corridorArt";
+import { constructionStripes, corridorStrip } from "./corridorArt";
 import { config } from "../sim/config";
 import { corridorJoints, corridors } from "../sim/corridors";
 import { edgeById, edgeSides, nearestEdge, type Edge } from "../sim/edges";
@@ -118,7 +118,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   const overlayCtx = new GraphicsContext();
   const world = new Container();
   let labels = new Container();
-  world.addChild(new Graphics(baseCtx), new Graphics(roomsCtx), new Graphics(fieldCtx), labels, new Graphics(overlayCtx));
+  const progressLabels = new Container();
+  world.addChild(new Graphics(baseCtx), new Graphics(roomsCtx), new Graphics(fieldCtx), labels, progressLabels, new Graphics(overlayCtx));
   const caption = new Text({ text: "", style: { fill: C.label, fontSize: 13, fontWeight: "700" } });
   caption.position.set(10, 8);
   app.stage.addChild(world, caption);
@@ -184,7 +185,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
         // Public rooms on the gallery open onto it: fill over the gallery's edge line.
         const poly = def.public && c.ring === 1 ? cellSectorFrom(h, c, h.shaftRadiusM - 0.3) : cellSector(h, c);
         if (room.planned) roomsCtx.poly(poly).fill({ color, alpha: 0.3 });
-        else if (room.building) roomsCtx.poly(poly).fill({ color, alpha: 0.4 });
+        else if (room.building) roomsCtx.poly(poly).fill({ color, alpha: 0.4 }).poly(poly).fill(constructionStripes());
         else roomsCtx.poly(poly).fill(color);
       }
       // Under construction: an orange outline, like tape around the works.
@@ -192,7 +193,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       else outlineCells(roomsCtx, cells, room.connected ? shade(color, 0.45) : C.bad, room.connected ? 1.5 : 3, !!def.public);
       const waiting = onFloor(room.pendingCells ?? []);
       if (waiting.length) {
-        for (const c of waiting) roomsCtx.poly(cellSector(h, c)).fill({ color, alpha: 0.4 });
+        for (const c of waiting) roomsCtx.poly(cellSector(h, c)).fill({ color, alpha: 0.4 }).poly(cellSector(h, c)).fill(constructionStripes());
         outlineCells(roomsCtx, waiting, C.build, 2.5, !!def.public);
       }
       const centre = roomCentre(h, cells);
@@ -398,6 +399,27 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     if (p.kind === "slot") overlayCtx.poly(cellSector(h, p, 0.15)).fill({ color: C.hover, alpha: 0.15 }).stroke({ color: C.hover, width: 2 });
     else if (p.kind === "gallery") {
       overlayCtx.circle(0, 0, h.shaftRadiusM * PX).stroke({ color: C.hover, width: 2 });
+    }
+  }
+
+  /** "45%" on each room under construction on this floor, as the crews work. */
+  let progressKey = "";
+  function drawProgress(s: { construction: { jobs: { roomId?: number; kind: string; progress: number }[] } }): void {
+    if (!layout) return;
+    const key = `${floor}:${layout.version}:` + s.construction.jobs.map((j) => `${j.roomId}:${Math.floor(j.progress * 100)}`).join(",");
+    if (key === progressKey) return;
+    progressKey = key;
+    progressLabels.removeChildren().forEach((c) => c.destroy());
+    for (const job of s.construction.jobs) {
+      const room = job.roomId !== undefined ? layout.rooms.find((r) => r.id === job.roomId) : undefined;
+      if (!room) continue;
+      const cells = onFloor(job.kind === "extend" ? (room.pendingCells ?? []) : room.cells);
+      if (!cells.length) continue;
+      const centre = roomCentre(layout.hole, cells);
+      const t = new Text({ text: `${Math.floor(job.progress * 100)}%`, style: { fill: 0xffffff, fontSize: 14, fontWeight: "800", stroke: { color: 0x1a0f0d, width: 4 } } });
+      t.anchor.set(0.5);
+      t.position.set(centre.x, centre.y + 12);
+      progressLabels.addChild(t);
     }
   }
 
@@ -634,6 +656,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       field = snapshot.effects;
       happiness = snapshot.happiness;
       redraw();
+      drawProgress(snapshot);
       redrawField(fieldChanged);
       updateCaption();
       refreshHover();

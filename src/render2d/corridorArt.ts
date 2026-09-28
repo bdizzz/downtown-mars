@@ -1,4 +1,4 @@
-import type { GraphicsContext } from "pixi.js";
+import { FillPattern, Texture, type GraphicsContext } from "pixi.js";
 import { finishDef } from "../sim/corridors";
 
 // How a corridor's finish looks in 2D: a band in the finish's colour, with a
@@ -125,4 +125,30 @@ export function corridorStrip(
     along(half - 1, 1.5, 0.9);
   }
   return poly;
+}
+
+let stripes: FillPattern | null = null;
+
+/** Diagonal hazard stripes, semi-opaque, for rooms under construction. One texture, shared. */
+export function constructionStripes(): FillPattern {
+  if (stripes) return stripes;
+  const size = 24;
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "rgba(30, 18, 12, 0.55)";
+  g.fillRect(0, 0, size, size);
+  g.fillStyle = "rgba(224, 160, 58, 0.85)";
+  // Two diagonal bands per tile, drawn so they meet across tile edges.
+  for (const o of [-size, 0, size]) {
+    g.beginPath();
+    g.moveTo(o, 0);
+    g.lineTo(o + size / 2, 0);
+    g.lineTo(o + size * 1.5, size);
+    g.lineTo(o + size, size);
+    g.closePath();
+    g.fill();
+  }
+  stripes = new FillPattern({ texture: Texture.from(c), repetition: "repeat" });
+  return stripes;
 }

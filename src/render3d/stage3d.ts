@@ -446,6 +446,59 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     overlayMat(`s:${color}:${opacity}`, () => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
   const lines = (color: number) => overlayMat(`l:${color}`, () => new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true }));
 
+  // "45%" over rooms under construction, updated as the crews work.
+  const progressGroup = new THREE.Group();
+  scene.add(progressGroup);
+  const percentMats = new Map<string, THREE.SpriteMaterial>();
+  let progressKey = "";
+  function percentMaterial(text: string): THREE.SpriteMaterial {
+    let m = percentMats.get(text);
+    if (m) return m;
+    const c = document.createElement("canvas");
+    c.width = 96;
+    c.height = 48;
+    const g = c.getContext("2d")!;
+    g.font = "800 30px system-ui, sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.lineWidth = 7;
+    g.strokeStyle = "#1a0f0d";
+    g.strokeText(text, 48, 25);
+    g.fillStyle = "#ffffff";
+    g.fillText(text, 48, 25);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    m = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+    percentMats.set(text, m);
+    return m;
+  }
+  function drawProgress(s: Snapshot): void {
+    const key = `${s.layout.version}:${floorLimit}:` + s.construction.jobs.map((j) => `${j.roomId}:${Math.floor(j.progress * 100)}`).join(",");
+    if (key === progressKey) return;
+    progressKey = key;
+    progressGroup.clear();
+    const h = s.layout.hole;
+    for (const job of s.construction.jobs) {
+      const room = job.roomId !== undefined ? s.layout.rooms.find((r) => r.id === job.roomId) : undefined;
+      if (!room || room.at.kind !== "ring") continue;
+      const cells = (job.kind === "extend" ? (room.pendingCells ?? []) : room.cells).filter((c) => floorLimit === null || c.floor >= floorLimit);
+      const c = cells[0];
+      if (!c) continue;
+      const n = h.ringSlots[c.ring - 1]!;
+      const [a0, a1] = slotAngles(c.slot, n);
+      const [r0, r1] = ringRadii(h, c.ring);
+      const [y0, y1] = floorSpan(c.floor);
+      const a = (a0 + a1) / 2;
+      const r = c.ring === 1 ? r0 - 0.8 : (r0 + r1) / 2;
+      const sprite = new THREE.Sprite(percentMaterial(`${Math.floor(job.progress * 100)}%`));
+      sprite.scale.set(2.4, 1.2, 1);
+      sprite.position.set(r * Math.cos(a), (y0 + y1) / 2, r * Math.sin(a));
+      sprite.renderOrder = 11;
+      progressGroup.add(sprite);
+    }
+    dirty = true;
+  }
+
   let plusMat: THREE.SpriteMaterial | null = null;
   /** A plus in a disc, drawn once: "this adds to what's there". */
   function plusMaterial(): THREE.SpriteMaterial {
@@ -1007,6 +1060,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const wasVisible = lander.visible;
       placeLander(lander, snapshot.layout, landing && floorLimit === null ? 1 - e.ticksToDrop / descent : null);
       if (landing || wasVisible) dirty = true;
+      drawProgress(snapshot);
       refreshHover(); // affordability or the layout may have changed
     },
     setTool(t: Tool) {
@@ -1062,6 +1116,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       overlayMats.forEach((m) => m.dispose());
       plusMat?.map?.dispose();
       plusMat?.dispose();
+      percentMats.forEach((m) => {
+        m.map?.dispose();
+        m.dispose();
+      });
       renderer.dispose();
       canvas.remove();
       bar.remove();

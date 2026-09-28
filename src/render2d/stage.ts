@@ -4,7 +4,7 @@ import { config } from "../sim/config";
 import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { edgeById, edgeSides, nearestEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors } from "../sim/corridors";
-import { corridorBand } from "./corridorArt";
+import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
 import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
@@ -189,6 +189,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     if (key === buildKey) return;
     buildKey = key;
     buildCtx.clear();
+    const labels: { text: string; x: number; y: number }[] = [];
     for (const job of s.construction.jobs) {
       const room = job.roomId !== undefined ? s.layout.rooms.find((r) => r.id === job.roomId) : undefined;
       if (!room || room.at.kind !== "ring") continue;
@@ -199,6 +200,19 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const bar = { x: x + 6, y: y + hh - 9, w: w - 12 };
       buildCtx.rect(bar.x, bar.y, bar.w, 5).fill({ color: 0x1a0f0d, alpha: 0.8 });
       buildCtx.rect(bar.x, bar.y, bar.w * job.progress, 5).fill(C.build);
+      labels.push({ text: `${Math.floor(job.progress * 100)}%`, x: x + w / 2, y: y + hh / 2 - 4 });
+    }
+    // The percentage, in every copy of the turn.
+    for (const copy of world.children as Container[]) {
+      const layer = copy.children[BUILD_LABELS_INDEX] as Container | undefined;
+      if (!layer) continue;
+      layer.removeChildren().forEach((c) => c.destroy());
+      for (const l of labels) {
+        const t = new Text({ text: l.text, style: { fill: 0xffffff, fontSize: 14, fontWeight: "800", stroke: { color: 0x1a0f0d, width: 4 } } });
+        t.anchor.set(0.5);
+        t.position.set(l.x, l.y);
+        layer.addChild(t);
+      }
     }
   }
 
@@ -423,12 +437,11 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
   }
 
-  /** Under construction: faint, with a scaffold of poles and planks over it. */
+  /** Under construction: faint, under semi-opaque diagonal hazard stripes, taped in orange. */
   function scaffold(x: number, y: number, w: number, hh: number, color: number): void {
-    roomsCtx.rect(x, y, w, hh).fill({ color, alpha: 0.4 }).stroke({ color: C.build, width: 2 });
-    for (let px = x + 8; px < x + w - 4; px += 16) roomsCtx.moveTo(px, y + 2).lineTo(px, y + hh - 2);
-    for (const py of [y + hh * 0.35, y + hh * 0.7]) roomsCtx.moveTo(x + 2, py).lineTo(x + w - 2, py);
-    roomsCtx.stroke({ color: C.build, width: 1.5, alpha: 0.8 });
+    roomsCtx.rect(x, y, w, hh).fill({ color, alpha: 0.4 });
+    roomsCtx.rect(x, y, w, hh).fill(constructionStripes());
+    roomsCtx.rect(x, y, w, hh).stroke({ color: C.build, width: 2 });
   }
 
   /**
@@ -627,8 +640,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
   // ---- camera ----
 
-  // Each copy: sky, hole, dig, rooms, effect field, room labels, lander, overlay.
+  // Each copy: sky, hole, dig, rooms, effect field, room labels, lander, build progress, progress labels, overlay.
   const LABELS_INDEX = 5;
+  const BUILD_LABELS_INDEX = 8;
 
   function ensureCopies(): void {
     const needed = Math.ceil(app.screen.width / (TURN_W * cam.zoom)) + 2;
@@ -636,7 +650,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const copy = new Container();
       copy.addChild(new Graphics(skyCtx), new Graphics(holeCtx), new Graphics(digCtx), new Graphics(roomsCtx), new Graphics(fieldCtx));
       copy.addChild(layout ? roomLabels(layout) : new Container());
-      copy.addChild(new Graphics(landerCtx), new Graphics(buildCtx), new Graphics(overlayCtx));
+      copy.addChild(new Graphics(landerCtx), new Graphics(buildCtx), new Container(), new Graphics(overlayCtx));
+      buildKey = ""; // the new copy needs its progress labels
       copy.x = world.children.length * TURN_W;
       world.addChild(copy);
     }
