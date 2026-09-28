@@ -1,0 +1,13 @@
+{
+  "_note": "Construction time (docs/PLAN-M7.md). Work is in work-hours; bandwidth is work-hours per game hour. Rooms may override their size's hours with buildHours in rooms.json.",
+  "instant": false,
+  "baseBandwidth": 1,
+  "hoursBySize": {
+    "S": 6,
+    "M": 12,
+    "L": 24,
+    "H": 48,
+    "surface": 12
+  },
+  "corridorHoursPer10m": 1.5
+}

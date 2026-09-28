@@ -34,6 +34,10 @@ export interface RoomInstance {
   priority: Priority;
   /** Farms only. */
   crop?: string;
+  /** Committed but still in the construction queue: holds its slots, doesn't run. */
+  building?: boolean;
+  /** Stairs or an elevator reaching further: cells held for floors still being built. */
+  pendingCells?: Cell[];
   /** Switched off by the player: no staff, no inputs, no output. */
   paused?: boolean;
   /** Idle (and release its staff) while its main output is at or above this stock. */
@@ -55,6 +59,8 @@ export interface Layout {
   corridors: Record<string, string>;
   /** Which corridors reach the shaft; recomputed with access. */
   corridorLinked?: Record<string, boolean>;
+  /** Corridors still in the construction queue: edge id → job id. */
+  corridorsBuilding?: Record<string, number>;
 }
 
 export type CheckResult =
@@ -224,12 +230,17 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
 }
 
 /** Join a new stair (or elevator) piece onto the stacks it touches: one room, spanning them all. */
-function extendStack(layout: Layout, check: Extract<CheckResult, { ok: true }>): CheckResult & { id?: number; extended?: boolean } {
+function extendStack(layout: Layout, check: Extract<CheckResult, { ok: true }>): CheckResult & { id?: number; extended?: boolean; fresh?: Cell[] } {
   const [keep, ...others] = check.merges!.map((id) => layout.rooms.find((r) => r.id === id)!);
   const room = keep!;
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+  const before = new Set([room, ...others].flatMap((r) => [...r!.cells, ...(r!.pendingCells ?? [])]).map(key));
+  const fresh = check.cells.filter((c) => !before.has(key(c)));
   const cells = new Map(room.cells.map((c) => [key(c), c]));
-  for (const other of others) for (const c of other!.cells) cells.set(key(c), c);
+  for (const other of others) {
+    for (const c of other!.cells) cells.set(key(c), c);
+    if (other!.pendingCells?.length) room.pendingCells = [...(room.pendingCells ?? []), ...other!.pendingCells];
+  }
   for (const c of check.cells) cells.set(key(c), c);
   room.cells = [...cells.values()].sort((a, b) => a.floor - b.floor);
   if (room.at.kind === "ring") room.at = { ...room.at, floor: room.cells[0]!.floor };
@@ -237,7 +248,7 @@ function extendStack(layout: Layout, check: Extract<CheckResult, { ok: true }>):
   for (const c of room.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = room.id;
   recomputeAccess(layout);
   layout.version++;
-  return { ...check, id: room.id, extended: true };
+  return { ...check, id: room.id, extended: true, fresh };
 }
 
 function nameOf(layout: Layout, id: number): string {
@@ -245,7 +256,7 @@ function nameOf(layout: Layout, id: number): string {
   return r ? roomDef(r.type).name : "another room";
 }
 
-export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimConfig = config): CheckResult & { id?: number } {
+export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimConfig = config): CheckResult & { id?: number; extended?: boolean; fresh?: Cell[] } {
   const check = checkPlacement(layout, type, at, cfg);
   if (!check.ok) return check;
   if (check.merges?.length) return extendStack(layout, check);

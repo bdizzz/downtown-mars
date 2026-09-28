@@ -1,3 +1,5 @@
+import { afterAll, beforeAll } from "vitest";
+import { construction } from "../src/sim/construction";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { foundHole } from "../src/sim/founding";
@@ -29,4 +31,14 @@ export function twoHoles(): World {
   const d = applyCommand(home, { type: "build", room: "rover_depot", at: { kind: "surface", slot: 8 } });
   if (!d.ok) throw new Error(d.reason);
   return w;
+}
+
+/** Run a block of tests with construction taking time (the setup file makes it instant for the rest). */
+export function withConstructionTime(): void {
+  beforeAll(() => {
+    construction.instant = false;
+  });
+  afterAll(() => {
+    construction.instant = true;
+  });
 }

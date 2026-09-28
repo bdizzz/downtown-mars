@@ -100,7 +100,7 @@ export function previewEffects(layout: Layout, type: string, cells: Cell[]): Eff
 export function computeEffects(layout: Layout): EffectField {
   const field = emptyField(layout);
   for (const room of layout.rooms) {
-    if (room.planned || room.at.kind !== "ring") continue;
+    if (room.planned || room.building || room.at.kind !== "ring") continue;
     radiate(layout, field, room);
   }
   return field;

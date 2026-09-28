@@ -198,7 +198,8 @@
         "metal": 20,
         "machinery": 4
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 30
     },
     {
       "id": "restroom",
@@ -257,7 +258,8 @@
         "machinery": 5,
         "electronics": 2
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 30
     },
     {
       "id": "clinic",
@@ -285,7 +287,8 @@
         "electronics": 1
       },
       "buildable": true,
-      "enablesBirths": true
+      "enablesBirths": true,
+      "buildHours": 8
     },
     {
       "id": "admin_office",
@@ -350,7 +353,8 @@
         "metal": 15,
         "machinery": 3
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 18
     },
     {
       "id": "smelter",
@@ -389,7 +393,8 @@
         "metal": 10,
         "machinery": 3
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 36
     },
     {
       "id": "machine_shop",
@@ -417,7 +422,8 @@
         "metal": 10,
         "machinery": 2
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 18
     },
     {
       "id": "silicon_refinery",
@@ -452,7 +458,8 @@
         "metal": 15,
         "machinery": 4
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 40
     },
     {
       "id": "electronics_fab",
@@ -475,7 +482,8 @@
         "machinery": 3,
         "electronics": 2
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 30
     },
     {
       "id": "staging_bay",
@@ -498,7 +506,8 @@
         "metal": 15,
         "machinery": 2
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 30
     },
     {
       "id": "rover_depot",
@@ -518,7 +527,8 @@
         "metal": 20,
         "machinery": 4
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 18
     },
     {
       "id": "school",
@@ -543,7 +553,8 @@
       "cost": {
         "brick": 15
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 14
     },
     {
       "id": "elder_care",
@@ -569,7 +580,8 @@
         "brick": 15,
         "metal": 5
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 14
     },
     {
       "id": "composter",
@@ -597,7 +609,8 @@
         "rock": 15,
         "metal": 5
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 14
     },
     {
       "id": "crypt",
@@ -617,7 +630,8 @@
         "brick": 20,
         "rock": 10
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 10
     },
     {
       "id": "concrete_plant",
@@ -646,7 +660,8 @@
         "metal": 5,
         "machinery": 1
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 18
     },
     {
       "id": "tiny_plaza",
@@ -713,7 +728,8 @@
       },
       "buildable": true,
       "stacks": true,
-      "stackNoun": "stairs"
+      "stackNoun": "stairs",
+      "buildHours": 8
     },
     {
       "id": "elevator",
@@ -742,7 +758,8 @@
         "metal": 10,
         "machinery": 2
       },
-      "buildable": true
+      "buildable": true,
+      "buildHours": 10
     }
   ]
 }

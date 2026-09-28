@@ -15,7 +15,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 
 type Raw = Record<string, unknown>;
 
@@ -75,6 +75,8 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       return { ...h, layout };
     }),
   }),
+  // v13: construction time. What was already there is built.
+  12: (s) => ({ ...s, holes: (s.holes as Raw[]).map((h) => ({ ...h, construction: { queue: [], nextJobId: 1 } })) }),
 };
 
 export interface SaveSummary {

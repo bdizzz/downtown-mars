@@ -9,6 +9,7 @@ import { isCrop } from "./resources";
 import { mainOutput } from "./economy";
 import { corridorCost, corridorRefusal, CORRIDORS, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById } from "./edges";
+import { dropCorridors, dropRoomJobs, prioritize, queueCorridors, queueExtension, queueRoom } from "./construction";
 import { holeGates } from "./people";
 import { answerVisit } from "./visits";
 import { roomDef } from "./rooms";
@@ -31,6 +32,8 @@ export type SimCommand =
   | { type: "removeCorridors"; edges: string[]; all?: boolean }
   /** Draw the shortest corridor that connects this room to the network. */
   | { type: "connectRoom"; roomId: number; finish: string }
+  /** Move a construction job to the front of the queue. */
+  | { type: "prioritize"; jobId: number }
   /** Start or stop the staging bay gathering a seed kit. */
   | { type: "setGathering"; gathering: boolean };
 
@@ -57,6 +60,7 @@ function drawCorridors(state: SimState, edges: string[], finish: string, all = f
     if (short) return { ok: false, reason: short };
   }
   let built = 0;
+  const carved: string[] = [];
   let firstShort: string | null = null;
   for (const id of ok) {
     const cost = corridorCost(layout.hole, edgeById(layout.hole, id)!, finish, config);
@@ -70,9 +74,11 @@ function drawCorridors(state: SimState, edges: string[], finish: string, all = f
       record(state, r, "out", CORRIDORS, v);
     }
     layout.corridors[id] = finish;
+    carved.push(id);
     built++;
   }
   if (!built) return { ok: false, reason: firstShort ?? "Nothing to carve" };
+  queueCorridors(state, carved, config);
   recomputeAccess(layout);
   layout.version++;
   return { ok: true };
@@ -88,18 +94,35 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       if (!r.ok) return { ok: false, reason: r.reason };
       charge(state.resources, cmd.room);
       for (const [id, amt] of Object.entries(roomDef(cmd.room).cost)) record(state, id, "out", CONSTRUCTION, amt);
+      const room = layout.rooms.find((x) => x.id === r.id)!;
       // Extending stairs or an elevator isn't a new room: nothing to undo as one.
-      if ("extended" in r && r.extended) return { ok: true };
-      layout.rooms.find((x) => x.id === r.id)!.builtTick = state.tick;
+      if (r.extended) {
+        queueExtension(state, room, r.fresh ?? []);
+        recomputeAccess(layout);
+        return { ok: true };
+      }
+      room.builtTick = state.tick;
+      queueRoom(state, room);
+      recomputeAccess(layout);
+      layout.version++;
       return { ok: true, roomId: r.id! };
     }
     case "demolish": {
       const room = layout.rooms.find((r) => r.id === cmd.roomId);
+      const cells = room ? [...room.cells, ...(room.pendingCells ?? [])] : [];
+      if (room?.pendingCells) {
+        room.cells = cells; // demolish takes the whole stack, built or not
+        delete room.pendingCells;
+      }
       const result = demolishRoom(layout, cmd.roomId);
-      // Blueprints were never built, so they refund in full. Stairs and elevators refund every piece:
-      // the first spans two floors, each extension one more.
-      const pieces = room && roomDef(room.type).stacks ? Math.max(1, new Set(room.cells.map((c) => c.floor)).size - 1) : 1;
-      if (result.ok && room) refund(state.resources, room.type, (room.planned ? 1 : config.economy.demolishRefund) * pieces);
+      if (result.ok && room) {
+        // Stairs and elevators refund every piece: the first spans two floors, each extension one more.
+        const pieces = roomDef(room.type).stacks ? Math.max(1, new Set(cells.map((c) => c.floor)).size - 1) : 1;
+        // Blueprints and rooms still waiting in the queue were never built: a full refund.
+        const unbuilt = room.planned || room.building;
+        refund(state.resources, room.type, (unbuilt ? 1 : config.economy.demolishRefund) * pieces);
+        dropRoomJobs(state, room.id);
+      }
       return result;
     }
     case "undoBuild": {
@@ -109,15 +132,33 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         return { ok: false, reason: "Too late to undo: demolish it instead" };
       }
       const result = demolishRoom(layout, cmd.roomId);
-      if (result.ok) refund(state.resources, room.type, 1);
+      if (result.ok) {
+        refund(state.resources, room.type, 1);
+        dropRoomJobs(state, room.id);
+      }
       return result;
     }
+    case "prioritize":
+      return prioritize(state, cmd.jobId) ? { ok: true } : { ok: false, reason: "Nothing in the queue by that number" };
     case "drawCorridors":
       return drawCorridors(state, cmd.edges, cmd.finish, cmd.all);
     case "removeCorridors": {
       // Filling a corridor in costs what carving it did: the walls around it are rebuilt.
-      const gone = cmd.edges.filter((id, i) => layout.corridors[id] && cmd.edges.indexOf(id) === i);
-      if (!gone.length) return { ok: false, reason: "No corridor there" };
+      const all = cmd.edges.filter((id, i) => layout.corridors[id] && cmd.edges.indexOf(id) === i);
+      if (!all.length) return { ok: false, reason: "No corridor there" };
+      // Not built yet: taken off the plan, with a full refund.
+      for (const id of dropCorridors(state, all, config)) {
+        for (const [r, v] of Object.entries(corridorCost(layout.hole, edgeById(layout.hole, id)!, layout.corridors[id]!, config))) {
+          state.resources[r] = (state.resources[r] ?? 0) + v;
+        }
+        delete layout.corridors[id];
+      }
+      const gone = all.filter((id) => layout.corridors[id]);
+      if (!gone.length) {
+        recomputeAccess(layout);
+        layout.version++;
+        return { ok: true };
+      }
       if (cmd.all) {
         const total: Record<string, number> = {};
         for (const id of gone) {

@@ -14,6 +14,7 @@ import type { DepositKind } from "./mapgeo";
 import { roomDef } from "./rooms";
 import { culture, type Culture } from "./culture";
 import { addAdults } from "./people";
+import { createConstruction, type ConstructionState } from "./construction";
 
 /** Where a hole is on Mars, in degrees. */
 export interface Site {
@@ -56,6 +57,8 @@ export interface SimState {
   /** Enacted ordinance ids. */
   ordinances: string[];
   ledger: Ledger;
+  /** What's waiting to be built, in order. */
+  construction: ConstructionState;
   /** Culture sliders, -1 to +1 each; they drift toward a target daily. */
   culture: Culture;
   /** The hole that founded this one, if any. */
@@ -111,6 +114,7 @@ export function createInitialState(
     office: createOffice(),
     ordinances: [],
     ledger: createLedger(),
+    construction: createConstruction(),
     culture: { ...culture.start },
     parentHoleId: null,
     foundedTick: 0,

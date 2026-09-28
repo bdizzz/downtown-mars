@@ -110,13 +110,14 @@ function network(layout: Layout): { sets: Sets; publicEdges: Map<string, number>
   const hole = layout.hole;
   const sets = new Sets();
   for (const id of Object.keys(layout.corridors)) {
+    if (layout.corridorsBuilding?.[id] !== undefined) continue; // not built yet
     const e = edgeById(hole, id);
     if (e && e.floor <= hole.floors) join(sets, hole, e);
   }
   // Public rooms: every outside edge is walkable; a room spanning floors links them.
   const publicEdges = new Map<string, number>();
   for (const room of layout.rooms) {
-    if (room.planned || room.at.kind !== "ring" || !roomDef(room.type).public) continue;
+    if (room.planned || room.building || room.at.kind !== "ring" || !roomDef(room.type).public) continue;
     let first: string | null = null;
     for (const e of outsideEdges(hole, room.cells)) {
       join(sets, hole, e);
@@ -149,7 +150,8 @@ export function recomputeAccess(layout: Layout): void {
   const linked: Record<string, boolean> = {};
   for (const id of Object.keys(layout.corridors)) {
     const e = edgeById(layout.hole, id);
-    linked[id] = !!e && e.floor <= layout.hole.floors && sets.find(edgeVertices(layout.hole, e)[0]) === shaft;
+    const built = layout.corridorsBuilding?.[id] === undefined;
+    linked[id] = built && !!e && e.floor <= layout.hole.floors && sets.find(edgeVertices(layout.hole, e)[0]) === shaft;
   }
   layout.corridorLinked = linked;
   for (const r of layout.rooms) {

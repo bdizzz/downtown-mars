@@ -100,7 +100,7 @@ export function standDown(room: RoomInstance, state: SimState, cfg: SimConfig): 
 
 /** A room does anything only once it's built and reachable. */
 export function isActive(room: RoomInstance): boolean {
-  return !room.planned && room.connected;
+  return !room.planned && !room.building && room.connected;
 }
 
 export function capacities(state: SimState, cfg: SimConfig): Record<string, number> {

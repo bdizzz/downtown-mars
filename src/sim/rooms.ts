@@ -53,6 +53,10 @@ export interface RoomDef {
   caresForElders?: number;
   /** Not buildable until the hole has reached this (see UNLOCKS in costs.ts). */
   unlockedBy?: "children" | "elders";
+  /** Work-hours to build it; otherwise its size's hours (data/construction.json). */
+  buildHours?: number;
+  /** Construction bandwidth it adds at full staff (construction offices). */
+  constructionBandwidth?: number;
   /** Floors tall, counting down from the floor it's placed on (default 1). */
   floors?: number;
   /** Pieces chain: a new one placed on the bottom of an existing one extends it (stairs, elevators). */

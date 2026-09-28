@@ -37,5 +37,6 @@ export default defineConfig({
       },
     },
   },
-  test: { include: ["tests/**/*.test.ts"] },
+  // Unit tests build instantly (the sandbox switch); construction tests and playthroughs turn it off themselves.
+  test: { include: ["tests/**/*.test.ts"], setupFiles: ["tests/setup.ts"] },
 });
