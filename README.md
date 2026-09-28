@@ -63,7 +63,7 @@ npm run package    # build and zip for a playtest upload
 
 `npm run package` writes `release/downtown-mars-v<version>.zip` with `index.html` at the top. To publish on itch.io: create an HTML project, upload the zip, and tick "This file will be played in the browser". Nothing is uploaded automatically.
 
-Design documents live in `docs/`: start with `DECISIONS.md`, then `DESIGN.md` and the catalogs. Build plans are `docs/PLAN.md` (milestone 1) and `docs/PLAN-M2.md` to `docs/PLAN-M8.md` (milestones 2 to 7, and storage). `CLAUDE.md` has the architecture rules: the simulation is pure TypeScript in a Web Worker, deterministic, with all numbers in `data/*.json`.
+Design documents live in `docs/`: start with `DECISIONS.md`, then `DESIGN.md` and the catalogs. Build plans are `docs/PLAN.md` (milestone 1) and `docs/PLAN-M2.md` to `docs/PLAN-M10.md` (milestones 2 to 10: M8 is storage, M9 excavation and the entrance, M10 furnishing). `CLAUDE.md` has the architecture rules: the simulation is pure TypeScript in a Web Worker, deterministic, with all numbers in `data/*.json`.
 
 ### Furnishing tool
 
