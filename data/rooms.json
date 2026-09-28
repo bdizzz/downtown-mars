@@ -772,6 +772,22 @@
       "buildable": true
     },
     {
+      "id": "entrance",
+      "name": "Entrance",
+      "short": "Entry",
+      "category": "circulation",
+      "size": "S",
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "public": true,
+      "surfaceLink": true,
+      "effects": [],
+      "cost": {},
+      "buildable": false,
+      "placeholder": true
+    },
+    {
       "id": "stairwell",
       "name": "Stairwell",
       "short": "Stairs",

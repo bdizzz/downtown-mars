@@ -69,6 +69,8 @@ export interface RoomDef {
   stackNoun?: string;
   /** The most floors one stack may span. */
   maxFloors?: number;
+  /** Opens onto the surface: how people and goods get in and out (the entrance, a cargo elevator's stop). */
+  surfaceLink?: boolean;
   /** Only digs out rock: when the job's done, the room is gone and its cells are empty space. */
   excavationOnly?: boolean;
   /** Walk-through: every side counts as a corridor, so neighbours open onto it. */

@@ -8,7 +8,7 @@ import { checkPlacement, type Location } from "../src/sim/placement";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { createWorld } from "../src/sim/world";
-import { allRock } from "./worlds";
+import { allRock, clearRingOne } from "./worlds";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 
@@ -16,9 +16,8 @@ function rich(): SimState {
   const s = createInitialState(config);
   s.drill.active = false;
   Object.assign(s.resources, { rock: 400, brick: 200, metal: 200, marscrete: 100, machinery: 50, electronics: 50 });
-  // Clear the landing kit's battery out of ring 1 so the slots are free.
-  const battery = s.layout.rooms.find((r) => r.type === "battery_bank")!;
-  applyCommand(s, { type: "demolish", roomId: battery.id });
+  // Ring 1 free of the landing kit, and every floor reachable: these tests are about corridors.
+  clearRingOne(s.layout);
   // These tests are about corridors through rock: no empty space to walk through.
   allRock(s.layout);
   return s;

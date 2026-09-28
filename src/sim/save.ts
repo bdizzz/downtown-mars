@@ -8,7 +8,7 @@ import { network } from "./network";
 import { culture } from "./culture";
 import { addAdults } from "./people";
 import { migrateCorridorRooms } from "./corridors";
-import { ensureFloors, type Layout } from "./placement";
+import { ensureFloors, placeRoom, type Layout } from "./placement";
 import { openCells } from "./excavation";
 import type { World } from "./world";
 
@@ -92,7 +92,8 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
     }),
   }),
   // v15: cells are rock until excavated. Old drills paid out every cell's rock already, but only the
-  // cells under rooms are dug out; the rest stays rock. Their shafts still link every floor (no stairs needed).
+  // cells under rooms are dug out; the rest stays rock. Their shafts still link every floor (no stairs
+  // needed). They get an entrance in the first free ring-1 slot of floor 1, if there is one.
   14: (s) => ({
     ...s,
     holes: (s.holes as Raw[]).map((h) => {
@@ -101,6 +102,11 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       ensureFloors(layout);
       for (const r of layout.rooms) if (!r.planned) openCells(layout, [...r.cells, ...(r.pendingCells ?? [])]);
       layout.openShaft = true;
+      const slot = layout.grid[0]?.[0]?.findIndex((id) => !id) ?? -1;
+      if (slot >= 0 && !layout.rooms.some((r) => r.type === "entrance")) {
+        const placed = placeRoom(layout, "entrance", { kind: "ring", floor: 1, ring: 1, slot, w: 1, d: 1 });
+        if (placed.ok) openCells(layout, placed.cells);
+      }
       return { ...h, layout };
     }),
   }),

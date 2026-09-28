@@ -140,7 +140,7 @@ export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo, 
                   className={`room-btn${corridorOn ? " on" : ""}${highlight === "tool:corridors" && !corridorOn ? " pulse" : ""}`}
                   style={{ "--cat": cssColor(CATEGORY_COLORS.circulation!) } as React.CSSProperties}
                   onClick={() => setTool(corridorOn ? null : { kind: "corridor", finish: lastFinish, erase: false })}
-                  title="Carve corridors along the borders between rooms, back to the shaft"
+                  title="Carve corridors along the borders between rooms, back to the gallery"
                 >
                   <span className="swatch" />
                   <span className="name">Corridors</span>
@@ -194,7 +194,7 @@ export function BuildPalette({ tool, setTool, resources, rotate, canUndo, undo, 
       )}
       {!shownDef && (
         <p className="hint">
-          Pick a room, or press its key. <kbd>R</kbd> rotates, <kbd>Esc</kbd> or right-click cancels. Rooms past ring 1 need a corridor (<kbd>C</kbd>) back to the shaft.
+          Pick a room, or press its key. <kbd>R</kbd> rotates, <kbd>Esc</kbd> or right-click cancels. Rooms past ring 1 need a corridor (<kbd>C</kbd>) back to the gallery, and floors below the entrance need stairs.
         </p>
       )}
     </aside>

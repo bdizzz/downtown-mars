@@ -27,7 +27,7 @@ export interface RoomInstance {
   cells: Cell[];
   /** Surface slots covered (empty for ring rooms). */
   surfaceCells: number[];
-  /** Reachable from the shaft gallery. Surface rooms always are. */
+  /** Reachable from the surface, through the entrance. Surface rooms always are. */
   connected: boolean;
   /** A blueprint on the floor still being dug; switches on when it's done. */
   planned: boolean;
@@ -66,7 +66,9 @@ export interface Layout {
   nextRoomId: number;
   /** Corridors along the borders between cells: edge id (see edges.ts) → finish. */
   corridors: Record<string, string>;
-  /** Which corridors reach the shaft; recomputed with access. */
+  /** Which floors' galleries are reached from the surface (floorLinked[floor - 1]); recomputed with access. */
+  floorLinked?: boolean[];
+  /** Which corridors reach the surface; recomputed with access. */
   corridorLinked?: Record<string, boolean>;
   /** Corridors still in the construction queue: edge id → job id. */
   corridorsBuilding?: Record<string, number>;

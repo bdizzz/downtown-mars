@@ -60,3 +60,17 @@ export function allRock(layout: Layout): void {
   layout.open = layout.open?.map((floor, f) => floor.map((ring, ri) => ring.map((_, slot) => (layout.grid[f]?.[ri]?.[slot] ? 1 : 0))));
   recomputeAccess(layout);
 }
+
+/**
+ * Ring 1 of floor 1 cleared of the landing kit (entrance included), with an
+ * old-style open shaft linking every floor instead: for tests about corridors
+ * and rooms, not about getting in and out.
+ */
+export function clearRingOne(layout: Layout): void {
+  for (const r of layout.rooms.filter((x) => x.at.kind === "ring" && x.cells.some((c) => c.floor === 1 && c.ring === 1))) {
+    for (const c of r.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = 0;
+    layout.rooms = layout.rooms.filter((x) => x !== r);
+  }
+  layout.openShaft = true;
+  recomputeAccess(layout);
+}

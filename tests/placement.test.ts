@@ -48,7 +48,9 @@ describe("footprint", () => {
 describe("placement rules", () => {
   let layout: Layout;
   beforeEach(() => {
+    // A bare hole with no entrance: an old-style open shaft links its floors, so ring 1 is reachable.
     layout = createLayout(hole());
+    layout.openShaft = true;
   });
 
   it("ring 1 rooms open onto the gallery", () => {
@@ -80,7 +82,13 @@ describe("placement rules", () => {
 describe("starting state", () => {
   it("places the landing kit", () => {
     const s = createInitialState(config);
-    expect(s.layout.rooms.map((r) => r.type).sort()).toEqual(["battery_bank", "landing_pad", "landing_pod", "solar_array"]);
+    expect(s.layout.rooms.map((r) => r.type).sort()).toEqual(["battery_bank", "entrance", "landing_pad", "landing_pod", "solar_array"]);
+  });
+
+  it("the entrance can't be demolished", () => {
+    const s = createInitialState(config);
+    const entrance = s.layout.rooms.find((r) => r.type === "entrance")!;
+    expect(applyCommand(s, { type: "demolish", roomId: entrance.id })).toMatchObject({ ok: false, reason: "The entrance can't be demolished" });
   });
 
   it("the landing pod can't be demolished", () => {

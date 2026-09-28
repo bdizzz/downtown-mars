@@ -94,7 +94,8 @@
       { "room": "solar_array", "slot": 4 }
     ],
     "ring": [
-      { "room": "battery_bank", "floor": 1, "ring": 1, "slot": 0 }
+      { "room": "entrance", "floor": 1, "ring": 1, "slot": 0 },
+      { "room": "battery_bank", "floor": 1, "ring": 2, "slot": 7 }
     ]
   }
 }

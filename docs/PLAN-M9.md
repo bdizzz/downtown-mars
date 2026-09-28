@@ -95,3 +95,28 @@ Decided Sep 28, 2026 (Bryon):
   - An empty room leaves empty space, which the next room builds on straight away.
   - Cancelling keeps what's dug.
   - Stair tests updated for the rock their new floors bring up.
+
+**Step 3, the entrance and stairs:** `src/sim/corridors.ts`.
+- **The entrance** is a landing-kit room: S, public, free, `surfaceLink`, and not buildable, so it can't be demolished ("The entrance can't be demolished"). It sits in ring 1, slot 0 of floor 1.
+- **The battery** moves from there to ring 2, slot 7, which the scripted players and most tests leave free.
+- **The airlock** won't take surface slots after all: the landing pod already sits above slot 0. It will stand at the rim's lip, inside the ring of surface buildings (step 5).
+- **Access:**
+  - Each floor has a gallery node, and any border end on the shaft wall joins it.
+  - The entrance joins floor 1's gallery to the surface.
+  - Stairs and elevators in ring 1 join the galleries of every floor they span. Elsewhere, they join the corridors they touch.
+  - Rooms, corridors and galleries count when they're linked to the surface. A ring-1 room is connected only if its floor's gallery is.
+  - `layout.floorLinked` records which floors are reached.
+- **Old saves** (`openShaft`) link every gallery to the surface, as before, and get an entrance in the first free ring-1 slot of floor 1 if there is one.
+- **Wording:**
+  - Hovering a spot on a floor with no stairs says "⚠ No stairs reach floor 3 from the entrance yet".
+  - The Inspector says "No access: no stairs reach floor 3 from the entrance".
+  - Hovering a room on rock says "Digs out 2 cells of rock first: 6 h, +4 rock".
+  - Corridors are "not linked to the entrance yet". The palette hint mentions stairs.
+- **Test helpers:** `clearRingOne` (tests/worlds.ts) clears ring 1 of the landing kit and gives an old-style open shaft, for tests about corridors rather than getting in and out. Bare layouts in the placement tests set `openShaft`.
+- **Tests (`tests/entrance.test.ts`):**
+  - The entrance links floor 1.
+  - A floor without stairs is cut off.
+  - Stairs, and a chain of them, reach floors 2 and 3.
+  - Stairs that miss floor 1 don't reach the surface.
+  - An old open shaft reaches everything.
+  - The entrance can't be demolished.

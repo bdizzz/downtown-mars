@@ -7,7 +7,7 @@ import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { network } from "../sim/network";
-import { corridors, finishDef } from "../sim/corridors";
+import { corridors, finishDef, floorLinked } from "../sim/corridors";
 import { STORABLE } from "../sim/storage";
 import { hoursText, num, ordinal, resName, signed } from "./format";
 
@@ -265,7 +265,10 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
   let state = "";
   if (room.planned) state = "Blueprint: builds when its floor is dug";
   else if (room.building) state = "Under construction";
-  else if (!room.connected) state = "No access: connect it with a corridor";
+  else if (!room.connected) {
+    const floor = room.cells[0]?.floor ?? 1;
+    state = floor > 1 && !floorLinked(s.layout, floor) ? `No access: no stairs reach floor ${floor} from the entrance` : "No access: connect it with a corridor";
+  }
   else if (st?.limit === "paused") state = "Paused: its crew is free for other work";
   else if (st?.limit === "kit") state = "Idle until you ask for a seed kit";
   else if (st?.limit?.startsWith("stocked:")) state = `Standing by: ${resName(st.limit.slice(8)).toLowerCase()} is stocked to ${num(room.stopAt ?? 0)}`;

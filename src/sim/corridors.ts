@@ -8,12 +8,15 @@ import type { Cell, Layout, RoomInstance } from "./placement";
 import { emptyCells } from "./excavation";
 
 // Corridors run along the borders between cells, carved out of the rooms and
-// rock on either side. They join up at shared vertices, and a corridor is
-// linked when its network reaches the shaft: a spoke between two ring-1
-// cells touches the gallery. Public rooms (plazas) count every side as a
-// corridor. A room is connected if it's in ring 1 (it opens onto the
-// gallery) or one of its sides is a linked corridor or a linked public room.
-// Empty space (excavated cells with no room) is walk-through like a plaza.
+// rock on either side. They join up at shared vertices. Each floor has a
+// gallery ringing the shaft, which anything touching the shaft wall joins
+// (a spoke between two ring-1 cells, a ring-1 plaza). The shaft itself is
+// open air: people and goods come and go through the entrance on floor 1,
+// and reach deeper floors by stairs and elevators, which join what they touch
+// on every floor they span. Everything linked to the surface that way is
+// reachable. Public rooms (plazas) count every side as a corridor, and so
+// does empty space (excavated cells with no room). A room is connected if it
+// opens onto a reachable gallery (ring 1), corridor or public space.
 
 export interface FinishDef {
   id: string;
@@ -100,13 +103,19 @@ class Sets {
   }
 }
 
-const SHAFT = "shaft";
+/** Where people and goods come from: the surface, through the entrance (or a cargo elevator). */
+const SURFACE = "surface";
+/** A floor's gallery, ringing the shaft. */
+const gallery = (floor: number) => `gallery:${floor}`;
 
-/** Join an edge's two ends, and a spoke between ring-1 cells to the shaft it touches. */
+/** Join an edge's two ends, and any end on the shaft wall to its floor's gallery. */
 function join(sets: Sets, hole: Hole, e: Edge): void {
   const [v0, v1] = edgeVertices(hole, e);
   sets.union(v0, v1);
-  if (e.kind === "radial" && e.ring === 1) sets.union(v0, SHAFT);
+  for (const v of [v0, v1]) {
+    const [floor, circle] = v.split("|");
+    if (circle === "0") sets.union(v, gallery(Number(floor)));
+  }
 }
 
 /** The corridor network: which vertices reach the shaft. Planned floors don't count yet. */
@@ -130,9 +139,13 @@ function network(layout: Layout): { sets: Sets; publicEdges: Map<string, number>
       if (first) sets.union(first, v0);
       else first = v0;
     }
-    // Ring-1 public rooms open onto the gallery too.
-    if (first && room.cells.some((c) => c.ring === 1)) sets.union(first, SHAFT);
+    // Ring-1 public rooms open onto the gallery too, on every floor they span.
+    for (const c of room.cells) if (first && c.ring === 1) sets.union(first, gallery(c.floor));
+    // The entrance opens onto the surface.
+    if (first && roomDef(room.type).surfaceLink) sets.union(first, SURFACE);
   }
+  // Old saves: the shaft still links every floor's gallery to the surface.
+  if (layout.openShaft) for (let f = 1; f <= hole.floors; f++) sets.union(gallery(f), SURFACE);
   // Empty space (excavated, no room) is walk-through too, one cell at a time.
   for (const cell of emptyCells(layout)) {
     for (const e of cellEdges(hole, cell)) {
@@ -143,20 +156,22 @@ function network(layout: Layout): { sets: Sets; publicEdges: Map<string, number>
   return { sets, publicEdges };
 }
 
-/** Does this group of cells open onto a linked corridor, a linked public room, or the gallery? */
+/** Does this group of cells open onto a reachable gallery, corridor or public room? */
 function opensOnto(layout: Layout, cells: Cell[], sets: Sets, publicEdges: Map<string, number>): boolean {
-  if (cells.some((c) => c.ring === 1)) return true;
-  const shaft = sets.find(SHAFT);
+  const shaft = sets.find(SURFACE);
+  if (cells.some((c) => c.ring === 1 && sets.find(gallery(c.floor)) === shaft)) return true;
   return outsideEdges(layout.hole, cells).some((e) => {
     if (!layout.corridors[e.id] && !publicEdges.has(e.id)) return false;
     return sets.find(edgeVertices(layout.hole, e)[0]) === shaft;
   });
 }
 
-/** Which corridors are linked to the shaft and which rooms are connected, without changing anything. */
-function computeAccess(layout: Layout): { linked: Record<string, boolean>; connected: Map<number, boolean> } {
+/** Which corridors are linked to the surface and which rooms are connected, without changing anything. */
+function computeAccess(layout: Layout): { linked: Record<string, boolean>; connected: Map<number, boolean>; floors: boolean[] } {
   const { sets, publicEdges } = network(layout);
-  const shaft = sets.find(SHAFT);
+  const shaft = sets.find(SURFACE);
+  // floors[f - 1]: is floor f's gallery reached from the surface?
+  const floors = Array.from({ length: layout.hole.floors }, (_, i) => sets.find(gallery(i + 1)) === shaft);
   const linked: Record<string, boolean> = {};
   for (const id of Object.keys(layout.corridors)) {
     const e = edgeById(layout.hole, id);
@@ -165,15 +180,21 @@ function computeAccess(layout: Layout): { linked: Record<string, boolean>; conne
   }
   const connected = new Map<number, boolean>();
   for (const r of layout.rooms) connected.set(r.id, r.at.kind === "surface" || opensOnto(layout, r.cells, sets, publicEdges));
-  return { linked, connected };
+  return { linked, connected, floors };
 }
 
 /** Recompute which rooms and corridors reach the shaft. */
 export function recomputeAccess(layout: Layout): void {
   layout.corridors ??= {};
-  const { linked, connected } = computeAccess(layout);
+  const { linked, connected, floors } = computeAccess(layout);
   layout.corridorLinked = linked;
+  layout.floorLinked = floors;
   for (const r of layout.rooms) r.connected = connected.get(r.id)!;
+}
+
+/** Is this floor's gallery reached from the surface (through the entrance and stairs)? */
+export function floorLinked(layout: Layout, floor: number): boolean {
+  return layout.floorLinked?.[floor - 1] ?? false;
 }
 
 /** What filling these corridors in would cut off: rooms now connected, and corridors now linked, that no longer would be. */
@@ -256,7 +277,7 @@ export function routeToRoom(layout: Layout, room: RoomInstance, cfg: SimConfig):
   const hole = layout.hole;
   const floor = room.at.floor;
   const { sets, publicEdges } = network(layout);
-  const shaft = sets.find(SHAFT);
+  const shaft = sets.find(SURFACE);
   const walkable = (e: Edge) => !!layout.corridors[e.id] || publicEdges.has(e.id);
   const usable = (e: Edge) => walkable(e) || corridorRefusal(layout, e.id) === null;
   const goal = new Set(outsideEdges(hole, room.cells).map((e) => e.id));
@@ -267,7 +288,8 @@ export function routeToRoom(layout: Layout, room: RoomInstance, cfg: SimConfig):
   const prev = new Map<string, { from: string; e: Edge }>();
   const queue: [number, string][] = [];
   for (const v of adj.keys()) {
-    const onGallery = v.split("|")[1] === "0";
+    const [f, circle] = v.split("|");
+    const onGallery = circle === "0" && sets.find(gallery(Number(f))) === shaft;
     if (onGallery || sets.find(v) === shaft) {
       dist.set(v, 0);
       queue.push([0, v]);

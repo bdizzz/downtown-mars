@@ -3,7 +3,9 @@ import type { Hole } from "../sim/geometry";
 import { effectAt, FIELD_TYPES } from "../sim/effects";
 import type { Snapshot } from "../sim/snapshot";
 import { num, resName, signed } from "./format";
-import { finishDef } from "../sim/corridors";
+import { finishDef, floorLinked } from "../sim/corridors";
+import { construction } from "../sim/construction";
+import { config } from "../sim/config";
 import { roomDef } from "../sim/rooms";
 
 const deg = (turns: number) => `${Math.round(turns * 360)}°`;
@@ -64,7 +66,7 @@ export function StatusBar({ info, snapshot, notice, overlay }: Props) {
       const cost = Object.entries(e.cost)
         .map(([id, v]) => `${num(v)} ${resName(id).toLowerCase()}`)
         .join(", ");
-      const here = e.finish ? `${finishDef(e.finish).name} corridor${e.linked ? "" : ", not linked to the shaft yet"}` : "";
+      const here = e.finish ? `${finishDef(e.finish).name} corridor${e.linked ? "" : ", not linked to the entrance yet"}` : "";
       if (e.refusal) {
         text = `${e.refusal}${here ? ` · ${here}` : ""} · ${text}`;
         bad = true;
@@ -76,13 +78,23 @@ export function StatusBar({ info, snapshot, notice, overlay }: Props) {
     } else if (info.check?.ok && snapshot) {
       const felt = feltOver(snapshot, info.check.cells);
       const blueprint = info.check.planned ? "Blueprint: builds when this floor is dug · " : "";
-      const cutOff = info.check.unconnected ? "⚠ No corridor reaches here yet: it won't work until one does · " : "";
+      const floor = info.check.cells[0]?.floor ?? 1;
+      const cutOff = !info.check.unconnected
+        ? ""
+        : floor > 1 && !floorLinked(snapshot.layout, floor) && !info.check.planned
+          ? `⚠ No stairs reach floor ${floor} from the entrance yet: it won't work until they do · `
+          : "⚠ No corridor reaches here yet: it won't work until one does · ";
+      // Solid rock is dug out first: time, and rock coming up.
+      const rock = info.check.rock ?? 0;
+      const digs = rock
+        ? `Digs out ${rock} ${rock === 1 ? "cell" : "cells"} of rock first: ${num(rock * construction.excavationHoursPerSlot)} h, +${num(rock * config.digging.rockPerSlot)} rock · `
+        : "";
       const note = info.check.note ? `＋ ${info.check.note} · ` : "";
       const d = info.check.destroys?.length ?? 0;
       const lost = (info.check.strands?.rooms.length ?? 0) + (info.check.strands?.corridors.length ?? 0);
       if (d) bad = true;
       const over = d ? `⚠ Fills in ${d} corridor ${d === 1 ? "segment" : "segments"}${lost ? `, cutting off ${lost} more` : ""} · ` : "";
-      text = `${over}${note}${cutOff}${blueprint}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
+      text = `${over}${note}${cutOff}${blueprint}${digs}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
     } else if (info.room) {
       const def = roomDef(info.room.type);
       const blueprint = info.room.planned ? " (blueprint)" : "";
