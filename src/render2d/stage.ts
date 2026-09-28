@@ -122,6 +122,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let digKey = "";
   let tool: Tool = null;
   let hoverKey = "";
+  /** The hover the UI was last told about. */
+  let notifiedKey = "";
   const cam = { x: 0, y: -EDGE_MARGIN / 2, zoom: 1 };
 
   // ---- drawing ----
@@ -739,9 +741,11 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     const info = hoverInfo();
     const key = hoverKeyFor(info, tool, layoutVersion, selected);
     if (key === hoverKey) return;
-    hoverKey = key;
+    // Setters clear hoverKey to force a redraw; the UI only hears about a hover that changed.
+    const changed = key !== notifiedKey;
+    hoverKey = notifiedKey = key;
     drawOverlay(info);
-    opts.onHover?.(info);
+    if (changed) opts.onHover?.(info);
   }
 
   // Snaking corridors: the chain grows and shrinks under the pointer while the button is held.

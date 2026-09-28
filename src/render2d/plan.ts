@@ -500,10 +500,12 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   function refreshHover(force = false): void {
     const info = hoverInfo();
     const key = hoverKeyFor(info, tool, layout?.version ?? -1, selected) + floor;
-    if (!force && key === hoverKey) return;
+    const changed = key !== hoverKey;
+    if (!force && !changed) return;
     hoverKey = key;
     drawOverlay(info);
-    opts.onHover?.(info);
+    // A forced refresh redraws; the UI only hears about a hover that changed.
+    if (changed) opts.onHover?.(info);
   }
 
   // Snaking corridors: the chain grows and shrinks under the pointer while the button is held.

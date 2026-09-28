@@ -617,7 +617,9 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   const edgeLine = wallMaterial("edges", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.5 })) as THREE.LineBasicMaterial;
 
   if (topFloor !== null) group.add(...floorCap(layout, topFloor));
-  group.add(...corridorFloors(layout, topFloor));
+  // No corridors yet: add() with nothing to add is an error in three.js.
+  const halls = corridorFloors(layout, topFloor);
+  if (halls.length) group.add(...halls);
 
   for (const whole of layout.rooms) {
     // Above the chosen floor there's nothing; tall rooms keep only the part at or below it.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import type { HoverInfo, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
@@ -43,6 +43,12 @@ export function App() {
   const [overlay, setOverlay] = useState<string | null>(null);
   /** A room waiting on the player's say-so because it would fill in corridors. */
   const [pendingBuild, setPendingBuild] = useState<PendingBuild | null>(null);
+  // What building over corridors would cost, outlined in the view. Kept stable between
+  // renders: a fresh object each time would re-send it to the view on every hover.
+  const buildWarning = useMemo(
+    () => (pendingBuild ? { edges: [...pendingBuild.destroys, ...pendingBuild.strands.corridors], rooms: pendingBuild.strands.rooms } : null),
+    [pendingBuild],
+  );
   /** A snaked corridor chain waiting for the player to confirm. */
   const [proposal, setProposal] = useState<Proposal | null>(null);
   /** The floor the plan and 3D views focus on; null shows every floor in 3D. */
@@ -416,7 +422,7 @@ export function App() {
             />
           )}
           <ViewHost
-            warning={pendingBuild ? { edges: [...pendingBuild.destroys, ...pendingBuild.strands.corridors], rooms: pendingBuild.strands.rooms } : null}
+            warning={buildWarning}
             onConfirmBuild={setPendingBuild}
             proposal={proposal}
             onPropose={setProposal}
