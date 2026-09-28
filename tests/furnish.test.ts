@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Layout, type Location } from "../src/sim/placement";
-import { FIT, fit, frameOf, furnish, inside, place, tooClose, unplace, type Template } from "../src/view/furnish";
-import { itemDef } from "../src/view/furniture";
+import { FIT, fit, frameOf, furnish, inside, layouts, place, tooClose, unplace, type Template } from "../src/view/furnish";
+import { isFurnished, itemDef, itemsFor } from "../src/view/furniture";
+import { roomDefs } from "../src/sim/rooms";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 
@@ -110,6 +111,52 @@ describe("dragging in the editor", () => {
       const back = unplace(frame, p, [at.x, at.z]);
       expect(back.x, wall).toBeCloseTo(0.7, 6);
       expect(back.y, wall).toBeCloseTo(0.4, 6);
+    }
+  });
+});
+
+describe("turned items", () => {
+  it("stand out from their wall by what they reach once turned: a bed turned head-to-wall", () => {
+    const layout = createLayout(createHole(10, 3, 3, config.geometry));
+    const r = room(layout, "clinic", ring(1, 2, 0));
+    const frame = frameOf(layout, r)!;
+    const [w] = itemDef("medical_bed").size;
+    const bed = place(frame, { item: "medical_bed", wall: "back", y: 0.1, turn: 90 });
+    // Its far corners reach the wall's gap, no further; its length runs out into the room.
+    const radii = bed.corners.map(([x, z]) => Math.hypot(x, z));
+    expect(Math.max(...radii)).toBeCloseTo(frame.rOut - 0.1, 1);
+    expect(Math.max(...radii) - Math.min(...radii)).toBeCloseTo(w, 1);
+  });
+});
+
+describe("the templates", () => {
+  const shapes = config.shapes as Record<string, [number, number][]>;
+
+  it("cover every furnished room type in every shape, with that room's own items", () => {
+    for (const def of roomDefs) {
+      if (!isFurnished(def.id)) continue;
+      for (const [w, d] of shapes[def.size] ?? []) {
+        const t = layouts.templates[`${def.id}:${w}x${d}`];
+        expect(t, `${def.id}:${w}x${d}`).toBeDefined();
+        for (const p of t!) expect(itemsFor(def.id), `${def.id}: ${p.item}`).toContain(p.item);
+      }
+    }
+  });
+
+  it("furnish a room in every ring it can go in, and every placement fits somewhere", () => {
+    for (const [key, t] of Object.entries(layouts.templates)) {
+      const [type, shape] = key.split(":") as [string, string];
+      const [w, d] = shape.split("x").map(Number) as [number, number];
+      const used = new Set<number>();
+      for (let r = 1; r + d - 1 <= 6; r++) {
+        const layout = createLayout(createHole(10, 2, 6, config.geometry));
+        const placed = placeRoom(layout, type, { kind: "ring", floor: 2, ring: r, slot: 0, w, d });
+        expect(placed.ok, `${key} in ring ${r}`).toBe(true);
+        const items = fit(frameOf(layout, layout.rooms.find((x) => x.id === placed.id)!)!, t);
+        expect(items.length, `${key} in ring ${r}`).toBeGreaterThanOrEqual(3);
+        items.forEach((i) => used.add(i.placement));
+      }
+      t.forEach((p, i) => expect(used.has(i), `${key} #${i} ${p.item} never fits`).toBe(true));
     }
   });
 });

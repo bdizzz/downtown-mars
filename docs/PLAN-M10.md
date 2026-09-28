@@ -113,3 +113,20 @@ Decided Sep 28, 2026 (Bryon):
 - **Save** posts every template to a dev-server endpoint (the `saveLayouts` plugin in `vite.config.ts`, serve only). It checks items and walls, and writes `data/layouts.json` with one placement per line. The game picks it up on reload.
 - **Snug placements** (added here): chairs at a desk and stools at a table go with their neighbours. They only keep 5 cm from them, not the 0.5 m aisle.
 - **Browser check:** the dorm template in ring 1, with a table dragged across the plan and saved to the file (then put back).
+
+**Step 6, templates for every room:** `data/layouts.json`.
+- **39 templates,** one per furnished room type and shape (the eight L rooms have one for 4×1 and one for 2×2). One-off items come first, so repeated rows (bunks, planters, shelves, racks, desks, stalls) fill in around them.
+- **Fit across rings 1–6:** every template places 3 or more items in every ring its room can go in, and covers about 5–25% of the floor, so rooms read as furnished but uncrowded.
+  - A few one-offs on the front wall step aside for ring 1's doorway, and appear in the other rings.
+  - Plazas stay open (a tree, benches, lamps). Farms and depots are the fullest.
+- **Placing fixes:**
+  - Side-wall items stand exactly against the straight wall.
+  - Back-wall items are set in until a straight item's corners touch the curved wall. Before this, flat items against a wall (tool walls, the board, the crypt's niches) never fit.
+  - A turned item stands out from its wall by what it reaches once turned: a clinic bed turned head-to-wall.
+- **Room lists:** elder care and the tiny plaza gained the items their templates use (a rug, potted plants).
+- **Tests:**
+  - Every furnished room type and shape has a template, using only its room's items.
+  - Every template furnishes its room in every ring it can go in, and every placement fits in at least one ring.
+  - The turned bed.
+- **Browser check:** the dev save's floor 1 in Iso with walls down: the storage tank, admin desks with chairs and screens, dorm bunks, and restroom stalls, with farm planters on the floor below.
+- **README:** furnishing, and the tool.

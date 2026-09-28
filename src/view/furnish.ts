@@ -85,6 +85,11 @@ export interface Frame {
   /** Angles of the left and right walls at radius r (they stand parallel to their borders). */
   left: (r: number) => number;
   right: (r: number) => number;
+  /** The borders' angles, and how far the left and right walls stand from them (metres): each wall is the straight line that far in. */
+  a0: number;
+  a1: number;
+  dLeft: number;
+  dRight: number;
   /** The doorway on the front wall, if any: its angle. */
   door: number | null;
   area: number;
@@ -137,6 +142,10 @@ export function frameOf(layout: Layout, room: RoomInstance): Frame | null {
     rOut,
     left: (r) => a0 + side(left + g, r),
     right: (r) => a1 - side(right + g, r),
+    a0,
+    a1,
+    dLeft: left + g,
+    dRight: right + g,
     door: door === null ? null : unwrap(door, a0),
     area: ((rOut * rOut - rIn * rIn) / 2) * (a1 - a0),
   };
@@ -156,9 +165,18 @@ function unwrap(a: number, a0: number): number {
   return a0 + ((((a - a0) % TAU) + TAU) % TAU);
 }
 
+/** How deep an item stands out from its wall once turned: a bed turned head-to-wall reaches out by its length. */
+function depthOf(p: Placement): number {
+  const [w, d] = itemDef(p.item).size;
+  const t = ((p.turn ?? 0) * Math.PI) / 180;
+  return Math.abs(Math.cos(t)) * d + Math.abs(Math.sin(t)) * w;
+}
+
 /** Where a placement (with repeat offset dx) puts an item: its centre on the floor, facing, and footprint corners. */
 export function place(frame: Frame, p: Placement, dx = 0): Omit<Fitted, "placement"> {
-  const [w, d] = itemDef(p.item).size;
+  // The item's own size (for its footprint, which turns with it), and how far it stands out from its wall.
+  const [w, dItem] = itemDef(p.item).size;
+  const d = depthOf(p);
   const x = (p.x ?? 0) + dx;
   const y = p.y ?? 0;
   const mid = (r: number) => (frame.left(r) + frame.right(r)) / 2;
@@ -166,34 +184,40 @@ export function place(frame: Frame, p: Placement, dx = 0): Omit<Fitted, "placeme
   let r: number;
   let a: number;
   // Which way the item's front faces, in the room's terms: out (+r), in (−r), or round (±angle).
-  let face: "in" | "out" | "cw" | "ccw";
+  let face: "in" | "out";
   if (p.wall === "back") {
-    r = frame.rOut - y - d / 2;
+    // The back wall curves away from a straight item: set it in until its back corners touch the curve.
+    r = Math.sqrt(frame.rOut * frame.rOut - (w * w) / 4) - y - d / 2;
     a = mid(r) + x / r;
     face = "in";
   } else if (p.wall === "front") {
     r = frame.rIn + y + d / 2;
     a = mid(r) + x / r;
     face = "out";
-  } else if (p.wall === "left") {
-    r = rMid + x;
-    a = frame.left(r) + (y + d / 2) / r;
-    face = "cw";
-  } else if (p.wall === "right") {
-    r = rMid + x;
-    a = frame.right(r) - (y + d / 2) / r;
-    face = "ccw";
+  } else if (p.wall === "left" || p.wall === "right") {
+    // Side walls are straight, parallel to their borders: stand the item against the line itself.
+    const left = p.wall === "left";
+    const b = left ? frame.a0 : frame.a1;
+    const u: [number, number] = [Math.cos(b), Math.sin(b)];
+    // Into the room from the border: toward larger angles on the left, smaller on the right.
+    const n: [number, number] = left ? [-u[1], u[0]] : [u[1], -u[0]];
+    const out = (left ? frame.dLeft : frame.dRight) + y + d / 2;
+    const along = rMid + x;
+    const cx = along * u[0] + out * n[0];
+    const cz = along * u[1] + out * n[1];
+    return finish(p, cx, cz, n, frame, w, dItem);
   } else {
     r = rMid + y;
     a = mid(r) + x / r;
     face = "in";
   }
-  const px = r * Math.cos(a);
-  const pz = r * Math.sin(a);
-  // Facing as a direction on the floor.
+  // Facing as a direction on the floor: out or in along the radius.
   const radial: [number, number] = [Math.cos(a), Math.sin(a)];
-  const round: [number, number] = [-Math.sin(a), Math.cos(a)];
-  const f: [number, number] = face === "out" ? radial : face === "in" ? [-radial[0], -radial[1]] : face === "cw" ? round : [-round[0], -round[1]];
+  return finish(p, r * Math.cos(a), r * Math.sin(a), face === "out" ? radial : [-radial[0], -radial[1]], frame, w, dItem);
+}
+
+/** An item centred at (px, pz) facing direction f (plus its placement's extra turn), with its footprint's corners. */
+function finish(p: Placement, px: number, pz: number, f: [number, number], frame: Frame, w: number, d: number): Omit<Fitted, "placement"> {
   const turn = Math.atan2(f[0], f[1]) + ((p.turn ?? 0) * Math.PI) / 180;
   // Footprint: local +z maps to (sin t, cos t), local +x to (cos t, −sin t).
   const Z: [number, number] = [Math.sin(turn), Math.cos(turn)];
@@ -211,15 +235,22 @@ export function place(frame: Frame, p: Placement, dx = 0): Omit<Fitted, "placeme
  * floor. Undoes `place` for the placement's wall.
  */
 export function unplace(frame: Frame, p: Placement, [px, pz]: [number, number]): { x: number; y: number } {
-  const [, d] = itemDef(p.item).size;
+  const d = depthOf(p);
   const r = Math.hypot(px, pz);
   const a = unwrap(Math.atan2(pz, px), frame.left(r) - Math.PI);
   const mid = (frame.left(r) + frame.right(r)) / 2;
   const rMid = (frame.rIn + frame.rOut) / 2;
-  if (p.wall === "back") return { x: (a - mid) * r, y: frame.rOut - r - d / 2 };
+  const [w] = itemDef(p.item).size;
+  if (p.wall === "back") return { x: (a - mid) * r, y: Math.sqrt(frame.rOut * frame.rOut - (w * w) / 4) - r - d / 2 };
   if (p.wall === "front") return { x: (a - mid) * r, y: r - frame.rIn - d / 2 };
-  if (p.wall === "left") return { x: r - rMid, y: (a - frame.left(r)) * r - d / 2 };
-  if (p.wall === "right") return { x: r - rMid, y: (frame.right(r) - a) * r - d / 2 };
+  if (p.wall === "left" || p.wall === "right") {
+    // Along the border line, and out from it: the point's components in the wall's own frame.
+    const left = p.wall === "left";
+    const b = left ? frame.a0 : frame.a1;
+    const u: [number, number] = [Math.cos(b), Math.sin(b)];
+    const n: [number, number] = left ? [-u[1], u[0]] : [u[1], -u[0]];
+    return { x: px * u[0] + pz * u[1] - rMid, y: px * n[0] + pz * n[1] - (left ? frame.dLeft : frame.dRight) - d / 2 };
+  }
   return { x: (a - mid) * r, y: r - rMid };
 }
 

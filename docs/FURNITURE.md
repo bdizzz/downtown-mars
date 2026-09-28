@@ -1,6 +1,6 @@
 # Furniture
 
-What's in each room type in the 3D view (docs/PLAN-M10.md). The models are in `data/furniture.json`: each item is a few boxes, cylinders and spheres, with named colours and "accent" for the room's category colour. Sizes are width × depth × height in metres. The back of an item goes against its wall.
+What's in each room type in the 3D view (docs/PLAN-M10.md). The models are in `data/furniture.json`: each item is a few boxes, cylinders and spheres, with named colours and "accent" for the room's category colour. Sizes are width × depth × height in metres. The back of an item goes against its wall. Where things go in each room is in `data/layouts.json`, edited with the dev tool (`?furnish` in the dev build).
 
 ## By room
 
@@ -23,11 +23,11 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are in `d
 | Electronics fab | M | Fab bench, Clean hood, Stool, Shelving, Control console |
 | Staging bay | L | Kit container, Crate stack, Cargo crate, Cargo cart, Control console |
 | School | M | School desk, Board, Desk, Office chair, Bookshelf, Rug |
-| Elder care | M | Bed, Armchair, Side table, Sofa, Potted plant, Medicine cabinet |
+| Elder care | M | Bed, Armchair, Side table, Sofa, Potted plant, Medicine cabinet, Rug |
 | Composter | M | Compost bin, Compost drum, Soil sacks, Tool cart |
 | Crypt | M | Memorial niches, Memorial stone, Bench, Potted plant |
 | Concrete plant | M | Mixer, Hopper, Cement bags, Mould forms |
-| Tiny plaza | S | Bench, Tree planter, Lamp post |
+| Tiny plaza | S | Bench, Tree planter, Lamp post, Potted plant |
 | Small plaza | M | Fountain, Bench, Tree planter, Lamp post |
 | Entrance | S | Suit locker, Bench, Control console |
 | Cargo elevator | S | Cargo crate, Cargo cart, Control console |
@@ -50,11 +50,11 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are in `d
 | Stool (`stool`) | 0.4 × 0.4 × 0.5 | Bunk dorm, Electronics fab |
 | Chair (`chair`) | 0.5 × 0.5 × 0.95 | Clinic |
 | Office chair (`office_chair`) | 0.6 × 0.6 × 1.15 | Admin office, School, Site office, Construction office |
-| Rug (`rug`) | 2.2 × 1.6 × 0.05 | Bunk dorm, School |
+| Rug (`rug`) | 2.2 × 1.6 × 0.05 | Bunk dorm, School, Elder care |
 | Armchair (`armchair`) | 0.9 × 0.9 × 1 | Elder care |
 | Sofa (`sofa`) | 2 × 0.9 × 0.95 | Elder care |
 | Side table (`side_table`) | 0.5 × 0.5 × 0.75 | Elder care |
-| Potted plant (`plant_pot`) | 0.6 × 0.6 × 1.35 | Admin office, Elder care, Crypt |
+| Potted plant (`plant_pot`) | 0.6 × 0.6 × 1.35 | Admin office, Elder care, Crypt, Tiny plaza |
 | Stove counter (`stove_counter`) | 2.05 × 0.75 × 2.25 | Galley |
 | Prep counter (`prep_counter`) | 2.05 × 0.75 × 1 | Galley |
 | Fridge (`fridge`) | 0.9 × 0.85 × 2 | Galley |
