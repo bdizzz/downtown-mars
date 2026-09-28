@@ -33,7 +33,7 @@ export const DEFAULT_SETTINGS: Settings = {
   uiScale: 1,
   colorBlind: false,
   autosave: true,
-  view: "2d",
+  view: "3d",
   quality3d: "high",
 };
 

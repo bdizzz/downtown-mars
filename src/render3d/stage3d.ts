@@ -45,8 +45,8 @@ const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25 };
 const TOP = { min: 20, max: 300, start: 80 };
 /** Iso: distance to the floor's centre (a multiple of the floor's radius to start), and how steeply it looks down. */
 const ISO = { start: 1.6, min: 12, max: 400, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
-/** First person: eye height off the floor, walking and running speed (m/s), and how fast dragging turns the head. */
-const WALK = { eye: 1.8, speed: 3, run: 7, turn: 0.004 };
+/** First person: eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
+const WALK = { eye: 1.8, speed: 3, run: 7, turn: 0.004, lookTurn: 0.0025, keyTurn: 1.8 };
 /** Free look: pitch stops just short of straight up or down; zoom narrows the field of view. */
 const FREE = { maxPitch: Math.PI / 2 - 0.02, minFov: 20, maxFov: 90, turn: 0.004 };
 /** How much of the surface still shows in x-ray: enough to keep your bearings. */
@@ -61,7 +61,7 @@ const MODES: { id: Mode; name: string; hint: string }[] = [
   { id: "cutaway", name: "Cutaway", hint: "Look at the hole from outside, sliced open" },
   { id: "top", name: "Top", hint: "Look straight down the shaft" },
   { id: "iso", name: "Iso", hint: "One floor from above and off to one side, so you see all of it (pick the floor on the right; drag to turn, scroll to zoom)" },
-  { id: "walk", name: "First person", hint: "Walk the galleries, corridors and public spaces: WASD to move, drag to look, Q and E to take stairs" },
+  { id: "walk", name: "First person", hint: "Walk the galleries, corridors and public spaces: WASD to move, Q and E to turn, drag to look (Tab for mouse look), R and F to take stairs up or down" },
 ];
 
 const VIEW_KEY = "downtown-mars.view3d";
@@ -74,9 +74,9 @@ interface ViewPrefs {
 function loadView(): ViewPrefs {
   try {
     const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? "{}") as Partial<ViewPrefs>;
-    return { mode: MODES.some((m) => m.id === v.mode) ? v.mode! : "shaft", xray: !!v.xray, wallsDown: !!v.wallsDown };
+    return { mode: MODES.some((m) => m.id === v.mode) ? v.mode! : "iso", xray: !!v.xray, wallsDown: !!v.wallsDown };
   } catch {
-    return { mode: "shaft", xray: false, wallsDown: false };
+    return { mode: "iso", xray: false, wallsDown: false };
   }
 }
 function saveView(v: ViewPrefs): void {
@@ -831,6 +831,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   const held = new Set<string>();
   let walkerPlaced = false;
+  /** Mouse look: the pointer locked to the view (Tab), where the browser allows it. */
+  const locked = () => document.pointerLockElement === canvas;
+  const centre = () => {
+    const r = canvas.getBoundingClientRect();
+    return { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+  };
+  const crosshair = document.createElement("div");
+  crosshair.className = "walk-crosshair";
+  crosshair.style.display = "none";
+  host.appendChild(crosshair);
 
   /** Stand on the gallery of the floor you were looking at, facing along it. */
   function placeWalker(): void {
@@ -848,15 +858,20 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** What the readout says while walking: where, and what the keys do. */
   function walkReadout(): string {
     const stairs = layout ? stairsHere(layout, walker.floor, walker.x, walker.z) : null;
-    const flights = stairs ? ` · ${[stairs.up !== null ? "Q up" : "", stairs.down !== null ? "E down" : ""].filter(Boolean).join(", ")}` : "";
-    return `Floor ${walker.floor} · WASD to move, drag to look, Shift to run${flights}`;
+    const flights = stairs ? ` · stairs: ${[stairs.up !== null ? "R up" : "", stairs.down !== null ? "F down" : ""].filter(Boolean).join(", ")}` : "";
+    const look = locked() ? "mouse to look (Tab or Esc to stop)" : "drag to look (Tab for mouse look)";
+    return `Floor ${walker.floor} · WASD to move, Q/E to turn, ${look}${flights}`;
   }
 
   /** Switching camera mode: set the new one up, and rebuild if what's hidden changed. */
   function enterMode(before: Mode): void {
     if (view.mode === "iso" && !cam.iso) cam.iso = outerRadius() * ISO.start;
     if (view.mode === "walk" && before !== "walk") placeWalker();
-    if (before === "walk") held.clear();
+    if (before === "walk" && view.mode !== "walk") {
+      held.clear();
+      if (locked()) document.exitPointerLock();
+    }
+    if ((before === "walk") !== (view.mode === "walk")) opts.onWalking?.(view.mode === "walk");
     applyFloorCut();
     applyCamera();
     if (latest) stage.update(latest);
@@ -871,7 +886,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     applyCamera();
   }
 
-  const WALK_KEYS = new Set(["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "shift", "q", "e"]);
+  const WALK_KEYS = new Set(["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", "shift", "q", "e", "r", "f", "tab"]);
   // Captured before the rest of the app sees them, so walking doesn't pick rooms by their keys.
   const onWalkKey = (e: KeyboardEvent) => {
     if (view.mode !== "walk") return;
@@ -885,22 +900,33 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       held.delete(k);
       return;
     }
-    if (!e.repeat && k === "q") takeStairs("up");
-    else if (!e.repeat && k === "e") takeStairs("down");
-    else held.add(k);
+    if (e.repeat && (k === "r" || k === "f" || k === "tab")) return;
+    if (k === "r") takeStairs("up");
+    else if (k === "f") takeStairs("down");
+    else if (k === "tab") {
+      if (locked()) document.exitPointerLock();
+      else canvas.requestPointerLock?.()?.catch?.(() => {});
+    } else held.add(k);
   };
   window.addEventListener("keydown", onWalkKey, { capture: true });
   window.addEventListener("keyup", onWalkKey, { capture: true });
   // Keys let go while the window is away never send a keyup: stop walking.
   const onBlur = () => held.clear();
   window.addEventListener("blur", onBlur);
+  const onLockChange = () => {
+    crosshair.style.display = view.mode === "walk" && locked() ? "block" : "none";
+    updateReadout();
+  };
+  document.addEventListener("pointerlockchange", onLockChange);
 
   /** One frame's walking: returns true if the walker moved. */
   function walkFrame(dt: number): boolean {
     if (view.mode !== "walk" || !layout || !held.size) return false;
+    const turn = (held.has("e") ? 1 : 0) - (held.has("q") ? 1 : 0);
+    walker.yaw += turn * WALK.keyTurn * dt;
     const fwd = (held.has("w") || held.has("arrowup") ? 1 : 0) - (held.has("s") || held.has("arrowdown") ? 1 : 0);
     const side = (held.has("d") || held.has("arrowright") ? 1 : 0) - (held.has("a") || held.has("arrowleft") ? 1 : 0);
-    if (!fwd && !side) return false;
+    if (!fwd && !side) return turn !== 0;
     const speed = (held.has("shift") ? WALK.run : WALK.speed) * dt;
     const len = Math.hypot(fwd, side);
     const [fx, fz] = [Math.cos(walker.yaw), Math.sin(walker.yaw)];
@@ -908,7 +934,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const dx = ((fwd * fx - side * fz) / len) * speed;
     const dz = ((fwd * fz + side * fx) / len) * speed;
     const [x, z] = walkStep(layout, walker.floor, walker.x, walker.z, dx, dz);
-    if (x === walker.x && z === walker.z) return false;
+    if (x === walker.x && z === walker.z) return turn !== 0;
     walker.x = x;
     walker.z = z;
     return true;
@@ -920,6 +946,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
+    // Mouse look: clicks land where the crosshair is.
+    if (view.mode === "walk" && locked()) {
+      pointer = centre();
+      const info = layout ? hoverInfo() : null;
+      if (info && layout) clickWith(layout, tool, info, opts);
+      return;
+    }
 
     pointer = e; // a tap may arrive with no move before it
     shift = e.shiftKey;
@@ -934,6 +967,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     drag = { x: e.clientX, y: e.clientY, moved: 0 };
   };
   const onPointerMove = (e: PointerEvent) => {
+    if (view.mode === "walk" && locked()) {
+      walker.yaw += e.movementX * WALK.lookTurn;
+      walker.pitch -= e.movementY * WALK.lookTurn;
+      pointer = centre();
+      applyCamera();
+      return;
+    }
     pointer = e;
     shift = e.shiftKey;
     if (snaking) {
@@ -967,6 +1007,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     applyCamera();
   };
   const onPointerUp = (e: PointerEvent) => {
+    if (view.mode === "walk" && locked()) return;
     pointer = e;
     if (drag && drag.moved <= CLICK_SLOP && layout) {
       const info = hoverInfo();
@@ -1095,6 +1136,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   syncBar();
   applyGroundXray();
   setWallsDown(view.wallsDown);
+  // Restored in first person: no building while walking.
+  if (view.mode === "walk") opts.onWalking?.(true);
 
   const resize = new ResizeObserver(() => {
     const w = host.clientWidth;
@@ -1301,6 +1344,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       window.removeEventListener("keydown", onWalkKey, { capture: true });
       window.removeEventListener("keyup", onWalkKey, { capture: true });
       window.removeEventListener("blur", onBlur);
+      document.removeEventListener("pointerlockchange", onLockChange);
+      if (locked()) document.exitPointerLock();
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("keyup", onKey);
       resize.disconnect();

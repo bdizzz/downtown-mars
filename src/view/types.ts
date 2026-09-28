@@ -75,6 +75,8 @@ export interface StageOptions {
   onInvalid?: (reason: string) => void;
   /** The view broke after starting (e.g. lost its graphics context). */
   onError?: (message: string) => void;
+  /** Walking around in first person (no building then), or not. */
+  onWalking?: (walking: boolean) => void;
 }
 
 export type Quality = "high" | "low";

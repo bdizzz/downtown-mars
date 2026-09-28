@@ -30,6 +30,8 @@ interface Props {
   quality: Quality;
   /** The chosen view couldn't start (e.g. no WebGL for 3D). */
   onViewError: (message: string) => void;
+  /** Walking in first person (3D), or not. */
+  onWalking: (walking: boolean) => void;
 }
 
 const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => Promise<Stage>> = {
@@ -40,12 +42,12 @@ const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => P
 };
 
 /** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
-export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, quality, onViewError }: Props) {
+export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, quality, onViewError, onWalking }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
-  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, floor, proposal, onPropose, warning, onConfirmBuild, onViewError });
-  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, floor, proposal, onPropose, warning, onConfirmBuild, onViewError };
+  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking });
+  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking };
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +60,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
       onError: (message) => props.current.onViewError(message),
       onPropose: (p) => props.current.onPropose(p),
       onConfirmBuild: (b) => props.current.onConfirmBuild(b),
+      onWalking: (w) => props.current.onWalking(w),
     }).then((stage) => {
       // StrictMode mounts twice; the first stage may resolve after cleanup.
       if (cancelled) return stage.destroy();
@@ -76,6 +79,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
     });
     return () => {
       cancelled = true;
+      props.current.onWalking(false);
       stageRef.current?.destroy();
       stageRef.current = null;
     };

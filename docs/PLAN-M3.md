@@ -76,3 +76,9 @@ Decided Sep 27, 2026 (Bryon): milestone 3 is the 3D view. When the network map c
   - **Stairs:** standing in stairs or an elevator, Q goes up and E goes down to the floors it reaches. The readout says which.
   - **No pointer lock:** it isn't available everywhere (not in the in-app browser), so looking is by dragging.
 - **Browser check:** Iso on floors 1 and 2, with and without walls down. Walked floor 1's gallery in first person until the wall stopped the walker.
+- **Changes (Bryon, Sep 28):**
+  - **Turning and stairs:** Q and E turn left and right (1.8 rad/s while held). Stairs moved to R (up) and F (down).
+  - **Mouse look:** Tab toggles it, where the browser allows pointer lock. The pointer is locked to the view, the mouse turns the head, a crosshair marks the centre, and clicks land there. Tab or Esc stops it.
+  - **No building while walking:** the stage tells the app (`onWalking`), which hides the build palette, clears the tool, and ignores the build shortcuts (room keys, C, X, R rotate). Selecting rooms, the map, views, holes and floors still work.
+  - **Iso is the default:** Iso is the 3D camera's default mode, and new players start in the 3D view. A saved choice still wins.
+  - **Fix:** a stage that React's development double mount throws away no longer reports "not walking" after the real one says it is. The view host reports it when it tears a stage down.

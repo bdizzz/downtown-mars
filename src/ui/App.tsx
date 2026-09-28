@@ -43,6 +43,11 @@ export function App() {
   const [overlay, setOverlay] = useState<string | null>(null);
   /** A room waiting on the player's say-so because it would fill in corridors. */
   const [pendingBuild, setPendingBuild] = useState<PendingBuild | null>(null);
+  // Walking around in first person: sightseeing, not building.
+  const [walking, setWalking] = useState(false);
+  useEffect(() => {
+    if (walking) setTool(null);
+  }, [walking]);
   // What building over corridors would cost, outlined in the view. Kept stable between
   // renders: a fresh object each time would re-send it to the view on every hover.
   const buildWarning = useMemo(
@@ -285,8 +290,8 @@ export function App() {
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.code === "KeyR") rotate();
       if (e.code === "KeyM") setMapOpen((m) => !m);
+      if (!walking && e.code === "KeyR") rotate();
       // [ and ] step through the holes.
       const next = e.code === "BracketRight" || e.key === "]";
       const prev = e.code === "BracketLeft" || e.key === "[";
@@ -304,6 +309,7 @@ export function App() {
         e.preventDefault();
         stepFloor(e.code === "PageDown" ? 1 : -1);
       }
+      if (walking) return; // no build tools while walking
       const letter = e.key.toUpperCase();
       if (letter === CORRIDOR_KEY) {
         setSelected(null);
@@ -322,7 +328,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, helpOpen, mapOpen, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish]);
+  }, [menu, helpOpen, mapOpen, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking]);
 
   return (
     <div
@@ -349,7 +355,7 @@ export function App() {
       />
       <ResourceBar s={snapshot} />
       <div className="main">
-        <BuildPalette
+        {!walking && <BuildPalette
           tool={tool}
           lastFinish={lastFinish}
           setTool={(t) => (setTool(t), setSelected(null))}
@@ -359,7 +365,7 @@ export function App() {
           rotate={rotate}
           canUndo={canUndo}
           undo={undo}
-        />
+        />}
         <div className="view">
           <OverlayPicker overlay={overlay} setOverlay={setOverlay} highlight={highlight} />
           {snapshot && tutorialOn && !menu && (
@@ -422,6 +428,7 @@ export function App() {
             />
           )}
           <ViewHost
+            onWalking={setWalking}
             warning={buildWarning}
             onConfirmBuild={setPendingBuild}
             proposal={proposal}

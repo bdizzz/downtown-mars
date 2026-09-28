@@ -255,6 +255,12 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 }
 .cam-toolbar button.on { border-color: var(--accent); color: var(--accent); }
 .cam-toolbar .k { color: var(--muted); margin-left: 6px; }
+/* First person with mouse look: a small cross at the centre, where clicks land. */
+.walk-crosshair {
+  position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; pointer-events: none;
+  background: linear-gradient(#f6efe6, #f6efe6) center / 2px 14px no-repeat, linear-gradient(#f6efe6, #f6efe6) center / 14px 2px no-repeat;
+  filter: drop-shadow(0 0 1px #1a0f0d);
+}
 .hole-name { color: var(--accent); font-weight: 600; }
 .hole-picker { background: #1a0f0d; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; font: inherit; font-weight: 600; padding: 2px 4px; }
 .map-screen {
