@@ -140,7 +140,8 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
   const mid = faces[Math.floor(faces.length / 2)];
   const door = mid ? (slotAngles(mid.slot, hole.ringSlots[0]!)[0] + slotAngles(mid.slot, hole.ringSlots[0]!)[1]) / 2 : null;
   return {
-    y: floorSpan(floor)[0],
+    // On the room's floor, which stands the walls' hairline above the floor's base (as the 3D view draws it).
+    y: floorSpan(floor)[0] + INSET,
     rIn,
     rOut,
     left: (r) => a0 + side(left + g, r),

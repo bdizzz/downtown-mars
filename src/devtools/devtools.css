@@ -28,3 +28,7 @@
 .dev-items li { cursor: pointer; }
 .dev-props { border: 1px solid #3a2418; border-radius: 4px; padding: 6px 8px; margin: 8px 0; }
 .dev-side code { color: #e07a3f; }
+.dev-overview-bar { padding: 6px 10px; margin: 0; background: #24150f; border-bottom: 1px solid #000; }
+.dev-overview-bar button { background: #1a0f0d; color: #f6efe6; border: 1px solid #5a3a28; border-radius: 3px; font: inherit; padding: 2px 6px; cursor: pointer; }
+.dev-overview-bar button.on { border-color: #e07a3f; color: #e07a3f; }
+.dev-overview-bar .k { color: #a89080; font-size: 12px; margin-left: 8px; }

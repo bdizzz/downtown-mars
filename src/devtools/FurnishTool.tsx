@@ -3,6 +3,7 @@ import { furniture, itemDef } from "../view/furniture";
 import { roomDef } from "../sim/rooms";
 import { Catalogue } from "./Catalogue";
 import { TemplateEditor } from "./TemplateEditor";
+import { Overview } from "./Overview";
 import "./devtools.css";
 
 // The furnishing tool (dev builds only, at ?furnish): lay out the templates
@@ -12,7 +13,7 @@ const ROOMS = Object.keys(furniture.rooms);
 
 export function FurnishTool() {
   const [room, setRoom] = useState<string>(ROOMS[0]!);
-  const [tab, setTab] = useState<"templates" | "catalogue">("templates");
+  const [tab, setTab] = useState<"templates" | "catalogue" | "overview">("templates");
   return (
     <div className="dev-tool">
       <aside className="dev-side">
@@ -23,6 +24,9 @@ export function FurnishTool() {
           </button>
           <button className={tab === "catalogue" ? "on" : ""} onClick={() => setTab("catalogue")}>
             Catalogue
+          </button>
+          <button className={tab === "overview" ? "on" : ""} onClick={() => setTab("overview")}>
+            Overview
           </button>
         </div>
         <label>
@@ -47,7 +51,7 @@ export function FurnishTool() {
         </ul>
         <p className="k">In the 3D views, drag to turn and scroll to zoom.</p>
       </aside>
-      {tab === "templates" ? <TemplateEditor key={room} room={room} /> : <Catalogue room={room} />}
+      {tab === "templates" ? <TemplateEditor key={room} room={room} /> : tab === "overview" ? <Overview /> : <Catalogue room={room} />}
     </div>
   );
 }
