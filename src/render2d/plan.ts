@@ -12,7 +12,7 @@ import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool } from "../vi
 import { drawGlyph, drawPlus, shade } from "./art";
 import { corridorStrip } from "./corridorArt";
 import { config } from "../sim/config";
-import { corridors } from "../sim/corridors";
+import { corridorJoints, corridors } from "../sim/corridors";
 import { edgeById, edgeSides, nearestEdge, type Edge } from "../sim/edges";
 import { roomAt } from "../sim/placement";
 import { CATEGORY_COLORS, HEAT } from "./palette";
@@ -264,6 +264,14 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       // Side 0 is the inner / earlier cell; the normal points outward (arcs) or to the later slot (spokes).
       if (opens(a)) door(-1);
       if (opens(z)) door(1);
+    }
+    // Square joints where corridors turn, so the outer edges meet in a clean corner.
+    for (const joint of corridorJoints(l).values()) {
+      if (joint.floor !== floor) continue;
+      const r = h.shaftRadiusM + joint.circle * RING_D;
+      const a = joint.turn * TAU;
+      const half = BAND / 2 / PX;
+      corridorStrip(roomsCtx, (t) => xy(r - half + t / PX, a), () => [-Math.sin(a), Math.cos(a)], BAND, BAND, joint.finish, joint.floor > h.floors ? 0.45 : 1);
     }
   }
 

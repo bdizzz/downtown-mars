@@ -291,3 +291,40 @@ export function migrateCorridorRooms(layout: Layout): void {
   layout.rooms = layout.rooms.filter((r) => r.type !== "corridor");
   recomputeAccess(layout);
 }
+
+export interface Joint {
+  key: string;
+  floor: number;
+  /** The circle it's on (0 is the shaft wall). */
+  circle: number;
+  /** Angle in turns. */
+  turn: number;
+  /** The finish of one of the corridors meeting there, for drawing. */
+  finish: string;
+}
+
+/**
+ * Where corridors turn: vertices where a radial corridor and a ring corridor
+ * meet. Each needs a square joint so the outer edges of the turn meet in a
+ * clean corner (like a square line join), not a notch.
+ */
+export function corridorJoints(layout: Layout): Map<string, Joint> {
+  const hole = layout.hole;
+  const kinds = new Map<string, { radial: boolean; arc: boolean; finish: string; floor: number; circle: number; turn: number }>();
+  for (const [id, finish] of Object.entries(layout.corridors ?? {})) {
+    const e = edgeById(hole, id);
+    if (!e) continue;
+    const [v0, v1] = edgeVertices(hole, e);
+    for (const v of [v0, v1]) {
+      const [floor, circle, f] = v.split("|");
+      const [p, q] = f!.split("/").map(Number);
+      const k = kinds.get(v) ?? { radial: false, arc: false, finish, floor: Number(floor), circle: Number(circle), turn: p! / q! };
+      if (e.kind === "radial") k.radial = true;
+      else k.arc = true;
+      kinds.set(v, k);
+    }
+  }
+  const out = new Map<string, Joint>();
+  for (const [key, k] of kinds) if (k.radial && k.arc) out.set(key, { key, floor: k.floor, circle: k.circle, turn: k.turn, finish: k.finish });
+  return out;
+}

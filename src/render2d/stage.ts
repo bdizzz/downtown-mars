@@ -3,7 +3,7 @@ import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
 import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { edgeById, edgeSides, nearestEdge, type Edge } from "../sim/edges";
-import { corridors } from "../sim/corridors";
+import { corridorJoints, corridors } from "../sim/corridors";
 import { corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
@@ -413,6 +413,13 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         if (opens(a)) roomsCtx.rect(mid, b.y - 3, 14, 3).fill(C.door);
         if (opens(z)) roomsCtx.rect(mid, b.y + BAND, 14, 3).fill(C.door);
       }
+    }
+    // Square joints where corridors turn, so the outer edges meet in a clean corner.
+    const maxRings = h.ringSlots.length;
+    for (const joint of corridorJoints(l).values()) {
+      const y = joint.circle === 0 ? ringTop(joint.floor, 1, maxRings) : ringTop(joint.floor, joint.circle, maxRings) + RING_H;
+      const x = joint.turn * TURN_W;
+      corridorBand(roomsCtx, x - BAND / 2, y - BAND / 2, BAND, BAND, "h", joint.finish, joint.floor > h.floors ? 0.45 : 1);
     }
   }
 

@@ -3,8 +3,8 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
 import { floorSpan, ringRadii, slotAngles, TAU } from "./cylinder";
-import { cellEdges, edgeById, outsideEdges, type ArcEdge, type Edge } from "../sim/edges";
-import { corridors, finishDef } from "../sim/corridors";
+import { cellEdges, edgeById, edgeVertices, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
+import { corridorJoints, corridors, finishDef } from "../sim/corridors";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
 // no room faces it, plus props on the surface. Rebuilt whenever the layout
@@ -88,6 +88,7 @@ function carveCell(
   inset: number,
   carve: boolean,
   openInner = false,
+  joints: Set<string> = new Set(),
 ): { a0: number; a1: number; pieces: Piece[]; openLeft: boolean; openRight: boolean; hallLeft: boolean; hallRight: boolean } {
   const hole = layout.hole;
   const key = (x: Cell) => `${x.floor}:${x.ring}:${x.slot}`;
@@ -103,7 +104,30 @@ function carveCell(
   const a0 = s0 + (openLeft ? (hallLeft ? HALL : inset) / rMid : 0);
   const a1 = s1 - (openRight ? (hallRight ? HALL : inset) / rMid : 0);
   const arcs = cellEdges(hole, c).filter((e): e is ArcEdge => e.kind === "arc");
-  const sides = (circle: number) => arcs.filter((e) => e.circle === circle).map((e) => ({ b0: e.a0 * TAU, b1: e.a1 * TAU, hall: hall(e.id) }));
+  // Where corridors turn, the joint's square fills the outer corner: a side piece without a corridor
+  // gives up a half-corridor notch next to it (unless the cell's own side there is a corridor, which carves it anyway).
+  const cornerHall = (angle: number) => (Math.abs(angle - s0) < 1e-9 ? hallLeft : Math.abs(angle - s1) < 1e-9 ? hallRight : false);
+  const sides = (circle: number) => {
+    const r = hole.shaftRadiusM + circle * (ringRadii(hole, 1)[1] - ringRadii(hole, 1)[0]);
+    const notch = HALL / r;
+    return arcs
+      .filter((e) => e.circle === circle)
+      .flatMap((e) => {
+        const b0 = e.a0 * TAU;
+        const b1 = e.a1 * TAU;
+        if (hall(e.id) || !carve) return [{ b0, b1, hall: hall(e.id) }];
+        const atStart = joints.has(vertexKey(c.floor, circle, e.from)) && !cornerHall(b0);
+        const atEnd = joints.has(vertexKey(c.floor, circle, e.to)) && !cornerHall(b1);
+        if (!atStart && !atEnd) return [{ b0, b1, hall: false }];
+        const n0 = atStart ? Math.min(b1, b0 + notch) : b0;
+        const n1 = atEnd ? Math.max(n0, b1 - notch) : b1;
+        const out = [];
+        if (n0 > b0) out.push({ b0, b1: n0, hall: true });
+        if (n1 > n0) out.push({ b0: n0, b1: n1, hall: false });
+        if (b1 > n1) out.push({ b0: n1, b1, hall: true });
+        return out;
+      });
+  };
   const innerSides = c.ring > 1 ? sides(c.ring - 1) : [];
   const outerSides = sides(c.ring);
   // Only split where a corridor starts or stops; an uncarved side stays one piece.
@@ -143,6 +167,7 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
   const rings = cells.map((c) => c.ring);
   const inner = Math.min(...rings);
   const outer = Math.max(...rings);
+  const joints = carve ? new Set(corridorJoints(layout).keys()) : new Set<string>();
   const pos: number[] = [];
   for (const c of cells) {
     let [y0, y1] = floorSpan(c.floor);
@@ -151,7 +176,7 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
     y1 -= c.floor === 1 ? Math.max(inset, ROOF_GAP) : inset;
     // A public room on the gallery has no wall there: it runs right up to the shaft.
     const onGallery = publicRoom && c.ring === 1;
-    const cut = carveCell(layout, c, own, inner, outer, inset, carve, onGallery);
+    const cut = carveCell(layout, c, own, inner, outer, inset, carve, onGallery, joints);
     let prev: Piece | null = null;
     for (const p of cut.pieces) {
       // Walls, except where a public room opens onto the gallery or a corridor.
@@ -287,11 +312,13 @@ function drawLabel(text: string, color: string): { material: THREE.SpriteMateria
 const shapeCache = new Map<string, { geo: THREE.BufferGeometry; edges: THREE.EdgesGeometry }>();
 
 function roomShape(layout: Layout, room: RoomInstance): { geo: THREE.BufferGeometry; edges: THREE.EdgesGeometry; key: string } {
-  // Corridors along its sides change its shape, so they're part of the key.
-  const halls = outsideEdges(layout.hole, room.cells)
-    .filter((e) => layout.corridors?.[e.id])
-    .map((e) => e.id)
-    .join(",");
+  // Corridors along its sides, and turns at its corners, change its shape, so they're part of the key.
+  const outside = outsideEdges(layout.hole, room.cells);
+  const joints = corridorJoints(layout);
+  const halls = [
+    ...outside.filter((e) => layout.corridors?.[e.id]).map((e) => e.id),
+    ...[...new Set(outside.flatMap((e) => edgeVertices(layout.hole, e)))].filter((v) => joints.has(v)),
+  ].join(",");
   const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}`;
   let shape = shapeCache.get(key);
   if (!shape) {
@@ -531,6 +558,17 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
     groups.get(key)!.push(...arr);
     geo.dispose();
   }
+  // Square joints where corridors turn, so the outer edges meet in a clean corner.
+  for (const joint of corridorJoints(layout).values()) {
+    if (joint.floor > hole.floors + 1 || (topFloor !== null && joint.floor < topFloor)) continue;
+    const r = hole.shaftRadiusM + joint.circle * (ringRadii(hole, 1)[1] - ringRadii(hole, 1)[0]);
+    const a = joint.turn * TAU;
+    const key = `${joint.finish}:true:false`;
+    const pos: number[] = [];
+    flatRing(pos, r - HALL, r + HALL, a - HALL / r, a + HALL / r, floorSpan(joint.floor)[0] + 0.05);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(...pos);
+  }
   const out: THREE.Object3D[] = [];
   for (const [key, pos] of groups) {
     const [finish, linked, building] = key.split(":");
@@ -556,6 +594,7 @@ function floorCap(layout: Layout, floor: number): THREE.Object3D[] {
   const hole = layout.hole;
   const [y0, y1] = floorSpan(floor);
   const y = y1 - CAP.lift;
+  const joints = new Set(corridorJoints(layout).keys());
   const open: number[] = [];
   const locked: number[] = [];
   // Rock where a corridor has been carved into it: walls from the cap down to the corridor floor.
@@ -567,7 +606,7 @@ function floorCap(layout: Layout, floor: number): THREE.Object3D[] {
       if (id) continue;
       // The cap has no lid over corridors: it's carved like a room, by half a corridor on each side one runs.
       const c = { floor, ring, slot };
-      const cut = carveCell(layout, c, new Set([`${floor}:${ring}:${slot}`]), ring, ring, 0, true);
+      const cut = carveCell(layout, c, new Set([`${floor}:${ring}:${slot}`]), ring, ring, 0, true, false, joints);
       for (const p of cut.pieces) {
         flatRing(ring > hole.unlockedRings ? locked : open, p.rr0, p.rr1, p.b0, p.b1, y);
         if (p.innerHall) curvedFace(cutWalls, p.rr0, p.b0, p.b1, y0, y);

@@ -186,3 +186,9 @@ Open questions for Bryon:
   - A plain click still carves one segment at once.
 
   Tested (`tests/corridorPlan.test.ts`): growing, retracing, bridging a skip, refusing a branch, rock-only borders, erase mode. In the browser (plan view): a snake along ring 1's outer edge, retraced to 4 segments, confirmed at 7.2 rock.
+- **Clean corners** (Bryon, Sep 27): corridors followed only their midlines, so where one turned the outer corner had a notch (the SVG stroke-join problem).
+  - `corridorJoints` finds every turn: a vertex where a radial corridor and a ring corridor meet. Straight runs and dead ends aren't turns.
+  - All three views draw a square joint there in the corridor's finish, centred on the vertex, radial and tangential in the plan and 3D.
+  - In 3D, rooms and the rock cap give up a half-corridor notch at the outer corner of a turn (a side piece without a corridor, next to a joint, unless the cell's side there is already carved), so the joint doesn't overlap them. Joints near a room are part of its shape-cache key.
+
+  Tested: joints found only at turns; a room notched at the outer corner of a turn, and unchanged by a turn elsewhere.

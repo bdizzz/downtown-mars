@@ -3,6 +3,7 @@ import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
 import { roomGeometry, shaftFaces } from "../src/render3d/rooms3d";
+import { corridorJoints } from "../src/sim/corridors";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 // Each curved face is split into 4 arc steps of 2 triangles; a radial side is 2 triangles.
@@ -118,5 +119,32 @@ describe("windows", () => {
     expect(b0).toBeGreaterThanOrEqual(minA - 1e-9);
     delete l.corridors["R1.1.2"];
     expect(span()[0]).toBeCloseTo(a0, 9);
+  });
+});
+
+describe("corridor corners", () => {
+  it("the room on the outer corner of a turn is notched, so the joint doesn't overlap it", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const r = placeRoom(l, "clinic", ring(1, 1, 4)); // ring-1 slot 4
+    const room = l.rooms.find((x) => x.id === r.id)!;
+    const plain = roomGeometry(l, room.cells);
+    // A turn at the corner above-left of slot 5's inner side... far from the clinic: no change.
+    l.corridors["R1.2.7"] = "rock";
+    l.corridors["A1.1.7/9"] = "rock";
+    expect(roomGeometry(l, room.cells).getAttribute("position").count).toBe(plain.getAttribute("position").count);
+    // A turn at the clinic's outer-right corner (angle 5/9 on circle 1), made of corridors that don't run along the clinic.
+    l.corridors["R1.2.5"] = "rock"; // out along ring 2 from that corner
+    l.corridors["A1.1.5/9"] = "rock"; // along the next cell's outer side
+    const notched = roomGeometry(l, room.cells);
+    expect(notched.getAttribute("position").count).toBeGreaterThan(plain.getAttribute("position").count);
+  });
+
+  it("finds turns, not straight runs", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    l.corridors["R1.1.3"] = "rock";
+    l.corridors["R1.2.3"] = "rock"; // straight on outward
+    expect(corridorJoints(l).size).toBe(0);
+    l.corridors["A1.1.1/3"] = "rock"; // and a turn along the circle
+    expect(corridorJoints(l).size).toBe(1);
   });
 });
