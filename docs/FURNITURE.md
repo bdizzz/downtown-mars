@@ -1,11 +1,13 @@
 # Furniture
 
-What's in each room type in the 3D view (docs/PLAN-M10.md). The models are in `data/furniture.json`: each item is a few boxes, cylinders and spheres, with named colours and "accent" for the room's category colour. Sizes are width × depth × height in metres. The back of an item goes against its wall. Where things go in each room is in `data/layouts.json`, edited with the dev tool (`?furnish` in the dev build).
+What's in each room type in the 3D view (docs/PLAN-M10.md). The models are in `data/furniture.json`: each item is a few boxes, cylinders and spheres, with named colours and "accent" for the room's category colour. Sizes are width × depth × height in metres. The back of an item goes against its wall. Where things go in each room is in `data/layouts.json`, edited with the dev tool (`?furnish` in the dev build). Stairwells and elevators are furnished on every floor they span, with their own templates for the top or bottom floor where those differ.
 
 ## By room
 
 | Room | Size | Items |
 | --- | --- | --- |
+| Stairwell | S | Stair flight, Stair landing, Bench, Potted plant |
+| Elevator | S | Elevator shaft, Elevator (car waiting), Call panel, Bench, Potted plant |
 | Bunk dorm | M | Bunk bed, Locker, Footlocker, Table, Stool, Rug |
 | Galley | S | Stove counter, Prep counter, Fridge, Dining table, Shelving |
 | Farm | L | Planter bed, Tool cart, Shelving, Storage tank |
@@ -54,7 +56,7 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are in `d
 | Armchair (`armchair`) | 0.9 × 0.9 × 1 | Elder care |
 | Sofa (`sofa`) | 2 × 0.9 × 0.95 | Elder care |
 | Side table (`side_table`) | 0.5 × 0.5 × 0.75 | Elder care |
-| Potted plant (`plant_pot`) | 0.6 × 0.6 × 1.35 | Admin office, Elder care, Crypt, Tiny plaza |
+| Potted plant (`plant_pot`) | 0.6 × 0.6 × 1.35 | Stairwell, Elevator, Admin office, Elder care, Crypt, Tiny plaza |
 | Stove counter (`stove_counter`) | 2.05 × 0.75 × 2.25 | Galley |
 | Prep counter (`prep_counter`) | 2.05 × 0.75 × 1 | Galley |
 | Fridge (`fridge`) | 0.9 × 0.85 × 2 | Galley |
@@ -112,9 +114,14 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are in `d
 | Medical bed (`medical_bed`) | 2.25 × 1.05 × 1.1 | Clinic |
 | Medicine cabinet (`med_cabinet`) | 1.2 × 0.55 × 1.9 | Clinic, Elder care |
 | Monitor (`monitor_stand`) | 0.6 × 0.6 × 1.8 | Clinic |
-| Bench (`bench`) | 1.8 × 0.5 × 0.5 | Crypt, Tiny plaza, Small plaza, Entrance |
+| Bench (`bench`) | 1.8 × 0.5 × 0.5 | Stairwell, Elevator, Crypt, Tiny plaza, Small plaza, Entrance |
 | Tree planter (`planter_tree`) | 1.7 × 1.6 × 3.3 | Tiny plaza, Small plaza |
 | Lamp post (`lamp_post`) | 0.5 × 0.5 × 3.15 | Tiny plaza, Small plaza |
 | Fountain (`fountain`) | 2.4 × 2.4 × 1.3 | Small plaza |
 | Memorial niches (`niche_wall`) | 3 × 0.45 × 2.6 | Crypt |
 | Memorial stone (`memorial`) | 0.9 × 0.6 × 1.1 | Crypt |
+| Stair flight (`stair_flight`) | 4.45 × 1.3 × 4 | Stairwell |
+| Stair landing (`stair_landing`) | 4.5 × 1.45 × 1.05 | Stairwell |
+| Elevator shaft (`elevator_shaft`) | 2.4 × 2.4 × 4 | Elevator |
+| Elevator (car waiting) (`elevator_car`) | 2.4 × 2.4 × 4 | Elevator |
+| Call panel (`call_panel`) | 0.35 × 0.2 × 1.6 | Elevator |

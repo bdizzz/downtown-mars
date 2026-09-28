@@ -23,25 +23,31 @@ function shapesOf(type: string): [number, number][] {
   return ((config.shapes as Record<string, [number, number][]>)[size] ?? [[1, 1]]).map(([w, d]) => [w, d]);
 }
 
-/** A hole with one room of this type and shape in the given ring, on floor 2 (so a cargo elevator's stop works too). */
+/**
+ * A hole with one room of this type and shape in the given ring, on floor 2
+ * of three dug floors (so a cargo elevator's stop works, and stairs or an
+ * elevator reach floor 3), with corridors along its sides if asked.
+ */
 export function sampleRoom(type: string, [w, d]: [number, number], ring: number, halls: { left: boolean; right: boolean }): { layout: Layout; room: RoomInstance } | null {
-  const layout = createLayout(createHole(10, 2, 6, config.geometry));
+  const layout = createLayout(createHole(10, 3, 6, config.geometry));
   const r = Math.min(ring, 7 - d);
   const placed = placeRoom(layout, type, { kind: "ring", floor: 2, ring: r, slot: 0, w, d });
   if (!placed.ok) return null;
   const room = layout.rooms.find((x) => x.id === placed.id)!;
-  const n = layout.hole.ringSlots[r - 1]!;
-  for (let k = r; k < r + d; k++) {
-    // Corridors along the room's sides, ring by ring (the outer rings' slots under the room's angle range).
-    const cells = room.cells.filter((c) => c.ring === k);
-    const m = layout.hole.ringSlots[k - 1]!;
-    const slots = cells.map((c) => c.slot);
-    if (halls.left && slots.length) layout.corridors[`R2.${k}.${Math.min(...slots)}`] = "rock";
-    if (halls.right && slots.length) layout.corridors[`R2.${k}.${(Math.max(...slots) + 1) % m}`] = "rock";
+  for (const f of new Set(room.cells.map((c) => c.floor))) {
+    for (let k = r; k < r + d; k++) {
+      // Corridors along the room's sides, ring by ring (the outer rings' slots under the room's angle range).
+      const slots = room.cells.filter((c) => c.floor === f && c.ring === k).map((c) => c.slot);
+      const m = layout.hole.ringSlots[k - 1]!;
+      if (halls.left && slots.length) layout.corridors[`R${f}.${k}.${Math.min(...slots)}`] = "rock";
+      if (halls.right && slots.length) layout.corridors[`R${f}.${k}.${(Math.max(...slots) + 1) % m}`] = "rock";
+    }
   }
-  void n;
   return { layout, room };
 }
+
+/** Which of a stairwell's or elevator's floors a template is for: any, or its top or bottom floor's own. */
+type Role = "" | "top" | "bottom";
 
 export function TemplateEditor({ room: type }: { room: string }) {
   const [templates, setTemplates] = useState<Record<string, Template>>(() => structuredClone(layouts.templates));
@@ -53,16 +59,23 @@ export function TemplateEditor({ room: type }: { room: string }) {
   const [selected, setSelected] = useState<number | null>(null);
   const [status, setStatus] = useState("");
   const [dirty, setDirty] = useState(false);
-  const key = `${type}:${shape[0]}x${shape[1]}`;
+  // Stairs and elevators span floors: each role (top floor, bottom floor) may have its own template.
+  const stacks = !!roomDef(type).stacks;
+  const [role, setRole] = useState<Role>("");
+  const base = `${type}:${shape[0]}x${shape[1]}`;
+  const key = stacks && role ? `${base}:${role}` : base;
   const template = templates[key] ?? [];
 
   useEffect(() => {
     setShapeIdx(0);
+    setRole("");
     setSelected(null);
   }, [type]);
 
   const sample = useMemo(() => sampleRoom(type, shape, ring, halls), [type, shape[0], shape[1], ring, halls.left, halls.right]);
-  const frame = sample ? frameOf(sample.layout, sample.room) : null;
+  // The floor to preview: a stack spans floors 2 (top) and 3 (bottom); "any floor" shows one without its own template.
+  const floor = !stacks ? undefined : role === "top" ? 2 : role === "bottom" ? 3 : templates[`${base}:bottom`] ? 2 : 3;
+  const frame = sample ? frameOf(sample.layout, sample.room, floor) : null;
   const fitted = useMemo(() => (frame ? fit(frame, template) : []), [frame, template]);
 
   const update = (next: Template) => {
@@ -109,6 +122,19 @@ export function TemplateEditor({ room: type }: { room: string }) {
             </button>
           ))}
         </div>
+        {stacks && (
+          <div className="dev-row">
+            Floor{" "}
+            {(["", "top", "bottom"] as const).map((r) => (
+              <button key={r} className={r === role ? "on" : ""} onClick={() => (setRole(r), setSelected(null))} title={r ? `Its own template for the ${r} floor (else the any-floor one is used)` : "Every floor without its own template"}>
+                {r ? `${r}${templates[`${base}:${r}`] ? "" : " (none)"}` : "any"}
+              </button>
+            ))}
+            {role && !templates[key] && templates[base] && (
+              <button onClick={() => update(structuredClone(templates[base]!))}>Copy from any floor</button>
+            )}
+          </div>
+        )}
         <div className="dev-row">
           Ring{" "}
           {[1, 2, 3, 4, 5, 6].map((r) => (
@@ -202,7 +228,7 @@ export function TemplateEditor({ room: type }: { room: string }) {
         ) : (
           <p className="k">This room can't go in ring {ring}.</p>
         )}
-        {sample && <Preview3D layout={sample.layout} room={sample.room} fitted={fitted} accent={accentFor(type)} />}
+        {sample && <Preview3D layout={sample.layout} room={sample.room} floor={floor} fitted={fitted} accent={accentFor(type)} />}
       </div>
     </>
   );

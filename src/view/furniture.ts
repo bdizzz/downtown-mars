@@ -49,10 +49,10 @@ export function itemsFor(roomType: string): string[] {
   return furniture.rooms[roomType] ?? [];
 }
 
-/** Rooms that get furniture: built inside the hole, and neither an empty room nor stairs or an elevator. */
+/** Rooms that get furniture: built inside the hole, and not an empty room (which leaves only empty space). Stairs and elevators are furnished floor by floor. */
 export function isFurnished(roomType: string): boolean {
   const def = roomDef(roomType);
-  return def.size !== "surface" && !def.excavationOnly && !def.stacks;
+  return def.size !== "surface" && !def.excavationOnly;
 }
 
 /** A part's colour as a hex string: its named colour, or the room's accent. */

@@ -123,6 +123,18 @@
       {"item":"stool","wall":"back","y":1.05,"repeat":{"every":2.8,"max":5},"snug":true},
       {"item":"fab_bench","wall":"center","y":-0.8,"repeat":{"every":2.8,"max":3}}
     ],
+    "elevator:1x1": [
+      {"item":"elevator_shaft","wall":"center","y":1.5},
+      {"item":"call_panel","wall":"center","x":1.7,"y":0.05,"snug":true},
+      {"item":"bench","wall":"left","y":0.1},
+      {"item":"plant_pot","wall":"right","y":0.3}
+    ],
+    "elevator:1x1:bottom": [
+      {"item":"elevator_car","wall":"center","y":1.5},
+      {"item":"call_panel","wall":"center","x":1.7,"y":0.05,"snug":true},
+      {"item":"bench","wall":"left","y":0.1},
+      {"item":"plant_pot","wall":"right","y":0.3}
+    ],
     "entrance:1x1": [
       {"item":"console","wall":"left","y":0.1},
       {"item":"suit_locker","wall":"back","y":0.05,"repeat":{"every":1.05,"max":8},"snug":true},
@@ -259,6 +271,16 @@
       {"item":"cargo_crate","wall":"center","x":-4.5,"repeat":{"every":1.7,"max":4}},
       {"item":"cargo_crate","wall":"center","x":4.5,"repeat":{"every":1.7,"max":4}},
       {"item":"crate_stack","wall":"front","x":4,"y":0.3,"repeat":{"every":3.4,"max":3}}
+    ],
+    "stairwell:1x1": [
+      {"item":"stair_flight","wall":"back","y":0.1},
+      {"item":"plant_pot","wall":"left","y":0.3},
+      {"item":"bench","wall":"right","y":0.1}
+    ],
+    "stairwell:1x1:top": [
+      {"item":"stair_landing","wall":"back","y":0.1},
+      {"item":"plant_pot","wall":"left","y":0.3},
+      {"item":"bench","wall":"right","y":0.1}
     ],
     "storeroom:1x1": [
       {"item":"cargo_crate","wall":"left","y":0.1},

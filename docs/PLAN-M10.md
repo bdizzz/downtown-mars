@@ -130,3 +130,18 @@ Decided Sep 28, 2026 (Bryon):
   - The turned bed.
 - **Browser check:** the dev save's floor 1 in Iso with walls down: the storage tank, admin desks with chairs and screens, dorm bunks, and restroom stalls, with farm planters on the floor below.
 - **README:** furnishing, and the tool.
+
+**Follow-up, stairs and elevators (Bryon, Sep 28):** "template the rest of the rooms". The rooms left bare were stairwells and elevators. Empty rooms become plain empty space once dug, so there's nothing to template; surface buildings keep their hand-built props.
+- **Floor by floor:** they're furnished on every built floor they span (`furnishedFloors`).
+  - A floor looks for its role's own template first: `type:WxD:top` for the shallowest floor, `:bottom` for the deepest, `:middle` for any between. Otherwise it uses the plain one (`templateFor`).
+  - `frameOf` takes the floor to fit on.
+  - In 3D, a picked floor hides the stack's furniture on the floors above it, item by item.
+- **New models:**
+  - A 16-step stair flight climbing 4 m along its wall, with treads in the access colour and a handrail.
+  - The top floor's landing: the opening the flight below comes up through, with a guard rail and a hazard edge.
+  - An elevator shaft frame with guide rails, and the same with the car waiting, doors shut and lit.
+  - A call panel.
+- **Templates (4):** the stairwell's flight on every floor but the top, whose landing sits in the same spot. The elevator's shaft and call panel on every floor, with the car on the bottom floor. Each has a bench and a potted plant.
+- **Dev tool:** for stairwells and elevators, Floor buttons (any, top, bottom) pick which template to edit and preview that floor. "Copy from any floor" starts a role's own template. The sample hole is now three floors deep, and its corridors run along every floor the room spans. The save endpoint accepts role keys.
+- **Tests:** templates are checked on the floors that use them; the coverage test now fails properly on a missing template.
+- **Browser check:** the stairwell's flight and the elevator's bottom floor in the tool.

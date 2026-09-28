@@ -97,12 +97,15 @@ export interface Frame {
 
 const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
 
-/** A room's frame, or null for rooms that aren't furnished (or not in a ring). */
-export function frameOf(layout: Layout, room: RoomInstance): Frame | null {
+/**
+ * A room's frame on one of its floors (by default the one it's furnished on:
+ * its own, or a cargo elevator's stop), or null for rooms that aren't
+ * furnished (or not in a ring).
+ */
+export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): Frame | null {
   if (room.at.kind !== "ring" || !isFurnished(room.type)) return null;
   const hole = layout.hole;
-  // A cargo elevator is furnished at its stop; everything else on its own floor.
-  const floor = roomDef(room.type).cargoShaft ? Math.max(...room.cells.map((c) => c.floor)) : room.at.floor;
+  const floor = onFloor ?? (roomDef(room.type).cargoShaft ? Math.max(...room.cells.map((c) => c.floor)) : room.at.floor);
   const cells = room.cells.filter((c) => c.floor === floor);
   const own = new Set(cells.map(key));
   const rings = cells.map((c) => c.ring);
@@ -339,15 +342,34 @@ export function fit(frame: Frame, template: Template): Fitted[] {
   return out;
 }
 
-/** The template for a room type and shape ("bunk_dorm:2x1"), if there is one. */
-export function templateFor(type: string, w: number, d: number, templates: Record<string, Template> = layouts.templates): Template | null {
-  return templates[`${type}:${w}x${d}`] ?? null;
+/** Which floor of a stairwell or elevator: its shallowest ("top"), its deepest ("bottom"), or one between. */
+export type FloorRole = "top" | "bottom" | "middle";
+
+/**
+ * The template for a room type and shape ("bunk_dorm:2x1"), if there is one.
+ * A floor of a stairwell or elevator looks for its role's own first
+ * ("stairwell:1x1:top"), then the plain one.
+ */
+export function templateFor(type: string, w: number, d: number, templates: Record<string, Template> = layouts.templates, role?: FloorRole): Template | null {
+  const key = `${type}:${w}x${d}`;
+  return (role && templates[`${key}:${role}`]) || templates[key] || null;
 }
 
-/** A built room's furniture: its template fitted into it (nothing for blueprints, rooms under construction, or rooms without a template). */
+/** The floors a room is furnished on, each with its role: every built floor of a stairwell or elevator, otherwise just the one. */
+export function furnishedFloors(room: RoomInstance): { floor: number; role?: FloorRole }[] {
+  if (!roomDef(room.type).stacks) return [{ floor: roomDef(room.type).cargoShaft ? Math.max(...room.cells.map((c) => c.floor)) : room.at.kind === "ring" ? room.at.floor : 1 }];
+  const floors = [...new Set(room.cells.map((c) => c.floor))].sort((a, b) => a - b);
+  return floors.map((floor, i) => ({ floor, role: i === 0 ? "top" : i === floors.length - 1 ? "bottom" : "middle" }));
+}
+
+/** A built room's furniture: its template fitted into it, floor by floor (nothing for blueprints, rooms under construction, or rooms without a template). */
 export function furnish(layout: Layout, room: RoomInstance, templates: Record<string, Template> = layouts.templates): Fitted[] {
   if (room.planned || room.building || room.at.kind !== "ring") return [];
-  const template = templateFor(room.type, room.at.w, room.at.d, templates);
-  const frame = template && frameOf(layout, room);
-  return frame && template ? fit(frame, template) : [];
+  const out: Fitted[] = [];
+  for (const { floor, role } of furnishedFloors(room)) {
+    const template = templateFor(room.type, room.at.w, room.at.d, templates, role);
+    const frame = template && frameOf(layout, room, floor);
+    if (frame && template) out.push(...fit(frame, template));
+  }
+  return out;
 }

@@ -10,7 +10,7 @@ import { orbitCamera } from "./scene";
 // as the game draws them) and its fitted furniture. One renderer lives as
 // long as the preview; the room and furniture are swapped as they change.
 
-export function Preview3D({ layout, room, fitted, accent }: { layout: Layout; room: RoomInstance; fitted: Fitted[]; accent: string }) {
+export function Preview3D({ layout, room, floor, fitted, accent }: { layout: Layout; room: RoomInstance; floor?: number; fitted: Fitted[]; accent: string }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<{ scene: THREE.Scene; render: () => void; shell: THREE.Object3D | null; items: THREE.Object3D | null; stop: () => void; key: string } | null>(null);
 
@@ -59,7 +59,9 @@ export function Preview3D({ layout, room, fitted, accent }: { layout: Layout; ro
       v.scene.remove(v.shell);
       (v.shell as THREE.Mesh).geometry.dispose();
     }
-    const shell = new THREE.Mesh(roomGeometry(layout, room.cells.filter((c) => c.floor === Math.max(...room.cells.map((x) => x.floor)))), new THREE.MeshStandardMaterial({ color: new THREE.Color(accent).lerp(new THREE.Color(0xffffff), 0.35), side: THREE.DoubleSide, roughness: 0.9 }));
+    // The floor being furnished: the one asked for, else the room's deepest (a cargo elevator's stop).
+    const onFloor = floor ?? Math.max(...room.cells.map((x) => x.floor));
+    const shell = new THREE.Mesh(roomGeometry(layout, room.cells.filter((c) => c.floor === onFloor)), new THREE.MeshStandardMaterial({ color: new THREE.Color(accent).lerp(new THREE.Color(0xffffff), 0.35), side: THREE.DoubleSide, roughness: 0.9 }));
     v.shell = shell;
     v.scene.add(shell);
     const box = new THREE.Box3().setFromObject(shell);
@@ -72,7 +74,7 @@ export function Preview3D({ layout, room, fitted, accent }: { layout: Layout; ro
       (v as unknown as { orbit: (t: THREE.Vector3, d: number, th: number) => void }).orbit(centre.setY(box.min.y), box.getSize(new THREE.Vector3()).length() * 0.8, facing);
     }
     v.render();
-  }, [layout, room, accent]);
+  }, [layout, room, floor, accent]);
 
   // The furniture, whenever the fit changes.
   useEffect(() => {

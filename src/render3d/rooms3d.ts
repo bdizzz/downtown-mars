@@ -424,15 +424,15 @@ function rockFaces(layout: Layout, topFloor: number | null): number[] {
  * corridors along it). Null when it has none.
  */
 const furnitureCache = new Map<string, THREE.Group>();
-function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, color: number): THREE.Group | null {
-  const key = `furniture:${shapeKey}`;
+function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, color: number, topFloor: number | null): THREE.Group | null {
+  // Stairs and elevators are furnished on several floors: above a chosen floor, theirs go too.
+  const key = `furniture:${shapeKey}:${topFloor ?? "all"}`;
   let g = furnitureCache.get(key);
   if (!g) {
-    const fitted = furnish(layout, room);
+    const fitted = furnish(layout, room).filter((f) => topFloor === null || Math.round(-f.y / FLOOR_H) >= topFloor);
     if (!fitted.length) return null;
     g = furnitureMeshes(fitted, `#${color.toString(16).padStart(6, "0")}`);
-    // Which floor it's on (for hiding floors above a chosen one), and its cache key.
-    g.userData = { cached: true, key, floor: Math.round(-fitted[0]!.y / FLOOR_H) };
+    g.userData = { cached: true, key };
     g.traverse((o) => (o.userData.cached = true));
     furnitureCache.set(key, g);
   }
@@ -878,8 +878,8 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     group.add(edges);
     // Its furniture, once it's built (not in x-ray's faded ring 1, nor above a chosen floor).
     if (!faint && !whole.planned && !whole.building) {
-      const furniture = roomFurniture(layout, whole, shape.key, color);
-      if (furniture && (topFloor === null || furniture.userData.floor >= topFloor)) {
+      const furniture = roomFurniture(layout, whole, shape.key, color, topFloor);
+      if (furniture) {
         used.add(furniture.userData.key);
         group.add(furniture);
       }

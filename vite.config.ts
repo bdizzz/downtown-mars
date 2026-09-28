@@ -40,7 +40,7 @@ function saveLayouts(): Plugin {
             const templates = JSON.parse(body) as Record<string, Record<string, unknown>[]>;
             const items = (JSON.parse(readFileSync(new URL("./data/furniture.json", import.meta.url), "utf8")) as { items: Record<string, unknown> }).items;
             for (const [key, list] of Object.entries(templates)) {
-              if (!/^[a-z_]+:\d+x\d+$/.test(key) || !Array.isArray(list)) throw new Error(`bad template "${key}"`);
+              if (!/^[a-z_]+:\d+x\d+(:(top|bottom|middle))?$/.test(key) || !Array.isArray(list)) throw new Error(`bad template "${key}"`);
               for (const p of list) if (!(String(p.item) in items) || !walls.has(String(p.wall))) throw new Error(`bad placement in "${key}": ${JSON.stringify(p)}`);
             }
             const note = (JSON.parse(readFileSync(file, "utf8")) as { _note?: string })._note ?? "";

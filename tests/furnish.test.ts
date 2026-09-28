@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Layout, type Location } from "../src/sim/placement";
-import { FIT, fit, frameOf, furnish, inside, layouts, place, tooClose, unplace, type Template } from "../src/view/furnish";
+import { FIT, fit, frameOf, furnish, furnishedFloors, inside, layouts, place, templateFor, tooClose, unplace, type Template } from "../src/view/furnish";
 import { isFurnished, itemDef, itemsFor } from "../src/view/furniture";
 import { roomDefs } from "../src/sim/rooms";
 
@@ -136,10 +136,14 @@ describe("the templates", () => {
     for (const def of roomDefs) {
       if (!isFurnished(def.id)) continue;
       for (const [w, d] of shapes[def.size] ?? []) {
-        const t = layouts.templates[`${def.id}:${w}x${d}`];
-        expect(t, `${def.id}:${w}x${d}`).toBeDefined();
+        const t = templateFor(def.id, w, d);
+        expect(t, `${def.id}:${w}x${d}`).not.toBeNull();
         for (const p of t!) expect(itemsFor(def.id), `${def.id}: ${p.item}`).toContain(p.item);
       }
+    }
+    // Floor-role templates too.
+    for (const [key, t] of Object.entries(layouts.templates)) {
+      for (const p of t) expect(itemsFor(key.split(":")[0]!), `${key}: ${p.item}`).toContain(p.item);
     }
   });
 
@@ -149,12 +153,19 @@ describe("the templates", () => {
       const [w, d] = shape.split("x").map(Number) as [number, number];
       const used = new Set<number>();
       for (let r = 1; r + d - 1 <= 6; r++) {
-        const layout = createLayout(createHole(10, 2, 6, config.geometry));
+        // Three floors dug: a stairwell or elevator on floor 2 reaches floor 3.
+        const layout = createLayout(createHole(10, 3, 6, config.geometry));
         const placed = placeRoom(layout, type, { kind: "ring", floor: 2, ring: r, slot: 0, w, d });
         expect(placed.ok, `${key} in ring ${r}`).toBe(true);
-        const items = fit(frameOf(layout, layout.rooms.find((x) => x.id === placed.id)!)!, t);
-        expect(items.length, `${key} in ring ${r}`).toBeGreaterThanOrEqual(3);
-        items.forEach((i) => used.add(i.placement));
+        const room = layout.rooms.find((x) => x.id === placed.id)!;
+        // The floors this template furnishes (a stack's top or bottom floor may have its own).
+        const floors = furnishedFloors(room).filter(({ role }) => templateFor(type, w, d, layouts.templates, role) === t);
+        expect(floors.length, key).toBeGreaterThan(0);
+        for (const { floor } of floors) {
+          const items = fit(frameOf(layout, room, floor)!, t);
+          expect(items.length, `${key} in ring ${r}`).toBeGreaterThanOrEqual(3);
+          items.forEach((i) => used.add(i.placement));
+        }
       }
       t.forEach((p, i) => expect(used.has(i), `${key} #${i} ${p.item} never fits`).toBe(true));
     }
