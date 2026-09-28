@@ -16,7 +16,8 @@ import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
 export type SimCommand =
-  | { type: "build"; room: string; at: Location }
+  /** `confirmed`: the player has agreed to fill in any corridors inside the footprint. */
+  | { type: "build"; room: string; at: Location; confirmed?: boolean }
   | { type: "demolish"; roomId: number }
   | { type: "undoBuild"; roomId: number }
   | { type: "setDrill"; active: boolean }
@@ -92,6 +93,24 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     case "build": {
       const check = checkBuild(layout, state.resources, cmd.room, cmd.at, config, holeGates(state));
       if (!check.ok) return { ok: false, reason: check.reason };
+      if (check.destroys?.length) {
+        const n = check.destroys.length;
+        if (!cmd.confirmed) return { ok: false, reason: `It would fill in ${n} corridor ${n === 1 ? "segment" : "segments"}: confirm first` };
+        // The room's walls take the corridors' place: they're gone, and any not yet built are refunded.
+        for (const id of dropCorridors(state, check.destroys, config)) {
+          for (const [r, v] of Object.entries(corridorCost(layout.hole, edgeById(layout.hole, id)!, layout.corridors[id]!, config))) state.resources[r] = (state.resources[r] ?? 0) + v;
+        }
+        for (const id of check.destroys) {
+          delete layout.corridors[id];
+          if (layout.corridorsFilling?.[id] !== undefined) delete layout.corridorsFilling[id];
+        }
+        // Queued fill-ins of those corridors have nothing left to do.
+        const gone = new Set(check.destroys);
+        if (state.construction) {
+          for (const j of state.construction.queue) if (j.kind === "fill") j.edges = (j.edges ?? []).filter((id) => !gone.has(id));
+          state.construction.queue = state.construction.queue.filter((j) => j.kind !== "fill" || (j.edges ?? []).length);
+        }
+      }
       const r = placeRoom(layout, cmd.room, cmd.at);
       if (!r.ok) return { ok: false, reason: r.reason };
       charge(state.resources, cmd.room);

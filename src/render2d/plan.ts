@@ -8,7 +8,7 @@ import type { DrillView } from "../sim/snapshot";
 import { FLOOR_H, openShaftRadius, pickAt, ringRadii, slotAngles } from "../render3d/cylinder";
 import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
-import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool } from "../view/types";
+import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { drawGlyph, drawPlus, shade } from "./art";
 import { constructionStripes, corridorStrip } from "./corridorArt";
 import { config } from "../sim/config";
@@ -362,6 +362,14 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     const h = layout.hole;
     const sel = selected !== null ? layout.rooms.find((r) => r.id === selected) : undefined;
     if (sel) markRoom(sel, C.selected);
+    // A warning is up: the corridors it would fill in, and whatever they'd cut off, in red.
+    if (warning) {
+      for (const id of warning.edges) ghostEdge(id, C.bad, null, 0.45);
+      for (const id of warning.rooms) {
+        const r = layout.rooms.find((x) => x.id === id);
+        if (r) markRoom(r, C.bad);
+      }
+    }
     // A snaked chain (while dragging, or waiting for confirmation): every border on this floor highlighted.
     const shown = snaking ? { edges: chain.edges, erase: chainErase } : proposal;
     if (shown?.edges.length) {
@@ -503,6 +511,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   let chain: Chain = EMPTY_CHAIN;
   let chainErase = false;
   let proposal: Proposal | null = null;
+  let warning: Warning | null = null;
 
   function snake(): void {
     if (!layout) return;
@@ -683,6 +692,10 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     },
     setProposal(p) {
       proposal = p;
+      refreshHover(true);
+    },
+    setWarning(w) {
+      warning = w;
       refreshHover(true);
     },
     setFloor(f) {

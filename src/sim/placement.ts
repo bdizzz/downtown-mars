@@ -1,6 +1,6 @@
 import { config, type Priority, type SimConfig } from "./config";
 import { overlappingSlots, ringSize, wrapSlot, type Hole } from "./geometry";
-import { recomputeAccess, wouldConnect } from "./corridors";
+import { corridorsInside, recomputeAccess, strandedBy, wouldConnect } from "./corridors";
 import { isRoomType, roomDef } from "./rooms";
 
 // Where rooms can go. A ring room is anchored at its innermost ring and
@@ -77,6 +77,9 @@ export type CheckResult =
       merges?: number[];
       /** What the placement does, when it isn't obvious ("Extend stairs to cover floors 1–3"). */
       note?: string;
+      /** Corridors inside the footprint that placing it would fill in, and what that would cut off. */
+      destroys?: string[];
+      strands?: { rooms: number[]; corridors: string[] };
     }
   | { ok: false; reason: string; cells: Cell[]; surfaceCells: number[] };
 
@@ -221,6 +224,8 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
   }
   // Rooms can go anywhere; one no corridor reaches yet just won't work until one does.
   const unconnected = !def.public && !wouldConnect(layout, cells);
+  // A room laid over corridors fills them in; say so, and what it would cut off.
+  const destroys = corridorsInside(layout, cells);
   return {
     ok: true,
     cells,
@@ -228,6 +233,7 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
     planned: bottom > hole.floors,
     ...(unconnected ? { unconnected } : {}),
     ...(merges.size ? { merges: [...merges].sort((a, b) => a - b), note } : {}),
+    ...(destroys.length ? { destroys, strands: strandedBy(layout, destroys) } : {}),
   };
 }
 

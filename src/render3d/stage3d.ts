@@ -8,7 +8,7 @@ import { HEAT } from "../render2d/palette";
 import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
-import type { HoverInfo, Pick, Proposal, Quality, Stage, StageOptions, Tool } from "../view/types";
+import type { HoverInfo, Pick, Proposal, Quality, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { FLOOR_H, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
@@ -611,6 +611,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!layout) return;
     const sel = selected !== null ? layout.rooms.find((r) => r.id === selected) : undefined;
     if (sel) markRoom(sel, HOVER.selected);
+    // A warning is up: the corridors it would fill in, and whatever they'd cut off, in red.
+    if (warning) {
+      for (const id of warning.edges) ghostEdge(id, HOVER.bad);
+      for (const id of warning.rooms) {
+        const r = layout.rooms.find((x) => x.id === id);
+        if (r) markRoom(r, HOVER.bad);
+      }
+    }
     // A snaked chain (while dragging, or waiting for confirmation): every border highlighted.
     const shown = snaking ? { edges: chain.edges, erase: chainErase } : proposal;
     if (shown?.edges.length) {
@@ -738,6 +746,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let chain: Chain = EMPTY_CHAIN;
   let chainErase = false;
   let proposal: Proposal | null = null;
+  let warning: Warning | null = null;
 
   function edgeUnderPointer(): Edge | null {
     if (!layout || !pointer) return null;
@@ -1073,6 +1082,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     },
     setProposal(p) {
       proposal = p;
+      refreshHover(true);
+    },
+    setWarning(w) {
+      warning = w;
       refreshHover(true);
     },
     setQuality(q) {

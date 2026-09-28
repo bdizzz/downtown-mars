@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { createStage } from "../render2d/stage";
 import { createPlanStage } from "../render2d/plan";
 import type { ViewMode } from "./settings";
-import type { HoverInfo, Proposal, Quality, Stage, StageOptions, Tool } from "../view/types";
+import type { HoverInfo, PendingBuild, Proposal, Quality, Stage, StageOptions, Tool, Warning } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import type { Snapshot } from "../sim/snapshot";
 
@@ -24,6 +24,9 @@ interface Props {
   /** A snaked corridor chain waiting for confirmation, shown until answered. */
   proposal: Proposal | null;
   onPropose: (p: Proposal) => void;
+  /** A warning to outline in red (corridors to be filled in, what they'd cut off). */
+  warning: Warning | null;
+  onConfirmBuild: (b: PendingBuild) => void;
   quality: Quality;
   /** The chosen view couldn't start (e.g. no WebGL for 3D). */
   onViewError: (message: string) => void;
@@ -37,12 +40,12 @@ const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => P
 };
 
 /** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
-export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, quality, onViewError }: Props) {
+export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, quality, onViewError }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
-  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, floor, proposal, onPropose, onViewError });
-  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, floor, proposal, onPropose, onViewError };
+  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, floor, proposal, onPropose, warning, onConfirmBuild, onViewError });
+  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, floor, proposal, onPropose, warning, onConfirmBuild, onViewError };
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +57,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
       onInvalid: (reason) => props.current.onInvalid(reason),
       onError: (message) => props.current.onViewError(message),
       onPropose: (p) => props.current.onPropose(p),
+      onConfirmBuild: (b) => props.current.onConfirmBuild(b),
     }).then((stage) => {
       // StrictMode mounts twice; the first stage may resolve after cleanup.
       if (cancelled) return stage.destroy();
@@ -65,6 +69,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
       stage.setQuality(props.current.quality);
       stage.setFloor(props.current.floor);
       stage.setProposal(props.current.proposal);
+      stage.setWarning(props.current.warning);
       if (props.current.snapshot) stage.update(props.current.snapshot);
     }, (err: unknown) => {
       if (!cancelled) props.current.onViewError(err instanceof Error ? err.message : String(err));
@@ -107,6 +112,10 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
   useEffect(() => {
     stageRef.current?.setProposal(proposal);
   }, [proposal]);
+
+  useEffect(() => {
+    stageRef.current?.setWarning(warning);
+  }, [warning]);
 
   return <div ref={hostRef} className="pixi-host" />;
 }

@@ -1,5 +1,5 @@
 import type { SimCommand } from "../sim/commands";
-import type { CheckResult, RoomInstance } from "../sim/placement";
+import type { CheckResult, Location, RoomInstance } from "../sim/placement";
 import type { Snapshot } from "../sim/snapshot";
 
 // What the UI and a view (2D or 3D) say to each other. Both views implement
@@ -47,7 +47,23 @@ export interface Proposal {
   erase: boolean;
 }
 
+/** A room waiting on the player's say-so because it would fill in corridors. */
+export interface PendingBuild {
+  room: string;
+  at: Location;
+  destroys: string[];
+  strands: { rooms: number[]; corridors: string[] };
+}
+
+/** What to outline in red while a warning is up: corridors to be lost, and what they'd cut off. */
+export interface Warning {
+  edges: string[];
+  rooms: number[];
+}
+
 export interface StageOptions {
+  /** A room would fill in corridors: ask first. */
+  onConfirmBuild?: (b: PendingBuild) => void;
   /** A corridor chain was snaked out and the button released: ask the player to confirm it. */
   onPropose?: (p: Proposal) => void;
   onHover?: (info: HoverInfo | null) => void;
@@ -78,6 +94,8 @@ export interface Stage {
   setFloor(floor: number | null): void;
   /** The chain the confirm popup is asking about, kept on show until it's answered (null: none). */
   setProposal(p: Proposal | null): void;
+  /** Outline these in red while a warning popup is up (null: none). */
+  setWarning(w: Warning | null): void;
   /** Detail level; views that have nothing to trade may ignore it. */
   setQuality(q: Quality): void;
   destroy(): void;

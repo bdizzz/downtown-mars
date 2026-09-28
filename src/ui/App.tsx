@@ -27,7 +27,8 @@ import { play, setAudioSettings, unlockAudio } from "../audio/sound";
 import { useSettings, VIEW_MODES } from "./settings";
 import { FloorPicker, shownFloor } from "./FloorPicker";
 import { CorridorConfirm } from "./CorridorConfirm";
-import type { Proposal } from "../view/types";
+import type { PendingBuild, Proposal } from "../view/types";
+import { BuildConfirm } from "./BuildConfirm";
 import { useSim } from "./useSim";
 import { useSounds } from "./useSounds";
 
@@ -40,6 +41,8 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [overlay, setOverlay] = useState<string | null>(null);
+  /** A room waiting on the player's say-so because it would fill in corridors. */
+  const [pendingBuild, setPendingBuild] = useState<PendingBuild | null>(null);
   /** A snaked corridor chain waiting for the player to confirm. */
   const [proposal, setProposal] = useState<Proposal | null>(null);
   /** The floor the plan and 3D views focus on; null shows every floor in 3D. */
@@ -401,7 +404,20 @@ export function App() {
               onCancel={() => setProposal(null)}
             />
           )}
+          {snapshot && pendingBuild && (
+            <BuildConfirm
+              build={pendingBuild}
+              layout={snapshot.layout}
+              onAccept={() => {
+                onCommand({ type: "build", room: pendingBuild.room, at: pendingBuild.at, confirmed: true });
+                setPendingBuild(null);
+              }}
+              onCancel={() => setPendingBuild(null)}
+            />
+          )}
           <ViewHost
+            warning={pendingBuild ? { edges: [...pendingBuild.destroys, ...pendingBuild.strands.corridors], rooms: pendingBuild.strands.rooms } : null}
+            onConfirmBuild={setPendingBuild}
             proposal={proposal}
             onPropose={setProposal}
             floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}

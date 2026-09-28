@@ -78,7 +78,11 @@ export function StatusBar({ info, snapshot, notice, overlay }: Props) {
       const blueprint = info.check.planned ? "Blueprint: builds when this floor is dug · " : "";
       const cutOff = info.check.unconnected ? "⚠ No corridor reaches here yet: it won't work until one does · " : "";
       const note = info.check.note ? `＋ ${info.check.note} · ` : "";
-      text = `${note}${cutOff}${blueprint}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
+      const d = info.check.destroys?.length ?? 0;
+      const lost = (info.check.strands?.rooms.length ?? 0) + (info.check.strands?.corridors.length ?? 0);
+      if (d) bad = true;
+      const over = d ? `⚠ Fills in ${d} corridor ${d === 1 ? "segment" : "segments"}${lost ? `, cutting off ${lost} more` : ""} · ` : "";
+      text = `${over}${note}${cutOff}${blueprint}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
     } else if (info.room) {
       const def = roomDef(info.room.type);
       const blueprint = info.room.planned ? " (blueprint)" : "";

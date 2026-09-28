@@ -293,3 +293,31 @@ describe("stacking stairs and elevators", () => {
     expect(checkPlacement(s.layout, "elevator", ring(8, 1, 5))).toMatchObject({ ok: false, reason: "Elevator can span at most 8 floors" });
   });
 });
+
+describe("placing a room over corridors", () => {
+  it("reports the corridors it would fill in, and needs confirming", () => {
+    const s = rich();
+    draw(s, ["R1.1.3"]); // a spoke between ring-1 slots 2 and 3
+    const check = checkPlacement(s.layout, "bunk_dorm", ring(1, 1, 2, 2)); // slots 2–3: the spoke is inside it
+    expect(check).toMatchObject({ ok: true, destroys: ["R1.1.3"] });
+    expect(applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 2, 2) })).toMatchObject({ ok: false, reason: expect.stringMatching(/fill in 1 corridor segment/) });
+    expect(applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 2, 2), confirmed: true }).ok).toBe(true);
+    expect(s.layout.corridors["R1.1.3"]).toBeUndefined();
+  });
+
+  it("a corridor only along its outside isn't touched", () => {
+    const s = rich();
+    draw(s, ["R1.1.2"]);
+    expect(checkPlacement(s.layout, "bunk_dorm", ring(1, 1, 2, 2))).not.toHaveProperty("destroys");
+  });
+
+  it("flags what filling them in would cut off", () => {
+    const s = rich();
+    // A spoke at slot 3 out to ring 2, then along to a clinic in ring 2 behind slot 3.
+    const clinic = build(s, "clinic", ring(1, 2, 3));
+    draw(s, ["R1.1.3", "A1.1.1/3"]);
+    expect(s.layout.rooms.find((r) => r.id === clinic.id)!.connected).toBe(true);
+    const check = checkPlacement(s.layout, "bunk_dorm", ring(1, 1, 2, 2));
+    expect(check).toMatchObject({ ok: true, destroys: ["R1.1.3"], strands: { rooms: [clinic.id], corridors: ["A1.1.1/3"] } });
+  });
+});

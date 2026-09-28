@@ -9,7 +9,7 @@ import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
 import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
-import type { HoverInfo, Proposal, Stage, StageOptions, Tool } from "../view/types";
+import type { HoverInfo, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import type { Happiness } from "../sim/happiness";
 import type { DrillView, Snapshot } from "../sim/snapshot";
 import {
@@ -543,6 +543,14 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     const sel = selected !== null ? layout.rooms.find((r) => r.id === selected) : undefined;
     if (sel) outlineRoom(sel, C.selected, 3);
     const h = layout.hole;
+    // A warning is up: the corridors it would fill in, and whatever they'd cut off, in red.
+    if (warning) {
+      for (const id of warning.edges) ghostEdge(id, C.bad, null, 0.45);
+      for (const id of warning.rooms) {
+        const r = layout.rooms.find((x) => x.id === id);
+        if (r) outlineRoom(r, C.bad, 4);
+      }
+    }
     // A snaked chain (while dragging, or waiting for confirmation): every border highlighted.
     const shown = snaking ? { edges: chain.edges, erase: chainErase } : proposal;
     if (shown?.edges.length) {
@@ -741,6 +749,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let chain: Chain = EMPTY_CHAIN;
   let chainErase = false;
   let proposal: Proposal | null = null;
+  let warning: Warning | null = null;
 
   function edgeUnderPointer(): Edge | null {
     if (!layout || !pointer) return null;
@@ -916,6 +925,11 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     },
     setProposal(p) {
       proposal = p;
+      hoverKey = "";
+      refreshHover();
+    },
+    setWarning(w) {
+      warning = w;
       hoverKey = "";
       refreshHover();
     },

@@ -130,3 +130,10 @@ Each adds `constructionBandwidth` times its running rate (staffing × morale), s
   - **Unrolled and plan views:** the stripes are a shared Pixi fill pattern. The % sits on a label layer that updates as the crews work, and the unrolled view keeps its progress bar.
   - **3D:** room geometry now carries texture coordinates taken from position, so a striped material tiles across walls and floors. A "45%" label floats over each room under construction.
   - **Browser check:** a construction office in the dev save at 32% (unrolled) and 33% (3D).
+- **Building over corridors:** a room whose footprint has corridors inside it (between two of its own cells) would fill them in.
+  - The placement check lists them (`destroys`), and what filling them in would cut off from the shaft (`strands`: rooms and corridors linked now and not after, from `strandedBy`, computed on a copy of the layout).
+  - The build command refuses unless `confirmed`. Confirmed, the corridors are gone at once: the room's walls take their place. Any not yet built are refunded, and queued fill-ins of them are dropped.
+  - Hovering says "⚠ Fills in 1 corridor segment, cutting off 2 more".
+  - Clicking opens a "Build over corridors?" popup naming what loses access (Build anyway with Enter, Cancel with Escape). Meanwhile every view outlines the corridors to be lost, the corridors cut off and the rooms cut off, in red (`setWarning`).
+  - A corridor only along the room's outside is untouched, as before (it carves the room).
+  - Tested: reported and refused until confirmed; outside corridors untouched; what's stranded. In the browser: a corridor carved through rock in ring 3, then a dorm placed over it.

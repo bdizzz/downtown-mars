@@ -144,9 +144,8 @@ function opensOnto(layout: Layout, cells: Cell[], sets: Sets, publicEdges: Map<s
   });
 }
 
-/** Recompute which rooms and corridors reach the shaft. */
-export function recomputeAccess(layout: Layout): void {
-  layout.corridors ??= {};
+/** Which corridors are linked to the shaft and which rooms are connected, without changing anything. */
+function computeAccess(layout: Layout): { linked: Record<string, boolean>; connected: Map<number, boolean> } {
   const { sets, publicEdges } = network(layout);
   const shaft = sets.find(SHAFT);
   const linked: Record<string, boolean> = {};
@@ -155,10 +154,42 @@ export function recomputeAccess(layout: Layout): void {
     const built = layout.corridorsBuilding?.[id] === undefined;
     linked[id] = built && !!e && e.floor <= layout.hole.floors && sets.find(edgeVertices(layout.hole, e)[0]) === shaft;
   }
+  const connected = new Map<number, boolean>();
+  for (const r of layout.rooms) connected.set(r.id, r.at.kind === "surface" || opensOnto(layout, r.cells, sets, publicEdges));
+  return { linked, connected };
+}
+
+/** Recompute which rooms and corridors reach the shaft. */
+export function recomputeAccess(layout: Layout): void {
+  layout.corridors ??= {};
+  const { linked, connected } = computeAccess(layout);
   layout.corridorLinked = linked;
-  for (const r of layout.rooms) {
-    r.connected = r.at.kind === "surface" || opensOnto(layout, r.cells, sets, publicEdges);
+  for (const r of layout.rooms) r.connected = connected.get(r.id)!;
+}
+
+/** What filling these corridors in would cut off: rooms now connected, and corridors now linked, that no longer would be. */
+export function strandedBy(layout: Layout, removed: string[]): { rooms: number[]; corridors: string[] } {
+  if (!removed.length) return { rooms: [], corridors: [] };
+  const gone = new Set(removed);
+  const after = computeAccess({ ...layout, corridors: Object.fromEntries(Object.entries(layout.corridors).filter(([id]) => !gone.has(id))) });
+  return {
+    rooms: layout.rooms.filter((r) => r.connected && !after.connected.get(r.id)).map((r) => r.id),
+    corridors: Object.keys(layout.corridors).filter((id) => !gone.has(id) && layout.corridorLinked?.[id] && !after.linked[id]),
+  };
+}
+
+/** Corridors lying inside a group of cells (between two of them): what a room placed there would fill in. */
+export function corridorsInside(layout: Layout, cells: Cell[]): string[] {
+  const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+  const own = new Set(cells.map(key));
+  const out = new Set<string>();
+  for (const c of cells) {
+    for (const e of cellEdges(layout.hole, c)) {
+      if (!layout.corridors[e.id]) continue;
+      if (edgeSides(layout.hole, e).every((x) => x && own.has(key(x)))) out.add(e.id);
+    }
   }
+  return [...out];
 }
 
 /** Would a room on these cells be connected as things stand? For the placement preview. */
