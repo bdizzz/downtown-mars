@@ -191,3 +191,24 @@ Decided Sep 28, 2026 (Bryon):
   - You walk through the door and on between the bunk partitions until a bunk stops you.
   - Turning round, you look out across the shaft.
 - **Dev:** `window.__stage3d.walker` (dev builds only) holds the first-person position and heading, for putting a walker somewhere.
+
+**Follow-up, a cozy look (Bryon, Sep 28):** "let's go cozy", with a settings screen to scale the effects for laptops, defaulting to higher-end.
+- **Post-processing** (`src/render3d/look.ts`) uses Three's bundled passes, with nothing new installed. The scene renders once into an antialiased target (4× MSAA) whose depth is kept; then:
+  - **Soft shadows (ambient occlusion)** are worked out from that depth, so walls lowered by walls down cast none. GTAOPass given outside depth still makes and reads its own normals target, so a small subclass keeps that at one pixel.
+  - **Haze** is warm dust that thickens below the floor in view. In Iso it swallows the floors under the one you're looking at. From inside the hole (first person, the shaft, free look), far-off things fade too, past 15 m. The sky stays clear.
+  - **Glow** (bloom) is limited to things brighter than full white: windows at night, lamps, screens and furnaces.
+  - **Miniature blur** is a tilt-shift in Iso only.
+  - Then tone mapping, and a **warm grade**: plum shadows, apricot highlights, a little more colour, a soft S-curve and a vignette.
+  - With every effect off, the scene renders straight to the screen as before.
+- **Reflections:** a soft studio environment, made once, for metal, glass and screens.
+- **Graphics settings** (`src/view/graphics.ts`) have a sharpness (pixel ratio 1, 1.5 or 2), colonists and dust, reflections, and an amount from off to full for each effect.
+  - Presets: Low (no effects, 1×), Medium (glow, haze and colour at 1.5×) and High (everything at 2×, the default).
+  - Changing one effect makes it Custom.
+  - They replace the old "3D detail" choice, and a saved Low carries over as the Low preset.
+  - Stored settings are cleaned on load (clamped, with anything missing filled in).
+- **Settings screen:** a 3D graphics section with the preset, sharpness, a slider per effect, and checkboxes.
+- **Labels** no longer write depth, so they don't shade what's around them.
+- **Dev:** `window.__stage3d.setGraphics({...})` tries settings without saving them, and `.look` exposes the passes.
+- **Tests:** presets and Custom, which settings need post-processing, cleaning stored settings, and carrying over the old setting.
+- **Browser check:** Iso and first person with each effect on and off, the raw occlusion buffer, and the settings screen switching presets (the view follows, and a slider makes it Custom).
+- **Build:** Three's chunk is now just over Vite's 600 kB warning (614 kB).

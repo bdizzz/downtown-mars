@@ -1,3 +1,4 @@
+import type { Graphics } from "./graphics";
 import type { SimCommand } from "../sim/commands";
 import type { CheckResult, Location, RoomInstance } from "../sim/placement";
 import type { Snapshot } from "../sim/snapshot";
@@ -79,7 +80,7 @@ export interface StageOptions {
   onWalking?: (walking: boolean) => void;
 }
 
-export type Quality = "high" | "low";
+export type { Graphics } from "./graphics";
 
 export interface Stage {
   update(snapshot: Snapshot): void;
@@ -99,7 +100,7 @@ export interface Stage {
   /** Outline these in red while a warning popup is up (null: none). */
   setWarning(w: Warning | null): void;
   /** Detail level; views that have nothing to trade may ignore it. */
-  setQuality(q: Quality): void;
+  setGraphics(g: Graphics): void;
   destroy(): void;
 }
 

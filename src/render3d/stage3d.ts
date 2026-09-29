@@ -8,7 +8,9 @@ import { HEAT } from "../render2d/palette";
 import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
-import type { HoverInfo, Pick, Proposal, Quality, Stage, StageOptions, Tool, Warning } from "../view/types";
+import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
+import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
+import { Look } from "./look";
 import { FLOOR_H, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
@@ -100,8 +102,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   } catch {
     throw new Error("3D needs WebGL, which this browser or device doesn't provide.");
   }
-  const MAX_PIXEL_RATIO = 2;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
   // Filmic tone mapping keeps the lamp-lit wall from blowing out close up.
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.8;
@@ -111,6 +111,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, host.clientWidth / Math.max(1, host.clientHeight), 0.1, 2000);
+  // What's drawn over the scene (occlusion, haze, glow, grading), per the graphics settings.
+  const look = new Look(renderer, scene, camera);
 
   const hemi = new THREE.HemisphereLight(0xffe6cc, 0x2a1510, 1.1);
   scene.add(hemi);
@@ -178,7 +180,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const stats = { buildMs: 0, frameMs: 0, calls: 0, triangles: 0 };
   const walkers = new Walkers();
   const dust = new Dust();
-  let quality: Quality = "high";
+  let graphics: Graphics = DEFAULT_GRAPHICS;
   /** Real time (ms) the sim last moved; walkers stop when the game is paused. */
   let lastTickChange = 0;
   let lastTick = -1;
@@ -248,6 +250,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     walker.pitch = Math.min(FREE.maxPitch, Math.max(-FREE.maxPitch, walker.pitch));
     const bottom = -depth() + EYE_HEIGHT;
     cam.y = Math.min(FLOOR_H * 3, Math.max(bottom, cam.y));
+  }
+
+  /** The height of the floor in view, below which things fade into the haze. */
+  function hazeFocus(): number {
+    if (view.mode === "walk") return floorSpan(walker.floor)[0];
+    if (view.mode === "iso") return floorSpan(cut() ?? 1)[0];
+    if (view.mode === "top") return cut() === null ? 0 : floorSpan(cut()!)[0];
+    return Math.min(0, camera.position.y - FLOOR_H);
   }
 
   function applyCamera(): void {
@@ -518,7 +528,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     g.fillText(text, 72, 25);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
-    m = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+    m = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true });
     percentMats.set(text, m);
     return m;
   }
@@ -574,7 +584,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     g.stroke();
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
-    plusMat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+    plusMat = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true });
     return plusMat;
   }
 
@@ -1149,6 +1159,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const h = host.clientHeight;
     if (!w || !h) return;
     renderer.setSize(w, h);
+    look.resize();
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     dirty = true;
@@ -1167,7 +1178,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       applyCamera();
       updateReadout();
     }
-    if (quality === "high" && hole && ambient >= 1 / AMBIENT_FPS) {
+    if (graphics.life && hole && ambient >= 1 / AMBIENT_FPS) {
       dust.step(ambient);
       if (performance.now() - lastTickChange < 400) walkers.step(ambient);
       ambient = 0;
@@ -1176,7 +1187,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!dirty) return;
     dirty = false;
     const t0 = performance.now();
-    renderer.render(scene, camera);
+    look.setView(hazeFocus(), view.mode === "walk" || view.mode === "shaft" || view.mode === "free", view.mode === "iso");
+    look.render();
     stats.frameMs = performance.now() - t0;
     stats.calls = renderer.info.render.calls;
     stats.triangles = renderer.info.render.triangles;
@@ -1195,14 +1207,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     });
     if (groundMesh) groundMesh.visible = cut() === null;
     if (lamps) lamps.visible = cut() === null;
-    walkers.mesh.visible = quality === "high" && cut() === null;
-    dust.points.visible = quality === "high" && cut() === null;
+    walkers.mesh.visible = graphics.life && cut() === null;
+    dust.points.visible = graphics.life && cut() === null;
     dirty = true;
   }
 
-  function applyQuality(): void {
-    renderer.setPixelRatio(quality === "high" ? Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO) : 1);
+  function applyGraphics(): void {
+    look.setGraphics(graphics);
     renderer.setSize(host.clientWidth, host.clientHeight);
+    look.resize();
     applyFloorCut();
   }
   scene.add(walkers.mesh, dust.points);
@@ -1232,6 +1245,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           },
           // First person's position and heading, to put a walker somewhere.
           walker,
+          // The post-processing chain, to inspect its passes.
+          look,
+          // Try graphics settings from the console (not saved).
+          setGraphics(g: Partial<Graphics>) {
+            graphics = { ...graphics, ...g };
+            applyGraphics();
+          },
         };
       }
       resources = snapshot.resources;
@@ -1323,9 +1343,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       warning = w;
       refreshHover(true);
     },
-    setQuality(q) {
-      quality = q;
-      applyQuality();
+    setGraphics(g) {
+      graphics = g;
+      applyGraphics();
     },
     setFloor(f) {
       if (f === pickedFloor) return;
@@ -1373,6 +1393,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         m.map?.dispose();
         m.dispose();
       });
+      look.dispose();
       renderer.dispose();
       canvas.remove();
       bar.remove();

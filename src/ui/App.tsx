@@ -444,7 +444,7 @@ export function App() {
             onInvalid={(reason) => (flash(reason), play("refuse"))}
             colorBlind={settings.colorBlind}
             mode={settings.view}
-            quality={settings.quality3d}
+            graphics={settings.graphics}
             onViewError={(message) => {
               flash(message);
               updateSettings({ view: "2d" });

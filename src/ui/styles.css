@@ -234,6 +234,11 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .settings input[type="range"] { flex: 1; accent-color: var(--accent); }
 .settings input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
 .settings select { background: #1a0f0d; color: var(--text); border: 1px solid var(--muted); border-radius: 4px; font: inherit; padding: 2px 4px; }
+.settings-graphics { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--muted); border-radius: 6px; padding: 8px 10px 10px; margin: 0; }
+.settings-graphics legend { padding: 0 4px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+.settings-graphics label > span:first-child { min-width: 7.5em; }
+.settings-graphics select { flex: 1; min-width: 0; }
+.settings-graphics .k { min-width: 3em; text-align: right; }
 .help { width: min(620px, 100%); }
 .help-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; }
 .help dl { margin: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }

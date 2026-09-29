@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { createStage } from "../render2d/stage";
 import { createPlanStage } from "../render2d/plan";
 import type { ViewMode } from "./settings";
-import type { HoverInfo, PendingBuild, Proposal, Quality, Stage, StageOptions, Tool, Warning } from "../view/types";
+import type { HoverInfo, Graphics, PendingBuild, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import type { Snapshot } from "../sim/snapshot";
 
@@ -27,7 +27,7 @@ interface Props {
   /** A warning to outline in red (corridors to be filled in, what they'd cut off). */
   warning: Warning | null;
   onConfirmBuild: (b: PendingBuild) => void;
-  quality: Quality;
+  graphics: Graphics;
   /** The chosen view couldn't start (e.g. no WebGL for 3D). */
   onViewError: (message: string) => void;
   /** Walking in first person (3D), or not. */
@@ -42,12 +42,12 @@ const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => P
 };
 
 /** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
-export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, quality, onViewError, onWalking }: Props) {
+export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, onViewError, onWalking }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
-  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking });
-  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, quality, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking };
+  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking });
+  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking };
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +69,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
       stage.setSelected(props.current.selected);
       stage.setOverlay(props.current.overlay);
       stage.setColorBlind(props.current.colorBlind);
-      stage.setQuality(props.current.quality);
+      stage.setGraphics(props.current.graphics);
       stage.setFloor(props.current.floor);
       stage.setProposal(props.current.proposal);
       stage.setWarning(props.current.warning);
@@ -106,8 +106,8 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
   }, [colorBlind]);
 
   useEffect(() => {
-    stageRef.current?.setQuality(quality);
-  }, [quality]);
+    stageRef.current?.setGraphics(graphics);
+  }, [graphics]);
 
   useEffect(() => {
     stageRef.current?.setFloor(floor);

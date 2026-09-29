@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { cleanGraphics, DEFAULT_GRAPHICS, GRAPHICS_PRESETS, type Graphics } from "../view/graphics";
 
 // Player preferences, kept in browser storage. Reading or writing storage
 // can fail (private windows, blocked storage); the game then just uses the
@@ -22,8 +23,8 @@ export interface Settings {
   autosave: boolean;
   /** Which view the player last used: the unrolled wall, one floor from above, or 3D. */
   view: ViewMode;
-  /** 3D detail: high adds walkers and dust and renders at full resolution. */
-  quality3d: "high" | "low";
+  /** 3D graphics: sharpness, ambient life, and how much of each effect. */
+  graphics: Graphics;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -34,7 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   colorBlind: false,
   autosave: true,
   view: "3d",
-  quality3d: "high",
+  graphics: DEFAULT_GRAPHICS,
 };
 
 const KEY = "downtown-mars.settings";
@@ -42,7 +43,11 @@ const KEY = "downtown-mars.settings";
 export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
-    const s = raw ? { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) } : DEFAULT_SETTINGS;
+    const stored = raw ? (JSON.parse(raw) as Partial<Settings> & { quality3d?: "high" | "low" }) : {};
+    // Before graphics settings there was one "3D detail" choice: low becomes the low preset.
+    const graphics = stored.graphics ? cleanGraphics(stored.graphics) : stored.quality3d === "low" ? GRAPHICS_PRESETS.low : DEFAULT_GRAPHICS;
+    const { quality3d: _old, ...rest } = stored;
+    const s: Settings = { ...DEFAULT_SETTINGS, ...rest, graphics };
     return VIEW_MODES.some((m) => m.id === s.view) ? s : { ...s, view: DEFAULT_SETTINGS.view };
   } catch {
     return DEFAULT_SETTINGS;

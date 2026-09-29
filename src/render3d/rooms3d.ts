@@ -751,7 +751,7 @@ function drawLabel(text: string, color: string): { material: THREE.SpriteMateria
   ctx.fillText(text, 12, canvas.height / 2 + 2);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  return { material: new THREE.SpriteMaterial({ map: tex, depthTest: true, transparent: true }), aspect: w / canvas.height };
+  return { material: new THREE.SpriteMaterial({ map: tex, depthTest: true, depthWrite: false, transparent: true }), aspect: w / canvas.height };
 }
 
 /**
