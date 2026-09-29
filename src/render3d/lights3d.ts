@@ -34,7 +34,7 @@ const POOL = {
 };
 
 /** The point lights: the most at full setting, their brightness per unit strength, and how far past its reach one lights. */
-export const LAMP_LIGHTS = { most: 12, intensity: 3.5, range: 1.6, decay: 1.8, within: 45 };
+export const LAMP_LIGHTS = { most: 12, intensity: 2.2, range: 1.5, decay: 2, within: 45 };
 
 /** The lights among some fitted furniture, in world space. */
 export function lampsOf(fitted: Fitted[]): Lamp[] {

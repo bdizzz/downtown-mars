@@ -481,3 +481,21 @@ Decided Sep 28, 2026 (Bryon):
   - The sky is left alone.
 - `look.setDaylight` is fed from `updateSky`. The mood scales with the haze setting, so Low turns it off with the haze.
 - Dev hook: `__stage3d.draw()` draws a frame at once, since a hidden browser pane barely animates.
+
+**Step 4, colonists as figures** (`people3d.ts`, which replaces the capsule `Walkers`):
+- **The figure:** a low-poly person (legs, body, arms, neck) coloured per vertex. Trousers stay dark and the rest takes the instance's clothing colour; the head is a separate instanced sphere in a skin tone.
+  - Two poses, standing and sitting. Lying is the standing figure turned.
+  - Every pose is one instanced mesh, so a crowd costs three draw calls.
+- **On the galleries:** walkers face the way they're going, bobbing with each step and swaying a little. There's one per 3 colonists, up to 60, as before.
+- **In rooms:** `spots` in the furniture data (26 items).
+  - Seats: chairs, office chairs, stools, armchairs, sofas and benches (2 each), school desks.
+  - Beds: bed, bunk (lower and upper), double (2), medical.
+  - Work posts, in front of: consoles, workbenches, stoves, counters, lathes, fab benches, drill presses, welders, blueprint tables, clean hoods, seed tables, printers, furnaces, scanners.
+- **Who's in, by the hour** (`occupied`, deterministic per room):
+  - Posts fill with the room's actual staff, who wear its category colour.
+  - Beds fill at night, up to the population. By day 8% are taken (the night shift).
+  - Seats in homes, plazas, offices, halls, galleries and elder care: 30% taken by day, 55% in the evening, 3% at night.
+  - It's redone when the hour, staffing, population or layout changes. At most 600 figures in rooms.
+- Everyone above a chosen floor is hidden (not in first person). Rooms hidden by X-ray have no furniture group, so no people either.
+- **Browser check:** in Iso on floor 1 with walls down, figures walk the gallery in their colours and galley staff stand at the counters in the food green. Poses are covered by tests (a sleeper lies flat).
+- Lamp light turned down again (intensity 2.2, decay 2), since white things right by a lamp were tripping the glow. The serving counter's light moved out from inside its sign.

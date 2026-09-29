@@ -13,6 +13,10 @@ import { DOOR, doorways, type Doorway } from "../view/doors";
 import { finishMaterial, withRock } from "./surfaces";
 import { roomFinish, type Finish } from "../view/roomFinish";
 import { lampsOf, lightPools } from "./lights3d";
+import { spotsOf, type RoomSpots } from "./people3d";
+
+/** Room categories where people sit about (the rest only have staff at their posts, and beds). */
+const SOCIAL = new Set(["housing", "public", "admin", "circulation"]);
 import { centreOf, disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow, type HangTag } from "./furniture3d";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
@@ -565,6 +569,9 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
   const hungAs = hanging.length ? { tags: hanging.map((f) => hangTag(layout, room, f)), key: "hung", material: withHangingDown } : null;
   if (hungAs) g.add(...furnitureMeshes(hanging, accent, hungAs).children);
   g.userData.centre = centreOf(fitted);
+  // Where its people go, for the stage to fill by the hour.
+  const def = roomDef(room.type);
+  g.userData.people = { roomId: room.id, spots: spotsOf(fitted), accent, social: SOCIAL.has(def.category) || room.type === "galley" || room.type === "elder_care" } satisfies RoomSpots;
   // Its lamps: pooled on the floor always, and for the stage to light the nearest.
   const lamps = lampsOf(fitted);
   g.userData.lamps = lamps;

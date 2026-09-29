@@ -34,6 +34,8 @@ export interface ItemDef {
   climb?: boolean;
   /** It gives light: its colour, where from (in its own frame), how far it reaches (metres), and how strong. */
   light?: { color: string; at: [number, number, number]; reach: number; strength: number };
+  /** Where people go: a seat, a bed or a work post, in its own frame, and which way they face (degrees; 0 is its front). */
+  spots?: { kind: "seat" | "bed" | "post"; at: [number, number, number]; turn?: number }[];
 }
 
 export const furniture = raw as unknown as {

@@ -1403,7 +1403,7 @@ const LIGHTS = {
   reactor_vessel: ["fire", [0, 1.2, 0.9], 4, 0.8],
   candle_stand: ["fire", [0, 1.12, 0], 2.5, 0.6],
   memorial: ["fire", [0, 0.45, 0.3], 2.5, 0.5],
-  serving_counter: ["cool", [0, 2.25, 0], 3, 0.6],
+  serving_counter: ["cool", [0, 1.7, 0.5], 3, 0.4],
   decon_arch: ["cool", [0, 2.45, 0.4], 3.5, 0.7],
   elevator_car: ["cool", [0, 2.45, 0.9], 3, 0.6],
   ...Object.fromEntries(
@@ -1415,6 +1415,43 @@ const LIGHTS = {
 for (const [id, [kind, at, reach, strength]] of Object.entries(LIGHTS)) {
   if (!items[id]) throw new Error(`light for unknown item "${id}"`);
   items[id].light = { color: LIGHT_KINDS[kind], at, reach, strength };
+}
+
+// Where people go (in the item's own frame; the 3D view puts colonists there): a seat (sitting, facing
+// +z, "at" the top of the seat), a bed (lying along x, head toward -x, "at" the top of the mattress), or a
+// work post (standing on the floor at "at", facing the item). [kind, at] or [kind, at, turn in degrees].
+const post = (id, out = 0.35) => [["post", [0, 0, up(items[id].size[1] / 2 + out)], 180]];
+const SPOTS = {
+  chair: [["seat", [0, 0.48, 0.02]]],
+  office_chair: [["seat", [0, 0.55, 0.04]]],
+  stool: [["seat", [0, 0.49, 0]]],
+  armchair: [["seat", [0, 0.56, 0.08]]],
+  sofa: [["seat", [-0.42, 0.56, 0.08]], ["seat", [0.42, 0.56, 0.08]]],
+  bench: [["seat", [-0.45, 0.47, 0]], ["seat", [0.45, 0.47, 0]]],
+  student_desk: [["seat", [0, 0.48, 0.4], 180]],
+  bed: [["bed", [0, 0.55, 0]]],
+  bunk_bed: [["bed", [0, 0.54, 0]], ["bed", [0, 1.44, 0]]],
+  double_bed: [["bed", [0, 0.6, -0.4]], ["bed", [0, 0.6, 0.4]]],
+  medical_bed: [["bed", [0.1, 0.82, 0]]],
+  console: post("console"),
+  workbench: post("workbench"),
+  stove_counter: post("stove_counter"),
+  prep_counter: post("prep_counter"),
+  serving_counter: [["post", [0, 0, -0.75], 0]],
+  lathe: post("lathe"),
+  fab_bench: post("fab_bench"),
+  drill_press: post("drill_press"),
+  welding_station: post("welding_station"),
+  blueprint_table: post("blueprint_table"),
+  clean_hood: post("clean_hood"),
+  seed_table: post("seed_table"),
+  printer_3d: post("printer_3d"),
+  furnace: post("furnace", 0.9),
+  scanner: post("scanner"),
+};
+for (const [id, list] of Object.entries(SPOTS)) {
+  if (!items[id]) throw new Error(`spots for unknown item "${id}"`);
+  items[id].spots = list.map(([kind, at, turn]) => ({ kind, at, ...(turn ? { turn } : {}) }));
 }
 
 // Every item a room lists exists, and every item is used somewhere.
@@ -1433,7 +1470,7 @@ const lines = ["{", `  "_note": ${JSON.stringify(note)},`, '  "colors": {'];
 Object.entries(colors).forEach(([k, v], i, all) => lines.push(`    ${JSON.stringify(k)}: ${JSON.stringify(v)}${i < all.length - 1 ? "," : ""}`));
 lines.push("  },", '  "items": {');
 Object.entries(items).forEach(([id, it], i, all) => {
-  lines.push(`    ${JSON.stringify(id)}: { "name": ${JSON.stringify(it.name)}, "size": ${J(it.size)},${it.mount ? ` "mount": ${it.mount},` : ""}${it.opening ? ` "opening": true,` : ""}${it.climb ? ` "climb": true,` : ""}${it.light ? ` "light": ${J(it.light)},` : ""} "parts": [`);
+  lines.push(`    ${JSON.stringify(id)}: { "name": ${JSON.stringify(it.name)}, "size": ${J(it.size)},${it.mount ? ` "mount": ${it.mount},` : ""}${it.opening ? ` "opening": true,` : ""}${it.climb ? ` "climb": true,` : ""}${it.light ? ` "light": ${J(it.light)},` : ""}${it.spots ? ` "spots": ${J(it.spots)},` : ""} "parts": [`);
   it.parts.forEach((p, j) => lines.push(`      ${J(p)}${j < it.parts.length - 1 ? "," : ""}`));
   lines.push(`    ] }${i < all.length - 1 ? "," : ""}`);
 });

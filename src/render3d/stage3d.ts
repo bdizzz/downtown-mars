@@ -22,7 +22,8 @@ import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotA
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, withWallsDown } from "./rooms3d";
-import { Dust, galleryLamps, makeLander, placeLander, setLampGlow, Walkers } from "./scenery3d";
+import { Dust, galleryLamps, makeLander, placeLander, setLampGlow } from "./scenery3d";
+import { occupied, People, type RoomSpots } from "./people3d";
 import { clear as walkClear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Four
@@ -222,7 +223,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(lander);
   // Timing for the dev console (window.__stage3d in dev builds only).
   const stats = { buildMs: 0, frameMs: 0, calls: 0, triangles: 0 };
-  const walkers = new Walkers();
+  const people = new People();
+  /** What the people in rooms were last worked out for. */
+  let peopleKey = "";
   const dust = new Dust();
   // Sparks and steam from working rooms.
   const roomFx = new RoomEffects();
@@ -1263,7 +1266,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       dust.step(ambient);
       // Colonists, sparks and steam move only while the game runs.
       if (performance.now() - lastTickChange < 400) {
-        walkers.step(ambient);
+        people.step(ambient);
         roomFx.step(ambient);
       }
       ambient = 0;
@@ -1306,7 +1309,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     skyDome.mesh.visible = cut() === null;
     scene.background = cut() === null ? skyColor : new THREE.Color(C.earth);
     if (lamps) lamps.visible = cut() === null;
-    walkers.mesh.visible = graphics.life && cut() === null;
+    people.group.visible = graphics.life;
+    people.setTopFloor(view.mode === "walk" ? null : cut());
     dust.points.visible = graphics.life && cut() === null;
     roomFx.group.visible = graphics.life;
     if (!graphics.life) roomFx.clear();
@@ -1323,7 +1327,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     look.resize();
     applyFloorCut();
   }
-  scene.add(walkers.mesh, dust.points, roomFx.group, lampLights.group);
+  scene.add(people.group, dust.points, roomFx.group, lampLights.group);
   lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
 
   let latest: Snapshot | null = null;
@@ -1364,6 +1368,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             applyCamera();
             drawFrame();
           },
+          // The colonists shown, and the gallery walkers.
+          people,
           // How many rooms show their furniture near and far.
           detail() {
             const n = { near: 0, far: 0 };
@@ -1459,7 +1465,17 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         applyFloorCut();
         updateSection();
       }
-      walkers.sync(snapshot.layout.hole, snapshot.population.count);
+      people.sync(snapshot.layout.hole, snapshot.population.count);
+      // Who's in the rooms: staff at their posts, sleepers by night, people sitting about. Redone by the hour.
+      const hour = Math.floor(snapshot.time.dayFraction * 24);
+      const staffKey = snapshot.layout.rooms.map((r) => snapshot.roomStatus[r.id]?.staff ?? 0).join(",");
+      const pk = `${layoutKey}:${hour}:${staffKey}:${snapshot.population.count}`;
+      if (pk !== peopleKey) {
+        peopleKey = pk;
+        const rooms = furnitureGroups.map((g) => g.userData.people as RoomSpots | undefined).filter((r): r is RoomSpots => !!r);
+        people.setRooms(occupied(rooms, hour, (id) => snapshot.roomStatus[id]?.staff ?? 0, snapshot.population.count));
+        dirty = true;
+      }
       roomFx.sync(snapshot.layout, snapshot.roomStatus);
       updateSky(snapshot);
       const happy = overlayType === "happiness" ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",") : "";
@@ -1544,7 +1560,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       dispose(lander);
       groundMat.dispose();
       if (terrain) disposeTerrain(terrain);
-      dispose(walkers.mesh);
+      people.group.traverse((o) => {
+        if (o instanceof THREE.InstancedMesh) dispose(o);
+      });
       dispose(dust.points);
       roomFx.dispose();
       fieldGroup.traverse((o) => o instanceof THREE.Mesh && o.geometry.dispose());

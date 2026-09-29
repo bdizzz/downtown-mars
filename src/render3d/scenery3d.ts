@@ -89,19 +89,9 @@ export function placeLander(lander: THREE.Group, layout: Layout, t: number | nul
   if (flame) flame.visible = t < 0.97;
 }
 
-// ---- walkers and dust: purely cosmetic, never part of the simulation ----
+// ---- dust: purely cosmetic, never part of the simulation (colonists are in people3d.ts) ----
 
-const WALKER = { max: 60, perColonists: 3, height: 1.6, radius: 0.22, speed: 0.35, colors: [0xd8c0ae, 0x6f93bd, 0x86ad58, 0xc9a456, 0xd48092] };
 const DUST = { count: 260, fall: 0.25, size: 0.12 };
-
-interface Walker {
-  floor: number;
-  angle: number;
-  /** Radians per second, signed: which way round they're walking. */
-  speed: number;
-  /** A little in or out on the ledge, so they don't walk single file. */
-  offset: number;
-}
 
 /** A deterministic scatter for cosmetics, so the same colony looks the same each load. */
 function scatter(seed: number): () => number {
@@ -110,59 +100,6 @@ function scatter(seed: number): () => number {
     s = (s * 1664525 + 1013904223) >>> 0;
     return s / 4294967296;
   };
-}
-
-export class Walkers {
-  readonly mesh: THREE.InstancedMesh;
-  private walkers: Walker[] = [];
-  private hole: Hole | null = null;
-  private readonly m = new THREE.Matrix4();
-
-  constructor() {
-    const body = new THREE.CapsuleGeometry(WALKER.radius, WALKER.height - 2 * WALKER.radius, 3, 6);
-    body.translate(0, WALKER.height / 2, 0);
-    this.mesh = new THREE.InstancedMesh(body, new THREE.MeshStandardMaterial({ roughness: 0.8 }), WALKER.max);
-    this.mesh.count = 0;
-    const c = new THREE.Color();
-    for (let i = 0; i < WALKER.max; i++) this.mesh.setColorAt(i, c.setHex(WALKER.colors[i % WALKER.colors.length]!));
-  }
-
-  /** Match the crowd to the colony: more people, more walkers, spread over the dug floors. */
-  sync(hole: Hole, population: number): void {
-    const want = Math.min(WALKER.max, Math.ceil(population / WALKER.perColonists));
-    if (this.hole === hole && this.walkers.length === want) return;
-    this.hole = hole;
-    const rand = scatter(population * 131 + hole.floors);
-    this.walkers = Array.from({ length: want }, () => ({
-      floor: 1 + Math.floor(rand() * hole.floors),
-      angle: rand() * TAU,
-      speed: (rand() < 0.5 ? -1 : 1) * WALKER.speed * (0.6 + rand() * 0.8),
-      offset: rand() * 1.2,
-    }));
-    this.mesh.count = want;
-    this.place();
-  }
-
-  /** Advance by dt real seconds and update the instances. */
-  step(dt: number): void {
-    for (const w of this.walkers) w.angle += (w.speed * dt) / Math.max(1, this.radiusFor(w));
-    this.place();
-  }
-
-  private radiusFor(w: Walker): number {
-    return this.hole ? openShaftRadius(this.hole) + 0.5 + w.offset : 1;
-  }
-
-  private place(): void {
-    if (!this.hole) return;
-    this.walkers.forEach((w, i) => {
-      const r = this.radiusFor(w);
-      const y = floorSpan(w.floor)[0] + 0.4;
-      this.m.makeTranslation(r * Math.cos(w.angle), y, r * Math.sin(w.angle));
-      this.mesh.setMatrixAt(i, this.m);
-    });
-    this.mesh.instanceMatrix.needsUpdate = true;
-  }
 }
 
 /** Motes drifting down the open shaft, caught in the lamplight. */
