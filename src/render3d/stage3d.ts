@@ -14,7 +14,7 @@ import { Look } from "./look";
 import { DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { withRegolith, withRock } from "./surfaces";
 import { RoomEffects } from "./effects3d";
-import { FLOOR_H, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, withWallsDown } from "./rooms3d";
@@ -178,7 +178,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
    */
   const cam = {
     theta: Math.PI / 2,
-    y: -FLOOR_H + EYE_HEIGHT,
+    y: floorSpan(1)[0] + EYE_HEIGHT,
     dist: 14,
     out: CUTAWAY.start,
     height: TOP.start,
@@ -844,7 +844,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** Stand on the gallery of the floor you were looking at, facing along it. */
   function placeWalker(): void {
     if (!hole || !layout) return;
-    const floor = Math.min(hole.floors, Math.max(1, pickedFloor ?? Math.floor(-cam.y / FLOOR_H) + 1));
+    const floor = Math.min(hole.floors, Math.max(1, pickedFloor ?? floorAtY(cam.y)));
     const r = (openShaftRadius(hole) + hole.shaftRadiusM) / 2;
     walker.floor = floor;
     walker.x = r * Math.cos(cam.theta);
@@ -1118,7 +1118,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     else if (view.mode === "iso") readout.textContent = `Floor ${f}, isometric`;
     else if (f !== null) readout.textContent = `Floor ${f}${view.mode === "top" ? " from above" : " and below"}`;
     else if (view.mode === "top") readout.textContent = "Looking down the shaft";
-    else readout.textContent = cam.y >= 0 ? "Surface" : `Floor ${Math.floor(-cam.y / FLOOR_H) + 1}`;
+    else readout.textContent = cam.y >= floorSpan(1)[1] ? "Surface" : `Floor ${floorAtY(cam.y)}`;
   }
   applyGroundXray();
   setWallsDown(view.wallsDown);

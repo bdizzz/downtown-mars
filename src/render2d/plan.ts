@@ -5,7 +5,7 @@ import type { Happiness } from "../sim/happiness";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { DrillView } from "../sim/snapshot";
-import { FLOOR_H, openShaftRadius, pickAt, ringRadii, slotAngles } from "../render3d/cylinder";
+import { floorSpan, openShaftRadius, pickAt, ringRadii, slotAngles } from "../render3d/cylinder";
 import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
@@ -524,7 +524,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     if (!layout || !pointer) return { kind: "rock" };
     const [px, py] = screenToPlan(pointer);
     // Mid-height of this floor, in the same metres as the 3D view.
-    return pickAt(layout.hole, px / PX, -(floor - 0.5) * FLOOR_H, py / PX);
+    const [y0, y1] = floorSpan(floor);
+    return pickAt(layout.hole, px / PX, (y0 + y1) / 2, py / PX);
   }
 
   /** Shift erases with the corridor tool. */

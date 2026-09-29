@@ -9,6 +9,8 @@ import type { Pick } from "../view/types";
 // drawing and picking share one tested source of truth.
 
 export const FLOOR_H = config.geometry.floorHeightM;
+/** Rock between floor 1's ceiling and the surface. */
+export const CRUST = config.geometry.surfaceDepthM;
 export const GALLERY_W = config.geometry.galleryWidthM;
 export const RING_D = config.geometry.roomDepthM;
 export const TAU = Math.PI * 2;
@@ -24,9 +26,14 @@ export function ringRadii(hole: Hole, ring: number): [number, number] {
   return [r0, r0 + RING_D];
 }
 
-/** Bottom and top y of a floor. Floor 1's top is the surface. */
+/** Bottom and top y of a floor. Floor 1's top is the crust's underside, CRUST below the surface. */
 export function floorSpan(floor: number): [number, number] {
-  return [-floor * FLOOR_H, (1 - floor) * FLOOR_H];
+  return [-floor * FLOOR_H - CRUST, (1 - floor) * FLOOR_H - CRUST];
+}
+
+/** The floor a height is on (floor 1 starts under the crust; above it, 0 or less). */
+export function floorAtY(y: number): number {
+  return Math.floor((-y - CRUST) / FLOOR_H) + 1;
 }
 
 /** The open shaft is narrower than the hole by the gallery ledge. */
@@ -43,8 +50,10 @@ export function pickAt(hole: Hole, x: number, y: number, z: number): Pick {
   const turn = (((Math.atan2(z, x) / TAU) % 1) + 1) % 1;
   const angle = turn * 360;
   if (y >= 0) return { kind: "surface", angle };
+  // The crust between the surface and floor 1.
+  if (y > -CRUST) return { kind: "rock" };
 
-  const floor = Math.floor(-y / FLOOR_H) + 1;
+  const floor = floorAtY(y);
   if (floor > hole.floors + 1) return { kind: "rock" };
   const digging = floor === hole.floors + 1;
   const r = Math.hypot(x, z);

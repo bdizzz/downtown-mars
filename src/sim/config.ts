@@ -6,6 +6,8 @@ export interface GeometryConfig {
   maxRings: number;
   /** Height of one floor, used by the 3D view. */
   floorHeightM: number;
+    /** Rock between the top floor's ceiling and the surface, metres. */
+    surfaceDepthM: number;
   /** Width of the walkway ledge ringing the shaft, used by the 3D view. */
   galleryWidthM: number;
   /**

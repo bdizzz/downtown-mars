@@ -37,8 +37,8 @@ describe("3D room geometry", () => {
       const radius = Math.hypot(pos.getX(i), pos.getZ(i));
       expect(radius).toBeGreaterThanOrEqual(10 - 1e-6);
       expect(radius).toBeLessThanOrEqual(20 + 1e-6);
-      expect(pos.getY(i)).toBeGreaterThanOrEqual(-12 - 1e-6);
-      expect(pos.getY(i)).toBeLessThanOrEqual(-8 + 1e-6);
+      expect(pos.getY(i)).toBeGreaterThanOrEqual(floorSpan(3)[0] - 1e-6);
+      expect(pos.getY(i)).toBeLessThanOrEqual(floorSpan(3)[1] + 1e-6);
     }
   });
 });

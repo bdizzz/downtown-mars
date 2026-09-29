@@ -11,6 +11,7 @@
     "roomDepthM": 10,
     "maxRings": 6,
     "floorHeightM": 4,
+    "surfaceDepthM": 3,
     "galleryWidthM": 2,
     "pairedRings": true,
     "nestedPairs": true,

@@ -19,7 +19,6 @@ import { disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnit
 // changes; everything here is plain geometry, no per-frame work.
 
 const ARC_STEPS = 4;
-const ROOF_GAP = 0.3;
 const INSET = 0.06;
 /** The window band on a ring-1 face (above the floor's base), how far in from the face's ends it stops, and its glass. */
 const WINDOW = { bottom: 1.4, top: 3.0, inset: 0.03, margin: 0.02, color: 0x2d4f6e, opacity: 0.22 };
@@ -387,9 +386,7 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
   for (const c of cells) {
     let [y0, y1] = floorSpan(c.floor);
     y0 += inset;
-    // Walls reach the floor above (whose rock or floor closes the room over), except on
-    // floor 1, where they stop just under the ground so the two surfaces don't fight.
-    if (c.floor === 1) y1 -= Math.max(inset, ROOF_GAP);
+    // Walls reach the floor above, whose rock (or on floor 1, the crust) closes the room over.
     // A public room on the gallery has no wall there: it runs right up to the shaft.
     const onGallery = publicRoom && c.ring === 1;
     const cut = carveCell(layout, c, own, inner, outer, inset, carve, onGallery, joints);
@@ -449,6 +446,18 @@ function rockFaces(layout: Layout, topFloor: number | null): number[] {
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
   const rock = (c: Cell | null) =>
     !c || c.floor < 1 || c.floor > hole.floors || (!layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] && !isOpen(layout, c));
+  // The crust's underside: the ceiling over whatever's dug out on floor 1.
+  if (hole.floors >= 1) {
+    const y = floorSpan(1)[1];
+    hole.ringSlots.forEach((n, ri) => {
+      const [r0, r1] = ringRadii(hole, ri + 1);
+      for (let slot = 0; slot < n; slot++) {
+        if (rock({ floor: 1, ring: ri + 1, slot })) continue;
+        const [s0, s1] = slotAngles(slot, n);
+        flatRing(pos, r0, r1, s0, s1, y);
+      }
+    });
+  }
   for (let floor = topFloor ?? 1; floor <= hole.floors; floor++) {
     const [y0, y1] = floorSpan(floor);
     hole.ringSlots.forEach((n, ri) => {
@@ -985,6 +994,11 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
       if (a1 > a0) curvedFace(wall, hole.shaftRadiusM, a0, a1, y0, y1, { side: -1 }); // open toward the shaft
     }
   }
+  // The crust: a collar of rock from floor 1's ceiling up to the surface, all the way round.
+  if (topFloor === null) {
+    const [, top] = floorSpan(1);
+    for (let slot = 0; slot < n1; slot++) curvedFace(wall, hole.shaftRadiusM, ...slotAngles(slot, n1), top, 0, { side: -1 });
+  }
   const wallMesh = new THREE.Mesh(geometry(wall), rock);
   wallMesh.userData = { pickable: true, wall: true, faint: xray };
   group.add(wallMesh);
@@ -1147,7 +1161,7 @@ function emptySpace(layout: Layout, topFloor: number | null): THREE.Object3D[] {
         const [a0, a1] = slotAngles(slot, n);
         flatRing(floorPos, r0 + INSET, r1 - INSET, a0 + INSET / r0, a1 - INSET / r1, y0 + 0.02);
         for (const r of [r0 + PILLAR.inset, r1 - PILLAR.inset]) {
-          for (const a of [a0 + PILLAR.inset / r, a1 - PILLAR.inset / r]) pillar(pillars, r * Math.cos(a), r * Math.sin(a), y0, y1 - (floor === 1 ? ROOF_GAP : 0), PILLAR.half);
+          for (const a of [a0 + PILLAR.inset / r, a1 - PILLAR.inset / r]) pillar(pillars, r * Math.cos(a), r * Math.sin(a), y0, y1, PILLAR.half);
         }
       }
     }

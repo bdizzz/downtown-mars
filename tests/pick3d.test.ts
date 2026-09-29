@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
-import { FLOOR_H, polar, ringRadii, slotAngles } from "../src/render3d/cylinder";
+import { CRUST, FLOOR_H, polar, ringRadii, slotAngles } from "../src/render3d/cylinder";
 import { inCarvedRegion, pickPast, rayCylinder, rayPlane, surfacePickAt } from "../src/render3d/pick3d";
 
 const hole = createHole(10, 3, 3, config.geometry);
@@ -30,14 +30,14 @@ describe("3D picking", () => {
   it("stepping just past the wall lands in the ring-1 slot you're looking at", () => {
     const n = hole.ringSlots[0]!;
     const [a0, a1] = slotAngles(3, n);
-    const target = polar(ringRadii(hole, 1)[0], (a0 + a1) / 2, -FLOOR_H * 1.5);
-    const r = ray([0, -FLOOR_H * 1.5, 0], target);
+    const target = polar(ringRadii(hole, 1)[0], (a0 + a1) / 2, -FLOOR_H * 1.5 - CRUST);
+    const r = ray([0, -FLOOR_H * 1.5 - CRUST, 0], target);
     expect(pickPast(hole, r, rayCylinder(r, 10)!)).toMatchObject({ kind: "slot", floor: 2, ring: 1, slot: 3 });
   });
 
   it("the cutaway plane gives cells on the section, in any ring", () => {
     const plane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0); // the section through the axis, x = 0
-    const r = ray([60, -FLOOR_H * 2.5, 35], [0, -FLOOR_H * 2.5, 35]);
+    const r = ray([60, -FLOOR_H * 2.5 - CRUST, 35], [0, -FLOOR_H * 2.5 - CRUST, 35]);
     const t = rayPlane(r, plane)!;
     const p = r.at(t, new THREE.Vector3());
     expect(inCarvedRegion(hole, p)).toBe(true);
