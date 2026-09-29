@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { loweredAt, outlineGeometry, roomGeometry, setWallsDown, shaftFaces, WALLS_DOWN } from "../src/render3d/rooms3d";
 import { floorSpan, ringRadii, slotAngles } from "../src/render3d/cylinder";
 import { corridorJoints } from "../src/sim/corridors";
+import { DOOR, doorways } from "../src/view/doors";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 // Each curved face is split into 4 arc steps of 2 triangles; a radial side is 2 triangles.
@@ -134,6 +135,40 @@ describe("windows", () => {
     expect(b0).toBeGreaterThanOrEqual(minA - 1e-9);
     delete l.corridors["R1.1.2"];
     expect(span()[0]).toBeCloseTo(a0, 9);
+  });
+});
+
+describe("doors and windows", () => {
+  /** Does a wall on the shaft face (radius about r) cover this angle and height? By each triangle's span, as walls are quads. */
+  const covers = (g: THREE.BufferGeometry, r: number, a: number, y: number) => {
+    const p = g.getAttribute("position");
+    for (let i = 0; i < p.count; i += 3) {
+      const k = [0, 1, 2];
+      if (k.some((j) => Math.abs(Math.hypot(p.getX(i + j), p.getZ(i + j)) - r) > 0.2)) continue;
+      const as = k.map((j) => Math.atan2(p.getZ(i + j), p.getX(i + j)));
+      const ys = k.map((j) => p.getY(i + j));
+      if (a >= Math.min(...as) && a <= Math.max(...as) && y >= Math.min(...ys) && y <= Math.max(...ys)) return true;
+    }
+    return false;
+  };
+
+  it("cut the doorway and the window band through a private room's shaft face", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 2));
+    const room = l.rooms.find((x) => x.id === r.id)!;
+    const [door] = doorways(l, room);
+    const r0 = ringRadii(l.hole, 1)[0];
+    const base = floorSpan(1)[0];
+    const solid = roomGeometry(l, room.cells);
+    const cut = roomGeometry(l, room.cells, undefined, true, false, doorways(l, room));
+    // In the doorway at knee height, and in the window band beside it: open only once cut.
+    for (const [a, y] of [[door!.angle, base + 0.5], [door!.angle + 3 / r0, base + 2]] as const) {
+      expect(covers(solid, r0, a, y)).toBe(true);
+      expect(covers(cut, r0, a, y)).toBe(false);
+    }
+    // Below the window beside the door, and above the door: still wall.
+    expect(covers(cut, r0, door!.angle + 3 / r0, base + 0.5)).toBe(true);
+    expect(covers(cut, r0, door!.angle, base + DOOR.height + 0.8)).toBe(true);
   });
 });
 

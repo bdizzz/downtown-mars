@@ -4,6 +4,7 @@ import { edgeById } from "../sim/edges";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { floorSpan, ringRadii, slotAngles } from "../render3d/cylinder";
+import { doorways } from "./doors";
 import { isFurnished, itemDef } from "./furniture";
 
 // Laying furniture out in a room. A template (data/layouts.json) is a list of
@@ -73,7 +74,7 @@ export const FIT = {
   flat: 0.1,
 };
 
-const isFlat = (item: string) => itemDef(item).size[2] <= FIT.flat;
+export const isFlat = (item: string) => itemDef(item).size[2] <= FIT.flat;
 
 /** What a room gives up on a side: half a corridor where one runs, else the walls' hairline (as in 3D). */
 const HALL = corridors.widthM / 2;
@@ -137,10 +138,8 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
   const rIn = ringRadii(hole, inner)[0] + front + g;
   const rOut = ringRadii(hole, outer)[1] - back - g;
   const side = (d: number, r: number) => Math.asin(Math.min(0.99, d / r));
-  // The door: in the middle of the room's run of ring-1 cells, as the 3D view draws it.
-  const faces = roomDef(room.type).public ? [] : cells.filter((c) => c.ring === 1);
-  const mid = faces[Math.floor(faces.length / 2)];
-  const door = mid ? (slotAngles(mid.slot, hole.ringSlots[0]!)[0] + slotAngles(mid.slot, hole.ringSlots[0]!)[1]) / 2 : null;
+  // The door on this floor, if it has one (as the 3D view cuts it).
+  const door = doorways(layout, room).find((d) => d.floor === floor)?.angle ?? null;
   return {
     // On the room's floor, which stands the walls' hairline above the floor's base (as the 3D view draws it).
     y: floorSpan(floor)[0] + INSET,

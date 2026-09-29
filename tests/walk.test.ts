@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
-import { ensureFloors, type Location } from "../src/sim/placement";
+import { ensureFloors, roomAt, type Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { openShaftRadius, ringRadii, slotAngles } from "../src/render3d/cylinder";
-import { clear, stairsHere, step, walkable } from "../src/view/walk";
+import { clear, OPEN, regionAt, stairsHere, step, walkable } from "../src/view/walk";
+import { doorways } from "../src/view/doors";
+import { furnish, isFlat } from "../src/view/furnish";
 import { allRock } from "./worlds";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
@@ -38,15 +40,52 @@ describe("walking in first person", () => {
     expect(walkable(s.layout, 1, ...mid(s, 3, 4))).toBe(false);
   });
 
-  it("public rooms and empty space are walkable; private rooms are behind walls", () => {
+  it("public rooms and empty space are open ground; a private room is walled off on its own", () => {
     const s = site();
     applyCommand(s, { type: "build", room: "tiny_plaza", at: ring(1, 1, 3) });
     applyCommand(s, { type: "build", room: "galley", at: ring(1, 1, 4) });
+    const galley = roomAt(s.layout, { floor: 1, ring: 1, slot: 4 })!;
     const r = applyCommand(s, { type: "build", room: "water_tank", at: ring(1, 1, 5) });
     if (r.ok) applyCommand(s, { type: "demolish", roomId: r.roomId! });
-    expect(walkable(s.layout, 1, ...mid(s, 1, 3))).toBe(true);
-    expect(walkable(s.layout, 1, ...mid(s, 1, 4))).toBe(false);
-    expect(walkable(s.layout, 1, ...mid(s, 1, 5))).toBe(true);
+    expect(regionAt(s.layout, 1, ...mid(s, 1, 3))).toBe(OPEN);
+    expect(regionAt(s.layout, 1, ...mid(s, 1, 4))).toBe(`room:${galley.id}`);
+    expect(regionAt(s.layout, 1, ...mid(s, 1, 5))).toBe(OPEN);
+  });
+
+  it("goes into a private room through its door, and nowhere else", () => {
+    const s = site();
+    const h = s.layout.hole;
+    applyCommand(s, { type: "build", room: "galley", at: ring(1, 1, 4) });
+    const room = roomAt(s.layout, { floor: 1, ring: 1, slot: 4 })!;
+    const [door] = doorways(s.layout, room);
+    expect(door).toBeDefined();
+    // Walk straight out from the gallery at an angle: returns how far out it got.
+    const walkOut = (a: number) => {
+      let [x, z] = [(h.shaftRadiusM - 1) * Math.cos(a), (h.shaftRadiusM - 1) * Math.sin(a)];
+      for (let i = 0; i < 30; i++) [x, z] = step(s.layout, 1, x, z, 0.1 * Math.cos(a), 0.1 * Math.sin(a));
+      return Math.hypot(x, z);
+    };
+    // Through the doorway and on into the room.
+    expect(walkOut(door!.angle)).toBeGreaterThan(h.shaftRadiusM + 1.5);
+    expect(regionAt(s.layout, 1, (h.shaftRadiusM + 1.5) * Math.cos(door!.angle), (h.shaftRadiusM + 1.5) * Math.sin(door!.angle))).toBe(`room:${room.id}`);
+    // Beside the door: the wall stops it on the gallery.
+    const beside = door!.angle + 1.5 / h.shaftRadiusM;
+    expect(walkOut(beside)).toBeLessThan(h.shaftRadiusM);
+    // Under construction, it has no way in.
+    room.building = true;
+    expect(regionAt(s.layout, 1, ...mid(s, 1, 4))).toBeNull();
+  });
+
+  it("bumps into furniture, but walks over rugs", () => {
+    const s = site();
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 4, 2) });
+    const room = roomAt(s.layout, { floor: 1, ring: 1, slot: 4 })!;
+    const items = furnish(s.layout, room);
+    const standing = items.find((f) => !isFlat(f.item))!;
+    expect(walkable(s.layout, 1, standing.x, standing.z)).toBe(true);
+    expect(clear(s.layout, 1, standing.x, standing.z)).toBe(false);
+    const rug = items.find((f) => isFlat(f.item));
+    if (rug && !items.some((f) => !isFlat(f.item) && Math.hypot(f.x - rug.x, f.z - rug.z) < 1.5)) expect(clear(s.layout, 1, rug.x, rug.z)).toBe(true);
   });
 
   it("corridors are walkable, through rock or along a room's side", () => {

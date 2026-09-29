@@ -7,6 +7,7 @@ import { cellEdges, edgeById, edgeSides, edgeVertices, outsideEdges, vertexKey, 
 import { corridorJoints, corridors, finishDef } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
 import { furnish } from "../view/furnish";
+import { DOOR, doorways, type Doorway } from "../view/doors";
 import { disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow } from "./furniture3d";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
@@ -16,8 +17,10 @@ import { disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnit
 const ARC_STEPS = 4;
 const ROOF_GAP = 0.3;
 const INSET = 0.06;
-const WINDOW = { bottom: 1.4, top: 3.0, inset: 0.03, color: 0x2d4f6e };
-const DOOR = { width: 1.3, height: 2.3, color: 0x2a1a14 };
+/** The window band on a ring-1 face (above the floor's base), how far in from the face's ends it stops, and its glass. */
+const WINDOW = { bottom: 1.4, top: 3.0, inset: 0.03, margin: 0.02, color: 0x2d4f6e, opacity: 0.22 };
+/** The door's frame: how wide, and its colour. */
+const DOOR_FRAME = { width: 0.12, color: 0x2a1a14 };
 const SURFACE_RING_M = 16; // how far from the rim surface props stand
 const LABEL = { px: 40, heightM: 1.1 };
 const GLOW = { windowBoost: 5 };
@@ -80,6 +83,45 @@ function curvedFace(pos: number[], r: number, a0: number, a1: number, y0: number
     const k = cut ? cut.side * (across ? ACROSS : 1) : 0;
     if (cut) tag(pos, 6, k * Math.cos(m), k * Math.sin(m), cut.y0 ?? y0, cut.y1 ?? y1);
     else tag(pos, 6);
+  }
+}
+
+/** An opening in a curved wall: angles and heights. */
+interface Opening {
+  a0: number;
+  a1: number;
+  y0: number;
+  y1: number;
+}
+
+/**
+ * A curved wall with openings cut out of it: the wall is split into a grid at
+ * the openings' edges, and every column keeps its solid runs. The wall tags
+ * keep the whole wall's height, so it lowers as one.
+ */
+function curvedFaceWithOpenings(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number, cut: Cut, openings: Opening[]): void {
+  const holes = openings
+    .map((o) => ({ a0: Math.max(o.a0, a0), a1: Math.min(o.a1, a1), y0: Math.max(o.y0, y0), y1: Math.min(o.y1, y1) }))
+    .filter((o) => o.a1 - o.a0 > 1e-9 && o.y1 - o.y0 > 1e-9);
+  const whole = { ...cut, y0: cut.y0 ?? y0, y1: cut.y1 ?? y1 };
+  if (!holes.length) return curvedFace(pos, r, a0, a1, y0, y1, whole);
+  const breaks = (list: number[]) => [...new Set(list)].sort((p, q) => p - q);
+  const as = breaks([a0, a1, ...holes.flatMap((o) => [o.a0, o.a1])]);
+  const ys = breaks([y0, y1, ...holes.flatMap((o) => [o.y0, o.y1])]);
+  for (let i = 0; i + 1 < as.length; i++) {
+    const am = (as[i]! + as[i + 1]!) / 2;
+    const open = (ym: number) => holes.some((o) => am > o.a0 && am < o.a1 && ym > o.y0 && ym < o.y1);
+    // Solid runs up the column, each drawn whole.
+    let start: number | null = null;
+    for (let j = 0; j + 1 < ys.length; j++) {
+      const solid = !open((ys[j]! + ys[j + 1]!) / 2);
+      if (solid && start === null) start = ys[j]!;
+      if (!solid && start !== null) {
+        curvedFace(pos, r, as[i]!, as[i + 1]!, start, ys[j]!, whole);
+        start = null;
+      }
+    }
+    if (start !== null) curvedFace(pos, r, as[i]!, as[i + 1]!, start, ys.at(-1)!, whole);
   }
 }
 
@@ -299,6 +341,26 @@ function pieceAt(cut: ReturnType<typeof carveCell>, p: Piece, r: number): [numbe
 }
 
 /**
+ * The openings in a ring-1 cell's shaft face (from a0 to a1): its window band,
+ * less a frame's width either side of a door, and the door, if it's here.
+ */
+function frontage(c: Cell, a0: number, a1: number, doors: Doorway[]): Opening[] {
+  const base = floorSpan(c.floor)[0];
+  const door = doors.find((d) => d.floor === c.floor && d.angle > a0 && d.angle < a1);
+  const band = { y0: base + WINDOW.bottom, y1: base + WINDOW.top };
+  // The window stops a little further in than the glass, so the glass always covers it.
+  const w0 = a0 + WINDOW.margin * 1.25;
+  const w1 = a1 - WINDOW.margin * 1.25;
+  if (!door) return [{ a0: w0, a1: w1, ...band }];
+  const frame = DOOR_FRAME.width / door.r;
+  return [
+    { a0: w0, a1: door.angle - door.half - frame, ...band },
+    { a0: door.angle + door.half + frame, a1: w1, ...band },
+    { a0: door.angle - door.half, a1: door.angle + door.half, y0: base, y1: base + DOOR.height },
+  ];
+}
+
+/**
  * One room: a floor and walls for every cell, without the faces its own cells
  * share, and no ceiling, so you can always see in. It's inset a few
  * centimetres on every outside face, so two rooms that touch never share a
@@ -307,9 +369,10 @@ function pieceAt(cut: ReturnType<typeof carveCell>, p: Piece, r: number): [numbe
  * corridor's width on that side instead, even along part of a side, so
  * corridors look carved out of the rooms they pass. A public room has no wall
  * where it opens onto the gallery or a corridor. With `carve` off (overlay
- * tints), corridors are ignored.
+ * tints), corridors are ignored. With `doors`, the shaft face has its windows
+ * and doors cut out of it.
  */
-export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve = true, publicRoom = false): THREE.BufferGeometry {
+export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve = true, publicRoom = false, doors: Doorway[] | null = null): THREE.BufferGeometry {
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
   const own = new Set(cells.map(key));
   const rings = cells.map((c) => c.ring);
@@ -339,7 +402,11 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
       // A piece's ends move with radius where a side stands parallel to a corridor.
       const inside = pieceAt(cut, p, p.rr0);
       const outside = pieceAt(cut, p, p.rr1);
-      if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) curvedFace(pos, p.rr0, ...inside, y0, y1, { side: 1, across: p.innerHall || ((a) => across(cr0 - 0.5, a)) });
+      if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) {
+        const wallCut: Cut = { side: 1, across: p.innerHall || ((a) => across(cr0 - 0.5, a)) };
+        if (doors && c.ring === 1) curvedFaceWithOpenings(pos, p.rr0, ...inside, y0, y1, wallCut, frontage(c, cut.left(p.rr0), cut.right(p.rr0), doors));
+        else curvedFace(pos, p.rr0, ...inside, y0, y1, wallCut);
+      }
       if (c.ring === outer && !(publicRoom && p.outerHall)) curvedFace(pos, p.rr1, ...outside, y0, y1, { side: -1, across: p.outerHall || ((a) => across(cr1 + 0.5, a)) });
       // A step where a corridor starts or stops partway along a side.
       if (prev) {
@@ -706,10 +773,12 @@ function roomShape(layout: Layout, room: RoomInstance): { geo: THREE.BufferGeome
   const around = neighborCells(layout.hole, room.cells)
     .map((c) => (layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] || isOpen(layout, c) ? 1 : 0))
     .join("");
-  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}`;
+  // A private room, once it's more than a plan, has its windows and doors cut through.
+  const doors = room.planned ? null : doorways(layout, room);
+  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${doors ? "open" : "shut"}`;
   let shape = shapeCache.get(key);
   if (!shape) {
-    const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public);
+    const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, doors);
     shape = { geo, edges: outlineGeometry(geo) };
     shapeCache.set(key, shape);
   }
@@ -832,8 +901,9 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   }
 
   const used = new Set<string>();
-  const glass = wallMaterial("glass", () => new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.2, metalness: 0.3, side: THREE.DoubleSide }));
-  const door = wallMaterial("door", () => new THREE.MeshStandardMaterial({ color: DOOR.color, roughness: 0.9, side: THREE.DoubleSide }));
+  // See-through glass: you can look into a room from the gallery, and out of it.
+  const glass = wallMaterial("glass", () => new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.1, metalness: 0.3, transparent: true, opacity: WINDOW.opacity, depthWrite: false, side: THREE.DoubleSide }));
+  const doorFrame = wallMaterial("door", () => new THREE.MeshStandardMaterial({ color: DOOR_FRAME.color, roughness: 0.9, side: THREE.DoubleSide }));
   const strandedLine = wallMaterial(`stranded:${colors.stranded}`, () => new THREE.LineBasicMaterial({ color: colors.stranded })) as THREE.LineBasicMaterial;
   const edgeLine = wallMaterial("edges", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.5 })) as THREE.LineBasicMaterial;
 
@@ -889,21 +959,35 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     }
 
     if (!room.planned && !faint && !def.public) {
-      // Shaft frontage: a window band on every ring-1 face, a door in the middle of the room's run.
+      // Shaft frontage: glass in the window band cut through every ring-1 face, and a
+      // framed doorway on each floor, in the middle of the room's run (the room's shape cuts the openings).
       const faces = shaftFaces(layout, room);
+      const doors = doorways(layout, room);
       const win = tagged();
+      const frames = tagged();
       // They go down with the wall they're set in.
       const inWall = (f: { y0: number }): Cut => ({ side: 1, y0: f.y0, y1: f.y0 + FLOOR_H, across: true });
-      for (const f of faces) curvedFace(win, f.r - WINDOW.inset, f.a0 + 0.02, f.a1 - 0.02, f.y0 + WINDOW.bottom, f.y0 + WINDOW.top, inWall(f));
-      if (win.length) group.add(new THREE.Mesh(geometry(win), glass));
-      const mid = faces[Math.floor(faces.length / 2)];
-      if (mid) {
-        const a = (mid.a0 + mid.a1) / 2;
-        const half = DOOR.width / 2 / mid.r;
-        const d = tagged();
-        curvedFace(d, mid.r - WINDOW.inset * 2, a - half, a + half, mid.y0 + 0.4, mid.y0 + 0.4 + DOOR.height, inWall(mid));
-        group.add(new THREE.Mesh(geometry(d), door));
+      for (const f of faces) {
+        const [g0, g1] = [f.a0 + WINDOW.margin, f.a1 - WINDOW.margin];
+        const [y0, y1] = [f.y0 + WINDOW.bottom, f.y0 + WINDOW.top];
+        const door = doors.find((d) => floorSpan(d.floor)[0] === f.y0 && d.angle > f.a0 && d.angle < f.a1);
+        if (!door) {
+          curvedFace(win, f.r - WINDOW.inset, g0, g1, y0, y1, inWall(f));
+          continue;
+        }
+        // The glass stops at the door's frame, which stands just proud of the wall.
+        const fw = DOOR_FRAME.width / door.r;
+        const [d0, d1] = [door.angle - door.half, door.angle + door.half];
+        if (d0 - fw > g0) curvedFace(win, f.r - WINDOW.inset, g0, d0 - fw, y0, y1, inWall(f));
+        if (g1 > d1 + fw) curvedFace(win, f.r - WINDOW.inset, d1 + fw, g1, y0, y1, inWall(f));
+        const r = f.r - WINDOW.inset * 2;
+        const top = f.y0 + DOOR.height;
+        curvedFace(frames, r, d0 - fw, d0, f.y0, top + DOOR_FRAME.width, inWall(f));
+        curvedFace(frames, r, d1, d1 + fw, f.y0, top + DOOR_FRAME.width, inWall(f));
+        curvedFace(frames, r, d0, d1, top, top + DOOR_FRAME.width, inWall(f));
       }
+      if (win.length) group.add(new THREE.Mesh(geometry(win), glass));
+      if (frames.length) group.add(new THREE.Mesh(geometry(frames), doorFrame));
     }
 
     if (def.short) {

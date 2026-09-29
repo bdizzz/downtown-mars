@@ -1230,6 +1230,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             syncBar();
             applyCamera();
           },
+          // First person's position and heading, to put a walker somewhere.
+          walker,
         };
       }
       resources = snapshot.resources;

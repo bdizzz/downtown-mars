@@ -172,3 +172,22 @@ Decided Sep 28, 2026 (Bryon):
 - **Dev tool, Overview:** a tab with every template fitted in the chosen ring, side by side, with walls down. Pick one to zoom in on it.
 - **Tests:** the aisle test allows `FIT.row` within a row. The turn test allows footprints that aren't symmetric.
 - **Browser check:** the Overview in rings 1–3: dorm, admin, clinic, galley, school, farm, life support, smelter, plaza, entrance and elder care.
+
+**Follow-up, walking among the furniture (Bryon, Sep 28):** "make first person walking collide with furniture", walk through doors, and see through windows.
+- **Doors** (`src/view/doors.ts`): a private room has a doorway on each floor that faces the shaft, in the middle of that floor's ring-1 cells. The 3D view, furnishing (keeping the doorway clear) and walking all use it. Before this, a two-floor room drew one door, while furnishing kept a doorway clear on each floor.
+- **Openings:** a private ring-1 room's shaft face now has its window band and doorway cut through the wall (`roomGeometry`'s `doors`, `curvedFaceWithOpenings`). The doorway runs from the floor up past the gallery's ledge to 2.7 m, with a dark frame. The glass is see-through (22% opaque), and stops at the door's frame. The wall's tags keep its full height, so walls down lowers it as one.
+- **Walking in regions** (`regionAt`):
+  - Open ground: the gallery, corridors, public rooms and empty space.
+  - Each private room's floor is its own region.
+  - A doorway belongs to both the room and the open ground: it's the door's width less a walker's radius, and 0.6 m either side of the wall.
+  - A walker's centre and edges must all be in one region, or joined through a doorway. A step never goes straight from one region into another. So the only way into a room is through its door, and rooms sharing a wall stay apart. Rooms under construction stay shut.
+- **Furniture is solid:** every standing item's footprint on the floor blocks, with 0.2 m of clearance (less than the walls' 0.3 m, so the 0.5 m aisles a room is furnished with can be walked). Rugs are walked over. Footprints are worked out once per layout snapshot and floor.
+- **Tests:**
+  - Through the door into a galley, while beside the door the wall stops you; under construction, it's shut.
+  - Standing furniture blocks.
+  - The doorway and window band are cut through the wall, with the wall kept below the window and above the door.
+- **Browser check:** a new game's bunk dorm in first person.
+  - From the gallery, the dorm shows through its glass, with the doorway framed.
+  - You walk through the door and on between the bunk partitions until a bunk stops you.
+  - Turning round, you look out across the shaft.
+- **Dev:** `window.__stage3d.walker` (dev builds only) holds the first-person position and heading, for putting a walker somewhere.
