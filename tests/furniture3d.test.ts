@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 import * as THREE from "three";
-import { furnitureMeshes, itemMesh } from "../src/render3d/furniture3d";
+import { furnitureMeshes, itemMesh, showDetail } from "../src/render3d/furniture3d";
 import { furniture, itemDef, partColor } from "../src/view/furniture";
 
 const bounds = (g: THREE.Object3D) => new THREE.Box3().setFromObject(g);
 
 describe("furniture meshes", () => {
-  it("every item builds, one mesh per colour, and fills its footprint", () => {
+  it("every item builds, one mesh for plain parts and one for glowing ones, and fills its footprint", () => {
     for (const id of Object.keys(furniture.items)) {
       const def = itemDef(id);
       const group = itemMesh(id, "#6f93bd");
-      const colours = new Set(def.parts.map((p) => `${partColor(p, "#6f93bd")}:${!!p.glow}`));
-      expect(group.children.length, id).toBe(colours.size);
+      const kinds = new Set(def.parts.map((p) => !!p.glow));
+      expect(group.children.length, id).toBe(kinds.size);
       const b = bounds(group);
       const [w, d, h] = def.size;
       // Within its footprint (a hair for curved shapes' facets), and on the floor.
@@ -33,6 +33,37 @@ describe("furniture meshes", () => {
     expect(b.max.z - b.min.z).toBeGreaterThan(def.size[0] - 0.1);
     expect((b.max.x + b.min.x) / 2).toBeCloseTo(5, 1);
     expect(b.min.y).toBeCloseTo(-4, 1);
+  });
+
+  it("colours each part through its vertices, glowing ones included", () => {
+    const def = itemDef("wall_lamp");
+    const g = itemMesh("wall_lamp", "#6f93bd");
+    const colours = (glow: boolean) => {
+      const mesh = g.children.find((o) => (((o as THREE.Mesh).material as THREE.MeshStandardMaterial).emissive.getHex() !== 0) === glow) as THREE.Mesh;
+      const c = mesh.geometry.getAttribute("color");
+      const out = new Set<string>();
+      for (let i = 0; i < c.count; i++) out.add(new THREE.Color(c.getX(i), c.getY(i), c.getZ(i)).getHexString());
+      return out;
+    };
+    const want = (glow: boolean) => new Set(def.parts.filter((p) => !!p.glow === glow).map((p) => new THREE.Color(partColor(p, "#6f93bd")).getHexString()));
+    expect(colours(false)).toEqual(want(false));
+    expect(colours(true)).toEqual(want(true));
+  });
+
+  it("has a coarser far copy, made when first shown, with small parts left out", () => {
+    const placed = Array.from({ length: 6 }, (_, i) => ({ item: "office_chair", x: i, y: 0, z: 0, turn: 0 }));
+    const g = furnitureMeshes(placed, "#6f93bd");
+    const tris = (d: string) => g.children.filter((o) => o.userData.detail === d && o.visible).reduce((n, o) => n + (o as THREE.Mesh).geometry.getAttribute("position").count / 3, 0);
+    const near = tris("near");
+    expect(tris("far")).toBe(0);
+    expect(showDetail(g, "far")).toBe(true);
+    expect(showDetail(g, "far")).toBe(false);
+    expect(tris("near")).toBe(0);
+    expect(tris("far")).toBeGreaterThan(0);
+    expect(tris("far")).toBeLessThan(near / 2);
+    showDetail(g, "near");
+    expect(tris("near")).toBe(near);
+    expect(g.userData.centre.x).toBeCloseTo(2.5);
   });
 
   it("merges a whole room's items into a few meshes", () => {

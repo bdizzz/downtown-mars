@@ -12,7 +12,7 @@ import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
 import { finishMaterial, withRock } from "./surfaces";
 import { roomFinish, type Finish } from "../view/roomFinish";
-import { disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow, type HangTag } from "./furniture3d";
+import { centreOf, disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow, type HangTag } from "./furniture3d";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
 // no room faces it, plus props on the surface. Rebuilt whenever the layout
@@ -561,10 +561,11 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
   const standing = fitted.filter((f) => !isMounted(f.item));
   const hanging = fitted.filter((f) => isMounted(f.item));
   const g = furnitureMeshes(standing, accent);
-  if (hanging.length) {
-    const tags = hanging.map((f) => hangTag(layout, room, f));
-    g.add(...furnitureMeshes(hanging, accent, { tags, key: "hung", material: withHangingDown }).children);
-  }
+  const hungAs = hanging.length ? { tags: hanging.map((f) => hangTag(layout, room, f)), key: "hung", material: withHangingDown } : null;
+  if (hungAs) g.add(...furnitureMeshes(hanging, accent, hungAs).children);
+  g.userData.centre = centreOf(fitted);
+  // Far away: coarser copies of both, made when first needed.
+  g.userData.far = () => [...furnitureMeshes(standing, accent, undefined, "far").children, ...(hungAs ? furnitureMeshes(hanging, accent, hungAs, "far").children : [])];
   return g;
 }
 
@@ -614,7 +615,7 @@ function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, col
     const fitted = furnish(layout, room).filter((f) => topFloor === null || f.floor >= topFloor);
     if (!fitted.length) return null;
     g = furnitureGroup(layout, room, fitted, `#${color.toString(16).padStart(6, "0")}`);
-    g.userData = { cached: true, key };
+    Object.assign(g.userData, { cached: true, key });
     g.traverse((o) => (o.userData.cached = true));
     furnitureCache.set(key, g);
   }

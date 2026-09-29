@@ -4,25 +4,45 @@ import { itemDef, partColor, type Part } from "../view/furniture";
 import type { Placed } from "../view/furnish";
 
 // Furniture as meshes. An item is built from its parts (data/furniture.json);
-// a room's worth of placed items is merged into one mesh per colour, so a
-// furnished hole costs a handful of draw calls per room rather than one per
-// part. Parts that glow share emissive materials that brighten at night.
+// a room's worth of placed items is merged into one mesh for what's plain and
+// one for what glows, coloured per vertex, so a furnished room costs a couple
+// of draw calls. Glowing parts share an emissive material that brightens at
+// night. Each room also gets a coarser copy for when it's far from the camera
+// (fewer facets, no small parts); the stage swaps between them.
 
 const SEGMENTS = { cyl: 12, sphW: 10, sphH: 8 };
+/** The far copy: rounder things with fewer facets, and parts smaller than `smallest` (metres, their longest side) left out. */
+const FAR = { cyl: 6, sphW: 6, sphH: 4, smallest: 0.45 };
 const GLOW = { day: 0.35, nightBoost: 0.9 };
 
+/** Beyond this distance (metres) from the camera, a room's furniture draws its far copy. */
+export const FURNITURE_LOD = { far: 55 };
+
+export type Detail = "near" | "far";
 export type { Placed };
 
-/** Unit shapes, scaled per part. */
-const unit = {
-  box: new THREE.BoxGeometry(1, 1, 1),
-  cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, SEGMENTS.cyl),
-  sph: new THREE.SphereGeometry(0.5, SEGMENTS.sphW, SEGMENTS.sphH),
+/** Unit shapes, scaled per part, for each level of detail. */
+const unit: Record<Detail, Record<Part["s"], THREE.BufferGeometry>> = {
+  near: {
+    box: new THREE.BoxGeometry(1, 1, 1),
+    cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, SEGMENTS.cyl),
+    sph: new THREE.SphereGeometry(0.5, SEGMENTS.sphW, SEGMENTS.sphH),
+  },
+  far: {
+    box: new THREE.BoxGeometry(1, 1, 1),
+    cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, FAR.cyl),
+    sph: new THREE.SphereGeometry(0.5, FAR.sphW, FAR.sphH),
+  },
 };
 
+/** A part's longest side, metres. */
+function extent(part: Part): number {
+  return Math.max(...part.z);
+}
+
 /** One part's geometry, in its item's own frame. */
-function partGeometry(part: Part): THREE.BufferGeometry {
-  const g = unit[part.s].clone();
+function partGeometry(part: Part, detail: Detail = "near"): THREE.BufferGeometry {
+  const g = unit[detail][part.s].clone();
   const a = part.z[0]!;
   const b = part.z[1] ?? a;
   const c = part.z[2] ?? a;
@@ -38,22 +58,32 @@ function partGeometry(part: Part): THREE.BufferGeometry {
 }
 
 /**
- * Materials, shared by colour: plain, or glowing. Wall hangings use their own
- * copies, adjusted by `hung` (so they can vanish with their wall).
+ * Materials: one plain and one glowing, both taking their colour from the
+ * vertices (a glowing part glows in its own colour). Wall hangings use their
+ * own copies, adjusted by `hung` (so they can vanish with their wall).
  */
 const materials = new Map<string, { material: THREE.MeshStandardMaterial; glow: boolean }>();
 let nightGlow = 0;
-function material(color: string, glow: boolean, hung?: Hung): THREE.MeshStandardMaterial {
-  const key = `${color}:${glow}${hung ? `:${hung.key}` : ""}`;
+function material(glow: boolean, hung?: Hung): THREE.MeshStandardMaterial {
+  const key = `${glow}${hung ? `:${hung.key}` : ""}`;
   let entry = materials.get(key);
   if (!entry) {
     const m = glow
-      ? new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: GLOW.day + nightGlow * GLOW.nightBoost, roughness: 0.4 })
-      : new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.05 });
+      ? glowing(new THREE.MeshStandardMaterial({ vertexColors: true, emissive: 0xffffff, emissiveIntensity: GLOW.day + nightGlow * GLOW.nightBoost, roughness: 0.4 }))
+      : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 });
     entry = { material: hung ? hung.material(m) : m, glow };
     materials.set(key, entry);
   }
   return entry.material;
+}
+
+/** Emissive light tinted by the vertex colour, so every glowing part shares one material. */
+function glowing(m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
+  m.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace("#include <emissivemap_fragment>", "#include <emissivemap_fragment>\n  totalEmissiveRadiance *= vColor.rgb;");
+  };
+  m.customProgramCacheKey = () => "furniture-glow";
+  return m;
 }
 
 /** Glowing parts (screens, lamps, grow lights) brighten as the sky darkens: 0 at noon, 1 at night. */
@@ -83,39 +113,77 @@ export interface Hung {
 }
 
 /**
- * Placed items as meshes, one per material, merged. `accent` is the room's
- * category colour. Returns an empty group when there's nothing to place.
+ * Placed items as meshes, at one level of detail: one for plain parts and one
+ * for glowing ones, merged, each tagged with its detail (`userData.detail`).
+ * `accent` is the room's category colour. The far copy is built the first time
+ * it's shown (see `showDetail`). Returns an empty group when there's nothing to place.
  */
-export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung): THREE.Group {
-  const byMaterial = new Map<string, { material: THREE.MeshStandardMaterial; parts: THREE.BufferGeometry[] }>();
-  const m = new THREE.Matrix4();
-  placed.forEach((p, i) => {
-    const def = itemDef(p.item);
-    m.makeRotationY(p.turn).setPosition(p.x, p.y, p.z);
-    const tag = hung?.tags[i];
-    for (const part of def.parts) {
-      const color = partColor(part, accent);
-      const key = `${color}:${!!part.glow}`;
-      let entry = byMaterial.get(key);
-      if (!entry) byMaterial.set(key, (entry = { material: material(color, !!part.glow, hung), parts: [] }));
-      const g = partGeometry(part);
-      g.applyMatrix4(m);
-      if (tag) {
-        const n = g.getAttribute("position").count;
-        g.setAttribute("aWall", new THREE.Float32BufferAttribute(Array.from({ length: n }, () => [tag.nx, tag.nz, tag.y0, tag.y1]).flat(), 4));
-        g.setAttribute("aHang", new THREE.Float32BufferAttribute(Array.from({ length: n }, () => [tag.ax, tag.az]).flat(), 2));
-      }
-      entry.parts.push(g);
-    }
-  });
+export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, detail: Detail = "near"): THREE.Group {
   const group = new THREE.Group();
-  for (const { material: mat, parts } of byMaterial.values()) {
-    const merged = mergeGeometries(parts.map((g) => g.toNonIndexed()));
-    parts.forEach((g) => g.dispose());
-    if (merged) group.add(new THREE.Mesh(merged, mat));
+  const m = new THREE.Matrix4();
+  const colour = new THREE.Color();
+  {
+    const byGlow = new Map<boolean, THREE.BufferGeometry[]>();
+    placed.forEach((p, i) => {
+      const def = itemDef(p.item);
+      m.makeRotationY(p.turn).setPosition(p.x, p.y, p.z);
+      const tag = hung?.tags[i];
+      for (const part of def.parts) {
+        if (detail === "far" && extent(part) < FAR.smallest) continue;
+        const glow = !!part.glow;
+        const g = partGeometry(part, detail).toNonIndexed();
+        g.applyMatrix4(m);
+        const n = g.getAttribute("position").count;
+        colour.set(partColor(part, accent));
+        const rgb = new Float32Array(n * 3);
+        for (let k = 0; k < n; k++) rgb.set([colour.r, colour.g, colour.b], k * 3);
+        g.setAttribute("color", new THREE.BufferAttribute(rgb, 3));
+        if (tag) {
+          const wall = new Float32Array(n * 4);
+          const hang = new Float32Array(n * 2);
+          for (let k = 0; k < n; k++) {
+            wall.set([tag.nx, tag.nz, tag.y0, tag.y1], k * 4);
+            hang.set([tag.ax, tag.az], k * 2);
+          }
+          g.setAttribute("aWall", new THREE.BufferAttribute(wall, 4));
+          g.setAttribute("aHang", new THREE.BufferAttribute(hang, 2));
+        }
+        let list = byGlow.get(glow);
+        if (!list) byGlow.set(glow, (list = []));
+        list.push(g);
+      }
+    });
+    for (const [glow, parts] of byGlow) {
+      const merged = mergeGeometries(parts);
+      parts.forEach((g) => g.dispose());
+      if (!merged) continue;
+      const mesh = new THREE.Mesh(merged, material(glow, hung));
+      mesh.userData.detail = detail;
+      group.add(mesh);
+    }
   }
-  group.userData = { furniture: true };
+  group.userData = { furniture: true, centre: centreOf(placed), far: () => furnitureMeshes(placed, accent, hung, "far").children };
   return group;
+}
+
+/** The middle of some placed items, where a room's furniture is measured from for its level of detail. */
+export function centreOf(placed: Placed[]): THREE.Vector3 {
+  const c = new THREE.Vector3();
+  for (const p of placed) c.add(new THREE.Vector3(p.x, p.y, p.z));
+  return placed.length ? c.divideScalar(placed.length) : c;
+}
+
+/** Show a furniture group's near or far copy (building the far one the first time). Returns whether anything changed. */
+export function showDetail(group: THREE.Object3D, detail: Detail): boolean {
+  if ((group.userData.detailShown ?? "near") === detail) return false;
+  group.userData.detailShown = detail;
+  if (detail === "far" && !group.userData.farBuilt) {
+    group.userData.farBuilt = true;
+    const make = group.userData.far as (() => THREE.Object3D[]) | undefined;
+    if (make) group.add(...make());
+  }
+  for (const o of group.children) if (o.userData.detail) o.visible = o.userData.detail === detail;
+  return true;
 }
 
 /** One item on its own, at the origin facing +z (for the dev tool's preview and catalogue). */

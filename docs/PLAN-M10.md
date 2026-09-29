@@ -445,3 +445,15 @@ Decided Sep 28, 2026 (Bryon):
   - Emitters are matched by spot when a room's output changes, so a slowdown doesn't wipe what's in the air.
   - A demolished room's furniture is gone, so its sparks and steam go at once.
 - Tests: `tests/effects3d.test.ts`.
+
+**Graphics batch (Bryon, Sep 29): all eleven enhancements, one step at a time.**
+
+**Step 1, cheaper furniture:**
+- Measured with a 200-room hole: 10,332 items in 1.58 M triangles and 7,428 meshes (one per colour per room), each its own draw call.
+- **Coloured per vertex:** a room's furniture is now one mesh for plain parts and one for glowing ones, each also split by whether it hangs. The glow material tints its light by the vertex colour. Draw calls drop to 800 for those 200 rooms.
+- **A far copy:**
+  - Beyond `FURNITURE_LOD.far` (55 m) from the camera, a room draws a coarser copy: 6-sided cylinders, 6×4 spheres, and no parts under 0.45 m. That's 35% of the triangles.
+  - It's built the first time it's needed (`showDetail`), so loading costs no more.
+  - The stage picks near or far per room on each redraw, from the distance to the furniture's centre.
+- Fixed along the way: the room cache replaced a furniture group's `userData`, losing its tags. It now merges.
+- Dev hook: `__stage3d.detail()` counts rooms showing each copy.

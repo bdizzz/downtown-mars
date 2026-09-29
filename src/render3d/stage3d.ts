@@ -14,6 +14,7 @@ import { Look } from "./look";
 import { DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { withRegolith, withRock } from "./surfaces";
 import { RoomEffects } from "./effects3d";
+import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { createSky } from "./sky3d";
 import { buildTerrain, siteSeed, type Terrain } from "./terrain3d";
 import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
@@ -224,6 +225,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const dust = new Dust();
   // Sparks and steam from working rooms.
   const roomFx = new RoomEffects();
+  /** Every room's furniture in the current layout, to switch between near and far copies. */
+  let furnitureGroups: THREE.Object3D[] = [];
   let graphics: Graphics = DEFAULT_GRAPHICS;
   /** Real time (ms) the sim last moved; walkers stop when the game is paused. */
   let lastTickChange = 0;
@@ -1259,6 +1262,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!dirty) return;
     dirty = false;
     const t0 = performance.now();
+    // Far rooms draw their furniture coarser.
+    for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : "near");
     skyDome.follow(camera);
     look.setView(hazeFocus(), view.mode === "walk" || view.mode === "shaft", view.mode === "iso");
     roomFx.setScale(renderer.getDrawingBufferSize(bufferSize).y / (2 * Math.tan((camera.fov * Math.PI) / 360)));
@@ -1334,6 +1339,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           look,
           // Sparks and steam, to inspect their emitters.
           roomFx,
+          // How many rooms show their furniture near and far.
+          detail() {
+            const n = { near: 0, far: 0 };
+            for (const g of furnitureGroups) n[(g.userData.detailShown ?? "near") as "near" | "far"]++;
+            return n;
+          },
           // Try graphics settings from the console (not saved).
           setGraphics(g: Partial<Graphics>) {
             graphics = { ...graphics, ...g };
@@ -1386,6 +1397,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray, cut(), view.roomColors);
         stats.buildMs = performance.now() - t0;
         scene.add(layoutGroup);
+        furnitureGroups = [];
+        layoutGroup.traverse((o) => {
+          if (o.userData.furniture) furnitureGroups.push(o);
+        });
         // The floor picked or x-ray changed: hidden furniture's sparks and steam go with it.
         roomFx.setView({ topFloor: cut(), xray: view.xray });
         dirty = true;
