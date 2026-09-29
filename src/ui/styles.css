@@ -250,7 +250,11 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .map-screen header .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .map-screen header button { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
 .map-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.map-wrap canvas { cursor: crosshair; }
+.map-wrap { position: relative; background: radial-gradient(circle at 50% 50%, #2a1612 0%, #120907 70%); }
+/* The globe fills the map's space; drag to spin, click a site. The dock sits over its bottom edge. */
+.globe { position: absolute; inset: 0; cursor: grab; }
+.globe:active { cursor: grabbing; }
+.globe canvas { display: block; }
 .map-screen footer { padding: 6px 14px; font-size: 12px; background: var(--panel); border-top: 1px solid #000; zoom: var(--ui-scale, 1); }
 .map-locked { margin: 0; padding: 6px 14px; font-size: 12px; background: #2a1814; color: #ffcf9f; border-bottom: 1px solid #000; zoom: var(--ui-scale, 1); }
 .map-body { flex: 1; min-height: 0; display: flex; }

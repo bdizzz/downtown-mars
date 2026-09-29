@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Globe } from "./Globe";
 import { degreesApart, DEPOSIT_KINDS, depositsAt, distanceKm, features, nearestFeature, wrapLon, type DepositKind } from "../sim/mapgeo";
 import { network } from "../sim/network";
 import type { Snapshot } from "../sim/snapshot";
@@ -77,12 +78,22 @@ interface Props {
 
 const fmtLat = (lat: number) => `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? "N" : "S"}`;
 
+/** The map drawn to wrap the globe: 2:1, with a scale for marks and names drawn on it. */
+const TEXTURE = { w: 2048, h: 1024, scale: 1.7 };
+
 export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  // Everything is drawn flat into this canvas, which the globe wears.
+  const canvas = useMemo(() => {
+    const c = document.createElement("canvas");
+    c.width = TEXTURE.w;
+    c.height = TEXTURE.h;
+    return c;
+  }, []);
+  const [version, setVersion] = useState(0);
   const [image, setImage] = useState<HTMLCanvasElement | null>(null);
   const [elevation, setElevation] = useState<Elevation | null>(null);
-  const [size, setSize] = useState({ w: 720, h: 360 });
+  const size = { w: TEXTURE.w, h: TEXTURE.h };
+  const S = TEXTURE.scale;
   const [hover, setHover] = useState<{ lat: number; lon: number } | null>(null);
   const [shown, setShown] = useState<Record<DepositKind, boolean>>({ ice: true, aquifer: true, ore: true, silica: true });
 
@@ -104,28 +115,11 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
     };
   }, []);
 
-  // Fit a 2:1 map to the space available.
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const w = Math.min(el.clientWidth, el.clientHeight * 2);
-      setSize({ w: Math.floor(w), h: Math.floor(w / 2) });
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
   const toXY = (lat: number, lon: number) => [(((lon % 360) + 360) % 360 / 360) * size.w, ((90 - lat) / 180) * size.h] as const;
 
   useEffect(() => {
-    const c = canvasRef.current;
-    if (!c || !image) return;
-    const dpr = window.devicePixelRatio;
-    c.width = size.w * dpr;
-    c.height = size.h * dpr;
-    const g = c.getContext("2d")!;
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!image) return;
+    const g = canvas.getContext("2d")!;
     g.imageSmoothingEnabled = true;
     g.drawImage(image, 0, 0, size.w, size.h);
     const pxPerDeg = size.w / 360;
@@ -136,16 +130,14 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       g.ellipse(x, y, d.radiusDeg * pxPerDeg / Math.max(0.2, Math.cos((d.lat * Math.PI) / 180)), d.radiusDeg * pxPerDeg, 0, 0, Math.PI * 2);
       g.fillStyle = DEPOSIT_STYLE[d.kind].color + "55";
       g.strokeStyle = DEPOSIT_STYLE[d.kind].color;
-      g.lineWidth = 1.5;
+      g.lineWidth = 1.5 * S;
       g.fill();
       g.stroke();
     }
-    // Labels shrink with the map, and the small-feature names drop out when it's narrow.
-    const labelPx = Math.max(8, Math.min(12, size.w / 70));
-    g.font = `600 ${labelPx}px system-ui, sans-serif`;
+    // Names of the places on the planet.
+    g.font = `600 ${Math.round(12 * S)}px system-ui, sans-serif`;
     g.textAlign = "center";
     for (const f of features) {
-      if (size.w < 700 && (f.kind === "crater" || f.kind === "canyon")) continue;
       const [x, y] = toXY(f.lat, f.lon);
       g.fillStyle = "rgba(20,10,8,0.55)";
       g.fillText(f.name, x + 1, y + 1);
@@ -155,17 +147,17 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
     if (site) {
       const [x, y] = toXY(site.lat, site.lon);
       g.strokeStyle = "#e07a3f";
-      g.lineWidth = 2;
+      g.lineWidth = 2 * S;
       g.beginPath();
-      g.arc(x, y, 9, 0, Math.PI * 2);
-      g.moveTo(x - 14, y);
-      g.lineTo(x - 4, y);
-      g.moveTo(x + 4, y);
-      g.lineTo(x + 14, y);
-      g.moveTo(x, y - 14);
-      g.lineTo(x, y - 4);
-      g.moveTo(x, y + 4);
-      g.lineTo(x, y + 14);
+      g.arc(x, y, 9 * S, 0, Math.PI * 2);
+      g.moveTo(x - 14 * S, y);
+      g.lineTo(x - 4 * S, y);
+      g.moveTo(x + 4 * S, y);
+      g.lineTo(x + 14 * S, y);
+      g.moveTo(x, y - 14 * S);
+      g.lineTo(x, y - 4 * S);
+      g.moveTo(x, y + 4 * S);
+      g.lineTo(x, y + 14 * S);
       g.stroke();
     }
     // Convoys: a dashed line from home to the new site, with the convoy along it.
@@ -183,12 +175,12 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       g.setLineDash([]);
       const t = Math.min(1, Math.max(0, c.progress));
       g.beginPath();
-      g.arc(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, 4, 0, Math.PI * 2);
+      g.arc(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, 4 * S, 0, Math.PI * 2);
       g.fillStyle = "#e07a3f";
       g.fill();
       g.fillStyle = "#fff";
-      g.font = "600 11px system-ui, sans-serif";
-      g.fillText(`${c.name} · ${c.daysLeft.toFixed(1)} d`, x1, y1 - 10);
+      g.font = `600 ${Math.round(11 * S)}px system-ui, sans-serif`;
+      g.fillText(`${c.name} · ${c.daysLeft.toFixed(1)} d`, x1, y1 - 10 * S);
     }
     // Trade routes: a faint line between the holes, each rover a dot on it.
     const siteOf = (id: number) => s.holes.find((h) => h.id === id)?.site ?? null;
@@ -228,17 +220,23 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       if (!h.site) continue;
       const [x, y] = toXY(h.site.lat, h.site.lon);
       g.beginPath();
-      g.arc(x, y, 6, 0, Math.PI * 2);
+      g.arc(x, y, 6 * S, 0, Math.PI * 2);
       g.fillStyle = h.id === s.holeId ? "#e07a3f" : "#f6efe6";
       g.strokeStyle = "#1a0f0d";
-      g.lineWidth = 2;
+      g.lineWidth = 2 * S;
       g.fill();
       g.stroke();
       g.fillStyle = "#fff";
-      g.font = "700 12px system-ui, sans-serif";
-      g.fillText(h.name, x, y - 10);
+      g.font = `700 ${Math.round(13 * S)}px system-ui, sans-serif`;
+      g.fillText(h.name, x, y - 10 * S);
     }
-  }, [image, size, s.deposits, s.holes, s.holeId, s.convoys, s.routes, s.migrations, shown, site]);
+    setVersion((v) => v + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [image, canvas, s.deposits, s.holes, s.holeId, s.convoys, s.routes, s.migrations, shown, site]);
+
+  // Open facing the hole you're looking at (or the site picked).
+  const home = s.holes.find((h) => h.id === s.holeId)?.site;
+  const [focus] = useState(() => site ?? home ?? { lat: 20, lon: 0 });
 
   const info = useMemo(() => {
     if (!hover) return null;
@@ -277,21 +275,12 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
         </p>
       )}
       <div className="map-body">
-      <div className="map-wrap" ref={wrapRef}>
-        {!image && <p className="k">Loading the planet…</p>}
-        <canvas
-          ref={canvasRef}
-          style={{ width: size.w, height: size.h }}
-          onMouseMove={(e) => {
-            const r = e.currentTarget.getBoundingClientRect();
-            setHover({ lat: 90 - ((e.clientY - r.top) / r.height) * 180, lon: ((e.clientX - r.left) / r.width) * 360 });
-          }}
-          onMouseLeave={() => setHover(null)}
-          onClick={(e) => {
-            const r = e.currentTarget.getBoundingClientRect();
-            onSite({ lat: 90 - ((e.clientY - r.top) / r.height) * 180, lon: ((e.clientX - r.left) / r.width) * 360 });
-          }}
-        />
+      <div className="map-wrap">
+        {!image ? (
+          <p className="k">Loading the planet…</p>
+        ) : (
+          <Globe map={canvas} version={version} focus={focus} onHover={setHover} onPick={onSite} />
+        )}
       </div>
       {site && <SitePanel s={s} site={site} elevation={elevation} onClear={() => onSite(null)} onFound={() => onFound(site)} />}
       </div>
