@@ -217,3 +217,15 @@ Decided Sep 28, 2026 (Bryon):
 - **`src/render3d/surfaces.ts`:** patterns worked out in the shader from world position (value noise, 3 octaves). There are no image files or UVs, and they read the same on walls, ceilings and floors. Each adds to a material's existing shader hook, and walls down now does the same, so the two combine.
 - **Rock:** sediment bands about 1.4 m thick, gently warped so they wander round the hole, each with its own shade and a thin darker seam. Over that go mottling across metres, fine grain, and darker flecks. The contrast is soft for the cozy look. It's on the shaft wall, rock faces, the rock seen from above, rock-finish corridors, the shaft bottom and the cutaway's outer wall.
 - **Regolith** for the ground around the hole: mottling, grain and pebbles, without layers. Rock's bands looked like camouflage on a flat plane.
+
+**Follow-up, sparks and steam (Bryon, Sep 28):** "small effects like smelter sparks and life-support steam".
+- **`src/render3d/effects3d.ts`:** effects come from the furniture itself: sparks from each furnace's glowing mouth, and steam from each scrubber's vent pipe.
+  - Only rooms that are running (their rate in the snapshot) emit, and a slowed room emits fewer.
+  - Emitters on floors above the chosen one stay quiet.
+  - Sparks fly out of the furnace front and fall under gravity, burning out. Steam rises, swells and thins away.
+  - Each kind is one set of points from a fixed pool (500 sparks, 300 puffs), animated on the CPU, with soft round sprites whose size is in metres. Sparks blend additively, so the glow picks them up.
+- They animate only while the game runs, like the walkers, and follow the "Colonists and dust" graphics setting.
+- **Dust** is now soft and round, not square.
+- **Furniture glow at night** is toned down (the night boost went from 1.6 to 0.9) so glowing parts don't blow out under bloom.
+- **Fix:** the room inspector crashed the whole app on a room slowed by low morale. It read the reason as a resource. Morale now has its own text, and any unknown reason shows as given.
+- **Console:** `dm.unlock("ore")` puts a deposit under the hole, and `dm.command({...})` sends any command, to set up rooms like a smelter for testing. Dev builds also have `__stage3d.walkTo(x, z, yaw)` and `.roomFx`.

@@ -15,6 +15,7 @@ import { allocationRefusal } from "./storage";
 import { answerVisit } from "./visits";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
+import type { DepositKind } from "./mapgeo";
 
 export type SimCommand =
   /** `confirmed`: the player has agreed to fill in any corridors inside the footprint. */
@@ -44,7 +45,7 @@ export type SimCommand =
   | { type: "setGathering"; gathering: boolean }
   /** Testing, from the browser console: set resources to amounts, add to them (negative takes away), or raise them to at least an amount. */
   | { type: "consoleResources"; set?: Record<string, number>; add?: Record<string, number>; atLeast?: Record<string, number> }
-  /** Testing, from the browser console: unlock rooms that wait on a milestone (all of them, or one gate). */
+  /** Testing, from the browser console: unlock rooms that wait on a milestone (all of them, or one gate), or put a deposit under the hole (by name). */
   | { type: "consoleUnlock"; gate?: string };
 
 /** roomId is set when a build succeeds, so the UI can offer undo. */
@@ -55,6 +56,9 @@ export function applyCommand(state: SimState, cmd: SimCommand): CommandResult {
   state.effects = refreshEffects(state.layout, state.effects);
   return result;
 }
+
+/** Deposits the console can put under a hole, for testing rooms that need one. */
+const DEPOSITS: DepositKind[] = ["ice", "aquifer", "ore", "silica"];
 
 /** What console changes are recorded as in the ledger. */
 export const CONSOLE = "Console";
@@ -203,8 +207,13 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     case "consoleResources":
       return consoleResources(state, cmd.set ?? {}, cmd.add ?? {}, cmd.atLeast ?? {});
     case "consoleUnlock": {
+      const deposit = DEPOSITS.find((d) => d === cmd.gate);
+      if (deposit) {
+        if (!state.deposits.includes(deposit)) state.deposits.push(deposit);
+        return { ok: true };
+      }
       const gates = cmd.gate === undefined ? [...UNLOCK_GATES] : UNLOCK_GATES.filter((g) => g === cmd.gate);
-      if (!gates.length) return { ok: false, reason: `Unknown gate "${cmd.gate}": try ${UNLOCK_GATES.join(", ")}` };
+      if (!gates.length) return { ok: false, reason: `Unknown gate "${cmd.gate}": try ${[...UNLOCK_GATES, ...DEPOSITS].join(", ")}` };
       gates.forEach((g) => unlock(state, g));
       return { ok: true };
     }

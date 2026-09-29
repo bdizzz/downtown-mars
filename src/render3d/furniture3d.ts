@@ -9,7 +9,7 @@ import type { Placed } from "../view/furnish";
 // part. Parts that glow share emissive materials that brighten at night.
 
 const SEGMENTS = { cyl: 12, sphW: 10, sphH: 8 };
-const GLOW = { day: 0.35, nightBoost: 1.6 };
+const GLOW = { day: 0.35, nightBoost: 0.9 };
 
 export type { Placed };
 

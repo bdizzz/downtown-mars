@@ -25,9 +25,20 @@ function limitText(limit: string | undefined): string {
   if (limit === "staff") return "short of staff";
   if (limit === "paused") return "paused";
   if (limit === "kit") return "idle until you ask for a seed kit";
+  // Unhappy colonists work slower (economy.ts).
+  if (limit === "morale") return "slowed by low morale";
   if (limit.startsWith("stocked:")) return `standing by: ${resName(limit.slice(8)).toLowerCase()} stocked`;
   if (limit.startsWith("full:")) return `idling: ${resName(limit.slice(5)).toLowerCase()} storage full`;
-  return `short of ${resName(limit).toLowerCase()}`;
+  return `short of ${nameOf(limit)}`;
+}
+
+/** A resource's name, or the reason as given if it isn't one (so a new reason can't break the panel). */
+function nameOf(id: string): string {
+  try {
+    return resName(id).toLowerCase();
+  } catch {
+    return id;
+  }
 }
 
 /** Idling because output storage is full is fine; shortages and missing access aren't. */

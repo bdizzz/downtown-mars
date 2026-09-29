@@ -72,7 +72,8 @@ For testing, the browser console has `dm`, which acts on the hole you're looking
 - `dm.resources()` shows what it has.
 - `dm.give("metal", 50)`, `dm.take("water", 20)` and `dm.set("rock", 500)` change one resource; each also takes an object, like `dm.give({ metal: 50, rock: 100 })`.
 - `dm.fill(1000)` raises every stored resource (not power or waste) to at least that much.
-- `dm.unlock()` unlocks every room that waits on a milestone, or one with `dm.unlock("cargo")`.
+- `dm.unlock()` unlocks every room that waits on a milestone, or one with `dm.unlock("cargo")`. `dm.unlock("ore")` puts a deposit (ice, aquifer, ore or silica) under the hole, for rooms that need one.
+- `dm.command({ ... })` sends any simulation command, as the game would (see `SimCommand` in `src/sim/commands.ts`).
 
 Changes go through the simulation like any command and show in the flow report as "Console". Giving more than the hole can store also adds that much storage, which the hole keeps (in saves too), so the amount isn't thrown away on the next tick.
 

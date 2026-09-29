@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { softDot } from "./effects3d";
 import type { Hole } from "../sim/geometry";
 import type { Layout } from "../sim/placement";
 import { floorSpan, openShaftRadius, TAU } from "./cylinder";
@@ -177,7 +178,8 @@ export class Dust {
     geo.setAttribute("position", new THREE.BufferAttribute(this.positions, 3));
     this.points = new THREE.Points(
       geo,
-      new THREE.PointsMaterial({ color: 0xffe2c0, size: DUST.size, transparent: true, opacity: 0.55, depthWrite: false }),
+      // Round and soft-edged, not the square a bare point draws as.
+      new THREE.PointsMaterial({ color: 0xffe2c0, size: DUST.size, map: softDot(), transparent: true, opacity: 0.55, depthWrite: false }),
     );
   }
 

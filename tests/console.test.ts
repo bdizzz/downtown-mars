@@ -40,5 +40,9 @@ describe("console commands", () => {
     expect(applyCommand(s, { type: "consoleUnlock", gate: "dragons" }).ok).toBe(false);
     applyCommand(s, { type: "consoleUnlock" });
     expect(holeGates(s)).toEqual(expect.arrayContaining(["children", "elders", "cargo"]));
+    // A deposit, only by name.
+    expect(holeGates(s)).not.toContain("ore");
+    applyCommand(s, { type: "consoleUnlock", gate: "ore" });
+    expect(s.deposits).toContain("ore");
   });
 });

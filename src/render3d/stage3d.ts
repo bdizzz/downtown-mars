@@ -12,6 +12,7 @@ import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } fr
 import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
 import { Look } from "./look";
 import { withRegolith, withRock } from "./surfaces";
+import { RoomEffects } from "./effects3d";
 import { FLOOR_H, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
@@ -181,6 +182,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const stats = { buildMs: 0, frameMs: 0, calls: 0, triangles: 0 };
   const walkers = new Walkers();
   const dust = new Dust();
+  // Sparks and steam from working rooms.
+  const roomFx = new RoomEffects();
   let graphics: Graphics = DEFAULT_GRAPHICS;
   /** Real time (ms) the sim last moved; walkers stop when the game is paused. */
   let lastTickChange = 0;
@@ -1170,6 +1173,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // Ambient life (dust, walkers) animates at up to 30 fps; camera moves and
   // sim changes still render on the next frame.
   const AMBIENT_FPS = 30;
+  const bufferSize = new THREE.Vector2();
   const clock = new THREE.Clock();
   let ambient = 0;
   renderer.setAnimationLoop(() => {
@@ -1181,7 +1185,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
     if (graphics.life && hole && ambient >= 1 / AMBIENT_FPS) {
       dust.step(ambient);
-      if (performance.now() - lastTickChange < 400) walkers.step(ambient);
+      // Colonists, sparks and steam move only while the game runs.
+      if (performance.now() - lastTickChange < 400) {
+        walkers.step(ambient);
+        roomFx.step(ambient, cut());
+      }
       ambient = 0;
       dirty = true;
     }
@@ -1189,6 +1197,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     dirty = false;
     const t0 = performance.now();
     look.setView(hazeFocus(), view.mode === "walk" || view.mode === "shaft" || view.mode === "free", view.mode === "iso");
+    roomFx.setScale(renderer.getDrawingBufferSize(bufferSize).y / (2 * Math.tan((camera.fov * Math.PI) / 360)));
     look.render();
     stats.frameMs = performance.now() - t0;
     stats.calls = renderer.info.render.calls;
@@ -1210,6 +1219,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (lamps) lamps.visible = cut() === null;
     walkers.mesh.visible = graphics.life && cut() === null;
     dust.points.visible = graphics.life && cut() === null;
+    roomFx.group.visible = graphics.life;
+    if (!graphics.life) roomFx.clear();
     dirty = true;
   }
 
@@ -1219,7 +1230,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     look.resize();
     applyFloorCut();
   }
-  scene.add(walkers.mesh, dust.points);
+  scene.add(walkers.mesh, dust.points, roomFx.group);
 
   let latest: Snapshot | null = null;
   applyCamera();
@@ -1246,8 +1257,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           },
           // First person's position and heading, to put a walker somewhere.
           walker,
+          // Stand somewhere and look (first person), and redraw.
+          walkTo(x: number, z: number, yaw: number, floor = walker.floor, pitch = 0) {
+            Object.assign(walker, { x, z, yaw, floor, pitch });
+            applyCamera();
+            dirty = true;
+          },
           // The post-processing chain, to inspect its passes.
           look,
+          // Sparks and steam, to inspect their emitters.
+          roomFx,
           // Try graphics settings from the console (not saved).
           setGraphics(g: Partial<Graphics>) {
             graphics = { ...graphics, ...g };
@@ -1312,6 +1331,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         }
       }
       walkers.sync(snapshot.layout.hole, snapshot.population.count);
+      roomFx.sync(snapshot.layout, snapshot.roomStatus);
       updateSky(snapshot);
       const happy = overlayType === "happiness" ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",") : "";
       const fk = `${overlayType}:${gameId}:${snapshot.layout.version}:${happy}:${heat.bad}`;
@@ -1385,6 +1405,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       groundMat.dispose();
       dispose(walkers.mesh);
       dispose(dust.points);
+      roomFx.dispose();
       fieldGroup.traverse((o) => o instanceof THREE.Mesh && o.geometry.dispose());
       disposeRoomMaterials();
       overlayMats.forEach((m) => m.dispose());

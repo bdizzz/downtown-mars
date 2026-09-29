@@ -20,7 +20,9 @@ const HELP = `Downtown Mars console (the hole you're looking at):
   dm.take("water", 20)      take some away
   dm.set("rock", 500)       set an amount (or dm.set({ rock: 500, brick: 200 }))
   dm.fill(1000)             every stored resource (not power or waste) up to at least this much
-  dm.unlock()               unlock every room that waits on a milestone (or dm.unlock("cargo"))`;
+  dm.unlock()               unlock every room that waits on a milestone (or dm.unlock("cargo"))
+  dm.unlock("ore")          put a deposit under the hole: ice, aquifer, ore or silica
+  dm.command({ ... })       send any simulation command, as the game would (see SimCommand in src/sim/commands.ts)`;
 
 /** "metal", 50 or { metal: 50 }, as amounts. */
 function amounts(what: string | Amounts, amount?: number): Amounts {
@@ -59,6 +61,9 @@ export function installConsole(api: Api): () => void {
     fill(amount = 1000) {
       const atLeast = Object.fromEntries(resourceDefs.filter((r) => !r.flow && !r.waste).map((r) => [r.id, amount]));
       return run({ type: "consoleResources", atLeast }, `Every stored resource is at least ${amount}`);
+    },
+    command(command: SimCommand) {
+      return run(command, "Done");
     },
     unlock(gate?: string) {
       return run({ type: "consoleUnlock", gate }, gate ? `Unlocked ${gate}` : "Unlocked everything that waits on a milestone");
