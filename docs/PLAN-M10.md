@@ -473,3 +473,11 @@ Decided Sep 28, 2026 (Bryon):
 - **A new setting**, "Lamp light" (`graphics.lamps`): High 1 (12 lights), Medium 0.5 (6), Low 0 (none, no pools). Changing the count recompiles shaders, so only settings change it.
 - **Console:** `dm.finish()` finishes the whole construction queue (`consoleFinish`), for testing.
 - **Browser check:** a new test game with rooms built by `dm.finish()` (Bryon's autosave backed up in the browser first). In the apartment in first person, lamp light off is flat and cool. On, the wall lamps throw warm light round themselves and the bedside lamps glow on the floor. The first attempt blew the paintings out, so the intensity came down from 7 to 3.5 and the wall lamp's light moved out from the wall.
+
+**Step 3, mood by depth and hour:**
+- The haze pass already rebuilds each pixel's world position, so it now tints by depth and time of day too (`LOOK.mood`).
+  - Near the surface, colours follow the hour: at night they cool to a moonlit blue.
+  - Deeper, lamps take over whatever the hour. From 2 m below the surface to 22 m, everything settles into their amber.
+  - The sky is left alone.
+- `look.setDaylight` is fed from `updateSky`. The mood scales with the haze setting, so Low turns it off with the haze.
+- Dev hook: `__stage3d.draw()` draws a frame at once, since a hidden browser pane barely animates.

@@ -469,6 +469,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // Deep in the shaft, daylight matters less than the lamps; keep it gentle.
     hemi.intensity = 0.45 + 0.35 * light;
     sun.intensity = 0.15 + 0.9 * light;
+    // Near the surface, the view takes the hour's light; deeper down, the lamps'.
+    look.setDaylight(light);
     // At night, windows and the gallery lamps glow.
     setNightGlow(1 - light);
     if (lamps) setLampGlow(lamps, 1 - light);
@@ -1269,6 +1271,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
     if (!dirty) return;
     dirty = false;
+    drawFrame();
+  });
+
+  /** Draw the scene now, with everything that follows the camera brought up to date. */
+  function drawFrame(): void {
     const t0 = performance.now();
     // Far rooms draw their furniture coarser.
     for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : "near");
@@ -1281,7 +1288,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     stats.frameMs = performance.now() - t0;
     stats.calls = renderer.info.render.calls;
     stats.triangles = renderer.info.render.triangles;
-  });
+  }
 
   canvas.addEventListener("webglcontextlost", (e) => {
     e.preventDefault();
@@ -1352,6 +1359,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           look,
           // Sparks and steam, to inspect their emitters.
           roomFx,
+          // Draw a frame now (a hidden browser tab barely animates).
+          draw() {
+            applyCamera();
+            drawFrame();
+          },
           // How many rooms show their furniture near and far.
           detail() {
             const n = { near: 0, far: 0 };

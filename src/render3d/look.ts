@@ -30,6 +30,13 @@ const LOOK = {
    * thickens with distance past a clear range, from inside the hole; and the most it hides.
    */
   haze: { color: 0x5e3a2c, depthDensity: 0.035, clear: 15, density: 0.012, max: 0.6 },
+  /**
+   * Mood by depth and hour: near the surface things take the time of day (a
+   * moonlit blue at night); deeper down, lamps take over, whatever the hour,
+   * and everything settles into their amber. `deep` is how far down (metres
+   * below the surface) the lamps have taken over entirely; `from` is where the change starts.
+   */
+  mood: { night: [0.72, 0.8, 1.02] as const, lamp: [1.07, 0.93, 0.78] as const, from: 2, deep: 22 },
   /** Tilt-shift: blur at full (as a share of the screen), and where the sharp band sits (0 bottom, 1 top). */
   tiltShift: { blur: 2.4, focus: 0.5 },
   /** Soft studio light reflected by metal and glass. */
@@ -104,6 +111,11 @@ const HazeShader = {
     focusY: { value: 0 },
     byDistance: { value: 0 },
     amount: { value: 1 },
+    daylight: { value: 1 },
+    nightTint: { value: new THREE.Vector3(...LOOK.mood.night) },
+    lampTint: { value: new THREE.Vector3(...LOOK.mood.lamp) },
+    moodFrom: { value: LOOK.mood.from },
+    moodDeep: { value: LOOK.mood.deep },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -120,6 +132,11 @@ const HazeShader = {
     uniform float focusY;
     uniform float byDistance;
     uniform float amount;
+    uniform float daylight;
+    uniform vec3 nightTint;
+    uniform vec3 lampTint;
+    uniform float moodFrom;
+    uniform float moodDeep;
     varying vec2 vUv;
     void main() {
       vec4 base = texture2D(tDiffuse, vUv);
@@ -132,7 +149,11 @@ const HazeShader = {
       float below = max(0.0, focusY - world.y);
       float far = max(0.0, length(view.xyz) - clear) * byDistance;
       float f = (1.0 - exp(-below * depthDensity - far * density)) * amount;
-      gl_FragColor = vec4(mix(base.rgb, color, clamp(f, 0.0, ${LOOK.haze.max.toFixed(2)})), base.a);
+      vec3 c = mix(base.rgb, color, clamp(f, 0.0, ${LOOK.haze.max.toFixed(2)}));
+      // The mood: the hour's light near the surface, the lamps' deeper down.
+      float lamps = smoothstep(moodFrom, moodDeep, -world.y);
+      vec3 tint = mix(mix(nightTint, vec3(1.0), daylight), lampTint, lamps);
+      gl_FragColor = vec4(c * mix(vec3(1.0), tint, amount), base.a);
     }`,
 };
 
@@ -225,6 +246,11 @@ export class Look {
    * over), whether it's from inside the hole (far things haze too), and whether
    * it's Iso (the only view tilt-shift suits).
    */
+  /** Daylight, 0 (night) to 1 (noon), for the mood near the surface. */
+  setDaylight(light: number): void {
+    this.haze.uniforms.daylight!.value = light;
+  }
+
   setView(focusY: number, inside: boolean, iso: boolean): void {
     this.haze.uniforms.focusY!.value = focusY;
     this.haze.uniforms.byDistance!.value = inside ? 1 : 0;
