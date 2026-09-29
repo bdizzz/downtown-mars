@@ -5,7 +5,7 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { floorSpan, ringRadii, slotAngles } from "../render3d/cylinder";
 import { doorways } from "./doors";
-import { isFurnished, isMounted, itemDef } from "./furniture";
+import { isFurnished, isItem, isMounted, itemDef } from "./furniture";
 
 // Laying furniture out in a room. A template (data/layouts.json) is a list of
 // placements for one room type and shape, in priority order. Each is pinned
@@ -418,5 +418,14 @@ export function furnish(layout: Layout, room: RoomInstance, templates: Record<st
     const frame = template && frameOf(layout, room, floor);
     if (frame && template) out.push(...fit(frame, template));
   }
+  // A farm shows what it grows: its planters and racks swap for that crop's (same footprints).
+  const crop = room.crop ?? roomDef(room.type).defaultCrop;
+  if (crop) for (const f of out) f.item = cropVariant(f.item, crop);
   return out;
+}
+
+/** An item as it looks growing a crop ("planter_bed_wheat"), if it has such a look. */
+export function cropVariant(item: string, crop: string): string {
+  const id = `${item}_${crop}`;
+  return isItem(id) ? id : item;
 }

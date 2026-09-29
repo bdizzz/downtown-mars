@@ -408,26 +408,109 @@ item("serving_counter", "Serving counter", [
   box([0, 2.3, -0.265], [1.5, 0.42, 0.01], "glow", glow),
 ]);
 item("water_dispenser", "Water dispenser", [box([0, 0.5, 0], [0.4, 1.0, 0.4], "white"), cyl([0, 1.2, 0], 0.32, 0.45, "water"), box([0, 0.75, 0.205], [0.2, 0.12, 0.02], "dark"), box([0, 0.85, 0.21], [0.06, 0.04, 0.02], "glow", glow)]);
-item("planter_bed", "Planter bed", [
-  box([0, 0.3, 0], [2.6, 0.6, 1.1], "panel"),
-  box([0, 0.3, 0.556], [2.6, 0.08, 0.01], "accent"),
-  box([0, 0.61, 0], [2.5, 0.02, 1.0], "soil"),
-  ...[-1.0, -0.5, 0, 0.5, 1.0].flatMap((x) => [-0.25, 0.25].map((z) => sph([x, 0.78, z], 0.34, "plant"))),
-  ...[-0.75, -0.25, 0.25, 0.75].flatMap((x) => [-0.25, 0.25].map((z) => sph([x, 0.9, z + 0.05], 0.2, "leaf"))),
-  ...[-1, 1].map((sx) => cyl([sx * 1.25, 1.6, 0], 0.05, 2.0, "metal")),
-  box([0, 2.55, 0], [2.6, 0.08, 0.3], "dark"),
-  box([0, 2.5, 0], [2.4, 0.02, 0.24], "grow", glow),
-  cyl([0, 0.66, 0.5], 0.04, 2.5, "water", { r: [0, 0, 90] }),
-]);
-item("hydroponic_rack", "Hydroponic rack", [
-  ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => box([sx * 0.95, 1.25, sz * 0.3], [0.05, 2.5, 0.05], "metal"))),
-  ...[0.3, 1.1, 1.9].flatMap((y) => [
-    box([0, y, 0], [1.95, 0.08, 0.62], "white"),
-    ...[-0.7, -0.35, 0, 0.35, 0.7].map((x) => sph([x, y + 0.14, 0], 0.22, "leaf")),
-    box([0, y + 0.6, 0], [1.8, 0.03, 0.3], "grow", glow),
-  ]),
-  cyl([0.9, 1.2, 0.3], 0.05, 2.2, "water"),
-]);
+// Farms: a planter bed and a hydroponic rack for every crop. The plain ids are leafy greens;
+// the others (planter_bed_wheat, ...) swap in for a farm growing that crop, in the same footprint.
+const CROPS = ["potatoes", "soybeans", "wheat", "barley", "leafyGreens", "mushrooms", "algae"];
+const CROP_NAMES = { potatoes: "potatoes", soybeans: "soybeans", wheat: "wheat", barley: "barley", leafyGreens: "leafy greens", mushrooms: "mushrooms", algae: "algae" };
+
+/** A crop growing over a patch w × d whose soil is at height y: its plants, as parts. */
+function cropParts(crop, w, d, y, scale = 1) {
+  const cols = Math.max(2, Math.round(w / (0.5 * scale)));
+  const rows = Math.max(1, Math.round(d / (0.5 * scale)));
+  const at = (i, j) => [(-w / 2) + (w / cols) * (i + 0.5), -d / 2 + (d / rows) * (j + 0.5)];
+  const grid = (f) => Array.from({ length: cols }, (_, i) => Array.from({ length: rows }, (_, j) => f(...at(i, j), i, j))).flat(2);
+  const k = scale;
+  switch (crop) {
+    case "potatoes":
+      // Low bushy mounds, a few white flowers.
+      return grid((x, z, i, j) => [
+        sph([x, y + 0.08 * k, z], 0.3 * k, "soil"),
+        sph([x, y + 0.2 * k, z], 0.36 * k, "potato"),
+        sph([x + 0.08 * k, y + 0.28 * k, z - 0.05 * k], 0.22 * k, "leaf"),
+        ...((i + j) % 2 ? [sph([x - 0.06 * k, y + 0.38 * k, z + 0.05 * k], 0.06 * k, "flower")] : []),
+      ]);
+    case "soybeans":
+      // Upright bushes, pods hanging.
+      return grid((x, z) => [
+        cyl([x, y + 0.2 * k, z], 0.03 * k, 0.4 * k, "plant"),
+        sph([x, y + 0.42 * k, z], 0.3 * k, "soy"),
+        sph([x + 0.06 * k, y + 0.55 * k, z], 0.2 * k, "leaf"),
+        box([x + 0.1 * k, y + 0.3 * k, z + 0.08 * k], [0.03 * k, 0.1 * k, 0.03 * k], "soy"),
+        box([x - 0.1 * k, y + 0.26 * k, z - 0.06 * k], [0.03 * k, 0.1 * k, 0.03 * k], "soy"),
+      ]);
+    case "wheat":
+    case "barley": {
+      // Close-set stalks, each with its ear; barley's nod and are paler.
+      const ear = crop === "wheat" ? "wheat" : "barley";
+      const stalks = [];
+      // Spaced the same on a shelf as in a bed, so a rack doesn't need hundreds of stalks.
+      const n = Math.max(3, Math.round(w / 0.2));
+      const m = Math.max(2, Math.round(d / 0.25));
+      for (let i = 0; i < n; i++)
+        for (let j = 0; j < m; j++) {
+          const x = -w / 2 + (w / n) * (i + 0.5) + ((j % 2) * w) / n / 2;
+          const z = -d / 2 + (d / m) * (j + 0.5);
+          const h = (0.55 + ((i * 7 + j * 3) % 5) * 0.03) * k;
+          stalks.push(cyl([x, y + h / 2, z], 0.015 * k, h, "stalk"));
+          stalks.push(box([x, y + h + 0.05 * k, z + (crop === "barley" ? 0.03 * k : 0)], [0.04 * k, 0.12 * k, 0.03 * k], ear, crop === "barley" ? { r: [25, 0, 0] } : {}));
+        }
+      return stalks;
+    }
+    case "mushrooms":
+      // Dark substrate blocks, caps on short stems.
+      return grid((x, z, i, j) => [
+        box([x, y + 0.06 * k, z], [0.4 * k, 0.12 * k, 0.4 * k], "substrate"),
+        ...[-0.1, 0.1].flatMap((dx) => [
+          cyl([x + dx * k, y + 0.16 * k, z + dx * 0.5 * k], 0.04 * k, 0.1 * k, "mushroom"),
+          cyl([x + dx * k, y + 0.22 * k, z + dx * 0.5 * k], ((i + j) % 2 ? 0.14 : 0.1) * k, 0.04 * k, "cap"),
+        ]),
+      ]);
+    case "algae":
+      // Green water in a glass trough, bubbling.
+      return [
+        box([0, y + 0.15 * k, 0], [w * 0.96, 0.3 * k, d * 0.9], "algae"),
+        ...grid((x, z) => [sph([x, y + 0.31 * k, z], 0.06 * k, "white")]),
+      ];
+    default:
+      // Leafy greens: round heads of leaves.
+      return grid((x, z) => [sph([x, y + 0.17 * k, z], 0.34 * k, "plant"), sph([x + 0.05 * k, y + 0.29 * k, z + 0.05 * k], 0.2 * k, "leaf")]);
+  }
+}
+
+/** A raised bed under a grow light (none for mushrooms, which grow dark), planted with a crop. */
+function planterBed(crop) {
+  const glass = crop === "algae";
+  return [
+    box([0, 0.3, 0], [2.6, 0.6, 1.1], glass ? "mirror" : "panel"),
+    box([0, 0.3, 0.556], [2.6, 0.08, 0.01], "accent"),
+    ...(glass ? [] : [box([0, 0.61, 0], [2.5, 0.02, 1.0], crop === "mushrooms" ? "substrate" : "soil")]),
+    ...cropParts(crop, 2.4, 0.9, 0.62),
+    ...[-1, 1].map((sx) => cyl([sx * 1.25, 1.6, 0], 0.05, 2.0, "metal")),
+    box([0, 2.55, 0], [2.6, 0.08, 0.3], "dark"),
+    ...(crop === "mushrooms" ? [] : [box([0, 2.5, 0], [2.4, 0.02, 0.24], "grow", glow)]),
+    cyl([0, 0.66, 0.5], 0.04, 2.5, "water", { r: [0, 0, 90] }),
+  ];
+}
+
+/** Three shelves of a crop under their own lights. */
+function hydroponicRack(crop) {
+  return [
+    ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => box([sx * 0.95, 1.25, sz * 0.3], [0.05, 2.5, 0.05], "metal"))),
+    ...[0.3, 1.1, 1.9].flatMap((y) => [
+      box([0, y, 0], [1.95, 0.08, 0.62], crop === "algae" ? "mirror" : "white"),
+      ...cropParts(crop, 1.8, 0.5, y + 0.04, 0.55),
+      ...(crop === "mushrooms" ? [] : [box([0, y + 0.6, 0], [1.8, 0.03, 0.3], "grow", glow)]),
+    ]),
+    cyl([0.9, 1.2, 0.3], 0.05, 2.2, "water"),
+  ];
+}
+
+for (const crop of CROPS) {
+  const suffix = crop === "leafyGreens" ? "" : `_${crop}`;
+  const name = crop === "leafyGreens" ? "" : ` (${CROP_NAMES[crop]})`;
+  item(`planter_bed${suffix}`, `Planter bed${name}`, planterBed(crop));
+  item(`hydroponic_rack${suffix}`, `Hydroponic rack${name}`, hydroponicRack(crop));
+}
 item("seed_table", "Seedling bench", [
   ...table(2.0, 0.8, 0.85, "steel"),
   ...[-0.7, -0.23, 0.23, 0.7].map((x) => box([x, 0.9, 0], [0.4, 0.05, 0.6], "dark")),
@@ -1026,7 +1109,7 @@ const rooms = {
   suite: ["double_bed", "side_table", "wardrobe", "dresser", "bathroom_pod", "bathtub", "kitchenette", "table", "chair", "sofa", "armchair", "coffee_table", "fireplace", "bookshelf", "tv_unit", "rug", "floor_lamp", "plant_pot", "planter_tree"],
   residence: ["double_bed", "bed", "side_table", "wardrobe", "dresser", "partition", "bathroom_pod", "bathtub", "kitchenette", "dining_table", "sofa", "armchair", "coffee_table", "fireplace", "piano", "bookshelf", "desk", "office_chair", "tv_unit", "rug", "floor_lamp", "plant_pot", "planter_tree"],
   galley: ["stove_counter", "prep_counter", "fridge", "serving_counter", "dining_table", "shelf_unit", "water_dispenser", "trash_bin"],
-  farm: ["planter_bed", "hydroponic_rack", "seed_table", "big_tank", "tool_cart", "shelf_unit", "pipe_run"],
+  farm: ["planter_bed", "hydroponic_rack", ...CROPS.filter((c) => c !== "leafyGreens").flatMap((c) => [`planter_bed_${c}`, `hydroponic_rack_${c}`]), "seed_table", "big_tank", "tool_cart", "shelf_unit", "pipe_run"],
   water_tank: ["big_tank", "pipe_run", "valve_panel", "pump"],
   water_recycler: ["filter_column", "big_tank", "pump", "pipe_run", "console", "valve_panel"],
   restroom: ["toilet_stall", "sink_basin", "shower_stall", "laundry_machine", "bench", "trash_bin"],
@@ -1112,6 +1195,8 @@ const colors = {
   composite: "#a88a66", cushion: "#7c6a5a", plant: "#5f9e4a", leaf: "#7cc05a", soil: "#5a3a28", water: "#4f9fc8", mirror: "#8fc7d9",
   rust: "#a0522d", copper: "#b87333", stone: "#8a7a6c", hazard: "#e0a03a", board: "#2f4a3a", glow: "#9fd2ff", grow: "#f0a8ff",
   fire: "#ff8a3d", lamp: "#ffe2b0", power: "#f4d35e", blueprint: "#3d6fb0", wood: "#8a5e3c",
+  potato: "#4f7a3a", soy: "#9cbf5a", stalk: "#b8a060", wheat: "#d8b35a", barley: "#cdbf86", substrate: "#4a3526",
+  mushroom: "#e6dccb", cap: "#b08a64", algae: "#3f9a5a", flower: "#f2f0e0",
 };
 
 // Every item a room lists exists, and every item is used somewhere.

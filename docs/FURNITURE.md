@@ -14,7 +14,7 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | Suite | S | Double bed, Side table, Wardrobe, Dresser, Bathroom, Bathtub, Kitchenette, Table, Chair, Sofa, Armchair, Coffee table, Fireplace, Bookshelf, Media wall, Rug, Floor lamp, Potted plant, Tree planter, Painting, Wide painting, Wall lamp, Wall shelf, Mirror, Clock, Hanging planter |
 | Residence | M | Double bed, Bed, Side table, Wardrobe, Dresser, Privacy screen, Bathroom, Bathtub, Kitchenette, Dining table, Sofa, Armchair, Coffee table, Fireplace, Piano, Bookshelf, Desk, Office chair, Media wall, Rug, Floor lamp, Potted plant, Tree planter, Painting, Wide painting, Wall lamp, Wall shelf, Mirror, Clock, Hanging planter |
 | Galley | S | Stove counter, Prep counter, Fridge, Serving counter, Dining table, Shelving, Water dispenser, Bin, Notice board, Clock, Wall shelf, Safety sign |
-| Farm | L | Planter bed, Hydroponic rack, Seedling bench, Storage tank, Tool cart, Shelving, Pipe run, Gauges, Chart board, Hanging planter, Readout panel |
+| Farm | L | Planter bed, Hydroponic rack, Planter bed (potatoes), Hydroponic rack (potatoes), Planter bed (soybeans), Hydroponic rack (soybeans), Planter bed (wheat), Hydroponic rack (wheat), Planter bed (barley), Hydroponic rack (barley), Planter bed (mushrooms), Hydroponic rack (mushrooms), Planter bed (algae), Hydroponic rack (algae), Seedling bench, Storage tank, Tool cart, Shelving, Pipe run, Gauges, Chart board, Hanging planter, Readout panel |
 | Water tank | S | Storage tank, Pipe run, Valve panel, Pump, Gauges, Safety sign |
 | Water recycler | L | Filter column, Storage tank, Pump, Pipe run, Control console, Valve panel, Gauges, Readout panel, Safety sign, Chart board |
 | Restroom | S | Toilet stall, Washbasins, Shower, Washer, Bench, Bin, Mirror, Poster, Wall lamp |
@@ -99,8 +99,20 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | Dining table (`dining_table`) | 2.4 × 1.95 × 0.9 | Apartment, Family apartment, Residence, Galley, Elder care |
 | Serving counter (`serving_counter`) | 2.45 × 0.75 × 2.55 | Galley |
 | Water dispenser (`water_dispenser`) | 0.4 × 0.45 × 1.45 | Galley |
+| Planter bed (potatoes) (`planter_bed_potatoes`) | 2.6 × 1.15 × 2.6 | Farm |
+| Hydroponic rack (potatoes) (`hydroponic_rack_potatoes`) | 1.95 × 0.65 × 2.55 | Farm |
+| Planter bed (soybeans) (`planter_bed_soybeans`) | 2.6 × 1.15 × 2.6 | Farm |
+| Hydroponic rack (soybeans) (`hydroponic_rack_soybeans`) | 1.95 × 0.65 × 2.55 | Farm |
+| Planter bed (wheat) (`planter_bed_wheat`) | 2.6 × 1.15 × 2.6 | Farm |
+| Hydroponic rack (wheat) (`hydroponic_rack_wheat`) | 1.95 × 0.65 × 2.55 | Farm |
+| Planter bed (barley) (`planter_bed_barley`) | 2.6 × 1.15 × 2.6 | Farm |
+| Hydroponic rack (barley) (`hydroponic_rack_barley`) | 1.95 × 0.65 × 2.55 | Farm |
 | Planter bed (`planter_bed`) | 2.6 × 1.15 × 2.6 | Farm |
 | Hydroponic rack (`hydroponic_rack`) | 1.95 × 0.65 × 2.55 | Farm |
+| Planter bed (mushrooms) (`planter_bed_mushrooms`) | 2.6 × 1.15 × 2.6 | Farm |
+| Hydroponic rack (mushrooms) (`hydroponic_rack_mushrooms`) | 1.95 × 0.65 × 2.5 | Farm |
+| Planter bed (algae) (`planter_bed_algae`) | 2.6 × 1.15 × 2.6 | Farm |
+| Hydroponic rack (algae) (`hydroponic_rack_algae`) | 1.95 × 0.65 × 2.55 | Farm |
 | Seedling bench (`seed_table`) | 2 × 0.8 × 1.05 | Farm |
 | Tool cart (`tool_cart`) | 0.9 × 0.55 × 1.05 | Farm, Smelter, Machine shop, Composter |
 | Compost bin (`compost_bin`) | 1.35 × 1.35 × 1.35 | Composter |

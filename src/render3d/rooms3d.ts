@@ -559,7 +559,8 @@ const HANG = { probe: 0.15 };
 const furnitureCache = new Map<string, THREE.Group>();
 function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, color: number, topFloor: number | null): THREE.Group | null {
   // Stairs and elevators are furnished on several floors: above a chosen floor, theirs go too.
-  const key = `furniture:${shapeKey}:${topFloor ?? "all"}`;
+  // A farm's crop changes what grows in its planters.
+  const key = `furniture:${shapeKey}:${topFloor ?? "all"}:${room.crop ?? ""}`;
   let g = furnitureCache.get(key);
   if (!g) {
     const fitted = furnish(layout, room).filter((f) => topFloor === null || f.floor >= topFloor);
