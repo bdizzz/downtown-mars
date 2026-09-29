@@ -32,6 +32,8 @@ export interface ItemDef {
   opening?: boolean;
   /** A flight of stairs: walked up from its foot (its front) to its head, a floor higher. */
   climb?: boolean;
+  /** It gives light: its colour, where from (in its own frame), how far it reaches (metres), and how strong. */
+  light?: { color: string; at: [number, number, number]; reach: number; strength: number };
 }
 
 export const furniture = raw as unknown as {

@@ -9,7 +9,7 @@ import { isCrop, resourceDefs } from "./resources";
 import { capacities, mainOutput } from "./economy";
 import { corridorCost, corridorRefusal, CORRIDORS, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById } from "./edges";
-import { dropCorridors, dropRoomJobs, prioritize, queueCorridors, queueExtension, queueFill, queueRoom } from "./construction";
+import { dropCorridors, dropRoomJobs, finishAll, prioritize, queueCorridors, queueExtension, queueFill, queueRoom } from "./construction";
 import { holeGates, unlock, UNLOCK_GATES } from "./people";
 import { allocationRefusal } from "./storage";
 import { answerVisit } from "./visits";
@@ -46,7 +46,9 @@ export type SimCommand =
   /** Testing, from the browser console: set resources to amounts, add to them (negative takes away), or raise them to at least an amount. */
   | { type: "consoleResources"; set?: Record<string, number>; add?: Record<string, number>; atLeast?: Record<string, number> }
   /** Testing, from the browser console: unlock rooms that wait on a milestone (all of them, or one gate), or put a deposit under the hole (by name). */
-  | { type: "consoleUnlock"; gate?: string };
+  | { type: "consoleUnlock"; gate?: string }
+  /** Testing, from the browser console: finish every job in the construction queue at once. */
+  | { type: "consoleFinish" };
 
 /** roomId is set when a build succeeds, so the UI can offer undo. */
 export type CommandResult = { ok: true; roomId?: number } | { ok: false; reason: string };
@@ -206,6 +208,12 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     }
     case "consoleResources":
       return consoleResources(state, cmd.set ?? {}, cmd.add ?? {}, cmd.atLeast ?? {});
+    case "consoleFinish": {
+      const n = state.construction?.queue.length ?? 0;
+      finishAll(state, config);
+      recomputeAccess(layout);
+      return n ? { ok: true } : { ok: false, reason: "Nothing is waiting to be built" };
+    }
     case "consoleUnlock": {
       const deposit = DEPOSITS.find((d) => d === cmd.gate);
       if (deposit) {

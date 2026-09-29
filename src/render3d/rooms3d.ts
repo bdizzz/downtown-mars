@@ -12,6 +12,7 @@ import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
 import { finishMaterial, withRock } from "./surfaces";
 import { roomFinish, type Finish } from "../view/roomFinish";
+import { lampsOf, lightPools } from "./lights3d";
 import { centreOf, disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow, type HangTag } from "./furniture3d";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
@@ -564,6 +565,11 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
   const hungAs = hanging.length ? { tags: hanging.map((f) => hangTag(layout, room, f)), key: "hung", material: withHangingDown } : null;
   if (hungAs) g.add(...furnitureMeshes(hanging, accent, hungAs).children);
   g.userData.centre = centreOf(fitted);
+  // Its lamps: pooled on the floor always, and for the stage to light the nearest.
+  const lamps = lampsOf(fitted);
+  g.userData.lamps = lamps;
+  const pools = lightPools(lamps);
+  if (pools) g.add(pools);
   // Far away: coarser copies of both, made when first needed.
   g.userData.far = () => [...furnitureMeshes(standing, accent, undefined, "far").children, ...(hungAs ? furnitureMeshes(hanging, accent, hungAs, "far").children : [])];
   return g;

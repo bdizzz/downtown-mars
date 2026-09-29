@@ -63,7 +63,7 @@
       {"s": "box", "p": [0, 0.18, 0.006], "z": [0.44, 0.03, 0.004], "c": "dark"},
       {"s": "box", "p": [0, 0.12, 0.006], "z": [0.44, 0.03, 0.004], "c": "dark"}
     ] },
-    "wall_lamp": { "name": "Wall lamp", "size": [0.25, 0.55, 0.35], "mount": 1.9, "parts": [
+    "wall_lamp": { "name": "Wall lamp", "size": [0.25, 0.55, 0.35], "mount": 1.9, "light": {"color": "#ffd29a", "at": [0, 0.05, 0.45], "reach": 4, "strength": 1}, "parts": [
       {"s": "box", "p": [0, 0.12, 0], "z": [0.12, 0.24, 0.04], "c": "metal"},
       {"s": "box", "p": [0, 0.12, 0.08], "z": [0.04, 0.04, 0.14], "c": "metal"},
       {"s": "cyl", "p": [0, 0.22, 0.15], "z": [0.22, 0.2], "c": "cream"},
@@ -346,13 +346,13 @@
       {"s": "sph", "p": [0.32, 0.36, 0.05], "z": [0.1], "c": "metal"},
       {"s": "cyl", "p": [0.45, 0.48, 0.06], "z": [0.18, 0.06], "c": "metal", "r": [90, 0, 0]}
     ] },
-    "grow_light": { "name": "Grow light", "size": [1.5, 0.75, 0.15], "mount": 2.5, "parts": [
+    "grow_light": { "name": "Grow light", "size": [1.5, 0.75, 0.15], "mount": 2.5, "light": {"color": "#f0a0ff", "at": [0, 0, 0.3], "reach": 4, "strength": 0.8}, "parts": [
       {"s": "box", "p": [-0.6, 0.1, 0.15], "z": [0.04, 0.04, 0.3], "c": "metal"},
       {"s": "box", "p": [0.6, 0.1, 0.15], "z": [0.04, 0.04, 0.3], "c": "metal"},
       {"s": "box", "p": [0, 0.06, 0.3], "z": [1.5, 0.08, 0.14], "c": "dark"},
       {"s": "box", "p": [0, 0.015, 0.3], "z": [1.44, 0.01, 0.1], "c": "grow", "glow": true}
     ] },
-    "work_light": { "name": "Work light", "size": [0.2, 0.6, 0.25], "mount": 2.45, "parts": [
+    "work_light": { "name": "Work light", "size": [0.2, 0.6, 0.25], "mount": 2.45, "light": {"color": "#ffd29a", "at": [0, 0.02, 0.2], "reach": 5, "strength": 1}, "parts": [
       {"s": "box", "p": [0, 0.12, 0.01], "z": [0.14, 0.22, 0.02], "c": "dark"},
       {"s": "box", "p": [0, 0.14, 0.08], "z": [0.04, 0.04, 0.14], "c": "dark"},
       {"s": "cyl", "p": [0, 0.1, 0.18], "z": [0.2, 0.18], "c": "hazard"},
@@ -468,7 +468,7 @@
       {"s": "box", "p": [0.93, 0.58, 0.05], "z": [0.14, 0.28, 0.8], "c": "accent"},
       {"s": "box", "p": [-0.6, 0.72, -0.25], "z": [0.32, 0.28, 0.1], "c": "cream", "r": [-15, 0, 0]}
     ] },
-    "side_table": { "name": "Side table", "size": [0.5, 0.5, 0.95], "parts": [
+    "side_table": { "name": "Side table", "size": [0.5, 0.5, 0.95], "light": {"color": "#ffd29a", "at": [0.08, 0.8, 0.05], "reach": 2.5, "strength": 0.6}, "parts": [
       {"s": "cyl", "p": [0, 0.3, 0], "z": [0.08, 0.58], "c": "metal"},
       {"s": "cyl", "p": [0, 0.59, 0], "z": [0.5, 0.03], "c": "composite"},
       {"s": "cyl", "p": [0, 0.02, 0], "z": [0.36, 0.04], "c": "metal"},
@@ -493,7 +493,7 @@
       {"s": "box", "p": [-0.9, 0.02, 0], "z": [0.08, 0.04, 0.4], "c": "metal"},
       {"s": "box", "p": [0.9, 0.02, 0], "z": [0.08, 0.04, 0.4], "c": "metal"}
     ] },
-    "floor_lamp": { "name": "Floor lamp", "size": [0.4, 0.4, 1.8], "parts": [
+    "floor_lamp": { "name": "Floor lamp", "size": [0.4, 0.4, 1.8], "light": {"color": "#ffd29a", "at": [0, 1.45, 0], "reach": 4, "strength": 1}, "parts": [
       {"s": "cyl", "p": [0, 0.02, 0], "z": [0.36, 0.04], "c": "dark"},
       {"s": "cyl", "p": [0, 0.8, 0], "z": [0.04, 1.56], "c": "metal"},
       {"s": "cyl", "p": [0, 1.62, 0], "z": [0.4, 0.3], "c": "cream"},
@@ -563,7 +563,7 @@
       {"s": "box", "p": [-0.25, 0.47, 0.02], "z": [0.26, 0.03, 0.2], "c": "cream"},
       {"s": "cyl", "p": [0.3, 0.46, -0.05], "z": [0.09, 0.09], "c": "white"}
     ] },
-    "kitchenette": { "name": "Kitchenette", "size": [2.45, 0.7, 2.2], "parts": [
+    "kitchenette": { "name": "Kitchenette", "size": [2.45, 0.7, 2.2], "light": {"color": "#ffd29a", "at": [0, 1.45, 0.1], "reach": 3, "strength": 0.7}, "parts": [
       {"s": "box", "p": [0, 0.44, 0], "z": [2.4, 0.88, 0.62], "c": "wood"},
       {"s": "box", "p": [-0.9, 0.44, 0.311], "z": [0.56, 0.78, 0.01], "c": "composite"},
       {"s": "box", "p": [-0.3, 0.44, 0.311], "z": [0.56, 0.78, 0.01], "c": "composite"},
@@ -582,7 +582,7 @@
       {"s": "box", "p": [0, 1.49, -0.05], "z": [2.2, 0.02, 0.1], "c": "lamp", "glow": true},
       {"s": "cyl", "p": [0.15, 0.99, -0.15], "z": [0.18, 0.14], "c": "accent"}
     ] },
-    "bathroom_pod": { "name": "Bathroom", "size": [2.25, 1.7, 2.45], "parts": [
+    "bathroom_pod": { "name": "Bathroom", "size": [2.25, 1.7, 2.45], "light": {"color": "#ffd29a", "at": [0.5, 2.05, 0.85], "reach": 3, "strength": 0.6}, "parts": [
       {"s": "box", "p": [0, 1.2, -0.78], "z": [2.2, 2.4, 0.04], "c": "panel"},
       {"s": "box", "p": [-1.08, 1.2, 0], "z": [0.04, 2.4, 1.6], "c": "panel"},
       {"s": "box", "p": [1.08, 1.2, 0], "z": [0.04, 2.4, 1.6], "c": "panel"},
@@ -601,7 +601,7 @@
       {"s": "box", "p": [-0.72, 0.84, 0], "z": [0.16, 0.04, 0.04], "c": "steel"},
       {"s": "box", "p": [0.5, 0.62, 0.3], "z": [0.3, 0.05, 0.2], "c": "cream"}
     ] },
-    "fireplace": { "name": "Fireplace", "size": [1.5, 0.5, 1.35], "parts": [
+    "fireplace": { "name": "Fireplace", "size": [1.5, 0.5, 1.35], "light": {"color": "#ff8a3d", "at": [0, 0.4, 0.4], "reach": 4.5, "strength": 1.1}, "parts": [
       {"s": "box", "p": [0, 0.55, 0], "z": [1.4, 1.1, 0.4], "c": "stone"},
       {"s": "box", "p": [0, 0.42, 0.18], "z": [0.9, 0.5, 0.06], "c": "dark"},
       {"s": "box", "p": [0, 0.36, 0.2], "z": [0.8, 0.22, 0.04], "c": "fire", "glow": true},
@@ -631,7 +631,7 @@
       {"s": "box", "p": [0, 0.82, 0.326], "z": [0.6, 0.1, 0.01], "c": "panel"},
       {"s": "box", "p": [0.2, 0.82, 0.332], "z": [0.08, 0.05, 0.005], "c": "glow", "glow": true}
     ] },
-    "stove_counter": { "name": "Stove counter", "size": [2.05, 0.75, 2.25], "parts": [
+    "stove_counter": { "name": "Stove counter", "size": [2.05, 0.75, 2.25], "light": {"color": "#ffd29a", "at": [0, 1.8, 0.1], "reach": 3, "strength": 0.7}, "parts": [
       {"s": "box", "p": [0, 0.43, 0], "z": [2, 0.86, 0.7], "c": "panel"},
       {"s": "box", "p": [0, 0.9, 0], "z": [2.02, 0.06, 0.72], "c": "steel"},
       {"s": "cyl", "p": [-0.75, 0.94, -0.15], "z": [0.24, 0.02], "c": "dark"},
@@ -688,7 +688,7 @@
       {"s": "box", "p": [0.7, 0.77, 0.25], "z": [0.32, 0.02, 0.24], "c": "white"},
       {"s": "cyl", "p": [0, 0.82, 0], "z": [0.12, 0.12], "c": "accent"}
     ] },
-    "serving_counter": { "name": "Serving counter", "size": [2.45, 0.75, 2.55], "parts": [
+    "serving_counter": { "name": "Serving counter", "size": [2.45, 0.75, 2.55], "light": {"color": "#bfe0ff", "at": [0, 2.25, 0], "reach": 3, "strength": 0.6}, "parts": [
       {"s": "box", "p": [0, 0.5, 0], "z": [2.4, 1, 0.7], "c": "accent"},
       {"s": "box", "p": [0, 1.03, 0], "z": [2.44, 0.06, 0.74], "c": "steel"},
       {"s": "box", "p": [-0.8, 1.07, 0.05], "z": [0.45, 0.04, 0.5], "c": "steel"},
@@ -711,7 +711,7 @@
       {"s": "box", "p": [0, 0.75, 0.205], "z": [0.2, 0.12, 0.02], "c": "dark"},
       {"s": "box", "p": [0, 0.85, 0.21], "z": [0.06, 0.04, 0.02], "c": "glow", "glow": true}
     ] },
-    "planter_bed_potatoes": { "name": "Planter bed (potatoes)", "size": [2.6, 1.15, 2.6], "parts": [
+    "planter_bed_potatoes": { "name": "Planter bed (potatoes)", "size": [2.6, 1.15, 2.6], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [0, 0.3, 0], "z": [2.6, 0.6, 1.1], "c": "panel"},
       {"s": "box", "p": [0, 0.3, 0.556], "z": [2.6, 0.08, 0.01], "c": "accent"},
       {"s": "box", "p": [0, 0.61, 0], "z": [2.5, 0.02, 1], "c": "soil"},
@@ -756,7 +756,7 @@
       {"s": "box", "p": [0, 2.5, 0], "z": [2.4, 0.02, 0.24], "c": "grow", "glow": true},
       {"s": "cyl", "p": [0, 0.66, 0.5], "z": [0.04, 2.5], "c": "water", "r": [0, 0, 90]}
     ] },
-    "hydroponic_rack_potatoes": { "name": "Hydroponic rack (potatoes)", "size": [1.95, 0.65, 2.55], "parts": [
+    "hydroponic_rack_potatoes": { "name": "Hydroponic rack (potatoes)", "size": [1.95, 0.65, 2.55], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [-0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [-0.95, 1.25, 0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
@@ -916,7 +916,7 @@
       {"s": "box", "p": [0, 2.5, 0], "z": [1.8, 0.03, 0.3], "c": "grow", "glow": true},
       {"s": "cyl", "p": [0.9, 1.2, 0.3], "z": [0.05, 2.2], "c": "water"}
     ] },
-    "planter_bed_soybeans": { "name": "Planter bed (soybeans)", "size": [2.6, 1.15, 2.6], "parts": [
+    "planter_bed_soybeans": { "name": "Planter bed (soybeans)", "size": [2.6, 1.15, 2.6], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [0, 0.3, 0], "z": [2.6, 0.6, 1.1], "c": "panel"},
       {"s": "box", "p": [0, 0.3, 0.556], "z": [2.6, 0.08, 0.01], "c": "accent"},
       {"s": "box", "p": [0, 0.61, 0], "z": [2.5, 0.02, 1], "c": "soil"},
@@ -976,7 +976,7 @@
       {"s": "box", "p": [0, 2.5, 0], "z": [2.4, 0.02, 0.24], "c": "grow", "glow": true},
       {"s": "cyl", "p": [0, 0.66, 0.5], "z": [0.04, 2.5], "c": "water", "r": [0, 0, 90]}
     ] },
-    "hydroponic_rack_soybeans": { "name": "Hydroponic rack (soybeans)", "size": [1.95, 0.65, 2.55], "parts": [
+    "hydroponic_rack_soybeans": { "name": "Hydroponic rack (soybeans)", "size": [1.95, 0.65, 2.55], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [-0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [-0.95, 1.25, 0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
@@ -1199,7 +1199,7 @@
       {"s": "box", "p": [0, 2.5, 0], "z": [1.8, 0.03, 0.3], "c": "grow", "glow": true},
       {"s": "cyl", "p": [0.9, 1.2, 0.3], "z": [0.05, 2.2], "c": "water"}
     ] },
-    "planter_bed_wheat": { "name": "Planter bed (wheat)", "size": [2.6, 1.15, 2.6], "parts": [
+    "planter_bed_wheat": { "name": "Planter bed (wheat)", "size": [2.6, 1.15, 2.6], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [0, 0.3, 0], "z": [2.6, 0.6, 1.1], "c": "panel"},
       {"s": "box", "p": [0, 0.3, 0.556], "z": [2.6, 0.08, 0.01], "c": "accent"},
       {"s": "box", "p": [0, 0.61, 0], "z": [2.5, 0.02, 1], "c": "soil"},
@@ -1305,7 +1305,7 @@
       {"s": "box", "p": [0, 2.5, 0], "z": [2.4, 0.02, 0.24], "c": "grow", "glow": true},
       {"s": "cyl", "p": [0, 0.66, 0.5], "z": [0.04, 2.5], "c": "water", "r": [0, 0, 90]}
     ] },
-    "hydroponic_rack_wheat": { "name": "Hydroponic rack (wheat)", "size": [1.95, 0.65, 2.55], "parts": [
+    "hydroponic_rack_wheat": { "name": "Hydroponic rack (wheat)", "size": [1.95, 0.65, 2.55], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [-0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [-0.95, 1.25, 0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
@@ -1426,7 +1426,7 @@
       {"s": "box", "p": [0, 2.5, 0], "z": [1.8, 0.03, 0.3], "c": "grow", "glow": true},
       {"s": "cyl", "p": [0.9, 1.2, 0.3], "z": [0.05, 2.2], "c": "water"}
     ] },
-    "planter_bed_barley": { "name": "Planter bed (barley)", "size": [2.6, 1.15, 2.6], "parts": [
+    "planter_bed_barley": { "name": "Planter bed (barley)", "size": [2.6, 1.15, 2.6], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [0, 0.3, 0], "z": [2.6, 0.6, 1.1], "c": "panel"},
       {"s": "box", "p": [0, 0.3, 0.556], "z": [2.6, 0.08, 0.01], "c": "accent"},
       {"s": "box", "p": [0, 0.61, 0], "z": [2.5, 0.02, 1], "c": "soil"},
@@ -1532,7 +1532,7 @@
       {"s": "box", "p": [0, 2.5, 0], "z": [2.4, 0.02, 0.24], "c": "grow", "glow": true},
       {"s": "cyl", "p": [0, 0.66, 0.5], "z": [0.04, 2.5], "c": "water", "r": [0, 0, 90]}
     ] },
-    "hydroponic_rack_barley": { "name": "Hydroponic rack (barley)", "size": [1.95, 0.65, 2.55], "parts": [
+    "hydroponic_rack_barley": { "name": "Hydroponic rack (barley)", "size": [1.95, 0.65, 2.55], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [-0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [-0.95, 1.25, 0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
@@ -1653,7 +1653,7 @@
       {"s": "box", "p": [0, 2.5, 0], "z": [1.8, 0.03, 0.3], "c": "grow", "glow": true},
       {"s": "cyl", "p": [0.9, 1.2, 0.3], "z": [0.05, 2.2], "c": "water"}
     ] },
-    "planter_bed": { "name": "Planter bed", "size": [2.6, 1.15, 2.6], "parts": [
+    "planter_bed": { "name": "Planter bed", "size": [2.6, 1.15, 2.6], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [0, 0.3, 0], "z": [2.6, 0.6, 1.1], "c": "panel"},
       {"s": "box", "p": [0, 0.3, 0.556], "z": [2.6, 0.08, 0.01], "c": "accent"},
       {"s": "box", "p": [0, 0.61, 0], "z": [2.5, 0.02, 1], "c": "soil"},
@@ -1683,7 +1683,7 @@
       {"s": "box", "p": [0, 2.5, 0], "z": [2.4, 0.02, 0.24], "c": "grow", "glow": true},
       {"s": "cyl", "p": [0, 0.66, 0.5], "z": [0.04, 2.5], "c": "water", "r": [0, 0, 90]}
     ] },
-    "hydroponic_rack": { "name": "Hydroponic rack", "size": [1.95, 0.65, 2.55], "parts": [
+    "hydroponic_rack": { "name": "Hydroponic rack", "size": [1.95, 0.65, 2.55], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [-0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [-0.95, 1.25, 0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
@@ -1780,7 +1780,7 @@
       {"s": "box", "p": [0, 2.5, 0], "z": [1.8, 0.03, 0.3], "c": "grow", "glow": true},
       {"s": "cyl", "p": [0.9, 1.2, 0.3], "z": [0.05, 2.2], "c": "water"}
     ] },
-    "planter_bed_mushrooms": { "name": "Planter bed (mushrooms)", "size": [2.6, 1.15, 2.6], "parts": [
+    "planter_bed_mushrooms": { "name": "Planter bed (mushrooms)", "size": [2.6, 1.15, 2.6], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [0, 0.3, 0], "z": [2.6, 0.6, 1.1], "c": "panel"},
       {"s": "box", "p": [0, 0.3, 0.556], "z": [2.6, 0.08, 0.01], "c": "accent"},
       {"s": "box", "p": [0, 0.61, 0], "z": [2.5, 0.02, 1], "c": "substrate"},
@@ -1839,7 +1839,7 @@
       {"s": "box", "p": [0, 2.55, 0], "z": [2.6, 0.08, 0.3], "c": "dark"},
       {"s": "cyl", "p": [0, 0.66, 0.5], "z": [0.04, 2.5], "c": "water", "r": [0, 0, 90]}
     ] },
-    "hydroponic_rack_mushrooms": { "name": "Hydroponic rack (mushrooms)", "size": [1.95, 0.65, 2.5], "parts": [
+    "hydroponic_rack_mushrooms": { "name": "Hydroponic rack (mushrooms)", "size": [1.95, 0.65, 2.5], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [-0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [-0.95, 1.25, 0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
@@ -2059,7 +2059,7 @@
       {"s": "cyl", "p": [0.826, 2.061, 0.153], "z": [0.077, 0.022], "c": "cap"},
       {"s": "cyl", "p": [0.9, 1.2, 0.3], "z": [0.05, 2.2], "c": "water"}
     ] },
-    "planter_bed_algae": { "name": "Planter bed (algae)", "size": [2.6, 1.15, 2.6], "parts": [
+    "planter_bed_algae": { "name": "Planter bed (algae)", "size": [2.6, 1.15, 2.6], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [0, 0.3, 0], "z": [2.6, 0.6, 1.1], "c": "mirror"},
       {"s": "box", "p": [0, 0.3, 0.556], "z": [2.6, 0.08, 0.01], "c": "accent"},
       {"s": "box", "p": [0, 0.77, 0], "z": [2.304, 0.3, 0.81], "c": "algae"},
@@ -2079,7 +2079,7 @@
       {"s": "box", "p": [0, 2.5, 0], "z": [2.4, 0.02, 0.24], "c": "grow", "glow": true},
       {"s": "cyl", "p": [0, 0.66, 0.5], "z": [0.04, 2.5], "c": "water", "r": [0, 0, 90]}
     ] },
-    "hydroponic_rack_algae": { "name": "Hydroponic rack (algae)", "size": [1.95, 0.65, 2.55], "parts": [
+    "hydroponic_rack_algae": { "name": "Hydroponic rack (algae)", "size": [1.95, 0.65, 2.55], "light": {"color": "#f0a0ff", "at": [0, 2.45, 0], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [-0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [-0.95, 1.25, 0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
       {"s": "box", "p": [0.95, 1.25, -0.3], "z": [0.05, 2.5, 0.05], "c": "metal"},
@@ -2267,7 +2267,7 @@
       {"s": "box", "p": [0, 0.55, -0.66], "z": [0.4, 0.3, 0.12], "c": "white"},
       {"s": "box", "p": [0.4, 0.9, -0.5], "z": [0.14, 0.14, 0.1], "c": "steel"}
     ] },
-    "sink_basin": { "name": "Washbasins", "size": [1.85, 0.55, 2], "parts": [
+    "sink_basin": { "name": "Washbasins", "size": [1.85, 0.55, 2], "light": {"color": "#ffd29a", "at": [0, 1.9, 0], "reach": 2.5, "strength": 0.5}, "parts": [
       {"s": "box", "p": [0, 0.4, 0], "z": [1.8, 0.8, 0.5], "c": "panel"},
       {"s": "box", "p": [0, 0.83, 0], "z": [1.82, 0.06, 0.55], "c": "white"},
       {"s": "cyl", "p": [-0.45, 0.86, 0.02], "z": [0.4, 0.02], "c": "water"},
@@ -2366,7 +2366,7 @@
       {"s": "cyl", "p": [0.6, 1, 0], "z": [0.25, 1.2], "c": "metal", "r": [0, 0, 90]},
       {"s": "cyl", "p": [0, 1.9, 0.52], "z": [0.3, 0.04], "c": "hazard", "r": [90, 0, 0]}
     ] },
-    "furnace": { "name": "Furnace", "size": [2.7, 2.5, 4], "parts": [
+    "furnace": { "name": "Furnace", "size": [2.7, 2.5, 4], "light": {"color": "#ff8a3d", "at": [0, 0.9, 1.4], "reach": 7, "strength": 1.6}, "parts": [
       {"s": "box", "p": [0, 1.3, 0], "z": [2.6, 2.6, 2.4], "c": "dark"},
       {"s": "box", "p": [0, 0.9, 1.21], "z": [1, 0.7, 0.02], "c": "fire", "glow": true},
       {"s": "box", "p": [0, 1.3, 1.22], "z": [1.4, 1.4, 0.02], "c": "rust"},
@@ -2426,7 +2426,7 @@
       {"s": "box", "p": [0.1, 1.05, 0.15], "z": [0.3, 0.12, 0.2], "c": "metal"},
       {"s": "box", "p": [-0.8, 1.2, 0.23], "z": [0.2, 0.15, 0.01], "c": "glow", "glow": true}
     ] },
-    "workbench": { "name": "Workbench", "size": [2, 0.8, 2.1], "parts": [
+    "workbench": { "name": "Workbench", "size": [2, 0.8, 2.1], "light": {"color": "#ffd29a", "at": [0, 2, -0.2], "reach": 3.5, "strength": 0.8}, "parts": [
       {"s": "box", "p": [-0.925, 0.44, -0.325], "z": [0.05, 0.88, 0.05], "c": "dark"},
       {"s": "box", "p": [-0.925, 0.44, 0.325], "z": [0.05, 0.88, 0.05], "c": "dark"},
       {"s": "box", "p": [0.925, 0.44, -0.325], "z": [0.05, 0.88, 0.05], "c": "dark"},
@@ -2463,7 +2463,7 @@
       {"s": "cyl", "p": [0, 1.25, 0.15], "z": [0.05, 0.3], "c": "steel"},
       {"s": "cyl", "p": [0.25, 1.5, 0.1], "z": [0.03, 0.3], "c": "metal", "r": [0, 0, 90]}
     ] },
-    "welding_station": { "name": "Welding bay", "size": [1.85, 1, 2], "parts": [
+    "welding_station": { "name": "Welding bay", "size": [1.85, 1, 2], "light": {"color": "#ff8a3d", "at": [0.1, 1, 0.2], "reach": 3.5, "strength": 0.9}, "parts": [
       {"s": "box", "p": [-0.725, 0.405, -0.375], "z": [0.05, 0.81, 0.05], "c": "metal"},
       {"s": "box", "p": [-0.725, 0.405, 0.375], "z": [0.05, 0.81, 0.05], "c": "metal"},
       {"s": "box", "p": [0.725, 0.405, -0.375], "z": [0.05, 0.81, 0.05], "c": "metal"},
@@ -2488,7 +2488,7 @@
       {"s": "box", "p": [0.1, 1.33, 0], "z": [0.12, 0.12, 0.12], "c": "hazard"},
       {"s": "box", "p": [0, 0.5, 0.451], "z": [0.3, 0.15, 0.01], "c": "glow", "glow": true}
     ] },
-    "reactor_vessel": { "name": "Reactor vessel", "size": [2.9, 2, 3.6], "parts": [
+    "reactor_vessel": { "name": "Reactor vessel", "size": [2.9, 2, 3.6], "light": {"color": "#ff8a3d", "at": [0, 1.2, 0.9], "reach": 4, "strength": 0.8}, "parts": [
       {"s": "cyl", "p": [0, 0.15, 0], "z": [2, 0.3], "c": "dark"},
       {"s": "cyl", "p": [0, 1.5, 0], "z": [1.6, 2.4], "c": "steel"},
       {"s": "sph", "p": [0, 2.7, 0], "z": [1.6], "c": "steel"},
@@ -2515,7 +2515,7 @@
       {"s": "box", "p": [0, 0.92, 0.1], "z": [1.6, 0.04, 0.6], "c": "steel"},
       {"s": "box", "p": [0, 2, 0.451], "z": [1.4, 0.1, 0.01], "c": "accent"}
     ] },
-    "fab_bench": { "name": "Fab bench", "size": [2, 0.8, 1.65], "parts": [
+    "fab_bench": { "name": "Fab bench", "size": [2, 0.8, 1.65], "light": {"color": "#bfe0ff", "at": [-0.5, 1.5, 0.15], "reach": 3, "strength": 0.6}, "parts": [
       {"s": "box", "p": [-0.925, 0.44, -0.325], "z": [0.05, 0.88, 0.05], "c": "metal"},
       {"s": "box", "p": [-0.925, 0.44, 0.325], "z": [0.05, 0.88, 0.05], "c": "metal"},
       {"s": "box", "p": [0.925, 0.44, -0.325], "z": [0.05, 0.88, 0.05], "c": "metal"},
@@ -2732,7 +2732,7 @@
       {"s": "box", "p": [0, 1.2, 0.18], "z": [0.3, 0.06, 0.01], "c": "accent"},
       {"s": "box", "p": [0, 1.05, -0.2], "z": [0.4, 0.5, 0.15], "c": "dark"}
     ] },
-    "decon_arch": { "name": "Decontamination arch", "size": [2.3, 0.85, 2.65], "parts": [
+    "decon_arch": { "name": "Decontamination arch", "size": [2.3, 0.85, 2.65], "light": {"color": "#bfe0ff", "at": [0, 2.45, 0.4], "reach": 3.5, "strength": 0.7}, "parts": [
       {"s": "box", "p": [-1, 1.2, 0], "z": [0.3, 2.4, 0.8], "c": "white"},
       {"s": "box", "p": [1, 1.2, 0], "z": [0.3, 2.4, 0.8], "c": "white"},
       {"s": "box", "p": [0, 2.5, 0], "z": [2.3, 0.3, 0.8], "c": "white"},
@@ -2943,7 +2943,7 @@
       {"s": "sph", "p": [-0.34, 2.636, -0.204], "z": [0.85], "c": "leaf"},
       {"s": "sph", "p": [0.085, 3.01, -0.085], "z": [0.68], "c": "plant"}
     ] },
-    "lamp_post": { "name": "Lamp post", "size": [1.1, 0.4, 2.9], "parts": [
+    "lamp_post": { "name": "Lamp post", "size": [1.1, 0.4, 2.9], "light": {"color": "#ffd29a", "at": [0.4, 2.7, 0], "reach": 6, "strength": 1.2}, "parts": [
       {"s": "cyl", "p": [0, 0.05, 0], "z": [0.4, 0.1], "c": "dark"},
       {"s": "cyl", "p": [0, 1.45, 0], "z": [0.08, 2.8], "c": "dark"},
       {"s": "box", "p": [0.2, 2.85, 0], "z": [0.5, 0.05, 0.05], "c": "dark"},
@@ -3012,7 +3012,7 @@
       {"s": "box", "p": [0.55, 1.7, 0.15], "z": [0.15, 0.06, 0.02], "c": "copper"},
       {"s": "box", "p": [0, 2.55, 0.05], "z": [3.1, 0.1, 0.4], "c": "accent"}
     ] },
-    "memorial": { "name": "Memorial stone", "size": [0.9, 0.65, 1], "parts": [
+    "memorial": { "name": "Memorial stone", "size": [0.9, 0.65, 1], "light": {"color": "#ff8a3d", "at": [0, 0.45, 0.3], "reach": 2.5, "strength": 0.5}, "parts": [
       {"s": "box", "p": [0, 0.1, 0], "z": [0.9, 0.2, 0.6], "c": "stone"},
       {"s": "box", "p": [0, 0.6, 0], "z": [0.7, 0.8, 0.25], "c": "stone"},
       {"s": "box", "p": [0, 0.75, 0.13], "z": [0.4, 0.3, 0.01], "c": "copper"},
@@ -3025,7 +3025,7 @@
       {"s": "sph", "p": [0.14, 0.324, 0.164], "z": [0.15], "c": "plant"},
       {"s": "sph", "p": [0.215, 0.39, 0.185], "z": [0.12], "c": "leaf"}
     ] },
-    "candle_stand": { "name": "Candle stand", "size": [0.5, 0.5, 1.15], "parts": [
+    "candle_stand": { "name": "Candle stand", "size": [0.5, 0.5, 1.15], "light": {"color": "#ff8a3d", "at": [0, 1.12, 0], "reach": 2.5, "strength": 0.6}, "parts": [
       {"s": "cyl", "p": [0, 0.45, 0], "z": [0.08, 0.9], "c": "copper"},
       {"s": "cyl", "p": [0, 0.9, 0], "z": [0.5, 0.04], "c": "copper"},
       {"s": "cyl", "p": [-0.15, 1, 0], "z": [0.06, 0.16], "c": "white"},
@@ -3115,7 +3115,7 @@
       {"s": "box", "p": [1.15, 2, 0], "z": [0.04, 4, 2.2], "c": "mirror"},
       {"s": "box", "p": [0, 0.03, 0], "z": [2.3, 0.06, 2.3], "c": "hazard"}
     ] },
-    "elevator_car": { "name": "Elevator (car waiting)", "size": [2.4, 2.4, 4], "parts": [
+    "elevator_car": { "name": "Elevator (car waiting)", "size": [2.4, 2.4, 4], "light": {"color": "#bfe0ff", "at": [0, 2.45, 0.9], "reach": 3, "strength": 0.6}, "parts": [
       {"s": "box", "p": [-1.15, 2, -1.15], "z": [0.1, 4, 0.1], "c": "metal"},
       {"s": "box", "p": [-1.15, 2, 1.15], "z": [0.1, 4, 0.1], "c": "metal"},
       {"s": "box", "p": [1.15, 2, -1.15], "z": [0.1, 4, 0.1], "c": "metal"},

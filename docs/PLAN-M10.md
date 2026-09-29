@@ -457,3 +457,19 @@ Decided Sep 28, 2026 (Bryon):
   - The stage picks near or far per room on each redraw, from the distance to the furniture's centre.
 - Fixed along the way: the room cache replaced a furniture group's `userData`, losing its tags. It now merges.
 - Dev hook: `__stage3d.detail()` counts rooms showing each copy.
+
+**Step 2, lamp light:**
+- **Lights in the data:** 35 items give light (`light` in furniture.json: colour, where from, reach, strength), set in `LIGHTS` in furniture.mjs.
+  - Lamps (warm): wall, floor and bedside lamps, work lights, lamp posts, kitchen and bench lights.
+  - Fires (orange): furnaces, fireplaces, welders, reactors, candles.
+  - Grow lights (pink): grow-light bars, planter beds and racks.
+  - A few cool ones: the serving counter, decon arch, elevator car and electronics bench.
+- **Pools** (`lightPools`): each light casts a soft additive disc on the floor below it, merged per room into the furniture group.
+  - A wall light's pool lies out from its wall.
+  - A light high up spreads thinner.
+- **Point lights** (`LampLights`): a pool of up to `LAMP_LIGHTS.most` (12) that go to the lamps nearest the camera on each redraw.
+  - Only lamps on the floor you're walking or the one picked, since lights don't cast shadows and would shine through the floor between.
+  - Lights fade at the edge of their range. Intensity 3.5, decay 1.8, reach × 1.6.
+- **A new setting**, "Lamp light" (`graphics.lamps`): High 1 (12 lights), Medium 0.5 (6), Low 0 (none, no pools). Changing the count recompiles shaders, so only settings change it.
+- **Console:** `dm.finish()` finishes the whole construction queue (`consoleFinish`), for testing.
+- **Browser check:** a new test game with rooms built by `dm.finish()` (Bryon's autosave backed up in the browser first). In the apartment in first person, lamp light off is flat and cool. On, the wall lamps throw warm light round themselves and the bedside lamps glow on the floor. The first attempt blew the paintings out, so the intensity came down from 7 to 3.5 and the wall lamp's light moved out from the wall.

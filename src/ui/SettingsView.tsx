@@ -58,7 +58,8 @@ export function SettingsView({ settings, update, onBack }: Props) {
 }
 
 /** The effects, each a slider from off to full. */
-const EFFECTS: { key: "ao" | "bloom" | "haze" | "tiltShift" | "grade"; name: string; hint: string }[] = [
+const EFFECTS: { key: "ao" | "bloom" | "haze" | "tiltShift" | "grade" | "lamps"; name: string; hint: string }[] = [
+  { key: "lamps", name: "Lamp light", hint: "Lamps, fires and grow lights light the rooms around them" },
   { key: "ao", name: "Soft shadows", hint: "Shade where things meet: corners, and under furniture" },
   { key: "bloom", name: "Glow", hint: "Light around windows, lamps, screens and furnaces" },
   { key: "haze", name: "Haze", hint: "Warm dust in the air, thicker far off and deep down" },

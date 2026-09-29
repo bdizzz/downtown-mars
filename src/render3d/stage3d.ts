@@ -15,6 +15,7 @@ import { DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { withRegolith, withRock } from "./surfaces";
 import { RoomEffects } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
+import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
 import { createSky } from "./sky3d";
 import { buildTerrain, siteSeed, type Terrain } from "./terrain3d";
 import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
@@ -227,6 +228,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const roomFx = new RoomEffects();
   /** Every room's furniture in the current layout, to switch between near and far copies. */
   let furnitureGroups: THREE.Object3D[] = [];
+  /** Every lamp in the layout, and the point lights that follow the camera round them. */
+  let lampList: Lamp[] = [];
+  const lampLights = new LampLights();
+  /** Light pools on the floor show whenever lamp light is on at all. */
+  const showPools = () => {
+    for (const g of furnitureGroups) for (const o of g.children) if (o.userData.pool) o.visible = graphics.lamps > 0;
+  };
   let graphics: Graphics = DEFAULT_GRAPHICS;
   /** Real time (ms) the sim last moved; walkers stop when the game is paused. */
   let lastTickChange = 0;
@@ -1264,6 +1272,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const t0 = performance.now();
     // Far rooms draw their furniture coarser.
     for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : "near");
+    // The nearest lamps light their rooms.
+    lampLights.place(lampList, view.mode === "walk" ? new THREE.Vector3(walker.x, camera.position.y, walker.z) : camera.position, view.mode === "walk" ? walker.floor : cut());
     skyDome.follow(camera);
     look.setView(hazeFocus(), view.mode === "walk" || view.mode === "shaft", view.mode === "iso");
     roomFx.setScale(renderer.getDrawingBufferSize(bufferSize).y / (2 * Math.tan((camera.fov * Math.PI) / 360)));
@@ -1300,11 +1310,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   function applyGraphics(): void {
     look.setGraphics(graphics);
+    lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
+    showPools();
     renderer.setSize(host.clientWidth, host.clientHeight);
     look.resize();
     applyFloorCut();
   }
-  scene.add(walkers.mesh, dust.points, roomFx.group);
+  scene.add(walkers.mesh, dust.points, roomFx.group, lampLights.group);
+  lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
 
   let latest: Snapshot | null = null;
   applyCamera();
@@ -1401,6 +1414,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         layoutGroup.traverse((o) => {
           if (o.userData.furniture) furnitureGroups.push(o);
         });
+        lampList = furnitureGroups.flatMap((g) => (g.userData.lamps as Lamp[] | undefined) ?? []);
+        showPools();
         // The floor picked or x-ray changed: hidden furniture's sparks and steam go with it.
         roomFx.setView({ topFloor: cut(), xray: view.xray });
         dirty = true;

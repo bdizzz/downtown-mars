@@ -4,6 +4,17 @@ import { config } from "../src/sim/config";
 import { holeGates } from "../src/sim/people";
 import { capacities } from "../src/sim/economy";
 import { createInitialState } from "../src/sim/state";
+import { construction } from "../src/sim/construction";
+
+/** With construction taking time (the test setup makes it instant). */
+function withConstruction(f: () => void) {
+  construction.instant = false;
+  try {
+    f();
+  } finally {
+    construction.instant = true;
+  }
+}
 
 describe("console commands", () => {
   it("set and add resources, never below zero, recorded in the ledger", () => {
@@ -44,5 +55,20 @@ describe("console commands", () => {
     expect(holeGates(s)).not.toContain("ore");
     applyCommand(s, { type: "consoleUnlock", gate: "ore" });
     expect(s.deposits).toContain("ore");
+  });
+
+  it("finishes the construction queue at once", () => {
+    withConstruction(() => {
+      const s = createInitialState(config);
+      Object.assign(s.resources, { rock: 500, metal: 200, brick: 200 });
+      const r = applyCommand(s, { type: "build", room: "galley", at: { kind: "ring", floor: 1, ring: 1, slot: 3, w: 1, d: 1 } });
+      expect(r.ok).toBe(true);
+      const room = s.layout.rooms.find((x) => x.id === (r.ok ? r.roomId : -1))!;
+      expect(room.building).toBe(true);
+      expect(applyCommand(s, { type: "consoleFinish" }).ok).toBe(true);
+      expect(room.building).toBeFalsy();
+      expect(s.construction.queue).toHaveLength(0);
+      expect(applyCommand(s, { type: "consoleFinish" }).ok).toBe(false);
+    });
   });
 });

@@ -22,6 +22,7 @@ const HELP = `Downtown Mars console (the hole you're looking at):
   dm.fill(1000)             every stored resource (not power or waste) up to at least this much
   dm.unlock()               unlock every room that waits on a milestone (or dm.unlock("cargo"))
   dm.unlock("ore")          put a deposit under the hole: ice, aquifer, ore or silica
+  dm.finish()               finish everything in the construction queue at once
   dm.command({ ... })       send any simulation command, as the game would (see SimCommand in src/sim/commands.ts)`;
 
 /** "metal", 50 or { metal: 50 }, as amounts. */
@@ -64,6 +65,9 @@ export function installConsole(api: Api): () => void {
     },
     command(command: SimCommand) {
       return run(command, "Done");
+    },
+    finish() {
+      return run({ type: "consoleFinish" }, "Everything in the queue is built");
     },
     unlock(gate?: string) {
       return run({ type: "consoleUnlock", gate }, gate ? `Unlocked ${gate}` : "Unlocked everything that waits on a milestone");

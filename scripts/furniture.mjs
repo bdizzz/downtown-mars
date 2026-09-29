@@ -1380,6 +1380,43 @@ const colors = {
   mushroom: "#e6dccb", cap: "#b08a64", algae: "#3f9a5a", flower: "#f2f0e0", red: "#c8423a",
 };
 
+// What gives light, and where from (in the item's own frame): lamps, fires, grow lights. The 3D view
+// pools each one's light on the floor, and lights the nearest few properly. Kinds set the colour.
+// [kind, at, reach (m), strength 0..1+]
+const LIGHT_KINDS = { lamp: "#ffd29a", grow: "#f0a0ff", fire: "#ff8a3d", cool: "#bfe0ff" };
+const LIGHTS = {
+  wall_lamp: ["lamp", [0, 0.05, 0.45], 4, 1],
+  work_light: ["lamp", [0, 0.02, 0.2], 5, 1],
+  floor_lamp: ["lamp", [0, 1.45, 0], 4, 1],
+  side_table: ["lamp", [0.08, 0.8, 0.05], 2.5, 0.6],
+  lamp_post: ["lamp", [0.4, 2.7, 0], 6, 1.2],
+  kitchenette: ["lamp", [0, 1.45, 0.1], 3, 0.7],
+  stove_counter: ["lamp", [0, 1.8, 0.1], 3, 0.7],
+  sink_basin: ["lamp", [0, 1.9, 0], 2.5, 0.5],
+  bathroom_pod: ["lamp", [0.5, 2.05, 0.85], 3, 0.6],
+  workbench: ["lamp", [0, 2.0, -0.2], 3.5, 0.8],
+  fab_bench: ["cool", [-0.5, 1.5, 0.15], 3, 0.6],
+  grow_light: ["grow", [0, 0, 0.3], 4, 0.8],
+  fireplace: ["fire", [0, 0.4, 0.4], 4.5, 1.1],
+  furnace: ["fire", [0, 0.9, 1.4], 7, 1.6],
+  welding_station: ["fire", [0.1, 1.0, 0.2], 3.5, 0.9],
+  reactor_vessel: ["fire", [0, 1.2, 0.9], 4, 0.8],
+  candle_stand: ["fire", [0, 1.12, 0], 2.5, 0.6],
+  memorial: ["fire", [0, 0.45, 0.3], 2.5, 0.5],
+  serving_counter: ["cool", [0, 2.25, 0], 3, 0.6],
+  decon_arch: ["cool", [0, 2.45, 0.4], 3.5, 0.7],
+  elevator_car: ["cool", [0, 2.45, 0.9], 3, 0.6],
+  ...Object.fromEntries(
+    Object.keys(items)
+      .filter((id) => id.startsWith("hydroponic_rack") || id.startsWith("planter_bed"))
+      .map((id) => [id, ["grow", [0, 2.45, 0], 3.5, 0.7]]),
+  ),
+};
+for (const [id, [kind, at, reach, strength]] of Object.entries(LIGHTS)) {
+  if (!items[id]) throw new Error(`light for unknown item "${id}"`);
+  items[id].light = { color: LIGHT_KINDS[kind], at, reach, strength };
+}
+
 // Every item a room lists exists, and every item is used somewhere.
 for (const [room, ids] of Object.entries(rooms)) for (const id of ids) if (!items[id]) throw new Error(`${room}: no item "${id}"`);
 const unused = Object.keys(items).filter((id) => !Object.values(rooms).some((ids) => ids.includes(id)));
@@ -1396,7 +1433,7 @@ const lines = ["{", `  "_note": ${JSON.stringify(note)},`, '  "colors": {'];
 Object.entries(colors).forEach(([k, v], i, all) => lines.push(`    ${JSON.stringify(k)}: ${JSON.stringify(v)}${i < all.length - 1 ? "," : ""}`));
 lines.push("  },", '  "items": {');
 Object.entries(items).forEach(([id, it], i, all) => {
-  lines.push(`    ${JSON.stringify(id)}: { "name": ${JSON.stringify(it.name)}, "size": ${J(it.size)},${it.mount ? ` "mount": ${it.mount},` : ""}${it.opening ? ` "opening": true,` : ""}${it.climb ? ` "climb": true,` : ""} "parts": [`);
+  lines.push(`    ${JSON.stringify(id)}: { "name": ${JSON.stringify(it.name)}, "size": ${J(it.size)},${it.mount ? ` "mount": ${it.mount},` : ""}${it.opening ? ` "opening": true,` : ""}${it.climb ? ` "climb": true,` : ""}${it.light ? ` "light": ${J(it.light)},` : ""} "parts": [`);
   it.parts.forEach((p, j) => lines.push(`      ${J(p)}${j < it.parts.length - 1 ? "," : ""}`));
   lines.push(`    ] }${i < all.length - 1 ? "," : ""}`);
 });
