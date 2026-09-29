@@ -500,7 +500,7 @@ export function App() {
           <Inspector s={snapshot} finish={lastFinish} roomId={selected} onCommand={onCommand} onClose={() => setSelected(null)} />
         )}
       </div>
-      <StatusBar info={hover} snapshot={snapshot} notice={notice} overlay={overlay} />
+      <StatusBar info={hover} snapshot={snapshot} notice={notice} overlay={overlay} view={settings.view} />
       {menu && (
         <Menu
           mode={menu}

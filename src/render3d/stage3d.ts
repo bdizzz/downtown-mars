@@ -47,7 +47,7 @@ const FOV = 55;
 const MIN_DIST = 2;
 const CLICK_SLOP = 5;
 const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25 };
-const TOP = { min: 20, max: 300, start: 80 };
+const TOP = { min: 20, max: 300, start: 80, margin: 1.1 };
 /** Iso: distance to the floor's centre (a multiple of the floor's radius to start), and how steeply it looks down. */
 const ISO = { start: 1.6, min: 12, max: 400, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
 /** First person: eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
@@ -233,6 +233,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (view.mode === "iso") return floorSpan(cut() ?? 1)[0];
     if (view.mode === "top") return cut() === null ? 0 : floorSpan(cut()!)[0];
     return Math.min(0, camera.position.y - FLOOR_H);
+  }
+
+  // Looking straight down: until the player zooms, frame the unlocked rings with a little margin.
+  let topFitted = true;
+  function fitTop(): void {
+    if (!hole) return;
+    const r = ringRadii(hole, Math.max(1, Math.min(hole.ringSlots.length, hole.unlockedRings)))[1];
+    const tan = Math.tan((FOV * Math.PI) / 360) * Math.min(1, camera.aspect);
+    cam.height = Math.min(TOP.max, Math.max(TOP.min, (r * TOP.margin) / tan));
   }
 
   function applyCamera(): void {
@@ -854,6 +863,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** Switching camera mode: set the new one up, and rebuild if what's hidden changed. */
   function enterMode(before: Mode): void {
     if (view.mode === "iso" && !cam.iso) cam.iso = outerRadius() * ISO.start;
+    if (view.mode === "top" && topFitted) fitTop();
     if (view.mode === "walk" && before !== "walk") placeWalker();
     if (before === "walk" && view.mode !== "walk") {
       held.clear();
@@ -1018,7 +1028,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       applyCamera();
       return;
     }
-    if (view.mode === "top") cam.height *= e.ctrlKey ? zoom : Math.exp(e.deltaY * 0.003);
+    if (view.mode === "top") {
+      cam.height *= e.ctrlKey ? zoom : Math.exp(e.deltaY * 0.003);
+      topFitted = false;
+    }
     else if (view.mode === "free") {
       if (e.ctrlKey) cam.fov *= zoom;
       else {
@@ -1236,6 +1249,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         holeKey = key;
         hole = snapshot.layout.hole;
         buildHole(hole);
+        // A new hole, or more rings: frame them from the top again.
+        if (topFitted) fitTop();
         dust.sync(hole);
         applyCamera();
       }

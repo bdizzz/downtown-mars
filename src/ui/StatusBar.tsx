@@ -1,3 +1,4 @@
+import type { ViewMode } from "./settings";
 import type { HoverInfo } from "../view/types";
 import type { Hole } from "../sim/geometry";
 import { effectAt, FIELD_TYPES } from "../sim/effects";
@@ -33,6 +34,8 @@ interface Props {
   snapshot: Snapshot | null;
   notice: string | null;
   overlay: string | null;
+  /** Which view is showing: the plan zooms with the wheel. */
+  view: ViewMode;
 }
 
 /** "noise −1.3 · health +0.7" for a slot, skipping effects that are ~0. */
@@ -52,9 +55,9 @@ function feltOver(s: Snapshot, cells: { floor: number; ring: number; slot: numbe
     .join(", ");
 }
 
-export function StatusBar({ info, snapshot, notice, overlay }: Props) {
+export function StatusBar({ info, snapshot, notice, overlay, view }: Props) {
   const hole = snapshot?.layout.hole;
-  let text = "Drag to pan · scroll to move · pinch or ctrl+scroll to zoom";
+  let text = view === "plan" ? "Drag to pan · scroll or pinch to zoom" : "Drag to pan · scroll to move · pinch or ctrl+scroll to zoom";
   let bad = false;
   if (notice) {
     text = notice;

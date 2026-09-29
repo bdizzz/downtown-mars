@@ -52,6 +52,10 @@ const C = {
 const PX = 7;
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 5;
+/** How much of the screen's shorter side the unlocked rings fill when fitted. */
+const FIT_SHARE = 0.9;
+/** Zoom per unit of wheel movement: a pinch (ctrl+wheel), a wheel or trackpad scroll, and a wheel "line" in pixels. */
+const WHEEL = { pinch: 0.01, wheel: 0.0015, line: 16 };
 const CLICK_SLOP = 5;
 const ARC_STEP = 0.05; // radians per segment when drawing arcs as polylines
 const FIELD_MAX = 3;
@@ -483,13 +487,12 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
 
   // ---- camera ----
 
-  /** Fit the floor's carved rings on screen. */
+  /** Fit the unlocked rings on screen, with a little margin: three rings fill it, six sit further out. */
   function fit(): void {
     if (!layout) return;
-    // Frame the carved rings, with one locked ring showing past them.
     const h = layout.hole;
-    const outer = ringRadii(h, Math.min(h.ringSlots.length, h.unlockedRings + 1))[1] * PX;
-    cam.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, (Math.min(app.screen.width, app.screen.height) * 0.92) / (outer * 2)));
+    const outer = ringRadii(h, Math.max(1, Math.min(h.ringSlots.length, h.unlockedRings)))[1] * PX;
+    cam.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, (Math.min(app.screen.width, app.screen.height) * FIT_SHARE) / (outer * 2)));
     cam.x = 0;
     cam.y = 0;
   }
@@ -640,17 +643,14 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     e.preventDefault();
     pointer = e;
     userMoved = true;
-    if (e.ctrlKey) {
-      // Pinch or ctrl+wheel: zoom around the cursor.
-      const [wx, wy] = screenToPlan(e);
-      cam.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom * Math.exp(-e.deltaY * 0.01)));
-      const r = canvas.getBoundingClientRect();
-      cam.x = wx - (e.clientX - r.left - app.screen.width / 2) / cam.zoom;
-      cam.y = wy - (e.clientY - r.top - app.screen.height / 2) / cam.zoom;
-    } else {
-      cam.x += e.deltaX / cam.zoom;
-      cam.y += e.deltaY / cam.zoom;
-    }
+    // The wheel and pinching both zoom, around the cursor (dragging pans). A pinch comes as
+    // ctrl+wheel in small steps; a wheel notch is a big step, in lines or pixels.
+    const [wx, wy] = screenToPlan(e);
+    const dy = e.deltaY * (e.deltaMode === 1 ? WHEEL.line : 1);
+    cam.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom * Math.exp(-dy * (e.ctrlKey ? WHEEL.pinch : WHEEL.wheel))));
+    const r = canvas.getBoundingClientRect();
+    cam.x = wx - (e.clientX - r.left - app.screen.width / 2) / cam.zoom;
+    cam.y = wy - (e.clientY - r.top - app.screen.height / 2) / cam.zoom;
     applyCamera();
   };
 
