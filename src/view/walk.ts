@@ -4,10 +4,10 @@ import { isOpen } from "../sim/excavation";
 import type { Hole } from "../sim/geometry";
 import { roomAt, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
-import { openShaftRadius, RING_D, TAU } from "../render3d/cylinder";
+import { FLOOR_H, openShaftRadius, RING_D, TAU } from "../render3d/cylinder";
 import { doorways } from "./doors";
 import { furnish, isFlat } from "./furnish";
-import { isMounted } from "./furniture";
+import { isMounted, itemDef } from "./furniture";
 
 // Walking a floor in first person: where a colonist can stand. Open ground is
 // the gallery ringing the shaft (not over the railing), public rooms (plazas,
@@ -160,7 +160,7 @@ export function obstacles(layout: Layout, floor: number): Obstacle[] {
       .filter((room) => room.cells.some((c) => c.floor === floor))
       .flatMap((room) => furnish(layout, room))
       // Rugs are walked over, and wall hangings are over your head.
-      .filter((f) => f.floor === floor && !isFlat(f.item) && !isMounted(f.item))
+      .filter((f) => f.floor === floor && !isFlat(f.item) && !isMounted(f.item) && !itemDef(f.item).climb && !itemDef(f.item).opening)
       .map((f) => {
         const xs = f.corners.map((c) => c[0]);
         const zs = f.corners.map((c) => c[1]);
@@ -206,37 +206,145 @@ function segmentDistance(x: number, z: number, [ax, az]: [number, number], [bx, 
 const SLIDE = { notch: 10, most: 85 };
 
 /**
- * Step from (x, z) by (dx, dz), sliding along whatever's in the way: the
- * whole step if it's clear; otherwise the same step turned a little at a
- * time, and shortened to what it moves along the obstacle, whichever way
+ * Step from (x, z) on a floor by (dx, dz), sliding along whatever's in the
+ * way: the whole step if it's clear; otherwise the same step turned a little
+ * at a time, and shortened to what it moves along the obstacle, whichever way
  * turns least; otherwise part of the step; otherwise nowhere. So walking into
  * a wall (straight, curved or corner-on) or furniture keeps you moving along
- * it, never through it.
+ * it, never through it. Stairs take you up or down a floor: the new floor
+ * comes back with the new place.
  */
-export function step(layout: Layout, floor: number, x: number, z: number, dx: number, dz: number): [number, number] {
+export function step(layout: Layout, floor: number, x: number, z: number, dx: number, dz: number): [number, number, number] {
   // Never from one region straight into another, however long the step: only through a doorway.
   const from = regionAt(layout, floor, x, z);
-  const ok = (nx: number, nz: number) => {
-    if (!clear(layout, floor, nx, nz)) return false;
-    const to = regionAt(layout, floor, nx, nz);
-    return from === null || (to !== null && joined(from, to));
+  /** The floor a walker would be on at (nx, nz), or null if it can't go there. */
+  const to = (nx: number, nz: number): number | null => {
+    const stairs = onStairs(layout, floor, x, z, nx, nz);
+    if (stairs !== undefined) return stairs;
+    if (!clear(layout, floor, nx, nz)) return null;
+    const there = regionAt(layout, floor, nx, nz);
+    return from === null || (there !== null && joined(from, there)) ? floor : null;
   };
-  if (!dx && !dz) return [x, z];
-  if (ok(x + dx, z + dz)) return [x + dx, z + dz];
+  if (!dx && !dz) return [x, z, floor];
+  const tryStep = (sx: number, sz: number): [number, number, number] | null => {
+    const f = to(x + sx, z + sz);
+    return f === null ? null : [x + sx, z + sz, f];
+  };
+  const whole = tryStep(dx, dz);
+  if (whole) return whole;
   for (let deg = SLIDE.notch; deg <= SLIDE.most; deg += SLIDE.notch) {
     const a = (deg * Math.PI) / 180;
     const k = Math.cos(a);
     for (const sign of [1, -1]) {
       const c = Math.cos(sign * a);
       const s = Math.sin(sign * a);
-      const sx = (dx * c - dz * s) * k;
-      const sz = (dx * s + dz * c) * k;
-      if (ok(x + sx, z + sz)) return [x + sx, z + sz];
+      const turned = tryStep((dx * c - dz * s) * k, (dx * s + dz * c) * k);
+      if (turned) return turned;
     }
   }
   // Up against it: close the gap.
-  for (const part of [0.5, 0.25]) if (ok(x + dx * part, z + dz * part)) return [x + dx * part, z + dz * part];
-  return [x, z];
+  for (const part of [0.5, 0.25]) {
+    const some = tryStep(dx * part, dz * part);
+    if (some) return some;
+  }
+  return [x, z, floor];
+}
+
+// ---- stairs ----
+
+/** A flight of stairs on a floor: its foot's middle, the way up, across it, its length and half its width. */
+export interface Flight {
+  foot: [number, number];
+  up: [number, number];
+  across: [number, number];
+  length: number;
+  half: number;
+}
+
+/** How far onto a flight you can step at its foot (or head), as a share of its length. */
+const STAIR_ENTRY = 0.15;
+
+const flightCache = new WeakMap<Layout, Map<number, Flight[]>>();
+
+/** The flights on a floor (each climbs to the floor above), from the stairwells' furniture. */
+export function flights(layout: Layout, floor: number): Flight[] {
+  let byFloor = flightCache.get(layout);
+  if (!byFloor) flightCache.set(layout, (byFloor = new Map()));
+  let list = byFloor.get(floor);
+  if (!list) {
+    list = layout.rooms
+      .filter((room) => roomDef(room.type).stacks && room.cells.some((c) => c.floor === floor))
+      .flatMap((room) => furnish(layout, room))
+      .filter((f) => f.floor === floor && itemDef(f.item).climb)
+      .map((f) => {
+        // The item's front (+z) is the foot; it climbs toward its back.
+        const [, length] = itemDef(f.item).size;
+        const up: [number, number] = [-Math.sin(f.turn), -Math.cos(f.turn)];
+        return {
+          foot: [f.x - (up[0] * length) / 2, f.z - (up[1] * length) / 2] as [number, number],
+          up,
+          across: [Math.cos(f.turn), -Math.sin(f.turn)] as [number, number],
+          length,
+          half: itemDef(f.item).size[0] / 2,
+        };
+      });
+    byFloor.set(floor, list);
+  }
+  return list;
+}
+
+/** Where a point is on a flight: how far up (0 at the foot, 1 at the head) and how far off its middle. */
+function along(fl: Flight, x: number, z: number): { s: number; off: number } {
+  const [px, pz] = [x - fl.foot[0], z - fl.foot[1]];
+  const s = (px * fl.up[0] + pz * fl.up[1]) / fl.length;
+  const off = px * fl.across[0] + pz * fl.across[1];
+  return { s, off };
+}
+
+/** Is a walker at this point touching the flight (its body over it)? */
+const over = (fl: Flight, a: { s: number; off: number }) => a.s >= 0 && a.s <= 1 && Math.abs(a.off) < fl.half + WALKER_RADIUS;
+/** Is a walker at this point fully between the flight's rails? */
+const between = (fl: Flight, a: { s: number; off: number }) => Math.abs(a.off) <= fl.half - WALKER_RADIUS;
+
+/**
+ * A step that has to do with stairs: the floor it lands on, or null if the
+ * stairs' rails stop it; undefined if there are no stairs about.
+ * On a flight you climb between its rails, stepping off its head onto the
+ * floor above or its foot back onto this one. You get onto one only at its
+ * foot; and into a flight's well on the floor above only at its head, which
+ * takes you down onto it.
+ */
+function onStairs(layout: Layout, floor: number, x: number, z: number, nx: number, nz: number): number | null | undefined {
+  for (const fl of flights(layout, floor)) {
+    const now = along(fl, x, z);
+    if (!(now.s >= 0 && now.s <= 1 && between(fl, now))) continue;
+    // Climbing this one.
+    const next = along(fl, nx, nz);
+    if (!between(fl, next) && next.s >= 0 && next.s <= 1) return null;
+    if (next.s > 1) return clear(layout, floor - 1, nx, nz) ? floor - 1 : null;
+    if (next.s >= 0) return floor;
+    return undefined; // off the foot, onto this floor as usual
+  }
+  for (const fl of flights(layout, floor)) {
+    const next = along(fl, nx, nz);
+    if (over(fl, next)) return next.s <= STAIR_ENTRY && between(fl, next) ? floor : null;
+  }
+  if (floor < layout.hole.floors) {
+    for (const fl of flights(layout, floor + 1)) {
+      const next = along(fl, nx, nz);
+      if (over(fl, next)) return next.s >= 1 - STAIR_ENTRY && between(fl, next) ? floor + 1 : null;
+    }
+  }
+  return undefined;
+}
+
+/** How high a walker stands above its floor: up a flight, by how far up it is; otherwise not at all. */
+export function stairLift(layout: Layout, floor: number, x: number, z: number): number {
+  for (const fl of flights(layout, floor)) {
+    const a = along(fl, x, z);
+    if (a.s >= 0 && a.s <= 1 && Math.abs(a.off) <= fl.half) return a.s * FLOOR_H;
+  }
+  return 0;
 }
 
 /** Stairs or an elevator under a walker: where it can take them (the floors above and below it reaches), or null. */

@@ -7,7 +7,7 @@ import { cellEdges, edgeById, edgeSides, edgeVertices, outsideEdges, vertexKey, 
 import { corridorJoints, corridors, finishDef } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
 import { FIT, frameOf, furnish, type Fitted } from "../view/furnish";
-import { isMounted } from "../view/furniture";
+import { isMounted, itemDef } from "../view/furniture";
 import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
 import { finishMaterial, withRock } from "./surfaces";
@@ -343,6 +343,53 @@ function pieceAt(cut: ReturnType<typeof carveCell>, p: Piece, r: number): [numbe
   return [p === cut.pieces[0] ? cut.left(r) : p.b0, p === cut.pieces.at(-1) ? cut.right(r) : p.b1];
 }
 
+/** A hole in a room's floor on one floor (a stair well): radii and angles. */
+export interface FloorHole {
+  floor: number;
+  r0: number;
+  r1: number;
+  a0: number;
+  a1: number;
+}
+
+/**
+ * A floor piece (as `flatPiece`), less a hole where one crosses it: the parts
+ * nearer and further than the hole, and either side of it between.
+ */
+function floorPiece(pos: number[], r0: number, r1: number, inner: [number, number], outer: [number, number], y: number, hole?: FloorHole): void {
+  if (!hole || hole.r1 <= r0 || hole.r0 >= r1) return flatPiece(pos, r0, r1, inner, outer, y);
+  // The piece's sides at a radius, between its inner and outer ends.
+  const sides = (r: number): [number, number] => {
+    const t = (r - r0) / (r1 - r0);
+    return [inner[0] + (outer[0] - inner[0]) * t, inner[1] + (outer[1] - inner[1]) * t];
+  };
+  // The hole's angles, brought round to the piece's.
+  const mid = (inner[0] + inner[1]) / 2;
+  const shift = Math.round((mid - (hole.a0 + hole.a1) / 2) / TAU) * TAU;
+  const [ha0, ha1] = [hole.a0 + shift, hole.a1 + shift];
+  if (ha1 <= Math.min(inner[0], outer[0]) || ha0 >= Math.max(inner[1], outer[1])) return flatPiece(pos, r0, r1, inner, outer, y);
+  const h0 = Math.max(r0, hole.r0);
+  const h1 = Math.min(r1, hole.r1);
+  if (h0 > r0) flatPiece(pos, r0, h0, inner, sides(h0), y);
+  if (r1 > h1) flatPiece(pos, h1, r1, sides(h1), outer, y);
+  const [i, o] = [sides(h0), sides(h1)];
+  if (ha0 > i[0]) flatPiece(pos, h0, h1, [i[0], Math.min(ha0, i[1])], [o[0], Math.min(ha0, o[1])], y);
+  if (ha1 < i[1]) flatPiece(pos, h0, h1, [Math.max(ha1, i[0]), i[1]], [Math.max(ha1, o[0]), o[1]], y);
+}
+
+/** The wells in a stack's floors: where a flight from the floor below comes up (its well's footprint). */
+export function stairWells(layout: Layout, room: RoomInstance): FloorHole[] {
+  if (!roomDef(room.type).stacks) return [];
+  return furnish(layout, room)
+    .filter((f) => itemDef(f.item).opening)
+    .map((f) => {
+      const rs = f.corners.map(([x, z]) => Math.hypot(x, z));
+      const centre = Math.atan2(f.z, f.x);
+      const as = f.corners.map(([x, z]) => centre + Math.atan2(Math.sin(Math.atan2(z, x) - centre), Math.cos(Math.atan2(z, x) - centre)));
+      return { floor: f.floor, r0: Math.min(...rs), r1: Math.max(...rs), a0: Math.min(...as), a1: Math.max(...as) };
+    });
+}
+
 /**
  * The openings in a ring-1 cell's shaft face (from a0 to a1): its window band,
  * less a frame's width either side of a door, and the door, if it's here.
@@ -375,7 +422,7 @@ function frontage(c: Cell, a0: number, a1: number, doors: Doorway[]): Opening[] 
  * tints), corridors are ignored. With `doors`, the shaft face has its windows
  * and doors cut out of it.
  */
-export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve = true, publicRoom = false, doors: Doorway[] | null = null): THREE.BufferGeometry {
+export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve = true, publicRoom = false, doors: Doorway[] | null = null, wells: FloorHole[] = []): THREE.BufferGeometry {
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
   const own = new Set(cells.map(key));
   const rings = cells.map((c) => c.ring);
@@ -426,7 +473,8 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
     if (cut.openRight && last && !(publicRoom && cut.hallRight)) {
       sideWall(pos, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y1, { side: -1, across: cut.hallRight || across(cMid, s1 + 0.5 / cMid) });
     }
-    for (const p of floorCut.pieces) flatPiece(pos, p.rr0, p.rr1, pieceAt(floorCut, p, p.rr0), pieceAt(floorCut, p, p.rr1), y0);
+    const well = wells.find((w) => w.floor === c.floor);
+    for (const p of floorCut.pieces) floorPiece(pos, p.rr0, p.rr1, pieceAt(floorCut, p, p.rr0), pieceAt(floorCut, p, p.rr1), y0, well);
   }
   return geometry(pos);
 }
@@ -881,7 +929,7 @@ function roomShape(layout: Layout, room: RoomInstance): { geo: THREE.BufferGeome
   const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${doors ? "open" : "shut"}`;
   let shape = shapeCache.get(key);
   if (!shape) {
-    const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, doors);
+    const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, doors, stairWells(layout, room));
     shape = { geo, edges: outlineGeometry(geo) };
     shapeCache.set(key, shape);
   }

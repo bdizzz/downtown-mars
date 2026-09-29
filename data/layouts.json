@@ -630,17 +630,26 @@
       {"item":"mars_map","wall":"front","x":-3.0}
     ],
     "stairwell:1x1": [
-      {"item":"stair_flight","wall":"back","y":0.1},
-      {"item":"plant_pot","wall":"left","y":0.3},
-      {"item":"bench","wall":"right","y":0.1},
+      {"item":"stair_flight","wall":"center","x":-1.85,"mirror":"even"},
+      {"item":"stair_landing","wall":"center","x":-1.85,"snug":true,"mirror":"odd"},
+      {"item":"bench","wall":"left","x":0.6,"y":0.1},
+      {"item":"plant_pot","wall":"right","x":0.6,"y":0.3},
+      {"item":"poster","wall":"left"},
+      {"item":"wall_lamp","wall":"right","x":-1.0},
+      {"item":"safety_sign","wall":"front","x":-1.5}
+    ],
+    "stairwell:1x1:bottom": [
+      {"item":"stair_flight","wall":"center","x":-1.85,"mirror":"even"},
+      {"item":"bench","wall":"left","x":0.6,"y":0.1},
+      {"item":"plant_pot","wall":"right","x":0.6,"y":0.3},
       {"item":"poster","wall":"left"},
       {"item":"wall_lamp","wall":"right","x":-1.0},
       {"item":"safety_sign","wall":"front","x":-1.5}
     ],
     "stairwell:1x1:top": [
-      {"item":"stair_landing","wall":"back","y":0.1},
-      {"item":"plant_pot","wall":"left","y":0.3},
-      {"item":"bench","wall":"right","y":0.1},
+      {"item":"stair_landing","wall":"center","x":-1.85,"snug":true,"mirror":"odd"},
+      {"item":"bench","wall":"left","x":0.6,"y":0.1},
+      {"item":"plant_pot","wall":"right","x":0.6,"y":0.3},
       {"item":"poster","wall":"left"},
       {"item":"wall_lamp","wall":"right","x":-1.0},
       {"item":"safety_sign","wall":"front","x":-1.5}

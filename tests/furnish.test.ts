@@ -4,7 +4,7 @@ import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Layout, type Location } from "../src/sim/placement";
 import { FIT, fit, frameOf, furnish, furnishedFloors, inside, layouts, place, templateFor, tooClose, unplace, type Template } from "../src/view/furnish";
 import { isFurnished, itemDef, itemsFor } from "../src/view/furniture";
-import { roomDefs } from "../src/sim/rooms";
+import { roomDef, roomDefs } from "../src/sim/rooms";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 
@@ -157,10 +157,12 @@ describe("the templates", () => {
       const [w, d] = shape.split("x").map(Number) as [number, number];
       const used = new Set<number>();
       for (let r = 1; r + d - 1 <= 6; r++) {
-        // Three floors dug: a stairwell or elevator on floor 2 reaches floor 3.
-        const layout = createLayout(createHole(10, 3, 6, config.geometry));
+        // Four floors dug: a stairwell or elevator on floor 2 reaches floor 3, and a second
+        // piece on floor 3 extends it to floor 4, so it has a top, a middle and a bottom.
+        const layout = createLayout(createHole(10, 4, 6, config.geometry));
         const placed = placeRoom(layout, type, { kind: "ring", floor: 2, ring: r, slot: 0, w, d });
         expect(placed.ok, `${key} in ring ${r}`).toBe(true);
+        if (roomDef(type).stacks) placeRoom(layout, type, { kind: "ring", floor: 3, ring: r, slot: 0, w, d });
         const room = layout.rooms.find((x) => x.id === placed.id)!;
         // The floors this template furnishes (a stack's top or bottom floor may have its own).
         const floors = furnishedFloors(room).filter(({ role }) => templateFor(type, w, d, layouts.templates, role) === t);

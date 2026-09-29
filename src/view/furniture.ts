@@ -28,6 +28,10 @@ export interface ItemDef {
   parts: Part[];
   /** Hung on a wall: how high its bottom is above the floor, metres. */
   mount?: number;
+  /** A hole in the floor (a stair well), not something standing on it: it takes no floor space. */
+  opening?: boolean;
+  /** A flight of stairs: walked up from its foot (its front) to its head, a floor higher. */
+  climb?: boolean;
 }
 
 export const furniture = raw as unknown as {

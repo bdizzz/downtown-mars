@@ -394,3 +394,24 @@ Decided Sep 28, 2026 (Bryon):
 - **Browser check:**
   - G does nothing outside Build. B opens Build; then G picks the galley, B the battery bank, and Z corridors. C switches to Charts, V to View, M to Map.
   - While walking, B does nothing (Build is off), and the floor picker shows no All and doesn't preview.
+
+**Follow-up, stairs, crops, ceilings and the ground (Bryon, Sep 29):**
+- **Wide stairs:**
+  - A stairwell is a switchback. Each floor has a 2.8 m wide flight of 16 steps (`stair_flight`: treads, risers, stringers and handrails; `climb`) rising 4 m to the floor above.
+  - Beside it is a railed well (`stair_landing`, "Stair well"; `opening`) where the flight from below comes up.
+  - The flight and well swap sides from floor to floor (a placement's new `mirror: "odd" | "even"`). Together they fill most of the room.
+  - The top floor has only the well, the bottom floor only the flight (`stairwell:1x1:top` / `:bottom`).
+  - The well is `snug`: the flight and well each face along their own radius, so they close in toward the shaft.
+  - Openings don't count toward crowding.
+- **Wells are cut from the floor** (`stairWells` in rooms3d): the floor slab is split round each well's ring and angle box, so you look down the flight.
+- **Walking the stairs** (`flights`, `onStairs`, `stairLift` in walk.ts):
+  - Step onto a flight only at its foot; the rails keep you on it.
+  - The camera rises smoothly with the distance along it. Off the head you're on the floor above.
+  - From above, walk into the well at its open end and you're on the flight going down. Its rails stop you anywhere else.
+  - `step` now returns the floor as well as the position.
+- **Farms show their crop:**
+  - Planter beds and hydroponic racks come in a version for each of the seven crops: potato mounds, soy bushes, wheat and barley stalks, leafy greens, mushroom logs and algae tubes.
+  - `cropVariant` picks the version for the room's crop, and the furniture cache is keyed on it.
+- **Furniture no longer pokes through the ceiling below.** Everything stands `FIT.lift` (3.5 cm) above its floor, since some models dip just below their base.
+- **The ground below the surface** (the cap round a picked floor) now reaches 3 km in 24 pieces, past where the camera can see, so the sky never shows round its edge.
+- **Browser check:** the stairwell template in the furnishing tool: the flight and well side by side, filling the room. The crop variants are in the Catalogue. The climbing itself is covered by tests; building a real three-floor stairwell in game takes days of drilling.

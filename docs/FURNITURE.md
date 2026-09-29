@@ -43,7 +43,7 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | Storeroom | S | Shelving, Cargo crate, Barrels, Safety sign, Notice board |
 | Warehouse | M | Pallet rack, Crate stack, Cargo cart, Pallet jack, Barrels, Safety sign, Notice board, Wall lamp |
 | Depot | L | Pallet rack, Crate stack, Cargo cart, Pallet jack, Control console, Barrels, Safety sign, Notice board, Readout panel |
-| Stairwell | S | Stair flight, Stair landing, Bench, Potted plant, Poster, Wall lamp, Safety sign |
+| Stairwell | S | Stair flight, Stair well, Bench, Potted plant, Poster, Wall lamp, Safety sign |
 | Elevator | S | Elevator shaft, Elevator (car waiting), Call panel, Bench, Potted plant, Poster, Wall lamp, Safety sign |
 
 ## Items
@@ -190,8 +190,8 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | Memorial niches (`niche_wall`) | 3.1 × 0.5 × 2.6 | Crypt |
 | Memorial stone (`memorial`) | 0.9 × 0.65 × 1 | Crypt |
 | Candle stand (`candle_stand`) | 0.5 × 0.5 × 1.15 | Crypt |
-| Stair flight (`stair_flight`) | 4.45 × 1.3 × 4 | Stairwell |
-| Stair landing (`stair_landing`) | 4.5 × 1.45 × 1.05 | Stairwell |
+| Stair flight (`stair_flight`) | 2.8 × 6.45 × 4 | Stairwell |
+| Stair well (`stair_landing`) | 2.85 × 6.45 × 1.05 | Stairwell |
 | Elevator shaft (`elevator_shaft`) | 2.4 × 2.4 × 4 | Elevator |
 | Elevator (car waiting) (`elevator_car`) | 2.4 × 2.4 × 4 | Elevator |
 | Call panel (`call_panel`) | 0.35 × 0.2 × 1.6 | Elevator |

@@ -3,7 +3,7 @@ import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
 import * as THREE from "three";
-import { loweredAt, outlineGeometry, roomGeometry, setWallsDown, shaftFaces, WALLS_DOWN } from "../src/render3d/rooms3d";
+import { loweredAt, outlineGeometry, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
 import { floorSpan, ringRadii, slotAngles } from "../src/render3d/cylinder";
 import { corridorJoints } from "../src/sim/corridors";
 import { DOOR, doorways } from "../src/view/doors";
@@ -294,5 +294,39 @@ describe("walls down, with neighbours", () => {
     expect(loweredAt(hitAt(face(r1)), inside)).toBe(true);
     expect(loweredAt(hitAt(face(r0)), inside)).toBe(false);
     setWallsDown(false);
+  });
+});
+
+describe("stair wells", () => {
+  it("are cut from a stairwell's floors above its flights", () => {
+    const l = createLayout(createHole(10, 4, 3, config.geometry));
+    placeRoom(l, "stairwell", ring(1, 2, 4));
+    placeRoom(l, "stairwell", ring(2, 2, 4));
+    const room = l.rooms.find((x) => x.type === "stairwell")!;
+    // The extension, built.
+    room.cells.push(...(room.pendingCells ?? []));
+    delete room.pendingCells;
+    const wells = stairWells(l, room);
+    // Floors 1 and 2 each have a well (the flights from 2 and 3 come up through them); 3, the bottom, has none.
+    expect(wells.map((w) => w.floor).sort()).toEqual([1, 2]);
+    const geo = roomGeometry(l, room.cells, undefined, true, true, null, wells);
+    const pos = geo.getAttribute("position");
+    for (const w of wells) {
+      const y = floorSpan(w.floor)[0] + 0.06;
+      const [rm, am] = [(w.r0 + w.r1) / 2, (w.a0 + w.a1) / 2];
+      // Nothing of the floor covers the well's middle.
+      for (let i = 0; i < pos.count; i += 3) {
+        const ys = [0, 1, 2].map((k) => pos.getY(i + k));
+        if (ys.some((v) => Math.abs(v - y) > 1e-4)) continue;
+        const rs = [0, 1, 2].map((k) => Math.hypot(pos.getX(i + k), pos.getZ(i + k)));
+        // Angles from the well's middle, so none wraps round past ±π.
+        const as = [0, 1, 2].map((k) => {
+          const d = Math.atan2(pos.getZ(i + k), pos.getX(i + k)) - am;
+          return Math.atan2(Math.sin(d), Math.cos(d));
+        });
+        const covers = rm > Math.min(...rs) && rm < Math.max(...rs) && 0 > Math.min(...as) && 0 < Math.max(...as);
+        expect(covers).toBe(false);
+      }
+    }
   });
 });

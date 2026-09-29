@@ -1041,32 +1041,54 @@ item("candle_stand", "Candle stand", [cyl([0, 0.45, 0], 0.08, 0.9, "copper"), cy
 // Stairs and elevators
 // =====================================================================
 
+// A grand straight flight, 2.8 m wide, climbing 4 m in 16 steps of 0.4 m run and 0.25 m rise,
+// from its front (+z, the foot) toward its back (−z, the head). Alternate floors mirror it, so
+// the flights switch back up the stairwell; the floor above has a railed well where it arrives.
+const STAIRS = { width: 2.8, run: 0.4, rise: 0.25, steps: 16 };
 {
-  // An open flight: 16 treads of 0.275 m run and 0.25 m rise on two stringers, climbing 4 m toward +x.
-  const run = 0.275;
-  const rise = 0.25;
-  const n = 16;
-  const width = 1.3;
-  const slope = Math.atan2(rise, run);
-  const L = Math.hypot(run * n, rise * n);
+  const { width: W, run, rise, steps: n } = STAIRS;
+  const L = run * n;
+  const H = rise * n;
+  const slope = (Math.atan2(H, L) * 180) / Math.PI;
+  /** The treads' height at z, along the slope. */
+  const heightAt = (z) => ((L / 2 - z) / L) * H;
   const flight = [
-    ...Array.from({ length: n }, (_, k) => box([-(run * n) / 2 + (k + 0.5) * run, (k + 1) * rise - 0.03, 0], [run + 0.02, 0.06, width - 0.1], k % 2 ? "composite" : "accent")),
-    // The stringers run under the treads, stopping short of the floor at the foot and the landing at the head.
-    ...[-1, 1].map((sz) => box([0, 2.0, sz * (width / 2 - 0.03)], [L - 0.6, 0.22, 0.06], "metal", { r: [0, 0, r3((slope * 180) / Math.PI)] })),
-    ...[-1, 1].map((sz) => box([-0.55, 2.35, sz * (width / 2 - 0.03)], [Math.hypot(3.3, 3.0), 0.05, 0.05], "steel", { r: [0, 0, r3((slope * 180) / Math.PI)] })),
-    ...[-(run * n) / 2 + 0.1, 0.4].map((x) => box([x, x < 0 ? 0.45 : 2.9, width / 2 - 0.03], [0.05, 0.9, 0.05], "steel")),
+    // Treads, and a riser under each.
+    ...Array.from({ length: n }, (_, k) => box([0, (k + 1) * rise - 0.03, L / 2 - (k + 0.5) * run], [W - 0.12, 0.06, run + 0.02], k % 2 ? "composite" : "accent")),
+    ...Array.from({ length: n }, (_, k) => box([0, (k + 0.5) * rise, L / 2 - k * run - 0.01], [W - 0.14, rise, 0.02], "dark")),
+    // Stringers under each side, short of the floor at the foot and the well's rim at the head.
+    ...[-1, 1].map((sx) => box([sx * (W / 2 - 0.05), H / 2, 0], [0.1, 0.3, Math.hypot(L, H) - 0.9], "metal", { r: [r3(slope), 0, 0] })),
+    // Handrails a metre above the treads, up the lower three quarters (the well's rail takes over above).
+    ...[-1, 1].flatMap((sx) => {
+      const [z0, z1] = [L / 2 - 0.2, -L / 2 + 1.8];
+      const zc = (z0 + z1) / 2;
+      return [
+        box([sx * (W / 2 - 0.05), heightAt(zc) + 0.95, zc], [0.05, 0.05, (z0 - z1) / Math.cos((slope * Math.PI) / 180)], "steel", { r: [r3(slope), 0, 0] }),
+        ...[z0, zc, z1].map((z) => box([sx * (W / 2 - 0.05), heightAt(z) + 0.5, z], [0.05, 0.9, 0.05], "steel")),
+      ];
+    }),
   ];
   item("stair_flight", "Stair flight", flight);
+  // Walked up, not round: first person climbs it from its foot to the floor above.
+  items.stair_flight.climb = true;
+  // The well a flight from below arrives through: railed round its sides and foot, open at its head.
+  const well = [
+    ...[-1, 1].flatMap((sx) => [
+      box([sx * (W / 2 - 0.03), 1.0, 0], [0.05, 0.05, L], "steel"),
+      box([sx * (W / 2 - 0.03), 0.5, 0], [0.04, 0.03, L], "steel"),
+      box([sx * (W / 2 - 0.03), 0.03, 0], [0.08, 0.06, L], "hazard"),
+      ...[-L / 2 + 0.05, -L / 4, 0, L / 4, L / 2 - 0.05].map((z) => box([sx * (W / 2 - 0.03), 0.5, z], [0.05, 1.0, 0.05], "steel")),
+    ]),
+    box([0, 1.0, L / 2 - 0.03], [W, 0.05, 0.05], "steel"),
+    box([0, 0.5, L / 2 - 0.03], [W, 0.03, 0.04], "steel"),
+    box([0, 0.03, L / 2 - 0.03], [W, 0.06, 0.08], "hazard"),
+    // The head, where you step off: a hazard edge on the floor.
+    box([0, 0.012, -L / 2 + 0.04], [W - 0.1, 0.024, 0.08], "hazard"),
+  ];
+  item("stair_landing", "Stair well", well);
+  // A hole in the floor, not something standing on it: it doesn't count toward a room's crowding.
+  items.stair_landing.opening = true;
 }
-item("stair_landing", "Stair landing", [
-  box([0, 0.012, 0], [4.4, 0.025, 1.3], "dark"),
-  box([0, 1.0, 0.68], [4.4, 0.05, 0.05], "steel"),
-  box([2.22, 1.0, 0], [0.05, 0.05, 1.36], "steel"),
-  ...[-2.2, -0.7, 0.7, 2.2].map((x) => box([x, 0.5, 0.68], [0.05, 1.0, 0.05], "steel")),
-  box([2.22, 0.5, -0.66], [0.05, 1.0, 0.05], "steel"),
-  box([0, 0.03, 0.66], [4.4, 0.06, 0.04], "hazard"),
-  box([0, 0.5, 0.68], [4.4, 0.03, 0.03], "steel"),
-]);
 function shaft(car) {
   const parts = [
     ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => box([sx * 1.15, 2.0, sz * 1.15], [0.1, 4.0, 0.1], "metal"))),
@@ -1215,7 +1237,7 @@ const lines = ["{", `  "_note": ${JSON.stringify(note)},`, '  "colors": {'];
 Object.entries(colors).forEach(([k, v], i, all) => lines.push(`    ${JSON.stringify(k)}: ${JSON.stringify(v)}${i < all.length - 1 ? "," : ""}`));
 lines.push("  },", '  "items": {');
 Object.entries(items).forEach(([id, it], i, all) => {
-  lines.push(`    ${JSON.stringify(id)}: { "name": ${JSON.stringify(it.name)}, "size": ${J(it.size)},${it.mount ? ` "mount": ${it.mount},` : ""} "parts": [`);
+  lines.push(`    ${JSON.stringify(id)}: { "name": ${JSON.stringify(it.name)}, "size": ${J(it.size)},${it.mount ? ` "mount": ${it.mount},` : ""}${it.opening ? ` "opening": true,` : ""}${it.climb ? ` "climb": true,` : ""} "parts": [`);
   it.parts.forEach((p, j) => lines.push(`      ${J(p)}${j < it.parts.length - 1 ? "," : ""}`));
   lines.push(`    ] }${i < all.length - 1 ? "," : ""}`);
 });

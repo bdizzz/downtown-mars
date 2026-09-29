@@ -4,7 +4,7 @@ import { config } from "../src/sim/config";
 import { ensureFloors, roomAt, type Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { openShaftRadius, ringRadii, slotAngles } from "../src/render3d/cylinder";
-import { clear, OPEN, regionAt, stairsHere, step, walkable } from "../src/view/walk";
+import { clear, flights, OPEN, regionAt, stairLift, stairsHere, step, walkable } from "../src/view/walk";
 import { doorways } from "../src/view/doors";
 import { furnish, isFlat } from "../src/view/furnish";
 import { allRock } from "./worlds";
@@ -130,5 +130,62 @@ describe("walking in first person", () => {
     expect(stairsHere(s.layout, 2, ...mid(s, 1, 2))).toEqual({ up: 1, down: null });
     expect(stairsHere(s.layout, 1, ...mid(s, 1, 6))).toBeNull();
     expect(walkable(s.layout, 2, ...mid(s, 1, 2))).toBe(true);
+  });
+});
+
+describe("stairs in first person", () => {
+  /** A stairwell from floor 1 down to floor 3, built, in ring 2 slot 0. */
+  function stairs() {
+    const s = site();
+    s.layout.hole.floors = 3;
+    ensureFloors(s.layout);
+    allRock(s.layout);
+    const at = (floor: number) => ({ kind: "ring" as const, floor, ring: 1, slot: 4, w: 1, d: 1 });
+    applyCommand(s, { type: "build", room: "stairwell", at: at(1) });
+    applyCommand(s, { type: "build", room: "stairwell", at: at(2) });
+    // Built, the extension too (it waits in the queue otherwise).
+    for (const r of s.layout.rooms) {
+      r.building = false;
+      if (r.pendingCells) {
+        r.cells.push(...r.pendingCells);
+        delete r.pendingCells;
+      }
+    }
+    s.layout.version++;
+    return s;
+  }
+
+  it("climbs a flight from its foot to the floor above, rising as it goes", () => {
+    const s = stairs();
+    const [fl] = flights(s.layout, 2);
+    expect(fl).toBeDefined();
+    // Stand just before its foot, facing up it, and walk.
+    let [x, z, floor] = [fl!.foot[0] - fl!.up[0] * 0.4, fl!.foot[1] - fl!.up[1] * 0.4, 2];
+    let highest = 0;
+    for (let i = 0; i < 120 && floor === 2; i++) {
+      [x, z, floor] = step(s.layout, floor, x, z, fl!.up[0] * 0.1, fl!.up[1] * 0.1);
+      highest = Math.max(highest, stairLift(s.layout, floor, x, z));
+    }
+    expect(floor).toBe(1);
+    expect(highest).toBeGreaterThan(3);
+    // Back down: into the well from its head, onto the flight, and off its foot.
+    for (let i = 0; i < 120 && !(floor === 2 && stairLift(s.layout, floor, x, z) === 0); i++) {
+      [x, z, floor] = step(s.layout, floor, x, z, -fl!.up[0] * 0.1, -fl!.up[1] * 0.1);
+    }
+    expect(floor).toBe(2);
+  });
+
+  it("can't step onto a flight from its side, nor fall into a well", () => {
+    const s = stairs();
+    const [fl] = flights(s.layout, 2);
+    // Beside the flight halfway up, walking sideways into it: stopped by the rails.
+    const mid = [fl!.foot[0] + fl!.up[0] * fl!.length * 0.5, fl!.foot[1] + fl!.up[1] * fl!.length * 0.5];
+    const [bx, bz] = [mid[0]! + fl!.across[0] * (fl!.half + 0.6), mid[1]! + fl!.across[1] * (fl!.half + 0.6)];
+    const [, , f1] = step(s.layout, 2, bx, bz, -fl!.across[0] * 0.5, -fl!.across[1] * 0.5);
+    expect(f1).toBe(2);
+    expect(stairLift(s.layout, 2, ...(step(s.layout, 2, bx, bz, -fl!.across[0] * 0.5, -fl!.across[1] * 0.5).slice(0, 2) as [number, number]))).toBe(0);
+    // On the floor above, beside the well halfway along, walking into it: it stays on floor 1.
+    const [, , f2] = step(s.layout, 1, bx, bz, -fl!.across[0] * 0.5, -fl!.across[1] * 0.5);
+    expect(f2).toBe(1);
   });
 });

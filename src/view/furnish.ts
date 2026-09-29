@@ -33,6 +33,11 @@ export interface Placement {
   repeat?: { every: number; max?: number };
   /** Goes with its neighbours (chairs at a desk, stools at a table): it only has to not overlap them, not keep an aisle. */
   snug?: boolean;
+  /**
+   * Mirrored on odd or even floors: x the other way, turned half round. Stairs
+   * use it to switch back, each floor's flight beside the one below.
+   */
+  mirror?: "odd" | "even";
 }
 
 export type Template = Placement[];
@@ -204,7 +209,11 @@ function depthOf(p: Placement): number {
 }
 
 /** Where a placement (with repeat offset dx) puts an item: its centre on the floor, facing, and footprint corners. */
-export function place(frame: Frame, p: Placement, dx = 0): Omit<Fitted, "placement"> {
+export function place(frame: Frame, placement: Placement, dx = 0): Omit<Fitted, "placement"> {
+  // Mirrored on this floor: the other side, facing the other way.
+  const flip = placement.mirror !== undefined && placement.mirror === (frame.floor % 2 === 0 ? "even" : "odd");
+  const p = flip ? { ...placement, x: -((placement.x ?? 0) + dx), turn: (placement.turn ?? 0) + 180 } : placement;
+  if (flip) dx = 0;
   // The item's own size (for its footprint, which turns with it), and how far it stands out from its wall.
   const [w, dItem] = itemDef(p.item).size;
   const d = depthOf(p);
@@ -338,7 +347,9 @@ export function fit(frame: Frame, template: Template): Fitted[] {
     if (isMounted(p.item)) return hang(p, i, dx);
     const [w, d] = itemDef(p.item).size;
     const flat = isFlat(p.item);
-    if (!flat && covered + w * d > cap) return "full";
+    // An opening in the floor (a stair well) takes no floor space.
+    const counts = !flat && !itemDef(p.item).opening;
+    if (counts && covered + w * d > cap) return "full";
     const f = place(frame, p, dx);
     if (!f.corners.every((c) => inside(frame, c))) return "outside";
     // A rug lies under whatever stands on it: only standing items keep apart, and out of the doorway.
@@ -348,7 +359,7 @@ export function fit(frame: Frame, template: Template): Fitted[] {
     if (!flat && out.some((o) => !isFlat(o.item) && !isMounted(o.item) && tooClose(f.corners, o.corners, between(o)))) return "blocked";
     if (flat && out.some((o) => isFlat(o.item) && tooClose(f.corners, o.corners, 0))) return "blocked";
     out.push({ ...f, placement: i });
-    if (!flat) covered += w * d;
+    if (counts) covered += w * d;
     return "ok";
   };
   // A wall hanging: only on a solid wall, clear of the doorway and of other hangings, and not

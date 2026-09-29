@@ -21,7 +21,7 @@ import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt }
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, withWallsDown } from "./rooms3d";
 import { Dust, galleryLamps, makeLander, placeLander, setLampGlow, Walkers } from "./scenery3d";
-import { clear as walkClear, stairsHere, step as walkStep } from "../view/walk";
+import { clear as walkClear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Four
 // cameras: standing in the shaft looking at the wall, the way someone on the
@@ -346,7 +346,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const past = outerRadius() * ISO.lookPast;
       camera.lookAt(-out.x * past, y, -out.z * past);
     } else if (view.mode === "walk") {
-      camera.position.set(walker.x, floorSpan(walker.floor)[0] + WALK.eye, walker.z);
+      // On a flight of stairs, as high up it as you've climbed.
+      const lift = layout ? stairLift(layout, walker.floor, walker.x, walker.z) : 0;
+      camera.position.set(walker.x, floorSpan(walker.floor)[0] + WALK.eye + lift, walker.z);
       const cp = Math.cos(walker.pitch);
       camera.lookAt(walker.x + Math.cos(walker.yaw) * cp, camera.position.y + Math.sin(walker.pitch), walker.z + Math.sin(walker.yaw) * cp);
     } else {
@@ -1032,10 +1034,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // Right of facing (fx, fz) is (−fz, fx).
     const dx = ((fwd * fx - side * fz) / len) * speed;
     const dz = ((fwd * fz + side * fx) / len) * speed;
-    const [x, z] = walkStep(layout, walker.floor, walker.x, walker.z, dx, dz);
+    const [x, z, floor] = walkStep(layout, walker.floor, walker.x, walker.z, dx, dz);
     if (x === walker.x && z === walker.z) return turn !== 0;
     walker.x = x;
     walker.z = z;
+    // Up (or down) the stairs onto another floor.
+    if (floor !== walker.floor) {
+      walker.floor = floor;
+      updateReadout();
+    }
     return true;
   }
 
