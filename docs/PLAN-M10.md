@@ -313,3 +313,39 @@ Decided Sep 28, 2026 (Bryon):
   - View: walls down and the noise overlay from the strip. First person turns Build off. Plan greys out X-ray and walls down.
   - Charts: Flows opens its panel. Map covers the view with the dock on top, and closes Flows.
   - Esc steps back through tool, mode and menu.
+
+**Follow-up, a batch of polish (Bryon, Sep 29):**
+- **Plan view zoom:**
+  - Scrolling and pinching zoom around the pointer (dragging still pans).
+  - The plan opens fitted to the unlocked rings, with a little margin: three rings fill the screen, six sit further out.
+  - The 3D Top camera fits the same way (`fitTop`), until the player zooms, and again for a new hole or more rings.
+- **Bare rock under the pointer** lights up only in Build mode (`highlightsSlot`, via `Stage.setBuildMode`). Rooms and dug-out space always do.
+- **Room colours** (View; 3D only, on by default): off, built rooms show what they're built from instead of their category's colour (`roomFinish`: the building material their cost uses most; nothing means carved rock).
+  - Rock uses the rock shader.
+  - Brick is running bond on walls and tiles on floors.
+  - Metal is riveted panels on walls and diamond plate on floors.
+  - Marscrete is speckled, with form lines on walls and joints across floors.
+  - The patterns now get the surface's normal (`surfaceUv` lays them along curved or radial walls and flat on floors). Plans and rooms under construction keep their colours.
+- **A 3 m crust** (`geometry.surfaceDepthM`): floors start that far below the surface.
+  - A rock collar rings the shaft up to the ground, and floor 1's rooms and dug-out space get a rock ceiling. Their walls and pillars no longer stop short of the ground.
+  - Picking treats the crust as rock, and `floorAtY` gives a height's floor.
+  - The 2D unrolled view is unchanged.
+- **The land** (`src/render3d/terrain3d.ts`): the ground is a polar grid out to 1.7 km.
+  - It's flat for 45 m round the rim (where surface buildings stand), then eases into rolling ground and sharpened ridges, rising a little toward the horizon.
+  - About 14 craters with bowls and rims, and 320 boulders.
+  - On a faceted ridge ring 1.5 km out, the horizon is jagged **mountains**, one to three flat-topped **mesas**, or low **hills**, chosen by the site (its rounded map position, or its name before it has one). The same site always gets the same land.
+  - The camera's far plane moved out to 3.5 km. Iso still cuts at a floor, so it doesn't show the surface; the other cameras do.
+  - **Cutaway** now fills its cut face with rock following the ground's profile, leaving the hole's own section open. Below the sliced-away land there used to be sky.
+- **The map is a globe** (`src/ui/Globe.tsx`):
+  - The flat map (relief, deposits, names, routes, convoys, holes and the picked site) is drawn into a 2048×1024 canvas that wraps a lit sphere with a thin glowing rim.
+  - It opens facing your hole (or the picked site).
+  - Dragging spins it, north stays up, and the tilt stops short of the poles.
+  - Let go and it coasts, slowing to a stop. The fling's speed is measured over the drag's last 100 ms and capped, so one jerk can't send it whirling.
+  - Scrolling zooms. Pointing and clicking read the latitude and longitude under the pointer from the sphere, so hover info and site picking work as before.
+- **Tests:** terrain (a flat pad, rolling ground beyond, the same land for the same site, and all three horizons among sites); the crust (floors, picking the crust as rock); rock only highlighting in Build; room finishes.
+- **Browser check:**
+  - The plan fitted to three rings, and zooming with the wheel. Top fitted.
+  - Room colours off: brick tiles in a flat, metal panels on the battery bank.
+  - The shaft's rock collar from above.
+  - Cutaway showing boulders and mesas, with the cut filled with rock.
+  - The globe: facing Bradbury, a fling coasting to a stop, and a click at Tempe Terra marking the site.
