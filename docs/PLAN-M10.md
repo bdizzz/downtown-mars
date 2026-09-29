@@ -212,3 +212,8 @@ Decided Sep 28, 2026 (Bryon):
 - **Tests:** presets and Custom, which settings need post-processing, cleaning stored settings, and carrying over the old setting.
 - **Browser check:** Iso and first person with each effect on and off, the raw occlusion buffer, and the settings screen switching presets (the view follows, and a slider makes it Custom).
 - **Build:** Three's chunk is now just over Vite's 600 kB warning (614 kB).
+
+**Follow-up, procedural rock (Bryon, Sep 28):** "a procedural rock shader, since rock is the biggest surface on screen".
+- **`src/render3d/surfaces.ts`:** patterns worked out in the shader from world position (value noise, 3 octaves). There are no image files or UVs, and they read the same on walls, ceilings and floors. Each adds to a material's existing shader hook, and walls down now does the same, so the two combine.
+- **Rock:** sediment bands about 1.4 m thick, gently warped so they wander round the hole, each with its own shade and a thin darker seam. Over that go mottling across metres, fine grain, and darker flecks. The contrast is soft for the cozy look. It's on the shaft wall, rock faces, the rock seen from above, rock-finish corridors, the shaft bottom and the cutaway's outer wall.
+- **Regolith** for the ground around the hole: mottling, grain and pebbles, without layers. Rock's bands looked like camouflage on a flat plane.

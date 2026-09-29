@@ -8,6 +8,7 @@ import { corridorJoints, corridors, finishDef } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
 import { furnish } from "../view/furnish";
 import { DOOR, doorways, type Doorway } from "../view/doors";
+import { withRock } from "./surfaces";
 import { disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow } from "./furniture3d";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
@@ -602,13 +603,17 @@ const WALLS_GLSL = /* glsl */ `
 `;
 
 export function withWallsDown<T extends THREE.Material>(m: T): T {
-  m.onBeforeCompile = (shader) => {
+  // On top of anything the material's shader already does (a procedural surface).
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
     Object.assign(shader.uniforms, wallsDown);
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nattribute vec4 aWall;\nattribute vec2 aWall2;\nuniform float uWallsDown;\nuniform float uWallStub;")
       .replace("#include <begin_vertex>", `#include <begin_vertex>\n${WALLS_GLSL}`);
   };
-  m.customProgramCacheKey = () => "walls-down";
+  m.customProgramCacheKey = () => `${prevKey}|walls-down`;
   return m;
 }
 
@@ -867,9 +872,11 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   const hole = layout.hole;
   const n1 = hole.ringSlots[0]!;
   const rock = wallMaterial(`rock:${colors.rock}:${xray}`, () =>
-    xray
-      ? new THREE.MeshStandardMaterial({ color: colors.rock, transparent: true, opacity: XRAY.wall, depthWrite: false, side: THREE.DoubleSide })
-      : new THREE.MeshStandardMaterial({ color: colors.rock, roughness: 0.95, side: THREE.DoubleSide }),
+    withRock(
+      xray
+        ? new THREE.MeshStandardMaterial({ color: colors.rock, transparent: true, opacity: XRAY.wall, depthWrite: false, side: THREE.DoubleSide })
+        : new THREE.MeshStandardMaterial({ color: colors.rock, roughness: 0.95, side: THREE.DoubleSide }),
+    ),
   );
 
   // The shaft wall, wherever a built room doesn't replace it.
@@ -1202,7 +1209,11 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
     const f = finishDef(finish!);
     const color = linked === "true" ? parseInt(f.color.slice(1), 16) : UNLINKED;
     const see = building === "true" ? { transparent: true, opacity: 0.35, depthWrite: false } : {};
-    const mat = material(`hall:${key}`, () => new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, ...FINISH_LOOK[finish!], ...see }));
+    const mat = material(`hall:${key}`, () => {
+      const m = new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, ...FINISH_LOOK[finish!], ...see });
+      // A corridor cut through the rock shows the rock's layers underfoot.
+      return finish === "rock" ? withRock(m) : m;
+    });
     const mesh = new THREE.Mesh(geometry(pos), mat);
     mesh.userData = { pickable: true, hall: true };
     out.push(mesh);
@@ -1252,7 +1263,7 @@ function floorCap(layout: Layout, floor: number, xray = false): THREE.Object3D[]
   const outer = ringRadii(hole, hole.ringSlots.length)[1];
   const beyond: number[] = [];
   flatRing(beyond, outer, outer + CAP.beyondM, 0, TAU, y);
-  const mat = (c: number) => material(`cap:${c}`, () => new THREE.MeshStandardMaterial({ color: c, roughness: 1, side: THREE.DoubleSide }));
+  const mat = (c: number) => material(`cap:${c}`, () => withRock(new THREE.MeshStandardMaterial({ color: c, roughness: 1, side: THREE.DoubleSide })));
   const openMesh = new THREE.Mesh(geometry(open), mat(CAP.rock));
   openMesh.userData = { pickable: true, cap: true };
   const lockedMesh = new THREE.Mesh(geometry(locked), mat(CAP.locked));

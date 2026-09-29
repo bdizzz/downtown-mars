@@ -11,6 +11,7 @@ import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
 import { Look } from "./look";
+import { withRegolith, withRock } from "./surfaces";
 import { FLOOR_H, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
@@ -148,7 +149,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   const view = loadView();
   // The surface: see-through in x-ray, so rooms under it show from above.
-  const groundMat = new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 });
+  const groundMat = withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 }));
   function applyGroundXray(): void {
     groundMat.transparent = view.xray;
     groundMat.opacity = view.xray ? XRAY_GROUND_OPACITY : 1;
@@ -336,7 +337,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
     const R = h.shaftRadiusM;
     const rOpen = openShaftRadius(h);
-    const rockDark = new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.DoubleSide });
+    const rockDark = withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.DoubleSide }));
     const ledge = new THREE.MeshStandardMaterial({ color: C.ledge, roughness: 0.8 });
     const rail = new THREE.MeshStandardMaterial({ color: C.rail, metalness: 0.4, roughness: 0.5 });
 
@@ -371,7 +372,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const rOuter = R + h.unlockedRings * RING_D + SHELL_MARGIN;
     const deep = -dy0 + SHELL_MARGIN;
     shell = new THREE.Group();
-    const wall = new THREE.Mesh(new THREE.CylinderGeometry(rOuter, rOuter, deep, 96, 1, true), new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.BackSide }));
+    const wall = new THREE.Mesh(new THREE.CylinderGeometry(rOuter, rOuter, deep, 96, 1, true), withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.BackSide })));
     wall.position.y = -deep / 2;
     const floorDisc = new THREE.Mesh(new THREE.CircleGeometry(rOuter, 96), rockDark);
     floorDisc.rotation.x = -Math.PI / 2;
