@@ -11,6 +11,7 @@ import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
 import { Look } from "./look";
+import { DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { withRegolith, withRock } from "./surfaces";
 import { RoomEffects } from "./effects3d";
 import { FLOOR_H, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
@@ -58,38 +59,7 @@ const XRAY_GROUND_OPACITY = 0.2;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
 const SHELL_MARGIN = 6;
 
-type Mode = "shaft" | "free" | "cutaway" | "top" | "iso" | "walk";
-const MODES: { id: Mode; name: string; hint: string }[] = [
-  { id: "iso", name: "Iso", hint: "One floor from above and off to one side, so you see all of it (pick the floor on the right; drag to turn, scroll to zoom)" },
-  { id: "shaft", name: "Shaft", hint: "Stand in the shaft and look at the wall" },
-  { id: "free", name: "Free", hint: "Stand at the centre of the shaft and drag to look anywhere" },
-  { id: "cutaway", name: "Cutaway", hint: "Look at the hole from outside, sliced open" },
-  { id: "top", name: "Top", hint: "Look straight down the shaft" },
-  { id: "walk", name: "First person", hint: "Walk the galleries, corridors and public spaces: WASD to move, Q and E to turn, drag to look (Tab for mouse look), R and F to take stairs up or down" },
-];
-
-const VIEW_KEY = "downtown-mars.view3d";
-interface ViewPrefs {
-  mode: Mode;
-  xray: boolean;
-  /** Walls between the camera and the rooms behind them lowered to a stub, as in The Sims. */
-  wallsDown: boolean;
-}
-function loadView(): ViewPrefs {
-  try {
-    const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? "{}") as Partial<ViewPrefs>;
-    return { mode: MODES.some((m) => m.id === v.mode) ? v.mode! : "iso", xray: !!v.xray, wallsDown: !!v.wallsDown };
-  } catch {
-    return { mode: "iso", xray: false, wallsDown: false };
-  }
-}
-function saveView(v: ViewPrefs): void {
-  try {
-    localStorage.setItem(VIEW_KEY, JSON.stringify(v));
-  } catch {
-    // Not remembered; fine.
-  }
-}
+type Mode = Camera;
 
 const HOVER = { ok: 0x7fd67f, bad: 0xe0503a, hover: 0xffe2b0, selected: 0xffffff };
 const FIELD_MAX = 3;
@@ -148,7 +118,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   digFront.rotation.x = Math.PI / 2;
   scene.add(digFront);
 
-  const view = loadView();
+  // The camera and the see-through toggles: set from the View mode's buttons (setView3d).
+  const view = { mode: DEFAULT_VIEW3D.camera as Mode, xray: DEFAULT_VIEW3D.xray, wallsDown: DEFAULT_VIEW3D.wallsDown };
   // The surface: see-through in x-ray, so rooms under it show from above.
   const groundMat = withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 }));
   function applyGroundXray(): void {
@@ -1086,62 +1057,39 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   };
   canvas.addEventListener("pointerleave", onPointerLeave);
 
-  // ---- camera toolbar (owned by this view) ----
+  // ---- readout: where the camera is, and (walking) what the keys do. The buttons live in the View mode. ----
 
   const bar = document.createElement("div");
-  bar.className = "cam-toolbar";
-  const modeButtons = MODES.map((m) => {
-    const b = document.createElement("button");
-    b.textContent = m.name;
-    b.title = m.hint;
-    b.onclick = () => {
+  bar.className = "cam-readout";
+  const readout = document.createElement("span");
+  bar.appendChild(readout);
+  host.appendChild(bar);
+
+  /** Switch camera, or the see-through toggles, from the View mode's buttons. */
+  function setView3d(v: View3d): void {
+    if (v.camera !== view.mode) {
       // Coming from the shaft view, keep facing the same way.
-      if (m.id === "free" && view.mode !== "free") {
+      if (v.camera === "free") {
         cam.yaw = cam.theta;
         cam.pitch = 0;
       }
       const before = view.mode;
-      view.mode = m.id;
-      saveView(view);
-      syncBar();
+      view.mode = v.camera;
       enterMode(before);
-    };
-    bar.appendChild(b);
-    return b;
-  });
-  const xrayButton = document.createElement("button");
-  xrayButton.textContent = "X-ray";
-  xrayButton.title = "Fade the shaft wall and ring 1 to see deeper rings";
-  xrayButton.onclick = () => {
-    view.xray = !view.xray;
-    saveView(view);
-    syncBar();
-    layoutKey = ""; // rebuild with the new materials on the next update
-    applyGroundXray();
-    if (latest) stage.update(latest);
-  };
-  bar.appendChild(xrayButton);
-  const wallsButton = document.createElement("button");
-  wallsButton.textContent = "Walls down";
-  wallsButton.title = "Lower the walls between you and the rooms behind them, to see inside";
-  wallsButton.onclick = () => {
-    view.wallsDown = !view.wallsDown;
-    saveView(view);
-    syncBar();
-    setWallsDown(view.wallsDown);
-    dirty = true;
-    if (pointer && layout) refreshHover();
-  };
-  bar.appendChild(wallsButton);
-  const readout = document.createElement("span");
-  readout.className = "k";
-  bar.appendChild(readout);
-  host.appendChild(bar);
-
-  function syncBar(): void {
-    modeButtons.forEach((b, i) => b.classList.toggle("on", MODES[i]!.id === view.mode));
-    xrayButton.classList.toggle("on", view.xray);
-    wallsButton.classList.toggle("on", view.wallsDown);
+    }
+    if (v.xray !== view.xray) {
+      view.xray = v.xray;
+      layoutKey = ""; // rebuild with the new materials on the next update
+      applyGroundXray();
+      if (latest) stage.update(latest);
+    }
+    if (v.wallsDown !== view.wallsDown) {
+      view.wallsDown = v.wallsDown;
+      setWallsDown(view.wallsDown);
+      dirty = true;
+      if (pointer && layout) refreshHover();
+    }
+    updateReadout();
   }
 
   function updateReadout(): void {
@@ -1152,11 +1100,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     else if (view.mode === "top") readout.textContent = "Looking down the shaft";
     else readout.textContent = cam.y >= 0 ? "Surface" : `Floor ${Math.floor(-cam.y / FLOOR_H) + 1}`;
   }
-  syncBar();
   applyGroundXray();
   setWallsDown(view.wallsDown);
-  // Restored in first person: no building while walking.
-  if (view.mode === "walk") opts.onWalking?.(true);
 
   const resize = new ResizeObserver(() => {
     const w = host.clientWidth;
@@ -1251,9 +1196,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             return performance.now() - t0;
           },
           setMode(m: Mode) {
-            view.mode = m;
-            syncBar();
-            applyCamera();
+            setView3d({ camera: m, xray: view.xray, wallsDown: view.wallsDown });
           },
           // First person's position and heading, to put a walker somewhere.
           walker,
@@ -1363,6 +1306,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     setWarning(w) {
       warning = w;
       refreshHover(true);
+    },
+    setView3d(v) {
+      setView3d(v);
     },
     setGraphics(g) {
       graphics = g;

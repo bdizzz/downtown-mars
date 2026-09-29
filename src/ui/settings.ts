@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { cleanGraphics, DEFAULT_GRAPHICS, GRAPHICS_PRESETS, type Graphics } from "../view/graphics";
+import { DEFAULT_VIEW3D, isCamera, type View3d } from "../view/cameras";
 
 // Player preferences, kept in browser storage. Reading or writing storage
 // can fail (private windows, blocked storage); the game then just uses the
@@ -25,6 +26,8 @@ export interface Settings {
   view: ViewMode;
   /** 3D graphics: sharpness, ambient life, and how much of each effect. */
   graphics: Graphics;
+  /** The 3D camera, X-ray and walls down, as last used. */
+  view3d: View3d;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -36,7 +39,24 @@ export const DEFAULT_SETTINGS: Settings = {
   autosave: true,
   view: "3d",
   graphics: DEFAULT_GRAPHICS,
+  view3d: DEFAULT_VIEW3D,
 };
+
+/** The 3D view used to keep its own camera choice; carried over the first time. */
+const OLD_VIEW3D_KEY = "downtown-mars.view3d";
+
+function cleanView3d(raw: Partial<View3d> | undefined): View3d {
+  let v = raw;
+  if (!v) {
+    try {
+      const old = JSON.parse(localStorage.getItem(OLD_VIEW3D_KEY) ?? "{}") as { mode?: string; xray?: boolean; wallsDown?: boolean };
+      v = { camera: old.mode as View3d["camera"], xray: old.xray, wallsDown: old.wallsDown };
+    } catch {
+      v = {};
+    }
+  }
+  return { camera: isCamera(v.camera) ? v.camera : DEFAULT_VIEW3D.camera, xray: !!v.xray, wallsDown: !!v.wallsDown };
+}
 
 const KEY = "downtown-mars.settings";
 
@@ -47,7 +67,7 @@ export function loadSettings(): Settings {
     // Before graphics settings there was one "3D detail" choice: low becomes the low preset.
     const graphics = stored.graphics ? cleanGraphics(stored.graphics) : stored.quality3d === "low" ? GRAPHICS_PRESETS.low : DEFAULT_GRAPHICS;
     const { quality3d: _old, ...rest } = stored;
-    const s: Settings = { ...DEFAULT_SETTINGS, ...rest, graphics };
+    const s: Settings = { ...DEFAULT_SETTINGS, ...rest, graphics, view3d: cleanView3d(stored.view3d) };
     return VIEW_MODES.some((m) => m.id === s.view) ? s : { ...s, view: DEFAULT_SETTINGS.view };
   } catch {
     return DEFAULT_SETTINGS;

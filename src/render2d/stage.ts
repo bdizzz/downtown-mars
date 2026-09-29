@@ -965,6 +965,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       tool = t;
       refreshHover();
     },
+    setView3d() {},
     setGraphics() {
       // The 2D view is cheap at any detail; nothing to trade.
     },

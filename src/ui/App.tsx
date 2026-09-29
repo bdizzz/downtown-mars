@@ -3,7 +3,8 @@ import type React from "react";
 import type { HoverInfo, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import { roomDef, roomDefs } from "../sim/rooms";
-import { BuildPalette, buildTool, CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, shapesFor } from "./BuildPalette";
+import { BuildStrip, buildTool, CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, shapesFor } from "./BuildPalette";
+import { ChartsStrip, Dock, ViewStrip, type Chart, type Mode } from "./Dock";
 import { corridors } from "../sim/corridors";
 import { FlowPanel } from "./FlowPanel";
 import { Help } from "./Help";
@@ -16,7 +17,6 @@ import { ConstructionPanel } from "./ConstructionPanel";
 import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
-import { OverlayPicker } from "./OverlayPicker";
 import { ViewHost } from "./ViewHost";
 import { ResourceBar } from "./ResourceBar";
 import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
@@ -46,8 +46,13 @@ export function App() {
   const [pendingBuild, setPendingBuild] = useState<PendingBuild | null>(null);
   // Walking around in first person: sightseeing, not building.
   const [walking, setWalking] = useState(false);
+  // The mode open at the bottom (Build, View, Map or Charts), or none.
+  const [mode, setModeState] = useState<Mode | null>(null);
   useEffect(() => {
-    if (walking) setTool(null);
+    if (walking) {
+      setTool(null);
+      setModeState((m) => (m === "build" ? null : m));
+    }
   }, [walking]);
   // What building over corridors would cost, outlined in the view. Kept stable between
   // renders: a fresh object each time would re-send it to the view on every hover.
@@ -66,6 +71,28 @@ export function App() {
     setPanel((cur) => (cur === p ? null : p));
     setSelected(null);
   };
+  const chart: Chart | null = panel && panel !== "office" ? panel : null;
+  /**
+   * Open a mode (or close it, with null). Only Build places things, so
+   * leaving it drops the tool in hand; the charts' panels belong to Charts.
+   */
+  const setMode = useCallback((m: Mode | null) => {
+    setModeState(m);
+    if (m !== "build") {
+      setTool(null);
+      setProposal(null);
+    }
+    if (m !== "charts") setPanel((p) => (p === "office" ? p : null));
+  }, []);
+  /** Pick up a build tool, opening Build mode if it isn't (a room's key works from any mode). */
+  const takeTool = useCallback(
+    (t: Tool | ((cur: Tool) => Tool)) => {
+      setMode("build");
+      setSelected(null);
+      setTool(t);
+    },
+    [setMode],
+  );
   // "title" until the player starts or continues a game; then the pause menu opens over play.
   const [menu, setMenu] = useState<"title" | "pause" | null>("title");
   const [menuError, setMenuError] = useState<string | null>(null);
@@ -74,7 +101,7 @@ export function App() {
   const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false, sawThreeD: false });
   const [settings, updateSettings] = useSettings();
   const [helpOpen, setHelpOpen] = useState(false);
-  const [mapOpen, setMapOpen] = useState(false);
+  const mapOpen = mode === "map";
   const [plannedSite, setPlannedSite] = useState<SitePick | null>(null);
 
   // Testing helpers in the browser console (dm.help()).
@@ -164,6 +191,7 @@ export function App() {
 
   const startPlaying = useCallback(() => {
     setMenu(null);
+    setModeState((m) => (m === "build" || m === "map" ? null : m));
     setTool(null);
     setSelected(null);
     setPanel(null);
@@ -282,13 +310,14 @@ export function App() {
       }
       if (menu || helpOpen) return;
       if (e.code === "Escape") {
-        // Esc backs out of whatever is open; with nothing open, it opens the menu.
-        if (mapOpen) setMapOpen(false);
-        else if (tool || selected !== null || panel) {
-          setTool(null);
+        // Esc backs out of whatever is open, one step at a time; with nothing open, it opens the menu.
+        if (mapOpen) setMode(null);
+        else if (tool) setTool(null);
+        else if (selected !== null || panel) {
           setSelected(null);
           setPanel(null);
-        } else openMenu();
+        } else if (mode) setMode(null);
+        else openMenu();
       }
       if ((e.metaKey || e.ctrlKey) && e.code === "KeyZ") {
         e.preventDefault();
@@ -296,7 +325,7 @@ export function App() {
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.code === "KeyM") setMapOpen((m) => !m);
+      if (e.code === "KeyM") setMode(mapOpen ? null : "map");
       if (!walking && e.code === "KeyR") rotate();
       // [ and ] step through the holes.
       const next = e.code === "BracketRight" || e.key === "]";
@@ -317,24 +346,15 @@ export function App() {
       }
       if (walking) return; // no build tools while walking
       const letter = e.key.toUpperCase();
-      if (letter === CORRIDOR_KEY) {
-        setSelected(null);
-        setTool((t) => (t?.kind === "corridor" ? null : { kind: "corridor", finish: lastFinish, erase: false }));
-      }
-      if (letter === DEMOLISH_KEY) {
-        setSelected(null);
-        setTool((t) => (t?.kind === "demolish" ? null : { kind: "demolish" }));
-      }
+      if (letter === CORRIDOR_KEY) takeTool((t) => (t?.kind === "corridor" ? null : { kind: "corridor", finish: lastFinish, erase: false }));
+      if (letter === DEMOLISH_KEY) takeTool((t) => (t?.kind === "demolish" ? null : { kind: "demolish" }));
       const room = Object.entries(HOTKEYS).find(([, k]) => k === letter)?.[0];
       const def = room ? roomDefs.find((d) => d.id === room && d.buildable) : undefined;
-      if (def) {
-        setSelected(null);
-        setTool((t) => (t?.kind === "build" && t.room === def.id ? null : buildTool(def)));
-      }
+      if (def) takeTool((t) => (t?.kind === "build" && t.room === def.id ? null : buildTool(def)));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, helpOpen, mapOpen, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking]);
+  }, [menu, helpOpen, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking]);
 
   return (
     <div
@@ -347,33 +367,43 @@ export function App() {
         setSpeed={setSpeed}
         setDrill={(active) => onCommand({ type: "setDrill", active })}
         toggleOffice={() => togglePanel("office")}
-        toggleFlows={() => togglePanel("flows")}
-        toggleNetwork={() => togglePanel("network")}
-        togglePeople={() => togglePanel("people")}
-        toggleConstruction={() => togglePanel("construction")}
-        view={settings.view}
-        setView={(view) => updateSettings({ view })}
         setActiveHole={setActiveHole}
-        toggleMap={() => setMapOpen((m) => !m)}
         highlight={highlight}
         openMenu={openMenu}
         keysEnabled={!menu}
       />
       <ResourceBar s={snapshot} />
       <div className="main">
-        {!walking && <BuildPalette
-          tool={tool}
-          lastFinish={lastFinish}
-          setTool={(t) => (setTool(t), setSelected(null))}
-          resources={snapshot?.resources ?? {}}
-          highlight={highlight}
-          deposits={snapshot?.holeGates ?? []}
-          rotate={rotate}
-          canUndo={canUndo}
-          undo={undo}
-        />}
         <div className="view">
-          <OverlayPicker overlay={overlay} setOverlay={setOverlay} highlight={highlight} />
+          {snapshot && (
+            <Dock mode={mode} setMode={setMode} walking={walking} highlight={highlight} jobs={snapshot.construction.jobs.length}>
+              {mode === "build" && (
+                <BuildStrip
+                  tool={tool}
+                  lastFinish={lastFinish}
+                  setTool={(t) => (setTool(t), setSelected(null))}
+                  resources={snapshot.resources}
+                  highlight={highlight}
+                  deposits={snapshot.holeGates}
+                  rotate={rotate}
+                  canUndo={canUndo}
+                  undo={undo}
+                />
+              )}
+              {mode === "view" && (
+                <ViewStrip
+                  view={settings.view}
+                  setView={(view) => updateSettings({ view })}
+                  view3d={settings.view3d}
+                  setView3d={(view3d) => updateSettings({ view3d })}
+                  overlay={overlay}
+                  setOverlay={setOverlay}
+                  highlight={highlight}
+                />
+              )}
+              {mode === "charts" && <ChartsStrip s={snapshot} chart={chart} toggle={togglePanel} highlight={highlight} />}
+            </Dock>
+          )}
           {snapshot && tutorialOn && !menu && (
             <Tutorial
               s={snapshot}
@@ -388,7 +418,7 @@ export function App() {
           {snapshot && mapOpen && (
             <MapScreen
               s={snapshot}
-              onClose={() => setMapOpen(false)}
+              onClose={() => setMode(null)}
               site={plannedSite}
               onSite={setPlannedSite}
               onFound={async (site) => {
@@ -398,7 +428,7 @@ export function App() {
               }}
             />
           )}
-          {snapshot && settings.view !== "2d" && (
+          {snapshot && settings.view !== "2d" && !mapOpen && (
             <FloorPicker
               floors={floorCount}
               floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
@@ -451,6 +481,7 @@ export function App() {
             colorBlind={settings.colorBlind}
             mode={settings.view}
             graphics={settings.graphics}
+            view3d={settings.view3d}
             onViewError={(message) => {
               flash(message);
               updateSettings({ view: "2d" });

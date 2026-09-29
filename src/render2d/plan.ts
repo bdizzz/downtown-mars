@@ -733,6 +733,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       redrawField(true);
       refreshHover(true);
     },
+    setView3d() {},
     setGraphics() {
       // Flat drawing: nothing to trade.
     },

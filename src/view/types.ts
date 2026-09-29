@@ -1,3 +1,4 @@
+import type { View3d } from "./cameras";
 import type { Graphics } from "./graphics";
 import type { SimCommand } from "../sim/commands";
 import type { CheckResult, Location, RoomInstance } from "../sim/placement";
@@ -101,6 +102,8 @@ export interface Stage {
   setWarning(w: Warning | null): void;
   /** Detail level; views that have nothing to trade may ignore it. */
   setGraphics(g: Graphics): void;
+  /** The 3D camera and see-through toggles (the 2D views ignore it). */
+  setView3d(v: View3d): void;
   destroy(): void;
 }
 

@@ -284,3 +284,32 @@ Decided Sep 28, 2026 (Bryon):
 - **Browser check:**
   - The Overview's residence: wide paintings over the double beds, lamps over the side tables, a mirror over the dresser. The side and front walls' hangings are gone with those walls.
   - In the game, a residence and a suite in ring 1: paintings show through the windows, and with walls down every wall of both lowers (open space behind), taking its hangings with it.
+
+**Follow-up, the dock (Bryon, Sep 29):** "a system like sim city, where there are a handful of 'mode' buttons in the bottom right, and selecting one of these modes displays a relevant menu of options in a strip of buttons along the bottom".
+- **`src/ui/Dock.tsx`:** four mode buttons at the bottom right (Build, View, Map, Charts), and the open mode's strip along the bottom of the view. Choosing the open mode again closes it, so no mode is open at all. The floor picker stays on the right, and hides under the map.
+- **Build** (`BuildStrip`, which replaces the left sidebar):
+  - A button per category, and one popup at a time above its category with that category's rooms (Access adds Corridors).
+  - Above the rooms, the details of the room under the pointer or in hand (with Rotate), or the corridor finishes while drawing corridors.
+  - Categories in the right half of the screen open leftward, so they stay on screen.
+  - Demolish, Undo and a key hint sit at the end.
+  - Only Build places anything: leaving it puts the tool down. A room's key, C or X opens Build and its category from any mode.
+  - Build is off while walking in first person.
+- **View** (`ViewStrip`), in sections:
+  - The six 3D cameras (choosing one also switches to 3D).
+  - Plan and Unrolled.
+  - X-ray and Walls down (greyed out outside 3D).
+  - The overlays, with their legend. The overlays weren't in the brief; they moved here from their own floating bar, since they're a way of looking.
+- **Map** opens the planet at once; closing it closes the mode, and so does M.
+- **Charts** (`ChartsStrip`):
+  - People, Flows, Network and Construction, each toggling its panel on the right. Network is greyed out with one hole.
+  - Leaving Charts closes its panel. The Office stays in the top bar: it's news that comes to you, not a chart.
+  - The mode button carries a badge with the construction jobs waiting.
+- **Top bar:** now just the menu, the hole, time, speed, the drill, the next drop and the Office. The view switch, Map, Construction, People, Flows and Network moved to the dock.
+- **The 3D camera moved out of the stage:** the camera, X-ray and walls down are now player settings (`settings.view3d`, carrying over what the stage used to keep), applied through `Stage.setView3d`. The stage's own button bar is gone, leaving a quiet readout of where you are (and, walking, the keys). The camera list is in `src/view/cameras.ts`.
+- **Esc** steps back one thing at a time: the tool in hand, then a panel or selection, then the open mode, then the menu.
+- **Tutorial:** its highlights pulse the mode that holds them (then the category, then the button). The hints now point to the modes.
+- **Browser check:**
+  - Build: Storage's popup, with the warehouse's card on hover. Air, in the right half, opens leftward. G from View mode opens Build at Food.
+  - View: walls down and the noise overlay from the strip. First person turns Build off. Plan greys out X-ray and walls down.
+  - Charts: Flows opens its panel. Map covers the view with the dock on top, and closes Flows.
+  - Esc steps back through tool, mode and menu.

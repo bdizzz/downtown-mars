@@ -1,8 +1,6 @@
 import { useEffect, useRef } from "react";
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
-import { VIEW_MODES, type ViewMode } from "./settings";
-import { hoursText } from "./format";
 
 interface Props {
   snapshot: Snapshot | null;
@@ -10,14 +8,7 @@ interface Props {
   setSpeed: (speed: number) => void;
   setDrill: (active: boolean) => void;
   toggleOffice: () => void;
-  toggleFlows: () => void;
-  toggleNetwork: () => void;
-  togglePeople: () => void;
-  toggleConstruction: () => void;
-  view: ViewMode;
-  setView: (v: ViewMode) => void;
   setActiveHole: (holeId: number) => void;
-  toggleMap: () => void;
   openMenu: () => void;
   /** Tutorial highlight, e.g. "hud:office". */
   highlight: string | null;
@@ -33,7 +24,9 @@ function gameDuration(ticks: number): string {
   return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
 }
 
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleFlows, toggleNetwork, togglePeople, toggleConstruction, view, setView, setActiveHole, toggleMap, openMenu, keysEnabled, highlight }: Props) {
+// The top bar: the menu, where and when you are, speed, the drill, the next
+// supply drop and the office. Everything else lives in the dock's modes.
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActiveHole, openMenu, keysEnabled, highlight }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
   // Space toggles pause, remembering the last running speed.
   const resumeRef = useRef(1);
@@ -104,38 +97,6 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, toggleF
       {snapshot && (
         <button className={`office-btn${snapshot.office.waiting.length ? " waiting" : ""}${pulse("office")}`} onClick={toggleOffice}>
           Office{snapshot.office.waiting.length ? ` · ${snapshot.office.waiting.length} waiting` : ""}
-        </button>
-      )}
-      <span className={`view-switch${pulse("view")}`} role="group" aria-label="View">
-        {VIEW_MODES.map((m) => (
-          <button key={m.id} className={view === m.id ? "on" : ""} onClick={() => setView(m.id)} title={`${m.hint} (V cycles)`}>
-            {m.name}
-          </button>
-        ))}
-      </span>
-      <button className={`office-btn${pulse("map")}`} onClick={toggleMap} title="The planet: terrain, deposits and your holes (M)">
-        Map
-      </button>
-      {snapshot && (
-        <button
-          className={`office-btn${snapshot.construction.jobs.length ? " build-chip" : ""}`}
-          onClick={toggleConstruction}
-          title="The construction queue: what's being built, in order"
-        >
-          {snapshot.construction.jobs.length
-            ? `🏗 ${snapshot.construction.jobs.length} · ${hoursText(snapshot.construction.jobs.reduce((m, j) => Math.max(m, j.hoursLeft ?? 0), 0))}`
-            : "Construction"}
-        </button>
-      )}
-      <button className="office-btn" onClick={togglePeople} title="Children, adults and elders; births and what's coming">
-        People
-      </button>
-      <button className={`office-btn${pulse("flows")}`} onClick={toggleFlows} title="Where resources come from and go">
-        Flows
-      </button>
-      {snapshot && snapshot.holes.length > 1 && (
-        <button className="office-btn" onClick={toggleNetwork} title="Your holes, rovers and trade routes">
-          Network
         </button>
       )}
       <span className="tick">tick {snapshot?.tick ?? 0}</span>

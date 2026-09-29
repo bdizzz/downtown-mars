@@ -2,13 +2,14 @@ import { DEMOLISH_KEY, HOTKEYS } from "./BuildPalette";
 import { roomDefs } from "../sim/rooms";
 
 const GENERAL: [string, string][] = [
+  ["Modes", "Build, View, Map and Charts, bottom right: each opens its buttons along the bottom (again to close). Only Build places rooms and corridors"],
   ["Space", "Pause / resume"],
-  ["Esc", "Cancel, close a panel, or open the menu"],
+  ["Esc", "Put down the tool, close a panel or mode, or open the menu"],
   ["R", "Rotate the room you're placing"],
-  ["V", "Switch between the 2D and 3D views"],
+  ["V", "Switch between the unrolled, plan and 3D views"],
   ["M", "Open or close the map of Mars"],
   ["[ ]", "Previous / next hole"],
-  [DEMOLISH_KEY, "Demolish tool"],
+  [DEMOLISH_KEY, "Demolish tool (a room's key, C or X opens Build)"],
   ["⌘Z / Ctrl+Z", "Undo your last placement"],
   ["?", "Show or hide this help"],
   ["Drag", "Pan the view (draws corridors with the corridor tool)"],
