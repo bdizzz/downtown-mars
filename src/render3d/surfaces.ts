@@ -369,8 +369,10 @@ export function withGrime<T extends THREE.Material>(m: T, level: number): T {
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vGrimePos;\nvarying vec3 vGrimeNormal;")
       .replace("#include <project_vertex>", "vGrimePos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvGrimeNormal = normalize(mat3(modelMatrix) * objectNormal);\n#include <project_vertex>");
+    // After everything else declared (other patterns insert their noise right after <common> too, and
+    // whatever is inserted last lands first), so the noise it calls is already defined.
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\nvarying vec3 vGrimePos;\nvarying vec3 vGrimeNormal;\n${hasNoise ? "" : NOISE_GLSL}\n${GRIME_GLSL}`)
+      .replace("void main() {", `varying vec3 vGrimePos;\nvarying vec3 vGrimeNormal;\n${hasNoise ? "" : NOISE_GLSL}\n${GRIME_GLSL}\nvoid main() {`)
       .replace("#include <color_fragment>", `#include <color_fragment>\ndiffuseColor.rgb *= grimeTone(vGrimePos, normalize(vGrimeNormal), ${level.toFixed(1)});`);
   };
   m.customProgramCacheKey = () => `${prevKey}|grime-${level}`;
