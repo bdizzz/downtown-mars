@@ -4,7 +4,7 @@ import type { HoverInfo, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import { roomDef, roomDefs } from "../sim/rooms";
 import { BuildStrip, buildTool, CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, shapesFor } from "./BuildPalette";
-import { ChartsStrip, Dock, ViewStrip, type Chart, type Mode } from "./Dock";
+import { ChartsStrip, Dock, MODE_KEYS, ViewStrip, type Chart, type Mode } from "./Dock";
 import { corridors } from "../sim/corridors";
 import { FlowPanel } from "./FlowPanel";
 import { Help } from "./Help";
@@ -24,7 +24,7 @@ import { StatusBar } from "./StatusBar";
 import { currentGoal, Tutorial } from "./Tutorial";
 import { setTutorialHidden, tutorialHidden, type UiFlags } from "./tutorialGoals";
 import { play, setAudioSettings, unlockAudio } from "../audio/sound";
-import { useSettings, VIEW_MODES } from "./settings";
+import { useSettings } from "./settings";
 import { installConsole } from "./devConsole";
 import { FloorPicker, shownFloor } from "./FloorPicker";
 import { CorridorConfirm } from "./CorridorConfirm";
@@ -66,8 +66,11 @@ export function App() {
   const [viewFloor, setViewFloor] = useState<number | null>(null);
   /** A floor shown while the pointer is on its button in the floor picker (undefined: none). */
   const [previewFloor, setPreviewFloor] = useState<number | null | undefined>(undefined);
-  /** What the view shows: the floor being previewed, else the one picked. */
-  const lookFloor = previewFloor !== undefined ? previewFloor : viewFloor;
+  /**
+   * What the view shows: the floor being previewed, else the one picked. Walking in
+   * first person there's no preview: picking a floor only moves you there.
+   */
+  const lookFloor = previewFloor !== undefined && !walking ? previewFloor : viewFloor;
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
   const [panel, setPanel] = useState<"office" | "flows" | "network" | "people" | "construction" | null>(null);
   const officeOpen = panel === "office";
@@ -336,8 +339,16 @@ export function App() {
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.code === "KeyM") setMode(mapOpen ? null : "map");
-      if (!walking && e.code === "KeyR") rotate();
+      // The modes' keys work anywhere: V, C and M open (or close) View, Charts and Map;
+      // B opens Build (inside Build, B is the battery bank's key).
+      const toggle = (m: Mode) => setMode(mode === m ? null : m);
+      if (e.code === MODE_KEYS.view) return toggle("view");
+      if (e.code === MODE_KEYS.charts) return toggle("charts");
+      if (e.code === MODE_KEYS.map) return toggle("map");
+      if (e.code === MODE_KEYS.build && mode !== "build") {
+        if (!walking) setMode("build");
+        return;
+      }
       // [ and ] step through the holes.
       const next = e.code === "BracketRight" || e.key === "]";
       const prev = e.code === "BracketLeft" || e.key === "[";
@@ -346,16 +357,14 @@ export function App() {
         const n = snapshot.holes.length;
         setActiveHole(snapshot.holes[(i + (next ? 1 : n - 1)) % n]!.id);
       }
-      if (e.code === "KeyV") {
-        const i = VIEW_MODES.findIndex((m) => m.id === settings.view);
-        updateSettings({ view: VIEW_MODES[(i + 1) % VIEW_MODES.length]!.id });
-      }
       // Page Up / Page Down step through floors in the plan and 3D views.
       if ((e.code === "PageUp" || e.code === "PageDown") && snapshot && settings.view !== "2d") {
         e.preventDefault();
         stepFloor(e.code === "PageDown" ? 1 : -1);
       }
-      if (walking) return; // no build tools while walking
+      // Everything else is Build's: its tools and rooms answer to their keys only there.
+      if (mode !== "build" || walking) return;
+      if (e.code === "KeyR") rotate();
       const letter = e.key.toUpperCase();
       if (letter === CORRIDOR_KEY) takeTool((t) => (t?.kind === "corridor" ? null : { kind: "corridor", finish: lastFinish, erase: false }));
       if (letter === DEMOLISH_KEY) takeTool((t) => (t?.kind === "demolish" ? null : { kind: "demolish" }));
@@ -443,10 +452,10 @@ export function App() {
             <FloorPicker
               floors={floorCount}
               floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
-              allowAll={settings.view === "3d"}
+              allowAll={settings.view === "3d" && !walking}
               onPick={setViewFloor}
-              preview={previewFloor}
-              onPreview={setPreviewFloor}
+              preview={walking ? undefined : previewFloor}
+              onPreview={walking ? () => {} : setPreviewFloor}
             />
           )}
           {snapshot && proposal && (

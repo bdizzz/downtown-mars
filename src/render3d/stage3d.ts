@@ -54,7 +54,7 @@ const TOP = { min: 20, max: 300, start: 80, margin: 1.1 };
 /** Iso: distance to the floor's centre (a multiple of the floor's radius to start), and how steeply it looks down. */
 const ISO = { start: 1.6, min: 12, max: 400, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
 /** First person: how finely and how far to look for room to stand on another floor (m), eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
-const WALK = { searchStep: 0.5, searchReach: 40, eye: 1.8, speed: 3, run: 7, turn: 0.004, lookTurn: 0.0025, keyTurn: 1.8 };
+const WALK = { searchStep: 0.5, searchReach: 40, eye: 1.8, speed: 3, run: 9, turn: 0.004, lookTurn: 0.0025, keyTurn: 1.8 };
 /** Looking up and down (first person) stops just short of straight up or down. */
 const MAX_PITCH = Math.PI / 2 - 0.02;
 /** How much of the surface still shows in x-ray: enough to keep your bearings. */
@@ -738,7 +738,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       for (const id of shown.edges) ghostEdge(id, shown.erase ? HOVER.bad : layout.corridors[id] ? HOVER.hover : HOVER.ok);
       return;
     }
-    if (!info) return;
+    // Walking, what's under the pointer isn't outlined (a click still picks it).
+    if (!info || view.mode === "walk") return;
     const p = info.pick;
     if (info.edge) {
       ghostEdge(info.edge.id, info.edge.refusal || info.edge.erase ? HOVER.bad : HOVER.ok);
@@ -984,11 +985,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const target = e.target as HTMLElement | null;
     if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
     const k = e.key.toLowerCase();
+    // Running: whether Shift is down, from every key, so a Shift let go elsewhere can't stick.
+    if (e.shiftKey) held.add("shift");
+    else held.delete("shift");
     if (!WALK_KEYS.has(k)) return;
     e.preventDefault();
     e.stopImmediatePropagation();
     if (e.type === "keyup") {
-      held.delete(k);
+      if (k !== "shift") held.delete(k);
       return;
     }
     if (e.repeat && (k === "r" || k === "f" || k === "tab")) return;

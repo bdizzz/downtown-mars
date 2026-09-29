@@ -13,11 +13,14 @@ import { hoursText } from "./format";
 export type Mode = "build" | "view" | "map" | "charts";
 export type Chart = "people" | "flows" | "network" | "construction";
 
+/** Each mode's key, anywhere in the game (as KeyboardEvent codes). */
+export const MODE_KEYS: Record<Mode, string> = { build: "KeyB", view: "KeyV", map: "KeyM", charts: "KeyC" };
+
 const MODES: { id: Mode; name: string; icon: string; hint: string }[] = [
-  { id: "build", name: "Build", icon: "⚒", hint: "Rooms, corridors and demolition (a room's key opens it too)" },
-  { id: "view", name: "View", icon: "◉", hint: "Cameras, the plan and unrolled views, X-ray, walls down and overlays (V cycles views)" },
+  { id: "build", name: "Build", icon: "⚒", hint: "Rooms, corridors and demolition (B). The rooms' keys work in here" },
+  { id: "view", name: "View", icon: "◉", hint: "Cameras, the plan and unrolled views, X-ray, walls down and overlays (V)" },
   { id: "map", name: "Map", icon: "◍", hint: "The planet: terrain, deposits and your holes (M)" },
-  { id: "charts", name: "Charts", icon: "▤", hint: "People, flows, your network and the construction queue" },
+  { id: "charts", name: "Charts", icon: "▤", hint: "People, flows, your network and the construction queue (C)" },
 ];
 
 /** Where a tutorial highlight lives: which mode holds it. */
@@ -60,7 +63,9 @@ export function Dock({ mode, setMode, walking, highlight, jobs, children }: Dock
               aria-pressed={mode === m.id}
             >
               <span className="icon">{m.icon}</span>
-              {m.name}
+              <span>
+                {m.name} <kbd>{MODE_KEYS[m.id].slice(3)}</kbd>
+              </span>
               {m.id === "charts" && jobs > 0 && <span className="badge" title="Construction jobs waiting">{jobs}</span>}
             </button>
           );

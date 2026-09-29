@@ -9,7 +9,12 @@ import { RoomCard } from "./RoomCard";
 import { corridors } from "../sim/corridors";
 import { resName } from "./format";
 
-/** Keyboard shortcuts for the build tools. R, X, Z and Space are taken. */
+/**
+ * Keyboard shortcuts for the build tools, live only in Build mode (so they're
+ * free for other things elsewhere). R rotates, X demolishes, Z draws corridors,
+ * and Space pauses; V, C and M always open View, Charts and Map. B opens Build
+ * from anywhere, and inside it is the battery bank's.
+ */
 export const HOTKEYS: Record<string, string> = {
   bunk_dorm: "D",
   galley: "G",
@@ -33,7 +38,7 @@ export const HOTKEYS: Record<string, string> = {
   electronics_fab: "N",
 };
 export const DEMOLISH_KEY = "X";
-export const CORRIDOR_KEY = "C";
+export const CORRIDOR_KEY = "Z";
 
 const CATEGORY_ORDER = ["circulation", "excavation", "construction", "storage", "public", "housing", "food", "water", "air", "power", "health", "admin", "industry", "logistics"];
 export const CATEGORY_NAMES: Record<string, string> = {

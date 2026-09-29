@@ -381,3 +381,16 @@ Decided Sep 28, 2026 (Bryon):
   - Plan icons stay upright as it turns.
   - Cutaway framed at noon, with the sky's gradient and a horizon of mountains.
   - Stars at night.
+
+**Follow-up, first person and keys (Bryon, Sep 29):**
+- **First person:**
+  - What's under the pointer isn't outlined; clicking a room still shows its details.
+  - The floor picker doesn't preview, and has no "All". Picking a floor only moves you there. Nothing is hidden or shown, since walking never lifts floors away.
+  - Holding Shift runs, now at 9 m/s against 3 walking; turning with Q and E is unchanged. Shift is read off every key, so a Shift let go outside the window can't stick.
+- **The modes' keys work anywhere** (`MODE_KEYS`): B opens Build; V, C and M open (or close) View, Charts and Map. The mode buttons show their keys.
+- **The rooms' keys work only in Build**, which frees them elsewhere. That includes R (rotate), X (demolish) and the corridor tool, which moved from C (now Charts) to **Z**, the only letter left. Inside Build, B is the battery bank's key again.
+- First person and Build never overlap, so WASD and Q/E are free for rooms in Build, as they already were.
+- **The help screen, README key table and tutorial hints** now say to open Build first ("In Build (B), press L").
+- **Browser check:**
+  - G does nothing outside Build. B opens Build; then G picks the galley, B the battery bank, and Z corridors. C switches to Charts, V to View, M to Map.
+  - While walking, B does nothing (Build is off), and the floor picker shows no All and doesn't preview.

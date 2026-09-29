@@ -5,37 +5,37 @@
     {
       "id": "galley",
       "text": "Twenty people and nowhere to cook. Put a galley in ring 1, on the shaft.",
-      "hint": "Press G (or Build, bottom right, then Food), then click a free slot in ring 1.",
+      "hint": "Press B for Build, then G for a galley (or Build, bottom right, then Food), and click a free slot in ring 1.",
       "highlight": "room:galley"
     },
     {
       "id": "restroom",
       "text": "Next, a restroom. It turns used water into gray water we can recycle later.",
-      "hint": "Press W and place it in ring 1.",
+      "hint": "In Build (B), press W and place it in ring 1.",
       "highlight": "room:restroom"
     },
     {
       "id": "life_support",
       "text": "Life support makes our oxygen. It's loud, so put it in ring 2, behind the rooms on the shaft.",
-      "hint": "Press L. It takes 4 slots; R rotates it. It won't run until a corridor reaches it: that's next.",
+      "hint": "In Build (B), press L. It takes 4 slots; R rotates it. It won't run until a corridor reaches it: that's next.",
       "highlight": "room:life_support"
     },
     {
       "id": "corridor",
       "text": "Rooms past ring 1 need a corridor back to the shaft. Carve one along the borders between rooms, from the gallery to the life support.",
-      "hint": "Press C and drag along the borders, or click Connect in the life support's panel.",
+      "hint": "In Build, press Z and drag along the borders, or click Connect in the life support's panel.",
       "highlight": "tool:corridors"
     },
     {
       "id": "water_tank",
       "text": "Earth ships water, and it has to go somewhere. A water tank holds 200.",
-      "hint": "Press T.",
+      "hint": "In Build (B), press T.",
       "highlight": "room:water_tank"
     },
     {
       "id": "dorm",
       "text": "The pod is cramped. Build a bunk dorm somewhere quiet.",
-      "hint": "Press D. While placing, the status bar shows the noise a spot already has.",
+      "hint": "In Build (B), press D. While placing, the status bar shows the noise a spot already has.",
       "highlight": "room:bunk_dorm"
     },
     {
@@ -53,7 +53,7 @@
     {
       "id": "farms",
       "text": "Rations won't last forever. Build two farms and grow different crops: potatoes and soybeans make a start.",
-      "hint": "Press F. Click a farm to change its crop. Farms need soil, water, power and CO2.",
+      "hint": "In Build (B), press F. Click a farm to change its crop. Farms need soil, water, power and CO2.",
       "highlight": "room:farm"
     },
     {
@@ -71,13 +71,13 @@
     {
       "id": "recycler",
       "text": "Most of it goes down the drain as gray water. A water recycler brings it back.",
-      "hint": "Press Y. It needs metal and machinery from Earth.",
+      "hint": "In Build (B), press Y. It needs metal and machinery from Earth.",
       "highlight": "room:water_recycler"
     },
     {
       "id": "clinic",
       "text": "Last one: a clinic keeps people healthy and makes the neighborhood feel safer.",
-      "hint": "Press K.",
+      "hint": "In Build (B), press K.",
       "highlight": "room:clinic"
     },
     {
