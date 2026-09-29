@@ -10,7 +10,7 @@ import { FIT, frameOf, furnish, type Fitted } from "../view/furnish";
 import { isMounted, itemDef } from "../view/furniture";
 import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
-import { finishMaterial, withRock } from "./surfaces";
+import { finishMaterial, withFloor, withFresnel, withRock, type FloorKind } from "./surfaces";
 import { roomFinish, type Finish } from "../view/roomFinish";
 import { lampsOf, lightPools } from "./lights3d";
 import { withCondensation } from "./details3d";
@@ -880,14 +880,32 @@ function finishWallMaterial(finish: Finish): THREE.Material {
   return wallMaterial(`finish:${finish}`, () => finishMaterial(finish));
 }
 
-function roomMaterial(color: number, planned: boolean, faint = false, building = false): THREE.Material {
+/** What a built room's floor is laid in, by its category (room colours on). */
+const FLOOR_BY_CATEGORY: Record<string, FloorKind> = {
+  housing: "planks",
+  health: "tiles",
+  food: "tiles",
+  admin: "planks",
+  public: "paving",
+  circulation: "tiles",
+  industry: "plate",
+  power: "plate",
+  air: "plate",
+  water: "plate",
+  storage: "concrete",
+  logistics: "concrete",
+  construction: "concrete",
+  excavation: "concrete",
+};
+
+function roomMaterial(color: number, planned: boolean, faint = false, building = false, floor: FloorKind = "concrete"): THREE.Material {
   // Under construction: the room's colour through semi-opaque diagonal stripes.
   if (building && !faint) {
     return wallMaterial(`building:${color}`, () =>
       new THREE.MeshStandardMaterial({ color, map: stripes(), transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9 }),
     );
   }
-  return wallMaterial(`room:${color}:${planned}:${faint}`, () =>
+  return wallMaterial(`room:${color}:${planned}:${faint}:${planned || faint ? "" : floor}`, () =>
     planned || faint
       ? new THREE.MeshStandardMaterial({
           color,
@@ -896,8 +914,42 @@ function roomMaterial(color: number, planned: boolean, faint = false, building =
           depthWrite: false,
           side: THREE.DoubleSide,
         })
-      : new THREE.MeshStandardMaterial({ color, roughness: 0.75, side: THREE.DoubleSide }),
+      : withFloor(new THREE.MeshStandardMaterial({ color, roughness: 0.75, side: THREE.DoubleSide }), floor),
   );
+}
+
+/** A small icon for each kind of room, before its name on its label. */
+const CATEGORY_ICONS: Record<string, string> = {
+  housing: "🛏",
+  food: "🍽",
+  water: "💧",
+  air: "🌬",
+  power: "⚡",
+  health: "✚",
+  admin: "🗂",
+  industry: "⚙",
+  public: "🌳",
+  circulation: "↕",
+  construction: "🏗",
+  storage: "📦",
+  logistics: "🚀",
+  excavation: "⛏",
+};
+
+/** A room's trouble, shown on it: a badge floating over its label, with the reason's icon. */
+export function statusBadge(icon: string): THREE.Sprite {
+  const sprite = label(icon, "#ffffff");
+  sprite.userData = { badge: true };
+  return sprite;
+}
+
+/** Outlines for rooms in trouble: amber when slowed (staff, morale, the weather), red when short of what they run on, grey when paused. */
+const TROUBLE_EDGE = { warn: 0xf0a030, bad: 0xe0503a, idle: 0x9a9a9a } as const;
+const troubleEdges = new Map<string, THREE.LineBasicMaterial>();
+export function troubleEdgeMaterial(level: keyof typeof TROUBLE_EDGE): THREE.LineBasicMaterial {
+  let m = troubleEdges.get(level);
+  if (!m) troubleEdges.set(level, (m = new THREE.LineBasicMaterial({ color: TROUBLE_EDGE[level] })));
+  return m;
 }
 
 /** Label materials are shared by text: a colony has hundreds of rooms but few distinct names. */
@@ -1092,7 +1144,7 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
   const used = new Set<string>();
   // See-through glass: you can look into a room from the gallery, and out of it.
   const glass = wallMaterial("glass", () =>
-    withCondensation(new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.1, metalness: 0.3, transparent: true, opacity: WINDOW.opacity, depthWrite: false, side: THREE.DoubleSide })),
+    withFresnel(withCondensation(new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.1, metalness: 0.3, transparent: true, opacity: WINDOW.opacity, depthWrite: false, side: THREE.DoubleSide }))),
   );
   const doorFrame = wallMaterial("door", () => new THREE.MeshStandardMaterial({ color: DOOR_FRAME.color, roughness: 0.9, side: THREE.DoubleSide }));
   const strandedLine = wallMaterial(`stranded:${colors.stranded}`, () => new THREE.LineBasicMaterial({ color: colors.stranded })) as THREE.LineBasicMaterial;
@@ -1136,11 +1188,12 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     const faint = xray && room.cells.some((c) => c.ring === 1);
     // Built rooms show their category's colour, or (room colours off) what they're built from.
     const shown = !roomColors && !room.planned && !room.building && !faint;
-    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(roomFinish(room.type)) : roomMaterial(color, room.planned, faint, !!room.building));
+    const floorKind = room.type === "farm" ? "plate" : (FLOOR_BY_CATEGORY[def.category] ?? "concrete");
+    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(roomFinish(room.type)) : roomMaterial(color, room.planned, faint, !!room.building, floorKind));
     mesh.userData = { pickable: true, roomId: room.id, faint, cached: true };
     group.add(mesh);
     const edges = new THREE.LineSegments(shape.edges, room.connected ? edgeLine : strandedLine);
-    edges.userData = { cached: true };
+    edges.userData = { cached: true, roomId: room.id, outline: !room.planned && !room.building && room.connected };
     group.add(edges);
     // Its furniture, once it's built (not in x-ray's faded ring 1, nor above a chosen floor).
     if (!faint && !whole.planned && !whole.building) {
@@ -1189,10 +1242,12 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
       const [a0, a1] = slotAngles(first.slot, n);
       const [r0] = ringRadii(hole, first.ring);
       const y1 = floorSpan(first.floor)[1];
-      const sprite = label(room.connected ? def.short : `${def.short} ⚠`, room.planned ? "#d8c0ae" : "#f6efe6");
+      const icon = CATEGORY_ICONS[def.category];
+      const name = icon ? `${icon} ${def.short}` : def.short;
+      const sprite = label(room.connected ? name : `${name} ⚠`, room.planned ? "#d8c0ae" : "#f6efe6");
       const a = (a0 + a1) / 2;
       sprite.position.set((r0 - 0.6) * Math.cos(a), y1 - 0.8, (r0 - 0.6) * Math.sin(a));
-      sprite.userData = { label: true, cached: true };
+      sprite.userData = { label: true, cached: true, roomId: room.id };
       group.add(sprite);
     }
   }

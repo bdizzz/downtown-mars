@@ -188,3 +188,147 @@ export function finishMaterial(finish: keyof typeof FINISH_LOOK): THREE.MeshStan
   const m = new THREE.MeshStandardMaterial({ color: f.color, roughness: f.roughness, metalness: f.metalness, side: THREE.DoubleSide });
   return withPattern(m, finish, f.glsl, f.call);
 }
+
+// ---- floors by kind of room, with room colours on ----
+
+/** A floor's look: its own colour (the room's category colour tints it a little), and its pattern. */
+export const FLOOR_LOOK = {
+  planks: { color: 0x9a6a44, tint: 0.2 },
+  tiles: { color: 0xd8d2c8, tint: 0.25 },
+  plate: { color: 0x8d9299, tint: 0.2 },
+  paving: { color: 0xa89484, tint: 0.2 },
+  concrete: { color: 0x9c8f84, tint: 0.2 },
+} as const;
+export type FloorKind = keyof typeof FLOOR_LOOK;
+
+const FLOOR_GLSL = /* glsl */ `
+  float floorTone(vec3 p, int kind) {
+    vec2 uv = p.xz;
+    if (kind == 0) {
+      // Planks, 20 cm wide, staggered ends, each its own shade, with grain along them.
+      vec2 b = uv / vec2(1.8, 0.2);
+      b.x += srfHash(vec3(floor(b.y), 1.0, 2.0)) * 3.0;
+      vec2 f = fract(b);
+      float gap = step(0.03, f.y) * step(0.004, f.x);
+      float grain = mix(0.94, 1.04, srfNoise(vec3(uv.x * 3.0, uv.y * 60.0, 0.0)));
+      return mix(0.55, mix(0.85, 1.08, srfHash(vec3(floor(b), 4.0))) * grain, gap);
+    }
+    if (kind == 1) {
+      // Tiles, 40 cm, with grout, a faint glaze mottling.
+      vec2 f = fract(uv / 0.4);
+      float grout = step(0.035, f.x) * step(0.035, f.y);
+      return mix(0.72, mix(0.94, 1.04, srfHash(vec3(floor(uv / 0.4), 6.0))) * mix(0.97, 1.02, srfNoise(p * 8.0)), grout);
+    }
+    if (kind == 2) {
+      // Diamond plate in 2 m sheets.
+      vec2 d = uv * 6.0;
+      float plate = abs(fract(d.x + d.y) - 0.5) + abs(fract(d.x - d.y) - 0.5);
+      float seams = step(0.02, fract(uv.x / 2.0)) * step(0.02, fract(uv.y / 2.0));
+      return mix(0.7, mix(0.95, 1.08, smoothstep(0.35, 0.6, plate)), seams);
+    }
+    if (kind == 3) {
+      // Paving: irregular stones, in offset rows of 60 cm.
+      vec2 b = uv / vec2(0.8, 0.6);
+      b.x += 0.5 * mod(floor(b.y), 2.0);
+      vec2 f = fract(b);
+      float joint = step(0.05, f.x) * step(0.06, f.y) * step(f.x, 0.97) * step(f.y, 0.96);
+      return mix(0.68, mix(0.86, 1.08, srfHash(vec3(floor(b), 8.0))) * mix(0.93, 1.05, srfNoise(p * 3.0)), joint);
+    }
+    // Concrete: speckled, with joints every 3 m.
+    vec2 f = fract(uv / 3.0);
+    vec2 e = min(f, 1.0 - f) * 3.0;
+    float shade = mix(0.9, 1.06, srfFbm(p * 0.8)) * mix(0.94, 1.05, srfNoise(p * 14.0));
+    return shade * (1.0 - 0.2 * (1.0 - smoothstep(0.0, 0.015, min(e.x, e.y))));
+  }
+`;
+
+/** A room's floor laid in its kind (the walls keep the room's colour). */
+export function withFloor<T extends THREE.Material>(m: T, kind: FloorKind): T {
+  const look = FLOOR_LOOK[kind];
+  const index = (Object.keys(FLOOR_LOOK) as FloorKind[]).indexOf(kind);
+  const own = new THREE.Color(look.color);
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vFloorPos;\nvarying vec3 vFloorNormal;")
+      .replace("#include <project_vertex>", "vFloorPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvFloorNormal = normalize(mat3(modelMatrix) * objectNormal);\n#include <project_vertex>");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", `#include <common>\nvarying vec3 vFloorPos;\nvarying vec3 vFloorNormal;\n${NOISE_GLSL}\n${FLOOR_GLSL}`)
+      .replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+        if (abs(vFloorNormal.y) > 0.7) diffuseColor.rgb = mix(vec3(${own.r.toFixed(4)}, ${own.g.toFixed(4)}, ${own.b.toFixed(4)}), diffuseColor.rgb, ${look.tint.toFixed(2)}) * floorTone(vFloorPos, ${index});`,
+      );
+  };
+  m.customProgramCacheKey = () => `${prevKey}|floor-${kind}`;
+  return m;
+}
+
+// ---- furniture: what each part is made of ----
+
+/** What a furniture part is made of, written to each vertex as `aMat`, for its fine pattern. */
+export const PART_MAT = { none: 0, wood: 1, fabric: 2, metal: 3, painted: 4, soil: 5 } as const;
+
+const PART_GLSL = /* glsl */ `
+  float partTone(vec3 p, float mat) {
+    if (mat < 0.5) return 1.0;
+    if (mat < 1.5) {
+      // Wood: grain running along x or z (whichever the part is longer in is unknown; both, softly), and rings.
+      float g = srfNoise(vec3(p.x * 2.0, p.y * 40.0, p.z * 40.0)) * 0.6 + srfNoise(vec3(p.x * 40.0, p.y * 40.0, p.z * 2.0)) * 0.4;
+      return mix(0.88, 1.06, g) * mix(0.95, 1.03, sin((p.x + p.z) * 30.0 + srfFbm(p * 3.0) * 8.0) * 0.5 + 0.5);
+    }
+    if (mat < 2.5) {
+      // Fabric: a soft weave and a little pilling.
+      float weave = 0.5 + 0.5 * sin(p.x * 180.0) * sin(p.z * 180.0 + p.y * 180.0);
+      return mix(0.93, 1.03, weave * 0.5 + srfNoise(p * 30.0) * 0.5);
+    }
+    if (mat < 3.5) {
+      // Metal: brushed, with worn scuffs.
+      float brushed = mix(0.95, 1.04, srfNoise(vec3(p.x * 60.0, p.y * 2.0, p.z * 60.0)));
+      return brushed * (1.0 - 0.1 * smoothstep(0.7, 0.85, srfFbm(p * 6.0)));
+    }
+    if (mat < 4.5) {
+      // Painted panel: worn at random, showing darker underneath, with fine scratches.
+      float wear = smoothstep(0.72, 0.8, srfFbm(p * 4.0 + 7.0));
+      float scratch = smoothstep(0.93, 0.97, srfNoise(vec3(p.x * 80.0, p.y * 3.0, p.z * 80.0)));
+      return (1.0 - 0.22 * wear) * (1.0 - 0.1 * scratch);
+    }
+    // Soil: clumps and dark crumbs.
+    float clumps = mix(0.8, 1.12, srfFbm(p * 14.0));
+    return clumps * (1.0 - 0.25 * smoothstep(0.75, 0.85, srfNoise(p * 40.0)));
+  }
+`;
+
+/** Furniture parts get the fine pattern of what they're made of (from `aMat`). */
+export function withPartPatterns<T extends THREE.Material>(m: T): T {
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute float aMat;\nvarying float vPartMat;\nvarying vec3 vPartPos;")
+      .replace("#include <project_vertex>", "vPartMat = aMat;\nvPartPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#include <project_vertex>");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", `#include <common>\nvarying float vPartMat;\nvarying vec3 vPartPos;\n${NOISE_GLSL}\n${PART_GLSL}`)
+      .replace("#include <color_fragment>", "#include <color_fragment>\ndiffuseColor.rgb *= partTone(vPartPos, vPartMat);");
+  };
+  m.customProgramCacheKey = () => `${prevKey}|part-patterns`;
+  return m;
+}
+
+/** Glass catches the light at a glancing angle: more of it shows, as a reflection would. */
+export function withFresnel<T extends THREE.Material>(m: T, strength = 0.55): T {
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <normal_fragment_maps>",
+      `#include <normal_fragment_maps>\ndiffuseColor.a = min(1.0, diffuseColor.a + pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 3.0) * ${strength.toFixed(2)});`,
+    );
+  };
+  m.customProgramCacheKey = () => `${prevKey}|fresnel`;
+  return m;
+}

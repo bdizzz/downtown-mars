@@ -541,3 +541,31 @@ Decided Sep 28, 2026 (Bryon):
 - **Windows fog at the bottom:** thick at the sill, thinning upward, a little uneven, with droplets beading, more of them low down.
 - Furniture now has four material kinds: plain, glow, plant and water. The kind comes from each part's colour.
 - **Browser check:** no shader errors after load. In the entrance, a colonist sits on the bench and another stands by the decon arch. The motion shows only while the game runs.
+
+**Step 8, textures** (procedural, in `surfaces.ts`):
+- **Floors by kind of room**, with room colours on (`withFloor`). Each uses its own colour, tinted 20–25% by the category colour.
+  - Planks (homes, offices): 20 cm, staggered, each its own shade, with grain.
+  - Tiles (clinics, kitchens, halls): 40 cm, grouted.
+  - Diamond plate (plants, workshops, farms).
+  - Paving (plazas): offset stones.
+  - Concrete (storage, logistics, construction): speckled, jointed.
+- **Furniture parts by what they're made of** (`aMat` per vertex, from the part's colour, `withPartPatterns`):
+  - Wood grain (wood, composite).
+  - A soft weave (cushion, cream).
+  - Brushed and scuffed metal (metal, steel).
+  - Worn paint with scratches (panel, hazard).
+  - Clumpy soil (soil, substrate).
+- **Glass catches the light at a glancing angle** (`withFresnel`), as a reflection would.
+- Found along the way: floor faces can wind downward (rooms draw double-sided), so floors are found by |n.y|, as the finishes do.
+- **Browser check:** in Iso on floor 1 with room colours on, there are planks in the dorm, tiles in the galley, plate in the battery room and paving in the plaza.
+
+**Step 9, labels and trouble:**
+- Labels start with an icon for the room's kind: 🛏 homes, 🍽 food, 💧 water, 🌬 air, ⚡ power, ✚ health, 🗂 admin, ⚙ industry, 🌳 public, ↕ halls and stairs, 🏗 construction, 📦 storage, 🚀 logistics, ⛏ digging.
+- **Rooms in trouble** (`troubleOf` in view/roomTrouble.ts, from the room's status):
+  - Slowed (short of staff, morale, the weather, an ordinance) is a warning: an amber outline.
+  - Short of what it runs on is bad: a red outline.
+  - Paused is idle: a grey outline.
+  - Standing by with its output full or stocked is fine.
+- A badge floats over the label with the reason's icon: 👷, 😞, 🌪, 📜, ⚡, 💧, 🫁, 🌾 and so on, or ⚠.
+- Outlines keep their normal material otherwise. It's redone only when some room's trouble changes, and outline materials are swapped, not rebuilt.
+- **Browser check:** pausing the battery bank puts a ⏸ badge over its label.

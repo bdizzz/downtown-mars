@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { itemDef, partColor, type Part } from "../view/furniture";
 import { GLOW_MODE, withGlowFx, withShimmer, withSway } from "./details3d";
+import { PART_MAT, withPartPatterns } from "./surfaces";
 import type { Placed } from "../view/furnish";
 
 // Furniture as meshes. An item is built from its parts (data/furniture.json);
@@ -77,6 +78,20 @@ function glowMode(part: Part): number {
   if (part.c === "lamp" || part.c === "grow") return GLOW_MODE.steady;
   return extent(part) < GLOW_BLINK_UNDER ? GLOW_MODE.blink : GLOW_MODE.screen;
 }
+/** What parts are made of, by colour, for their fine pattern (surfaces.ts). */
+const PART_MATS: Record<string, number> = {
+  wood: PART_MAT.wood,
+  composite: PART_MAT.wood,
+  cushion: PART_MAT.fabric,
+  cream: PART_MAT.fabric,
+  metal: PART_MAT.metal,
+  steel: PART_MAT.metal,
+  panel: PART_MAT.painted,
+  hazard: PART_MAT.painted,
+  soil: PART_MAT.soil,
+  substrate: PART_MAT.soil,
+};
+
 /** Glowing parts smaller than this (metres, their longest side) are indicator lights, and blink. */
 const GLOW_BLINK_UNDER = 0.12;
 
@@ -94,7 +109,7 @@ function material(kind: Kind, hung?: Hung): THREE.MeshStandardMaterial {
     if (kind === "glow") m = withGlowFx(glowing(new THREE.MeshStandardMaterial({ vertexColors: true, emissive: 0xffffff, emissiveIntensity: GLOW.day + nightGlow * GLOW.nightBoost, roughness: 0.4 })));
     else if (kind === "plant") m = withSway(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }));
     else if (kind === "water") m = withShimmer(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.25, metalness: 0.1 }));
-    else m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 });
+    else m = withPartPatterns(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 }));
     entry = { material: hung ? hung.material(m) : m, glow: kind === "glow" };
     materials.set(key, entry);
   }
@@ -164,6 +179,7 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
         for (let k = 0; k < n; k++) rgb.set([colour.r, colour.g, colour.b], k * 3);
         g.setAttribute("color", new THREE.BufferAttribute(rgb, 3));
         if (kind === "glow") g.setAttribute("aGlow", new THREE.BufferAttribute(new Float32Array(n).fill(glowMode(part)), 1));
+        if (kind === "plain") g.setAttribute("aMat", new THREE.BufferAttribute(new Float32Array(n).fill(PART_MATS[part.c] ?? PART_MAT.none), 1));
         if (tag) {
           const wall = new Float32Array(n * 4);
           const hang = new Float32Array(n * 2);

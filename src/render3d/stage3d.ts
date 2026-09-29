@@ -21,12 +21,17 @@ import { buildTerrain, siteSeed, type Terrain } from "./terrain3d";
 import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
-import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, withWallsDown } from "./rooms3d";
+import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, galleryLamps, makeLander, placeLander, setLampGlow } from "./scenery3d";
 import { occupied, People, type RoomSpots } from "./people3d";
 import { Grit } from "./storm3d";
 import { LightShaft } from "./shafts3d";
 import { advanceDetails } from "./details3d";
+import { troubleOf, type Trouble } from "../view/roomTrouble";
+import type { RoomStatus } from "../sim/economy";
+
+/** How far above a room's label its trouble badge floats, metres. */
+const BADGE_ABOVE = 0.9;
 
 /** How much a full dust storm dims the sun and the sky's light, and how fast (per second) the view follows it. */
 const STORM_DIM = { sun: 0.7, sky: 0.3 };
@@ -231,6 +236,32 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // Timing for the dev console (window.__stage3d in dev builds only).
   const stats = { buildMs: 0, frameMs: 0, calls: 0, triangles: 0 };
   const people = new People();
+  /** Rooms in trouble: their outlines (recoloured) and labels (with a badge over them), by room. */
+  let roomOutlines = new Map<number, THREE.LineSegments>();
+  let roomLabels = new Map<number, THREE.Object3D>();
+  const badges = new THREE.Group();
+  let troubleKey = "";
+  /** Show each room's trouble: its outline's colour and a badge over its label. */
+  function showTrouble(status: Record<number, RoomStatus>): void {
+    const troubles = new Map<number, Trouble>();
+    for (const id of roomOutlines.keys()) troubles.set(id, troubleOf(status[id]));
+    const key = [...troubles].map(([id, t]) => `${id}${t.icon}`).join(",");
+    if (key === troubleKey) return;
+    troubleKey = key;
+    for (const [id, edges] of roomOutlines) {
+      const t = troubles.get(id)!;
+      edges.material = t.level === "ok" ? (edges.userData.baseMaterial as THREE.Material) : troubleEdgeMaterial(t.level);
+    }
+    badges.clear();
+    for (const [id, t] of troubles) {
+      const at = roomLabels.get(id);
+      if (t.level === "ok" || !at) continue;
+      const b = statusBadge(t.icon);
+      b.position.copy(at.position).add(new THREE.Vector3(0, BADGE_ABOVE, 0));
+      badges.add(b);
+    }
+    dirty = true;
+  }
   /** A dust storm: how hard it's blowing as shown (eased toward the sim's), and the grit it carries. */
   const grit = new Grit();
   let storm = 0;
@@ -1366,7 +1397,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     look.resize();
     applyFloorCut();
   }
-  scene.add(people.group, dust.points, roomFx.group, lampLights.group, grit.points, shaftLight.mesh);
+  scene.add(people.group, dust.points, roomFx.group, lampLights.group, grit.points, shaftLight.mesh, badges);
   lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
 
   let latest: Snapshot | null = null;
@@ -1476,6 +1507,17 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         });
         lampList = furnitureGroups.flatMap((g) => (g.userData.lamps as Lamp[] | undefined) ?? []);
         showPools();
+        // Each built room's outline and label, to show its trouble on.
+        roomOutlines = new Map();
+        roomLabels = new Map();
+        layoutGroup.traverse((o) => {
+          if (o.userData.outline && o instanceof THREE.LineSegments) {
+            o.userData.baseMaterial ??= o.material;
+            roomOutlines.set(o.userData.roomId as number, o);
+          }
+          if (o.userData.label && typeof o.userData.roomId === "number") roomLabels.set(o.userData.roomId as number, o);
+        });
+        troubleKey = "";
         // The floor picked or x-ray changed: hidden furniture's sparks and steam go with it.
         roomFx.setView({ topFloor: cut(), xray: view.xray });
         dirty = true;
@@ -1515,6 +1557,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const hour = Math.floor(snapshot.time.dayFraction * 24);
       const staffKey = snapshot.layout.rooms.map((r) => snapshot.roomStatus[r.id]?.staff ?? 0).join(",");
       const pk = `${layoutKey}:${hour}:${staffKey}:${snapshot.population.count}`;
+      showTrouble(snapshot.roomStatus);
       if (pk !== peopleKey) {
         peopleKey = pk;
         const rooms = furnitureGroups.map((g) => g.userData.people as RoomSpots | undefined).filter((r): r is RoomSpots => !!r);
