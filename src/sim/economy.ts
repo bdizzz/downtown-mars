@@ -112,7 +112,10 @@ export function capacities(state: SimState, cfg: SimConfig): Record<string, numb
     for (const [id, v] of Object.entries(roomSpec(room, cfg).stores)) caps[id] = (caps[id] ?? 0) + v;
   }
   // Dry goods live in storage rooms: only as much as they've space allocated for.
-  return { ...caps, ...storageCaps(state) };
+  const all = { ...caps, ...storageCaps(state) };
+  // Room the console made, for amounts given past what the hole could hold.
+  for (const [id, v] of Object.entries(state.consoleSpace ?? {})) all[id] = (all[id] ?? 0) + v;
+  return all;
 }
 
 function priorityOrder(cfg: SimConfig) {

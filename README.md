@@ -65,6 +65,17 @@ npm run package    # build and zip for a playtest upload
 
 Design documents live in `docs/`: start with `DECISIONS.md`, then `DESIGN.md` and the catalogs. Build plans are `docs/PLAN.md` (milestone 1) and `docs/PLAN-M2.md` to `docs/PLAN-M10.md` (milestones 2 to 10: M8 is storage, M9 excavation and the entrance, M10 furnishing). `CLAUDE.md` has the architecture rules: the simulation is pure TypeScript in a Web Worker, deterministic, with all numbers in `data/*.json`.
 
+### Console commands
+
+For testing, the browser console has `dm`, which acts on the hole you're looking at (in any build). `dm.help()` lists them:
+
+- `dm.resources()` shows what it has.
+- `dm.give("metal", 50)`, `dm.take("water", 20)` and `dm.set("rock", 500)` change one resource; each also takes an object, like `dm.give({ metal: 50, rock: 100 })`.
+- `dm.fill(1000)` raises every stored resource (not power or waste) to at least that much.
+- `dm.unlock()` unlocks every room that waits on a milestone, or one with `dm.unlock("cargo")`.
+
+Changes go through the simulation like any command and show in the flow report as "Console". Giving more than the hole can store also adds that much storage, which the hole keeps (in saves too), so the amount isn't thrown away on the next tick.
+
 ### Furnishing tool
 
 Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture models (Catalogue) and lay out the template for any room type and shape (Templates). Preview the fit in any ring, with or without a corridor along a side. Drag items in the plan, set their wall, offsets, turn, repeat and priority, and save: the tool writes `data/layouts.json`. **Overview** shows every template side by side, or one up close. Models are built in `scripts/furniture.mjs` (run `node scripts/furniture.mjs` to write `data/furniture.json`); see `docs/FURNITURE.md`.

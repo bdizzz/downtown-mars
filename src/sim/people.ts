@@ -113,8 +113,12 @@ export function holeGates(state: SimState): string[] {
   return [...(state.deposits ?? []), ...(state.unlocks ?? [])];
 }
 
+/** Everything a hole can reach that unlocks rooms. */
+export const UNLOCK_GATES = ["children", "elders", "cargo"] as const;
+export type UnlockGate = (typeof UNLOCK_GATES)[number];
+
 /** Record that a hole has reached something that unlocks rooms (first child, first elder). */
-export function unlock(state: SimState, what: "children" | "elders" | "cargo"): void {
+export function unlock(state: SimState, what: UnlockGate): void {
   state.unlocks ??= [];
   if (!state.unlocks.includes(what)) state.unlocks.push(what);
 }

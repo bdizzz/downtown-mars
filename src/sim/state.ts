@@ -35,6 +35,8 @@ export interface SimState {
   kit: Record<string, number>;
   /** Milestones that unlock rooms: "children" (first birth), "elders" (first retirement). */
   unlocks?: string[];
+  /** Extra room for resources, made by the console when it gives more than the hole could hold (testing). */
+  consoleSpace?: Record<string, number>;
   /** The player asked the staging bay to gather a kit; it stops when the kit is full or leaves. */
   gatheringKit: boolean;
   tick: number;

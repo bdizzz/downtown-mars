@@ -5,12 +5,12 @@ import { refreshEffects } from "./effects";
 import { demolishRoom, placeRoom, type Location } from "./placement";
 import type { Priority } from "./config";
 import { enact, repeal } from "./ordinances";
-import { isCrop } from "./resources";
-import { mainOutput } from "./economy";
+import { isCrop, resourceDefs } from "./resources";
+import { capacities, mainOutput } from "./economy";
 import { corridorCost, corridorRefusal, CORRIDORS, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById } from "./edges";
 import { dropCorridors, dropRoomJobs, prioritize, queueCorridors, queueExtension, queueFill, queueRoom } from "./construction";
-import { holeGates } from "./people";
+import { holeGates, unlock, UNLOCK_GATES } from "./people";
 import { allocationRefusal } from "./storage";
 import { answerVisit } from "./visits";
 import { roomDef } from "./rooms";
@@ -41,7 +41,11 @@ export type SimCommand =
   /** Share a storage room's space among goods (units per good; the rest is left free). */
   | { type: "setAllocation"; roomId: number; allocation: Record<string, number> }
   /** Start or stop the staging bay gathering a seed kit. */
-  | { type: "setGathering"; gathering: boolean };
+  | { type: "setGathering"; gathering: boolean }
+  /** Testing, from the browser console: set resources to amounts, add to them (negative takes away), or raise them to at least an amount. */
+  | { type: "consoleResources"; set?: Record<string, number>; add?: Record<string, number>; atLeast?: Record<string, number> }
+  /** Testing, from the browser console: unlock rooms that wait on a milestone (all of them, or one gate). */
+  | { type: "consoleUnlock"; gate?: string };
 
 /** roomId is set when a build succeeds, so the UI can offer undo. */
 export type CommandResult = { ok: true; roomId?: number } | { ok: false; reason: string };
@@ -50,6 +54,40 @@ export function applyCommand(state: SimState, cmd: SimCommand): CommandResult {
   const result = apply(state, cmd);
   state.effects = refreshEffects(state.layout, state.effects);
   return result;
+}
+
+/** What console changes are recorded as in the ledger. */
+export const CONSOLE = "Console";
+
+/**
+ * The console's resource tweak: every id is checked first (a resource or a
+ * crop), then each is set or added to, never below zero, and recorded in the
+ * ledger so the flow report stays honest. Past what the hole can hold, it
+ * makes extra room (kept with the hole), so the amount sticks.
+ */
+function consoleResources(state: SimState, set: Record<string, number>, add: Record<string, number>, atLeast: Record<string, number>): CommandResult {
+  const known = new Set([...resourceDefs.map((r) => r.id), ...Object.keys(state.resources)]);
+  const bad = [...Object.keys(set), ...Object.keys(add), ...Object.keys(atLeast)].filter((id) => !known.has(id) && !isCrop(id));
+  if (bad.length) return { ok: false, reason: `Unknown resource ${bad.map((id) => `"${id}"`).join(", ")}` };
+  const amounts = [...Object.values(set), ...Object.values(add), ...Object.values(atLeast)];
+  if (amounts.some((v) => typeof v !== "number" || !Number.isFinite(v))) return { ok: false, reason: "Amounts must be numbers" };
+  const change = (id: string, to: number) => {
+    const from = state.resources[id] ?? 0;
+    const next = Math.max(0, to);
+    state.resources[id] = next;
+    // More than the hole can hold: make room for it, or the next tick would throw the rest away.
+    const cap = capacities(state, config)[id] ?? Infinity;
+    if (next > cap) {
+      state.consoleSpace ??= {};
+      state.consoleSpace[id] = (state.consoleSpace[id] ?? 0) + (next - cap);
+    }
+    if (next > from) record(state, id, "in", CONSOLE, next - from);
+    else record(state, id, "out", CONSOLE, from - next);
+  };
+  for (const [id, v] of Object.entries(set)) change(id, v);
+  for (const [id, v] of Object.entries(add)) change(id, (state.resources[id] ?? 0) + v);
+  for (const [id, v] of Object.entries(atLeast)) if ((state.resources[id] ?? 0) < v) change(id, v);
+  return { ok: true };
 }
 
 /**
@@ -161,6 +199,14 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         dropRoomJobs(state, room.id);
       }
       return result;
+    }
+    case "consoleResources":
+      return consoleResources(state, cmd.set ?? {}, cmd.add ?? {}, cmd.atLeast ?? {});
+    case "consoleUnlock": {
+      const gates = cmd.gate === undefined ? [...UNLOCK_GATES] : UNLOCK_GATES.filter((g) => g === cmd.gate);
+      if (!gates.length) return { ok: false, reason: `Unknown gate "${cmd.gate}": try ${UNLOCK_GATES.join(", ")}` };
+      gates.forEach((g) => unlock(state, g));
+      return { ok: true };
     }
     case "cancelJob": {
       const job = state.construction?.queue.find((j) => j.id === cmd.jobId);

@@ -25,6 +25,7 @@ import { currentGoal, Tutorial } from "./Tutorial";
 import { setTutorialHidden, tutorialHidden, type UiFlags } from "./tutorialGoals";
 import { play, setAudioSettings, unlockAudio } from "../audio/sound";
 import { useSettings, VIEW_MODES } from "./settings";
+import { installConsole } from "./devConsole";
 import { FloorPicker, shownFloor } from "./FloorPicker";
 import { CorridorConfirm } from "./CorridorConfirm";
 import type { PendingBuild, Proposal } from "../view/types";
@@ -75,6 +76,11 @@ export function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [plannedSite, setPlannedSite] = useState<SitePick | null>(null);
+
+  // Testing helpers in the browser console (dm.help()).
+  const latestSnapshot = useRef(snapshot);
+  latestSnapshot.current = snapshot;
+  useEffect(() => installConsole({ send, snapshot: () => latestSnapshot.current }), [send]);
 
   useSounds(snapshot);
   useEffect(() => setAudioSettings(settings), [settings]);
