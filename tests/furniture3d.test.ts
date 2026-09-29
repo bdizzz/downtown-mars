@@ -6,11 +6,12 @@ import { furniture, itemDef, partColor } from "../src/view/furniture";
 const bounds = (g: THREE.Object3D) => new THREE.Box3().setFromObject(g);
 
 describe("furniture meshes", () => {
-  it("every item builds, one mesh for plain parts and one for glowing ones, and fills its footprint", () => {
+  it("every item builds, one mesh per kind of part (plain, glowing, growing, water), and fills its footprint", () => {
+    const PLANTS = new Set(["plant", "leaf", "potato", "soy", "stalk", "wheat", "barley", "algae", "flower"]);
     for (const id of Object.keys(furniture.items)) {
       const def = itemDef(id);
       const group = itemMesh(id, "#6f93bd");
-      const kinds = new Set(def.parts.map((p) => !!p.glow));
+      const kinds = new Set(def.parts.map((p) => (p.glow ? "glow" : PLANTS.has(p.c) ? "plant" : p.c === "water" ? "water" : "plain")));
       expect(group.children.length, id).toBe(kinds.size);
       const b = bounds(group);
       const [w, d, h] = def.size;
@@ -69,5 +70,17 @@ describe("furniture meshes", () => {
   it("merges a whole room's items into a few meshes", () => {
     const placed = Array.from({ length: 8 }, (_, i) => ({ item: "bunk_bed", x: i * 2.2, y: 0, z: 0, turn: 0 }));
     expect(furnitureMeshes(placed, "#6f93bd").children.length).toBe(itemMesh("bunk_bed", "#6f93bd").children.length);
+  });
+
+  it("marks how glowing parts behave: fires dance, lamps hold steady, small lights blink, screens flicker", () => {
+    const modes = (id: string) => {
+      const mesh = itemMesh(id, "#6f93bd").children.find((o) => (o as THREE.Mesh).geometry.getAttribute("aGlow")) as THREE.Mesh | undefined;
+      const a = mesh?.geometry.getAttribute("aGlow");
+      return new Set(a ? Array.from({ length: a.count }, (_, i) => a.getX(i)) : []);
+    };
+    expect(modes("fireplace")).toEqual(new Set([3]));
+    expect(modes("floor_lamp")).toEqual(new Set([0]));
+    expect(modes("wall_screen")).toContain(1);
+    expect(modes("intercom")).toContain(2);
   });
 });

@@ -13,6 +13,7 @@ import { DOOR, doorways, type Doorway } from "../view/doors";
 import { finishMaterial, withRock } from "./surfaces";
 import { roomFinish, type Finish } from "../view/roomFinish";
 import { lampsOf, lightPools } from "./lights3d";
+import { withCondensation } from "./details3d";
 import { spotsOf, type RoomSpots } from "./people3d";
 
 /** Room categories where people sit about (the rest only have staff at their posts, and beds). */
@@ -1090,7 +1091,9 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
 
   const used = new Set<string>();
   // See-through glass: you can look into a room from the gallery, and out of it.
-  const glass = wallMaterial("glass", () => new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.1, metalness: 0.3, transparent: true, opacity: WINDOW.opacity, depthWrite: false, side: THREE.DoubleSide }));
+  const glass = wallMaterial("glass", () =>
+    withCondensation(new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.1, metalness: 0.3, transparent: true, opacity: WINDOW.opacity, depthWrite: false, side: THREE.DoubleSide })),
+  );
   const doorFrame = wallMaterial("door", () => new THREE.MeshStandardMaterial({ color: DOOR_FRAME.color, roughness: 0.9, side: THREE.DoubleSide }));
   const strandedLine = wallMaterial(`stranded:${colors.stranded}`, () => new THREE.LineBasicMaterial({ color: colors.stranded })) as THREE.LineBasicMaterial;
   const edgeLine = wallMaterial("edges", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.5 })) as THREE.LineBasicMaterial;

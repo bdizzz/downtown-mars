@@ -529,3 +529,15 @@ Decided Sep 28, 2026 (Bryon):
 - It shows only with no floor picked and haze on.
 - Found along the way: additive blending already scales by alpha, so the shader puts the colour in whole and only the strength in alpha. Scaling both had squared it away to nothing.
 - **Browser check:** at 11:42 in a test game. From the shaft, the upper shaft glows warm; in Cutaway there's a column of light with streaks down the middle of the hole.
+
+**Step 7, cozy details** (`details3d.ts`): small shader touches chained onto materials, on one clock that runs while the game does (with Life on).
+- **Glowing parts** (`aGlow` per vertex):
+  - Fires flicker and dance.
+  - Lamps and grow lights hold steady.
+  - Glowing parts under 12 cm are indicator lights and blink, each at its own rate.
+  - Screens flicker a little.
+- **Plants sway:** leaf, plant and crop colours. They lean more the higher they are above their floor, in slow gusts.
+- **Water shimmers:** light ripples across it, and its top surface rises and falls a hair.
+- **Windows fog at the bottom:** thick at the sill, thinning upward, a little uneven, with droplets beading, more of them low down.
+- Furniture now has four material kinds: plain, glow, plant and water. The kind comes from each part's colour.
+- **Browser check:** no shader errors after load. In the entrance, a colonist sits on the bench and another stands by the decon arch. The motion shows only while the game runs.

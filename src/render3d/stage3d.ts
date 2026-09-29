@@ -26,6 +26,7 @@ import { Dust, galleryLamps, makeLander, placeLander, setLampGlow } from "./scen
 import { occupied, People, type RoomSpots } from "./people3d";
 import { Grit } from "./storm3d";
 import { LightShaft } from "./shafts3d";
+import { advanceDetails } from "./details3d";
 
 /** How much a full dust storm dims the sun and the sky's light, and how fast (per second) the view follows it. */
 const STORM_DIM = { sun: 0.7, sky: 0.3 };
@@ -1302,6 +1303,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         people.step(ambient);
         grit.step(ambient, camera.position);
         shaftLight.step(ambient);
+        advanceDetails(ambient);
         roomFx.step(ambient);
       }
       ambient = 0;

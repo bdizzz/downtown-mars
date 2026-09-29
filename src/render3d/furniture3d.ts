@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { itemDef, partColor, type Part } from "../view/furniture";
+import { GLOW_MODE, withGlowFx, withShimmer, withSway } from "./details3d";
 import type { Placed } from "../view/furnish";
 
 // Furniture as meshes. An item is built from its parts (data/furniture.json);
@@ -58,20 +59,43 @@ function partGeometry(part: Part, detail: Detail = "near"): THREE.BufferGeometry
 }
 
 /**
- * Materials: one plain and one glowing, both taking their colour from the
- * vertices (a glowing part glows in its own colour). Wall hangings use their
- * own copies, adjusted by `hung` (so they can vanish with their wall).
+ * What a part is made of, for its material: plain; glowing (screens, lamps,
+ * fires, in their own colour); growing (it sways); or water (it shimmers).
+ */
+type Kind = "plain" | "glow" | "plant" | "water";
+const PLANT_COLORS = new Set(["plant", "leaf", "potato", "soy", "stalk", "wheat", "barley", "algae", "flower"]);
+function kindOf(part: Part): Kind {
+  if (part.glow) return "glow";
+  if (PLANT_COLORS.has(part.c)) return "plant";
+  if (part.c === "water") return "water";
+  return "plain";
+}
+
+/** How a glowing part behaves: fires dance, lamps and grow lights hold steady, small lights blink, screens flicker. */
+function glowMode(part: Part): number {
+  if (part.c === "fire") return GLOW_MODE.fire;
+  if (part.c === "lamp" || part.c === "grow") return GLOW_MODE.steady;
+  return extent(part) < GLOW_BLINK_UNDER ? GLOW_MODE.blink : GLOW_MODE.screen;
+}
+/** Glowing parts smaller than this (metres, their longest side) are indicator lights, and blink. */
+const GLOW_BLINK_UNDER = 0.12;
+
+/**
+ * Materials, one per kind, all taking their colour from the vertices. Wall
+ * hangings use their own copies, adjusted by `hung` (so they can vanish with their wall).
  */
 const materials = new Map<string, { material: THREE.MeshStandardMaterial; glow: boolean }>();
 let nightGlow = 0;
-function material(glow: boolean, hung?: Hung): THREE.MeshStandardMaterial {
-  const key = `${glow}${hung ? `:${hung.key}` : ""}`;
+function material(kind: Kind, hung?: Hung): THREE.MeshStandardMaterial {
+  const key = `${kind}${hung ? `:${hung.key}` : ""}`;
   let entry = materials.get(key);
   if (!entry) {
-    const m = glow
-      ? glowing(new THREE.MeshStandardMaterial({ vertexColors: true, emissive: 0xffffff, emissiveIntensity: GLOW.day + nightGlow * GLOW.nightBoost, roughness: 0.4 }))
-      : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 });
-    entry = { material: hung ? hung.material(m) : m, glow };
+    let m: THREE.MeshStandardMaterial;
+    if (kind === "glow") m = withGlowFx(glowing(new THREE.MeshStandardMaterial({ vertexColors: true, emissive: 0xffffff, emissiveIntensity: GLOW.day + nightGlow * GLOW.nightBoost, roughness: 0.4 })));
+    else if (kind === "plant") m = withSway(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }));
+    else if (kind === "water") m = withShimmer(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.25, metalness: 0.1 }));
+    else m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 });
+    entry = { material: hung ? hung.material(m) : m, glow: kind === "glow" };
     materials.set(key, entry);
   }
   return entry.material;
@@ -85,6 +109,7 @@ function glowing(m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
   m.customProgramCacheKey = () => "furniture-glow";
   return m;
 }
+
 
 /** Glowing parts (screens, lamps, grow lights) brighten as the sky darkens: 0 at noon, 1 at night. */
 export function setFurnitureGlow(night: number): void {
@@ -123,14 +148,14 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
   const m = new THREE.Matrix4();
   const colour = new THREE.Color();
   {
-    const byGlow = new Map<boolean, THREE.BufferGeometry[]>();
+    const byKind = new Map<Kind, THREE.BufferGeometry[]>();
     placed.forEach((p, i) => {
       const def = itemDef(p.item);
       m.makeRotationY(p.turn).setPosition(p.x, p.y, p.z);
       const tag = hung?.tags[i];
       for (const part of def.parts) {
         if (detail === "far" && extent(part) < FAR.smallest) continue;
-        const glow = !!part.glow;
+        const kind = kindOf(part);
         const g = partGeometry(part, detail).toNonIndexed();
         g.applyMatrix4(m);
         const n = g.getAttribute("position").count;
@@ -138,6 +163,7 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
         const rgb = new Float32Array(n * 3);
         for (let k = 0; k < n; k++) rgb.set([colour.r, colour.g, colour.b], k * 3);
         g.setAttribute("color", new THREE.BufferAttribute(rgb, 3));
+        if (kind === "glow") g.setAttribute("aGlow", new THREE.BufferAttribute(new Float32Array(n).fill(glowMode(part)), 1));
         if (tag) {
           const wall = new Float32Array(n * 4);
           const hang = new Float32Array(n * 2);
@@ -148,16 +174,16 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
           g.setAttribute("aWall", new THREE.BufferAttribute(wall, 4));
           g.setAttribute("aHang", new THREE.BufferAttribute(hang, 2));
         }
-        let list = byGlow.get(glow);
-        if (!list) byGlow.set(glow, (list = []));
+        let list = byKind.get(kind);
+        if (!list) byKind.set(kind, (list = []));
         list.push(g);
       }
     });
-    for (const [glow, parts] of byGlow) {
+    for (const [kind, parts] of byKind) {
       const merged = mergeGeometries(parts);
       parts.forEach((g) => g.dispose());
       if (!merged) continue;
-      const mesh = new THREE.Mesh(merged, material(glow, hung));
+      const mesh = new THREE.Mesh(merged, material(kind, hung));
       mesh.userData.detail = detail;
       group.add(mesh);
     }
