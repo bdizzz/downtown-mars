@@ -14,6 +14,7 @@ import { Look } from "./look";
 import { DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { withRegolith, withRock } from "./surfaces";
 import { RoomEffects } from "./effects3d";
+import { buildTerrain, siteSeed, type Terrain } from "./terrain3d";
 import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
@@ -44,6 +45,7 @@ const LEDGE_THICKNESS = 0.4;
 const RAIL_HEIGHT = 1.1;
 const EYE_HEIGHT = 1.7;
 const FOV = 55;
+const FAR = 3500;
 const MIN_DIST = 2;
 const CLICK_SLOP = 5;
 const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25 };
@@ -82,7 +84,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const canvas = renderer.domElement;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(FOV, host.clientWidth / Math.max(1, host.clientHeight), 0.1, 2000);
+  // Far enough to see the horizon's ridges, wherever the camera stands.
+  const camera = new THREE.PerspectiveCamera(FOV, host.clientWidth / Math.max(1, host.clientHeight), 0.1, FAR);
   // What's drawn over the scene (occlusion, haze, glow, grading), per the graphics settings.
   const look = new Look(renderer, scene, camera);
 
@@ -132,6 +135,65 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // The cutaway slices along a plane through the shaft's axis, facing away from the camera.
   const clip = new THREE.Plane(new THREE.Vector3(1, 0, 0), 0);
   let shell: THREE.Object3D | null = null;
+  // Cutaway: the cut face of the ground, rock from the surface's profile down, so
+  // below the sliced-away land there's earth, not sky. It leaves a gap for the
+  // hole's own section (the backdrop behind the rooms).
+  const SECTION = { reach: 1700, bottom: -900, samples: 120 };
+  const sectionPos = new Float32Array(3 * 2 * (SECTION.samples + 1) * 2 + 3 * 4);
+  const sectionGeo = new THREE.BufferGeometry();
+  sectionGeo.setAttribute("position", new THREE.BufferAttribute(sectionPos, 3));
+  {
+    // Two strips (each side of the hole) of top/bottom pairs, then the slab under the hole.
+    const idx: number[] = [];
+    const n = SECTION.samples + 1;
+    for (const base of [0, 2 * n]) {
+      for (let i = 0; i < SECTION.samples; i++) {
+        const a = base + 2 * i;
+        idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3);
+      }
+    }
+    const slab = 4 * n;
+    idx.push(slab, slab + 1, slab + 2, slab + 2, slab + 1, slab + 3);
+    sectionGeo.setIndex(idx);
+  }
+  const section = new THREE.Mesh(sectionGeo, withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.DoubleSide })));
+  section.frustumCulled = false;
+  section.visible = false;
+  scene.add(section);
+
+  /** Lay the cut face along the section plane, following the ground where it's cut. */
+  function updateSection(): void {
+    section.visible = view.mode === "cutaway" && !!hole && cut() === null;
+    if (!section.visible || !hole) return;
+    const out = new THREE.Vector3(Math.cos(cam.theta), 0, Math.sin(cam.theta));
+    // Along the cut, and a hair to the kept side so the clip plane doesn't take it.
+    const tx = -out.z;
+    const tz = out.x;
+    const back = -0.05;
+    const inner = hole.shaftRadiusM + hole.unlockedRings * RING_D + SHELL_MARGIN;
+    const deep = floorSpan(hole.floors + 1)[0] - SHELL_MARGIN;
+    const n = SECTION.samples + 1;
+    let k = 0;
+    const put = (u: number, y: number) => {
+      sectionPos[k++] = u * tx + out.x * back;
+      sectionPos[k++] = y;
+      sectionPos[k++] = u * tz + out.z * back;
+    };
+    for (const sign of [-1, 1]) {
+      for (let i = 0; i < n; i++) {
+        // Denser near the hole, where the ground is seen close up.
+        const u = sign * (inner + (SECTION.reach - inner) * (i / SECTION.samples) ** 2);
+        put(u, terrain ? terrain.heightAt(u * tx, u * tz) : 0);
+        put(u, SECTION.bottom);
+      }
+    }
+    put(-inner, deep);
+    put(-inner, SECTION.bottom);
+    put(inner, deep);
+    put(inner, SECTION.bottom);
+    sectionGeo.attributes.position!.needsUpdate = true;
+    sectionGeo.computeVertexNormals();
+  }
   // Hover, ghost, halo and selection: rebuilt whenever what they show changes.
   let overlay = new THREE.Group();
   scene.add(overlay);
@@ -165,7 +227,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let pickedFloor: number | null = null;
   /** Show only this floor and those below it, i.e. deeper (null: every floor). Iso always looks at one floor. */
   const cut = (): number | null => pickedFloor ?? (view.mode === "iso" ? 1 : null);
-  let groundMesh: THREE.Mesh | null = null;
+  // The land round the hole: the ground, boulders, craters and the horizon, for this site.
+  let terrain: Terrain | null = null;
+  let terrainKey = "";
   let gameId = "";
   let dirty = true;
 
@@ -297,6 +361,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     lamp.visible = inside;
     fill.intensity = inside ? 0.15 : 0.7;
     if (shell) shell.visible = view.mode === "cutaway";
+    updateSection();
     updateReadout();
     dirty = true;
     // The world moved under a still pointer, so what it points at may have changed.
@@ -369,11 +434,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     lamps = galleryLamps(h);
     holeGroup.add(lamps);
 
-    // The surface around the rim.
-    const ground = new THREE.Mesh(new THREE.RingGeometry(R, 600, 96, 1), groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    holeGroup.add(ground);
-    groundMesh = ground;
     applyFloorCut();
 
     scene.add(holeGroup);
@@ -1180,7 +1240,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const f = cut();
       if (typeof o.userData.floor === "number") o.visible = f === null || o.userData.floor >= f;
     });
-    if (groundMesh) groundMesh.visible = cut() === null;
+    if (terrain) terrain.group.visible = cut() === null;
     if (lamps) lamps.visible = cut() === null;
     walkers.mesh.visible = graphics.life && cut() === null;
     dust.points.visible = graphics.life && cut() === null;
@@ -1256,6 +1316,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         holeKey = key;
         hole = snapshot.layout.hole;
         buildHole(hole);
+        terrainKey = ""; // the rim may have moved
         // A new hole, or more rings: frame them from the top again.
         if (topFitted) fitTop();
         dust.sync(hole);
@@ -1294,6 +1355,20 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           digFront.position.y = y;
           dirty = true;
         }
+      }
+      // The land: rebuilt for another site (or another hole).
+      const here = snapshot.holes.find((x) => x.id === snapshot.holeId);
+      const tk = `${snapshot.holeId}:${JSON.stringify(here?.site ?? null)}:${snapshot.holeName}:${snapshot.layout.hole.shaftRadiusM}`;
+      if (tk !== terrainKey) {
+        terrainKey = tk;
+        if (terrain) {
+          scene.remove(terrain.group);
+          disposeTerrain(terrain);
+        }
+        terrain = buildTerrain(snapshot.layout.hole.shaftRadiusM, siteSeed(here?.site ?? null, snapshot.holeName), groundMat);
+        scene.add(terrain.group);
+        applyFloorCut();
+        updateSection();
       }
       walkers.sync(snapshot.layout.hole, snapshot.population.count);
       roomFx.sync(snapshot.layout, snapshot.roomStatus);
@@ -1373,8 +1448,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       disposeLayout(layoutGroup);
       dispose(holeGroup);
       dispose(digFront);
+      sectionGeo.dispose();
+      (section.material as THREE.Material).dispose();
       dispose(lander);
       groundMat.dispose();
+      if (terrain) disposeTerrain(terrain);
       dispose(walkers.mesh);
       dispose(dust.points);
       roomFx.dispose();
@@ -1394,4 +1472,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     },
   };
   return stage;
+}
+
+/** Free a terrain's geometry and its own materials (the ground's material belongs to the stage). */
+function disposeTerrain(t: Terrain): void {
+  t.group.traverse((o) => {
+    if (!(o instanceof THREE.Mesh)) return;
+    o.geometry.dispose();
+    if (o !== t.ground) (o.material as THREE.Material).dispose();
+  });
 }
