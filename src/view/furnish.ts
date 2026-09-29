@@ -85,6 +85,8 @@ export const FIT = {
   lift: 0.035,
   /** Kept between two wall hangings. */
   hangingGap: 0.25,
+  /** Kept between two hangings, one above the other. */
+  hangingAbove: 0.1,
   /** How far off the wall a hanging's back is, so the two never share a plane. */
   hangingOff: 0.01,
 };
@@ -371,8 +373,11 @@ export function fit(frame: Frame, template: Template): Fitted[] {
     if (!f.corners.every((c) => inside(frame, c))) return "outside";
     if (door && tooClose(f.corners, door, 0)) return "blocked";
     const mount = itemDef(p.item).mount!;
+    // Two hangings can share a stretch of wall if one hangs clear above the other (a vent over a picture).
+    const top = mount + itemDef(p.item).size[2];
+    const level = (o: string) => itemDef(o).mount! < top + FIT.hangingAbove && mount < itemDef(o).mount! + itemDef(o).size[2] + FIT.hangingAbove;
     const clash = (o: Fitted) =>
-      isMounted(o.item) ? tooClose(f.corners, o.corners, FIT.hangingGap) : !isFlat(o.item) && itemDef(o.item).size[2] > mount && tooClose(f.corners, o.corners, 0);
+      isMounted(o.item) ? level(o.item) && tooClose(f.corners, o.corners, FIT.hangingGap) : !isFlat(o.item) && itemDef(o.item).size[2] > mount && tooClose(f.corners, o.corners, 0);
     if (out.some(clash)) return "blocked";
     // Checked where standing things go; hung flat on the wall itself, which stands the fitting gap further out.
     out.push({ ...place(frame, { ...p, y: (p.y ?? 0) - FIT.wallGap + FIT.hangingOff }, dx), placement: i });

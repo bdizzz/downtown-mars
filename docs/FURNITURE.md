@@ -6,45 +6,45 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 
 | Room | Size | Items |
 | --- | --- | --- |
-| Bunk dorm | M | Bunk bed, Locker, Footlocker, Privacy screen, Table, Stool, Rug, Floor lamp, Coat rack, Shelving, Poster, Wall lamp, Wall shelf, Clock |
-| Studio | S | Bed, Side table, Wardrobe, Privacy screen, Kitchenette, Bathroom, Table, Stool, Rug, Floor lamp, Potted plant, Coat rack, Painting, Poster, Wall lamp, Wall shelf, Mirror |
-| Apartment | M | Bed, Side table, Wardrobe, Privacy screen, Kitchenette, Bathroom, Dining table, Sofa, Media wall, Rug, Floor lamp, Potted plant, Coat rack, Painting, Wide painting, Wall lamp, Wall shelf, Mirror, Clock |
-| Flat | S | Double bed, Side table, Wardrobe, Dresser, Privacy screen, Kitchenette, Bathroom, Table, Chair, Sofa, Coffee table, Media wall, Rug, Floor lamp, Potted plant, Bookshelf, Painting, Wide painting, Wall lamp, Wall shelf, Mirror, Clock, Hanging planter |
-| Family apartment | M | Double bed, Bed, Side table, Wardrobe, Dresser, Privacy screen, Kitchenette, Bathroom, Dining table, Sofa, Coffee table, Media wall, Desk, Office chair, Rug, Floor lamp, Potted plant, Bookshelf, Painting, Wide painting, Poster, Wall lamp, Wall shelf, Mirror, Clock, Hanging planter |
-| Suite | S | Double bed, Side table, Wardrobe, Dresser, Bathroom, Bathtub, Kitchenette, Table, Chair, Sofa, Armchair, Coffee table, Fireplace, Bookshelf, Media wall, Rug, Floor lamp, Potted plant, Tree planter, Painting, Wide painting, Wall lamp, Wall shelf, Mirror, Clock, Hanging planter |
-| Residence | M | Double bed, Bed, Side table, Wardrobe, Dresser, Privacy screen, Bathroom, Bathtub, Kitchenette, Dining table, Sofa, Armchair, Coffee table, Fireplace, Piano, Bookshelf, Desk, Office chair, Media wall, Rug, Floor lamp, Potted plant, Tree planter, Painting, Wide painting, Wall lamp, Wall shelf, Mirror, Clock, Hanging planter |
-| Galley | S | Stove counter, Prep counter, Fridge, Serving counter, Dining table, Shelving, Water dispenser, Bin, Notice board, Clock, Wall shelf, Safety sign |
-| Farm | L | Planter bed, Hydroponic rack, Planter bed (potatoes), Hydroponic rack (potatoes), Planter bed (soybeans), Hydroponic rack (soybeans), Planter bed (wheat), Hydroponic rack (wheat), Planter bed (barley), Hydroponic rack (barley), Planter bed (mushrooms), Hydroponic rack (mushrooms), Planter bed (algae), Hydroponic rack (algae), Seedling bench, Storage tank, Tool cart, Shelving, Pipe run, Gauges, Chart board, Hanging planter, Readout panel |
-| Water tank | S | Storage tank, Pipe run, Valve panel, Pump, Gauges, Safety sign |
-| Water recycler | L | Filter column, Storage tank, Pump, Pipe run, Control console, Valve panel, Gauges, Readout panel, Safety sign, Chart board |
-| Restroom | S | Toilet stall, Washbasins, Shower, Washer, Bench, Bin, Mirror, Poster, Wall lamp |
-| Life support | L | CO2 scrubber, Air handler, Gas bottles, Control console, Pipe run, Air duct, Gauges, Readout panel, Safety sign |
-| Clinic | S | Medical bed, Medicine cabinet, Monitor, Privacy screen, Body scanner, Desk, Office chair, Chair, Potted plant, Water cooler, Chart board, Poster, Clock, Readout panel, Painting |
-| Admin office | M | Reception desk, Desk, Office chair, Filing cabinet, Meeting table, Wall screen, Potted plant, Water cooler, Bookshelf, Sofa, Map of Mars, Painting, Clock, Notice board, Wide painting |
-| Battery bank | S | Battery rack, Inverter cabinet, Control console, Air duct, Gauges, Readout panel, Safety sign |
-| Deep well pump | M | Wellhead, Pump, Pipe run, Valve panel, Control console, Storage tank, Gauges, Readout panel, Safety sign |
-| Smelter | L | Furnace, Ore bin, Ingot rack, Control console, Tool cart, Conveyor, Barrels, Safety sign, Readout panel, Gauges, Chart board |
-| Machine shop | M | Lathe, Workbench, Drill press, Welding bay, 3D printer, Tool wall, Shelving, Tool cart, Safety sign, Chart board, Wall shelf, Clock |
-| Silicon refinery | L | Reactor vessel, Crystal puller, Clean hood, Control console, Gas bottles, Shelving, Safety sign, Readout panel, Gauges, Chart board |
-| Electronics fab | M | Fab bench, Clean hood, Parts cabinet, 3D printer, Stool, Shelving, Control console, Readout panel, Chart board, Safety sign, Clock |
-| Staging bay | L | Kit container, Crate stack, Cargo crate, Cargo cart, Pallet jack, Barrels, Control console, Safety sign, Notice board, Map of Mars, Readout panel |
-| School | M | School desk, Board, Desk, Office chair, Bookshelf, Cubbies, Rug, Potted plant, Notice board, Map of Mars, Poster, Clock, Painting |
-| Elder care | M | Bed, Armchair, Side table, Sofa, Potted plant, Medicine cabinet, Rug, Media wall, Floor lamp, Privacy screen, Dining table, Water cooler, Painting, Wide painting, Clock, Hanging planter, Wall lamp |
-| Composter | M | Compost bin, Compost drum, Soil sacks, Tool cart, Barrels, Gauges, Safety sign, Chart board |
-| Crypt | M | Memorial niches, Memorial stone, Bench, Potted plant, Candle stand, Plaque, Wall lamp, Painting |
-| Concrete plant | M | Mixer, Hopper, Cement bags, Mould forms, Conveyor, Pallet jack, Safety sign, Gauges, Chart board |
-| Tiny plaza | S | Bench, Tree planter, Lamp post, Potted plant, Bin, Hanging planter, Wall lamp, Banner |
-| Small plaza | M | Fountain, Bench, Tree planter, Lamp post, Vending machine, Info kiosk, Bin, Potted plant, Banner, Hanging planter, Wall lamp, Map of Mars |
-| Entrance | S | Suit locker, Decontamination arch, Bench, Control console, Info kiosk, Cargo crate, Map of Mars, Safety sign, Notice board, Clock |
-| Cargo elevator | S | Cargo crate, Cargo cart, Pallet jack, Control console, Barrels, Safety sign, Notice board |
-| Site office | S | Desk, Office chair, Plan table, Locker, Shelving, Water cooler, Chart board, Notice board, Clock |
-| Construction office | M | Plan table, Desk, Office chair, Tool wall, Cargo crate, Shelving, Water cooler, Chart board, Notice board, Clock, Map of Mars |
-| Construction yard | L | Girder stack, Crate stack, Scaffolding, Cargo cart, Pallet jack, Tool wall, Plan table, Barrels, Safety sign, Chart board, Notice board |
-| Storeroom | S | Shelving, Cargo crate, Barrels, Safety sign, Notice board |
-| Warehouse | M | Pallet rack, Crate stack, Cargo cart, Pallet jack, Barrels, Safety sign, Notice board, Wall lamp |
-| Depot | L | Pallet rack, Crate stack, Cargo cart, Pallet jack, Control console, Barrels, Safety sign, Notice board, Readout panel |
-| Stairwell | S | Stair flight, Stair well, Bench, Potted plant, Poster, Wall lamp, Safety sign |
-| Elevator | S | Elevator shaft, Elevator (car waiting), Call panel, Bench, Potted plant, Poster, Wall lamp, Safety sign |
+| Bunk dorm | M | Bunk bed, Locker, Footlocker, Privacy screen, Table, Stool, Rug, Floor lamp, Coat rack, Shelving, Poster, Wall lamp, Wall shelf, Clock, Family photos, Woven hanging, Picture of Earth, Coat hooks, Intercom, Air vent |
+| Studio | S | Bed, Side table, Wardrobe, Privacy screen, Kitchenette, Bathroom, Table, Stool, Rug, Floor lamp, Potted plant, Coat rack, Painting, Poster, Wall lamp, Wall shelf, Mirror, Family photos, Woven hanging, Picture of Earth, Coat hooks, Intercom, Air vent |
+| Apartment | M | Bed, Side table, Wardrobe, Privacy screen, Kitchenette, Bathroom, Dining table, Sofa, Media wall, Rug, Floor lamp, Potted plant, Coat rack, Painting, Wide painting, Wall lamp, Wall shelf, Mirror, Clock, Family photos, Woven hanging, Picture of Earth, Coat hooks, Intercom, Air vent |
+| Flat | S | Double bed, Side table, Wardrobe, Dresser, Privacy screen, Kitchenette, Bathroom, Table, Chair, Sofa, Coffee table, Media wall, Rug, Floor lamp, Potted plant, Bookshelf, Painting, Wide painting, Wall lamp, Wall shelf, Mirror, Clock, Hanging planter, Family photos, Woven hanging, Picture of Earth, Coat hooks, Intercom, Air vent |
+| Family apartment | M | Double bed, Bed, Side table, Wardrobe, Dresser, Privacy screen, Kitchenette, Bathroom, Dining table, Sofa, Coffee table, Media wall, Desk, Office chair, Rug, Floor lamp, Potted plant, Bookshelf, Painting, Wide painting, Poster, Wall lamp, Wall shelf, Mirror, Clock, Hanging planter, Family photos, Woven hanging, Picture of Earth, Coat hooks, Intercom, Air vent |
+| Suite | S | Double bed, Side table, Wardrobe, Dresser, Bathroom, Bathtub, Kitchenette, Table, Chair, Sofa, Armchair, Coffee table, Fireplace, Bookshelf, Media wall, Rug, Floor lamp, Potted plant, Tree planter, Painting, Wide painting, Wall lamp, Wall shelf, Mirror, Clock, Hanging planter, Family photos, Woven hanging, Picture of Earth, Coat hooks, Intercom, Air vent |
+| Residence | M | Double bed, Bed, Side table, Wardrobe, Dresser, Privacy screen, Bathroom, Bathtub, Kitchenette, Dining table, Sofa, Armchair, Coffee table, Fireplace, Piano, Bookshelf, Desk, Office chair, Media wall, Rug, Floor lamp, Potted plant, Tree planter, Painting, Wide painting, Wall lamp, Wall shelf, Mirror, Clock, Hanging planter, Family photos, Woven hanging, Picture of Earth, Coat hooks, Intercom, Air vent |
+| Galley | S | Stove counter, Prep counter, Fridge, Serving counter, Dining table, Shelving, Water dispenser, Bin, Notice board, Clock, Wall shelf, Safety sign, Menu board, Utensil rack, Fire extinguisher, First-aid box, Air vent |
+| Farm | L | Planter bed, Hydroponic rack, Planter bed (potatoes), Hydroponic rack (potatoes), Planter bed (soybeans), Hydroponic rack (soybeans), Planter bed (wheat), Hydroponic rack (wheat), Planter bed (barley), Hydroponic rack (barley), Planter bed (mushrooms), Hydroponic rack (mushrooms), Planter bed (algae), Hydroponic rack (algae), Seedling bench, Storage tank, Tool cart, Shelving, Pipe run, Gauges, Chart board, Hanging planter, Readout panel, Grow light, Pipe manifold, Tool pegboard, Fire extinguisher, Air vent |
+| Water tank | S | Storage tank, Pipe run, Valve panel, Pump, Gauges, Safety sign, Pipe manifold, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Water recycler | L | Filter column, Storage tank, Pump, Pipe run, Control console, Valve panel, Gauges, Readout panel, Safety sign, Chart board, Pipe manifold, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Restroom | S | Toilet stall, Washbasins, Shower, Washer, Bench, Bin, Mirror, Poster, Wall lamp, Air vent, First-aid box, Intercom |
+| Life support | L | CO2 scrubber, Air handler, Gas bottles, Control console, Pipe run, Air duct, Gauges, Readout panel, Safety sign, Pipe manifold, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Clinic | S | Medical bed, Medicine cabinet, Monitor, Privacy screen, Body scanner, Desk, Office chair, Chair, Potted plant, Water cooler, Chart board, Poster, Clock, Readout panel, Painting, Whiteboard, Picture of Earth, Family photos, Intercom, Fire extinguisher, Air vent |
+| Admin office | M | Reception desk, Desk, Office chair, Filing cabinet, Meeting table, Wall screen, Potted plant, Water cooler, Bookshelf, Sofa, Map of Mars, Painting, Clock, Notice board, Wide painting, Whiteboard, Picture of Earth, Family photos, Intercom, Fire extinguisher, Air vent |
+| Battery bank | S | Battery rack, Inverter cabinet, Control console, Air duct, Gauges, Readout panel, Safety sign, Pipe manifold, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Deep well pump | M | Wellhead, Pump, Pipe run, Valve panel, Control console, Storage tank, Gauges, Readout panel, Safety sign, Pipe manifold, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Smelter | L | Furnace, Ore bin, Ingot rack, Control console, Tool cart, Conveyor, Barrels, Safety sign, Readout panel, Gauges, Chart board, Pipe manifold, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Machine shop | M | Lathe, Workbench, Drill press, Welding bay, 3D printer, Tool wall, Shelving, Tool cart, Safety sign, Chart board, Wall shelf, Clock, Tool pegboard, Whiteboard, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Silicon refinery | L | Reactor vessel, Crystal puller, Clean hood, Control console, Gas bottles, Shelving, Safety sign, Readout panel, Gauges, Chart board, Pipe manifold, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Electronics fab | M | Fab bench, Clean hood, Parts cabinet, 3D printer, Stool, Shelving, Control console, Readout panel, Chart board, Safety sign, Clock, Tool pegboard, Whiteboard, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Staging bay | L | Kit container, Crate stack, Cargo crate, Cargo cart, Pallet jack, Barrels, Control console, Safety sign, Notice board, Map of Mars, Readout panel, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| School | M | School desk, Board, Desk, Office chair, Bookshelf, Cubbies, Rug, Potted plant, Notice board, Map of Mars, Poster, Clock, Painting, Whiteboard, Picture of Earth, Family photos, Intercom, Fire extinguisher, Air vent |
+| Elder care | M | Bed, Armchair, Side table, Sofa, Potted plant, Medicine cabinet, Rug, Media wall, Floor lamp, Privacy screen, Dining table, Water cooler, Painting, Wide painting, Clock, Hanging planter, Wall lamp, Family photos, Woven hanging, Picture of Earth, Coat hooks, Intercom, Air vent |
+| Composter | M | Compost bin, Compost drum, Soil sacks, Tool cart, Barrels, Gauges, Safety sign, Chart board, Pipe manifold, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Crypt | M | Memorial niches, Memorial stone, Bench, Potted plant, Candle stand, Plaque, Wall lamp, Painting, Woven hanging, Air vent |
+| Concrete plant | M | Mixer, Hopper, Cement bags, Mould forms, Conveyor, Pallet jack, Safety sign, Gauges, Chart board, Pipe manifold, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Tiny plaza | S | Bench, Tree planter, Lamp post, Potted plant, Bin, Hanging planter, Wall lamp, Banner, Picture of Earth, Intercom, Fire extinguisher, First-aid box, Air vent |
+| Small plaza | M | Fountain, Bench, Tree planter, Lamp post, Vending machine, Info kiosk, Bin, Potted plant, Banner, Hanging planter, Wall lamp, Map of Mars, Picture of Earth, Intercom, Fire extinguisher, First-aid box, Air vent |
+| Entrance | S | Suit locker, Decontamination arch, Bench, Control console, Info kiosk, Cargo crate, Map of Mars, Safety sign, Notice board, Clock, Coat hooks, Picture of Earth, Fire extinguisher, First-aid box, Intercom, Air vent |
+| Cargo elevator | S | Cargo crate, Cargo cart, Pallet jack, Control console, Barrels, Safety sign, Notice board, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Site office | S | Desk, Office chair, Plan table, Locker, Shelving, Water cooler, Chart board, Notice board, Clock, Whiteboard, Picture of Earth, Family photos, Intercom, Fire extinguisher, Air vent |
+| Construction office | M | Plan table, Desk, Office chair, Tool wall, Cargo crate, Shelving, Water cooler, Chart board, Notice board, Clock, Map of Mars, Whiteboard, Picture of Earth, Family photos, Intercom, Fire extinguisher, Air vent |
+| Construction yard | L | Girder stack, Crate stack, Scaffolding, Cargo cart, Pallet jack, Tool wall, Plan table, Barrels, Safety sign, Chart board, Notice board, Tool pegboard, Whiteboard, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Storeroom | S | Shelving, Cargo crate, Barrels, Safety sign, Notice board, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Warehouse | M | Pallet rack, Crate stack, Cargo cart, Pallet jack, Barrels, Safety sign, Notice board, Wall lamp, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Depot | L | Pallet rack, Crate stack, Cargo cart, Pallet jack, Control console, Barrels, Safety sign, Notice board, Readout panel, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Stairwell | S | Stair flight, Stair well, Bench, Potted plant, Poster, Wall lamp, Safety sign, Picture of Earth, Intercom, Fire extinguisher, First-aid box, Hanging planter, Air vent |
+| Elevator | S | Elevator shaft, Elevator (car waiting), Call panel, Bench, Potted plant, Poster, Wall lamp, Safety sign, Picture of Earth, Intercom, Fire extinguisher, First-aid box, Hanging planter, Air vent |
 
 ## Items
 
@@ -63,9 +63,25 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | Map of Mars (`mars_map`) | 2 × 0.1 × 1.1, hung at 1.3 | Admin office, Staging bay, School, Small plaza, Entrance, Construction office |
 | Notice board (`notice_board`) | 1.2 × 0.1 × 0.8, hung at 1.3 | Galley, Admin office, Staging bay, School, Entrance, Cargo elevator, Site office, Construction office, Construction yard, Storeroom, Warehouse, Depot |
 | Safety sign (`safety_sign`) | 0.6 × 0.05 × 0.6, hung at 1.75 | Galley, Water tank, Water recycler, Life support, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, Composter, Concrete plant, Entrance, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot, Stairwell, Elevator |
-| Hanging planter (`wall_planter`) | 0.8 × 0.5 × 0.8, hung at 1.35 | Flat, Family apartment, Suite, Residence, Farm, Elder care, Tiny plaza, Small plaza |
+| Hanging planter (`wall_planter`) | 0.8 × 0.5 × 0.8, hung at 1.35 | Flat, Family apartment, Suite, Residence, Farm, Elder care, Tiny plaza, Small plaza, Stairwell, Elevator |
 | Banner (`banner`) | 0.9 × 0.1 × 1.6, hung at 1.6 | Tiny plaza, Small plaza |
 | Plaque (`plaque`) | 0.5 × 0.05 × 0.35, hung at 1.4 | Crypt |
+| Family photos (`family_photos`) | 1 × 0.05 × 0.7, hung at 1.35 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Clinic, Admin office, School, Elder care, Site office, Construction office |
+| Woven hanging (`wall_textile`) | 0.9 × 0.1 × 1.25, hung at 1.3 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Elder care, Crypt |
+| Picture of Earth (`earth_photo`) | 0.7 × 0.1 × 0.7, hung at 1.4 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Clinic, Admin office, School, Elder care, Tiny plaza, Small plaza, Entrance, Site office, Construction office, Stairwell, Elevator |
+| Coat hooks (`coat_hooks`) | 1.3 × 0.35 × 1, hung at 0.9 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Elder care, Entrance |
+| Whiteboard (`whiteboard`) | 1.6 × 0.2 × 1, hung at 1 | Clinic, Admin office, Machine shop, Electronics fab, School, Site office, Construction office, Construction yard |
+| Pipe manifold (`pipe_manifold`) | 1.6 × 0.5 × 0.7, hung at 1.7 | Farm, Water tank, Water recycler, Life support, Battery bank, Deep well pump, Smelter, Silicon refinery, Composter, Concrete plant |
+| Cable tray (`cable_tray`) | 1.8 × 0.6 × 0.15, hung at 2.95 | Water tank, Water recycler, Life support, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, Composter, Concrete plant, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot |
+| Tool pegboard (`tool_board`) | 1.2 × 0.2 × 0.9, hung at 1.1 | Farm, Machine shop, Electronics fab, Construction yard |
+| Fire extinguisher (`fire_extinguisher`) | 0.25 × 0.4 × 0.85, hung at 0.8 | Galley, Farm, Water tank, Water recycler, Life support, Clinic, Admin office, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, School, Composter, Concrete plant, Tiny plaza, Small plaza, Entrance, Cargo elevator, Site office, Construction office, Construction yard, Storeroom, Warehouse, Depot, Stairwell, Elevator |
+| First-aid box (`first_aid_kit`) | 0.4 × 0.3 × 0.4, hung at 1.4 | Galley, Water tank, Water recycler, Restroom, Life support, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, Composter, Concrete plant, Tiny plaza, Small plaza, Entrance, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot, Stairwell, Elevator |
+| Air vent (`air_vent`) | 0.7 × 0.1 × 0.4, hung at 2.7 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Galley, Farm, Water tank, Water recycler, Restroom, Life support, Clinic, Admin office, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, School, Elder care, Composter, Crypt, Concrete plant, Tiny plaza, Small plaza, Entrance, Cargo elevator, Site office, Construction office, Construction yard, Storeroom, Warehouse, Depot, Stairwell, Elevator |
+| Intercom (`intercom`) | 0.2 × 0.1 × 0.3, hung at 1.35 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Restroom, Clinic, Admin office, School, Elder care, Tiny plaza, Small plaza, Entrance, Site office, Construction office, Stairwell, Elevator |
+| Menu board (`menu_board`) | 1.3 × 0.1 × 0.6, hung at 1.75 | Galley |
+| Utensil rack (`utensil_rack`) | 1.1 × 0.25 × 0.75, hung at 1.3 | Galley |
+| Grow light (`grow_light`) | 1.5 × 0.75 × 0.15, hung at 2.5 | Farm |
+| Work light (`work_light`) | 0.2 × 0.6 × 0.25, hung at 2.45 | Water tank, Water recycler, Life support, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, Composter, Concrete plant, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot |
 | Bunk bed (`bunk_bed`) | 2 × 1 × 1.9 | Bunk dorm |
 | Bed (`bed`) | 2.15 × 1.05 × 0.9 | Studio, Apartment, Family apartment, Residence, Elder care |
 | Locker (`locker`) | 0.65 × 0.55 × 1.95 | Bunk dorm, Site office |

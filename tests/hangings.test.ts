@@ -43,6 +43,15 @@ describe("wall hangings", () => {
     expect(back).toBeLessThanOrEqual(frame.rOut + FIT.wallGap);
   });
 
+  it("share a stretch of wall one above the other, but not side by side at one height", () => {
+    const layout = createLayout(createHole(10, 3, 3, config.geometry));
+    const frame = frameOf(layout, room(layout, "flat", ring(1, 2, 3)))!;
+    // A vent high over a painting: both hang.
+    expect(fit(frame, [{ item: "painting", wall: "back" }, { item: "air_vent", wall: "back" }])).toHaveLength(2);
+    // Two paintings in the same place: only the first.
+    expect(fit(frame, [{ item: "painting", wall: "back" }, { item: "poster", wall: "back" }])).toHaveLength(1);
+  });
+
   it("go only on solid walls: not ring 1's glass front, nor a public room's open sides", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
     const t: Template = [{ item: "poster", wall: "front" }];

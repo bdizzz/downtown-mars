@@ -415,3 +415,22 @@ Decided Sep 28, 2026 (Bryon):
 - **Furniture no longer pokes through the ceiling below.** Everything stands `FIT.lift` (3.5 cm) above its floor, since some models dip just below their base.
 - **The ground below the surface** (the cap round a picked floor) now reaches 3 km in 24 pieces, past where the camera can see, so the sky never shows round its edge.
 - **Browser check:** the stairwell template in the furnishing tool: the flight and well side by side, filling the room. The crop variants are in the Catalogue. The climbing itself is covered by tests; building a real three-floor stairwell in game takes days of drilling.
+
+**Follow-up, fuller walls (Bryon, Sep 29):**
+- **16 new wall models:**
+  - At home: family photos, a woven hanging, a picture of Earth, coat hooks and an intercom.
+  - At work: a whiteboard, a pipe manifold with valve wheels, a cable tray, a tool pegboard, a fire extinguisher, a first-aid box, an air vent and a caged work light.
+  - In the galley: a menu board and a rack of pans.
+  - In farms: a grow-light bar.
+  - The palette gains `red`.
+- **A second pass fills the walls** (`WALL_FILL` in furniture.mjs, `FILL` in the layouts generator):
+  - After each template's own hangings, every room gets fill-ins for its kind: home, plant, workshop, office, store, farm, galley, wash, quiet, public or entry.
+  - A high row runs round the room over everything else: vents at 2.7 m, cable trays at 2.95 m, work lights at 2.45 m, grow lights at 2.5 m.
+  - Eye-level pieces fill the gaps the first pass left, and extinguishers and hooks go low.
+  - Single pieces search along their wall for a free spot (`spot`: every 0.5 m, one copy).
+  - A few that never find room in their kind of room are left out (`NO_ROOM`).
+- **Hangings stack:** two hangings clash only if they overlap in height as well (within `FIT.hangingAbove`, 0.1 m), so a vent or cable tray can run above a picture.
+- **Count:** in ring 2, the templates hang about 3× as much as before (422 → 1,284 across all templates).
+  - At home it's about double, e.g. a studio went from 13 to 26.
+  - Industrial rooms gain the most, from their cable trays, e.g. a smelter went from 12 to 42 and a storeroom from 2 to 21.
+- **Browser check:** in the entrance in first person, the air vent, clock, first-aid box, picture of Earth and notice board hang on the walls; the battery bank has its cable trays and work lights.

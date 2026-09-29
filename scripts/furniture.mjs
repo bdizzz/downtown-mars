@@ -176,6 +176,137 @@ item("banner", "Banner", [
 ], 1.6);
 item("plaque", "Plaque", [box([0, 0.17, 0], [0.5, 0.34, 0.03], "copper"), box([0, 0.17, 0.016], [0.42, 0.26, 0.004], "stone"), ...[0.22, 0.15, 0.08].map((y) => box([0, y, 0.019], [0.3, 0.02, 0.003], "dark"))], 1.4);
 
+
+// Family snapshots: a cluster of small frames, each a different size and colour.
+item("family_photos", "Family photos", [
+  ...[[-0.36, 0.34, 0.26, 0.32, "wood", "water"], [-0.02, 0.4, 0.34, 0.26, "dark", "cream"], [0.33, 0.3, 0.24, 0.3, "copper", "plant"], [-0.2, 0.08, 0.3, 0.2, "dark", "rust"], [0.16, 0.06, 0.22, 0.16, "wood", "glow"]].flatMap(([x, y, w, h, f, c]) => [
+    box([x, y + h / 2, 0], [w, h, 0.03], f),
+    box([x, y + h / 2, 0.016], [w - 0.06, h - 0.06, 0.004], c),
+  ]),
+], 1.35);
+item("wall_textile", "Woven hanging", [
+  cyl([0, 1.2, 0.03], 0.04, 0.9, "wood", { r: [0, 0, 90] }),
+  box([0, 0.66, 0.02], [0.7, 1.06, 0.015], "cushion"),
+  // Bands of colour woven across it, and tassels along the bottom.
+  ...[[0.98, "accent"], [0.82, "hazard"], [0.66, "cream"], [0.5, "rust"], [0.34, "accent"]].map(([y, c]) => box([0, y, 0.029], [0.66, 0.08, 0.004], c)),
+  box([0, 0.66, 0.031], [0.18, 0.18, 0.004], "power", { r: [0, 0, 45] }),
+  ...[-0.3, -0.18, -0.06, 0.06, 0.18, 0.3].map((x) => box([x, 0.06, 0.02], [0.03, 0.12, 0.02], "cushion")),
+], 1.3);
+item("earth_photo", "Picture of Earth", [
+  box([0, 0.35, 0], [0.7, 0.7, 0.04], "dark"),
+  box([0, 0.35, 0.021], [0.62, 0.62, 0.004], "rubber"),
+  cyl([0.03, 0.38, 0.025], 0.42, 0.004, "blueprint", { r: [90, 0, 0] }),
+  box([-0.02, 0.44, 0.028], [0.16, 0.12, 0.004], "plant", { r: [0, 0, 20] }),
+  box([0.08, 0.3, 0.028], [0.1, 0.14, 0.004], "composite", { r: [0, 0, -10] }),
+  box([0.02, 0.52, 0.029], [0.24, 0.03, 0.004], "white", { r: [0, 0, -12] }),
+  cyl([-0.2, 0.14, 0.027], 0.1, 0.004, "stone", { r: [90, 0, 0] }),
+], 1.4);
+item("coat_hooks", "Coat hooks", [
+  box([0, 0.95, 0.02], [1.2, 0.08, 0.04], "wood"),
+  ...[-0.45, -0.15, 0.15, 0.45].map((x) => box([x, 0.92, 0.07], [0.03, 0.03, 0.08], "steel")),
+  // A jacket, a bag and a scarf.
+  box([-0.45, 0.55, 0.09], [0.36, 0.72, 0.1], "accent"),
+  box([-0.45, 0.85, 0.12], [0.16, 0.1, 0.06], "accent"),
+  box([0.15, 0.62, 0.1], [0.28, 0.3, 0.14], "composite"),
+  box([0.15, 0.8, 0.1], [0.03, 0.14, 0.02], "dark"),
+  box([0.45, 0.6, 0.08], [0.1, 0.6, 0.03], "hazard"),
+], 0.9);
+item("whiteboard", "Whiteboard", [
+  box([0, 0.5, 0], [1.6, 1.0, 0.03], "steel"),
+  box([0, 0.5, 0.016], [1.52, 0.92, 0.004], "white"),
+  box([0, 0.02, 0.04], [1.4, 0.04, 0.08], "steel"),
+  ...[[-0.45, 0.8, 0.5, "blueprint"], [-0.5, 0.7, 0.4, "blueprint"], [-0.42, 0.6, 0.55, "fire"], [0.35, 0.3, 0.6, "blueprint"]].map(([x, y, w, c]) => box([x, y, 0.02], [w, 0.02, 0.003], c)),
+  // A box-and-arrow sketch.
+  box([0.3, 0.72, 0.019], [0.3, 0.2, 0.003], "plant"),
+  box([0.3, 0.72, 0.02], [0.26, 0.16, 0.003], "white"),
+  box([0.05, 0.55, 0.02], [0.3, 0.02, 0.003], "dark", { r: [0, 0, -30] }),
+  ...[-0.3, -0.2].map((x, i) => box([x, 0.06, 0.07], [0.1, 0.02, 0.02], i ? "fire" : "blueprint")),
+], 1.0);
+item("pipe_manifold", "Pipe manifold", [
+  ...[0.12, 0.34, 0.56].map((y, i) => cyl([0, y, 0.1], 0.1, 1.6, ["metal", "copper", "steel"][i], { r: [0, 0, 90] })),
+  ...[-0.7, 0.7].map((x) => box([x, 0.34, 0.03], [0.06, 0.7, 0.06], "dark")),
+  ...[[-0.3, 0.12], [0.25, 0.34], [-0.05, 0.56]].flatMap(([x, y]) => [
+    cyl([x, y, 0.1], 0.14, 0.12, "dark", { r: [0, 0, 90] }),
+    box([x, y, 0.19], [0.02, 0.02, 0.1], "dark"),
+    cyl([x, y, 0.24], 0.16, 0.02, "fire", { r: [90, 0, 0] }),
+  ]),
+  box([0.55, 0.45, 0.16], [0.14, 0.14, 0.04], "white"),
+], 1.7);
+item("cable_tray", "Cable tray", [
+  box([0, 0.02, 0.15], [1.8, 0.03, 0.3], "metal"),
+  box([0, 0.08, 0.295], [1.8, 0.12, 0.01], "metal"),
+  ...[-0.8, 0, 0.8].map((x) => box([x, 0.06, 0.05], [0.04, 0.12, 0.1], "dark")),
+  ...[[0.08, "dark"], [0.14, "rubber"], [0.2, "hazard"], [0.25, "blueprint"]].map(([z, c]) => cyl([0, 0.07, z], 0.05, 1.8, c, { r: [0, 0, 90] })),
+], 2.95);
+item("tool_board", "Tool pegboard", [
+  box([0, 0.45, 0], [1.2, 0.9, 0.03], "composite"),
+  ...[0.2, 0.45, 0.7].flatMap((y) => [-0.45, -0.15, 0.15, 0.45].map((x) => box([x + 0.1, y - 0.1, 0.018], [0.02, 0.02, 0.004], "dark"))),
+  // A spanner, a hammer, pliers, a saw and a coil of cable.
+  box([-0.4, 0.55, 0.03], [0.05, 0.5, 0.02], "steel"),
+  box([-0.2, 0.62, 0.03], [0.04, 0.4, 0.03], "wood"),
+  box([-0.2, 0.82, 0.04], [0.18, 0.06, 0.05], "metal"),
+  ...[-0.03, 0.03].map((dx) => box([dx, 0.55, 0.03], [0.03, 0.3, 0.02], "fire", { r: [0, 0, dx * 300] })),
+  box([0.28, 0.6, 0.025], [0.3, 0.14, 0.01], "steel"),
+  box([0.4, 0.6, 0.03], [0.08, 0.16, 0.03], "wood"),
+  cyl([0.3, 0.22, 0.05], 0.24, 0.08, "hazard", { r: [90, 0, 0] }),
+], 1.1);
+item("fire_extinguisher", "Fire extinguisher", [
+  box([0, 0.3, 0.01], [0.16, 0.24, 0.02], "dark"),
+  cyl([0, 0.28, 0.1], 0.16, 0.52, "red"),
+  cyl([0, 0.57, 0.1], 0.07, 0.06, "dark"),
+  box([0.04, 0.62, 0.1], [0.14, 0.03, 0.04], "dark"),
+  box([-0.04, 0.5, 0.18], [0.03, 0.2, 0.03], "rubber"),
+  // Its sign above.
+  box([0, 0.78, 0.005], [0.22, 0.14, 0.01], "red"),
+  box([0, 0.78, 0.011], [0.08, 0.1, 0.003], "white"),
+], 0.8);
+item("first_aid_kit", "First-aid box", [
+  box([0, 0.2, 0.06], [0.4, 0.4, 0.12], "white"),
+  box([0, 0.2, 0.121], [0.2, 0.06, 0.004], "red"),
+  box([0, 0.2, 0.121], [0.06, 0.2, 0.004], "red"),
+  box([0.17, 0.2, 0.125], [0.02, 0.08, 0.01], "metal"),
+], 1.4);
+item("air_vent", "Air vent", [
+  box([0, 0.18, 0.01], [0.7, 0.36, 0.02], "steel"),
+  box([0, 0.18, 0.021], [0.6, 0.28, 0.004], "dark"),
+  ...[0.08, 0.13, 0.18, 0.23, 0.28].map((y) => box([0, y, 0.026], [0.58, 0.02, 0.012], "metal", { r: [30, 0, 0] })),
+], 2.7);
+item("intercom", "Intercom", [
+  box([0, 0.15, 0.02], [0.2, 0.3, 0.04], "panel"),
+  box([0, 0.2, 0.041], [0.14, 0.1, 0.004], "glow", glow),
+  ...[0.09, 0.05].map((y) => box([0, y, 0.043], [0.1, 0.02, 0.006], "dark")),
+  cyl([0.06, 0.27, 0.043], 0.02, 0.006, "plant", { r: [90, 0, 0], glow: true }),
+], 1.35);
+item("menu_board", "Menu board", [
+  box([0, 0.3, 0], [1.3, 0.6, 0.05], "dark"),
+  box([0, 0.3, 0.026], [1.2, 0.5, 0.004], "board"),
+  box([0, 0.5, 0.029], [0.5, 0.05, 0.003], "power", glow),
+  ...[0.4, 0.33, 0.26, 0.19, 0.12].flatMap((y, i) => [box([-0.2, y, 0.029], [0.55 - (i % 2) * 0.12, 0.025, 0.003], "white"), box([0.45, y, 0.029], [0.12, 0.025, 0.003], "hazard")]),
+], 1.75);
+item("utensil_rack", "Utensil rack", [
+  box([0, 0.72, 0.03], [1.1, 0.03, 0.03], "steel"),
+  ...[-0.5, 0.5].map((x) => box([x, 0.72, 0.01], [0.03, 0.06, 0.04], "dark")),
+  // Pans, a ladle, a whisk and a sieve, hanging by their handles.
+  ...[[-0.35, 0.3], [-0.05, 0.24]].flatMap(([x, d]) => [box([x, 0.58, 0.05], [0.03, 0.26, 0.02], "dark"), cyl([x, 0.4 - d / 4, 0.05], d, 0.05, "copper", { r: [90, 0, 0] })]),
+  box([0.18, 0.5, 0.05], [0.02, 0.42, 0.02], "steel"),
+  sph([0.18, 0.3, 0.07], 0.1, "steel"),
+  box([0.32, 0.54, 0.05], [0.02, 0.34, 0.02], "steel"),
+  sph([0.32, 0.36, 0.05], 0.1, "metal"),
+  cyl([0.45, 0.48, 0.06], 0.18, 0.06, "metal", { r: [90, 0, 0] }),
+], 1.3);
+item("grow_light", "Grow light", [
+  ...[-0.6, 0.6].map((x) => box([x, 0.1, 0.15], [0.04, 0.04, 0.3], "metal")),
+  box([0, 0.06, 0.3], [1.5, 0.08, 0.14], "dark"),
+  box([0, 0.015, 0.3], [1.44, 0.01, 0.1], "grow", glow),
+], 2.5);
+item("work_light", "Work light", [
+  box([0, 0.12, 0.01], [0.14, 0.22, 0.02], "dark"),
+  box([0, 0.14, 0.08], [0.04, 0.04, 0.14], "dark"),
+  cyl([0, 0.1, 0.18], 0.2, 0.18, "hazard"),
+  cyl([0, 0.06, 0.18], 0.14, 0.08, "lamp", glow),
+  ...[-0.08, 0.08].map((dx) => box([dx, 0.1, 0.18], [0.01, 0.16, 0.2], "dark")),
+], 2.45);
+
 // =====================================================================
 // Homes and people
 // =====================================================================
@@ -1206,6 +1337,34 @@ const hangings = {
   stairwell: ["poster", "wall_lamp", "safety_sign"],
   elevator: ["poster", "wall_lamp", "safety_sign"],
 };
+// And more to fill the walls, by kind of room: a second pass that the templates spread along every wall.
+const WALL_FILL = {
+  home: ["family_photos", "wall_textile", "earth_photo", "coat_hooks", "intercom", "air_vent"],
+  plant: ["pipe_manifold", "cable_tray", "work_light", "fire_extinguisher", "first_aid_kit", "air_vent"],
+  workshop: ["tool_board", "whiteboard", "cable_tray", "work_light", "fire_extinguisher", "first_aid_kit", "air_vent"],
+  office: ["whiteboard", "earth_photo", "family_photos", "intercom", "fire_extinguisher", "air_vent"],
+  store: ["cable_tray", "work_light", "fire_extinguisher", "first_aid_kit", "air_vent"],
+  farm: ["grow_light", "pipe_manifold", "tool_board", "fire_extinguisher", "air_vent"],
+  galley: ["menu_board", "utensil_rack", "fire_extinguisher", "first_aid_kit", "air_vent"],
+  wash: ["air_vent", "first_aid_kit", "intercom"],
+  quiet: ["wall_textile", "air_vent"],
+  public: ["earth_photo", "intercom", "fire_extinguisher", "first_aid_kit", "wall_planter", "air_vent"],
+  entry: ["coat_hooks", "earth_photo", "fire_extinguisher", "first_aid_kit", "intercom", "air_vent"],
+};
+const FILL_KIND = {
+  bunk_dorm: "home", studio: "home", apartment: "home", flat: "home", family_apartment: "home", suite: "home", residence: "home", elder_care: "home",
+  water_tank: "plant", water_recycler: "plant", life_support: "plant", battery_bank: "plant", deep_well_pump: "plant", smelter: "plant", silicon_refinery: "plant", composter: "plant", concrete_plant: "plant",
+  machine_shop: "workshop", electronics_fab: "workshop", construction_yard: "workshop",
+  admin_office: "office", site_office: "office", construction_office: "office", clinic: "office", school: "office",
+  storeroom: "store", warehouse: "store", depot: "store", staging_bay: "store", cargo_elevator: "store",
+  farm: "farm", galley: "galley", restroom: "wash", crypt: "quiet",
+  tiny_plaza: "public", small_plaza: "public", stairwell: "public", elevator: "public", entrance: "entry",
+};
+for (const room of Object.keys(rooms)) {
+  const kind = FILL_KIND[room];
+  if (!kind) throw new Error(`no wall fill for "${room}"`);
+  hangings[room].push(...WALL_FILL[kind].filter((id) => !hangings[room].includes(id)));
+}
 for (const [room, ids] of Object.entries(hangings)) {
   if (!rooms[room]) throw new Error(`hangings for unknown room "${room}"`);
   rooms[room].push(...ids.filter((id) => !rooms[room].includes(id)));
@@ -1218,7 +1377,7 @@ const colors = {
   rust: "#a0522d", copper: "#b87333", stone: "#8a7a6c", hazard: "#e0a03a", board: "#2f4a3a", glow: "#9fd2ff", grow: "#f0a8ff",
   fire: "#ff8a3d", lamp: "#ffe2b0", power: "#f4d35e", blueprint: "#3d6fb0", wood: "#8a5e3c",
   potato: "#4f7a3a", soy: "#9cbf5a", stalk: "#b8a060", wheat: "#d8b35a", barley: "#cdbf86", substrate: "#4a3526",
-  mushroom: "#e6dccb", cap: "#b08a64", algae: "#3f9a5a", flower: "#f2f0e0",
+  mushroom: "#e6dccb", cap: "#b08a64", algae: "#3f9a5a", flower: "#f2f0e0", red: "#c8423a",
 };
 
 // Every item a room lists exists, and every item is used somewhere.

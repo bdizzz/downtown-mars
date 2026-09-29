@@ -18,7 +18,16 @@
       {"item":"wall_clock","wall":"right","x":-4.5},
       {"item":"notice_board","wall":"front","x":-3.0},
       {"item":"painting_wide","wall":"back","x":-5.0},
-      {"item":"painting_wide","wall":"back","x":5.0}
+      {"item":"painting_wide","wall":"back","x":5.0},
+      {"item":"whiteboard","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"whiteboard","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"front","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"family_photos","wall":"back","x":-1.6,"repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"front","x":-1.6,"repeat":{"every":2.4,"max":2}},
+      {"item":"intercom","wall":"front","x":0.5,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":2.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "apartment:2x1": [
       {"item":"kitchenette","wall":"left","x":-0.8,"y":0.05},
@@ -43,7 +52,16 @@
       {"item":"wall_mirror","wall":"left","x":1.2},
       {"item":"wall_clock","wall":"right","x":1.2},
       {"item":"painting_wide","wall":"left","x":-3.5},
-      {"item":"wall_shelf","wall":"right","x":-4.0}
+      {"item":"wall_shelf","wall":"right","x":-4.0},
+      {"item":"family_photos","wall":"left","repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"right","repeat":{"every":2.4,"max":2}},
+      {"item":"wall_textile","wall":"back","x":1.5,"repeat":{"every":3.0,"max":2}},
+      {"item":"earth_photo","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"coat_hooks","wall":"front","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"front","x":-0.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":2.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "battery_bank:1x1": [
       {"item":"inverter","wall":"left","y":0.1},
@@ -54,7 +72,19 @@
       {"item":"inverter","wall":"front","x":2.5,"y":0.3},
       {"item":"gauge_panel","wall":"left","x":-4.0},
       {"item":"readout_panel","wall":"right"},
-      {"item":"safety_sign","wall":"back","repeat":{"every":2.4,"max":3}}
+      {"item":"safety_sign","wall":"back","repeat":{"every":2.4,"max":3}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "bunk_dorm:2x1": [
       {"item":"shelf_unit","wall":"left","x":-1.5,"y":0.1},
@@ -76,7 +106,16 @@
       {"item":"wall_lamp","wall":"right","x":-3.2},
       {"item":"wall_clock","wall":"front","x":-1.4},
       {"item":"wall_shelf","wall":"front","x":-6.5},
-      {"item":"poster","wall":"right"}
+      {"item":"poster","wall":"right"},
+      {"item":"family_photos","wall":"left","repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"right","repeat":{"every":2.4,"max":2}},
+      {"item":"wall_textile","wall":"back","x":1.5,"repeat":{"every":3.0,"max":2}},
+      {"item":"earth_photo","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"coat_hooks","wall":"front","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"front","x":-0.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":2.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "cargo_elevator:1x1": [
       {"item":"console","wall":"left","y":0.1},
@@ -86,7 +125,19 @@
       {"item":"cargo_crate","wall":"back","y":0.1,"repeat":{"every":1.5,"max":6},"snug":true},
       {"item":"safety_sign","wall":"left"},
       {"item":"safety_sign","wall":"right"},
-      {"item":"notice_board","wall":"back","x":2.6}
+      {"item":"notice_board","wall":"back","x":2.6},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"back","x":-2.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "clinic:1x1": [
       {"item":"med_cabinet","wall":"left","y":0.1},
@@ -103,7 +154,16 @@
       {"item":"readout_panel","wall":"back","repeat":{"every":2.6,"max":4}},
       {"item":"wall_clock","wall":"right","x":0.5},
       {"item":"poster","wall":"front","x":-1.5},
-      {"item":"painting","wall":"right","x":-2.5}
+      {"item":"painting","wall":"right","x":-2.5},
+      {"item":"whiteboard","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"whiteboard","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"front","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"family_photos","wall":"back","x":-1.6,"repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"front","x":-1.6,"repeat":{"every":2.4,"max":2}},
+      {"item":"intercom","wall":"front","x":0.5,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":2.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "composter:2x1": [
       {"item":"tool_cart","wall":"front","x":3,"y":0.3},
@@ -114,7 +174,19 @@
       {"item":"compost_drum","wall":"center","y":-0.5,"repeat":{"every":3.2,"max":3}},
       {"item":"gauge_panel","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"safety_sign","wall":"right","repeat":{"every":2.4,"max":3}},
-      {"item":"chart_board","wall":"back","repeat":{"every":3.0,"max":4}}
+      {"item":"chart_board","wall":"back","repeat":{"every":3.0,"max":4}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "concrete_plant:2x1": [
       {"item":"mixer_drum","wall":"center","y":-0.4},
@@ -126,7 +198,19 @@
       {"item":"mold_forms","wall":"front","x":-3,"y":0.3,"repeat":{"every":3,"max":2}},
       {"item":"safety_sign","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"gauge_panel","wall":"right","repeat":{"every":2.4,"max":3}},
-      {"item":"chart_board","wall":"back","repeat":{"every":3.0,"max":4}}
+      {"item":"chart_board","wall":"back","repeat":{"every":3.0,"max":4}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "construction_office:2x1": [
       {"item":"tool_wall","wall":"left"},
@@ -140,7 +224,16 @@
       {"item":"chart_board","wall":"back","x":-5.0},
       {"item":"mars_map","wall":"left","x":-3.5},
       {"item":"notice_board","wall":"right"},
-      {"item":"wall_clock","wall":"front","x":-2.4}
+      {"item":"wall_clock","wall":"front","x":-2.4},
+      {"item":"whiteboard","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"whiteboard","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"front","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"family_photos","wall":"back","x":-1.6,"repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"front","x":-1.6,"repeat":{"every":2.4,"max":2}},
+      {"item":"intercom","wall":"front","x":0.5,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":2.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "construction_yard:2x2": [
       {"item":"tool_wall","wall":"left"},
@@ -154,7 +247,19 @@
       {"item":"girder_stack","wall":"front","y":2.5,"repeat":{"every":3.8,"max":6}},
       {"item":"safety_sign","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"chart_board","wall":"right","repeat":{"every":2.4,"max":3}},
-      {"item":"notice_board","wall":"back","repeat":{"every":3.0,"max":4}}
+      {"item":"notice_board","wall":"back","repeat":{"every":3.0,"max":4}},
+      {"item":"tool_board","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"tool_board","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"tool_board","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"whiteboard","wall":"front","x":-1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"left","repeat":{"every":3.0,"max":2}},
+      {"item":"air_vent","wall":"right","repeat":{"every":3.0,"max":2}}
     ],
     "construction_yard:4x1": [
       {"item":"tool_wall","wall":"left"},
@@ -167,7 +272,19 @@
       {"item":"cart","wall":"front","x":-2.5,"y":0.3},
       {"item":"safety_sign","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"chart_board","wall":"right","repeat":{"every":2.4,"max":3}},
-      {"item":"notice_board","wall":"back","repeat":{"every":3.0,"max":4}}
+      {"item":"notice_board","wall":"back","repeat":{"every":3.0,"max":4}},
+      {"item":"tool_board","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"tool_board","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"tool_board","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"whiteboard","wall":"front","x":-1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"left","repeat":{"every":3.0,"max":2}},
+      {"item":"air_vent","wall":"right","repeat":{"every":3.0,"max":2}}
     ],
     "crypt:2x1": [
       {"item":"niche_wall","wall":"back","repeat":{"every":3.2,"max":7}},
@@ -183,7 +300,12 @@
       {"item":"plaque","wall":"right","repeat":{"every":1.4,"max":5}},
       {"item":"wall_lamp","wall":"front","x":-2.5},
       {"item":"wall_lamp","wall":"front","x":2.5},
-      {"item":"painting","wall":"back","x":-4.0}
+      {"item":"painting","wall":"back","x":-4.0},
+      {"item":"wall_textile","wall":"back","x":1.1,"repeat":{"every":2.2,"max":3}},
+      {"item":"wall_textile","wall":"front","x":1.1,"repeat":{"every":2.2,"max":3}},
+      {"item":"wall_lamp","wall":"left","x":0.7,"repeat":{"every":1.4,"max":5}},
+      {"item":"wall_lamp","wall":"right","x":0.7,"repeat":{"every":1.4,"max":5}},
+      {"item":"air_vent","wall":"front","repeat":{"every":3.0,"max":1}}
     ],
     "deep_well_pump:2x1": [
       {"item":"well_head","wall":"center","y":0.6},
@@ -195,7 +317,18 @@
       {"item":"pipe_run","wall":"back","y":0.1,"repeat":{"every":3.4,"max":6}},
       {"item":"gauge_panel","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"readout_panel","wall":"right","repeat":{"every":2.4,"max":3}},
-      {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}}
+      {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "depot:2x2": [
       {"item":"console","wall":"right","y":0.1},
@@ -209,7 +342,19 @@
       {"item":"pallet_rack","wall":"front","y":2.5,"repeat":{"every":2.82,"max":10},"snug":true},
       {"item":"safety_sign","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"notice_board","wall":"right","repeat":{"every":2.4,"max":3}},
-      {"item":"readout_panel","wall":"back","repeat":{"every":3.0,"max":4}}
+      {"item":"readout_panel","wall":"back","repeat":{"every":3.0,"max":4}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"back","x":-2.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "depot:4x1": [
       {"item":"console","wall":"right","y":0.1},
@@ -221,7 +366,19 @@
       {"item":"pallet_rack","wall":"center","y":0.5,"repeat":{"every":2.82,"max":12},"snug":true},
       {"item":"safety_sign","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"notice_board","wall":"right","repeat":{"every":2.4,"max":3}},
-      {"item":"readout_panel","wall":"back","repeat":{"every":3.0,"max":4}}
+      {"item":"readout_panel","wall":"back","repeat":{"every":3.0,"max":4}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"back","x":-2.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "elder_care:2x1": [
       {"item":"med_cabinet","wall":"left","y":0.1},
@@ -241,7 +398,16 @@
       {"item":"wall_lamp","wall":"back","x":0.9,"repeat":{"every":3.0,"max":6}},
       {"item":"wall_clock","wall":"left","x":-0.5},
       {"item":"painting_wide","wall":"front","x":-4.5},
-      {"item":"wall_planter","wall":"right","x":0.8}
+      {"item":"wall_planter","wall":"right","x":0.8},
+      {"item":"family_photos","wall":"left","repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"right","repeat":{"every":2.4,"max":2}},
+      {"item":"wall_textile","wall":"back","x":1.5,"repeat":{"every":3.0,"max":2}},
+      {"item":"earth_photo","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"coat_hooks","wall":"front","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"front","x":-0.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":2.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "electronics_fab:2x1": [
       {"item":"console","wall":"front","x":3.5,"y":0.3},
@@ -256,7 +422,19 @@
       {"item":"readout_panel","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"chart_board","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}},
-      {"item":"wall_clock","wall":"front","x":-3.0}
+      {"item":"wall_clock","wall":"front","x":-3.0},
+      {"item":"tool_board","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"tool_board","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"tool_board","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"whiteboard","wall":"front","x":-1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"left","repeat":{"every":3.0,"max":2}},
+      {"item":"air_vent","wall":"right","repeat":{"every":3.0,"max":2}}
     ],
     "elevator:1x1": [
       {"item":"elevator_shaft","wall":"center","y":1.5},
@@ -265,7 +443,15 @@
       {"item":"plant_pot","wall":"right","y":0.3},
       {"item":"poster","wall":"left"},
       {"item":"wall_lamp","wall":"right","x":-1.0},
-      {"item":"safety_sign","wall":"front","x":-1.5}
+      {"item":"safety_sign","wall":"front","x":-1.5},
+      {"item":"earth_photo","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":-1.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"right","x":-1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","repeat":{"every":3.0,"max":3}}
     ],
     "elevator:1x1:bottom": [
       {"item":"elevator_car","wall":"center","y":1.5},
@@ -274,7 +460,15 @@
       {"item":"plant_pot","wall":"right","y":0.3},
       {"item":"poster","wall":"left"},
       {"item":"wall_lamp","wall":"right","x":-1.0},
-      {"item":"safety_sign","wall":"front","x":-1.5}
+      {"item":"safety_sign","wall":"front","x":-1.5},
+      {"item":"earth_photo","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":-1.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"right","x":-1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","repeat":{"every":3.0,"max":3}}
     ],
     "entrance:1x1": [
       {"item":"decon_arch","wall":"center","y":-0.2},
@@ -286,7 +480,14 @@
       {"item":"mars_map","wall":"left","x":-3.5},
       {"item":"safety_sign","wall":"left","x":-1.0},
       {"item":"notice_board","wall":"right","x":1.0},
-      {"item":"wall_clock","wall":"back","x":2.6}
+      {"item":"wall_clock","wall":"back","x":2.6},
+      {"item":"coat_hooks","wall":"left","x":1.8,"repeat":{"every":1.4,"max":3}},
+      {"item":"coat_hooks","wall":"right","x":1.8,"repeat":{"every":1.4,"max":3}},
+      {"item":"earth_photo","wall":"back","x":-1.2,"repeat":{"every":2.4,"max":2}},
+      {"item":"fire_extinguisher","wall":"front","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"front","x":-1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","repeat":{"every":3.0,"max":2}}
     ],
     "family_apartment:2x1": [
       {"item":"double_bed","wall":"back","x":-6.0,"y":0.1,"turn":-90},
@@ -323,7 +524,16 @@
       {"item":"wall_clock","wall":"right","x":2.8},
       {"item":"painting","wall":"back","x":-3.5},
       {"item":"wall_planter","wall":"front","x":3.6},
-      {"item":"wall_shelf","wall":"left","x":-2.6}
+      {"item":"wall_shelf","wall":"left","x":-2.6},
+      {"item":"family_photos","wall":"left","repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"right","repeat":{"every":2.4,"max":2}},
+      {"item":"wall_textile","wall":"back","x":1.5,"repeat":{"every":3.0,"max":2}},
+      {"item":"earth_photo","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"coat_hooks","wall":"front","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"front","x":-0.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":2.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "farm:2x2": [
       {"item":"big_tank","wall":"left","y":0.3},
@@ -338,7 +548,15 @@
       {"item":"gauge_panel","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"chart_board","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"wall_planter","wall":"back","repeat":{"every":3.0,"max":4}},
-      {"item":"readout_panel","wall":"front","x":-3.0}
+      {"item":"readout_panel","wall":"front","x":-3.0},
+      {"item":"grow_light","wall":"back","repeat":{"every":1.8,"max":8}},
+      {"item":"grow_light","wall":"left","repeat":{"every":1.8,"max":8}},
+      {"item":"grow_light","wall":"right","repeat":{"every":1.8,"max":8}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"tool_board","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":-0.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "farm:4x1": [
       {"item":"big_tank","wall":"left","y":0.3},
@@ -351,7 +569,15 @@
       {"item":"gauge_panel","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"chart_board","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"wall_planter","wall":"back","repeat":{"every":3.0,"max":4}},
-      {"item":"readout_panel","wall":"front","x":-3.0}
+      {"item":"readout_panel","wall":"front","x":-3.0},
+      {"item":"grow_light","wall":"back","repeat":{"every":1.8,"max":8}},
+      {"item":"grow_light","wall":"left","repeat":{"every":1.8,"max":8}},
+      {"item":"grow_light","wall":"right","repeat":{"every":1.8,"max":8}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"tool_board","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":-0.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "flat:1x1": [
       {"item":"double_bed","wall":"back","x":-2.6,"y":0.1,"turn":-90},
@@ -385,7 +611,16 @@
       {"item":"wall_mirror","wall":"left","x":2.1},
       {"item":"wall_clock","wall":"right","x":2.4},
       {"item":"wall_planter","wall":"front","x":2.2},
-      {"item":"wall_shelf","wall":"left","x":-2.5}
+      {"item":"wall_shelf","wall":"left","x":-2.5},
+      {"item":"family_photos","wall":"left","repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"right","repeat":{"every":2.4,"max":2}},
+      {"item":"wall_textile","wall":"back","x":1.5,"repeat":{"every":3.0,"max":2}},
+      {"item":"earth_photo","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"coat_hooks","wall":"front","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"front","x":-0.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":2.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "galley:1x1": [
       {"item":"stove_counter","wall":"back","x":-1.1,"y":0.1},
@@ -399,7 +634,14 @@
       {"item":"notice_board","wall":"left","x":0.3},
       {"item":"wall_clock","wall":"right","x":0.5},
       {"item":"wall_shelf","wall":"back","x":-4.0},
-      {"item":"safety_sign","wall":"back","x":2.6}
+      {"item":"safety_sign","wall":"back","x":2.6},
+      {"item":"utensil_rack","wall":"back","x":0.9,"repeat":{"every":1.8,"max":3}},
+      {"item":"utensil_rack","wall":"left","x":0.9,"repeat":{"every":1.8,"max":3}},
+      {"item":"menu_board","wall":"right","repeat":{"every":2.6,"max":1}},
+      {"item":"menu_board","wall":"front","repeat":{"every":2.6,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","repeat":{"every":2.6,"max":3}}
     ],
     "life_support:2x2": [
       {"item":"big_fan","wall":"left","y":0.1},
@@ -414,7 +656,19 @@
       {"item":"scrubber_unit","wall":"center","y":-2.0,"repeat":{"every":3.2,"max":6}},
       {"item":"gauge_panel","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"readout_panel","wall":"right","repeat":{"every":2.4,"max":3}},
-      {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}}
+      {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "life_support:4x1": [
       {"item":"big_fan","wall":"left","y":0.1},
@@ -428,7 +682,19 @@
       {"item":"pipe_run","wall":"front","x":4,"y":0.3,"repeat":{"every":3.6,"max":3}},
       {"item":"gauge_panel","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"readout_panel","wall":"right","repeat":{"every":2.4,"max":3}},
-      {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}}
+      {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "machine_shop:2x1": [
       {"item":"tool_wall","wall":"left"},
@@ -442,7 +708,19 @@
       {"item":"safety_sign","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"chart_board","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"wall_shelf","wall":"back","repeat":{"every":3.0,"max":4}},
-      {"item":"wall_clock","wall":"front","x":-3.0}
+      {"item":"wall_clock","wall":"front","x":-3.0},
+      {"item":"tool_board","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"tool_board","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"tool_board","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"whiteboard","wall":"front","x":-1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"left","repeat":{"every":3.0,"max":2}},
+      {"item":"air_vent","wall":"right","repeat":{"every":3.0,"max":2}}
     ],
     "residence:2x1": [
       {"item":"double_bed","wall":"back","x":-6.0,"y":0.1,"turn":-90},
@@ -485,7 +763,15 @@
       {"item":"wall_clock","wall":"right","x":0.3},
       {"item":"painting_wide","wall":"front","x":-3.2},
       {"item":"wall_planter","wall":"front","x":4.2},
-      {"item":"wall_shelf","wall":"left","x":2.5}
+      {"item":"wall_shelf","wall":"left","x":2.5},
+      {"item":"family_photos","wall":"left","repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"right","repeat":{"every":2.4,"max":2}},
+      {"item":"wall_textile","wall":"back","x":1.5,"repeat":{"every":3.0,"max":2}},
+      {"item":"earth_photo","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"coat_hooks","wall":"front","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"front","x":-0.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "restroom:1x1": [
       {"item":"toilet_stall","wall":"back","y":0.05,"repeat":{"every":1.15,"max":6},"snug":true},
@@ -496,7 +782,13 @@
       {"item":"trash_bin","wall":"front","x":2.5,"y":0.2},
       {"item":"wall_mirror","wall":"back","repeat":{"every":1.4,"max":4}},
       {"item":"poster","wall":"left"},
-      {"item":"wall_lamp","wall":"right"}
+      {"item":"wall_lamp","wall":"right"},
+      {"item":"air_vent","wall":"back","repeat":{"every":2.6,"max":2}},
+      {"item":"air_vent","wall":"left","repeat":{"every":2.6,"max":2}},
+      {"item":"air_vent","wall":"right","repeat":{"every":2.6,"max":2}},
+      {"item":"first_aid_kit","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"wall_lamp","wall":"back","x":0.7,"repeat":{"every":1.4,"max":4}}
     ],
     "school:2x1": [
       {"item":"chalkboard","wall":"back"},
@@ -513,7 +805,16 @@
       {"item":"notice_board","wall":"right","x":0.3},
       {"item":"poster","wall":"back","repeat":{"every":2.4,"max":6}},
       {"item":"wall_clock","wall":"front","x":-2.2},
-      {"item":"painting","wall":"front","x":2.6}
+      {"item":"painting","wall":"front","x":2.6},
+      {"item":"whiteboard","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"whiteboard","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"front","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"family_photos","wall":"back","x":-1.6,"repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"front","x":-1.6,"repeat":{"every":2.4,"max":2}},
+      {"item":"intercom","wall":"front","x":0.5,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":2.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "silicon_refinery:2x2": [
       {"item":"clean_hood","wall":"left","y":0.1},
@@ -527,7 +828,19 @@
       {"item":"readout_panel","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"gauge_panel","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}},
-      {"item":"chart_board","wall":"front","x":-3.0}
+      {"item":"chart_board","wall":"front","x":-3.0},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "silicon_refinery:4x1": [
       {"item":"clean_hood","wall":"left","y":0.1},
@@ -540,7 +853,19 @@
       {"item":"readout_panel","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"gauge_panel","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}},
-      {"item":"chart_board","wall":"front","x":-3.0}
+      {"item":"chart_board","wall":"front","x":-3.0},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "site_office:1x1": [
       {"item":"desk","wall":"back","x":-1.2,"y":0.1},
@@ -553,7 +878,16 @@
       {"item":"office_chair","wall":"back","x":1.6,"y":1.0,"turn":180,"snug":true},
       {"item":"chart_board","wall":"back","x":-4.0},
       {"item":"notice_board","wall":"left","x":-4.0},
-      {"item":"wall_clock","wall":"right"}
+      {"item":"wall_clock","wall":"right"},
+      {"item":"whiteboard","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"whiteboard","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"front","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"family_photos","wall":"back","x":-1.6,"repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"front","x":-1.6,"repeat":{"every":2.4,"max":2}},
+      {"item":"intercom","wall":"front","x":0.5,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":2.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "small_plaza:2x1": [
       {"item":"fountain","wall":"center"},
@@ -569,7 +903,15 @@
       {"item":"banner","wall":"back","repeat":{"every":3.2,"max":5}},
       {"item":"wall_planter","wall":"back","x":1.6,"repeat":{"every":3.2,"max":4}},
       {"item":"mars_map","wall":"left"},
-      {"item":"wall_lamp","wall":"right"}
+      {"item":"wall_lamp","wall":"right"},
+      {"item":"earth_photo","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":-1.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"right","x":-1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","repeat":{"every":3.0,"max":3}}
     ],
     "smelter:2x2": [
       {"item":"console","wall":"right","y":0.1},
@@ -584,7 +926,19 @@
       {"item":"readout_panel","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}},
       {"item":"gauge_panel","wall":"front","x":-3.0},
-      {"item":"chart_board","wall":"front","x":3.0}
+      {"item":"chart_board","wall":"front","x":3.0},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "smelter:4x1": [
       {"item":"console","wall":"right","y":0.1},
@@ -598,7 +952,19 @@
       {"item":"readout_panel","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}},
       {"item":"gauge_panel","wall":"front","x":-3.0},
-      {"item":"chart_board","wall":"front","x":3.0}
+      {"item":"chart_board","wall":"front","x":3.0},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "staging_bay:2x2": [
       {"item":"kit_container","wall":"center","y":1},
@@ -613,7 +979,19 @@
       {"item":"safety_sign","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"notice_board","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"readout_panel","wall":"back","repeat":{"every":3.0,"max":4}},
-      {"item":"mars_map","wall":"front","x":-3.0}
+      {"item":"mars_map","wall":"front","x":-3.0},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"back","x":-2.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "staging_bay:4x1": [
       {"item":"kit_container","wall":"center"},
@@ -627,7 +1005,19 @@
       {"item":"safety_sign","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"notice_board","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"readout_panel","wall":"back","repeat":{"every":3.0,"max":4}},
-      {"item":"mars_map","wall":"front","x":-3.0}
+      {"item":"mars_map","wall":"front","x":-3.0},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"back","x":-2.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "stairwell:1x1": [
       {"item":"stair_flight","wall":"center","x":-1.85,"mirror":"even"},
@@ -636,7 +1026,15 @@
       {"item":"plant_pot","wall":"right","x":0.6,"y":0.3},
       {"item":"poster","wall":"left"},
       {"item":"wall_lamp","wall":"right","x":-1.0},
-      {"item":"safety_sign","wall":"front","x":-1.5}
+      {"item":"safety_sign","wall":"front","x":-1.5},
+      {"item":"earth_photo","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":-1.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"right","x":-1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","repeat":{"every":3.0,"max":3}}
     ],
     "stairwell:1x1:bottom": [
       {"item":"stair_flight","wall":"center","x":-1.85,"mirror":"even"},
@@ -644,7 +1042,15 @@
       {"item":"plant_pot","wall":"right","x":0.6,"y":0.3},
       {"item":"poster","wall":"left"},
       {"item":"wall_lamp","wall":"right","x":-1.0},
-      {"item":"safety_sign","wall":"front","x":-1.5}
+      {"item":"safety_sign","wall":"front","x":-1.5},
+      {"item":"earth_photo","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":-1.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"right","x":-1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","repeat":{"every":3.0,"max":3}}
     ],
     "stairwell:1x1:top": [
       {"item":"stair_landing","wall":"center","x":-1.85,"snug":true,"mirror":"odd"},
@@ -652,7 +1058,15 @@
       {"item":"plant_pot","wall":"right","x":0.6,"y":0.3},
       {"item":"poster","wall":"left"},
       {"item":"wall_lamp","wall":"right","x":-1.0},
-      {"item":"safety_sign","wall":"front","x":-1.5}
+      {"item":"safety_sign","wall":"front","x":-1.5},
+      {"item":"earth_photo","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":-1.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"right","x":-1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","repeat":{"every":3.0,"max":3}}
     ],
     "storeroom:1x1": [
       {"item":"barrel_group","wall":"front","x":-2.5,"y":0.3},
@@ -661,7 +1075,19 @@
       {"item":"shelf_unit","wall":"center","y":0.6,"repeat":{"every":1.42,"max":6},"snug":true},
       {"item":"shelf_unit","wall":"center","y":-1.2,"turn":180,"repeat":{"every":1.42,"max":6},"snug":true},
       {"item":"safety_sign","wall":"left"},
-      {"item":"notice_board","wall":"right"}
+      {"item":"notice_board","wall":"right"},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"back","x":-2.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "studio:1x1": [
       {"item":"kitchenette","wall":"left","x":-1.2,"y":0.05},
@@ -682,7 +1108,16 @@
       {"item":"wall_lamp","wall":"back","x":0.85,"repeat":{"every":2.4,"max":5}},
       {"item":"wall_mirror","wall":"right","x":0.2},
       {"item":"wall_shelf","wall":"left","x":0.8},
-      {"item":"poster","wall":"front","x":-1.4}
+      {"item":"poster","wall":"front","x":-1.4},
+      {"item":"family_photos","wall":"left","repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"right","repeat":{"every":2.4,"max":2}},
+      {"item":"wall_textile","wall":"back","x":1.5,"repeat":{"every":3.0,"max":2}},
+      {"item":"earth_photo","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"coat_hooks","wall":"front","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"front","x":-0.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":2.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "suite:1x1": [
       {"item":"double_bed","wall":"back","x":-2.4,"y":0.1,"turn":-90},
@@ -712,7 +1147,15 @@
       {"item":"painting","wall":"left","x":-4.0},
       {"item":"wall_clock","wall":"right","x":0.3},
       {"item":"wall_planter","wall":"front","x":-1.3},
-      {"item":"wall_shelf","wall":"left","x":3.0}
+      {"item":"wall_shelf","wall":"left","x":3.0},
+      {"item":"family_photos","wall":"left","repeat":{"every":2.4,"max":2}},
+      {"item":"family_photos","wall":"right","repeat":{"every":2.4,"max":2}},
+      {"item":"wall_textile","wall":"back","x":1.5,"repeat":{"every":3.0,"max":2}},
+      {"item":"earth_photo","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"coat_hooks","wall":"front","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"front","x":-0.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":2.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
     "tiny_plaza:1x1": [
       {"item":"planter_tree","wall":"center"},
@@ -727,7 +1170,15 @@
       {"item":"wall_planter","wall":"back","repeat":{"every":2.6,"max":4}},
       {"item":"wall_lamp","wall":"left"},
       {"item":"wall_lamp","wall":"right"},
-      {"item":"banner","wall":"back","x":-1.3,"repeat":{"every":2.6,"max":3}}
+      {"item":"banner","wall":"back","x":-1.3,"repeat":{"every":2.6,"max":3}},
+      {"item":"earth_photo","wall":"back","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"earth_photo","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"intercom","wall":"left","x":-1.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"right","x":-1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"back","repeat":{"every":3.0,"max":3}}
     ],
     "warehouse:2x1": [
       {"item":"pallet_jack","wall":"front","x":4,"y":0.3},
@@ -738,7 +1189,19 @@
       {"item":"pallet_rack","wall":"center","y":0.3,"repeat":{"every":2.82,"max":6},"snug":true},
       {"item":"safety_sign","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"notice_board","wall":"right","repeat":{"every":2.4,"max":3}},
-      {"item":"wall_lamp","wall":"back","repeat":{"every":3.0,"max":4}}
+      {"item":"wall_lamp","wall":"back","repeat":{"every":3.0,"max":4}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"back","x":-2.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"left","repeat":{"every":0.5,"max":1}},
+      {"item":"safety_sign","wall":"right","repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "water_recycler:2x2": [
       {"item":"console","wall":"left","y":0.1},
@@ -751,7 +1214,19 @@
       {"item":"gauge_panel","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"readout_panel","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}},
-      {"item":"chart_board","wall":"front","x":-3.0}
+      {"item":"chart_board","wall":"front","x":-3.0},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "water_recycler:4x1": [
       {"item":"console","wall":"left","y":0.1},
@@ -763,7 +1238,19 @@
       {"item":"gauge_panel","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"readout_panel","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"safety_sign","wall":"back","repeat":{"every":3.0,"max":4}},
-      {"item":"chart_board","wall":"front","x":-3.0}
+      {"item":"chart_board","wall":"front","x":-3.0},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
     "water_tank:1x1": [
       {"item":"valve_panel","wall":"left","y":0.1},
@@ -772,7 +1259,19 @@
       {"item":"big_tank","wall":"center","y":0.6,"repeat":{"every":3.6,"max":3}},
       {"item":"gauge_panel","wall":"left","x":-4.0},
       {"item":"safety_sign","wall":"right"},
-      {"item":"gauge_panel","wall":"back","x":2.8}
+      {"item":"gauge_panel","wall":"back","x":2.8},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"left","repeat":{"every":2.0,"max":8}},
+      {"item":"cable_tray","wall":"right","repeat":{"every":2.0,"max":8}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"left","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"work_light","wall":"right","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ]
   }
 }
