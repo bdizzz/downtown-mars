@@ -119,7 +119,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(digFront);
 
   // The camera and the see-through toggles: set from the View mode's buttons (setView3d).
-  const view = { mode: DEFAULT_VIEW3D.camera as Mode, xray: DEFAULT_VIEW3D.xray, wallsDown: DEFAULT_VIEW3D.wallsDown };
+  const view = { mode: DEFAULT_VIEW3D.camera as Mode, xray: DEFAULT_VIEW3D.xray, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors };
   // The surface: see-through in x-ray, so rooms under it show from above.
   const groundMat = withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 }));
   function applyGroundXray(): void {
@@ -1098,6 +1098,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       applyGroundXray();
       if (latest) stage.update(latest);
     }
+    if (v.roomColors !== view.roomColors) {
+      view.roomColors = v.roomColors;
+      layoutKey = ""; // rebuild with the rooms' new materials on the next update
+      if (latest) stage.update(latest);
+    }
     if (v.wallsDown !== view.wallsDown) {
       view.wallsDown = v.wallsDown;
       setWallsDown(view.wallsDown);
@@ -1211,7 +1216,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             return performance.now() - t0;
           },
           setMode(m: Mode) {
-            setView3d({ camera: m, xray: view.xray, wallsDown: view.wallsDown });
+            setView3d({ camera: m, xray: view.xray, wallsDown: view.wallsDown, roomColors: view.roomColors });
           },
           // First person's position and heading, to put a walker somewhere.
           walker,
@@ -1266,13 +1271,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         placeWalker();
         applyCamera();
       }
-      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}:${cut()}`;
+      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}:${cut()}:${view.roomColors}`;
       if (lk !== layoutKey) {
         layoutKey = lk;
         scene.remove(layoutGroup);
         disposeLayout(layoutGroup);
         const t0 = performance.now();
-        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray, cut());
+        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray, cut(), view.roomColors);
         stats.buildMs = performance.now() - t0;
         scene.add(layoutGroup);
         dirty = true;

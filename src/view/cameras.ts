@@ -19,9 +19,11 @@ export interface View3d {
   xray: boolean;
   /** Walls between the camera and the rooms behind them lowered to a stub, as in The Sims. */
   wallsDown: boolean;
+  /** Rooms in their category's colour (on), or in the material they're built from: rock, marscrete, brick, metal (off). */
+  roomColors: boolean;
 }
 
-export const DEFAULT_VIEW3D: View3d = { camera: "iso", xray: false, wallsDown: false };
+export const DEFAULT_VIEW3D: View3d = { camera: "iso", xray: false, wallsDown: false, roomColors: true };
 
 export function isCamera(id: unknown): id is Camera {
   return CAMERAS.some((c) => c.id === id);

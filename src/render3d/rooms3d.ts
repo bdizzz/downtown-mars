@@ -10,7 +10,8 @@ import { FIT, frameOf, furnish, type Fitted } from "../view/furnish";
 import { isMounted } from "../view/furniture";
 import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
-import { withRock } from "./surfaces";
+import { finishMaterial, withRock } from "./surfaces";
+import { roomFinish, type Finish } from "../view/roomFinish";
 import { disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow, type HangTag } from "./furniture3d";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
@@ -784,6 +785,11 @@ export function disposeRoomMaterials(): void {
   disposeFurnitureMaterials();
 }
 
+/** A room's walls and floor in the material it's built from, with walls down. */
+function finishWallMaterial(finish: Finish): THREE.Material {
+  return wallMaterial(`finish:${finish}`, () => finishMaterial(finish));
+}
+
 function roomMaterial(color: number, planned: boolean, faint = false, building = false): THREE.Material {
   // Under construction: the room's colour through semi-opaque diagonal stripes.
   if (building && !faint) {
@@ -948,7 +954,7 @@ function surfaceProp(room: RoomInstance, layout: Layout, color: number): THREE.O
  * cells get a rock cap, so from above it reads as a plan and its empty cells
  * can be picked.
  */
-export function buildLayout(layout: Layout, digFloor: number | null, colors: RoomColors, xray = false, topFloor: number | null = null): THREE.Group {
+export function buildLayout(layout: Layout, digFloor: number | null, colors: RoomColors, xray = false, topFloor: number | null = null, roomColors = true): THREE.Group {
   const group = new THREE.Group();
   const hole = layout.hole;
   const n1 = hole.ringSlots[0]!;
@@ -1031,7 +1037,9 @@ export function buildLayout(layout: Layout, digFloor: number | null, colors: Roo
     const shape = roomShape(layout, room);
     used.add(shape.key);
     const faint = xray && room.cells.some((c) => c.ring === 1);
-    const mesh = new THREE.Mesh(shape.geo, roomMaterial(color, room.planned, faint, !!room.building));
+    // Built rooms show their category's colour, or (room colours off) what they're built from.
+    const shown = !roomColors && !room.planned && !room.building && !faint;
+    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(roomFinish(room.type)) : roomMaterial(color, room.planned, faint, !!room.building));
     mesh.userData = { pickable: true, roomId: room.id, faint, cached: true };
     group.add(mesh);
     const edges = new THREE.LineSegments(shape.edges, room.connected ? edgeLine : strandedLine);
