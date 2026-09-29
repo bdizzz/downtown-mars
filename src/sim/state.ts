@@ -7,6 +7,7 @@ import { createLedger, type Ledger } from "./ledger";
 import { createNotables, type Notable } from "./notables";
 import { createOffice, type Office } from "./visits";
 import type { Message } from "./messages";
+import type { WeatherState } from "./weather";
 import type { Population, RoomStatus } from "./economy";
 import { createHole } from "./geometry";
 import { createLayout, placeRoom, type Layout } from "./placement";
@@ -51,6 +52,8 @@ export interface SimState {
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
   earth: EarthState;
+  /** Dust storms forecast or blowing (absent in older saves until the first tick). */
+  weather?: WeatherState;
   messages: Message[];
   /** Derived from the layout; recomputed only when layout.version changes. */
   effects: Effects;

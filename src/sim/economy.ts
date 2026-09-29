@@ -7,6 +7,7 @@ import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 import { countStage, needsWeight, type Cohort } from "./people";
 import { storageCaps } from "./storage";
+import { stormOutput } from "./weather";
 
 // The per-tick economy: staff the rooms, run them, feed the colonists, cap
 // storage. Every amount in the data is per game day, so each tick moves
@@ -207,6 +208,12 @@ function runRoom(
   if (spec.staff > 0 && state.happiness.productivity < 1) {
     rate *= state.happiness.productivity;
     if (state.happiness.productivity < NOTICEABLE) limit ??= "morale";
+  }
+  // A dust storm dims the solar arrays.
+  const storm = stormOutput(state, cfg, room.type);
+  if (storm < 1) {
+    rate *= storm;
+    limit ??= "storm";
   }
   if (mod.noisyRoomOutput < 1 && roomDef(room.type).effects.some((e) => e.type === "noise")) {
     rate *= mod.noisyRoomOutput;

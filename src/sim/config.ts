@@ -80,6 +80,15 @@ export interface SimConfig {
     /** Slots a room of each size nominally covers; deep rooms covering more scale up. */
     nominalSlots: Record<string, number>;
   };
+  weather: {
+    /**
+     * Dust storms: none before `earliestDay`; after that, each day a storm may
+     * be forecast, `warningDays` ahead, lasting `lastsDays` (both [least, most]).
+     * It builds and clears over `rampHours`. While it blows, the rooms in
+     * `affects` (solar) make only `output` of what they would.
+     */
+    dustStorm: { earliestDay: number; chancePerDay: number; warningDays: [number, number]; lastsDays: [number, number]; rampHours: number; affects: string[]; output: number };
+  };
   earth: {
     firstDropDay: number;
     intervalDays: number;

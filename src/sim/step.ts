@@ -1,6 +1,7 @@
 import type { SimConfig } from "./config";
 import { stepDigging } from "./digging";
 import { stepEarth } from "./earth";
+import { stepWeather } from "./weather";
 import { stepEconomy, updateRates } from "./economy";
 import { refreshEffects } from "./effects";
 import { stepHappiness } from "./happiness";
@@ -15,6 +16,7 @@ import type { SimState } from "./state";
 export function step(state: SimState, cfg: SimConfig): void {
   state.tick += 1;
   const before = { ...state.resources };
+  stepWeather(state, cfg);
   stepDigging(state, cfg);
   state.effects = refreshEffects(state.layout, state.effects);
   stepEconomy(state, cfg);

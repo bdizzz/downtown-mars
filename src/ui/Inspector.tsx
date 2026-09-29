@@ -27,6 +27,8 @@ function limitText(limit: string | undefined): string {
   if (limit === "kit") return "idle until you ask for a seed kit";
   // Unhappy colonists work slower (economy.ts).
   if (limit === "morale") return "slowed by low morale";
+  // A dust storm dims the solar arrays (weather.ts).
+  if (limit === "storm") return "dimmed by the dust storm";
   if (limit.startsWith("stocked:")) return `standing by: ${resName(limit.slice(8)).toLowerCase()} stocked`;
   if (limit.startsWith("full:")) return `idling: ${resName(limit.slice(5)).toLowerCase()} storage full`;
   return `short of ${nameOf(limit)}`;

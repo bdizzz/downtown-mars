@@ -89,6 +89,11 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
           )}
         </span>
       )}
+      {snapshot && (snapshot.weather.storm > 0 || snapshot.weather.dueInDays !== null) && (
+        <span className="drop warn" title="Dust storms cut what the solar arrays make">
+          {snapshot.weather.storm > 0 ? "🌪 Dust storm" : `🌪 Storm in ~${snapshot.weather.dueInDays!.toFixed(1)} days`}
+        </span>
+      )}
       {snapshot && (
         <span className={`drop${snapshot.earth.waiting ? " warn" : ""}`} title="Next Earth supply drop">
           {snapshot.earth.waiting ? "🚀 Drop waiting: pad needs staff and power" : `🚀 Drop in ${gameDuration(snapshot.earth.ticksToDrop)}`}

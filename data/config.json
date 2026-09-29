@@ -63,6 +63,17 @@
     "ledgerDays": 4,
     "nominalSlots": { "S": 1, "M": 2, "L": 4, "H": 8 }
   },
+  "weather": {
+    "dustStorm": {
+      "earliestDay": 6,
+      "chancePerDay": 0.05,
+      "warningDays": [2, 4],
+      "lastsDays": [1, 2],
+      "rampHours": 6,
+      "affects": ["solar_array"],
+      "output": 0.5
+    }
+  },
   "earth": {
     "firstDropDay": 3,
     "intervalDays": 4,
