@@ -456,4 +456,10 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .dock-popup-row { display: flex; flex-wrap: wrap; gap: 3px; }
 .dock-popup .room-btn { background: #2f1c16; }
 .dock-popup .room-btn:hover { background: #3a241d; }
-.dock-popup .room-card { border-top: none; border-radius: 4px; max-height: 240px; }
+/* A room's details, above its category's popup: out of the popup's layout, so showing them never shifts its buttons. */
+.dock-card {
+  position: absolute; bottom: calc(100% + 6px); left: 0; width: 320px; max-width: 80vw; z-index: 1;
+  border: 1px solid #000; border-radius: 6px; overflow: hidden; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+.dock-group.leftward .dock-card { left: auto; right: 0; }
+.dock-card .room-card { border-top: none; max-height: 260px; }

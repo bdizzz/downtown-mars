@@ -247,18 +247,27 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
         for (const c of waiting) roomsCtx.poly(cellSector(h, c)).fill({ color, alpha: 0.4 }).poly(cellSector(h, c)).fill(constructionStripes());
         outlineCells(roomsCtx, waiting, C.build, 2.5, !!def.public);
       }
+      // The room's icon and name, together at its centre, kept upright as the plan turns.
       const centre = roomCentre(h, cells);
       const ink = room.planned ? color : shade(color, 0.55);
-      drawGlyph(roomsCtx, room.type, centre.x, centre.y + 5, Math.min(26, centre.size * 0.55), ink);
+      const marker = new Container();
+      marker.position.set(centre.x, centre.y);
+      const icon = new Graphics();
+      drawGlyph(icon.context, room.type, 0, 5, Math.min(26, centre.size * 0.55), ink);
+      marker.addChild(icon);
       if (def.short) {
         const text = new Text({
           text: room.connected ? def.short : `${def.short} ⚠`,
           style: { fill: room.planned ? color : C.roomText, fontSize: LABEL_PX, fontWeight: "600" },
         });
         text.anchor.set(0.5, 1);
-        text.position.set(centre.x, centre.y - Math.min(10, centre.size * 0.25));
-        labels.addChild(text);
+        text.position.set(0, -Math.min(10, centre.size * 0.25));
+        text.label = "name";
+        text.scale.set(nameScale());
+        marker.addChild(text);
       }
+      marker.rotation = -cam.rot;
+      labels.addChild(marker);
     }
     drawCorridors(l);
   }
@@ -478,6 +487,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       const t = new Text({ text: `${job.phase === "excavating" ? "⛏ " : ""}${Math.floor(job.progress * 100)}%`, style: { fill: 0xffffff, fontSize: 14, fontWeight: "800", stroke: { color: 0x1a0f0d, width: 4 } } });
       t.anchor.set(0.5);
       t.position.set(centre.x, centre.y + 12);
+      t.rotation = -cam.rot;
       progressLabels.addChild(t);
     }
   }
@@ -500,6 +510,11 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     cam.y = 0;
   }
 
+  /** Room names stay readable when zoomed out: never smaller than MIN_LABEL_PX on screen. */
+  function nameScale(): number {
+    return Math.max(1, MIN_LABEL_PX / (LABEL_PX * cam.zoom));
+  }
+
   function applyCamera(): void {
     cam.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom));
     world.scale.set(cam.zoom);
@@ -507,10 +522,9 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     world.x = app.screen.width / 2;
     world.y = app.screen.height / 2;
     // Names stay upright however the layout is turned.
-    const labelScale = Math.max(1, MIN_LABEL_PX / (LABEL_PX * cam.zoom));
-    for (const label of labels.children) {
-      label.scale.set(labelScale);
-      label.rotation = -cam.rot;
+    for (const marker of labels.children) {
+      marker.rotation = -cam.rot;
+      marker.getChildByLabel("name")?.scale.set(nameScale());
     }
     for (const label of progressLabels.children) label.rotation = -cam.rot;
     refreshHover();

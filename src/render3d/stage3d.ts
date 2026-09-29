@@ -14,13 +14,14 @@ import { Look } from "./look";
 import { DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { withRegolith, withRock } from "./surfaces";
 import { RoomEffects } from "./effects3d";
+import { createSky } from "./sky3d";
 import { buildTerrain, siteSeed, type Terrain } from "./terrain3d";
 import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, withWallsDown } from "./rooms3d";
 import { Dust, galleryLamps, makeLander, placeLander, setLampGlow, Walkers } from "./scenery3d";
-import { stairsHere, step as walkStep } from "../view/walk";
+import { clear as walkClear, stairsHere, step as walkStep } from "../view/walk";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Four
 // cameras: standing in the shaft looking at the wall, the way someone on the
@@ -52,10 +53,10 @@ const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25 };
 const TOP = { min: 20, max: 300, start: 80, margin: 1.1 };
 /** Iso: distance to the floor's centre (a multiple of the floor's radius to start), and how steeply it looks down. */
 const ISO = { start: 1.6, min: 12, max: 400, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
-/** First person: eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
-const WALK = { eye: 1.8, speed: 3, run: 7, turn: 0.004, lookTurn: 0.0025, keyTurn: 1.8 };
-/** Free look: pitch stops just short of straight up or down; zoom narrows the field of view. */
-const FREE = { maxPitch: Math.PI / 2 - 0.02, minFov: 20, maxFov: 90, turn: 0.004 };
+/** First person: how finely and how far to look for room to stand on another floor (m), eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
+const WALK = { searchStep: 0.5, searchReach: 40, eye: 1.8, speed: 3, run: 7, turn: 0.004, lookTurn: 0.0025, keyTurn: 1.8 };
+/** Looking up and down (first person) stops just short of straight up or down. */
+const MAX_PITCH = Math.PI / 2 - 0.02;
 /** How much of the surface still shows in x-ray: enough to keep your bearings. */
 const XRAY_GROUND_OPACITY = 0.2;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
@@ -86,6 +87,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const scene = new THREE.Scene();
   // Far enough to see the horizon's ridges, wherever the camera stands.
   const camera = new THREE.PerspectiveCamera(FOV, host.clientWidth / Math.max(1, host.clientHeight), 0.1, FAR);
+  // The sky: a gradient by day, stars by night.
+  const skyDome = createSky();
+  scene.add(skyDome.mesh);
   // What's drawn over the scene (occlusion, haze, glow, grading), per the graphics settings.
   const look = new Look(renderer, scene, camera);
 
@@ -227,7 +231,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let pickedFloor: number | null = null;
   /** Show only this floor and those below it, i.e. deeper (null: every floor). Iso always looks at one floor. */
   // The floor picked (everything above it hidden), or null for all of them, surface and all.
-  const cut = (): number | null => pickedFloor;
+  // Walking, nothing is lifted away: the picked floor is the one you're on.
+  const cut = (): number | null => (view.mode === "walk" ? null : pickedFloor);
   // The land round the hole: the ground, boulders, craters and the horizon, for this site.
   let terrain: Terrain | null = null;
   let terrainKey = "";
@@ -247,10 +252,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     dist: 14,
     out: CUTAWAY.start,
     height: TOP.start,
-    /** Free look: where the camera on the axis is pointing, and its field of view. */
-    yaw: Math.PI / 2,
-    pitch: 0,
-    fov: FOV,
     /** Iso: distance from the floor's centre (0 until first used) and elevation in radians. */
     iso: 0,
     isoElev: ISO.elev,
@@ -282,12 +283,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     cam.dist = Math.min(maxDist(), Math.max(MIN_DIST, cam.dist));
     cam.out = Math.min(CUTAWAY.max, Math.max(CUTAWAY.min, cam.out));
     cam.height = Math.min(TOP.max, Math.max(TOP.min, cam.height));
-    cam.pitch = Math.min(FREE.maxPitch, Math.max(-FREE.maxPitch, cam.pitch));
-    cam.fov = Math.min(FREE.maxFov, Math.max(FREE.minFov, cam.fov));
     // Iso's distance stays 0 ("not set yet") until the mode is first used and sizes it to the floor.
     if (cam.iso) cam.iso = Math.min(ISO.max, Math.max(ISO.min, cam.iso));
     cam.isoElev = Math.min(ISO.maxElev, Math.max(ISO.minElev, cam.isoElev));
-    walker.pitch = Math.min(FREE.maxPitch, Math.max(-FREE.maxPitch, walker.pitch));
+    walker.pitch = Math.min(MAX_PITCH, Math.max(-MAX_PITCH, walker.pitch));
     const bottom = -depth() + EYE_HEIGHT;
     cam.y = Math.min(FLOOR_H * 3, Math.max(bottom, cam.y));
   }
@@ -304,6 +303,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let topFitted = true;
   /** Build mode is open: bare rock lights up under the pointer, as somewhere to build. */
   let building = false;
+  // Cutaway: the same, framing the unlocked rings across the section.
+  let cutawayFitted = true;
+  function fitCutaway(): void {
+    if (!hole) return;
+    const r = ringRadii(hole, Math.max(1, Math.min(hole.ringSlots.length, hole.unlockedRings)))[1];
+    const tan = Math.tan((FOV * Math.PI) / 360) * camera.aspect;
+    cam.out = Math.min(CUTAWAY.max, Math.max(CUTAWAY.min, (r * TOP.margin) / tan));
+  }
   function fitTop(): void {
     if (!hole) return;
     const r = ringRadii(hole, Math.max(1, Math.min(hole.ringSlots.length, hole.unlockedRings)))[1];
@@ -321,11 +328,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const target = out.clone().multiplyScalar(R).setY(cam.y - 0.3 - Math.max(0, cam.y) * 2);
       camera.position.copy(target).addScaledVector(out, -cam.dist).setY(cam.y);
       camera.lookAt(target);
-    } else if (view.mode === "free") {
-      // On the shaft's axis, looking wherever the player has turned.
-      camera.position.set(0, cam.y, 0);
-      const cp = Math.cos(cam.pitch);
-      camera.lookAt(Math.cos(cam.yaw) * cp, cam.y + Math.sin(cam.pitch), Math.sin(cam.yaw) * cp);
+
     } else if (view.mode === "cutaway") {
       camera.position.copy(out).multiplyScalar(cam.out).setY(cam.y + cam.out * CUTAWAY.lift);
       camera.lookAt(0, cam.y, 0);
@@ -353,12 +356,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     renderer.clippingPlanes = view.mode === "cutaway" ? [clip] : [];
     // Far-off cameras need a farther near plane, or the depth buffer can't tell
     // the ground from the roofs just under it.
-    const inside = view.mode === "shaft" || view.mode === "free" || view.mode === "walk";
+    const inside = view.mode === "shaft" || view.mode === "walk";
     const near = inside ? 0.1 : Math.max(0.5, (view.mode === "top" ? cam.height : view.mode === "iso" ? cam.iso : cam.out) / 100);
-    const fov = view.mode === "free" ? cam.fov : FOV;
-    if (camera.near !== near || camera.fov !== fov) {
+    if (camera.near !== near) {
       camera.near = near;
-      camera.fov = fov;
       camera.updateProjectionMatrix();
     }
     lamp.visible = inside;
@@ -446,8 +447,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function updateSky(s: Snapshot): void {
     const f = s.time.dayFraction;
     const light = f > 0.25 && f < 0.75 ? Math.sin((Math.PI * (f - 0.25)) / 0.5) : 0;
-    const sky = new THREE.Color(C.nightSky).lerp(new THREE.Color(C.daySky), light);
-    scene.background = sky;
+    // Behind the sky dome, in case anything peeks past it.
+    scene.background = new THREE.Color(C.nightSky).lerp(new THREE.Color(C.daySky), light);
     // Deep in the shaft, daylight matters less than the lamps; keep it gentle.
     hemi.intensity = 0.45 + 0.35 * light;
     sun.intensity = 0.15 + 0.9 * light;
@@ -457,6 +458,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // The sun crosses the sky once a day.
     const a = (f - 0.25) * TAU;
     sun.position.set(Math.cos(a) * 100, Math.max(5, Math.sin(a) * 100), 30);
+    // The dome: its gradient by daylight, the sun's glow where the sun is (below the horizon at night).
+    skyDome.update(light, new THREE.Vector3(Math.cos(a), Math.sin(a), 0.3));
     dirty = true;
   }
 
@@ -519,7 +522,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // With a floor chosen, the surface is hidden: nothing up there to pick.
     const surfaceShown = cut() === null;
     if (surfaceShown && (!view.xray || placingOnSurface)) offer(tGround, groundPick);
-    const inShaft = view.mode === "shaft" || view.mode === "free" || view.mode === "walk";
+    const inShaft = view.mode === "shaft" || view.mode === "walk";
     if (inShaft && !view.xray) {
       // Empty wall faces are part of the wall mesh; nothing more to add.
     } else if (inShaft && view.xray) {
@@ -917,6 +920,30 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     walkerPlaced = true;
   }
 
+  /** Put the walker on another floor: straight down (or up) if there's room, else the nearest spot there is, else the gallery. */
+  function moveWalkerTo(floor: number): void {
+    if (!hole || !layout || floor < 1 || floor > hole.floors) return;
+    const { x, z } = walker;
+    let spot: [number, number] | null = walkClear(layout, floor, x, z) ? [x, z] : null;
+    // Rings of candidates, each a little further out.
+    for (let d = WALK.searchStep; !spot && d <= WALK.searchReach; d += WALK.searchStep) {
+      const n = Math.max(8, Math.ceil((TAU * d) / WALK.searchStep));
+      for (let i = 0; i < n && !spot; i++) {
+        const a = (i / n) * TAU;
+        if (walkClear(layout, floor, x + d * Math.cos(a), z + d * Math.sin(a))) spot = [x + d * Math.cos(a), z + d * Math.sin(a)];
+      }
+    }
+    if (!spot) {
+      const r = (openShaftRadius(hole) + hole.shaftRadiusM) / 2;
+      const a = Math.atan2(z, x);
+      spot = [r * Math.cos(a), r * Math.sin(a)];
+    }
+    walker.floor = floor;
+    [walker.x, walker.z] = spot;
+    applyCamera();
+    updateReadout();
+  }
+
   /** What the readout says while walking: where, and what the keys do. */
   function walkReadout(): string {
     const stairs = layout ? stairsHere(layout, walker.floor, walker.x, walker.z) : null;
@@ -929,6 +956,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function enterMode(before: Mode): void {
     if (view.mode === "iso" && !cam.iso) cam.iso = outerRadius() * ISO.start;
     if (view.mode === "top" && topFitted) fitTop();
+    if (view.mode === "cutaway" && cutawayFitted) fitCutaway();
     if (view.mode === "walk" && before !== "walk") placeWalker();
     if (before === "walk" && view.mode !== "walk") {
       held.clear();
@@ -1051,11 +1079,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const dy = e.clientY - drag.y;
     drag.moved += Math.abs(dx) + Math.abs(dy);
     if (drag.moved > CLICK_SLOP) canvas.style.cursor = "grabbing";
-    if (view.mode === "free") {
-      // Grab the view: the world follows the pointer, so dragging up looks down.
-      cam.yaw += dx * FREE.turn * (cam.fov / FOV);
-      cam.pitch += dy * FREE.turn * (cam.fov / FOV);
-    } else if (view.mode === "walk") {
+    if (view.mode === "walk") {
       // Turn your head: drag right to look right, up to look up.
       walker.yaw += dx * WALK.turn;
       walker.pitch -= dy * WALK.turn;
@@ -1097,15 +1121,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       cam.height *= e.ctrlKey ? zoom : Math.exp(e.deltaY * 0.003);
       topFitted = false;
     }
-    else if (view.mode === "free") {
-      if (e.ctrlKey) cam.fov *= zoom;
-      else {
-        cam.yaw += e.deltaX * 0.003;
-        cam.y -= e.deltaY * 0.03;
-      }
-    } else if (e.ctrlKey) {
+    else if (e.ctrlKey) {
       if (view.mode === "shaft") cam.dist *= zoom;
-      else cam.out *= zoom;
+      else {
+        cam.out *= zoom;
+        cutawayFitted = false;
+      }
     } else if (e.shiftKey) cam.theta += e.deltaY * 0.003;
     else {
       cam.theta += e.deltaX * 0.003;
@@ -1146,11 +1167,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** Switch camera, or the see-through toggles, from the View mode's buttons. */
   function setView3d(v: View3d): void {
     if (v.camera !== view.mode) {
-      // Coming from the shaft view, keep facing the same way.
-      if (v.camera === "free") {
-        cam.yaw = cam.theta;
-        cam.pitch = 0;
-      }
       const before = view.mode;
       view.mode = v.camera;
       enterMode(before);
@@ -1194,6 +1210,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     look.resize();
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    // The framing depends on the screen's shape: redo it until the player zooms.
+    if (topFitted) fitTop();
+    if (cutawayFitted) fitCutaway();
+    applyCamera();
     dirty = true;
   });
   resize.observe(host);
@@ -1224,7 +1244,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!dirty) return;
     dirty = false;
     const t0 = performance.now();
-    look.setView(hazeFocus(), view.mode === "walk" || view.mode === "shaft" || view.mode === "free", view.mode === "iso");
+    skyDome.follow(camera);
+    look.setView(hazeFocus(), view.mode === "walk" || view.mode === "shaft", view.mode === "iso");
     roomFx.setScale(renderer.getDrawingBufferSize(bufferSize).y / (2 * Math.tan((camera.fov * Math.PI) / 360)));
     look.render();
     stats.frameMs = performance.now() - t0;
@@ -1322,6 +1343,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         terrainKey = ""; // the rim may have moved
         // A new hole, or more rings: frame them from the top again.
         if (topFitted) fitTop();
+        if (cutawayFitted) fitCutaway();
         dust.sync(hole);
         applyCamera();
       }
@@ -1421,6 +1443,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     setFloor(f) {
       if (f === pickedFloor) return;
       pickedFloor = f;
+      // Walking: go to that floor, as near as there's room to stand.
+      if (view.mode === "walk" && f !== null && f !== walker.floor) moveWalkerTo(f);
       layoutKey = ""; // rebuild without the floors above
       applyFloorCut();
       applyCamera();
@@ -1469,6 +1493,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         m.dispose();
       });
       look.dispose();
+      skyDome.dispose();
       renderer.dispose();
       canvas.remove();
       bar.remove();

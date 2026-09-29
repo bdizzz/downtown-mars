@@ -105,14 +105,22 @@ describe("walking in first person", () => {
     const s = site();
     const h = s.layout.hole;
     const g = (openShaftRadius(h) + h.shaftRadiusM) / 2;
-    // Walking straight out from the gallery into rock: blocked.
-    const [x, z] = step(s.layout, 1, g, 0.1, 5, 0);
+    // Straight out from the gallery into rock (slot 4, away from the entrance): it never goes in,
+    // and doesn't stop dead either: it slides round the gallery.
+    const [a0, a1] = slotAngles(4, h.ringSlots[0]!);
+    const a = (a0 + a1) / 2;
+    const [x, z] = step(s.layout, 1, g * Math.cos(a), g * Math.sin(a), 0.5 * Math.cos(a), 0.5 * Math.sin(a));
     expect(clear(s.layout, 1, x, z)).toBe(true);
     expect(Math.hypot(x, z)).toBeLessThan(h.shaftRadiusM);
-    // Diagonally: the part along the gallery goes through.
-    const [x2, z2] = step(s.layout, 1, 0.1, g, 0.5, 2);
-    expect(x2).toBeCloseTo(0.6);
-    expect(z2).toBeCloseTo(g);
+    expect(Math.hypot(x - g * Math.cos(a), z - g * Math.sin(a))).toBeGreaterThan(0.01);
+    // Diagonally into the wall: it keeps moving, along the gallery, and never through.
+    let [px, pz] = [g * Math.cos(a), g * Math.sin(a)];
+    const out = [Math.cos(a), Math.sin(a)];
+    const along = [-Math.sin(a), Math.cos(a)];
+    for (let i = 0; i < 20; i++) [px, pz] = step(s.layout, 1, px, pz, 0.1 * (out[0]! + along[0]!), 0.1 * (out[1]! + along[1]!));
+    expect(Math.hypot(px, pz)).toBeLessThan(h.shaftRadiusM);
+    expect(clear(s.layout, 1, px, pz)).toBe(true);
+    expect(Math.hypot(px - g * Math.cos(a), pz - g * Math.sin(a))).toBeGreaterThan(1);
   });
 
   it("stairs lead to the floors they reach", () => {

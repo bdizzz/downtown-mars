@@ -202,10 +202,16 @@ function segmentDistance(x: number, z: number, [ax, az]: [number, number], [bx, 
   return Math.hypot(x - ax - t * dx, z - az - t * dz);
 }
 
+/** Sliding: how far round (degrees) a blocked step is turned, a notch at a time, looking for a way along. */
+const SLIDE = { notch: 10, most: 85 };
+
 /**
  * Step from (x, z) by (dx, dz), sliding along whatever's in the way: the
- * whole step if it's clear, otherwise the part along x or along z that is,
- * otherwise nowhere.
+ * whole step if it's clear; otherwise the same step turned a little at a
+ * time, and shortened to what it moves along the obstacle, whichever way
+ * turns least; otherwise part of the step; otherwise nowhere. So walking into
+ * a wall (straight, curved or corner-on) or furniture keeps you moving along
+ * it, never through it.
  */
 export function step(layout: Layout, floor: number, x: number, z: number, dx: number, dz: number): [number, number] {
   // Never from one region straight into another, however long the step: only through a doorway.
@@ -215,9 +221,21 @@ export function step(layout: Layout, floor: number, x: number, z: number, dx: nu
     const to = regionAt(layout, floor, nx, nz);
     return from === null || (to !== null && joined(from, to));
   };
+  if (!dx && !dz) return [x, z];
   if (ok(x + dx, z + dz)) return [x + dx, z + dz];
-  if (dx && ok(x + dx, z)) return [x + dx, z];
-  if (dz && ok(x, z + dz)) return [x, z + dz];
+  for (let deg = SLIDE.notch; deg <= SLIDE.most; deg += SLIDE.notch) {
+    const a = (deg * Math.PI) / 180;
+    const k = Math.cos(a);
+    for (const sign of [1, -1]) {
+      const c = Math.cos(sign * a);
+      const s = Math.sin(sign * a);
+      const sx = (dx * c - dz * s) * k;
+      const sz = (dx * s + dz * c) * k;
+      if (ok(x + sx, z + sz)) return [x + sx, z + sz];
+    }
+  }
+  // Up against it: close the gap.
+  for (const part of [0.5, 0.25]) if (ok(x + dx * part, z + dz * part)) return [x + dx * part, z + dz * part];
   return [x, z];
 }
 

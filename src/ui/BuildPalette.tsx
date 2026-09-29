@@ -173,14 +173,17 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
             </button>
             {isOpen && (
               <div className="dock-popup">
+                {/* The room's details float above the popup, so they never move the buttons under the pointer. */}
                 {shown && (
-                  <RoomCard
-                    def={shown}
-                    resources={resources}
-                    siteNote={siteRefusal(shown.id, deposits)}
-                    shape={tool?.kind === "build" && tool.room === shown.id ? tool.shape : shapesFor(shown)[0]!}
-                    onRotate={tool?.kind === "build" && tool.room === shown.id && shapesFor(shown).length > 1 ? rotate : undefined}
-                  />
+                  <div className="dock-card">
+                    <RoomCard
+                      def={shown}
+                      resources={resources}
+                      siteNote={siteRefusal(shown.id, deposits)}
+                      shape={tool?.kind === "build" && tool.room === shown.id ? tool.shape : shapesFor(shown)[0]!}
+                      onRotate={tool?.kind === "build" && tool.room === shown.id && shapesFor(shown).length > 1 ? rotate : undefined}
+                    />
+                  </div>
                 )}
                 {cat === "circulation" && !shown && <Finishes tool={tool} setTool={setTool} resources={resources} />}
                 <div className="dock-popup-row">

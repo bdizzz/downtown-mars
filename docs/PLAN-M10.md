@@ -363,3 +363,21 @@ Decided Sep 28, 2026 (Bryon):
   - Pointing at F2 previews it, and moving off returns to the surface.
   - F1 with walls down, with no lid.
   - The plan turned by sideways scrolling, with names upright and a drag that doesn't move it.
+
+**Follow-up, more polish (Bryon, Sep 29):**
+- **Plan icons stay upright:** each room's icon and name are one marker at its centre, counter-turned as the plan turns (and the construction percentages too).
+- **Cutaway frames the unlocked rings** across the section, with a margin (`fitCutaway`). Like Top, it stops once the player zooms, and refits for a new hole, more rings, or a resized window.
+- **The sky** (`src/render3d/sky3d.ts`) is a dome that follows the camera.
+  - By day it's butterscotch at the horizon deepening to tan overhead, with a bluish halo and disc where the sun is.
+  - By night it's near black, with stars fading in as the light goes: a scattering of sky cells about a degree across each hold one, so a star is a couple of pixels.
+  - The scene's background colour stays behind it.
+- **First person follows the floor picker:** picking a floor while walking moves you there, straight down (or up) if there's room, else to the nearest spot within 40 m, else the gallery. The floor being dug has nowhere to stand, so picking it leaves you where you are. Walking, a picked floor no longer lifts away the floors above.
+- **Sliding** (`step` in `walk.ts`): a blocked step is tried turned a notch (10°) at a time, up to 85°, each way, shortened to what it moves along the obstacle, and the least turn that's clear is taken; failing that, half or a quarter of the step. So you slide along straight, curved or angled walls and furniture instead of stopping.
+- **Free is gone:** the camera, its drag and zoom, and its state. A saved Free camera opens as Iso.
+- **The Life support card flickered:** the room card sat inside its category's popup, so showing it widened the popup. Air's popup opens leftward, anchored at its right edge, so a wider popup moved the button out from under the pointer, which hid the card and moved the button back, over and over. The card now floats above the popup, out of its layout.
+- **Tests:** sliding (into rock it slides round the gallery; diagonally into the wall it keeps moving along it and never goes through).
+- **Browser check:**
+  - The Life support card stays up.
+  - Plan icons stay upright as it turns.
+  - Cutaway framed at noon, with the sky's gradient and a horizon of mountains.
+  - Stars at night.
