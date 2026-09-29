@@ -114,7 +114,7 @@ export function holeGates(state: SimState): string[] {
 }
 
 /** Everything a hole can reach that unlocks rooms. */
-export const UNLOCK_GATES = ["children", "elders", "cargo"] as const;
+export const UNLOCK_GATES = ["children", "elders", "cargo", "basicHomes", "standardHomes", "luxuryHomes"] as const;
 export type UnlockGate = (typeof UNLOCK_GATES)[number];
 
 /** Record that a hole has reached something that unlocks rooms (first child, first elder). */
@@ -219,11 +219,16 @@ export function stepGrief(state: SimState, cfg: SimConfig): void {
   state.population.grief = next < 0.05 ? 0 : next;
 }
 
-/** Once a day: milestones reached by size (a big enough hole can have a cargo elevator). */
+/** Once a day: milestones reached by size (a cargo elevator, and better homes as the hole grows). */
 export function stepUnlocks(state: SimState, cfg: SimConfig): void {
   if (state.tick % cfg.ticksPerDay !== 0) return;
-  if (state.population.count >= cfg.unlocks.cargoPopulation && !(state.unlocks ?? []).includes("cargo")) {
-    unlock(state, "cargo");
-    postMessage(state, cfg, `${state.name} is big enough for a cargo elevator: straight from the surface to a floor of your choosing.`, "good");
-  }
+  const reach = (gate: UnlockGate, population: number, news: string) => {
+    if (state.population.count < population || (state.unlocks ?? []).includes(gate)) return;
+    unlock(state, gate);
+    postMessage(state, cfg, news, "good");
+  };
+  reach("cargo", cfg.unlocks.cargoPopulation, `${state.name} is big enough for a cargo elevator: straight from the surface to a floor of your choosing.`);
+  reach("basicHomes", cfg.unlocks.homes.basic, `${state.name} is ready for proper homes: studios and apartments, roomier than bunks.`);
+  reach("standardHomes", cfg.unlocks.homes.standard, `${state.name} can build flats and family apartments: comfortable homes that cheer their neighbours.`);
+  reach("luxuryHomes", cfg.unlocks.homes.luxury, `${state.name} can build suites and residences: the finest homes on Mars.`);
 }

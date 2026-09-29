@@ -52,7 +52,7 @@ export interface RoomDef {
   /** Elders it looks after. */
   caresForElders?: number;
   /** Not buildable until the hole has reached this (see UNLOCKS in costs.ts). */
-  unlockedBy?: "children" | "elders" | "cargo";
+  unlockedBy?: "children" | "elders" | "cargo" | "basicHomes" | "standardHomes" | "luxuryHomes";
   /** Units of storage for dry goods (data/storage.json). */
   storage?: number;
   /** How its storage starts out allocated (the landing pod); otherwise empty. */

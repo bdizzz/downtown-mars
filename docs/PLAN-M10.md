@@ -229,3 +229,28 @@ Decided Sep 28, 2026 (Bryon):
 - **Furniture glow at night** is toned down (the night boost went from 1.6 to 0.9) so glowing parts don't blow out under bloom.
 - **Fix:** the room inspector crashed the whole app on a room slowed by low morale. It read the reason as a resource. Morale now has its own text, and any unknown reason shows as given.
 - **Console:** `dm.unlock("ore")` puts a deposit under the hole, and `dm.command({...})` sends any command, to set up rooms like a smelter for testing. Dev builds also have `__stage3d.walkTo(x, z, yaw)` and `.roomFx`.
+
+**Follow-up, apartments (Bryon, Sep 28):** "a few apartments of different sizes... more costly to build and store fewer people per segment, but have improvements to comfort".
+- **Six homes** (`data/rooms.json`): the S and M sizes of the three apartment tiers in ROOMS.md (Housing). Residents, cost per slot, power per two slots, and base comfort follow its tables, with +1 for residents of a cozy S room. The standard M is named **Family apartment** here, since ROOMS.md calls both M apartments "Apartment" (ROOMS.md is read-only, so its table still says "Apartment").
+
+  | Room | Tier | Size | Residents | Power | Cost | Residents' comfort | Neighbours |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | Studio | basic | S | 5 | 0.5 | rock 8, brick 5 | +1 | — |
+  | Apartment | basic | M | 10 | 1 | rock 16, brick 10 | 0 | — |
+  | Flat | standard | S | 4 | 1 | brick 8, metal 3 | +2 | comfort +1 r1 |
+  | Family apartment | standard | M | 8 | 2 | brick 16, metal 6 | +1 | comfort +1 r1 |
+  | Suite | luxury | S | 2 | 1.5 | metal 5, electronics 3 | +3 | comfort +1 r1 |
+  | Residence | luxury | M | 4 | 3 | metal 10, electronics 6; staff 1 | +2 | comfort +1 r1 |
+
+  For comparison, a bunk dorm is M, houses 16, costs rock 20 and gives its residents −1. The luxury tier's catalog staffing ("1 per 4 slots") comes to one attendant for the M residence and none for the S suite.
+- **Unlocks by population** (`config.unlocks.homes`), per ROOMS.md: basic at 50 colonists, standard at 200, luxury at 1,000. Each posts a message when reached. `dm.unlock()` opens them for testing.
+- **2D glyphs:** a house, with a door for basic homes, windows for standard, and a star for luxury.
+- **Furniture:** nine new models: double bed, wardrobe, dresser (with a mirror), coffee table, kitchenette (sink, hob, wall cupboards, a light under them), a bathroom (a small panelled room with a door and a light), bathtub, fireplace and piano. There's also a new colour, wood.
+- **Templates:**
+  - Every home puts its beds head to the back wall with side tables, screens between them, a kitchenette and a bathroom on the side walls, and a table or lounge in the middle.
+  - Studios and apartments are rows of single beds with a shared table (and a sofa and screen in the M).
+  - Flats and family apartments have double bedrooms, a table for two or a dining table, and a sofa, coffee table and screen (the family's also has children's beds and a desk).
+  - Suites and residences add a dresser, a bathtub by the bathroom, and a lounge round a fireplace with armchairs; the residence also has a piano, a second bathroom and a desk.
+  - Every home fits its essentials in every ring. A few extras (a side table, a second bathroom) step aside in ring 1, where the front is narrow and the M rooms' door sits off-centre.
+- **Beds now face the right way:** every bed model has its head at −x, and templates had them turned 90°, which put the head away from the wall. All beds (bunks, elder care, clinic, homes) are now turned −90°, head to the wall.
+- **Tests:** each tier houses fewer per slot, and gives its residents more comfort, than the one below; an S home is cozier than its tier's M; studios wait for 50 colonists and then build, while suites still wait.

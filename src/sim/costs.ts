@@ -19,6 +19,9 @@ const UNLOCKS: Record<string, string> = {
   children: "Unlocks with the first child born here",
   elders: "Unlocks when the first colonists retire",
   cargo: `Unlocks at ${config.unlocks.cargoPopulation} colonists in this hole`,
+  basicHomes: `Unlocks at ${config.unlocks.homes.basic} colonists in this hole`,
+  standardHomes: `Unlocks at ${config.unlocks.homes.standard} colonists in this hole`,
+  luxuryHomes: `Unlocks at ${config.unlocks.homes.luxury} colonists in this hole`,
 };
 
 /**

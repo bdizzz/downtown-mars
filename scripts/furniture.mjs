@@ -153,6 +153,92 @@ item("tv_unit", "Media wall", [
   ...[-0.8, 0.8].map((x) => box([x, 0.7, 0.05], [0.18, 0.4, 0.18], "dark")),
 ]);
 item("coat_rack", "Coat rack", [cyl([0, 0.02, 0], 0.4, 0.04, "dark"), cyl([0, 0.9, 0], 0.05, 1.8, "metal"), box([0.12, 1.4, 0.05], [0.24, 0.7, 0.14], "accent"), box([-0.1, 1.45, -0.04], [0.2, 0.6, 0.12], "cushion")]);
+// Homes: apartments of every tier (the finer the home, the more of these it holds).
+item("double_bed", "Double bed", [
+  ...legs(2.1, 1.7, 0.28, "wood"),
+  box([0, 0.3, 0], [2.1, 0.06, 1.7], "wood"),
+  box([0.02, 0.43, 0], [2.0, 0.2, 1.62], "white"),
+  box([0.3, 0.55, 0], [1.4, 0.06, 1.66], "accent"),
+  box([0.3, 0.51, 0.82], [1.4, 0.14, 0.02], "accent"),
+  box([0.95, 0.59, 0], [0.3, 0.05, 1.66], "cream"),
+  ...[-0.4, 0.4].map((z) => box([-0.72, 0.6, z], [0.36, 0.14, 0.62], "white")),
+  // The headboard: padded, in the wood frame.
+  box([-1.03, 0.75, 0], [0.06, 0.9, 1.72], "wood"),
+  box([-0.99, 0.82, 0], [0.04, 0.6, 1.5], "cushion"),
+]);
+item("wardrobe", "Wardrobe", [
+  box([0, 1.0, 0], [1.2, 2.0, 0.6], "wood"),
+  box([0, 1.02, 0.301], [0.015, 1.9, 0.01], "dark"),
+  ...[-1, 1].map((sx) => box([sx * 0.08, 1.05, 0.31], [0.03, 0.28, 0.03], "steel")),
+  box([0, 2.02, 0], [1.24, 0.04, 0.62], "dark"),
+  box([0, 0.04, 0], [1.16, 0.08, 0.56], "dark"),
+]);
+item("dresser", "Dresser", [
+  box([0, 0.42, 0], [1.2, 0.8, 0.5], "wood"),
+  ...[0.18, 0.42, 0.66].flatMap((y) => [box([0, y, 0.251], [1.14, 0.2, 0.01], "composite"), box([0, y, 0.26], [0.2, 0.03, 0.02], "steel")]),
+  box([0, 0.83, 0], [1.24, 0.03, 0.54], "dark"),
+  box([0, 1.3, -0.2], [0.8, 0.9, 0.03], "mirror"),
+  box([0, 1.3, -0.215], [0.88, 0.98, 0.02], "wood"),
+  cyl([0.42, 0.95, 0.05], 0.12, 0.2, "accent"),
+  ...foliage(0.42, 1.12, 0.05, 0.3),
+]);
+item("coffee_table", "Coffee table", [
+  ...table(1.1, 0.6, 0.42, "wood", "dark"),
+  box([-0.25, 0.44, 0.02], [0.3, 0.03, 0.22], "accent"),
+  box([-0.25, 0.47, 0.02], [0.26, 0.03, 0.2], "cream"),
+  cyl([0.3, 0.46, -0.05], 0.09, 0.09, "white"),
+]);
+item("kitchenette", "Kitchenette", [
+  box([0, 0.44, 0], [2.4, 0.88, 0.62], "wood"),
+  ...[-0.9, -0.3, 0.3, 0.9].map((x) => box([x, 0.44, 0.311], [0.56, 0.78, 0.01], "composite")),
+  box([0, 0.9, 0], [2.44, 0.04, 0.66], "stone"),
+  // The sink and its tap, and a two-ring hob.
+  box([-0.6, 0.905, 0.02], [0.5, 0.02, 0.4], "steel"),
+  box([-0.6, 1.02, -0.2], [0.04, 0.22, 0.04], "steel"),
+  ...[0.45, 0.8].map((x) => cyl([x, 0.925, 0.02], 0.22, 0.01, "dark")),
+  // Wall cupboards, and a light under them.
+  box([0, 1.85, -0.14], [2.4, 0.7, 0.34], "wood"),
+  ...[-0.9, -0.3, 0.3, 0.9].map((x) => box([x, 1.85, 0.031], [0.56, 0.64, 0.01], "composite")),
+  box([0, 1.49, -0.05], [2.2, 0.02, 0.1], "lamp", glow),
+  cyl([0.15, 0.99, -0.15], 0.18, 0.14, "accent"),
+]);
+item("bathroom_pod", "Bathroom", [
+  // A little room in the room: panelled walls, a door, a light over it.
+  box([0, 1.2, -0.78], [2.2, 2.4, 0.04], "panel"),
+  ...[-1, 1].map((sx) => box([sx * 1.08, 1.2, 0], [0.04, 2.4, 1.6], "panel")),
+  box([0.5, 1.2, 0.78], [1.2, 2.4, 0.04], "panel"),
+  box([-0.55, 1.05, 0.79], [0.8, 2.1, 0.04], "accent"),
+  box([-0.3, 1.05, 0.815], [0.03, 0.18, 0.03], "steel"),
+  box([-0.55, 2.28, 0.78], [0.9, 0.24, 0.04], "panel"),
+  box([0, 2.42, 0], [2.24, 0.04, 1.64], "white"),
+  box([0.5, 2.1, 0.81], [0.5, 0.12, 0.02], "lamp", glow),
+]);
+item("bathtub", "Bathtub", [
+  box([0, 0.28, 0], [1.7, 0.56, 0.8], "white"),
+  box([0, 0.5, 0], [1.5, 0.08, 0.6], "water"),
+  box([0, 0.58, 0], [1.72, 0.04, 0.82], "white"),
+  box([-0.78, 0.72, 0], [0.06, 0.26, 0.06], "steel"),
+  box([-0.72, 0.84, 0], [0.16, 0.04, 0.04], "steel"),
+  box([0.5, 0.62, 0.3], [0.3, 0.05, 0.2], "cream"),
+]);
+item("fireplace", "Fireplace", [
+  box([0, 0.55, 0], [1.4, 1.1, 0.4], "stone"),
+  box([0, 0.42, 0.18], [0.9, 0.5, 0.06], "dark"),
+  box([0, 0.36, 0.2], [0.8, 0.22, 0.04], "fire", glow),
+  ...[-0.2, 0.05, 0.25].map((x) => box([x, 0.24, 0.2], [0.22, 0.06, 0.08], "wood")),
+  box([0, 1.12, 0.02], [1.5, 0.06, 0.46], "wood"),
+  ...[-0.5, 0.45].map((x) => cyl([x, 1.25, 0], 0.08, 0.2, "accent")),
+]);
+item("piano", "Piano", [
+  box([0, 0.65, -0.1], [1.5, 1.3, 0.4], "dark"),
+  box([0, 0.72, 0.16], [1.4, 0.08, 0.3], "dark"),
+  box([0, 0.77, 0.2], [1.3, 0.02, 0.18], "white"),
+  box([0, 0.78, 0.16], [1.3, 0.01, 0.07], "dark"),
+  ...[-1, 1].map((sx) => box([sx * 0.66, 0.36, 0.2], [0.08, 0.72, 0.08], "dark")),
+  box([0, 1.32, -0.1], [1.52, 0.04, 0.42], "wood"),
+  box([0, 0.46, 0.55], [0.9, 0.06, 0.34], "cushion"),
+  ...[-1, 1].map((sx) => box([sx * 0.4, 0.22, 0.55], [0.06, 0.44, 0.3], "dark")),
+]);
 item("laundry_machine", "Washer", [
   box([0, 0.45, 0], [0.7, 0.9, 0.65], "white"),
   cyl([0, 0.45, 0.33], 0.46, 0.02, "dark", { r: [90, 0, 0] }),
@@ -823,6 +909,12 @@ item("call_panel", "Call panel", [
 
 const rooms = {
   bunk_dorm: ["bunk_bed", "locker", "footlocker", "partition", "table", "stool", "rug", "floor_lamp", "coat_rack", "shelf_unit"],
+  studio: ["bed", "side_table", "wardrobe", "partition", "kitchenette", "bathroom_pod", "table", "stool", "rug", "floor_lamp", "plant_pot", "coat_rack"],
+  apartment: ["bed", "side_table", "wardrobe", "partition", "kitchenette", "bathroom_pod", "dining_table", "sofa", "tv_unit", "rug", "floor_lamp", "plant_pot", "coat_rack"],
+  flat: ["double_bed", "side_table", "wardrobe", "dresser", "partition", "kitchenette", "bathroom_pod", "table", "chair", "sofa", "coffee_table", "tv_unit", "rug", "floor_lamp", "plant_pot", "bookshelf"],
+  family_apartment: ["double_bed", "bed", "side_table", "wardrobe", "dresser", "partition", "kitchenette", "bathroom_pod", "dining_table", "sofa", "coffee_table", "tv_unit", "desk", "office_chair", "rug", "floor_lamp", "plant_pot", "bookshelf"],
+  suite: ["double_bed", "side_table", "wardrobe", "dresser", "bathroom_pod", "bathtub", "kitchenette", "table", "chair", "sofa", "armchair", "coffee_table", "fireplace", "bookshelf", "tv_unit", "rug", "floor_lamp", "plant_pot", "planter_tree"],
+  residence: ["double_bed", "bed", "side_table", "wardrobe", "dresser", "partition", "bathroom_pod", "bathtub", "kitchenette", "dining_table", "sofa", "armchair", "coffee_table", "fireplace", "piano", "bookshelf", "desk", "office_chair", "tv_unit", "rug", "floor_lamp", "plant_pot", "planter_tree"],
   galley: ["stove_counter", "prep_counter", "fridge", "serving_counter", "dining_table", "shelf_unit", "water_dispenser", "trash_bin"],
   farm: ["planter_bed", "hydroponic_rack", "seed_table", "big_tank", "tool_cart", "shelf_unit", "pipe_run"],
   water_tank: ["big_tank", "pipe_run", "valve_panel", "pump"],
@@ -861,7 +953,7 @@ const colors = {
   metal: "#8f949b", steel: "#b7bcc2", dark: "#3b3f45", rubber: "#2a2a2c", panel: "#cfc8bb", white: "#e4e0d8", cream: "#e8dcc0",
   composite: "#a88a66", cushion: "#7c6a5a", plant: "#5f9e4a", leaf: "#7cc05a", soil: "#5a3a28", water: "#4f9fc8", mirror: "#8fc7d9",
   rust: "#a0522d", copper: "#b87333", stone: "#8a7a6c", hazard: "#e0a03a", board: "#2f4a3a", glow: "#9fd2ff", grow: "#f0a8ff",
-  fire: "#ff8a3d", lamp: "#ffe2b0", power: "#f4d35e", blueprint: "#3d6fb0",
+  fire: "#ff8a3d", lamp: "#ffe2b0", power: "#f4d35e", blueprint: "#3d6fb0", wood: "#8a5e3c",
 };
 
 // Every item a room lists exists, and every item is used somewhere.

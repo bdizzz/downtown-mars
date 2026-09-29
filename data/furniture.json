@@ -25,7 +25,8 @@
     "fire": "#ff8a3d",
     "lamp": "#ffe2b0",
     "power": "#f4d35e",
-    "blueprint": "#3d6fb0"
+    "blueprint": "#3d6fb0",
+    "wood": "#8a5e3c"
   },
   "items": {
     "bunk_bed": { "name": "Bunk bed", "size": [2, 1, 1.9], "parts": [
@@ -180,6 +181,117 @@
       {"s": "cyl", "p": [0, 0.9, 0], "z": [0.05, 1.8], "c": "metal"},
       {"s": "box", "p": [0.12, 1.4, 0.05], "z": [0.24, 0.7, 0.14], "c": "accent"},
       {"s": "box", "p": [-0.1, 1.45, -0.04], "z": [0.2, 0.6, 0.12], "c": "cushion"}
+    ] },
+    "double_bed": { "name": "Double bed", "size": [2.2, 1.75, 1.2], "parts": [
+      {"s": "box", "p": [-0.975, 0.14, -0.775], "z": [0.05, 0.28, 0.05], "c": "wood"},
+      {"s": "box", "p": [-0.975, 0.14, 0.775], "z": [0.05, 0.28, 0.05], "c": "wood"},
+      {"s": "box", "p": [0.975, 0.14, -0.775], "z": [0.05, 0.28, 0.05], "c": "wood"},
+      {"s": "box", "p": [0.975, 0.14, 0.775], "z": [0.05, 0.28, 0.05], "c": "wood"},
+      {"s": "box", "p": [0, 0.3, 0], "z": [2.1, 0.06, 1.7], "c": "wood"},
+      {"s": "box", "p": [0.02, 0.43, 0], "z": [2, 0.2, 1.62], "c": "white"},
+      {"s": "box", "p": [0.3, 0.55, 0], "z": [1.4, 0.06, 1.66], "c": "accent"},
+      {"s": "box", "p": [0.3, 0.51, 0.82], "z": [1.4, 0.14, 0.02], "c": "accent"},
+      {"s": "box", "p": [0.95, 0.59, 0], "z": [0.3, 0.05, 1.66], "c": "cream"},
+      {"s": "box", "p": [-0.72, 0.6, -0.4], "z": [0.36, 0.14, 0.62], "c": "white"},
+      {"s": "box", "p": [-0.72, 0.6, 0.4], "z": [0.36, 0.14, 0.62], "c": "white"},
+      {"s": "box", "p": [-1.03, 0.75, 0], "z": [0.06, 0.9, 1.72], "c": "wood"},
+      {"s": "box", "p": [-0.99, 0.82, 0], "z": [0.04, 0.6, 1.5], "c": "cushion"}
+    ] },
+    "wardrobe": { "name": "Wardrobe", "size": [1.25, 0.65, 2.05], "parts": [
+      {"s": "box", "p": [0, 1, 0], "z": [1.2, 2, 0.6], "c": "wood"},
+      {"s": "box", "p": [0, 1.02, 0.301], "z": [0.015, 1.9, 0.01], "c": "dark"},
+      {"s": "box", "p": [-0.08, 1.05, 0.31], "z": [0.03, 0.28, 0.03], "c": "steel"},
+      {"s": "box", "p": [0.08, 1.05, 0.31], "z": [0.03, 0.28, 0.03], "c": "steel"},
+      {"s": "box", "p": [0, 2.02, 0], "z": [1.24, 0.04, 0.62], "c": "dark"},
+      {"s": "box", "p": [0, 0.04, 0], "z": [1.16, 0.08, 0.56], "c": "dark"}
+    ] },
+    "dresser": { "name": "Dresser", "size": [1.25, 0.55, 1.8], "parts": [
+      {"s": "box", "p": [0, 0.42, 0], "z": [1.2, 0.8, 0.5], "c": "wood"},
+      {"s": "box", "p": [0, 0.18, 0.251], "z": [1.14, 0.2, 0.01], "c": "composite"},
+      {"s": "box", "p": [0, 0.18, 0.26], "z": [0.2, 0.03, 0.02], "c": "steel"},
+      {"s": "box", "p": [0, 0.42, 0.251], "z": [1.14, 0.2, 0.01], "c": "composite"},
+      {"s": "box", "p": [0, 0.42, 0.26], "z": [0.2, 0.03, 0.02], "c": "steel"},
+      {"s": "box", "p": [0, 0.66, 0.251], "z": [1.14, 0.2, 0.01], "c": "composite"},
+      {"s": "box", "p": [0, 0.66, 0.26], "z": [0.2, 0.03, 0.02], "c": "steel"},
+      {"s": "box", "p": [0, 0.83, 0], "z": [1.24, 0.03, 0.54], "c": "dark"},
+      {"s": "box", "p": [0, 1.3, -0.2], "z": [0.8, 0.9, 0.03], "c": "mirror"},
+      {"s": "box", "p": [0, 1.3, -0.215], "z": [0.88, 0.98, 0.02], "c": "wood"},
+      {"s": "cyl", "p": [0.42, 0.95, 0.05], "z": [0.12, 0.2], "c": "accent"},
+      {"s": "sph", "p": [0.42, 1.12, 0.05], "z": [0.21], "c": "plant"},
+      {"s": "sph", "p": [0.474, 1.165, 0.08], "z": [0.135], "c": "leaf"},
+      {"s": "sph", "p": [0.36, 1.144, 0.014], "z": [0.15], "c": "leaf"},
+      {"s": "sph", "p": [0.435, 1.21, 0.035], "z": [0.12], "c": "plant"}
+    ] },
+    "coffee_table": { "name": "Coffee table", "size": [1.1, 0.6, 0.55], "parts": [
+      {"s": "box", "p": [-0.475, 0.19, -0.225], "z": [0.05, 0.38, 0.05], "c": "dark"},
+      {"s": "box", "p": [-0.475, 0.19, 0.225], "z": [0.05, 0.38, 0.05], "c": "dark"},
+      {"s": "box", "p": [0.475, 0.19, -0.225], "z": [0.05, 0.38, 0.05], "c": "dark"},
+      {"s": "box", "p": [0.475, 0.19, 0.225], "z": [0.05, 0.38, 0.05], "c": "dark"},
+      {"s": "box", "p": [0, 0.4, 0], "z": [1.1, 0.04, 0.6], "c": "wood"},
+      {"s": "box", "p": [-0.25, 0.44, 0.02], "z": [0.3, 0.03, 0.22], "c": "accent"},
+      {"s": "box", "p": [-0.25, 0.47, 0.02], "z": [0.26, 0.03, 0.2], "c": "cream"},
+      {"s": "cyl", "p": [0.3, 0.46, -0.05], "z": [0.09, 0.09], "c": "white"}
+    ] },
+    "kitchenette": { "name": "Kitchenette", "size": [2.45, 0.7, 2.2], "parts": [
+      {"s": "box", "p": [0, 0.44, 0], "z": [2.4, 0.88, 0.62], "c": "wood"},
+      {"s": "box", "p": [-0.9, 0.44, 0.311], "z": [0.56, 0.78, 0.01], "c": "composite"},
+      {"s": "box", "p": [-0.3, 0.44, 0.311], "z": [0.56, 0.78, 0.01], "c": "composite"},
+      {"s": "box", "p": [0.3, 0.44, 0.311], "z": [0.56, 0.78, 0.01], "c": "composite"},
+      {"s": "box", "p": [0.9, 0.44, 0.311], "z": [0.56, 0.78, 0.01], "c": "composite"},
+      {"s": "box", "p": [0, 0.9, 0], "z": [2.44, 0.04, 0.66], "c": "stone"},
+      {"s": "box", "p": [-0.6, 0.905, 0.02], "z": [0.5, 0.02, 0.4], "c": "steel"},
+      {"s": "box", "p": [-0.6, 1.02, -0.2], "z": [0.04, 0.22, 0.04], "c": "steel"},
+      {"s": "cyl", "p": [0.45, 0.925, 0.02], "z": [0.22, 0.01], "c": "dark"},
+      {"s": "cyl", "p": [0.8, 0.925, 0.02], "z": [0.22, 0.01], "c": "dark"},
+      {"s": "box", "p": [0, 1.85, -0.14], "z": [2.4, 0.7, 0.34], "c": "wood"},
+      {"s": "box", "p": [-0.9, 1.85, 0.031], "z": [0.56, 0.64, 0.01], "c": "composite"},
+      {"s": "box", "p": [-0.3, 1.85, 0.031], "z": [0.56, 0.64, 0.01], "c": "composite"},
+      {"s": "box", "p": [0.3, 1.85, 0.031], "z": [0.56, 0.64, 0.01], "c": "composite"},
+      {"s": "box", "p": [0.9, 1.85, 0.031], "z": [0.56, 0.64, 0.01], "c": "composite"},
+      {"s": "box", "p": [0, 1.49, -0.05], "z": [2.2, 0.02, 0.1], "c": "lamp", "glow": true},
+      {"s": "cyl", "p": [0.15, 0.99, -0.15], "z": [0.18, 0.14], "c": "accent"}
+    ] },
+    "bathroom_pod": { "name": "Bathroom", "size": [2.25, 1.7, 2.45], "parts": [
+      {"s": "box", "p": [0, 1.2, -0.78], "z": [2.2, 2.4, 0.04], "c": "panel"},
+      {"s": "box", "p": [-1.08, 1.2, 0], "z": [0.04, 2.4, 1.6], "c": "panel"},
+      {"s": "box", "p": [1.08, 1.2, 0], "z": [0.04, 2.4, 1.6], "c": "panel"},
+      {"s": "box", "p": [0.5, 1.2, 0.78], "z": [1.2, 2.4, 0.04], "c": "panel"},
+      {"s": "box", "p": [-0.55, 1.05, 0.79], "z": [0.8, 2.1, 0.04], "c": "accent"},
+      {"s": "box", "p": [-0.3, 1.05, 0.815], "z": [0.03, 0.18, 0.03], "c": "steel"},
+      {"s": "box", "p": [-0.55, 2.28, 0.78], "z": [0.9, 0.24, 0.04], "c": "panel"},
+      {"s": "box", "p": [0, 2.42, 0], "z": [2.24, 0.04, 1.64], "c": "white"},
+      {"s": "box", "p": [0.5, 2.1, 0.81], "z": [0.5, 0.12, 0.02], "c": "lamp", "glow": true}
+    ] },
+    "bathtub": { "name": "Bathtub", "size": [1.75, 0.85, 0.9], "parts": [
+      {"s": "box", "p": [0, 0.28, 0], "z": [1.7, 0.56, 0.8], "c": "white"},
+      {"s": "box", "p": [0, 0.5, 0], "z": [1.5, 0.08, 0.6], "c": "water"},
+      {"s": "box", "p": [0, 0.58, 0], "z": [1.72, 0.04, 0.82], "c": "white"},
+      {"s": "box", "p": [-0.78, 0.72, 0], "z": [0.06, 0.26, 0.06], "c": "steel"},
+      {"s": "box", "p": [-0.72, 0.84, 0], "z": [0.16, 0.04, 0.04], "c": "steel"},
+      {"s": "box", "p": [0.5, 0.62, 0.3], "z": [0.3, 0.05, 0.2], "c": "cream"}
+    ] },
+    "fireplace": { "name": "Fireplace", "size": [1.5, 0.5, 1.35], "parts": [
+      {"s": "box", "p": [0, 0.55, 0], "z": [1.4, 1.1, 0.4], "c": "stone"},
+      {"s": "box", "p": [0, 0.42, 0.18], "z": [0.9, 0.5, 0.06], "c": "dark"},
+      {"s": "box", "p": [0, 0.36, 0.2], "z": [0.8, 0.22, 0.04], "c": "fire", "glow": true},
+      {"s": "box", "p": [-0.2, 0.24, 0.2], "z": [0.22, 0.06, 0.08], "c": "wood"},
+      {"s": "box", "p": [0.05, 0.24, 0.2], "z": [0.22, 0.06, 0.08], "c": "wood"},
+      {"s": "box", "p": [0.25, 0.24, 0.2], "z": [0.22, 0.06, 0.08], "c": "wood"},
+      {"s": "box", "p": [0, 1.12, 0.02], "z": [1.5, 0.06, 0.46], "c": "wood"},
+      {"s": "cyl", "p": [-0.5, 1.25, 0], "z": [0.08, 0.2], "c": "accent"},
+      {"s": "cyl", "p": [0.45, 1.25, 0], "z": [0.08, 0.2], "c": "accent"}
+    ] },
+    "piano": { "name": "Piano", "size": [1.55, 1.45, 1.35], "parts": [
+      {"s": "box", "p": [0, 0.65, -0.1], "z": [1.5, 1.3, 0.4], "c": "dark"},
+      {"s": "box", "p": [0, 0.72, 0.16], "z": [1.4, 0.08, 0.3], "c": "dark"},
+      {"s": "box", "p": [0, 0.77, 0.2], "z": [1.3, 0.02, 0.18], "c": "white"},
+      {"s": "box", "p": [0, 0.78, 0.16], "z": [1.3, 0.01, 0.07], "c": "dark"},
+      {"s": "box", "p": [-0.66, 0.36, 0.2], "z": [0.08, 0.72, 0.08], "c": "dark"},
+      {"s": "box", "p": [0.66, 0.36, 0.2], "z": [0.08, 0.72, 0.08], "c": "dark"},
+      {"s": "box", "p": [0, 1.32, -0.1], "z": [1.52, 0.04, 0.42], "c": "wood"},
+      {"s": "box", "p": [0, 0.46, 0.55], "z": [0.9, 0.06, 0.34], "c": "cushion"},
+      {"s": "box", "p": [-0.4, 0.22, 0.55], "z": [0.06, 0.44, 0.3], "c": "dark"},
+      {"s": "box", "p": [0.4, 0.22, 0.55], "z": [0.06, 0.44, 0.3], "c": "dark"}
     ] },
     "laundry_machine": { "name": "Washer", "size": [0.7, 0.7, 0.9], "parts": [
       {"s": "box", "p": [0, 0.45, 0], "z": [0.7, 0.9, 0.65], "c": "white"},
@@ -1301,6 +1413,12 @@
   },
   "rooms": {
     "bunk_dorm": ["bunk_bed", "locker", "footlocker", "partition", "table", "stool", "rug", "floor_lamp", "coat_rack", "shelf_unit"],
+    "studio": ["bed", "side_table", "wardrobe", "partition", "kitchenette", "bathroom_pod", "table", "stool", "rug", "floor_lamp", "plant_pot", "coat_rack"],
+    "apartment": ["bed", "side_table", "wardrobe", "partition", "kitchenette", "bathroom_pod", "dining_table", "sofa", "tv_unit", "rug", "floor_lamp", "plant_pot", "coat_rack"],
+    "flat": ["double_bed", "side_table", "wardrobe", "dresser", "partition", "kitchenette", "bathroom_pod", "table", "chair", "sofa", "coffee_table", "tv_unit", "rug", "floor_lamp", "plant_pot", "bookshelf"],
+    "family_apartment": ["double_bed", "bed", "side_table", "wardrobe", "dresser", "partition", "kitchenette", "bathroom_pod", "dining_table", "sofa", "coffee_table", "tv_unit", "desk", "office_chair", "rug", "floor_lamp", "plant_pot", "bookshelf"],
+    "suite": ["double_bed", "side_table", "wardrobe", "dresser", "bathroom_pod", "bathtub", "kitchenette", "table", "chair", "sofa", "armchair", "coffee_table", "fireplace", "bookshelf", "tv_unit", "rug", "floor_lamp", "plant_pot", "planter_tree"],
+    "residence": ["double_bed", "bed", "side_table", "wardrobe", "dresser", "partition", "bathroom_pod", "bathtub", "kitchenette", "dining_table", "sofa", "armchair", "coffee_table", "fireplace", "piano", "bookshelf", "desk", "office_chair", "tv_unit", "rug", "floor_lamp", "plant_pot", "planter_tree"],
     "galley": ["stove_counter", "prep_counter", "fridge", "serving_counter", "dining_table", "shelf_unit", "water_dispenser", "trash_bin"],
     "farm": ["planter_bed", "hydroponic_rack", "seed_table", "big_tank", "tool_cart", "shelf_unit", "pipe_run"],
     "water_tank": ["big_tank", "pipe_run", "valve_panel", "pump"],

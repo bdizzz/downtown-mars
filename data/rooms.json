@@ -94,6 +94,181 @@
       "buildable": true
     },
     {
+      "id": "studio",
+      "name": "Studio",
+      "short": "Studio",
+      "category": "housing",
+      "size": "S",
+      "staff": 0,
+      "uses": {
+        "power": 0.5
+      },
+      "makes": {},
+      "houses": 5,
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": 1,
+          "radius": 0,
+          "residentsOnly": true
+        }
+      ],
+      "cost": {
+        "rock": 8,
+        "brick": 5
+      },
+      "buildable": true,
+      "unlockedBy": "basicHomes"
+    },
+    {
+      "id": "apartment",
+      "name": "Apartment",
+      "short": "Apt",
+      "category": "housing",
+      "size": "M",
+      "staff": 0,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "houses": 10,
+      "effects": [],
+      "cost": {
+        "rock": 16,
+        "brick": 10
+      },
+      "buildable": true,
+      "unlockedBy": "basicHomes"
+    },
+    {
+      "id": "flat",
+      "name": "Flat",
+      "short": "Flat",
+      "category": "housing",
+      "size": "S",
+      "staff": 0,
+      "uses": {
+        "power": 1
+      },
+      "makes": {},
+      "houses": 4,
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": 2,
+          "radius": 0,
+          "residentsOnly": true
+        },
+        {
+          "type": "comfort",
+          "strength": 1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "brick": 8,
+        "metal": 3
+      },
+      "buildable": true,
+      "unlockedBy": "standardHomes"
+    },
+    {
+      "id": "family_apartment",
+      "name": "Family apartment",
+      "short": "Family",
+      "category": "housing",
+      "size": "M",
+      "staff": 0,
+      "uses": {
+        "power": 2
+      },
+      "makes": {},
+      "houses": 8,
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": 1,
+          "radius": 0,
+          "residentsOnly": true
+        },
+        {
+          "type": "comfort",
+          "strength": 1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "brick": 16,
+        "metal": 6
+      },
+      "buildable": true,
+      "unlockedBy": "standardHomes"
+    },
+    {
+      "id": "suite",
+      "name": "Suite",
+      "short": "Suite",
+      "category": "housing",
+      "size": "S",
+      "staff": 0,
+      "uses": {
+        "power": 1.5
+      },
+      "makes": {},
+      "houses": 2,
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": 3,
+          "radius": 0,
+          "residentsOnly": true
+        },
+        {
+          "type": "comfort",
+          "strength": 1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "metal": 5,
+        "electronics": 3
+      },
+      "buildable": true,
+      "unlockedBy": "luxuryHomes"
+    },
+    {
+      "id": "residence",
+      "name": "Residence",
+      "short": "Residence",
+      "category": "housing",
+      "size": "M",
+      "staff": 1,
+      "uses": {
+        "power": 3
+      },
+      "makes": {},
+      "houses": 4,
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": 2,
+          "radius": 0,
+          "residentsOnly": true
+        },
+        {
+          "type": "comfort",
+          "strength": 1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "metal": 10,
+        "electronics": 6
+      },
+      "buildable": true,
+      "unlockedBy": "luxuryHomes"
+    },
+    {
       "id": "galley",
       "name": "Galley",
       "short": "Galley",

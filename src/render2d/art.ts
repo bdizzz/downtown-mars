@@ -20,11 +20,20 @@ export function tint(c: number, t: number): number {
 }
 
 /** Rooms that share another's glyph. */
-const ALIASES: Record<string, string> = { empty_room_s: "empty_room", empty_room_m: "empty_room", empty_room_l: "empty_room", tiny_plaza: "small_plaza", construction_yard: "construction_office", storeroom: "warehouse", depot: "warehouse" };
+const ALIASES: Record<string, string> = { studio: "apartment", family_apartment: "flat", residence: "suite", empty_room_s: "empty_room", empty_room_m: "empty_room", empty_room_l: "empty_room", tiny_plaza: "small_plaza", construction_yard: "construction_office", storeroom: "warehouse", depot: "warehouse" };
 
 type Glyph = (g: GraphicsContext, cx: number, cy: number, s: number, color: number) => void;
 
 const line = (w: number, color: number, alpha = 1) => ({ color, width: w, alpha, cap: "round" as const, join: "round" as const });
+
+/** A house outline: walls, roof and door, plus windows (tier 1 and up) and a star (tier 2). */
+function house(g: GraphicsContext, cx: number, cy: number, s: number, c: number, tier: number): void {
+  g.moveTo(cx - s * 0.28, cy - s * 0.02).lineTo(cx, cy - s * 0.3).lineTo(cx + s * 0.28, cy - s * 0.02).stroke(line(1.5, c));
+  g.rect(cx - s * 0.22, cy - s * 0.04, s * 0.44, s * 0.34).stroke(line(1.5, c));
+  g.rect(cx - s * 0.05, cy + s * 0.12, s * 0.1, s * 0.18).stroke(line(1.2, c));
+  if (tier >= 1) for (const dx of [-0.14, 0.14]) g.rect(cx + dx * s - s * 0.04, cy + s * 0.04, s * 0.08, s * 0.07).fill({ color: c, alpha: 0.8 });
+  if (tier >= 2) g.star(cx, cy - s * 0.38, 5, s * 0.07, s * 0.03).fill({ color: c });
+}
 
 /** One icon per room type, drawn centred at (cx, cy) inside a box of size s. */
 const GLYPHS: Record<string, Glyph> = {
@@ -36,6 +45,10 @@ const GLYPHS: Record<string, Glyph> = {
       g.moveTo(x - s * 0.16, cy).lineTo(x + s * 0.16, cy).stroke(line(1.5, c));
     }
   },
+  // Homes: a house, with a door for the basic tier, windows for the standard, and a star over the luxury.
+  apartment: (g, cx, cy, s, c) => house(g, cx, cy, s, c, 0),
+  flat: (g, cx, cy, s, c) => house(g, cx, cy, s, c, 1),
+  suite: (g, cx, cy, s, c) => house(g, cx, cy, s, c, 2),
   landing_pod: (g, cx, cy, s, c) => {
     g.moveTo(cx - s * 0.35, cy + s * 0.25).arc(cx, cy + s * 0.25, s * 0.35, Math.PI, 0).closePath().stroke(line(1.5, c));
     g.circle(cx, cy + s * 0.05, s * 0.08).stroke(line(1.5, c));
