@@ -618,6 +618,22 @@ function hangTag(layout: Layout, room: RoomInstance, f: Fitted): HangTag {
 /** How far past a room's wall to look for what's across it: past the wall's hairline, or into a corridor alongside. */
 const HANG = { probe: 0.15 };
 
+/** Solar panels: dark glass, dulled by dust in a storm (see `setPanelDust`). */
+const PANEL = { clean: 0x1d2a4a, dusty: 0x8a6048, roughness: [0.3, 0.9] as const, metalness: [0.5, 0.1] as const };
+let panels: THREE.MeshStandardMaterial | null = null;
+function panelMaterial(): THREE.MeshStandardMaterial {
+  panels ??= new THREE.MeshStandardMaterial({ color: PANEL.clean, metalness: PANEL.metalness[0], roughness: PANEL.roughness[0] });
+  return panels;
+}
+
+/** Dust on the solar panels: 0 clean to 1 caked. */
+export function setPanelDust(level: number): void {
+  const m = panelMaterial();
+  m.color.set(PANEL.clean).lerp(new THREE.Color(PANEL.dusty), level);
+  m.roughness = PANEL.roughness[0] + (PANEL.roughness[1] - PANEL.roughness[0]) * level;
+  m.metalness = PANEL.metalness[0] + (PANEL.metalness[1] - PANEL.metalness[0]) * level;
+}
+
 const furnitureCache = new Map<string, THREE.Group>();
 function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, color: number, topFloor: number | null): THREE.Group | null {
   // Stairs and elevators are furnished on several floors: above a chosen floor, theirs go too.
@@ -984,7 +1000,7 @@ function surfaceProp(room: RoomInstance, layout: Layout, color: number): THREE.O
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.6), mat(0x555555));
       post.position.set(0, 0.8, dz);
       g.add(post);
-      const panel = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.12, 2.4), mat(0x1d2a4a, { metalness: 0.5, roughness: 0.3 }));
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.12, 2.4), panelMaterial());
       panel.position.set(0, 1.7, dz);
       panel.rotation.z = 0.5;
       g.add(panel);

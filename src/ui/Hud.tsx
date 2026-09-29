@@ -90,8 +90,8 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
         </span>
       )}
       {snapshot && (snapshot.weather.storm > 0 || snapshot.weather.dueInDays !== null) && (
-        <span className="drop warn" title="Dust storms cut what the solar arrays make">
-          {snapshot.weather.storm > 0 ? "🌪 Dust storm" : `🌪 Storm in ~${snapshot.weather.dueInDays!.toFixed(1)} days`}
+        <span className="drop warn" title={snapshot.weather.storm > 0 ? "A dust storm is blowing: the solar arrays make less" : "A dust storm is coming: it will cut what the solar arrays make"}>
+          {snapshot.weather.storm > 0 ? "🌪 Storm" : `🌪 in ${snapshot.weather.dueInDays!.toFixed(1)}d`}
         </span>
       )}
       {snapshot && (

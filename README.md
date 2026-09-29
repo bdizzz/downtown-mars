@@ -16,6 +16,7 @@ Start a new game and follow your deputy's tutorial, or dive in:
 - **Homes:** bunk dorms from the start; as the hole grows, apartments. At 50 colonists, studios and apartments. At 200, flats and family apartments. At 1,000, suites and residences. Each tier houses fewer people per slot and costs more, but its residents are more comfortable, and the finer tiers cheer their neighbours too.
 - **Watch the bar at the top:** oxygen, water, meals and power, with how fast they're changing. Red means it runs out in under two days.
 - **Earth** sends supply drops every few days until you can stand on your own.
+- **Dust storms** are forecast a few days ahead (the 🌪 chip at the top counts down), then blow for a day or two, halving what the solar arrays make. Charge your batteries before one hits. In 3D the sky thickens to a murk, grit streams past, and the panels dull over.
 - **Office:** colonists visit with problems. What you promise, they remember.
 - **People:** everyone starts as a working adult. With a clinic and a happy hole, children are born (they need a school); adults eventually retire as elders (who want elder care), and elders pass away in time: build a crypt, or enact Return to the soil. Only adults work. The **People** panel shows what's holding births back, and colonists in a miserable hole move to a happier one.
 - **Storage:** dry goods (food and materials) only keep what storage has room for. Build storerooms, warehouses or depots and choose what each holds in its details panel; the landing pod has some to start. A good shown in amber has no room left, and what arrives is lost.
@@ -76,6 +77,7 @@ For testing, the browser console has `dm`, which acts on the hole you're looking
 - `dm.fill(1000)` raises every stored resource (not power or waste) to at least that much.
 - `dm.unlock()` unlocks every room that waits on a milestone, or one with `dm.unlock("cargo")`. `dm.unlock("ore")` puts a deposit (ice, aquifer, ore or silica) under the hole, for rooms that need one.
 - `dm.finish()` finishes everything in the construction queue at once.
+- `dm.storm(1)` starts a dust storm now, for a day; `dm.storm(2, 3)` forecasts one in 3 days for 2; `dm.storm(0)` clears the sky.
 - `dm.command({ ... })` sends any simulation command, as the game would (see `SimCommand` in `src/sim/commands.ts`).
 
 Changes go through the simulation like any command and show in the flow report as "Console". Giving more than the hole can store also adds that much storage, which the hole keeps (in saves too), so the amount isn't thrown away on the next tick.

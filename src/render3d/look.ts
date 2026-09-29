@@ -36,6 +36,8 @@ const LOOK = {
    * and everything settles into their amber. `deep` is how far down (metres
    * below the surface) the lamps have taken over entirely; `from` is where the change starts.
    */
+  /** A dust storm: haze turns dusty and thick, and reaches far things from anywhere. */
+  storm: { color: 0x8a5838, density: 0.05, clear: 4, max: 0.88 },
   mood: { night: [0.72, 0.8, 1.02] as const, lamp: [1.07, 0.93, 0.78] as const, from: 2, deep: 22 },
   /** Tilt-shift: blur at full (as a share of the screen), and where the sharp band sits (0 bottom, 1 top). */
   tiltShift: { blur: 2.4, focus: 0.5 },
@@ -111,6 +113,7 @@ const HazeShader = {
     focusY: { value: 0 },
     byDistance: { value: 0 },
     amount: { value: 1 },
+    most: { value: LOOK.haze.max },
     daylight: { value: 1 },
     nightTint: { value: new THREE.Vector3(...LOOK.mood.night) },
     lampTint: { value: new THREE.Vector3(...LOOK.mood.lamp) },
@@ -132,6 +135,7 @@ const HazeShader = {
     uniform float focusY;
     uniform float byDistance;
     uniform float amount;
+    uniform float most;
     uniform float daylight;
     uniform vec3 nightTint;
     uniform vec3 lampTint;
@@ -149,7 +153,7 @@ const HazeShader = {
       float below = max(0.0, focusY - world.y);
       float far = max(0.0, length(view.xyz) - clear) * byDistance;
       float f = (1.0 - exp(-below * depthDensity - far * density)) * amount;
-      vec3 c = mix(base.rgb, color, clamp(f, 0.0, ${LOOK.haze.max.toFixed(2)}));
+      vec3 c = mix(base.rgb, color, clamp(f, 0.0, most));
       // The mood: the hour's light near the surface, the lamps' deeper down.
       float lamps = smoothstep(moodFrom, moodDeep, -world.y);
       vec3 tint = mix(mix(nightTint, vec3(1.0), daylight), lampTint, lamps);
@@ -184,6 +188,7 @@ const GradeShader = {
 export class Look {
   private graphics: Graphics | null = null;
   private iso = false;
+  private storm = 0;
   private composer: EffectComposer;
   private scenePass: ScenePass;
   private ao: SceneAOPass;
@@ -246,6 +251,16 @@ export class Look {
    * over), whether it's from inside the hole (far things haze too), and whether
    * it's Iso (the only view tilt-shift suits).
    */
+  /** How hard a dust storm is blowing, 0 to 1: the haze thickens and browns, near and far. */
+  setStorm(level: number): void {
+    this.storm = level;
+    const u = this.haze.uniforms;
+    (u.color!.value as THREE.Color).set(LOOK.haze.color).lerp(new THREE.Color(LOOK.storm.color), level);
+    u.density!.value = LOOK.haze.density + (LOOK.storm.density - LOOK.haze.density) * level;
+    u.clear!.value = LOOK.haze.clear + (LOOK.storm.clear - LOOK.haze.clear) * level;
+    u.most!.value = LOOK.haze.max + (LOOK.storm.max - LOOK.haze.max) * level;
+  }
+
   /** Daylight, 0 (night) to 1 (noon), for the mood near the surface. */
   setDaylight(light: number): void {
     this.haze.uniforms.daylight!.value = light;
@@ -253,7 +268,7 @@ export class Look {
 
   setView(focusY: number, inside: boolean, iso: boolean): void {
     this.haze.uniforms.focusY!.value = focusY;
-    this.haze.uniforms.byDistance!.value = inside ? 1 : 0;
+    this.haze.uniforms.byDistance!.value = Math.max(inside ? 1 : 0, this.storm);
     if (iso === this.iso) return;
     this.iso = iso;
     this.applyTiltShift();

@@ -21,9 +21,14 @@ import { buildTerrain, siteSeed, type Terrain } from "./terrain3d";
 import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
-import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, withWallsDown } from "./rooms3d";
+import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, withWallsDown } from "./rooms3d";
 import { Dust, galleryLamps, makeLander, placeLander, setLampGlow } from "./scenery3d";
 import { occupied, People, type RoomSpots } from "./people3d";
+import { Grit } from "./storm3d";
+
+/** How much a full dust storm dims the sun and the sky's light, and how fast (per second) the view follows it. */
+const STORM_DIM = { sun: 0.7, sky: 0.3 };
+const STORM_EASE = 0.8;
 import { clear as walkClear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Four
@@ -224,6 +229,18 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // Timing for the dev console (window.__stage3d in dev builds only).
   const stats = { buildMs: 0, frameMs: 0, calls: 0, triangles: 0 };
   const people = new People();
+  /** A dust storm: how hard it's blowing as shown (eased toward the sim's), and the grit it carries. */
+  const grit = new Grit();
+  let storm = 0;
+  let stormTarget: number | null = null;
+  /** Show the storm at this strength: haze, sky, dusty panels, grit, dimmer sun. */
+  function applyStorm(level: number): void {
+    storm = level;
+    look.setStorm(level);
+    skyDome.setDust(level);
+    setPanelDust(level);
+    grit.setLevel(graphics.life && cut() === null ? level : 0);
+  }
   /** What the people in rooms were last worked out for. */
   let peopleKey = "";
   const dust = new Dust();
@@ -470,8 +487,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     skyColor = new THREE.Color(C.nightSky).lerp(new THREE.Color(C.daySky), light);
     if (cut() === null) scene.background = skyColor;
     // Deep in the shaft, daylight matters less than the lamps; keep it gentle.
-    hemi.intensity = 0.45 + 0.35 * light;
-    sun.intensity = 0.15 + 0.9 * light;
+    // A dust storm blots out the sun, and some of the sky's light.
+    hemi.intensity = (0.45 + 0.35 * light) * (1 - STORM_DIM.sky * storm);
+    sun.intensity = (0.15 + 0.9 * light) * (1 - STORM_DIM.sun * storm);
     // Near the surface, the view takes the hour's light; deeper down, the lamps'.
     look.setDaylight(light);
     // At night, windows and the gallery lamps glow.
@@ -1258,6 +1276,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   renderer.setAnimationLoop(() => {
     const dt = Math.min(0.1, clock.getDelta());
     ambient += dt;
+    // The storm builds and clears smoothly, even when the sim jumps.
+    if (stormTarget !== null && Math.abs(stormTarget - storm) > 0.002) {
+      applyStorm(storm + (stormTarget - storm) * Math.min(1, dt * STORM_EASE));
+      if (latest) updateSky(latest);
+      dirty = true;
+    }
     if (walkFrame(dt)) {
       applyCamera();
       updateReadout();
@@ -1267,6 +1291,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       // Colonists, sparks and steam move only while the game runs.
       if (performance.now() - lastTickChange < 400) {
         people.step(ambient);
+        grit.step(ambient, camera.position);
         roomFx.step(ambient);
       }
       ambient = 0;
@@ -1310,6 +1335,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     scene.background = cut() === null ? skyColor : new THREE.Color(C.earth);
     if (lamps) lamps.visible = cut() === null;
     people.group.visible = graphics.life;
+    grit.setLevel(graphics.life && cut() === null ? storm : 0);
     people.setTopFloor(view.mode === "walk" ? null : cut());
     dust.points.visible = graphics.life && cut() === null;
     roomFx.group.visible = graphics.life;
@@ -1327,7 +1353,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     look.resize();
     applyFloorCut();
   }
-  scene.add(people.group, dust.points, roomFx.group, lampLights.group);
+  scene.add(people.group, dust.points, roomFx.group, lampLights.group, grit.points);
   lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
 
   let latest: Snapshot | null = null;
@@ -1466,6 +1492,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         updateSection();
       }
       people.sync(snapshot.layout.hole, snapshot.population.count);
+      // The weather: a storm on load shows at once; after that it eases in and out.
+      if (stormTarget === null) applyStorm(snapshot.weather.storm);
+      stormTarget = snapshot.weather.storm;
       // Who's in the rooms: staff at their posts, sleepers by night, people sitting about. Redone by the hour.
       const hour = Math.floor(snapshot.time.dayFraction * 24);
       const staffKey = snapshot.layout.rooms.map((r) => snapshot.roomStatus[r.id]?.staff ?? 0).join(",");
@@ -1564,6 +1593,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         if (o instanceof THREE.InstancedMesh) dispose(o);
       });
       dispose(dust.points);
+      grit.dispose();
       roomFx.dispose();
       fieldGroup.traverse((o) => o instanceof THREE.Mesh && o.geometry.dispose());
       disposeRoomMaterials();

@@ -62,4 +62,13 @@ describe("dust storms", () => {
     }
     expect(a.rngState).toBe(b.rngState);
   });
+
+  it("can be called up from the console, and cleared", () => {
+    const s = createInitialState(config);
+    s.tick = 500;
+    expect(applyCommand(s, { type: "consoleStorm", days: 2, inDays: 1 }).ok).toBe(true);
+    expect(s.weather?.storm).toEqual({ start: 500 + tpd, end: 500 + 3 * tpd });
+    applyCommand(s, { type: "consoleStorm", days: 0 });
+    expect(s.weather?.storm).toBeUndefined();
+  });
 });

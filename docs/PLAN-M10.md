@@ -499,3 +499,24 @@ Decided Sep 28, 2026 (Bryon):
 - Everyone above a chosen floor is hidden (not in first person). Rooms hidden by X-ray have no furniture group, so no people either.
 - **Browser check:** in Iso on floor 1 with walls down, figures walk the gallery in their colours and galley staff stand at the counters in the food green. Poses are covered by tests (a sleeper lies flat).
 - Lamp light turned down again (intensity 2.2, decay 2), since white things right by a lamp were tripping the glow. The serving counter's light moved out from inside its sign.
+
+**Step 5, dust storms:**
+- **In the sim** (`weather.ts`; DESIGN.md "Dust storms: forecast days ahead; cut solar output").
+  - From day 6, each day has a 5% chance of a storm forecast 2 to 4 days ahead. It lasts 1 to 2 days and builds and clears over 6 hours.
+  - While it blows, solar arrays make half (`limit: "storm"`, "dimmed by the dust storm" in the room card).
+  - Whether a storm comes is a hash of the hole and the day, not the hole's random stream, so it never shifts anything else's luck.
+  - Messages at the forecast, the start and the end. The snapshot carries `weather: { storm, dueInDays }`, and a chip in the top bar counts down, then shows "🌪 Storm".
+  - All numbers are in `config.json` → `weather.dustStorm`.
+- **Balance note:**
+  - The first try (solar at 30% for 1 to 3 days) cost the 90-day network bot about 15% growth.
+  - Teaching the bot to build batteries and solar on a forecast made it worse: extra arrays each take a worker.
+  - At 50% for 1 to 2 days, with the bot unchanged, the playthroughs pass: 15 born and 170 colonists at day 80, against 18 and 166 without storms.
+  - How often and how hard storms hit is open for mid-game balance.
+- **In 3D:**
+  - The haze turns dusty and thick and reaches far things from any view.
+  - The sky dome fills with murk (lighter toward the horizon), hiding the sun and stars. The sun dims 70% and the sky's light 30%.
+  - The solar panels dull to dusty tan.
+  - Grit streams past the camera: 1,400 motes in a box that follows it, above ground, with a floor picked hidden.
+  - The view eases toward the sim's storm level, so it builds smoothly. A storm already blowing on load shows at once.
+- **Console:** `dm.storm(days, inDays)` (`consoleStorm`).
+- **Browser check:** `dm.storm(1)` in a test game, run to full strength. In Cutaway the sky is an orange murk, the horizon has gone and the hole is dim. From the shaft, grit drifts above the gallery.

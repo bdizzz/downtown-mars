@@ -15,6 +15,9 @@ const SKY = {
   starCells: 60,
   starDensity: 0.08,
   starsBy: 0.35,
+  /** A dust storm: the sky thickens to this murk (at full daylight; darker by night), hiding the sun and stars. */
+  dust: 0x9a6a4a,
+  dustNight: 0x1a100c,
 };
 
 const VERTEX = /* glsl */ `
@@ -37,6 +40,9 @@ const FRAGMENT = /* glsl */ `
   uniform float starDensity;
   uniform float starCells;
   uniform float starsBy;
+  uniform float dust;
+  uniform vec3 dustDay;
+  uniform vec3 dustNight;
   varying vec3 vDir;
 
   float hash(vec3 p) {
@@ -69,6 +75,9 @@ const FRAGMENT = /* glsl */ `
         col += vec3(0.95, 0.92, 1.0) * smoothstep(0.16, 0.02, r) * bright * dark * smoothstep(0.0, 0.08, d.y);
       }
     }
+    // A storm: murk, a little lighter toward the horizon, over everything.
+    vec3 murk = mix(dustNight, dustDay, light) * (1.05 - 0.15 * t);
+    col = mix(col, murk, dust);
     gl_FragColor = vec4(col, 1.0);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -79,6 +88,8 @@ export interface Sky {
   mesh: THREE.Mesh;
   /** Daylight 0..1, and where the sun is (a direction). */
   update(light: number, sunDir: THREE.Vector3): void;
+  /** A dust storm's hold on the sky: 0 clear to 1. */
+  setDust(level: number): void;
   /** Keep it centred on the camera. */
   follow(camera: THREE.Camera): void;
   dispose(): void;
@@ -98,6 +109,9 @@ export function createSky(): Sky {
       starDensity: { value: SKY.starDensity },
       starCells: { value: SKY.starCells },
       starsBy: { value: SKY.starsBy },
+      dust: { value: 0 },
+      dustDay: { value: lin(SKY.dust) },
+      dustNight: { value: lin(SKY.dustNight) },
     },
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
@@ -112,6 +126,9 @@ export function createSky(): Sky {
     update(light, sunDir) {
       material.uniforms.light!.value = light;
       (material.uniforms.sunDir!.value as THREE.Vector3).copy(sunDir).normalize();
+    },
+    setDust(level) {
+      material.uniforms.dust!.value = level * 0.9;
     },
     follow(camera) {
       mesh.position.copy(camera.position);

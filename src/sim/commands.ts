@@ -48,7 +48,9 @@ export type SimCommand =
   /** Testing, from the browser console: unlock rooms that wait on a milestone (all of them, or one gate), or put a deposit under the hole (by name). */
   | { type: "consoleUnlock"; gate?: string }
   /** Testing, from the browser console: finish every job in the construction queue at once. */
-  | { type: "consoleFinish" };
+  | { type: "consoleFinish" }
+  /** Testing, from the browser console: a dust storm, starting in `inDays` (0: now) and lasting `days`; or clear skies (days 0). */
+  | { type: "consoleStorm"; inDays?: number; days?: number };
 
 /** roomId is set when a build succeeds, so the UI can offer undo. */
 export type CommandResult = { ok: true; roomId?: number } | { ok: false; reason: string };
@@ -208,6 +210,17 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     }
     case "consoleResources":
       return consoleResources(state, cmd.set ?? {}, cmd.add ?? {}, cmd.atLeast ?? {});
+    case "consoleStorm": {
+      const tpd = config.ticksPerDay;
+      const days = cmd.days ?? 1;
+      if (days <= 0) {
+        if (state.weather) state.weather.storm = undefined;
+        return { ok: true };
+      }
+      const start = state.tick + Math.round((cmd.inDays ?? 0) * tpd);
+      state.weather = { storm: { start, end: start + Math.round(days * tpd) } };
+      return { ok: true };
+    }
     case "consoleFinish": {
       const n = state.construction?.queue.length ?? 0;
       finishAll(state, config);
