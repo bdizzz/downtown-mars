@@ -36,7 +36,7 @@ const FRAGMENT = /* glsl */ `
   uniform float strength;
   uniform float fade;
   uniform float time;
-  uniform float length;
+  uniform float columnLength;
   varying vec3 vWorld;
   varying vec3 vNormal;
   varying float vDown;
@@ -45,7 +45,7 @@ const FRAGMENT = /* glsl */ `
     // Through the middle of the column there's the most light to see; its edges fade out.
     float through = pow(abs(dot(normalize(vNormal), toCam)), 1.6);
     // Fading down the hole, and gone before the column's end, so it has no hard rim.
-    float depth = exp(-vDown * fade) * smoothstep(length, length * 0.55, vDown);
+    float depth = exp(-vDown * fade) * smoothstep(columnLength, columnLength * 0.55, vDown);
     // Faint streaks drifting down.
     float a = atan(vWorld.z, vWorld.x);
     float streaks = 0.75 + 0.25 * sin(a * 23.0 + vDown * 0.35 - time * 0.6) * sin(a * 7.0 - time * 0.23);
@@ -69,7 +69,7 @@ export class LightShaft {
         strength: { value: 0 },
         fade: { value: SHAFT.fade },
         time: { value: 0 },
-        length: { value: 1 },
+        columnLength: { value: 1 },
       },
       vertexShader: VERTEX,
       fragmentShader: FRAGMENT,
@@ -92,7 +92,7 @@ export class LightShaft {
     const g = new THREE.CylinderGeometry(openRadius * SHAFT.radius, openRadius * SHAFT.radius, depth, 48, 1, true);
     g.translate(0, -depth / 2, 0);
     this.mesh.geometry = g;
-    this.material.uniforms.length!.value = depth;
+    this.material.uniforms.columnLength!.value = depth;
   }
 
   /**
