@@ -55,7 +55,7 @@ function half(p) {
 const up = (v) => Math.ceil(Math.round(v * 1e6) / 1e6 * 20) / 20;
 
 const items = {};
-function item(id, name, parts) {
+function item(id, name, parts, mount) {
   let [w, d, h] = [0, 0, 0];
   for (const p of parts) {
     const [hx, hy, hz] = half(p);
@@ -63,8 +63,118 @@ function item(id, name, parts) {
     d = Math.max(d, 2 * (Math.abs(p.p[2]) + hz));
     h = Math.max(h, p.p[1] + hy);
   }
-  items[id] = { name, size: [up(w), up(d), up(h)], parts };
+  items[id] = { name, size: [up(w), up(d), up(h)], parts, ...(mount ? { mount } : {}) };
 }
+
+// =====================================================================
+// Wall hangings: modelled from their bottom edge, hung at their mount height
+// (the last argument). Their backs go flat against the wall.
+// =====================================================================
+
+/** A picture frame (w × h) with a canvas in it. */
+const framed = (w, h, frame = "wood") => [box([0, h / 2, 0], [w, h, 0.04], frame), box([0, h / 2, 0.021], [w - 0.1, h - 0.1, 0.01], "cream")];
+item("painting", "Painting", [
+  ...framed(0.9, 0.7),
+  // A landscape: sky, hills and a sun.
+  box([0, 0.47, 0.027], [0.8, 0.26, 0.005], "glow"),
+  box([-0.12, 0.25, 0.028], [0.56, 0.2, 0.005], "rust"),
+  box([0.2, 0.2, 0.029], [0.4, 0.12, 0.005], "composite"),
+  cyl([0.22, 0.5, 0.03], 0.1, 0.005, "power", { r: [90, 0, 0] }),
+], 1.5);
+item("painting_wide", "Wide painting", [
+  ...framed(1.8, 0.9),
+  box([0, 0.62, 0.027], [1.7, 0.36, 0.005], "accent"),
+  box([-0.4, 0.3, 0.028], [0.9, 0.3, 0.005], "rust"),
+  box([0.45, 0.25, 0.029], [0.8, 0.2, 0.005], "plant"),
+  cyl([-0.55, 0.65, 0.03], 0.14, 0.005, "white", { r: [90, 0, 0] }),
+], 1.45);
+item("poster", "Poster", [
+  box([0, 0.42, 0], [0.6, 0.84, 0.01], "white"),
+  box([0, 0.52, 0.006], [0.5, 0.5, 0.004], "accent"),
+  cyl([0, 0.55, 0.009], 0.26, 0.004, "power", { r: [90, 0, 0] }),
+  ...[0.18, 0.12].map((y) => box([0, y, 0.006], [0.44, 0.03, 0.004], "dark")),
+], 1.3);
+item("wall_lamp", "Wall lamp", [
+  box([0, 0.12, 0], [0.12, 0.24, 0.04], "metal"),
+  box([0, 0.12, 0.08], [0.04, 0.04, 0.14], "metal"),
+  cyl([0, 0.22, 0.15], 0.22, 0.2, "cream"),
+  cyl([0, 0.14, 0.15], 0.16, 0.03, "lamp", glow),
+], 1.9);
+item("wall_shelf", "Wall shelf", [
+  box([0, 0.14, 0.1], [1.0, 0.04, 0.22], "wood"),
+  ...[-0.42, 0.42].map((x) => box([x, 0.06, 0.03], [0.03, 0.12, 0.08], "dark")),
+  ...[-0.32, -0.26, -0.2].map((x, i) => box([x, 0.27 + i * 0.01, 0.1], [0.05, 0.22 + i * 0.02, 0.16], ["accent", "rust", "board"][i])),
+  cyl([0.05, 0.24, 0.1], 0.12, 0.16, "copper"),
+  sph([0.3, 0.23, 0.1], 0.14, "mirror"),
+], 1.45);
+item("wall_mirror", "Mirror", [box([0, 0.5, 0], [0.6, 1.0, 0.03], "wood"), box([0, 0.5, 0.016], [0.52, 0.92, 0.005], "mirror")], 1.1);
+item("wall_clock", "Clock", [
+  cyl([0, 0.2, 0.02], 0.4, 0.04, "dark", { r: [90, 0, 0] }),
+  cyl([0, 0.2, 0.041], 0.34, 0.005, "white", { r: [90, 0, 0] }),
+  box([0, 0.25, 0.045], [0.02, 0.11, 0.005], "dark"),
+  box([0.05, 0.2, 0.045], [0.1, 0.02, 0.005], "dark"),
+], 2.2);
+item("chart_board", "Chart board", [
+  box([0, 0.45, 0], [1.4, 0.9, 0.04], "white"),
+  box([0, 0.02, 0.03], [1.3, 0.03, 0.06], "metal"),
+  // A rising line, bars and notes.
+  ...[[-0.45, 0.35], [-0.2, 0.45], [0.05, 0.4], [0.3, 0.6]].map(([x, y], i, all) => {
+    const [nx, ny] = all[i + 1] ?? [0.5, 0.7];
+    const len = Math.hypot(nx - x, ny - y);
+    return box([(x + nx) / 2, (y + ny) / 2, 0.022], [len, 0.02, 0.004], "blueprint", { r: [0, 0, (Math.atan2(ny - y, nx - x) * 180) / Math.PI] });
+  }),
+  ...[-0.5, -0.4, -0.3].map((x, i) => box([x, 0.2 + i * 0.03, 0.022], [0.07, 0.12 + i * 0.06, 0.004], "accent")),
+  box([0.45, 0.2, 0.022], [0.3, 0.2, 0.004], "power"),
+], 1.25);
+item("readout_panel", "Readout panel", [
+  box([0, 0.35, 0], [1.2, 0.7, 0.08], "dark"),
+  box([-0.28, 0.4, 0.041], [0.56, 0.44, 0.005], "glow", glow),
+  ...[0.12, 0.2, 0.28].map((x, i) => box([x + 0.1, 0.28 + i * 0.06, 0.042], [0.06, 0.2 + i * 0.12, 0.005], "power", glow)),
+  ...[-0.4, -0.25, -0.1].map((x) => box([x, 0.1, 0.045], [0.08, 0.05, 0.01], "accent")),
+], 1.35);
+item("gauge_panel", "Gauges", [
+  box([0, 0.3, 0], [0.9, 0.6, 0.1], "metal"),
+  ...[-0.25, 0.05, 0.3].map((x) => cyl([x, 0.36, 0.051], 0.2, 0.01, "white", { r: [90, 0, 0] })),
+  ...[-0.25, 0.05, 0.3].map((x, i) => box([x + 0.03, 0.38, 0.058], [0.08, 0.015, 0.004], "fire", { r: [0, 0, 30 - i * 40] })),
+  box([0, 0.1, 0.051], [0.7, 0.06, 0.005], "hazard"),
+], 1.3);
+item("mars_map", "Map of Mars", [
+  box([0, 0.55, 0], [2.0, 1.1, 0.04], "dark"),
+  box([0, 0.55, 0.021], [1.9, 1.0, 0.005], "rust"),
+  // Highlands, a canyon, and the colony's holes marked.
+  box([-0.4, 0.8, 0.024], [0.8, 0.3, 0.004], "composite"),
+  box([0.3, 0.45, 0.024], [0.9, 0.06, 0.004], "soil", { r: [0, 0, -8] }),
+  cyl([0.55, 0.8, 0.026], 0.3, 0.004, "stone", { r: [90, 0, 0] }),
+  ...[[-0.6, 0.3], [-0.1, 0.55], [0.7, 0.25]].map(([x, y]) => cyl([x, y, 0.028], 0.07, 0.006, "glow", { r: [90, 0, 0], glow: true })),
+], 1.3);
+item("notice_board", "Notice board", [
+  box([0, 0.4, 0], [1.2, 0.8, 0.04], "wood"),
+  box([0, 0.4, 0.021], [1.1, 0.7, 0.005], "composite"),
+  ...[[-0.35, 0.55, "white"], [-0.05, 0.5, "power"], [0.3, 0.58, "accent"], [-0.3, 0.22, "cream"], [0.1, 0.25, "white"], [0.38, 0.2, "grow"]].map(([x, y, c]) =>
+    box([x, y, 0.026], [0.22, 0.24, 0.004], c, { r: [0, 0, (x * 20) % 7] }),
+  ),
+], 1.3);
+item("safety_sign", "Safety sign", [
+  box([0, 0.3, 0], [0.6, 0.6, 0.02], "hazard"),
+  box([0, 0.3, 0.011], [0.38, 0.38, 0.004], "dark", { r: [0, 0, 45] }),
+  box([0, 0.3, 0.014], [0.3, 0.3, 0.004], "hazard", { r: [0, 0, 45] }),
+  box([0, 0.33, 0.016], [0.04, 0.14, 0.004], "dark"),
+  box([0, 0.23, 0.016], [0.04, 0.04, 0.004], "dark"),
+], 1.75);
+item("wall_planter", "Hanging planter", [
+  box([0, 0.45, 0.12], [0.8, 0.2, 0.24], "accent"),
+  box([0, 0.55, 0.12], [0.74, 0.02, 0.2], "soil"),
+  // Leaves over the rim, and vines trailing down the front.
+  ...[-0.25, 0, 0.25].flatMap((x) => [sph([x, 0.65, 0.12], 0.26, "leaf"), box([x + 0.05, 0.2, 0.22], [0.05, 0.4, 0.05], "plant")]),
+], 1.35);
+item("banner", "Banner", [
+  box([0, 1.58, 0.03], [0.9, 0.04, 0.04], "metal"),
+  box([0, 0.9, 0.02], [0.8, 1.3, 0.01], "accent"),
+  box([0, 1.05, 0.026], [0.5, 0.5, 0.004], "white"),
+  cyl([0, 1.05, 0.029], 0.3, 0.004, "power", { r: [90, 0, 0] }),
+  box([0, 0.3, 0.02], [0.8, 0.1, 0.01], "hazard"),
+], 1.6);
+item("plaque", "Plaque", [box([0, 0.17, 0], [0.5, 0.34, 0.03], "copper"), box([0, 0.17, 0.016], [0.42, 0.26, 0.004], "stone"), ...[0.22, 0.15, 0.08].map((y) => box([0, y, 0.019], [0.3, 0.02, 0.003], "dark"))], 1.4);
 
 // =====================================================================
 // Homes and people
@@ -949,6 +1059,54 @@ const rooms = {
   elevator: ["elevator_shaft", "elevator_car", "call_panel", "bench", "plant_pot"],
 };
 
+// What hangs on each room's walls: pictures and lamps at home, charts, readouts and signs at work.
+const hangings = {
+  bunk_dorm: ["poster", "wall_lamp", "wall_shelf", "wall_clock"],
+  studio: ["painting", "poster", "wall_lamp", "wall_shelf", "wall_mirror"],
+  apartment: ["painting", "painting_wide", "wall_lamp", "wall_shelf", "wall_mirror", "wall_clock"],
+  flat: ["painting", "painting_wide", "wall_lamp", "wall_shelf", "wall_mirror", "wall_clock", "wall_planter"],
+  family_apartment: ["painting", "painting_wide", "poster", "wall_lamp", "wall_shelf", "wall_mirror", "wall_clock", "wall_planter"],
+  suite: ["painting", "painting_wide", "wall_lamp", "wall_shelf", "wall_mirror", "wall_clock", "wall_planter"],
+  residence: ["painting", "painting_wide", "wall_lamp", "wall_shelf", "wall_mirror", "wall_clock", "wall_planter"],
+  galley: ["notice_board", "wall_clock", "wall_shelf", "safety_sign"],
+  farm: ["gauge_panel", "chart_board", "wall_planter", "readout_panel"],
+  water_tank: ["gauge_panel", "safety_sign"],
+  water_recycler: ["gauge_panel", "readout_panel", "safety_sign", "chart_board"],
+  restroom: ["wall_mirror", "poster", "wall_lamp"],
+  life_support: ["gauge_panel", "readout_panel", "safety_sign"],
+  clinic: ["chart_board", "poster", "wall_clock", "readout_panel", "painting"],
+  admin_office: ["mars_map", "painting", "wall_clock", "notice_board", "painting_wide"],
+  battery_bank: ["gauge_panel", "readout_panel", "safety_sign"],
+  deep_well_pump: ["gauge_panel", "readout_panel", "safety_sign"],
+  smelter: ["safety_sign", "readout_panel", "gauge_panel", "chart_board"],
+  machine_shop: ["safety_sign", "chart_board", "wall_shelf", "wall_clock"],
+  silicon_refinery: ["safety_sign", "readout_panel", "gauge_panel", "chart_board"],
+  electronics_fab: ["readout_panel", "chart_board", "safety_sign", "wall_clock"],
+  staging_bay: ["safety_sign", "notice_board", "mars_map", "readout_panel"],
+  school: ["notice_board", "mars_map", "poster", "wall_clock", "painting"],
+  elder_care: ["painting", "painting_wide", "wall_clock", "wall_planter", "wall_lamp"],
+  composter: ["gauge_panel", "safety_sign", "chart_board"],
+  crypt: ["plaque", "wall_lamp", "painting"],
+  concrete_plant: ["safety_sign", "gauge_panel", "chart_board"],
+  tiny_plaza: ["wall_planter", "wall_lamp", "banner"],
+  small_plaza: ["banner", "wall_planter", "wall_lamp", "mars_map"],
+  entrance: ["mars_map", "safety_sign", "notice_board", "wall_clock"],
+  cargo_elevator: ["safety_sign", "notice_board"],
+  site_office: ["chart_board", "notice_board", "wall_clock"],
+  construction_office: ["chart_board", "notice_board", "wall_clock", "mars_map"],
+  construction_yard: ["safety_sign", "chart_board", "notice_board"],
+  storeroom: ["safety_sign", "notice_board"],
+  warehouse: ["safety_sign", "notice_board", "wall_lamp"],
+  depot: ["safety_sign", "notice_board", "readout_panel"],
+  stairwell: ["poster", "wall_lamp", "safety_sign"],
+  elevator: ["poster", "wall_lamp", "safety_sign"],
+};
+for (const [room, ids] of Object.entries(hangings)) {
+  if (!rooms[room]) throw new Error(`hangings for unknown room "${room}"`);
+  rooms[room].push(...ids.filter((id) => !rooms[room].includes(id)));
+}
+for (const room of Object.keys(rooms)) if (!hangings[room]) throw new Error(`nothing hangs in "${room}"`);
+
 const colors = {
   metal: "#8f949b", steel: "#b7bcc2", dark: "#3b3f45", rubber: "#2a2a2c", panel: "#cfc8bb", white: "#e4e0d8", cream: "#e8dcc0",
   composite: "#a88a66", cushion: "#7c6a5a", plant: "#5f9e4a", leaf: "#7cc05a", soil: "#5a3a28", water: "#4f9fc8", mirror: "#8fc7d9",
@@ -961,6 +1119,9 @@ for (const [room, ids] of Object.entries(rooms)) for (const id of ids) if (!item
 const unused = Object.keys(items).filter((id) => !Object.values(rooms).some((ids) => ids.includes(id)));
 if (unused.length) console.warn("unused items:", unused.join(", "));
 
+// Hangings fit under the ceiling: floors are 4 m, and floor 1's walls stop a little short.
+for (const [id, it] of Object.entries(items)) if (it.mount && it.mount + it.size[2] > 3.6) throw new Error(`${id} hangs too high`);
+
 // Written compactly: one line per part.
 const note =
   "Furniture for the 3D rooms (docs/PLAN-M10.md), written by scripts/furniture.mjs: edit that and run it, not this. Metres. Each item's footprint (size: width x depth x height) is centred on x = 0, z = 0, with y = 0 the floor; its back is -z, against its wall, and its front +z faces into the room. Parts: s = box | cyl | sph; p = centre; z = size (box [x, y, z], cyl [diameter, height], sph [diameter]); c = a colour name, or 'accent' for the room's category colour; r = rotation in degrees [x, y, z]; glow = lights up at night. rooms lists what each room type may hold.";
@@ -969,7 +1130,7 @@ const lines = ["{", `  "_note": ${JSON.stringify(note)},`, '  "colors": {'];
 Object.entries(colors).forEach(([k, v], i, all) => lines.push(`    ${JSON.stringify(k)}: ${JSON.stringify(v)}${i < all.length - 1 ? "," : ""}`));
 lines.push("  },", '  "items": {');
 Object.entries(items).forEach(([id, it], i, all) => {
-  lines.push(`    ${JSON.stringify(id)}: { "name": ${JSON.stringify(it.name)}, "size": ${J(it.size)}, "parts": [`);
+  lines.push(`    ${JSON.stringify(id)}: { "name": ${JSON.stringify(it.name)}, "size": ${J(it.size)},${it.mount ? ` "mount": ${it.mount},` : ""} "parts": [`);
   it.parts.forEach((p, j) => lines.push(`      ${J(p)}${j < it.parts.length - 1 ? "," : ""}`));
   lines.push(`    ] }${i < all.length - 1 ? "," : ""}`);
 });

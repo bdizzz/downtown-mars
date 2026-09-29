@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import type { RoomStatus } from "../sim/economy";
 import type { Layout } from "../sim/placement";
-import { FLOOR_H } from "./cylinder";
 import { furnish, type Fitted } from "../view/furnish";
 
 // Small effects on working rooms: sparks spitting from a smelter's furnace
@@ -226,7 +225,7 @@ function emitterAt(f: Fitted, kind: Kind, [lx, ly, lz]: [number, number, number]
     fx: s,
     fz: c,
     rate,
-    floor: Math.ceil(-f.y / FLOOR_H - 1e-6),
+    floor: f.floor,
     owed: 0,
   };
 }

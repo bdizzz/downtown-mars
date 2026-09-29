@@ -26,6 +26,8 @@ export interface ItemDef {
   /** Width (x), depth (z), height (y), metres. The footprint is centred on the item's origin. */
   size: [number, number, number];
   parts: Part[];
+  /** Hung on a wall: how high its bottom is above the floor, metres. */
+  mount?: number;
 }
 
 export const furniture = raw as unknown as {
@@ -38,6 +40,11 @@ export function itemDef(id: string): ItemDef {
   const def = furniture.items[id];
   if (!def) throw new Error(`unknown furniture item "${id}"`);
   return def;
+}
+
+/** A wall hanging (a painting, a lamp, a readout): hung at a height, not standing on the floor. */
+export function isMounted(id: string): boolean {
+  return (itemDef(id).mount ?? 0) > 0;
 }
 
 export function isItem(id: string): boolean {

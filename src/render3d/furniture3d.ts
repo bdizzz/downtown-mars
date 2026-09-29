@@ -37,45 +37,77 @@ function partGeometry(part: Part): THREE.BufferGeometry {
   return g;
 }
 
-/** Materials, shared by colour: plain, or glowing. */
-const materials = new Map<string, THREE.MeshStandardMaterial>();
-function material(color: string, glow: boolean): THREE.MeshStandardMaterial {
-  const key = `${color}:${glow}`;
-  let m = materials.get(key);
-  if (!m) {
-    m = glow
-      ? new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: GLOW.day, roughness: 0.4 })
+/**
+ * Materials, shared by colour: plain, or glowing. Wall hangings use their own
+ * copies, adjusted by `hung` (so they can vanish with their wall).
+ */
+const materials = new Map<string, { material: THREE.MeshStandardMaterial; glow: boolean }>();
+let nightGlow = 0;
+function material(color: string, glow: boolean, hung?: Hung): THREE.MeshStandardMaterial {
+  const key = `${color}:${glow}${hung ? `:${hung.key}` : ""}`;
+  let entry = materials.get(key);
+  if (!entry) {
+    const m = glow
+      ? new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: GLOW.day + nightGlow * GLOW.nightBoost, roughness: 0.4 })
       : new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.05 });
-    materials.set(key, m);
+    entry = { material: hung ? hung.material(m) : m, glow };
+    materials.set(key, entry);
   }
-  return m;
+  return entry.material;
 }
 
 /** Glowing parts (screens, lamps, grow lights) brighten as the sky darkens: 0 at noon, 1 at night. */
 export function setFurnitureGlow(night: number): void {
-  for (const [key, m] of materials) if (key.endsWith(":true")) m.emissiveIntensity = GLOW.day + night * GLOW.nightBoost;
+  nightGlow = night;
+  for (const { material: m, glow } of materials.values()) if (glow) m.emissiveIntensity = GLOW.day + night * GLOW.nightBoost;
+}
+
+/**
+ * Wall hangings: each item's tag (its wall's inward normal, at twice its
+ * length when there's something to see across the wall, the wall's base and
+ * top, and a point on the wall), written to every vertex as `aWall` and
+ * `aHang`, and how to adjust their materials so they react to them.
+ */
+export interface HangTag {
+  nx: number;
+  nz: number;
+  y0: number;
+  y1: number;
+  ax: number;
+  az: number;
+}
+export interface Hung {
+  tags: HangTag[];
+  key: string;
+  material: (m: THREE.MeshStandardMaterial) => THREE.MeshStandardMaterial;
 }
 
 /**
  * Placed items as meshes, one per material, merged. `accent` is the room's
  * category colour. Returns an empty group when there's nothing to place.
  */
-export function furnitureMeshes(placed: Placed[], accent: string): THREE.Group {
+export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung): THREE.Group {
   const byMaterial = new Map<string, { material: THREE.MeshStandardMaterial; parts: THREE.BufferGeometry[] }>();
   const m = new THREE.Matrix4();
-  for (const p of placed) {
+  placed.forEach((p, i) => {
     const def = itemDef(p.item);
     m.makeRotationY(p.turn).setPosition(p.x, p.y, p.z);
+    const tag = hung?.tags[i];
     for (const part of def.parts) {
       const color = partColor(part, accent);
       const key = `${color}:${!!part.glow}`;
       let entry = byMaterial.get(key);
-      if (!entry) byMaterial.set(key, (entry = { material: material(color, !!part.glow), parts: [] }));
+      if (!entry) byMaterial.set(key, (entry = { material: material(color, !!part.glow, hung), parts: [] }));
       const g = partGeometry(part);
       g.applyMatrix4(m);
+      if (tag) {
+        const n = g.getAttribute("position").count;
+        g.setAttribute("aWall", new THREE.Float32BufferAttribute(Array.from({ length: n }, () => [tag.nx, tag.nz, tag.y0, tag.y1]).flat(), 4));
+        g.setAttribute("aHang", new THREE.Float32BufferAttribute(Array.from({ length: n }, () => [tag.ax, tag.az]).flat(), 2));
+      }
       entry.parts.push(g);
     }
-  }
+  });
   const group = new THREE.Group();
   for (const { material: mat, parts } of byMaterial.values()) {
     const merged = mergeGeometries(parts.map((g) => g.toNonIndexed()));
@@ -99,6 +131,6 @@ export function disposeFurniture(group: THREE.Object3D): void {
 }
 
 export function disposeFurnitureMaterials(): void {
-  materials.forEach((m) => m.dispose());
+  materials.forEach(({ material: m }) => m.dispose());
   materials.clear();
 }

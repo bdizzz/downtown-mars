@@ -254,3 +254,33 @@ Decided Sep 28, 2026 (Bryon):
   - Every home fits its essentials in every ring. A few extras (a side table, a second bathroom) step aside in ring 1, where the front is narrow and the M rooms' door sits off-centre.
 - **Beds now face the right way:** every bed model has its head at −x, and templates had them turned 90°, which put the head away from the wall. All beds (bunks, elder care, clinic, homes) are now turned −90°, head to the wall.
 - **Tests:** each tier houses fewer per slot, and gives its residents more comfort, than the one below; an S home is cozier than its tier's M; studios wait for 50 colonists and then build, while suites still wait.
+
+**Follow-up, wall hangings (Bryon, Sep 28):** "'wall hangings' furniture for all rooms... items attached to a wall should be completely hidden when on a wall that has been removed via 'walls down'".
+- **Sixteen hangings,** each modelled from its bottom edge with a `mount` height: painting, wide painting, poster, wall lamp (lit), wall shelf with ornaments, mirror, clock, chart board, readout panel (lit screens), gauges, a map of Mars (the colony's holes lit), notice board, safety sign, hanging planter, banner and plaque. The model script checks each fits under the ceiling.
+- **Every room hangs something:**
+  - Pictures, lamps, mirrors, shelves and clocks at home.
+  - Charts, readouts, gauges and safety signs at work.
+  - Maps and notice boards in offices and the entrance.
+  - Plaques in the crypt, banners and planters in plazas.
+  - Posters and lamps on the stairs.
+- **Fitting** (`hang` in `fit`):
+  - A hanging goes only on a solid wall (`frame.solid`): never ring 1's glass front, nor a public room's open sides (onto the gallery or a corridor).
+  - It keeps out of the doorway, keeps 0.25 m from other hangings, and is blocked by anything standing taller than it hangs. So a painting goes over a bed or a sofa, and a lamp over a side table, but nothing hangs behind a wardrobe.
+  - It's checked where standing things go, then hung flat on the wall itself (the fitting gap further out, and 1 cm off it).
+  - Hangings take no floor, so they don't count toward crowding. Standing items ignore them, and templates list them last so they fit around what stands.
+- **Every fitted item knows its wall and floor** (`Fitted.wall`, `.floor`, and `Frame.floor`). Filtering by floor used to work from an item's height, which a hanging would have got wrong.
+- **Walls down:** `furnitureGroup` builds a room's standing furniture as before, and its hangings as separate meshes.
+  - Each hanging is tagged like its wall (`aWall`): the wall's inward normal, at twice its length when there's something to see across it (the gallery, another room, empty space, or a corridor alongside, found by probing just past the wall). It also carries the point on the wall behind it (`aHang`).
+  - `withHangingDown` makes the same in-the-way test as the walls, at that point. When the wall is lowered, the whole item collapses to the point, so nothing of it shows (a wall's stub would otherwise leave a sliver).
+  - The furnishing tool's preview and Overview use the same builder.
+- **Walking:** hangings are over your head, so they aren't obstacles.
+- **Templates:** 1 to 20 hangings per room depending on the ring. Every hanging fits in at least one ring its room can go in; a search tried each one that didn't along all four walls, and moved it to where it fits in the most rings.
+- **Tests:**
+  - Every room has something to hang, and all of it fits under the ceiling.
+  - A painting hangs over a bed but not behind a wardrobe, at its height, flat on the wall.
+  - Nothing hangs on ring 1's glass front or on a plaza's open front.
+  - A hanging's tag points into the room.
+  - Walking obstacles leave hangings out.
+- **Browser check:**
+  - The Overview's residence: wide paintings over the double beds, lamps over the side tables, a mirror over the dresser. The side and front walls' hangings are gone with those walls.
+  - In the game, a residence and a suite in ring 1: paintings show through the windows, and with walls down every wall of both lowers (open space behind), taking its hangings with it.

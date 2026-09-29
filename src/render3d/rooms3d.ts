@@ -6,10 +6,12 @@ import { FLOOR_H, floorSpan, RING_D, ringRadii, slotAngles, TAU } from "./cylind
 import { cellEdges, edgeById, edgeSides, edgeVertices, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
-import { furnish } from "../view/furnish";
+import { FIT, frameOf, furnish, type Fitted } from "../view/furnish";
+import { isMounted } from "../view/furniture";
+import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
 import { withRock } from "./surfaces";
-import { disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow } from "./furniture3d";
+import { disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow, type HangTag } from "./furniture3d";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
 // no room faces it, plus props on the surface. Rebuilt whenever the layout
@@ -491,15 +493,67 @@ function rockFaces(layout: Layout, topFloor: number | null): number[] {
  * already changes with everything the fit depends on (its cells, and the
  * corridors along it). Null when it has none.
  */
+/**
+ * A room's fitted furniture as meshes: what stands on the floor, and what
+ * hangs on the walls, each hanging tagged with its wall so it vanishes when
+ * walls down lowers that wall (rather than being cut to a stub like the wall).
+ */
+export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitted[], accent: string): THREE.Group {
+  const standing = fitted.filter((f) => !isMounted(f.item));
+  const hanging = fitted.filter((f) => isMounted(f.item));
+  const g = furnitureMeshes(standing, accent);
+  if (hanging.length) {
+    const tags = hanging.map((f) => hangTag(layout, room, f));
+    g.add(...furnitureMeshes(hanging, accent, { tags, key: "hung", material: withHangingDown }).children);
+  }
+  return g;
+}
+
+/** A wall hanging's tag: its wall's inward normal (longer when there's something to see across the wall), the wall's height, and the point on the wall behind it. */
+function hangTag(layout: Layout, room: RoomInstance, f: Fitted): HangTag {
+  const frame = frameOf(layout, room, f.floor)!;
+  const a = Math.atan2(f.z, f.x);
+  const r = Math.hypot(f.x, f.z);
+  // Into the room, and how far the item's centre stands from the edge of the floor it's fitted in.
+  let n: [number, number];
+  let dist: number;
+  if (f.wall === "back") {
+    n = [-Math.cos(a), -Math.sin(a)];
+    dist = frame.rOut - r;
+  } else if (f.wall === "front") {
+    n = [Math.cos(a), Math.sin(a)];
+    dist = r - frame.rIn;
+  } else if (f.wall === "left") {
+    n = [-Math.sin(frame.a0), Math.cos(frame.a0)];
+    dist = f.x * n[0] + f.z * n[1] - frame.dLeft;
+  } else {
+    n = [Math.sin(frame.a1), -Math.cos(frame.a1)];
+    dist = f.x * n[0] + f.z * n[1] - frame.dRight;
+  }
+  // The wall stands the fitting gap beyond the fitted floor's edge. Just past it: what's there?
+  const wall = dist + FIT.wallGap;
+  const past = wall + HANG.probe;
+  const px = f.x - n[0] * past;
+  const pz = f.z - n[1] * past;
+  const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+  const across = seeThrough(layout, own, f.floor, Math.hypot(px, pz), Math.atan2(pz, px)) || onCorridorAt(layout, f.floor, px, pz);
+  const k = across ? ACROSS : 1;
+  const [y0, y1] = floorSpan(f.floor);
+  return { nx: n[0] * k, nz: n[1] * k, y0, y1, ax: f.x - n[0] * wall, az: f.z - n[1] * wall };
+}
+
+/** How far past a room's wall to look for what's across it: past the wall's hairline, or into a corridor alongside. */
+const HANG = { probe: 0.15 };
+
 const furnitureCache = new Map<string, THREE.Group>();
 function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, color: number, topFloor: number | null): THREE.Group | null {
   // Stairs and elevators are furnished on several floors: above a chosen floor, theirs go too.
   const key = `furniture:${shapeKey}:${topFloor ?? "all"}`;
   let g = furnitureCache.get(key);
   if (!g) {
-    const fitted = furnish(layout, room).filter((f) => topFloor === null || Math.round(-f.y / FLOOR_H) >= topFloor);
+    const fitted = furnish(layout, room).filter((f) => topFloor === null || f.floor >= topFloor);
     if (!fitted.length) return null;
-    g = furnitureMeshes(fitted, `#${color.toString(16).padStart(6, "0")}`);
+    g = furnitureGroup(layout, room, fitted, `#${color.toString(16).padStart(6, "0")}`);
     g.userData = { cached: true, key };
     g.traverse((o) => (o.userData.cached = true));
     furnitureCache.set(key, g);
@@ -601,6 +655,33 @@ const WALLS_GLSL = /* glsl */ `
     if (first && second) transformed.y = min(transformed.y, mix(aWall.z, aWall.w, uWallStub));
   }
 `;
+
+// Per vertex, for wall hangings: when their wall is lowered (the same test as
+// the walls, made at the point on the wall behind the item), the whole item
+// collapses to that point, so nothing of it shows. A hanging is tagged like
+// its wall (aWall) and carries that point (aHang).
+const HANG_GLSL = /* glsl */ `
+  if (uWallsDown > 0.5 && dot(aWall.xy, aWall.xy) > 0.0) {
+    vec2 toCam = cameraPosition.xz - (modelMatrix * vec4(aHang.x, 0.0, aHang.y, 1.0)).xz;
+    vec2 n1 = (modelMatrix * vec4(aWall.x, 0.0, aWall.y, 0.0)).xz;
+    if (dot(aWall.xy, aWall.xy) > 2.0 || dot(toCam, n1) < 0.0) transformed = vec3(aHang.x, aWall.z, aHang.y);
+  }
+`;
+
+/** A wall hanging's material: gone whenever its wall is lowered. */
+export function withHangingDown<T extends THREE.Material>(m: T): T {
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    Object.assign(shader.uniforms, wallsDown);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute vec4 aWall;\nattribute vec2 aHang;\nuniform float uWallsDown;")
+      .replace("#include <begin_vertex>", `#include <begin_vertex>\n${HANG_GLSL}`);
+  };
+  m.customProgramCacheKey = () => `${prevKey}|hanging-down`;
+  return m;
+}
 
 export function withWallsDown<T extends THREE.Material>(m: T): T {
   // On top of anything the material's shader already does (a procedural surface).

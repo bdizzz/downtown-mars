@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import type { Layout, RoomInstance } from "../sim/placement";
-import { disposeFurniture, furnitureMeshes, setFurnitureGlow } from "../render3d/furniture3d";
-import { roomGeometry } from "../render3d/rooms3d";
+import { disposeFurniture, setFurnitureGlow } from "../render3d/furniture3d";
+import { furnitureGroup, roomGeometry } from "../render3d/rooms3d";
 import type { Fitted } from "../view/furnish";
 import { orbitCamera } from "./scene";
 
@@ -84,10 +84,10 @@ export function Preview3D({ layout, room, floor, fitted, accent }: { layout: Lay
       v.scene.remove(v.items);
       disposeFurniture(v.items);
     }
-    v.items = furnitureMeshes(fitted, accent);
+    v.items = furnitureGroup(layout, room, fitted, accent);
     v.scene.add(v.items);
     v.render();
-  }, [fitted, accent]);
+  }, [layout, room, fitted, accent]);
 
   return <div ref={host} className="dev-canvas dev-preview" />;
 }

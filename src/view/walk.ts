@@ -4,9 +4,10 @@ import { isOpen } from "../sim/excavation";
 import type { Hole } from "../sim/geometry";
 import { roomAt, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
-import { FLOOR_H, openShaftRadius, RING_D, TAU } from "../render3d/cylinder";
+import { openShaftRadius, RING_D, TAU } from "../render3d/cylinder";
 import { doorways } from "./doors";
 import { furnish, isFlat } from "./furnish";
+import { isMounted } from "./furniture";
 
 // Walking a floor in first person: where a colonist can stand. Open ground is
 // the gallery ringing the shaft (not over the railing), public rooms (plazas,
@@ -89,6 +90,19 @@ function walkThrough(room: RoomInstance, floor: number): boolean {
   return true;
 }
 
+/** Is this point in a built corridor (along any side of the cell it's in)? */
+export function onCorridorAt(layout: Layout, floor: number, x: number, z: number): boolean {
+  const hole = layout.hole;
+  const r = Math.hypot(x, z);
+  if (r < hole.shaftRadiusM || floor < 1 || floor > hole.floors) return false;
+  const ring = Math.floor((r - hole.shaftRadiusM) / RING_D) + 1;
+  if (ring > hole.unlockedRings) return false;
+  const turn = (((Math.atan2(z, x) / TAU) % 1) + 1) % 1;
+  const n = hole.ringSlots[ring - 1]!;
+  const cell = { floor, ring, slot: Math.min(Math.floor(turn * n), n - 1) };
+  return cellEdges(hole, cell).some((e) => onCorridor(layout, e, r, turn * TAU));
+}
+
 /** Is a point (radius r, angle a) inside the band a built corridor on this edge carves? */
 function onCorridor(layout: Layout, e: Edge, r: number, a: number): boolean {
   if (!layout.corridors[e.id] || layout.corridorsBuilding?.[e.id] !== undefined) return false;
@@ -145,7 +159,8 @@ export function obstacles(layout: Layout, floor: number): Obstacle[] {
     list = layout.rooms
       .filter((room) => room.cells.some((c) => c.floor === floor))
       .flatMap((room) => furnish(layout, room))
-      .filter((f) => !isFlat(f.item) && Math.round(-f.y / FLOOR_H) === floor)
+      // Rugs are walked over, and wall hangings are over your head.
+      .filter((f) => f.floor === floor && !isFlat(f.item) && !isMounted(f.item))
       .map((f) => {
         const xs = f.corners.map((c) => c[0]);
         const zs = f.corners.map((c) => c[1]);

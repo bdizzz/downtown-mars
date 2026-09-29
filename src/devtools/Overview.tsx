@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { furnitureMeshes, setFurnitureGlow } from "../render3d/furniture3d";
-import { roomGeometry, setWallsDown, withWallsDown } from "../render3d/rooms3d";
+import { setFurnitureGlow } from "../render3d/furniture3d";
+import { furnitureGroup, roomGeometry, setWallsDown, withWallsDown } from "../render3d/rooms3d";
 import { roomDef } from "../sim/rooms";
 import { fit, frameOf, layouts } from "../view/furnish";
 import { orbitCamera, accentFor } from "./scene";
@@ -69,7 +69,7 @@ export function Overview() {
       const g = new THREE.Group();
       // Walls down, as in the game, so what's inside shows.
       g.add(new THREE.Mesh(roomGeometry(layout, room.cells.filter((c) => c.floor === onFloor)), withWallsDown(new THREE.MeshStandardMaterial({ color: new THREE.Color(accent).lerp(new THREE.Color(0xffffff), 0.45), side: THREE.DoubleSide, roughness: 0.9 }))));
-      g.add(furnitureMeshes(fit(frame, layouts.templates[key]!), accent));
+      g.add(furnitureGroup(layout, room, fit(frame, layouts.templates[key]!), accent));
       // Turn the room so its middle faces the camera (front toward +z), and centre it in its grid cell.
       const rMid = (frame.rIn + frame.rOut) / 2;
       const a = (frame.left(rMid) + frame.right(rMid)) / 2;

@@ -5,7 +5,7 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { floorSpan, ringRadii, slotAngles } from "../render3d/cylinder";
 import { doorways } from "./doors";
-import { isFurnished, itemDef } from "./furniture";
+import { isFurnished, isMounted, itemDef } from "./furniture";
 
 // Laying furniture out in a room. A template (data/layouts.json) is a list of
 // placements for one room type and shape, in priority order. Each is pinned
@@ -50,6 +50,10 @@ export interface Placed {
 export interface Fitted extends Placed {
   placement: number;
   corners: [number, number][];
+  /** The wall its placement is against (or the centre). */
+  wall: Wall;
+  /** The floor it's on. */
+  floor: number;
 }
 
 export const layouts = raw as unknown as { templates: Record<string, Template> };
@@ -72,6 +76,10 @@ export const FIT = {
   maxRepeat: 12,
   /** Items no taller than this (rugs) lie on the floor: others stand on them, and they don't count toward crowding. */
   flat: 0.1,
+  /** Kept between two wall hangings. */
+  hangingGap: 0.25,
+  /** How far off the wall a hanging's back is, so the two never share a plane. */
+  hangingOff: 0.01,
 };
 
 export const isFlat = (item: string) => itemDef(item).size[2] <= FIT.flat;
@@ -96,6 +104,13 @@ export interface Frame {
   /** The doorway on the front wall, if any: its angle. */
   door: number | null;
   area: number;
+  /** The floor it's on. */
+  floor: number;
+  /**
+   * Which walls stand solid, for hanging things on: not a public room's open
+   * sides (onto the gallery or a corridor), nor ring 1's glass front.
+   */
+  solid: Record<"back" | "front" | "left" | "right", boolean>;
 }
 
 const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
@@ -140,6 +155,7 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
   const side = (d: number, r: number) => Math.asin(Math.min(0.99, d / r));
   // The door on this floor, if it has one (as the 3D view cuts it).
   const door = doorways(layout, room).find((d) => d.floor === floor)?.angle ?? null;
+  const open = !!roomDef(room.type).public;
   return {
     // On the room's floor, which stands the walls' hairline above the floor's base (as the 3D view draws it).
     y: floorSpan(floor)[0] + INSET,
@@ -153,6 +169,14 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
     dRight: right + g,
     door: door === null ? null : unwrap(door, a0),
     area: ((rOut * rOut - rIn * rIn) / 2) * (a1 - a0),
+    floor,
+    solid: {
+      // Ring 1's front is the shaft face: glass on a private room, nothing at all on a public one.
+      front: inner > 1 && !(open && front === HALL),
+      back: !(open && back === HALL),
+      left: !(open && left === HALL),
+      right: !(open && right === HALL),
+    },
   };
 }
 
@@ -231,7 +255,8 @@ function finish(p: Placement, px: number, pz: number, f: [number, number], frame
     px + (sx * w * X[0]) / 2 + (sz * d * Z[0]) / 2,
     pz + (sx * w * X[1]) / 2 + (sz * d * Z[1]) / 2,
   ]);
-  return { item: p.item, x: px, y: frame.y, z: pz, turn, corners };
+  // A wall hanging hangs at its height above the floor.
+  return { item: p.item, x: px, y: frame.y + (itemDef(p.item).mount ?? 0), z: pz, turn, corners, wall: p.wall, floor: frame.floor };
 }
 
 /**
@@ -308,6 +333,7 @@ export function fit(frame: Frame, template: Template): Fitted[] {
   let covered = 0;
   const cap = frame.area * FIT.crowding;
   const tryPlace = (p: Placement, i: number, dx: number): "ok" | "outside" | "blocked" | "full" => {
+    if (isMounted(p.item)) return hang(p, i, dx);
     const [w, d] = itemDef(p.item).size;
     const flat = isFlat(p.item);
     if (!flat && covered + w * d > cap) return "full";
@@ -317,10 +343,26 @@ export function fit(frame: Frame, template: Template): Fitted[] {
     if (!flat && door && tooClose(f.corners, door, 0)) return "blocked";
     const gap = p.snug ? FIT.snug : FIT.aisle;
     const between = (o: Fitted) => (o.placement === i ? Math.min(gap, FIT.row) : gap);
-    if (!flat && out.some((o) => !isFlat(o.item) && tooClose(f.corners, o.corners, between(o)))) return "blocked";
+    if (!flat && out.some((o) => !isFlat(o.item) && !isMounted(o.item) && tooClose(f.corners, o.corners, between(o)))) return "blocked";
     if (flat && out.some((o) => isFlat(o.item) && tooClose(f.corners, o.corners, 0))) return "blocked";
     out.push({ ...f, placement: i });
     if (!flat) covered += w * d;
+    return "ok";
+  };
+  // A wall hanging: only on a solid wall, clear of the doorway and of other hangings, and not
+  // behind anything standing taller than it hangs (a painting over a bed, not behind a wardrobe).
+  // It takes no floor, so it doesn't count toward crowding.
+  const hang = (p: Placement, i: number, dx: number): "ok" | "outside" | "blocked" => {
+    if (p.wall === "center" || !frame.solid[p.wall]) return "outside";
+    const f = place(frame, p, dx);
+    if (!f.corners.every((c) => inside(frame, c))) return "outside";
+    if (door && tooClose(f.corners, door, 0)) return "blocked";
+    const mount = itemDef(p.item).mount!;
+    const clash = (o: Fitted) =>
+      isMounted(o.item) ? tooClose(f.corners, o.corners, FIT.hangingGap) : !isFlat(o.item) && itemDef(o.item).size[2] > mount && tooClose(f.corners, o.corners, 0);
+    if (out.some(clash)) return "blocked";
+    // Checked where standing things go; hung flat on the wall itself, which stands the fitting gap further out.
+    out.push({ ...place(frame, { ...p, y: (p.y ?? 0) - FIT.wallGap + FIT.hangingOff }, dx), placement: i });
     return "ok";
   };
   template.forEach((p, i) => {
