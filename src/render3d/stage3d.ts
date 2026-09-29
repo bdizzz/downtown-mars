@@ -1251,7 +1251,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       // Colonists, sparks and steam move only while the game runs.
       if (performance.now() - lastTickChange < 400) {
         walkers.step(ambient);
-        roomFx.step(ambient, cut());
+        roomFx.step(ambient);
       }
       ambient = 0;
       dirty = true;
@@ -1288,6 +1288,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     dust.points.visible = graphics.life && cut() === null;
     roomFx.group.visible = graphics.life;
     if (!graphics.life) roomFx.clear();
+    // Sparks and steam only come from furniture that's shown.
+    roomFx.setView({ topFloor: cut(), xray: view.xray });
     dirty = true;
   }
 
@@ -1384,6 +1386,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray, cut(), view.roomColors);
         stats.buildMs = performance.now() - t0;
         scene.add(layoutGroup);
+        // The floor picked or x-ray changed: hidden furniture's sparks and steam go with it.
+        roomFx.setView({ topFloor: cut(), xray: view.xray });
         dirty = true;
       }
       const d = snapshot.drill;

@@ -2,11 +2,13 @@ import * as THREE from "three";
 import type { RoomStatus } from "../sim/economy";
 import type { Layout } from "../sim/placement";
 import { furnish, type Fitted } from "../view/furnish";
+import { furniture } from "../view/furniture";
 
 // Small effects on working rooms: sparks spitting from a smelter's furnace
 // mouth, steam rising off life support's scrubber vents. They come from the
 // furniture itself (where the template put each furnace or scrubber), and
-// only while the room is running. Each kind is one set of points, animated
+// only while the room is running, and only while that furniture is shown
+// (not above a chosen floor, nor in x-ray's faded ring 1). Each kind is one set of points, animated
 // on the CPU from a fixed pool, so a busy hole costs two draw calls.
 
 type Kind = "sparks" | "steam";
@@ -35,8 +37,20 @@ interface Emitter {
   /** 0..1 of full output: a slowed room makes fewer. */
   rate: number;
   floor: number;
+  /** Its room reaches ring 1, whose furniture x-ray hides. */
+  ring1: boolean;
   owed: number;
 }
+
+/** What the view hides: every floor above a chosen one, and (in x-ray) ring 1's rooms. */
+export interface FxView {
+  topFloor: number | null;
+  xray: boolean;
+}
+
+const hiddenIn = (e: Emitter, v: FxView) => (v.topFloor !== null && e.floor < v.topFloor) || (v.xray && e.ring1);
+/** Emitters are remade whenever a room's output changes: the same spot is the same emitter. */
+const spotKey = (e: Emitter) => `${e.kind}:${e.x.toFixed(3)}:${e.y.toFixed(3)}:${e.z.toFixed(3)}`;
 
 const VERTEX = /* glsl */ `
   attribute float aSize;
@@ -72,6 +86,8 @@ class Particles {
   private alpha: Float32Array;
   private age: Float32Array;
   private life: Float32Array;
+  /** The emitter each particle came from, so they go when it's hidden or gone. */
+  private owner: (Emitter | null)[];
   private next = 0;
   private material: THREE.ShaderMaterial;
 
@@ -83,6 +99,7 @@ class Particles {
     this.alpha = new Float32Array(n);
     this.age = new Float32Array(n).fill(1);
     this.life = new Float32Array(n).fill(1);
+    this.owner = new Array<Emitter | null>(n).fill(null);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(this.pos, 3));
     geo.setAttribute("aSize", new THREE.BufferAttribute(this.size, 1));
@@ -120,6 +137,7 @@ class Particles {
     } else {
       this.vel.set([r() * MOTION.steamDrift, MOTION.steamRise * (0.7 + Math.random() * 0.6), r() * MOTION.steamDrift], i * 3);
     }
+    this.owner[i] = e;
     this.age[i] = 0;
     this.life[i] = look.life[0] + Math.random() * (look.life[1] - look.life[0]);
   }
@@ -144,7 +162,31 @@ class Particles {
     g.attributes.aAlpha!.needsUpdate = true;
   }
 
+  /** Particles live on only while `keep` gives their emitter (or a stand-in for it); the rest go at once. */
+  retain(keep: (e: Emitter) => Emitter | null): void {
+    let changed = false;
+    for (let i = 0; i < this.age.length; i++) {
+      const e = this.owner[i];
+      if (!e || this.age[i]! >= this.life[i]!) continue;
+      const to = keep(e);
+      this.owner[i] = to;
+      if (to) continue;
+      this.age[i] = this.life[i]!;
+      this.alpha[i] = 0;
+      changed = true;
+    }
+    if (changed) this.points.geometry.attributes.aAlpha!.needsUpdate = true;
+  }
+
+  /** How many are alive and showing. */
+  get live(): number {
+    let n = 0;
+    for (let i = 0; i < this.age.length; i++) if (this.age[i]! < this.life[i]! && this.alpha[i]! > 0) n++;
+    return n;
+  }
+
   clear(): void {
+    this.owner.fill(null);
     this.age.fill(1);
     this.alpha.fill(0);
     this.points.geometry.attributes.aAlpha!.needsUpdate = true;
@@ -161,21 +203,42 @@ export class RoomEffects {
   private kinds: Record<Kind, Particles> = { sparks: new Particles("sparks"), steam: new Particles("steam") };
   private emitters: Emitter[] = [];
   private key = "";
+  private view: FxView = { topFloor: null, xray: false };
 
   constructor() {
     this.group.add(this.kinds.sparks.points, this.kinds.steam.points);
   }
 
-  /** Find the emitters: the furnaces and scrubbers of rooms that are running, with how hard. */
+  /** Find the emitters: the furnaces and scrubbers of built rooms, with how hard each room is running (a stopped one makes none). */
   sync(layout: Layout, status: Record<number, RoomStatus>): void {
-    const running = layout.rooms.filter((r) => (status[r.id]?.rate ?? 0) > 0 && !r.planned && !r.building);
-    const key = `${layout.version}:${running.map((r) => `${r.id}.${Math.round((status[r.id]?.rate ?? 0) * 4)}`).join(",")}`;
+    const built = layout.rooms.filter((r) => !r.planned && !r.building && (furniture.rooms[r.type] ?? []).some((id) => EMITTERS[id]));
+    const key = `${layout.version}:${built.map((r) => `${r.id}.${Math.round((status[r.id]?.rate ?? 0) * 4)}`).join(",")}`;
     if (key === this.key) return;
     this.key = key;
-    this.emitters = running.flatMap((room) => {
-      const rate = status[room.id]!.rate;
-      return furnish(layout, room).flatMap((f) => (EMITTERS[f.item] ?? []).map((e) => emitterAt(f, e.kind, e.at, rate)));
+    this.emitters = built.flatMap((room) => {
+      const rate = status[room.id]?.rate ?? 0;
+      const ring1 = room.cells.some((c) => c.ring === 1);
+      return furnish(layout, room).flatMap((f) => (EMITTERS[f.item] ?? []).map((e) => emitterAt(f, e.kind, e.at, rate, ring1)));
     });
+    // What's in the air stays with the same spot (a stopped furnace's last sparks fade out); one that's gone takes its sparks with it.
+    const now = new Map(this.emitters.map((e) => [spotKey(e), e]));
+    this.retain((e) => now.get(spotKey(e)) ?? null);
+  }
+
+  /** What the view hides changed: anything from hidden furniture goes at once, even while paused. */
+  setView(view: FxView): void {
+    this.view = view;
+    this.retain((e) => (hiddenIn(e, view) ? null : e));
+  }
+
+  private retain(keep: (e: Emitter) => Emitter | null): void {
+    this.kinds.sparks.retain(keep);
+    this.kinds.steam.retain(keep);
+  }
+
+  /** Particles alive and showing, of each kind. */
+  get live(): Record<Kind, number> {
+    return { sparks: this.kinds.sparks.live, steam: this.kinds.steam.live };
   }
 
   /** Points' sizes are in metres: how many pixels a metre is at unit distance. */
@@ -184,10 +247,10 @@ export class RoomEffects {
     this.kinds.steam.setScale(pixelsPerMetre);
   }
 
-  /** Advance by dt seconds; emitters on floors above `topFloor` (when one is chosen) stay quiet. */
-  step(dt: number, topFloor: number | null): void {
+  /** Advance by dt seconds; hidden emitters stay quiet. */
+  step(dt: number): void {
     for (const e of this.emitters) {
-      if (topFloor !== null && e.floor < topFloor) continue;
+      if (hiddenIn(e, this.view)) continue;
       e.owed += LOOK[e.kind].rate * e.rate * dt;
       while (e.owed >= 1) {
         this.kinds[e.kind].spawn(e);
@@ -199,7 +262,7 @@ export class RoomEffects {
   }
 
   get active(): boolean {
-    return this.emitters.length > 0;
+    return this.emitters.some((e) => e.rate > 0);
   }
 
   clear(): void {
@@ -214,7 +277,7 @@ export class RoomEffects {
 }
 
 /** An emitter at a point in an item's own frame, turned and placed with the item. */
-function emitterAt(f: Fitted, kind: Kind, [lx, ly, lz]: [number, number, number], rate: number): Emitter {
+function emitterAt(f: Fitted, kind: Kind, [lx, ly, lz]: [number, number, number], rate: number, ring1: boolean): Emitter {
   const c = Math.cos(f.turn);
   const s = Math.sin(f.turn);
   return {
@@ -226,6 +289,7 @@ function emitterAt(f: Fitted, kind: Kind, [lx, ly, lz]: [number, number, number]
     fz: c,
     rate,
     floor: f.floor,
+    ring1,
     owed: 0,
   };
 }

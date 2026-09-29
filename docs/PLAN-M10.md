@@ -434,3 +434,14 @@ Decided Sep 28, 2026 (Bryon):
   - At home it's about double, e.g. a studio went from 13 to 26.
   - Industrial rooms gain the most, from their cable trays, e.g. a smelter went from 12 to 42 and a storeroom from 2 to 21.
 - **Browser check:** in the entrance in first person, the air vent, clock, first-aid box, picture of Earth and notice board hang on the walls; the battery bank has its cable trays and work lights.
+
+**Follow-up, sparks and steam follow their furniture (Bryon, Sep 29):**
+- Each particle remembers the emitter it came from.
+- **Particles only come from furniture that's shown.** When the view hides that furniture, its particles vanish at once, even while paused (`RoomEffects.setView`).
+  - The view hides furniture on floors above a picked floor, and in X-ray's faded ring-1 rooms.
+  - The stage calls `setView` on every layout rebuild (a floor pick or an X-ray toggle) and from `applyFloorCut`.
+  - Hidden emitters make nothing new.
+- **Built rooms keep their emitters when they stop** (their rate goes to 0), so a stopped furnace's last sparks fade out naturally.
+  - Emitters are matched by spot when a room's output changes, so a slowdown doesn't wipe what's in the air.
+  - A demolished room's furniture is gone, so its sparks and steam go at once.
+- Tests: `tests/effects3d.test.ts`.
