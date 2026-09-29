@@ -482,6 +482,7 @@ export function App() {
             mode={settings.view}
             graphics={settings.graphics}
             view3d={settings.view3d}
+            building={mode === "build"}
             onViewError={(message) => {
               flash(message);
               updateSettings({ view: "2d" });

@@ -5,7 +5,7 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
-import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
+import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
@@ -237,6 +237,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   // Looking straight down: until the player zooms, frame the unlocked rings with a little margin.
   let topFitted = true;
+  /** Build mode is open: bare rock lights up under the pointer, as somewhere to build. */
+  let building = false;
   function fitTop(): void {
     if (!hole) return;
     const r = ringRadii(hole, Math.max(1, Math.min(hole.ringSlots.length, hole.unlockedRings)))[1];
@@ -703,7 +705,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (info.room.id !== selected || tool?.kind === "demolish") markRoom(info.room, tool?.kind === "demolish" ? HOVER.bad : HOVER.hover);
       return;
     }
-    if (p.kind === "slot") outline([p as Cell], HOVER.hover);
+    if (p.kind === "slot" && highlightsSlot(layout, p, building)) outline([p as Cell], HOVER.hover);
   }
 
   /** Tint cells by an effect, or homes by happiness, banded so each band is one mesh. */
@@ -779,7 +781,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   function refreshHover(force = false): void {
     const info = hoverInfo();
-    const key = hoverKeyFor(info, tool, layout?.version ?? -1, selected) + view.mode + view.xray;
+    const key = hoverKeyFor(info, tool, layout?.version ?? -1, selected) + view.mode + view.xray + building;
     const changed = key !== hoverKey;
     if (!force && !changed) return;
     hoverKey = key;
@@ -1320,6 +1322,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     },
     setWarning(w) {
       warning = w;
+      refreshHover(true);
+    },
+    setBuildMode(on) {
+      building = on;
       refreshHover(true);
     },
     setView3d(v) {

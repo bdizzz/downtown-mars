@@ -8,7 +8,7 @@ import { corridorJoints, corridors } from "../sim/corridors";
 import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
-import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
+import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import type { HoverInfo, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import type { Happiness } from "../sim/happiness";
@@ -119,6 +119,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let resources: Record<string, number> = {};
   let deposits: string[] = [];
   let selected: number | null = null;
+  /** Build mode is open: bare rock lights up under the pointer, as somewhere to build. */
+  let building = false;
   let overlayType: string | null = null;
   let heat = HEAT.normal;
   let field: EffectField | null = null;
@@ -642,7 +644,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       return;
     }
 
-    if (p.kind === "slot") {
+    if (p.kind === "slot" && highlightsSlot(layout, p, building)) {
       const n = h.ringSlots[p.ring - 1]!;
       const [x0, x1] = slotX(p.slot, n);
       const y = ringTop(p.floor, p.ring, h.ringSlots.length);
@@ -783,7 +785,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
   function refreshHover(): void {
     const info = hoverInfo();
-    const key = hoverKeyFor(info, tool, layoutVersion, selected);
+    const key = hoverKeyFor(info, tool, layoutVersion, selected) + building;
     if (key === hoverKey) return;
     // Setters clear hoverKey to force a redraw; the UI only hears about a hover that changed.
     const changed = key !== notifiedKey;
@@ -966,6 +968,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       refreshHover();
     },
     setView3d() {},
+    setBuildMode(on) {
+      building = on;
+      refreshHover();
+    },
     setGraphics() {
       // The 2D view is cheap at any detail; nothing to trade.
     },

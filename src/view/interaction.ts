@@ -3,6 +3,7 @@ import { config } from "../sim/config";
 import { checkBuild } from "../sim/costs";
 import { roomAt, type Layout, type Location } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
+import { isOpen } from "../sim/excavation";
 import { corridorCost, corridorRefusal, shortfall } from "../sim/corridors";
 import type { Edge } from "../sim/edges";
 import type { EdgeHover, HoverInfo, Pick, StageOptions, Tool } from "./types";
@@ -59,6 +60,14 @@ export function edgeHoverFor(layout: Layout, resources: Record<string, number>, 
 export function corridorCommand(tool: Tool, edge: EdgeHover | undefined): SimCommand | null {
   if (tool?.kind !== "corridor" || !edge) return null;
   return edge.erase ? { type: "removeCorridors", edges: [edge.id] } : { type: "drawCorridors", edges: [edge.id], finish: tool.finish };
+}
+
+/**
+ * Does an empty slot under the pointer light up? Dug-out space always does;
+ * bare rock only in Build mode, where it's somewhere to put a room.
+ */
+export function highlightsSlot(layout: Layout, p: Extract<Pick, { kind: "slot" }>, building: boolean): boolean {
+  return building || isOpen(layout, p);
 }
 
 /** Changes only when what's shown for the hover would change, so views redraw sparingly. */

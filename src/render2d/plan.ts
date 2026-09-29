@@ -6,7 +6,7 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { DrillView } from "../sim/snapshot";
 import { FLOOR_H, openShaftRadius, pickAt, ringRadii, slotAngles } from "../render3d/cylinder";
-import { clickWith, edgeHoverFor, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
+import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { drawGlyph, drawPlus, shade, tint } from "./art";
@@ -141,6 +141,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   let resources: Record<string, number> = {};
   let gates: string[] = [];
   let selected: number | null = null;
+  /** Build mode is open: bare rock lights up under the pointer, as somewhere to build. */
+  let building = false;
   let tool: Tool = null;
   let overlayType: string | null = null;
   let heat = HEAT.normal;
@@ -452,7 +454,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       if (info.room.id !== selected || tool?.kind === "demolish") markRoom(info.room, tool?.kind === "demolish" ? C.bad : C.hover);
       return;
     }
-    if (p.kind === "slot") overlayCtx.poly(cellSector(h, p, 0.15)).fill({ color: C.hover, alpha: 0.15 }).stroke({ color: C.hover, width: 2 });
+    if (p.kind === "slot" && highlightsSlot(layout, p, building)) overlayCtx.poly(cellSector(h, p, 0.15)).fill({ color: C.hover, alpha: 0.15 }).stroke({ color: C.hover, width: 2 });
     else if (p.kind === "gallery") {
       overlayCtx.circle(0, 0, h.shaftRadiusM * PX).stroke({ color: C.hover, width: 2 });
     }
@@ -546,7 +548,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
 
   function refreshHover(force = false): void {
     const info = hoverInfo();
-    const key = hoverKeyFor(info, tool, layout?.version ?? -1, selected) + floor;
+    const key = hoverKeyFor(info, tool, layout?.version ?? -1, selected) + floor + building;
     const changed = key !== hoverKey;
     if (!force && !changed) return;
     hoverKey = key;
@@ -734,6 +736,10 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       refreshHover(true);
     },
     setView3d() {},
+    setBuildMode(on) {
+      building = on;
+      refreshHover(true);
+    },
     setGraphics() {
       // Flat drawing: nothing to trade.
     },
