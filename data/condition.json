@@ -1,0 +1,29 @@
+{
+  "_note": "Room condition and upkeep (docs/PLAN-M10.md). Conditions are 0..1. Rooms decay after they're built; maintenance and cleaning services repair them, one room per service room at a time, from a hole-wide queue.",
+  "decayPerDay": 0.012,
+  "heavyCategories": ["industry", "power", "air", "water"],
+  "heavyDecay": 1.3,
+  "queueBelow": 0.6,
+  "wornBelow": 0.3,
+  "wornOutput": 0.7,
+  "unhappyBelow": 0.5,
+  "exempt": ["entrance", "stairwell", "elevator", "cargo_elevator", "maintenance", "cleaning_service"],
+  "cleanable": {
+    "categories": ["housing"],
+    "rooms": ["galley", "restroom", "clinic", "school", "elder_care", "crypt", "tiny_plaza", "small_plaza", "admin_office", "landing_pod"]
+  },
+  "repairHoursBySize": { "S": 4, "M": 8, "L": 16, "H": 32, "surface": 6 },
+  "leastRepair": 0.25,
+  "laneWorkPerHour": 1,
+  "happiness": {
+    "homeComfort": 3,
+    "sharedComfort": 2,
+    "cleanableWeight": 1.5,
+    "otherWeight": 0.5
+  },
+  "breakdown": {
+    "chancePerDay": 0.06,
+    "drop": [0.2, 0.3],
+    "earliestDay": 4
+  }
+}

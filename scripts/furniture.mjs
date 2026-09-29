@@ -308,6 +308,53 @@ item("work_light", "Work light", [
 ], 2.45);
 
 // =====================================================================
+// Services: maintenance and cleaning crews
+// =====================================================================
+
+item("parts_rack", "Parts rack", [
+  ...[-0.55, 0.55].map((x) => box([x, 1.0, 0], [0.05, 2.0, 0.55], "metal")),
+  ...[0.1, 0.7, 1.3, 1.9].map((y) => box([0, y, 0], [1.15, 0.04, 0.55], "metal")),
+  // Bins of spares, gears, a coil of pipe and a motor on the shelves.
+  ...[[-0.35, 0.28, "hazard"], [0, 0.28, "accent"], [0.35, 0.28, "hazard"], [-0.3, 0.88, "accent"], [0.3, 0.88, "blueprint"]].map(([x, y, c]) => box([x, y, 0.02], [0.3, 0.28, 0.4], c)),
+  ...[-0.3, 0.05].map((x) => cyl([x, 1.5, 0.05], 0.3, 0.06, "steel", { r: [90, 0, 0] })),
+  cyl([0.35, 1.48, 0], 0.22, 0.32, "copper"),
+  box([-0.2, 2.05, 0], [0.5, 0.25, 0.4], "panel"),
+  box([0.3, 2.02, 0.05], [0.3, 0.2, 0.3], "dark"),
+]);
+item("repair_stand", "Repair stand", [
+  ...legs(1.2, 0.7, 0.75, "dark", 0.06),
+  box([0, 0.78, 0], [1.2, 0.05, 0.7], "metal"),
+  // A pump opened up on the stand, its cover off to one side.
+  cyl([-0.1, 1.05, 0], 0.45, 0.5, "accent", { r: [0, 0, 90] }),
+  cyl([0.25, 1.05, 0], 0.3, 0.2, "steel", { r: [0, 0, 90] }),
+  box([-0.1, 1.33, 0], [0.12, 0.08, 0.12], "dark"),
+  box([0.4, 0.83, 0.18], [0.3, 0.04, 0.3], "accent"),
+  box([-0.45, 0.82, -0.2], [0.2, 0.03, 0.08], "steel"),
+  box([-0.45, 0.82, -0.08], [0.18, 0.03, 0.05], "hazard"),
+]);
+item("cleaning_cart", "Cleaning cart", [
+  ...legs(0.9, 0.5, 0.12, "dark", 0.04),
+  box([0, 0.45, 0], [0.9, 0.7, 0.5], "accent"),
+  box([0, 0.82, 0], [0.92, 0.04, 0.52], "panel"),
+  // A mop bucket, spray bottles and a bin bag.
+  cyl([0.25, 0.97, 0], 0.3, 0.26, "water"),
+  box([0.25, 1.4, 0.05], [0.03, 0.9, 0.03], "wood"),
+  ...[-0.35, -0.22].map((x, i) => cyl([x, 0.95, 0.1], 0.09, 0.22, i ? "plant" : "water")),
+  box([-0.1, 0.96, -0.1], [0.25, 0.26, 0.2], "dark"),
+]);
+item("mop_rack", "Mop rack", [
+  box([0, 1.4, 0], [1.2, 0.08, 0.1], "wood"),
+  ...[-0.45, -0.15, 0.15, 0.45].flatMap((x, i) => [box([x, 0.85, 0.08], [0.03, 1.1, 0.03], "wood"), box([x, 0.2, 0.08], [0.22, 0.25, 0.08], ["cream", "accent", "cream", "hazard"][i])]),
+  box([0, 0.05, 0.1], [1.2, 0.1, 0.25], "metal"),
+]);
+item("drying_rack", "Drying rack", [
+  ...[-0.5, 0.5].map((x) => box([x, 0.8, 0], [0.04, 1.6, 0.5], "steel")),
+  ...[0.7, 1.1, 1.5].map((y) => box([0, y, 0], [1.0, 0.03, 0.03], "steel")),
+  // Towels and cloths hung over the bars.
+  ...[[-0.25, 1.1, "cream"], [0.05, 1.1, "accent"], [0.3, 1.5, "white"], [-0.2, 1.5, "cushion"], [0.25, 0.7, "cream"]].map(([x, y, c]) => box([x, y - 0.2, 0], [0.22, 0.4, 0.04], c)),
+]);
+
+// =====================================================================
 // Homes and people
 // =====================================================================
 
@@ -1292,6 +1339,8 @@ const rooms = {
   warehouse: ["pallet_rack", "crate_stack", "cart", "pallet_jack", "barrel_group"],
   depot: ["pallet_rack", "crate_stack", "cart", "pallet_jack", "console", "barrel_group"],
   stairwell: ["stair_flight", "stair_landing", "bench", "plant_pot"],
+  maintenance: ["workbench", "repair_stand", "parts_rack", "tool_wall", "tool_cart", "console", "shelf_unit"],
+  cleaning_service: ["laundry_machine", "cleaning_cart", "mop_rack", "drying_rack", "sink_basin", "shelf_unit", "locker"],
   elevator: ["elevator_shaft", "elevator_car", "call_panel", "bench", "plant_pot"],
 };
 
@@ -1335,6 +1384,8 @@ const hangings = {
   warehouse: ["safety_sign", "notice_board", "wall_lamp"],
   depot: ["safety_sign", "notice_board", "readout_panel"],
   stairwell: ["poster", "wall_lamp", "safety_sign"],
+  maintenance: ["safety_sign", "chart_board", "wall_clock", "notice_board"],
+  cleaning_service: ["notice_board", "wall_clock", "wall_mirror", "poster", "wall_lamp"],
   elevator: ["poster", "wall_lamp", "safety_sign"],
 };
 // And more to fill the walls, by kind of room: a second pass that the templates spread along every wall.
@@ -1359,6 +1410,7 @@ const FILL_KIND = {
   storeroom: "store", warehouse: "store", depot: "store", staging_bay: "store", cargo_elevator: "store",
   farm: "farm", galley: "galley", restroom: "wash", crypt: "quiet",
   tiny_plaza: "public", small_plaza: "public", stairwell: "public", elevator: "public", entrance: "entry",
+  maintenance: "workshop", cleaning_service: "wash",
 };
 for (const room of Object.keys(rooms)) {
   const kind = FILL_KIND[room];

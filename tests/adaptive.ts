@@ -1,3 +1,4 @@
+import { maintenanceQueue } from "../src/sim/condition";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { elderCoverage, schoolCoverage } from "../src/sim/care";
@@ -213,4 +214,19 @@ function placeStorage(hole: SimState): boolean {
     }
   }
   return false;
+}
+
+/**
+ * Keep rooms in repair: a maintenance room once rooms start wearing, and
+ * another whenever the queue grows longer than the crews can keep up with. Once a day.
+ */
+export function tendUpkeep(hole: SimState): boolean {
+  const queue = maintenanceQueue(hole).length;
+  const crews = count(hole, "maintenance") + count(hole, "cleaning_service");
+  if (queue < 3 || queue <= crews * 2) return false;
+  if (!placeAnywhere(hole, "maintenance")) return false;
+  // Upkeep comes first: it takes its crew ahead of ordinary rooms.
+  const built = hole.layout.rooms.filter((r) => r.type === "maintenance").at(-1)!;
+  applyCommand(hole, { type: "setPriority", roomId: built.id, priority: "high" });
+  return true;
 }

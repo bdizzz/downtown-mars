@@ -8,6 +8,7 @@ import { createNotables, type Notable } from "./notables";
 import { createOffice, type Office } from "./visits";
 import type { Message } from "./messages";
 import type { WeatherState } from "./weather";
+import type { MaintenanceState } from "./condition";
 import type { Population, RoomStatus } from "./economy";
 import { createHole } from "./geometry";
 import { createLayout, placeRoom, type Layout } from "./placement";
@@ -54,6 +55,8 @@ export interface SimState {
   earth: EarthState;
   /** Dust storms forecast or blowing (absent in older saves until the first tick). */
   weather?: WeatherState;
+  /** Maintenance and cleaning services at work (absent in older saves until the first tick). */
+  maintenance?: MaintenanceState;
   messages: Message[];
   /** Derived from the layout; recomputed only when layout.version changes. */
   effects: Effects;

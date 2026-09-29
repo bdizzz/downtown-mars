@@ -4,6 +4,7 @@ import { effectOnRoom } from "./effects";
 import type { RoomInstance } from "./placement";
 import { modifiers } from "./ordinances";
 import { careFactors } from "./care";
+import { CONDITION, homeWearComfort, sharedWear } from "./condition";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
@@ -60,7 +61,8 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   const mod = modifiers(state);
   const care = careFactors(state);
   const shared = needsHealth(state, cfg) + (1 - careCoverage(state)) * h.noCareHealth + mod.health + care.health;
-  const sharedComfort = mod.comfort + care.comfort;
+  // Worn shared rooms (the galley, restrooms, workplaces) get everyone down; worn homes, their own residents.
+  const sharedComfort = mod.comfort + care.comfort - sharedWear(state) * CONDITION.happiness.sharedComfort;
   if (!room) return { noise: 0, comfort: clamp(h.homelessComfort + sharedComfort, -lim, lim), health: clamp(shared, -lim, lim) };
 
   const field = state.effects.field;
@@ -69,7 +71,7 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   const view = room.cells.some((c) => c.ring === 1) ? h.shaftViewComfort : 0;
   return {
     noise: clamp(effectOnRoom(field, "noise", room) * mod.noiseFactor, -lim, lim),
-    comfort: clamp(own + view + sharedComfort + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
+    comfort: clamp(own + view + sharedComfort + homeWearComfort(room) + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
     health: clamp(effectOnRoom(field, "health", room) + shared, -lim, lim),
   };
 }

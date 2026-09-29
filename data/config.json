@@ -99,7 +99,7 @@
     "productivityFullAt": 50
   },
   "messages": { "keep": 20 },
-  "unlocks": { "cargoPopulation": 100, "homes": { "basic": 50, "standard": 200, "luxury": 1000 } },
+  "unlocks": { "cargoPopulation": 100, "homes": { "basic": 50, "standard": 200, "luxury": 1000 }, "cleaningPopulation": 150 },
   "landingKit": {
     "surface": [
       { "room": "landing_pod", "slot": 0 },

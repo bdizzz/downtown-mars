@@ -2,6 +2,7 @@ import type { SimConfig } from "./config";
 import { stepDigging } from "./digging";
 import { stepEarth } from "./earth";
 import { stepWeather } from "./weather";
+import { stepCondition } from "./condition";
 import { stepEconomy, updateRates } from "./economy";
 import { refreshEffects } from "./effects";
 import { stepHappiness } from "./happiness";
@@ -20,6 +21,7 @@ export function step(state: SimState, cfg: SimConfig): void {
   stepDigging(state, cfg);
   state.effects = refreshEffects(state.layout, state.effects);
   stepEconomy(state, cfg);
+  stepCondition(state, cfg);
   stepConstruction(state, cfg);
   // Rates show the hole's own production and use, so measure before drops land.
   updateRates(state, before, cfg);

@@ -131,6 +131,8 @@ export interface SimConfig {
     cargoPopulation: number;
     /** Colonists in a hole before each tier of apartments (ROOMS.md, Housing). */
     homes: { basic: number; standard: number; luxury: number };
+    /** Colonists in a hole before it can have a cleaning service. */
+    cleaningPopulation: number;
   };
   landingKit: {
     surface: { room: string; slot: number }[];

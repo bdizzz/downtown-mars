@@ -49,6 +49,12 @@ export interface RoomInstance {
   stopAt?: number;
   /** When it was placed, for undo. Absent for the landing kit and old saves. */
   builtTick?: number;
+  /** How worn it is, 0..1 (see condition.ts); absent means 100%. */
+  condition?: number;
+  /** A repair under way or handed back part-done: work-hours done and needed. */
+  repair?: { done: number; work: number };
+  /** The player's own name for it (rename), shown instead of its type's. */
+  name?: string;
 }
 
 export interface Layout {

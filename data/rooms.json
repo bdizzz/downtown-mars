@@ -1063,6 +1063,53 @@
       "buildable": true
     },
     {
+      "id": "maintenance",
+      "name": "Maintenance",
+      "short": "Maint",
+      "category": "services",
+      "size": "M",
+      "staff": 2,
+      "uses": {
+        "power": 1,
+        "machinery": 0.5
+      },
+      "makes": {},
+      "maintains": "all",
+      "effects": [
+        { "type": "noise", "strength": -1, "radius": 1 }
+      ],
+      "cost": {
+        "rock": 15,
+        "metal": 10,
+        "machinery": 2
+      },
+      "buildable": true
+    },
+    {
+      "id": "cleaning_service",
+      "name": "Cleaning service",
+      "short": "Cleaners",
+      "category": "services",
+      "size": "M",
+      "staff": 3,
+      "uses": {
+        "power": 1,
+        "water": 4
+      },
+      "makes": {
+        "grayWater": 4
+      },
+      "maintains": "cleanable",
+      "unlockedBy": "cleaning",
+      "effects": [],
+      "cost": {
+        "rock": 15,
+        "metal": 8,
+        "brick": 5
+      },
+      "buildable": true
+    },
+    {
       "id": "construction_office",
       "name": "Construction office",
       "short": "Builders",

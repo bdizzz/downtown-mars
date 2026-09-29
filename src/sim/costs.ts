@@ -22,6 +22,7 @@ const UNLOCKS: Record<string, string> = {
   basicHomes: `Unlocks at ${config.unlocks.homes.basic} colonists in this hole`,
   standardHomes: `Unlocks at ${config.unlocks.homes.standard} colonists in this hole`,
   luxuryHomes: `Unlocks at ${config.unlocks.homes.luxury} colonists in this hole`,
+  cleaning: `Unlocks at ${config.unlocks.cleaningPopulation} colonists in this hole`,
 };
 
 /**

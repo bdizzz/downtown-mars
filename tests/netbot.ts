@@ -9,7 +9,7 @@ import { addRoute } from "../src/sim/rovers";
 import type { SimState } from "../src/sim/state";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
-import { ensureStairs, quarry, adapt, tendStorage } from "./adaptive";
+import { ensureStairs, quarry, adapt, tendStorage, tendUpkeep } from "./adaptive";
 import { PLAN, VISIT_ANSWERS } from "./bot";
 import { beds } from "../src/sim/earth";
 import { stageCounts } from "../src/sim/people";
@@ -107,7 +107,10 @@ function builder(plan: Plan[]) {
 /** Carve corridors to anything still cut off. */
 /** Once a day: storage kept ahead of the goods. */
 function tend(hole: SimState, t: number): void {
-  if (t % config.ticksPerDay === 0) tendStorage(hole);
+  if (t % config.ticksPerDay === 0) {
+    tendStorage(hole);
+    tendUpkeep(hole);
+  }
 }
 
 function reconnect(hole: SimState): void {

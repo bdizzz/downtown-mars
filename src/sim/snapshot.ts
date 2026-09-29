@@ -1,3 +1,4 @@
+import { maintenanceView, type MaintenanceView } from "./condition";
 import { stormDue, stormLevel } from "./weather";
 import { gameTime, type GameTime } from "./clock";
 import type { SimConfig } from "./config";
@@ -143,6 +144,8 @@ export interface Snapshot {
   earth: { ticksToDrop: number; waiting: boolean; padReady: boolean; landed: number };
   /** Dust storms: how hard one is blowing (0 clear to 1), and the days until a forecast one arrives. */
   weather: { storm: number; dueInDays: number | null };
+  /** Room condition and upkeep: the overall condition, the queue, and what each service room is repairing. */
+  maintenance: MaintenanceView;
   beds: number;
   messages: Message[];
   happiness: Happiness;
@@ -210,6 +213,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
       landed: state.earth.landed ?? 0,
     },
     weather: { storm: stormLevel(state, cfg), dueInDays: stormDue(state, cfg) },
+    maintenance: maintenanceView(state),
     beds: beds(state),
     messages: state.messages,
     happiness: state.happiness,
