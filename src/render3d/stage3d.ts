@@ -25,6 +25,7 @@ import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials
 import { Dust, galleryLamps, makeLander, placeLander, setLampGlow } from "./scenery3d";
 import { occupied, People, type RoomSpots } from "./people3d";
 import { Grit } from "./storm3d";
+import { LightShaft } from "./shafts3d";
 
 /** How much a full dust storm dims the sun and the sky's light, and how fast (per second) the view follows it. */
 const STORM_DIM = { sun: 0.7, sky: 0.3 };
@@ -240,10 +241,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     skyDome.setDust(level);
     setPanelDust(level);
     grit.setLevel(graphics.life && cut() === null ? level : 0);
+    updateShaftLight();
   }
   /** What the people in rooms were last worked out for. */
   let peopleKey = "";
   const dust = new Dust();
+  /** Sunlight down the shaft at midday, and where the sun is. */
+  const shaftLight = new LightShaft();
+  const sunDir = new THREE.Vector3(0, 1, 0);
+  /** Light shafts show from above the floors (nothing picked), with haze on to catch them. */
+  const updateShaftLight = () => shaftLight.update(sunDir, storm, cut() === null && graphics.haze > 0);
   // Sparks and steam from working rooms.
   const roomFx = new RoomEffects();
   /** Every room's furniture in the current layout, to switch between near and far copies. */
@@ -500,6 +507,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     sun.position.set(Math.cos(a) * 100, Math.max(5, Math.sin(a) * 100), 30);
     // The dome: its gradient by daylight, the sun's glow where the sun is (below the horizon at night).
     skyDome.update(light, new THREE.Vector3(Math.cos(a), Math.sin(a), 0.3));
+    sunDir.set(Math.cos(a), Math.sin(a), 0.3).normalize();
+    updateShaftLight();
     dirty = true;
   }
 
@@ -1292,6 +1301,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (performance.now() - lastTickChange < 400) {
         people.step(ambient);
         grit.step(ambient, camera.position);
+        shaftLight.step(ambient);
         roomFx.step(ambient);
       }
       ambient = 0;
@@ -1336,6 +1346,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (lamps) lamps.visible = cut() === null;
     people.group.visible = graphics.life;
     grit.setLevel(graphics.life && cut() === null ? storm : 0);
+    updateShaftLight();
     people.setTopFloor(view.mode === "walk" ? null : cut());
     dust.points.visible = graphics.life && cut() === null;
     roomFx.group.visible = graphics.life;
@@ -1353,7 +1364,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     look.resize();
     applyFloorCut();
   }
-  scene.add(people.group, dust.points, roomFx.group, lampLights.group, grit.points);
+  scene.add(people.group, dust.points, roomFx.group, lampLights.group, grit.points, shaftLight.mesh);
   lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
 
   let latest: Snapshot | null = null;
@@ -1396,6 +1407,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           },
           // The colonists shown, and the gallery walkers.
           people,
+          // Sunlight down the shaft.
+          shaftLight,
           // How many rooms show their furniture near and far.
           detail() {
             const n = { near: 0, far: 0 };
@@ -1433,6 +1446,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         if (topFitted) fitTop();
         if (cutawayFitted) fitCutaway();
         dust.sync(hole);
+        shaftLight.fit(openShaftRadius(hole), -floorSpan(hole.floors + 1)[0]);
         applyCamera();
       }
       // Remembered in iso: frame the floor once there's a hole to frame.
@@ -1594,6 +1608,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       });
       dispose(dust.points);
       grit.dispose();
+      shaftLight.dispose();
       roomFx.dispose();
       fieldGroup.traverse((o) => o instanceof THREE.Mesh && o.geometry.dispose());
       disposeRoomMaterials();

@@ -520,3 +520,12 @@ Decided Sep 28, 2026 (Bryon):
   - The view eases toward the sim's storm level, so it builds smoothly. A storm already blowing on load shows at once.
 - **Console:** `dm.storm(days, inDays)` (`consoleStorm`).
 - **Browser check:** `dm.storm(1)` in a test game, run to full strength. In Cutaway the sky is an orange murk, the horizon has gone and the hole is dim. From the shaft, grit drifts above the gallery.
+
+**Step 6, light shafts** (`shafts3d.ts`):
+- Sunlight falling down the open shaft around midday: an open-ended additive column, 62% of the shaft's open radius, from the surface down the hole.
+  - It's brightest where you look through the most of it, fades with depth, and is gone before its end, so it has no hard rim.
+  - Faint streaks drift down it.
+- It leans a little away from the sun (at most 0.22 rad). It shows from the sun at 0.35 high and is full from 0.85. A dust storm smothers it.
+- It shows only with no floor picked and haze on.
+- Found along the way: additive blending already scales by alpha, so the shader puts the colour in whole and only the strength in alpha. Scaling both had squared it away to nothing.
+- **Browser check:** at 11:42 in a test game. From the shaft, the upper shaft glows warm; in Cutaway there's a column of light with streaks down the middle of the hole.
