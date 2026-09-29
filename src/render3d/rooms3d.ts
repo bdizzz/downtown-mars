@@ -1325,7 +1325,7 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
   return out;
 }
 
-const CAP = { rock: 0x4a2a1e, locked: 0x33201a, beyond: 0x241410, lift: 0.02, beyondM: 30 };
+const CAP = { rock: 0x4a2a1e, locked: 0x33201a, beyond: 0x241410, lift: 0.02, beyondM: 3000, beyondSteps: 24 };
 
 /**
  * A rock lid over the chosen floor's empty cells, just under its ceiling:
@@ -1365,8 +1365,9 @@ function floorCap(layout: Layout, floor: number, xray = false): THREE.Object3D[]
     }
   });
   const outer = ringRadii(hole, hole.ringSlots.length)[1];
+  // The rock beyond the rings, out to near the horizon, round in many steps (four made it a square).
   const beyond: number[] = [];
-  flatRing(beyond, outer, outer + CAP.beyondM, 0, TAU, y);
+  for (let i = 0; i < CAP.beyondSteps; i++) flatRing(beyond, outer, outer + CAP.beyondM, (i / CAP.beyondSteps) * TAU, ((i + 1) / CAP.beyondSteps) * TAU, y);
   const mat = (c: number) => material(`cap:${c}`, () => withRock(new THREE.MeshStandardMaterial({ color: c, roughness: 1, side: THREE.DoubleSide })));
   const openMesh = new THREE.Mesh(geometry(open), mat(CAP.rock));
   openMesh.userData = { pickable: true, cap: true };

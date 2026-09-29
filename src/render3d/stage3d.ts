@@ -39,6 +39,8 @@ const C = {
   stranded: 0xe0503a,
   digFront: 0xe07a3f,
   nightSky: 0x120a14,
+  /** Behind everything with a floor picked: the ground all round. */
+  earth: 0x241410,
   daySky: 0xc98a5e,
 };
 
@@ -89,6 +91,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const camera = new THREE.PerspectiveCamera(FOV, host.clientWidth / Math.max(1, host.clientHeight), 0.1, FAR);
   // The sky: a gradient by day, stars by night.
   const skyDome = createSky();
+  let skyColor = new THREE.Color(C.nightSky);
   scene.add(skyDome.mesh);
   // What's drawn over the scene (occlusion, haze, glow, grading), per the graphics settings.
   const look = new Look(renderer, scene, camera);
@@ -447,8 +450,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function updateSky(s: Snapshot): void {
     const f = s.time.dayFraction;
     const light = f > 0.25 && f < 0.75 ? Math.sin((Math.PI * (f - 0.25)) / 0.5) : 0;
-    // Behind the sky dome, in case anything peeks past it.
-    scene.background = new THREE.Color(C.nightSky).lerp(new THREE.Color(C.daySky), light);
+    // Behind the sky dome, in case anything peeks past it (earth, with a floor picked).
+    skyColor = new THREE.Color(C.nightSky).lerp(new THREE.Color(C.daySky), light);
+    if (cut() === null) scene.background = skyColor;
     // Deep in the shaft, daylight matters less than the lamps; keep it gentle.
     hemi.intensity = 0.45 + 0.35 * light;
     sun.intensity = 0.15 + 0.9 * light;
@@ -1269,6 +1273,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (typeof o.userData.floor === "number") o.visible = f === null || o.userData.floor >= f;
     });
     if (terrain) terrain.group.visible = cut() === null;
+    // With a floor picked you're looking underground: earth all round, no sky.
+    skyDome.mesh.visible = cut() === null;
+    scene.background = cut() === null ? skyColor : new THREE.Color(C.earth);
     if (lamps) lamps.visible = cut() === null;
     walkers.mesh.visible = graphics.life && cut() === null;
     dust.points.visible = graphics.life && cut() === null;

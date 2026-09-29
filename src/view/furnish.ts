@@ -76,6 +76,8 @@ export const FIT = {
   maxRepeat: 12,
   /** Items no taller than this (rugs) lie on the floor: others stand on them, and they don't count toward crowding. */
   flat: 0.1,
+  /** Furniture stands this far above the floor: models dip up to 3 cm below their base, and must not show through the floor from below. */
+  lift: 0.035,
   /** Kept between two wall hangings. */
   hangingGap: 0.25,
   /** How far off the wall a hanging's back is, so the two never share a plane. */
@@ -255,8 +257,8 @@ function finish(p: Placement, px: number, pz: number, f: [number, number], frame
     px + (sx * w * X[0]) / 2 + (sz * d * Z[0]) / 2,
     pz + (sx * w * X[1]) / 2 + (sz * d * Z[1]) / 2,
   ]);
-  // A wall hanging hangs at its height above the floor.
-  return { item: p.item, x: px, y: frame.y + (itemDef(p.item).mount ?? 0), z: pz, turn, corners, wall: p.wall, floor: frame.floor };
+  // A hair above the floor (so nothing pokes through it, seen from the floor below); a wall hanging at its height.
+  return { item: p.item, x: px, y: frame.y + FIT.lift + (itemDef(p.item).mount ?? 0), z: pz, turn, corners, wall: p.wall, floor: frame.floor };
 }
 
 /**

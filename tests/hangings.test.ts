@@ -36,7 +36,7 @@ describe("wall hangings", () => {
     // Over the bed, yes; behind the wardrobe, no.
     expect(hung.map((x) => x.placement)).toEqual([2]);
     const p = hung[0]!;
-    expect(p.y).toBeCloseTo(frame.y + itemDef("painting").mount!, 6);
+    expect(p.y).toBeCloseTo(frame.y + FIT.lift + itemDef("painting").mount!, 6);
     // Its back is just off the wall, which stands the fitting gap beyond the fitted floor.
     const back = Math.max(...p.corners.map(([x, z]) => Math.hypot(x, z)));
     expect(back).toBeGreaterThan(frame.rOut + FIT.wallGap - FIT.hangingOff - 0.02);
