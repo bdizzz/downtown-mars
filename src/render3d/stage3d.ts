@@ -28,6 +28,7 @@ import { Grit } from "./storm3d";
 import { LightShaft } from "./shafts3d";
 import { advanceDetails } from "./details3d";
 import { troubleOf, type Trouble } from "../view/roomTrouble";
+import { grimeLevel } from "../view/grime";
 import type { RoomStatus } from "../sim/economy";
 
 /** How far above a room's label its trouble badge floats, metres. */
@@ -1492,13 +1493,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         placeWalker();
         applyCamera();
       }
-      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}:${cut()}:${view.roomColors}`;
+      // Wear and grime: each room's level, which changes over days, so rebuilds stay rare.
+      const grime = new Map(snapshot.layout.rooms.map((r) => [r.id, grimeLevel(r, snapshot.tick, config.ticksPerDay, snapshot.effects)]));
+      const grimeKey = [...grime.values()].join("");
+      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}:${cut()}:${view.roomColors}:${grimeKey}`;
       if (lk !== layoutKey) {
         layoutKey = lk;
         scene.remove(layoutGroup);
         disposeLayout(layoutGroup);
         const t0 = performance.now();
-        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray, cut(), view.roomColors);
+        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray, cut(), view.roomColors, (r) => grime.get(r.id) ?? 0);
         stats.buildMs = performance.now() - t0;
         scene.add(layoutGroup);
         furnitureGroups = [];

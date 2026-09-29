@@ -569,3 +569,14 @@ Decided Sep 28, 2026 (Bryon):
 - A badge floats over the label with the reason's icon: 👷, 😞, 🌪, 📜, ⚡, 💧, 🫁, 🌾 and so on, or ⚠.
 - Outlines keep their normal material otherwise. It's redone only when some room's trouble changes, and outline materials are swapped, not rebuilt.
 - **Browser check:** pausing the battery bank puts a ⏸ badge over its label.
+
+**Step 10, wear and grime** (`view/grime.ts`, `withGrime` in surfaces.ts):
+- A room's wear comes from:
+  - its age (up to 0.55 at 60 days; the landing kit counts from the start);
+  - the worst noise (0.2) and smell (0.3) on its own cells;
+  - heavy work (plants, power, air, water; 0.25 over its first 10 days).
+- It's cut into four whole levels, so rooms share materials and the layout only rebuilds when a room crosses a level. The stage adds the levels to its layout key.
+- **Walls:** grime rises from the floor (unevenly), with streaks running down and broad stains.
+- **Floors:** scuffs and stains.
+- It works on room colours and on finishes alike.
+- **Browser check:** the Day 8 save, opened paused. The battery bank (power, 8 days old) darkens toward its base, and there are no shader errors.

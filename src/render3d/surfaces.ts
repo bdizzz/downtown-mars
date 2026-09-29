@@ -1,4 +1,8 @@
 import * as THREE from "three";
+import { config } from "../sim/config";
+
+const FLOOR_H = config.geometry.floorHeightM;
+const CRUST = config.geometry.surfaceDepthM;
 
 // Procedural surfaces: patterns worked out in the shader from each point's
 // position in the world, so there are no image files, nothing to unwrap, and
@@ -330,5 +334,45 @@ export function withFresnel<T extends THREE.Material>(m: T, strength = 0.55): T 
     );
   };
   m.customProgramCacheKey = () => `${prevKey}|fresnel`;
+  return m;
+}
+
+// ---- wear and grime ----
+
+/** How grubby a room gets at each level (1 to 3): walls streak and stain toward the floor, floors scuff. */
+const GRIME_GLSL = /* glsl */ `
+  float grimeTone(vec3 p, vec3 n, float level) {
+    if (level < 0.5) return 1.0;
+    float amount = level / 3.0;
+    float above = mod(p.y + ${CRUST.toFixed(2)}, ${FLOOR_H.toFixed(2)});
+    if (abs(n.y) > 0.7) {
+      // Floors: scuffed where people walk, with the odd stain.
+      float scuff = smoothstep(0.55, 0.8, srfFbm(p * 1.3)) * 0.5 + smoothstep(0.75, 0.85, srfNoise(p * 3.1)) * 0.4;
+      return 1.0 - 0.28 * amount * scuff;
+    }
+    // Walls: grime rising from the floor, streaks running down, and stains.
+    float rise = smoothstep(1.4, 0.0, above) * mix(0.6, 1.2, srfFbm(p * 0.9));
+    float streak = smoothstep(0.62, 0.8, srfNoise(vec3(p.x * 3.0, p.y * 0.25, p.z * 3.0))) * smoothstep(3.8, 2.0, above);
+    float stain = smoothstep(0.7, 0.82, srfFbm(p * 0.6 + 4.0));
+    return 1.0 - amount * (0.3 * rise + 0.2 * streak + 0.18 * stain);
+  }
+`;
+
+/** A room's walls and floor worn to a level (0 to 3): see view/grime.ts. */
+export function withGrime<T extends THREE.Material>(m: T, level: number): T {
+  if (level <= 0) return m;
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    const hasNoise = shader.fragmentShader.includes("srfNoise");
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vGrimePos;\nvarying vec3 vGrimeNormal;")
+      .replace("#include <project_vertex>", "vGrimePos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvGrimeNormal = normalize(mat3(modelMatrix) * objectNormal);\n#include <project_vertex>");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", `#include <common>\nvarying vec3 vGrimePos;\nvarying vec3 vGrimeNormal;\n${hasNoise ? "" : NOISE_GLSL}\n${GRIME_GLSL}`)
+      .replace("#include <color_fragment>", `#include <color_fragment>\ndiffuseColor.rgb *= grimeTone(vGrimePos, normalize(vGrimeNormal), ${level.toFixed(1)});`);
+  };
+  m.customProgramCacheKey = () => `${prevKey}|grime-${level}`;
   return m;
 }
