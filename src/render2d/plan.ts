@@ -55,7 +55,7 @@ const MAX_ZOOM = 5;
 /** How much of the screen's shorter side the unlocked rings fill when fitted. */
 const FIT_SHARE = 0.9;
 /** Zoom per unit of wheel movement: a pinch (ctrl+wheel), a wheel or trackpad scroll, and a wheel "line" in pixels. */
-const WHEEL = { pinch: 0.01, wheel: 0.0015, line: 16 };
+const WHEEL = { pinch: 0.01, wheel: 0.0015, line: 16, turn: 0.003 };
 const CLICK_SLOP = 5;
 const ARC_STEP = 0.05; // radians per segment when drawing arcs as polylines
 const FIELD_MAX = 3;
@@ -153,7 +153,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   let fitted = false;
   /** Until the player pans or zooms, keep the floor fitted to the view as it resizes. */
   let userMoved = false;
-  const cam = { x: 0, y: 0, zoom: 1 };
+  // Always centred on the shaft: the player zooms and turns the layout, but doesn't pan it.
+  const cam = { x: 0, y: 0, zoom: 1, rot: 0 };
 
   // ---- drawing ----
 
@@ -502,10 +503,16 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   function applyCamera(): void {
     cam.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom));
     world.scale.set(cam.zoom);
-    world.x = app.screen.width / 2 - cam.x * cam.zoom;
-    world.y = app.screen.height / 2 - cam.y * cam.zoom;
+    world.rotation = cam.rot;
+    world.x = app.screen.width / 2;
+    world.y = app.screen.height / 2;
+    // Names stay upright however the layout is turned.
     const labelScale = Math.max(1, MIN_LABEL_PX / (LABEL_PX * cam.zoom));
-    for (const label of labels.children) label.scale.set(labelScale);
+    for (const label of labels.children) {
+      label.scale.set(labelScale);
+      label.rotation = -cam.rot;
+    }
+    for (const label of progressLabels.children) label.rotation = -cam.rot;
     refreshHover();
   }
 
@@ -517,7 +524,12 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
 
   function screenToPlan(e: { clientX: number; clientY: number }): [number, number] {
     const r = canvas.getBoundingClientRect();
-    return [cam.x + (e.clientX - r.left - app.screen.width / 2) / cam.zoom, cam.y + (e.clientY - r.top - app.screen.height / 2) / cam.zoom];
+    // From the screen's centre, unturned and unscaled.
+    const sx = (e.clientX - r.left - app.screen.width / 2) / cam.zoom;
+    const sy = (e.clientY - r.top - app.screen.height / 2) / cam.zoom;
+    const c = Math.cos(cam.rot);
+    const sn = Math.sin(cam.rot);
+    return [c * sx + sn * sy, -sn * sx + c * sy];
   }
 
   function pickHere(): Pick {
@@ -609,17 +621,10 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       return;
     }
     if (drag) {
-      const dx = e.clientX - drag.x;
-      const dy = e.clientY - drag.y;
-      drag.moved += Math.abs(dx) + Math.abs(dy);
-      if (drag.moved > CLICK_SLOP) canvas.style.cursor = "grabbing";
-      cam.x -= dx / cam.zoom;
-      cam.y -= dy / cam.zoom;
-      if (drag.moved > CLICK_SLOP) userMoved = true;
+      // Dragging doesn't pan (the plan stays centred on the shaft); it only tells a click from a slip.
+      drag.moved += Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y);
       drag.x = e.clientX;
       drag.y = e.clientY;
-      applyCamera();
-      return;
     }
     refreshHover();
   };
@@ -646,14 +651,17 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     e.preventDefault();
     pointer = e;
     userMoved = true;
-    // The wheel and pinching both zoom, around the cursor (dragging pans). A pinch comes as
-    // ctrl+wheel in small steps; a wheel notch is a big step, in lines or pixels.
-    const [wx, wy] = screenToPlan(e);
-    const dy = e.deltaY * (e.deltaMode === 1 ? WHEEL.line : 1);
+    const line = e.deltaMode === 1 ? WHEEL.line : 1;
+    // Sideways scrolling turns the layout round the shaft, as it turns the 3D views.
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && !e.ctrlKey) {
+      cam.rot -= e.deltaX * line * WHEEL.turn;
+      applyCamera();
+      return;
+    }
+    // The wheel and pinching both zoom, about the shaft. A pinch comes as ctrl+wheel in
+    // small steps; a wheel notch is a big step, in lines or pixels.
+    const dy = e.deltaY * line;
     cam.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom * Math.exp(-dy * (e.ctrlKey ? WHEEL.pinch : WHEEL.wheel))));
-    const r = canvas.getBoundingClientRect();
-    cam.x = wx - (e.clientX - r.left - app.screen.width / 2) / cam.zoom;
-    cam.y = wy - (e.clientY - r.top - app.screen.height / 2) / cam.zoom;
     applyCamera();
   };
 

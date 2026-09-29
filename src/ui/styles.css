@@ -346,6 +346,8 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 }
 .floor-picker button { background: #2f1c16; color: var(--text); border: 1px solid transparent; border-radius: 4px; padding: 2px 8px; font: inherit; font-size: 12px; cursor: pointer; }
 .floor-picker button.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+/* Pointed at: shown for now, kept with a click. */
+.floor-picker button.preview { border-color: var(--muted); border-style: dashed; }
 
 /* Corridor finishes, in the Access popup */
 .finishes { display: flex; flex-direction: column; gap: 2px; }

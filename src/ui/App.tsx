@@ -64,6 +64,10 @@ export function App() {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   /** The floor the plan and 3D views focus on; null shows every floor in 3D. */
   const [viewFloor, setViewFloor] = useState<number | null>(null);
+  /** A floor shown while the pointer is on its button in the floor picker (undefined: none). */
+  const [previewFloor, setPreviewFloor] = useState<number | null | undefined>(undefined);
+  /** What the view shows: the floor being previewed, else the one picked. */
+  const lookFloor = previewFloor !== undefined ? previewFloor : viewFloor;
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
   const [panel, setPanel] = useState<"office" | "flows" | "network" | "people" | "construction" | null>(null);
   const officeOpen = panel === "office";
@@ -162,6 +166,13 @@ export function App() {
       setCanUndo(false);
     }
   }, [send, flash]);
+
+  // Iso with every floor showing looks at the surface; picking up something to build
+  // underground (a room below ground, or corridors) drops the view to floor 1.
+  useEffect(() => {
+    const below = tool?.kind === "corridor" || (tool?.kind === "build" && roomDef(tool.room).size !== "surface");
+    if (below && viewFloor === null && settings.view === "3d" && settings.view3d.camera === "iso") setViewFloor(1);
+  }, [tool, viewFloor, settings.view, settings.view3d.camera]);
 
   // The corridor tool remembers its finish between uses.
   const [lastFinish, setLastFinish] = useState(corridors.defaultFinish);
@@ -434,6 +445,8 @@ export function App() {
               floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
               allowAll={settings.view === "3d"}
               onPick={setViewFloor}
+              preview={previewFloor}
+              onPreview={setPreviewFloor}
             />
           )}
           {snapshot && proposal && (
@@ -469,7 +482,7 @@ export function App() {
             onConfirmBuild={setPendingBuild}
             proposal={proposal}
             onPropose={setProposal}
-            floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
+            floor={shownFloor(lookFloor, floorCount, settings.view === "plan")}
             snapshot={snapshot}
             tool={tool}
             onHover={setHover}

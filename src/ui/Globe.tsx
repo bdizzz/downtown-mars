@@ -11,8 +11,9 @@ export type LatLon = { lat: number; lon: number };
 const GLOBE = {
   /** Camera distance, in globe radii: where it starts, and how close and far it goes. */
   distance: { start: 3.7, min: 1.6, max: 6 },
-  /** Radians of spin per pixel dragged (at the starting distance). */
+  /** Radians of spin per pixel dragged, and per pixel scrolled sideways (at the starting distance). */
   drag: 0.006,
+  scrollSpin: 0.004,
   /** How quickly a coasting spin dies away (per second), and when it counts as stopped. */
   decay: 2.2,
   /** A fling's speed is measured over the drag's last moments (ms), and capped (radians a second). */
@@ -186,6 +187,14 @@ export function Globe({ map, version, focus, onHover, onPick }: Props) {
     const onLeave = () => callbacks.current.onHover(null);
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      // Sideways scrolling spins the planet; up and down (or a pinch) zooms.
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && !e.ctrlKey) {
+        spin.vYaw = 0;
+        spin.vTilt = 0;
+        spin.yaw -= e.deltaX * GLOBE.scrollSpin * (spin.distance / GLOBE.distance.start);
+        place();
+        return;
+      }
       spin.distance = Math.max(GLOBE.distance.min, Math.min(GLOBE.distance.max, spin.distance * Math.exp(e.deltaY * (e.ctrlKey ? 0.01 : 0.0015))));
       place();
     };

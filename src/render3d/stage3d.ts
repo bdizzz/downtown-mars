@@ -226,7 +226,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** The floor picked on the right (null: every floor). */
   let pickedFloor: number | null = null;
   /** Show only this floor and those below it, i.e. deeper (null: every floor). Iso always looks at one floor. */
-  const cut = (): number | null => pickedFloor ?? (view.mode === "iso" ? 1 : null);
+  // The floor picked (everything above it hidden), or null for all of them, surface and all.
+  const cut = (): number | null => pickedFloor;
   // The land round the hole: the ground, boulders, craters and the horizon, for this site.
   let terrain: Terrain | null = null;
   let terrainKey = "";
@@ -294,7 +295,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** The height of the floor in view, below which things fade into the haze. */
   function hazeFocus(): number {
     if (view.mode === "walk") return floorSpan(walker.floor)[0];
-    if (view.mode === "iso") return floorSpan(cut() ?? 1)[0];
+    if (view.mode === "iso") return cut() === null ? 0 : floorSpan(cut()!)[0];
     if (view.mode === "top") return cut() === null ? 0 : floorSpan(cut()!)[0];
     return Math.min(0, camera.position.y - FLOOR_H);
   }
@@ -331,8 +332,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       // Keep what's behind the axis from the camera's point of view.
       clip.normal.copy(out).negate();
     } else if (view.mode === "iso") {
-      // Above the floor and off to one side, looking across it (a little past its centre, so the far rooms fill the view).
-      const y = floorSpan(cut() ?? 1)[0];
+      // Above the floor (or, with every floor showing, the surface) and off to one side, looking
+      // across it, a little past its centre, so the far side fills the view.
+      const f = cut();
+      const y = f === null ? 0 : floorSpan(f)[0];
       camera.position.copy(out).multiplyScalar(cam.iso * Math.cos(cam.isoElev)).setY(y + cam.iso * Math.sin(cam.isoElev));
       const past = outerRadius() * ISO.lookPast;
       camera.lookAt(-out.x * past, y, -out.z * past);
@@ -1175,7 +1178,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function updateReadout(): void {
     const f = cut();
     if (view.mode === "walk") readout.textContent = walkReadout();
-    else if (view.mode === "iso") readout.textContent = `Floor ${f}, isometric`;
+    else if (view.mode === "iso") readout.textContent = f === null ? "The surface, isometric" : `Floor ${f}, isometric`;
     else if (f !== null) readout.textContent = `Floor ${f}${view.mode === "top" ? " from above" : " and below"}`;
     else if (view.mode === "top") readout.textContent = "Looking down the shaft";
     else readout.textContent = cam.y >= floorSpan(1)[1] ? "Surface" : `Floor ${floorAtY(cam.y)}`;

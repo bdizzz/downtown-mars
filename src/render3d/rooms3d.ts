@@ -446,8 +446,9 @@ function rockFaces(layout: Layout, topFloor: number | null): number[] {
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
   const rock = (c: Cell | null) =>
     !c || c.floor < 1 || c.floor > hole.floors || (!layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] && !isOpen(layout, c));
-  // The crust's underside: the ceiling over whatever's dug out on floor 1.
-  if (hole.floors >= 1) {
+  // The crust's underside: the ceiling over whatever's dug out on floor 1. Only with every floor
+  // showing: with a floor picked, everything above it (the crust too) is lifted away to look in.
+  if (hole.floors >= 1 && topFloor === null) {
     const y = floorSpan(1)[1];
     hole.ringSlots.forEach((n, ri) => {
       const [r0, r1] = ringRadii(hole, ri + 1);

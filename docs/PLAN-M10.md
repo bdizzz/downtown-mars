@@ -349,3 +349,17 @@ Decided Sep 28, 2026 (Bryon):
   - The shaft's rock collar from above.
   - Cutaway showing boulders and mesas, with the cut filled with rock.
   - The globe: facing Bradbury, a fling coasting to a stop, and a click at Tempe Terra marking the site.
+
+**Follow-up, fixes and controls (Bryon, Sep 29):**
+- **Iso shows the surface:**
+  - Iso used to treat "All" as floor 1, so the surface, its buildings and the new land never showed there. Now "All" in Iso looks at the surface, like the other cameras, and picking a floor looks into it.
+  - Picking up a room below ground, or the corridor tool, in Iso with All drops the view to floor 1, so building works as before (and the tutorial's "place it in ring 1").
+- **The crust's ceiling got in the way:** floor 1's rock ceiling was drawn even with a floor picked, and covered it like a lid (in Iso, and with X-ray and walls down). It's now only drawn with every floor showing.
+- **The globe spins** with sideways scrolling too.
+- **The plan stays centred:** dragging no longer pans. Sideways scrolling turns the layout round the shaft, as in the 3D views, and zoom is about the shaft. Names stay upright, and picking undoes the turn.
+- **Floor preview:** pointing at a floor in the picker shows it (dashed); moving off the picker goes back to the floor that was kept; clicking keeps it.
+- **Browser check:**
+  - Iso with All shows the solar array, airlock, pod, landing pad and boulders.
+  - Pointing at F2 previews it, and moving off returns to the surface.
+  - F1 with walls down, with no lid.
+  - The plan turned by sideways scrolling, with names upright and a drag that doesn't move it.
