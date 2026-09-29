@@ -20,9 +20,11 @@ export interface View3d {
   wallsDown: boolean;
   /** Rooms in their category's colour (on), or in the material they're built from: rock, marscrete, brick, metal (off). */
   roomColors: boolean;
+  /** Resource networks drawn as pipes: power, water, air and food, flowing from what makes them to what uses them. */
+  flows: boolean;
 }
 
-export const DEFAULT_VIEW3D: View3d = { camera: "iso", xray: false, wallsDown: false, roomColors: true };
+export const DEFAULT_VIEW3D: View3d = { camera: "iso", xray: false, wallsDown: false, roomColors: true, flows: false };
 
 export function isCamera(id: unknown): id is Camera {
   return CAMERAS.some((c) => c.id === id);

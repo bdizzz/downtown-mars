@@ -580,3 +580,15 @@ Decided Sep 28, 2026 (Bryon):
 - **Floors:** scuffs and stains.
 - It works on room colours and on finishes alike.
 - **Browser check:** the Day 8 save, opened paused. The battery bank (power, 8 days old) darkens toward its base, and there are no shader errors.
+
+**Step 11, resource flows** (`flows3d.ts`, View → Flows):
+- **Four networks:** power (yellow), water (blue), air (pale cyan) and food (green).
+- **Risers:** one per network in the shaft, spread round it.
+- **Spokes:** every room that makes or uses the network's resource runs a pipe along its ceiling to the shaft face, round the face to its riser.
+  - A running room making it feeds; a room using it draws. Homes draw air.
+  - Surface rooms run in to the rim and round it, then over the edge.
+- **Dashes run the way the resource goes:** a feeding room's pipe runs toward the riser, a drawing room's away from it. Risers are still.
+- Drawn over everything (no depth test), as an overlay.
+- With a floor picked, the surface and anything above the floor drop out.
+- It's rebuilt only when the rooms feeding or drawing change (`flowRooms`), or the floor picked. `View3d.flows` is kept in settings. The legend sits beside the button.
+- **Browser check:** in a test game with two solar arrays, in Cutaway, yellow dashes run from the arrays round the rim, down the riser and out to the rooms, with water and air beside them.

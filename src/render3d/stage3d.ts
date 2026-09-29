@@ -29,6 +29,7 @@ import { LightShaft } from "./shafts3d";
 import { advanceDetails } from "./details3d";
 import { troubleOf, type Trouble } from "../view/roomTrouble";
 import { grimeLevel } from "../view/grime";
+import { flowRooms, Flows } from "./flows3d";
 import type { RoomStatus } from "../sim/economy";
 
 /** How far above a room's label its trouble badge floats, metres. */
@@ -145,7 +146,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(digFront);
 
   // The camera and the see-through toggles: set from the View mode's buttons (setView3d).
-  const view = { mode: DEFAULT_VIEW3D.camera as Mode, xray: DEFAULT_VIEW3D.xray, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors };
+  const view = { mode: DEFAULT_VIEW3D.camera as Mode, xray: DEFAULT_VIEW3D.xray, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors, flows: DEFAULT_VIEW3D.flows };
   // The surface: see-through in x-ray, so rooms under it show from above.
   const groundMat = withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 }));
   function applyGroundXray(): void {
@@ -237,6 +238,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // Timing for the dev console (window.__stage3d in dev builds only).
   const stats = { buildMs: 0, frameMs: 0, calls: 0, triangles: 0 };
   const people = new People();
+  /** Resource networks as pipes (View → Flows), and what they were last built for. */
+  const flows = new Flows();
+  let flowsKey = "";
   /** Rooms in trouble: their outlines (recoloured) and labels (with a badge over them), by room. */
   let roomOutlines = new Map<number, THREE.LineSegments>();
   let roomLabels = new Map<number, THREE.Object3D>();
@@ -1268,6 +1272,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       applyGroundXray();
       if (latest) stage.update(latest);
     }
+    if (!!v.flows !== view.flows) {
+      view.flows = !!v.flows;
+      flowsKey = "";
+      if (latest) stage.update(latest);
+    }
     if (v.roomColors !== view.roomColors) {
       view.roomColors = v.roomColors;
       layoutKey = ""; // rebuild with the rooms' new materials on the next update
@@ -1335,6 +1344,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         people.step(ambient);
         grit.step(ambient, camera.position);
         shaftLight.step(ambient);
+        if (view.flows) flows.step(ambient);
         advanceDetails(ambient);
         roomFx.step(ambient);
       }
@@ -1398,7 +1408,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     look.resize();
     applyFloorCut();
   }
-  scene.add(people.group, dust.points, roomFx.group, lampLights.group, grit.points, shaftLight.mesh, badges);
+  scene.add(people.group, dust.points, roomFx.group, lampLights.group, grit.points, shaftLight.mesh, badges, flows.group);
   lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
 
   let latest: Snapshot | null = null;
@@ -1420,7 +1430,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             return performance.now() - t0;
           },
           setMode(m: Mode) {
-            setView3d({ camera: m, xray: view.xray, wallsDown: view.wallsDown, roomColors: view.roomColors });
+            setView3d({ camera: m, xray: view.xray, wallsDown: view.wallsDown, roomColors: view.roomColors, flows: view.flows });
           },
           // First person's position and heading, to put a walker somewhere.
           walker,
@@ -1562,6 +1572,17 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const staffKey = snapshot.layout.rooms.map((r) => snapshot.roomStatus[r.id]?.staff ?? 0).join(",");
       const pk = `${layoutKey}:${hour}:${staffKey}:${snapshot.population.count}`;
       showTrouble(snapshot.roomStatus);
+      // Resource flows: rebuilt when the rooms feeding or drawing change, or the floor picked.
+      flows.group.visible = view.flows;
+      if (view.flows) {
+        const rooms = flowRooms(snapshot.layout, snapshot.roomStatus, config, cut());
+        const fk = `${snapshot.layout.version}:${cut()}:${JSON.stringify(rooms)}`;
+        if (fk !== flowsKey) {
+          flowsKey = fk;
+          flows.build(snapshot.layout, rooms);
+          dirty = true;
+        }
+      }
       if (pk !== peopleKey) {
         peopleKey = pk;
         const rooms = furnitureGroups.map((g) => g.userData.people as RoomSpots | undefined).filter((r): r is RoomSpots => !!r);
@@ -1658,6 +1679,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       dispose(dust.points);
       grit.dispose();
       shaftLight.dispose();
+      flows.dispose();
       roomFx.dispose();
       fieldGroup.traverse((o) => o instanceof THREE.Mesh && o.geometry.dispose());
       disposeRoomMaterials();

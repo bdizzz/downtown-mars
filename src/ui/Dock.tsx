@@ -1,3 +1,4 @@
+import { FLOW_NETS } from "../render3d/flows3d";
 import type React from "react";
 import type { Snapshot } from "../sim/snapshot";
 import { FIELD_TYPES } from "../sim/effects";
@@ -147,6 +148,24 @@ export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverla
         >
           Room colours
         </button>
+        <button
+          className={`dock-btn${in3d && view3d.flows ? " on" : ""}`}
+          disabled={!in3d}
+          onClick={() => setView3d({ ...view3d, flows: !view3d.flows })}
+          title={in3d ? "Power, water, air and food as pipes, flowing from what makes them to what uses them" : "In the 3D views"}
+          aria-pressed={view3d.flows}
+        >
+          Flows
+        </button>
+        {in3d && view3d.flows && (
+          <span className="legend">
+            {FLOW_NETS.map((n) => (
+              <span key={n.id}>
+                <i style={{ background: n.color }} /> {n.name}{" "}
+              </span>
+            ))}
+          </span>
+        )}
       </span>
       <span className="dock-sep" />
       <span className="dock-section" aria-label="Overlay">

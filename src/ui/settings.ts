@@ -55,7 +55,7 @@ function cleanView3d(raw: Partial<View3d> | undefined): View3d {
       v = {};
     }
   }
-  return { camera: isCamera(v.camera) ? v.camera : DEFAULT_VIEW3D.camera, xray: !!v.xray, wallsDown: !!v.wallsDown, roomColors: v.roomColors ?? DEFAULT_VIEW3D.roomColors };
+  return { camera: isCamera(v.camera) ? v.camera : DEFAULT_VIEW3D.camera, xray: !!v.xray, wallsDown: !!v.wallsDown, roomColors: v.roomColors ?? DEFAULT_VIEW3D.roomColors, flows: !!v.flows };
 }
 
 const KEY = "downtown-mars.settings";
