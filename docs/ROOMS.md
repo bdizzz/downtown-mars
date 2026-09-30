@@ -145,6 +145,10 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 | Electronics fab | M | 4 | Metal 1, silicon wafers 1, power 4 | Electronics 1 | — | M 15, Mc 3, E 2 | Pop 500 |
 | Reinforcement frame | S | 0 | — | — | Cave-in risk −2 r2 | M 10 | Depth 8 floors |
 | Staging bay | L | 2 | Seed kit goods | Founds a new hole | Noise −1 r1 | M 15, Mc 2 | Map mode |
+| Site office | S | 2 | Power 1 | Construction bandwidth +1 | — | R 10, M 5 | Start |
+| Construction office | M | 4 | Power 1 | Construction bandwidth +2.5 | Noise −1 r1 | B 15, M 10, Mc 1 | Start |
+| Construction yard | L | 8 | Power 2 | Construction bandwidth +5 | Noise −2 r1 | B 30, M 20, Mc 3 | Start |
+| Empty room | S, M or L | 0 | — | Digs out rock ahead of need; leaves walk-through empty space | — | Free (the digging takes time) | Start |
 
 ## Materials, goods and vehicles
 
@@ -194,6 +198,18 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 - **Mixing is allowed:** a room can be part brick, part marscrete, with the comfort penalty scaled to the share of marscrete.
 - **Refitting:** rooms built with substitutes can be refinished later once the preferred material is available.
 
+## Services
+
+| Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Maintenance | M | 2 | Power 1, machinery 0.5 | Repairs rooms back to 100% condition, one at a time, worst first | Noise −1 r1 | R 15, M 10, Mc 2 | Start |
+| Cleaning service | M | 3 | Power 1, water 4 | Repairs homes and other people-heavy rooms back to 100%; gray water 4 | — | R 15, B 5, M 8 | Pop 150 |
+
+- **Condition:** every room except the entrance, stairs, elevators and these two starts at 100% when built and wears down about 1.2% a day (30% faster for industry, power, air and water). Breakdowns now and then knock a room down 20–30 points.
+- **Worn rooms:** below 50% they upset people (their own residents for homes; everyone, more so for galleys, restrooms and clinics); below 30% they work 30% slower; at 0% they stop.
+- **The queue:** rooms at 60% or below wait in a hole-wide queue, worst first. Each maintenance room or cleaning service works one room at a time, at a pace set by its staff; one that stops hands its room back, part-done, to the front.
+- Numbers live in `data/condition.json`.
+
 ## Health, education and care
 
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
@@ -206,6 +222,7 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 | Park | M | 1 | Water 2, power 1 | O2 1 | Comfort +2 r2, air quality +1 r2 | R 5, B 10 | Pop 100 |
 | Running track | L, or a full floor ring | 0 | Power 1 | Hosts races and festivals; a full-ring loop doubles its effects | Health +2 r2, entertainment +1 r2 | R 20, B 10 | Pop 200 |
 | Research lab | M | 4 | Power 3 | Speeds milestones | — | M 15, E 5 | Pop 300 |
+| Crypt | M | 0 | Power 1 | Lays 40 dead to rest, for good (without one, grief weighs on comfort) | — | R 10, B 20 | First elders |
 
 ## Administration and commerce
 
@@ -234,6 +251,8 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Corridor | S | 0 | — | Connects outer rings to the shaft; shortens commutes | Blocks noise and smell passing through | R 5 | Start |
+| Entrance | S | 0 | — | Floor 1's way in from the surface: an airlock at the rim, and where people and goods arrive | — | Landing kit | Start |
+| Tiny plaza | S | 0 | — | Walk-through gathering corner | Comfort +1 r1 | R 5, B 2 | Start |
 | Small plaza | M | 1 | Power 1 | Gathering space | Comfort +1 r2 | R 10, B 5 | Pop 100 |
 | Plaza | L | 2 | Power 2 | Transit hub; shortens commutes | Comfort +2 r2, entertainment +1 r2 | B 20, M 5 | Pop 500 |
 | Grand plaza | H | 4 | Power 4, glass for skylights | Transit hub; hosts events | Comfort +3 r3, entertainment +2 r3 | B 40, M 15, glass 10 | Pop 2,000 |
@@ -264,6 +283,8 @@ The main shaft elevator is the spine, but stairs and extra elevators relieve it.
 | Grand staircase | M, spans 2–3 floors | 0 | — | High-capacity link inside plazas | Comfort +1 r2 | B 20, glass 5 | First plaza |
 | Escalator | M, spans 1–2 floors | 0 | Power 1 | Fast, high capacity for short trips; boosts shops at both ends | Noise −1 r1 | M 10, Mc 2 | Pop 500 |
 | Local elevator | S, spans up to 8 floors | 0 | Power 1 | Serves a band of floors, easing the main shaft | Noise −1 r1 | M 10, Mc 2 | Pop 150 |
+| Elevator (as built) | S, spans 2–8 floors | 0 | Power 1 | A lift linking floors; extends a floor at a time | Noise −1 r1 | M 10, Mc 2 | Start |
+| Cargo elevator | S | 1 | Power 3 | Straight from the surface to one floor, if its column above is clear; brings drops in there | Noise −1 r1 | M 40, Mc 8, E 4 | Pop 100 |
 | Freight elevator | S, any span | 1 | Power 2 | Moves goods only, freeing people elevators | Noise −2 r1 | M 15, Mc 3 | Pop 300 |
 | Express elevator | S, any span | 0 | Power 3 | Skips floors; stops only at sky lobbies | — | M 20, Mc 4, E 3 | Pop 2,000 |
 | Panoramic elevator | S on the shaft wall | 0 | Power 2 | Glass car riding the shaft wall; slower | Comfort +1 r1; tourist attraction | M 15, glass 8, Mc 2 | First hotel |
@@ -279,4 +300,7 @@ The main shaft elevator is the spine, but stairs and extra elevators relieve it.
 | Landing pad | Surface | 3 | Power 1 | Supply drops, belt shipments, tourists | — | R 20, M 10 | Start |
 | Rover depot | Surface | 4 | Power 3 | Trade routes between holes | — | M 20, Mc 4 | Map mode |
 | Elevator upgrade | Shaft | 1 | Power 2 | More transit capacity | Noise −1 r1 | M 15, Mc 3 | Start |
+| Landing pod | Surface | 0 | — | Houses 20; stores 500 goods; temporary homes for the first colonists | — | Landing kit | Start |
+| Storeroom | S | 0 | — | Stores 90 goods | — | R 8, M 2 | Start |
 | Warehouse | M | 1 | — | Stores 200 goods | — | R 15, M 5 | Start |
+| Depot | L | 2 | Power 1 | Stores 440 goods | Noise −1 r1 | R 30, M 10, Mc 1 | Start |
