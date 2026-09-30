@@ -313,13 +313,6 @@ function RoomTitle({ room, onCommand }: { room: RoomInstance; onCommand: (c: Sim
   );
 }
 
-/** 2 → "2nd", 11 → "11th", 23 → "23rd". */
-export function ordinal(n: number): string {
-  const teen = n % 100 >= 11 && n % 100 <= 13;
-  const suffix = teen ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th";
-  return `${n}${suffix}`;
-}
-
 /** A room's condition, as a bar, and who's repairing it or where it is in the queue. */
 function ConditionRow({ s, roomId, condition, repairing }: { s: Snapshot; roomId: number; condition: number; repairing?: { done: number; work: number } }) {
   const lane = s.maintenance.lanes.find((l) => l.target === roomId);

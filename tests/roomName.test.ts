@@ -52,7 +52,7 @@ describe("room names", () => {
 
 describe("ordinals", () => {
   it("read right", async () => {
-    const { ordinal } = await import("../src/ui/Inspector");
+    const { ordinal } = await import("../src/ui/format");
     expect([1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 101].map(ordinal)).toEqual(["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd", "101st"]);
   });
 });
