@@ -18,6 +18,21 @@ interface Props {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
+/** −1 for the minus key, +1 for plus (or = unshifted, and the keypad's), else 0. */
+export function speedStep(e: Pick<KeyboardEvent, "code" | "key">): number {
+  if (e.code === "Minus" || e.code === "NumpadSubtract" || e.key === "-" || e.key === "_") return -1;
+  if (e.code === "Equal" || e.code === "NumpadAdd" || e.key === "+" || e.key === "=") return 1;
+  return 0;
+}
+
+/** The running speed one step from `from` (1×, 2×, 4×), or null past either end. */
+export function nextSpeed(from: number, step: number): number | null {
+  const running = config.speeds.filter((s) => s > 0);
+  const i = running.indexOf(from);
+  const j = (i < 0 ? 0 : i) + step;
+  return j < 0 || j >= running.length ? null : running[j]!;
+}
+
 /** Game-time estimate, e.g. "~1.2 days" or "~5 h". */
 function gameDuration(ticks: number): string {
   const days = ticks / config.ticksPerDay;
@@ -28,14 +43,25 @@ function gameDuration(ticks: number): string {
 // supply drop and the office. Everything else lives in the dock's modes.
 export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActiveHole, openMenu, keysEnabled, highlight }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
-  // Space toggles pause, remembering the last running speed.
+  // Space toggles pause, remembering the last running speed; − and + step the speed down and up
+  // (from paused, they start at one step from the remembered speed). Past either end, nothing.
   const resumeRef = useRef(1);
   if (speed) resumeRef.current = speed;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code !== "Space" || !keysEnabled) return;
+      if (!keysEnabled || e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        setSpeed(speed ? 0 : resumeRef.current);
+        return;
+      }
+      const step = speedStep(e);
+      if (!step) return;
       e.preventDefault();
-      setSpeed(speed ? 0 : resumeRef.current);
+      const next = nextSpeed(speed || resumeRef.current, step);
+      if (next !== null && (next !== speed || !speed)) setSpeed(next);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

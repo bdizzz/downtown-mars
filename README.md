@@ -33,7 +33,8 @@ Start a new game and follow your deputy's tutorial, or dive in:
 | Key | Action |
 | --- | --- |
 | B V C M | Build, View, Charts and Map modes (anywhere) |
-| Space | Pause / resume |
+| Space | Pause / resume, at the speed you had |
+| − + | Slower / faster (1×, 2×, 4×); from paused, starts one step from the speed you had |
 | Esc | Put down the tool, close a panel or mode, or open the menu |
 | | **In Build only:** |
 | R | Rotate the room you're placing |
