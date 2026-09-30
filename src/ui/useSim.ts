@@ -22,6 +22,11 @@ export function useSim() {
         const { layout, effects, layoutVersion: _, ...rest } = msg.snapshot;
         if (layout && effects) lastLayout.current = { layout, effects };
         if (!lastLayout.current) return;
+        // Conditions change every tick, but the layout only comes when it changes: put them back on its rooms.
+        for (const r of lastLayout.current.layout.rooms) {
+          const c = rest.conditions[r.id];
+          if (c !== undefined) r.condition = c;
+        }
         setSnapshot({ ...rest, ...lastLayout.current });
         setSpeedState(msg.speed);
       } else {

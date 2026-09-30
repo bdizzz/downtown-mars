@@ -1,3 +1,4 @@
+import { hasCondition } from "./condition";
 import { config } from "./config";
 import { charge, checkBuild, CONSTRUCTION, refund } from "./costs";
 import { record } from "./ledger";
@@ -50,7 +51,9 @@ export type SimCommand =
   /** Testing, from the browser console: finish every job in the construction queue at once. */
   | { type: "consoleFinish" }
   /** Testing, from the browser console: a dust storm, starting in `inDays` (0: now) and lasting `days`; or clear skies (days 0). */
-  | { type: "consoleStorm"; inDays?: number; days?: number };
+  | { type: "consoleStorm"; inDays?: number; days?: number }
+  /** Testing, from the browser console: set rooms' condition (0..1): one room, or every room that has one. */
+  | { type: "consoleWear"; condition: number; roomId?: number };
 
 /** roomId is set when a build succeeds, so the UI can offer undo. */
 export type CommandResult = { ok: true; roomId?: number } | { ok: false; reason: string };
@@ -210,6 +213,16 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     }
     case "consoleResources":
       return consoleResources(state, cmd.set ?? {}, cmd.add ?? {}, cmd.atLeast ?? {});
+    case "consoleWear": {
+      const c = Math.max(0, Math.min(1, cmd.condition));
+      const rooms = layout.rooms.filter((r) => (cmd.roomId === undefined || r.id === cmd.roomId) && hasCondition(r));
+      if (!rooms.length) return { ok: false, reason: cmd.roomId === undefined ? "No rooms with a condition" : "That room has no condition" };
+      for (const r of rooms) {
+        r.condition = c;
+        delete r.repair;
+      }
+      return { ok: true };
+    }
     case "consoleStorm": {
       const tpd = config.ticksPerDay;
       const days = cmd.days ?? 1;

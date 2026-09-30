@@ -72,7 +72,7 @@ const FRAGMENT = /* glsl */ `
         vec3 at = vec3(hash(cell + 1.3), hash(cell + 2.7), hash(cell + 4.1)) * 0.6 + 0.2;
         float r = length(fract(p) - at);
         float bright = mix(0.4, 1.0, hash(cell + 9.1));
-        col += vec3(0.95, 0.92, 1.0) * smoothstep(0.16, 0.02, r) * bright * dark * smoothstep(0.0, 0.08, d.y);
+        col += vec3(0.95, 0.92, 1.0) * (1.0 - smoothstep(0.02, 0.16, r)) * bright * dark * smoothstep(0.0, 0.08, d.y);
       }
     }
     // A storm: murk, a little lighter toward the horizon, over everything.

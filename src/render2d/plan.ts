@@ -1,3 +1,5 @@
+import { crewsAt, crewsKey } from "../view/crews";
+import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import { previewEffects, type EffectField } from "../sim/effects";
 import type { Hole } from "../sim/geometry";
@@ -180,6 +182,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     baseCtx.moveTo(sx, sy).lineTo(ex, ey).stroke({ color: C.seam, width: 2, alpha: 0.5 });
   }
 
+  /** Rooms a maintenance or cleaning crew is at, with its icon, shown on their labels. */
+  let crews = new Map<number, string>();
   function drawRooms(l: Layout): void {
     roomsCtx.clear();
     labels.destroy({ children: true });
@@ -257,7 +261,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       marker.addChild(icon);
       if (def.short) {
         const text = new Text({
-          text: room.connected ? def.short : `${def.short} ⚠`,
+          text: `${room.connected ? def.short : `${def.short} ⚠`}${crews.has(room.id) ? ` ${crews.get(room.id)}` : ""}`,
           style: { fill: room.planned ? color : C.roomText, fontSize: LABEL_PX, fontWeight: "600" },
         });
         text.anchor.set(0.5, 1);
@@ -362,6 +366,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     }
   }
 
+  /** The condition overlay's colours as last drawn. */
+  let conditionShown = "";
   function drawField(): void {
     fieldCtx.clear();
     if (!layout || !overlayType) return;
@@ -370,6 +376,12 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       if (Math.abs(v) < 0.05) return;
       fieldCtx.poly(cellSector(h, c, 0.15)).fill({ color: v < 0 ? heat.bad : heat.good, alpha: Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA });
     };
+    if (overlayType === "condition") {
+      for (const { room, color } of conditionTints(layout.rooms)) {
+        for (const c of onFloor(room.cells)) fieldCtx.poly(cellSector(h, c, 0.15)).fill({ color, alpha: CONDITION_ALPHA });
+      }
+      return;
+    }
     if (overlayType === "happiness") {
       for (const pool of happiness?.pools ?? []) {
         const room = layout.rooms.find((r) => r.id === pool.roomId);
@@ -699,7 +711,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
 
   function redraw(force = false): void {
     if (!layout) return;
-    const key = `${gameId}:${layout.version}:${JSON.stringify(layout.hole)}:${floor}`;
+    const key = `${gameId}:${layout.version}:${JSON.stringify(layout.hole)}:${floor}:${crewsKey(crews)}`;
     if (!force && key === drawnKey) return;
     drawnKey = key;
     drawBase(layout.hole);
@@ -729,10 +741,13 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
         userMoved = false;
       }
       layout = snapshot.layout;
+      crews = crewsAt(snapshot);
       drill = snapshot.drill;
       resources = snapshot.resources;
       gates = snapshot.holeGates;
-      const fieldChanged = snapshot.effects !== field || (overlayType === "happiness" && snapshot.happiness.pools !== happiness?.pools);
+      const ck = overlayType === "condition" ? conditionKey(snapshot.layout.rooms) : "";
+      const fieldChanged = snapshot.effects !== field || (overlayType === "happiness" && snapshot.happiness.pools !== happiness?.pools) || ck !== conditionShown;
+      conditionShown = ck;
       field = snapshot.effects;
       happiness = snapshot.happiness;
       redraw();

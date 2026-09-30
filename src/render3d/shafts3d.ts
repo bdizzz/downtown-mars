@@ -45,7 +45,7 @@ const FRAGMENT = /* glsl */ `
     // Through the middle of the column there's the most light to see; its edges fade out.
     float through = pow(abs(dot(normalize(vNormal), toCam)), 1.6);
     // Fading down the hole, and gone before the column's end, so it has no hard rim.
-    float depth = exp(-vDown * fade) * smoothstep(columnLength, columnLength * 0.55, vDown);
+    float depth = exp(-vDown * fade) * (1.0 - smoothstep(columnLength * 0.55, columnLength, vDown));
     // Faint streaks drifting down.
     float a = atan(vWorld.z, vWorld.x);
     float streaks = 0.75 + 0.25 * sin(a * 23.0 + vDown * 0.35 - time * 0.6) * sin(a * 7.0 - time * 0.23);

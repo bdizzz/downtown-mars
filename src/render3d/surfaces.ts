@@ -47,7 +47,7 @@ const ROCK_GLSL = /* glsl */ `
     // Strata: bands in height, warped by broad noise so they undulate round the hole.
     float s = p.y / 1.4 + (srfFbm(p * 0.05) - 0.5) * 0.9;
     float band = floor(s);
-    float edge = smoothstep(0.0, 0.12, fract(s)) * smoothstep(1.0, 0.88, fract(s));
+    float edge = smoothstep(0.0, 0.12, fract(s)) * (1.0 - smoothstep(0.88, 1.0, fract(s)));
     float shade = mix(0.84, 1.1, srfHash(vec3(band, 3.1, 7.7)));
     // A thin darker seam between bands.
     shade *= mix(0.9, 1.0, edge);
@@ -351,8 +351,8 @@ const GRIME_GLSL = /* glsl */ `
       return 1.0 - 0.28 * amount * scuff;
     }
     // Walls: grime rising from the floor, streaks running down, and stains.
-    float rise = smoothstep(1.4, 0.0, above) * mix(0.6, 1.2, srfFbm(p * 0.9));
-    float streak = smoothstep(0.62, 0.8, srfNoise(vec3(p.x * 3.0, p.y * 0.25, p.z * 3.0))) * smoothstep(3.8, 2.0, above);
+    float rise = (1.0 - smoothstep(0.0, 1.4, above)) * mix(0.6, 1.2, srfFbm(p * 0.9));
+    float streak = smoothstep(0.62, 0.8, srfNoise(vec3(p.x * 3.0, p.y * 0.25, p.z * 3.0))) * (1.0 - smoothstep(2.0, 3.8, above));
     float stain = smoothstep(0.7, 0.82, srfFbm(p * 0.6 + 4.0));
     return 1.0 - amount * (0.3 * rise + 0.2 * streak + 0.18 * stain);
   }

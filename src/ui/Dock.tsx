@@ -12,7 +12,7 @@ import { hoursText } from "./format";
 // mode is the only one that places rooms and corridors.
 
 export type Mode = "build" | "view" | "map" | "charts";
-export type Chart = "people" | "flows" | "network" | "construction";
+export type Chart = "people" | "flows" | "network" | "construction" | "maintenance";
 
 /** Each mode's key, anywhere in the game (as KeyboardEvent codes). */
 export const MODE_KEYS: Record<Mode, string> = { build: "KeyB", view: "KeyV", map: "KeyM", charts: "KeyC" };
@@ -21,7 +21,7 @@ const MODES: { id: Mode; name: string; icon: string; hint: string }[] = [
   { id: "build", name: "Build", icon: "⚒", hint: "Rooms, corridors and demolition (B). The rooms' keys work in here" },
   { id: "view", name: "View", icon: "◉", hint: "Cameras, the plan and unrolled views, X-ray, walls down and overlays (V)" },
   { id: "map", name: "Map", icon: "◍", hint: "The planet: terrain, deposits and your holes (M)" },
-  { id: "charts", name: "Charts", icon: "▤", hint: "People, flows, your network and the construction queue (C)" },
+  { id: "charts", name: "Charts", icon: "▤", hint: "People, flows, your network, and the construction and maintenance queues (C)" },
 ];
 
 /** Where a tutorial highlight lives: which mode holds it. */
@@ -76,7 +76,7 @@ export function Dock({ mode, setMode, walking, highlight, jobs, children }: Dock
   );
 }
 
-const OVERLAYS: Record<string, string> = { noise: "Noise", smell: "Smell", health: "Health", comfort: "Comfort", happiness: "Happiness" };
+const OVERLAYS: Record<string, string> = { noise: "Noise", smell: "Smell", health: "Health", comfort: "Comfort", happiness: "Happiness", condition: "Condition" };
 
 interface ViewProps {
   view: ViewMode;
@@ -170,7 +170,7 @@ export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverla
       <span className="dock-sep" />
       <span className="dock-section" aria-label="Overlay">
         <span className="dock-label">Overlay</span>
-        {[null, ...FIELD_TYPES, "happiness"].map((t) => (
+        {[null, ...FIELD_TYPES, "happiness", "condition"].map((t) => (
           <button
             key={t ?? "off"}
             className={`dock-btn${t === overlay ? " on" : ""}${t && highlight === `overlay:${t}` && t !== overlay ? " pulse" : ""}`}
@@ -181,7 +181,8 @@ export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverla
         ))}
         {overlay && (
           <span className="legend">
-            <i className="bad" /> {overlay === "happiness" ? "unhappy" : "hurts"} <i className="good" /> {overlay === "happiness" ? "happy" : "helps"}
+            <i className="bad" /> {overlay === "happiness" ? "unhappy" : overlay === "condition" ? "worn out" : "hurts"} <i className="good" />{" "}
+            {overlay === "happiness" ? "happy" : overlay === "condition" ? "good repair" : "helps"}
           </span>
         )}
       </span>
@@ -214,6 +215,11 @@ export function ChartsStrip({ s, chart, toggle, highlight }: ChartsProps) {
         "construction",
         jobs.length ? `Construction · ${jobs.length} · ${hoursText(jobs.reduce((m, j) => Math.max(m, j.hoursLeft ?? 0), 0))}` : "Construction",
         "The construction queue: what's being built, in order",
+      )}
+      {btn(
+        "maintenance",
+        s ? `Maintenance · ${Math.round(s.maintenance.overall * 100)}%${s.maintenance.queue.length ? ` · ${s.maintenance.queue.length} waiting` : ""}` : "Maintenance",
+        "Room condition: what the maintenance and cleaning crews are repairing, and the queue",
       )}
     </div>
   );

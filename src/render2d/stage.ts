@@ -1,3 +1,5 @@
+import { crewsAt, crewsKey } from "../view/crews";
+import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
@@ -114,6 +116,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let layout: Layout | null = null;
   let holeKey = "";
   let layoutVersion = -1;
+  /** Rooms a maintenance or cleaning crew is at, with its icon, shown on their labels. */
+  let crews = new Map<number, string>();
   let gameId = "";
   let drill: DrillView | null = null;
   let resources: Record<string, number> = {};
@@ -155,6 +159,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   }
 
   /** Red where an effect hurts, green where it helps, stronger for bigger values. */
+  /** The condition overlay's colours as last drawn. */
+  let conditionShown = "";
   function drawHappiness(): void {
     if (!layout || !happiness) return;
     for (const pool of happiness.pools) {
@@ -169,9 +175,19 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
   }
 
+  /** Each room in its condition's colour, green to red. */
+  function drawCondition(): void {
+    if (!layout) return;
+    for (const { room, color } of conditionTints(layout.rooms)) {
+      if (room.at.kind === "surface") fieldCtx.rect(...surfaceRect(room.surfaceCells, layout.surface.length)).fill({ color, alpha: CONDITION_ALPHA });
+      else for (const row of cellRows(layout.hole, room.cells)) fieldCtx.rect(...rowRect(layout.hole, row)).fill({ color, alpha: CONDITION_ALPHA });
+    }
+  }
+
   function drawField(): void {
     fieldCtx.clear();
     if (overlayType === "happiness") return drawHappiness();
+    if (overlayType === "condition") return drawCondition();
     if (!layout || !field || !overlayType) return;
     const grid = field[overlayType];
     if (!grid) return;
@@ -545,7 +561,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const def = roomDef(room.type);
       if (!def.short) continue;
       const text = new Text({
-        text: room.connected ? def.short : `${def.short} ⚠`,
+        text: `${room.connected ? def.short : `${def.short} ⚠`}${crews.has(room.id) ? ` ${crews.get(room.id)}` : ""}`,
         style: {
           fill: room.planned ? (CATEGORY_COLORS[def.category] ?? C.label) : C.roomText,
           fontSize: LABEL_PX,
@@ -944,12 +960,17 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         drawDig(l.hole, drill);
         updateDigLabel(drill);
       }
-      if (snapshot.effects !== field || (overlayType === "happiness" && snapshot.happiness.pools !== happiness?.pools)) {
+      const ck = overlayType === "condition" ? conditionKey(snapshot.layout.rooms) : "";
+      if (snapshot.effects !== field || (overlayType === "happiness" && snapshot.happiness.pools !== happiness?.pools) || ck !== conditionShown) {
+        conditionShown = ck;
         field = snapshot.effects;
         happiness = snapshot.happiness;
         drawField();
       }
       happiness = snapshot.happiness;
+      const nextCrews = crewsAt(snapshot);
+      if (crewsKey(nextCrews) !== crewsKey(crews)) layoutVersion = -1;
+      crews = nextCrews;
       if (l.version !== layoutVersion) {
         layoutVersion = l.version;
         drawRooms(l);

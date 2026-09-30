@@ -463,3 +463,10 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 }
 .dock-group.leftward .dock-card { left: auto; right: 0; }
 .dock-card .room-card { border-top: none; max-height: 260px; }
+
+/* Maintenance */
+.maintenance h3 { font-size: 13px; margin: 10px 0 2px; }
+.maintenance .condition-bar { position: relative; }
+.maintenance .condition-bar > .repair { position: absolute; left: 0; bottom: 0; height: 2px; background: #fff; opacity: 0.8; }
+.inspector .condition .bar { height: 6px; background: #0006; border-radius: 3px; overflow: hidden; margin: -2px 0 6px; }
+.inspector .condition .bar > div { height: 100%; }

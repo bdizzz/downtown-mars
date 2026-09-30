@@ -592,3 +592,44 @@ Decided Sep 28, 2026 (Bryon):
 - With a floor picked, the surface and anything above the floor drop out.
 - It's rebuilt only when the rooms feeding or drawing change (`flowRooms`), or the floor picked. `View3d.flows` is kept in settings. The legend sits beside the button.
 - **Browser check:** in a test game with two solar arrays, in Cutaway, yellow dashes run from the arrays round the rim, down the riser and out to the rooms, with water and air beside them.
+
+**Room condition, maintenance and cleaning (Bryon, Sep 30):**
+- **Sim** (`condition.ts`, `data/condition.json`):
+  - Every built room has a condition, 0..1. The exceptions are the entrance, stairs, elevators, the cargo elevator, the service rooms themselves and excavations.
+  - It decays 1.2% a day, and 30% faster for industry, power, air and water.
+  - Below 50%: homes lose up to 3 comfort for their own residents, and worn shared rooms take up to 2 comfort off everyone. The people-heavy (cleanable) ones weigh 1.5, others 0.5.
+  - Below 30%: output ×0.7 (`limit: "worn"`). At 0: stopped (`"broken"`).
+  - **Breakdowns:** from day 4, a 6% daily chance that a named piece of standing furniture in some room breaks (from furniture.json's room lists). It knocks 20–30 points off, with a message. Hashed per hole and day, not from the random stream.
+- **The queue:** rooms at 60% or below, not being worked. Part-repaired rooms come first, then the worst.
+- **Lanes:** each maintenance room (`maintains: "all"`) or cleaning service (`"cleanable"`: housing, galley, restroom, clinic, school, elder care, crypt, plazas, admin office, landing pod) is a lane.
+  - A working lane takes the first room in the queue it may work on.
+  - Work to finish: 4/8/16/32 h for S/M/L/H (6 for surface) × how worn it is (at least 25%).
+  - Progress is 1 work-hour an hour × the service room's rate, so staffing and inputs count.
+  - Finished: back to 100%, and grime clears.
+  - A lane whose room stops working (unstaffed, paused, out of machinery) drops its room, which keeps its part-done repair and returns to the front of the queue. Rooms don't decay while being repaired.
+- **The rooms:**
+  - Maintenance: M, 2 staff, uses power 1 and machinery 0.5 a day, noise −1.
+  - Cleaning service: M, 3 staff, power 1, clean water 4 → gray water 4, unlocks at 150 colonists (`unlocks.cleaningPopulation`, gate `"cleaning"`).
+  - A new **Services** category (teal) holds both.
+- **Furniture:** parts rack, repair stand, cleaning cart, mop rack, drying rack.
+  - `maintenance:2x1`: parts racks, tool wall, repair stands, workbenches, console, tool cart.
+  - `cleaning_service:2x1`: washers, sink, drying rack, mop rack, lockers, cleaning carts.
+  - Wall fill-ins as a workshop and a washroom.
+- **UI:**
+  - **Charts → Maintenance:** overall condition, each crew and its room with progress, and the queue with condition bars coloured green to red. The chart button shows overall % and how many are waiting.
+  - A **Condition** stat in the top bar (size-weighted average).
+  - The room card shows condition as a bar, and who's on it or its place in the queue.
+  - Room status says "worn" or "broken down".
+- **Views:**
+  - A **Condition** overlay (green → amber → red, in 10 steps) in 3D, 2D and plan.
+  - 🛠 (maintenance) or 🧽 (cleaning) on a room being worked: a badge in 3D, after its name in 2D and plan.
+  - Worn rooms get an amber 🔧 badge and outline, broken ones red ⛔.
+  - Grime now follows condition alone (`grimeLevel(room)`, four levels): clean at 100%, gone again when repaired.
+- **Console:** `dm.wear(condition, roomId?)` (`consoleWear`) and `dm.snapshot()`.
+- **Bots:** they build a maintenance room at high priority once three rooms are queued and the crews are behind (`tendUpkeep`). With decay at 1.2% a day and breakdowns at 6%, the 90-day playthroughs pass.
+- **Found and fixed on the way:**
+  - The layout only travels to the main thread when its version changes, so room conditions were stale there. The snapshot now carries `conditions` by room, and useSim puts them back on the rooms.
+  - Overlay tints lay in the same plane as room floors and walls, so they lost the depth test and never showed (all overlays, not just condition). They now use a polygon offset.
+  - Surface rooms' overlay discs floated over a picked floor; they now skip when a floor is picked.
+  - **GLSL `smoothstep` with reversed edges is undefined**, and on some GPUs it breaks the shader's output. There were seven, in grime, window fog and droplets, the light shaft, stars, sparks and rock strata. Each is now `1 − smoothstep(lo, hi, x)`.
+  - Trouble outlines now lower with their walls.

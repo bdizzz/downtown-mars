@@ -1,3 +1,6 @@
+import { cssColor } from "../render2d/palette";
+import { hasCondition } from "../sim/condition";
+import { conditionColor } from "../view/conditionView";
 import { useState } from "react";
 import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
@@ -27,6 +30,9 @@ function limitText(limit: string | undefined): string {
   if (limit === "kit") return "idle until you ask for a seed kit";
   // Unhappy colonists work slower (economy.ts).
   if (limit === "morale") return "slowed by low morale";
+  // Condition (condition.ts).
+  if (limit === "worn") return "slowed: worn out, below 30% condition";
+  if (limit === "broken") return "stopped: broken down (0% condition)";
   // A dust storm dims the solar arrays (weather.ts).
   if (limit === "storm") return "dimmed by the dust storm";
   if (limit.startsWith("stocked:")) return `standing by: ${resName(limit.slice(8)).toLowerCase()} stocked`;
@@ -268,6 +274,27 @@ function Controls({ room, s, onCommand }: { room: Snapshot["layout"]["rooms"][nu
   );
 }
 
+/** A room's condition, as a bar, and who's repairing it or where it is in the queue. */
+function ConditionRow({ s, roomId, condition, repairing }: { s: Snapshot; roomId: number; condition: number; repairing?: { done: number; work: number } }) {
+  const lane = s.maintenance.lanes.find((l) => l.target === roomId);
+  const place = s.maintenance.queue.findIndex((q) => q.roomId === roomId);
+  const note = lane
+    ? `${lane.kind === "all" ? "🛠 Being repaired" : "🧽 Being cleaned"}: ${Math.round((lane.progress ?? 0) * 100)}% done`
+    : place >= 0
+      ? `In the maintenance queue: ${place === 0 ? "next" : `${place + 1}th`}${repairing ? ", part repaired" : ""}`
+      : "";
+  return (
+    <div className="condition">
+      <p>
+        <span className="k">Condition</span> {Math.round(condition * 100)}%{note ? <span className="k"> · {note}</span> : null}
+      </p>
+      <div className="bar">
+        <div style={{ width: `${Math.round(condition * 100)}%`, background: cssColor(conditionColor(condition)) }} />
+      </div>
+    </div>
+  );
+}
+
 export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
   const room = s.layout.rooms.find((r) => r.id === roomId);
   if (!room) return null;
@@ -297,6 +324,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
       </header>
       <p className={isProblem(room, st) ? "warn" : ""}>{state}</p>
       <UnderConstruction s={s} roomId={room.id} onCommand={onCommand} />
+      {!room.planned && !room.building && hasCondition(room) && <ConditionRow s={s} roomId={room.id} condition={room.condition ?? 1} repairing={room.repair} />}
       {(room.storageUnits ?? def.storage) ? <StorageEditor s={s} room={room} onCommand={onCommand} /> : null}
       {!room.connected && room.at.kind === "ring" && (
         <button

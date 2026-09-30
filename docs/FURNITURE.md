@@ -44,6 +44,8 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | Warehouse | M | Pallet rack, Crate stack, Cargo cart, Pallet jack, Barrels, Safety sign, Notice board, Wall lamp, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
 | Depot | L | Pallet rack, Crate stack, Cargo cart, Pallet jack, Control console, Barrels, Safety sign, Notice board, Readout panel, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
 | Stairwell | S | Stair flight, Stair well, Bench, Potted plant, Poster, Wall lamp, Safety sign, Picture of Earth, Intercom, Fire extinguisher, First-aid box, Hanging planter, Air vent |
+| Maintenance | M | Workbench, Repair stand, Parts rack, Tool wall, Tool cart, Control console, Shelving, Safety sign, Chart board, Clock, Notice board, Tool pegboard, Whiteboard, Cable tray, Work light, Fire extinguisher, First-aid box, Air vent |
+| Cleaning service | M | Washer, Cleaning cart, Mop rack, Drying rack, Washbasins, Shelving, Locker, Notice board, Clock, Mirror, Poster, Wall lamp, Air vent, First-aid box, Intercom |
 | Elevator | S | Elevator shaft, Elevator (car waiting), Call panel, Bench, Potted plant, Poster, Wall lamp, Safety sign, Picture of Earth, Intercom, Fire extinguisher, First-aid box, Hanging planter, Air vent |
 
 ## Items
@@ -52,17 +54,17 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | --- | --- | --- |
 | Painting (`painting`) | 0.9 × 0.1 × 0.7, hung at 1.5 | Studio, Apartment, Flat, Family apartment, Suite, Residence, Clinic, Admin office, School, Elder care, Crypt |
 | Wide painting (`painting_wide`) | 1.8 × 0.1 × 0.9, hung at 1.45 | Apartment, Flat, Family apartment, Suite, Residence, Admin office, Elder care |
-| Poster (`poster`) | 0.6 × 0.05 × 0.85, hung at 1.3 | Bunk dorm, Studio, Family apartment, Restroom, Clinic, School, Stairwell, Elevator |
-| Wall lamp (`wall_lamp`) | 0.25 × 0.55 × 0.35, hung at 1.9 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Restroom, Elder care, Crypt, Tiny plaza, Small plaza, Warehouse, Stairwell, Elevator |
+| Poster (`poster`) | 0.6 × 0.05 × 0.85, hung at 1.3 | Bunk dorm, Studio, Family apartment, Restroom, Clinic, School, Stairwell, Cleaning service, Elevator |
+| Wall lamp (`wall_lamp`) | 0.25 × 0.55 × 0.35, hung at 1.9 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Restroom, Elder care, Crypt, Tiny plaza, Small plaza, Warehouse, Stairwell, Cleaning service, Elevator |
 | Wall shelf (`wall_shelf`) | 1 × 0.45 × 0.45, hung at 1.45 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Galley, Machine shop |
-| Mirror (`wall_mirror`) | 0.6 × 0.05 × 1, hung at 1.1 | Studio, Apartment, Flat, Family apartment, Suite, Residence, Restroom |
-| Clock (`wall_clock`) | 0.4 × 0.1 × 0.4, hung at 2.2 | Bunk dorm, Apartment, Flat, Family apartment, Suite, Residence, Galley, Clinic, Admin office, Machine shop, Electronics fab, School, Elder care, Entrance, Site office, Construction office |
-| Chart board (`chart_board`) | 1.4 × 0.15 × 0.9, hung at 1.25 | Farm, Water recycler, Clinic, Smelter, Machine shop, Silicon refinery, Electronics fab, Composter, Concrete plant, Site office, Construction office, Construction yard |
+| Mirror (`wall_mirror`) | 0.6 × 0.05 × 1, hung at 1.1 | Studio, Apartment, Flat, Family apartment, Suite, Residence, Restroom, Cleaning service |
+| Clock (`wall_clock`) | 0.4 × 0.1 × 0.4, hung at 2.2 | Bunk dorm, Apartment, Flat, Family apartment, Suite, Residence, Galley, Clinic, Admin office, Machine shop, Electronics fab, School, Elder care, Entrance, Site office, Construction office, Maintenance, Cleaning service |
+| Chart board (`chart_board`) | 1.4 × 0.15 × 0.9, hung at 1.25 | Farm, Water recycler, Clinic, Smelter, Machine shop, Silicon refinery, Electronics fab, Composter, Concrete plant, Site office, Construction office, Construction yard, Maintenance |
 | Readout panel (`readout_panel`) | 1.2 × 0.1 × 0.7, hung at 1.35 | Farm, Water recycler, Life support, Clinic, Battery bank, Deep well pump, Smelter, Silicon refinery, Electronics fab, Staging bay, Depot |
 | Gauges (`gauge_panel`) | 0.9 × 0.15 × 0.6, hung at 1.3 | Farm, Water tank, Water recycler, Life support, Battery bank, Deep well pump, Smelter, Silicon refinery, Composter, Concrete plant |
 | Map of Mars (`mars_map`) | 2 × 0.1 × 1.1, hung at 1.3 | Admin office, Staging bay, School, Small plaza, Entrance, Construction office |
-| Notice board (`notice_board`) | 1.2 × 0.1 × 0.8, hung at 1.3 | Galley, Admin office, Staging bay, School, Entrance, Cargo elevator, Site office, Construction office, Construction yard, Storeroom, Warehouse, Depot |
-| Safety sign (`safety_sign`) | 0.6 × 0.05 × 0.6, hung at 1.75 | Galley, Water tank, Water recycler, Life support, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, Composter, Concrete plant, Entrance, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot, Stairwell, Elevator |
+| Notice board (`notice_board`) | 1.2 × 0.1 × 0.8, hung at 1.3 | Galley, Admin office, Staging bay, School, Entrance, Cargo elevator, Site office, Construction office, Construction yard, Storeroom, Warehouse, Depot, Maintenance, Cleaning service |
+| Safety sign (`safety_sign`) | 0.6 × 0.05 × 0.6, hung at 1.75 | Galley, Water tank, Water recycler, Life support, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, Composter, Concrete plant, Entrance, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot, Stairwell, Maintenance, Elevator |
 | Hanging planter (`wall_planter`) | 0.8 × 0.5 × 0.8, hung at 1.35 | Flat, Family apartment, Suite, Residence, Farm, Elder care, Tiny plaza, Small plaza, Stairwell, Elevator |
 | Banner (`banner`) | 0.9 × 0.1 × 1.6, hung at 1.6 | Tiny plaza, Small plaza |
 | Plaque (`plaque`) | 0.5 × 0.05 × 0.35, hung at 1.4 | Crypt |
@@ -70,21 +72,26 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | Woven hanging (`wall_textile`) | 0.9 × 0.1 × 1.25, hung at 1.3 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Elder care, Crypt |
 | Picture of Earth (`earth_photo`) | 0.7 × 0.1 × 0.7, hung at 1.4 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Clinic, Admin office, School, Elder care, Tiny plaza, Small plaza, Entrance, Site office, Construction office, Stairwell, Elevator |
 | Coat hooks (`coat_hooks`) | 1.3 × 0.35 × 1, hung at 0.9 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Elder care, Entrance |
-| Whiteboard (`whiteboard`) | 1.6 × 0.2 × 1, hung at 1 | Clinic, Admin office, Machine shop, Electronics fab, School, Site office, Construction office, Construction yard |
+| Whiteboard (`whiteboard`) | 1.6 × 0.2 × 1, hung at 1 | Clinic, Admin office, Machine shop, Electronics fab, School, Site office, Construction office, Construction yard, Maintenance |
 | Pipe manifold (`pipe_manifold`) | 1.6 × 0.5 × 0.7, hung at 1.7 | Farm, Water tank, Water recycler, Life support, Battery bank, Deep well pump, Smelter, Silicon refinery, Composter, Concrete plant |
-| Cable tray (`cable_tray`) | 1.8 × 0.6 × 0.15, hung at 2.95 | Water tank, Water recycler, Life support, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, Composter, Concrete plant, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot |
-| Tool pegboard (`tool_board`) | 1.2 × 0.2 × 0.9, hung at 1.1 | Farm, Machine shop, Electronics fab, Construction yard |
-| Fire extinguisher (`fire_extinguisher`) | 0.25 × 0.4 × 0.85, hung at 0.8 | Galley, Farm, Water tank, Water recycler, Life support, Clinic, Admin office, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, School, Composter, Concrete plant, Tiny plaza, Small plaza, Entrance, Cargo elevator, Site office, Construction office, Construction yard, Storeroom, Warehouse, Depot, Stairwell, Elevator |
-| First-aid box (`first_aid_kit`) | 0.4 × 0.3 × 0.4, hung at 1.4 | Galley, Water tank, Water recycler, Restroom, Life support, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, Composter, Concrete plant, Tiny plaza, Small plaza, Entrance, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot, Stairwell, Elevator |
-| Air vent (`air_vent`) | 0.7 × 0.1 × 0.4, hung at 2.7 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Galley, Farm, Water tank, Water recycler, Restroom, Life support, Clinic, Admin office, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, School, Elder care, Composter, Crypt, Concrete plant, Tiny plaza, Small plaza, Entrance, Cargo elevator, Site office, Construction office, Construction yard, Storeroom, Warehouse, Depot, Stairwell, Elevator |
-| Intercom (`intercom`) | 0.2 × 0.1 × 0.3, hung at 1.35 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Restroom, Clinic, Admin office, School, Elder care, Tiny plaza, Small plaza, Entrance, Site office, Construction office, Stairwell, Elevator |
+| Cable tray (`cable_tray`) | 1.8 × 0.6 × 0.15, hung at 2.95 | Water tank, Water recycler, Life support, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, Composter, Concrete plant, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot, Maintenance |
+| Tool pegboard (`tool_board`) | 1.2 × 0.2 × 0.9, hung at 1.1 | Farm, Machine shop, Electronics fab, Construction yard, Maintenance |
+| Fire extinguisher (`fire_extinguisher`) | 0.25 × 0.4 × 0.85, hung at 0.8 | Galley, Farm, Water tank, Water recycler, Life support, Clinic, Admin office, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, School, Composter, Concrete plant, Tiny plaza, Small plaza, Entrance, Cargo elevator, Site office, Construction office, Construction yard, Storeroom, Warehouse, Depot, Stairwell, Maintenance, Elevator |
+| First-aid box (`first_aid_kit`) | 0.4 × 0.3 × 0.4, hung at 1.4 | Galley, Water tank, Water recycler, Restroom, Life support, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, Composter, Concrete plant, Tiny plaza, Small plaza, Entrance, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot, Stairwell, Maintenance, Cleaning service, Elevator |
+| Air vent (`air_vent`) | 0.7 × 0.1 × 0.4, hung at 2.7 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Galley, Farm, Water tank, Water recycler, Restroom, Life support, Clinic, Admin office, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, School, Elder care, Composter, Crypt, Concrete plant, Tiny plaza, Small plaza, Entrance, Cargo elevator, Site office, Construction office, Construction yard, Storeroom, Warehouse, Depot, Stairwell, Maintenance, Cleaning service, Elevator |
+| Intercom (`intercom`) | 0.2 × 0.1 × 0.3, hung at 1.35 | Bunk dorm, Studio, Apartment, Flat, Family apartment, Suite, Residence, Restroom, Clinic, Admin office, School, Elder care, Tiny plaza, Small plaza, Entrance, Site office, Construction office, Stairwell, Cleaning service, Elevator |
 | Menu board (`menu_board`) | 1.3 × 0.1 × 0.6, hung at 1.75 | Galley |
 | Utensil rack (`utensil_rack`) | 1.1 × 0.25 × 0.75, hung at 1.3 | Galley |
 | Grow light (`grow_light`) | 1.5 × 0.75 × 0.15, hung at 2.5 | Farm |
-| Work light (`work_light`) | 0.2 × 0.6 × 0.25, hung at 2.45 | Water tank, Water recycler, Life support, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, Composter, Concrete plant, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot |
+| Work light (`work_light`) | 0.2 × 0.6 × 0.25, hung at 2.45 | Water tank, Water recycler, Life support, Battery bank, Deep well pump, Smelter, Machine shop, Silicon refinery, Electronics fab, Staging bay, Composter, Concrete plant, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot, Maintenance |
+| Parts rack (`parts_rack`) | 1.15 × 0.55 × 2.2 | Maintenance |
+| Repair stand (`repair_stand`) | 1.2 × 0.7 × 1.4 | Maintenance |
+| Cleaning cart (`cleaning_cart`) | 0.95 × 0.55 × 1.85 | Cleaning service |
+| Mop rack (`mop_rack`) | 1.2 × 0.45 × 1.45 | Cleaning service |
+| Drying rack (`drying_rack`) | 1.05 × 0.5 × 1.6 | Cleaning service |
 | Bunk bed (`bunk_bed`) | 2 × 1 × 1.9 | Bunk dorm |
 | Bed (`bed`) | 2.15 × 1.05 × 0.9 | Studio, Apartment, Family apartment, Residence, Elder care |
-| Locker (`locker`) | 0.65 × 0.55 × 1.95 | Bunk dorm, Site office |
+| Locker (`locker`) | 0.65 × 0.55 × 1.95 | Bunk dorm, Site office, Cleaning service |
 | Footlocker (`footlocker`) | 0.95 × 0.55 × 0.45 | Bunk dorm |
 | Table (`table`) | 1.2 × 0.8 × 0.85 | Bunk dorm, Studio, Flat, Suite |
 | Stool (`stool`) | 0.4 × 0.4 × 0.5 | Bunk dorm, Studio, Electronics fab |
@@ -108,7 +115,7 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | Bathtub (`bathtub`) | 1.75 × 0.85 × 0.9 | Suite, Residence |
 | Fireplace (`fireplace`) | 1.5 × 0.5 × 1.35 | Suite, Residence |
 | Piano (`piano`) | 1.55 × 1.45 × 1.35 | Residence |
-| Washer (`laundry_machine`) | 0.7 × 0.7 × 0.9 | Restroom |
+| Washer (`laundry_machine`) | 0.7 × 0.7 × 0.9 | Restroom, Cleaning service |
 | Stove counter (`stove_counter`) | 2.05 × 0.75 × 2.25 | Galley |
 | Prep counter (`prep_counter`) | 2.05 × 0.75 × 1.75 | Galley |
 | Fridge (`fridge`) | 0.9 × 0.85 × 2 | Galley |
@@ -130,7 +137,7 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | Planter bed (algae) (`planter_bed_algae`) | 2.6 × 1.15 × 2.6 | Farm |
 | Hydroponic rack (algae) (`hydroponic_rack_algae`) | 1.95 × 0.65 × 2.55 | Farm |
 | Seedling bench (`seed_table`) | 2 × 0.8 × 1.05 | Farm |
-| Tool cart (`tool_cart`) | 0.9 × 0.55 × 1.05 | Farm, Smelter, Machine shop, Composter |
+| Tool cart (`tool_cart`) | 0.9 × 0.55 × 1.05 | Farm, Smelter, Machine shop, Composter, Maintenance |
 | Compost bin (`compost_bin`) | 1.35 × 1.35 × 1.35 | Composter |
 | Compost drum (`compost_drum`) | 1.8 × 1.05 × 1.45 | Composter |
 | Soil sacks (`soil_sacks`) | 1.3 × 0.9 × 0.7 | Composter |
@@ -139,9 +146,9 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | Valve panel (`valve_panel`) | 1.2 × 0.65 × 1.8 | Water tank, Water recycler, Deep well pump |
 | Pump (`pump`) | 1.3 × 0.8 × 1.1 | Water tank, Water recycler, Deep well pump |
 | Filter column (`filter_column`) | 1.1 × 1.1 × 3 | Water recycler |
-| Control console (`console`) | 1.3 × 0.9 × 1.8 | Water recycler, Life support, Battery bank, Deep well pump, Smelter, Silicon refinery, Electronics fab, Staging bay, Entrance, Cargo elevator, Depot |
+| Control console (`console`) | 1.3 × 0.9 × 1.8 | Water recycler, Life support, Battery bank, Deep well pump, Smelter, Silicon refinery, Electronics fab, Staging bay, Entrance, Cargo elevator, Depot, Maintenance |
 | Toilet stall (`toilet_stall`) | 1.1 × 1.55 × 2.1 | Restroom |
-| Washbasins (`sink_basin`) | 1.85 × 0.55 × 2 | Restroom |
+| Washbasins (`sink_basin`) | 1.85 × 0.55 × 2 | Restroom, Cleaning service |
 | Shower (`shower_stall`) | 1.1 × 1.1 × 2.2 | Restroom |
 | CO2 scrubber (`scrubber_unit`) | 2.45 × 1.45 × 3.4 | Life support |
 | Gas bottles (`gas_bottles`) | 1.3 × 0.6 × 1.65 | Life support, Silicon refinery |
@@ -154,8 +161,8 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | Ore bin (`ore_bin`) | 1.6 × 1.3 × 1 | Smelter |
 | Ingot rack (`ingot_rack`) | 1.6 × 0.6 × 1.3 | Smelter |
 | Lathe (`lathe`) | 2.2 × 0.6 × 1.4 | Machine shop |
-| Workbench (`workbench`) | 2 × 0.8 × 2.1 | Machine shop |
-| Tool wall (`tool_wall`) | 2 × 0.2 × 1.9 | Machine shop, Construction office, Construction yard |
+| Workbench (`workbench`) | 2 × 0.8 × 2.1 | Machine shop, Maintenance |
+| Tool wall (`tool_wall`) | 2 × 0.2 × 1.9 | Machine shop, Construction office, Construction yard, Maintenance |
 | Drill press (`drill_press`) | 0.8 × 0.7 × 1.85 | Machine shop |
 | Welding bay (`welding_station`) | 1.85 × 1 × 2 | Machine shop |
 | 3D printer (`printer_3d`) | 1 × 0.95 × 1.75 | Machine shop, Electronics fab |
@@ -172,7 +179,7 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 | Cargo crate (`cargo_crate`) | 1.25 × 1.25 × 1.2 | Staging bay, Entrance, Cargo elevator, Construction office, Storeroom |
 | Crate stack (`crate_stack`) | 2.45 × 1.25 × 2.4 | Staging bay, Construction yard, Warehouse, Depot |
 | Pallet rack (`pallet_rack`) | 2.8 × 1.1 × 3.2 | Warehouse, Depot |
-| Shelving (`shelf_unit`) | 1.4 × 0.5 × 2 | Bunk dorm, Galley, Farm, Machine shop, Silicon refinery, Electronics fab, Site office, Construction office, Storeroom |
+| Shelving (`shelf_unit`) | 1.4 × 0.5 × 2 | Bunk dorm, Galley, Farm, Machine shop, Silicon refinery, Electronics fab, Site office, Construction office, Storeroom, Maintenance, Cleaning service |
 | Cargo cart (`cart`) | 1.45 × 0.9 × 1.35 | Staging bay, Cargo elevator, Construction yard, Warehouse, Depot |
 | Pallet jack (`pallet_jack`) | 1.6 × 0.7 × 1.35 | Staging bay, Concrete plant, Cargo elevator, Construction yard, Warehouse, Depot |
 | Barrels (`barrel_group`) | 1.35 × 1.3 × 0.95 | Smelter, Staging bay, Composter, Cargo elevator, Construction yard, Storeroom, Warehouse, Depot |

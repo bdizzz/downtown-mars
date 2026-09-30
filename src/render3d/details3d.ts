@@ -131,13 +131,13 @@ export function withCondensation<T extends THREE.Material>(m: T): T {
         float up = clamp((above - ${b0.toFixed(2)}) / ${(b1 - b0).toFixed(2)}, 0.0, 1.0);
         // Fog thick at the sill, thinning upward, a little uneven.
         float along = atan(vFxWorld.z, vFxWorld.x) * length(vFxWorld.xz);
-        float fog = smoothstep(${f.rise.toFixed(2)}, 0.0, up + 0.08 * sin(along * 1.7) * sin(along * 0.6 + 1.0));
+        float fog = (1.0 - smoothstep(0.0, ${f.rise.toFixed(2)}, up + 0.08 * sin(along * 1.7) * sin(along * 0.6 + 1.0)));
         // Droplets: a scattering of beads, more low down.
         vec2 cell = vec2(along, above) * ${f.drops.toFixed(1)};
         vec2 id = floor(cell);
         float h = fxHash2(id);
         vec2 at = vec2(fxHash2(id + 3.1), fxHash2(id + 7.7)) * 0.6 + 0.2;
-        float drop = step(0.55 + up * 0.35, h) * smoothstep(${f.dropSize.toFixed(2)}, ${(f.dropSize * 0.5).toFixed(2)}, length(fract(cell) - at));
+        float drop = step(0.55 + up * 0.35, h) * (1.0 - smoothstep(${(f.dropSize * 0.5).toFixed(2)}, ${f.dropSize.toFixed(2)}, length(fract(cell) - at)));
         float mist = fog * ${f.thickness.toFixed(2)} + drop * 0.35;
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.9, 0.94), mist);
         diffuseColor.a = min(1.0, diffuseColor.a + mist * 0.6);

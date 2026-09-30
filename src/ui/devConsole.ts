@@ -23,6 +23,7 @@ const HELP = `Downtown Mars console (the hole you're looking at):
   dm.unlock()               unlock every room that waits on a milestone (or dm.unlock("cargo"))
   dm.unlock("ore")          put a deposit under the hole: ice, aquifer, ore or silica
   dm.finish()               finish everything in the construction queue at once
+  dm.wear(0.4)              every room's condition to 40% (dm.wear(0.2, roomId) for one room)
   dm.storm(1)               a dust storm now, for a day (dm.storm(2, 3): in 3 days, for 2; dm.storm(0) clears it)
   dm.command({ ... })       send any simulation command, as the game would (see SimCommand in src/sim/commands.ts)`;
 
@@ -41,6 +42,10 @@ export function installConsole(api: Api): () => void {
   const dm = {
     help(): void {
       console.log(HELP);
+    },
+    /** The latest snapshot, to look at. */
+    snapshot() {
+      return api.snapshot();
     },
     resources(): Amounts {
       const res = api.snapshot()?.resources ?? {};
@@ -66,6 +71,9 @@ export function installConsole(api: Api): () => void {
     },
     command(command: SimCommand) {
       return run(command, "Done");
+    },
+    wear(condition: number, roomId?: number) {
+      return run({ type: "consoleWear", condition, roomId }, roomId === undefined ? `Every room at ${Math.round(condition * 100)}%` : `Room ${roomId} at ${Math.round(condition * 100)}%`);
     },
     storm(days = 1, inDays = 0) {
       return run({ type: "consoleStorm", days, inDays }, days > 0 ? `Dust storm ${inDays ? `in ${inDays} days` : "now"}, for ${days} day${days === 1 ? "" : "s"}` : "Clear skies");

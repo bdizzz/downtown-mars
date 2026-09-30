@@ -896,6 +896,7 @@ const FLOOR_BY_CATEGORY: Record<string, FloorKind> = {
   logistics: "concrete",
   construction: "concrete",
   excavation: "concrete",
+  services: "tiles",
 };
 
 function roomMaterial(color: number, planned: boolean, faint = false, building = false, floor: FloorKind = "concrete", grime = 0): THREE.Material {
@@ -948,7 +949,8 @@ const TROUBLE_EDGE = { warn: 0xf0a030, bad: 0xe0503a, idle: 0x9a9a9a } as const;
 const troubleEdges = new Map<string, THREE.LineBasicMaterial>();
 export function troubleEdgeMaterial(level: keyof typeof TROUBLE_EDGE): THREE.LineBasicMaterial {
   let m = troubleEdges.get(level);
-  if (!m) troubleEdges.set(level, (m = new THREE.LineBasicMaterial({ color: TROUBLE_EDGE[level] })));
+  // Lowered with their walls, as the ordinary outlines are.
+  if (!m) troubleEdges.set(level, (m = withWallsDown(new THREE.LineBasicMaterial({ color: TROUBLE_EDGE[level] }))));
   return m;
 }
 

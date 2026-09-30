@@ -68,6 +68,10 @@ export function ResourceBar({ s }: { s: Snapshot | null }) {
           <span className="label">Happy</span>
           <span className="val">{Math.round(s.happiness.average)}</span>
         </span>
+        <span className={`res${s.maintenance.overall < 0.5 ? " warn" : ""}`} title="Overall condition: every room's, weighted by size. Below 50% rooms get people down; below 30% they slow (Charts → Maintenance)">
+          <span className="label">Condition</span>
+          <span className="val">{Math.round(s.maintenance.overall * 100)}%</span>
+        </span>
         <span className="res" title="Workers employed / total">
           <span className="label">Workers</span>
           <span className="val">

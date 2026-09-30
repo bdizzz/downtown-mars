@@ -69,7 +69,7 @@ const FRAGMENT = /* glsl */ `
   varying float vAlpha;
   void main() {
     float r = length(gl_PointCoord - 0.5) * 2.0;
-    float a = smoothstep(1.0, 0.2, r) * vAlpha;
+    float a = (1.0 - smoothstep(0.2, 1.0, r)) * vAlpha;
     if (a < 0.01) discard;
     gl_FragColor = vec4(uColor, a);
     #include <tonemapping_fragment>

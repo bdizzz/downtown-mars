@@ -14,6 +14,7 @@ import { MapScreen, type SitePick } from "./MapScreen";
 import { NetworkPanel } from "./NetworkPanel";
 import { PeoplePanel } from "./PeoplePanel";
 import { ConstructionPanel } from "./ConstructionPanel";
+import { MaintenancePanel } from "./MaintenancePanel";
 import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
@@ -72,9 +73,9 @@ export function App() {
    */
   const lookFloor = previewFloor !== undefined && !walking ? previewFloor : viewFloor;
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
-  const [panel, setPanel] = useState<"office" | "flows" | "network" | "people" | "construction" | null>(null);
+  const [panel, setPanel] = useState<"office" | "flows" | "network" | "people" | "construction" | "maintenance" | null>(null);
   const officeOpen = panel === "office";
-  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction") => {
+  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction" | "maintenance") => {
     setPanel((cur) => (cur === p ? null : p));
     setSelected(null);
   };
@@ -515,6 +516,9 @@ export function App() {
         {snapshot && officeOpen && <Office s={snapshot} onCommand={onCommand} onClose={() => setPanel(null)} />}
         {snapshot && panel === "flows" && <FlowPanel s={snapshot} onClose={() => setPanel(null)} />}
         {snapshot && panel === "people" && <PeoplePanel s={snapshot} onClose={() => setPanel(null)} />}
+        {snapshot && panel === "maintenance" && (
+          <MaintenancePanel s={snapshot} onSelect={(id) => (setSelected(id), setPanel(null))} onClose={() => setPanel(null)} />
+        )}
         {snapshot && panel === "construction" && (
           <ConstructionPanel s={snapshot} onCommand={onCommand} onSelect={(id) => (setSelected(id), setPanel(null))} onClose={() => setPanel(null)} />
         )}

@@ -146,6 +146,12 @@ export interface Snapshot {
   weather: { storm: number; dueInDays: number | null };
   /** Room condition and upkeep: the overall condition, the queue, and what each service room is repairing. */
   maintenance: MaintenanceView;
+  /**
+   * Each room's condition, by id (rooms without one left out). It changes
+   * every tick, and the layout only travels to the main thread when its
+   * version moves, so it's sent on its own and put back on the rooms there.
+   */
+  conditions: Record<number, number>;
   beds: number;
   messages: Message[];
   happiness: Happiness;
@@ -214,6 +220,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     },
     weather: { storm: stormLevel(state, cfg), dueInDays: stormDue(state, cfg) },
     maintenance: maintenanceView(state),
+    conditions: Object.fromEntries(state.layout.rooms.filter((r) => r.condition !== undefined).map((r) => [r.id, r.condition!])),
     beds: beds(state),
     messages: state.messages,
     happiness: state.happiness,

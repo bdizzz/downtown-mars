@@ -29,6 +29,7 @@ import { LightShaft } from "./shafts3d";
 import { advanceDetails } from "./details3d";
 import { troubleOf, type Trouble } from "../view/roomTrouble";
 import { grimeLevel } from "../view/grime";
+import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
 import { flowRooms, Flows } from "./flows3d";
 import type { RoomStatus } from "../sim/economy";
 
@@ -88,6 +89,8 @@ const FIELD_MAX = 3;
 /** Overlay tints sit just proud of the cells, in front of the rock and around rooms. */
 const FIELD_OUTSET = -0.04;
 const FIELD_ALPHA = 0.55;
+/** Overlay tints lie on the rooms' own floors and walls: pulled toward the camera so they win the depth test. */
+const OVERLAY_OFFSET = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 };
 
 export async function createStage3D(host: HTMLElement, opts: StageOptions = {}): Promise<Stage> {
   let renderer: THREE.WebGLRenderer;
@@ -247,15 +250,21 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const badges = new THREE.Group();
   let troubleKey = "";
   /** Show each room's trouble: its outline's colour and a badge over its label. */
-  function showTrouble(status: Record<number, RoomStatus>): void {
+  function showTrouble(status: Record<number, RoomStatus>, lanes: Snapshot["maintenance"]["lanes"]): void {
     const troubles = new Map<number, Trouble>();
-    for (const id of roomOutlines.keys()) troubles.set(id, troubleOf(status[id]));
+    const worked = new Map(lanes.filter((l) => l.target !== null).map((l) => [l.target!, l.kind]));
+    for (const id of roomOutlines.keys()) {
+      // A crew at work shows its tool over the room, whatever else is up with it.
+      const kind = worked.get(id);
+      const t = troubleOf(status[id]);
+      troubles.set(id, kind ? { level: t.level === "ok" ? "work" : t.level, icon: kind === "all" ? "🛠" : "🧽" } : t);
+    }
     const key = [...troubles].map(([id, t]) => `${id}${t.icon}`).join(",");
     if (key === troubleKey) return;
     troubleKey = key;
     for (const [id, edges] of roomOutlines) {
       const t = troubles.get(id)!;
-      edges.material = t.level === "ok" ? (edges.userData.baseMaterial as THREE.Material) : troubleEdgeMaterial(t.level);
+      edges.material = t.level === "ok" || t.level === "work" ? (edges.userData.baseMaterial as THREE.Material) : troubleEdgeMaterial(t.level);
     }
     badges.clear();
     for (const [id, t] of troubles) {
@@ -877,12 +886,37 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (!bands.has(band)) bands.set(band, []);
       bands.get(band)!.push(...cells);
     };
+    if (overlayType === "condition") {
+      // Each room in its condition's colour, green to red; rooms grouped by colour.
+      const byColor = new Map<number, Cell[]>();
+      for (const { room, color } of conditionTints(l.rooms)) {
+        if (room.at.kind === "surface") {
+          // The surface is hidden with a floor picked: nothing to tint there.
+          if (cut() !== null) continue;
+          const total = l.surface.length;
+          const mid = ((Math.min(...room.surfaceCells) + room.surfaceCells.length / 2) / total) * TAU;
+          const r = l.hole.shaftRadiusM + 16;
+          const disc = new THREE.Mesh(new THREE.CircleGeometry(8, 32), solid(color, CONDITION_ALPHA));
+          disc.rotation.x = -Math.PI / 2;
+          disc.position.set(r * Math.cos(mid), 0.2, r * Math.sin(mid));
+          fieldGroup.add(disc);
+        } else byColor.set(color, [...(byColor.get(color) ?? []), ...room.cells]);
+      }
+      for (const [color, cells] of byColor) {
+        const mat = overlayMat(`c:${color}`, () =>
+          withWallsDown(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: CONDITION_ALPHA, depthWrite: false, side: THREE.DoubleSide, ...OVERLAY_OFFSET })),
+        );
+        fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET, false), mat));
+      }
+      return;
+    }
     if (overlayType === "happiness") {
       for (const pool of s.happiness.pools) {
         const room = l.rooms.find((r) => r.id === pool.roomId);
         if (!room) continue;
         const v = ((pool.happiness - 50) / 50) * FIELD_MAX;
         if (room.at.kind === "surface") {
+          if (cut() !== null) continue;
           const color = v < 0 ? heat.bad : heat.good;
           const total = l.surface.length;
           const mid = ((Math.min(...room.surfaceCells) + room.surfaceCells.length / 2) / total) * TAU;
@@ -905,7 +939,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const color = v < 0 ? heat.bad : heat.good;
       const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA;
       const mat = overlayMat(`f:${color}:${alpha}`, () =>
-        withWallsDown(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, depthWrite: false, side: THREE.DoubleSide })),
+        withWallsDown(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, depthWrite: false, side: THREE.DoubleSide, ...OVERLAY_OFFSET })),
       );
       fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET, false), mat));
     }
@@ -1453,6 +1487,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           people,
           // Sunlight down the shaft.
           shaftLight,
+          // The overlay's meshes, to inspect.
+          field: () => fieldGroup,
+          // The renderer, to inspect its programs.
+          renderer,
           // How many rooms show their furniture near and far.
           detail() {
             const n = { near: 0, far: 0 };
@@ -1504,7 +1542,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         applyCamera();
       }
       // Wear and grime: each room's level, which changes over days, so rebuilds stay rare.
-      const grime = new Map(snapshot.layout.rooms.map((r) => [r.id, grimeLevel(r, snapshot.tick, config.ticksPerDay, snapshot.effects)]));
+      const grime = new Map(snapshot.layout.rooms.map((r) => [r.id, grimeLevel(r)]));
       const grimeKey = [...grime.values()].join("");
       const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}:${cut()}:${view.roomColors}:${grimeKey}`;
       if (lk !== layoutKey) {
@@ -1571,7 +1609,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const hour = Math.floor(snapshot.time.dayFraction * 24);
       const staffKey = snapshot.layout.rooms.map((r) => snapshot.roomStatus[r.id]?.staff ?? 0).join(",");
       const pk = `${layoutKey}:${hour}:${staffKey}:${snapshot.population.count}`;
-      showTrouble(snapshot.roomStatus);
+      showTrouble(snapshot.roomStatus, snapshot.maintenance.lanes);
       // Resource flows: rebuilt when the rooms feeding or drawing change, or the floor picked.
       flows.group.visible = view.flows;
       if (view.flows) {
@@ -1591,8 +1629,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       }
       roomFx.sync(snapshot.layout, snapshot.roomStatus);
       updateSky(snapshot);
-      const happy = overlayType === "happiness" ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",") : "";
-      const fk = `${overlayType}:${gameId}:${snapshot.layout.version}:${happy}:${heat.bad}`;
+      const happy =
+        overlayType === "happiness" ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",") : overlayType === "condition" ? conditionKey(snapshot.layout.rooms) : "";
+      const fk = `${overlayType}:${gameId}:${snapshot.layout.version}:${happy}:${heat.bad}:${cut()}`;
       if (fk !== fieldKey) {
         fieldKey = fk;
         buildField(snapshot);

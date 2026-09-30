@@ -20,6 +20,7 @@ Start a new game and follow your deputy's tutorial, or dive in:
 - **Office:** colonists visit with problems. What you promise, they remember.
 - **People:** everyone starts as a working adult. With a clinic and a happy hole, children are born (they need a school); adults eventually retire as elders (who want elder care), and elders pass away in time: build a crypt, or enact Return to the soil. Only adults work. The **People** panel shows what's holding births back, and colonists in a miserable hole move to a happier one.
 - **Storage:** dry goods (food and materials) only keep what storage has room for. Build storerooms, warehouses or depots and choose what each holds in its details panel; the landing pod has some to start. A good shown in amber has no room left, and what arrives is lost.
+- **Condition:** rooms wear down once they're built (all but the entrance, stairs, elevators and the service rooms). The worse they get, the grubbier they look. Below 50% people in and around them get unhappy (more so for homes, galleys, restrooms and clinics), below 30% they work 30% slower, and at 0% they stop. Now and then something breaks and knocks a room down 20 or 30 points. **Maintenance** rooms (Build → Services) repair rooms back to 100%, one room per maintenance room at a time, taking the worst from the hole's queue (rooms at 60% or below); they use machinery. From 150 colonists, **cleaning services** do the same for homes and other rooms people share, using clean water. Understaffed crews work slower; a crew that stops hands its room back, part-done, to the front of the queue. **Charts → Maintenance** shows the queue and what each crew is on; the **Condition** stat at the top and the Condition overlay show how things stand.
 - **Room controls:** pause any staffed room, or have it stop at a stock level, from its details panel.
 - **Overlays** (bottom left) show noise, smell, health, comfort and happiness. **Flows** (top) shows where every resource comes from and goes.
 - **More holes:** once the network reaches 50 colonists the map opens. Build a staging bay to gather a seed kit, pick a site on the Map (M) and send a convoy. With two holes, a **rover depot** gives a hole 2 rovers, and the **Network** panel sets up trade routes between holes.
@@ -77,6 +78,7 @@ For testing, the browser console has `dm`, which acts on the hole you're looking
 - `dm.fill(1000)` raises every stored resource (not power or waste) to at least that much.
 - `dm.unlock()` unlocks every room that waits on a milestone, or one with `dm.unlock("cargo")`. `dm.unlock("ore")` puts a deposit (ice, aquifer, ore or silica) under the hole, for rooms that need one.
 - `dm.finish()` finishes everything in the construction queue at once.
+- `dm.wear(0.4)` sets every room's condition to 40% (`dm.wear(0.2, roomId)` for one room); `dm.snapshot()` returns the latest snapshot.
 - `dm.storm(1)` starts a dust storm now, for a day; `dm.storm(2, 3)` forecasts one in 3 days for 2; `dm.storm(0)` clears the sky.
 - `dm.command({ ... })` sends any simulation command, as the game would (see `SimCommand` in `src/sim/commands.ts`).
 
