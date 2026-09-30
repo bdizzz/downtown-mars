@@ -5,6 +5,7 @@ import { createLayout, placeRoom, type Layout, type Location } from "../src/sim/
 import { FIT, fit, frameOf, furnish, furnishedFloors, inside, layouts, place, templateFor, tooClose, unplace, type Template } from "../src/view/furnish";
 import { isFurnished, itemDef, itemsFor } from "../src/view/furniture";
 import { roomDef, roomDefs } from "../src/sim/rooms";
+import { galleryEdges } from "../src/sim/edges";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 
@@ -23,6 +24,8 @@ const DORM: Template = [
 
 describe("fitting furniture into a room", () => {
   const layout = createLayout(createHole(10, 3, 3, config.geometry));
+  // Floor 1's gallery tube, so ring-1 rooms have a door onto it.
+  for (const e of galleryEdges(layout.hole, 1)) layout.corridors[e.id] = "gallery";
   const near = room(layout, "bunk_dorm", ring(1, 1, 0, 2)); // ring 1: narrow, with a door on the shaft
   const far = room(layout, "bunk_dorm", ring(1, 2, 3, 2)); // ring 2: the same slots as ring 1, further out, so wider
 

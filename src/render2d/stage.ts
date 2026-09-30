@@ -7,7 +7,7 @@ import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
 import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { isOpen } from "../sim/excavation";
-import { edgeById, edgeSides, nearestEdge, type Edge } from "../sim/edges";
+import { edgeById, edgeSides, galleryEdges, isGalleryEdge, nearestEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors } from "../sim/corridors";
 import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
@@ -46,6 +46,8 @@ const C = {
   ground: 0x7a3b22,
   gallery: 0x6b5448,
   galleryEdge: 0x2b1a14,
+  /** The open shaft: Mars air, where no gallery tube hangs. */
+  shaft: 0x140c0a,
   slot: 0x4a2c22,
   slotEdge: 0x2b1812,
   locked: 0x33201a,
@@ -269,10 +271,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     holeCtx.clear();
     for (let floor = 1; floor <= lastFloor; floor++) {
       const top = floorTop(floor, maxRings);
-      holeCtx.rect(0, top, TURN_W, GALLERY_H).fill(C.gallery);
-      // The gallery's railing, facing the open shaft.
-      holeCtx.rect(0, top + 2, TURN_W, 1.5).fill(C.rail);
-      for (let x = 0; x < TURN_W; x += HATCH_STEP) holeCtx.rect(x, top + 2, 1.5, 6).fill(C.rail);
+      // The open shaft, Mars air: gallery tubes hang in it where they're built (drawn with the corridors).
+      holeCtx.rect(0, top, TURN_W, GALLERY_H).fill(C.shaft);
       holeCtx.rect(0, top + GALLERY_H - 2, TURN_W, 2).fill(C.galleryEdge);
 
       for (let ring = 1; ring <= maxRings; ring++) {
@@ -434,11 +434,12 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     drawCorridors(l);
   }
 
-  /** Where a corridor's band sits: centred on its border, carving into both sides. */
-  function bandOf(h: Hole, e: Edge): { x: number; y: number; len: number; along: "h" | "v" } {
+  /** Where a corridor's band sits: centred on its border, carving into both sides. A gallery tube fills the band over its floor. */
+  function bandOf(h: Hole, e: Edge): { x: number; y: number; len: number; along: "h" | "v"; thick: number } {
     const maxRings = h.ringSlots.length;
-    if (e.kind === "radial") return { x: e.turn * TURN_W - BAND / 2, y: ringTop(e.floor, e.ring, maxRings), len: RING_H, along: "v" };
-    return { x: e.a0 * TURN_W, y: ringTop(e.floor, e.circle, maxRings) + RING_H - BAND / 2, len: (e.a1 - e.a0) * TURN_W, along: "h" };
+    if (e.kind === "arc" && isGalleryEdge(e)) return { x: e.a0 * TURN_W, y: floorTop(e.floor, maxRings), len: (e.a1 - e.a0) * TURN_W, along: "h", thick: GALLERY_H - 2 };
+    if (e.kind === "radial") return { x: e.turn * TURN_W - BAND / 2, y: ringTop(e.floor, e.ring, maxRings), len: RING_H, along: "v", thick: BAND };
+    return { x: e.a0 * TURN_W, y: ringTop(e.floor, e.circle, maxRings) + RING_H - BAND / 2, len: (e.a1 - e.a0) * TURN_W, along: "h", thick: BAND };
   }
 
   /**
@@ -455,6 +456,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const linked = !!l.corridorLinked?.[id];
       const b = bandOf(h, e);
       const building = l.corridorsBuilding?.[id] !== undefined;
+      const BAND = b.thick;
       corridorBand(roomsCtx, b.x, b.y, b.len, BAND, b.along, finish, planned || building ? 0.45 : 1);
       const [w, hh] = b.along === "h" ? [b.len, BAND] : [BAND, b.len];
       if (building || l.corridorsFilling?.[id] !== undefined) {
@@ -477,7 +479,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         roomsCtx.rect(b.x, b.y, w, hh).stroke({ color: C.bad, width: 1.5 });
         continue;
       }
-      // Doors into the rooms on either side (public rooms are open anyway).
+      // Doors into the rooms on either side (public rooms are open anyway); ring 1's frontage has its own onto a tube.
+      if (isGalleryEdge(e)) continue;
       const [a, z] = edgeSides(h, e);
       const opens = (c: Cell | null) => {
         const r = c ? roomAt(l, c) : undefined;
@@ -497,6 +500,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     // Square joints where corridors turn, so the outer edges meet in a clean corner.
     const maxRings = h.ringSlots.length;
     for (const joint of corridorJoints(l).values()) {
+      if (joint.circle === 0) continue; // a tube hangs in its own band, clear of the rooms
       const y = joint.circle === 0 ? ringTop(joint.floor, 1, maxRings) : ringTop(joint.floor, joint.circle, maxRings) + RING_H;
       const x = joint.turn * TURN_W;
       corridorBand(roomsCtx, x - BAND / 2, y - BAND / 2, BAND, BAND, "h", joint.finish, joint.floor > h.floors ? 0.45 : 1);
@@ -511,8 +515,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   }
 
   /**
-   * Frontage: windows on the shaft side of ring 1, with a door onto the
-   * gallery; plain wall elsewhere. Doors onto corridors come with the corridors.
+   * Frontage: windows on the shaft side of ring 1, with a door onto a gallery
+   * tube where one runs along it (a full wall of windows where none does);
+   * plain wall elsewhere. Doors onto corridors come with the corridors.
    */
   function drawFrontage(l: Layout, rows: ReturnType<typeof cellRows>, color: number): void {
     const h = l.hole;
@@ -529,12 +534,14 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         const cut = (slot: number) => (l.corridors[`R${row.floor}.1.${slot}`] ? BAND / 2 : 0);
         const xs = x + cut(startSlot);
         const xe = x + w - cut(endSlot);
-        const mid = (xs + xe) / 2;
+        // The tubes along this stretch of wall: the door goes in the middle of them.
+        const tubes = galleryEdges(h, row.floor).filter((e) => l.corridors[e.id] && e.a0 * TURN_W >= row.x0 - 0.5 && e.a1 * TURN_W <= row.x1 + 0.5);
+        const mid = tubes.length ? ((tubes[0]!.a0 + tubes.at(-1)!.a1) / 2) * TURN_W : null;
         for (let wx = xs + 5; wx + 10 < xe - 4; wx += 13) {
-          if (Math.abs(wx + 5 - mid) < 9) continue;
+          if (mid !== null && Math.abs(wx + 5 - mid) < 9) continue;
           roomsCtx.rect(wx, y + 3, 10, 5).fill({ color: C.window, alpha: 0.85 });
         }
-        roomsCtx.rect(mid - 5, y, 10, 11).fill(C.door);
+        if (mid !== null) roomsCtx.rect(mid - 5, y, 10, 11).fill(C.door);
       }
     }
   }
@@ -789,6 +796,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     if (!layout) return null;
     const h = layout.hole;
     const p = pick(h, x, y);
+    // Over the shaft band: the gallery edge there.
+    if (p.kind === "gallery") return nearestEdge(h, p.floor, -0.1, x / TURN_W, config.geometry.roomDepthM);
     if (p.kind !== "slot") return null;
     const v = (y - ringTop(p.floor, p.ring, h.ringSlots.length)) / RING_H;
     return nearestEdge(h, p.floor, p.ring - 1 + v, x / TURN_W, config.geometry.roomDepthM);

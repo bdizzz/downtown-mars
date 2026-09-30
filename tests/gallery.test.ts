@@ -7,6 +7,7 @@ import { ensureFloors, type Location } from "../src/sim/placement";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { createWorld } from "../src/sim/world";
+import { tubeRuns } from "../src/view/gallery";
 
 // Milestone 11, step 1: the gallery is built, like corridors. Along the shaft
 // wall a corridor is always a gallery tube; floor 1 starts with one all the
@@ -85,5 +86,26 @@ describe("the gallery", () => {
     if (!back.ok) return;
     const layout = back.world.holes[0]!.layout;
     for (let f = 1; f <= 3; f++) expect(galleryEdges(layout.hole, f).every((e) => layout.corridors[e.id] === "gallery"), `floor ${f}`).toBe(true);
+  });
+});
+
+describe("tube runs", () => {
+  it("merge built tubes into runs on each floor, wrapping past 0°, skipping ones still being built", () => {
+    const s = createInitialState(config);
+    s.layout.hole.floors = 2;
+    ensureFloors(s.layout);
+    expect(tubeRuns(s.layout)).toEqual([{ floor: 1, t0: 0, t1: 1, full: true }]);
+    const f2 = galleryEdges(s.layout.hole, 2);
+    const n = f2.length;
+    // The last two slots and the first one: one run across 0°.
+    for (const e of [f2[n - 2]!, f2[n - 1]!, f2[0]!]) s.layout.corridors[e.id] = "gallery";
+    // A lone one on the far side, still being built.
+    s.layout.corridors[f2[4]!.id] = "gallery";
+    s.layout.corridorsBuilding = { [f2[4]!.id]: 1 };
+    const runs = tubeRuns(s.layout).filter((r) => r.floor === 2);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]!.t0).toBeCloseTo(f2[n - 2]!.a0);
+    expect(runs[0]!.t1).toBeCloseTo(1 + f2[0]!.a1);
+    expect(runs[0]!.full).toBe(false);
   });
 });

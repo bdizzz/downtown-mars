@@ -49,7 +49,11 @@ describe("colonists in 3D", () => {
   it("place figures: walkers on the galleries, and sitters, sleepers and workers in rooms, hidden above a chosen floor", () => {
     const dorm = room("bunk_dorm", 2);
     const people = new People();
-    people.sync(dorm.layout.hole, 30);
+    // No gallery tubes: nobody strolling the shaft.
+    people.sync(dorm.layout.hole, 30, []);
+    expect(people.shown.stand).toBe(0);
+    const everywhere = Array.from({ length: dorm.layout.hole.floors }, (_, i) => ({ floor: i + 1, t0: 0, t1: 1, full: true }));
+    people.sync(dorm.layout.hole, 30, everywhere);
     const who = occupied([dorm.spots], 2, () => 0, 100);
     people.setRooms(who);
     expect(people.shown.stand).toBe(10 + who.length);

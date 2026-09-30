@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { galleryEdges } from "../src/sim/edges";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
@@ -98,11 +99,14 @@ describe("carved by corridors", () => {
 });
 
 describe("public rooms", () => {
-  it("have no wall onto the gallery, or on a side with a corridor", () => {
+  it("have no wall onto a gallery tube (walled off from the shaft without one), or on a side with a corridor", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     const r = placeRoom(l, "tiny_plaza", ring(1, 1, 2));
     const room = l.rooms.find((x) => x.id === r.id)!;
     const walled = triangles(roomGeometry(l, room.cells)); // as a private room would be
+    // No tube along it yet: the shaft side keeps its wall.
+    expect(triangles(roomGeometry(l, room.cells, undefined, true, true))).toBe(walled);
+    for (const e of galleryEdges(l.hole, 1)) l.corridors[e.id] = "gallery";
     const open = triangles(roomGeometry(l, room.cells, undefined, true, true));
     expect(walled - open).toBe(CURVED); // no inner wall onto the gallery
     l.corridors["R1.1.2"] = "metal"; // its left side
@@ -156,6 +160,9 @@ describe("doors and windows", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 2));
     const room = l.rooms.find((x) => x.id === r.id)!;
+    // No gallery tube along it: all window, no door.
+    expect(doorways(l, room)).toEqual([]);
+    for (const e of galleryEdges(l.hole, 1)) l.corridors[e.id] = "gallery";
     const [door] = doorways(l, room);
     const r0 = ringRadii(l.hole, 1)[0];
     const base = floorSpan(1)[0];

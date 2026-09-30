@@ -18,7 +18,7 @@ import { isOpen } from "../sim/excavation";
 import { constructionStripes, corridorStrip } from "./corridorArt";
 import { config } from "../sim/config";
 import { corridorJoints, corridors } from "../sim/corridors";
-import { edgeById, edgeSides, nearestEdge, type Edge } from "../sim/edges";
+import { edgeById, edgeSides, isGalleryEdge, nearestEdge, type Edge } from "../sim/edges";
 import { roomAt } from "../sim/placement";
 import { CATEGORY_COLORS, HEAT } from "./palette";
 
@@ -72,6 +72,8 @@ const RING_D = config.geometry.roomDepthM;
 const TAU = Math.PI * 2;
 /** A corridor's width on the plan: its true 3 m. */
 const BAND = corridors.widthM * PX;
+/** A gallery tube's width on the plan: the ledge inside the shaft wall. */
+const TUBE = config.geometry.galleryWidthM * PX * 0.9;
 
 /** Screen position (px, before zoom) of a point r metres out at angle a. */
 const xy = (r: number, a: number): [number, number] => [r * PX * Math.cos(a), r * PX * Math.sin(a)];
@@ -175,9 +177,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
         baseCtx.poly(cellSector(h, { ring, slot })).fill(ring > h.unlockedRings ? C.locked : C.slot).stroke({ color: C.slotEdge, width: 1 });
       }
     });
-    // The gallery ledge, and the open shaft inside it.
-    baseCtx.circle(0, 0, h.shaftRadiusM * PX).fill(C.gallery).stroke({ color: C.galleryEdge, width: 2 });
-    baseCtx.circle(0, 0, openShaftRadius(h) * PX).fill(C.shaft);
+    // The open shaft, Mars air, out to the shaft wall: gallery tubes hang in it where they're built (drawn with the corridors).
+    baseCtx.circle(0, 0, h.shaftRadiusM * PX).fill(C.shaft).stroke({ color: C.galleryEdge, width: 2 });
     // The 0° seam, where the unrolled view starts.
     const [sx, sy] = xy(openShaftRadius(h), 0);
     const [ex, ey] = xy(outer, 0);
@@ -278,8 +279,14 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     drawCorridors(l);
   }
 
-  /** A corridor's centreline on the plan, in px: out along a spoke, or around an arc. */
+  /** A corridor's centreline on the plan, in px: out along a spoke, or around an arc (a gallery tube's along the ledge, inside the shaft wall). */
   function stripOf(h: Hole, e: Edge): { at: (t: number) => [number, number]; normal: (t: number) => [number, number]; len: number; mid: number } {
+    if (e.kind === "arc" && isGalleryEdge(e)) {
+      const r = (openShaftRadius(h) + h.shaftRadiusM) / 2;
+      const a0 = e.a0 * TAU;
+      const len = (e.a1 - e.a0) * TAU * r * PX;
+      return { at: (t) => xy(r, a0 + t / (r * PX)), normal: (t) => [Math.cos(a0 + t / (r * PX)), Math.sin(a0 + t / (r * PX))], len, mid: len / 2 };
+    }
     if (e.kind === "radial") {
       const a = e.turn * TAU;
       const [r0] = ringRadii(h, e.ring);
@@ -306,7 +313,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       const s = stripOf(h, e);
       const planned = e.floor > h.floors;
       const building = l.corridorsBuilding?.[id] !== undefined;
-      const poly = corridorStrip(roomsCtx, s.at, s.normal, s.len, BAND, finish, planned || building ? 0.45 : 1);
+      const tube = isGalleryEdge(e);
+      const poly = corridorStrip(roomsCtx, s.at, s.normal, s.len, tube ? TUBE : BAND, finish, planned || building ? 0.45 : 1);
       if (building || l.corridorsFilling?.[id] !== undefined) {
         roomsCtx.poly(poly).stroke({ color: C.build, width: 2 });
         if (building) continue;
@@ -321,6 +329,11 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
         return !!r && !r.planned && !roomDef(r.type).public;
       };
       if (s.len < 16) continue;
+      // A tube's door is in the shaft wall, into the ring-1 room behind it.
+      if (tube) {
+        if (opens(z)) roomsCtx.circle(...xy(h.shaftRadiusM + 0.5, ((e.kind === "arc" ? e.a0 + e.a1 : 0) / 2) * TAU), 3).fill(C.door);
+        continue;
+      }
       const [mx, my] = s.at(s.mid);
       const [nx, ny] = s.normal(s.mid);
       const door = (sign: number) => {
@@ -334,7 +347,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     }
     // Square joints where corridors turn, so the outer edges meet in a clean corner.
     for (const joint of corridorJoints(l).values()) {
-      if (joint.floor !== floor) continue;
+      if (joint.floor !== floor || joint.circle === 0) continue;
       const r = h.shaftRadiusM + joint.circle * RING_D;
       const a = joint.turn * TAU;
       const half = BAND / 2 / PX;

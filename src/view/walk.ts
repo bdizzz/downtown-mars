@@ -1,5 +1,5 @@
 import { corridors } from "../sim/corridors";
-import { cellEdges, isGalleryEdge, type Edge } from "../sim/edges";
+import { cellEdges, galleryEdges, isGalleryEdge, type Edge } from "../sim/edges";
 import { isOpen } from "../sim/excavation";
 import type { Hole } from "../sim/geometry";
 import { roomAt, type Layout, type RoomInstance } from "../sim/placement";
@@ -10,7 +10,7 @@ import { furnish, isFlat } from "./furnish";
 import { isMounted, itemDef } from "./furniture";
 
 // Walking a floor in first person: where a colonist can stand. Open ground is
-// the gallery ringing the shaft (not over the railing), public rooms (plazas,
+// the gallery tubes along the shaft wall (not over the railing), public rooms (plazas,
 // stairs, the entrance, a cargo elevator's stop), dug-out empty space, and the
 // corridors carved along the borders between cells. A private room's floor is
 // its own region, walled off from everything around it except through its
@@ -43,7 +43,7 @@ export function regionAt(layout: Layout, floor: number, x: number, z: number): R
   const a = Math.atan2(z, x);
   const door = doorAt(layout, floor, r, a);
   if (door) return door;
-  if (r < hole.shaftRadiusM) return OPEN; // the gallery
+  if (r < hole.shaftRadiusM) return inTube(layout, floor, a) ? OPEN : null; // a gallery tube, or open shaft
   const ring = Math.floor((r - hole.shaftRadiusM) / RING_D) + 1;
   if (ring > hole.unlockedRings) return null;
   const turn = (((a / TAU) % 1) + 1) % 1;
@@ -56,6 +56,14 @@ export function regionAt(layout: Layout, floor: number, x: number, z: number): R
   if (!built(room)) return null;
   if (!roomDef(room.type).public) return `room:${room.id}`;
   return walkThrough(room, floor) ? OPEN : null;
+}
+
+/** Is there a built gallery tube at this angle on this floor? */
+function inTube(layout: Layout, floor: number, a: number): boolean {
+  const n = layout.hole.ringSlots[0]!;
+  const turn = (((a / TAU) % 1) + 1) % 1;
+  const e = galleryEdges(layout.hole, floor)[Math.min(Math.floor(turn * n), n - 1)];
+  return !!e && !!layout.corridors?.[e.id] && layout.corridorsBuilding?.[e.id] === undefined;
 }
 
 /** Can a walker in one region step straight into the other? Only within a region, or through a doorway. */

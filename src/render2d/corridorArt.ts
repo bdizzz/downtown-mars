@@ -41,6 +41,11 @@ export function corridorBand(g: GraphicsContext, x: number, y: number, len: numb
       const [px, py] = at(t + jitter(x + t, y) * 3, 2 + jitter(y + t, x) * (thick - 4));
       g.circle(px, py, 1 + jitter(px, py)).fill({ color: ink, alpha: 0.8 * alpha });
     }
+  } else if (f.id === "gallery") {
+    // A glass tube: ribs, the railing along its shaft side, and a glint down the glass.
+    for (let t = 5; t < len; t += 10) cross(t, 1.2, 0.8);
+    lengthwise(1, 1.5);
+    lengthwise(thick * 0.4, 1, 0.3);
   } else if (f.id === "marscrete") {
     for (let t = 14; t < len; t += 14) cross(t, 1, 0.7);
   } else if (f.id === "brick") {

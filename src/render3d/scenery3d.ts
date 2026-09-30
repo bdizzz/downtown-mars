@@ -4,41 +4,11 @@ import type { Hole } from "../sim/geometry";
 import type { Layout } from "../sim/placement";
 import { floorSpan, openShaftRadius, TAU } from "./cylinder";
 
-// Things that bring the 3D shaft to life but don't depend on rooms: lamps
-// along each gallery railing that light up at night, and the Earth lander
-// coming down onto the pad before a supply drop.
+// Things that bring the 3D shaft to life but don't depend on rooms: the
+// Earth lander coming down onto the pad before a supply drop, and dust.
 
-const LAMPS_PER_FLOOR = 16;
-const LAMP = { height: 1.3, radius: 0.09, color: 0xffb870 };
 const LANDER = { startHeight: 60, body: 0xd9d4cc, trim: 0x6b6660, flame: 0xffb35c };
 const SURFACE_RING_M = 16;
-
-/** Small lamps on every gallery railing, one instanced mesh for the whole hole. */
-export function galleryLamps(hole: Hole): THREE.InstancedMesh {
-  const count = hole.floors * LAMPS_PER_FLOOR;
-  const mesh = new THREE.InstancedMesh(
-    new THREE.SphereGeometry(LAMP.radius, 8, 6),
-    new THREE.MeshStandardMaterial({ color: LAMP.color, emissive: LAMP.color, emissiveIntensity: 0 }),
-    Math.max(1, count),
-  );
-  const m = new THREE.Matrix4();
-  const r = openShaftRadius(hole) + 0.1;
-  let i = 0;
-  for (let floor = 1; floor <= hole.floors; floor++) {
-    const y = floorSpan(floor)[0] + LAMP.height + 0.4;
-    for (let k = 0; k < LAMPS_PER_FLOOR; k++) {
-      const a = ((k + 0.5) / LAMPS_PER_FLOOR) * TAU;
-      m.makeTranslation(r * Math.cos(a), y, r * Math.sin(a));
-      mesh.setMatrixAt(i++, m);
-    }
-  }
-  mesh.count = count;
-  return mesh;
-}
-
-export function setLampGlow(lamps: THREE.InstancedMesh, night: number): void {
-  (lamps.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.2 + night * 1.2;
-}
 
 /** The lander: a capsule with legs and a flame, positioned by the caller. */
 export function makeLander(): THREE.Group {

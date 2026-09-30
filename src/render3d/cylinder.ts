@@ -14,6 +14,10 @@ export const CRUST = config.geometry.surfaceDepthM;
 export const GALLERY_W = config.geometry.galleryWidthM;
 export const RING_D = config.geometry.roomDepthM;
 export const TAU = Math.PI * 2;
+/** A gallery tube's floor: a slab this thick on the ledge inside the shaft wall. */
+export const LEDGE_THICKNESS = 0.4;
+/** The railing inside a gallery tube, above its floor. */
+export const RAIL_HEIGHT = 1.1;
 
 /** The slot's angular span [start, end) in radians. */
 export function slotAngles(slot: number, n: number): [number, number] {

@@ -74,3 +74,11 @@ A late, costly project that seals the top of the shaft. It needs glass (bringing
 - Walking ignores gallery edges for now (the ledge is still open everywhere); the tutorial's corridor goal doesn't count the starting gallery.
 - **Bots:** their Connect calls lay gallery tubes on new floors. Growth to minute 80 is a little slower (155 colonists, was 160+); the people playthrough's bar is 150 now.
 
+**Step 2, the gallery in the views:**
+- **2D unrolled:** each floor's top band is open shaft (dark) now; gallery tubes are drawn in it where built, as a glass band (ribs, the railing edge, a glint; `corridorArt`'s "gallery" look). A ring-1 room's door onto the gallery sits in the middle of the tubes along it; with none, its shaft face is all windows. Pointing at the band with the corridor tool picks the gallery edge there.
+- **Plan:** the ledge ring is open shaft; tubes are drawn as arcs on it, with a door dot where they meet a room.
+- **3D:** the ledge, railing and lamps that ran all the way round every floor are gone. Each built tube (`galleryTubes` in rooms3d) is a floor slab on the ledge, a curved glass wall with ribs, a railing, and (with every floor showing) a glass roof with a lamp strip that glows at night. A tube still being built is a ghosted slab; an unlinked one is red. Where there's no tube, a nearly invisible ledge is left to point at, so the corridor tool can reach the shaft wall.
+- **Doors** (`view/doors.ts`) only where a built tube runs along a ring-1 room; a public room in ring 1 is walled off from the shaft without one.
+- **Walking:** the ledge is only walkable inside a built tube. **Walkers** stroll along runs of tube (`view/gallery.ts` `tubeRuns`), turning back at the ends; floors without tubes have none.
+- **Not done:** a floor-to-ceiling window where no tube runs (the usual window band stays); the 2D views still draw ring-1 public rooms and dug-out empty space as open to the shaft side.
+

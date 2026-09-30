@@ -4,8 +4,8 @@ import * as THREE from "three";
 import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
-import { FLOOR_H, floorSpan, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
-import { cellEdges, edgeById, edgeSides, edgeVertices, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
+import { FLOOR_H, floorSpan, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
 import { FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
@@ -444,8 +444,9 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
     let [y0, y1] = floorSpan(c.floor);
     y0 += inset;
     // Walls reach the floor above, whose rock (or on floor 1, the crust) closes the room over.
-    // A public room on the gallery has no wall there: it runs right up to the shaft.
-    const onGallery = publicRoom && c.ring === 1;
+    // A public room on a gallery tube has no wall there: it runs right up to the tube. Without one, it's walled off from the shaft.
+    const tube = galleryEdges(layout.hole, c.floor)[c.slot];
+    const onGallery = publicRoom && c.ring === 1 && !!tube && !!layout.corridors?.[tube.id];
     const cut = carveCell(layout, c, own, inner, outer, inset, carve, onGallery, joints);
     // The floor runs out to the cell's edges (only the walls keep the hairline), so no gap shows between two rooms.
     const floorCut = carveCell(layout, c, own, inner, outer, 0, carve, onGallery, joints);
@@ -866,6 +867,8 @@ export function outlineGeometry(geo: THREE.BufferGeometry): THREE.EdgesGeometry 
 export function setNightGlow(night: number): void {
   const glass = materialCache.get("glass") as THREE.MeshStandardMaterial | undefined;
   if (glass) glass.emissiveIntensity = 1 + night * GLOW.windowBoost;
+  const tubeLamp = materialCache.get("tube:lamp") as THREE.MeshStandardMaterial | undefined;
+  if (tubeLamp) tubeLamp.emissiveIntensity = 0.3 + night * 1.4;
   setFurnitureGlow(night);
 }
 
@@ -1161,6 +1164,8 @@ export function buildLayout(
   // No corridors yet: add() with nothing to add is an error in three.js.
   const halls = corridorFloors(layout, topFloor);
   if (halls.length) group.add(...halls);
+  const tubes = galleryTubes(layout, digFloor, topFloor);
+  if (tubes.length) group.add(...tubes);
   const empty = emptySpace(layout, topFloor);
   if (empty.length) group.add(...empty);
 
@@ -1426,7 +1431,7 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
   const groups = new Map<string, number[]>();
   for (const [id, finish] of Object.entries(layout.corridors ?? {})) {
     const e = edgeById(hole, id);
-    if (!e || e.floor > hole.floors + 1) continue;
+    if (!e || e.floor > hole.floors + 1 || isGalleryEdge(e)) continue;
     if (topFloor !== null && e.floor < topFloor) continue;
     // Corridors have no ceiling: always on the floor, open to the sky or the cut above.
     const y = floorSpan(e.floor)[0] + 0.05;
@@ -1442,7 +1447,7 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
   }
   // Square joints where corridors turn, so the outer edges meet in a clean corner.
   for (const joint of corridorJoints(layout).values()) {
-    if (joint.floor > hole.floors + 1 || (topFloor !== null && joint.floor < topFloor)) continue;
+    if (joint.floor > hole.floors + 1 || joint.circle === 0 || (topFloor !== null && joint.floor < topFloor)) continue;
     const r = hole.shaftRadiusM + joint.circle * (ringRadii(hole, 1)[1] - ringRadii(hole, 1)[0]);
     const a = joint.turn * TAU;
     const key = `${joint.finish}:true:false`;
@@ -1466,6 +1471,78 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
     mesh.userData = { pickable: true, hall: true };
     out.push(mesh);
   }
+  return out;
+}
+
+/** Gallery tubes: how tall the glass is above the tube's floor, how often a rib holds it up, and the look. */
+const TUBE = { height: 3.3, ribEveryM: 2.4, ribM: 0.12, slab: 0x7a6a5e, rib: 0x9aa4ab, glass: 0xa8d4f0, glassOpacity: 0.14, lamp: 0xffc98a };
+
+/**
+ * Gallery tubes: on each floor, a glass-walled walkway on the ledge inside the
+ * shaft wall wherever one's built: a floor slab, a curved glass wall and roof
+ * (no roof with a floor picked: nothing has a ceiling then), ribs holding the
+ * glass, a railing, and lamps along the roof. Where there's no tube, a nearly
+ * invisible ledge, so the corridor tool can point at the shaft wall there.
+ */
+function galleryTubes(layout: Layout, digFloor: number | null, topFloor: number | null): THREE.Object3D[] {
+  const hole = layout.hole;
+  const R = hole.shaftRadiusM;
+  const rOpen = openShaftRadius(hole);
+  const last = digFloor ?? hole.floors;
+  const slab: number[] = [];
+  const ghostSlab: number[] = [];
+  const unlinked: number[] = [];
+  const glass: number[] = [];
+  const ribs: number[] = [];
+  const lamps: number[] = [];
+  const empty: number[] = [];
+  for (let floor = topFloor ?? 1; floor <= last; floor++) {
+    const y0 = floorSpan(floor)[0];
+    const yf = y0 + LEDGE_THICKNESS;
+    for (const e of galleryEdges(hole, floor)) {
+      const a0 = e.a0 * TAU;
+      const a1 = e.a1 * TAU;
+      if (!layout.corridors?.[e.id]) {
+        flatRing(empty, rOpen, R, a0, a1, yf);
+        continue;
+      }
+      const building = layout.corridorsBuilding?.[e.id] !== undefined;
+      const linked = !!layout.corridorLinked?.[e.id] || floor > hole.floors;
+      const floorPos = building ? ghostSlab : linked ? slab : unlinked;
+      flatRing(floorPos, rOpen, R, a0, a1, yf);
+      curvedFace(floorPos, rOpen, a0, a1, y0, yf);
+      if (building) continue;
+      const top = yf + TUBE.height;
+      curvedFace(glass, rOpen, a0, a1, yf, top);
+      if (topFloor === null) flatRing(glass, rOpen, R, a0, a1, top);
+      // Ribs: a post on the glass and a beam across the roof, every so often along the arc.
+      const len = (a1 - a0) * rOpen;
+      const count = Math.max(1, Math.round(len / TUBE.ribEveryM));
+      const w = TUBE.ribM / rOpen;
+      for (let i = 0; i <= count; i++) {
+        const a = a0 + ((a1 - a0) * i) / count;
+        curvedFace(ribs, rOpen + 0.02, a - w / 2, a + w / 2, yf, top);
+        if (topFloor === null) flatRing(ribs, rOpen, R, a - w / 2, a + w / 2, top - 0.02);
+      }
+      // The railing, and a lamp strip down the middle of the roof.
+      curvedFace(ribs, rOpen + 0.05, a0, a1, yf + RAIL_HEIGHT - 0.03, yf + RAIL_HEIGHT + 0.03);
+      if (topFloor === null) flatRing(lamps, (rOpen + R) / 2 - 0.08, (rOpen + R) / 2 + 0.08, a0, a1, top - 0.05);
+    }
+  }
+  const out: THREE.Object3D[] = [];
+  const add = (pos: number[], key: string, make: () => THREE.Material, data: Record<string, unknown> = {}) => {
+    if (!pos.length) return;
+    const mesh = new THREE.Mesh(geometry(pos), material(key, make));
+    mesh.userData = data;
+    out.push(mesh);
+  };
+  add(slab, "tube:slab", () => new THREE.MeshStandardMaterial({ color: TUBE.slab, roughness: 0.8, side: THREE.DoubleSide }), { pickable: true, hall: true });
+  add(unlinked, "tube:unlinked", () => new THREE.MeshStandardMaterial({ color: UNLINKED, roughness: 0.8, side: THREE.DoubleSide }), { pickable: true, hall: true });
+  add(ghostSlab, "tube:building", () => new THREE.MeshStandardMaterial({ color: TUBE.slab, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }), { pickable: true, hall: true });
+  add(empty, "tube:none", () => new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.03, depthWrite: false, side: THREE.DoubleSide }), { pickable: true, hall: true });
+  add(glass, "tube:glass", () => withFresnel(new THREE.MeshStandardMaterial({ color: TUBE.glass, roughness: 0.05, metalness: 0.2, transparent: true, opacity: TUBE.glassOpacity, depthWrite: false, side: THREE.DoubleSide })));
+  add(ribs, "tube:rib", () => new THREE.MeshStandardMaterial({ color: TUBE.rib, roughness: 0.4, metalness: 0.6, side: THREE.DoubleSide }));
+  add(lamps, "tube:lamp", () => new THREE.MeshStandardMaterial({ color: TUBE.lamp, emissive: TUBE.lamp, emissiveIntensity: 0.3, side: THREE.DoubleSide }));
   return out;
 }
 

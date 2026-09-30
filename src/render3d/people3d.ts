@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Hole } from "../sim/geometry";
 import type { Fitted } from "../view/furnish";
 import { itemDef } from "../view/furniture";
-import { floorSpan, openShaftRadius, TAU } from "./cylinder";
+import { floorSpan, LEDGE_THICKNESS, openShaftRadius, TAU } from "./cylinder";
 
 // Colonists as little figures: legs, a body in their clothes' colour, and a
 // head. Some walk the galleries, bobbing as they go; the rest are where the
@@ -164,6 +164,10 @@ const BED_FEET = 0.85;
 interface Gallery {
   floor: number;
   angle: number;
+  /** The tube run they walk (radians): they turn back at its ends, unless it goes all the way round. */
+  a0: number;
+  a1: number;
+  full: boolean;
   /** Radians per second, signed: which way round they're walking. */
   speed: number;
   /** A little in or out on the ledge, so they don't walk single file. */
@@ -204,22 +208,44 @@ export class People {
     }
   }
 
-  /** Match the gallery crowd to the colony: more people, more walkers, spread over the dug floors. */
-  sync(hole: Hole, population: number): void {
-    const want = Math.min(FIGURE.walkers.max, Math.ceil(population / FIGURE.walkers.perColonists));
-    if (this.hole === hole && this.walkers.length === want) return;
+  private runsKey = "";
+
+  /** Match the gallery crowd to the colony: more people, more walkers, spread over the gallery tubes (runs of them, in turns). */
+  sync(hole: Hole, population: number, runs: { floor: number; t0: number; t1: number; full: boolean }[]): void {
+    // Short runs don't get walkers: there's hardly anywhere to go.
+    const usable = runs.filter((r) => (r.t1 - r.t0) * TAU * openShaftRadius(hole) >= 4);
+    const want = usable.length ? Math.min(FIGURE.walkers.max, Math.ceil(population / FIGURE.walkers.perColonists)) : 0;
+    const key = JSON.stringify(usable);
+    if (this.hole === hole && this.walkers.length === want && key === this.runsKey) return;
     this.hole = hole;
+    this.runsKey = key;
     let s = (population * 131 + hole.floors) >>> 0 || 1;
     const rand = () => ((s = (s * 1664525 + 1013904223) >>> 0), s / 4294967296);
-    this.walkers = Array.from({ length: want }, () => ({
-      floor: 1 + Math.floor(rand() * hole.floors),
-      angle: rand() * TAU,
+    // Longer runs get more walkers.
+    const lengths = usable.map((r) => r.t1 - r.t0);
+    const total = lengths.reduce((a, b) => a + b, 0);
+    const pickRun = () => {
+      let x = rand() * total;
+      for (let i = 0; i < usable.length; i++) if ((x -= lengths[i]!) <= 0) return usable[i]!;
+      return usable.at(-1)!;
+    };
+    this.walkers = Array.from({ length: want }, () => {
+      const run = pickRun();
+      const a0 = run.t0 * TAU;
+      const a1 = run.t1 * TAU;
+      return {
+      floor: run.floor,
+      angle: a0 + rand() * (a1 - a0),
+      a0,
+      a1,
+      full: run.full,
       speed: (rand() < 0.5 ? -1 : 1) * FIGURE.walkers.speed * (0.6 + rand() * 0.8),
       offset: rand() * 1.2,
       clothes: FIGURE.clothes[Math.floor(rand() * FIGURE.clothes.length)]!,
       skin: FIGURE.skin[Math.floor(rand() * FIGURE.skin.length)]!,
       phase: rand() * TAU,
-    }));
+      };
+    });
     this.place();
   }
 
@@ -244,12 +270,20 @@ export class People {
   /** Walk on by dt real seconds. */
   step(dt: number): void {
     this.time += dt;
-    for (const w of this.walkers) w.angle += (w.speed * dt) / Math.max(1, this.radiusFor(w));
+    for (const w of this.walkers) {
+      w.angle += (w.speed * dt) / Math.max(1, this.radiusFor(w));
+      if (w.full) continue;
+      // Turn back at the end of the tube, a little short of it.
+      const margin = 0.6 / Math.max(1, this.radiusFor(w));
+      if (w.angle > w.a1 - margin && w.speed > 0) w.speed = -w.speed;
+      if (w.angle < w.a0 + margin && w.speed < 0) w.speed = -w.speed;
+    }
     this.place();
   }
 
   private radiusFor(w: Gallery): number {
-    return this.hole ? openShaftRadius(this.hole) + 0.5 + w.offset : 1;
+    // Along the tube's floor, between the glass and the shaft wall.
+    return this.hole ? openShaftRadius(this.hole) + 0.4 + w.offset * 0.9 : 1;
   }
 
   private shows(floor: number): boolean {
@@ -272,7 +306,7 @@ export class People {
       for (const w of this.walkers) {
         if (!this.shows(w.floor)) continue;
         const r = this.radiusFor(w);
-        const y = floorSpan(w.floor)[0] + 0.4;
+        const y = floorSpan(w.floor)[0] + LEDGE_THICKNESS;
         // Facing the way they walk (round the shaft), bobbing with each step and swaying a little.
         const stride = this.time * FIGURE.walkers.stride * Math.abs(w.speed) / FIGURE.walkers.speed + w.phase;
         const bob = Math.abs(Math.sin(stride)) * FIGURE.walkers.bob;

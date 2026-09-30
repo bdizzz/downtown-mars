@@ -8,6 +8,7 @@ import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
 import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
+import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
@@ -23,7 +24,7 @@ import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotA
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
-import { Dust, galleryLamps, makeLander, placeLander, setLampGlow } from "./scenery3d";
+import { Dust, makeLander, placeLander } from "./scenery3d";
 import { occupied, People, type RoomSpots } from "./people3d";
 import { Grit } from "./storm3d";
 import { LightShaft } from "./shafts3d";
@@ -52,8 +53,6 @@ import { clear as walkClear, stairLift, stairsHere, step as walkStep } from "../
 const C = {
   rock: 0x6a3a28,
   rockDark: 0x3e2218,
-  ledge: 0x8f7a6c,
-  rail: 0x8a7466,
   ground: 0x7a3b22,
   stranded: 0xe0503a,
   digFront: 0xe07a3f,
@@ -63,8 +62,6 @@ const C = {
   daySky: 0xc98a5e,
 };
 
-const LEDGE_THICKNESS = 0.4;
-const RAIL_HEIGHT = 1.1;
 const EYE_HEIGHT = 1.7;
 const FOV = 55;
 const FAR = 3500;
@@ -236,7 +233,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(fieldGroup);
   let overlayType: string | null = null;
   let fieldKey = "";
-  let lamps: THREE.InstancedMesh | null = null;
   const lander = makeLander();
   scene.add(lander);
   // Timing for the dev console (window.__stage3d in dev builds only).
@@ -309,6 +305,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let lastTick = -1;
   let hole: Hole | null = null;
   let holeKey = "";
+  /** The gallery tubes' runs, for the walkers: worked out again when the layout changes. */
+  let tubes: TubeRun[] = [];
+  let tubesFor = "";
   /** The floor picked on the right (null: every floor). */
   let pickedFloor: number | null = null;
   /** Show only this floor and those below it, i.e. deeper (null: every floor). Iso always looks at one floor. */
@@ -474,28 +473,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     holeGroup = new THREE.Group();
 
     const R = h.shaftRadiusM;
-    const rOpen = openShaftRadius(h);
     const rockDark = withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.DoubleSide }));
-    const ledge = new THREE.MeshStandardMaterial({ color: C.ledge, roughness: 0.8 });
-    const rail = new THREE.MeshStandardMaterial({ color: C.rail, metalness: 0.4, roughness: 0.5 });
-
-    for (let floor = 1; floor <= h.floors; floor++) {
-      const [y0] = floorSpan(floor);
-      // The gallery: a ledge ringing the shaft at the floor's base, with a railing on the open side.
-      const ring = new THREE.Mesh(new THREE.RingGeometry(rOpen, R, 64), ledge);
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.y = y0 + LEDGE_THICKNESS;
-      const edge = new THREE.Mesh(new THREE.CylinderGeometry(rOpen, rOpen, LEDGE_THICKNESS, 64, 1, true), ledge);
-      edge.position.y = y0 + LEDGE_THICKNESS / 2;
-      // Its back edge, where a corridor or a room's floor meets it: a step up, not a slot under the ledge.
-      const back = new THREE.Mesh(new THREE.CylinderGeometry(R, R, LEDGE_THICKNESS, 64, 1, true), ledge);
-      back.position.y = y0 + LEDGE_THICKNESS / 2;
-      const railing = new THREE.Mesh(new THREE.TorusGeometry(rOpen + 0.1, 0.05, 6, 96), rail);
-      railing.rotation.x = Math.PI / 2;
-      railing.position.y = y0 + LEDGE_THICKNESS + RAIL_HEIGHT;
-      for (const m of [ring, edge, back, railing]) m.userData.floor = floor;
-      holeGroup.add(ring, edge, back, railing);
-    }
+    // No ledge all the way round: gallery tubes hang inside the shaft wall where they're built (rooms3d).
 
     // Rough rock underfoot at the bottom of the floor being dug.
     const [dy0] = floorSpan(h.floors + 1);
@@ -519,8 +498,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     shell.visible = view.mode === "cutaway";
     holeGroup.add(shell);
 
-    lamps = galleryLamps(h);
-    holeGroup.add(lamps);
 
     applyFloorCut();
 
@@ -540,9 +517,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     sun.intensity = (0.15 + 0.9 * light) * (1 - STORM_DIM.sun * storm);
     // Near the surface, the view takes the hour's light; deeper down, the lamps'.
     look.setDaylight(light);
-    // At night, windows and the gallery lamps glow.
+    // At night, windows and the gallery tubes' lamps glow.
     setNightGlow(1 - light);
-    if (lamps) setLampGlow(lamps, 1 - light);
     // The sun crosses the sky once a day.
     const a = (f - 0.25) * TAU;
     sun.position.set(Math.cos(a) * 100, Math.max(5, Math.sin(a) * 100), 30);
@@ -1406,7 +1382,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     opts.onError?.("The 3D view lost its graphics context (the GPU may be busy or asleep). Switched to 2D.");
   });
 
-  /** Hide what sits above the chosen floor: ledges, lamps, walkers, the surface. */
+  /** Hide what sits above the chosen floor: walkers, the surface. */
   function applyFloorCut(): void {
     holeGroup.traverse((o) => {
       const f = cut();
@@ -1416,7 +1392,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // With a floor picked you're looking underground: earth all round, no sky.
     skyDome.mesh.visible = cut() === null;
     scene.background = cut() === null ? skyColor : new THREE.Color(C.earth);
-    if (lamps) lamps.visible = cut() === null;
     people.group.visible = graphics.life;
     grit.setLevel(graphics.life && cut() === null ? storm : 0);
     updateShaftLight();
@@ -1596,7 +1571,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         applyFloorCut();
         updateSection();
       }
-      people.sync(snapshot.layout.hole, snapshot.population.count);
+      if (tubesFor !== `${gameId}:${snapshot.layout.version}`) {
+        tubesFor = `${gameId}:${snapshot.layout.version}`;
+        tubes = tubeRuns(snapshot.layout);
+      }
+      people.sync(snapshot.layout.hole, snapshot.population.count, tubes);
       // The weather: a storm on load shows at once; after that it eases in and out.
       if (stormTarget === null) applyStorm(snapshot.weather.storm);
       stormTarget = snapshot.weather.storm;
