@@ -24,7 +24,7 @@ This doc is the design target; the game builds toward it. Milestones 1–10 are 
 | The borehole | Floors dug by the drill; rooms excavated from rock; entrance, stairs and elevators | Rings 4–6; cave-ins; choosing a diameter |
 | Rooms | 56 room types (see `ROOM-STATUS.md`) | About half the catalog, H-size rooms, multi-floor rooms beyond stairs and elevators |
 | Resources | Air, water (clean, gray, black), food, soil, waste, rock and ores, brick, marscrete, metal, machinery, wafers, electronics; storage for dry goods | Glass, plastics, textiles, consumer goods, currency |
-| Happiness | Three factors: noise, health and comfort (smell, shaft views, homelessness, care, seating at meals, ordinances and room condition feed them); gyms, parks, canteens and hospitals lift them | Air quality, safety, entertainment, diet variety |
+| Happiness | Three factors: noise, health and comfort (smell, shaft views, homelessness, care, seating at meals, ordinances and room condition feed them); gyms, parks, canteens and hospitals lift them; air quality feeds health | Safety, entertainment, diet variety, crowding |
 | Office and ordinances | Citizen visits (noise complaint, clinic demand) and promises; 5 ordinances | The other 27 ordinances, delegation |
 | People | Children, adults, elders; births, aging, deaths, migration; notables | Skills, mentoring, factions and strikes |
 | Network | A Mars globe (MOLA terrain), founding holes, rovers, trade routes, culture sliders and opinions | Pipelines, the belt, independence, blocs |

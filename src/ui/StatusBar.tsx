@@ -2,7 +2,7 @@ import { roomName } from "../sim/roomName";
 import type { ViewMode } from "./settings";
 import type { HoverInfo } from "../view/types";
 import type { Hole } from "../sim/geometry";
-import { effectAt, FIELD_TYPES } from "../sim/effects";
+import { effectAt, effectName, FIELD_TYPES } from "../sim/effects";
 import type { Snapshot } from "../sim/snapshot";
 import { num, resName, signed } from "./format";
 import { finishDef, floorLinked } from "../sim/corridors";
@@ -42,7 +42,7 @@ interface Props {
 function effectsHere(s: Snapshot, cell: { floor: number; ring: number; slot: number }): string {
   return FIELD_TYPES.map((t) => [t, effectAt(s.effects, t, cell)] as const)
     .filter(([, v]) => Math.abs(v) >= 0.05)
-    .map(([t, v]) => `${t} ${signed(v)}`)
+    .map(([t, v]) => `${effectName(t)} ${signed(v)}`)
     .join(" · ");
 }
 
@@ -51,7 +51,7 @@ function feltOver(s: Snapshot, cells: { floor: number; ring: number; slot: numbe
   if (!cells.length) return "";
   return FIELD_TYPES.map((t) => [t, cells.reduce((sum, c) => sum + effectAt(s.effects, t, c), 0) / cells.length] as const)
     .filter(([, v]) => Math.abs(v) >= 0.05)
-    .map(([t, v]) => `${t} ${signed(v)}`)
+    .map(([t, v]) => `${effectName(t)} ${signed(v)}`)
     .join(", ");
 }
 

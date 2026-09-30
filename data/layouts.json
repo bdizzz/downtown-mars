@@ -1405,6 +1405,19 @@
       {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
       {"item":"air_vent","wall":"back","repeat":{"every":3.0,"max":3}}
     ],
+    "ventilation_hub:1x1": [
+      {"item":"big_fan","wall":"back","y":0.1},
+      {"item":"duct_riser","wall":"left","y":0.1},
+      {"item":"duct_riser","wall":"right","y":0.1},
+      {"item":"filter_column","wall":"front","x":-1.6,"y":0.2,"repeat":{"every":1.0,"max":2}},
+      {"item":"gauge_panel","wall":"left","x":1.2},
+      {"item":"readout_panel","wall":"right","x":-1.2},
+      {"item":"safety_sign","wall":"back","x":2.2},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":3}},
+      {"item":"work_light","wall":"back","x":1.0,"repeat":{"every":4.0,"max":1}},
+      {"item":"air_vent","wall":"left","x":-1.0,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"right","x":1.0,"repeat":{"every":0.5,"max":1}}
+    ],
     "warehouse:2x1": [
       {"item":"pallet_jack","wall":"front","x":4,"y":0.3},
       {"item":"cart","wall":"front","x":-4,"y":0.3},

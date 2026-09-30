@@ -114,7 +114,7 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 | Deep well pump | M | 2 | Power 4 | Clean water 40 | Noise −1 r1 | M 15, Mc 3 | Aquifer site |
 | Water recycler ★ | L | 3 | Gray water 40, power 3 | Clean water 36, solid waste 1 | Noise −1 r1, smell −1 r1 | M 20, Mc 4 | Start |
 | Life support ★ | L | 4 | Water 6, power 5 | O2 30, removes CO2 30 | Noise −2 r2 | M 25, Mc 5, E 2 | Start |
-| Ventilation hub | S | 1 | Power 2 | — | Air quality +2 r2, noise −1 r1 | M 8, Mc 1 | Pop 100 |
+| Ventilation hub | S | 1 | Power 2 | — | Air quality +2 r2, noise −1 r1 | M 8, Mc 1 | Start |
 
 ## Waste
 
@@ -139,7 +139,7 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Excavator bay | M | 3 | Power 3 | Faster digging, rock | Noise −2 r2 | M 10, Mc 3 | Start |
-| Brickworks | M | 3 | Rock 6, water 1, power 2 | Brick 4 | Noise −1 r1, air quality −1 r1 (air quality not built yet) | R 15, M 5, Mc 1 | Pop 50 |
+| Brickworks | M | 3 | Rock 6, water 1, power 2 | Brick 4 | Noise −1 r1, air quality −1 r1 | R 15, M 5, Mc 1 | Pop 50 |
 | Smelter | L | 5 | Ore 6, power 6 | Metal 3 | Noise −2 r2, heat +1 r2, air quality −1 r2 | B 20, M 10, Mc 3 | Ore site |
 | Machine shop | M | 4 | Metal 3, power 3 | Machinery 1 | Noise −2 r2 | B 15, M 10, Mc 2 | Pop 200 |
 | Electronics fab | M | 4 | Metal 1, silicon wafers 1, power 4 | Electronics 1 | — | M 15, Mc 3, E 2 | Pop 500 |
@@ -219,7 +219,7 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 | School | M | 3 | Power 1 | Teaches 40 children | Noise −1 r1 | B 15 | First births |
 | Elder care | M | 3 | Power 1 | Care for 30 elders | Health +1 r1 | B 15, M 5 | First elders |
 | Gym | M | 1 | Water 1, power 1 | — | Health +2 r2 | B 10 | Pop 50 |
-| Park | M | 1 | Water 2, power 1 | O2 1; walk-through | Comfort +2 r2, air quality +1 r2 (air quality not built yet) | R 5, B 10 | Pop 50 |
+| Park | M | 1 | Water 2, power 1 | O2 1; walk-through | Comfort +2 r2, air quality +1 r2 | R 5, B 10 | Pop 50 |
 | Running track | L, or a full floor ring | 0 | Power 1 | Hosts races and festivals; a full-ring loop doubles its effects | Health +2 r2, entertainment +1 r2 | R 20, B 10 | Pop 200 |
 | Research lab | M | 4 | Power 3 | Speeds milestones | — | M 15, E 5 | Pop 300 |
 | Crypt | M | 0 | Power 1 | Lays 40 dead to rest, for good (without one, grief weighs on comfort) | — | R 10, B 20 | First elders |

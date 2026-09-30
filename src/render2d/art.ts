@@ -279,6 +279,15 @@ const GLYPHS: Record<string, Glyph> = {
       for (const t of [2.5, -2.5]) g.moveTo(mx, my).lineTo(mx + Math.cos(ang + t) * s * 0.1, my + Math.sin(ang + t) * s * 0.1).stroke(line(1.5, c));
     }
   },
+  ventilation_hub: (g, cx, cy, s, c) => {
+    // A fan in its housing.
+    g.circle(cx, cy, s * 0.3).stroke(line(1.5, c));
+    for (let i = 0; i < 3; i++) {
+      const a = (i * Math.PI * 2) / 3;
+      g.moveTo(cx, cy).quadraticCurveTo(cx + Math.cos(a + 0.9) * s * 0.26, cy + Math.sin(a + 0.9) * s * 0.26, cx + Math.cos(a) * s * 0.24, cy + Math.sin(a) * s * 0.24).stroke(line(1.4, c));
+    }
+    g.circle(cx, cy, s * 0.04).fill(c);
+  },
   waste_storage: (g, cx, cy, s, c) => {
     // A bin with a lid.
     g.poly([cx - s * 0.2, cy - s * 0.18, cx + s * 0.2, cy - s * 0.18, cx + s * 0.16, cy + s * 0.3, cx - s * 0.16, cy + s * 0.3]).stroke(line(1.5, c));

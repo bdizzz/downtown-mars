@@ -8,7 +8,7 @@ import { useState } from "react";
 import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
 import { mainOutput, roomSpec } from "../sim/economy";
-import { effectOnRoom, FIELD_TYPES } from "../sim/effects";
+import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
 import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
@@ -74,7 +74,7 @@ function Neighborhood({ s, room }: { s: Snapshot; room: Snapshot["layout"]["room
   return (
     <p>
       <span className="k">Felt here</span>
-      {felt.length ? felt.map(([t, v]) => `${t} ${signed(v)}`).join(", ") : "nothing"}
+      {felt.length ? felt.map(([t, v]) => `${effectName(t)} ${signed(v)}`).join(", ") : "nothing"}
     </p>
   );
 }

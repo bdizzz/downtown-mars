@@ -1476,6 +1476,7 @@ const rooms = {
   brickworks: ["kiln", "brick_press", "brick_pallet", "hopper", "conveyor", "pallet_jack", "console"],
   recycling_center: ["sorting_bins", "baler", "scrap_pile", "conveyor", "pallet_jack", "console", "barrel_group"],
   waste_storage: ["dumpster", "barrel_group", "trash_bin"],
+  ventilation_hub: ["big_fan", "duct_riser", "filter_column", "console", "pipe_run"],
 };
 
 // What hangs on each room's walls: pictures and lamps at home, charts, readouts and signs at work.
@@ -1529,6 +1530,7 @@ const hangings = {
   brickworks: ["safety_sign", "gauge_panel", "chart_board"],
   recycling_center: ["safety_sign", "chart_board", "readout_panel"],
   waste_storage: ["safety_sign"],
+  ventilation_hub: ["gauge_panel", "readout_panel", "safety_sign"],
 };
 // And more to fill the walls, by kind of room: a second pass that the templates spread along every wall.
 const WALL_FILL = {
@@ -1553,7 +1555,7 @@ const FILL_KIND = {
   farm: "farm", galley: "galley", restroom: "wash", crypt: "quiet",
   tiny_plaza: "public", small_plaza: "public", stairwell: "public", elevator: "public", entrance: "entry",
   maintenance: "workshop", cleaning_service: "wash",
-  kitchen: "galley", canteen: "public", hospital: "office", gym: "public", park: "public", brickworks: "plant", recycling_center: "plant", waste_storage: "store",
+  kitchen: "galley", canteen: "public", hospital: "office", gym: "public", park: "public", brickworks: "plant", recycling_center: "plant", waste_storage: "store", ventilation_hub: "plant",
 };
 for (const room of Object.keys(rooms)) {
   const kind = FILL_KIND[room];

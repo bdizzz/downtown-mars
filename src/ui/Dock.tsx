@@ -76,7 +76,7 @@ export function Dock({ mode, setMode, walking, highlight, jobs, children }: Dock
   );
 }
 
-const OVERLAYS: Record<string, string> = { noise: "Noise", smell: "Smell", health: "Health", comfort: "Comfort", happiness: "Happiness", condition: "Condition" };
+const OVERLAYS: Record<string, string> = { noise: "Noise", smell: "Smell", health: "Health", comfort: "Comfort", airQuality: "Air", happiness: "Happiness", condition: "Condition" };
 
 interface ViewProps {
   view: ViewMode;

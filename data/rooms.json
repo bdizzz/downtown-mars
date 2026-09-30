@@ -510,6 +510,36 @@
       "buildHours": 30
     },
     {
+      "id": "ventilation_hub",
+      "name": "Ventilation hub",
+      "short": "Vent",
+      "category": "air",
+      "size": "S",
+      "staff": 1,
+      "uses": {
+        "power": 2
+      },
+      "makes": {},
+      "effects": [
+        {
+          "type": "airQuality",
+          "strength": 2,
+          "radius": 2
+        },
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "metal": 8,
+        "machinery": 1
+      },
+      "buildable": true,
+      "buildHours": 8
+    },
+    {
       "id": "clinic",
       "name": "Clinic",
       "short": "Clinic",
@@ -957,6 +987,11 @@
           "type": "noise",
           "strength": -2,
           "radius": 2
+        },
+        {
+          "type": "airQuality",
+          "strength": -1,
+          "radius": 1
         }
       ],
       "cost": {
@@ -986,6 +1021,11 @@
       "effects": [
         {
           "type": "noise",
+          "strength": -1,
+          "radius": 1
+        },
+        {
+          "type": "airQuality",
           "strength": -1,
           "radius": 1
         }
@@ -1149,6 +1189,11 @@
         {
           "type": "comfort",
           "strength": 2,
+          "radius": 2
+        },
+        {
+          "type": "airQuality",
+          "strength": 1,
           "radius": 2
         }
       ],

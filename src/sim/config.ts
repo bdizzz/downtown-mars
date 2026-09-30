@@ -121,6 +121,8 @@ export interface SimConfig {
     noCareHealth: number;
     /** Comfort lost by everyone when nobody has a seat at a galley or canteen (in proportion). */
     unservedComfort: number;
+    /** Health from the air at home, per point of air quality. */
+    airHealth: number;
     /** The thrill of arrival: happiness points added at a hole's founding, easing away to nothing over so many days. */
     afterglow: { points: number; days: number };
     /** Roughly how long happiness takes to settle on its target. */
@@ -131,6 +133,8 @@ export interface SimConfig {
     productivityFullAt: number;
   };
   messages: { keep: number };
+  /** Neighbor effects: air quality every cell starts with, by ring (ring 1 first; the last carries on outward). */
+  effects: { airQualityByRing: number[] };
   /** Charts: a sample every so many ticks (an hour), kept hour by hour for recentDays, and as daily averages for up to maxDays. */
   history: { everyTicks: number; recentDays: number; maxDays: number };
   unlocks: {

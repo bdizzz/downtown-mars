@@ -2,13 +2,19 @@ import { overlappingSlots, ringSize, wrapSlot } from "./geometry";
 import type { Cell, Layout, RoomInstance } from "./placement";
 import { roomDef, type EffectType } from "./rooms";
 import { corridorBetween, corridors as corridorCfg } from "./corridors";
+import { config } from "./config";
 
 // Neighbor effects: every built room radiates its effects outward from its own
 // cells, step by step along the ring, across rings (by angle) and between
 // floors, fading linearly to nothing just past its radius. Sources add up.
 // Corridors soak up noise and smell: they don't cross a border that's all corridor.
+// Air quality also has a baseline by ring: the further from the shaft, the staler.
 
-export const FIELD_TYPES: EffectType[] = ["noise", "smell", "health", "comfort"];
+export const FIELD_TYPES: EffectType[] = ["noise", "smell", "health", "comfort", "airQuality"];
+
+/** How each effect reads in text ("air −1.2"). */
+export const EFFECT_NAMES: Record<string, string> = { noise: "noise", smell: "smell", health: "health", comfort: "comfort", airQuality: "air" };
+export const effectName = (t: string) => EFFECT_NAMES[t] ?? t;
 
 /** field[type][floor - 1][ring - 1][slot] */
 export type EffectField = Record<string, number[][][]>;
@@ -99,6 +105,9 @@ export function previewEffects(layout: Layout, type: string, cells: Cell[]): Eff
 
 export function computeEffects(layout: Layout): EffectField {
   const field = emptyField(layout);
+  // Air goes stale away from the shaft: each ring out starts a little worse, before any room's effect.
+  const byRing = config.effects.airQualityByRing;
+  field.airQuality!.forEach((floor) => floor.forEach((ring, r) => ring.fill(byRing[r] ?? byRing.at(-1) ?? 0)));
   for (const room of layout.rooms) {
     if (room.planned || room.building || room.at.kind !== "ring") continue;
     radiate(layout, field, room);

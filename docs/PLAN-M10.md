@@ -696,3 +696,10 @@ Decided Sep 28, 2026 (Bryon):
 - **Top bar:** each item has a tooltip (title, what it means, a two-day sparkline and the change; two lines for colonists/beds, workers/adults and power made/used) in place of the old `title` text, and clicking opens Trends on it. Happiness shows ✦ and the afterglow points while it lasts.
 - **Charts → Trends** (`TrendsPanel`, `TrendChart`, `trends.ts`): range 2 days, 10 days or All (daily averages, ending with the latest sample; hourly until there are three days). Amount or change per day (hourly changes smoothed over 6 hours). Axes with tidy steps, day marks, reference lines near the data (happiness 50 "full work, births" and 45 "people leave below", health 70, condition 50 and 30, CO2 100; "steady" at 0 for change), a readout under the pointer, and low/high/change for the range. Below, every series as a row with a sparkline, value and change; empty resources hidden until the hole has had some.
 - **`dm.skip(days)`:** a worker message that runs the world ahead up to 365 days at once, for testing.
+
+**Air quality (Bryon, Sep 30):**
+- `airQuality` joins `FIELD_TYPES` (noise, smell, health, comfort, air). `computeEffects` starts every cell at `config.effects.airQualityByRing` for its ring, then rooms radiate as usual; corridors don't block it (only noise and smell). `EFFECT_NAMES`/`effectName` give "air" in the hover line and the room card.
+- Felt at home: `homeFactors` adds the room's air quality × `happiness.airHealth` (1) to health.
+- Sources: ventilation hub (new, air, S, 1 staff, power 2, air +2 r2, noise −1 r1, metal 8 and machinery 1, from the start), park +1 r2, smelter −1 r2 (it had this in the data all along, unused until now), brickworks −1 r1, concrete plant −1 r1.
+- Air overlay in View; hub furniture (fan, ducts, filters) and a fan glyph in 2D.
+- Bots: a stale home (air below −0.4) gets a ventilation hub nearest it by angle, on ring 1 of its floor or the floors around, else on ring 2 with a corridor carved to it.

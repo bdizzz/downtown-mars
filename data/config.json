@@ -94,6 +94,7 @@
     "homelessComfort": -3,
     "noCareHealth": -1,
     "unservedComfort": 1,
+    "airHealth": 1,
     "afterglow": { "points": 20, "days": 20 },
     "easeDays": 1,
     "updateEveryTicks": 10,
@@ -101,6 +102,7 @@
     "productivityFullAt": 50
   },
   "messages": { "keep": 20 },
+  "effects": { "airQualityByRing": [0, 0, -1, -1.5, -2, -2.5] },
   "history": { "everyTicks": 10, "recentDays": 10, "maxDays": 2000 },
   "unlocks": { "cargoPopulation": 100, "homes": { "basic": 50, "standard": 200, "luxury": 1000 }, "cleaningPopulation": 150, "rooms": { "brickworks": 50, "leisure": 50, "recycling": 100, "hospital": 300 } },
   "landingKit": {

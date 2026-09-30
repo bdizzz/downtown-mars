@@ -3458,6 +3458,7 @@
     "park": ["lawn", "flower_bed", "shrub", "planter_tree", "bench", "lamp_post", "fountain", "trash_bin", "wall_planter", "wall_lamp", "banner", "earth_photo", "intercom", "fire_extinguisher", "first_aid_kit", "air_vent"],
     "brickworks": ["kiln", "brick_press", "brick_pallet", "hopper", "conveyor", "pallet_jack", "console", "safety_sign", "gauge_panel", "chart_board", "pipe_manifold", "cable_tray", "work_light", "fire_extinguisher", "first_aid_kit", "air_vent"],
     "recycling_center": ["sorting_bins", "baler", "scrap_pile", "conveyor", "pallet_jack", "console", "barrel_group", "safety_sign", "chart_board", "readout_panel", "pipe_manifold", "cable_tray", "work_light", "fire_extinguisher", "first_aid_kit", "air_vent"],
-    "waste_storage": ["dumpster", "barrel_group", "trash_bin", "safety_sign", "cable_tray", "work_light", "fire_extinguisher", "first_aid_kit", "air_vent"]
+    "waste_storage": ["dumpster", "barrel_group", "trash_bin", "safety_sign", "cable_tray", "work_light", "fire_extinguisher", "first_aid_kit", "air_vent"],
+    "ventilation_hub": ["big_fan", "duct_riser", "filter_column", "console", "pipe_run", "gauge_panel", "readout_panel", "safety_sign", "pipe_manifold", "cable_tray", "work_light", "fire_extinguisher", "first_aid_kit", "air_vent"]
   }
 }

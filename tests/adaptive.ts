@@ -11,7 +11,8 @@ import { allocated, spaceOf, STORABLE, storageCaps } from "../src/sim/storage";
 import { countStage, cryptSpace } from "../src/sim/people";
 import type { SimState } from "../src/sim/state";
 import { floorLinked } from "../src/sim/corridors";
-import { footprint } from "../src/sim/placement";
+import { footprint, type RoomInstance } from "../src/sim/placement";
+import { effectOnRoom } from "../src/sim/effects";
 
 // A scripted player that reacts: once a day it looks at what its hole is
 // short of and builds the room that fixes it, in the first free spot on the
@@ -128,9 +129,47 @@ export function wants(hole: SimState): { room: string; crop?: string }[] {
   if (careCoverage(hole) < 1) out.push({ room: "clinic" });
   if (schoolCoverage(hole).missing > 0) out.push({ room: "school" });
   if (elderCoverage(hole).missing > 0) out.push({ room: "elder_care" });
+  if (staleHome(hole)) out.push({ room: "ventilation_hub" });
   // More homes only while the hole is doing well, leaving room for births.
   if (beds(hole) - pop < 6 && hole.population.health >= 70 && hole.happiness.average >= 50) out.push({ room: "bunk_dorm" });
   return out;
+}
+
+/** The home with the stalest air, if any is bad enough to fix. */
+function staleHome(hole: SimState): RoomInstance | undefined {
+  const homes = hole.layout.rooms.filter((r) => r.at.kind === "ring" && !r.building && (roomDef(r.type).houses ?? 0) > 0);
+  const air = (r: RoomInstance) => effectOnRoom(hole.effects.field, "airQuality", r);
+  return homes.filter((r) => air(r) < -0.4).sort((a, b) => air(a) - air(b))[0];
+}
+
+/**
+ * A ventilation hub as close to the stale home as it'll go: ring 1 of its floor, then of the floors
+ * around it, then ring 2 behind it (with a corridor carved to it). Nearest by angle first.
+ */
+function ventilate(hole: SimState): boolean {
+  const home = staleHome(hole);
+  if (!home || home.at.kind !== "ring") return false;
+  const angle = (home.at.slot + 0.5) / hole.layout.hole.ringSlots[home.at.ring - 1]!;
+  const byAngle = (ring: number) => {
+    const n = hole.layout.hole.ringSlots[ring - 1]!;
+    const gap = (s: number) => Math.min(Math.abs((s + 0.5) / n - angle), 1 - Math.abs((s + 0.5) / n - angle));
+    return [...Array(n).keys()].sort((a, b) => gap(a) - gap(b));
+  };
+  const floors = [home.at.floor, home.at.floor - 1, home.at.floor + 1].filter((f) => f >= 1 && floorLinked(hole.layout, f));
+  for (const ring of [1, 2]) {
+    for (const floor of floors) {
+      for (const slot of byAngle(ring)) {
+        if (ring === 1 && slot === stairSlot(hole)) continue;
+        const r = applyCommand(hole, { type: "build", room: "ventilation_hub", at: { kind: "ring", floor, ring, slot, w: 1, d: 1 } });
+        if (r.ok) {
+          if (ring > 1) applyCommand(hole, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
+          return true;
+        }
+        if (/^(Needs|Not enough)/.test(r.reason)) return false;
+      }
+    }
+  }
+  return false;
 }
 
 /** Rooms a player would stand down first to free hands for air, food and water. */
@@ -165,7 +204,7 @@ export function adapt(hole: SimState, saving: string[] = []): string | null {
   for (const w of list) {
     if (roomDef(w.room).staff > freeHands) continue; // it would stand empty
     if (w.room !== "life_support" && Object.keys(roomDef(w.room).cost).some((id) => saving.includes(id))) continue;
-    if (placeAnywhere(hole, w.room, w.crop)) return w.room;
+    if (w.room === "ventilation_hub" ? ventilate(hole) : placeAnywhere(hole, w.room, w.crop)) return w.room;
   }
   return null;
 }

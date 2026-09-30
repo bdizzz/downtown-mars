@@ -77,7 +77,8 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   return {
     noise: clamp(effectOnRoom(field, "noise", room) * mod.noiseFactor, -lim, lim),
     comfort: clamp(own + view + sharedComfort + homeWearComfort(room) + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
-    health: clamp(effectOnRoom(field, "health", room) + shared, -lim, lim),
+    // Stale air (outer rings, industry) wears on health; ventilation and green space freshen it.
+    health: clamp(effectOnRoom(field, "health", room) + effectOnRoom(field, "airQuality", room) * h.airHealth + shared, -lim, lim),
   };
 }
 

@@ -38,7 +38,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **CO2 used by:** farms, life support scrubbers, chemical plant.
 - **Air quality:** ventilation hubs raise it; smelters, brickworks, concrete and chemical plants lower it.
 
-**As built:** life support (30 O2 a day) and farms (2 O2, using CO2). Life support scrubs CO2 above a small reserve that farms draw on. No air-quality effect, algae or chemical plant yet.
+**As built:** life support (30 O2 a day) and farms (2 O2, using CO2). Life support scrubs CO2 above a small reserve that farms draw on. Air quality is a neighbor effect: a baseline by ring (0, 0, −1, then −1.5, −2, −2.5), ventilation hubs +2 r2, parks +1 r2, smelters −1 r2, brickworks and concrete plants −1 r1; at home it adds to health. No algae or chemical plant yet.
 
 ## Food
 
