@@ -84,6 +84,8 @@ export interface RoomDef {
   excavationOnly?: boolean;
   /** Walk-through: every side counts as a corridor, so neighbours open onto it. */
   public?: boolean;
+  /** Moves people between floors in a car: people ride it, air doesn't (elevators). */
+  lift?: boolean;
   /** A working one lets colonists have children. */
   enablesBirths?: boolean;
   /** Rovers this room provides for trade routes. */

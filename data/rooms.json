@@ -1268,7 +1268,8 @@
         "machinery": 2
       },
       "buildable": true,
-      "buildHours": 10
+      "buildHours": 10,
+      "lift": true
     },
     {
       "id": "cargo_elevator",
@@ -1298,7 +1299,8 @@
         "electronics": 4
       },
       "buildable": true,
-      "buildHours": 40
+      "buildHours": 40,
+      "lift": true
     },
     {
       "id": "site_office",

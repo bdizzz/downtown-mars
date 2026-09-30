@@ -87,3 +87,9 @@ A late, costly project that seals the top of the shaft. It needs glass (bringing
 - **Changed from the plan:** half the bonus behind a tube (0.5 of 1) cost every ring-1 home in the bot runs 4 happiness (floor 1's gallery comes built), and births stalled below 50. So a tube keeps the old bonus (1) and a room's own windows are the upgrade (**1.5**): skipping the tube still pays, and nothing already built gets worse. Both numbers are in `data/config.json`.
 - The room card of a home says what ring 1 gives; a built home's card says its view ("through its own windows", "through a gallery tube", or "partly").
 
+**Step 4, the network graph** (`sim/paths.ts`):
+- **Nodes:** built corridor segments (tubes too), walk-through rooms per floor (plazas, parks, stairs, elevators, the entrance), dug-out empty cells, and private rooms per floor. **Links:** walkable pieces sharing a corner; a private room to the walkable pieces along its sides (its doors), and never walked through; a room's own floors (stairs, elevators) one floor apart.
+- **Distances in metres**, reported in steps of 10 m (`STEP_M`, a room across). Moving between nodes costs half of each one's length (a segment's own length, a room's 10 m × √cells, 10 m a floor inside stairs), so a route counts half its two ends and all it passes through. Metres rather than counted pieces, because the corridor model cuts arcs at every slot boundary of both rings: counting pieces would make "steps" uneven.
+- **Air vs walking:** elevators (`lift` in rooms.json: the elevator and the cargo elevator) carry people between floors but not air.
+- `pathsFor(layout)` caches the graph until `layout.version` changes; `distancesFrom(paths, roomId, mode, maxM)` is a Dijkstra to every room within reach; `stepsBetween` for one pair.
+
