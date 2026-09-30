@@ -101,6 +101,7 @@
     "productivityFullAt": 50
   },
   "messages": { "keep": 20 },
+  "history": { "everyTicks": 10, "recentDays": 10, "maxDays": 2000 },
   "unlocks": { "cargoPopulation": 100, "homes": { "basic": 50, "standard": 200, "luxury": 1000 }, "cleaningPopulation": 150, "rooms": { "brickworks": 50, "leisure": 50, "recycling": 100, "hospital": 300 } },
   "landingKit": {
     "surface": [

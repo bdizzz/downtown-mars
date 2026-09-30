@@ -13,6 +13,8 @@ import { stepBirths } from "./births";
 import { stepConstruction } from "./construction";
 import type { SimState } from "./state";
 
+import { stepHistory } from "./history";
+
 // Advance the simulation by one fixed tick. Mutates state in place.
 export function step(state: SimState, cfg: SimConfig): void {
   state.tick += 1;
@@ -33,4 +35,5 @@ export function step(state: SimState, cfg: SimConfig): void {
   stepHappiness(state, cfg);
   stepVisits(state, cfg);
   stepLedger(state, cfg);
+  stepHistory(state, cfg);
 }

@@ -24,6 +24,7 @@ let speed = 1;
 let tickDebt = 0; // fractional ticks owed to real time
 let last = performance.now();
 let sentLayout = "";
+let sentHistory = "";
 
 function reply(msg: FromWorker): void {
   self.postMessage(msg);
@@ -90,10 +91,13 @@ function knownDeposits() {
 
 function post(): void {
   const hole = active();
-  const { layout, effects, ...rest } = makeSnapshot(hole, config);
+  const { layout, effects, history, ...rest } = makeSnapshot(hole, config);
   const key = `${gameId}:${hole.holeId}:${layout.version}`;
   const fresh = key !== sentLayout;
   sentLayout = key;
+  const historyKey = `${gameId}:${hole.holeId}:${history?.version ?? -1}`;
+  const freshHistory = historyKey !== sentHistory;
+  sentHistory = historyKey;
   const snapshot: WireSnapshot = {
     ...rest,
     gameId,
@@ -121,6 +125,7 @@ function post(): void {
     messages: networkMessages(world, config.messages.keep),
     layoutVersion: layout.version,
     ...(fresh ? { layout, effects } : {}),
+    ...(freshHistory ? { history } : {}),
   };
   reply({ type: "snapshot", snapshot, speed });
 }
@@ -152,6 +157,12 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     case "setSpeed":
       if (config.speeds.includes(msg.speed)) speed = msg.speed;
       break;
+    case "advance": {
+      const ticks = Math.max(0, Math.min(365, msg.days)) * config.ticksPerDay;
+      for (let i = 0; i < ticks; i++) stepWorld(world, config);
+      reply({ type: "commandResult", id: msg.id, result: { ok: true } });
+      break;
+    }
     case "setActiveHole":
       if (holeById(world, msg.holeId)) activeHoleId = msg.holeId;
       break;

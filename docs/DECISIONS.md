@@ -110,6 +110,7 @@ Each milestone plan has the details, under "Notes as built".
 - **Dust storms** are forecast, then halve solar output for a day or two.
 - **Staffing cuts (Bryon, Sep 30):** farm 5, life support 3, landing pad 1, rover depot 3; solar arrays, restrooms and small plazas need no staff.
 - **Afterglow (Bryon, Sep 30):** a new hole's happiness starts +20 and eases to nothing over 20 days (slowly, then faster, then slowly), so the player can set up critical systems and stock up before unhappiness bites. Counted from each hole's founding (`happiness.afterglow`).
+- **History and charts (Sep 30):** hourly samples for 10 days and daily averages for the whole game; sparkline tooltips on the top bar and Charts → Trends.
 - **Idle crews stand by:** maintenance and cleaning rooms with nothing to repair use only power.
 - **Rooms can be renamed**; farms are named after their crop.
 - **More rooms (Sep 30):** kitchen and canteen, gym, park, hospital, brickworks, recycling center, waste storage. **Seating:** galleys seat 25 and canteens 60; kitchens cook but seat no one; diners without a seat cost comfort. Unlocks moved earlier than the catalog so players have more ways to lift happiness: gym and park at 50 colonists (catalog 100), recycling center at 100 (300), hospital at 300 (1,000); brickworks stays at 50 (`config.unlocks.rooms`).

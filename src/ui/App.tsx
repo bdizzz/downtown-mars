@@ -20,6 +20,7 @@ import { Messages } from "./Messages";
 import { Office } from "./Office";
 import { ViewHost } from "./ViewHost";
 import { ResourceBar } from "./ResourceBar";
+import { TrendsPanel } from "./TrendsPanel";
 import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
 import { StatusBar } from "./StatusBar";
 import { currentGoal, Tutorial } from "./Tutorial";
@@ -37,7 +38,7 @@ import { useSounds } from "./useSounds";
 const NOTICE_MS = 3000;
 
 export function App() {
-  const { snapshot, speed, setSpeed, setActiveHole, send, found, route, save, load, newGame } = useSim();
+  const { snapshot, speed, setSpeed, setActiveHole, send, found, route, save, load, newGame, advance } = useSim();
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [tool, setTool] = useState<Tool>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -73,9 +74,11 @@ export function App() {
    */
   const lookFloor = previewFloor !== undefined && !walking ? previewFloor : viewFloor;
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
-  const [panel, setPanel] = useState<"office" | "flows" | "network" | "people" | "construction" | "maintenance" | null>(null);
+  const [panel, setPanel] = useState<"office" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | null>(null);
   const officeOpen = panel === "office";
-  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction" | "maintenance") => {
+  /** The series Trends opens on (a resource clicked in the bar at the top). */
+  const [trendKey, setTrendKey] = useState("happiness");
+  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends") => {
     setPanel((cur) => (cur === p ? null : p));
     setSelected(null);
   };
@@ -115,7 +118,7 @@ export function App() {
   // Testing helpers in the browser console (dm.help()).
   const latestSnapshot = useRef(snapshot);
   latestSnapshot.current = snapshot;
-  useEffect(() => installConsole({ send, snapshot: () => latestSnapshot.current }), [send]);
+  useEffect(() => installConsole({ send, advance, snapshot: () => latestSnapshot.current }), [send, advance]);
 
   useSounds(snapshot);
   useEffect(() => setAudioSettings(settings), [settings]);
@@ -395,7 +398,15 @@ export function App() {
         openMenu={openMenu}
         keysEnabled={!menu}
       />
-      <ResourceBar s={snapshot} />
+      <ResourceBar
+        s={snapshot}
+        onTrend={(key) => {
+          setTrendKey(key);
+          setMode("charts");
+          setPanel("trends");
+          setSelected(null);
+        }}
+      />
       <div className="main">
         <div className="view">
           {snapshot && (
@@ -518,6 +529,7 @@ export function App() {
         {snapshot && officeOpen && <Office s={snapshot} onCommand={onCommand} onClose={() => setPanel(null)} />}
         {snapshot && panel === "flows" && <FlowPanel s={snapshot} onClose={() => setPanel(null)} />}
         {snapshot && panel === "people" && <PeoplePanel s={snapshot} onClose={() => setPanel(null)} />}
+        {snapshot && panel === "trends" && <TrendsPanel key={trendKey} s={snapshot} initial={trendKey} onClose={() => setPanel(null)} />}
         {snapshot && panel === "maintenance" && (
           <MaintenancePanel s={snapshot} onSelect={(id) => (setSelected(id), setPanel(null))} onClose={() => setPanel(null)} />
         )}

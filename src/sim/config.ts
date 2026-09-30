@@ -131,6 +131,8 @@ export interface SimConfig {
     productivityFullAt: number;
   };
   messages: { keep: number };
+  /** Charts: a sample every so many ticks (an hour), kept hour by hour for recentDays, and as daily averages for up to maxDays. */
+  history: { everyTicks: number; recentDays: number; maxDays: number };
   unlocks: {
     /** Colonists in a hole before it can build a cargo elevator. */
     cargoPopulation: number;

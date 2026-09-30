@@ -4,6 +4,8 @@ import type { Snapshot } from "../sim/snapshot";
 
 export type ToWorker =
   | { type: "setSpeed"; speed: number }
+  /** Testing: run the world ahead so many days at once (the console's dm.skip). */
+  | { type: "advance"; id: number; days: number }
   | { type: "command"; id: number; command: SimCommand }
   | { type: "save"; id: number }
   | { type: "load"; id: number; data: string }
@@ -19,12 +21,14 @@ export type RouteAction =
 /**
  * The layout and effect field change rarely, so the worker only sends them
  * when layout.version moves (or a new game starts); the main thread keeps
- * the last ones it got.
+ * the last ones it got. History is the same: it comes with each new sample.
  */
-export type WireSnapshot = Omit<Snapshot, "layout" | "effects"> & {
+export type WireSnapshot = Omit<Snapshot, "layout" | "effects" | "history"> & {
   layoutVersion: number;
   layout?: Snapshot["layout"];
   effects?: Snapshot["effects"];
+  /** Only when there's a new sample (or another hole or game): the main thread keeps the last. */
+  history?: Snapshot["history"];
 };
 
 export type FromWorker =

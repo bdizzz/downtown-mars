@@ -9,6 +9,7 @@ import { createOffice, type Office } from "./visits";
 import type { Message } from "./messages";
 import type { WeatherState } from "./weather";
 import type { MaintenanceState } from "./condition";
+import type { History } from "./history";
 import type { Population, RoomStatus } from "./economy";
 import { createHole } from "./geometry";
 import { createLayout, placeRoom, type Layout } from "./placement";
@@ -73,6 +74,8 @@ export interface SimState {
   /** The hole that founded this one, if any. */
   parentHoleId: number | null;
   foundedTick: number;
+  /** Resources and vital signs over time, for the charts (absent in older saves until the first sample). */
+  history?: History;
 }
 
 export interface HoleIdentity {

@@ -4,11 +4,12 @@ import { gameTime, type GameTime } from "./clock";
 import type { SimConfig } from "./config";
 import { canDig, diggingFloor, ticksToDig } from "./digging";
 import { beds, padReady } from "./earth";
-import { capacities, roomSpec, type Population, type RoomStatus } from "./economy";
+import { capacities, powerFlow, type Population, type RoomStatus } from "./economy";
 import type { EffectField } from "./effects";
 import type { Deposit, DepositKind } from "./mapgeo";
 import { hasStagingBay, kitProgress } from "./founding";
 import { afterglow, afterglowDaysLeft, type Happiness } from "./happiness";
+import type { History } from "./history";
 import { cryptSpace, holeGates, stageCounts, type Stage } from "./people";
 import { ordinanceDef } from "./ordinances";
 import { elderCoverage, schoolCoverage, type Coverage } from "./care";
@@ -157,6 +158,8 @@ export interface Snapshot {
   happiness: Happiness;
   /** The thrill of arrival: happiness points it's adding now, and days until it's gone. */
   afterglow: { points: number; daysLeft: number };
+  /** Resources and vital signs over time (the worker sends it only when it has a new sample). */
+  history: History | null;
   notables: Notable[];
   office: Office;
   ordinances: string[];
@@ -227,23 +230,11 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     messages: state.messages,
     happiness: state.happiness,
     afterglow: { points: afterglow(state, cfg), daysLeft: afterglowDaysLeft(state, cfg) },
+    history: state.history ?? null,
     notables: state.notables,
     office: state.office,
     ordinances: state.ordinances,
     ordinanceSlots: ordinanceSlots(state),
     flows: averageFlows(state, cfg),
   };
-}
-
-function powerFlow(state: SimState, cfg: SimConfig): { made: number; used: number } {
-  let made = 0;
-  let used = 0;
-  for (const room of state.layout.rooms) {
-    const st = state.roomStatus[room.id];
-    if (!st) continue;
-    const spec = roomSpec(room, cfg);
-    made += (spec.makes.power ?? 0) * st.rate;
-    used += (spec.uses.power ?? 0) * st.rate;
-  }
-  return { made, used };
 }

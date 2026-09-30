@@ -480,3 +480,48 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .inspector .rename-btn { background: none; border: none; color: var(--text); opacity: 0.55; cursor: pointer; font-size: 0.8em; margin-left: 0.3em; padding: 0 2px; }
 .inspector .rename-btn:hover { opacity: 1; }
 .inspector input.rename { font: inherit; font-size: 16px; font-weight: 600; background: #0006; color: var(--text); border: 1px solid #e0a03a; border-radius: 4px; padding: 2px 6px; width: 70%; }
+
+/* Resource bar tooltips (sparklines) and Charts → Trends */
+.res.has-tip { cursor: pointer; border-radius: 3px; padding: 0 2px; margin: 0 -2px; }
+.res.has-tip:hover, .res.has-tip:focus-visible { background: #ffffff10; outline: none; }
+.res .rate.glow { color: #f0c060; }
+.res-tip {
+  position: fixed; z-index: 50; width: 220px; pointer-events: none;
+  display: flex; flex-direction: column; gap: 3px;
+  background: #2a1814f2; border: 1px solid #000; border-radius: 6px; padding: 8px 10px;
+  box-shadow: 0 6px 18px #0008; font-size: 12px; color: var(--text);
+}
+.res-tip strong { font-size: 13px; }
+.res-tip .tip-note { color: var(--muted); }
+.res-tip .spark { margin-top: 4px; }
+.res-tip .tip-foot { color: var(--muted); font-size: 11px; }
+.res-tip .tip-legend { display: flex; gap: 10px; font-size: 11px; }
+.res-tip .tip-legend i { font-style: normal; }
+.trends { width: 320px; }
+.trends > * { flex-shrink: 0; }
+.trends h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 10px 0 2px; }
+.trends h3.trend-title { color: var(--text); text-transform: none; letter-spacing: 0; font-size: 14px; margin: 6px 0 0; }
+.seg { display: flex; gap: 0; border: 1px solid var(--muted); border-radius: 5px; overflow: hidden; align-self: flex-start; }
+.seg button { background: transparent; color: var(--text); border: none; font: inherit; font-size: 12px; padding: 3px 10px; cursor: pointer; }
+.seg button + button { border-left: 1px solid #a88d7c55; }
+.seg button.on { background: var(--accent); color: #1a0f0d; }
+.seg.small button { font-size: 11px; padding: 2px 8px; }
+.trend-svg { width: 100%; height: auto; display: block; touch-action: none; }
+.trend-svg .grid { stroke: #ffffff14; stroke-width: 1; }
+.trend-svg .axis { fill: var(--muted); font-size: 9px; font-family: inherit; }
+.trend-svg .ref { stroke: #f0c06066; stroke-width: 1; stroke-dasharray: 3 3; }
+.trend-svg .ref-label { fill: #f0c060aa; font-size: 8.5px; font-family: inherit; }
+.trend-svg .cursor { stroke: #ffffff55; stroke-width: 1; }
+.trend-readout { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; font-variant-numeric: tabular-nums; min-height: 16px; }
+.trend-sum { font-size: 12px; font-variant-numeric: tabular-nums; }
+.trend-group { display: flex; flex-direction: column; }
+.trend-row {
+  display: grid; grid-template-columns: 1fr 96px 46px 44px; align-items: center; gap: 6px;
+  background: transparent; color: var(--text); border: 1px solid transparent; border-radius: 4px;
+  font: inherit; font-size: 12px; padding: 2px 4px; cursor: pointer; text-align: left; font-variant-numeric: tabular-nums;
+}
+.trend-row:hover { background: #ffffff0c; }
+.trend-row.on { border-color: var(--accent); background: #e07a3f18; }
+.trend-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trend-row .val { text-align: right; }
+.trend-row .delta { text-align: right; color: var(--muted); font-size: 11px; }

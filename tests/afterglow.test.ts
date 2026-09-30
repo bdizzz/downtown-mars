@@ -65,7 +65,9 @@ describe("maintenance on standby", () => {
     s.drill.active = false;
     Object.assign(s.resources, { rock: 2000, metal: 2000, brick: 2000, machinery: 50 });
     setAdults(s, 20, config);
-    const m = applyCommand(s, { type: "build", room: "maintenance", at: ring(1, 1, 5, 2) }).roomId!;
+    const built = applyCommand(s, { type: "build", room: "maintenance", at: ring(1, 1, 5, 2) });
+    if (!built.ok) throw new Error(built.reason);
+    const m = built.roomId!;
     step(s, config);
     const before = s.resources.machinery!;
     for (let i = 0; i < tpd / 2; i++) step(s, config);

@@ -12,6 +12,7 @@ export function useSim() {
   const nextId = useRef(1);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const lastLayout = useRef<Pick<Snapshot, "layout" | "effects"> | null>(null);
+  const lastHistory = useRef<Snapshot["history"]>(null);
   const [speed, setSpeedState] = useState(1);
 
   useEffect(() => {
@@ -19,15 +20,16 @@ export function useSim() {
     worker.onmessage = (e: MessageEvent<FromWorker>) => {
       const msg = e.data;
       if (msg.type === "snapshot") {
-        const { layout, effects, layoutVersion: _, ...rest } = msg.snapshot;
+        const { layout, effects, history, layoutVersion: _, ...rest } = msg.snapshot;
         if (layout && effects) lastLayout.current = { layout, effects };
+        if (history !== undefined) lastHistory.current = history;
         if (!lastLayout.current) return;
         // Conditions change every tick, but the layout only comes when it changes: put them back on its rooms.
         for (const r of lastLayout.current.layout.rooms) {
           const c = rest.conditions[r.id];
           if (c !== undefined) r.condition = c;
         }
-        setSnapshot({ ...rest, ...lastLayout.current });
+        setSnapshot({ ...rest, ...lastLayout.current, history: lastHistory.current });
         setSpeedState(msg.speed);
       } else {
         pending.current.get(msg.id)?.(msg);
@@ -86,11 +88,18 @@ export function useSim() {
     [ask],
   );
 
+  /** Testing: run the world ahead so many days at once. */
+  const advance = useCallback(
+    async (days: number): Promise<CommandResult> =>
+      (await ask<Extract<Reply, { type: "commandResult" }>>((id) => ({ type: "advance", id, days }))).result,
+    [ask],
+  );
+
   const route = useCallback(
     async (action: RouteAction): Promise<CommandResult> =>
       (await ask<Extract<Reply, { type: "commandResult" }>>((id) => ({ type: "route", id, action }))).result,
     [ask],
   );
 
-  return { snapshot, speed, setSpeed, setActiveHole, send, found, route, save, load, newGame };
+  return { snapshot, speed, setSpeed, setActiveHole, send, found, route, save, load, newGame, advance };
 }

@@ -12,7 +12,7 @@ import { hoursText } from "./format";
 // mode is the only one that places rooms and corridors.
 
 export type Mode = "build" | "view" | "map" | "charts";
-export type Chart = "people" | "flows" | "network" | "construction" | "maintenance";
+export type Chart = "people" | "flows" | "network" | "construction" | "maintenance" | "trends";
 
 /** Each mode's key, anywhere in the game (as KeyboardEvent codes). */
 export const MODE_KEYS: Record<Mode, string> = { build: "KeyB", view: "KeyV", map: "KeyM", charts: "KeyC" };
@@ -21,7 +21,7 @@ const MODES: { id: Mode; name: string; icon: string; hint: string }[] = [
   { id: "build", name: "Build", icon: "⚒", hint: "Rooms, corridors and demolition (B). The rooms' keys work in here" },
   { id: "view", name: "View", icon: "◉", hint: "Cameras, the plan and unrolled views, X-ray, walls down and overlays (V)" },
   { id: "map", name: "Map", icon: "◍", hint: "The planet: terrain, deposits and your holes (M)" },
-  { id: "charts", name: "Charts", icon: "▤", hint: "People, flows, your network, and the construction and maintenance queues (C)" },
+  { id: "charts", name: "Charts", icon: "▤", hint: "People, trends, flows, your network, and the construction and maintenance queues (C)" },
 ];
 
 /** Where a tutorial highlight lives: which mode holds it. */
@@ -209,6 +209,7 @@ export function ChartsStrip({ s, chart, toggle, highlight }: ChartsProps) {
   return (
     <div className="dock-strip" role="toolbar" aria-label="Charts">
       {btn("people", "People", "Children, adults and elders; births and what's coming")}
+      {btn("trends", "Trends", "How resources, happiness and everything else have been changing over time")}
       {btn("flows", "Flows", "Where resources come from and go", false, highlight === "hud:flows")}
       {btn("network", "Network", oneHole ? "Your holes, rovers and trade routes: found a second hole first (Map)" : "Your holes, rovers and trade routes", oneHole)}
       {btn(

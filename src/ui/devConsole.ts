@@ -9,6 +9,7 @@ import { resourceDefs } from "../sim/resources";
 
 interface Api {
   send: (command: SimCommand) => Promise<CommandResult>;
+  advance: (days: number) => Promise<CommandResult>;
   snapshot: () => Snapshot | null;
 }
 
@@ -23,6 +24,7 @@ const HELP = `Downtown Mars console (the hole you're looking at):
   dm.unlock()               unlock every room that waits on a milestone (or dm.unlock("cargo"))
   dm.unlock("ore")          put a deposit under the hole: ice, aquifer, ore or silica
   dm.finish()               finish everything in the construction queue at once
+  dm.skip(3)                run every hole ahead 3 days at once (up to 365)
   dm.wear(0.4)              every room's condition to 40% (dm.wear(0.2, roomId) for one room)
   dm.storm(1)               a dust storm now, for a day (dm.storm(2, 3): in 3 days, for 2; dm.storm(0) clears it)
   dm.command({ ... })       send any simulation command, as the game would (see SimCommand in src/sim/commands.ts)`;
@@ -77,6 +79,12 @@ export function installConsole(api: Api): () => void {
     },
     storm(days = 1, inDays = 0) {
       return run({ type: "consoleStorm", days, inDays }, days > 0 ? `Dust storm ${inDays ? `in ${inDays} days` : "now"}, for ${days} day${days === 1 ? "" : "s"}` : "Clear skies");
+    },
+    async skip(days = 1) {
+      const r = await api.advance(days);
+      const msg = r.ok ? `Skipped ${days} day${days === 1 ? "" : "s"}` : `Couldn't: ${r.reason}`;
+      console.log(msg);
+      return msg;
     },
     finish() {
       return run({ type: "consoleFinish" }, "Everything in the queue is built");

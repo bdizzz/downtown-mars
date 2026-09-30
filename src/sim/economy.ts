@@ -378,3 +378,17 @@ export function updateRates(state: SimState, before: Record<string, number>, cfg
     state.rates[id] = (state.rates[id] ?? perDay) * (1 - alpha) + perDay * alpha;
   }
 }
+
+/** Power made and used a day, by the rooms running this tick. */
+export function powerFlow(state: SimState, cfg: SimConfig): { made: number; used: number } {
+  let made = 0;
+  let used = 0;
+  for (const room of state.layout.rooms) {
+    const st = state.roomStatus[room.id];
+    if (!st) continue;
+    const spec = roomSpec(room, cfg);
+    made += (spec.makes.power ?? 0) * st.rate;
+    used += (spec.uses.power ?? 0) * st.rate;
+  }
+  return { made, used };
+}
