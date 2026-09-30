@@ -15,6 +15,8 @@ export interface ResourceDef {
 export interface CropDef {
   id: string;
   name: string;
+  /** What a farm growing it calls itself ("Potato farm"). */
+  farmName: string;
   group: "staple" | "protein" | "produce";
   yield: number;
   water: number;

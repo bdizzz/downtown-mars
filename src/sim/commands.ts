@@ -1,3 +1,4 @@
+import { ROOM_NAME_MAX } from "./roomName";
 import { hasCondition } from "./condition";
 import { config } from "./config";
 import { charge, checkBuild, CONSTRUCTION, refund } from "./costs";
@@ -53,7 +54,9 @@ export type SimCommand =
   /** Testing, from the browser console: a dust storm, starting in `inDays` (0: now) and lasting `days`; or clear skies (days 0). */
   | { type: "consoleStorm"; inDays?: number; days?: number }
   /** Testing, from the browser console: set rooms' condition (0..1): one room, or every room that has one. */
-  | { type: "consoleWear"; condition: number; roomId?: number };
+  | { type: "consoleWear"; condition: number; roomId?: number }
+  /** Give a room its own name; an empty name goes back to the default. */
+  | { type: "renameRoom"; roomId: number; name: string };
 
 /** roomId is set when a build succeeds, so the UI can offer undo. */
 export type CommandResult = { ok: true; roomId?: number } | { ok: false; reason: string };
@@ -341,6 +344,16 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     case "setDrill":
       state.drill.active = cmd.active;
       return { ok: true };
+    case "renameRoom": {
+      const room = layout.rooms.find((r) => r.id === cmd.roomId);
+      if (!room) return { ok: false, reason: "No such room" };
+      const name = cmd.name.replace(/\s+/g, " ").trim().slice(0, ROOM_NAME_MAX);
+      if (name && name !== roomDef(room.type).name) room.name = name;
+      else delete room.name;
+      // The map views label rooms by name.
+      layout.version++;
+      return { ok: true };
+    }
     case "setCrop": {
       const room = layout.rooms.find((r) => r.id === cmd.roomId);
       if (!room || !roomDef(room.type).growsCrops) return { ok: false, reason: "Only farms grow crops" };

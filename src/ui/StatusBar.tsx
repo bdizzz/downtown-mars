@@ -1,3 +1,4 @@
+import { roomName } from "../sim/roomName";
 import type { ViewMode } from "./settings";
 import type { HoverInfo } from "../view/types";
 import type { Hole } from "../sim/geometry";
@@ -7,7 +8,6 @@ import { num, resName, signed } from "./format";
 import { finishDef, floorLinked } from "../sim/corridors";
 import { construction } from "../sim/construction";
 import { config } from "../sim/config";
-import { roomDef } from "../sim/rooms";
 
 const deg = (turns: number) => `${Math.round(turns * 360)}°`;
 
@@ -99,11 +99,10 @@ export function StatusBar({ info, snapshot, notice, overlay, view }: Props) {
       const over = d ? `⚠ Fills in ${d} corridor ${d === 1 ? "segment" : "segments"}${lost ? `, cutting off ${lost} more` : ""} · ` : "";
       text = `${over}${note}${cutOff}${blueprint}${digs}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
     } else if (info.room) {
-      const def = roomDef(info.room.type);
       const blueprint = info.room.planned ? " (blueprint)" : "";
       const st = snapshot?.roomStatus[info.room.id];
       const running = st && !info.room.planned && info.room.connected ? ` · ${Math.round(st.rate * 100)}%` : "";
-      text = `${def.name}${blueprint}${running}${info.room.connected ? "" : " · no access: connect it with a corridor"} · click for details · ${text}`;
+      text = `${roomName(info.room)}${blueprint}${running}${info.room.connected ? "" : " · no access: connect it with a corridor"} · click for details · ${text}`;
       bad = !info.room.connected;
     }
   }

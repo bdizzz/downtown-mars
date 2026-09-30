@@ -43,7 +43,7 @@ describe("construction time", () => {
     hours(s, roomWork("galley") / construction.baseBandwidth + 0.2);
     expect(room(s, galley.id)!.building).toBe(false);
     expect(s.construction.queue).toHaveLength(0);
-    expect(s.messages.at(-1)?.text).toMatch(/Galley built/);
+    expect(s.messages.at(-1)?.text).toMatch(/\[\[room:\d+\|Galley\|1\]\] built/);
     step(s, config);
     expect(s.roomStatus[galley.id]!.staff).toBeGreaterThan(0);
   });

@@ -1,3 +1,6 @@
+import { ROOM_NAME_MAX, roomName } from "../sim/roomName";
+import type { RoomInstance } from "../sim/placement";
+import { RoomName } from "./RoomName";
 import { cssColor } from "../render2d/palette";
 import { hasCondition } from "../sim/condition";
 import { conditionColor } from "../view/conditionView";
@@ -274,6 +277,49 @@ function Controls({ room, s, onCommand }: { room: Snapshot["layout"]["rooms"][nu
   );
 }
 
+/** The room card's title: its name and floor badge, and a pencil to rename it (empty goes back to its kind's name). */
+function RoomTitle({ room, onCommand }: { room: RoomInstance; onCommand: (c: SimCommand) => void }) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const commit = () => {
+    if (editing !== null) onCommand({ type: "renameRoom", roomId: room.id, name: editing });
+    setEditing(null);
+  };
+  if (editing !== null) {
+    return (
+      <input
+        className="rename"
+        autoFocus
+        value={editing}
+        maxLength={ROOM_NAME_MAX}
+        placeholder={roomDef(room.type).name}
+        onChange={(e) => setEditing(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") setEditing(null);
+        }}
+        aria-label="Room name"
+      />
+    );
+  }
+  return (
+    <h2>
+      <RoomName room={room} />
+      <button className="rename-btn" onClick={() => setEditing(room.name ?? roomName(room))} title="Rename it (leave it empty for its usual name)" aria-label="Rename">
+        ✎
+      </button>
+    </h2>
+  );
+}
+
+/** 2 → "2nd", 11 → "11th", 23 → "23rd". */
+export function ordinal(n: number): string {
+  const teen = n % 100 >= 11 && n % 100 <= 13;
+  const suffix = teen ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th";
+  return `${n}${suffix}`;
+}
+
 /** A room's condition, as a bar, and who's repairing it or where it is in the queue. */
 function ConditionRow({ s, roomId, condition, repairing }: { s: Snapshot; roomId: number; condition: number; repairing?: { done: number; work: number } }) {
   const lane = s.maintenance.lanes.find((l) => l.target === roomId);
@@ -281,7 +327,7 @@ function ConditionRow({ s, roomId, condition, repairing }: { s: Snapshot; roomId
   const note = lane
     ? `${lane.kind === "all" ? "🛠 Being repaired" : "🧽 Being cleaned"}: ${Math.round((lane.progress ?? 0) * 100)}% done`
     : place >= 0
-      ? `In the maintenance queue: ${place === 0 ? "next" : `${place + 1}th`}${repairing ? ", part repaired" : ""}`
+      ? `In the maintenance queue: ${place === 0 ? "next" : ordinal(place + 1)}${repairing ? ", part repaired" : ""}`
       : "";
   return (
     <div className="condition">
@@ -317,7 +363,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
   return (
     <aside className="inspector">
       <header>
-        <h2>{def.name}</h2>
+        <RoomTitle room={room} onCommand={onCommand} />
         <button onClick={onClose} aria-label="Close">
           ×
         </button>

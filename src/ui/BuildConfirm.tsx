@@ -1,3 +1,4 @@
+import { RoomName } from "./RoomName";
 import { useEffect } from "react";
 import type { Layout } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
@@ -36,9 +37,9 @@ export function BuildConfirm({ build, layout, onAccept, onCancel }: { build: Pen
         <p className="warn">
           That cuts off{" "}
           {[
-            ...cutOff.map((r) => roomDef(r!.type).name.toLowerCase()),
-            ...(halls ? [`${halls} more corridor ${halls === 1 ? "segment" : "segments"}`] : []),
-          ].join(", ")}{" "}
+            ...cutOff.map((r) => <RoomName key={r!.id} room={r!} />),
+            ...(halls ? [<span key="halls">{`${halls} more corridor ${halls === 1 ? "segment" : "segments"}`}</span>] : []),
+          ].flatMap((el, i) => (i ? [<span key={`sep${i}`}>, </span>, el] : [el]))}{" "}
           from the shaft (outlined in red).
         </p>
       ) : (

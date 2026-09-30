@@ -1,3 +1,4 @@
+import { roomLabel } from "../sim/roomName";
 import { crewsAt, crewsKey } from "../view/crews";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
@@ -561,7 +562,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const def = roomDef(room.type);
       if (!def.short) continue;
       const text = new Text({
-        text: `${room.connected ? def.short : `${def.short} ⚠`}${crews.has(room.id) ? ` ${crews.get(room.id)}` : ""}`,
+        text: `${room.connected ? roomLabel(room) : `${roomLabel(room)} ⚠`}${crews.has(room.id) ? ` ${crews.get(room.id)}` : ""}`,
         style: {
           fill: room.planned ? (CATEGORY_COLORS[def.category] ?? C.label) : C.roomText,
           fontSize: LABEL_PX,

@@ -1,3 +1,4 @@
+import { RichText } from "./RoomName";
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
 
@@ -13,7 +14,7 @@ export function Messages({ s }: { s: Snapshot | null }) {
       {recent.map((m) => (
         <div key={`${m.holeId ?? 0}:${m.tick}:${m.text}`} className={`msg ${m.kind}`} style={{ opacity: 1 - ((s.tick - m.tick) / SHOW_TICKS) ** 3 }}>
           {m.holeId !== undefined && m.holeId !== s.holeId && <strong className="from">{m.holeName}: </strong>}
-          {m.text}
+          <RichText text={m.text} s={s} />
         </div>
       ))}
     </div>

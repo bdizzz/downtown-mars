@@ -1,3 +1,4 @@
+import { RoomName } from "./RoomName";
 import type { SimCommand } from "../sim/commands";
 import type { Snapshot } from "../sim/snapshot";
 import { hoursText, num } from "./format";
@@ -7,6 +8,7 @@ import { hoursText, num } from "./format";
 
 export function ConstructionPanel({ s, onCommand, onSelect, onClose }: { s: Snapshot; onCommand: (c: SimCommand) => void; onSelect: (roomId: number) => void; onClose: () => void }) {
   const { bandwidth, jobs } = s.construction;
+  const byId = new Map(s.layout.rooms.map((r) => [r.id, r]));
   return (
     <aside className="inspector construction">
       <header>
@@ -26,10 +28,13 @@ export function ConstructionPanel({ s, onCommand, onSelect, onClose }: { s: Snap
         {jobs.map((j, i) => (
           <li key={j.id}>
             <div className="row">
-              {j.roomId !== undefined ? (
-                <button className="link" onClick={() => onSelect(j.roomId!)} title="Show it">
-                  {j.label}
-                </button>
+              {j.roomId !== undefined && byId.get(j.roomId) ? (
+                <span>
+                  <button className="link" onClick={() => onSelect(j.roomId!)} title="Show it">
+                    <RoomName room={byId.get(j.roomId)!} />
+                  </button>
+                  {j.note && <span className="k"> {j.note}</span>}
+                </span>
               ) : (
                 <span>{j.label}</span>
               )}

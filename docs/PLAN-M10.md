@@ -647,3 +647,18 @@ Decided Sep 28, 2026 (Bryon):
   - Each room's furnishings take its own shade of the category colour (hue ±3%, saturation ±15%, lightness ±8%).
   - Stairs and elevators are never varied.
   - The furniture cache key now includes the room's id.
+
+**Names and floors (Bryon, Sep 30):**
+- **Rename a room:** the ✎ beside its name on the room card; Enter keeps, Esc cancels.
+  - `renameRoom` trims, collapses spaces and caps at 32 characters. Empty, or the kind's own name, goes back to the usual name.
+  - Renaming bumps the layout version, so the map labels change.
+- **Farms go by their crop** ("Potato farm", `farmName` in crops.json) unless the player has named them, so a new crop renames them. `roomName` and `roomLabel` (map labels: own name, crop, or the kind's short name) are in sim/roomName.ts.
+- **Floor badges:** in menus and text, a room's name carries a coloured badge with its floor ("F3", "S" on the surface; each floor its own hue) via the `RoomName` component. Used in:
+  - the room card;
+  - the construction queue (with its stage: "excavating", "another floor", `JobView.note`);
+  - the maintenance queue;
+  - the build confirmation's cut-off rooms;
+  - messages.
+- **Messages name rooms with tokens** (`[[room:id|name|floor]]`, `roomRef`), shown as the room's current name with its badge. If the room is gone, the name and floor it had are used. `plainText` gives "Galley (floor 1)" for places that need a string.
+- **The map views** (2D, plan, 3D) keep bare names, with no category icons. The hover line uses the room's own name.
+- Queue places now read "2nd", "3rd" and so on.

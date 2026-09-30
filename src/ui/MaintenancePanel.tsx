@@ -1,5 +1,5 @@
 import type { Snapshot } from "../sim/snapshot";
-import { roomDef } from "../sim/rooms";
+import { RoomName } from "./RoomName";
 import { conditionColor } from "../view/conditionView";
 import { cssColor } from "../render2d/palette";
 
@@ -21,15 +21,14 @@ function Condition({ value, progress }: { value: number; progress?: number | nul
 export function MaintenancePanel({ s, onSelect, onClose }: { s: Snapshot; onSelect: (roomId: number) => void; onClose: () => void }) {
   const { overall, queue, lanes } = s.maintenance;
   const byId = new Map(s.layout.rooms.map((r) => [r.id, r]));
-  const name = (id: number) => {
+  const link = (id: number) => {
     const r = byId.get(id);
-    return r ? (r.name ?? roomDef(r.type).name) : "";
+    return (
+      <button className="link" onClick={() => onSelect(id)} title="Show it">
+        {r ? <RoomName room={r} /> : ""}
+      </button>
+    );
   };
-  const link = (id: number) => (
-    <button className="link" onClick={() => onSelect(id)} title="Show it">
-      {name(id)}
-    </button>
-  );
   return (
     <aside className="inspector construction maintenance">
       <header>

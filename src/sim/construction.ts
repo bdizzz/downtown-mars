@@ -1,3 +1,4 @@
+import { roomName, roomRef } from "./roomName";
 import raw from "../../data/construction.json";
 import type { SimConfig } from "./config";
 import { recomputeAccess } from "./corridors";
@@ -215,7 +216,7 @@ function finish(state: SimState, job: Job, cfg: SimConfig): void {
   }
   recomputeAccess(layout);
   layout.version++;
-  if (job.kind !== "corridors" && job.kind !== "fill" && room) postMessage(state, cfg, `${roomDef(room.type).name} ${job.kind === "extend" ? "extended" : "built"}.`);
+  if (job.kind !== "corridors" && job.kind !== "fill" && room) postMessage(state, cfg, `${roomRef(room)} ${job.kind === "extend" ? "extended" : "built"}.`);
 }
 
 /** Each tick: bandwidth goes to the first job that can be worked, any left over to the next. */
@@ -286,6 +287,8 @@ export interface JobView {
   kind: Job["kind"];
   roomId?: number;
   label: string;
+  /** For a room's job, what stage it's at beside the room's name ("excavating", "another floor"), if anything. */
+  note?: string;
   /** 0..1. */
   progress: number;
   /** Digging out rock first, or building. */
@@ -301,7 +304,9 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
   let ahead = 0;
   const jobs = (state.construction?.queue ?? []).map((job): JobView => {
     const room = job.roomId !== undefined ? state.layout.rooms.find((r) => r.id === job.roomId) : undefined;
-    const name = room ? roomDef(room.type).name : "";
+    const name = room ? roomName(room) : "";
+    const note =
+      job.kind === "extend" ? "another floor" : phaseOf(job) === "excavating" && room && !roomDef(room.type).excavationOnly ? "excavating" : undefined;
     const n = job.edges?.length ?? 0;
     const label =
       job.kind === "corridors"
@@ -320,6 +325,7 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
       kind: job.kind,
       ...(job.roomId !== undefined ? { roomId: job.roomId } : {}),
       label,
+      ...(note ? { note } : {}),
       progress: job.work > 0 ? job.done / job.work : 1,
       phase: phaseOf(job),
       work: job.work,

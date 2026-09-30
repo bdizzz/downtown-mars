@@ -1,3 +1,4 @@
+import { roomLabel } from "../sim/roomName";
 import * as THREE from "three";
 import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
@@ -929,24 +930,6 @@ function roomMaterial(color: number, planned: boolean, faint = false, building =
   );
 }
 
-/** A small icon for each kind of room, before its name on its label. */
-const CATEGORY_ICONS: Record<string, string> = {
-  housing: "🛏",
-  food: "🍽",
-  water: "💧",
-  air: "🌬",
-  power: "⚡",
-  health: "✚",
-  admin: "🗂",
-  industry: "⚙",
-  public: "🌳",
-  circulation: "↕",
-  construction: "🏗",
-  storage: "📦",
-  logistics: "🚀",
-  excavation: "⛏",
-};
-
 /** A room's trouble, shown on it: a badge floating over its label, with the reason's icon. */
 export function statusBadge(icon: string): THREE.Sprite {
   const sprite = label(icon, "#ffffff");
@@ -1264,8 +1247,7 @@ export function buildLayout(
       const [a0, a1] = slotAngles(first.slot, n);
       const [r0] = ringRadii(hole, first.ring);
       const y1 = floorSpan(first.floor)[1];
-      const icon = CATEGORY_ICONS[def.category];
-      const name = icon ? `${icon} ${def.short}` : def.short;
+      const name = roomLabel(whole);
       const sprite = label(room.connected ? name : `${name} ⚠`, room.planned ? "#d8c0ae" : "#f6efe6");
       const a = (a0 + a1) / 2;
       sprite.position.set((r0 - 0.6) * Math.cos(a), y1 - 0.8, (r0 - 0.6) * Math.sin(a));

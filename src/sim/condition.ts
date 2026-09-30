@@ -5,6 +5,7 @@ import { isActive } from "./economy";
 import { postMessage } from "./messages";
 import type { RoomInstance } from "./placement";
 import { roomDef, type RoomSize } from "./rooms";
+import { roomRef } from "./roomName";
 import type { SimState } from "./state";
 
 // Room condition and upkeep. Every room but a few (the entrance, stairs,
@@ -118,12 +119,6 @@ function breakables(type: string): string[] {
   });
 }
 
-/** A room's name for messages: its own, or its type's, with its floor. */
-function where(room: RoomInstance): string {
-  const name = room.name ?? roomDef(room.type).name;
-  return room.at.kind === "ring" ? `${name} (floor ${room.at.floor})` : name;
-}
-
 export function stepCondition(state: SimState, cfg: SimConfig): void {
   const tpd = cfg.ticksPerDay;
   const ms = (state.maintenance ??= { lanes: {} });
@@ -147,7 +142,7 @@ export function stepCondition(state: SimState, cfg: SimConfig): void {
       const item = furniture.items[things[Math.floor(roll(state, day, 2) * things.length)]!]!;
       const drop = b.drop[0] + (b.drop[1] - b.drop[0]) * roll(state, day, 3);
       room.condition = Math.max(0, conditionOf(room) - drop);
-      postMessage(state, cfg, `The ${item.name.toLowerCase()} in ${where(room)} broke down: it's down to ${Math.round(room.condition * 100)}%.`, "warn");
+      postMessage(state, cfg, `The ${item.name.toLowerCase()} in ${roomRef(room)} broke down: it's down to ${Math.round(room.condition * 100)}%.`, "warn");
     }
   }
 
