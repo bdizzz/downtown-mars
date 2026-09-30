@@ -5,7 +5,8 @@ import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { computeEffects, effectAt, effectOnRoom } from "../src/sim/effects";
 import { homeFactors } from "../src/sim/happiness";
-import type { Location } from "../src/sim/placement";
+import { ensureFloors, type Location } from "../src/sim/placement";
+import { galleryEdges } from "../src/sim/edges";
 
 // Air quality: a neighbor effect with a baseline that goes stale ring by ring
 // away from the shaft. Industry fouls it, ventilation hubs and parks freshen it,
@@ -35,13 +36,22 @@ describe("air quality", () => {
     for (let r = 1; r <= s.layout.hole.unlockedRings; r++) expect(effectAt(field, "airQuality", { floor: 1, ring: r, slot: 0 })).toBe(byRing[r - 1]);
   });
 
-  it("a ventilation hub freshens the air around it, through corridors too", () => {
+  it("a ventilation hub freshens the rooms along the network from it, not through walls", () => {
     const s = hole();
-    const cell = { floor: 1, ring: 3, slot: 4 };
-    const before = effectAt(computeEffects(s.layout), "airQuality", cell);
-    build(s, "ventilation_hub", ring(1, 2, 3));
-    const after = effectAt(computeEffects(s.layout), "airQuality", cell);
-    expect(after).toBeGreaterThan(before);
+    s.layout.hole.floors = 2;
+    ensureFloors(s.layout);
+    // Floor 2 is rock but for what's built: a dorm some way along a gallery tube from the hub,
+    // and a clinic right behind the hub, walled off from it with no way round.
+    const hub = build(s, "ventilation_hub", ring(2, 1, 1));
+    const dorm = build(s, "bunk_dorm", ring(2, 1, 4, 2));
+    const behind = build(s, "clinic", ring(2, 2, 1));
+    const tubes = galleryEdges(s.layout.hole, 2).slice(1, 6).map((e) => e.id);
+    expect(applyCommand(s, { type: "drawCorridors", edges: tubes, finish: "rock" }).ok).toBe(true);
+    applyCommand(s, { type: "consoleFinish" });
+    const field = computeEffects(s.layout);
+    expect(effectOnRoom(field, "airQuality", room(s, hub))).toBeCloseTo(2);
+    expect(effectOnRoom(field, "airQuality", room(s, dorm))).toBeGreaterThan(0);
+    expect(effectOnRoom(field, "airQuality", room(s, behind))).toBe(byRing[1]);
   });
 
   it("industry fouls it, a park freshens it", () => {

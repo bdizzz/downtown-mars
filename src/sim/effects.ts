@@ -1,6 +1,7 @@
 import { overlappingSlots, ringSize, wrapSlot } from "./geometry";
 import type { Cell, Layout, RoomInstance } from "./placement";
-import { roomDef, type EffectType } from "./rooms";
+import { roomDef, type EffectDef, type EffectType } from "./rooms";
+import { distancesFrom, pathsFor, STEP_M } from "./paths";
 import { corridorBetween, corridors as corridorCfg } from "./corridors";
 import { config } from "./config";
 
@@ -8,7 +9,14 @@ import { config } from "./config";
 // cells, step by step along the ring, across rings (by angle) and between
 // floors, fading linearly to nothing just past its radius. Sources add up.
 // Corridors soak up noise and smell: they don't cross a border that's all corridor.
-// Air quality also has a baseline by ring: the further from the shaft, the staler.
+//
+// Airborne effects (air quality, smell) ride the air instead: through the
+// sealed network of corridors, tubes and stairs to the rooms along it, fading
+// with every step (paths.ts), reaching `stepsPerRadius` steps per point of
+// radius. They leak through walls only as far as `leak` (smell to the room
+// next door; air quality not at all). Where a room gets one source both ways,
+// the stronger counts. Air quality also has a baseline by ring: the further
+// from the air trunk in the shaft wall, the staler.
 
 export const FIELD_TYPES: EffectType[] = ["noise", "smell", "health", "comfort", "airQuality"];
 
@@ -57,35 +65,75 @@ function blocks(layout: Layout, from: Cell, to: Cell, type: EffectType): boolean
   return corridorCfg.blocksEffects.includes(type) && corridorBetween(layout, from, to);
 }
 
-function radiate(layout: Layout, field: EffectField, room: RoomInstance): void {
-  const def = roomDef(room.type);
-  for (const eff of def.effects) {
-    if (eff.residentsOnly || !field[eff.type]) continue;
-    const grid = field[eff.type]!;
-    const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
-    const seen = new Set(room.cells.map(key));
-    let frontier = room.cells;
-    for (let d = 0; d <= eff.radius && frontier.length; d++) {
-      const next: Cell[] = [];
-      for (const c of frontier) {
-        grid[c.floor - 1]![c.ring - 1]![c.slot]! += falloff(eff.strength, eff.radius, d);
-        for (const nb of stepNeighbors(layout, c)) {
-          const k = key(nb);
-          if (seen.has(k)) continue;
-          // A corridor between them soaks it up; it may still get there another way.
-          if (blocks(layout, c, nb, eff.type)) continue;
-          seen.add(k);
-          next.push(nb);
-        }
+const cellKey = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+
+/** One effect by nearness, out to `reach` steps: each cell it gets to, and how much. */
+function nearness(layout: Layout, cells: Cell[], eff: EffectDef, reach: number): Map<string, [Cell, number]> {
+  const out = new Map<string, [Cell, number]>();
+  const seen = new Set(cells.map(cellKey));
+  let frontier = cells;
+  for (let d = 0; d <= reach && frontier.length; d++) {
+    const next: Cell[] = [];
+    for (const c of frontier) {
+      out.set(cellKey(c), [c, falloff(eff.strength, eff.radius, d)]);
+      for (const nb of stepNeighbors(layout, c)) {
+        const k = cellKey(nb);
+        if (seen.has(k)) continue;
+        // A corridor between them soaks it up; it may still get there another way.
+        if (blocks(layout, c, nb, eff.type)) continue;
+        seen.add(k);
+        next.push(nb);
       }
-      frontier = next;
     }
+    frontier = next;
+  }
+  return out;
+}
+
+function addTo(field: EffectField, type: string, got: Map<string, [Cell, number]>): void {
+  const grid = field[type]!;
+  for (const [c, v] of got.values()) grid[c.floor - 1]![c.ring - 1]![c.slot]! += v;
+}
+
+/** Everything a room radiates, by nearness only (the halo while placing, before it's on the network). */
+function radiate(layout: Layout, field: EffectField, room: RoomInstance): void {
+  for (const eff of roomDef(room.type).effects) {
+    if (eff.residentsOnly || !field[eff.type]) continue;
+    addTo(field, eff.type, nearness(layout, room.cells, eff, eff.radius));
+  }
+}
+
+/** Everything a built room radiates: by nearness, and airborne effects along the network too. */
+function radiateBuilt(layout: Layout, field: EffectField, room: RoomInstance, rooms: Map<number, RoomInstance>): void {
+  const fx = config.effects;
+  for (const eff of roomDef(room.type).effects) {
+    if (eff.residentsOnly || !field[eff.type]) continue;
+    const air = fx.airborne[eff.type];
+    if (!air) {
+      addTo(field, eff.type, nearness(layout, room.cells, eff, eff.radius));
+      continue;
+    }
+    const got = nearness(layout, room.cells, eff, Math.min(eff.radius, air.leak));
+    const reach = eff.radius * fx.stepsPerRadius;
+    for (const [id, m] of distancesFrom(pathsFor(layout), room.id, "air", (reach + 1) * STEP_M)) {
+      if (id === room.id) continue;
+      const v = falloff(eff.strength, reach, m / STEP_M);
+      if (!v) continue;
+      for (const c of rooms.get(id)?.cells ?? []) {
+        const k = cellKey(c);
+        const had = got.get(k)?.[1] ?? 0;
+        // The stronger way wins, not both.
+        if (Math.abs(v) > Math.abs(had)) got.set(k, [c, v]);
+      }
+    }
+    addTo(field, eff.type, got);
   }
 }
 
 /**
  * What a room would radiate if it were placed on these cells: the halo shown
- * while placing. Only this room's own effects, on an otherwise empty field.
+ * while placing. Only this room's own effects, on an otherwise empty field, by
+ * nearness (it isn't on the network until it's built).
  */
 export function previewEffects(layout: Layout, type: string, cells: Cell[]): EffectField {
   const field = emptyField(layout);
@@ -108,9 +156,10 @@ export function computeEffects(layout: Layout): EffectField {
   // Air goes stale away from the shaft: each ring out starts a little worse, before any room's effect.
   const byRing = config.effects.airQualityByRing;
   field.airQuality!.forEach((floor) => floor.forEach((ring, r) => ring.fill(byRing[r] ?? byRing.at(-1) ?? 0)));
+  const rooms = new Map(layout.rooms.map((r) => [r.id, r]));
   for (const room of layout.rooms) {
     if (room.planned || room.building || room.at.kind !== "ring") continue;
-    radiate(layout, field, room);
+    radiateBuilt(layout, field, room, rooms);
   }
   return field;
 }

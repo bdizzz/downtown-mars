@@ -93,3 +93,9 @@ A late, costly project that seals the top of the shaft. It needs glass (bringing
 - **Air vs walking:** elevators (`lift` in rooms.json: the elevator and the cargo elevator) carry people between floors but not air.
 - `pathsFor(layout)` caches the graph until `layout.version` changes; `distancesFrom(paths, roomId, mode, maxM)` is a Dijkstra to every room within reach; `stepsBetween` for one pair.
 
+**Step 5, air and smell through the network:**
+- `config.effects.airborne`: air quality and smell ride the air along the network (`distancesFrom(…, "air")`), reaching `stepsPerRadius` (3) steps per point of a room's radius and fading linearly; they leak through walls only as far as `leak` (smell 1: next door; air quality 0: the room itself). Where a room gets one source both ways, the stronger counts. Only rooms feel the network part (the overlay shades rooms, not bare rock); the per-ring baseline stays on every cell.
+- Noise and the other effects are unchanged (nearness, corridors soak up noise; smell's one step through a wall is still stopped by a corridor between, which carries it instead).
+- The placement halo still shows airborne effects by nearness: a room isn't on the network until it's built.
+- **Bots:** when ring 1 is full on every floor they reach, they put a room on ring 2 and connect it (the child hole outgrew its two life supports without this).
+

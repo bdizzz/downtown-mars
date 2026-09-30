@@ -72,7 +72,7 @@ export function quarry(hole: SimState): boolean {
   return false;
 }
 
-/** Build a room wherever it fits: on the surface, or on ring 1 of the shallowest floor the stairs reach, with room. */
+/** Build a room wherever it fits: on the surface, or on ring 1 of the shallowest floor the stairs reach, with room (else ring 2, connected by a corridor). */
 export function placeAnywhere(hole: SimState, room: string, crop?: string): boolean {
   const def = roomDef(room);
   if (def.size === "surface") {
@@ -82,19 +82,23 @@ export function placeAnywhere(hole: SimState, room: string, crop?: string): bool
     return false;
   }
   const [w, d] = config.shapes[def.size as keyof typeof config.shapes]![0]!;
-  const slots = hole.layout.hole.ringSlots[0]!;
-  for (let floor = 1; floor <= hole.layout.hole.floors; floor++) {
-    if (!floorLinked(hole.layout, floor)) continue; // no way down yet
-    for (let slot = 0; slot < slots; slot++) {
-      if (footprint(hole.layout.hole, floor, 1, slot, w, d).some((c) => c.ring === 1 && c.slot === stairSlot(hole))) continue;
-      const r = applyCommand(hole, { type: "build", room, at: { kind: "ring", floor, ring: 1, slot, w, d } });
-      if (r.ok) {
-        if (crop) applyCommand(hole, { type: "setCrop", roomId: r.roomId!, crop });
-        return true;
+  // Ring 1 of the shallowest floor with room; failing that, ring 2 behind it, with a corridor carved to it.
+  for (const ring of [1, 2]) {
+    const slots = hole.layout.hole.ringSlots[ring - 1]!;
+    for (let floor = 1; floor <= hole.layout.hole.floors; floor++) {
+      if (!floorLinked(hole.layout, floor)) continue; // no way down yet
+      for (let slot = 0; slot < slots; slot++) {
+        if (footprint(hole.layout.hole, floor, ring, slot, w, d).some((c) => c.ring === 1 && c.slot === stairSlot(hole))) continue;
+        const r = applyCommand(hole, { type: "build", room, at: { kind: "ring", floor, ring, slot, w, d } });
+        if (r.ok) {
+          if (crop) applyCommand(hole, { type: "setCrop", roomId: r.roomId!, crop });
+          if (ring > 1) applyCommand(hole, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
+          return true;
+        }
+        // Can't afford it anywhere: stop looking (short of rock, dig some out).
+        if (/more rock/.test(r.reason)) quarry(hole);
+        if (/^(Needs|Not enough|Unlocks)/.test(r.reason)) return false;
       }
-      // Can't afford it anywhere: stop looking (short of rock, dig some out).
-      if (/more rock/.test(r.reason)) quarry(hole);
-      if (/^(Needs|Not enough|Unlocks)/.test(r.reason)) return false;
     }
   }
   return false;

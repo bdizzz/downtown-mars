@@ -136,7 +136,16 @@ export interface SimConfig {
   };
   messages: { keep: number };
   /** Neighbor effects: air quality every cell starts with, by ring (ring 1 first; the last carries on outward). */
-  effects: { airQualityByRing: number[] };
+  effects: {
+    airQualityByRing: number[];
+    /**
+     * Effects that ride the air through the sealed network (corridors, tubes, stairs), fading step by step.
+     * `leak`: how far (by nearness) they also get through walls: 0 only in the room itself, 1 next door.
+     */
+    airborne: Record<string, { leak: number }>;
+    /** Steps along the network an airborne effect reaches, per point of its radius. */
+    stepsPerRadius: number;
+  };
   /** Charts: a sample every so many ticks (an hour), kept hour by hour for recentDays, and as daily averages for up to maxDays. */
   history: { everyTicks: number; recentDays: number; maxDays: number };
   unlocks: {
