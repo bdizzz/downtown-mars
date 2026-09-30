@@ -127,6 +127,7 @@ See `PLAN-M11.md`. Not built yet.
 - **Effects travel three ways:** what you sense by nearness (noise, heat, view), what you breathe through the air network (air quality, smell), what you use by walking distance (parks, plazas, gyms, canteens, clinics, schools, elder care). Parks, plazas and canteens also keep a small nearness bonus.
 - **Noise stays nearness-based,** and corridors still soak it up; smell now rides the air through corridors.
 - **Steps:** one per room or corridor segment, stairs one between floors; reach is data (about 6 for a plaza, 10 for a clinic). Stairs carry air and people, elevators people only.
+- **Services fill nearest first:** homes use the nearest clinic, school or elder care in reach, and spill over to the next one in reach when it's full.
 - **The dome** over the shaft is a hole's end goal (a later milestone).
 
 ## Still open

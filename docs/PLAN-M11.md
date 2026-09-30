@@ -23,6 +23,7 @@ Decided Sep 30, 2026 (Bryon), in conversation, before any code:
 - **Noise stays nearness-based,** and corridors keep soaking it up, so "a corridor between you and the life support" is still a tactic. Smell no longer stops at a corridor: it rides the air through it, fading.
 - **Steps.** Distance on the network counts one step per room, corridor segment or gallery segment passed through; stairs count as a step between floors. Reach is data: about 6 steps for a plaza or park, about 10 for a clinic (to tune).
 - **Stairs carry air and people; elevators carry people only.**
+- **Services fill nearest first:** homes use the nearest clinic, school or elder care in reach; when it's full, the next homes go to the next one in reach.
 - **The dome** is a hole's late, expensive end goal (a later milestone; sketched below).
 
 ## What this changes, in the code as it is
@@ -42,7 +43,7 @@ Each step ends with something to see and test, and is committed on its own.
 4. **The network graph.** A graph of the sealed spaces, rebuilt when the layout changes (like the effect field): rooms, corridor and gallery segments, public rooms and empty space, stairs (people and air) and elevators (people only) linking floors. Two distance queries: steps on foot, and steps through the air. Tested on its own.
 5. **Air and smell through the network.** Air quality and smell spread from each source along the air graph, fading per step (strength and reach from the room's effect data), on top of the per-ring baseline; smell also leaks to the rooms right next door by nearness. A ventilation hub on a corridor cleans the stretch around it. Noise and heat unchanged. The overlays show the spread along corridors.
 6. **Amenities on foot.** Park, plaza, gym and canteen bonuses reach homes within their walking range, fading with steps; park, plaza and canteen keep a small nearness bonus too. Canteen and galley seats count for diners within reach.
-7. **Services by distance.** Clinic, hospital, school and elder-care coverage per home, from the services in reach with room to spare (nearest first). Homes out of reach feel it as the hole-wide shortfall does today, but locally. The People panel and home cards say what's in reach and what isn't.
+7. **Services by distance.** Clinic, hospital, school and elder-care coverage per home, from the services in reach with room to spare, nearest first: each home's people go to the nearest clinic (school, elder care) in reach, and once it's full, the next homes go to the next one in reach (decided, Bryon). Homes out of reach feel it as the hole-wide shortfall does today, but locally. The People panel and home cards say what's in reach and what isn't.
 8. **Seeing distances.** Placing a room shows what it would reach (or what reaches it) in steps, e.g. "clinic 4 steps, plaza 9 (out of reach)". Selecting a service shows its reach as an overlay.
 9. **Balance, bots and docs.** Tune reach, fades and the gallery's cost so the early game stays gentle (floor 1's free gallery, the afterglow); bots place services within reach of their homes; README, DESIGN, DECISIONS and ROOMS updated.
 
@@ -61,7 +62,6 @@ A late, costly project that seals the top of the shaft. It needs glass (bringing
 ## Still open
 
 - Exact reach and fade numbers, and the gallery segment's cost.
-- Services: step 7 proposes nearest-first with capacity (a full clinic sends the next homes to the next clinic in reach); the simpler alternative is in or out of reach, with capacity hole-wide as today. To confirm before step 7.
 - How the half view bonus shows in 3D (the glass tube in front of the window).
 
 ## Notes as built
