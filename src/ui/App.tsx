@@ -382,6 +382,8 @@ export function App() {
       className={`app${settings.colorBlind ? " color-blind" : ""}`}
       style={{ "--ui-scale": settings.uiScale } as React.CSSProperties}
     >
+      {/* Build mode: a thin yellow frame round the screen, so it's always clear you're building. Clicks go through it. */}
+      {mode === "build" && <div className="build-frame" aria-hidden="true" />}
       <Hud
         snapshot={snapshot}
         speed={speed}
