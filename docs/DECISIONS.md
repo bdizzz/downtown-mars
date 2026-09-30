@@ -1,12 +1,14 @@
 # Decision log
 
-A condensed record of the design conversation (Sep 26–27, 2026) between Bryon and Claude: what was decided, what changed along the way, and what is still open. Use this to avoid reviving ideas that were already rejected.
+A condensed record of the design conversation (Sep 26–27, 2026) between Bryon and Claude, and of what was decided while building (Sep 27–30): what was decided, what changed along the way, and what is still open. Use this to avoid reviving ideas that were already rejected.
+
+**Where things stand (Sep 30, 2026):** milestones 1–10 are built (see "Decided while building" below and the `PLAN*.md` files). Which catalog rooms are in the game and which are only described is in `ROOM-STATUS.md`, generated from the catalog and `data/rooms.json`.
 
 ## Source of truth
 
 When documents disagree, trust them in this order:
 
-1. **This log** (most recent decisions and reversals)
+1. **This log** (most recent decisions and reversals), and the milestone plans' "Notes as built" (`PLAN.md`, `PLAN-M2.md` … `PLAN-M10.md`) for how things were actually built
 2. **ROOMS.md**, **EVENTS.md**, **PATHWAYS.md** (detailed catalogs)
 3. **DESIGN.md** (main design doc; some early sections are stale, listed below)
 
@@ -31,7 +33,7 @@ When documents disagree, trust them in this order:
 **Space**
 - Rooms sit at (floor, ring, slot). Up to 6 rings: 1–3 at start, 4–5 with reinforcement frames, 6 via an excavation milestone.
 - Outer rings have more slots; narrow holes grow outward, wide holes grow down.
-- **Corridors take slots** (spokes and ring segments); no dedicated corridor rings. A walkway gallery rings the shaft, so ring 1 needs no corridors. A full loop of ring segments is a faster "ring road."
+- **Corridors run on the edges between rooms** (and between rooms and rock), not in slots; see Reversals. A walkway gallery rings the shaft, so ring 1 needs no corridors.
 - Rooms come in S/M/L/H (1/2/4/8 slots). Most L/H rooms choose wide, deep or tall; grand plaza, stadium and reactor are at least 2×2×2; arena, theater, farm atrium and commons are at least 2 floors tall.
 - Public rooms (plazas, markets, food courts, stadiums) are walk-through; private and industrial rooms block movement.
 - Frontage is automatic: shaft-facing windows (+1 comfort), doors and storefronts on corridors and plazas, no wall where a corridor meets a plaza.
@@ -46,7 +48,7 @@ When documents disagree, trust them in this order:
 **Starting game**
 - 20 colonists, a landing pod (temporary housing for 20 plus an admin desk), landing pad, one solar array, one battery.
 - Critical set: bunk dorm, life support, water tank, restroom, galley.
-- Then **two farms with different crops** (e.g. potatoes 12 + soybeans 8 = 20 food), water recycler, second solar array, clinic, excavator bay, admin office.
+- Then **two farms with different crops** (e.g. potatoes 12 + soybeans 8 = 20 food), water recycler, second solar array, clinic, admin office. (The excavator bay here became the drill plus empty rooms; see Reversals.)
 - Earth covers rations, water, spare oxygen and metal, machinery, electronics early on. One hole can survive alone but can't grow alone (no ore or no silica), which pushes the network.
 
 **Network**
@@ -70,6 +72,9 @@ When documents disagree, trust them in this order:
 - **Electronics input:** "rare minerals" was replaced by silicon wafers.
 - **Restrooms:** no longer consume their own water; they provide sanitation for 25 and return users' water as gray and black water.
 - **Life support:** raised from 10 to 30 oxygen so the starting crew has margin.
+- **Corridors take slots** (spokes and ring segments, a "ring road" loop): replaced in milestone 6 by corridors that run along the edges between rooms, carved out of what they pass. Don't bring back 1-slot corridor rooms.
+- **Excavator bay as the digger:** replaced in milestone 9. The drill sinks the shaft on its own; every room slot is rock until it's excavated, and **empty rooms** dig ahead for rock and space. (An excavator bay may return as a faster drill; see ROOM-STATUS.md.)
+- **Free space:** rooms used to sit on ready-made slots. Since milestone 9, space is dug, not given.
 
 ## Cleanup before handoff
 
@@ -85,14 +90,35 @@ These sections were brought in line with the catalogs, both in this kit and in t
 
 - Each water tank holds only one type of water: clean, gray or black (from Bryon's early room list).
 
+## Decided while building (Sep 27–30)
+
+Each milestone plan has the details, under "Notes as built".
+
+- **Tick model:** 240 ticks a game day; 1× is 2 ticks a second (so a day is 2 minutes), with 2× and 4× (`data/config.json`). Resources are one pool per hole, no pathing. Neighbor effects are a per-slot field rebuilt when the layout changes (`PLAN.md`).
+- **Rings:** only rings 1–3 are open. Rings 4–6 and their unlocks (reinforcement frames, the excavation milestone) aren't built yet.
+- **Build UI:** four modes as in SimCity (Build, View, Map, Charts); Build has a strip of room categories. Room keys work only in Build. A yellow frame shows Build is on (`PLAN-M2.md`, `PLAN-M6.md`, `PLAN-M10.md`).
+- **Save format:** autosave every game day in the browser, save slots, and export to a file (`PLAN-M2.md`).
+- **Tutorial:** a deputy walks new players through the start (`data/tutorial.json`).
+- **3D view (M3):** the main view; new games open in 3D Iso. Cutaway, Top, Iso and first person, X-ray and walls down. **Art direction:** a cozy, miniature look (soft shadows, glow, warm haze and grade, furnished rooms; `ART.md`, `PLAN-M10.md`). Space Grotesk for the UI and labels.
+- **Network (M4):** a real Mars globe from NASA MOLA data. New holes are founded from a staging bay; rover depots and trade routes; culture drift and opinions between holes.
+- **People (M5):** cohorts of children, adults and elders; births, aging, retirement, deaths, migration; school, elder care and crypt.
+- **Corridors on edges (M6).** **Construction time (M7):** a queue per hole, paced by construction offices. **Storage (M8):** dry goods keep only what storerooms, warehouses and depots have room for.
+- **Excavation and the entrance (M9):** the entrance on floor 1 is the only way in; stairs and elevators reach deeper floors; a cargo elevator at 100 colonists.
+- **Furnishing (M10):** every room type has a furniture template; rooms of a kind vary (mirrored, stand-ins, shades).
+- **Condition and upkeep (Sep 30):** rooms wear; worn rooms upset people, slow down and stop at 0%; breakdowns now and then. Maintenance rooms (using machinery) and, from 150 colonists, cleaning services (using water) repair them from a hole-wide queue (`data/condition.json`).
+- **Housing tiers:** dorms, then studios and apartments at 50 colonists, flats and family apartments at 200, suites and residences at 1,000.
+- **Dust storms** are forecast, then halve solar output for a day or two.
+- **Rooms can be renamed**; farms are named after their crop.
+- **Built so far, not the full design:** 5 ordinances (Quiet hours, Water rationing, Ration cards, Closed borders, Return to the soil), 2 kinds of citizen visit (noise complaint, clinic demand), and overlays for noise, smell, health, comfort, happiness and condition. The design's 32 ordinances and full event catalog are still the target.
+
 ## Still open
 
 Deliberately not decided yet:
 
-- **Simulation model:** how several holes run efficiently. (Milestone 1 defaults for tick rate, flows, effects and the 2D view were settled Sep 27; see PLAN.md.)
-- **Build mode and UI flow:** digging, placing rooms, choosing size, shape and materials, reading overlays.
-- **Art and audio direction.**
-- **Full balancing pass:** only the starter rooms are balanced; mid- and late-game numbers are rough placeholders.
-- **Build roadmap:** milestones beyond the first playable version.
-- **Smaller items:** difficulty settings, tutorial flow, save format, accessibility, mod support.
+- **Simulation at scale:** how many holes (and 10,000-person holes) run efficiently. Two holes run fine today.
+- **Audio direction.** Today's sound is synthesized placeholder effects and a hum (`src/audio/sound.ts`). (Art direction is settled: the cozy 3D look.)
+- **Full balancing pass:** the starter rooms and the first month are tuned (the playtest bots check them); mid- and late-game numbers are rough placeholders.
+- **Build roadmap past milestone 10:** what to build next. `ROOM-STATUS.md` grades the unbuilt rooms by how big a step each is.
+- **Rings 4–6** and how they unlock.
+- **Smaller items:** difficulty settings, accessibility, mod support.
 - **Trademark check** for "Downtown Mars."

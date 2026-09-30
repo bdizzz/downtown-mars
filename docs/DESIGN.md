@@ -15,6 +15,22 @@ A real-time city builder on Mars where each city is a borehole: you dig down, ca
 - **Vibe:** SimCity, SimTower and Terraforming Mars, with some of Frostpunk's social tension but chill rather than crushing.
 - **Mode:** Sandbox. The goal is a self-sustaining network; total supported population is the high score.
 
+## Where the build stands (Sep 30, 2026)
+
+This doc is the design target; the game builds toward it. Milestones 1–10 are done: one or two holes, the 3D view, people, corridors on edges, construction time, storage, excavation and the entrance, furnished rooms, and condition and upkeep. Sections below carry an **As built** note where the game differs today. `DECISIONS.md` lists what was decided while building, and `ROOM-STATUS.md` which rooms are in the game.
+
+| Area | In the game | Not yet |
+| --- | --- | --- |
+| The borehole | Floors dug by the drill; rooms excavated from rock; entrance, stairs and elevators | Rings 4–6; cave-ins; choosing a diameter |
+| Rooms | 48 room types (see `ROOM-STATUS.md`) | About half the catalog, H-size rooms, multi-floor rooms beyond stairs and elevators |
+| Resources | Air, water (clean, gray, black), food, soil, waste, rock and ores, brick, marscrete, metal, machinery, wafers, electronics; storage for dry goods | Glass, plastics, textiles, consumer goods, currency |
+| Happiness | Three factors: noise, health and comfort (smell, shaft views, homelessness, care, ordinances and room condition feed them) | Air quality, safety, entertainment, diet variety |
+| Office and ordinances | Citizen visits (noise complaint, clinic demand) and promises; 5 ordinances | The other 27 ordinances, delegation |
+| People | Children, adults, elders; births, aging, deaths, migration; notables | Skills, mentoring, factions and strikes |
+| Network | A Mars globe (MOLA terrain), founding holes, rovers, trade routes, culture sliders and opinions | Pipelines, the belt, independence, blocs |
+| Hazards | Dust storms, breakdowns and wear | Cave-ins, outbreaks, difficulty settings |
+| Views and sound | 3D (the main view), the 2D unrolled view, the plan view, overlays, flows; synthesized sound effects and an ambient hum | Real audio: music, recorded sound |
+
 ## The borehole
 
 Every hole starts as a small shaft; rooms are carved into its wall, then floors stack downward and rooms expand outward from the cylinder.
@@ -34,6 +50,8 @@ Each floor holds rings of rooms around the shaft, with ring 1 facing the shaft i
 - **Rings 4–5** unlock once the hole has reinforcement frames.
 - **Ring 6** is the hard cap, unlocked by an advanced excavation milestone.
 
+**As built:** only rings 1–3 exist; the unlocks for 4–6 aren't built. The starter hole is R = 10 m with 9, 16 and 22 slots.
+
 **Trade-offs of building outward:** each ring out costs more to dig, lengthens commutes (corridors required), raises cave-in risk and needs ventilation hubs for fresh air. In return, outer rings are quieter and more private, good for housing without a view, storage, or industry kept out of the way.
 
 **Outer rings are bigger,** because each wraps a wider circle. Approximate slots per ring:
@@ -46,6 +64,8 @@ Each floor holds rings of rooms around the shaft, with ring 1 facing the shaft i
 Narrow holes gain the most by expanding outward, since their outer rings more than double in size; wide holes gain more from digging down. The diameter choice therefore shapes each hole's building style.
 
 ### Corridors and access
+
+**As built (milestone 6, reversing this section):** corridors don't take slots. They run along the edges between rooms, and between rooms and rock, carved out of what they pass; spokes and ring roads as slot-rooms are gone. The gallery and the access rule stand. See `PLAN-M6.md`. The original design follows.
 
 Corridors take up slots just like rooms, rather than getting rings of their own, so every corridor is a placement trade-off.
 
@@ -278,6 +298,8 @@ The game runs in real time with pause and speed controls, and the player can swi
 - **3D cylinder** sells immersion and the feeling of a city in a hole.
 - **Build order:** 2D first, 3D later, with no data rework.
 
+**As built:** 3D is now the main view (new games open in 3D Iso), with Cutaway, Top, first person, X-ray and walls down; the unrolled 2D view and a top-down plan view sit beside it. 1× runs 2 ticks a second, 240 ticks a game day.
+
 ## First 30 minutes
 
 The opening session teaches digging, adjacency, the office and the water ledger, then teases the network.
@@ -337,6 +359,8 @@ Power travels down the shaft, so a failing surface array affects the whole hole.
 - **Equipment failures:** aging rooms need maintenance.
 - Hazard frequency follows a difficulty setting, and every hazard gives warning.
 
+**As built:** dust storms (forecast, then halving solar for a day or two) and room wear with breakdowns, repaired by maintenance and cleaning services. No cave-ins, outbreaks or difficulty settings yet.
+
 **Surface:** each hole has a limited footprint for solar arrays, a landing pad and a rover depot, exposed to storms and radiation. Rovers carry trade between holes along visible map routes, with travel time and storm disruption.
 
 ## Research, money and commerce
@@ -379,6 +403,8 @@ The first build proves the adjacency puzzle is fun inside one hole; the network 
 - Happiness from three factors: noise, health, comfort.
 - 2D unrolled view only; real time with pause.
 - Office visits from notables.
+
+**As built:** done (milestone 1, `PLAN.md`), and grown well past this; see "Where the build stands" at the top.
 
 ## Cultural drift model
 
@@ -436,6 +462,8 @@ Rooms come in several footprints, and housing comes in several quality levels th
 | Standard apartment | Good | Brick and metal |
 | Luxury apartment | High | Metal and electronics, fewer residents per slot |
 
+**As built:** bunk dorms, then studios and apartments (50 colonists), flats and family apartments (200), suites and residences (1,000). Finer tiers house fewer per slot and cheer their neighbours.
+
 ## Air and solid waste
 
 Air and solid waste get the same full-cycle treatment as water, and appear in the flow diagram.
@@ -481,6 +509,8 @@ Heat-map overlays let the player read a large hole at a glance.
 - **Overlays:** noise, health, comfort, air quality, smell, staffing, power, safety, cave-in risk.
 - **Alerts** flag shortages, hazards and waiting petitioners, and link straight to the problem.
 
+**As built:** overlays for noise, smell, health, comfort, happiness and condition; a Flows view of power, water, air and food; messages that name rooms with their floor; rooms in trouble outlined in 3D with a ⚠.
+
 ## The map
 
 The map uses real Mars terrain, with resource deposits randomized each game so every run has unique challenges and opportunities.
@@ -493,7 +523,7 @@ The game starts on the web, built so a later move to Godot costs as little as po
 | --- | --- | --- |
 | Language | TypeScript | Type safety across interlocking systems |
 | 2D view | PixiJS | Fast sprite rendering for the unrolled view |
-| 3D view | Three.js (later) | Cylinder view reading the same data |
+| 3D view | Three.js | Cylinder view reading the same data (built, and now the main view) |
 | UI | React | Menus, office visits, flow diagram, overlay toggles |
 | Build | Vite | Local dev and builds |
 

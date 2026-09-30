@@ -2,6 +2,20 @@
 
 Each pathway follows one resource family from its source to the rooms that use it. In the original design doc each section had a diagram; here each diagram is written out as a text flow.
 
+**As built (Sep 30, 2026):** each section ends with what's in the game today. In short:
+
+| Pathway | In the game |
+| --- | --- |
+| Water | Complete loop: deep well pump, tanks, recycler, restrooms, composter |
+| Air | Complete: life support and farms |
+| Food | Farms (crops) → galley → colonists; Earth rations fill gaps. No kitchen, canteen or cultured meat |
+| Construction materials | Rock from every dig; concrete plant (marscrete). Brick only from Earth and the pod |
+| Metals and machinery | Smelter (ore sites) and machine shop |
+| Silicon and electronics | Silicon refinery (silica sites) and electronics fab |
+| Plastics, consumer goods, beer | Not yet |
+| Waste | Organic and black water to soil (composter); gray water recycled. Solid waste only piles up |
+| Upkeep (new) | Maintenance uses machinery; cleaning services turn clean water into gray water |
+
 ## Water
 
 **Flow:** water ice / aquifers → deep well pump (or imports) → clean water (stored in tanks) → colonists (drink 2 a day), farms, kitchens, life support (splits water into O2), industry (bricks, chips, fuel) → used water (gray and black) → water recycler (gray back to clean) → clean water. Most water circles back through the recycler.
@@ -13,6 +27,8 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Storage:** each tank holds only one type of water (clean, gray or black).
 - **Lost to:** leaks, tracked in the water ledger.
 
+**As built:** the whole loop works: deep well pump (aquifer or ice sites), water tanks, water recycler, restrooms (75% gray, 25% black), composter (black water), life support, farms, galley, clinic, silicon refinery and concrete plant. Cleaning services also use clean water and return it as gray. Clean, gray and black water are pools per hole rather than typed tanks. No leaks yet.
+
 ## Air
 
 **Flow:** clean water + power → life support (water to O2); farms and algae (CO2 to O2) → oxygen → colonists (breathe 1 a day) → CO2 → back to farms, and to the chemical plant (CO2 to plastics and fuel). Plants and chemistry turn exhaled CO2 back into value.
@@ -21,6 +37,8 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **CO2 made by:** colonists and some industry.
 - **CO2 used by:** farms, life support scrubbers, chemical plant.
 - **Air quality:** ventilation hubs raise it; smelters, brickworks, concrete and chemical plants lower it.
+
+**As built:** life support (30 O2 a day) and farms (2 O2, using CO2). Life support scrubs CO2 above a small reserve that farms draw on. No air-quality effect, algae or chemical plant yet.
 
 ## Food
 
@@ -31,6 +49,8 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Served by:** canteens, galleys, bars, hotels.
 - **Eaten by:** colonists (1 a day) and tourists. Kitchen scraps return to composters, mycelium vats and mushroom crops.
 
+**As built:** farms (crop chosen per farm, named after it) → raw food → galley → meals. The galley cooks Earth rations when there's no raw food. Diet variety doesn't count yet. Galley scraps go to the composter. No kitchen, canteen, cultured meat lab or food groups yet.
+
 ## Construction materials
 
 **Flow:** excavator bay digs → regolith (rock and silica) → brickworks (rock to brick), concrete plant (rock to marscrete), glassworks (rock to glass); solid waste → recycling center (scrap to brick) → brick, marscrete, glass → every new room's build cost. Every dig yields rock that becomes the next room.
@@ -38,6 +58,8 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Rock from:** the excavator bay and every dig.
 - **Processed by:** brickworks, concrete plant, glassworks, recycling center.
 - **Used by:** construction of every room. Glass also goes into windows, skylights, grand staircases and panoramic elevators.
+
+**As built:** the drill sinks the shaft and every room is excavated from rock, which yields rock (and ore or silica on those sites); empty rooms dig ahead. The concrete plant makes marscrete. Brick comes only from Earth drops and the pod's stock: no brickworks, recycling center or glass yet. Rooms can be finished in bare rock, marscrete, brick or metal.
 
 ## Metals and machinery
 
@@ -47,6 +69,8 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Processed by:** machine shop (machinery), pipe mill (pipe), vehicle works (rovers), electronics fab.
 - **Used by:** construction, furniture and appliance workshops, reinforcement frames.
 
+**As built:** smelter (ore sites) → metal → machine shop → machinery. Metal and machinery go into construction; maintenance rooms use machinery to repair. Other holes get metal by trade route.
+
 ## Silicon and electronics
 
 **Flow:** silica (sand deposits) → silicon refinery (makes wafers) → electronics fab (wafers plus metal) → appliances, vehicle works (rovers), advanced rooms (labs, reactors), solar arrays.
@@ -54,6 +78,8 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Silica from:** silica deposits on the map, or imports.
 - **Processed by:** silicon refinery (wafers), electronics fab (wafers plus metal).
 - **Electronics used by:** appliance assembly, vehicle works, research labs, reactors, solar arrays, luxury housing and other advanced rooms.
+
+**As built:** silicon refinery (silica sites) → wafers → electronics fab (with metal) → electronics, used in construction.
 
 ## Plastics and fuel
 
@@ -63,6 +89,8 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Plastics used by:** textile mill, toy workshop, appliance assembly.
 - **Methane used by:** rovers.
 
+**As built:** not yet.
+
 ## Consumer goods
 
 **Flow:** fiber hemp (farm crop) or plastics → textile mill (textiles); organic waste → mycelium vat (composite) → clothing workshop, furniture workshop (composite + textiles + metal), toy workshop (plastics + textiles), appliance assembly (metal, plastics, electronics) → shops → colonists.
@@ -71,9 +99,13 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Processed by:** textile mill, mycelium vat, clothing, furniture and toy workshops, appliance assembly.
 - **Sold by:** shops and market halls. Colonists need goods by life stage and housing tier; goods also export to the belt and tourists.
 
+**As built:** not yet.
+
 ## Beer
 
 **Flow:** barley (farm crop) + water → brewery → beer → bars and lounges (comfort +1 for regulars) and exports.
+
+**As built:** not yet (barley isn't a crop yet).
 
 ## Waste
 
@@ -82,3 +114,5 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Made by:** colonists, kitchens, restrooms, factories.
 - **Processed by:** mycelium vat, composter, water recycler, recycling center.
 - **Stored in:** waste storage when processing falls behind; smell grows as it fills.
+
+**As built:** the galley's organic waste and restrooms' black water go to the composter, which makes soil for farms; gray water goes to the recycler. Solid waste (colonists, the recycler) has a base capacity and nothing uses it yet: the recycling center is the missing link. No waste storage rooms.

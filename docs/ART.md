@@ -1,6 +1,8 @@
-# Art direction (placeholder)
+# Art direction
 
-What the game should look like, written so the code-drawn placeholders in `src/render2d/art.ts` and `stage.ts` can be swapped for real art without changing how the view works. Nothing here is decided with Bryon yet; "Art and audio direction" is still open in DECISIONS.md. Treat this as a proposal to react to.
+What the game should look like, written so the code-drawn placeholders in `src/render2d/art.ts` and `stage.ts` can be swapped for real art without changing how the view works.
+
+**As built (Sep 30, 2026):** the art direction is settled as the **cozy 3D look**, and 3D is the main view. Rooms are code-built models, furnished from templates (`docs/FURNITURE.md`, `PLAN-M10.md`), with soft shadows, glow round lit windows and lamps, a warm haze swallowing the floors below, a miniature-style blur in Iso and a warm colour grade. Floors, materials and grime suit each room; grime follows the room's condition. Screens flicker, lights blink, fires dance, plants sway, windows fog. The sky, dust storms and terrain follow the site and the hour. The UI and all labels use Space Grotesk. Audio is still open: today's sound is synthesized placeholder effects and a hum (`src/audio/sound.ts`). The 2D sections below were the first proposal; the readability rules still hold.
 
 ## Mood
 
@@ -32,6 +34,7 @@ These matter more than style, because the game is a placement puzzle.
 | Shaft windows | `#9fd2ff` |
 | Housing / Food / Water / Air | `#6f93bd` / `#86ad58` / `#4f9fc8` / `#8cc8cf` |
 | Health / Admin / Power / Logistics / Access | `#d48092` / `#c9a456` / `#e0bf4a` / `#a08fb0` / `#9a8574` |
+| Excavation / Industry / Public / Construction / Storage / Services | `#7a6a5e` / `#b48a6a` / `#d9a870` / `#d98c3a` / `#9c8a6a` / `#5aa89c` |
 
 ## What a real artist would make
 
@@ -39,7 +42,7 @@ These matter more than style, because the game is a placement puzzle.
 - **Frontage tiles:** shaft window strip, gallery door, side door, top and bottom door, plain wall, corner pieces, storefront (for later shops).
 - **Surface props:** solar arrays (tilting with the sun), landing pad with lights, the pod, lander with a landing plume, rovers later.
 - **Colonists:** tiny figures walking the gallery and corridors, more of them when busier. Purely cosmetic.
-- **UI:** a condensed technical sans for numbers, warm panels, one accent colour.
+- **UI:** a condensed technical sans for numbers, warm panels, one accent colour. (Built: Space Grotesk throughout.)
 
 ## Audio (for step 6)
 

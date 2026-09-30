@@ -2,6 +2,18 @@
 
 Events are how the colony talks back: citizen visits, hazards, discoveries, network politics and story beats, each offering a few choices with lasting consequences.
 
+**As built (Sep 30, 2026):**
+
+| Event | In the game |
+| --- | --- |
+| Citizen visits | Noise complaint and clinic demand, with promises the notable remembers (`data/visits.json`) |
+| Dust storm | Forecast a few days ahead; halves solar for a day or two |
+| Equipment failure | Breakdowns: now and then something in a room breaks and knocks its condition down 20–30 points. Rooms also wear, and maintenance or cleaning crews repair them |
+| Supply drops | Every few days from Earth, sometimes delayed |
+| People | Births, retirements, deaths, migration between holes, opinion shifts between holes |
+
+Everything else here (the strike chain, cave-ins, outbreaks, discoveries, network, Earth and belt events, story beats, notable life events) is still design. Events don't offer choices yet, except citizen visits.
+
 ## How events work
 
 - **Anatomy:** a trigger (conditions in the hole), a messenger (usually a notable visiting the office), two to four choices, and consequences, both immediate and lingering.
