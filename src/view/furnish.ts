@@ -5,7 +5,7 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { floorSpan, ringRadii, slotAngles } from "../render3d/cylinder";
 import { doorways } from "./doors";
-import { isFurnished, isItem, isMounted, itemDef } from "./furniture";
+import { isFurnished, isItem, isMounted, itemDef, itemsFor } from "./furniture";
 
 // Laying furniture out in a room. A template (data/layouts.json) is a list of
 // placements for one room type and shape, in priority order. Each is pinned
@@ -432,12 +432,63 @@ export function furnish(layout: Layout, room: RoomInstance, templates: Record<st
   for (const { floor, role } of furnishedFloors(room)) {
     const template = templateFor(room.type, room.at.w, room.at.d, templates, role);
     const frame = template && frameOf(layout, room, floor);
-    if (frame && template) out.push(...fit(frame, template));
+    if (frame && template) out.push(...fit(frame, varied(template, room)));
   }
   // A farm shows what it grows: its planters and racks swap for that crop's (same footprints).
   const crop = room.crop ?? roomDef(room.type).defaultCrop;
   if (crop) for (const f of out) f.item = cropVariant(f.item, crop);
   return out;
+}
+
+// ---- variety: no two rooms of a kind quite alike ----
+
+/**
+ * Pieces that can stand in for one another. A room swaps some for others in
+ * the same group (only ones its kind of room may have), so two dorms don't
+ * hang the same pictures or light their corners the same way.
+ */
+const SWAPS: string[][] = [
+  ["plant_pot", "floor_lamp"],
+  ["painting", "poster", "earth_photo", "family_photos"],
+  ["painting_wide", "wall_textile"],
+  ["wall_clock", "intercom"],
+  ["chart_board", "whiteboard", "notice_board"],
+  ["gauge_panel", "readout_panel"],
+  ["shelf_unit", "bookshelf"],
+  ["wall_mirror", "wall_shelf"],
+];
+
+/** A room's own roll, 0..1, for a salt: the same room always varies the same way. */
+export function roomRoll(roomId: number, salt: number): number {
+  let h = Math.imul(roomId ^ 0x9e3779b9, 2654435761) ^ Math.imul(salt + 1, 40503);
+  h = Math.imul(h ^ (h >>> 15), 2246822507);
+  h = Math.imul(h ^ (h >>> 13), 3266489909);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/**
+ * A room's own take on its template: mirrored side to side (about half of
+ * rooms), with some pieces swapped for others that can stand in for them.
+ * Stairs and elevators keep theirs exactly, as their flights and shafts line
+ * up floor to floor.
+ */
+export function varied(template: Template, room: RoomInstance): Template {
+  if (roomDef(room.type).stacks || template.some((p) => p.mirror || itemDef(p.item).climb || itemDef(p.item).opening)) return template;
+  const allowed = new Set(itemsFor(room.type));
+  const mirror = roomRoll(room.id, 0) < 0.5;
+  return template.map((p, i) => {
+    let item = p.item;
+    const group = SWAPS.find((g) => g.includes(item));
+    if (group) {
+      const options = group.filter((id) => allowed.has(id) && isMounted(id) === isMounted(item));
+      if (options.length > 1) item = options[Math.floor(roomRoll(room.id, i + 1) * options.length)]!;
+    }
+    if (!mirror) return item === p.item ? p : { ...p, item };
+    // Mirrored: the left wall's things go on the right and back; along the others, x the other way.
+    const wall: Wall = p.wall === "left" ? "right" : p.wall === "right" ? "left" : p.wall;
+    const x = p.wall === "left" || p.wall === "right" ? p.x : p.x === undefined ? undefined : -p.x;
+    return { ...p, item, wall, ...(x !== undefined ? { x } : {}), ...(p.turn ? { turn: -p.turn } : {}) };
+  });
 }
 
 /** An item as it looks growing a crop ("planter_bed_wheat"), if it has such a look. */

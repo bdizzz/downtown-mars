@@ -633,3 +633,17 @@ Decided Sep 28, 2026 (Bryon):
   - Surface rooms' overlay discs floated over a picked floor; they now skip when a floor is picked.
   - **GLSL `smoothstep` with reversed edges is undefined**, and on some GPUs it breaks the shader's output. There were seven, in grime, window fog and droplets, the light shaft, stars, sparks and rock strata. Each is now `1 − smoothstep(lo, hi, x)`.
   - Trouble outlines now lower with their walls.
+
+**Keys, the build frame, and variety (Bryon, Sep 30):**
+- **Speed keys** (`speedStep`, `nextSpeed` in Hud.tsx):
+  - − and + step 1× → 2× → 4× and back, doing nothing past either end. The main keys, = and the keypad all work.
+  - From paused, they start one step from the speed you had.
+  - Space pauses and resumes at the speed you had.
+  - In the help screen and README.
+- **Build mode frame:** a 4 px yellow border inset 6 px with 10 px corners, over everything, clicks passing through (`.build-frame`).
+- **Rooms of a kind vary** (`varied` in furnish.ts, from the room's id):
+  - About half are mirrored side to side: left and right walls swap, x flips along the others, turns flip.
+  - Stand-ins swap within groups, only to items that kind of room may have and a hanging only for a hanging: plant ↔ floor lamp; painting, poster, Earth, family photos; wide painting ↔ woven hanging; clock ↔ intercom; chart board, whiteboard, notice board; gauges ↔ readout; shelving ↔ bookshelf; mirror ↔ wall shelf.
+  - Each room's furnishings take its own shade of the category colour (hue ±3%, saturation ±15%, lightness ±8%).
+  - Stairs and elevators are never varied.
+  - The furniture cache key now includes the room's id.

@@ -6,7 +6,7 @@ import { FLOOR_H, floorSpan, RING_D, ringRadii, slotAngles, TAU } from "./cylind
 import { cellEdges, edgeById, edgeSides, edgeVertices, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
-import { FIT, frameOf, furnish, type Fitted } from "../view/furnish";
+import { FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
 import { isMounted, itemDef } from "../view/furniture";
 import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
@@ -635,16 +635,26 @@ export function setPanelDust(level: number): void {
   m.metalness = PANEL.metalness[0] + (PANEL.metalness[1] - PANEL.metalness[0]) * level;
 }
 
+/** A room's own shade of its category's colour, for its furnishings: a touch lighter or darker, warmer or cooler. */
+function roomAccent(color: number, roomId: number): number {
+  const c = new THREE.Color(color);
+  const hsl = { h: 0, s: 0, l: 0 };
+  c.getHSL(hsl);
+  c.setHSL((hsl.h + (roomRoll(roomId, 101) - 0.5) * 0.06 + 1) % 1, hsl.s * (0.85 + roomRoll(roomId, 102) * 0.3), Math.min(0.85, Math.max(0.15, hsl.l + (roomRoll(roomId, 103) - 0.5) * 0.16)));
+  return c.getHex();
+}
+
 const furnitureCache = new Map<string, THREE.Group>();
 function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, color: number, topFloor: number | null): THREE.Group | null {
   // Stairs and elevators are furnished on several floors: above a chosen floor, theirs go too.
   // A farm's crop changes what grows in its planters.
-  const key = `furniture:${shapeKey}:${topFloor ?? "all"}:${room.crop ?? ""}`;
+  // Each room varies its template its own way (furnish.ts), so its id is part of the key.
+  const key = `furniture:${room.id}:${shapeKey}:${topFloor ?? "all"}:${room.crop ?? ""}`;
   let g = furnitureCache.get(key);
   if (!g) {
     const fitted = furnish(layout, room).filter((f) => topFloor === null || f.floor >= topFloor);
     if (!fitted.length) return null;
-    g = furnitureGroup(layout, room, fitted, `#${color.toString(16).padStart(6, "0")}`);
+    g = furnitureGroup(layout, room, fitted, `#${roomAccent(color, room.id).toString(16).padStart(6, "0")}`);
     Object.assign(g.userData, { cached: true, key });
     g.traverse((o) => (o.userData.cached = true));
     furnitureCache.set(key, g);
