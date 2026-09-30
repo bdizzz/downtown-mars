@@ -32,6 +32,7 @@ import { advanceDetails } from "./details3d";
 import { troubleOf, type Trouble } from "../view/roomTrouble";
 import { grimeLevel } from "../view/grime";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
+import { reachKey, reachTints } from "../view/reachView";
 import { flowRooms, Flows } from "./flows3d";
 import type { RoomStatus } from "../sim/economy";
 
@@ -848,8 +849,23 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     fieldGroup = new THREE.Group();
     scene.add(fieldGroup);
     dirty = true;
-    if (!overlayType) return;
     const l = s.layout;
+    // No overlay on, and a service or amenity selected: the homes it reaches on foot, and those it doesn't.
+    if (!overlayType) {
+      const byLook = new Map<string, Cell[]>();
+      for (const { room, color, alpha } of reachTints(l, selected) ?? []) {
+        const k = `${color}:${Math.round(alpha * 20) / 20}`;
+        byLook.set(k, [...(byLook.get(k) ?? []), ...room.cells]);
+      }
+      for (const [k, cells] of byLook) {
+        const [color, alpha] = k.split(":").map(Number) as [number, number];
+        const mat = overlayMat(`r:${k}`, () =>
+          withWallsDown(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, depthWrite: false, side: THREE.DoubleSide, ...OVERLAY_OFFSET })),
+        );
+        fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET, false), mat));
+      }
+      return;
+    }
     const bands = new Map<number, Cell[]>();
     const add = (v: number, cells: Cell[]) => {
       if (Math.abs(v) < 0.05) return;
@@ -1605,7 +1621,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       updateSky(snapshot);
       const happy =
         overlayType === "happiness" ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",") : overlayType === "condition" ? conditionKey(snapshot.layout.rooms) : "";
-      const fk = `${overlayType}:${gameId}:${snapshot.layout.version}:${happy}:${heat.bad}:${cut()}`;
+      const fk = `${overlayType}:${gameId}:${snapshot.layout.version}:${happy}:${heat.bad}:${cut()}:${reachKey(snapshot.layout, selected)}`;
       if (fk !== fieldKey) {
         fieldKey = fk;
         buildField(snapshot);

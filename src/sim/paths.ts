@@ -51,6 +51,8 @@ export interface Paths {
   links: Map<string, Link[]>;
   /** Each room's nodes (one per floor it's on). */
   byRoom: Map<number, string[]>;
+  /** The walkable pieces along each border: what a room on one side of it opens onto. */
+  byEdge: Map<string, string[]>;
 }
 
 const built = (r: RoomInstance) => !r.planned && !r.building;
@@ -126,7 +128,7 @@ export function buildPaths(layout: Layout): Paths {
   for (const list of byVertex.values()) for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) link(list[i]!, list[j]!);
   // A private room opens onto whatever walkable piece runs along one of its sides.
   for (const p of privates) for (const e of outsideEdges(hole, p.cells)) for (const other of byEdge.get(e.id) ?? []) link(p.key, other);
-  return { nodes, links, byRoom };
+  return { nodes, links, byRoom, byEdge };
 }
 
 const cache = new WeakMap<Layout, { version: number; paths: Paths }>();
@@ -146,14 +148,36 @@ export function pathsFor(layout: Layout): Paths {
  * private room). The room itself is at 0. Stops past `maxM`.
  */
 export function distancesFrom(paths: Paths, roomId: number, mode: PathMode, maxM = Infinity): Map<number, number> {
+  const seeds = (paths.byRoom.get(roomId) ?? []).map((k): [string, number] => [k, 0]);
+  const out = walkOut(paths, seeds, roomId, mode, maxM);
+  if (seeds.length) out.set(roomId, 0);
+  return out;
+}
+
+/**
+ * The same, from a room that isn't built yet: where it would open onto the
+ * walkable pieces along its sides (for the placement preview).
+ */
+export function distancesFromCells(layout: Layout, cells: Cell[], mode: PathMode, maxM = Infinity): Map<number, number> {
+  const paths = pathsFor(layout);
+  const half = roomLength(cells.length) / 2;
+  const seeds: [string, number][] = [];
+  for (const e of outsideEdges(layout.hole, cells)) {
+    for (const k of paths.byEdge.get(e.id) ?? []) seeds.push([k, half + paths.nodes.get(k)!.length / 2]);
+  }
+  return walkOut(paths, seeds, -1, mode, maxM);
+}
+
+/** Dijkstra from some nodes at given costs, to every room within `maxM`. */
+function walkOut(paths: Paths, seeds: [string, number][], roomId: number, mode: PathMode, maxM: number): Map<number, number> {
   const dist = new Map<string, number>();
   const queue: [number, string][] = [];
-  for (const k of paths.byRoom.get(roomId) ?? []) {
-    dist.set(k, 0);
-    queue.push([0, k]);
+  for (const [k, d] of seeds) {
+    if (d > maxM || d >= (dist.get(k) ?? Infinity)) continue;
+    dist.set(k, d);
+    queue.push([d, k]);
   }
   const out = new Map<number, number>();
-  if (queue.length) out.set(roomId, 0);
   while (queue.length) {
     // Small graphs: a sorted array does fine as a queue.
     queue.sort((a, b) => a[0] - b[0]);

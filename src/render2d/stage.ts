@@ -2,6 +2,7 @@ import { UI_FONT } from "../view/font";
 import { roomLabel } from "../sim/roomName";
 import { crewsAt, crewsKey } from "../view/crews";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
+import { reachTints } from "../view/reachView";
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
@@ -188,8 +189,17 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
   }
 
+  /** With no overlay on and a service or amenity selected: the homes it reaches on foot, and those it doesn't. */
+  function drawReach(): void {
+    if (!layout) return;
+    for (const { room, color, alpha } of reachTints(layout, selected) ?? []) {
+      for (const row of cellRows(layout.hole, room.cells)) fieldCtx.rect(...rowRect(layout.hole, row)).fill({ color, alpha });
+    }
+  }
+
   function drawField(): void {
     fieldCtx.clear();
+    if (!overlayType) return drawReach();
     if (overlayType === "happiness") return drawHappiness();
     if (overlayType === "condition") return drawCondition();
     if (!layout || !field || !overlayType) return;
@@ -1035,6 +1045,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       selected = id;
       hoverKey = ""; // force a redraw of the selection outline
       refreshHover();
+      drawField(); // a service's reach, when no overlay is on
     },
     destroy() {
       canvas.removeEventListener("wheel", onWheel);

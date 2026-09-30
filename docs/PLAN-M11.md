@@ -116,3 +116,8 @@ A late, costly project that seals the top of the shaft. It needs glass (bringing
 - **Bots:** clinics, schools and elder care go near the home most short of them.
 - Tests that used the clinic's old through-the-wall health as their example source now use a concrete plant (noise) or a flat (comfort).
 
+**Step 8, seeing distances:**
+- **Placing a room:** the status line says what it would reach on foot (`reachSummary` in `view/reachView.ts`, walking from where the room would open: `distancesFromCells` in paths.ts). A home lists the nearest of each service and place to go in steps, flagging those out of reach ("On foot: Park 1 · Clinic 2 · Galley 3"); a service or amenity says how many homes it would reach.
+- **Selecting a service or amenity** with no overlay on: in all three views the homes within its reach are tinted green (stronger nearer), those beyond it red (`reachTints`). Its card says "Reaches 3 of 5 homes within 8 steps: …".
+- A home's card (step 6 and 7) already lists what's within reach.
+

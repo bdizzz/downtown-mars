@@ -10,6 +10,7 @@ import { config, type Priority } from "../sim/config";
 import { mainOutput, roomSpec } from "../sim/economy";
 import { shaftView } from "../sim/happiness";
 import { amenityFelt } from "../sim/amenities";
+import { reachSteps, reachTints } from "../view/reachView";
 import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
 import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
@@ -67,6 +68,19 @@ function Flows({ label, flows }: { label: string; flows: Record<string, number> 
   return (
     <p>
       <span className="k">{label}</span> {entries.map(([id, v]) => `${resName(id)} ${num(v)}`).join(", ")}
+    </p>
+  );
+}
+
+/** A service's or amenity's reach on foot: the homes within it (tinted on the map when no overlay is on). */
+function Reaches({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
+  const tints = reachTints(s.layout, room.id);
+  if (!tints) return null;
+  const within = tints.filter((t) => t.steps !== null).sort((a, b) => a.steps! - b.steps!);
+  return (
+    <p>
+      <span className="k">Reaches</span> {within.length} of {tints.length} {tints.length === 1 ? "home" : "homes"} within {reachSteps(room.type)} steps
+      {within.length ? `: ${within.slice(0, 4).map((t) => `${roomName(t.room)} ${Math.max(1, Math.round(t.steps!))}`).join(", ")}${within.length > 4 ? "…" : ""}` : ""}
     </p>
   );
 }
@@ -466,6 +480,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
       )}
       {room.at.kind === "ring" && def.houses ? <ShaftView s={s} room={room} /> : null}
       {def.houses ? <WithinReach s={s} room={room} /> : null}
+      <Reaches s={s} room={room} />
       {room.at.kind === "ring" && <Neighborhood s={s} room={room} />}
       {def.growsCrops && (
         <label>

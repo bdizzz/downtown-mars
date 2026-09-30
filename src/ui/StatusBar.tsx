@@ -1,6 +1,7 @@
 import { roomName } from "../sim/roomName";
 import type { ViewMode } from "./settings";
-import type { HoverInfo } from "../view/types";
+import type { HoverInfo, Tool } from "../view/types";
+import { reachSummary } from "../view/reachView";
 import type { Hole } from "../sim/geometry";
 import { effectAt, effectName, FIELD_TYPES } from "../sim/effects";
 import type { Snapshot } from "../sim/snapshot";
@@ -31,6 +32,8 @@ function where(info: HoverInfo, hole: Hole): string {
 
 interface Props {
   info: HoverInfo | null;
+  /** The tool in hand: placing a room shows what it would reach on foot. */
+  tool?: Tool;
   snapshot: Snapshot | null;
   notice: string | null;
   overlay: string | null;
@@ -55,7 +58,7 @@ function feltOver(s: Snapshot, cells: { floor: number; ring: number; slot: numbe
     .join(", ");
 }
 
-export function StatusBar({ info, snapshot, notice, overlay, view }: Props) {
+export function StatusBar({ info, snapshot, notice, overlay, view, tool }: Props) {
   const hole = snapshot?.layout.hole;
   let text = view === "plan" ? "Drag to pan · scroll or pinch to zoom" : "Drag to pan · scroll to move · pinch or ctrl+scroll to zoom";
   let bad = false;
@@ -80,6 +83,7 @@ export function StatusBar({ info, snapshot, notice, overlay, view }: Props) {
       bad = true;
     } else if (info.check?.ok && snapshot) {
       const felt = feltOver(snapshot, info.check.cells);
+      const onFoot = tool?.kind === "build" && info.check.cells.length ? reachSummary(snapshot.layout, tool.room, info.check.cells) : "";
       const blueprint = info.check.planned ? "Blueprint: builds when this floor is dug · " : "";
       const floor = info.check.cells[0]?.floor ?? 1;
       const cutOff = !info.check.unconnected
@@ -97,7 +101,7 @@ export function StatusBar({ info, snapshot, notice, overlay, view }: Props) {
       const lost = (info.check.strands?.rooms.length ?? 0) + (info.check.strands?.corridors.length ?? 0);
       if (d) bad = true;
       const over = d ? `⚠ Fills in ${d} corridor ${d === 1 ? "segment" : "segments"}${lost ? `, cutting off ${lost} more` : ""} · ` : "";
-      text = `${over}${note}${cutOff}${blueprint}${digs}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
+      text = `${over}${note}${cutOff}${blueprint}${digs}${onFoot ? `On foot: ${onFoot} · ` : ""}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
     } else if (info.room) {
       const blueprint = info.room.planned ? " (blueprint)" : "";
       const st = snapshot?.roomStatus[info.room.id];

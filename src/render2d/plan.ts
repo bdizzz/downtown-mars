@@ -2,6 +2,7 @@ import { UI_FONT } from "../view/font";
 import { roomLabel } from "../sim/roomName";
 import { crewsAt, crewsKey } from "../view/crews";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
+import { reachKey, reachTints } from "../view/reachView";
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import { previewEffects, type EffectField } from "../sim/effects";
 import type { Hole } from "../sim/geometry";
@@ -385,8 +386,15 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   let conditionShown = "";
   function drawField(): void {
     fieldCtx.clear();
-    if (!layout || !overlayType) return;
+    if (!layout) return;
     const h = layout.hole;
+    // No overlay on, and a service or amenity selected: the homes it reaches on foot, and those it doesn't.
+    if (!overlayType) {
+      for (const { room, color, alpha } of reachTints(layout, selected) ?? []) {
+        for (const c of onFloor(room.cells)) fieldCtx.poly(cellSector(h, c, 0.15)).fill({ color, alpha });
+      }
+      return;
+    }
     const tintCell = (c: { ring: number; slot: number }, v: number) => {
       if (Math.abs(v) < 0.05) return;
       fieldCtx.poly(cellSector(h, c, 0.15)).fill({ color: v < 0 ? heat.bad : heat.good, alpha: Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA });
@@ -740,7 +748,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   }
 
   function redrawField(force = false): void {
-    const key = `${overlayType}:${floor}:${heat.bad}`;
+    const key = `${overlayType}:${floor}:${heat.bad}:${layout ? reachKey(layout, selected) : ""}`;
     if (!force && key === fieldKey) return;
     fieldKey = key;
     drawField();
@@ -778,6 +786,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     setSelected(id) {
       selected = id;
       refreshHover(true);
+      redrawField();
     },
     setOverlay(type) {
       overlayType = type;

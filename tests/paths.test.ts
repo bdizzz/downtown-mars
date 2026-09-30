@@ -3,7 +3,8 @@ import { config } from "../src/sim/config";
 import { applyCommand } from "../src/sim/commands";
 import { galleryEdges, radialEdge, arcAt } from "../src/sim/edges";
 import { ensureFloors, type Location } from "../src/sim/placement";
-import { buildPaths, distancesFrom, pathsFor, STEP_M, stepsBetween } from "../src/sim/paths";
+import { buildPaths, distancesFrom, distancesFromCells, pathsFor, STEP_M, stepsBetween } from "../src/sim/paths";
+import { reachSummary, reachTints } from "../src/view/reachView";
 import { createInitialState, type SimState } from "../src/sim/state";
 
 // Milestone 11, step 4: the sealed network as a graph with distances.
@@ -109,5 +110,30 @@ describe("the network graph", () => {
     expect(distancesFrom(paths, dorm, "walk", m - 1).has(clinic)).toBe(false);
     // Cached until the layout changes.
     expect(pathsFor(s.layout)).toBe(pathsFor(s.layout));
+  });
+});
+
+describe("seeing distances", () => {
+  it("tints the homes a service reaches, and those it doesn't", () => {
+    const s = deep();
+    const near = build(s, "bunk_dorm", ring(1, 1, 1, 2));
+    const clinic = build(s, "clinic", ring(1, 1, 3));
+    finish(s);
+    const tints = reachTints(s.layout, clinic)!;
+    expect(tints.find((t) => t.room.id === near)!.steps).not.toBeNull();
+    // A room with no reach, or none selected: nothing to show.
+    expect(reachTints(s.layout, near)).toBeNull();
+    expect(reachTints(s.layout, null)).toBeNull();
+  });
+
+  it("says in the placement preview what a home would reach, and what a service would", () => {
+    const s = deep();
+    build(s, "clinic", ring(1, 1, 3));
+    build(s, "bunk_dorm", ring(1, 1, 5, 2));
+    finish(s);
+    const cells = [{ floor: 1, ring: 1, slot: 1 }];
+    expect(reachSummary(s.layout, "bunk_dorm", cells)).toMatch(/Clinic \d+/);
+    expect(reachSummary(s.layout, "galley", cells)).toMatch(/reaches 1 of 1 home within 8 steps/);
+    expect(distancesFromCells(s.layout, cells, "walk").size).toBeGreaterThan(0);
   });
 });
