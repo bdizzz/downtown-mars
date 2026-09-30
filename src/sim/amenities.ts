@@ -22,15 +22,14 @@ let longest: number | null = null;
 function longestReachM(): number {
   if (longest === null) {
     longest = 0;
-    for (const def of roomDefs) longest = Math.max(longest, reachOf(def.id));
+    for (const def of roomDefs) longest = Math.max(longest, def.reach ?? 0, def.amenity?.reach ?? 0);
     longest *= STEP_M;
   }
   return longest;
 }
-/** How far a room's amenity or service reaches, in steps. */
+/** How far a room's service (seats, care, school places) reaches, in steps. Its amenity has its own reach. */
 export function reachOf(type: string): number {
-  const def = roomDef(type);
-  return def.amenity?.reach ?? def.reach ?? 0;
+  return roomDef(type).reach ?? 0;
 }
 
 /**

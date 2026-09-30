@@ -158,18 +158,19 @@ describe("connecting a room", () => {
 });
 
 describe("corridors and effects", () => {
-  it("a corridor between two rooms soaks up noise; health still passes", () => {
+  it("a corridor between two rooms soaks up noise; comfort still passes", () => {
     const s = rich();
+    s.unlocks = ["standardHomes"];
     build(s, "life_support", ring(1, 1, 0, 4)); // noise −2 r2, slots 0–3
     build(s, "bunk_dorm", ring(1, 1, 4, 2));
-    build(s, "clinic", ring(1, 1, 6)); // health +2 r2
+    build(s, "flat", ring(1, 1, 6)); // comfort +1 r1 for its neighbours
     const before = effectAt(computeEffects(s.layout), "noise", { floor: 1, ring: 1, slot: 4 });
     draw(s, ["R1.1.4"]); // between the life support and the dorm
     const after = computeEffects(s.layout);
     expect(before).toBeLessThan(0);
     expect(Math.abs(effectAt(after, "noise", { floor: 1, ring: 1, slot: 4 }))).toBeLessThan(Math.abs(before));
     draw(s, ["R1.1.6"]); // between the dorm and the clinic
-    expect(effectAt(computeEffects(s.layout), "health", { floor: 1, ring: 1, slot: 5 })).toBeGreaterThan(0);
+    expect(effectAt(computeEffects(s.layout), "comfort", { floor: 1, ring: 1, slot: 5 })).toBeGreaterThan(0);
   });
 });
 

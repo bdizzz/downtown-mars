@@ -40,14 +40,14 @@ describe("effect field", () => {
 
   it("travels across rings by angle", () => {
     const l = layout();
-    placeRoom(l, "clinic", ring(1, 1, 0)); // health +2 r2
+    placeRoom(l, "concrete_plant", ring(1, 1, 0, 2)); // noise −2 r2, slots 0–1
     const f = computeEffects(l);
     // Rings 1 and 2 share their slots: ring 1 slot 0 sits right on ring 2 slot 0.
-    expect(effectAt(f, "health", cell(1, 2, 0))).toBeCloseTo(4 / 3);
-    expect(effectAt(f, "health", cell(1, 2, 1))).toBeCloseTo(2 / 3);
+    expect(effectAt(f, "noise", cell(1, 2, 0))).toBeCloseTo(-4 / 3);
+    expect(effectAt(f, "noise", cell(1, 2, 2))).toBeCloseTo(-2 / 3);
     // Ring 3 has more slots: ring 2 slot 0 (0°–40°) overlaps several of them.
-    expect(effectAt(f, "health", cell(1, 3, 0))).toBeCloseTo(2 / 3);
-    expect(effectAt(f, "health", cell(1, 3, 1))).toBeCloseTo(2 / 3);
+    expect(effectAt(f, "noise", cell(1, 3, 0))).toBeCloseTo(-2 / 3);
+    expect(effectAt(f, "noise", cell(1, 3, 1))).toBeCloseTo(-2 / 3);
   });
 
   it("a corridor along the border soaks up noise instead of passing it across", () => {
@@ -63,12 +63,12 @@ describe("effect field", () => {
     expect(effectAt(b, "noise", cell(1, 1, 4))).toBeGreaterThan(effectAt(a, "noise", cell(1, 1, 4)));
   });
 
-  it("corridors don't block health", () => {
+  it("corridors don't block comfort", () => {
     const l = layout();
-    placeRoom(l, "clinic", ring(1, 1, 0));
+    placeRoom(l, "flat", ring(1, 1, 0)); // comfort +1 r1 for its neighbours
     l.corridors["R1.1.1"] = "rock";
     const f = computeEffects(l);
-    expect(effectAt(f, "health", cell(1, 1, 1))).toBeCloseTo(4 / 3);
+    expect(effectAt(f, "comfort", cell(1, 1, 1))).toBeCloseTo(1 / 2);
   });
 
   it("effects from several rooms add up", () => {
@@ -100,9 +100,9 @@ describe("effect field", () => {
 describe("placement preview", () => {
   it("shows only the new room's halo", () => {
     const l = layout();
-    placeRoom(l, "clinic", ring(1, 1, 5)); // an unrelated source, not in the preview
+    placeRoom(l, "flat", ring(1, 1, 5)); // an unrelated source, not in the preview
     const f = previewEffects(l, "life_support", [cell(1, 1, 0), cell(1, 1, 1), cell(1, 1, 2), cell(1, 1, 3)]);
     expect(effectAt(f, "noise", cell(1, 1, 4))).toBeCloseTo(-4 / 3);
-    expect(effectAt(f, "health", cell(1, 1, 5))).toBe(0);
+    expect(effectAt(f, "comfort", cell(1, 1, 6))).toBe(0);
   });
 });

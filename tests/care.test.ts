@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { careFactors, elderCoverage, schoolCoverage } from "../src/sim/care";
+import { updateHappiness } from "../src/sim/happiness";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { createInitialState, type SimState } from "../src/sim/state";
@@ -27,27 +28,34 @@ describe("school and elder care", () => {
     expect(applyCommand(s, { type: "build", room: "elder_care", at: at(3) }).ok).toBe(true);
   });
 
+  /** A tick, then the happiness update that shares out places within reach. */
+  const settle = (s: ReturnType<typeof withKids>) => {
+    step(s, config);
+    updateHappiness(s, config, true);
+    updateHappiness(s, config, true);
+  };
+
   it("children without a school weigh on comfort; a school lifts it", () => {
     const s = withKids(10);
-    step(s, config);
+    settle(s);
     expect(schoolCoverage(s).missing).toBe(10);
     const without = careFactors(s).comfort;
     expect(without).toBeLessThan(-0.5);
     s.unlocks = ["children"];
     expect(applyCommand(s, { type: "build", room: "school", at: at(1) }).ok).toBe(true);
-    step(s, config);
+    settle(s);
     expect(schoolCoverage(s).missing).toBe(0);
     expect(careFactors(s).comfort).toBeCloseTo(0);
   });
 
   it("elders without care weigh on health; elder care lifts it", () => {
     const s = withKids(0, 8);
-    step(s, config);
+    settle(s);
     expect(elderCoverage(s).missing).toBe(8);
     expect(careFactors(s).health).toBeLessThan(-0.5);
     s.unlocks = ["elders"];
     expect(applyCommand(s, { type: "build", room: "elder_care", at: at(1) }).ok).toBe(true);
-    step(s, config);
+    settle(s);
     expect(careFactors(s).health).toBeCloseTo(0);
   });
 });

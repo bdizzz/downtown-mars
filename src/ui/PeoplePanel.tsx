@@ -79,7 +79,7 @@ export function PeoplePanel({ s, onClose }: { s: Snapshot; onClose: () => void }
         {s.care.school.who === 0
           ? "none yet"
           : s.care.school.missing > 0
-            ? `${num(s.care.school.missing)} of ${s.care.school.who} without a school place: their families are unhappy`
+            ? `${num(s.care.school.missing)} of ${s.care.school.who} without a school place within reach: their families are unhappy`
             : `all ${s.care.school.who} in school`}
       </p>
       <p>
@@ -87,10 +87,18 @@ export function PeoplePanel({ s, onClose }: { s: Snapshot; onClose: () => void }
         {s.care.elders.who === 0
           ? "none yet"
           : s.care.elders.missing > 0
-            ? `${num(s.care.elders.missing)} of ${s.care.elders.who} without care: health suffers`
+            ? `${num(s.care.elders.missing)} of ${s.care.elders.who} without elder care within reach: health suffers`
             : `all ${s.care.elders.who} cared for`}
       </p>
 
+      <p>
+        <span className="k">Clinic</span>{" "}
+        {(() => {
+          const c = s.population.care?.care;
+          if (!c || c.who === 0) return "—";
+          return c.missing > 0.5 ? `${num(c.missing)} of ${c.who} without a clinic within reach: health suffers` : `everyone has a clinic within reach`;
+        })()}
+      </p>
       <p>
         <span className="k">Meals</span> {dining(s)}
       </p>

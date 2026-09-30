@@ -107,3 +107,12 @@ A late, costly project that seals the top of the shaft. It needs glass (bringing
 - **UI:** amenity and serving rooms' cards say their reach; a home's card says its share seated and what's in reach on foot ("Park 3 steps (comfort +1.3)").
 - **Bots:** a galley near the least-seated home when anyone's short of a seat (a `placeNear` shared with ventilation), and a dorm only with air for its people (or the means to build a life support); the child hole otherwise outgrew its water and air by minute 90.
 
+**Step 7, services by distance** (`sim/care.ts`):
+- Clinic (and hospital), school and elder-care places are shared out with `assignNearest`, within each room's `reach` (clinic 10 steps, hospital 16, school 10, elder care 10), by the last update's residents. Homes don't know which of their people are children or elders: each is taken to hold the hole's mix. The homeless get whatever's left anywhere.
+- Each home feels its own shortfall: no clinic within reach (`noCareHealth`), unschooled children (families' comfort), uncared elders (health). Grief stays hole-wide. `population.care` holds each home's shares and the hole's totals (`missing` now counts those out of reach), used by the People panel.
+- Clinics and hospitals lost their through-the-wall health; they have an amenity instead (health +1.5 within 10 steps, +2.5 within 16), so a clinic nearby still lifts a home. Elder care lost its through-the-wall health too.
+- `reachOf` is a service's reach; an amenity has its own (the clinic's two happen to match).
+- **UI:** a home's card lists clinic, school and elder care within reach; the People panel says how many have no clinic within reach.
+- **Bots:** clinics, schools and elder care go near the home most short of them.
+- Tests that used the clinic's old through-the-wall health as their example source now use a concrete plant (noise) or a flat (comfort).
+

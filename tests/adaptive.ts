@@ -1,9 +1,8 @@
 import { maintenanceQueue } from "../src/sim/condition";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
-import { elderCoverage, schoolCoverage } from "../src/sim/care";
+import { careCoverage, elderCoverage, schoolCoverage } from "../src/sim/care";
 import { beds } from "../src/sim/earth";
-import { careCoverage } from "../src/sim/happiness";
 import { roomDef } from "../src/sim/rooms";
 import { bandwidth } from "../src/sim/construction";
 import { network } from "../src/sim/network";
@@ -110,11 +109,11 @@ const limited = (hole: SimState, what: string) =>
   hole.layout.rooms.some((r) => !r.planned && hole.roomStatus[r.id]?.limit === what);
 
 /** What this hole needs most right now, in order of urgency. */
-export function wants(hole: SimState): { room: string; crop?: string; near?: "seats" }[] {
+export function wants(hole: SimState): { room: string; crop?: string; near?: Need }[] {
   const pop = hole.population.count;
   const res = hole.resources;
   const met = hole.population.needsMet;
-  const out: { room: string; crop?: string; near?: "seats" }[] = [];
+  const out: { room: string; crop?: string; near?: Need }[] = [];
   if ((res.co2 ?? 0) > 30 || (met.o2 ?? 1) < 1 || count(hole, "life_support") * 30 < pop) out.push({ room: "life_support" });
   if (limited(hole, "power")) out.push({ room: "solar_array" });
   // Maintenance eats machinery: another machine shop once there's barely any left for building.
@@ -127,14 +126,15 @@ export function wants(hole: SimState): { room: string; crop?: string; near?: "se
     out.push({ room: "water_recycler" });
   }
   if (count(hole, "galley") * 25 < pop) out.push({ room: "galley" });
-  else if (unseatedHome(hole)) out.push({ room: "galley", near: "seats" });
+  else if (shortHome(hole, "seats")) out.push({ room: "galley", near: "seats" });
   if (count(hole, "farm") * 12 < pop * 0.6) out.push({ room: "farm", crop: "potatoes" });
   if (hole.population.sanitation < 0.99) out.push({ room: "restroom" });
   if ((res.soil ?? 0) < 20 && count(hole, "farm") > 0 && (res.organicWaste ?? 0) > 10) out.push({ room: "composter" });
   if (countStage(hole, "elder") > cryptSpace(hole)) out.push({ room: "crypt" });
-  if (careCoverage(hole) < 1) out.push({ room: "clinic" });
-  if (schoolCoverage(hole).missing > 0) out.push({ room: "school" });
-  if (elderCoverage(hole).missing > 0) out.push({ room: "elder_care" });
+  // Services within reach: near the home that's shortest of them.
+  if (careCoverage(hole) < 1) out.push({ room: "clinic", near: "care" });
+  if (schoolCoverage(hole).missing > 0) out.push({ room: "school", near: "school" });
+  if (elderCoverage(hole).missing > 0) out.push({ room: "elder_care", near: "elders" });
   if (staleHome(hole)) out.push({ room: "ventilation_hub" });
   // More homes only while the hole is doing well, leaving room for births.
   // …and only with the air for a dorm's worth more, or the means to build it: beds without air to breathe are no use.
@@ -157,9 +157,14 @@ function ventilate(hole: SimState): boolean {
   return !!home && placeNear(hole, "ventilation_hub", home);
 }
 
-/** The home with the smallest share seated within reach, if any is short. */
-function unseatedHome(hole: SimState): RoomInstance | undefined {
-  const by = hole.population.servedByHome ?? {};
+/** What a home can be short of, within reach: seats, or clinic, school or elder-care places. */
+type Need = "seats" | "care" | "school" | "elders";
+
+/** The home with the smallest share of a need met within reach, if any is short. */
+function shortHome(hole: SimState, need: Need): RoomInstance | undefined {
+  const pop = hole.population;
+  const by: Record<string, number> =
+    need === "seats" ? (pop.servedByHome ?? {}) : Object.fromEntries(Object.entries(pop.care?.byHome ?? {}).map(([id, c]) => [id, c[need]]));
   const worst = Object.entries(by).filter(([, v]) => v < 0.98).sort((a, b) => a[1] - b[1])[0];
   const home = worst ? hole.layout.rooms.find((r) => r.id === Number(worst[0])) : undefined;
   // The pod's people walk in from the entrance: a galley near that.
@@ -229,7 +234,7 @@ export function adapt(hole: SimState, saving: string[] = []): string | null {
   for (const w of list) {
     if (roomDef(w.room).staff > freeHands) continue; // it would stand empty
     if (w.room !== "life_support" && Object.keys(roomDef(w.room).cost).some((id) => saving.includes(id))) continue;
-    const home = w.near === "seats" ? unseatedHome(hole) : undefined;
+    const home = w.near ? shortHome(hole, w.near) : undefined;
     const placed = w.room === "ventilation_hub" ? ventilate(hole) : home ? placeNear(hole, w.room, home) : placeAnywhere(hole, w.room, w.crop);
     if (placed) return w.room;
   }

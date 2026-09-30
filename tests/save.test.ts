@@ -33,10 +33,13 @@ describe("saves", () => {
 
   it("rebuilds each hole's effect field rather than storing it", () => {
     const w = createWorld(config);
-    applyCommand(first(w), { type: "build", room: "clinic", at: { kind: "ring", floor: 1, ring: 1, slot: 2, w: 1, d: 1 } });
+    applyCommand(first(w), { type: "consoleFinish" });
+    applyCommand(first(w), { type: "consoleResources", atLeast: { rock: 100, metal: 50, machinery: 10 } });
+    expect(applyCommand(first(w), { type: "build", room: "concrete_plant", at: { kind: "ring", floor: 1, ring: 1, slot: 2, w: 2, d: 1 } }).ok).toBe(true);
+    applyCommand(first(w), { type: "consoleFinish" });
     expect(serialize(w)).not.toContain('"field"');
     const loaded = deserialize(serialize(w));
-    expect(loaded.ok && first(loaded.world).effects.field.health![0]![0]![2]).toBe(2);
+    expect(loaded.ok && first(loaded.world).effects.field.noise![0]![0]![2]).toBe(-2);
   });
 
   it("refuses garbage, other games and other versions", () => {

@@ -4,7 +4,7 @@ import { effectOnRoom } from "./effects";
 import type { Layout, RoomInstance } from "./placement";
 import { galleryEdges } from "./edges";
 import { modifiers } from "./ordinances";
-import { careFactors } from "./care";
+import { careFactors, updateCare } from "./care";
 import { CONDITION, homeWearComfort, sharedWear } from "./condition";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
@@ -61,18 +61,6 @@ export function shaftView(layout: Layout, room: RoomInstance, cfg: SimConfig): n
   return each.reduce((a, b) => a + b, 0) / each.length;
 }
 
-/** Share of colonists a working clinic looks after, 0..1. */
-export function careCoverage(state: SimState): number {
-  const pop = state.population.count;
-  if (pop <= 0) return 1;
-  let care = 0;
-  for (const r of state.layout.rooms) {
-    const cares = roomDef(r.type).cares ?? 0;
-    if (cares && isActive(r)) care += cares * (state.roomStatus[r.id]?.rate ?? 0);
-  }
-  return Math.min(1, care / pop);
-}
-
 /** How well needs are met, as a health factor: 0 at full health, −3 at none. */
 function needsHealth(state: SimState, cfg: SimConfig): number {
   return ((state.population.health - 100) / 100) * cfg.happiness.factorLimit;
@@ -82,8 +70,9 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   const h = cfg.happiness;
   const lim = h.factorLimit;
   const mod = modifiers(state);
-  const care = careFactors(state);
-  const shared = needsHealth(state, cfg) + (1 - careCoverage(state)) * h.noCareHealth + mod.health + care.health;
+  // Clinic, school and elder-care places within reach of this home (or, for the homeless, whatever's left).
+  const care = careFactors(state, room ? room.id : null);
+  const shared = needsHealth(state, cfg) + (1 - care.clinic) * h.noCareHealth + mod.health + care.health;
   // Worn shared rooms (the galley, restrooms, workplaces) get everyone down; worn homes, their own residents.
   const sharedComfort = mod.comfort + care.comfort - sharedWear(state) * CONDITION.happiness.sharedComfort;
   // Diners without a seat at a galley or canteen within reach eat on the go.
@@ -143,8 +132,9 @@ export function createHappiness(): Happiness {
  */
 export function updateHappiness(state: SimState, cfg: SimConfig, settle = false): void {
   const h = cfg.happiness;
-  // Seats within reach, shared out by where people lived at the last update.
+  // Seats and care within reach, shared out by where people lived at the last update.
   updateDining(state, cfg);
+  updateCare(state);
   const prev = new Map(state.happiness.pools.map((p) => [p.roomId, p]));
   const homes = state.layout.rooms.filter((r) => isActive(r) && (roomDef(r.type).houses ?? 0) > 0);
 

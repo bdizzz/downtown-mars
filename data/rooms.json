@@ -554,13 +554,7 @@
       },
       "makes": {},
       "cares": 50,
-      "effects": [
-        {
-          "type": "health",
-          "strength": 2,
-          "radius": 2
-        }
-      ],
+      "effects": [],
       "cost": {
         "brick": 10,
         "metal": 5,
@@ -568,7 +562,12 @@
       },
       "buildable": true,
       "enablesBirths": true,
-      "buildHours": 8
+      "buildHours": 8,
+      "reach": 10,
+      "amenity": {
+        "health": 1.5,
+        "reach": 10
+      }
     },
     {
       "id": "hospital",
@@ -585,20 +584,19 @@
       "cares": 400,
       "enablesBirths": true,
       "unlockedBy": "hospital",
-      "effects": [
-        {
-          "type": "health",
-          "strength": 3,
-          "radius": 3
-        }
-      ],
+      "effects": [],
       "cost": {
         "brick": 30,
         "metal": 20,
         "electronics": 8
       },
       "buildable": true,
-      "buildHours": 40
+      "buildHours": 40,
+      "reach": 16,
+      "amenity": {
+        "health": 2.5,
+        "reach": 16
+      }
     },
     {
       "id": "gym",
@@ -888,7 +886,8 @@
         "brick": 15
       },
       "buildable": true,
-      "buildHours": 14
+      "buildHours": 14,
+      "reach": 10
     },
     {
       "id": "elder_care",
@@ -903,19 +902,14 @@
       "makes": {},
       "caresForElders": 30,
       "unlockedBy": "elders",
-      "effects": [
-        {
-          "type": "health",
-          "strength": 1,
-          "radius": 1
-        }
-      ],
+      "effects": [],
       "cost": {
         "brick": 15,
         "metal": 5
       },
       "buildable": true,
-      "buildHours": 14
+      "buildHours": 14,
+      "reach": 10
     },
     {
       "id": "composter",

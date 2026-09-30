@@ -71,6 +71,20 @@ function Flows({ label, flows }: { label: string; flows: Record<string, number> 
   );
 }
 
+/** Clinic, school and elder-care places within reach of a home. */
+function CareInReach({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
+  const c = s.population.care?.byHome[room.id];
+  if (!c) return null;
+  const part = (name: string, v: number, who: number) => (who <= 0 ? null : v >= 0.98 ? `${name} ✓` : `${name} ${Math.round(v * 100)}%`);
+  const items = [part("clinic", c.care, 1), part("school", c.school, s.care.school.who), part("elder care", c.elders, s.care.elders.who)].filter(Boolean);
+  const short = c.care < 0.98 || (s.care.school.who > 0 && c.school < 0.98) || (s.care.elders.who > 0 && c.elders < 0.98);
+  return (
+    <p className={short ? "warn" : undefined}>
+      <span className="k">Within reach</span> {items.join(" · ")}
+    </p>
+  );
+}
+
 /** What a home's people can walk to: seats at a galley or canteen, and the amenities in reach. */
 function WithinReach({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
   const seated = s.population.servedByHome?.[room.id];
@@ -82,6 +96,7 @@ function WithinReach({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms
           <span className="k">Meals</span> {seated >= 0.98 ? "a seat for everyone within reach" : `${Math.round(seated * 100)}% seated within reach; the rest eat on the go`}
         </p>
       )}
+      <CareInReach s={s} room={room} />
       <p>
         <span className="k">On foot</span>
         {felt.from.length

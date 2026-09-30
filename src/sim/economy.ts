@@ -9,6 +9,7 @@ import { countStage, needsWeight, type Cohort } from "./people";
 import { storageCaps } from "./storage";
 import { stormOutput } from "./weather";
 import { conditionOutput, isCleanable, maintenanceQueue } from "./condition";
+import type { CareState } from "./care";
 
 // The per-tick economy: staff the rooms, run them, feed the colonists, cap
 // storage. Every amount in the data is per game day, so each tick moves
@@ -59,6 +60,8 @@ export interface Population {
   servedByHome?: Record<number, number>;
   /** The homeless's share with a seat (whatever's left over anywhere). */
   servedHomeless?: number;
+  /** Clinic, school and elder-care places, home by home and in total (care.ts). */
+  care?: CareState;
 }
 
 /**
