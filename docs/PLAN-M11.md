@@ -6,7 +6,7 @@ Decided Sep 30, 2026 (Bryon), in conversation, before any code:
 
 - **The shaft is outside.** It's Mars air (thin, cold, dusty). Nothing about it is breathable or walkable until the dome.
 - **Air is an internal loop.** Life support is the lungs; ventilation hubs are air handlers that scrub and circulate. Nothing vents to the planet or draws air from it. Poor air quality means contamination (fumes, dust, CO2 pooling) and distance from the main air trunk, which runs in risers down the shaft wall. The per-ring baseline (`effects.airQualityByRing`) stays, reframed as distance from the trunk.
-- **The gallery becomes buildable corridor:** glass-walled, pressurized tubes along the shaft wall. Floor 1 starts with its gallery built; on other floors the player lays gallery segments where they want them. A ring-1 room can face the shaft directly through its own windows (the full view bonus, but it needs access from a corridor behind or beside it), or open onto a gallery tube (easy access, a filtered view: half the bonus).
+- **The gallery becomes buildable corridor:** glass-walled, pressurized tubes along the shaft wall. Floor 1 starts with its gallery built; on other floors the player lays gallery segments where they want them. A ring-1 room can face the shaft directly through its own windows (the full view bonus, but it needs access from a corridor behind or beside it), or open onto a gallery tube (easy access, a filtered view: less of the bonus; as built, 1.5 direct and 1 through a tube, see step 3).
 - **Three ways effects travel.** What you *sense* goes by nearness (through rock and walls), what you *breathe* goes through the air network, and what you *use* goes by walking distance.
 
   | Effect or bonus | Nearness | Air network | Walking |
@@ -81,4 +81,9 @@ A late, costly project that seals the top of the shaft. It needs glass (bringing
 - **Doors** (`view/doors.ts`) only where a built tube runs along a ring-1 room; a public room in ring 1 is walled off from the shaft without one.
 - **Walking:** the ledge is only walkable inside a built tube. **Walkers** stroll along runs of tube (`view/gallery.ts` `tubeRuns`), turning back at the ends; floors without tubes have none.
 - **Not done:** a floor-to-ceiling window where no tube runs (the usual window band stays); the 2D views still draw ring-1 public rooms and dug-out empty space as open to the shaft side.
+
+**Step 3, the view bonus:**
+- `shaftView(layout, room)`: each of a home's ring-1 cells counts `shaftViewComfort` through its own windows, or `galleryViewComfort` with a tube (built or being built) in front of it; averaged over those cells.
+- **Changed from the plan:** half the bonus behind a tube (0.5 of 1) cost every ring-1 home in the bot runs 4 happiness (floor 1's gallery comes built), and births stalled below 50. So a tube keeps the old bonus (1) and a room's own windows are the upgrade (**1.5**): skipping the tube still pays, and nothing already built gets worse. Both numbers are in `data/config.json`.
+- The room card of a home says what ring 1 gives; a built home's card says its view ("through its own windows", "through a gallery tube", or "partly").
 

@@ -1,7 +1,8 @@
 import type { SimConfig } from "./config";
 import { isActive } from "./economy";
 import { effectOnRoom } from "./effects";
-import type { RoomInstance } from "./placement";
+import type { Layout, RoomInstance } from "./placement";
+import { galleryEdges } from "./edges";
 import { modifiers } from "./ordinances";
 import { careFactors } from "./care";
 import { CONDITION, homeWearComfort, sharedWear } from "./condition";
@@ -41,6 +42,24 @@ export interface Happiness {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
+/**
+ * Comfort from looking out over the shaft: each of a room's ring-1 cells
+ * counts in full through its own windows, or partly through a gallery tube
+ * in front of it (built, or being built); averaged over those cells. 0 for a
+ * room with none in ring 1.
+ */
+export function shaftView(layout: Layout, room: RoomInstance, cfg: SimConfig): number {
+  const faces = room.cells.filter((c) => c.ring === 1);
+  if (!faces.length) return 0;
+  const tubes = galleryEdges(layout.hole, faces[0]!.floor);
+  const h = cfg.happiness;
+  const each = faces.map((c) => {
+    const id = (c.floor === faces[0]!.floor ? tubes : galleryEdges(layout.hole, c.floor))[c.slot]?.id;
+    return id && layout.corridors?.[id] ? h.galleryViewComfort : h.shaftViewComfort;
+  });
+  return each.reduce((a, b) => a + b, 0) / each.length;
+}
+
 /** Share of colonists a working clinic looks after, 0..1. */
 export function careCoverage(state: SimState): number {
   const pop = state.population.count;
@@ -73,7 +92,7 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   const field = state.effects.field;
   const def = roomDef(room.type);
   const own = def.effects.filter((e) => e.residentsOnly && e.type === "comfort").reduce((s, e) => s + e.strength, 0);
-  const view = room.cells.some((c) => c.ring === 1) ? h.shaftViewComfort : 0;
+  const view = shaftView(state.layout, room, cfg);
   return {
     noise: clamp(effectOnRoom(field, "noise", room) * mod.noiseFactor, -lim, lim),
     comfort: clamp(own + view + sharedComfort + homeWearComfort(room) + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
-import { productivity, updateHappiness } from "../src/sim/happiness";
+import { productivity, shaftView, updateHappiness } from "../src/sim/happiness";
+import { galleryEdges } from "../src/sim/edges";
 import type { Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
@@ -55,13 +56,22 @@ describe("happiness", () => {
     expect(pool(withClinic, "bunk_dorm").factors.health).toBeGreaterThan(pool(without, "bunk_dorm").factors.health);
   });
 
-  it("ring 1 homes get the shaft view", () => {
+  it("ring 1 homes get the shaft view: in full through their own windows, partly through a gallery tube", () => {
     const s = withRooms([
       ["bunk_dorm", ring(1, 1, 1, 2)],
       ["bunk_dorm", ring(1, 2, 3, 2)],
     ]);
-    const [inner, outer] = s.happiness.pools.filter((p) => s.layout.rooms.find((r) => r.id === p.roomId)!.type === "bunk_dorm");
-    expect(inner!.factors.comfort - outer!.factors.comfort).toBeCloseTo(config.happiness.shaftViewComfort);
+    const dorms = () => s.happiness.pools.filter((p) => s.layout.rooms.find((r) => r.id === p.roomId)!.type === "bunk_dorm");
+    // Floor 1 starts with its gallery all the way round: the view is through the tube.
+    let [inner, outer] = dorms();
+    expect(inner!.factors.comfort - outer!.factors.comfort).toBeCloseTo(config.happiness.galleryViewComfort);
+    // Take the tube away from in front of one of its two cells: halfway between.
+    const home = s.layout.rooms.find((r) => r.id === inner!.roomId)!;
+    delete s.layout.corridors[galleryEdges(s.layout.hole, 1)[home.cells[0]!.slot]!.id];
+    updateHappiness(s, config, true);
+    [inner, outer] = dorms();
+    expect(inner!.factors.comfort - outer!.factors.comfort).toBeCloseTo((config.happiness.shaftViewComfort + config.happiness.galleryViewComfort) / 2);
+    expect(shaftView(s.layout, home, config)).toBeCloseTo((config.happiness.shaftViewComfort + config.happiness.galleryViewComfort) / 2);
   });
 
   it("colonists move into the best homes first", () => {

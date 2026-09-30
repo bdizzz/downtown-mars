@@ -8,6 +8,7 @@ import { useState } from "react";
 import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
 import { mainOutput, roomSpec } from "../sim/economy";
+import { shaftView } from "../sim/happiness";
 import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
 import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
@@ -65,6 +66,19 @@ function Flows({ label, flows }: { label: string; flows: Record<string, number> 
   return (
     <p>
       <span className="k">{label}</span> {entries.map(([id, v]) => `${resName(id)} ${num(v)}`).join(", ")}
+    </p>
+  );
+}
+
+/** A ring-1 home's view over the shaft: through its own windows, or a gallery tube in front. */
+function ShaftView({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
+  const v = shaftView(s.layout, room, config);
+  if (v <= 0) return null;
+  const h = config.happiness;
+  const how = v >= h.shaftViewComfort - 1e-9 ? "through its own windows" : v <= h.galleryViewComfort + 1e-9 ? "through a gallery tube" : "partly through a gallery tube";
+  return (
+    <p>
+      <span className="k">Shaft view</span> {signed(v)} comfort, {how}
     </p>
   );
 }
@@ -413,6 +427,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
           <span className="k">Seats</span> {num(spec.serves)} diners · {dining(s)}
         </p>
       )}
+      {room.at.kind === "ring" && def.houses ? <ShaftView s={s} room={room} /> : null}
       {room.at.kind === "ring" && <Neighborhood s={s} room={room} />}
       {def.growsCrops && (
         <label>

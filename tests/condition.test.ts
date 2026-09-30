@@ -6,6 +6,7 @@ import { step } from "../src/sim/step";
 import { CONDITION, conditionOf, maintenanceQueue, maintenanceView, overallCondition, stepCondition } from "../src/sim/condition";
 import type { Location } from "../src/sim/placement";
 import { homeFactors } from "../src/sim/happiness";
+import { galleryEdges } from "../src/sim/edges";
 
 const tpd = config.ticksPerDay;
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
@@ -128,6 +129,8 @@ describe("room condition", () => {
     const s = hole();
     const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     const galley = build(s, "galley", ring(1, 1, 5));
+    // Its own shaft windows (no tube in front), so its comfort isn't already at the floor.
+    for (const slot of [3, 4]) delete s.layout.corridors[galleryEdges(s.layout.hole, 1)[slot]!.id];
     const fresh = homeFactors(s, room(s, dorm), config).comfort;
     room(s, dorm).condition = 0.1;
     const wornHome = homeFactors(s, room(s, dorm), config).comfort;

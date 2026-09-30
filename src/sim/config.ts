@@ -116,6 +116,8 @@ export interface SimConfig {
     factorLimit: number;
     /** Comfort for homes in ring 1, which look out over the shaft. */
     shaftViewComfort: number;
+    /** The view from a ring-1 room through a gallery tube in front of it. */
+    galleryViewComfort: number;
     homelessComfort: number;
     /** Health factor when no clinic covers anyone; scaled by the uncovered share. */
     noCareHealth: number;
