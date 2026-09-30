@@ -117,6 +117,18 @@ Each milestone plan has the details, under "Notes as built".
 - **More rooms (Sep 30):** kitchen and canteen, gym, park, hospital, brickworks, recycling center, waste storage. **Seating:** galleys seat 25 and canteens 60; kitchens cook but seat no one; diners without a seat cost comfort. Unlocks moved earlier than the catalog so players have more ways to lift happiness: gym and park at 50 colonists (catalog 100), recycling center at 100 (300), hospital at 300 (1,000); brickworks stays at 50 (`config.unlocks.rooms`).
 - **Built so far, not the full design:** 5 ordinances (Quiet hours, Water rationing, Ration cards, Closed borders, Return to the soil), 2 kinds of citizen visit (noise complaint, clinic demand), and overlays for noise, smell, health, comfort, happiness and condition. The design's 32 ordinances and full event catalog are still the target.
 
+## Decided for milestone 11 (Sep 30, in conversation)
+
+See `PLAN-M11.md`. Not built yet.
+
+- **The shaft is outside:** open to Mars, not breathable or walkable. People live in a sealed network of rooms, corridors, stairs and glass gallery tubes.
+- **Air is an internal loop:** ventilation hubs scrub and circulate; nothing vents to the planet. Stale air means contamination and distance from the air trunk in the shaft wall.
+- **The gallery becomes buildable corridor** (glass tubes along the shaft), built on floor 1 at the start, laid by the player elsewhere. Direct shaft windows get the full view bonus; rooms behind a gallery tube get half.
+- **Effects travel three ways:** what you sense by nearness (noise, heat, view), what you breathe through the air network (air quality, smell), what you use by walking distance (parks, plazas, gyms, canteens, clinics, schools, elder care). Parks, plazas and canteens also keep a small nearness bonus.
+- **Noise stays nearness-based,** and corridors still soak it up; smell now rides the air through corridors.
+- **Steps:** one per room or corridor segment, stairs one between floors; reach is data (about 6 for a plaza, 10 for a clinic). Stairs carry air and people, elevators people only.
+- **The dome** over the shaft is a hole's end goal (a later milestone).
+
 ## Still open
 
 Deliberately not decided yet:
