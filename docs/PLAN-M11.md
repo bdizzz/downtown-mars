@@ -121,3 +121,8 @@ A late, costly project that seals the top of the shaft. It needs glass (bringing
 - **Selecting a service or amenity** with no overlay on: in all three views the homes within its reach are tinted green (stronger nearer), those beyond it red (`reachTints`). Its card says "Reaches 3 of 5 homes within 8 steps: …".
 - A home's card (step 6 and 7) already lists what's within reach.
 
+**Step 9, balance, bots and docs:**
+- Balance was tuned step by step as the bots showed trouble: gallery tubes cost rock (not metal); the view bonus keeps the old value behind a tube and adds to direct windows; bots got smarter (galleys, clinics, schools and elder care near the homes short of them; hubs near stale homes; rooms on ring 2 with a corridor when ring 1 is full; dorms only with air to spare; saving metal for the seed kit). The one bar lowered: the people playthrough's colonists at minute 80 (150, was 160), for the rock and crew time tubes take.
+- README, DESIGN (where things stand), DECISIONS, CLAUDE.md and ART.md updated.
+- **Not done (the "maybe" list, and loose ends):** sealed bulkheads; Mars dust from the airlock; crowding lowering air quality; floor-to-ceiling windows where no tube runs; the 2D views still draw ring-1 public rooms and empty space as open to the shaft side; the placement halo shows airborne effects by nearness. The shaft dome is its own milestone.
+

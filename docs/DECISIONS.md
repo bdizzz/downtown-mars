@@ -2,7 +2,7 @@
 
 A condensed record of the design conversation (Sep 26–27, 2026) between Bryon and Claude, and of what was decided while building (Sep 27–30): what was decided, what changed along the way, and what is still open. Use this to avoid reviving ideas that were already rejected.
 
-**Where things stand (Sep 30, 2026):** milestones 1–10 are built (see "Decided while building" below and the `PLAN*.md` files). Which catalog rooms are in the game and which are only described is in `ROOM-STATUS.md`, generated from the catalog and `data/rooms.json`.
+**Where things stand (Sep 30, 2026):** milestones 1–11 are built (see "Decided while building" below and the `PLAN*.md` files). Which catalog rooms are in the game and which are only described is in `ROOM-STATUS.md`, generated from the catalog and `data/rooms.json`.
 
 ## Source of truth
 
@@ -119,7 +119,7 @@ Each milestone plan has the details, under "Notes as built".
 
 ## Decided for milestone 11 (Sep 30, in conversation)
 
-See `PLAN-M11.md`. Not built yet.
+See `PLAN-M11.md`: built (Sep 30), with its notes as built.
 
 - **The shaft is outside:** open to Mars, not breathable or walkable. People live in a sealed network of rooms, corridors, stairs and glass gallery tubes.
 - **Air is an internal loop:** ventilation hubs scrub and circulate; nothing vents to the planet. Stale air means contamination and distance from the air trunk in the shaft wall.

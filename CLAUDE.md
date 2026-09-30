@@ -16,7 +16,7 @@ Vibe: SimCity, SimTower and Terraforming Mars, with some of Frostpunk's social t
 | `ROOM-STATUS.md` | Which catalog rooms are built and which are only described, graded by what each needs first. Generated: `node scripts/room-status.mjs` (rerun after adding rooms). |
 | `PATHWAYS.md` | Each resource family traced from source to users, with what's built. |
 | `EVENTS.md` | Event catalog: citizen visits, strike chain, hazards, discoveries, network, Earth and belt, story and notable events, with what's built. |
-| `PLAN.md`, `PLAN-M2.md` … `PLAN-M11.md` | Milestone plans, each with "Notes as built". M1 first playable, M2 polish and saves, M3 3D, M4 two holes, M5 people, M6 corridors on edges, M7 construction time, M8 storage, M9 excavation and the entrance, M10 furnishing (and later work: condition, new rooms, afterglow, charts, air quality), M11 (planned) the sealed network: gallery tubes, air through corridors, walking distance. |
+| `PLAN.md`, `PLAN-M2.md` … `PLAN-M11.md` | Milestone plans, each with "Notes as built". M1 first playable, M2 polish and saves, M3 3D, M4 two holes, M5 people, M6 corridors on edges, M7 construction time, M8 storage, M9 excavation and the entrance, M10 furnishing (and later work: condition, new rooms, afterglow, charts, air quality), M11 the sealed network: gallery tubes, air and smell through corridors, amenities and services by walking distance (the shaft dome is a later milestone). |
 | `FURNITURE.md` | Furniture models and room layout templates. |
 | `ART.md` | Art direction: the cozy 3D look, palette, readability rules. |
 
@@ -77,11 +77,11 @@ tests/        # Vitest: sim units plus scripted playthroughs (bots)
   The starter hole is R = 10 m: rings 1–3 have 9, 16 and 22 slots. Adjacency across rings is by angular overlap.
 - **Room footprints** have width (slots), depth (rings) and height (floors). Sizes: S = 1 slot, M = 2, L = 4, H = 8 (H not built yet).
 - **Space is dug:** every slot is rock until a room (or an empty room) is excavated there.
-- **Access:** a walkway gallery rings the shaft on every floor. Ring 1 rooms open onto it; other rooms need a corridor back to it. **Corridors run along the edges** between rooms (and between rooms and rock), not in slots. People reach floor 1 through the entrance, and deeper floors by stairs and elevators.
-- **Neighbor effects** (noise, smell, health, comfort) radiate from rooms with a strength (−3 to +3) and radius in slots, falling off with distance, along the ring, across rings and between floors. Corridors block noise and smell.
+- **Access:** the shaft is open to Mars. **Corridors run along the edges** between rooms (and between rooms and rock), not in slots; along the shaft wall they're glass **gallery tubes** (floor 1 starts with one all the way round; deeper floors get what the player builds). Every room needs a tube, corridor or walk-through room along one side. People reach floor 1 through the entrance, and deeper floors by stairs and elevators.
+- **Neighbor effects** (noise, smell, health, comfort) radiate from rooms with a strength (−3 to +3) and radius in slots, falling off with distance, along the ring, across rings and between floors; corridors block noise. **Airborne effects** (air quality, smell) ride the network instead, fading per step. **Amenities and services** (parks, plazas, gyms, galleys, clinics, schools) count by walking distance in steps (10 m).
 
 ## Where things stand (Sep 30, 2026)
 
-Milestones 1–10 are built: one hole growing into a network of two or more, a 3D view (the main one) with 2D and plan views, people with life stages, corridors on edges, construction time, storage, excavation and the entrance, furnished rooms, and room condition with maintenance and cleaning. 1× is 2 ticks a second, 240 ticks a game day. See the README for how to play, `DECISIONS.md` for what was decided while building, and `ROOM-STATUS.md` for what to build next.
+Milestones 1–11 are built: one hole growing into a network of two or more, a 3D view (the main one) with 2D and plan views, people with life stages, corridors on edges, construction time, storage, excavation and the entrance, furnished rooms, room condition with maintenance and cleaning, and (M11) a sealed network: the shaft is open to Mars, people move through gallery tubes, corridors and stairs, air and smell ride that network, and amenities and services count by walking distance (`sim/paths.ts`, `sim/amenities.ts`, `sim/care.ts`). 1× is 2 ticks a second, 240 ticks a game day. See the README for how to play, `DECISIONS.md` for what was decided while building, and `ROOM-STATUS.md` for what to build next.
 
 Before committing, run `npm test` (unit tests plus scripted playthroughs) and check the change in the browser at http://localhost:5173.

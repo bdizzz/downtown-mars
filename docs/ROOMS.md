@@ -80,8 +80,8 @@ Every housing tier comes in four sizes. Bigger buildings fit more residents per 
 | Farm atrium | H | 20 | Water 12, soil 6, power 8, CO2 6 | Raw food 30, O2 6 | Comfort +2 r2 | B 40, M 30, Mc 6, E 4 | Depth 10 floors |
 | Cultured meat lab | S | 2 | Feedstock crops 3 (soy or algae), water 2, power 7 | Raw protein 8 (meat group; comfort bonus in diet) | — (clean and quiet) | M 15, Mc 3, E 5 | Research lab |
 | Kitchen | M | 4 | Raw food 40, water 3, power 2 | Cooked food 40, organic waste 3 | Smell −1 r1 | R 15, M 5, Mc 1 | Start |
-| Canteen | M | 3 | Cooked food | Seats 60 (a galley seats 25; a kitchen none) | Comfort +1 r2 | R 15, B 5 | Start |
-| Galley ★ | S | 2 | Raw food or Earth rations 25, water 2, power 2 | Cooks and serves 25; organic waste 2 | Smell −1 r1 | R 10, M 5 | Start |
+| Canteen | M | 3 | Cooked food | Seats 60 from homes within 8 steps (a galley seats 25; a kitchen none) | Comfort +0.5 r1 | R 15, B 5 | Start |
+| Galley ★ | S | 2 | Raw food or Earth rations 25, water 2, power 2 | Cooks and seats 25 from homes within 8 steps; organic waste 2 | Smell −1 r1 | R 10, M 5 | Start |
 | Brewery | M | 3 | Barley 4, water 4, power 2 | Beer 4 | Smell −1 r1 | B 10, M 5, Mc 1 | Pop 150 |
 
 ### Crops
@@ -214,12 +214,12 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Clinic ★ | S | 2 | Power 1, water 1 | Care for 50; enables births | Health +2 r2 | B 10, M 5, E 1 | Start |
-| Hospital | L | 10 | Power 4, water 3 | Care for 400; allows births | Health +3 r3 | B 30, M 20, E 8 | Pop 300 |
-| School | M | 3 | Power 1 | Teaches 40 children | Noise −1 r1 | B 15 | First births |
-| Elder care | M | 3 | Power 1 | Care for 30 elders | Health +1 r1 | B 15, M 5 | First elders |
-| Gym | M | 1 | Water 1, power 1 | — | Health +2 r2 | B 10 | Pop 50 |
-| Park | M | 1 | Water 2, power 1 | O2 1; walk-through | Comfort +2 r2, air quality +1 r2 | R 5, B 10 | Pop 50 |
+| Clinic ★ | S | 2 | Power 1, water 1 | Care for 50 within 10 steps; enables births | Health +1.5 on foot, within 10 steps | B 10, M 5, E 1 | Start |
+| Hospital | L | 10 | Power 4, water 3 | Care for 400 within 16 steps; allows births | Health +2.5 on foot, within 16 steps | B 30, M 20, E 8 | Pop 300 |
+| School | M | 3 | Power 1 | Teaches 40 children within 10 steps | Noise −1 r1 | B 15 | First births |
+| Elder care | M | 3 | Power 1 | Care for 30 elders within 10 steps | — | B 15, M 5 | First elders |
+| Gym | M | 1 | Water 1, power 1 | — | Health +2 on foot, within 6 steps | B 10 | Pop 50 |
+| Park | M | 1 | Water 2, power 1 | O2 1; walk-through | Comfort +2 on foot within 6 steps, +1 r1 next door; air quality +1 r2 (airborne) | R 5, B 10 | Pop 50 |
 | Running track | L, or a full floor ring | 0 | Power 1 | Hosts races and festivals; a full-ring loop doubles its effects | Health +2 r2, entertainment +1 r2 | R 20, B 10 | Pop 200 |
 | Research lab | M | 4 | Power 3 | Speeds milestones | — | M 15, E 5 | Pop 300 |
 | Crypt | M | 0 | Power 1 | Lays 40 dead to rest, for good (without one, grief weighs on comfort) | — | R 10, B 20 | First elders |
@@ -252,8 +252,8 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Corridor | S | 0 | — | Connects outer rings to the shaft; shortens commutes | Blocks noise and smell passing through | R 5 | Start |
 | Entrance | S | 0 | — | Floor 1's way in from the surface: an airlock at the rim, and where people and goods arrive | — | Landing kit | Start |
-| Tiny plaza | S | 0 | — | Walk-through gathering corner | Comfort +1 r1 | R 5, B 2 | Start |
-| Small plaza | M | 1 | Power 1 | Gathering space | Comfort +1 r2 | R 10, B 5 | Pop 100 |
+| Tiny plaza | S | 0 | — | Walk-through gathering corner | Comfort +1 on foot within 4 steps, +0.5 r1 next door | R 5, B 2 | Start |
+| Small plaza | M | 1 | Power 1 | Gathering space | Comfort +1.5 on foot within 6 steps, +0.5 r1 next door | R 10, B 5 | Pop 100 |
 | Plaza | L | 2 | Power 2 | Transit hub; shortens commutes | Comfort +2 r2, entertainment +1 r2 | B 20, M 5 | Pop 500 |
 | Grand plaza | H | 4 | Power 4, glass for skylights | Transit hub; hosts events | Comfort +3 r3, entertainment +2 r3 | B 40, M 15, glass 10 | Pop 2,000 |
 

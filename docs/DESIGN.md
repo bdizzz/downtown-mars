@@ -17,14 +17,14 @@ A real-time city builder on Mars where each city is a borehole: you dig down, ca
 
 ## Where the build stands (Sep 30, 2026)
 
-This doc is the design target; the game builds toward it. Milestones 1–10 are done: one or two holes, the 3D view, people, corridors on edges, construction time, storage, excavation and the entrance, furnished rooms, and condition and upkeep. Sections below carry an **As built** note where the game differs today. `DECISIONS.md` lists what was decided while building, and `ROOM-STATUS.md` which rooms are in the game.
+This doc is the design target; the game builds toward it. Milestones 1–11 are done (11: gallery tubes, air through the network, services by walking distance): one or two holes, the 3D view, people, corridors on edges, construction time, storage, excavation and the entrance, furnished rooms, and condition and upkeep. Sections below carry an **As built** note where the game differs today. `DECISIONS.md` lists what was decided while building, and `ROOM-STATUS.md` which rooms are in the game.
 
 | Area | In the game | Not yet |
 | --- | --- | --- |
-| The borehole | Floors dug by the drill; rooms excavated from rock; entrance, stairs and elevators | Rings 4–6; cave-ins; choosing a diameter |
+| The borehole | Floors dug by the drill; rooms excavated from rock; entrance, stairs and elevators; the shaft open to Mars, with a sealed network of gallery tubes, corridors and stairs (milestone 11) | Rings 4–6; cave-ins; choosing a diameter; the shaft dome |
 | Rooms | 56 room types (see `ROOM-STATUS.md`) | About half the catalog, H-size rooms, multi-floor rooms beyond stairs and elevators |
 | Resources | Air, water (clean, gray, black), food, soil, waste, rock and ores, brick, marscrete, metal, machinery, wafers, electronics; storage for dry goods | Glass, plastics, textiles, consumer goods, currency |
-| Happiness | Three factors: noise, health and comfort (smell, shaft views, homelessness, care, seating at meals, ordinances and room condition feed them); gyms, parks, canteens and hospitals lift them; air quality feeds health | Safety, entertainment, diet variety, crowding |
+| Happiness | Three factors: noise, health and comfort (smell, shaft views, homelessness, care, seating at meals, ordinances and room condition feed them); parks, plazas, gyms and clinics lift the homes within walking reach; air quality feeds health | Safety, entertainment, diet variety, crowding |
 | Office and ordinances | Citizen visits (noise complaint, clinic demand) and promises; 5 ordinances | The other 27 ordinances, delegation |
 | People | Children, adults, elders; births, aging, deaths, migration; notables | Skills, mentoring, factions and strikes |
 | Network | A Mars globe (MOLA terrain), founding holes, rovers, trade routes, culture sliders and opinions | Pipelines, the belt, independence, blocs |
