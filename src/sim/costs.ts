@@ -23,6 +23,7 @@ const UNLOCKS: Record<string, string> = {
   standardHomes: `Unlocks at ${config.unlocks.homes.standard} colonists in this hole`,
   luxuryHomes: `Unlocks at ${config.unlocks.homes.luxury} colonists in this hole`,
   cleaning: `Unlocks at ${config.unlocks.cleaningPopulation} colonists in this hole`,
+  ...Object.fromEntries(Object.entries(config.unlocks.rooms).map(([g, n]) => [g, `Unlocks at ${n} colonists in this hole`])),
 };
 
 /**

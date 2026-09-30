@@ -15,7 +15,7 @@ import type { Snapshot } from "../sim/snapshot";
 import { network } from "../sim/network";
 import { corridors, finishDef, floorLinked } from "../sim/corridors";
 import { STORABLE } from "../sim/storage";
-import { hoursText, num, ordinal, resName, signed } from "./format";
+import { dining, hoursText, num, ordinal, resName, signed } from "./format";
 
 interface Props {
   s: Snapshot;
@@ -404,6 +404,11 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
       {spec.sanitation > 0 && (
         <p>
           <span className="k">Sanitation for</span> {num(spec.sanitation)}
+        </p>
+      )}
+      {spec.serves > 0 && (
+        <p>
+          <span className="k">Seats</span> {num(spec.serves)} diners · {dining(s)}
         </p>
       )}
       {room.at.kind === "ring" && <Neighborhood s={s} room={room} />}

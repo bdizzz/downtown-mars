@@ -8,12 +8,12 @@ Each pathway follows one resource family from its source to the rooms that use i
 | --- | --- |
 | Water | Complete loop: deep well pump, tanks, recycler, restrooms, composter |
 | Air | Complete: life support and farms |
-| Food | Farms (crops) → galley → colonists; Earth rations fill gaps. No kitchen, canteen or cultured meat |
-| Construction materials | Rock from every dig; concrete plant (marscrete). Brick only from Earth and the pod |
+| Food | Farms (crops) → galley, or kitchen plus canteen → colonists; Earth rations fill gaps. No cultured meat |
+| Construction materials | Rock from every dig; concrete plant (marscrete); brickworks (rock to brick); recycling center |
 | Metals and machinery | Smelter (ore sites) and machine shop |
 | Silicon and electronics | Silicon refinery (silica sites) and electronics fab |
 | Plastics, consumer goods, beer | Not yet |
-| Waste | Organic and black water to soil (composter); gray water recycled. Solid waste only piles up |
+| Waste | Organic and black water to soil (composter); gray water recycled; solid waste to metal and brick (recycling center); waste storage |
 | Upkeep (new) | Maintenance uses machinery; cleaning services turn clean water into gray water |
 
 ## Water
@@ -49,7 +49,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Served by:** canteens, galleys, bars, hotels.
 - **Eaten by:** colonists (1 a day) and tourists. Kitchen scraps return to composters, mycelium vats and mushroom crops.
 
-**As built:** farms (crop chosen per farm, named after it) → raw food → galley → meals. The galley cooks Earth rations when there's no raw food. Diet variety doesn't count yet. Galley scraps go to the composter. No kitchen, canteen, cultured meat lab or food groups yet.
+**As built:** farms (crop chosen per farm, named after it) → raw food → galley → meals. The galley cooks Earth rations when there's no raw food. Diet variety doesn't count yet. Galley and kitchen scraps go to the composter. **Seating:** a galley cooks and seats 25; a kitchen cooks 40 but seats no one, so it pairs with a canteen (seats 60, comfort +1 around it). Diners without a seat cost everyone a little comfort. No cultured meat lab or food groups yet.
 
 ## Construction materials
 
@@ -59,7 +59,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Processed by:** brickworks, concrete plant, glassworks, recycling center.
 - **Used by:** construction of every room. Glass also goes into windows, skylights, grand staircases and panoramic elevators.
 
-**As built:** the drill sinks the shaft and every room is excavated from rock, which yields rock (and ore or silica on those sites); empty rooms dig ahead. The concrete plant makes marscrete. Brick comes only from Earth drops and the pod's stock: no brickworks, recycling center or glass yet. Rooms can be finished in bare rock, marscrete, brick or metal.
+**As built:** the drill sinks the shaft and every room is excavated from rock, which yields rock (and ore or silica on those sites); empty rooms dig ahead. The concrete plant makes marscrete, the brickworks (from 50 colonists) brick from rock, and the recycling center (from 100) metal and brick from solid waste. No glass yet. Rooms can be finished in bare rock, marscrete, brick or metal.
 
 ## Metals and machinery
 
@@ -115,4 +115,4 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Processed by:** mycelium vat, composter, water recycler, recycling center.
 - **Stored in:** waste storage when processing falls behind; smell grows as it fills.
 
-**As built:** the galley's organic waste and restrooms' black water go to the composter, which makes soil for farms; gray water goes to the recycler. Solid waste (colonists, the recycler) has a base capacity and nothing uses it yet: the recycling center is the missing link. No waste storage rooms.
+**As built:** the galley's organic waste and restrooms' black water go to the composter, which makes soil for farms; gray water goes to the recycler. Solid waste (colonists, the recycler) goes to the recycling center, from 100 colonists; waste storage rooms hold more of it (and of organic waste) until it's used.

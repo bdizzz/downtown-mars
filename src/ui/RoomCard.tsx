@@ -60,6 +60,8 @@ export function RoomCard({ def, resources, shape, onRotate, siteNote }: Props) {
       {def.houses ? <p>Houses {def.houses}</p> : null}
       {def.sanitation ? <p>Sanitation for {def.sanitation}</p> : null}
       {def.cares ? <p>Care for {def.cares}</p> : null}
+      {def.serves ? <p>Seats {def.serves} diners{def.makes.meals ? "" : " (meals cooked elsewhere)"}</p> : null}
+      {!def.serves && def.makes.meals ? <p className="k">Cooks but seats no one: pair it with a canteen</p> : null}
       {def.ordinanceSlots ? <p>{def.ordinanceSlots} ordinance slots</p> : null}
       {def.effects.map((e, i) => (
         <p key={i} className={e.strength < 0 ? "bad" : "good"}>

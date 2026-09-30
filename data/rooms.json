@@ -1,5 +1,5 @@
 {
-  "_note": "Amounts are per game day. Values from ROOMS.md (\u2605 rooms) unless marked placeholder. requiresDeposit: the hole must sit on that deposit (Unlock column in ROOMS.md).",
+  "_note": "Amounts are per game day. Values from ROOMS.md (★ rooms) unless marked placeholder. requiresDeposit: the hole must sit on that deposit (Unlock column in ROOMS.md).",
   "rooms": [
     {
       "id": "landing_pod",
@@ -300,7 +300,68 @@
         "rock": 10,
         "metal": 5
       },
-      "buildable": true
+      "buildable": true,
+      "serves": 25
+    },
+    {
+      "id": "kitchen",
+      "name": "Kitchen",
+      "short": "Kitchen",
+      "category": "food",
+      "size": "M",
+      "staff": 4,
+      "uses": {
+        "rawFood": 40,
+        "water": 3,
+        "power": 2
+      },
+      "makes": {
+        "meals": 40,
+        "organicWaste": 3
+      },
+      "substitutes": {
+        "rawFood": [
+          "rations"
+        ]
+      },
+      "effects": [
+        {
+          "type": "smell",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "rock": 15,
+        "metal": 5,
+        "machinery": 1
+      },
+      "buildable": true,
+      "buildHours": 14
+    },
+    {
+      "id": "canteen",
+      "name": "Canteen",
+      "short": "Canteen",
+      "category": "food",
+      "size": "M",
+      "staff": 3,
+      "uses": {},
+      "makes": {},
+      "serves": 60,
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": 1,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "rock": 15,
+        "brick": 5
+      },
+      "buildable": true,
+      "buildHours": 12
     },
     {
       "id": "farm",
@@ -476,6 +537,62 @@
       "buildable": true,
       "enablesBirths": true,
       "buildHours": 8
+    },
+    {
+      "id": "hospital",
+      "name": "Hospital",
+      "short": "Hospital",
+      "category": "health",
+      "size": "L",
+      "staff": 10,
+      "uses": {
+        "power": 4,
+        "water": 3
+      },
+      "makes": {},
+      "cares": 400,
+      "enablesBirths": true,
+      "unlockedBy": "hospital",
+      "effects": [
+        {
+          "type": "health",
+          "strength": 3,
+          "radius": 3
+        }
+      ],
+      "cost": {
+        "brick": 30,
+        "metal": 20,
+        "electronics": 8
+      },
+      "buildable": true,
+      "buildHours": 40
+    },
+    {
+      "id": "gym",
+      "name": "Gym",
+      "short": "Gym",
+      "category": "health",
+      "size": "M",
+      "staff": 1,
+      "uses": {
+        "water": 1,
+        "power": 1
+      },
+      "makes": {},
+      "unlockedBy": "leisure",
+      "effects": [
+        {
+          "type": "health",
+          "strength": 2,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "brick": 10
+      },
+      "buildable": true,
+      "buildHours": 12
     },
     {
       "id": "admin_office",
@@ -851,6 +968,72 @@
       "buildHours": 18
     },
     {
+      "id": "brickworks",
+      "name": "Brickworks",
+      "short": "Bricks",
+      "category": "industry",
+      "size": "M",
+      "staff": 3,
+      "uses": {
+        "rock": 6,
+        "water": 1,
+        "power": 2
+      },
+      "makes": {
+        "brick": 4
+      },
+      "unlockedBy": "brickworks",
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "rock": 15,
+        "metal": 5,
+        "machinery": 1
+      },
+      "buildable": true,
+      "buildHours": 18
+    },
+    {
+      "id": "recycling_center",
+      "name": "Recycling center",
+      "short": "Recycling",
+      "category": "industry",
+      "size": "L",
+      "staff": 4,
+      "uses": {
+        "solidWaste": 6,
+        "power": 3
+      },
+      "makes": {
+        "metal": 1,
+        "brick": 1
+      },
+      "unlockedBy": "recycling",
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        },
+        {
+          "type": "smell",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "metal": 20,
+        "machinery": 3
+      },
+      "buildable": true,
+      "buildHours": 30
+    },
+    {
       "id": "empty_room_s",
       "name": "Small empty room",
       "short": "Empty",
@@ -945,6 +1128,36 @@
         "brick": 5
       },
       "buildable": true
+    },
+    {
+      "id": "park",
+      "name": "Park",
+      "short": "Park",
+      "category": "public",
+      "size": "M",
+      "staff": 1,
+      "uses": {
+        "water": 2,
+        "power": 1
+      },
+      "makes": {
+        "o2": 1
+      },
+      "public": true,
+      "unlockedBy": "leisure",
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": 2,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "rock": 5,
+        "brick": 10
+      },
+      "buildable": true,
+      "buildHours": 12
     },
     {
       "id": "entrance",
@@ -1076,7 +1289,11 @@
       "makes": {},
       "maintains": "all",
       "effects": [
-        { "type": "noise", "strength": -1, "radius": 1 }
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
       ],
       "cost": {
         "rock": 15,
@@ -1225,6 +1442,32 @@
       },
       "buildHours": 20,
       "buildable": true
+    },
+    {
+      "id": "waste_storage",
+      "name": "Waste storage",
+      "short": "Waste",
+      "category": "storage",
+      "size": "S",
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "stores": {
+        "solidWaste": 100,
+        "organicWaste": 50
+      },
+      "effects": [
+        {
+          "type": "smell",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "rock": 10
+      },
+      "buildable": true,
+      "buildHours": 6
     }
   ]
 }

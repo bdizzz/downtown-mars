@@ -2,6 +2,9 @@ import raw from "../../data/rooms.json";
 
 import type { DepositKind } from "./mapgeo";
 
+/** Rooms that unlock when a hole reaches a size (config unlocks.rooms). */
+export type RoomUnlock = "brickworks" | "leisure" | "recycling" | "hospital";
+
 export type RoomSize = "S" | "M" | "L" | "H" | "surface";
 export type EffectType = "noise" | "smell" | "health" | "comfort" | "airQuality" | "heat" | "safety";
 
@@ -41,6 +44,8 @@ export interface RoomDef {
   ordinanceSlots?: number;
   /** Colonists a clinic can look after. */
   cares?: number;
+  /** Diners it seats: galleys and canteens. Kitchens cook but seat no one. */
+  serves?: number;
   /** Only buildable in a hole that sits on this deposit. */
   requiresDeposit?: DepositKind;
   /** Gathers the seed kit for founding a new hole. */
@@ -52,7 +57,7 @@ export interface RoomDef {
   /** Elders it looks after. */
   caresForElders?: number;
   /** Not buildable until the hole has reached this (see UNLOCKS in costs.ts). */
-  unlockedBy?: "children" | "elders" | "cargo" | "basicHomes" | "standardHomes" | "luxuryHomes" | "cleaning";
+  unlockedBy?: "children" | "elders" | "cargo" | "basicHomes" | "standardHomes" | "luxuryHomes" | "cleaning" | RoomUnlock;
   /** A service room that repairs other rooms' condition: any room, or only the people-heavy (cleanable) ones. */
   maintains?: "all" | "cleanable";
   /** Units of storage for dry goods (data/storage.json). */

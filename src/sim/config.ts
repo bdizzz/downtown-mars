@@ -1,4 +1,5 @@
 import raw from "../../data/config.json";
+import type { RoomUnlock } from "./rooms";
 
 export interface GeometryConfig {
   slotWidthM: number;
@@ -118,6 +119,8 @@ export interface SimConfig {
     homelessComfort: number;
     /** Health factor when no clinic covers anyone; scaled by the uncovered share. */
     noCareHealth: number;
+    /** Comfort lost by everyone when nobody has a seat at a galley or canteen (in proportion). */
+    unservedComfort: number;
     /** Roughly how long happiness takes to settle on its target. */
     easeDays: number;
     updateEveryTicks: number;
@@ -133,6 +136,8 @@ export interface SimConfig {
     homes: { basic: number; standard: number; luxury: number };
     /** Colonists in a hole before it can have a cleaning service. */
     cleaningPopulation: number;
+    /** Colonists in a hole before each group of rooms: the brickworks, gym and park, recycling center, hospital. */
+    rooms: Record<RoomUnlock, number>;
   };
   landingKit: {
     surface: { room: string; slot: number }[];

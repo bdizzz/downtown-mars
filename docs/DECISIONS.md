@@ -109,6 +109,7 @@ Each milestone plan has the details, under "Notes as built".
 - **Housing tiers:** dorms, then studios and apartments at 50 colonists, flats and family apartments at 200, suites and residences at 1,000.
 - **Dust storms** are forecast, then halve solar output for a day or two.
 - **Rooms can be renamed**; farms are named after their crop.
+- **More rooms (Sep 30):** kitchen and canteen, gym, park, hospital, brickworks, recycling center, waste storage. **Seating:** galleys seat 25 and canteens 60; kitchens cook but seat no one; diners without a seat cost comfort. Unlocks moved earlier than the catalog so players have more ways to lift happiness: gym and park at 50 colonists (catalog 100), recycling center at 100 (300), hospital at 300 (1,000); brickworks stays at 50 (`config.unlocks.rooms`).
 - **Built so far, not the full design:** 5 ordinances (Quiet hours, Water rationing, Ration cards, Closed borders, Return to the soil), 2 kinds of citizen visit (noise complaint, clinic demand), and overlays for noise, smell, health, comfort, happiness and condition. The design's 32 ordinances and full event catalog are still the target.
 
 ## Still open

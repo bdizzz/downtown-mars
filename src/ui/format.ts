@@ -29,3 +29,12 @@ export function ordinal(n: number): string {
   const tail = n % 100 >= 11 && n % 100 <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
   return `${n}${tail}`;
 }
+
+/** How the hole's diners are seated: "all 40 seated", or how many eat on the go. */
+export function dining(s: { population: { count: number; served?: number; seats?: number } }): string {
+  const served = s.population.served ?? 1;
+  const seats = Math.round(s.population.seats ?? 0);
+  if (s.population.count === 0) return `${seats} seats`;
+  if (served >= 0.999) return `${seats} seats: everyone has one`;
+  return `${seats} seats: ${Math.round((1 - served) * 100)}% eat on the go, and comfort is down (a canteen or galley seats more)`;
+}

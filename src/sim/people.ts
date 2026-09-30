@@ -114,7 +114,7 @@ export function holeGates(state: SimState): string[] {
 }
 
 /** Everything a hole can reach that unlocks rooms. */
-export const UNLOCK_GATES = ["children", "elders", "cargo", "basicHomes", "standardHomes", "luxuryHomes", "cleaning"] as const;
+export const UNLOCK_GATES = ["children", "elders", "cargo", "basicHomes", "standardHomes", "luxuryHomes", "cleaning", "brickworks", "leisure", "recycling", "hospital"] as const;
 export type UnlockGate = (typeof UNLOCK_GATES)[number];
 
 /** Record that a hole has reached something that unlocks rooms (first child, first elder). */
@@ -232,4 +232,9 @@ export function stepUnlocks(state: SimState, cfg: SimConfig): void {
   reach("standardHomes", cfg.unlocks.homes.standard, `${state.name} can build flats and family apartments: comfortable homes that cheer their neighbours.`);
   reach("luxuryHomes", cfg.unlocks.homes.luxury, `${state.name} can build suites and residences: the finest homes on Mars.`);
   reach("cleaning", cfg.unlocks.cleaningPopulation, `${state.name} can support a cleaning service: crews who keep homes, galleys, restrooms and clinics spotless.`);
+  const r = cfg.unlocks.rooms;
+  reach("brickworks", r.brickworks, `${state.name} can build a brickworks: bricks from its own rock, not just Earth's.`);
+  reach("leisure", r.leisure, `${state.name} can build gyms and parks: somewhere to stay fit, and green space that cheers everyone near it.`);
+  reach("recycling", r.recycling, `${state.name} can build a recycling center: solid waste back into metal and brick.`);
+  reach("hospital", r.hospital, `${state.name} can support a hospital: care for hundreds, and health for everyone near it.`);
 }

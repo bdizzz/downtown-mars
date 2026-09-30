@@ -10,7 +10,7 @@
   "exempt": ["entrance", "stairwell", "elevator", "cargo_elevator", "maintenance", "cleaning_service"],
   "cleanable": {
     "categories": ["housing"],
-    "rooms": ["galley", "restroom", "clinic", "school", "elder_care", "crypt", "tiny_plaza", "small_plaza", "admin_office", "landing_pod"]
+    "rooms": ["galley", "kitchen", "canteen", "restroom", "clinic", "hospital", "gym", "park", "school", "elder_care", "crypt", "tiny_plaza", "small_plaza", "admin_office", "landing_pod"]
   },
   "repairHoursBySize": { "S": 4, "M": 8, "L": 16, "H": 32, "surface": 6 },
   "leastRepair": 0.25,

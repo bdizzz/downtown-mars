@@ -62,7 +62,9 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   const care = careFactors(state);
   const shared = needsHealth(state, cfg) + (1 - careCoverage(state)) * h.noCareHealth + mod.health + care.health;
   // Worn shared rooms (the galley, restrooms, workplaces) get everyone down; worn homes, their own residents.
-  const sharedComfort = mod.comfort + care.comfort - sharedWear(state) * CONDITION.happiness.sharedComfort;
+  // Diners without a seat at a galley or canteen eat on the go.
+  const unserved = (1 - (state.population.served ?? 1)) * h.unservedComfort;
+  const sharedComfort = mod.comfort + care.comfort - sharedWear(state) * CONDITION.happiness.sharedComfort - unserved;
   if (!room) return { noise: 0, comfort: clamp(h.homelessComfort + sharedComfort, -lim, lim), health: clamp(shared, -lim, lim) };
 
   const field = state.effects.field;

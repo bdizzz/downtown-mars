@@ -1,5 +1,5 @@
 import type { Snapshot } from "../sim/snapshot";
-import { num } from "./format";
+import { dining, num } from "./format";
 
 // The hole's people: who they are by life stage, what's coming, and why
 // children are or aren't being born.
@@ -72,7 +72,7 @@ export function PeoplePanel({ s, onClose }: { s: Snapshot; onClose: () => void }
       </ul>
       <p className="k">{b.born ? `${b.born} born here so far.` : "Nobody born here yet."}</p>
 
-      <h3>School and care</h3>
+      <h3>School, care and meals</h3>
       <p>
         <span className="k">Children</span>{" "}
         {s.care.school.who === 0
@@ -88,6 +88,10 @@ export function PeoplePanel({ s, onClose }: { s: Snapshot; onClose: () => void }
           : s.care.elders.missing > 0
             ? `${num(s.care.elders.missing)} of ${s.care.elders.who} without care: health suffers`
             : `all ${s.care.elders.who} cared for`}
+      </p>
+
+      <p>
+        <span className="k">Meals</span> {dining(s)}
       </p>
 
       <h3>The departed</h3>

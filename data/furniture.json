@@ -3208,6 +3208,205 @@
       {"s": "box", "p": [0, 1.35, 0.02], "z": [0.35, 0.5, 0.1], "c": "dark"},
       {"s": "box", "p": [0, 1.45, 0.075], "z": [0.12, 0.12, 0.01], "c": "glow", "glow": true},
       {"s": "box", "p": [0, 1.25, 0.075], "z": [0.12, 0.12, 0.01], "c": "fire", "glow": true}
+    ] },
+    "treadmill": { "name": "Treadmill", "size": [0.8, 2.3, 1.5], "parts": [
+      {"s": "box", "p": [0, 0.12, 0.2], "z": [0.8, 0.24, 1.9], "c": "dark"},
+      {"s": "box", "p": [0, 0.25, 0.25], "z": [0.6, 0.02, 1.6], "c": "rubber"},
+      {"s": "box", "p": [-0.36, 0.75, -0.6], "z": [0.06, 1.1, 0.06], "c": "metal"},
+      {"s": "box", "p": [0.36, 0.75, -0.6], "z": [0.06, 1.1, 0.06], "c": "metal"},
+      {"s": "box", "p": [0, 1.3, -0.62], "z": [0.78, 0.06, 0.3], "c": "metal"},
+      {"s": "box", "p": [0, 1.36, -0.66], "z": [0.4, 0.22, 0.04], "c": "dark"},
+      {"s": "box", "p": [0, 1.36, -0.635], "z": [0.34, 0.16, 0.005], "c": "glow", "glow": true}
+    ] },
+    "exercise_bike": { "name": "Exercise bike", "size": [0.55, 1.2, 1.25], "parts": [
+      {"s": "box", "p": [0, 0.06, 0], "z": [0.5, 0.12, 1.2], "c": "dark"},
+      {"s": "cyl", "p": [0, 0.38, 0.35], "z": [0.5, 0.1], "c": "accent", "r": [0, 0, 90]},
+      {"s": "box", "p": [0, 0.6, -0.2], "z": [0.08, 0.9, 0.08], "c": "metal", "r": [-15, 0, 0]},
+      {"s": "box", "p": [0, 0.98, -0.3], "z": [0.3, 0.08, 0.34], "c": "cushion"},
+      {"s": "box", "p": [0, 0.85, 0.45], "z": [0.08, 0.8, 0.08], "c": "metal", "r": [15, 0, 0]},
+      {"s": "box", "p": [0, 1.22, 0.52], "z": [0.55, 0.05, 0.06], "c": "rubber"}
+    ] },
+    "weight_bench": { "name": "Weight bench", "size": [1.8, 1.35, 1.35], "parts": [
+      {"s": "box", "p": [-0.125, 0.21, -0.575], "z": [0.05, 0.42, 0.05], "c": "metal"},
+      {"s": "box", "p": [-0.125, 0.21, 0.575], "z": [0.05, 0.42, 0.05], "c": "metal"},
+      {"s": "box", "p": [0.125, 0.21, -0.575], "z": [0.05, 0.42, 0.05], "c": "metal"},
+      {"s": "box", "p": [0.125, 0.21, 0.575], "z": [0.05, 0.42, 0.05], "c": "metal"},
+      {"s": "box", "p": [0, 0.46, 0], "z": [0.4, 0.08, 1.3], "c": "cushion"},
+      {"s": "box", "p": [-0.55, 0.6, -0.45], "z": [0.06, 1.2, 0.06], "c": "metal"},
+      {"s": "box", "p": [0.55, 0.6, -0.45], "z": [0.06, 1.2, 0.06], "c": "metal"},
+      {"s": "cyl", "p": [0, 1.1, -0.45], "z": [0.04, 1.8], "c": "steel", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [-0.8, 1.1, -0.45], "z": [0.42, 0.08], "c": "dark", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [0.8, 1.1, -0.45], "z": [0.42, 0.08], "c": "dark", "r": [0, 0, 90]}
+    ] },
+    "dumbbell_rack": { "name": "Dumbbell rack", "size": [1.6, 0.5, 0.85], "parts": [
+      {"s": "box", "p": [-0.72, 0.35, -0.17], "z": [0.06, 0.7, 0.06], "c": "metal"},
+      {"s": "box", "p": [-0.72, 0.35, 0.17], "z": [0.06, 0.7, 0.06], "c": "metal"},
+      {"s": "box", "p": [0.72, 0.35, -0.17], "z": [0.06, 0.7, 0.06], "c": "metal"},
+      {"s": "box", "p": [0.72, 0.35, 0.17], "z": [0.06, 0.7, 0.06], "c": "metal"},
+      {"s": "box", "p": [0, 0.35, 0], "z": [1.6, 0.04, 0.5], "c": "dark"},
+      {"s": "box", "p": [0, 0.68, 0], "z": [1.6, 0.04, 0.5], "c": "dark"},
+      {"s": "cyl", "p": [-0.6, 0.42, 0], "z": [0.1, 0.3], "c": "dark", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [-0.6, 0.75, 0], "z": [0.1, 0.3], "c": "dark", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [-0.2, 0.42, 0], "z": [0.12, 0.3], "c": "accent", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [-0.2, 0.75, 0], "z": [0.12, 0.3], "c": "accent", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [0.2, 0.42, 0], "z": [0.14, 0.3], "c": "dark", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [0.2, 0.75, 0], "z": [0.14, 0.3], "c": "dark", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [0.6, 0.42, 0], "z": [0.16, 0.3], "c": "accent", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [0.6, 0.75, 0], "z": [0.16, 0.3], "c": "accent", "r": [0, 0, 90]}
+    ] },
+    "gym_mat": { "name": "Exercise mat", "size": [1, 2, 0.05], "parts": [
+      {"s": "box", "p": [0, 0.015, 0], "z": [1, 0.03, 2], "c": "accent"},
+      {"s": "box", "p": [0, 0.032, 0], "z": [0.9, 0.004, 1.9], "c": "cushion"}
+    ] },
+    "punching_bag": { "name": "Punching bag", "size": [0.6, 1, 2.2], "parts": [
+      {"s": "box", "p": [0, 1.1, -0.35], "z": [0.1, 2.2, 0.1], "c": "metal"},
+      {"s": "box", "p": [0, 2.15, -0.1], "z": [0.08, 0.08, 0.5], "c": "metal"},
+      {"s": "cyl", "p": [0, 1.35, 0.15], "z": [0.4, 1], "c": "rust"},
+      {"s": "box", "p": [0, 0.03, -0.2], "z": [0.6, 0.06, 0.6], "c": "dark"}
+    ] },
+    "lawn": { "name": "Lawn", "size": [3, 2, 0.05], "parts": [
+      {"s": "box", "p": [0, 0.02, 0], "z": [3, 0.04, 2], "c": "plant"},
+      {"s": "box", "p": [0, 0.045, 0], "z": [2.8, 0.01, 1.8], "c": "leaf"}
+    ] },
+    "flower_bed": { "name": "Flower bed", "size": [2, 0.7, 0.8], "parts": [
+      {"s": "box", "p": [0, 0.2, 0], "z": [2, 0.4, 0.7], "c": "stone"},
+      {"s": "box", "p": [0, 0.41, 0], "z": [1.9, 0.02, 0.6], "c": "soil"},
+      {"s": "sph", "p": [-0.75, 0.55, 0], "z": [0.26], "c": "leaf"},
+      {"s": "sph", "p": [-0.7, 0.7, 0.05], "z": [0.12], "c": "flower"},
+      {"s": "sph", "p": [-0.45, 0.55, 0], "z": [0.26], "c": "plant"},
+      {"s": "sph", "p": [-0.4, 0.7, 0.05], "z": [0.12], "c": "red"},
+      {"s": "sph", "p": [-0.15, 0.55, 0], "z": [0.26], "c": "leaf"},
+      {"s": "sph", "p": [-0.1, 0.7, 0.05], "z": [0.12], "c": "power"},
+      {"s": "sph", "p": [0.15, 0.55, 0], "z": [0.26], "c": "plant"},
+      {"s": "sph", "p": [0.2, 0.7, 0.05], "z": [0.12], "c": "flower"},
+      {"s": "sph", "p": [0.45, 0.55, 0], "z": [0.26], "c": "leaf"},
+      {"s": "sph", "p": [0.5, 0.7, 0.05], "z": [0.12], "c": "red"},
+      {"s": "sph", "p": [0.75, 0.55, 0], "z": [0.26], "c": "plant"},
+      {"s": "sph", "p": [0.8, 0.7, 0.05], "z": [0.12], "c": "power"}
+    ] },
+    "shrub": { "name": "Shrub", "size": [0.85, 0.7, 0.95], "parts": [
+      {"s": "cyl", "p": [0, 0.08, 0], "z": [0.7, 0.16], "c": "soil"},
+      {"s": "sph", "p": [0, 0.5, 0], "z": [0.63], "c": "plant"},
+      {"s": "sph", "p": [0.162, 0.635, 0.09], "z": [0.405], "c": "leaf"},
+      {"s": "sph", "p": [-0.18, 0.572, -0.108], "z": [0.45], "c": "leaf"},
+      {"s": "sph", "p": [0.045, 0.77, -0.045], "z": [0.36], "c": "plant"}
+    ] },
+    "stock_kettle": { "name": "Stock kettle", "size": [1.35, 0.9, 1.15], "parts": [
+      {"s": "box", "p": [-0.5, 0.45, 0], "z": [0.08, 0.9, 0.5], "c": "metal"},
+      {"s": "box", "p": [0.5, 0.45, 0], "z": [0.08, 0.9, 0.5], "c": "metal"},
+      {"s": "cyl", "p": [0, 0.75, 0], "z": [0.85, 0.7], "c": "steel"},
+      {"s": "cyl", "p": [0, 1.11, 0], "z": [0.9, 0.04], "c": "metal"},
+      {"s": "box", "p": [0.55, 0.8, 0], "z": [0.25, 0.08, 0.08], "c": "dark"}
+    ] },
+    "dishwasher": { "name": "Dishwasher", "size": [1.2, 0.75, 1.9], "parts": [
+      {"s": "box", "p": [0, 0.45, 0], "z": [1.2, 0.9, 0.7], "c": "steel"},
+      {"s": "box", "p": [0, 1.4, 0], "z": [1.2, 1, 0.7], "c": "steel"},
+      {"s": "box", "p": [0, 1.4, 0.36], "z": [1, 0.8, 0.02], "c": "metal"},
+      {"s": "box", "p": [0.45, 0.8, 0.36], "z": [0.12, 0.08, 0.02], "c": "glow", "glow": true}
+    ] },
+    "tray_rack": { "name": "Tray rack", "size": [0.6, 0.5, 1.6], "parts": [
+      {"s": "box", "p": [-0.23, 0.8, -0.18], "z": [0.04, 1.6, 0.04], "c": "metal"},
+      {"s": "box", "p": [-0.23, 0.8, 0.18], "z": [0.04, 1.6, 0.04], "c": "metal"},
+      {"s": "box", "p": [0.23, 0.8, -0.18], "z": [0.04, 1.6, 0.04], "c": "metal"},
+      {"s": "box", "p": [0.23, 0.8, 0.18], "z": [0.04, 1.6, 0.04], "c": "metal"},
+      {"s": "box", "p": [0, 0.3, 0], "z": [0.56, 0.03, 0.46], "c": "panel"},
+      {"s": "box", "p": [0, 0.55, 0], "z": [0.56, 0.03, 0.46], "c": "accent"},
+      {"s": "box", "p": [0, 0.8, 0], "z": [0.56, 0.03, 0.46], "c": "panel"},
+      {"s": "box", "p": [0, 1.05, 0], "z": [0.56, 0.03, 0.46], "c": "accent"},
+      {"s": "box", "p": [0, 1.3, 0], "z": [0.56, 0.03, 0.46], "c": "panel"},
+      {"s": "box", "p": [0, 1.55, 0], "z": [0.56, 0.03, 0.46], "c": "accent"}
+    ] },
+    "canteen_table": { "name": "Canteen table", "size": [2.6, 1.85, 0.8], "parts": [
+      {"s": "box", "p": [-1.225, 0.355, -0.375], "z": [0.05, 0.71, 0.05], "c": "metal"},
+      {"s": "box", "p": [-1.225, 0.355, 0.375], "z": [0.05, 0.71, 0.05], "c": "metal"},
+      {"s": "box", "p": [1.225, 0.355, -0.375], "z": [0.05, 0.71, 0.05], "c": "metal"},
+      {"s": "box", "p": [1.225, 0.355, 0.375], "z": [0.05, 0.71, 0.05], "c": "metal"},
+      {"s": "box", "p": [0, 0.73, 0], "z": [2.6, 0.04, 0.9], "c": "panel"},
+      {"s": "box", "p": [0, 0.45, -0.75], "z": [2.4, 0.06, 0.34], "c": "accent"},
+      {"s": "box", "p": [0, 0.45, 0.75], "z": [2.4, 0.06, 0.34], "c": "accent"},
+      {"s": "box", "p": [-1.05, 0.22, -0.75], "z": [0.06, 0.44, 0.3], "c": "metal"},
+      {"s": "box", "p": [1.05, 0.22, -0.75], "z": [0.06, 0.44, 0.3], "c": "metal"},
+      {"s": "box", "p": [-1.05, 0.22, 0.75], "z": [0.06, 0.44, 0.3], "c": "metal"},
+      {"s": "box", "p": [1.05, 0.22, 0.75], "z": [0.06, 0.44, 0.3], "c": "metal"},
+      {"s": "box", "p": [-0.7, 0.77, 0.1], "z": [0.4, 0.02, 0.3], "c": "white"},
+      {"s": "box", "p": [0.2, 0.77, 0.1], "z": [0.4, 0.02, 0.3], "c": "white"},
+      {"s": "box", "p": [0.9, 0.77, 0.1], "z": [0.4, 0.02, 0.3], "c": "white"}
+    ] },
+    "operating_table": { "name": "Operating table", "size": [0.7, 2, 3], "parts": [
+      {"s": "box", "p": [0, 0.45, 0], "z": [0.3, 0.9, 0.3], "c": "metal"},
+      {"s": "box", "p": [0, 0.95, 0], "z": [0.7, 0.1, 2], "c": "white"},
+      {"s": "box", "p": [0, 1.01, 0], "z": [0.62, 0.02, 1.9], "c": "mirror"},
+      {"s": "box", "p": [0, 1.5, -0.8], "z": [0.08, 3, 0.08], "c": "metal"},
+      {"s": "box", "p": [0, 2.9, -0.35], "z": [0.06, 0.06, 0.9], "c": "metal"},
+      {"s": "cyl", "p": [0, 2.8, 0.1], "z": [0.7, 0.15], "c": "white"},
+      {"s": "cyl", "p": [0, 2.72, 0.1], "z": [0.5, 0.02], "c": "lamp", "glow": true}
+    ] },
+    "wheelchair": { "name": "Wheelchair", "size": [0.65, 0.6, 1.1], "parts": [
+      {"s": "cyl", "p": [-0.3, 0.3, 0], "z": [0.6, 0.04], "c": "dark", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [0.3, 0.3, 0], "z": [0.6, 0.04], "c": "dark", "r": [0, 0, 90]},
+      {"s": "box", "p": [0, 0.5, 0.05], "z": [0.5, 0.06, 0.45], "c": "cushion"},
+      {"s": "box", "p": [0, 0.8, -0.2], "z": [0.5, 0.55, 0.05], "c": "cushion"},
+      {"s": "box", "p": [-0.27, 0.7, 0], "z": [0.04, 0.04, 0.45], "c": "metal"},
+      {"s": "box", "p": [0.27, 0.7, 0], "z": [0.04, 0.04, 0.45], "c": "metal"}
+    ] },
+    "kiln": { "name": "Brick kiln", "size": [2.6, 2.25, 4], "parts": [
+      {"s": "box", "p": [0, 1.1, 0], "z": [2.6, 2.2, 2.2], "c": "rust"},
+      {"s": "cyl", "p": [0, 2.2, 0], "z": [2.2, 0.6], "c": "rust", "r": [0, 0, 90]},
+      {"s": "box", "p": [0, 0.75, 1.11], "z": [1.2, 1.1, 0.02], "c": "dark"},
+      {"s": "box", "p": [0, 0.7, 1.12], "z": [1, 0.8, 0.01], "c": "fire", "glow": true},
+      {"s": "cyl", "p": [0.8, 3.2, -0.5], "z": [0.45, 1.6], "c": "stone"}
+    ] },
+    "brick_press": { "name": "Brick press", "size": [1.4, 1, 1.95], "parts": [
+      {"s": "box", "p": [0, 0.4, 0], "z": [1.4, 0.8, 1], "c": "accent"},
+      {"s": "box", "p": [-0.6, 1.3, 0], "z": [0.12, 1, 0.12], "c": "metal"},
+      {"s": "box", "p": [0.6, 1.3, 0], "z": [0.12, 1, 0.12], "c": "metal"},
+      {"s": "box", "p": [0, 1.85, 0], "z": [1.4, 0.2, 0.5], "c": "dark"},
+      {"s": "cyl", "p": [0, 1.45, 0], "z": [0.25, 0.6], "c": "steel"},
+      {"s": "box", "p": [0, 0.85, 0.1], "z": [0.8, 0.1, 0.5], "c": "rust"}
+    ] },
+    "brick_pallet": { "name": "Bricks on a pallet", "size": [1.2, 1, 0.75], "parts": [
+      {"s": "box", "p": [0, 0.06, 0], "z": [1.2, 0.12, 1], "c": "wood"},
+      {"s": "box", "p": [-0.3, 0.2, 0], "z": [0.56, 0.14, 0.9], "c": "red"},
+      {"s": "box", "p": [0.3, 0.2, 0], "z": [0.56, 0.14, 0.9], "c": "red"},
+      {"s": "box", "p": [-0.3, 0.35, 0], "z": [0.56, 0.14, 0.9], "c": "rust"},
+      {"s": "box", "p": [0.3, 0.35, 0], "z": [0.56, 0.14, 0.9], "c": "rust"},
+      {"s": "box", "p": [-0.3, 0.5, 0], "z": [0.56, 0.14, 0.9], "c": "red"},
+      {"s": "box", "p": [0.3, 0.5, 0], "z": [0.56, 0.14, 0.9], "c": "red"},
+      {"s": "box", "p": [-0.3, 0.65, 0], "z": [0.56, 0.14, 0.9], "c": "rust"},
+      {"s": "box", "p": [0.3, 0.65, 0], "z": [0.56, 0.14, 0.9], "c": "rust"}
+    ] },
+    "sorting_bins": { "name": "Sorting bins", "size": [2.8, 0.9, 1.05], "parts": [
+      {"s": "box", "p": [-1.05, 0.5, 0], "z": [0.64, 1, 0.8], "c": "accent"},
+      {"s": "box", "p": [-0.35, 0.5, 0], "z": [0.64, 1, 0.8], "c": "metal"},
+      {"s": "box", "p": [0.35, 0.5, 0], "z": [0.64, 1, 0.8], "c": "plant"},
+      {"s": "box", "p": [1.05, 0.5, 0], "z": [0.64, 1, 0.8], "c": "hazard"},
+      {"s": "box", "p": [-1.05, 1.02, -0.05], "z": [0.66, 0.04, 0.8], "c": "dark"},
+      {"s": "box", "p": [-0.35, 1.02, -0.05], "z": [0.66, 0.04, 0.8], "c": "dark"},
+      {"s": "box", "p": [0.35, 1.02, -0.05], "z": [0.66, 0.04, 0.8], "c": "dark"},
+      {"s": "box", "p": [1.05, 1.02, -0.05], "z": [0.66, 0.04, 0.8], "c": "dark"}
+    ] },
+    "baler": { "name": "Baler", "size": [1.6, 3.5, 2.4], "parts": [
+      {"s": "box", "p": [0, 1, 0], "z": [1.6, 2, 1.4], "c": "accent"},
+      {"s": "box", "p": [0, 0.55, 0.71], "z": [1.2, 0.8, 0.02], "c": "dark"},
+      {"s": "box", "p": [0, 2.2, 0], "z": [0.6, 0.4, 0.6], "c": "metal"},
+      {"s": "box", "p": [0.6, 1.5, 0.71], "z": [0.2, 0.3, 0.02], "c": "glow", "glow": true},
+      {"s": "box", "p": [0, 0.3, 1.3], "z": [1, 0.6, 0.9], "c": "composite"}
+    ] },
+    "scrap_pile": { "name": "Scrap pile", "size": [1.8, 1.4, 0.8], "parts": [
+      {"s": "box", "p": [0, 0.05, 0], "z": [1.8, 0.1, 1.4], "c": "dark"},
+      {"s": "box", "p": [-0.3, 0.3, 0], "z": [0.9, 0.4, 0.8], "c": "rust", "r": [0, 20, 8]},
+      {"s": "box", "p": [0.4, 0.28, 0.2], "z": [0.7, 0.35, 0.6], "c": "metal", "r": [0, -30, -6]},
+      {"s": "cyl", "p": [0.1, 0.55, -0.2], "z": [0.2, 1.2], "c": "copper", "r": [0, 0, 80]},
+      {"s": "sph", "p": [-0.5, 0.55, 0.3], "z": [0.3], "c": "steel"}
+    ] },
+    "dumpster": { "name": "Waste container", "size": [1.85, 1.15, 1.35], "parts": [
+      {"s": "box", "p": [0, 0.6, 0], "z": [1.8, 1.1, 1.1], "c": "accent"},
+      {"s": "box", "p": [0, 1.2, -0.05], "z": [1.84, 0.08, 1.04], "c": "dark", "r": [-8, 0, 0]},
+      {"s": "box", "p": [0, 0.6, 0.555], "z": [1.7, 0.08, 0.02], "c": "hazard"},
+      {"s": "cyl", "p": [-0.7, 0.05, -0.4], "z": [0.12, 0.1], "c": "rubber", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [-0.7, 0.05, 0.4], "z": [0.12, 0.1], "c": "rubber", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [0.7, 0.05, -0.4], "z": [0.12, 0.1], "c": "rubber", "r": [0, 0, 90]},
+      {"s": "cyl", "p": [0.7, 0.05, 0.4], "z": [0.12, 0.1], "c": "rubber", "r": [0, 0, 90]}
     ] }
   },
   "rooms": {
@@ -3251,6 +3450,14 @@
     "stairwell": ["stair_flight", "stair_landing", "bench", "plant_pot", "poster", "wall_lamp", "safety_sign", "earth_photo", "intercom", "fire_extinguisher", "first_aid_kit", "wall_planter", "air_vent"],
     "maintenance": ["workbench", "repair_stand", "parts_rack", "tool_wall", "tool_cart", "console", "shelf_unit", "safety_sign", "chart_board", "wall_clock", "notice_board", "tool_board", "whiteboard", "cable_tray", "work_light", "fire_extinguisher", "first_aid_kit", "air_vent"],
     "cleaning_service": ["laundry_machine", "cleaning_cart", "mop_rack", "drying_rack", "sink_basin", "shelf_unit", "locker", "notice_board", "wall_clock", "wall_mirror", "poster", "wall_lamp", "air_vent", "first_aid_kit", "intercom"],
-    "elevator": ["elevator_shaft", "elevator_car", "call_panel", "bench", "plant_pot", "poster", "wall_lamp", "safety_sign", "earth_photo", "intercom", "fire_extinguisher", "first_aid_kit", "wall_planter", "air_vent"]
+    "elevator": ["elevator_shaft", "elevator_car", "call_panel", "bench", "plant_pot", "poster", "wall_lamp", "safety_sign", "earth_photo", "intercom", "fire_extinguisher", "first_aid_kit", "wall_planter", "air_vent"],
+    "kitchen": ["stove_counter", "prep_counter", "fridge", "stock_kettle", "dishwasher", "shelf_unit", "trash_bin", "water_dispenser", "notice_board", "wall_clock", "wall_shelf", "safety_sign", "menu_board", "utensil_rack", "fire_extinguisher", "first_aid_kit", "air_vent"],
+    "canteen": ["canteen_table", "serving_counter", "tray_rack", "water_dispenser", "plant_pot", "trash_bin", "planter_tree", "painting_wide", "poster", "wall_clock", "wall_planter", "wall_lamp", "menu_board", "earth_photo", "intercom", "fire_extinguisher", "first_aid_kit", "air_vent"],
+    "hospital": ["medical_bed", "monitor_stand", "partition", "med_cabinet", "scanner", "operating_table", "reception_desk", "office_chair", "chair", "wheelchair", "plant_pot", "water_cooler", "chart_board", "readout_panel", "wall_clock", "poster", "painting", "whiteboard", "earth_photo", "family_photos", "intercom", "fire_extinguisher", "air_vent"],
+    "gym": ["treadmill", "exercise_bike", "weight_bench", "dumbbell_rack", "gym_mat", "punching_bag", "water_cooler", "bench", "locker", "wall_mirror", "poster", "wall_clock", "notice_board", "earth_photo", "intercom", "fire_extinguisher", "first_aid_kit", "wall_planter", "air_vent"],
+    "park": ["lawn", "flower_bed", "shrub", "planter_tree", "bench", "lamp_post", "fountain", "trash_bin", "wall_planter", "wall_lamp", "banner", "earth_photo", "intercom", "fire_extinguisher", "first_aid_kit", "air_vent"],
+    "brickworks": ["kiln", "brick_press", "brick_pallet", "hopper", "conveyor", "pallet_jack", "console", "safety_sign", "gauge_panel", "chart_board", "pipe_manifold", "cable_tray", "work_light", "fire_extinguisher", "first_aid_kit", "air_vent"],
+    "recycling_center": ["sorting_bins", "baler", "scrap_pile", "conveyor", "pallet_jack", "console", "barrel_group", "safety_sign", "chart_board", "readout_panel", "pipe_manifold", "cable_tray", "work_light", "fire_extinguisher", "first_aid_kit", "air_vent"],
+    "waste_storage": ["dumpster", "barrel_group", "trash_bin", "safety_sign", "cable_tray", "work_light", "fire_extinguisher", "first_aid_kit", "air_vent"]
   }
 }

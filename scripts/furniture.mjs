@@ -1297,6 +1297,132 @@ item("call_panel", "Call panel", [
 ]);
 
 // =====================================================================
+// Leisure, dining, care and recycling (Sep 30)
+// =====================================================================
+
+item("treadmill", "Treadmill", [
+  box([0, 0.12, 0.2], [0.8, 0.24, 1.9], "dark"),
+  box([0, 0.25, 0.25], [0.6, 0.02, 1.6], "rubber"),
+  ...[-1, 1].map((sx) => box([sx * 0.36, 0.75, -0.6], [0.06, 1.1, 0.06], "metal")),
+  box([0, 1.3, -0.62], [0.78, 0.06, 0.3], "metal"),
+  box([0, 1.36, -0.66], [0.4, 0.22, 0.04], "dark"),
+  box([0, 1.36, -0.635], [0.34, 0.16, 0.005], "glow", glow),
+]);
+item("exercise_bike", "Exercise bike", [
+  box([0, 0.06, 0], [0.5, 0.12, 1.2], "dark"),
+  cyl([0, 0.38, 0.35], 0.5, 0.1, "accent", { r: [0, 0, 90] }),
+  box([0, 0.6, -0.2], [0.08, 0.9, 0.08], "metal", { r: [-15, 0, 0] }),
+  box([0, 0.98, -0.3], [0.3, 0.08, 0.34], "cushion"),
+  box([0, 0.85, 0.45], [0.08, 0.8, 0.08], "metal", { r: [15, 0, 0] }),
+  box([0, 1.22, 0.52], [0.55, 0.05, 0.06], "rubber"),
+]);
+item("weight_bench", "Weight bench", [
+  ...legs(0.4, 1.3, 0.42, "metal", 0.05),
+  box([0, 0.46, 0], [0.4, 0.08, 1.3], "cushion"),
+  ...[-1, 1].map((sx) => box([sx * 0.55, 0.6, -0.45], [0.06, 1.2, 0.06], "metal")),
+  cyl([0, 1.1, -0.45], 0.04, 1.8, "steel", { r: [0, 0, 90] }),
+  ...[-1, 1].map((sx) => cyl([sx * 0.8, 1.1, -0.45], 0.42, 0.08, "dark", { r: [0, 0, 90] })),
+]);
+item("dumbbell_rack", "Dumbbell rack", [
+  ...legs(1.6, 0.5, 0.7, "metal", 0.06),
+  ...[0.35, 0.68].map((y) => box([0, y, 0], [1.6, 0.04, 0.5], "dark")),
+  ...[-0.6, -0.2, 0.2, 0.6].flatMap((x, i) => [0.42, 0.75].map((y) => cyl([x, y, 0], 0.1 + i * 0.02, 0.3, i % 2 ? "accent" : "dark", { r: [0, 0, 90] }))),
+]);
+item("gym_mat", "Exercise mat", [box([0, 0.015, 0], [1.0, 0.03, 2.0], "accent"), box([0, 0.032, 0], [0.9, 0.004, 1.9], "cushion")]);
+item("punching_bag", "Punching bag", [
+  box([0, 1.1, -0.35], [0.1, 2.2, 0.1], "metal"),
+  box([0, 2.15, -0.1], [0.08, 0.08, 0.5], "metal"),
+  cyl([0, 1.35, 0.15], 0.4, 1.0, "rust"),
+  box([0, 0.03, -0.2], [0.6, 0.06, 0.6], "dark"),
+]);
+item("lawn", "Lawn", [box([0, 0.02, 0], [3.0, 0.04, 2.0], "plant"), box([0, 0.045, 0], [2.8, 0.01, 1.8], "leaf")]);
+item("flower_bed", "Flower bed", [
+  box([0, 0.2, 0], [2.0, 0.4, 0.7], "stone"),
+  box([0, 0.41, 0], [1.9, 0.02, 0.6], "soil"),
+  ...[-0.75, -0.45, -0.15, 0.15, 0.45, 0.75].flatMap((x, i) => [sph([x, 0.55, 0], 0.26, i % 2 ? "plant" : "leaf"), sph([x + 0.05, 0.7, 0.05], 0.12, ["flower", "red", "power"][i % 3])]),
+]);
+item("shrub", "Shrub", [cyl([0, 0.08, 0], 0.7, 0.16, "soil"), ...foliage(0, 0.5, 0, 0.9)]);
+item("stock_kettle", "Stock kettle", [
+  ...[-1, 1].map((sx) => box([sx * 0.5, 0.45, 0], [0.08, 0.9, 0.5], "metal")),
+  cyl([0, 0.75, 0], 0.85, 0.7, "steel"),
+  cyl([0, 1.11, 0], 0.9, 0.04, "metal"),
+  box([0.55, 0.8, 0], [0.25, 0.08, 0.08], "dark"),
+]);
+item("dishwasher", "Dishwasher", [
+  box([0, 0.45, 0], [1.2, 0.9, 0.7], "steel"),
+  box([0, 1.4, 0], [1.2, 1.0, 0.7], "steel"),
+  box([0, 1.4, 0.36], [1.0, 0.8, 0.02], "metal"),
+  box([0.45, 0.8, 0.36], [0.12, 0.08, 0.02], "glow", glow),
+]);
+item("tray_rack", "Tray rack", [
+  ...legs(0.6, 0.5, 1.6, "metal", 0.04),
+  ...[0.3, 0.55, 0.8, 1.05, 1.3, 1.55].map((y, i) => box([0, y, 0], [0.56, 0.03, 0.46], i % 2 ? "accent" : "panel")),
+]);
+item("canteen_table", "Canteen table", [
+  ...table(2.6, 0.9, 0.75, "panel"),
+  ...[-1, 1].map((sz) => box([0, 0.45, sz * 0.75], [2.4, 0.06, 0.34], "accent")),
+  ...[-1, 1].flatMap((sz) => [-1.05, 1.05].map((x) => box([x, 0.22, sz * 0.75], [0.06, 0.44, 0.3], "metal"))),
+  ...[-0.7, 0.2, 0.9].map((x) => box([x, 0.77, 0.1], [0.4, 0.02, 0.3], "white")),
+]);
+item("operating_table", "Operating table", [
+  box([0, 0.45, 0], [0.3, 0.9, 0.3], "metal"),
+  box([0, 0.95, 0], [0.7, 0.1, 2.0], "white"),
+  box([0, 1.01, 0], [0.62, 0.02, 1.9], "mirror"),
+  box([0, 1.5, -0.8], [0.08, 3.0, 0.08], "metal"),
+  box([0, 2.9, -0.35], [0.06, 0.06, 0.9], "metal"),
+  cyl([0, 2.8, 0.1], 0.7, 0.15, "white"),
+  cyl([0, 2.72, 0.1], 0.5, 0.02, "lamp", glow),
+]);
+item("wheelchair", "Wheelchair", [
+  ...[-1, 1].map((sx) => cyl([sx * 0.3, 0.3, 0], 0.6, 0.04, "dark", { r: [0, 0, 90] })),
+  box([0, 0.5, 0.05], [0.5, 0.06, 0.45], "cushion"),
+  box([0, 0.8, -0.2], [0.5, 0.55, 0.05], "cushion"),
+  ...[-1, 1].map((sx) => box([sx * 0.27, 0.7, 0], [0.04, 0.04, 0.45], "metal")),
+]);
+item("kiln", "Brick kiln", [
+  box([0, 1.1, 0], [2.6, 2.2, 2.2], "rust"),
+  cyl([0, 2.2, 0], 2.2, 0.6, "rust", { r: [0, 0, 90] }),
+  box([0, 0.75, 1.11], [1.2, 1.1, 0.02], "dark"),
+  box([0, 0.7, 1.12], [1.0, 0.8, 0.01], "fire", glow),
+  cyl([0.8, 3.2, -0.5], 0.45, 1.6, "stone"),
+]);
+item("brick_press", "Brick press", [
+  box([0, 0.4, 0], [1.4, 0.8, 1.0], "accent"),
+  ...[-1, 1].map((sx) => box([sx * 0.6, 1.3, 0], [0.12, 1.0, 0.12], "metal")),
+  box([0, 1.85, 0], [1.4, 0.2, 0.5], "dark"),
+  cyl([0, 1.45, 0], 0.25, 0.6, "steel"),
+  box([0, 0.85, 0.1], [0.8, 0.1, 0.5], "rust"),
+]);
+item("brick_pallet", "Bricks on a pallet", [
+  box([0, 0.06, 0], [1.2, 0.12, 1.0], "wood"),
+  ...[0, 1, 2, 3].flatMap((k) => [-0.3, 0.3].map((x) => box([x, 0.2 + k * 0.15, 0], [0.56, 0.14, 0.9], k % 2 ? "rust" : "red"))),
+]);
+item("sorting_bins", "Sorting bins", [
+  ...[-1.05, -0.35, 0.35, 1.05].map((x, i) => box([x, 0.5, 0], [0.64, 1.0, 0.8], ["accent", "metal", "plant", "hazard"][i])),
+  ...[-1.05, -0.35, 0.35, 1.05].map((x) => box([x, 1.02, -0.05], [0.66, 0.04, 0.8], "dark")),
+]);
+item("baler", "Baler", [
+  box([0, 1.0, 0], [1.6, 2.0, 1.4], "accent"),
+  box([0, 0.55, 0.71], [1.2, 0.8, 0.02], "dark"),
+  box([0, 2.2, 0], [0.6, 0.4, 0.6], "metal"),
+  box([0.6, 1.5, 0.71], [0.2, 0.3, 0.02], "glow", glow),
+  box([0, 0.3, 1.3], [1.0, 0.6, 0.9], "composite"),
+]);
+item("scrap_pile", "Scrap pile", [
+  box([0, 0.05, 0], [1.8, 0.1, 1.4], "dark"),
+  box([-0.3, 0.3, 0], [0.9, 0.4, 0.8], "rust", { r: [0, 20, 8] }),
+  box([0.4, 0.28, 0.2], [0.7, 0.35, 0.6], "metal", { r: [0, -30, -6] }),
+  cyl([0.1, 0.55, -0.2], 0.2, 1.2, "copper", { r: [0, 0, 80] }),
+  sph([-0.5, 0.55, 0.3], 0.3, "steel"),
+]);
+item("dumpster", "Waste container", [
+  box([0, 0.6, 0], [1.8, 1.1, 1.1], "accent"),
+  box([0, 1.2, -0.05], [1.84, 0.08, 1.04], "dark", { r: [-8, 0, 0] }),
+  box([0, 0.6, 0.555], [1.7, 0.08, 0.02], "hazard"),
+  ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => cyl([sx * 0.7, 0.05, sz * 0.4], 0.12, 0.1, "rubber", { r: [0, 0, 90] }))),
+]);
+
+// =====================================================================
 // What each room may hold
 // =====================================================================
 
@@ -1342,6 +1468,14 @@ const rooms = {
   maintenance: ["workbench", "repair_stand", "parts_rack", "tool_wall", "tool_cart", "console", "shelf_unit"],
   cleaning_service: ["laundry_machine", "cleaning_cart", "mop_rack", "drying_rack", "sink_basin", "shelf_unit", "locker"],
   elevator: ["elevator_shaft", "elevator_car", "call_panel", "bench", "plant_pot"],
+  kitchen: ["stove_counter", "prep_counter", "fridge", "stock_kettle", "dishwasher", "shelf_unit", "trash_bin", "water_dispenser"],
+  canteen: ["canteen_table", "serving_counter", "tray_rack", "water_dispenser", "plant_pot", "trash_bin", "planter_tree"],
+  hospital: ["medical_bed", "monitor_stand", "partition", "med_cabinet", "scanner", "operating_table", "reception_desk", "office_chair", "chair", "wheelchair", "plant_pot", "water_cooler"],
+  gym: ["treadmill", "exercise_bike", "weight_bench", "dumbbell_rack", "gym_mat", "punching_bag", "water_cooler", "bench", "locker"],
+  park: ["lawn", "flower_bed", "shrub", "planter_tree", "bench", "lamp_post", "fountain", "trash_bin"],
+  brickworks: ["kiln", "brick_press", "brick_pallet", "hopper", "conveyor", "pallet_jack", "console"],
+  recycling_center: ["sorting_bins", "baler", "scrap_pile", "conveyor", "pallet_jack", "console", "barrel_group"],
+  waste_storage: ["dumpster", "barrel_group", "trash_bin"],
 };
 
 // What hangs on each room's walls: pictures and lamps at home, charts, readouts and signs at work.
@@ -1387,6 +1521,14 @@ const hangings = {
   maintenance: ["safety_sign", "chart_board", "wall_clock", "notice_board"],
   cleaning_service: ["notice_board", "wall_clock", "wall_mirror", "poster", "wall_lamp"],
   elevator: ["poster", "wall_lamp", "safety_sign"],
+  kitchen: ["notice_board", "wall_clock", "wall_shelf", "safety_sign"],
+  canteen: ["painting_wide", "poster", "wall_clock", "wall_planter", "wall_lamp", "menu_board"],
+  hospital: ["chart_board", "readout_panel", "wall_clock", "poster", "painting"],
+  gym: ["wall_mirror", "poster", "wall_clock", "notice_board"],
+  park: ["wall_planter", "wall_lamp", "banner"],
+  brickworks: ["safety_sign", "gauge_panel", "chart_board"],
+  recycling_center: ["safety_sign", "chart_board", "readout_panel"],
+  waste_storage: ["safety_sign"],
 };
 // And more to fill the walls, by kind of room: a second pass that the templates spread along every wall.
 const WALL_FILL = {
@@ -1411,6 +1553,7 @@ const FILL_KIND = {
   farm: "farm", galley: "galley", restroom: "wash", crypt: "quiet",
   tiny_plaza: "public", small_plaza: "public", stairwell: "public", elevator: "public", entrance: "entry",
   maintenance: "workshop", cleaning_service: "wash",
+  kitchen: "galley", canteen: "public", hospital: "office", gym: "public", park: "public", brickworks: "plant", recycling_center: "plant", waste_storage: "store",
 };
 for (const room of Object.keys(rooms)) {
   const kind = FILL_KIND[room];

@@ -234,6 +234,57 @@ const GLYPHS: Record<string, Glyph> = {
     g.rect(cx + s * 0.25, cy - s * 0.07, s * 0.06, s * 0.14).fill(c);
     g.moveTo(cx - s * 0.05, cy - s * 0.1).lineTo(cx - s * 0.12, cy + s * 0.02).lineTo(cx, cy + s * 0.02).lineTo(cx - s * 0.07, cy + s * 0.12).stroke(line(1.2, c));
   },
+  kitchen: (g, cx, cy, s, c) => {
+    // A pot with steam.
+    g.rect(cx - s * 0.24, cy - s * 0.02, s * 0.48, s * 0.28).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.32, cy - s * 0.02).lineTo(cx + s * 0.32, cy - s * 0.02).stroke(line(1.5, c));
+    for (const dx of [-0.1, 0.1]) g.moveTo(cx + dx * s, cy - s * 0.1).quadraticCurveTo(cx + dx * s + s * 0.06, cy - s * 0.2, cx + dx * s, cy - s * 0.32).stroke(line(1.2, c));
+  },
+  canteen: (g, cx, cy, s, c) => {
+    // A fork and a knife.
+    g.moveTo(cx - s * 0.12, cy - s * 0.3).lineTo(cx - s * 0.12, cy + s * 0.3).stroke(line(1.5, c));
+    for (const dx of [-0.2, -0.04]) g.moveTo(cx + dx * s, cy - s * 0.3).lineTo(cx + dx * s, cy - s * 0.12).stroke(line(1.2, c));
+    g.moveTo(cx - s * 0.2, cy - s * 0.12).lineTo(cx - s * 0.04, cy - s * 0.12).stroke(line(1.2, c));
+    g.moveTo(cx + s * 0.14, cy + s * 0.3).lineTo(cx + s * 0.14, cy - s * 0.3).quadraticCurveTo(cx + s * 0.26, cy - s * 0.15, cx + s * 0.14, cy).stroke(line(1.5, c));
+  },
+  hospital: (g, cx, cy, s, c) => {
+    // A cross in a circle.
+    g.circle(cx, cy, s * 0.32).stroke(line(1.5, c));
+    g.moveTo(cx, cy - s * 0.18).lineTo(cx, cy + s * 0.18).moveTo(cx - s * 0.18, cy).lineTo(cx + s * 0.18, cy).stroke(line(2, c));
+  },
+  gym: (g, cx, cy, s, c) => {
+    // A dumbbell.
+    g.moveTo(cx - s * 0.2, cy).lineTo(cx + s * 0.2, cy).stroke(line(1.8, c));
+    for (const sx of [-1, 1]) g.rect(cx + sx * s * 0.24 - s * 0.05, cy - s * 0.16, s * 0.1, s * 0.32).stroke(line(1.5, c));
+  },
+  park: (g, cx, cy, s, c) => {
+    // A tree on a lawn.
+    g.circle(cx, cy - s * 0.1, s * 0.2).stroke(line(1.5, c));
+    g.moveTo(cx, cy + s * 0.1).lineTo(cx, cy + s * 0.3).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.3, cy + s * 0.3).lineTo(cx + s * 0.3, cy + s * 0.3).stroke(line(1.5, c));
+  },
+  brickworks: (g, cx, cy, s, c) => {
+    // A little brick wall.
+    for (const [x, y] of [[-0.3, 0.06], [0, 0.06], [-0.15, -0.14]] as const) g.rect(cx + x * s, cy + y * s, s * 0.3, s * 0.18).stroke(line(1.3, c));
+  },
+  recycling_center: (g, cx, cy, s, c) => {
+    // Three arrows chasing round a triangle.
+    for (let i = 0; i < 3; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI * 2) / 3;
+      const b = a + (Math.PI * 2) / 3;
+      const [x0, y0, x1, y1] = [cx + Math.cos(a) * s * 0.3, cy + Math.sin(a) * s * 0.3, cx + Math.cos(b) * s * 0.3, cy + Math.sin(b) * s * 0.3];
+      const [mx, my] = [x0 + (x1 - x0) * 0.75, y0 + (y1 - y0) * 0.75];
+      g.moveTo(x0 + (x1 - x0) * 0.15, y0 + (y1 - y0) * 0.15).lineTo(mx, my).stroke(line(1.5, c));
+      const ang = Math.atan2(y1 - y0, x1 - x0);
+      for (const t of [2.5, -2.5]) g.moveTo(mx, my).lineTo(mx + Math.cos(ang + t) * s * 0.1, my + Math.sin(ang + t) * s * 0.1).stroke(line(1.5, c));
+    }
+  },
+  waste_storage: (g, cx, cy, s, c) => {
+    // A bin with a lid.
+    g.poly([cx - s * 0.2, cy - s * 0.18, cx + s * 0.2, cy - s * 0.18, cx + s * 0.16, cy + s * 0.3, cx - s * 0.16, cy + s * 0.3]).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.26, cy - s * 0.24).lineTo(cx + s * 0.26, cy - s * 0.24).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.06, cy - s * 0.3).lineTo(cx + s * 0.06, cy - s * 0.3).stroke(line(1.5, c));
+  },
 };
 
 export function drawGlyph(g: GraphicsContext, type: string, cx: number, cy: number, size: number, color: number): void {
