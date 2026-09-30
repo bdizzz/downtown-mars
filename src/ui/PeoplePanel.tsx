@@ -1,5 +1,6 @@
 import type { Snapshot } from "../sim/snapshot";
 import { dining, num } from "./format";
+import { people } from "../sim/people";
 
 // The hole's people: who they are by life stage, what's coming, and why
 // children are or aren't being born.
@@ -20,7 +21,7 @@ export function PeoplePanel({ s, onClose }: { s: Snapshot; onClose: () => void }
   const b = s.births;
   const checks: [boolean, string][] = [
     [!b.blockers.includes("No working clinic"), "A working clinic"],
-    [!b.blockers.some((x) => x.startsWith("Happiness")), `Happiness 55 or more (now ${Math.round(s.happiness.average)})`],
+    [!b.blockers.some((x) => x.startsWith("Happiness")), `Happiness ${people.births.minHappiness} or more (now ${Math.round(s.happiness.average)})`],
     [!b.blockers.includes("No free beds"), `A free bed (${s.population.count}/${s.beds})`],
   ];
   return (
