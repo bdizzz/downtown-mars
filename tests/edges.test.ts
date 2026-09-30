@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
-import { cellEdges, circleCuts, edgeById, edgeLengthM, edgeSides, edgeVertices, nearestEdge, outsideEdges, sharedEdges } from "../src/sim/edges";
+import { cellEdges, circleCuts, edgeById, edgeLengthM, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, nearestEdge, outsideEdges, sharedEdges } from "../src/sim/edges";
 import { createHole, ringSize } from "../src/sim/geometry";
 import { footprint } from "../src/sim/placement";
 
@@ -46,9 +46,13 @@ describe("the edge grid", () => {
     }
   });
 
-  it("ring 1's inner side is the gallery, not an edge", () => {
+  it("ring 1's inner side is a gallery edge, on the shaft wall", () => {
     const arcs = cellEdges(hole, { floor: 1, ring: 1, slot: 0 }).filter((e) => e.kind === "arc");
-    expect(arcs.every((e) => e.kind === "arc" && e.circle === 1)).toBe(true);
+    const gallery = arcs.filter(isGalleryEdge);
+    expect(gallery).toHaveLength(1);
+    expect(edgeSides(hole, gallery[0]!)).toEqual([null, { floor: 1, ring: 1, slot: 0 }]);
+    expect(galleryEdges(hole, 1)).toHaveLength(ringSize(hole, 1));
+    expect(edgeById(hole, gallery[0]!.id)).toEqual(gallery[0]);
   });
 
   it("a room's outside edges leave out its middle", () => {
@@ -78,8 +82,10 @@ describe("the edge grid", () => {
     expect(nearestEdge(hole, 1, 1.5, slot * 0.05, D)!.id).toBe("R1.2.0"); // near the left side
     expect(nearestEdge(hole, 1, 1.95, slot * 0.5, D)!).toMatchObject({ kind: "arc", circle: 2 }); // near the outer edge
     expect(nearestEdge(hole, 1, 1.05, slot * 0.5, D)!).toMatchObject({ kind: "arc", circle: 1 }); // near the inner edge
-    // In ring 1, the inner side is the gallery: never picked.
-    expect(nearestEdge(hole, 1, 0.02, 0.5 / ringSize(hole, 1), D)!.kind).not.toBe("arc");
+    // In ring 1 near the shaft wall, or just over it on the shaft side: the gallery edge.
+    expect(nearestEdge(hole, 1, 0.02, 0.5 / ringSize(hole, 1), D)!).toMatchObject({ kind: "arc", circle: 0 });
+    expect(nearestEdge(hole, 1, -0.1, 0.5 / ringSize(hole, 1), D)!).toMatchObject({ kind: "arc", circle: 0 });
+    expect(nearestEdge(hole, 1, -1, 0.5 / ringSize(hole, 1), D)).toBeNull();
   });
 
   it("measures edges", () => {

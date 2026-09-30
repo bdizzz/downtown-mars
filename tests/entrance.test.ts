@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { checkPlacement, ensureFloors, type Location } from "../src/sim/placement";
+import { floorLinked } from "../src/sim/corridors";
+import { galleryEdges } from "../src/sim/edges";
 import { checkBuild } from "../src/sim/costs";
 import { holeGates, setAdults, unlock } from "../src/sim/people";
 import { step } from "../src/sim/step";
@@ -40,15 +42,26 @@ describe("the entrance, and stairs down", () => {
     expect(galley.connected).toBe(false);
   });
 
-  it("stairs from floor 1 reach floor 2's gallery, and a chain of them reaches floor 3", () => {
+  it("stairs from floor 1 reach floor 2, a chain of them floor 3, and a gallery tube from them connects rooms there", () => {
     const s = deep();
-    const g2 = build(s, "galley", ring(2, 1, 3));
-    const g3 = build(s, "galley", ring(3, 1, 3));
+    const g2 = build(s, "galley", ring(2, 1, 3)); // two slots along from the stairs (a room right beside them opens onto them)
+    const g3 = build(s, "galley", ring(3, 1, 3)); // two slots along from them
     build(s, "stairwell", ring(1, 1, 5)); // floors 1–2
-    expect(g2.connected).toBe(true);
-    expect(g3.connected).toBe(false);
+    expect(floorLinked(s.layout, 2)).toBe(true);
+    expect(floorLinked(s.layout, 3)).toBe(false);
+    // No gallery on floor 2 yet: the room needs a way in.
+    expect(g2.connected).toBe(false);
+    expect(applyCommand(s, { type: "connectRoom", roomId: g2.id, finish: "rock" }).ok).toBe(true);
+    expect(s.layout.rooms.find((r) => r.id === g2.id)!.connected).toBe(true);
     build(s, "stairwell", ring(2, 1, 5)); // extends to floor 3
-    expect(g3.connected).toBe(true);
+    expect(floorLinked(s.layout, 3)).toBe(true);
+    expect(g3.connected).toBe(false);
+    // Gallery tubes along the shaft wall from the stairs to the room.
+    const tubes = galleryEdges(s.layout.hole, 3).filter((e) => e.a0 >= 3 / 9 - 1e-9 && e.a1 <= 6 / 9 + 1e-9).map((e) => e.id);
+    expect(applyCommand(s, { type: "drawCorridors", edges: tubes, finish: "rock" }).ok).toBe(true);
+    applyCommand(s, { type: "consoleFinish" });
+    expect(s.layout.rooms.find((r) => r.id === g3.id)!.connected).toBe(true);
+    expect(tubes.every((id) => s.layout.corridors[id] === "gallery")).toBe(true);
   });
 
   it("stairs that don't reach floor 1 link floors 2 and 3 to each other, but not to the surface", () => {
@@ -61,6 +74,8 @@ describe("the entrance, and stairs down", () => {
   it("an old save's open shaft reaches every floor", () => {
     const s = deep();
     const g3 = build(s, "galley", ring(3, 1, 3));
+    // As migrated: an old save's floors have their galleries, and the shaft links them.
+    for (const e of galleryEdges(s.layout.hole, 3)) s.layout.corridors[e.id] = "gallery";
     s.layout.openShaft = true;
     applyCommand(s, { type: "setDrill", active: false });
     applyCommand(s, { type: "build", room: "water_tank", at: ring(1, 1, 6) }); // anything that recomputes access

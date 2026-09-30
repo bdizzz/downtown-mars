@@ -73,7 +73,7 @@ export function RoomCard({ def, resources, shape, onRotate, siteNote }: Props) {
       {def.public ? (
         <p className="good">Walk-through: its sides count as corridors, so neighbours open onto it</p>
       ) : (
-        def.size !== "surface" && <p className="k">Needs the gallery (ring 1) or a corridor to one side.</p>
+        def.size !== "surface" && <p className="k">Needs a gallery tube, a corridor or a plaza along one side.</p>
       )}
     </div>
   );

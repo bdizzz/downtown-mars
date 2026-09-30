@@ -24,9 +24,9 @@ const has = (s: Snapshot, type: string, n = 1) => s.layout.rooms.filter((r) => r
 export const CHECKS: Record<string, (s: Snapshot, ui: UiFlags) => boolean> = {
   galley: (s) => has(s, "galley"),
   restroom: (s) => has(s, "restroom"),
-  // A corridor that actually reaches a room past ring 1.
+  // A corridor (not the gallery the game starts with) that actually reaches a room past ring 1.
   corridor: (s) =>
-    Object.values(s.layout.corridorLinked ?? {}).some(Boolean) &&
+    Object.entries(s.layout.corridorLinked ?? {}).some(([id, linked]) => linked && s.layout.corridors[id] !== "gallery") &&
     s.layout.rooms.some((r) => r.at.kind === "ring" && r.connected && !r.cells.some((c) => c.ring === 1)),
   life_support: (s) => has(s, "life_support"),
   water_tank: (s) => has(s, "water_tank"),

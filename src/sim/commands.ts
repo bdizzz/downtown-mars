@@ -9,7 +9,7 @@ import type { Priority } from "./config";
 import { enact, repeal } from "./ordinances";
 import { isCrop, resourceDefs } from "./resources";
 import { capacities, mainOutput } from "./economy";
-import { corridorCost, corridorRefusal, CORRIDORS, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
+import { corridorCost, corridorRefusal, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById } from "./edges";
 import { dropCorridors, dropRoomJobs, finishAll, prioritize, queueCorridors, queueExtension, queueFill, queueRoom } from "./construction";
 import { holeGates, unlock, UNLOCK_GATES } from "./people";
@@ -131,7 +131,7 @@ function drawCorridors(state: SimState, edges: string[], finish: string, all = f
       state.resources[r] = (state.resources[r] ?? 0) - v;
       record(state, r, "out", CORRIDORS, v);
     }
-    layout.corridors[id] = finish;
+    layout.corridors[id] = finishFor(edgeById(layout.hole, id)!, finish);
     carved.push(id);
     built++;
   }

@@ -65,3 +65,12 @@ A late, costly project that seals the top of the shaft. It needs glass (bringing
 - How the half view bonus shows in 3D (the glass tube in front of the window).
 
 ## Notes as built
+
+**Step 1, gallery edges:**
+- `edges.ts`: circle 0 (the shaft wall) has arc edges now, one per ring-1 slot: in `cellEdges`, `edgeById`, `arcAt` and `nearestEdge` (which also picks them from just over the wall, on the shaft side). `isGalleryEdge`, `galleryEdges(hole, floor)`.
+- `corridors.ts`: a corridor on the shaft wall is always a gallery tube (`corridors.gallery` in `data/corridors.json`, `finishFor`), whatever finish was asked for; it's never refused for its shaft side. The implicit per-floor gallery node is gone: ring-1 rooms connect only through a built tube, corridor, public room or empty space. A floor is linked when anything on it reaches the surface. Connect (`routeToRoom`) routes along the shaft wall too.
+- **Cost:** 3 rock per 10 m (about 2 a segment). Metal was tried first: the bots ran short of it for life support, as early players would; glass isn't in the game yet.
+- **New games** start with floor 1's gallery built all the way round. **Save v16:** every floor of an old save gets its full gallery.
+- Walking ignores gallery edges for now (the ledge is still open everywhere); the tutorial's corridor goal doesn't count the starting gallery.
+- **Bots:** their Connect calls lay gallery tubes on new floors. Growth to minute 80 is a little slower (155 colonists, was 160+); the people playthrough's bar is 150 now.
+

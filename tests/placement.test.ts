@@ -4,6 +4,7 @@ import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { checkPlacement, createLayout, footprint, placeRoom, type Layout, type Location } from "../src/sim/placement";
 import { roomDefs } from "../src/sim/rooms";
+import { galleryEdges } from "../src/sim/edges";
 import { createInitialState } from "../src/sim/state";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
@@ -48,8 +49,10 @@ describe("footprint", () => {
 describe("placement rules", () => {
   let layout: Layout;
   beforeEach(() => {
-    // A bare hole with no entrance: an old-style open shaft links its floors, so ring 1 is reachable.
+    // A bare hole with no entrance: an old-style open shaft links its floors, and (as old saves are
+    // migrated) every floor has its gallery, so ring 1 is reachable.
     layout = createLayout(hole());
+    for (let f = 1; f <= layout.hole.floors; f++) for (const e of galleryEdges(layout.hole, f)) layout.corridors[e.id] = "gallery";
     layout.openShaft = true;
   });
 

@@ -1,5 +1,5 @@
 import { corridors } from "../sim/corridors";
-import { cellEdges, type Edge } from "../sim/edges";
+import { cellEdges, isGalleryEdge, type Edge } from "../sim/edges";
 import { isOpen } from "../sim/excavation";
 import type { Hole } from "../sim/geometry";
 import { roomAt, type Layout, type RoomInstance } from "../sim/placement";
@@ -106,6 +106,8 @@ export function onCorridorAt(layout: Layout, floor: number, x: number, z: number
 /** Is a point (radius r, angle a) inside the band a built corridor on this edge carves? */
 function onCorridor(layout: Layout, e: Edge, r: number, a: number): boolean {
   if (!layout.corridors[e.id] || layout.corridorsBuilding?.[e.id] !== undefined) return false;
+  // A gallery tube runs on the shaft side of the wall, over the gallery ledge: it carves nothing from ring 1.
+  if (isGalleryEdge(e)) return false;
   const hole = layout.hole;
   if (e.kind === "radial") {
     const [r0, r1] = [hole.shaftRadiusM + (e.ring - 1) * RING_D, hole.shaftRadiusM + e.ring * RING_D];

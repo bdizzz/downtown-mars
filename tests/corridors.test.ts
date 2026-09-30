@@ -109,7 +109,7 @@ describe("access", () => {
     build(s, "small_plaza", ring(1, 1, 0, 2));
     const dorm = build(s, "bunk_dorm", ring(1, 2, 0, 2)); // right behind the plaza
     expect(dorm.connected).toBe(true);
-    expect(Object.keys(s.layout.corridors)).toHaveLength(0);
+    expect(Object.values(s.layout.corridors).filter((f) => f !== "gallery")).toHaveLength(0);
   });
 
   it("corridors on the floor being dug don't link until it's dug", () => {
@@ -132,7 +132,7 @@ describe("connecting a room", () => {
     expect(route.length).toBeLessThanOrEqual(2);
     expect(applyCommand(s, { type: "connectRoom", roomId: ls.id, finish: "marscrete" }).ok).toBe(true);
     expect(s.layout.rooms.find((r) => r.id === ls.id)!.connected).toBe(true);
-    expect(Object.values(s.layout.corridors).every((f) => f === "marscrete")).toBe(true);
+    expect(Object.values(s.layout.corridors).every((f) => f === "marscrete" || f === "gallery")).toBe(true);
   });
 
   it("digs through rock to reach a room with nothing around it", () => {

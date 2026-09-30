@@ -39,7 +39,8 @@ describe("ninety minutes of people", () => {
 
   it("outgrows a single hole by a wide margin", () => {
     expect(net.log.at(-1)!.total).toBeGreaterThan(solo.log.at(-1)!.total * 1.3);
-    expect(at(80).total).toBeGreaterThan(160);
+    // Gallery tubes on every new floor (milestone 11) cost rock and crew time: a little slower than before (was 160).
+    expect(at(80).total).toBeGreaterThan(150);
   });
 
   it("keeps the child hole healthy", () => {

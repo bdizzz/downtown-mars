@@ -1,11 +1,21 @@
 {
-  "_note": "Corridors run along the borders between cells (see src/sim/edges.ts). Costs are per 10 m of corridor; short arc pieces cost in proportion. The finish is purely a look for now. Removing a corridor costs the same as drawing it in its finish: the walls of the rooms around it have to be rebuilt.",
+  "_note": "Corridors run along the borders between cells (see src/sim/edges.ts). Costs are per 10 m of corridor; short arc pieces cost in proportion. The finish is purely a look for now. Removing a corridor costs the same as drawing it in its finish: the walls of the rooms around it have to be rebuilt. Along the shaft wall (circle 0) a corridor is always a gallery tube: a glass-walled, pressurized walkway hanging on the shaft side, in its own finish and cost.",
   "widthM": 3,
   "blocksEffects": [
     "noise",
     "smell"
   ],
   "defaultFinish": "rock",
+  "gallery": {
+    "id": "gallery",
+    "name": "Gallery tube",
+    "hint": "A glass-walled walkway along the shaft wall: pressurized, with the view",
+    "cost": {
+      "rock": 3
+    },
+    "color": "#9fb8c4",
+    "accent": "#5f7c8a"
+  },
   "finishes": [
     {
       "id": "rock",

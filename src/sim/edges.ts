@@ -3,8 +3,8 @@ import type { Cell } from "./placement";
 
 // The borders between cells on a floor, where corridors run.
 //
-// Rings are bounded by circles: circle 0 is the shaft wall (the gallery runs
-// along it), circle n is the outer edge of ring n. Slots are bounded by
+// Rings are bounded by circles: circle 0 is the shaft wall (gallery tubes run
+// along it, on the shaft side), circle n is the outer edge of ring n. Slots are bounded by
 // radial lines. An edge is either a radial line between two slots of one
 // ring, or a piece of a circle. Outer rings have more slots, so the circle
 // between ring n and ring n+1 is cut at every slot boundary of either ring;
@@ -110,7 +110,7 @@ export function edgeById(hole: Hole, id: string): Edge | null {
     if (k < 1 || k > hole.ringSlots.length) return null;
     return radialEdge(hole, floor, k, Number(m[4]));
   }
-  if (k < 1 || k > hole.ringSlots.length || m[5] === undefined) return null;
+  if (k < 0 || k > hole.ringSlots.length || m[5] === undefined) return null;
   const want = fracKey(frac(Number(m[4]), Number(m[5])));
   const i = circleCuts(hole, k).findIndex((f) => fracKey(f) === want);
   return i < 0 ? null : arcPiece(hole, floor, k, i);
@@ -140,14 +140,14 @@ export function edgeSides(hole: Hole, e: Edge): [Cell | null, Cell | null] {
   return [cellIn(e.circle), cellIn(e.circle + 1)];
 }
 
-/** Every edge of a cell. Ring 1's inner side is the gallery, not an edge. */
+/** Every edge of a cell. Ring 1's inner side is on the shaft wall (circle 0), where a gallery tube can run. */
 export function cellEdges(hole: Hole, c: Cell): Edge[] {
   const n = ringSize(hole, c.ring);
   const out: Edge[] = [radialEdge(hole, c.floor, c.ring, c.slot), radialEdge(hole, c.floor, c.ring, c.slot + 1)];
   const s0 = c.slot / n;
   const s1 = (c.slot + 1) / n;
   for (const circle of [c.ring - 1, c.ring]) {
-    if (circle < 1) continue;
+    if (circle < 0) continue;
     const list = circleCuts(hole, circle);
     list.forEach((f, i) => {
       const t = turnOf(f);
@@ -190,9 +190,10 @@ export function edgeLengthM(hole: Hole, e: Edge, ringDepthM: number): number {
  * The edge nearest a point on a floor: the cell it's in, then whichever of
  * that cell's sides is closest. `rings` is the distance out from the shaft
  * wall in rings (0 at the wall, 1 at the outer edge of ring 1), `turn` the
- * angle in turns. Ring 1's inner side is the gallery, so it's never chosen.
+ * angle in turns. Just inside the shaft wall (down to `galleryRings` in), it's ring 1's gallery side.
  */
-export function nearestEdge(hole: Hole, floor: number, rings: number, turn: number, ringDepthM: number): Edge | null {
+export function nearestEdge(hole: Hole, floor: number, rings: number, turn: number, ringDepthM: number, galleryRings = 0.3): Edge | null {
+  if (rings < 0 && rings >= -galleryRings) return arcAt(hole, floor, 0, turn);
   if (rings < 0 || rings >= hole.ringSlots.length) return null;
   const ring = Math.floor(rings) + 1;
   const v = rings - (ring - 1);
@@ -207,17 +208,27 @@ export function nearestEdge(hole: Hole, floor: number, rings: number, turn: numb
     [(1 - u) * slotM, () => radialEdge(hole, floor, ring, slot + 1)],
     [(1 - v) * ringDepthM, () => arcAt(hole, floor, ring, t)],
   ];
-  if (ring > 1) options.push([v * ringDepthM, () => arcAt(hole, floor, ring - 1, t)]);
+  options.push([v * ringDepthM, () => arcAt(hole, floor, ring - 1, t)]);
   options.sort((a, b) => a[0] - b[0]);
   return options[0]![1]();
 }
 
 /** The arc piece of a circle at an angle. */
 export function arcAt(hole: Hole, floor: number, circle: number, turn: number): ArcEdge | null {
-  if (circle < 1 || circle > hole.ringSlots.length) return null;
+  if (circle < 0 || circle > hole.ringSlots.length) return null;
   const list = circleCuts(hole, circle);
   const t = ((turn % 1) + 1) % 1;
   let i = list.length - 1;
   for (let k = 0; k < list.length; k++) if (turnOf(list[k]!) <= t + 1e-12) i = k;
   return arcPiece(hole, floor, circle, i);
+}
+
+/** Is this a gallery edge: on the shaft wall, where a gallery tube runs? */
+export function isGalleryEdge(e: Edge): boolean {
+  return e.kind === "arc" && e.circle === 0;
+}
+
+/** A floor's gallery edges, all the way round the shaft: one per ring-1 slot. */
+export function galleryEdges(hole: Hole, floor: number): ArcEdge[] {
+  return circleCuts(hole, 0).map((_, i) => arcPiece(hole, floor, 0, i));
 }

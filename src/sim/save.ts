@@ -7,7 +7,8 @@ import { depositsAt, generateMap, type MapState } from "./map";
 import { network } from "./network";
 import { culture } from "./culture";
 import { addAdults } from "./people";
-import { migrateCorridorRooms } from "./corridors";
+import { corridors, migrateCorridorRooms, recomputeAccess } from "./corridors";
+import { galleryEdges } from "./edges";
 import { ensureFloors, placeRoom, type Layout } from "./placement";
 import { openCells } from "./excavation";
 import type { World } from "./world";
@@ -16,7 +17,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 15;
+export const SAVE_VERSION = 16;
 
 type Raw = Record<string, unknown>;
 
@@ -107,6 +108,17 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
         const placed = placeRoom(layout, "entrance", { kind: "ring", floor: 1, ring: 1, slot, w: 1, d: 1 });
         if (placed.ok) openCells(layout, placed.cells);
       }
+      return { ...h, layout };
+    }),
+  }),
+  // v16: the gallery is built, like corridors. Every floor that had one gets it all the way round.
+  15: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const layout = h.layout as Layout;
+      layout.corridors ??= {};
+      for (let f = 1; f <= layout.hole.floors; f++) for (const e of galleryEdges(layout.hole, f)) layout.corridors[e.id] ??= corridors.gallery.id;
+      recomputeAccess(layout);
       return { ...h, layout };
     }),
   }),
