@@ -8,7 +8,7 @@ import type { SimState } from "./state";
 import { countStage, needsWeight, type Cohort } from "./people";
 import { storageCaps } from "./storage";
 import { stormOutput } from "./weather";
-import { conditionOutput } from "./condition";
+import { conditionOutput, isCleanable, maintenanceQueue } from "./condition";
 
 // The per-tick economy: staff the rooms, run them, feed the colonists, cap
 // storage. Every amount in the data is per game day, so each tick moves
@@ -158,12 +158,19 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
 
   // 2. Run rooms. Pure producers (solar) go first so power is there for the rest.
   const mod = modifiers(state);
+  // Maintenance and cleaning crews with nothing to repair stand by: they keep the lights on, but use no parts or water.
+  const waiting = rooms.some((r) => roomDef(r.type).maintains) ? maintenanceQueue(state) : [];
+  const standby = (r: RoomInstance): boolean => {
+    const kind = roomDef(r.type).maintains;
+    if (!kind || state.maintenance?.lanes[r.id]) return false;
+    return !waiting.some((w) => kind === "all" || isCleanable(w.type));
+  };
   const producers = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length === 0);
   const others = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length > 0);
   for (const r of [...producers, ...others]) {
     const why = down.get(r.id);
     if (why) status[r.id] = { staff: 0, staffNeeded: specs.get(r.id)!.staff, rate: 0, limit: why };
-    else runRoom(r, specs.get(r.id)!, status[r.id]!, state, caps, cfg, dt, mod);
+    else runRoom(r, standby(r) ? idleSpec(specs.get(r.id)!) : specs.get(r.id)!, status[r.id]!, state, caps, cfg, dt, mod, standby(r));
   }
   state.roomStatus = status;
 
@@ -178,6 +185,11 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
       res[id] = cap;
     }
   }
+}
+
+/** A room standing by: only its power, and nothing made. */
+function idleSpec(spec: RoomSpec): RoomSpec {
+  return { ...spec, uses: spec.uses.power ? { power: spec.uses.power } : {}, makes: {} };
 }
 
 function available(res: Record<string, number>, id: string, subs: string[] = []): number {
@@ -206,6 +218,7 @@ function runRoom(
   cfg: SimConfig,
   dt: number,
   mod: Modifiers,
+  idle = false,
 ): void {
   const res = state.resources;
   const subs = roomDef(room.type).substitutes ?? {};
@@ -281,6 +294,7 @@ function runRoom(
 
   st.rate = rate;
   if (limit) st.limit = limit;
+  else if (idle) st.limit = "standby";
 }
 
 /** Below this, a slowdown is worth naming in the room's status. */

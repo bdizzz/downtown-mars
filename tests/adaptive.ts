@@ -37,14 +37,16 @@ export function ensureStairs(hole: SimState): boolean {
   return applyCommand(hole, { type: "build", room: "stairwell", at: { kind: "ring", floor: bottom, ring: 1, slot, w: 1, d: 1 } }).ok;
 }
 
-/** Does the hole need its stairs to go deeper: a room waiting on a floor they don't reach, or ring 1 full where they do? */
+/** Does the hole need its stairs to go deeper: a room waiting on a floor they don't reach, or no room for a two-slot room on ring 1 where they do? */
 function wantsDeeper(hole: SimState): boolean {
   const l = hole.layout;
   if (l.rooms.some((r) => r.at.kind === "ring" && r.cells.some((c) => !floorLinked(l, c.floor)))) return true;
   const slot = stairSlot(hole);
+  const n = l.hole.ringSlots[0]!;
+  const free = (floor: number, s: number) => s !== slot && !l.grid[floor - 1]?.[0]?.[s];
   for (let floor = 1; floor <= l.hole.floors; floor++) {
     if (!floorLinked(l, floor)) continue;
-    for (let s = 0; s < l.hole.ringSlots[0]!; s++) if (s !== slot && !l.grid[floor - 1]?.[0]?.[s]) return false;
+    for (let s = 0; s < n; s++) if (free(floor, s) && free(floor, (s + 1) % n)) return false;
   }
   return true;
 }
@@ -109,6 +111,9 @@ export function wants(hole: SimState): { room: string; crop?: string }[] {
   const out: { room: string; crop?: string }[] = [];
   if ((res.co2 ?? 0) > 30 || (met.o2 ?? 1) < 1 || count(hole, "life_support") * 30 < pop) out.push({ room: "life_support" });
   if (limited(hole, "power")) out.push({ room: "solar_array" });
+  // Maintenance eats machinery: another machine shop once there's barely any left for building.
+  const shops = count(hole, "machine_shop");
+  if (shops > 0 && (res.machinery ?? 0) < 6 && shops * roomDef("machine_shop").makes.machinery! < count(hole, "maintenance") * roomDef("maintenance").uses.machinery! + 1) out.push({ room: "machine_shop" });
   if ((met.water ?? 1) < 1 || limited(hole, "water")) {
     out.push({ room: count(hole, "water_recycler") * 36 < pop * 1.5 ? "water_recycler" : "water_tank" });
   } else if (pop >= 30 && (res.water ?? 0) < pop * 4 && count(hole, "water_recycler") * 36 < pop * 1.5) {
@@ -137,7 +142,8 @@ function backlog(hole: SimState): number {
   return hole.construction.queue.reduce((h, j) => h + j.work - j.done, 0) / bandwidth(hole);
 }
 
-export function adapt(hole: SimState): string | null {
+/** `saving`: goods the player is saving up (a seed kit's); rooms that cost them wait, air excepted. */
+export function adapt(hole: SimState, saving: string[] = []): string | null {
   let freeHands = hole.workforce.total - hole.workforce.employed;
   let list = wants(hole);
   // Air first: a life support already in the queue goes to the front.
@@ -158,6 +164,7 @@ export function adapt(hole: SimState): string | null {
   }
   for (const w of list) {
     if (roomDef(w.room).staff > freeHands) continue; // it would stand empty
+    if (w.room !== "life_support" && Object.keys(roomDef(w.room).cost).some((id) => saving.includes(id))) continue;
     if (placeAnywhere(hole, w.room, w.crop)) return w.room;
   }
   return null;

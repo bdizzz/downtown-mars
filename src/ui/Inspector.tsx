@@ -31,6 +31,7 @@ function limitText(limit: string | undefined): string {
   if (limit === "staff") return "short of staff";
   if (limit === "paused") return "paused";
   if (limit === "kit") return "idle until you ask for a seed kit";
+  if (limit === "standby") return "standing by: nothing to repair";
   // Unhappy colonists work slower (economy.ts).
   if (limit === "morale") return "slowed by low morale";
   // Condition (condition.ts).
@@ -55,7 +56,7 @@ function nameOf(id: string): string {
 /** Idling because output storage is full is fine; shortages and missing access aren't. */
 function isProblem(room: { planned: boolean; connected: boolean }, st: { rate: number; limit?: string } | undefined): boolean {
   if (!room.planned && !room.connected) return true;
-  return !!st && st.rate < 0.999 && !st.limit?.startsWith("full:") && st.limit !== "paused" && st.limit !== "kit" && !st.limit?.startsWith("stocked:");
+  return !!st && st.rate < 0.999 && !st.limit?.startsWith("full:") && st.limit !== "paused" && st.limit !== "kit" && st.limit !== "standby" && !st.limit?.startsWith("stocked:");
 }
 
 function Flows({ label, flows }: { label: string; flows: Record<string, number> }) {
@@ -350,6 +351,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
   }
   else if (st?.limit === "paused") state = "Paused: its crew is free for other work";
   else if (st?.limit === "kit") state = "Idle until you ask for a seed kit";
+  else if (st?.limit === "standby") state = "Standing by: nothing to repair";
   else if (st?.limit?.startsWith("stocked:")) state = `Standing by: ${resName(st.limit.slice(8)).toLowerCase()} is stocked to ${num(room.stopAt ?? 0)}`;
   else if (st) state = `Running at ${Math.round(st.rate * 100)}%${st.limit ? ` · ${limitText(st.limit)}` : ""}`;
 

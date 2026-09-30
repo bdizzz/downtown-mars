@@ -36,15 +36,18 @@ export const HOME_EXTRA: Plan[] = [
 export const CHILD_PLAN: Plan[] = [
   { room: "galley", at: ring(1, 1, 2) },
   { room: "restroom", at: ring(1, 1, 3) },
+  { room: "rover_depot", at: surface(9) },
   { room: "water_tank", at: ring(1, 1, 6) },
   { room: "life_support", at: ring(1, 2, 3, 4) },
   { room: "site_office", at: ring(1, 1, 1) },
-  { room: "rover_depot", at: surface(9) },
   { room: "solar_array", at: surface(5) },
   { room: "farm", at: ring(2, 1, 0, 4), crop: "potatoes" },
   { room: "bunk_dorm", at: ring(1, 1, 4, 2) },
   { room: "clinic", at: ring(1, 1, 7) },
 ];
+
+/** Goods a hole can't easily make early on: saved for the seed kit while it's gathered. */
+const SCARCE = ["metal", "machinery", "electronics"];
 
 /** Routes to set up once both holes have rovers: [from, to, resource, per trip]. */
 const HOME_ROUTES: [string, number][] = [["metal", 20]];
@@ -165,10 +168,18 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
       if (foundedDay === null && !home.gatheringKit && kitProgress(home) < 0.999) {
         applyCommand(home, { type: "setGathering", gathering: true });
       }
+      // Saving metal for the kit: the machine shop waits (once there's a little machinery in hand), and starts again after.
+      const shortMetal = home.gatheringKit && (home.kit.metal ?? 0) < (network.seedKit.goods.metal ?? 0) - 1e-6;
+      for (const r of home.layout.rooms.filter((x) => x.type === "machine_shop" && !x.building)) {
+        const pause = shortMetal && (home.resources.machinery ?? 0) >= 6;
+        if (!!r.paused !== pause) applyCommand(home, { type: "setRoomControl", roomId: r.id, paused: pause });
+      }
       homePlan.step(home, day);
       // Past the opening plan, the player reacts to what's short, once a day.
       if (homePlan.done === PLAN.length && t % config.ticksPerDay === 0) {
-        const built = adapt(home);
+        // Saving up for the seed kit: the scarce goods it's still short of aren't spent on other rooms.
+        const saving = home.gatheringKit ? SCARCE.filter((k) => (home.kit[k] ?? 0) < (network.seedKit.goods[k] ?? 0) - 1e-6) : [];
+        const built = adapt(home, saving);
         if (built) adapted.push(`d${day.toFixed(0)} ${home.name} ${built}`);
       }
       answerVisits(home);

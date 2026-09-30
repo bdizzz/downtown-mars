@@ -94,6 +94,7 @@
     "homelessComfort": -3,
     "noCareHealth": -1,
     "unservedComfort": 1,
+    "afterglow": { "points": 20, "days": 20 },
     "easeDays": 1,
     "updateEveryTicks": 10,
     "productivityAtZero": 0.75,

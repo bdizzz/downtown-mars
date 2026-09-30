@@ -7,6 +7,7 @@ import { careFactors } from "./care";
 import { CONDITION, homeWearComfort, sharedWear } from "./condition";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
+import { postMessage } from "./messages";
 
 // Happiness from three factors (noise, comfort, health), each −3..+3, felt
 // where colonists live. Each home's happiness eases toward its target, and a
@@ -34,6 +35,8 @@ export interface Happiness {
   average: number;
   /** Multiplier on every room's output. */
   productivity: number;
+  /** Happiness points from the thrill of arrival, fading over the first weeks (missing in old saves: none). */
+  afterglow?: number;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -78,6 +81,22 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   };
 }
 
+/**
+ * The afterglow of the adventure: happiness points a new hole starts with,
+ * easing away (slowly, then faster, then slowly) until reality sets in.
+ */
+export function afterglow(state: SimState, cfg: SimConfig): number {
+  const a = cfg.happiness.afterglow;
+  const t = (state.tick - state.foundedTick) / (a.days * cfg.ticksPerDay);
+  if (t >= 1 || a.points <= 0) return 0;
+  return a.points * 0.5 * (1 + Math.cos(Math.PI * Math.max(0, t)));
+}
+
+/** Days left before the afterglow is gone. */
+export function afterglowDaysLeft(state: SimState, cfg: SimConfig): number {
+  return Math.max(0, cfg.happiness.afterglow.days - (state.tick - state.foundedTick) / cfg.ticksPerDay);
+}
+
 export function targetHappiness(f: Factors, cfg: SimConfig): number {
   const w = cfg.happiness.weights;
   return clamp(50 + (cfg.happiness.base - 50) + w.noise * f.noise + w.comfort * f.comfort + w.health * f.health, 0, 100);
@@ -102,9 +121,10 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
   const prev = new Map(state.happiness.pools.map((p) => [p.roomId, p]));
   const homes = state.layout.rooms.filter((r) => isActive(r) && (roomDef(r.type).houses ?? 0) > 0);
 
+  const glow = afterglow(state, cfg);
   const pools: HousingPool[] = homes.map((room) => {
     const factors = homeFactors(state, room, cfg);
-    const target = targetHappiness(factors, cfg);
+    const target = clamp(targetHappiness(factors, cfg) + glow, 0, 100);
     const old = prev.get(room.id);
     return { roomId: room.id, capacity: roomDef(room.type).houses!, residents: 0, happiness: old?.happiness ?? target, target, factors };
   });
@@ -119,14 +139,28 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
   const ease = settle ? 1 : Math.min(1, h.updateEveryTicks / (h.easeDays * cfg.ticksPerDay));
   for (const p of pools) p.happiness += (p.target - p.happiness) * ease;
 
-  const homelessTarget = targetHappiness(homeFactors(state, null, cfg), cfg);
+  const homelessTarget = clamp(targetHappiness(homeFactors(state, null, cfg), cfg) + glow, 0, 100);
   const pop = state.population.count;
   const total = pools.reduce((s, p) => s + p.residents * p.happiness, 0) + left * homelessTarget;
   const average = pop > 0 ? total / pop : 50;
 
-  state.happiness = { pools, homeless: left, average, productivity: productivity(average, cfg) };
+  state.happiness = { pools, homeless: left, average, productivity: productivity(average, cfg), afterglow: glow };
 }
 
 export function stepHappiness(state: SimState, cfg: SimConfig): void {
   if (state.tick % cfg.happiness.updateEveryTicks === 0) updateHappiness(state, cfg);
+  afterglowNews(state, cfg);
+}
+
+/** Word when the thrill of arrival is half gone, and when it's gone. */
+function afterglowNews(state: SimState, cfg: SimConfig): void {
+  const since = state.tick - state.foundedTick;
+  if (since <= 0 || since % cfg.ticksPerDay !== 0) return;
+  const day = since / cfg.ticksPerDay;
+  const { days } = cfg.happiness.afterglow;
+  if (day === Math.round(days / 2)) {
+    postMessage(state, cfg, `The thrill of landing is wearing off in ${state.name}. In about ${days - day} days the colonists' spirits will rest on the life you've built them.`, "warn");
+  } else if (day === days) {
+    postMessage(state, cfg, `The afterglow has faded in ${state.name}: from now on, happiness is down to homes, quiet, health and comfort.`, "warn");
+  }
 }

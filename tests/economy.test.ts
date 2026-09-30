@@ -7,6 +7,7 @@ import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { setAdults } from "../src/sim/people";
+import { roomDef } from "../src/sim/rooms";
 
 // No Earth drops here: these tests are about what the hole does on its own.
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
@@ -96,10 +97,11 @@ describe("the 20-colonist start on the critical set", () => {
 describe("rooms", () => {
   it("staff go to critical rooms first", () => {
     const s = criticalSet();
-    setAdults(s, 5, config);
+    const need = roomDef("life_support").staff;
+    setAdults(s, need, config);
     days(s, 0.1);
     const ls = s.layout.rooms.find((r) => r.type === "life_support")!;
-    expect(s.roomStatus[ls.id]).toMatchObject({ staff: 4, staffNeeded: 4 });
+    expect(s.roomStatus[ls.id]).toMatchObject({ staff: need, staffNeeded: need });
   });
 
   it("an understaffed room runs at part rate", () => {
@@ -126,7 +128,7 @@ describe("rooms", () => {
     const farm = build(s, "farm", ring(1, 1, 1, 2, 2));
     expect(farm.cells).toHaveLength(4);
     expect(roomSpec(farm, config).makes.rawFood).toBeCloseTo(12);
-    expect(roomSpec(farm, config).staff).toBe(6);
+    expect(roomSpec(farm, config).staff).toBe(roomDef("farm").staff);
     // Across a pair boundary (ring 2 into ring 3, which has more slots) the wedge widens and output scales.
     const deep = build(s, "farm", ring(1, 2, 4, 2, 2));
     expect(deep.cells.length).toBeGreaterThan(4);

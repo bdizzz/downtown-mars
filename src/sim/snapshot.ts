@@ -8,7 +8,7 @@ import { capacities, roomSpec, type Population, type RoomStatus } from "./econom
 import type { EffectField } from "./effects";
 import type { Deposit, DepositKind } from "./mapgeo";
 import { hasStagingBay, kitProgress } from "./founding";
-import type { Happiness } from "./happiness";
+import { afterglow, afterglowDaysLeft, type Happiness } from "./happiness";
 import { cryptSpace, holeGates, stageCounts, type Stage } from "./people";
 import { ordinanceDef } from "./ordinances";
 import { elderCoverage, schoolCoverage, type Coverage } from "./care";
@@ -155,6 +155,8 @@ export interface Snapshot {
   beds: number;
   messages: Message[];
   happiness: Happiness;
+  /** The thrill of arrival: happiness points it's adding now, and days until it's gone. */
+  afterglow: { points: number; daysLeft: number };
   notables: Notable[];
   office: Office;
   ordinances: string[];
@@ -224,6 +226,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     beds: beds(state),
     messages: state.messages,
     happiness: state.happiness,
+    afterglow: { points: afterglow(state, cfg), daysLeft: afterglowDaysLeft(state, cfg) },
     notables: state.notables,
     office: state.office,
     ordinances: state.ordinances,

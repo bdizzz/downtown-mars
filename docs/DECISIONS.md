@@ -108,6 +108,9 @@ Each milestone plan has the details, under "Notes as built".
 - **Condition and upkeep (Sep 30):** rooms wear; worn rooms upset people, slow down and stop at 0%; breakdowns now and then. Maintenance rooms (using machinery) and, from 150 colonists, cleaning services (using water) repair them from a hole-wide queue (`data/condition.json`).
 - **Housing tiers:** dorms, then studios and apartments at 50 colonists, flats and family apartments at 200, suites and residences at 1,000.
 - **Dust storms** are forecast, then halve solar output for a day or two.
+- **Staffing cuts (Bryon, Sep 30):** farm 5, life support 3, landing pad 1, rover depot 3; solar arrays, restrooms and small plazas need no staff.
+- **Afterglow (Bryon, Sep 30):** a new hole's happiness starts +20 and eases to nothing over 20 days (slowly, then faster, then slowly), so the player can set up critical systems and stock up before unhappiness bites. Counted from each hole's founding (`happiness.afterglow`).
+- **Idle crews stand by:** maintenance and cleaning rooms with nothing to repair use only power.
 - **Rooms can be renamed**; farms are named after their crop.
 - **More rooms (Sep 30):** kitchen and canteen, gym, park, hospital, brickworks, recycling center, waste storage. **Seating:** galleys seat 25 and canteens 60; kitchens cook but seat no one; diners without a seat cost comfort. Unlocks moved earlier than the catalog so players have more ways to lift happiness: gym and park at 50 colonists (catalog 100), recycling center at 100 (300), hospital at 300 (1,000); brickworks stays at 50 (`config.unlocks.rooms`).
 - **Built so far, not the full design:** 5 ordinances (Quiet hours, Water rationing, Ration cards, Closed borders, Return to the soil), 2 kinds of citizen visit (noise complaint, clinic demand), and overlays for noise, smell, health, comfort, happiness and condition. The design's 32 ordinances and full event catalog are still the target.

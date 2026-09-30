@@ -37,7 +37,7 @@
       "category": "logistics",
       "size": "surface",
       "surfaceSlots": 2,
-      "staff": 3,
+      "staff": 1,
       "uses": {
         "power": 1
       },
@@ -56,7 +56,7 @@
       "category": "power",
       "size": "surface",
       "surfaceSlots": 1,
-      "staff": 1,
+      "staff": 0,
       "uses": {},
       "makes": {
         "power": 10
@@ -369,7 +369,7 @@
       "short": "Farm",
       "category": "food",
       "size": "L",
-      "staff": 6,
+      "staff": 5,
       "uses": {
         "water": 4,
         "soil": 2,
@@ -455,7 +455,7 @@
       "short": "WC",
       "category": "water",
       "size": "S",
-      "staff": 1,
+      "staff": 0,
       "uses": {},
       "makes": {},
       "sanitation": 25,
@@ -482,7 +482,7 @@
       "short": "Life sup.",
       "category": "air",
       "size": "L",
-      "staff": 4,
+      "staff": 3,
       "uses": {
         "water": 6,
         "power": 5
@@ -820,7 +820,7 @@
       "category": "logistics",
       "size": "surface",
       "surfaceSlots": 2,
-      "staff": 4,
+      "staff": 3,
       "uses": {
         "power": 3
       },
@@ -1110,7 +1110,7 @@
       "short": "Plaza",
       "category": "public",
       "size": "M",
-      "staff": 1,
+      "staff": 0,
       "uses": {
         "power": 1
       },

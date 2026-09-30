@@ -35,7 +35,7 @@ export function troubleOf(status: RoomStatus | undefined): Trouble {
   const limit = status?.limit;
   if (!limit) return OK;
   if (limit === "paused") return { level: "idle", icon: "⏸" };
-  if (limit === "kit" || limit.startsWith("full:") || limit.startsWith("stocked:")) return OK;
+  if (limit === "kit" || limit === "standby" || limit.startsWith("full:") || limit.startsWith("stocked:")) return OK;
   if (limit === "staff") return { level: "warn", icon: "👷" };
   if (limit === "morale") return { level: "warn", icon: "😞" };
   if (limit === "storm") return { level: "warn", icon: "🌪" };

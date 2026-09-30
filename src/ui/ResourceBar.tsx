@@ -63,7 +63,7 @@ export function ResourceBar({ s }: { s: Snapshot | null }) {
         </span>
         <span
           className={`res${s.happiness.productivity < 1 ? " warn" : ""}`}
-          title={`Average happiness${s.happiness.productivity < 1 ? ` · rooms at ${Math.round(s.happiness.productivity * 100)}% from low morale` : ""}${s.happiness.homeless ? ` · ${s.happiness.homeless} homeless` : ""}`}
+          title={`Average happiness${s.afterglow.points >= 0.5 ? ` · +${Math.round(s.afterglow.points)} afterglow: the thrill of arrival, gone in ${Math.ceil(s.afterglow.daysLeft)} days` : ""}${s.happiness.productivity < 1 ? ` · rooms at ${Math.round(s.happiness.productivity * 100)}% from low morale` : ""}${s.happiness.homeless ? ` · ${s.happiness.homeless} homeless` : ""}`}
         >
           <span className="label">Happy</span>
           <span className="val">{Math.round(s.happiness.average)}</span>

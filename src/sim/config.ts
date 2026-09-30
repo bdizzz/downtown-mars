@@ -121,6 +121,8 @@ export interface SimConfig {
     noCareHealth: number;
     /** Comfort lost by everyone when nobody has a seat at a galley or canteen (in proportion). */
     unservedComfort: number;
+    /** The thrill of arrival: happiness points added at a hole's founding, easing away to nothing over so many days. */
+    afterglow: { points: number; days: number };
     /** Roughly how long happiness takes to settle on its target. */
     easeDays: number;
     updateEveryTicks: number;
