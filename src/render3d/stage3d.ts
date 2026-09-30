@@ -250,17 +250,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let roomLabels = new Map<number, THREE.Object3D>();
   const badges = new THREE.Group();
   let troubleKey = "";
-  /** Show each room's trouble: its outline's colour and a badge over its label. */
-  function showTrouble(status: Record<number, RoomStatus>, lanes: Snapshot["maintenance"]["lanes"]): void {
+  /** Show each room's trouble: its outline's colour, and a caution sign over its label when it's slowed or short (not when it's only paused). */
+  function showTrouble(status: Record<number, RoomStatus>): void {
     const troubles = new Map<number, Trouble>();
-    const worked = new Map(lanes.filter((l) => l.target !== null).map((l) => [l.target!, l.kind]));
-    for (const id of roomOutlines.keys()) {
-      // A crew at work shows its tool over the room, whatever else is up with it.
-      const kind = worked.get(id);
-      const t = troubleOf(status[id]);
-      troubles.set(id, kind ? { level: t.level === "ok" ? "work" : t.level, icon: kind === "all" ? "🛠" : "🧽" } : t);
-    }
-    const key = [...troubles].map(([id, t]) => `${id}${t.icon}`).join(",");
+    for (const id of roomOutlines.keys()) troubles.set(id, troubleOf(status[id]));
+    const key = [...troubles].map(([id, t]) => `${id}${t.level}`).join(",");
     if (key === troubleKey) return;
     troubleKey = key;
     for (const [id, edges] of roomOutlines) {
@@ -270,8 +264,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     badges.clear();
     for (const [id, t] of troubles) {
       const at = roomLabels.get(id);
-      if (t.level === "ok" || !at) continue;
-      const b = statusBadge(t.icon);
+      if ((t.level !== "warn" && t.level !== "bad") || !at) continue;
+      const b = statusBadge("⚠");
       b.position.copy(at.position).add(new THREE.Vector3(0, BADGE_ABOVE, 0));
       badges.add(b);
     }
@@ -1610,7 +1604,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const hour = Math.floor(snapshot.time.dayFraction * 24);
       const staffKey = snapshot.layout.rooms.map((r) => snapshot.roomStatus[r.id]?.staff ?? 0).join(",");
       const pk = `${layoutKey}:${hour}:${staffKey}:${snapshot.population.count}`;
-      showTrouble(snapshot.roomStatus, snapshot.maintenance.lanes);
+      showTrouble(snapshot.roomStatus);
       // Resource flows: rebuilt when the rooms feeding or drawing change, or the floor picked.
       flows.group.visible = view.flows;
       if (view.flows) {

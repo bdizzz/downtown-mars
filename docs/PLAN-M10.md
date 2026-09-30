@@ -667,3 +667,4 @@ Decided Sep 28, 2026 (Bryon):
 - Space Grotesk (Google Fonts, weights 400–700, `display=swap`) for the whole UI: CSS, the 2D and plan views' Pixi labels, and the canvas-drawn 3D labels, map and devtools labels (`UI_FONT` in view/font.ts).
 - The game waits for it a moment at most (`fontReady`, 1.5 s) before first drawing, so canvas labels don't bake in the stand-in. Offline, it falls back to the system sans.
 - Self-hosting the font files would make offline and itch.io builds independent of Google; that would need a download, not done.
+- **3D labels, later:** no icons beside names. Rooms slowed or short of something get a ⚠ over their label (not paused ones, not ones being repaired); cut-off rooms keep ⚠ after their name. Outline colours unchanged. The 2D and plan views still show the crew icons.
