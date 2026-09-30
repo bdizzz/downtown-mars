@@ -1,3 +1,4 @@
+import { UI_FONT } from "../view/font";
 import { useEffect, useMemo, useState } from "react";
 import { Globe } from "./Globe";
 import { degreesApart, DEPOSIT_KINDS, depositsAt, distanceKm, features, nearestFeature, wrapLon, type DepositKind } from "../sim/mapgeo";
@@ -135,7 +136,7 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       g.stroke();
     }
     // Names of the places on the planet.
-    g.font = `600 ${Math.round(12 * S)}px system-ui, sans-serif`;
+    g.font = `600 ${Math.round(12 * S)}px ${UI_FONT}`;
     g.textAlign = "center";
     for (const f of features) {
       const [x, y] = toXY(f.lat, f.lon);
@@ -179,7 +180,7 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       g.fillStyle = "#e07a3f";
       g.fill();
       g.fillStyle = "#fff";
-      g.font = `600 ${Math.round(11 * S)}px system-ui, sans-serif`;
+      g.font = `600 ${Math.round(11 * S)}px ${UI_FONT}`;
       g.fillText(`${c.name} · ${c.daysLeft.toFixed(1)} d`, x1, y1 - 10 * S);
     }
     // Trade routes: a faint line between the holes, each rover a dot on it.
@@ -227,7 +228,7 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       g.fill();
       g.stroke();
       g.fillStyle = "#fff";
-      g.font = `700 ${Math.round(13 * S)}px system-ui, sans-serif`;
+      g.font = `700 ${Math.round(13 * S)}px ${UI_FONT}`;
       g.fillText(h.name, x, y - 10 * S);
     }
     setVersion((v) => v + 1);

@@ -1,3 +1,4 @@
+import { UI_FONT } from "../view/font";
 import { roomLabel } from "../sim/roomName";
 import * as THREE from "three";
 import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
@@ -966,11 +967,11 @@ function label(text: string, color: string): THREE.Sprite {
 function drawLabel(text: string, color: string): { material: THREE.SpriteMaterial; aspect: number } {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d")!;
-  ctx.font = `600 ${LABEL.px}px system-ui, sans-serif`;
+  ctx.font = `600 ${LABEL.px}px ${UI_FONT}`;
   const w = Math.ceil(ctx.measureText(text).width) + 24;
   canvas.width = w;
   canvas.height = LABEL.px + 20;
-  ctx.font = `600 ${LABEL.px}px system-ui, sans-serif`;
+  ctx.font = `600 ${LABEL.px}px ${UI_FONT}`;
   ctx.fillStyle = "rgba(20, 10, 8, 0.72)";
   ctx.beginPath();
   ctx.roundRect(0, 0, w, canvas.height, 12);

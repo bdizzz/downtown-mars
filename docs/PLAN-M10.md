@@ -662,3 +662,8 @@ Decided Sep 28, 2026 (Bryon):
 - **Messages name rooms with tokens** (`[[room:id|name|floor]]`, `roomRef`), shown as the room's current name with its badge. If the room is gone, the name and floor it had are used. `plainText` gives "Galley (floor 1)" for places that need a string.
 - **The map views** (2D, plan, 3D) keep bare names, with no category icons. The hover line uses the room's own name.
 - Queue places now read "2nd", "3rd" and so on.
+
+**Typeface (Bryon, Sep 30):**
+- Space Grotesk (Google Fonts, weights 400–700, `display=swap`) for the whole UI: CSS, the 2D and plan views' Pixi labels, and the canvas-drawn 3D labels, map and devtools labels (`UI_FONT` in view/font.ts).
+- The game waits for it a moment at most (`fontReady`, 1.5 s) before first drawing, so canvas labels don't bake in the stand-in. Offline, it falls back to the system sans.
+- Self-hosting the font files would make offline and itch.io builds independent of Google; that would need a download, not done.

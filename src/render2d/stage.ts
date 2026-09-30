@@ -1,3 +1,4 @@
+import { UI_FONT } from "../view/font";
 import { roomLabel } from "../sim/roomName";
 import { crewsAt, crewsKey } from "../view/crews";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
@@ -233,7 +234,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       if (!layer) continue;
       layer.removeChildren().forEach((c) => c.destroy());
       for (const l of labels) {
-        const t = new Text({ text: l.text, style: { fill: 0xffffff, fontSize: 14, fontWeight: "800", stroke: { color: 0x1a0f0d, width: 4 } } });
+        const t = new Text({ text: l.text, style: { fontFamily: UI_FONT, fill: 0xffffff, fontSize: 14, fontWeight: "800", stroke: { color: 0x1a0f0d, width: 4 } } });
         t.anchor.set(0.5);
         t.position.set(l.x, l.y);
         layer.addChild(t);
@@ -564,6 +565,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const text = new Text({
         text: `${room.connected ? roomLabel(room) : `${roomLabel(room)} ⚠`}${crews.has(room.id) ? ` ${crews.get(room.id)}` : ""}`,
         style: {
+          fontFamily: UI_FONT,
           fill: room.planned ? (CATEGORY_COLORS[def.category] ?? C.label) : C.roomText,
           fontSize: LABEL_PX,
           fontWeight: "600",
@@ -701,7 +703,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   function rebuildFloorLabels(h: Hole, digFloor: number | null): void {
     floorLabels.removeChildren().forEach((c) => c.destroy());
     for (let floor = 1; floor <= (digFloor ?? h.floors); floor++) {
-      floorLabels.addChild(new Text({ text: `F${floor}`, style: { fill: C.label, fontSize: 13, fontWeight: "700" } }));
+      floorLabels.addChild(new Text({ text: `F${floor}`, style: { fontFamily: UI_FONT, fill: C.label, fontSize: 13, fontWeight: "700" } }));
     }
   }
 

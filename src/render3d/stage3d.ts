@@ -1,3 +1,4 @@
+import { UI_FONT } from "../view/font";
 import * as THREE from "three";
 import { previewEffects } from "../sim/effects";
 import type { Hole } from "../sim/geometry";
@@ -665,7 +666,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     c.width = 144;
     c.height = 48;
     const g = c.getContext("2d")!;
-    g.font = "800 30px system-ui, sans-serif";
+    g.font = `800 30px ${UI_FONT}`;
     g.textAlign = "center";
     g.textBaseline = "middle";
     g.lineWidth = 7;

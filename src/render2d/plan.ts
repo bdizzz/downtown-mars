@@ -1,3 +1,4 @@
+import { UI_FONT } from "../view/font";
 import { roomLabel } from "../sim/roomName";
 import { crewsAt, crewsKey } from "../view/crews";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
@@ -132,7 +133,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   let labels = new Container();
   const progressLabels = new Container();
   world.addChild(new Graphics(baseCtx), new Graphics(roomsCtx), new Graphics(fieldCtx), labels, progressLabels, new Graphics(overlayCtx));
-  const caption = new Text({ text: "", style: { fill: C.label, fontSize: 13, fontWeight: "700" } });
+  const caption = new Text({ text: "", style: { fontFamily: UI_FONT, fill: C.label, fontSize: 13, fontWeight: "700" } });
   caption.position.set(10, 8);
   app.stage.addChild(world, caption);
 
@@ -263,7 +264,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       if (def.short) {
         const text = new Text({
           text: `${room.connected ? roomLabel(room) : `${roomLabel(room)} ⚠`}${crews.has(room.id) ? ` ${crews.get(room.id)}` : ""}`,
-          style: { fill: room.planned ? color : C.roomText, fontSize: LABEL_PX, fontWeight: "600" },
+          style: { fontFamily: UI_FONT, fill: room.planned ? color : C.roomText, fontSize: LABEL_PX, fontWeight: "600" },
         });
         text.anchor.set(0.5, 1);
         text.position.set(0, -Math.min(10, centre.size * 0.25));
@@ -497,7 +498,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       const cells = onFloor(job.kind === "extend" ? (room.pendingCells ?? []) : room.cells);
       if (!cells.length) continue;
       const centre = roomCentre(layout.hole, cells);
-      const t = new Text({ text: `${job.phase === "excavating" ? "⛏ " : ""}${Math.floor(job.progress * 100)}%`, style: { fill: 0xffffff, fontSize: 14, fontWeight: "800", stroke: { color: 0x1a0f0d, width: 4 } } });
+      const t = new Text({ text: `${job.phase === "excavating" ? "⛏ " : ""}${Math.floor(job.progress * 100)}%`, style: { fontFamily: UI_FONT, fill: 0xffffff, fontSize: 14, fontWeight: "800", stroke: { color: 0x1a0f0d, width: 4 } } });
       t.anchor.set(0.5);
       t.position.set(centre.x, centre.y + 12);
       t.rotation = -cam.rot;
