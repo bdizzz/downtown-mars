@@ -99,3 +99,11 @@ A late, costly project that seals the top of the shaft. It needs glass (bringing
 - The placement halo still shows airborne effects by nearness: a room isn't on the network until it's built.
 - **Bots:** when ring 1 is full on every floor they reach, they put a room on ring 2 and connect it (the child hole outgrew its two life supports without this).
 
+**Step 6, amenities on foot** (`sim/amenities.ts`):
+- **Amenities:** `amenity: { comfort?, health?, reach }` in rooms.json. Park comfort +2 within 6 steps; small plaza +1.5 within 6; tiny plaza +1 within 4; gym health +2 within 6. Fading linearly with steps, times how well the room is running. For each home, the nearest (best) of each kind counts, and kinds add: a second park next door adds nothing.
+- **Nearness kept small:** park comfort +1 r1, plazas and canteen +0.5 r1 (ambience); the gym's through-the-wall health is gone.
+- **Seats by reach:** galleys and canteens have `reach` 8. `assignNearest` shares capacity out to homes within reach, shortest walk first (the same code will share out clinic, school and elder-care places in step 7). The homeless get whatever seats are left anywhere. Each home's share seated (`population.servedByHome`) sets its own "eating on the go" comfort penalty; `population.served` is the hole's share, for the People panel. Seating moved from the economy step to the happiness update (every 10 ticks), using the last update's residents.
+- **The landing pod** (on the surface) walks in through the entrance.
+- **UI:** amenity and serving rooms' cards say their reach; a home's card says its share seated and what's in reach on foot ("Park 3 steps (comfort +1.3)").
+- **Bots:** a galley near the least-seated home when anyone's short of a seat (a `placeNear` shared with ventilation), and a dorm only with air for its people (or the means to build a life support); the child hole otherwise outgrew its water and air by minute 90.
+

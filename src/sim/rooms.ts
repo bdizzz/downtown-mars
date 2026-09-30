@@ -46,6 +46,10 @@ export interface RoomDef {
   cares?: number;
   /** Diners it seats: galleys and canteens. Kitchens cook but seat no one. */
   serves?: number;
+  /** How far on foot (steps) its service reaches homes: seats, care, school places. */
+  reach?: number;
+  /** A place to go: comfort and/or health for the homes within `reach` steps on foot, fading with distance (amenities.ts). */
+  amenity?: { comfort?: number; health?: number; reach: number };
   /** Only buildable in a hole that sits on this deposit. */
   requiresDeposit?: DepositKind;
   /** Gathers the seed kit for founding a new hole. */

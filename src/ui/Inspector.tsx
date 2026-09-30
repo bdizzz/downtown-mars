@@ -9,6 +9,7 @@ import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
 import { mainOutput, roomSpec } from "../sim/economy";
 import { shaftView } from "../sim/happiness";
+import { amenityFelt } from "../sim/amenities";
 import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
 import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
@@ -67,6 +68,27 @@ function Flows({ label, flows }: { label: string; flows: Record<string, number> 
     <p>
       <span className="k">{label}</span> {entries.map(([id, v]) => `${resName(id)} ${num(v)}`).join(", ")}
     </p>
+  );
+}
+
+/** What a home's people can walk to: seats at a galley or canteen, and the amenities in reach. */
+function WithinReach({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
+  const seated = s.population.servedByHome?.[room.id];
+  const felt = amenityFelt(s, room);
+  return (
+    <>
+      {seated !== undefined && (
+        <p className={seated < 0.98 ? "warn" : undefined}>
+          <span className="k">Meals</span> {seated >= 0.98 ? "a seat for everyone within reach" : `${Math.round(seated * 100)}% seated within reach; the rest eat on the go`}
+        </p>
+      )}
+      <p>
+        <span className="k">On foot</span>
+        {felt.from.length
+          ? felt.from.map((f) => `${roomDef(f.type).name} ${Math.max(1, Math.round(f.steps))} steps (${[f.comfort ? `comfort ${signed(f.comfort)}` : "", f.health ? `health ${signed(f.health)}` : ""].filter(Boolean).join(", ")})`).join(" · ")
+          : "no park, plaza or gym in reach"}
+      </p>
+    </>
   );
 }
 
@@ -428,6 +450,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
         </p>
       )}
       {room.at.kind === "ring" && def.houses ? <ShaftView s={s} room={room} /> : null}
+      {def.houses ? <WithinReach s={s} room={room} /> : null}
       {room.at.kind === "ring" && <Neighborhood s={s} room={room} />}
       {def.growsCrops && (
         <label>

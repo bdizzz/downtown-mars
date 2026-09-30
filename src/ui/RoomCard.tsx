@@ -62,7 +62,8 @@ export function RoomCard({ def, resources, shape, onRotate, siteNote }: Props) {
       {def.houses ? <p className="good">In ring 1: a shaft view, {signed(config.happiness.shaftViewComfort)} comfort through its own windows ({signed(config.happiness.galleryViewComfort)} behind a gallery tube)</p> : null}
       {def.sanitation ? <p>Sanitation for {def.sanitation}</p> : null}
       {def.cares ? <p>Care for {def.cares}</p> : null}
-      {def.serves ? <p>Seats {def.serves} diners{def.makes.meals ? "" : " (meals cooked elsewhere)"}</p> : null}
+      {def.serves ? <p>Seats {def.serves} diners{def.reach ? ` from homes within ${def.reach} steps` : ""}{def.makes.meals ? "" : " (meals cooked elsewhere)"}</p> : null}
+      {def.amenity ? <p className="good">{[def.amenity.comfort ? `Comfort ${signed(def.amenity.comfort)}` : "", def.amenity.health ? `Health ${signed(def.amenity.health)}` : ""].filter(Boolean).join(", ")} for homes within {def.amenity.reach} steps on foot, less further off (the nearest of each kind counts)</p> : null}
       {!def.serves && def.makes.meals ? <p className="k">Cooks but seats no one: pair it with a canteen</p> : null}
       {def.ordinanceSlots ? <p>{def.ordinanceSlots} ordinance slots</p> : null}
       {def.effects.map((e, i) => (

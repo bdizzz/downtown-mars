@@ -301,7 +301,8 @@
         "metal": 5
       },
       "buildable": true,
-      "serves": 25
+      "serves": 25,
+      "reach": 8
     },
     {
       "id": "kitchen",
@@ -352,8 +353,8 @@
       "effects": [
         {
           "type": "comfort",
-          "strength": 1,
-          "radius": 2
+          "strength": 0.5,
+          "radius": 1
         }
       ],
       "cost": {
@@ -361,7 +362,8 @@
         "brick": 5
       },
       "buildable": true,
-      "buildHours": 12
+      "buildHours": 12,
+      "reach": 8
     },
     {
       "id": "farm",
@@ -611,18 +613,16 @@
       },
       "makes": {},
       "unlockedBy": "leisure",
-      "effects": [
-        {
-          "type": "health",
-          "strength": 2,
-          "radius": 2
-        }
-      ],
+      "effects": [],
       "cost": {
         "brick": 10
       },
       "buildable": true,
-      "buildHours": 12
+      "buildHours": 12,
+      "amenity": {
+        "health": 2,
+        "reach": 6
+      }
     },
     {
       "id": "admin_office",
@@ -1134,7 +1134,7 @@
       "effects": [
         {
           "type": "comfort",
-          "strength": 1,
+          "strength": 0.5,
           "radius": 1
         }
       ],
@@ -1142,7 +1142,11 @@
         "rock": 5,
         "brick": 2
       },
-      "buildable": true
+      "buildable": true,
+      "amenity": {
+        "comfort": 1,
+        "reach": 4
+      }
     },
     {
       "id": "small_plaza",
@@ -1159,15 +1163,19 @@
       "effects": [
         {
           "type": "comfort",
-          "strength": 1,
-          "radius": 2
+          "strength": 0.5,
+          "radius": 1
         }
       ],
       "cost": {
         "rock": 10,
         "brick": 5
       },
-      "buildable": true
+      "buildable": true,
+      "amenity": {
+        "comfort": 1.5,
+        "reach": 6
+      }
     },
     {
       "id": "park",
@@ -1188,8 +1196,8 @@
       "effects": [
         {
           "type": "comfort",
-          "strength": 2,
-          "radius": 2
+          "strength": 1,
+          "radius": 1
         },
         {
           "type": "airQuality",
@@ -1202,7 +1210,11 @@
         "brick": 10
       },
       "buildable": true,
-      "buildHours": 12
+      "buildHours": 12,
+      "amenity": {
+        "comfort": 2,
+        "reach": 6
+      }
     },
     {
       "id": "entrance",

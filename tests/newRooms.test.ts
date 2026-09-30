@@ -4,9 +4,9 @@ import { applyCommand } from "../src/sim/commands";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import type { Location } from "../src/sim/placement";
-import { homeFactors } from "../src/sim/happiness";
+import { homeFactors, updateHappiness } from "../src/sim/happiness";
+import { amenityFelt } from "../src/sim/amenities";
 import { capacities } from "../src/sim/economy";
-import { effectOnRoom } from "../src/sim/effects";
 import { setAdults, stepUnlocks } from "../src/sim/people";
 import { roomDef } from "../src/sim/rooms";
 import { birthBlockers } from "../src/sim/births";
@@ -36,19 +36,40 @@ const days = (s: SimState, n: number) => {
 };
 
 describe("dining", () => {
-  it("seats as many diners as the galleys and canteens hold; the rest eat on the go, less comfortably", () => {
+  /** A tick, then the happiness update that shares out seats and amenities. */
+  const settle = (s: SimState) => {
+    step(s, config);
+    updateHappiness(s, config, true);
+    updateHappiness(s, config, true);
+  };
+
+  it("seats as many diners as the galleys and canteens within reach hold; the rest eat on the go, less comfortably", () => {
     const s = hole();
     setAdults(s, 40, config);
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    build(s, "bunk_dorm", ring(1, 1, 3, 2));
     build(s, "galley", ring(1, 1, 5));
-    step(s, config);
+    settle(s);
     expect(s.population.seats).toBeCloseTo(25, 5);
     expect(s.population.served).toBeCloseTo(25 / 40, 5);
-    const crowded = homeFactors(s, room(s, dorm), config).comfort;
+    // The pod's people are the ones short of a seat (the dorm is nearer the galley).
+    const pod = s.layout.rooms.find((r) => r.type === "landing_pod")!;
+    const crowded = homeFactors(s, pod, config).comfort;
     build(s, "canteen", ring(1, 1, 6, 2));
-    step(s, config);
+    settle(s);
     expect(s.population.served).toBe(1);
-    expect(homeFactors(s, room(s, dorm), config).comfort).toBeGreaterThan(crowded);
+    expect(homeFactors(s, pod, config).comfort).toBeGreaterThan(crowded);
+  });
+
+  it("serves the nearest homes first", () => {
+    const s = hole();
+    setAdults(s, 36, config);
+    const near = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    build(s, "galley", ring(1, 1, 5));
+    settle(s);
+    // The dorm beside the galley is seated in full; the pod's people, further off, get what's left.
+    expect(s.population.servedByHome?.[near]).toBe(1);
+    const pod = s.layout.rooms.find((r) => r.type === "landing_pod")!;
+    expect(s.population.servedByHome?.[pod.id]).toBeLessThan(1);
   });
 
   it("a kitchen cooks more than a galley, falls back on rations, and seats no one", () => {
@@ -56,7 +77,7 @@ describe("dining", () => {
     setAdults(s, 20, config);
     const kitchen = build(s, "kitchen", ring(1, 1, 3, 2));
     const meals0 = s.resources.meals ?? 0;
-    step(s, config);
+    settle(s);
     expect(s.roomStatus[kitchen]!.rate).toBeGreaterThan(0);
     expect(s.population.seats).toBe(0);
     expect(s.population.served).toBe(0);
@@ -68,22 +89,31 @@ describe("dining", () => {
     setAdults(s, 20, config);
     const canteen = build(s, "canteen", ring(1, 1, 3, 2));
     expect(applyCommand(s, { type: "setRoomControl", roomId: canteen, paused: true }).ok).toBe(true);
-    step(s, config);
+    settle(s);
     expect(s.population.seats).toBe(0);
   });
 });
 
 describe("health and leisure", () => {
-  it("a gym lifts health and a park comfort, around them", () => {
+  it("a gym lifts health and a park comfort, for the homes within walking reach", () => {
     const s = hole();
+    setAdults(s, 20, config);
     const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     step(s, config);
-    const before = { health: effectOnRoom(s.effects!.field, "health", room(s, dorm)), comfort: effectOnRoom(s.effects!.field, "comfort", room(s, dorm)) };
+    const before = amenityFelt(s, room(s, dorm));
+    expect(before.comfort + before.health).toBe(0);
     build(s, "gym", ring(1, 1, 1, 2));
     build(s, "park", ring(1, 1, 5, 2));
     step(s, config);
-    expect(effectOnRoom(s.effects!.field, "health", room(s, dorm))).toBeGreaterThan(before.health);
-    expect(effectOnRoom(s.effects!.field, "comfort", room(s, dorm))).toBeGreaterThan(before.comfort);
+    const after = amenityFelt(s, room(s, dorm));
+    expect(after.health).toBeGreaterThan(0);
+    expect(after.comfort).toBeGreaterThan(0);
+    expect(after.from.map((f) => f.type).sort()).toEqual(["gym", "park"]);
+    // A second park nearby adds nothing: the nearest of each kind counts.
+    build(s, "park", ring(1, 2, 3, 2));
+    applyCommand(s, { type: "consoleFinish" });
+    step(s, config);
+    expect(amenityFelt(s, room(s, dorm)).comfort).toBeCloseTo(after.comfort, 5);
   });
 
   it("a park is walk-through and makes a little oxygen", () => {

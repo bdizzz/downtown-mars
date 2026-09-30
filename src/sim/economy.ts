@@ -51,10 +51,14 @@ export interface Population {
   needsMet: Record<string, number>;
   /** 0..1 of colonists with a restroom. */
   sanitation: number;
-  /** 0..1 of diners with a seat at a galley or canteen (missing in old saves: all). */
+  /** 0..1 of diners with a seat at a galley or canteen within reach (missing in old saves: all). */
   served?: number;
-  /** Seats at working galleys and canteens, last tick. */
+  /** Seats at working galleys and canteens, at the last happiness update. */
   seats?: number;
+  /** Each home's share of its residents with a seat within reach (amenities.ts). */
+  servedByHome?: Record<number, number>;
+  /** The homeless's share with a seat (whatever's left over anywhere). */
+  servedHomeless?: number;
 }
 
 /**
@@ -348,18 +352,6 @@ function stepColonists(
     res[id] = (res[id] ?? 0) + drunk * covered * share;
     record(state, id, "in", LABELS.restrooms, drunk * covered * share);
   }
-
-  // Galleys and canteens seat diners, as far as they're staffed and in working order.
-  let dining = 0;
-  for (const r of rooms) {
-    const spec = specs.get(r.id)!;
-    const st = status[r.id]!;
-    if (spec.serves <= 0) continue;
-    const staffed = st.staffNeeded > 0 ? st.staff / st.staffNeeded : st.limit ? 0 : 1;
-    dining += spec.serves * staffed * conditionOutput(r).factor;
-  }
-  pop.seats = dining;
-  pop.served = weight > 0 ? Math.min(1, dining / weight) : 1;
 
   let loss = 0;
   for (const [id, m] of Object.entries(met)) loss += (1 - m) * (c.healthLossPerDay[id] ?? 0);
