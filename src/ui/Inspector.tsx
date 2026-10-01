@@ -8,7 +8,7 @@ import { useState } from "react";
 import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
 import { mainOutput, roomSpec } from "../sim/economy";
-import { shaftView } from "../sim/happiness";
+import { crowdedAir, shaftView } from "../sim/happiness";
 import { amenityFelt } from "../sim/amenities";
 import { reachSteps, reachTints } from "../view/reachView";
 import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
@@ -479,6 +479,11 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
         </p>
       )}
       {room.at.kind === "ring" && def.houses ? <ShaftView s={s} room={room} /> : null}
+      {def.houses && crowdedAir(s, room) < -0.01 ? (
+        <p className="warn">
+          <span className="k">Crowded</span> air {signed(crowdedAir(s, room))}: more than {config.effects.crowding.perCell} to a cell gets stuffy
+        </p>
+      ) : null}
       {def.houses ? <WithinReach s={s} room={room} /> : null}
       <Reaches s={s} room={room} />
       {room.at.kind === "ring" && <Neighborhood s={s} room={room} />}

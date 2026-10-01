@@ -9,6 +9,7 @@ import { CONDITION, homeWearComfort, sharedWear } from "./condition";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 import { postMessage } from "./messages";
+import { config } from "./config";
 import { amenityFelt, updateDining } from "./amenities";
 
 // Happiness from three factors (noise, comfort, health), each −3..+3, felt
@@ -42,6 +43,18 @@ export interface Happiness {
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/**
+ * A packed home's air: each resident past `crowding.perCell` a cell (as of the
+ * last update) costs it `crowding.air` air quality. 0 when it's not crowded.
+ */
+export function crowdedAir(state: Pick<SimState, "happiness">, room: RoomInstance): number {
+  const c = config.effects.crowding;
+  const residents = state.happiness.pools.find((p) => p.roomId === room.id)?.residents ?? 0;
+  const cells = Math.max(1, room.cells.length || room.surfaceCells.length);
+  const over = residents / cells - c.perCell;
+  return over > 0 ? -over * c.air : 0;
+}
 
 /**
  * Comfort from looking out over the shaft: each of a room's ring-1 cells
@@ -91,7 +104,7 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
     noise: clamp(effectOnRoom(field, "noise", room) * mod.noiseFactor, -lim, lim),
     comfort: clamp(own + view + sharedComfort - unserved(seated) + amen.comfort + homeWearComfort(room) + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
     // Stale air (outer rings, industry) wears on health; ventilation and green space freshen it.
-    health: clamp(effectOnRoom(field, "health", room) + effectOnRoom(field, "airQuality", room) * h.airHealth + amen.health + shared, -lim, lim),
+    health: clamp(effectOnRoom(field, "health", room) + (effectOnRoom(field, "airQuality", room) + crowdedAir(state, room)) * h.airHealth + amen.health + shared, -lim, lim),
   };
 }
 

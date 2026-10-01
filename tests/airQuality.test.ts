@@ -4,7 +4,8 @@ import { applyCommand } from "../src/sim/commands";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { computeEffects, dustNow, effectAt, effectOnRoom } from "../src/sim/effects";
-import { homeFactors } from "../src/sim/happiness";
+import { crowdedAir, homeFactors, updateHappiness } from "../src/sim/happiness";
+import { setAdults } from "../src/sim/people";
 import { ensureFloors, type Location } from "../src/sim/placement";
 import { galleryEdges } from "../src/sim/edges";
 
@@ -98,5 +99,23 @@ describe("dust through the airlock", () => {
     applyCommand(s, { type: "consoleStorm", days: 0 });
     step(s, config);
     expect(s.effects.dust).toBe(1);
+  });
+});
+
+describe("crowding", () => {
+  it("makes a packed home stuffy, which costs its people health", () => {
+    const s = hole();
+    setAdults(s, 36, config);
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    applyCommand(s, { type: "consoleFinish" });
+    updateHappiness(s, config, true);
+    updateHappiness(s, config, true);
+    const full = s.happiness.pools.find((p) => p.roomId === dorm)!;
+    expect(full.residents).toBe(16);
+    const c = config.effects.crowding;
+    expect(crowdedAir(s, room(s, dorm))).toBeCloseTo(-(16 / 2 - c.perCell) * c.air, 5);
+    // The same dorm half empty isn't crowded.
+    full.residents = 8;
+    expect(crowdedAir(s, room(s, dorm))).toBe(0);
   });
 });

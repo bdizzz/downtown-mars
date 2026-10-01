@@ -45,3 +45,8 @@ Asked for by Bryon, Sep 30, 2026 ("let's do all that", after PLAN-M11's "not bui
 - The entrance and the cargo elevator (rooms that open onto the surface) have air quality −1 r1, spread by the airborne rules: the rooms along the network from them get the dust, fading.
 - In a dust storm it's worse: × (1 + (`dust.stormFactor` − 1) × the storm's level), in quarter steps (`dustNow`). `Effects` carries the dust it was built with; `refreshEffects` rebuilds when the layout or the dust changes, and the worker resends the field then too.
 
+**Step 4, crowding:**
+- `crowdedAir(state, home)`: each resident past `crowding.perCell` a cell (as of the last update) costs the home `crowding.air` air quality, felt as health. **Changed from the plan:** 5 a cell, not 4, so studios and apartments (5 a cell) aren't crowded and a full bunk dorm (8) is: −0.45.
+- A home's card says when it's crowded.
+- **Bots:** they count crowding when looking for homes with stale air (a hub nearby fixes it), and build apartments rather than bunks once they're unlocked and affordable. Without that, every bot dorm was stuffy and births stalled.
+

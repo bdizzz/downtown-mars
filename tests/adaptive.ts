@@ -13,6 +13,7 @@ import { floorLinked } from "../src/sim/corridors";
 import { footprint, type RoomInstance } from "../src/sim/placement";
 import { missingCost } from "../src/sim/costs";
 import { effectOnRoom } from "../src/sim/effects";
+import { crowdedAir } from "../src/sim/happiness";
 
 // A scripted player that reacts: once a day it looks at what its hole is
 // short of and builds the room that fixes it, in the first free spot on the
@@ -140,14 +141,17 @@ export function wants(hole: SimState): { room: string; crop?: string; near?: Nee
   // …and only with the air for a dorm's worth more, or the means to build it: beds without air to breathe are no use.
   const airFor = count(hole, "life_support") * roomDef("life_support").makes.o2!;
   const canBreathe = airFor >= pop + roomDef("bunk_dorm").houses! || missingCost(res, "life_support") === null;
-  if (beds(hole) - pop < 6 && hole.population.health >= 70 && hole.happiness.average >= 50 && canBreathe) out.push({ room: "bunk_dorm" });
+  // Better homes once they're unlocked and affordable (bunks are crowded); bunks otherwise.
+  const home = (hole.unlocks ?? []).includes("basicHomes") && missingCost(res, "apartment") === null ? "apartment" : "bunk_dorm";
+  if (beds(hole) - pop < 6 && hole.population.health >= 70 && hole.happiness.average >= 50 && canBreathe) out.push({ room: home });
   return out;
 }
 
 /** The home with the stalest air, if any is bad enough to fix. */
 function staleHome(hole: SimState): RoomInstance | undefined {
   const homes = hole.layout.rooms.filter((r) => r.at.kind === "ring" && !r.building && (roomDef(r.type).houses ?? 0) > 0);
-  const air = (r: RoomInstance) => effectOnRoom(hole.effects.field, "airQuality", r);
+  // The air at home: the network's, and stuffiness from crowding.
+  const air = (r: RoomInstance) => effectOnRoom(hole.effects.field, "airQuality", r) + crowdedAir(hole, r);
   return homes.filter((r) => air(r) < -0.4).sort((a, b) => air(a) - air(b))[0];
 }
 

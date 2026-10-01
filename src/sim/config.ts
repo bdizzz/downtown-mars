@@ -147,6 +147,8 @@ export interface SimConfig {
     stepsPerRadius: number;
     /** Mars dust through an airlock (a room that opens onto the surface): its air effect is this much worse in a dust storm. */
     dust: { stormFactor: number };
+    /** Packed homes go stuffy: each resident past `perCell` a cell costs the home `air` air quality. */
+    crowding: { perCell: number; air: number };
   };
   /** Charts: a sample every so many ticks (an hour), kept hour by hour for recentDays, and as daily averages for up to maxDays. */
   history: { everyTicks: number; recentDays: number; maxDays: number };
