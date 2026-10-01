@@ -39,4 +39,4 @@ Asked for by Bryon, Sep 30, 2026: rooms beside a corridor sometimes had no door 
 - `windows.costPer10m` is glass 2 (a ring-1 bunk dorm's shaft wall: 4 glass).
 - The landing kit brings 100 glass (`startingStock`); the landing pod's storage grows from 500 to 600 units, 100 of them allocated to glass.
 - The glassworks needs no unlock any more (the "glassworks" gate is gone) and is easier: 2 staff (was 3), power 3 (was 4), glass 3 a day (was 2), built from rock 20 and metal 4 (was brick 10, metal 5, machinery 1).
-- Bots build a glassworks when glass drops under 20 with homes still unglazed. Old saves keep their glass (none) and get the pod's extra 100 units unallocated.
+- Bots build a glassworks when glass drops under 20 with homes still unglazed. Save v18: old saves get the kit's 100 glass (topped up to it) and the pod 100 units allocated to glass (a legacy pod with its own space grows by that much).

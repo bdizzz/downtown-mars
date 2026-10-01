@@ -132,6 +132,24 @@ describe("windows", () => {
     expect(edgeHoverFor(s.layout, s.resources, tool, pick, rock, false).edge!.refusal).toMatch(/Nothing to look out on/);
   });
 
+  it("old saves get the landing kit's glass, and the pod room to keep it", () => {
+    const w = createWorld(config, 42);
+    const old = JSON.parse(serialize(w));
+    old.version = 17;
+    for (const h of old.state.holes) {
+      h.resources.glass = 0;
+      const pod = h.layout.rooms.find((r: { type: string }) => r.type === "landing_pod");
+      delete pod.allocation.glass;
+    }
+    const back = deserialize(JSON.stringify(old));
+    expect(back.ok).toBe(true);
+    if (!back.ok) return;
+    for (const h of back.world.holes) {
+      expect(h.resources.glass).toBe(config.startingStock.glass);
+      expect(h.layout.rooms.find((r) => r.type === "landing_pod")!.allocation!.glass).toBe(config.startingStock.glass);
+    }
+  });
+
   it("old saves keep the shaft windows they had", () => {
     const w = createWorld(config, 42);
     const hole = w.holes[0]!;

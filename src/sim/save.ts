@@ -18,7 +18,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 17;
+export const SAVE_VERSION = 18;
 
 type Raw = Record<string, unknown>;
 
@@ -135,6 +135,23 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
         if (shaft.length) setRoomWindows(room, shaft, true);
       }
       return { ...h, layout };
+    }),
+  }),
+  // v18: windows cost glass, and the landing kit brings some. Holes get the kit's glass, and the pod room for it.
+  17: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const layout = h.layout as Layout;
+      const kit = config.startingStock.glass ?? 0;
+      const pod = layout.rooms.find((r) => r.type === "landing_pod");
+      if (pod) {
+        // A legacy pod has its own space: grow it by what glass takes.
+        const room = Math.max(0, kit - (pod.allocation?.glass ?? 0));
+        if (pod.storageUnits !== undefined) pod.storageUnits += room;
+        pod.allocation = { ...(pod.allocation ?? {}), glass: Math.max(pod.allocation?.glass ?? 0, kit) };
+      }
+      const resources = h.resources as Record<string, number>;
+      return { ...h, layout, resources: { ...resources, glass: Math.max(resources.glass ?? 0, kit) } };
     }),
   }),
 };
