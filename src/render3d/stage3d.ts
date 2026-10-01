@@ -24,7 +24,8 @@ import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotA
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
-import { Dust, makeDome, makeDrillRig, makeLander, placeLander, type DrillRig } from "./scenery3d";
+import { Dust, makeDome, makeLander, placeLander } from "./scenery3d";
+import { makeDrillRig, type DrillRig } from "./drillRig";
 import { occupied, People, type RoomSpots } from "./people3d";
 import { Grit } from "./storm3d";
 import { LightShaft } from "./shafts3d";
@@ -1586,7 +1587,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         rigFor = rk;
         if (rig) {
           scene.remove(rig.group);
-          dispose(rig.group);
+          rig.dispose();
         }
         rig = makeDrillRig(snapshot.layout.hole);
         scene.add(rig.group);
@@ -1743,7 +1744,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       disposeLayout(layoutGroup);
       dispose(holeGroup);
       dispose(digFront);
-      if (rig) dispose(rig.group);
+      rig?.dispose();
       sectionGeo.dispose();
       (section.material as THREE.Material).dispose();
       dispose(lander);
