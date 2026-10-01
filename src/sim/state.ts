@@ -95,7 +95,7 @@ export function createInitialState(
 ): SimState {
   const h = cfg.starterHole;
   const layout = createLayout(createHole(h.shaftRadiusM, h.floors, h.unlockedRings, cfg.geometry), cfg);
-  // The landing crew has blasted out the first rings of floor 1; the rest is rock.
+  // The landing crew has blasted out floor 1's first ring (and the kit's rooms); the rest is rock.
   for (let ring = 1; ring <= h.openRings; ring++) {
     openCells(layout, Array.from({ length: layout.hole.ringSlots[ring - 1]! }, (_, slot) => ({ floor: 1, ring, slot })));
   }
@@ -105,7 +105,9 @@ export function createInitialState(
   }
   for (const k of cfg.landingKit.ring) {
     const [w, d] = cfg.shapes[roomDef(k.room).size as keyof SimConfig["shapes"]]![0]!;
-    must(placeRoom(layout, k.room, { kind: "ring", floor: k.floor, ring: k.ring, slot: k.slot, w, d }, cfg), k.room);
+    const placed = must(placeRoom(layout, k.room, { kind: "ring", floor: k.floor, ring: k.ring, slot: k.slot, w, d }, cfg), k.room);
+    // The kit's rooms come with their space blasted out, wherever they stand.
+    if (placed.ok) openCells(layout, placed.cells);
   }
   // Floor 1's gallery comes built, all the way round the shaft.
   for (const e of galleryEdges(layout.hole, 1)) layout.corridors[e.id] = corridors.gallery.id;
@@ -146,6 +148,7 @@ export function createInitialState(
   return state;
 }
 
-function must(result: { ok: boolean; reason?: string }, what: string): void {
+function must<T extends { ok: boolean; reason?: string }>(result: T, what: string): T {
   if (!result.ok) throw new Error(`landing kit: can't place ${what}: ${result.reason}`);
+  return result;
 }

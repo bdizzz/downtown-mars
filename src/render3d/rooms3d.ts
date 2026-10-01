@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
-import { FLOOR_H, floorSpan, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { FLOOR_H, floorSpan, RIG_DROP, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef, hasBulkhead } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
@@ -1320,7 +1320,9 @@ export function buildLayout(
       const mouth = (i: number) => (layout.corridors?.[`R${floor}.1.${i % n1}`] ? HALL / hole.shaftRadiusM : 0);
       const a0 = s0 + mouth(slot);
       const a1 = s1 - mouth(slot + 1);
-      if (a1 > a0) curvedFace(wall, hole.shaftRadiusM, a0, a1, y0, y1, { side: -1 }); // open toward the shaft
+      // The last floor's wall reaches half a floor lower, round the drill rig (drawn that far down).
+      const bottom = floor === lastFloor ? y0 - RIG_DROP : y0;
+      if (a1 > a0) curvedFace(wall, hole.shaftRadiusM, a0, a1, bottom, y1, { side: -1 }); // open toward the shaft
     }
   }
   // The crust: a collar of rock from floor 1's ceiling up to the surface, all the way round.
@@ -1455,7 +1457,8 @@ function pillar(pos: number[], x: number, z: number, y0: number, y1: number, h: 
 
 /**
  * Dug-out cells with no room: a bare floor you can build on (picked like a
- * room's floor), and a pillar at each corner holding up the rock above. No walls.
+ * room's floor), running to the cell's edges so neighbours meet without a
+ * crack, and a pillar at each corner holding up the rock above. No walls.
  */
 function emptySpace(layout: Layout, topFloor: number | null): THREE.Object3D[] {
   const hole = layout.hole;
@@ -1470,7 +1473,8 @@ function emptySpace(layout: Layout, topFloor: number | null): THREE.Object3D[] {
         const c = { floor, ring, slot };
         if (!isOpen(layout, c) || layout.grid[floor - 1]?.[ring - 1]?.[slot]) continue;
         const [a0, a1] = slotAngles(slot, n);
-        flatRing(floorPos, r0 + INSET, r1 - INSET, a0 + INSET / r0, a1 - INSET / r1, y0 + 0.02);
+        // Edge to edge: no crack between two empty cells, or onto the gallery tube.
+        flatRing(floorPos, r0, r1, a0, a1, y0 + 0.02);
         for (const r of [r0 + PILLAR.inset, r1 - PILLAR.inset]) {
           for (const a of [a0 + PILLAR.inset / r, a1 - PILLAR.inset / r]) pillar(pillars, r * Math.cos(a), r * Math.sin(a), y0, y1, PILLAR.half);
         }
@@ -1687,7 +1691,7 @@ function bulkheadGates(layout: Layout, topFloor: number | null): THREE.Object3D[
 }
 
 /** Gallery tubes: how tall the glass is above the tube's floor, how often a rib holds it up, and the look. */
-const TUBE = { height: 3.3, ribEveryM: 2.4, ribM: 0.12, slab: 0x7a6a5e, rib: 0x9aa4ab, glass: 0xa8d4f0, glassOpacity: 0.14, lamp: 0xffc98a };
+const TUBE = { header: 0x6b4a3a, height: 3.3, ribEveryM: 2.4, ribM: 0.12, slab: 0x7a6a5e, rib: 0x9aa4ab, glass: 0xa8d4f0, glassOpacity: 0.14, lamp: 0xffc98a };
 
 /**
  * Gallery tubes: on each floor, a glass-walled walkway on the ledge inside the
@@ -1708,10 +1712,11 @@ function galleryTubes(layout: Layout, digFloor: number | null, topFloor: number 
   const ribs: number[] = [];
   const lamps: number[] = [];
   const empty: number[] = [];
+  const header: number[] = [];
   for (let floor = topFloor ?? 1; floor <= last; floor++) {
     const y0 = floorSpan(floor)[0];
     const yf = y0 + LEDGE_THICKNESS;
-    for (const e of galleryEdges(hole, floor)) {
+    for (const [slot, e] of galleryEdges(hole, floor).entries()) {
       const a0 = e.a0 * TAU;
       const a1 = e.a1 * TAU;
       // Under the dome the shaft is air: an open ledge all the way round, with a railing and lamps, no glass.
@@ -1740,6 +1745,13 @@ function galleryTubes(layout: Layout, digFloor: number | null, topFloor: number 
       const top = yf + TUBE.height;
       curvedFace(glass, rOpen, a0, a1, yf, top);
       if (topFloor === null) flatRing(glass, rOpen, R, a0, a1, top);
+      // Its slab's back edge, and (where the cell behind is open to it: empty space or a walk-through room)
+      // a strip of rock over its roof up to the ceiling, so nothing shows past it from inside the floor.
+      curvedFace(floorPos, R, a0, a1, y0, yf);
+      const behind = layout.grid[floor - 1]?.[0]?.[slot];
+      const room = behind ? layout.rooms.find((r) => r.id === behind) : undefined;
+      const open = room ? !room.planned && roomDef(room.type).public : floor <= hole.floors && isOpen(layout, { floor, ring: 1, slot });
+      if (open) curvedFace(header, R, a0, a1, top, floorSpan(floor)[1]);
       // Ribs: a post on the glass and a beam across the roof, every so often along the arc.
       const len = (a1 - a0) * rOpen;
       const count = Math.max(1, Math.round(len / TUBE.ribEveryM));
@@ -1767,6 +1779,7 @@ function galleryTubes(layout: Layout, digFloor: number | null, topFloor: number 
   add(empty, "tube:none", () => new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.03, depthWrite: false, side: THREE.DoubleSide }), { pickable: true, hall: true });
   add(glass, "tube:glass", () => withFresnel(new THREE.MeshStandardMaterial({ color: TUBE.glass, roughness: 0.05, metalness: 0.2, transparent: true, opacity: TUBE.glassOpacity, depthWrite: false, side: THREE.DoubleSide })));
   add(ribs, "tube:rib", () => new THREE.MeshStandardMaterial({ color: TUBE.rib, roughness: 0.4, metalness: 0.6, side: THREE.DoubleSide }));
+  add(header, "tube:header", () => withRock(new THREE.MeshStandardMaterial({ color: TUBE.header, roughness: 0.95, side: THREE.DoubleSide })));
   add(lamps, "tube:lamp", () => new THREE.MeshStandardMaterial({ color: TUBE.lamp, emissive: TUBE.lamp, emissiveIntensity: 0.3, side: THREE.DoubleSide }));
   return out;
 }

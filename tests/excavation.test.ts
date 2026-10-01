@@ -22,10 +22,13 @@ function rich(): SimState {
 }
 
 describe("excavation and empty space", () => {
-  it("starts with rings 1 and 2 of floor 1 dug out, and the rest solid rock", () => {
+  it("starts with ring 1 of floor 1 dug out (and the kit's rooms), and the rest solid rock", () => {
     const s = createInitialState(config);
     expect(isOpen(s.layout, { floor: 1, ring: 1, slot: 4 })).toBe(true);
-    expect(isOpen(s.layout, { floor: 1, ring: 2, slot: 4 })).toBe(true);
+    expect(isOpen(s.layout, { floor: 1, ring: 2, slot: 4 })).toBe(false);
+    // The battery bank the kit sets up in ring 2 has its cell dug.
+    const battery = s.layout.rooms.find((r) => r.type === "battery_bank")!;
+    expect(battery.cells.every((c) => isOpen(s.layout, c))).toBe(true);
     expect(isOpen(s.layout, { floor: 1, ring: 3, slot: 4 })).toBe(false);
   });
 
@@ -117,7 +120,7 @@ describe("excavating, then building", () => {
 
   it("on empty space there's nothing to dig, and nothing gained", () => {
     const s = site();
-    const r = applyCommand(s, { type: "build", room: "water_tank", at: ring(1, 2, 5) }); // ring 2 starts dug out
+    const r = applyCommand(s, { type: "build", room: "water_tank", at: ring(1, 1, 5) }); // ring 1 starts dug out
     expect(r.ok).toBe(true);
     const job = s.construction.queue[0]!;
     expect(job.dig).toBeUndefined();
@@ -126,7 +129,7 @@ describe("excavating, then building", () => {
 
   it("an empty room digs ahead: when it's done it's gone, leaving empty space", () => {
     const s = site();
-    expect(checkPlacement(s.layout, "empty_room_s", ring(1, 2, 5))).toMatchObject({ ok: false, reason: "Already dug out" });
+    expect(checkPlacement(s.layout, "empty_room_s", ring(1, 1, 5))).toMatchObject({ ok: false, reason: "Already dug out" });
     const r = applyCommand(s, { type: "build", room: "empty_room_m", at: ring(1, 3, 6, 2) });
     expect(r.ok).toBe(true);
     expect(s.construction.queue[0]!.work).toBe(2 * dig());

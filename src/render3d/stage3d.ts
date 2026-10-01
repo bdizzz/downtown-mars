@@ -26,6 +26,7 @@ import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, makeDome, makeLander, placeLander } from "./scenery3d";
 import { makeDrillRig, type DrillRig } from "./drillRig";
+import { RIG_DROP } from "./cylinder";
 import { occupied, People, type RoomSpots } from "./people3d";
 import { Grit } from "./storm3d";
 import { LightShaft } from "./shafts3d";
@@ -1575,7 +1576,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         const [, top] = floorSpan(d.floor);
         const r = snapshot.layout.hole.shaftRadiusM - 0.05;
         digFront.scale.set(r, r, 1);
-        const y = top - d.progress * FLOOR_H;
+        // At the rig's cutter face: half a floor below where the sim's progress puts the front (see RIG_DROP).
+        const y = top - d.progress * FLOOR_H - RIG_DROP;
         if (Math.abs(digFront.position.y - y) > 0.01) {
           digFront.position.y = y;
           dirty = true;
@@ -1594,7 +1596,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       }
       if (rig) {
         const deepest = snapshot.layout.hole.floors;
-        const front = d.floor !== null ? floorSpan(d.floor)[1] - d.progress * FLOOR_H : floorSpan(deepest)[0];
+        // Half a floor lower than the sim's dig front, so its widest parts stay clear of the deepest floor's gallery tubes.
+        const front = (d.floor !== null ? floorSpan(d.floor)[1] - d.progress * FLOOR_H : floorSpan(deepest)[0]) - RIG_DROP;
         const bore = floorSpan(deepest)[0] - front;
         const shownFloor = d.floor ?? deepest;
         rig.group.visible = cf === null || shownFloor >= cf;

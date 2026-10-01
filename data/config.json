@@ -26,7 +26,7 @@
     "shaftRadiusM": 10,
     "floors": 1,
     "unlockedRings": 3,
-  "openRings": 2
+  "openRings": 1
   },
   "digging": {
     "ticksForFirstFloor": 720,
