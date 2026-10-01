@@ -24,7 +24,7 @@ import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotA
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
-import { Dust, makeDome, makeLander, placeLander } from "./scenery3d";
+import { Dust, makeDome, makeDrillRig, makeLander, placeLander, type DrillRig } from "./scenery3d";
 import { occupied, People, type RoomSpots } from "./people3d";
 import { Grit } from "./storm3d";
 import { LightShaft } from "./shafts3d";
@@ -306,6 +306,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let lastTick = -1;
   let hole: Hole | null = null;
   let holeKey = "";
+  /** The boring machine at the bottom of the shaft, rebuilt for another hole's width. */
+  let rig: DrillRig | null = null;
+  let rigFor = "";
   /** The glass dome over the shaft, once a hole has one. */
   let dome: THREE.Group | null = null;
   let domeFor = "";
@@ -1371,6 +1374,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         if (view.flows) flows.step(ambient);
         advanceDetails(ambient);
         roomFx.step(ambient);
+        rig?.step(ambient);
       }
       ambient = 0;
       dirty = true;
@@ -1576,6 +1580,29 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           dirty = true;
         }
       }
+      // The boring machine: at the dig front, riding down with it; at the bottom of the hole once it's as deep as it goes.
+      const rk = `${gameId}:${snapshot.layout.hole.shaftRadiusM}`;
+      if (rk !== rigFor) {
+        rigFor = rk;
+        if (rig) {
+          scene.remove(rig.group);
+          dispose(rig.group);
+        }
+        rig = makeDrillRig(snapshot.layout.hole);
+        scene.add(rig.group);
+      }
+      if (rig) {
+        const deepest = snapshot.layout.hole.floors;
+        const front = d.floor !== null ? floorSpan(d.floor)[1] - d.progress * FLOOR_H : floorSpan(deepest)[0];
+        const bore = floorSpan(deepest)[0] - front;
+        const shownFloor = d.floor ?? deepest;
+        rig.group.visible = cf === null || shownFloor >= cf;
+        if (Math.abs(rig.group.position.y - front) > 0.005 || rig.group.userData.active !== (d.active && d.floor !== null)) {
+          rig.group.userData.active = d.active && d.floor !== null;
+          rig.place(front, bore, d.active && d.floor !== null);
+          dirty = true;
+        }
+      }
       // The land: rebuilt for another site (or another hole).
       const here = snapshot.holes.find((x) => x.id === snapshot.holeId);
       const tk = `${snapshot.holeId}:${JSON.stringify(here?.site ?? null)}:${snapshot.holeName}:${snapshot.layout.hole.shaftRadiusM}`;
@@ -1716,6 +1743,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       disposeLayout(layoutGroup);
       dispose(holeGroup);
       dispose(digFront);
+      if (rig) dispose(rig.group);
       sectionGeo.dispose();
       (section.material as THREE.Material).dispose();
       dispose(lander);

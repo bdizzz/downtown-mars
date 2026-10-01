@@ -14,10 +14,11 @@ export interface Drill {
   progress: number;
 }
 
-/** Ticks needed to dig a given floor (2 = the first one dug). Deeper is slower. */
+/** Ticks needed to dig a given floor (2 = the first one dug). Deeper is slower, and much slower past the first few floors. */
 export function ticksToDig(floor: number, cfg: SimConfig): number {
   const d = cfg.digging;
-  return Math.round(d.ticksForFirstFloor * Math.pow(1 + d.depthGrowth, floor - 2));
+  const slow = floor >= d.slowFromFloor ? d.slowFactor : 1;
+  return Math.round(d.ticksForFirstFloor * Math.pow(1 + d.depthGrowth, floor - 2) * slow);
 }
 
 /** Rock from one floor of the drill: the shaft's share only (rooms are excavated separately). */

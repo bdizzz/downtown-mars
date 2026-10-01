@@ -49,6 +49,9 @@ export interface SimConfig {
     /** Ticks to dig floor 2; each deeper floor takes depthGrowth longer. */
     ticksForFirstFloor: number;
     depthGrowth: number;
+    /** From this floor down the rock is harder going: each floor takes slowFactor times as long. */
+    slowFromFloor: number;
+    slowFactor: number;
     /** Rock yielded per slot dug out: the shaft's area by the drill, a room's cells by excavation. */
     rockPerSlot: number;
     /** Extra yield per slot when the hole sits on a deposit, e.g. ore → { ore: 0.4 }. */

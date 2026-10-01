@@ -31,6 +31,8 @@
   "digging": {
     "ticksForFirstFloor": 720,
     "depthGrowth": 0.2,
+    "slowFromFloor": 4,
+    "slowFactor": 2,
     "rockPerSlot": 6,
     "depositYieldsPerSlot": {
       "ore": { "ore": 2 },
