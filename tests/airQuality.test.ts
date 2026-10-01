@@ -3,7 +3,7 @@ import { config } from "../src/sim/config";
 import { applyCommand } from "../src/sim/commands";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
-import { computeEffects, effectAt, effectOnRoom } from "../src/sim/effects";
+import { computeEffects, dustNow, effectAt, effectOnRoom } from "../src/sim/effects";
 import { homeFactors } from "../src/sim/happiness";
 import { ensureFloors, type Location } from "../src/sim/placement";
 import { galleryEdges } from "../src/sim/edges";
@@ -33,7 +33,7 @@ describe("air quality", () => {
   it("goes stale ring by ring away from the shaft", () => {
     const s = hole();
     const field = computeEffects(s.layout);
-    for (let r = 1; r <= s.layout.hole.unlockedRings; r++) expect(effectAt(field, "airQuality", { floor: 1, ring: r, slot: 0 })).toBe(byRing[r - 1]);
+    for (let r = 1; r <= s.layout.hole.unlockedRings; r++) expect(effectAt(field, "airQuality", { floor: 1, ring: r, slot: 4 })).toBe(byRing[r - 1]);
   });
 
   it("a ventilation hub freshens the rooms along the network from it, not through walls", () => {
@@ -76,5 +76,27 @@ describe("air quality", () => {
     build(s, "ventilation_hub", ring(1, 1, 2));
     step(s, config);
     expect(homeFactors(s, room(s, dorm), config).health).toBeGreaterThanOrEqual(fresh);
+  });
+});
+
+describe("dust through the airlock", () => {
+  it("fouls the air of the rooms along the network from the entrance, worse in a dust storm", () => {
+    const s = hole();
+    const near = build(s, "galley", ring(1, 1, 1)); // beside the entrance
+    applyCommand(s, { type: "consoleFinish" });
+    const clear = effectOnRoom(computeEffects(s.layout, dustNow(0)), "airQuality", room(s, near));
+    const storm = effectOnRoom(computeEffects(s.layout, dustNow(1)), "airQuality", room(s, near));
+    expect(clear).toBeLessThan(0);
+    expect(storm).toBeCloseTo(clear * config.effects.dust.stormFactor, 5);
+  });
+
+  it("rebuilds the effect field as a storm blows, and again when it's over", () => {
+    const s = hole();
+    applyCommand(s, { type: "consoleStorm", days: 1, inDays: 0 });
+    for (let i = 0; i < config.ticksPerDay / 2; i++) step(s, config);
+    expect(s.effects.dust).toBeGreaterThan(1);
+    applyCommand(s, { type: "consoleStorm", days: 0 });
+    step(s, config);
+    expect(s.effects.dust).toBe(1);
   });
 });

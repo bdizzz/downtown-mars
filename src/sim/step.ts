@@ -1,10 +1,10 @@
 import type { SimConfig } from "./config";
 import { stepDigging } from "./digging";
 import { stepEarth } from "./earth";
-import { stepWeather } from "./weather";
+import { stepWeather, stormLevel } from "./weather";
 import { stepCondition } from "./condition";
 import { stepEconomy, updateRates } from "./economy";
-import { refreshEffects } from "./effects";
+import { dustNow, refreshEffects } from "./effects";
 import { stepHappiness } from "./happiness";
 import { stepLedger } from "./ledger";
 import { stepVisits } from "./visits";
@@ -21,7 +21,7 @@ export function step(state: SimState, cfg: SimConfig): void {
   const before = { ...state.resources };
   stepWeather(state, cfg);
   stepDigging(state, cfg);
-  state.effects = refreshEffects(state.layout, state.effects);
+  state.effects = refreshEffects(state.layout, state.effects, dustNow(stormLevel(state, cfg)));
   stepEconomy(state, cfg);
   stepCondition(state, cfg);
   stepConstruction(state, cfg);

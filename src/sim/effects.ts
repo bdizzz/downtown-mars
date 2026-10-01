@@ -29,6 +29,8 @@ export type EffectField = Record<string, number[][][]>;
 
 export interface Effects {
   version: number;
+  /** How bad the dust through the airlocks is, as a multiple (1 in clear weather; more in a storm). */
+  dust?: number;
   field: EffectField;
 }
 
@@ -104,9 +106,12 @@ function radiate(layout: Layout, field: EffectField, room: RoomInstance): void {
 }
 
 /** Everything a built room radiates: by nearness, and airborne effects along the network too. */
-function radiateBuilt(layout: Layout, field: EffectField, room: RoomInstance, rooms: Map<number, RoomInstance>): void {
+function radiateBuilt(layout: Layout, field: EffectField, room: RoomInstance, rooms: Map<number, RoomInstance>, dust: number): void {
   const fx = config.effects;
-  for (const eff of roomDef(room.type).effects) {
+  const def = roomDef(room.type);
+  for (const base of def.effects) {
+    // An airlock lets in Mars dust: worse in a storm.
+    const eff = def.surfaceLink && base.type === "airQuality" ? { ...base, strength: base.strength * dust } : base;
     if (eff.residentsOnly || !field[eff.type]) continue;
     const air = fx.airborne[eff.type];
     if (!air) {
@@ -151,7 +156,7 @@ export function previewEffects(layout: Layout, type: string, cells: Cell[]): Eff
   return field;
 }
 
-export function computeEffects(layout: Layout): EffectField {
+export function computeEffects(layout: Layout, dust = 1): EffectField {
   const field = emptyField(layout);
   // Air goes stale away from the shaft: each ring out starts a little worse, before any room's effect.
   const byRing = config.effects.airQualityByRing;
@@ -159,15 +164,21 @@ export function computeEffects(layout: Layout): EffectField {
   const rooms = new Map(layout.rooms.map((r) => [r.id, r]));
   for (const room of layout.rooms) {
     if (room.planned || room.building || room.at.kind !== "ring") continue;
-    radiateBuilt(layout, field, room, rooms);
+    radiateBuilt(layout, field, room, rooms, dust);
   }
   return field;
 }
 
-/** Recompute only when the layout has changed since last time. */
-export function refreshEffects(layout: Layout, cached: Effects | null): Effects {
-  if (cached && cached.version === layout.version) return cached;
-  return { version: layout.version, field: computeEffects(layout) };
+/** Recompute only when the layout (or the dust through the airlocks) has changed since last time. */
+export function refreshEffects(layout: Layout, cached: Effects | null, dust = cached?.dust ?? 1): Effects {
+  if (cached && cached.version === layout.version && (cached.dust ?? 1) === dust) return cached;
+  return { version: layout.version, dust, field: computeEffects(layout, dust) };
+}
+
+/** How bad the airlocks' dust is now: 1, rising to the storm factor as a dust storm blows (in quarter steps, so the field isn't rebuilt every tick). */
+export function dustNow(storm: number): number {
+  const f = config.effects.dust.stormFactor;
+  return 1 + Math.round(storm * (f - 1) * 4) / 4;
 }
 
 export function effectAt(field: EffectField, type: string, c: Cell): number {

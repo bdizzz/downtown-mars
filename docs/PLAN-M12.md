@@ -41,3 +41,7 @@ Asked for by Bryon, Sep 30, 2026 ("let's do all that", after PLAN-M11's "not bui
 - **Tool:** the corridor tool's **Bulkhead** button (hazard-striped chip) turns it into the bulkhead tool: click a corridor to fit one, Shift-click or Erase to take it out. No dragging. The status line says what a click will do.
 - **Views:** a hazard-striped bar across the corridor in 2D and plan; in 3D a door frame with a sealed door and an orange band, at the segment's middle.
 
+**Step 3, dust through the airlock:**
+- The entrance and the cargo elevator (rooms that open onto the surface) have air quality −1 r1, spread by the airborne rules: the rooms along the network from them get the dust, fading.
+- In a dust storm it's worse: × (1 + (`dust.stormFactor` − 1) × the storm's level), in quarter steps (`dustNow`). `Effects` carries the dust it was built with; `refreshEffects` rebuilds when the layout or the dust changes, and the worker resends the field then too.
+

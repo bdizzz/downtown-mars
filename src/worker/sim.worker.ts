@@ -92,7 +92,8 @@ function knownDeposits() {
 function post(): void {
   const hole = active();
   const { layout, effects, history, ...rest } = makeSnapshot(hole, config);
-  const key = `${gameId}:${hole.holeId}:${layout.version}`;
+  // The effect field changes with the layout, and with the dust through the airlocks in a storm.
+  const key = `${gameId}:${hole.holeId}:${layout.version}:${hole.effects.dust ?? 1}`;
   const fresh = key !== sentLayout;
   sentLayout = key;
   const historyKey = `${gameId}:${hole.holeId}:${history?.version ?? -1}`;

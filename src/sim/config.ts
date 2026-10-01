@@ -145,6 +145,8 @@ export interface SimConfig {
     airborne: Record<string, { leak: number }>;
     /** Steps along the network an airborne effect reaches, per point of its radius. */
     stepsPerRadius: number;
+    /** Mars dust through an airlock (a room that opens onto the surface): its air effect is this much worse in a dust storm. */
+    dust: { stormFactor: number };
   };
   /** Charts: a sample every so many ticks (an hour), kept hour by hour for recentDays, and as daily averages for up to maxDays. */
   history: { everyTicks: number; recentDays: number; maxDays: number };

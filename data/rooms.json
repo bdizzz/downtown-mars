@@ -1221,7 +1221,13 @@
       "makes": {},
       "public": true,
       "surfaceLink": true,
-      "effects": [],
+      "effects": [
+        {
+          "type": "airQuality",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
       "cost": {},
       "buildable": false,
       "placeholder": true
@@ -1295,6 +1301,11 @@
       "effects": [
         {
           "type": "noise",
+          "strength": -1,
+          "radius": 1
+        },
+        {
+          "type": "airQuality",
           "strength": -1,
           "radius": 1
         }
