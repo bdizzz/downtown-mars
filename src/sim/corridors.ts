@@ -138,6 +138,15 @@ function network(layout: Layout): { sets: Sets; publicEdges: Map<string, number>
   }
   // Public rooms: every outside edge is walkable; a room spanning floors links them.
   const publicEdges = new Map<string, number>();
+  // Under the dome, the shaft is air: every floor's gallery is open walkway, built or not.
+  if (layout.domed) {
+    for (let f = 1; f <= hole.floors; f++) {
+      for (const e of galleryEdges(hole, f)) {
+        join(sets, hole, e);
+        if (!layout.corridors[e.id]) publicEdges.set(e.id, 0);
+      }
+    }
+  }
   for (const room of layout.rooms) {
     if (room.planned || room.building || room.at.kind !== "ring" || !roomDef(room.type).public) continue;
     let first: string | null = null;

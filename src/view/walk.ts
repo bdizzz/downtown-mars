@@ -60,6 +60,7 @@ export function regionAt(layout: Layout, floor: number, x: number, z: number): R
 
 /** Is there a built gallery tube at this angle on this floor? */
 function inTube(layout: Layout, floor: number, a: number): boolean {
+  if (layout.domed) return true;
   const n = layout.hole.ringSlots[0]!;
   const turn = (((a / TAU) % 1) + 1) % 1;
   const e = galleryEdges(layout.hole, floor)[Math.min(Math.floor(turn * n), n - 1)];

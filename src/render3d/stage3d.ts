@@ -24,7 +24,7 @@ import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotA
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
-import { Dust, makeLander, placeLander } from "./scenery3d";
+import { Dust, makeDome, makeLander, placeLander } from "./scenery3d";
 import { occupied, People, type RoomSpots } from "./people3d";
 import { Grit } from "./storm3d";
 import { LightShaft } from "./shafts3d";
@@ -306,6 +306,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let lastTick = -1;
   let hole: Hole | null = null;
   let holeKey = "";
+  /** The glass dome over the shaft, once a hole has one. */
+  let dome: THREE.Group | null = null;
+  let domeFor = "";
   /** The gallery tubes' runs, for the walkers: worked out again when the layout changes. */
   let tubes: TubeRun[] = [];
   let tubesFor = "";
@@ -1631,6 +1634,22 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const landing = e.padReady && !e.waiting && e.ticksToDrop <= descent;
       const wasVisible = lander.visible;
       placeLander(lander, snapshot.layout, landing && cut() === null ? 1 - e.ticksToDrop / descent : null);
+      // The dome over the shaft, once it's built.
+      const dk = snapshot.layout.domed ? `${gameId}:${snapshot.layout.hole.shaftRadiusM}` : "";
+      if (dk !== domeFor) {
+        domeFor = dk;
+        if (dome) {
+          scene.remove(dome);
+          dispose(dome);
+          dome = null;
+        }
+        if (dk) {
+          dome = makeDome(snapshot.layout.hole);
+          scene.add(dome);
+        }
+        dirty = true;
+      }
+      if (dome) dome.visible = cut() === null;
       if (landing || wasVisible) dirty = true;
       drawProgress(snapshot);
       refreshHover(); // affordability or the layout may have changed

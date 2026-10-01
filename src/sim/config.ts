@@ -150,6 +150,8 @@ export interface SimConfig {
     /** Packed homes go stuffy: each resident past `perCell` a cell costs the home `air` air quality. */
     crowding: { perCell: number; air: number };
   };
+  /** The shaft dome, a hole's end goal (PLAN-M12): when it opens up, what it costs, how long it takes, and what it gives. */
+  dome: { population: number; cost: Record<string, number>; workHours: number; atriumComfort: number; air: number };
   /** Charts: a sample every so many ticks (an hour), kept hour by hour for recentDays, and as daily averages for up to maxDays. */
   history: { everyTicks: number; recentDays: number; maxDays: number };
   unlocks: {

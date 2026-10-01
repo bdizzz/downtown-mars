@@ -69,9 +69,10 @@ export function shaftView(layout: Layout, room: RoomInstance, cfg: SimConfig): n
   const h = cfg.happiness;
   const each = faces.map((c) => {
     const id = (c.floor === faces[0]!.floor ? tubes : galleryEdges(layout.hole, c.floor))[c.slot]?.id;
-    return id && layout.corridors?.[id] ? h.galleryViewComfort : h.shaftViewComfort;
+    return id && layout.corridors?.[id] && !layout.domed ? h.galleryViewComfort : h.shaftViewComfort;
   });
-  return each.reduce((a, b) => a + b, 0) / each.length;
+  // Under the dome the shaft is an atrium: something more to look out on.
+  return each.reduce((a, b) => a + b, 0) / each.length + (layout.domed ? cfg.dome.atriumComfort : 0);
 }
 
 /** How well needs are met, as a health factor: 0 at full health, −3 at none. */

@@ -1,6 +1,6 @@
 import { config } from "./config";
 import { hasBulkhead, openTo } from "./corridors";
-import { cellEdges, edgeById, edgeLengthM, edgeVertices, outsideEdges } from "./edges";
+import { cellEdges, edgeById, edgeLengthM, edgeVertices, galleryEdges, outsideEdges } from "./edges";
 import { emptyCells } from "./excavation";
 import type { Cell, Layout, RoomInstance } from "./placement";
 import { roomDef } from "./rooms";
@@ -91,6 +91,18 @@ export function buildPaths(layout: Layout): Paths {
     add(key, { roomId: 0, floor: e.floor, length: edgeLengthM(hole, e, depth), through: true, airtight: hasBulkhead(layout, id) });
     for (const v of edgeVertices(hole, e)) index(byVertex, v, key);
     index(byEdge, id, key);
+  }
+  // Under the dome, every floor's gallery is open walkway, as if tubes ran all the way round.
+  if (layout.domed) {
+    for (let f = 1; f <= hole.floors; f++) {
+      for (const e of galleryEdges(hole, f)) {
+        const key = `c:${e.id}`;
+        if (nodes.has(key)) continue;
+        add(key, { roomId: 0, floor: f, length: edgeLengthM(hole, e, depth), through: true });
+        for (const v of edgeVertices(hole, e)) index(byVertex, v, key);
+        index(byEdge, e.id, key);
+      }
+    }
   }
   // Rooms, floor by floor: walk-through ones join by their corners and sides, private ones by their sides only.
   const privates: { key: string; cells: Cell[] }[] = [];

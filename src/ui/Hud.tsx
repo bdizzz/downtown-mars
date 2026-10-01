@@ -79,7 +79,7 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
         <select className="hole-picker" value={snapshot.holeId} onChange={(e) => setActiveHole(Number(e.target.value))} title="Which hole you're looking at">
           {snapshot.holes.map((h) => (
             <option key={h.id} value={h.id}>
-              {h.name} · {h.population}
+              {h.name}{h.domed ? " ◓" : ""} · {h.population}
               {h.waiting ? ` · ${h.waiting} waiting` : ""}
             </option>
           ))}

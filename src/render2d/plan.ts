@@ -168,7 +168,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
 
   const onFloor = (cells: Cell[]) => cells.filter((c) => c.floor === floor);
 
-  function drawBase(h: Hole): void {
+  function drawBase(h: Hole, domed = false): void {
     baseCtx.clear();
     const outer = ringRadii(h, h.ringSlots.length)[1] + RIM_M;
     baseCtx.circle(0, 0, outer * PX).fill(C.rock);
@@ -180,7 +180,9 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       }
     });
     // The open shaft, Mars air, out to the shaft wall: gallery tubes hang in it where they're built (drawn with the corridors).
-    baseCtx.circle(0, 0, h.shaftRadiusM * PX).fill(C.shaft).stroke({ color: C.galleryEdge, width: 2 });
+    baseCtx.circle(0, 0, h.shaftRadiusM * PX).fill(domed ? C.gallery : C.shaft).stroke({ color: C.galleryEdge, width: 2 });
+    // Under the dome the ledge is open walkway all round; the open shaft is inside it.
+    if (domed) baseCtx.circle(0, 0, openShaftRadius(h) * PX).fill(C.shaft);
     // The 0° seam, where the unrolled view starts.
     const [sx, sy] = xy(openShaftRadius(h), 0);
     const [ex, ey] = xy(outer, 0);
@@ -746,7 +748,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     const key = `${gameId}:${layout.version}:${JSON.stringify(layout.hole)}:${floor}:${crewsKey(crews)}`;
     if (!force && key === drawnKey) return;
     drawnKey = key;
-    drawBase(layout.hole);
+    drawBase(layout.hole, !!layout.domed);
     drawRooms(layout);
     fieldKey = "";
     if (!fitted) {

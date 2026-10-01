@@ -11,7 +11,7 @@ import { isCrop, resourceDefs } from "./resources";
 import { capacities, mainOutput } from "./economy";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById } from "./edges";
-import { dropCorridors, dropRoomJobs, finishAll, prioritize, queueCorridors, queueExtension, queueFill, queueRoom } from "./construction";
+import { domeRefusal, dropCorridors, dropRoomJobs, finishAll, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRoom } from "./construction";
 import { holeGates, unlock, UNLOCK_GATES } from "./people";
 import { allocationRefusal } from "./storage";
 import { answerVisit } from "./visits";
@@ -57,6 +57,8 @@ export type SimCommand =
   | { type: "consoleWear"; condition: number; roomId?: number }
   /** Fit sealed bulkheads across built corridor segments (on), or take them out (off, free). */
   | { type: "setBulkhead"; edges: string[]; on: boolean }
+  /** Start building the dome over the shaft. */
+  | { type: "buildDome" }
   /** Give a room its own name; an empty name goes back to the default. */
   | { type: "renameRoom"; roomId: number; name: string };
 
@@ -268,6 +270,9 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
           if (finish) for (const [r, v] of Object.entries(corridorCost(layout.hole, edgeById(layout.hole, id)!, finish, config))) state.resources[r] = (state.resources[r] ?? 0) + v;
           delete layout.corridorsFilling?.[id];
         }
+      } else if (job.kind === "dome") {
+        // Its materials come back in full.
+        for (const [r, v] of Object.entries(config.dome.cost)) state.resources[r] = (state.resources[r] ?? 0) + v;
       } else if (job.kind === "extend" && job.roomId !== undefined) {
         // The waiting floors are let go, and their piece refunded.
         const room = layout.rooms.find((r) => r.id === job.roomId);
@@ -280,6 +285,16 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       state.construction.queue = state.construction.queue.filter((j) => j !== job);
       recomputeAccess(layout);
       layout.version++;
+      return { ok: true };
+    }
+    case "buildDome": {
+      const why = domeRefusal(state);
+      if (why) return { ok: false, reason: why };
+      for (const [r, v] of Object.entries(config.dome.cost)) {
+        state.resources[r] = (state.resources[r] ?? 0) - v;
+        record(state, r, "out", CONSTRUCTION, v);
+      }
+      queueDome(state, config);
       return { ok: true };
     }
     case "setBulkhead": {

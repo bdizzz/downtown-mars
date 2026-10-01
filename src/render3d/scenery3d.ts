@@ -10,6 +10,33 @@ import { floorSpan, openShaftRadius, TAU } from "./cylinder";
 const LANDER = { startHeight: 60, body: 0xd9d4cc, trim: 0x6b6660, flame: 0xffb35c };
 const SURFACE_RING_M = 16;
 
+/** The shaft dome: a low glass dome over the shaft at the rim, on ribs, with a ring at its foot. */
+export function makeDome(hole: Hole): THREE.Group {
+  const g = new THREE.Group();
+  const r = hole.shaftRadiusM + 1.5;
+  const rise = r * 0.45;
+  // A flattened half-sphere: a sphere scaled down in height.
+  const glass = new THREE.Mesh(
+    new THREE.SphereGeometry(r, 48, 16, 0, TAU, 0, Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: 0xa8d4f0, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide }),
+  );
+  glass.scale.set(1, rise / r, 1);
+  const metal = new THREE.MeshStandardMaterial({ color: 0x9aa4ab, roughness: 0.4, metalness: 0.6 });
+  // Ribs: meridians from the foot to the crown.
+  for (let k = 0; k < 12; k++) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(r, 0.12, 6, 32, Math.PI), metal);
+    rib.scale.set(1, rise / r, 1);
+    rib.rotation.y = (k / 12) * Math.PI;
+    g.add(rib);
+  }
+  const foot = new THREE.Mesh(new THREE.TorusGeometry(r, 0.35, 8, 64), metal);
+  foot.rotation.x = Math.PI / 2;
+  foot.position.y = 0.2;
+  g.add(glass, foot);
+  g.position.y = 0.05;
+  return g;
+}
+
 /** The lander: a capsule with legs and a flame, positioned by the caller. */
 export function makeLander(): THREE.Group {
   const g = new THREE.Group();

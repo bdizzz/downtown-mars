@@ -81,6 +81,40 @@ interface Props {
   deposits: string[];
   /** The finish the corridor tool last used. */
   lastFinish: string;
+  /** The shaft dome: not yet, under way, or built. */
+  dome?: "none" | "building" | "built";
+  onBuildDome?: () => void;
+}
+
+/** Why the dome can't be started, as the hole stands (null: it can). */
+function domeRefusal(dome: Props["dome"], gates: string[], resources: Record<string, number>): string | null {
+  if (dome === "built") return "Built: the shaft is air";
+  if (dome === "building") return "Under construction (Charts → Construction)";
+  if (!gates.includes("dome")) return `Unlocks at ${config.dome.population} colonists in this hole`;
+  const short = Object.entries(config.dome.cost).filter(([id, v]) => (resources[id] ?? 0) < v);
+  return short.length ? `Needs ${short.map(([id, v]) => `${Math.ceil(v - (resources[id] ?? 0))} more ${resName(id).toLowerCase()}`).join(", ")}` : null;
+}
+
+/** The dome's card: what it costs and what it does. */
+function DomeCard({ dome, deposits, resources }: { dome: Props["dome"]; deposits: string[]; resources: Record<string, number> }) {
+  const why = domeRefusal(dome, deposits, resources);
+  const d = config.dome;
+  return (
+    <div className="room-card">
+      <h3>Shaft dome</h3>
+      <p className="k">A glass dome sealing the top of the shaft: a hole's crowning work. One per hole.</p>
+      <p>
+        {Object.entries(d.cost)
+          .map(([id, v]) => `${resName(id)} ${v}`)
+          .join(", ")}
+      </p>
+      <p className="k">Takes {d.workHours} work-hours to build</p>
+      <p className="good">Every floor's gallery becomes open walkway: no tubes to lay</p>
+      <p className="good">The shaft is an atrium: comfort +{d.atriumComfort} for every room facing it</p>
+      <p className="good">Air quality +{d.air} everywhere; storms no longer drive dust through the airlock</p>
+      {why ? <p className={dome === "built" ? "good" : "bad"}>{why}.</p> : <p className="good">Click to start building it.</p>}
+    </div>
+  );
 }
 
 /** The category a tool belongs to: its room's, or Access for corridors. */
@@ -139,7 +173,7 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
  * details of the room under the pointer or in hand; choosing a room (or its
  * key) opens its category. Demolish and undo sit at the end.
  */
-export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, highlight, deposits, lastFinish }: Props) {
+export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, highlight, deposits, lastFinish, dome = "none", onBuildDome }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(() => categoryOf(tool));
   // Groups in the right half of the screen open their popup leftward.
@@ -201,6 +235,11 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
                   </div>
                 )}
                 {cat === "circulation" && !shown && <Finishes tool={tool} setTool={setTool} resources={resources} />}
+                {cat === "public" && hovered === "shaft_dome" && (
+                  <div className="dock-card">
+                    <DomeCard dome={dome} deposits={deposits} resources={resources} />
+                  </div>
+                )}
                 <div className="dock-popup-row">
                   {cat === "circulation" && (
                     <button
@@ -212,6 +251,19 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
                       <span className="swatch" />
                       <span className="name">Corridors</span>
                       <kbd>{CORRIDOR_KEY}</kbd>
+                    </button>
+                  )}
+                  {cat === "public" && (
+                    <button
+                      className={`room-btn${dome === "built" ? " on" : ""}${domeRefusal(dome, deposits, resources) && dome !== "built" ? " short" : ""}`}
+                      style={{ "--cat": color } as React.CSSProperties}
+                      onClick={() => !domeRefusal(dome, deposits, resources) && onBuildDome?.()}
+                      onMouseEnter={() => setHovered("shaft_dome")}
+                      onMouseLeave={() => setHovered(null)}
+                      title={domeRefusal(dome, deposits, resources) ?? "Start building the dome over the shaft"}
+                    >
+                      <span className="swatch" />
+                      <span className="name">Shaft dome{dome === "built" ? " ✓" : dome === "building" ? " …" : ""}</span>
                     </button>
                   )}
                   {defs.map((def) => {

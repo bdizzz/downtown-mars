@@ -275,14 +275,19 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   }
 
   /** Dug floors, plus the floor being dug (its rock cover is drawn separately). */
-  function drawHole(h: Hole, digFloor: number | null): void {
+  function drawHole(h: Hole, digFloor: number | null, domed = false): void {
     const maxRings = h.ringSlots.length;
     const lastFloor = digFloor ?? h.floors;
     holeCtx.clear();
     for (let floor = 1; floor <= lastFloor; floor++) {
       const top = floorTop(floor, maxRings);
       // The open shaft, Mars air: gallery tubes hang in it where they're built (drawn with the corridors).
-      holeCtx.rect(0, top, TURN_W, GALLERY_H).fill(C.shaft);
+      // Under the dome it's air: an open walkway all the way round, with its railing.
+      if (domed && floor <= h.floors) {
+        holeCtx.rect(0, top, TURN_W, GALLERY_H).fill(C.gallery);
+        holeCtx.rect(0, top + 2, TURN_W, 1.5).fill(C.rail);
+        for (let x = 0; x < TURN_W; x += HATCH_STEP) holeCtx.rect(x, top + 2, 1.5, 6).fill(C.rail);
+      } else holeCtx.rect(0, top, TURN_W, GALLERY_H).fill(C.shaft);
       holeCtx.rect(0, top + GALLERY_H - 2, TURN_W, 2).fill(C.galleryEdge);
 
       for (let ring = 1; ring <= maxRings; ring++) {
@@ -980,10 +985,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const l = snapshot.layout;
       layout = l;
       drill = snapshot.drill;
-      const key = JSON.stringify([l.hole, drill.floor]);
+      const key = JSON.stringify([l.hole, drill.floor, !!l.domed]);
       if (key !== holeKey) {
         holeKey = key;
-        drawHole(l.hole, drill.floor);
+        drawHole(l.hole, drill.floor, !!l.domed);
         rebuildFloorLabels(l.hole, drill.floor);
         applyCamera();
       }

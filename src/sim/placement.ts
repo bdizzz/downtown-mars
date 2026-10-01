@@ -82,6 +82,8 @@ export interface Layout {
   corridorsFilling?: Record<string, number>;
   /** Corridor segments with a sealed bulkhead: people pass, air doesn't (edge id → true). */
   bulkheads?: Record<string, true>;
+  /** The shaft dome is built: the shaft is pressurized, every floor's gallery open walkway. */
+  domed?: boolean;
 }
 
 export type CheckResult =

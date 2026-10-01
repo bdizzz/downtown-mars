@@ -1,7 +1,7 @@
 import { roomName, roomRef } from "./roomName";
 import raw from "../../data/construction.json";
-import type { SimConfig } from "./config";
-import { recomputeAccess } from "./corridors";
+import { config, type SimConfig } from "./config";
+import { recomputeAccess, shortfall } from "./corridors";
 import { edgeById, edgeLengthM } from "./edges";
 import { isActive } from "./economy";
 import { postMessage } from "./messages";
@@ -32,7 +32,7 @@ export const construction = raw as unknown as {
 export interface Job {
   id: number;
   /** A room, corridor segments to carve or to fill in, or more floors for stairs or an elevator. */
-  kind: "room" | "corridors" | "fill" | "extend";
+  kind: "room" | "corridors" | "fill" | "extend" | "dome";
   roomId?: number;
   edges?: string[];
   /** Work needed and done, in work-hours (excavation included). */
@@ -160,6 +160,7 @@ export function jobForRoom(state: SimState, roomId: number): Job | undefined {
 
 /** Can the crews work on this job yet? A blueprint on a floor still being dug waits. */
 function workable(state: SimState, job: Job): boolean {
+  if (job.kind === "dome") return true;
   if (job.kind === "corridors" || job.kind === "fill") return (job.edges ?? []).every((id) => (edgeById(state.layout.hole, id)?.floor ?? 0) <= state.layout.hole.floors);
   const room = state.layout.rooms.find((r) => r.id === job.roomId);
   return !!room && !room.planned;
@@ -193,6 +194,7 @@ function removeRoom(layout: Layout, room: RoomInstance): void {
 
 function finish(state: SimState, job: Job, cfg: SimConfig): void {
   const layout = state.layout;
+  if (job.kind === "dome") return finishDome(state, cfg);
   const room = job.roomId !== undefined ? layout.rooms.find((r) => r.id === job.roomId) : undefined;
   if (job.digCells) openCells(layout, job.digCells);
   // An empty room is only ever a hole in the rock: done, it's empty space.
@@ -217,6 +219,33 @@ function finish(state: SimState, job: Job, cfg: SimConfig): void {
   recomputeAccess(layout);
   layout.version++;
   if (job.kind !== "corridors" && job.kind !== "fill" && room) postMessage(state, cfg, `${roomRef(room)} ${job.kind === "extend" ? "extended" : "built"}.`);
+}
+
+/** The dome is up: the shaft is pressurized. */
+function finishDome(state: SimState, cfg: SimConfig): void {
+  state.layout.domed = true;
+  recomputeAccess(state.layout);
+  state.layout.version++;
+  postMessage(state, cfg, `The dome over ${state.name}'s shaft is sealed: the shaft is air now, every gallery is open walkway, and the whole hole breathes easier.`, "good");
+}
+
+/** Start building the dome over the shaft (or, with construction time off, build it at once). */
+export function queueDome(state: SimState, cfg: SimConfig): void {
+  const job = add(state, { kind: "dome", work: cfg.dome.workHours });
+  if (!job) finishDome(state, cfg);
+}
+
+/** Why the dome can't be started now, or null. */
+export function domeRefusal(state: SimState): string | null {
+  if (state.layout.domed) return "The shaft already has its dome";
+  if (domeQueued(state)) return "The dome is already being built";
+  if (!(state.unlocks ?? []).includes("dome")) return `Unlocks at ${config.dome.population} colonists in this hole`;
+  return shortfall(state.resources, config.dome.cost);
+}
+
+/** Is the dome being built? */
+export function domeQueued(state: SimState): boolean {
+  return !!state.construction?.queue.some((j) => j.kind === "dome");
 }
 
 /** Each tick: bandwidth goes to the first job that can be worked, any left over to the next. */
@@ -309,7 +338,9 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
       job.kind === "extend" ? "another floor" : phaseOf(job) === "excavating" && room && !roomDef(room.type).excavationOnly ? "excavating" : undefined;
     const n = job.edges?.length ?? 0;
     const label =
-      job.kind === "corridors"
+      job.kind === "dome"
+        ? "Shaft dome"
+        : job.kind === "corridors"
         ? `Corridors (${n} ${n === 1 ? "segment" : "segments"})`
         : job.kind === "fill"
           ? `Filling in corridors (${n} ${n === 1 ? "segment" : "segments"})`

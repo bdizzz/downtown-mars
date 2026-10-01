@@ -55,3 +55,11 @@ Asked for by Bryon, Sep 30, 2026 ("let's do all that", after PLAN-M11's "not bui
 - Glassworks (industry, M, 3 staff): rock 4, power 4 → glass 2 a day; brick 10, metal 5, machinery 1; from 200 colonists (`unlocks.rooms.glassworks`, with word when it opens). Noise −1 r1 and air quality −1 r1 (heat, the catalog's effect, isn't built).
 - Furniture (the kiln, a new rack of glass sheets, a hopper), a template, and a pane-of-glass glyph.
 
+**Step 6, the dome:**
+- `config.dome`: population 300 (an unlock gate, "dome", with word when it opens), cost glass 200, metal 120, machinery 20, electronics 10, 240 work-hours, atrium +0.5 comfort, air +0.5.
+- `buildDome` charges the cost and queues a construction job of its own kind ("Shaft dome"); cancelling it refunds everything. Done, it sets `layout.domed`, with a message.
+- **Under the dome:** every floor's gallery is open walkway in the access network and the path graph (as if tubes ran all round); `tubeAt` is true everywhere, so doors, window bands, walking and the walkers follow; shaft-facing rooms get the full view plus the atrium bonus; air quality +0.5 on every cell's baseline; storms no longer worsen the airlock dust (the field's dust stays 1).
+- **Views:** 3D: open ledges with railings on every floor (no glass), and a ribbed glass dome over the shaft at the rim; 2D and plan: the shaft band and ledge ring drawn as walkway again.
+- **UI:** Build → Public has a **Shaft dome** button (✓ built, … under way) with a card of its cost and what it does; a domed hole's name carries ◓ in the hole list and the Network panel.
+- Storm grit already stays above ground in 3D, so nothing more was needed there.
+

@@ -422,6 +422,8 @@ export function App() {
                   rotate={rotate}
                   canUndo={canUndo}
                   undo={undo}
+                  dome={snapshot.layout.domed ? "built" : snapshot.construction.jobs.some((j) => j.kind === "dome") ? "building" : "none"}
+                  onBuildDome={() => onCommand({ type: "buildDome" })}
                 />
               )}
               {mode === "view" && (

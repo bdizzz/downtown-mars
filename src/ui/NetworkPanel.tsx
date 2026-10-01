@@ -63,7 +63,7 @@ export function NetworkPanel({
             <tr key={h.id} className={h.id === s.holeId ? "here" : ""}>
               <td>
                 <i className="dot" style={{ background: colorOf(s, h.id) }} />
-                {h.name}
+                {h.name}{h.domed ? " ◓" : ""}
               </td>
               <td>{h.population}</td>
               <td>
@@ -102,7 +102,7 @@ export function NetworkPanel({
         {s.holes.map((h) => (
           <span key={h.id}>
             <i style={{ background: colorOf(s, h.id) }} />
-            {h.name}
+            {h.name}{h.domed ? " ◓" : ""}
           </span>
         ))}
       </div>

@@ -46,6 +46,7 @@ function summaries(): HoleSummary[] {
     stock: Object.fromEntries(TRADEABLE.map((r) => [r, h.resources[r] ?? 0])),
     culture: h.culture,
     cultureTarget: cultureTarget(h, config),
+    domed: !!h.layout.domed,
   }));
 }
 

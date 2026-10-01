@@ -1566,6 +1566,19 @@ function galleryTubes(layout: Layout, digFloor: number | null, topFloor: number 
     for (const e of galleryEdges(hole, floor)) {
       const a0 = e.a0 * TAU;
       const a1 = e.a1 * TAU;
+      // Under the dome the shaft is air: an open ledge all the way round, with a railing and lamps, no glass.
+      if (layout.domed) {
+        if (floor > hole.floors) continue;
+        flatRing(slab, rOpen, R, a0, a1, yf);
+        curvedFace(slab, rOpen, a0, a1, y0, yf);
+        curvedFace(ribs, rOpen + 0.05, a0, a1, yf + RAIL_HEIGHT - 0.03, yf + RAIL_HEIGHT + 0.03);
+        const posts = Math.max(1, Math.round(((a1 - a0) * rOpen) / TUBE.ribEveryM));
+        for (let i = 0; i < posts; i++) {
+          const a = a0 + ((a1 - a0) * (i + 0.5)) / posts;
+          curvedFace(ribs, rOpen + 0.05, a - 0.03 / rOpen, a + 0.03 / rOpen, yf, yf + RAIL_HEIGHT);
+        }
+        continue;
+      }
       if (!layout.corridors?.[e.id]) {
         flatRing(empty, rOpen, R, a0, a1, yf);
         continue;

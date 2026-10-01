@@ -85,6 +85,8 @@ export interface HoleSummary {
   culture: Culture;
   /** Where the culture is heading. */
   cultureTarget: Culture;
+  /** The shaft has its dome: a hole's crowning work. */
+  domed?: boolean;
 }
 
 // What the views get to see: the hole being looked at, in full, plus a line

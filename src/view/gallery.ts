@@ -19,7 +19,7 @@ export function tubeRuns(layout: Layout): TubeRun[] {
   const out: TubeRun[] = [];
   for (let floor = 1; floor <= layout.hole.floors; floor++) {
     const edges = galleryEdges(layout.hole, floor);
-    const built = edges.map((e) => !!layout.corridors?.[e.id] && layout.corridorsBuilding?.[e.id] === undefined);
+    const built = edges.map((e) => !!layout.domed || (!!layout.corridors?.[e.id] && layout.corridorsBuilding?.[e.id] === undefined));
     if (built.every(Boolean)) {
       out.push({ floor, t0: 0, t1: 1, full: true });
       continue;
@@ -48,6 +48,7 @@ export function tubeRuns(layout: Layout): TubeRun[] {
 
 /** Is there a gallery tube (built, or being built) along ring 1's slot on this floor? */
 export function tubeAt(layout: Layout, floor: number, slot: number): boolean {
+  if (layout.domed) return true; // the shaft is air: open walkway all round
   const e = galleryEdges(layout.hole, floor)[slot];
   return !!e && !!layout.corridors?.[e.id];
 }

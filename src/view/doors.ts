@@ -34,6 +34,7 @@ export function doorways(layout: Layout, room: RoomInstance): Doorway[] {
       .filter((c) => c.floor === floor && c.ring === 1)
       .filter((c) => {
         const id = tubes[c.slot]?.id;
+        if (layout.domed) return true;
         return !!id && !!layout.corridors?.[id] && layout.corridorsBuilding?.[id] === undefined;
       })
       .sort((a, b) => a.slot - b.slot);

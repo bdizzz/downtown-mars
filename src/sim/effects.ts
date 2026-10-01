@@ -160,7 +160,9 @@ export function computeEffects(layout: Layout, dust = 1): EffectField {
   const field = emptyField(layout);
   // Air goes stale away from the shaft: each ring out starts a little worse, before any room's effect.
   const byRing = config.effects.airQualityByRing;
-  field.airQuality!.forEach((floor) => floor.forEach((ring, r) => ring.fill(byRing[r] ?? byRing.at(-1) ?? 0)));
+  // Under the dome the shaft is one big shared volume of air: fresher everywhere.
+  const dome = layout.domed ? config.dome.air : 0;
+  field.airQuality!.forEach((floor) => floor.forEach((ring, r) => ring.fill((byRing[r] ?? byRing.at(-1) ?? 0) + dome)));
   const rooms = new Map(layout.rooms.map((r) => [r.id, r]));
   for (const room of layout.rooms) {
     if (room.planned || room.building || room.at.kind !== "ring") continue;

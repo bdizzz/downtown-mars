@@ -21,7 +21,8 @@ export function step(state: SimState, cfg: SimConfig): void {
   const before = { ...state.resources };
   stepWeather(state, cfg);
   stepDigging(state, cfg);
-  state.effects = refreshEffects(state.layout, state.effects, dustNow(stormLevel(state, cfg)));
+  // A dust storm drives more dust through the airlocks (the dome's are better sealed).
+  state.effects = refreshEffects(state.layout, state.effects, dustNow(state.layout.domed ? 0 : stormLevel(state, cfg)));
   stepEconomy(state, cfg);
   stepCondition(state, cfg);
   stepConstruction(state, cfg);
