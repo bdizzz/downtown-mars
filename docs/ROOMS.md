@@ -256,6 +256,7 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 | Small plaza | M | 1 | Power 1 | Gathering space | Comfort +1.5 on foot within 6 steps, +0.5 r1 next door | R 10, B 5 | Pop 100 |
 | Plaza | L | 2 | Power 2 | Transit hub; shortens commutes | Comfort +2 r2, entertainment +1 r2 | B 20, M 5 | Pop 500 |
 | Grand plaza | H | 4 | Power 4, glass for skylights | Transit hub; hosts events | Comfort +3 r3, entertainment +2 r3 | B 40, M 15, glass 10 | Pop 2,000 |
+| Shaft dome (as built) | Over the shaft, one per hole | 0 | — | Seals the shaft: every gallery open walkway; atrium comfort +0.5 for shaft-facing rooms; air quality +0.5 everywhere; no storm dust through the airlock | — | Glass 200, M 120, Mc 20, E 10; 240 work-hours | Pop 300 |
 
 - **Corridors** are required to reach rooms beyond the first ring, and double as sound buffers between noisy and quiet rooms.
 - **Plazas** give shops, bars and canteens that border them a customer bonus, forming natural town squares.

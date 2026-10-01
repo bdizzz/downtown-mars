@@ -63,3 +63,5 @@ Asked for by Bryon, Sep 30, 2026 ("let's do all that", after PLAN-M11's "not bui
 - **UI:** Build → Public has a **Shaft dome** button (✓ built, … under way) with a card of its cost and what it does; a domed hole's name carries ◓ in the hole list and the Network panel.
 - Storm grit already stays above ground in 3D, so nothing more was needed there.
 
+**Step 7, docs:** README, DESIGN, DECISIONS, CLAUDE.md, ART and ROOMS (a Shaft dome row) updated; ROOM-STATUS regenerated. The bots don't build bulkheads, glassworks or the dome (their runs stop before 200 colonists in a hole); nothing in them needed changing.
+

@@ -2,7 +2,7 @@
 
 A condensed record of the design conversation (Sep 26–27, 2026) between Bryon and Claude, and of what was decided while building (Sep 27–30): what was decided, what changed along the way, and what is still open. Use this to avoid reviving ideas that were already rejected.
 
-**Where things stand (Sep 30, 2026):** milestones 1–11 are built (see "Decided while building" below and the `PLAN*.md` files). Which catalog rooms are in the game and which are only described is in `ROOM-STATUS.md`, generated from the catalog and `data/rooms.json`.
+**Where things stand (Sep 30, 2026):** milestones 1–12 are built (see "Decided while building" below and the `PLAN*.md` files). Which catalog rooms are in the game and which are only described is in `ROOM-STATUS.md`, generated from the catalog and `data/rooms.json`.
 
 ## Source of truth
 
@@ -129,6 +129,17 @@ See `PLAN-M11.md`: built (Sep 30), with its notes as built.
 - **Steps:** one per room or corridor segment, stairs one between floors; reach is data (about 6 for a plaza, 10 for a clinic). Stairs carry air and people, elevators people only.
 - **Services fill nearest first:** homes use the nearest clinic, school or elder care in reach, and spill over to the next one in reach when it's full.
 - **The dome** over the shaft is a hole's end goal (a later milestone).
+
+## Decided for milestone 12 (Sep 30)
+
+See `PLAN-M12.md` (Claude's defaults, built at Bryon's "let's do all that"; every number is in data).
+
+- **Bulkheads** on built corridor segments (not tubes): air and smell stop, people pass. 2 metal; free to take out.
+- **Dust through the airlock:** air quality −1 by the airborne rules, twice as bad in a dust storm.
+- **Crowding:** past 5 residents a cell, a home loses 0.15 air quality per resident a cell (a full bunk dorm −0.45).
+- **Window walls** where no tube runs; open space and walk-through rooms walled off from the shaft without one.
+- **Glass** and the **glassworks** (from 200 colonists).
+- **The shaft dome**, from 300 colonists: every gallery open walkway, the shaft an atrium (+0.5 comfort facing it), air +0.5 everywhere, no storm dust through the airlock.
 
 ## Still open
 

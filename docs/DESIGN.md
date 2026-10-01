@@ -17,11 +17,11 @@ A real-time city builder on Mars where each city is a borehole: you dig down, ca
 
 ## Where the build stands (Sep 30, 2026)
 
-This doc is the design target; the game builds toward it. Milestones 1–11 are done (11: gallery tubes, air through the network, services by walking distance): one or two holes, the 3D view, people, corridors on edges, construction time, storage, excavation and the entrance, furnished rooms, and condition and upkeep. Sections below carry an **As built** note where the game differs today. `DECISIONS.md` lists what was decided while building, and `ROOM-STATUS.md` which rooms are in the game.
+This doc is the design target; the game builds toward it. Milestones 1–12 are done (11: gallery tubes, air through the network, services by walking distance; 12: bulkheads, airlock dust, crowding, glass and the shaft dome): one or two holes, the 3D view, people, corridors on edges, construction time, storage, excavation and the entrance, furnished rooms, and condition and upkeep. Sections below carry an **As built** note where the game differs today. `DECISIONS.md` lists what was decided while building, and `ROOM-STATUS.md` which rooms are in the game.
 
 | Area | In the game | Not yet |
 | --- | --- | --- |
-| The borehole | Floors dug by the drill; rooms excavated from rock; entrance, stairs and elevators; the shaft open to Mars, with a sealed network of gallery tubes, corridors and stairs (milestone 11) | Rings 4–6; cave-ins; choosing a diameter; the shaft dome |
+| The borehole | Floors dug by the drill; rooms excavated from rock; entrance, stairs and elevators; the shaft open to Mars, with a sealed network of gallery tubes, corridors and stairs (milestone 11) | Rings 4–6; cave-ins; choosing a diameter |
 | Rooms | 56 room types (see `ROOM-STATUS.md`) | About half the catalog, H-size rooms, multi-floor rooms beyond stairs and elevators |
 | Resources | Air, water (clean, gray, black), food, soil, waste, rock and ores, brick, marscrete, metal, machinery, wafers, electronics; storage for dry goods | Glass, plastics, textiles, consumer goods, currency |
 | Happiness | Three factors: noise, health and comfort (smell, shaft views, homelessness, care, seating at meals, ordinances and room condition feed them); parks, plazas, gyms and clinics lift the homes within walking reach; air quality feeds health | Safety, entertainment, diet variety, crowding |
