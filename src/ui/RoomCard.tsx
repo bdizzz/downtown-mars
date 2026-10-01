@@ -59,7 +59,7 @@ export function RoomCard({ def, resources, shape, onRotate, siteNote }: Props) {
       {Object.keys(def.makes).length > 0 && <p>Makes {flows(def.makes)} a day</p>}
       {def.stores && <p>Stores {flows(def.stores)}</p>}
       {def.houses ? <p>Houses {def.houses}</p> : null}
-      {def.houses ? <p className="good">In ring 1: a shaft view, {signed(config.happiness.shaftViewComfort)} comfort through its own windows ({signed(config.happiness.galleryViewComfort)} behind a gallery tube)</p> : null}
+      {def.houses ? <p className="good">Windows (an upgrade): up to {signed(config.windows.view.shaft)} comfort looking out over the shaft, less onto a plaza or a corridor</p> : null}
       {def.sanitation ? <p>Sanitation for {def.sanitation}</p> : null}
       {def.cares ? <p>Care for {def.cares}</p> : null}
       {def.serves ? <p>Seats {def.serves} diners{def.reach ? ` from homes within ${def.reach} steps` : ""}{def.makes.meals ? "" : " (meals cooked elsewhere)"}</p> : null}

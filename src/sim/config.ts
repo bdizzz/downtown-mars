@@ -114,10 +114,6 @@ export interface SimConfig {
     /** Happiness points per unit of each factor (factors run −factorLimit..+factorLimit). */
     weights: Record<"noise" | "comfort" | "health", number>;
     factorLimit: number;
-    /** Comfort for homes in ring 1, which look out over the shaft. */
-    shaftViewComfort: number;
-    /** The view from a ring-1 room through a gallery tube in front of it. */
-    galleryViewComfort: number;
     homelessComfort: number;
     /** Health factor when no clinic covers anyone; scaled by the uncovered share. */
     noCareHealth: number;
@@ -149,6 +145,18 @@ export interface SimConfig {
     dust: { stormFactor: number };
     /** Packed homes go stuffy: each resident past `perCell` a cell costs the home `air` air quality. */
     crowding: { perCell: number; air: number };
+  };
+  /**
+   * Windows, an upgrade a room's walls can have (PLAN-M13): their price by
+   * length, and the comfort a home gets from them: its best view (the open
+   * shaft, the shaft through a gallery tube, a walk-through room, a corridor),
+   * plus `extraWall` for each other glazed wall, up to `cap`.
+   */
+  windows: {
+    costPer10m: Record<string, number>;
+    view: Record<"shaft" | "tube" | "public" | "corridor", number>;
+    extraWall: number;
+    cap: number;
   };
   /** The shaft dome, a hole's end goal (PLAN-M12): when it opens up, what it costs, how long it takes, and what it gives. */
   dome: { population: number; cost: Record<string, number>; workHours: number; atriumComfort: number; air: number };

@@ -1,6 +1,7 @@
+import { setRoomWindows, shaftBorders } from "./windows";
 import { refreshEffects } from "./effects";
 import { createLedger } from "./ledger";
-import { isRoomType } from "./rooms";
+import { isRoomType, roomDef } from "./rooms";
 import type { SimState } from "./state";
 import { config, type SimConfig } from "./config";
 import { depositsAt, generateMap, type MapState } from "./map";
@@ -17,7 +18,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 16;
+export const SAVE_VERSION = 17;
 
 type Raw = Record<string, unknown>;
 
@@ -119,6 +120,20 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       layout.corridors ??= {};
       for (let f = 1; f <= layout.hole.floors; f++) for (const e of galleryEdges(layout.hole, f)) layout.corridors[e.id] ??= corridors.gallery.id;
       recomputeAccess(layout);
+      return { ...h, layout };
+    }),
+  }),
+  // v17: windows are an upgrade. Rooms keep the shaft windows they had: every private room's ring-1 face.
+  16: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const layout = h.layout as Layout;
+      for (const room of layout.rooms) {
+        const def = roomDef(room.type);
+        if (room.at.kind !== "ring" || def.public || def.excavationOnly) continue;
+        const shaft = shaftBorders(layout, room);
+        if (shaft.length) setRoomWindows(room, shaft, true);
+      }
       return { ...h, layout };
     }),
   }),

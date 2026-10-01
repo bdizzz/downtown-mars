@@ -6,6 +6,7 @@ import { roomDef } from "../sim/rooms";
 import { isOpen } from "../sim/excavation";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, shortfall } from "../sim/corridors";
 import type { Edge } from "../sim/edges";
+import { glazedAcross, glazedOnWall, roomForWindows, wallOf, windowComfort, windowCost, windowRefusal } from "../sim/windows";
 import type { EdgeHover, HoverInfo, Pick, StageOptions, Tool } from "./types";
 
 // The rules for turning "what's under the pointer" into hover info and
@@ -46,6 +47,7 @@ export function edgeHoverFor(layout: Layout, resources: Record<string, number>, 
   if (!edge) return info;
   const finish = layout.corridors[edge.id];
   const removing = erase || tool.erase;
+  if (tool.windows) return windowHover(layout, resources, p, edge, removing);
   if (tool.bulkhead) {
     const refusal = bulkheadRefusal(layout, edge.id, !removing) ?? (removing ? null : shortfall(resources, corridors.bulkhead.cost));
     info.edge = { id: edge.id, refusal, cost: removing ? {} : corridors.bulkhead.cost, erase: removing, bulkhead: true, ...(finish ? { finish, linked: !!layout.corridorLinked?.[edge.id] } : {}) };
@@ -61,9 +63,26 @@ export function edgeHoverFor(layout: Layout, resources: Record<string, number>, 
   return info;
 }
 
+/** Hover info for the windows tool: the wall of a room under the pointer, and what glazing (or clearing) it would do. */
+function windowHover(layout: Layout, resources: Record<string, number>, p: Pick, edge: Edge, removing: boolean): HoverInfo {
+  const near = p.kind === "slot" ? { floor: p.floor, ring: p.ring, slot: p.slot } : null;
+  const room = roomForWindows(layout, edge.id, near);
+  const wall = room ? (removing ? glazedOnWall(layout, room, edge.id) : (wallOf(layout, room, edge.id) ?? [])) : [];
+  const ids = wall.map((e) => e.id);
+  let refusal = windowRefusal(room, ids, !removing);
+  const fresh = room ? wall.filter((e) => !room.windows?.includes(e.id)) : [];
+  const cost = removing || !fresh.length ? {} : windowCost(layout, fresh);
+  if (!refusal) refusal = shortfall(resources, cost);
+  const across = room && wall[0] ? glazedAcross(layout, room, wall[0]) : null;
+  // What a home would get from it: its comfort from windows, with this wall's in (or out).
+  const comfort = room && roomDef(room.type).houses && !refusal ? windowComfort(layout, { ...room, windows: removing ? room.windows?.filter((id) => !ids.includes(id)) : [...new Set([...(room.windows ?? []), ...ids])] }) : null;
+  return { pick: p, edge: { id: edge.id, refusal, cost, erase: removing, windows: { roomId: room?.id ?? 0, edges: ids.length ? ids : [edge.id], across, comfort } } };
+}
+
 /** The command for drawing (or erasing) a corridor on the border under the pointer. */
 export function corridorCommand(tool: Tool, edge: EdgeHover | undefined): SimCommand | null {
   if (tool?.kind !== "corridor" || !edge) return null;
+  if (tool.windows) return edge.windows?.roomId ? { type: "setWindows", roomId: edge.windows.roomId, edges: edge.windows.edges, on: !edge.erase } : null;
   if (tool.bulkhead) return { type: "setBulkhead", edges: [edge.id], on: !edge.erase };
   return edge.erase ? { type: "removeCorridors", edges: [edge.id] } : { type: "drawCorridors", edges: [edge.id], finish: tool.finish };
 }
@@ -106,7 +125,7 @@ export function clickWith(layout: Layout, tool: Tool, info: HoverInfo, opts: Sta
 
 /** With the corridor tool, dragging draws (or erases) a corridor along every border it crosses. */
 export function paints(tool: Tool): boolean {
-  return tool?.kind === "corridor" && !tool.bulkhead;
+  return tool?.kind === "corridor" && !tool.bulkhead && !tool.windows;
 }
 
 /**

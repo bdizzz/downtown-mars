@@ -36,7 +36,7 @@ When documents disagree, trust them in this order:
 - **Corridors run on the edges between rooms** (and between rooms and rock), not in slots; see Reversals. A walkway gallery rings the shaft, so ring 1 needs no corridors.
 - Rooms come in S/M/L/H (1/2/4/8 slots). Most L/H rooms choose wide, deep or tall; grand plaza, stadium and reactor are at least 2×2×2; arena, theater, farm atrium and commons are at least 2 floors tall.
 - Public rooms (plazas, markets, food courts, stadiums) are walk-through; private and industrial rooms block movement.
-- Frontage is automatic: shaft-facing windows (+1 comfort), doors and storefronts on corridors and plazas, no wall where a corridor meets a plaza.
+- Frontage: doors are automatic (one a floor, on the best wall); windows are an upgrade the player puts in (milestone 13); no wall where a corridor meets a plaza.
 
 **Economy**
 - Natural resources: regolith (rock, silica), water ice, ores, CO2 atmosphere; energy from sun, geothermal, reactors. Everything else is made.
@@ -75,6 +75,7 @@ When documents disagree, trust them in this order:
 - **Corridors take slots** (spokes and ring segments, a "ring road" loop): replaced in milestone 6 by corridors that run along the edges between rooms, carved out of what they pass. Don't bring back 1-slot corridor rooms.
 - **Excavator bay as the digger:** replaced in milestone 9. The drill sinks the shaft on its own; every room slot is rock until it's excavated, and **empty rooms** dig ahead for rock and space. (An excavator bay may return as a faster drill; see ROOM-STATUS.md.)
 - **Free space:** rooms used to sit on ready-made slots. Since milestone 9, space is dug, not given.
+- **Automatic windows:** every ring-1 room used to get shaft windows and their view for free. Since milestone 13 windows are an upgrade the player puts in (old saves keep the shaft windows they had). Frontage is no longer fully automatic: doors are, windows aren't.
 
 ## Cleanup before handoff
 
@@ -140,6 +141,14 @@ See `PLAN-M12.md` (Claude's defaults, built at Bryon's "let's do all that"; ever
 - **Window walls** where no tube runs; open space and walk-through rooms walled off from the shaft without one.
 - **Glass** and the **glassworks** (from 200 colonists).
 - **The shaft dome**, from 300 colonists: every gallery open walkway, the shaft an atrium (+0.5 comfort facing it), air +0.5 everywhere, no storm dust through the airlock.
+
+## Decided for milestone 13 (Sep 30)
+
+See `PLAN-M13.md` (Bryon's request; the numbers are Claude's defaults, in data).
+
+- **Doors on any wall:** one per floor, on the best wall a room has: a gallery tube first, else the longest corridor, else a walk-through room. Every room touching a corridor has a way in.
+- **Windows are an upgrade,** off by default. The corridor tool's **Windows** mode glazes a whole wall at a click, only where the shaft, a corridor or a walk-through room is across it. **Changed from the plan:** 5 rock per 10 m (fused regolith panes), not metal: early metal is too scarce, and the playtest bots stalled paying it.
+- **Window comfort (homes):** the best wall's view, averaged along it: open shaft 1.5, shaft through a tube 1, a plaza or stairs 0.75, a corridor 0.25; +0.25 for each other glazed wall, up to 2; the dome's atrium on top. Replaces the automatic shaft view.
 
 ## Still open
 

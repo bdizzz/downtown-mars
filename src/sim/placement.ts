@@ -55,6 +55,8 @@ export interface RoomInstance {
   repair?: { done: number; work: number };
   /** The player's own name for it (rename), shown instead of its type's. */
   name?: string;
+  /** Borders (edge ids) of its walls the player has put windows in (see windows.ts). */
+  windows?: string[];
 }
 
 export interface Layout {

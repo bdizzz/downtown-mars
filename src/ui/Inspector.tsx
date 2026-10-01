@@ -8,7 +8,8 @@ import { useState } from "react";
 import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
 import { mainOutput, roomSpec } from "../sim/economy";
-import { crowdedAir, shaftView } from "../sim/happiness";
+import { crowdedAir } from "../sim/happiness";
+import { glazedWalls, windowComfort, type Across } from "../sim/windows";
 import { amenityFelt } from "../sim/amenities";
 import { reachSteps, reachTints } from "../view/reachView";
 import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
@@ -121,15 +122,24 @@ function WithinReach({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms
   );
 }
 
-/** A ring-1 home's view over the shaft: through its own windows, or a gallery tube in front. */
-function ShaftView({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
-  const v = shaftView(s.layout, room, config);
-  if (v <= 0) return null;
-  const h = config.happiness;
-  const how = v >= h.shaftViewComfort - 1e-9 ? "through its own windows" : v <= h.galleryViewComfort + 1e-9 ? "through a gallery tube" : "partly through a gallery tube";
+const ACROSS: Record<Across, string> = { shaft: "the shaft", corridor: "a corridor", public: "a walk-through room" };
+
+/** A room's windows: what they look out on, and (a home) the comfort they give. None until the player puts them in. */
+function Windows({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
+  const walls = glazedWalls(s.layout, room);
+  const home = !!roomDef(room.type).houses;
+  if (!walls.length) {
+    return home ? (
+      <p>
+        <span className="k">Windows</span> none yet: add them with Build → Corridors → Windows, on a wall facing the shaft, a corridor or a plaza
+      </p>
+    ) : null;
+  }
+  const onto = [...new Set(walls.map((w) => ACROSS[w.across]))].join(", ");
   return (
     <p>
-      <span className="k">Shaft view</span> {signed(v)} comfort, {how}
+      <span className="k">Windows</span> onto {onto}
+      {home ? `: ${signed(windowComfort(s.layout, room, config))} comfort` : ""}
     </p>
   );
 }
@@ -478,7 +488,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
           <span className="k">Seats</span> {num(spec.serves)} diners · {dining(s)}
         </p>
       )}
-      {room.at.kind === "ring" && def.houses ? <ShaftView s={s} room={room} /> : null}
+      {room.at.kind === "ring" && !def.public ? <Windows s={s} room={room} /> : null}
       {def.houses && crowdedAir(s, room) < -0.01 ? (
         <p className="warn">
           <span className="k">Crowded</span> air {signed(crowdedAir(s, room))}: more than {config.effects.crowding.perCell} to a cell gets stuffy

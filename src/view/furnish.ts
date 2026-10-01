@@ -4,7 +4,8 @@ import { edgeById } from "../sim/edges";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { floorSpan, ringRadii, slotAngles } from "../render3d/cylinder";
-import { doorways, type Doorway } from "./doors";
+import { doorways, sideOf, type Doorway } from "./doors";
+import { glazedWalls, ownSide } from "../sim/windows";
 import { isFurnished, isItem, isMounted, itemDef, itemsFor } from "./furniture";
 
 // Laying furniture out in a room. A template (data/layouts.json) is a list of
@@ -168,6 +169,15 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
     .filter((d) => d.floor === floor)
     .map((d) => keepClear(d));
   const open = !!roomDef(room.type).public;
+  // Which walls have windows in them on this floor.
+  const glass = new Set(
+    glazedWalls(layout, room)
+      .filter(({ edge }) => edge.floor === floor)
+      .map(({ edge }) => {
+        const cell = ownSide(layout, edge, own);
+        return cell ? sideOf(edge, cell) : null;
+      }),
+  );
   return {
     // On the room's floor, which stands the walls' hairline above the floor's base (as the 3D view draws it).
     y: floorSpan(floor)[0] + INSET,
@@ -183,11 +193,11 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
     area: ((rOut * rOut - rIn * rIn) / 2) * (a1 - a0),
     floor,
     solid: {
-      // Ring 1's front is the shaft face: glass on a private room, nothing at all on a public one.
-      front: inner > 1 && !(open && front === HALL),
-      back: !(open && back === HALL),
-      left: !(open && left === HALL),
-      right: !(open && right === HALL),
+      // A public room's open sides, ring 1's front onto the shaft on a public room, and glazed walls aren't.
+      front: !(open && (front === HALL || inner === 1)) && !glass.has("inner"),
+      back: !(open && back === HALL) && !glass.has("outer"),
+      left: !(open && left === HALL) && !glass.has("left"),
+      right: !(open && right === HALL) && !glass.has("right"),
     },
   };
 }

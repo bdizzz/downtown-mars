@@ -7,6 +7,7 @@ import { FIT, fit, frameOf, furnish, isFlat, type Template } from "../src/view/f
 import { furniture, isMounted, itemDef } from "../src/view/furniture";
 import { furnitureGroup } from "../src/render3d/rooms3d";
 import { obstacles } from "../src/view/walk";
+import { setRoomWindows, shaftBorders } from "../src/sim/windows";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 function room(layout: Layout, type: string, at: Location) {
@@ -52,10 +53,13 @@ describe("wall hangings", () => {
     expect(fit(frame, [{ item: "painting", wall: "back" }, { item: "poster", wall: "back" }])).toHaveLength(1);
   });
 
-  it("go only on solid walls: not ring 1's glass front, nor a public room's open sides", () => {
+  it("go only on solid walls: not a glazed one, nor a public room's open sides", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
     const t: Template = [{ item: "poster", wall: "front" }];
-    expect(fit(frameOf(layout, room(layout, "flat", ring(1, 1, 3)))!, t)).toEqual([]);
+    const front = room(layout, "flat", ring(1, 1, 3));
+    expect(fit(frameOf(layout, front)!, t)).toHaveLength(1);
+    setRoomWindows(front, shaftBorders(layout, front), true);
+    expect(fit(frameOf(layout, front)!, t)).toEqual([]);
     expect(fit(frameOf(layout, room(layout, "flat", ring(1, 2, 3)))!, t)).toHaveLength(1);
     // A plaza on the gallery has no front wall at all.
     expect(fit(frameOf(layout, room(layout, "tiny_plaza", ring(1, 1, 6)))!, t)).toEqual([]);

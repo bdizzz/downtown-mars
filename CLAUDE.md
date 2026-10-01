@@ -16,7 +16,7 @@ Vibe: SimCity, SimTower and Terraforming Mars, with some of Frostpunk's social t
 | `ROOM-STATUS.md` | Which catalog rooms are built and which are only described, graded by what each needs first. Generated: `node scripts/room-status.mjs` (rerun after adding rooms). |
 | `PATHWAYS.md` | Each resource family traced from source to users, with what's built. |
 | `EVENTS.md` | Event catalog: citizen visits, strike chain, hazards, discoveries, network, Earth and belt, story and notable events, with what's built. |
-| `PLAN.md`, `PLAN-M2.md` … `PLAN-M11.md` | Milestone plans, each with "Notes as built". M1 first playable, M2 polish and saves, M3 3D, M4 two holes, M5 people, M6 corridors on edges, M7 construction time, M8 storage, M9 excavation and the entrance, M10 furnishing (and later work: condition, new rooms, afterglow, charts, air quality), M11 the sealed network: gallery tubes, air and smell through corridors, amenities and services by walking distance; M12 bulkheads, airlock dust, crowding, window walls, glass and the shaft dome. |
+| `PLAN.md`, `PLAN-M2.md` … `PLAN-M13.md` | Milestone plans, each with "Notes as built". M1 first playable, M2 polish and saves, M3 3D, M4 two holes, M5 people, M6 corridors on edges, M7 construction time, M8 storage, M9 excavation and the entrance, M10 furnishing (and later work: condition, new rooms, afterglow, charts, air quality), M11 the sealed network: gallery tubes, air and smell through corridors, amenities and services by walking distance; M12 bulkheads, airlock dust, crowding, window walls, glass and the shaft dome; M13 doors on any wall and windows as an upgrade. |
 | `FURNITURE.md` | Furniture models and room layout templates. |
 | `ART.md` | Art direction: the cozy 3D look, palette, readability rules. |
 

@@ -9,7 +9,7 @@ import { addRoute } from "../src/sim/rovers";
 import type { SimState } from "../src/sim/state";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
-import { ensureStairs, quarry, adapt, tendStorage, tendUpkeep } from "./adaptive";
+import { ensureStairs, quarry, adapt, tendStorage, tendUpkeep, tendWindows } from "./adaptive";
 import { PLAN, VISIT_ANSWERS } from "./bot";
 import { beds } from "../src/sim/earth";
 import { stageCounts } from "../src/sim/people";
@@ -113,6 +113,7 @@ function tend(hole: SimState, t: number): void {
   if (t % config.ticksPerDay === 0) {
     tendStorage(hole);
     tendUpkeep(hole);
+    tendWindows(hole);
   }
 }
 

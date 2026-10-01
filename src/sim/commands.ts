@@ -10,7 +10,8 @@ import { enact, repeal } from "./ordinances";
 import { isCrop, resourceDefs } from "./resources";
 import { capacities, mainOutput } from "./economy";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
-import { edgeById } from "./edges";
+import { edgeById, outsideEdges } from "./edges";
+import { setRoomWindows, wallOf, windowCost, windowRefusal } from "./windows";
 import { domeRefusal, dropCorridors, dropRoomJobs, finishAll, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRoom } from "./construction";
 import { holeGates, unlock, UNLOCK_GATES } from "./people";
 import { allocationRefusal } from "./storage";
@@ -57,6 +58,8 @@ export type SimCommand =
   | { type: "consoleWear"; condition: number; roomId?: number }
   /** Fit sealed bulkheads across built corridor segments (on), or take them out (off, free). */
   | { type: "setBulkhead"; edges: string[]; on: boolean }
+  /** Put windows in (or take them out of) a room's wall: the borders along it. */
+  | { type: "setWindows"; roomId: number; edges: string[]; on: boolean }
   /** Start building the dome over the shaft. */
   | { type: "buildDome" }
   /** Give a room its own name; an empty name goes back to the default. */
@@ -72,6 +75,9 @@ export function applyCommand(state: SimState, cmd: SimCommand): CommandResult {
 }
 
 /** Deposits the console can put under a hole, for testing rooms that need one. */
+/** What windows are recorded as in the ledger. */
+const WINDOWS = "Windows";
+
 const DEPOSITS: DepositKind[] = ["ice", "aquifer", "ore", "silica"];
 
 /** What console changes are recorded as in the ledger. */
@@ -312,6 +318,27 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         layout.bulkheads ??= {};
         for (const id of ids) layout.bulkheads[id] = true;
       } else for (const id of ids) delete layout.bulkheads?.[id];
+      layout.version++;
+      return { ok: true };
+    }
+    case "setWindows": {
+      const room = layout.rooms.find((r) => r.id === cmd.roomId);
+      const own = room ? new Set(outsideEdges(layout.hole, room.cells).map((e) => e.id)) : new Set<string>();
+      // Only the room's own borders, and (putting them in) only where there's something to look out on.
+      const edges = room ? cmd.edges.filter((id, i) => cmd.edges.indexOf(id) === i && own.has(id) && (!cmd.on || (wallOf(layout, room, id) ?? []).some((e) => e.id === id))) : [];
+      const refusal = windowRefusal(room, edges, cmd.on);
+      if (refusal || !room) return { ok: false, reason: refusal ?? "No room there" };
+      if (cmd.on) {
+        const fresh = edges.filter((id) => !room.windows?.includes(id)).map((id) => edgeById(layout.hole, id)!);
+        const cost = windowCost(layout, fresh);
+        const short = shortfall(state.resources, cost);
+        if (short) return { ok: false, reason: short };
+        for (const [r, v] of Object.entries(cost)) {
+          state.resources[r] = (state.resources[r] ?? 0) - v;
+          record(state, r, "out", WINDOWS, v);
+        }
+      }
+      setRoomWindows(room, edges, cmd.on);
       layout.version++;
       return { ok: true };
     }

@@ -18,8 +18,11 @@ export type Pick =
 export type Tool =
   | { kind: "build"; room: string; shape: [number, number] }
   | { kind: "demolish" }
-  /** Draw corridors along borders, in a finish; with erase, remove them. With bulkhead, fit (or take out) sealed bulkheads on built ones instead. */
-  | { kind: "corridor"; finish: string; erase: boolean; bulkhead?: boolean }
+  /**
+   * Draw corridors along borders, in a finish; with erase, remove them. With bulkhead, fit (or take out)
+   * sealed bulkheads on built ones instead; with windows, put windows in (or take them out of) rooms' walls.
+   */
+  | { kind: "corridor"; finish: string; erase: boolean; bulkhead?: boolean; windows?: boolean }
   | null;
 
 /** The border under the pointer, with the corridor tool. */
@@ -36,6 +39,8 @@ export interface EdgeHover {
   erase: boolean;
   /** The bulkhead tool: fitting (or taking out) a bulkhead, not a corridor. */
   bulkhead?: boolean;
+  /** The windows tool: the room, the borders of its wall that would be glazed (or cleared), what's across, and the comfort it'd give a home. */
+  windows?: { roomId: number; edges: string[]; across: string | null; comfort: number | null };
 }
 
 export interface HoverInfo {

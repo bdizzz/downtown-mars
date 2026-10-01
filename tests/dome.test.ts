@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { applyCommand } from "../src/sim/commands";
 import { computeEffects, effectAt } from "../src/sim/effects";
-import { shaftView } from "../src/sim/happiness";
+import { setRoomWindows, shaftBorders, windowComfort } from "../src/sim/windows";
 import { ensureFloors, type Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
@@ -82,11 +82,9 @@ describe("the shaft dome", () => {
     // Floor 2 has no tubes: neither room is connected, and they can't reach each other.
     expect(s.layout.rooms.find((r) => r.id === a)!.connected).toBe(false);
     expect(stepsBetween(s.layout, a, b)).toBeNull();
-    const view = shaftView(
-      s.layout,
-      s.layout.rooms.find((r) => r.id === b)!,
-      config,
-    );
+    const clinic = s.layout.rooms.find((r) => r.id === b)!;
+    setRoomWindows(clinic, shaftBorders(s.layout, clinic), true);
+    const view = windowComfort(s.layout, clinic, config);
     const air = effectAt(computeEffects(s.layout), "airQuality", {
       floor: 2,
       ring: 3,
@@ -98,7 +96,7 @@ describe("the shaft dome", () => {
     expect(s.layout.rooms.find((r) => r.id === a)!.connected).toBe(true);
     expect(stepsBetween(s.layout, a, b)).not.toBeNull();
     expect(
-      shaftView(
+      windowComfort(
         s.layout,
         s.layout.rooms.find((r) => r.id === b)!,
         config,

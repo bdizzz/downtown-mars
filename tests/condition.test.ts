@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { setRoomWindows, shaftBorders } from "../src/sim/windows";
 import { config } from "../src/sim/config";
 import { applyCommand } from "../src/sim/commands";
 import { createInitialState, type SimState } from "../src/sim/state";
@@ -131,6 +132,7 @@ describe("room condition", () => {
     const galley = build(s, "galley", ring(1, 1, 5));
     // Its own shaft windows (no tube in front), so its comfort isn't already at the floor.
     for (const slot of [3, 4]) delete s.layout.corridors[galleryEdges(s.layout.hole, 1)[slot]!.id];
+    setRoomWindows(room(s, dorm), shaftBorders(s.layout, room(s, dorm)), true);
     const fresh = homeFactors(s, room(s, dorm), config).comfort;
     room(s, dorm).condition = 0.1;
     const wornHome = homeFactors(s, room(s, dorm), config).comfort;

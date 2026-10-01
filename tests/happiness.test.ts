@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
-import { productivity, shaftView, updateHappiness } from "../src/sim/happiness";
+import { productivity, updateHappiness } from "../src/sim/happiness";
+import { setRoomWindows, shaftBorders, windowComfort } from "../src/sim/windows";
 import { galleryEdges } from "../src/sim/edges";
 import type { Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
@@ -56,22 +57,28 @@ describe("happiness", () => {
     expect(pool(withClinic, "bunk_dorm").factors.health).toBeGreaterThan(pool(without, "bunk_dorm").factors.health);
   });
 
-  it("ring 1 homes get the shaft view: in full through their own windows, partly through a gallery tube", () => {
+  it("homes with windows get the view: in full over the open shaft, less through a gallery tube; none without windows", () => {
     const s = withRooms([
       ["bunk_dorm", ring(1, 1, 1, 2)],
       ["bunk_dorm", ring(1, 2, 3, 2)],
     ]);
     const dorms = () => s.happiness.pools.filter((p) => s.layout.rooms.find((r) => r.id === p.roomId)!.type === "bunk_dorm");
-    // Floor 1 starts with its gallery all the way round: the view is through the tube.
     let [inner, outer] = dorms();
-    expect(inner!.factors.comfort - outer!.factors.comfort).toBeCloseTo(config.happiness.galleryViewComfort);
-    // Take the tube away from in front of one of its two cells: halfway between.
+    // No windows yet: no view, even facing the shaft.
+    expect(inner!.factors.comfort).toBeCloseTo(outer!.factors.comfort);
     const home = s.layout.rooms.find((r) => r.id === inner!.roomId)!;
+    setRoomWindows(home, shaftBorders(s.layout, home), true);
+    updateHappiness(s, config, true);
+    // Floor 1 starts with its gallery all the way round: the view is through the tube.
+    [inner, outer] = dorms();
+    expect(inner!.factors.comfort - outer!.factors.comfort).toBeCloseTo(config.windows.view.tube);
+    // Take the tube away from in front of one of its two cells: halfway between, along the wall.
     delete s.layout.corridors[galleryEdges(s.layout.hole, 1)[home.cells[0]!.slot]!.id];
     updateHappiness(s, config, true);
     [inner, outer] = dorms();
-    expect(inner!.factors.comfort - outer!.factors.comfort).toBeCloseTo((config.happiness.shaftViewComfort + config.happiness.galleryViewComfort) / 2);
-    expect(shaftView(s.layout, home, config)).toBeCloseTo((config.happiness.shaftViewComfort + config.happiness.galleryViewComfort) / 2);
+    const half = (config.windows.view.shaft + config.windows.view.tube) / 2;
+    expect(inner!.factors.comfort - outer!.factors.comfort).toBeCloseTo(half);
+    expect(windowComfort(s.layout, home, config)).toBeCloseTo(half);
   });
 
   it("colonists move into the best homes first", () => {

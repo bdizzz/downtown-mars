@@ -1,8 +1,8 @@
 import { corridors } from "../sim/corridors";
-import { edgeLengthM, edgeSides, galleryEdges, isGalleryEdge, outsideEdges, type Edge } from "../sim/edges";
+import { edgeLengthM, galleryEdges, isGalleryEdge, outsideEdges, type Edge } from "../sim/edges";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
-import { roomAt } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
+import { ownSide, viewAcross, type Across } from "../sim/windows";
 import { RING_D, ringRadii, slotAngles } from "../render3d/cylinder";
 
 // A private room's doors: one on each of its floors, wherever it opens onto
@@ -42,28 +42,13 @@ export interface Doorway {
 const HALL = corridors.widthM / 2;
 const INSET = 0.03;
 
-/** What's across an outside edge of a room, for a door or windows: a tube (the shaft), a corridor, a walk-through room, or nothing usable. */
-export function acrossEdge(layout: Layout, e: Edge, own: Set<string>): "shaft" | "corridor" | "public" | null {
+/** What's across an outside edge of a room, for a door: a tube (the shaft: not without one, unless under the dome), a corridor, a walk-through room, or nothing to walk out to. */
+export function acrossEdge(layout: Layout, e: Edge, own: Set<string>): Across | null {
   if (isGalleryEdge(e)) return layout.domed || layout.corridors?.[e.id] ? "shaft" : null;
-  if (layout.corridors?.[e.id] && layout.corridorsBuilding?.[e.id] === undefined) return "corridor";
-  const other = otherSide(layout, e, own);
-  const room = other ? roomAt(layout, other) : undefined;
-  if (room && !room.planned && !room.building && roomDef(room.type).public && !roomDef(room.type).excavationOnly) return "public";
-  return null;
+  return viewAcross(layout, e, own);
 }
 
 const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
-
-/** The cell across an edge from a room (the one not its own), or null at the shaft. */
-export function otherSide(layout: Layout, e: Edge, own: Set<string>): Cell | null {
-  const sides = edgeSides(layout.hole, e);
-  return sides.find((c) => c && !own.has(key(c))) ?? null;
-}
-
-/** The room's own cell along an edge. */
-export function ownSide(layout: Layout, e: Edge, own: Set<string>): Cell | null {
-  return edgeSides(layout.hole, e).find((c) => c && own.has(key(c))) ?? null;
-}
 
 /** Which wall of its own cell an edge is. */
 export function sideOf(e: Edge, cell: Cell): WallSide {

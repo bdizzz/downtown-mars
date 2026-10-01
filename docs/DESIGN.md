@@ -120,7 +120,7 @@ Full list with stats and costs: see the **Room catalog**.
 
 ### Frontage: windows, doors and storefronts
 
-What a room faces shapes how it looks and what it earns, and walls, windows and doors are generated automatically from its neighbors.
+What a room faces shapes how it looks and what it earns. Walls and doors are generated automatically from its neighbors; windows are an upgrade the player puts in (milestone 13: see DECISIONS.md, which wins where this section differs).
 
 | Room faces | What appears | Effect |
 | --- | --- | --- |

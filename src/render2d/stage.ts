@@ -8,6 +8,7 @@ import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
 import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { doorsOnFloor } from "../view/doors";
+import { glazedWalls } from "../sim/windows";
 import { isOpen } from "../sim/excavation";
 import { edgeById, edgeSides, galleryEdges, isGalleryEdge, nearestEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
@@ -431,7 +432,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       }
       // Stairs or an elevator reaching further: the new floors under scaffolding.
       for (const row of cellRows(l.hole, room.pendingCells ?? [])) scaffold(...rowRect(l.hole, row), color);
-      if (!room.planned && !room.building && !def.public) drawFrontage(l, rows, color);
+      if (!room.planned && !room.building && !def.public) drawFrontage(l, room, rows, color);
       drawRoomGlyph(l, room, rows, color);
       if (!room.connected) for (const row of rows) roomsCtx.rect(...rowRect(l.hole, row)).stroke({ color: C.bad, width: 3 });
     }
@@ -448,6 +449,36 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       else drawAirlock(roomsCtx, x, w, groundY + 4, color);
     }
     drawCorridors(l);
+    for (const room of l.rooms) if (!room.planned && !room.building) drawWindows(l, room);
+  }
+
+  /**
+   * A room's windows onto corridors and walk-through rooms (shaft windows are
+   * part of its frontage): panes along its side of each glazed border, around its door.
+   */
+  function drawWindows(l: Layout, room: RoomInstance): void {
+    const h = l.hole;
+    const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+    for (const { edge: e } of glazedWalls(l, room)) {
+      if (isGalleryEdge(e)) continue;
+      const b = bandOf(h, e);
+      const [a] = edgeSides(h, e);
+      const first = !!a && own.has(`${a.floor}:${a.ring}:${a.slot}`);
+      // Out from the border to the room's side: past the corridor's half, if one runs here.
+      const off = l.corridors[e.id] ? BAND / 2 : 0;
+      const door = doorsOnFloor(l, e.floor).some((d) => d.edge === e.id && d.roomId === room.id);
+      const mid = b.len / 2;
+      for (let t = 4; t + 10 <= b.len - 4; t += 13) {
+        if (door && Math.abs(t + 5 - mid) < 12) continue;
+        if (b.along === "v") {
+          const x = b.x + BAND / 2 + (first ? -off - 3 : off);
+          roomsCtx.rect(x, b.y + t, 3, 10).fill({ color: C.window, alpha: 0.9 });
+        } else {
+          const y = b.y + BAND / 2 + (first ? -off - 3 : off);
+          roomsCtx.rect(b.x + t, y, 10, 3).fill({ color: C.window, alpha: 0.9 });
+        }
+      }
+    }
   }
 
   /** Where a corridor's band sits: centred on its border, carving into both sides. A gallery tube fills the band over its floor. */
@@ -541,7 +572,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
    * tube where one runs along it (a full wall of windows where none does);
    * plain wall elsewhere. Doors onto corridors come with the corridors.
    */
-  function drawFrontage(l: Layout, rows: ReturnType<typeof cellRows>, color: number): void {
+  function drawFrontage(l: Layout, room: RoomInstance, rows: ReturnType<typeof cellRows>, color: number): void {
+    // Shaft windows only where the player has put them in.
+    const glazed = glazedWalls(l, room).flatMap((g) => (g.edge.kind === "arc" && isGalleryEdge(g.edge) ? [g.edge] : []));
     const h = l.hole;
     const wall = shade(color, 0.45);
     for (const row of rows) {
@@ -563,8 +596,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         const mid = door ? (door.angle / (Math.PI * 2)) * TURN_W : null;
         // Behind a tube, a band of windows; with none, a window wall nearly floor to ceiling.
         const tubeOver = (px: number) => tubes.some((e) => px >= e.a0 * TURN_W && px <= e.a1 * TURN_W);
+        const glass = (px: number) => glazed.some((e) => e.floor === row.floor && px >= e.a0 * TURN_W && px <= e.a1 * TURN_W);
         for (let wx = xs + 5; wx + 10 < xe - 4; wx += 13) {
           if (mid !== null && Math.abs(wx + 5 - mid) < 9) continue;
+          if (!glass(wx + 5)) continue;
           if (tubeOver(wx + 5)) roomsCtx.rect(wx, y + 3, 10, 5).fill({ color: C.window, alpha: 0.85 });
           else roomsCtx.rect(wx, y + 2, 10, hh * 0.55).fill({ color: C.window, alpha: 0.85 });
         }
@@ -668,8 +703,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
     if (info.edge) {
       const color = info.edge.refusal ? C.bad : info.edge.erase ? C.bad : C.ok;
-      const preview = !info.edge.erase && !info.edge.refusal && tool?.kind === "corridor" ? tool.finish : null;
-      ghostEdge(info.edge.id, color, preview, info.edge.erase ? 0.35 : 0.15);
+      const preview = !info.edge.erase && !info.edge.refusal && tool?.kind === "corridor" && !info.edge.windows ? tool.finish : null;
+      // The windows tool lights up the whole wall it would glaze.
+      for (const id of info.edge.windows?.edges ?? [info.edge.id]) ghostEdge(id, color, preview, info.edge.erase ? 0.35 : 0.15);
       return;
     }
 

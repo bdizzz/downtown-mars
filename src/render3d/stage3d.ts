@@ -812,7 +812,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!info || view.mode === "walk") return;
     const p = info.pick;
     if (info.edge) {
-      ghostEdge(info.edge.id, info.edge.refusal || info.edge.erase ? HOVER.bad : HOVER.ok);
+      for (const id of info.edge.windows?.edges ?? [info.edge.id]) ghostEdge(id, info.edge.refusal || info.edge.erase ? HOVER.bad : HOVER.ok);
       return;
     }
     if (tool?.kind === "build" && info.check) {

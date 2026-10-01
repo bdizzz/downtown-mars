@@ -14,6 +14,8 @@ import { footprint, type RoomInstance } from "../src/sim/placement";
 import { missingCost } from "../src/sim/costs";
 import { effectOnRoom } from "../src/sim/effects";
 import { crowdedAir } from "../src/sim/happiness";
+import { outsideEdges } from "../src/sim/edges";
+import { viewAcross, wallOf, type Across } from "../src/sim/windows";
 
 // A scripted player that reacts: once a day it looks at what its hole is
 // short of and builds the room that fixes it, in the first free spot on the
@@ -311,4 +313,28 @@ export function tendUpkeep(hole: SimState): boolean {
   const built = hole.layout.rooms.filter((r) => r.type === "maintenance").at(-1)!;
   applyCommand(hole, { type: "setPriority", roomId: built.id, priority: "high" });
   return true;
+}
+
+/**
+ * Windows in every home that has none: the wall with the best view (the
+ * shaft, then a plaza, then a corridor), if there's metal for it. Once a day.
+ */
+export function tendWindows(hole: SimState): boolean {
+  const layout = hole.layout;
+  const rank = config.windows.view;
+  let any = false;
+  for (const room of layout.rooms) {
+    if (!roomDef(room.type).houses || room.planned || room.windows?.length) continue;
+    const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+    const walls = outsideEdges(layout.hole, room.cells)
+      .map((e) => ({ e, across: viewAcross(layout, e, own) }))
+      .filter((w): w is { e: (typeof w)["e"]; across: Across } => w.across !== null)
+      .sort((a, b) => rank[b.across] - rank[a.across]);
+    const best = walls[0];
+    if (!best) continue;
+    const wall = wallOf(layout, room, best.e.id) ?? [];
+    const edges = wall.map((e) => e.id);
+    if (applyCommand(hole, { type: "setWindows", roomId: room.id, edges, on: true }).ok) any = true;
+  }
+  return any;
 }

@@ -12,6 +12,7 @@ import { FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
 import { isMounted, itemDef } from "../view/furniture";
 import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
+import { glazedWalls } from "../sim/windows";
 import { tubeAt } from "../view/gallery";
 import { finishMaterial, withFloor, withFresnel, withGrime, withRock, type FloorKind } from "./surfaces";
 import { roomFinish, type Finish } from "../view/roomFinish";
@@ -419,16 +420,15 @@ export interface OpeningParts {
 }
 
 /**
- * A room's windows: for now, as they've always been, ring 1's shaft face
- * (a wall of glass with no tube in front, a band behind one).
+ * A room's windows, where the player has put them (and they see something):
+ * a band, or a wall of glass nearly floor to ceiling onto the open shaft
+ * where no tube runs in front.
  */
 export function windowSpans(layout: Layout, room: RoomInstance): WindowSpans {
   const out: WindowSpans = new Map();
-  if (roomDef(room.type).public) return out;
-  for (const c of room.cells) {
-    if (c.ring !== 1) continue;
-    const e = galleryEdges(layout.hole, c.floor)[c.slot];
-    if (e) out.set(e.id, tubeAt(layout, c.floor, c.slot) ? WINDOW : WINDOW_WALL);
+  for (const { edge, across } of glazedWalls(layout, room)) {
+    const open = across === "shaft" && !layout.domed && !layout.corridors?.[edge.id];
+    out.set(edge.id, open ? WINDOW_WALL : WINDOW);
   }
   return out;
 }

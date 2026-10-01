@@ -131,7 +131,7 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
     <div className="finishes">
       {corridors.finishes.map((f) => {
         const short = Object.entries(f.cost).some(([id, v]) => (resources[id] ?? 0) < v);
-        const picked = tool.finish === f.id && !tool.erase && !tool.bulkhead;
+        const picked = tool.finish === f.id && !tool.erase && !tool.bulkhead && !tool.windows;
         return (
           <button
             key={f.id}
@@ -148,11 +148,20 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
       <button
         className={`finish${tool.bulkhead ? " on" : ""}${Object.entries(corridors.bulkhead.cost).some(([id, v]) => (resources[id] ?? 0) < v) ? " short" : ""}`}
         title={`${corridors.bulkhead.hint}. Click a built corridor to fit one; Shift-click (or Erase) to take one out, free.`}
-        onClick={() => setTool({ ...tool, bulkhead: !tool.bulkhead, erase: false })}
+        onClick={() => setTool({ ...tool, bulkhead: !tool.bulkhead, windows: false, erase: false })}
       >
         <span className="chip bulkhead" />
         <span className="name">{corridors.bulkhead.name}</span>
         <span className="k">{Object.entries(corridors.bulkhead.cost).map(([id, v]) => `${v} ${resName(id).toLowerCase()}`).join(", ")} each</span>
+      </button>
+      <button
+        className={`finish${tool.windows ? " on" : ""}${Object.entries(config.windows.costPer10m).some(([id, v]) => (resources[id] ?? 0) < v) ? " short" : ""}`}
+        title="Put windows in a room's wall, where it faces the shaft, a corridor or a walk-through room: a home's comfort goes up. Click a wall to glaze it all; Shift-click (or Erase) to take them out, free."
+        onClick={() => setTool({ ...tool, windows: !tool.windows, bulkhead: false, erase: false })}
+      >
+        <span className="chip windows" />
+        <span className="name">Windows</span>
+        <span className="k">{Object.entries(config.windows.costPer10m).map(([id, v]) => `${v} ${resName(id).toLowerCase()}`).join(", ")} per 10 m</span>
       </button>
       <button
         className={`finish erase${tool.erase ? " on" : ""}`}
@@ -162,7 +171,13 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
         <span className="name">Erase</span>
         <kbd>⇧</kbd>
       </button>
-      <p className="k">{tool.bulkhead ? "Click a corridor to seal it: air and smell stop there." : "Costs are per 10 m. Drag along the borders between rooms."}</p>
+      <p className="k">
+        {tool.windows
+          ? "Hover a room's wall: it lights up where windows can go. Click to glaze it."
+          : tool.bulkhead
+            ? "Click a corridor to seal it: air and smell stop there."
+            : "Costs are per 10 m. Drag along the borders between rooms."}
+      </p>
     </div>
   );
 }

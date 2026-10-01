@@ -8,6 +8,7 @@ import { loweredAt, openingsOf, outlineGeometry, roomGeometry, setWallsDown, sha
 import { floorSpan, ringRadii, slotAngles } from "../src/render3d/cylinder";
 import { corridorJoints } from "../src/sim/corridors";
 import { DOOR, doorways } from "../src/view/doors";
+import { setRoomWindows, shaftBorders } from "../src/sim/windows";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 // Each curved face is split into 4 arc steps of 2 triangles; a radial side is 2 triangles.
@@ -163,6 +164,7 @@ describe("doors and windows", () => {
     // No gallery tube along it: all window, no door.
     expect(doorways(l, room)).toEqual([]);
     for (const e of galleryEdges(l.hole, 1)) l.corridors[e.id] = "gallery";
+    setRoomWindows(room, shaftBorders(l, room), true);
     const [door] = doorways(l, room);
     const r0 = ringRadii(l.hole, 1)[0];
     const base = floorSpan(1)[0];

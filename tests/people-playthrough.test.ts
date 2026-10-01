@@ -25,7 +25,9 @@ describe("ninety minutes of people", () => {
 
   it("keeps having children, and they grow up into workers", () => {
     const born = net.log.at(-1)!.born;
-    expect(born).toBeGreaterThanOrEqual(15);
+    // Windows are paid for since milestone 13, this seed's run gets fewer
+    // (over four seeds the totals are much as before, 11–28 born). Was 15.
+    expect(born).toBeGreaterThanOrEqual(10);
     const children = net.world.holes.reduce((n, h) => n + h.population.cohorts.filter((c) => c.stage === "child").reduce((k, c) => k + c.count, 0), 0);
     expect(children).toBeLessThan(born); // the earliest have grown up
   });
@@ -40,7 +42,8 @@ describe("ninety minutes of people", () => {
   it("outgrows a single hole by a wide margin", () => {
     expect(net.log.at(-1)!.total).toBeGreaterThan(solo.log.at(-1)!.total * 1.3);
     // Gallery tubes on every new floor (milestone 11) cost rock and crew time: a little slower than before (was 160).
-    expect(at(80).total).toBeGreaterThan(150);
+    // Windows paid for (milestone 13): this seed's run slows again; other seeds reach 139–147 (was 150).
+    expect(at(80).total).toBeGreaterThan(130);
   });
 
   it("keeps the child hole healthy", () => {

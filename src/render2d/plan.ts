@@ -1,5 +1,6 @@
 import { UI_FONT } from "../view/font";
 import { doorsOnFloor } from "../view/doors";
+import { glazedWalls } from "../sim/windows";
 import { roomLabel } from "../sim/roomName";
 import { crewsAt, crewsKey } from "../view/crews";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
@@ -48,6 +49,7 @@ const C = {
   bad: 0xe0503a,
   dig: 0xe07a3f,
   door: 0x2a1a14,
+  window: 0x9fd2ff,
   build: 0xe0a03a,
   /** A cell still solid rock, and one dug out with nothing in it. */
   rockCell: 0x341e17,
@@ -282,6 +284,38 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       labels.addChild(marker);
     }
     drawCorridors(l);
+    for (const room of l.rooms) if (!room.planned && !room.building) drawWindows(l, room);
+  }
+
+  /** A room's windows on this floor: panes along its side of each glazed border (just inside the shaft wall on ring 1), around its door. */
+  function drawWindows(l: Layout, room: RoomInstance): void {
+    const h = l.hole;
+    const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+    for (const { edge: e } of glazedWalls(l, room)) {
+      if (e.floor !== floor) continue;
+      let s = stripOf(h, e);
+      let off = 0;
+      if (e.kind === "arc" && isGalleryEdge(e)) {
+        // Along the shaft wall, on the room's side of it.
+        const r = h.shaftRadiusM + 0.5;
+        const a0 = e.a0 * TAU;
+        const len = (e.a1 - e.a0) * TAU * r * PX;
+        s = { at: (t) => xy(r, a0 + t / (r * PX)), normal: (t) => [Math.cos(a0 + t / (r * PX)), Math.sin(a0 + t / (r * PX))], len, mid: len / 2 };
+      } else {
+        const [a] = edgeSides(h, e);
+        const sign = a && own.has(`${a.floor}:${a.ring}:${a.slot}`) ? -1 : 1;
+        off = sign * ((l.corridors[e.id] ? BAND / 2 : 0) + 2);
+      }
+      const door = doorsOnFloor(l, floor).some((d) => d.edge === e.id && d.roomId === room.id);
+      for (let t = 3; t + 8 <= s.len - 3; t += 11) {
+        if (door && Math.abs(t + 4 - s.mid) < 8) continue;
+        const [x0, y0] = s.at(t);
+        const [x1, y1] = s.at(t + 8);
+        const [nx, ny] = s.normal(t);
+        roomsCtx.moveTo(x0 + nx * off, y0 + ny * off).lineTo(x1 + nx * off, y1 + ny * off);
+      }
+      roomsCtx.stroke({ color: C.window, width: 3, alpha: 0.9 });
+    }
   }
 
   /** A corridor's centreline on the plan, in px: out along a spoke, or around an arc (a gallery tube's along the ledge, inside the shaft wall). */
@@ -489,8 +523,9 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     const p = info.pick;
     if (info.edge) {
       const color = info.edge.refusal || info.edge.erase ? C.bad : C.ok;
-      const preview = !info.edge.erase && !info.edge.refusal && tool?.kind === "corridor" ? tool.finish : null;
-      ghostEdge(info.edge.id, color, preview, info.edge.erase ? 0.35 : 0.15);
+      const preview = !info.edge.erase && !info.edge.refusal && tool?.kind === "corridor" && !info.edge.windows ? tool.finish : null;
+      // The windows tool lights up the whole wall it would glaze.
+      for (const id of info.edge.windows?.edges ?? [info.edge.id]) ghostEdge(id, color, preview, info.edge.erase ? 0.35 : 0.15);
       return;
     }
     if (tool?.kind === "build" && info.check) {
