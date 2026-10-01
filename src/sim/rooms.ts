@@ -3,7 +3,7 @@ import raw from "../../data/rooms.json";
 import type { DepositKind } from "./mapgeo";
 
 /** Rooms that unlock when a hole reaches a size (config unlocks.rooms). */
-export type RoomUnlock = "brickworks" | "leisure" | "recycling" | "hospital";
+export type RoomUnlock = "brickworks" | "leisure" | "recycling" | "hospital" | "glassworks";
 
 export type RoomSize = "S" | "M" | "L" | "H" | "surface";
 export type EffectType = "noise" | "smell" | "health" | "comfort" | "airQuality" | "heat" | "safety";

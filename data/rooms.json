@@ -1033,6 +1033,41 @@
       "buildHours": 18
     },
     {
+      "id": "glassworks",
+      "name": "Glassworks",
+      "short": "Glass",
+      "category": "industry",
+      "size": "M",
+      "staff": 3,
+      "uses": {
+        "rock": 4,
+        "power": 4
+      },
+      "makes": {
+        "glass": 2
+      },
+      "unlockedBy": "glassworks",
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        },
+        {
+          "type": "airQuality",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "brick": 10,
+        "metal": 5,
+        "machinery": 1
+      },
+      "buildable": true,
+      "buildHours": 18
+    },
+    {
       "id": "recycling_center",
       "name": "Recycling center",
       "short": "Recycling",

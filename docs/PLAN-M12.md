@@ -50,3 +50,8 @@ Asked for by Bryon, Sep 30, 2026 ("let's do all that", after PLAN-M11's "not bui
 - A home's card says when it's crowded.
 - **Bots:** they count crowding when looking for homes with stale air (a hub nearby fixes it), and build apartments rather than bunks once they're unlocked and affordable. Without that, every bot dorm was stuffy and births stalled.
 
+**Step 5, glass and the glassworks:**
+- Glass: a dry good (material), kept in storage like brick. Shown in the top strip once a hole has some; in Trends.
+- Glassworks (industry, M, 3 staff): rock 4, power 4 → glass 2 a day; brick 10, metal 5, machinery 1; from 200 colonists (`unlocks.rooms.glassworks`, with word when it opens). Noise −1 r1 and air quality −1 r1 (heat, the catalog's effect, isn't built).
+- Furniture (the kiln, a new rack of glass sheets, a hopper), a template, and a pane-of-glass glyph.
+

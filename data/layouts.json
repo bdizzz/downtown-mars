@@ -699,6 +699,23 @@
       {"item":"first_aid_kit","wall":"right","x":1.6,"repeat":{"every":0.5,"max":1}},
       {"item":"air_vent","wall":"back","repeat":{"every":2.6,"max":3}}
     ],
+    "glassworks:2x1": [
+      {"item":"kiln","wall":"back","x":-2.8,"y":0.1},
+      {"item":"hopper","wall":"back","x":2.8,"y":0.1},
+      {"item":"glass_rack","wall":"front","x":-2.8,"y":0.2,"repeat":{"every":2.0,"max":2},"snug":true},
+      {"item":"glass_rack","wall":"right","y":0.2},
+      {"item":"pallet_jack","wall":"front","x":2.4,"y":0.3},
+      {"item":"console","wall":"left","y":0.1},
+      {"item":"safety_sign","wall":"left","repeat":{"every":2.4,"max":2}},
+      {"item":"gauge_panel","wall":"right","x":-1.6},
+      {"item":"chart_board","wall":"front","x":4.0},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2.0,"max":6}},
+      {"item":"work_light","wall":"back","x":2.0,"repeat":{"every":4.0,"max":2}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
+    ],
     "gym:2x1": [
       {"item":"treadmill","wall":"back","x":-3.2,"y":0.2,"repeat":{"every":1.2,"max":3}},
       {"item":"exercise_bike","wall":"back","x":1.6,"y":0.2,"repeat":{"every":1.0,"max":3}},

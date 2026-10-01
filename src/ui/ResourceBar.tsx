@@ -15,6 +15,8 @@ const FOOD = ["rations", "rawFood", "soil"] as const;
 const MATERIALS = ["rock", "brick", "metal", "machinery", "electronics"] as const;
 /** Shown only where there's some: they come from the ground under certain sites. */
 const REGIONAL = ["ore", "silica"] as const;
+/** Shown once there's some: made later in the game. */
+const LATER = ["glass"] as const;
 const WARN_DAYS = 2;
 /** Storage this full, with more coming in, shows as full. */
 const FULL_AT = 0.97;
@@ -229,6 +231,9 @@ export function ResourceBar({ s, onTrend }: { s: Snapshot | null; onTrend: OnTre
           <Stock key={id} id={id} s={s} onTrend={onTrend} />
         ))}
         {REGIONAL.filter((id) => (s.resources[id] ?? 0) > 0 || s.holeDeposits.includes(id)).map((id) => (
+          <Stock key={id} id={id} s={s} onTrend={onTrend} />
+        ))}
+        {LATER.filter((id) => (s.resources[id] ?? 0) > 0).map((id) => (
           <Stock key={id} id={id} s={s} onTrend={onTrend} />
         ))}
       </span>

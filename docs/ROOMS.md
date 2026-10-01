@@ -157,7 +157,7 @@ These rooms turn raw resources into construction materials, consumer goods, pipe
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Concrete plant | M | 3 | Rock 5, water 2, power 2 | Marscrete 4 | Noise −2 r2, air quality −1 r1 | R 15, M 5, Mc 1 | Pop 100 |
-| Glassworks | M | 3 | Rock 4, power 4 | Glass 2 | Heat +1 r1 | B 10, M 5, Mc 1 | Pop 200 |
+| Glassworks | M | 3 | Rock 4, power 4 | Glass 2 | Noise −1 r1, air quality −1 r1 (heat not built yet) | B 10, M 5, Mc 1 | Pop 200 |
 | Chemical plant | L | 5 | CO2 4, water 2, power 5 | Plastics 2, methane 2 | Noise −1 r1, air quality −2 r2 | M 20, Mc 4, E 2 | Pop 300 |
 | Mycelium vat | M | 2 | Organic waste 3, water 2, power 1 | Mycelium composite 3 (a wood substitute) | Smell −1 r1 | R 10, M 5 | Pop 150 |
 | Textile mill | M | 3 | Fiber 4 or plastics 2, power 2 | Textiles 3 | Noise −1 r1 | B 10, M 5, Mc 2 | Pop 150 |

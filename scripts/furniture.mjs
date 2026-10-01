@@ -1422,6 +1422,12 @@ item("dumpster", "Waste container", [
   ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => cyl([sx * 0.7, 0.05, sz * 0.4], 0.12, 0.1, "rubber", { r: [0, 0, 90] }))),
 ]);
 
+item("glass_rack", "Glass sheets on a rack", [
+  box([0, 0.06, 0], [1.6, 0.12, 0.7], "dark"),
+  box([0, 0.75, -0.2], [1.6, 1.3, 0.06], "metal", { r: [-12, 0, 0] }),
+  ...[0, 1, 2, 3].map((k) => box([0, 0.8, -0.1 + k * 0.07], [1.4, 1.25, 0.02], "mirror", { r: [-12, 0, 0] })),
+]);
+
 // =====================================================================
 // What each room may hold
 // =====================================================================
@@ -1477,6 +1483,7 @@ const rooms = {
   recycling_center: ["sorting_bins", "baler", "scrap_pile", "conveyor", "pallet_jack", "console", "barrel_group"],
   waste_storage: ["dumpster", "barrel_group", "trash_bin"],
   ventilation_hub: ["big_fan", "duct_riser", "filter_column", "console", "pipe_run"],
+  glassworks: ["kiln", "glass_rack", "hopper", "pallet_jack", "console"],
 };
 
 // What hangs on each room's walls: pictures and lamps at home, charts, readouts and signs at work.
@@ -1531,6 +1538,7 @@ const hangings = {
   recycling_center: ["safety_sign", "chart_board", "readout_panel"],
   waste_storage: ["safety_sign"],
   ventilation_hub: ["gauge_panel", "readout_panel", "safety_sign"],
+  glassworks: ["safety_sign", "gauge_panel", "chart_board"],
 };
 // And more to fill the walls, by kind of room: a second pass that the templates spread along every wall.
 const WALL_FILL = {
@@ -1555,7 +1563,7 @@ const FILL_KIND = {
   farm: "farm", galley: "galley", restroom: "wash", crypt: "quiet",
   tiny_plaza: "public", small_plaza: "public", stairwell: "public", elevator: "public", entrance: "entry",
   maintenance: "workshop", cleaning_service: "wash",
-  kitchen: "galley", canteen: "public", hospital: "office", gym: "public", park: "public", brickworks: "plant", recycling_center: "plant", waste_storage: "store", ventilation_hub: "plant",
+  kitchen: "galley", canteen: "public", hospital: "office", gym: "public", park: "public", brickworks: "plant", recycling_center: "plant", waste_storage: "store", ventilation_hub: "plant", glassworks: "plant",
 };
 for (const room of Object.keys(rooms)) {
   const kind = FILL_KIND[room];

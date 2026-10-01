@@ -188,3 +188,21 @@ describe("unlocks", () => {
     expect(s.messages.some((m) => m.text.includes("gyms and parks"))).toBe(true);
   });
 });
+
+describe("glass", () => {
+  it("a glassworks, from 200 colonists, makes glass from rock", () => {
+    const s = hole();
+    s.unlocks = [];
+    expect(applyCommand(s, { type: "build", room: "glassworks", at: ring(1, 1, 3, 2) }).ok).toBe(false);
+    s.unlocks = ["glassworks"];
+    setAdults(s, 20, config);
+    s.layout.rooms.find((r) => r.type === "landing_pod")!.allocation = { ...(s.layout.rooms.find((r) => r.type === "landing_pod")!.allocation ?? {}), glass: 100 };
+    const works = build(s, "glassworks", ring(1, 1, 3, 2));
+    const rock = s.resources.rock!;
+    for (let i = 0; i < tpd; i++) step(s, config);
+    expect(s.roomStatus[works]!.rate).toBeGreaterThan(0);
+    expect(s.resources.glass ?? 0).toBeGreaterThan(0);
+    expect(s.resources.rock!).toBeLessThan(rock);
+    expect(config.unlocks.rooms.glassworks).toBe(200);
+  });
+});

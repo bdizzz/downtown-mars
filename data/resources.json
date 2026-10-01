@@ -110,6 +110,12 @@
       "baseCapacity": 0
     },
     {
+      "id": "glass",
+      "name": "Glass",
+      "group": "material",
+      "baseCapacity": 0
+    },
+    {
       "id": "metal",
       "name": "Metal",
       "group": "material",

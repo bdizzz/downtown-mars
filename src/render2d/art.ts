@@ -279,6 +279,12 @@ const GLYPHS: Record<string, Glyph> = {
       for (const t of [2.5, -2.5]) g.moveTo(mx, my).lineTo(mx + Math.cos(ang + t) * s * 0.1, my + Math.sin(ang + t) * s * 0.1).stroke(line(1.5, c));
     }
   },
+  glassworks: (g, cx, cy, s, c) => {
+    // A pane of glass with a glint.
+    g.rect(cx - s * 0.24, cy - s * 0.28, s * 0.48, s * 0.56).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.12, cy + s * 0.1).lineTo(cx + s * 0.06, cy - s * 0.16).stroke(line(1.2, c));
+    g.moveTo(cx - s * 0.02, cy + s * 0.16).lineTo(cx + s * 0.12, cy - s * 0.04).stroke(line(1.2, c));
+  },
   ventilation_hub: (g, cx, cy, s, c) => {
     // A fan in its housing.
     g.circle(cx, cy, s * 0.3).stroke(line(1.5, c));
