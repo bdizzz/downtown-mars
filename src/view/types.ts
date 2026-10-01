@@ -18,8 +18,8 @@ export type Pick =
 export type Tool =
   | { kind: "build"; room: string; shape: [number, number] }
   | { kind: "demolish" }
-  /** Draw corridors along borders, in a finish; with erase, remove them. */
-  | { kind: "corridor"; finish: string; erase: boolean }
+  /** Draw corridors along borders, in a finish; with erase, remove them. With bulkhead, fit (or take out) sealed bulkheads on built ones instead. */
+  | { kind: "corridor"; finish: string; erase: boolean; bulkhead?: boolean }
   | null;
 
 /** The border under the pointer, with the corridor tool. */
@@ -34,6 +34,8 @@ export interface EdgeHover {
   linked?: boolean;
   /** Removing rather than drawing (erase mode, or Shift held). */
   erase: boolean;
+  /** The bulkhead tool: fitting (or taking out) a bulkhead, not a corridor. */
+  bulkhead?: boolean;
 }
 
 export interface HoverInfo {

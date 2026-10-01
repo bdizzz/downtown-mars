@@ -6,7 +6,7 @@ import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
 import { FLOOR_H, floorSpan, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
-import { corridorJoints, corridors, finishDef } from "../sim/corridors";
+import { corridorJoints, corridors, finishDef, hasBulkhead } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
 import { FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
 import { isMounted, itemDef } from "../view/furniture";
@@ -1176,6 +1176,8 @@ export function buildLayout(
   if (halls.length) group.add(...halls);
   const tubes = galleryTubes(layout, digFloor, topFloor);
   if (tubes.length) group.add(...tubes);
+  const seals = bulkheadGates(layout, topFloor);
+  if (seals.length) group.add(...seals);
   const empty = emptySpace(layout, topFloor);
   if (empty.length) group.add(...empty);
 
@@ -1481,6 +1483,57 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
     const mesh = new THREE.Mesh(geometry(pos), mat);
     mesh.userData = { pickable: true, hall: true };
     out.push(mesh);
+  }
+  return out;
+}
+
+/** A bulkhead: a door frame across the corridor, with a sealed door in it. */
+const BULKHEAD = { height: 2.9, post: 0.22, depth: 0.3, frame: 0x3b3f45, door: 0xc9a456, stripe: 0xe0a03a };
+
+/** Bulkheads across the corridors that have them, at each segment's middle. */
+function bulkheadGates(layout: Layout, topFloor: number | null): THREE.Object3D[] {
+  const hole = layout.hole;
+  const out: THREE.Object3D[] = [];
+  const frame = material("bulkhead:frame", () => new THREE.MeshStandardMaterial({ color: BULKHEAD.frame, roughness: 0.5, metalness: 0.6 }));
+  const door = material("bulkhead:door", () => new THREE.MeshStandardMaterial({ color: BULKHEAD.door, roughness: 0.6, metalness: 0.3 }));
+  const stripe = material("bulkhead:stripe", () => new THREE.MeshStandardMaterial({ color: BULKHEAD.stripe, roughness: 0.6 }));
+  for (const id of Object.keys(layout.bulkheads ?? {})) {
+    if (!hasBulkhead(layout, id)) continue;
+    const e = edgeById(hole, id);
+    if (!e || e.floor > hole.floors || (topFloor !== null && e.floor < topFloor)) continue;
+    const y = floorSpan(e.floor)[0];
+    // Its middle, and the way across the corridor (the gate's width runs that way).
+    let r: number;
+    let a: number;
+    let turn: number;
+    if (e.kind === "radial") {
+      const [r0, r1] = ringRadii(hole, e.ring);
+      r = (r0 + r1) / 2;
+      a = e.turn * TAU;
+      turn = -a - Math.PI / 2; // across a spoke: along the circle
+    } else {
+      r = hole.shaftRadiusM + e.circle * RING_D;
+      a = ((e.a0 + e.a1) / 2) * TAU;
+      turn = -a; // across an arc: outward
+    }
+    const g = new THREE.Group();
+    const w = 2 * HALL;
+    const post = (x: number) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(BULKHEAD.post, BULKHEAD.height, BULKHEAD.depth), frame);
+      m.position.set(x, BULKHEAD.height / 2, 0);
+      return m;
+    };
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(w, BULKHEAD.post, BULKHEAD.depth), frame);
+    lintel.position.set(0, BULKHEAD.height, 0);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(w - 2 * BULKHEAD.post, BULKHEAD.height - 0.1, BULKHEAD.depth * 0.5), door);
+    panel.position.set(0, (BULKHEAD.height - 0.1) / 2, 0);
+    const band = new THREE.Mesh(new THREE.BoxGeometry(w - 2 * BULKHEAD.post, 0.18, BULKHEAD.depth * 0.6), stripe);
+    band.position.set(0, 1.1, 0);
+    g.add(post(-w / 2 + BULKHEAD.post / 2), post(w / 2 - BULKHEAD.post / 2), lintel, panel, band);
+    g.position.set(r * Math.cos(a), y, r * Math.sin(a));
+    g.rotation.y = turn;
+    g.userData = { floor: e.floor };
+    out.push(g);
   }
   return out;
 }

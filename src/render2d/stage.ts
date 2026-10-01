@@ -9,7 +9,7 @@ import { config } from "../sim/config";
 import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { isOpen } from "../sim/excavation";
 import { edgeById, edgeSides, galleryEdges, isGalleryEdge, nearestEdge, type Edge } from "../sim/edges";
-import { corridorJoints, corridors } from "../sim/corridors";
+import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
 import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
@@ -468,6 +468,15 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const building = l.corridorsBuilding?.[id] !== undefined;
       const BAND = b.thick;
       corridorBand(roomsCtx, b.x, b.y, b.len, BAND, b.along, finish, planned || building ? 0.45 : 1);
+      // A bulkhead: a sealed door across the corridor, in hazard stripes.
+      if (hasBulkhead(l, id)) {
+        const [bx, by, bw, bh] = b.along === "h" ? [b.x + b.len / 2 - 2.5, b.y - 1, 5, BAND + 2] : [b.x - 1, b.y + b.len / 2 - 2.5, BAND + 2, 5];
+        roomsCtx.rect(bx, by, bw, bh).fill(0x3b3f45);
+        for (let k = 0; k < (b.along === "h" ? bh : bw); k += 4) {
+          if (b.along === "h") roomsCtx.rect(bx, by + k, bw, 2).fill(0xe0a03a);
+          else roomsCtx.rect(bx + k, by, 2, bh).fill(0xe0a03a);
+        }
+      }
       const [w, hh] = b.along === "h" ? [b.len, BAND] : [BAND, b.len];
       if (building || l.corridorsFilling?.[id] !== undefined) {
         // Not built yet, or about to be filled in: a dashed orange outline, like tape around a dig.

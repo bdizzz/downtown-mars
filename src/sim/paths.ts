@@ -1,5 +1,5 @@
 import { config } from "./config";
-import { openTo } from "./corridors";
+import { hasBulkhead, openTo } from "./corridors";
 import { cellEdges, edgeById, edgeLengthM, edgeVertices, outsideEdges } from "./edges";
 import { emptyCells } from "./excavation";
 import type { Cell, Layout, RoomInstance } from "./placement";
@@ -37,6 +37,8 @@ interface Node {
   length: number;
   /** Can a route pass through it (not a private room)? */
   through: boolean;
+  /** Sealed: people pass, air doesn't (a corridor segment with a bulkhead). */
+  airtight?: boolean;
 }
 
 interface Link {
@@ -86,7 +88,7 @@ export function buildPaths(layout: Layout): Paths {
     const e = edgeById(hole, id);
     if (!e || e.floor > hole.floors) continue;
     const key = `c:${id}`;
-    add(key, { roomId: 0, floor: e.floor, length: edgeLengthM(hole, e, depth), through: true });
+    add(key, { roomId: 0, floor: e.floor, length: edgeLengthM(hole, e, depth), through: true, airtight: hasBulkhead(layout, id) });
     for (const v of edgeVertices(hole, e)) index(byVertex, v, key);
     index(byEdge, id, key);
   }
@@ -190,7 +192,7 @@ function walkOut(paths: Paths, seeds: [string, number][], roomId: number, mode: 
       if (!node.through) continue;
     }
     for (const l of paths.links.get(k) ?? []) {
-      if (mode === "air" && !l.air) continue;
+      if (mode === "air" && (!l.air || paths.nodes.get(l.to)!.airtight)) continue;
       const nd = d + l.cost;
       if (nd > maxM || nd >= (dist.get(l.to) ?? Infinity)) continue;
       dist.set(l.to, nd);

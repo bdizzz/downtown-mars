@@ -80,6 +80,8 @@ export interface Layout {
   corridorsBuilding?: Record<string, number>;
   /** Corridors being filled in (still usable until the job's done): edge id → job id. */
   corridorsFilling?: Record<string, number>;
+  /** Corridor segments with a sealed bulkhead: people pass, air doesn't (edge id → true). */
+  bulkheads?: Record<string, true>;
 }
 
 export type CheckResult =

@@ -34,6 +34,8 @@ export const corridors = raw as unknown as {
   defaultFinish: string;
   /** The gallery tube: every corridor along the shaft wall is one, whatever finish was asked for. */
   gallery: FinishDef;
+  /** A sealed door fitted across a built corridor segment. */
+  bulkhead: { name: string; hint: string; cost: Record<string, number> };
   finishes: FinishDef[];
 };
 
@@ -198,9 +200,27 @@ function computeAccess(layout: Layout): { linked: Record<string, boolean>; conne
   return { linked, connected, floors };
 }
 
+/** Is there a bulkhead on this corridor segment (and the corridor still there)? */
+export function hasBulkhead(layout: Layout, edgeId: string): boolean {
+  return !!layout.bulkheads?.[edgeId] && !!layout.corridors?.[edgeId];
+}
+
+/** Why a bulkhead can't be fitted on this border (or, with `on` false, taken out), or null. */
+export function bulkheadRefusal(layout: Layout, edgeId: string, on = true): string | null {
+  if (!on) return hasBulkhead(layout, edgeId) ? null : "No bulkhead here";
+  const e = edgeById(layout.hole, edgeId);
+  if (!e || !layout.corridors?.[edgeId]) return "A bulkhead goes across a corridor: there's none here";
+  if (isGalleryEdge(e)) return "Gallery tubes run open along the shaft: no bulkhead in one";
+  if (layout.corridorsBuilding?.[edgeId] !== undefined) return "Not built yet";
+  if (hasBulkhead(layout, edgeId)) return "Already has a bulkhead";
+  return null;
+}
+
 /** Recompute which rooms and corridors reach the shaft. */
 export function recomputeAccess(layout: Layout): void {
   layout.corridors ??= {};
+  // A bulkhead goes with its corridor.
+  for (const id of Object.keys(layout.bulkheads ?? {})) if (!layout.corridors[id]) delete layout.bulkheads![id];
   const { linked, connected, floors } = computeAccess(layout);
   layout.corridorLinked = linked;
   layout.floorLinked = floors;

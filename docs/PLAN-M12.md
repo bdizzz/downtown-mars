@@ -35,3 +35,9 @@ Asked for by Bryon, Sep 30, 2026 ("let's do all that", after PLAN-M11's "not bui
 - 3D: a ring-1 room's shaft face has the usual window band behind a tube, and a window wall (0.35 m to 3.55 m) with none (`WINDOW_WALL`). Dug-out empty space opens onto the shaft only with a tube; otherwise the shaft wall stands. Walk-through rooms were already walled off without one (M11).
 - 2D: tall windows where no tube runs; ring-1 walk-through rooms open onto the shaft band only along tubes. Plan: the same for walk-through rooms.
 
+**Step 2, bulkheads:**
+- `layout.bulkheads` (edge id → true); `setBulkhead { edges, on }`: fitting one costs `corridors.bulkhead.cost` (2 metal), taking it out is free. Only on a built corridor segment, never a gallery tube (`bulkheadRefusal`). `recomputeAccess` drops any whose corridor is gone, so filling a corridor in takes its bulkhead with it.
+- In the network graph a corridor segment with a bulkhead is airtight: air routes skip it, people walk through.
+- **Tool:** the corridor tool's **Bulkhead** button (hazard-striped chip) turns it into the bulkhead tool: click a corridor to fit one, Shift-click or Erase to take it out. No dragging. The status line says what a click will do.
+- **Views:** a hazard-striped bar across the corridor in 2D and plan; in 3D a door frame with a sealed door and an orange band, at the segment's middle.
+

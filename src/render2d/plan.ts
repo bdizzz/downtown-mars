@@ -19,7 +19,7 @@ import { drawGlyph, drawPlus, shade, tint } from "./art";
 import { isOpen } from "../sim/excavation";
 import { constructionStripes, corridorStrip } from "./corridorArt";
 import { config } from "../sim/config";
-import { corridorJoints, corridors } from "../sim/corridors";
+import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
 import { edgeById, edgeSides, isGalleryEdge, nearestEdge, type Edge } from "../sim/edges";
 import { roomAt } from "../sim/placement";
 import { CATEGORY_COLORS, HEAT } from "./palette";
@@ -317,6 +317,14 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       const building = l.corridorsBuilding?.[id] !== undefined;
       const tube = isGalleryEdge(e);
       const poly = corridorStrip(roomsCtx, s.at, s.normal, s.len, tube ? TUBE : BAND, finish, planned || building ? 0.45 : 1);
+      // A bulkhead: a sealed door across the corridor, in hazard stripes.
+      if (hasBulkhead(l, id)) {
+        const [mx, my] = s.at(s.mid);
+        const [nx, ny] = s.normal(s.mid);
+        const half = BAND / 2 + 1;
+        roomsCtx.moveTo(mx - nx * half, my - ny * half).lineTo(mx + nx * half, my + ny * half).stroke({ color: 0x3b3f45, width: 5 });
+        roomsCtx.moveTo(mx - nx * half, my - ny * half).lineTo(mx + nx * half, my + ny * half).stroke({ color: 0xe0a03a, width: 2 });
+      }
       if (building || l.corridorsFilling?.[id] !== undefined) {
         roomsCtx.poly(poly).stroke({ color: C.build, width: 2 });
         if (building) continue;

@@ -16,6 +16,13 @@
     "color": "#9fb8c4",
     "accent": "#5f7c8a"
   },
+  "bulkhead": {
+    "name": "Bulkhead",
+    "hint": "A sealed door across a corridor: people pass, air and smell don't",
+    "cost": {
+      "metal": 2
+    }
+  },
   "finishes": [
     {
       "id": "rock",

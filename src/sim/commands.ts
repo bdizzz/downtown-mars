@@ -9,7 +9,7 @@ import type { Priority } from "./config";
 import { enact, repeal } from "./ordinances";
 import { isCrop, resourceDefs } from "./resources";
 import { capacities, mainOutput } from "./economy";
-import { corridorCost, corridorRefusal, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
+import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById } from "./edges";
 import { dropCorridors, dropRoomJobs, finishAll, prioritize, queueCorridors, queueExtension, queueFill, queueRoom } from "./construction";
 import { holeGates, unlock, UNLOCK_GATES } from "./people";
@@ -55,6 +55,8 @@ export type SimCommand =
   | { type: "consoleStorm"; inDays?: number; days?: number }
   /** Testing, from the browser console: set rooms' condition (0..1): one room, or every room that has one. */
   | { type: "consoleWear"; condition: number; roomId?: number }
+  /** Fit sealed bulkheads across built corridor segments (on), or take them out (off, free). */
+  | { type: "setBulkhead"; edges: string[]; on: boolean }
   /** Give a room its own name; an empty name goes back to the default. */
   | { type: "renameRoom"; roomId: number; name: string };
 
@@ -277,6 +279,24 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       }
       state.construction.queue = state.construction.queue.filter((j) => j !== job);
       recomputeAccess(layout);
+      layout.version++;
+      return { ok: true };
+    }
+    case "setBulkhead": {
+      const ids = cmd.edges.filter((id, i) => cmd.edges.indexOf(id) === i && bulkheadRefusal(layout, id, cmd.on) === null);
+      if (!ids.length) return { ok: false, reason: bulkheadRefusal(layout, cmd.edges[0] ?? "", cmd.on) ?? "Nothing to do" };
+      if (cmd.on) {
+        const cost: Record<string, number> = {};
+        for (const [r, v] of Object.entries(corridors.bulkhead.cost)) cost[r] = v * ids.length;
+        const short = shortfall(state.resources, cost);
+        if (short) return { ok: false, reason: short };
+        for (const [r, v] of Object.entries(cost)) {
+          state.resources[r] = (state.resources[r] ?? 0) - v;
+          record(state, r, "out", CORRIDORS, v);
+        }
+        layout.bulkheads ??= {};
+        for (const id of ids) layout.bulkheads[id] = true;
+      } else for (const id of ids) delete layout.bulkheads?.[id];
       layout.version++;
       return { ok: true };
     }

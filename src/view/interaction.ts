@@ -4,7 +4,7 @@ import { checkBuild } from "../sim/costs";
 import { roomAt, type Layout, type Location } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { isOpen } from "../sim/excavation";
-import { corridorCost, corridorRefusal, shortfall } from "../sim/corridors";
+import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, shortfall } from "../sim/corridors";
 import type { Edge } from "../sim/edges";
 import type { EdgeHover, HoverInfo, Pick, StageOptions, Tool } from "./types";
 
@@ -46,6 +46,11 @@ export function edgeHoverFor(layout: Layout, resources: Record<string, number>, 
   if (!edge) return info;
   const finish = layout.corridors[edge.id];
   const removing = erase || tool.erase;
+  if (tool.bulkhead) {
+    const refusal = bulkheadRefusal(layout, edge.id, !removing) ?? (removing ? null : shortfall(resources, corridors.bulkhead.cost));
+    info.edge = { id: edge.id, refusal, cost: removing ? {} : corridors.bulkhead.cost, erase: removing, bulkhead: true, ...(finish ? { finish, linked: !!layout.corridorLinked?.[edge.id] } : {}) };
+    return info;
+  }
   let refusal: string | null;
   if (removing) refusal = !finish ? "No corridor here to remove" : layout.corridorsFilling?.[edge.id] !== undefined ? "Already being filled in" : null;
   else refusal = corridorRefusal(layout, edge.id);
@@ -59,6 +64,7 @@ export function edgeHoverFor(layout: Layout, resources: Record<string, number>, 
 /** The command for drawing (or erasing) a corridor on the border under the pointer. */
 export function corridorCommand(tool: Tool, edge: EdgeHover | undefined): SimCommand | null {
   if (tool?.kind !== "corridor" || !edge) return null;
+  if (tool.bulkhead) return { type: "setBulkhead", edges: [edge.id], on: !edge.erase };
   return edge.erase ? { type: "removeCorridors", edges: [edge.id] } : { type: "drawCorridors", edges: [edge.id], finish: tool.finish };
 }
 
@@ -100,7 +106,7 @@ export function clickWith(layout: Layout, tool: Tool, info: HoverInfo, opts: Sta
 
 /** With the corridor tool, dragging draws (or erases) a corridor along every border it crosses. */
 export function paints(tool: Tool): boolean {
-  return tool?.kind === "corridor";
+  return tool?.kind === "corridor" && !tool.bulkhead;
 }
 
 /**
