@@ -35,6 +35,9 @@ const LADDER_IDS = {
   "Basic apartment|M": "apartment",
 };
 
+/** Catalog entries built as a one-off project, not a room (no entry in rooms.json). */
+const PROJECTS = { "shaft dome": "Build → Public: a construction project (PLAN-M12)" };
+
 /** Catalog rooms built as something a little different, and under another name. */
 const BUILT_AS = { "local elevator": true, "empty room": true };
 
@@ -160,6 +163,7 @@ for (const l of ladderBuilt) if (l.b) catalogIds.add(l.b.id);
 const builtOnly = built.filter((r) => !catalogIds.has(r.id));
 
 const status = (r) => {
+  if (PROJECTS[norm(r.name)]) return "Built (a project)";
   if (!r.b) return r.name === "Corridor" ? "Built differently" : "Described";
   if (BUILT_AS[norm(r.name)]) return `Built as ${r.b.name.toLowerCase()}`;
   const catSize = r.size.split(/[ ,]/)[0];
@@ -183,8 +187,9 @@ out.push("");
 out.push("| Room | Section | Size | Status | Built as | Needs first | Grade |");
 out.push("| --- | --- | --- | --- | --- | --- | --- |");
 for (const r of described) {
-  const [grade, need] = NEEDS[r.name] ?? (r.b ? ["", ""] : ["?", "Not assessed yet"]);
-  out.push(`| ${r.name.replace(/★/g, "").trim()} | ${r.section} | ${r.size} | ${status(r)} | ${r.b ? `\`${r.b.id}\` (${sizeOf(r.b)})` : "—"} | ${r.b ? "" : need} | ${r.b ? "" : grade} |`);
+  const project = PROJECTS[norm(r.name)];
+  const [grade, need] = project ? ["", ""] : (NEEDS[r.name] ?? (r.b ? ["", ""] : ["?", "Not assessed yet"]));
+  out.push(`| ${r.name.replace(/★/g, "").trim()} | ${r.section} | ${r.size} | ${status(r)} | ${r.b ? `\`${r.b.id}\` (${sizeOf(r.b)})` : project ?? "—"} | ${r.b ? "" : need} | ${r.b ? "" : grade} |`);
 }
 out.push("");
 
