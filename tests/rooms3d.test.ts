@@ -4,7 +4,7 @@ import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
 import * as THREE from "three";
-import { loweredAt, outlineGeometry, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
+import { loweredAt, openingsOf, outlineGeometry, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
 import { floorSpan, ringRadii, slotAngles } from "../src/render3d/cylinder";
 import { corridorJoints } from "../src/sim/corridors";
 import { DOOR, doorways } from "../src/view/doors";
@@ -167,7 +167,7 @@ describe("doors and windows", () => {
     const r0 = ringRadii(l.hole, 1)[0];
     const base = floorSpan(1)[0];
     const solid = roomGeometry(l, room.cells);
-    const cut = roomGeometry(l, room.cells, undefined, true, false, doorways(l, room));
+    const cut = roomGeometry(l, room.cells, undefined, true, false, openingsOf(l, room));
     // In the doorway at knee height, and in the window band beside it: open only once cut.
     for (const [a, y] of [[door!.angle, base + 0.5], [door!.angle + 3 / r0, base + 2]] as const) {
       expect(covers(solid, r0, a, y)).toBe(true);
@@ -176,6 +176,22 @@ describe("doors and windows", () => {
     // Below the window beside the door, and above the door: still wall.
     expect(covers(cut, r0, door!.angle + 3 / r0, base + 0.5)).toBe(true);
     expect(covers(cut, r0, door!.angle, base + DOOR.height + 0.8)).toBe(true);
+  });
+
+  it("cut a door into a side wall where a corridor runs along it and no tube does", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const r = placeRoom(l, "life_support", ring(1, 2, 2, 2, 2)); // rings 2–3, no shaft face
+    const room = l.rooms.find((x) => x.id === r.id)!;
+    expect(doorways(l, room)).toEqual([]);
+    l.corridors["R1.2.2"] = "rock"; // along its left side, on ring 2
+    const [door] = doorways(l, room);
+    expect(door).toMatchObject({ side: "left", edge: "R1.2.2" });
+    const parts = { glass: [] as number[], frames: [] as number[] };
+    const solid = triangles(roomGeometry(l, room.cells));
+    const cut = triangles(roomGeometry(l, room.cells, undefined, true, false, openingsOf(l, room), [], parts));
+    expect(cut).toBeGreaterThan(solid); // the wall split round the doorway
+    expect(parts.frames.length).toBeGreaterThan(0);
+    expect(parts.glass.length).toBe(0); // no windows on it
   });
 });
 

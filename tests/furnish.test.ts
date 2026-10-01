@@ -60,15 +60,29 @@ describe("fitting furniture into a room", () => {
 
   it("keeps a ring-1 room's doorway clear", () => {
     const frame = frameOf(layout, near)!;
-    expect(frame.door).not.toBeNull();
+    expect(frame.doors).toHaveLength(1);
+    const [cx, cz] = frame.doors[0]!.reduce(([x, z], [px, pz]) => [x + px / 4, z + pz / 4], [0, 0]);
+    const doorAngle = Math.atan2(cz, cx);
     // A table dropped right in the doorway is left out.
     const inDoor: Template = [{ item: "table", wall: "front", x: 0, y: 0.1 }];
-    const doorX = (frame.door! - (frame.left(frame.rIn + 1) + frame.right(frame.rIn + 1)) / 2) * (frame.rIn + 1);
+    const doorX = (doorAngle - (frame.left(frame.rIn + 1) + frame.right(frame.rIn + 1)) / 2) * (frame.rIn + 1);
     expect(fit(frame, [{ ...inDoor[0]!, x: doorX }])).toHaveLength(0);
     // Off to one side (toward the room's middle: the door is in its second cell), it goes in.
     expect(fit(frame, [{ ...inDoor[0]!, x: doorX - 3 }])).toHaveLength(1);
     // A ring-2 room has no shaft face, so no doorway there.
-    expect(frameOf(layout, far)!.door).toBeNull();
+    expect(frameOf(layout, far)!.doors).toEqual([]);
+  });
+
+  it("keeps a side doorway clear too, where a corridor runs along a wall", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const lab = room(l, "bunk_dorm", ring(1, 2, 3, 2));
+    l.corridors["R1.2.3"] = "rock"; // along its left side
+    const frame = frameOf(l, lab)!;
+    expect(frame.doors).toHaveLength(1);
+    const locker: Template = [{ item: "locker", wall: "left", y: 0.1 }];
+    // A locker against the left wall, in the middle (where the door is): left out. Out at the end: in.
+    expect(fit(frame, locker)).toHaveLength(0);
+    expect(fit(frame, [{ ...locker[0]!, x: 3.5 }])).toHaveLength(1);
   });
 
   it("skips what doesn't fit and carries on, and stops at the crowding cap", () => {

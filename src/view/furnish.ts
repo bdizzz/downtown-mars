@@ -4,7 +4,7 @@ import { edgeById } from "../sim/edges";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { floorSpan, ringRadii, slotAngles } from "../render3d/cylinder";
-import { doorways } from "./doors";
+import { doorways, type Doorway } from "./doors";
 import { isFurnished, isItem, isMounted, itemDef, itemsFor } from "./furniture";
 
 // Laying furniture out in a room. A template (data/layouts.json) is a list of
@@ -73,7 +73,7 @@ export const FIT = {
   snug: 0.05,
   /** Kept between copies in one repeated row (planters, racks, tables): a row can stand closer than the aisle. */
   row: 0.3,
-  /** The doorway kept clear on a ring-1 room's shaft face: width along the wall, depth into the room. */
+  /** A doorway's keep-clear zone, on whichever wall it's in: width along the wall, depth into the room. */
   door: { width: 1.8, depth: 1.6 },
   /** Items stop once their footprints cover this share of the floor. */
   crowding: 0.35,
@@ -110,8 +110,8 @@ export interface Frame {
   a1: number;
   dLeft: number;
   dRight: number;
-  /** The doorway on the front wall, if any: its angle. */
-  door: number | null;
+  /** The doorways on this floor (on any wall), as the floor kept clear inside each: footprints. */
+  doors: [number, number][][];
   area: number;
   /** The floor it's on. */
   floor: number;
@@ -155,15 +155,18 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
   for (const id of Object.keys(layout.corridors ?? {})) {
     const e = id.startsWith(`A${floor}.`) ? edgeById(hole, id) : null;
     if (!e || e.kind !== "arc" || !overlaps(e.a0 * TAU, e.a1 * TAU, a0, a1)) continue;
-    if (e.circle === inner - 1) front = HALL;
+    // A gallery tube runs in the shaft, outside the room's front wall: it takes nothing from the room.
+    if (e.circle === inner - 1 && e.circle > 0) front = HALL;
     if (e.circle === outer) back = HALL;
   }
   const g = FIT.wallGap;
   const rIn = ringRadii(hole, inner)[0] + front + g;
   const rOut = ringRadii(hole, outer)[1] - back - g;
   const side = (d: number, r: number) => Math.asin(Math.min(0.99, d / r));
-  // The door on this floor, if it has one (as the 3D view cuts it).
-  const door = doorways(layout, room).find((d) => d.floor === floor)?.angle ?? null;
+  // The doors on this floor (as the 3D view cuts them), and the floor kept clear inside each.
+  const doors = doorways(layout, room)
+    .filter((d) => d.floor === floor)
+    .map((d) => keepClear(d));
   const open = !!roomDef(room.type).public;
   return {
     // On the room's floor, which stands the walls' hairline above the floor's base (as the 3D view draws it).
@@ -176,7 +179,7 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
     a1,
     dLeft: left + g,
     dRight: right + g,
-    door: door === null ? null : unwrap(door, a0),
+    doors,
     area: ((rOut * rOut - rIn * rIn) / 2) * (a1 - a0),
     floor,
     solid: {
@@ -323,26 +326,29 @@ export function tooClose(a: [number, number][], b: [number, number][], gap: numb
   return true;
 }
 
-/** The doorway's keep-clear zone, as a footprint. */
-function doorway(frame: Frame): [number, number][] | null {
-  if (frame.door === null) return null;
+/** The floor kept clear inside a doorway, as a footprint: from just outside its wall, the doorway's width, some way into the room. */
+function keepClear(d: Doorway): [number, number][] {
   const { width, depth } = FIT.door;
-  const r0 = frame.rIn - FIT.wallGap;
-  const r1 = r0 + depth;
-  const a = frame.door;
-  const h = width / 2 / r0;
-  return [
-    [r0 * Math.cos(a - h), r0 * Math.sin(a - h)],
-    [r1 * Math.cos(a - h), r1 * Math.sin(a - h)],
-    [r1 * Math.cos(a + h), r1 * Math.sin(a + h)],
-    [r0 * Math.cos(a + h), r0 * Math.sin(a + h)],
-  ];
+  const g = FIT.wallGap;
+  const at = (r: number, a: number): [number, number] => [r * Math.cos(a), r * Math.sin(a)];
+  if (d.side === "inner" || d.side === "outer") {
+    // Into the room: outward from an inner wall, inward from an outer one.
+    const [r0, r1] = d.side === "inner" ? [d.r - g, d.r + depth] : [d.r - depth, d.r + g];
+    const h = width / 2 / d.r;
+    return [at(r0, d.angle - h), at(r1, d.angle - h), at(r1, d.angle + h), at(r0, d.angle + h)];
+  }
+  // A side wall: along its line, and in from it (toward larger angles from a left wall, smaller from a right).
+  const u: [number, number] = [Math.cos(d.angle), Math.sin(d.angle)];
+  const n: [number, number] = d.side === "left" ? [-u[1], u[0]] : [u[1], -u[0]];
+  const p = (along: number, out: number): [number, number] => [along * u[0] + out * n[0], along * u[1] + out * n[1]];
+  const [lo, hi] = [d.r - width / 2, d.r + width / 2];
+  return [p(lo, -g), p(hi, -g), p(hi, depth), p(lo, depth)];
 }
 
 /** A template's items fitted into a room, in priority order: what fits, and nothing else. */
 export function fit(frame: Frame, template: Template): Fitted[] {
   const out: Fitted[] = [];
-  const door = doorway(frame);
+  const inDoorway = (corners: [number, number][]) => frame.doors.some((d) => tooClose(corners, d, 0));
   let covered = 0;
   const cap = frame.area * FIT.crowding;
   const tryPlace = (p: Placement, i: number, dx: number): "ok" | "outside" | "blocked" | "full" => {
@@ -355,7 +361,7 @@ export function fit(frame: Frame, template: Template): Fitted[] {
     const f = place(frame, p, dx);
     if (!f.corners.every((c) => inside(frame, c))) return "outside";
     // A rug lies under whatever stands on it: only standing items keep apart, and out of the doorway.
-    if (!flat && door && tooClose(f.corners, door, 0)) return "blocked";
+    if (!flat && inDoorway(f.corners)) return "blocked";
     const gap = p.snug ? FIT.snug : FIT.aisle;
     const between = (o: Fitted) => (o.placement === i ? Math.min(gap, FIT.row) : gap);
     if (!flat && out.some((o) => !isFlat(o.item) && !isMounted(o.item) && tooClose(f.corners, o.corners, between(o)))) return "blocked";
@@ -371,7 +377,7 @@ export function fit(frame: Frame, template: Template): Fitted[] {
     if (p.wall === "center" || !frame.solid[p.wall]) return "outside";
     const f = place(frame, p, dx);
     if (!f.corners.every((c) => inside(frame, c))) return "outside";
-    if (door && tooClose(f.corners, door, 0)) return "blocked";
+    if (inDoorway(f.corners)) return "blocked";
     const mount = itemDef(p.item).mount!;
     // Two hangings can share a stretch of wall if one hangs clear above the other (a vent over a picture).
     const top = mount + itemDef(p.item).size[2];

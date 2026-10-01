@@ -5,7 +5,7 @@ import type { Hole } from "../sim/geometry";
 import { roomAt, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { FLOOR_H, openShaftRadius, RING_D, TAU } from "../render3d/cylinder";
-import { doorways } from "./doors";
+import { doorsOnFloor, inDoorway } from "./doors";
 import { furnish, isFlat } from "./furnish";
 import { isMounted, itemDef } from "./furniture";
 
@@ -21,8 +21,6 @@ import { isMounted, itemDef } from "./furniture";
 export const WALKER_RADIUS = 0.3;
 /** How close to furniture: less than to a wall, so a walker fits down the aisles a room is furnished with. */
 export const FURNITURE_CLEARANCE = 0.2;
-/** How far either side of its wall a doorway reaches: stand in it and you're both in the room and outside. */
-const DOOR_DEPTH = 0.6;
 const HALL = corridors.widthM / 2;
 
 /** Where a point is: open ground, inside a private room ("room:" and its id), or in a room's doorway ("door:" and its id). */
@@ -78,16 +76,7 @@ const built = (room: RoomInstance) => !room.planned && !room.building;
 
 /** The doorway a point stands in, if any: within its width (less a walker's radius, so all of one fits through) and close to its wall. */
 function doorAt(layout: Layout, floor: number, r: number, a: number): Region | null {
-  const hole = layout.hole;
-  if (Math.abs(r - hole.shaftRadiusM) > DOOR_DEPTH) return null;
-  const n = hole.ringSlots[0]!;
-  const turn = (((a / TAU) % 1) + 1) % 1;
-  const room = roomAt(layout, { floor, ring: 1, slot: Math.min(Math.floor(turn * n), n - 1) });
-  if (!room || !built(room)) return null;
-  for (const d of doorways(layout, room)) {
-    if (d.floor !== floor) continue;
-    if (Math.abs(angleDiff(a, d.angle)) * d.r <= d.half * d.r - WALKER_RADIUS) return `door:${room.id}`;
-  }
+  for (const d of doorsOnFloor(layout, floor)) if (inDoorway(d, r, a, WALKER_RADIUS)) return `door:${d.roomId}`;
   return null;
 }
 

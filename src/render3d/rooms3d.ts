@@ -12,7 +12,7 @@ import { FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
 import { isMounted, itemDef } from "../view/furniture";
 import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
-import { tubeAt, tubeAtAngle } from "../view/gallery";
+import { tubeAt } from "../view/gallery";
 import { finishMaterial, withFloor, withFresnel, withGrime, withRock, type FloorKind } from "./surfaces";
 import { roomFinish, type Finish } from "../view/roomFinish";
 import { lampsOf, lightPools } from "./lights3d";
@@ -403,31 +403,117 @@ export function stairWells(layout: Layout, room: RoomInstance): FloorHole[] {
     });
 }
 
-/** The glass in a ring-1 face: the usual band behind a gallery tube, a window wall where none runs. */
-function windowSpan(tube: boolean): { bottom: number; top: number } {
-  return tube ? WINDOW : WINDOW_WALL;
+/** Where a room has windows, by border (edge id): how high the glass runs (a wall of it, or a band). */
+export type WindowSpans = Map<string, { bottom: number; top: number }>;
+
+/** What's cut through a room's walls: its doors, and its windows. */
+export interface RoomOpenings {
+  doors: Doorway[];
+  windows: WindowSpans;
+}
+
+/** The glass and door frames to go in the openings, as roomGeometry builds the walls they're cut in. */
+export interface OpeningParts {
+  glass: number[];
+  frames: number[];
 }
 
 /**
- * The openings in a ring-1 cell's shaft face (from a0 to a1): its windows
- * (a band behind a tube, a wall of them with none), less a frame's width
- * either side of a door, and the door, if it's here.
+ * A room's windows: for now, as they've always been, ring 1's shaft face
+ * (a wall of glass with no tube in front, a band behind one).
  */
-function frontage(c: Cell, a0: number, a1: number, doors: Doorway[], tube: boolean): Opening[] {
-  const base = floorSpan(c.floor)[0];
-  const door = doors.find((d) => d.floor === c.floor && d.angle > a0 && d.angle < a1);
-  const span = windowSpan(tube);
-  const band = { y0: base + span.bottom, y1: base + span.top };
-  // The window stops a little further in than the glass, so the glass always covers it.
-  const w0 = a0 + WINDOW.margin * 1.25;
-  const w1 = a1 - WINDOW.margin * 1.25;
-  if (!door) return [{ a0: w0, a1: w1, ...band }];
-  const frame = DOOR_FRAME.width / door.r;
-  return [
-    { a0: w0, a1: door.angle - door.half - frame, ...band },
-    { a0: door.angle + door.half + frame, a1: w1, ...band },
-    { a0: door.angle - door.half, a1: door.angle + door.half, y0: base, y1: base + DOOR.height },
-  ];
+export function windowSpans(layout: Layout, room: RoomInstance): WindowSpans {
+  const out: WindowSpans = new Map();
+  if (roomDef(room.type).public) return out;
+  for (const c of room.cells) {
+    if (c.ring !== 1) continue;
+    const e = galleryEdges(layout.hole, c.floor)[c.slot];
+    if (e) out.set(e.id, tubeAt(layout, c.floor, c.slot) ? WINDOW : WINDOW_WALL);
+  }
+  return out;
+}
+
+/** A room's openings, or null for a plan (nothing's cut yet). */
+export function openingsOf(layout: Layout, room: RoomInstance): RoomOpenings | null {
+  if (room.planned) return null;
+  return { doors: doorways(layout, room), windows: windowSpans(layout, room) };
+}
+
+/** A span of a wall (angles on a curved wall, radii along a side wall) and its heights. */
+interface Span {
+  s0: number;
+  s1: number;
+  y0: number;
+  y1: number;
+}
+
+/**
+ * The openings in one stretch of wall, from s0 to s1 (angles, or radii along
+ * a side wall): each glazed border's window band, less a frame's width either
+ * side of a door, and the door itself. `edges` are the borders along it, with
+ * their extent in the same units. `unit` turns metres into those units.
+ */
+function wallOpenings(open: RoomOpenings, cell: Cell, edges: { id: string; s0: number; s1: number }[], base: number, unit: number, margin: number): { holes: Span[]; panes: Span[]; door: { s: number; half: number } | null } {
+  const holes: Span[] = [];
+  const panes: Span[] = [];
+  let door: { s: number; half: number } | null = null;
+  for (const e of edges) {
+    const d = open.doors.find((x) => x.edge === e.id && x.cell.floor === cell.floor && x.cell.ring === cell.ring && x.cell.slot === cell.slot);
+    const at = d ? (d.side === "left" || d.side === "right" ? d.r : d.angle) : null;
+    const half = d ? (d.side === "left" || d.side === "right" ? d.half : d.half) : 0;
+    if (d && at !== null) {
+      door = { s: at, half };
+      holes.push({ s0: at - half, s1: at + half, y0: base, y1: base + DOOR.height });
+    }
+    const win = open.windows.get(e.id);
+    if (!win) continue;
+    const w0 = e.s0 + margin;
+    const w1 = e.s1 - margin;
+    const frame = DOOR_FRAME.width * unit;
+    const runs: [number, number][] = door && at !== null && at > w0 && at < w1 ? [[w0, at - half - frame], [at + half + frame, w1]] : [[w0, w1]];
+    for (const [a, b] of runs) {
+      if (b - a <= 1e-6) continue;
+      holes.push({ s0: a, s1: b, y0: base + win.bottom, y1: base + win.top });
+      panes.push({ s0: a, s1: b, y0: base + win.bottom, y1: base + win.top });
+    }
+  }
+  return { holes, panes, door };
+}
+
+/** A side wall from (r0, a0) to (r1, a1), with openings along it (by radius) cut out. */
+function sideWallWithOpenings(pos: number[], r0: number, a0: number, r1: number, a1: number, y0: number, y1: number, cut: Cut, holes: Span[]): void {
+  const at = (r: number): [number, number] => {
+    const u = (r - r0) / (r1 - r0 || 1);
+    const [x0, , z0] = [r0 * Math.cos(a0), 0, r0 * Math.sin(a0)];
+    const [x1, , z1] = [r1 * Math.cos(a1), 0, r1 * Math.sin(a1)];
+    const x = x0 + (x1 - x0) * u;
+    const z = z0 + (z1 - z0) * u;
+    return [Math.hypot(x, z), Math.atan2(z, x)];
+  };
+  const lo = Math.min(r0, r1);
+  const hi = Math.max(r0, r1);
+  const clipped = holes.map((h) => ({ ...h, s0: Math.max(h.s0, lo), s1: Math.min(h.s1, hi) })).filter((h) => h.s1 - h.s0 > 1e-6 && h.y1 > h.y0);
+  const whole = { ...cut, y0: cut.y0 ?? y0, y1: cut.y1 ?? y1 };
+  if (!clipped.length) return sideWall(pos, r0, a0, r1, a1, y0, y1, whole);
+  const breaks = (list: number[]) => [...new Set(list)].sort((p, q) => p - q);
+  const rs = breaks([lo, hi, ...clipped.flatMap((h) => [h.s0, h.s1])]);
+  const ys = breaks([y0, y1, ...clipped.flatMap((h) => [h.y0, h.y1])]);
+  for (let i = 0; i + 1 < rs.length; i++) {
+    const rm = (rs[i]! + rs[i + 1]!) / 2;
+    const open = (ym: number) => clipped.some((h) => rm > h.s0 && rm < h.s1 && ym > h.y0 && ym < h.y1);
+    const [pa, aa] = at(rs[i]!);
+    const [pb, ab] = at(rs[i + 1]!);
+    let start: number | null = null;
+    for (let j = 0; j + 1 < ys.length; j++) {
+      const solid = !open((ys[j]! + ys[j + 1]!) / 2);
+      if (solid && start === null) start = ys[j]!;
+      if (!solid && start !== null) {
+        sideWall(pos, pa, aa, pb, ab, start, ys[j]!, whole);
+        start = null;
+      }
+    }
+    if (start !== null) sideWall(pos, pa, aa, pb, ab, start, ys.at(-1)!, whole);
+  }
 }
 
 /**
@@ -442,7 +528,16 @@ function frontage(c: Cell, a0: number, a1: number, doors: Doorway[], tube: boole
  * tints), corridors are ignored. With `doors`, the shaft face has its windows
  * and doors cut out of it.
  */
-export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve = true, publicRoom = false, doors: Doorway[] | null = null, wells: FloorHole[] = []): THREE.BufferGeometry {
+export function roomGeometry(
+  layout: Layout,
+  cells: Cell[],
+  inset = INSET,
+  carve = true,
+  publicRoom = false,
+  open: RoomOpenings | null = null,
+  wells: FloorHole[] = [],
+  parts?: OpeningParts,
+): THREE.BufferGeometry {
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
   const own = new Set(cells.map(key));
   const rings = cells.map((c) => c.ring);
@@ -465,6 +560,64 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
     const [s0, s1] = slotAngles(c.slot, layout.hole.ringSlots[c.ring - 1]!);
     const cMid = (cr0 + cr1) / 2;
     const across = (r: number, a: number) => seeThrough(layout, own, c.floor, r, a);
+    const base = floorSpan(c.floor)[0];
+    // Glass and frames go down with the wall they're set in.
+    const inWall = (side: 1 | -1): Cut => ({ side, y0: base, y1: base + FLOOR_H, across: true });
+    // The borders along each curved face, as angle ranges within this cell.
+    const arcsOn = (circle: number) =>
+      cellEdges(layout.hole, c)
+        .filter((e): e is ArcEdge => e.kind === "arc" && e.circle === circle)
+        .map((e) => ({ id: e.id, s0: Math.max(e.a0 * TAU, s0), s1: Math.min(e.a1 * TAU, s1) }));
+    /** A curved face with its openings cut, and its glass and door frame. */
+    const curved = (r: number, range: [number, number], circle: number, wallCut: Cut, outward: 1 | -1) => {
+      if (!open) return curvedFace(pos, r, ...range, y0, y1, wallCut);
+      const o = wallOpenings(open, c, arcsOn(circle), base, 1 / r, WINDOW.margin * 1.25);
+      curvedFaceWithOpenings(pos, r, ...range, y0, y1, wallCut, o.holes.map((h) => ({ a0: h.s0, a1: h.s1, y0: h.y0, y1: h.y1 })));
+      if (!parts) return;
+      const rg = r + outward * WINDOW.inset;
+      const rf = r + outward * WINDOW.inset * 2;
+      for (const pane of o.panes) {
+        const a = Math.max(pane.s0, range[0]);
+        const b = Math.min(pane.s1, range[1]);
+        if (b - a > 1e-6) curvedFace(parts.glass, rg, a, b, pane.y0, pane.y1, inWall(outward === -1 ? 1 : -1));
+      }
+      if (o.door && o.door.s > range[0] && o.door.s < range[1]) {
+        const fw = DOOR_FRAME.width / r;
+        const [d0, d1] = [o.door.s - o.door.half, o.door.s + o.door.half];
+        const top = base + DOOR.height;
+        const cutF = inWall(outward === -1 ? 1 : -1);
+        curvedFace(parts.frames, rf, d0 - fw, d0, base, top + DOOR_FRAME.width, cutF);
+        curvedFace(parts.frames, rf, d1, d1 + fw, base, top + DOOR_FRAME.width, cutF);
+        curvedFace(parts.frames, rf, d0, d1, top, top + DOOR_FRAME.width, cutF);
+      }
+    };
+    /** A side wall (along the radial border `id`) with its openings, glass and door frame. */
+    const side = (id: string, r0: number, a0: number, r1: number, a1: number, wallCut: Cut) => {
+      if (!open) return sideWall(pos, r0, a0, r1, a1, y0, y1, wallCut);
+      const o = wallOpenings(open, c, [{ id, s0: cr0, s1: cr1 }], base, 1, 0.15);
+      sideWallWithOpenings(pos, r0, a0, r1, a1, y0, y1, wallCut, o.holes);
+      if (!parts) return;
+      const point = (r: number): [number, number] => {
+        const u = (r - r0) / (r1 - r0 || 1);
+        const x = r0 * Math.cos(a0) + (r1 * Math.cos(a1) - r0 * Math.cos(a0)) * u;
+        const z = r0 * Math.sin(a0) + (r1 * Math.sin(a1) - r0 * Math.sin(a0)) * u;
+        return [Math.hypot(x, z), Math.atan2(z, x)];
+      };
+      const piece = (list: number[], ra: number, rb: number, ya: number, yb: number) => {
+        const a = Math.max(Math.min(ra, rb), Math.min(r0, r1));
+        const b = Math.min(Math.max(ra, rb), Math.max(r0, r1));
+        if (b - a > 1e-6) sideWall(list, ...point(a), ...point(b), ya, yb, { ...wallCut, y0: base, y1: base + FLOOR_H, across: true });
+      };
+      for (const pane of o.panes) piece(parts.glass, pane.s0, pane.s1, pane.y0, pane.y1);
+      if (o.door) {
+        const fw = DOOR_FRAME.width;
+        const top = base + DOOR.height;
+        const [d0, d1] = [o.door.s - o.door.half, o.door.s + o.door.half];
+        piece(parts.frames, d0 - fw, d0, base, top + fw);
+        piece(parts.frames, d1, d1 + fw, base, top + fw);
+        piece(parts.frames, d0, d1, top, top + fw);
+      }
+    };
     let prev: Piece | null = null;
     for (const p of cut.pieces) {
       // Walls, except where a public room opens onto the gallery or a corridor. What's across is asked segment by segment.
@@ -473,10 +626,9 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
       const outside = pieceAt(cut, p, p.rr1);
       if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) {
         const wallCut: Cut = { side: 1, across: p.innerHall || ((a) => across(cr0 - 0.5, a)) };
-        if (doors && c.ring === 1) curvedFaceWithOpenings(pos, p.rr0, ...inside, y0, y1, wallCut, frontage(c, cut.left(p.rr0), cut.right(p.rr0), doors, tubeAt(layout, c.floor, c.slot)));
-        else curvedFace(pos, p.rr0, ...inside, y0, y1, wallCut);
+        curved(p.rr0, inside, c.ring - 1, wallCut, -1);
       }
-      if (c.ring === outer && !(publicRoom && p.outerHall)) curvedFace(pos, p.rr1, ...outside, y0, y1, { side: -1, across: p.outerHall || ((a) => across(cr1 + 0.5, a)) });
+      if (c.ring === outer && !(publicRoom && p.outerHall)) curved(p.rr1, outside, c.ring, { side: -1, across: p.outerHall || ((a) => across(cr1 + 0.5, a)) }, 1);
       // A step where a corridor starts or stops partway along a side.
       if (prev) {
         // The room is on the side of whichever piece reaches further in (or out).
@@ -488,11 +640,12 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
     }
     const first = cut.pieces[0];
     const last = cut.pieces.at(-1);
+    const n = layout.hole.ringSlots[c.ring - 1]!;
     if (cut.openLeft && first && !(publicRoom && cut.hallLeft)) {
-      sideWall(pos, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y1, { side: 1, across: cut.hallLeft || across(cMid, s0 - 0.5 / cMid) });
+      side(`R${c.floor}.${c.ring}.${c.slot}`, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), { side: 1, across: cut.hallLeft || across(cMid, s0 - 0.5 / cMid) });
     }
     if (cut.openRight && last && !(publicRoom && cut.hallRight)) {
-      sideWall(pos, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y1, { side: -1, across: cut.hallRight || across(cMid, s1 + 0.5 / cMid) });
+      side(`R${c.floor}.${c.ring}.${(c.slot + 1) % n}`, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), { side: -1, across: cut.hallRight || across(cMid, s1 + 0.5 / cMid) });
     }
     const well = wells.find((w) => w.floor === c.floor);
     for (const p of floorCut.pieces) floorPiece(pos, p.rr0, p.rr1, pieceAt(floorCut, p, p.rr0), pieceAt(floorCut, p, p.rr1), y0, well);
@@ -892,10 +1045,7 @@ export function disposeRoomMaterials(): void {
     material.dispose();
   });
   labelCache.clear();
-  shapeCache.forEach(({ geo, edges }) => {
-    geo.dispose();
-    edges.dispose();
-  });
+  shapeCache.forEach(disposeShape);
   shapeCache.clear();
   furnitureCache.forEach((g) => disposeFurniture(g));
   furnitureCache.clear();
@@ -1004,9 +1154,23 @@ function drawLabel(text: string, color: string): { material: THREE.SpriteMateria
  * one room, so the other few hundred reuse what they had. Entries not used by
  * the latest build are freed.
  */
-const shapeCache = new Map<string, { geo: THREE.BufferGeometry; edges: THREE.EdgesGeometry }>();
+interface Shape {
+  geo: THREE.BufferGeometry;
+  edges: THREE.EdgesGeometry;
+  /** The glass in its windows, and its door frames, if it has any. */
+  glass: THREE.BufferGeometry | null;
+  frames: THREE.BufferGeometry | null;
+}
+const shapeCache = new Map<string, Shape>();
 
-function roomShape(layout: Layout, room: RoomInstance): { geo: THREE.BufferGeometry; edges: THREE.EdgesGeometry; key: string } {
+function disposeShape(shape: Shape): void {
+  shape.geo.dispose();
+  shape.edges.dispose();
+  shape.glass?.dispose();
+  shape.frames?.dispose();
+}
+
+function roomShape(layout: Layout, room: RoomInstance): Shape & { key: string } {
   // Corridors along its sides, and turns at its corners, change its shape, so they're part of the key.
   const outside = outsideEdges(layout.hole, room.cells);
   const joints = corridorJoints(layout);
@@ -1018,13 +1182,25 @@ function roomShape(layout: Layout, room: RoomInstance): { geo: THREE.BufferGeome
   const around = neighborCells(layout.hole, room.cells)
     .map((c) => (layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] || isOpen(layout, c) ? 1 : 0))
     .join("");
-  // A private room, once it's more than a plan, has its windows and doors cut through.
-  const doors = room.planned ? null : doorways(layout, room);
-  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${doors ? "open" : "shut"}`;
+  // A room, once it's more than a plan, has its windows and doors cut through.
+  const open = openingsOf(layout, room);
+  const cut = open
+    ? [
+        ...open.doors.map((d) => `${d.edge}/${d.cell.ring}.${d.cell.slot}`),
+        ...[...open.windows].map(([e, w]) => `${e}=${w.bottom}-${w.top}`),
+      ].join(",")
+    : "shut";
+  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${cut}`;
   let shape = shapeCache.get(key);
   if (!shape) {
-    const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, doors, stairWells(layout, room));
-    shape = { geo, edges: outlineGeometry(geo) };
+    const parts: OpeningParts = { glass: tagged(), frames: tagged() };
+    const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, open, stairWells(layout, room), parts);
+    shape = {
+      geo,
+      edges: outlineGeometry(geo),
+      glass: parts.glass.length ? geometry(parts.glass) : null,
+      frames: parts.frames.length ? geometry(parts.frames) : null,
+    };
     shapeCache.set(key, shape);
   }
   return { ...shape, key };
@@ -1229,37 +1405,10 @@ export function buildLayout(
       }
     }
 
-    if (!room.planned && !faint && !def.public) {
-      // Shaft frontage: glass in the window band cut through every ring-1 face, and a
-      // framed doorway on each floor, in the middle of the room's run (the room's shape cuts the openings).
-      const faces = shaftFaces(layout, room);
-      const doors = doorways(layout, room);
-      const win = tagged();
-      const frames = tagged();
-      // They go down with the wall they're set in.
-      const inWall = (f: { y0: number }): Cut => ({ side: 1, y0: f.y0, y1: f.y0 + FLOOR_H, across: true });
-      for (const f of faces) {
-        const [g0, g1] = [f.a0 + WINDOW.margin, f.a1 - WINDOW.margin];
-        const span = windowSpan(tubeAtAngle(layout, f.floor, (f.a0 + f.a1) / 2));
-        const [y0, y1] = [f.y0 + span.bottom, f.y0 + span.top];
-        const door = doors.find((d) => floorSpan(d.floor)[0] === f.y0 && d.angle > f.a0 && d.angle < f.a1);
-        if (!door) {
-          curvedFace(win, f.r - WINDOW.inset, g0, g1, y0, y1, inWall(f));
-          continue;
-        }
-        // The glass stops at the door's frame, which stands just proud of the wall.
-        const fw = DOOR_FRAME.width / door.r;
-        const [d0, d1] = [door.angle - door.half, door.angle + door.half];
-        if (d0 - fw > g0) curvedFace(win, f.r - WINDOW.inset, g0, d0 - fw, y0, y1, inWall(f));
-        if (g1 > d1 + fw) curvedFace(win, f.r - WINDOW.inset, d1 + fw, g1, y0, y1, inWall(f));
-        const r = f.r - WINDOW.inset * 2;
-        const top = f.y0 + DOOR.height;
-        curvedFace(frames, r, d0 - fw, d0, f.y0, top + DOOR_FRAME.width, inWall(f));
-        curvedFace(frames, r, d1, d1 + fw, f.y0, top + DOOR_FRAME.width, inWall(f));
-        curvedFace(frames, r, d0, d1, top, top + DOOR_FRAME.width, inWall(f));
-      }
-      if (win.length) group.add(new THREE.Mesh(geometry(win), glass));
-      if (frames.length) group.add(new THREE.Mesh(geometry(frames), doorFrame));
+    // Its windows and doors: glass in the openings the shape cut, and a frame round each doorway.
+    if (!room.planned && !faint) {
+      if (shape.glass) group.add(new THREE.Mesh(shape.glass, glass));
+      if (shape.frames) group.add(new THREE.Mesh(shape.frames, doorFrame));
     }
 
     if (def.short) {
@@ -1278,8 +1427,7 @@ export function buildLayout(
   }
   for (const [key, shape] of shapeCache) {
     if (used.has(key)) continue;
-    shape.geo.dispose();
-    shape.edges.dispose();
+    disposeShape(shape);
     shapeCache.delete(key);
   }
   for (const [key, g] of furnitureCache) {

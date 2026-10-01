@@ -7,6 +7,7 @@ import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js
 import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
 import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
+import { doorsOnFloor } from "../view/doors";
 import { isOpen } from "../sim/excavation";
 import { edgeById, edgeSides, galleryEdges, isGalleryEdge, nearestEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
@@ -503,20 +504,17 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         roomsCtx.rect(b.x, b.y, w, hh).stroke({ color: C.bad, width: 1.5 });
         continue;
       }
-      // Doors into the rooms on either side (public rooms are open anyway); ring 1's frontage has its own onto a tube.
+      // Doors into the rooms on either side that open onto it here (public rooms are open anyway); ring 1's frontage has its own onto a tube.
       if (isGalleryEdge(e)) continue;
       const [a, z] = edgeSides(h, e);
-      const opens = (c: Cell | null) => {
-        const r = c ? roomAt(l, c) : undefined;
-        return !!r && !r.planned && !roomDef(r.type).public;
-      };
+      const doors = doorsOnFloor(l, e.floor).filter((d) => d.edge === id);
+      const opens = (c: Cell | null) => !!c && doors.some((d) => d.cell.ring === c.ring && d.cell.slot === c.slot);
       if (b.along === "v") {
         const y = b.y + RING_H / 2 - 7;
         if (opens(a)) roomsCtx.rect(b.x - 3, y, 3, 14).fill(C.door);
         if (opens(z)) roomsCtx.rect(b.x + BAND, y, 3, 14).fill(C.door);
       } else {
         const mid = b.x + b.len / 2 - 7;
-        if (b.len < 18) continue;
         if (opens(a)) roomsCtx.rect(mid, b.y - 3, 14, 3).fill(C.door);
         if (opens(z)) roomsCtx.rect(mid, b.y + BAND, 14, 3).fill(C.door);
       }
@@ -560,7 +558,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         const xe = x + w - cut(endSlot);
         // The tubes along this stretch of wall: the door goes in the middle of them.
         const tubes = galleryEdges(h, row.floor).filter((e) => l.corridors[e.id] && e.a0 * TURN_W >= row.x0 - 0.5 && e.a1 * TURN_W <= row.x1 + 0.5);
-        const mid = tubes.length ? ((tubes[0]!.a0 + tubes.at(-1)!.a1) / 2) * TURN_W : null;
+        // The room's door onto them, where the 3D view cuts it.
+        const door = doorsOnFloor(l, row.floor).find((d) => d.side === "inner" && d.cell.ring === 1 && tubes.some((t) => t.id === d.edge));
+        const mid = door ? (door.angle / (Math.PI * 2)) * TURN_W : null;
         // Behind a tube, a band of windows; with none, a window wall nearly floor to ceiling.
         const tubeOver = (px: number) => tubes.some((e) => px >= e.a0 * TURN_W && px <= e.a1 * TURN_W);
         for (let wx = xs + 5; wx + 10 < xe - 4; wx += 13) {

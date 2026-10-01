@@ -76,6 +76,28 @@ describe("walking in first person", () => {
     expect(regionAt(s.layout, 1, ...mid(s, 1, 4))).toBeNull();
   });
 
+  it("goes in through a side door from a corridor running along a room with no shaft face", () => {
+    const s = site();
+    const h = s.layout.hole;
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 2, 3, 2) });
+    applyCommand(s, { type: "drawCorridors", edges: ["R1.2.3"], finish: "rock" });
+    applyCommand(s, { type: "consoleFinish" });
+    const room = roomAt(s.layout, { floor: 1, ring: 2, slot: 3 })!;
+    const [door] = doorways(s.layout, room);
+    expect(door).toMatchObject({ side: "left", edge: "R1.2.3" });
+    // From the corridor's middle, straight across the wall into the room.
+    const b = slotAngles(3, h.ringSlots[1]!)[0];
+    const n = [-Math.sin(b), Math.cos(b)];
+    const walkIn = (along: number) => {
+      let [x, z] = [along * Math.cos(b), along * Math.sin(b)];
+      for (let i = 0; i < 40; i++) [x, z] = step(s.layout, 1, x, z, 0.1 * n[0]!, 0.1 * n[1]!);
+      return regionAt(s.layout, 1, x, z);
+    };
+    expect(walkIn(door!.r)).toBe(`room:${room.id}`);
+    // Further along the wall, past the door: it stays in the corridor.
+    expect(walkIn(door!.r + 3)).toBe(OPEN);
+  });
+
   it("bumps into furniture, but walks over rugs", () => {
     const s = site();
     applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 4, 2) });

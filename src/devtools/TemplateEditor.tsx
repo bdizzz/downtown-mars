@@ -290,7 +290,6 @@ function PlanView({ frame, fitted, template, selected, onSelect, onDrag, accent 
     const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m);
     return [p.x, p.y];
   };
-  const door = frame.door;
   return (
     <svg
       ref={svg}
@@ -318,9 +317,9 @@ function PlanView({ frame, fitted, template, selected, onSelect, onDrag, accent 
           </text>
         );
       })}
-      {door !== null && (
-        <circle cx={(frame.rIn + 0.8) * Math.cos(door)} cy={(frame.rIn + 0.8) * Math.sin(door)} r={0.9} fill="none" stroke="#e07a3f" strokeWidth={0.05} strokeDasharray="0.2 0.15" />
-      )}
+      {frame.doors.map((d, k) => (
+        <polygon key={`door${k}`} points={d.map((p) => p.join(",")).join(" ")} fill="none" stroke="#e07a3f" strokeWidth={0.05} strokeDasharray="0.2 0.15" />
+      ))}
       {fitted.map((f, k) => {
         const on = f.placement === selected;
         return (

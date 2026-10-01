@@ -1,4 +1,5 @@
 import { UI_FONT } from "../view/font";
+import { doorsOnFloor } from "../view/doors";
 import { roomLabel } from "../sim/roomName";
 import { crewsAt, crewsKey } from "../view/crews";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
@@ -336,11 +337,9 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
         continue;
       }
       const [a, z] = edgeSides(h, e);
-      const opens = (c: Cell | null) => {
-        const r = c ? roomAt(l, c) : undefined;
-        return !!r && !r.planned && !roomDef(r.type).public;
-      };
-      if (s.len < 16) continue;
+      // Only where a room's door is (one a floor, on the best border it has).
+      const doors = doorsOnFloor(l, e.floor).filter((d) => d.edge === id);
+      const opens = (c: Cell | null) => !!c && doors.some((d) => d.cell.ring === c.ring && d.cell.slot === c.slot);
       // A tube's door is in the shaft wall, into the ring-1 room behind it.
       if (tube) {
         if (opens(z)) roomsCtx.circle(...xy(h.shaftRadiusM + 0.5, ((e.kind === "arc" ? e.a0 + e.a1 : 0) / 2) * TAU), 3).fill(C.door);
