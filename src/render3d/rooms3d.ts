@@ -12,6 +12,7 @@ import { FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
 import { isMounted, itemDef } from "../view/furniture";
 import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
+import { tubeAt, tubeAtAngle } from "../view/gallery";
 import { finishMaterial, withFloor, withFresnel, withGrime, withRock, type FloorKind } from "./surfaces";
 import { roomFinish, type Finish } from "../view/roomFinish";
 import { lampsOf, lightPools } from "./lights3d";
@@ -32,6 +33,8 @@ const ARC_STEPS = 4;
 const INSET = 0.06;
 /** The window band on a ring-1 face (above the floor's base), how far in from the face's ends it stops, and its glass. */
 const WINDOW = { bottom: 1.4, top: 3.0, inset: 0.03, margin: 0.02, color: 0x2d4f6e, opacity: 0.22 };
+/** With no gallery tube in front, a ring-1 room's shaft face is a window wall, nearly floor to ceiling. */
+const WINDOW_WALL = { bottom: 0.35, top: 3.55 };
 /** The door's frame: how wide, and its colour. */
 const DOOR_FRAME = { width: 0.12, color: 0x2a1a14 };
 const SURFACE_RING_M = 16; // how far from the rim surface props stand
@@ -400,14 +403,21 @@ export function stairWells(layout: Layout, room: RoomInstance): FloorHole[] {
     });
 }
 
+/** The glass in a ring-1 face: the usual band behind a gallery tube, a window wall where none runs. */
+function windowSpan(tube: boolean): { bottom: number; top: number } {
+  return tube ? WINDOW : WINDOW_WALL;
+}
+
 /**
- * The openings in a ring-1 cell's shaft face (from a0 to a1): its window band,
- * less a frame's width either side of a door, and the door, if it's here.
+ * The openings in a ring-1 cell's shaft face (from a0 to a1): its windows
+ * (a band behind a tube, a wall of them with none), less a frame's width
+ * either side of a door, and the door, if it's here.
  */
-function frontage(c: Cell, a0: number, a1: number, doors: Doorway[]): Opening[] {
+function frontage(c: Cell, a0: number, a1: number, doors: Doorway[], tube: boolean): Opening[] {
   const base = floorSpan(c.floor)[0];
   const door = doors.find((d) => d.floor === c.floor && d.angle > a0 && d.angle < a1);
-  const band = { y0: base + WINDOW.bottom, y1: base + WINDOW.top };
+  const span = windowSpan(tube);
+  const band = { y0: base + span.bottom, y1: base + span.top };
   // The window stops a little further in than the glass, so the glass always covers it.
   const w0 = a0 + WINDOW.margin * 1.25;
   const w1 = a1 - WINDOW.margin * 1.25;
@@ -463,7 +473,7 @@ export function roomGeometry(layout: Layout, cells: Cell[], inset = INSET, carve
       const outside = pieceAt(cut, p, p.rr1);
       if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) {
         const wallCut: Cut = { side: 1, across: p.innerHall || ((a) => across(cr0 - 0.5, a)) };
-        if (doors && c.ring === 1) curvedFaceWithOpenings(pos, p.rr0, ...inside, y0, y1, wallCut, frontage(c, cut.left(p.rr0), cut.right(p.rr0), doors));
+        if (doors && c.ring === 1) curvedFaceWithOpenings(pos, p.rr0, ...inside, y0, y1, wallCut, frontage(c, cut.left(p.rr0), cut.right(p.rr0), doors, tubeAt(layout, c.floor, c.slot)));
         else curvedFace(pos, p.rr0, ...inside, y0, y1, wallCut);
       }
       if (c.ring === outer && !(publicRoom && p.outerHall)) curvedFace(pos, p.rr1, ...outside, y0, y1, { side: -1, across: p.outerHall || ((a) => across(cr1 + 0.5, a)) });
@@ -688,7 +698,7 @@ const HALL = corridors.widthM / 2;
  * the room's side walls stand, so a corridor carved along a side pulls the
  * windows back with it (the same angles `roomGeometry` uses).
  */
-export function shaftFaces(layout: Layout, room: RoomInstance): { a0: number; a1: number; y0: number; r: number }[] {
+export function shaftFaces(layout: Layout, room: RoomInstance): { a0: number; a1: number; y0: number; r: number; floor: number }[] {
   const hole = layout.hole;
   const n = hole.ringSlots[0]!;
   const [r0] = ringRadii(hole, 1);
@@ -704,7 +714,7 @@ export function shaftFaces(layout: Layout, room: RoomInstance): { a0: number; a1
       const [s0, s1] = slotAngles(c.slot, n);
       const a0 = s0 + pullBack(c, c.slot - 1, c.slot);
       const a1 = s1 - pullBack(c, c.slot + 1, c.slot + 1);
-      return { a0, a1, y0: floorSpan(c.floor)[0], r: r0 };
+      return { a0, a1, y0: floorSpan(c.floor)[0], r: r0, floor: c.floor };
     });
 }
 
@@ -1127,8 +1137,8 @@ export function buildLayout(
       const id = layout.grid[floor - 1]?.[0]?.[slot];
       const room = id ? layout.rooms.find((r) => r.id === id) : undefined;
       if (room && !room.planned) continue;
-      // Dug-out empty space opens right onto the gallery.
-      if (!room && floor <= hole.floors && isOpen(layout, { floor, ring: 1, slot })) continue;
+      // Dug-out empty space opens right onto a gallery tube; with none, it's walled off from the shaft.
+      if (!room && floor <= hole.floors && isOpen(layout, { floor, ring: 1, slot }) && tubeAt(layout, floor, slot)) continue;
       // A corridor's mouth: the wall stops half a corridor short of the spoke on either side.
       const [s0, s1] = slotAngles(slot, n1);
       const mouth = (i: number) => (layout.corridors?.[`R${floor}.1.${i % n1}`] ? HALL / hole.shaftRadiusM : 0);
@@ -1228,7 +1238,8 @@ export function buildLayout(
       const inWall = (f: { y0: number }): Cut => ({ side: 1, y0: f.y0, y1: f.y0 + FLOOR_H, across: true });
       for (const f of faces) {
         const [g0, g1] = [f.a0 + WINDOW.margin, f.a1 - WINDOW.margin];
-        const [y0, y1] = [f.y0 + WINDOW.bottom, f.y0 + WINDOW.top];
+        const span = windowSpan(tubeAtAngle(layout, f.floor, (f.a0 + f.a1) / 2));
+        const [y0, y1] = [f.y0 + span.bottom, f.y0 + span.top];
         const door = doors.find((d) => floorSpan(d.floor)[0] === f.y0 && d.angle > f.a0 && d.angle < f.a1);
         if (!door) {
           curvedFace(win, f.r - WINDOW.inset, g0, g1, y0, y1, inWall(f));

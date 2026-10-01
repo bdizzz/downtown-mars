@@ -3,6 +3,7 @@ import { roomLabel } from "../sim/roomName";
 import { crewsAt, crewsKey } from "../view/crews";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
 import { reachKey, reachTints } from "../view/reachView";
+import { tubeAt } from "../view/gallery";
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import { previewEffects, type EffectField } from "../sim/effects";
 import type { Hole } from "../sim/geometry";
@@ -241,8 +242,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       }
       // Cells fill edge to edge, so a room reads as one piece; its outline marks where it ends.
       for (const c of cells) {
-        // Public rooms on the gallery open onto it: fill over the gallery's edge line.
-        const poly = def.public && c.ring === 1 ? cellSectorFrom(h, c, h.shaftRadiusM - 0.3) : cellSector(h, c);
+        // Public rooms on a gallery tube open onto it: fill over the shaft wall's line.
+        const poly = def.public && c.ring === 1 && tubeAt(l, c.floor, c.slot) ? cellSectorFrom(h, c, h.shaftRadiusM - 0.3) : cellSector(h, c);
         if (room.planned) roomsCtx.poly(poly).fill({ color, alpha: 0.3 });
         else if (room.building) roomsCtx.poly(poly).fill({ color, alpha: 0.4 }).poly(poly).fill(constructionStripes());
         else roomsCtx.poly(poly).fill(color);

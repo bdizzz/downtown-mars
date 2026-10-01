@@ -409,8 +409,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const rows = cellRows(l.hole, def.cargoShaft ? room.cells.filter((c) => c.floor === stop) : room.cells);
       for (const row of rows) {
         let [x, y, w, hh] = rowRect(l.hole, row);
-        // Public rooms on the gallery have no wall there: they open right onto it.
-        const open = def.public && row.ring === 1;
+        // Public rooms on a gallery tube have no wall there: they open right onto it.
+        const open = def.public && row.ring === 1 && galleryEdges(l.hole, row.floor).some((e) => l.corridors[e.id] && e.a0 * TURN_W >= row.x0 - 0.5 && e.a1 * TURN_W <= row.x1 + 0.5);
         if (open) [y, hh] = [y - 3, hh + 3];
         const r = roomsCtx.rect(x, y, w, hh);
         if (room.planned) r.fill({ color, alpha: 0.3 }).stroke({ color, width: 2 });
@@ -547,9 +547,12 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         // The tubes along this stretch of wall: the door goes in the middle of them.
         const tubes = galleryEdges(h, row.floor).filter((e) => l.corridors[e.id] && e.a0 * TURN_W >= row.x0 - 0.5 && e.a1 * TURN_W <= row.x1 + 0.5);
         const mid = tubes.length ? ((tubes[0]!.a0 + tubes.at(-1)!.a1) / 2) * TURN_W : null;
+        // Behind a tube, a band of windows; with none, a window wall nearly floor to ceiling.
+        const tubeOver = (px: number) => tubes.some((e) => px >= e.a0 * TURN_W && px <= e.a1 * TURN_W);
         for (let wx = xs + 5; wx + 10 < xe - 4; wx += 13) {
           if (mid !== null && Math.abs(wx + 5 - mid) < 9) continue;
-          roomsCtx.rect(wx, y + 3, 10, 5).fill({ color: C.window, alpha: 0.85 });
+          if (tubeOver(wx + 5)) roomsCtx.rect(wx, y + 3, 10, 5).fill({ color: C.window, alpha: 0.85 });
+          else roomsCtx.rect(wx, y + 2, 10, hh * 0.55).fill({ color: C.window, alpha: 0.85 });
         }
         if (mid !== null) roomsCtx.rect(mid - 5, y, 10, 11).fill(C.door);
       }

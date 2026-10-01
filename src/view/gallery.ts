@@ -45,3 +45,16 @@ export function tubeRuns(layout: Layout): TubeRun[] {
   }
   return out;
 }
+
+/** Is there a gallery tube (built, or being built) along ring 1's slot on this floor? */
+export function tubeAt(layout: Layout, floor: number, slot: number): boolean {
+  const e = galleryEdges(layout.hole, floor)[slot];
+  return !!e && !!layout.corridors?.[e.id];
+}
+
+/** The same, by angle (radians) round the shaft. */
+export function tubeAtAngle(layout: Layout, floor: number, angle: number): boolean {
+  const n = layout.hole.ringSlots[0]!;
+  const turn = (((angle / (2 * Math.PI)) % 1) + 1) % 1;
+  return tubeAt(layout, floor, Math.min(n - 1, Math.floor(turn * n)));
+}

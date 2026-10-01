@@ -29,3 +29,9 @@ Asked for by Bryon, Sep 30, 2026 ("let's do all that", after PLAN-M11's "not bui
 7. **Docs and bots.**
 
 ## Notes as built
+
+**Step 1, window walls and walls to the shaft:**
+- `tubeAt` / `tubeAtAngle` (`view/gallery.ts`): is a tube (built or being built) along a ring-1 slot.
+- 3D: a ring-1 room's shaft face has the usual window band behind a tube, and a window wall (0.35 m to 3.55 m) with none (`WINDOW_WALL`). Dug-out empty space opens onto the shaft only with a tube; otherwise the shaft wall stands. Walk-through rooms were already walled off without one (M11).
+- 2D: tall windows where no tube runs; ring-1 walk-through rooms open onto the shaft band only along tubes. Plan: the same for walk-through rooms.
+
