@@ -139,7 +139,7 @@ See `PLAN-M12.md` (Claude's defaults, built at Bryon's "let's do all that"; ever
 - **Dust through the airlock:** air quality −1 by the airborne rules, twice as bad in a dust storm.
 - **Crowding:** past 5 residents a cell, a home loses 0.15 air quality per resident a cell (a full bunk dorm −0.45).
 - **Window walls** where no tube runs; open space and walk-through rooms walled off from the shaft without one.
-- **Glass** and the **glassworks** (from 200 colonists).
+- **Glass** and the **glassworks** (from 200 colonists; since milestone 13, from the start).
 - **The shaft dome**, from 300 colonists: every gallery open walkway, the shaft an atrium (+0.5 comfort facing it), air +0.5 everywhere, no storm dust through the airlock.
 
 ## Decided for milestone 13 (Sep 30)
@@ -147,7 +147,7 @@ See `PLAN-M12.md` (Claude's defaults, built at Bryon's "let's do all that"; ever
 See `PLAN-M13.md` (Bryon's request; the numbers are Claude's defaults, in data).
 
 - **Doors on any wall:** one per floor, on the best wall a room has: a gallery tube first, else the longest corridor, else a walk-through room. Every room touching a corridor has a way in.
-- **Windows are an upgrade,** off by default. The corridor tool's **Windows** mode glazes a whole wall at a click, only where the shaft, a corridor or a walk-through room is across it. **Changed from the plan:** 5 rock per 10 m (fused regolith panes), not metal: early metal is too scarce, and the playtest bots stalled paying it.
+- **Windows are an upgrade,** off by default. The corridor tool's **Windows** mode glazes a whole wall at a click, only where the shaft, a corridor or a walk-through room is across it. **Windows cost glass** (2 per 10 m; Bryon, Oct 1). To make that work early, the landing kit brings 100 glass (the pod holds 100 more units for it) and the glassworks is available from the start, smaller and cheaper: 2×1, 2 staff, rock 4 and power 3 → glass 3 a day, built from rock 20 and metal 4. (A metal price was tried first and stalled the bots; rock was a stopgap.)
 - **Window comfort (homes):** the best wall's view, averaged along it: open shaft 1.5, shaft through a tube 1, a plaza or stairs 0.75, a corridor 0.25; +0.25 for each other glazed wall, up to 2; the dome's atrium on top. Replaces the automatic shaft view.
 
 ## Still open

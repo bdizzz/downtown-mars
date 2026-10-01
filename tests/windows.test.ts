@@ -50,19 +50,28 @@ describe("windows", () => {
     const tube = galleryEdges(s.layout.hole, 1)[1]!.id;
     const wall = wallOf(s.layout, roomOf(s, dorm), tube)!;
     expect(wall.map((e) => e.id).sort()).toEqual(shaftBorders(s.layout, roomOf(s, dorm)).sort());
-    const rock = s.resources.rock!;
+    const glass = s.resources.glass!;
     expect(glaze(s, dorm, tube).ok).toBe(true);
-    expect(s.resources.rock).toBeCloseTo(rock - windowCost(s.layout, wall).rock!);
+    expect(s.resources.glass).toBeCloseTo(glass - windowCost(s.layout, wall).glass!);
     expect(roomOf(s, dorm).windows).toHaveLength(2);
     // Behind floor 1's tubes: the view through them. The 3D view cuts the glass.
     expect(windowComfort(s.layout, roomOf(s, dorm))).toBeCloseTo(config.windows.view.tube);
     expect(openingsOf(s.layout, roomOf(s, dorm))!.windows.size).toBe(2);
     // A wall that's glazed already: nothing to do. Taking them out is free.
     expect(glaze(s, dorm, tube).ok).toBe(false);
-    const after = s.resources.rock!;
+    const after = s.resources.glass!;
     expect(glaze(s, dorm, tube, false).ok).toBe(true);
     expect(roomOf(s, dorm).windows).toBeUndefined();
-    expect(s.resources.rock).toBe(after);
+    expect(s.resources.glass).toBe(after);
+  });
+
+  it("need glass: none in stock, none put in", () => {
+    const s = site();
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 1, 2));
+    s.resources.glass = 0;
+    const r = glaze(s, dorm, galleryEdges(s.layout.hole, 1)[1]!.id);
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.reason).toMatch(/glass/);
   });
 
   it("only where there's something across: a corridor or a plaza, not rock; never in a walk-through room", () => {

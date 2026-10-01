@@ -139,6 +139,8 @@ export function wants(hole: SimState): { room: string; crop?: string; near?: Nee
   if (schoolCoverage(hole).missing > 0) out.push({ room: "school", near: "school" });
   if (elderCoverage(hole).missing > 0) out.push({ room: "elder_care", near: "elders" });
   if (staleHome(hole)) out.push({ room: "ventilation_hub" });
+  // Glass running low, and homes still without windows: a glassworks of its own.
+  if ((res.glass ?? 0) < 20 && count(hole, "glassworks") === 0 && hole.layout.rooms.some((r) => roomDef(r.type).houses && !r.planned && !r.windows?.length && r.at.kind === "ring")) out.push({ room: "glassworks" });
   // More homes only while the hole is doing well, leaving room for births.
   // …and only with the air for a dorm's worth more, or the means to build it: beds without air to breathe are no use.
   const airFor = count(hole, "life_support") * roomDef("life_support").makes.o2!;

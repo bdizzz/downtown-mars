@@ -190,19 +190,18 @@ describe("unlocks", () => {
 });
 
 describe("glass", () => {
-  it("a glassworks, from 200 colonists, makes glass from rock", () => {
+  it("a glassworks, from the start, makes glass from rock; the landing kit brings a stock of it", () => {
     const s = hole();
     s.unlocks = [];
-    expect(applyCommand(s, { type: "build", room: "glassworks", at: ring(1, 1, 3, 2) }).ok).toBe(false);
-    s.unlocks = ["glassworks"];
     setAdults(s, 20, config);
-    s.layout.rooms.find((r) => r.type === "landing_pod")!.allocation = { ...(s.layout.rooms.find((r) => r.type === "landing_pod")!.allocation ?? {}), glass: 100 };
+    expect(s.resources.glass).toBe(config.startingStock.glass);
+    // Room to keep what it makes.
+    s.layout.rooms.find((r) => r.type === "landing_pod")!.allocation!.glass = 200;
     const works = build(s, "glassworks", ring(1, 1, 3, 2));
     const rock = s.resources.rock!;
     for (let i = 0; i < tpd; i++) step(s, config);
     expect(s.roomStatus[works]!.rate).toBeGreaterThan(0);
     expect(s.resources.glass ?? 0).toBeGreaterThan(0);
     expect(s.resources.rock!).toBeLessThan(rock);
-    expect(config.unlocks.rooms.glassworks).toBe(200);
   });
 });

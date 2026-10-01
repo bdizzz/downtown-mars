@@ -17,8 +17,9 @@
       "cost": {},
       "buildable": false,
       "placeholder": true,
-      "storage": 500,
+      "storage": 600,
       "defaultAllocation": {
+        "glass": 100,
         "rations": 120,
         "meals": 30,
         "rawFood": 20,
@@ -1038,15 +1039,14 @@
       "short": "Glass",
       "category": "industry",
       "size": "M",
-      "staff": 3,
+      "staff": 2,
       "uses": {
         "rock": 4,
-        "power": 4
+        "power": 3
       },
       "makes": {
-        "glass": 2
+        "glass": 3
       },
-      "unlockedBy": "glassworks",
       "effects": [
         {
           "type": "noise",
@@ -1060,9 +1060,8 @@
         }
       ],
       "cost": {
-        "brick": 10,
-        "metal": 5,
-        "machinery": 1
+        "rock": 20,
+        "metal": 4
       },
       "buildable": true,
       "buildHours": 18

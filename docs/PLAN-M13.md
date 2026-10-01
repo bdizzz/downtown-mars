@@ -34,3 +34,9 @@ Asked for by Bryon, Sep 30, 2026: rooms beside a corridor sometimes had no door 
 - **Tool:** the corridor tool's **Windows** button (a pane chip). Hovering a border picks the room on the pointer's side (or the private one across it) and lights up its whole wall: green with the cost and the home's resulting comfort in the status line, red with the reason. Click glazes it; Shift-click (or Erase) clears it. No dragging.
 - **Views:** 3D cuts window bands (a wall of glass onto the open shaft) into whichever walls are glazed, side walls included, with glass; furniture doesn't hang on glazed walls. 2D and plan draw panes along the room's side of each glazed border, around its door. The room card and inspector say what the windows look out on and the comfort they give (and how to add them).
 - **Bots:** `tendWindows` glazes each home's best wall once a day. The people playthrough's thresholds came down (births 15 → 10, day-80 population 150 → 130): its seed runs a little lower, other seeds don't.
+
+**Step 3, windows cost glass (Bryon, Oct 1):**
+- `windows.costPer10m` is glass 2 (a ring-1 bunk dorm's shaft wall: 4 glass).
+- The landing kit brings 100 glass (`startingStock`); the landing pod's storage grows from 500 to 600 units, 100 of them allocated to glass.
+- The glassworks needs no unlock any more (the "glassworks" gate is gone) and is easier: 2 staff (was 3), power 3 (was 4), glass 3 a day (was 2), built from rock 20 and metal 4 (was brick 10, metal 5, machinery 1).
+- Bots build a glassworks when glass drops under 20 with homes still unglazed. Old saves keep their glass (none) and get the pod's extra 100 units unallocated.
