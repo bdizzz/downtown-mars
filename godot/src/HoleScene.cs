@@ -18,7 +18,8 @@ public partial class HoleScene : Node3D
     readonly Furniture _furniture = new();
     readonly List<OmniLight3D> _lamps = new();
     /// <summary>Lamps casting shadows: only the nearest few to the camera (a shadow pass per lamp redraws everything near it).</summary>
-    const int ShadowLamps = 4;
+    /// <summary>How many lamps cast shadows (the graphics level's).</summary>
+    public int ShadowLamps { get; set; } = 4;
     const float ShadowWithin = 40;
     /// <summary>How much the nearest lamps light the haze.</summary>
     const float FogEnergy = 0.6f;

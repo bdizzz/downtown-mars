@@ -121,3 +121,17 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 - Calmer air: the global haze at 40% of what it was and the shaft's at 40%, and the sun's shadows with more bias and some blur, which ends the jagged self-shadowing on walls at a low sun.
 - Testing note: the bridge now says when its port is taken, rather than crashing, and the viewer takes `--port=<n>`; I test on 7979 so as not to touch a bridge you're running on 7878.
 
+**Step 5, graphics presets** (Oct 2, 2026):
+
+- `Graphics.cs`: four levels, F2 or the HUD's Graphics button cycles them, kept in `user://settings.cfg`; `--quality=low|medium|high|ultra` sets one for a run. Low: no GI, haze or ambient occlusion, no lamp shadows, FXAA. Medium: SSAO, 2 lamp shadows, MSAA 2×. High (default): SDFGI and the haze, 4 lamp shadows. Ultra: SSIL too, 8 lamp shadows, lamps lit a floor above and two below.
+- Showcase (13 floors), 1600×1000, M4, at noon:
+
+| Level | Iso F4 | First person F1 |
+| --- | --- | --- |
+| Low | 72 fps | 65 fps |
+| Medium | 58 | 47 |
+| High | 48 | 34 |
+| Ultra | 41 | 30 |
+
+- High moved SSIL to Ultra (4 ms for little to see), so the default is faster than step 4's everything-on (38 and 28).
+

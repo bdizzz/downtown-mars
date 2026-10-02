@@ -17,8 +17,6 @@ namespace DowntownMars;
 public partial class Live : Node3D
 {
     static readonly int[] Speeds = { 0, 1, 2, 4 };
-    /// <summary>Lamps lit: on the floor in view, this many above it and below.</summary>
-    static readonly (int above, int below) LampFloors = (0, 1);
     static readonly (string key, string name)[] Stocks = { ("o2", "Oxygen"), ("water", "Water"), ("meals", "Meals"), ("rations", "Rations"), ("power", "Power"), ("rock", "Rock"), ("metal", "Metal"), ("brick", "Brick"), ("glass", "Glass") };
 
     Bridge _bridge = null!;
@@ -55,6 +53,10 @@ public partial class Live : Node3D
     public bool StartWalking { get; set; }
     /// <summary>The bridge's port (npm run bridge -- --port=…).</summary>
     public int Port { get; set; } = 7878;
+    /// <summary>A graphics level from the command line (--quality=low…ultra), not saved; otherwise the saved one.</summary>
+    public Quality? StartQuality { get; set; }
+    Quality _quality;
+    Button _qualityButton = null!;
     /// <summary>A click at this screen point once the scene is up (for testing picking from the command line).</summary>
     public Vector2? ClickAt { get; set; }
     /// <summary>A room to have in hand once the palette's in, and a point to hover (testing building from the command line).</summary>
@@ -82,6 +84,8 @@ public partial class Live : Node3D
         _ground = new MeshInstance3D { Name = "Ground" };
         AddChild(_ground);
         BuildHud();
+        _quality = StartQuality ?? Graphics.Load();
+        ApplyQuality();
         _inspector = new Inspector(_hud) { Name = "Inspector" };
         _inspector.Closed = () => Inspect(null);
         _inspector.Command = SendCommand;
@@ -115,7 +119,7 @@ public partial class Live : Node3D
             if (_clockSeconds > BenchWarmup + BenchSeconds)
             {
                 var ms = _frames.OrderBy(f => f).ToList();
-                GD.Print($"BENCH {{\"avgMs\":{ms.Average():0.0},\"p95Ms\":{ms[(int)(ms.Count * 0.95)]:0.0},\"fps\":{1000 / ms.Average():0.0},\"drawCalls\":{RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)},\"chunks\":{_hole.Chunks},\"triangles\":{RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame)},\"gpuMs\":{_gpu.Average():0.0},\"renderCpuMs\":{_cpu.Average():0.0},\"scriptMs\":{_process.Average():0.0},\"walking\":{(_rig?.Walking == true ? "true" : "false")}}}");
+                GD.Print($"BENCH {{\"avgMs\":{ms.Average():0.0},\"p95Ms\":{ms[(int)(ms.Count * 0.95)]:0.0},\"fps\":{1000 / ms.Average():0.0},\"drawCalls\":{RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)},\"chunks\":{_hole.Chunks},\"triangles\":{RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame)},\"gpuMs\":{_gpu.Average():0.0},\"renderCpuMs\":{_cpu.Average():0.0},\"scriptMs\":{_process.Average():0.0},\"quality\":\"{_quality}\",\"walking\":{(_rig?.Walking == true ? "true" : "false")}}}");
                 Screenshot("bench");
                 GetTree().Quit();
             }
@@ -172,7 +176,8 @@ public partial class Live : Node3D
             _shadowClock = 0;
             // The floor in view: where you stand in first person, else the picked floor (or the top).
             var focus = _rig?.Walking == true ? Mathf.FloorToInt((-cam.GlobalPosition.Y - 3) / 4) + 1 : _topFloor ?? 1;
-            _hole.UpdateLamps(cam.GlobalPosition, focus - LampFloors.above, focus + LampFloors.below);
+            var (above, below) = Graphics.LampFloors(_quality);
+            _hole.UpdateLamps(cam.GlobalPosition, focus - above, focus + below);
         }
         if (snapshot != null)
         {
@@ -180,7 +185,7 @@ public partial class Live : Node3D
             snapshot.Dispose();
         }
         _status.Text = _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.Walking == true ? "first person" : "iso")}\nClick a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.Walking == true ? "first person" : "iso")}\nClick a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics"
             : "Waiting for the game: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -208,6 +213,7 @@ public partial class Live : Node3D
         if (_haze != null) _haze.QueueFree();
         _haze = Lighting.MakeShaftHaze(_shape);
         AddChild(_haze);
+        ApplyQuality();
     }
 
     void OnScene(JsonElement scene)
@@ -268,6 +274,22 @@ public partial class Live : Node3D
             sky.GroundHorizonColor = night.ground.Lerp(day.ground, _light);
         }
         _hole.SetNight(1 - _light);
+    }
+
+    void ApplyQuality()
+    {
+        Graphics.Apply(_quality, _env.Environment, _sun, _haze, GetViewport());
+        _hole.ShadowLamps = Graphics.ShadowLamps(_quality);
+        _qualityButton.Text = $"Graphics: {_quality}";
+    }
+
+    /// <summary>The next graphics level round (F2 or the HUD button), kept for next time.</summary>
+    void CycleQuality()
+    {
+        _quality = (Quality)(((int)_quality + 1) % 4);
+        Graphics.Save(_quality);
+        ApplyQuality();
+        _build.Toast($"Graphics: {_quality}");
     }
 
     Meta MetaNow() => new() { Hole = _shape, Cut = _topFloor };
@@ -357,6 +379,7 @@ public partial class Live : Node3D
             case Key.Down: PickFloor((_topFloor ?? 0) + 1); break;
             case Key.Home: PickFloor(null); break;
             case Key.L: _hole.ShowLabels = !_hole.ShowLabels; break;
+            case Key.F2: CycleQuality(); break;
             case Key.F12: Screenshot($"live-{DateTime.Now:HHmmss}"); break;
             default: return;
         }
@@ -466,6 +489,9 @@ public partial class Live : Node3D
         }
         _stocks = Text("", 15, new Color("#d8c4b0"));
         rows.AddChild(_stocks);
+        _qualityButton = new Button { Text = "Graphics", FocusMode = Control.FocusModeEnum.None, TooltipText = "Graphics level (F2): Low, Medium, High, Ultra" };
+        _qualityButton.Pressed += CycleQuality;
+        bar.AddChild(_qualityButton);
 
         _status = Text("", 13, new Color(1, 0.93f, 0.85f, 0.85f));
         _status.SetAnchorsPreset(Control.LayoutPreset.BottomLeft);
