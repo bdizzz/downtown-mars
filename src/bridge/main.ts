@@ -15,6 +15,7 @@ import { dayOf, isSlot, readSlot, savesList, writeSlot } from "./saves";
 import { office, officeKey } from "./office";
 import { flows, trends } from "./charts";
 import { mapView, networkView, siteView } from "./network";
+import { constructionView, maintenanceViewOf, peopleView } from "./colony";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
 // Godot viewer, speaking the web game's worker protocol (worker/protocol.ts) one JSON message per
@@ -106,6 +107,8 @@ type BridgeMessage =
   | { type: "flows"; tab: string }
   /** The network (network.ts): what the map shows, the network panel, and a site's report. */
   | { type: "map" }
+  /** The colony panels (colony.ts): people, the construction queue, upkeep. */
+  | { type: "colony"; tab: "people" | "construction" | "maintenance" }
   | { type: "network" }
   | { type: "site"; lat: number; lon: number }
   /** First person: a floor's walking map (walkmap.ts). */
@@ -197,6 +200,9 @@ const server = createServer((socket) => {
           if (r.command && !r.refusal) host.onMessage({ type: "command", id: commandId++, command: r.command });
           else if (r.refusal && !msg.painting) send({ type: "notice", text: r.refusal });
           send(edgeHover(host.active(), msg.tool, msg.at));
+        } else if (msg.type === "colony") {
+          const s = host.snapshot();
+          send(msg.tab === "construction" ? constructionView(s) : msg.tab === "maintenance" ? maintenanceViewOf(s) : peopleView(s));
         } else if (msg.type === "map") {
           send(mapView(host.snapshot()));
         } else if (msg.type === "network") {

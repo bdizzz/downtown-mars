@@ -1,29 +1,13 @@
 import type { Snapshot } from "../sim/snapshot";
-import { dining, num } from "./format";
-import { people } from "../sim/people";
+import { peopleReport } from "../view/colony";
 
 // The hole's people: who they are by life stage, what's coming, and why
-// children are or aren't being born.
-
-const MOVES = {
-  child: (n: number) => `${n} ${n === 1 ? "child grows" : "children grow"} up`,
-  adult: (n: number) => `${n} ${n === 1 ? "adult retires" : "adults retire"}`,
-  elder: (n: number) => `${n} ${n === 1 ? "elder passes" : "elders pass"} away`,
-};
-
-function days(d: number): string {
-  return d < 1 ? "today" : `in ${Math.round(d)} ${Math.round(d) === 1 ? "day" : "days"}`;
-}
+// children are or aren't being born (the words: view/colony.ts).
 
 export function PeoplePanel({ s, onClose }: { s: Snapshot; onClose: () => void }) {
   const { child, adult, elder } = s.stages;
   const total = Math.max(1, child + adult + elder);
-  const b = s.births;
-  const checks: [boolean, string][] = [
-    [!b.blockers.includes("No working clinic"), "A working clinic"],
-    [!b.blockers.some((x) => x.startsWith("Happiness")), `Happiness ${people.births.minHappiness} or more (now ${Math.round(s.happiness.average)})`],
-    [!b.blockers.includes("No free beds"), `A free bed (${s.population.count}/${s.beds})`],
-  ];
+  const r = peopleReport(s);
   return (
     <aside className="inspector people">
       <header>
@@ -48,79 +32,36 @@ export function PeoplePanel({ s, onClose }: { s: Snapshot; onClose: () => void }
           <i className="elder" /> {elder} {elder === 1 ? "elder" : "elders"}
         </span>
       </p>
-      <p className="k">
-        Adults work ({s.workforce.employed} of {s.workforce.total} employed). Children and elders don't, but need beds, food, water and air.
-      </p>
+      <p className="k">{r.work}</p>
 
-      {s.leavingFor && (
-        <p className="warn">
-          Morale is low: colonists are leaving for {s.leavingFor}, a few each day. Raise happiness above 45 to keep them.
-        </p>
-      )}
+      {r.leaving && <p className="warn">{r.leaving}</p>}
 
       <h3>Births</h3>
-      {b.blockers.length === 0 ? (
-        <p>About one child every {Math.max(1, Math.round(1 / Math.max(b.perDay, 1e-6)))} days.</p>
-      ) : (
-        <p className="warn">No births for now.</p>
-      )}
+      <p className={r.births.ok ? "" : "warn"}>{r.births.text}</p>
       <ul className="checks">
-        {checks.map(([ok, text]) => (
+        {r.checks.map(([ok, text]) => (
           <li key={text} className={ok ? "ok" : ""}>
             {ok ? "✓" : "✗"} {text}
           </li>
         ))}
       </ul>
-      <p className="k">{b.born ? `${b.born} born here so far.` : "Nobody born here yet."}</p>
+      <p className="k">{r.born}</p>
 
       <h3>School, care and meals</h3>
-      <p>
-        <span className="k">Children</span>{" "}
-        {s.care.school.who === 0
-          ? "none yet"
-          : s.care.school.missing > 0
-            ? `${num(s.care.school.missing)} of ${s.care.school.who} without a school place within reach: their families are unhappy`
-            : `all ${s.care.school.who} in school`}
-      </p>
-      <p>
-        <span className="k">Elders</span>{" "}
-        {s.care.elders.who === 0
-          ? "none yet"
-          : s.care.elders.missing > 0
-            ? `${num(s.care.elders.missing)} of ${s.care.elders.who} without elder care within reach: health suffers`
-            : `all ${s.care.elders.who} cared for`}
-      </p>
-
-      <p>
-        <span className="k">Clinic</span>{" "}
-        {(() => {
-          const c = s.population.care?.care;
-          if (!c || c.who === 0) return "—";
-          return c.missing > 0.5 ? `${num(c.missing)} of ${c.who} without a clinic within reach: health suffers` : `everyone has a clinic within reach`;
-        })()}
-      </p>
-      <p>
-        <span className="k">Meals</span> {dining(s)}
-      </p>
+      {r.care.map((c) => (
+        <p key={c.label}>
+          <span className="k">{c.label}</span> {c.text}
+        </p>
+      ))}
 
       <h3>The departed</h3>
-      <p>
-        {s.rest.composting
-          ? "Under Return to the soil, the dead become soil for the farms."
-          : s.rest.space > 0
-            ? `${s.rest.space} places left in the crypt${s.rest.interred ? `, where ${s.rest.interred} rest` : ""}.`
-            : s.stages.elder > 0 || s.rest.interred > 0
-              ? "No crypt space: those who pass away will have nowhere to rest."
-              : "Nobody has passed away here."}
-      </p>
-      {s.rest.grief >= 0.5 && <p className="warn">The hole grieves for dead with nowhere to rest: comfort is down.</p>}
+      <p>{r.departed}</p>
+      {r.grief && <p className="warn">{r.grief}</p>}
 
       <h3>Coming up</h3>
       <ul className="upcoming">
-        {s.upcoming.map((u, i) => (
-          <li key={i}>
-            {MOVES[u.stage](u.count)} {days(u.daysLeft)}
-          </li>
+        {r.upcoming.map((u, i) => (
+          <li key={i}>{u}</li>
         ))}
       </ul>
     </aside>

@@ -29,6 +29,7 @@ public partial class Live : Node3D
     Charts _charts = null!;
     MapView _map = null!;
     NetworkPanel _network = null!;
+    ColonyPanel _colony = null!;
     Button _officeButton = null!;
     /// <summary>Ticks in a game day (data/config.json), for "decide within" times.</summary>
     const int TicksPerDay = 240;
@@ -124,6 +125,8 @@ public partial class Live : Node3D
         AddChild(_charts);
         _network = new NetworkPanel(_hud, m => _bridge.Send(m)) { Name = "Network" };
         AddChild(_network);
+        _colony = new ColonyPanel(_hud, m => _bridge.Send(m)) { Name = "Colony", ShowRoom = id => Inspect(id) };
+        AddChild(_colony);
         _map = new MapView(_hud, m => _bridge.Send(m)) { Name = "Map", Toast = t => _build.Toast(t) };
         AddChild(_map);
         // The map has its own layer: the hole's sun doesn't light it.
@@ -145,12 +148,21 @@ public partial class Live : Node3D
             Inspect(null);
             _choices.ToggleOffice(false);
             _network.Toggle(false);
+            _colony.Toggle(false);
         };
         _network.Opened = () =>
         {
             Inspect(null);
             _choices.ToggleOffice(false);
             _charts.Toggle(false);
+            _colony.Toggle(false);
+        };
+        _colony.Opened = () =>
+        {
+            Inspect(null);
+            _choices.ToggleOffice(false);
+            _charts.Toggle(false);
+            _network.Toggle(false);
         };
         // The menu over everything; the game pauses while it's open.
         _menu = new GameMenu(m => _bridge.Send(m)) { Name = "Menu", Toast = t => _build.Toast(t) };
@@ -250,6 +262,8 @@ public partial class Live : Node3D
                 {
                     _choices.ToggleOffice(false);
                     _charts.Toggle(false);
+                    _network.Toggle(false);
+                    _colony.Toggle(false);
                 }
             }
             else if (type == "office")
@@ -266,6 +280,9 @@ public partial class Live : Node3D
             else if (type == "map") _map.SetMap(msg.RootElement);
             else if (type == "site") _map.SetSite(msg.RootElement);
             else if (type == "network") _network.Set(msg.RootElement);
+            else if (type == "colonyPeople") _colony.SetPeople(msg.RootElement);
+            else if (type == "colonyConstruction") _colony.SetConstruction(msg.RootElement);
+            else if (type == "colonyMaintenance") _colony.SetMaintenance(msg.RootElement);
             else if (type == "flows") _charts.SetFlows(msg.RootElement);
             else if (type == "saved") _menu.Saved(msg.RootElement);
             else if (type == "loaded")
@@ -313,7 +330,7 @@ public partial class Live : Node3D
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
             : _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nEsc menu · M map · N network · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nEsc menu · M map · N network · P colony · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
             : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -694,6 +711,9 @@ public partial class Live : Node3D
             case Key.Escape when _map.Open: ToggleMap(); break;
             case Key.M when !_build.Active: ToggleMap(); break;
             case Key.N when !_build.Active: _network.Toggle(); break;
+            case Key.P when !_build.Active: _colony.Toggle(); break;
+            case Key.Escape when _colony.Open: _colony.Toggle(false); break;
+            case Key.Escape when _network.Open: _network.Toggle(false); break;
             case Key.Escape when _build.HasTool: _build.Drop(); break;
             case Key.Escape when _build.Active: _build.Toggle(false); break;
             case Key.Escape when _inspector.Open: Inspect(null); break;
@@ -850,6 +870,9 @@ public partial class Live : Node3D
         var networkButton = new Button { Text = "Network", FocusMode = Control.FocusModeEnum.None, TooltipText = "Holes, culture, opinion and trade routes (N)" };
         networkButton.Pressed += () => _network.Toggle();
         bar.AddChild(networkButton);
+        var colonyButton = new Button { Text = "Colony", FocusMode = Control.FocusModeEnum.None, TooltipText = "People, construction and maintenance (P)" };
+        colonyButton.Pressed += () => _colony.Toggle();
+        bar.AddChild(colonyButton);
         var chartsButton = new Button { Text = "Charts", FocusMode = Control.FocusModeEnum.None, TooltipText = "Trends and flows (C)" };
         chartsButton.Pressed += () => _charts.Toggle();
         bar.AddChild(chartsButton);

@@ -179,7 +179,7 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 - **The office**: an Office button in the HUD (amber, "Office · N waiting", when someone is) or O opens a panel on the right (it and the room panel take turns there): who's waiting, with their role, traits and loyalty, what they want, when they leave and the answers you can give (an answer that would enact an ordinance with no slot free is disabled); promises and how long is left; ordinances to enact or repeal against the slots; the notables and their loyalty. The bridge sends it (`src/bridge/office.ts`, laid out as `ui/Office.tsx`) when it changes.
 - Checked by tapping through the UI (`--keys=…,tap:x:y@t` clicks a screen point as a mouse would): answering a noise complaint emptied the waiting room and left a promise; raising a toast to five floors brought up the next card.
 - **News**, as the web's messages: the latest four from the last game day at the bottom right, coloured by kind (good, warning), fading as they age; rooms they name show as "Galley (F1)".
-- Still only in the web: the people, construction and maintenance panels.
+- With the colony panels below, everything the web game shows is in the viewer too (bar the 2D views and the web's dev tools).
 
 **Charts** (Oct 2, 2026):
 
@@ -200,4 +200,6 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 - `ScrollInput.cs` turns all three into the browser's terms (a scroll as dx, dy in pixels; a pinch as a zoom factor), and the views follow the web's rules with them: **Iso** turns with sideways scrolling and zooms with up and down (Shift turns instead) or a pinch; **the globe** spins with sideways scrolling and zooms with up and down or a pinch; **first person** ignores scrolling, as the web's. Panels' lists scroll on their own (Godot's ScrollContainer takes every kind).
 - Godot hands each gesture to the scene twice (two copies, the same frame; wheel clicks come once), so a pinch zoomed twice as far: the copy is skipped.
 - Checked by sending what each device sends (`--keys=…,pan:dx:dy@t,pinch:f@t,wheel:down@t`) and printing the camera: three steps of a trackpad's scroll zoom 64 → 100 m, a sideways one turns, a 1.3 pinch zooms by exactly 1.3, three wheel clicks zoom 64 → 110 m; the same on the globe.
+
+**The colony panels** (Oct 2, 2026): a Colony panel (P, or the HUD's Colony; it takes turns on the right with the others) with the web's three as tabs: **People** (life stages as a bar, work, who's leaving, births and their three conditions, school, care, clinic and meals, the departed, who's moving on next), **Construction** (bandwidth and the queue, each job with its progress, when it'll be done, ⤒ to move it to the front and ✕ to cancel it) and **Maintenance** (overall condition, what each maintenance and cleaning room is repairing, and the queue worst first, with condition bars in the web's colours). Rooms named in them open their panel. The bridge writes them (`src/bridge/colony.ts`); the people panel's words moved from `ui/PeoplePanel.tsx` to `src/view/colony.ts` for both.
 
