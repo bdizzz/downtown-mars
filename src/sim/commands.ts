@@ -16,7 +16,7 @@ import { domeRefusal, dropCorridors, dropRoomJobs, finishAll, prioritize, queueC
 import { holeGates, unlock, UNLOCK_GATES } from "./people";
 import { allocationRefusal } from "./storage";
 import { answerVisit } from "./visits";
-import { answerEvent } from "./events";
+import { answerEvent, consoleEvent } from "./events";
 import { padReady } from "./earth";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
@@ -58,6 +58,8 @@ export type SimCommand =
   | { type: "consoleFinish" }
   /** Testing, from the browser console: a dust storm, starting in `inDays` (0: now) and lasting `days`; or clear skies (days 0). */
   | { type: "consoleStorm"; inDays?: number; days?: number }
+  /** Console: raise an event now (a find on the deepest floor, a belt ship, a celebration). */
+  | { type: "consoleEvent"; kind: string }
   /** Testing, from the browser console: set rooms' condition (0..1): one room, or every room that has one. */
   | { type: "consoleWear"; condition: number; roomId?: number }
   /** Fit sealed bulkheads across built corridor segments (on), or take them out (off, free). */
@@ -240,6 +242,8 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       }
       return { ok: true };
     }
+    case "consoleEvent":
+      return consoleEvent(state, config, cmd.kind);
     case "consoleStorm": {
       const tpd = config.ticksPerDay;
       const days = cmd.days ?? 1;

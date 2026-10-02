@@ -4,6 +4,8 @@ import { recomputeAccess } from "./corridors";
 import { openCells, isOpen } from "./excavation";
 import type { DepositKind } from "./mapgeo";
 import { postMessage } from "./messages";
+import { capacities } from "./economy";
+import { resourceDef } from "./resources";
 import { addNotable } from "./notables";
 import { addAdults, hash01 } from "./people";
 import type { Cell } from "./placement";
@@ -103,6 +105,7 @@ export interface EventsState {
 
 export const eventData = raw as unknown as {
   checkEveryTicks: number;
+  beltShip: { fromDay: number; chancePerDay: number; cooldownDays: number; names: string[] };
   discoveries: {
     chance: number;
     firstAlways: boolean;
@@ -187,7 +190,17 @@ export function answerEvent(state: SimState, cfg: SimConfig, eventId: number, ch
 export function applyEffect(state: SimState, cfg: SimConfig, e: EventEffect, at: Partial<PendingEvent> & { kind?: string } = {}): void {
   const ev = eventsOf(state);
   const day = cfg.ticksPerDay;
-  for (const [id, v] of Object.entries(e.resources ?? {})) state.resources[id] = Math.max(0, (state.resources[id] ?? 0) + v);
+  // Gains land only where there's room for them (as Earth's drops do); costs come off first.
+  const gains = Object.entries(e.resources ?? {});
+  for (const [id, v] of gains) if (v < 0) state.resources[id] = Math.max(0, (state.resources[id] ?? 0) + v);
+  const caps = capacities(state, cfg);
+  const lost: string[] = [];
+  for (const [id, v] of gains) {
+    if (v <= 0) continue;
+    const fit = Math.max(0, Math.min(v, (caps[id] ?? Infinity) - (state.resources[id] ?? 0)));
+    state.resources[id] = (state.resources[id] ?? 0) + fit;
+    if (v - fit >= 1) lost.push(`${Math.round(v - fit)} ${resourceDef(id).name.toLowerCase()}`);
+  }
   if (e.mood) ev.moods.push({ amount: e.mood.amount, startTick: state.tick, untilTick: state.tick + Math.round(e.mood.days * day) });
   if (e.deposit && !state.deposits.includes(e.deposit as DepositKind)) state.deposits.push(e.deposit as DepositKind);
   if (e.openCavity && at.cells?.length) {
@@ -214,6 +227,7 @@ export function applyEffect(state: SimState, cfg: SimConfig, e: EventEffect, at:
   }
   if (e.landing) ev.landingTick = state.tick;
   if (e.message) postMessage(state, cfg, fill(e.message, at), (e.mood?.amount ?? 0) < 0 ? "warn" : "good");
+  if (lost.length) postMessage(state, cfg, `No storage space for ${lost.join(", ")}: it was left behind.`, "warn");
 }
 
 /** Happiness everyone gets from recent events (moods easing off, and a festival on). */
@@ -279,6 +293,17 @@ export function rollDiscovery(state: SimState, cfg: SimConfig, floor: number): v
   }
 }
 
+/** The console's way to raise any event now, with something sensible filled in. */
+export function consoleEvent(state: SimState, cfg: SimConfig, kind: string): { ok: true } | { ok: false; reason: string } {
+  if (!byId.has(kind)) return { ok: false, reason: `Unknown event "${kind}": try ${eventData.events.map((e) => e.id).join(", ")}` };
+  const floor = state.layout.hole.floors;
+  const cells = kind === "lava_tube" ? cavityOn(state, floor, eventData.discoveries.cavityCells) : undefined;
+  if (cells === null) return { ok: false, reason: "No rock left for a lava tube on the deepest floor" };
+  if (byId.get(kind)!.text.includes("{floor}")) eventsOf(state).struckTick = state.tick;
+  raiseEvent(state, cfg, kind, { floor, ship: eventData.beltShip.names[0], milestone: "a console test", ...(cells ? { cells } : {}) });
+  return { ok: true };
+}
+
 // ---- the tick ----
 
 export function stepEvents(state: SimState, cfg: SimConfig): void {
@@ -296,4 +321,22 @@ export function stepEvents(state: SimState, cfg: SimConfig): void {
     applyEffect(state, cfg, f.effect, { kind: f.kind });
   }
   ev.moods = ev.moods.filter((m) => state.tick < m.untilTick);
+  if (state.tick % cfg.ticksPerDay === 0) dailyEvents(state, cfg);
+}
+
+/** Once a game day: does a belt ship call for help? */
+function dailyEvents(state: SimState, cfg: SimConfig): void {
+  const ev = eventsOf(state);
+  const day = Math.floor((state.tick - state.foundedTick) / cfg.ticksPerDay);
+  const b = eventData.beltShip;
+  const last = ev.lastTick.belt_ship;
+  if (
+    day >= b.fromDay &&
+    (last === undefined || state.tick - last >= b.cooldownDays * cfg.ticksPerDay) &&
+    !ev.pending.some((e) => e.kind === "belt_ship") &&
+    roll(state, state.tick, 5) < b.chancePerDay
+  ) {
+    const ship = b.names[Math.floor(roll(state, state.tick, 6) * b.names.length)]!;
+    raiseEvent(state, cfg, "belt_ship", { ship });
+  }
 }

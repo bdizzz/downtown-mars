@@ -14,7 +14,25 @@
     ],
     "cavityCells": 3
   },
+  "beltShip": {
+    "fromDay": 20,
+    "chancePerDay": 0.03,
+    "cooldownDays": 25,
+    "names": ["Ceres Dawn", "Vesta's Pride", "Long Haul", "Pallas Wren", "Hygiea Star", "Old Rockhopper", "Juno Queen", "Ida's Luck"]
+  },
   "events": [
+    {
+      "id": "belt_ship",
+      "title": "Mayday from the {ship}",
+      "text": "A belt freighter, the {ship}, is calling on every frequency: her drive is failing and her six crew are running out of air. She could make it down to our pad, or limp on if someone sends supplies up.",
+      "patienceDays": 0.5,
+      "ignored": { "mood": { "amount": -5, "days": 4 }, "message": "The {ship} went quiet. Nobody answered her, and people know it." },
+      "choices": [
+        { "id": "rescue", "label": "Bring them down", "hint": "30 oxygen and 30 water. Her six crew join us, with their salvage (15 electronics, 10 machinery); their pilot becomes a notable.", "needsPad": true, "resources": { "o2": -30, "water": -30, "electronics": 15, "machinery": 10 }, "colonists": 6, "notableRole": "belt pilot", "landing": true, "mood": { "amount": 4, "days": 4 }, "message": "The {ship} came down on our pad: six belters, safe, and their salvage. Everyone turned out to see." },
+        { "id": "supplies", "label": "Send supplies up", "hint": "60 oxygen and 60 water. They limp on, and the belt doesn't forget: a thank-you drop in 10–15 days.", "resources": { "o2": -60, "water": -60 }, "mood": { "amount": 2, "days": 3 }, "followUp": { "days": [10, 15], "effect": { "resources": { "electronics": 20, "machinery": 15 }, "landing": true, "message": "A drop from the belt, with thanks from the crew we helped: 20 electronics, 15 machinery." } }, "message": "Supplies went up to the {ship}. She limps on toward Ceres." },
+        { "id": "ignore", "label": "Ignore the call", "hint": "Keep what we have. People won't like it (−5 happiness).", "mood": { "amount": -5, "days": 4 }, "message": "We let the {ship} go. People are quiet about it." }
+      ]
+    },
     {
       "id": "aquifer",
       "title": "The drill struck water",

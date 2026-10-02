@@ -64,3 +64,9 @@ Choices: **Throw a festival** (30 meals or rations, and a day at 80% productivit
 - As planned: each finished floor rolls (`discoveries.chance` 0.45; the first always strikes), choosing by weight among the finds deep enough, skipping deposits the hole has and microfossils after the first. A lava tube needs three side-by-side rock slots in ring 2 or 3 of that floor (else something else is picked); opening it digs them.
 - In 3D the rig shudders for three seconds and its lamps and beacon flare when the drill strikes something (`DrillRig.strike`, on a new `drill.struckTick`).
 - **Playthroughs:** with the bot tapping every find, six seeds land at 115–159 people on day 80 (without finds: 122–165); the people playthrough's day-80 check came down to 110 (was 130) and its school check now looks across the network.
+
+**Step 3, the belt ship:**
+- `beltShip` in `data/events.json`: from day 20 of a hole's life, once a game day a 3% chance (its own dice), at most once in 25 days, of a call from a named belt freighter; half a day to answer.
+- Choices as planned. **Bring them down** needs a working pad (else it's greyed, with why); six crew join as adults, one a notable ("belt pilot"), and the lander comes down on the pad (`events.landingTick`: the same descent as a supply drop, then a few hours on the pad). **Send supplies** schedules the thank-you drop 10–15 days on (it lands too). Ignoring it, or the call timing out: −5 happiness for four days. A rescue also cheers everyone (+4).
+- **Gains need storage,** as Earth's drops do: an event's goods land only where there's room, and a warning says what was left behind (early on, the pod's shelves are full).
+- **Console:** `dm.event("belt_ship")` (or any event id) raises one now, for trying them out.

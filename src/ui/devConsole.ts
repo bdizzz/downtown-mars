@@ -26,6 +26,7 @@ const HELP = `Downtown Mars console (the hole you're looking at):
   dm.finish()               finish everything in the construction queue at once
   dm.skip(3)                run every hole ahead 3 days at once (up to 365)
   dm.wear(0.4)              every room's condition to 40% (dm.wear(0.2, roomId) for one room)
+  dm.event("belt_ship")      raise an event now (aquifer, ore_vein, silica_bed, lava_tube, gas_pocket, microfossils, belt_ship)
   dm.storm(1)               a dust storm now, for a day (dm.storm(2, 3): in 3 days, for 2; dm.storm(0) clears it)
   dm.command({ ... })       send any simulation command, as the game would (see SimCommand in src/sim/commands.ts)`;
 
@@ -76,6 +77,9 @@ export function installConsole(api: Api): () => void {
     },
     wear(condition: number, roomId?: number) {
       return run({ type: "consoleWear", condition, roomId }, roomId === undefined ? `Every room at ${Math.round(condition * 100)}%` : `Room ${roomId} at ${Math.round(condition * 100)}%`);
+    },
+    event(kind: string) {
+      return run({ type: "consoleEvent", kind }, `Event: ${kind}`);
     },
     storm(days = 1, inDays = 0) {
       return run({ type: "consoleStorm", days, inDays }, days > 0 ? `Dust storm ${inDays ? `in ${inDays} days` : "now"}, for ${days} day${days === 1 ? "" : "s"}` : "Clear skies");

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { ticksToDig } from "../src/sim/digging";
-import { eventMood, eventsOf, raiseEvent, rollDiscovery } from "../src/sim/events";
+import { padReady } from "../src/sim/earth";
+import { capacities } from "../src/sim/economy";
+import { eventMood, eventsOf, raiseEvent, rollDiscovery, stepEvents } from "../src/sim/events";
 import { isOpen } from "../src/sim/excavation";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
@@ -16,6 +18,7 @@ function hole(): SimState {
   s.drill.active = false;
   return s;
 }
+const stepEventsOnly = (s: SimState) => stepEvents(s, config);
 const answer = (s: SimState, choice: string) => applyCommand(s, { type: "answerEvent", eventId: s.events!.pending[0]!.id, choice });
 
 describe("drill discoveries", () => {
@@ -49,7 +52,8 @@ describe("drill discoveries", () => {
     const water = s.resources.water!;
     expect(answer(s, "tap").ok).toBe(true);
     expect(s.deposits).toContain("aquifer");
-    expect(s.resources.water).toBeCloseTo(water + 150);
+    // As much as there's room for.
+    expect(s.resources.water).toBeCloseTo(Math.min(water + 150, capacities(s, config).water!));
     expect(s.events!.pending).toHaveLength(0);
   });
 
@@ -102,5 +106,70 @@ describe("drill discoveries", () => {
     for (let i = 0; i < day; i++) step(s, config);
     expect(eventMood(s)).toBeLessThan(now);
     expect(eventMood(s)).toBeGreaterThan(0);
+  });
+});
+
+describe("a belt ship in distress", () => {
+  it("calls now and then after day 20, at most once in a while", () => {
+    const s = hole();
+    let calls = 0;
+    for (let i = 0; i < 120 * day; i++) {
+      s.tick++;
+      // Just the event clock, so the colony's own troubles don't get in the way.
+      if (s.tick % 10 === 0) stepEventsOnly(s);
+      const p = s.events!.pending.find((e) => e.kind === "belt_ship");
+      if (p) {
+        expect(s.tick).toBeGreaterThanOrEqual(20 * day);
+        expect(p.title).toContain(p.ship!);
+        calls++;
+        s.events!.pending = [];
+      }
+    }
+    expect(calls).toBeGreaterThan(0);
+    expect(calls).toBeLessThanOrEqual(Math.ceil(100 / 25));
+  });
+
+  it("brought down, its crew join the hole with their salvage, and one becomes a notable", () => {
+    const s = hole();
+    // A few hours in, so the landing crew has the pad staffed and powered.
+    for (let i = 0; i < 30; i++) step(s, config);
+    expect(padReady(s)).toBe(true);
+    raiseEvent(s, config, "belt_ship", { ship: "Long Haul" });
+    const pop = s.population.count;
+    const notables = s.notables.length;
+    const electronics = s.resources.electronics!;
+    expect(answer(s, "rescue").ok).toBe(true);
+    expect(s.population.count).toBe(pop + 6);
+    expect(s.notables.length).toBe(notables + 1);
+    expect(s.notables.at(-1)!.role).toBe("belt pilot");
+    expect(s.resources.electronics).toBeCloseTo(electronics + 15);
+    expect(s.events!.landingTick).toBe(s.tick);
+  });
+
+  it("sent supplies, it sends thanks later", () => {
+    const s = hole();
+    raiseEvent(s, config, "belt_ship", { ship: "Pallas Wren" });
+    expect(answer(s, "supplies").ok).toBe(true);
+    const f = s.events!.followUps[0]!;
+    expect(f.dueTick - s.tick).toBeGreaterThanOrEqual(10 * day);
+    expect(f.dueTick - s.tick).toBeLessThanOrEqual(15 * day);
+    const machinery = s.resources.machinery!;
+    s.tick = f.dueTick - 1;
+    for (let i = 0; i < 20; i++) {
+      s.tick++;
+      stepEventsOnly(s);
+    }
+    expect(s.resources.machinery).toBeCloseTo(machinery + 15);
+    expect(s.messages.some((m) => /thank/.test(m.text))).toBe(true);
+  });
+
+  it("can't be brought down without a working pad", () => {
+    const s = hole();
+    s.layout.rooms = s.layout.rooms.filter((r) => r.type !== "landing_pad");
+    raiseEvent(s, config, "belt_ship", { ship: "Ida's Luck" });
+    const r = answer(s, "rescue");
+    expect(r.ok).toBe(false);
+    expect(answer(s, "ignore").ok).toBe(true);
+    expect(eventMood(s)).toBeLessThan(0);
   });
 });

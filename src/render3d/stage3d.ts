@@ -1670,7 +1670,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const descent = config.earth.descentDays * config.ticksPerDay;
       const landing = e.padReady && !e.waiting && e.ticksToDrop <= descent;
       const wasVisible = lander.visible;
-      placeLander(lander, snapshot.layout, landing && cut() === null ? 1 - e.ticksToDrop / descent : null);
+      // An event's landing (a rescued ship, a thank-you drop): down over the same descent, then a few hours on the pad.
+      const since = snapshot.events.landingTick === null ? Infinity : snapshot.tick - snapshot.events.landingTick;
+      const eventLanding = since < descent + config.ticksPerDay / 4 ? Math.min(1, since / descent) : null;
+      const t = landing ? 1 - e.ticksToDrop / descent : eventLanding;
+      placeLander(lander, snapshot.layout, t !== null && cut() === null ? t : null);
       // The dome over the shaft, once it's built.
       const dk = snapshot.layout.domed ? `${gameId}:${snapshot.layout.hole.shaftRadiusM}` : "";
       if (dk !== domeFor) {
