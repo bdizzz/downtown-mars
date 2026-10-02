@@ -12,16 +12,20 @@ namespace DowntownMars;
 static class Lighting
 {
     /// <summary>Lamp brightness and reach, relative to the web game's numbers.</summary>
-    const float LampEnergy = 1.4f, LampRange = 1.6f;
+    public const float LampEnergy = 1.4f, LampRange = 1.6f;
 
     /// <param name="lite">Without the costly parts (SDFGI, SSIL, volumetric fog), to measure what they cost.</param>
+    /// <summary>The sky's top, horizon and ground-horizon colours by day and by night.</summary>
+    public static readonly (Color top, Color horizon, Color ground) DaySky = (new(0.62f, 0.45f, 0.33f), new(0.86f, 0.66f, 0.47f), new(0.55f, 0.36f, 0.25f));
+    public static readonly (Color top, Color horizon, Color ground) NightSky = (new(0.03f, 0.02f, 0.04f), new(0.09f, 0.05f, 0.06f), new(0.05f, 0.03f, 0.03f));
+
     public static WorldEnvironment MakeEnvironment(bool lite = false)
     {
         var sky = new ProceduralSkyMaterial
         {
-            SkyTopColor = new Color(0.62f, 0.45f, 0.33f),
-            SkyHorizonColor = new Color(0.86f, 0.66f, 0.47f),
-            GroundHorizonColor = new Color(0.55f, 0.36f, 0.25f),
+            SkyTopColor = DaySky.top,
+            SkyHorizonColor = DaySky.horizon,
+            GroundHorizonColor = DaySky.ground,
             GroundBottomColor = new Color(0.25f, 0.15f, 0.1f),
             SunAngleMax = 20,
         };

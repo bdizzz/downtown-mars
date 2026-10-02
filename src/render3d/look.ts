@@ -298,7 +298,8 @@ export class Look implements LookLike {
       cave.traverse((o) => {
         const m = o as THREE.Mesh;
         m.geometry?.dispose();
-        (m.material as THREE.Material | undefined)?.dispose();
+        const mats = m.material as THREE.Material | THREE.Material[] | undefined;
+        for (const mat of Array.isArray(mats) ? mats : mats ? [mats] : []) mat.dispose();
       });
       pmrem.dispose();
     }

@@ -11,7 +11,6 @@ namespace DowntownMars;
 public partial class CameraRig : Node3D
 {
     readonly Camera3D _cam = new() { Fov = 50, Near = 0.1f, Far = 4000 };
-    readonly Meta _meta;
 
     bool _walking;
     // Iso.
@@ -28,17 +27,38 @@ public partial class CameraRig : Node3D
 
     public CameraRig(Meta meta)
     {
-        _meta = meta;
+        Frame(meta, true);
+    }
+
+    /// <summary>
+    /// Frame the hole: Iso over the picked floor (or the surface); first person in the gallery tube of
+    /// the picked floor (or floor 1). `walkToo` moves the walker as well (not when only the floor changes in Iso).
+    /// </summary>
+    public void Frame(Meta meta, bool walkToo)
+    {
         var h = meta.Hole;
         var outer = h.ShaftRadiusM + h.UnlockedRings * 10;
         // As the web game's Iso: over the picked floor (or the surface), a little past the middle, from 1.6 radii back.
         var floorY = meta.Cut is int f ? -3 - f * h.FloorHeightM : 0;
         _target = new Vector3(0, floorY, -outer * 0.12f);
         _dist = outer * 1.6f;
-        // In the gallery tube (inside the shaft wall) of the picked floor or floor 1, at eye height, looking across the shaft.
-        var walkFloor = meta.Cut ?? 1;
-        _pos = new Vector3(0, -3 - walkFloor * h.FloorHeightM + 1.6f, h.ShaftRadiusM - 1.2f);
-        _lookYaw = -Mathf.Pi / 2;
+        if (walkToo)
+        {
+            // In the gallery tube (inside the shaft wall), at eye height, looking across the shaft.
+            var walkFloor = meta.Cut ?? 1;
+            _pos = new Vector3(0, -3 - walkFloor * h.FloorHeightM + 1.6f, h.ShaftRadiusM - 1.2f);
+            _lookYaw = -Mathf.Pi / 2;
+            _lookPitch = 0;
+        }
+        if (IsInsideTree()) Apply();
+    }
+
+    public bool Walking => _walking;
+
+    public void Walk(bool on)
+    {
+        _walking = on;
+        Apply();
     }
 
     public override void _Ready()

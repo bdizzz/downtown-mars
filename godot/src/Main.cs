@@ -12,13 +12,15 @@ namespace DowntownMars;
 /// materials, and lights it with Godot's renderer: sun and sky, global illumination (SDFGI),
 /// screen-space occlusion and indirect light, volumetric fog, glow, and a real light per lamp.
 ///
-/// Command line (after "--"): --scene=&lt;name&gt; (default "small"); --bench[=seconds] circles the
+/// Without arguments it's the live viewer (Live.cs), drawing the game the bridge runs; --floor=&lt;n&gt;
+/// picks a floor, --walk starts in first person, --shot=&lt;seconds&gt; saves shots/live.png then and quits.
+/// Command line (after "--"): --scene=&lt;name&gt; views an exported scene instead; --bench[=seconds] circles the
 /// camera, writes bench/&lt;name&gt;.json and a screenshot, then quits; with --walk, in first person. --no-lamp-shadows: lamps light but cast no shadows; --lite: no SDFGI, SSIL or volumetric fog.
 /// Keys: Tab switches Iso and first person; F12 saves a screenshot to shots/.
 /// </summary>
 public partial class Main : Node3D
 {
-    string _scene = "small";
+    string? _scene;
     float _benchSeconds = 0;
     bool _benchWalk, _lampShadows = true, _lite;
     CameraRig _rig = null!;
@@ -41,6 +43,20 @@ public partial class Main : Node3D
             else if (arg == "--walk") _benchWalk = true;
             else if (arg == "--no-lamp-shadows") _lampShadows = false;
             else if (arg == "--lite") _lite = true;
+        }
+
+        // Without a scene to load, the live game from the bridge.
+        if (_scene == null)
+        {
+            var live = new Live { Name = "Live" };
+            foreach (var arg in OS.GetCmdlineUserArgs())
+            {
+                if (arg.StartsWith("--shot=")) live.ShotAfter = float.Parse(arg["--shot=".Length..]);
+                else if (arg.StartsWith("--floor=")) live.StartFloor = int.Parse(arg["--floor=".Length..]);
+                else if (arg == "--walk") live.StartWalking = true;
+            }
+            AddChild(live);
+            return;
         }
 
         var dir = ProjectSettings.GlobalizePath("res://scenes/");
@@ -80,6 +96,7 @@ public partial class Main : Node3D
 
     public override void _Process(double delta)
     {
+        if (_scene == null) return;
         var calls = RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame);
         var prims = RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame);
         _hud.Text = $"{_scene} · {Engine.GetFramesPerSecond()} fps · {calls} draw calls · {prims / 1000}k triangles · {_lampCount} lamps · {_rig.ModeName}\nTab: Iso / first person · drag to turn · wheel to zoom · WASD to move · F12 screenshot";
@@ -99,6 +116,7 @@ public partial class Main : Node3D
 
     public override void _UnhandledInput(InputEvent e)
     {
+        if (_scene == null) return;
         if (e is InputEventKey { Pressed: true, Keycode: Key.F12 }) Screenshot($"shots/{_scene}-{DateTime.Now:HHmmss}.png");
     }
 

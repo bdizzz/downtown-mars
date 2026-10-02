@@ -93,6 +93,20 @@ For testing, the browser console has `dm`, which acts on the hole you're looking
 
 Changes go through the simulation like any command and show in the flow report as "Console". Giving more than the hole can store also adds that much storage, which the hole keeps (in saves too), so the amount isn't thrown away on the next tick.
 
+### The Godot viewer (experiment)
+
+A desktop viewer in Godot 4 and C# (`godot/`, Mac for now), drawing the same game: see `docs/PLAN-GODOT.md`. It needs Godot .NET 4.7 and the .NET SDK. Run the simulation in Node, then open the viewer:
+
+```bash
+npm run bridge -- --showcase=12
+```
+
+```bash
+cd godot && dotnet build && godot-mono --path .
+```
+
+The bridge serves the game on `127.0.0.1:7878` (`--load=save.json` loads a save, `--showcase=12` builds a big test colony, `--speed=2`, `--verbose`); the viewer connects (and reconnects) by itself. In the viewer: Space pauses, 1–3 set the speed, Up/Down step the picked floor, Home shows every floor, Tab switches Iso and first person, L hides labels, F12 saves a screenshot to `godot/shots/`.
+
 ### Furnishing tool
 
 Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture models (Catalogue) and lay out the template for any room type and shape (Templates). Preview the fit in any ring, with or without a corridor along a side. Drag items in the plan, set their wall, offsets, turn, repeat and priority, and save: the tool writes `data/layouts.json`. **Overview** shows every template side by side, or one up close. Models are built in `scripts/furniture.mjs` (run `node scripts/furniture.mjs` to write `data/furniture.json`); see `docs/FURNITURE.md`.

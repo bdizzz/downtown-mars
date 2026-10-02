@@ -738,6 +738,9 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
   const hungAs = hanging.length ? { tags: hanging.map((f) => hangTag(layout, room, f)), key: "hung", material: withHangingDown } : null;
   if (hungAs) g.add(...furnitureMeshes(hanging, accent, hungAs).children);
   g.userData.centre = centreOf(fitted);
+  // What stands where, for the Godot bridge (src/bridge/scene.ts), which draws furniture its own way.
+  g.userData.placed = fitted.map(({ item, x, y, z, turn }) => ({ item, x, y, z, turn }));
+  g.userData.accent = accent;
   // Where its people go, for the stage to fill by the hour.
   const def = roomDef(room.type);
   g.userData.people = { roomId: room.id, spots: spotsOf(fitted), accent, social: SOCIAL.has(def.category) || SOCIAL_ROOMS.has(room.type) } satisfies RoomSpots;
@@ -1427,7 +1430,7 @@ export function buildLayout(
       const sprite = label(room.connected ? name : `${name} ⚠`, room.planned ? "#d8c0ae" : "#f6efe6");
       const a = (a0 + a1) / 2;
       sprite.position.set((r0 - 0.6) * Math.cos(a), y1 - 0.8, (r0 - 0.6) * Math.sin(a));
-      sprite.userData = { label: true, cached: true, roomId: room.id };
+      sprite.userData = { label: true, cached: true, roomId: room.id, text: name };
       group.add(sprite);
     }
   }

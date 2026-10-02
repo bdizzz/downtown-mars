@@ -35,7 +35,7 @@ static class Dress
     }
 
     /// <summary>The dressed material for an exported one (made once per original).</summary>
-    static Material For(BaseMaterial3D src)
+    public static Material For(BaseMaterial3D src)
     {
         var key = $"{src.ResourceName}|{src.AlbedoColor}|{src.Transparency}";
         if (Done.TryGetValue(key, out var hit)) return hit;

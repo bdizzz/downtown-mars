@@ -54,3 +54,32 @@ Oct 2, 2026.
 
 **Not done:** the Windows export. It needs Godot's export templates (about 1 GB from godotengine.org), not downloaded yet.
 
+## Phase 2: the live viewer
+
+Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: a **live viewer**. The TypeScript simulation runs in Node and Godot draws it, so it plays and looks good soon. The sim port to C# waits until it's worth it.
+
+### How
+
+- **One sim host, two homes.** The Web Worker's logic is now `src/worker/host.ts` (`createSimHost`): the world, real-time ticking and the message protocol. The worker (`sim.worker.ts`) is a thin wrapper round it. The **bridge** (`src/bridge/main.ts`, `npm run bridge`) runs the same host in Node and serves it on a local TCP socket, one JSON message per line, in the worker's protocol. To Godot it's just another main thread: it gets snapshots (20 a second, about 20 KB each) and sends commands (`setSpeed`, `command`, …).
+- **The scene from the web's own code.** Porting the 3D builders to C# would be about 2,000 lines of carving geometry (walls with doors and windows, stairwells, tubes, corridors, rock faces), and the two copies would drift apart. Instead the bridge runs `render3d/rooms3d.ts` `buildLayout` in Node (`src/bridge/dom.ts` stubs the canvas it draws labels on) and sends the result (`src/bridge/scene.ts`): meshes merged by material and floor into chunks, the lamps, the room labels, and the furniture as placements. It sends again whenever the layout, the drill, wear or the picked floor change. The viewer asks for a floor with `{ type: "view", topFloor }`.
+- **Furniture as instances.** Sent as triangles, furniture made a 12-floor scene 398 MB. Now the bridge sends what stands where (item, position, turn, the room's accent), and Godot builds each item once from `data/furniture.json` (`Furniture.cs`: boxes, cylinders and spheres, as `furniture3d.ts`) and draws every copy as a MultiMesh, one per item per floor. A small shader gives accent parts their room's colour, lights glowing parts by night and sways plants. The scene is 4.7 MB and builds in Godot in about 100 ms.
+- **Godot's side** (`godot/src/`): `Bridge.cs` (the socket, read and parsed on a background thread, reconnecting by itself), `HoleScene.cs` (chunks into meshes, dressed by material name with `Dress.cs`; a real light per lamp; Label3D labels), `Live.cs` (the sun and sky by the game's hour as the web's `updateSky`, the ground, the HUD with the day, speed buttons, stocks and floor picker, keys), with `CameraRig.cs` from phase 1.
+
+### Steps
+
+1. Bridge and live viewer: the hole, furniture, lamps, day and night, speed and floor picking. **Done.**
+2. People: colonists walking the galleries and corridors, at work and at home.
+3. Picking and info: click a room for what it is and how it's doing.
+4. Building: place rooms, dig, corridors, from Godot.
+5. Looks: materials and models made for Godot, graphics presets.
+
+### Notes as built
+
+**Step 1** (Oct 2, 2026):
+
+- Lamps: 955 on the showcase's floors below F4. Each light costs every pixel it might reach (37 → 50 fps without them), and a shadow pass per lamp redraws everything near it (51,000 draw calls and 2 fps with every lamp casting shadows). So, as the web's nearest-lamps pool, lamps light only on the floor in view, one floor above and two below, and the 8 nearest the camera within 40 m cast shadows.
+- Furniture batches per item per floor rather than for the whole hole: 4,000 draw calls against 1,500, the same frame rate (draw calls aren't the limit now), and floors out of view drop out.
+- Showcase (13 floors) cut at F4, Iso, by day: 39 fps at 1600×1000 on the M4 with SDFGI, SSAO, SSIL, volumetric fog and glow, about 5,000 draw calls (the sun's four shadow cascades redraw the scene). The effects are most of the cost; graphics presets come with step 5.
+- With a floor picked the ground is hidden, as in the web view. Labels show the room's short name (`rooms3d.ts` now keeps the text on the sprite for the bridge).
+- Fixed on the way, in the web game: the reflections' cave environment disposed a mesh with several materials as if it had one (`look.ts`), an error on every graphics change.
+

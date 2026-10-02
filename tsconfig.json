@@ -14,5 +14,6 @@
     "skipLibCheck": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "tests", "data"]
+  "include": ["src", "tests", "data"],
+  "exclude": ["src/bridge"]
 }
