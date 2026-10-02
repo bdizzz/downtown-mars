@@ -91,6 +91,8 @@ const FIELD_MAX = 3;
 /** Overlay tints sit just proud of the cells, in front of the rock and around rooms. */
 const FIELD_OUTSET = -0.04;
 const FIELD_ALPHA = 0.55;
+/** Day and night: the sky's, the sun's and the ambient's strength at night, and how much more at noon (scaled by daylight 0..1). */
+const DAYNIGHT = { sky: [0.38, 0.5], sun: [0.06, 1.25], ambient: [0.16, 0.14] } as const;
 /** The fill light: the ambient's strength, and how much of the fill (sky and ambient) is left walking. */
 const FILL = { ambient: 0.25, walk: 0.7 };
 /** The camera's headlamp: how strong in the shaft view and walking, and where it rides (metres above and behind the eye). */
@@ -144,8 +146,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(hemi);
   const ambientLight = new THREE.AmbientLight(0xffe0c0, FILL.ambient);
   scene.add(ambientLight);
-  /** The sky's light before the first-person dimming (set with the sky). */
+  /** The sky's and the ambient's light before the first-person dimming (set with the sky). */
   let hemiBase = 1;
+  let ambientBase = FILL.ambient;
   // A warm lamp that travels with the camera, like a colonist's headlamp,
   // so the shaft reads at night too. It rides above and behind the eye, so
   // what's right in front of you (glass, a colonist) isn't blown out.
@@ -450,7 +453,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function applyFill(): void {
     const k = view.mode === "walk" ? FILL.walk : 1;
     hemi.intensity = hemiBase * k;
-    ambientLight.intensity = FILL.ambient * k;
+    ambientLight.intensity = ambientBase * k;
   }
 
   /** Where the lamps that light the scene are picked round: where you stand walking, where Iso looks, else the camera. */
@@ -583,10 +586,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (cut() === null) scene.background = skyColor;
     // Deep in the shaft, daylight matters less than the lamps; keep it gentle.
     // A dust storm blots out the sun, and some of the sky's light.
-    hemiBase = (0.45 + 0.35 * light) * (1 - STORM_DIM.sky * storm);
+    // Bright days and dark nights: at noon the sky and sun are strong; at night little's left but the lamps.
+    hemiBase = (DAYNIGHT.sky[0] + DAYNIGHT.sky[1] * light) * (1 - STORM_DIM.sky * storm);
+    ambientBase = DAYNIGHT.ambient[0] + DAYNIGHT.ambient[1] * light;
     applyFill();
     // With shadows the rock keeps the sun out of the rooms, so it can shine harder down the shaft and on the surface.
-    sunBase = (0.15 + 0.9 * light) * (1 - STORM_DIM.sun * storm);
+    sunBase = (DAYNIGHT.sun[0] + DAYNIGHT.sun[1] * light) * (1 - STORM_DIM.sun * storm);
     sun.intensity = sunBase * (sun.castShadow ? SUN_SHADOW.boost : 1);
     // Near the surface, the view takes the hour's light; deeper down, the lamps'.
     look.setDaylight(light);
