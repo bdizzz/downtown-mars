@@ -8,12 +8,14 @@ import { buildPeople, buildScene, peopleKey, sceneKey } from "./scene";
 import { gameTime } from "../sim/clock";
 import { stepWorld } from "../sim/worldstep";
 import type { RoomSpots } from "../render3d/people3d";
+import { inspect, roomAtPoint } from "./inspect";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
 // Godot viewer, speaking the web game's worker protocol (worker/protocol.ts) one JSON message per
 // line. Godot is just another main thread: it gets snapshots and sends commands. On top of that the
-// bridge sends the 3D scene (scene.ts) whenever it changes, and takes one message of its own:
-// { type: "view", topFloor } (the floor picked, or null for all).
+// bridge sends the 3D scene (scene.ts) whenever it changes, who's where (people), and the room in the
+// panel (inspect.ts); and takes messages of its own: { type: "view", topFloor } (the floor picked, or
+// null for all) and { type: "inspect", roomId | at } (the room to show, or what's at a point).
 //
 //   npm run bridge -- [--port=7878] [--load=save.json] [--showcase=12] [--speed=1] [--hour=12] [--verbose]
 
@@ -76,7 +78,19 @@ function report(scene: ReturnType<typeof buildScene>["message"], line: string): 
   }
 }
 
-type BridgeMessage = ToWorker | { type: "view"; topFloor: number | null };
+type BridgeMessage =
+  | ToWorker
+  | { type: "view"; topFloor: number | null }
+  /** The room panel: a room by id, or whatever is at a world point; null closes it. */
+  | { type: "inspect"; roomId?: number | null; at?: [number, number, number] };
+
+// The room in the panel, kept up to date twice a second.
+let inspecting: number | null = null;
+let inspectClock = 0;
+function sendInspect(): void {
+  const line = JSON.stringify(inspect(host.active(), inspecting)) + "\n";
+  for (const c of clients) c.write(line);
+}
 
 if (args.load) host.onMessage({ type: "load", id: 0, data: readFileSync(args.load, "utf8") });
 if (args.showcase) host.onMessage({ type: "command", id: 0, command: { type: "consoleShowcase", floors: Number(args.showcase) } });
@@ -110,6 +124,9 @@ const server = createServer((socket) => {
         if (msg.type === "view") {
           topFloor = msg.topFloor;
           sendScene();
+        } else if (msg.type === "inspect") {
+          inspecting = msg.at ? roomAtPoint(host.active(), msg.at) : (msg.roomId ?? null);
+          sendInspect();
         } else host.onMessage(msg);
       } catch (e) {
         console.error("Bad message:", line.slice(0, 200), e);
@@ -128,6 +145,7 @@ server.listen(port, "127.0.0.1", () => console.log(`Sim bridge on 127.0.0.1:${po
 setInterval(() => {
   host.frame();
   sendScene();
+  if (inspecting !== null && ++inspectClock % Math.round(config.snapshotsPerSecond / 2) === 0) sendInspect();
 }, 1000 / config.snapshotsPerSecond);
 setInterval(() => {
   if (sent && args.verbose) console.log(`${(sent / 1024).toFixed(0)} KB/s to ${clients.size}`);

@@ -69,7 +69,7 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 
 1. Bridge and live viewer: the hole, furniture, lamps, day and night, speed and floor picking. **Done.**
 2. People: colonists walking the galleries and corridors, at work and at home. **Done**, with a performance pass.
-3. Picking and info: click a room for what it is and how it's doing.
+3. Picking and info: click a room for what it is and how it's doing. **Done.**
 4. Building: place rooms, dig, corridors, from Godot.
 5. Looks: materials and models made for Godot, graphics presets.
 
@@ -98,4 +98,11 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 
 - **Where the time goes** now (first person): lamps about 14 ms with their shadows, SDFGI 8, SSIL 4, volumetric fog 4; with all of those off it's held at 60 fps (vsync). Chunks per floor and eighth of the ring changed nothing measurable, and neither did MSAA or the labels. So Godot's cost here is lighting quality, which graphics presets (step 5) can trade, and which a desktop graphics card has far more room for than the M4's.
 - The bridge resets the picked floor when a viewer connects, and the viewer asks again if a scene comes for another floor.
+
+**Step 3** (Oct 2, 2026):
+
+- Click a room (a click, not a drag: under 5 px of movement) and the viewer sends the point where the pointer meets the floor in view (the picked floor in Iso, your own in first person); the bridge finds the room as the web view picks (`pickAt` in `cylinder.ts`), and sends its panel twice a second while it's open (`src/bridge/inspect.ts`): its name, type and floors, how it's running, staff, homes, what it makes and uses a day, condition, and its outline (the web's `outlineGeometry`), drawn over everything in Godot (`Inspector.cs`). Esc or × closes it.
+- The inspector's state line ("Running at 40% · short of staff", "No access: connect it with a corridor") moved from `ui/Inspector.tsx` to `src/view/roomState.ts`, so the web and the Godot panel say the same.
+- Test option: `--click=x,y` clicks there once the scene is up.
+- Not yet: surface rooms (the pod, the pad, solar arrays) can't be picked; the web's inspector does much more (renaming, priority, crops, storage, windows, reach), which comes with building.
 

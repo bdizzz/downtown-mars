@@ -17,9 +17,10 @@ import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { network } from "../sim/network";
-import { corridors, finishDef, floorLinked } from "../sim/corridors";
+import { corridors, finishDef } from "../sim/corridors";
 import { STORABLE } from "../sim/storage";
 import { dining, hoursText, num, ordinal, resName, signed } from "./format";
+import { isProblem, roomState } from "../view/roomState";
 
 interface Props {
   s: Snapshot;
@@ -28,39 +29,6 @@ interface Props {
   roomId: number;
   onCommand: (cmd: SimCommand) => void;
   onClose: () => void;
-}
-
-function limitText(limit: string | undefined): string {
-  if (!limit) return "";
-  if (limit === "staff") return "short of staff";
-  if (limit === "paused") return "paused";
-  if (limit === "kit") return "idle until you ask for a seed kit";
-  if (limit === "standby") return "standing by: nothing to repair";
-  // Unhappy colonists work slower (economy.ts).
-  if (limit === "morale") return "slowed by low morale";
-  // Condition (condition.ts).
-  if (limit === "worn") return "slowed: worn out, below 30% condition";
-  if (limit === "broken") return "stopped: broken down (0% condition)";
-  // A dust storm dims the solar arrays (weather.ts).
-  if (limit === "storm") return "dimmed by the dust storm";
-  if (limit.startsWith("stocked:")) return `standing by: ${resName(limit.slice(8)).toLowerCase()} stocked`;
-  if (limit.startsWith("full:")) return `idling: ${resName(limit.slice(5)).toLowerCase()} storage full`;
-  return `short of ${nameOf(limit)}`;
-}
-
-/** A resource's name, or the reason as given if it isn't one (so a new reason can't break the panel). */
-function nameOf(id: string): string {
-  try {
-    return resName(id).toLowerCase();
-  } catch {
-    return id;
-  }
-}
-
-/** Idling because output storage is full is fine; shortages and missing access aren't. */
-function isProblem(room: { planned: boolean; connected: boolean }, st: { rate: number; limit?: string } | undefined): boolean {
-  if (!room.planned && !room.connected) return true;
-  return !!st && st.rate < 0.999 && !st.limit?.startsWith("full:") && st.limit !== "paused" && st.limit !== "kit" && st.limit !== "standby" && !st.limit?.startsWith("stocked:");
 }
 
 function Flows({ label, flows }: { label: string; flows: Record<string, number> }) {
@@ -417,18 +385,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
   const spec = roomSpec(room, config);
   const st = s.roomStatus[room.id];
 
-  let state = "";
-  if (room.planned) state = "Blueprint: builds when its floor is dug";
-  else if (room.building) state = "Under construction";
-  else if (!room.connected) {
-    const floor = room.cells[0]?.floor ?? 1;
-    state = floor > 1 && !floorLinked(s.layout, floor) ? `No access: no stairs reach floor ${floor} from the entrance` : "No access: connect it with a corridor";
-  }
-  else if (st?.limit === "paused") state = "Paused: its crew is free for other work";
-  else if (st?.limit === "kit") state = "Idle until you ask for a seed kit";
-  else if (st?.limit === "standby") state = "Standing by: nothing to repair";
-  else if (st?.limit?.startsWith("stocked:")) state = `Standing by: ${resName(st.limit.slice(8)).toLowerCase()} is stocked to ${num(room.stopAt ?? 0)}`;
-  else if (st) state = `Running at ${Math.round(st.rate * 100)}%${st.limit ? ` · ${limitText(st.limit)}` : ""}`;
+  const state = roomState(s.layout, room, st);
 
   return (
     <aside className="inspector">

@@ -24,6 +24,9 @@ public partial class Live : Node3D
     Bridge _bridge = null!;
     HoleScene _hole = null!;
     People _people = null!;
+    Inspector _inspector = null!;
+    Vector2 _pressAt;
+    bool _pressed;
     CameraRig? _rig;
     WorldEnvironment _env = null!;
     DirectionalLight3D _sun = null!;
@@ -31,6 +34,7 @@ public partial class Live : Node3D
     MeshInstance3D _ground = null!;
 
     // HUD.
+    CanvasLayer _hud = null!;
     Label _title = null!, _clock = null!, _stocks = null!, _status = null!;
     readonly List<Button> _speedButtons = new();
     VBoxContainer _floorPicker = null!;
@@ -47,6 +51,8 @@ public partial class Live : Node3D
     /// <summary>Start-up options from the command line (Main.cs): a floor to pick, first person, and a screenshot then quit.</summary>
     public int? StartFloor { get; set; }
     public bool StartWalking { get; set; }
+    /// <summary>A click at this screen point once the scene is up (for testing picking from the command line).</summary>
+    public Vector2? ClickAt { get; set; }
     public float ShotAfter { get; set; }
     /// <summary>Benchmark: after a warmup, average this many seconds of frames, print them, save a shot and quit.</summary>
     public float BenchSeconds { get; set; }
@@ -69,6 +75,9 @@ public partial class Live : Node3D
         _ground = new MeshInstance3D { Name = "Ground" };
         AddChild(_ground);
         BuildHud();
+        _inspector = new Inspector(_hud) { Name = "Inspector" };
+        _inspector.Closed = () => Inspect(null);
+        AddChild(_inspector);
         RenderingServer.ViewportSetMeasureRenderTime(GetViewport().GetViewportRid(), true);
     }
 
@@ -101,6 +110,11 @@ public partial class Live : Node3D
                 GetTree().Quit();
             }
         }
+        if (ClickAt is Vector2 click && _rig != null && _clockSeconds > 6)
+        {
+            ClickAt = null;
+            Click(click);
+        }
         if (ShotAfter > 0 && _clockSeconds > ShotAfter)
         {
             ShotAfter = 0;
@@ -122,6 +136,7 @@ public partial class Live : Node3D
             }
             if (type == "scene") OnScene(msg.RootElement);
             else if (type == "people") _people.Set(msg.RootElement);
+            else if (type == "inspected") _inspector.Show(msg.RootElement);
             msg.Dispose();
         }
         // Lamps near what you're looking at, and their shadows, follow the camera a few times a second.
@@ -139,7 +154,7 @@ public partial class Live : Node3D
             snapshot.Dispose();
         }
         _status.Text = _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.Walking == true ? "first person" : "iso")}\nSpace pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.Walking == true ? "first person" : "iso")}\nClick a room · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels"
             : "Waiting for the game: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -251,11 +266,46 @@ public partial class Live : Node3D
 
     void SetSpeed(int speed) => _bridge.Send(new Dictionary<string, object> { ["type"] = "setSpeed", ["speed"] = speed });
 
+    /// <summary>Show a room in the panel (null closes it).</summary>
+    void Inspect(int? roomId) => _bridge.Send(new Dictionary<string, object?> { ["type"] = "inspect", ["roomId"] = roomId });
+
+    /// <summary>A click (not a drag): what's under the pointer, on the floor in view.</summary>
+    void Click(Vector2 at)
+    {
+        if (GetViewport().GetCamera3D() is not Camera3D cam) return;
+        var from = cam.ProjectRayOrigin(at);
+        var dir = cam.ProjectRayNormal(at);
+        // The floor in view: where you stand in first person, else the picked floor (or the first).
+        var floor = _rig?.Walking == true ? Mathf.FloorToInt((-cam.GlobalPosition.Y - 3) / 4) + 1 : _topFloor ?? 1;
+        var y = -3 - floor * _shape.FloorHeightM + 0.5f;
+        if (Mathf.Abs(dir.Y) < 1e-4f) return;
+        var t = (y - from.Y) / dir.Y;
+        if (t <= 0) return;
+        var p = from + dir * t;
+        _bridge.Send(new Dictionary<string, object> { ["type"] = "inspect", ["at"] = new[] { p.X, p.Y, p.Z } });
+    }
+
     public override void _UnhandledInput(InputEvent e)
     {
+        // Clicks pick a room; drags turn the camera (CameraRig), so tell them apart by how far the pointer moved.
+        if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left } mb)
+        {
+            if (mb.Pressed)
+            {
+                _pressAt = mb.Position;
+                _pressed = true;
+            }
+            else if (_pressed)
+            {
+                _pressed = false;
+                if (mb.Position.DistanceTo(_pressAt) < 5) Click(mb.Position);
+            }
+            return;
+        }
         if (e is not InputEventKey { Pressed: true, Echo: false } k) return;
         switch (k.Keycode)
         {
+            case Key.Escape when _inspector.Open: Inspect(null); break;
             case Key.Space when _rig?.Walking != true: SetSpeed(_speed == 0 ? 1 : 0); break;
             case Key.Key1: SetSpeed(1); break;
             case Key.Key2: SetSpeed(2); break;
@@ -347,7 +397,7 @@ public partial class Live : Node3D
 
     void BuildHud()
     {
-        var layer = new CanvasLayer();
+        var layer = _hud = new CanvasLayer();
         AddChild(layer);
         var top = new PanelContainer { Position = new Vector2(10, 10) };
         top.AddThemeStyleboxOverride("panel", Panel());
@@ -415,7 +465,7 @@ public partial class Live : Node3D
         return l;
     }
 
-    static StyleBoxFlat Panel() => new()
+    public static StyleBoxFlat Panel() => new()
     {
         BgColor = new Color(0.12f, 0.07f, 0.06f, 0.82f),
         CornerRadiusTopLeft = 8, CornerRadiusTopRight = 8, CornerRadiusBottomLeft = 8, CornerRadiusBottomRight = 8,
