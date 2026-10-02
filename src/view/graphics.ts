@@ -21,14 +21,16 @@ export interface Graphics {
   grade: number;
   /** Lamps, fires and grow lights light the rooms around them: their pools on the floor, and the nearest few properly. */
   lamps: number;
+  /** Shadows: the sun's, down the shaft and on the surface (sharper at full). */
+  shadows: number;
 }
 
 export type Preset = "low" | "medium" | "high";
 
 export const GRAPHICS_PRESETS: Record<Preset, Graphics> = {
-  low: { pixelRatio: 1, life: false, reflections: false, ao: 0, bloom: 0, haze: 0, tiltShift: 0, grade: 0, lamps: 0 },
-  medium: { pixelRatio: 1.5, life: true, reflections: true, ao: 0, bloom: 0.6, haze: 0.8, tiltShift: 0, grade: 0.8, lamps: 0.5 },
-  high: { pixelRatio: 2, life: true, reflections: true, ao: 0.8, bloom: 0.8, haze: 1, tiltShift: 0.6, grade: 1, lamps: 1 },
+  low: { pixelRatio: 1, life: false, reflections: false, ao: 0, bloom: 0, haze: 0, tiltShift: 0, grade: 0, lamps: 0, shadows: 0 },
+  medium: { pixelRatio: 1.5, life: true, reflections: true, ao: 0, bloom: 0.6, haze: 0.8, tiltShift: 0, grade: 0.8, lamps: 0.5, shadows: 0.5 },
+  high: { pixelRatio: 2, life: true, reflections: true, ao: 0.8, bloom: 0.8, haze: 1, tiltShift: 0.6, grade: 1, lamps: 1, shadows: 1 },
 };
 
 export const PRESET_NAMES: { id: Preset; name: string; hint: string }[] = [
@@ -64,5 +66,6 @@ export function cleanGraphics(raw: Partial<Graphics> | undefined): Graphics {
     tiltShift: amount(g.tiltShift, DEFAULT_GRAPHICS.tiltShift),
     grade: amount(g.grade, DEFAULT_GRAPHICS.grade),
     lamps: amount(g.lamps, DEFAULT_GRAPHICS.lamps),
+    shadows: amount(g.shadows, DEFAULT_GRAPHICS.shadows),
   };
 }

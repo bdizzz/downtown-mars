@@ -46,3 +46,7 @@ What it looks like (same save, paused at 00:30, same camera; screenshots shared 
 - **Cost:** fine on this Mac; not measured on weaker GPUs.
 
 Verdict for now: WebGPU is a good foundation (the effects work, glass is handled, the pipe is fast), but the visible gain over today's tuned WebGL look is modest until the procedural surfaces, sky, haze and grade come across (the 4–6 day port above) and the materials are retuned to give SSR and SSGI something to work with.
+
+## Then (Oct 1): option 2, better looks within WebGL
+
+Bryon chose to improve the WebGL look first. Built: sun shadows (a **Shadows** graphics setting; the sun shines harder with them, since rock keeps it out of the rooms, and is left as it was when a floor is picked), floor gloss by kind, shinier metal finishes, and a warm cave environment for reflections instead of the studio. Lamp shadows were tried and dropped: indoor light is mostly fill and the camera's lamp, so they barely showed, and walking would redraw two cube maps every time the nearest lamps changed.

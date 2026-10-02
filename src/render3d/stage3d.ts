@@ -91,6 +91,8 @@ const FIELD_MAX = 3;
 /** Overlay tints sit just proud of the cells, in front of the rock and around rooms. */
 const FIELD_OUTSET = -0.04;
 const FIELD_ALPHA = 0.55;
+/** The sun's shadow: map size at full setting, how far its box reaches (from 100 m up), the margin round the rings, and how far (radians) it moves before shadows are redrawn. */
+const SUN_SHADOW = { mapSize: 2048, far: 450, margin: 12, redrawAngle: 0.02, boost: 2.4 };
 /** Overlay tints lie on the rooms' own floors and walls: pulled toward the camera so they win the depth test. */
 const OVERLAY_OFFSET = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 };
 
@@ -113,6 +115,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     throw new Error(webgpu ? `WebGPU renderer failed: ${(e as Error).message}` : "3D needs WebGL, which this browser or device doesn't provide.");
   }
   // Filmic tone mapping keeps the lamp-lit wall from blowing out close up.
+  // Shadows, when the graphics settings ask: soft-edged, and redrawn only when something that casts them changes.
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.8;
   renderer.setSize(host.clientWidth, host.clientHeight);
@@ -146,6 +151,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   camera.add(fill, fill.target);
   const sun = new THREE.DirectionalLight(0xfff0dd, 1.2);
   sun.position.set(40, 80, 20);
+  // Its shadows cover the hole and its rings; the box is fitted when the hole is known (fitSunShadow).
+  sun.shadow.bias = -0.0006;
+  sun.shadow.normalBias = 0.04;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = SUN_SHADOW.far;
   scene.add(sun);
 
   // Everything built from the hole's shape lives in one group, rebuilt when the hole changes.
@@ -542,7 +552,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // Deep in the shaft, daylight matters less than the lamps; keep it gentle.
     // A dust storm blots out the sun, and some of the sky's light.
     hemi.intensity = (0.45 + 0.35 * light) * (1 - STORM_DIM.sky * storm);
-    sun.intensity = (0.15 + 0.9 * light) * (1 - STORM_DIM.sun * storm);
+    // With shadows the rock keeps the sun out of the rooms, so it can shine harder down the shaft and on the surface.
+    sunBase = (0.15 + 0.9 * light) * (1 - STORM_DIM.sun * storm);
+    sun.intensity = sunBase * (sun.castShadow ? SUN_SHADOW.boost : 1);
     // Near the surface, the view takes the hour's light; deeper down, the lamps'.
     look.setDaylight(light);
     // At night, windows and the gallery tubes' lamps glow.
@@ -1413,6 +1425,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : "near");
     // The nearest lamps light their rooms.
     lampLights.place(lampList, view.mode === "walk" ? new THREE.Vector3(walker.x, camera.position.y, walker.z) : camera.position, view.mode === "walk" ? walker.floor : cut());
+    updateShadows();
     skyDome.follow(camera);
     look.setView(hazeFocus(), view.mode === "walk" || view.mode === "shaft", view.mode === "iso");
     roomFx.setScale(renderer.getDrawingBufferSize(bufferSize).y / (2 * Math.tan((camera.fov * Math.PI) / 360)));
@@ -1420,6 +1433,62 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     stats.frameMs = performance.now() - t0;
     stats.calls = renderer.info.render.calls;
     stats.triangles = renderer.info.render.triangles;
+  }
+
+  /**
+   * Shadows are drawn only when something that casts them changes: the scene rebuilt, a floor picked,
+   * or the sun moved a little. Then every solid mesh casts and receives
+   * (see-through ones only receive), and the shadow maps are redrawn once.
+   */
+  let shadowKey = "";
+  let shadowSun = new THREE.Vector3();
+  /** The sun's strength before the shadow boost (set with the sky). */
+  let sunBase = 1;
+  function updateShadows(): void {
+    if (!renderer.shadowMap.enabled) return;
+    setSunShadow();
+    const key = `${layoutGroup.uuid}:${terrain?.group.uuid}:${rig?.group.uuid}:${holeGroup.uuid}:${cut()}`;
+    const sunMoved = sun.position.clone().normalize().angleTo(shadowSun) > SUN_SHADOW.redrawAngle;
+    if (key === shadowKey && !sunMoved) return;
+    if (key !== shadowKey) {
+      scene.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh) return;
+        const mat = m.material as THREE.Material | THREE.Material[];
+        const seeThrough = Array.isArray(mat) ? mat.some((x) => x.transparent) : mat.transparent;
+        m.castShadow = !seeThrough;
+        m.receiveShadow = true;
+      });
+      // Not the sky, nor colonists (who move between redraws).
+      skyDome.mesh.castShadow = skyDome.mesh.receiveShadow = false;
+      people.group.traverse((o) => (o.castShadow = false));
+      fitSunShadow();
+    }
+    shadowKey = key;
+    shadowSun = sun.position.clone().normalize();
+    renderer.shadowMap.needsUpdate = true;
+  }
+
+  /**
+   * The sun casts shadows (and shines harder) when shadows are on and no floor is picked: with a floor
+   * picked, the rock above is lifted away to look in, so there'd be nothing to keep the sun out of the rooms.
+   */
+  function setSunShadow(): void {
+    const on = renderer.shadowMap.enabled && cut() === null;
+    if (sun.castShadow !== on) shadowKey = "";
+    sun.castShadow = on;
+    sun.intensity = sunBase * (on ? SUN_SHADOW.boost : 1);
+  }
+
+  /** The sun's shadow box: round the hole and its rings, deep enough for every floor. */
+  function fitSunShadow(): void {
+    const h = latest?.layout.hole;
+    if (!h) return;
+    const half = h.shaftRadiusM + h.ringSlots.length * RING_D + SUN_SHADOW.margin;
+    const cam = sun.shadow.camera;
+    cam.left = cam.bottom = -half;
+    cam.right = cam.top = half;
+    cam.updateProjectionMatrix();
   }
 
   canvas.addEventListener("webglcontextlost", (e) => {
@@ -1453,6 +1522,18 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function applyGraphics(): void {
     look.setGraphics(graphics);
     lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
+    // Shadows: the sun's down the shaft (a finer map at full).
+    const shadows = graphics.shadows > 0 && !webgpu;
+    renderer.shadowMap.enabled = shadows;
+    setSunShadow();
+    const size = graphics.shadows >= 1 ? SUN_SHADOW.mapSize : SUN_SHADOW.mapSize / 2;
+    if (sun.shadow.mapSize.x !== size) {
+      sun.shadow.mapSize.set(size, size);
+      sun.shadow.map?.dispose();
+      sun.shadow.map = null;
+    }
+    shadowKey = "";
+    dirty = true;
     showPools();
     renderer.setSize(host.clientWidth, host.clientHeight);
     look.resize();
@@ -1511,6 +1592,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             const n = { near: 0, far: 0 };
             for (const g of furnitureGroups) n[(g.userData.detailShown ?? "near") as "near" | "far"]++;
             return n;
+          },
+          shadowState() {
+            return { enabled: renderer.shadowMap.enabled, sun: sun.castShadow, map: sun.shadow.map ? sun.shadow.map.width : null, sunPos: sun.position.toArray(), box: [sun.shadow.camera.left, sun.shadow.camera.right], key: shadowKey, casters: (() => { let n = 0; scene.traverse((o) => { if ((o as THREE.Mesh).castShadow) n++; }); return n; })() };
           },
           // Try graphics settings from the console (not saved).
           setGraphics(g: Partial<Graphics>) {

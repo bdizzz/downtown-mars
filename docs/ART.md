@@ -11,6 +11,7 @@ A warm, lived-in city inside a cold, rusty planet. SimTower's cutaway clarity, w
 - **Outside is cold and vast.** Dusty rust ground, a butterscotch day sky that falls to a violet-black night full of stars. Hills are silhouettes, never detail.
 - **Inside is warm and small.** Rooms glow in category colours against dark rock. Light spills from shaft windows.
 - **The shaft is the showpiece.** Ring 1 windows face it; the gallery railing frames it. A future 3D view looks down it.
+- **Light (Oct 1):** by day the sun falls down the shaft and the rim throws a crescent of shadow into it (the sun shines harder there, since rock keeps it out of the rooms); shiny things reflect a warm lamp-lit cave, not a studio: glazed tiles and steel plate floors take a sheen, varnished planks a little, paving and concrete hardly any. Lamps don't cast shadows yet: the rooms are lit mostly by fill light and the camera's lamp, so lamp shadows would barely show (and would cost a lot while walking) until room lighting is redesigned.
 
 ## Readability rules
 

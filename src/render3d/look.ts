@@ -8,7 +8,6 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 import { HorizontalTiltShiftShader } from "three/examples/jsm/shaders/HorizontalTiltShiftShader.js";
 import { VerticalTiltShiftShader } from "three/examples/jsm/shaders/VerticalTiltShiftShader.js";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { hasPostEffects, type Graphics } from "../view/graphics";
 
 // The 3D view's look: what's drawn after the scene, scaled by the graphics
@@ -41,8 +40,8 @@ const LOOK = {
   mood: { night: [0.72, 0.8, 1.02] as const, lamp: [1.07, 0.93, 0.78] as const, from: 2, deep: 22 },
   /** Tilt-shift: blur at full (as a share of the screen), and where the sharp band sits (0 bottom, 1 top). */
   tiltShift: { blur: 2.4, focus: 0.5 },
-  /** Soft studio light reflected by metal and glass. */
-  environment: 0.35,
+  /** The lamp-lit cave reflected by shiny floors, metal and glass. */
+  environment: 0.55,
 };
 
 /** Renders the scene into its own target, keeping its depth for later passes, then hands the colour on. */
@@ -216,6 +215,34 @@ export class PlainLook implements LookLike {
   dispose(): void {}
 }
 
+/**
+ * What shiny things reflect: not a photo studio but the inside of the hole. Dark warm rock all round,
+ * darker underfoot, a string of warm lamps along the walls at head height, and a pale patch of sky
+ * overhead where the shaft opens. Blurred into the environment map, it reads as warm glints and a
+ * cool sheen from above.
+ */
+function caveEnvironment(): THREE.Scene {
+  const scene = new THREE.Scene();
+  const basic = (color: number, k = 1) => new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(k), side: THREE.BackSide });
+  const room = new THREE.Mesh(new THREE.BoxGeometry(20, 10, 20), [basic(0x3a2418), basic(0x3a2418), basic(0x1c1410), basic(0x24150e), basic(0x3a2418), basic(0x3a2418)]);
+  room.position.y = 3;
+  scene.add(room);
+  // Lamps along the walls.
+  const lamp = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffc48a).multiplyScalar(6) });
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 1.2), lamp);
+    m.position.set(Math.cos(a) * 9.3, 3.5, Math.sin(a) * 9.3);
+    scene.add(m);
+  }
+  // The sky down the shaft.
+  const sky = new THREE.Mesh(new THREE.CircleGeometry(4, 24), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xc9b8a8).multiplyScalar(2) }));
+  sky.rotation.x = Math.PI / 2;
+  sky.position.y = 7.9;
+  scene.add(sky);
+  return scene;
+}
+
 export class Look implements LookLike {
   private graphics: Graphics | null = null;
   private iso = false;
@@ -263,12 +290,16 @@ export class Look implements LookLike {
     this.bloom.strength = LOOK.bloom.strength * g.bloom;
     this.grade.enabled = g.grade > 0;
     this.grade.uniforms.amount!.value = g.grade;
-    // Reflections: a soft neutral studio, made once.
+    // Reflections: a warm, lamp-lit cave, made once.
     if (g.reflections && !this.envTexture) {
       const pmrem = new THREE.PMREMGenerator(this.renderer);
-      const room = new RoomEnvironment();
-      this.envTexture = pmrem.fromScene(room, 0.04).texture;
-      room.dispose();
+      const cave = caveEnvironment();
+      this.envTexture = pmrem.fromScene(cave, 0.04).texture;
+      cave.traverse((o) => {
+        const m = o as THREE.Mesh;
+        m.geometry?.dispose();
+        (m.material as THREE.Material | undefined)?.dispose();
+      });
       pmrem.dispose();
     }
     this.scene.environment = g.reflections ? this.envTexture : null;

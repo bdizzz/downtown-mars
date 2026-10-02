@@ -183,7 +183,7 @@ const FINISH_LOOK = {
   rock: { glsl: ROCK_GLSL, call: "rockTone", color: 0x7a4f3c, roughness: 0.95, metalness: 0 },
   marscrete: { glsl: MARSCRETE_GLSL, call: "marscreteTone", color: 0x9c8f84, roughness: 0.9, metalness: 0 },
   brick: { glsl: BRICK_GLSL, call: "brickTone", color: 0x9c5438, roughness: 0.85, metalness: 0 },
-  metal: { glsl: METAL_GLSL, call: "metalTone", color: 0x8d9299, roughness: 0.45, metalness: 0.55 },
+  metal: { glsl: METAL_GLSL, call: "metalTone", color: 0x8d9299, roughness: 0.32, metalness: 0.6 },
 } as const;
 
 /** A room's walls and floor as the material it's built from (room colours off). */
@@ -195,13 +195,17 @@ export function finishMaterial(finish: keyof typeof FINISH_LOOK): THREE.MeshStan
 
 // ---- floors by kind of room, with room colours on ----
 
-/** A floor's look: its own colour (the room's category colour tints it a little), and its pattern. */
+/**
+ * A floor's look: its own colour (the room's category colour tints it a little), its pattern, and how
+ * it takes the light: glazed tiles and steel plate shine (catching the lamps and the room in them),
+ * varnished planks a little, paving and concrete hardly at all.
+ */
 export const FLOOR_LOOK = {
-  planks: { color: 0x9a6a44, tint: 0.2 },
-  tiles: { color: 0xd8d2c8, tint: 0.25 },
-  plate: { color: 0x8d9299, tint: 0.2 },
-  paving: { color: 0xa89484, tint: 0.2 },
-  concrete: { color: 0x9c8f84, tint: 0.2 },
+  planks: { color: 0x9a6a44, tint: 0.2, roughness: 0.55, metalness: 0 },
+  tiles: { color: 0xd8d2c8, tint: 0.25, roughness: 0.4, metalness: 0 },
+  plate: { color: 0x8d9299, tint: 0.2, roughness: 0.42, metalness: 0.45 },
+  paving: { color: 0xa89484, tint: 0.2, roughness: 0.78, metalness: 0 },
+  concrete: { color: 0x9c8f84, tint: 0.2, roughness: 0.82, metalness: 0 },
 } as const;
 export type FloorKind = keyof typeof FLOOR_LOOK;
 
@@ -264,7 +268,10 @@ export function withFloor<T extends THREE.Material>(m: T, kind: FloorKind): T {
         "#include <color_fragment>",
         `#include <color_fragment>
         if (abs(vFloorNormal.y) > 0.7) diffuseColor.rgb = mix(vec3(${own.r.toFixed(4)}, ${own.g.toFixed(4)}, ${own.b.toFixed(4)}), diffuseColor.rgb, ${look.tint.toFixed(2)}) * floorTone(vFloorPos, ${index});`,
-      );
+      )
+      // The floor's own sheen (the walls keep the room's).
+      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\nif (abs(vFloorNormal.y) > 0.7) roughnessFactor = ${look.roughness.toFixed(2)};`)
+      .replace("#include <metalnessmap_fragment>", `#include <metalnessmap_fragment>\nif (abs(vFloorNormal.y) > 0.7) metalnessFactor = ${look.metalness.toFixed(2)};`);
   };
   m.customProgramCacheKey = () => `${prevKey}|floor-${kind}`;
   return m;
