@@ -91,6 +91,8 @@ const FIELD_MAX = 3;
 /** Overlay tints sit just proud of the cells, in front of the rock and around rooms. */
 const FIELD_OUTSET = -0.04;
 const FIELD_ALPHA = 0.55;
+/** The camera's headlamp: how strong in the shaft view and walking, and where it rides (metres above and behind the eye). */
+const HEADLAMP = { shaft: 40, walk: 10, above: 1.2, behind: 1.5 };
 /** The sun's shadow: map size at full setting, how far its box reaches (from 100 m up), the margin round the rings, and how far (radians) it moves before shadows are redrawn. */
 const SUN_SHADOW = { mapSize: 2048, far: 450, margin: 12, redrawAngle: 0.02, boost: 2.4 };
 /** Overlay tints lie on the rooms' own floors and walls: pulled toward the camera so they win the depth test. */
@@ -140,8 +142,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(hemi);
   scene.add(new THREE.AmbientLight(0xffe0c0, 0.25));
   // A warm lamp that travels with the camera, like a colonist's headlamp,
-  // so the shaft reads at night too. Proper lighting comes with rooms.
-  const lamp = new THREE.PointLight(0xffd8a8, 40, 60, 1.2);
+  // so the shaft reads at night too. It rides above and behind the eye, so
+  // what's right in front of you (glass, a colonist) isn't blown out.
+  const lamp = new THREE.PointLight(0xffd8a8, HEADLAMP.shaft, 60, 1.2);
+  lamp.position.set(0, HEADLAMP.above, HEADLAMP.behind);
   camera.add(lamp);
   scene.add(camera);
   // A soft light from the camera's direction, for the outside views where the lamp is too far away.
@@ -484,6 +488,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       camera.updateProjectionMatrix();
     }
     lamp.visible = inside;
+    // Walking, the rooms' own lights do most of the work: the headlamp only takes the edge off the dark.
+    lamp.intensity = view.mode === "walk" ? HEADLAMP.walk : HEADLAMP.shaft;
     fill.intensity = inside ? 0.15 : 0.7;
     if (shell) shell.visible = view.mode === "cutaway";
     updateSection();
