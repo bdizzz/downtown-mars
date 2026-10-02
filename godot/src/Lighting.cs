@@ -11,8 +11,8 @@ namespace DowntownMars;
 /// </summary>
 static class Lighting
 {
-    /// <summary>Lamp brightness and reach, relative to the web game's numbers.</summary>
-    public const float LampEnergy = 1.4f, LampRange = 1.6f;
+    /// <summary>Lamp brightness and reach, relative to the web game's numbers (a longer reach costs every pixel it touches).</summary>
+    public const float LampEnergy = 1.4f, LampRange = 1.0f;
 
     /// <param name="lite">Without the costly parts (SDFGI, SSIL, volumetric fog), to measure what they cost.</param>
     /// <summary>The sky's top, horizon and ground-horizon colours by day and by night.</summary>
@@ -59,6 +59,12 @@ static class Lighting
             AdjustmentContrast = 1.12f,
             AdjustmentSaturation = 1.2f,
         };
+        // For measuring (Dev.cs): effects off one by one.
+        if (Dev.Off("sdfgi")) env.SdfgiEnabled = false;
+        if (Dev.Off("fog")) env.VolumetricFogEnabled = false;
+        if (Dev.Off("ssil")) env.SsilEnabled = false;
+        if (Dev.Off("ssao")) env.SsaoEnabled = false;
+        if (Dev.Off("glow")) env.GlowEnabled = false;
         if (lite)
         {
             env.SdfgiEnabled = false;
@@ -72,7 +78,7 @@ static class Lighting
     public static FogVolume MakeShaftHaze(HoleShape h)
     {
         var depth = 3 + h.FloorHeightM * (h.Floors + 1);
-        var mat = new FogMaterial { Density = 0.035f, Albedo = new Color(0.95f, 0.75f, 0.6f), HeightFalloff = 0, EdgeFade = 0.3f };
+        var mat = new FogMaterial { Density = 0.012f, Albedo = new Color(0.95f, 0.75f, 0.6f), HeightFalloff = 0, EdgeFade = 0.3f };
         return new FogVolume
         {
             Shape = RenderingServer.FogVolumeShape.Cylinder,
@@ -82,7 +88,7 @@ static class Lighting
         };
     }
 
-    /// <summary>The sun, from where the web game had it, with shadows cascading out far enough for the whole hole.</summary>
+    /// <summary>The sun, from where the web game had it, with two shadow cascades out to 200 m.</summary>
     public static DirectionalLight3D MakeSun(float[] pos)
     {
         var sun = new DirectionalLight3D
@@ -90,8 +96,8 @@ static class Lighting
             LightColor = new Color(1, 0.94f, 0.85f),
             LightEnergy = 2.2f,
             ShadowEnabled = true,
-            DirectionalShadowMode = DirectionalLight3D.ShadowMode.Parallel4Splits,
-            DirectionalShadowMaxDistance = 400,
+            DirectionalShadowMode = DirectionalLight3D.ShadowMode.Parallel2Splits,
+            DirectionalShadowMaxDistance = 200,
         };
         var from = new Vector3(pos[0], pos[1], pos[2]);
         // Looking from the sun toward the hole (a vertical sun needs another "up").

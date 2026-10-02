@@ -6,14 +6,20 @@ import { buildLayout, disposeLayout } from "../render3d/rooms3d";
 import { floorAtY } from "../render3d/cylinder";
 import type { Lamp } from "../render3d/lights3d";
 import type { Placed } from "../view/furnish";
+import { occupied, type RoomSpots } from "../render3d/people3d";
+import { gameTime } from "../sim/clock";
+import { tubeRuns, type TubeRun } from "../view/gallery";
 import { grimeLevel } from "../view/grime";
 
 // The hole's 3D scene for the Godot viewer, built by the web game's own code (render3d/rooms3d.ts),
-// so both draw the same rooms, walls, doors, windows, tubes and corridors. Meshes are merged by
-// material and floor into chunks: a few hundred draw calls for a whole colony, while Godot can
-// still leave out floors off screen. Godot gives each material its own look by name. Furniture
+// so both draw the same rooms, walls, doors, windows, tubes and corridors. Triangles are merged by
+// material, floor and part of the ring into chunks: few enough draw calls for a whole colony, small
+// enough that the camera, each light and each shadow pass leave out what they don't reach. Godot gives each material its own look by name. Furniture
 // travels as placements (item, where, which way, the room's accent colour): Godot builds each item
 // once from data/furniture.json and draws every copy of it in one go.
+
+/** Chunks split each floor into this many parts round the ring, so the camera and lights can leave out what they don't reach. */
+const SECTORS = Number(process.env.DM_SECTORS ?? 8);
 
 /** The web view's rock and unconnected-room colours (stage3d.ts). */
 const COLORS = { rock: 0x6a3a28, stranded: 0xe0503a };
@@ -104,7 +110,40 @@ interface Bucket {
   col: number[] | null;
 }
 
-export function buildScene(state: SimState, gameId: number, topFloor: number | null): SceneMessage {
+/** People (the web's people3d.ts): who's at a post, in a seat or in bed now, and the gallery tubes the walkers stroll. */
+export interface PeopleMessage {
+  type: "people";
+  /** [kind (0 post, 1 seat, 2 bed), x, y, z, turn, floor, clothes, skin] */
+  seated: number[][];
+  tubes: TubeRun[];
+  population: number;
+}
+
+/** What decides who's where: the scene, the hour, each room's staff and the head count. */
+export function peopleKey(state: SimState, scene: string): string {
+  const hour = Math.floor(gameTime(state.tick, config).dayFraction * 24);
+  const staff = state.layout.rooms.map((r) => state.roomStatus[r.id]?.staff ?? 0).join(",");
+  return `${scene}:${hour}:${staff}:${state.population.count}`;
+}
+
+export function buildPeople(state: SimState, spots: RoomSpots[]): PeopleMessage {
+  const hour = Math.floor(gameTime(state.tick, config).dayFraction * 24);
+  const kinds = { post: 0, seat: 1, bed: 2 } as const;
+  const seated = occupied(spots, hour, (id) => state.roomStatus[id]?.staff ?? 0, state.population.count).map(({ spot: s, clothes, skin }) => [
+    kinds[s.kind],
+    round(s.x),
+    round(s.y),
+    round(s.z),
+    round(s.turn),
+    s.floor,
+    clothes,
+    skin,
+  ]);
+  return { type: "people", seated, tubes: tubeRuns(state.layout), population: state.population.count };
+}
+
+/** The scene, and each furnished room's spots for people (kept by the bridge, not sent). */
+export function buildScene(state: SimState, gameId: number, topFloor: number | null): { message: SceneMessage; spots: RoomSpots[] } {
   const t0 = performance.now();
   const layout = state.layout;
   const group = buildLayout(layout, drillFloor(state), COLORS, false, topFloor, true, grimeLevel);
@@ -115,10 +154,8 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
   const buckets = new Map<string, Bucket>();
   const lamps: SceneMessage["lamps"] = [];
   const labels: SceneMessage["labels"] = [];
-  const v = new THREE.Vector3();
-  const n = new THREE.Vector3();
+  const centre = new THREE.Vector3();
   const normalMatrix = new THREE.Matrix3();
-  const box = new THREE.Box3();
   const instance = new THREE.Matrix4();
   const world = new THREE.Matrix4();
 
@@ -141,11 +178,13 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     return i >= 0 ? i : list.push(s) - 1;
   };
   const furnitureGroups: THREE.Object3D[] = [];
+  const spots: RoomSpots[] = [];
   group.traverse((o) => {
     if (o.userData.furniture && o.userData.placed) furnitureGroups.push(o);
   });
   for (const g of furnitureGroups) {
     for (const l of (g.userData.lamps as Lamp[] | undefined) ?? []) lamps.push({ x: l.x, y: l.y, z: l.z, floor: l.floor, color: l.color, reach: l.reach, strength: l.strength });
+    if (g.userData.people) spots.push(g.userData.people as RoomSpots);
     const accent = indexIn(accents, g.userData.accent as string);
     for (const p of g.userData.placed as Placed[]) placed.push([indexIn(items, p.item), accent, round(p.x), round(p.y), round(p.z), round(p.turn)]);
     g.removeFromParent();
@@ -168,28 +207,38 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     const colAttr = geo.getAttribute("color");
     const lines = mesh instanceof THREE.LineSegments;
     const count = mesh instanceof THREE.InstancedMesh ? mesh.count : 1;
+    const mi = indexOf(material);
+    const per = lines ? 2 : 3;
+    const pts = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+    const nrms = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
     for (let k = 0; k < count; k++) {
       world.copy(mesh.matrixWorld);
       if (mesh instanceof THREE.InstancedMesh) world.multiply((mesh.getMatrixAt(k, instance), instance));
       normalMatrix.getNormalMatrix(world);
-      box.makeEmpty();
-      for (let i = 0; i < p.count; i++) box.expandByPoint(v.fromBufferAttribute(p, i).applyMatrix4(world));
-      const floor = Math.max(0, floorAtY((box.min.y + box.max.y) / 2));
-      const mi = indexOf(material);
-      const key = `${mi}:${floor}:${lines}`;
-      let b = buckets.get(key);
-      if (!b) buckets.set(key, (b = { material: mi, floor, lines, pos: [], nrm: [], col: material.vertexColors ? [] : null }));
-      for (let i = 0; i < p.count; i++) {
-        v.fromBufferAttribute(p, i).applyMatrix4(world);
-        b.pos.push(v.x, v.y, v.z);
-        if (!lines) {
-          if (nrmAttr) n.fromBufferAttribute(nrmAttr, i).applyMatrix3(normalMatrix).normalize();
-          else n.set(0, 1, 0);
-          b.nrm.push(n.x, n.y, n.z);
+      // Triangle by triangle (segment by segment), into the chunk for its floor and its part of the ring.
+      for (let i = 0; i + per <= p.count; i += per) {
+        centre.set(0, 0, 0);
+        for (let j = 0; j < per; j++) {
+          pts[j]!.fromBufferAttribute(p, i + j).applyMatrix4(world);
+          centre.add(pts[j]!);
+          if (!lines) {
+            if (nrmAttr) nrms[j]!.fromBufferAttribute(nrmAttr, i + j).applyMatrix3(normalMatrix).normalize();
+            else nrms[j]!.set(0, 1, 0);
+          }
         }
-        if (b.col) {
-          if (colAttr) b.col.push(colAttr.getX(i), colAttr.getY(i), colAttr.getZ(i));
-          else b.col.push(1, 1, 1);
+        centre.divideScalar(per);
+        const floor = Math.max(0, floorAtY(centre.y));
+        const sector = Math.floor(((Math.atan2(centre.z, centre.x) / (Math.PI * 2) + 1) % 1) * SECTORS) % SECTORS;
+        const key = `${mi}:${floor}:${sector}:${lines}`;
+        let b = buckets.get(key);
+        if (!b) buckets.set(key, (b = { material: mi, floor, lines, pos: [], nrm: [], col: material.vertexColors ? [] : null }));
+        for (let j = 0; j < per; j++) {
+          b.pos.push(pts[j]!.x, pts[j]!.y, pts[j]!.z);
+          if (!lines) b.nrm.push(nrms[j]!.x, nrms[j]!.y, nrms[j]!.z);
+          if (b.col) {
+            if (colAttr) b.col.push(colAttr.getX(i + j), colAttr.getY(i + j), colAttr.getZ(i + j));
+            else b.col.push(1, 1, 1);
+          }
         }
       }
     }
@@ -205,7 +254,7 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     ...(b.lines ? {} : { normals: base64(b.nrm) }),
     ...(b.col ? { colors: base64(b.col) } : {}),
   }));
-  return {
+  const message: SceneMessage = {
     type: "scene",
     gameId,
     layoutVersion: layout.version,
@@ -218,4 +267,5 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     furniture: { items, accents, placed },
     buildMs: performance.now() - t0,
   };
+  return { message, spots };
 }

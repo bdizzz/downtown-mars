@@ -18,11 +18,12 @@ public partial class Live : Node3D
 {
     static readonly int[] Speeds = { 0, 1, 2, 4 };
     /// <summary>Lamps lit: on the floor in view, this many above it and below.</summary>
-    static readonly (int above, int below) LampFloors = (1, 2);
+    static readonly (int above, int below) LampFloors = (0, 1);
     static readonly (string key, string name)[] Stocks = { ("o2", "Oxygen"), ("water", "Water"), ("meals", "Meals"), ("rations", "Rations"), ("power", "Power"), ("rock", "Rock"), ("metal", "Metal"), ("brick", "Brick"), ("glass", "Glass") };
 
     Bridge _bridge = null!;
     HoleScene _hole = null!;
+    People _people = null!;
     CameraRig? _rig;
     WorldEnvironment _env = null!;
     DirectionalLight3D _sun = null!;
@@ -47,6 +48,10 @@ public partial class Live : Node3D
     public int? StartFloor { get; set; }
     public bool StartWalking { get; set; }
     public float ShotAfter { get; set; }
+    /// <summary>Benchmark: after a warmup, average this many seconds of frames, print them, save a shot and quit.</summary>
+    public float BenchSeconds { get; set; }
+    const double BenchWarmup = 8;
+    readonly List<double> _frames = new(), _gpu = new(), _cpu = new(), _process = new();
 
     public override void _Ready()
     {
@@ -57,16 +62,45 @@ public partial class Live : Node3D
         AddChild(_sun);
         _hole = new HoleScene { Name = "Hole" };
         AddChild(_hole);
+        _people = new People { Name = "People" };
+        if (!Dev.Off("people")) AddChild(_people);
+        if (Dev.Off("sunshadow")) _sun.ShadowEnabled = false;
+        if (Dev.Off("msaa")) GetViewport().Msaa3D = Viewport.Msaa.Disabled;
         _ground = new MeshInstance3D { Name = "Ground" };
         AddChild(_ground);
         BuildHud();
+        RenderingServer.ViewportSetMeasureRenderTime(GetViewport().GetViewportRid(), true);
     }
 
     public override void _ExitTree() => _bridge.Dispose();
 
+    double _liveMs;
+
     public override void _Process(double delta)
     {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        try { Step(delta); }
+        finally { _liveMs = watch.Elapsed.TotalMilliseconds; }
+    }
+
+    void Step(double delta)
+    {
         _clockSeconds += delta;
+        if (BenchSeconds > 0 && _clockSeconds > BenchWarmup)
+        {
+            _frames.Add(delta * 1000);
+            var vp = GetViewport().GetViewportRid();
+            _gpu.Add(RenderingServer.ViewportGetMeasuredRenderTimeGpu(vp));
+            _cpu.Add(RenderingServer.ViewportGetMeasuredRenderTimeCpu(vp) + RenderingServer.GetFrameSetupTimeCpu());
+            _process.Add(_people.LastMs + _liveMs);
+            if (_clockSeconds > BenchWarmup + BenchSeconds)
+            {
+                var ms = _frames.OrderBy(f => f).ToList();
+                GD.Print($"BENCH {{\"avgMs\":{ms.Average():0.0},\"p95Ms\":{ms[(int)(ms.Count * 0.95)]:0.0},\"fps\":{1000 / ms.Average():0.0},\"drawCalls\":{RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)},\"chunks\":{_hole.Chunks},\"triangles\":{RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame)},\"gpuMs\":{_gpu.Average():0.0},\"renderCpuMs\":{_cpu.Average():0.0},\"scriptMs\":{_process.Average():0.0},\"walking\":{(_rig?.Walking == true ? "true" : "false")}}}");
+                Screenshot("bench");
+                GetTree().Quit();
+            }
+        }
         if (ShotAfter > 0 && _clockSeconds > ShotAfter)
         {
             ShotAfter = 0;
@@ -87,6 +121,7 @@ public partial class Live : Node3D
                 continue;
             }
             if (type == "scene") OnScene(msg.RootElement);
+            else if (type == "people") _people.Set(msg.RootElement);
             msg.Dispose();
         }
         // Lamps near what you're looking at, and their shadows, follow the camera a few times a second.
@@ -119,6 +154,7 @@ public partial class Live : Node3D
             UnlockedRings = h.GetProperty("unlockedRings").GetInt32(),
             FloorHeightM = 4,
         };
+        _people.SetHole(_shape);
         if (_topFloor > _shape.Floors) PickFloor(null);
         if (_pickerFloors != _shape.Floors) BuildFloorPicker();
         if (StartFloor is int start)
@@ -127,6 +163,7 @@ public partial class Live : Node3D
             PickFloor(start);
         }
         BuildGround();
+        BuildOccluders();
         if (_haze != null) _haze.QueueFree();
         _haze = Lighting.MakeShaftHaze(_shape);
         AddChild(_haze);
@@ -134,6 +171,10 @@ public partial class Live : Node3D
 
     void OnScene(JsonElement scene)
     {
+        // A scene for another floor than ours (the bridge restarted, say): ask again.
+        var cut = scene.GetProperty("topFloor");
+        int? sceneFloor = cut.ValueKind == JsonValueKind.Number ? cut.GetInt32() : null;
+        if (sceneFloor != _topFloor) _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = _topFloor });
         var t0 = Time.GetTicksMsec();
         _hole.Build(scene);
         _hole.SetNight(1 - _light);
@@ -197,6 +238,8 @@ public partial class Live : Node3D
         _topFloor = floor;
         // With a floor picked, everything above it is left out, the ground too.
         _ground.Visible = floor == null;
+        _people.SetTopFloor(floor);
+        BuildOccluders();
         _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = floor });
         _rig?.Frame(MetaNow(), false);
         foreach (var b in _floorPicker.GetChildren().OfType<Button>())
@@ -263,6 +306,41 @@ public partial class Live : Node3D
         mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
         mesh.SurfaceSetMaterial(0, Dress.For(new StandardMaterial3D { ResourceName = "rock:ground", AlbedoColor = new Color("#7a3b22"), Roughness = 0.95f }));
         _ground.Mesh = mesh;
+    }
+
+    Node3D? _occluders;
+
+    /// <summary>
+    /// Each floor's slab as an occluder (a ring from the gallery ledge out past ring 3, just under the
+    /// floor): Godot then leaves out whatever a floor hides, the floors under the one in view above all.
+    /// </summary>
+    void BuildOccluders()
+    {
+        _occluders?.QueueFree();
+        _occluders = new Node3D { Name = "Occluders" };
+        AddChild(_occluders);
+        if (Dev.Off("occluders")) return;
+        const int segments = 48;
+        var r0 = _shape.ShaftRadiusM - 2;
+        var r1 = _shape.ShaftRadiusM + _shape.RingSlots.Length * 10;
+        // Floors above a picked one aren't there, so neither are their slabs.
+        for (var f = _topFloor ?? 1; f <= _shape.Floors; f++)
+        {
+            var y = -3 - f * _shape.FloorHeightM - 0.05f;
+            var verts = new List<Vector3>();
+            var index = new List<int>();
+            for (var i = 0; i < segments; i++)
+            {
+                var t = Mathf.Tau * i / segments;
+                verts.Add(new Vector3(r0 * Mathf.Cos(t), y, r0 * Mathf.Sin(t)));
+                verts.Add(new Vector3(r1 * Mathf.Cos(t), y, r1 * Mathf.Sin(t)));
+                int a = i * 2, b = a + 1, c = (a + 2) % (segments * 2), d = (a + 3) % (segments * 2);
+                index.AddRange(new[] { a, b, d, a, d, c });
+            }
+            var occ = new ArrayOccluder3D();
+            occ.SetArrays(verts.ToArray(), index.ToArray());
+            _occluders.AddChild(new OccluderInstance3D { Occluder = occ, Name = $"floor{f}" });
+        }
     }
 
     // ---- HUD ----

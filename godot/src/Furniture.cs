@@ -16,6 +16,11 @@ namespace DowntownMars;
 public class Furniture
 {
     const int CylSegments = 12, SphW = 10, SphH = 8;
+    /// <summary>The far copy, as the web's: rounder things with fewer facets, parts smaller than this (metres) left out, beyond this distance.</summary>
+    const int FarCyl = 6, FarSphW = 6, FarSphH = 4;
+    const float FarSmallest = 0.45f, FarFrom = 55;
+    /// <summary>Batches split each floor into this many parts round the ring, so near and far are judged room by room, more or less.</summary>
+    const int Sectors = 8;
     /// <summary>Glow by day and the extra by night (as the web game's, a little stronger for Godot's exposure).</summary>
     const float GlowDay = 0.6f, GlowNight = 1.8f;
     /// <summary>Glowing parts smaller than this (metres, their longest side) are indicator lights.</summary>
@@ -25,7 +30,7 @@ public class Furniture
 
     readonly Dictionary<string, string> _colors = new();
     readonly Dictionary<string, JsonElement> _items = new();
-    readonly Dictionary<string, Mesh?> _meshes = new();
+    readonly Dictionary<(string, bool), Mesh?> _meshes = new();
     readonly Dictionary<Kind, ShaderMaterial> _materials = new();
 
     public Furniture()
@@ -59,33 +64,45 @@ public class Furniture
         var root = new Node3D { Name = "Furniture" };
         var items = furniture.GetProperty("items").EnumerateArray().Select(e => e.GetString()!).ToArray();
         var accents = furniture.GetProperty("accents").EnumerateArray().Select(e => new Color(e.GetString()!).SrgbToLinear()).ToArray();
-        // One batch per item per floor, so floors out of sight (or out of a light's reach) are left out whole.
-        var byItem = new Dictionary<(int item, int floor), List<float[]>>();
+        // One batch per item per floor per part of the ring, so what's out of sight (or out of a light's reach) is left out,
+        // and each batch twice: near, and a coarser copy (casting no shadow) from FarFrom metres.
+        var byItem = new Dictionary<(int item, int floor, int sector), List<float[]>>();
         foreach (var p in furniture.GetProperty("placed").EnumerateArray())
         {
             var v = p.EnumerateArray().Select(x => x.GetSingle()).ToArray();
-            var key = ((int)v[0], FloorAt(v[3]));
+            var sector = (int)(((Mathf.Atan2(v[4], v[2]) / Mathf.Tau + 1) % 1) * Sectors) % Sectors;
+            var key = ((int)v[0], FloorAt(v[3]), sector);
             if (!byItem.TryGetValue(key, out var list)) byItem[key] = list = new();
             list.Add(v);
         }
-        foreach (var ((item, _), list) in byItem)
+        foreach (var ((item, _, _), list) in byItem)
         {
-            var mesh = MeshFor(items[item]);
-            if (mesh == null) continue;
-            var mm = new MultiMesh
+            foreach (var far in new[] { false, true })
             {
-                TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
-                UseCustomData = true,
-                Mesh = mesh,
-                InstanceCount = list.Count,
-            };
-            for (var i = 0; i < list.Count; i++)
-            {
-                var v = list[i];
-                mm.SetInstanceTransform(i, new Transform3D(new Basis(Vector3.Up, v[5]), new Vector3(v[2], v[3], v[4])));
-                mm.SetInstanceCustomData(i, accents[(int)v[1]]);
+                var mesh = MeshFor(items[item], far);
+                if (mesh == null) continue;
+                var mm = new MultiMesh
+                {
+                    TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+                    UseCustomData = true,
+                    Mesh = mesh,
+                    InstanceCount = list.Count,
+                };
+                for (var i = 0; i < list.Count; i++)
+                {
+                    var v = list[i];
+                    mm.SetInstanceTransform(i, new Transform3D(new Basis(Vector3.Up, v[5]), new Vector3(v[2], v[3], v[4])));
+                    mm.SetInstanceCustomData(i, accents[(int)v[1]]);
+                }
+                root.AddChild(new MultiMeshInstance3D
+                {
+                    Multimesh = mm,
+                    Name = items[item] + (far ? " far" : ""),
+                    VisibilityRangeBegin = far ? FarFrom : 0,
+                    VisibilityRangeEnd = far ? 0 : FarFrom,
+                    CastShadow = far ? GeometryInstance3D.ShadowCastingSetting.Off : GeometryInstance3D.ShadowCastingSetting.On,
+                });
             }
-            root.AddChild(new MultiMeshInstance3D { Multimesh = mm, Name = items[item] });
         }
         return root;
     }
@@ -94,19 +111,21 @@ public class Furniture
     static int FloorAt(float y) => Mathf.FloorToInt((-y - 3) / 4) + 1;
 
     /// <summary>An item's mesh, one surface per kind of part; vertex colour alpha 0 marks accent-coloured parts.</summary>
-    Mesh? MeshFor(string id)
+    Mesh? MeshFor(string id, bool far)
     {
-        if (_meshes.TryGetValue(id, out var cached)) return cached;
-        if (!_items.TryGetValue(id, out var def)) return _meshes[id] = null;
+        if (_meshes.TryGetValue((id, far), out var cached)) return cached;
+        if (!_items.TryGetValue(id, out var def)) return _meshes[(id, far)] = null;
         var byKind = new Dictionary<Kind, (List<Vector3> v, List<Vector3> n, List<Color> c)>();
         foreach (var part in def.GetProperty("parts").EnumerateArray())
         {
             var c = part.GetProperty("c").GetString()!;
+            if (far && part.GetProperty("z").EnumerateArray().Max(x => x.GetSingle()) < FarSmallest) continue;
             var kind = part.TryGetProperty("glow", out var g) && g.GetBoolean() ? Kind.Glow : PlantColors.Contains(c) ? Kind.Plant : c == "water" ? Kind.Water : Kind.Plain;
             var color = c == "accent" ? new Color(1, 1, 1, 0) : new Color(_colors.GetValueOrDefault(c, "#ff00ff")).SrgbToLinear() with { A = 1 };
             if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new());
-            AddPart(part, color, s.v, s.n, s.c);
+            AddPart(part, color, s.v, s.n, s.c, far);
         }
+        if (byKind.Count == 0) return _meshes[(id, far)] = null;
         var mesh = new ArrayMesh();
         foreach (var (kind, s) in byKind)
         {
@@ -118,11 +137,11 @@ public class Furniture
             mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
             mesh.SurfaceSetMaterial(mesh.GetSurfaceCount() - 1, _materials[kind]);
         }
-        return _meshes[id] = mesh;
+        return _meshes[(id, far)] = mesh;
     }
 
     /// <summary>One part: a unit shape scaled, turned (degrees, X then Y then Z as three.js's "XYZ"), and moved to its centre.</summary>
-    static void AddPart(JsonElement part, Color color, List<Vector3> verts, List<Vector3> norms, List<Color> cols)
+    static void AddPart(JsonElement part, Color color, List<Vector3> verts, List<Vector3> norms, List<Color> cols, bool far)
     {
         var shape = part.GetProperty("s").GetString();
         var z = part.GetProperty("z").EnumerateArray().Select(x => x.GetSingle()).ToArray();
@@ -139,7 +158,7 @@ public class Furniture
         var p = part.GetProperty("p").EnumerateArray().Select(x => x.GetSingle()).ToArray();
         var at = new Vector3(p[0], p[1], p[2]);
 
-        var tris = shape == "box" ? Box() : shape == "cyl" ? Cylinder() : Sphere();
+        var tris = shape == "box" ? Box() : shape == "cyl" ? Cylinder(far) : Sphere(far);
         for (var i = 0; i < tris.Count; i += 3)
         {
             var tri = new (Vector3 v, Vector3 n)[3];
@@ -164,7 +183,8 @@ public class Furniture
     // Unit shapes centred on the origin, as three.js's: a 1 m box, a cylinder 1 m across and tall, a sphere 1 m across.
     // Triangles with outward normals; winding is fixed up afterwards.
 
-    static List<(Vector3, Vector3)>? _box, _cyl, _sph;
+    static List<(Vector3, Vector3)>? _box;
+    static readonly Dictionary<bool, List<(Vector3, Vector3)>> _cyl = new(), _sph = new();
 
     static List<(Vector3, Vector3)> Box()
     {
@@ -180,43 +200,45 @@ public class Furniture
         return _box;
     }
 
-    static List<(Vector3, Vector3)> Cylinder()
+    static List<(Vector3, Vector3)> Cylinder(bool far)
     {
-        if (_cyl != null) return _cyl;
-        _cyl = new();
-        for (var i = 0; i < CylSegments; i++)
+        if (_cyl.TryGetValue(far, out var cached)) return cached;
+        var cyl = _cyl[far] = new();
+        var segments = far ? FarCyl : CylSegments;
+        for (var i = 0; i < segments; i++)
         {
-            float t0 = Mathf.Tau * i / CylSegments, t1 = Mathf.Tau * (i + 1) / CylSegments;
+            float t0 = Mathf.Tau * i / segments, t1 = Mathf.Tau * (i + 1) / segments;
             var n0 = new Vector3(Mathf.Cos(t0), 0, Mathf.Sin(t0));
             var n1 = new Vector3(Mathf.Cos(t1), 0, Mathf.Sin(t1));
             var lo0 = n0 * 0.5f + Vector3.Down * 0.5f;
             var lo1 = n1 * 0.5f + Vector3.Down * 0.5f;
             var hi0 = n0 * 0.5f + Vector3.Up * 0.5f;
             var hi1 = n1 * 0.5f + Vector3.Up * 0.5f;
-            Quad(_cyl, lo0, lo1, hi1, hi0, n0, n1, n1, n0);
-            _cyl.Add((Vector3.Up * 0.5f, Vector3.Up)); _cyl.Add((hi0, Vector3.Up)); _cyl.Add((hi1, Vector3.Up));
-            _cyl.Add((Vector3.Down * 0.5f, Vector3.Down)); _cyl.Add((lo1, Vector3.Down)); _cyl.Add((lo0, Vector3.Down));
+            Quad(cyl, lo0, lo1, hi1, hi0, n0, n1, n1, n0);
+            cyl.Add((Vector3.Up * 0.5f, Vector3.Up)); cyl.Add((hi0, Vector3.Up)); cyl.Add((hi1, Vector3.Up));
+            cyl.Add((Vector3.Down * 0.5f, Vector3.Down)); cyl.Add((lo1, Vector3.Down)); cyl.Add((lo0, Vector3.Down));
         }
-        return _cyl;
+        return cyl;
     }
 
-    static List<(Vector3, Vector3)> Sphere()
+    static List<(Vector3, Vector3)> Sphere(bool far)
     {
-        if (_sph != null) return _sph;
-        _sph = new();
+        if (_sph.TryGetValue(far, out var cached)) return cached;
+        var sph = _sph[far] = new();
+        int w = far ? FarSphW : SphW, h = far ? FarSphH : SphH;
         Vector3 At(int i, int j)
         {
-            var phi = Mathf.Tau * i / SphW;
-            var theta = Mathf.Pi * j / SphH;
+            var phi = Mathf.Tau * i / w;
+            var theta = Mathf.Pi * j / h;
             return new Vector3(Mathf.Cos(phi) * Mathf.Sin(theta), Mathf.Cos(theta), Mathf.Sin(phi) * Mathf.Sin(theta));
         }
-        for (var i = 0; i < SphW; i++)
-            for (var j = 0; j < SphH; j++)
+        for (var i = 0; i < w; i++)
+            for (var j = 0; j < h; j++)
             {
                 Vector3 a = At(i, j), b = At(i + 1, j), c = At(i + 1, j + 1), d = At(i, j + 1);
-                Quad(_sph, a * 0.5f, b * 0.5f, c * 0.5f, d * 0.5f, a, b, c, d);
+                Quad(sph, a * 0.5f, b * 0.5f, c * 0.5f, d * 0.5f, a, b, c, d);
             }
-        return _sph;
+        return sph;
     }
 
     static void Quad(List<(Vector3, Vector3)> list, Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 na, Vector3 nb, Vector3 nc, Vector3 nd)

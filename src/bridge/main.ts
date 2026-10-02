@@ -4,7 +4,10 @@ import { readFileSync } from "node:fs";
 import { config } from "../sim/config";
 import { createSimHost } from "../worker/host";
 import type { FromWorker, ToWorker } from "../worker/protocol";
-import { buildScene, sceneKey } from "./scene";
+import { buildPeople, buildScene, peopleKey, sceneKey } from "./scene";
+import { gameTime } from "../sim/clock";
+import { stepWorld } from "../sim/worldstep";
+import type { RoomSpots } from "../render3d/people3d";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
 // Godot viewer, speaking the web game's worker protocol (worker/protocol.ts) one JSON message per
@@ -12,7 +15,7 @@ import { buildScene, sceneKey } from "./scene";
 // bridge sends the 3D scene (scene.ts) whenever it changes, and takes one message of its own:
 // { type: "view", topFloor } (the floor picked, or null for all).
 //
-//   npm run bridge -- [--port=7878] [--load=save.json] [--showcase=12] [--speed=1]
+//   npm run bridge -- [--port=7878] [--load=save.json] [--showcase=12] [--speed=1] [--hour=12] [--verbose]
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => {
@@ -37,15 +40,31 @@ const host = createSimHost(broadcast);
 // The 3D scene: built again whenever the layout, the drill, wear or the picked floor change.
 let topFloor: number | null = null;
 let sentScene = "";
+let sentPeople = "";
+let spots: RoomSpots[] = [];
 function sendScene(force = false): void {
   if (clients.size === 0) return;
   const state = host.active();
   const key = sceneKey(state, host.gameId(), topFloor);
-  if (!force && key === sentScene) return;
-  sentScene = key;
-  const scene = buildScene(state, host.gameId(), topFloor);
-  const line = JSON.stringify(scene) + "\n";
+  if (force || key !== sentScene) {
+    sentScene = key;
+    const built = buildScene(state, host.gameId(), topFloor);
+    spots = built.spots;
+    const scene = built.message;
+    const line = JSON.stringify(scene) + "\n";
+    for (const c of clients) c.write(line);
+    report(scene, line);
+    sentPeople = "";
+  }
+  // Who's where: by the hour, each room's staff and the head count.
+  const pk = peopleKey(state, sentScene);
+  if (pk === sentPeople) return;
+  sentPeople = pk;
+  const line = JSON.stringify(buildPeople(state, spots)) + "\n";
   for (const c of clients) c.write(line);
+}
+
+function report(scene: ReturnType<typeof buildScene>["message"], line: string): void {
   if (args.verbose) {
     console.log(`Scene: ${scene.chunks.length} chunks, ${scene.lamps.length} lamps, ${(line.length / 1e6).toFixed(1)} MB, built in ${scene.buildMs.toFixed(0)} ms`);
     const bytes = new Map<string, number>();
@@ -61,6 +80,11 @@ type BridgeMessage = ToWorker | { type: "view"; topFloor: number | null };
 
 if (args.load) host.onMessage({ type: "load", id: 0, data: readFileSync(args.load, "utf8") });
 if (args.showcase) host.onMessage({ type: "command", id: 0, command: { type: "consoleShowcase", floors: Number(args.showcase) } });
+// Run on to an hour of the day (for comparable screenshots and benchmarks: with --speed=0 it stays there).
+if (args.hour) {
+  const world = host.world();
+  for (let i = 0; i < config.ticksPerDay && gameTime(world.tick, config).hour !== Number(args.hour); i++) stepWorld(world, config);
+}
 host.onMessage({ type: "setSpeed", speed: Number(args.speed ?? 1) });
 
 const server = createServer((socket) => {
@@ -68,7 +92,8 @@ const server = createServer((socket) => {
   socket.setEncoding("utf8");
   clients.add(socket);
   console.log(`Godot connected (${clients.size})`);
-  // A new viewer needs the layout and the rest, whatever was sent before.
+  // A new viewer needs the layout and the rest, whatever was sent before, and starts with every floor.
+  topFloor = null;
   host.resend();
   host.post();
   sendScene(true);

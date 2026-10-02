@@ -18,8 +18,10 @@ public partial class HoleScene : Node3D
     readonly Furniture _furniture = new();
     readonly List<OmniLight3D> _lamps = new();
     /// <summary>Lamps casting shadows: only the nearest few to the camera (a shadow pass per lamp redraws everything near it).</summary>
-    const int ShadowLamps = 8;
+    const int ShadowLamps = 4;
     const float ShadowWithin = 40;
+    /// <summary>How much the nearest lamps light the haze.</summary>
+    const float FogEnergy = 0.6f;
     public int Lamps { get; private set; }
     public int Chunks { get; private set; }
     public bool ShowLabels { get => _labels.Visible; set => _labels.Visible = value; }
@@ -43,7 +45,7 @@ public partial class HoleScene : Node3D
             AddChild(new MeshInstance3D { Mesh = mesh, Name = $"chunk{Chunks++}" });
         }
 
-        AddChild(_furniture.Build(scene.GetProperty("furniture")));
+        if (!Dev.Off("furniture")) AddChild(_furniture.Build(scene.GetProperty("furniture")));
 
         Lamps = 0;
         _lamps.Clear();
@@ -57,8 +59,13 @@ public partial class HoleScene : Node3D
                 OmniRange = l.GetProperty("reach").GetSingle() * Lighting.LampRange,
                 OmniAttenuation = 1.4f,
                 ShadowEnabled = false,
+                // Two passes per shadow, not a cube's six.
+                OmniShadowMode = OmniLight3D.ShadowMode.DualParaboloid,
                 LightIndirectEnergy = 1.2f,
-                LightVolumetricFogEnergy = 0.6f,
+                // Lamps don't move: global illumination takes them in once, not every frame.
+                LightBakeMode = Light3D.BakeMode.Static,
+                // Only the nearest light the haze (see UpdateLamps).
+                LightVolumetricFogEnergy = 0,
             };
             lamp.SetMeta("floor", l.GetProperty("floor").GetInt32());
             AddChild(lamp);
@@ -66,6 +73,7 @@ public partial class HoleScene : Node3D
             Lamps++;
         }
 
+        if (!Dev.Off("labels"))
         foreach (var l in scene.GetProperty("labels").EnumerateArray())
         {
             _labels.AddChild(new Label3D
@@ -85,14 +93,14 @@ public partial class HoleScene : Node3D
 
     /// <summary>
     /// Lamps on these floors light up, the rest are off (each light costs every pixel it might reach);
-    /// and shadows for the lamps nearest the camera, off for the rest.
+    /// and shadows and haze for the lamps nearest the camera, off for the rest.
     /// </summary>
     public void UpdateLamps(Vector3 camera, int fromFloor, int toFloor)
     {
         foreach (var l in _lamps)
         {
             var f = l.GetMeta("floor").AsInt32();
-            l.Visible = f >= fromFloor && f <= toFloor;
+            l.Visible = f >= fromFloor && f <= toFloor && !Dev.Off("lamps");
         }
         var near = _lamps
             .Where(l => l.Visible)
@@ -102,7 +110,12 @@ public partial class HoleScene : Node3D
             .Take(ShadowLamps)
             .Select(x => x.l)
             .ToHashSet();
-        foreach (var l in _lamps) l.ShadowEnabled = near.Contains(l);
+        foreach (var l in _lamps)
+        {
+            var close = near.Contains(l);
+            l.ShadowEnabled = close;
+            l.LightVolumetricFogEnergy = close ? FogEnergy : 0;
+        }
     }
 
     /// <summary>Glowing furniture brightens as the sky darkens: 0 at noon, 1 at night.</summary>

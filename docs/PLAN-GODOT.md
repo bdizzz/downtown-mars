@@ -68,7 +68,7 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 ### Steps
 
 1. Bridge and live viewer: the hole, furniture, lamps, day and night, speed and floor picking. **Done.**
-2. People: colonists walking the galleries and corridors, at work and at home.
+2. People: colonists walking the galleries and corridors, at work and at home. **Done**, with a performance pass.
 3. Picking and info: click a room for what it is and how it's doing.
 4. Building: place rooms, dig, corridors, from Godot.
 5. Looks: materials and models made for Godot, graphics presets.
@@ -82,4 +82,20 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 - Showcase (13 floors) cut at F4, Iso, by day: 39 fps at 1600×1000 on the M4 with SDFGI, SSAO, SSIL, volumetric fog and glow, about 5,000 draw calls (the sun's four shadow cascades redraw the scene). The effects are most of the cost; graphics presets come with step 5.
 - With a floor picked the ground is hidden, as in the web view. Labels show the room's short name (`rooms3d.ts` now keeps the text on the sprite for the bridge).
 - Fixed on the way, in the web game: the reflections' cave environment disposed a mesh with several materials as if it had one (`look.ts`), an error on every graphics change.
+
+**Step 2** (Oct 2, 2026):
+
+- **People** as the web's `people3d.ts`: the bridge works out who's at a work post, in a seat or in bed (the web's `occupied`, from the furniture's spots, the hour, each room's staff and the head count) and sends it when that changes, with the gallery tube runs. Godot (`People.cs`) draws the figures as three MultiMeshes (standing and lying, sitting, heads), clothes and skin per instance, and walks the gallery crowd itself, bobbing and swaying, every frame (0.4 ms of script a frame).
+- **Measuring.** The bridge's `--hour=12 --speed=0` holds the game at noon; the viewer's `--bench=<s>` averages frames after an 8 s warmup and prints them with draw calls and triangles; `DM_FX=no…` (`Dev.cs`) turns things off one by one. Showcase, 1600×1000, M4, every effect on:
+
+| Change | Iso F4 | First person F1 |
+| --- | --- | --- |
+| Start of step 2 | 26 fps | 19 fps |
+| Furniture's far copy from 55 m (the web's: fewer facets, small parts left out, no shadow): 4.2M triangles a frame to 0.48M | 29 | 20 |
+| Lamps static for GI, only the shadowed ones light the haze, lit on the floor in view and one below, GI at half resolution | 34 | 21 |
+| Lamp reach as the web's (1.6× before), 4 shadowed lamps with two-pass (dual paraboloid) shadows, the sun's shadows in 2 cascades | 36 | 27 |
+| Floor occluders (each floor's slab, from the picked floor down): 3,800 draw calls to 1,900 | 38 | 27 |
+
+- **Where the time goes** now (first person): lamps about 14 ms with their shadows, SDFGI 8, SSIL 4, volumetric fog 4; with all of those off it's held at 60 fps (vsync). Chunks per floor and eighth of the ring changed nothing measurable, and neither did MSAA or the labels. So Godot's cost here is lighting quality, which graphics presets (step 5) can trade, and which a desktop graphics card has far more room for than the M4's.
+- The bridge resets the picked floor when a viewer connects, and the viewer asks again if a scene comes for another floor.
 

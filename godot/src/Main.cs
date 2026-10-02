@@ -13,7 +13,8 @@ namespace DowntownMars;
 /// screen-space occlusion and indirect light, volumetric fog, glow, and a real light per lamp.
 ///
 /// Without arguments it's the live viewer (Live.cs), drawing the game the bridge runs; --floor=&lt;n&gt;
-/// picks a floor, --walk starts in first person, --shot=&lt;seconds&gt; saves shots/live.png then and quits.
+/// picks a floor, --walk starts in first person, --shot=&lt;seconds&gt; saves shots/live.png then and quits,
+/// --bench=&lt;seconds&gt; averages frame times after a warmup, prints them and quits.
 /// Command line (after "--"): --scene=&lt;name&gt; views an exported scene instead; --bench[=seconds] circles the
 /// camera, writes bench/&lt;name&gt;.json and a screenshot, then quits; with --walk, in first person. --no-lamp-shadows: lamps light but cast no shadows; --lite: no SDFGI, SSIL or volumetric fog.
 /// Keys: Tab switches Iso and first person; F12 saves a screenshot to shots/.
@@ -54,6 +55,7 @@ public partial class Main : Node3D
                 if (arg.StartsWith("--shot=")) live.ShotAfter = float.Parse(arg["--shot=".Length..]);
                 else if (arg.StartsWith("--floor=")) live.StartFloor = int.Parse(arg["--floor=".Length..]);
                 else if (arg == "--walk") live.StartWalking = true;
+                else if (arg.StartsWith("--bench=")) live.BenchSeconds = float.Parse(arg["--bench=".Length..]);
             }
             AddChild(live);
             return;
