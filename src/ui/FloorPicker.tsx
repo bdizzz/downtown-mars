@@ -35,7 +35,7 @@ export function FloorPicker({ floors, floor, allowAll, onPick, onPreview, previe
   return (
     <div className="floor-picker" role="group" aria-label="Floor" onMouseLeave={() => onPreview(undefined)}>
       {allowAll && button(null, "All", "Show every floor")}
-      {list.map((f) => button(f, `F${f}`, `Floor ${f} (Page Up / Page Down)`))}
+      {list.map((f) => button(f, `F${f}`, `Floor ${f} (↑ ↓ or Page Up / Page Down)`))}
     </div>
   );
 }

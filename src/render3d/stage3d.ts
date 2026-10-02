@@ -74,6 +74,8 @@ const CLICK_SLOP = 5;
 const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25 };
 const TOP = { min: 20, max: 300, start: 80, margin: 1.1 };
 /** Iso: distance to the floor's centre (a multiple of the floor's radius to start), and how steeply it looks down. */
+/** Iso's WASD pan: metres a second as a share of the camera's distance (with a floor), and how far from the axis it may go, as a share of the rings' radius. */
+const ISO_PAN = { speed: 0.6, minSpeed: 12, reach: 1.3 };
 const ISO = { start: 1.6, min: 12, max: 400, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
 /** First person: how finely and how far to look for room to stand on another floor (m), eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
 const WALK = { searchStep: 0.5, searchReach: 40, eye: 1.8, speed: 3, run: 9, turn: 0.004, lookTurn: 0.0025, keyTurn: 1.8 };
@@ -91,6 +93,8 @@ const FIELD_MAX = 3;
 /** Overlay tints sit just proud of the cells, in front of the rock and around rooms. */
 const FIELD_OUTSET = -0.04;
 const FIELD_ALPHA = 0.55;
+/** The camera's headlamp: how strong in the shaft view and walking, and where it rides (metres above and behind the eye). */
+const HEADLAMP = { shaft: 40, walk: 36, above: 1.2, behind: 1.5 };
 /** The sun's shadow: map size at full setting, how far its box reaches (from 100 m up), the margin round the rings, and how far (radians) it moves before shadows are redrawn. */
 const SUN_SHADOW = { mapSize: 2048, far: 450, margin: 12, redrawAngle: 0.02, boost: 2.4 };
 /** Overlay tints lie on the rooms' own floors and walls: pulled toward the camera so they win the depth test. */
@@ -140,8 +144,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(hemi);
   scene.add(new THREE.AmbientLight(0xffe0c0, 0.25));
   // A warm lamp that travels with the camera, like a colonist's headlamp,
-  // so the shaft reads at night too. Proper lighting comes with rooms.
-  const lamp = new THREE.PointLight(0xffd8a8, 40, 60, 1.2);
+  // so the shaft reads at night too. It rides above and behind the eye, so
+  // what's right in front of you (glass, a colonist) isn't blown out.
+  const lamp = new THREE.PointLight(0xffd8a8, HEADLAMP.shaft, 60, 1.2);
+  lamp.position.set(0, HEADLAMP.above, HEADLAMP.behind);
   camera.add(lamp);
   scene.add(camera);
   // A soft light from the camera's direction, for the outside views where the lamp is too far away.
@@ -374,7 +380,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     /** Iso: distance from the floor's centre (0 until first used) and elevation in radians. */
     iso: 0,
     isoElev: ISO.elev,
+    /** Iso: how far the view has been panned (WASD), in metres across the ground. */
+    panX: 0,
+    panZ: 0,
   };
+  /** Where each camera starts: what Reset camera goes back to (Iso's distance and the fitted views are worked out from the hole). */
+  const camHome = { ...cam };
   /** First person: where the walker stands (metres), on which floor, and where they look. */
   const walker = { x: 0, z: 0, floor: 1, yaw: 0, pitch: 0 };
 
@@ -459,8 +470,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const f = cut();
       const y = f === null ? 0 : floorSpan(f)[0];
       camera.position.copy(out).multiplyScalar(cam.iso * Math.cos(cam.isoElev)).setY(y + cam.iso * Math.sin(cam.isoElev));
+      camera.position.x += cam.panX;
+      camera.position.z += cam.panZ;
       const past = outerRadius() * ISO.lookPast;
-      camera.lookAt(-out.x * past, y, -out.z * past);
+      camera.lookAt(-out.x * past + cam.panX, y, -out.z * past + cam.panZ);
     } else if (view.mode === "walk") {
       // On a flight of stairs, as high up it as you've climbed.
       const lift = layout ? stairLift(layout, walker.floor, walker.x, walker.z) : 0;
@@ -484,8 +497,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       camera.updateProjectionMatrix();
     }
     lamp.visible = inside;
+    // Walking, you're close to everything: a gentler headlamp.
+    lamp.intensity = view.mode === "walk" ? HEADLAMP.walk : HEADLAMP.shaft;
     fill.intensity = inside ? 0.15 : 0.7;
     if (shell) shell.visible = view.mode === "cutaway";
+    // Moved off where this view starts: offer the way back.
+    resetButton.hidden = atHome();
     updateSection();
     updateReadout();
     dirty = true;
@@ -1105,6 +1122,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (view.mode === "top" && topFitted) fitTop();
     if (view.mode === "cutaway" && cutawayFitted) fitCutaway();
     if (view.mode === "walk" && before !== "walk") placeWalker();
+    if (view.mode !== "iso") isoHeld.clear();
     if (before === "walk" && view.mode !== "walk") {
       held.clear();
       if (locked()) document.exitPointerLock();
@@ -1152,13 +1170,98 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   window.addEventListener("keydown", onWalkKey, { capture: true });
   window.addEventListener("keyup", onWalkKey, { capture: true });
   // Keys let go while the window is away never send a keyup: stop walking.
-  const onBlur = () => held.clear();
+  const onBlur = () => {
+    held.clear();
+    isoHeld.clear();
+  };
   window.addEventListener("blur", onBlur);
   const onLockChange = () => {
     crosshair.style.display = view.mode === "walk" && locked() ? "block" : "none";
     updateReadout();
   };
   document.addEventListener("pointerlockchange", onLockChange);
+
+  // ---- Iso: WASD pans across the ground (outside Build, whose room keys W, A, S and D are) ----
+  const isoHeld = new Set<string>();
+  const ISO_KEYS = new Set(["w", "a", "s", "d"]);
+  const onIsoKey = (e: KeyboardEvent) => {
+    const k = e.key.toLowerCase();
+    if (!ISO_KEYS.has(k)) return;
+    if (e.type === "keyup") {
+      isoHeld.delete(k);
+      return;
+    }
+    const target = e.target as HTMLElement | null;
+    if (view.mode !== "iso" || building || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+    isoHeld.add(k);
+  };
+  window.addEventListener("keydown", onIsoKey);
+  window.addEventListener("keyup", onIsoKey);
+
+  /** One frame's panning in Iso: returns true if the view moved. */
+  function isoFrame(dt: number): boolean {
+    if (view.mode !== "iso" || !isoHeld.size) return false;
+    const fwd = (isoHeld.has("w") ? 1 : 0) - (isoHeld.has("s") ? 1 : 0);
+    const side = (isoHeld.has("d") ? 1 : 0) - (isoHeld.has("a") ? 1 : 0);
+    if (!fwd && !side) return false;
+    // Forward is the way the camera looks, flattened onto the ground; right is to its right.
+    const [fx, fz] = [-Math.cos(cam.theta), -Math.sin(cam.theta)];
+    const [rx, rz] = [-fz, fx];
+    const len = Math.hypot(fwd, side);
+    const speed = Math.max(ISO_PAN.minSpeed, cam.iso * ISO_PAN.speed) * dt;
+    cam.panX += ((fwd * fx + side * rx) / len) * speed;
+    cam.panZ += ((fwd * fz + side * rz) / len) * speed;
+    // Not off into the wilderness: within a little of the rings.
+    const far = Math.hypot(cam.panX, cam.panZ);
+    const most = outerRadius() * ISO_PAN.reach;
+    if (far > most) {
+      cam.panX *= most / far;
+      cam.panZ *= most / far;
+    }
+    return true;
+  }
+
+  // ---- Reset camera: back to where the current view starts ----
+
+  /** Is the camera where this view starts (so there's nothing to reset)? Walking has no start to go back to. */
+  function atHome(): boolean {
+    const near = (a: number, b: number) => Math.abs(a - b) < 1e-3;
+    const turned = !near(cam.theta, camHome.theta);
+    switch (view.mode) {
+      case "iso":
+        return !turned && near(cam.isoElev, camHome.isoElev) && near(cam.iso, outerRadius() * ISO.start) && !cam.panX && !cam.panZ;
+      case "shaft":
+        return !turned && near(cam.y, camHome.y) && near(cam.dist, camHome.dist);
+      case "cutaway":
+        return !turned && near(cam.y, camHome.y) && cutawayFitted;
+      case "top":
+        return !turned && topFitted;
+      default:
+        return true;
+    }
+  }
+
+  /** Back to where this view starts. */
+  function resetCamera(): void {
+    cam.theta = camHome.theta;
+    if (view.mode === "iso") {
+      cam.iso = outerRadius() * ISO.start;
+      cam.isoElev = camHome.isoElev;
+      cam.panX = cam.panZ = 0;
+    } else if (view.mode === "shaft") {
+      cam.y = camHome.y;
+      cam.dist = camHome.dist;
+    } else if (view.mode === "cutaway") {
+      cam.y = camHome.y;
+      cutawayFitted = true;
+      fitCutaway();
+    } else if (view.mode === "top") {
+      topFitted = true;
+      fitTop();
+    }
+    applyCamera();
+  }
 
   /** One frame's walking: returns true if the walker moved. */
   function walkFrame(dt: number): boolean {
@@ -1317,6 +1420,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   bar.className = "cam-readout";
   const readout = document.createElement("span");
   bar.appendChild(readout);
+  // Once the camera has moved from where a view starts: a quiet way back.
+  const resetButton = document.createElement("button");
+  resetButton.className = "cam-reset";
+  resetButton.textContent = "Reset camera";
+  resetButton.title = "Back to where this view starts";
+  resetButton.hidden = true;
+  resetButton.addEventListener("click", () => resetCamera());
+  bar.appendChild(resetButton);
   host.appendChild(bar);
 
   /** Switch camera, or the see-through toggles, from the View mode's buttons. */
@@ -1397,6 +1508,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       applyCamera();
       updateReadout();
     }
+    if (isoFrame(dt)) applyCamera();
     if (graphics.life && hole && ambient >= 1 / AMBIENT_FPS) {
       dust.step(ambient);
       // Colonists, sparks and steam move only while the game runs.
@@ -1860,6 +1972,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       document.removeEventListener("pointerlockchange", onLockChange);
       if (locked()) document.exitPointerLock();
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onIsoKey);
+      window.removeEventListener("keyup", onIsoKey);
       window.removeEventListener("keyup", onKey);
       resize.disconnect();
       canvas.removeEventListener("wheel", onWheel);

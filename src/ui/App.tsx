@@ -362,10 +362,12 @@ export function App() {
         const n = snapshot.holes.length;
         setActiveHole(snapshot.holes[(i + (next ? 1 : n - 1)) % n]!.id);
       }
-      // Page Up / Page Down step through floors in the plan and 3D views.
-      if ((e.code === "PageUp" || e.code === "PageDown") && snapshot && settings.view !== "2d") {
+      // Page Up / Page Down, or the up and down arrows, step through floors in the plan and 3D views
+      // (up is toward the surface). Walking, the arrows walk: the 3D view takes them first.
+      const floorKey = { PageUp: -1, PageDown: 1, ArrowUp: -1, ArrowDown: 1 }[e.code];
+      if (floorKey && snapshot && settings.view !== "2d") {
         e.preventDefault();
-        stepFloor(e.code === "PageDown" ? 1 : -1);
+        stepFloor(floorKey);
       }
       // Everything else is Build's: its tools and rooms answer to their keys only there.
       if (mode !== "build" || walking) return;
