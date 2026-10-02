@@ -65,7 +65,8 @@ export function buildShowcase(state: SimState, floors: number): { rooms: number 
           const [a, b] = edgeSides(hole, e);
           const ra = a ? roomAt(layout, a) : undefined;
           const rb = b ? roomAt(layout, b) : undefined;
-          if (ra && rb && ra !== rb) layout.corridors[e.id] = "marscrete";
+          // Not along the stairs: their doorways would leave no room for the flight (the gallery tube reaches them).
+          if (ra && rb && ra !== rb && ra.type !== "stairwell" && rb.type !== "stairwell") layout.corridors[e.id] = "marscrete";
         }
       }
     }

@@ -145,3 +145,10 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 
 **Fixes after Bryon's first run** (Oct 2, 2026): a gray screen with half the HUD. Docker on his Mac listens on port 7878, so with no bridge running the viewer connected to Docker, heard nothing, and (with no scene yet) had no camera. Now: the bridge's port is **17878**; the bridge says hello first and the viewer counts itself connected only once it hears it (else it says what's on the port isn't the bridge); the camera and sky are there from the start, with the waiting message in the middle of the screen; and the socket thread catches its errors (closing the window while connected aborted Godot).
 
+**Walking** (Oct 2, 2026):
+
+- First person walks by the web's rules (`view/walk.ts`): open ground (gallery tubes, corridors, public rooms, dug-out space) and rooms joined only through doorways, furniture in the way, stairs climbing a floor, steps sliding along whatever blocks them. Rather than port every rule to C#, the bridge samples them (`src/bridge/walkmap.ts`): the web's `regionAt` on a 15 cm grid over the floor, run-length encoded (a floor of the showcase: 25 KB, 0.3 s), with the furniture's footprints and the stairs' flights. The viewer asks for the walker's floor and those above and below, and again after the layout changes. `Walker.cs` ports `step`, `clear`, the stairs and `stairLift` against the grid.
+- In first person, WASD walks (Shift runs) at eye height (1.7 m) over the floor, rising up the flights; until a map comes, it flies as before. The HUD says "on foot, floor N".
+- Checked by script (`--stroll=<s>` walks ahead; test shots print where the walker is): from floor 1's gallery toward the shaft it stops at the railing; from the foot of a floor-2 flight it climbs (eye height between the floors partway) and comes off the top onto floor 1.
+- The showcase keeps corridors off the stairwells' sides: their doorways left no room for the flight, so its stairs had none.
+

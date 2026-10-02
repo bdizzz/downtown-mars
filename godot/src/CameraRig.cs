@@ -28,6 +28,15 @@ public partial class CameraRig : Node3D
     };
 
     bool _walking;
+    /// <summary>
+    /// First person on foot (Walker.cs), once there's a walking map: WASD walks, sliding along walls and
+    /// furniture, through doorways, up and down stairs. Without a map (still coming, or none) it flies.
+    /// </summary>
+    public Walker? Walker { get; set; }
+    /// <summary>Testing: seconds to walk straight ahead once on foot, as if W were held.</summary>
+    public float StrollSeconds { get; set; }
+    bool _onFoot;
+    const float EyeHeight = 1.7f, WalkSpeed = 3f;
     // Iso.
     Vector3 _target;
     float _yaw = Mathf.Pi / 2, _pitch = 0.75f, _dist;
@@ -69,6 +78,12 @@ public partial class CameraRig : Node3D
     }
 
     public bool Walking => _walking;
+    /// <summary>Walking on the ground (not flying): there's a map and the walker found its feet.</summary>
+    public bool OnFoot => _walking && _onFoot;
+    /// <summary>The floor the camera is on (floor 1 starts under the 3 m crust; floors are 4 m).</summary>
+    public static int FloorAt(float y) => Mathf.FloorToInt((-y - 3) / 4) + 1;
+    /// <summary>The walker's maps changed (a new layout): find its feet again when they come.</summary>
+    public void Unground() => _onFoot = false;
 
     /// <summary>Stand here in first person, looking this way (radians about y: 0 looks along +x) and this far up.</summary>
     public void Stand(Vector3 at, float yaw, float pitch = 0)
@@ -118,14 +133,32 @@ public partial class CameraRig : Node3D
             return;
         }
         var fwd = (Input.IsKeyPressed(Key.W) ? 1 : 0) - (Input.IsKeyPressed(Key.S) ? 1 : 0);
+        // Testing: walk on by itself for a while (Live's --stroll).
+        if (StrollSeconds > 0 && _onFoot)
+        {
+            StrollSeconds -= dt;
+            fwd = 1;
+        }
         var side = (Input.IsKeyPressed(Key.D) ? 1 : 0) - (Input.IsKeyPressed(Key.A) ? 1 : 0);
         var fast = Input.IsKeyPressed(Key.Shift) ? 3f : 1f;
         if (_walking)
         {
             var f = new Vector3(Mathf.Cos(_lookYaw), 0, Mathf.Sin(_lookYaw));
             var r = new Vector3(-f.Z, 0, f.X);
-            var up = (Input.IsKeyPressed(Key.Space) ? 1 : 0) - (Input.IsKeyPressed(Key.C) ? 1 : 0);
-            _pos += (f * fwd + r * side + Vector3.Up * up) * 4f * fast * dt;
+            if (Walker is Walker w && Walker.Has(FloorAt(_pos.Y)) && !_onFoot)
+                _onFoot = w.Place(FloorAt(_pos.Y), new Vector2(_pos.X, _pos.Z));
+            if (_onFoot && Walker is Walker walker)
+            {
+                // On foot: the walker decides where a step lands (and which floor).
+                var step = (f * fwd + r * side) * WalkSpeed * (fast > 1 ? 2 : 1) * dt;
+                walker.Step(new Vector2(step.X, step.Z));
+                _pos = new Vector3(walker.At.X, walker.Height + EyeHeight, walker.At.Y);
+            }
+            else
+            {
+                var up = (Input.IsKeyPressed(Key.Space) ? 1 : 0) - (Input.IsKeyPressed(Key.C) ? 1 : 0);
+                _pos += (f * fwd + r * side + Vector3.Up * up) * 4f * fast * dt;
+            }
         }
         else
         {
@@ -143,6 +176,7 @@ public partial class CameraRig : Node3D
         if (e is InputEventKey { Pressed: true, Keycode: Key.Tab })
         {
             _walking = !_walking;
+            _onFoot = false;
             Apply();
         }
         if (e is InputEventMouseMotion m && (m.ButtonMask & (MouseButtonMask.Left | MouseButtonMask.Right)) != 0)

@@ -52,6 +52,8 @@ public partial class Live : Node3D
     /// <summary>Start-up options from the command line (Main.cs): a floor to pick, first person, and a screenshot then quit.</summary>
     public int? StartFloor { get; set; }
     public bool StartWalking { get; set; }
+    /// <summary>Testing: walk ahead this many seconds once on foot.</summary>
+    public float StrollSeconds { get; set; }
     /// <summary>Stand here in first person: x, y, z, heading in degrees (0 looks along +x), and optionally pitch.</summary>
     public float[]? StandAt { get; set; }
     /// <summary>The bridge's port (npm run bridge -- --port=…).</summary>
@@ -87,7 +89,7 @@ public partial class Live : Node3D
         _ground = new MeshInstance3D { Name = "Ground" };
         AddChild(_ground);
         // A camera from the start, so there's a sky while waiting for the game (not a gray screen).
-        _rig = new CameraRig(MetaNow());
+        _rig = new CameraRig(MetaNow()) { Walker = _walker };
         AddChild(_rig);
         BuildGround();
         BuildHud();
@@ -110,6 +112,9 @@ public partial class Live : Node3D
     }
 
     double _liveMs;
+    readonly Walker _walker = new();
+    readonly HashSet<int> _mapsAsked = new();
+    int _layoutVersion = -1;
     bool _framed;
 
     public override void _Process(double delta)
@@ -156,6 +161,7 @@ public partial class Live : Node3D
         if (ShotAfter > 0 && _clockSeconds > ShotAfter)
         {
             ShotAfter = 0;
+            if (_rig?.Walking == true && GetViewport().GetCamera3D() is Camera3D c) GD.Print($"WALKER onFoot={_rig.OnFoot} floor={_walker.Floor} at=({_walker.At.X:0.00},{_walker.At.Y:0.00}) r={_walker.At.Length():0.00} camera={c.GlobalPosition}");
             Screenshot("live");
             GetTree().Quit();
         }
@@ -174,6 +180,7 @@ public partial class Live : Node3D
             }
             if (type == "scene") OnScene(msg.RootElement);
             else if (type == "people") _people.Set(msg.RootElement);
+            else if (type == "walkmap" && msg.RootElement.GetProperty("layoutVersion").GetInt32() == _layoutVersion) _walker.SetMap(Walker.Map.Parse(msg.RootElement));
             else if (type == "inspected") _inspector.Show(msg.RootElement);
             else if (type == "palette") _build.SetPalette(msg.RootElement);
             else if (type == "hovered") _build.Hovered(msg.RootElement);
@@ -193,6 +200,7 @@ public partial class Live : Node3D
             _hole.UpdateLamps(cam.GlobalPosition, focus - above, focus + below);
         }
         _hole.ShowEdges = _rig?.Walking != true;
+        AskForMaps();
         if (snapshot != null)
         {
             OnSnapshot(snapshot.RootElement);
@@ -208,7 +216,7 @@ public partial class Live : Node3D
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
             : _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.Walking == true ? "first person" : "iso")}\nClick a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nClick a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics"
             : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -254,6 +262,7 @@ public partial class Live : Node3D
             _framed = true;
             _rig.Frame(MetaNow(), true);
             if (StartWalking) _rig.Walk(true);
+            _rig.StrollSeconds = StrollSeconds;
             if (StandAt is float[] at && at.Length >= 4) _rig.Stand(new Vector3(at[0], at[1], at[2]), Mathf.DegToRad(at[3]), at.Length > 4 ? Mathf.DegToRad(at[4]) : 0);
         }
     }
@@ -261,6 +270,14 @@ public partial class Live : Node3D
     void OnSnapshot(JsonElement msg)
     {
         _speed = msg.GetProperty("speed").GetInt32();
+        // A new layout: the walking maps are out of date (ask again as needed).
+        var version = msg.GetProperty("snapshot").GetProperty("layoutVersion").GetInt32();
+        if (version != _layoutVersion)
+        {
+            _layoutVersion = version;
+            _walker.Forget();
+            _mapsAsked.Clear();
+        }
         var s = msg.GetProperty("snapshot");
         var gameId = s.GetProperty("gameId").GetInt32();
         if (gameId != _gameId)
@@ -298,6 +315,18 @@ public partial class Live : Node3D
             sky.GroundHorizonColor = night.ground.Lerp(day.ground, _light);
         }
         _hole.SetNight(1 - _light);
+    }
+
+    /// <summary>In first person, the walking maps for the floor you're on and those above and below (stairs go there).</summary>
+    void AskForMaps()
+    {
+        if (_rig?.Walking != true || !_bridge.Connected || _layoutVersion < 0) return;
+        var here = _rig.OnFoot ? _walker.Floor : CameraRig.FloorAt(GetViewport().GetCamera3D()?.GlobalPosition.Y ?? -5);
+        for (var f = here - 1; f <= here + 1; f++)
+        {
+            if (f < 1 || f > _shape.Floors || _walker.Has(f) || !_mapsAsked.Add(f)) continue;
+            _bridge.Send(new Dictionary<string, object> { ["type"] = "walkmap", ["floor"] = f });
+        }
     }
 
     void ApplyQuality()

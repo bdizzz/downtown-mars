@@ -10,6 +10,7 @@ import { stepWorld } from "../sim/worldstep";
 import type { RoomSpots } from "../render3d/people3d";
 import { inspect, roomAtPoint } from "./inspect";
 import { hover, palette, paletteKey, place, type BuildTool } from "./build";
+import { walkMap } from "./walkmap";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
 // Godot viewer, speaking the web game's worker protocol (worker/protocol.ts) one JSON message per
@@ -86,7 +87,9 @@ type BridgeMessage =
   | { type: "inspect"; roomId?: number | null; at?: [number, number, number] }
   /** Building: what placing the tool's room at a world point would do, and doing it. */
   | { type: "hover"; tool: BuildTool; at: [number, number, number] }
-  | { type: "place"; tool: BuildTool; at: [number, number, number]; confirmed?: boolean };
+  | { type: "place"; tool: BuildTool; at: [number, number, number]; confirmed?: boolean }
+  /** First person: a floor's walking map (walkmap.ts). */
+  | { type: "walkmap"; floor: number };
 
 function send(msg: object): void {
   const line = JSON.stringify(msg) + "\n";
@@ -153,6 +156,10 @@ const server = createServer((socket) => {
           if (r.command) host.onMessage({ type: "command", id: commandId++, command: r.command });
           else send({ type: "notice", text: r.refusal ?? r.confirm, ...(r.confirm ? { confirm: { tool: msg.tool, at: msg.at } } : {}) });
           send(hover(host.active(), msg.tool, msg.at));
+        } else if (msg.type === "walkmap") {
+          const map = walkMap(host.active(), msg.floor);
+          if (args.verbose) console.log(`Walk map for floor ${msg.floor}: ${map.regions.length} regions, ${(map.runs.length / 1024).toFixed(0)} KB of runs, ${map.buildMs.toFixed(0)} ms`);
+          send(map);
         } else if (msg.type === "inspect") {
           inspecting = msg.at ? roomAtPoint(host.active(), msg.at) : (msg.roomId ?? null);
           sendInspect();
