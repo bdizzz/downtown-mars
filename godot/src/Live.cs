@@ -77,6 +77,11 @@ public partial class Live : Node3D
     public float[]? StandAt { get; set; }
     /// <summary>The bridge's port (npm run bridge -- --port=…).</summary>
     public int Port { get; set; } = 17878;
+    /// <summary>Start a bridge if none answers (off with --no-bridge), with these arguments for it (else --continue).</summary>
+    public bool StartBridge { get; set; } = true;
+    public List<string> BridgeArgs { get; } = new();
+    int _bridgePid = -1;
+    bool _bridgeTried;
     /// <summary>A graphics level from the command line (--quality=low…ultra), not saved; otherwise the saved one.</summary>
     public Quality? StartQuality { get; set; }
     Quality _quality;
@@ -182,6 +187,13 @@ public partial class Live : Node3D
 
     public override void _ExitTree()
     {
+        // A bridge we started stops with us, saving first.
+        if (_bridgePid > 0 && OS.IsProcessRunning(_bridgePid))
+        {
+            _bridge.Send(new Dictionary<string, object> { ["type"] = "quit" });
+            for (var i = 0; i < 30 && OS.IsProcessRunning(_bridgePid); i++) System.Threading.Thread.Sleep(50);
+            if (OS.IsProcessRunning(_bridgePid)) OS.Kill(_bridgePid);
+        }
         _bridge.Dispose();
         Looks.Release();
         Dress.Release();
@@ -204,6 +216,7 @@ public partial class Live : Node3D
     {
         _clockSeconds += delta;
         PlayKeys();
+        MaybeStartBridge();
         if (BenchSeconds > 0 && _clockSeconds > BenchWarmup)
         {
             _frames.Add(delta * 1000);
@@ -331,6 +344,8 @@ public partial class Live : Node3D
         _pickerPanel.Visible = !waiting && _pickerFloors >= 0 && !_map.Open;
         _waiting.Text = _bridge.Silent
             ? $"Something is on port {Port}, but it isn't the game's bridge.\nRun  npm run bridge  in the repo, or start both with --port=<n>."
+            : _bridgePid > 0 && OS.IsProcessRunning(_bridgePid) ? "Starting the game…"
+            : _bridgePid > 0 ? "The game stopped: see ~/.downtown-mars/bridge.log"
             : $"Waiting for the game on port {Port}…\nRun  npm run bridge  in the repo (add  -- --showcase=12  for a big test colony).";
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
@@ -447,6 +462,22 @@ public partial class Live : Node3D
             sky.GroundHorizonColor = night.ground.Lerp(day.ground, _light);
         }
         _hole.SetNight(1 - _light);
+    }
+
+    /// <summary>
+    /// With no game answering after a moment, start one: the bridge in Node, from the repo, through a login
+    /// shell (for Node on the PATH), its output in ~/.downtown-mars/bridge.log. It goes when the viewer does.
+    /// </summary>
+    void MaybeStartBridge()
+    {
+        if (!StartBridge || _bridgeTried || _clockSeconds < 1.5 || _bridge.Connected || _bridge.Silent) return;
+        _bridgeTried = true;
+        var repo = ProjectSettings.GlobalizePath("res://").TrimEnd('/');
+        repo = System.IO.Path.GetDirectoryName(repo)!;
+        var args = BridgeArgs.Count > 0 ? BridgeArgs : new List<string> { "--continue" };
+        var line = $"export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; mkdir -p ~/.downtown-mars && cd '{repo}' && exec node scripts/bridge.mjs --port={Port} {string.Join(" ", args)} > ~/.downtown-mars/bridge.log 2>&1";
+        _bridgePid = OS.CreateProcess("/bin/zsh", new[] { "-lc", line });
+        GD.Print(_bridgePid > 0 ? $"Started the game (bridge, pid {_bridgePid}); its log: ~/.downtown-mars/bridge.log" : "Couldn't start the bridge: run  npm run bridge  in the repo");
     }
 
     /// <summary>Feed the test keys (--keys) to Godot's input, as a keyboard would.</summary>

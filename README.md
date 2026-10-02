@@ -95,17 +95,19 @@ Changes go through the simulation like any command and show in the flow report a
 
 ### The Godot viewer (experiment)
 
-A desktop viewer in Godot 4 and C# (`godot/`, Mac for now), drawing the same game: see `docs/PLAN-GODOT.md`. It needs Godot .NET 4.7 and the .NET SDK. Run the simulation in Node, then open the viewer:
-
-```bash
-npm run bridge -- --showcase=12
-```
+A desktop viewer in Godot 4 and C# (`godot/`, Mac for now), drawing the same game: see `docs/PLAN-GODOT.md`. It needs Godot .NET 4.7 and the .NET SDK. One command builds and runs it; it starts the game (the simulation, in Node) by itself, continuing the last autosave:
 
 ```bash
 cd godot && dotnet build && godot-mono --path .
 ```
 
-The bridge serves the game on `127.0.0.1:17878` (`--load=save.json` loads a save, `--showcase=12` builds a big test colony, `--speed=2`, `--hour=12` runs on to noon, `--verbose`); the viewer connects (and reconnects) by itself. Viewer options after `--`: `--floor=4` picks a floor, `--walk` starts in first person, `--bench=8` measures frame times and quits, `--quality=low` sets the graphics level, `--port=7979` finds a bridge on another port. Saves go to `~/.downtown-mars/saves` (an autosave each game day, and three slots); a web save exported to a file can be imported there, and back. In the viewer: Esc opens the menu (save, load, new game, import and export), O the office (visits, promises, ordinances), C the charts (trends and flows), M the map (pick a site, found a hole), N the network (routes, culture), P the colony (people, construction, maintenance), [ and ] switch holes, event cards come up at the top left, click a room for its panel, B opens Build (click to place, R turns, Esc puts down; Z or Access for corridors: click or drag along borders, Shift erases), Space pauses, 1–3 set the speed, Up/Down step the picked floor, Home shows every floor, Tab switches Iso and first person (where WASD walks: through doors, round furniture, up and down stairs), L hides labels, F2 cycles the graphics level (Low to Ultra), F12 saves a screenshot to `godot/shots/`.
+Add `-- --new` for a new game, `-- --showcase=12` for a big test colony, or `-- --load=save.json`. Quitting saves to the autosave and stops the game. To run the game yourself instead (the viewer then just connects; Ctrl-C there autosaves too):
+
+```bash
+npm run bridge -- --showcase=12
+```
+
+The bridge serves the game on `127.0.0.1:17878` (its log, when the viewer starts it: `~/.downtown-mars/bridge.log`) (`--load=save.json` loads a save, `--showcase=12` builds a big test colony, `--speed=2`, `--hour=12` runs on to noon, `--verbose`); the viewer connects (and reconnects) by itself. Viewer options after `--`: `--floor=4` picks a floor, `--walk` starts in first person, `--bench=8` measures frame times and quits, `--quality=low` sets the graphics level, `--port=7979` finds a bridge on another port. Saves go to `~/.downtown-mars/saves` (an autosave each game day, and three slots); a web save exported to a file can be imported there, and back. In the viewer: Esc opens the menu (save, load, new game, import and export), O the office (visits, promises, ordinances), C the charts (trends and flows), M the map (pick a site, found a hole), N the network (routes, culture), P the colony (people, construction, maintenance), [ and ] switch holes, event cards come up at the top left, click a room for its panel, B opens Build (click to place, R turns, Esc puts down; Z or Access for corridors: click or drag along borders, Shift erases), Space pauses, 1–3 set the speed, Up/Down step the picked floor, Home shows every floor, Tab switches Iso and first person (where WASD walks: through doors, round furniture, up and down stairs), L hides labels, F2 cycles the graphics level (Low to Ultra), F12 saves a screenshot to `godot/shots/`.
 
 ### Furnishing tool
 

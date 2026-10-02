@@ -205,3 +205,5 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 
 **Readable nights** (Oct 2, 2026): at night the scene went near-black (the sun down, the sky dark, and with SDFGI on Godot's ambient light barely reaching). Now the sky's night colours are a little warmer and brighter, the ambient light turns toward a dim dust colour as the sky darkens, and a faint shadowless light from overhead (the night's dust glow) fades in as the sun sets: the hole and the surface read at night, and lamp-lit rooms stand out.
 
+**One command** (Oct 2, 2026): the viewer starts the bridge itself when nothing answers on its port after a moment (through a login shell, for Node on the PATH; its output in `~/.downtown-mars/bridge.log`), continuing the autosave (`--continue`), or with `--new`, `--showcase=N` or `--load=file`; `--no-bridge` only connects. On quit it tells that bridge to stop, and the bridge autosaves first (it does on Ctrl-C and SIGTERM too, when run by hand). A bridge you started yourself is left running. Checked: started from nothing, autosaved and stopped on quit, and the next start continued that colony.
+

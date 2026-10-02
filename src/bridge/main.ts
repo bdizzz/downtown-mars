@@ -24,7 +24,7 @@ import { constructionView, maintenanceViewOf, peopleView } from "./colony";
 // panel (inspect.ts); and takes messages of its own: { type: "view", topFloor } (the floor picked, or
 // null for all) and { type: "inspect", roomId | at } (the room to show, or what's at a point).
 //
-//   npm run bridge -- [--port=17878] [--load=save.json] [--showcase=12] [--speed=1] [--hour=12] [--no-autosave] [--verbose]
+//   npm run bridge -- [--port=17878] [--load=save.json] [--showcase=12] [--speed=1] [--hour=12] [--continue] [--no-autosave] [--verbose]
 //
 // Saves go to ~/.downtown-mars/saves (or DM_SAVES): an autosave each new game day, and three slots.
 
@@ -111,6 +111,8 @@ type BridgeMessage =
   | { type: "colony"; tab: "people" | "construction" | "maintenance" }
   | { type: "network" }
   | { type: "site"; lat: number; lon: number }
+  /** The viewer that started this bridge is closing: autosave and stop. */
+  | { type: "quit" }
   /** First person: a floor's walking map (walkmap.ts). */
   | { type: "walkmap"; floor: number };
 
@@ -149,6 +151,14 @@ function sendInspect(): void {
 }
 
 if (args.load) host.onMessage({ type: "load", id: 0, data: readFileSync(args.load, "utf8") });
+// Pick up where the last game left off, if there's an autosave (the viewer starts its bridge so).
+else if (args.continue) {
+  const data = readSlot("autosave");
+  if (data) {
+    host.onMessage({ type: "load", id: 0, data });
+    console.log("Continuing from the autosave");
+  }
+}
 if (args.showcase) host.onMessage({ type: "command", id: 0, command: { type: "consoleShowcase", floors: Number(args.showcase) } });
 // Run on to an hour of the day (for comparable screenshots and benchmarks: with --speed=0 it stays there).
 if (args.hour) {
@@ -230,6 +240,8 @@ const server = createServer((socket) => {
             host.onMessage({ type: "load", id: commandId++, data });
             lastDay = dayOf(host.world());
           } else send({ type: "notice", text: "Nothing saved there" });
+        } else if (msg.type === "quit") {
+          shutDown("the viewer closed");
         } else if (msg.type === "walkmap") {
           const map = walkMap(host.active(), msg.floor);
           if (args.verbose) console.log(`Walk map for floor ${msg.floor}: ${map.regions.length} regions, ${(map.runs.length / 1024).toFixed(0)} KB of runs, ${map.buildMs.toFixed(0)} ms`);
@@ -257,6 +269,21 @@ server.on("error", (e: NodeJS.ErrnoException) => {
   process.exit(1);
 });
 server.listen(port, "127.0.0.1", () => console.log(`Sim bridge on 127.0.0.1:${port}`));
+
+/** Stop, saving the game to the autosave first (unless autosave is off). */
+function shutDown(why: string): void {
+  if (!args["no-autosave"]) {
+    try {
+      writeSlot(host.world(), "autosave");
+      console.log(`Autosaved (${why})`);
+    } catch (e) {
+      console.error("Autosave failed:", e);
+    }
+  }
+  process.exit(0);
+}
+process.on("SIGTERM", () => shutDown("stopped"));
+process.on("SIGINT", () => shutDown("stopped"));
 // Autosave as the web does, each new game day (--no-autosave to stop it).
 let lastDay = dayOf(host.world());
 setInterval(() => {

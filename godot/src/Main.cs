@@ -12,7 +12,9 @@ namespace DowntownMars;
 /// materials, and lights it with Godot's renderer: sun and sky, global illumination (SDFGI),
 /// screen-space occlusion and indirect light, volumetric fog, glow, and a real light per lamp.
 ///
-/// Without arguments it's the live viewer (Live.cs), drawing the game the bridge runs; --floor=&lt;n&gt;
+/// Without arguments it's the live viewer (Live.cs), drawing the game the bridge runs (started by the
+/// viewer if none is running: it continues the autosave, or --new, --showcase=N or --load=file; --no-bridge
+/// to only connect); --floor=&lt;n&gt;
 /// picks a floor, --walk starts in first person, --port=&lt;n&gt; finds the bridge there (default 17878),
 /// --quality=low|medium|high|ultra sets the graphics level for this run, --at=x,y,z,heading[,pitch]
 /// stands there in first person, --stroll=&lt;seconds&gt; walks ahead that long,
@@ -63,6 +65,10 @@ public partial class Main : Node3D
                 else if (arg.StartsWith("--stroll=")) live.StrollSeconds = float.Parse(arg["--stroll=".Length..]);
                 else if (arg.StartsWith("--at=")) live.StandAt = arg["--at=".Length..].Split(',').Select(float.Parse).ToArray();
                 else if (arg.StartsWith("--port=")) live.Port = int.Parse(arg["--port=".Length..]);
+                else if (arg == "--no-bridge") live.StartBridge = false;
+                // For the bridge it starts: a test colony, a save to load, or a new game (else it continues the autosave).
+                else if (arg.StartsWith("--showcase=") || arg.StartsWith("--load=")) live.BridgeArgs.Add(arg);
+                else if (arg == "--new") live.BridgeArgs.Add("--speed=1");
                 else if (arg.StartsWith("--quality=") && System.Enum.TryParse<Quality>(arg["--quality=".Length..], true, out var q)) live.StartQuality = q;
                 else if (arg.StartsWith("--bench=")) live.BenchSeconds = float.Parse(arg["--bench=".Length..]);
                 else if (arg.StartsWith("--build=")) live.StartTool = arg["--build=".Length..];
