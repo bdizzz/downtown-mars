@@ -70,3 +70,9 @@ Choices: **Throw a festival** (30 meals or rations, and a day at 80% productivit
 - Choices as planned. **Bring them down** needs a working pad (else it's greyed, with why); six crew join as adults, one a notable ("belt pilot"), and the lander comes down on the pad (`events.landingTick`: the same descent as a supply drop, then a few hours on the pad). **Send supplies** schedules the thank-you drop 10–15 days on (it lands too). Ignoring it, or the call timing out: −5 happiness for four days. A rescue also cheers everyone (+4).
 - **Gains need storage,** as Earth's drops do: an event's goods land only where there's room, and a warning says what was left behind (early on, the pod's shelves are full).
 - **Console:** `dm.event("belt_ship")` (or any event id) raises one now, for trying them out.
+
+**Step 4, celebrations:**
+- `celebrations` in `data/events.json`: milestones checked every few ticks (population 50/100/200/300/500, the first birth, floors 5/10/20, the dome), each proposed once as a "Time to celebrate" event, one at a time; studying microfossils proposes one too. A save from before M14 doesn't celebrate what it had already passed.
+- **Throw a festival:** a feast of 30 (meals first, then rations; greyed out without), a mood of +8 easing off over two days, and the first day at 80% productivity (`festivalWork`). **Raise a toast:** +2 for two days. Left a day, it passes with a toast (+1).
+- **3D** (`render3d/festival3d.ts`): strings of coloured lights looped round every floor's gallery (from a picked floor down), sagging between hangers, and 90 lanterns rising up the middle of the shaft, swaying, glowing additively; shown while the festival lasts.
+- **Bots** throw a festival only with 120 meals and rations to spare, else raise a toast.

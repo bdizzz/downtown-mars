@@ -342,10 +342,13 @@ export function tendWindows(hole: SimState): boolean {
   return any;
 }
 
-/** Answer whatever events are waiting: the first choice it can afford. Once a day. */
+/** Answer whatever events are waiting: the first choice it can afford (a festival only with food to spare). Once a day. */
 export function tendEvents(hole: SimState): void {
+  // A festival only with food to spare (a feast is 30); otherwise a toast.
+  const plenty = (hole.resources.meals ?? 0) + (hole.resources.rations ?? 0) >= 120;
   for (const e of [...(hole.events?.pending ?? [])]) {
     for (const c of eventDef(e.kind).choices) {
+      if (c.festival && !plenty) continue;
       if (applyCommand(hole, { type: "answerEvent", eventId: e.id, choice: c.id }).ok) break;
     }
   }

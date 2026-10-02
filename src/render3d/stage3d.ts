@@ -26,6 +26,7 @@ import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, makeDome, makeLander, placeLander } from "./scenery3d";
 import { makeDrillRig, type DrillRig } from "./drillRig";
+import { Festival } from "./festival3d";
 import { RIG_DROP } from "./cylinder";
 import { occupied, People, type RoomSpots } from "./people3d";
 import { Grit } from "./storm3d";
@@ -309,6 +310,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let hole: Hole | null = null;
   let holeKey = "";
   /** The boring machine at the bottom of the shaft, rebuilt for another hole's width. */
+  /** Lights and lanterns while the hole holds a festival. */
+  const festival = new Festival();
+  scene.add(festival.group);
   let rig: DrillRig | null = null;
   let rigFor = "";
   /** The drill's last strike we've seen, so the rig shudders once for each (undefined until the first snapshot). */
@@ -1379,6 +1383,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         advanceDetails(ambient);
         roomFx.step(ambient);
         rig?.step(ambient);
+        if (festival.group.visible) festival.step(ambient);
       }
       ambient = 0;
       dirty = true;
@@ -1613,6 +1618,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           dirty = true;
         }
       }
+      // A festival on: lights along the galleries (from a picked floor down) and lanterns up the shaft.
+      const partying = snapshot.events.festival !== null;
+      if (partying) festival.sync(snapshot.layout.hole, cf);
+      if (festival.group.visible !== partying) {
+        festival.group.visible = partying;
+        dirty = true;
+      }
       // The land: rebuilt for another site (or another hole).
       const here = snapshot.holes.find((x) => x.id === snapshot.holeId);
       const tk = `${snapshot.holeId}:${JSON.stringify(here?.site ?? null)}:${snapshot.holeName}:${snapshot.layout.hole.shaftRadiusM}`;
@@ -1758,6 +1770,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       dispose(holeGroup);
       dispose(digFront);
       rig?.dispose();
+      festival.dispose();
       sectionGeo.dispose();
       (section.material as THREE.Material).dispose();
       dispose(lander);

@@ -103,8 +103,13 @@ export interface EventsState {
   landingTick?: number;
 }
 
+type EventsData = typeof eventData;
 export const eventData = raw as unknown as {
   checkEveryTicks: number;
+  celebrations: {
+    milestones: { id: string; check: "population" | "born" | "floors" | "domed" | "event"; at?: number; title: string }[];
+    festival: { feast: number; mood: number; days: number; workDays: number; productivity: number };
+  };
   beltShip: { fromDay: number; chancePerDay: number; cooldownDays: number; names: string[] };
   discoveries: {
     chance: number;
@@ -127,9 +132,30 @@ export function createEvents(seed: number): EventsState {
   return { seed: seed >>> 0, pending: [], followUps: [], nextId: 1, lastTick: {}, found: [], celebrated: [], moods: [] };
 }
 
-/** The hole's events, made on first use (older saves have none). */
+/** The hole's events, made on first use (older saves have none: milestones they've already passed aren't news). */
 export function eventsOf(state: SimState): EventsState {
-  return (state.events ??= createEvents(state.holeId * 7919 + 17));
+  if (!state.events) {
+    state.events = createEvents(state.holeId * 7919 + 17);
+    state.events.celebrated = eventData.celebrations.milestones.filter((m) => reached(state, m)).map((m) => m.id);
+  }
+  return state.events;
+}
+
+type Milestone = EventsData["celebrations"]["milestones"][number];
+
+function reached(state: SimState, m: Milestone): boolean {
+  switch (m.check) {
+    case "population":
+      return state.population.count >= (m.at ?? 0);
+    case "born":
+      return (state.population.born ?? 0) >= (m.at ?? 1);
+    case "floors":
+      return state.layout.hole.floors >= (m.at ?? 0);
+    case "domed":
+      return !!state.layout.domed;
+    case "event":
+      return false;
+  }
 }
 
 /** A die for an event: 0..1, the same every time for the same hole, seed and things asked about. */
@@ -166,6 +192,9 @@ export function raiseEvent(state: SimState, cfg: SimConfig, kind: string, extra:
 /** Why a choice can't be picked right now, or null if it can. */
 export function choiceRefusal(state: SimState, choice: EventChoice, padWorks: boolean): string | null {
   if (choice.needsPad && !padWorks) return "Needs a staffed, powered landing pad";
+  if (choice.festival && (state.resources.meals ?? 0) + (state.resources.rations ?? 0) < eventData.celebrations.festival.feast) {
+    return `A feast needs ${eventData.celebrations.festival.feast} meals or rations`;
+  }
   for (const [id, v] of Object.entries(choice.resources ?? {})) {
     if (v < 0 && (state.resources[id] ?? 0) + v < -1e-9) return `Not enough ${id}`;
   }
@@ -226,8 +255,35 @@ export function applyEffect(state: SimState, cfg: SimConfig, e: EventEffect, at:
     ev.followUps.push({ dueTick: state.tick + Math.round(days * day), effect: e.followUp.effect, kind: at.kind ?? "" });
   }
   if (e.landing) ev.landingTick = state.tick;
+  if (e.festival) {
+    const f = eventData.celebrations.festival;
+    // The feast: meals first, rations for the rest.
+    const meals = Math.min(f.feast, state.resources.meals ?? 0);
+    state.resources.meals = (state.resources.meals ?? 0) - meals;
+    state.resources.rations = Math.max(0, (state.resources.rations ?? 0) - (f.feast - meals));
+    ev.festival = { startTick: state.tick, untilTick: state.tick + Math.round(f.days * day) };
+    ev.moods.push({ amount: f.mood, startTick: state.tick, untilTick: ev.festival.untilTick });
+  }
+  if (e.celebrate) celebrate(state, cfg, e.celebrate);
   if (e.message) postMessage(state, cfg, fill(e.message, at), (e.mood?.amount ?? 0) < 0 ? "warn" : "good");
   if (lost.length) postMessage(state, cfg, `No storage space for ${lost.join(", ")}: it was left behind.`, "warn");
+}
+
+/** Work slows during a festival's first day(s): a factor on productivity. */
+export function festivalWork(state: SimState, cfg: SimConfig): number {
+  const f = state.events?.festival;
+  if (!f || state.tick >= f.untilTick) return 1;
+  const c = eventData.celebrations.festival;
+  return state.tick < f.startTick + c.workDays * cfg.ticksPerDay ? c.productivity : 1;
+}
+
+/** Propose a celebration (one at a time: another waits until this one's decided). */
+function celebrate(state: SimState, cfg: SimConfig, milestone: string): void {
+  const ev = eventsOf(state);
+  if (ev.celebrated.includes(milestone)) return;
+  ev.celebrated.push(milestone);
+  const title = eventData.celebrations.milestones.find((m) => m.id === milestone)?.title ?? milestone;
+  raiseEvent(state, cfg, "celebration", { milestone: title });
 }
 
 /** Happiness everyone gets from recent events (moods easing off, and a festival on). */
@@ -308,8 +364,8 @@ export function consoleEvent(state: SimState, cfg: SimConfig, kind: string): { o
 
 export function stepEvents(state: SimState, cfg: SimConfig): void {
   if (state.tick % eventData.checkEveryTicks !== 0) return;
-  const ev = state.events;
-  if (!ev) return;
+  // Older saves get theirs here (milestones already passed aren't news).
+  const ev = eventsOf(state);
   // Waited too long: the event takes its own course.
   for (const e of ev.pending.filter((x) => state.tick >= x.expiresTick)) {
     ev.pending = ev.pending.filter((x) => x !== e);
@@ -321,6 +377,11 @@ export function stepEvents(state: SimState, cfg: SimConfig): void {
     applyEffect(state, cfg, f.effect, { kind: f.kind });
   }
   ev.moods = ev.moods.filter((m) => state.tick < m.untilTick);
+  // Milestones reached: one celebration proposed at a time.
+  if (!ev.pending.some((e) => e.kind === "celebration")) {
+    const next = eventData.celebrations.milestones.find((m) => !ev.celebrated.includes(m.id) && reached(state, m));
+    if (next) celebrate(state, cfg, next.id);
+  }
   if (state.tick % cfg.ticksPerDay === 0) dailyEvents(state, cfg);
 }
 

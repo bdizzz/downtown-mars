@@ -14,6 +14,23 @@
     ],
     "cavityCells": 3
   },
+  "celebrations": {
+    "_note": "Milestones a hole celebrates, once each: check is population (at least `at` people), born (at least `at` children born), floors (at least `at` floors dug) or domed; event milestones come only from an event's `celebrate`. A festival costs `feast` meals (or rations, if meals run short), lifts everyone for `days`, and the first `workDays` run at `productivity`.",
+    "milestones": [
+      { "id": "first_birth", "check": "born", "at": 1, "title": "the first child born on Mars" },
+      { "id": "pop_50", "check": "population", "at": 50, "title": "fifty people" },
+      { "id": "pop_100", "check": "population", "at": 100, "title": "a hundred people" },
+      { "id": "pop_200", "check": "population", "at": 200, "title": "two hundred people" },
+      { "id": "pop_300", "check": "population", "at": 300, "title": "three hundred people" },
+      { "id": "pop_500", "check": "population", "at": 500, "title": "five hundred people" },
+      { "id": "floor_5", "check": "floors", "at": 5, "title": "five floors down" },
+      { "id": "floor_10", "check": "floors", "at": 10, "title": "ten floors down" },
+      { "id": "floor_20", "check": "floors", "at": 20, "title": "twenty floors down" },
+      { "id": "dome", "check": "domed", "title": "the dome over the shaft" },
+      { "id": "microfossils", "check": "event", "title": "life on Mars, once" }
+    ],
+    "festival": { "feast": 30, "mood": 8, "days": 2, "workDays": 1, "productivity": 0.8 }
+  },
   "beltShip": {
     "fromDay": 20,
     "chancePerDay": 0.03,
@@ -21,6 +38,17 @@
     "names": ["Ceres Dawn", "Vesta's Pride", "Long Haul", "Pallas Wren", "Hygiea Star", "Old Rockhopper", "Juno Queen", "Ida's Luck"]
   },
   "events": [
+    {
+      "id": "celebration",
+      "title": "Time to celebrate: {milestone}",
+      "text": "{milestone}! People want to mark it. A festival would cost a feast and a day of slow work, but it's the kind of thing people remember.",
+      "patienceDays": 1,
+      "ignored": { "mood": { "amount": 1, "days": 1 }, "message": "{milestone}: marked with a quiet toast or two." },
+      "choices": [
+        { "id": "festival", "label": "Throw a festival", "hint": "A feast (30 meals, or rations), lanterns in the shaft, and a day of slow work (80%). Everyone's lifted (+8 happiness, easing off over two days).", "festival": true, "message": "A festival for {milestone}! Lanterns are going up the shaft." },
+        { "id": "toast", "label": "Raise a toast", "hint": "A small lift (+2 happiness for a couple of days).", "mood": { "amount": 2, "days": 2 }, "message": "A toast to {milestone}." }
+      ]
+    },
     {
       "id": "belt_ship",
       "title": "Mayday from the {ship}",

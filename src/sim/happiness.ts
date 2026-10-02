@@ -11,7 +11,7 @@ import type { SimState } from "./state";
 import { postMessage } from "./messages";
 import { config } from "./config";
 import { amenityFelt, updateDining } from "./amenities";
-import { eventMood } from "./events";
+import { eventMood, festivalWork } from "./events";
 
 // Happiness from three factors (noise, comfort, health), each −3..+3, felt
 // where colonists live. Each home's happiness eases toward its target, and a
@@ -159,7 +159,8 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
   const total = pools.reduce((s, p) => s + p.residents * p.happiness, 0) + left * homelessTarget;
   const average = pop > 0 ? total / pop : 50;
 
-  state.happiness = { pools, homeless: left, average, productivity: productivity(average, cfg), afterglow: glow };
+  // A festival's day off slows work as well.
+  state.happiness = { pools, homeless: left, average, productivity: productivity(average, cfg) * festivalWork(state, cfg), afterglow: glow };
 }
 
 export function stepHappiness(state: SimState, cfg: SimConfig): void {

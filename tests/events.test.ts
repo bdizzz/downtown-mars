@@ -4,7 +4,7 @@ import { config } from "../src/sim/config";
 import { ticksToDig } from "../src/sim/digging";
 import { padReady } from "../src/sim/earth";
 import { capacities } from "../src/sim/economy";
-import { eventMood, eventsOf, raiseEvent, rollDiscovery, stepEvents } from "../src/sim/events";
+import { eventMood, eventsOf, festivalWork, raiseEvent, rollDiscovery, stepEvents } from "../src/sim/events";
 import { isOpen } from "../src/sim/excavation";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
@@ -171,5 +171,61 @@ describe("a belt ship in distress", () => {
     expect(r.ok).toBe(false);
     expect(answer(s, "ignore").ok).toBe(true);
     expect(eventMood(s)).toBeLessThan(0);
+  });
+});
+
+describe("celebrations", () => {
+  it("a milestone reached proposes a celebration, once", () => {
+    const s = hole();
+    s.layout.hole.floors = 5;
+    stepEventsOnly(s);
+    const c = s.events!.pending.find((e) => e.kind === "celebration")!;
+    expect(c.title).toMatch(/five floors down/);
+    s.events!.pending = [];
+    stepEventsOnly(s);
+    expect(s.events!.pending.some((e) => e.kind === "celebration")).toBe(false);
+  });
+
+  it("a festival costs a feast, slows work for a day, and lifts everyone", () => {
+    const s = hole();
+    s.layout.hole.floors = 5;
+    stepEventsOnly(s);
+    s.resources.meals = 10;
+    s.resources.rations = 100;
+    expect(answer(s, "festival").ok).toBe(true);
+    expect(s.resources.meals).toBe(0);
+    expect(s.resources.rations).toBe(80);
+    expect(s.events!.festival).toBeDefined();
+    expect(festivalWork(s, config)).toBeCloseTo(0.8);
+    expect(eventMood(s)).toBeCloseTo(8);
+    s.tick += day + 1;
+    expect(festivalWork(s, config)).toBe(1);
+    expect(eventMood(s)).toBeGreaterThan(0);
+  });
+
+  it("no feast, no festival: just a toast", () => {
+    const s = hole();
+    s.layout.hole.floors = 5;
+    stepEventsOnly(s);
+    s.resources.meals = 0;
+    s.resources.rations = 5;
+    expect(answer(s, "festival").ok).toBe(false);
+    expect(answer(s, "toast").ok).toBe(true);
+  });
+
+  it("an old save doesn't celebrate what it reached long ago", () => {
+    const s = hole();
+    s.layout.hole.floors = 12;
+    delete s.events;
+    stepEventsOnly(s);
+    expect(s.events!.pending).toHaveLength(0);
+    expect(s.events!.celebrated).toEqual(expect.arrayContaining(["floor_5", "floor_10"]));
+  });
+
+  it("studying microfossils is worth a celebration", () => {
+    const s = hole();
+    raiseEvent(s, config, "microfossils", { floor: 6 });
+    expect(answer(s, "study").ok).toBe(true);
+    expect(s.events!.pending.find((e) => e.kind === "celebration")!.title).toMatch(/life on Mars/);
   });
 });
