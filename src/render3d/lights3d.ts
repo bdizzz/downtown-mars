@@ -184,7 +184,7 @@ export class LampLights {
  * cameras they'd sit between you and the room, so there they're light without
  * a lamp.
  */
-export const CEILING = { below: 0.2, reach: 9, strength: 16, color: "#ffe2bf", size: [1.2, 0.07, 0.5] as const, glow: 2.2 };
+export const CEILING = { below: 0.2, reach: 9, strength: 11, color: "#ffe2bf", size: [1.2, 0.07, 0.5] as const, glow: 2.2 };
 /** The render layer the fittings are on: only the first-person camera draws it. */
 export const FIXTURE_LAYER = 1;
 
