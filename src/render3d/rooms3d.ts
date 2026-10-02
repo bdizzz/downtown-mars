@@ -16,7 +16,7 @@ import { glazedWalls } from "../sim/windows";
 import { tubeAt } from "../view/gallery";
 import { finishMaterial, withFloor, withFresnel, withGrime, withRock, type FloorKind } from "./surfaces";
 import { roomFinish, type Finish } from "../view/roomFinish";
-import { ceilingLights, lampsOf, lightPools } from "./lights3d";
+import { lampsOf, lightPools } from "./lights3d";
 import { withCondensation } from "./details3d";
 import { spotsOf, type RoomSpots } from "./people3d";
 
@@ -741,19 +741,8 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
   // Where its people go, for the stage to fill by the hour.
   const def = roomDef(room.type);
   g.userData.people = { roomId: room.id, spots: spotsOf(fitted), accent, social: SOCIAL.has(def.category) || SOCIAL_ROOMS.has(room.type) } satisfies RoomSpots;
-  // Its lamps (and its ceiling lights, over every slot it's furnished on): pooled on the floor always, and for the stage to light the nearest.
-  const floors = new Set(fitted.map((f) => f.floor));
-  const ceiling = ceilingLights(
-    room.cells
-      .filter((c) => floors.has(c.floor))
-      .map((c) => {
-        const [r0, r1] = ringRadii(layout.hole, c.ring);
-        const [a0, a1] = slotAngles(c.slot, layout.hole.ringSlots[c.ring - 1]!);
-        return { floor: c.floor, r: (r0 + r1) / 2, a: (a0 + a1) / 2 };
-      }),
-  );
-  if (ceiling.fixtures) g.add(ceiling.fixtures);
-  const lamps = [...lampsOf(fitted), ...ceiling.lamps];
+  // Its lamps: pooled on the floor always, and for the stage to light the nearest.
+  const lamps = lampsOf(fitted);
   g.userData.lamps = lamps;
   const pools = lightPools(lamps);
   if (pools) g.add(pools);

@@ -21,8 +21,6 @@ const GENERAL: [string, string][] = [
   ["Pinch / Ctrl+scroll", "Zoom"],
   ["Right-click", "Cancel the current tool"],
   ["WASD, Q E", "First person: walk (Shift runs) and turn"],
-  ["WASD", "Iso: pan across the floor (not in Build, where they're room keys); Reset camera (top left) goes back"],
-  ["↑ ↓ / Page Up, Page Down", "Floor up / down in the Plan and 3D views"],
 ];
 
 export function Help({ onClose }: { onClose: () => void }) {

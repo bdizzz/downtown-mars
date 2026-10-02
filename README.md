@@ -50,8 +50,7 @@ Start a new game and follow your deputy's tutorial, or dive in:
 | J | Composter: organic waste and black water into soil |
 | U O H I N | Deep well pump, smelter, machine shop, silicon refinery, electronics fab (some need the right site) |
 | [ ] | Previous / next hole, once you have more than one |
-| ↑ ↓ or Page Up / Page Down | Floor up (toward the surface) / down in the Plan and 3D views (walking, the arrows walk) |
-| W A S D | Iso: pan across the floor (outside Build, where they're room keys). Once a 3D view has moved from where it starts, a **Reset camera** button at the top left takes you back |
+| Page Up / Page Down | Previous / next floor in the Plan and 3D views |
 | ⌘Z / Ctrl+Z | Undo your last placement |
 | ? | Controls help |
 | Drag / scroll | Pan (drag paints corridors with the corridor tool) |
