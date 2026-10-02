@@ -1,5 +1,5 @@
 // Runs the Godot bridge (src/bridge/main.ts): bundles it for Node with Vite, then starts it.
-// npm run bridge -- [--port=7878] [--load=save.json] [--showcase=12] [--speed=1] [--verbose]
+// npm run bridge -- [--port=17878] [--load=save.json] [--showcase=12] [--speed=1] [--verbose]
 import { build } from "vite";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { resolve } from "node:path";

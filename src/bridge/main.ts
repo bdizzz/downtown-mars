@@ -18,7 +18,7 @@ import { hover, palette, paletteKey, place, type BuildTool } from "./build";
 // panel (inspect.ts); and takes messages of its own: { type: "view", topFloor } (the floor picked, or
 // null for all) and { type: "inspect", roomId | at } (the room to show, or what's at a point).
 //
-//   npm run bridge -- [--port=7878] [--load=save.json] [--showcase=12] [--speed=1] [--hour=12] [--verbose]
+//   npm run bridge -- [--port=17878] [--load=save.json] [--showcase=12] [--speed=1] [--hour=12] [--verbose]
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => {
@@ -26,7 +26,7 @@ const args = Object.fromEntries(
     return [k!, v ?? "1"];
   }),
 );
-const port = Number(args.port ?? 7878);
+const port = Number(args.port ?? 17878);
 
 const clients = new Set<Socket>();
 let sent = 0;
@@ -125,6 +125,8 @@ const server = createServer((socket) => {
   socket.setEncoding("utf8");
   clients.add(socket);
   console.log(`Godot connected (${clients.size})`);
+  // First, say who we are: the viewer counts itself connected only once it hears this (anything else could be on the port).
+  socket.write(JSON.stringify({ type: "hello", bridge: "downtown-mars" }) + "\n");
   // A new viewer needs the layout and the rest, whatever was sent before, and starts with every floor.
   topFloor = null;
   host.resend();

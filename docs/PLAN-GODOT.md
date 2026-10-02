@@ -143,3 +143,5 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 - Rooms' outlines are hidden in first person (from above they help; up close they looked like dotted glitches on the floor).
 - Test option: `--at=x,y,z,heading[,pitch]` stands there in first person.
 
+**Fixes after Bryon's first run** (Oct 2, 2026): a gray screen with half the HUD. Docker on his Mac listens on port 7878, so with no bridge running the viewer connected to Docker, heard nothing, and (with no scene yet) had no camera. Now: the bridge's port is **17878**; the bridge says hello first and the viewer counts itself connected only once it hears it (else it says what's on the port isn't the bridge); the camera and sky are there from the start, with the waiting message in the middle of the screen; and the socket thread catches its errors (closing the window while connected aborted Godot).
+

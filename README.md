@@ -105,7 +105,7 @@ npm run bridge -- --showcase=12
 cd godot && dotnet build && godot-mono --path .
 ```
 
-The bridge serves the game on `127.0.0.1:7878` (`--load=save.json` loads a save, `--showcase=12` builds a big test colony, `--speed=2`, `--hour=12` runs on to noon, `--verbose`); the viewer connects (and reconnects) by itself. Viewer options after `--`: `--floor=4` picks a floor, `--walk` starts in first person, `--bench=8` measures frame times and quits, `--quality=low` sets the graphics level, `--port=7979` finds a bridge on another port. In the viewer: click a room for its panel, B opens Build (click to place, R turns, Esc puts down), Space pauses, 1–3 set the speed, Up/Down step the picked floor, Home shows every floor, Tab switches Iso and first person, L hides labels, F2 cycles the graphics level (Low to Ultra), F12 saves a screenshot to `godot/shots/`.
+The bridge serves the game on `127.0.0.1:17878` (`--load=save.json` loads a save, `--showcase=12` builds a big test colony, `--speed=2`, `--hour=12` runs on to noon, `--verbose`); the viewer connects (and reconnects) by itself. Viewer options after `--`: `--floor=4` picks a floor, `--walk` starts in first person, `--bench=8` measures frame times and quits, `--quality=low` sets the graphics level, `--port=7979` finds a bridge on another port. In the viewer: click a room for its panel, B opens Build (click to place, R turns, Esc puts down), Space pauses, 1–3 set the speed, Up/Down step the picked floor, Home shows every floor, Tab switches Iso and first person, L hides labels, F2 cycles the graphics level (Low to Ultra), F12 saves a screenshot to `godot/shots/`.
 
 ### Furnishing tool
 

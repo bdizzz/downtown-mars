@@ -13,7 +13,7 @@ namespace DowntownMars;
 /// screen-space occlusion and indirect light, volumetric fog, glow, and a real light per lamp.
 ///
 /// Without arguments it's the live viewer (Live.cs), drawing the game the bridge runs; --floor=&lt;n&gt;
-/// picks a floor, --walk starts in first person, --port=&lt;n&gt; finds the bridge there (default 7878),
+/// picks a floor, --walk starts in first person, --port=&lt;n&gt; finds the bridge there (default 17878),
 /// --quality=low|medium|high|ultra sets the graphics level for this run, --at=x,y,z,heading[,pitch]
 /// stands there in first person, --shot=&lt;seconds&gt; saves shots/live.png then and quits,
 /// --bench=&lt;seconds&gt; averages frame times after a warmup, prints them and quits, --click=x,y clicks there,

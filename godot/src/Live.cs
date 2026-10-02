@@ -35,7 +35,8 @@ public partial class Live : Node3D
 
     // HUD.
     CanvasLayer _hud = null!;
-    Label _title = null!, _clock = null!, _stocks = null!, _status = null!;
+    Label _title = null!, _clock = null!, _stocks = null!, _status = null!, _waiting = null!;
+    PanelContainer _pickerPanel = null!;
     readonly List<Button> _speedButtons = new();
     VBoxContainer _floorPicker = null!;
     int _pickerFloors = -1;
@@ -54,7 +55,7 @@ public partial class Live : Node3D
     /// <summary>Stand here in first person: x, y, z, heading in degrees (0 looks along +x), and optionally pitch.</summary>
     public float[]? StandAt { get; set; }
     /// <summary>The bridge's port (npm run bridge -- --port=…).</summary>
-    public int Port { get; set; } = 7878;
+    public int Port { get; set; } = 17878;
     /// <summary>A graphics level from the command line (--quality=low…ultra), not saved; otherwise the saved one.</summary>
     public Quality? StartQuality { get; set; }
     Quality _quality;
@@ -85,6 +86,10 @@ public partial class Live : Node3D
         if (Dev.Off("msaa")) GetViewport().Msaa3D = Viewport.Msaa.Disabled;
         _ground = new MeshInstance3D { Name = "Ground" };
         AddChild(_ground);
+        // A camera from the start, so there's a sky while waiting for the game (not a gray screen).
+        _rig = new CameraRig(MetaNow());
+        AddChild(_rig);
+        BuildGround();
         BuildHud();
         _quality = StartQuality ?? Graphics.Load();
         ApplyQuality();
@@ -105,6 +110,7 @@ public partial class Live : Node3D
     }
 
     double _liveMs;
+    bool _framed;
 
     public override void _Process(double delta)
     {
@@ -192,9 +198,18 @@ public partial class Live : Node3D
             OnSnapshot(snapshot.RootElement);
             snapshot.Dispose();
         }
-        _status.Text = _bridge.Connected
+        // While there's no game, say why in the middle of the screen, and hide what needs one.
+        var waiting = !_bridge.Connected;
+        _waiting.Visible = waiting;
+        _pickerPanel.Visible = !waiting && _pickerFloors >= 0;
+        _waiting.Text = _bridge.Silent
+            ? $"Something is on port {Port}, but it isn't the game's bridge.\nRun  npm run bridge  in the repo, or start both with --port=<n>."
+            : $"Waiting for the game on port {Port}…\nRun  npm run bridge  in the repo (add  -- --showcase=12  for a big test colony).";
+        _status.Text = _bridge.Silent
+            ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
+            : _bridge.Connected
             ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.Walking == true ? "first person" : "iso")}\nClick a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics"
-            : "Waiting for the game: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
+            : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
     void OnLayout(JsonElement layout)
@@ -234,10 +249,10 @@ public partial class Live : Node3D
         _hole.Build(scene);
         _hole.SetNight(1 - _light);
         GD.Print($"Scene built: {_hole.Chunks} chunks, {_hole.Lamps} lamps in {Time.GetTicksMsec() - t0} ms");
-        if (_rig == null)
+        if (!_framed && _rig != null)
         {
-            _rig = new CameraRig(MetaNow());
-            AddChild(_rig);
+            _framed = true;
+            _rig.Frame(MetaNow(), true);
             if (StartWalking) _rig.Walk(true);
             if (StandAt is float[] at && at.Length >= 4) _rig.Stand(new Vector3(at[0], at[1], at[2]), Mathf.DegToRad(at[3]), at.Length > 4 ? Mathf.DegToRad(at[4]) : 0);
         }
@@ -508,7 +523,15 @@ public partial class Live : Node3D
         _status.GrowVertical = Control.GrowDirection.Begin;
         layer.AddChild(_status);
 
-        var pickerPanel = new PanelContainer();
+        _waiting = Text("", 20, new Color("#f3e6d8"));
+        _waiting.HorizontalAlignment = HorizontalAlignment.Center;
+        _waiting.AddThemeStyleboxOverride("normal", Panel());
+        _waiting.SetAnchorsPreset(Control.LayoutPreset.Center);
+        _waiting.GrowHorizontal = Control.GrowDirection.Both;
+        _waiting.GrowVertical = Control.GrowDirection.Both;
+        layer.AddChild(_waiting);
+
+        var pickerPanel = _pickerPanel = new PanelContainer();
         pickerPanel.AddThemeStyleboxOverride("panel", Panel());
         pickerPanel.SetAnchorsPreset(Control.LayoutPreset.CenterRight);
         pickerPanel.GrowHorizontal = Control.GrowDirection.Begin;

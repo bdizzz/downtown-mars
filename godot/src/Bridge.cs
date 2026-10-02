@@ -26,9 +26,13 @@ public class Bridge : IDisposable
     NetworkStream? _stream;
     readonly object _sendLock = new();
 
-    public bool Connected => _client?.Connected == true;
+    volatile bool _greeted;
+    /// <summary>Connected to the bridge itself: it said hello (something else could be listening on the port).</summary>
+    public bool Connected => _client?.Connected == true && _greeted;
+    /// <summary>Connected to something on the port that hasn't said hello (yet): likely not the bridge.</summary>
+    public bool Silent => _client?.Connected == true && !_greeted;
 
-    public Bridge(string host = "127.0.0.1", int port = 7878)
+    public Bridge(string host = "127.0.0.1", int port = 17878)
     {
         _host = host;
         _port = port;
@@ -68,13 +72,21 @@ public class Bridge : IDisposable
                 while (!_stopping && (line = reader.ReadLine()) != null)
                 {
                     if (line.Length == 0) continue;
-                    _inbox.Enqueue(JsonDocument.Parse(line));
+                    var doc = JsonDocument.Parse(line);
+                    if (doc.RootElement.TryGetProperty("type", out var t) && t.GetString() == "hello")
+                    {
+                        _greeted = true;
+                        doc.Dispose();
+                        continue;
+                    }
+                    _inbox.Enqueue(doc);
                 }
             }
-            catch (Exception) when (!_stopping)
+            catch (Exception)
             {
-                // Not running yet, or gone: try again shortly.
+                // Not running yet, gone, or closing down: try again shortly (or stop).
             }
+            _greeted = false;
             _stream = null;
             _client?.Dispose();
             _client = null;
