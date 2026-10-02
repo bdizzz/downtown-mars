@@ -17,6 +17,7 @@ Vibe: SimCity, SimTower and Terraforming Mars, with some of Frostpunk's social t
 | `PATHWAYS.md` | Each resource family traced from source to users, with what's built. |
 | `EVENTS.md` | Event catalog: citizen visits, strike chain, hazards, discoveries, network, Earth and belt, story and notable events, with what's built. |
 | `PLAN.md`, `PLAN-M2.md` … `PLAN-M14.md` | Milestone plans, each with "Notes as built". M1 first playable, M2 polish and saves, M3 3D, M4 two holes, M5 people, M6 corridors on edges, M7 construction time, M8 storage, M9 excavation and the entrance, M10 furnishing (and later work: condition, new rooms, afterglow, charts, air quality), M11 the sealed network: gallery tubes, air and smell through corridors, amenities and services by walking distance; M12 bulkheads, airlock dust, crowding, window walls, glass and the shaft dome; M13 doors on any wall and windows as an upgrade; M14 events with choices: drill discoveries, a belt ship in distress, celebrations. |
+| `PLAN-GODOT.md` | The Godot + C# desktop experiment (`godot/`): the scene exporter, the viewer, measurements against the web version, and what they showed. |
 | `FURNITURE.md` | Furniture models and room layout templates. |
 | `ART.md` | Art direction: the cozy 3D look, palette, readability rules. |
 
