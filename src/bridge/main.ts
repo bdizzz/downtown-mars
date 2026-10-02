@@ -14,6 +14,7 @@ import { walkMap } from "./walkmap";
 import { dayOf, isSlot, readSlot, savesList, writeSlot } from "./saves";
 import { office, officeKey } from "./office";
 import { flows, trends } from "./charts";
+import { mapView, networkView, siteView } from "./network";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
 // Godot viewer, speaking the web game's worker protocol (worker/protocol.ts) one JSON message per
@@ -103,6 +104,10 @@ type BridgeMessage =
   /** Charts (charts.ts): trends for a series over a range (amounts, or change per day), and a flow tab's rivers. */
   | { type: "trends"; key: string; range: "2d" | "10d" | "all"; mode: "amount" | "rate" }
   | { type: "flows"; tab: string }
+  /** The network (network.ts): what the map shows, the network panel, and a site's report. */
+  | { type: "map" }
+  | { type: "network" }
+  | { type: "site"; lat: number; lon: number }
   /** First person: a floor's walking map (walkmap.ts). */
   | { type: "walkmap"; floor: number };
 
@@ -192,6 +197,12 @@ const server = createServer((socket) => {
           if (r.command && !r.refusal) host.onMessage({ type: "command", id: commandId++, command: r.command });
           else if (r.refusal && !msg.painting) send({ type: "notice", text: r.refusal });
           send(edgeHover(host.active(), msg.tool, msg.at));
+        } else if (msg.type === "map") {
+          send(mapView(host.snapshot()));
+        } else if (msg.type === "network") {
+          send(networkView(host.snapshot()));
+        } else if (msg.type === "site") {
+          send(siteView(host.snapshot(), { lat: msg.lat, lon: msg.lon }));
         } else if (msg.type === "trends") {
           send(trends(host.active(), msg.key, msg.range, msg.mode));
         } else if (msg.type === "flows") {

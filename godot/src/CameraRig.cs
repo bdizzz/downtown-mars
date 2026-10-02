@@ -82,6 +82,9 @@ public partial class CameraRig : Node3D
     }
 
     public bool Walking => _walking;
+
+    /// <summary>Back to this camera (after the map's).</summary>
+    public void MakeCurrent() => _cam.Current = true;
     /// <summary>Walking on the ground (not flying): there's a map and the walker found its feet.</summary>
     public bool OnFoot => _walking && _onFoot;
     /// <summary>The floor the camera is on (floor 1 starts under the 3 m crust; floors are 4 m).</summary>

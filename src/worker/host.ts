@@ -1,7 +1,7 @@
 import { applyCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { deserialize, serialize, summarize } from "../sim/save";
-import { makeSnapshot, type HoleSummary, type RelationView, type RouteView } from "../sim/snapshot";
+import { makeSnapshot, type HoleSummary, type RelationView, type RouteView, type Snapshot } from "../sim/snapshot";
 import { cultureTarget, loadFactor, relation, tier } from "../sim/culture";
 import { destination } from "../sim/migration";
 import { foundHole, travelTicks } from "../sim/founding";
@@ -90,19 +90,15 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
     return world.map.deposits.filter((d) => sites.some((s) => degreesApart(s, d) <= network.scoutRadiusDeg + d.radiusDeg));
   }
 
-  function post(): void {
+  /** The whole snapshot of the hole in view, with what only the world knows (the other holes, convoys, routes…). */
+  function snapshot(): Snapshot {
     const hole = active();
-    const { layout, effects, history, ...rest } = makeSnapshot(hole, config);
-    // The effect field changes with the layout, and with the dust through the airlocks in a storm.
-    const key = `${gameId}:${hole.holeId}:${layout.version}:${hole.effects.dust ?? 1}`;
-    const fresh = key !== sentLayout;
-    sentLayout = key;
-    const historyKey = `${gameId}:${hole.holeId}:${history?.version ?? -1}`;
-    const freshHistory = historyKey !== sentHistory;
-    sentHistory = historyKey;
-    const snapshot: WireSnapshot = {
-      ...rest,
-      gameId,
+    return { ...makeSnapshot(hole, config), ...worldViews(hole), gameId };
+  }
+
+  /** The snapshot's parts that need the world: every hole, deposits, convoys, routes, migrations, relations, news. */
+  function worldViews(hole: ReturnType<typeof active>) {
+    return {
       holes: summaries(),
       deposits: knownDeposits(),
       convoys: world.convoys.map((c) => ({
@@ -125,6 +121,23 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       mapUnlocked: world.mapUnlocked,
       // News from every hole, so nothing elsewhere goes unnoticed.
       messages: networkMessages(world, config.messages.keep),
+    };
+  }
+
+  function post(): void {
+    const hole = active();
+    const { layout, effects, history, ...rest } = makeSnapshot(hole, config);
+    // The effect field changes with the layout, and with the dust through the airlocks in a storm.
+    const key = `${gameId}:${hole.holeId}:${layout.version}:${hole.effects.dust ?? 1}`;
+    const fresh = key !== sentLayout;
+    sentLayout = key;
+    const historyKey = `${gameId}:${hole.holeId}:${history?.version ?? -1}`;
+    const freshHistory = historyKey !== sentHistory;
+    sentHistory = historyKey;
+    const snapshot: WireSnapshot = {
+      ...rest,
+      gameId,
+      ...worldViews(hole),
       layoutVersion: layout.version,
       ...(fresh ? { layout, effects } : {}),
       ...(freshHistory ? { history } : {}),
@@ -206,7 +219,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
     sentHistory = "";
   }
 
-  return { onMessage, frame, post, resend, world: () => world, active, gameId: () => gameId };
+  return { onMessage, frame, post, resend, world: () => world, active, gameId: () => gameId, snapshot };
 }
 
 export type SimHost = ReturnType<typeof createSimHost>;

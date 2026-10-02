@@ -1,19 +1,13 @@
 import { UI_FONT } from "../view/font";
 import { useEffect, useMemo, useState } from "react";
 import { Globe } from "./Globe";
-import { degreesApart, DEPOSIT_KINDS, depositsAt, distanceKm, features, nearestFeature, wrapLon, type DepositKind } from "../sim/mapgeo";
+import { DEPOSIT_KINDS, depositsAt, features, nearestFeature, wrapLon, type DepositKind } from "../sim/mapgeo";
 import { network } from "../sim/network";
+import { DEPOSIT_STYLE, siteReport, type Elevation } from "../view/network";
 import type { Snapshot } from "../sim/snapshot";
 
 // The planet from above: MOLA relief (loaded when the map first opens),
 // the game's deposits, named features, and where the holes are.
-
-export const DEPOSIT_STYLE: Record<DepositKind, { name: string; color: string; hint: string }> = {
-  ice: { name: "Ice", color: "#d6ecff", hint: "Water ice: mine it for water" },
-  aquifer: { name: "Aquifer", color: "#3f8fff", hint: "Groundwater: a deep well pump draws it" },
-  ore: { name: "Ore", color: "#c7a3a3", hint: "Metal ore: a smelter turns it into metal" },
-  silica: { name: "Silica", color: "#f0d46a", hint: "Silica: the start of silicon and electronics" },
-};
 
 /** Colour by elevation (metres): deep basins dark, plains rust, heights pale. */
 const RAMP: [number, [number, number, number]][] = [
@@ -39,7 +33,6 @@ function ramp(e: number): [number, number, number] {
   return RAMP[RAMP.length - 1]![1];
 }
 
-type Elevation = { width: number; height: number; unitMeters: number; elevation: number[] };
 
 /** Shaded relief as an image: colour by height, lit from the north-west, with the polar caps. */
 function relief(d: Elevation): ImageData {
@@ -77,7 +70,6 @@ interface Props {
   onFound: (site: SitePick) => void;
 }
 
-const fmtLat = (lat: number) => `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? "N" : "S"}`;
 
 /** The map drawn to wrap the globe: 2:1, with a scale for marks and names drawn on it. */
 const TEXTURE = { w: 2048, h: 1024, scale: 1.7 };
@@ -307,27 +299,7 @@ function SitePanel({
   onClear: () => void;
   onFound: () => void;
 }) {
-  const kit = network.seedKit;
-  const pop = s.holes.find((h) => h.id === s.holeId)?.population ?? 0;
-  const taken = [...s.holes.flatMap((h) => (h.site ? [h.site] : [])), ...s.convoys.map((c) => c.to)];
-  const checks: [boolean, string][] = [
-    [s.mapUnlocked, `The map is open (at ${network.mapUnlockPopulation} colonists)`],
-    [s.kit.hasBay, `${s.holeName} has a staging bay`],
-    [
-      s.kit.progress >= 0.999,
-      `Seed kit gathered (${Math.floor(s.kit.progress * 100)}%${s.kit.progress < 0.999 && !s.kit.gathering ? ": ask the staging bay to gather" : ""})`,
-    ],
-    [pop - kit.volunteers >= kit.minStayBehind, `${kit.volunteers} volunteers, keeping ${kit.minStayBehind} (${pop} now)`],
-    [!taken.some((t) => degreesApart(t, site) < kit.minSpacingDeg), "Far enough from other holes"],
-  ];
-  const ready = checks.every(([ok]) => ok);
-  const near = nearestFeature(site);
-  const known = s.mapUnlocked || s.holes.some((h) => h.site && degreesApart(h.site, site) <= network.scoutRadiusDeg);
-  const here = depositsAt({ deposits: s.deposits }, site);
-  const e = elevation
-    ? elevation.elevation[Math.min(elevation.height - 1, Math.floor(90 - site.lat)) * elevation.width + (Math.floor(wrapLon(site.lon)) % elevation.width)]! *
-      elevation.unitMeters
-    : null;
+  const report = siteReport(s, site, elevation);
   return (
     <aside className="site-panel">
       <header>
@@ -336,16 +308,14 @@ function SitePanel({
           ×
         </button>
       </header>
-      <p>
-        {fmtLat(site.lat)} {wrapLon(site.lon).toFixed(1)}°E{e !== null && ` · ${Math.round(e).toLocaleString()} m`}
-      </p>
-      <p className="k">{near.km < 600 ? `At ${near.feature.name}` : `${Math.round(near.km).toLocaleString()} km from ${near.feature.name}`}</p>
+      <p>{report.where}</p>
+      <p className="k">{report.near}</p>
       <h4>In the ground</h4>
-      {!known ? (
+      {!report.known ? (
         <p className="k">Not scouted yet.</p>
-      ) : here.length ? (
+      ) : report.deposits.length ? (
         <ul>
-          {here.map((k) => (
+          {report.deposits.map((k) => (
             <li key={k}>
               <i style={{ background: DEPOSIT_STYLE[k].color }} /> {DEPOSIT_STYLE[k].name}: {DEPOSIT_STYLE[k].hint.split(": ")[1]}
             </li>
@@ -356,26 +326,19 @@ function SitePanel({
       )}
       <h4>From your holes</h4>
       <ul>
-        {s.holes
-          .filter((h) => h.site)
-          .map((h) => {
-            const km = distanceKm(h.site!, site);
-            return (
-              <li key={h.id}>
-                {h.name}: {Math.round(km).toLocaleString()} km · {(km / network.roverKmPerDay).toFixed(1)} days by rover
-              </li>
-            );
-          })}
+        {report.distances.map((d) => (
+          <li key={d}>{d}</li>
+        ))}
       </ul>
       <h4>Found a hole here</h4>
       <ul className="checks">
-        {checks.map(([ok, text]) => (
+        {report.checks.map(([ok, text]) => (
           <li key={text} className={ok ? "ok" : "no"}>
             {ok ? "✓" : "·"} {text}
           </li>
         ))}
       </ul>
-      <button className="found-btn" disabled={!ready} onClick={onFound}>
+      <button className="found-btn" disabled={!report.ready} onClick={onFound}>
         Send a convoy from {s.holeName}
       </button>
     </aside>

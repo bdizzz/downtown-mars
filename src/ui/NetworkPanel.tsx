@@ -1,26 +1,15 @@
 import { useState } from "react";
 import { culture } from "../sim/culture";
 import { resourceDef } from "../sim/resources";
-import type { RouteView, Snapshot } from "../sim/snapshot";
+import type { Snapshot } from "../sim/snapshot";
 import type { CommandResult } from "../sim/commands";
 import type { RouteAction } from "../worker/protocol";
 import { num } from "./format";
+import { holeColor, phaseText } from "../view/network";
 
 // The network: every hole, its rovers, and the trade routes between them.
 
 const STEPS = [10, 20, 40, 80];
-
-const HOLE_COLORS = ["#e07a3f", "#6fb3c9", "#b48ad8", "#9bc46a", "#e0c050"];
-const colorOf = (s: Snapshot, id: number) => HOLE_COLORS[s.holes.findIndex((h) => h.id === id) % HOLE_COLORS.length]!;
-
-function phaseText(r: RouteView): string {
-  if (r.idle) return "parked: no free rover";
-  if (r.loadFactor === 0) return "they refuse to load: relations are hostile";
-  if (r.phase === "loading") return "waiting for a load";
-  const left = Math.max(0, r.legDays * (1 - r.progress));
-  const eta = left < 0.05 ? "arriving" : `${left.toFixed(1)} d`;
-  return r.phase === "outbound" ? `carrying ${num(r.cargo)} · ${eta}` : `driving back · ${eta}`;
-}
 
 export function NetworkPanel({
   s,
@@ -62,7 +51,7 @@ export function NetworkPanel({
           {s.holes.map((h) => (
             <tr key={h.id} className={h.id === s.holeId ? "here" : ""}>
               <td>
-                <i className="dot" style={{ background: colorOf(s, h.id) }} />
+                <i className="dot" style={{ background: holeColor(s, h.id) }} />
                 {h.name}{h.domed ? " ◓" : ""}
               </td>
               <td>{h.population}</td>
@@ -85,12 +74,12 @@ export function NetworkPanel({
               <span key={h.id}>
                 <i
                   className="target"
-                  style={{ left: `${((h.cultureTarget[a.id] + 1) / 2) * 100}%`, borderColor: colorOf(s, h.id) }}
+                  style={{ left: `${((h.cultureTarget[a.id] + 1) / 2) * 100}%`, borderColor: holeColor(s, h.id) }}
                 />
                 <i
                   className="now"
                   title={`${h.name}: ${a.left} ${Math.round(((1 - h.culture[a.id]) / 2) * 100)}% · ${a.right} ${Math.round(((1 + h.culture[a.id]) / 2) * 100)}%`}
-                  style={{ left: `${((h.culture[a.id] + 1) / 2) * 100}%`, background: colorOf(s, h.id) }}
+                  style={{ left: `${((h.culture[a.id] + 1) / 2) * 100}%`, background: holeColor(s, h.id) }}
                 />
               </span>
             ))}
@@ -101,7 +90,7 @@ export function NetworkPanel({
       <div className="legend">
         {s.holes.map((h) => (
           <span key={h.id}>
-            <i style={{ background: colorOf(s, h.id) }} />
+            <i style={{ background: holeColor(s, h.id) }} />
             {h.name}{h.domed ? " ◓" : ""}
           </span>
         ))}

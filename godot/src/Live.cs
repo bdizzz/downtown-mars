@@ -27,6 +27,8 @@ public partial class Live : Node3D
     GameMenu _menu = null!;
     Choices _choices = null!;
     Charts _charts = null!;
+    MapView _map = null!;
+    NetworkPanel _network = null!;
     Button _officeButton = null!;
     /// <summary>Ticks in a game day (data/config.json), for "decide within" times.</summary>
     const int TicksPerDay = 240;
@@ -119,7 +121,19 @@ public partial class Live : Node3D
         AddChild(_choices);
         _charts = new Charts(_hud, m => _bridge.Send(m)) { Name = "Charts" };
         AddChild(_charts);
-        // The room panel, the office and the charts take turns on the right.
+        _network = new NetworkPanel(_hud, m => _bridge.Send(m)) { Name = "Network" };
+        AddChild(_network);
+        _map = new MapView(_hud, m => _bridge.Send(m)) { Name = "Map", Toast = t => _build.Toast(t) };
+        AddChild(_map);
+        // The map has its own layer: the hole's sun doesn't light it.
+        _sun.LightCullMask &= ~MapView.MapLayer;
+        _map.Closed = () =>
+        {
+            _rig?.MakeCurrent();
+            _rig?.SetProcess(true);
+            _rig?.SetProcessUnhandledInput(true);
+        };
+        // The room panel, the office, the charts and the network take turns on the right.
         _choices.OfficeOpened = () =>
         {
             Inspect(null);
@@ -129,6 +143,13 @@ public partial class Live : Node3D
         {
             Inspect(null);
             _choices.ToggleOffice(false);
+            _network.Toggle(false);
+        };
+        _network.Opened = () =>
+        {
+            Inspect(null);
+            _choices.ToggleOffice(false);
+            _charts.Toggle(false);
         };
         // The menu over everything; the game pauses while it's open.
         _menu = new GameMenu(m => _bridge.Send(m)) { Name = "Menu", Toast = t => _build.Toast(t) };
@@ -240,6 +261,9 @@ public partial class Live : Node3D
             else if (type == "notice") _build.Notice(msg.RootElement);
             else if (type == "saves") _menu.SetSaves(msg.RootElement);
             else if (type == "trends") _charts.SetTrends(msg.RootElement);
+            else if (type == "map") _map.SetMap(msg.RootElement);
+            else if (type == "site") _map.SetSite(msg.RootElement);
+            else if (type == "network") _network.Set(msg.RootElement);
             else if (type == "flows") _charts.SetFlows(msg.RootElement);
             else if (type == "saved") _menu.Saved(msg.RootElement);
             else if (type == "loaded")
@@ -280,14 +304,14 @@ public partial class Live : Node3D
         // While there's no game, say why in the middle of the screen, and hide what needs one.
         var waiting = !_bridge.Connected;
         _waiting.Visible = waiting;
-        _pickerPanel.Visible = !waiting && _pickerFloors >= 0;
+        _pickerPanel.Visible = !waiting && _pickerFloors >= 0 && !_map.Open;
         _waiting.Text = _bridge.Silent
             ? $"Something is on port {Port}, but it isn't the game's bridge.\nRun  npm run bridge  in the repo, or start both with --port=<n>."
             : $"Waiting for the game on port {Port}…\nRun  npm run bridge  in the repo (add  -- --showcase=12  for a big test colony).";
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
             : _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nEsc menu · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nEsc menu · M map · N network · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
             : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -593,8 +617,31 @@ public partial class Live : Node3D
         return new Vector3(q.X, -3 - floor * _shape.FloorHeightM + 0.5f, q.Z);
     }
 
+    /// <summary>The map open or shut (M): the hole's camera rests while it's open, and the panels on the right close.</summary>
+    void ToggleMap()
+    {
+        var open = !_map.Open;
+        if (open)
+        {
+            Inspect(null);
+            _choices.ToggleOffice(false);
+            _charts.Toggle(false);
+            _network.Toggle(false);
+            _build.Toggle(false);
+            _rig?.SetProcess(false);
+            _rig?.SetProcessUnhandledInput(false);
+        }
+        _map.Show(open);
+    }
+
     public override void _UnhandledInput(InputEvent e)
     {
+        // With the map open, the pointer turns and picks on the globe; keys still work.
+        if (_map.Open && e is InputEventMouse)
+        {
+            _map.HandleInput(e);
+            return;
+        }
         _build.ShiftErase = Input.IsKeyPressed(Key.Shift);
         if (e is InputEventMouseMotion motion && _build.HasTool && FloorPoint(motion.Position) is Vector3 over)
         {
@@ -623,6 +670,9 @@ public partial class Live : Node3D
         switch (k.Keycode)
         {
             case Key.Escape when _menu.Visible: _menu.Close(); break;
+            case Key.Escape when _map.Open: ToggleMap(); break;
+            case Key.M when !_build.Active: ToggleMap(); break;
+            case Key.N when !_build.Active: _network.Toggle(); break;
             case Key.Escape when _build.HasTool: _build.Drop(); break;
             case Key.Escape when _build.Active: _build.Toggle(false); break;
             case Key.Escape when _inspector.Open: Inspect(null); break;
@@ -773,6 +823,12 @@ public partial class Live : Node3D
         _officeButton = new Button { Text = "Office", FocusMode = Control.FocusModeEnum.None, TooltipText = "Visits, promises, ordinances and notables" };
         _officeButton.Pressed += () => _choices.ToggleOffice();
         bar.AddChild(_officeButton);
+        var mapButton = new Button { Text = "Map", FocusMode = Control.FocusModeEnum.None, TooltipText = "Mars, your holes and where to found the next (M)" };
+        mapButton.Pressed += ToggleMap;
+        bar.AddChild(mapButton);
+        var networkButton = new Button { Text = "Network", FocusMode = Control.FocusModeEnum.None, TooltipText = "Holes, culture, opinion and trade routes (N)" };
+        networkButton.Pressed += () => _network.Toggle();
+        bar.AddChild(networkButton);
         var chartsButton = new Button { Text = "Charts", FocusMode = Control.FocusModeEnum.None, TooltipText = "Trends and flows (C)" };
         chartsButton.Pressed += () => _charts.Toggle();
         bar.AddChild(chartsButton);
