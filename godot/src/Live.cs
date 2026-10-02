@@ -54,6 +54,9 @@ public partial class Live : Node3D
     public bool StartWalking { get; set; }
     /// <summary>Testing: walk ahead this many seconds once on foot.</summary>
     public float StrollSeconds { get; set; }
+    /// <summary>Testing: keys to press as a keyboard would, "Tab@3,W@4-7" (a key at 3 s, a key held from 4 to 7 s).</summary>
+    public string? Keys { get; set; }
+    List<(Key key, double down, double up, bool pressed, bool released)>? _keys;
     /// <summary>Stand here in first person: x, y, z, heading in degrees (0 looks along +x), and optionally pitch.</summary>
     public float[]? StandAt { get; set; }
     /// <summary>The bridge's port (npm run bridge -- --port=…).</summary>
@@ -127,6 +130,7 @@ public partial class Live : Node3D
     void Step(double delta)
     {
         _clockSeconds += delta;
+        PlayKeys();
         if (BenchSeconds > 0 && _clockSeconds > BenchWarmup)
         {
             _frames.Add(delta * 1000);
@@ -197,12 +201,19 @@ public partial class Live : Node3D
             _shadowClock = 0;
             // The floor in view: where you stand in first person, else the picked floor (or the top).
             var focus = _rig?.Walking == true ? Mathf.FloorToInt((-cam.GlobalPosition.Y - 3) / 4) + 1 : _topFloor ?? 1;
+            // Clicks find what they hit on the floors in view (and the surface, from above).
+            _hole.EnsureCollision(new[] { 0, focus - 1, focus, focus + 1 });
             var (above, below) = Graphics.LampFloors(_quality);
             _hole.UpdateLamps(cam.GlobalPosition, focus - above, focus + below);
         }
         _hole.ShowEdges = _rig?.Walking != true;
+        WatchWalking();
         // With the corridor tool, a left drag paints (the right one still turns the camera).
-        if (_rig != null) _rig.LeftDragTurns = !_build.Painting;
+        if (_rig != null)
+        {
+            _rig.LeftDragTurns = !_build.Painting;
+            _rig.KeysMove = !_build.Active;
+        }
         AskForMaps();
         if (snapshot != null)
         {
@@ -255,7 +266,7 @@ public partial class Live : Node3D
         // A scene for another floor than ours (the bridge restarted, say): ask again.
         var cut = scene.GetProperty("topFloor");
         int? sceneFloor = cut.ValueKind == JsonValueKind.Number ? cut.GetInt32() : null;
-        if (sceneFloor != _topFloor) _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = _topFloor });
+        if (sceneFloor != Cut) _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = Cut });
         var t0 = Time.GetTicksMsec();
         _hole.Build(scene);
         _hole.SetNight(1 - _light);
@@ -320,6 +331,34 @@ public partial class Live : Node3D
         _hole.SetNight(1 - _light);
     }
 
+    /// <summary>Feed the test keys (--keys) to Godot's input, as a keyboard would.</summary>
+    void PlayKeys()
+    {
+        if (Keys == null) return;
+        _keys ??= Keys.Split(',').Select(k =>
+        {
+            var (name, when) = (k.Split('@')[0], k.Split('@')[1].Split('-'));
+            var down = double.Parse(when[0]);
+            var up = when.Length > 1 ? double.Parse(when[1]) : down + 0.1;
+            return (OS.FindKeycodeFromString(name), down, up, false, false);
+        }).ToList();
+        for (var i = 0; i < _keys.Count; i++)
+        {
+            var k = _keys[i];
+            if (!k.pressed && _clockSeconds >= k.down)
+            {
+                Input.ParseInputEvent(new InputEventKey { Keycode = k.key, PhysicalKeycode = k.key, Pressed = true });
+                k.pressed = true;
+            }
+            if (k.pressed && !k.released && _clockSeconds >= k.up)
+            {
+                Input.ParseInputEvent(new InputEventKey { Keycode = k.key, PhysicalKeycode = k.key, Pressed = false });
+                k.released = true;
+            }
+            _keys[i] = k;
+        }
+    }
+
     /// <summary>In first person, the walking maps for the floor you're on and those above and below (stairs go there).</summary>
     void AskForMaps()
     {
@@ -350,22 +389,58 @@ public partial class Live : Node3D
 
     Meta MetaNow() => new() { Hole = _shape, Cut = _topFloor };
 
+    /// <summary>
+    /// Pick a floor (null for all). In Iso the hole is cut there: everything above is left out. In first
+    /// person nothing is cut (you're inside); picking a floor takes you to its gallery instead.
+    /// </summary>
     void PickFloor(int? floor)
     {
         if (floor != null) floor = Math.Clamp(floor.Value, 1, Math.Max(1, _shape.Floors));
-        if (floor == _topFloor) return;
+        if (floor == _topFloor && _rig?.Walking != true) return;
         _topFloor = floor;
-        // With a floor picked, everything above it is left out, the ground too.
-        _ground.Visible = floor == null;
-        _people.SetTopFloor(floor);
-        BuildOccluders();
-        _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = floor });
-        _rig?.Frame(MetaNow(), false);
+        if (_rig?.Walking == true) GoToFloor(floor ?? 1);
+        else _rig?.Frame(MetaNow(), false);
+        ApplyCut();
         foreach (var b in _floorPicker.GetChildren().OfType<Button>())
         {
             var f = b.GetMeta("floor").AsInt32();
             b.ButtonPressed = f == -1 ? floor == null : f == floor;
         }
+    }
+
+    /// <summary>The cut the scene shows: the picked floor in Iso, none in first person.</summary>
+    int? Cut => _rig?.Walking == true ? null : _topFloor;
+    int? _cutSent = -1;
+
+    /// <summary>Show the cut: the scene (from the bridge), the ground, people and occluders.</summary>
+    void ApplyCut()
+    {
+        var cut = Cut;
+        _ground.Visible = cut == null;
+        _people.SetTopFloor(cut);
+        if (cut == _cutSent) return;
+        _cutSent = cut;
+        BuildOccluders();
+        _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = cut });
+    }
+
+    /// <summary>First person: to a floor's gallery, finding your feet there once its walking map is in.</summary>
+    void GoToFloor(int floor)
+    {
+        _rig?.Frame(new Meta { Hole = _shape, Cut = floor }, true);
+        _rig?.Unground();
+    }
+
+    bool _wasWalking;
+
+    /// <summary>Into first person with a floor picked: start on it; and in or out, show the right cut.</summary>
+    void WatchWalking()
+    {
+        var walking = _rig?.Walking == true;
+        if (walking == _wasWalking) return;
+        _wasWalking = walking;
+        if (walking && _topFloor is int f && !_rig!.OnFoot) GoToFloor(f);
+        ApplyCut();
     }
 
     void SetSpeed(int speed) => _bridge.Send(new Dictionary<string, object> { ["type"] = "setSpeed", ["speed"] = speed });
@@ -394,9 +469,33 @@ public partial class Live : Node3D
     /// <summary>A click (not a drag): build with the room in hand, or show the room under the pointer.</summary>
     void Click(Vector2 at)
     {
-        if (FloorPoint(at) is not Vector3 p) return;
-        if (_build.HasTool) _build.Place(p);
-        else _bridge.Send(new Dictionary<string, object> { ["type"] = "inspect", ["at"] = new[] { p.X, p.Y, p.Z } });
+        if (_build.HasTool)
+        {
+            if (FloorPoint(at) is Vector3 p) _build.Place(p);
+            return;
+        }
+        if ((RoomPoint(at) ?? FloorPoint(at)) is Vector3 q) _bridge.Send(new Dictionary<string, object> { ["type"] = "inspect", ["at"] = new[] { q.X, q.Y, q.Z } });
+    }
+
+    /// <summary>
+    /// What the pointer is on, by a ray against the hole's surfaces: a point just inside it, at its floor's
+    /// standing height, so the bridge finds the room (a wall's far side is the room behind it). Null if it hits nothing.
+    /// </summary>
+    Vector3? RoomPoint(Vector2 at)
+    {
+        if (GetViewport().GetCamera3D() is not Camera3D cam) return null;
+        var from = cam.ProjectRayOrigin(at);
+        var dir = cam.ProjectRayNormal(at);
+        var hit = GetWorld3D().DirectSpaceState.IntersectRay(PhysicsRayQueryParameters3D.Create(from, from + dir * 2000));
+        if (hit.Count == 0) return null;
+        var p = (Vector3)hit["position"];
+        var n = (Vector3)hit["normal"];
+        // On a floor (facing up): a little above it. On a wall: through it, then at standing height on its floor.
+        if (n.Y > 0.7f) return p + Vector3.Up * 0.5f;
+        var flat = new Vector3(dir.X, 0, dir.Z).Normalized();
+        var q = p + flat * 0.4f;
+        var floor = Mathf.FloorToInt((-p.Y - 3) / 4) + 1;
+        return new Vector3(q.X, -3 - floor * _shape.FloorHeightM + 0.5f, q.Z);
     }
 
     public override void _UnhandledInput(InputEvent e)
@@ -433,14 +532,17 @@ public partial class Live : Node3D
             case Key.Escape when _inspector.Open: Inspect(null); break;
             case Key.B when !_build.Active: _build.Toggle(true); break;
             case Key.R when _build.HasTool: _build.Rotate(); break;
-            case var key when _build.Active && key >= Key.A && key <= Key.Z && _build.PickByKey(((char)key).ToString()): break;
             case Key.Space when _rig?.Walking != true: SetSpeed(_speed == 0 ? 1 : 0); break;
             case Key.Key1: SetSpeed(1); break;
             case Key.Key2: SetSpeed(2); break;
             case Key.Key3: SetSpeed(4); break;
+            // In first person, up and down a floor from where you are; in Iso, the picked floor up and down.
+            case Key.Up when _rig?.Walking == true: PickFloor(Math.Max(1, (_rig.OnFoot ? _walker.Floor : _topFloor ?? 1) - 1)); break;
+            case Key.Down when _rig?.Walking == true: PickFloor((_rig.OnFoot ? _walker.Floor : _topFloor ?? 1) + 1); break;
             case Key.Up: if (_topFloor != null) PickFloor(_topFloor == 1 ? null : _topFloor - 1); break;
             case Key.Down: PickFloor((_topFloor ?? 0) + 1); break;
             case Key.Home: PickFloor(null); break;
+            case var key when _build.Active && key >= Key.A && key <= Key.Z && key != Key.R && _build.PickByKey(((char)key).ToString()): break;
             case Key.L: _hole.ShowLabels = !_hole.ShowLabels; break;
             case Key.F2: CycleQuality(); break;
             case Key.F12: Screenshot($"live-{DateTime.Now:HHmmss}"); break;
@@ -503,7 +605,7 @@ public partial class Live : Node3D
         var r0 = _shape.ShaftRadiusM - 2;
         var r1 = _shape.ShaftRadiusM + _shape.RingSlots.Length * 10;
         // Floors above a picked one aren't there, so neither are their slabs.
-        for (var f = _topFloor ?? 1; f <= _shape.Floors; f++)
+        for (var f = Cut ?? 1; f <= _shape.Floors; f++)
         {
             var y = -3 - f * _shape.FloorHeightM - 0.05f;
             var verts = new List<Vector3>();

@@ -36,6 +36,25 @@ public partial class HoleScene : Node3D
         }
     }
     readonly List<MeshInstance3D> _edges = new();
+    readonly List<bool> _seeThrough = new();
+    readonly Dictionary<int, List<MeshInstance3D>> _solid = new();
+    readonly HashSet<int> _collided = new();
+
+    /// <summary>Make these floors' surfaces solid to clicks (once each per scene).</summary>
+    public void EnsureCollision(IEnumerable<int> floors)
+    {
+        if (Dev.Off("collision")) return;
+        foreach (var f in floors)
+        {
+            if (!_collided.Add(f) || !_solid.TryGetValue(f, out var list)) continue;
+            foreach (var instance in list)
+            {
+                var body = new StaticBody3D();
+                body.AddChild(new CollisionShape3D { Shape = new ConcavePolygonShape3D { Data = instance.Mesh.GetFaces(), BackfaceCollision = true } });
+                instance.AddChild(body);
+            }
+        }
+    }
     bool _showEdges = true;
     /// <summary>Rooms' outlines: they help from above, and look like glitches up close (off in first person).</summary>
     public bool ShowEdges
@@ -56,16 +75,31 @@ public partial class HoleScene : Node3D
         AddChild(_labels);
 
         var materials = new List<Material>();
-        foreach (var m in scene.GetProperty("materials").EnumerateArray()) materials.Add(MaterialFor(m));
+        _seeThrough.Clear();
+        foreach (var m in scene.GetProperty("materials").EnumerateArray())
+        {
+            materials.Add(MaterialFor(m));
+            _seeThrough.Add(m.GetProperty("transparent").GetBoolean());
+        }
 
         Chunks = 0;
         _edges.Clear();
+        _solid.Clear();
+        _collided.Clear();
         foreach (var c in scene.GetProperty("chunks").EnumerateArray())
         {
             var mesh = ChunkMesh(c);
             if (mesh == null) continue;
             mesh.SurfaceSetMaterial(0, materials[c.GetProperty("material").GetInt32()]);
             var instance = new MeshInstance3D { Mesh = mesh, Name = $"chunk{Chunks++}" };
+            // Solid surfaces take clicks (a ray finds what's under the pointer); glass and outlines don't.
+            // Their collision is made when their floor comes into view (EnsureCollision): all at once took a second.
+            if (!c.GetProperty("lines").GetBoolean() && !_seeThrough[c.GetProperty("material").GetInt32()])
+            {
+                var floor = c.GetProperty("floor").GetInt32();
+                if (!_solid.TryGetValue(floor, out var list)) _solid[floor] = list = new();
+                list.Add(instance);
+            }
             if (c.GetProperty("lines").GetBoolean())
             {
                 instance.Visible = _showEdges;

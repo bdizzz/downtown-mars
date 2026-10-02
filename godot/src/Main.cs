@@ -15,7 +15,8 @@ namespace DowntownMars;
 /// Without arguments it's the live viewer (Live.cs), drawing the game the bridge runs; --floor=&lt;n&gt;
 /// picks a floor, --walk starts in first person, --port=&lt;n&gt; finds the bridge there (default 17878),
 /// --quality=low|medium|high|ultra sets the graphics level for this run, --at=x,y,z,heading[,pitch]
-/// stands there in first person, --stroll=&lt;seconds&gt; walks ahead that long, --shot=&lt;seconds&gt; saves shots/live.png then and quits,
+/// stands there in first person, --stroll=&lt;seconds&gt; walks ahead that long,
+/// --keys=Tab@3,W@4-7 presses keys as a keyboard would (at 3 s; held from 4 to 7 s), --shot=&lt;seconds&gt; saves shots/live.png then and quits,
 /// --bench=&lt;seconds&gt; averages frame times after a warmup, prints them and quits, --click=x,y clicks there,
 /// --build=&lt;room&gt; opens Build with that room in hand and --hover=x,y points there.
 /// Command line (after "--"): --scene=&lt;name&gt; views an exported scene instead; --bench[=seconds] circles the
@@ -58,6 +59,7 @@ public partial class Main : Node3D
                 if (arg.StartsWith("--shot=")) live.ShotAfter = float.Parse(arg["--shot=".Length..]);
                 else if (arg.StartsWith("--floor=")) live.StartFloor = int.Parse(arg["--floor=".Length..]);
                 else if (arg == "--walk") live.StartWalking = true;
+                else if (arg.StartsWith("--keys=")) live.Keys = arg["--keys=".Length..];
                 else if (arg.StartsWith("--stroll=")) live.StrollSeconds = float.Parse(arg["--stroll=".Length..]);
                 else if (arg.StartsWith("--at=")) live.StandAt = arg["--at=".Length..].Split(',').Select(float.Parse).ToArray();
                 else if (arg.StartsWith("--port=")) live.Port = int.Parse(arg["--port=".Length..]);

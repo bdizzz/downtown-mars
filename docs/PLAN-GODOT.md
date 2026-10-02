@@ -158,3 +158,11 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 - All by the web's rules in the bridge (`build.ts`): the border nearest the pointer as the web finds it (`nearestEdge`), what the tool would do there (`edgeHoverFor`), and its command (`corridorCommand`). A click's refusal comes back as a toast; painting skips what it can't do quietly.
 - With this, a whole game can be played from Godot: rooms, corridors, stairs, speed, and what each room is doing. Still only in the web: the office and visits, events, ordinances, charts, the network map, saving and loading (the bridge's `--load` takes a save file).
 
+**Fixes after Bryon's second run** (Oct 2, 2026):
+
+- *Walking through walls and furniture; changing floors didn't move the first-person camera.* Walking worked, but the walker stayed on its floor when a floor was picked, and picking one cuts the hole there, so after picking F4 you walked an invisible floor 1 under F4's rooms. Now in first person picking a floor (the picker, or ↑↓ from where you stand) takes you to its gallery; going into first person with a floor picked starts you on it; and first person shows every floor (the cut is for Iso, and comes back with it).
+- *Clicking a room didn't work.* A click looked where the pointer meets the floor in view, which looking ahead in first person it never does. Now a ray finds the surface under the pointer (collision from the scene's solid chunks, made floor by floor as they come into view, since all at once took a second per rebuild), and the room is the one it hits (through a wall, the room behind it).
+- *Build shortcuts.* They worked (B, then a room's key), but WASD, Q and E are room keys too (restroom, admin, solar, dorm, elder care, school) and also moved the camera, and L toggled labels instead of taking life support. As in the web, camera keys rest while the build bar is open, and room keys come first.
+- The bridge forgets the room panel when a viewer connects.
+- Test option: `--keys=Tab@3,W@4-7` presses keys as a keyboard would (at 3 s; held from 4 to 7 s), through Godot's own input.
+

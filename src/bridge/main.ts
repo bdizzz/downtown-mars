@@ -135,6 +135,7 @@ const server = createServer((socket) => {
   socket.write(JSON.stringify({ type: "hello", bridge: "downtown-mars" }) + "\n");
   // A new viewer needs the layout and the rest, whatever was sent before, and starts with every floor.
   topFloor = null;
+  inspecting = null;
   host.resend();
   host.post();
   sendScene(true);

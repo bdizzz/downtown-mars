@@ -35,6 +35,8 @@ public partial class CameraRig : Node3D
     public Walker? Walker { get; set; }
     /// <summary>Does a left drag turn the camera? Not while it paints corridors (a right drag still does).</summary>
     public bool LeftDragTurns { get; set; } = true;
+    /// <summary>Do WASD and Q/E move the camera? Not while the build bar is open (they're room keys there).</summary>
+    public bool KeysMove { get; set; } = true;
     /// <summary>Testing: seconds to walk straight ahead once on foot, as if W were held.</summary>
     public float StrollSeconds { get; set; }
     bool _onFoot;
@@ -134,14 +136,16 @@ public partial class CameraRig : Node3D
             Apply();
             return;
         }
-        var fwd = (Input.IsKeyPressed(Key.W) ? 1 : 0) - (Input.IsKeyPressed(Key.S) ? 1 : 0);
+        // With the build bar open, letters pick rooms (as in the web), so they don't move the camera.
+        bool Held(Key k) => KeysMove && Input.IsKeyPressed(k);
+        var fwd = (Held(Key.W) ? 1 : 0) - (Held(Key.S) ? 1 : 0);
         // Testing: walk on by itself for a while (Live's --stroll).
         if (StrollSeconds > 0 && _onFoot)
         {
             StrollSeconds -= dt;
             fwd = 1;
         }
-        var side = (Input.IsKeyPressed(Key.D) ? 1 : 0) - (Input.IsKeyPressed(Key.A) ? 1 : 0);
+        var side = (Held(Key.D) ? 1 : 0) - (Held(Key.A) ? 1 : 0);
         var fast = Input.IsKeyPressed(Key.Shift) ? 3f : 1f;
         if (_walking)
         {
@@ -164,7 +168,7 @@ public partial class CameraRig : Node3D
         }
         else
         {
-            _yaw += ((Input.IsKeyPressed(Key.E) ? 1 : 0) - (Input.IsKeyPressed(Key.Q) ? 1 : 0)) * 1.2f * dt;
+            _yaw += ((Held(Key.E) ? 1 : 0) - (Held(Key.Q) ? 1 : 0)) * 1.2f * dt;
             // Forward is the way the camera looks, flat on the ground.
             var f = new Vector3(-Mathf.Cos(_yaw), 0, -Mathf.Sin(_yaw));
             var r = new Vector3(-f.Z, 0, f.X);
