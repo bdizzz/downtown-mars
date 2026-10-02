@@ -7,7 +7,7 @@ import { furnish } from "../src/view/furnish";
 import { itemDef } from "../src/view/furniture";
 import { furnitureGroup } from "../src/render3d/rooms3d";
 import { floorSpan } from "../src/render3d/cylinder";
-import { LampLights, lampsOf, lightPools } from "../src/render3d/lights3d";
+import { FIXTURE_LAYER, LampLights, lampsOf, lightPools } from "../src/render3d/lights3d";
 
 function flat() {
   const layout = createLayout(createHole(10, 3, 3, config.geometry));
@@ -43,7 +43,13 @@ describe("lamp light", () => {
     expect(y).toBeLessThan(floorSpan(1)[0] + 0.1);
     const g = furnitureGroup(layout, room, fitted, "#888888");
     expect(g.children.some((o) => o.userData.pool)).toBe(true);
-    expect(g.userData.lamps).toHaveLength(lampsOf(fitted).length);
+    // Its furniture's lamps, and a ceiling light over each of its slots, whose fitting shows only walking.
+    expect(g.userData.lamps).toHaveLength(lampsOf(fitted).length + room.cells.length);
+    const fittings: THREE.Object3D[] = [];
+    g.traverse((o) => {
+      if (o.layers.isEnabled(FIXTURE_LAYER) && !o.layers.isEnabled(0)) fittings.push(o);
+    });
+    expect(fittings).toHaveLength(room.cells.length);
   });
 
   it("lights the nearest lamps on the floor asked for, and no more than it has", () => {
