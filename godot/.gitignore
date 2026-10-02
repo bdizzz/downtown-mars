@@ -7,3 +7,4 @@ scenes/*.glb
 scenes/*.json
 bench/
 shots/
+scenes/*.import
