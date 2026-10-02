@@ -21,6 +21,7 @@ import type { Message } from "./messages";
 import type { Notable } from "./notables";
 import { ordinanceSlots } from "./ordinances";
 import type { Office } from "./visits";
+import { choiceRefusal, eventDef, eventMood, type PendingEvent } from "./events";
 import type { Layout } from "./placement";
 import type { SimState } from "./state";
 
@@ -32,6 +33,15 @@ export interface DrillView {
   progress: number;
   /** Real ticks left on the current floor. */
   ticksLeft: number;
+  /** Stopped by an event (venting gas, studying fossils) until this tick, if it is. */
+  holdUntil: number | null;
+  /** When it last struck something (the rig shudders for a moment). */
+  struckTick: number | null;
+}
+
+/** An event waiting for an answer, with its choices and whether each can be picked now. */
+export interface EventView extends PendingEvent {
+  choices: { id: string; label: string; hint: string; refusal: string | null }[];
 }
 
 export interface ConvoyView {
@@ -168,6 +178,22 @@ export interface Snapshot {
   ordinanceSlots: number;
   /** Per-day flows by resource, averaged over recent days, for the flow diagram. */
   flows: Flows;
+  /** Events waiting for an answer (PLAN-M14), what they're doing to everyone's mood, a festival on, and the last event landing. */
+  events: { pending: EventView[]; mood: number; festival: { startTick: number; untilTick: number } | null; landingTick: number | null };
+}
+
+function eventsView(state: SimState): Snapshot["events"] {
+  const ev = state.events;
+  const pad = padReady(state);
+  return {
+    pending: (ev?.pending ?? []).map((e) => ({
+      ...e,
+      choices: eventDef(e.kind).choices.map((c) => ({ id: c.id, label: c.label, hint: c.hint.replaceAll("{floor}", String(e.floor ?? "")), refusal: choiceRefusal(state, c, pad) })),
+    })),
+    mood: eventMood(state),
+    festival: ev?.festival && ev.festival.untilTick > state.tick ? ev.festival : null,
+    landingTick: ev?.landingTick ?? null,
+  };
 }
 
 export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
@@ -195,6 +221,8 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
       floor,
       progress: floor ? state.drill.progress / needed : 0,
       ticksLeft: floor ? needed - state.drill.progress : 0,
+      holdUntil: state.drill.holdUntil !== undefined && state.drill.holdUntil > state.tick ? state.drill.holdUntil : null,
+      struckTick: state.events?.struckTick ?? null,
     },
     resources: state.resources,
     capacities: capacities(state, cfg),
@@ -238,5 +266,6 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     ordinances: state.ordinances,
     ordinanceSlots: ordinanceSlots(state),
     flows: averageFlows(state, cfg),
+    events: eventsView(state),
   };
 }

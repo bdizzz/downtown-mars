@@ -11,6 +11,7 @@ import type { SimState } from "./state";
 import { postMessage } from "./messages";
 import { config } from "./config";
 import { amenityFelt, updateDining } from "./amenities";
+import { eventMood } from "./events";
 
 // Happiness from three factors (noise, comfort, health), each −3..+3, felt
 // where colonists live. Each home's happiness eases toward its target, and a
@@ -134,7 +135,8 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
   const prev = new Map(state.happiness.pools.map((p) => [p.roomId, p]));
   const homes = state.layout.rooms.filter((r) => isActive(r) && (roomDef(r.type).houses ?? 0) > 0);
 
-  const glow = afterglow(state, cfg);
+  // The afterglow, and how recent events have left everyone feeling.
+  const glow = afterglow(state, cfg) + eventMood(state);
   const pools: HousingPool[] = homes.map((room) => {
     const factors = homeFactors(state, room, cfg);
     const target = clamp(targetHappiness(factors, cfg) + glow, 0, 100);

@@ -8,6 +8,7 @@ import { dustNow, refreshEffects } from "./effects";
 import { stepHappiness } from "./happiness";
 import { stepLedger } from "./ledger";
 import { stepVisits } from "./visits";
+import { stepEvents } from "./events";
 import { stepAging, stepGrief, stepUnlocks } from "./people";
 import { stepBirths } from "./births";
 import { stepConstruction } from "./construction";
@@ -35,6 +36,7 @@ export function step(state: SimState, cfg: SimConfig): void {
   stepUnlocks(state, cfg);
   stepHappiness(state, cfg);
   stepVisits(state, cfg);
+  stepEvents(state, cfg);
   stepLedger(state, cfg);
   stepHistory(state, cfg);
 }

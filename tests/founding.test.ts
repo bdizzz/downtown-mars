@@ -122,7 +122,8 @@ describe("two holes at once", () => {
     const child = w.holes[1]!;
     const dropAt = child.earth.nextDropTick;
     expect(dropAt).toBeGreaterThan(w.tick);
-    while (w.tick <= dropAt) stepWorld(w, config);
-    expect(child.messages.some((m) => /Supply drop landed/.test(m.text))).toBe(true);
+    // A drop can be held a day once by dust over the landing zone.
+    while (w.tick <= dropAt + config.ticksPerDay + 1) stepWorld(w, config);
+    expect(child.messages.some((m) => /Supply drop landed/.test(m.text)), child.messages.map((m) => m.text).join("\n")).toBe(true);
   });
 });

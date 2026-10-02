@@ -18,6 +18,7 @@ import { MaintenancePanel } from "./MaintenancePanel";
 import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
+import { EventCards } from "./EventCards";
 import { ViewHost } from "./ViewHost";
 import { ResourceBar } from "./ResourceBar";
 import { TrendsPanel } from "./TrendsPanel";
@@ -451,6 +452,7 @@ export function App() {
             />
           )}
           <Messages s={snapshot} />
+          <EventCards s={snapshot} onCommand={onCommand} />
           {snapshot && mapOpen && (
             <MapScreen
               s={snapshot}

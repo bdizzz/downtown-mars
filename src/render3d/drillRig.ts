@@ -50,6 +50,8 @@ export interface DrillRig {
   place(y: number, bore: number, active: boolean): void;
   /** Turn the cutterhead and the beacon, run the conveyor and blink the lamps, while the game runs. */
   step(dt: number): void;
+  /** It struck something: a few seconds of shuddering, the lamps flaring. */
+  strike(): void;
   /** Free its geometry, materials and textures. */
   dispose(): void;
 }
@@ -490,6 +492,8 @@ export function makeDrillRig(hole: Hole): DrillRig {
 
   let active = false;
   let t = 0;
+  let shake = 0;
+  const SHAKE_S = 3;
   return {
     group: g,
     place(y, bore, on) {
@@ -505,6 +509,21 @@ export function makeDrillRig(hole: Hole): DrillRig {
       beaconMat.emissiveIntensity = on ? 1.5 : 0.2;
     },
     step(dt) {
+      if (shake > 0) {
+        shake = Math.max(0, shake - dt);
+        // A judder that dies away, side to side.
+        const k = (shake / SHAKE_S) * 0.18;
+        g.position.x = Math.sin(t * 61) * k;
+        g.position.z = Math.cos(t * 47) * k;
+        lampMat.emissiveIntensity = Math.sin(t * 20) > 0 ? 4 : 1;
+        beaconMat.emissiveIntensity = 3;
+        t += dt;
+        if (shake === 0) {
+          g.position.x = g.position.z = 0;
+          beaconMat.emissiveIntensity = active ? 1.5 : 0.2;
+        }
+        if (!active) return;
+      }
       if (!active) return;
       t += dt;
       head.rotation.y += dt * 0.35;
@@ -517,6 +536,9 @@ export function makeDrillRig(hole: Hole): DrillRig {
         if (lump.position.x > convLen) lump.position.x -= convLen;
       }
       lampMat.emissiveIntensity = Math.sin(t * 4) > 0 ? 2.4 : 1.2;
+    },
+    strike() {
+      shake = SHAKE_S;
     },
     dispose() {
       g.traverse((o) => {

@@ -14,6 +14,7 @@ import { footprint, type RoomInstance } from "../src/sim/placement";
 import { missingCost } from "../src/sim/costs";
 import { effectOnRoom } from "../src/sim/effects";
 import { crowdedAir } from "../src/sim/happiness";
+import { eventDef } from "../src/sim/events";
 import { outsideEdges } from "../src/sim/edges";
 import { viewAcross, wallOf, type Across } from "../src/sim/windows";
 
@@ -339,4 +340,13 @@ export function tendWindows(hole: SimState): boolean {
     if (applyCommand(hole, { type: "setWindows", roomId: room.id, edges, on: true }).ok) any = true;
   }
   return any;
+}
+
+/** Answer whatever events are waiting: the first choice it can afford. Once a day. */
+export function tendEvents(hole: SimState): void {
+  for (const e of [...(hole.events?.pending ?? [])]) {
+    for (const c of eventDef(e.kind).choices) {
+      if (applyCommand(hole, { type: "answerEvent", eventId: e.id, choice: c.id }).ok) break;
+    }
+  }
 }

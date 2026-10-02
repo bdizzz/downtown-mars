@@ -1,3 +1,4 @@
+import { rollDiscovery } from "./events";
 import type { SimConfig } from "./config";
 import { shaftSlots, yieldRock } from "./excavation";
 import { blueprintReady } from "./construction";
@@ -12,6 +13,8 @@ export interface Drill {
   active: boolean;
   /** Ticks of work done on the floor being dug. */
   progress: number;
+  /** Stopped until this tick by an event (venting gas, studying fossils). */
+  holdUntil?: number;
 }
 
 /** Ticks needed to dig a given floor (2 = the first one dug). Deeper is slower, and much slower past the first few floors. */
@@ -36,6 +39,7 @@ export function canDig(state: SimState, cfg: SimConfig): boolean {
 
 export function stepDigging(state: SimState, cfg: SimConfig): void {
   if (!state.drill.active || !canDig(state, cfg)) return;
+  if (state.drill.holdUntil !== undefined && state.tick < state.drill.holdUntil) return;
   const floor = diggingFloor(state);
   const needed = ticksToDig(floor, cfg);
 
@@ -55,4 +59,6 @@ export function stepDigging(state: SimState, cfg: SimConfig): void {
   recomputeAccess(layout);
   layout.version++;
   state.drill.progress = 0;
+  // Perhaps it struck something on the way.
+  rollDiscovery(state, cfg, floor);
 }

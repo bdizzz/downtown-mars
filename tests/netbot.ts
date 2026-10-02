@@ -9,7 +9,7 @@ import { addRoute } from "../src/sim/rovers";
 import type { SimState } from "../src/sim/state";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
-import { ensureStairs, quarry, adapt, tendStorage, tendUpkeep, tendWindows } from "./adaptive";
+import { ensureStairs, quarry, adapt, tendStorage, tendUpkeep, tendWindows, tendEvents } from "./adaptive";
 import { PLAN, VISIT_ANSWERS } from "./bot";
 import { beds } from "../src/sim/earth";
 import { stageCounts } from "../src/sim/people";
@@ -114,6 +114,7 @@ function tend(hole: SimState, t: number): void {
     tendStorage(hole);
     tendUpkeep(hole);
     tendWindows(hole);
+    tendEvents(hole);
   }
 }
 
@@ -130,7 +131,7 @@ function answerVisits(hole: SimState): void {
   }
 }
 
-/** The nearest deposit of something the home hole lacks (silica first), far enough away to found on. */
+/** The nearest deposit of something the home hole lacks (silica first), far enough away to found on; else the nearest of anything. */
 export function pickSite(world: World, home: SimState): { lat: number; lon: number } {
   const lacks = (["silica", "ore", "aquifer"] as DepositKind[]).filter((k) => !home.deposits.includes(k));
   for (const kind of lacks) {
@@ -139,6 +140,11 @@ export function pickSite(world: World, home: SimState): { lat: number; lon: numb
       .sort((x, y) => degreesApart(x, home.site!) - degreesApart(y, home.site!))[0];
     if (d) return { lat: d.lat, lon: d.lon };
   }
+  // The home hole has them all (the drill struck them): the nearest deposit of anything, far enough away.
+  const any = world.map.deposits
+    .filter((x) => degreesApart(x, home.site!) >= network.seedKit.minSpacingDeg)
+    .sort((x, y) => degreesApart(x, home.site!) - degreesApart(y, home.site!))[0];
+  if (any) return { lat: any.lat, lon: any.lon };
   throw new Error("nowhere to found");
 }
 

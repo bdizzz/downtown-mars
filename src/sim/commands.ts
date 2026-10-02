@@ -16,6 +16,8 @@ import { domeRefusal, dropCorridors, dropRoomJobs, finishAll, prioritize, queueC
 import { holeGates, unlock, UNLOCK_GATES } from "./people";
 import { allocationRefusal } from "./storage";
 import { answerVisit } from "./visits";
+import { answerEvent } from "./events";
+import { padReady } from "./earth";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 import type { DepositKind } from "./mapgeo";
@@ -31,6 +33,8 @@ export type SimCommand =
   /** Pause a room, or have it stop while its main output is at or above stopAt (null clears it). */
   | { type: "setRoomControl"; roomId: number; paused?: boolean; stopAt?: number | null }
   | { type: "answerVisit"; visitId: number; choice: string }
+  /** Answer an event (a find, a ship, a celebration) with one of its choices. */
+  | { type: "answerEvent"; eventId: number; choice: string }
   | { type: "setOrdinance"; id: string; enacted: boolean }
   /** Carve corridors along these borders (edge ids, see edges.ts), in a finish. Skips any that can't go. */
   /** With `all`, carve every one or none (a snaked chain is no use half built). */
@@ -426,6 +430,8 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     }
     case "answerVisit":
       return answerVisit(state, config, cmd.visitId, cmd.choice);
+    case "answerEvent":
+      return answerEvent(state, config, cmd.eventId, cmd.choice, padReady(state));
     case "setOrdinance":
       if (!cmd.enacted) {
         repeal(state, cmd.id);

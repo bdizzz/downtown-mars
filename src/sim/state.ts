@@ -1,3 +1,4 @@
+import { createEvents, type EventsState } from "./events";
 import type { SimConfig } from "./config";
 import type { Drill } from "./digging";
 import { createEarth, type EarthState } from "./earth";
@@ -78,6 +79,8 @@ export interface SimState {
   foundedTick: number;
   /** Resources and vital signs over time, for the charts (absent in older saves until the first sample). */
   history?: History;
+  /** Events waiting for an answer, finds made, moods and festivals (PLAN-M14; absent in older saves until the first). */
+  events?: EventsState;
 }
 
 export interface HoleIdentity {
@@ -141,6 +144,7 @@ export function createInitialState(
     culture: { ...culture.start },
     parentHoleId: null,
     foundedTick: 0,
+    events: createEvents(who.seed),
   };
   addAdults(state, cfg.colonists.start, cfg); // the game starts with working adults only
   createNotables(state);

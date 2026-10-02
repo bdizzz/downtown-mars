@@ -36,14 +36,16 @@ describe("ninety minutes of people", () => {
     const elders = home!.population.cohorts.filter((c) => c.stage === "elder").reduce((n, c) => n + c.count, 0);
     expect(elders).toBeGreaterThan(0);
     expect(home!.unlocks).toContain("elders");
-    expect(home!.layout.rooms.some((r) => r.type === "school")).toBe(true);
+    // Somewhere in the network (with drill finds since milestone 14, the home hole's children may be few enough to go without).
+    expect(net.world.holes.some((h) => h.layout.rooms.some((r) => r.type === "school"))).toBe(true);
   });
 
   it("outgrows a single hole by a wide margin", () => {
     expect(net.log.at(-1)!.total).toBeGreaterThan(solo.log.at(-1)!.total * 1.3);
     // Gallery tubes on every new floor (milestone 11) cost rock and crew time: a little slower than before (was 160).
     // Windows paid for (milestone 13): this seed's run slows again; other seeds reach 139–147 (was 150).
-    expect(at(80).total).toBeGreaterThan(130);
+    // Drill finds (milestone 14): the bot taps every one it's offered, and over six seeds day 80 lands at 115–159 (was 130).
+    expect(at(80).total).toBeGreaterThan(110);
   });
 
   it("keeps the child hole healthy", () => {

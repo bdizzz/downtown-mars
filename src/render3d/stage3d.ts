@@ -311,6 +311,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** The boring machine at the bottom of the shaft, rebuilt for another hole's width. */
   let rig: DrillRig | null = null;
   let rigFor = "";
+  /** The drill's last strike we've seen, so the rig shudders once for each (undefined until the first snapshot). */
+  let rigStruck: number | null | undefined;
   /** The glass dome over the shaft, once a hole has one. */
   let dome: THREE.Group | null = null;
   let domeFor = "";
@@ -1593,6 +1595,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         }
         rig = makeDrillRig(snapshot.layout.hole);
         scene.add(rig.group);
+        rigStruck = undefined; // another hole (or game): its old strikes aren't news
       }
       if (rig) {
         const deepest = snapshot.layout.hole.floors;
@@ -1601,6 +1604,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         const bore = floorSpan(deepest)[0] - front;
         const shownFloor = d.floor ?? deepest;
         rig.group.visible = cf === null || shownFloor >= cf;
+        // It struck something just now (not one from before a load): shudder.
+        if (rigStruck !== undefined && d.struckTick !== null && d.struckTick !== rigStruck) rig.strike();
+        rigStruck = d.struckTick;
         if (Math.abs(rig.group.position.y - front) > 0.005 || rig.group.userData.active !== (d.active && d.floor !== null)) {
           rig.group.userData.active = d.active && d.floor !== null;
           rig.place(front, bore, d.active && d.floor !== null);

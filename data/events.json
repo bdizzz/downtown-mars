@@ -1,0 +1,85 @@
+{
+  "_note": "Events with choices (docs/PLAN-M14.md). Triggers live in src/sim/events.ts; everything else is here. An event waits patienceDays for an answer, then its `ignored` effect happens. Effects: resources (added; negative is a cost, and a choice you can't afford is greyed out), mood (happiness for everyone, easing off over its days), message, deposit (the hole gains it), openCavity (the lava tube's cells, dug free), holdDrillDays, conditionFloorAbove (condition lost by the rooms on the floor above the find), colonists, notableRole (one of the newcomers becomes a notable with that role), followUp (an effect some days later), celebrate (propose a celebration for that milestone), festival, landing (the lander comes down on the pad). Placeholders: {floor}, {ship}, {milestone}.",
+  "checkEveryTicks": 10,
+  "discoveries": {
+    "chance": 0.45,
+    "firstAlways": true,
+    "finds": [
+      { "event": "aquifer", "minFloor": 2, "weight": 3, "skipIfDeposit": "aquifer" },
+      { "event": "ore_vein", "minFloor": 2, "weight": 3, "skipIfDeposit": "ore" },
+      { "event": "silica_bed", "minFloor": 2, "weight": 3, "skipIfDeposit": "silica" },
+      { "event": "lava_tube", "minFloor": 3, "weight": 3 },
+      { "event": "gas_pocket", "minFloor": 4, "weight": 2 },
+      { "event": "microfossils", "minFloor": 6, "weight": 1, "once": true }
+    ],
+    "cavityCells": 3
+  },
+  "events": [
+    {
+      "id": "aquifer",
+      "title": "The drill struck water",
+      "text": "Floor {floor}: the cutterhead broke into a layer of wet rock, and water is seeping into the bore. An aquifer, right under us.",
+      "patienceDays": 2,
+      "ignored": { "message": "Nobody decided about the aquifer on floor {floor}: the drill crew sealed it and carried on." },
+      "choices": [
+        { "id": "tap", "label": "Tap it", "hint": "The hole gains the aquifer (deep well pumps), and 150 water now.", "deposit": "aquifer", "resources": { "water": 150 }, "message": "The aquifer on floor {floor} is tapped: deep well pumps can draw on it." },
+        { "id": "seal", "label": "Seal it pristine", "hint": "Leave Mars's water untouched. Everyone's a little proud (+4 happiness for a few days).", "mood": { "amount": 4, "days": 3 }, "message": "The aquifer on floor {floor} is sealed, untouched. People are proud of that." }
+      ]
+    },
+    {
+      "id": "ore_vein",
+      "title": "A rich ore vein",
+      "text": "Floor {floor}: the spoil coming up the conveyor is heavy and dark. The drill has cut a vein of iron ore.",
+      "patienceDays": 2,
+      "ignored": { "message": "The ore vein on floor {floor} was left alone." },
+      "choices": [
+        { "id": "work", "label": "Work the vein", "hint": "The hole gains the ore deposit (smelters; digging brings up ore), and 60 ore now.", "deposit": "ore", "resources": { "ore": 60 }, "message": "The ore vein on floor {floor} is being worked." },
+        { "id": "leave", "label": "Leave it", "hint": "Nothing changes." }
+      ]
+    },
+    {
+      "id": "silica_bed",
+      "title": "A bed of silica sand",
+      "text": "Floor {floor}: the drill is bringing up fine pale sand. Silica: the stuff of glass and wafers.",
+      "patienceDays": 2,
+      "ignored": { "message": "The silica bed on floor {floor} was left alone." },
+      "choices": [
+        { "id": "work", "label": "Work the bed", "hint": "The hole gains the silica deposit (digging brings up silica), and 60 silica now.", "deposit": "silica", "resources": { "silica": 60 }, "message": "The silica bed on floor {floor} is being worked." },
+        { "id": "leave", "label": "Leave it", "hint": "Nothing changes." }
+      ]
+    },
+    {
+      "id": "lava_tube",
+      "title": "A lava tube",
+      "text": "Floor {floor}: the drill broke into a hollow. An old lava tube runs off from the shaft, smooth-walled and dry.",
+      "patienceDays": 2,
+      "ignored": { "message": "The lava tube on floor {floor} was left: the crew walled it off." },
+      "choices": [
+        { "id": "open", "label": "Open it up", "hint": "A run of empty space on floor {floor}, dug out for free, ready to build in.", "openCavity": true, "message": "The lava tube on floor {floor} is opened up: free space to build in." },
+        { "id": "mine", "label": "Mine its walls", "hint": "200 rock from its walls; the space stays rock.", "resources": { "rock": 200 }, "message": "The lava tube's walls on floor {floor} are mined for rock." }
+      ]
+    },
+    {
+      "id": "gas_pocket",
+      "title": "Gas in the bore",
+      "text": "Floor {floor}: the drill has opened a pocket of gas. The sensors are complaining and the crew wants to know how careful to be.",
+      "patienceDays": 1,
+      "ignored": { "holdDrillDays": 1, "message": "With nobody deciding, the drill crew vented the gas slowly: a day lost." },
+      "choices": [
+        { "id": "vent", "label": "Vent it slowly", "hint": "Safe, but the drill loses a day.", "holdDrillDays": 1, "message": "The gas on floor {floor} is vented slowly: the drill is back at it tomorrow." },
+        { "id": "push", "label": "Push through", "hint": "Keep drilling: the rooms on the floor above lose 20 condition to the fumes, and people are rattled (−4 happiness for a few days).", "conditionFloorAbove": 20, "mood": { "amount": -4, "days": 3 }, "message": "The drill pushed through the gas on floor {floor}. The floor above smells of it." }
+      ]
+    },
+    {
+      "id": "microfossils",
+      "title": "Microfossils!",
+      "text": "Floor {floor}: in the spoil, under a hand lens, tiny ordered shapes. Something lived here once. The scientists want the drill stopped.",
+      "patienceDays": 2,
+      "ignored": { "mood": { "amount": -5, "days": 3 }, "message": "Nobody stopped the drill for the microfossils, and the scientists are sulking." },
+      "choices": [
+        { "id": "study", "label": "Stop and study them", "hint": "The drill stops for 2 days. Everyone's thrilled (+10 happiness), and it's worth a celebration.", "holdDrillDays": 2, "mood": { "amount": 10, "days": 5 }, "celebrate": "microfossils", "message": "Life on Mars, once: the microfossils from floor {floor} are being studied." },
+        { "id": "dig", "label": "Dig on", "hint": "No time lost; the scientists sulk (−5 happiness).", "mood": { "amount": -5, "days": 3 }, "message": "The drill digs on past the microfossils. The scientists are not pleased." }
+      ]
+    }
+  ]
+}
