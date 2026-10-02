@@ -17,7 +17,7 @@ static class Lighting
     /// <param name="lite">Without the costly parts (SDFGI, SSIL, volumetric fog), to measure what they cost.</param>
     /// <summary>The sky's top, horizon and ground-horizon colours by day and by night.</summary>
     public static readonly (Color top, Color horizon, Color ground) DaySky = (new(0.62f, 0.45f, 0.33f), new(0.86f, 0.66f, 0.47f), new(0.55f, 0.36f, 0.25f));
-    public static readonly (Color top, Color horizon, Color ground) NightSky = (new(0.03f, 0.02f, 0.04f), new(0.09f, 0.05f, 0.06f), new(0.05f, 0.03f, 0.03f));
+    public static readonly (Color top, Color horizon, Color ground) NightSky = (new(0.05f, 0.035f, 0.06f), new(0.17f, 0.1f, 0.1f), new(0.1f, 0.06f, 0.05f));
 
     public static WorldEnvironment MakeEnvironment(bool lite = false)
     {
@@ -35,6 +35,8 @@ static class Lighting
             Sky = new Sky { SkyMaterial = sky },
             AmbientLightSource = Godot.Environment.AmbientSource.Sky,
             AmbientLightEnergy = 0.25f,
+            // Mixed with the sky's light (by AmbientLightSkyContribution): the dust's dim glow, which carries the nights.
+            AmbientLightColor = new Color(0.62f, 0.44f, 0.34f),
             TonemapMode = Godot.Environment.ToneMapper.Agx,
             TonemapExposure = 1.0f,
             SsaoEnabled = true,

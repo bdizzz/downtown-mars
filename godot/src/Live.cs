@@ -40,6 +40,8 @@ public partial class Live : Node3D
     CameraRig? _rig;
     WorldEnvironment _env = null!;
     DirectionalLight3D _sun = null!;
+    /// <summary>The night's dust glow from overhead: dim, warm, no shadows (with GI on, Godot's ambient light doesn't reach).</summary>
+    readonly DirectionalLight3D _glow = new() { Name = "NightGlow", LightColor = new Color(0.85f, 0.62f, 0.5f), ShadowEnabled = false, LightSpecular = 0.1f, LightEnergy = 0 };
     FogVolume? _haze;
     MeshInstance3D _ground = null!;
 
@@ -97,6 +99,8 @@ public partial class Live : Node3D
         AddChild(_env);
         _sun = Lighting.MakeSun(new float[] { 40, 80, 20 });
         AddChild(_sun);
+        AddChild(_glow);
+        _glow.LookAtFromPosition(new Vector3(-20, 100, 35), Vector3.Zero, Vector3.Up);
         _hole = new HoleScene { Name = "Hole" };
         AddChild(_hole);
         _people = new People { Name = "People" };
@@ -131,6 +135,7 @@ public partial class Live : Node3D
         AddChild(_map);
         // The map has its own layer: the hole's sun doesn't light it.
         _sun.LightCullMask &= ~MapView.MapLayer;
+        _glow.LightCullMask &= ~MapView.MapLayer;
         _map.Closed = () =>
         {
             _rig?.MakeCurrent();
@@ -429,7 +434,10 @@ public partial class Live : Node3D
         _sun.LookAtFromPosition(pos, Vector3.Zero, Vector3.Up);
         _sun.LightEnergy = (0.15f + 2.0f * _light) * (1 - 0.7f * storm);
         var env = _env.Environment;
-        env.AmbientLightEnergy = (0.08f + 0.2f * _light) * (1 - 0.4f * storm);
+        // Nights stay readable: as the sky darkens, the ambient light turns to the dust's dim glow, never black.
+        env.AmbientLightEnergy = (0.12f + 0.16f * _light) * (1 - 0.4f * storm);
+        env.AmbientLightSkyContribution = Graphics.SkyShare * Mathf.Lerp(0.35f, 1f, _light);
+        _glow.LightEnergy = 0.35f * (1 - _light) * (1 - 0.5f * storm);
         if (env.Sky.SkyMaterial is ProceduralSkyMaterial sky)
         {
             var day = Lighting.DaySky;

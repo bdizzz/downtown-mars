@@ -28,6 +28,9 @@ public static class Graphics
         cfg.Save(File);
     }
 
+    /// <summary>How much of the ambient light comes from the sky by day at this level (the rest is the dust's glow).</summary>
+    public static float SkyShare { get; private set; } = 1;
+
     /// <summary>Lamps casting shadows at each level.</summary>
     public static int ShadowLamps(Quality q) => q switch { Quality.Low => 0, Quality.Medium => 2, Quality.High => 4, _ => 8 };
 
@@ -43,7 +46,8 @@ public static class Graphics
         env.SsilEnabled = q >= Quality.Ultra && !Dev.Off("ssil");
         if (haze != null) haze.Visible = env.VolumetricFogEnabled;
         // Without bounced light, the sky lights the rooms a little more.
-        env.AmbientLightSkyContribution = env.SdfgiEnabled ? 1f : 0.85f;
+        SkyShare = env.SdfgiEnabled ? 1f : 0.85f;
+        env.AmbientLightSkyContribution = SkyShare;
         sun.DirectionalShadowMaxDistance = q == Quality.Low ? 120 : 200;
         viewport.Msaa3D = q == Quality.Low || Dev.Off("msaa") ? Viewport.Msaa.Disabled : Viewport.Msaa.Msaa2X;
         viewport.ScreenSpaceAA = q == Quality.Low ? Viewport.ScreenSpaceAAEnum.Fxaa : Viewport.ScreenSpaceAAEnum.Disabled;
