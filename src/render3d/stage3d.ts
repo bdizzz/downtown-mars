@@ -17,7 +17,7 @@ import { DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { withRegolith, withRock } from "./surfaces";
 import { RoomEffects } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
-import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
+import { FIXTURE_LAYER, LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
 import { createSky } from "./sky3d";
 import { buildTerrain, siteSeed, type Terrain } from "./terrain3d";
 import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
@@ -91,6 +91,8 @@ const FIELD_MAX = 3;
 /** Overlay tints sit just proud of the cells, in front of the rock and around rooms. */
 const FIELD_OUTSET = -0.04;
 const FIELD_ALPHA = 0.55;
+/** The fill light: the ambient's strength, and how much of the fill (sky and ambient) is left walking. */
+const FILL = { ambient: 0.25, walk: 0.7 };
 /** The camera's headlamp: how strong in the shaft view and walking, and where it rides (metres above and behind the eye). */
 const HEADLAMP = { shaft: 40, walk: 10, above: 1.2, behind: 1.5 };
 /** The sun's shadow: map size at full setting, how far its box reaches (from 100 m up), the margin round the rings, and how far (radians) it moves before shadows are redrawn. */
@@ -140,7 +142,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   const hemi = new THREE.HemisphereLight(0xffe6cc, 0x2a1510, 1.1);
   scene.add(hemi);
-  scene.add(new THREE.AmbientLight(0xffe0c0, 0.25));
+  const ambientLight = new THREE.AmbientLight(0xffe0c0, FILL.ambient);
+  scene.add(ambientLight);
+  /** The sky's light before the first-person dimming (set with the sky). */
+  let hemiBase = 1;
   // A warm lamp that travels with the camera, like a colonist's headlamp,
   // so the shaft reads at night too. It rides above and behind the eye, so
   // what's right in front of you (glass, a colonist) isn't blown out.
@@ -441,6 +446,22 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     cam.height = Math.min(TOP.max, Math.max(TOP.min, (r * TOP.margin) / tan));
   }
 
+  /** The fill light (sky and ambient): dimmer walking, so the rooms' own lights do the work and corners go dark. */
+  function applyFill(): void {
+    const k = view.mode === "walk" ? FILL.walk : 1;
+    hemi.intensity = hemiBase * k;
+    ambientLight.intensity = FILL.ambient * k;
+  }
+
+  /** Where the lamps that light the scene are picked round: where you stand walking, where Iso looks, else the camera. */
+  function lampFocus(): THREE.Vector3 {
+    if (view.mode === "walk") return new THREE.Vector3(walker.x, camera.position.y, walker.z);
+    if (view.mode === "iso") return isoLook.clone();
+    return camera.position;
+  }
+  /** The point Iso looks at (set in applyCamera). */
+  const isoLook = new THREE.Vector3();
+
   function applyCamera(): void {
     clampCamera();
     const R = hole?.shaftRadiusM ?? 10;
@@ -464,7 +485,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const y = f === null ? 0 : floorSpan(f)[0];
       camera.position.copy(out).multiplyScalar(cam.iso * Math.cos(cam.isoElev)).setY(y + cam.iso * Math.sin(cam.isoElev));
       const past = outerRadius() * ISO.lookPast;
-      camera.lookAt(-out.x * past, y, -out.z * past);
+      isoLook.set(-out.x * past, y, -out.z * past);
+      camera.lookAt(isoLook);
     } else if (view.mode === "walk") {
       // On a flight of stairs, as high up it as you've climbed.
       const lift = layout ? stairLift(layout, walker.floor, walker.x, walker.z) : 0;
@@ -488,6 +510,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       camera.updateProjectionMatrix();
     }
     lamp.visible = inside;
+    // Ceiling-light fittings only walking: from above they'd sit between you and the room.
+    if (view.mode === "walk") camera.layers.enable(FIXTURE_LAYER);
+    else camera.layers.disable(FIXTURE_LAYER);
+    applyFill();
     // Walking, the rooms' own lights do most of the work: the headlamp only takes the edge off the dark.
     lamp.intensity = view.mode === "walk" ? HEADLAMP.walk : HEADLAMP.shaft;
     fill.intensity = inside ? 0.15 : 0.7;
@@ -557,7 +583,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (cut() === null) scene.background = skyColor;
     // Deep in the shaft, daylight matters less than the lamps; keep it gentle.
     // A dust storm blots out the sun, and some of the sky's light.
-    hemi.intensity = (0.45 + 0.35 * light) * (1 - STORM_DIM.sky * storm);
+    hemiBase = (0.45 + 0.35 * light) * (1 - STORM_DIM.sky * storm);
+    applyFill();
     // With shadows the rock keeps the sun out of the rooms, so it can shine harder down the shaft and on the surface.
     sunBase = (0.15 + 0.9 * light) * (1 - STORM_DIM.sun * storm);
     sun.intensity = sunBase * (sun.castShadow ? SUN_SHADOW.boost : 1);
@@ -1430,7 +1457,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // Far rooms draw their furniture coarser.
     for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : "near");
     // The nearest lamps light their rooms.
-    lampLights.place(lampList, view.mode === "walk" ? new THREE.Vector3(walker.x, camera.position.y, walker.z) : camera.position, view.mode === "walk" ? walker.floor : cut());
+    lampLights.place(lampList, lampFocus(), view.mode === "walk" ? walker.floor : cut());
     updateShadows();
     skyDome.follow(camera);
     look.setView(hazeFocus(), view.mode === "walk" || view.mode === "shaft", view.mode === "iso");
@@ -1598,6 +1625,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             const n = { near: 0, far: 0 };
             for (const g of furnitureGroups) n[(g.userData.detailShown ?? "near") as "near" | "far"]++;
             return n;
+          },
+          lampState() {
+            const f = lampFocus();
+            return { mode: view.mode, focus: f.toArray().map((v) => v.toFixed(1)), list: lampList.map((l) => `${l.floor}@${l.x.toFixed(1)},${l.y.toFixed(1)},${l.z.toFixed(1)}`), lamps: lampList.length, lights: lampLights.group.children.map((l) => [(l as THREE.PointLight).intensity.toFixed(2), l.position.toArray().map((v) => v.toFixed(1)).join(",")]) };
           },
           shadowState() {
             return { enabled: renderer.shadowMap.enabled, sun: sun.castShadow, map: sun.shadow.map ? sun.shadow.map.width : null, sunPos: sun.position.toArray(), box: [sun.shadow.camera.left, sun.shadow.camera.right], key: shadowKey, casters: (() => { let n = 0; scene.traverse((o) => { if ((o as THREE.Mesh).castShadow) n++; }); return n; })() };
