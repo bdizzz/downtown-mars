@@ -70,7 +70,7 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 1. Bridge and live viewer: the hole, furniture, lamps, day and night, speed and floor picking. **Done.**
 2. People: colonists walking the galleries and corridors, at work and at home. **Done**, with a performance pass.
 3. Picking and info: click a room for what it is and how it's doing. **Done.**
-4. Building: place rooms, dig, corridors, from Godot.
+4. Building: place rooms, dig, corridors, from Godot. **Rooms done** (corridor drawing, windows and bulkheads not yet).
 5. Looks: materials and models made for Godot, graphics presets.
 
 ### Notes as built
@@ -105,4 +105,12 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 - The inspector's state line ("Running at 40% · short of staff", "No access: connect it with a corridor") moved from `ui/Inspector.tsx` to `src/view/roomState.ts`, so the web and the Godot panel say the same.
 - Test option: `--click=x,y` clicks there once the scene is up.
 - Not yet: surface rooms (the pod, the pad, solar arrays) can't be picked; the web's inspector does much more (renaming, priority, crops, storage, windows, reach), which comes with building.
+
+**Step 4** (Oct 2, 2026):
+
+- **Build mode** (`BuildMode.cs`): B opens a strip of categories along the bottom (the web's, in order); each pops up its rooms, one line each with cost and hotkey, locked ones dimmed (the reason in the tooltip), two columns when there are many. A room in hand shows a ghost of its footprint where the pointer meets the floor in view (the surface, for surface rooms), green or red, with its cost and why not or what it does ("A blueprint: builds when its floor is dug"). Click builds; R turns it (cycles its shapes); Esc or a right click puts it down; with the strip open, a room's hotkey takes it in hand.
+- **By the web's rules**, in the bridge (`src/bridge/build.ts`): the palette from `roomDefs` with `siteRefusal` and `missingCost`, sent when the gates or what the stocks can pay for change; hover and place use `pickAt`, `locationFor` (`view/interaction.ts`) and `checkBuild`, so placement, costs, blueprints and refusals match the web exactly. Building over corridors asks first (a Godot dialog), as the web's confirm. A refused command comes back as a toast.
+- The palette's catalogue (categories in order, their names, room hotkeys, shapes) moved from `ui/BuildPalette.tsx` to `src/view/buildCatalog.ts` for both.
+- The room panel gained **Connect** (carves corridors in rock to reach an unconnected room, as the web's) and **Demolish** (Cancel for a blueprint or a room being built).
+- Test options: `--build=<room>` opens Build with it in hand, `--hover=x,y` points there.
 

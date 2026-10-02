@@ -14,7 +14,8 @@ namespace DowntownMars;
 ///
 /// Without arguments it's the live viewer (Live.cs), drawing the game the bridge runs; --floor=&lt;n&gt;
 /// picks a floor, --walk starts in first person, --shot=&lt;seconds&gt; saves shots/live.png then and quits,
-/// --bench=&lt;seconds&gt; averages frame times after a warmup, prints them and quits, --click=x,y clicks there.
+/// --bench=&lt;seconds&gt; averages frame times after a warmup, prints them and quits, --click=x,y clicks there,
+/// --build=&lt;room&gt; opens Build with that room in hand and --hover=x,y points there.
 /// Command line (after "--"): --scene=&lt;name&gt; views an exported scene instead; --bench[=seconds] circles the
 /// camera, writes bench/&lt;name&gt;.json and a screenshot, then quits; with --walk, in first person. --no-lamp-shadows: lamps light but cast no shadows; --lite: no SDFGI, SSIL or volumetric fog.
 /// Keys: Tab switches Iso and first person; F12 saves a screenshot to shots/.
@@ -56,6 +57,12 @@ public partial class Main : Node3D
                 else if (arg.StartsWith("--floor=")) live.StartFloor = int.Parse(arg["--floor=".Length..]);
                 else if (arg == "--walk") live.StartWalking = true;
                 else if (arg.StartsWith("--bench=")) live.BenchSeconds = float.Parse(arg["--bench=".Length..]);
+                else if (arg.StartsWith("--build=")) live.StartTool = arg["--build=".Length..];
+                else if (arg.StartsWith("--hover="))
+                {
+                    var xy = arg["--hover=".Length..].Split(',');
+                    live.HoverAt = new Vector2(float.Parse(xy[0]), float.Parse(xy[1]));
+                }
                 else if (arg.StartsWith("--click="))
                 {
                     var xy = arg["--click=".Length..].Split(',');

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Godot;
@@ -13,6 +14,9 @@ public partial class Inspector : Node3D
 {
     readonly PanelContainer _panel = new();
     readonly Label _title = new(), _subtitle = new(), _state = new(), _lines = new();
+    readonly Button _connect = new() { Text = "Connect", FocusMode = Control.FocusModeEnum.None, TooltipText = "Carve corridors (rock finish) along rooms to reach it" };
+    readonly Button _demolish = new() { Text = "Demolish", FocusMode = Control.FocusModeEnum.None };
+    int _roomId;
     readonly MeshInstance3D _outline = new() { Name = "Outline", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
     readonly StandardMaterial3D _lineMaterial = new()
     {
@@ -24,6 +28,8 @@ public partial class Inspector : Node3D
     string _outlineData = "";
 
     public Action? Closed { get; set; }
+    /// <summary>Sends a simulation command (SimCommand) for the room's buttons.</summary>
+    public Action<Dictionary<string, object>>? Command { get; set; }
 
     public Inspector(CanvasLayer hud)
     {
@@ -52,6 +58,13 @@ public partial class Inspector : Node3D
         rows.AddChild(_state);
         Style(_lines, 14, new Color("#e0cfbd"));
         rows.AddChild(_lines);
+        var buttons = new HBoxContainer();
+        buttons.AddThemeConstantOverride("separation", 8);
+        rows.AddChild(buttons);
+        _connect.Pressed += () => Command?.Invoke(new() { ["type"] = "connectRoom", ["roomId"] = _roomId, ["finish"] = "rock" });
+        _demolish.Pressed += () => Command?.Invoke(new() { ["type"] = "demolish", ["roomId"] = _roomId });
+        buttons.AddChild(_connect);
+        buttons.AddChild(_demolish);
     }
 
     static void Style(Label l, int size, Color color)
@@ -73,6 +86,9 @@ public partial class Inspector : Node3D
             return;
         }
         _panel.Visible = true;
+        _roomId = msg.GetProperty("roomId").GetInt32();
+        _connect.Visible = !msg.GetProperty("connected").GetBoolean() && !msg.GetProperty("unbuilt").GetBoolean();
+        _demolish.Text = msg.GetProperty("unbuilt").GetBoolean() ? "Cancel" : "Demolish";
         _title.Text = msg.GetProperty("title").GetString();
         _subtitle.Text = msg.GetProperty("subtitle").GetString();
         _state.Text = msg.GetProperty("state").GetString();

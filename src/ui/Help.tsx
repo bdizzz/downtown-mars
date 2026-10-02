@@ -1,4 +1,4 @@
-import { CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS } from "./BuildPalette";
+import { CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS } from "../view/buildCatalog";
 import { roomDefs } from "../sim/rooms";
 
 const GENERAL: [string, string][] = [

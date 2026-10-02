@@ -23,6 +23,9 @@ export interface InspectedMessage {
   lines?: string[];
   /** The room's outline: float32 line segments (xyz pairs), base64. */
   outline?: string;
+  /** For its buttons: whether a corridor reaches it, and whether it's still a blueprint or being built. */
+  connected?: boolean;
+  unbuilt?: boolean;
 }
 
 /** The room at a world point (as the web view picks), or null. */
@@ -70,5 +73,7 @@ export function inspect(state: SimState, roomId: number | null): InspectedMessag
     problem: isProblem(room, st),
     lines,
     outline,
+    connected: room.connected,
+    unbuilt: room.planned || !!room.building,
   };
 }

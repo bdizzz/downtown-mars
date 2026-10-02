@@ -9,6 +9,7 @@ import { gameTime } from "../sim/clock";
 import { stepWorld } from "../sim/worldstep";
 import type { RoomSpots } from "../render3d/people3d";
 import { inspect, roomAtPoint } from "./inspect";
+import { hover, palette, paletteKey, place, type BuildTool } from "./build";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
 // Godot viewer, speaking the web game's worker protocol (worker/protocol.ts) one JSON message per
@@ -82,7 +83,25 @@ type BridgeMessage =
   | ToWorker
   | { type: "view"; topFloor: number | null }
   /** The room panel: a room by id, or whatever is at a world point; null closes it. */
-  | { type: "inspect"; roomId?: number | null; at?: [number, number, number] };
+  | { type: "inspect"; roomId?: number | null; at?: [number, number, number] }
+  /** Building: what placing the tool's room at a world point would do, and doing it. */
+  | { type: "hover"; tool: BuildTool; at: [number, number, number] }
+  | { type: "place"; tool: BuildTool; at: [number, number, number]; confirmed?: boolean };
+
+function send(msg: object): void {
+  const line = JSON.stringify(msg) + "\n";
+  for (const c of clients) c.write(line);
+}
+
+// The build palette: sent when what can be built changes.
+let sentPalette = "";
+function sendPalette(force = false): void {
+  const key = paletteKey(host.active());
+  if (!force && key === sentPalette) return;
+  sentPalette = key;
+  send(palette(host.active()));
+}
+let commandId = 1_000_000;
 
 // The room in the panel, kept up to date twice a second.
 let inspecting: number | null = null;
@@ -111,6 +130,7 @@ const server = createServer((socket) => {
   host.resend();
   host.post();
   sendScene(true);
+  sendPalette(true);
   let buffer = "";
   socket.on("data", (chunk: string) => {
     buffer += chunk;
@@ -124,6 +144,13 @@ const server = createServer((socket) => {
         if (msg.type === "view") {
           topFloor = msg.topFloor;
           sendScene();
+        } else if (msg.type === "hover") {
+          send(hover(host.active(), msg.tool, msg.at));
+        } else if (msg.type === "place") {
+          const r = place(host.active(), msg.tool, msg.at, !!msg.confirmed);
+          if (r.command) host.onMessage({ type: "command", id: commandId++, command: r.command });
+          else send({ type: "notice", text: r.refusal ?? r.confirm, ...(r.confirm ? { confirm: { tool: msg.tool, at: msg.at } } : {}) });
+          send(hover(host.active(), msg.tool, msg.at));
         } else if (msg.type === "inspect") {
           inspecting = msg.at ? roomAtPoint(host.active(), msg.at) : (msg.roomId ?? null);
           sendInspect();
@@ -145,6 +172,7 @@ server.listen(port, "127.0.0.1", () => console.log(`Sim bridge on 127.0.0.1:${po
 setInterval(() => {
   host.frame();
   sendScene();
+  if (clients.size) sendPalette();
   if (inspecting !== null && ++inspectClock % Math.round(config.snapshotsPerSecond / 2) === 0) sendInspect();
 }, 1000 / config.snapshotsPerSecond);
 setInterval(() => {

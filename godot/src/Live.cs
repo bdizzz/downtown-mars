@@ -25,6 +25,8 @@ public partial class Live : Node3D
     HoleScene _hole = null!;
     People _people = null!;
     Inspector _inspector = null!;
+    BuildMode _build = null!;
+    int _commandId = 1;
     Vector2 _pressAt;
     bool _pressed;
     CameraRig? _rig;
@@ -53,6 +55,9 @@ public partial class Live : Node3D
     public bool StartWalking { get; set; }
     /// <summary>A click at this screen point once the scene is up (for testing picking from the command line).</summary>
     public Vector2? ClickAt { get; set; }
+    /// <summary>A room to have in hand once the palette's in, and a point to hover (testing building from the command line).</summary>
+    public string? StartTool { get; set; }
+    public Vector2? HoverAt { get; set; }
     public float ShotAfter { get; set; }
     /// <summary>Benchmark: after a warmup, average this many seconds of frames, print them, save a shot and quit.</summary>
     public float BenchSeconds { get; set; }
@@ -77,7 +82,10 @@ public partial class Live : Node3D
         BuildHud();
         _inspector = new Inspector(_hud) { Name = "Inspector" };
         _inspector.Closed = () => Inspect(null);
+        _inspector.Command = SendCommand;
         AddChild(_inspector);
+        _build = new BuildMode(_hud, m => _bridge.Send(m)) { Name = "Build" };
+        AddChild(_build);
         RenderingServer.ViewportSetMeasureRenderTime(GetViewport().GetViewportRid(), true);
     }
 
@@ -110,6 +118,17 @@ public partial class Live : Node3D
                 GetTree().Quit();
             }
         }
+        if (StartTool is string tool && _rig != null && _clockSeconds > 4)
+        {
+            StartTool = null;
+            _build.Toggle(true);
+            _build.Pick(tool);
+        }
+        if (HoverAt is Vector2 hover && _rig != null && _clockSeconds > 5 && FloorPoint(hover) is Vector3 over)
+        {
+            HoverAt = null;
+            _build.Hover(over, hover);
+        }
         if (ClickAt is Vector2 click && _rig != null && _clockSeconds > 6)
         {
             ClickAt = null;
@@ -137,6 +156,11 @@ public partial class Live : Node3D
             if (type == "scene") OnScene(msg.RootElement);
             else if (type == "people") _people.Set(msg.RootElement);
             else if (type == "inspected") _inspector.Show(msg.RootElement);
+            else if (type == "palette") _build.SetPalette(msg.RootElement);
+            else if (type == "hovered") _build.Hovered(msg.RootElement);
+            else if (type == "notice") _build.Notice(msg.RootElement);
+            else if (type == "commandResult" && msg.RootElement.GetProperty("result") is var r && !r.GetProperty("ok").GetBoolean())
+                _build.Toast(r.TryGetProperty("reason", out var why) ? why.GetString() ?? "Can't do that" : "Can't do that");
             msg.Dispose();
         }
         // Lamps near what you're looking at, and their shadows, follow the camera a few times a second.
@@ -154,7 +178,7 @@ public partial class Live : Node3D
             snapshot.Dispose();
         }
         _status.Text = _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.Walking == true ? "first person" : "iso")}\nClick a room · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.Walking == true ? "first person" : "iso")}\nClick a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels"
             : "Waiting for the game: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -269,24 +293,36 @@ public partial class Live : Node3D
     /// <summary>Show a room in the panel (null closes it).</summary>
     void Inspect(int? roomId) => _bridge.Send(new Dictionary<string, object?> { ["type"] = "inspect", ["roomId"] = roomId });
 
-    /// <summary>A click (not a drag): what's under the pointer, on the floor in view.</summary>
-    void Click(Vector2 at)
+    void SendCommand(Dictionary<string, object> command) => _bridge.Send(new Dictionary<string, object> { ["type"] = "command", ["id"] = _commandId++, ["command"] = command });
+
+    /// <summary>
+    /// Where the pointer meets the floor in view: where you stand in first person, else the picked
+    /// floor (or the first); the surface for a surface room in hand with no floor picked.
+    /// </summary>
+    Vector3? FloorPoint(Vector2 at)
     {
-        if (GetViewport().GetCamera3D() is not Camera3D cam) return;
+        if (GetViewport().GetCamera3D() is not Camera3D cam) return null;
         var from = cam.ProjectRayOrigin(at);
         var dir = cam.ProjectRayNormal(at);
-        // The floor in view: where you stand in first person, else the picked floor (or the first).
         var floor = _rig?.Walking == true ? Mathf.FloorToInt((-cam.GlobalPosition.Y - 3) / 4) + 1 : _topFloor ?? 1;
-        var y = -3 - floor * _shape.FloorHeightM + 0.5f;
-        if (Mathf.Abs(dir.Y) < 1e-4f) return;
+        var y = _build.Tool != null && _build.SurfaceTool && _topFloor == null ? 0.2f : -3 - floor * _shape.FloorHeightM + 0.5f;
+        if (Mathf.Abs(dir.Y) < 1e-4f) return null;
         var t = (y - from.Y) / dir.Y;
-        if (t <= 0) return;
-        var p = from + dir * t;
-        _bridge.Send(new Dictionary<string, object> { ["type"] = "inspect", ["at"] = new[] { p.X, p.Y, p.Z } });
+        return t > 0 ? from + dir * t : null;
+    }
+
+    /// <summary>A click (not a drag): build with the room in hand, or show the room under the pointer.</summary>
+    void Click(Vector2 at)
+    {
+        if (FloorPoint(at) is not Vector3 p) return;
+        if (_build.Tool != null) _build.Place(p);
+        else _bridge.Send(new Dictionary<string, object> { ["type"] = "inspect", ["at"] = new[] { p.X, p.Y, p.Z } });
     }
 
     public override void _UnhandledInput(InputEvent e)
     {
+        if (e is InputEventMouseMotion motion && _build.Tool != null && FloorPoint(motion.Position) is Vector3 over) _build.Hover(over, motion.Position);
+        if (e is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: false } && _build.Tool != null) _build.Drop();
         // Clicks pick a room; drags turn the camera (CameraRig), so tell them apart by how far the pointer moved.
         if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left } mb)
         {
@@ -305,7 +341,12 @@ public partial class Live : Node3D
         if (e is not InputEventKey { Pressed: true, Echo: false } k) return;
         switch (k.Keycode)
         {
+            case Key.Escape when _build.Tool != null: _build.Drop(); break;
+            case Key.Escape when _build.Active: _build.Toggle(false); break;
             case Key.Escape when _inspector.Open: Inspect(null); break;
+            case Key.B when !_build.Active: _build.Toggle(true); break;
+            case Key.R when _build.Tool != null: _build.Rotate(); break;
+            case var key when _build.Active && key >= Key.A && key <= Key.Z && _build.PickByKey(((char)key).ToString()): break;
             case Key.Space when _rig?.Walking != true: SetSpeed(_speed == 0 ? 1 : 0); break;
             case Key.Key1: SetSpeed(1); break;
             case Key.Key2: SetSpeed(2); break;
