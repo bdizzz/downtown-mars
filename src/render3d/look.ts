@@ -185,7 +185,38 @@ const GradeShader = {
     }`,
 };
 
-export class Look {
+/** What the stage needs from the post-processing pipeline (Look, or PlainLook while trying WebGPU). */
+export interface LookLike {
+  setGraphics(g: Graphics): void;
+  setStorm(level: number): void;
+  setDaylight(light: number): void;
+  setView(focusY: number, inside: boolean, iso: boolean): void;
+  resize(): void;
+  render(): void;
+  dispose(): void;
+}
+
+/** No post effects at all: the scene straight to the screen (the WebGPU experiment, until its own pipeline exists). */
+export class PlainLook implements LookLike {
+  constructor(
+    private renderer: { render(s: THREE.Scene, c: THREE.Camera): unknown; setPixelRatio(r: number): void },
+    private scene: THREE.Scene,
+    private camera: THREE.PerspectiveCamera,
+  ) {}
+  setGraphics(g: Graphics): void {
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, g.pixelRatio));
+  }
+  setStorm(): void {}
+  setDaylight(): void {}
+  setView(): void {}
+  resize(): void {}
+  render(): void {
+    this.renderer.render(this.scene, this.camera);
+  }
+  dispose(): void {}
+}
+
+export class Look implements LookLike {
   private graphics: Graphics | null = null;
   private iso = false;
   private storm = 0;

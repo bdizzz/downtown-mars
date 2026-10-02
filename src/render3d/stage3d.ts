@@ -12,7 +12,7 @@ import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
-import { Look } from "./look";
+import { Look, PlainLook, type LookLike } from "./look";
 import { DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { withRegolith, withRock } from "./surfaces";
 import { RoomEffects } from "./effects3d";
@@ -95,11 +95,20 @@ const FIELD_ALPHA = 0.55;
 const OVERLAY_OFFSET = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 };
 
 export async function createStage3D(host: HTMLElement, opts: StageOptions = {}): Promise<Stage> {
+  // The WebGPU experiment (?renderer=webgpu): three's WebGPU renderer, with no post effects yet and
+  // without the shader tweaks it can't take (see docs/WEBGPU.md). Typed as the WebGL one for now.
+  const webgpu = new URLSearchParams(location.search).get("renderer") === "webgpu";
   let renderer: THREE.WebGLRenderer;
   try {
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-  } catch {
-    throw new Error("3D needs WebGL, which this browser or device doesn't provide.");
+    if (webgpu) {
+      const { WebGPURenderer } = await import("three/webgpu");
+      const r = new WebGPURenderer({ antialias: true });
+      await r.init();
+      renderer = r as unknown as THREE.WebGLRenderer;
+      console.info(`3D: WebGPU renderer (${(r.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? "WebGPU" : "WebGL 2 fallback"})`);
+    } else renderer = new THREE.WebGLRenderer({ antialias: true });
+  } catch (e) {
+    throw new Error(webgpu ? `WebGPU renderer failed: ${(e as Error).message}` : "3D needs WebGL, which this browser or device doesn't provide.");
   }
   // Filmic tone mapping keeps the lamp-lit wall from blowing out close up.
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -116,7 +125,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let skyColor = new THREE.Color(C.nightSky);
   scene.add(skyDome.mesh);
   // What's drawn over the scene (occlusion, haze, glow, grading), per the graphics settings.
-  const look = new Look(renderer, scene, camera);
+  const look: LookLike = webgpu ? new PlainLook(renderer, scene, camera) : new Look(renderer, scene, camera);
 
   const hemi = new THREE.HemisphereLight(0xffe6cc, 0x2a1510, 1.1);
   scene.add(hemi);
@@ -1459,10 +1468,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         (window as unknown as { __stage3d: unknown }).__stage3d = {
           ...stats,
           measure(): number {
-            const gl = renderer.getContext();
             const t0 = performance.now();
             renderer.render(scene, camera);
-            gl.finish();
+            if (!webgpu) renderer.getContext().finish();
             return performance.now() - t0;
           },
           setMode(m: Mode) {
