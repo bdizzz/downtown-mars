@@ -25,6 +25,8 @@ public partial class Choices : Node
     readonly PanelContainer _office = new();
     readonly VBoxContainer _officeRows = new();
     readonly Dictionary<int, Label> _countdowns = new();
+    readonly VBoxContainer _news = new();
+    static readonly System.Text.RegularExpressions.Regex RoomToken = new(@"\[\[room:\d+\|([^|\]]*)\|([^\]]*)\]\]");
     string _cardsKey = "";
     int _ticksPerDay = 240;
 
@@ -39,6 +41,15 @@ public partial class Choices : Node
         _cards.Position = new Vector2(10, 100);
         _cards.AddThemeConstantOverride("separation", 8);
         hud.AddChild(_cards);
+
+        // News, as the web's messages: the latest few, fading over a game day, at the bottom right.
+        _news.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
+        _news.GrowHorizontal = Control.GrowDirection.Begin;
+        _news.GrowVertical = Control.GrowDirection.Begin;
+        _news.Position = new Vector2(-470, -100);
+        _news.Alignment = BoxContainer.AlignmentMode.End;
+        _news.AddThemeConstantOverride("separation", 4);
+        hud.AddChild(_news);
 
         _office.Visible = false;
         _office.SetAnchorsPreset(Control.LayoutPreset.TopRight);
@@ -135,6 +146,43 @@ public partial class Choices : Node
         foreach (var e in pending.EnumerateArray())
             if (_countdowns.TryGetValue(e.GetProperty("id").GetInt32(), out var label))
                 label.Text = $"Decide within {Left(e.GetProperty("expiresTick").GetInt32() - tick)}";
+    }
+
+    string _newsKey = "";
+
+    /// <summary>The snapshot's messages: the latest four from the last game day, fading as they age.</summary>
+    public void SetMessages(JsonElement snapshot, int ticksPerDay)
+    {
+        var tick = snapshot.GetProperty("tick").GetInt32();
+        var holeId = snapshot.GetProperty("holeId").GetInt32();
+        var recent = snapshot.GetProperty("messages").EnumerateArray().Where(m => tick - m.GetProperty("tick").GetInt32() < ticksPerDay).TakeLast(4).ToList();
+        var key = string.Join("|", recent.Select(m => $"{m.GetProperty("tick").GetInt32()}:{m.GetProperty("text").GetString()}"));
+        if (key != _newsKey)
+        {
+            _newsKey = key;
+            foreach (var c in _news.GetChildren())
+            {
+                _news.RemoveChild(c);
+                c.QueueFree();
+            }
+            foreach (var m in recent)
+            {
+                var text = RoomToken.Replace(m.GetProperty("text").GetString()!, x => x.Groups[2].Value == "S" ? $"{x.Groups[1].Value} (surface)" : $"{x.Groups[1].Value} (F{x.Groups[2].Value})");
+                if (m.TryGetProperty("holeId", out var h) && h.GetInt32() != holeId && m.TryGetProperty("holeName", out var name)) text = $"{name.GetString()}: {text}";
+                var kind = m.GetProperty("kind").GetString();
+                var label = Text(text, 14, kind == "warn" ? Warn : kind == "good" ? new Color("#9fd28a") : Body);
+                label.CustomMinimumSize = new Vector2(440, 0);
+                label.HorizontalAlignment = HorizontalAlignment.Right;
+                label.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
+                label.AddThemeConstantOverride("shadow_offset_x", 1);
+                label.AddThemeConstantOverride("shadow_offset_y", 1);
+                label.SetMeta("tick", m.GetProperty("tick").GetInt32());
+                _news.AddChild(label);
+            }
+        }
+        // Fading out over the day, as the web's.
+        foreach (var label in _news.GetChildren().OfType<Label>())
+            label.Modulate = new Color(1, 1, 1, 1 - Mathf.Pow((float)(tick - label.GetMeta("tick").AsInt32()) / ticksPerDay, 3));
     }
 
     /// <summary>The bridge's office view.</summary>

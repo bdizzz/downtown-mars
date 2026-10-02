@@ -347,6 +347,7 @@ public partial class Live : Node3D
         _stocks.Text = string.Join("   ", Stocks.Where(k => res.TryGetProperty(k.key, out _)).Select(k => $"{k.name} {res.GetProperty(k.key).GetDouble():0}"));
         for (var i = 0; i < Speeds.Length; i++) _speedButtons[i].ButtonPressed = Speeds[i] == _speed;
         _choices.SetEvents(s, TicksPerDay);
+        _choices.SetMessages(s, TicksPerDay);
         var storm = s.GetProperty("weather").GetProperty("storm").GetSingle();
         Daylight(t.GetProperty("dayFraction").GetSingle(), storm);
     }
