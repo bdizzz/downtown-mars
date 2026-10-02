@@ -11,8 +11,11 @@ Events are how the colony talks back: citizen visits, hazards, discoveries, netw
 | Equipment failure | Breakdowns: now and then something in a room breaks and knocks its condition down 20–30 points. Rooms also wear, and maintenance or cleaning crews repair them |
 | Supply drops | Every few days from Earth, sometimes delayed |
 | People | Births, retirements, deaths, migration between holes, opinion shifts between holes |
+| Drill discoveries (M14) | Aquifer, rich ore vein, silica bed, lava tube, gas pocket and microfossils, struck as floors are finished, each with a choice (`data/events.json`, `sim/events.ts`) |
+| Belt ship in distress (M14) | From day 20: bring her down (crew and salvage), send supplies up (thanks later), or ignore her |
+| Celebrations (M14) | Milestones proposed as a festival (a feast, a slow day, lights and lanterns) or a toast |
 
-Everything else here (the strike chain, cave-ins, outbreaks, discoveries, network, Earth and belt events, story beats, notable life events) is still design. Events don't offer choices yet, except citizen visits.
+Everything else here (the strike chain, cave-ins, outbreaks, the network events, the rest of Earth and the belt, story beats, notable life events) is still design. Visits and the M14 events offer choices; M14 events arrive as cards and don't pause the game.
 
 ## How events work
 

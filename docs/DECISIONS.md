@@ -150,6 +150,14 @@ See `PLAN-M13.md` (Bryon's request; the numbers are Claude's defaults, in data).
 - **Windows are an upgrade,** off by default. The corridor tool's **Windows** mode glazes a whole wall at a click, only where the shaft, a corridor or a walk-through room is across it. **Windows cost glass** (2 per 10 m; Bryon, Oct 1). To make that work early, the landing kit brings 100 glass (the pod holds 100 more units for it) and the glassworks is available from the start, smaller and cheaper: 2×1, 2 staff, rock 4 and power 3 → glass 3 a day, built from rock 20 and metal 4. (A metal price was tried first and stalled the bots; rock was a stopgap.)
 - **Window comfort (homes):** the best wall's view, averaged along it: open shaft 1.5, shaft through a tube 1, a plaza or stairs 0.75, a corridor 0.25; +0.25 for each other glazed wall, up to 2; the dome's atrium on top. Replaces the automatic shaft view.
 
+## Decided for milestone 14 (Oct 1)
+
+See `PLAN-M14.md` (Bryon: drill discoveries, then the belt ship, then celebrations; the numbers are Claude's defaults, in `data/events.json`).
+
+- **Events sting, they don't crush,** and **don't pause the game:** a card waits with its choices and a deadline; ignored, it takes its own course.
+- **Drill discoveries:** a 45% chance each floor (the first always), six finds by depth. **The belt ship:** from day 20, 3% a day, at most once in 25 days. **Celebrations:** one per milestone, a festival or a toast.
+- **Events roll their own dice** (hashed from a seed kept with them), never the hole's random stream, so adding an event doesn't reshuffle storms, births and visits.
+
 ## Still open
 
 Deliberately not decided yet:
