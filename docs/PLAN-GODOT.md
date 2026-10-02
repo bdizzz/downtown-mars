@@ -173,3 +173,10 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 - Checked: a slot saved and listed; the autosave written as a new day began; loading a slot put the game back.
 - Known: a save's summary counts days from tick 0, not from the 6:00 start, so an autosave made as day 2 begins says day 1 (the web's menu does the same; it's the sim's `summarize`).
 
+**Events and the office** (Oct 2, 2026):
+
+- **Event cards** (`Choices.cs`), as the web's: one each at the top left, with its icon, text, a button per choice (its hint, or why not, and disabled then) and how long you have to decide, from the snapshot's pending events (the sim works out each choice's refusal). The game runs on.
+- **The office**: an Office button in the HUD (amber, "Office · N waiting", when someone is) or O opens a panel on the right (it and the room panel take turns there): who's waiting, with their role, traits and loyalty, what they want, when they leave and the answers you can give (an answer that would enact an ordinance with no slot free is disabled); promises and how long is left; ordinances to enact or repeal against the slots; the notables and their loyalty. The bridge sends it (`src/bridge/office.ts`, laid out as `ui/Office.tsx`) when it changes.
+- Checked by tapping through the UI (`--keys=…,tap:x:y@t` clicks a screen point as a mouse would): answering a noise complaint emptied the waiting room and left a promise; raising a toast to five floors brought up the next card.
+- Still only in the web: news messages, charts and flows, the network map and other holes, people and maintenance panels.
+

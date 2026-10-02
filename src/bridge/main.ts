@@ -12,6 +12,7 @@ import { inspect, roomAtPoint } from "./inspect";
 import { edgeCommand, edgeHover, hover, palette, paletteKey, place, type BuildTool, type CorridorTool } from "./build";
 import { walkMap } from "./walkmap";
 import { dayOf, isSlot, readSlot, savesList, writeSlot } from "./saves";
+import { office, officeKey } from "./office";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
 // Godot viewer, speaking the web game's worker protocol (worker/protocol.ts) one JSON message per
@@ -106,6 +107,15 @@ function send(msg: object): void {
   for (const c of clients) c.write(line);
 }
 
+// The office: sent when it changes.
+let sentOffice = "";
+function sendOffice(force = false): void {
+  const key = officeKey(host.active());
+  if (!force && key === sentOffice) return;
+  sentOffice = key;
+  send(office(host.active()));
+}
+
 // The build palette: sent when what can be built changes.
 let sentPalette = "";
 function sendPalette(force = false): void {
@@ -147,6 +157,7 @@ const server = createServer((socket) => {
   host.post();
   sendScene(true);
   sendPalette(true);
+  sendOffice(true);
   let buffer = "";
   socket.on("data", (chunk: string) => {
     buffer += chunk;
@@ -237,7 +248,10 @@ setInterval(() => {
 setInterval(() => {
   host.frame();
   sendScene();
-  if (clients.size) sendPalette();
+  if (clients.size) {
+    sendPalette();
+    sendOffice();
+  }
   if (inspecting !== null && ++inspectClock % Math.round(config.snapshotsPerSecond / 2) === 0) sendInspect();
 }, 1000 / config.snapshotsPerSecond);
 setInterval(() => {
