@@ -12,7 +12,7 @@ import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
-import { Look, PlainLook, type LookLike } from "./look";
+import { Look, type LookLike } from "./look";
 import { DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { withRegolith, withRock } from "./surfaces";
 import { RoomEffects } from "./effects3d";
@@ -102,7 +102,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   try {
     if (webgpu) {
       const { WebGPURenderer } = await import("three/webgpu");
-      const r = new WebGPURenderer({ antialias: true });
+      // No MSAA: the effects read the depth buffer, and TRAA smooths edges instead.
+      // Five render targets for the effects need 40 bytes a pixel (WebGPU's default limit is 32; Apple GPUs allow 128).
+      const r = new WebGPURenderer({ antialias: false, requiredLimits: { maxColorAttachmentBytesPerSample: 64 } } as ConstructorParameters<typeof WebGPURenderer>[0]);
       await r.init();
       renderer = r as unknown as THREE.WebGLRenderer;
       console.info(`3D: WebGPU renderer (${(r.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? "WebGPU" : "WebGL 2 fallback"})`);
@@ -125,7 +127,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let skyColor = new THREE.Color(C.nightSky);
   scene.add(skyDome.mesh);
   // What's drawn over the scene (occlusion, haze, glow, grading), per the graphics settings.
-  const look: LookLike = webgpu ? new PlainLook(renderer, scene, camera) : new Look(renderer, scene, camera);
+  const look: LookLike = webgpu
+    ? new (await import("./lookGpu")).GpuLook(renderer as unknown as import("three/webgpu").WebGPURenderer, scene, camera)
+    : new Look(renderer, scene, camera);
 
   const hemi = new THREE.HemisphereLight(0xffe6cc, 0x2a1510, 1.1);
   scene.add(hemi);
@@ -1431,7 +1435,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     });
     if (terrain) terrain.group.visible = cut() === null;
     // With a floor picked you're looking underground: earth all round, no sky.
-    skyDome.mesh.visible = cut() === null;
+    // (The sky's shader isn't ported to WebGPU yet: a plain sky colour there.)
+    skyDome.mesh.visible = cut() === null && !webgpu;
     scene.background = cut() === null ? skyColor : new THREE.Color(C.earth);
     people.group.visible = graphics.life;
     grit.setLevel(graphics.life && cut() === null ? storm : 0);

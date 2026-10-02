@@ -28,3 +28,21 @@ All in TSL, three's node shading language (JavaScript that compiles to WGSL for 
 5. **Then the new things:** SSGI, SSR on glass and floors, TRAA, shadowed lamps, GPU particles.
 
 Once 1–4 are done, WebGPU could become the default with WebGL 2 as its automatic fallback, and the old GLSL path retired.
+
+## The effects preview (Oct 1)
+
+`render3d/lookGpu.ts` (`GpuLook`), used with `?renderer=webgpu`: one scene pass writing five targets (colour, base colour, normals, metal/roughness, motion), then SSGI, SSR, bloom and TRAA. `?fx=gi,ssr,bloom,traa` picks effects (`?fx=none` for the bare scene); in dev, `__gpuFx("gi")` switches live and `__gpuGi(0.35)` / `__gpuSsr(0.6)` set strengths.
+
+What it took:
+- The five targets need 40 bytes a pixel against WebGPU's default limit of 32 (even 8-bit targets count 8 bytes each): the renderer asks for 64 (`requiredLimits`; Apple GPUs allow 128).
+- No MSAA in this mode (`antialias: false`, a single-sampled pass): the effects read depth, which can't be copied from a multisampled buffer; TRAA smooths edges instead.
+- SSGI's bounce added on top of our fill lights (hemisphere, ambient) roughly triples the brightness and washes everything out: it runs at a 0.35 share. A real port would trim the fill lights instead.
+- Glass and other see-through materials write zero alpha into the effects' buffers (`material.mrtNode`), or SSGI lights the tube glass as if it were solid and turns it milky.
+
+What it looks like (same save, paused at 00:30, same camera; screenshots shared in conversation):
+- **From Iso distance, today's WebGL look is warmer and richer.** Its procedural rock, haze and colour grade carry the mood, and none of them are ported yet. The new effects are subtle at that distance.
+- **Close up, WebGPU adds deeper contact shadows** under railings, at wall bases and round furniture, and a moodier, more grounded contrast. Bounced light tints surfaces near lit ones, softly.
+- **Reflections barely show:** almost all our surfaces are rough (0.75–0.9). SSR pays off only once floors, tubes and metal are given glossier materials.
+- **Cost:** fine on this Mac; not measured on weaker GPUs.
+
+Verdict for now: WebGPU is a good foundation (the effects work, glass is handled, the pipe is fast), but the visible gain over today's tuned WebGL look is modest until the procedural surfaces, sky, haze and grade come across (the 4–6 day port above) and the materials are retuned to give SSR and SSGI something to work with.
