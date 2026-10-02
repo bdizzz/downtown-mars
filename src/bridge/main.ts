@@ -111,6 +111,8 @@ function send(msg: object): void {
   for (const c of clients) c.write(line);
 }
 
+let shownHole: number | null = null;
+
 // The office: sent when it changes.
 let sentOffice = "";
 function sendOffice(force = false): void {
@@ -259,6 +261,15 @@ setInterval(() => {
   if (clients.size) {
     sendPalette();
     sendOffice();
+    // Another hole in view: the room panel was about one in the last.
+    const hole = host.active().holeId;
+    if (hole !== shownHole) {
+      if (shownHole !== null && inspecting !== null) {
+        inspecting = null;
+        sendInspect();
+      }
+      shownHole = hole;
+    }
   }
   if (inspecting !== null && ++inspectClock % Math.round(config.snapshotsPerSecond / 2) === 0) sendInspect();
 }, 1000 / config.snapshotsPerSecond);

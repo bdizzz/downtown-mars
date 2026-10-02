@@ -67,5 +67,5 @@ export function office(state: SimState): OfficeMessage {
 /** What changes the office (the time left only by the game hour, so it isn't sent every tick). */
 export function officeKey(state: SimState): string {
   const hour = Math.floor(state.tick / (config.ticksPerDay / 24));
-  return JSON.stringify([hour, state.office.waiting.map((v) => v.id), state.office.promises.length, state.ordinances, ordinanceSlots(state), state.notables.map((n) => n.loyalty)]);
+  return JSON.stringify([state.holeId, hour, state.office.waiting.map((v) => v.id), state.office.promises.length, state.ordinances, ordinanceSlots(state), state.notables.map((n) => n.loyalty)]);
 }

@@ -15,6 +15,7 @@ const CELL = 0.15;
 export interface WalkMapMessage {
   type: "walkmap";
   floor: number;
+  holeId: number;
   layoutVersion: number;
   /** The grid: `size` cells across from -half to +half metres on x and z, `cell` metres each. */
   size: number;
@@ -78,6 +79,7 @@ export function walkMap(state: SimState, floor: number): WalkMapMessage {
   return {
     type: "walkmap",
     floor,
+    holeId: state.holeId,
     layoutVersion: layout.version,
     size,
     half,

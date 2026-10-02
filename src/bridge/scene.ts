@@ -68,7 +68,7 @@ export interface SceneMessage {
 /** What decides the scene: when it changes, build again. */
 export function sceneKey(state: SimState, gameId: number, topFloor: number | null): string {
   const grime = state.layout.rooms.map(grimeLevel).join("");
-  return `${gameId}:${state.layout.version}:${drillFloor(state)}:${topFloor}:${grime}`;
+  return `${gameId}:${state.holeId}:${state.layout.version}:${drillFloor(state)}:${topFloor}:${grime}`;
 }
 
 function drillFloor(state: SimState): number | null {

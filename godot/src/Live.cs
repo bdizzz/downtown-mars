@@ -52,7 +52,9 @@ public partial class Live : Node3D
     HoleShape _shape = new();
     int? _topFloor;
     int _speed = 1;
-    int _gameId = -1;
+    int _gameId = -1, _holeId = -1;
+    OptionButton _holePicker = null!;
+    string _holesKey = "";
     float _light = 1;
     double _clockSeconds, _shadowClock;
 
@@ -217,7 +219,7 @@ public partial class Live : Node3D
             }
             if (type == "scene") OnScene(msg.RootElement);
             else if (type == "people") _people.Set(msg.RootElement);
-            else if (type == "walkmap" && msg.RootElement.GetProperty("layoutVersion").GetInt32() == _layoutVersion) _walker.SetMap(Walker.Map.Parse(msg.RootElement));
+            else if (type == "walkmap" && msg.RootElement.GetProperty("layoutVersion").GetInt32() == _layoutVersion && msg.RootElement.GetProperty("holeId").GetInt32() == _holeId) _walker.SetMap(Walker.Map.Parse(msg.RootElement));
             else if (type == "inspected")
             {
                 _inspector.Show(msg.RootElement);
@@ -285,7 +287,7 @@ public partial class Live : Node3D
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
             : _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nEsc menu · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nEsc menu · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
             : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -349,9 +351,12 @@ public partial class Live : Node3D
         }
         var s = msg.GetProperty("snapshot");
         var gameId = s.GetProperty("gameId").GetInt32();
-        if (gameId != _gameId)
+        var holeId = s.GetProperty("holeId").GetInt32();
+        UpdateHolePicker(s, holeId);
+        if (gameId != _gameId || holeId != _holeId)
         {
             _gameId = gameId;
+            _holeId = holeId;
             // Another game (new, or loaded): nothing from the last one holds.
             _walker.Forget();
             _mapsAsked.Clear();
@@ -445,6 +450,20 @@ public partial class Live : Node3D
             if (f < 1 || f > _shape.Floors || _walker.Has(f) || !_mapsAsked.Add(f)) continue;
             _bridge.Send(new Dictionary<string, object> { ["type"] = "walkmap", ["floor"] = f });
         }
+    }
+
+    /// <summary>The hole picker: every hole by name and head count, shown once there's more than one.</summary>
+    void UpdateHolePicker(JsonElement s, int holeId)
+    {
+        var holes = s.GetProperty("holes").EnumerateArray().Select(h => (id: h.GetProperty("id").GetInt32(), name: h.GetProperty("name").GetString()!, pop: h.GetProperty("population").GetInt32())).ToList();
+        var key = string.Join("|", holes.Select(h => $"{h.id}:{h.name}:{h.pop}")) + $">{holeId}";
+        if (key == _holesKey) return;
+        _holesKey = key;
+        _holePicker.Clear();
+        foreach (var h in holes) _holePicker.AddItem($"{h.name} · {h.pop}", h.id);
+        _holePicker.Select(holes.FindIndex(h => h.id == holeId));
+        _holePicker.Visible = holes.Count > 1;
+        _title.Visible = holes.Count <= 1;
     }
 
     void ApplyQuality()
@@ -627,6 +646,11 @@ public partial class Live : Node3D
             case Key.O: _choices.ToggleOffice(); break;
             case Key.C when _rig?.Walking != true || _rig.OnFoot: _charts.Toggle(); break;
             case Key.F2: CycleQuality(); break;
+            // The previous or next hole (as the picker).
+            case Key.Bracketleft or Key.Bracketright when _holePicker.ItemCount > 1:
+                var next = (_holePicker.Selected + (k.Keycode == Key.Bracketright ? 1 : _holePicker.ItemCount - 1)) % _holePicker.ItemCount;
+                _bridge.Send(new Dictionary<string, object> { ["type"] = "setActiveHole", ["holeId"] = (int)_holePicker.GetItemId(next) });
+                break;
             case Key.F12: Screenshot($"live-{DateTime.Now:HHmmss}"); break;
             default: return;
         }
@@ -722,6 +746,12 @@ public partial class Live : Node3D
         rows.AddChild(bar);
         _title = Text("Downtown Mars", 20, new Color("#e8834a"));
         bar.AddChild(_title);
+        // With more than one hole, the title is a picker: the hole in view.
+        _holePicker = new OptionButton { Visible = false, FocusMode = Control.FocusModeEnum.None, TooltipText = "The hole in view" };
+        _holePicker.AddThemeFontSizeOverride("font_size", 18);
+        _holePicker.AddThemeColorOverride("font_color", new Color("#e8834a"));
+        _holePicker.ItemSelected += i => _bridge.Send(new Dictionary<string, object> { ["type"] = "setActiveHole", ["holeId"] = (int)_holePicker.GetItemId((int)i) });
+        bar.AddChild(_holePicker);
         _clock = Text("", 18, new Color("#f3e6d8"));
         bar.AddChild(_clock);
         var speeds = new HBoxContainer();

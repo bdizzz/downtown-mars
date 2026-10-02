@@ -76,7 +76,7 @@ export function palette(state: SimState): PaletteMessage {
 
 /** What changes the palette: the gates, and which rooms the stocks can pay for. */
 export function paletteKey(state: SimState): string {
-  return holeGates(state).join(",") + ":" + roomDefs.map((d) => (d.buildable && missingCost(state.resources, d.id) ? 1 : 0)).join("");
+  return state.holeId + ":" + holeGates(state).join(",") + ":" + roomDefs.map((d) => (d.buildable && missingCost(state.resources, d.id) ? 1 : 0)).join("");
 }
 
 export interface BuildTool {
