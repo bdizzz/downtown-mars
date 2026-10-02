@@ -3,8 +3,8 @@ using Godot;
 namespace DowntownMars;
 
 /// <summary>
-/// Two cameras, as in the web game. Iso: orbiting a point over the hole (drag to turn, wheel to zoom,
-/// WASD to pan, Q/E to turn). First person: walking height on floor 1 (WASD to move, drag to look,
+/// Two cameras, as in the web game. Iso: orbiting a point over the hole (drag to turn; scroll sideways to
+/// turn and up or down to zoom, or pinch, with a wheel, trackpad or Magic Mouse alike; WASD to pan, Q/E to turn). First person: walking height on floor 1 (WASD to move, drag to look,
 /// Space/C up and down, Shift faster; no collision in the experiment). Tab switches. The benchmark
 /// circles the Iso camera once.
 /// </summary>
@@ -82,6 +82,8 @@ public partial class CameraRig : Node3D
     }
 
     public bool Walking => _walking;
+
+    public string Describe() => $"yaw={Mathf.RadToDeg(_yaw):0} pitch={Mathf.RadToDeg(_pitch):0} dist={_dist:0.0}";
 
     /// <summary>Back to this camera (after the map's).</summary>
     public void MakeCurrent() => _cam.Current = true;
@@ -201,11 +203,16 @@ public partial class CameraRig : Node3D
                 _pitch = Mathf.Clamp(_pitch + m.Relative.Y * 0.004f, 0.15f, 1.5f);
             }
         }
-        if (e is InputEventMouseButton { Pressed: true } b && !_walking)
+        // Scrolling and pinching, from a wheel, a trackpad or a Magic Mouse alike (ScrollInput.cs), as the web's
+        // Iso: sideways turns the hole, up and down zooms (Shift turns instead), a pinch zooms. Not in first person.
+        if (!_walking && ScrollInput.Read(e, out var scroll, out var zoom))
         {
-            if (b.ButtonIndex == MouseButton.WheelUp) _dist *= 0.9f;
-            if (b.ButtonIndex == MouseButton.WheelDown) _dist *= 1.1f;
-            _dist = Mathf.Clamp(_dist, 5, 800);
+            _yaw += scroll.X * 0.003f;
+            if (ScrollInput.Shift(e)) _yaw += scroll.Y * 0.003f;
+            else _dist *= Mathf.Exp(scroll.Y * 0.003f);
+            _dist = Mathf.Clamp(_dist / zoom, 5, 800);
+            Apply();
+            GetViewport().SetInputAsHandled();
         }
     }
 

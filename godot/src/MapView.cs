@@ -47,6 +47,7 @@ public partial class MapView : Node3D
     readonly Dictionary<string, string> _depositNames = new();
 
     public bool Open => _ui.Visible;
+    public string Describe() => $"yaw={Mathf.RadToDeg(_yaw):0} dist={_dist:0.0}";
     /// <summary>The render layer the map is drawn on (the hole's cameras and lights leave it out).</summary>
     public const uint MapLayer = Layer;
     public Action? Closed { get; set; }
@@ -308,9 +309,12 @@ public partial class MapView : Node3D
             }
             Readout(m.Position);
         }
-        if (e is InputEventMouseButton { Pressed: true } wb && (wb.ButtonIndex == MouseButton.WheelUp || wb.ButtonIndex == MouseButton.WheelDown))
+        // As the web's globe: sideways scrolling spins the planet, up and down (or a pinch) zooms; any device (ScrollInput.cs).
+        if (ScrollInput.Read(e, out var scroll, out var zoom))
         {
-            _dist = Math.Clamp(_dist * (wb.ButtonIndex == MouseButton.WheelUp ? 0.9f : 1.1f), R * 1.25f, R * 5);
+            if (Math.Abs(scroll.X) > Math.Abs(scroll.Y)) _yaw += scroll.X * 0.003f * (_dist - R) / 24;
+            else _dist *= MathF.Exp(scroll.Y * 0.0015f);
+            _dist = Math.Clamp(_dist / zoom, R * 1.25f, R * 5);
             Apply();
         }
         if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left } mb)

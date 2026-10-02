@@ -69,6 +69,7 @@ public partial class Live : Node3D
     public string? Keys { get; set; }
     List<(Key key, double down, double up, bool pressed, bool released)>? _keys;
     readonly List<(Vector2 pos, double at)> _taps = new();
+    readonly List<(InputEvent e, double at)> _events = new();
     /// <summary>Stand here in first person: x, y, z, heading in degrees (0 looks along +x), and optionally pitch.</summary>
     public float[]? StandAt { get; set; }
     /// <summary>The bridge's port (npm run bridge -- --port=…).</summary>
@@ -221,6 +222,7 @@ public partial class Live : Node3D
         if (ShotAfter > 0 && _clockSeconds > ShotAfter)
         {
             ShotAfter = 0;
+            if (_rig != null) GD.Print($"CAMERA {_rig.Describe()}{(_map.Open ? " map " + _map.Describe() : "")}");
             if (_rig?.Walking == true && GetViewport().GetCamera3D() is Camera3D c) GD.Print($"WALKER onFoot={_rig.OnFoot} floor={_walker.Floor} at=({_walker.At.X:0.00},{_walker.At.Y:0.00}) r={_walker.At.Length():0.00} camera={c.GlobalPosition}");
             Screenshot("live");
             GetTree().Quit();
@@ -311,7 +313,7 @@ public partial class Live : Node3D
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
             : _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nEsc menu · M map · N network · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nEsc menu · M map · N network · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
             : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -429,6 +431,19 @@ public partial class Live : Node3D
         _keys ??= Keys.Split(',').Select(k =>
         {
             var (name, when) = (k.Split('@')[0], k.Split('@')[1].Split('-'));
+            // "pan:dx:dy@t", "pinch:factor@t", "wheel:up|down|left|right@t": what a trackpad or Magic Mouse, a pinch, and a wheel send.
+            if (name.StartsWith("pan:") || name.StartsWith("pinch:") || name.StartsWith("wheel:"))
+            {
+                var p = name.Split(':');
+                InputEvent ev = p[0] switch
+                {
+                    "pan" => new InputEventPanGesture { Delta = new Vector2(float.Parse(p[1]), float.Parse(p[2])), Position = new Vector2(800, 500) },
+                    "pinch" => new InputEventMagnifyGesture { Factor = float.Parse(p[1]), Position = new Vector2(800, 500) },
+                    _ => new InputEventMouseButton { Pressed = true, Factor = 1, Position = new Vector2(800, 500), ButtonIndex = p[1] switch { "up" => MouseButton.WheelUp, "down" => MouseButton.WheelDown, "left" => MouseButton.WheelLeft, _ => MouseButton.WheelRight } },
+                };
+                _events.Add((ev, double.Parse(when[0])));
+                return (Key.None, double.MaxValue, double.MaxValue, true, true);
+            }
             // "tap:x:y@t": a left click at that screen point (as a mouse would), through the UI too.
             if (name.StartsWith("tap:"))
             {
@@ -440,6 +455,12 @@ public partial class Live : Node3D
             var up = when.Length > 1 ? double.Parse(when[1]) : down + 0.1;
             return (OS.FindKeycodeFromString(name), down, up, false, false);
         }).ToList();
+        for (var t = _events.Count - 1; t >= 0; t--)
+        {
+            if (_clockSeconds < _events[t].at) continue;
+            Input.ParseInputEvent(_events[t].e);
+            _events.RemoveAt(t);
+        }
         for (var t = _taps.Count - 1; t >= 0; t--)
         {
             if (_clockSeconds < _taps[t].at) continue;
@@ -637,7 +658,7 @@ public partial class Live : Node3D
     public override void _UnhandledInput(InputEvent e)
     {
         // With the map open, the pointer turns and picks on the globe; keys still work.
-        if (_map.Open && e is InputEventMouse)
+        if (_map.Open && e is InputEventMouse or InputEventGesture)
         {
             _map.HandleInput(e);
             return;
