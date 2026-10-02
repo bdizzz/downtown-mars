@@ -179,5 +179,11 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 - **The office**: an Office button in the HUD (amber, "Office · N waiting", when someone is) or O opens a panel on the right (it and the room panel take turns there): who's waiting, with their role, traits and loyalty, what they want, when they leave and the answers you can give (an answer that would enact an ordinance with no slot free is disabled); promises and how long is left; ordinances to enact or repeal against the slots; the notables and their loyalty. The bridge sends it (`src/bridge/office.ts`, laid out as `ui/Office.tsx`) when it changes.
 - Checked by tapping through the UI (`--keys=…,tap:x:y@t` clicks a screen point as a mouse would): answering a noise complaint emptied the waiting room and left a promise; raising a toast to five floors brought up the next card.
 - **News**, as the web's messages: the latest four from the last game day at the bottom right, coloured by kind (good, warning), fading as they age; rooms they name show as "Galley (F1)".
-- Still only in the web: charts and flows, the network map and other holes, people and maintenance panels.
+- Still only in the web: the network map and other holes, people and maintenance panels.
+
+**Charts** (Oct 2, 2026):
+
+- A Charts panel (C, or the HUD's Charts button; it takes turns with the office and the room panel on the right), as the web's two: **Trends**, one series up close over 2 days, 10 days or the whole game, as amounts or change per day, drawn with its scale, reference lines ("people leave below") and the time span, its first-to-last and low and high under it, and every series below as a row with a sparkline, its value and its change, to pick from; and **Flows**, a tab per family (water, air, food, power, materials), each resource as a river from its sources through to its uses, with the share of water recycled.
+- The bridge works the numbers out with the web's own code (`src/bridge/charts.ts`: `ui/trends.ts` for the series, points, scales' data and rows; sparklines thinned to 48 points), and Godot draws them (`Charts.cs`: line charts, sparklines and rivers drawn by hand). Refreshed every two seconds while open.
+- The flow panel's rules (tabs, colours, what's shown, the recycled share) moved from `ui/FlowPanel.tsx` to `src/view/flows.ts` for both.
 

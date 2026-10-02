@@ -26,6 +26,7 @@ public partial class Live : Node3D
     BuildMode _build = null!;
     GameMenu _menu = null!;
     Choices _choices = null!;
+    Charts _charts = null!;
     Button _officeButton = null!;
     /// <summary>Ticks in a game day (data/config.json), for "decide within" times.</summary>
     const int TicksPerDay = 240;
@@ -112,8 +113,21 @@ public partial class Live : Node3D
         _build = new BuildMode(_hud, m => _bridge.Send(m)) { Name = "Build" };
         AddChild(_build);
         // Event cards and the office; the office and the room panel share the right side.
-        _choices = new Choices(_hud, SendCommand) { Name = "Choices", OfficeOpened = () => Inspect(null) };
+        _choices = new Choices(_hud, SendCommand) { Name = "Choices" };
         AddChild(_choices);
+        _charts = new Charts(_hud, m => _bridge.Send(m)) { Name = "Charts" };
+        AddChild(_charts);
+        // The room panel, the office and the charts take turns on the right.
+        _choices.OfficeOpened = () =>
+        {
+            Inspect(null);
+            _charts.Toggle(false);
+        };
+        _charts.Opened = () =>
+        {
+            Inspect(null);
+            _choices.ToggleOffice(false);
+        };
         // The menu over everything; the game pauses while it's open.
         _menu = new GameMenu(m => _bridge.Send(m)) { Name = "Menu", Toast = t => _build.Toast(t) };
         _menu.Shown = open =>
@@ -207,7 +221,11 @@ public partial class Live : Node3D
             else if (type == "inspected")
             {
                 _inspector.Show(msg.RootElement);
-                if (_inspector.Open) _choices.ToggleOffice(false);
+                if (_inspector.Open)
+                {
+                    _choices.ToggleOffice(false);
+                    _charts.Toggle(false);
+                }
             }
             else if (type == "office")
             {
@@ -219,6 +237,8 @@ public partial class Live : Node3D
             else if (type == "hovered" || type == "edgeHovered") _build.Hovered(msg.RootElement);
             else if (type == "notice") _build.Notice(msg.RootElement);
             else if (type == "saves") _menu.SetSaves(msg.RootElement);
+            else if (type == "trends") _charts.SetTrends(msg.RootElement);
+            else if (type == "flows") _charts.SetFlows(msg.RootElement);
             else if (type == "saved") _menu.Saved(msg.RootElement);
             else if (type == "loaded")
             {
@@ -265,7 +285,7 @@ public partial class Live : Node3D
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
             : _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nEsc menu · O office · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nEsc menu · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics"
             : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -588,6 +608,7 @@ public partial class Live : Node3D
             case Key.Escape when _build.Active: _build.Toggle(false); break;
             case Key.Escape when _inspector.Open: Inspect(null); break;
             case Key.Escape when _choices.OfficeOpen: _choices.ToggleOffice(false); break;
+            case Key.Escape when _charts.Open: _charts.Toggle(false); break;
             case Key.Escape: _menu.Open(); break;
             case Key.B when !_build.Active: _build.Toggle(true); break;
             case Key.R when _build.HasTool: _build.Rotate(); break;
@@ -604,6 +625,7 @@ public partial class Live : Node3D
             case var key when _build.Active && key >= Key.A && key <= Key.Z && key != Key.R && _build.PickByKey(((char)key).ToString()): break;
             case Key.L: _hole.ShowLabels = !_hole.ShowLabels; break;
             case Key.O: _choices.ToggleOffice(); break;
+            case Key.C when _rig?.Walking != true || _rig.OnFoot: _charts.Toggle(); break;
             case Key.F2: CycleQuality(); break;
             case Key.F12: Screenshot($"live-{DateTime.Now:HHmmss}"); break;
             default: return;
@@ -721,6 +743,9 @@ public partial class Live : Node3D
         _officeButton = new Button { Text = "Office", FocusMode = Control.FocusModeEnum.None, TooltipText = "Visits, promises, ordinances and notables" };
         _officeButton.Pressed += () => _choices.ToggleOffice();
         bar.AddChild(_officeButton);
+        var chartsButton = new Button { Text = "Charts", FocusMode = Control.FocusModeEnum.None, TooltipText = "Trends and flows (C)" };
+        chartsButton.Pressed += () => _charts.Toggle();
+        bar.AddChild(chartsButton);
         _qualityButton = new Button { Text = "Graphics", FocusMode = Control.FocusModeEnum.None, TooltipText = "Graphics level (F2): Low, Medium, High, Ultra" };
         _qualityButton.Pressed += CycleQuality;
         bar.AddChild(_qualityButton);

@@ -13,6 +13,7 @@ import { edgeCommand, edgeHover, hover, palette, paletteKey, place, type BuildTo
 import { walkMap } from "./walkmap";
 import { dayOf, isSlot, readSlot, savesList, writeSlot } from "./saves";
 import { office, officeKey } from "./office";
+import { flows, trends } from "./charts";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
 // Godot viewer, speaking the web game's worker protocol (worker/protocol.ts) one JSON message per
@@ -99,6 +100,9 @@ type BridgeMessage =
   | { type: "saves" }
   | { type: "saveSlot"; slot: string }
   | { type: "loadSlot"; slot: string }
+  /** Charts (charts.ts): trends for a series over a range (amounts, or change per day), and a flow tab's rivers. */
+  | { type: "trends"; key: string; range: "2d" | "10d" | "all"; mode: "amount" | "rate" }
+  | { type: "flows"; tab: string }
   /** First person: a floor's walking map (walkmap.ts). */
   | { type: "walkmap"; floor: number };
 
@@ -186,6 +190,10 @@ const server = createServer((socket) => {
           if (r.command && !r.refusal) host.onMessage({ type: "command", id: commandId++, command: r.command });
           else if (r.refusal && !msg.painting) send({ type: "notice", text: r.refusal });
           send(edgeHover(host.active(), msg.tool, msg.at));
+        } else if (msg.type === "trends") {
+          send(trends(host.active(), msg.key, msg.range, msg.mode));
+        } else if (msg.type === "flows") {
+          send(flows(host.active(), msg.tab));
         } else if (msg.type === "saves") {
           send(savesList());
         } else if (msg.type === "saveSlot") {
