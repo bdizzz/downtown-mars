@@ -1,0 +1,9 @@
+.godot/
+bin/
+obj/
+*.user
+# Exported scenes and benchmark output are regenerated from the web game (dm / __stage3d.exportGodot).
+scenes/*.glb
+scenes/*.json
+bench/
+shots/

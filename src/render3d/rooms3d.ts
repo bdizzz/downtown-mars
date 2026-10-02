@@ -874,7 +874,11 @@ export function shaftFaces(layout: Layout, room: RoomInstance): { a0: number; a1
 const materialCache = new Map<string, THREE.Material>();
 function material(key: string, make: () => THREE.Material): THREE.Material {
   let m = materialCache.get(key);
-  if (!m) materialCache.set(key, (m = make()));
+  if (!m) {
+    materialCache.set(key, (m = make()));
+    // Named for what it is, so an exported scene (the Godot experiment) can tell rock from glass.
+    m.name = key;
+  }
   return m;
 }
 /** A material for tagged geometry (rooms, the shaft wall, windows, outlines), which lowers with walls down. */

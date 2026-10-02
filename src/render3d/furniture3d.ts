@@ -111,6 +111,7 @@ function material(kind: Kind, hung?: Hung): THREE.MeshStandardMaterial {
     else if (kind === "water") m = withShimmer(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.25, metalness: 0.1 }));
     else m = withPartPatterns(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 }));
     entry = { material: hung ? hung.material(m) : m, glow: kind === "glow" };
+    entry.material.name = `furniture:${key}`;
     materials.set(key, entry);
   }
   return entry.material;

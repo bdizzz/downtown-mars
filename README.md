@@ -85,6 +85,7 @@ For testing, the browser console has `dm`, which acts on the hole you're looking
 - `dm.fill(1000)` raises every stored resource (not power or waste) to at least that much.
 - `dm.unlock()` unlocks every room that waits on a milestone, or one with `dm.unlock("cargo")`. `dm.unlock("ore")` puts a deposit (ice, aquifer, ore or silica) under the hole, for rooms that need one.
 - `dm.finish()` finishes everything in the construction queue at once.
+- `dm.showcase(12)` digs to 12 floors and fills rings 1–3 with built, furnished rooms, tubes and corridors (costs and rules skipped): for looking at, and for stress-testing the 3D view.
 - `dm.skip(3)` runs every hole ahead 3 days at once (up to 365), to see how things play out.
 - `dm.wear(0.4)` sets every room's condition to 40% (`dm.wear(0.2, roomId)` for one room); `dm.snapshot()` returns the latest snapshot.
 - `dm.storm(1)` starts a dust storm now, for a day; `dm.storm(2, 3)` forecasts one in 3 days for 2; `dm.storm(0)` clears the sky.

@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
@@ -65,10 +65,40 @@ function saveLayouts(): Plugin {
   };
 }
 
+/**
+ * The Godot experiment's scene export (dev server only): POST a file to
+ * /__dev/godot?name=<file> and it's written to godot/scenes/<file>.
+ * See docs/PLAN-GODOT.md and dm.exportGodot().
+ */
+function saveGodotScene(): Plugin {
+  return {
+    name: "dev-save-godot-scene",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/__dev/godot", (req, res) => {
+        const name = new URL(req.url ?? "", "http://x").searchParams.get("name") ?? "";
+        if (req.method !== "POST" || !/^[a-z0-9_-]+\.(glb|json)$/.test(name)) {
+          res.statusCode = 400;
+          res.end("POST with ?name=<a-z0-9_->.glb or .json");
+          return;
+        }
+        const chunks: Buffer[] = [];
+        req.on("data", (c: Buffer) => chunks.push(c));
+        req.on("end", () => {
+          const dir = new URL("./godot/scenes/", import.meta.url);
+          mkdirSync(dir, { recursive: true });
+          writeFileSync(new URL(name, dir), Buffer.concat(chunks));
+          res.end(`saved godot/scenes/${name}`);
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig({
   // Relative paths, so the build runs from any folder (itch.io serves games from a sub-path).
   base: "./",
-  plugins: [react(), saveLayouts()],
+  plugins: [react(), saveLayouts(), saveGodotScene()],
   worker: { format: "es" },
   define: {
     __APP_VERSION__: JSON.stringify(`v${pkg.version} · ${commit()}`),

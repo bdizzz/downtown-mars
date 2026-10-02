@@ -1,0 +1,136 @@
+using Godot;
+
+namespace DowntownMars;
+
+/// <summary>
+/// Two cameras, as in the web game. Iso: orbiting a point over the hole (drag to turn, wheel to zoom,
+/// WASD to pan, Q/E to turn). First person: walking height on floor 1 (WASD to move, drag to look,
+/// Space/C up and down, Shift faster; no collision in the experiment). Tab switches. The benchmark
+/// circles the Iso camera once.
+/// </summary>
+public partial class CameraRig : Node3D
+{
+    readonly Camera3D _cam = new() { Fov = 50, Near = 0.1f, Far = 4000 };
+    readonly Meta _meta;
+
+    bool _walking;
+    // Iso.
+    Vector3 _target;
+    float _yaw = Mathf.Pi / 2, _pitch = 0.75f, _dist;
+    // First person.
+    Vector3 _pos;
+    float _lookYaw, _lookPitch;
+    // Benchmark.
+    float _benchSeconds;
+    double _benchClock;
+
+    public string ModeName => _benchSeconds > 0 ? "benchmark" : _walking ? "first person" : "iso";
+
+    public CameraRig(Meta meta)
+    {
+        _meta = meta;
+        var h = meta.Hole;
+        var outer = h.ShaftRadiusM + h.UnlockedRings * 10;
+        // As the web game's Iso: over the picked floor (or the surface), a little past the middle, from 1.6 radii back.
+        var floorY = meta.Cut is int f ? -3 - f * h.FloorHeightM : 0;
+        _target = new Vector3(0, floorY, -outer * 0.12f);
+        _dist = outer * 1.6f;
+        // In the gallery tube (inside the shaft wall) of the picked floor or floor 1, at eye height, looking across the shaft.
+        var walkFloor = meta.Cut ?? 1;
+        _pos = new Vector3(0, -3 - walkFloor * h.FloorHeightM + 1.6f, h.ShaftRadiusM - 1.2f);
+        _lookYaw = -Mathf.Pi / 2;
+    }
+
+    public override void _Ready()
+    {
+        AddChild(_cam);
+        _cam.Current = true;
+        Apply();
+    }
+
+    /// <summary>Circle once for the benchmark: the Iso camera round the hole, or (walking) a turn on the spot.</summary>
+    public void StartBench(float seconds, bool walking)
+    {
+        _benchSeconds = seconds;
+        _walking = walking;
+        Apply();
+    }
+
+    public override void _Process(double delta)
+    {
+        var dt = (float)delta;
+        if (_benchSeconds > 0)
+        {
+            _benchClock += delta;
+            // Hold still while it warms up, then once round.
+            if (_benchClock > Bench.Warmup)
+            {
+                if (_walking) _lookYaw += Mathf.Tau / _benchSeconds * dt;
+                else _yaw += Mathf.Tau / _benchSeconds * dt;
+            }
+            Apply();
+            return;
+        }
+        var fwd = (Input.IsKeyPressed(Key.W) ? 1 : 0) - (Input.IsKeyPressed(Key.S) ? 1 : 0);
+        var side = (Input.IsKeyPressed(Key.D) ? 1 : 0) - (Input.IsKeyPressed(Key.A) ? 1 : 0);
+        var fast = Input.IsKeyPressed(Key.Shift) ? 3f : 1f;
+        if (_walking)
+        {
+            var f = new Vector3(Mathf.Cos(_lookYaw), 0, Mathf.Sin(_lookYaw));
+            var r = new Vector3(-f.Z, 0, f.X);
+            var up = (Input.IsKeyPressed(Key.Space) ? 1 : 0) - (Input.IsKeyPressed(Key.C) ? 1 : 0);
+            _pos += (f * fwd + r * side + Vector3.Up * up) * 4f * fast * dt;
+        }
+        else
+        {
+            _yaw += ((Input.IsKeyPressed(Key.E) ? 1 : 0) - (Input.IsKeyPressed(Key.Q) ? 1 : 0)) * 1.2f * dt;
+            // Forward is the way the camera looks, flat on the ground.
+            var f = new Vector3(-Mathf.Cos(_yaw), 0, -Mathf.Sin(_yaw));
+            var r = new Vector3(-f.Z, 0, f.X);
+            _target += (f * fwd + r * side) * Mathf.Max(10, _dist * 0.6f) * fast * dt;
+        }
+        Apply();
+    }
+
+    public override void _UnhandledInput(InputEvent e)
+    {
+        if (e is InputEventKey { Pressed: true, Keycode: Key.Tab })
+        {
+            _walking = !_walking;
+            Apply();
+        }
+        if (e is InputEventMouseMotion m && (m.ButtonMask & (MouseButtonMask.Left | MouseButtonMask.Right)) != 0)
+        {
+            if (_walking)
+            {
+                _lookYaw += m.Relative.X * 0.004f;
+                _lookPitch = Mathf.Clamp(_lookPitch - m.Relative.Y * 0.004f, -1.4f, 1.4f);
+            }
+            else
+            {
+                _yaw += m.Relative.X * 0.005f;
+                _pitch = Mathf.Clamp(_pitch + m.Relative.Y * 0.004f, 0.15f, 1.5f);
+            }
+        }
+        if (e is InputEventMouseButton { Pressed: true } b && !_walking)
+        {
+            if (b.ButtonIndex == MouseButton.WheelUp) _dist *= 0.9f;
+            if (b.ButtonIndex == MouseButton.WheelDown) _dist *= 1.1f;
+            _dist = Mathf.Clamp(_dist, 5, 800);
+        }
+    }
+
+    void Apply()
+    {
+        if (_walking)
+        {
+            _cam.GlobalPosition = _pos;
+            var look = new Vector3(Mathf.Cos(_lookYaw) * Mathf.Cos(_lookPitch), Mathf.Sin(_lookPitch), Mathf.Sin(_lookYaw) * Mathf.Cos(_lookPitch));
+            _cam.LookAt(_pos + look, Vector3.Up);
+            return;
+        }
+        var offset = new Vector3(Mathf.Cos(_yaw) * Mathf.Cos(_pitch), Mathf.Sin(_pitch), Mathf.Sin(_yaw) * Mathf.Cos(_pitch)) * _dist;
+        _cam.GlobalPosition = _target + offset;
+        _cam.LookAt(_target, Vector3.Up);
+    }
+}

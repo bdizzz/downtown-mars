@@ -19,6 +19,7 @@ import { answerVisit } from "./visits";
 import { answerEvent, consoleEvent } from "./events";
 import { padReady } from "./earth";
 import { roomDef } from "./rooms";
+import { buildShowcase } from "./showcase";
 import type { SimState } from "./state";
 import type { DepositKind } from "./mapgeo";
 
@@ -56,6 +57,8 @@ export type SimCommand =
   | { type: "consoleUnlock"; gate?: string }
   /** Testing, from the browser console: finish every job in the construction queue at once. */
   | { type: "consoleFinish" }
+  /** Console: dig to this many floors and fill rings 1–3 with built, furnished rooms (for looking at and stress tests). */
+  | { type: "consoleShowcase"; floors: number }
   /** Testing, from the browser console: a dust storm, starting in `inDays` (0: now) and lasting `days`; or clear skies (days 0). */
   | { type: "consoleStorm"; inDays?: number; days?: number }
   /** Console: raise an event now (a find on the deepest floor, a belt ship, a celebration). */
@@ -254,6 +257,10 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       const start = state.tick + Math.round((cmd.inDays ?? 0) * tpd);
       state.weather = { storm: { start, end: start + Math.round(days * tpd) } };
       return { ok: true };
+    }
+    case "consoleShowcase": {
+      const r = buildShowcase(state, cmd.floors);
+      return r.rooms ? { ok: true } : { ok: false, reason: "No room left to fill" };
     }
     case "consoleFinish": {
       const n = state.construction?.queue.length ?? 0;

@@ -17,6 +17,17 @@ function withConstruction(f: () => void) {
 }
 
 describe("console commands", () => {
+  it("builds a showcase colony: dug, filled with built rooms, everyone connected", () => {
+    const s = createInitialState(config);
+    expect(applyCommand(s, { type: "consoleShowcase", floors: 6 }).ok).toBe(true);
+    const layout = s.layout;
+    expect(layout.hole.floors).toBe(6);
+    expect(layout.rooms.length).toBeGreaterThan(6 * 10);
+    expect(layout.rooms.some((r) => r.planned || r.building)).toBe(false);
+    for (let floor = 1; floor <= 6; floor++) expect(layout.rooms.some((r) => r.type === "stairwell" && r.cells.some((c) => c.floor === floor))).toBe(true);
+    expect(layout.rooms.filter((r) => !r.connected).length).toBe(0);
+  });
+
   it("set and add resources, never below zero, recorded in the ledger", () => {
     const s = createInitialState(config);
     s.resources.metal = 10;

@@ -1705,6 +1705,55 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             for (const g of furnitureGroups) n[(g.userData.detailShown ?? "near") as "near" | "far"]++;
             return n;
           },
+          /**
+           * The Godot experiment (docs/PLAN-GODOT.md): the scene as drawn (the shaft, the rooms and their
+           * furniture, tubes, the rig, the land round the hole) to godot/scenes/<name>.glb, with its lamps
+           * and the hole's shape to <name>.json. Best with every floor showing and walls up.
+           */
+          async exportGodot(name = "hole") {
+            const { GLTFExporter } = await import("three/examples/jsm/exporters/GLTFExporter.js");
+            const { mergeGeometries } = await import("three/examples/jsm/utils/BufferGeometryUtils.js");
+            const parts: THREE.Object3D[] = [];
+            for (const o of [holeGroup, layoutGroup, terrain?.group, rig?.group, dome]) {
+              if (!o) continue;
+              o.updateMatrixWorld(true);
+              // A copy, with instanced meshes baked into one plain mesh each (Godot doesn't read glTF's instancing extension).
+              const copy = o.clone(true);
+              const instanced: THREE.InstancedMesh[] = [];
+              copy.traverse((n) => {
+                if ((n as THREE.InstancedMesh).isInstancedMesh) instanced.push(n as THREE.InstancedMesh);
+              });
+              for (const im of instanced) {
+                const m = new THREE.Matrix4();
+                const geos = Array.from({ length: im.count }, (_, i) => {
+                  im.getMatrixAt(i, m);
+                  const g = im.geometry.clone();
+                  for (const attr of Object.keys(g.attributes)) if (!["position", "normal", "uv", "color"].includes(attr)) g.deleteAttribute(attr);
+                  return g.applyMatrix4(m);
+                });
+                const merged = geos.length ? mergeGeometries(geos) : null;
+                const plain = new THREE.Mesh(merged ?? new THREE.BufferGeometry(), im.material);
+                plain.position.copy(im.position);
+                plain.quaternion.copy(im.quaternion);
+                plain.scale.copy(im.scale);
+                plain.visible = im.visible && !!merged;
+                im.parent?.add(plain);
+                im.removeFromParent();
+              }
+              parts.push(copy);
+            }
+            const glb = (await new GLTFExporter().parseAsync(parts, { binary: true, onlyVisible: true })) as ArrayBuffer;
+            const h = layout!.hole;
+            const meta = {
+              hole: { shaftRadiusM: h.shaftRadiusM, floors: h.floors, ringSlots: h.ringSlots, unlockedRings: h.unlockedRings, floorHeightM: FLOOR_H },
+              // The floor picked when exported (everything above it was hidden), or null with every floor showing.
+              cut: cut(),
+              lamps: lampList.map((l) => ({ x: l.x, y: l.y, z: l.z, floor: l.floor, color: l.color, reach: l.reach, strength: l.strength })),
+              sun: sun.position.toArray(),
+            };
+            const post = async (file: string, body: BodyInit) => (await fetch(`/__dev/godot?name=${file}`, { method: "POST", body })).text();
+            return [await post(`${name}.glb`, glb), await post(`${name}.json`, JSON.stringify(meta)), `${(glb.byteLength / 1e6).toFixed(1)} MB, ${meta.lamps.length} lamps`];
+          },
           shadowState() {
             return { enabled: renderer.shadowMap.enabled, sun: sun.castShadow, map: sun.shadow.map ? sun.shadow.map.width : null, sunPos: sun.position.toArray(), box: [sun.shadow.camera.left, sun.shadow.camera.right], key: shadowKey, casters: (() => { let n = 0; scene.traverse((o) => { if ((o as THREE.Mesh).castShadow) n++; }); return n; })() };
           },
