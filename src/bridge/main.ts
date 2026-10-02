@@ -9,7 +9,7 @@ import { gameTime } from "../sim/clock";
 import { stepWorld } from "../sim/worldstep";
 import type { RoomSpots } from "../render3d/people3d";
 import { inspect, roomAtPoint } from "./inspect";
-import { hover, palette, paletteKey, place, type BuildTool } from "./build";
+import { edgeCommand, edgeHover, hover, palette, paletteKey, place, type BuildTool, type CorridorTool } from "./build";
 import { walkMap } from "./walkmap";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
@@ -88,6 +88,9 @@ type BridgeMessage =
   /** Building: what placing the tool's room at a world point would do, and doing it. */
   | { type: "hover"; tool: BuildTool; at: [number, number, number] }
   | { type: "place"; tool: BuildTool; at: [number, number, number]; confirmed?: boolean }
+  /** Corridors, bulkheads and windows: what the tool would do at the border nearest a point, and doing it (a click, or painting on a drag). */
+  | { type: "edgeHover"; tool: CorridorTool; at: [number, number, number] }
+  | { type: "edge"; tool: CorridorTool; at: [number, number, number]; painting?: boolean }
   /** First person: a floor's walking map (walkmap.ts). */
   | { type: "walkmap"; floor: number };
 
@@ -156,6 +159,14 @@ const server = createServer((socket) => {
           if (r.command) host.onMessage({ type: "command", id: commandId++, command: r.command });
           else send({ type: "notice", text: r.refusal ?? r.confirm, ...(r.confirm ? { confirm: { tool: msg.tool, at: msg.at } } : {}) });
           send(hover(host.active(), msg.tool, msg.at));
+        } else if (msg.type === "edgeHover") {
+          send(edgeHover(host.active(), msg.tool, msg.at));
+        } else if (msg.type === "edge") {
+          // A click says why not; painting along a drag skips what it can't do, quietly.
+          const r = edgeCommand(host.active(), msg.tool, msg.at);
+          if (r.command && !r.refusal) host.onMessage({ type: "command", id: commandId++, command: r.command });
+          else if (r.refusal && !msg.painting) send({ type: "notice", text: r.refusal });
+          send(edgeHover(host.active(), msg.tool, msg.at));
         } else if (msg.type === "walkmap") {
           const map = walkMap(host.active(), msg.floor);
           if (args.verbose) console.log(`Walk map for floor ${msg.floor}: ${map.regions.length} regions, ${(map.runs.length / 1024).toFixed(0)} KB of runs, ${map.buildMs.toFixed(0)} ms`);

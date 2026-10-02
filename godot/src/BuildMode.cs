@@ -11,7 +11,8 @@ namespace DowntownMars;
 /// Building from Godot, by the web game's rules (the bridge's build.ts): a strip of categories along
 /// the bottom (B opens it), each popping up its rooms; choosing one puts it in hand, and the pointer
 /// shows a ghost of where it would go, green or red, with its cost or why not. Click to build, R turns
-/// it (cycles its shapes), Esc or a right click puts it down.
+/// it (cycles its shapes), Esc or a right click puts it down. Access holds the corridor tool (Z): click
+/// or drag along borders to carve corridors in a finish, or fit bulkheads or windows; Shift erases.
 /// </summary>
 public partial class BuildMode : Node3D
 {
@@ -35,6 +36,18 @@ public partial class BuildMode : Node3D
 
     /// <summary>The room in hand and its shape, or null.</summary>
     public string? Tool { get; private set; }
+
+    // The corridor tool (Access): a finish to draw in, or bulkheads, or windows; erasing with Erase or Shift.
+    List<(string id, string name, string cost, string hint)> _finishes = new();
+    string _bulkheadCost = "", _windowsCost = "";
+    /// <summary>The corridor tool's finish while it's in hand, or null.</summary>
+    public string? Corridor { get; private set; }
+    bool _bulkhead, _windows, _erase;
+    /// <summary>Shift held: the corridor tool erases.</summary>
+    public bool ShiftErase { get; set; }
+    public bool HasTool => Tool != null || Corridor != null;
+    /// <summary>Dragging paints corridors (not for bulkheads or windows, which go one wall at a time).</summary>
+    public bool Painting => Corridor != null && !_bulkhead && !_windows;
     int _shape;
     public bool Active => _strip.Visible;
 
@@ -122,6 +135,7 @@ public partial class BuildMode : Node3D
     public void Drop()
     {
         Tool = null;
+        Corridor = null;
         _ghost.Visible = false;
         _tip.Visible = false;
         RefreshRooms();
@@ -141,6 +155,10 @@ public partial class BuildMode : Node3D
             r.TryGetProperty("key", out var k) ? k.GetString() : null,
             r.TryGetProperty("locked", out var l) ? l.GetString() : null,
             r.TryGetProperty("short", out var s2) ? s2.GetString() : null)).ToList();
+        var cor = msg.GetProperty("corridors");
+        _finishes = cor.GetProperty("finishes").EnumerateArray().Select(f => (f.GetProperty("id").GetString()!, f.GetProperty("name").GetString()!, f.GetProperty("cost").GetString()!, f.GetProperty("hint").GetString()!)).ToList();
+        _bulkheadCost = cor.GetProperty("bulkhead").GetString()!;
+        _windowsCost = cor.GetProperty("windows").GetString()!;
         foreach (var c in _categories.GetChildren()) c.QueueFree();
         foreach (var (id, name) in _cats)
         {
@@ -171,8 +189,32 @@ public partial class BuildMode : Node3D
         _popup.Visible = _open != null && _strip.Visible;
         if (!_popup.Visible) return;
         var list = _palette.Where(r => r.Category == _open).ToList();
+        // Access starts with the corridor tool: its finishes, bulkheads, windows, and Erase.
+        var tools = _open == "circulation" ? _finishes.Count + 3 : 0;
         // Long lists in two columns, so they don't run off the top.
-        _rooms.Columns = list.Count > 8 ? 2 : 1;
+        _rooms.Columns = list.Count + tools > 8 ? 2 : 1;
+        if (_open == "circulation")
+        {
+            Button ToolButton(string text, string tip, bool on, Action pressed)
+            {
+                var b = new Button { Text = text, TooltipText = tip, Alignment = HorizontalAlignment.Left, ToggleMode = true, ButtonPressed = on, FocusMode = Control.FocusModeEnum.None, CustomMinimumSize = new Vector2(280, 0) };
+                b.Pressed += pressed;
+                _rooms.AddChild(b);
+                return b;
+            }
+            foreach (var f in _finishes)
+            {
+                var id = f.id;
+                ToolButton($"Corridor: {f.name} [Z]  ·  {f.cost}", f.hint + ". Click or drag along the borders between cells; Shift erases.", Corridor == id && !_bulkhead && !_windows, () => PickCorridor(id, false, false));
+            }
+            ToolButton($"Bulkhead  ·  {_bulkheadCost}", "Click a built corridor to seal it: people pass, air and smell don't. Shift-click takes one out.", Corridor != null && _bulkhead, () => PickCorridor(Corridor ?? _finishes.FirstOrDefault().id ?? "rock", true, false));
+            ToolButton($"Windows  ·  {_windowsCost}", "Click a room's wall where it faces the shaft, a corridor or a walk-through room: glazes the wall. Shift-click takes them out.", Corridor != null && _windows, () => PickCorridor(Corridor ?? _finishes.FirstOrDefault().id ?? "rock", false, true));
+            ToolButton("Erase (or hold Shift)", "Fill corridors in (it costs as much as carving them), or take out bulkheads and windows.", _erase, () =>
+            {
+                _erase = !_erase;
+                RefreshRooms();
+            });
+        }
         foreach (var r in list)
         {
             var why = r.Locked ?? r.Short;
@@ -206,8 +248,36 @@ public partial class BuildMode : Node3D
     }
 
     /// <summary>Put a room in hand (by id), its first shape.</summary>
+    /// <summary>The corridor tool in hand: drawing in a finish, or fitting bulkheads, or windows. Again to put it down.</summary>
+    public void PickCorridor(string finish, bool bulkhead, bool windows)
+    {
+        var same = Corridor == finish && _bulkhead == bulkhead && _windows == windows;
+        Tool = null;
+        Corridor = same ? null : finish;
+        _bulkhead = bulkhead;
+        _windows = windows;
+        if (Corridor == null) Drop();
+        else if (_open != "circulation") OpenCategory("circulation");
+        RefreshRooms();
+    }
+
+    object CorridorJson() => new Dictionary<string, object> { ["finish"] = Corridor!, ["erase"] = _erase || ShiftErase, ["bulkhead"] = _bulkhead, ["windows"] = _windows };
+
+    Vector3? _lastPaint;
+
+    /// <summary>Dragging with the corridor tool: draw (or erase) along each border crossed.</summary>
+    public void Paint(Vector3 at)
+    {
+        if (!Painting || (_lastPaint is Vector3 last && last.DistanceTo(at) < 0.6f)) return;
+        _lastPaint = at;
+        _send(new Dictionary<string, object> { ["type"] = "edge", ["tool"] = CorridorJson(), ["at"] = new[] { at.X, at.Y, at.Z }, ["painting"] = true });
+    }
+
+    public void EndPaint() => _lastPaint = null;
+
     public void Pick(string id)
     {
+        Corridor = null;
         Tool = Tool == id ? null : id;
         _shape = 0;
         if (Tool == null) Drop();
@@ -218,6 +288,12 @@ public partial class BuildMode : Node3D
     /// <summary>The room in hand by its key, if there's one with that key.</summary>
     public bool PickByKey(string key)
     {
+        if (key == "Z" && _finishes.Count > 0)
+        {
+            if (!_strip.Visible) Toggle(true);
+            PickCorridor(Corridor ?? _finishes[0].id, false, false);
+            return true;
+        }
         var r = _palette.FirstOrDefault(r => r.Key == key && r.Locked == null);
         if (r == null) return false;
         if (!_strip.Visible) Toggle(true);
@@ -246,17 +322,23 @@ public partial class BuildMode : Node3D
     /// <summary>The pointer moved over this world point with a room in hand: ask what placing it there would do (a few times a second at most).</summary>
     public void Hover(Vector3 at, Vector2 screen)
     {
-        if (Tool == null) return;
+        if (!HasTool) return;
         _tip.Position = screen + new Vector2(18, 18);
         if (_lastHover is Vector3 last && last.DistanceTo(at) < 0.5f && _clock - _lastHoverAt < 0.5) return;
         if (_clock - _lastHoverAt < 0.06) return;
         _lastHover = at;
         _lastHoverAt = _clock;
-        _send(new Dictionary<string, object> { ["type"] = "hover", ["tool"] = ToolJson(), ["at"] = new[] { at.X, at.Y, at.Z } });
+        if (Corridor != null) _send(new Dictionary<string, object> { ["type"] = "edgeHover", ["tool"] = CorridorJson(), ["at"] = new[] { at.X, at.Y, at.Z } });
+        else _send(new Dictionary<string, object> { ["type"] = "hover", ["tool"] = ToolJson(), ["at"] = new[] { at.X, at.Y, at.Z } });
     }
 
     public void Place(Vector3 at)
     {
+        if (Corridor != null)
+        {
+            _send(new Dictionary<string, object> { ["type"] = "edge", ["tool"] = CorridorJson(), ["at"] = new[] { at.X, at.Y, at.Z } });
+            return;
+        }
         if (Tool == null) return;
         _send(new Dictionary<string, object> { ["type"] = "place", ["tool"] = ToolJson(), ["at"] = new[] { at.X, at.Y, at.Z } });
     }
@@ -264,14 +346,14 @@ public partial class BuildMode : Node3D
     /// <summary>The bridge's answer to a hover: ok or not, the cost and a note, and the footprint.</summary>
     public void Hovered(JsonElement msg)
     {
-        if (Tool == null) return;
+        if (!HasTool) return;
         var ok = msg.GetProperty("ok").GetBoolean();
         var text = msg.GetProperty("text").GetString();
         var cost = msg.GetProperty("cost").GetString();
         _tip.Text = string.IsNullOrEmpty(text) ? cost : $"{cost}\n{text}";
         _tip.AddThemeColorOverride("font_color", ok ? new Color("#cfeec0") : new Color("#f3b0a0"));
         _tip.Visible = true;
-        if (msg.TryGetProperty("ghost", out var g))
+        if (msg.TryGetProperty("ghost", out var g) || msg.TryGetProperty("strip", out g))
         {
             var f = MemoryMarshal.Cast<byte, float>(Convert.FromBase64String(g.GetString()!)).ToArray();
             var verts = new Vector3[f.Length / 3];

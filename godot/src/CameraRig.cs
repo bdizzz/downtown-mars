@@ -33,6 +33,8 @@ public partial class CameraRig : Node3D
     /// furniture, through doorways, up and down stairs. Without a map (still coming, or none) it flies.
     /// </summary>
     public Walker? Walker { get; set; }
+    /// <summary>Does a left drag turn the camera? Not while it paints corridors (a right drag still does).</summary>
+    public bool LeftDragTurns { get; set; } = true;
     /// <summary>Testing: seconds to walk straight ahead once on foot, as if W were held.</summary>
     public float StrollSeconds { get; set; }
     bool _onFoot;
@@ -179,7 +181,7 @@ public partial class CameraRig : Node3D
             _onFoot = false;
             Apply();
         }
-        if (e is InputEventMouseMotion m && (m.ButtonMask & (MouseButtonMask.Left | MouseButtonMask.Right)) != 0)
+        if (e is InputEventMouseMotion m && (m.ButtonMask & (LeftDragTurns ? MouseButtonMask.Left | MouseButtonMask.Right : MouseButtonMask.Right)) != 0)
         {
             if (_walking)
             {

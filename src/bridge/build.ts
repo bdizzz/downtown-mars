@@ -6,10 +6,12 @@ import { roomDefs } from "../sim/rooms";
 import type { SimCommand } from "../sim/commands";
 import type { SimState } from "../sim/state";
 import type { Location } from "../sim/placement";
-import { pickAt } from "../render3d/cylinder";
-import { roomGeometry } from "../render3d/rooms3d";
+import { floorSpan, pickAt, RING_D, TAU } from "../render3d/cylinder";
+import { corridorStripGeometry, roomGeometry } from "../render3d/rooms3d";
+import { corridors } from "../sim/corridors";
+import { nearestEdge } from "../sim/edges";
 import { CATEGORY_NAMES, CATEGORY_ORDER, HOTKEYS, shapesFor } from "../view/buildCatalog";
-import { locationFor } from "../view/interaction";
+import { corridorCommand, edgeHoverFor, locationFor } from "../view/interaction";
 import { resName } from "../ui/format";
 
 // Building from the Godot viewer, by the web game's rules (view/interaction.ts, sim/costs.ts): the
@@ -34,6 +36,8 @@ export interface PaletteMessage {
   type: "palette";
   categories: { id: string; name: string }[];
   rooms: PaletteRoom[];
+  /** The corridor tool (in Access): its finishes, and bulkheads and windows, with what they cost. */
+  corridors: { finishes: { id: string; name: string; cost: string; hint: string }[]; bulkhead: string; windows: string };
 }
 
 const costText = (cost: Record<string, number>) =>
@@ -57,7 +61,17 @@ export function palette(state: SimState): PaletteMessage {
       ...(missingCost(state.resources, d.id) ? { short: missingCost(state.resources, d.id)! } : {}),
     }));
   const used = new Set(rooms.map((r) => r.category));
-  return { type: "palette", categories: CATEGORY_ORDER.filter((c) => used.has(c)).map((id) => ({ id, name: CATEGORY_NAMES[id] ?? id })), rooms };
+  used.add("circulation");
+  return {
+    type: "palette",
+    categories: CATEGORY_ORDER.filter((c) => used.has(c)).map((id) => ({ id, name: CATEGORY_NAMES[id] ?? id })),
+    rooms,
+    corridors: {
+      finishes: corridors.finishes.map((f) => ({ id: f.id, name: f.name, cost: `${costText(f.cost)} per 10 m`, hint: f.hint })),
+      bulkhead: `${costText(corridors.bulkhead.cost)} each`,
+      windows: `${costText(config.windows.costPer10m)} per 10 m`,
+    },
+  };
 }
 
 /** What changes the palette: the gates, and which rooms the stocks can pay for. */
@@ -115,3 +129,58 @@ export function place(state: SimState, tool: BuildTool, at: [number, number, num
   }
   return { command: { type: "build", room: tool.room, at: where, ...(confirmed ? { confirmed: true } : {}) } };
 }
+
+// ---- corridors, bulkheads and windows: the border under the pointer ----
+
+export interface CorridorTool {
+  finish: string;
+  erase: boolean;
+  bulkhead?: boolean;
+  windows?: boolean;
+}
+
+/** The border nearest a world point, as the web view finds it (stage3d.ts edgeAtPick). */
+function edgeAt(state: SimState, at: [number, number, number]) {
+  const hole = state.layout.hole;
+  const p = pickAt(hole, ...at);
+  if (p.kind !== "slot" && p.kind !== "gallery") return { pick: p, edge: null };
+  const rings = Math.max(0.001, (Math.hypot(at[0], at[2]) - hole.shaftRadiusM) / RING_D);
+  return { pick: p, edge: nearestEdge(hole, p.floor, rings, Math.atan2(at[2], at[0]) / TAU, RING_D) };
+}
+
+export interface EdgeHoveredMessage {
+  type: "edgeHovered";
+  ok: boolean;
+  text: string;
+  cost: string;
+  /** The border's strip (where the corridor would run), as triangles: float32 xyz, base64. */
+  strip?: string;
+}
+
+/** What the tool would do at the border under the pointer: its cost, or why not (view/interaction.ts edgeHoverFor). */
+export function edgeHover(state: SimState, tool: CorridorTool, at: [number, number, number]): EdgeHoveredMessage {
+  const { pick, edge } = edgeAt(state, at);
+  if (!edge || !("floor" in pick)) return { type: "edgeHovered", ok: false, text: "Point at a border between cells", cost: "" };
+  const info = edgeHoverFor(state.layout, state.resources, { kind: "corridor", ...tool }, pick, edge, tool.erase).edge;
+  const geo = corridorStripGeometry(state.layout, edge, floorSpan(pick.floor)[0] + 0.08);
+  const strip = Buffer.from(new Float32Array((geo.getAttribute("position") as THREE.BufferAttribute).array).buffer).toString("base64");
+  geo.dispose();
+  const what = tool.windows ? "Windows" : tool.bulkhead ? "Bulkhead" : "Corridor";
+  return {
+    type: "edgeHovered",
+    ok: !info?.refusal,
+    text: info?.refusal ?? (info?.erase ? `Remove ${what.toLowerCase()}` : what),
+    cost: info && Object.keys(info.cost).length ? costText(info.cost) : "",
+    strip,
+  };
+}
+
+/** The command for the tool at the border under the pointer (sent even if our view says no while painting: the sim decides), or why not. */
+export function edgeCommand(state: SimState, tool: CorridorTool, at: [number, number, number]): { command?: SimCommand; refusal?: string } {
+  const { pick, edge } = edgeAt(state, at);
+  if (!edge || !("floor" in pick)) return { refusal: "Point at a border between cells" };
+  const info = edgeHoverFor(state.layout, state.resources, { kind: "corridor", ...tool }, pick, edge, tool.erase).edge;
+  const command = corridorCommand({ kind: "corridor", ...tool }, info);
+  return command ? { command, ...(info?.refusal ? { refusal: info.refusal } : {}) } : { refusal: info?.refusal ?? "Nothing to do here" };
+}
+

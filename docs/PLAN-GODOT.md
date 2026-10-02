@@ -70,7 +70,7 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 1. Bridge and live viewer: the hole, furniture, lamps, day and night, speed and floor picking. **Done.**
 2. People: colonists walking the galleries and corridors, at work and at home. **Done**, with a performance pass.
 3. Picking and info: click a room for what it is and how it's doing. **Done.**
-4. Building: place rooms, dig, corridors, from Godot. **Rooms done** (corridor drawing, windows and bulkheads not yet).
+4. Building: place rooms, dig, corridors, from Godot. **Done**: rooms, corridors, bulkheads and windows.
 5. Looks: materials and models made for Godot, graphics presets. Bryon, Oct 2: keep going; I took "grounded and textured, lighting calm" as the default.
 
 ### Notes as built
@@ -151,4 +151,10 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 - In first person, WASD walks (Shift runs) at eye height (1.7 m) over the floor, rising up the flights; until a map comes, it flies as before. The HUD says "on foot, floor N".
 - Checked by script (`--stroll=<s>` walks ahead; test shots print where the walker is): from floor 1's gallery toward the shaft it stops at the railing; from the foot of a floor-2 flight it climbs (eye height between the floors partway) and comes off the top onto floor 1.
 - The showcase keeps corridors off the stairwells' sides: their doorways left no room for the flight, so its stairs had none.
+
+**Corridors, bulkheads and windows** (Oct 2, 2026):
+
+- Build's Access category starts with the corridor tool (Z): a button per finish with its cost per 10 m, Bulkhead, Windows, and Erase (or hold Shift). Hovering shows the border's strip, green or red, with what it costs or why not; a click carves it (or fits the bulkhead, or glazes the wall); dragging paints corridors along every border crossed (a left drag then paints rather than turning the camera; a right drag still turns).
+- All by the web's rules in the bridge (`build.ts`): the border nearest the pointer as the web finds it (`nearestEdge`), what the tool would do there (`edgeHoverFor`), and its command (`corridorCommand`). A click's refusal comes back as a toast; painting skips what it can't do quietly.
+- With this, a whole game can be played from Godot: rooms, corridors, stairs, speed, and what each room is doing. Still only in the web: the office and visits, events, ordinances, charts, the network map, saving and loading (the bridge's `--load` takes a save file).
 

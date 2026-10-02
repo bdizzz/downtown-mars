@@ -146,7 +146,8 @@ public partial class Live : Node3D
         {
             StartTool = null;
             _build.Toggle(true);
-            _build.Pick(tool);
+            if (tool.StartsWith("corridor:")) _build.PickCorridor(tool["corridor:".Length..], false, false);
+            else _build.Pick(tool);
         }
         if (HoverAt is Vector2 hover && _rig != null && _clockSeconds > 5 && FloorPoint(hover) is Vector3 over)
         {
@@ -183,7 +184,7 @@ public partial class Live : Node3D
             else if (type == "walkmap" && msg.RootElement.GetProperty("layoutVersion").GetInt32() == _layoutVersion) _walker.SetMap(Walker.Map.Parse(msg.RootElement));
             else if (type == "inspected") _inspector.Show(msg.RootElement);
             else if (type == "palette") _build.SetPalette(msg.RootElement);
-            else if (type == "hovered") _build.Hovered(msg.RootElement);
+            else if (type == "hovered" || type == "edgeHovered") _build.Hovered(msg.RootElement);
             else if (type == "notice") _build.Notice(msg.RootElement);
             else if (type == "commandResult" && msg.RootElement.GetProperty("result") is var r && !r.GetProperty("ok").GetBoolean())
                 _build.Toast(r.TryGetProperty("reason", out var why) ? why.GetString() ?? "Can't do that" : "Can't do that");
@@ -200,6 +201,8 @@ public partial class Live : Node3D
             _hole.UpdateLamps(cam.GlobalPosition, focus - above, focus + below);
         }
         _hole.ShowEdges = _rig?.Walking != true;
+        // With the corridor tool, a left drag paints (the right one still turns the camera).
+        if (_rig != null) _rig.LeftDragTurns = !_build.Painting;
         AskForMaps();
         if (snapshot != null)
         {
@@ -382,7 +385,7 @@ public partial class Live : Node3D
         var from = cam.ProjectRayOrigin(at);
         var dir = cam.ProjectRayNormal(at);
         var floor = _rig?.Walking == true ? Mathf.FloorToInt((-cam.GlobalPosition.Y - 3) / 4) + 1 : _topFloor ?? 1;
-        var y = _build.Tool != null && _build.SurfaceTool && _topFloor == null ? 0.2f : -3 - floor * _shape.FloorHeightM + 0.5f;
+        var y = _build.HasTool && _build.SurfaceTool && _topFloor == null ? 0.2f : -3 - floor * _shape.FloorHeightM + 0.5f;
         if (Mathf.Abs(dir.Y) < 1e-4f) return null;
         var t = (y - from.Y) / dir.Y;
         return t > 0 ? from + dir * t : null;
@@ -392,14 +395,20 @@ public partial class Live : Node3D
     void Click(Vector2 at)
     {
         if (FloorPoint(at) is not Vector3 p) return;
-        if (_build.Tool != null) _build.Place(p);
+        if (_build.HasTool) _build.Place(p);
         else _bridge.Send(new Dictionary<string, object> { ["type"] = "inspect", ["at"] = new[] { p.X, p.Y, p.Z } });
     }
 
     public override void _UnhandledInput(InputEvent e)
     {
-        if (e is InputEventMouseMotion motion && _build.Tool != null && FloorPoint(motion.Position) is Vector3 over) _build.Hover(over, motion.Position);
-        if (e is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: false } && _build.Tool != null) _build.Drop();
+        _build.ShiftErase = Input.IsKeyPressed(Key.Shift);
+        if (e is InputEventMouseMotion motion && _build.HasTool && FloorPoint(motion.Position) is Vector3 over)
+        {
+            _build.Hover(over, motion.Position);
+            // Dragging with the corridor tool paints along the borders crossed.
+            if (_build.Painting && (motion.ButtonMask & MouseButtonMask.Left) != 0) _build.Paint(over);
+        }
+        if (e is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: false } && _build.HasTool) _build.Drop();
         // Clicks pick a room; drags turn the camera (CameraRig), so tell them apart by how far the pointer moved.
         if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left } mb)
         {
@@ -411,6 +420,7 @@ public partial class Live : Node3D
             else if (_pressed)
             {
                 _pressed = false;
+                _build.EndPaint();
                 if (mb.Position.DistanceTo(_pressAt) < 5) Click(mb.Position);
             }
             return;
@@ -418,11 +428,11 @@ public partial class Live : Node3D
         if (e is not InputEventKey { Pressed: true, Echo: false } k) return;
         switch (k.Keycode)
         {
-            case Key.Escape when _build.Tool != null: _build.Drop(); break;
+            case Key.Escape when _build.HasTool: _build.Drop(); break;
             case Key.Escape when _build.Active: _build.Toggle(false); break;
             case Key.Escape when _inspector.Open: Inspect(null); break;
             case Key.B when !_build.Active: _build.Toggle(true); break;
-            case Key.R when _build.Tool != null: _build.Rotate(); break;
+            case Key.R when _build.HasTool: _build.Rotate(); break;
             case var key when _build.Active && key >= Key.A && key <= Key.Z && _build.PickByKey(((char)key).ToString()): break;
             case Key.Space when _rig?.Walking != true: SetSpeed(_speed == 0 ? 1 : 0); break;
             case Key.Key1: SetSpeed(1); break;
