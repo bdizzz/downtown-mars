@@ -24,6 +24,8 @@ public partial class Live : Node3D
     People _people = null!;
     Inspector _inspector = null!;
     BuildMode _build = null!;
+    GameMenu _menu = null!;
+    int _speedBeforeMenu = 1;
     int _commandId = 1;
     Vector2 _pressAt;
     bool _pressed;
@@ -104,6 +106,14 @@ public partial class Live : Node3D
         AddChild(_inspector);
         _build = new BuildMode(_hud, m => _bridge.Send(m)) { Name = "Build" };
         AddChild(_build);
+        // The menu over everything; the game pauses while it's open.
+        _menu = new GameMenu(m => _bridge.Send(m)) { Name = "Menu", Toast = t => _build.Toast(t) };
+        _menu.Shown = open =>
+        {
+            if (open) _speedBeforeMenu = _speed;
+            SetSpeed(open ? 0 : _speedBeforeMenu);
+        };
+        _hud.AddChild(_menu);
         RenderingServer.ViewportSetMeasureRenderTime(GetViewport().GetViewportRid(), true);
     }
 
@@ -190,6 +200,13 @@ public partial class Live : Node3D
             else if (type == "palette") _build.SetPalette(msg.RootElement);
             else if (type == "hovered" || type == "edgeHovered") _build.Hovered(msg.RootElement);
             else if (type == "notice") _build.Notice(msg.RootElement);
+            else if (type == "saves") _menu.SetSaves(msg.RootElement);
+            else if (type == "saved") _menu.Saved(msg.RootElement);
+            else if (type == "loaded")
+            {
+                var result = msg.RootElement.GetProperty("result");
+                _build.Toast(result.GetProperty("ok").GetBoolean() ? "Loaded" : $"Couldn't load: {(result.TryGetProperty("reason", out var why) ? why.GetString() : "unknown")}");
+            }
             else if (type == "commandResult" && msg.RootElement.GetProperty("result") is var r && !r.GetProperty("ok").GetBoolean())
                 _build.Toast(r.TryGetProperty("reason", out var why) ? why.GetString() ?? "Can't do that" : "Can't do that");
             msg.Dispose();
@@ -230,7 +247,7 @@ public partial class Live : Node3D
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
             : _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nClick a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nEsc menu · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag to turn · wheel to zoom · WASD to move · L labels · F2 graphics"
             : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -297,6 +314,11 @@ public partial class Live : Node3D
         if (gameId != _gameId)
         {
             _gameId = gameId;
+            // Another game (new, or loaded): nothing from the last one holds.
+            _walker.Forget();
+            _mapsAsked.Clear();
+            _rig?.Unground();
+            Inspect(null);
             _rig?.Frame(MetaNow(), true);
         }
         var t = s.GetProperty("time");
@@ -527,9 +549,11 @@ public partial class Live : Node3D
         if (e is not InputEventKey { Pressed: true, Echo: false } k) return;
         switch (k.Keycode)
         {
+            case Key.Escape when _menu.Visible: _menu.Close(); break;
             case Key.Escape when _build.HasTool: _build.Drop(); break;
             case Key.Escape when _build.Active: _build.Toggle(false); break;
             case Key.Escape when _inspector.Open: Inspect(null); break;
+            case Key.Escape: _menu.Open(); break;
             case Key.B when !_build.Active: _build.Toggle(true); break;
             case Key.R when _build.HasTool: _build.Rotate(); break;
             case Key.Space when _rig?.Walking != true: SetSpeed(_speed == 0 ? 1 : 0); break;
@@ -654,6 +678,10 @@ public partial class Live : Node3D
         }
         _stocks = Text("", 15, new Color("#d8c4b0"));
         rows.AddChild(_stocks);
+        var menuButton = new Button { Text = "☰ Menu", FocusMode = Control.FocusModeEnum.None, TooltipText = "Save, load, new game (Esc)" };
+        menuButton.Pressed += () => _menu.Open();
+        bar.AddChild(menuButton);
+        bar.MoveChild(menuButton, 0);
         _qualityButton = new Button { Text = "Graphics", FocusMode = Control.FocusModeEnum.None, TooltipText = "Graphics level (F2): Low, Medium, High, Ultra" };
         _qualityButton.Pressed += CycleQuality;
         bar.AddChild(_qualityButton);

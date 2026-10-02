@@ -11,6 +11,7 @@ import type { RoomSpots } from "../render3d/people3d";
 import { inspect, roomAtPoint } from "./inspect";
 import { edgeCommand, edgeHover, hover, palette, paletteKey, place, type BuildTool, type CorridorTool } from "./build";
 import { walkMap } from "./walkmap";
+import { dayOf, isSlot, readSlot, savesList, writeSlot } from "./saves";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
 // Godot viewer, speaking the web game's worker protocol (worker/protocol.ts) one JSON message per
@@ -19,7 +20,9 @@ import { walkMap } from "./walkmap";
 // panel (inspect.ts); and takes messages of its own: { type: "view", topFloor } (the floor picked, or
 // null for all) and { type: "inspect", roomId | at } (the room to show, or what's at a point).
 //
-//   npm run bridge -- [--port=17878] [--load=save.json] [--showcase=12] [--speed=1] [--hour=12] [--verbose]
+//   npm run bridge -- [--port=17878] [--load=save.json] [--showcase=12] [--speed=1] [--hour=12] [--no-autosave] [--verbose]
+//
+// Saves go to ~/.downtown-mars/saves (or DM_SAVES): an autosave each new game day, and three slots.
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => {
@@ -91,6 +94,10 @@ type BridgeMessage =
   /** Corridors, bulkheads and windows: what the tool would do at the border nearest a point, and doing it (a click, or painting on a drag). */
   | { type: "edgeHover"; tool: CorridorTool; at: [number, number, number] }
   | { type: "edge"; tool: CorridorTool; at: [number, number, number]; painting?: boolean }
+  /** Saves (saves.ts): the slots, saving to one, loading one. */
+  | { type: "saves" }
+  | { type: "saveSlot"; slot: string }
+  | { type: "loadSlot"; slot: string }
   /** First person: a floor's walking map (walkmap.ts). */
   | { type: "walkmap"; floor: number };
 
@@ -168,6 +175,23 @@ const server = createServer((socket) => {
           if (r.command && !r.refusal) host.onMessage({ type: "command", id: commandId++, command: r.command });
           else if (r.refusal && !msg.painting) send({ type: "notice", text: r.refusal });
           send(edgeHover(host.active(), msg.tool, msg.at));
+        } else if (msg.type === "saves") {
+          send(savesList());
+        } else if (msg.type === "saveSlot") {
+          if (!isSlot(msg.slot)) continue;
+          try {
+            writeSlot(host.world(), msg.slot);
+            send({ type: "notice", text: `Saved to ${msg.slot === "autosave" ? "the autosave" : `slot ${msg.slot.slice(4)}`}` });
+          } catch (e) {
+            send({ type: "notice", text: `Couldn't save: ${(e as Error).message}` });
+          }
+          send(savesList());
+        } else if (msg.type === "loadSlot") {
+          const data = isSlot(msg.slot) ? readSlot(msg.slot) : null;
+          if (data) {
+            host.onMessage({ type: "load", id: commandId++, data });
+            lastDay = dayOf(host.world());
+          } else send({ type: "notice", text: "Nothing saved there" });
         } else if (msg.type === "walkmap") {
           const map = walkMap(host.active(), msg.floor);
           if (args.verbose) console.log(`Walk map for floor ${msg.floor}: ${map.regions.length} regions, ${(map.runs.length / 1024).toFixed(0)} KB of runs, ${map.buildMs.toFixed(0)} ms`);
@@ -195,6 +219,21 @@ server.on("error", (e: NodeJS.ErrnoException) => {
   process.exit(1);
 });
 server.listen(port, "127.0.0.1", () => console.log(`Sim bridge on 127.0.0.1:${port}`));
+// Autosave as the web does, each new game day (--no-autosave to stop it).
+let lastDay = dayOf(host.world());
+setInterval(() => {
+  const day = dayOf(host.world());
+  if (day === lastDay) return;
+  lastDay = day;
+  if (args["no-autosave"]) return;
+  try {
+    writeSlot(host.world(), "autosave");
+    if (clients.size) send(savesList());
+  } catch (e) {
+    console.error("Autosave failed:", e);
+  }
+}, 1000);
+
 setInterval(() => {
   host.frame();
   sendScene();

@@ -166,3 +166,10 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 - The bridge forgets the room panel when a viewer connects.
 - Test option: `--keys=Tab@3,W@4-7` presses keys as a keyboard would (at 3 s; held from 4 to 7 s), through Godot's own input.
 
+**Saves and the game menu** (Oct 2, 2026):
+
+- The bridge keeps saves as the web does (`src/bridge/saves.ts`): an autosave each new game day and three slots, each `{ data, summary, savedAt }` with `data` the web's own save file, as files in `~/.downtown-mars/saves` (or `DM_SAVES`; `--no-autosave` stops it). The autosave is the bridge's, so it happens whether or not a viewer is open.
+- The viewer's game menu (`GameMenu.cs`; Esc when nothing else is open, or ☰ Menu): resume, save to a slot, load the autosave or a slot (each described as the web's menu does), new game (asks first), import a save file (the web's Export makes one; so does Godot's), export the game to a file, quit. The game pauses while it's open. A new game or a load resets the walker and closes the room panel.
+- Checked: a slot saved and listed; the autosave written as a new day began; loading a slot put the game back.
+- Known: a save's summary counts days from tick 0, not from the 6:00 start, so an autosave made as day 2 begins says day 1 (the web's menu does the same; it's the sim's `summarize`).
+
