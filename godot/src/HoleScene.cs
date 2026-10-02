@@ -134,7 +134,10 @@ public partial class HoleScene : Node3D
                 AlbedoColor = new Color(color, opacity),
                 Transparency = transparent ? BaseMaterial3D.TransparencyEnum.Alpha : BaseMaterial3D.TransparencyEnum.Disabled,
             };
-        // The web game's material as a plain Godot one, then dressed by what it is.
+        // Rooms, rock and finishes: the procedural surfaces (Looks.cs).
+        if (!Dev.Off("looks") && Looks.For(m.GetProperty("name").GetString() ?? "", color, m.GetProperty("roughness").GetSingle(), m.GetProperty("metalness").GetSingle(), transparent) is Material look)
+            return look;
+        // Anything else: the web game's material as a plain Godot one, then dressed by what it is.
         var src = new StandardMaterial3D
         {
             ResourceName = m.GetProperty("name").GetString(),

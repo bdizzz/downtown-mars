@@ -37,6 +37,7 @@ static class Dress
     /// <summary>The dressed material for an exported one (made once per original).</summary>
     public static Material For(BaseMaterial3D src)
     {
+        if (Dev.Off("dress")) return src;
         var key = $"{src.ResourceName}|{src.AlbedoColor}|{src.Transparency}";
         if (Done.TryGetValue(key, out var hit)) return hit;
         var name = src.ResourceName ?? "";
@@ -72,7 +73,7 @@ static class Dress
         AlbedoTexture = Noise.Tone(0.2f, 0.88f),
         NormalEnabled = true,
         NormalTexture = Noise.Bumps(0.3f, 2),
-        NormalScale = 0.35f,
+        NormalScale = 0.12f,
         Roughness = Mathf.Min(src.Roughness, 0.8f),
         Metallic = src.Metallic,
         Uv1Triplanar = true,

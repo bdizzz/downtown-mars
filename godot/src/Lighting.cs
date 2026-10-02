@@ -50,7 +50,7 @@ static class Lighting
             GlowIntensity = 0.5f,
             GlowBloom = 0.05f,
             VolumetricFogEnabled = true,
-            VolumetricFogDensity = 0.0015f,
+            VolumetricFogDensity = 0.0006f,
             VolumetricFogAlbedo = new Color(0.9f, 0.7f, 0.55f),
             VolumetricFogLength = 120,
             VolumetricFogGIInject = 0.6f,
@@ -78,7 +78,7 @@ static class Lighting
     public static FogVolume MakeShaftHaze(HoleShape h)
     {
         var depth = 3 + h.FloorHeightM * (h.Floors + 1);
-        var mat = new FogMaterial { Density = 0.012f, Albedo = new Color(0.95f, 0.75f, 0.6f), HeightFalloff = 0, EdgeFade = 0.3f };
+        var mat = new FogMaterial { Density = 0.005f, Albedo = new Color(0.95f, 0.75f, 0.6f), HeightFalloff = 0, EdgeFade = 0.3f };
         return new FogVolume
         {
             Shape = RenderingServer.FogVolumeShape.Cylinder,
@@ -98,6 +98,10 @@ static class Lighting
             ShadowEnabled = true,
             DirectionalShadowMode = DirectionalLight3D.ShadowMode.Parallel2Splits,
             DirectionalShadowMaxDistance = 200,
+            // Thin walls at a glancing sun shadow themselves in jagged bands without these.
+            ShadowBias = 0.08f,
+            ShadowNormalBias = 2.5f,
+            ShadowBlur = 1.5f,
         };
         var from = new Vector3(pos[0], pos[1], pos[2]);
         // Looking from the sun toward the hole (a vertical sun needs another "up").

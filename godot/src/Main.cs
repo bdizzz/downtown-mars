@@ -13,7 +13,7 @@ namespace DowntownMars;
 /// screen-space occlusion and indirect light, volumetric fog, glow, and a real light per lamp.
 ///
 /// Without arguments it's the live viewer (Live.cs), drawing the game the bridge runs; --floor=&lt;n&gt;
-/// picks a floor, --walk starts in first person, --shot=&lt;seconds&gt; saves shots/live.png then and quits,
+/// picks a floor, --walk starts in first person, --port=&lt;n&gt; finds the bridge there (default 7878), --shot=&lt;seconds&gt; saves shots/live.png then and quits,
 /// --bench=&lt;seconds&gt; averages frame times after a warmup, prints them and quits, --click=x,y clicks there,
 /// --build=&lt;room&gt; opens Build with that room in hand and --hover=x,y points there.
 /// Command line (after "--"): --scene=&lt;name&gt; views an exported scene instead; --bench[=seconds] circles the
@@ -56,6 +56,7 @@ public partial class Main : Node3D
                 if (arg.StartsWith("--shot=")) live.ShotAfter = float.Parse(arg["--shot=".Length..]);
                 else if (arg.StartsWith("--floor=")) live.StartFloor = int.Parse(arg["--floor=".Length..]);
                 else if (arg == "--walk") live.StartWalking = true;
+                else if (arg.StartsWith("--port=")) live.Port = int.Parse(arg["--port=".Length..]);
                 else if (arg.StartsWith("--bench=")) live.BenchSeconds = float.Parse(arg["--bench=".Length..]);
                 else if (arg.StartsWith("--build=")) live.StartTool = arg["--build=".Length..];
                 else if (arg.StartsWith("--hover="))

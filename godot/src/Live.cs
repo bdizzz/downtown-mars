@@ -53,6 +53,8 @@ public partial class Live : Node3D
     /// <summary>Start-up options from the command line (Main.cs): a floor to pick, first person, and a screenshot then quit.</summary>
     public int? StartFloor { get; set; }
     public bool StartWalking { get; set; }
+    /// <summary>The bridge's port (npm run bridge -- --port=…).</summary>
+    public int Port { get; set; } = 7878;
     /// <summary>A click at this screen point once the scene is up (for testing picking from the command line).</summary>
     public Vector2? ClickAt { get; set; }
     /// <summary>A room to have in hand once the palette's in, and a point to hover (testing building from the command line).</summary>
@@ -66,7 +68,7 @@ public partial class Live : Node3D
 
     public override void _Ready()
     {
-        _bridge = new Bridge();
+        _bridge = new Bridge(port: Port);
         _env = Lighting.MakeEnvironment();
         AddChild(_env);
         _sun = Lighting.MakeSun(new float[] { 40, 80, 20 });
@@ -395,7 +397,7 @@ public partial class Live : Node3D
         arrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
         var mesh = new ArrayMesh();
         mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
-        mesh.SurfaceSetMaterial(0, Dress.For(new StandardMaterial3D { ResourceName = "rock:ground", AlbedoColor = new Color("#7a3b22"), Roughness = 0.95f }));
+        mesh.SurfaceSetMaterial(0, Looks.For("rock:ground", new Color("#7a3b22"), 0.95f, 0, false) ?? Dress.For(new StandardMaterial3D { ResourceName = "rock:ground", AlbedoColor = new Color("#7a3b22"), Roughness = 0.95f }));
         _ground.Mesh = mesh;
     }
 

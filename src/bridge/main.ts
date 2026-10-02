@@ -168,6 +168,11 @@ const server = createServer((socket) => {
   socket.on("error", drop);
 });
 
+server.on("error", (e: NodeJS.ErrnoException) => {
+  if (e.code !== "EADDRINUSE") throw e;
+  console.error(`Port ${port} is taken: another bridge is running (stop it, or use --port=<n> here and in the viewer).`);
+  process.exit(1);
+});
 server.listen(port, "127.0.0.1", () => console.log(`Sim bridge on 127.0.0.1:${port}`));
 setInterval(() => {
   host.frame();

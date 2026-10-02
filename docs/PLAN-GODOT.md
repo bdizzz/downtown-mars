@@ -71,7 +71,7 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 2. People: colonists walking the galleries and corridors, at work and at home. **Done**, with a performance pass.
 3. Picking and info: click a room for what it is and how it's doing. **Done.**
 4. Building: place rooms, dig, corridors, from Godot. **Rooms done** (corridor drawing, windows and bulkheads not yet).
-5. Looks: materials and models made for Godot, graphics presets.
+5. Looks: materials and models made for Godot, graphics presets. Bryon, Oct 2: keep going; I took "grounded and textured, lighting calm" as the default.
 
 ### Notes as built
 
@@ -113,4 +113,11 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 - The palette's catalogue (categories in order, their names, room hotkeys, shapes) moved from `ui/BuildPalette.tsx` to `src/view/buildCatalog.ts` for both.
 - The room panel gained **Connect** (carves corridors in rock to reach an unconnected room, as the web's) and **Demolish** (Cancel for a blueprint or a room being built).
 - Test options: `--build=<room>` opens Build with it in hand, `--hover=x,y` points there.
+
+**Step 5, surfaces** (Oct 2, 2026):
+
+- **The web's procedural surfaces in Godot** (`godot/shaders/surfaces.gdshader`, chosen by material name in `Looks.cs`): rock strata, regolith, marscrete, brick and metal finishes, and rooms' floors by kind (planks, tiles, diamond plate, paving, concrete, with the web's colours, tints and sheen) under walls in the room's colour with a fine plaster grain, and the web's grime. Ported from `surfaces.ts`'s GLSL, plus two things the web doesn't do: each pattern's relief bends the light (bump mapping from the pattern's own slope, so grout, plank gaps, plate, seams and strata catch the lamps), and gaps are rougher than faces. Gallery tube ribs and rims take bolted metal; their floors marscrete. No cost measured (38 fps Iso, 28 first person, as before).
+- The phase-1 noise materials (`Dress.cs`) remain for the rest (glass, doors, props, lamps), with a gentler bump: its cellular normal map is what made the tube rims look like gravel.
+- Calmer air: the global haze at 40% of what it was and the shaft's at 40%, and the sun's shadows with more bias and some blur, which ends the jagged self-shadowing on walls at a low sun.
+- Testing note: the bridge now says when its port is taken, rather than crashing, and the viewer takes `--port=<n>`; I test on 7979 so as not to touch a bridge you're running on 7878.
 
