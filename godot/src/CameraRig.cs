@@ -11,6 +11,21 @@ namespace DowntownMars;
 public partial class CameraRig : Node3D
 {
     readonly Camera3D _cam = new() { Fov = 50, Near = 0.1f, Far = 4000 };
+    /// <summary>
+    /// First person carries a headlamp, as the web's does: soft and warm, a little above and behind the
+    /// eyes so near walls don't flare, no shadows. Off in Iso.
+    /// </summary>
+    readonly OmniLight3D _headlamp = new()
+    {
+        LightColor = new Color(1f, 0.9f, 0.78f),
+        LightEnergy = 1.4f,
+        OmniRange = 13,
+        OmniAttenuation = 1.6f,
+        Position = new Vector3(0, 0.4f, 0.6f),
+        ShadowEnabled = false,
+        LightSpecular = 0.3f,
+        Visible = false,
+    };
 
     bool _walking;
     // Iso.
@@ -55,6 +70,16 @@ public partial class CameraRig : Node3D
 
     public bool Walking => _walking;
 
+    /// <summary>Stand here in first person, looking this way (radians about y: 0 looks along +x) and this far up.</summary>
+    public void Stand(Vector3 at, float yaw, float pitch = 0)
+    {
+        _walking = true;
+        _pos = at;
+        _lookYaw = yaw;
+        _lookPitch = pitch;
+        Apply();
+    }
+
     public void Walk(bool on)
     {
         _walking = on;
@@ -64,6 +89,7 @@ public partial class CameraRig : Node3D
     public override void _Ready()
     {
         AddChild(_cam);
+        _cam.AddChild(_headlamp);
         _cam.Current = true;
         Apply();
     }
@@ -142,6 +168,7 @@ public partial class CameraRig : Node3D
 
     void Apply()
     {
+        _headlamp.Visible = _walking;
         if (_walking)
         {
             _cam.GlobalPosition = _pos;

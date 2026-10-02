@@ -135,3 +135,11 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 
 - High moved SSIL to Ultra (4 ms for little to see), so the default is faster than step 4's everything-on (38 and 28).
 
+**Step 5, furniture and first person** (Oct 2, 2026):
+
+- Furniture's near copy has **chamfered edges** (1.5 cm, less on small parts; built at each part's real size so the bevel doesn't stretch): every box is 44 triangles, not 12, and its edges catch the light. The far copy stays plain. Iso on High: 47 fps as before (most furniture is far there).
+- Furniture parts get **what they're made of**, as the web's `partTone`: wood grain, fabric weave, brushed and scuffed metal (more metallic), worn paint, soil; the material rides in each vertex's UV, and each varies roughness a little too.
+- **A headlamp in first person**, as the web's: soft and warm, a little above and behind the eyes, no shadows. Without it unlit rooms were black.
+- Rooms' outlines are hidden in first person (from above they help; up close they looked like dotted glitches on the floor).
+- Test option: `--at=x,y,z,heading[,pitch]` stands there in first person.
+

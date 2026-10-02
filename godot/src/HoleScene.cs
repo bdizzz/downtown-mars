@@ -26,6 +26,18 @@ public partial class HoleScene : Node3D
     public int Lamps { get; private set; }
     public int Chunks { get; private set; }
     public bool ShowLabels { get => _labels.Visible; set => _labels.Visible = value; }
+    readonly List<MeshInstance3D> _edges = new();
+    bool _showEdges = true;
+    /// <summary>Rooms' outlines: they help from above, and look like glitches up close (off in first person).</summary>
+    public bool ShowEdges
+    {
+        get => _showEdges;
+        set
+        {
+            _showEdges = value;
+            foreach (var e in _edges) e.Visible = value;
+        }
+    }
     Node3D _labels = new() { Name = "Labels" };
 
     public void Build(JsonElement scene)
@@ -38,12 +50,20 @@ public partial class HoleScene : Node3D
         foreach (var m in scene.GetProperty("materials").EnumerateArray()) materials.Add(MaterialFor(m));
 
         Chunks = 0;
+        _edges.Clear();
         foreach (var c in scene.GetProperty("chunks").EnumerateArray())
         {
             var mesh = ChunkMesh(c);
             if (mesh == null) continue;
             mesh.SurfaceSetMaterial(0, materials[c.GetProperty("material").GetInt32()]);
-            AddChild(new MeshInstance3D { Mesh = mesh, Name = $"chunk{Chunks++}" });
+            var instance = new MeshInstance3D { Mesh = mesh, Name = $"chunk{Chunks++}" };
+            if (c.GetProperty("lines").GetBoolean())
+            {
+                instance.Visible = _showEdges;
+                instance.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+                _edges.Add(instance);
+            }
+            AddChild(instance);
         }
 
         if (!Dev.Off("furniture")) AddChild(_furniture.Build(scene.GetProperty("furniture")));

@@ -51,6 +51,8 @@ public partial class Live : Node3D
     /// <summary>Start-up options from the command line (Main.cs): a floor to pick, first person, and a screenshot then quit.</summary>
     public int? StartFloor { get; set; }
     public bool StartWalking { get; set; }
+    /// <summary>Stand here in first person: x, y, z, heading in degrees (0 looks along +x), and optionally pitch.</summary>
+    public float[]? StandAt { get; set; }
     /// <summary>The bridge's port (npm run bridge -- --port=…).</summary>
     public int Port { get; set; } = 7878;
     /// <summary>A graphics level from the command line (--quality=low…ultra), not saved; otherwise the saved one.</summary>
@@ -179,6 +181,7 @@ public partial class Live : Node3D
             var (above, below) = Graphics.LampFloors(_quality);
             _hole.UpdateLamps(cam.GlobalPosition, focus - above, focus + below);
         }
+        _hole.ShowEdges = _rig?.Walking != true;
         if (snapshot != null)
         {
             OnSnapshot(snapshot.RootElement);
@@ -231,6 +234,7 @@ public partial class Live : Node3D
             _rig = new CameraRig(MetaNow());
             AddChild(_rig);
             if (StartWalking) _rig.Walk(true);
+            if (StandAt is float[] at && at.Length >= 4) _rig.Stand(new Vector3(at[0], at[1], at[2]), Mathf.DegToRad(at[3]), at.Length > 4 ? Mathf.DegToRad(at[4]) : 0);
         }
     }
 
