@@ -14,6 +14,13 @@ static class Dress
 {
     static readonly Dictionary<string, Material> Done = new();
 
+    /// <summary>Let go of the cached materials and textures on the way out.</summary>
+    public static void Release()
+    {
+        Done.Clear();
+        Noise.Release();
+    }
+
     public static void Apply(Node root)
     {
         foreach (var node in Walk(root))
@@ -122,6 +129,8 @@ static class Dress
 static class Noise
 {
     static readonly Dictionary<string, Texture2D> Made = new();
+
+    public static void Release() => Made.Clear();
 
     /// <summary>A greyscale tone between `low` and 1, multiplied into a colour.</summary>
     public static Texture2D Tone(float frequency, float low) => Get($"tone:{frequency}:{low}", () => new NoiseTexture2D

@@ -25,7 +25,16 @@ public partial class HoleScene : Node3D
     const float FogEnergy = 0.6f;
     public int Lamps { get; private set; }
     public int Chunks { get; private set; }
-    public bool ShowLabels { get => _labels.Visible; set => _labels.Visible = value; }
+    bool _showLabels = true;
+    public bool ShowLabels
+    {
+        get => _showLabels;
+        set
+        {
+            _showLabels = value;
+            if (_labels != null) _labels.Visible = value;
+        }
+    }
     readonly List<MeshInstance3D> _edges = new();
     bool _showEdges = true;
     /// <summary>Rooms' outlines: they help from above, and look like glitches up close (off in first person).</summary>
@@ -38,12 +47,12 @@ public partial class HoleScene : Node3D
             foreach (var e in _edges) e.Visible = value;
         }
     }
-    Node3D _labels = new() { Name = "Labels" };
+    Node3D? _labels;
 
     public void Build(JsonElement scene)
     {
         foreach (var c in GetChildren()) c.QueueFree();
-        _labels = new Node3D { Name = "Labels" };
+        _labels = new Node3D { Name = "Labels", Visible = _showLabels };
         AddChild(_labels);
 
         var materials = new List<Material>();
@@ -97,7 +106,7 @@ public partial class HoleScene : Node3D
         if (!Dev.Off("labels"))
         foreach (var l in scene.GetProperty("labels").EnumerateArray())
         {
-            _labels.AddChild(new Label3D
+            _labels!.AddChild(new Label3D
             {
                 Text = l.GetProperty("text").GetString(),
                 Position = new Vector3(l.GetProperty("x").GetSingle(), l.GetProperty("y").GetSingle(), l.GetProperty("z").GetSingle()),

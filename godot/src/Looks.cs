@@ -11,8 +11,16 @@ namespace DowntownMars;
 /// </summary>
 static class Looks
 {
-    static readonly Shader Shader = GD.Load<Shader>("res://shaders/surfaces.gdshader");
+    static Shader? _shader;
+    static Shader Shader => _shader ??= GD.Load<Shader>("res://shaders/surfaces.gdshader");
     static readonly Dictionary<string, ShaderMaterial> Made = new();
+
+    /// <summary>Let go of the shader and materials on the way out (statics would outlive the engine and show as leaks).</summary>
+    public static void Release()
+    {
+        Made.Clear();
+        _shader = null;
+    }
 
     /// <summary>Floors by kind, as the web's FLOOR_LOOK (surfaces.ts): colour, how much the room's colour tints it, roughness, metalness.</summary>
     static readonly Dictionary<string, (int kind, string color, float tint, float rough, float metal)> Floors = new()

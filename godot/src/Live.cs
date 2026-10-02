@@ -97,7 +97,12 @@ public partial class Live : Node3D
         RenderingServer.ViewportSetMeasureRenderTime(GetViewport().GetViewportRid(), true);
     }
 
-    public override void _ExitTree() => _bridge.Dispose();
+    public override void _ExitTree()
+    {
+        _bridge.Dispose();
+        Looks.Release();
+        Dress.Release();
+    }
 
     double _liveMs;
 
