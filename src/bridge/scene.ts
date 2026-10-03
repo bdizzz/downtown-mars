@@ -48,6 +48,9 @@ export interface SceneChunk {
   normals?: string;
   /** Float32 rgb per vertex. */
   colors?: string;
+  /** Walls down: float32 per vertex, the wall tag (4) and a line's second wall (2), when any vertex has one. */
+  walls?: string;
+  walls2?: string;
 }
 
 export interface SceneMessage {
@@ -108,6 +111,10 @@ interface Bucket {
   pos: number[];
   nrm: number[];
   col: number[] | null;
+  /** Walls down (rooms3d.ts aWall, aWall2): each vertex's wall tag, and a line's second wall; with any set, `walled`. */
+  wall: number[];
+  wall2: number[];
+  walled: boolean;
 }
 
 /** People (the web's people3d.ts): who's at a post, in a seat or in bed now, and the gallery tubes the walkers stroll. */
@@ -187,7 +194,11 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     for (const l of (g.userData.lamps as Lamp[] | undefined) ?? []) lamps.push({ x: l.x, y: l.y, z: l.z, floor: l.floor, color: l.color, reach: l.reach, strength: l.strength });
     if (g.userData.people) spots.push(g.userData.people as RoomSpots);
     const accent = indexIn(accents, g.userData.accent as string);
-    for (const p of g.userData.placed as Placed[]) placed.push([indexIn(items, p.item), accent, round(p.x), round(p.y), round(p.z), round(p.turn)]);
+    // A wall hanging carries its wall (as rooms3d.ts hangTag): normal, bottom and top, and the point on it behind the item.
+    for (const p of g.userData.placed as (Placed & { hang?: { nx: number; nz: number; y0: number; y1: number; ax: number; az: number } })[]) {
+      const base = [indexIn(items, p.item), accent, round(p.x), round(p.y), round(p.z), round(p.turn)];
+      placed.push(p.hang ? [...base, round(p.hang.nx), round(p.hang.nz), round(p.hang.y0), round(p.hang.y1), round(p.hang.ax), round(p.hang.az)] : base);
+    }
     g.removeFromParent();
   }
 
@@ -206,6 +217,8 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     if (!p || p.count === 0) return;
     const nrmAttr = geo.getAttribute("normal");
     const colAttr = geo.getAttribute("color");
+    const wallAttr = geo.getAttribute("aWall");
+    const wall2Attr = geo.getAttribute("aWall2");
     const lines = mesh instanceof THREE.LineSegments;
     const count = mesh instanceof THREE.InstancedMesh ? mesh.count : 1;
     const mi = indexOf(material);
@@ -232,7 +245,7 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
         const sector = Math.floor(((Math.atan2(centre.z, centre.x) / (Math.PI * 2) + 1) % 1) * SECTORS) % SECTORS;
         const key = `${mi}:${floor}:${sector}:${lines}`;
         let b = buckets.get(key);
-        if (!b) buckets.set(key, (b = { material: mi, floor, lines, pos: [], nrm: [], col: material.vertexColors ? [] : null }));
+        if (!b) buckets.set(key, (b = { material: mi, floor, lines, pos: [], nrm: [], col: material.vertexColors ? [] : null, wall: [], wall2: [], walled: false }));
         for (let j = 0; j < per; j++) {
           b.pos.push(pts[j]!.x, pts[j]!.y, pts[j]!.z);
           if (!lines) b.nrm.push(nrms[j]!.x, nrms[j]!.y, nrms[j]!.z);
@@ -240,6 +253,12 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
             if (colAttr) b.col.push(colAttr.getX(i + j), colAttr.getY(i + j), colAttr.getZ(i + j));
             else b.col.push(1, 1, 1);
           }
+          if (wallAttr) {
+            b.wall.push(wallAttr.getX(i + j), wallAttr.getY(i + j), wallAttr.getZ(i + j), wallAttr.getW(i + j));
+            b.walled ||= wallAttr.getX(i + j) !== 0 || wallAttr.getY(i + j) !== 0;
+          } else b.wall.push(0, 0, 0, 0);
+          if (wall2Attr) b.wall2.push(wall2Attr.getX(i + j), wall2Attr.getY(i + j));
+          else b.wall2.push(0, 0);
         }
       }
     }
@@ -254,6 +273,7 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     positions: base64(b.pos),
     ...(b.lines ? {} : { normals: base64(b.nrm) }),
     ...(b.col ? { colors: base64(b.col) } : {}),
+    ...(b.walled ? { walls: base64(b.wall), walls2: base64(b.wall2) } : {}),
   }));
   const message: SceneMessage = {
     type: "scene",

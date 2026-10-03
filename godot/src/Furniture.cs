@@ -41,6 +41,10 @@ public class Furniture
     readonly Dictionary<(string, bool), Mesh?> _meshes = new();
     readonly Dictionary<Kind, ShaderMaterial> _materials = new();
 
+    /// <summary>Wall hangings, for walls down: each instance, where it stands, and its wall (normal, bottom, the point behind it).</summary>
+    record Hung(MultiMesh Mm, int Index, Transform3D At, Vector2 Normal, Vector2 Point, bool Down);
+    readonly List<Hung> _hung = new();
+
     public Furniture()
     {
         var path = ProjectSettings.GlobalizePath("res://") + "../data/furniture.json";
@@ -64,12 +68,30 @@ public class Furniture
         return m;
     }
 
+    /// <summary>
+    /// Walls down: a hanging whose wall is lowered goes (as the web's HANG_GLSL, tested at the point on the
+    /// wall behind it: the camera on the wall's far side, or the wall always lowered); back when it isn't.
+    /// </summary>
+    public void UpdateWalls(bool on, Vector3 camera)
+    {
+        for (var i = 0; i < _hung.Count; i++)
+        {
+            var h = _hung[i];
+            var toCam = new Vector2(camera.X - h.Point.X, camera.Z - h.Point.Y);
+            var down = on && (h.Normal.LengthSquared() > 2 || toCam.Dot(h.Normal) < 0);
+            if (down == h.Down) continue;
+            h.Mm.SetInstanceTransform(h.Index, down ? new Transform3D(Basis.FromScale(Vector3.Zero), h.At.Origin) : h.At);
+            _hung[i] = h with { Down = down };
+        }
+    }
+
     public void SetNight(float night) => _materials[Kind.Glow].SetShaderParameter("glow", GlowDay + night * GlowNight);
 
     /// <summary>The scene's furniture: { items, accents, placed: [item, accent, x, y, z, turn] }.</summary>
     public Node3D Build(JsonElement furniture)
     {
         var root = new Node3D { Name = "Furniture" };
+        _hung.Clear();
         var items = furniture.GetProperty("items").EnumerateArray().Select(e => e.GetString()!).ToArray();
         var accents = furniture.GetProperty("accents").EnumerateArray().Select(e => new Color(e.GetString()!).SrgbToLinear()).ToArray();
         // One batch per item per floor per part of the ring, so what's out of sight (or out of a light's reach) is left out,
@@ -99,8 +121,10 @@ public class Furniture
                 for (var i = 0; i < list.Count; i++)
                 {
                     var v = list[i];
-                    mm.SetInstanceTransform(i, new Transform3D(new Basis(Vector3.Up, v[5]), new Vector3(v[2], v[3], v[4])));
+                    var at = new Transform3D(new Basis(Vector3.Up, v[5]), new Vector3(v[2], v[3], v[4]));
+                    mm.SetInstanceTransform(i, at);
                     mm.SetInstanceCustomData(i, accents[(int)v[1]]);
+                    if (v.Length >= 12) _hung.Add(new Hung(mm, i, at, new Vector2(v[6], v[7]), new Vector2(v[10], v[11]), false));
                 }
                 root.AddChild(new MultiMeshInstance3D
                 {

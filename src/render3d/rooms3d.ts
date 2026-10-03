@@ -739,7 +739,8 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
   if (hungAs) g.add(...furnitureMeshes(hanging, accent, hungAs).children);
   g.userData.centre = centreOf(fitted);
   // What stands where, for the Godot bridge (src/bridge/scene.ts), which draws furniture its own way.
-  g.userData.placed = fitted.map(({ item, x, y, z, turn }) => ({ item, x, y, z, turn }));
+  const hungTags = new Map(hanging.map((f, i) => [f, hungAs!.tags[i]!]));
+  g.userData.placed = fitted.map((f) => ({ item: f.item, x: f.x, y: f.y, z: f.z, turn: f.turn, hang: hungTags.get(f) }));
   g.userData.accent = accent;
   // Where its people go, for the stage to fill by the hour.
   const def = roomDef(room.type);

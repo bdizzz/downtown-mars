@@ -56,6 +56,8 @@ public partial class Main : Node3D
         if (_scene == null)
         {
             var live = new Live { Name = "Live" };
+            // Test runs keep their hands off the player's settings.
+            ViewSettings.ReadOnly = OS.GetCmdlineUserArgs().Any(a => a.StartsWith("--shot=") || a.StartsWith("--bench="));
             foreach (var arg in OS.GetCmdlineUserArgs())
             {
                 if (arg.StartsWith("--shot=")) live.ShotAfter = float.Parse(arg["--shot=".Length..]);

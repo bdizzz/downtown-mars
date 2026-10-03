@@ -22,6 +22,7 @@ public static class Graphics
 
     public static void Save(Quality q)
     {
+        if (ViewSettings.ReadOnly) return;
         var cfg = new ConfigFile();
         cfg.Load(File);
         cfg.SetValue("graphics", "quality", (int)q);

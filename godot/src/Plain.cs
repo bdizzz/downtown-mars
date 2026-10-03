@@ -44,6 +44,7 @@ uniform vec3 emission : source_color = vec3(0.0);
 uniform float emission_energy = 0.0;
 uniform bool use_vertex_color = false;
 uniform float grain = 0.0;
+uniform bool walls = false;
 varying vec3 wpos;
 varying vec4 vcolor;
 float hash3(vec3 p) {{ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }}
@@ -55,7 +56,7 @@ float noise3(vec3 x) {{
 void vertex() {{
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vcolor = COLOR;
-	VERTEX = lower_wall(VERTEX, CUSTOM0, CUSTOM1.xy, wpos, CAMERA_POSITION_WORLD);
+	if (walls) VERTEX = lower_wall(VERTEX, CUSTOM0, CUSTOM1.xy, wpos, CAMERA_POSITION_WORLD);
 }}
 void fragment() {{
 	if (cut_away(wpos)) discard;

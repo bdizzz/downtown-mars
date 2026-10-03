@@ -24,8 +24,12 @@ public static class ViewSettings
         RoomColors = (bool)cfg.GetValue("view", "room_colors", true);
     }
 
+    /// <summary>A test run (a screenshot or a benchmark): nothing it changes is kept.</summary>
+    public static bool ReadOnly { get; set; }
+
     public static void Save()
     {
+        if (ReadOnly) return;
         var cfg = new ConfigFile();
         cfg.Load(File);
         cfg.SetValue("view", "camera", (int)Camera);

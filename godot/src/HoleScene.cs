@@ -90,7 +90,10 @@ public partial class HoleScene : Node3D
         {
             var mesh = ChunkMesh(c);
             if (mesh == null) continue;
-            mesh.SurfaceSetMaterial(0, materials[c.GetProperty("material").GetInt32()]);
+            var material = materials[c.GetProperty("material").GetInt32()];
+            // Walls down only where there are walls to lower (the mesh carries their tags).
+            if (mesh.HasMeta("walls") && material is ShaderMaterial sm) sm.SetShaderParameter("walls", true);
+            mesh.SurfaceSetMaterial(0, material);
             var instance = new MeshInstance3D { Mesh = mesh, Name = $"chunk{Chunks++}" };
             // Solid surfaces take clicks (a ray finds what's under the pointer); glass and outlines don't.
             // Their collision is made when their floor comes into view (EnsureCollision): all at once took a second.
@@ -183,6 +186,9 @@ public partial class HoleScene : Node3D
         }
     }
 
+    /// <summary>Walls down for the wall hangings (the walls themselves drop in their shaders).</summary>
+    public void UpdateWalls(bool on, Vector3 camera) => _furniture.UpdateWalls(on, camera);
+
     /// <summary>On the cutaway's cut-away side (view.gdshaderinc cut_away)?</summary>
     static bool CutAway(Vector4 cut, Vector3 p) => cut.W > 0.5f && p.X * cut.X + p.Z * cut.Z > 0;
 
@@ -271,7 +277,28 @@ public partial class HoleScene : Node3D
             arrays[(int)Mesh.ArrayType.Color] = colors;
         }
         var mesh = new ArrayMesh();
-        mesh.AddSurfaceFromArrays(lines ? Mesh.PrimitiveType.Lines : Mesh.PrimitiveType.Triangles, arrays);
+        // Walls down: each vertex's wall tag (CUSTOM0) and a line's second wall (CUSTOM1), zeros where none.
+        var flags = (Mesh.ArrayFormat)0;
+        if (c.TryGetProperty("walls", out var we) && c.TryGetProperty("walls2", out var we2))
+        {
+            var w = Floats(we);
+            var w2 = Floats(we2);
+            var wall = new float[count * 4];
+            var wall2 = new float[count * 4];
+            for (var i = 0; i < count; i++)
+            {
+                var k = order[i];
+                for (var j = 0; j < 4; j++) wall[i * 4 + j] = w[k * 4 + j];
+                wall2[i * 4] = w2[k * 2];
+                wall2[i * 4 + 1] = w2[k * 2 + 1];
+            }
+            arrays[(int)Mesh.ArrayType.Custom0] = wall;
+            arrays[(int)Mesh.ArrayType.Custom1] = wall2;
+            flags = (Mesh.ArrayFormat)((long)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift
+                | (long)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom1Shift);
+        }
+        mesh.AddSurfaceFromArrays(lines ? Mesh.PrimitiveType.Lines : Mesh.PrimitiveType.Triangles, arrays, null, null, flags);
+        if (flags != 0) mesh.SetMeta("walls", true);
         return mesh;
     }
 }
