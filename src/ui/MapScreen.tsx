@@ -5,58 +5,11 @@ import { DEPOSIT_KINDS, depositsAt, features, nearestFeature, wrapLon, type Depo
 import { network } from "../sim/network";
 import { DEPOSIT_STYLE, siteReport, type Elevation } from "../view/network";
 import type { Snapshot } from "../sim/snapshot";
+import reliefUrl from "../../data/mars-relief.jpg?url";
 
-// The planet from above: MOLA relief (loaded when the map first opens),
-// the game's deposits, named features, and where the holes are.
-
-/** Colour by elevation (metres): deep basins dark, plains rust, heights pale. */
-const RAMP: [number, [number, number, number]][] = [
-  [-8000, [29, 34, 51]],
-  [-4000, [64, 42, 40]],
-  [-2000, [107, 58, 36]],
-  [0, [154, 82, 48]],
-  [2000, [184, 115, 63]],
-  [5000, [201, 154, 106]],
-  [10000, [220, 195, 160]],
-  [21000, [244, 236, 224]],
-];
-
-function ramp(e: number): [number, number, number] {
-  for (let i = 1; i < RAMP.length; i++) {
-    const [e1, c1] = RAMP[i]!;
-    const [e0, c0] = RAMP[i - 1]!;
-    if (e <= e1) {
-      const t = Math.max(0, (e - e0) / (e1 - e0));
-      return [c0[0] + (c1[0] - c0[0]) * t, c0[1] + (c1[1] - c0[1]) * t, c0[2] + (c1[2] - c0[2]) * t];
-    }
-  }
-  return RAMP[RAMP.length - 1]![1];
-}
-
-
-/** Shaded relief as an image: colour by height, lit from the north-west, with the polar caps. */
-function relief(d: Elevation): ImageData {
-  const { width: w, height: h } = d;
-  const img = new ImageData(w, h);
-  const at = (x: number, y: number) => d.elevation[Math.min(h - 1, Math.max(0, y)) * w + (((x % w) + w) % w)]! * d.unitMeters;
-  for (let y = 0; y < h; y++) {
-    const lat = 90 - y - 0.5;
-    for (let x = 0; x < w; x++) {
-      const e = at(x, y);
-      const shade = Math.min(1.35, Math.max(0.55, 1 + (at(x - 1, y - 1) - at(x + 1, y + 1)) / 3500));
-      let [r, g, b] = ramp(e);
-      // Residual polar ice caps.
-      const cap = Math.max(0, (Math.abs(lat) - (lat > 0 ? 80 : 83)) / 5);
-      if (cap > 0) [r, g, b] = [r + (236 - r) * Math.min(1, cap), g + (238 - g) * Math.min(1, cap), b + (240 - b) * Math.min(1, cap)];
-      const i = (y * w + x) * 4;
-      img.data[i] = Math.min(255, r * shade);
-      img.data[i + 1] = Math.min(255, g * shade);
-      img.data[i + 2] = Math.min(255, b * shade);
-      img.data[i + 3] = 255;
-    }
-  }
-  return img;
-}
+// The planet from above: MOLA shaded relief at 8 px a degree (data/mars-relief.jpg, drawn by
+// scripts/build-relief.mjs; loaded when the map first opens), the game's deposits, named features,
+// and where the holes are. Heights under the pointer come from the game's 1° grid.
 
 export type SitePick = { lat: number; lon: number };
 
@@ -72,7 +25,7 @@ interface Props {
 
 
 /** The map drawn to wrap the globe: 2:1, with a scale for marks and names drawn on it. */
-const TEXTURE = { w: 2048, h: 1024, scale: 1.7 };
+const TEXTURE = { w: 4096, h: 2048, scale: 3.4 };
 
 export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
   // Everything is drawn flat into this canvas, which the globe wears.
@@ -90,18 +43,21 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
   const [hover, setHover] = useState<{ lat: number; lon: number } | null>(null);
   const [shown, setShown] = useState<Record<DepositKind, boolean>>({ ice: true, aquifer: true, ore: true, silica: true });
 
-  // Load the elevation data once, and turn it into a small relief image.
+  // Load the relief image and the elevation grid once.
   useEffect(() => {
     let alive = true;
-    import("../../data/mars-elevation.json").then((mod) => {
+    const img = new Image();
+    img.onload = () => {
       if (!alive) return;
-      const d = (mod.default ?? mod) as Elevation;
       const c = document.createElement("canvas");
-      c.width = d.width;
-      c.height = d.height;
-      c.getContext("2d")!.putImageData(relief(d), 0, 0);
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      c.getContext("2d")!.drawImage(img, 0, 0);
       setImage(c);
-      setElevation(d);
+    };
+    img.src = reliefUrl;
+    import("../../data/mars-elevation.json").then((mod) => {
+      if (alive) setElevation((mod.default ?? mod) as Elevation);
     });
     return () => {
       alive = false;

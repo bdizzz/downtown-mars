@@ -236,7 +236,7 @@ public partial class Live : Node3D
         };
         _hud.AddChild(_menu);
         // The tutorial, help and settings (the sheets over the menu).
-        _tutorial.Hidden = () =>
+        _tutorial.Dismissed = () =>
         {
             ViewSettings.TutorialHidden = true;
             ViewSettings.Save();
@@ -1060,6 +1060,8 @@ public partial class Live : Node3D
     void KeepUnderTop()
     {
         var y = _topPanel.Position.Y + _topPanel.Size.Y + 8;
+        if (_map.Open) _map.Top = y;
+        _choices.CardsVisible = !_map.Open;
         foreach (var c in _hud.GetChildren())
             if (c is Control panel && panel.HasMeta("under_top") && !Mathf.IsEqualApprox(panel.Position.Y, y))
                 panel.Position = panel.Position with { Y = y };

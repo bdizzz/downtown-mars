@@ -24,7 +24,7 @@ public partial class Tutorial : PanelContainer
     /// <summary>What the current goal points at: "room:&lt;id&gt;", "hud:&lt;button&gt;", "overlay:&lt;type&gt;" or "tool:corridors"; null with none.</summary>
     public string? Highlight { get; private set; }
     /// <summary>Hide pressed.</summary>
-    public Action? Hidden { get; set; }
+    public Action? Dismissed { get; set; }
 
     static Label Style(Label l, int size, Color color)
     {
@@ -70,7 +70,7 @@ public partial class Tutorial : PanelContainer
         _hide.AddThemeFontSizeOverride("font_size", 13);
         _hide.AddThemeColorOverride("font_color", new Color("#c9b29c"));
         _hide.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
-        _hide.Pressed += () => Hidden?.Invoke();
+        _hide.Pressed += () => Dismissed?.Invoke();
         _rows.AddChild(_hide);
 
         _pill.SetAnchorsPreset(LayoutPreset.BottomRight);

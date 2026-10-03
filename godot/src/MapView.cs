@@ -8,7 +8,7 @@ namespace DowntownMars;
 
 /// <summary>
 /// The map of Mars, as the web's (ui/MapScreen.tsx and Globe.tsx): a globe wearing MOLA relief
-/// (data/mars-elevation.json, coloured and shaded as the web's), the deposits you know of, named
+/// (data/mars-relief.jpg, the web's own; heights from data/mars-elevation.json), the deposits you know of, named
 /// features, your holes, convoys, routes with their rovers, and colonists moving. Drag to turn, wheel
 /// to zoom; the pointer's place shows at the bottom; a click picks a site, whose report (from the
 /// bridge's network.ts) says what's there and whether a hole can be founded, with the button to send
@@ -18,7 +18,7 @@ public partial class MapView : Node3D
 {
     const float R = 10, MarsKm = 3389.5f;
     const uint Layer = 1 << 10;
-    const int TexW = 2048, TexH = 1024;
+    const int TexW = 4096, TexH = 2048;
 
     readonly Action<object> _send;
     readonly Camera3D _cam = new() { Fov = 40, CullMask = Layer, Current = false };
@@ -37,6 +37,17 @@ public partial class MapView : Node3D
     readonly Control _ui = new();
     readonly Label _footer = new(), _locked = new();
     readonly PanelContainer _sitePanel = new();
+    PanelContainer _topPanel = null!;
+
+    /// <summary>Where the HUD's top bar ends: the map's panels sit just below it.</summary>
+    public float Top
+    {
+        set
+        {
+            if (_topPanel != null) _topPanel.Position = _topPanel.Position with { Y = value };
+            _sitePanel.Position = _sitePanel.Position with { Y = value };
+        }
+    }
     readonly VBoxContainer _siteRows = new();
 
     // For the pointer readout.
@@ -126,39 +137,16 @@ public partial class MapView : Node3D
 
     static float Wrap(float lon) => ((lon % 360) + 360) % 360;
 
-    /// <summary>Colour by height (the web's ramp), lit from the north-west, with the polar caps; as big as the texture.</summary>
+    /// <summary>
+    /// The shaded relief (data/mars-relief.jpg, 8 px a degree, drawn by scripts/build-relief.mjs as the
+    /// web's map uses it: coloured by height, lit from the north-west, the polar caps), as big as the texture.
+    /// </summary>
     Image Relief()
     {
-        (float e, Color c)[] ramp =
-        {
-            (-8000, C(29, 34, 51)), (-4000, C(64, 42, 40)), (-2000, C(107, 58, 36)), (0, C(154, 82, 48)),
-            (2000, C(184, 115, 63)), (5000, C(201, 154, 106)), (10000, C(220, 195, 160)), (21000, C(244, 236, 224)),
-        };
-        static Color C(int r, int g, int b) => new(r / 255f, g / 255f, b / 255f);
-        Color Ramp(float e)
-        {
-            for (var i = 1; i < ramp.Length; i++)
-                if (e <= ramp[i].e) return ramp[i - 1].c.Lerp(ramp[i].c, Math.Max(0, (e - ramp[i - 1].e) / (ramp[i].e - ramp[i - 1].e)));
-            return ramp[^1].c;
-        }
-        float At(int x, int y) => _elevation[Math.Clamp(y, 0, _eh - 1) * _ew + ((x % _ew) + _ew) % _ew];
-        // At the data's resolution first, then smoothly up to the texture's.
-        var small = Image.CreateEmpty(_ew, _eh, false, Image.Format.Rgb8);
-        for (var y = 0; y < _eh; y++)
-        {
-            var lat = 90 - y - 0.5f;
-            for (var x = 0; x < _ew; x++)
-            {
-                var shade = Math.Clamp(1 + (At(x - 1, y - 1) - At(x + 1, y + 1)) / 3500, 0.55f, 1.35f);
-                var c = Ramp(At(x, y));
-                var cap = Math.Max(0, (Math.Abs(lat) - (lat > 0 ? 80 : 83)) / 5);
-                if (cap > 0) c = c.Lerp(C(236, 238, 240), Math.Min(1, cap));
-                small.SetPixel(x, y, new Color(Math.Min(1, c.R * shade), Math.Min(1, c.G * shade), Math.Min(1, c.B * shade)));
-            }
-        }
-        small.Resize(TexW, TexH, Image.Interpolation.Cubic);
-        small.Convert(Image.Format.Rgba8);
-        return small;
+        var img = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://") + "../data/mars-relief.jpg");
+        img.Resize(TexW, TexH, Image.Interpolation.Cubic);
+        img.Convert(Image.Format.Rgba8);
+        return img;
     }
 
     /// <summary>The relief with the deposits painted on (as the web's ellipses, wider toward the poles).</summary>
@@ -519,7 +507,7 @@ public partial class MapView : Node3D
         _ui.MouseFilter = Control.MouseFilterEnum.Ignore;
         _ui.Visible = false;
         hud.AddChild(_ui);
-        var top = new PanelContainer { Position = new Vector2(10, 100) };
+        var top = _topPanel = new PanelContainer { Position = new Vector2(10, 100) };
         top.AddThemeStyleboxOverride("panel", Live.Panel());
         _ui.AddChild(top);
         var rows = new VBoxContainer();

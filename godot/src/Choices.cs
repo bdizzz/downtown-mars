@@ -35,6 +35,9 @@ public partial class Choices : Node
     public bool OfficeOpen => _office.Visible;
     public int Waiting { get; private set; }
 
+    /// <summary>The event cards shown, or set aside (while the map's open, where its own panel sits).</summary>
+    public bool CardsVisible { set => _cards.Visible = value; }
+
     public Choices(CanvasLayer hud, Action<Dictionary<string, object>> command)
     {
         _command = command;
