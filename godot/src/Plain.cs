@@ -54,6 +54,7 @@ uniform bool room_lines = false;
 uniform float toward_camera = 0.0;
 global uniform sampler2D room_tint : filter_nearest;
 global uniform float hover_room;
+global uniform float hover_bad;
 varying vec3 wpos;
 varying flat float room;
 varying vec4 vcolor;
@@ -79,7 +80,7 @@ void fragment() {{
 	if (room > 0.5) {{
 		int id = int(room + 0.5) - 1;
 		vec4 tint = texelFetch(room_tint, ivec2(id % 256, id / 256), 0);
-		if (abs(float(id) - hover_room) < 0.5) c = vec3(1.0, 0.886, 0.69);
+		if (abs(float(id) - hover_room) < 0.5) c = hover_bad > 0.5 ? vec3(0.878, 0.314, 0.227) : vec3(1.0, 0.886, 0.69);
 		else if (tint.a > 0.5) c = tint.rgb;
 		if (abs(float(id) - hover_room) < 0.5 || tint.a > 0.5) alpha = 1.0;
 	}}

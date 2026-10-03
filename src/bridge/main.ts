@@ -9,7 +9,7 @@ import { gameTime } from "../sim/clock";
 import { stepWorld } from "../sim/worldstep";
 import type { RoomSpots } from "../render3d/people3d";
 import { inspect, roomAtPoint } from "./inspect";
-import { edgeCommand, edgeHover, hover, palette, paletteKey, place, type BuildTool, type CorridorTool } from "./build";
+import { answerProposal, chainedMessage, chainEnd, chainStep, edgeCommand, edgeHover, hover, newChainState, palette, paletteKey, place, type BuildTool, type CorridorTool } from "./build";
 import { walkMap } from "./walkmap";
 import { dayOf, isSlot, readSlot, savesList, writeSlot } from "./saves";
 import { office, officeKey } from "./office";
@@ -166,6 +166,12 @@ type BridgeMessage =
   /** Corridors, bulkheads and windows: what the tool would do at the border nearest a point, and doing it (a click, or painting on a drag). */
   | { type: "edgeHover"; tool: CorridorTool; at: [number, number, number] }
   | { type: "edge"; tool: CorridorTool; at: [number, number, number]; painting?: boolean }
+  /** Snaking a chain of corridors: pressed (start) and dragged, released (chainEnd), and the answer to the confirm it brings up. */
+  | { type: "chain"; tool: CorridorTool; at: [number, number, number]; start?: boolean }
+  | { type: "chainEnd"; tool: CorridorTool; at: [number, number, number] }
+  | { type: "proposalAnswer"; accept: boolean }
+  /** The demolish tool: the room at a world point. */
+  | { type: "demolishAt"; at: [number, number, number] }
   /** Saves (saves.ts): the slots, saving to one, loading one. */
   | { type: "saves" }
   | { type: "saveSlot"; slot: string }
@@ -209,6 +215,8 @@ function sendPalette(force = false): void {
   send(palette(host.active()));
 }
 let commandId = 1_000_000;
+/** The corridor chain being snaked out, or waiting on the player's answer. */
+const chains = newChainState();
 
 // The room in the panel, kept up to date twice a second.
 let inspecting: number | null = null;
@@ -319,6 +327,24 @@ const server = createServer((socket) => {
           const map = walkMap(host.active(), msg.floor);
           if (args.verbose) console.log(`Walk map for floor ${msg.floor}: ${map.regions.length} regions, ${(map.runs.length / 1024).toFixed(0)} KB of runs, ${map.buildMs.toFixed(0)} ms`);
           send(map);
+        } else if (msg.type === "chain") {
+          const m = chainStep(host.active(), chains, msg.tool, msg.at, !!msg.start);
+          if (m) send(m);
+        } else if (msg.type === "chainEnd") {
+          const r = chainEnd(host.active(), chains, msg.tool, msg.at);
+          if (r.proposal) send(r.proposal);
+          else {
+            send(chainedMessage(host.active(), [], false));
+            if (r.command) host.onMessage({ type: "command", id: commandId++, command: r.command });
+            else if (r.refusal) send({ type: "notice", text: r.refusal });
+          }
+        } else if (msg.type === "proposalAnswer") {
+          const command = answerProposal(chains, msg.accept);
+          if (command) host.onMessage({ type: "command", id: commandId++, command });
+          send(chainedMessage(host.active(), [], false));
+        } else if (msg.type === "demolishAt") {
+          const roomId = roomAtPoint(host.active(), msg.at);
+          if (roomId !== null) host.onMessage({ type: "command", id: commandId++, command: { type: "demolish", roomId } });
         } else if (msg.type === "pick") {
           send({ type: "picked", roomId: msg.at ? roomAtPoint(host.active(), msg.at) : null });
         } else if (msg.type === "inspect") {

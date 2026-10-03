@@ -1,11 +1,7 @@
 import { useEffect } from "react";
-import { config } from "../sim/config";
-import { corridorCost, finishDef, shortfall } from "../sim/corridors";
-import { edgeById, edgeLengthM } from "../sim/edges";
 import type { Layout } from "../sim/placement";
 import type { Proposal } from "../view/types";
-import { hoursText, num, resName } from "./format";
-import { corridorWork } from "../sim/construction";
+import { proposalSummary } from "../view/corridorProposal";
 
 // Asks before carving (or filling in) a snaked chain of corridors: how many
 // segments, how long, and what it costs.
@@ -20,20 +16,8 @@ interface Props {
 }
 
 export function CorridorConfirm({ proposal, layout, resources, finish, onAccept, onCancel }: Props) {
-  // Drawing: only new segments cost (existing ones along the way are free). Filling in: each costs its own finish.
-  const segments = proposal.edges.filter((id) => (proposal.erase ? !!layout.corridors[id] : !layout.corridors[id]));
-  const riding = proposal.edges.length - segments.length;
-  let length = 0;
-  const cost: Record<string, number> = {};
-  for (const id of segments) {
-    const e = edgeById(layout.hole, id);
-    if (!e) continue;
-    length += edgeLengthM(layout.hole, e, config.geometry.roomDepthM);
-    const f = proposal.erase ? layout.corridors[id]! : finish;
-    for (const [r, v] of Object.entries(corridorCost(layout.hole, e, f, config))) cost[r] = (cost[r] ?? 0) + v;
-  }
-  const short = shortfall(resources, cost);
-  const ok = segments.length > 0 && !short;
+  const p = proposalSummary(proposal, layout, resources, finish);
+  const ok = p.ok;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -51,21 +35,15 @@ export function CorridorConfirm({ proposal, layout, resources, finish, onAccept,
     return () => window.removeEventListener("keydown", onKey, true);
   }, [ok, onAccept, onCancel]);
 
-  const costText = Object.entries(cost)
-    .map(([r, v]) => `${num(v)} ${resName(r).toLowerCase()}`)
-    .join(", ");
   return (
     <div className="corridor-confirm" role="dialog" aria-label="Confirm corridors">
-      <h3>{proposal.erase ? "Fill in corridors?" : `Carve ${finishDef(finish).name.toLowerCase()} corridors?`}</h3>
-      <p>
-        {segments.length} {segments.length === 1 ? "segment" : "segments"} · {Math.round(length)} m
-        {riding > 0 && !proposal.erase ? ` · ${riding} already there` : ""}
-      </p>
-      {!proposal.erase && segments.length > 0 && <p className="k">About {hoursText(corridorWork(layout, segments, config))} of construction work</p>}
-      <p className={short ? "warn" : ""}>{segments.length ? (short ?? `Costs ${costText}${proposal.erase ? ", rebuilding the walls" : ""}`) : "Nothing new to carve."}</p>
+      <h3>{p.title}</h3>
+      <p>{p.size}</p>
+      {p.work && <p className="k">{p.work}</p>}
+      <p className={p.short ? "warn" : ""}>{p.cost}</p>
       <div className="buttons">
         <button className="primary" disabled={!ok} onClick={onAccept}>
-          {proposal.erase ? "Fill in" : "Build"} <kbd>↵</kbd>
+          {p.accept} <kbd>↵</kbd>
         </button>
         <button onClick={onCancel}>
           Cancel <kbd>Esc</kbd>

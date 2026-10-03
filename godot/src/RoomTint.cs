@@ -67,12 +67,16 @@ public static class RoomTint
         return badged;
     }
 
-    /// <summary>The room under the pointer, outlined in the hover colour (none: -1).</summary>
-    public static void Hover(int room)
+    /// <summary>The room under the pointer, outlined in the hover colour, or red for the demolish tool (none: -1).</summary>
+    public static void Hover(int room, bool bad = false)
     {
         Ensure();
-        if (room == _hover) return;
+        if (room == _hover && bad == _bad) return;
         _hover = room;
+        _bad = bad;
         RenderingServer.GlobalShaderParameterSet("hover_room", (float)room);
+        RenderingServer.GlobalShaderParameterSet("hover_bad", bad ? 1f : 0f);
     }
+
+    static bool _bad;
 }

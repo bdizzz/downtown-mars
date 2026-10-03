@@ -9,7 +9,10 @@ import type { Location } from "../sim/placement";
 import { floorSpan, pickAt, RING_D, TAU } from "../render3d/cylinder";
 import { corridorStripGeometry, roomGeometry } from "../render3d/rooms3d";
 import { corridors } from "../sim/corridors";
-import { nearestEdge } from "../sim/edges";
+import { edgeById, nearestEdge } from "../sim/edges";
+import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
+import { proposalSummary, type ProposalSummary } from "../view/corridorProposal";
+import type { Proposal } from "../view/types";
 import { CATEGORY_NAMES, CATEGORY_ORDER, HOTKEYS, shapesFor } from "../view/buildCatalog";
 import { corridorCommand, edgeHoverFor, locationFor } from "../view/interaction";
 import { resName } from "../ui/format";
@@ -232,3 +235,78 @@ export function edgeCommand(state: SimState, tool: CorridorTool, at: [number, nu
   return command ? { command, ...(info?.refusal ? { refusal: info.refusal } : {}) } : { refusal: info?.refusal ?? "Nothing to do here" };
 }
 
+
+// ---- snaking a chain of corridors (render3d/stage3d.ts snake and endSnake) ----
+
+/** The chain being dragged out, and the one waiting on the player's answer. */
+export interface ChainState {
+  chain: Chain;
+  erase: boolean;
+  finish: string;
+  proposal: Proposal | null;
+}
+
+export const newChainState = (): ChainState => ({ chain: EMPTY_CHAIN, erase: false, finish: corridors.defaultFinish, proposal: null });
+
+const HOVER = { ok: 0x7fd67f, bad: 0xe0503a, existing: 0xffe2b0 };
+
+export interface ChainedMessage {
+  type: "chained";
+  /** The chain's borders, as strips (triangles, as the ghost's) by colour: new, already there, or being filled in. */
+  strips: { color: string; tris: string }[];
+}
+
+/** The chain's borders to highlight. */
+export function chainedMessage(state: SimState, edges: string[], erase: boolean): ChainedMessage {
+  const byColor = new Map<number, number[]>();
+  for (const id of edges) {
+    const e = edgeById(state.layout.hole, id);
+    if (!e) continue;
+    const color = erase ? HOVER.bad : state.layout.corridors[id] ? HOVER.existing : HOVER.ok;
+    const geo = corridorStripGeometry(state.layout, e, floorSpan(e.floor)[0] + 0.08);
+    const a = (geo.getAttribute("position") as THREE.BufferAttribute).array;
+    if (!byColor.has(color)) byColor.set(color, []);
+    const list = byColor.get(color)!;
+    for (let i = 0; i < a.length; i++) list.push(a[i]!);
+    geo.dispose();
+  }
+  return { type: "chained", strips: [...byColor].map(([c, pos]) => ({ color: `#${c.toString(16).padStart(6, "0")}`, tris: b64(pos) })) };
+}
+
+/** The pointer pressed (start) or dragged with the corridor tool: the chain grows to (or trims back to) the border under it. */
+export function chainStep(state: SimState, cs: ChainState, tool: CorridorTool, at: [number, number, number], start: boolean): ChainedMessage | null {
+  if (start) {
+    cs.chain = EMPTY_CHAIN;
+    cs.erase = tool.erase;
+    cs.finish = tool.finish;
+    cs.proposal = null;
+  }
+  const next = extendChain(state.layout, cs.chain, edgeAt(state, at).edge, cs.erase);
+  if (next === cs.chain && !start) return null;
+  cs.chain = next;
+  return chainedMessage(state, next.edges, cs.erase);
+}
+
+export interface ProposalMessage extends ProposalSummary {
+  type: "proposal";
+}
+
+/** Released: a chain goes to the player to confirm; a single border is just drawn (or filled in), as a click. */
+export function chainEnd(state: SimState, cs: ChainState, tool: CorridorTool, at: [number, number, number]): { proposal?: ProposalMessage; command?: SimCommand; refusal?: string } {
+  const done = cs.chain;
+  cs.chain = EMPTY_CHAIN;
+  if (done.edges.length > 1) {
+    cs.proposal = { edges: done.edges, erase: cs.erase };
+    return { proposal: { type: "proposal", ...proposalSummary(cs.proposal, state.layout, state.resources, cs.finish) } };
+  }
+  if (done.edges.length === 1) return edgeCommand(state, tool, at);
+  return {};
+}
+
+/** The player's answer: carve (or fill in) the whole chain, or not. */
+export function answerProposal(cs: ChainState, accept: boolean): SimCommand | null {
+  const p = cs.proposal;
+  cs.proposal = null;
+  if (!p || !accept) return null;
+  return p.erase ? { type: "removeCorridors", edges: p.edges, all: true } : { type: "drawCorridors", edges: p.edges, finish: cs.finish, all: true };
+}

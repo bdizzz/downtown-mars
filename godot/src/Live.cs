@@ -165,6 +165,7 @@ public partial class Live : Node3D
         _inspector.Command = SendCommand;
         AddChild(_inspector);
         _build = new BuildMode(_hud, m => _bridge.Send(m)) { Name = "Build" };
+        _build.UndoPressed = Undo;
         AddChild(_build);
         // Event cards and the office; the office and the room panel share the right side.
         _choices = new Choices(_hud, SendCommand) { Name = "Choices" };
@@ -370,8 +371,9 @@ public partial class Live : Node3D
                 var result = msg.RootElement.GetProperty("result");
                 _build.Toast(result.GetProperty("ok").GetBoolean() ? "Loaded" : $"Couldn't load: {(result.TryGetProperty("reason", out var why) ? why.GetString() : "unknown")}");
             }
-            else if (type == "commandResult" && msg.RootElement.GetProperty("result") is var r && !r.GetProperty("ok").GetBoolean())
-                _build.Toast(r.TryGetProperty("reason", out var why) ? why.GetString() ?? "Can't do that" : "Can't do that");
+            else if (type == "commandResult") OnCommandResult(msg.RootElement);
+            else if (type == "chained") _build.ShowChain(msg.RootElement);
+            else if (type == "proposal") _build.Propose(msg.RootElement);
             msg.Dispose();
         }
         // Lamps near what you're looking at, and their shadows, follow the camera a few times a second.
@@ -493,6 +495,9 @@ public partial class Live : Node3D
             // Another game (new, or loaded): nothing from the last one holds.
             _walker.Forget();
             _mapsAsked.Clear();
+            // Undo belongs to the hole it was in.
+            _placed.Clear();
+            _build.CanUndo = false;
             _rig?.Unground();
             Inspect(null);
             _rig?.Frame(MetaNow(), true);
@@ -580,6 +585,20 @@ public partial class Live : Node3D
                     "pan" => new InputEventPanGesture { Delta = new Vector2(float.Parse(p[1]), float.Parse(p[2])), Position = new Vector2(800, 500) },
                     "pinch" => new InputEventMagnifyGesture { Factor = float.Parse(p[1]), Position = new Vector2(800, 500) },
                     _ => new InputEventMouseButton { Pressed = true, Factor = 1, Position = new Vector2(800, 500), ButtonIndex = p[1] switch { "up" => MouseButton.WheelUp, "down" => MouseButton.WheelDown, "left" => MouseButton.WheelLeft, _ => MouseButton.WheelRight } },
+                };
+                _events.Add((ev, double.Parse(when[0])));
+                return (Key.None, double.MaxValue, double.MaxValue, true, true);
+            }
+            // "down:x:y@t", "drag:x:y@t", "up:x:y@t": the left button pressed, the pointer moved with it held, released.
+            if (name.StartsWith("down:") || name.StartsWith("drag:") || name.StartsWith("up:"))
+            {
+                var p = name.Split(':');
+                var at = new Vector2(float.Parse(p[1]), float.Parse(p[2]));
+                InputEvent ev = p[0] switch
+                {
+                    "down" => new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = at, GlobalPosition = at, ButtonMask = MouseButtonMask.Left },
+                    "drag" => new InputEventMouseMotion { Position = at, GlobalPosition = at, ButtonMask = MouseButtonMask.Left, Relative = Vector2.One },
+                    _ => new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = at, GlobalPosition = at },
                 };
                 _events.Add((ev, double.Parse(when[0])));
                 return (Key.None, double.MaxValue, double.MaxValue, true, true);
@@ -922,7 +941,7 @@ public partial class Live : Node3D
     /// </summary>
     void HoverRoom(float dt)
     {
-        var looking = !_build.HasTool && !PlanShown && _rig?.Walking != true && _rig != null && !_map.Open;
+        var looking = (!_build.HasTool || _build.Demolishing) && !PlanShown && _rig?.Walking != true && _rig != null && !_map.Open;
         _pickClock += dt;
         // Again as the pointer moves, and now and then while it rests (the camera or the hole may have moved under it).
         if (looking && _pointer is Vector2 at && (at != _pickedAt && _pickClock > 0.08f || _pickClock > 0.5f))
@@ -932,12 +951,43 @@ public partial class Live : Node3D
             var p = RoomPoint(at);
             _bridge.Send(new Dictionary<string, object?> { ["type"] = "pick", ["at"] = p is Vector3 q ? new[] { q.X, q.Y, q.Z } : null });
         }
-        RoomTint.Hover(looking && _hovered is int h && h != _inspector.Selected ? h : -1);
+        RoomTint.Hover(looking && _hovered is int h && (h != _inspector.Selected || _build.Demolishing) ? h : -1, _build.Demolishing);
+    }
+
+    // ---- undo ----
+
+    /// <summary>Rooms placed this session (in this hole), newest last, for undo; and the undo command waiting on its answer.</summary>
+    readonly Stack<int> _placed = new();
+    int _undoCommand = -1;
+
+    void OnCommandResult(JsonElement msg)
+    {
+        var r = msg.GetProperty("result");
+        var ok = r.GetProperty("ok").GetBoolean();
+        if (!ok) _build.Toast(r.TryGetProperty("reason", out var why) ? why.GetString() ?? "Can't do that" : "Can't do that");
+        if (ok && r.TryGetProperty("roomId", out var room) && room.ValueKind == JsonValueKind.Number) _placed.Push(room.GetInt32());
+        // An undo refused (too late, say): older placements are older still.
+        if (!ok && msg.TryGetProperty("id", out var id) && id.GetInt32() == _undoCommand) _placed.Clear();
+        _build.CanUndo = _placed.Count > 0;
+    }
+
+    /// <summary>Take back the last room placed, for a full refund (within a few game hours), as the web's.</summary>
+    void Undo()
+    {
+        if (_placed.Count == 0) return;
+        _undoCommand = _commandId;
+        SendCommand(new Dictionary<string, object> { ["type"] = "undoBuild", ["roomId"] = _placed.Pop() });
+        _build.CanUndo = _placed.Count > 0;
     }
 
     /// <summary>A click (not a drag): build with the room in hand, or show the room under the pointer.</summary>
     void Click(Vector2 at)
     {
+        if (_build.Demolishing)
+        {
+            if ((RoomPoint(at) ?? FloorPoint(at)) is Vector3 d) _bridge.Send(new Dictionary<string, object> { ["type"] = "demolishAt", ["at"] = new[] { d.X, d.Y, d.Z } });
+            return;
+        }
         if (_build.HasTool)
         {
             if (FloorPoint(at) is Vector3 p) _build.Place(p);
@@ -1011,7 +1061,7 @@ public partial class Live : Node3D
         {
             _build.Hover(over, motion.Position);
             // Dragging with the corridor tool paints along the borders crossed.
-            if (_build.Painting && (motion.ButtonMask & MouseButtonMask.Left) != 0) _build.Paint(over);
+            if (_build.Chaining && (motion.ButtonMask & MouseButtonMask.Left) != 0) _build.Paint(over);
         }
         if (e is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: false } && _build.HasTool) _build.Drop();
         // Clicks pick a room; drags turn the camera (CameraRig), so tell them apart by how far the pointer moved.
@@ -1021,16 +1071,27 @@ public partial class Live : Node3D
             {
                 _pressAt = mb.Position;
                 _pressed = true;
+                // The corridor tool snakes a chain from here while the button's held.
+                if (_build.Painting && FloorPoint(mb.Position) is Vector3 from) _build.ChainStart(from);
             }
             else if (_pressed)
             {
                 _pressed = false;
-                _build.EndPaint();
-                if (mb.Position.DistanceTo(_pressAt) < 5) Click(mb.Position);
+                if (_build.Chaining)
+                {
+                    if (FloorPoint(mb.Position) is Vector3 to) _build.ChainEnd(to);
+                }
+                else if (mb.Position.DistanceTo(_pressAt) < 5) Click(mb.Position);
             }
             return;
         }
         if (e is not InputEventKey { Pressed: true, Echo: false } k) return;
+        // Undo the last room placed (⌘Z, or Ctrl+Z).
+        if (k.Keycode == Key.Z && (k.MetaPressed || k.CtrlPressed))
+        {
+            Undo();
+            return;
+        }
         switch (k.Keycode)
         {
             case Key.Tab when PlanShown:
@@ -1052,6 +1113,7 @@ public partial class Live : Node3D
             case Key.Escape: _menu.Open(); break;
             case Key.B when !_build.Active: _build.Toggle(true); break;
             case Key.R when _build.HasTool: _build.Rotate(); break;
+            case Key.X when _rig?.Walking != true: _build.ToggleDemolish(); break;
             case Key.Space when _rig?.Walking != true: SetSpeed(_speed == 0 ? 1 : 0); break;
             case Key.Key1: SetSpeed(1); break;
             case Key.Key2: SetSpeed(2); break;

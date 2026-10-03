@@ -48,3 +48,7 @@ hover_room={
 "type": "float",
 "value": -1.0
 }
+hover_bad={
+"type": "float",
+"value": 0.0
+}

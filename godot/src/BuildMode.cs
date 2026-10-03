@@ -12,7 +12,9 @@ namespace DowntownMars;
 /// the bottom (B opens it), each popping up its rooms; choosing one puts it in hand, and the pointer
 /// shows a ghost of where it would go, green or red, with its cost or why not. Click to build, R turns
 /// it (cycles its shapes), Esc or a right click puts it down. Access holds the corridor tool (Z): click
-/// or drag along borders to carve corridors in a finish, or fit bulkheads or windows; Shift erases.
+/// a border, or drag a chain along borders and confirm it, to carve corridors in a finish (or fit
+/// bulkheads or windows); Shift erases. Demolish (X) takes down the room clicked; Undo (⌘Z) takes back
+/// the last room placed.
 /// </summary>
 public partial class BuildMode : Node3D
 {
@@ -26,6 +28,13 @@ public partial class BuildMode : Node3D
     readonly Label _tip = new();
     readonly Label _toast = new();
     readonly ConfirmationDialog _confirm = new() { Title = "Build here?", OkButtonText = "Build", CancelButtonText = "Cancel" };
+    readonly Button _demolishButton = new() { Text = "Demolish [X]", ToggleMode = true, FocusMode = Control.FocusModeEnum.None, TooltipText = "Demolish a room (half its cost back)" };
+    readonly Button _undoButton = new() { Text = "Undo ⌘Z", Disabled = true, FocusMode = Control.FocusModeEnum.None, TooltipText = "Undo your last placement for a full refund, within a few game hours" };
+    /// <summary>A snaked chain of corridors to confirm: carve (or fill in) it all, or not.</summary>
+    readonly ConfirmationDialog _propose = new() { Title = "Corridors", CancelButtonText = "Cancel" };
+    /// <summary>The chain being snaked out (or waiting on the confirm): its borders, by colour.</summary>
+    readonly MeshInstance3D _chain = new() { Name = "Chain", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+    List<(Color color, Vector3[] tris)> _chainBands = new();
     readonly MeshInstance3D _ghost = new() { Name = "Ghost", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
     /// <summary>The room's effect on the cells round where it would go (the web's halo), a band of cells per strength.</summary>
     readonly MeshInstance3D _halo = new() { Name = "Halo", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
@@ -52,7 +61,11 @@ public partial class BuildMode : Node3D
     bool _bulkhead, _windows, _erase;
     /// <summary>Shift held: the corridor tool erases.</summary>
     public bool ShiftErase { get; set; }
-    public bool HasTool => Tool != null || Corridor != null;
+    public bool HasTool => Tool != null || Corridor != null || Demolishing;
+    /// <summary>The demolish tool (X): a click takes the room under the pointer down.</summary>
+    public bool Demolishing { get; private set; }
+    public Action? UndoPressed { get; set; }
+    public bool CanUndo { set => _undoButton.Disabled = !value; }
     /// <summary>Dragging paints corridors (not for bulkheads or windows, which go one wall at a time).</summary>
     public bool Painting => Corridor != null && !_bulkhead && !_windows;
     int _shape;
@@ -68,6 +81,7 @@ public partial class BuildMode : Node3D
         AddChild(_ghost);
         _ghost.Visible = false;
         AddChild(_halo);
+        AddChild(_chain);
 
         _strip.AddThemeStyleboxOverride("panel", Live.Panel());
         _strip.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
@@ -76,7 +90,19 @@ public partial class BuildMode : Node3D
         _strip.Position = new Vector2(0, -80);
         _strip.Visible = false;
         hud.AddChild(_strip);
-        _strip.AddChild(_categories);
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 6);
+        _strip.AddChild(row);
+        row.AddChild(_categories);
+        row.AddChild(new VSeparator());
+        _demolishButton.Pressed += ToggleDemolish;
+        _demolishButton.AddThemeColorOverride("font_color", new Color("#f0a090"));
+        row.AddChild(_demolishButton);
+        _undoButton.Pressed += () => UndoPressed?.Invoke();
+        row.AddChild(_undoButton);
+        var hint = new Label { Text = "R rotates · Esc or right-click cancels", VerticalAlignment = VerticalAlignment.Center };
+        Style(hint, 12, new Color("#a8927e"));
+        row.AddChild(hint);
 
         _popup.AddThemeStyleboxOverride("panel", Live.Panel());
         _popup.Visible = false;
@@ -109,6 +135,9 @@ public partial class BuildMode : Node3D
             _pendingConfirm = null;
         };
         hud.AddChild(_confirm);
+        _propose.Confirmed += () => _send(new Dictionary<string, object> { ["type"] = "proposalAnswer", ["accept"] = true });
+        _propose.Canceled += () => _send(new Dictionary<string, object> { ["type"] = "proposalAnswer", ["accept"] = false });
+        hud.AddChild(_propose);
     }
 
     static StandardMaterial3D Ghost(Color c) => new()
@@ -155,6 +184,8 @@ public partial class BuildMode : Node3D
     {
         Tool = null;
         Corridor = null;
+        Demolishing = false;
+        _demolishButton.ButtonPressed = false;
         _ghost.Visible = false;
         ClearHalo();
         _tip.Visible = false;
@@ -323,7 +354,7 @@ public partial class BuildMode : Node3D
     }
 
     /// <summary>The room's effects round where it would go, for the plan view: a colour (with its opacity) and triangles per band.</summary>
-    public List<(Color color, Vector3[] tris)> Halo => _halo.Visible && Tool != null ? _haloBands : NoHalo;
+    public List<(Color color, Vector3[] tris)> Halo => _chain.Visible ? _chainBands : _halo.Visible && Tool != null ? _haloBands : NoHalo;
     static readonly List<(Color color, Vector3[] tris)> NoHalo = new();
 
     void ShowHalo(JsonElement msg)
@@ -376,6 +407,8 @@ public partial class BuildMode : Node3D
     {
         var same = Corridor == finish && _bulkhead == bulkhead && _windows == windows;
         Tool = null;
+        Demolishing = false;
+        _demolishButton.ButtonPressed = false;
         Corridor = same ? null : finish;
         _bulkhead = bulkhead;
         _windows = windows;
@@ -386,23 +419,89 @@ public partial class BuildMode : Node3D
 
     object CorridorJson() => new Dictionary<string, object> { ["finish"] = Corridor!, ["erase"] = _erase || ShiftErase, ["bulkhead"] = _bulkhead, ["windows"] = _windows };
 
-    Vector3? _lastPaint;
-
-    /// <summary>Dragging with the corridor tool: draw (or erase) along each border crossed.</summary>
-    public void Paint(Vector3 at)
+    /// <summary>The demolish tool on or off (opening the strip for it).</summary>
+    public void ToggleDemolish()
     {
-        if (!Painting || (_lastPaint is Vector3 last && last.DistanceTo(at) < 0.6f)) return;
-        _lastPaint = at;
-        _send(new Dictionary<string, object> { ["type"] = "edge", ["tool"] = CorridorJson(), ["at"] = new[] { at.X, at.Y, at.Z }, ["painting"] = true });
+        var on = !Demolishing;
+        Drop();
+        Demolishing = on;
+        _demolishButton.ButtonPressed = on;
+        if (on)
+        {
+            if (!_strip.Visible) _strip.Visible = true;
+            OpenCategory(null);
+            Toast("Demolish: click a room (half its cost back) · X or Esc stops");
+        }
     }
 
-    public void EndPaint() => _lastPaint = null;
+    Vector3? _lastPaint;
+
+    /// <summary>Pressed with the corridor tool: a chain starts at the border under the pointer.</summary>
+    public void ChainStart(Vector3 at)
+    {
+        _lastPaint = at;
+        _send(new Dictionary<string, object> { ["type"] = "chain", ["tool"] = CorridorJson(), ["at"] = new[] { at.X, at.Y, at.Z }, ["start"] = true });
+    }
+
+    /// <summary>Dragged: the chain grows along the borders crossed (or trims back, retracing).</summary>
+    public void Paint(Vector3 at)
+    {
+        if (!Painting || _lastPaint is not Vector3 last || last.DistanceTo(at) < 0.6f) return;
+        _lastPaint = at;
+        _send(new Dictionary<string, object> { ["type"] = "chain", ["tool"] = CorridorJson(), ["at"] = new[] { at.X, at.Y, at.Z } });
+    }
+
+    /// <summary>Released: the bridge asks to confirm a chain, or draws a single border as a click.</summary>
+    public void ChainEnd(Vector3 at)
+    {
+        if (_lastPaint == null) return;
+        _lastPaint = null;
+        _send(new Dictionary<string, object> { ["type"] = "chainEnd", ["tool"] = CorridorJson(), ["at"] = new[] { at.X, at.Y, at.Z } });
+    }
+
+    public bool Chaining => _lastPaint != null;
+
+    /// <summary>The bridge's chain to show: strips by colour (new, already there, or being filled in).</summary>
+    public void ShowChain(JsonElement msg)
+    {
+        var mesh = new ArrayMesh();
+        _chainBands = new();
+        foreach (var strip in msg.GetProperty("strips").EnumerateArray())
+        {
+            var color = new Color(strip.GetProperty("color").GetString()!) with { A = 0.45f };
+            var verts = Verts(strip.GetProperty("tris").GetString()!);
+            if (verts.Length == 0) continue;
+            _chainBands.Add((color, verts));
+            var arrays = new Godot.Collections.Array();
+            arrays.Resize((int)Mesh.ArrayType.Max);
+            arrays[(int)Mesh.ArrayType.Vertex] = verts;
+            mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
+            mesh.SurfaceSetMaterial(mesh.GetSurfaceCount() - 1, Ghost(color));
+        }
+        _chain.Mesh = mesh;
+        _chain.Visible = _chainBands.Count > 0;
+        // While a chain shows, the single border's strip under the pointer would be in the way.
+        if (_chain.Visible) _ghost.Visible = false;
+    }
+
+    /// <summary>The bridge's question about a chain (view/corridorProposal.ts): its size, work and cost.</summary>
+    public void Propose(JsonElement msg)
+    {
+        _propose.Title = msg.GetProperty("title").GetString();
+        var work = msg.GetProperty("work").ValueKind == JsonValueKind.String ? "\n" + msg.GetProperty("work").GetString() : "";
+        _propose.DialogText = $"{msg.GetProperty("size").GetString()}{work}\n{msg.GetProperty("cost").GetString()}";
+        _propose.OkButtonText = msg.GetProperty("accept").GetString();
+        _propose.GetOkButton().Disabled = !msg.GetProperty("ok").GetBoolean();
+        _propose.PopupCentered();
+    }
 
     public void Pick(string id)
     {
         // Not a room in the palette (none yet, or not buildable).
         if (_palette.All(r => r.Id != id)) return;
         Corridor = null;
+        Demolishing = false;
+        _demolishButton.ButtonPressed = false;
         Tool = Tool == id ? null : id;
         _shape = 0;
         if (Tool == null) Drop();
