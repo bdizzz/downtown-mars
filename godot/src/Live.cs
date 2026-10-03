@@ -26,6 +26,7 @@ public partial class Live : Node3D
     readonly Storm _storm = new() { Name = "Storm" };
     readonly RoomEffects _fx = new() { Name = "RoomEffects" };
     readonly Festival _festival = new() { Name = "Festival" };
+    readonly Scenery _scenery = new() { Name = "Scenery" };
     readonly Cutaway _cutaway = new() { Name = "Cutaway" };
     readonly Terrain _terrain = new() { Name = "Terrain" };
     readonly PlanView _planView = new() { Name = "Plan" };
@@ -127,6 +128,7 @@ public partial class Live : Node3D
         AddChild(_storm);
         AddChild(_fx);
         AddChild(_festival);
+        AddChild(_scenery);
         AddChild(_cutaway);
         // The plan under the HUD, over the 3D view (which rests while it's up).
         var planLayer = new CanvasLayer { Layer = 0, Name = "PlanLayer" };
@@ -254,6 +256,7 @@ public partial class Live : Node3D
         _rig3d.Step((float)delta * _speed);
         _fx.Step((float)delta * _speed);
         _festival.Step((float)delta);
+        _scenery.Step((float)delta);
         Weather((float)delta);
         MaybeStartBridge();
         if (BenchSeconds > 0 && _clockSeconds > BenchWarmup)
@@ -424,6 +427,7 @@ public partial class Live : Node3D
             FloorHeightM = 4,
         };
         _people.SetHole(_shape);
+        _scenery.SetLayout(layout, _shape);
         if (_topFloor > _shape.Floors) PickFloor(null);
         if (_pickerFloors != _shape.Floors) BuildFloorPicker();
         if (StartFloor is int start)
@@ -496,6 +500,7 @@ public partial class Live : Node3D
         _choices.SetEvents(s, TicksPerDay);
         _rig3d.Place(s.GetProperty("drill"), _shape.Floors, Cut);
         _festival.Sync(s.GetProperty("events").GetProperty("festival").ValueKind == JsonValueKind.Object, _shape, Cut);
+        _scenery.Update(s, _shape, Cut == null);
         _choices.SetMessages(s, TicksPerDay);
         _storm.SetTarget(s.GetProperty("weather").GetProperty("storm").GetSingle(), !_stormSeen);
         _stormSeen = true;
