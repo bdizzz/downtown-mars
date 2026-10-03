@@ -56,7 +56,7 @@ public partial class Live : Node3D
     WorldEnvironment _env = null!;
     DirectionalLight3D _sun = null!;
     /// <summary>The night's dust glow from overhead: dim, warm, no shadows (with GI on, Godot's ambient light doesn't reach).</summary>
-    readonly DirectionalLight3D _glow = new() { Name = "NightGlow", LightColor = new Color(0.85f, 0.62f, 0.5f), ShadowEnabled = false, LightSpecular = 0.1f, LightEnergy = 0 };
+    readonly DirectionalLight3D _glow = new() { Name = "NightGlow", LightColor = new Color(0.7f, 0.62f, 0.62f), ShadowEnabled = false, LightSpecular = 0.1f, LightEnergy = 0 };
     FogVolume? _haze;
     MeshInstance3D _ground = null!;
 
@@ -516,13 +516,13 @@ public partial class Live : Node3D
         env.AmbientLightEnergy = (0.12f + 0.16f * _light) * (1 - 0.4f * storm);
         env.AmbientLightSkyContribution = Graphics.SkyShare * Mathf.Lerp(0.35f, 1f, _light);
         _glow.LightEnergy = 0.35f * (1 - _light) * (1 - 0.5f * storm);
-        if (env.Sky.SkyMaterial is ProceduralSkyMaterial sky)
+        // The colour boost suits daylight; at night it pushes dark red regolith to pure red.
+        env.AdjustmentSaturation = Mathf.Lerp(0.75f, 1.2f, _light);
+        // The sky by the hour: its light, and where the sun is (stars come out as it goes).
+        if (env.Sky.SkyMaterial is ShaderMaterial sky)
         {
-            var day = Lighting.DaySky;
-            var night = Lighting.NightSky;
-            sky.SkyTopColor = night.top.Lerp(day.top, _light);
-            sky.SkyHorizonColor = night.horizon.Lerp(day.horizon, _light);
-            sky.GroundHorizonColor = night.ground.Lerp(day.ground, _light);
+            sky.SetShaderParameter("light", _light);
+            sky.SetShaderParameter("sun_dir", new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0.3f).Normalized());
         }
         _hole.SetNight(1 - _light);
     }

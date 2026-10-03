@@ -91,13 +91,8 @@ public partial class Storm : Node3D
     {
         Level += (_target - Level) * Mathf.Min(1, dt * Ease);
         if (Mathf.Abs(_target - Level) < 0.002f) Level = _target;
-        if (env.Sky?.SkyMaterial is ProceduralSkyMaterial sky)
-        {
-            var murk = MurkNight.Lerp(Murk, light);
-            sky.SkyTopColor = sky.SkyTopColor.Lerp(murk * 0.95f, Level);
-            sky.SkyHorizonColor = sky.SkyHorizonColor.Lerp(murk * 1.05f, Level);
-            sky.GroundHorizonColor = sky.GroundHorizonColor.Lerp(murk, Level);
-        }
+        // The sky's murk (shaders/sky.gdshader mixes it in, dusty by day, near black by night).
+        if (env.Sky?.SkyMaterial is ShaderMaterial sky) sky.SetShaderParameter("dust", Level);
         // Haze: from the calm day's light dust to a brown-out.
         env.VolumetricFogDensity = Mathf.Lerp(0.0006f, 0.012f, Level);
         env.VolumetricFogAlbedo = new Color(0.9f, 0.7f, 0.55f).Lerp(new Color("#b07a52"), Level);

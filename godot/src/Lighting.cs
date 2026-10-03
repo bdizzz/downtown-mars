@@ -21,14 +21,8 @@ static class Lighting
 
     public static WorldEnvironment MakeEnvironment(bool lite = false)
     {
-        var sky = new ProceduralSkyMaterial
-        {
-            SkyTopColor = DaySky.top,
-            SkyHorizonColor = DaySky.horizon,
-            GroundHorizonColor = DaySky.ground,
-            GroundBottomColor = new Color(0.25f, 0.15f, 0.1f),
-            SunAngleMax = 20,
-        };
+        // The web's sky (shaders/sky.gdshader): its colours, the sun's halo, stars at night, storm murk.
+        var sky = new ShaderMaterial { Shader = GD.Load<Shader>("res://shaders/sky.gdshader") };
         var env = new Godot.Environment
         {
             BackgroundMode = Godot.Environment.BGMode.Sky,
@@ -36,7 +30,7 @@ static class Lighting
             AmbientLightSource = Godot.Environment.AmbientSource.Sky,
             AmbientLightEnergy = 0.25f,
             // Mixed with the sky's light (by AmbientLightSkyContribution): the dust's dim glow, which carries the nights.
-            AmbientLightColor = new Color(0.62f, 0.44f, 0.34f),
+            AmbientLightColor = new Color(0.46f, 0.4f, 0.4f),
             TonemapMode = Godot.Environment.ToneMapper.Agx,
             TonemapExposure = 1.0f,
             SsaoEnabled = true,
