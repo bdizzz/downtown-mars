@@ -23,6 +23,9 @@ public partial class Live : Node3D
     HoleScene _hole = null!;
     People _people = null!;
     readonly Rig _rig3d = new() { Name = "Rig" };
+    readonly Storm _storm = new() { Name = "Storm" };
+    bool _stormSeen;
+    float _dayFraction = -1;
     Inspector _inspector = null!;
     BuildMode _build = null!;
     GameMenu _menu = null!;
@@ -110,6 +113,7 @@ public partial class Live : Node3D
         _hole = new HoleScene { Name = "Hole" };
         AddChild(_hole);
         AddChild(_rig3d);
+        AddChild(_storm);
         _people = new People { Name = "People" };
         if (!Dev.Off("people")) AddChild(_people);
         if (Dev.Off("sunshadow")) _sun.ShadowEnabled = false;
@@ -220,6 +224,7 @@ public partial class Live : Node3D
         PlayKeys();
         // The rig moves at the game's pace (still when paused).
         _rig3d.Step((float)delta * _speed);
+        Weather((float)delta);
         MaybeStartBridge();
         if (BenchSeconds > 0 && _clockSeconds > BenchWarmup)
         {
@@ -442,13 +447,15 @@ public partial class Live : Node3D
         _choices.SetEvents(s, TicksPerDay);
         _rig3d.Place(s.GetProperty("drill"), _shape.Floors, Cut);
         _choices.SetMessages(s, TicksPerDay);
-        var storm = s.GetProperty("weather").GetProperty("storm").GetSingle();
-        Daylight(t.GetProperty("dayFraction").GetSingle(), storm);
+        _storm.SetTarget(s.GetProperty("weather").GetProperty("storm").GetSingle(), !_stormSeen);
+        _stormSeen = true;
+        _dayFraction = t.GetProperty("dayFraction").GetSingle();
     }
 
     /// <summary>The hour's light, as the web game's (stage3d.ts updateSky): the sun crosses once a day, the sky dims at night and in a storm.</summary>
     void Daylight(float f, float storm)
     {
+        // The sky's base colours by the hour; the storm (Storm.cs) thickens them to murk.
         _light = f > 0.25f && f < 0.75f ? Mathf.Sin(Mathf.Pi * (f - 0.25f) / 0.5f) : 0;
         var a = (f - 0.25f) * Mathf.Tau;
         var pos = new Vector3(Mathf.Cos(a) * 100, Mathf.Max(5, Mathf.Sin(a) * 100), 30);
@@ -468,6 +475,14 @@ public partial class Live : Node3D
             sky.GroundHorizonColor = night.ground.Lerp(day.ground, _light);
         }
         _hole.SetNight(1 - _light);
+    }
+
+    /// <summary>Each frame: the hour's light, then the storm on top of it (eased, as the web's).</summary>
+    void Weather(float dt)
+    {
+        if (_dayFraction < 0) return;
+        Daylight(_dayFraction, _storm.Level);
+        _storm.Step(dt, _light, _env.Environment, GetViewport().GetCamera3D(), Cut == null && _rig?.Walking != true && !_map.Open);
     }
 
     /// <summary>
