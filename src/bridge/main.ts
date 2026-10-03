@@ -18,6 +18,7 @@ import { mapView, networkView, siteView } from "./network";
 import { constructionView, maintenanceViewOf, peopleView } from "./colony";
 import { rigKey, rigMessage } from "./rig";
 import { hudMessage } from "./hud";
+import { tutorialMessage } from "./tutorial";
 import { planFieldKey, planFieldMessage, planKey, planMessage, type FieldView } from "./plan";
 import { terrainKey, terrainMessage } from "./terrain";
 import { emittersKey, emittersOf } from "../render3d/effects3d";
@@ -171,6 +172,9 @@ type BridgeMessage =
   | { type: "chain"; tool: CorridorTool; at: [number, number, number]; start?: boolean }
   | { type: "chainEnd"; tool: CorridorTool; at: [number, number, number] }
   | { type: "proposalAnswer"; accept: boolean }
+  /** Settings: autosave each game day, or not; and what the viewer saw for the tutorial. */
+  | { type: "autosave"; on: boolean }
+  | { type: "tutorialFlags"; sawNoise: boolean; openedFlows: boolean; sawThreeD: boolean }
   /** The demolish tool: the room at a world point. */
   | { type: "demolishAt"; at: [number, number, number] }
   /** Saves (saves.ts): the slots, saving to one, loading one. */
@@ -224,6 +228,10 @@ let inspecting: number | null = null;
 let inspectClock = 0;
 let hudClock = 0;
 let sentHud = "";
+let sentTutorial = "";
+let tutorialFlags = { sawNoise: false, openedFlows: false, sawThreeD: true };
+/** Autosave each new game day (the viewer's setting; --no-autosave starts it off). */
+let dailyAutosave = !args["no-autosave"];
 function sendInspect(): void {
   const line = JSON.stringify((inspecting === null ? { type: "inspected", roomId: null } : inspect(host.active(), host.snapshot(), inspecting))) + "\n";
   for (const c of clients) c.write(line);
@@ -261,6 +269,7 @@ const server = createServer((socket) => {
   host.post();
   sendScene(true);
   sentHud = "";
+  sentTutorial = "";
   sendPalette(true);
   sendOffice(true);
   let buffer = "";
@@ -346,6 +355,10 @@ const server = createServer((socket) => {
           const command = answerProposal(chains, msg.accept);
           if (command) host.onMessage({ type: "command", id: commandId++, command });
           send(chainedMessage(host.active(), [], false));
+        } else if (msg.type === "autosave") {
+          dailyAutosave = msg.on;
+        } else if (msg.type === "tutorialFlags") {
+          tutorialFlags = { sawNoise: msg.sawNoise, openedFlows: msg.openedFlows, sawThreeD: msg.sawThreeD };
         } else if (msg.type === "demolishAt") {
           const roomId = roomAtPoint(host.active(), msg.at);
           if (roomId !== null) host.onMessage({ type: "command", id: commandId++, command: { type: "demolish", roomId } });
@@ -395,7 +408,7 @@ setInterval(() => {
   const day = dayOf(host.world());
   if (day === lastDay) return;
   lastDay = day;
-  if (args["no-autosave"]) return;
+  if (!dailyAutosave) return;
   try {
     writeSlot(host.world(), "autosave");
     if (clients.size) send(savesList());
@@ -423,10 +436,16 @@ setInterval(() => {
   if (inspecting !== null && ++inspectClock % Math.round(config.snapshotsPerSecond / 2) === 0) sendInspect();
   // The HUD's bar and extras, twice a second when they change.
   if (clients.size && ++hudClock % Math.round(config.snapshotsPerSecond / 2) === 0) {
-    const line = JSON.stringify(hudMessage(host.snapshot()));
+    const snap = host.snapshot();
+    const line = JSON.stringify(hudMessage(snap));
     if (line !== sentHud) {
       sentHud = line;
       for (const c of clients) c.write(line + "\n");
+    }
+    const tut = JSON.stringify(tutorialMessage(snap, tutorialFlags));
+    if (tut !== sentTutorial) {
+      sentTutorial = tut;
+      for (const c of clients) c.write(tut + "\n");
     }
   }
 }, 1000 / config.snapshotsPerSecond);

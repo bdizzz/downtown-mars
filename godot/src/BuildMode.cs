@@ -257,7 +257,7 @@ public partial class BuildMode : Node3D
             foreach (var f in _finishes)
             {
                 var id = f.id;
-                ToolButton($"Corridor: {f.name} [Z]  ·  {f.cost}", f.hint + ". Click or drag along the borders between cells; Shift erases.", Corridor == id && !_bulkhead && !_windows, () => PickCorridor(id, false, false));
+                ToolButton($"Corridor: {f.name} [Z]  ·  {f.cost}", f.hint + ". Click or drag along the borders between cells; Shift erases.", Corridor == id && !_bulkhead && !_windows, () => PickCorridor(id, false, false)).SetMeta("highlight", "tool:corridors");
             }
             ToolButton($"Bulkhead  ·  {_bulkheadCost}", "Click a built corridor to seal it: people pass, air and smell don't. Shift-click takes one out.", Corridor != null && _bulkhead, () => PickCorridor(Corridor ?? _finishes.FirstOrDefault().id ?? "rock", true, false));
             ToolButton($"Windows  ·  {_windowsCost}", "Click a room's wall where it faces the shaft, a corridor or a walk-through room: glazes the wall. Shift-click takes them out.", Corridor != null && _windows, () => PickCorridor(Corridor ?? _finishes.FirstOrDefault().id ?? "rock", false, true));
@@ -283,6 +283,7 @@ public partial class BuildMode : Node3D
             };
             if (r.Short != null) b.AddThemeColorOverride("font_color", new Color("#e0a070"));
             var id = r.Id;
+            b.SetMeta("highlight", "room:" + id);
             b.Pressed += () => Pick(id);
             b.MouseEntered += () => Point(id);
             b.MouseExited += () => Point(null);
@@ -531,6 +532,20 @@ public partial class BuildMode : Node3D
         var r = _palette.FirstOrDefault(r => r.Id == Tool);
         if (r != null) _shape = (_shape + 1) % r.Shapes.Length;
         ShowCard();
+    }
+
+    /// <summary>The rooms with build keys, and the corridor tool's (for Help).</summary>
+    public IEnumerable<(string key, string name)> RoomKeys =>
+        _palette.Where(r => r.Key != null).Select(r => (r.Key!, r.Name)).Append(("Z", "Corridor tool")).Append(("X", "Demolish"));
+
+    /// <summary>What to pulse for the tutorial: a room's category (and the room, its popup open), or the corridor tool.</summary>
+    public IEnumerable<Control> HighlightTargets(string highlight)
+    {
+        var category = highlight == "tool:corridors" ? "circulation" : _palette.FirstOrDefault(r => "room:" + r.Id == highlight)?.Category;
+        foreach (var b in _categories.GetChildren().OfType<Button>())
+            if (b.GetMeta("cat").AsString() == category) yield return b;
+        foreach (var b in _rooms.GetChildren().OfType<Button>())
+            if (b.HasMeta("highlight") && b.GetMeta("highlight").AsString() == highlight) yield return b;
     }
 
     public bool SurfaceTool => _palette.FirstOrDefault(r => r.Id == Tool)?.Surface == true;

@@ -45,7 +45,7 @@ public partial class Live : Node3D
     MapView _map = null!;
     NetworkPanel _network = null!;
     ColonyPanel _colony = null!;
-    Button _officeButton = null!;
+    Button _officeButton = null!, _buildButton = null!;
     /// <summary>Ticks in a game day (data/config.json), for "decide within" times.</summary>
     const int TicksPerDay = 240;
     int _speedBeforeMenu = 1;
@@ -64,6 +64,12 @@ public partial class Live : Node3D
     CanvasLayer _hud = null!;
     Label _title = null!, _clock = null!, _status = null!, _waiting = null!;
     PanelContainer _topPanel = null!;
+    Tutorial _tutorial = null!;
+    HelpSheet _help = null!;
+    SettingsSheet _settings = null!;
+    bool _wasConnected;
+    /// <summary>What the tutorial needs to know that the sim doesn't: the noise overlay seen, Flows opened.</summary>
+    bool _sawNoise, _openedFlows;
     /// <summary>The resource bar, and the top bar's drill (with its pause), storm and supply drop.</summary>
     readonly HudBar _bar = new() { Name = "Bar" };
     Label _drillText = null!, _stormDue = null!, _drop = null!;
@@ -220,6 +226,8 @@ public partial class Live : Node3D
             _network.Toggle(false);
         };
         // The menu over everything; the game pauses while it's open.
+        // The tutorial's card under the menu and the sheets.
+        _tutorial = new Tutorial(_hud) { Name = "Tutorial" };
         _menu = new GameMenu(m => _bridge.Send(m)) { Name = "Menu", Toast = t => _build.Toast(t) };
         _menu.Shown = open =>
         {
@@ -227,6 +235,37 @@ public partial class Live : Node3D
             SetSpeed(open ? 0 : _speedBeforeMenu);
         };
         _hud.AddChild(_menu);
+        // The tutorial, help and settings (the sheets over the menu).
+        _tutorial.Hidden = () =>
+        {
+            ViewSettings.TutorialHidden = true;
+            ViewSettings.Save();
+            _tutorial.Show(false);
+        };
+        _help = new HelpSheet { Name = "Help", RoomKeys = () => _build.RoomKeys };
+        _hud.AddChild(_help);
+        _settings = new SettingsSheet
+        {
+            Name = "Settings",
+            Changed = ApplyGameSettings,
+            GetQuality = () => (int)_quality,
+            SetQuality = q =>
+            {
+                _quality = (Quality)q;
+                Graphics.Save(_quality);
+                ApplyQuality();
+            },
+        };
+        _hud.AddChild(_settings);
+        _menu.SettingsPressed = _settings.Open;
+        _charts.FlowsOpened = () =>
+        {
+            if (_openedFlows) return;
+            _openedFlows = true;
+            SendTutorialFlags();
+        };
+        _menu.HelpPressed = _help.Open;
+        ApplyGameSettings();
         RenderingServer.ViewportSetMeasureRenderTime(GetViewport().GetViewportRid(), true);
     }
 
@@ -267,6 +306,13 @@ public partial class Live : Node3D
         _festival.Step((float)delta);
         _scenery.Step((float)delta);
         KeepUnderTop();
+        Pulse();
+        // A bridge (re)connected: it needs the game settings it acts on.
+        if (_bridge.Connected != _wasConnected)
+        {
+            _wasConnected = _bridge.Connected;
+            if (_wasConnected) SendGameSettings();
+        }
         HoverRoom((float)delta);
         Weather((float)delta);
         MaybeStartBridge();
@@ -379,6 +425,7 @@ public partial class Live : Node3D
             }
             else if (type == "commandResult") OnCommandResult(msg.RootElement);
             else if (type == "hud") OnHud(msg.RootElement);
+            else if (type == "tutorial") _tutorial.Set(msg.RootElement);
             else if (type == "chained") _build.ShowChain(msg.RootElement);
             else if (type == "proposal") _build.Propose(msg.RootElement);
             msg.Dispose();
@@ -731,7 +778,7 @@ public partial class Live : Node3D
     }
 
     /// <summary>What the bridge builds the scene for: the cut, and room colours on or off.</summary>
-    void SendView() => _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = Cut, ["roomColors"] = ViewSettings.RoomColors, ["plan"] = ViewSettings.Plan ? PlanFloor : null, ["overlay"] = ViewSettings.Overlay });
+    void SendView() => _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = Cut, ["roomColors"] = ViewSettings.RoomColors, ["plan"] = ViewSettings.Plan ? PlanFloor : null, ["overlay"] = ViewSettings.Overlay, ["colorBlind"] = ViewSettings.ColorBlind });
 
     /// <summary>The plan on or off (a 3D camera, or first person, turns it off).</summary>
     void SetPlan(bool on)
@@ -802,6 +849,11 @@ public partial class Live : Node3D
             ViewSettings.Overlay = Overlays[i].id;
             ViewSettings.Save();
             SendView();
+            if (ViewSettings.Overlay == "noise" && !_sawNoise)
+            {
+                _sawNoise = true;
+                SendTutorialFlags();
+            }
             UpdateLegend();
         };
         _overlayBox.AddChild(pick);
@@ -831,6 +883,8 @@ public partial class Live : Node3D
         var o = ViewSettings.Overlay;
         _legend.Visible = o != null;
         var (bad, good) = o == "happiness" ? ("unhappy", "happy") : o == "condition" ? ("worn out", "good repair") : ("hurts", "helps");
+        ((ColorRect)_legend.GetChild(0)).Color = new Color(ViewSettings.ColorBlind ? "#f08a24" : "#ff4a2e");
+        ((ColorRect)_legend.GetChild(2)).Color = new Color(ViewSettings.ColorBlind ? "#3f8fff" : "#5fe07a");
         ((Label)_legend.GetChild(1)).Text = bad;
         ((Label)_legend.GetChild(3)).Text = good;
     }
@@ -957,6 +1011,47 @@ public partial class Live : Node3D
             _bridge.Send(new Dictionary<string, object?> { ["type"] = "pick", ["at"] = p is Vector3 q ? new[] { q.X, q.Y, q.Z } : null });
         }
         RoomTint.Hover(looking && _hovered is int h && (h != _inspector.Selected || _build.Demolishing) ? h : -1, _build.Demolishing);
+    }
+
+    // ---- settings, the tutorial ----
+
+    /// <summary>The game settings changed (or the game started): apply them here, and tell the bridge.</summary>
+    void ApplyGameSettings()
+    {
+        GetTree().Root.ContentScaleFactor = ViewSettings.UiScale;
+        _tutorial.Show(!ViewSettings.TutorialHidden);
+        UpdateLegend();
+        SendGameSettings();
+        SendView();
+    }
+
+    void SendGameSettings()
+    {
+        _bridge.Send(new Dictionary<string, object> { ["type"] = "autosave", ["on"] = ViewSettings.Autosave });
+        SendTutorialFlags();
+    }
+
+    void SendTutorialFlags() => _bridge.Send(new Dictionary<string, object> { ["type"] = "tutorialFlags", ["sawNoise"] = _sawNoise, ["openedFlows"] = _openedFlows, ["sawThreeD"] = true });
+
+    readonly List<Control> _pulsed = new();
+
+    /// <summary>What the tutorial's goal points at glows, amber to white and back, as the web's pulse.</summary>
+    void Pulse()
+    {
+        foreach (var c in _pulsed)
+            if (IsInstanceValid(c)) c.Modulate = Colors.White;
+        _pulsed.Clear();
+        if (_tutorial.Highlight is not string h) return;
+        if (h == "hud:office") _pulsed.Add(_officeButton);
+        else if (h == "hud:speed") _pulsed.AddRange(_speedButtons);
+        else if (h.StartsWith("overlay:")) _pulsed.Add(ViewSettings.Plan ? _overlayBox : _viewButtons["plan"]);
+        else if (h.StartsWith("room:") || h == "tool:corridors")
+        {
+            if (!_build.Active) _pulsed.Add(_buildButton);
+            else _pulsed.AddRange(_build.HighlightTargets(h));
+        }
+        var w = 0.5f + 0.5f * Mathf.Sin((float)_clockSeconds * 5);
+        foreach (var c in _pulsed) c.Modulate = new Color(1, 0.72f + 0.28f * w, 0.35f + 0.65f * w);
     }
 
     // ---- the top bar ----
@@ -1126,6 +1221,13 @@ public partial class Live : Node3D
             return;
         }
         if (e is not InputEventKey { Pressed: true, Echo: false } k) return;
+        // Help: ? (or F1).
+        if (k.Unicode == '?' || k.Keycode == Key.F1)
+        {
+            if (_help.Visible) _help.Close();
+            else _help.Open();
+            return;
+        }
         // Undo the last room placed (⌘Z, or Ctrl+Z).
         if (k.Keycode == Key.Z && (k.MetaPressed || k.CtrlPressed))
         {
@@ -1310,6 +1412,9 @@ public partial class Live : Node3D
         menuButton.Pressed += () => _menu.Open();
         bar.AddChild(menuButton);
         bar.MoveChild(menuButton, 0);
+        _buildButton = new Button { Text = "Build", FocusMode = Control.FocusModeEnum.None, TooltipText = "Rooms, corridors, demolish and undo (B)" };
+        _buildButton.Pressed += () => _build.Toggle();
+        bar.AddChild(_buildButton);
         _officeButton = new Button { Text = "Office", FocusMode = Control.FocusModeEnum.None, TooltipText = "Visits, promises, ordinances and notables" };
         _officeButton.Pressed += () => _choices.ToggleOffice();
         bar.AddChild(_officeButton);

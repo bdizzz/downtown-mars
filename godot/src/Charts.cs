@@ -21,6 +21,8 @@ public partial class Charts : Node
     double _clock, _asked;
 
     public Action? Opened { get; set; }
+    /// <summary>The Flows tab opened (the tutorial asks for it).</summary>
+    public Action? FlowsOpened { get; set; }
     public bool Open => _panel.Visible;
 
     static readonly Color Title = new("#e8834a"), Body = new("#f3e6d8"), Muted = new("#b8a490");
@@ -86,6 +88,7 @@ public partial class Charts : Node
             b.Pressed += () =>
             {
                 _tab = id;
+                if (id == "flows") FlowsOpened?.Invoke();
                 Ask();
             };
             head.AddChild(b);

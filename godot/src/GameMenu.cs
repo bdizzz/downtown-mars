@@ -25,6 +25,9 @@ public partial class GameMenu : Control
     /// <summary>Opened and closed (Live pauses and resumes the game).</summary>
     public Action<bool>? Shown { get; set; }
     public Action<string>? Toast { get; set; }
+    /// <summary>Settings and Help, opened over the menu.</summary>
+    public Action? SettingsPressed { get; set; }
+    public Action? HelpPressed { get; set; }
 
     public GameMenu(Action<object> send)
     {
@@ -142,6 +145,8 @@ public partial class GameMenu : Control
             _export.CurrentFile = "downtown-mars.json";
             _export.PopupCentered(new Vector2I(800, 500));
         });
+        Add("Settings…", () => SettingsPressed?.Invoke());
+        Add("Controls (?)", () => HelpPressed?.Invoke());
         Add("Quit", () => GetTree().Quit());
         _folder.AddThemeFontSizeOverride("font_size", 12);
         _folder.AddThemeColorOverride("font_color", new Color("#b8a490"));

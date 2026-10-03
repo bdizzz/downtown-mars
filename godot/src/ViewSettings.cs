@@ -18,6 +18,11 @@ public static class ViewSettings
     public static bool Plan { get; set; }
     /// <summary>The overlay: noise, smell, health, comfort, airQuality, happiness or condition; null for none.</summary>
     public static string? Overlay { get; set; }
+    /// <summary>The game's settings, as the web's: the tutorial put away, autosave each game day, colour-blind overlays, interface size.</summary>
+    public static bool TutorialHidden { get; set; }
+    public static bool Autosave { get; set; } = true;
+    public static bool ColorBlind { get; set; }
+    public static float UiScale { get; set; } = 1;
 
     public static void Load()
     {
@@ -29,6 +34,10 @@ public static class ViewSettings
         Plan = (bool)cfg.GetValue("view", "plan", false);
         var overlay = (string)cfg.GetValue("view", "overlay", "");
         Overlay = overlay == "" ? null : overlay;
+        TutorialHidden = (bool)cfg.GetValue("game", "tutorial_hidden", false);
+        Autosave = (bool)cfg.GetValue("game", "autosave", true);
+        ColorBlind = (bool)cfg.GetValue("game", "color_blind", false);
+        UiScale = (float)cfg.GetValue("game", "ui_scale", 1f);
     }
 
     /// <summary>A test run (a screenshot or a benchmark): nothing it changes is kept.</summary>
@@ -44,6 +53,10 @@ public static class ViewSettings
         cfg.SetValue("view", "room_colors", RoomColors);
         cfg.SetValue("view", "plan", Plan);
         cfg.SetValue("view", "overlay", Overlay ?? "");
+        cfg.SetValue("game", "tutorial_hidden", TutorialHidden);
+        cfg.SetValue("game", "autosave", Autosave);
+        cfg.SetValue("game", "color_blind", ColorBlind);
+        cfg.SetValue("game", "ui_scale", UiScale);
         cfg.Save(File);
     }
 }
