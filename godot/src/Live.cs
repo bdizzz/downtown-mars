@@ -27,6 +27,7 @@ public partial class Live : Node3D
     readonly RoomEffects _fx = new() { Name = "RoomEffects" };
     readonly Festival _festival = new() { Name = "Festival" };
     readonly Cutaway _cutaway = new() { Name = "Cutaway" };
+    readonly Terrain _terrain = new() { Name = "Terrain" };
     readonly PlanView _planView = new() { Name = "Plan" };
     /// <summary>The plan is showing (on, and the map isn't over it).</summary>
     bool PlanShown => ViewSettings.Plan && !_map.Open;
@@ -139,6 +140,8 @@ public partial class Live : Node3D
         if (Dev.Off("msaa")) GetViewport().Msaa3D = Viewport.Msaa.Disabled;
         _ground = new MeshInstance3D { Name = "Ground" };
         AddChild(_ground);
+        // The land, once the bridge sends it: under the ground node, so it shows and hides with it.
+        _ground.AddChild(_terrain);
         // A camera from the start, so there's a sky while waiting for the game (not a gray screen).
         var asked = ViewSettings.Camera;
         ViewSettings.Load();
@@ -309,6 +312,12 @@ public partial class Live : Node3D
             if (type == "scene") OnScene(msg.RootElement);
             else if (type == "people") _people.Set(msg.RootElement);
             else if (type == "rig") _rig3d.Set(msg.RootElement);
+            else if (type == "terrain")
+            {
+                _terrain.Set(msg.RootElement);
+                // The flat ring was a stand-in.
+                _ground.Mesh = null;
+            }
             else if (type == "plan")
             {
                 _planView.Set(msg.RootElement);
@@ -994,6 +1003,8 @@ public partial class Live : Node3D
     /// <summary>The ground round the hole: a wide ring of rock from the shaft's rim out to the horizon.</summary>
     void BuildGround()
     {
+        // The bridge's terrain replaces this stand-in.
+        if (_terrain.HoleId >= 0) return;
         const int segments = 96;
         const float far = 1500;
         var r0 = _shape.ShaftRadiusM;

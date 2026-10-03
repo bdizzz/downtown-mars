@@ -18,6 +18,7 @@ import { mapView, networkView, siteView } from "./network";
 import { constructionView, maintenanceViewOf, peopleView } from "./colony";
 import { rigKey, rigMessage } from "./rig";
 import { planKey, planMessage } from "./plan";
+import { terrainKey, terrainMessage } from "./terrain";
 import { emittersKey, emittersOf } from "../render3d/effects3d";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
@@ -61,6 +62,7 @@ let sentScene = "";
 let sentPeople = "";
 let sentRig = "";
 let sentFx = "";
+let sentTerrain = "";
 let spots: RoomSpots[] = [];
 function sendScene(force = false): void {
   if (clients.size === 0) return;
@@ -96,6 +98,15 @@ function sendScene(force = false): void {
       if (args.verbose) console.log(`Plan of floor ${planFloor}: ${plan.ops.length} ops, ${plan.markers.length} rooms, ${(planLine.length / 1024).toFixed(0)} KB, ${(performance.now() - t0).toFixed(0)} ms`);
     }
   } else sentPlan = "";
+  // The land round the hole: once per hole.
+  const tk = terrainKey(state);
+  if (force || tk !== sentTerrain) {
+    sentTerrain = tk;
+    const t0 = performance.now();
+    const terrainLine = JSON.stringify(terrainMessage(state)) + "\n";
+    for (const c of clients) c.write(terrainLine);
+    if (args.verbose) console.log(`Terrain: ${(terrainLine.length / 1e6).toFixed(1)} MB, ${(performance.now() - t0).toFixed(0)} ms`);
+  }
   // The drill rig: again for another hole, or when its grippers brace.
   const rk = rigKey(state, host.gameId());
   if (force || rk !== sentRig) {

@@ -14,7 +14,7 @@ public static class Plain
     static readonly Dictionary<string, Shader> Shaders = new();
 
     public static ShaderMaterial Make(Color color, float roughness = 0.8f, float metallic = 0, bool transparent = false, bool unshaded = false,
-        Color? emission = null, float emissionEnergy = 0, bool vertexColors = false, float grain = 0, float specular = 0.5f)
+        Color? emission = null, float emissionEnergy = 0, bool vertexColors = false, float grain = 0, float specular = 0.5f, bool flat = false)
     {
         var key = $"{transparent}:{unshaded}";
         if (!Shaders.TryGetValue(key, out var shader)) Shaders[key] = shader = new Shader { Code = Code(transparent, unshaded) };
@@ -27,6 +27,7 @@ public static class Plain
         m.SetShaderParameter("emission_energy", emissionEnergy);
         m.SetShaderParameter("use_vertex_color", vertexColors);
         m.SetShaderParameter("grain", grain);
+        m.SetShaderParameter("flat_shade", flat);
         return m;
     }
 
@@ -45,6 +46,8 @@ uniform float emission_energy = 0.0;
 uniform bool use_vertex_color = false;
 uniform float grain = 0.0;
 uniform bool walls = false;
+// Faceted, as three.js's flatShading: each face's own normal.
+uniform bool flat_shade = false;
 varying vec3 wpos;
 varying vec4 vcolor;
 float hash3(vec3 p) {{ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }}
@@ -60,6 +63,7 @@ void vertex() {{
 }}
 void fragment() {{
 	if (cut_away(wpos)) discard;
+	if (flat_shade) NORMAL = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));
 	vec3 c = albedo.rgb * (use_vertex_color ? vcolor.rgb : vec3(1.0));
 	if (grain > 0.0) c *= mix(1.0 - 0.08 * grain, 1.0 + 0.03 * grain, noise3(wpos * 4.0));
 	ALBEDO = c;
