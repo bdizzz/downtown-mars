@@ -136,6 +136,7 @@ public partial class Live : Node3D
         planLayer.AddChild(_planView);
         _planView.Ghost = () => _build.GhostShape;
         _planView.Outline = () => _inspector.OutlineLines;
+        _planView.Halo = () => _build.Halo;
         _people = new People { Name = "People" };
         if (!Dev.Off("people")) AddChild(_people);
         if (Dev.Off("sunshadow")) _sun.ShadowEnabled = false;

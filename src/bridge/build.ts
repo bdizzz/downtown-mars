@@ -13,6 +13,12 @@ import { nearestEdge } from "../sim/edges";
 import { CATEGORY_NAMES, CATEGORY_ORDER, HOTKEYS, shapesFor } from "../view/buildCatalog";
 import { corridorCommand, edgeHoverFor, locationFor } from "../view/interaction";
 import { resName } from "../ui/format";
+import { roomCard, type CardContent } from "../view/roomCard";
+import { previewEffects } from "../sim/effects";
+import { roomDef } from "../sim/rooms";
+import type { Cell } from "../sim/placement";
+import { HEAT } from "../render2d/palette";
+import { FIELD_MAX } from "../render2d/planDraw";
 
 // Building from the Godot viewer, by the web game's rules (view/interaction.ts, sim/costs.ts): the
 // palette of rooms and whether each can be built here and now; what placing one at the pointer
@@ -30,6 +36,8 @@ export interface PaletteRoom {
   /** Why it can't be built in this hole (a deposit or a milestone it waits on), or what it's short of. */
   locked?: string;
   short?: string;
+  /** The room card (view/roomCard.ts), shown while it's pointed at or in hand. */
+  card: CardContent;
 }
 
 export interface PaletteMessage {
@@ -59,6 +67,7 @@ export function palette(state: SimState): PaletteMessage {
       ...(HOTKEYS[d.id] ? { key: HOTKEYS[d.id] } : {}),
       ...(siteRefusal(d.id, gates) ? { locked: siteRefusal(d.id, gates)! } : {}),
       ...(missingCost(state.resources, d.id) ? { short: missingCost(state.resources, d.id)! } : {}),
+      card: roomCard(d, state.resources, siteRefusal(d.id, gates)),
     }));
   const used = new Set(rooms.map((r) => r.category));
   used.add("circulation");
@@ -96,6 +105,44 @@ export interface HoveredMessage {
   cost: string;
   /** Its footprint as triangles (float32 xyz, base64), to show where it would go. */
   ghost?: string;
+  /** Its strongest effect on the cells round it, as the web's halo: bands of cells (triangles, as the ghost) in a colour and opacity. */
+  halo?: { color: string; alpha: number; tris: string }[];
+}
+
+const b64 = (a: ArrayLike<number>) => Buffer.from(new Float32Array(a).buffer).toString("base64");
+
+/** The room's strongest spreading effect, previewed where it would go (render3d/stage3d.ts drawHalo): cells grouped by strength. */
+function halo(state: SimState, type: string, cells: Cell[]): HoveredMessage["halo"] {
+  const effects = roomDef(type).effects.filter((e) => !e.residentsOnly && e.radius > 0);
+  if (!effects.length) return undefined;
+  const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
+  const grid = previewEffects(state.layout, type, cells)[main.type];
+  if (!grid) return undefined;
+  const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+  const bands = new Map<number, Cell[]>();
+  grid.forEach((rings, fi) =>
+    rings.forEach((slots, ri) =>
+      slots.forEach((v, slot) => {
+        if (Math.abs(v) < 0.05 || own.has(`${fi + 1}:${ri + 1}:${slot}`)) return;
+        const band = Math.round(v * 3) / 3;
+        if (!bands.has(band)) bands.set(band, []);
+        bands.get(band)!.push({ floor: fi + 1, ring: ri + 1, slot });
+      }),
+    ),
+  );
+  const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
+  return [...bands].map(([v, list]) => {
+    const pos: number[] = [];
+    for (const c of list) {
+      const geo = roomGeometry(state.layout, [c]);
+      const g = geo.index ? geo.toNonIndexed() : geo;
+      const a = (g.getAttribute("position") as THREE.BufferAttribute).array;
+      for (let i = 0; i < a.length; i++) pos.push(a[i]!);
+      geo.dispose();
+      g.dispose();
+    }
+    return { color: hex(v < 0 ? HEAT.normal.bad : HEAT.normal.good), alpha: Math.min(1, Math.abs(v) / FIELD_MAX) * 0.6, tris: b64(pos) };
+  });
 }
 
 export function hover(state: SimState, tool: BuildTool, at: [number, number, number]): HoveredMessage {
@@ -114,7 +161,8 @@ export function hover(state: SimState, tool: BuildTool, at: [number, number, num
     geo.dispose();
     g.dispose();
   }
-  return { type: "hovered", ok: check.ok, text, cost, ...(ghost ? { ghost } : {}) };
+  const glow = check.ok && check.cells.length ? halo(state, tool.room, check.cells) : undefined;
+  return { type: "hovered", ok: check.ok, text, cost, ...(ghost ? { ghost } : {}), ...(glow?.length ? { halo: glow } : {}) };
 }
 
 /** The command for a click with the tool: build it, or (cutting through corridors) only once confirmed; or why not. */

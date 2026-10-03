@@ -40,6 +40,8 @@ public partial class PlanView : Control
     /// <summary>What to lay over the plan: triangles (a build ghost or corridor strip) and line pairs (an outline), in world space.</summary>
     public Func<(Vector3[] tris, bool ok)>? Ghost { get; set; }
     public Func<Vector3[]>? Outline { get; set; }
+    /// <summary>The room in hand's effect round where it would go: bands of cells (triangles) in a colour.</summary>
+    public Func<List<(Color color, Vector3[] tris)>>? Halo { get; set; }
 
     public PlanView()
     {
@@ -141,6 +143,7 @@ public partial class PlanView : Control
     }
 
     object? _ghostSeen, _outlineSeen;
+    List<(Color, Vector3[])>? _haloSeen;
 
     public override void _Process(double delta)
     {
@@ -148,9 +151,11 @@ public partial class PlanView : Control
         // Over it: the ghost and the outline change as the pointer moves; redraw only then.
         var ghost = Ghost?.Invoke().tris;
         var outline = Outline?.Invoke();
-        if (ReferenceEquals(ghost, _ghostSeen) && ReferenceEquals(outline, _outlineSeen)) return;
+        var halo = Halo?.Invoke();
+        if (ReferenceEquals(ghost, _ghostSeen) && ReferenceEquals(outline, _outlineSeen) && ReferenceEquals(halo, _haloSeen)) return;
         _ghostSeen = ghost;
         _outlineSeen = outline;
+        _haloSeen = halo;
         QueueRedraw();
     }
 
@@ -213,6 +218,14 @@ public partial class PlanView : Control
         }
         // The build ghost (or corridor strip) and the selected room's outline, laid flat.
         Vector2 Flat(Vector3 w) => ToScreen(new Vector2(w.X, w.Z) * _px);
+        // Only this floor's cells (the effect reaches the floors above and below too).
+        bool OnFloor(Vector3 w) => w.Y >= -_floor * 4 - 3 - 0.01f && w.Y <= (1 - _floor) * 4 - 3 + 0.01f;
+        foreach (var (color, band) in Halo?.Invoke() ?? new())
+            for (var i = 0; i + 2 < band.Length; i += 3)
+            {
+                var tri = new[] { Flat(band[i]), Flat(band[i + 1]), Flat(band[i + 2]) };
+                if (Mathf.Abs((tri[1] - tri[0]).Cross(tri[2] - tri[0])) > 0.5f && OnFloor(band[i])) DrawColoredPolygon(tri, color);
+            }
         if (Ghost?.Invoke() is var (tris, ok) && tris.Length >= 3)
         {
             var color = (ok ? new Color("#7fd67f") : new Color("#e0503a")) with { A = 0.35f };

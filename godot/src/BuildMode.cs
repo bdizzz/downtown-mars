@@ -16,7 +16,7 @@ namespace DowntownMars;
 /// </summary>
 public partial class BuildMode : Node3D
 {
-    record Room(string Id, string Name, string Category, int[][] Shapes, bool Surface, string Cost, string? Key, string? Locked, string? Short);
+    record Room(string Id, string Name, string Category, int[][] Shapes, bool Surface, string Cost, string? Key, string? Locked, string? Short, JsonElement Card);
 
     readonly Action<object> _send;
     readonly PanelContainer _strip = new();
@@ -27,6 +27,13 @@ public partial class BuildMode : Node3D
     readonly Label _toast = new();
     readonly ConfirmationDialog _confirm = new() { Title = "Build here?", OkButtonText = "Build", CancelButtonText = "Cancel" };
     readonly MeshInstance3D _ghost = new() { Name = "Ghost", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+    /// <summary>The room's effect on the cells round where it would go (the web's halo), a band of cells per strength.</summary>
+    readonly MeshInstance3D _halo = new() { Name = "Halo", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+    List<(Color color, Vector3[] tris)> _haloBands = new();
+    /// <summary>The room card: what the room pointed at (or in hand) costs, takes, makes and does, above the popup.</summary>
+    readonly PanelContainer _card = new();
+    readonly VBoxContainer _cardRows = new();
+    string? _pointed;
     readonly StandardMaterial3D _good = Ghost(new Color(0.45f, 0.95f, 0.5f, 0.35f)), _bad = Ghost(new Color(1f, 0.35f, 0.3f, 0.35f));
     List<Room> _palette = new();
     List<(string id, string name)> _cats = new();
@@ -60,6 +67,7 @@ public partial class BuildMode : Node3D
         _send = send;
         AddChild(_ghost);
         _ghost.Visible = false;
+        AddChild(_halo);
 
         _strip.AddThemeStyleboxOverride("panel", Live.Panel());
         _strip.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
@@ -74,6 +82,13 @@ public partial class BuildMode : Node3D
         _popup.Visible = false;
         hud.AddChild(_popup);
         _popup.AddChild(_rooms);
+
+        _card.AddThemeStyleboxOverride("panel", Live.Panel());
+        _card.Visible = false;
+        _card.MouseFilter = Control.MouseFilterEnum.Ignore;
+        _cardRows.AddThemeConstantOverride("separation", 3);
+        _card.AddChild(_cardRows);
+        hud.AddChild(_card);
 
         Style(_tip, 14, new Color("#f3e6d8"));
         _tip.Visible = false;
@@ -141,6 +156,7 @@ public partial class BuildMode : Node3D
         Tool = null;
         Corridor = null;
         _ghost.Visible = false;
+        ClearHalo();
         _tip.Visible = false;
         RefreshRooms();
     }
@@ -158,7 +174,8 @@ public partial class BuildMode : Node3D
             r.GetProperty("cost").GetString()!,
             r.TryGetProperty("key", out var k) ? k.GetString() : null,
             r.TryGetProperty("locked", out var l) ? l.GetString() : null,
-            r.TryGetProperty("short", out var s2) ? s2.GetString() : null)).ToList();
+            r.TryGetProperty("short", out var s2) ? s2.GetString() : null,
+            r.GetProperty("card").Clone())).ToList();
         var cor = msg.GetProperty("corridors");
         _finishes = cor.GetProperty("finishes").EnumerateArray().Select(f => (f.GetProperty("id").GetString()!, f.GetProperty("name").GetString()!, f.GetProperty("cost").GetString()!, f.GetProperty("hint").GetString()!)).ToList();
         _bulkheadCost = cor.GetProperty("bulkhead").GetString()!;
@@ -236,10 +253,112 @@ public partial class BuildMode : Node3D
             if (r.Short != null) b.AddThemeColorOverride("font_color", new Color("#e0a070"));
             var id = r.Id;
             b.Pressed += () => Pick(id);
+            b.MouseEntered += () => Point(id);
+            b.MouseExited += () => Point(null);
             _rooms.AddChild(b);
         }
         // Above the strip, at the open category's button, once laid out.
         CallDeferred(nameof(PlacePopup));
+        ShowCard();
+    }
+
+    // ---- the room card ----
+
+    void Point(string? id)
+    {
+        _pointed = id;
+        ShowCard();
+    }
+
+    static readonly Dictionary<string, Color> Tones = new() { ["k"] = new Color("#a8927e"), ["good"] = new Color("#9fd28a"), ["bad"] = new Color("#f08070") };
+
+    /// <summary>The card for the room pointed at in the popup, else the one in hand; above the popup, as the web's.</summary>
+    void ShowCard()
+    {
+        var room = _palette.FirstOrDefault(r => r.Id == (_pointed ?? Tool));
+        _card.Visible = room != null && _popup.Visible;
+        if (room == null || !_card.Visible) return;
+        foreach (var c in _cardRows.GetChildren())
+        {
+            _cardRows.RemoveChild(c);
+            c.QueueFree();
+        }
+        Label Line(string text, int size, Color color)
+        {
+            var l = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(320, 0) };
+            l.AddThemeFontSizeOverride("font_size", size);
+            l.AddThemeColorOverride("font_color", color);
+            _cardRows.AddChild(l);
+            return l;
+        }
+        var card = room.Card;
+        Line(card.GetProperty("name").GetString()!, 17, new Color("#e8834a"));
+        var shape = room.Shapes[Tool == room.Id ? _shape : 0];
+        var size = card.GetProperty("size").GetString() + (card.GetProperty("surface").GetBoolean() ? "" : $" · {shape[0]} wide × {shape[1]} deep");
+        Line(room.Shapes.Length > 1 && Tool == room.Id ? size + "  ·  R turns it" : size, 13, Tones["k"]);
+        // The cost, what the stocks are short of in red.
+        var cost = new RichTextLabel { BbcodeEnabled = true, FitContent = true, ScrollActive = false, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(320, 0), MouseFilter = Control.MouseFilterEnum.Ignore };
+        cost.AddThemeFontSizeOverride("normal_font_size", 14);
+        cost.Text = string.Join("   ", card.GetProperty("cost").EnumerateArray().Select(c => c.GetProperty("short").GetBoolean() ? $"[color=#f08070]{c.GetProperty("text").GetString()}[/color]" : $"[color=#f3e6d8]{c.GetProperty("text").GetString()}[/color]"));
+        _cardRows.AddChild(cost);
+        foreach (var l in card.GetProperty("lines").EnumerateArray())
+            Line(l.GetProperty("text").GetString()!, 13, l.TryGetProperty("tone", out var t) && Tones.TryGetValue(t.GetString()!, out var c) ? c : new Color("#e0cfbd"));
+        CallDeferred(nameof(PlaceCard));
+    }
+
+    void PlaceCard()
+    {
+        if (!_card.Visible) return;
+        _card.ResetSize();
+        var x = Mathf.Clamp(_popup.Position.X, 10, GetViewport().GetVisibleRect().Size.X - _card.Size.X - 10);
+        _card.Position = new Vector2(x, Mathf.Max(10, _popup.Position.Y - _card.Size.Y - 8));
+    }
+
+    // ---- the halo ----
+
+    void ClearHalo()
+    {
+        _halo.Visible = false;
+        _haloBands = new();
+    }
+
+    /// <summary>The room's effects round where it would go, for the plan view: a colour (with its opacity) and triangles per band.</summary>
+    public List<(Color color, Vector3[] tris)> Halo => _halo.Visible && Tool != null ? _haloBands : NoHalo;
+    static readonly List<(Color color, Vector3[] tris)> NoHalo = new();
+
+    void ShowHalo(JsonElement msg)
+    {
+        if (!msg.TryGetProperty("halo", out var bands))
+        {
+            ClearHalo();
+            return;
+        }
+        var mesh = new ArrayMesh();
+        _haloBands = new();
+        foreach (var band in bands.EnumerateArray())
+        {
+            var color = new Color(band.GetProperty("color").GetString()!) with { A = band.GetProperty("alpha").GetSingle() };
+            var verts = Verts(band.GetProperty("tris").GetString()!);
+            if (verts.Length == 0) continue;
+            _haloBands.Add((color, verts));
+            var arrays = new Godot.Collections.Array();
+            arrays.Resize((int)Mesh.ArrayType.Max);
+            arrays[(int)Mesh.ArrayType.Vertex] = verts;
+            mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
+            var m = Ghost(color);
+            m.RenderPriority = 4;
+            mesh.SurfaceSetMaterial(mesh.GetSurfaceCount() - 1, m);
+        }
+        _halo.Mesh = mesh;
+        _halo.Visible = true;
+    }
+
+    static Vector3[] Verts(string b64)
+    {
+        var f = MemoryMarshal.Cast<byte, float>(Convert.FromBase64String(b64)).ToArray();
+        var verts = new Vector3[f.Length / 3];
+        for (var i = 0; i < verts.Length; i++) verts[i] = new Vector3(f[i * 3], f[i * 3 + 1], f[i * 3 + 2]);
+        return verts;
     }
 
     void PlacePopup()
@@ -281,6 +400,8 @@ public partial class BuildMode : Node3D
 
     public void Pick(string id)
     {
+        // Not a room in the palette (none yet, or not buildable).
+        if (_palette.All(r => r.Id != id)) return;
         Corridor = null;
         Tool = Tool == id ? null : id;
         _shape = 0;
@@ -310,6 +431,7 @@ public partial class BuildMode : Node3D
     {
         var r = _palette.FirstOrDefault(r => r.Id == Tool);
         if (r != null) _shape = (_shape + 1) % r.Shapes.Length;
+        ShowCard();
     }
 
     public bool SurfaceTool => _palette.FirstOrDefault(r => r.Id == Tool)?.Surface == true;
@@ -377,6 +499,7 @@ public partial class BuildMode : Node3D
             _ghost.Visible = true;
         }
         else _ghost.Visible = false;
+        ShowHalo(msg);
     }
 
     /// <summary>The bridge's notice: why a click didn't build, or a question (it would cut corridors) to confirm.</summary>

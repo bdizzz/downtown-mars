@@ -1,8 +1,5 @@
-import { roomWork } from "../sim/construction";
-import type { EffectDef, RoomDef } from "../sim/rooms";
-import { resourceDef } from "../sim/resources";
-import { num, resName, signed } from "./format";
-import { config } from "../sim/config";
+import type { RoomDef } from "../sim/rooms";
+import { roomCard } from "../view/roomCard";
 
 interface Props {
   def: RoomDef;
@@ -13,30 +10,15 @@ interface Props {
   siteNote?: string | null;
 }
 
-const SIZE_NAMES: Record<string, string> = { S: "Small", M: "Medium", L: "Large", H: "Huge", surface: "Surface" };
-
-function effectText(e: EffectDef): string {
-  const name = e.type === "airQuality" ? "Air quality" : e.type[0]!.toUpperCase() + e.type.slice(1);
-  const v = `${e.strength > 0 ? "+" : "−"}${Math.abs(e.strength)}`;
-  if (e.residentsOnly) return `${name} ${v} for its own residents`;
-  if (e.radius === 0) return `${name} ${v} in the room`;
-  return `${name} ${v}, fading over ${e.radius} ${e.radius === 1 ? "step" : "steps"}`;
-}
-
-const flows = (r: Record<string, number>) =>
-  Object.entries(r)
-    .map(([id, v]) => `${resName(id)} ${num(v)}`)
-    .join(", ");
-
-/** Everything a player needs to decide where a room goes, before placing it. */
+/** Everything a player needs to decide where a room goes, before placing it (view/roomCard.ts). */
 export function RoomCard({ def, resources, shape, onRotate, siteNote }: Props) {
+  const card = roomCard(def, resources, siteNote);
   return (
     <div className="room-card">
-      <h3>{def.name}</h3>
+      <h3>{card.name}</h3>
       <p className="k">
-        {SIZE_NAMES[def.size]}
-        {def.size !== "surface" && ` · ${shape[0]} wide × ${shape[1]} deep`}
-        {def.size === "surface" && def.surfaceSlots ? ` · ${def.surfaceSlots} surface ${def.surfaceSlots === 1 ? "slot" : "slots"}` : ""}
+        {card.size}
+        {!card.surface && ` · ${shape[0]} wide × ${shape[1]} deep`}
         {onRotate && (
           <button className="rotate" onClick={onRotate} title="Rotate (R)">
             ⟳ rotate
@@ -44,40 +26,17 @@ export function RoomCard({ def, resources, shape, onRotate, siteNote }: Props) {
         )}
       </p>
       <p className="cost">
-        {Object.entries(def.cost).map(([id, amt]) => (
-          <span key={id} className={(resources[id] ?? 0) < amt ? "short" : ""}>
-            {resourceDef(id).name} {amt}
+        {card.cost.map((c) => (
+          <span key={c.text} className={c.short ? "short" : ""}>
+            {c.text}
           </span>
         ))}
-        {!Object.keys(def.cost).length && <span>Free</span>}
       </p>
-      <p className="k">Takes {roomWork(def.id)} work-hours to build</p>
-      {def.storage ? <p className="good">Stores {def.storage} units of goods, shared among those you choose</p> : null}
-      {def.constructionBandwidth ? <p className="good">Adds {def.constructionBandwidth} to construction bandwidth at full staff</p> : null}
-      {def.staff > 0 && <p>Staff {def.staff}</p>}
-      {Object.keys(def.uses).length > 0 && <p>Uses {flows(def.uses)} a day</p>}
-      {Object.keys(def.makes).length > 0 && <p>Makes {flows(def.makes)} a day</p>}
-      {def.stores && <p>Stores {flows(def.stores)}</p>}
-      {def.houses ? <p>Houses {def.houses}</p> : null}
-      {def.houses ? <p className="good">Windows (an upgrade): up to {signed(config.windows.view.shaft)} comfort looking out over the shaft, less onto a plaza or a corridor</p> : null}
-      {def.sanitation ? <p>Sanitation for {def.sanitation}</p> : null}
-      {def.cares ? <p>Care for {def.cares}</p> : null}
-      {def.serves ? <p>Seats {def.serves} diners{def.reach ? ` from homes within ${def.reach} steps` : ""}{def.makes.meals ? "" : " (meals cooked elsewhere)"}</p> : null}
-      {def.amenity ? <p className="good">{[def.amenity.comfort ? `Comfort ${signed(def.amenity.comfort)}` : "", def.amenity.health ? `Health ${signed(def.amenity.health)}` : ""].filter(Boolean).join(", ")} for homes within {def.amenity.reach} steps on foot, less further off (the nearest of each kind counts)</p> : null}
-      {!def.serves && def.makes.meals ? <p className="k">Cooks but seats no one: pair it with a canteen</p> : null}
-      {def.ordinanceSlots ? <p>{def.ordinanceSlots} ordinance slots</p> : null}
-      {def.effects.map((e, i) => (
-        <p key={i} className={e.strength < 0 ? "bad" : "good"}>
-          {effectText(e)}
+      {card.lines.map((l, i) => (
+        <p key={i} className={l.tone}>
+          {l.text}
         </p>
       ))}
-      {siteNote && <p className="bad">{siteNote}.</p>}
-      {(def.floors ?? 1) > 1 && <p>Spans {def.floors} floors, linking them</p>}
-      {def.public ? (
-        <p className="good">Walk-through: its sides count as corridors, so neighbours open onto it</p>
-      ) : (
-        def.size !== "surface" && <p className="k">Needs a gallery tube, a corridor or a plaza along one side.</p>
-      )}
     </div>
   );
 }
