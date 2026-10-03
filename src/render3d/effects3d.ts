@@ -26,7 +26,7 @@ const LOOK: Record<Kind, { pool: number; rate: number; life: [number, number]; s
 };
 const MOTION = { sparkOut: 2.2, sparkUp: 2.2, sparkSpread: 1.2, gravity: 5, steamRise: 0.55, steamDrift: 0.12 };
 
-interface Emitter {
+export interface Emitter {
   kind: Kind;
   x: number;
   y: number;
@@ -211,15 +211,10 @@ export class RoomEffects {
 
   /** Find the emitters: the furnaces and scrubbers of built rooms, with how hard each room is running (a stopped one makes none). */
   sync(layout: Layout, status: Record<number, RoomStatus>): void {
-    const built = layout.rooms.filter((r) => !r.planned && !r.building && (furniture.rooms[r.type] ?? []).some((id) => EMITTERS[id]));
-    const key = `${layout.version}:${built.map((r) => `${r.id}.${Math.round((status[r.id]?.rate ?? 0) * 4)}`).join(",")}`;
+    const key = emittersKey(layout, status);
     if (key === this.key) return;
     this.key = key;
-    this.emitters = built.flatMap((room) => {
-      const rate = status[room.id]?.rate ?? 0;
-      const ring1 = room.cells.some((c) => c.ring === 1);
-      return furnish(layout, room).flatMap((f) => (EMITTERS[f.item] ?? []).map((e) => emitterAt(f, e.kind, e.at, rate, ring1)));
-    });
+    this.emitters = emittersOf(layout, status);
     // What's in the air stays with the same spot (a stopped furnace's last sparks fade out); one that's gone takes its sparks with it.
     const now = new Map(this.emitters.map((e) => [spotKey(e), e]));
     this.retain((e) => now.get(spotKey(e)) ?? null);
@@ -274,6 +269,22 @@ export class RoomEffects {
     this.kinds.sparks.dispose();
     this.kinds.steam.dispose();
   }
+}
+
+const withEmitters = (layout: Layout) => layout.rooms.filter((r) => !r.planned && !r.building && (furniture.rooms[r.type] ?? []).some((id) => EMITTERS[id]));
+
+/** What decides the emitters: the layout, and how hard each room with one is running (in quarters). */
+export function emittersKey(layout: Layout, status: Record<number, RoomStatus>): string {
+  return `${layout.version}:${withEmitters(layout).map((r) => `${r.id}.${Math.round((status[r.id]?.rate ?? 0) * 4)}`).join(",")}`;
+}
+
+/** Every emitter in the hole: the furnaces and scrubbers of built rooms, with how hard each room is running (also for the Godot viewer). */
+export function emittersOf(layout: Layout, status: Record<number, RoomStatus>): Emitter[] {
+  return withEmitters(layout).flatMap((room) => {
+    const rate = status[room.id]?.rate ?? 0;
+    const ring1 = room.cells.some((c) => c.ring === 1);
+    return furnish(layout, room).flatMap((f) => (EMITTERS[f.item] ?? []).map((e) => emitterAt(f, e.kind, e.at, rate, ring1)));
+  });
 }
 
 /** An emitter at a point in an item's own frame, turned and placed with the item. */

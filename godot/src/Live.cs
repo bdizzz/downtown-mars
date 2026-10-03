@@ -24,6 +24,7 @@ public partial class Live : Node3D
     People _people = null!;
     readonly Rig _rig3d = new() { Name = "Rig" };
     readonly Storm _storm = new() { Name = "Storm" };
+    readonly RoomEffects _fx = new() { Name = "RoomEffects" };
     bool _stormSeen;
     float _dayFraction = -1;
     Inspector _inspector = null!;
@@ -114,6 +115,7 @@ public partial class Live : Node3D
         AddChild(_hole);
         AddChild(_rig3d);
         AddChild(_storm);
+        AddChild(_fx);
         _people = new People { Name = "People" };
         if (!Dev.Off("people")) AddChild(_people);
         if (Dev.Off("sunshadow")) _sun.ShadowEnabled = false;
@@ -224,6 +226,7 @@ public partial class Live : Node3D
         PlayKeys();
         // The rig moves at the game's pace (still when paused).
         _rig3d.Step((float)delta * _speed);
+        _fx.Step((float)delta * _speed);
         Weather((float)delta);
         MaybeStartBridge();
         if (BenchSeconds > 0 && _clockSeconds > BenchWarmup)
@@ -282,6 +285,7 @@ public partial class Live : Node3D
             if (type == "scene") OnScene(msg.RootElement);
             else if (type == "people") _people.Set(msg.RootElement);
             else if (type == "rig") _rig3d.Set(msg.RootElement);
+            else if (type == "fx") _fx.Set(msg.RootElement);
             else if (type == "walkmap" && msg.RootElement.GetProperty("layoutVersion").GetInt32() == _layoutVersion && msg.RootElement.GetProperty("holeId").GetInt32() == _holeId) _walker.SetMap(Walker.Map.Parse(msg.RootElement));
             else if (type == "inspected")
             {
@@ -635,6 +639,7 @@ public partial class Live : Node3D
         var cut = Cut;
         _ground.Visible = cut == null;
         _people.SetTopFloor(cut);
+        _fx.SetTopFloor(cut);
         if (cut == _cutSent) return;
         _cutSent = cut;
         BuildOccluders();

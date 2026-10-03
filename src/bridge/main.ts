@@ -17,6 +17,7 @@ import { flows, trends } from "./charts";
 import { mapView, networkView, siteView } from "./network";
 import { constructionView, maintenanceViewOf, peopleView } from "./colony";
 import { rigKey, rigMessage } from "./rig";
+import { emittersKey, emittersOf } from "../render3d/effects3d";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
 // Godot viewer, speaking the web game's worker protocol (worker/protocol.ts) one JSON message per
@@ -54,6 +55,7 @@ let topFloor: number | null = null;
 let sentScene = "";
 let sentPeople = "";
 let sentRig = "";
+let sentFx = "";
 let spots: RoomSpots[] = [];
 function sendScene(force = false): void {
   if (clients.size === 0) return;
@@ -68,6 +70,14 @@ function sendScene(force = false): void {
     for (const c of clients) c.write(line);
     report(scene, line);
     sentPeople = "";
+  }
+  // Room effects: the furnaces' and scrubbers' spots, and how hard each room is running (Godot animates them).
+  const fk = `${state.holeId}:${emittersKey(state.layout, state.roomStatus)}`;
+  if (force || fk !== sentFx) {
+    sentFx = fk;
+    const emitters = emittersOf(state.layout, state.roomStatus).map(({ kind, x, y, z, fx, fz, rate, floor }) => ({ kind, x, y, z, fx, fz, rate, floor }));
+    const fxLine = JSON.stringify({ type: "fx", emitters }) + "\n";
+    for (const c of clients) c.write(fxLine);
   }
   // The drill rig: again for another hole, or when its grippers brace.
   const rk = rigKey(state, host.gameId());
