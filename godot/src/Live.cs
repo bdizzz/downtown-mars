@@ -612,7 +612,7 @@ public partial class Live : Node3D
             var k = _keys[i];
             if (!k.pressed && _clockSeconds >= k.down)
             {
-                Input.ParseInputEvent(new InputEventKey { Keycode = k.key, PhysicalKeycode = k.key, Pressed = true });
+                Input.ParseInputEvent(new InputEventKey { Keycode = k.key, PhysicalKeycode = k.key, Pressed = true, Unicode = k.key is >= Key.A and <= Key.Z ? char.ToLower((char)k.key) : 0 });
                 k.pressed = true;
             }
             if (k.pressed && !k.released && _clockSeconds >= k.up)

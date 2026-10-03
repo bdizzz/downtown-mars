@@ -214,7 +214,7 @@ let commandId = 1_000_000;
 let inspecting: number | null = null;
 let inspectClock = 0;
 function sendInspect(): void {
-  const line = JSON.stringify(inspect(host.active(), inspecting)) + "\n";
+  const line = JSON.stringify((inspecting === null ? { type: "inspected", roomId: null } : inspect(host.active(), host.snapshot(), inspecting))) + "\n";
   for (const c of clients) c.write(line);
 }
 

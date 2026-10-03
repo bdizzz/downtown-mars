@@ -7,19 +7,14 @@ import { conditionColor } from "../view/conditionView";
 import { useState } from "react";
 import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
-import { mainOutput, roomSpec } from "../sim/economy";
-import { crowdedAir } from "../sim/happiness";
-import { glazedWalls, windowComfort, type Across } from "../sim/windows";
-import { amenityFelt } from "../sim/amenities";
-import { reachSteps, reachTints } from "../view/reachView";
-import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
+import { roomSpec } from "../sim/economy";
 import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
-import { network } from "../sim/network";
 import { corridors, finishDef } from "../sim/corridors";
 import { STORABLE } from "../sim/storage";
-import { dining, hoursText, num, ordinal, resName, signed } from "./format";
+import { num, resName } from "./format";
+import { conditionNote, constructionInfo, panelRows, seedKitInfo, stopAtInfo, type Row } from "../view/roomPanel";
 import { isProblem, roomState } from "../view/roomState";
 
 interface Props {
@@ -31,147 +26,29 @@ interface Props {
   onClose: () => void;
 }
 
-function Flows({ label, flows }: { label: string; flows: Record<string, number> }) {
-  const entries = Object.entries(flows).filter(([, v]) => v > 0);
-  if (!entries.length) return null;
-  return (
-    <p>
-      <span className="k">{label}</span> {entries.map(([id, v]) => `${resName(id)} ${num(v)}`).join(", ")}
-    </p>
-  );
-}
-
-/** A service's or amenity's reach on foot: the homes within it (tinted on the map when no overlay is on). */
-function Reaches({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
-  const tints = reachTints(s.layout, room.id);
-  if (!tints) return null;
-  const within = tints.filter((t) => t.steps !== null).sort((a, b) => a.steps! - b.steps!);
-  return (
-    <p>
-      <span className="k">Reaches</span> {within.length} of {tints.length} {tints.length === 1 ? "home" : "homes"} within {reachSteps(room.type)} steps
-      {within.length ? `: ${within.slice(0, 4).map((t) => `${roomName(t.room)} ${Math.max(1, Math.round(t.steps!))}`).join(", ")}${within.length > 4 ? "…" : ""}` : ""}
-    </p>
-  );
-}
-
-/** Clinic, school and elder-care places within reach of a home. */
-function CareInReach({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
-  const c = s.population.care?.byHome[room.id];
-  if (!c) return null;
-  const part = (name: string, v: number, who: number) => (who <= 0 ? null : v >= 0.98 ? `${name} ✓` : `${name} ${Math.round(v * 100)}%`);
-  const items = [part("clinic", c.care, 1), part("school", c.school, s.care.school.who), part("elder care", c.elders, s.care.elders.who)].filter(Boolean);
-  const short = c.care < 0.98 || (s.care.school.who > 0 && c.school < 0.98) || (s.care.elders.who > 0 && c.elders < 0.98);
-  return (
-    <p className={short ? "warn" : undefined}>
-      <span className="k">Within reach</span> {items.join(" · ")}
-    </p>
-  );
-}
-
-/** What a home's people can walk to: seats at a galley or canteen, and the amenities in reach. */
-function WithinReach({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
-  const seated = s.population.servedByHome?.[room.id];
-  const felt = amenityFelt(s, room);
+/** Rows of the panel (view/roomPanel.ts): a dimmed label, then the text. */
+function Rows({ rows }: { rows: Row[] }) {
   return (
     <>
-      {seated !== undefined && (
-        <p className={seated < 0.98 ? "warn" : undefined}>
-          <span className="k">Meals</span> {seated >= 0.98 ? "a seat for everyone within reach" : `${Math.round(seated * 100)}% seated within reach; the rest eat on the go`}
+      {rows.map((r, i) => (
+        <p key={i} className={r.warn ? "warn" : undefined}>
+          {r.k && <span className="k">{r.k}</span>} {r.text}
         </p>
-      )}
-      <CareInReach s={s} room={room} />
-      <p>
-        <span className="k">On foot</span>
-        {felt.from.length
-          ? felt.from.map((f) => `${roomDef(f.type).name} ${Math.max(1, Math.round(f.steps))} steps (${[f.comfort ? `comfort ${signed(f.comfort)}` : "", f.health ? `health ${signed(f.health)}` : ""].filter(Boolean).join(", ")})`).join(" · ")
-          : "no park, plaza or gym in reach"}
-      </p>
+      ))}
     </>
-  );
-}
-
-const ACROSS: Record<Across, string> = { shaft: "the shaft", corridor: "a corridor", public: "a walk-through room" };
-
-/** A room's windows: what they look out on, and (a home) the comfort they give. None until the player puts them in. */
-function Windows({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
-  const walls = glazedWalls(s.layout, room);
-  const home = !!roomDef(room.type).houses;
-  if (!walls.length) {
-    return home ? (
-      <p>
-        <span className="k">Windows</span> none yet: add them with Build → Corridors → Windows, on a wall facing the shaft, a corridor or a plaza
-      </p>
-    ) : null;
-  }
-  const onto = [...new Set(walls.map((w) => ACROSS[w.across]))].join(", ");
-  return (
-    <p>
-      <span className="k">Windows</span> onto {onto}
-      {home ? `: ${signed(windowComfort(s.layout, room, config))} comfort` : ""}
-    </p>
-  );
-}
-
-function Neighborhood({ s, room }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number] }) {
-  const felt = FIELD_TYPES.map((t) => [t, effectOnRoom(s.effects, t, room)] as const).filter(([, v]) => Math.abs(v) >= 0.05);
-  return (
-    <p>
-      <span className="k">Felt here</span>
-      {felt.length ? felt.map(([t, v]) => `${effectName(t)} ${signed(v)}`).join(", ") : "nothing"}
-    </p>
   );
 }
 
 function SeedKit({ s, onCommand }: { s: Snapshot; onCommand: Props["onCommand"] }) {
-  const goods = Object.entries(network.seedKit.goods);
+  const kit = seedKitInfo(s);
   return (
     <>
       <p>
-        <span className="k">Seed kit</span> {Math.floor(s.kit.progress * 100)}% gathered
+        <span className="k">Seed kit</span> {Math.floor(kit.progress * 100)}% gathered
       </p>
-      <p className="k">
-        {goods.map(([id, want]) => `${resName(id)} ${num(s.kit.loaded[id] ?? 0)}/${want}`).join(" · ")}
-      </p>
-      {s.kit.progress < 0.999 && (
-        <button onClick={() => onCommand({ type: "setGathering", gathering: !s.kit.gathering })}>
-          {s.kit.gathering ? "Stop gathering" : s.kit.progress > 0 ? "Resume gathering" : "Gather a seed kit"}
-        </button>
-      )}
-      <p className="k">
-        {s.kit.gathering
-          ? "The bay's crew is moving goods into the kit, never leaving less than a reserve in store."
-          : s.kit.progress >= 0.999
-            ? `Ready. Pick a site on the map (M) and send ${network.seedKit.volunteers} volunteers to found a new hole.`
-            : "The bay stands idle, its crew free for other work, until you ask for a kit."}
-      </p>
-    </>
-  );
-}
-
-function Home({ s, roomId, capacity }: { s: Snapshot; roomId: number; capacity: number }) {
-  const pool = s.happiness.pools.find((p) => p.roomId === roomId);
-  if (!pool) {
-    return (
-      <p>
-        <span className="k">Houses</span> {capacity}
-      </p>
-    );
-  }
-  const f = pool.factors;
-  const trend = pool.target > pool.happiness + 1 ? " ↑" : pool.target < pool.happiness - 1 ? " ↓" : "";
-  return (
-    <>
-      <p>
-        <span className="k">Residents</span> {pool.residents} / {capacity}
-      </p>
-      <p className={pool.happiness < 50 ? "warn" : ""}>
-        <span className="k">Happiness</span> {Math.round(pool.happiness)}
-        {trend} (heading for {Math.round(pool.target)})
-      </p>
-      <p>
-        <span className="k">Noise</span> {signed(f.noise)} <span className="k">Comfort</span> {signed(f.comfort)}{" "}
-        <span className="k">Health</span> {signed(f.health)}
-      </p>
+      <p className="k">{kit.goods}</p>
+      {kit.button && <button onClick={() => onCommand({ type: "setGathering", gathering: !s.kit.gathering })}>{kit.button}</button>}
+      <p className="k">{kit.note}</p>
     </>
   );
 }
@@ -255,22 +132,16 @@ function StorageEditor({ s, room, onCommand }: { s: Snapshot; room: Snapshot["la
 
 /** A room (or its next floor) waiting in the construction queue: progress, place, time left, and moving it up. */
 function UnderConstruction({ s, roomId, onCommand }: { s: Snapshot; roomId: number; onCommand: Props["onCommand"] }) {
-  const index = s.construction.jobs.findIndex((j) => j.roomId === roomId);
-  const job = s.construction.jobs[index];
+  const job = constructionInfo(s, roomId);
   if (!job) return null;
   return (
     <div className="under-construction">
       <div className="bar">
         <div style={{ width: `${Math.round(job.progress * 100)}%` }} />
       </div>
-      <p className="k">
-        {job.kind === "extend" ? "Another floor: " : ""}
-        {job.phase === "excavating" ? "Excavating · " : ""}
-        {Math.round(job.progress * 100)}% · {ordinal(index + 1)} in the queue ·{" "}
-        {job.hoursLeft === null ? "waits for its floor to be dug" : `done in about ${hoursText(job.hoursLeft)}`}
-      </p>
-      {index > 0 && (
-        <button onClick={() => onCommand({ type: "prioritize", jobId: job.id })} title="Move it to the front of the construction queue">
+      <p className="k">{job.text}</p>
+      {job.canPrioritize && (
+        <button onClick={() => onCommand({ type: "prioritize", jobId: job.jobId })} title="Move it to the front of the construction queue">
           Priority construction
         </button>
       )}
@@ -280,9 +151,10 @@ function UnderConstruction({ s, roomId, onCommand }: { s: Snapshot; roomId: numb
 
 /** Pause a room, or have it stand by while its output is stocked. */
 function Controls({ room, s, onCommand }: { room: Snapshot["layout"]["rooms"][number]; s: Snapshot; onCommand: Props["onCommand"] }) {
-  const out = mainOutput(room, config);
+  const stop = stopAtInfo(s, room);
+  const out = stop?.resource;
   const [draft, setDraft] = useState<string | null>(null);
-  const suggested = Math.max(10, Math.round(((s.resources[out ?? ""] ?? 0) + 20) / 10) * 10);
+  const suggested = stop?.suggested ?? 10;
   return (
     <div className="controls">
       <label>
@@ -359,13 +231,7 @@ function RoomTitle({ room, onCommand }: { room: RoomInstance; onCommand: (c: Sim
 
 /** A room's condition, as a bar, and who's repairing it or where it is in the queue. */
 function ConditionRow({ s, roomId, condition, repairing }: { s: Snapshot; roomId: number; condition: number; repairing?: { done: number; work: number } }) {
-  const lane = s.maintenance.lanes.find((l) => l.target === roomId);
-  const place = s.maintenance.queue.findIndex((q) => q.roomId === roomId);
-  const note = lane
-    ? `${lane.kind === "all" ? "🛠 Being repaired" : "🧽 Being cleaned"}: ${Math.round((lane.progress ?? 0) * 100)}% done`
-    : place >= 0
-      ? `In the maintenance queue: ${place === 0 ? "next" : ordinal(place + 1)}${repairing ? ", part repaired" : ""}`
-      : "";
+  const note = conditionNote(s, roomId, repairing);
   return (
     <div className="condition">
       <p>
@@ -386,6 +252,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
   const st = s.roomStatus[room.id];
 
   const state = roomState(s.layout, room, st);
+  const rows = panelRows(s, room);
 
   return (
     <aside className="inspector">
@@ -407,53 +274,9 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
           Connect with a corridor ({finishDef(finish ?? corridors.defaultFinish).name.toLowerCase()})
         </button>
       )}
-      {spec.staff > 0 && (
-        <p>
-          <span className="k">Staff</span> {st?.staff ?? 0} / {spec.staff}
-        </p>
-      )}
-      <Flows label="Uses/day" flows={spec.uses} />
-      <Flows label="Makes/day" flows={spec.makes} />
-      <Flows label="Scrubs/day" flows={spec.scrubs} />
-      <Flows label="Stores" flows={spec.stores} />
+      <Rows rows={rows.before} />
       {def.stagesSeedKit && <SeedKit s={s} onCommand={onCommand} />}
-      {def.houses ? <Home s={s} roomId={room.id} capacity={def.houses} /> : null}
-      {def.teaches ? (
-        <p>
-          <span className="k">Teaches</span> up to {def.teaches} children · {s.care.school.who} in the hole,{" "}
-          {s.care.school.missing > 0 ? `${num(s.care.school.missing)} without a place` : "all with a place"}
-        </p>
-      ) : null}
-      {def.rests ? (
-        <p>
-          <span className="k">Rests</span> up to {def.rests} · {s.rest.interred} laid to rest here, {s.rest.space} places left
-        </p>
-      ) : null}
-      {def.caresForElders ? (
-        <p>
-          <span className="k">Cares for</span> up to {def.caresForElders} elders · {s.care.elders.who} in the hole,{" "}
-          {s.care.elders.missing > 0 ? `${num(s.care.elders.missing)} without care` : "all cared for"}
-        </p>
-      ) : null}
-      {spec.sanitation > 0 && (
-        <p>
-          <span className="k">Sanitation for</span> {num(spec.sanitation)}
-        </p>
-      )}
-      {spec.serves > 0 && (
-        <p>
-          <span className="k">Seats</span> {num(spec.serves)} diners · {dining(s)}
-        </p>
-      )}
-      {room.at.kind === "ring" && !def.public ? <Windows s={s} room={room} /> : null}
-      {def.houses && crowdedAir(s, room) < -0.01 ? (
-        <p className="warn">
-          <span className="k">Crowded</span> air {signed(crowdedAir(s, room))}: more than {config.effects.crowding.perCell} to a cell gets stuffy
-        </p>
-      ) : null}
-      {def.houses ? <WithinReach s={s} room={room} /> : null}
-      <Reaches s={s} room={room} />
-      {room.at.kind === "ring" && <Neighborhood s={s} room={room} />}
+      <Rows rows={rows.after} />
       {def.growsCrops && (
         <label>
           <span className="k">Crop</span>
