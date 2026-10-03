@@ -1,7 +1,7 @@
 import { UI_FONT } from "../view/font";
 import { crewsAt, crewsKey } from "../view/crews";
-import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
-import { reachKey, reachTints } from "../view/reachView";
+import { conditionKey } from "../view/conditionView";
+import { reachKey } from "../view/reachView";
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import { previewEffects, type EffectField } from "../sim/effects";
 import type { Happiness } from "../sim/happiness";
@@ -16,7 +16,7 @@ import { drawGlyph, drawPlus } from "./art";
 import { constructionStripes, corridorStrip } from "./corridorArt";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import { HEAT } from "./palette";
-import { BAND, C, PX, RING_D, TAU, cellSector, drawBase, drawRooms, outlineCells, roomCentre, stripOf } from "./planDraw";
+import { BAND, C, FIELD_MAX, PX, RING_D, TAU, cellSector, drawBase, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, type ProgressJob } from "./planDraw";
 
 // The plan view: one floor seen from above, drawn flat. The shaft in the
 // middle, the gallery ledge around it, then each ring as a band of slots.
@@ -30,8 +30,6 @@ const FIT_SHARE = 0.9;
 /** Zoom per unit of wheel movement: a pinch (ctrl+wheel), a wheel or trackpad scroll, and a wheel "line" in pixels. */
 const WHEEL = { pinch: 0.01, wheel: 0.0015, line: 16, turn: 0.003 };
 const CLICK_SLOP = 5;
-const FIELD_MAX = 3;
-const FIELD_ALPHA = 0.7;
 const LABEL_PX = 12;
 const MIN_LABEL_PX = 10;
 export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}): Promise<Stage> {
@@ -85,37 +83,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   function drawField(): void {
     fieldCtx.clear();
     if (!layout) return;
-    const h = layout.hole;
-    // No overlay on, and a service or amenity selected: the homes it reaches on foot, and those it doesn't.
-    if (!overlayType) {
-      for (const { room, color, alpha } of reachTints(layout, selected) ?? []) {
-        for (const c of onFloor(room.cells)) fieldCtx.poly(cellSector(h, c, 0.15)).fill({ color, alpha });
-      }
-      return;
-    }
-    const tintCell = (c: { ring: number; slot: number }, v: number) => {
-      if (Math.abs(v) < 0.05) return;
-      fieldCtx.poly(cellSector(h, c, 0.15)).fill({ color: v < 0 ? heat.bad : heat.good, alpha: Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA });
-    };
-    if (overlayType === "condition") {
-      for (const { room, color } of conditionTints(layout.rooms)) {
-        for (const c of onFloor(room.cells)) fieldCtx.poly(cellSector(h, c, 0.15)).fill({ color, alpha: CONDITION_ALPHA });
-      }
-      return;
-    }
-    if (overlayType === "happiness") {
-      for (const pool of happiness?.pools ?? []) {
-        const room = layout.rooms.find((r) => r.id === pool.roomId);
-        if (!room) continue;
-        for (const c of onFloor(room.cells)) tintCell(c, ((pool.happiness - 50) / 50) * FIELD_MAX);
-      }
-      return;
-    }
-    const grid = field?.[overlayType]?.[floor - 1];
-    grid?.forEach((slots, ri) => {
-      if (ri + 1 > h.unlockedRings) return;
-      slots.forEach((v, slot) => tintCell({ ring: ri + 1, slot }, v));
-    });
+    drawFieldOn(fieldCtx, layout, floor, { overlay: overlayType, field, happiness, heat, selected });
   }
 
   function drawHalo(type: string, cells: Cell[]): void {
@@ -206,21 +174,16 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
 
   /** "45%" on each room under construction on this floor, as the crews work. */
   let progressKey = "";
-  function drawProgress(s: { construction: { jobs: { roomId?: number; kind: string; progress: number; phase: string }[] } }): void {
+  function drawProgress(s: { construction: { jobs: ProgressJob[] } }): void {
     if (!layout) return;
     const key = `${floor}:${layout.version}:` + s.construction.jobs.map((j) => `${j.roomId}:${j.phase}:${Math.floor(j.progress * 100)}`).join(",");
     if (key === progressKey) return;
     progressKey = key;
     progressLabels.removeChildren().forEach((c) => c.destroy());
-    for (const job of s.construction.jobs) {
-      const room = job.roomId !== undefined ? layout.rooms.find((r) => r.id === job.roomId) : undefined;
-      if (!room) continue;
-      const cells = onFloor(job.kind === "extend" ? (room.pendingCells ?? []) : room.cells);
-      if (!cells.length) continue;
-      const centre = roomCentre(layout.hole, cells);
-      const t = new Text({ text: `${job.phase === "excavating" ? "⛏ " : ""}${Math.floor(job.progress * 100)}%`, style: { fontFamily: UI_FONT, fill: 0xffffff, fontSize: 14, fontWeight: "800", stroke: { color: 0x1a0f0d, width: 4 } } });
+    for (const p of progressAt(layout, floor, s.construction.jobs)) {
+      const t = new Text({ text: p.text, style: { fontFamily: UI_FONT, fill: 0xffffff, fontSize: 14, fontWeight: "800", stroke: { color: 0x1a0f0d, width: 4 } } });
       t.anchor.set(0.5);
-      t.position.set(centre.x, centre.y + 12);
+      t.position.set(p.x, p.y);
       t.rotation = -cam.rot;
       progressLabels.addChild(t);
     }

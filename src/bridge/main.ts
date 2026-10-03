@@ -17,7 +17,7 @@ import { flows, trends } from "./charts";
 import { mapView, networkView, siteView } from "./network";
 import { constructionView, maintenanceViewOf, peopleView } from "./colony";
 import { rigKey, rigMessage } from "./rig";
-import { planKey, planMessage } from "./plan";
+import { planFieldKey, planFieldMessage, planKey, planMessage, type FieldView } from "./plan";
 import { terrainKey, terrainMessage } from "./terrain";
 import { emittersKey, emittersOf } from "../render3d/effects3d";
 
@@ -58,6 +58,11 @@ let roomColors = true;
 /** The plan view's floor while it's open (null when shut). */
 let planFloor: number | null = null;
 let sentPlan = "";
+/** The overlay picked (noise, smell, health, comfort, airQuality, happiness, condition, or none), and colour-blind colours. */
+const fieldView: FieldView = { overlay: null, selected: null, colorBlind: false };
+let sentField = "";
+let shownEffects: unknown = null;
+let effectsVersion = 0;
 let sentScene = "";
 let sentPeople = "";
 let sentRig = "";
@@ -97,7 +102,21 @@ function sendScene(force = false): void {
       for (const c of clients) c.write(planLine);
       if (args.verbose) console.log(`Plan of floor ${planFloor}: ${plan.ops.length} ops, ${plan.markers.length} rooms, ${(planLine.length / 1024).toFixed(0)} KB, ${(performance.now() - t0).toFixed(0)} ms`);
     }
-  } else sentPlan = "";
+    // Over it: the overlay (or the selected room's reach) and construction progress.
+    if (state.effects.field !== shownEffects) {
+      shownEffects = state.effects.field;
+      effectsVersion++;
+    }
+    fieldView.selected = inspecting;
+    const fk = planFieldKey(state, planFloor, fieldView, effectsVersion);
+    if (force || fk !== sentField) {
+      sentField = fk;
+      send(planFieldMessage(state, planFloor, fieldView));
+    }
+  } else {
+    sentPlan = "";
+    sentField = "";
+  }
   // The land round the hole: once per hole.
   const tk = terrainKey(state);
   if (force || tk !== sentTerrain) {
@@ -136,7 +155,7 @@ function report(scene: ReturnType<typeof buildScene>["message"], line: string): 
 
 type BridgeMessage =
   | ToWorker
-  | { type: "view"; topFloor: number | null; roomColors?: boolean; plan?: number | null }
+  | { type: "view"; topFloor: number | null; roomColors?: boolean; plan?: number | null; overlay?: string | null; colorBlind?: boolean }
   /** The room panel: a room by id, or whatever is at a world point; null closes it. */
   | { type: "inspect"; roomId?: number | null; at?: [number, number, number] }
   /** The room under the pointer (for the hover outline): answered with { type: "picked", roomId }. */
@@ -246,6 +265,8 @@ const server = createServer((socket) => {
           topFloor = msg.topFloor;
           if (msg.roomColors !== undefined) roomColors = msg.roomColors;
           if (msg.plan !== undefined) planFloor = msg.plan;
+          if (msg.overlay !== undefined) fieldView.overlay = msg.overlay;
+          if (msg.colorBlind !== undefined) fieldView.colorBlind = msg.colorBlind;
           sendScene();
         } else if (msg.type === "hover") {
           send(hover(host.active(), msg.tool, msg.at));

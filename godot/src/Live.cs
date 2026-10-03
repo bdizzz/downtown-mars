@@ -146,7 +146,9 @@ public partial class Live : Node3D
         _ground.AddChild(_terrain);
         // A camera from the start, so there's a sky while waiting for the game (not a gray screen).
         var asked = ViewSettings.Camera;
+        var overlay = ViewSettings.Overlay;
         ViewSettings.Load();
+        if (overlay != null) ViewSettings.Overlay = overlay;
         // A camera from the command line (--view=) wins over the saved one, for this run.
         if (asked != Overview.Iso) ViewSettings.Camera = asked;
         if (StartPlan) ViewSettings.Plan = true;
@@ -329,6 +331,7 @@ public partial class Live : Node3D
                 _planSeen = true;
             }
             else if (type == "fx") _fx.Set(msg.RootElement);
+            else if (type == "planField") _planView.SetField(msg.RootElement);
             else if (type == "walkmap" && msg.RootElement.GetProperty("layoutVersion").GetInt32() == _layoutVersion && msg.RootElement.GetProperty("holeId").GetInt32() == _holeId) _walker.SetMap(Walker.Map.Parse(msg.RootElement));
             else if (type == "picked") _hovered = msg.RootElement.GetProperty("roomId").ValueKind == JsonValueKind.Number ? msg.RootElement.GetProperty("roomId").GetInt32() : null;
             else if (type == "inspected")
@@ -703,7 +706,7 @@ public partial class Live : Node3D
     }
 
     /// <summary>What the bridge builds the scene for: the cut, and room colours on or off.</summary>
-    void SendView() => _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = Cut, ["roomColors"] = ViewSettings.RoomColors, ["plan"] = ViewSettings.Plan ? PlanFloor : null });
+    void SendView() => _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = Cut, ["roomColors"] = ViewSettings.RoomColors, ["plan"] = ViewSettings.Plan ? PlanFloor : null, ["overlay"] = ViewSettings.Overlay });
 
     /// <summary>The plan on or off (a 3D camera, or first person, turns it off).</summary>
     void SetPlan(bool on)
@@ -757,6 +760,54 @@ public partial class Live : Node3D
             ViewSettings.Save();
             SendView();
         });
+        // The overlay, in the plan (as the web's Dock): each cell tinted by what reaches it.
+        _overlayBox = new HBoxContainer();
+        _overlayBox.AddThemeConstantOverride("separation", 4);
+        _overlayBox.AddChild(new VSeparator());
+        _overlayBox.AddChild(Text("Overlay", 14, new Color("#c9b29c")));
+        var pick = new OptionButton { FocusMode = Control.FocusModeEnum.None, TooltipText = "Tint each cell of the plan by what reaches it" };
+        pick.AddThemeFontSizeOverride("font_size", 13);
+        for (var i = 0; i < Overlays.Length; i++)
+        {
+            pick.AddItem(Overlays[i].name, i);
+            if (Overlays[i].id == ViewSettings.Overlay) pick.Select(i);
+        }
+        pick.ItemSelected += i =>
+        {
+            ViewSettings.Overlay = Overlays[i].id;
+            ViewSettings.Save();
+            SendView();
+            UpdateLegend();
+        };
+        _overlayBox.AddChild(pick);
+        _legend = new HBoxContainer();
+        _legend.AddThemeConstantOverride("separation", 5);
+        foreach (var color in new[] { "#ff4a2e", "#5fe07a" })
+        {
+            _legend.AddChild(new ColorRect { Color = new Color(color), CustomMinimumSize = new Vector2(11, 11), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter });
+            _legend.AddChild(Text("", 13, new Color("#d8c0ae")));
+        }
+        _overlayBox.AddChild(_legend);
+        bar.AddChild(_overlayBox);
+        UpdateLegend();
+    }
+
+    static readonly (string? id, string name)[] Overlays =
+    {
+        (null, "Off"), ("noise", "Noise"), ("smell", "Smell"), ("health", "Health"), ("comfort", "Comfort"),
+        ("airQuality", "Air"), ("happiness", "Happiness"), ("condition", "Condition"),
+    };
+    HBoxContainer _overlayBox = null!;
+    HBoxContainer _legend = null!;
+
+    /// <summary>What the overlay's two colours mean, as the web's legend.</summary>
+    void UpdateLegend()
+    {
+        var o = ViewSettings.Overlay;
+        _legend.Visible = o != null;
+        var (bad, good) = o == "happiness" ? ("unhappy", "happy") : o == "condition" ? ("worn out", "good repair") : ("hurts", "helps");
+        ((Label)_legend.GetChild(1)).Text = bad;
+        ((Label)_legend.GetChild(3)).Text = good;
     }
 
     /// <summary>
@@ -796,6 +847,7 @@ public partial class Live : Node3D
         _viewButtons["top"].ButtonPressed = !plan && !walking && mode == Overview.Top;
         _viewButtons["walk"].ButtonPressed = walking;
         _viewButtons["plan"].ButtonPressed = plan;
+        _overlayBox.Visible = plan;
         _viewButtons["walls"].ButtonPressed = ViewSettings.WallsDown;
         // Walls down is for the 3D overview cameras.
         _viewButtons["walls"].Disabled = walking || plan;

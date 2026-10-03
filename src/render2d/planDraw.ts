@@ -15,6 +15,10 @@ import { roomFinish } from "../view/roomFinish";
 import { shade, tint } from "./art";
 import { corridorStrip } from "./corridorArt";
 import { CATEGORY_COLORS } from "./palette";
+import type { EffectField } from "../sim/effects";
+import type { Happiness } from "../sim/happiness";
+import { CONDITION_ALPHA, conditionTints } from "../view/conditionView";
+import { reachTints } from "../view/reachView";
 
 // The plan view's drawing: one floor seen from above, drawn flat, onto a Pixi GraphicsContext. The
 // web's plan stage (plan.ts) draws with it, and so does the Godot viewer's bridge (src/bridge/plan.ts),
@@ -375,3 +379,76 @@ export function outlineCells(g: GraphicsContext, h: Hole, cells: Cell[], color: 
   }
 }
 
+
+// ---- the overlay and construction progress ----
+
+/** The overlay's strongest value (full tint) and how opaque that is. */
+export const FIELD_MAX = 3;
+export const FIELD_ALPHA = 0.7;
+
+export interface FieldOptions {
+  /** noise, smell, health, comfort, airQuality, happiness or condition; null for none. */
+  overlay: string | null;
+  field: EffectField | null;
+  happiness: Happiness | null;
+  /** The two ends of the scale (palette.ts HEAT). */
+  heat: { bad: number; good: number };
+  /** With no overlay on, a selected service or amenity tints the homes it reaches on foot and those it doesn't. */
+  selected: number | null;
+}
+
+/** The overlay on a floor, each cell tinted: an effect field, the homes' happiness, rooms' condition, or a service's reach. */
+export function drawField(g: GraphicsContext, layout: Layout, floor: number, o: FieldOptions): void {
+  const h = layout.hole;
+  const onFloor = (cells: Cell[]) => cells.filter((c) => c.floor === floor);
+  if (!o.overlay) {
+    for (const { room, color, alpha } of reachTints(layout, o.selected) ?? []) {
+      for (const c of onFloor(room.cells)) g.poly(cellSector(h, c, 0.15)).fill({ color, alpha });
+    }
+    return;
+  }
+  const tintCell = (c: { ring: number; slot: number }, v: number) => {
+    if (Math.abs(v) < 0.05) return;
+    g.poly(cellSector(h, c, 0.15)).fill({ color: v < 0 ? o.heat.bad : o.heat.good, alpha: Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA });
+  };
+  if (o.overlay === "condition") {
+    for (const { room, color } of conditionTints(layout.rooms)) {
+      for (const c of onFloor(room.cells)) g.poly(cellSector(h, c, 0.15)).fill({ color, alpha: CONDITION_ALPHA });
+    }
+    return;
+  }
+  if (o.overlay === "happiness") {
+    for (const pool of o.happiness?.pools ?? []) {
+      const room = layout.rooms.find((r) => r.id === pool.roomId);
+      if (!room) continue;
+      for (const c of onFloor(room.cells)) tintCell(c, ((pool.happiness - 50) / 50) * FIELD_MAX);
+    }
+    return;
+  }
+  const grid = o.field?.[o.overlay]?.[floor - 1];
+  grid?.forEach((slots, ri) => {
+    if (ri + 1 > h.unlockedRings) return;
+    slots.forEach((v, slot) => tintCell({ ring: ri + 1, slot }, v));
+  });
+}
+
+export interface ProgressJob {
+  roomId?: number;
+  kind: string;
+  progress: number;
+  phase: string;
+}
+
+/** "45%" (with a pick while it's being dug out) at each room under construction on a floor, where to write it. */
+export function progressLabels(layout: Layout, floor: number, jobs: ProgressJob[]): { x: number; y: number; text: string }[] {
+  const out: { x: number; y: number; text: string }[] = [];
+  for (const job of jobs) {
+    const room = job.roomId !== undefined ? layout.rooms.find((r) => r.id === job.roomId) : undefined;
+    if (!room) continue;
+    const cells = (job.kind === "extend" ? (room.pendingCells ?? []) : room.cells).filter((c) => c.floor === floor);
+    if (!cells.length) continue;
+    const centre = roomCentre(layout.hole, cells);
+    out.push({ x: centre.x, y: centre.y + 12, text: `${job.phase === "excavating" ? "⛏ " : ""}${Math.floor(job.progress * 100)}%` });
+  }
+  return out;
+}

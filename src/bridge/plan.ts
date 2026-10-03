@@ -1,6 +1,12 @@
 import { GraphicsContext } from "pixi.js";
 import { drawGlyph } from "../render2d/art";
-import { drawBase, drawRooms, PX } from "../render2d/planDraw";
+import { drawBase, drawField, drawRooms, progressLabels, PX } from "../render2d/planDraw";
+import { HEAT } from "../render2d/palette";
+import { queueView } from "../sim/construction";
+import { config } from "../sim/config";
+import { canDig, diggingFloor, ticksToDig } from "../sim/digging";
+import { conditionKey } from "../view/conditionView";
+import { reachKey } from "../view/reachView";
 import type { SimState } from "../sim/state";
 import { crewsAt } from "../view/crews";
 import { maintenanceView } from "../sim/condition";
@@ -89,4 +95,48 @@ export function planMessage(state: SimState, floor: number, roomColors: boolean)
   const ops = record(g);
   g.destroy();
   return { type: "plan", holeId: state.holeId, floor, px: PX, outer: l.hole.shaftRadiusM + l.hole.unlockedRings * 10, ops, markers };
+}
+
+/** Over the plan, as the web's: the overlay's tints (or a selected service's reach), and each room under construction's progress. */
+export interface PlanFieldMessage {
+  type: "planField";
+  holeId: number;
+  floor: number;
+  ops: Op[];
+  progress: { x: number; y: number; text: string }[];
+  /** "being dug, 40%: blueprints only" while the drill is on this floor, else null. */
+  dug: string | null;
+}
+
+export interface FieldView {
+  overlay: string | null;
+  selected: number | null;
+  colorBlind: boolean;
+}
+
+/** How far the drill is through this floor (0..1), or null when it isn't digging it. */
+function dugShare(state: SimState, floor: number): number | null {
+  const at = canDig(state, config) ? diggingFloor(state) : null;
+  return at === floor ? state.drill.progress / ticksToDig(floor, config) : null;
+}
+
+/** What decides the overlay and progress: everything the web's plan redraws them for. */
+export function planFieldKey(state: SimState, floor: number, v: FieldView, effectsVersion: number): string {
+  const l = state.layout;
+  const happy = v.overlay === "happiness" ? state.happiness.pools.map((p) => Math.round(p.happiness)).join(",") : "";
+  const cond = v.overlay === "condition" ? conditionKey(l.rooms) : "";
+  const jobs = queueView(state).jobs.map((j) => `${j.roomId}:${j.phase}:${Math.floor(j.progress * 100)}`).join(",");
+  const drill = Math.floor((dugShare(state, floor) ?? -0.01) * 100);
+  return `${state.holeId}:${floor}:${l.version}:${v.overlay}:${v.colorBlind}:${reachKey(l, v.selected)}:${effectsVersion}:${happy}:${cond}:${jobs}:${drill}`;
+}
+
+export function planFieldMessage(state: SimState, floor: number, v: FieldView): PlanFieldMessage {
+  const g = new GraphicsContext();
+  drawField(g, state.layout, floor, { overlay: v.overlay, field: state.effects.field, happiness: state.happiness, heat: v.colorBlind ? HEAT.colorBlind : HEAT.normal, selected: v.selected });
+  const ops = record(g);
+  g.destroy();
+  const progress = progressLabels(state.layout, floor, queueView(state).jobs).map((p) => ({ x: r2(p.x), y: r2(p.y), text: p.text }));
+  const share = dugShare(state, floor);
+  const dug = share !== null ? `being dug, ${Math.floor(share * 100)}%: blueprints only` : null;
+  return { type: "planField", holeId: state.holeId, floor, ops, progress, dug };
 }

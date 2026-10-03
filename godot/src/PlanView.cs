@@ -23,8 +23,13 @@ public partial class PlanView : Control
     static readonly Color Background = new("#1a0d0a"), Caption = new("#d8c0ae");
     const int CircleSteps = 32;
     const float FitShare = 0.9f, MinZoom = 0.3f, MaxZoom = 5, LabelPx = 12, MinLabelPx = 10;
+    const int ProgressPx = 14;
 
     Op[] _ops = Array.Empty<Op>();
+    /// <summary>Over the rooms: the overlay's tints; each room under construction's progress; the drill's caption.</summary>
+    Op[] _field = Array.Empty<Op>();
+    (Vector2 at, string text)[] _progress = Array.Empty<(Vector2, string)>();
+    string? _dug;
     Marker[] _markers = Array.Empty<Marker>();
     float _px = 7, _outer = 40;
     int _floor = 1;
@@ -85,13 +90,31 @@ public partial class PlanView : Control
     {
         _px = m.GetProperty("px").GetSingle();
         _outer = m.GetProperty("outer").GetSingle();
-        _floor = m.GetProperty("floor").GetInt32();
+        var floor = m.GetProperty("floor").GetInt32();
+        if (floor != _floor)
+        {
+            _field = Array.Empty<Op>();
+            _progress = Array.Empty<(Vector2, string)>();
+            _dug = null;
+        }
+        _floor = floor;
         _ops = Ops(m.GetProperty("ops"));
         _markers = m.GetProperty("markers").EnumerateArray().Select(k => new Marker(
             new Vector2(k.GetProperty("x").GetSingle(), k.GetProperty("y").GetSingle()),
             k.GetProperty("text").ValueKind == JsonValueKind.String ? k.GetProperty("text").GetString() : null,
             new Color(k.GetProperty("textColor").GetString()!),
             Ops(k.GetProperty("glyph")))).ToArray();
+        QueueRedraw();
+    }
+
+    /// <summary>The bridge's overlay and progress for the floor shown.</summary>
+    public void SetField(JsonElement m)
+    {
+        if (m.GetProperty("floor").GetInt32() != _floor) return;
+        _field = Ops(m.GetProperty("ops"));
+        _progress = m.GetProperty("progress").EnumerateArray()
+            .Select(p => (new Vector2(p.GetProperty("x").GetSingle(), p.GetProperty("y").GetSingle()), p.GetProperty("text").GetString()!)).ToArray();
+        _dug = m.GetProperty("dug").ValueKind == JsonValueKind.String ? m.GetProperty("dug").GetString() : null;
         QueueRedraw();
     }
 
@@ -164,6 +187,7 @@ public partial class PlanView : Control
         }
         DrawSetTransform(Centre, Turn, new Vector2(Zoom, Zoom));
         foreach (var op in _ops) Paint(op, Zoom);
+        foreach (var op in _field) Paint(op, Zoom);
         DrawSetTransformMatrix(Transform2D.Identity);
         // Each room's icon and name, upright as the plan turns; names never smaller than MinLabelPx.
         var font = ThemeDB.FallbackFont;
@@ -177,6 +201,15 @@ public partial class PlanView : Control
             if (m.Text == null) continue;
             var width = font.GetStringSize(m.Text, HorizontalAlignment.Left, -1, label).X;
             DrawString(font, at + new Vector2(-width / 2, -3 * Zoom), m.Text, HorizontalAlignment.Left, -1, label, m.TextColor);
+        }
+        // "45%" on each room under construction, white on a dark outline, as the web's.
+        foreach (var (p, text) in _progress)
+        {
+            var at = ToScreen(p);
+            var width = font.GetStringSize(text, HorizontalAlignment.Left, -1, ProgressPx).X;
+            var pos = at + new Vector2(-width / 2, ProgressPx / 2f);
+            DrawStringOutline(font, pos, text, HorizontalAlignment.Left, -1, ProgressPx, 6, new Color("#1a0f0d"));
+            DrawString(font, pos, text, HorizontalAlignment.Left, -1, ProgressPx, Colors.White);
         }
         // The build ghost (or corridor strip) and the selected room's outline, laid flat.
         Vector2 Flat(Vector3 w) => ToScreen(new Vector2(w.X, w.Z) * _px);
@@ -192,6 +225,6 @@ public partial class PlanView : Control
         }
         if (Outline?.Invoke() is { Length: >= 2 } lines)
             for (var i = 0; i + 1 < lines.Length; i += 2) DrawLine(Flat(lines[i]), Flat(lines[i + 1]), new Color("#ffffff"), 2.5f, true);
-        DrawString(font, new Vector2(12, Size.Y - 100), $"Floor {_floor}", HorizontalAlignment.Left, -1, 15, Caption);
+        DrawString(font, new Vector2(12, Size.Y - 100), _dug != null ? $"Floor {_floor} · {_dug}" : $"Floor {_floor}", HorizontalAlignment.Left, -1, 15, Caption);
     }
 }
