@@ -25,6 +25,7 @@ public partial class Live : Node3D
     readonly Rig _rig3d = new() { Name = "Rig" };
     readonly Storm _storm = new() { Name = "Storm" };
     readonly RoomEffects _fx = new() { Name = "RoomEffects" };
+    readonly Festival _festival = new() { Name = "Festival" };
     bool _stormSeen;
     float _dayFraction = -1;
     Inspector _inspector = null!;
@@ -116,6 +117,7 @@ public partial class Live : Node3D
         AddChild(_rig3d);
         AddChild(_storm);
         AddChild(_fx);
+        AddChild(_festival);
         _people = new People { Name = "People" };
         if (!Dev.Off("people")) AddChild(_people);
         if (Dev.Off("sunshadow")) _sun.ShadowEnabled = false;
@@ -227,6 +229,7 @@ public partial class Live : Node3D
         // The rig moves at the game's pace (still when paused).
         _rig3d.Step((float)delta * _speed);
         _fx.Step((float)delta * _speed);
+        _festival.Step((float)delta);
         Weather((float)delta);
         MaybeStartBridge();
         if (BenchSeconds > 0 && _clockSeconds > BenchWarmup)
@@ -450,6 +453,7 @@ public partial class Live : Node3D
         for (var i = 0; i < Speeds.Length; i++) _speedButtons[i].ButtonPressed = Speeds[i] == _speed;
         _choices.SetEvents(s, TicksPerDay);
         _rig3d.Place(s.GetProperty("drill"), _shape.Floors, Cut);
+        _festival.Sync(s.GetProperty("events").GetProperty("festival").ValueKind == JsonValueKind.Object, _shape, Cut);
         _choices.SetMessages(s, TicksPerDay);
         _storm.SetTarget(s.GetProperty("weather").GetProperty("storm").GetSingle(), !_stormSeen);
         _stormSeen = true;

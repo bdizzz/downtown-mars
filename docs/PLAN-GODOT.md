@@ -213,3 +213,7 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 
 **Sparks and steam** (Oct 2, 2026), as the web's (`render3d/effects3d.ts`): the bridge sends the emitters, worked out by the web's own `emittersOf` (each furnace's mouth and scrubber's vent from the rooms' furniture, with how hard its room is running), when they change; Godot (`RoomEffects.cs`) runs the web's particle motion at the game's speed in a pool per kind, drawn as camera-facing soft dots in one MultiMesh each: sparks glow (additive), fly out of the furnace and fall; steam rises, swells in and thins away. Nothing from floors above a picked one.
 
+**Festivals** (Oct 3, 2026), ported from the web's `render3d/festival3d.ts` (pure geometry, so straight to C#, `Festival.cs`): strings of coloured lights looped along every floor's gallery from the picked floor down, sagging between hangers, and ninety paper lanterns drifting up the shaft to the rim, swaying and flickering; in Godot six of them carry real warm light (which the haze catches) as they rise. Shown while the snapshot says a festival is on.
+
+With these, the web's moving parts are all in the viewer: the rig, storms, sparks and steam, festivals.
+
