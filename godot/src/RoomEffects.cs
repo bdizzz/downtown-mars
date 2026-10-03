@@ -168,14 +168,18 @@ public partial class RoomEffects : Node3D
     static string Code(string blend) => $@"
 shader_type spatial;
 render_mode unshaded, {blend}, depth_draw_never, cull_disabled, shadows_disabled;
+#include ""res://shaders/view.gdshaderinc""
 uniform vec3 color : source_color;
 varying float alpha;
+varying vec3 centre;
 void vertex() {{
     alpha = INSTANCE_CUSTOM.a;
     float s = length(MODEL_MATRIX[0].xyz);
+    centre = MODEL_MATRIX[3].xyz;
     MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0] * s, INV_VIEW_MATRIX[1] * s, INV_VIEW_MATRIX[2] * s, MODEL_MATRIX[3]);
 }}
 void fragment() {{
+    if (cut_away(centre)) discard;
     float r = length(UV - 0.5) * 2.0;
     float a = (1.0 - smoothstep(0.2, 1.0, r)) * alpha;
     if (a < 0.01) discard;

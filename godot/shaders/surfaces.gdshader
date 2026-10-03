@@ -5,6 +5,7 @@
 // gaps are rougher than the faces.
 shader_type spatial;
 render_mode cull_disabled;
+#include "res://shaders/view.gdshaderinc"
 
 // 0 a room (walls in its colour, floor by kind), 1 rock, 2 regolith, 3 marscrete, 4 brick, 5 metal.
 uniform int look = 0;
@@ -26,6 +27,8 @@ varying vec3 wpos;
 varying vec3 wnorm;
 
 void vertex() {
+	// Walls down: a wall the camera looks through drops to a stub.
+	VERTEX = lower_wall(VERTEX, CUSTOM0, CUSTOM1.xy, (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz, CAMERA_POSITION_WORLD);
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
@@ -203,6 +206,7 @@ float grime_tone(vec3 p, vec3 n, float level) {
 }
 
 void fragment() {
+	if (cut_away(wpos)) discard;
 	vec3 n = normalize(wnorm);
 	bool is_floor = abs(n.y) > 0.7;
 	vec3 color = albedo;

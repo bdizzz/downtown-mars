@@ -66,9 +66,9 @@ export interface SceneMessage {
 }
 
 /** What decides the scene: when it changes, build again. */
-export function sceneKey(state: SimState, gameId: number, topFloor: number | null): string {
+export function sceneKey(state: SimState, gameId: number, topFloor: number | null, roomColors = true): string {
   const grime = state.layout.rooms.map(grimeLevel).join("");
-  return `${gameId}:${state.holeId}:${state.layout.version}:${drillFloor(state)}:${topFloor}:${grime}`;
+  return `${gameId}:${state.holeId}:${state.layout.version}:${drillFloor(state)}:${topFloor}:${roomColors}:${grime}`;
 }
 
 function drillFloor(state: SimState): number | null {
@@ -143,10 +143,11 @@ export function buildPeople(state: SimState, spots: RoomSpots[]): PeopleMessage 
 }
 
 /** The scene, and each furnished room's spots for people (kept by the bridge, not sent). */
-export function buildScene(state: SimState, gameId: number, topFloor: number | null): { message: SceneMessage; spots: RoomSpots[] } {
+/** Room colours off: rooms in what they're built from (rock, marscrete, brick, metal), as the web's toggle. */
+export function buildScene(state: SimState, gameId: number, topFloor: number | null, roomColors = true): { message: SceneMessage; spots: RoomSpots[] } {
   const t0 = performance.now();
   const layout = state.layout;
-  const group = buildLayout(layout, drillFloor(state), COLORS, false, topFloor, true, grimeLevel);
+  const group = buildLayout(layout, drillFloor(state), COLORS, false, topFloor, roomColors, grimeLevel);
   group.updateMatrixWorld(true);
 
   const materials: SceneMaterial[] = [];

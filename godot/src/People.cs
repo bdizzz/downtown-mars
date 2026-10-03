@@ -232,13 +232,17 @@ public partial class People : Node3D
 
     const string ShaderCode = @"
 shader_type spatial;
+#include ""res://shaders/view.gdshaderinc""
 uniform float roughness = 0.85;
 uniform bool instance_only = false;
 varying vec3 tint;
+varying vec3 wpos;
 void vertex() {
+    wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
     tint = instance_only ? INSTANCE_CUSTOM.rgb : mix(INSTANCE_CUSTOM.rgb, COLOR.rgb, COLOR.a);
 }
 void fragment() {
+    if (cut_away(wpos)) discard;
     ALBEDO = tint;
     ROUGHNESS = roughness;
 }

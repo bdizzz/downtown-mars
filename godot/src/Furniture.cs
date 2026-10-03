@@ -322,6 +322,7 @@ public class Furniture
     /// </summary>
     const string ShaderCode = @"
 shader_type spatial;
+#include ""res://shaders/view.gdshaderinc""
 uniform float roughness = 0.8;
 uniform float metallic = 0.05;
 uniform float glow = 0.0;
@@ -382,6 +383,7 @@ vec2 part_tone(vec3 p, float m) {
     return vec2(clumps * (1.0 - 0.25 * smoothstep(0.75, 0.85, noise3(p * 40.0))), 0.1);
 }
 void fragment() {
+    if (cut_away(wpos)) discard;
     vec2 t = part_tone(wpos, mat);
     ALBEDO = tint * t.x;
     ROUGHNESS = clamp(roughness + t.y, 0.05, 1.0);

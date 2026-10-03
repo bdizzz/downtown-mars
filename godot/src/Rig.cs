@@ -20,7 +20,7 @@ public partial class Rig : Node3D
 
     Node3D? _root, _head, _beacon, _reel, _hoist, _power;
     readonly List<Node3D> _lumps = new();
-    StandardMaterial3D? _lamp, _beaconMat;
+    ShaderMaterial? _lamp, _beaconMat;
     readonly OmniLight3D _flood = new() { LightColor = new Color("#ffb35c"), OmniRange = 16, OmniAttenuation = 1.2f, ShadowEnabled = false, LightEnergy = 0 };
     float _hoistTop, _powerTop, _conveyor;
     bool _active;
@@ -57,31 +57,22 @@ public partial class Rig : Node3D
         _conveyor = tops.GetProperty("conveyor").GetSingle();
     }
 
-    StandardMaterial3D MaterialFor(JsonElement m)
+    ShaderMaterial MaterialFor(JsonElement m)
     {
         var name = m.GetProperty("name").GetString();
-        var mat = new StandardMaterial3D
-        {
-            AlbedoColor = new Color(m.GetProperty("color").GetString()!) with { A = m.GetProperty("opacity").GetSingle() },
-            Roughness = m.GetProperty("roughness").GetSingle(),
-            Metallic = m.GetProperty("metalness").GetSingle(),
-            CullMode = BaseMaterial3D.CullModeEnum.Disabled,
-            Transparency = m.GetProperty("transparent").GetBoolean() ? BaseMaterial3D.TransparencyEnum.Alpha : BaseMaterial3D.TransparencyEnum.Disabled,
-        };
         var glow = m.GetProperty("emissiveIntensity").GetSingle();
         var emissive = new Color(m.GetProperty("emissive").GetString()!);
-        if (glow > 0 && emissive.Luminance > 0.01f)
-        {
-            mat.EmissionEnabled = true;
-            mat.Emission = emissive;
-            mat.EmissionEnergyMultiplier = glow;
-        }
+        var glows = glow > 0 && emissive.Luminance > 0.01f;
+        var mat = Plain.Make(new Color(m.GetProperty("color").GetString()!) with { A = m.GetProperty("opacity").GetSingle() }, m.GetProperty("roughness").GetSingle(), m.GetProperty("metalness").GetSingle(),
+            transparent: m.GetProperty("transparent").GetBoolean(), emission: glows ? emissive : null, emissionEnergy: glow);
         if (name == "rig:lamp") _lamp = mat;
         if (name == "rig:beacon") _beaconMat = mat;
         return mat;
     }
 
-    Node3D Build(JsonElement n, List<StandardMaterial3D> materials)
+    static void Glow(ShaderMaterial? m, float energy) => m?.SetShaderParameter("emission_energy", energy);
+
+    Node3D Build(JsonElement n, List<ShaderMaterial> materials)
     {
         var node = new Node3D { Name = string.IsNullOrEmpty(n.GetProperty("name").GetString()) ? "part" : n.GetProperty("name").GetString()!.Replace(":", "_") };
         float[] F(string k) => n.GetProperty(k).EnumerateArray().Select(x => x.GetSingle()).ToArray();
@@ -149,8 +140,8 @@ public partial class Rig : Node3D
 
     void Light(bool on)
     {
-        if (_lamp != null) _lamp.EmissionEnergyMultiplier = on ? 2 : 0.5f;
-        if (_beaconMat != null) _beaconMat.EmissionEnergyMultiplier = on ? 1.5f : 0.2f;
+        Glow(_lamp, on ? 2 : 0.5f);
+        Glow(_beaconMat, on ? 1.5f : 0.2f);
         _flood.LightEnergy = on ? 2.5f : 0.6f;
     }
 
@@ -164,8 +155,8 @@ public partial class Rig : Node3D
             var k = _shake / ShakeSeconds * 0.18f;
             _root.Position = new Vector3(MathF.Sin(_t * 61) * k, 0, MathF.Cos(_t * 47) * k);
             var flare = MathF.Sin(_t * 20) > 0;
-            if (_lamp != null) _lamp.EmissionEnergyMultiplier = flare ? 4 : 1;
-            if (_beaconMat != null) _beaconMat.EmissionEnergyMultiplier = 3;
+            Glow(_lamp, flare ? 4 : 1);
+            Glow(_beaconMat, 3);
             _flood.LightEnergy = flare ? 4 : 1.5f;
             _t += dt;
             if (_shake == 0)
@@ -189,7 +180,7 @@ public partial class Rig : Node3D
             Turn(lump, Vector3.Up, dt);
         }
         var blink = MathF.Sin(_t * 4) > 0;
-        if (_lamp != null) _lamp.EmissionEnergyMultiplier = blink ? 2.4f : 1.2f;
+        Glow(_lamp, blink ? 2.4f : 1.2f);
         _flood.LightEnergy = blink ? 2.6f : 2.2f;
     }
 

@@ -142,6 +142,7 @@ public partial class HoleScene : Node3D
         {
             _labels!.AddChild(new Label3D
             {
+                Visible = !CutAway(_cut, new Vector3(l.GetProperty("x").GetSingle(), 0, l.GetProperty("z").GetSingle())),
                 Text = l.GetProperty("text").GetString(),
                 Position = new Vector3(l.GetProperty("x").GetSingle(), l.GetProperty("y").GetSingle(), l.GetProperty("z").GetSingle()),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
@@ -159,12 +160,12 @@ public partial class HoleScene : Node3D
     /// Lamps on these floors light up, the rest are off (each light costs every pixel it might reach);
     /// and shadows and haze for the lamps nearest the camera, off for the rest.
     /// </summary>
-    public void UpdateLamps(Vector3 camera, int fromFloor, int toFloor)
+    public void UpdateLamps(Vector3 camera, int fromFloor, int toFloor, Vector4 cut = default)
     {
         foreach (var l in _lamps)
         {
             var f = l.GetMeta("floor").AsInt32();
-            l.Visible = f >= fromFloor && f <= toFloor && !Dev.Off("lamps");
+            l.Visible = f >= fromFloor && f <= toFloor && !Dev.Off("lamps") && !CutAway(cut, l.Position);
         }
         var near = _lamps
             .Where(l => l.Visible)
@@ -182,6 +183,20 @@ public partial class HoleScene : Node3D
         }
     }
 
+    /// <summary>On the cutaway's cut-away side (view.gdshaderinc cut_away)?</summary>
+    static bool CutAway(Vector4 cut, Vector3 p) => cut.W > 0.5f && p.X * cut.X + p.Z * cut.Z > 0;
+
+    Vector4 _cut;
+
+    /// <summary>The cutaway's cut: labels on the cut-away side go (the surfaces' shaders take the rest).</summary>
+    public void SetCut(Vector4 cut)
+    {
+        if (cut == _cut) return;
+        _cut = cut;
+        if (_labels == null) return;
+        foreach (var l in _labels.GetChildren().OfType<Label3D>()) l.Visible = !CutAway(cut, l.Position);
+    }
+
     /// <summary>Glowing furniture brightens as the sky darkens: 0 at noon, 1 at night.</summary>
     public void SetNight(float night) => _furniture.SetNight(night);
 
@@ -191,41 +206,19 @@ public partial class HoleScene : Node3D
         var color = new Color(m.GetProperty("color").GetString()!);
         var opacity = m.GetProperty("opacity").GetSingle();
         var transparent = m.GetProperty("transparent").GetBoolean();
-        if (kind == "line")
-            return new StandardMaterial3D
-            {
-                ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-                AlbedoColor = new Color(color, opacity),
-                Transparency = transparent ? BaseMaterial3D.TransparencyEnum.Alpha : BaseMaterial3D.TransparencyEnum.Disabled,
-            };
+        if (kind == "line") return Plain.Make(new Color(color, opacity), transparent: transparent, unshaded: true);
         // Rooms, rock and finishes: the procedural surfaces (Looks.cs).
         if (!Dev.Off("looks") && Looks.For(m.GetProperty("name").GetString() ?? "", color, m.GetProperty("roughness").GetSingle(), m.GetProperty("metalness").GetSingle(), transparent) is Material look)
             return look;
-        // Anything else: the web game's material as a plain Godot one, then dressed by what it is.
-        var src = new StandardMaterial3D
-        {
-            ResourceName = m.GetProperty("name").GetString(),
-            AlbedoColor = new Color(color, opacity),
-            Transparency = transparent ? BaseMaterial3D.TransparencyEnum.Alpha : BaseMaterial3D.TransparencyEnum.Disabled,
-            Roughness = m.GetProperty("roughness").GetSingle(),
-            Metallic = m.GetProperty("metalness").GetSingle(),
-        };
+        // Anything else (doors, props, glass, lamps): plain, so the view can cut it (Plain.cs).
         var emissive = new Color(m.GetProperty("emissive").GetString()!);
         var glow = m.GetProperty("emissiveIntensity").GetSingle();
-        if (glow > 0 && emissive.Luminance > 0.01f)
-        {
-            src.EmissionEnabled = true;
-            src.Emission = emissive;
-            src.EmissionEnergyMultiplier = glow;
-        }
-        var dressed = Dress.For(src);
-        if (m.GetProperty("vertexColors").GetBoolean() && dressed is StandardMaterial3D s && !s.VertexColorUseAsAlbedo)
-        {
-            s = (StandardMaterial3D)s.Duplicate();
-            s.VertexColorUseAsAlbedo = true;
-            return s;
-        }
-        return dressed;
+        var glows = glow > 0 && emissive.Luminance > 0.01f;
+        var vertexColors = m.GetProperty("vertexColors").GetBoolean();
+        // Glass: clear, glossy, a faint tint.
+        if (transparent)
+            return Plain.Make(new Color(color, Mathf.Clamp(opacity, 0.08f, 0.35f)), 0.04f, 0, transparent: true, emission: glows ? emissive : null, emissionEnergy: glow, vertexColors: vertexColors, specular: 0.8f);
+        return Plain.Make(color, Mathf.Min(m.GetProperty("roughness").GetSingle(), 0.8f), m.GetProperty("metalness").GetSingle(), emission: glows ? emissive : null, emissionEnergy: glow, vertexColors: vertexColors, grain: glows ? 0 : 1);
     }
 
     static float[] Floats(JsonElement e)

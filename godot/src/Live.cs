@@ -26,6 +26,7 @@ public partial class Live : Node3D
     readonly Storm _storm = new() { Name = "Storm" };
     readonly RoomEffects _fx = new() { Name = "RoomEffects" };
     readonly Festival _festival = new() { Name = "Festival" };
+    readonly Cutaway _cutaway = new() { Name = "Cutaway" };
     bool _stormSeen;
     float _dayFraction = -1;
     Inspector _inspector = null!;
@@ -118,6 +119,7 @@ public partial class Live : Node3D
         AddChild(_storm);
         AddChild(_fx);
         AddChild(_festival);
+        AddChild(_cutaway);
         _people = new People { Name = "People" };
         if (!Dev.Off("people")) AddChild(_people);
         if (Dev.Off("sunshadow")) _sun.ShadowEnabled = false;
@@ -125,8 +127,13 @@ public partial class Live : Node3D
         _ground = new MeshInstance3D { Name = "Ground" };
         AddChild(_ground);
         // A camera from the start, so there's a sky while waiting for the game (not a gray screen).
+        var asked = ViewSettings.Camera;
+        ViewSettings.Load();
+        // A camera from the command line (--view=) wins over the saved one, for this run.
+        if (asked != Overview.Iso) ViewSettings.Camera = asked;
         _rig = new CameraRig(MetaNow()) { Walker = _walker };
         AddChild(_rig);
+        _rig.SetMode(ViewSettings.Camera);
         BuildGround();
         BuildHud();
         _quality = StartQuality ?? Graphics.Load();
@@ -335,13 +342,19 @@ public partial class Live : Node3D
         {
             _shadowClock = 0;
             // The floor in view: where you stand in first person, else the picked floor (or the top).
-            var focus = _rig?.Walking == true ? Mathf.FloorToInt((-cam.GlobalPosition.Y - 3) / 4) + 1 : _topFloor ?? 1;
+            var cutaway = _rig?.Walking != true && _rig?.Mode == Overview.Cutaway;
+            var focus = _rig?.Walking == true ? Mathf.FloorToInt((-cam.GlobalPosition.Y - 3) / 4) + 1
+                : cutaway ? Math.Max(_topFloor ?? 1, CameraRig.FloorAt(_rig!.CutawayY)) : _topFloor ?? 1;
             // Clicks find what they hit on the floors in view (and the surface, from above).
             _hole.EnsureCollision(new[] { 0, focus - 1, focus, focus + 1 });
             var (above, below) = Graphics.LampFloors(_quality);
-            _hole.UpdateLamps(cam.GlobalPosition, focus - above, focus + below);
+            // The cutaway sees a few floors at once, side on.
+            if (cutaway) (above, below) = (above + 1, below + 1);
+            _hole.UpdateLamps(cam.GlobalPosition, focus - above, focus + below, _rig?.CutPlane ?? default);
         }
         _hole.ShowEdges = _rig?.Walking != true;
+        UpdateViewBar();
+        ApplyViewToShaders();
         WatchWalking();
         // With the corridor tool, a left drag paints (the right one still turns the camera).
         if (_rig != null)
@@ -647,7 +660,87 @@ public partial class Live : Node3D
         if (cut == _cutSent) return;
         _cutSent = cut;
         BuildOccluders();
-        _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = cut });
+        SendView();
+    }
+
+    /// <summary>What the bridge builds the scene for: the cut, and room colours on or off.</summary>
+    void SendView() => _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = Cut, ["roomColors"] = ViewSettings.RoomColors });
+
+    // ---- the View bar ----
+
+    readonly Dictionary<string, Button> _viewButtons = new();
+
+    /// <summary>The View bar: the cameras, then walls down and room colours (as the web's View mode).</summary>
+    void BuildViewBar(VBoxContainer rows)
+    {
+        var bar = new HBoxContainer();
+        bar.AddThemeConstantOverride("separation", 4);
+        rows.AddChild(bar);
+        var label = Text("View", 14, new Color("#c9b29c"));
+        bar.AddChild(label);
+        Button Add(string id, string text, string tip, System.Action pressed)
+        {
+            var b = new Button { Text = text, ToggleMode = true, FocusMode = Control.FocusModeEnum.None, TooltipText = tip };
+            b.AddThemeFontSizeOverride("font_size", 13);
+            b.Pressed += pressed;
+            bar.AddChild(b);
+            _viewButtons[id] = b;
+            return b;
+        }
+        Add("iso", "Iso", "One floor from above and off to one side (pick the floor on the right; drag to turn, scroll to zoom)", () => SetCamera(Overview.Iso));
+        Add("cutaway", "Cutaway", "Look at the hole from outside, sliced open (scroll up and down to move along it)", () => SetCamera(Overview.Cutaway));
+        Add("top", "Top", "Look straight down the shaft", () => SetCamera(Overview.Top));
+        Add("walk", "First person", "Walk the galleries, corridors and public spaces (Tab)", () => _rig?.Walk(true));
+        bar.AddChild(new VSeparator());
+        Add("walls", "Walls down", "Walls between the camera and the rooms behind them lowered to a stub, as in The Sims (not in first person)", () =>
+        {
+            ViewSettings.WallsDown = !ViewSettings.WallsDown;
+            ViewSettings.Save();
+        });
+        Add("colors", "Room colours", "Rooms in their category's colour, or (off) in what they're built from: rock, marscrete, brick, metal", () =>
+        {
+            ViewSettings.RoomColors = !ViewSettings.RoomColors;
+            ViewSettings.Save();
+            SendView();
+        });
+    }
+
+    /// <summary>
+    /// Each frame: the cutaway's cut and walls down for every surface's shader (view.gdshaderinc), the
+    /// cutaway's backdrop and cut face, and the floor occluders (whole slabs, which would hide what the
+    /// cutaway shows below them).
+    /// </summary>
+    void ApplyViewToShaders()
+    {
+        var walking = _rig?.Walking == true;
+        var cut = _rig?.CutPlane ?? Vector4.Zero;
+        RenderingServer.GlobalShaderParameterSet("cut_plane", cut);
+        RenderingServer.GlobalShaderParameterSet("walls_down", ViewSettings.WallsDown && !walking ? 1f : 0f);
+        _hole.SetCut(cut);
+        var cutaway = cut.W > 0.5f;
+        _cutaway.Show(cutaway, _shape, _rig?.Heading ?? 0, Cut == null);
+        if (_occluders != null) _occluders.Visible = !cutaway;
+    }
+
+    void SetCamera(Overview mode)
+    {
+        ViewSettings.Camera = mode;
+        ViewSettings.Save();
+        _rig?.SetMode(mode);
+    }
+
+    /// <summary>The View bar shows what's on (it can change by key, Tab, too).</summary>
+    void UpdateViewBar()
+    {
+        var walking = _rig?.Walking == true;
+        var mode = _rig?.Mode ?? Overview.Iso;
+        _viewButtons["iso"].ButtonPressed = !walking && mode == Overview.Iso;
+        _viewButtons["cutaway"].ButtonPressed = !walking && mode == Overview.Cutaway;
+        _viewButtons["top"].ButtonPressed = !walking && mode == Overview.Top;
+        _viewButtons["walk"].ButtonPressed = walking;
+        _viewButtons["walls"].ButtonPressed = ViewSettings.WallsDown;
+        _viewButtons["walls"].Disabled = walking;
+        _viewButtons["colors"].ButtonPressed = ViewSettings.RoomColors;
     }
 
     /// <summary>First person: to a floor's gallery, finding your feet there once its walking map is in.</summary>
@@ -926,6 +1019,7 @@ public partial class Live : Node3D
         }
         _stocks = Text("", 15, new Color("#d8c4b0"));
         rows.AddChild(_stocks);
+        BuildViewBar(rows);
         var menuButton = new Button { Text = "☰ Menu", FocusMode = Control.FocusModeEnum.None, TooltipText = "Save, load, new game (Esc)" };
         menuButton.Pressed += () => _menu.Open();
         bar.AddChild(menuButton);

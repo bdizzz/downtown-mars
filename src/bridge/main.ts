@@ -52,6 +52,7 @@ const host = createSimHost(broadcast);
 
 // The 3D scene: built again whenever the layout, the drill, wear or the picked floor change.
 let topFloor: number | null = null;
+let roomColors = true;
 let sentScene = "";
 let sentPeople = "";
 let sentRig = "";
@@ -60,10 +61,10 @@ let spots: RoomSpots[] = [];
 function sendScene(force = false): void {
   if (clients.size === 0) return;
   const state = host.active();
-  const key = sceneKey(state, host.gameId(), topFloor);
+  const key = sceneKey(state, host.gameId(), topFloor, roomColors);
   if (force || key !== sentScene) {
     sentScene = key;
-    const built = buildScene(state, host.gameId(), topFloor);
+    const built = buildScene(state, host.gameId(), topFloor, roomColors);
     spots = built.spots;
     const scene = built.message;
     const line = JSON.stringify(scene) + "\n";
@@ -108,7 +109,7 @@ function report(scene: ReturnType<typeof buildScene>["message"], line: string): 
 
 type BridgeMessage =
   | ToWorker
-  | { type: "view"; topFloor: number | null }
+  | { type: "view"; topFloor: number | null; roomColors?: boolean }
   /** The room panel: a room by id, or whatever is at a world point; null closes it. */
   | { type: "inspect"; roomId?: number | null; at?: [number, number, number] }
   /** Building: what placing the tool's room at a world point would do, and doing it. */
@@ -213,6 +214,7 @@ const server = createServer((socket) => {
         const msg = JSON.parse(line) as BridgeMessage;
         if (msg.type === "view") {
           topFloor = msg.topFloor;
+          if (msg.roomColors !== undefined) roomColors = msg.roomColors;
           sendScene();
         } else if (msg.type === "hover") {
           send(hover(host.active(), msg.tool, msg.at));

@@ -29,3 +29,14 @@ textures/default_filters/anisotropic_filtering_level=4
 limits/cluster_builder/max_clustered_elements=4096
 global_illumination/gi/use_half_resolution=true
 occlusion_culling/use_occlusion_culling=true
+
+[shader_globals]
+
+cut_plane={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+walls_down={
+"type": "float",
+"value": 0.0
+}

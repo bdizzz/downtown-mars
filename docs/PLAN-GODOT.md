@@ -217,3 +217,11 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 
 With these, the web's moving parts are all in the viewer: the rig, storms, sparks and steam, festivals.
 
+**Views and toggles, part 1** (Oct 3, 2026). Bryon asked for the web's cameras (Iso, Cutaway, Top, First person) and the plan view, with walls down (not in first person) and room colours (every view); x-ray and flows skipped for now.
+
+- A **View bar** under the stocks: Iso, Cutaway, Top, First person; Walls down, Room colours. The camera and both toggles are kept in `user://settings.cfg` (`ViewSettings.cs`); `--view=cutaway|top` picks a camera for a run.
+- **Top** (`CameraRig.cs`): straight down the shaft from above the picked floor (or the surface), turned by the shared heading; fitted to the unlocked rings as the web's; scroll up and down or pinch to zoom, sideways or drag to turn.
+- **Cutaway**: out past the rings looking in at the axis, the near half cut away; drag or scroll up and down moves along the hole, sideways turns, pinch zooms, W/S and A/D too. Godot has no global clip plane (three.js has), so the cut is a global shader parameter (`cut_plane`, in `shaders/view.gdshaderinc`) that every surface of the hole honours: the room and rock surfaces, furniture, people, sparks and steam, festival lights; the built-in materials still used in the hole (doors, props, glass, lines, the rig) moved to a small shader of their own (`Plain.cs`). Lamps and labels on the cut-away side go too. Round it, as the web's: a rock backdrop (the inside of a cylinder past the rings, `Cutaway.cs`) and the cut face where the ground is sliced, turned with the camera. The floor occluders rest in the cutaway (whole slabs would hide the floors below). 27 fps on Ultra circling the 7-floor showcase.
+- **Room colours** off: the bridge builds the scene with the web's `roomColors` off (rooms in their finish: rock, marscrete, brick, metal), which `Looks.cs` already draws.
+- Walls down has its global (`walls_down`) and the shader side ready (`lower_wall` in the room surfaces and the plain shader); the bridge doesn't send the walls' tags yet: next.
+

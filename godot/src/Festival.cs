@@ -56,7 +56,7 @@ public partial class Festival : Node3D
         var first = topFloor ?? 1;
         var floors = Math.Max(0, hole.Floors - first + 1);
         var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseColors = true, Mesh = new SphereMesh { Radius = Size, Height = Size * 2, RadialSegments = 8, Rings = 4 }, InstanceCount = count * floors };
-        ((SphereMesh)mm.Mesh).Material = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, VertexColorUseAsAlbedo = true };
+        ((SphereMesh)mm.Mesh).Material = Plain.Make(new Color(1, 1, 1), unshaded: true, vertexColors: true);
         var im = new ImmediateMesh();
         im.SurfaceBegin(Mesh.PrimitiveType.Lines);
         var i = 0;
@@ -84,7 +84,7 @@ public partial class Festival : Node3D
         if (count * floors > 0) im.SurfaceEnd();
         _lights.Multimesh = mm;
         _string.Mesh = count * floors > 0 ? im : null;
-        _string.MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color("#3a2a22"), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded };
+        _string.MaterialOverride = Plain.Make(new Color("#3a2a22"), unshaded: true);
 
         // Lanterns: scattered up the shaft from the bottom of the dug floors to the rim.
         _depth = Math.Max(1, hole.Floors) * FloorH + Crust;
@@ -118,12 +118,16 @@ public partial class Festival : Node3D
     const string LanternShader = @"
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+#include ""res://shaders/view.gdshaderinc""
 uniform float opacity = 0.9;
+varying vec3 centre;
 void vertex() {
     float s = length(MODEL_MATRIX[0].xyz);
+    centre = MODEL_MATRIX[3].xyz;
     MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0] * s, INV_VIEW_MATRIX[1] * s, INV_VIEW_MATRIX[2] * s, MODEL_MATRIX[3]);
 }
 void fragment() {
+    if (cut_away(centre)) discard;
     float r = length(UV - 0.5) * 2.0;
     float a = (1.0 - smoothstep(0.2, 1.0, r)) * opacity;
     if (a < 0.01) discard;
