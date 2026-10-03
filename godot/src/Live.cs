@@ -22,6 +22,7 @@ public partial class Live : Node3D
     Bridge _bridge = null!;
     HoleScene _hole = null!;
     People _people = null!;
+    readonly Rig _rig3d = new() { Name = "Rig" };
     Inspector _inspector = null!;
     BuildMode _build = null!;
     GameMenu _menu = null!;
@@ -108,6 +109,7 @@ public partial class Live : Node3D
         _glow.LookAtFromPosition(new Vector3(-20, 100, 35), Vector3.Zero, Vector3.Up);
         _hole = new HoleScene { Name = "Hole" };
         AddChild(_hole);
+        AddChild(_rig3d);
         _people = new People { Name = "People" };
         if (!Dev.Off("people")) AddChild(_people);
         if (Dev.Off("sunshadow")) _sun.ShadowEnabled = false;
@@ -216,6 +218,8 @@ public partial class Live : Node3D
     {
         _clockSeconds += delta;
         PlayKeys();
+        // The rig moves at the game's pace (still when paused).
+        _rig3d.Step((float)delta * _speed);
         MaybeStartBridge();
         if (BenchSeconds > 0 && _clockSeconds > BenchWarmup)
         {
@@ -272,6 +276,7 @@ public partial class Live : Node3D
             }
             if (type == "scene") OnScene(msg.RootElement);
             else if (type == "people") _people.Set(msg.RootElement);
+            else if (type == "rig") _rig3d.Set(msg.RootElement);
             else if (type == "walkmap" && msg.RootElement.GetProperty("layoutVersion").GetInt32() == _layoutVersion && msg.RootElement.GetProperty("holeId").GetInt32() == _holeId) _walker.SetMap(Walker.Map.Parse(msg.RootElement));
             else if (type == "inspected")
             {
@@ -435,6 +440,7 @@ public partial class Live : Node3D
         _stocks.Text = string.Join("   ", Stocks.Where(k => res.TryGetProperty(k.key, out _)).Select(k => $"{k.name} {res.GetProperty(k.key).GetDouble():0}"));
         for (var i = 0; i < Speeds.Length; i++) _speedButtons[i].ButtonPressed = Speeds[i] == _speed;
         _choices.SetEvents(s, TicksPerDay);
+        _rig3d.Place(s.GetProperty("drill"), _shape.Floors, Cut);
         _choices.SetMessages(s, TicksPerDay);
         var storm = s.GetProperty("weather").GetProperty("storm").GetSingle();
         Daylight(t.GetProperty("dayFraction").GetSingle(), storm);

@@ -235,7 +235,7 @@ public partial class HoleScene : Node3D
     }
 
     /// <summary>One chunk's geometry. Three.js faces are counter-clockwise; Godot's clockwise, so each triangle turns over.</summary>
-    static ArrayMesh? ChunkMesh(JsonElement c)
+    internal static ArrayMesh? ChunkMesh(JsonElement c)
     {
         var lines = c.GetProperty("lines").GetBoolean();
         var p = Floats(c.GetProperty("positions"));

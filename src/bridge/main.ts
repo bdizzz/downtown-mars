@@ -16,6 +16,7 @@ import { office, officeKey } from "./office";
 import { flows, trends } from "./charts";
 import { mapView, networkView, siteView } from "./network";
 import { constructionView, maintenanceViewOf, peopleView } from "./colony";
+import { rigKey, rigMessage } from "./rig";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
 // Godot viewer, speaking the web game's worker protocol (worker/protocol.ts) one JSON message per
@@ -52,6 +53,7 @@ const host = createSimHost(broadcast);
 let topFloor: number | null = null;
 let sentScene = "";
 let sentPeople = "";
+let sentRig = "";
 let spots: RoomSpots[] = [];
 function sendScene(force = false): void {
   if (clients.size === 0) return;
@@ -66,6 +68,13 @@ function sendScene(force = false): void {
     for (const c of clients) c.write(line);
     report(scene, line);
     sentPeople = "";
+  }
+  // The drill rig: again for another hole, or when its grippers brace.
+  const rk = rigKey(state, host.gameId());
+  if (force || rk !== sentRig) {
+    sentRig = rk;
+    const rigLine = JSON.stringify(rigMessage(state)) + "\n";
+    for (const c of clients) c.write(rigLine);
   }
   // Who's where: by the hour, each room's staff and the head count.
   const pk = peopleKey(state, sentScene);

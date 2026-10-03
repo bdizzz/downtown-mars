@@ -124,6 +124,9 @@ export function makeDrillRig(hole: Hole): DrillRig {
   const glassMat = mat(RIG.glass, { emissive: 0x3a6f99, emissiveIntensity: 0.7, metalness: 0.2, roughness: 0.1 });
   const lampMat = mat(RIG.lamp, { emissive: RIG.lamp, emissiveIntensity: 2, metalness: 0 });
   const beaconMat = mat(RIG.beacon, { emissive: RIG.beacon, emissiveIntensity: 1.5, metalness: 0, transparent: true, opacity: 0.9 });
+  // Named, as are the parts that move, for the Godot viewer (src/bridge/rig.ts), which animates them itself.
+  lampMat.name = "rig:lamp";
+  beaconMat.name = "rig:beacon";
   const hazardTex = hazardTexture();
   const gratingTex = gratingTexture();
   if (hazardTex) textures.push(hazardTex);
@@ -151,6 +154,7 @@ export function makeDrillRig(hole: Hole): DrillRig {
 
   // ---- the cutterhead (turns) ----
   const head = new THREE.Group();
+  head.name = "rig:head";
   const headR = R - 0.3;
   add(head, new THREE.CylinderGeometry(headR, headR - 0.25, 1.1, 64), steel, 0, 0.55, 0);
   // A dark recessed face ring and the hub on top.
@@ -342,6 +346,7 @@ export function makeDrillRig(hole: Hole): DrillRig {
   for (let k = 0; k < 7; k++) {
     const lump = add(frame, lumpGeo, rockMat, (k / 7) * convLen, 0.28, (k % 3 - 1) * 0.15);
     lump.rotation.set(k, k * 2, k * 3);
+    lump.name = "rig:lump";
     lumps.push(lump);
   }
 
@@ -373,6 +378,7 @@ export function makeDrillRig(hole: Hole): DrillRig {
   add(cab, new THREE.BoxGeometry(0.7, 0.35, 0.6), mat(0xbdb8ae, { metalness: 0.3 }), 0.5, 1.72, 0);
   for (let s = 0; s < 4; s++) add(cab, new THREE.BoxGeometry(0.02, 0.25, 0.5), dark, 0.16 + s * 0.04, 1.72, 0);
   const beacon = new THREE.Group();
+  beacon.name = "rig:beacon";
   add(beacon, new THREE.CylinderGeometry(0.12, 0.14, 0.12, 10), dark, 0, 0, 0);
   add(beacon, new THREE.CylinderGeometry(0.1, 0.1, 0.18, 10), beaconMat, 0, 0.15, 0);
   const flash = add(beacon, new THREE.BoxGeometry(0.03, 0.12, 0.16), lampMat, 0.07, 0.15, 0);
@@ -406,6 +412,7 @@ export function makeDrillRig(hole: Hole): DrillRig {
 
   // The cable reel, paying out the power line that runs up the shaft beside the hoist cable.
   const reel = new THREE.Group();
+  reel.name = "rig:reel";
   const drum = add(reel, new THREE.CylinderGeometry(0.35, 0.35, 0.8, 16), mat(0x2a2827, { metalness: 0.1, roughness: 0.9 }));
   drum.rotation.x = Math.PI / 2;
   for (const z of [-0.42, 0.42]) {
@@ -487,8 +494,11 @@ export function makeDrillRig(hole: Hole): DrillRig {
   // ---- cables up the shaft: the hoist from the sheave, the power line from the reel. Stretched in place(). ----
   const hoistTop = deckY + 0.15 + mastH + 0.05;
   const hoist = add(g, new THREE.CylinderGeometry(0.06, 0.06, 1, 6), dark, skipX, 0, skipZ);
+  hoist.name = "rig:hoist";
   const powerTop = deckY + 0.15 + 1.3;
   const power = add(g, new THREE.CylinderGeometry(0.05, 0.05, 1, 6), rubber, bodyR * 0.05, 0, bodyR * 0.62);
+  power.name = "rig:power";
+  g.userData.cableTops = { hoist: hoistTop, power: powerTop, conveyor: convLen };
 
   let active = false;
   let t = 0;
