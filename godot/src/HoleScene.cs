@@ -93,6 +93,7 @@ public partial class HoleScene : Node3D
             var material = materials[c.GetProperty("material").GetInt32()];
             // Walls down only where there are walls to lower (the mesh carries their tags).
             if (mesh.HasMeta("walls") && material is ShaderMaterial sm) sm.SetShaderParameter("walls", true);
+            if (mesh.HasMeta("rooms") && material is ShaderMaterial rm) rm.SetShaderParameter("room_lines", true);
             mesh.SurfaceSetMaterial(0, material);
             var instance = new MeshInstance3D { Mesh = mesh, Name = $"chunk{Chunks++}" };
             // Solid surfaces take clicks (a ray finds what's under the pointer); glass and outlines don't.
@@ -143,7 +144,7 @@ public partial class HoleScene : Node3D
         if (!Dev.Off("labels"))
         foreach (var l in scene.GetProperty("labels").EnumerateArray())
         {
-            _labels!.AddChild(new Label3D
+            var label = new Label3D
             {
                 Visible = !CutAway(_cut, new Vector3(l.GetProperty("x").GetSingle(), 0, l.GetProperty("z").GetSingle())),
                 Text = l.GetProperty("text").GetString(),
@@ -155,9 +156,47 @@ public partial class HoleScene : Node3D
                 Modulate = new Color(1, 0.95f, 0.9f),
                 OutlineModulate = new Color(0.1f, 0.05f, 0.04f, 0.8f),
                 NoDepthTest = false,
-            });
+            };
+            label.SetMeta("room", l.GetProperty("roomId").GetInt32());
+            _labels!.AddChild(label);
+        }
+        _badgesKey = "";
+        SetBadges(_badged);
+    }
+
+    HashSet<int> _badged = new();
+    string _badgesKey = "";
+
+    /// <summary>A caution sign over the labels of these rooms (slowed or short of something), as the web's statusBadge.</summary>
+    public void SetBadges(HashSet<int> rooms)
+    {
+        var key = string.Join(",", rooms.OrderBy(x => x));
+        _badged = rooms;
+        if (key == _badgesKey || _labels == null) return;
+        _badgesKey = key;
+        foreach (var l in _labels.GetChildren().OfType<Label3D>())
+        {
+            var badge = l.GetNodeOrNull<Label3D>("Badge");
+            var want = l.HasMeta("room") && rooms.Contains(l.GetMeta("room").AsInt32());
+            if (want && badge == null)
+                l.AddChild(new Label3D
+                {
+                    Name = "Badge",
+                    Text = "⚠",
+                    Position = new Vector3(0, BadgeAbove, 0),
+                    Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                    FontSize = 56,
+                    PixelSize = 0.01f,
+                    OutlineSize = 10,
+                    Modulate = new Color("#f0a030"),
+                    OutlineModulate = new Color(0.1f, 0.05f, 0.04f, 0.8f),
+                });
+            else if (!want) badge?.QueueFree();
         }
     }
+
+    /// <summary>How far above a room's label its trouble badge floats, metres (the web's BADGE_ABOVE).</summary>
+    const float BadgeAbove = 0.9f;
 
     /// <summary>
     /// Lamps on these floors light up, the rest are off (each light costs every pixel it might reach);
@@ -206,13 +245,21 @@ public partial class HoleScene : Node3D
     /// <summary>Glowing furniture brightens as the sky darkens: 0 at noon, 1 at night.</summary>
     public void SetNight(float night) => _furniture.SetNight(night);
 
+    /// <summary>How far lines come toward the camera, metres, so outlines on wall caps and floors show (three.js draws them over at equal depth).</summary>
+    const float LineLift = 0.04f;
+
     static Material MaterialFor(JsonElement m)
     {
         var kind = m.GetProperty("kind").GetString();
         var color = new Color(m.GetProperty("color").GetString()!);
         var opacity = m.GetProperty("opacity").GetSingle();
         var transparent = m.GetProperty("transparent").GetBoolean();
-        if (kind == "line") return Plain.Make(new Color(color, opacity), transparent: transparent, unshaded: true);
+        if (kind == "line")
+        {
+            var line = Plain.Make(new Color(color, opacity), transparent: transparent, unshaded: true);
+            line.SetShaderParameter("toward_camera", LineLift);
+            return line;
+        }
         // Rooms, rock and finishes: the procedural surfaces (Looks.cs).
         if (!Dev.Off("looks") && Looks.For(m.GetProperty("name").GetString() ?? "", color, m.GetProperty("roughness").GetSingle(), m.GetProperty("metalness").GetSingle(), transparent) is Material look)
             return look;
@@ -279,18 +326,26 @@ public partial class HoleScene : Node3D
         var mesh = new ArrayMesh();
         // Walls down: each vertex's wall tag (CUSTOM0) and a line's second wall (CUSTOM1), zeros where none.
         var flags = (Mesh.ArrayFormat)0;
-        if (c.TryGetProperty("walls", out var we) && c.TryGetProperty("walls2", out var we2))
+        // An outline's room (id + 1) rides in CUSTOM1.z, for the edge shader to tint by its trouble or the hover.
+        var walled = c.TryGetProperty("walls", out var we) & c.TryGetProperty("walls2", out var we2);
+        var roomed = c.TryGetProperty("rooms", out var re);
+        if (walled || roomed)
         {
-            var w = Floats(we);
-            var w2 = Floats(we2);
+            var w = walled ? Floats(we) : null;
+            var w2 = walled ? Floats(we2) : null;
+            var r = roomed ? Floats(re) : null;
             var wall = new float[count * 4];
             var wall2 = new float[count * 4];
             for (var i = 0; i < count; i++)
             {
                 var k = order[i];
-                for (var j = 0; j < 4; j++) wall[i * 4 + j] = w[k * 4 + j];
-                wall2[i * 4] = w2[k * 2];
-                wall2[i * 4 + 1] = w2[k * 2 + 1];
+                if (w != null && w2 != null)
+                {
+                    for (var j = 0; j < 4; j++) wall[i * 4 + j] = w[k * 4 + j];
+                    wall2[i * 4] = w2[k * 2];
+                    wall2[i * 4 + 1] = w2[k * 2 + 1];
+                }
+                if (r != null) wall2[i * 4 + 2] = r[k];
             }
             arrays[(int)Mesh.ArrayType.Custom0] = wall;
             arrays[(int)Mesh.ArrayType.Custom1] = wall2;
@@ -299,6 +354,7 @@ public partial class HoleScene : Node3D
         }
         mesh.AddSurfaceFromArrays(lines ? Mesh.PrimitiveType.Lines : Mesh.PrimitiveType.Triangles, arrays, null, null, flags);
         if (flags != 0) mesh.SetMeta("walls", true);
+        if (roomed) mesh.SetMeta("rooms", true);
         return mesh;
     }
 }

@@ -48,7 +48,14 @@ uniform float grain = 0.0;
 uniform bool walls = false;
 // Faceted, as three.js's flatShading: each face's own normal.
 uniform bool flat_shade = false;
+// Room outlines: each vertex's room (id + 1, CUSTOM1.z), tinted by its trouble (room_tint) or the hover.
+uniform bool room_lines = false;
+// Lines lying on a surface (room outlines on wall caps and floors) come this far toward the camera, metres, so they aren't lost in it.
+uniform float toward_camera = 0.0;
+global uniform sampler2D room_tint : filter_nearest;
+global uniform float hover_room;
 varying vec3 wpos;
+varying flat float room;
 varying vec4 vcolor;
 float hash3(vec3 p) {{ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }}
 float noise3(vec3 x) {{
@@ -59,17 +66,27 @@ float noise3(vec3 x) {{
 void vertex() {{
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vcolor = COLOR;
+	room = room_lines ? CUSTOM1.z : 0.0;
 	if (walls) VERTEX = lower_wall(VERTEX, CUSTOM0, CUSTOM1.xy, wpos, CAMERA_POSITION_WORLD);
+	if (toward_camera > 0.0) VERTEX += (inverse(MODEL_MATRIX) * vec4(normalize(CAMERA_POSITION_WORLD - wpos) * toward_camera, 0.0)).xyz;
 }}
 void fragment() {{
 	if (cut_away(wpos)) discard;
 	if (flat_shade) NORMAL = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));
 	vec3 c = albedo.rgb * (use_vertex_color ? vcolor.rgb : vec3(1.0));
+	float alpha = albedo.a;
 	if (grain > 0.0) c *= mix(1.0 - 0.08 * grain, 1.0 + 0.03 * grain, noise3(wpos * 4.0));
+	if (room > 0.5) {{
+		int id = int(room + 0.5) - 1;
+		vec4 tint = texelFetch(room_tint, ivec2(id % 256, id / 256), 0);
+		if (abs(float(id) - hover_room) < 0.5) c = vec3(1.0, 0.886, 0.69);
+		else if (tint.a > 0.5) c = tint.rgb;
+		if (abs(float(id) - hover_room) < 0.5 || tint.a > 0.5) alpha = 1.0;
+	}}
 	ALBEDO = c;
 	{(unshaded ? "" : "ROUGHNESS = roughness; METALLIC = metallic; SPECULAR = specular;")}
 	EMISSION = emission * emission_energy;
-	{(transparent ? "ALPHA = albedo.a;" : "")}
+	{(transparent ? "ALPHA = alpha;" : "")}
 }}
 ";
 }

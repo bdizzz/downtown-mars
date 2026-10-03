@@ -257,6 +257,7 @@ public partial class Live : Node3D
         _fx.Step((float)delta * _speed);
         _festival.Step((float)delta);
         _scenery.Step((float)delta);
+        HoverRoom((float)delta);
         Weather((float)delta);
         MaybeStartBridge();
         if (BenchSeconds > 0 && _clockSeconds > BenchWarmup)
@@ -281,10 +282,11 @@ public partial class Live : Node3D
             if (tool.StartsWith("corridor:")) _build.PickCorridor(tool["corridor:".Length..], false, false);
             else _build.Pick(tool);
         }
-        if (HoverAt is Vector2 hover && _rig != null && _clockSeconds > 5 && FloorPoint(hover) is Vector3 over)
+        if (HoverAt is Vector2 hover && _rig != null && _clockSeconds > 5)
         {
             HoverAt = null;
-            _build.Hover(over, hover);
+            _pointer = hover;
+            if (_build.HasTool && FloorPoint(hover) is Vector3 over) _build.Hover(over, hover);
         }
         if (ClickAt is Vector2 click && _rig != null && _clockSeconds > 6)
         {
@@ -328,6 +330,7 @@ public partial class Live : Node3D
             }
             else if (type == "fx") _fx.Set(msg.RootElement);
             else if (type == "walkmap" && msg.RootElement.GetProperty("layoutVersion").GetInt32() == _layoutVersion && msg.RootElement.GetProperty("holeId").GetInt32() == _holeId) _walker.SetMap(Walker.Map.Parse(msg.RootElement));
+            else if (type == "picked") _hovered = msg.RootElement.GetProperty("roomId").ValueKind == JsonValueKind.Number ? msg.RootElement.GetProperty("roomId").GetInt32() : null;
             else if (type == "inspected")
             {
                 _inspector.Show(msg.RootElement);
@@ -501,6 +504,7 @@ public partial class Live : Node3D
         _rig3d.Place(s.GetProperty("drill"), _shape.Floors, Cut);
         _festival.Sync(s.GetProperty("events").GetProperty("festival").ValueKind == JsonValueKind.Object, _shape, Cut);
         _scenery.Update(s, _shape, Cut == null);
+        if (RoomTint.Update(s.GetProperty("roomStatus")) is { } troubled) _hole.SetBadges(troubled);
         _choices.SetMessages(s, TicksPerDay);
         _storm.SetTarget(s.GetProperty("weather").GetProperty("storm").GetSingle(), !_stormSeen);
         _stormSeen = true;
@@ -855,6 +859,29 @@ public partial class Live : Node3D
         return t > 0 ? from + dir * t : null;
     }
 
+    Vector2? _pointer, _pickedAt;
+    int? _hovered;
+    float _pickClock;
+
+    /// <summary>
+    /// The room under the pointer, outlined in the hover colour as the web's (not the one shown in the
+    /// panel, nor while building, walking or in the plan): the bridge finds it, asked a few times a second.
+    /// </summary>
+    void HoverRoom(float dt)
+    {
+        var looking = !_build.HasTool && !PlanShown && _rig?.Walking != true && _rig != null && !_map.Open;
+        _pickClock += dt;
+        // Again as the pointer moves, and now and then while it rests (the camera or the hole may have moved under it).
+        if (looking && _pointer is Vector2 at && (at != _pickedAt && _pickClock > 0.08f || _pickClock > 0.5f))
+        {
+            _pickClock = 0;
+            _pickedAt = at;
+            var p = RoomPoint(at);
+            _bridge.Send(new Dictionary<string, object?> { ["type"] = "pick", ["at"] = p is Vector3 q ? new[] { q.X, q.Y, q.Z } : null });
+        }
+        RoomTint.Hover(looking && _hovered is int h && h != _inspector.Selected ? h : -1);
+    }
+
     /// <summary>A click (not a drag): build with the room in hand, or show the room under the pointer.</summary>
     void Click(Vector2 at)
     {
@@ -926,6 +953,7 @@ public partial class Live : Node3D
                 _planView.TurnBy(pm.Relative.X * 0.005f);
         }
         _build.ShiftErase = Input.IsKeyPressed(Key.Shift);
+        if (e is InputEventMouseMotion moved) _pointer = moved.Position;
         if (e is InputEventMouseMotion motion && _build.HasTool && FloorPoint(motion.Position) is Vector3 over)
         {
             _build.Hover(over, motion.Position);

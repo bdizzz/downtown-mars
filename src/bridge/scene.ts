@@ -51,6 +51,8 @@ export interface SceneChunk {
   /** Walls down: float32 per vertex, the wall tag (4) and a line's second wall (2), when any vertex has one. */
   walls?: string;
   walls2?: string;
+  /** Lines: each vertex's room (id + 1) on a room's outline, else 0 (float32). */
+  rooms?: string;
 }
 
 export interface SceneMessage {
@@ -115,6 +117,9 @@ interface Bucket {
   wall: number[];
   wall2: number[];
   walled: boolean;
+  /** Lines: each vertex's room (its id + 1) when it's a room's outline, else 0, for the viewer to tint by the room's trouble or the hover. */
+  room: number[];
+  roomed: boolean;
 }
 
 /** People (the web's people3d.ts): who's at a post, in a seat or in bed now, and the gallery tubes the walkers stroll. */
@@ -220,6 +225,7 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     const wallAttr = geo.getAttribute("aWall");
     const wall2Attr = geo.getAttribute("aWall2");
     const lines = mesh instanceof THREE.LineSegments;
+    const outlineOf = lines && typeof mesh.userData.roomId === "number" ? (mesh.userData.roomId as number) + 1 : 0;
     const count = mesh instanceof THREE.InstancedMesh ? mesh.count : 1;
     const mi = indexOf(material);
     const per = lines ? 2 : 3;
@@ -245,7 +251,7 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
         const sector = Math.floor(((Math.atan2(centre.z, centre.x) / (Math.PI * 2) + 1) % 1) * SECTORS) % SECTORS;
         const key = `${mi}:${floor}:${sector}:${lines}`;
         let b = buckets.get(key);
-        if (!b) buckets.set(key, (b = { material: mi, floor, lines, pos: [], nrm: [], col: material.vertexColors ? [] : null, wall: [], wall2: [], walled: false }));
+        if (!b) buckets.set(key, (b = { material: mi, floor, lines, pos: [], nrm: [], col: material.vertexColors ? [] : null, wall: [], wall2: [], walled: false, room: [], roomed: false }));
         for (let j = 0; j < per; j++) {
           b.pos.push(pts[j]!.x, pts[j]!.y, pts[j]!.z);
           if (!lines) b.nrm.push(nrms[j]!.x, nrms[j]!.y, nrms[j]!.z);
@@ -259,6 +265,10 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
           } else b.wall.push(0, 0, 0, 0);
           if (wall2Attr) b.wall2.push(wall2Attr.getX(i + j), wall2Attr.getY(i + j));
           else b.wall2.push(0, 0);
+          if (lines) {
+            b.room.push(outlineOf);
+            b.roomed ||= outlineOf > 0;
+          }
         }
       }
     }
@@ -274,6 +284,7 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     ...(b.lines ? {} : { normals: base64(b.nrm) }),
     ...(b.col ? { colors: base64(b.col) } : {}),
     ...(b.walled ? { walls: base64(b.wall), walls2: base64(b.wall2) } : {}),
+    ...(b.roomed ? { rooms: base64(b.room) } : {}),
   }));
   const message: SceneMessage = {
     type: "scene",

@@ -40,3 +40,11 @@ walls_down={
 "type": "float",
 "value": 0.0
 }
+room_tint={
+"type": "sampler2D",
+"value": ""
+}
+hover_room={
+"type": "float",
+"value": -1.0
+}

@@ -139,6 +139,8 @@ type BridgeMessage =
   | { type: "view"; topFloor: number | null; roomColors?: boolean; plan?: number | null }
   /** The room panel: a room by id, or whatever is at a world point; null closes it. */
   | { type: "inspect"; roomId?: number | null; at?: [number, number, number] }
+  /** The room under the pointer (for the hover outline): answered with { type: "picked", roomId }. */
+  | { type: "pick"; at: [number, number, number] | null }
   /** Building: what placing the tool's room at a world point would do, and doing it. */
   | { type: "hover"; tool: BuildTool; at: [number, number, number] }
   | { type: "place"; tool: BuildTool; at: [number, number, number]; confirmed?: boolean }
@@ -296,6 +298,8 @@ const server = createServer((socket) => {
           const map = walkMap(host.active(), msg.floor);
           if (args.verbose) console.log(`Walk map for floor ${msg.floor}: ${map.regions.length} regions, ${(map.runs.length / 1024).toFixed(0)} KB of runs, ${map.buildMs.toFixed(0)} ms`);
           send(map);
+        } else if (msg.type === "pick") {
+          send({ type: "picked", roomId: msg.at ? roomAtPoint(host.active(), msg.at) : null });
         } else if (msg.type === "inspect") {
           inspecting = msg.at ? roomAtPoint(host.active(), msg.at) : (msg.roomId ?? null);
           sendInspect();

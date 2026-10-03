@@ -77,6 +77,8 @@ public partial class Inspector : Node3D
 
     public bool Open => _panel.Visible;
     /// <summary>The room's outline as line pairs in world space, while the panel is open (for the plan view).</summary>
+    /// <summary>The room shown, if the panel's open.</summary>
+    public int? Selected => _panel.Visible ? _roomId : null;
     public Vector3[] OutlineLines => _panel.Visible ? _outlineVerts : System.Array.Empty<Vector3>();
     Vector3[] _outlineVerts = System.Array.Empty<Vector3>();
 
