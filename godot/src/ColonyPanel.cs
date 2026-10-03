@@ -35,6 +35,8 @@ public partial class ColonyPanel : Node
         _panel.SetAnchorsPreset(Control.LayoutPreset.TopRight);
         _panel.GrowHorizontal = Control.GrowDirection.Begin;
         _panel.Position = new Vector2(-400, 100);
+        // Kept just under the top bar, however tall it wraps (Live).
+        _panel.SetMeta("under_top", true);
         _panel.AddThemeStyleboxOverride("panel", Live.Panel());
         hud.AddChild(_panel);
         var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(370, 640), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };

@@ -123,6 +123,8 @@ public partial class Inspector : Node3D
         _panel.SetAnchorsPreset(Control.LayoutPreset.TopRight);
         _panel.GrowHorizontal = Control.GrowDirection.Begin;
         _panel.Position = new Vector2(-370, 100);
+        // Kept just under the top bar, however tall it wraps (Live).
+        _panel.SetMeta("under_top", true);
         _panel.CustomMinimumSize = new Vector2(350, 0);
         _panel.AddThemeStyleboxOverride("panel", Live.Panel());
         hud.AddChild(_panel);

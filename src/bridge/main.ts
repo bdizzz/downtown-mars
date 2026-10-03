@@ -17,6 +17,7 @@ import { flows, trends } from "./charts";
 import { mapView, networkView, siteView } from "./network";
 import { constructionView, maintenanceViewOf, peopleView } from "./colony";
 import { rigKey, rigMessage } from "./rig";
+import { hudMessage } from "./hud";
 import { planFieldKey, planFieldMessage, planKey, planMessage, type FieldView } from "./plan";
 import { terrainKey, terrainMessage } from "./terrain";
 import { emittersKey, emittersOf } from "../render3d/effects3d";
@@ -221,6 +222,8 @@ const chains = newChainState();
 // The room in the panel, kept up to date twice a second.
 let inspecting: number | null = null;
 let inspectClock = 0;
+let hudClock = 0;
+let sentHud = "";
 function sendInspect(): void {
   const line = JSON.stringify((inspecting === null ? { type: "inspected", roomId: null } : inspect(host.active(), host.snapshot(), inspecting))) + "\n";
   for (const c of clients) c.write(line);
@@ -257,6 +260,7 @@ const server = createServer((socket) => {
   host.resend();
   host.post();
   sendScene(true);
+  sentHud = "";
   sendPalette(true);
   sendOffice(true);
   let buffer = "";
@@ -417,6 +421,14 @@ setInterval(() => {
     }
   }
   if (inspecting !== null && ++inspectClock % Math.round(config.snapshotsPerSecond / 2) === 0) sendInspect();
+  // The HUD's bar and extras, twice a second when they change.
+  if (clients.size && ++hudClock % Math.round(config.snapshotsPerSecond / 2) === 0) {
+    const line = JSON.stringify(hudMessage(host.snapshot()));
+    if (line !== sentHud) {
+      sentHud = line;
+      for (const c of clients) c.write(line + "\n");
+    }
+  }
 }, 1000 / config.snapshotsPerSecond);
 setInterval(() => {
   if (sent && args.verbose) console.log(`${(sent / 1024).toFixed(0)} KB/s to ${clients.size}`);

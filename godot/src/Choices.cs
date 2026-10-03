@@ -39,6 +39,8 @@ public partial class Choices : Node
     {
         _command = command;
         _cards.Position = new Vector2(10, 100);
+        // Kept just under the top bar, however tall it wraps (Live).
+        _cards.SetMeta("under_top", true);
         _cards.AddThemeConstantOverride("separation", 8);
         hud.AddChild(_cards);
 
@@ -55,6 +57,7 @@ public partial class Choices : Node
         _office.SetAnchorsPreset(Control.LayoutPreset.TopRight);
         _office.GrowHorizontal = Control.GrowDirection.Begin;
         _office.Position = new Vector2(-400, 100);
+        _office.SetMeta("under_top", true);
         _office.AddThemeStyleboxOverride("panel", Live.Panel());
         hud.AddChild(_office);
         var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(370, 640), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
+import { topExtras } from "../view/hudItems";
 
 interface Props {
   snapshot: Snapshot | null;
@@ -33,12 +34,6 @@ export function nextSpeed(from: number, step: number): number | null {
   return j < 0 || j >= running.length ? null : running[j]!;
 }
 
-/** Game-time estimate, e.g. "~1.2 days" or "~5 h". */
-function gameDuration(ticks: number): string {
-  const days = ticks / config.ticksPerDay;
-  return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
-}
-
 // The top bar: the menu, where and when you are, speed, the drill, the next
 // supply drop and the office. Everything else lives in the dock's modes.
 export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActiveHole, openMenu, keysEnabled, highlight }: Props) {
@@ -68,7 +63,7 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
   }, [speed, setSpeed, keysEnabled]);
 
   const t = snapshot?.time;
-  const drill = snapshot?.drill;
+  const extras = snapshot ? topExtras(snapshot) : null;
   return (
     <header className="hud">
       <button className="menu-btn" onClick={openMenu} title="Menu (Esc)">
@@ -101,28 +96,26 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
           </button>
         ))}
       </span>
-      {drill && (
+      {extras?.drill && (
         <span className="drill">
-          {drill.floor ? (
+          {extras.drill.canPause ? (
             <>
-              <span title={`${gameDuration(drill.ticksLeft)} left`}>
-                ⛏ F{drill.floor} {Math.floor(drill.progress * 100)}%
-              </span>
-              <button onClick={() => setDrill(!drill.active)}>{drill.active ? "Pause drill" : "Resume drill"}</button>
+              <span title={extras.drill.tip}>{extras.drill.text}</span>
+              <button onClick={() => setDrill(!extras.drill!.active)}>{extras.drill.active ? "Pause drill" : "Resume drill"}</button>
             </>
           ) : (
-            "⛏ Max depth"
+            extras.drill.text
           )}
         </span>
       )}
-      {snapshot && (snapshot.weather.storm > 0 || snapshot.weather.dueInDays !== null) && (
-        <span className="drop warn" title={snapshot.weather.storm > 0 ? "A dust storm is blowing: the solar arrays make less" : "A dust storm is coming: it will cut what the solar arrays make"}>
-          {snapshot.weather.storm > 0 ? "🌪 Storm" : `🌪 in ${snapshot.weather.dueInDays!.toFixed(1)}d`}
+      {extras?.storm && (
+        <span className="drop warn" title={extras.storm.tip}>
+          {extras.storm.text}
         </span>
       )}
-      {snapshot && (
-        <span className={`drop${snapshot.earth.waiting ? " warn" : ""}`} title="Next Earth supply drop">
-          {snapshot.earth.waiting ? "🚀 Drop waiting: pad needs staff and power" : `🚀 Drop in ${gameDuration(snapshot.earth.ticksToDrop)}`}
+      {extras && (
+        <span className={`drop${extras.drop.warn ? " warn" : ""}`} title="Next Earth supply drop">
+          {extras.drop.text}
         </span>
       )}
       {snapshot && (

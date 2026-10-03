@@ -17,7 +17,6 @@ namespace DowntownMars;
 public partial class Live : Node3D
 {
     static readonly int[] Speeds = { 0, 1, 2, 4 };
-    static readonly (string key, string name)[] Stocks = { ("o2", "Oxygen"), ("water", "Water"), ("meals", "Meals"), ("rations", "Rations"), ("power", "Power"), ("rock", "Rock"), ("metal", "Metal"), ("brick", "Brick"), ("glass", "Glass") };
 
     Bridge _bridge = null!;
     HoleScene _hole = null!;
@@ -63,7 +62,13 @@ public partial class Live : Node3D
 
     // HUD.
     CanvasLayer _hud = null!;
-    Label _title = null!, _clock = null!, _stocks = null!, _status = null!, _waiting = null!;
+    Label _title = null!, _clock = null!, _status = null!, _waiting = null!;
+    PanelContainer _topPanel = null!;
+    /// <summary>The resource bar, and the top bar's drill (with its pause), storm and supply drop.</summary>
+    readonly HudBar _bar = new() { Name = "Bar" };
+    Label _drillText = null!, _stormDue = null!, _drop = null!;
+    Button _drillButton = null!;
+    bool _drillActive;
     PanelContainer _pickerPanel = null!;
     readonly List<Button> _speedButtons = new();
     VBoxContainer _floorPicker = null!;
@@ -261,6 +266,7 @@ public partial class Live : Node3D
         _fx.Step((float)delta * _speed);
         _festival.Step((float)delta);
         _scenery.Step((float)delta);
+        KeepUnderTop();
         HoverRoom((float)delta);
         Weather((float)delta);
         MaybeStartBridge();
@@ -372,6 +378,7 @@ public partial class Live : Node3D
                 _build.Toast(result.GetProperty("ok").GetBoolean() ? "Loaded" : $"Couldn't load: {(result.TryGetProperty("reason", out var why) ? why.GetString() : "unknown")}");
             }
             else if (type == "commandResult") OnCommandResult(msg.RootElement);
+            else if (type == "hud") OnHud(msg.RootElement);
             else if (type == "chained") _build.ShowChain(msg.RootElement);
             else if (type == "proposal") _build.Propose(msg.RootElement);
             msg.Dispose();
@@ -503,11 +510,8 @@ public partial class Live : Node3D
             _rig?.Frame(MetaNow(), true);
         }
         var t = s.GetProperty("time");
-        var pop = s.GetProperty("population").GetProperty("count").GetInt32();
         _title.Text = s.GetProperty("holeName").GetString();
-        _clock.Text = $"Day {t.GetProperty("day").GetInt32()} · {t.GetProperty("hour").GetInt32():00}:{t.GetProperty("minute").GetInt32():00} · {pop} colonists";
-        var res = s.GetProperty("resources");
-        _stocks.Text = string.Join("   ", Stocks.Where(k => res.TryGetProperty(k.key, out _)).Select(k => $"{k.name} {res.GetProperty(k.key).GetDouble():0}"));
+        _clock.Text = $"Day {t.GetProperty("day").GetInt32()} · {t.GetProperty("hour").GetInt32():00}:{t.GetProperty("minute").GetInt32():00}";
         for (var i = 0; i < Speeds.Length; i++) _speedButtons[i].ButtonPressed = Speeds[i] == _speed;
         _choices.SetEvents(s, TicksPerDay);
         _rig3d.Place(s.GetProperty("drill"), _shape.Floors, Cut);
@@ -589,8 +593,8 @@ public partial class Live : Node3D
                 _events.Add((ev, double.Parse(when[0])));
                 return (Key.None, double.MaxValue, double.MaxValue, true, true);
             }
-            // "down:x:y@t", "drag:x:y@t", "up:x:y@t": the left button pressed, the pointer moved with it held, released.
-            if (name.StartsWith("down:") || name.StartsWith("drag:") || name.StartsWith("up:"))
+            // "down:x:y@t", "drag:x:y@t", "up:x:y@t": the left button pressed, the pointer moved with it held, released; "move:x:y@t" moves it.
+            if (name.StartsWith("down:") || name.StartsWith("drag:") || name.StartsWith("up:") || name.StartsWith("move:"))
             {
                 var p = name.Split(':');
                 var at = new Vector2(float.Parse(p[1]), float.Parse(p[2]));
@@ -598,6 +602,7 @@ public partial class Live : Node3D
                 {
                     "down" => new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = at, GlobalPosition = at, ButtonMask = MouseButtonMask.Left },
                     "drag" => new InputEventMouseMotion { Position = at, GlobalPosition = at, ButtonMask = MouseButtonMask.Left, Relative = Vector2.One },
+                    "move" => new InputEventMouseMotion { Position = at, GlobalPosition = at, Relative = Vector2.One },
                     _ => new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = at, GlobalPosition = at },
                 };
                 _events.Add((ev, double.Parse(when[0])));
@@ -954,6 +959,41 @@ public partial class Live : Node3D
         RoomTint.Hover(looking && _hovered is int h && (h != _inspector.Selected || _build.Demolishing) ? h : -1, _build.Demolishing);
     }
 
+    // ---- the top bar ----
+
+    /// <summary>Panels and cards marked "under_top" sit just below the top bar, which grows when the resource bar wraps.</summary>
+    void KeepUnderTop()
+    {
+        var y = _topPanel.Position.Y + _topPanel.Size.Y + 8;
+        foreach (var c in _hud.GetChildren())
+            if (c is Control panel && panel.HasMeta("under_top") && !Mathf.IsEqualApprox(panel.Position.Y, y))
+                panel.Position = panel.Position with { Y = y };
+    }
+
+    void OnHud(JsonElement m)
+    {
+        _bar.Set(m);
+        var x = m.GetProperty("extras");
+        var drill = x.GetProperty("drill");
+        _drillText.Text = drill.GetProperty("text").GetString();
+        _drillText.TooltipText = drill.GetProperty("tip").GetString();
+        _drillButton.Visible = drill.GetProperty("canPause").GetBoolean();
+        _drillActive = drill.GetProperty("active").GetBoolean();
+        _drillButton.Text = _drillActive ? "Pause drill" : "Resume drill";
+        _stormDue.Visible = x.GetProperty("storm").ValueKind == JsonValueKind.Object;
+        if (_stormDue.Visible)
+        {
+            _stormDue.Text = x.GetProperty("storm").GetProperty("text").GetString();
+            _stormDue.TooltipText = x.GetProperty("storm").GetProperty("tip").GetString();
+        }
+        var drop = x.GetProperty("drop");
+        _drop.Text = drop.GetProperty("text").GetString();
+        _drop.AddThemeColorOverride("font_color", drop.GetProperty("warn").GetBoolean() ? new Color("#f0a030") : new Color("#f3e6d8"));
+    }
+
+    /// <summary>12.4 → "12", 0.35 → "0.4": whole numbers unless small (ui/format.ts num).</summary>
+    public static string Num(double v) => Math.Abs(v) >= 10 || v == 0 ? Math.Round(v).ToString() : v.ToString("0.0");
+
     // ---- undo ----
 
     /// <summary>Rooms placed this session (in this hole), newest last, for undo; and the undo command waiting on its answer.</summary>
@@ -1221,7 +1261,7 @@ public partial class Live : Node3D
     {
         var layer = _hud = new CanvasLayer();
         AddChild(layer);
-        var top = new PanelContainer { Position = new Vector2(10, 10) };
+        var top = _topPanel = new PanelContainer { Position = new Vector2(10, 10) };
         top.AddThemeStyleboxOverride("panel", Panel());
         layer.AddChild(top);
         var rows = new VBoxContainer();
@@ -1249,8 +1289,22 @@ public partial class Live : Node3D
             speeds.AddChild(b);
             _speedButtons.Add(b);
         }
-        _stocks = Text("", 15, new Color("#d8c4b0"));
-        rows.AddChild(_stocks);
+        // The drill, a coming storm and the next supply drop, as the web's top bar.
+        _drillText = Text("", 15, new Color("#f3e6d8"));
+        bar.AddChild(_drillText);
+        _drillButton = new Button { Text = "Pause drill", FocusMode = Control.FocusModeEnum.None };
+        _drillButton.AddThemeFontSizeOverride("font_size", 13);
+        _drillButton.Pressed += () => SendCommand(new Dictionary<string, object> { ["type"] = "setDrill", ["active"] = !_drillActive });
+        bar.AddChild(_drillButton);
+        _stormDue = Text("", 15, new Color("#f0a030"));
+        _stormDue.MouseFilter = Control.MouseFilterEnum.Pass;
+        bar.AddChild(_stormDue);
+        _drop = Text("", 15, new Color("#f3e6d8"));
+        _drop.MouseFilter = Control.MouseFilterEnum.Pass;
+        _drop.TooltipText = "Next Earth supply drop";
+        bar.AddChild(_drop);
+        rows.AddChild(_bar);
+        _bar.Clicked = trend => _charts.ShowTrend(trend);
         BuildViewBar(rows);
         var menuButton = new Button { Text = "☰ Menu", FocusMode = Control.FocusModeEnum.None, TooltipText = "Save, load, new game (Esc)" };
         menuButton.Pressed += () => _menu.Open();

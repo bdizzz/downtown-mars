@@ -32,6 +32,8 @@ public partial class Charts : Node
         _panel.SetAnchorsPreset(Control.LayoutPreset.TopRight);
         _panel.GrowHorizontal = Control.GrowDirection.Begin;
         _panel.Position = new Vector2(-400, 100);
+        // Kept just under the top bar, however tall it wraps (Live).
+        _panel.SetMeta("under_top", true);
         _panel.AddThemeStyleboxOverride("panel", Live.Panel());
         hud.AddChild(_panel);
         var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(370, 660), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
@@ -39,6 +41,14 @@ public partial class Charts : Node
         _rows.AddThemeConstantOverride("separation", 5);
         _rows.CustomMinimumSize = new Vector2(350, 0);
         scroll.AddChild(_rows);
+    }
+
+    /// <summary>Open on Trends, with this series up close (a click on the resource bar).</summary>
+    public void ShowTrend(string key)
+    {
+        _tab = "trends";
+        _key = key;
+        Toggle(true);
     }
 
     public void Toggle(bool? open = null)
