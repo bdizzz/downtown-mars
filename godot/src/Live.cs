@@ -27,6 +27,13 @@ public partial class Live : Node3D
     readonly RoomEffects _fx = new() { Name = "RoomEffects" };
     readonly Festival _festival = new() { Name = "Festival" };
     readonly Cutaway _cutaway = new() { Name = "Cutaway" };
+    readonly PlanView _planView = new() { Name = "Plan" };
+    /// <summary>The plan is showing (on, and the map isn't over it).</summary>
+    bool PlanShown => ViewSettings.Plan && !_map.Open;
+    bool _planSeen;
+    /// <summary>Start in the plan view (--plan), for this run.</summary>
+    public bool StartPlan { get; set; }
+    int PlanFloor => Math.Clamp(_topFloor ?? 1, 1, Math.Max(1, _shape.Floors));
     bool _stormSeen;
     float _dayFraction = -1;
     Inspector _inspector = null!;
@@ -120,6 +127,12 @@ public partial class Live : Node3D
         AddChild(_fx);
         AddChild(_festival);
         AddChild(_cutaway);
+        // The plan under the HUD, over the 3D view (which rests while it's up).
+        var planLayer = new CanvasLayer { Layer = 0, Name = "PlanLayer" };
+        AddChild(planLayer);
+        planLayer.AddChild(_planView);
+        _planView.Ghost = () => _build.GhostShape;
+        _planView.Outline = () => _inspector.OutlineLines;
         _people = new People { Name = "People" };
         if (!Dev.Off("people")) AddChild(_people);
         if (Dev.Off("sunshadow")) _sun.ShadowEnabled = false;
@@ -131,6 +144,7 @@ public partial class Live : Node3D
         ViewSettings.Load();
         // A camera from the command line (--view=) wins over the saved one, for this run.
         if (asked != Overview.Iso) ViewSettings.Camera = asked;
+        if (StartPlan) ViewSettings.Plan = true;
         _rig = new CameraRig(MetaNow()) { Walker = _walker };
         AddChild(_rig);
         _rig.SetMode(ViewSettings.Camera);
@@ -295,6 +309,11 @@ public partial class Live : Node3D
             if (type == "scene") OnScene(msg.RootElement);
             else if (type == "people") _people.Set(msg.RootElement);
             else if (type == "rig") _rig3d.Set(msg.RootElement);
+            else if (type == "plan")
+            {
+                _planView.Set(msg.RootElement);
+                _planSeen = true;
+            }
             else if (type == "fx") _fx.Set(msg.RootElement);
             else if (type == "walkmap" && msg.RootElement.GetProperty("layoutVersion").GetInt32() == _layoutVersion && msg.RootElement.GetProperty("holeId").GetInt32() == _holeId) _walker.SetMap(Walker.Map.Parse(msg.RootElement));
             else if (type == "inspected")
@@ -380,7 +399,7 @@ public partial class Live : Node3D
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
             : _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(_rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : "iso")}\nEsc menu · M map · N network · P colony · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(PlanShown ? $"plan, floor {PlanFloor}" : _rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : _rig?.ModeName ?? "iso")}\nEsc menu · M map · N network · P colony · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
             : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -416,7 +435,8 @@ public partial class Live : Node3D
         // A scene for another floor than ours (the bridge restarted, say): ask again.
         var cut = scene.GetProperty("topFloor");
         int? sceneFloor = cut.ValueKind == JsonValueKind.Number ? cut.GetInt32() : null;
-        if (sceneFloor != Cut) _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = Cut });
+        // A scene for another floor than ours (the bridge restarted, say), or no plan yet with the plan up: ask again.
+        if (sceneFloor != Cut || ViewSettings.Plan && !_planSeen) SendView();
         var t0 = Time.GetTicksMsec();
         _hole.Build(scene);
         _hole.SetNight(1 - _light);
@@ -636,6 +656,7 @@ public partial class Live : Node3D
         if (floor != null) floor = Math.Clamp(floor.Value, 1, Math.Max(1, _shape.Floors));
         if (floor == _topFloor && _rig?.Walking != true) return;
         _topFloor = floor;
+        if (ViewSettings.Plan) SendView();
         if (_rig?.Walking == true) GoToFloor(floor ?? 1);
         else _rig?.Frame(MetaNow(), false);
         ApplyCut();
@@ -664,7 +685,17 @@ public partial class Live : Node3D
     }
 
     /// <summary>What the bridge builds the scene for: the cut, and room colours on or off.</summary>
-    void SendView() => _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = Cut, ["roomColors"] = ViewSettings.RoomColors });
+    void SendView() => _bridge.Send(new Dictionary<string, object?> { ["type"] = "view", ["topFloor"] = Cut, ["roomColors"] = ViewSettings.RoomColors, ["plan"] = ViewSettings.Plan ? PlanFloor : null });
+
+    /// <summary>The plan on or off (a 3D camera, or first person, turns it off).</summary>
+    void SetPlan(bool on)
+    {
+        if (on == ViewSettings.Plan) return;
+        ViewSettings.Plan = on;
+        ViewSettings.Save();
+        _planView.Refit();
+        SendView();
+    }
 
     // ---- the View bar ----
 
@@ -690,7 +721,12 @@ public partial class Live : Node3D
         Add("iso", "Iso", "One floor from above and off to one side (pick the floor on the right; drag to turn, scroll to zoom)", () => SetCamera(Overview.Iso));
         Add("cutaway", "Cutaway", "Look at the hole from outside, sliced open (scroll up and down to move along it)", () => SetCamera(Overview.Cutaway));
         Add("top", "Top", "Look straight down the shaft", () => SetCamera(Overview.Top));
-        Add("walk", "First person", "Walk the galleries, corridors and public spaces (Tab)", () => _rig?.Walk(true));
+        Add("walk", "First person", "Walk the galleries, corridors and public spaces (Tab)", () =>
+        {
+            SetPlan(false);
+            _rig?.Walk(true);
+        });
+        Add("plan", "Plan", "One floor seen from above, drawn flat (pick the floor on the right; drag or scroll sideways to turn, scroll or pinch to zoom)", () => SetPlan(true));
         bar.AddChild(new VSeparator());
         Add("walls", "Walls down", "Walls between the camera and the rooms behind them lowered to a stub, as in The Sims (not in first person)", () =>
         {
@@ -725,6 +761,7 @@ public partial class Live : Node3D
 
     void SetCamera(Overview mode)
     {
+        SetPlan(false);
         ViewSettings.Camera = mode;
         ViewSettings.Save();
         _rig?.SetMode(mode);
@@ -733,14 +770,26 @@ public partial class Live : Node3D
     /// <summary>The View bar shows what's on (it can change by key, Tab, too).</summary>
     void UpdateViewBar()
     {
-        var walking = _rig?.Walking == true;
+        var plan = ViewSettings.Plan;
+        var walking = _rig?.Walking == true && !plan;
         var mode = _rig?.Mode ?? Overview.Iso;
-        _viewButtons["iso"].ButtonPressed = !walking && mode == Overview.Iso;
-        _viewButtons["cutaway"].ButtonPressed = !walking && mode == Overview.Cutaway;
-        _viewButtons["top"].ButtonPressed = !walking && mode == Overview.Top;
+        _viewButtons["iso"].ButtonPressed = !plan && !walking && mode == Overview.Iso;
+        _viewButtons["cutaway"].ButtonPressed = !plan && !walking && mode == Overview.Cutaway;
+        _viewButtons["top"].ButtonPressed = !plan && !walking && mode == Overview.Top;
         _viewButtons["walk"].ButtonPressed = walking;
+        _viewButtons["plan"].ButtonPressed = plan;
         _viewButtons["walls"].ButtonPressed = ViewSettings.WallsDown;
-        _viewButtons["walls"].Disabled = walking;
+        // Walls down is for the 3D overview cameras.
+        _viewButtons["walls"].Disabled = walking || plan;
+        // While the plan's up, the 3D view and its camera rest (the map has its own).
+        var shown = PlanShown;
+        _planView.Visible = shown;
+        GetViewport().Disable3D = shown;
+        if (_rig != null)
+        {
+            _rig.SetProcess(!shown && !_map.Open);
+            _rig.SetProcessUnhandledInput(!shown && !_map.Open);
+        }
         _viewButtons["colors"].ButtonPressed = ViewSettings.RoomColors;
     }
 
@@ -776,6 +825,12 @@ public partial class Live : Node3D
     /// </summary>
     Vector3? FloorPoint(Vector2 at)
     {
+        // The plan: the floor it shows, at standing height.
+        if (PlanShown)
+        {
+            var w = _planView.ToWorld(at);
+            return new Vector3(w.X, -3 - PlanFloor * _shape.FloorHeightM + 0.5f, w.Y);
+        }
         if (GetViewport().GetCamera3D() is not Camera3D cam) return null;
         var from = cam.ProjectRayOrigin(at);
         var dir = cam.ProjectRayNormal(at);
@@ -803,6 +858,7 @@ public partial class Live : Node3D
     /// </summary>
     Vector3? RoomPoint(Vector2 at)
     {
+        if (PlanShown) return null;
         if (GetViewport().GetCamera3D() is not Camera3D cam) return null;
         var from = cam.ProjectRayOrigin(at);
         var dir = cam.ProjectRayNormal(at);
@@ -843,6 +899,18 @@ public partial class Live : Node3D
             _map.HandleInput(e);
             return;
         }
+        // The plan: scroll or pinch zooms, sideways (or a drag) turns; clicks go on as in 3D.
+        if (PlanShown)
+        {
+            if (ScrollInput.Read(e, out var scroll, out var zoom))
+            {
+                _planView.TurnBy(scroll.X * 0.003f);
+                _planView.ZoomBy(Mathf.Exp(-scroll.Y * 0.0015f) * zoom);
+                return;
+            }
+            if (e is InputEventMouseMotion pm && (pm.ButtonMask & (_build.Painting ? MouseButtonMask.Right : MouseButtonMask.Left | MouseButtonMask.Right)) != 0)
+                _planView.TurnBy(pm.Relative.X * 0.005f);
+        }
         _build.ShiftErase = Input.IsKeyPressed(Key.Shift);
         if (e is InputEventMouseMotion motion && _build.HasTool && FloorPoint(motion.Position) is Vector3 over)
         {
@@ -870,6 +938,10 @@ public partial class Live : Node3D
         if (e is not InputEventKey { Pressed: true, Echo: false } k) return;
         switch (k.Keycode)
         {
+            case Key.Tab when PlanShown:
+                SetPlan(false);
+                _rig?.Walk(true);
+                break;
             case Key.Escape when _menu.Visible: _menu.Close(); break;
             case Key.Escape when _map.Open: ToggleMap(); break;
             case Key.M when !_build.Active: ToggleMap(); break;

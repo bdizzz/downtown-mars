@@ -68,6 +68,7 @@ public partial class Main : Node3D
                 else if (arg.StartsWith("--at=")) live.StandAt = arg["--at=".Length..].Split(',').Select(float.Parse).ToArray();
                 else if (arg.StartsWith("--port=")) live.Port = int.Parse(arg["--port=".Length..]);
                 else if (arg == "--no-bridge") live.StartBridge = false;
+                else if (arg == "--plan") live.StartPlan = true;
                 else if (arg.StartsWith("--view=") && System.Enum.TryParse<Overview>(arg["--view=".Length..], true, out var view)) ViewSettings.Camera = view;
                 // For the bridge it starts: a test colony, a save to load, or a new game (else it continues the autosave).
                 else if (arg.StartsWith("--showcase=") || arg.StartsWith("--load=")) live.BridgeArgs.Add(arg);

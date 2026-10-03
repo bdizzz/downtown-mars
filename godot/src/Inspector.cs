@@ -76,6 +76,9 @@ public partial class Inspector : Node3D
     }
 
     public bool Open => _panel.Visible;
+    /// <summary>The room's outline as line pairs in world space, while the panel is open (for the plan view).</summary>
+    public Vector3[] OutlineLines => _panel.Visible ? _outlineVerts : System.Array.Empty<Vector3>();
+    Vector3[] _outlineVerts = System.Array.Empty<Vector3>();
 
     /// <summary>The bridge's "inspected" message: a room's lines and outline, or roomId null to close.</summary>
     public void Show(JsonElement msg)
@@ -104,6 +107,7 @@ public partial class Inspector : Node3D
             var f = MemoryMarshal.Cast<byte, float>(Convert.FromBase64String(outline)).ToArray();
             var verts = new Vector3[f.Length / 3];
             for (var i = 0; i < verts.Length; i++) verts[i] = new Vector3(f[i * 3], f[i * 3 + 1], f[i * 3 + 2]);
+            _outlineVerts = verts;
             var arrays = new Godot.Collections.Array();
             arrays.Resize((int)Mesh.ArrayType.Max);
             arrays[(int)Mesh.ArrayType.Vertex] = verts;

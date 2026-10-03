@@ -17,6 +17,7 @@ import { flows, trends } from "./charts";
 import { mapView, networkView, siteView } from "./network";
 import { constructionView, maintenanceViewOf, peopleView } from "./colony";
 import { rigKey, rigMessage } from "./rig";
+import { planKey, planMessage } from "./plan";
 import { emittersKey, emittersOf } from "../render3d/effects3d";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
@@ -53,6 +54,9 @@ const host = createSimHost(broadcast);
 // The 3D scene: built again whenever the layout, the drill, wear or the picked floor change.
 let topFloor: number | null = null;
 let roomColors = true;
+/** The plan view's floor while it's open (null when shut). */
+let planFloor: number | null = null;
+let sentPlan = "";
 let sentScene = "";
 let sentPeople = "";
 let sentRig = "";
@@ -80,6 +84,18 @@ function sendScene(force = false): void {
     const fxLine = JSON.stringify({ type: "fx", emitters }) + "\n";
     for (const c of clients) c.write(fxLine);
   }
+  // The plan, while it's open: again whenever what it shows changes.
+  if (planFloor !== null) {
+    const pk = planKey(state, planFloor, roomColors);
+    if (force || pk !== sentPlan) {
+      sentPlan = pk;
+      const t0 = performance.now();
+      const plan = planMessage(state, planFloor, roomColors);
+      const planLine = JSON.stringify(plan) + "\n";
+      for (const c of clients) c.write(planLine);
+      if (args.verbose) console.log(`Plan of floor ${planFloor}: ${plan.ops.length} ops, ${plan.markers.length} rooms, ${(planLine.length / 1024).toFixed(0)} KB, ${(performance.now() - t0).toFixed(0)} ms`);
+    }
+  } else sentPlan = "";
   // The drill rig: again for another hole, or when its grippers brace.
   const rk = rigKey(state, host.gameId());
   if (force || rk !== sentRig) {
@@ -109,7 +125,7 @@ function report(scene: ReturnType<typeof buildScene>["message"], line: string): 
 
 type BridgeMessage =
   | ToWorker
-  | { type: "view"; topFloor: number | null; roomColors?: boolean }
+  | { type: "view"; topFloor: number | null; roomColors?: boolean; plan?: number | null }
   /** The room panel: a room by id, or whatever is at a world point; null closes it. */
   | { type: "inspect"; roomId?: number | null; at?: [number, number, number] }
   /** Building: what placing the tool's room at a world point would do, and doing it. */
@@ -196,6 +212,7 @@ const server = createServer((socket) => {
   socket.write(JSON.stringify({ type: "hello", bridge: "downtown-mars" }) + "\n");
   // A new viewer needs the layout and the rest, whatever was sent before, and starts with every floor.
   topFloor = null;
+  planFloor = null;
   inspecting = null;
   host.resend();
   host.post();
@@ -215,6 +232,7 @@ const server = createServer((socket) => {
         if (msg.type === "view") {
           topFloor = msg.topFloor;
           if (msg.roomColors !== undefined) roomColors = msg.roomColors;
+          if (msg.plan !== undefined) planFloor = msg.plan;
           sendScene();
         } else if (msg.type === "hover") {
           send(hover(host.active(), msg.tool, msg.at));

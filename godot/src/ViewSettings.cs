@@ -14,6 +14,8 @@ public static class ViewSettings
     public static Overview Camera { get; set; } = Overview.Iso;
     public static bool WallsDown { get; set; }
     public static bool RoomColors { get; set; } = true;
+    /// <summary>The plan view (2D) instead of a 3D camera.</summary>
+    public static bool Plan { get; set; }
 
     public static void Load()
     {
@@ -22,6 +24,7 @@ public static class ViewSettings
         Camera = (Overview)(int)cfg.GetValue("view", "camera", (int)Overview.Iso);
         WallsDown = (bool)cfg.GetValue("view", "walls_down", false);
         RoomColors = (bool)cfg.GetValue("view", "room_colors", true);
+        Plan = (bool)cfg.GetValue("view", "plan", false);
     }
 
     /// <summary>A test run (a screenshot or a benchmark): nothing it changes is kept.</summary>
@@ -35,6 +38,7 @@ public static class ViewSettings
         cfg.SetValue("view", "camera", (int)Camera);
         cfg.SetValue("view", "walls_down", WallsDown);
         cfg.SetValue("view", "room_colors", RoomColors);
+        cfg.SetValue("view", "plan", Plan);
         cfg.Save(File);
     }
 }

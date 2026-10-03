@@ -50,6 +50,10 @@ public partial class BuildMode : Node3D
     public bool Painting => Corridor != null && !_bulkhead && !_windows;
     int _shape;
     public bool Active => _strip.Visible;
+    /// <summary>The ghost (or corridor strip) as last hovered: world-space triangles, and whether it can go there (for the plan view).</summary>
+    public (Vector3[] tris, bool ok) GhostShape => _ghost.Visible && HasTool ? (_ghostVerts, _ghostOk) : (Array.Empty<Vector3>(), false);
+    Vector3[] _ghostVerts = Array.Empty<Vector3>();
+    bool _ghostOk;
 
     public BuildMode(CanvasLayer hud, Action<object> send)
     {
@@ -358,6 +362,8 @@ public partial class BuildMode : Node3D
             var f = MemoryMarshal.Cast<byte, float>(Convert.FromBase64String(g.GetString()!)).ToArray();
             var verts = new Vector3[f.Length / 3];
             for (var i = 0; i < verts.Length; i++) verts[i] = new Vector3(f[i * 3], f[i * 3 + 1], f[i * 3 + 2]);
+            _ghostVerts = verts;
+            _ghostOk = ok;
             var arrays = new Godot.Collections.Array();
             arrays.Resize((int)Mesh.ArrayType.Max);
             arrays[(int)Mesh.ArrayType.Vertex] = verts;
