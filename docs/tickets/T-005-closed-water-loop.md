@@ -14,10 +14,11 @@ A colony "loses way too much water and really relies on supply drops full of wat
 
 ## Context
 The agreed design (N-0005, Claude's proposal approved, plus Bryon's answers):
-- **Clean water is one shared pool**, like power. Anything that uses clean water (people, farms, galleys and kitchens, life support, clinics, gyms, parks, industry) turns the same amount into **gray** right away, 1:1. Only clean water can be used.
+- **Clean water is one shared pool**, like power. Anything that uses clean water (people, farms, galleys and kitchens, clinics, gyms, parks, industry; not life support) turns the same amount into **gray** right away, 1:1. Only clean water can be used.
 - **Treatment** (the water recycler) turns gray back into clean, costing power, with noise. It returns about **95–98%**; the rest is **sludge that becomes soil**, slowly (the soil output Bryon asked for).
 - **Some industrial rooms** turn part of their water into **tailings** instead of gray. Early on, tailings can only be stored; **if storage is full, the overflow just disappears for now**. A later room reclaims tailings (T-007).
 - **Names:** clean / gray / **tailings** (not "black water", which means toilet waste in real life).
+- **Life support** uses water up for good (water → oxygen); it doesn't return gray. See T-011 for the air loop that keeps this small.
 - **Wells bring in gray** (salty brine in the story), so well water needs treating. Supply drops and trade still top up what leaks away.
 - **Gray water needs its own storage.** The water tank lets you **choose what it holds (clean, gray or tailings)**, the way a farm picks its crop. When the gray tanks are full, the rooms using water stall.
 - **The water charts must show exactly what is converting water, by source and by user.** Today colonists show up as a single "colonists" consumer (`record(state, id, "out", LABELS.colonists, …)` in `src/sim/economy.ts`), and restrooms *return* gray/black water (`LABELS.restrooms`). Replace both with clear per-user flows: who used clean water, who made gray, the recycler's in and out, and tailings by source.
@@ -36,9 +37,10 @@ Data: rename `blackWater` to `tailings`; give each water-using room a gray (and 
 - GUIDE.md: Water.
 
 ## Open questions
-- [ ] Which industrial rooms make tailings, and how much? Proposed: the silicon refinery and concrete plant send half their water to tailings; the brickworks a quarter; everything else returns all of it as gray.
+- [x] Which industrial rooms make tailings? The silicon refinery and concrete plant send half their water to tailings, the brickworks a quarter, and the **electronics fab** too (it uses no water today, so give it some, say 2 a day, half to tailings). Everything else returns all of it as gray. (Bryon, Oct 4)
 - [ ] The composter eats black water today (toilet waste + scraps → soil). After the rename that would mean it eats industrial tailings. Proposed: the composter stops taking water at all (scraps → soil), and the recycler's sludge is the other soil source.
-- [ ] Life support splits water into oxygen in real life (it's really used up). Return it as gray like everything else (keeps the loop closed), or let it be a true sink? Proposed: gray, to keep the loop simple.
+- [x] Life support is a **true sink**: water split into oxygen is gone for good (the hydrogen isn't tracked). It's the one deliberate leak besides tailings, and it shrinks a lot once the air loop exists (T-011): oxygen is made from water only to fill new living space, and O2 ↔ CO2 cycles after that. (Bryon, Oct 4)
 
 ## History
 - 2026-10-04 18:03 opened from N-0005
+- 2026-10-04 18:56 tailings list and life support answered; air loop split out as T-011
