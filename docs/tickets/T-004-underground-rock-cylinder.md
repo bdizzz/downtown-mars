@@ -31,3 +31,4 @@ Add an open, inward-facing cylinder mesh at the unlocked rings' outer radius, fr
 ## History
 - 2026-10-04 16:12 opened from N-0004
 - 2026-10-04 16:14 questions answered
+- 2026-10-04 19:29 building on t-004-underground-rock-cylinder
