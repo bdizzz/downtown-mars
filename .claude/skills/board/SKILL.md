@@ -19,6 +19,6 @@ Things Bryon might ask for:
 - **"drop T-0NN"**: `node scripts/board.mjs log T-0NN "dropped: <his reason>" --status dropped`.
 - **more context for a ticket**: add it to the ticket's Context section.
 
-After any ticket edit, publish: `node scripts/board.mjs publish "Tickets: <what changed>"` plus a blank line and the attribution line from the system reminder (commits only `docs/tickets/` on main and pushes it).
+After any ticket edit, publish: `node scripts/board.mjs publish "chore(tickets): <what changed>"` plus a blank line and the attribution line from the system reminder (commits only `docs/tickets/` on main and pushes it).
 
 This skill doesn't build anything; for that it's /build.

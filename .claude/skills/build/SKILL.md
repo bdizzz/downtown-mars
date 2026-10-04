@@ -35,7 +35,7 @@ If there's overlap, tell Bryon in one or two lines ("PR #41 (T-007) rewrites `da
 
 ```sh
 node scripts/board.mjs log T-0NN "blocked: overlaps PR #41" --blocked-by T-007   # or --blocked-by "#41" if the PR has no ticket
-node scripts/board.mjs publish "Tickets: T-0NN waits on T-007"   # plus a blank line and the attribution line
+node scripts/board.mjs publish "chore(tickets): block T-0NN on T-007"   # plus a blank line and the attribution line
 ```
 
 The ticket shows as ready again by itself once T-007 is done. Then go back to step 1.
@@ -46,7 +46,7 @@ The branch is `t-0NN-<ticket-slug>`, e.g. `t-012-drill-button-hidden`.
 
 - If this session is in the main checkout (`git rev-parse --git-dir` equals `--git-common-dir`), don't build there; it's where Bryon takes notes and plays. Load `EnterWorktree` (ToolSearch `select:EnterWorktree`) and enter a worktree named after the branch.
 - In the worktree: `git fetch origin main` and `git switch -c t-0NN-<slug> origin/main`. If that fails because the worktree's branch already has commits of its own, stop and ask. (In an app-made worktree, use the `sync_with_base_branch` tool to bring in main later, not `git merge`.)
-- **Claim it**: `node scripts/board.mjs log T-0NN "building on t-0NN-<slug>" --here`, commit that, then `git push -u origin t-0NN-<slug>`. The pushed branch is what shows the ticket as in flight on every machine.
+- **Claim it**: `node scripts/board.mjs log T-0NN "building on t-0NN-<slug>" --here`, commit that (`chore(tickets): claim T-0NN`), then `git push -u origin t-0NN-<slug>`. The pushed branch is what shows the ticket as in flight on every machine.
 - Install packages if `node_modules` is missing (`npm install`).
 
 ## 4. Build it
@@ -63,11 +63,11 @@ Work as CLAUDE.md says: brain and face, data in JSON, deterministic sim. Read on
 
 - Update the docs the ticket lists under "Docs to update", plus whatever the change makes stale: "Notes as built" in the relevant plan, `docs/GUIDE.md` for player-visible changes, `docs/DECISIONS.md` for design decisions, and `node scripts/room-status.mjs` if rooms changed. The README only if its short overview changes.
 - Mark the ticket done in the branch, so it lands on main with the merge: `node scripts/board.mjs log T-0NN "built" --status done --here`.
-- Commit in small logical steps, ending each message with the attribution line from the system reminder. `git push`.
+- Commit in small logical steps, in the Conventional Commits format from CLAUDE.md ("Commit messages"), e.g. `fix(ui): keep the drill button clear of the room panel (T-0NN)`, ending each message with the attribution line from the system reminder. `git push`.
 - Open the PR. Bryon is the only reviewer, so keep it short:
 
   ```sh
-  gh pr create --base main --title "T-0NN: <ticket title>" --body "$(cat <<'EOF'
+  gh pr create --base main --title "<type>(<scope>): <summary> (T-0NN)" --body "$(cat <<'EOF'
   <one to three lines: what changed and why>
 
   Tested: <npm test, what was checked in the browser>

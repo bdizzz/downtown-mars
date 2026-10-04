@@ -106,4 +106,18 @@ Tickets are checked in (`docs/tickets/`, see its README), so any machine can bui
 
 A SessionStart hook (`.claude/hooks/fresh-main.sh`) fetches `origin/main` at the start of every session, and fast-forwards the checkout if it's on a clean `main`.
 
+## Commit messages
+
+[Conventional Commits](https://www.conventionalcommits.org/) (adopted Oct 4, 2026; older history doesn't follow it): `type(scope): summary`, with the ticket id at the end when there is one.
+
+```
+fix(render3d): light only the glazed room's half of the corridor on hover (T-003)
+```
+
+- **type**: `feat` (something new for the player), `fix` (a bug), `perf`, `refactor` (no behavior change), `test`, `docs` (docs only), `style` (formatting only), `build` (packaging, dependencies, Vite), `chore` (tooling, scripts, skills, tickets), `revert`. Balance changes in `data/*.json` are `feat` or `fix` with scope `balance`.
+- **scope** (optional, one word): the area, as in tickets: `sim`, `data`, `ui`, `render3d`, `render2d`, `godot`, `bridge`, `audio`, `docs`, `balance`, `events`, `rooms`, `tickets`, `devtools`.
+- **summary**: imperative and lowercase ("add", not "added" or "adds"), no full stop, about 72 characters at most. Put the why and the details in the body.
+- A breaking change to saves or the bridge protocol gets a `!` (`feat(sim)!: …`) and a `BREAKING CHANGE:` line in the body.
+- PR titles follow the same format.
+
 Several sessions may work on the game at once: keep each to one area, on its own branch or worktree, and update the docs and commit as you finish so the others can see what changed.
