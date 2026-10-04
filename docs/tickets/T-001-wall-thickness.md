@@ -20,15 +20,16 @@ Room walls are zero-thickness planes, which "isn't realistic when you think too 
 - Related: T-002 (walls down), T-003 (glass overlay).
 
 ## Approach
-Build each wall once per edge (room–room, room–corridor, room–rock), as a box straddling the edge line or set into the room, rather than per room face. Keep the walls-down tagging per side. Done: 0.25 m walls everywhere in 3D, one wall between neighbours, doors and windows cut cleanly through the thickness, walls down/outlines/picking still right, furniture not clipping. Check Godot.
+Build each wall once per edge (room–room, room–corridor, room–rock), as a box centred on the edge line (0.125 m each side, the same for corridor, tube and rock edges), rather than per room face. Keep the walls-down tagging per side. Done: 0.25 m walls everywhere in 3D, one wall between neighbours, doors and windows cut cleanly through the thickness, walls down/outlines/picking still right, furniture not clipping. Check Godot.
 
 ## Docs to update
 - ART.md or DESIGN.md (3D section): walls are 0.25 m thick, one per shared edge.
 - PLAN-GODOT.md if Godot needed changes.
 
 ## Open questions
-- [ ] Where does the thickness go? (a) centred on the edge line, so a room loses 0.125 m on each walled side (proposed); or (b) entirely inside each room, with shared walls split.
-- [ ] Walls along corridors and gallery tubes: same 0.25 m, eating into the corridor/tube side or the room side? And the walls facing rock?
+- [x] Where does the thickness go? Centred on the edge line, so a room loses 0.125 m on each walled side (Bryon, Oct 4).
+- [x] Walls along corridors, gallery tubes and rock: the same 0.25 m, centred on the edge line like every other wall (Bryon, Oct 4).
 
 ## History
 - 2026-10-04 16:12 opened from N-0001
+- 2026-10-04 16:14 questions answered

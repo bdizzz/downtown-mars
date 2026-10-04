@@ -26,8 +26,9 @@ Start with the tag change (corridor- and rock-facing walls are never "see-across
 - DECISIONS.md (3D view): walls down lowers only walls that hide a room.
 
 ## Open questions
-- [ ] Walk-through rooms and plazas count as "rooms" (lowered), and gallery tubes count as corridors (kept)? Proposed: yes to both.
-- [ ] Only in Iso, or in every view that has walls down (Top, Cutaway)? Proposed: every view, since it's the same rule.
+- [x] Walk-through rooms and plazas count as rooms (lowered); gallery tubes count as corridors (kept) (Bryon, Oct 4).
+- [x] Every view that has walls down, not just Iso (Bryon, Oct 4).
 
 ## History
 - 2026-10-04 16:12 opened from N-0002
+- 2026-10-04 16:14 questions answered

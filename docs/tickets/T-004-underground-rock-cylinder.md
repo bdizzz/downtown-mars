@@ -19,14 +19,15 @@ Viewing a floor below the surface, you can see far into the distance past the ho
 - Godot draws its own sky/background; it'll want the same cylinder.
 
 ## Approach
-Add an open, inward-facing cylinder mesh at the unlocked rings' outer radius, from the picked floor's bottom up to ground level, shown only when a floor is picked; rebuild on floor change and when rings open. Done: Iso/Top on any underground floor shows rock beyond the rings instead of open distance; zooming out past it never hides anything. Same in Godot.
+Add an open, inward-facing cylinder mesh at the unlocked rings' outer radius, from the picked floor's bottom up to ground level, shown whenever the view is below ground (a floor picked, or walking underground); rebuild on floor change and when rings open. Done: Iso/Top on any underground floor shows rock beyond the rings instead of open distance; zooming out past it never hides anything. Same in Godot.
 
 ## Docs to update
 - ART.md: underground views are closed in by rock.
 - PLAN-GODOT.md if ported.
 
 ## Open questions
-- [ ] Should first person (walk) underground get it too? Proposed: yes, whenever you're below ground.
+- [x] First person (walk) underground gets it too, whenever you're below ground (Bryon, Oct 4).
 
 ## History
 - 2026-10-04 16:12 opened from N-0004
+- 2026-10-04 16:14 questions answered
