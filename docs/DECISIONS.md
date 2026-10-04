@@ -169,3 +169,4 @@ Deliberately not decided yet:
 - **Rings 4–6** and how they unlock.
 - **Smaller items:** difficulty settings, accessibility, mod support.
 - **Trademark check** for "Downtown Mars."
+- **Web or Godot, and the repo's layout.** The Godot viewer (`godot/`) is close to parity with the web game, with the sim still in TypeScript; whether it becomes the main version (and the sim moves to C#) isn't decided. Moving the web code into its own folder was considered (Oct 3) and held off: if it's done, split into `core/` (sim and shared view code), `web/`, `godot/` and `bridge/`, not a bare `web/`.

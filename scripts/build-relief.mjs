@@ -1,6 +1,7 @@
 // Build data/mars-relief.jpg, the shaded relief the map draws (the web's map screen and the Godot
 // viewer's globe), from NASA's MOLA MEGDR 16 px/degree grid (MEGT90N000EB.IMG from the PDS
 // Geosciences Node, public domain):
+// (https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x/meg016/megt90n000eb.img, not kept in the repo)
 //
 //   node scripts/build-relief.mjs path/to/megt90n000eb.img
 //

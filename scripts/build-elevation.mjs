@@ -1,5 +1,6 @@
 // Build data/mars-elevation.json from NASA's MOLA MEGDR 4 px/degree grid
 // (MEGT90N000CB.IMG from the PDS Geosciences Node, public domain):
+// (https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x/meg004/megt90n000cb.img, not kept in the repo)
 //
 //   node scripts/build-elevation.mjs path/to/megt90n000cb.img
 //
