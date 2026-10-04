@@ -2,7 +2,7 @@ import { useState } from "react";
 import { describeSave, readSave, SLOTS, slotLabel, type Slot } from "./saves";
 import type { Settings } from "./settings";
 import { SettingsView } from "./SettingsView";
-import { APP_VERSION } from "./version";
+import { APP_VERSION, useGitBranch } from "./version";
 
 interface Props {
   /** "title" before a game starts; "pause" in the middle of one. */
@@ -27,6 +27,7 @@ export function Menu(props: Props) {
   const { mode, onResume, onNewGame, onSave, onLoad, onExport, onImport, error, tutorialHidden, onShowTutorial } = props;
   const [view, setView] = useState<"main" | "save" | "load" | "settings">("main");
   const [confirm, setConfirm] = useState<Confirm>(null);
+  const branch = useGitBranch();
   // Re-read storage on every render: saves change underneath us.
   const saves = Object.fromEntries(SLOTS.map((s) => [s, readSave(s)])) as Record<Slot, ReturnType<typeof readSave>>;
   const auto = saves.autosave;
@@ -113,7 +114,14 @@ export function Menu(props: Props) {
             <button onClick={() => setView("main")}>Back</button>
           </div>
         )}
-        <p className="menu-version">{APP_VERSION}</p>
+        <p className="menu-version">
+          {branch && (
+            <span className="menu-branch" title={`Git branch: ${branch} (dev server only)`}>
+              git: {branch}
+            </span>
+          )}
+          <span>{APP_VERSION}</span>
+        </p>
       </div>
     </div>
   );

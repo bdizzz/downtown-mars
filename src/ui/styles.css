@@ -18,11 +18,6 @@ html, body, #root { margin: 0; height: 100%; }
 .title { font-weight: 700; letter-spacing: 0.02em; }
 .clock { font-variant-numeric: tabular-nums; min-width: 120px; }
 .tick { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
-.git-branch {
-  color: var(--muted); font-size: 0.85em; white-space: nowrap;
-  max-width: 28ch; overflow: hidden; text-overflow: ellipsis;
-  border: 1px solid var(--muted); border-radius: 4px; padding: 1px 6px;
-}
 .speeds { display: flex; gap: 4px; }
 .speeds button {
   background: transparent; color: var(--text);
@@ -246,7 +241,9 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 @media (max-width: 560px) { .help-cols { grid-template-columns: 1fr; } }
 /* Sit above the dock so neither hides the other. */
 .tutorial, .tutorial-pill { bottom: calc(76px * var(--ui-scale, 1)); }
-.menu-version { margin: 0; font-size: 11px; color: var(--muted); text-align: right; }
+.menu-version { margin: 0; font-size: 11px; color: var(--muted); display: flex; justify-content: flex-end; gap: 12px; }
+/* The dev server's git branch, opposite the version (vite.config.ts gitBranch). */
+.menu-branch { margin-right: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Where the 3D camera is (and, walking, what the keys do): a quiet label, top left. */
 .cam-readout {
   position: absolute; top: 10px; left: 12px; z-index: 2; pointer-events: none;
