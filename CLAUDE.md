@@ -90,4 +90,19 @@ Milestones 1–14 are built: one hole growing into a network of two or more, a 3
 
 Before committing, run `npm test` (unit tests plus scripted playthroughs) and check the change in the browser at http://localhost:5173. To test without touching Bryon's own browser game, open the same server at http://[::1]:5173: a different origin, so its saves (in local storage) are separate. `src/bridge` is type-checked separately: `npx tsc --noEmit -p tsconfig.node.json` (the main `tsconfig.json` leaves it out). For Godot changes, `cd godot && dotnet build`, and check them with a test run (see "Testing the viewer" in `PLAN-GODOT.md`).
 
+## Playtest notes and the board
+
+Bryon's playtest notes flow through four skills (`.claude/skills/`):
+
+| Skill | Does |
+| --- | --- |
+| `/note <text>` | Adds the note verbatim to the inbox. Nothing else. |
+| `/ingest` | Turns inbox notes into item cards (`T-012`, with size S/M/L/XL, status and open questions) and archives each note word for word. No repo edits. |
+| `/board` | Syncs PR states from GitHub and shows what's ready, needs answers, blocked, in flight and in review. |
+| `/build [T-012]` | One item → overlap check against open PRs → a worktree branched from a fresh `origin/main` → build, test, docs → PR → card in review. Merged PRs move cards to done on the next sync. |
+
+The tracker (inbox, archive, cards, `BOARD.md`) lives in `.tracker/` in the main checkout. It's gitignored, so status changes never collide across branches; `node scripts/board.mjs` finds it from any worktree. Doc changes for an item ride in its PR, not in `/ingest`.
+
+A SessionStart hook (`.claude/hooks/fresh-main.sh`) fetches `origin/main` at the start of every session, and fast-forwards the checkout if it's on a clean `main`.
+
 Several sessions may work on the game at once: keep each to one area, on its own branch or worktree, and update the docs and commit as you finish so the others can see what changed.
