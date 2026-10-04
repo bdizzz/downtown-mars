@@ -56,6 +56,13 @@ export function wallOf(layout: Layout, room: RoomInstance, edgeId: string): Edge
   return outside.filter((x) => sameWall(x, e) && viewAcross(layout, x, own) !== null);
 }
 
+/** Which side of a border a room is on, in edgeSides' order (0: the lower slot, or the inner ring), or null if neither. */
+export function roomSide(layout: Layout, room: RoomInstance, e: Edge): 0 | 1 | null {
+  const own = ownCells(room);
+  const i = edgeSides(layout.hole, e).findIndex((c) => !!c && own.has(key(c)));
+  return i === 0 || i === 1 ? i : null;
+}
+
 /** The borders of a room's wall (the one this border is on) that have windows in them, blind or not: what taking them out clears. */
 export function glazedOnWall(layout: Layout, room: RoomInstance, edgeId: string): Edge[] {
   const e = edgeById(layout.hole, edgeId);

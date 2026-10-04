@@ -10,6 +10,7 @@ import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, pai
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
+import { roomSide } from "../sim/windows";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
 import { Look, type LookLike } from "./look";
@@ -822,13 +823,17 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
   }
 
-  /** A border highlighted on its floor, where the corridor is (or will be), outlined so it reads against any finish. */
-  function ghostEdge(id: string, color: number): void {
+  /**
+   * A border highlighted on its floor, where the corridor is (or will be), outlined so it reads against any finish.
+   * Given a room (the windows tool's), only the half on that room's side.
+   */
+  function ghostEdge(id: string, color: number, room?: RoomInstance): void {
     if (!layout) return;
     const e = edgeById(layout.hole, id);
     if (!e) return;
     const y = floorSpan(e.floor)[0] + 0.08;
-    const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y), solid(color, 0.55));
+    const side = room ? (roomSide(layout, room, e) ?? undefined) : undefined;
+    const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y, side), solid(color, 0.55));
     strip.renderOrder = 9;
     overlay.add(strip);
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(strip.geometry), lines(color));
@@ -865,7 +870,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!info || view.mode === "walk") return;
     const p = info.pick;
     if (info.edge) {
-      for (const id of info.edge.windows?.edges ?? [info.edge.id]) ghostEdge(id, info.edge.refusal || info.edge.erase ? HOVER.bad : HOVER.ok);
+      const w = info.edge.windows;
+      const room = w?.roomId ? layout.rooms.find((r) => r.id === w.roomId) : undefined;
+      for (const id of w?.edges ?? [info.edge.id]) ghostEdge(id, info.edge.refusal || info.edge.erase ? HOVER.bad : HOVER.ok, room);
       return;
     }
     if (tool?.kind === "build" && info.check) {

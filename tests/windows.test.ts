@@ -6,8 +6,8 @@ import { ensureFloors, type Location } from "../src/sim/placement";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { createWorld } from "../src/sim/world";
-import { glazedWalls, roomForWindows, shaftBorders, wallOf, windowComfort, windowCost } from "../src/sim/windows";
-import { openingsOf } from "../src/render3d/rooms3d";
+import { glazedWalls, roomForWindows, roomSide, shaftBorders, wallOf, windowComfort, windowCost } from "../src/sim/windows";
+import { corridorStripGeometry, openingsOf } from "../src/render3d/rooms3d";
 import { frameOf } from "../src/view/furnish";
 import { corridorCommand, edgeHoverFor } from "../src/view/interaction";
 
@@ -164,5 +164,40 @@ describe("windows", () => {
     expect(room.windows?.sort()).toEqual(shaftBorders(back.world.holes[0]!.layout, room).sort());
     // Not the entrance (it's walk-through).
     expect(back.world.holes[0]!.layout.rooms.find((r) => r.type === "entrance")!.windows).toBeUndefined();
+  });
+
+  it("the hover ghost covers only the glazed room's half of the corridor", () => {
+    const s = site();
+    const room = roomOf(s, build(s, "bunk_dorm", ring(1, 1, 1, 2)));
+    const hole = s.layout.hole;
+    // Its side walls: the room is past the left one, before the right one; the shaft wall is outside it.
+    const left = radialEdge(hole, 1, 1, 1);
+    const right = radialEdge(hole, 1, 1, 3);
+    const shaft = galleryEdges(hole, 1).find((e) => roomSide(s.layout, room, e) !== null)!;
+    expect(roomSide(s.layout, room, left)).toBe(1);
+    expect(roomSide(s.layout, room, right)).toBe(0);
+    expect(roomSide(s.layout, room, shaft)).toBe(1);
+    expect(roomSide(s.layout, room, radialEdge(hole, 1, 1, 5))).toBeNull();
+    // Strips: the half toward the room, half as wide.
+    const radii = (side?: 0 | 1) => {
+      const a = corridorStripGeometry(s.layout, shaft, 0, side).getAttribute("position").array;
+      const r: number[] = [];
+      for (let i = 0; i < a.length; i += 3) r.push(Math.hypot(a[i]!, a[i + 2]!));
+      return [Math.min(...r), Math.max(...r)];
+    };
+    const [lo, hi] = radii();
+    const mid = (lo + hi) / 2;
+    expect(radii(1)[0]).toBeCloseTo(mid, 5);
+    expect(radii(1)[1]).toBeCloseTo(hi, 5);
+    expect(radii(0)[1]).toBeCloseTo(mid, 5);
+    // Along a spoke: side 1 lies at larger angles than the border.
+    const turnOf = (side: 0 | 1) => {
+      const a = corridorStripGeometry(s.layout, left, 0, side).getAttribute("position").array;
+      let sum = 0;
+      for (let i = 0; i < a.length; i += 3) sum += Math.atan2(a[i + 2]!, a[i]!);
+      return sum / (a.length / 3);
+    };
+    expect(turnOf(1)).toBeGreaterThan(left.turn * 2 * Math.PI);
+    expect(turnOf(0)).toBeLessThan(left.turn * 2 * Math.PI);
   });
 });
