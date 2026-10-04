@@ -179,7 +179,7 @@ describe("windows", () => {
     expect(roomSide(s.layout, room, shaft)).toBe(1);
     expect(roomSide(s.layout, room, radialEdge(hole, 1, 1, 5))).toBeNull();
     // Strips: the half toward the room, half as wide.
-    const radii = (side?: 0 | 1) => {
+    const radii = (side?: 0 | 1): [number, number] => {
       const a = corridorStripGeometry(s.layout, shaft, 0, side).getAttribute("position").array;
       const r: number[] = [];
       for (let i = 0; i < a.length; i += 3) r.push(Math.hypot(a[i]!, a[i + 2]!));
