@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
 import { topExtras } from "../view/hudItems";
+import { useGitBranch } from "./version";
 
 interface Props {
   snapshot: Snapshot | null;
@@ -38,6 +39,7 @@ export function nextSpeed(from: number, step: number): number | null {
 // supply drop and the office. Everything else lives in the dock's modes.
 export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActiveHole, openMenu, keysEnabled, highlight }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
+  const branch = useGitBranch();
   // Space toggles pause, remembering the last running speed; − and + step the speed down and up
   // (from paused, they start at one step from the remembered speed). Past either end, nothing.
   const resumeRef = useRef(1);
@@ -124,6 +126,11 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
         </button>
       )}
       <span className="tick">tick {snapshot?.tick ?? 0}</span>
+      {branch && (
+        <span className="git-branch" title={`Git branch: ${branch} (dev server only)`}>
+          git: {branch}
+        </span>
+      )}
     </header>
   );
 }

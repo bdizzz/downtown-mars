@@ -16,6 +16,32 @@ function commit(): string {
 }
 
 /**
+ * The git branch this dev server is serving (dev server only): GET
+ * /__dev/branch returns its name, read fresh each time so it follows a
+ * checkout that switches branches; "" outside git, a short hash when detached.
+ */
+function gitBranch(): Plugin {
+  return {
+    name: "dev-git-branch",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/__dev/branch", (_req, res) => {
+        let name = "";
+        try {
+          name = execSync("git rev-parse --abbrev-ref HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+          if (name === "HEAD") name = commit();
+        } catch {
+          // Not a git checkout: no branch to show.
+        }
+        res.setHeader("Content-Type", "text/plain");
+        res.setHeader("Cache-Control", "no-store");
+        res.end(name);
+      });
+    },
+  };
+}
+
+/**
  * The furnishing tool's save (dev server only): POST the templates to
  * /__dev/layouts and they're written to data/layouts.json, one placement per
  * line, keeping the file's note. Only well-formed templates are accepted.
@@ -98,7 +124,7 @@ function saveGodotScene(): Plugin {
 export default defineConfig({
   // Relative paths, so the build runs from any folder (itch.io serves games from a sub-path).
   base: "./",
-  plugins: [react(), saveLayouts(), saveGodotScene()],
+  plugins: [react(), saveLayouts(), saveGodotScene(), gitBranch()],
   worker: { format: "es" },
   define: {
     __APP_VERSION__: JSON.stringify(`v${pkg.version} · ${commit()}`),
