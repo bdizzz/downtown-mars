@@ -5,7 +5,7 @@
 //   node scripts/try.mjs [target] [--checkout] [--json]
 //
 // target:
-//   T-003, t-003, 3     the worktree on that ticket's t-003-… branch
+//   T-003, t-003, t3, 3 the worktree on that ticket's t-003-… branch
 //   <branch>            the worktree with that branch checked out (main: the main checkout)
 //   (nothing)           this worktree, if run from one; else the only other worktree
 // --checkout            no worktree for it yet: make one in .claude/worktrees/ from origin

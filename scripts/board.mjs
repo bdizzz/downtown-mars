@@ -32,6 +32,7 @@
 //   node scripts/board.mjs show <id>         print one ticket or feature with its live state
 //   node scripts/board.mjs publish <message> commit docs/tickets/ alone on main and push it
 //   node scripts/board.mjs path              print the local tracker folder
+// Ids can be shorthand anywhere: t6, T6, t-6 and 6 mean T-006; f1 means F-001.
 // Everything works on the main checkout's tickets; add --here to edit this
 // checkout's copy instead.
 
@@ -47,6 +48,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+
+// Mistakes (a bad id, a wrong status) print one line, not a stack trace.
+process.on("uncaughtException", (e) => {
+  console.error(`board: ${e.message}`);
+  process.exit(1);
+});
 
 const STORED_STATUSES = ["open", "done", "dropped"];
 const FEATURE_STATUSES = ["draft", "agreed", "done", "dropped"];
@@ -166,9 +173,17 @@ function writeTicket(t) {
 }
 
 const idNum = (id) => Number(String(id).replace(/\D/g, ""));
-const isFeature = (id) => /^f/i.test(String(id).trim());
-/** "12" or "t-12" → T-012; "f-1" → F-001. */
-const normId = (id) => `${isFeature(id) ? "F" : "T"}-${String(idNum(id)).padStart(3, "0")}`;
+/** Ids in full or shorthand: T-006, t-6, t6, T6 and 6 are T-006; F-001, f1 and F1 are F-001. Null if it isn't one. */
+function parseId(s) {
+  const m = /^([tf])?-?0*(\d+)$/i.exec(String(s).trim());
+  return m ? `${(m[1] ?? "T").toUpperCase()}-${m[2].padStart(3, "0")}` : null;
+}
+function normId(s) {
+  const id = parseId(s);
+  if (!id) throw new Error(`"${s}" isn't a ticket or feature id (T-006, t6 or 6; F-001 or f1)`);
+  return id;
+}
+const isFeature = (s) => parseId(s)?.startsWith("F") ?? false;
 
 function load(prefix) {
   return readdirSync(TICKETS)
@@ -241,7 +256,7 @@ function liveState(t, gh, byId) {
       const pr = Object.values(gh.prs).find((p) => p.number === Number(b.replace("#", "")));
       return pr?.state !== "MERGED";
     }
-    const other = byId[normId(b)];
+    const other = byId[parseId(b)];
     return !other || liveState(other, gh, byId).state !== "done";
   });
   // A feature's tasks wait until it's agreed. Only its stored status counts
@@ -464,7 +479,7 @@ switch (cmd) {
     break;
   }
   case "next-id":
-    console.log(nextId(isFeature(args[0] ?? "") ? "F" : "T"));
+    console.log(nextId(/^f/i.test(args[0] ?? "") ? "F" : "T"));
     break;
   case "log": {
     const f = flags(args);
@@ -477,7 +492,10 @@ switch (cmd) {
     }
     if (f.feature === "none") delete t.meta.feature;
     else if (f.feature) t.meta.feature = normId(`F-${idNum(f.feature)}`);
-    if (f["blocked-by"]) t.meta.blocked_by = f["blocked-by"] === "none" ? [] : f["blocked-by"].split(",").map((s) => s.trim());
+    // "#41" is a PR; anything else is a ticket id, shorthand allowed (t7 → T-007).
+    const blocker = (s) => (s.startsWith("#") ? s : normId(s));
+    if (f["blocked-by"])
+      t.meta.blocked_by = f["blocked-by"] === "none" ? [] : f["blocked-by"].split(",").map((s) => blocker(s.trim()));
     const line = `- ${stamp()} ${words.join(" ")}`.trimEnd();
     t.body = /^## History\s*$/m.test(t.body)
       ? t.body.replace(/\s*$/, `\n${line}\n`)

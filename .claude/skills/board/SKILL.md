@@ -13,7 +13,7 @@ description: Show the Downtown Mars playtest board (features, ready, needs answe
    - draft features with a plan ready (their plan PR merged, or the Breakdown filled in): offer to agree them
    - in-flight branches that look abandoned (Bryon will know): offer to delete the remote branch so the item shows as ready again (ask first; it's his branch)
 
-Things Bryon might ask for:
+Things Bryon might ask for (ids can be shorthand: `t6` or `6` is T-006, `f1` is F-001; `board.mjs` takes them as typed, and you say the full id back):
 - **"quick wins"**: only Ready tickets of size S.
 - **"answer questions"**: for each Needs answers ticket or feature, show its Problem (or Goal) and open questions, take his answers, then edit it (tick the questions, fold the answers into Problem/Approach, or a feature's Design), `node scripts/board.mjs log T-0NN "questions answered"`.
 - **an id**: `node scripts/board.mjs show T-0NN` (or `F-0NN`) and summarize it.

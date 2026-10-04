@@ -1,6 +1,6 @@
 ---
 name: build
-description: Implement one ticket from the Downtown Mars playtest board end to end — check open PRs for overlap, branch from a fresh main in a worktree, build, test, update docs, push and open a PR. Or, given a feature (F-001), write or revise its plan as a doc-only PR. Use when Bryon types /build, with a ticket id (T-012), a feature id (F-001), a description, or nothing to pick from the menu.
+description: Implement one ticket from the Downtown Mars playtest board end to end — check open PRs for overlap, branch from a fresh main in a worktree, build, test, update docs, push and open a PR. Or, given a feature (F-001), write or revise its plan as a doc-only PR. Use when Bryon types /build, with a ticket id (T-012, or shorthand like t12), a feature id (F-001, f1), a description, or nothing to pick from the menu.
 ---
 
 # /build [T-0NN … | F-0NN | description]
@@ -13,7 +13,7 @@ A **feature** id (`F-0NN`) builds its plan instead of code; see "Building a feat
 
 Run `node scripts/board.mjs menu`.
 
-- **An id**: use it. **A description**: find the matching ticket in the menu and confirm it in one line before starting.
+- **An id**: use it. Shorthand is fine: `t6`, `T6`, `t-6` and `6` mean T-006, `f1` means F-001. `board.mjs` takes either; use the full id (T-006, `t-006-…`) in the session title, branch, commits and PR. **A description**: find the matching ticket in the menu and confirm it in one line before starting.
 - **Nothing**: show the menu's Ready list and ask which. Understand "quick win" (the first Ready S; the menu lists small and old first), "oldest" and "answer questions" (as in /board).
 - If the menu says notes are waiting in the inbox, mention it once ("4 notes not on the board yet; /ingest first?"). Don't ingest unless he says so.
 
