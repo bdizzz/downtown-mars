@@ -97,11 +97,11 @@ Bryon's playtest notes flow through four skills (`.claude/skills/`):
 | Skill | Does |
 | --- | --- |
 | `/note <text>` | Adds the note verbatim to the inbox. Nothing else. |
-| `/ingest` | Turns inbox notes into item cards (`T-012`, with size S/M/L/XL, status and open questions) and archives each note word for word. No repo edits. |
-| `/board` | Syncs PR states from GitHub and shows what's ready, needs answers, blocked, in flight and in review. |
-| `/build [T-012]` | One item → overlap check against open PRs → a worktree branched from a fresh `origin/main` → build, test, docs → PR → card in review. Merged PRs move cards to done on the next sync. |
+| `/ingest` | Turns inbox notes into tickets in `docs/tickets/` (`T-012`, with size S/M/L/XL and open questions), archives each note word for word, and publishes them to main. |
+| `/board` | Shows what's ready, needs answers, blocked, in flight and in review. |
+| `/build [T-012]` | One ticket → overlap check against open PRs → a `t-012-…` branch from a fresh `origin/main` in a worktree → build, test, docs → PR. |
 
-The tracker (inbox, archive, cards, `BOARD.md`) lives in `.tracker/` in the main checkout. It's gitignored, so status changes never collide across branches; `node scripts/board.mjs` finds it from any worktree. Doc changes for an item ride in its PR, not in `/ingest`.
+Tickets are checked in (`docs/tickets/`, see its README), so any machine can build one. They store only `open`, `done` or `dropped`; the rest is derived from GitHub (a pushed `t-0NN-…` branch is in flight, an open PR is in review, a merged one is done), so status never needs syncing or collides across branches. `node scripts/board.mjs publish` commits ticket-only changes straight to main and pushes them. The inbox and the generated `BOARD.md` stay local, in `.tracker/` (gitignored). Doc changes for an item ride in its PR.
 
 A SessionStart hook (`.claude/hooks/fresh-main.sh`) fetches `origin/main` at the start of every session, and fast-forwards the checkout if it's on a clean `main`.
 

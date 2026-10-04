@@ -1,21 +1,24 @@
 ---
 name: board
-description: Show the Downtown Mars playtest board (ready, needs answers, blocked, in flight, in review), syncing PR states from GitHub first. Use when Bryon types /board or asks what's on the board, what's ready, or for quick wins.
+description: Show the Downtown Mars playtest board (ready, needs answers, blocked, in flight, in review) from docs/tickets/ and GitHub. Use when Bryon types /board or asks what's on the board, what's ready, or for quick wins.
 ---
 
 # /board
 
-1. `node scripts/board.mjs menu`. It moves cards whose PRs merged to done (and closed-unmerged ones back to ready), unblocks cards whose blockers are done, rewrites BOARD.md and prints the short view.
-2. Show that output as it is (a code block keeps the columns lined up). Mention the BOARD.md path once in case he wants the full view.
+1. `node scripts/board.mjs menu`. It reads the tickets in `docs/tickets/` and GitHub (`t-0NN-…` branches and their PRs), prints the short view and rewrites the full `BOARD.md` in the local tracker.
+2. Show the output as it is (in a code block so the columns line up). Mention the BOARD.md path once in case he wants the full view.
 3. Point out only what needs him:
    - notes waiting in the inbox ("run /ingest")
-   - cards in "Needs answers": offer to go through their questions now
-   - in-flight cards marked `stale?`: a build session probably stopped. Offer to move them back to ready (`move T-0NN ready --why "abandoned"`) or look for their branch.
+   - tickets under "Needs answers": offer to go through their questions now
+   - in-flight branches that look abandoned (Bryon will know): offer to delete the remote branch so the ticket shows as ready again (ask first; it's his branch)
 
-Options Bryon might add:
-- **"quick wins"**: only Ready cards of size S.
-- **"answer questions"**: for each Needs answers card, show its Problem and open questions, take his answers, update the card, and move it to ready.
-- **an id**: `node scripts/board.mjs show T-0NN` and summarize the card.
-- **"drop T-0NN"**: `move T-0NN dropped --why "<his reason>"`.
+Things Bryon might ask for:
+- **"quick wins"**: only Ready tickets of size S.
+- **"answer questions"**: for each Needs answers ticket, show its Problem and open questions, take his answers, then edit the ticket (tick the questions, fold the answers into Problem/Approach), `node scripts/board.mjs log T-0NN "questions answered"`.
+- **an id**: `node scripts/board.mjs show T-0NN` and summarize the ticket.
+- **"drop T-0NN"**: `node scripts/board.mjs log T-0NN "dropped: <his reason>" --status dropped`.
+- **more context for a ticket**: add it to the ticket's Context section.
+
+After any ticket edit, publish: `node scripts/board.mjs publish "Tickets: <what changed>"` plus a blank line and the attribution line from the system reminder (commits only `docs/tickets/` on main and pushes it).
 
 This skill doesn't build anything; for that it's /build.
