@@ -1575,21 +1575,27 @@ const FINISH_LOOK: Record<string, THREE.MeshStandardMaterialParameters> = {
 };
 const UNLINKED = 0xe0503a;
 
-/** A corridor's floor: a strip centred on its border, `lift` above the floor (or on the cut, from above). */
-export function corridorStripGeometry(layout: Layout, e: Edge, y: number): THREE.BufferGeometry {
+/**
+ * A corridor's floor: a strip centred on its border, `lift` above the floor (or on the cut, from above).
+ * Given a side (as edgeSides orders them), just the half toward it: the windows tool's ghost, on the glazed room's side.
+ */
+export function corridorStripGeometry(layout: Layout, e: Edge, y: number, side?: 0 | 1): THREE.BufferGeometry {
   const hole = layout.hole;
   const pos: number[] = [];
+  const lo = side === 1 ? 0 : -1;
+  const hi = side === 0 ? 0 : 1;
   if (e.kind === "radial") {
     const a = e.turn * TAU;
     const [r0, r1] = ringRadii(hole, e.ring);
-    // A flat rectangle along the spoke, HALL either side of it.
+    // A flat rectangle along the spoke, HALL either side of it (side 0 is the lower slot, toward smaller angles).
     const px = -Math.sin(a) * HALL;
     const pz = Math.cos(a) * HALL;
     const p = (r: number, s: number) => [r * Math.cos(a) + px * s, y, r * Math.sin(a) + pz * s];
-    push(pos, p(r0, -1), p(r1, -1), p(r1, 1), p(r0, -1), p(r1, 1), p(r0, 1));
+    push(pos, p(r0, lo), p(r1, lo), p(r1, hi), p(r0, lo), p(r1, hi), p(r0, hi));
   } else {
+    // Side 0 is the inner ring.
     const r = ringRadii(hole, e.circle)[1];
-    flatRing(pos, r - HALL, r + HALL, e.a0 * TAU, e.a1 * TAU, y);
+    flatRing(pos, r + lo * HALL, r + hi * HALL, e.a0 * TAU, e.a1 * TAU, y);
   }
   return geometry(pos);
 }

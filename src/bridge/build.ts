@@ -9,7 +9,8 @@ import type { Location } from "../sim/placement";
 import { floorSpan, pickAt, RING_D, TAU } from "../render3d/cylinder";
 import { corridorStripGeometry, roomGeometry } from "../render3d/rooms3d";
 import { corridors } from "../sim/corridors";
-import { edgeById, nearestEdge } from "../sim/edges";
+import { edgeById, nearestEdge, type Edge } from "../sim/edges";
+import { roomSide } from "../sim/windows";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { proposalSummary, type ProposalSummary } from "../view/corridorProposal";
 import type { Proposal } from "../view/types";
@@ -213,9 +214,17 @@ export function edgeHover(state: SimState, tool: CorridorTool, at: [number, numb
   const { pick, edge } = edgeAt(state, at);
   if (!edge || !("floor" in pick)) return { type: "edgeHovered", ok: false, text: "Point at a border between cells", cost: "" };
   const info = edgeHoverFor(state.layout, state.resources, { kind: "corridor", ...tool }, pick, edge, tool.erase).edge;
-  const geo = corridorStripGeometry(state.layout, edge, floorSpan(pick.floor)[0] + 0.08);
-  const strip = Buffer.from(new Float32Array((geo.getAttribute("position") as THREE.BufferAttribute).array).buffer).toString("base64");
-  geo.dispose();
+  // Windows: the room's whole wall, each border only on the room's half (as stage3d.ts drawOverlay).
+  const w = info?.windows;
+  const room = w?.roomId ? state.layout.rooms.find((r) => r.id === w.roomId) : undefined;
+  const edges = room && w ? w.edges.map((id) => edgeById(state.layout.hole, id)).filter((e): e is Edge => !!e) : [edge];
+  const pos: number[] = [];
+  for (const e of edges) {
+    const geo = corridorStripGeometry(state.layout, e, floorSpan(e.floor)[0] + 0.08, room ? (roomSide(state.layout, room, e) ?? undefined) : undefined);
+    pos.push(...(geo.getAttribute("position") as THREE.BufferAttribute).array);
+    geo.dispose();
+  }
+  const strip = Buffer.from(new Float32Array(pos).buffer).toString("base64");
   const what = tool.windows ? "Windows" : tool.bulkhead ? "Bulkhead" : "Corridor";
   return {
     type: "edgeHovered",

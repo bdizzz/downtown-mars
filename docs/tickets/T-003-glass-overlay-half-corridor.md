@@ -1,7 +1,7 @@
 ---
 id: T-003
 title: Windows tool highlights only the targeted wall's half of the corridor
-status: open
+status: done
 size: S
 area: render3d, godot
 touches: [src/render3d/stage3d.ts, src/render3d/rooms3d.ts]
@@ -27,3 +27,4 @@ Give `corridorStripGeometry` (or a sibling) an optional side, producing the half
 ## History
 - 2026-10-04 16:12 opened from N-0003
 - 2026-10-04 16:15 building on t-003-glass-overlay-half-corridor
+- 2026-10-04 16:19 built
