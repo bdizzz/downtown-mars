@@ -1,7 +1,7 @@
 ---
 id: T-010
 title: Rooms sized by area and placed by angle, with snapping and fill rooms
-status: open
+status: dropped
 size: XL
 area: sim, render3d
 touches: [src/sim/, src/render3d/, src/render2d/, src/ui/BuildPalette.tsx, src/sim/save.ts, data/rooms.json, data/layouts.json, godot/]
@@ -40,3 +40,4 @@ One task already known: **the furnishing tool (`?furnish`, `src/devtools/`) adap
 ## History
 - 2026-10-04 18:03 opened from N-0008
 - 2026-10-04 19:05 questions answered
+- 2026-10-04 19:13 dropped: folded into F-004 (T-012)

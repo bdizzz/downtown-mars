@@ -4,6 +4,7 @@ title: Tailings reclaimer, a late room that turns tailings back into gray water
 status: open
 size: M
 area: data, rooms
+feature: F-001
 touches: [data/rooms.json, data/config.json, data/furniture.json, data/layouts.json, src/sim/people.ts]
 blocked_by: [T-005]
 notes: [N-0005]
@@ -30,3 +31,4 @@ Add the room to `data/rooms.json` (uses tailings plus lots of power and some mac
 ## History
 - 2026-10-04 18:03 opened from N-0005
 - 2026-10-04 19:05 questions answered
+- 2026-10-04 19:13 part of F-001 (T-012)

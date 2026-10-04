@@ -97,12 +97,12 @@ Bryon's playtest notes flow through five skills (`.claude/skills/`):
 | Skill | Does |
 | --- | --- |
 | `/note <text>` | Adds the note verbatim to the inbox. Nothing else. |
-| `/ingest` | Turns inbox notes into tickets in `docs/tickets/` (`T-012`, with size S/M/L/XL and open questions), archives each note word for word, and publishes them to main. |
-| `/board` | Shows what's ready, needs answers, blocked, in flight and in review. |
-| `/build [T-012]` | One ticket → overlap check against open PRs → a `t-012-…` branch from a fresh `origin/main` in a worktree → build, test, docs → PR. |
+| `/ingest` | Turns inbox notes into tickets in `docs/tickets/` (`T-012`, with size S/M/L/XL and open questions) or, for big items, features (`F-001`), archives each note word for word, and publishes them to main. |
+| `/board` | Shows features with their tasks, then what's ready, needs answers, blocked, in flight and in review. "agree F-001" turns a feature's breakdown into tickets. |
+| `/build [T-012]` | One ticket → overlap check against open PRs → a `t-012-…` branch from a fresh `origin/main` in a worktree → build, test, docs → PR. `/build F-001` writes or revises a feature's plan instead (a doc-only PR on `f-001-…`). |
 | `/try [T-012]` | Starts the dev server for that ticket's (or branch's) worktree in the Terminal panel, on its own port from 5174 (`scripts/try.mjs` picks the checkout and port), and says what to look at. |
 
-Tickets are checked in (`docs/tickets/`, see its README), so any machine can build one. They store only `open`, `done` or `dropped`; the rest is derived from GitHub (a pushed `t-0NN-…` branch is in flight, an open PR is in review, a merged one is done), so status never needs syncing or collides across branches. `node scripts/board.mjs publish` commits ticket-only changes straight to main and pushes them. The inbox and the generated `BOARD.md` stay local, in `.tracker/` (gitignored). Doc changes for an item ride in its PR.
+Tickets are checked in (`docs/tickets/`, see its README), so any machine can build one. They store only `open`, `done` or `dropped`; the rest is derived from GitHub (a pushed `t-0NN-…` branch is in flight, an open PR is in review, a merged one is done), so status never needs syncing or collides across branches. **Features** (`F-0NN`, the epics) hold the plan for a big item and its breakdown into tasks; tickets name theirs with `feature: F-0NN` and wait until Bryon agrees the feature (`draft` → `agreed`), and a task's build reads its feature first. Ids can be shorthand in commands and chat (`/build t6` is T-006, `f1` is F-001); files, branches and commits use the full form. `node scripts/board.mjs publish` commits ticket-only changes straight to main and pushes them. The inbox and the generated `BOARD.md` stay local, in `.tracker/` (gitignored). Doc changes for an item ride in its PR.
 
 A SessionStart hook (`.claude/hooks/fresh-main.sh`) fetches `origin/main` at the start of every session, and fast-forwards the checkout if it's on a clean `main`.
 

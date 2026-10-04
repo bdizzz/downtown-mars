@@ -5,6 +5,8 @@ description: Start the web game's dev server for a ticket's or branch's worktree
 
 # /try [T-0NN | branch | main]
 
+Ticket ids can be shorthand: `t6`, `T6` and `6` all mean T-006. Pass them to the script as typed; say the full id back to Bryon.
+
 Bryon plays his own game on port 5173. Every other checkout gets its own port from 5174 up: a different origin, so its saves are separate too.
 
 ## 1. Work out the command

@@ -1,7 +1,7 @@
 ---
 id: T-012
 title: Features (epics) on the board, parents of task tickets
-status: open
+status: done
 size: M
 area: docs
 touches: [scripts/board.mjs, docs/tickets/README.md, .claude/skills/ingest/SKILL.md, .claude/skills/board/SKILL.md, .claude/skills/build/SKILL.md, CLAUDE.md]
@@ -32,3 +32,6 @@ Done: `node scripts/board.mjs menu` shows features with their tasks; the skills 
 
 ## History
 - 2026-10-04 19:30 opened from Bryon's answer on T-010 (N-0008)
+- 2026-10-04 19:09 building on t-012-features-on-the-board
+- 2026-10-04 19:15 built
+- 2026-10-04 19:20 added shorthand ids (t6 → T-006, f1 → F-001), at Bryon's ask
