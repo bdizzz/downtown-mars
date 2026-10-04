@@ -24,8 +24,9 @@ A script (e.g. `npm run saves`, running the bots headless with fixed seeds) that
 - README.md or PLAN-GODOT.md (Testing the viewer): the dev saves and how to rebuild them.
 
 ## Open questions
-- [ ] Which moments? Proposed four: **early** (day 5, the first rooms and corridors), **mid** (about day 30, around 100 people, furnished, windows, a few events seen), **network** (two holes linked by a gallery tube), and **late** (as big as the bots get, with the dome if they reach it).
-- [ ] Check them in, so every machine (and Godot testing) has the same saves? Proposed: yes; drop them from `.gitignore` and replace the five old ones.
+- [x] Four moments: **early** (day 5, the first rooms and corridors), **mid** (about day 30, around 100 people, furnished, windows, a few events seen), **network** (two holes linked by a gallery tube), and **late** (as big as the bots get, with the dome if they reach it). (Bryon, Oct 4)
+- [x] Check them in: drop `public/dev-save*.json` from `.gitignore` and replace the five old saves. (Bryon, Oct 4)
 
 ## History
 - 2026-10-04 19:23 opened from N-0009
+- 2026-10-04 19:25 questions answered
