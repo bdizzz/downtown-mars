@@ -1,7 +1,7 @@
 ---
 id: T-011
 title: Air as a mix: O2 % of the living volume, O2 ↔ CO2 loop, gas tanks
-status: open
+status: dropped
 size: XL
 area: sim, data
 touches: [data/config.json, data/rooms.json, data/resources.json, data/storage.json, data/events.json, src/sim/economy.ts, src/sim/events.ts, src/sim/save.ts, src/ui/ResourceBar.tsx, src/ui/TrendsPanel.tsx, tests/]
@@ -42,3 +42,4 @@ XL: a plan of its own first (the next free `docs/PLAN-M*.md`). Pieces: a living-
 ## History
 - 2026-10-04 18:56 opened from N-0005 (Bryon's answer about life support on T-005)
 - 2026-10-04 19:05 questions answered
+- 2026-10-04 19:13 dropped: folded into F-002 (T-012)

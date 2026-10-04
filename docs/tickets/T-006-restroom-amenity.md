@@ -4,6 +4,7 @@ title: Restrooms become a walking-distance amenity (a comfort lever)
 status: open
 size: M
 area: sim, data
+feature: F-001
 touches: [src/sim/amenities.ts, src/sim/economy.ts, data/rooms.json, data/furniture.json, src/view/roomPanel.ts]
 blocked_by: [T-005]
 notes: [N-0005]
@@ -32,3 +33,4 @@ Add restrooms to the amenity table with a walking radius and capacity; a home co
 ## History
 - 2026-10-04 18:03 opened from N-0005
 - 2026-10-04 19:05 questions answered
+- 2026-10-04 19:13 part of F-001 (T-012)

@@ -1,7 +1,7 @@
 ---
 id: T-008
 title: Upgrade a room's building material and finish in place
-status: open
+status: dropped
 size: XL
 area: sim, ui
 touches: [data/rooms.json, data/construction.json, src/sim/construction.ts, src/sim/commands.ts, src/sim/amenities.ts, src/view/roomPanel.ts, src/render3d/rooms3d.ts, src/render3d/surfaces.ts, godot/src/Looks.cs]
@@ -37,3 +37,4 @@ XL: worth a short plan of its own (`docs/PLAN-M15.md` or similar) before buildin
 ## History
 - 2026-10-04 18:03 opened from N-0006
 - 2026-10-04 19:05 questions answered
+- 2026-10-04 19:13 dropped: folded into F-003 (T-012)
