@@ -18,6 +18,11 @@ html, body, #root { margin: 0; height: 100%; }
 .title { font-weight: 700; letter-spacing: 0.02em; }
 .clock { font-variant-numeric: tabular-nums; min-width: 120px; }
 .tick { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.git-branch {
+  color: var(--muted); font-size: 0.85em; white-space: nowrap;
+  max-width: 28ch; overflow: hidden; text-overflow: ellipsis;
+  border: 1px solid var(--muted); border-radius: 4px; padding: 1px 6px;
+}
 .speeds { display: flex; gap: 4px; }
 .speeds button {
   background: transparent; color: var(--text);
