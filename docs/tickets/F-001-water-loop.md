@@ -1,7 +1,7 @@
 ---
 id: F-001
 title: Water as a closed loop
-status: draft
+status: agreed
 plan:
 notes: [N-0005]
 created: 2026-10-04 19:12
@@ -28,3 +28,4 @@ Agreed with Bryon on Oct 4 (N-0005, Claude's proposal plus his answers on T-005,
 
 ## History
 - 2026-10-04 19:12 made from T-005 (T-012 moved the water loop into a feature); tasks T-005, T-006, T-007
+- 2026-10-04 19:22 agreed (Bryon)
