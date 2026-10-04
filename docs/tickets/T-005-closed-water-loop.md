@@ -1,6 +1,6 @@
 ---
 id: T-005
-title: "Water as a closed loop: clean → gray → treatment, with tailings as the leak"
+title: Water as a closed loop: clean → gray → treatment, with tailings as the leak
 status: open
 size: L
 area: sim, data
@@ -30,6 +30,8 @@ This changes the starting balance a lot: the bots (scripted playthroughs in `tes
 ## Approach
 Data: rename `blackWater` to `tailings`; give each water-using room a gray (and for industry, tailings) output in the data (maybe a `waterReturns` split per room, rather than special-casing); the deep well makes gray; recycler about 97% plus soil; the water tank gets a "holds" choice like the farm's crop. Sim: people's water turns gray as it's used, not through restrooms (restrooms become an amenity: T-006). Charts: flows by source and user. Then rebalance the opening so a new colony with a recycler and a gray tank doesn't depend on drops. Done: `npm test` bots pass without water drops carrying them, and the charts show the whole loop.
 
+**Becomes a feature (T-012).** Bryon wants this planned as a feature (an epic): the plan, details and how to break the work into tasks live in the feature, and task tickets are written only once the feature is agreed. Until T-012 lands, this ticket stands in for the feature. Its tasks so far: this loop itself, T-006 (restrooms) and T-007 (tailings reclaimer).
+
 ## Docs to update
 - DECISIONS.md: the water loop (replaces the restroom water line and "Restrooms ... return users' water as gray and black water"); tanks choose what they hold; black water renamed to tailings.
 - PATHWAYS.md: Water.
@@ -38,9 +40,10 @@ Data: rename `blackWater` to `tailings`; give each water-using room a gray (and 
 
 ## Open questions
 - [x] Which industrial rooms make tailings? The silicon refinery and concrete plant send half their water to tailings, the brickworks a quarter, and the **electronics fab** too (it uses no water today, so give it some, say 2 a day, half to tailings). Everything else returns all of it as gray. (Bryon, Oct 4)
-- [ ] The composter eats black water today (toilet waste + scraps → soil). After the rename that would mean it eats industrial tailings. Proposed: the composter stops taking water at all (scraps → soil), and the recycler's sludge is the other soil source.
+- [x] The composter stops taking water (scraps → soil); the recycler's sludge is the other soil source. (Bryon, Oct 4)
 - [x] Life support is a **true sink**: water split into oxygen is gone for good (the hydrogen isn't tracked). It's the one deliberate leak besides tailings, and it shrinks a lot once the air loop exists (T-011): oxygen is made from water only to fill new living space, and O2 ↔ CO2 cycles after that. (Bryon, Oct 4)
 
 ## History
 - 2026-10-04 18:03 opened from N-0005
 - 2026-10-04 18:56 tailings list and life support answered; air loop split out as T-011
+- 2026-10-04 19:05 questions answered

@@ -26,8 +26,9 @@ Add restrooms to the amenity table with a walking radius and capacity; a home co
 - ROOMS.md: restroom row.
 
 ## Open questions
-- [ ] Should missing restrooms still cost health (sanitation), or only comfort now? Proposed: comfort only, with health kept for very poor coverage (say, under half covered).
-- [ ] Walking distance for a restroom? Proposed: 6 steps (60 m), shorter than a park.
+- [x] Comfort only, with a health cost kept for very poor coverage (under half covered). (Bryon, Oct 4)
+- [x] Walking distance: 6 steps (60 m). (Bryon, Oct 4)
 
 ## History
 - 2026-10-04 18:03 opened from N-0005
+- 2026-10-04 19:05 questions answered

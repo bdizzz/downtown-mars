@@ -18,17 +18,22 @@ Rooms are usually built from bare rock early because it's cheapest. Once brick a
 - The 3D look already varies walls/floors by room type (`rooms3d.ts` around line 1070, `surfaces.ts`); material and finish should show (rock strata, brick courses, metal panels), in Godot too (`godot/src/Looks.cs`, `godot/shaders/surfaces.gdshader`).
 - Comfort works through neighbor effects and home comfort (`sim/amenities.ts`, `sim/care.ts`).
 
+**Floors (from T-009's answers):** a room's floor always matches its building material and finish by default. On top of that, the **floor is its own upgrade**, independent of the walls: e.g. **fibre-composite panels** (hemp fibre), which only change the floor and give a comfort boost. More floor finishes can follow.
+
 ## Approach
-XL: worth a short plan of its own (`docs/PLAN-M15.md` or similar) before building. Rough pieces: a material + finish tier per room in the sim and saves; a data table of materials × finishes with cost and comfort/condition/other modifiers; an Upgrade action in the room panel that queues a construction job; the look per material and finish in web and Godot; bots unaffected. Done: you can take a rock bunk dorm to patterned brick, pay brick, watch it build, and see comfort rise.
+XL: worth a short plan of its own (`docs/PLAN-M15.md` or similar) before building. Rough pieces: a material + finish tier per room in the sim and saves; a data table of materials × finishes with cost and comfort/condition/other modifiers; an Upgrade action in the room panel that queues a construction job; the look per material and finish in web and Godot; bots unaffected. Floor upgrades are a separate action with their own cost and comfort. Done: you can take a rock bunk dorm to patterned brick, pay brick, watch it build, and see comfort rise; and lay fibre-composite floors in it for a little more.
+
+**Becomes a feature (T-012).** Bryon wants this planned as a feature (an epic): the plan, details and how to break the work into tasks live in the feature, and task tickets are written only once the feature is agreed. Until T-012 lands, this ticket stands in for the feature.
 
 ## Docs to update
 - DECISIONS.md, DESIGN.md (materials), ROOMS.md (material substitution), GUIDE.md: Building, ART.md (material looks).
 
 ## Open questions
-- [ ] Is the room usable while it's being upgraded? Proposed: yes, at half its normal output (and homes at reduced comfort), so upgrading doesn't feel like demolishing.
-- [ ] Which values do upgrades change? Proposed: comfort first (homes and neighbor effects), and condition wear (better materials wear slower); cave-in resistance only once cave-ins exist.
-- [ ] How many finish steps per material? Proposed: two (base and finished) for rock, brick and metal; marscrete and glass later.
-- [ ] Can you upgrade straight from rock to finished brick, or one step at a time? Proposed: straight there, paying the full cost.
+- [x] Usable while upgrading, at half output (homes at reduced comfort). (Bryon, Oct 4)
+- [x] Upgrades change comfort and condition wear; cave-in resistance only once cave-ins exist. (Bryon, Oct 4)
+- [x] Two finish steps (base and finished) for rock, brick and metal; marscrete and glass later. (Bryon, Oct 4)
+- [x] Straight from rock to finished brick is allowed, paying the full cost of **both** steps: converting to brick, then brick base → finished. (Bryon, Oct 4)
 
 ## History
 - 2026-10-04 18:03 opened from N-0006
+- 2026-10-04 19:05 questions answered

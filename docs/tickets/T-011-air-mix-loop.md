@@ -1,6 +1,6 @@
 ---
 id: T-011
-title: "Air as a mix: O2 % of the living volume, O2 ↔ CO2 loop, gas tanks"
+title: Air as a mix: O2 % of the living volume, O2 ↔ CO2 loop, gas tanks
 status: open
 size: XL
 area: sim, data
@@ -28,14 +28,17 @@ Today: O2 and CO2 are plain pooled resources (`data/config.json`: start o2 120; 
 ## Approach
 XL: a plan of its own first (the next free `docs/PLAN-M*.md`). Pieces: a living-volume measure from the layout; O2 and CO2 as amounts over that volume, shown as %; health bands; life support split into making O2 from water (only to reach the target) and scrubbing CO2 → O2 + soil; gas tanks with a chosen gas; overflow into the air; the vent event; the 0%-condition storage rule (water tanks too); charts and the resource bar showing %; save migration; bots rebalanced. Done: a colony at steady size uses almost no water for air, and growing the hole costs water for its new air.
 
+**Becomes a feature (T-012).** Bryon wants this planned as a feature (an epic): the plan, details and how to break the work into tasks live in the feature, and task tickets are written only once the feature is agreed. Until T-012 lands, this ticket stands in for the feature.
+
 ## Docs to update
 - DECISIONS.md (air mix; the vent exception to "nothing vents"), DESIGN.md, PATHWAYS.md (Air), ROOMS.md (life support, scrubber, gas tank), EVENTS.md (vent excess air), GUIDE.md: Air.
 
 ## Open questions
-- [ ] Life support does both jobs (makes O2 from water when below target, otherwise scrubs CO2), or two rooms: an **electrolyzer** (water → O2) and a **CO2 scrubber** (CO2 → O2 + soil)? Proposed: two rooms, so the player sees which is the water leak; the existing life support becomes the scrubber.
-- [ ] Health bands? Proposed: target 21%; comfortable 19.5–23.5%; below 19.5% health falls, below 16% it falls fast; above 23.5% a fire-risk warning and (later) a fire hazard. CO2 above 1% hurts health (replacing today's flat `co2DangerLevel`).
-- [ ] When O2 is below target, do O2 tanks release into the air automatically? Proposed: yes, ballast works both ways.
-- [ ] Names: "O2 %" for the hole-wide mix and keep "air quality" for the local ventilation effect? Proposed: yes; the HUD shows "Air 21% O2".
+- [x] Two rooms: an **electrolyzer** (water → O2) and a **CO2 scrubber** (CO2 → O2 + soil); today's life support becomes the scrubber. (Bryon, Oct 4)
+- [x] Target 21%; comfortable 19.5–23.5%; below 19.5% health falls, below 16% fast; above 23.5% a fire-risk warning (later a hazard); CO2 above 1% hurts health, replacing `co2DangerLevel`. (Bryon, Oct 4)
+- [x] O2 tanks release into the air automatically when O2 is below target: ballast both ways. (Bryon, Oct 4)
+- [x] "O2 %" for the hole-wide mix (HUD: "Air 21% O2"); "air quality" stays the local ventilation effect. (Bryon, Oct 4)
 
 ## History
 - 2026-10-04 18:56 opened from N-0005 (Bryon's answer about life support on T-005)
+- 2026-10-04 19:05 questions answered

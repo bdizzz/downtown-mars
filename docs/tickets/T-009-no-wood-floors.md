@@ -17,14 +17,15 @@ In Godot (and maybe the web) some floors look like wood. There's no wood resourc
 - Furniture also has a `wood` part material (`PART_MAT.wood`, about 36 `"wood"` parts in `data/furniture.json`, plus "composite" drawn as wood).
 
 ## Approach
-Replace the planks floor with something Mars-plausible in both renderers and point homes/admin at it. Done: no wood-grain floors in web or Godot.
+**Floors match the room's building material** (Bryon, Oct 4), including its finish. Rooms have no material yet (that's T-008), and today they're all dug from rock, so homes and admin get a rock floor (a smoothed stone, warmer than the industrial ones) instead of planks; once T-008 lands, floors follow each room's material and finish. Furniture's wood parts get a fibre-composite look. Fibre-composite **floor panels** as a comfort upgrade belong to T-008. Done: no wood grain anywhere, in web or Godot.
 
 ## Docs to update
 - ART.md: floor materials.
 
 ## Open questions
-- [ ] What replaces the planks? Proposed: warm **fibre-composite floor panels** (hemp fibre is in the crop catalog): long panels in the same warm tone, with a fine woven texture instead of grain.
-- [ ] Furniture too? About 36 parts are drawn as wood. Proposed: yes, the same composite look, so nothing reads as wood.
+- [x] Floors match the room's building material and finish, not a fixed floor per room type. Fibre-composite panels become a separate floor upgrade with a comfort boost (in T-008). (Bryon, Oct 4)
+- [x] Furniture's wood parts get a fibre-composite look too. (Bryon, Oct 4)
 
 ## History
 - 2026-10-04 18:03 opened from N-0007
+- 2026-10-04 19:05 questions answered

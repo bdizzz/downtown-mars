@@ -24,14 +24,19 @@ Things in DECISIONS.md it touches: the slot model (Spatial), corridors along edg
 ## Approach
 XL, a milestone of its own: write `docs/PLAN-M15.md` (or the next number) first: the new coordinate (floor, ring, start angle, span), how edges and corridors are found between arbitrary angles, how neighbor fields and walking steps work without slots, excavation, save migration from slots, then the placement UI (snapping, toggle, handles or fill tool). Possibly in phases: model and migration first with today's sizes as angles, then snapping, then fill rooms.
 
+One task already known: **the furnishing tool (`?furnish`, `src/devtools/`) adapts to areas**, and a room's target area is one of the things you set there (Bryon, Oct 4).
+
+**Becomes a feature (T-012).** Bryon wants this planned as a feature (an epic): the plan, details and how to break the work into tasks live in the feature, and task tickets are written only once the feature is agreed. Until T-012 lands, this ticket stands in for the feature.
+
 ## Docs to update
 - DECISIONS.md, DESIGN.md (spatial model), ROOMS.md (sizes as areas), FURNITURE.md (layouts per area, not per ring), GUIDE.md: Building, CLAUDE.md (Core spatial model).
 
 ## Open questions
-- [ ] Go ahead with a design plan before any code? Proposed: yes, a plan doc for Bryon to review first, since it changes the core model.
-- [ ] Fill rooms: the fill tool, the drag handles, or both? Proposed: handles (they also give normal rooms their ±10–15%), and a double-click on a gap as a shortcut that fills it.
-- [ ] Keep the S/M/L/H names as target areas (S = 100 m², M = 200, L = 400, H = 800, about today's ring-2 slot)? Proposed: yes.
-- [ ] Old saves: convert their slots to angles (rooms keep their spans and areas grow or shrink by ring), or start fresh? Proposed: convert.
+- [x] A plan doc first, for Bryon to review before any code. (Bryon, Oct 4)
+- [x] Drag handles on the left/right walls (normal rooms ±10–15%, fill rooms much further), plus double-clicking a gap to fill it. (Bryon, Oct 4)
+- [x] S/M/L/H stay as target areas: 100, 200, 400 and 800 m². (Bryon, Oct 4)
+- [x] Old saves convert their slots to angles. (Bryon, Oct 4)
 
 ## History
 - 2026-10-04 18:03 opened from N-0008
+- 2026-10-04 19:05 questions answered
