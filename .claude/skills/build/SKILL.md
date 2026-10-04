@@ -17,6 +17,8 @@ Run `node scripts/board.mjs menu`.
 
 Then `node scripts/board.mjs show T-0NN` and read the ticket, including its Context.
 
+Name the session after it: load `mcp__ccd_session_mgmt__set_session_title` (ToolSearch `select:mcp__ccd_session_mgmt__set_session_title`) and set the title to `T-0NN: <ticket title>` (for several tickets, `T-014 + T-009: <first title>`). Outside the desktop app the tool doesn't exist; skip it silently.
+
 - **Needs answers**: ask the open questions, fold in the answers (as /board does), publish, and continue.
 - **In flight / in review**: another session or machine has it; say which branch or PR and ask before going on.
 - **Blocked / done / dropped**: say so and stop unless Bryon says otherwise.
