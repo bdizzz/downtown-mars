@@ -5,3 +5,4 @@ dist
 release
 public/dev-save*.json
 .tracker/
+.claude/worktrees/
