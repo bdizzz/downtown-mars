@@ -1,7 +1,7 @@
 ---
 id: T-004
 title: A rock cylinder round the rings when viewing a floor underground
-status: open
+status: done
 size: M
 area: render3d, godot
 touches: [src/render3d/stage3d.ts, src/render3d/cylinder.ts, src/render3d/surfaces.ts, godot/src/]
@@ -32,3 +32,4 @@ Add an open, inward-facing cylinder mesh at the unlocked rings' outer radius, fr
 - 2026-10-04 16:12 opened from N-0004
 - 2026-10-04 16:14 questions answered
 - 2026-10-04 19:29 building on t-004-underground-rock-cylinder
+- 2026-10-04 19:34 built
