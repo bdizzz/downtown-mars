@@ -32,3 +32,4 @@ Done: `node scripts/board.mjs menu` shows features with their tasks; the skills 
 
 ## History
 - 2026-10-04 19:30 opened from Bryon's answer on T-010 (N-0008)
+- 2026-10-04 19:09 building on t-012-features-on-the-board
