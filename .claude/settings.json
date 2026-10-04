@@ -16,6 +16,7 @@
   "permissions": {
     "allow": [
       "Bash(node scripts/board.mjs *)",
+      "Bash(node scripts/try.mjs *)",
       "Bash(gh pr list *)",
       "Bash(gh pr view *)"
     ]

@@ -92,7 +92,7 @@ Before committing, run `npm test` (unit tests plus scripted playthroughs) and ch
 
 ## Playtest notes and the board
 
-Bryon's playtest notes flow through four skills (`.claude/skills/`):
+Bryon's playtest notes flow through five skills (`.claude/skills/`):
 
 | Skill | Does |
 | --- | --- |
@@ -100,6 +100,7 @@ Bryon's playtest notes flow through four skills (`.claude/skills/`):
 | `/ingest` | Turns inbox notes into tickets in `docs/tickets/` (`T-012`, with size S/M/L/XL and open questions), archives each note word for word, and publishes them to main. |
 | `/board` | Shows what's ready, needs answers, blocked, in flight and in review. |
 | `/build [T-012]` | One ticket → overlap check against open PRs → a `t-012-…` branch from a fresh `origin/main` in a worktree → build, test, docs → PR. |
+| `/try [T-012]` | Starts the dev server for that ticket's (or branch's) worktree in the Terminal panel, on its own port from 5174 (`scripts/try.mjs` picks the checkout and port), and says what to look at. |
 
 Tickets are checked in (`docs/tickets/`, see its README), so any machine can build one. They store only `open`, `done` or `dropped`; the rest is derived from GitHub (a pushed `t-0NN-…` branch is in flight, an open PR is in review, a merged one is done), so status never needs syncing or collides across branches. `node scripts/board.mjs publish` commits ticket-only changes straight to main and pushes them. The inbox and the generated `BOARD.md` stay local, in `.tracker/` (gitignored). Doc changes for an item ride in its PR.
 
