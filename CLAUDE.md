@@ -17,7 +17,8 @@ Vibe: SimCity, SimTower and Terraforming Mars, with some of Frostpunk's social t
 | `PATHWAYS.md` | Each resource family traced from source to users, with what's built. |
 | `EVENTS.md` | Event catalog: citizen visits, strike chain, hazards, discoveries, network, Earth and belt, story and notable events, with what's built. |
 | `PLAN.md`, `PLAN-M2.md` … `PLAN-M14.md` | Milestone plans, each with "Notes as built". M1 first playable, M2 polish and saves, M3 3D, M4 two holes, M5 people, M6 corridors on edges, M7 construction time, M8 storage, M9 excavation and the entrance, M10 furnishing (and later work: condition, new rooms, afterglow, charts, air quality), M11 the sealed network: gallery tubes, air and smell through corridors, amenities and services by walking distance; M12 bulkheads, airlock dust, crowding, window walls, glass and the shaft dome; M13 doors on any wall and windows as an upgrade; M14 events with choices: drill discoveries, a belt ship in distress, celebrations. |
-| `PLAN-GODOT.md` | The Godot + C# desktop experiment (`godot/`): the scene exporter, the viewer, measurements against the web version, and what they showed. |
+| `PLAN-GODOT.md` | The Godot + C# desktop viewer (`godot/`): how the live viewer works, its "Status and next" list, and notes as built. |
+| `GUIDE.md` | The player's guide: everything the game does, by section (the README keeps only a short overview). |
 | `FURNITURE.md` | Furniture models and room layout templates. |
 | `ART.md` | Art direction: the cozy 3D look, palette, readability rules. |
 
@@ -81,8 +82,12 @@ tests/        # Vitest: sim units plus scripted playthroughs (bots)
 - **Access:** the shaft is open to Mars. **Corridors run along the edges** between rooms (and between rooms and rock), not in slots; along the shaft wall they're glass **gallery tubes** (floor 1 starts with one all the way round; deeper floors get what the player builds). Every room needs a tube, corridor or walk-through room along one side. People reach floor 1 through the entrance, and deeper floors by stairs and elevators.
 - **Neighbor effects** (noise, smell, health, comfort) radiate from rooms with a strength (−3 to +3) and radius in slots, falling off with distance, along the ring, across rings and between floors; corridors block noise. **Airborne effects** (air quality, smell) ride the network instead, fading per step. **Amenities and services** (parks, plazas, gyms, galleys, clinics, schools) count by walking distance in steps (10 m).
 
-## Where things stand (Oct 1, 2026)
+## Where things stand (Oct 4, 2026)
 
 Milestones 1–14 are built: one hole growing into a network of two or more, a 3D view (the main one) with 2D and plan views, people with life stages, corridors on edges, construction time, storage, excavation and the entrance, furnished rooms, room condition with maintenance and cleaning, and (M11) a sealed network: the shaft is open to Mars, people move through gallery tubes, corridors and stairs, air and smell ride that network, and amenities and services count by walking distance (`sim/paths.ts`, `sim/amenities.ts`, `sim/care.ts`); (M12) bulkheads, airlock dust, crowding, glass, and the shaft dome as a hole's end goal; (M13) doors on any wall and windows as an upgrade; (M14) events with choices (`sim/events.ts`, `data/events.json`): what the drill strikes, a belt ship in distress, celebrations. 1× is 2 ticks a second, 240 ticks a game day. See the README for how to play, `DECISIONS.md` for what was decided while building, and `ROOM-STATUS.md` for what to build next.
 
-Before committing, run `npm test` (unit tests plus scripted playthroughs) and check the change in the browser at http://localhost:5173.
+**The Godot viewer** (`godot/`, C#) is close to parity with the web game. The TypeScript sim runs in Node (`src/bridge/`, `npm run bridge`) and Godot draws it; the bridge reuses the web's own code wherever it can (scene building, plan drawing, panel text) rather than porting it. Shared view logic lives in `src/view/` (`roomPanel.ts`, `roomCard.ts`, `hudItems.ts`, `corridorProposal.ts`) and `render2d/planDraw.ts`, used by both the React UI and the bridge. What's left is in `docs/PLAN-GODOT.md` under "Status and next".
+
+Before committing, run `npm test` (unit tests plus scripted playthroughs) and check the change in the browser at http://localhost:5173. `src/bridge` is type-checked separately: `npx tsc --noEmit -p tsconfig.node.json` (the main `tsconfig.json` leaves it out). For Godot changes, `cd godot && dotnet build`, and check them with a test run (see "Testing the viewer" in `PLAN-GODOT.md`).
+
+Several sessions may work on the game at once: keep each to one area, on its own branch or worktree, and update the docs and commit as you finish so the others can see what changed.

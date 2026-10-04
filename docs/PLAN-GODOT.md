@@ -73,6 +73,30 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 4. Building: place rooms, dig, corridors, from Godot. **Done**: rooms, corridors, bulkheads and windows.
 5. Looks: materials and models made for Godot, graphics presets. Bryon, Oct 2: keep going; I took "grounded and textured, lighting calm" as the default.
 
+### Status and next (Oct 4, 2026)
+
+The viewer plays the whole game: every camera (Iso, Cutaway, Top, first person) and the plan with its overlays; building with the room card and effect halo, corridor chains, demolish and undo; the room panel; the HUD with its tooltips; office, charts, map, network and colony panels; the tutorial, help and settings; saves shared with the web.
+
+Still to do, roughly in order of value:
+
+- **Overlays in 3D** (they're plan-only so far; the web tints cells in 3D too: `render3d/stage3d.ts`, around `overlayType`).
+- **The status line**: the web's bottom line saying what's under the pointer and what placing there would do (`ui/StatusBar.tsx`); Godot shows only key hints there.
+- **Tutorial hints** come from `data/tutorial.json` and name the web's buttons ("View, at the bottom right"); they need wording for both.
+- **Colour-blind colours** reach the plan's overlay and legend but not the build halo (`src/bridge/build.ts` `halo` uses `HEAT.normal`).
+- **Sound**: none yet in Godot (the web has synthesized sound in `src/audio/`).
+- Smaller: the trouble ⚠ badges are small; the interface-size setting hasn't been checked on screen; no first-person screenshot in the README yet (the shaft view is hazy).
+
+### Testing the viewer
+
+- **Never touch Bryon's own game.** His viewer's bridge runs on port 17878 and saves to `~/.downtown-mars/saves`. Test runs use `--port=7979` and `DM_SAVES=<a scratch folder>`, for example:
+  `DM_SAVES=/tmp/x/saves godot-mono --path godot -- --port=7979 --load=save.json --view=iso --floor=2 --shot=10`
+  The viewer starts its own bridge on that port. Afterwards stop it with `pkill -f "bridge.mjs --port=7979"`, and **wait a second or two before the next run**: a viewer that starts while the old bridge is still shutting down connects to it and gets an empty scene.
+- **Flags** (after `--`): `--shot=<s>` saves `godot/shots/live.png` and quits; `--no-hud` hides the interface; `--new`, `--showcase=12`, `--load=`; `--view=iso|cutaway|top`, `--plan`, `--walk`, `--floor=`; `--overlay=noise`; `--build=<room>` or `--build=corridor:rock` puts a tool in hand; `--hover=x,y` and `--click=x,y` point and click in the scene.
+- **Key playback** (`--keys=`, comma-separated, each `name@seconds`): key names (`B@8`, `F1@9`; letters type into fields), `tap:x:y` (a click through the GUI), `down:x:y`, `drag:x:y`, `up:x:y` (a drag), `move:x:y` (hover, for tooltips), `pan:dx:dy`, `pinch:f`, `wheel:up`.
+- Test runs don't save settings (`ViewSettings.ReadOnly`), but they do read Bryon's, so pass the view you want on the command line.
+- **Test saves**: make one with a small script under `scripts/` run by `npx tsx` (`createSimHost`, a `consoleShowcase` command, `stepWorld`, then `serialize` from `sim/save`), and delete the script afterwards. Topping up stocks every tick makes the HUD's rates absurd: top up once at the end.
+- Godot's screenshots come from the viewport, so they include the HUD unless `--no-hud`.
+
 ### Notes as built
 
 **Step 1** (Oct 2, 2026):
