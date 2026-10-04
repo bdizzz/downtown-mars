@@ -2,117 +2,117 @@
 
 *Hole sweet hole.*
 
-A real-time city builder on Mars. Each city is a borehole: dig a shaft down, carve rooms into its walls in rings and floors, and keep everyone breathing, fed and sane. Rooms affect their neighbors, so where you put the noisy life support matters as much as whether you build it.
+A real-time city builder on Mars. Each city is a borehole: dig a shaft down, carve rooms into its walls in rings and floors, and keep everyone breathing, fed and sane. Rooms affect their neighbours, so where you put the noisy life support matters as much as whether you build it.
+
+![A floor of the hole from above: homes, storage, a galley and furnaces in rings round the shaft](docs/images/hero.jpg)
 
 This is an early playtest build: a hole or two, the first hour or so of play. Total population supported is your score.
 
-## Playing
-
-Start a new game and follow your deputy's tutorial, or dive in:
-
-- **Build:** open Build (B), pick a room from its category (or press its key: room keys work only in Build), then click a slot. Green means it fits; red says why not. The shaft itself is open to Mars: people get about in a sealed network of **gallery tubes** (glass walkways along the shaft wall), corridors, plazas and stairs. Floor 1 starts with its gallery tube all the way round; on deeper floors, lay tubes along the shaft wall where you want them (the corridor tool, on the shaft side of ring 1; **Connect** does it for you). Every room needs a tube, corridor or plaza along one side. Rooms have a door on each floor, wherever they open onto a tube, a corridor or a plaza. Rooms start without windows: the corridor tool's **Windows** mode puts them in, a whole wall at a click (hover a wall: it lights up green where windows can go, with the cost and the comfort they'd give), on walls facing the shaft, a corridor or a walk-through room; Windows cost glass (2 per 10 m of wall); the landing kit brings 100. Shift-click takes them out. A home looking out over the shaft gets +1.5 comfort (a wall of glass where no tube runs), +1 behind a tube, less onto a plaza or a corridor, and a little more for each other glazed wall. **The shaft dome** (Build → Public, from 300 colonists; glass, metal, machinery and electronics, and a long build) is a hole's crowning work: it seals the top of the shaft, so every gallery becomes open walkway, the shaft becomes an atrium (more comfort facing it), the air freshens everywhere, and storms stop driving dust through the airlock. Glass comes from a **glassworks** (Industry, from the start: a small 2×1 room, 2 staff, rock and power → 3 glass a day). Press Z and drag to snake a corridor along the borders between rooms: it follows the pointer, retracing takes it back, and on release you confirm the segments and cost (Shift snakes a fill-in instead, which costs as much as carving). A plain click carves one segment. pick a finish (bare rock, marscrete, brick or metal), or click **Connect** on a cut-off room.
-- **Dig:** the drill only sinks the shaft: in 3D a big boring machine sits at the bottom of the hole (a turning cutterhead with cutters and muck buckets, drive motors, grippers braced on the bore, a conveyor lifting spoil into a skip, a deck with a cab and beacon, a power pack, tanks, a cable reel and floodlights, and the hoist cable and power line up to the rim), riding down as it digs (drawn half a floor below the dig front, so it clears the gallery tubes above; the progress shown is the sim's). The first floors go quickly; from floor 4 on, each floor takes twice as long (`digging.slowFromFloor`, `slowFactor`). A new hole starts with only ring 1 of floor 1 dug out (and the landing kit's battery bank in ring 2); every other room slot is solid rock until it's dug out: a room placed on rock is excavated first (3 hours a slot, bringing up its rock and whatever the hole sits on), then built. **Empty rooms** (Build → Excavation) dig ahead for rock and space. Dug-out space with nothing in it has pillars and no walls, and is walk-through like a plaza; demolishing a room leaves it.
-- **Getting in and out:** people and goods come in through the **entrance** on floor 1 (its airlock stands at the rim). Deeper floors are reached only by **stairs** or elevators down from there. At 100 colonists a **cargo elevator** can run from the surface straight down to one floor, if its column above is clear.
-- **Homes:** bunk dorms from the start; as the hole grows, apartments. At 50 colonists, studios and apartments. At 200, flats and family apartments. At 1,000, suites and residences. Each tier houses fewer people per slot and costs more, but its residents are more comfortable, and the finer tiers cheer their neighbours too.
-- **Meals and feeling good:** a galley cooks and seats 25. A **kitchen** cooks 40 but seats no one, so pair it with a **canteen** (seats 60). Seats go to the homes nearest them first, within 8 steps on foot (a step is about a room across, along corridors, tubes and stairs); anyone without a seat within reach eats on the go, and their home's comfort drops (a home's card says how many are seated). What people use counts by how far they'd walk: **plazas**, **parks** and **gyms** lift the homes within their reach on foot (parks and plazas comfort, gyms health), less the further off, and the nearest of each kind counts, so spread them out. Parks, plazas and canteens also cheer the rooms right next to them a little. At 50 colonists, gyms and parks (a park makes a little oxygen, and is walk-through like a plaza). At 300, a **hospital**: care for 400 within 16 steps.
-- **Materials and waste:** at 50 colonists a **brickworks** makes brick from rock, so you're not waiting on Earth. At 100, a **recycling center** turns solid waste into metal and brick. **Waste storage** holds more solid and organic waste until something uses it.
-- **The afterglow:** everyone arrives thrilled. For the first 20 days happiness gets a boost (+20 at landing, easing away), so there's time to get air, water and food running and put something by before reality sets in. Newly founded holes get their own. Point at **Happy** to see how much is left.
-- **Watch the bar at the top:** oxygen, water, meals and power, with how fast they're changing. Red means it runs out in under two days. Point at anything there for what it means and a sparkline of its last two days; click it to open it in **Charts → Trends**.
-- **Earth** sends supply drops every few days until you can stand on your own.
-- **Dust storms** are forecast a few days ahead (the 🌪 chip at the top counts down), then blow for a day or two, halving what the solar arrays make. Charge your batteries before one hits. In 3D the sky thickens to a murk, grit streams past, and the panels dull over.
-- **Office:** colonists visit with problems. What you promise, they remember.
-- **Events:** things happen, and you choose. A card slides in at the top left with the choices (each with what it costs and does) and how long you have; the game keeps running, and if you don't decide, it takes its own course. **The drill strikes things:** each floor it finishes may break into an aquifer, an ore vein, a silica bed, a lava tube (free space, or rock), a gas pocket (vent it and lose a day, or push through and foul the floor above) or, deep down, microfossils; the rig shudders when it does. **A belt ship in distress** calls now and then from day 20: bring her down on your pad (her crew join you, with salvage), send supplies up (the belt sends thanks later), or ignore her. **Milestones** (the first birth, 50, 100, 200 people, floors 5, 10 and 20, the dome) can be celebrated: a festival costs a feast and a slow day of work, lifts everyone for two days, and strings lights along the galleries with lanterns rising up the shaft; or just raise a toast. Gains need storage space, like Earth's drops. Console: `dm.event("belt_ship")` raises any event now.
-- **People:** everyone starts as a working adult. With a clinic and a happy hole, children are born (they need a school); adults eventually retire as elders (who want elder care), and elders pass away in time: build a crypt, or enact Return to the soil. Clinics, schools and elder care serve the homes within about 10 steps on foot, nearest first: a home too far from one (or last in line at a full one) goes without, and feels it. A clinic nearby also lifts its neighbours' health. **Seeing reach:** while placing a room, the line at the bottom says what it would reach on foot ("On foot: Park 1 · Clinic 2 · Galley 3"); select a galley, clinic, school, park or gym with no overlay on to see the homes it reaches in green and those it doesn't in red. Only adults work. The **People** panel shows what's holding births back, and colonists in a miserable hole move to a happier one.
-- **Storage:** dry goods (food and materials) only keep what storage has room for. Build storerooms, warehouses or depots and choose what each holds in its details panel; the landing pod has some to start. A good shown in amber has no room left, and what arrives is lost.
-- **Condition:** rooms wear down once they're built (all but the entrance, stairs, elevators and the service rooms). The worse they get, the grubbier they look. Below 50% people in and around them get unhappy (more so for homes, galleys, restrooms and clinics), below 30% they work 30% slower, and at 0% they stop. Now and then something breaks and knocks a room down 20 or 30 points. **Maintenance** rooms (Build → Services) repair rooms back to 100%, one room per maintenance room at a time, taking the worst from the hole's queue (rooms at 60% or below); they use machinery. From 150 colonists, **cleaning services** do the same for homes and other rooms people share, using clean water. Understaffed crews work slower; a crew that stops hands its room back, part-done, to the front of the queue. A crew with nothing to repair stands by, using power but no machinery or water. **Charts → Maintenance** shows the queue and what each crew is on; the **Condition** stat at the top and the Condition overlay show how things stand.
-- **Room controls:** pause any staffed room, or have it stop at a stock level, from its details panel.
-- **Overlays** (bottom left) show noise, smell, health, comfort, air, happiness and condition.
-- **Air quality:** the hole's air is a closed loop: life support makes it, and it moves where people do, through the corridors, gallery tubes and stairs (not through walls, and not by elevator). It goes stale away from the air trunk in the shaft wall (ring 3 starts at −1), and smelters, brickworks and concrete plants foul it for the rooms down the corridors from them, fading with every step. At home, stale air costs health (and so happiness). **Ventilation hubs** (Build → Air) scrub and freshen the air for the rooms along the network from them, and parks help a little. Smell travels the same way, and leaks into the room next door as well. The entrance's airlock lets in Mars dust, fouling the air down the corridors from it, twice as badly in a dust storm. **Bulkheads** (the corridor tool's Bulkhead button: click a corridor, 2 metal) seal a corridor against air and smell; people pass through. Crowded homes get stuffy. **Flows** (top) shows where every resource comes from and goes.
-- **More holes:** once the network reaches 50 colonists the map opens. Build a staging bay to gather a seed kit, pick a site on the Map (M) and send a convoy. With two holes, a **rover depot** gives a hole 2 rovers, and the **Network** panel sets up trade routes between holes.
-- **Plan view:** one floor from above, rings around the shaft. Pick the floor from the strip on the right (point at a floor to preview it, click to keep it; or Page Up / Page Down); everything you can do in the unrolled view works here too. Scroll or pinch to zoom and scroll sideways to turn it; it stays centred on the shaft, and opens with the unlocked rings filling the screen (as does the 3D Top camera).
-- **Modes:** four buttons at the bottom right, as in SimCity. **Build** opens a strip of room categories along the bottom; pick one (Storage, say) and its rooms pop up above it, with each room's details as you point at it; Demolish and Undo sit at the end. Only Build places rooms and corridors. B, V, M and C open Build, View, Map and Charts from anywhere; the rooms' keys (and Z for corridors, X to demolish, R to rotate) work only in Build; outside it, bare rock doesn't light up under the pointer. **View** has the 3D cameras, the plan and unrolled views, X-ray, walls down, room colours (off shows each room in what it's built from: rock, marscrete, brick or metal), **Flows** (power, water, air and food as pipes, with dashes running from what makes each to what uses it), and the overlays. **Map** opens the planet as a globe: drag or scroll sideways to spin it (it coasts to a stop), scroll to zoom, click to pick a site. **Charts** has People, Trends, Flows, Network, Maintenance and the construction queue (its badge counts the jobs). **Trends** shows how everything has been changing: pick a series (colonists and beds, happiness, health, workers, condition, power made and used, every resource) for a detailed chart over the last 2 days, 10 days or the whole game, as amounts or as change per day, with the lines that matter marked (happiness 50 and 45, CO2 100 and so on); point along it to read any hour. Pick the open mode again to close it; Esc steps back one thing at a time. The floor picker stays on the right.
-- **3D view**: stand in the shaft, slice the hole open with **Cutaway** (it opens framing the unlocked rings), or look straight down from the **Top**. **Iso** looks at one floor (or, with All, the surface) from above and off to one side, so you see all of it (drag to turn it, scroll to zoom). **First person** puts you on a floor at eye height: WASD to walk (hold Shift to run), Q and E to turn, drag to look (or Tab for mouse look, where the browser allows it), and walk up or down a stairwell's wide flights to change floors (R or F also takes the stairs from anywhere in a stairwell; picking a floor on the right takes you there too, as near as there's room to stand). You can walk the gallery tubes, corridors, plazas and empty space, and into a room through its door (onto a tube, a corridor or a plaza), but not through walls or furniture: walk into one and you slide along it. Windows are glass: look into a room from the gallery, or out of it. Walking is for looking around: Build is off while you do. New games open in 3D, in Iso. Built rooms are furnished in 3D: bunks in dorms, planters or racks of whatever the farm grows, furnaces in the smelter, laid out from a template for each room type and shape, with plenty on the walls: pictures, family photos, lamps and hangings at home; charts, gauges, pipes, tool boards and extinguishers at work; and vents, cable trays and lights running high round the room. Colonists are little figures: some stroll the gallery tubes, and the rest are where you'd expect for the hour, working their posts in staffed rooms, asleep in bunks and beds at night, sitting about in homes, plazas and offices. Rooms in trouble are outlined in amber (slowed) or red (short of what they run on), with a ⚠ over their name; paused rooms are outlined in grey. The room's card says why. Floors are laid to suit each room (planks at home, tiles in kitchens and clinics, plating in plants, paving in plazas), furniture shows its wood, fabric and worn paint, and rooms get grubbier as their condition drops. Screens flicker, indicator lights blink, fires dance, plants sway and windows fog at the bottom. Around midday, sunlight falls down the shaft; near the surface the light follows the hour, and deeper down everything settles into lamp-light. Lamps, fires and grow lights light the rooms around them: a warm pool on the floor under each, and the lamps nearest you light the room properly. Working smelters throw sparks and life support vents steam. Rock shows its layers. By day the sky fades from butterscotch at the horizon to a deeper tan overhead, with a bluish glow round the sun; at night the stars come out. Floor 1 sits under 3 m of rock, and the land round the hole rolls away in ridges, craters and boulders to a horizon of mountains, mesas or low hills, depending on the site. Pick a floor on the right to hide everything above it: from the Top it becomes a clear plan you can build on. **X-ray** fades ring 1 so you can see behind it (View → X-ray). **Walls down** (View → Walls down) lowers every wall standing between you and the room or shaft behind it to a short stub, as in The Sims, so you can see inside. Everything you can do in 2D works in 3D. The 3D view has a cozy look: soft shadows where things meet, glow around lit windows and lamps, a warm haze that swallows the floors below, a miniature-style blur in Iso, and a warm colour grade. **Settings → 3D graphics** picks a preset (Low, Medium or High, the default) or sets each effect, including lamp light and **shadows** (by day the sun falls down the shaft and the rim's shadow sweeps round it as the hours pass), so a laptop can scale them down. Shiny floors (glazed tiles, steel plate, varnished planks), metal and glass reflect a warm, lamp-lit cave. `?renderer=webgpu` tries three's WebGPU renderer with light bouncing and reflections (an experiment: see docs/WEBGPU.md).
-
-### Controls
-
-| Key | Action |
+| | |
 | --- | --- |
-| B V C M | Build, View, Charts and Map modes (anywhere) |
-| Space | Pause / resume, at the speed you had |
-| − + | Slower / faster (1×, 2×, 4×); from paused, starts one step from the speed you had |
-| Esc | Put down the tool, close a panel or mode, or open the menu |
-| | **In Build only:** |
-| R | Rotate the room you're placing |
-| Z | Corridor tool (drag to snake a corridor, confirm on release; Shift fills in) |
-| X | Demolish |
-| D G F T Y W L K A B S P | Dorm, galley, farm, tank, recycler, restroom, life support, clinic, admin office, battery, solar, landing pad |
-| E Q | School, elder care (unlock with the first child and the first elder) |
-| J | Composter: organic waste and black water into soil |
-| U O H I N | Deep well pump, smelter, machine shop, silicon refinery, electronics fab (some need the right site) |
-| [ ] | Previous / next hole, once you have more than one |
-| ↑ ↓ or Page Up / Page Down | Floor up (toward the surface) / down in the Plan and 3D views (walking, the arrows walk) |
-| W A S D | Iso: pan across the floor (outside Build, where they're room keys). Once a 3D view has moved from where it starts, a **Reset camera** button at the top left takes you back |
-| ⌘Z / Ctrl+Z | Undo your last placement |
-| ? | Controls help |
-| Drag / scroll | Pan (drag paints corridors with the corridor tool) |
-| Pinch / Ctrl+scroll | Zoom |
+| ![The hole sliced open, twelve floors of rooms round the shaft](docs/images/cutaway.jpg) | ![A floor at night, lit by lamps and furnaces](docs/images/night.jpg) |
+| **Cutaway:** twelve floors of rooms, sliced open | **Night:** lamps, furnaces and grow lights |
+| ![A floor straight from above](docs/images/top.jpg) | ![Mars as a globe, with the colony and the deposits found so far](docs/images/globe.jpg) |
+| **Top:** a floor as a plan you can build on | **The map:** NASA's elevation data, deposits and sites for new holes |
 
-The game autosaves every game day in your browser. Use the menu to save to a slot or export a save file to keep it somewhere safe.
+![The interface: resources along the top, a room's panel, and the build card for a galley with its smell spreading in red](docs/images/interface.jpg)
 
-## Developing
+## What you do
+
+- **Dig.** A boring machine sinks the shaft floor by floor. Every room slot starts as rock: excavate it, then build.
+- **Build** homes, galleys, farms, life support, workshops and more in rings around the shaft, joined by glass gallery tubes, corridors and stairs.
+- **Mind the neighbours.** Rooms spread noise, smell, comfort and health. Air and smell travel the corridors, and people only use what they can walk to.
+- **Keep people going.** Watch oxygen, water, food and power; ride out dust storms; repair rooms as they wear; answer colonists at the office; decide what to do when the drill strikes something.
+- **Grow.** Better homes unlock as the colony grows. At 50 colonists the map opens: send a convoy to found another hole and trade between them.
+
+New games start with a tutorial from your deputy. The [player's guide](docs/GUIDE.md) covers everything in detail.
+
+## Playing
 
 Requires Node 20+.
 
 ```bash
 npm install
 npm run dev        # play at http://localhost:5173
-npm test           # simulation tests
-npm run playtest   # scripted first month, printed day by day
-npm run playtest:net  # scripted first hour across two holes
-npm run package    # build and zip for a playtest upload
 ```
 
-`npm run package` writes `release/downtown-mars-v<version>.zip` with `index.html` at the top. To publish on itch.io: create an HTML project, upload the zip, and tick "This file will be played in the browser". Nothing is uploaded automatically.
+The essentials:
 
-Design documents live in `docs/`: start with `DECISIONS.md`, then `DESIGN.md` and the catalogs. `docs/ROOM-STATUS.md` lists which catalog rooms are built and which are only described, graded by what each needs (regenerate it with `node scripts/room-status.mjs`). Build plans are `docs/PLAN.md` (milestone 1) and `docs/PLAN-M2.md` to `docs/PLAN-M10.md` (milestones 2 to 10: M8 is storage, M9 excavation and the entrance, M10 furnishing). `CLAUDE.md` has the architecture rules: the simulation is pure TypeScript in a Web Worker, deterministic, with all numbers in `data/*.json`.
+| Key | Does |
+| --- | --- |
+| B V C M | Build, View, Charts and Map |
+| Space | Pause / resume |
+| − + | Slower / faster |
+| R, Z, X | Rotate, corridor tool, demolish (in Build) |
+| ⌘Z / Ctrl+Z | Undo your last placement |
+| ↑ ↓ | Floor up / down |
+| ? | All the controls |
+
+The game autosaves every game day in your browser. Use the menu to save to a slot or export a save file.
+
+## Developing
+
+```bash
+npm test              # simulation tests
+npm run playtest      # scripted first month, printed day by day
+npm run playtest:net  # scripted first hour across two holes
+npm run package       # build and zip for a playtest upload
+```
+
+- **Packaging:** `npm run package` writes `release/downtown-mars-v<version>.zip` with `index.html` at the top. To publish on itch.io, create an HTML project, upload the zip, and tick "This file will be played in the browser". Nothing is uploaded automatically.
+- **Design docs** live in `docs/`: start with `DECISIONS.md`, then `DESIGN.md` and the catalogs. `ROOM-STATUS.md` lists which rooms are built and which are only described (regenerate it with `node scripts/room-status.mjs`). Milestone plans are `PLAN.md` and `PLAN-M2.md` to `PLAN-M14.md`.
+- **Architecture:** see `CLAUDE.md`. The simulation is pure TypeScript in a Web Worker, deterministic, with all its numbers in `data/*.json`.
 
 ### Console commands
 
-For testing, the browser console has `dm`, which acts on the hole you're looking at (in any build). `dm.help()` lists them:
+For testing, the browser console has `dm`, which acts on the hole you're looking at. `dm.help()` lists them all.
 
-- `dm.resources()` shows what it has.
-- `dm.give("metal", 50)`, `dm.take("water", 20)` and `dm.set("rock", 500)` change one resource; each also takes an object, like `dm.give({ metal: 50, rock: 100 })`.
-- `dm.fill(1000)` raises every stored resource (not power or waste) to at least that much.
-- `dm.unlock()` unlocks every room that waits on a milestone, or one with `dm.unlock("cargo")`. `dm.unlock("ore")` puts a deposit (ice, aquifer, ore or silica) under the hole, for rooms that need one.
-- `dm.finish()` finishes everything in the construction queue at once.
-- `dm.showcase(12)` digs to 12 floors and fills rings 1–3 with built, furnished rooms, tubes and corridors (costs and rules skipped): for looking at, and for stress-testing the 3D view.
-- `dm.skip(3)` runs every hole ahead 3 days at once (up to 365), to see how things play out.
-- `dm.wear(0.4)` sets every room's condition to 40% (`dm.wear(0.2, roomId)` for one room); `dm.snapshot()` returns the latest snapshot.
-- `dm.storm(1)` starts a dust storm now, for a day; `dm.storm(2, 3)` forecasts one in 3 days for 2; `dm.storm(0)` clears the sky.
-- `dm.command({ ... })` sends any simulation command, as the game would (see `SimCommand` in `src/sim/commands.ts`).
+| Command | Does |
+| --- | --- |
+| `dm.resources()` | Shows what the hole has |
+| `dm.give("metal", 50)`, `dm.take(...)`, `dm.set(...)` | Change a resource (or several: `dm.give({ metal: 50, rock: 100 })`) |
+| `dm.fill(1000)` | Raises every stored resource to at least that much |
+| `dm.unlock()` | Unlocks every room waiting on a milestone (or one: `dm.unlock("cargo")`); `dm.unlock("ore")` puts a deposit under the hole |
+| `dm.finish()` | Finishes everything in the construction queue |
+| `dm.showcase(12)` | Digs 12 floors and fills rings 1–3 with furnished rooms, for looking at and stress-testing |
+| `dm.skip(3)` | Runs every hole ahead 3 days (up to 365) |
+| `dm.wear(0.4)` | Sets every room's condition to 40% (`dm.wear(0.2, roomId)` for one) |
+| `dm.storm(1)` | Starts a dust storm for a day; `dm.storm(2, 3)` forecasts one in 3 days; `dm.storm(0)` clears it |
+| `dm.event("belt_ship")` | Raises any event now |
+| `dm.snapshot()`, `dm.command({ ... })` | The latest snapshot; send any simulation command (`SimCommand` in `src/sim/commands.ts`) |
 
-Changes go through the simulation like any command and show in the flow report as "Console". Giving more than the hole can store also adds that much storage, which the hole keeps (in saves too), so the amount isn't thrown away on the next tick.
+Changes go through the simulation like any command and show in the flow report as "Console". Giving more than the hole can store also adds that much storage, so the amount isn't thrown away on the next tick.
 
 ### The Godot viewer (experiment)
 
-A desktop viewer in Godot 4 and C# (`godot/`, Mac for now), drawing the same game: see `docs/PLAN-GODOT.md`. It needs Godot .NET 4.7 and the .NET SDK. One command builds and runs it; it starts the game (the simulation, in Node) by itself, continuing the last autosave:
+A desktop viewer in Godot 4 and C# (`godot/`, Mac for now) that draws the same game: the sim runs in Node and talks to the viewer over a local socket. See `docs/PLAN-GODOT.md`. It needs Godot .NET 4.7 and the .NET SDK. (The screenshots above are from it.)
 
 ```bash
 cd godot && dotnet build && godot-mono --path .
 ```
 
-Add `-- --new` for a new game, `-- --showcase=12` for a big test colony, or `-- --load=save.json`. Quitting saves to the autosave and stops the game. To run the game yourself instead (the viewer then just connects; Ctrl-C there autosaves too):
+It starts the game by itself, continuing the last autosave; quitting saves and stops it. Add options after `--`:
 
-```bash
-npm run bridge -- --showcase=12
-```
+| Option | Does |
+| --- | --- |
+| `--new`, `--showcase=12`, `--load=save.json` | A new game, a big test colony, or a save |
+| `--floor=4`, `--view=cutaway`, `--plan`, `--walk` | Start on a floor, camera, the plan, or in first person |
+| `--quality=low` | Graphics level |
+| `--shot=10`, `--no-hud` | Save a screenshot to `godot/shots/` after 10 s and quit; hide the interface |
+| `--bench=8` | Measure frame times and quit |
+| `--port=7979` | Use a bridge on another port |
 
-The bridge serves the game on `127.0.0.1:17878` (its log, when the viewer starts it: `~/.downtown-mars/bridge.log`) (`--load=save.json` loads a save, `--showcase=12` builds a big test colony, `--speed=2`, `--hour=12` runs on to noon, `--verbose`); the viewer connects (and reconnects) by itself. Viewer options after `--`: `--floor=4` picks a floor, `--walk` starts in first person, `--bench=8` measures frame times and quits, `--quality=low` sets the graphics level, `--port=7979` finds a bridge on another port. Saves go to `~/.downtown-mars/saves` (an autosave each game day, and three slots); a web save exported to a file can be imported there, and back. In the viewer: The View bar under the stocks switches cameras (Iso, Cutaway, Top, First person) and the 2D Plan (with its Overlay: noise, smell, health, comfort, air, happiness, condition), and toggles Walls down and Room colours. Esc opens the menu (save, load, new game, import and export), O the office (visits, promises, ordinances), C the charts (trends and flows), M the map (pick a site, found a hole), N the network (routes, culture), P the colony (people, construction, maintenance), [ and ] switch holes, event cards come up at the top left, click a room for its panel (rename, priority, crops, storage, running and stop-at, demolish), B or the top bar's Build opens Build (pointing at a room shows its card; click to place, with its effect's halo shown; R turns, Esc puts down; Z or Access for corridors: click a border, or drag a chain and confirm it, Shift erases; X demolishes; ⌘Z undoes the last placement), the resource bar's tooltips explain each number (click one for its trend), the deputy's tutorial card walks through the first goals, ? or F1 shows the controls, the menu's Settings has autosave, colour-blind overlays, interface size and graphics, Space pauses, 1–3 set the speed, Up/Down step the picked floor, Home shows every floor, Tab switches Iso and first person (where WASD walks: through doors, round furniture, up and down stairs), L hides labels, F2 cycles the graphics level (Low to Ultra), F12 saves a screenshot to `godot/shots/`.
+To run the game yourself instead (the viewer then just connects), use `npm run bridge -- --showcase=12`. The bridge serves on `127.0.0.1:17878` (its log: `~/.downtown-mars/bridge.log`) and takes `--load`, `--showcase`, `--speed`, `--hour=12` and `--verbose`. Saves go to `~/.downtown-mars/saves`; a web save exported to a file can be imported there, and back.
+
+The viewer has the web game's views (Iso, Cutaway, Top, first person, the plan with its overlays), building with the room card and effect halo, corridor chains, demolish and undo, the room panel, the resource bar with its tooltips, office, charts, map, network and colony panels, the tutorial, help (? or F1) and settings. F2 cycles the graphics level; F12 saves a screenshot.
 
 ### Furnishing tool
 
-Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture models (Catalogue) and lay out the template for any room type and shape (Templates). Preview the fit in any ring, with or without a corridor along a side. Drag items in the plan, set their wall, offsets, turn, repeat and priority, and save: the tool writes `data/layouts.json`. **Overview** shows every template side by side, or one up close. Models are built in `scripts/furniture.mjs` (run `node scripts/furniture.mjs` to write `data/furniture.json`); see `docs/FURNITURE.md`.
+Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture models (Catalogue) and lay out the template for any room type and shape (Templates). Drag items in the plan, set their wall, offsets, turn, repeat and priority, and save: the tool writes `data/layouts.json`. **Overview** shows every template side by side. Models are built in `scripts/furniture.mjs` (`node scripts/furniture.mjs` writes `data/furniture.json`); see `docs/FURNITURE.md`.
 
 ## Credits
 
-Mars elevation: NASA Mars Global Surveyor, Mars Orbiter Laser Altimeter (MOLA) Mission Experiment Gridded Data Record `MEGT90N000CB` (PDS Geosciences Node), public domain. `scripts/build-elevation.mjs` averages it to 1° for `data/mars-elevation.json`.
+Mars elevation: NASA Mars Global Surveyor, Mars Orbiter Laser Altimeter (MOLA) Mission Experiment Gridded Data Records (PDS Geosciences Node), public domain.
+
+- `MEGT90N000EB` (16 px/degree): `scripts/build-relief.mjs` draws the map's shaded relief, `data/mars-relief.jpg`, at 8 px a degree.
+- `MEGT90N000CB` (4 px/degree): `scripts/build-elevation.mjs` averages it to 1° for the game's own grid, `data/mars-elevation.json`.

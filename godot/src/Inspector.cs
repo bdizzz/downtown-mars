@@ -391,9 +391,18 @@ public partial class Inspector : Node3D
         _filling = true;
         try { Fill(msg); }
         finally { _filling = false; }
-        // As tall as it needs, up to most of the window.
-        _scroll.CustomMinimumSize = new Vector2(0, Mathf.Min(((Control)_scroll.GetChild(0)).GetCombinedMinimumSize().Y, _panel.GetViewportRect().Size.Y - 220));
+        // As tall as it needs, up to most of the window: measured once laid out (wrapped text needs its width first).
+        CallDeferred(nameof(FitHeight));
         ShowOutline(msg.GetProperty("outline").GetString()!);
+    }
+
+    void FitHeight()
+    {
+        var content = (Control)_scroll.GetChild(0);
+        var height = Mathf.Min(content.GetCombinedMinimumSize().Y, _panel.GetViewportRect().Size.Y - _panel.Position.Y - 60);
+        if (Mathf.IsEqualApprox(_scroll.CustomMinimumSize.Y, height)) return;
+        _scroll.CustomMinimumSize = new Vector2(0, height);
+        _panel.ResetSize();
     }
 
     void Fill(JsonElement msg)

@@ -34,6 +34,8 @@ public partial class Live : Node3D
     bool _planSeen;
     /// <summary>Start in the plan view (--plan), for this run.</summary>
     public bool StartPlan { get; set; }
+    /// <summary>No HUD (--no-hud): for screenshots of the game alone.</summary>
+    public bool NoHud { get; set; }
     int PlanFloor => Math.Clamp(_topFloor ?? 1, 1, Math.Max(1, _shape.Floors));
     bool _stormSeen;
     float _dayFraction = -1;
@@ -307,6 +309,7 @@ public partial class Live : Node3D
         _scenery.Step((float)delta);
         KeepUnderTop();
         Pulse();
+        if (NoHud) _hud.Visible = false;
         // A bridge (re)connected: it needs the game settings it acts on.
         if (_bridge.Connected != _wasConnected)
         {
