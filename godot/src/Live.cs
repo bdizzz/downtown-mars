@@ -27,6 +27,7 @@ public partial class Live : Node3D
     readonly Festival _festival = new() { Name = "Festival" };
     readonly Scenery _scenery = new() { Name = "Scenery" };
     readonly Cutaway _cutaway = new() { Name = "Cutaway" };
+    readonly RockWall _rockWall = new();
     readonly Terrain _terrain = new() { Name = "Terrain" };
     readonly PlanView _planView = new() { Name = "Plan" };
     /// <summary>The plan is showing (on, and the map isn't over it).</summary>
@@ -143,6 +144,7 @@ public partial class Live : Node3D
         AddChild(_festival);
         AddChild(_scenery);
         AddChild(_cutaway);
+        AddChild(_rockWall);
         // The plan under the HUD, over the 3D view (which rests while it's up).
         var planLayer = new CanvasLayer { Layer = 0, Name = "PlanLayer" };
         AddChild(planLayer);
@@ -907,6 +909,9 @@ public partial class Live : Node3D
         if (GetViewport().GetCamera3D() is Camera3D view) _hole.UpdateWalls(ViewSettings.WallsDown && !walking, view.GlobalPosition);
         var cutaway = cut.W > 0.5f;
         _cutaway.Show(cutaway, _shape, _rig?.Heading ?? 0, Cut == null);
+        // Underground, rock round the rings (the cutaway has its backdrop instead); walking, the whole hole's depth.
+        var under = walking && GetViewport().GetCamera3D()?.GlobalPosition.Y < 0;
+        _rockWall.Show(_shape, cutaway ? null : under ? _shape.Floors : Cut);
         if (_occluders != null) _occluders.Visible = !cutaway;
     }
 
