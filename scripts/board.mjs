@@ -266,7 +266,8 @@ function featureState(f, gh, rows) {
   if (f.meta.status === "done" || (f.meta.status === "agreed" && tasks.length && !unticketed && tasks.every(finished)))
     return { ...out, state: "done" };
   if (pr?.state === "OPEN") return { ...out, state: "in-review", since: pr.createdAt, pr };
-  if (gh.branches[id]) return { ...out, state: "in-flight", branch: gh.branches[id] };
+  // A merged plan PR leaves the feature where its file says (draft until Bryon agrees it).
+  if (gh.branches[id] && pr?.state !== "MERGED") return { ...out, state: "in-flight", branch: gh.branches[id] };
   if (f.meta.status === "agreed") {
     const started = tasks.some((r) => ["in-flight", "in-review", "done"].includes(r.state));
     return { ...out, state: started ? "in-progress" : "agreed" };
