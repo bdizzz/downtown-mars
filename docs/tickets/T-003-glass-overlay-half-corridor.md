@@ -26,3 +26,4 @@ Give `corridorStripGeometry` (or a sibling) an optional side, producing the half
 
 ## History
 - 2026-10-04 16:12 opened from N-0003
+- 2026-10-04 16:15 building on t-003-glass-overlay-half-corridor
