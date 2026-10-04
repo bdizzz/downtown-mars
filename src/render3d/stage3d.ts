@@ -219,6 +219,23 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   section.frustumCulled = false;
   section.visible = false;
   scene.add(section);
+  // Below ground (a floor picked, or walking): a wall of rock just past the unlocked rings, from the
+  // floor in view up to the surface, so the view stops at rock instead of running off into the distance.
+  // Only its inside is drawn, so a camera outside it (zoomed out) sees straight through it.
+  const rockWallGeo = new THREE.CylinderGeometry(1, 1, 1, 96, 1, true).translate(0, -0.5, 0);
+  const rockWall = new THREE.Mesh(rockWallGeo, withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.BackSide })));
+  rockWall.visible = false;
+  scene.add(rockWall);
+
+  /** Fit the rock wall to the unlocked rings and the floor in view, and show it only underground. */
+  function updateRockWall(): void {
+    // The cutaway has its own backdrop (the shell), the full depth of the hole.
+    const f = view.mode === "walk" ? hole?.floors ?? null : cut();
+    rockWall.visible = !!hole && view.mode !== "cutaway" && f !== null;
+    if (!rockWall.visible || !hole) return;
+    const r = hole.shaftRadiusM + hole.unlockedRings * RING_D + SHELL_MARGIN;
+    rockWall.scale.set(r, -floorSpan(f!)[0] + SHELL_MARGIN, r);
+  }
 
   /** Lay the cut face along the section plane, following the ground where it's cut. */
   function updateSection(): void {
@@ -505,6 +522,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // Moved off where this view starts: offer the way back.
     resetButton.hidden = atHome();
     updateSection();
+    updateRockWall();
     updateReadout();
     dirty = true;
     // The world moved under a still pointer, so what it points at may have changed.
@@ -1635,6 +1653,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!graphics.life) roomFx.clear();
     // Sparks and steam only come from furniture that's shown.
     roomFx.setView({ topFloor: cut(), xray: view.xray });
+    updateRockWall();
     dirty = true;
   }
 
