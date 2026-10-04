@@ -19,3 +19,85 @@ when viewing a floor below the surface, we shouldn't be able to see far into the
 
 the height of this cylinder texture should only go as high as the depth below ground that the current floor is. i.e. the cylinder shouldn't be infinitely tall when you're only looking at floor 1.  this new cylinder should never obscure the camera's view or any rooms or corridors.
 → T-004
+
+## N-0005 · 2026-10-04 17:10
+right now a colony loses way too much water and really relies on supply drops full of water. we should make sure that the resource loop for water makes sense. at a high level:
+
+1. colonies have a certain amount of seed water (clean) at the beginning
+2. several things consume that water, like farms, people, kitchens, life support etc.
+3. anything consuming clean water turns that water into gray water at a 1:1 ratio. 
+4. farms, people, kitchens, etc can only consume clean water.
+5. water treatment facility converts gray water back to clean water, at the expense of other resources (electricity etc) and effects (noise etc)
+   1. water treatment facility also produces soil, slowly
+6. some industrial rooms convert water not just to gray water but also to black water. in early game the only thing you can do with black water is store it or discard it.
+
+
+in this context, gray water means "reasonable to sanitize and filter to create clean water" and is a process immediately available form the beginning. black water means "heavily contaminated with industrial byproducts, not easy to clean" an unlockable room later in the game should be an "industrial byproduct filtration" room that can convert black water into gray water, with high resource usage. i'm up for better labels if this is too confusing with the generally-accepted meanings of those concepts. 
+
+so, given infinite electricity and maintenance, water should largely be a closed loop system from the start (with the exception of clean water lost to black water). the trickiness for the player is managing the levels of clean to gray water in the hole, and making sure that too much isn't being lost to black water without being replenished externally (supply drop, trade with another hole, deep well). when retrieving water via a well, it should come in as gray water (in the narrative, it's very salty brine that can be liquid at low temps), and the player will need to convert it to clean water.
+
+something i haven't really figured out is whether:
+
+1. throughout the course of the day, humans convert water to gray water
+   1. not sure what purpose restrooms have here
+2. humans don't do that directly; bathrooms are where the resource exchange happens and the player needs to make sure that restrooms are within X distance of many other rooms
+   1. some rooms (like suite) seem to have a bathroom furniture, if that exists in a room than that room is exempt from restroom calculation
+   2. if we go this path, restroom distance could be a comfort modifier. in general i'd like to figure out more comfort modifiers so you have enough tools to keep people happy
+
+
+i'd appreciate perspective on what a good system would be here
+
+--- Follow-up (same note): Claude's perspective, which Bryon approved ---
+- Who makes gray water: the hole as a whole, not restrooms. Clean water is one shared pool, like power. When a person, farm or kitchen uses clean water, the same amount becomes gray right away. No carrying water to restrooms.
+- Restrooms are an amenity by walking distance, like parks and clinics. Homes with bathroom furniture (the suite, for example) count as covered. Being far from a restroom costs comfort, and a nearby one is a small plus. This is a new comfort lever.
+- The loop leaks a little: treatment returns about 95–98% as clean water, and the rest comes out as sludge that becomes soil (that's where the soil output comes from). Wells and supply drops still matter a little. With infinite power, the early challenge is treatment capacity and gray-water storage: when the gray tanks are full, consumers stall.
+- Names: clean / gray / tailings, since "black water" means toilet waste in real life. The late-game room is a "tailings reclaimer" (tailings → gray). Well water arrives as gray (salty brine in the story).
+
+--- Bryon's answers ---
+1. Gray water needs its own storage. The water tank room lets you choose what it holds (clean or gray), the way farms let you pick a crop.
+2. Tailings can be stored. If there isn't enough storage, the overflow just disappears for now.
+3. The water charts should show exactly what is converting water, by source and by user. Check how they handle "humans" today.
+→ T-005, T-006, T-007
+
+## N-0006 · 2026-10-04 17:20
+we should add a way for people to "upgrade" a room's building materials. generally rooms are build from bare rock in the early game because the overall resource value is cheapest. once the player has access to better materials like bricks and metal, the player should be able to upgrade the room in place to be made with one of these other materials. i don't think you should get materials back when you convert a room away from a given material, but it should have a cost in the new material. the task should also be part of the construction queue. i'm undecided if the room should be usable while in active construction. 
+
+one further idea: you can modify a room to have a slightly upgraded version within the same building material. for example, not just:
+
+* rock -> brick
+
+but also:
+
+* bare rock -> smoothed rock
+* brick -> patterned brick
+* metal -> inlaid decorative metal 
+
+etc
+
+so room type should have it's own base comfort and other values, and these are modifiable with these upgrades to different degrees
+→ T-008
+
+## N-0007 · 2026-10-04 17:21
+in godot mode (maybe web too), some of the floors appear to have a wooden texture. we should make sure there is not a wooden texture floor since there is no wood resource in the game
+→ T-009
+
+## N-0008 · 2026-10-04 17:59
+this sounds like a very large idea:
+
+a drawback of the current system is that the furniture layout of the same room on ring 1 vs ring 2 is very different, because the overall square footage of a 2x1 room (for example) is very different between rings (it is the largest difference between ring 1->2  and 2->3). this make building and corridor paths much simpler, but perhaps we should have a fundamentally different system where:
+
+1. each room has a "target square footage"
+2. each ring continues to have a set "depth" dimension
+3. when building a room, we translate the target square footage and specific ring's depth into "degrees"
+   1. degrees is the span around the circle at that ring distance which would create a room of that area
+4. there are no longer a certain number of "slots" for rooms in a given ring
+5. a room no longer identifies itself by number of room "slots" it takes up, instead by overall area
+6. when building, we should have a little wiggle room when placing a room:
+   1. a proposed room should "snap" to a neighbor room when the hover state is close enough to that room
+   2. snapping should also work for the ends of rooms on other rings, so that it's easier to make successive corridors traversing rings lined up into a straight line
+   3. there should be a little (10-15%) grace when filling in a room so that it can snap to a similar ending line of another ring, or to meet the next neighbor room on the current ring. this means that even though rooms have a target sqft, when placing, the true sqft might end up +/- 10 or 15 percent based on snapping opportunities
+   4. snapping is an option that can be toggled off from the build UI, default is on but you should be able to toggle it while placing a given room without leaving the placement mode.
+7. some room types, like empty rooms and plazas, can take _any_ number of degrees as valid. this will be useful for filling in null spaces between other rooms where a standard room area won't fit.
+   1. perhaps there is a different "fill tool" that can be used with these rooms, and it attempts to fill in those awkward spaces. this only works if there are already two rooms to bookend the fill, that way you don't create a ring with only one room and then a very very long plaza. perhaps fill covers at most 60 degrees radially or something
+   2. or, perhaps you could place a normal room in a temporary invalid state (won't get build if you exit this state while it's still invalid) and then you can drag the left/right borders of the room to fit your needs. perhaps visually there's handle UI to convey that the left & right wall are moveable. snapping should apply while dragging those, and there should be visual indication when your proposed room is now in a valid placement. normal rooms get +/- 10 or 15 percent adjustment with these handles, and then some "fill rooms" like plazas and empty rooms can go much much further in swing.
+→ T-010
