@@ -145,3 +145,7 @@ if a corridor is running perpendicular to a room's multisegment wall and makes a
 ## N-0019 · 2026-10-05 02:39
 the "try" skill should be able take web/godot/both as input for what engine to start up
 → T-023
+
+## N-0020 · 2026-10-05 02:54
+sometimes the "hovering over the button for another floor shows you that floor" is jarring, we should make that a game setting (toggleable in the settings menu) wether to preview floors on hover
+→ T-024
