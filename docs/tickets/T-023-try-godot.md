@@ -1,7 +1,7 @@
 ---
 id: T-023
 title: /try takes web, godot or both
-status: open
+status: done
 size: S
 area: docs
 touches: [.claude/skills/try/SKILL.md, scripts/try.mjs, docs/PLAN-GODOT.md]
@@ -25,3 +25,4 @@ created: 2026-10-05 02:42
 ## History
 - 2026-10-05 02:42 opened from N-0019
 - 2026-10-05 02:45 building on t-009-no-wood-floors
+- 2026-10-05 02:53 built: try.mjs takes web|godot|both; a test viewer's bridge log goes beside DM_SAVES

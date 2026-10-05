@@ -611,7 +611,8 @@ public partial class Live : Node3D
 
     /// <summary>
     /// With no game answering after a moment, start one: the bridge in Node, from the repo, through a login
-    /// shell (for Node on the PATH), its output in ~/.downtown-mars/bridge.log. It goes when the viewer does.
+    /// shell (for Node on the PATH), its output in ~/.downtown-mars/bridge.log (or beside DM_SAVES, so a test
+    /// run's log stays out of Bryon's). It goes when the viewer does.
     /// </summary>
     void MaybeStartBridge()
     {
@@ -620,9 +621,11 @@ public partial class Live : Node3D
         var repo = ProjectSettings.GlobalizePath("res://").TrimEnd('/');
         repo = System.IO.Path.GetDirectoryName(repo)!;
         var args = BridgeArgs.Count > 0 ? BridgeArgs : new List<string> { "--continue" };
-        var line = $"export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; mkdir -p ~/.downtown-mars && cd '{repo}' && exec node scripts/bridge.mjs --port={Port} {string.Join(" ", args)} > ~/.downtown-mars/bridge.log 2>&1";
+        var saves = System.Environment.GetEnvironmentVariable("DM_SAVES");
+        var logDir = string.IsNullOrEmpty(saves) ? "~/.downtown-mars" : $"'{System.IO.Path.GetDirectoryName(saves.TrimEnd('/'))}'";
+        var line = $"export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; mkdir -p {logDir} && cd '{repo}' && exec node scripts/bridge.mjs --port={Port} {string.Join(" ", args)} > {logDir}/bridge.log 2>&1";
         _bridgePid = OS.CreateProcess("/bin/zsh", new[] { "-lc", line });
-        GD.Print(_bridgePid > 0 ? $"Started the game (bridge, pid {_bridgePid}); its log: ~/.downtown-mars/bridge.log" : "Couldn't start the bridge: run  npm run bridge  in the repo");
+        GD.Print(_bridgePid > 0 ? $"Started the game (bridge, pid {_bridgePid}); its log: {logDir}/bridge.log" : "Couldn't start the bridge: run  npm run bridge  in the repo");
     }
 
     /// <summary>Feed the test keys (--keys) to Godot's input, as a keyboard would.</summary>
