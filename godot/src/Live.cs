@@ -777,6 +777,8 @@ public partial class Live : Node3D
     /// backdrop by up to SliceTint, fully by SliceTintDepth metres down; opening it takes SliceSeconds.
     /// </summary>
     const float SliceFadeFrom = 6, SliceFadeTo = 45, SliceEdge = 5, SliceTint = 0.7f, SliceTintDepth = 30, SliceSeconds = 0.5f;
+    /// <summary>The backdrop's earth the cut-out fades into (the web's C.earth).</summary>
+    static readonly Color SliceEarth = new("#241410");
     /// <summary>How far the cut-out has opened, 0 to 1 (it dissolves in when a floor's picked).</summary>
     float _sliceAmount = 1;
     bool _wasSliced;
@@ -937,6 +939,25 @@ public partial class Live : Node3D
         _sliceClock = now;
         RenderingServer.GlobalShaderParameterSet("slice_fade", new Vector4(SliceFadeFrom, SliceFadeTo, _sliceAmount, 0));
         RenderingServer.GlobalShaderParameterSet("slice_look", new Vector4(SliceEdge, SliceTint, SliceTintDepth, 0));
+        // Past the cut-out, a haze in the backdrop's earth covers the distance and the sky (the web's
+        // backdrop turns to earth instead), from the far side of the fade on, easing in as it opens.
+        var env = _env.Environment;
+        env.FogEnabled = sliced;
+        if (sliced && GetViewport().GetCamera3D() is Camera3D eye)
+        {
+            // From the eye to the far side of the rock wall, at the surface.
+            var r = RockWall.Radius(_shape);
+            var far = eye.GlobalPosition.DistanceTo(new Vector3(-Mathf.Cos(heading) * r, 0, -Mathf.Sin(heading) * r));
+            env.FogMode = Godot.Environment.FogModeEnum.Depth;
+            env.FogLightColor = SliceEarth;
+            env.FogLightEnergy = 1;
+            env.FogSunScatter = 0;
+            env.FogSkyAffect = 1;
+            env.FogDepthBegin = far + SliceFadeFrom;
+            env.FogDepthEnd = far + SliceFadeTo;
+            env.FogDepthCurve = 1;
+            env.FogDensity = _sliceAmount;
+        }
         if (_ground.Visible != (Cut == null || Sliced)) ApplyCut();
         if (_occluders != null) _occluders.Visible = !cutaway;
     }
