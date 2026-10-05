@@ -169,38 +169,73 @@ function withPattern<T extends THREE.Material>(m: T, name: string, glsl: string,
 }
 
 /**
- * The land sliced open through the hole's axis (Iso with a floor picked): while `on`, what's on the
- * camera's side of the slice (`dir`, from the axis towards the camera) isn't drawn, and with a hole,
- * neither is anything within `radius` of the axis (the land over the rings).
+ * The land sliced open through the hole's axis (Iso with a floor picked). While `on`, what's on the
+ * camera's side of the slice (`dir`, from the axis towards the camera) isn't drawn; land isn't drawn
+ * over the rings (within `radius` of the axis); and land and the cut face thin out with distance past
+ * the rings (from `radius + fadeFrom` to `radius + fadeTo`), a fine stipple into the background, so
+ * the planet round the floor reads as a ghostly cut-out. `amount` eases from 0 to 1 as the slice
+ * opens: what goes dissolves away, what comes dissolves in.
  */
 export interface Slice {
   on: { value: number };
+  amount: { value: number };
   dir: { value: THREE.Vector2 };
   radius: { value: number };
+  fadeFrom: { value: number };
+  fadeTo: { value: number };
 }
 
-export function makeSlice(): Slice {
-  return { on: { value: 0 }, dir: { value: new THREE.Vector2(1, 0) }, radius: { value: 0 } };
+export function makeSlice(fadeFrom: number, fadeTo: number): Slice {
+  return {
+    on: { value: 0 },
+    amount: { value: 1 },
+    dir: { value: new THREE.Vector2(1, 0) },
+    radius: { value: 0 },
+    fadeFrom: { value: fadeFrom },
+    fadeTo: { value: fadeTo },
+  };
 }
 
-/** Let a slice cut this material away (with `hole`, round the axis too). */
-export function withSlice<T extends THREE.Material>(m: T, slice: Slice, hole = false): T {
+/** What a slice does to a material: the land (all of the above), a wall round the rings (its near half goes), or the cut face (it fades). */
+export type SliceRole = "land" | "wall" | "face";
+
+const SLICE_GLSL = /* glsl */ `
+  // A stipple threshold per pixel (interleaved gradient noise): fine, even, and steady as the camera moves.
+  float sliceStipple() { return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))); }
+  float sliceFade(vec3 p) { return smoothstep(sliceRadius + sliceFadeFrom, sliceRadius + sliceFadeTo, length(p.xz)); }
+`;
+
+/** When a fragment goes, by role (n is its stipple threshold). */
+const SLICE_CUT: Record<SliceRole, string> = {
+  // The near half and the land over the rings dissolve away; the rest thins out with distance.
+  land: "(dot(vSlicePos.xz, sliceDir) > 0.0 || length(vSlicePos.xz) < sliceRadius) ? n < sliceAmount : n < sliceFade(vSlicePos) * sliceAmount",
+  // The near half dissolves away.
+  wall: "dot(vSlicePos.xz, sliceDir) > 0.0 && n < sliceAmount",
+  // Dissolves in, thinning out with distance.
+  face: "n > sliceAmount || n < sliceFade(vSlicePos)",
+};
+
+/** Let a slice cut this material, in this role. */
+export function withSlice<T extends THREE.Material>(m: T, slice: Slice, role: SliceRole): T {
   const prev = m.onBeforeCompile;
   const prevKey = m.customProgramCacheKey();
   m.onBeforeCompile = (shader, renderer) => {
     prev.call(m, shader, renderer);
     shader.uniforms.sliceOn = slice.on;
+    shader.uniforms.sliceAmount = slice.amount;
     shader.uniforms.sliceDir = slice.dir;
     shader.uniforms.sliceRadius = slice.radius;
+    shader.uniforms.sliceFadeFrom = slice.fadeFrom;
+    shader.uniforms.sliceFadeTo = slice.fadeTo;
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vSlicePos;")
       .replace("#include <project_vertex>", "vSlicePos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#include <project_vertex>");
-    const cut = hole ? "dot(vSlicePos.xz, sliceDir) > 0.0 || length(vSlicePos.xz) < sliceRadius" : "dot(vSlicePos.xz, sliceDir) > 0.0";
+    const uniforms = "uniform float sliceOn;\nuniform float sliceAmount;\nuniform vec2 sliceDir;\nuniform float sliceRadius;\nuniform float sliceFadeFrom;\nuniform float sliceFadeTo;";
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", "#include <common>\nvarying vec3 vSlicePos;\nuniform float sliceOn;\nuniform vec2 sliceDir;\nuniform float sliceRadius;")
-      .replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>\nif (sliceOn > 0.5 && (${cut})) discard;`);
+      .replace("#include <common>", `#include <common>\nvarying vec3 vSlicePos;\n${uniforms}\n${SLICE_GLSL}`)
+      .replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>\nif (sliceOn > 0.5) { float n = sliceStipple(); if (${SLICE_CUT[role]}) discard; }`);
   };
-  m.customProgramCacheKey = () => `${prevKey}|slice${hole ? "-hole" : ""}`;
+  m.customProgramCacheKey = () => `${prevKey}|slice-${role}`;
   return m;
 }
 
