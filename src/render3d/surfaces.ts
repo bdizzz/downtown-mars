@@ -169,8 +169,10 @@ function withPattern<T extends THREE.Material>(m: T, name: string, glsl: string,
 }
 
 /**
- * The land sliced open through the hole's axis (Iso with a floor picked). While `on`, what's on the
- * camera's side of the slice (`dir`, from the axis towards the camera) isn't drawn; land isn't drawn
+ * The land sliced open (Iso with a floor picked), along the line where the rings look widest from the
+ * camera: square to `dir` (from the axis towards the camera), `offset` metres toward it, through the
+ * points where the camera's sightlines graze the rock wall. While `on`, what's on the camera's side of
+ * that line isn't drawn; land isn't drawn
  * over the rings (within `radius` of the axis); and land and the cut face thin out with distance past
  * the rings (from `radius + fadeFrom` to `radius + fadeTo`), a fine stipple into the background, so
  * the planet round the floor reads as a ghostly cut-out. Where the land meets the cut, both crumble
@@ -183,6 +185,7 @@ export interface Slice {
   on: { value: number };
   amount: { value: number };
   dir: { value: THREE.Vector2 };
+  offset: { value: number };
   radius: { value: number };
   fadeFrom: { value: number };
   fadeTo: { value: number };
@@ -206,6 +209,7 @@ export function makeSlice(look: SliceLook): Slice {
     on: { value: 0 },
     amount: { value: 1 },
     dir: { value: new THREE.Vector2(1, 0) },
+    offset: { value: 0 },
     radius: { value: 0 },
     fadeFrom: { value: look.fadeFrom },
     fadeTo: { value: look.fadeTo },
@@ -223,7 +227,7 @@ export function makeSlice(look: SliceLook): Slice {
  */
 export type SliceRole = "land" | "wall" | "face" | "ground";
 
-const SLICE_UNIFORMS = ["On", "Amount", "Radius", "FadeFrom", "FadeTo", "Edge", "Tint", "TintDepth"].map((u) => `uniform float slice${u};`).join("\n") + "\nuniform vec2 sliceDir;\nuniform vec3 sliceEarth;";
+const SLICE_UNIFORMS = ["On", "Amount", "Offset", "Radius", "FadeFrom", "FadeTo", "Edge", "Tint", "TintDepth"].map((u) => `uniform float slice${u};`).join("\n") + "\nuniform vec2 sliceDir;\nuniform vec3 sliceEarth;";
 
 const SLICE_GLSL = /* glsl */ `
   // A stipple threshold per pixel (interleaved gradient noise): fine, even, and steady as the camera moves.
@@ -247,10 +251,10 @@ const SLICE_GLSL = /* glsl */ `
 /** When a fragment goes, by role (n is its stipple threshold). */
 const SLICE_CUT: Record<SliceRole, string> = {
   // The near half and the land over the rings dissolve away; the rest thins out with distance and crumbles by the cut.
-  land: `(dot(vSlicePos.xz, sliceDir) > 0.0 || length(vSlicePos.xz) < sliceRadius) ? n < sliceAmount
-    : n < max(sliceFade(vSlicePos), sliceCrumble(-dot(vSlicePos.xz, sliceDir), vSlicePos.xz)) * sliceAmount`,
+  land: `(dot(vSlicePos.xz, sliceDir) > sliceOffset || length(vSlicePos.xz) < sliceRadius) ? n < sliceAmount
+    : n < max(sliceFade(vSlicePos), sliceCrumble(sliceOffset - dot(vSlicePos.xz, sliceDir), vSlicePos.xz)) * sliceAmount`,
   // The near half dissolves away.
-  wall: "dot(vSlicePos.xz, sliceDir) > 0.0 && n < sliceAmount",
+  wall: "dot(vSlicePos.xz, sliceDir) > sliceOffset && n < sliceAmount",
   // Dissolves in, thinning out with distance and crumbling along its top.
   face: "n > sliceAmount || n < max(sliceFade(vSlicePos), sliceCrumble(-vSlicePos.y, vec2(vSlicePos.x + vSlicePos.z, vSlicePos.y)))",
   // Thins out with distance.
@@ -267,6 +271,7 @@ export function withSlice<T extends THREE.Material>(m: T, slice: Slice, role: Sl
       sliceOn: slice.on,
       sliceAmount: slice.amount,
       sliceDir: slice.dir,
+      sliceOffset: slice.offset,
       sliceRadius: slice.radius,
       sliceFadeFrom: slice.fadeFrom,
       sliceFadeTo: slice.fadeTo,

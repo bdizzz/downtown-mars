@@ -92,9 +92,10 @@ const ROCK_FLUSH = 0.05;
  * Iso's cut-out round the picked floor (surfaces.ts withSlice): the land and its cut face thin out
  * between these distances past the rings (metres) into the dark backdrop; where land meets the cut,
  * both crumble over `edge` metres; the cut rock darkens toward the backdrop by up to `tint`, fully by
- * `tintDepth` metres down; and opening it takes `seconds`.
+ * `tintDepth` metres down; and opening it takes `seconds`. The cut runs where the rings look widest;
+ * with the camera over the wall (nearer than `nearest` radii), as if it were that far out.
  */
-const SLICE = { fadeFrom: 6, fadeTo: 45, edge: 5, tint: 0.7, tintDepth: 30, seconds: 0.5 };
+const SLICE = { fadeFrom: 6, fadeTo: 45, edge: 5, tint: 0.7, tintDepth: 30, seconds: 0.5, nearest: 1.05 };
 
 type Mode = Camera;
 
@@ -272,12 +273,22 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function updateSection(): void {
     const underground = sliced();
     const out = new THREE.Vector3(Math.cos(cam.theta), 0, Math.sin(cam.theta));
+    const r = hole ? hole.shaftRadiusM + hole.unlockedRings * RING_D + ROCK_FLUSH : 0;
+    // Iso's cut runs where the rings look widest: square to the camera (where it really is, panned or
+    // not), through the points where its sightlines graze the rock wall, r²/D toward it from the axis.
+    let offset = 0;
+    if (underground) {
+      const d = Math.hypot(camera.position.x, camera.position.z);
+      if (d > 1e-3) out.set(camera.position.x / d, 0, camera.position.z / d);
+      offset = (r * r) / Math.max(d, r * SLICE.nearest);
+    }
     const opening = underground && !!hole;
     // Opening the slice (not moving between floors): it dissolves in.
     if (opening && slice.on.value < 0.5) slice.amount.value = 0;
     slice.on.value = opening ? 1 : 0;
     slice.dir.value.set(out.x, out.z);
-    if (hole) slice.radius.value = hole.shaftRadiusM + hole.unlockedRings * RING_D + ROCK_FLUSH;
+    slice.offset.value = offset;
+    slice.radius.value = r;
     section.material = underground ? sliceMat : sectionMat;
     section.visible = !!hole && ((view.mode === "cutaway" && cut() === null) || underground);
     if (!section.visible || !hole) return;
@@ -285,7 +296,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const tx = -out.z;
     const tz = out.x;
     const back = -0.05;
-    const inner = hole.shaftRadiusM + hole.unlockedRings * RING_D + (underground ? ROCK_FLUSH : SHELL_MARGIN);
+    // Underground the face starts at the wall, where the cut meets it; the cutaway's past the backdrop.
+    const inner = underground ? Math.sqrt(Math.max(0, r * r - offset * offset)) : hole.shaftRadiusM + hole.unlockedRings * RING_D + SHELL_MARGIN;
     // Underground, no slab under the hole (the rooms below the picked floor stay in view), and the face
     // stops at the picked floor's cap: below it, past the faded ground, there's only the backdrop.
     const deep = underground ? SECTION.bottom : floorSpan(hole.floors + 1)[0] - SHELL_MARGIN;
@@ -293,15 +305,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const n = SECTION.samples + 1;
     let k = 0;
     const put = (u: number, y: number) => {
-      sectionPos[k++] = u * tx + out.x * back;
+      sectionPos[k++] = u * tx + out.x * (offset + back);
       sectionPos[k++] = y;
-      sectionPos[k++] = u * tz + out.z * back;
+      sectionPos[k++] = u * tz + out.z * (offset + back);
     };
     for (const sign of [-1, 1]) {
       for (let i = 0; i < n; i++) {
         // Denser near the hole, where the ground is seen close up.
         const u = sign * (inner + (SECTION.reach - inner) * (i / SECTION.samples) ** 2);
-        put(u, terrain ? terrain.heightAt(u * tx, u * tz) : 0);
+        put(u, terrain ? terrain.heightAt(u * tx + out.x * offset, u * tz + out.z * offset) : 0);
         put(u, bottom);
       }
     }
