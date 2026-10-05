@@ -19,16 +19,17 @@ Things happen too fast for the number of days: babies arrive the day after happi
 - The day/night cycle stays as it is: one sol of light and dark per "month", which is a little odd but it's what Bryon asked for.
 
 ## Approach
-One shared formatter (in `src/view/`, so the bridge and Godot get it) for a game day as "Month 9" / "Year 3, month 9", used everywhere; rates and durations relabelled "a month"; data text reworded. Done: no "day" left in player-facing text except where it means daylight.
+One shared formatter (in `src/view/`, so the bridge and Godot get it) for a game day as "Month 9" / "Year 3, month 9", used everywhere; rates and durations relabelled "a month"; data text reworded. The HUD keeps its hh:mm clock and gains a small rotating sun/moon dial next to it (a disc turning once a sol, sun up by day and moon by night, as on an analog clock's moon-phase window); Godot's HUD too. Done: no "day" left in player-facing text except where it means daylight.
 
 ## Docs to update
 - GUIDE.md and README.md (time and speed), DECISIONS.md (a game day is shown as a month), CLAUDE.md "240 ticks a game day" note if it's worth a line.
 
 ## Open questions
-- [ ] The HUD clock (`hh:mm`): keep it (the time of day within the month's one sol of light), or drop it? Proposed: drop the hh:mm and show the light as a small sun/moon icon, since a month with a clock reads oddly.
+- [x] Keep the hh:mm clock for now (Bryon knows it sits oddly next to months), and add a rotating **sun/moon dial** beside it, like the moon-phase dial on an analog clock face. (Bryon, Oct 5)
 - [ ] Rates: "+3 a month" and "runs out in 2.5 months"? Proposed: yes, everywhere a day was used as the unit.
 - [ ] Ages in years and months (a 40-day lifespan stage becomes "3 years 4 months")? Proposed: yes.
 - [ ] Read as time elapsed, as in your example (month 45 = "year 3, month 9"; the first year shows plain "month 9"), rather than as a calendar (month 45 = "year 4, month 9")? Proposed: elapsed, as you wrote it.
 
 ## History
 - 2026-10-05 01:11 opened from N-0016, N-0017
+- 2026-10-05 01:16 clock question answered: keep hh:mm, add a sun/moon dial
