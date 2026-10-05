@@ -1,7 +1,7 @@
 ---
 id: T-017
 title: Caution badges from floors above stay visible on a lower floor
-status: open
+status: done
 size: S
 area: render3d
 touches: [src/render3d/stage3d.ts]
@@ -22,3 +22,6 @@ Tag each badge with its room's floor and hide it with the floor cut (and on rebu
 
 ## History
 - 2026-10-05 01:11 opened from N-0012
+- 2026-10-05 02:27 building on t-017-badges-hide-above-floor
+- 2026-10-05 02:31 cause: showTrouble skipped when its key matched; a floor with no rooms gives the empty key, the same as the rebuild's reset, so old badges stayed. Reset to null instead. Godot unaffected (badges are children of rebuilt labels)
+- 2026-10-05 02:31 built
