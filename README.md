@@ -29,7 +29,7 @@ New games start with a tutorial from your deputy. The [player's guide](docs/GUID
 
 ## Playing
 
-The latest `main` is playable at **https://bdizzz.github.io/downtown-mars/** (rebuilt on every push). To run it locally (Node 20+):
+The latest `main` is playable at **https://bdizzz.github.io/downtown-mars/** (rebuilt on every push). To run it locally (Node 24; `nvm use` picks it up from `.nvmrc`):
 
 ```bash
 npm install
