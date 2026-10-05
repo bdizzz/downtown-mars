@@ -177,7 +177,7 @@ New games open in 3D, in Iso. Everything you can do in 2D works in 3D.
 **What you'll see**
 
 - Built rooms are furnished: bunks in dorms, planters or racks of whatever the farm grows, furnaces in the smelter. Homes have pictures, family photos and lamps; workplaces have charts, gauges, pipes and tool boards; vents, cable trays and lights run high round every room.
-- Floors suit each room: planks at home, tiles in kitchens and clinics, plating in plants, paving in plazas. Rooms get grubbier as their condition drops.
+- Floors suit each room: honed stone at home and in offices, tiles in kitchens and clinics, plating in plants, paving in plazas. Nothing is wooden: there are no trees on Mars, so furniture frames and panels are fibre composite. Rooms get grubbier as their condition drops.
 - Colonists stroll the gallery tubes or are where you'd expect for the hour: at their posts, asleep in bed at night, sitting about in homes, plazas and offices.
 - Rooms in trouble are outlined in amber (slowed) or red (short of what they run on), with a ⚠ over their name; paused rooms in grey. The room's card says why.
 - Screens flicker, indicator lights blink, fires dance, plants sway and windows fog at the bottom. Working smelters throw sparks and life support vents steam.

@@ -72,7 +72,7 @@ function item(id, name, parts, mount) {
 // =====================================================================
 
 /** A picture frame (w × h) with a canvas in it. */
-const framed = (w, h, frame = "wood") => [box([0, h / 2, 0], [w, h, 0.04], frame), box([0, h / 2, 0.021], [w - 0.1, h - 0.1, 0.01], "cream")];
+const framed = (w, h, frame = "fibre") => [box([0, h / 2, 0], [w, h, 0.04], frame), box([0, h / 2, 0.021], [w - 0.1, h - 0.1, 0.01], "cream")];
 item("painting", "Painting", [
   ...framed(0.9, 0.7),
   // A landscape: sky, hills and a sun.
@@ -101,13 +101,13 @@ item("wall_lamp", "Wall lamp", [
   cyl([0, 0.14, 0.15], 0.16, 0.03, "lamp", glow),
 ], 1.9);
 item("wall_shelf", "Wall shelf", [
-  box([0, 0.14, 0.1], [1.0, 0.04, 0.22], "wood"),
+  box([0, 0.14, 0.1], [1.0, 0.04, 0.22], "fibre"),
   ...[-0.42, 0.42].map((x) => box([x, 0.06, 0.03], [0.03, 0.12, 0.08], "dark")),
   ...[-0.32, -0.26, -0.2].map((x, i) => box([x, 0.27 + i * 0.01, 0.1], [0.05, 0.22 + i * 0.02, 0.16], ["accent", "rust", "board"][i])),
   cyl([0.05, 0.24, 0.1], 0.12, 0.16, "copper"),
   sph([0.3, 0.23, 0.1], 0.14, "mirror"),
 ], 1.45);
-item("wall_mirror", "Mirror", [box([0, 0.5, 0], [0.6, 1.0, 0.03], "wood"), box([0, 0.5, 0.016], [0.52, 0.92, 0.005], "mirror")], 1.1);
+item("wall_mirror", "Mirror", [box([0, 0.5, 0], [0.6, 1.0, 0.03], "fibre"), box([0, 0.5, 0.016], [0.52, 0.92, 0.005], "mirror")], 1.1);
 item("wall_clock", "Clock", [
   cyl([0, 0.2, 0.02], 0.4, 0.04, "dark", { r: [90, 0, 0] }),
   cyl([0, 0.2, 0.041], 0.34, 0.005, "white", { r: [90, 0, 0] }),
@@ -148,7 +148,7 @@ item("mars_map", "Map of Mars", [
   ...[[-0.6, 0.3], [-0.1, 0.55], [0.7, 0.25]].map(([x, y]) => cyl([x, y, 0.028], 0.07, 0.006, "glow", { r: [90, 0, 0], glow: true })),
 ], 1.3);
 item("notice_board", "Notice board", [
-  box([0, 0.4, 0], [1.2, 0.8, 0.04], "wood"),
+  box([0, 0.4, 0], [1.2, 0.8, 0.04], "fibre"),
   box([0, 0.4, 0.021], [1.1, 0.7, 0.005], "composite"),
   ...[[-0.35, 0.55, "white"], [-0.05, 0.5, "power"], [0.3, 0.58, "accent"], [-0.3, 0.22, "cream"], [0.1, 0.25, "white"], [0.38, 0.2, "grow"]].map(([x, y, c]) =>
     box([x, y, 0.026], [0.22, 0.24, 0.004], c, { r: [0, 0, (x * 20) % 7] }),
@@ -179,13 +179,13 @@ item("plaque", "Plaque", [box([0, 0.17, 0], [0.5, 0.34, 0.03], "copper"), box([0
 
 // Family snapshots: a cluster of small frames, each a different size and colour.
 item("family_photos", "Family photos", [
-  ...[[-0.36, 0.34, 0.26, 0.32, "wood", "water"], [-0.02, 0.4, 0.34, 0.26, "dark", "cream"], [0.33, 0.3, 0.24, 0.3, "copper", "plant"], [-0.2, 0.08, 0.3, 0.2, "dark", "rust"], [0.16, 0.06, 0.22, 0.16, "wood", "glow"]].flatMap(([x, y, w, h, f, c]) => [
+  ...[[-0.36, 0.34, 0.26, 0.32, "fibre", "water"], [-0.02, 0.4, 0.34, 0.26, "dark", "cream"], [0.33, 0.3, 0.24, 0.3, "copper", "plant"], [-0.2, 0.08, 0.3, 0.2, "dark", "rust"], [0.16, 0.06, 0.22, 0.16, "fibre", "glow"]].flatMap(([x, y, w, h, f, c]) => [
     box([x, y + h / 2, 0], [w, h, 0.03], f),
     box([x, y + h / 2, 0.016], [w - 0.06, h - 0.06, 0.004], c),
   ]),
 ], 1.35);
 item("wall_textile", "Woven hanging", [
-  cyl([0, 1.2, 0.03], 0.04, 0.9, "wood", { r: [0, 0, 90] }),
+  cyl([0, 1.2, 0.03], 0.04, 0.9, "fibre", { r: [0, 0, 90] }),
   box([0, 0.66, 0.02], [0.7, 1.06, 0.015], "cushion"),
   // Bands of colour woven across it, and tassels along the bottom.
   ...[[0.98, "accent"], [0.82, "hazard"], [0.66, "cream"], [0.5, "rust"], [0.34, "accent"]].map(([y, c]) => box([0, y, 0.029], [0.66, 0.08, 0.004], c)),
@@ -202,7 +202,7 @@ item("earth_photo", "Picture of Earth", [
   cyl([-0.2, 0.14, 0.027], 0.1, 0.004, "stone", { r: [90, 0, 0] }),
 ], 1.4);
 item("coat_hooks", "Coat hooks", [
-  box([0, 0.95, 0.02], [1.2, 0.08, 0.04], "wood"),
+  box([0, 0.95, 0.02], [1.2, 0.08, 0.04], "fibre"),
   ...[-0.45, -0.15, 0.15, 0.45].map((x) => box([x, 0.92, 0.07], [0.03, 0.03, 0.08], "steel")),
   // A jacket, a bag and a scarf.
   box([-0.45, 0.55, 0.09], [0.36, 0.72, 0.1], "accent"),
@@ -243,11 +243,11 @@ item("tool_board", "Tool pegboard", [
   ...[0.2, 0.45, 0.7].flatMap((y) => [-0.45, -0.15, 0.15, 0.45].map((x) => box([x + 0.1, y - 0.1, 0.018], [0.02, 0.02, 0.004], "dark"))),
   // A spanner, a hammer, pliers, a saw and a coil of cable.
   box([-0.4, 0.55, 0.03], [0.05, 0.5, 0.02], "steel"),
-  box([-0.2, 0.62, 0.03], [0.04, 0.4, 0.03], "wood"),
+  box([-0.2, 0.62, 0.03], [0.04, 0.4, 0.03], "fibre"),
   box([-0.2, 0.82, 0.04], [0.18, 0.06, 0.05], "metal"),
   ...[-0.03, 0.03].map((dx) => box([dx, 0.55, 0.03], [0.03, 0.3, 0.02], "fire", { r: [0, 0, dx * 300] })),
   box([0.28, 0.6, 0.025], [0.3, 0.14, 0.01], "steel"),
-  box([0.4, 0.6, 0.03], [0.08, 0.16, 0.03], "wood"),
+  box([0.4, 0.6, 0.03], [0.08, 0.16, 0.03], "fibre"),
   cyl([0.3, 0.22, 0.05], 0.24, 0.08, "hazard", { r: [90, 0, 0] }),
 ], 1.1);
 item("fire_extinguisher", "Fire extinguisher", [
@@ -338,13 +338,13 @@ item("cleaning_cart", "Cleaning cart", [
   box([0, 0.82, 0], [0.92, 0.04, 0.52], "panel"),
   // A mop bucket, spray bottles and a bin bag.
   cyl([0.25, 0.97, 0], 0.3, 0.26, "water"),
-  box([0.25, 1.4, 0.05], [0.03, 0.9, 0.03], "wood"),
+  box([0.25, 1.4, 0.05], [0.03, 0.9, 0.03], "fibre"),
   ...[-0.35, -0.22].map((x, i) => cyl([x, 0.95, 0.1], 0.09, 0.22, i ? "plant" : "water")),
   box([-0.1, 0.96, -0.1], [0.25, 0.26, 0.2], "dark"),
 ]);
 item("mop_rack", "Mop rack", [
-  box([0, 1.4, 0], [1.2, 0.08, 0.1], "wood"),
-  ...[-0.45, -0.15, 0.15, 0.45].flatMap((x, i) => [box([x, 0.85, 0.08], [0.03, 1.1, 0.03], "wood"), box([x, 0.2, 0.08], [0.22, 0.25, 0.08], ["cream", "accent", "cream", "hazard"][i])]),
+  box([0, 1.4, 0], [1.2, 0.08, 0.1], "fibre"),
+  ...[-0.45, -0.15, 0.15, 0.45].flatMap((x, i) => [box([x, 0.85, 0.08], [0.03, 1.1, 0.03], "fibre"), box([x, 0.2, 0.08], [0.22, 0.25, 0.08], ["cream", "accent", "cream", "hazard"][i])]),
   box([0, 0.05, 0.1], [1.2, 0.1, 0.25], "metal"),
 ]);
 item("drying_rack", "Drying rack", [
@@ -443,41 +443,41 @@ item("tv_unit", "Media wall", [
 item("coat_rack", "Coat rack", [cyl([0, 0.02, 0], 0.4, 0.04, "dark"), cyl([0, 0.9, 0], 0.05, 1.8, "metal"), box([0.12, 1.4, 0.05], [0.24, 0.7, 0.14], "accent"), box([-0.1, 1.45, -0.04], [0.2, 0.6, 0.12], "cushion")]);
 // Homes: apartments of every tier (the finer the home, the more of these it holds).
 item("double_bed", "Double bed", [
-  ...legs(2.1, 1.7, 0.28, "wood"),
-  box([0, 0.3, 0], [2.1, 0.06, 1.7], "wood"),
+  ...legs(2.1, 1.7, 0.28, "fibre"),
+  box([0, 0.3, 0], [2.1, 0.06, 1.7], "fibre"),
   box([0.02, 0.43, 0], [2.0, 0.2, 1.62], "white"),
   box([0.3, 0.55, 0], [1.4, 0.06, 1.66], "accent"),
   box([0.3, 0.51, 0.82], [1.4, 0.14, 0.02], "accent"),
   box([0.95, 0.59, 0], [0.3, 0.05, 1.66], "cream"),
   ...[-0.4, 0.4].map((z) => box([-0.72, 0.6, z], [0.36, 0.14, 0.62], "white")),
-  // The headboard: padded, in the wood frame.
-  box([-1.03, 0.75, 0], [0.06, 0.9, 1.72], "wood"),
+  // The headboard: padded, in the fibre frame.
+  box([-1.03, 0.75, 0], [0.06, 0.9, 1.72], "fibre"),
   box([-0.99, 0.82, 0], [0.04, 0.6, 1.5], "cushion"),
 ]);
 item("wardrobe", "Wardrobe", [
-  box([0, 1.0, 0], [1.2, 2.0, 0.6], "wood"),
+  box([0, 1.0, 0], [1.2, 2.0, 0.6], "fibre"),
   box([0, 1.02, 0.301], [0.015, 1.9, 0.01], "dark"),
   ...[-1, 1].map((sx) => box([sx * 0.08, 1.05, 0.31], [0.03, 0.28, 0.03], "steel")),
   box([0, 2.02, 0], [1.24, 0.04, 0.62], "dark"),
   box([0, 0.04, 0], [1.16, 0.08, 0.56], "dark"),
 ]);
 item("dresser", "Dresser", [
-  box([0, 0.42, 0], [1.2, 0.8, 0.5], "wood"),
+  box([0, 0.42, 0], [1.2, 0.8, 0.5], "fibre"),
   ...[0.18, 0.42, 0.66].flatMap((y) => [box([0, y, 0.251], [1.14, 0.2, 0.01], "composite"), box([0, y, 0.26], [0.2, 0.03, 0.02], "steel")]),
   box([0, 0.83, 0], [1.24, 0.03, 0.54], "dark"),
   box([0, 1.3, -0.2], [0.8, 0.9, 0.03], "mirror"),
-  box([0, 1.3, -0.215], [0.88, 0.98, 0.02], "wood"),
+  box([0, 1.3, -0.215], [0.88, 0.98, 0.02], "fibre"),
   cyl([0.42, 0.95, 0.05], 0.12, 0.2, "accent"),
   ...foliage(0.42, 1.12, 0.05, 0.3),
 ]);
 item("coffee_table", "Coffee table", [
-  ...table(1.1, 0.6, 0.42, "wood", "dark"),
+  ...table(1.1, 0.6, 0.42, "fibre", "dark"),
   box([-0.25, 0.44, 0.02], [0.3, 0.03, 0.22], "accent"),
   box([-0.25, 0.47, 0.02], [0.26, 0.03, 0.2], "cream"),
   cyl([0.3, 0.46, -0.05], 0.09, 0.09, "white"),
 ]);
 item("kitchenette", "Kitchenette", [
-  box([0, 0.44, 0], [2.4, 0.88, 0.62], "wood"),
+  box([0, 0.44, 0], [2.4, 0.88, 0.62], "fibre"),
   ...[-0.9, -0.3, 0.3, 0.9].map((x) => box([x, 0.44, 0.311], [0.56, 0.78, 0.01], "composite")),
   box([0, 0.9, 0], [2.44, 0.04, 0.66], "stone"),
   // The sink and its tap, and a two-ring hob.
@@ -485,7 +485,7 @@ item("kitchenette", "Kitchenette", [
   box([-0.6, 1.02, -0.2], [0.04, 0.22, 0.04], "steel"),
   ...[0.45, 0.8].map((x) => cyl([x, 0.925, 0.02], 0.22, 0.01, "dark")),
   // Wall cupboards, and a light under them.
-  box([0, 1.85, -0.14], [2.4, 0.7, 0.34], "wood"),
+  box([0, 1.85, -0.14], [2.4, 0.7, 0.34], "fibre"),
   ...[-0.9, -0.3, 0.3, 0.9].map((x) => box([x, 1.85, 0.031], [0.56, 0.64, 0.01], "composite")),
   box([0, 1.49, -0.05], [2.2, 0.02, 0.1], "lamp", glow),
   cyl([0.15, 0.99, -0.15], 0.18, 0.14, "accent"),
@@ -513,8 +513,8 @@ item("fireplace", "Fireplace", [
   box([0, 0.55, 0], [1.4, 1.1, 0.4], "stone"),
   box([0, 0.42, 0.18], [0.9, 0.5, 0.06], "dark"),
   box([0, 0.36, 0.2], [0.8, 0.22, 0.04], "fire", glow),
-  ...[-0.2, 0.05, 0.25].map((x) => box([x, 0.24, 0.2], [0.22, 0.06, 0.08], "wood")),
-  box([0, 1.12, 0.02], [1.5, 0.06, 0.46], "wood"),
+  ...[-0.2, 0.05, 0.25].map((x) => box([x, 0.24, 0.2], [0.22, 0.06, 0.08], "fibre")),
+  box([0, 1.12, 0.02], [1.5, 0.06, 0.46], "fibre"),
   ...[-0.5, 0.45].map((x) => cyl([x, 1.25, 0], 0.08, 0.2, "accent")),
 ]);
 item("piano", "Piano", [
@@ -523,7 +523,7 @@ item("piano", "Piano", [
   box([0, 0.77, 0.2], [1.3, 0.02, 0.18], "white"),
   box([0, 0.78, 0.16], [1.3, 0.01, 0.07], "dark"),
   ...[-1, 1].map((sx) => box([sx * 0.66, 0.36, 0.2], [0.08, 0.72, 0.08], "dark")),
-  box([0, 1.32, -0.1], [1.52, 0.04, 0.42], "wood"),
+  box([0, 1.32, -0.1], [1.52, 0.04, 0.42], "fibre"),
   box([0, 0.46, 0.55], [0.9, 0.06, 0.34], "cushion"),
   ...[-1, 1].map((sx) => box([sx * 0.4, 0.22, 0.55], [0.06, 0.44, 0.3], "dark")),
 ]);
@@ -1394,7 +1394,7 @@ item("brick_press", "Brick press", [
   box([0, 0.85, 0.1], [0.8, 0.1, 0.5], "rust"),
 ]);
 item("brick_pallet", "Bricks on a pallet", [
-  box([0, 0.06, 0], [1.2, 0.12, 1.0], "wood"),
+  box([0, 0.06, 0], [1.2, 0.12, 1.0], "fibre"),
   ...[0, 1, 2, 3].flatMap((k) => [-0.3, 0.3].map((x) => box([x, 0.2 + k * 0.15, 0], [0.56, 0.14, 0.9], k % 2 ? "rust" : "red"))),
 ]);
 item("sorting_bins", "Sorting bins", [
@@ -1580,7 +1580,7 @@ const colors = {
   metal: "#8f949b", steel: "#b7bcc2", dark: "#3b3f45", rubber: "#2a2a2c", panel: "#cfc8bb", white: "#e4e0d8", cream: "#e8dcc0",
   composite: "#a88a66", cushion: "#7c6a5a", plant: "#5f9e4a", leaf: "#7cc05a", soil: "#5a3a28", water: "#4f9fc8", mirror: "#8fc7d9",
   rust: "#a0522d", copper: "#b87333", stone: "#8a7a6c", hazard: "#e0a03a", board: "#2f4a3a", glow: "#9fd2ff", grow: "#f0a8ff",
-  fire: "#ff8a3d", lamp: "#ffe2b0", power: "#f4d35e", blueprint: "#3d6fb0", wood: "#8a5e3c",
+  fire: "#ff8a3d", lamp: "#ffe2b0", power: "#f4d35e", blueprint: "#3d6fb0", fibre: "#7a6352",
   potato: "#4f7a3a", soy: "#9cbf5a", stalk: "#b8a060", wheat: "#d8b35a", barley: "#cdbf86", substrate: "#4a3526",
   mushroom: "#e6dccb", cap: "#b08a64", algae: "#3f9a5a", flower: "#f2f0e0", red: "#c8423a",
 };

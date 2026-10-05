@@ -80,8 +80,8 @@ function glowMode(part: Part): number {
 }
 /** What parts are made of, by colour, for their fine pattern (surfaces.ts). */
 const PART_MATS: Record<string, number> = {
-  wood: PART_MAT.wood,
-  composite: PART_MAT.wood,
+  fibre: PART_MAT.fibre,
+  composite: PART_MAT.fibre,
   cushion: PART_MAT.fabric,
   cream: PART_MAT.fabric,
   metal: PART_MAT.metal,

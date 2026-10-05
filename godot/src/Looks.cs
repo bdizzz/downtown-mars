@@ -25,7 +25,7 @@ static class Looks
     /// <summary>Floors by kind, as the web's FLOOR_LOOK (surfaces.ts): colour, how much the room's colour tints it, roughness, metalness.</summary>
     static readonly Dictionary<string, (int kind, string color, float tint, float rough, float metal)> Floors = new()
     {
-        ["planks"] = (0, "#9a6a44", 0.2f, 0.55f, 0),
+        ["stone"] = (0, "#a4826a", 0.2f, 0.55f, 0),
         ["tiles"] = (1, "#d8d2c8", 0.25f, 0.4f, 0),
         ["plate"] = (2, "#8d9299", 0.2f, 0.42f, 0.45f),
         ["paving"] = (3, "#a89484", 0.2f, 0.78f, 0),
