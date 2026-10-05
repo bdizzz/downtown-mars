@@ -8,14 +8,16 @@ bool cut_away(vec3 world) {
 	return cut_plane.w > 0.5 && dot(world.xz, cut_plane.xz) > 0.0;
 }
 
-// Iso's cut-out with a floor picked, as the web's (surfaces.ts withSlice): the land sliced through the
-// hole's axis (slice: xy toward the camera, z the radius of the opening over the rings, w 1 when on),
+// Iso's cut-out with a floor picked, as the web's (surfaces.ts withSlice): the land sliced square to the
+// camera (slice: xy toward the camera, z the radius of the opening over the rings, w 1 when on),
 // thinning out with distance past the rings in a fine stipple (slice_fade: x to y metres past them; z how
-// far it's opened, easing 0 to 1). Where land meets the cut, both crumble over slice_look.x metres; the
+// far it's opened, easing 0 to 1). The cut runs slice_look.w metres toward the camera from the axis, where
+// the rings look widest. Where land meets the cut, both crumble over slice_look.x metres; the
 // cut rock darkens toward the backdrop's earth by up to slice_look.y, fully by slice_look.z metres down
 // or the far end of the fade. Only materials given a slice_role take it: 1 the land (its near half and
 // over the rings dissolve away, the rest thins out and crumbles by the cut), 2 the cut face (dissolves
-// in, thins out, crumbles along its top, darkens), 3 the rock wall (darkens; its near half isn't built).
+// in, thins out, crumbles along its top, darkens; nothing inside the wall), 3 the rock wall (its near side
+// dissolves away; it darkens).
 global uniform vec4 slice;
 global uniform vec4 slice_fade;
 global uniform vec4 slice_look;
@@ -38,14 +40,16 @@ float slice_fade_at(vec3 world) {
 }
 
 bool sliced_away(vec3 world, vec2 frag) {
-	if (slice_role == 0 || slice_role == 3 || slice.w < 0.5) return false;
+	if (slice_role == 0 || slice.w < 0.5) return false;
 	float n = fract(52.9829189 * fract(dot(frag, vec2(0.06711056, 0.00583715))));
 	float d = length(world.xz);
 	float fade = slice_fade_at(world);
 	float a = slice_fade.z;
+	float side = dot(world.xz, slice.xy) - slice_look.w;
 	if (slice_role == 1)
-		return (dot(world.xz, slice.xy) > 0.0 || d < slice.z) ? n < a : n < max(fade, slice_crumble(-dot(world.xz, slice.xy), world.xz)) * a;
-	return n > a || n < max(fade, slice_crumble(-world.y, vec2(world.x + world.z, world.y)));
+		return (side > 0.0 || d < slice.z) ? n < a : n < max(fade, slice_crumble(-side, world.xz)) * a;
+	if (slice_role == 3) return side > 0.0 && n < a;
+	return d < slice.z || n > a || n < max(fade, slice_crumble(-world.y, vec2(world.x + world.z, world.y)));
 }
 
 // How far the cut rock (the face and the wall) darkens toward the backdrop: with depth, and along the fade.

@@ -54,13 +54,13 @@ public partial class Cutaway : Node3D
             face.AddRange(new[] { new Vector3(u0, y1, 0), new Vector3(u1, y1, 0), new Vector3(u1, y0, 0), new Vector3(u0, y1, 0), new Vector3(u1, y0, 0), new Vector3(u0, y0, 0) });
         Quad(-Reach, -inner, Bottom, 0);
         Quad(inner, Reach, Bottom, 0);
-        // Iso's cut through the land: flush with the rings (as the rock wall), in the shaft wall's rock.
-        var flush = RockWall.Radius(h);
+        // Iso's cut through the land, in the shaft wall's rock, where the rings look widest (Show places it).
         var cut = new List<Vector3>();
         void CutQuad(float u0, float u1) =>
             cut.AddRange(new[] { new Vector3(u0, 0, 0), new Vector3(u1, 0, 0), new Vector3(u1, Bottom, 0), new Vector3(u0, 0, 0), new Vector3(u1, Bottom, 0), new Vector3(u0, Bottom, 0) });
-        CutQuad(-Reach, -flush);
-        CutQuad(flush, Reach);
+        // From the middle out: the shader leaves out what's inside the rock wall (view.gdshaderinc).
+        CutQuad(-Reach, 0);
+        CutQuad(0, Reach);
         _slice.Mesh = Mesh(cut);
         // Its own material: it fades with distance and dissolves in (view.gdshaderinc `slice_role` 2).
         var sliceRock = Looks.For("rock:slice", new Color("#6a3a28"), 1, 0, false);
@@ -83,9 +83,10 @@ public partial class Cutaway : Node3D
     /// <summary>
     /// On in the cutaway: the backdrop always, the cut face with no floor picked (the ground's there to cut
     /// then). Sliced (Iso with a floor picked), only the cut face either side of the rings, without the slab
-    /// under the hole, so the land reads as cut open down to that floor.
+    /// under the hole, so the land reads as cut open down to that floor: square to `toward` (from the axis
+    /// toward the camera), `offset` metres toward it, where the rings look widest.
     /// </summary>
-    public void Show(bool on, HoleShape hole, float heading, bool whole, bool sliced = false)
+    public void Show(bool on, HoleShape hole, float heading, bool whole, bool sliced = false, Vector2 toward = default, float offset = 0)
     {
         Visible = on || sliced;
         if (!Visible) return;
@@ -95,10 +96,10 @@ public partial class Cutaway : Node3D
         _slice.Visible = sliced && !on;
         // Along the cut, a hair to the kept side so the cut doesn't take it.
         var outward = new Vector3(Mathf.Cos(heading), 0, Mathf.Sin(heading));
-        foreach (var face in new[] { _section, _slice })
-        {
-            face.Basis = new Basis(new Vector3(-outward.Z, 0, outward.X), Vector3.Up, outward);
-            face.Position = -outward * 0.05f;
-        }
+        _section.Basis = new Basis(new Vector3(-outward.Z, 0, outward.X), Vector3.Up, outward);
+        _section.Position = -outward * 0.05f;
+        var at = new Vector3(toward.X, 0, toward.Y);
+        _slice.Basis = new Basis(new Vector3(-at.Z, 0, at.X), Vector3.Up, at);
+        _slice.Position = at * (offset - 0.05f);
     }
 }

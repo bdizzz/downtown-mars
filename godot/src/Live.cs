@@ -777,6 +777,8 @@ public partial class Live : Node3D
     /// backdrop by up to SliceTint, fully by SliceTintDepth metres down; opening it takes SliceSeconds.
     /// </summary>
     const float SliceFadeFrom = 6, SliceFadeTo = 45, SliceEdge = 5, SliceTint = 0.7f, SliceTintDepth = 30, SliceSeconds = 0.5f;
+    /// <summary>With the camera over the rock wall (nearer than this many radii), the cut sits as if it were that far out.</summary>
+    const float SliceNearest = 1.05f;
     /// <summary>The backdrop's earth the cut-out fades into (the web's C.earth).</summary>
     static readonly Color SliceEarth = new("#241410");
     /// <summary>How far the cut-out has opened, 0 to 1 (it dissolves in when a floor's picked).</summary>
@@ -926,11 +928,22 @@ public partial class Live : Node3D
         var cutaway = cut.W > 0.5f;
         var heading = _rig?.Heading ?? 0;
         var sliced = Sliced && !cutaway;
-        _cutaway.Show(cutaway, _shape, heading, Cut == null, sliced);
+        // Iso's cut runs where the rings look widest, as the web's: square to the camera (where it really
+        // is, panned or not), through the points where its sightlines graze the rock wall, r²/D toward it.
+        var r = RockWall.Radius(_shape);
+        var toward = new Vector2(Mathf.Cos(heading), Mathf.Sin(heading));
+        var offset = 0f;
+        if (sliced && GetViewport().GetCamera3D() is Camera3D seen)
+        {
+            var flat = new Vector2(seen.GlobalPosition.X, seen.GlobalPosition.Z);
+            if (flat.Length() > 1e-3f) toward = flat.Normalized();
+            offset = r * r / Mathf.Max(flat.Length(), r * SliceNearest);
+        }
+        _cutaway.Show(cutaway, _shape, heading, Cut == null, sliced, toward, offset);
         // Underground, rock round the rings (the cutaway has its backdrop instead); walking, the whole hole's depth.
         var under = walking && GetViewport().GetCamera3D()?.GlobalPosition.Y < 0;
-        _rockWall.Show(_shape, cutaway ? null : under ? _shape.Floors : Cut, sliced ? heading : null);
-        RenderingServer.GlobalShaderParameterSet("slice", new Vector4(Mathf.Cos(heading), Mathf.Sin(heading), RockWall.Radius(_shape), sliced ? 1 : 0));
+        _rockWall.Show(_shape, cutaway ? null : under ? _shape.Floors : Cut);
+        RenderingServer.GlobalShaderParameterSet("slice", new Vector4(toward.X, toward.Y, r, sliced ? 1 : 0));
         // Opening the cut-out (not moving between floors): it dissolves in.
         var now = Time.GetTicksMsec();
         if (sliced && !_wasSliced) _sliceAmount = 0;
@@ -938,7 +951,7 @@ public partial class Live : Node3D
         _wasSliced = sliced;
         _sliceClock = now;
         RenderingServer.GlobalShaderParameterSet("slice_fade", new Vector4(SliceFadeFrom, SliceFadeTo, _sliceAmount, 0));
-        RenderingServer.GlobalShaderParameterSet("slice_look", new Vector4(SliceEdge, SliceTint, SliceTintDepth, 0));
+        RenderingServer.GlobalShaderParameterSet("slice_look", new Vector4(SliceEdge, SliceTint, SliceTintDepth, offset));
         // Past the cut-out, a haze in the backdrop's earth covers the distance and the sky (the web's
         // backdrop turns to earth instead), from the far side of the fade on, easing in as it opens.
         var env = _env.Environment;
@@ -946,8 +959,7 @@ public partial class Live : Node3D
         if (sliced && GetViewport().GetCamera3D() is Camera3D eye)
         {
             // From the eye to the far side of the rock wall, at the surface.
-            var r = RockWall.Radius(_shape);
-            var far = eye.GlobalPosition.DistanceTo(new Vector3(-Mathf.Cos(heading) * r, 0, -Mathf.Sin(heading) * r));
+            var far = eye.GlobalPosition.DistanceTo(new Vector3(-toward.X * r, 0, -toward.Y * r));
             env.FogMode = Godot.Environment.FogModeEnum.Depth;
             env.FogLightColor = SliceEarth;
             env.FogLightEnergy = 1;
