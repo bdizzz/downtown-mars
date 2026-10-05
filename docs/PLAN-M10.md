@@ -544,13 +544,13 @@ Decided Sep 28, 2026 (Bryon):
 
 **Step 8, textures** (procedural, in `surfaces.ts`):
 - **Floors by kind of room**, with room colours on (`withFloor`). Each uses its own colour, tinted 20–25% by the category colour.
-  - Planks (homes, offices): 20 cm, staggered, each its own shade, with grain.
+  - Planks (homes, offices): 20 cm, staggered, each its own shade, with grain. *Later (Oct 5, T-009): honed stone slabs instead, 1.2 × 0.8 m in offset rows; there's no wood on Mars.*
   - Tiles (clinics, kitchens, halls): 40 cm, grouted.
   - Diamond plate (plants, workshops, farms).
   - Paving (plazas): offset stones.
   - Concrete (storage, logistics, construction): speckled, jointed.
 - **Furniture parts by what they're made of** (`aMat` per vertex, from the part's colour, `withPartPatterns`):
-  - Wood grain (wood, composite).
+  - Wood grain (wood, composite). *Later (Oct 5, T-009): a fibre-composite twill; the `wood` colour became `fibre`.*
   - A soft weave (cushion, cream).
   - Brushed and scuffed metal (metal, steel).
   - Worn paint with scratches (panel, hazard).

@@ -327,10 +327,10 @@ export function finishMaterial(finish: keyof typeof FINISH_LOOK): THREE.MeshStan
 /**
  * A floor's look: its own colour (the room's category colour tints it a little), its pattern, and how
  * it takes the light: glazed tiles and steel plate shine (catching the lamps and the room in them),
- * varnished planks a little, paving and concrete hardly at all.
+ * honed stone a little, paving and concrete hardly at all. No wood: there are no trees on Mars.
  */
 export const FLOOR_LOOK = {
-  planks: { color: 0x9a6a44, tint: 0.2, roughness: 0.55, metalness: 0 },
+  stone: { color: 0xa4826a, tint: 0.2, roughness: 0.55, metalness: 0 },
   tiles: { color: 0xd8d2c8, tint: 0.25, roughness: 0.4, metalness: 0 },
   plate: { color: 0x8d9299, tint: 0.2, roughness: 0.42, metalness: 0.45 },
   paving: { color: 0xa89484, tint: 0.2, roughness: 0.78, metalness: 0 },
@@ -342,13 +342,15 @@ const FLOOR_GLSL = /* glsl */ `
   float floorTone(vec3 p, int kind) {
     vec2 uv = p.xz;
     if (kind == 0) {
-      // Planks, 20 cm wide, staggered ends, each its own shade, with grain along them.
-      vec2 b = uv / vec2(1.8, 0.2);
-      b.x += srfHash(vec3(floor(b.y), 1.0, 2.0)) * 3.0;
+      // Honed stone: the hole's own rock cut into 1.2 x 0.8 m slabs in offset rows, each its own
+      // shade, with soft clouding and the odd fine vein; tight joints.
+      vec2 b = uv / vec2(1.2, 0.8);
+      b.x += 0.5 * mod(floor(b.y), 2.0);
       vec2 f = fract(b);
-      float gap = step(0.03, f.y) * step(0.004, f.x);
-      float grain = mix(0.94, 1.04, srfNoise(vec3(uv.x * 3.0, uv.y * 60.0, 0.0)));
-      return mix(0.55, mix(0.85, 1.08, srfHash(vec3(floor(b), 4.0))) * grain, gap);
+      float joint = step(0.006, f.x) * step(0.008, f.y);
+      float cloud = mix(0.92, 1.05, srfFbm(vec3(uv * 1.5, srfHash(vec3(floor(b), 3.0)) * 9.0)));
+      float vein = 1.0 - 0.12 * smoothstep(0.96, 0.99, srfNoise(vec3(uv.x * 2.0 + uv.y * 7.0, uv.y * 2.0, floor(b.x))));
+      return mix(0.62, mix(0.9, 1.06, srfHash(vec3(floor(b), 4.0))) * cloud * vein, joint);
     }
     if (kind == 1) {
       // Tiles, 40 cm, with grout, a faint glaze mottling.
@@ -409,15 +411,15 @@ export function withFloor<T extends THREE.Material>(m: T, kind: FloorKind): T {
 // ---- furniture: what each part is made of ----
 
 /** What a furniture part is made of, written to each vertex as `aMat`, for its fine pattern. */
-export const PART_MAT = { none: 0, wood: 1, fabric: 2, metal: 3, painted: 4, soil: 5 } as const;
+export const PART_MAT = { none: 0, fibre: 1, fabric: 2, metal: 3, painted: 4, soil: 5 } as const;
 
 const PART_GLSL = /* glsl */ `
   float partTone(vec3 p, float mat) {
     if (mat < 0.5) return 1.0;
     if (mat < 1.5) {
-      // Wood: grain running along x or z (whichever the part is longer in is unknown; both, softly), and rings.
-      float g = srfNoise(vec3(p.x * 2.0, p.y * 40.0, p.z * 40.0)) * 0.6 + srfNoise(vec3(p.x * 40.0, p.y * 40.0, p.z * 2.0)) * 0.4;
-      return mix(0.88, 1.06, g) * mix(0.95, 1.03, sin((p.x + p.z) * 30.0 + srfFbm(p * 3.0) * 8.0) * 0.5 + 0.5);
+      // Fibre composite (no wood on Mars): a fine twill of fibres under matte resin, faintly mottled.
+      float twill = 0.5 + 0.5 * sin((p.x + p.y + p.z) * 220.0) * sin((p.x - p.z) * 220.0 + p.y * 110.0);
+      return mix(0.95, 1.03, twill) * mix(0.93, 1.04, srfFbm(p * 5.0));
     }
     if (mat < 2.5) {
       // Fabric: a soft weave and a little pilling.

@@ -1,7 +1,7 @@
 ---
 id: T-009
 title: No wooden-looking floors (there's no wood on Mars)
-status: open
+status: done
 size: S
 area: render3d, godot
 touches: [src/render3d/rooms3d.ts, src/render3d/surfaces.ts, godot/src/Looks.cs, godot/shaders/surfaces.gdshader]
@@ -29,3 +29,5 @@ In Godot (and maybe the web) some floors look like wood. There's no wood resourc
 ## History
 - 2026-10-04 18:03 opened from N-0007
 - 2026-10-04 19:05 questions answered
+- 2026-10-05 02:45 building on t-009-no-wood-floors
+- 2026-10-05 02:53 built: homes and offices floored in honed stone, furniture wood is now fibre composite (web and Godot)

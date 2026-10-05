@@ -1067,10 +1067,10 @@ function finishWallMaterial(finish: Finish, grime = 0): THREE.Material {
 
 /** What a built room's floor is laid in, by its category (room colours on). */
 const FLOOR_BY_CATEGORY: Record<string, FloorKind> = {
-  housing: "planks",
+  housing: "stone",
   health: "tiles",
   food: "tiles",
-  admin: "planks",
+  admin: "stone",
   public: "paving",
   circulation: "tiles",
   industry: "plate",

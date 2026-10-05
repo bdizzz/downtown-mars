@@ -170,14 +170,14 @@ New games open in 3D, in Iso. Everything you can do in 2D works in 3D.
 **Cameras**
 
 - **Iso** looks at one floor (or, with All, the surface) from above and off to one side, so you see all of it: drag to turn it, scroll to zoom. With a floor picked, the planet is cut open to show it: the land across the hole stands with a rock face down to that floor, fading into the dark further out, and the near side is cut away.
-- **Cutaway** slices the hole open (it opens framing the unlocked rings); **Top** looks straight down. Pick a floor on the right to hide everything above it: from the Top it becomes a clear plan you can build on.
+- **Cutaway** slices the hole open (it opens framing the unlocked rings); **Top** looks straight down. Pick a floor on the right to hide everything above it: from the Top it becomes a clear plan you can build on. **Surface** shows the whole hole again, from the surface down.
 - **First person** puts you on a floor at eye height: WASD to walk (hold Shift to run), Q and E to turn, drag to look (or Tab for mouse look, where the browser allows it). Walk up or down a stairwell's wide flights to change floors (R or F also takes the stairs from anywhere in a stairwell; picking a floor on the right takes you there too). You can walk the gallery tubes, corridors, plazas and empty space, and into a room through its door, but not through walls or furniture. Build is off while you walk.
 - **X-ray** fades ring 1 so you can see behind it. **Walls down** lowers every wall standing between you and the room or shaft behind it to a short stub, as in The Sims.
 
 **What you'll see**
 
 - Built rooms are furnished: bunks in dorms, planters or racks of whatever the farm grows, furnaces in the smelter. Homes have pictures, family photos and lamps; workplaces have charts, gauges, pipes and tool boards; vents, cable trays and lights run high round every room.
-- Floors suit each room: planks at home, tiles in kitchens and clinics, plating in plants, paving in plazas. Rooms get grubbier as their condition drops.
+- Floors suit each room: honed stone at home and in offices, tiles in kitchens and clinics, plating in plants, paving in plazas. Nothing is wooden: there are no trees on Mars, so furniture frames and panels are fibre composite. Rooms get grubbier as their condition drops.
 - Colonists stroll the gallery tubes or are where you'd expect for the hour: at their posts, asleep in bed at night, sitting about in homes, plazas and offices.
 - Rooms in trouble are outlined in amber (slowed) or red (short of what they run on), with a ⚠ over their name; paused rooms in grey. The room's card says why.
 - Screens flicker, indicator lights blink, fires dance, plants sway and windows fog at the bottom. Working smelters throw sparks and life support vents steam.

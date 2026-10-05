@@ -18,10 +18,10 @@ public class Furniture
     const int CylSegments = 12, SphW = 10, SphH = 8;
     /// <summary>How much a near box's edges are chamfered (metres; less on small parts).</summary>
     const float Chamfer = 0.015f;
-    /// <summary>What parts are made of, by colour, for their fine pattern (as the web's PART_MATS): 1 wood, 2 fabric, 3 metal, 4 painted, 5 soil.</summary>
+    /// <summary>What parts are made of, by colour, for their fine pattern (as the web's PART_MATS): 1 fibre composite, 2 fabric, 3 metal, 4 painted, 5 soil.</summary>
     static readonly Dictionary<string, int> PartMats = new()
     {
-        ["wood"] = 1, ["composite"] = 1, ["cushion"] = 2, ["cream"] = 2, ["metal"] = 3, ["steel"] = 3,
+        ["fibre"] = 1, ["composite"] = 1, ["cushion"] = 2, ["cream"] = 2, ["metal"] = 3, ["steel"] = 3,
         ["panel"] = 4, ["hazard"] = 4, ["soil"] = 5, ["substrate"] = 5,
     };
     /// <summary>The far copy, as the web's: rounder things with fewer facets, parts smaller than this (metres) left out, beyond this distance.</summary>
@@ -386,8 +386,8 @@ float fbm3(vec3 p) {
 vec2 part_tone(vec3 p, float m) {
     if (m < 0.5) return vec2(1.0, 0.0);
     if (m < 1.5) {
-        float g = noise3(vec3(p.x * 2.0, p.y * 40.0, p.z * 40.0)) * 0.6 + noise3(vec3(p.x * 40.0, p.y * 40.0, p.z * 2.0)) * 0.4;
-        return vec2(mix(0.88, 1.06, g) * mix(0.95, 1.03, sin((p.x + p.z) * 30.0 + fbm3(p * 3.0) * 8.0) * 0.5 + 0.5), -0.1);
+        float twill = 0.5 + 0.5 * sin((p.x + p.y + p.z) * 220.0) * sin((p.x - p.z) * 220.0 + p.y * 110.0);
+        return vec2(mix(0.95, 1.03, twill) * mix(0.93, 1.04, fbm3(p * 5.0)), 0.05);
     }
     if (m < 2.5) {
         float weave = 0.5 + 0.5 * sin(p.x * 180.0) * sin(p.z * 180.0 + p.y * 180.0);

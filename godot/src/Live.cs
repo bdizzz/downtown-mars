@@ -11,7 +11,7 @@ namespace DowntownMars;
 /// drawn by Godot. Snapshots bring the time, the people and the stocks; scenes bring the hole.
 /// The sun crosses the sky by the game's hour; the HUD shows the day, the speed and the stocks, and
 /// picks a floor (the bridge sends the scene cut there).
-/// Keys: Space pauses, 1–3 set the speed, Up/Down step the picked floor, Home shows all floors,
+/// Keys: Space pauses, 1–3 set the speed, Up/Down step the picked floor, Home shows the surface (every floor),
 /// Tab switches Iso and first person, L hides the labels, F12 saves a screenshot.
 /// </summary>
 public partial class Live : Node3D
@@ -479,7 +479,7 @@ public partial class Live : Node3D
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
             : _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(PlanShown ? $"plan, floor {PlanFloor}" : _rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : _rig?.ModeName ?? "iso")}\nEsc menu · M map · N network · P colony · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(PlanShown ? $"plan, floor {PlanFloor}" : _rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : _rig?.ModeName ?? "iso")}\nEsc menu · M map · N network · P colony · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home surface · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
             : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -611,7 +611,8 @@ public partial class Live : Node3D
 
     /// <summary>
     /// With no game answering after a moment, start one: the bridge in Node, from the repo, through a login
-    /// shell (for Node on the PATH), its output in ~/.downtown-mars/bridge.log. It goes when the viewer does.
+    /// shell (for Node on the PATH), its output in ~/.downtown-mars/bridge.log (or beside DM_SAVES, so a test
+    /// run's log stays out of Bryon's). It goes when the viewer does.
     /// </summary>
     void MaybeStartBridge()
     {
@@ -620,9 +621,11 @@ public partial class Live : Node3D
         var repo = ProjectSettings.GlobalizePath("res://").TrimEnd('/');
         repo = System.IO.Path.GetDirectoryName(repo)!;
         var args = BridgeArgs.Count > 0 ? BridgeArgs : new List<string> { "--continue" };
-        var line = $"export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; mkdir -p ~/.downtown-mars && cd '{repo}' && exec node scripts/bridge.mjs --port={Port} {string.Join(" ", args)} > ~/.downtown-mars/bridge.log 2>&1";
+        var saves = System.Environment.GetEnvironmentVariable("DM_SAVES");
+        var logDir = string.IsNullOrEmpty(saves) ? "~/.downtown-mars" : $"'{System.IO.Path.GetDirectoryName(saves.TrimEnd('/'))}'";
+        var line = $"export PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"; mkdir -p {logDir} && cd '{repo}' && exec node scripts/bridge.mjs --port={Port} {string.Join(" ", args)} > {logDir}/bridge.log 2>&1";
         _bridgePid = OS.CreateProcess("/bin/zsh", new[] { "-lc", line });
-        GD.Print(_bridgePid > 0 ? $"Started the game (bridge, pid {_bridgePid}); its log: ~/.downtown-mars/bridge.log" : "Couldn't start the bridge: run  npm run bridge  in the repo");
+        GD.Print(_bridgePid > 0 ? $"Started the game (bridge, pid {_bridgePid}); its log: {logDir}/bridge.log" : "Couldn't start the bridge: run  npm run bridge  in the repo");
     }
 
     /// <summary>Feed the test keys (--keys) to Godot's input, as a keyboard would.</summary>
@@ -1536,7 +1539,7 @@ public partial class Live : Node3D
         for (var f = 0; f <= _shape.Floors; f++)
         {
             var floor = f == 0 ? (int?)null : f;
-            var b = new Button { Text = f == 0 ? "All" : $"F{f}", ToggleMode = true, FocusMode = Control.FocusModeEnum.None, ButtonPressed = floor == _topFloor };
+            var b = new Button { Text = f == 0 ? "Surface" : $"F{f}", ToggleMode = true, FocusMode = Control.FocusModeEnum.None, ButtonPressed = floor == _topFloor };
             b.SetMeta("floor", f == 0 ? -1 : f);
             b.Pressed += () => PickFloor(floor);
             _floorPicker.AddChild(b);
