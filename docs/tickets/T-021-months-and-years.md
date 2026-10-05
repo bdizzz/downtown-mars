@@ -15,7 +15,7 @@ Things happen too fast for the number of days: babies arrive the day after happi
 ## Context
 - "Day" shows up all over the face: the HUD clock (`src/ui/Hud.tsx`: `Day ${t.day} · hh:mm`), trend charts (`TrendChart.tsx`), save slots (`src/ui/saves.ts`), rates ("+3 a day", "Runs out in 2.5 days" in `src/view/hudItems.ts`; "Uses/day", "Makes/day" in `src/view/roomPanel.ts`), the colony view, Office, messages from the sim (`src/sim/people.ts` and others), event and tutorial text in `data/*.json`, and Godot's own labels where it doesn't reuse `src/view`.
 - Ages and life stages are in game days (`data/people.json`: "Days are game days"), so ages would read in months/years too.
-- "Year 3, month 9" for month 45 means 12 months a year with month 45 = 3×12 + 9, so months count from... check: the first month is month 1 or 0? (See the open questions.)
+- Bryon's example, month 45 = "year 3, month 9", is 45 = 3 × 12 + 9: 12 months a year, read like an age (3 years and 9 months in), not a calendar date (which would make month 45 year 4, month 9).
 - The day/night cycle stays as it is: one sol of light and dark per "month", which is a little odd but it's what Bryon asked for.
 
 ## Approach
@@ -28,7 +28,7 @@ One shared formatter (in `src/view/`, so the bridge and Godot get it) for a game
 - [ ] The HUD clock (`hh:mm`): keep it (the time of day within the month's one sol of light), or drop it? Proposed: drop the hh:mm and show the light as a small sun/moon icon, since a month with a clock reads oddly.
 - [ ] Rates: "+3 a month" and "runs out in 2.5 months"? Proposed: yes, everywhere a day was used as the unit.
 - [ ] Ages in years and months (a 40-day lifespan stage becomes "3 years 4 months")? Proposed: yes.
-- [ ] When to switch to years: always "year 1, month 3", or plain "month 9" until a year has passed? Proposed: "month 9" for the first year, then "year 3, month 9". Month numbering starts at 1 (so day 0 is "month 1").
+- [ ] Read as time elapsed, as in your example (month 45 = "year 3, month 9"; the first year shows plain "month 9"), rather than as a calendar (month 45 = "year 4, month 9")? Proposed: elapsed, as you wrote it.
 
 ## History
 - 2026-10-05 01:11 opened from N-0016, N-0017
