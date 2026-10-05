@@ -1,10 +1,15 @@
 // What every surface of the hole shares with the view (set by Live.cs as global shader parameters):
 // the cutaway's cut, a plane through the shaft's axis (xz its normal toward the camera, w 1 when on;
-// what's on the camera's side isn't drawn); and walls down (1 when on).
+// what's on the camera's side isn't drawn); and walls down (1 when on). And Iso's slice through the
+// land with a floor picked (xy toward the camera, z the radius of the opening over the rings, w 1 when
+// on), which takes only materials marked as land: their near half, and over the rings.
 global uniform vec4 cut_plane;
 global uniform float walls_down;
+global uniform vec4 slice;
+uniform bool land = false;
 
 bool cut_away(vec3 world) {
+	if (land && slice.w > 0.5 && (dot(world.xz, slice.xy) > 0.0 || length(world.xz) < slice.z)) return true;
 	return cut_plane.w > 0.5 && dot(world.xz, cut_plane.xz) > 0.0;
 }
 

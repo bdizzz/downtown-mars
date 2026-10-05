@@ -14,12 +14,14 @@ public partial class Cutaway : Node3D
     const float Margin = 6, Reach = 1700, Bottom = -900, FloorH = 4, Crust = 3;
     readonly MeshInstance3D _shell = new() { Name = "Shell" };
     readonly MeshInstance3D _section = new() { Name = "Section" };
+    readonly MeshInstance3D _slice = new() { Name = "Slice" };
     string _key = "";
 
     public Cutaway()
     {
         AddChild(_shell);
         AddChild(_section);
+        AddChild(_slice);
         Visible = false;
     }
 
@@ -52,6 +54,8 @@ public partial class Cutaway : Node3D
             face.AddRange(new[] { new Vector3(u0, y1, 0), new Vector3(u1, y1, 0), new Vector3(u1, y0, 0), new Vector3(u0, y1, 0), new Vector3(u1, y0, 0), new Vector3(u0, y0, 0) });
         Quad(-Reach, -inner, Bottom, 0);
         Quad(inner, Reach, Bottom, 0);
+        _slice.Mesh = Mesh(face);
+        _slice.MaterialOverride = Rock();
         Quad(-inner, inner, Bottom, -deep);
         _section.Mesh = Mesh(face);
         _section.MaterialOverride = Rock();
@@ -66,16 +70,25 @@ public partial class Cutaway : Node3D
         return st.Commit();
     }
 
-    /// <summary>On in the cutaway: the backdrop always, the cut face with no floor picked (the ground's there to cut then).</summary>
-    public void Show(bool on, HoleShape hole, float heading, bool whole)
+    /// <summary>
+    /// On in the cutaway: the backdrop always, the cut face with no floor picked (the ground's there to cut
+    /// then). Sliced (Iso with a floor picked), only the cut face either side of the rings, without the slab
+    /// under the hole, so the land reads as cut open down to that floor.
+    /// </summary>
+    public void Show(bool on, HoleShape hole, float heading, bool whole, bool sliced = false)
     {
-        Visible = on;
-        if (!on) return;
+        Visible = on || sliced;
+        if (!Visible) return;
         Build(hole);
-        _section.Visible = whole;
+        _shell.Visible = on;
+        _section.Visible = on && whole;
+        _slice.Visible = sliced && !on;
         // Along the cut, a hair to the kept side so the cut doesn't take it.
         var outward = new Vector3(Mathf.Cos(heading), 0, Mathf.Sin(heading));
-        _section.Basis = new Basis(new Vector3(-outward.Z, 0, outward.X), Vector3.Up, outward);
-        _section.Position = -outward * 0.05f;
+        foreach (var face in new[] { _section, _slice })
+        {
+            face.Basis = new Basis(new Vector3(-outward.Z, 0, outward.X), Vector3.Up, outward);
+            face.Position = -outward * 0.05f;
+        }
     }
 }

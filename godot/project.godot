@@ -36,6 +36,10 @@ cut_plane={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)
 }
+slice={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
 walls_down={
 "type": "float",
 "value": 0.0

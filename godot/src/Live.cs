@@ -767,13 +767,16 @@ public partial class Live : Node3D
 
     /// <summary>The cut the scene shows: the picked floor in Iso, none in first person.</summary>
     int? Cut => _rig?.Walking == true ? null : _topFloor;
+
+    /// <summary>Iso with a floor picked: the land's sliced open through the hole's axis to show that floor.</summary>
+    bool Sliced => Cut != null && _rig?.Mode == Overview.Iso;
     int? _cutSent = -1;
 
     /// <summary>Show the cut: the scene (from the bridge), the ground, people and occluders.</summary>
     void ApplyCut()
     {
         var cut = Cut;
-        _ground.Visible = cut == null;
+        _ground.Visible = cut == null || Sliced;
         _people.SetTopFloor(cut);
         _fx.SetTopFloor(cut);
         if (cut == _cutSent) return;
@@ -908,10 +911,14 @@ public partial class Live : Node3D
         _hole.SetCut(cut);
         if (GetViewport().GetCamera3D() is Camera3D view) _hole.UpdateWalls(ViewSettings.WallsDown && !walking, view.GlobalPosition);
         var cutaway = cut.W > 0.5f;
-        _cutaway.Show(cutaway, _shape, _rig?.Heading ?? 0, Cut == null);
+        var heading = _rig?.Heading ?? 0;
+        var sliced = Sliced && !cutaway;
+        _cutaway.Show(cutaway, _shape, heading, Cut == null, sliced);
         // Underground, rock round the rings (the cutaway has its backdrop instead); walking, the whole hole's depth.
         var under = walking && GetViewport().GetCamera3D()?.GlobalPosition.Y < 0;
-        _rockWall.Show(_shape, cutaway ? null : under ? _shape.Floors : Cut);
+        _rockWall.Show(_shape, cutaway ? null : under ? _shape.Floors : Cut, sliced ? heading : null);
+        RenderingServer.GlobalShaderParameterSet("slice", new Vector4(Mathf.Cos(heading), Mathf.Sin(heading), RockWall.Radius(_shape), sliced ? 1 : 0));
+        if (_ground.Visible != (Cut == null || Sliced)) ApplyCut();
         if (_occluders != null) _occluders.Visible = !cutaway;
     }
 
@@ -1328,7 +1335,7 @@ public partial class Live : Node3D
         arrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
         var mesh = new ArrayMesh();
         mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
-        mesh.SurfaceSetMaterial(0, Looks.For("rock:ground", new Color("#7a3b22"), 0.95f, 0, false) ?? Dress.For(new StandardMaterial3D { ResourceName = "rock:ground", AlbedoColor = new Color("#7a3b22"), Roughness = 0.95f }));
+        mesh.SurfaceSetMaterial(0, Terrain.Land(Looks.For("rock:ground", new Color("#7a3b22"), 0.95f, 0, false) ?? Dress.For(new StandardMaterial3D { ResourceName = "rock:ground", AlbedoColor = new Color("#7a3b22"), Roughness = 0.95f })));
         _ground.Mesh = mesh;
     }
 
