@@ -40,6 +40,10 @@ slice={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)
 }
+slice_fade={
+"type": "vec4",
+"value": Vector4(6, 45, 1, 0)
+}
 walls_down={
 "type": "float",
 "value": 0.0

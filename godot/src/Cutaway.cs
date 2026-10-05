@@ -62,7 +62,10 @@ public partial class Cutaway : Node3D
         CutQuad(-Reach, -flush);
         CutQuad(flush, Reach);
         _slice.Mesh = Mesh(cut);
-        _slice.MaterialOverride = Looks.For("rock:wall", new Color("#6a3a28"), 1, 0, false);
+        // Its own material: it fades with distance and dissolves in (view.gdshaderinc `slice_role` 2).
+        var sliceRock = Looks.For("rock:slice", new Color("#6a3a28"), 1, 0, false);
+        if (sliceRock is ShaderMaterial s) s.SetShaderParameter("slice_role", 2);
+        _slice.MaterialOverride = sliceRock;
         Quad(-inner, inner, Bottom, -deep);
         _section.Mesh = Mesh(face);
         _section.MaterialOverride = Rock();

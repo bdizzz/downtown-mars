@@ -770,6 +770,13 @@ public partial class Live : Node3D
 
     /// <summary>Iso with a floor picked: the land's sliced open through the hole's axis to show that floor.</summary>
     bool Sliced => Cut != null && _rig?.Mode == Overview.Iso;
+
+    /// <summary>Iso's cut-out, as the web's (stage3d.ts SLICE): the land thins out from and to these distances past the rings, metres, and opening it takes this long, seconds.</summary>
+    const float SliceFadeFrom = 6, SliceFadeTo = 45, SliceSeconds = 0.5f;
+    /// <summary>How far the cut-out has opened, 0 to 1 (it dissolves in when a floor's picked).</summary>
+    float _sliceAmount = 1;
+    bool _wasSliced;
+    ulong _sliceClock;
     int? _cutSent = -1;
 
     /// <summary>Show the cut: the scene (from the bridge), the ground, people and occluders.</summary>
@@ -918,6 +925,13 @@ public partial class Live : Node3D
         var under = walking && GetViewport().GetCamera3D()?.GlobalPosition.Y < 0;
         _rockWall.Show(_shape, cutaway ? null : under ? _shape.Floors : Cut, sliced ? heading : null);
         RenderingServer.GlobalShaderParameterSet("slice", new Vector4(Mathf.Cos(heading), Mathf.Sin(heading), RockWall.Radius(_shape), sliced ? 1 : 0));
+        // Opening the cut-out (not moving between floors): it dissolves in.
+        var now = Time.GetTicksMsec();
+        if (sliced && !_wasSliced) _sliceAmount = 0;
+        else if (sliced) _sliceAmount = Mathf.Min(1, _sliceAmount + (now - _sliceClock) / 1000f / SliceSeconds);
+        _wasSliced = sliced;
+        _sliceClock = now;
+        RenderingServer.GlobalShaderParameterSet("slice_fade", new Vector4(SliceFadeFrom, SliceFadeTo, _sliceAmount, 0));
         if (_ground.Visible != (Cut == null || Sliced)) ApplyCut();
         if (_occluders != null) _occluders.Visible = !cutaway;
     }

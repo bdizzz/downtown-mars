@@ -1,16 +1,30 @@
 // What every surface of the hole shares with the view (set by Live.cs as global shader parameters):
 // the cutaway's cut, a plane through the shaft's axis (xz its normal toward the camera, w 1 when on;
-// what's on the camera's side isn't drawn); and walls down (1 when on). And Iso's slice through the
-// land with a floor picked (xy toward the camera, z the radius of the opening over the rings, w 1 when
-// on), which takes only materials marked as land: their near half, and over the rings.
+// what's on the camera's side isn't drawn); and walls down (1 when on).
 global uniform vec4 cut_plane;
 global uniform float walls_down;
-global uniform vec4 slice;
-uniform bool land = false;
 
 bool cut_away(vec3 world) {
-	if (land && slice.w > 0.5 && (dot(world.xz, slice.xy) > 0.0 || length(world.xz) < slice.z)) return true;
 	return cut_plane.w > 0.5 && dot(world.xz, cut_plane.xz) > 0.0;
+}
+
+// Iso's cut-out with a floor picked, as the web's (surfaces.ts withSlice): the land sliced through the
+// hole's axis (slice: xy toward the camera, z the radius of the opening over the rings, w 1 when on),
+// thinning out with distance past the rings in a fine stipple (slice_fade: x to y metres past them; z how
+// far it's opened, easing 0 to 1). Only materials given a slice_role take it: 1 the land (its near half
+// and over the rings dissolve away, the rest thins out), 2 the cut face (dissolves in, thinning out).
+global uniform vec4 slice;
+global uniform vec4 slice_fade;
+uniform int slice_role = 0;
+
+bool sliced_away(vec3 world, vec2 frag) {
+	if (slice_role == 0 || slice.w < 0.5) return false;
+	float n = fract(52.9829189 * fract(dot(frag, vec2(0.06711056, 0.00583715))));
+	float d = length(world.xz);
+	float fade = smoothstep(slice.z + slice_fade.x, slice.z + slice_fade.y, d);
+	float a = slice_fade.z;
+	if (slice_role == 1) return (dot(world.xz, slice.xy) > 0.0 || d < slice.z) ? n < a : n < fade * a;
+	return n > a || n < fade;
 }
 
 // Walls down, as the web's (rooms3d.ts WALLS_GLSL): a wall vertex tagged with its wall's inward normal

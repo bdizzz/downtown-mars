@@ -208,7 +208,7 @@ float grime_tone(vec3 p, vec3 n, float level) {
 }
 
 void fragment() {
-	if (cut_away(wpos)) discard;
+	if (cut_away(wpos) || sliced_away(wpos, FRAGCOORD.xy)) discard;
 	vec3 n = normalize(wnorm);
 	bool is_floor = abs(n.y) > 0.7;
 	vec3 color = albedo;
