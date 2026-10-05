@@ -32,3 +32,4 @@ Proposed; becomes tickets once this feature (and its plan) is agreed. Phased so 
 
 ## History
 - 2026-10-04 19:12 made from T-010 (T-012 moved rooms by area into a feature)
+- 2026-10-05 18:57 planning on f-004-rooms-by-area
