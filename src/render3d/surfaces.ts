@@ -168,6 +168,42 @@ function withPattern<T extends THREE.Material>(m: T, name: string, glsl: string,
   return m;
 }
 
+/**
+ * The land sliced open through the hole's axis (Iso with a floor picked): while `on`, what's on the
+ * camera's side of the slice (`dir`, from the axis towards the camera) isn't drawn, and with a hole,
+ * neither is anything within `radius` of the axis (the land over the rings).
+ */
+export interface Slice {
+  on: { value: number };
+  dir: { value: THREE.Vector2 };
+  radius: { value: number };
+}
+
+export function makeSlice(): Slice {
+  return { on: { value: 0 }, dir: { value: new THREE.Vector2(1, 0) }, radius: { value: 0 } };
+}
+
+/** Let a slice cut this material away (with `hole`, round the axis too). */
+export function withSlice<T extends THREE.Material>(m: T, slice: Slice, hole = false): T {
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    shader.uniforms.sliceOn = slice.on;
+    shader.uniforms.sliceDir = slice.dir;
+    shader.uniforms.sliceRadius = slice.radius;
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vSlicePos;")
+      .replace("#include <project_vertex>", "vSlicePos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#include <project_vertex>");
+    const cut = hole ? "dot(vSlicePos.xz, sliceDir) > 0.0 || length(vSlicePos.xz) < sliceRadius" : "dot(vSlicePos.xz, sliceDir) > 0.0";
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vSlicePos;\nuniform float sliceOn;\nuniform vec2 sliceDir;\nuniform float sliceRadius;")
+      .replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>\nif (sliceOn > 0.5 && (${cut})) discard;`);
+  };
+  m.customProgramCacheKey = () => `${prevKey}|slice${hole ? "-hole" : ""}`;
+  return m;
+}
+
 /** Stratified Martian rock, on any material that draws rock. */
 export function withRock<T extends THREE.Material>(m: T): T {
   return withPattern(m, "rock", ROCK_GLSL, "rockTone");
