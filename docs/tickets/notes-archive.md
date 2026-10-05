@@ -137,3 +137,11 @@ things happen too quickly between the simulation and the number of days elapsed.
 ## N-0017 · 2026-10-05 01:11
 after implementing months, we can start showing a large count of months as years. like month 45 would be "year 3, month 9"
 → T-021
+
+## N-0018 · 2026-10-05 02:33
+if a corridor is running perpendicular to a room's multisegment wall and makes a dead-end at the room (not a corner of a room, but along the multisegment side of a room), then this is a potential valid place for a door to be added. doors should not be added to the absolute corner of a room (less than 1m from the corner)
+→ T-022
+
+## N-0019 · 2026-10-05 02:39
+the "try" skill should be able take web/godot/both as input for what engine to start up
+→ T-023
