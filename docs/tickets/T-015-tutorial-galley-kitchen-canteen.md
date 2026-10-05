@@ -21,3 +21,4 @@ Make the check `has(galley) || (has(kitchen) && has(canteen))`. Maybe mention th
 
 ## History
 - 2026-10-05 00:52 opened from N-0010
+- 2026-10-05 01:52 building on t-015-tutorial-galley-kitchen-canteen
