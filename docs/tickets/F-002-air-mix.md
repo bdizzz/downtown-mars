@@ -34,3 +34,4 @@ Proposed; becomes tickets once this feature is agreed.
 
 ## History
 - 2026-10-04 19:12 made from T-011 (T-012 moved the air mix into a feature)
+- 2026-10-05 18:57 planning on f-002-air-mix
