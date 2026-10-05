@@ -1,5 +1,6 @@
 import raw from "../../data/tutorial.json";
 import type { Snapshot } from "../sim/snapshot";
+import { storageKey } from "./storageKey";
 
 export interface Goal {
   id: string;
@@ -42,7 +43,7 @@ export const CHECKS: Record<string, (s: Snapshot, ui: UiFlags) => boolean> = {
   three_d: (_, ui) => ui.sawThreeD,
 };
 
-const KEY = "downtown-mars.tutorial.hidden";
+const KEY = storageKey("tutorial.hidden");
 
 export function tutorialHidden(): boolean {
   try {

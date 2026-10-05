@@ -1,0 +1,71 @@
+# Publish each PR as a playable preview at
+# https://bdizzz.github.io/downtown-mars/pr-preview/pr-N/, with a comment on
+# the PR carrying the link (kept up to date, not repeated). It's rebuilt on
+# every push and removed when the PR closes. Plain git and gh only
+# (scripts/gh-pages.sh): the repo allows only GitHub's own actions.
+#
+# Previews share the main game's origin, so they're built with their own
+# storage prefix (src/ui/storageKey.ts) to keep their saves apart.
+name: Preview
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+concurrency:
+  group: preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  PR: ${{ github.event.number }}
+  URL: https://bdizzz.github.io/downtown-mars/pr-preview/pr-${{ github.event.number }}/
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  preview:
+    # Dependabot's runs get a read-only token, and its PRs don't need playing.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        if: github.event.action != 'closed'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+        if: github.event.action != 'closed'
+      - run: npm run build
+        if: github.event.action != 'closed'
+        env:
+          VITE_STORAGE_PREFIX: pr-${{ github.event.number }}.
+      - run: |
+          sh scripts/gh-pages.sh publish dist "pr-preview/pr-$PR" "Preview PR #$PR at ${{ github.event.pull_request.head.sha }}"
+        if: github.event.action != 'closed'
+
+      - run: |
+          sh scripts/gh-pages.sh remove "pr-preview/pr-$PR" "Remove the preview of PR #$PR"
+        if: github.event.action == 'closed'
+
+      - name: Comment the link on the PR
+        shell: bash
+        run: |
+          sha=${{ github.event.pull_request.head.sha }}
+          if [ "${{ github.event.action }}" = closed ]; then
+            body=$'<!-- pr-preview -->\n**Preview** removed now that the PR is closed.'
+          else
+            body=$'<!-- pr-preview -->\n**Play this PR:** '"$URL"$'\n\nBuilt from '"${sha::7}"$' (live a minute or two after this comment). Its saves and settings are its own.'
+          fi
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq '.[] | select(.body | startswith("<!-- pr-preview -->")) | .id' | head -n 1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" > /dev/null
+          fi
