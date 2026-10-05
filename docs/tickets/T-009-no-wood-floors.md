@@ -29,3 +29,4 @@ In Godot (and maybe the web) some floors look like wood. There's no wood resourc
 ## History
 - 2026-10-04 18:03 opened from N-0007
 - 2026-10-04 19:05 questions answered
+- 2026-10-05 02:45 building on t-009-no-wood-floors
