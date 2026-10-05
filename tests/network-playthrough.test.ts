@@ -60,10 +60,11 @@ describe("first hour, two holes", () => {
     expect(last.total).toBeGreaterThan(solo.log.at(-1)!.total * 0.95);
   });
 
+  // A whole second hour of play: past vitest's 5 s default on CI's slower runners.
   it("plays out identically every time", () => {
     const again = runNetwork(60);
     expect(serialize(again.world)).toEqual(serialize(net.world));
-  });
+  }, 30_000);
 
   it("parent and child still get along", () => {
     expect(relation(net.world, child!.holeId, home!.holeId).opinion).toBeGreaterThan(20);
