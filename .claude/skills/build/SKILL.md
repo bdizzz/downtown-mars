@@ -79,9 +79,9 @@ Work as CLAUDE.md says: brain and face, data in JSON, deterministic sim. Read on
   EOF
   )"
   ```
-- Bind the PR with the ccd_pr tools (`get_status`, then `bind_pr` if needed), and finish with the PR link and anything Bryon should look at when reviewing.
+- Bind the PR with the ccd_pr tools (`get_status`, then `bind_pr` if needed), and finish with the PR link, anything Bryon should look at when reviewing, and that `/land T-0NN` merges it and cleans up once he's happy.
 
-If Bryon closes the PR without merging, the ticket goes back to ready on its own (it's still `open` on main), but delete the remote branch too, or it will keep showing as in flight.
+If Bryon closes the PR without merging, the ticket goes back to ready on its own (it's still `open` on main), but the remote branch must go too, or it will keep showing as in flight: `/land T-0NN` with his OK to drop it.
 
 ## Building a feature (`/build F-0NN`)
 
