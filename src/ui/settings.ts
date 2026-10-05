@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { cleanGraphics, DEFAULT_GRAPHICS, GRAPHICS_PRESETS, type Graphics } from "../view/graphics";
 import { DEFAULT_VIEW3D, isCamera, type View3d } from "../view/cameras";
+import { storageKey } from "./storageKey";
 
 // Player preferences, kept in browser storage. Reading or writing storage
 // can fail (private windows, blocked storage); the game then just uses the
@@ -43,7 +44,7 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 /** The 3D view used to keep its own camera choice; carried over the first time. */
-const OLD_VIEW3D_KEY = "downtown-mars.view3d";
+const OLD_VIEW3D_KEY = storageKey("view3d");
 
 function cleanView3d(raw: Partial<View3d> | undefined): View3d {
   let v = raw;
@@ -58,7 +59,7 @@ function cleanView3d(raw: Partial<View3d> | undefined): View3d {
   return { camera: isCamera(v.camera) ? v.camera : DEFAULT_VIEW3D.camera, xray: !!v.xray, wallsDown: !!v.wallsDown, roomColors: v.roomColors ?? DEFAULT_VIEW3D.roomColors, flows: !!v.flows };
 }
 
-const KEY = "downtown-mars.settings";
+const KEY = storageKey("settings");
 
 export function loadSettings(): Settings {
   try {

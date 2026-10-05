@@ -1,4 +1,5 @@
 import type { SaveSummary } from "../sim/save";
+import { storageKey } from "./storageKey";
 
 // Saves live in the browser's localStorage. Every access can throw (private
 // windows, blocked storage, full quota), so each one is guarded and failure
@@ -13,7 +14,7 @@ export interface StoredSave {
   savedAt: number;
 }
 
-const key = (slot: Slot) => `downtown-mars.save.${slot}`;
+const key = (slot: Slot) => storageKey(`save.${slot}`);
 
 export function readSave(slot: Slot): StoredSave | null {
   try {

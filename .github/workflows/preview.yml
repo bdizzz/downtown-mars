@@ -1,0 +1,43 @@
+# Publish each PR as a playable preview at
+# https://bdizzz.github.io/downtown-mars/pr-preview/pr-N/, with a sticky
+# comment on the PR carrying the link (and a QR code for phones). It's
+# rebuilt on every push and removed when the PR closes.
+#
+# Previews share the main game's origin, so they're built with their own
+# storage prefix (src/ui/storageKey.ts) to keep their saves apart.
+name: Preview
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+concurrency:
+  group: preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  preview:
+    # Dependabot's runs get a read-only token, and its PRs don't need playing.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        if: github.event.action != 'closed'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+        if: github.event.action != 'closed'
+      - run: npm run build
+        if: github.event.action != 'closed'
+        env:
+          VITE_STORAGE_PREFIX: pr-${{ github.event.number }}.
+      - uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: dist

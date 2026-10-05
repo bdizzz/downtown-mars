@@ -1,4 +1,6 @@
 # Build the web game and publish it to GitHub Pages on every push to main.
+# Pages serves the gh-pages branch: main's build at the root, and each open
+# PR's preview under pr-preview/ (see preview.yml), which this leaves alone.
 name: Pages
 
 on:
@@ -12,33 +14,24 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npm run build
-      - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
+      - run: touch dist/.nojekyll
+      - uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v5
+          folder: dist
+          branch: gh-pages
+          clean-exclude: pr-preview/
+          force: false
