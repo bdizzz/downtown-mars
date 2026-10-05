@@ -38,7 +38,7 @@ One short message:
 - **Godot**: that the viewer window is opening on a fresh game (or that checkout's last test game: saves are kept per branch, in `saves`). Closing the window stops its bridge too; if it's left running, `stop` does it.
 - **What to look at**: if it's a ticket, read it (`node scripts/board.mjs show T-0NN`) and turn its "Done:" line and what was built into a few concrete steps to see the change. For a branch without a ticket, the PR description or the commits (`git log origin/main..<branch> --oneline`).
 
-- If the branch has a PR, its playable preview too, for his phone or another machine: `https://bdizzz.github.io/downtown-mars/pr-preview/pr-<N>/` (the PR's sticky comment has it, with a QR code; it updates a minute or two after each push).
+- If the branch has a PR, its playable preview too, for his phone or another machine: `https://bdizzz.github.io/downtown-mars/pr-preview/pr-<N>/` (a comment on the PR links it; it updates a minute or two after each push).
 - That anything he wants changed, he can just say here.
 
 Don't open the URL in the Browser pane unless he asks; he'll use his own.
