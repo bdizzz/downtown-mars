@@ -60,7 +60,9 @@ const here = resolve(quiet("git rev-parse --show-toplevel") || process.cwd());
 const commonDir = resolve(sh("git rev-parse --git-common-dir"));
 process.chdir(resolve(commonDir, "..")); // run from the main checkout, wherever we were called
 
-if (!dry) quiet("git fetch --quiet --prune origin");
+// Even in a dry run: it only refreshes what we know of origin, and GitHub
+// deletes merged branches itself.
+quiet("git fetch --quiet --prune origin");
 
 /** Every worktree but the main checkout: { dir, branch, head, locked }. */
 function worktrees() {
@@ -289,8 +291,13 @@ for (const it of items.values()) {
     }
   }
   if (it.remote) {
-    if (!dry && !ok(`git push --quiet origin --delete "${it.name}"`)) notes.push(`couldn't delete origin/${it.name}`);
-    else done.branches.push(`origin/${it.name}`);
+    if (dry || ok(`git push --quiet origin --delete "${it.name}"`)) done.branches.push(`origin/${it.name}`);
+    else if (quiet(`git ls-remote --heads origin "refs/heads/${it.name}"`)) notes.push(`couldn't delete origin/${it.name}`);
+    else {
+      // GitHub deleted it on merge (a merge we just made, say); forget our copy too.
+      quiet(`git update-ref -d "refs/remotes/origin/${it.name}"`);
+      done.branches.push(`origin/${it.name}`);
+    }
   }
   landed.push(done);
 }
