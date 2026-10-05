@@ -1,7 +1,7 @@
 ---
 id: T-015
 title: A kitchen plus a canteen satisfies the tutorial's galley step
-status: open
+status: done
 size: S
 area: ui
 touches: [src/ui/tutorialGoals.ts, data/tutorial.json]
@@ -22,3 +22,4 @@ Make the check `has(galley) || (has(kitchen) && has(canteen))`. Maybe mention th
 ## History
 - 2026-10-05 00:52 opened from N-0010
 - 2026-10-05 01:52 building on t-015-tutorial-galley-kitchen-canteen
+- 2026-10-05 01:54 built
