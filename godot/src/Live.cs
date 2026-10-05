@@ -11,7 +11,7 @@ namespace DowntownMars;
 /// drawn by Godot. Snapshots bring the time, the people and the stocks; scenes bring the hole.
 /// The sun crosses the sky by the game's hour; the HUD shows the day, the speed and the stocks, and
 /// picks a floor (the bridge sends the scene cut there).
-/// Keys: Space pauses, 1–3 set the speed, Up/Down step the picked floor, Home shows all floors,
+/// Keys: Space pauses, 1–3 set the speed, Up/Down step the picked floor, Home shows the surface (every floor),
 /// Tab switches Iso and first person, L hides the labels, F12 saves a screenshot.
 /// </summary>
 public partial class Live : Node3D
@@ -479,7 +479,7 @@ public partial class Live : Node3D
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
             : _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(PlanShown ? $"plan, floor {PlanFloor}" : _rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : _rig?.ModeName ?? "iso")}\nEsc menu · M map · N network · P colony · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home all floors · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(PlanShown ? $"plan, floor {PlanFloor}" : _rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : _rig?.ModeName ?? "iso")}\nEsc menu · M map · N network · P colony · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home surface · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
             : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -1536,7 +1536,7 @@ public partial class Live : Node3D
         for (var f = 0; f <= _shape.Floors; f++)
         {
             var floor = f == 0 ? (int?)null : f;
-            var b = new Button { Text = f == 0 ? "All" : $"F{f}", ToggleMode = true, FocusMode = Control.FocusModeEnum.None, ButtonPressed = floor == _topFloor };
+            var b = new Button { Text = f == 0 ? "Surface" : $"F{f}", ToggleMode = true, FocusMode = Control.FocusModeEnum.None, ButtonPressed = floor == _topFloor };
             b.SetMeta("floor", f == 0 ? -1 : f);
             b.Pressed += () => PickFloor(floor);
             _floorPicker.AddChild(b);

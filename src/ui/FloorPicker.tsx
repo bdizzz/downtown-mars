@@ -1,6 +1,6 @@
 // A strip of floors down the side of the plan and 3D views. Picking a floor
 // shows that floor alone (plan) or hides everything above it (3D), for a
-// clear look from above. "All" (3D only) shows the whole hole again.
+// clear look from above. "Surface" (3D only) shows the whole hole again.
 // Pointing at a floor previews it; clicking keeps it; moving off the strip
 // goes back to the floor that was kept.
 
@@ -34,7 +34,7 @@ export function FloorPicker({ floors, floor, allowAll, onPick, onPreview, previe
   );
   return (
     <div className="floor-picker" role="group" aria-label="Floor" onMouseLeave={() => onPreview(undefined)}>
-      {allowAll && button(null, "All", "Show every floor")}
+      {allowAll && button(null, "Surface", "The surface and every floor")}
       {list.map((f) => button(f, `F${f}`, `Floor ${f} (↑ ↓ or Page Up / Page Down)`))}
     </div>
   );
