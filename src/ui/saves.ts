@@ -68,11 +68,20 @@ export function pickSaveFile(): Promise<string | null> {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "application/json,.json";
-    input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file) return resolve(null);
-      file.text().then(resolve, () => resolve(null));
+    input.style.display = "none";
+    // Kept in the document while the dialog is open: a detached input can be
+    // garbage-collected by Chrome and Safari before its change event fires.
+    document.body.appendChild(input);
+    const done = (text: string | null) => {
+      input.remove();
+      resolve(text);
     };
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) return done(null);
+      file.text().then(done, () => done(null));
+    });
+    input.addEventListener("cancel", () => done(null));
     input.click();
   });
 }

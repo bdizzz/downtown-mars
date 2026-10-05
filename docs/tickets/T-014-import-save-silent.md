@@ -1,7 +1,7 @@
 ---
 id: T-014
 title: Import save file does nothing after picking a file
-status: open
+status: done
 size: S
 area: ui
 touches: [src/ui/saves.ts]
@@ -27,3 +27,5 @@ Attach the input to `document.body` (hidden) while the dialog is open, remove it
 
 ## History
 - 2026-10-05 10:00 opened from a bug report in chat
+- 2026-10-05 00:33 building on t-014-import-save-silent
+- 2026-10-05 00:34 built
