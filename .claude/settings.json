@@ -19,7 +19,22 @@
       "Bash(node scripts/try.mjs *)",
       "Bash(node scripts/land.mjs *)",
       "Bash(gh pr list *)",
-      "Bash(gh pr view *)"
+      "Bash(gh pr view *)",
+      "Bash(npm test)",
+      "Bash(npm run typecheck)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx tsc --noEmit *)",
+      "Bash(npx vitest run)",
+      "Bash(npx vitest run *)",
+      "Bash(git fetch *)",
+      "mcp__Claude_Browser__find",
+      "mcp__Claude_Browser__read_page",
+      "mcp__Claude_Browser__get_page_text",
+      "mcp__Claude_Browser__read_console_messages",
+      "mcp__Claude_Browser__read_network_requests",
+      "mcp__Claude_Browser__tabs_context",
+      "mcp__Claude_Browser__preview_list",
+      "mcp__Claude_Browser__preview_logs"
     ]
   }
 }
