@@ -22,7 +22,8 @@ const has = (s: Snapshot, type: string, n = 1) => s.layout.rooms.filter((r) => r
 
 /** Whether each goal is met right now. Goals can be met in any order. */
 export const CHECKS: Record<string, (s: Snapshot, ui: UiFlags) => boolean> = {
-  galley: (s) => has(s, "galley"),
+  // A kitchen cooks and a canteen seats people, so together they stand in for a galley; either alone doesn't.
+  galley: (s) => has(s, "galley") || (has(s, "kitchen") && has(s, "canteen")),
   restroom: (s) => has(s, "restroom"),
   // A corridor (not the gallery the game starts with) that actually reaches a room past ring 1.
   corridor: (s) =>
