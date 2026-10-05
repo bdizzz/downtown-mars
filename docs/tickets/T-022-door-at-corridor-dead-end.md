@@ -25,8 +25,9 @@ Treat a corridor end meeting a room's wall (curved inner/outer face, away from t
 - DECISIONS.md ("Doors on any wall"), GUIDE.md: Corridors and doors.
 
 ## Open questions
-- [ ] Where does a dead end rank among a room's options? Proposed: like a corridor along a wall, but as the shortest one, so a tube or a real stretch of corridor still wins and the dead end is used only when it's the room's only way in.
-- [ ] Does it also work on a room's side (radial) walls, e.g. a corridor along a ring boundary ending at a room's left or right side? Proposed: yes, any wall, as long as it's 1 m from the corners.
+- [x] A dead end ranks like the shortest corridor along a wall: a tube or a real stretch of corridor still wins, and the dead end is used only when it's the room's only way in. (Bryon, Oct 5)
+- [x] Any wall, curved or side, as long as the door is 1 m or more from the corners. (Bryon, Oct 5)
 
 ## History
 - 2026-10-05 02:42 opened from N-0018
+- 2026-10-05 02:43 questions answered
