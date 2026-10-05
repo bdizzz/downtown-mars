@@ -216,8 +216,12 @@ export function makeSlice(look: SliceLook): Slice {
   };
 }
 
-/** What a slice does to a material: the land (all of the above), a wall round the rings (its near half goes; it darkens with depth), or the cut face (it fades, crumbles at the top and darkens). */
-export type SliceRole = "land" | "wall" | "face";
+/**
+ * What a slice does to a material: the land (all of the above), a wall round the rings (its near half
+ * goes; it darkens with depth), the cut face (it fades, crumbles at the top and darkens), or the ground
+ * at the cut floor past the rings (it only fades, so far off it's the backdrop, as the land above is).
+ */
+export type SliceRole = "land" | "wall" | "face" | "ground";
 
 const SLICE_UNIFORMS = ["On", "Amount", "Radius", "FadeFrom", "FadeTo", "Edge", "Tint", "TintDepth"].map((u) => `uniform float slice${u};`).join("\n") + "\nuniform vec2 sliceDir;\nuniform vec3 sliceEarth;";
 
@@ -249,6 +253,8 @@ const SLICE_CUT: Record<SliceRole, string> = {
   wall: "dot(vSlicePos.xz, sliceDir) > 0.0 && n < sliceAmount",
   // Dissolves in, thinning out with distance and crumbling along its top.
   face: "n > sliceAmount || n < max(sliceFade(vSlicePos), sliceCrumble(-vSlicePos.y, vec2(vSlicePos.x + vSlicePos.z, vSlicePos.y)))",
+  // Thins out with distance.
+  ground: "n < sliceFade(vSlicePos) * sliceAmount",
 };
 
 /** Let a slice cut this material, in this role. */
@@ -276,7 +282,7 @@ export function withSlice<T extends THREE.Material>(m: T, slice: Slice, role: Sl
       .replace("#include <common>", `#include <common>\nvarying vec3 vSlicePos;\n${SLICE_UNIFORMS}\n${SLICE_GLSL}`)
       .replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>\nif (sliceOn > 0.5) { float n = sliceStipple(); if (${SLICE_CUT[role]}) discard; }`);
     // The cut rock recedes into the dark, once lit.
-    if (role !== "land")
+    if (role === "wall" || role === "face")
       shader.fragmentShader = shader.fragmentShader.replace(
         "#include <fog_fragment>",
         "#include <fog_fragment>\nif (sliceOn > 0.5) gl_FragColor.rgb = mix(gl_FragColor.rgb, sliceEarth, sliceDarken(vSlicePos));",

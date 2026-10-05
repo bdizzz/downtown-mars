@@ -241,6 +241,19 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   rockWall.visible = false;
   scene.add(rockWall);
 
+  // The rock past the open rings at the cut floor: its own copies of rooms3d's materials, so Iso's
+  // cut-out can fade it into the backdrop with the land (or far off, the two hazes wouldn't match).
+  const outerCapMats = new Map<number, THREE.Material>();
+  function outerCapMaterial(m: THREE.MeshStandardMaterial): THREE.Material {
+    const hex = m.color.getHex();
+    let made = outerCapMats.get(hex);
+    if (!made) {
+      made = withSlice(withRock(new THREE.MeshStandardMaterial({ color: hex, roughness: 1, side: THREE.DoubleSide })), slice, "ground");
+      outerCapMats.set(hex, made);
+    }
+    return made;
+  }
+
   /** Fit the rock wall to the unlocked rings and the floor in view, and show it only underground. */
   function updateRockWall(): void {
     // The cutaway has its own backdrop (the shell), the full depth of the hole.
@@ -273,8 +286,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const tz = out.x;
     const back = -0.05;
     const inner = hole.shaftRadiusM + hole.unlockedRings * RING_D + (underground ? ROCK_FLUSH : SHELL_MARGIN);
-    // Underground, no slab under the hole: the rooms below the picked floor stay in view.
+    // Underground, no slab under the hole (the rooms below the picked floor stay in view), and the face
+    // stops at the picked floor's cap: below it, past the faded ground, there's only the backdrop.
     const deep = underground ? SECTION.bottom : floorSpan(hole.floors + 1)[0] - SHELL_MARGIN;
+    const bottom = underground ? floorSpan(cut()!)[1] : SECTION.bottom;
     const n = SECTION.samples + 1;
     let k = 0;
     const put = (u: number, y: number) => {
@@ -287,7 +302,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         // Denser near the hole, where the ground is seen close up.
         const u = sign * (inner + (SECTION.reach - inner) * (i / SECTION.samples) ** 2);
         put(u, terrain ? terrain.heightAt(u * tx, u * tz) : 0);
-        put(u, SECTION.bottom);
+        put(u, bottom);
       }
     }
     put(-inner, deep);
@@ -1884,6 +1899,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         scene.add(layoutGroup);
         furnitureGroups = [];
         layoutGroup.traverse((o) => {
+          if (o.userData.outerCap) (o as THREE.Mesh).material = outerCapMaterial((o as THREE.Mesh).material as THREE.MeshStandardMaterial);
           if (o.userData.furniture) furnitureGroups.push(o);
         });
         lampList = furnitureGroups.flatMap((g) => (g.userData.lamps as Lamp[] | undefined) ?? []);
