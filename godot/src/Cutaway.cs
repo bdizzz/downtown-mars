@@ -54,8 +54,15 @@ public partial class Cutaway : Node3D
             face.AddRange(new[] { new Vector3(u0, y1, 0), new Vector3(u1, y1, 0), new Vector3(u1, y0, 0), new Vector3(u0, y1, 0), new Vector3(u1, y0, 0), new Vector3(u0, y0, 0) });
         Quad(-Reach, -inner, Bottom, 0);
         Quad(inner, Reach, Bottom, 0);
-        _slice.Mesh = Mesh(face);
-        _slice.MaterialOverride = Rock();
+        // Iso's cut through the land: flush with the rings (as the rock wall), in the shaft wall's rock.
+        var flush = RockWall.Radius(h);
+        var cut = new List<Vector3>();
+        void CutQuad(float u0, float u1) =>
+            cut.AddRange(new[] { new Vector3(u0, 0, 0), new Vector3(u1, 0, 0), new Vector3(u1, Bottom, 0), new Vector3(u0, 0, 0), new Vector3(u1, Bottom, 0), new Vector3(u0, Bottom, 0) });
+        CutQuad(-Reach, -flush);
+        CutQuad(flush, Reach);
+        _slice.Mesh = Mesh(cut);
+        _slice.MaterialOverride = Looks.For("rock:wall", new Color("#6a3a28"), 1, 0, false);
         Quad(-inner, inner, Bottom, -deep);
         _section.Mesh = Mesh(face);
         _section.MaterialOverride = Rock();

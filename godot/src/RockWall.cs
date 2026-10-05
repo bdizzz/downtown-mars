@@ -10,19 +10,21 @@ namespace DowntownMars;
 /// </summary>
 public partial class RockWall : MeshInstance3D
 {
-    const float Margin = 6, FloorH = 4, Crust = 3;
+    // Flush with the rings' outer edge, just clear of the outer walls; it reaches a little below the floor.
+    const float Flush = 0.05f, Below = 6, FloorH = 4, Crust = 3;
     string _key = "";
 
     public RockWall()
     {
         Name = "RockWall";
         Visible = false;
-        // The rock look's shader draws both sides; this wall must not, so a plain material.
-        MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color("#6a3a28"), Roughness = 1, CullMode = BaseMaterial3D.CullModeEnum.Back };
+        // The shaft wall's rock. Its shader draws both sides, but the camera's always inside the whole wall
+        // (Top, the shaft, walking), and in Iso only the far half's built.
+        MaterialOverride = Looks.For("rock:wall", new Color("#6a3a28"), 1, 0, false);
     }
 
     /// <summary>The wall's radius: just past the unlocked rings, where the cutaway's backdrop sits.</summary>
-    public static float Radius(HoleShape hole) => hole.ShaftRadiusM + hole.UnlockedRings * 10 + Margin;
+    public static float Radius(HoleShape hole) => hole.ShaftRadiusM + hole.UnlockedRings * 10 + Flush;
 
     /// <summary>
     /// Shown down to the bottom of this floor (null: hidden). Sliced open (Iso, `heading` toward the
@@ -38,7 +40,7 @@ public partial class RockWall : MeshInstance3D
         if (key == _key) return;
         _key = key;
         var r = Radius(hole);
-        var deep = floor.Value * FloorH + Crust + Margin;
+        var deep = floor.Value * FloorH + Crust + Below;
         var verts = new List<Vector3>();
         const int n = 96;
         Vector3 P(float a, float y) => new(r * Mathf.Cos(a), y, r * Mathf.Sin(a));

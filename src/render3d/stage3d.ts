@@ -86,6 +86,8 @@ const MAX_PITCH = Math.PI / 2 - 0.02;
 const XRAY_GROUND_OPACITY = 0.2;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
 const SHELL_MARGIN = 6;
+/** The rock wall and the land's cut sit this far past the rings' outer edge: flush, just clear of the outer walls. */
+const ROCK_FLUSH = 0.05;
 
 type Mode = Camera;
 
@@ -217,7 +219,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     idx.push(slab, slab + 1, slab + 2, slab + 2, slab + 1, slab + 3);
     sectionGeo.setIndex(idx);
   }
-  const section = new THREE.Mesh(sectionGeo, withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.DoubleSide })));
+  // The cutaway's face is dark; Iso's cut through the land is the shaft wall's lighter rock.
+  const sectionMat = withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.DoubleSide }));
+  const sliceMat = withRock(new THREE.MeshStandardMaterial({ color: C.rock, roughness: 1, side: THREE.DoubleSide }));
+  const section = new THREE.Mesh(sectionGeo, sectionMat);
   section.frustumCulled = false;
   section.visible = false;
   scene.add(section);
@@ -225,7 +230,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // floor in view up to the surface, so the view stops at rock instead of running off into the distance.
   // Only its inside is drawn, so a camera outside it (zoomed out) sees straight through it.
   const rockWallGeo = new THREE.CylinderGeometry(1, 1, 1, 96, 1, true).translate(0, -0.5, 0);
-  const rockWall = new THREE.Mesh(rockWallGeo, withSlice(withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.BackSide })), slice));
+  const rockWall = new THREE.Mesh(rockWallGeo, withSlice(withRock(new THREE.MeshStandardMaterial({ color: C.rock, roughness: 1, side: THREE.BackSide })), slice));
   rockWall.visible = false;
   scene.add(rockWall);
 
@@ -235,7 +240,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const f = view.mode === "walk" ? hole?.floors ?? null : cut();
     rockWall.visible = !!hole && view.mode !== "cutaway" && f !== null;
     if (!rockWall.visible || !hole) return;
-    const r = hole.shaftRadiusM + hole.unlockedRings * RING_D + SHELL_MARGIN;
+    const r = hole.shaftRadiusM + hole.unlockedRings * RING_D + ROCK_FLUSH;
     rockWall.scale.set(r, -floorSpan(f!)[0] + SHELL_MARGIN, r);
   }
 
@@ -249,14 +254,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const out = new THREE.Vector3(Math.cos(cam.theta), 0, Math.sin(cam.theta));
     slice.on.value = underground && hole ? 1 : 0;
     slice.dir.value.set(out.x, out.z);
-    if (hole) slice.radius.value = hole.shaftRadiusM + hole.unlockedRings * RING_D + SHELL_MARGIN;
+    if (hole) slice.radius.value = hole.shaftRadiusM + hole.unlockedRings * RING_D + ROCK_FLUSH;
+    section.material = underground ? sliceMat : sectionMat;
     section.visible = !!hole && ((view.mode === "cutaway" && cut() === null) || underground);
     if (!section.visible || !hole) return;
     // Along the cut, and a hair to the kept side so the clip plane doesn't take it.
     const tx = -out.z;
     const tz = out.x;
     const back = -0.05;
-    const inner = hole.shaftRadiusM + hole.unlockedRings * RING_D + SHELL_MARGIN;
+    const inner = hole.shaftRadiusM + hole.unlockedRings * RING_D + (underground ? ROCK_FLUSH : SHELL_MARGIN);
     // Underground, no slab under the hole: the rooms below the picked floor stay in view.
     const deep = underground ? SECTION.bottom : floorSpan(hole.floors + 1)[0] - SHELL_MARGIN;
     const n = SECTION.samples + 1;
