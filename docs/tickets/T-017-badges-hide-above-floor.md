@@ -22,3 +22,4 @@ Tag each badge with its room's floor and hide it with the floor cut (and on rebu
 
 ## History
 - 2026-10-05 01:11 opened from N-0012
+- 2026-10-05 02:27 building on t-017-badges-hide-above-floor
