@@ -24,6 +24,16 @@ describe("tutorial", () => {
     expect(done).toEqual([]);
   });
 
+  it("a kitchen plus a canteen counts as a galley; a kitchen alone doesn't", () => {
+    const s = makeSnapshot(createInitialState(config), config);
+    const room = (type: string) => ({ ...s.layout.rooms[0]!, type });
+    const rooms = (...types: string[]) => ({ ...s, layout: { ...s.layout, rooms: types.map(room) } });
+    expect(CHECKS.galley!(rooms("kitchen"), flags)).toBe(false);
+    expect(CHECKS.galley!(rooms("canteen"), flags)).toBe(false);
+    expect(CHECKS.galley!(rooms("kitchen", "canteen"), flags)).toBe(true);
+    expect(CHECKS.galley!(rooms("galley"), flags)).toBe(true);
+  });
+
   it("a colony played like the docs' first 30 minutes meets every goal", () => {
     const { state } = run(15);
     const snap = makeSnapshot(state, config);

@@ -5,7 +5,7 @@
     {
       "id": "galley",
       "text": "Twenty people and nowhere to cook. Put a galley in ring 1, on the shaft.",
-      "hint": "Press B for Build, then G for a galley (or Build, bottom right, then Food), and click a free slot in ring 1.",
+      "hint": "Press B for Build, then G for a galley (or Build, bottom right, then Food), and click a free slot in ring 1. A kitchen plus a canteen does the same job.",
       "highlight": "room:galley"
     },
     {
