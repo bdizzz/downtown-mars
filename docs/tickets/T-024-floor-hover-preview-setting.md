@@ -18,13 +18,14 @@ Hovering over another floor's button shows that floor, which "sometimes is jarri
 - Godot's floor picker doesn't seem to preview on hover, so nothing to do there (worth a quick check).
 
 ## Approach
-Add `floorHoverPreview: boolean` to the settings with a checkbox (e.g. under View: "Preview floors on hover"), and skip `onPreview` when it's off. Done: with it off, hovering the floor buttons changes nothing until you click.
+Add `floorHoverPreview: boolean` to the settings with a checkbox (e.g. under View: "Preview floors on hover"), default **off**, and skip `onPreview` when it's off. Existing players' saved settings also get it off (it's the new default, not a migration of the old behaviour). Done: with it off, hovering the floor buttons changes nothing until you click.
 
 ## Docs to update
 - GUIDE.md: Settings (and where it describes the floor picker).
 
 ## Open questions
-- [ ] On or off by default? Proposed: on, as it is now, so new players still discover floors by pointing at them.
+- [x] **Off by default**: floors change only on a click unless the player turns previewing on. (Bryon, Oct 5)
 
 ## History
 - 2026-10-05 02:54 opened from N-0020
+- 2026-10-05 02:55 questions answered: off by default
