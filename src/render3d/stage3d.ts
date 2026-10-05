@@ -89,10 +89,12 @@ const SHELL_MARGIN = 6;
 /** The rock wall and the land's cut sit this far past the rings' outer edge: flush, just clear of the outer walls. */
 const ROCK_FLUSH = 0.05;
 /**
- * Iso's cut-out round the picked floor: the land and its cut face thin out between these distances
- * past the rings (metres) into the dark backdrop, and opening it takes this long (seconds).
+ * Iso's cut-out round the picked floor (surfaces.ts withSlice): the land and its cut face thin out
+ * between these distances past the rings (metres) into the dark backdrop; where land meets the cut,
+ * both crumble over `edge` metres; the cut rock darkens toward the backdrop by up to `tint`, fully by
+ * `tintDepth` metres down; and opening it takes `seconds`.
  */
-const SLICE = { fadeFrom: 6, fadeTo: 45, seconds: 0.5 };
+const SLICE = { fadeFrom: 6, fadeTo: 45, edge: 5, tint: 0.7, tintDepth: 30, seconds: 0.5 };
 
 type Mode = Camera;
 
@@ -191,7 +193,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const view = { mode: DEFAULT_VIEW3D.camera as Mode, xray: DEFAULT_VIEW3D.xray, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors, flows: DEFAULT_VIEW3D.flows };
   // The surface: see-through in x-ray, so rooms under it show from above.
   // Iso with a floor picked slices the land open through the hole's axis: the near half's gone.
-  const slice = makeSlice(SLICE.fadeFrom, SLICE.fadeTo);
+  const slice = makeSlice({ ...SLICE, earth: C.earth });
   const groundMat = withSlice(withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 })), slice, "land");
   function applyGroundXray(): void {
     groundMat.transparent = view.xray;
