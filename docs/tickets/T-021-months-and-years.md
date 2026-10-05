@@ -26,10 +26,11 @@ One shared formatter (in `src/view/`, so the bridge and Godot get it) for a game
 
 ## Open questions
 - [x] Keep the hh:mm clock for now (Bryon knows it sits oddly next to months), and add a rotating **sun/moon dial** beside it, like the moon-phase dial on an analog clock face. (Bryon, Oct 5)
-- [ ] Rates: "+3 a month" and "runs out in 2.5 months"? Proposed: yes, everywhere a day was used as the unit.
-- [ ] Ages in years and months (a 40-day lifespan stage becomes "3 years 4 months")? Proposed: yes.
-- [ ] Read as time elapsed, as in your example (month 45 = "year 3, month 9"; the first year shows plain "month 9"), rather than as a calendar (month 45 = "year 4, month 9")? Proposed: elapsed, as you wrote it.
+- [x] Rates: "+3 a month" and "runs out in 2.5 months"? Proposed: yes, everywhere a day was used as the unit. (Bryon, Oct 5: agreed)
+- [x] Ages in years and months (a 40-day lifespan stage becomes "3 years 4 months")? Proposed: yes. (Bryon, Oct 5: agreed)
+- [x] Read as time elapsed, as in your example (month 45 = "year 3, month 9"; the first year shows plain "month 9"), rather than as a calendar (month 45 = "year 4, month 9")? Proposed: elapsed, as you wrote it. (Bryon, Oct 5: agreed)
 
 ## History
 - 2026-10-05 01:11 opened from N-0016, N-0017
 - 2026-10-05 01:16 clock question answered: keep hh:mm, add a sun/moon dial
+- 2026-10-05 01:17 questions answered

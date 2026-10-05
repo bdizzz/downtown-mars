@@ -26,8 +26,9 @@ Give the scene a north (say −z), compute the sun's direction from the time of 
 - ART.md (sky), DECISIONS.md (sky by latitude, at the equinox).
 
 ## Open questions
-- [ ] Procedural stars that turn correctly, or a real star map (recognisable constellations, as seen from Mars)? Proposed: keep the procedural field for now.
-- [ ] Which way is north on a site? Proposed: fixed in scene terms (−z), shown as a small compass mark on the map/Top view later if wanted.
+- [x] Procedural stars that turn correctly, or a real star map (recognisable constellations, as seen from Mars)? Proposed: keep the procedural field for now. (Bryon, Oct 5: agreed)
+- [x] Which way is north on a site? Proposed: fixed in scene terms (−z), shown as a small compass mark on the map/Top view later if wanted. (Bryon, Oct 5: agreed)
 
 ## History
 - 2026-10-05 01:11 opened from N-0015
+- 2026-10-05 01:17 questions answered
