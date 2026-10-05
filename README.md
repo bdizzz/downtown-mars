@@ -29,7 +29,7 @@ New games start with a tutorial from your deputy. The [player's guide](docs/GUID
 
 ## Playing
 
-Requires Node 20+.
+The latest `main` is playable at **https://bdizzz.github.io/downtown-mars/** (rebuilt on every push). To run it locally (Node 20+):
 
 ```bash
 npm install
@@ -59,6 +59,7 @@ npm run playtest:net  # scripted first hour across two holes
 npm run package       # build and zip for a playtest upload
 ```
 
+- **CI:** GitHub Actions type-checks and tests every PR and push to `main` (`.github/workflows/ci.yml`), and publishes each push to `main` to GitHub Pages (`pages.yml`). Dependabot opens one grouped PR a week for npm packages and one for Actions.
 - **Packaging:** `npm run package` writes `release/downtown-mars-v<version>.zip` with `index.html` at the top. To publish on itch.io, create an HTML project, upload the zip, and tick "This file will be played in the browser". Nothing is uploaded automatically.
 - **Design docs** live in `docs/`: start with `DECISIONS.md`, then `DESIGN.md` and the catalogs. `ROOM-STATUS.md` lists which rooms are built and which are only described (regenerate it with `node scripts/room-status.mjs`). Milestone plans are `PLAN.md` and `PLAN-M2.md` to `PLAN-M14.md`.
 - **Architecture:** see `CLAUDE.md`. The simulation is pure TypeScript in a Web Worker, deterministic, with all its numbers in `data/*.json`.
