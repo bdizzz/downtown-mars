@@ -208,7 +208,7 @@ float grime_tone(vec3 p, vec3 n, float level) {
 }
 
 void fragment() {
-	if (cut_away(wpos)) discard;
+	if (cut_away(wpos) || sliced_away(wpos, FRAGCOORD.xy)) discard;
 	vec3 n = normalize(wnorm);
 	bool is_floor = abs(n.y) > 0.7;
 	vec3 color = albedo;
@@ -234,7 +234,7 @@ void fragment() {
 		relief = 0.25;
 	}
 	color *= t.x * grime_tone(wpos, n, grime);
-	ALBEDO = color;
+	ALBEDO = mix(color, SLICE_EARTH, slice_darken(wpos));
 	// Gaps hold dust: rougher than the faces.
 	ROUGHNESS = clamp(rough + (1.0 - t.y) * 0.25, 0.0, 1.0);
 	METALLIC = metal;

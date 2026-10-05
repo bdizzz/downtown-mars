@@ -168,6 +168,135 @@ function withPattern<T extends THREE.Material>(m: T, name: string, glsl: string,
   return m;
 }
 
+/**
+ * The land sliced open (Iso with a floor picked), along the line where the rings look widest from the
+ * camera: square to `dir` (from the axis towards the camera), `offset` metres toward it, through the
+ * points where the camera's sightlines graze the rock wall. While `on`, what's on the camera's side of
+ * that line isn't drawn; land isn't drawn
+ * over the rings (within `radius` of the axis); and land and the cut face thin out with distance past
+ * the rings (from `radius + fadeFrom` to `radius + fadeTo`), a fine stipple into the background, so
+ * the planet round the floor reads as a ghostly cut-out. Where the land meets the cut, both crumble
+ * over `edge` metres (a ragged stipple, not a ruled line), and the cut rock darkens toward `earth` (the
+ * backdrop) the deeper and further it goes (up to `tint`, fully by `tintDepth` metres down or the far
+ * end of the fade), so it recedes as the floors below do. `amount` eases from 0 to 1 as the slice
+ * opens: what goes dissolves away, what comes dissolves in.
+ */
+export interface Slice {
+  on: { value: number };
+  amount: { value: number };
+  dir: { value: THREE.Vector2 };
+  offset: { value: number };
+  radius: { value: number };
+  fadeFrom: { value: number };
+  fadeTo: { value: number };
+  edge: { value: number };
+  earth: { value: THREE.Color };
+  tint: { value: number };
+  tintDepth: { value: number };
+}
+
+export interface SliceLook {
+  fadeFrom: number;
+  fadeTo: number;
+  edge: number;
+  earth: number;
+  tint: number;
+  tintDepth: number;
+}
+
+export function makeSlice(look: SliceLook): Slice {
+  return {
+    on: { value: 0 },
+    amount: { value: 1 },
+    dir: { value: new THREE.Vector2(1, 0) },
+    offset: { value: 0 },
+    radius: { value: 0 },
+    fadeFrom: { value: look.fadeFrom },
+    fadeTo: { value: look.fadeTo },
+    edge: { value: look.edge },
+    earth: { value: new THREE.Color(look.earth) },
+    tint: { value: look.tint },
+    tintDepth: { value: look.tintDepth },
+  };
+}
+
+/**
+ * What a slice does to a material: the land (all of the above), a wall round the rings (its near half
+ * goes; it darkens with depth), the cut face (it fades, crumbles at the top and darkens), or the ground
+ * at the cut floor past the rings (it only fades, so far off it's the backdrop, as the land above is).
+ */
+export type SliceRole = "land" | "wall" | "face" | "ground";
+
+const SLICE_UNIFORMS = ["On", "Amount", "Offset", "Radius", "FadeFrom", "FadeTo", "Edge", "Tint", "TintDepth"].map((u) => `uniform float slice${u};`).join("\n") + "\nuniform vec2 sliceDir;\nuniform vec3 sliceEarth;";
+
+const SLICE_GLSL = /* glsl */ `
+  // A stipple threshold per pixel (interleaved gradient noise): fine, even, and steady as the camera moves.
+  float sliceStipple() { return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))); }
+  float sliceFade(vec3 p) { return smoothstep(sliceRadius + sliceFadeFrom, sliceRadius + sliceFadeTo, length(p.xz)); }
+  // Smooth noise over metres, for the crumbling edge.
+  float sliceHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float sliceNoise(vec2 p) {
+    vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(sliceHash(i), sliceHash(i + vec2(1.0, 0.0)), f.x), mix(sliceHash(i + vec2(0.0, 1.0)), sliceHash(i + vec2(1.0, 1.0)), f.x), f.y);
+  }
+  // How much crumbles away at d metres from the cut (1 at it, 0 past the edge), ragged by the noise at q.
+  float sliceCrumble(float d, vec2 q) {
+    float rough = sliceNoise(q * 0.35) * 0.65 + sliceNoise(q * 1.3) * 0.35;
+    return 1.0 - smoothstep(0.0, sliceEdge, d - (rough - 0.5) * sliceEdge);
+  }
+  // How far toward the backdrop the cut rock darkens: with depth, and with distance along the fade.
+  float sliceDarken(vec3 p) { return sliceTint * max(smoothstep(0.0, sliceTintDepth, -p.y), sliceFade(p)); }
+`;
+
+/** When a fragment goes, by role (n is its stipple threshold). */
+const SLICE_CUT: Record<SliceRole, string> = {
+  // The near half and the land over the rings dissolve away; the rest thins out with distance and crumbles by the cut.
+  land: `(dot(vSlicePos.xz, sliceDir) > sliceOffset || length(vSlicePos.xz) < sliceRadius) ? n < sliceAmount
+    : n < max(sliceFade(vSlicePos), sliceCrumble(sliceOffset - dot(vSlicePos.xz, sliceDir), vSlicePos.xz)) * sliceAmount`,
+  // The near half dissolves away.
+  wall: "dot(vSlicePos.xz, sliceDir) > sliceOffset && n < sliceAmount",
+  // Dissolves in, thinning out with distance and crumbling along its top.
+  face: "n > sliceAmount || n < max(sliceFade(vSlicePos), sliceCrumble(-vSlicePos.y, vec2(vSlicePos.x + vSlicePos.z, vSlicePos.y)))",
+  // Thins out with distance.
+  ground: "n < sliceFade(vSlicePos) * sliceAmount",
+};
+
+/** Let a slice cut this material, in this role. */
+export function withSlice<T extends THREE.Material>(m: T, slice: Slice, role: SliceRole): T {
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    Object.assign(shader.uniforms, {
+      sliceOn: slice.on,
+      sliceAmount: slice.amount,
+      sliceDir: slice.dir,
+      sliceOffset: slice.offset,
+      sliceRadius: slice.radius,
+      sliceFadeFrom: slice.fadeFrom,
+      sliceFadeTo: slice.fadeTo,
+      sliceEdge: slice.edge,
+      sliceEarth: slice.earth,
+      sliceTint: slice.tint,
+      sliceTintDepth: slice.tintDepth,
+    });
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vSlicePos;")
+      .replace("#include <project_vertex>", "vSlicePos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#include <project_vertex>");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", `#include <common>\nvarying vec3 vSlicePos;\n${SLICE_UNIFORMS}\n${SLICE_GLSL}`)
+      .replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>\nif (sliceOn > 0.5) { float n = sliceStipple(); if (${SLICE_CUT[role]}) discard; }`);
+    // The cut rock recedes into the dark, once lit.
+    if (role === "wall" || role === "face")
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <fog_fragment>",
+        "#include <fog_fragment>\nif (sliceOn > 0.5) gl_FragColor.rgb = mix(gl_FragColor.rgb, sliceEarth, sliceDarken(vSlicePos));",
+      );
+  };
+  m.customProgramCacheKey = () => `${prevKey}|slice-${role}`;
+  return m;
+}
+
 /** Stratified Martian rock, on any material that draws rock. */
 export function withRock<T extends THREE.Material>(m: T): T {
   return withPattern(m, "rock", ROCK_GLSL, "rockTone");

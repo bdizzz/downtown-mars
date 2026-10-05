@@ -1845,8 +1845,10 @@ function floorCap(layout: Layout, floor: number, xray = false): THREE.Object3D[]
   const openMesh = new THREE.Mesh(geometry(open), mat(CAP.rock));
   openMesh.userData = { pickable: true, cap: true };
   const lockedMesh = new THREE.Mesh(geometry(locked), mat(CAP.locked));
-  lockedMesh.userData = { pickable: true, cap: true };
+  // outerCap: the rock past the open rings, which Iso's cut-out fades into the backdrop (stage3d.ts).
+  lockedMesh.userData = { pickable: true, cap: true, outerCap: true };
   const beyondMesh = new THREE.Mesh(geometry(beyond), mat(CAP.beyond));
+  beyondMesh.userData = { outerCap: true };
   const wallsMesh = new THREE.Mesh(geometry(cutWalls), mat(CAP.locked));
   // Hairline slot edges on the carved cells, so the grid reads from above.
   const grid: number[] = [];

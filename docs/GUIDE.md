@@ -169,7 +169,7 @@ New games open in 3D, in Iso. Everything you can do in 2D works in 3D.
 
 **Cameras**
 
-- **Iso** looks at one floor (or, with All, the surface) from above and off to one side, so you see all of it: drag to turn it, scroll to zoom.
+- **Iso** looks at one floor (or, with All, the surface) from above and off to one side, so you see all of it: drag to turn it, scroll to zoom. With a floor picked, the planet is cut open to show it: the land across the hole stands with a rock face down to that floor, fading into the dark further out, and the near side is cut away.
 - **Cutaway** slices the hole open (it opens framing the unlocked rings); **Top** looks straight down. Pick a floor on the right to hide everything above it: from the Top it becomes a clear plan you can build on.
 - **First person** puts you on a floor at eye height: WASD to walk (hold Shift to run), Q and E to turn, drag to look (or Tab for mouse look, where the browser allows it). Walk up or down a stairwell's wide flights to change floors (R or F also takes the stairs from anywhere in a stairwell; picking a floor on the right takes you there too). You can walk the gallery tubes, corridors, plazas and empty space, and into a room through its door, but not through walls or furniture. Build is off while you walk.
 - **X-ray** fades ring 1 so you can see behind it. **Walls down** lowers every wall standing between you and the room or shaft behind it to a short stub, as in The Sims.

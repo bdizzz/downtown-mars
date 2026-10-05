@@ -27,6 +27,7 @@ public partial class Live : Node3D
     readonly Festival _festival = new() { Name = "Festival" };
     readonly Scenery _scenery = new() { Name = "Scenery" };
     readonly Cutaway _cutaway = new() { Name = "Cutaway" };
+    readonly RockWall _rockWall = new();
     readonly Terrain _terrain = new() { Name = "Terrain" };
     readonly PlanView _planView = new() { Name = "Plan" };
     /// <summary>The plan is showing (on, and the map isn't over it).</summary>
@@ -143,6 +144,7 @@ public partial class Live : Node3D
         AddChild(_festival);
         AddChild(_scenery);
         AddChild(_cutaway);
+        AddChild(_rockWall);
         // The plan under the HUD, over the 3D view (which rests while it's up).
         var planLayer = new CanvasLayer { Layer = 0, Name = "PlanLayer" };
         AddChild(planLayer);
@@ -765,13 +767,31 @@ public partial class Live : Node3D
 
     /// <summary>The cut the scene shows: the picked floor in Iso, none in first person.</summary>
     int? Cut => _rig?.Walking == true ? null : _topFloor;
+
+    /// <summary>Iso with a floor picked: the land's sliced open through the hole's axis to show that floor.</summary>
+    bool Sliced => Cut != null && _rig?.Mode == Overview.Iso;
+
+    /// <summary>
+    /// Iso's cut-out, as the web's (stage3d.ts SLICE): the land thins out from and to these distances past
+    /// the rings, metres; land and cut crumble over SliceEdge metres; the cut rock darkens toward the
+    /// backdrop by up to SliceTint, fully by SliceTintDepth metres down; opening it takes SliceSeconds.
+    /// </summary>
+    const float SliceFadeFrom = 6, SliceFadeTo = 45, SliceEdge = 5, SliceTint = 0.7f, SliceTintDepth = 30, SliceSeconds = 0.5f;
+    /// <summary>With the camera over the rock wall (nearer than this many radii), the cut sits as if it were that far out.</summary>
+    const float SliceNearest = 1.05f;
+    /// <summary>The backdrop's earth the cut-out fades into (the web's C.earth).</summary>
+    static readonly Color SliceEarth = new("#241410");
+    /// <summary>How far the cut-out has opened, 0 to 1 (it dissolves in when a floor's picked).</summary>
+    float _sliceAmount = 1;
+    bool _wasSliced;
+    ulong _sliceClock;
     int? _cutSent = -1;
 
     /// <summary>Show the cut: the scene (from the bridge), the ground, people and occluders.</summary>
     void ApplyCut()
     {
         var cut = Cut;
-        _ground.Visible = cut == null;
+        _ground.Visible = cut == null || Sliced;
         _people.SetTopFloor(cut);
         _fx.SetTopFloor(cut);
         if (cut == _cutSent) return;
@@ -906,7 +926,51 @@ public partial class Live : Node3D
         _hole.SetCut(cut);
         if (GetViewport().GetCamera3D() is Camera3D view) _hole.UpdateWalls(ViewSettings.WallsDown && !walking, view.GlobalPosition);
         var cutaway = cut.W > 0.5f;
-        _cutaway.Show(cutaway, _shape, _rig?.Heading ?? 0, Cut == null);
+        var heading = _rig?.Heading ?? 0;
+        var sliced = Sliced && !cutaway;
+        // Iso's cut runs where the rings look widest, as the web's: square to the camera (where it really
+        // is, panned or not), through the points where its sightlines graze the rock wall, r²/D toward it.
+        var r = RockWall.Radius(_shape);
+        var toward = new Vector2(Mathf.Cos(heading), Mathf.Sin(heading));
+        var offset = 0f;
+        if (sliced && GetViewport().GetCamera3D() is Camera3D seen)
+        {
+            var flat = new Vector2(seen.GlobalPosition.X, seen.GlobalPosition.Z);
+            if (flat.Length() > 1e-3f) toward = flat.Normalized();
+            offset = r * r / Mathf.Max(flat.Length(), r * SliceNearest);
+        }
+        _cutaway.Show(cutaway, _shape, heading, Cut == null, sliced, toward, offset);
+        // Underground, rock round the rings (the cutaway has its backdrop instead); walking, the whole hole's depth.
+        var under = walking && GetViewport().GetCamera3D()?.GlobalPosition.Y < 0;
+        _rockWall.Show(_shape, cutaway ? null : under ? _shape.Floors : Cut);
+        RenderingServer.GlobalShaderParameterSet("slice", new Vector4(toward.X, toward.Y, r, sliced ? 1 : 0));
+        // Opening the cut-out (not moving between floors): it dissolves in.
+        var now = Time.GetTicksMsec();
+        if (sliced && !_wasSliced) _sliceAmount = 0;
+        else if (sliced) _sliceAmount = Mathf.Min(1, _sliceAmount + (now - _sliceClock) / 1000f / SliceSeconds);
+        _wasSliced = sliced;
+        _sliceClock = now;
+        RenderingServer.GlobalShaderParameterSet("slice_fade", new Vector4(SliceFadeFrom, SliceFadeTo, _sliceAmount, 0));
+        RenderingServer.GlobalShaderParameterSet("slice_look", new Vector4(SliceEdge, SliceTint, SliceTintDepth, offset));
+        // Past the cut-out, a haze in the backdrop's earth covers the distance and the sky (the web's
+        // backdrop turns to earth instead), from the far side of the fade on, easing in as it opens.
+        var env = _env.Environment;
+        env.FogEnabled = sliced;
+        if (sliced && GetViewport().GetCamera3D() is Camera3D eye)
+        {
+            // From the eye to the far side of the rock wall, at the surface.
+            var far = eye.GlobalPosition.DistanceTo(new Vector3(-toward.X * r, 0, -toward.Y * r));
+            env.FogMode = Godot.Environment.FogModeEnum.Depth;
+            env.FogLightColor = SliceEarth;
+            env.FogLightEnergy = 1;
+            env.FogSunScatter = 0;
+            env.FogSkyAffect = 1;
+            env.FogDepthBegin = far + SliceFadeFrom;
+            env.FogDepthEnd = far + SliceFadeTo;
+            env.FogDepthCurve = 1;
+            env.FogDensity = _sliceAmount;
+        }
+        if (_ground.Visible != (Cut == null || Sliced)) ApplyCut();
         if (_occluders != null) _occluders.Visible = !cutaway;
     }
 
@@ -1323,7 +1387,7 @@ public partial class Live : Node3D
         arrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
         var mesh = new ArrayMesh();
         mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
-        mesh.SurfaceSetMaterial(0, Looks.For("rock:ground", new Color("#7a3b22"), 0.95f, 0, false) ?? Dress.For(new StandardMaterial3D { ResourceName = "rock:ground", AlbedoColor = new Color("#7a3b22"), Roughness = 0.95f }));
+        mesh.SurfaceSetMaterial(0, Terrain.Land(Looks.For("rock:ground", new Color("#7a3b22"), 0.95f, 0, false) ?? Dress.For(new StandardMaterial3D { ResourceName = "rock:ground", AlbedoColor = new Color("#7a3b22"), Roughness = 0.95f })));
         _ground.Mesh = mesh;
     }
 

@@ -14,12 +14,14 @@ public partial class Cutaway : Node3D
     const float Margin = 6, Reach = 1700, Bottom = -900, FloorH = 4, Crust = 3;
     readonly MeshInstance3D _shell = new() { Name = "Shell" };
     readonly MeshInstance3D _section = new() { Name = "Section" };
+    readonly MeshInstance3D _slice = new() { Name = "Slice" };
     string _key = "";
 
     public Cutaway()
     {
         AddChild(_shell);
         AddChild(_section);
+        AddChild(_slice);
         Visible = false;
     }
 
@@ -52,6 +54,18 @@ public partial class Cutaway : Node3D
             face.AddRange(new[] { new Vector3(u0, y1, 0), new Vector3(u1, y1, 0), new Vector3(u1, y0, 0), new Vector3(u0, y1, 0), new Vector3(u1, y0, 0), new Vector3(u0, y0, 0) });
         Quad(-Reach, -inner, Bottom, 0);
         Quad(inner, Reach, Bottom, 0);
+        // Iso's cut through the land, in the shaft wall's rock, where the rings look widest (Show places it).
+        var cut = new List<Vector3>();
+        void CutQuad(float u0, float u1) =>
+            cut.AddRange(new[] { new Vector3(u0, 0, 0), new Vector3(u1, 0, 0), new Vector3(u1, Bottom, 0), new Vector3(u0, 0, 0), new Vector3(u1, Bottom, 0), new Vector3(u0, Bottom, 0) });
+        // From the middle out: the shader leaves out what's inside the rock wall (view.gdshaderinc).
+        CutQuad(-Reach, 0);
+        CutQuad(0, Reach);
+        _slice.Mesh = Mesh(cut);
+        // Its own material: it fades with distance and dissolves in (view.gdshaderinc `slice_role` 2).
+        var sliceRock = Looks.For("rock:slice", new Color("#6a3a28"), 1, 0, false);
+        if (sliceRock is ShaderMaterial s) s.SetShaderParameter("slice_role", 2);
+        _slice.MaterialOverride = sliceRock;
         Quad(-inner, inner, Bottom, -deep);
         _section.Mesh = Mesh(face);
         _section.MaterialOverride = Rock();
@@ -66,16 +80,26 @@ public partial class Cutaway : Node3D
         return st.Commit();
     }
 
-    /// <summary>On in the cutaway: the backdrop always, the cut face with no floor picked (the ground's there to cut then).</summary>
-    public void Show(bool on, HoleShape hole, float heading, bool whole)
+    /// <summary>
+    /// On in the cutaway: the backdrop always, the cut face with no floor picked (the ground's there to cut
+    /// then). Sliced (Iso with a floor picked), only the cut face either side of the rings, without the slab
+    /// under the hole, so the land reads as cut open down to that floor: square to `toward` (from the axis
+    /// toward the camera), `offset` metres toward it, where the rings look widest.
+    /// </summary>
+    public void Show(bool on, HoleShape hole, float heading, bool whole, bool sliced = false, Vector2 toward = default, float offset = 0)
     {
-        Visible = on;
-        if (!on) return;
+        Visible = on || sliced;
+        if (!Visible) return;
         Build(hole);
-        _section.Visible = whole;
+        _shell.Visible = on;
+        _section.Visible = on && whole;
+        _slice.Visible = sliced && !on;
         // Along the cut, a hair to the kept side so the cut doesn't take it.
         var outward = new Vector3(Mathf.Cos(heading), 0, Mathf.Sin(heading));
         _section.Basis = new Basis(new Vector3(-outward.Z, 0, outward.X), Vector3.Up, outward);
         _section.Position = -outward * 0.05f;
+        var at = new Vector3(toward.X, 0, toward.Y);
+        _slice.Basis = new Basis(new Vector3(-at.Z, 0, at.X), Vector3.Up, at);
+        _slice.Position = at * (offset - 0.05f);
     }
 }

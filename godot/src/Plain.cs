@@ -72,7 +72,7 @@ void vertex() {{
 	if (toward_camera > 0.0) VERTEX += (inverse(MODEL_MATRIX) * vec4(normalize(CAMERA_POSITION_WORLD - wpos) * toward_camera, 0.0)).xyz;
 }}
 void fragment() {{
-	if (cut_away(wpos)) discard;
+	if (cut_away(wpos) || sliced_away(wpos, FRAGCOORD.xy)) discard;
 	if (flat_shade) NORMAL = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));
 	vec3 c = albedo.rgb * (use_vertex_color ? vcolor.rgb : vec3(1.0));
 	float alpha = albedo.a;

@@ -15,7 +15,7 @@ import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } fr
 import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
 import { Look, type LookLike } from "./look";
 import { DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
-import { withRegolith, withRock } from "./surfaces";
+import { makeSlice, withRegolith, withRock, withSlice } from "./surfaces";
 import { RoomEffects } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
@@ -86,6 +86,16 @@ const MAX_PITCH = Math.PI / 2 - 0.02;
 const XRAY_GROUND_OPACITY = 0.2;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
 const SHELL_MARGIN = 6;
+/** The rock wall and the land's cut sit this far past the rings' outer edge: flush, just clear of the outer walls. */
+const ROCK_FLUSH = 0.05;
+/**
+ * Iso's cut-out round the picked floor (surfaces.ts withSlice): the land and its cut face thin out
+ * between these distances past the rings (metres) into the dark backdrop; where land meets the cut,
+ * both crumble over `edge` metres; the cut rock darkens toward the backdrop by up to `tint`, fully by
+ * `tintDepth` metres down; and opening it takes `seconds`. The cut runs where the rings look widest;
+ * with the camera over the wall (nearer than `nearest` radii), as if it were that far out.
+ */
+const SLICE = { fadeFrom: 6, fadeTo: 45, edge: 5, tint: 0.7, tintDepth: 30, seconds: 0.5, nearest: 1.05 };
 
 type Mode = Camera;
 
@@ -183,7 +193,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // The camera and the see-through toggles: set from the View mode's buttons (setView3d).
   const view = { mode: DEFAULT_VIEW3D.camera as Mode, xray: DEFAULT_VIEW3D.xray, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors, flows: DEFAULT_VIEW3D.flows };
   // The surface: see-through in x-ray, so rooms under it show from above.
-  const groundMat = withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 }));
+  // Iso with a floor picked slices the land open through the hole's axis: the near half's gone.
+  const slice = makeSlice({ ...SLICE, earth: C.earth });
+  const groundMat = withSlice(withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 })), slice, "land");
   function applyGroundXray(): void {
     groundMat.transparent = view.xray;
     groundMat.opacity = view.xray ? XRAY_GROUND_OPACITY : 1;
@@ -215,35 +227,94 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     idx.push(slab, slab + 1, slab + 2, slab + 2, slab + 1, slab + 3);
     sectionGeo.setIndex(idx);
   }
-  const section = new THREE.Mesh(sectionGeo, withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.DoubleSide })));
+  // The cutaway's face is dark; Iso's cut through the land is the shaft wall's lighter rock.
+  const sectionMat = withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.DoubleSide }));
+  const sliceMat = withSlice(withRock(new THREE.MeshStandardMaterial({ color: C.rock, roughness: 1, side: THREE.DoubleSide })), slice, "face");
+  const section = new THREE.Mesh(sectionGeo, sectionMat);
   section.frustumCulled = false;
   section.visible = false;
   scene.add(section);
+  // Below ground (a floor picked, or walking): a wall of rock just past the unlocked rings, from the
+  // floor in view up to the surface, so the view stops at rock instead of running off into the distance.
+  // Only its inside is drawn, so a camera outside it (zoomed out) sees straight through it.
+  const rockWallGeo = new THREE.CylinderGeometry(1, 1, 1, 96, 1, true).translate(0, -0.5, 0);
+  const rockWall = new THREE.Mesh(rockWallGeo, withSlice(withRock(new THREE.MeshStandardMaterial({ color: C.rock, roughness: 1, side: THREE.BackSide })), slice, "wall"));
+  rockWall.visible = false;
+  scene.add(rockWall);
 
-  /** Lay the cut face along the section plane, following the ground where it's cut. */
+  // The rock past the open rings at the cut floor: its own copies of rooms3d's materials, so Iso's
+  // cut-out can fade it into the backdrop with the land (or far off, the two hazes wouldn't match).
+  const outerCapMats = new Map<number, THREE.Material>();
+  function outerCapMaterial(m: THREE.MeshStandardMaterial): THREE.Material {
+    const hex = m.color.getHex();
+    let made = outerCapMats.get(hex);
+    if (!made) {
+      made = withSlice(withRock(new THREE.MeshStandardMaterial({ color: hex, roughness: 1, side: THREE.DoubleSide })), slice, "ground");
+      outerCapMats.set(hex, made);
+    }
+    return made;
+  }
+
+  /** Fit the rock wall to the unlocked rings and the floor in view, and show it only underground. */
+  function updateRockWall(): void {
+    // The cutaway has its own backdrop (the shell), the full depth of the hole.
+    const f = view.mode === "walk" ? hole?.floors ?? null : cut();
+    rockWall.visible = !!hole && view.mode !== "cutaway" && f !== null;
+    if (!rockWall.visible || !hole) return;
+    const r = hole.shaftRadiusM + hole.unlockedRings * RING_D + ROCK_FLUSH;
+    rockWall.scale.set(r, -floorSpan(f!)[0] + SHELL_MARGIN, r);
+  }
+
+  /**
+   * Lay the cut face along the section plane, following the ground where it's cut. In Iso with a floor
+   * picked, the same face stands outside the rock wall (not under the hole), so the land looks sliced
+   * open to show that floor: the far half of the planet stays as a cut face, the near half's gone.
+   */
   function updateSection(): void {
-    section.visible = view.mode === "cutaway" && !!hole && cut() === null;
-    if (!section.visible || !hole) return;
+    const underground = sliced();
     const out = new THREE.Vector3(Math.cos(cam.theta), 0, Math.sin(cam.theta));
+    const r = hole ? hole.shaftRadiusM + hole.unlockedRings * RING_D + ROCK_FLUSH : 0;
+    // Iso's cut runs where the rings look widest: square to the camera (where it really is, panned or
+    // not), through the points where its sightlines graze the rock wall, r²/D toward it from the axis.
+    let offset = 0;
+    if (underground) {
+      const d = Math.hypot(camera.position.x, camera.position.z);
+      if (d > 1e-3) out.set(camera.position.x / d, 0, camera.position.z / d);
+      offset = (r * r) / Math.max(d, r * SLICE.nearest);
+    }
+    const opening = underground && !!hole;
+    // Opening the slice (not moving between floors): it dissolves in.
+    if (opening && slice.on.value < 0.5) slice.amount.value = 0;
+    slice.on.value = opening ? 1 : 0;
+    slice.dir.value.set(out.x, out.z);
+    slice.offset.value = offset;
+    slice.radius.value = r;
+    section.material = underground ? sliceMat : sectionMat;
+    section.visible = !!hole && ((view.mode === "cutaway" && cut() === null) || underground);
+    if (!section.visible || !hole) return;
     // Along the cut, and a hair to the kept side so the clip plane doesn't take it.
     const tx = -out.z;
     const tz = out.x;
     const back = -0.05;
-    const inner = hole.shaftRadiusM + hole.unlockedRings * RING_D + SHELL_MARGIN;
-    const deep = floorSpan(hole.floors + 1)[0] - SHELL_MARGIN;
+    // Underground the face starts at the wall, where the cut meets it; the cutaway's past the backdrop.
+    const inner = underground ? Math.sqrt(Math.max(0, r * r - offset * offset)) : hole.shaftRadiusM + hole.unlockedRings * RING_D + SHELL_MARGIN;
+    // Underground, no slab under the hole (the rooms below the picked floor stay in view), and the face
+    // stops at the picked floor's cap: below it, past the faded ground, there's only the backdrop.
+    const deep = underground ? SECTION.bottom : floorSpan(hole.floors + 1)[0] - SHELL_MARGIN;
+    const bottom = underground ? floorSpan(cut()!)[1] : SECTION.bottom;
     const n = SECTION.samples + 1;
     let k = 0;
     const put = (u: number, y: number) => {
-      sectionPos[k++] = u * tx + out.x * back;
+      sectionPos[k++] = u * tx + out.x * (offset + back);
       sectionPos[k++] = y;
-      sectionPos[k++] = u * tz + out.z * back;
+      sectionPos[k++] = u * tz + out.z * (offset + back);
     };
     for (const sign of [-1, 1]) {
       for (let i = 0; i < n; i++) {
         // Denser near the hole, where the ground is seen close up.
         const u = sign * (inner + (SECTION.reach - inner) * (i / SECTION.samples) ** 2);
-        put(u, terrain ? terrain.heightAt(u * tx, u * tz) : 0);
-        put(u, SECTION.bottom);
+        put(u, terrain ? terrain.heightAt(u * tx + out.x * offset, u * tz + out.z * offset) : 0);
+        put(u, bottom);
       }
     }
     put(-inner, deep);
@@ -359,6 +430,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // The floor picked (everything above it hidden), or null for all of them, surface and all.
   // Walking, nothing is lifted away: the picked floor is the one you're on.
   const cut = (): number | null => (view.mode === "walk" ? null : pickedFloor);
+  /** Iso with a floor picked: the land is sliced open through the hole's axis to show that floor. */
+  const sliced = (): boolean => view.mode === "iso" && cut() !== null;
   // The land round the hole: the ground, boulders, craters and the horizon, for this site.
   let terrain: Terrain | null = null;
   let terrainKey = "";
@@ -505,6 +578,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // Moved off where this view starts: offer the way back.
     resetButton.hidden = atHome();
     updateSection();
+    updateRockWall();
     updateReadout();
     dirty = true;
     // The world moved under a still pointer, so what it points at may have changed.
@@ -566,7 +640,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const light = f > 0.25 && f < 0.75 ? Math.sin((Math.PI * (f - 0.25)) / 0.5) : 0;
     // Behind the sky dome, in case anything peeks past it (earth, with a floor picked).
     skyColor = new THREE.Color(C.nightSky).lerp(new THREE.Color(C.daySky), light);
-    if (cut() === null) scene.background = skyColor;
+    applyBackground();
     // Deep in the shaft, daylight matters less than the lamps; keep it gentle.
     // A dust storm blots out the sun, and some of the sky's light.
     hemi.intensity = (0.45 + 0.35 * light) * (1 - STORM_DIM.sky * storm);
@@ -1516,6 +1590,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       updateReadout();
     }
     if (isoFrame(dt)) applyCamera();
+    // Iso's cut-out opening: the land dissolves away round the floor, the backdrop darkens.
+    if (slice.on.value > 0.5 && slice.amount.value < 1) {
+      slice.amount.value = Math.min(1, slice.amount.value + dt / SLICE.seconds);
+      applyBackground();
+      dirty = true;
+    }
     if (graphics.life && hole && ambient >= 1 / AMBIENT_FPS) {
       dust.step(ambient);
       // Colonists, sparks and steam move only while the game runs.
@@ -1615,17 +1695,25 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     opts.onError?.("The 3D view lost its graphics context (the GPU may be busy or asleep). Switched to 2D.");
   });
 
+  /** The sky with every floor showing; earth below ground (Iso's cut-out darkening into it as it opens). */
+  function applyBackground(): void {
+    if (cut() === null) scene.background = skyColor;
+    else if (sliced()) scene.background = skyColor.clone().lerp(new THREE.Color(C.earth), slice.on.value > 0.5 ? slice.amount.value : 1);
+    else scene.background = new THREE.Color(C.earth);
+  }
+
   /** Hide what sits above the chosen floor: walkers, the surface. */
   function applyFloorCut(): void {
     holeGroup.traverse((o) => {
       const f = cut();
       if (typeof o.userData.floor === "number") o.visible = f === null || o.userData.floor >= f;
     });
-    if (terrain) terrain.group.visible = cut() === null;
-    // With a floor picked you're looking underground: earth all round, no sky.
+    if (terrain) terrain.group.visible = cut() === null || sliced();
+    // With a floor picked you're looking underground: earth all round, no sky. Iso slices the land
+    // open instead (the cut face), so the sky shows over it.
     // (The sky's shader isn't ported to WebGPU yet: a plain sky colour there.)
     skyDome.mesh.visible = cut() === null && !webgpu;
-    scene.background = cut() === null ? skyColor : new THREE.Color(C.earth);
+    applyBackground();
     people.group.visible = graphics.life;
     grit.setLevel(graphics.life && cut() === null ? storm : 0);
     updateShaftLight();
@@ -1635,6 +1723,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!graphics.life) roomFx.clear();
     // Sparks and steam only come from furniture that's shown.
     roomFx.setView({ topFloor: cut(), xray: view.xray });
+    updateRockWall();
     dirty = true;
   }
 
@@ -1822,6 +1911,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         scene.add(layoutGroup);
         furnitureGroups = [];
         layoutGroup.traverse((o) => {
+          if (o.userData.outerCap) (o as THREE.Mesh).material = outerCapMaterial((o as THREE.Mesh).material as THREE.MeshStandardMaterial);
           if (o.userData.furniture) furnitureGroups.push(o);
         });
         lampList = furnitureGroups.flatMap((g) => (g.userData.lamps as Lamp[] | undefined) ?? []);
@@ -1900,6 +1990,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           disposeTerrain(terrain);
         }
         terrain = buildTerrain(snapshot.layout.hole.shaftRadiusM, siteSeed(here?.site ?? null, snapshot.holeName), groundMat);
+        // Boulders and the horizon go with the slice too (the ground already does).
+        const wrapped = new Set<THREE.Material>([groundMat]);
+        terrain.group.traverse((o) => {
+          const m = (o as THREE.Mesh).material;
+          for (const x of !m ? [] : Array.isArray(m) ? m : [m]) {
+            if (!wrapped.has(x)) withSlice(x, slice, "land");
+            wrapped.add(x);
+          }
+        });
         scene.add(terrain.group);
         applyFloorCut();
         updateSection();

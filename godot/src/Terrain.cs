@@ -53,18 +53,26 @@ public partial class Terrain : Node3D
         return mesh;
     }
 
+    /// <summary>Marks a material as land, for Iso's cut-out (view.gdshaderinc `slice_role`).</summary>
+    public static Material Land(Material m)
+    {
+        if (m is ShaderMaterial s) s.SetShaderParameter("slice_role", 1);
+        return m;
+    }
+
     public void Set(JsonElement m)
     {
         foreach (var c in GetChildren()) c.QueueFree();
         HoleId = m.GetProperty("holeId").GetInt32();
         var groundMaterial = Looks.For("rock:ground", new Color("#7a3b22"), 1, 0, false)!;
+        Land(groundMaterial);
         AddChild(new MeshInstance3D { Mesh = Mesh(m.GetProperty("ground"), groundMaterial), Name = "Ground" });
         var rocks = m.GetProperty("rocks");
         var t = Floats(rocks.GetProperty("transforms"));
         var mm = new MultiMesh
         {
             TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
-            Mesh = Mesh(rocks.GetProperty("mesh"), Plain.Make(new Color(rocks.GetProperty("color").GetString()!), 1, flat: true)),
+            Mesh = Mesh(rocks.GetProperty("mesh"), Land(Plain.Make(new Color(rocks.GetProperty("color").GetString()!), 1, flat: true))),
             InstanceCount = t.Length / 12,
         };
         for (var i = 0; i < mm.InstanceCount; i++)
@@ -74,6 +82,6 @@ public partial class Terrain : Node3D
         }
         AddChild(new MultiMeshInstance3D { Multimesh = mm, Name = "Boulders" });
         var horizon = m.GetProperty("horizon");
-        AddChild(new MeshInstance3D { Mesh = Mesh(horizon.GetProperty("mesh"), Plain.Make(new Color(horizon.GetProperty("color").GetString()!), 1, flat: true)), Name = "Horizon", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        AddChild(new MeshInstance3D { Mesh = Mesh(horizon.GetProperty("mesh"), Land(Plain.Make(new Color(horizon.GetProperty("color").GetString()!), 1, flat: true))), Name = "Horizon", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
     }
 }
