@@ -350,7 +350,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let roomOutlines = new Map<number, THREE.LineSegments>();
   let roomLabels = new Map<number, THREE.Object3D>();
   const badges = new THREE.Group();
-  let troubleKey = "";
+  /** What the outlines and badges were last drawn for; null after a rebuild, so they're redrawn even with no rooms in view (an empty key). */
+  let troubleKey: string | null = null;
   /** Show each room's trouble: its outline's colour, and a caution sign over its label when it's slowed or short (not when it's only paused). */
   function showTrouble(status: Record<number, RoomStatus>): void {
     const troubles = new Map<number, Trouble>();
@@ -1926,7 +1927,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           }
           if (o.userData.label && typeof o.userData.roomId === "number") roomLabels.set(o.userData.roomId as number, o);
         });
-        troubleKey = "";
+        troubleKey = null;
         // The floor picked or x-ray changed: hidden furniture's sparks and steam go with it.
         roomFx.setView({ topFloor: cut(), xray: view.xray });
         dirty = true;
