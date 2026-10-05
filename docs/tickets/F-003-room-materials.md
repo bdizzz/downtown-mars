@@ -32,3 +32,4 @@ Proposed; becomes tickets once this feature is agreed.
 
 ## History
 - 2026-10-04 19:12 made from T-008 (T-012 moved room materials into a feature)
+- 2026-10-05 09:07 planning on f-003-room-materials
