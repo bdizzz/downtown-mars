@@ -45,10 +45,12 @@ jobs:
         if: github.event.action != 'closed'
         env:
           VITE_STORAGE_PREFIX: pr-${{ github.event.number }}.
-      - run: sh scripts/gh-pages.sh publish dist "pr-preview/pr-$PR" "Preview PR #$PR at ${{ github.event.pull_request.head.sha }}"
+      - run: |
+          sh scripts/gh-pages.sh publish dist "pr-preview/pr-$PR" "Preview PR #$PR at ${{ github.event.pull_request.head.sha }}"
         if: github.event.action != 'closed'
 
-      - run: sh scripts/gh-pages.sh remove "pr-preview/pr-$PR" "Remove the preview of PR #$PR"
+      - run: |
+          sh scripts/gh-pages.sh remove "pr-preview/pr-$PR" "Remove the preview of PR #$PR"
         if: github.event.action == 'closed'
 
       - name: Comment the link on the PR
