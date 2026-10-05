@@ -771,8 +771,12 @@ public partial class Live : Node3D
     /// <summary>Iso with a floor picked: the land's sliced open through the hole's axis to show that floor.</summary>
     bool Sliced => Cut != null && _rig?.Mode == Overview.Iso;
 
-    /// <summary>Iso's cut-out, as the web's (stage3d.ts SLICE): the land thins out from and to these distances past the rings, metres, and opening it takes this long, seconds.</summary>
-    const float SliceFadeFrom = 6, SliceFadeTo = 45, SliceSeconds = 0.5f;
+    /// <summary>
+    /// Iso's cut-out, as the web's (stage3d.ts SLICE): the land thins out from and to these distances past
+    /// the rings, metres; land and cut crumble over SliceEdge metres; the cut rock darkens toward the
+    /// backdrop by up to SliceTint, fully by SliceTintDepth metres down; opening it takes SliceSeconds.
+    /// </summary>
+    const float SliceFadeFrom = 6, SliceFadeTo = 45, SliceEdge = 5, SliceTint = 0.7f, SliceTintDepth = 30, SliceSeconds = 0.5f;
     /// <summary>How far the cut-out has opened, 0 to 1 (it dissolves in when a floor's picked).</summary>
     float _sliceAmount = 1;
     bool _wasSliced;
@@ -932,6 +936,7 @@ public partial class Live : Node3D
         _wasSliced = sliced;
         _sliceClock = now;
         RenderingServer.GlobalShaderParameterSet("slice_fade", new Vector4(SliceFadeFrom, SliceFadeTo, _sliceAmount, 0));
+        RenderingServer.GlobalShaderParameterSet("slice_look", new Vector4(SliceEdge, SliceTint, SliceTintDepth, 0));
         if (_ground.Visible != (Cut == null || Sliced)) ApplyCut();
         if (_occluders != null) _occluders.Visible = !cutaway;
     }

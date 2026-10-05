@@ -21,6 +21,8 @@ public partial class RockWall : MeshInstance3D
         // The shaft wall's rock. Its shader draws both sides, but the camera's always inside the whole wall
         // (Top, the shaft, walking), and in Iso only the far half's built.
         MaterialOverride = Looks.For("rock:wall", new Color("#6a3a28"), 1, 0, false);
+        // In Iso's cut-out it darkens with depth (view.gdshaderinc `slice_role` 3).
+        if (MaterialOverride is ShaderMaterial s) s.SetShaderParameter("slice_role", 3);
     }
 
     /// <summary>The wall's radius: just past the unlocked rings, where the cutaway's backdrop sits.</summary>
