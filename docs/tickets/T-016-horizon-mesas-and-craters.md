@@ -25,7 +25,8 @@ More mesas (say 3–6, of different widths and heights, some buttes), at a few d
 - ART.md: the horizon.
 
 ## Open questions
-- [ ] Large horizon craters on every site, or only mesa sites? Proposed: every site gets one or two, with more on mesa and hills sites (flatter land shows them best).
+- [x] Every site gets one or two large horizon craters, with more on mesa and hills sites (flatter land shows them best). (Bryon, Oct 5)
 
 ## History
 - 2026-10-05 00:52 opened from N-0011
+- 2026-10-05 00:53 questions answered
