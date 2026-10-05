@@ -105,3 +105,11 @@ a drawback of the current system is that the furniture layout of the same room o
 ## N-0009 · 2026-10-04 19:06
 we should build some new saves for the public folder, since a lot has changed since they were made
 → T-013
+
+## N-0010 · 2026-10-05 00:44
+if someone builds a kitchen and a canteen instead of a galley, that should satisfy the tutorial step asking you to make a galley
+→ T-015
+
+## N-0011 · 2026-10-05 00:51
+the "mesa" style horizon could use some work: the mesa doesn't look believable and there's only one of them. perhaps we can add some large craters to the horizon too.
+→ T-016
