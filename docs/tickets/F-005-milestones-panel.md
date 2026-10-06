@@ -1,7 +1,7 @@
 ---
 id: F-005
 title: A milestones panel: the hole's achievements, from first birth to self-sufficiency
-status: draft
+status: agreed
 plan:
 notes: [N-0025]
 created: 2026-10-06 01:26
@@ -24,21 +24,25 @@ Plus the extra ideas Bryon approved (N-0025 follow-up): first Martian adult, thi
 - Per hole, with the network ones (trade routes, holes linked, culture drift) on the network side.
 - Godot needs the panel too; the bridge should reuse the web's panel text (`src/view/`).
 - Earned milestones should be news: a message, maybe the celebration card where one exists.
+- **Answered (Bryon, Oct 6):** one list, where every celebration is a milestone but not every milestone gets one; milestones are a record and news, with a celebration for the big ones, no rewards; a hole must hold steady for one game month to count as self-sufficient; per hole, with a network section.
 
 ## Breakdown
 Proposed; becomes tickets once this feature is agreed.
-- Milestone catalog in `data/milestones.json` (folding in celebrations' list), sim tracking with the day each was reached, saved; existing checks (population, born, floors, domed, event).
-- The panel on the web: earned (with date) and ahead, grouped; a dock button.
-- Life checks: first harvest, first Martian adult, third generation, laid to rest, full ring, good neighbors.
-- Sustainability tiers: rolling net-balance per resource, with Earth / with trade / alone, held for a month; "a year on our own".
-- Network checks: kit sent (first founding), first trade route, 3 and 5 holes linked, drifting apart; closed loop once F-001's water loop lands.
-- The panel in Godot through the bridge.
+- Milestone catalog in `data/milestones.json` (folding in celebrations' list), sim tracking with the day each was reached, saved; existing checks (population, born, floors, domed, event). → T-055
+- The panel on the web: earned (with date) and ahead, grouped; a dock button. → T-056
+- Life checks: first harvest, first Martian adult, third generation, laid to rest, full ring, good neighbors. → T-057
+- Sustainability tiers: rolling net-balance per resource, with Earth / with trade / alone, held for a month; "a year on our own". → T-058
+- Network checks: kit sent (first founding), first trade route, 3 and 5 holes linked, drifting apart. → T-059
+- Closed loop: water treatment returns more than it loses over a month, once F-001's water loop lands. → T-060
+- The panel in Godot through the bridge. → T-061
 
 ## Open questions
-- [ ] Should milestones and celebrations be one list (every celebration is a milestone, not every milestone a celebration)? Proposed: yes.
-- [ ] Do milestones give anything (a reward, an unlock, score) or are they just a record? Proposed: a record and news, plus a celebration for the big ones.
-- [ ] Self-sufficiency: how long must a hole hold steady before it counts? Proposed: one game month (a game day may become a month, T-021).
-- [ ] Per hole, network-wide, or both? Proposed: per hole, with a network section.
+- [x] Should milestones and celebrations be one list (every celebration is a milestone, not every milestone a celebration)? Proposed: yes.
+- [x] Do milestones give anything (a reward, an unlock, score) or are they just a record? Proposed: a record and news, plus a celebration for the big ones.
+- [x] Self-sufficiency: how long must a hole hold steady before it counts? Proposed: one game month (a game day may become a month, T-021).
+- [x] Per hole, network-wide, or both? Proposed: per hole, with a network section.
 
 ## History
 - 2026-10-06 01:26 opened from N-0025
+- 2026-10-06 01:29 agreed
+- 2026-10-06 01:29 questions answered

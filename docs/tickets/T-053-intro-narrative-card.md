@@ -30,14 +30,15 @@ Bryon approved this text (N-0026 follow-up):
 The tutorial already opens with the deputy's line (`data/tutorial.json` `intro`, shown in `src/ui/Tutorial.tsx`). The text belongs in `data/` so Godot can show the same card; the colonist count should come from config (the landing kit's population), not be hard-coded.
 
 ## Approach
-A modal card on a new game only (not on loading a save), one button ("Let's dig in" or "Start"), text from data. The game waits behind it (paused until dismissed). Same card in Godot via the bridge.
+A modal card on a new game only (not on loading a save), one button ("Let's dig in" or "Start"), text from data. The game waits behind it (paused until dismissed). Same card in Godot via the bridge, in the same PR (Bryon, Oct 6), as long as the bridge can pass the text simply. Every new game, tutorial on or off.
 
 ## Docs to update
 GUIDE.md: Starting out. README if it describes the opening.
 
 ## Open questions
-- [ ] Godot in the same PR, or a follow-up? Proposed: same PR if the bridge can pass the text simply.
-- [ ] Show it even when the tutorial is off? Proposed: yes, every new game; a "don't show again" setting isn't needed for one short card.
+- [x] Godot in the same PR, or a follow-up? Proposed: same PR if the bridge can pass the text simply.
+- [x] Show it even when the tutorial is off? Proposed: yes, every new game; a "don't show again" setting isn't needed for one short card.
 
 ## History
 - 2026-10-06 01:26 opened from N-0026
+- 2026-10-06 01:29 questions answered
