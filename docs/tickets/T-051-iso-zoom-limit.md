@@ -1,7 +1,7 @@
 ---
 id: T-051
 title: Cap Iso's zoom-out at six rings' width plus a little padding
-status: open
+status: done
 size: S
 area: render3d, godot
 touches: [src/render3d/stage3d.ts, src/render3d/cylinder.ts, godot/src/CameraRig.cs]
@@ -24,3 +24,4 @@ Work out the distance at which ring 6's outer diameter, plus about 10% padding, 
 ## History
 - 2026-10-06 00:48 opened from N-0022
 - 2026-10-06 02:19 building on t-051-iso-zoom-limit
+- 2026-10-06 02:23 built

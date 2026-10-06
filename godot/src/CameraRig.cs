@@ -87,6 +87,50 @@ public partial class CameraRig : Node3D
     }
 
     float Outer => _meta.Hole.ShaftRadiusM + _meta.Hole.UnlockedRings * 10;
+
+    /// <summary>
+    /// How far out Iso may zoom, as the web's (render3d/isoReach.ts): every ring the hole can have, open
+    /// or not, with a tenth to spare, just inside the view.
+    /// </summary>
+    float IsoMax()
+    {
+        var rings = _meta.Hole.RingSlots.Length > 0 ? _meta.Hole.RingSlots.Length : 6;
+        var radius = (_meta.Hole.ShaftRadiusM + rings * 10) * Margin;
+        var aspect = IsInsideTree() ? GetViewport().GetVisibleRect().Size.Aspect() : 1.6f;
+        return Mathf.Max(5, IsoFitDistance(radius, _pitch, _cam.Fov, aspect));
+    }
+
+    /// <summary>
+    /// The least distance, orbiting the disc's centre `elev` radians up and looking at it, at which a disc of
+    /// `radius` on the floor fits a view `fovDeg` tall: by halving, checking points round its rim.
+    /// </summary>
+    static float IsoFitDistance(float radius, float elev, float fovDeg, float aspect)
+    {
+        var tanV = Mathf.Tan(Mathf.DegToRad(fovDeg / 2));
+        var tanH = tanV * aspect;
+        bool Fits(float d)
+        {
+            float cx = d * Mathf.Cos(elev), cy = d * Mathf.Sin(elev);
+            float fx = -cx / d, fy = -cy / d;
+            float ux = -fy, uy = fx;
+            for (var i = 0; i < 48; i++)
+            {
+                var a = i / 48f * Mathf.Tau;
+                float px = radius * Mathf.Cos(a) - cx, py = -cy, pz = radius * Mathf.Sin(a);
+                var ahead = px * fx + py * fy;
+                if (ahead <= 0 || Mathf.Abs(pz) > tanH * ahead || Mathf.Abs(px * ux + py * uy) > tanV * ahead) return false;
+            }
+            return true;
+        }
+        float lo = radius * 0.1f, hi = radius * 100;
+        for (var i = 0; i < 30; i++)
+        {
+            var mid = (lo + hi) / 2;
+            if (Fits(mid)) hi = mid;
+            else lo = mid;
+        }
+        return hi;
+    }
     float Depth => (_meta.Hole.Floors + 1) * _meta.Hole.FloorHeightM + 3;
     float CutTop => _meta.Cut is int f ? (1 - f) * _meta.Hole.FloorHeightM - 3 : 0;
 
@@ -308,6 +352,7 @@ public partial class CameraRig : Node3D
             _cam.LookAt(new Vector3(0, -Depth, 0), outward);
             return;
         }
+        _dist = Mathf.Min(_dist, IsoMax());
         var offset = new Vector3(Mathf.Cos(_yaw) * Mathf.Cos(_pitch), Mathf.Sin(_pitch), Mathf.Sin(_yaw) * Mathf.Cos(_pitch)) * _dist;
         _cam.GlobalPosition = _target + offset;
         _cam.LookAt(_target, Vector3.Up);

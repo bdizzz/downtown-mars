@@ -22,6 +22,7 @@ import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
 import { createSky } from "./sky3d";
 import { buildTerrain, siteSeed, type Terrain } from "./terrain3d";
 import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { isoFitDistance } from "./isoReach";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
@@ -76,10 +77,13 @@ const MIN_DIST = 2;
 const CLICK_SLOP = 5;
 const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25 };
 const TOP = { min: 20, max: 300, start: 80, margin: 1.1 };
-/** Iso: distance to the floor's centre (a multiple of the floor's radius to start), and how steeply it looks down. */
 /** Iso's WASD pan: metres a second as a share of the camera's distance (with a floor), and how far from the axis it may go, as a share of the rings' radius. */
 const ISO_PAN = { speed: 0.6, minSpeed: 12, reach: 1.3 };
-const ISO = { start: 1.6, min: 12, max: 400, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
+/**
+ * Iso: distance to the floor's centre (a multiple of the floor's radius to start), and how steeply it looks down.
+ * Zooming out stops once every ring the hole can have (open or not) fits the view, with `pad` to spare.
+ */
+const ISO = { start: 1.6, min: 12, pad: 1.1, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
 /** First person: how finely and how far to look for room to stand on another floor (m), eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
 const WALK = { searchStep: 0.5, searchReach: 40, eye: 1.8, speed: 3, run: 9, turn: 0.004, lookTurn: 0.0025, keyTurn: 1.8 };
 /** Looking up and down (first person) stops just short of straight up or down. */
@@ -482,6 +486,19 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     return hole ? ringRadii(hole, hole.unlockedRings)[1] : 40;
   }
 
+  /** How far out Iso may zoom: all the rings' footprint, padded, just inside the view (isoReach.ts). */
+  let isoMaxKey = "";
+  let isoMaxDist = 0;
+  function isoMax(): number {
+    const r = hole ? ringRadii(hole, hole.ringSlots.length)[1] : 70;
+    const key = `${r}:${cam.isoElev}:${camera.aspect}:${outerRadius()}`;
+    if (key !== isoMaxKey) {
+      isoMaxKey = key;
+      isoMaxDist = Math.max(ISO.min, isoFitDistance(r * ISO.pad, cam.isoElev, FOV, camera.aspect, outerRadius() * ISO.lookPast));
+    }
+    return isoMaxDist;
+  }
+
   function depth(): number {
     return hole ? -floorSpan(hole.floors + 1)[0] : FLOOR_H;
   }
@@ -491,8 +508,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     cam.out = Math.min(CUTAWAY.max, Math.max(CUTAWAY.min, cam.out));
     cam.height = Math.min(TOP.max, Math.max(TOP.min, cam.height));
     // Iso's distance stays 0 ("not set yet") until the mode is first used and sizes it to the floor.
-    if (cam.iso) cam.iso = Math.min(ISO.max, Math.max(ISO.min, cam.iso));
     cam.isoElev = Math.min(ISO.maxElev, Math.max(ISO.minElev, cam.isoElev));
+    if (cam.iso) cam.iso = Math.min(isoMax(), Math.max(ISO.min, cam.iso));
     walker.pitch = Math.min(MAX_PITCH, Math.max(-MAX_PITCH, walker.pitch));
     const bottom = -depth() + EYE_HEIGHT;
     cam.y = Math.min(FLOOR_H * 3, Math.max(bottom, cam.y));
