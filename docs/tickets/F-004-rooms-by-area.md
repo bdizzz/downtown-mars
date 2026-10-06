@@ -1,8 +1,9 @@
 ---
 id: F-004
 title: Rooms sized by area and placed by angle, with snapping and fill rooms
-status: draft
+status: agreed
 plan: docs/PLAN-M17.md
+branch: feature/f-004-rooms-by-area
 notes: [N-0008]
 created: 2026-10-04 19:12
 ---
@@ -29,18 +30,18 @@ This replaces the core spatial model: (floor, ring, slot), `slots(n)`, slot-wrap
 
 ## Breakdown
 Proposed; becomes tickets once this feature (and its plan) is agreed. In build order; each leaves the game working (until step 8, rooms are still placed on slots, with angles underneath).
-- Notches and spans: area ↔ angle helpers, every ring room also gets start/span/depth, save migration; no behaviour change (M)
-- Space as intervals: occupancy and excavation as spans per floor and ring (`sim/space.ts`) replacing `grid` and `open`, and pieces (L)
-- Corridors on lines: corridors as runs, edges cut at vertices with notch ids, access, gallery, bulkheads, doors, windows by wall, the corridor tool, save migration (L)
-- Effects and paths over pieces: neighbour effects in metres, air and walking on the new edges, overlays per piece (L)
-- The 3D view on angles: rooms, walls, corridors, picking, people, flows and furniture fitting from spans (L)
-- The 2D views on angles: the unrolled view at mid-radius length and the plan view (and the bridge's plan) (M)
-- The bridge and Godot on angles: snapshot and scene, `PlanView.cs`, `Live.cs`, `BuildMode.cs` (M)
-- Placing by area: rooms at any angle with their target area, `build` carries the angle (breaking), slots and paired rings retired, dig yields and fill costs by area, landing kit, bots and tests (L)
-- Snapping and its toggle in the web build mode (M)
-- Drag handles and fill rooms: leeway and fill ranges, Empty space as one fill room, plazas and the park as fill rooms, double-click to fill a gap (L)
-- Snapping, handles and fill in Godot's build mode (M)
-- The furnishing tool (`?furnish`, `src/devtools/`) by area: templates keyed by size and depth, preview at any ring and area, a type's target area set there (Bryon, Oct 4) (M)
+- Notches and spans: area ↔ angle helpers, every ring room also gets start/span/depth, save migration; no behaviour change (M) → T-039
+- Space as intervals: occupancy and excavation as spans per floor and ring (`sim/space.ts`) replacing `grid` and `open`, and pieces (L) → T-040
+- Corridors on lines: corridors as runs, edges cut at vertices with notch ids, access, gallery, bulkheads, doors, windows by wall, the corridor tool, save migration (L) → T-041
+- Effects and paths over pieces: neighbour effects in metres, air and walking on the new edges, overlays per piece (L) → T-042
+- The 3D view on angles: rooms, walls, corridors, picking, people, flows and furniture fitting from spans (L) → T-043
+- The 2D views on angles: the unrolled view at mid-radius length and the plan view (and the bridge's plan) (M) → T-044
+- The bridge and Godot on angles: snapshot and scene, `PlanView.cs`, `Live.cs`, `BuildMode.cs` (M) → T-045
+- Placing by area: rooms at any angle with their target area, `build` carries the angle (breaking), slots and paired rings retired, dig yields and fill costs by area, landing kit, bots and tests (L) → T-046
+- Snapping and its toggle in the web build mode (M) → T-047
+- Drag handles and fill rooms: leeway and fill ranges, Empty space as one fill room, plazas and the park as fill rooms, double-click to fill a gap (L) → T-048
+- Snapping, handles and fill in Godot's build mode (M) → T-049
+- The furnishing tool (`?furnish`, `src/devtools/`) by area: templates keyed by size and depth, preview at any ring and area, a type's target area set there (Bryon, Oct 4) (M) → T-050
 
 ## Open questions
 - [x] Leeway ±15%. (Bryon, Oct 6)
@@ -52,3 +53,5 @@ Proposed; becomes tickets once this feature (and its plan) is agreed. In build o
 - 2026-10-04 19:12 made from T-010 (T-012 moved rooms by area into a feature)
 - 2026-10-05 18:57 planning on f-004-rooms-by-area
 - 2026-10-06 00:24 questions answered
+- 2026-10-06 00:32 agreed
+- 2026-10-06 00:32 built on feature/f-004-rooms-by-area
