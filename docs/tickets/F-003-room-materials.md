@@ -34,8 +34,8 @@ Context: DECISIONS.md has glass as optional and marscrete replacing brick at 1.5
 - **Condition back to 100% when a refit finishes?** Yes (Bryon, Oct 6): a fresh lining.
 - **Half output only once crews start**, not while the job waits in the queue? Yes (Bryon, Oct 6).
 - **Can a lining be downgraded** (metal → brick), paying the new one in full? Yes, and **back to bare rock too** (Bryon, Oct 6, revised): changing away from brick or metal **refunds part** of the old lining, so a room can be **salvaged** for its materials at the cost of its quality. This replaces the Oct 4 "no refund for the old material".
-- [ ] How much comes back when a lining is removed? Proposed: **50%** of the material that lining cost (a patterned-brick room stripped to bare rock returns half of brick 12 a cell), rounded down; the finish's extra glass (inlaid metal) is lost.
-- [ ] Does stripping take work? Proposed: yes, a refit job at **half** the lining's work per cell, the room at half output while it runs, the refund paid when it finishes (cancelling refunds nothing extra and leaves the lining).
+- [x] How much comes back when a lining is removed? **50%** of the material that lining cost (a patterned-brick room stripped to bare rock returns half of brick 12 a cell), rounded down; the finish's extra glass (inlaid metal) is lost. (Bryon, Oct 6)
+- [x] Does stripping take work? Yes, a refit job at **half** the lining's work per cell, the room at half output while it runs, the refund paid when it finishes (cancelling refunds nothing extra and leaves the lining). (Bryon, Oct 6)
 - **The numbers** in PLAN-M15's tables are first guesses for the playthroughs to tune.
 
 ## Breakdown
@@ -55,3 +55,4 @@ Agreed Oct 6. In build order; 5 can go any time before 6.
 - 2026-10-06 00:15 build-mode material picker added as T-038 (Bryon)
 - 2026-10-06 00:17 questions answered
 - 2026-10-06 00:19 downgrades to bare rock with a partial refund (Bryon); 2 questions
+- 2026-10-06 00:20 questions answered
