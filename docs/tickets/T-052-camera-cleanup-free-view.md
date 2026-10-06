@@ -27,7 +27,8 @@ Remove the Shaft and Top cameras and X-ray from the web and Godot (code, buttons
 - DECISIONS.md (3D view cameras; a Reversals line for Shaft, Top and X-ray), GUIDE.md (View), README.md, PLAN-GODOT.md (flags), ART.md if it mentions Iso.
 
 ## Open questions
-- [ ] Remove the code outright, or just hide the cameras behind a dev flag? Proposed: remove outright (git keeps it); less to maintain while F-004 reworks the 3D view.
+- [x] Remove the code outright, not behind a dev flag (git keeps it). (Bryon, Oct 6)
 
 ## History
 - 2026-10-06 00:48 opened from N-0023, N-0024
+- 2026-10-06 00:50 questions answered: remove outright
