@@ -3,7 +3,7 @@ import { edgeLengthM, galleryEdges, isGalleryEdge, outsideEdges, type Edge } fro
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { ownSide, viewAcross, type Across } from "../sim/windows";
-import { RING_D, ringRadii, slotAngles } from "../render3d/cylinder";
+import { RING_D, ringRadii, slotAngles, WALL_T } from "../render3d/cylinder";
 
 // A private room's doors: one on each of its floors, wherever it opens onto
 // something walkable: a gallery tube along its shaft face first, else the
@@ -40,7 +40,8 @@ export interface Doorway {
 }
 
 const HALL = corridors.widthM / 2;
-const INSET = 0.03;
+/** A wall's inner face stands half its thickness in from the border. */
+const WALL = WALL_T / 2;
 
 /** What's across an outside edge of a room, for a door: a tube (the shaft: not without one, unless under the dome), a corridor, a walk-through room, or nothing to walk out to. */
 export function acrossEdge(layout: Layout, e: Edge, own: Set<string>): Across | null {
@@ -56,10 +57,10 @@ export function sideOf(e: Edge, cell: Cell): WallSide {
   return e.index === cell.slot ? "left" : "right";
 }
 
-/** How far a wall stands back from its border: half a corridor where one runs, else the hairline (nothing on the shaft wall). */
+/** How far a wall's inner face stands back from its border: half the wall, plus half a corridor where one runs (gallery tubes run outside the shaft wall). */
 function pullBack(layout: Layout, e: Edge): number {
-  if (isGalleryEdge(e)) return 0;
-  return layout.corridors?.[e.id] ? HALL : INSET;
+  if (isGalleryEdge(e)) return WALL;
+  return layout.corridors?.[e.id] ? HALL + WALL : WALL;
 }
 
 /** A doorway on this edge of this cell, in the middle of the edge. */
