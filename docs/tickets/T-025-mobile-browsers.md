@@ -32,3 +32,4 @@ A first pass, honest about "a little": (1) viewport and page: no page zoom/scrol
 ## History
 - 2026-10-05 23:55 opened from N-0021
 - 2026-10-05 23:57 questions answered
+- 2026-10-06 01:26 building on t-025-mobile-browsers
