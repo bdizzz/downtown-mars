@@ -176,6 +176,43 @@ describe("solid walls", () => {
     for (let t = 0; t < pos.count; t += 3) if ([0, 1, 2].every((k) => Math.abs(pos.getY(t + k) - top) < 1e-6)) expect(Math.hypot(tags.getX(t), tags.getY(t))).toBeGreaterThan(0);
   });
 
+  it("leave no seam along a wall two rings share: their tops cover it all the way through", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const n2 = l.hole.ringSlots[1]!;
+    const n3 = l.hole.ringSlots[2]!;
+    const [s0, s1] = slotAngles(2, n2);
+    const j = Math.floor(((s0 + s1) / 2 / (2 * Math.PI)) * n3);
+    const aId = placeRoom(l, "flat", ring(1, 2, 2)).id;
+    const bId = placeRoom(l, "flat", ring(1, 3, j)).id;
+    const top = floorSpan(1)[1];
+    const tris: number[][][] = [];
+    for (const id of [aId, bId]) {
+      const room = l.rooms.find((x) => x.id === id)!;
+      const pos = solid(l, room.cells).getAttribute("position");
+      for (let t = 0; t < pos.count; t += 3) {
+        const v = [0, 1, 2].map((k) => [pos.getX(t + k), pos.getY(t + k), pos.getZ(t + k)]);
+        if (v.every((p) => Math.abs(p[1]! - top) < 1e-6)) tris.push(v.map((p) => [p[0]!, p[2]!]));
+      }
+    }
+    const cross = (a: number[], b: number[], p: number[]) => (b[0]! - a[0]!) * (p[1]! - a[1]!) - (b[1]! - a[1]!) * (p[0]! - a[0]!);
+    const covered = (p: number[]) =>
+      tris.some(([a, b, c]) => {
+        const d = [cross(a!, b!, p), cross(b!, c!, p), cross(c!, a!, p)];
+        return d.every((x) => x >= -1e-6) || d.every((x) => x <= 1e-6);
+      });
+    const edge = ringRadii(l.hole, 2)[1];
+    const [t0, t1] = slotAngles(j, n3);
+    const lo = Math.max(s0, t0) + 0.3 / edge;
+    const hi = Math.min(s1, t1) - 0.3 / edge;
+    for (let i = 0; i <= 200; i++) {
+      const a = lo + ((hi - lo) * i) / 200;
+      for (const dr of [-0.1, -0.05, -0.02, 0, 0.02, 0.05, 0.1]) {
+        const r = edge + dr;
+        expect(covered([r * Math.cos(a), r * Math.sin(a)]), `angle ${a.toFixed(4)}, ${dr} m off the edge`).toBe(true);
+      }
+    }
+  });
+
   it("put their tops apart from the walls when asked, to be drawn in bare rock", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     const roomId = placeRoom(l, "flat", ring(1, 2, 2)).id;

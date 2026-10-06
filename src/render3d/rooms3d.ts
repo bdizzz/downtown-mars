@@ -89,10 +89,33 @@ function tag(pos: number[], count: number, nx = 0, nz = 0, y0 = 0, y1 = 0): void
   if (t) for (let i = 0; i < count; i++) t.push(nx, nz, y0, y1);
 }
 
-function curvedFace(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number, cut?: Cut): void {
-  for (let i = 0; i < ARC_STEPS; i++) {
-    const b0 = a0 + ((a1 - a0) * i) / ARC_STEPS;
-    const b1 = a0 + ((a1 - a0) * (i + 1)) / ARC_STEPS;
+/**
+ * Solid walls split their arcs at angles fixed round the whole hole (this far
+ * apart), not into equal steps per face: two walls that meet along an arc
+ * then share their corners, and their chords can't leave a sliver between
+ * them (equal steps sag apart by up to 8 cm on wide ring-2 slots).
+ */
+const ARC_GRID = TAU / 240;
+
+/** An arc's corners from a0 to a1 (a0 < a1): its ends, and every grid angle between, less any too close to an end. */
+function arcAngles(a0: number, a1: number): number[] {
+  const out = [a0];
+  for (let k = Math.floor(a0 / ARC_GRID) + 1; k * ARC_GRID < a1 - 1e-6; k++) if (k * ARC_GRID > a0 + 1e-6) out.push(k * ARC_GRID);
+  out.push(a1);
+  return out;
+}
+
+/** An arc's corners: ARC_STEPS equal steps, or (`grid`) on the hole-wide grid. */
+function arcCorners(a0: number, a1: number, grid: boolean): number[] {
+  if (grid) return a0 <= a1 ? arcAngles(a0, a1) : arcAngles(a1, a0).reverse();
+  return Array.from({ length: ARC_STEPS + 1 }, (_, i) => a0 + ((a1 - a0) * i) / ARC_STEPS);
+}
+
+function curvedFace(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number, cut?: Cut, grid = false): void {
+  const corners = arcCorners(a0, a1, grid);
+  for (let i = 0; i + 1 < corners.length; i++) {
+    const b0 = corners[i]!;
+    const b1 = corners[i + 1]!;
     push(pos, at(r, b0, y0), at(r, b1, y0), at(r, b1, y1), at(r, b0, y0), at(r, b1, y1), at(r, b0, y1));
     // One normal per segment (at its middle), so all six corners agree on whether it's cut.
     const m = (b0 + b1) / 2;
@@ -116,12 +139,12 @@ interface Opening {
  * the openings' edges, and every column keeps its solid runs. The wall tags
  * keep the whole wall's height, so it lowers as one.
  */
-function curvedFaceWithOpenings(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number, cut: Cut, openings: Opening[]): void {
+function curvedFaceWithOpenings(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number, cut: Cut, openings: Opening[], grid = false): void {
   const holes = openings
     .map((o) => ({ a0: Math.max(o.a0, a0), a1: Math.min(o.a1, a1), y0: Math.max(o.y0, y0), y1: Math.min(o.y1, y1) }))
     .filter((o) => o.a1 - o.a0 > 1e-9 && o.y1 - o.y0 > 1e-9);
   const whole = { ...cut, y0: cut.y0 ?? y0, y1: cut.y1 ?? y1 };
-  if (!holes.length) return curvedFace(pos, r, a0, a1, y0, y1, whole);
+  if (!holes.length) return curvedFace(pos, r, a0, a1, y0, y1, whole, grid);
   const breaks = (list: number[]) => [...new Set(list)].sort((p, q) => p - q);
   const as = breaks([a0, a1, ...holes.flatMap((o) => [o.a0, o.a1])]);
   const ys = breaks([y0, y1, ...holes.flatMap((o) => [o.y0, o.y1])]);
@@ -134,11 +157,11 @@ function curvedFaceWithOpenings(pos: number[], r: number, a0: number, a1: number
       const solid = !open((ys[j]! + ys[j + 1]!) / 2);
       if (solid && start === null) start = ys[j]!;
       if (!solid && start !== null) {
-        curvedFace(pos, r, as[i]!, as[i + 1]!, start, ys[j]!, whole);
+        curvedFace(pos, r, as[i]!, as[i + 1]!, start, ys[j]!, whole, grid);
         start = null;
       }
     }
-    if (start !== null) curvedFace(pos, r, as[i]!, as[i + 1]!, start, ys.at(-1)!, whole);
+    if (start !== null) curvedFace(pos, r, as[i]!, as[i + 1]!, start, ys.at(-1)!, whole, grid);
   }
 }
 
@@ -584,16 +607,19 @@ function quad(pos: number[], a: number[], b: number[], c: number[], d: number[],
   tag(pos, 6, ...t);
 }
 
-/** A flat band between two arcs (at ra over [a0, a1], at rb over [b0, b1]), tagged like the wall it tops. */
+/**
+ * A flat band between two arcs (at ra over [a0, a1], at rb over [b0, b1]),
+ * tagged like the wall it tops. Both edges keep to the hole-wide grid, so
+ * they match the faces below them and the band of a wall on the far side.
+ */
 function arcBand(pos: number[], ra: number, [a0, a1]: [number, number], rb: number, [b0, b1]: [number, number], y: number, tagAt: (angle: number) => [number, number, number, number]): void {
-  for (let i = 0; i < ARC_STEPS; i++) {
-    const t0 = i / ARC_STEPS;
-    const t1 = (i + 1) / ARC_STEPS;
-    const p0 = a0 + (a1 - a0) * t0;
-    const p1 = a0 + (a1 - a0) * t1;
-    const q0 = b0 + (b1 - b0) * t0;
-    const q1 = b0 + (b1 - b0) * t1;
-    quad(pos, at(ra, p0, y), at(rb, q0, y), at(rb, q1, y), at(ra, p1, y), tagAt((p0 + p1) / 2));
+  const ts = [...new Set([...arcAngles(a0, a1), ...arcAngles(b0, b1)])].sort((p, q) => p - q);
+  const clamp = (t: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, t));
+  for (let i = 0; i + 1 < ts.length; i++) {
+    const [t0, t1] = [ts[i]!, ts[i + 1]!];
+    if (t1 - t0 < 1e-9) continue;
+    const [p0, p1, q0, q1] = [clamp(t0, a0, a1), clamp(t1, a0, a1), clamp(t0, b0, b1), clamp(t1, b0, b1)];
+    quad(pos, at(ra, p0, y), at(rb, q0, y), at(rb, q1, y), at(ra, p1, y), tagAt((t0 + t1) / 2));
   }
 }
 
@@ -739,8 +765,8 @@ function solidWalls(pos: number[], s: SolidCell): void {
       const holes =
         open && st.wall && st.circle !== undefined ? wallOpenings(open, c, arcsOn(st.circle), floorBase, 1 / pin.r, WINDOW.margin * 1.25) : null;
       const cutHoles = (holes?.holes ?? []).map((h) => ({ a0: h.s0, a1: h.s1, y0: h.y0, y1: h.y1 }));
-      if (st.wall && inLen > 1e-6) curvedFaceWithOpenings(pos, pin.r, ...rangeIn, y0, y1, cut, cutHoles);
-      if (outerFace && outLen > 1e-6) curvedFaceWithOpenings(pos, pout.r, ...rangeOut, floorBase, y1, cut, cutHoles);
+      if (st.wall && inLen > 1e-6) curvedFaceWithOpenings(pos, pin.r, ...rangeIn, y0, y1, cut, cutHoles, true);
+      if (outerFace && outLen > 1e-6) curvedFaceWithOpenings(pos, pout.r, ...rangeOut, floorBase, y1, cut, cutHoles, true);
       // The wall's top, between its two faces.
       const [lo, hi] = pin.r < pout.r ? [pin.r, pout.r] : [pout.r, pin.r];
       if (Math.abs(pin.r - pout.r) > 1e-6) {
