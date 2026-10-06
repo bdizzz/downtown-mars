@@ -70,7 +70,7 @@ When documents disagree, trust them in this order:
 - **Gym and park:** originally one combined room; now separate rooms (gym for health, park for comfort and air).
 - **Mushrooms:** a crop choice for a regular farm, not a separate room (a diagram labeled it "Mushroom farm" for clarity).
 - **Electronics input:** "rare minerals" was replaced by silicon wafers.
-- **Restrooms:** no longer consume their own water; they provide sanitation for 25 and return users' water as gray and black water.
+- **Restrooms:** no longer consume their own water; they provide sanitation for 25. (They once returned users' water as gray and black water; since T-005 water turns gray as it's used, and black water became tailings.)
 - **Life support:** raised from 10 to 30 oxygen so the starting crew has margin.
 - **Corridors take slots** (spokes and ring segments, a "ring road" loop): replaced in milestone 6 by corridors that run along the edges between rooms, carved out of what they pass. Don't bring back 1-slot corridor rooms.
 - **Excavator bay as the digger:** replaced in milestone 9. The drill sinks the shaft on its own; every room slot is rock until it's excavated, and **empty rooms** dig ahead for rock and space. (An excavator bay may return as a faster drill; see ROOM-STATUS.md.)
@@ -89,7 +89,7 @@ These sections were brought in line with the catalogs, both in this kit and in t
 
 ## Standing rules easy to miss
 
-- Each water tank holds only one type of water: clean, gray or black (from Bryon's early room list).
+- Each water tank holds only one type of water: clean, gray or tailings, chosen by the player like a farm's crop (from Bryon's early room list; choosable since T-005).
 
 ## Decided while building (Sep 27–30)
 
@@ -165,6 +165,14 @@ See `PLAN-M14.md` (Bryon: drill discoveries, then the belt ship, then celebratio
 - **Tap to aim, tap again to act** for every tool (rooms, demolish, a single corridor border, windows, bulkheads), since a finger can't hover first; with no tool a tap selects at once. A long press stands in for hover. Claude's default; the shared logic is `src/view/touch.ts`.
 - **First person on touch:** a translucent joystick bottom left (analog: push further to walk faster, all the way to run), stair buttons beside it, drag elsewhere to look (Bryon asked for arrows or a stick, Oct 6; the stick won).
 - **Narrow screens (under 760 px)** get panels as bottom sheets and a one-line, sideways-scrolling resource bar; wider tablets keep the desktop layout.
+
+## Decided for the water loop (Oct 4–6, F-001, T-005)
+
+- **Water is a closed loop:** clean water used turns gray one for one; the recycler treats gray back to clean at about 97%, the rest as sludge soil. Only clean water can be used (Bryon, Oct 4).
+- **The leaks:** life support is a true sink (water split into oxygen), and industry sends part of its water to **tailings** (not "black water"): refinery, concrete plant and electronics fab half, brickworks a quarter. Tailings can only be stored; overflow just disappears for now (Bryon, Oct 4).
+- **Wells bring in gray water** (brine), which needs treating. The composter no longer takes water.
+- **Full gray tanks stall the rooms that use water.** People still drink; their gray water overflows. Treatment runs before the rooms that use water each tick (Claude's default, so a recycler that keeps up never starves the galley).
+- **Numbers (Claude's defaults):** the recycler treats 80 gray a day into 78 clean and 1 soil (one per ~35 people); the pod holds 250 gray water to ride out the first days. In `data/rooms.json` and `data/resources.json`.
 
 ## Still open
 
