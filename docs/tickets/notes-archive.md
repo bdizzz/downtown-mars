@@ -153,3 +153,15 @@ sometimes the "hovering over the button for another floor shows you that floor" 
 ## N-0021 · 2026-10-05 18:59
 we should care a little about loading the web version on mobile browsers -- gettign the viewport correct, gestures and controls, etc
 → T-025
+
+## N-0022 · 2026-10-06 00:46
+let's limit the amount you can zoom out in iso mode. you should be able to zoom out to see the full 6 rings of width, plus a small amount of padding, but not further
+→ T-051
+
+## N-0023 · 2026-10-06 00:47
+let's deprecate the shaft view, the 3d top view, and xray mode.
+→ T-052
+
+## N-0024 · 2026-10-06 00:48
+rename Iso view to free view
+→ T-052
