@@ -22,6 +22,8 @@ Everything the game does, section by section. For a quick start, see the [README
 
 Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists, one pod, and a hole that goes nowhere yet.
 
+**The welcome card:** every new game (not a loaded one) opens with a short card on why you're here and why the colony goes underground: the surface is open to radiation from the Sun and deep space, so you dig. Only Mars and the hole show behind it, and the game waits; **And so it begins...** brings in the rest of the interface and starts the clock at 1×. Its text is in `data/tutorial.json` (`welcome`).
+
 **The afterglow:** everyone arrives thrilled. For the first 20 days happiness gets a boost (+20 at landing, easing away), so there's time to get air, water and food running and put something by before reality sets in. Newly founded holes get their own. Point at **Happy** to see how much is left.
 
 **Watch the bar at the top:** oxygen, water, meals and power, with how fast they're changing. Red means it runs out in under two days. Point at anything there for what it means and a sparkline of its last two days; click it to open it in **Charts → Trends**.

@@ -1,7 +1,7 @@
 ---
 id: T-053
 title: An intro narrative card for new games
-status: open
+status: done
 size: S
 area: ui
 touches: [src/ui/App.tsx, src/ui/Tutorial.tsx, data/tutorial.json, godot/]
@@ -19,7 +19,7 @@ Bryon approved this text (N-0026 follow-up):
 >
 > Earth sent you here to build something that lasts: a home where people can live for generations.
 >
-> There's a catch. Mars has almost no air and no magnetic field, so the Sun's radiation hits the surface unchecked. Stay up there too long, even in a suit or rover, and it catches up with you.
+> There's a catch. Mars has almost no air and no magnetic field, so radiation from the Sun and deep space hits the surface unchecked. Stay up there too long, even in a suit or rover, and it catches up with you.
 >
 > So we go down.
 >
@@ -42,3 +42,5 @@ GUIDE.md: Starting out. README if it describes the opening.
 ## History
 - 2026-10-06 01:26 opened from N-0026
 - 2026-10-06 01:29 questions answered
+- 2026-10-06 01:30 building on t-053-intro-narrative-card
+- 2026-10-06 01:34 built

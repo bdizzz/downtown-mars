@@ -68,6 +68,7 @@ public partial class Live : Node3D
     Label _title = null!, _clock = null!, _status = null!, _waiting = null!;
     PanelContainer _topPanel = null!;
     Tutorial _tutorial = null!;
+    Welcome _welcome = null!;
     HelpSheet _help = null!;
     SettingsSheet _settings = null!;
     bool _wasConnected;
@@ -239,6 +240,18 @@ public partial class Live : Node3D
             SetSpeed(open ? 0 : _speedBeforeMenu);
         };
         _hud.AddChild(_menu);
+        // A new game's welcome card, on a layer of its own over the HUD: only Mars and the hole show
+        // behind it (the HUD hides), and the game waits, then starts at 1×.
+        _welcome = new Welcome { Name = "Welcome" };
+        _welcome.Shown = open =>
+        {
+            SetSpeed(open ? 0 : 1);
+            _hud.Visible = !open && !NoHud;
+            if (!open) _bridge.Send(new Dictionary<string, object> { ["type"] = "welcomeSeen" });
+        };
+        var welcomeLayer = new CanvasLayer { Layer = 2, Name = "WelcomeLayer" };
+        AddChild(welcomeLayer);
+        welcomeLayer.AddChild(_welcome);
         // The tutorial, help and settings (the sheets over the menu).
         _tutorial.Dismissed = () =>
         {
@@ -431,6 +444,7 @@ public partial class Live : Node3D
             else if (type == "commandResult") OnCommandResult(msg.RootElement);
             else if (type == "hud") OnHud(msg.RootElement);
             else if (type == "tutorial") _tutorial.Set(msg.RootElement);
+            else if (type == "welcome") _welcome.Set(msg.RootElement);
             else if (type == "chained") _build.ShowChain(msg.RootElement);
             else if (type == "proposal") _build.Propose(msg.RootElement);
             msg.Dispose();
@@ -1293,6 +1307,8 @@ public partial class Live : Node3D
             return;
         }
         if (e is not InputEventKey { Pressed: true, Echo: false } k) return;
+        // The welcome card takes no hotkeys: only its button (Enter or Space) closes it.
+        if (_welcome.Visible) return;
         // Help: ? (or F1).
         if (k.Unicode == '?' || k.Keycode == Key.F1)
         {

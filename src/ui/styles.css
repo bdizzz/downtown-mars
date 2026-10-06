@@ -636,3 +636,10 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   background: #1a0f0db0; border: 1px solid #f0e0d060; border-radius: 6px; padding: 8px 12px;
 }
 .walk-stairs button[hidden] { display: none; }
+
+.welcome { width: min(540px, 100%); gap: 12px; }
+.welcome h2 { font-size: 25px; color: var(--accent); }
+.welcome p { margin: 0; font-size: 16.5px; line-height: 1.5; }
+.welcome button.primary { margin-top: 6px; font-size: 16.5px; text-align: center; }
+/* Behind the welcome card, only Mars and the hole: the rest of the interface comes in when it's closed. */
+.app.welcoming > :not(.main):not(.menu-backdrop), .app.welcoming .view > :not(.pixi-host), .app.welcoming .pixi-host > :not(canvas) { display: none; }

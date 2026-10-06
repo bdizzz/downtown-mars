@@ -21,6 +21,7 @@ import { hudMessage } from "./hud";
 import { tutorialMessage } from "./tutorial";
 import { planFieldKey, planFieldMessage, planKey, planMessage, type FieldView } from "./plan";
 import { terrainKey, terrainMessage } from "./terrain";
+import { welcomeCard } from "../view/welcome";
 import { emittersKey, emittersOf } from "../render3d/effects3d";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
@@ -193,7 +194,9 @@ type BridgeMessage =
   /** The viewer that started this bridge is closing: autosave and stop. */
   | { type: "quit" }
   /** First person: a floor's walking map (walkmap.ts). */
-  | { type: "walkmap"; floor: number };
+  | { type: "walkmap"; floor: number }
+  /** The new game's welcome card was read (it's sent until then, to every viewer that connects). */
+  | { type: "welcomeSeen" };
 
 function send(msg: object): void {
   const line = JSON.stringify(msg) + "\n";
@@ -237,15 +240,22 @@ function sendInspect(): void {
   for (const c of clients) c.write(line);
 }
 
-if (args.load) host.onMessage({ type: "load", id: 0, data: readFileSync(args.load, "utf8") });
+/** A new game's welcome card (view/welcome.ts) hasn't been read yet: a loaded game doesn't get one. */
+let welcomePending = true;
+if (args.load) {
+  host.onMessage({ type: "load", id: 0, data: readFileSync(args.load, "utf8") });
+  welcomePending = false;
+}
 // Pick up where the last game left off, if there's an autosave (the viewer starts its bridge so).
 else if (args.continue) {
   const data = readSlot("autosave");
   if (data) {
     host.onMessage({ type: "load", id: 0, data });
+    welcomePending = false;
     console.log("Continuing from the autosave");
   }
 }
+if (args.showcase || args.hour) welcomePending = false;
 if (args.showcase) host.onMessage({ type: "command", id: 0, command: { type: "consoleShowcase", floors: Number(args.showcase) } });
 // Run on to an hour of the day (for comparable screenshots and benchmarks: with --speed=0 it stays there).
 if (args.hour) {
@@ -272,6 +282,7 @@ const server = createServer((socket) => {
   sentTutorial = "";
   sendPalette(true);
   sendOffice(true);
+  if (welcomePending) socket.write(JSON.stringify(welcomeCard()) + "\n");
   let buffer = "";
   socket.on("data", (chunk: string) => {
     buffer += chunk;
@@ -333,7 +344,10 @@ const server = createServer((socket) => {
           if (data) {
             host.onMessage({ type: "load", id: commandId++, data });
             lastDay = dayOf(host.world());
+            welcomePending = false;
           } else send({ type: "notice", text: "Nothing saved there" });
+        } else if (msg.type === "welcomeSeen") {
+          welcomePending = false;
         } else if (msg.type === "quit") {
           shutDown("the viewer closed");
         } else if (msg.type === "walkmap") {
@@ -367,7 +381,14 @@ const server = createServer((socket) => {
         } else if (msg.type === "inspect") {
           inspecting = msg.at ? roomAtPoint(host.active(), msg.at) : (msg.roomId ?? null);
           sendInspect();
-        } else host.onMessage(msg);
+        } else {
+          host.onMessage(msg);
+          if (msg.type === "load") welcomePending = false;
+          else if (msg.type === "newGame") {
+            welcomePending = true;
+            send(welcomeCard());
+          }
+        }
       } catch (e) {
         console.error("Bad message:", line.slice(0, 200), e);
       }
