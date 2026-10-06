@@ -11,7 +11,7 @@ Rooms built from cheap bare rock early can later be **upgraded in place** to bri
 
 ## Design
 Bryon's answers (Oct 4, first written up in T-008 and T-009):
-- No refund for the old material; the upgrade costs the new one and goes through the **construction queue** (M7: `docs/PLAN-M7.md`, `data/construction.json`).
+- ~~No refund for the old material~~ (revised Oct 6: removing a lining refunds part of it, see Open questions); the upgrade costs the new one and goes through the **construction queue** (M7: `docs/PLAN-M7.md`, `data/construction.json`).
 - The room stays **usable while upgrading, at half output** (homes at reduced comfort).
 - Upgrades change **comfort and condition wear**; cave-in resistance only once cave-ins exist.
 - **Two steps per material** (base and finished) for rock, brick and metal; marscrete and glass later.
@@ -33,7 +33,9 @@ Context: DECISIONS.md has glass as optional and marscrete replacing brick at 1.5
 - **Rooms start as bare rock whatever their build cost?** Answered (Bryon, Oct 6): yes by default, but build mode gets a **building material** picker, defaulting to bare rock, so a room can be built straight away in a higher material. It always costs bare rock's cost plus the upgrade's, whichever way the room got there, but building it outright takes only the room's build time (one construction effort, no refit work): that's the reward for choosing up front. → T-038
 - **Condition back to 100% when a refit finishes?** Yes (Bryon, Oct 6): a fresh lining.
 - **Half output only once crews start**, not while the job waits in the queue? Yes (Bryon, Oct 6).
-- **Can a lining be downgraded** (metal → brick), paying the new one in full? Yes, never back to bare rock (Bryon, Oct 6).
+- **Can a lining be downgraded** (metal → brick), paying the new one in full? Yes, and **back to bare rock too** (Bryon, Oct 6, revised): changing away from brick or metal **refunds part** of the old lining, so a room can be **salvaged** for its materials at the cost of its quality. This replaces the Oct 4 "no refund for the old material".
+- [ ] How much comes back when a lining is removed? Proposed: **50%** of the material that lining cost (a patterned-brick room stripped to bare rock returns half of brick 12 a cell), rounded down; the finish's extra glass (inlaid metal) is lost.
+- [ ] Does stripping take work? Proposed: yes, a refit job at **half** the lining's work per cell, the room at half output while it runs, the refund paid when it finishes (cancelling refunds nothing extra and leaves the lining).
 - **The numbers** in PLAN-M15's tables are first guesses for the playthroughs to tune.
 
 ## Breakdown
@@ -52,3 +54,4 @@ Agreed Oct 6. In build order; 5 can go any time before 6.
 - 2026-10-06 00:11 agreed
 - 2026-10-06 00:15 build-mode material picker added as T-038 (Bryon)
 - 2026-10-06 00:17 questions answered
+- 2026-10-06 00:19 downgrades to bare rock with a partial refund (Bryon); 2 questions
