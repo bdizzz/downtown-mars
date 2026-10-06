@@ -76,7 +76,8 @@ export function roomSpec(room: RoomInstance, cfg: SimConfig): RoomSpec {
     const crop = cropDef(room.crop);
     uses.water = crop.water;
     uses.power = crop.power;
-    makes.rawFood = crop.yield;
+    delete makes.rawFood;
+    makes[crop.makes ?? "rawFood"] = crop.yield;
   }
   // Clean water comes back as wastewater as it's used.
   for (const [id, share] of Object.entries(waterReturns(def.returnsWater, cfg))) makes[id] = (makes[id] ?? 0) + (uses.water ?? 0) * share;

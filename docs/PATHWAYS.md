@@ -59,7 +59,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Processed by:** brickworks, concrete plant, glassworks, recycling center.
 - **Used by:** construction of every room. Glass also goes into windows, skylights, grand staircases and panoramic elevators.
 
-**As built:** the drill sinks the shaft and every room is excavated from rock, which yields rock (and ore or silica on those sites); empty rooms dig ahead. The concrete plant makes marscrete, the brickworks (from 50 colonists) brick from rock, and the recycling center (from 100) metal and brick from solid waste. No glass yet. Rooms can be finished in bare rock, marscrete, brick or metal.
+**As built:** the drill sinks the shaft and every room is excavated from rock, which yields rock (and ore or silica on those sites); empty rooms dig ahead. The concrete plant makes marscrete, the brickworks (from 50 colonists) brick from rock, and the recycling center (from 100) metal and brick from solid waste. No glass yet. Rooms can be finished in bare rock, marscrete, brick or metal. **Fiber:** a farm growing fiber hemp makes fiber (6 a day for an L farm) instead of raw food, stored like other materials; fibre-composite floor panels will use it (M15).
 
 ## Metals and machinery
 
@@ -99,7 +99,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Processed by:** textile mill, mycelium vat, clothing, furniture and toy workshops, appliance assembly.
 - **Sold by:** shops and market halls. Colonists need goods by life stage and housing tier; goods also export to the belt and tourists.
 
-**As built:** not yet.
+**As built:** fiber hemp grows fiber (see Construction materials); nothing turns it into textiles yet.
 
 ## Beer
 

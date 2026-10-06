@@ -157,6 +157,7 @@ export const SERIES: SeriesMeta[] = [
   res("brick", "Materials", "#c0604a"),
   res("marscrete", "Materials", "#a8a098"),
   res("glass", "Materials", "#a8d4f0"),
+  res("fiber", "Materials", "#b9a36a"),
   res("metal", "Materials", "#b7bcc2"),
   res("machinery", "Materials", cat("industry")),
   res("electronics", "Materials", "#6fd0b0"),

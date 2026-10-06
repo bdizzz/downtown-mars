@@ -98,13 +98,15 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 | Fruit | Food: produce | 5 | 5 | 4 | Long | Comfort bonus; prized export |
 | Mushrooms | Food: protein | 8 | 2 | 1 | Short | Needs no light; uses organic waste; ideal for deep floors |
 | Algae | Food: staple | 14 | 6 | 2 | Short | Makes extra O2; tastes bland, comfort −1 if a diet relies on it |
-| Fiber hemp | Material: fiber | 6 | 4 | 3 | Medium | Feeds textile mills |
+| Fiber hemp | Material: fiber | 6 | 4 | 3 | Medium | Feeds textile mills and fibre-composite floor panels (M15) |
 | Oilseed | Material: bio-oil | 5 | 3 | 3 | Medium | Feeds chemical plants as a plastics alternative |
 | Herbs | Material: medicine | 3 | 2 | 2 | Short | Supplies clinics; raises their effectiveness |
 | Coffee and tea | Luxury | 3 | 3 | 3 | Long | Comfort +1 hole-wide when stocked; top belt and tourist export |
 | Flowers | Comfort | — | 2 | 2 | Short | No food; comfort +1 r2 around the farm |
 
 **Diet variety:** kitchens combine crops into meals. Colonists want staples, protein and produce; a varied diet gives health and comfort bonuses, and a monotonous one gives penalties.
+
+**As built:** potatoes, soybeans, wheat, barley, leafy greens, mushrooms, algae and fiber hemp (`data/crops.json`). A crop's `makes` names what it yields when that isn't raw food: hemp makes `fiber`, a dry good kept in storage like other materials. Grow time and switching costs aren't modelled.
 
 ## Water and air
 

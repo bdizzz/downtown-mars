@@ -19,7 +19,9 @@ export interface CropDef {
   name: string;
   /** What a farm growing it calls itself ("Potato farm"). */
   farmName: string;
-  group: "staple" | "protein" | "produce";
+  group: "staple" | "protein" | "produce" | "material";
+  /** What it yields, when not raw food (fiber hemp makes fiber). */
+  makes?: string;
   yield: number;
   water: number;
   power: number;
