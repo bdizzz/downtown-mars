@@ -23,6 +23,8 @@ export interface Settings {
   /** Orange/blue instead of red/green in overlays. */
   colorBlind: boolean;
   autosave: boolean;
+  /** Pointing at a floor in the floor picker shows it before you click. */
+  floorHoverPreview: boolean;
   /** Which view the player last used: the unrolled wall, one floor from above, or 3D. */
   view: ViewMode;
   /** 3D graphics: sharpness, ambient life, and how much of each effect. */
@@ -38,6 +40,7 @@ export const DEFAULT_SETTINGS: Settings = {
   uiScale: 1,
   colorBlind: false,
   autosave: true,
+  floorHoverPreview: false,
   view: "3d",
   graphics: DEFAULT_GRAPHICS,
   view3d: DEFAULT_VIEW3D,

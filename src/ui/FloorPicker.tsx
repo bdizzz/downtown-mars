@@ -1,8 +1,9 @@
 // A strip of floors down the side of the plan and 3D views. Picking a floor
 // shows that floor alone (plan) or hides everything above it (3D), for a
 // clear look from above. "Surface" (3D only) shows the whole hole again.
-// Pointing at a floor previews it; clicking keeps it; moving off the strip
-// goes back to the floor that was kept.
+// With "Preview floors on hover" on (Settings, off by default), pointing at
+// a floor previews it; clicking keeps it; moving off the strip goes back to
+// the floor that was kept.
 
 interface Props {
   /** Floors there are to show: dug floors, plus the one being dug. */

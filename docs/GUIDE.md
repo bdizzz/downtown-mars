@@ -161,7 +161,7 @@ The floor picker stays on the right.
 
 ### The plan
 
-One floor from above, rings around the shaft. Pick the floor from the strip on the right (point at a floor to preview it, click to keep it; or Page Up / Page Down). Everything you can do in the unrolled view works here too. Scroll or pinch to zoom and scroll sideways to turn it; it stays centred on the shaft, and opens with the unlocked rings filling the screen.
+One floor from above, rings around the shaft. Pick the floor from the strip on the right (click a floor, or Page Up / Page Down; turn on **Settings → Preview floors on hover** to see a floor just by pointing at it). Everything you can do in the unrolled view works here too. Scroll or pinch to zoom and scroll sideways to turn it; it stays centred on the shaft, and opens with the unlocked rings filling the screen.
 
 ### 3D
 
