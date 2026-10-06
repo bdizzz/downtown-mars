@@ -21,7 +21,10 @@ Each hole's **living volume** in m³, recomputed when `layout.version` changes (
 
 - every **excavated cell** (empty space or room, `layout.open`): slot width × room depth × floor height (10 × 10 × 4 = **400 m³**);
 - every **built corridor and gallery tube**: its length (`edgeLengthM`) × `corridors.widthM` (3) × floor height;
-- the **open shaft** and **unexcavated rock** don't count; nor do surface rooms (landing pad, solar).
+- the **open shaft** and **unexcavated rock** don't count; nor do surface rooms (landing pad, solar);
+- **a domed shaft does** (Bryon, Oct 6): once the shaft dome (M12, from 300 colonists) is built, the shaft's π R² × depth joins the volume, about 1,250 m³ a floor for the starter 10 m shaft. It makes the dome a real air project.
+
+**Pressurizing the dome.** A 10-floor shaft is about 12,500 m³, enough to drop a whole hole's O2 by several points at once, into the "very low" band. So a finished dome first **pressurizes**: the shaft joins the volume only once its share of air is made (21% of its volume, from the O2 reserve first, then the electrolyzers, shown as "Air for new space"). Until then the dome stands sealed and its benefits (walkway, atrium comfort, air +0.5, no storm dust) wait, with "Pressurizing the shaft: 40%" in the HUD and the dome's panel. Dug cells (400 m³ each) are small enough to just dilute.
 
 Rooms are counted by the cells they stand in, so the rule holds however rooms are shaped (and survives F-004's rooms by area: volume is still dug cells). A starter hole is about 10 cells and the floor 1 gallery: roughly **4,750 m³**.
 
@@ -125,7 +128,7 @@ Each step is one PR and leaves the game working.
 
 1. **Living volume and the mix.** `sim/air.ts`: living volume, O2 and CO2 %, the bands and health, breathing 1:1, the `air` config block; life support (as is) and the farms/parks feed the air, with life support's O2 stopping at the target; HUD, charts, migration, a new game starting at target. (L)
 2. **Two-step flows.** The ledger's `then` breakdown, the second column in the web flow panel and in Godot's charts. Nothing uses it yet but a test. (S)
-3. **The electrolyzer and the CO2 scrubber.** Life support renamed and its water dropped; the electrolyzer with `runsWhile` and its flows (new space, replacing breathed air), furniture, layout, 2D art; parks take CO2; the tutorial and landing kit; Godot model. (M)
+3. **The electrolyzer and the CO2 scrubber.** Life support renamed and its water dropped; the electrolyzer with `runsWhile` and its flows (new space, replacing breathed air); the domed shaft as volume, pressurized before it opens; furniture, layout, 2D art; parks take CO2; the tutorial and landing kit; Godot model. (M)
 4. **Gas tanks.** The room and its O2/CO2 choice (reusing T-005's "holds"), the ballast order, overflow, the electrolyzer's tank fill slider (and its "Into the O2 reserve" flow), drops and kits into tanks, the 0%-condition rule for every tank. (M, after T-005)
 5. **Too much oxygen.** The fire-risk warning and the vent event. (S)
 6. **Rebalance.** `unitsPerM3`, the electrolyzer's ratio, the seed kit, Earth's O2 gap, the bots: a steady colony uses almost no water for air, and digging shows up as electrolyzer water. A test that pins both. (M)
