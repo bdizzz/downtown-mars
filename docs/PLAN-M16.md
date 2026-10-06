@@ -1,6 +1,6 @@
 # Milestone 16 plan: rooms by area, placed by angle
 
-Goal: the same room is the same size on every ring. Each room type has a **target area**; placing it on a ring turns that area and the ring's depth into an **angle**. Rings lose their fixed slots. Placing gets **snapping** (to neighbours on the ring, and to room ends on other rings), **drag handles** on a proposed room's side walls, and **fill rooms** (empty space, plazas) that stretch to close awkward gaps.
+Goal: the same room is the same size on every ring. Each room type has a **target area**; placing it on a ring turns that area and the ring's depth into an **angle**. Rings lose their fixed slots. Placing gets **snapping** (to neighbours on the ring, and to room ends on other rings), **drag handles** on a proposed room's side walls, and **fill rooms** (empty space, plazas, the park) that stretch to close awkward gaps.
 
 Asked for by Bryon, Oct 4, 2026 (note N-0008, then T-010, now feature F-004): "a drawback of the current system is that the furniture layout of the same room on ring 1 vs ring 2 is very different". His answers: S/M/L/H become 100, 200, 400 and 800 m²; drag handles plus double-clicking a gap; old saves convert their slots to angles; a plan first, before any code. Everything else below is Claude's default; Bryon confirmed the leeway, old rooms, fill rooms and fill limits on Oct 6 ("Answered", at the end). Every number goes in data.
 
@@ -90,7 +90,7 @@ Each is one PR and leaves the game working. Until step 8, rooms are still placed
 7. **The bridge and Godot on angles** (M). The snapshot and scene, `PlanView.cs`, `Live.cs` and `BuildMode.cs` reading the new location.
 8. **Placing by area** (L). The switch: rooms go at any angle with their target area; `build` carries the angle (breaking); slots and paired rings retired; dig yields and fill-room costs by area; the landing kit, bots and tests placed by angle; `room.cells` removed.
 9. **Snapping and its toggle** (M). In the web build mode: the snap order above, the tick marks, the toggle and key.
-10. **Drag handles and fill rooms** (L). Handles on a proposal, the leeway and fill ranges, Empty space as one fill room, plazas as fill rooms, double-click to fill a gap. Web.
+10. **Drag handles and fill rooms** (L). Handles on a proposal, the leeway and fill ranges, Empty space as one fill room, plazas and the park as fill rooms, double-click to fill a gap. Web.
 11. **Snapping, handles and fill in Godot** (M). Its build mode catches up.
 12. **The furnishing tool by area** (M). Templates keyed by size and depth, previews at any ring and area, and a type's target area set from the tool.
 
