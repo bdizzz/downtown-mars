@@ -1,7 +1,7 @@
 ---
 id: T-025
 title: Work on mobile browsers (viewport, touch gestures and controls)
-status: open
+status: done
 size: L
 area: ui, render3d
 touches: [index.html, src/ui/styles.css, src/render3d/stage3d.ts, src/render2d/stage.ts, src/render2d/plan.ts, src/ui/App.tsx, src/ui/Dock.tsx, src/ui/BuildPalette.tsx, src/ui/FloorPicker.tsx]
@@ -33,3 +33,4 @@ A first pass, honest about "a little": (1) viewport and page: no page zoom/scrol
 - 2026-10-05 23:55 opened from N-0021
 - 2026-10-05 23:57 questions answered
 - 2026-10-06 01:26 building on t-025-mobile-browsers
+- 2026-10-06 01:35 built

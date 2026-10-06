@@ -158,6 +158,13 @@ See `PLAN-M14.md` (Bryon: drill discoveries, then the belt ship, then celebratio
 - **Drill discoveries:** a 45% chance each floor (the first always), six finds by depth. **The belt ship:** from day 20, 3% a day, at most once in 25 days. **Celebrations:** one per milestone, a festival or a toast.
 - **Events roll their own dice** (hashed from a seed kept with them), never the hole's random stream, so adding an event doesn't reshuffle storms, births and visits.
 
+## Decided for mobile browsers (Oct 5–6, T-025)
+
+- **What mobile gets:** tablets in landscape fully playable; phones playable but cramped (portrait and landscape), with the 3D view as the main one (Bryon, Oct 5). The furnishing tool and Godot stay desktop-only.
+- **Gestures:** one finger orbits in Cutaway and Iso and pans in Plan and Unrolled; two fingers always pinch-zoom, twist and pan (Bryon, Oct 5). Top still turns with one finger (it has no pan, and T-052 drops it).
+- **Tap to aim, tap again to act** for every tool (rooms, demolish, a single corridor border, windows, bulkheads), since a finger can't hover first; with no tool a tap selects at once. A long press stands in for hover. Claude's default; the shared logic is `src/view/touch.ts`.
+- **Narrow screens (under 760 px)** get panels as bottom sheets and a one-line, sideways-scrolling resource bar; wider tablets keep the desktop layout.
+
 ## Still open
 
 Deliberately not decided yet:
