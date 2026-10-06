@@ -1,7 +1,7 @@
 ---
 id: T-002
 title: Walls down (Iso) only lowers walls that hide another room
-status: open
+status: done
 size: M
 area: render3d, godot
 touches: [src/render3d/rooms3d.ts, src/render3d/stage3d.ts, godot/src/ViewSettings.cs, godot/src/Live.cs]
@@ -18,6 +18,8 @@ In Iso with "walls down" on, walls that only hide a corridor are lowered too. Br
 - Hangings follow their wall (`HANG_GLSL`); outlines use `aWall2`.
 - Godot has its own walls-down setting (`godot/src/ViewSettings.cs`, `Live.cs`); check whether it uses the same tags from the bridge.
 
+- As built: the wall tag's length is now 1 (nothing across), or 2 + the distance to the room across (`roomBeyond` walks out from the wall through corridors and hairlines, up to 4 m; shaft, tubes and rock give none). The shader test (`inTheWay` / `IN_THE_WAY_GLSL`, Godot `wall_in_the_way`) lowers a wall from its own side when the line over its top is still above head height (1.5 m) 0.25 m into that room. Measuring at the floor instead would still drop most corridor walls at the default Iso pitch (43°): they hide a metre of the far room's floor.
+
 ## Approach
 Start with the tag change (corridor- and rock-facing walls are never "see-across"), then add an angle check: lower a wall only if a ray from the camera through it reaches a room cell within a few metres beyond it. Done: in Iso with walls down, walls in front of corridors/rock stay up, walls in front of rooms drop, and it updates as you orbit. Same in Godot.
 
@@ -33,3 +35,4 @@ Start with the tag change (corridor- and rock-facing walls are never "see-across
 - 2026-10-04 16:12 opened from N-0002
 - 2026-10-04 16:14 questions answered
 - 2026-10-06 09:48 building on t-002-walls-down-ignore-corridors
+- 2026-10-06 09:58 built
