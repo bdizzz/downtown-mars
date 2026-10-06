@@ -116,6 +116,12 @@
       "baseCapacity": 0
     },
     {
+      "id": "fiber",
+      "name": "Fiber",
+      "group": "material",
+      "baseCapacity": 0
+    },
+    {
       "id": "metal",
       "name": "Metal",
       "group": "material",

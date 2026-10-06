@@ -76,7 +76,8 @@ export function roomSpec(room: RoomInstance, cfg: SimConfig): RoomSpec {
     const crop = cropDef(room.crop);
     uses.water = crop.water;
     uses.power = crop.power;
-    makes.rawFood = crop.yield;
+    delete makes.rawFood;
+    makes[crop.makes ?? "rawFood"] = crop.yield;
   }
   const nominal = cfg.economy.nominalSlots[def.size] ?? 1;
   const k = room.at.kind === "ring" ? room.cells.length / nominal : 1;

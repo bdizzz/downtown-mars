@@ -1,5 +1,5 @@
 {
-  "_note": "Per L farm per day, from ROOMS.md Crops. Replaces the farm's rawFood output and its water and power use. Grow time is not modelled yet.",
+  "_note": "Per L farm per day, from ROOMS.md Crops. Replaces the farm's rawFood output and its water and power use; makes, when given, is the resource it yields instead of rawFood. Grow time is not modelled yet.",
   "crops": [
     { "id": "potatoes", "name": "Potatoes", "farmName": "Potato farm", "group": "staple", "yield": 12, "water": 4, "power": 3 },
     { "id": "soybeans", "name": "Soybeans", "farmName": "Soybean farm", "group": "protein", "yield": 8, "water": 4, "power": 3 },
@@ -7,6 +7,7 @@
     { "id": "barley", "name": "Barley", "farmName": "Barley farm", "group": "staple", "yield": 9, "water": 3, "power": 3 },
     { "id": "leafyGreens", "name": "Leafy greens", "farmName": "Greens farm", "group": "produce", "yield": 7, "water": 3, "power": 2 },
     { "id": "mushrooms", "name": "Mushrooms", "farmName": "Mushroom farm", "group": "protein", "yield": 8, "water": 2, "power": 1 },
-    { "id": "algae", "name": "Algae", "farmName": "Algae farm", "group": "staple", "yield": 14, "water": 6, "power": 2 }
+    { "id": "algae", "name": "Algae", "farmName": "Algae farm", "group": "staple", "yield": 14, "water": 6, "power": 2 },
+    { "id": "hemp", "name": "Fiber hemp", "farmName": "Hemp farm", "group": "material", "makes": "fiber", "yield": 6, "water": 4, "power": 3 }
   ]
 }
