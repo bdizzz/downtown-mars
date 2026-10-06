@@ -100,7 +100,7 @@ Each milestone plan has the details, under "Notes as built".
 - **Build UI:** four modes as in SimCity (Build, View, Map, Charts); Build has a strip of room categories. Room keys work only in Build. A yellow frame shows Build is on (`PLAN-M2.md`, `PLAN-M6.md`, `PLAN-M10.md`).
 - **Save format:** autosave every game day in the browser, save slots, and export to a file (`PLAN-M2.md`).
 - **Tutorial:** a deputy walks new players through the start (`data/tutorial.json`).
-- **3D view (M3):** the main view; new games open in 3D Iso. Cutaway, Top, Iso and first person, X-ray and walls down. **Art direction:** a cozy, miniature look (soft shadows, glow, warm haze and grade, furnished rooms; `ART.md`, `PLAN-M10.md`). Space Grotesk for the UI and labels.
+- **3D view (M3):** the main view; new games open in 3D Iso. Cutaway, Top, Iso and first person, X-ray and walls down. Room walls are solid, 0.25 m thick and centred on the edge line, one wall per shared edge (T-001, Oct 6). **Art direction:** a cozy, miniature look (soft shadows, glow, warm haze and grade, furnished rooms; `ART.md`, `PLAN-M10.md`). Space Grotesk for the UI and labels.
 - **Network (M4):** a real Mars globe from NASA MOLA data. New holes are founded from a staging bay; rover depots and trade routes; culture drift and opinions between holes.
 - **People (M5):** cohorts of children, adults and elders; births, aging, retirement, deaths, migration; school, elder care and crypt.
 - **Corridors on edges (M6).** **Construction time (M7):** a queue per hole, paced by construction offices. **Storage (M8):** dry goods keep only what storerooms, warehouses and depots have room for.
