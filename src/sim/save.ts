@@ -18,7 +18,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 18;
+export const SAVE_VERSION = 19;
 
 type Raw = Record<string, unknown>;
 
@@ -154,6 +154,8 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       return { ...h, layout, resources: { ...resources, glass: Math.max(resources.glass ?? 0, kit) } };
     }),
   }),
+  // v19: rooms have linings (material, finish, flooring). Absent means bare rock, which every old room is.
+  18: (s) => s,
 };
 
 /** What a hole could hold of each dry good before storage rooms (save v13 and older). */

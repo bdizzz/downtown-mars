@@ -57,6 +57,12 @@ export interface RoomInstance {
   name?: string;
   /** Borders (edge ids) of its walls the player has put windows in (see windows.ts). */
   windows?: string[];
+  /** Its walls' lining (see materials.ts): absent means bare rock. */
+  material?: "rock" | "brick" | "metal";
+  /** The lining's finish: absent means its base step. */
+  finish?: "base" | "fine";
+  /** Its floor upgrade (a flooring id in data/materials.json): absent means it matches the walls. */
+  flooring?: string;
 }
 
 export interface Layout {

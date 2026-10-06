@@ -19,6 +19,7 @@ import { answerVisit } from "./visits";
 import { answerEvent, consoleEvent } from "./events";
 import { padReady } from "./earth";
 import { roomDef } from "./rooms";
+import { canLine, flooringDef, MATERIALS } from "./materials";
 import { buildShowcase } from "./showcase";
 import type { SimState } from "./state";
 import type { DepositKind } from "./mapgeo";
@@ -65,6 +66,8 @@ export type SimCommand =
   | { type: "consoleEvent"; kind: string }
   /** Testing, from the browser console: set rooms' condition (0..1): one room, or every room that has one. */
   | { type: "consoleWear"; condition: number; roomId?: number }
+  /** Testing, from the browser console: line a room's walls (and floor) outright, for nothing. Null flooring: back to matching the walls. */
+  | { type: "consoleLining"; roomId: number; material?: string; finish?: string; flooring?: string | null }
   /** Fit sealed bulkheads across built corridor segments (on), or take them out (off, free). */
   | { type: "setBulkhead"; edges: string[]; on: boolean }
   /** Put windows in (or take them out of) a room's wall: the borders along it. */
@@ -243,6 +246,29 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         r.condition = c;
         delete r.repair;
       }
+      return { ok: true };
+    }
+    case "consoleLining": {
+      const room = layout.rooms.find((r) => r.id === cmd.roomId);
+      if (!room) return { ok: false, reason: "No such room" };
+      if (!canLine(room)) return { ok: false, reason: `${roomDef(room.type).name} can't have a lining` };
+      const material = cmd.material ?? room.material ?? "rock";
+      const finish = cmd.finish ?? (cmd.material ? "base" : (room.finish ?? "base"));
+      const step = MATERIALS.walls.find((w) => w.material === material && w.finish === finish);
+      if (!step) return { ok: false, reason: `No lining "${material}" (${finish}): ${MATERIALS.walls.map((w) => `${w.material}/${w.finish}`).join(", ")}` };
+      if (cmd.flooring && !flooringDef(cmd.flooring)) return { ok: false, reason: `No flooring "${cmd.flooring}": ${MATERIALS.floorings.map((f) => f.id).join(", ")}` };
+      if (step === MATERIALS.walls[0]) {
+        delete room.material;
+        delete room.finish;
+      } else {
+        room.material = step.material;
+        if (step.finish === "base") delete room.finish;
+        else room.finish = step.finish;
+      }
+      if (cmd.flooring) room.flooring = cmd.flooring;
+      else if (cmd.flooring === null) delete room.flooring;
+      // The views draw rooms by their lining.
+      layout.version++;
       return { ok: true };
     }
     case "consoleEvent":
