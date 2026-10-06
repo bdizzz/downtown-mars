@@ -556,6 +556,6 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .welcome { width: min(540px, 100%); gap: 12px; }
 .welcome h2 { font-size: 25px; color: var(--accent); }
 .welcome p { margin: 0; font-size: 16.5px; line-height: 1.5; }
-.welcome button.primary { margin-top: 6px; font-size: 16.5px; }
+.welcome button.primary { margin-top: 6px; font-size: 16.5px; text-align: center; }
 /* Behind the welcome card, only Mars and the hole: the rest of the interface comes in when it's closed. */
 .app.welcoming > :not(.main):not(.menu-backdrop), .app.welcoming .view > :not(.pixi-host), .app.welcoming .pixi-host > :not(canvas) { display: none; }
