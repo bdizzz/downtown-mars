@@ -245,3 +245,15 @@ i'd like to be able to "install" the web page on mobile phones, so you don't hav
 ## N-0031 · 2026-10-06 02:02
 add an offline mode, and a way of updating the version of the game when a newer one is available
 → T-064
+
+## N-0032 · 2026-10-06 02:05
+add more sound effects, and procedurally generated cozy uplifting mars music.
+→ F-006
+
+## N-0033 · 2026-10-06 02:11
+let's create a doc describing the dev work flow:
+
+* when to use which skills
+* what the general flow of stages are
+* some of the reasoning (succinctly) for doing things this way
+→ T-065
