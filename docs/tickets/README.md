@@ -18,6 +18,7 @@ id: F-001
 title: Water as a closed loop
 status: draft            # draft · agreed · done · dropped
 plan:                    # optional: docs/PLAN-M*.md once the design outgrows this file
+branch:                  # optional: feature/f-0NN-<slug>, when its tasks are built on a branch of its own (see below)
 notes: [N-0005]
 created: 2026-10-04 19:12
 ---
@@ -33,4 +34,5 @@ created: 2026-10-04 19:12
 - **Draft** while it's being worked out: `/ingest` makes one for an XL item, and `/build F-0NN` writes or revises its plan as a doc-only PR on an `f-0NN-…` branch. Tasks that already exist wait (show as blocked) until it's agreed.
 - **Agreed** once Bryon says so (`/board`: "agree F-001"). Then each Breakdown line without a ticket becomes one, with `feature: F-0NN`, and the line gets "→ T-0NN".
 - The board shows it as **in progress** once a task is in flight, and **done** once every Breakdown line has a ticket and all of them are done or dropped (or set `status: done`).
+- **On a branch of its own** (Bryon's choice when he agrees it, for a feature to test as a whole before it reaches main): `node scripts/board.mjs feature-branch F-0NN` makes `feature/f-0NN-<slug>` from main and records it as `branch:`. Its tasks still get a `t-0NN-…` branch and PR each, but branched from the feature branch, with the PR into it (`board.mjs base T-0NN` says which); `/land` squash-merges them there. `board.mjs sync F-0NN` merges main into the feature branch to keep it current. A draft PR from the feature branch into main gives a playable preview of the whole feature so far. The feature is **ready to merge** once every task is finished, and **done** only when that PR is merged (with a merge commit, so each task's commit is kept).
 - A task's build reads its feature first: `node scripts/board.mjs show T-0NN` says which.
