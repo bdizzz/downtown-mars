@@ -59,7 +59,7 @@ Plants do the reverse, 1:1: farms take CO2 2 → O2 2 as today, and **parks chan
 
 | Room | Size, staff | Uses | Makes | Runs | Noise | Cost |
 | --- | --- | --- | --- | --- | --- | --- |
-| **Electrolyzer** (new) | M, 1 | water 10, power 6 | O2 40 | only while O2 is below the target (and the O2 tanks are empty); otherwise stands by | −1 | metal 15, machinery 2, electronics 2 |
+| **Electrolyzer** (new) | M, 1 | water 10, power 6 | O2 40 | while O2 is below the target (after the O2 tanks have released), then on to fill the O2 tanks up to the hole's **tank fill** level; otherwise stands by | −1 | metal 15, machinery 2, electronics 2 |
 | **CO2 scrubber** (today's life support, renamed) | L, 3 | power 5 | O2 30 and soil 0.5 from 30 CO2 | while CO2 is above the scrub floor | −2 | as today |
 
 - **The scrubber keeps the room id `life_support`**, renamed in data only. Saves, tests, furniture, layouts, the tutorial and the bots keep working without a migration; its water use goes. (Changing the id touches about 25 files for no player gain.)
@@ -78,6 +78,8 @@ Each tick, in this order:
 2. **Rooms run** (breathing, farms, parks, scrubbers, then the electrolyzer, which only makes what the tanks couldn't cover). So the tanks save water: the electrolyzer runs only when they're empty.
 3. **Store:** O2 above the target goes into O2 tanks with room; CO2 above `air.co2StoreAbove` (default 0.5%: what the scrubbers couldn't keep up with) goes into CO2 tanks.
 4. **Overflow:** when the tanks are full, the extra stays in the air. That's how O2 gets too high.
+
+**Stockpiling O2 (Bryon, Oct 6):** once the air is at the target, the electrolyzer can go on filling the O2 tanks, for growth spurts or a scrubber breakdown. One hole-wide **tank fill** slider, 0–100% of the O2 tanks' capacity (default 0%, off), shown in every electrolyzer's and O2 tank's panel; it's one setting because the tanks are one pool. Its O2 goes straight into the tanks, never the air, so it can't push O2 too high. That water is spent for good, like any electrolyzer water, and the charts show it as "to tanks".
 
 O2 above the target comes from what arrives rather than what's made: supply drops and the belt ship's thanks, a seed kit landing in a small new hole, farms working through stored CO2. **Supply drops and seed kits land in the tanks first, then the air.** Earth's O2 gap becomes "O2 short of the target, less what's in the tanks".
 
@@ -99,7 +101,7 @@ At most once every 3 days. This is a deliberate exception to "nothing vents to t
 
 - HUD: **Air 21% O2** (warn below 19.5% or above 23.5%, bad below 16%), **CO2 0.4%** (warn above 1%), with notes: the volume (m³), O2 and CO2 amounts, tank fill, what's making and using each. Health's note keeps CO2 and adds O2.
 - Charts (`ui/trends.ts`): O2 % with reference lines at 16, 19.5 and 23.5; CO2 % with lines at 1 and 3; living volume; O2 and CO2 in tanks. Flows: the air loop (people and fires → CO2 → scrubbers and plants → O2; water → electrolyzer → O2; tanks either way; vented).
-- Room panels: the electrolyzer and scrubber show standby; a gas tank shows what it holds and its fill.
+- Room panels: the electrolyzer and scrubber show standby; a gas tank shows what it holds and its fill; the electrolyzer and O2 tanks carry the tank fill slider.
 - The Godot viewer reads HUD and panel text through the bridge (`src/view/hudItems.ts`, `roomPanel.ts`), so it follows; the electrolyzer's model needs adding there like any new room.
 
 ### 8. Saves and the network
@@ -114,7 +116,7 @@ Each step is one PR and leaves the game working.
 
 1. **Living volume and the mix.** `sim/air.ts`: living volume, O2 and CO2 %, the bands and health, breathing 1:1, the `air` config block; life support (as is) and the farms/parks feed the air, with life support's O2 stopping at the target; HUD, charts, migration, a new game starting at target. (L)
 2. **The electrolyzer and the CO2 scrubber.** Life support renamed and its water dropped; the electrolyzer with `runsWhile`, furniture, layout, 2D art; parks take CO2; the tutorial and landing kit; Godot model. (M)
-3. **Gas tanks.** The room and its O2/CO2 choice (reusing T-005's "holds"), the ballast order, overflow, drops and kits into tanks, the 0%-condition rule for every tank. (M, after T-005)
+3. **Gas tanks.** The room and its O2/CO2 choice (reusing T-005's "holds"), the ballast order, overflow, the electrolyzer's tank fill slider, drops and kits into tanks, the 0%-condition rule for every tank. (M, after T-005)
 4. **Too much oxygen.** The fire-risk warning and the vent event. (S)
 5. **Rebalance.** `unitsPerM3`, the electrolyzer's ratio, the seed kit, Earth's O2 gap, the bots: a steady colony uses almost no water for air, and digging shows up as electrolyzer water. A test that pins both. (M)
 
