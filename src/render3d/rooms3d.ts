@@ -417,6 +417,8 @@ export interface RoomOpenings {
 export interface OpeningParts {
   glass: number[];
   frames: number[];
+  /** The tops of solid walls: bare rock, whatever the room is built from or coloured. */
+  tops?: number[];
 }
 
 /**
@@ -713,6 +715,8 @@ function solidWalls(pos: number[], s: SolidCell): void {
   const ins = corners(insides);
   const outs = corners(outsides);
   const xz = ([r, a]: [number, number], y: number) => at(r, a, y);
+  // Wall tops go with the parts when there are any (to be drawn in rock), else in with the walls.
+  const tops = parts?.tops ?? pos;
   const glassCut = (st: Stretch): Cut => ({ side: st.cut.side, y0: floorBase, y1: floorBase + FLOOR_H, across: true });
 
   list.forEach((st, i) => {
@@ -740,7 +744,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
       // The wall's top, between its two faces.
       const [lo, hi] = pin.r < pout.r ? [pin.r, pout.r] : [pout.r, pin.r];
       if (Math.abs(pin.r - pout.r) > 1e-6) {
-        arcBand(pos, lo, pin.r < pout.r ? rangeIn : rangeOut, hi, pin.r < pout.r ? rangeOut : rangeIn, y1, tagAt);
+        arcBand(tops, lo, pin.r < pout.r ? rangeIn : rangeOut, hi, pin.r < pout.r ? rangeOut : rangeIn, y1, tagAt);
         // Reveals: each opening's sides, sill and head through the wall's thickness.
         for (const h of cutHoles) {
           const a0 = Math.max(h.a0, rangeIn[0]);
@@ -780,7 +784,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
     if (outerFace && outLen > 1e-6) sideWallWithOpenings(pos, ...pOut, ...qOut, floorBase, y1, cut, holes?.holes ?? []);
     const t = tagAt(pin.theta);
     if (Math.abs(pin.d - pout.d) > 1e-6) {
-      quad(pos, xz(pOut, y1), xz(qOut, y1), xz(qIn, y1), xz(pIn, y1), t);
+      quad(tops, xz(pOut, y1), xz(qOut, y1), xz(qIn, y1), xz(pIn, y1), t);
       const onIn = (r: number) => at(r, lineAt(pin.theta, pin.d, r), 0);
       const onOut = (r: number) => at(r, lineAt(pout.theta, pout.d, r), 0);
       const lift = (p: number[], y: number) => [p[0]!, y, p[2]!];
@@ -1475,6 +1479,7 @@ interface Shape {
   /** The glass in its windows, and its door frames, if it has any. */
   glass: THREE.BufferGeometry | null;
   frames: THREE.BufferGeometry | null;
+  tops: THREE.BufferGeometry | null;
 }
 const shapeCache = new Map<string, Shape>();
 
@@ -1483,6 +1488,7 @@ function disposeShape(shape: Shape): void {
   shape.edges.dispose();
   shape.glass?.dispose();
   shape.frames?.dispose();
+  shape.tops?.dispose();
 }
 
 function roomShape(layout: Layout, room: RoomInstance): Shape & { key: string } {
@@ -1508,13 +1514,14 @@ function roomShape(layout: Layout, room: RoomInstance): Shape & { key: string } 
   const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${cut}`;
   let shape = shapeCache.get(key);
   if (!shape) {
-    const parts: OpeningParts = { glass: tagged(), frames: tagged() };
+    const parts: OpeningParts = { glass: tagged(), frames: tagged(), tops: tagged() };
     const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, open, stairWells(layout, room), parts, true);
     shape = {
       geo,
       edges: outlineGeometry(geo),
       glass: parts.glass.length ? geometry(parts.glass) : null,
       frames: parts.frames.length ? geometry(parts.frames) : null,
+      tops: parts.tops!.length ? geometry(parts.tops!) : null,
     };
     shapeCache.set(key, shape);
   }
@@ -1710,6 +1717,12 @@ export function buildLayout(
     const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(roomFinish(room.type), grime) : roomMaterial(color, room.planned, faint, !!room.building, floorKind, grime));
     mesh.userData = { pickable: true, roomId: room.id, faint, cached: true };
     group.add(mesh);
+    // Its walls' tops: bare rock once it's built, whatever it's made of or coloured (a plan or x-ray's faded ring keeps the room's look).
+    if (shape.tops) {
+      const tops = new THREE.Mesh(shape.tops, room.planned || faint ? mesh.material : rock);
+      tops.userData = { pickable: true, roomId: room.id, faint, cached: true };
+      group.add(tops);
+    }
     const edges = new THREE.LineSegments(shape.edges, room.connected ? edgeLine : strandedLine);
     edges.userData = { cached: true, roomId: room.id, outline: !room.planned && !room.building && room.connected };
     group.add(edges);

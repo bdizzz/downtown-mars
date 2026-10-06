@@ -175,6 +175,18 @@ describe("solid walls", () => {
     const tags = g.getAttribute("aWall");
     for (let t = 0; t < pos.count; t += 3) if ([0, 1, 2].every((k) => Math.abs(pos.getY(t + k) - top) < 1e-6)) expect(Math.hypot(tags.getX(t), tags.getY(t))).toBeGreaterThan(0);
   });
+
+  it("put their tops apart from the walls when asked, to be drawn in bare rock", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const roomId = placeRoom(l, "flat", ring(1, 2, 2)).id;
+    const room = l.rooms.find((x) => x.id === roomId)!;
+    const top = floorSpan(1)[1];
+    const parts = { glass: [], frames: [], tops: [] as number[] };
+    const pos = roomGeometry(l, room.cells, undefined, true, false, null, [], parts, true).getAttribute("position");
+    for (let t = 0; t < pos.count; t += 3) expect([0, 1, 2].every((k) => Math.abs(pos.getY(t + k) - top) < 1e-6)).toBe(false);
+    expect(parts.tops.length).toBeGreaterThan(0);
+    for (let i = 1; i < parts.tops.length; i += 3) expect(parts.tops[i]).toBeCloseTo(top, 6);
+  });
 });
 
 describe("windows", () => {
