@@ -22,14 +22,15 @@ This is the service worker T-063 left out on purpose ("not now; it adds update h
 - The dev server shouldn't register one at all.
 
 ## Approach
-`vite-plugin-pwa` (Workbox) in `prompt` mode: it precaches the built files and data, and fires an event when a new build has downloaded. The game shows a small banner, "A new version is ready (v…) · Update", that reloads into it; nothing changes mid-game without asking. It also checks for updates when the app comes back to the foreground and every so often. Done: an installed game (T-063) opens and plays in airplane mode; after a deploy, the next launch offers the update and taking it loads the new version with saves intact.
+`vite-plugin-pwa` (Workbox) in `prompt` mode: it precaches the built files and data, and fires an event when a new build has downloaded. The game shows a small banner, "A new version is ready (v…) · Update", that reloads into it; nothing changes mid-game without asking. It also checks for updates when the app comes back to the foreground and every so often. Answered (Bryon, Oct 6): updates come as a banner you tap, not silently; PR previews get no service worker (the main one skips `pr-preview/`). Done: an installed game (T-063) opens and plays in airplane mode; after a deploy, the next launch offers the update and taking it loads the new version with saves intact.
 
 ## Docs to update
 GUIDE.md and README: offline play and updating. DECISIONS.md: previews and service workers.
 
 ## Open questions
-- [ ] Update style: a banner you tap (proposed), or apply silently on the next launch?
-- [ ] PR previews: no offline mode for them (proposed; they're short-lived), or the same as the main game?
+- [x] Update style: a banner you tap (proposed), or apply silently on the next launch?
+- [x] PR previews: no offline mode for them (proposed; they're short-lived), or the same as the main game?
 
 ## History
 - 2026-10-06 02:02 opened from N-0031
+- 2026-10-06 02:03 questions answered
