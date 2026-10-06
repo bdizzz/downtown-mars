@@ -1,7 +1,7 @@
 ---
 id: F-002
 title: Air as a mix: O2 % of the living volume, O2 ↔ CO2 loop, gas tanks
-status: draft
+status: agreed
 plan: docs/PLAN-M16.md
 notes: [N-0005]
 created: 2026-10-04 19:12
@@ -29,13 +29,13 @@ Planned in `docs/PLAN-M16.md` (Claude's defaults, every number in data):
 - **Vent event** after half a day above 23.5% with full tanks: vent to 21% (lost for good) or hold.
 
 ## Breakdown
-Proposed; becomes tickets once this feature is agreed. Steps 1–3 and 5 don't need F-001; step 4 builds on T-005's tank "holds" choice.
-1. Living volume and the mix: `sim/air.ts`, O2/CO2 % with health bands, breathing 1:1, HUD "Air 21% O2" and charts, save migration, new games at target (L)
-2. Two-step flows: a use can show where it went next (the ledger's `then`), in the web flow panel and Godot's charts (S)
-3. The electrolyzer and the CO2 scrubber: life support renamed and dry, the new room with its flows (water → split into oxygen → air for new space · replacing breathed air), furniture, layout and 2D art, parks take CO2, the domed shaft pressurized into the volume, tutorial and landing kit (M)
-4. Gas tanks: O2/CO2 choice, ballast both ways and overflow, the electrolyzer's tank fill slider, drops and kits into tanks, the 0%-condition rule for every tank (M, after T-005)
-5. Too much oxygen: the fire-risk warning and the "vent excess air" event (S)
-6. Rebalance: air per m³, the electrolyzer's ratio, the seed kit, Earth's O2 gap and the bots, with a test that a steady colony uses almost no water for air (M)
+Agreed Oct 6. Steps 1–3 and 5 don't need F-001; step 4 builds on T-005's tank "holds" choice.
+- Living volume and the mix: `sim/air.ts`, O2/CO2 % with health bands, breathing 1:1, HUD "Air 21% O2" and charts, save migration, new games at target (L) → T-026
+- Two-step flows: a use can show where it went next (the ledger's `then`), in the web flow panel and Godot's charts (S) → T-027
+- The electrolyzer and the CO2 scrubber: life support renamed and dry, the new room with its flows, furniture, layout and 2D art, parks take CO2, the domed shaft pressurized into the volume, tutorial and landing kit (M) → T-028
+- Gas tanks: O2/CO2 choice, ballast both ways and overflow, the electrolyzer's tank fill slider, drops and kits into tanks, the 0%-condition rule for every tank (M, after T-005) → T-029
+- Too much oxygen: the fire-risk warning and the "vent excess air" event (S) → T-030
+- Rebalance: air per m³, the electrolyzer's ratio, the seed kit, Earth's O2 gap and the bots, with a test that a steady colony uses almost no water for air (M) → T-031
 
 ## Open questions
 - [x] **The shaft dome** (M12, from 300 colonists) seals the shaft. Does the domed shaft join the living volume? Yes (Bryon, Oct 6): about 1,250 m³ a floor, a big one-off O2 bill. Claude's default: the dome pressurizes first (its air made from the reserve and electrolyzers) and opens once full, so the hole's O2 doesn't crash.
@@ -49,3 +49,4 @@ Proposed; becomes tickets once this feature is agreed. Steps 1–3 and 5 don't n
 - 2026-10-06 00:04 flows in two steps for the electrolyzer (Bryon)
 - 2026-10-06 00:05 domed shaft counts as living volume (Bryon)
 - 2026-10-06 00:06 plan defaults agreed (Bryon); questions answered
+- 2026-10-06 00:08 agreed
