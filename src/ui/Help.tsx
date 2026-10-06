@@ -1,5 +1,6 @@
 import { CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS } from "../view/buildCatalog";
 import { roomDefs } from "../sim/rooms";
+import { touchFirst } from "../view/touch";
 
 const GENERAL: [string, string][] = [
   ["Modes", "Build, View, Map and Charts, bottom right: each opens its buttons along the bottom (again to close). Only Build places rooms and corridors"],
@@ -25,15 +26,27 @@ const GENERAL: [string, string][] = [
   ["↑ ↓ / Page Up, Page Down", "Floor up / down in the Plan and 3D views"],
 ];
 
+/** On a phone or tablet: what fingers do (the keys still work with a keyboard attached). */
+const TOUCH: [string, string][] = [
+  ["Tap", "Select a room; with a tool, aim it (the ghost shows where it lands)"],
+  ["Tap again", "Place, dig or demolish where you aimed"],
+  ["Hold", "Show what's under your finger, as hovering does with a mouse"],
+  ["Drag", "3D: turn round the hole (Iso: drag up and down to tilt). Plan and Unrolled: pan. With the corridor tool: draw"],
+  ["Two fingers", "Pinch to zoom, twist to turn, move together to pan (in the side-on views, to go up and down)"],
+  ["Stick", "First person: the stick bottom left walks (all the way runs); drag elsewhere to look; ▲ ▼ take the stairs"],
+  ["Modes", "Build, View, Map and Charts along the bottom; tap the view to fold a room list away"],
+];
+
 export function Help({ onClose }: { onClose: () => void }) {
-  const rooms = roomDefs.filter((d) => HOTKEYS[d.id]);
+  const finger = touchFirst();
+  const rooms = finger ? [] : roomDefs.filter((d) => HOTKEYS[d.id]);
   return (
     <div className="menu-backdrop" onClick={onClose}>
       <div className="menu help" role="dialog" aria-label="Keyboard shortcuts" onClick={(e) => e.stopPropagation()}>
         <h2>Controls</h2>
         <div className="help-cols">
           <dl>
-            {GENERAL.map(([k, v]) => (
+            {(finger ? TOUCH : GENERAL).map(([k, v]) => (
               <div key={k}>
                 <dt>
                   <kbd>{k}</kbd>

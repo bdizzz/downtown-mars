@@ -9,6 +9,7 @@ import { num, resName, signed } from "./format";
 import { finishDef, floorLinked } from "../sim/corridors";
 import { construction } from "../sim/construction";
 import { config } from "../sim/config";
+import { touchFirst } from "../view/touch";
 
 const deg = (turns: number) => `${Math.round(turns * 360)}°`;
 
@@ -60,7 +61,15 @@ function feltOver(s: Snapshot, cells: { floor: number; ring: number; slot: numbe
 
 export function StatusBar({ info, snapshot, notice, overlay, view, tool }: Props) {
   const hole = snapshot?.layout.hole;
-  let text = view === "plan" ? "Drag to pan · scroll or pinch to zoom" : "Drag to pan · scroll to move · pinch or ctrl+scroll to zoom";
+  const finger = touchFirst();
+  const drag = view === "3d" ? "drag to turn" : "drag to pan";
+  let text = finger
+    ? tool
+      ? `Tap to aim, tap again to place · ${drag} · two fingers pinch and pan`
+      : `${drag[0]!.toUpperCase()}${drag.slice(1)} · two fingers pinch, twist and pan · hold to inspect`
+    : view === "plan"
+      ? "Drag to pan · scroll or pinch to zoom"
+      : "Drag to pan · scroll to move · pinch or ctrl+scroll to zoom";
   let bad = false;
   if (notice) {
     text = notice;
@@ -111,7 +120,7 @@ export function StatusBar({ info, snapshot, notice, overlay, view, tool }: Props
       const blueprint = info.room.planned ? " (blueprint)" : "";
       const st = snapshot?.roomStatus[info.room.id];
       const running = st && !info.room.planned && info.room.connected ? ` · ${Math.round(st.rate * 100)}%` : "";
-      text = `${roomName(info.room)}${blueprint}${running}${info.room.connected ? "" : " · no access: connect it with a corridor"} · click for details · ${text}`;
+      text = `${roomName(info.room)}${blueprint}${running}${info.room.connected ? "" : " · no access: connect it with a corridor"} · ${finger ? "tap" : "click"} for details · ${text}`;
       bad = !info.room.connected;
     }
   }
