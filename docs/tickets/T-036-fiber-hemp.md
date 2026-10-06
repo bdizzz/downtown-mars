@@ -4,9 +4,9 @@ title: Fiber hemp crop and the fiber material
 status: open
 size: S
 area: data, rooms
+feature: F-003
 touches: [data/crops.json, data/resources.json, data/storage.json, src/sim/economy.ts]
 blocked_by: []
-feature: F-003
 notes: [N-0006, N-0007]
 created: 2026-10-06 00:10
 ---
@@ -24,3 +24,4 @@ ROOMS.md (crops), PATHWAYS.md (materials), GUIDE.md: Farms, PLAN-M15.md Notes as
 
 ## History
 - 2026-10-06 00:10 opened from F-003 (agreed)
+- 2026-10-06 09:47 building on t-036-fiber-hemp
