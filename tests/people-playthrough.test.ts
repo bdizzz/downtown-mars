@@ -26,8 +26,9 @@ describe("ninety minutes of people", () => {
   it("keeps having children, and they grow up into workers", () => {
     const born = net.log.at(-1)!.born;
     // Windows are paid for since milestone 13, this seed's run gets fewer
-    // (over four seeds the totals are much as before, 11–28 born). Was 15.
-    expect(born).toBeGreaterThanOrEqual(10);
+    // (over four seeds the totals are much as before, 11–28 born). Was 15, then 10 until the
+    // air became a mix (T-026): health dips while the holes dig, and births wait on it.
+    expect(born).toBeGreaterThanOrEqual(8);
     const children = net.world.holes.reduce((n, h) => n + h.population.cohorts.filter((c) => c.stage === "child").reduce((k, c) => k + c.count, 0), 0);
     expect(children).toBeLessThan(born); // the earliest have grown up
   });

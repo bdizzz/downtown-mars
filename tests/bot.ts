@@ -65,6 +65,7 @@ export interface Day {
   health: number;
   happy: number;
   prod: number;
+  /** % of the air. */
   o2: number;
   water: number;
   food: number;
@@ -74,6 +75,7 @@ export interface Day {
   built: number;
   floors: number;
   co2: number;
+  vol: number;
   met: string;
   san: number;
   farms: string;
@@ -133,7 +135,7 @@ export function run(days: number): { state: SimState; log: Day[]; builtAt: Recor
         health: Math.round(s.population.health),
         happy: Math.round(s.happiness.average),
         prod: Math.round(s.happiness.productivity * 100),
-        o2: Math.round(r.o2 ?? 0),
+        o2: Math.round(snap.air.o2Pct * 10) / 10,
         water: Math.round(r.water ?? 0),
         food: Math.round((r.rations ?? 0) + (r.rawFood ?? 0) + (r.meals ?? 0)),
         power: `${snap.power.used.toFixed(0)}/${snap.power.made.toFixed(0)}`,
@@ -141,7 +143,8 @@ export function run(days: number): { state: SimState; log: Day[]; builtAt: Recor
         rock: Math.round(r.rock ?? 0),
         built: next,
         floors: s.layout.hole.floors,
-        co2: Math.round(r.co2 ?? 0),
+        co2: Math.round(snap.air.co2Pct * 100) / 100,
+        vol: Math.round(snap.air.volume),
         met: Object.entries(s.population.needsMet)
           .map(([k, v]) => `${k}:${v.toFixed(2)}`)
           .join(" "),

@@ -1,3 +1,4 @@
+import { airPct } from "../src/sim/air";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { relation, tier } from "../src/sim/culture";
@@ -63,6 +64,7 @@ export interface NetDay {
   delivered: number;
   deliveredHome: number;
   opinions: string;
+  /** % of the child hole's air. */
   childO2: number;
   childWater: number;
   childFood: number;
@@ -247,7 +249,7 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
         opinions: child
           ? `${Math.round(relation(world, 1, child.holeId).opinion)}/${Math.round(relation(world, child.holeId, 1).opinion)} ${tier(relation(world, child.holeId, 1).opinion)}`
           : "",
-        childO2: Math.round(r.o2 ?? 0),
+        childO2: child ? Math.round(airPct(child, config, "o2") * 10) / 10 : 0,
         childWater: Math.round(r.water ?? 0),
         childFood: Math.round((r.rations ?? 0) + (r.rawFood ?? 0) + (r.meals ?? 0)),
         childHealth: Math.round(child?.population.health ?? 0),

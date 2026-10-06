@@ -1,4 +1,5 @@
 import raw from "../../data/config.json";
+import type { AirConfig } from "./air";
 import type { RoomUnlock } from "./rooms";
 
 export interface GeometryConfig {
@@ -66,15 +67,11 @@ export interface SimConfig {
     /** Health lost per day when a need goes entirely unmet (scaled by the shortfall). */
     healthLossPerDay: Record<string, number>;
     noSanitationHealthLossPerDay: number;
-    co2DangerLevel: number;
-    co2HealthLossPerDay: number;
     healthRecoveryPerDay: number;
   };
   economy: {
     priorities: Priority[];
     defaultPriority: Priority;
-    /** Life support leaves this much CO2 in the air for farms. */
-    co2ScrubFloor: number;
     demolishRefund: number;
     /** A room can be undone for a full refund this long after it was placed. */
     undoWindowTicks: number;
@@ -84,6 +81,7 @@ export interface SimConfig {
     /** Slots a room of each size nominally covers; deep rooms covering more scale up. */
     nominalSlots: Record<string, number>;
   };
+  air: AirConfig;
   weather: {
     /**
      * Dust storms: none before `earliestDay`; after that, each day a storm may

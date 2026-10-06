@@ -10,6 +10,8 @@ export interface ResourceDef {
   waste?: boolean;
   /** Used as it's made; only batteries carry it between ticks. */
   flow?: boolean;
+  /** In the air: no storage cap, read as a % of the hole's living volume (air.ts). */
+  air?: boolean;
 }
 
 export interface CropDef {

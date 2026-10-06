@@ -487,15 +487,16 @@
       "size": "L",
       "staff": 3,
       "uses": {
-        "water": 6,
+        "water": 60,
         "power": 5
       },
       "makes": {
-        "o2": 30
+        "o2": 300
       },
       "scrubs": {
         "co2": 30
       },
+      "topsUpAir": true,
       "priority": "critical",
       "effects": [
         {

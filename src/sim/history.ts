@@ -1,4 +1,5 @@
 import type { SimConfig } from "./config";
+import { airPct, airVolume } from "./air";
 import { overallCondition } from "./condition";
 import { powerFlow } from "./economy";
 import { beds } from "./earth";
@@ -12,7 +13,7 @@ import type { SimState } from "./state";
 // it never changes anything else.
 
 /** Series beyond the resources (whose series are their ids). */
-export const VITALS = ["population", "beds", "happiness", "health", "condition", "employed", "workers", "powerMade", "powerUsed"] as const;
+export const VITALS = ["population", "beds", "happiness", "health", "condition", "employed", "workers", "powerMade", "powerUsed", "o2Pct", "co2Pct", "airVolume"] as const;
 export type Vital = (typeof VITALS)[number];
 
 export interface History {
@@ -56,6 +57,9 @@ export function sample(state: SimState, cfg: SimConfig): Record<string, number> 
     workers: state.workforce.total,
     powerMade: power.made,
     powerUsed: power.used,
+    o2Pct: airPct(state, cfg, "o2"),
+    co2Pct: airPct(state, cfg, "co2"),
+    airVolume: airVolume(state, cfg),
   };
   for (const r of resourceDefs) out[r.id] = state.resources[r.id] ?? 0;
   return out;

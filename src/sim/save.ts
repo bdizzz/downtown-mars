@@ -12,13 +12,14 @@ import { corridors, migrateCorridorRooms, recomputeAccess } from "./corridors";
 import { galleryEdges } from "./edges";
 import { ensureFloors, placeRoom, type Layout } from "./placement";
 import { openCells } from "./excavation";
+import { fillAir } from "./air";
 import type { World } from "./world";
 
 // Saves are the whole world as JSON, minus what can be rebuilt (each hole's
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 18;
+export const SAVE_VERSION = 19;
 
 type Raw = Record<string, unknown>;
 
@@ -152,6 +153,17 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       }
       const resources = h.resources as Record<string, number>;
       return { ...h, layout, resources: { ...resources, glass: Math.max(resources.glass ?? 0, kit) } };
+    }),
+  }),
+  // v19: the air is a mix over the living volume (PLAN-M16). Old O2 and CO2 pools meant nothing per m³:
+  // every hole's air starts over at the target, with CO2 at the scrub floor.
+  18: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const hole = { ...h, resources: { ...(h.resources as Record<string, number>) } } as unknown as SimState;
+      delete hole.air;
+      fillAir(hole, config);
+      return hole as unknown as Raw;
     }),
   }),
 };

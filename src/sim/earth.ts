@@ -1,4 +1,5 @@
 import type { SimConfig } from "./config";
+import { airAmount } from "./air";
 import { capacities, isActive, roomSpec } from "./economy";
 import { LABELS, record } from "./ledger";
 import { postMessage } from "./messages";
@@ -41,6 +42,7 @@ export function beds(state: SimState): number {
 export function dailyGaps(state: SimState, cfg: SimConfig): Record<string, number> {
   const pop = needsWeight(state);
   const needs = cfg.colonists.needsPerDay;
+  const breathed = pop * cfg.air.breathPerDay;
   let waterUse = pop * (needs.water ?? 0);
   let waterMade = 0;
   let o2Made = 0;
@@ -56,7 +58,7 @@ export function dailyGaps(state: SimState, cfg: SimConfig): Record<string, numbe
   return {
     rations: Math.max(0, pop * (needs.meals ?? 0) - foodMade),
     water: Math.max(0, waterUse - waterMade),
-    o2: Math.max(0, pop * (needs.o2 ?? 0) - o2Made),
+    o2: Math.max(0, breathed - o2Made),
   };
 }
 
@@ -119,7 +121,8 @@ function land(state: SimState, cfg: SimConfig): Record<string, number> {
   const onHand: Record<string, number> = {
     rations: (res.rations ?? 0) + (res.rawFood ?? 0) + (res.meals ?? 0),
     water: res.water ?? 0,
-    o2: res.o2 ?? 0,
+    // Only O2 above the target is spare: below it, the drop makes up the difference too.
+    o2: (res.o2 ?? 0) - airAmount(state, cfg, cfg.air.o2Target),
   };
   for (const [id, perDay] of Object.entries(gaps)) add(id, perDay * cover - (onHand[id] ?? 0));
   for (const [id, amount] of Object.entries(ec.fixed)) add(id, amount);

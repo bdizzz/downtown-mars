@@ -1,3 +1,4 @@
+import { airPct } from "../src/sim/air";
 import { maintenanceQueue } from "../src/sim/condition";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
@@ -118,7 +119,9 @@ export function wants(hole: SimState): { room: string; crop?: string; near?: Nee
   const res = hole.resources;
   const met = hole.population.needsMet;
   const out: { room: string; crop?: string; near?: Need }[] = [];
-  if ((res.co2 ?? 0) > 30 || (met.o2 ?? 1) < 1 || count(hole, "life_support") * 30 < pop) out.push({ room: "life_support" });
+  // The air: CO2 building up, oxygen thinning (digging dilutes it), or too few scrubbers for everyone.
+  const scrubs = roomDef("life_support").scrubs!.co2!;
+  if (airPct(hole, config, "co2") > 0.5 || airPct(hole, config, "o2") < config.air.o2Low || count(hole, "life_support") * scrubs < pop) out.push({ room: "life_support" });
   if (limited(hole, "power")) out.push({ room: "solar_array" });
   // Maintenance eats machinery: another machine shop once there's barely any left for building.
   const shops = count(hole, "machine_shop");
@@ -144,7 +147,7 @@ export function wants(hole: SimState): { room: string; crop?: string; near?: Nee
   if ((res.glass ?? 0) < 20 && count(hole, "glassworks") === 0 && hole.layout.rooms.some((r) => roomDef(r.type).houses && !r.planned && !r.windows?.length && r.at.kind === "ring")) out.push({ room: "glassworks" });
   // More homes only while the hole is doing well, leaving room for births.
   // …and only with the air for a dorm's worth more, or the means to build it: beds without air to breathe are no use.
-  const airFor = count(hole, "life_support") * roomDef("life_support").makes.o2!;
+  const airFor = count(hole, "life_support") * scrubs;
   const canBreathe = airFor >= pop + roomDef("bunk_dorm").houses! || missingCost(res, "life_support") === null;
   // Better homes once they're unlocked and affordable (bunks are crowded); bunks otherwise.
   const home = (hole.unlocks ?? []).includes("basicHomes") && missingCost(res, "apartment") === null ? "apartment" : "bunk_dorm";

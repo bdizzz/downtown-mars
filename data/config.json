@@ -42,28 +42,38 @@
     "maxFloors": 40
   },
   "startingStock": {
-    "rations": 100, "water": 240, "o2": 120, "soil": 40,
+    "rations": 100, "water": 240, "soil": 40,
     "rock": 160, "brick": 20, "metal": 60, "machinery": 10, "electronics": 10, "glass": 100
   },
   "colonists": {
     "start": 20,
-    "needsPerDay": { "o2": 1, "water": 2, "meals": 1 },
-    "makesPerDay": { "co2": 1, "solidWaste": 1 },
-    "healthLossPerDay": { "o2": 60, "water": 20, "meals": 10 },
+    "needsPerDay": { "water": 2, "meals": 1 },
+    "makesPerDay": { "solidWaste": 1 },
+    "healthLossPerDay": { "water": 20, "meals": 10 },
     "noSanitationHealthLossPerDay": 5,
-    "co2DangerLevel": 100,
-    "co2HealthLossPerDay": 7.5,
     "healthRecoveryPerDay": 10
   },
   "economy": {
     "priorities": ["critical", "high", "normal", "low"],
     "defaultPriority": "normal",
-    "co2ScrubFloor": 10,
     "demolishRefund": 0.5,
     "undoWindowTicks": 60,
     "rateSmoothingDays": 0.25,
     "ledgerDays": 4,
     "nominalSlots": { "S": 1, "M": 2, "L": 4, "H": 8 }
+  },
+  "air": {
+    "_note": "The hole's air as a mix over its living volume (PLAN-M16). Levels are % of the air; amounts are volume (m3) x unitsPerM3.",
+    "unitsPerM3": 2,
+    "breathPerDay": 1,
+    "o2Target": 21,
+    "o2Low": 18,
+    "o2VeryLow": 15,
+    "o2High": 23.5,
+    "co2Harmful": 1,
+    "co2Dangerous": 3,
+    "co2Floor": 0.2,
+    "healthLossPerDay": { "o2Low": 5, "o2VeryLow": 20, "co2Harmful": 7.5, "co2Dangerous": 30 }
   },
   "weather": {
     "dustStorm": {

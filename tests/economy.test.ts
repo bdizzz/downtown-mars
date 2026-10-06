@@ -8,6 +8,7 @@ import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { setAdults } from "../src/sim/people";
 import { roomDef } from "../src/sim/rooms";
+import { airAmount, airPct, fillAir } from "../src/sim/air";
 
 // No Earth drops here: these tests are about what the hole does on its own.
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
@@ -58,14 +59,16 @@ describe("build costs", () => {
 });
 
 describe("the 20-colonist start on the critical set", () => {
-  it("breathes, eats and stays healthy for 4 days", () => {
+  it("breathes, eats and stays healthy for 2 days, while life support refills the air the new rooms diluted", () => {
     const s = criticalSet();
-    days(s, 4);
+    // Digging out life support and the tank thinned the air.
+    expect(airPct(s, config, "o2")).toBeLessThan(config.air.o2VeryLow);
+    days(s, 2);
     const snap = makeSnapshot(s, config);
-    expect(snap.population.health).toBeGreaterThan(95);
-    expect(snap.population.needsMet).toEqual({ o2: 1, water: 1, meals: 1 });
-    expect(s.resources.o2).toBeGreaterThan(100);
-    expect(s.resources.co2).toBeLessThan(config.colonists.co2DangerLevel);
+    expect(snap.population.health).toBeGreaterThan(90);
+    expect(snap.population.needsMet).toEqual({ water: 1, meals: 1 });
+    expect(snap.air.o2Pct).toBeGreaterThan(config.air.o2Low);
+    expect(snap.air.co2Pct).toBeLessThan(config.air.co2Harmful);
   });
 
   it("runs power nearly full: about 9 of 10", () => {
@@ -151,25 +154,30 @@ describe("rooms", () => {
     expect(s.roomStatus[farm.id]!.rate).toBeGreaterThan(0.9);
   });
 
-  it("life support keeps scrubbing CO2 when oxygen storage is full", () => {
+  it("life support keeps scrubbing CO2 with the oxygen at its target, spending water only on what is breathed", () => {
     const s = criticalSet();
-    s.resources.co2 = 150;
-    s.resources.o2 = 200;
+    fillAir(s, config);
+    const co2 = airAmount(s, config, 2);
+    s.resources.co2 = co2;
     days(s, 1);
     // Scrubs 30 a day against 20 breathed out.
-    expect(s.resources.co2).toBeCloseTo(140, 0);
+    expect(s.resources.co2).toBeCloseTo(co2 - 10, 0);
     const ls = s.layout.rooms.find((r) => r.type === "life_support")!;
     expect(s.roomStatus[ls.id]!.rate).toBe(1);
+    // The air stays at its target. Until the scrubber turns CO2 back into oxygen (T-028), what's
+    // breathed is made again from water: 20 O2 a day for 4 water, not the 60 a day of a full top-up.
+    expect(airPct(s, config, "o2")).toBeCloseTo(config.air.o2Target, 0);
+    expect(s.ledger.days.at(-1)!.water?.out["Life support"] ?? 0).toBeCloseTo(4, 0);
   });
 
-  it("life support idles once the air is clean and oxygen is full", () => {
+  it("life support idles once the air is clean and the oxygen at its target", () => {
     const s = criticalSet();
-    s.resources.o2 = 200;
+    fillAir(s, config);
     days(s, 1);
     const ls = s.layout.rooms.find((r) => r.type === "life_support")!;
     // Just enough to scrub what 20 colonists breathe out: 20 of 30.
     expect(s.roomStatus[ls.id]!.rate).toBeCloseTo(2 / 3, 1);
-    expect(s.roomStatus[ls.id]!.limit).toBe("full:o2");
+    expect(s.roomStatus[ls.id]!.limit).toBe("air:o2");
   });
 
   it("is deterministic", () => {
