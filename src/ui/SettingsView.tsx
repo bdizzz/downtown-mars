@@ -51,6 +51,10 @@ export function SettingsView({ settings, update, onBack }: Props) {
         <input type="checkbox" checked={settings.autosave} onChange={(e) => update({ autosave: e.target.checked })} />
         <span>Autosave every game day</span>
       </label>
+      <label>
+        <input type="checkbox" checked={settings.floorHoverPreview} onChange={(e) => update({ floorHoverPreview: e.target.checked })} />
+        <span>Preview floors on hover</span>
+      </label>
       <GraphicsSettings graphics={settings.graphics} set={(g) => update({ graphics: { ...settings.graphics, ...g } })} />
       <button onClick={onBack}>Back</button>
     </div>

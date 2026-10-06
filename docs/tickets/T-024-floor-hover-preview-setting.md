@@ -1,7 +1,7 @@
 ---
 id: T-024
 title: A setting to turn off previewing floors on hover
-status: open
+status: done
 size: S
 area: ui
 touches: [src/ui/FloorPicker.tsx, src/ui/settings.ts, src/ui/SettingsView.tsx, src/ui/App.tsx]
@@ -29,3 +29,5 @@ Add `floorHoverPreview: boolean` to the settings with a checkbox (e.g. under Vie
 ## History
 - 2026-10-05 02:54 opened from N-0020
 - 2026-10-05 02:55 questions answered: off by default
+- 2026-10-06 00:40 building on t-024-floor-hover-preview-setting
+- 2026-10-06 00:41 built

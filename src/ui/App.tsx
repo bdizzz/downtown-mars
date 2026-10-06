@@ -476,7 +476,7 @@ export function App() {
               allowAll={settings.view === "3d" && !walking}
               onPick={setViewFloor}
               preview={walking ? undefined : previewFloor}
-              onPreview={walking ? () => {} : setPreviewFloor}
+              onPreview={walking || !settings.floorHoverPreview ? () => {} : setPreviewFloor}
             />
           )}
           {snapshot && proposal && (
