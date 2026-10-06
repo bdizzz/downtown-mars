@@ -1,106 +1,147 @@
-# Milestone 16 plan: rooms by area, placed by angle
+# Milestone 16 plan: air as a mix — O2 % of the living volume, the O2 ↔ CO2 loop, gas tanks
 
-Goal: the same room is the same size on every ring. Each room type has a **target area**; placing it on a ring turns that area and the ring's depth into an **angle**. Rings lose their fixed slots. Placing gets **snapping** (to neighbours on the ring, and to room ends on other rings), **drag handles** on a proposed room's side walls, and **fill rooms** (empty space, plazas, the park) that stretch to close awkward gaps.
+Goal: oxygen and CO2 form a stable loop, so once a hole's air is made it doesn't keep costing water. Water turns into oxygen for good **only as the hole's living volume grows**. Feature F-002 (`docs/tickets/F-002-air-mix.md`).
 
-Asked for by Bryon, Oct 4, 2026 (note N-0008, then T-010, now feature F-004): "a drawback of the current system is that the furniture layout of the same room on ring 1 vs ring 2 is very different". His answers: S/M/L/H become 100, 200, 400 and 800 m²; drag handles plus double-clicking a gap; old saves convert their slots to angles; a plan first, before any code. Everything else below is Claude's default; Bryon confirmed the leeway, old rooms, fill rooms and fill limits on Oct 6 ("Answered", at the end). Every number goes in data.
+Bryon's design (Oct 4, N-0005, first written up in T-011) is settled; the numbers and the smaller rules below are Claude's defaults, which Bryon agreed on Oct 6. Every one is easy to change in balancing. Every number lives in data (`data/config.json` under a new `air` block, and `data/rooms.json`).
 
-## Why
+## Where it stands today
 
-A slot is an equal share of a ring, so its area depends on the ring. With today's paired rings (9, 9, 18, 18, 36, 36 slots on R = 10 m, d = 10 m):
+- `o2` and `co2` are plain pooled resources in `state.resources` (`data/resources.json`: O2 holds 200, CO2 300 and is waste).
+- People need 1 O2 a day (`colonists.needsPerDay`; health −60 a day if unmet) and make 1 CO2. CO2 above `co2DangerLevel` (100) costs 7.5 health a day.
+- **Life support** (L, staff 3): water 6 + power 5 → O2 30, and scrubs 30 CO2 down to `co2ScrubFloor` (10) so farms have some. Noise −2. Not in the landing kit; the tutorial asks for it early.
+- Farms take CO2 2 → O2 2; parks make O2 1 from nothing.
+- Earth drops cover the O2 gap (`dailyGaps` in `sim/earth.ts`); the seed kit carries 60 O2 to a new hole (`data/network.json`).
+- Each hole has its own `resources`, so each hole has its own air. That stays.
 
-| Ring | Radii (m) | Slots | Area of a slot (m²) | S at 100 m²: angle | Notches (below) |
-| --- | --- | --- | --- | --- | --- |
-| 1 | 10–20 | 9 | 105 | 38.2° | 153 |
-| 2 | 20–30 | 9 | **175** | 22.9° | 92 |
-| 3 | 30–40 | 18 | 122 | 16.4° | 65 |
-| 4 | 40–50 | 18 | 157 | 12.7° | 51 |
-| 5 | 50–60 | 36 | 96 | 10.4° | 42 |
-| 6 | 60–70 | 36 | 113 | 8.8° | 35 |
+## The design
 
-So a galley on ring 2 has 75% more floor than one on ring 1, and its furniture sits differently. By area, every S room is about **10 m wide at its middle** on every ring (area ÷ depth = the arc length at mid-radius); only the taper changes (on ring 1 the inner wall is 6.7 m and the outer 13.3 m; on ring 3, 8.6 and 11.4). Think of rings as bands of a dartboard: instead of cutting each band into a fixed number of pieces, you cut pieces of the same weight, so outer bands just get more of them (about 9, 16, 22, 28, 34 and 41 S rooms round rings 1–6).
+### 1. Living volume
 
-## Design
+Each hole's **living volume** in m³, recomputed when `layout.version` changes (like effects):
 
-### The model
+- every **excavated cell** (empty space or room, `layout.open`): slot width × room depth × floor height (10 × 10 × 4 = **400 m³**);
+- every **built corridor and gallery tube**: its length (`edgeLengthM`) × `corridors.widthM` (3) × floor height;
+- the **open shaft** and **unexcavated rock** don't count; nor do surface rooms (landing pad, solar);
+- **a domed shaft does** (Bryon, Oct 6): once the shaft dome (M12, from 300 colonists) is built, the shaft's π R² × depth joins the volume, about 1,250 m³ a floor for the starter 10 m shaft. It makes the dome a real air project.
 
-- **Angles are whole notches:** 1,440 a turn (a quarter of a degree; 31 cm at ring 6's outer wall). Integers, so the same point always has the same value, edges meet exactly, rooms on different rings line up exactly, and nothing drifts with float error. 1,440 divides by 9, 16, 18 and 36, so today's slot boundaries convert exactly (22-slot rings, in older saves, round to the nearest notch, the same way on both sides of a boundary, so nothing opens a gap).
-- **A ring room's location** becomes `{ kind: "ring", floor, ring, depth, start, span }`: the innermost ring, how many rings deep (1 or 2), and its start angle and span in notches, wrapping at 1,440. A deep room takes the same angles on every ring it covers (a clean wedge, as the inner ring's angle range already is today). Surface rooms keep their 12 surface slots; they're not part of this.
-- **Area ↔ angle:** area = span (radians) × (r_out² − r_in²) / 2 over the rings it covers. A room's **target area** is its size's area (`config.sizes`: S 100, M 200, L 400, H 800 m²), or its own `area` in `rooms.json` when a type wants something else (set from the furnishing tool). Its **shape** is the depth: S and M are 1 ring deep; L is 1 or 2 deep (today's 4×1 and 2×2); H 1 or 2 (`config.shapes` becomes depths per size).
-- **What a room does doesn't depend on its exact area.** Within its leeway (below) a galley seats 25 whether it's 88 or 115 m²; the leeway is looks and fit, not a balance lever. Fill rooms are the exception for cost (below): a bigger plaza or park costs more but does no more.
-- **Space is kept as intervals, not a grid.** Per floor and ring: which room holds each angle range (`occupancy`, sorted spans), and which ranges are excavated (`open`, merged spans). A room overlaps another if their spans overlap on any floor and ring they share. Rock is whatever isn't open.
-- **Pieces replace cells** as the thing other systems walk over: on each floor and ring, the angle is cut wherever something starts or ends (a room, empty space, rock). A piece is `{ floor, ring, a0, a1 }`: a room's part on that ring, a stretch of empty space (open, no room), or rock. Rock and empty space are cut further into pieces no wider than about 10 m, so neighbour effects and air still spread through them in small steps rather than jumping a whole quarter-ring at once.
+**Pressurizing the dome.** A 10-floor shaft is about 12,500 m³, enough to drop a whole hole's O2 by several points at once, into the "very low" band. So a finished dome first **pressurizes**: the shaft joins the volume only once its share of air is made (21% of its volume, from the O2 reserve first, then the electrolyzers, shown as "Air for new space"). Until then the dome stands sealed and its benefits (walkway, atrium comfort, air +0.5, no storm dust) wait, with "Pressurizing the shaft: 40%" in the HUD and the dome's panel. Dug cells (400 m³ each) are small enough to just dilute.
 
-### Edges and corridors
+Rooms are counted by the cells they stand in, so the rule holds however rooms are shaped (and survives F-004's rooms by area: volume is still dug cells). A starter hole is about 10 cells and the floor 1 gallery: roughly **4,750 m³**.
 
-- Corridors still run **on edges**, between rooms and between rooms and rock ("Don't bring back 1-slot corridor rooms" stands). There are two kinds of line on a floor: **circles** (circle 0 is the shaft wall, circle n the outer edge of ring n) and **radial lines** across one ring at one angle.
-- **Corridors are stored as runs on lines,** not per edge: an arc run is `(floor, circle, from, to)`, a radial run `(floor, ring, angle)`, each with its finish. A corridor can run along a radial line at **any** notch, not just at room ends (the tool snaps it to room ends nearby; see Placement). A full gallery on floor 1 is one run, `circle 0, 0 → 1,440`.
-- **Edges are derived:** the runs and the room walls cut at every vertex where something meets (another corridor, a room's end on either side of the circle, a door). Each piece of edge has a stable id from its integers, `A{floor}.{circle}.{from}-{to}` and `R{floor}.{ring}.{angle}`, and `edges.ts` keeps its API (`edgeById`, `edgeSides`, `outsideEdges`, `sharedEdges`, `edgeLengthM`, `nearestEdge`, `galleryEdges`), so the consumers (access, doors, paths, the views) change little. A corridor's cost is still per 10 m of its length.
-- **Bulkheads** sit on a run between two notches (fitted on one edge piece, as today; if a new junction later cuts that piece, the bulkhead stays on the part it was on). **Windows** are stored by wall, not edge id: `inner`, `outer`, `start`, `end`, per floor for tall rooms, so a wall stays glazed however the edges along it are cut. **Doors** keep M13's rule (the best wall: a tube, else the longest corridor, else a walk-through room).
+### 2. O2 and CO2 as amounts over the volume, shown as %
 
-### Neighbour effects, air and walking
+- `o2` and `co2` stay resources (amounts in the air), so the ledger, flows and charts keep working. They lose their storage caps: the air takes any amount.
+- **O2 % = o2 / (volume × `air.unitsPerM3`)**; the same for CO2. Default `unitsPerM3` **2**, so the starter hole holds about 2,000 O2 at 21%, and 1% of its air is about 95 units. No nitrogen and no overall pressure: the rest of the air is implied.
+- **Digging dilutes.** When a cell opens, the same O2 spreads over more volume and the % drops. That's the whole growth cost: the electrolyzer then makes the new air from water.
+- A new game starts with its air made: O2 at the target, CO2 at the scrub floor (the landing crew sealed and filled it). `startingStock.o2` goes.
 
-- **Neighbour effects** (noise, health, comfort, view) spread over pieces instead of cells: from a room's pieces outward through neighbouring pieces (along the ring, across rings where angles overlap, up and down a floor), costing the metres between their middles, fading linearly to nothing just past the radius. **Radius stays in data as steps of 10 m** (a radius of 2 reaches 20 m), close to today's slot-steps. Corridors still soak up noise: an effect doesn't cross a border that's corridor all along. Overlays colour each piece.
-- **Air and smell** ride the network as today (`paths.ts` already works in metres). **Walking distance** too: nodes are corridor edge pieces, walk-through rooms, empty-space pieces and rooms, each costing its own length; reach stays in steps of 10 m. The ring-by-ring air baseline (`effects.airQualityByRing`) is unchanged.
+**Bands** (all in `air`):
 
-### Placement
+| | Level | Effect |
+| --- | --- | --- |
+| O2 target | 21% | what the electrolyzer and the tanks aim for |
+| Comfortable | 19.5–23.5% | nothing |
+| Low | below 19.5% | health falls (default −10 a day) |
+| Very low | below 16% | health falls fast (default −40 a day) |
+| High | above 23.5% | fire-risk warning (HUD and a message); a hazard later |
+| CO2 harmful | above 1% | health falls (default −7.5 a day, as today), replacing `co2DangerLevel` |
+| CO2 dangerous | above 3% | health falls fast (default −30 a day) |
+| CO2 scrub floor | 0.2% | scrubbers leave this much for farms (replaces `co2ScrubFloor`) |
 
-- **A proposed room** shows at the cursor's angle with its target area for that ring. It goes green (fits), amber (fits, but no corridor yet) or red (overlaps, out of reach), as today.
-- **Leeway:** a room may end up **±15%** of its target area to make a snap or a handle drag (`placement.leeway` 0.15). On ring 1 that's an S of 130–176 notches.
-- **Snapping, on by default:** within the leeway, a proposed room's ends snap to, in order: both ends at once to exactly fill a gap between two neighbours on its ring; one end against a neighbour on its ring (no sliver left); one end in line with a room end, a radial corridor, or another room's end on the ring inside or outside, so corridors can run straight across rings. A small tick marks what it snapped to. **A toggle** in the build strip, and a key, turn snapping off and on without leaving placement; with it off, the room sits at the cursor at exactly its target area. Stairs and elevators always snap onto a stack below or above them (they must line up exactly to join).
-- **Drag handles** on a proposed room's two side walls: drag one to stretch or shrink that side, snapping while you drag, the room red past its range. Normal rooms move within the leeway; **fill rooms** much further. Placing leaves the handles on the proposal until it's committed (click again, or Enter); Escape drops it. A room left invalid is never built.
-- **Fill rooms** (`fill: true` in `rooms.json`): the empty rooms, the tiny and small plazas, and the park. They range from **50% to 300%** of their target area, and never more than **90°** (`placement.fill`), so a plaza on ring 1 can't wrap half the hole. **The three empty rooms become one, "Empty space"**, with S's 100 m² as its target, since its size no longer means much. A fill room's **cost and dig time scale with its area**; its effects don't.
-- **Double-clicking a gap** with a fill room selected fills it, wall to wall: the gap between two rooms (or a room and the edge of the dug-out rock) on that ring, if it's within the fill room's range. Otherwise the hover says why ("Too wide: up to 300 m²").
-- **Nothing is slot-shaped any more:** `ringSlots`, `slotsInRing`, `pairedRings` and `nestedPairs` go; `geometry.slotWidthM` is only used to size the 10 m step.
+"Air quality" stays what it is: the separate, local ventilation effect (M11/M12). The HUD and room panels already say "Air" for both; the mix reads as **"Air 21% O2"** and **"CO2 0.4%"**, and the local effect keeps its overlay name, "Air quality".
 
-### Furnishing
+### 3. Breathing and burning
 
-- Templates stay **pinned to walls with offsets in metres** (they already stretch with the room). They're keyed by type and shape, `galley:M` or `farm:L2` (size, plus depth when it's more than 1), instead of `galley:2x1`. Since every room of a type is now about the same size, one template looks right everywhere; the taper is what's left to cope with.
-- **The furnishing tool (`?furnish`)** previews a template on any ring at any area in the leeway (a slider), and **sets a room type's target area** (written to `rooms.json` as `area`).
+People turn O2 into CO2, 1:1, every tick (by `needsWeight`, so children breathe less), whatever the level; O2 just can't go below 0. O2 leaves `colonists.needsPerDay`: shortfall now shows as a low %, not an unmet need.
 
-### Costs and timings
+Anything else that breathes or burns uses the same data, `uses: { o2 }` and `makes: { co2 }` in `rooms.json`. **Default: nothing burns yet** (the smelter and kilns are electric); the hook is there for later rooms.
 
-- **Digging:** rock and deposit yields are per 100 m² dug (`digging.rockPerSlot` becomes `rockPer100m2`, and so on), so an S room brings up what an S slot did. The shaft's yield is its own area over 100.
-- **Construction hours** stay per size (`construction.json`); fill rooms scale by area.
+Plants do the reverse, 1:1: farms take CO2 2 → O2 2 as today, and **parks change to CO2 1 → O2 1** (today they make O2 from nothing, which would slowly push O2 too high).
 
-### Saves
+### 4. Two rooms replace life support
 
-- One migration (to version 19): each ring room's slots become notches (start = slot × 1,440 / slots in the ring, span likewise; deep rooms take the inner ring's angles, as their footprint already does). **Old rooms keep their exact angles, and so their old areas** (a ring-2 room stays 75% big), so nothing moves, no gaps open and every corridor still meets its room. They furnish by their real area and can't be resized. `open` and `grid` become intervals; corridors' edge ids become runs (merged where they join up); bulkheads keep their piece; windows' edge ids become walls. Effects are recomputed.
-- **Bridge and worker protocol:** the `build` command carries `start`, `span` and `depth` instead of `slot`, `w` and `d`; the snapshot carries the new locations. A breaking change (`feat(sim)!`), made once, in the step that switches placement over.
+| Room | Size, staff | Uses | Makes | Runs | Noise | Cost |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Electrolyzer** (new) | M, 1 | water 10, power 6 | O2 40 | while O2 is below the target (after the O2 tanks have released), then on to fill the O2 tanks up to the hole's **tank fill** level; otherwise stands by | −1 | metal 15, machinery 2, electronics 2 |
+| **CO2 scrubber** (today's life support, renamed) | L, 3 | power 5 | O2 30 and soil 0.5 from 30 CO2 | while CO2 is above the scrub floor | −2 | as today |
 
-### Views, the bridge and Godot
+- **The scrubber keeps the room id `life_support`**, renamed in data only. Saves, tests, furniture, layouts, the tutorial and the bots keep working without a migration; its water use goes. (Changing the id touches about 25 files for no player gain.)
+- **The electrolyzer's water is gone for good** (F-001: the one deliberate leak besides tailings). It shows in the water charts as its own user.
+- "Fully efficient while there's scrubbing capacity": a steady colony with enough scrubbers runs the electrolyzer only as it digs. 20 people make 20 CO2 a day, so one scrubber covers about 30 people.
+- New `runsWhile` field for both, so the rule is data, not a special case: `{ "below": "o2Target" }`, `{ "above": "co2Floor" }` (the scrubber's `scrubs` already does the second; `runsWhile` makes "standby" show in the room panel).
+- **No scrubber in the landing kit** (Bryon, Oct 6): a new game's air lasts about 5 days before CO2 passes 1%, and the tutorial asks for a scrubber early, as it does for life support today. Furniture: the scrubber keeps life support's; the electrolyzer gets a new model and layout (`scripts/furniture.mjs`, `data/furniture.json`, `data/layouts.json`), plus 2D art.
 
-- **3D** (`render3d/cylinder.ts`, `rooms3d.ts`, `pick3d.ts`, `people3d.ts`, `flows3d.ts`): rooms, walls, corridors and picking from angles instead of slot indices. Most already draw wedges from angle ranges (`slotAngles`), so the change is mostly where they get them.
-- **2D**: the unrolled view lays each ring out at its mid-radius length, so rooms of the same area are the same width on every ring; the plan view (`planDraw.ts`, shared with the bridge) draws wedges from angles.
-- **Godot**: `PlanView.cs`, `Live.cs` and `BuildMode.cs` read the new location; snapping, handles and fill come to its build mode in their own step. The scene already comes from the web's own code through the bridge.
+### 5. Gas tanks: ballast both ways
 
-## What stays the same
+A **gas tank** room (S, no staff, stores 200; cost metal 8, glass 2) **holds O2 or CO2**, chosen in its panel the way a water tank chooses clean, gray or tailings (T-005) and a farm its crop. Tank contents are separate stocks, `o2Stored` and `co2Stored`, with capacity from the tanks; changing what a tank holds needs it empty (or loses what's in it, see Open questions).
 
-Floors, stairs and elevators, the shaft and the drill, the entrance, the surface's 12 slots, tall rooms, M13's doors and window comfort, the corridor finishes and their prices per 10 m, walk reach in steps, the air network, rings 1–3 open (rings 4–6 stay undecided).
+Each tick, in this order:
+
+1. **Release:** if O2 is below the target, O2 tanks release into the air up to the target. If CO2 is below the scrub floor and farms want it, CO2 tanks release for them.
+2. **Rooms run** (breathing, farms, parks, scrubbers, then the electrolyzer, which only makes what the tanks couldn't cover). So the tanks save water: the electrolyzer runs only when they're empty.
+3. **Store:** O2 above the target goes into O2 tanks with room; CO2 above `air.co2StoreAbove` (default 0.5%: what the scrubbers couldn't keep up with) goes into CO2 tanks.
+4. **Overflow:** when the tanks are full, the extra stays in the air. That's how O2 gets too high.
+
+**Stockpiling O2 (Bryon, Oct 6):** once the air is at the target, the electrolyzer can go on filling the O2 tanks, for growth spurts or a scrubber breakdown. One hole-wide **tank fill** slider, 0–100% of the O2 tanks' capacity (default 0%, off), shown in every electrolyzer's and O2 tank's panel; it's one setting because the tanks are one pool. Its O2 goes straight into the tanks, never the air, so it can't push O2 too high. That water is spent for good, like any electrolyzer water; the flow panel shows where it went (below).
+
+O2 above the target comes from what arrives rather than what's made: supply drops and the belt ship's thanks, a seed kit landing in a small new hole, farms working through stored CO2. **Supply drops and seed kits land in the tanks first, then the air.** Earth's O2 gap becomes "O2 short of the target, less what's in the tanks".
+
+**A tank at 0% condition** (gas or water, F-001's tanks too) keeps what it holds but can't take more; what's in it can still be used. Today a room at 0% stops, and a stopped tank's capacity vanishes; instead its capacity counts as exactly what it holds, never more.
+
+### 6. The "vent excess air" event
+
+When O2 has been above 23.5% for half a day (tanks full), an event card (M14 framework, `data/events.json`, trigger in `sim/events.ts`):
+
+> **Too much oxygen.** The air's at 25% O2 and the tanks are full. Fire crews are nervous.
+> - **Vent the excess**: O2 back to 21%; what's vented is lost for good.
+> - **Hold it**: build tanks instead. The fire-risk warning stays.
+>
+> Ignored (1 day): it's held.
+
+At most once every 3 days. This is a deliberate exception to "nothing vents to the planet" (DECISIONS.md, M11): the air never leaks on its own; venting is only ever the player's choice.
+
+### 7. HUD, charts and panels
+
+- HUD: **Air 21% O2** (warn below 19.5% or above 23.5%, bad below 16%), **CO2 0.4%** (warn above 1%), with notes: the volume (m³), O2 and CO2 amounts, tank fill, what's making and using each. Health's note keeps CO2 and adds O2.
+- Charts (`ui/trends.ts`): O2 % with reference lines at 16, 19.5 and 23.5; CO2 % with lines at 1 and 3; living volume; O2 and CO2 in tanks. Flows: the air loop (people and fires → CO2 → scrubbers and plants → O2; water → electrolyzer → O2; tanks either way; vented).
+- **Two-step flows (Bryon, Oct 6).** The flow panel today is one step per resource: sources → the resource → uses. A use can now carry a second step, where it went next. The Water tab's electrolyzer reads:
+
+  > Water → **Split into oxygen** → **Air for new space** · **Replacing breathed air** · **Into the O2 reserve**
+
+  - *Air for new space*: filling volume the hole just dug. The sim keeps a running "new space owed" (each dug cell adds its volume × units per m³ × 21%), and the electrolyzer's O2 pays that off first.
+  - *Replacing breathed air*: O2 made below the target beyond what's owed: the scrubbers aren't keeping up, so water is covering for them. A sign to build a scrubber.
+  - *Into the O2 reserve*: the tank fill slider's O2.
+
+  The ledger gains it generically (`record(…, { then: "Air for new space" })` keeps a per-use breakdown), so other loops can use it too: F-001's industry water could show "→ gray · tailings". The web panel (`ui/FlowPanel.tsx`) draws the second column; the Godot viewer gets it through `src/bridge/charts.ts`.
+- Room panels: the electrolyzer and scrubber show standby; a gas tank shows what it holds and its fill; the electrolyzer and O2 tanks carry the tank fill slider.
+- The Godot viewer reads HUD and panel text through the bridge (`src/view/hudItems.ts`, `roomPanel.ts`), so it follows; the electrolyzer's model needs adding there like any new room.
+
+### 8. Saves and the network
+
+- **Migration** (`sim/migration.ts`): an old hole gets its living volume, O2 set to the target and CO2 to the floor (its old pools meant nothing per m³). Life support keeps its id. A save version bump.
+- **New holes:** a founded hole starts with the volume its kit blasts out, filled from the seed kit's O2 (60 today, raised to fill a starter hole if needed, tuned in step 6). A small hole with a big kit lands above target: the vent event's first natural trigger.
+- **Trade:** O2 keeps its value in `culture.json`; hauling goes tank to tank (the rover takes from `o2Stored`, never the air).
 
 ## Steps
 
-Each is one PR and leaves the game working. Until step 8, rooms are still placed on today's slots, but everything underneath reads angles; `room.cells` stays as a slot-shaped field derived from the angles so code not yet moved keeps working, and goes in step 8.
+Each step is one PR and leaves the game working.
 
-1. **Notches and spans** (M). Area ↔ angle helpers and ring radii in `geometry.ts`; every ring room also gets `start`, `span`, `depth`; save migration fills them. No behaviour change.
-2. **Space as intervals** (L). Occupancy and excavation as spans per floor and ring (`sim/space.ts`), replacing `layout.grid` and `layout.open`; pieces; overlap, `roomAt` by angle, empty space and rock by intervals; excavation and lava tubes on spans.
-3. **Corridors on lines** (L). Corridors as runs; edges derived and cut at vertices, with notch ids; access, the gallery, bulkheads, doors, windows by wall; the corridor tool drags along circles and radial lines; save migration of corridors, bulkheads and windows.
-4. **Effects and paths over pieces** (L). Neighbour effects over pieces in metres, air and walking over the new edges, overlays per piece. The playthroughs should come out about the same; differences are explained in the PR.
-5. **The 3D view on angles** (L). Rooms, walls, corridors, picking, people and flows, and furniture fitting from spans.
-6. **The 2D views on angles** (M). The unrolled view at mid-radius length and the plan view; the bridge's plan comes with it.
-7. **The bridge and Godot on angles** (M). The snapshot and scene, `PlanView.cs`, `Live.cs` and `BuildMode.cs` reading the new location.
-8. **Placing by area** (L). The switch: rooms go at any angle with their target area; `build` carries the angle (breaking); slots and paired rings retired; dig yields and fill-room costs by area; the landing kit, bots and tests placed by angle; `room.cells` removed.
-9. **Snapping and its toggle** (M). In the web build mode: the snap order above, the tick marks, the toggle and key.
-10. **Drag handles and fill rooms** (L). Handles on a proposal, the leeway and fill ranges, Empty space as one fill room, plazas and the park as fill rooms, double-click to fill a gap. Web.
-11. **Snapping, handles and fill in Godot** (M). Its build mode catches up.
-12. **The furnishing tool by area** (M). Templates keyed by size and depth, previews at any ring and area, and a type's target area set from the tool.
+1. **Living volume and the mix.** `sim/air.ts`: living volume, O2 and CO2 %, the bands and health, breathing 1:1, the `air` config block; life support (as is) and the farms/parks feed the air, with life support's O2 stopping at the target; HUD, charts, migration, a new game starting at target. (L)
+2. **Two-step flows.** The ledger's `then` breakdown, the second column in the web flow panel and in Godot's charts. Nothing uses it yet but a test. (S)
+3. **The electrolyzer and the CO2 scrubber.** Life support renamed and its water dropped; the electrolyzer with `runsWhile` and its flows (new space, replacing breathed air); the domed shaft as volume, pressurized before it opens; furniture, layout, 2D art; parks take CO2; the tutorial and landing kit; Godot model. (M)
+4. **Gas tanks.** The room and its O2/CO2 choice (reusing T-005's "holds"), the ballast order, overflow, the electrolyzer's tank fill slider (and its "Into the O2 reserve" flow), drops and kits into tanks, the 0%-condition rule for every tank. (M, after T-005)
+5. **Too much oxygen.** The fire-risk warning and the vent event. (S)
+6. **Rebalance.** `unitsPerM3`, the electrolyzer's ratio, the seed kit, Earth's O2 gap, the bots: a steady colony uses almost no water for air, and digging shows up as electrolyzer water. A test that pins both. (M)
 
-Docs ride with each step: `CLAUDE.md` (core spatial model) and `DECISIONS.md` in step 8, `DESIGN.md` (space) and `ROOMS.md` (sizes as areas) in step 8, `GUIDE.md` (Building) in steps 8–10, `FURNITURE.md` in step 12, `PLAN-GODOT.md` in steps 7 and 11.
+## Order with other work
 
-## Answered (Bryon, Oct 6)
+- **F-001 / T-005 (water loop)** first, or at least before step 4: gas tanks reuse its tank "holds" choice and its 0%-condition rule covers water tanks; step 3's electrolyzer is one of the water loop's two leaks. Steps 1–3 don't depend on it.
+- **F-004 (rooms by area)** changes how rooms map to cells. Volume counts dug cells, not room footprints, so whichever lands second only needs `livingVolume` checked.
 
-1. **Leeway ±15%.** Yes.
-2. **Old rooms keep their angles and their old areas** (a ring-2 room stays 175 m²), so nothing moves. Yes.
-3. **Fill rooms:** Empty space (the three empty rooms as one), the tiny and small plazas, **and the park too**. A bigger one **only costs more**; its effects and reach don't grow.
-4. **Fill limits:** 50–300% of the area and at most 90° (at 300%, a small plaza would be 229° on ring 1, so the angle cap is what bites on the inner rings); double-click fills only with a fill room selected. Yes.
+## Open questions
+
+See the feature's Open questions (`docs/tickets/F-002-air-mix.md`).
 
 ## Notes as built
+
+(Filled in as the steps land.)

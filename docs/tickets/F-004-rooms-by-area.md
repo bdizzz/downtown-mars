@@ -2,7 +2,7 @@
 id: F-004
 title: Rooms sized by area and placed by angle, with snapping and fill rooms
 status: draft
-plan: docs/PLAN-M16.md
+plan: docs/PLAN-M17.md
 notes: [N-0008]
 created: 2026-10-04 19:12
 ---
@@ -19,7 +19,7 @@ Bryon's proposal (N-0008) and answers (Oct 4, first written up in T-010):
 
 This replaces the core spatial model: (floor, ring, slot), `slots(n)`, slot-wrapped rings, corridors on edges between slots, neighbor effects as a per-slot field, walking distance in 10 m steps, excavation per slot, S/M/L/H = 1/2/4/8 slots, layouts per size, saves, the 2D unrolled and plan views, the bridge and Godot. Adjacency across rings is already by angular overlap, which helps. Corridors stay on edges (DECISIONS.md: "Don't bring back 1-slot corridor rooms").
 
-**The plan: `docs/PLAN-M16.md`.** In short:
+**The plan: `docs/PLAN-M17.md`.** In short:
 - Angles are whole **notches**, 1,440 a turn, so edges meet exactly and rooms on different rings line up exactly. A ring room is `(floor, ring, depth, start, span)`; area = span × (r_out² − r_in²) / 2, so every S room is about 10 m wide at its middle on any ring.
 - Space is kept as **intervals** per floor and ring (which room holds each angle range; what's dug), and **pieces** (a room's part of a ring, empty space, rock cut to ~10 m) replace cells for effects and air.
 - **Corridors are runs on lines** (circles and radial lines at any notch); edges are derived by cutting runs at vertices and keep `edges.ts`'s API. Windows are stored by wall, not edge.
