@@ -4,9 +4,9 @@ title: Living volume and the O2/CO2 mix
 status: open
 size: L
 area: sim, ui
+feature: F-002
 touches: [src/sim/air.ts, src/sim/economy.ts, data/config.json, src/sim/save.ts, src/view/hudItems.ts, src/ui/TrendsPanel.tsx, tests/]
 blocked_by: []
-feature: F-002
 notes: [N-0005]
 created: 2026-10-06 00:08
 ---
@@ -24,3 +24,4 @@ PLAN-M16.md Notes as built; DECISIONS.md (air as a mix); GUIDE.md: Air.
 
 ## History
 - 2026-10-06 00:08 opened from F-002 (agreed)
+- 2026-10-06 09:47 building on t-026-air-volume-and-mix
