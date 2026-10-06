@@ -32,3 +32,4 @@ Start with the tag change (corridor- and rock-facing walls are never "see-across
 ## History
 - 2026-10-04 16:12 opened from N-0002
 - 2026-10-04 16:14 questions answered
+- 2026-10-06 09:48 building on t-002-walls-down-ignore-corridors
