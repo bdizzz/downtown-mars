@@ -553,3 +553,7 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .trend-row .delta { text-align: right; color: var(--muted); font-size: 11px; }
 .finish .chip.windows { background: linear-gradient(90deg, #9fd2ff 0 45%, #3b3f45 45% 55%, #9fd2ff 55%); border-color: #5a7a96; }
 .finish .chip.bulkhead { background: repeating-linear-gradient(135deg, #e0a03a 0 3px, #3b3f45 3px 6px); border-color: #3b3f45; }
+.welcome { width: min(480px, 100%); gap: 10px; }
+.welcome h2 { font-size: 22px; color: var(--accent); }
+.welcome p { margin: 0; line-height: 1.5; }
+.welcome button.primary { margin-top: 6px; font-size: 15px; }

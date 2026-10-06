@@ -26,6 +26,7 @@ import { TrendsPanel } from "./TrendsPanel";
 import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
 import { StatusBar } from "./StatusBar";
 import { currentGoal, Tutorial } from "./Tutorial";
+import { Welcome } from "./Welcome";
 import { setTutorialHidden, tutorialHidden, type UiFlags } from "./tutorialGoals";
 import { play, setAudioSettings, unlockAudio } from "../audio/sound";
 import { useSettings } from "./settings";
@@ -109,6 +110,8 @@ export function App() {
   // "title" until the player starts or continues a game; then the pause menu opens over play.
   const [menu, setMenu] = useState<"title" | "pause" | null>("title");
   const [menuError, setMenuError] = useState<string | null>(null);
+  /** The card a new game opens with (ui/Welcome.tsx); the game waits behind it. */
+  const [welcome, setWelcome] = useState(false);
   const resumeSpeed = useRef(1);
   const [tutorialOn, setTutorialOn] = useState(() => !tutorialHidden());
   const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false, sawThreeD: false });
@@ -198,10 +201,10 @@ export function App() {
     });
   }, []);
 
-  // The sim stays paused behind any menu.
+  // The sim stays paused behind any menu, and the welcome card.
   useEffect(() => {
-    if (menu) setSpeed(0);
-  }, [menu, setSpeed]);
+    if (menu || welcome) setSpeed(0);
+  }, [menu, welcome, setSpeed]);
 
   const openMenu = useCallback(() => {
     resumeSpeed.current = speed || resumeSpeed.current;
@@ -209,14 +212,14 @@ export function App() {
     setMenu("pause");
   }, [speed]);
 
-  const startPlaying = useCallback(() => {
+  const startPlaying = useCallback((paused = false) => {
     setMenu(null);
     setModeState((m) => (m === "build" || m === "map" ? null : m));
     setTool(null);
     setSelected(null);
     setPanel(null);
     setHover(null);
-    setSpeed(resumeSpeed.current);
+    if (!paused) setSpeed(resumeSpeed.current);
   }, [setSpeed]);
 
   const saveTo = useCallback(
@@ -229,11 +232,12 @@ export function App() {
   );
 
   const menuActions = {
-    onResume: startPlaying,
+    onResume: () => startPlaying(),
     onNewGame: async () => {
       await newGame();
       resumeSpeed.current = 1;
-      startPlaying();
+      setWelcome(true);
+      startPlaying(true);
     },
     onSave: async (slot: Slot) => {
       if (await saveTo(slot)) {
@@ -328,7 +332,7 @@ export function App() {
         setHelpOpen(false);
         return;
       }
-      if (menu || helpOpen) return;
+      if (menu || helpOpen || welcome) return;
       if (e.code === "Escape") {
         // Esc backs out of whatever is open, one step at a time; with nothing open, it opens the menu.
         if (mapOpen) setMode(null);
@@ -382,7 +386,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, helpOpen, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking]);
+  }, [menu, helpOpen, welcome, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking]);
 
   return (
     <div
@@ -444,7 +448,7 @@ export function App() {
               {mode === "charts" && <ChartsStrip s={snapshot} chart={chart} toggle={togglePanel} highlight={highlight} />}
             </Dock>
           )}
-          {snapshot && tutorialOn && !menu && (
+          {snapshot && tutorialOn && !menu && !welcome && (
             <Tutorial
               s={snapshot}
               flags={flags}
@@ -563,6 +567,14 @@ export function App() {
           settings={settings}
           updateSettings={updateSettings}
           onHelp={() => setHelpOpen(true)}
+        />
+      )}
+      {welcome && (
+        <Welcome
+          onClose={() => {
+            setWelcome(false);
+            setSpeed(resumeSpeed.current);
+          }}
         />
       )}
       {helpOpen && <Help onClose={() => setHelpOpen(false)} />}

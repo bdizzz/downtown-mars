@@ -1,5 +1,16 @@
 {
-  "_note": "The first-30-minutes tutorial. Each goal's check is in src/ui/tutorial.ts, keyed by id. {name} is the deputy.",
+  "_note": "The first-30-minutes tutorial. Each goal's check is in src/ui/tutorial.ts, keyed by id. {name} is the deputy. welcome is the card every new game opens with (src/view/welcome.ts); **bold** marks emphasis, {colonists} is the landing party's size.",
+  "welcome": {
+    "title": "Welcome to Mars, Administrator.",
+    "paragraphs": [
+      "Earth sent you here to build something that lasts: a home where people can live for generations.",
+      "There's a catch. Mars has almost no air and no magnetic field, so the Sun's radiation hits the surface unchecked. Stay up there too long, even in a suit or rover, and it catches up with you.",
+      "So we go down.",
+      "You have **{colonists} colonists**, enough supplies to get started, and **one very large drill**. As it bores into the ground, you'll carve homes, farms and workshops into the walls of the hole.",
+      "It's the only way to live here for good. Let's dig in."
+    ],
+    "button": "Let's dig in"
+  },
   "intro": "I'm {name}, your deputy. Twenty of us, one pod, and a hole that goes nowhere yet. Let's make it a home.",
   "goals": [
     {
