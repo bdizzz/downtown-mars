@@ -1,1 +1,0 @@
-import{r as e}from"./pixi-Bd6jcku3.js";export{e as CanvasRenderer};
