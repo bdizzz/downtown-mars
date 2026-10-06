@@ -83,6 +83,8 @@ export interface SimConfig {
     ledgerDays: number;
     /** Slots a room of each size nominally covers; deep rooms covering more scale up. */
     nominalSlots: Record<string, number>;
+    /** What becomes of clean water once used, unless a room says otherwise (rooms.json returnsWater): its share as each kind of wastewater. */
+    waterReturns: Record<string, number>;
   };
   weather: {
     /**

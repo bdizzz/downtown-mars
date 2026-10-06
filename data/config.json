@@ -63,7 +63,8 @@
     "undoWindowTicks": 60,
     "rateSmoothingDays": 0.25,
     "ledgerDays": 4,
-    "nominalSlots": { "S": 1, "M": 2, "L": 4, "H": 8 }
+    "nominalSlots": { "S": 1, "M": 2, "L": 4, "H": 8 },
+    "waterReturns": { "grayWater": 1 }
   },
   "weather": {
     "dustStorm": {

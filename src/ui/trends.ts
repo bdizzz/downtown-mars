@@ -148,7 +148,7 @@ export const SERIES: SeriesMeta[] = [
   { ...res("co2", "Air", "#b0a090", false), refs: [{ at: 100, label: "harms health" }] },
   res("water", "Water", cat("water"), false),
   res("grayWater", "Water", "#8aa0a8"),
-  res("blackWater", "Water", "#7a6a5e"),
+  res("tailings", "Water", "#7a6a5e"),
   res("meals", "Food", cat("food"), false),
   res("rawFood", "Food", "#b8c060"),
   res("rations", "Food", "#d9a870"),

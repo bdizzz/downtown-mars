@@ -26,7 +26,7 @@ function nursery(): SimState {
 /** Keep everyone comfortable so only the rule under test matters. */
 function run(s: SimState, ticks: number) {
   for (let i = 0; i < ticks; i++) {
-    Object.assign(s.resources, { o2: 200, water: 200, meals: 60, power: 50 });
+    Object.assign(s.resources, { o2: 200, water: 200, grayWater: 0, meals: 60, power: 50 });
     s.happiness.average = Math.max(s.happiness.average, 70);
     step(s, config);
     s.happiness.average = Math.max(s.happiness.average, 70);

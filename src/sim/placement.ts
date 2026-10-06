@@ -35,6 +35,8 @@ export interface RoomInstance {
   priority: Priority;
   /** Farms only. */
   crop?: string;
+  /** What a tank holds, of its kind's choices (rooms.json holds); absent means the first. */
+  holds?: string;
   /** Committed but still in the construction queue: holds its slots, doesn't run. */
   building?: boolean;
   /** Stairs or an elevator reaching further: cells held for floors still being built. */

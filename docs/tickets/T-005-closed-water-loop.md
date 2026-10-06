@@ -1,7 +1,7 @@
 ---
 id: T-005
 title: Water as a closed loop: clean → gray → treatment, with tailings as the leak
-status: open
+status: done
 size: L
 area: sim, data
 feature: F-001
@@ -49,3 +49,5 @@ Data: rename `blackWater` to `tailings`; give each water-using room a gray (and 
 - 2026-10-04 18:56 tailings list and life support answered; air loop split out as T-011
 - 2026-10-04 19:05 questions answered
 - 2026-10-04 19:13 part of F-001 (T-012)
+- 2026-10-06 09:47 building on t-005-closed-water-loop
+- 2026-10-06 10:07 built

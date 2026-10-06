@@ -27,7 +27,9 @@ describe("ninety minutes of people", () => {
     const born = net.log.at(-1)!.born;
     // Windows are paid for since milestone 13, this seed's run gets fewer
     // (over four seeds the totals are much as before, 11–28 born). Was 15.
-    expect(born).toBeGreaterThanOrEqual(10);
+    // The closed water loop (T-005): recyclers early, and this seed's home hole sits at 49 happiness
+    // and full beds; over six seeds 6–15 born (10–15 before). Was 10.
+    expect(born).toBeGreaterThanOrEqual(5);
     const children = net.world.holes.reduce((n, h) => n + h.population.cohorts.filter((c) => c.stage === "child").reduce((k, c) => k + c.count, 0), 0);
     expect(children).toBeLessThan(born); // the earliest have grown up
   });
@@ -45,7 +47,9 @@ describe("ninety minutes of people", () => {
     // Gallery tubes on every new floor (milestone 11) cost rock and crew time: a little slower than before (was 160).
     // Windows paid for (milestone 13): this seed's run slows again; other seeds reach 139–147 (was 150).
     // Drill finds (milestone 14): the bot taps every one it's offered, and over six seeds day 80 lands at 115–159 (was 130).
-    expect(at(80).total).toBeGreaterThan(110);
+    // The closed water loop (T-005): over six seeds day 80 lands at 104–142 (115–146 before), and day 90 ends higher
+    // on average (148 against 137), with almost no water from Earth. Was 110.
+    expect(at(80).total).toBeGreaterThan(100);
   });
 
   it("keeps the child hole healthy", () => {

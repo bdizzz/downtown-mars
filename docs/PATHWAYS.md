@@ -18,16 +18,16 @@ Each pathway follows one resource family from its source to the rooms that use i
 
 ## Water
 
-**Flow:** water ice / aquifers → deep well pump (or imports) → clean water (stored in tanks) → colonists (drink 2 a day), farms, kitchens, life support (splits water into O2), industry (bricks, chips, fuel) → used water (gray and black) → water recycler (gray back to clean) → clean water. Most water circles back through the recycler.
+**Flow:** a closed loop (F-001). Clean water (one shared pool, like power) → colonists (2 a day), farms, galleys and kitchens, clinics, gyms, parks, industry → **gray water**, one for one, as it's used → water recycler (about 97% back to clean, the rest as sludge soil) → clean water. Two leaks: **life support** splits water into oxygen for good, and some **industry** sends part of its water to **tailings**. Wells bring in gray water (brine); drops and trade top up the rest.
 
-- **Made by:** deep well pump (aquifer sites), water recycler (from gray water), imports.
-- **Processed by:** water recycler, life support (splits it into oxygen), composter (black water to soil).
-- **Used by:** colonists (2 a day), farms, kitchens, life support, clinics, hospitals, bars, hotels, gyms and parks, brickworks, concrete plant, chemical plant, mycelium vat, silicon refinery, geothermal plant and reactor.
-- **Restrooms** don't consume water; they turn users' water into gray (75%) and black (25%) water.
-- **Storage:** each tank holds only one type of water (clean, gray or black).
-- **Lost to:** leaks, tracked in the water ledger.
+- **Made by:** water recycler (from gray water); deep well pump (gray water, at aquifer or ice sites); digging through ice; imports.
+- **Processed by:** water recycler (gray to clean, plus soil), life support (splits clean water into oxygen).
+- **Used by:** colonists (2 a day), farms, kitchens, life support, clinics, hospitals, bars, hotels, gyms and parks, brickworks, concrete plant, chemical plant, mycelium vat, silicon refinery, electronics fab, geothermal plant and reactor.
+- **Tailings:** the silicon refinery, concrete plant and electronics fab send half their water to tailings, the brickworks a quarter. They can only be stored for now; with nowhere to keep them they're lost (the tailings reclaimer, T-007, turns them back into gray).
+- **Storage:** each tank holds one kind (clean, gray or tailings), chosen by the player. When gray water has nowhere to go, the rooms that use water stall.
+- **Lost to:** life support, tailings, the recycler's few percent, and overflow, all in the water ledger.
 
-**As built:** the whole loop works: deep well pump (aquifer or ice sites), water tanks, water recycler, restrooms (75% gray, 25% black), composter (black water), life support, farms, galley, clinic, silicon refinery and concrete plant. Cleaning services also use clean water and return it as gray. Clean, gray and black water are pools per hole rather than typed tanks. No leaks yet.
+**As built (T-005):** the loop above, with a room's split in `rooms.json` (`returnsWater`, default `economy.waterReturns` in `config.json`: all gray). The recycler runs before water users each tick, so they drain into the room it frees. The pod holds 250 gray water to ride out the first days. The Flows panel shows each user's clean water out and gray water back, and says how much gray water is overflowing. Restrooms still give sanitation but no longer handle water (T-006 makes them an amenity).
 
 ## Air
 
@@ -109,10 +109,10 @@ Each pathway follows one resource family from its source to the rooms that use i
 
 ## Waste
 
-**Flow:** kitchens → organic waste → mycelium vat (composite for furniture) and composter (soil back to farms); restrooms → black water → composter; restrooms → gray water → water recycler (clean water back to tanks); homes and factories → solid waste → recycling center (metal and brick back to building). Almost every kind of waste becomes a resource again.
+**Flow:** kitchens → organic waste → mycelium vat (composite for furniture) and composter (soil back to farms); everything that uses water → gray water → water recycler (clean water back to tanks, sludge to soil); homes and factories → solid waste → recycling center (metal and brick back to building). Almost every kind of waste becomes a resource again.
 
-- **Made by:** colonists, kitchens, restrooms, factories.
+- **Made by:** colonists, kitchens, water users (gray water), factories (tailings).
 - **Processed by:** mycelium vat, composter, water recycler, recycling center.
 - **Stored in:** waste storage when processing falls behind; smell grows as it fills.
 
-**As built:** the galley's organic waste and restrooms' black water go to the composter, which makes soil for farms; gray water goes to the recycler. Solid waste (colonists, the recycler) goes to the recycling center, from 100 colonists; waste storage rooms hold more of it (and of organic waste) until it's used.
+**As built:** the galley's organic waste goes to the composter, which makes soil for farms; gray water goes to the recycler, whose sludge is soil too. Tailings are only stored (T-005). Solid waste (colonists, the recycler) goes to the recycling center, from 100 colonists; waste storage rooms hold more of it (and of organic waste) until it's used.
