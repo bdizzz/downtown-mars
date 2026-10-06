@@ -6,7 +6,10 @@ description: Show the Downtown Mars playtest board (features, ready, needs answe
 # /board
 
 1. `node scripts/board.mjs menu`. It reads the tickets and features in `docs/tickets/` and GitHub (`t-0NN-…` and `f-0NN-…` branches and their PRs), prints the short view and rewrites the full `BOARD.md` in the local tracker. Features come first, each with its tasks' states on the line below; tasks also appear in the ticket columns, tagged with their feature.
-2. Show the output as it is (in a code block so the columns line up). Mention the BOARD.md path once in case he wants the full view.
+2. Show it as **markdown tables**, not a code block, rebuilt from the output (keep every row and its wording; don't summarize):
+   - **Features**: Feature · State · Title · Tasks (the line under each feature: its tasks' states, branch or PR).
+   - Then one table per group in the output's order (Ready, Needs answers, Blocked, In flight, In review), each under a short bold heading with its count: Ticket · Size · Title · Age · Notes (feature, what it waits on, PR or branch; blank if none). Leave out empty groups.
+   - The "N done" line and the BOARD.md path as one line after the tables, so he can open the full view.
 3. Point out only what needs him:
    - notes waiting in the inbox ("run /ingest")
    - tickets or features under "Needs answers": offer to go through their questions now
