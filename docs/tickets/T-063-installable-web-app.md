@@ -29,3 +29,4 @@ GUIDE.md and README: playing on a phone, how to add it to the home screen.
 ## History
 - 2026-10-06 01:58 opened from N-0030
 - 2026-10-06 02:01 questions answered
+- 2026-10-06 02:12 building on t-063-installable-web-app
