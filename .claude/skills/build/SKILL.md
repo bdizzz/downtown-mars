@@ -74,6 +74,8 @@ Work as CLAUDE.md says: brain and face, data in JSON, deterministic sim. Read on
   gh pr create --base <base> --title "<type>(<scope>): <summary> (T-0NN)" --body "$(cat <<'EOF'
   <one to three lines: what changed and why>
 
+  **Preview:** [play this PR's build](https://bdizzz.github.io/downtown-mars/pr-preview/pr-PRNUM/) (works until the PR merges)
+
   Tested: <npm test, what was checked in the browser>
   Ticket: docs/tickets/T-0NN-<slug>.md
 
@@ -81,6 +83,7 @@ Work as CLAUDE.md says: brain and face, data in JSON, deterministic sim. Read on
   EOF
   )"
   ```
+- The PR's number only exists once it's open, so fill it into the preview link straight after: read the body (`gh pr view <N> --json body --jq .body`), swap `PRNUM` for the number, and `gh pr edit <N> --body-file <file>`. Keep the description current if review changes what the PR does.
 - Bind the PR with the ccd_pr tools (`get_status`, then `bind_pr` if needed), and finish with the PR link (for a feature-branch task, say it merges into that branch, not main), its preview (`https://bdizzz.github.io/downtown-mars/pr-preview/pr-<N>/`, live a few minutes after the push), anything Bryon should look at when reviewing, and that `/land T-0NN` merges it and cleans up once he's happy.
 
 If Bryon closes the PR without merging, the ticket goes back to ready on its own (it's still `open` on main), but the remote branch must go too, or it will keep showing as in flight: `/land T-0NN` with his OK to drop it.
