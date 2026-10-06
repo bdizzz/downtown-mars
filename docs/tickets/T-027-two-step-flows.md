@@ -4,9 +4,9 @@ title: Two-step flows: show where a use went next
 status: open
 size: S
 area: ui, godot
+feature: F-002
 touches: [src/sim/economy.ts, src/ui/FlowPanel.tsx, src/view/flows.ts, godot/src/]
 blocked_by: []
-feature: F-002
 notes: [N-0005]
 created: 2026-10-06 00:08
 ---
@@ -24,3 +24,4 @@ PLAN-M16.md Notes as built.
 
 ## History
 - 2026-10-06 00:08 opened from F-002 (agreed)
+- 2026-10-06 09:47 building on t-027-two-step-flows
