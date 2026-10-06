@@ -1,7 +1,7 @@
 ---
 id: F-006
 title: More sound effects, and procedurally generated cozy Mars music
-status: draft
+status: agreed
 plan:
 notes: [N-0032]
 created: 2026-10-06 02:12
@@ -21,12 +21,12 @@ created: 2026-10-06 02:12
 
 ## Breakdown
 Proposed; becomes tickets once this feature is agreed.
-- Audio buses and settings: master, music, effects and ambience volumes (sliders, not just on/off); one place mapping game happenings to sounds.
-- The sound-effects pass: a catalogue of events → effects in data, the new effects synthesized, wired to the snapshot and UI.
-- Positional ambience in the 3D view: rooms that hum, whir or chatter, by distance and floor.
-- The music engine: a generative cozy track (key, chords, pads, melody), seeded, with gentle crossfades.
-- Music that follows the game: time of day, celebrations, tension, storms, pause, and the room make-up of the floor in view (industrial → rhythmic and repetitive, farming → folksy), blended slowly.
-- Sound and music in Godot.
+- Audio buses and settings: master, music, effects and ambience volumes (sliders, not just on/off); one place mapping game happenings to sounds. → T-066
+- The sound-effects pass: a catalogue of events → effects in data, the new effects synthesized, wired to the snapshot and UI. → T-067
+- Positional ambience in the 3D view: rooms that hum, whir or chatter, by distance and floor. → T-068
+- The music engine: a generative cozy track (key, chords, pads, melody), seeded, with gentle crossfades. → T-069
+- Music that follows the game: time of day, celebrations, tension, storms, pause, and the room make-up of the floor in view (industrial → rhythmic and repetitive, farming → folksy), blended slowly. → T-070
+- Sound and music in Godot. → T-071
 
 ## Open questions
 - [x] Fully synthesized (proposed), or are sample-based sounds and instruments okay (a small CC0 set, more realistic, more files)?
@@ -38,3 +38,4 @@ Proposed; becomes tickets once this feature is agreed.
 - 2026-10-06 02:12 opened from N-0032
 - 2026-10-06 02:16 music mood follows the floor's room make-up (Bryon)
 - 2026-10-06 02:18 questions answered
+- 2026-10-06 02:19 agreed
