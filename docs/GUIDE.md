@@ -98,6 +98,7 @@ What people use counts by how far they'd walk. A step is about a room across, al
 ## Materials, waste and storage
 
 - At 50 colonists a **brickworks** makes brick from rock, so you're not waiting on Earth. At 100, a **recycling center** turns solid waste into metal and brick.
+- **Fiber:** set a farm's crop to **fiber hemp** and it grows fiber (6 a day) instead of food. Give it room in storage; it's shown in the resource bar once you have some.
 - **Waste storage** holds more solid and organic waste until something uses it.
 - **Storage:** dry goods (food and materials) only keep what storage has room for. Build storerooms, warehouses or depots and choose what each holds in its details panel; the landing pod has some to start. A good shown in amber has no room left, and what arrives is lost.
 

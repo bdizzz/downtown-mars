@@ -100,4 +100,4 @@ Each step leaves the game working when merged on its own; 5 can go any time befo
 
 ## Notes as built
 
-(None yet.)
+- **Fibre (step 5, T-036).** Fiber hemp is a crop in `data/crops.json` with `"makes": "fiber"`; `roomSpec` swaps the farm's raw food for whatever its crop makes, so any future non-food crop is data only. `fiber` is a material in `data/resources.json`, so storage takes it with no change. It shows in the resource bar once there's some, and in Trends under Materials. The farm keeps its O2 and CO2 exchange. Hemp has its own planter and rack (tall stalks with fanned leaves) in `scripts/furniture.mjs`.

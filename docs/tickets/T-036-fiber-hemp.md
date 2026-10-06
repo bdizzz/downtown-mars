@@ -1,7 +1,7 @@
 ---
 id: T-036
 title: Fiber hemp crop and the fiber material
-status: open
+status: done
 size: S
 area: data, rooms
 feature: F-003
@@ -25,3 +25,4 @@ ROOMS.md (crops), PATHWAYS.md (materials), GUIDE.md: Farms, PLAN-M15.md Notes as
 ## History
 - 2026-10-06 00:10 opened from F-003 (agreed)
 - 2026-10-06 09:47 building on t-036-fiber-hemp
+- 2026-10-06 09:55 built
