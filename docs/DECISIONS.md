@@ -166,6 +166,14 @@ See `PLAN-M14.md` (Bryon: drill discoveries, then the belt ship, then celebratio
 - **First person on touch:** a translucent joystick bottom left (analog: push further to walk faster, all the way to run), stair buttons beside it, drag elsewhere to look (Bryon asked for arrows or a stick, Oct 6; the stick won).
 - **Narrow screens (under 760 px)** get panels as bottom sheets and a one-line, sideways-scrolling resource bar; wider tablets keep the desktop layout.
 
+## Decided for the air mix (Oct 6, F-002 / T-026)
+
+See `PLAN-M16.md`.
+
+- **The air is a mix over the living volume** (dug cells, built corridors and tubes): O2 and CO2 stay amounts, read as % of `volume × air.unitsPerM3`; no caps, no nitrogen, no pressure. Digging dilutes it; that's growth's water cost. "Air quality" stays the separate local effect.
+- **Step 1 balance (Bryon: "fast top-up, softer bands"):** the planned density makes a dug cell 168 O2, so the maker must be fast: life support tops up at 300 O2 a day until the electrolyzer replaces it, spending water only on what it makes; health bands low below 18%, very low below 15%. T-031 rebalances the loop as a whole.
+- **Holes start with their air made**, new and founded; old saves' air starts over at the target (save v19).
+
 ## Still open
 
 Deliberately not decided yet:

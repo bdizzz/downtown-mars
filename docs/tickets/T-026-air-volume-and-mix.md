@@ -1,7 +1,7 @@
 ---
 id: T-026
 title: Living volume and the O2/CO2 mix
-status: open
+status: done
 size: L
 area: sim, ui
 feature: F-002
@@ -25,3 +25,4 @@ PLAN-M16.md Notes as built; DECISIONS.md (air as a mix); GUIDE.md: Air.
 ## History
 - 2026-10-06 00:08 opened from F-002 (agreed)
 - 2026-10-06 09:47 building on t-026-air-volume-and-mix
+- 2026-10-06 19:41 built
