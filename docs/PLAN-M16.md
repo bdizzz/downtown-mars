@@ -2,7 +2,7 @@
 
 Goal: the same room is the same size on every ring. Each room type has a **target area**; placing it on a ring turns that area and the ring's depth into an **angle**. Rings lose their fixed slots. Placing gets **snapping** (to neighbours on the ring, and to room ends on other rings), **drag handles** on a proposed room's side walls, and **fill rooms** (empty space, plazas) that stretch to close awkward gaps.
 
-Asked for by Bryon, Oct 4, 2026 (note N-0008, then T-010, now feature F-004): "a drawback of the current system is that the furniture layout of the same room on ring 1 vs ring 2 is very different". His answers: S/M/L/H become 100, 200, 400 and 800 m²; drag handles plus double-clicking a gap; old saves convert their slots to angles; a plan first, before any code. Everything else below is Claude's default, flagged so it's easy to change; every number goes in data.
+Asked for by Bryon, Oct 4, 2026 (note N-0008, then T-010, now feature F-004): "a drawback of the current system is that the furniture layout of the same room on ring 1 vs ring 2 is very different". His answers: S/M/L/H become 100, 200, 400 and 800 m²; drag handles plus double-clicking a gap; old saves convert their slots to angles; a plan first, before any code. Everything else below is Claude's default; Bryon confirmed the leeway, old rooms, fill rooms and fill limits on Oct 6 ("Answered", at the end). Every number goes in data.
 
 ## Why
 
@@ -19,14 +19,14 @@ A slot is an equal share of a ring, so its area depends on the ring. With today'
 
 So a galley on ring 2 has 75% more floor than one on ring 1, and its furniture sits differently. By area, every S room is about **10 m wide at its middle** on every ring (area ÷ depth = the arc length at mid-radius); only the taper changes (on ring 1 the inner wall is 6.7 m and the outer 13.3 m; on ring 3, 8.6 and 11.4). Think of rings as bands of a dartboard: instead of cutting each band into a fixed number of pieces, you cut pieces of the same weight, so outer bands just get more of them (about 9, 16, 22, 28, 34 and 41 S rooms round rings 1–6).
 
-## Defaults (to confirm or change)
+## Design
 
 ### The model
 
 - **Angles are whole notches:** 1,440 a turn (a quarter of a degree; 31 cm at ring 6's outer wall). Integers, so the same point always has the same value, edges meet exactly, rooms on different rings line up exactly, and nothing drifts with float error. 1,440 divides by 9, 16, 18 and 36, so today's slot boundaries convert exactly (22-slot rings, in older saves, round to the nearest notch, the same way on both sides of a boundary, so nothing opens a gap).
 - **A ring room's location** becomes `{ kind: "ring", floor, ring, depth, start, span }`: the innermost ring, how many rings deep (1 or 2), and its start angle and span in notches, wrapping at 1,440. A deep room takes the same angles on every ring it covers (a clean wedge, as the inner ring's angle range already is today). Surface rooms keep their 12 surface slots; they're not part of this.
 - **Area ↔ angle:** area = span (radians) × (r_out² − r_in²) / 2 over the rings it covers. A room's **target area** is its size's area (`config.sizes`: S 100, M 200, L 400, H 800 m²), or its own `area` in `rooms.json` when a type wants something else (set from the furnishing tool). Its **shape** is the depth: S and M are 1 ring deep; L is 1 or 2 deep (today's 4×1 and 2×2); H 1 or 2 (`config.shapes` becomes depths per size).
-- **What a room does doesn't depend on its exact area.** Within its leeway (below) a galley seats 25 whether it's 88 or 115 m²; the leeway is looks and fit, not a balance lever. Fill rooms are the exception for cost (below).
+- **What a room does doesn't depend on its exact area.** Within its leeway (below) a galley seats 25 whether it's 88 or 115 m²; the leeway is looks and fit, not a balance lever. Fill rooms are the exception for cost (below): a bigger plaza or park costs more but does no more.
 - **Space is kept as intervals, not a grid.** Per floor and ring: which room holds each angle range (`occupancy`, sorted spans), and which ranges are excavated (`open`, merged spans). A room overlaps another if their spans overlap on any floor and ring they share. Rock is whatever isn't open.
 - **Pieces replace cells** as the thing other systems walk over: on each floor and ring, the angle is cut wherever something starts or ends (a room, empty space, rock). A piece is `{ floor, ring, a0, a1 }`: a room's part on that ring, a stretch of empty space (open, no room), or rock. Rock and empty space are cut further into pieces no wider than about 10 m, so neighbour effects and air still spread through them in small steps rather than jumping a whole quarter-ring at once.
 
@@ -48,7 +48,7 @@ So a galley on ring 2 has 75% more floor than one on ring 1, and its furniture s
 - **Leeway:** a room may end up **±15%** of its target area to make a snap or a handle drag (`placement.leeway` 0.15). On ring 1 that's an S of 130–176 notches.
 - **Snapping, on by default:** within the leeway, a proposed room's ends snap to, in order: both ends at once to exactly fill a gap between two neighbours on its ring; one end against a neighbour on its ring (no sliver left); one end in line with a room end, a radial corridor, or another room's end on the ring inside or outside, so corridors can run straight across rings. A small tick marks what it snapped to. **A toggle** in the build strip, and a key, turn snapping off and on without leaving placement; with it off, the room sits at the cursor at exactly its target area. Stairs and elevators always snap onto a stack below or above them (they must line up exactly to join).
 - **Drag handles** on a proposed room's two side walls: drag one to stretch or shrink that side, snapping while you drag, the room red past its range. Normal rooms move within the leeway; **fill rooms** much further. Placing leaves the handles on the proposal until it's committed (click again, or Enter); Escape drops it. A room left invalid is never built.
-- **Fill rooms** (`fill: true` in `rooms.json`): the empty rooms and the tiny and small plazas. They range from **50% to 300%** of their target area, and never more than **90°** (`placement.fill`), so a plaza on ring 1 can't wrap half the hole. **The three empty rooms become one, "Empty space"**, with S's 100 m² as its target, since its size no longer means much. A fill room's **cost and dig time scale with its area**; its effects don't.
+- **Fill rooms** (`fill: true` in `rooms.json`): the empty rooms, the tiny and small plazas, and the park. They range from **50% to 300%** of their target area, and never more than **90°** (`placement.fill`), so a plaza on ring 1 can't wrap half the hole. **The three empty rooms become one, "Empty space"**, with S's 100 m² as its target, since its size no longer means much. A fill room's **cost and dig time scale with its area**; its effects don't.
 - **Double-clicking a gap** with a fill room selected fills it, wall to wall: the gap between two rooms (or a room and the edge of the dug-out rock) on that ring, if it's within the fill room's range. Otherwise the hover says why ("Too wide: up to 300 m²").
 - **Nothing is slot-shaped any more:** `ringSlots`, `slotsInRing`, `pairedRings` and `nestedPairs` go; `geometry.slotWidthM` is only used to size the 10 m step.
 
@@ -96,11 +96,11 @@ Each is one PR and leaves the game working. Until step 8, rooms are still placed
 
 Docs ride with each step: `CLAUDE.md` (core spatial model) and `DECISIONS.md` in step 8, `DESIGN.md` (space) and `ROOMS.md` (sizes as areas) in step 8, `GUIDE.md` (Building) in steps 8–10, `FURNITURE.md` in step 12, `PLAN-GODOT.md` in steps 7 and 11.
 
-## Open questions (Bryon)
+## Answered (Bryon, Oct 6)
 
-1. **Leeway ±15%?** You said 10–15%; the plan takes the top so snaps find more to grab.
-2. **Old rooms keep their angles and their old areas** (a ring-2 room stays 175 m²), so nothing moves? The alternative, shrinking them to their target areas, leaves gaps and breaks corridors.
-3. **Fill rooms:** Empty space (the three empty rooms as one) and the tiny and small plazas, from 50% to 300% of their area, costing by area. Should the park be one too? And should a bigger plaza do more (reach further, or more comfort), or only cost more?
-4. **Fill limits:** 50–300% of the area and at most 90°? (Your earlier idea was 60°. At 300%, a tiny plaza is 115° on ring 1 and 49° on ring 3, a small plaza 229° and 98°, so the angle cap is what bites on the inner rings.) And double-click fills only with a fill room selected?
+1. **Leeway ±15%.** Yes.
+2. **Old rooms keep their angles and their old areas** (a ring-2 room stays 175 m²), so nothing moves. Yes.
+3. **Fill rooms:** Empty space (the three empty rooms as one), the tiny and small plazas, **and the park too**. A bigger one **only costs more**; its effects and reach don't grow.
+4. **Fill limits:** 50–300% of the area and at most 90° (at 300%, a small plaza would be 229° on ring 1, so the angle cap is what bites on the inner rings); double-click fills only with a fill room selected. Yes.
 
 ## Notes as built
