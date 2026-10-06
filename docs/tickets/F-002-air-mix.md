@@ -25,15 +25,17 @@ Planned in `docs/PLAN-M16.md` (Claude's defaults, every number in data):
 - **O2 and CO2 stay resources** (amounts), shown as % of `volume × air.unitsPerM3` (2). New games start at 21%. CO2 bands: harmful above 1%, fast above 3%; scrubbers leave 0.2% for farms.
 - **Life support becomes the CO2 scrubber**, keeping its id `life_support` (no migration, no churn in ~25 files) and losing its water. The **electrolyzer** (M, water 10 + power 6 → O2 40) runs below the target after the O2 tanks release, then fills the O2 tanks up to a hole-wide tank fill slider (default off). Parks change to CO2 1 → O2 1 so nothing makes O2 from nothing.
 - **Gas tanks** (S, 200): tanks release before rooms run and store after, so they save electrolyzer water; drops and seed kits land in tanks first. Nothing burns yet; rooms can opt in with `uses.o2`/`makes.co2`.
+- **Flows in two steps**: water → split into oxygen → air for new space · replacing breathed air · into the O2 reserve (Bryon, Oct 6).
 - **Vent event** after half a day above 23.5% with full tanks: vent to 21% (lost for good) or hold.
 
 ## Breakdown
-Proposed; becomes tickets once this feature is agreed. Steps 1, 2 and 4 don't need F-001; step 3 builds on T-005's tank "holds" choice.
+Proposed; becomes tickets once this feature is agreed. Steps 1–3 and 5 don't need F-001; step 4 builds on T-005's tank "holds" choice.
 1. Living volume and the mix: `sim/air.ts`, O2/CO2 % with health bands, breathing 1:1, HUD "Air 21% O2" and charts, save migration, new games at target (L)
-2. The electrolyzer and the CO2 scrubber: life support renamed and dry, the new room with furniture, layout and 2D art, parks take CO2, tutorial and landing kit (M)
-3. Gas tanks: O2/CO2 choice, ballast both ways and overflow, the electrolyzer's tank fill slider, drops and kits into tanks, the 0%-condition rule for every tank (M, after T-005)
-4. Too much oxygen: the fire-risk warning and the "vent excess air" event (S)
-5. Rebalance: air per m³, the electrolyzer's ratio, the seed kit, Earth's O2 gap and the bots, with a test that a steady colony uses almost no water for air (M)
+2. Two-step flows: a use can show where it went next (the ledger's `then`), in the web flow panel and Godot's charts (S)
+3. The electrolyzer and the CO2 scrubber: life support renamed and dry, the new room with its flows (water → split into oxygen → air for new space · replacing breathed air), furniture, layout and 2D art, parks take CO2, tutorial and landing kit (M)
+4. Gas tanks: O2/CO2 choice, ballast both ways and overflow, the electrolyzer's tank fill slider, drops and kits into tanks, the 0%-condition rule for every tank (M, after T-005)
+5. Too much oxygen: the fire-risk warning and the "vent excess air" event (S)
+6. Rebalance: air per m³, the electrolyzer's ratio, the seed kit, Earth's O2 gap and the bots, with a test that a steady colony uses almost no water for air (M)
 
 ## Open questions
 - [ ] **The shaft dome** (M12, from 300 colonists) seals the shaft. Does the domed shaft join the living volume? Proposed: yes, a big one-off O2 bill (about 1,250 m³ a floor) that makes the dome a real project.
@@ -44,3 +46,4 @@ Proposed; becomes tickets once this feature is agreed. Steps 1, 2 and 4 don't ne
 - 2026-10-04 19:12 made from T-011 (T-012 moved the air mix into a feature)
 - 2026-10-05 18:57 planning on f-002-air-mix
 - 2026-10-06 00:01 electrolyzer stockpile answered: tank fill slider
+- 2026-10-06 00:04 flows in two steps for the electrolyzer (Bryon)
