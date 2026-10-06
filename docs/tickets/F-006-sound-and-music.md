@@ -16,7 +16,8 @@ created: 2026-10-06 02:12
 - **Music follows the game, gently** (Bryon, Oct 6): tension and celebrations colour it when they happen; otherwise **the make-up of rooms on the floor in view slowly shapes the mood**. A floor of industrial rooms nudges it towards rhythmic, repetitive figures (ostinatos, a soft pulse); a farming floor towards folksy instruments (plucked strings, a whistle or reed, open fifths); presumably homes and parks towards warm, sparse pads, labs and the clinic towards something glassier. Transitions are never abrupt: the mood is a blend that drifts towards the floor's mix over many bars, and a quick look at another floor barely moves it. Room → mood weights belong in data (e.g. a `music` tag per room category in `data/`), not code. Folksy timbres can be synthesized (Karplus–Strong plucks, breathy filtered noise for winds), which bears on question 1.
 - **More sound effects:** a pass over what the player does and what happens: placing and cancelling, construction finished, the drill (start, strike, a find), elevators, doors and airlocks, the supply drop landing, event cards arriving, celebrations, alerts and warnings, UI clicks, plus positional ambience in 3D near busy rooms (farm fans, workshops, the canteen's chatter) that fades with distance and the floor in view.
 - Event triggers come from the snapshot and messages on the main thread; the sim stays silent (brain and face).
-- Godot: Godot can't run Web Audio. Either port the synth to Godot's `AudioStreamGenerator`, or render stems from the web engine. A later task either way.
+- Godot: Godot can't run Web Audio, so **the synth is rebuilt in Godot** (C#, `AudioStreamGenerator`) to match the web's sound (Bryon, Oct 6). Keep instrument and mood definitions in data so both engines read the same numbers.
+- **Answered (Bryon, Oct 6):** everything generated in code, no sample files; music on by default at a medium volume; Godot gets the same synth rebuilt.
 
 ## Breakdown
 Proposed; becomes tickets once this feature is agreed.
@@ -28,11 +29,12 @@ Proposed; becomes tickets once this feature is agreed.
 - Sound and music in Godot.
 
 ## Open questions
-- [ ] Fully synthesized (proposed), or are sample-based sounds and instruments okay (a small CC0 set, more realistic, more files)?
-- [ ] Music always on by default, or off until turned on? Proposed: on, at a low volume.
+- [x] Fully synthesized (proposed), or are sample-based sounds and instruments okay (a small CC0 set, more realistic, more files)?
+- [x] Music always on by default, or off until turned on? Answered: on by default, at a medium volume.
 - [x] Should the music follow the game (day/night, tension, celebrations), or stay one steady mood? Answered: follow it gently, and also by the floor's room make-up (see Design).
-- [ ] Godot: port the synth (proposed, so both match), or leave Godot silent for now?
+- [x] Godot: port the synth (proposed, so both match), or leave Godot silent for now?
 
 ## History
 - 2026-10-06 02:12 opened from N-0032
 - 2026-10-06 02:16 music mood follows the floor's room make-up (Bryon)
+- 2026-10-06 02:18 questions answered
