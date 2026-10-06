@@ -58,15 +58,25 @@ float slice_darken(vec3 world) {
 	return slice_look.y * max(smoothstep(0.0, slice_look.z, -world.y), slice_fade_at(world));
 }
 
-// Walls down, as the web's (rooms3d.ts WALLS_GLSL): a wall vertex tagged with its wall's inward normal
-// (xy) and the wall's bottom and top (zw), and a line's second wall (wall2), drops to a stub when the
-// camera is on its far side. A longer normal means there's something to see across it: always lowered.
+// Walls down, as the web's (rooms3d.ts inTheWay): is a wall with inward normal n, from y0 to y1, in the
+// camera's way? Seen from behind, always. A normal of length 2 + d means a room starts d metres past it:
+// seen from its own side, it's in the way when the line over its top is still above head height (1.5 m)
+// at d plus a glimpse (0.25 m) into that room.
+bool wall_in_the_way(vec2 n, vec2 to_cam, float cam_y, float y0, float y1) {
+	float len = length(n);
+	float p = dot(to_cam, n) / len;
+	if (p < 0.0) return true;
+	if (len < 1.5) return false;
+	float rise = cam_y - y1;
+	return rise <= 0.0 || p * (y1 - y0 - 1.5) > (len - 2.0 + 0.25) * rise;
+}
+
+// A wall vertex tagged with its wall's inward normal (xy) and the wall's bottom and top (zw), and a line's
+// second wall (wall2, as high as the first), drops to a stub when the wall is in the way (both, for a line).
 vec3 lower_wall(vec3 v, vec4 wall, vec2 wall2, vec3 world, vec3 camera) {
 	if (walls_down < 0.5 || dot(wall.xy, wall.xy) <= 0.0) return v;
 	vec2 to_cam = camera.xz - world.xz;
-	float n2 = dot(wall2, wall2);
-	bool second = n2 == 0.0 || n2 > 2.0 || dot(to_cam, wall2) < 0.0;
-	bool first = dot(wall.xy, wall.xy) > 2.0 || dot(to_cam, wall.xy) < 0.0;
-	if (first && second) v.y = min(v.y, mix(wall.z, wall.w, 0.15));
+	bool second = dot(wall2, wall2) == 0.0 || wall_in_the_way(wall2, to_cam, camera.y, wall.z, wall.w);
+	if (second && wall_in_the_way(wall.xy, to_cam, camera.y, wall.z, wall.w)) v.y = min(v.y, mix(wall.z, wall.w, 0.15));
 	return v;
 }

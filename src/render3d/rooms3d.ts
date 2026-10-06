@@ -68,15 +68,25 @@ export interface Cut {
   y0?: number;
   y1?: number;
   /**
-   * Something to see on the wall's other side (a neighbouring room, empty
-   * space, a corridor, the gallery), not rock. Seen from its own side, such a
-   * wall hides that neighbour, so with walls down it's lowered from either side.
+   * A room on the wall's other side (a neighbour, a walk-through room, empty
+   * space), and how far past the wall it starts: right there, or across a
+   * corridor. Null for rock, the shaft or a tube with nothing near beyond. Seen
+   * from its own side, such a wall can hide that room, so with walls down it's
+   * lowered when the camera's line over its top lands in the room (`inTheWay`).
    * A curved wall can face several cells: then it's asked per segment, by angle.
    */
-  across?: boolean | ((angle: number) => boolean);
+  across?: number | null | ((angle: number) => number | null);
 }
-/** How a wall with something to see across it is tagged: its normal at this length instead of 1. */
+/**
+ * How a wall with a room across it is tagged: its normal at this length plus
+ * how far past the wall the room starts (metres), instead of 1.
+ */
 const ACROSS = 2;
+/** A wall's tag length: its side, and the room across it if any. */
+function tagLength(cut: Cut, at: number): number {
+  const reach = typeof cut.across === "function" ? cut.across(at) : cut.across;
+  return cut.side * (reach == null ? 1 : ACROSS + reach);
+}
 /** Vertex arrays that carry wall tags (`aWall`: interior normal x, z, then base and top y). */
 const wallTags = new WeakMap<number[], number[]>();
 function tagged(): number[] {
@@ -96,8 +106,7 @@ function curvedFace(pos: number[], r: number, a0: number, a1: number, y0: number
     push(pos, at(r, b0, y0), at(r, b1, y0), at(r, b1, y1), at(r, b0, y0), at(r, b1, y1), at(r, b0, y1));
     // One normal per segment (at its middle), so all six corners agree on whether it's cut.
     const m = (b0 + b1) / 2;
-    const across = typeof cut?.across === "function" ? cut.across(m) : cut?.across;
-    const k = cut ? cut.side * (across ? ACROSS : 1) : 0;
+    const k = cut ? tagLength(cut, m) : 0;
     if (cut) tag(pos, 6, k * Math.cos(m), k * Math.sin(m), cut.y0 ?? y0, cut.y1 ?? y1);
     else tag(pos, 6);
   }
@@ -153,8 +162,7 @@ function flatRing(pos: number[], r0: number, r1: number, a0: number, a1: number,
 
 function radialSide(pos: number[], r0: number, r1: number, a: number, y0: number, y1: number, cut?: Cut): void {
   push(pos, at(r0, a, y0), at(r1, a, y0), at(r1, a, y1), at(r0, a, y0), at(r1, a, y1), at(r0, a, y1));
-  const across = typeof cut?.across === "function" ? cut.across(a) : cut?.across;
-  const k = cut ? cut.side * (across ? ACROSS : 1) : 0;
+  const k = cut ? tagLength(cut, a) : 0;
   if (cut) tag(pos, 6, -k * Math.sin(a), k * Math.cos(a), cut.y0 ?? y0, cut.y1 ?? y1);
   else tag(pos, 6);
 }
@@ -192,8 +200,7 @@ function sideWall(pos: number[], r0: number, a0: number, r1: number, a1: number,
   // Toward larger angles: the direction a circle turns at the wall's middle.
   const m = (a0 + a1) / 2;
   if (nx * -Math.sin(m) + nz * Math.cos(m) < 0) [nx, nz] = [-nx, -nz];
-  const across = typeof cut.across === "function" ? cut.across(m) : cut.across;
-  const k = cut.side * (across ? ACROSS : 1);
+  const k = tagLength(cut, m);
   tag(pos, 6, k * nx, k * nz, cut.y0 ?? y0, cut.y1 ?? y1);
 }
 
@@ -555,14 +562,17 @@ export function roomGeometry(
     const cut = carveCell(layout, c, own, inner, outer, inset, carve, onGallery, joints);
     // The floor runs out to the cell's edges (only the walls keep the hairline), so no gap shows between two rooms.
     const floorCut = carveCell(layout, c, own, inner, outer, 0, carve, onGallery, joints);
-    // What's across each wall, looked for just past the cell's edge.
+    // What's across each wall: the room past it, looked for from the wall outward (through a corridor alongside).
     const [cr0, cr1] = ringRadii(layout.hole, c.ring);
     const [s0, s1] = slotAngles(c.slot, layout.hole.ringSlots[c.ring - 1]!);
-    const cMid = (cr0 + cr1) / 2;
-    const across = (r: number, a: number) => seeThrough(layout, own, c.floor, r, a);
     const base = floorSpan(c.floor)[0];
+    const beyond = (r: number, a: number, ux: number, uz: number) => roomBeyond(layout, own, c.floor, r * Math.cos(a), r * Math.sin(a), ux, uz);
+    /** Out from a curved wall at radius r (outward +1, inward −1). */
+    const radially = (r: number, out: 1 | -1) => (a: number) => beyond(r, a, out * Math.cos(a), out * Math.sin(a));
+    /** Out from a side wall at (r, a), toward larger angles (+1) or smaller (−1). */
+    const turning = (r: number, a: number, dir: 1 | -1) => beyond(r, a, -dir * Math.sin(a), dir * Math.cos(a));
     // Glass and frames go down with the wall they're set in.
-    const inWall = (side: 1 | -1): Cut => ({ side, y0: base, y1: base + FLOOR_H, across: true });
+    const inWall = (wallCut: Cut): Cut => ({ ...wallCut, y0: base, y1: base + FLOOR_H });
     // The borders along each curved face, as angle ranges within this cell.
     const arcsOn = (circle: number) =>
       cellEdges(layout.hole, c)
@@ -579,13 +589,13 @@ export function roomGeometry(
       for (const pane of o.panes) {
         const a = Math.max(pane.s0, range[0]);
         const b = Math.min(pane.s1, range[1]);
-        if (b - a > 1e-6) curvedFace(parts.glass, rg, a, b, pane.y0, pane.y1, inWall(outward === -1 ? 1 : -1));
+        if (b - a > 1e-6) curvedFace(parts.glass, rg, a, b, pane.y0, pane.y1, inWall(wallCut));
       }
       if (o.door && o.door.s > range[0] && o.door.s < range[1]) {
         const fw = DOOR_FRAME.width / r;
         const [d0, d1] = [o.door.s - o.door.half, o.door.s + o.door.half];
         const top = base + DOOR.height;
-        const cutF = inWall(outward === -1 ? 1 : -1);
+        const cutF = inWall(wallCut);
         curvedFace(parts.frames, rf, d0 - fw, d0, base, top + DOOR_FRAME.width, cutF);
         curvedFace(parts.frames, rf, d1, d1 + fw, base, top + DOOR_FRAME.width, cutF);
         curvedFace(parts.frames, rf, d0, d1, top, top + DOOR_FRAME.width, cutF);
@@ -606,7 +616,7 @@ export function roomGeometry(
       const piece = (list: number[], ra: number, rb: number, ya: number, yb: number) => {
         const a = Math.max(Math.min(ra, rb), Math.min(r0, r1));
         const b = Math.min(Math.max(ra, rb), Math.max(r0, r1));
-        if (b - a > 1e-6) sideWall(list, ...point(a), ...point(b), ya, yb, { ...wallCut, y0: base, y1: base + FLOOR_H, across: true });
+        if (b - a > 1e-6) sideWall(list, ...point(a), ...point(b), ya, yb, inWall(wallCut));
       };
       for (const pane of o.panes) piece(parts.glass, pane.s0, pane.s1, pane.y0, pane.y1);
       if (o.door) {
@@ -625,16 +635,17 @@ export function roomGeometry(
       const inside = pieceAt(cut, p, p.rr0);
       const outside = pieceAt(cut, p, p.rr1);
       if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) {
-        const wallCut: Cut = { side: 1, across: p.innerHall || ((a) => across(cr0 - 0.5, a)) };
-        curved(p.rr0, inside, c.ring - 1, wallCut, -1);
+        curved(p.rr0, inside, c.ring - 1, { side: 1, across: radially(p.rr0, -1) }, -1);
       }
-      if (c.ring === outer && !(publicRoom && p.outerHall)) curved(p.rr1, outside, c.ring, { side: -1, across: p.outerHall || ((a) => across(cr1 + 0.5, a)) }, 1);
+      if (c.ring === outer && !(publicRoom && p.outerHall)) curved(p.rr1, outside, c.ring, { side: -1, across: radially(p.rr1, 1) }, 1);
       // A step where a corridor starts or stops partway along a side.
       if (prev) {
         // The room is on the side of whichever piece reaches further in (or out).
-        // Across a step is the corridor that carved it.
-        if (prev.rr0 !== p.rr0) radialSide(pos, Math.min(prev.rr0, p.rr0), Math.max(prev.rr0, p.rr0), p.b0, y0, y1, { side: prev.rr0 < p.rr0 ? -1 : 1, across: true });
-        if (prev.rr1 !== p.rr1) radialSide(pos, Math.min(prev.rr1, p.rr1), Math.max(prev.rr1, p.rr1), p.b0, y0, y1, { side: prev.rr1 > p.rr1 ? -1 : 1, across: true });
+        // Across a step is the corridor that carved it, and whatever is past that.
+        const step = (ra: number, rb: number, side: 1 | -1) =>
+          radialSide(pos, Math.min(ra, rb), Math.max(ra, rb), p.b0, y0, y1, { side, across: turning((ra + rb) / 2, p.b0, side === 1 ? -1 : 1) });
+        if (prev.rr0 !== p.rr0) step(prev.rr0, p.rr0, prev.rr0 < p.rr0 ? -1 : 1);
+        if (prev.rr1 !== p.rr1) step(prev.rr1, p.rr1, prev.rr1 > p.rr1 ? -1 : 1);
       }
       prev = p;
     }
@@ -642,10 +653,10 @@ export function roomGeometry(
     const last = cut.pieces.at(-1);
     const n = layout.hole.ringSlots[c.ring - 1]!;
     if (cut.openLeft && first && !(publicRoom && cut.hallLeft)) {
-      side(`R${c.floor}.${c.ring}.${c.slot}`, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), { side: 1, across: cut.hallLeft || across(cMid, s0 - 0.5 / cMid) });
+      side(`R${c.floor}.${c.ring}.${c.slot}`, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), { side: 1, across: turning((first.rr0 + first.rr1) / 2, cut.left((first.rr0 + first.rr1) / 2), -1) });
     }
     if (cut.openRight && last && !(publicRoom && cut.hallRight)) {
-      side(`R${c.floor}.${c.ring}.${(c.slot + 1) % n}`, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), { side: -1, across: cut.hallRight || across(cMid, s1 + 0.5 / cMid) });
+      side(`R${c.floor}.${c.ring}.${(c.slot + 1) % n}`, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), { side: -1, across: turning((last.rr0 + last.rr1) / 2, cut.right((last.rr0 + last.rr1) / 2), 1) });
     }
     const well = wells.find((w) => w.floor === c.floor);
     for (const p of floorCut.pieces) floorPiece(pos, p.rr0, p.rr1, pieceAt(floorCut, p, p.rr0), pieceAt(floorCut, p, p.rr1), y0, well);
@@ -776,20 +787,14 @@ function hangTag(layout: Layout, room: RoomInstance, f: Fitted): HangTag {
     n = [Math.sin(frame.a1), -Math.cos(frame.a1)];
     dist = f.x * n[0] + f.z * n[1] - frame.dRight;
   }
-  // The wall stands the fitting gap beyond the fitted floor's edge. Just past it: what's there?
+  // The wall stands the fitting gap beyond the fitted floor's edge. Past it: is there a room?
   const wall = dist + FIT.wallGap;
-  const past = wall + HANG.probe;
-  const px = f.x - n[0] * past;
-  const pz = f.z - n[1] * past;
+  const [ax, az] = [f.x - n[0] * wall, f.z - n[1] * wall];
   const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
-  const across = seeThrough(layout, own, f.floor, Math.hypot(px, pz), Math.atan2(pz, px)) || onCorridorAt(layout, f.floor, px, pz);
-  const k = across ? ACROSS : 1;
+  const k = tagLength({ side: 1, across: roomBeyond(layout, own, f.floor, ax, az, -n[0], -n[1]) }, 0);
   const [y0, y1] = floorSpan(f.floor);
-  return { nx: n[0] * k, nz: n[1] * k, y0, y1, ax: f.x - n[0] * wall, az: f.z - n[1] * wall };
+  return { nx: n[0] * k, nz: n[1] * k, y0, y1, ax, az };
 }
-
-/** How far past a room's wall to look for what's across it: past the wall's hairline, or into a corridor alongside. */
-const HANG = { probe: 0.15 };
 
 /** Solar panels: dark glass, dulled by dust in a storm (see `setPanelDust`). */
 const PANEL = { clean: 0x1d2a4a, dusty: 0x8a6048, roughness: [0.3, 0.9] as const, metalness: [0.5, 0.1] as const };
@@ -834,17 +839,30 @@ function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, col
   return g;
 }
 
-/** Is there something to see at (r, a) on this floor, past a room's wall: the gallery, another room, empty space? Not rock. */
-function seeThrough(layout: Layout, own: Set<string>, floor: number, r: number, a: number): boolean {
+/**
+ * Walking out from a wall at (x, z) the way (ux, uz) points, through any
+ * corridor alongside and the hairline between rooms: how far until a room
+ * (any but `own`, or dug empty space), within walls down's reach. Null when
+ * the way leads into rock, the shaft or a gallery tube, or nothing is near.
+ */
+function roomBeyond(layout: Layout, own: Set<string>, floor: number, x: number, z: number, ux: number, uz: number): number | null {
   const hole = layout.hole;
-  if (r < hole.shaftRadiusM) return true; // the gallery
-  const ring = Math.floor((r - hole.shaftRadiusM) / (ringRadii(hole, 1)[1] - ringRadii(hole, 1)[0])) + 1;
-  if (ring > hole.unlockedRings) return false;
-  const n = hole.ringSlots[ring - 1]!;
-  const turn = (((a / TAU) % 1) + 1) % 1;
-  const c = { floor, ring, slot: Math.min(Math.floor(turn * n), n - 1) };
-  if (own.has(`${c.floor}:${c.ring}:${c.slot}`)) return false;
-  return !!layout.grid[floor - 1]?.[ring - 1]?.[c.slot] || isOpen(layout, c);
+  const depth = ringRadii(hole, 1)[1] - ringRadii(hole, 1)[0];
+  for (let t = WALLS_DOWN.step; t <= WALLS_DOWN.reach; t += WALLS_DOWN.step) {
+    const px = x + ux * t;
+    const pz = z + uz * t;
+    const r = Math.hypot(px, pz);
+    if (r < hole.shaftRadiusM) return null;
+    if (onCorridorAt(layout, floor, px, pz)) continue;
+    const ring = Math.floor((r - hole.shaftRadiusM) / depth) + 1;
+    if (ring > hole.unlockedRings) return null;
+    const n = hole.ringSlots[ring - 1]!;
+    const turn = (((Math.atan2(pz, px) / TAU) % 1) + 1) % 1;
+    const c = { floor, ring, slot: Math.min(Math.floor(turn * n), n - 1) };
+    if (own.has(`${c.floor}:${c.ring}:${c.slot}`)) continue;
+    return layout.grid[floor - 1]?.[ring - 1]?.[c.slot] || isOpen(layout, c) ? t - WALLS_DOWN.step : null;
+  }
+  return null;
 }
 
 /** Half a corridor's width: what a room gives up on a side a corridor runs along. */
@@ -892,8 +910,13 @@ function wallMaterial(key: string, make: () => THREE.Material): THREE.Material {
 
 // ---- walls down ----
 
-/** How much of a lowered wall still stands. */
-export const WALLS_DOWN = { stub: 0.15 };
+/**
+ * How much of a lowered wall still stands; the height above the floor of what
+ * there is to see in a room (people, furniture), and how far into a room a
+ * wall must hide it to be lowered (metres); and how far past a wall, in what
+ * steps, to look for a room (across a corridor, but not across the shaft).
+ */
+export const WALLS_DOWN = { stub: 0.15, head: 1.5, glimpse: 0.25, reach: 4, step: 0.25 };
 const wallsDown = { uWallsDown: { value: 0 }, uWallStub: { value: WALLS_DOWN.stub } };
 
 /** Lower or raise the walls that stand between the camera and what's behind them. */
@@ -902,34 +925,51 @@ export function setWallsDown(on: boolean): void {
 }
 
 /**
- * Is a wall at `p`, bounding the side `n` points to, in the way of a camera at
- * `cam`: seen from its back, or (tagged with a longer normal) with something
- * to see across it? Then with walls down it's lowered. (The same test as the
- * shader below.)
+ * Is a wall at `p` (height y0 to y1), bounding the side `n` points to, in the
+ * way of a camera at `cam`? Seen from its back it hides its own room. Seen
+ * from its own side it hides a room across it (tagged with a longer normal: 2
+ * plus how far past the wall that room starts) when the camera's line over
+ * its top is still above head height where the room starts: so a wall right
+ * against another room drops, and one in front of a corridor stands from high
+ * up and drops once the camera is low enough to lose the room beyond it.
+ * Rock, the shaft and tubes never count. (The same test as the shaders below.)
  */
-function inTheWay(nx: number, nz: number, px: number, pz: number, cam: THREE.Vector3): boolean {
-  const n2 = nx * nx + nz * nz;
-  if (n2 === 0) return false;
-  // Something to see across it: in the way from either side.
-  return n2 > 2 || (cam.x - px) * nx + (cam.z - pz) * nz < 0;
+function inTheWay(nx: number, nz: number, y0: number, y1: number, px: number, pz: number, cam: THREE.Vector3): boolean {
+  const len = Math.hypot(nx, nz);
+  if (len === 0) return false;
+  // How far the camera stands in front of the wall, on its own side.
+  const p = ((cam.x - px) * nx + (cam.z - pz) * nz) / len;
+  if (p < 0) return true;
+  if (len < (1 + ACROSS) / 2) return false;
+  // The line over its top comes down to head height this far past it: p · drop / rise (never, with the camera below the top).
+  const rise = cam.y - y1;
+  return rise <= 0 || p * (y1 - y0 - WALLS_DOWN.head) > (len - ACROSS + WALLS_DOWN.glimpse) * rise;
 }
 
-// Per vertex: lowered walls are squashed down to their stub. A wall is in the
-// way when it's seen from behind (it hides its own room), or when there's
-// something to see across it (tagged with a longer normal: it hides the
-// neighbour from its own side). A line (a room's outline) may border two walls
-// (`aWall2`), and only drops if both are lowered. Missing attributes read as
-// zero, which never lowers anything.
+/** The shaders' copy of `inTheWay`, given the camera's offset from the point. */
+const IN_THE_WAY_GLSL = /* glsl */ `
+bool wallInTheWay(vec2 n, vec2 toCam, float camY, float y0, float y1) {
+  float len = length(n);
+  float p = dot(toCam, n) / len;
+  if (p < 0.0) return true;
+  if (len < ${((1 + ACROSS) / 2).toFixed(1)}) return false;
+  float rise = camY - y1;
+  return rise <= 0.0 || p * (y1 - y0 - ${WALLS_DOWN.head.toFixed(2)}) > (len - ${ACROSS.toFixed(1)} + ${WALLS_DOWN.glimpse.toFixed(2)}) * rise;
+}
+`;
+
+// Per vertex: lowered walls are squashed down to their stub (see `inTheWay`).
+// A line (a room's outline) may border two walls (`aWall2`, taken to stand as
+// high as the first), and only drops if both are lowered. Missing attributes
+// read as zero, which never lowers anything.
 const WALLS_GLSL = /* glsl */ `
   if (uWallsDown > 0.5 && dot(aWall.xy, aWall.xy) > 0.0) {
     vec2 toCam = cameraPosition.xz - (modelMatrix * vec4(transformed, 1.0)).xz;
     // The tags are in the model's own frame: turn them with it (a turned model, as in the dev tool's overview).
     vec2 n1 = (modelMatrix * vec4(aWall.x, 0.0, aWall.y, 0.0)).xz;
     vec2 m2 = (modelMatrix * vec4(aWall2.x, 0.0, aWall2.y, 0.0)).xz;
-    float n2 = dot(aWall2.xy, aWall2.xy);
-    bool second = n2 == 0.0 || n2 > 2.0 || dot(toCam, m2) < 0.0;
-    bool first = dot(aWall.xy, aWall.xy) > 2.0 || dot(toCam, n1) < 0.0;
-    if (first && second) transformed.y = min(transformed.y, mix(aWall.z, aWall.w, uWallStub));
+    bool second = dot(aWall2.xy, aWall2.xy) == 0.0 || wallInTheWay(m2, toCam, cameraPosition.y, aWall.z, aWall.w);
+    if (second && wallInTheWay(n1, toCam, cameraPosition.y, aWall.z, aWall.w)) transformed.y = min(transformed.y, mix(aWall.z, aWall.w, uWallStub));
   }
 `;
 
@@ -941,7 +981,7 @@ const HANG_GLSL = /* glsl */ `
   if (uWallsDown > 0.5 && dot(aWall.xy, aWall.xy) > 0.0) {
     vec2 toCam = cameraPosition.xz - (modelMatrix * vec4(aHang.x, 0.0, aHang.y, 1.0)).xz;
     vec2 n1 = (modelMatrix * vec4(aWall.x, 0.0, aWall.y, 0.0)).xz;
-    if (dot(aWall.xy, aWall.xy) > 2.0 || dot(toCam, n1) < 0.0) transformed = vec3(aHang.x, aWall.z, aHang.y);
+    if (wallInTheWay(n1, toCam, cameraPosition.y, aWall.z, aWall.w)) transformed = vec3(aHang.x, aWall.z, aHang.y);
   }
 `;
 
@@ -953,7 +993,7 @@ export function withHangingDown<T extends THREE.Material>(m: T): T {
     prev.call(m, shader, renderer);
     Object.assign(shader.uniforms, wallsDown);
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nattribute vec4 aWall;\nattribute vec2 aHang;\nuniform float uWallsDown;")
+      .replace("#include <common>", `#include <common>\nattribute vec4 aWall;\nattribute vec2 aHang;\nuniform float uWallsDown;\n${IN_THE_WAY_GLSL}`)
       .replace("#include <begin_vertex>", `#include <begin_vertex>\n${HANG_GLSL}`);
   };
   m.customProgramCacheKey = () => `${prevKey}|hanging-down`;
@@ -968,7 +1008,7 @@ export function withWallsDown<T extends THREE.Material>(m: T): T {
     prev.call(m, shader, renderer);
     Object.assign(shader.uniforms, wallsDown);
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nattribute vec4 aWall;\nattribute vec2 aWall2;\nuniform float uWallsDown;\nuniform float uWallStub;")
+      .replace("#include <common>", `#include <common>\nattribute vec4 aWall;\nattribute vec2 aWall2;\nuniform float uWallsDown;\nuniform float uWallStub;\n${IN_THE_WAY_GLSL}`)
       .replace("#include <begin_vertex>", `#include <begin_vertex>\n${WALLS_GLSL}`);
   };
   m.customProgramCacheKey = () => `${prevKey}|walls-down`;
@@ -982,7 +1022,7 @@ export function loweredAt(hit: THREE.Intersection, cam: THREE.Vector3): boolean 
   if (!attr) return false;
   const i = hit.face.a;
   const [nx, nz, y0, y1] = [attr.getX(i), attr.getY(i), attr.getZ(i), attr.getW(i)];
-  if (!inTheWay(nx, nz, hit.point.x, hit.point.z, cam)) return false;
+  if (!inTheWay(nx, nz, y0, y1, hit.point.x, hit.point.z, cam)) return false;
   return hit.point.y > y0 + (y1 - y0) * WALLS_DOWN.stub + 1e-3;
 }
 
