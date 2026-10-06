@@ -165,3 +165,53 @@ let's deprecate the shaft view, the 3d top view, and xray mode.
 ## N-0024 · 2026-10-06 00:48
 rename Iso view to free view
 → T-052
+
+## N-0025 · 2026-10-06 00:56
+let's add a "milestones" panel to the UI. some milestones are like 
+
+* a hole that is capable of keeping humans alive indefinitely at its current size, provided continued supply drops from earth
+* a hole that is capable of keeping humans alive indefinitely at its current size, thanks to trade with other holes
+* a hole that is self-sufficient on its own
+* a hole that has produced a kit to create another hole
+* first birth in hole
+* 
+* and any other ideas you have.
+
+--- Follow-up (same note): Claude's extra milestone ideas, which Bryon approved ---
+- First Martian adult: someone born in the hole grows up
+- Third generation: the grandchild of an original colonist is born
+- Laid to rest: the first colonist dies of old age on Mars
+- Closed loop: water treatment returns more than it loses over a whole month
+- First harvest: a farm produces food for the first time
+- Deep roots: the hole reaches floor 5, then 10 and 20
+- Full ring: every slot on one floor's ring is dug
+- Under glass: the shaft dome is finished
+- A year on our own: the hole goes a full year without a supply drop
+- Network: first trade route, then 3 and 5 holes linked
+- Drifting apart: one hole's culture becomes clearly different from the others
+- Good neighbors: the belt ship in distress is rescued
+- Population: 50, 100, 250 and 500 people
+→ F-005
+
+## N-0026 · 2026-10-06 01:17
+let's add an intro narrative card to new games. the card describes that you are the administrator of a mission from earth to create a sustainable society on mars. however, because mars lacks an appreciable atmosphere and magnetic field, the surface of the planet is irradiated by the sun, unlike on earth. staying on the surface too long -- even in suits and vehicles -- comes with a radiation dose and long-term health impact. because of this, your colony needs to build underground. your mission provided 20 people, supplies to sustain you for some time, and one large borehole drilling machine. your goal is to build your colony in the walls of the hole that is being drilled. it's the only way to live long term on this planet.
+
+please wordsmith it to be exciting and easily readable by someone who really just wants to start playing the game
+
+--- Follow-up (same note): Claude's draft of the card text, which Bryon approved ---
+**Welcome to Mars, Administrator.**
+
+Earth sent you here to build something that lasts: a home where people can live for generations.
+
+There's a catch. Mars has almost no air and no magnetic field, so the Sun's radiation hits the surface unchecked. Stay up there too long, even in a suit or rover, and it catches up with you.
+
+So we go down.
+
+You have **20 colonists**, enough supplies to get started, and **one very large drill**. As it bores into the ground, you'll carve homes, farms and workshops into the walls of the hole.
+
+It's the only way to live here for good. Let's dig in.
+→ T-053
+
+## N-0027 · 2026-10-06 01:19
+create procedurally generated persona headshots for each of the notable people. for some of them, elements of their profession are incorporated into their profile picture.
+→ T-054
