@@ -257,3 +257,19 @@ let's create a doc describing the dev work flow:
 * what the general flow of stages are
 * some of the reasoning (succinctly) for doing things this way
 → T-065
+
+## N-0034 · 2026-10-06 02:23
+for installed android PWAs, we should have an option to show/hide the system bar
+→ T-072
+
+## N-0035 · 2026-10-06 02:28
+let's take a more refined pass as the distant geologic features on the horizon (mountains and plateaus). can we make them a little more 3d?
+→ T-016
+
+## N-0036 · 2026-10-06 09:45
+we should color the soil at a hole site to match the mars planet map where the particular hole is located. we should prevent players from placing hole sites on ice caps or glaciers
+→ T-073
+
+## N-0037 · 2026-10-06 09:45
+we should add local weather report, even though the hole colony is insulated within their habitable space.
+→ T-074
