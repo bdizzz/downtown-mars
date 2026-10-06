@@ -40,6 +40,13 @@ describe("first month playthrough", () => {
     expect(Math.min(...log.map((d) => d.health))).toBeGreaterThan(60);
   });
 
+  it("closes the water loop: two recyclers, and Earth brings little water in the last ten days", () => {
+    const last = log.slice(-10);
+    const used = last.reduce((a, d) => a + d.waterUsed, 0);
+    const fromEarth = last.reduce((a, d) => a + d.earthWater, 0);
+    expect(fromEarth).toBeLessThan(used * 0.1);
+  });
+
   it("keeps morale from collapsing", () => {
     expect(Math.min(...log.slice(5).map((d) => d.happy))).toBeGreaterThan(35);
   });

@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
-import { FLOOR_H, floorSpan, RIG_DROP, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef, hasBulkhead } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
@@ -178,10 +178,33 @@ function tagWall(pos: number[], cut: Cut, nx: number, nz: number, x: number, z: 
   wallTags.get(pos)?.push({ count: 6, face: f, y0: cut.y0 ?? y0, y1: cut.y1 ?? y1 });
 }
 
-function curvedFace(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number, cut?: Cut): void {
-  for (let i = 0; i < ARC_STEPS; i++) {
-    const b0 = a0 + ((a1 - a0) * i) / ARC_STEPS;
-    const b1 = a0 + ((a1 - a0) * (i + 1)) / ARC_STEPS;
+/**
+ * Solid walls split their arcs at angles fixed round the whole hole (this far
+ * apart), not into equal steps per face: two walls that meet along an arc
+ * then share their corners, and their chords can't leave a sliver between
+ * them (equal steps sag apart by up to 8 cm on wide ring-2 slots).
+ */
+const ARC_GRID = TAU / 240;
+
+/** An arc's corners from a0 to a1 (a0 < a1): its ends, and every grid angle between, less any too close to an end. */
+function arcAngles(a0: number, a1: number): number[] {
+  const out = [a0];
+  for (let k = Math.floor(a0 / ARC_GRID) + 1; k * ARC_GRID < a1 - 1e-6; k++) if (k * ARC_GRID > a0 + 1e-6) out.push(k * ARC_GRID);
+  out.push(a1);
+  return out;
+}
+
+/** An arc's corners: ARC_STEPS equal steps, or (`grid`) on the hole-wide grid. */
+function arcCorners(a0: number, a1: number, grid: boolean): number[] {
+  if (grid) return a0 <= a1 ? arcAngles(a0, a1) : arcAngles(a1, a0).reverse();
+  return Array.from({ length: ARC_STEPS + 1 }, (_, i) => a0 + ((a1 - a0) * i) / ARC_STEPS);
+}
+
+function curvedFace(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number, cut?: Cut, grid = false): void {
+  const corners = arcCorners(a0, a1, grid);
+  for (let i = 0; i + 1 < corners.length; i++) {
+    const b0 = corners[i]!;
+    const b1 = corners[i + 1]!;
     push(pos, at(r, b0, y0), at(r, b1, y0), at(r, b1, y1), at(r, b0, y0), at(r, b1, y1), at(r, b0, y1));
     // Each segment adds its normal and middle to its face.
     const m = (b0 + b1) / 2;
@@ -203,12 +226,12 @@ interface Opening {
  * the openings' edges, and every column keeps its solid runs. The wall tags
  * keep the whole wall's height, so it lowers as one.
  */
-function curvedFaceWithOpenings(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number, cut: Cut, openings: Opening[]): void {
+function curvedFaceWithOpenings(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number, cut: Cut, openings: Opening[], grid = false): void {
   const holes = openings
     .map((o) => ({ a0: Math.max(o.a0, a0), a1: Math.min(o.a1, a1), y0: Math.max(o.y0, y0), y1: Math.min(o.y1, y1) }))
     .filter((o) => o.a1 - o.a0 > 1e-9 && o.y1 - o.y0 > 1e-9);
   const whole = { ...cut, face: faceOf(cut), y0: cut.y0 ?? y0, y1: cut.y1 ?? y1 };
-  if (!holes.length) return curvedFace(pos, r, a0, a1, y0, y1, whole);
+  if (!holes.length) return curvedFace(pos, r, a0, a1, y0, y1, whole, grid);
   const breaks = (list: number[]) => [...new Set(list)].sort((p, q) => p - q);
   const as = breaks([a0, a1, ...holes.flatMap((o) => [o.a0, o.a1])]);
   const ys = breaks([y0, y1, ...holes.flatMap((o) => [o.y0, o.y1])]);
@@ -221,11 +244,11 @@ function curvedFaceWithOpenings(pos: number[], r: number, a0: number, a1: number
       const solid = !open((ys[j]! + ys[j + 1]!) / 2);
       if (solid && start === null) start = ys[j]!;
       if (!solid && start !== null) {
-        curvedFace(pos, r, as[i]!, as[i + 1]!, start, ys[j]!, whole);
+        curvedFace(pos, r, as[i]!, as[i + 1]!, start, ys[j]!, whole, grid);
         start = null;
       }
     }
-    if (start !== null) curvedFace(pos, r, as[i]!, as[i + 1]!, start, ys.at(-1)!, whole);
+    if (start !== null) curvedFace(pos, r, as[i]!, as[i + 1]!, start, ys.at(-1)!, whole, grid);
   }
 }
 
@@ -520,6 +543,8 @@ export interface RoomOpenings {
 export interface OpeningParts {
   glass: number[];
   frames: number[];
+  /** The tops of solid walls: bare rock, whatever the room is built from or coloured. */
+  tops?: number[];
 }
 
 /**
@@ -619,6 +644,322 @@ function sideWallWithOpenings(pos: number[], r0: number, a0: number, r1: number,
   }
 }
 
+// ---- solid walls ----
+
+/** Half a wall: what a room gives up on each walled side, and what the wall reaches past its edge line. */
+const WALL_HALF = WALL_T / 2;
+/** Door frames stand this far proud of the wall face they're set in. */
+const FRAME_PROUD = 0.01;
+
+/**
+ * What's across a wall decides where its outer face goes. A corridor's or
+ * empty space's wall is centred on its line, with a face on the far side. A
+ * neighbouring room (or rock) supplies the far half itself, so the room builds
+ * only its own half, up to the edge line. Onto the open shaft (no tube) the
+ * wall is flush with the rock either side: the room's half, with a face at
+ * the edge line.
+ */
+type WallKind = "hall" | "open" | "flush" | "shared";
+const OUTER: Record<WallKind, { d: number; face: boolean }> = {
+  hall: { d: -WALL_HALF, face: true },
+  open: { d: -WALL_HALF, face: true },
+  flush: { d: 0, face: true },
+  shared: { d: 0, face: false },
+};
+
+/**
+ * A stretch of a cell's outline: an arc at radius r, or a straight line
+ * {p : p·n(θ) = d}, n turned toward larger angles. `s` is the side the room
+ * is on (+1 outward, or toward larger angles), so moving it into the room by
+ * x adds s·x.
+ */
+type Prim = { arc: true; r: number; s: 1 | -1 } | { arc: false; theta: number; d: number; s: 1 | -1 };
+
+interface Stretch {
+  prim: Prim;
+  /** A wall stands here (not a side onto the room's own cells, nor a public room's open side). */
+  wall: boolean;
+  kind: WallKind;
+  /** A radial step where a corridor starts or stops partway along a side. */
+  step: boolean;
+  cut: Cut;
+  /** For openings: the circle an arc runs on, or the radial border a side wall stands on. */
+  circle?: number;
+  border?: string;
+}
+
+const shifted = (p: Prim, by: number): Prim => (p.arc ? { ...p, r: p.r + p.s * by } : { ...p, d: p.d + p.s * by });
+const lineAt = (theta: number, d: number, r: number) => theta + Math.asin(Math.max(-0.99, Math.min(0.99, d / r)));
+
+/** Where two neighbouring stretches meet, as (radius, angle): an arc always meets a line. */
+function meet(p: Prim, q: Prim): [number, number] {
+  if (p.arc && !q.arc) return [p.r, lineAt(q.theta, q.d, p.r)];
+  if (!p.arc && q.arc) return [q.r, lineAt(p.theta, p.d, q.r)];
+  throw new Error("solid walls: two arcs (or two lines) in a row");
+}
+
+/** A quad of a wall's top or a reveal, going down with its wall (`cut` follows the wall's face). */
+function quad(pos: number[], a: number[], b: number[], c: number[], d: number[], cut: Cut): void {
+  push(pos, a, b, c, a, c, d);
+  wallTags.get(pos)?.push({ count: 6, face: faceOf(cut), y0: cut.y0 ?? 0, y1: cut.y1 ?? 0 });
+}
+
+/**
+ * A flat band between two arcs (at ra over [a0, a1], at rb over [b0, b1]),
+ * tagged like the wall it tops. Both edges keep to the hole-wide grid, so
+ * they match the faces below them and the band of a wall on the far side.
+ */
+function arcBand(pos: number[], ra: number, [a0, a1]: [number, number], rb: number, [b0, b1]: [number, number], y: number, cut: Cut): void {
+  const ts = [...new Set([...arcAngles(a0, a1), ...arcAngles(b0, b1)])].sort((p, q) => p - q);
+  const clamp = (t: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, t));
+  for (let i = 0; i + 1 < ts.length; i++) {
+    const [t0, t1] = [ts[i]!, ts[i + 1]!];
+    if (t1 - t0 < 1e-9) continue;
+    const [p0, p1, q0, q1] = [clamp(t0, a0, a1), clamp(t1, a0, a1), clamp(t0, b0, b1), clamp(t1, b0, b1)];
+    quad(pos, at(ra, p0, y), at(rb, q0, y), at(rb, q1, y), at(ra, p1, y), cut);
+  }
+}
+
+const sorted = (a: number, b: number): [number, number] => (a <= b ? [a, b] : [b, a]);
+
+interface SolidCell {
+  layout: Layout;
+  cell: Cell;
+  own: Set<string>;
+  inner: number;
+  outer: number;
+  publicRoom: boolean;
+  onGallery: boolean;
+  /** The cell carved to its edge lines (and corridor lines): the floor's outline. */
+  base: ReturnType<typeof carveCell>;
+  open: RoomOpenings | null;
+  parts?: OpeningParts;
+  /** The room's floor, and the top of its walls. */
+  y0: number;
+  y1: number;
+  /** How far to a room past a curved wall at radius r (out +1 or in −1), by angle; or past a side wall at (r, a), toward larger angles (+1) or smaller. */
+  radially: (r: number, out: 1 | -1) => (a: number) => number | null;
+  turning: (r: number, a: number, dir: 1 | -1) => number | null;
+  /** The room's curved wall faces, shared across its cells. */
+  face: (key: string, floor: number) => Face;
+}
+
+/**
+ * A cell's walls as solid slabs, WALL_T thick, centred on its edge lines (and
+ * on a corridor's line where one runs). The cell's outline is offset into the
+ * room for the walls' inner faces and out for their outer faces, so corners
+ * mitre and a step where a corridor stops gets its thickness too; each wall
+ * has a top, and doors and windows cut through it with reveals. Between two
+ * rooms each builds its own half, so they share one wall.
+ */
+function solidWalls(pos: number[], s: SolidCell): void {
+  const { layout, cell: c, inner, outer, publicRoom, onGallery, base, open, parts, y0, y1, radially, turning, face } = s;
+  const hole = layout.hole;
+  const key = (x: Cell) => `${x.floor}:${x.ring}:${x.slot}`;
+  const n = hole.ringSlots[c.ring - 1]!;
+  const [s0, s1] = slotAngles(c.slot, n);
+  const [cr0, cr1] = ringRadii(hole, c.ring);
+  const cMid = (cr0 + cr1) / 2;
+  const floorBase = floorSpan(c.floor)[0];
+  const arcsOn = (circle: number) =>
+    cellEdges(hole, c)
+      .filter((e): e is ArcEdge => e.kind === "arc" && e.circle === circle)
+      .map((e) => ({ id: e.id, s0: Math.max(e.a0 * TAU, s0), s1: Math.min(e.a1 * TAU, s1), e }));
+  const kindOf = (e: Edge | undefined, hall: boolean): WallKind => {
+    if (hall) return "hall";
+    if (!e) return "shared";
+    // A tube's wall is centred on its edge like a corridor's; with no tube, the face is flush with the shaft wall.
+    if (isGalleryEdge(e)) return layout.corridors?.[e.id] ? "open" : "flush";
+    const other = edgeSides(hole, e).find((x) => x && key(x) !== key(c));
+    if (!other || other.ring > hole.unlockedRings) return "shared";
+    if (layout.grid[other.floor - 1]?.[other.ring - 1]?.[other.slot]) return "shared";
+    return isOpen(layout, other) ? "open" : "shared";
+  };
+  // The floor's pieces, split again wherever what's across the inner or outer side changes.
+  const innerArcs = c.ring === inner ? arcsOn(c.ring - 1) : [];
+  const outerArcs = c.ring === outer ? arcsOn(c.ring) : [];
+  const breaks = [...innerArcs, ...outerArcs].flatMap((a) => [a.s0, a.s1]);
+  const pieces = base.pieces.flatMap((p) => {
+    const cuts = [...new Set([p.b0, ...breaks.filter((b) => b > p.b0 + 1e-9 && b < p.b1 - 1e-9), p.b1])].sort((x, y) => x - y);
+    return cuts.slice(1).map((b1, i) => ({ ...p, b0: cuts[i]!, b1 }));
+  });
+  const edgeAt = (list: typeof innerArcs, a: number) => list.find((x) => a >= x.s0 - 1e-9 && a < x.s1 - 1e-9)?.e;
+  const innerWall = (p: Piece) => c.ring === inner && !onGallery && !(publicRoom && p.innerHall);
+  const outerWall = (p: Piece) => c.ring === outer && !(publicRoom && p.outerHall);
+  // What's across is looked for from a wall's face on the room's side, out through the wall (and any corridor beyond).
+  const fromFace = (reach: number | null) => (reach == null ? null : reach + WALL_HALF);
+  const step = (theta: number, r: number, sd: 1 | -1, wall: boolean): Stretch => ({
+    prim: { arc: false, theta, d: 0, s: sd },
+    wall,
+    kind: "open",
+    step: true,
+    cut: { side: sd, across: turning(r, theta, sd === 1 ? -1 : 1), face: newFace(c.floor) },
+  });
+  const list: Stretch[] = [];
+  pieces.forEach((p, i) => {
+    const prev = pieces[i - 1];
+    if (prev) list.push(step(p.b0, (prev.rr0 + p.rr0) / 2, prev.rr0 < p.rr0 ? -1 : 1, Math.abs(prev.rr0 - p.rr0) > 1e-9));
+    const mid = (p.b0 + p.b1) / 2;
+    list.push({
+      prim: { arc: true, r: p.rr0, s: 1 },
+      wall: innerWall(p),
+      kind: kindOf(edgeAt(innerArcs, mid), p.innerHall),
+      step: false,
+      cut: { side: 1, across: (a) => fromFace(radially(p.rr0, -1)(a)), face: face(`${c.floor}:in:${p.rr0.toFixed(2)}`, c.floor) },
+      circle: c.ring - 1,
+    });
+  });
+  const leftId = `R${c.floor}.${c.ring}.${c.slot}`;
+  const rightId = `R${c.floor}.${c.ring}.${(c.slot + 1) % n}`;
+  list.push({
+    prim: { arc: false, theta: s1, d: base.openRight && base.hallRight ? -HALL : 0, s: -1 },
+    wall: base.openRight && !(publicRoom && base.hallRight),
+    kind: kindOf(edgeById(hole, rightId) ?? undefined, base.hallRight),
+    step: false,
+    cut: { side: -1, across: fromFace(turning(cMid, s1 - (base.openRight && base.hallRight ? HALL / cMid : 0), 1)), face: newFace(c.floor) },
+    border: rightId,
+  });
+  for (let i = pieces.length - 1; i >= 0; i--) {
+    const p = pieces[i]!;
+    const mid = (p.b0 + p.b1) / 2;
+    list.push({
+      prim: { arc: true, r: p.rr1, s: -1 },
+      wall: outerWall(p),
+      kind: kindOf(edgeAt(outerArcs, mid), p.outerHall),
+      step: false,
+      cut: { side: -1, across: (a) => fromFace(radially(p.rr1, 1)(a)), face: face(`${c.floor}:out:${p.rr1.toFixed(2)}`, c.floor) },
+      circle: c.ring,
+    });
+    const prev = pieces[i - 1];
+    if (prev) list.push(step(p.b0, (prev.rr1 + p.rr1) / 2, prev.rr1 > p.rr1 ? -1 : 1, Math.abs(prev.rr1 - p.rr1) > 1e-9));
+  }
+  list.push({
+    prim: { arc: false, theta: s0, d: base.openLeft && base.hallLeft ? HALL : 0, s: 1 },
+    wall: base.openLeft && !(publicRoom && base.hallLeft),
+    kind: kindOf(edgeById(hole, leftId) ?? undefined, base.hallLeft),
+    step: false,
+    cut: { side: 1, across: fromFace(turning(cMid, s0 + (base.openLeft && base.hallLeft ? HALL / cMid : 0), -1)), face: newFace(c.floor) },
+    border: leftId,
+  });
+
+  // The outline moved into the room (inner faces) and out (outer faces), and where its stretches meet.
+  const insides = list.map((st) => shifted(st.prim, st.wall ? WALL_HALF : 0));
+  const outsides = list.map((st) => shifted(st.prim, st.wall ? OUTER[st.kind].d : 0));
+  const corners = (prims: Prim[]) => prims.map((p, i) => meet(prims[(i - 1 + prims.length) % prims.length]!, p));
+  const ins = corners(insides);
+  const outs = corners(outsides);
+  const xz = ([r, a]: [number, number], y: number) => at(r, a, y);
+  // Wall tops go with the parts when there are any (to be drawn in rock), else in with the walls.
+  const tops = parts?.tops ?? pos;
+  // Glass and frames go down with the wall they're set in.
+  const glassCut = (st: Stretch): Cut => ({ side: st.cut.side, y0: floorBase, y1: floorBase + FLOOR_H, face: faceOf(st.cut), follows: true });
+
+  list.forEach((st, i) => {
+    const j = (i + 1) % list.length;
+    const [pIn, qIn, pOut, qOut] = [ins[i]!, ins[j]!, outs[i]!, outs[j]!];
+    const pin = insides[i]!;
+    const pout = outsides[i]!;
+    const outLen = Math.hypot(...([0, 2] as const).map((k) => xz(pOut, 0)[k]! - xz(qOut, 0)[k]!));
+    const inLen = Math.hypot(...([0, 2] as const).map((k) => xz(pIn, 0)[k]! - xz(qIn, 0)[k]!));
+    // A step with no wall of its own still caps the end of a thicker wall beside it.
+    const capOnly = !st.wall && st.step && outLen > 1e-4;
+    if (!st.wall && !capOnly) return;
+    // One face per wall: its face on the room's side places it; its outer face, top and reveals (and a cap,
+    // the wall beside it) go with it.
+    const ownerCut = capOnly ? list[(i - 1 + list.length) % list.length]!.cut : st.cut;
+    const cut: Cut = { ...ownerCut, y0, y1, face: faceOf(ownerCut), follows: capOnly };
+    const follow: Cut = { ...cut, follows: true };
+    const outerFace = (st.wall && OUTER[st.kind].face) || capOnly;
+    if (pin.arc && pout.arc) {
+      const rangeIn = sorted(pIn[1], qIn[1]);
+      const rangeOut = sorted(pOut[1], qOut[1]);
+      const holes =
+        open && st.wall && st.circle !== undefined ? wallOpenings(open, c, arcsOn(st.circle), floorBase, 1 / pin.r, WINDOW.margin * 1.25) : null;
+      const cutHoles = (holes?.holes ?? []).map((h) => ({ a0: h.s0, a1: h.s1, y0: h.y0, y1: h.y1 }));
+      if (st.wall && inLen > 1e-6) curvedFaceWithOpenings(pos, pin.r, ...rangeIn, y0, y1, cut, cutHoles, true);
+      if (outerFace && outLen > 1e-6) curvedFaceWithOpenings(pos, pout.r, ...rangeOut, floorBase, y1, follow, cutHoles, true);
+      // The wall's top, between its two faces.
+      const [lo, hi] = pin.r < pout.r ? [pin.r, pout.r] : [pout.r, pin.r];
+      if (Math.abs(pin.r - pout.r) > 1e-6) {
+        arcBand(tops, lo, pin.r < pout.r ? rangeIn : rangeOut, hi, pin.r < pout.r ? rangeOut : rangeIn, y1, follow);
+        // Reveals: each opening's sides, sill and head through the wall's thickness.
+        for (const h of cutHoles) {
+          const a0 = Math.max(h.a0, rangeIn[0]);
+          const a1 = Math.min(h.a1, rangeIn[1]);
+          if (a1 - a0 < 1e-9) continue;
+          const hb = Math.max(h.y0, floorBase);
+          const ht = Math.min(h.y1, y1);
+          for (const a of [a0, a1]) quad(pos, at(lo, a, hb), at(hi, a, hb), at(hi, a, ht), at(lo, a, ht), follow);
+          if (hb > y0 + 1e-6) arcBand(pos, lo, [a0, a1], hi, [a0, a1], hb, follow);
+          if (ht < y1 - 1e-6) arcBand(pos, lo, [a0, a1], hi, [a0, a1], ht, follow);
+        }
+      }
+      if (!parts || !holes) return;
+      const rGlass = (pin.r + pout.r) / 2;
+      for (const pane of holes.panes) {
+        const a = Math.max(pane.s0, rangeIn[0]);
+        const b = Math.min(pane.s1, rangeIn[1]);
+        if (b - a > 1e-6) curvedFace(parts.glass, rGlass, a, b, pane.y0, pane.y1, glassCut(st));
+      }
+      const door = holes.door;
+      if (door && door.s > rangeIn[0] && door.s < rangeIn[1]) {
+        const [d0, d1] = [door.s - door.half, door.s + door.half];
+        const top = floorBase + DOOR.height;
+        const faces = [pin.r + st.prim.s * FRAME_PROUD, ...(outerFace ? [pout.r - st.prim.s * FRAME_PROUD] : [])];
+        for (const rf of faces) {
+          const fw = DOOR_FRAME.width / rf;
+          curvedFace(parts.frames, rf, d0 - fw, d0, floorBase, top + DOOR_FRAME.width, glassCut(st));
+          curvedFace(parts.frames, rf, d1, d1 + fw, floorBase, top + DOOR_FRAME.width, glassCut(st));
+          curvedFace(parts.frames, rf, d0, d1, top, top + DOOR_FRAME.width, glassCut(st));
+        }
+      }
+      return;
+    }
+    if (pin.arc || pout.arc) return;
+    const holes = open && st.wall && st.border ? wallOpenings(open, c, [{ id: st.border, s0: cr0, s1: cr1 }], floorBase, 1, 0.15) : null;
+    if (st.wall && inLen > 1e-6) sideWallWithOpenings(pos, ...pIn, ...qIn, y0, y1, cut, holes?.holes ?? []);
+    if (outerFace && outLen > 1e-6) sideWallWithOpenings(pos, ...pOut, ...qOut, floorBase, y1, follow, holes?.holes ?? []);
+    const t = follow;
+    if (Math.abs(pin.d - pout.d) > 1e-6) {
+      quad(tops, xz(pOut, y1), xz(qOut, y1), xz(qIn, y1), xz(pIn, y1), t);
+      const onIn = (r: number) => at(r, lineAt(pin.theta, pin.d, r), 0);
+      const onOut = (r: number) => at(r, lineAt(pout.theta, pout.d, r), 0);
+      const lift = (p: number[], y: number) => [p[0]!, y, p[2]!];
+      const [lo, hi] = sorted(pIn[0], qIn[0]);
+      for (const h of holes?.holes ?? []) {
+        const r0 = Math.max(h.s0, lo);
+        const r1 = Math.min(h.s1, hi);
+        if (r1 - r0 < 1e-6) continue;
+        const hb = Math.max(h.y0, floorBase);
+        const ht = Math.min(h.y1, y1);
+        for (const r of [r0, r1]) quad(pos, lift(onIn(r), hb), lift(onOut(r), hb), lift(onOut(r), ht), lift(onIn(r), ht), t);
+        for (const y of [hb > y0 + 1e-6 ? hb : null, ht < y1 - 1e-6 ? ht : null]) {
+          if (y !== null) quad(pos, lift(onIn(r0), y), lift(onIn(r1), y), lift(onOut(r1), y), lift(onOut(r0), y), t);
+        }
+      }
+    }
+    if (!parts || !holes) return;
+    const piece = (list: number[], d: number, ra: number, rb: number, ya: number, yb: number) => {
+      const [lo, hi] = sorted(pIn[0], qIn[0]);
+      const a = Math.max(Math.min(ra, rb), lo);
+      const b = Math.min(Math.max(ra, rb), hi);
+      if (b - a > 1e-6) sideWall(list, a, lineAt(pin.theta, d, a), b, lineAt(pin.theta, d, b), ya, yb, glassCut(st));
+    };
+    const dGlass = (pin.d + pout.d) / 2;
+    for (const pane of holes.panes) piece(parts.glass, dGlass, pane.s0, pane.s1, pane.y0, pane.y1);
+    if (holes.door) {
+      const fw = DOOR_FRAME.width;
+      const top = floorBase + DOOR.height;
+      const [d0, d1] = [holes.door.s - holes.door.half, holes.door.s + holes.door.half];
+      for (const d of [pin.d + st.prim.s * FRAME_PROUD, ...(outerFace ? [pout.d - st.prim.s * FRAME_PROUD] : [])]) {
+        piece(parts.frames, d, d0 - fw, d0, floorBase, top + fw);
+        piece(parts.frames, d, d1, d1 + fw, floorBase, top + fw);
+        piece(parts.frames, d, d0, d1, top, top + fw);
+      }
+    }
+  });
+}
+
 /**
  * One room: a floor and walls for every cell, without the faces its own cells
  * share, and no ceiling, so you can always see in. It's inset a few
@@ -629,7 +970,9 @@ function sideWallWithOpenings(pos: number[], r0: number, a0: number, r1: number,
  * corridors look carved out of the rooms they pass. A public room has no wall
  * where it opens onto the gallery or a corridor. With `carve` off (overlay
  * tints), corridors are ignored. With `doors`, the shaft face has its windows
- * and doors cut out of it.
+ * and doors cut out of it. With `solid`, the walls are slabs WALL_T thick
+ * centred on the edge lines instead (see `solidWalls`), as the built rooms
+ * draw them; plain faces are for outlines and tints.
  */
 export function roomGeometry(
   layout: Layout,
@@ -640,6 +983,7 @@ export function roomGeometry(
   open: RoomOpenings | null = null,
   wells: FloorHole[] = [],
   parts?: OpeningParts,
+  solid = false,
 ): THREE.BufferGeometry {
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
   const own = new Set(cells.map(key));
@@ -731,8 +1075,9 @@ export function roomGeometry(
         piece(parts.frames, d0, d1, top, top + fw);
       }
     };
+    if (solid) solidWalls(pos, { layout, cell: c, own, inner, outer, publicRoom, onGallery, base: floorCut, open, parts, y0, y1, radially, turning, face });
     let prev: Piece | null = null;
-    for (const p of cut.pieces) {
+    for (const p of solid ? [] : cut.pieces) {
       // Walls, except where a public room opens onto the gallery or a corridor. What's across is asked segment by segment.
       // A piece's ends move with radius where a side stands parallel to a corridor.
       const inside = pieceAt(cut, p, p.rr0);
@@ -755,10 +1100,10 @@ export function roomGeometry(
     const first = cut.pieces[0];
     const last = cut.pieces.at(-1);
     const n = layout.hole.ringSlots[c.ring - 1]!;
-    if (cut.openLeft && first && !(publicRoom && cut.hallLeft)) {
+    if (!solid && cut.openLeft && first && !(publicRoom && cut.hallLeft)) {
       side(`R${c.floor}.${c.ring}.${c.slot}`, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), { side: 1, across: turning((first.rr0 + first.rr1) / 2, cut.left((first.rr0 + first.rr1) / 2), -1), face: newFace(c.floor) });
     }
-    if (cut.openRight && last && !(publicRoom && cut.hallRight)) {
+    if (!solid && cut.openRight && last && !(publicRoom && cut.hallRight)) {
       side(`R${c.floor}.${c.ring}.${(c.slot + 1) % n}`, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), { side: -1, across: turning((last.rr0 + last.rr1) / 2, cut.right((last.rr0 + last.rr1) / 2), 1), face: newFace(c.floor) });
     }
     const well = wells.find((w) => w.floor === c.floor);
@@ -872,7 +1217,7 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
 
 /** A room's wall faces, resolved (as its walls are drawn), for its hangings to go with. */
 function wallFaces(layout: Layout, room: RoomInstance): (FaceTag & { floor: number })[] {
-  const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public);
+  const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, null, [], undefined, true);
   const faces = (geo.userData.faces ?? []) as (FaceTag & { floor: number })[];
   geo.dispose();
   return faces;
@@ -1020,7 +1365,7 @@ export function shaftFaces(layout: Layout, room: RoomInstance): { a0: number; a1
   // The side walls stand parallel to their borders: where they meet the shaft face, at r0.
   const pullBack = (c: Cell, slot: number, edge: number) => {
     if (own.has(`${c.floor}:1:${(slot + n) % n}`)) return 0; // the room carries on: no wall here
-    return sideAngle(layout.corridors?.[`R${c.floor}.1.${edge % n}`] ? HALL : INSET, r0);
+    return sideAngle(layout.corridors?.[`R${c.floor}.1.${edge % n}`] ? HALL + WALL_HALF : WALL_HALF, r0);
   };
   return room.cells
     .filter((c) => c.ring === 1)
@@ -1395,6 +1740,7 @@ interface Shape {
   /** The glass in its windows, and its door frames, if it has any. */
   glass: THREE.BufferGeometry | null;
   frames: THREE.BufferGeometry | null;
+  tops: THREE.BufferGeometry | null;
 }
 const shapeCache = new Map<string, Shape>();
 
@@ -1403,6 +1749,7 @@ function disposeShape(shape: Shape): void {
   shape.edges.dispose();
   shape.glass?.dispose();
   shape.frames?.dispose();
+  shape.tops?.dispose();
 }
 
 function roomShape(layout: Layout, room: RoomInstance): Shape & { key: string } {
@@ -1428,13 +1775,14 @@ function roomShape(layout: Layout, room: RoomInstance): Shape & { key: string } 
   const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${cut}`;
   let shape = shapeCache.get(key);
   if (!shape) {
-    const parts: OpeningParts = { glass: tagged(), frames: tagged() };
-    const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, open, stairWells(layout, room), parts);
+    const parts: OpeningParts = { glass: tagged(), frames: tagged(), tops: tagged() };
+    const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, open, stairWells(layout, room), parts, true);
     shape = {
       geo,
       edges: outlineGeometry(geo),
       glass: parts.glass.length ? geometry(parts.glass) : null,
       frames: parts.frames.length ? geometry(parts.frames) : null,
+      tops: parts.tops!.length ? geometry(parts.tops!) : null,
     };
     shapeCache.set(key, shape);
   }
@@ -1630,6 +1978,12 @@ export function buildLayout(
     const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(roomFinish(room.type), grime) : roomMaterial(color, room.planned, faint, !!room.building, floorKind, grime));
     mesh.userData = { pickable: true, roomId: room.id, faint, cached: true };
     group.add(mesh);
+    // Its walls' tops: bare rock once it's built, whatever it's made of or coloured (a plan or x-ray's faded ring keeps the room's look).
+    if (shape.tops) {
+      const tops = new THREE.Mesh(shape.tops, room.planned || faint ? mesh.material : rock);
+      tops.userData = { pickable: true, roomId: room.id, faint, cached: true };
+      group.add(tops);
+    }
     const edges = new THREE.LineSegments(shape.edges, room.connected ? edgeLine : strandedLine);
     edges.userData = { cached: true, roomId: room.id, outline: !room.planned && !room.building && room.connected };
     group.add(edges);

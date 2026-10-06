@@ -1,10 +1,11 @@
 import type { RoomInstance } from "./placement";
-import { cropDef, isCrop } from "./resources";
+import { cropDef, isCrop, resourceDef } from "./resources";
 import { roomDef } from "./rooms";
 
 // What a room is called: the player's own name for it if they've given one;
 // otherwise a farm goes by what it grows ("Potato farm"), and anything else
-// by its kind ("Galley").
+// by its kind ("Galley"), and a tank set to something else by what it holds
+// ("Gray water tank").
 
 /** Longest name a player can give a room. */
 export const ROOM_NAME_MAX = 32;
@@ -14,7 +15,15 @@ export function roomName(room: RoomInstance): string {
   const def = roomDef(room.type);
   const crop = def.growsCrops ? (room.crop ?? def.defaultCrop) : undefined;
   if (crop && isCrop(crop)) return cropDef(crop).farmName;
+  const held = heldOther(room);
+  if (held) return `${resourceDef(held).name} tank`;
   return def.name;
+}
+
+/** What a tank holds, when it's not its kind's default (clean water). */
+function heldOther(room: RoomInstance): string | null {
+  const choices = roomDef(room.type).holds;
+  return choices && room.holds && room.holds !== choices[0] && choices.includes(room.holds) ? room.holds : null;
 }
 
 /** A room's label on the map views: its own name, a farm's crop, or its kind's short name ("Dorm"). */
@@ -23,6 +32,8 @@ export function roomLabel(room: RoomInstance): string {
   const def = roomDef(room.type);
   const crop = def.growsCrops ? (room.crop ?? def.defaultCrop) : undefined;
   if (crop && isCrop(crop)) return cropDef(crop).farmName;
+  const held = heldOther(room);
+  if (held) return `${resourceDef(held).name.split(" ")[0]} ${def.short.toLowerCase()}`;
   return def.short;
 }
 

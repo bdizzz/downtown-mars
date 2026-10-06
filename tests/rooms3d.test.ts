@@ -89,7 +89,7 @@ describe("carved by corridors", () => {
 
   it("a corridor along part of a side carves just that part, with a step", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = placeRoom(l, "clinic", ring(1, 2, 1)); // ring-2 slot 1: ring 3 beyond has more slots, so its outer side is in pieces
+    const r = placeRoom(l, "flat", ring(1, 2, 1)); // ring-2 slot 1: ring 3 beyond has more slots, so its outer side is in pieces
     const room = l.rooms.find((x) => x.id === r.id)!;
     const plain = roomGeometry(l, room.cells);
     l.corridors["A1.2.1/9"] = "metal"; // the first piece of its outer side
@@ -117,6 +117,115 @@ describe("public rooms", () => {
   });
 });
 
+describe("solid walls", () => {
+  const solid = (l: ReturnType<typeof createLayout>, cells: Parameters<typeof roomGeometry>[1]) => roomGeometry(l, cells, undefined, true, false, null, [], undefined, true);
+  const points = (g: THREE.BufferGeometry) => {
+    const pos = g.getAttribute("position");
+    return Array.from({ length: pos.count }, (_, i) => ({ r: Math.hypot(pos.getX(i), pos.getZ(i)), a: Math.atan2(pos.getZ(i), pos.getX(i)), y: pos.getY(i) }));
+  };
+
+  it("keep half a wall each side of a border between two rooms, so they share one wall", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const aId = placeRoom(l, "flat", ring(1, 2, 2)).id;
+    const a = l.rooms.find((x) => x.id === aId)!;
+    const bId = placeRoom(l, "flat", ring(1, 2, 3)).id;
+    const b = l.rooms.find((x) => x.id === bId)!;
+    const border = slotAngles(3, l.hole.ringSlots[1]!)[0];
+    const pa = points(solid(l, a.cells));
+    const pb = points(solid(l, b.cells));
+    // Neither crosses the border, and both reach it (the wall's top runs to it from either side).
+    expect(Math.max(...pa.map((p) => p.a))).toBeCloseTo(border, 6);
+    expect(Math.min(...pb.map((p) => p.a))).toBeCloseTo(border, 6);
+    // The inner faces stand half a wall in from it.
+    const top = floorSpan(1)[1];
+    // Signed distance from the border line, into each room.
+    const faceAt = (ps: typeof pa, side: 1 | -1) => ps.filter((p) => Math.abs(p.y - top) < 1e-6).map((p) => side * p.r * Math.sin(p.a - border)).filter((d) => Math.abs(d) < 0.5);
+    expect(Math.max(...faceAt(pa, 1).filter((d) => d < -1e-6))).toBeCloseTo(-0.125, 2);
+    expect(Math.max(...faceAt(pb, -1).filter((d) => d < -1e-6))).toBeCloseTo(-0.125, 2);
+  });
+
+  it("stand centred on a corridor's edge, with a face on the corridor side", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const roomId = placeRoom(l, "flat", ring(1, 2, 2)).id;
+    const room = l.rooms.find((x) => x.id === roomId)!;
+    const [r0] = ringRadii(l.hole, 2);
+    const before = Math.min(...points(solid(l, room.cells)).map((p) => p.r));
+    const innerEdge = cellEdges(l.hole, room.cells[0]!).find((e) => e.kind === "arc" && e.circle === 1)!;
+    l.corridors[innerEdge.id] = "rock";
+    const pts = points(solid(l, room.cells));
+    // Without a corridor, the inner wall's half reaches the border; with one, it stands half a corridor back, half a wall either side.
+    expect(before).toBeCloseTo(r0, 4);
+    const walls = pts.filter((p) => p.y > floorSpan(1)[0] + 0.5);
+    const radii = [...new Set(walls.map((p) => p.r.toFixed(3)))].map(Number).filter((r) => r < r0 + 2);
+    expect(radii).toContain(Number((r0 + 1.375).toFixed(3)));
+    expect(radii).toContain(Number((r0 + 1.625).toFixed(3)));
+  });
+
+  it("have a top: wall pieces at the ceiling between the two faces", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const roomId = placeRoom(l, "flat", ring(1, 2, 2)).id;
+    const room = l.rooms.find((x) => x.id === roomId)!;
+    const top = floorSpan(1)[1];
+    const g = solid(l, room.cells);
+    const pos = g.getAttribute("position");
+    let flatAtTop = 0;
+    for (let t = 0; t < pos.count; t += 3) if ([0, 1, 2].every((k) => Math.abs(pos.getY(t + k) - top) < 1e-6)) flatAtTop++;
+    expect(flatAtTop).toBeGreaterThan(0);
+    // Tagged as walls, so they come down with them.
+    const tags = g.getAttribute("aWall");
+    for (let t = 0; t < pos.count; t += 3) if ([0, 1, 2].every((k) => Math.abs(pos.getY(t + k) - top) < 1e-6)) expect(Math.hypot(tags.getX(t), tags.getY(t))).toBeGreaterThan(0);
+  });
+
+  it("leave no seam along a wall two rings share: their tops cover it all the way through", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const n2 = l.hole.ringSlots[1]!;
+    const n3 = l.hole.ringSlots[2]!;
+    const [s0, s1] = slotAngles(2, n2);
+    const j = Math.floor(((s0 + s1) / 2 / (2 * Math.PI)) * n3);
+    const aId = placeRoom(l, "flat", ring(1, 2, 2)).id;
+    const bId = placeRoom(l, "flat", ring(1, 3, j)).id;
+    const top = floorSpan(1)[1];
+    const tris: number[][][] = [];
+    for (const id of [aId, bId]) {
+      const room = l.rooms.find((x) => x.id === id)!;
+      const pos = solid(l, room.cells).getAttribute("position");
+      for (let t = 0; t < pos.count; t += 3) {
+        const v = [0, 1, 2].map((k) => [pos.getX(t + k), pos.getY(t + k), pos.getZ(t + k)]);
+        if (v.every((p) => Math.abs(p[1]! - top) < 1e-6)) tris.push(v.map((p) => [p[0]!, p[2]!]));
+      }
+    }
+    const cross = (a: number[], b: number[], p: number[]) => (b[0]! - a[0]!) * (p[1]! - a[1]!) - (b[1]! - a[1]!) * (p[0]! - a[0]!);
+    const covered = (p: number[]) =>
+      tris.some(([a, b, c]) => {
+        const d = [cross(a!, b!, p), cross(b!, c!, p), cross(c!, a!, p)];
+        return d.every((x) => x >= -1e-6) || d.every((x) => x <= 1e-6);
+      });
+    const edge = ringRadii(l.hole, 2)[1];
+    const [t0, t1] = slotAngles(j, n3);
+    const lo = Math.max(s0, t0) + 0.3 / edge;
+    const hi = Math.min(s1, t1) - 0.3 / edge;
+    for (let i = 0; i <= 200; i++) {
+      const a = lo + ((hi - lo) * i) / 200;
+      for (const dr of [-0.1, -0.05, -0.02, 0, 0.02, 0.05, 0.1]) {
+        const r = edge + dr;
+        expect(covered([r * Math.cos(a), r * Math.sin(a)]), `angle ${a.toFixed(4)}, ${dr} m off the edge`).toBe(true);
+      }
+    }
+  });
+
+  it("put their tops apart from the walls when asked, to be drawn in bare rock", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const roomId = placeRoom(l, "flat", ring(1, 2, 2)).id;
+    const room = l.rooms.find((x) => x.id === roomId)!;
+    const top = floorSpan(1)[1];
+    const parts = { glass: [], frames: [], tops: [] as number[] };
+    const pos = roomGeometry(l, room.cells, undefined, true, false, null, [], parts, true).getAttribute("position");
+    for (let t = 0; t < pos.count; t += 3) expect([0, 1, 2].every((k) => Math.abs(pos.getY(t + k) - top) < 1e-6)).toBe(false);
+    expect(parts.tops.length).toBeGreaterThan(0);
+    for (let i = 1; i < parts.tops.length; i += 3) expect(parts.tops[i]).toBeCloseTo(top, 6);
+  });
+});
+
 describe("windows", () => {
   it("pull back with the wall when a corridor is carved along a side, and return when it's gone", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
@@ -129,8 +238,8 @@ describe("windows", () => {
     const [a0, a1] = span();
     l.corridors["R1.1.2"] = "rock"; // along its left side
     const [b0, b1] = span();
-    // Back to where the side wall meets the shaft face (r = 10): half a corridor from the border, where there was only the hairline.
-    expect(b0 - a0).toBeCloseTo(Math.asin(1.5 / 10) - Math.asin(0.06 / 10), 6);
+    // Back to where the side wall meets the shaft face (r = 10): half a corridor and half a wall from the border, where there was only half a wall.
+    expect(b0 - a0).toBeCloseTo(Math.asin(1.625 / 10) - Math.asin(0.125 / 10), 6);
     expect(b1).toBeCloseTo(a1, 9);
     // The windows stay inside the room's walls.
     const geo = roomGeometry(l, room.cells);
@@ -408,6 +517,29 @@ describe("walls down, across a corridor", () => {
     const turn = (a: number) => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     expect(turn(faces.getY(k))).toBeCloseTo(turn(a0), 1);
     expect(faces.getZ(k) - faces.getY(k)).toBeCloseTo(a1 - a0, 1);
+  });
+
+  it("judges a solid wall as one slab: its faces, top and reveals together", () => {
+    const layout = createLayout(createHole(10, 3, 3, config.geometry));
+    const placed = placeRoom(layout, "life_support", ring(2, 2, 3, 4));
+    const room = layout.rooms.find((x) => x.id === placed.id)!;
+    expect(placeRoom(layout, "galley", ring(2, 3, 6)).ok).toBe(true);
+    for (const c of room.cells) for (const e of cellEdges(layout.hole, c)) if (e.kind === "arc" && e.circle === 2) layout.corridors[e.id] = "rock";
+    const geo = roomGeometry(layout, room.cells, undefined, true, false, null, [], undefined, true);
+    const pos = geo.getAttribute("position");
+    const walls = geo.getAttribute("aWall");
+    const faces = geo.getAttribute("aFace");
+    // The outer wall (tagged inward): every vertex of it, faces, top and ends, carries one tag.
+    const tags = new Set<string>();
+    for (let k = 0; k < pos.count; k++) {
+      const r = Math.hypot(pos.getX(k), pos.getZ(k));
+      if ((walls.getX(k) * pos.getX(k) + walls.getY(k) * pos.getZ(k)) / r < -0.5) tags.add([walls.getX(k), walls.getY(k), faces.getX(k), faces.getY(k), faces.getZ(k)].map((v) => v.toFixed(4)).join());
+    }
+    expect(tags.size).toBe(1);
+    // A room across the corridor, about a corridor's width past the wall's face.
+    const [nx, nz] = [...tags][0]!.split(",").map(Number);
+    expect(Math.hypot(nx!, nz!) - 2).toBeGreaterThan(corridors.widthM - 0.5);
+    expect(Math.hypot(nx!, nz!) - 2).toBeLessThan(corridors.widthM + 0.5);
   });
 
   it("drops a wide curved wall when any of it is seen from behind", () => {

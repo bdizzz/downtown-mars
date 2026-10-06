@@ -411,6 +411,11 @@
       "stores": {
         "water": 200
       },
+      "holds": [
+        "water",
+        "grayWater",
+        "tailings"
+      ],
       "effects": [],
       "cost": {
         "rock": 10,
@@ -426,13 +431,16 @@
       "size": "L",
       "staff": 3,
       "uses": {
-        "grayWater": 40,
+        "grayWater": 80,
         "power": 3
       },
       "makes": {
-        "water": 36,
-        "solidWaste": 1
+        "water": 78,
+        "soil": 1
       },
+      "byproducts": [
+        "soil"
+      ],
       "effects": [
         {
           "type": "noise",
@@ -462,10 +470,6 @@
       "uses": {},
       "makes": {},
       "sanitation": 25,
-      "returnsWater": {
-        "grayWater": 0.75,
-        "blackWater": 0.25
-      },
       "effects": [
         {
           "type": "smell",
@@ -493,6 +497,7 @@
       "makes": {
         "o2": 30
       },
+      "returnsWater": {},
       "scrubs": {
         "co2": 30
       },
@@ -672,7 +677,7 @@
         "power": 4
       },
       "makes": {
-        "water": 40
+        "grayWater": 40
       },
       "requiresDeposit": "aquifer",
       "effects": [
@@ -773,6 +778,10 @@
       "makes": {
         "wafers": 2
       },
+      "returnsWater": {
+        "grayWater": 0.5,
+        "tailings": 0.5
+      },
       "requiresDeposit": "silica",
       "effects": [
         {
@@ -804,10 +813,15 @@
       "uses": {
         "metal": 1,
         "wafers": 1,
+        "water": 2,
         "power": 4
       },
       "makes": {
         "electronics": 1
+      },
+      "returnsWater": {
+        "grayWater": 0.5,
+        "tailings": 0.5
       },
       "effects": [],
       "cost": {
@@ -921,7 +935,6 @@
       "staff": 2,
       "uses": {
         "organicWaste": 4,
-        "blackWater": 2,
         "power": 1
       },
       "makes": {
@@ -977,6 +990,10 @@
       "makes": {
         "marscrete": 4
       },
+      "returnsWater": {
+        "grayWater": 0.5,
+        "tailings": 0.5
+      },
       "effects": [
         {
           "type": "noise",
@@ -1011,6 +1028,10 @@
       },
       "makes": {
         "brick": 4
+      },
+      "returnsWater": {
+        "grayWater": 0.75,
+        "tailings": 0.25
       },
       "unlockedBy": "brickworks",
       "effects": [
@@ -1411,9 +1432,7 @@
         "power": 1,
         "water": 4
       },
-      "makes": {
-        "grayWater": 4
-      },
+      "makes": {},
       "maintains": "cleanable",
       "unlockedBy": "cleaning",
       "effects": [],

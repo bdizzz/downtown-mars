@@ -588,8 +588,8 @@ item("serving_counter", "Serving counter", [
 item("water_dispenser", "Water dispenser", [box([0, 0.5, 0], [0.4, 1.0, 0.4], "white"), cyl([0, 1.2, 0], 0.32, 0.45, "water"), box([0, 0.75, 0.205], [0.2, 0.12, 0.02], "dark"), box([0, 0.85, 0.21], [0.06, 0.04, 0.02], "glow", glow)]);
 // Farms: a planter bed and a hydroponic rack for every crop. The plain ids are leafy greens;
 // the others (planter_bed_wheat, ...) swap in for a farm growing that crop, in the same footprint.
-const CROPS = ["potatoes", "soybeans", "wheat", "barley", "leafyGreens", "mushrooms", "algae"];
-const CROP_NAMES = { potatoes: "potatoes", soybeans: "soybeans", wheat: "wheat", barley: "barley", leafyGreens: "leafy greens", mushrooms: "mushrooms", algae: "algae" };
+const CROPS = ["potatoes", "soybeans", "wheat", "barley", "leafyGreens", "mushrooms", "algae", "hemp"];
+const CROP_NAMES = { potatoes: "potatoes", soybeans: "soybeans", wheat: "wheat", barley: "barley", leafyGreens: "leafy greens", mushrooms: "mushrooms", algae: "algae", hemp: "fiber hemp" };
 
 /** A crop growing over a patch w × d whose soil is at height y: its plants, as parts. */
 function cropParts(crop, w, d, y, scale = 1) {
@@ -633,6 +633,23 @@ function cropParts(crop, w, d, y, scale = 1) {
           stalks.push(box([x, y + h + 0.05 * k, z + (crop === "barley" ? 0.03 * k : 0)], [0.04 * k, 0.12 * k, 0.03 * k], ear, crop === "barley" ? { r: [25, 0, 0] } : {}));
         }
       return stalks;
+    }
+    case "hemp": {
+      // Tall bare stalks, fans of narrow leaves at the top, a pointed tip.
+      const plants = [];
+      const n = Math.max(3, Math.round(w / 0.3));
+      const m = Math.max(2, Math.round(d / 0.3));
+      for (let i = 0; i < n; i++)
+        for (let j = 0; j < m; j++) {
+          const x = -w / 2 + (w / n) * (i + 0.5) + ((j % 2) * w) / n / 4;
+          const z = -d / 2 + (d / m) * (j + 0.5);
+          const h = (0.8 + ((i * 5 + j * 3) % 4) * 0.04) * k;
+          const turn = ((i + j) % 3) * 20;
+          plants.push(cyl([x, y + h / 2, z], 0.018 * k, h, "hemp"));
+          for (const a of [0, 60, 120]) plants.push(box([x, y + h * 0.82, z], [0.34 * k, 0.015 * k, 0.05 * k], "hempLeaf", { r: [0, a + turn, 12] }));
+          plants.push(box([x, y + h + 0.04 * k, z], [0.05 * k, 0.12 * k, 0.05 * k], "hempLeaf"));
+        }
+      return plants;
     }
     case "mushrooms":
       // Dark substrate blocks, caps on short stems.
@@ -1582,7 +1599,7 @@ const colors = {
   rust: "#a0522d", copper: "#b87333", stone: "#8a7a6c", hazard: "#e0a03a", board: "#2f4a3a", glow: "#9fd2ff", grow: "#f0a8ff",
   fire: "#ff8a3d", lamp: "#ffe2b0", power: "#f4d35e", blueprint: "#3d6fb0", fibre: "#7a6352",
   potato: "#4f7a3a", soy: "#9cbf5a", stalk: "#b8a060", wheat: "#d8b35a", barley: "#cdbf86", substrate: "#4a3526",
-  mushroom: "#e6dccb", cap: "#b08a64", algae: "#3f9a5a", flower: "#f2f0e0", red: "#c8423a",
+  mushroom: "#e6dccb", cap: "#b08a64", algae: "#3f9a5a", hemp: "#6f8f3e", hempLeaf: "#5c8a34", flower: "#f2f0e0", red: "#c8423a",
 };
 
 // What gives light, and where from (in the item's own frame): lamps, fires, grow lights. The 3D view

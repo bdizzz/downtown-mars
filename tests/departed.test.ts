@@ -21,10 +21,10 @@ function elders(n = 3): SimState {
 }
 
 describe("the composter", () => {
-  it("turns organic waste and black water into soil", () => {
+  it("turns organic waste into soil, with no water", () => {
     const s = createInitialState(config);
     s.drill.active = false;
-    Object.assign(s.resources, { organicWaste: 40, blackWater: 20, soil: 0 });
+    Object.assign(s.resources, { organicWaste: 40, soil: 0 });
     expect(applyCommand(s, { type: "build", room: "composter", at: at(1) }).ok).toBe(true);
     for (let i = 0; i < config.ticksPerDay; i++) step(s, config);
     expect(s.resources.soil).toBeGreaterThan(2);

@@ -30,6 +30,8 @@ export type SimCommand =
   | { type: "undoBuild"; roomId: number }
   | { type: "setDrill"; active: boolean }
   | { type: "setCrop"; roomId: number; crop: string }
+  /** What a tank holds: clean, gray water or tailings. */
+  | { type: "setHolds"; roomId: number; holds: string }
   | { type: "setPriority"; roomId: number; priority: Priority }
   /** Pause a room, or have it stop while its main output is at or above stopAt (null clears it). */
   | { type: "setRoomControl"; roomId: number; paused?: boolean; stopAt?: number | null }
@@ -436,6 +438,17 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       if (!room || !roomDef(room.type).growsCrops) return { ok: false, reason: "Only farms grow crops" };
       if (!isCrop(cmd.crop)) return { ok: false, reason: `Unknown crop "${cmd.crop}"` };
       room.crop = cmd.crop;
+      layout.version++;
+      return { ok: true };
+    }
+    case "setHolds": {
+      const room = layout.rooms.find((r) => r.id === cmd.roomId);
+      const choices = room && roomDef(room.type).holds;
+      if (!choices) return { ok: false, reason: "Only tanks hold a choice of water" };
+      if (!choices.includes(cmd.holds)) return { ok: false, reason: `A ${roomDef(room!.type).name.toLowerCase()} can't hold "${cmd.holds}"` };
+      // Whatever no longer fits once the tank changes over is lost with the next overflow.
+      if (cmd.holds === choices[0]) delete room!.holds;
+      else room!.holds = cmd.holds;
       layout.version++;
       return { ok: true };
     }

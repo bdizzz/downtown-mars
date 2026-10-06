@@ -10,6 +10,8 @@ export interface ResourceDef {
   waste?: boolean;
   /** Used as it's made; only batteries carry it between ticks. */
   flow?: boolean;
+  /** Wastewater with nowhere to go: rooms whose used water turns into it stall when it's full (gray water). */
+  backsUp?: boolean;
 }
 
 export interface CropDef {
@@ -17,7 +19,9 @@ export interface CropDef {
   name: string;
   /** What a farm growing it calls itself ("Potato farm"). */
   farmName: string;
-  group: "staple" | "protein" | "produce";
+  group: "staple" | "protein" | "produce" | "material";
+  /** What it yields, when not raw food (fiber hemp makes fiber). */
+  makes?: string;
   yield: number;
   water: number;
   power: number;

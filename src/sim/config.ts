@@ -11,6 +11,8 @@ export interface GeometryConfig {
     surfaceDepthM: number;
   /** Width of the walkway ledge ringing the shaft, used by the 3D view. */
   galleryWidthM: number;
+  /** How thick a room's walls are in the 3D view: one wall per shared edge, centred on it. */
+  wallThicknessM: number;
   /**
    * Rings come in pairs that share a slot count: ring 2 has ring 1's, ring 4
    * ring 3's, ring 6 ring 5's. Fewer, simpler borders between them, at the
@@ -83,6 +85,8 @@ export interface SimConfig {
     ledgerDays: number;
     /** Slots a room of each size nominally covers; deep rooms covering more scale up. */
     nominalSlots: Record<string, number>;
+    /** What becomes of clean water once used, unless a room says otherwise (rooms.json returnsWater): its share as each kind of wastewater. */
+    waterReturns: Record<string, number>;
   };
   weather: {
     /**

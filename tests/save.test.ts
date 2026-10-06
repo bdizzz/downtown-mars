@@ -73,6 +73,24 @@ describe("saves", () => {
     }
   });
 
+  it("upgrades a v18 save's black water to tailings, everywhere it's kept", () => {
+    const w = createWorld(config);
+    run(w, 300);
+    const json = serialize(w)
+      .replace(`"version":${SAVE_VERSION}`, '"version":18')
+      .replace('"resources":{', '"resources":{"blackWater":12,')
+      .replace('"current":{', '"current":{"blackWater":{"in":{"Restrooms":3},"out":{}},');
+    const loaded = deserialize(json);
+    expect(loaded.ok).toBe(true);
+    if (loaded.ok) {
+      const h = first(loaded.world);
+      expect(h.resources.tailings).toBe(12);
+      expect(h.resources).not.toHaveProperty("blackWater");
+      expect(h.ledger.current.tailings?.in.Restrooms).toBe(3);
+      expect(() => run(loaded.world, 300)).not.toThrow();
+    }
+  });
+
   it("refuses rooms this build doesn't know", () => {
     const s = serialize(createWorld(config)).replace('"type":"landing_pad"', '"type":"space_elevator"');
     expect(deserialize(s)).toMatchObject({ ok: false, reason: expect.stringMatching(/space_elevator/) });
