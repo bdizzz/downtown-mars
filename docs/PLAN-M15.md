@@ -100,4 +100,12 @@ Each step leaves the game working when merged on its own; 5 can go any time befo
 
 ## Notes as built
 
-(None yet.)
+**Step 1, materials in the sim (T-032, Oct 6).**
+
+- `data/materials.json` holds the walls table (a fine finish's cost and work are on top of its base step's, as in the plan), the floorings (fibre panels, costing `fiber`, which T-036 adds), the four kinds and what each gets (`kinds`: comfort share and wear benefit), `byCategory` (the heavy categories), `byRoom` (per-room overrides; kept here rather than in `rooms.json`, so all the lining numbers sit together), `shared` (scale 0.5, max 0.5), `leastWear` and `exempt`.
+- `src/sim/materials.ts`: `liningOf`, `flooringOf`, `liningKind`, `liningComfort` (homes), `sharedLiningComfort` (everyone), `liningWear` and `liningText`. A room's kind: `byRoom`, then homes (rooms that house), then people rooms (`condition.json`'s cleanable list, so the restroom counts as people though its category is water), then `byCategory`, else other.
+- **Shared comfort** is the plain average of the people rooms' lining comfort (walls plus floor), times `shared.scale`, capped at `shared.max`. Only built, active people rooms count; workshops and stores don't dilute it.
+- **Wear:** `stepCondition` multiplies each room's decay by `liningWear`: `1 − (1 − wear) × wearBenefit`, never below `leastWear` (metal panels on a heavy room: ×0.4).
+- **The room panel** (`panelRows`, shared with Godot) has a **Walls** row for every room that can have a lining: "Patterned brick, fibre-composite panels floor: comfort +1, wears 15% slower".
+- **Console:** `dm.lining(roomId, material, finish?)` and `dm.floor(roomId, flooring?)` (the `consoleLining` command) set a lining outright, for free. Nothing else sets one yet.
+- **Save v19:** no migration needed (absent fields are bare rock).

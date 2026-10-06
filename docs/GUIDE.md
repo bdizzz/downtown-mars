@@ -127,6 +127,7 @@ The hole's air is a closed loop: life support makes it, and it moves where peopl
 - **Maintenance** rooms (Build → Services) repair rooms back to 100%, one room per maintenance room at a time, taking the worst from the hole's queue (rooms at 60% or below). They use machinery.
 - From 150 colonists, **cleaning services** do the same for homes and other rooms people share, using clean water.
 - Understaffed crews work slower; a crew that stops hands its room back, part-done, to the front of the queue. A crew with nothing to repair stands by, using power but no machinery or water.
+- Every room is carved from **bare rock**; the room panel's **Walls** row says what its lining is and what that gives. Brick and metal linings (an upgrade, coming soon) make homes more comfortable, make shared rooms nicer for everyone, and wear more slowly (workshops and plants twice as much).
 - **Charts → Maintenance** shows the queue and what each crew is on; the **Condition** stat at the top and the Condition overlay show how things stand.
 
 ## Earth, storms, the office and events

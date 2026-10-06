@@ -97,6 +97,7 @@ For testing, the browser console has `dm`, which acts on the hole you're looking
 | `dm.showcase(12)` | Digs 12 floors and fills rings 1–3 with furnished rooms, for looking at and stress-testing |
 | `dm.skip(3)` | Runs every hole ahead 3 days (up to 365) |
 | `dm.wear(0.4)` | Sets every room's condition to 40% (`dm.wear(0.2, roomId)` for one) |
+| `dm.lining(12, "brick")` | Lines room 12's walls outright: `rock`, `brick` or `metal`, `"fine"` as a third argument for the finer finish; `dm.floor(12, "fibre_panels")` its floor (`dm.floor(12)` back to matching) |
 | `dm.storm(1)` | Starts a dust storm for a day; `dm.storm(2, 3)` forecasts one in 3 days; `dm.storm(0)` clears it |
 | `dm.event("belt_ship")` | Raises any event now |
 | `dm.snapshot()`, `dm.command({ ... })` | The latest snapshot; send any simulation command (`SimCommand` in `src/sim/commands.ts`) |

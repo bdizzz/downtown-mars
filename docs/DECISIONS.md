@@ -166,6 +166,14 @@ See `PLAN-M14.md` (Bryon: drill discoveries, then the belt ship, then celebratio
 - **First person on touch:** a translucent joystick bottom left (analog: push further to walk faster, all the way to run), stair buttons beside it, drag elsewhere to look (Bryon asked for arrows or a stick, Oct 6; the stick won).
 - **Narrow screens (under 760 px)** get panels as bottom sheets and a one-line, sideways-scrolling resource bar; wider tablets keep the desktop layout.
 
+## Decided for room linings (Oct 4–6, F-003)
+
+See `PLAN-M15.md` and `docs/tickets/F-003-room-materials.md` (Bryon's answers; the numbers are Claude's defaults, in `data/materials.json`).
+
+- **Every room starts as bare rock,** its build cost unchanged. The lining is `room.material` (`rock`, `brick`, `metal`) and `room.finish` (`base`, `fine`); the floor is `room.flooring`, absent meaning it matches the walls. Only ring rooms with walls of their own have one (not surface buildings, the entrance, stairs, lifts or empty rooms).
+- **What a lining does depends on the kind of room:** homes feel its comfort in full; people rooms (the cleanable ones) lift everyone's shared comfort (their average lining comfort × 0.5, up to +0.5); heavy rooms (industry, power, air, water) get no comfort but twice the wear benefit; the rest only wear slower. Cave-in resistance waits for cave-ins.
+- **Upgrades go through the construction queue,** usable at half output once crews start; condition back to 100% when done. Linings can be changed down or stripped to bare rock for a 50% refund of their material (T-033). Build mode can pick a material up front for the full price but one construction effort (T-038).
+
 ## Still open
 
 Deliberately not decided yet:

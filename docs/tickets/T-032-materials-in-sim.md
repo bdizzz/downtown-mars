@@ -1,7 +1,7 @@
 ---
 id: T-032
 title: Room materials in the sim: material, finish, flooring, comfort and wear
-status: open
+status: done
 size: M
 area: sim, data
 feature: F-003
@@ -25,3 +25,4 @@ PLAN-M15.md Notes as built; DECISIONS.md (room linings).
 ## History
 - 2026-10-06 00:10 opened from F-003 (agreed)
 - 2026-10-06 09:47 building on t-032-materials-in-sim
+- 2026-10-06 09:52 built
