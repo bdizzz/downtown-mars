@@ -2,7 +2,7 @@
 
 Goal: oxygen and CO2 form a stable loop, so once a hole's air is made it doesn't keep costing water. Water turns into oxygen for good **only as the hole's living volume grows**. Feature F-002 (`docs/tickets/F-002-air-mix.md`).
 
-Bryon's design (Oct 4, N-0005, first written up in T-011) is settled; the numbers and the smaller rules below are Claude's defaults, flagged so they're easy to change. Every number lives in data (`data/config.json` under a new `air` block, and `data/rooms.json`).
+Bryon's design (Oct 4, N-0005, first written up in T-011) is settled; the numbers and the smaller rules below are Claude's defaults, which Bryon agreed on Oct 6. Every one is easy to change in balancing. Every number lives in data (`data/config.json` under a new `air` block, and `data/rooms.json`).
 
 ## Where it stands today
 
@@ -69,7 +69,7 @@ Plants do the reverse, 1:1: farms take CO2 2 → O2 2 as today, and **parks chan
 - **The electrolyzer's water is gone for good** (F-001: the one deliberate leak besides tailings). It shows in the water charts as its own user.
 - "Fully efficient while there's scrubbing capacity": a steady colony with enough scrubbers runs the electrolyzer only as it digs. 20 people make 20 CO2 a day, so one scrubber covers about 30 people.
 - New `runsWhile` field for both, so the rule is data, not a special case: `{ "below": "o2Target" }`, `{ "above": "co2Floor" }` (the scrubber's `scrubs` already does the second; `runsWhile` makes "standby" show in the room panel).
-- **The landing kit gains a scrubber**, or the tutorial keeps asking for one early (see Open questions). Furniture: the scrubber keeps life support's; the electrolyzer gets a new model and layout (`scripts/furniture.mjs`, `data/furniture.json`, `data/layouts.json`), plus 2D art.
+- **No scrubber in the landing kit** (Bryon, Oct 6): a new game's air lasts about 5 days before CO2 passes 1%, and the tutorial asks for a scrubber early, as it does for life support today. Furniture: the scrubber keeps life support's; the electrolyzer gets a new model and layout (`scripts/furniture.mjs`, `data/furniture.json`, `data/layouts.json`), plus 2D art.
 
 ### 5. Gas tanks: ballast both ways
 

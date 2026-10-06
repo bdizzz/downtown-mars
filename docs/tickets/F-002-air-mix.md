@@ -40,7 +40,7 @@ Proposed; becomes tickets once this feature is agreed. Steps 1–3 and 5 don't n
 ## Open questions
 - [x] **The shaft dome** (M12, from 300 colonists) seals the shaft. Does the domed shaft join the living volume? Yes (Bryon, Oct 6): about 1,250 m³ a floor, a big one-off O2 bill. Claude's default: the dome pressurizes first (its air made from the reserve and electrolyzers) and opens once full, so the hole's O2 doesn't crash.
 - [x] **Should the electrolyzer ever fill O2 tanks** (a stockpile for growth spurts or a scrubber breakdown)? Yes: once O2 is at the target, it fills the O2 tanks up to a hole-wide **tank fill** slider (0–100%, default off), straight into the tanks so it never pushes the air too high. (Bryon, Oct 6)
-- [ ] **Scrubber in the landing kit?** A new game's air lasts about 5 days before CO2 passes 1% with 20 people. Proposed: keep the tutorial asking for one early rather than adding it to the kit.
+- [x] **Scrubber in the landing kit?** A new game's air lasts about 5 days before CO2 passes 1% with 20 people. No: the tutorial asks for one early instead. (Bryon, Oct 6, with the rest of Claude's defaults)
 
 ## History
 - 2026-10-04 19:12 made from T-011 (T-012 moved the air mix into a feature)
@@ -48,3 +48,4 @@ Proposed; becomes tickets once this feature is agreed. Steps 1–3 and 5 don't n
 - 2026-10-06 00:01 electrolyzer stockpile answered: tank fill slider
 - 2026-10-06 00:04 flows in two steps for the electrolyzer (Bryon)
 - 2026-10-06 00:05 domed shaft counts as living volume (Bryon)
+- 2026-10-06 00:06 plan defaults agreed (Bryon); questions answered
