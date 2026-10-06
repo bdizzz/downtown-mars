@@ -390,7 +390,7 @@ export function App() {
 
   return (
     <div
-      className={`app${settings.colorBlind ? " color-blind" : ""}`}
+      className={`app${settings.colorBlind ? " color-blind" : ""}${welcome ? " welcoming" : ""}`}
       style={{ "--ui-scale": settings.uiScale } as React.CSSProperties}
     >
       {/* Build mode: a thin yellow frame round the screen, so it's always clear you're building. Clicks go through it. */}

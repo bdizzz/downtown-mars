@@ -240,14 +240,18 @@ public partial class Live : Node3D
             SetSpeed(open ? 0 : _speedBeforeMenu);
         };
         _hud.AddChild(_menu);
-        // A new game's welcome card, over the menu; the game waits behind it, then starts at 1×.
+        // A new game's welcome card, on a layer of its own over the HUD: only Mars and the hole show
+        // behind it (the HUD hides), and the game waits, then starts at 1×.
         _welcome = new Welcome { Name = "Welcome" };
         _welcome.Shown = open =>
         {
             SetSpeed(open ? 0 : 1);
+            _hud.Visible = !open && !NoHud;
             if (!open) _bridge.Send(new Dictionary<string, object> { ["type"] = "welcomeSeen" });
         };
-        _hud.AddChild(_welcome);
+        var welcomeLayer = new CanvasLayer { Layer = 2, Name = "WelcomeLayer" };
+        AddChild(welcomeLayer);
+        welcomeLayer.AddChild(_welcome);
         // The tutorial, help and settings (the sheets over the menu).
         _tutorial.Dismissed = () =>
         {
