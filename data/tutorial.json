@@ -9,7 +9,7 @@
       "You have **{colonists} colonists**, enough supplies to get started, and **one very large drill**. As it bores into the ground, you'll carve homes, farms and workshops into the walls of the hole.",
       "It's the only way to live here for good. Let's dig in."
     ],
-    "button": "Let's dig in"
+    "button": "And so it begins"
   },
   "intro": "I'm {name}, your deputy. Twenty of us, one pod, and a hole that goes nowhere yet. Let's make it a home.",
   "goals": [
