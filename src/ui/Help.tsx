@@ -33,6 +33,7 @@ const TOUCH: [string, string][] = [
   ["Hold", "Show what's under your finger, as hovering does with a mouse"],
   ["Drag", "3D: turn round the hole (Iso: drag up and down to tilt). Plan and Unrolled: pan. With the corridor tool: draw"],
   ["Two fingers", "Pinch to zoom, twist to turn, move together to pan (in the side-on views, to go up and down)"],
+  ["Stick", "First person: the stick bottom left walks (all the way runs); drag elsewhere to look; ▲ ▼ take the stairs"],
   ["Modes", "Build, View, Map and Charts along the bottom; tap the view to fold a room list away"],
 ];
 

@@ -224,6 +224,7 @@ The web game plays in mobile browsers: fully on a tablet in landscape, cramped b
 | Hold | Show what's under your finger, as hovering does with a mouse; slide to look around, lift to put it down (it isn't a tap) |
 | One finger | 3D: turn round the hole (Iso: up and down tilts, as with a mouse). Plan and Unrolled: pan. With the corridor tool: draw a corridor, confirmed on release |
 | Two fingers | Pinch to zoom, twist to turn, move together to pan (in Iso across the floor; in Cutaway and Shaft up and down). A second finger cancels whatever the first was doing |
+| First person | A see-through stick, bottom left, walks and strafes (pushed all the way, you run); drag anywhere else to look round. **▲ Up** and **▼ Down** appear beside it on stairs |
 | Map | Drag spins the planet, pinch zooms |
 
 On a narrow screen (under 760 px), the resources run in one line that scrolls sideways, the dock stacks its strip above the mode buttons, and panels (the inspector, charts) open as a sheet over the bottom of the view, closed with ×. Touching the view folds an open room list away, so it doesn't hide where the room goes; the tool stays in hand. Keys still work with a keyboard attached.

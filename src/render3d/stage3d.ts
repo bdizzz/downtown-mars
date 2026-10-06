@@ -46,7 +46,8 @@ const BADGE_ABOVE = 0.9;
 /** How much a full dust storm dims the sun and the sky's light, and how fast (per second) the view follows it. */
 const STORM_DIM = { sun: 0.7, sky: 0.3 };
 const STORM_EASE = 0.8;
-import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
+import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, touchFirst, type Gesture } from "../view/touch";
+import { createWalkPad } from "./joystick";
 import { clear as walkClear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Four
@@ -1156,6 +1157,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   crosshair.className = "walk-crosshair";
   crosshair.style.display = "none";
   host.appendChild(crosshair);
+  // On a touch screen: a stick to walk with, and stair buttons (no keys to press).
+  const walkPad = createWalkPad(host, (dir) => {
+    takeStairs(dir);
+    updateReadout();
+  });
 
   /** Stand on the gallery of the floor you were looking at, facing along it. */
   function placeWalker(): void {
@@ -1198,6 +1204,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function walkReadout(): string {
     const stairs = layout ? stairsHere(layout, walker.floor, walker.x, walker.z) : null;
     const flights = stairs ? ` · stairs: ${[stairs.up !== null ? "R up" : "", stairs.down !== null ? "F down" : ""].filter(Boolean).join(", ")}` : "";
+    walkPad.setStairs(stairs?.up != null, stairs?.down != null);
+    if (touchFirst()) return `Floor ${walker.floor} · the stick walks (all the way runs), drag to look`;
     const look = locked() ? "mouse to look (Tab or Esc to stop)" : "drag to look (Tab for mouse look)";
     return `Floor ${walker.floor} · WASD to move, Q/E to turn, ${look}${flights}`;
   }
@@ -1214,6 +1222,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (locked()) document.exitPointerLock();
     }
     if ((before === "walk") !== (view.mode === "walk")) opts.onWalking?.(view.mode === "walk");
+    walkPad.show(view.mode === "walk" && touchFirst());
     applyFloorCut();
     applyCamera();
     if (latest) stage.update(latest);
@@ -1355,13 +1364,18 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   /** One frame's walking: returns true if the walker moved. */
   function walkFrame(dt: number): boolean {
-    if (view.mode !== "walk" || !layout || !held.size) return false;
+    const stick = walkPad.vector();
+    if (view.mode !== "walk" || !layout || (!held.size && !stick.x && !stick.y)) return false;
     const turn = (held.has("e") ? 1 : 0) - (held.has("q") ? 1 : 0);
     walker.yaw += turn * WALK.keyTurn * dt;
-    const fwd = (held.has("w") || held.has("arrowup") ? 1 : 0) - (held.has("s") || held.has("arrowdown") ? 1 : 0);
-    const side = (held.has("d") || held.has("arrowright") ? 1 : 0) - (held.has("a") || held.has("arrowleft") ? 1 : 0);
+    let fwd = (held.has("w") || held.has("arrowup") ? 1 : 0) - (held.has("s") || held.has("arrowdown") ? 1 : 0);
+    let side = (held.has("d") || held.has("arrowright") ? 1 : 0) - (held.has("a") || held.has("arrowleft") ? 1 : 0);
+    // The touch stick, when no key is held: as far as it's pushed, that fast.
+    const analog = !fwd && !side;
+    if (analog) [fwd, side] = [stick.y, stick.x];
     if (!fwd && !side) return turn !== 0;
-    const speed = (held.has("shift") ? WALK.run : WALK.speed) * dt;
+    const run = held.has("shift") || (analog && walkPad.running());
+    const speed = (run ? WALK.run : WALK.speed) * dt * (analog ? Math.min(1, Math.hypot(fwd, side)) : 1);
     const len = Math.hypot(fwd, side);
     const [fx, fz] = [Math.cos(walker.yaw), Math.sin(walker.yaw)];
     // Right of facing (fx, fz) is (−fz, fx).
@@ -2254,6 +2268,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       renderer.dispose();
       canvas.remove();
       bar.remove();
+      crosshair.remove();
+      walkPad.dispose();
     },
   };
   return stage;

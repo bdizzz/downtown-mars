@@ -163,6 +163,7 @@ See `PLAN-M14.md` (Bryon: drill discoveries, then the belt ship, then celebratio
 - **What mobile gets:** tablets in landscape fully playable; phones playable but cramped (portrait and landscape), with the 3D view as the main one (Bryon, Oct 5). The furnishing tool and Godot stay desktop-only.
 - **Gestures:** one finger orbits in Cutaway and Iso and pans in Plan and Unrolled; two fingers always pinch-zoom, twist and pan (Bryon, Oct 5). Top still turns with one finger (it has no pan, and T-052 drops it).
 - **Tap to aim, tap again to act** for every tool (rooms, demolish, a single corridor border, windows, bulkheads), since a finger can't hover first; with no tool a tap selects at once. A long press stands in for hover. Claude's default; the shared logic is `src/view/touch.ts`.
+- **First person on touch:** a translucent joystick bottom left (analog: push further to walk faster, all the way to run), stair buttons beside it, drag elsewhere to look (Bryon asked for arrows or a stick, Oct 6; the stick won).
 - **Narrow screens (under 760 px)** get panels as bottom sheets and a one-line, sideways-scrolling resource bar; wider tablets keep the desktop layout.
 
 ## Still open
