@@ -92,13 +92,14 @@ Before committing, run `npm test` (unit tests plus scripted playthroughs) and ch
 
 ## Playtest notes and the board
 
-Bryon's playtest notes flow through six skills (`.claude/skills/`):
+Bryon's playtest notes flow through seven skills (`.claude/skills/`):
 
 | Skill | Does |
 | --- | --- |
 | `/note <text>` | Adds the note verbatim to the inbox. Nothing else. |
 | `/ingest` | Turns inbox notes into tickets in `docs/tickets/` (`T-012`, with size S/M/L/XL and open questions) or, for big items, features (`F-001`), archives each note word for word, and publishes them to main. |
 | `/board` | Shows features with their tasks, then what's ready, needs answers, blocked, in flight and in review. "agree F-001" turns a feature's breakdown into tickets. |
+| `/deps [days]` | Draws the ticket dependency tree in the Claude UI: tickets as boxes (ready purple, blocked gray, in flight or review blue, done green) with arrows for `blocked_by`; done tickets stay on it for `days` after shipping (default 7). From `node scripts/board.mjs graph`. |
 | `/build [T-012]` | One ticket → overlap check against open PRs → a `t-012-…` branch from a fresh `origin/main` in a worktree → build, test, docs → PR. `/build F-001` writes or revises a feature's plan instead (a doc-only PR on `f-001-…`). |
 | `/try [T-012] [web\|godot\|both]` | Starts the web dev server (on its own port from 5174), the Godot viewer (its bridge on a port from 7980, saving to a scratch folder), or both, for that ticket's (or branch's) worktree in the Terminal panel (`scripts/try.mjs` picks the checkout and ports), and says what to look at. Feedback you give afterwards goes on that PR as a checklist and gets fixed on the same branch. |
 | `/land [T-012]` | After review: squash-merges the PR if CI is green, stops that branch's dev servers, removes its worktree, deletes its local and remote branches, updates main and shows what's ready next (`scripts/land.mjs`). With nothing named, sweeps up everything already merged. Leaves alone worktrees a live session is in, uncommitted work and branches still in flight. |
