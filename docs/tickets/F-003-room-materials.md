@@ -31,9 +31,9 @@ Context: DECISIONS.md has glass as optional and marscrete replacing brick at 1.5
 
 ## Open questions
 - **Rooms start as bare rock whatever their build cost?** Answered (Bryon, Oct 6): yes by default, but build mode gets a **building material** picker, defaulting to bare rock, so a room can be built straight away in a higher material. It always costs bare rock's cost plus the upgrade's, whichever way the room got there, but building it outright takes only the room's build time (one construction effort, no refit work): that's the reward for choosing up front. → T-038
-- **Condition back to 100% when a refit finishes?** (Proposed: yes, a fresh lining; it makes refitting a worn room doubly worth it.)
-- **Half output only once crews start**, not while the job waits in the queue? (Proposed: once started.)
-- **Can a lining be downgraded** (metal → brick), paying the new one in full? (Proposed: yes; never back to bare rock.)
+- **Condition back to 100% when a refit finishes?** Yes (Bryon, Oct 6): a fresh lining.
+- **Half output only once crews start**, not while the job waits in the queue? Yes (Bryon, Oct 6).
+- **Can a lining be downgraded** (metal → brick), paying the new one in full? Yes, never back to bare rock (Bryon, Oct 6).
 - **The numbers** in PLAN-M15's tables are first guesses for the playthroughs to tune.
 
 ## Breakdown
@@ -51,3 +51,4 @@ Agreed Oct 6. In build order; 5 can go any time before 6.
 - 2026-10-05 09:07 planning on f-003-room-materials
 - 2026-10-06 00:11 agreed
 - 2026-10-06 00:15 build-mode material picker added as T-038 (Bryon)
+- 2026-10-06 00:17 questions answered
