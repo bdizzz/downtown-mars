@@ -1,7 +1,7 @@
 ---
 id: T-053
 title: An intro narrative card for new games
-status: open
+status: done
 size: S
 area: ui
 touches: [src/ui/App.tsx, src/ui/Tutorial.tsx, data/tutorial.json, godot/]
@@ -43,3 +43,4 @@ GUIDE.md: Starting out. README if it describes the opening.
 - 2026-10-06 01:26 opened from N-0026
 - 2026-10-06 01:29 questions answered
 - 2026-10-06 01:30 building on t-053-intro-narrative-card
+- 2026-10-06 01:34 built

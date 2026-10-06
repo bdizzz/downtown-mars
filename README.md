@@ -25,7 +25,7 @@ This is an early playtest build: a hole or two, the first hour or so of play. To
 - **Keep people going.** Watch oxygen, water, food and power; ride out dust storms; repair rooms as they wear; answer colonists at the office; decide what to do when the drill strikes something.
 - **Grow.** Better homes unlock as the colony grows. At 50 colonists the map opens: send a convoy to found another hole and trade between them.
 
-New games start with a tutorial from your deputy. The [player's guide](docs/GUIDE.md) covers everything in detail.
+New games open with a short welcome card, then a tutorial from your deputy. The [player's guide](docs/GUIDE.md) covers everything in detail.
 
 ## Playing
 
