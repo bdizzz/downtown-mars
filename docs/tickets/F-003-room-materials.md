@@ -1,7 +1,7 @@
 ---
 id: F-003
 title: Room materials, finishes and floors, upgraded in place
-status: draft
+status: agreed
 plan: docs/PLAN-M15.md
 notes: [N-0006, N-0007]
 created: 2026-10-04 19:12
@@ -37,14 +37,15 @@ Context: DECISIONS.md has glass as optional and marscrete replacing brick at 1.5
 - **The numbers** in PLAN-M15's tables are first guesses for the playthroughs to tune.
 
 ## Breakdown
-Proposed; becomes tickets once this feature is agreed. In build order; 5 can go any time before 6.
-- (M) Materials in the sim: `data/materials.json`, `room.material`, `finish` and `flooring`, comfort for homes and shared rooms by kind of room, the wear multiplier, an inspector line, save version bump (set by tests and the console only)
-- (L) The Upgrade action: `upgradeRoom` command and `upgrade` job, half output and the refit comfort dip, both-steps pricing, cancel and refund, the room panel's Upgrade control, Construction panel label, 2D and plan accent border, bots refit homes in brick
-- (M) Looks in the web 3D view: smoothed rock, brick, patterned brick, metal panels, inlaid metal, their floors, refit stripes
-- (M) Looks in Godot: the same surfaces, the material through the bridge, the Upgrade control working in the viewer
-- (S) Fibre: fiber hemp as a farm crop making a new `fiber` material, stored like other dry goods
-- (M) Floor upgrades: `flooring` upgrades starting with fibre-composite panels, the panel's Floor control, floor looks in web 3D and Godot
+Agreed Oct 6. In build order; 5 can go any time before 6.
+- (M) Materials in the sim: `data/materials.json`, `room.material`, `finish` and `flooring`, comfort for homes and shared rooms by kind of room, the wear multiplier, an inspector line, save version bump (set by tests and the console only) → T-032
+- (L) The Upgrade action: `upgradeRoom` command and `upgrade` job, half output and the refit comfort dip, both-steps pricing, cancel and refund, the room panel's Upgrade control, Construction panel label, 2D and plan accent border, bots refit homes in brick → T-033
+- (M) Looks in the web 3D view: smoothed rock, brick, patterned brick, metal panels, inlaid metal, their floors, refit stripes → T-034
+- (M) Looks in Godot: the same surfaces, the material through the bridge, the Upgrade control working in the viewer → T-035
+- (S) Fibre: fiber hemp as a farm crop making a new `fiber` material, stored like other dry goods → T-036
+- (M) Floor upgrades: `flooring` upgrades starting with fibre-composite panels, the panel's Floor control, floor looks in web 3D and Godot → T-037
 
 ## History
 - 2026-10-04 19:12 made from T-008 (T-012 moved room materials into a feature)
 - 2026-10-05 09:07 planning on f-003-room-materials
+- 2026-10-06 00:11 agreed
