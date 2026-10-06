@@ -33,3 +33,4 @@ Build each wall once per edge (room–room, room–corridor, room–rock), as a 
 ## History
 - 2026-10-04 16:12 opened from N-0001
 - 2026-10-04 16:14 questions answered
+- 2026-10-06 09:48 building on t-001-wall-thickness
