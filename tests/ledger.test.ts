@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { flows } from "../src/bridge/charts";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
-import { averageFlows, LABELS } from "../src/sim/ledger";
+import { averageFlows, LABELS, record } from "../src/sim/ledger";
 import type { Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { river } from "../src/view/flows";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
@@ -55,5 +57,26 @@ describe("flow ledger", () => {
     expect(s.ledger.days).toHaveLength(config.economy.ledgerDays);
     // 20 colonists breathe 20 oxygen a day.
     expect(averageFlows(s, config).o2!.out[LABELS.colonists]).toBeCloseTo(20, 0);
+  });
+});
+
+describe("two-step flows", () => {
+  it("keeps where a use went next, averaged, for the web panel and the bridge", () => {
+    const s = colony();
+    for (let day = 0; day < 2; day++) {
+      record(s, "water", "out", "Electrolyzer", 6, { then: "Air for new space" });
+      record(s, "water", "out", "Electrolyzer", 2, { then: "Replacing breathed air" });
+      for (let i = 0; i < config.ticksPerDay; i++) step(s, config);
+    }
+    const f = averageFlows(s, config);
+    expect(f.water!.then!["Electrolyzer"]!["Air for new space"]).toBeCloseTo(6, 6);
+    expect(f.water!.out["Electrolyzer"]).toBeCloseTo(8, 6);
+
+    const rv = river("water", f.water);
+    expect(rv.thens["Electrolyzer"]!.map(([label]) => label)).toEqual(["Air for new space", "Replacing breathed air"]);
+    expect(Object.keys(rv.thens)).toEqual(["Electrolyzer"]); // other uses don't say
+
+    const out = flows(s, "water").rivers[0]!.outs.find((o) => o.label === "Electrolyzer")!;
+    expect(out.then!.map((t) => t.value)).toEqual([expect.closeTo(6, 6), expect.closeTo(2, 6)]);
   });
 });

@@ -1,7 +1,7 @@
 ---
 id: T-027
 title: Two-step flows: show where a use went next
-status: open
+status: done
 size: S
 area: ui, godot
 feature: F-002
@@ -25,3 +25,4 @@ PLAN-M16.md Notes as built.
 ## History
 - 2026-10-06 00:08 opened from F-002 (agreed)
 - 2026-10-06 09:47 building on t-027-two-step-flows
+- 2026-10-06 19:30 built

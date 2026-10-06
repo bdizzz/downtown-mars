@@ -106,7 +106,7 @@ export interface FlowsMessage {
   tabs: { id: string; name: string }[];
   note: string;
   recycled?: string;
-  rivers: { name: string; summary: string; empty?: string; ins: { label: string; value: number; color: string }[]; outs: { label: string; value: number; color: string }[] }[];
+  rivers: { name: string; summary: string; empty?: string; ins: { label: string; value: number; color: string }[]; outs: { label: string; value: number; color: string; then?: { label: string; value: number }[] }[] }[];
 }
 
 export function flows(state: SimState, tab: string): FlowsMessage {
@@ -130,7 +130,12 @@ export function flows(state: SimState, tab: string): FlowsMessage {
         summary: empty ? "" : `in ${num(rv.totalIn)} · out ${num(rv.totalOut)} a day · ${net >= 0 ? "+" : "−"}${num(Math.abs(net))} net · ${num(stock)} stored`,
         ...(empty ? { empty: `Nothing moving yet. In store: ${num(stock)}` } : {}),
         ins: rv.ins.map(([label, value]) => ({ label, value, color: flowColor(label) })),
-        outs: rv.outs.map(([label, value]) => ({ label, value, color: flowColor(label) })),
+        outs: rv.outs.map(([label, value]) => ({
+          label,
+          value,
+          color: flowColor(label),
+          ...(rv.thens[label] ? { then: rv.thens[label]!.map(([l, v]) => ({ label: l, value: v })) } : {}),
+        })),
       };
     }),
   };

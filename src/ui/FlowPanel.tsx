@@ -6,9 +6,12 @@ import { FLOW_TABS, flowColor, recycledShare, river } from "../view/flows";
 import { num } from "./format";
 
 // River-style flow diagrams: for each resource, where it comes from (left),
-// where it goes (right), per day averaged over recent days.
+// where it goes (right), per day averaged over recent days. A use that says
+// where it went next (the ledger's `then`) gets a third column.
 
 const W = 320;
+/** A river with a second step is drawn wider, to fit the third column. */
+const W2 = 460;
 const LABEL_W = 100;
 const BAR = 6;
 const GAP = 4;
@@ -16,8 +19,7 @@ const MAX_H = 130;
 
 type Node = { label: string; value: number; y: number; h: number };
 
-function stack(entries: [string, number][], scale: number): Node[] {
-  let y = 0;
+function stack(entries: [string, number][], scale: number, y = 0): Node[] {
   return entries.map(([label, value]) => {
     const h = Math.max(1.5, value * scale);
     const n = { label, value, y, h };
@@ -26,6 +28,8 @@ function stack(entries: [string, number][], scale: number): Node[] {
   });
 }
 
+const bottom = (nodes: Node[]) => (nodes.length ? nodes.at(-1)!.y + nodes.at(-1)!.h : 0);
+
 /** A ribbon from one side's node to a slice of the middle bar. */
 function ribbon(x1: number, y1: number, x2: number, y2: number, h: number): string {
   const m = (x1 + x2) / 2;
@@ -33,7 +37,7 @@ function ribbon(x1: number, y1: number, x2: number, y2: number, h: number): stri
 }
 
 function River({ resource, flows, stock }: { resource: string; flows: Flows[string] | undefined; stock: number }) {
-  const { name, ins, outs, totalIn, totalOut } = river(resource, flows);
+  const { name, ins, outs, thens, totalIn, totalOut } = river(resource, flows);
   if (!ins.length && !outs.length) {
     return (
       <div className="river">
@@ -43,14 +47,26 @@ function River({ resource, flows, stock }: { resource: string; flows: Flows[stri
     );
   }
 
+  const twoStep = outs.some(([label]) => thens[label]);
+  const w = twoStep ? W2 : W;
   const scale = MAX_H / Math.max(totalIn, totalOut, 1e-6);
   const left = stack(ins, scale);
   const right = stack(outs, scale);
+  // The second step: each use's next places, stacked from the use's own top (or below the last).
+  const next: (Node & { from: Node; off: number })[] = [];
+  for (const use of right) {
+    let off = 0;
+    for (const n of stack(thens[use.label] ?? [], scale, Math.max(use.y, next.length ? bottom(next) + GAP : 0))) {
+      next.push({ ...n, from: use, off });
+      off += n.h;
+    }
+  }
   const midH = Math.max(totalIn, totalOut) * scale;
-  const height = Math.max(midH, left.at(-1) ? left.at(-1)!.y + left.at(-1)!.h : 0, right.at(-1) ? right.at(-1)!.y + right.at(-1)!.h : 0) + 4;
+  const height = Math.max(midH, bottom(left), bottom(right), bottom(next)) + 4;
   const xL = LABEL_W;
-  const xM = W / 2 - BAR / 2;
-  const xR = W - LABEL_W - BAR;
+  const xM = twoStep ? 160 : W / 2 - BAR / 2;
+  const xR = twoStep ? 250 : W - LABEL_W - BAR;
+  const xT = w - LABEL_W - BAR;
 
   let inOffset = 0;
   let outOffset = 0;
@@ -65,7 +81,7 @@ function River({ resource, flows, stock }: { resource: string; flows: Flows[stri
           {num(Math.abs(net))} net · {num(stock)} stored
         </span>
       </h4>
-      <svg viewBox={`0 0 ${W} ${height}`} width="100%" role="img" aria-label={`${name} flows`}>
+      <svg viewBox={`0 0 ${w} ${height}`} width="100%" role="img" aria-label={`${name} flows`}>
         {left.map((n) => {
           const d = ribbon(xL + BAR, n.y, xM, inOffset, n.h);
           inOffset += n.h;
@@ -76,6 +92,9 @@ function River({ resource, flows, stock }: { resource: string; flows: Flows[stri
           outOffset += n.h;
           return <path key={`o${n.label}`} d={d} fill={flowColor(n.label)} opacity={0.45} />;
         })}
+        {next.map((n) => (
+          <path key={`t${n.from.label}/${n.label}`} d={ribbon(xR + BAR, n.from.y + n.off, xT, n.y, n.h)} fill={flowColor(n.from.label)} opacity={0.3} />
+        ))}
         <rect x={xM} y={0} width={BAR} height={midH} fill="#f0e0d0" opacity={0.8} />
         {left.map((n) => (
           <g key={`li${n.label}`}>
@@ -88,7 +107,15 @@ function River({ resource, flows, stock }: { resource: string; flows: Flows[stri
         {right.map((n) => (
           <g key={`ro${n.label}`}>
             <rect x={xR} y={n.y} width={BAR} height={n.h} fill={flowColor(n.label)} />
-            <text x={xR + BAR + 4} y={n.y + n.h / 2} dominantBaseline="middle" className="lbl">
+            <text x={xR + BAR + 4} y={n.y + n.h / 2} dominantBaseline="middle" className={twoStep ? "lbl halo" : "lbl"}>
+              {n.label} {num(n.value)}
+            </text>
+          </g>
+        ))}
+        {next.map((n) => (
+          <g key={`tn${n.from.label}/${n.label}`}>
+            <rect x={xT} y={n.y} width={BAR} height={n.h} fill={flowColor(n.from.label)} opacity={0.8} />
+            <text x={xT + BAR + 4} y={n.y + n.h / 2} dominantBaseline="middle" className="lbl">
               {n.label} {num(n.value)}
             </text>
           </g>
@@ -103,9 +130,10 @@ export function FlowPanel({ s, onClose }: { s: Snapshot; onClose: () => void }) 
   const current = FLOW_TABS.find((t) => t.id === tab)!;
   const share = recycledShare(s.flows);
   const recycled = s.flows.water?.in["Water recycler"] ?? 0;
+  const twoStep = current.resources.some((r) => Object.keys(river(r, s.flows[r]).thens).length);
 
   return (
-    <aside className="inspector flows">
+    <aside className={twoStep ? "inspector flows wide" : "inspector flows"}>
       <header>
         <h2>Flows</h2>
         <button onClick={onClose} aria-label="Close">

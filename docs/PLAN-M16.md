@@ -144,4 +144,9 @@ See the feature's Open questions (`docs/tickets/F-002-air-mix.md`).
 
 ## Notes as built
 
-(Filled in as the steps land.)
+**Step 2, two-step flows** (T-027, Oct 6, 2026):
+
+- `record(state, res, "out", label, amount, { then: "Air for new space" })` adds to the use as before and also to `flows[res].then[label][where]`. `then` is optional on each day's entry, so old saves' ledgers load as they are; `averageFlows` averages it like the rest. A use's `then` needn't cover all of it: what's left over just has no second step.
+- `view/flows.ts`'s `river()` returns `thens` by the use's shown label, biggest first, dropping anything under `MIN_FLOW`. The web panel and the bridge both read it, so they agree.
+- Drawing: a river with a second step is drawn wider (the web panel widens to 480 px for that tab; Godot's river to 460) with the middle bar moved left; each use's next places stack from the use's own top, joined by fainter ribbons in the use's colour. Use labels sit over those ribbons, with a halo to keep them readable.
+- Nothing records a `then` yet; a test in `tests/ledger.test.ts` checks the ledger, `river()` and the bridge's flows message. Checked by hand in both viewers with the colonists' water split three ways (not committed). The electrolyzer (step 3) is the first real user.
