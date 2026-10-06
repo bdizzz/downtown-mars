@@ -152,6 +152,14 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
   useEffect(() => {
     if (toolCategory) openAt(toolCategory);
   }, [toolCategory]);
+  // A finger on the view folds the popup away, so it doesn't hide where the room goes (the tool stays in hand).
+  useEffect(() => {
+    const fold = (e: PointerEvent) => {
+      if (e.pointerType === "touch" && e.target instanceof HTMLCanvasElement) setOpen(null);
+    };
+    window.addEventListener("pointerdown", fold, { capture: true });
+    return () => window.removeEventListener("pointerdown", fold, { capture: true });
+  }, []);
 
   // Access always shows, for the corridor tool.
   const groups = CATEGORY_ORDER.map((cat) => [cat, buildable.filter((d) => d.category === cat)] as const).filter(

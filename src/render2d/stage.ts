@@ -18,6 +18,7 @@ import { previewEffects, type EffectField } from "../sim/effects";
 import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import type { HoverInfo, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
+import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
 import type { Happiness } from "../sim/happiness";
 import type { DrillView, Snapshot } from "../sim/snapshot";
 import {
@@ -912,21 +913,57 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     const done = chain;
     chain = EMPTY_CHAIN;
     if (done.edges.length > 1) opts.onPropose?.({ edges: done.edges, erase: chainErase });
-    else if (done.edges.length === 1) click();
+    else if (done.edges.length === 1) click(fingerDown);
     hoverKey = "";
     refreshHover();
   }
 
 
-  function click(): void {
+  /** By finger, with a tool, the first tap only aims (shows the ghost); a second on the same spot acts. */
+  function click(finger = false): void {
     const info = hoverInfo();
-    if (info && layout) clickWith(layout, tool, info, opts);
+    if (finger) refreshHover();
+    if (info && layout && (!finger || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickWith(layout, tool, info, opts);
+  }
+
+  // Fingers: one pans, two pinch and pan (the unrolled rings don't turn); a long press shows the hover.
+  const touches = new Touches();
+  const aim = new TapToAim();
+  let fingerDown = false;
+  const longPress = new LongPress(() => {
+    drag = null;
+    hoverKey = "";
+    refreshHover();
+  });
+
+  /** Two fingers: pinch zooms about the point between them, moving both pans. */
+  function gesture(g: Gesture): void {
+    const r = canvas.getBoundingClientRect();
+    // The world point that was under the fingers stays under them.
+    const [wx, wy] = screenToWorld({ clientX: g.cx - g.dx, clientY: g.cy - g.dy });
+    cam.zoom *= g.scale;
+    clampCamera();
+    cam.x = wx - (g.cx - r.left) / cam.zoom;
+    cam.y = wy - (g.cy - r.top) / cam.zoom;
+    applyCamera();
   }
 
   // ---- input ----
 
   const onPointerDown = (e: PointerEvent) => {
+    if (touches.down(e)) {
+      longPress.cancel();
+      drag = null;
+      if (snaking) {
+        snaking = false;
+        chain = EMPTY_CHAIN;
+        hoverKey = "";
+        refreshHover();
+      }
+    }
+    if (touches.gesturing) return;
     if (e.button !== 0) return;
+    fingerDown = isTouch(e);
     pointer = e; // a tap may arrive with no move before it
     shift = e.shiftKey;
     canvas.setPointerCapture(e.pointerId);
@@ -938,8 +975,17 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       return;
     }
     drag = { x: e.clientX, y: e.clientY, moved: 0 };
+    longPress.start(e);
   };
   const onPointerMove = (e: PointerEvent) => {
+    if (isTouch(e)) {
+      const g = touches.move(e);
+      if (touches.gesturing) {
+        if (g) gesture(g);
+        return;
+      }
+      longPress.move(e);
+    }
     pointer = e;
     shift = e.shiftKey;
     if (snaking) snake();
@@ -956,19 +1002,31 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     applyCamera();
   };
   const onPointerUp = (e: PointerEvent) => {
+    const wasGesture = touches.gesturing;
+    touches.up(e);
+    longPress.cancel();
+    if (wasGesture) {
+      if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+      return;
+    }
     pointer = e;
-    if (drag && drag.moved <= CLICK_SLOP) click();
+    const finger = isTouch(e);
+    if (drag && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && !longPress.fired) click(finger);
     drag = null;
     if (snaking) endSnake();
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
     canvas.style.cursor = "";
   };
-  const onPointerLeave = () => {
+  const onPointerLeave = (e: PointerEvent) => {
+    // A lifted finger "leaves" too, but what it tapped should stay shown.
+    if (isTouch(e)) return;
     pointer = null;
     refreshHover();
   };
   const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
+    // A long press on a touch screen opens the context menu too; it isn't a cancel.
+    if (longPress.fired || touches.count) return;
     opts.onCancel?.();
   };
   const onWheel = (e: WheelEvent) => {
@@ -1001,6 +1059,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
+  canvas.addEventListener("pointercancel", onPointerUp);
   canvas.addEventListener("pointerleave", onPointerLeave);
   canvas.addEventListener("contextmenu", onContextMenu);
   canvas.addEventListener("wheel", onWheel, { passive: false });

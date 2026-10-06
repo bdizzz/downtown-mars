@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { Touches } from "../view/touch";
 
 // The planet as a globe: the map (an equirectangular canvas) wrapped on a
 // sphere. Drag to spin it; let go and it coasts, slowing to a stop. Scroll
@@ -136,8 +137,16 @@ export function Globe({ map, version, focus, onHover, onPick }: Props) {
     let down: { x: number; y: number; moved: boolean; t: number } | null = null;
     // Where the spin was over the last moments of a drag, for the speed of the fling.
     let trail: { t: number; yaw: number; tilt: number }[] = [];
+    // Two fingers pinch to zoom; the spin stops while they're down.
+    const touches = new Touches();
     const onDown = (e: PointerEvent) => {
+      touches.down(e);
       canvas.setPointerCapture(e.pointerId);
+      if (touches.gesturing) {
+        down = null;
+        dragging = false;
+        return;
+      }
       down = { x: e.clientX, y: e.clientY, moved: false, t: performance.now() };
       dragging = true;
       spin.vYaw = 0;
@@ -145,6 +154,14 @@ export function Globe({ map, version, focus, onHover, onPick }: Props) {
       trail = [{ t: down.t, yaw: spin.yaw, tilt: spin.tilt }];
     };
     const onMove = (e: PointerEvent) => {
+      const g = touches.move(e);
+      if (touches.gesturing) {
+        if (g) {
+          spin.distance = Math.max(GLOBE.distance.min, Math.min(GLOBE.distance.max, spin.distance / g.scale));
+          place();
+        }
+        return;
+      }
       if (down) {
         const dx = e.clientX - down.x;
         const dy = e.clientY - down.y;
@@ -165,6 +182,7 @@ export function Globe({ map, version, focus, onHover, onPick }: Props) {
       callbacks.current.onHover(latLonAt(e));
     };
     const onUp = (e: PointerEvent) => {
+      touches.up(e);
       if (!down) return;
       dragging = false;
       // The fling: how far it turned over the drag's last moments (none after a pause), capped.

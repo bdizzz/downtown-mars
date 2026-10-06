@@ -12,6 +12,7 @@ import { floorSpan, pickAt, ringRadii } from "../render3d/cylinder";
 import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
+import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
 import { drawGlyph, drawPlus } from "./art";
 import { constructionStripes, corridorStrip } from "./corridorArt";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
@@ -216,8 +217,17 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     cam.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom));
     world.scale.set(cam.zoom);
     world.rotation = cam.rot;
-    world.x = app.screen.width / 2;
-    world.y = app.screen.height / 2;
+    // A finger may slide the plan off centre, but not so far the shaft is lost.
+    if (layout) {
+      const most = ringRadii(layout.hole, layout.hole.unlockedRings)[1] * PX * cam.zoom;
+      const far = Math.hypot(cam.x, cam.y);
+      if (far > most) {
+        cam.x *= most / far;
+        cam.y *= most / far;
+      }
+    }
+    world.x = app.screen.width / 2 + cam.x;
+    world.y = app.screen.height / 2 + cam.y;
     // Names stay upright however the layout is turned.
     for (const marker of labels.children) {
       marker.rotation = -cam.rot;
@@ -236,8 +246,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   function screenToPlan(e: { clientX: number; clientY: number }): [number, number] {
     const r = canvas.getBoundingClientRect();
     // From the screen's centre, unturned and unscaled.
-    const sx = (e.clientX - r.left - app.screen.width / 2) / cam.zoom;
-    const sy = (e.clientY - r.top - app.screen.height / 2) / cam.zoom;
+    const sx = (e.clientX - r.left - app.screen.width / 2 - cam.x) / cam.zoom;
+    const sy = (e.clientY - r.top - app.screen.height / 2 - cam.y) / cam.zoom;
     const c = Math.cos(cam.rot);
     const sn = Math.sin(cam.rot);
     return [c * sx + sn * sy, -sn * sx + c * sy];
@@ -304,14 +314,63 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     if (done.edges.length > 1) opts.onPropose?.({ edges: done.edges, erase: chainErase });
     else if (done.edges.length === 1 && layout) {
       const info = hoverInfo();
-      if (info) clickWith(layout, tool, info, opts);
+      // By finger, a single border is aimed first, like a room.
+      if (info && (!fingerDown || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickWith(layout, tool, info, opts);
     }
     refreshHover(true);
   }
 
 
+  // Fingers: one pans, two pinch, twist and pan; a long press shows the hover; with a tool, tap to aim, tap again to act.
+  const touches = new Touches();
+  const aim = new TapToAim();
+  let fingerDown = false;
+  const longPress = new LongPress(() => {
+    drag = null;
+    refreshHover(true);
+  });
+
+  /** Two fingers: pinch zooms about the point between them, twisting turns the plan, moving both pans. */
+  function gesture(g: Gesture): void {
+    userMoved = true;
+    const r = canvas.getBoundingClientRect();
+    // Keep the point between the fingers over the same spot of the plan.
+    const ox = g.cx - r.left - app.screen.width / 2;
+    const oy = g.cy - r.top - app.screen.height / 2;
+    const before = cam.zoom;
+    cam.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, cam.zoom * g.scale));
+    const k = cam.zoom / before;
+    const c = Math.cos(g.turn);
+    const s = Math.sin(g.turn);
+    // The plan's centre, relative to the fingers, scales and turns with them.
+    const px = (cam.x - ox + g.dx) * k;
+    const py = (cam.y - oy + g.dy) * k;
+    cam.x = ox + c * px - s * py;
+    cam.y = oy + s * px + c * py;
+    cam.rot += g.turn;
+    applyCamera();
+  }
+
+  function pan(dx: number, dy: number): void {
+    userMoved = true;
+    cam.x += dx;
+    cam.y += dy;
+    applyCamera();
+  }
+
   const onPointerDown = (e: PointerEvent) => {
+    if (touches.down(e)) {
+      longPress.cancel();
+      drag = null;
+      if (snaking) {
+        snaking = false;
+        chain = EMPTY_CHAIN;
+        refreshHover(true);
+      }
+    }
+    if (touches.gesturing) return;
     if (e.button !== 0) return;
+    fingerDown = isTouch(e);
     pointer = e;
     shift = e.shiftKey;
     canvas.setPointerCapture(e.pointerId);
@@ -323,8 +382,17 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       return;
     }
     drag = { x: e.clientX, y: e.clientY, moved: 0 };
+    longPress.start(e);
   };
   const onPointerMove = (e: PointerEvent) => {
+    if (isTouch(e)) {
+      const g = touches.move(e);
+      if (touches.gesturing) {
+        if (g) gesture(g);
+        return;
+      }
+      longPress.move(e);
+    }
     pointer = e;
     shift = e.shiftKey;
     if (snaking) {
@@ -332,7 +400,9 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       return;
     }
     if (drag) {
-      // Dragging doesn't pan (the plan stays centred on the shaft); it only tells a click from a slip.
+      // A mouse drag doesn't pan (the plan stays centred on the shaft); it only tells a click from a slip.
+      // A finger, which can't scroll, slides the plan (unless it was held to show the hover).
+      if (isTouch(e) && !longPress.fired) pan(e.clientX - drag.x, e.clientY - drag.y);
       drag.moved += Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y);
       drag.x = e.clientX;
       drag.y = e.clientY;
@@ -340,22 +410,36 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     refreshHover();
   };
   const onPointerUp = (e: PointerEvent) => {
+    const wasGesture = touches.gesturing;
+    touches.up(e);
+    longPress.cancel();
+    if (wasGesture) {
+      if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+      return;
+    }
     pointer = e;
-    if (drag && drag.moved <= CLICK_SLOP && layout) {
+    const finger = isTouch(e);
+    if (drag && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && layout && !longPress.fired) {
       const info = hoverInfo();
-      if (info) clickWith(layout, tool, info, opts);
+      if (finger) refreshHover();
+      // A finger can't hover first: with a tool, the first tap shows where it lands.
+      if (info && (!finger || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickWith(layout, tool, info, opts);
     }
     drag = null;
     if (snaking) endSnake();
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
     canvas.style.cursor = "";
   };
-  const onPointerLeave = () => {
+  const onPointerLeave = (e: PointerEvent) => {
+    // A lifted finger "leaves" too, but what it tapped should stay shown.
+    if (isTouch(e)) return;
     pointer = null;
     refreshHover();
   };
   const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
+    // A long press on a touch screen opens the context menu too; it isn't a cancel.
+    if (longPress.fired || touches.count) return;
     opts.onCancel?.();
   };
   const onWheel = (e: WheelEvent) => {
@@ -386,6 +470,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
+  canvas.addEventListener("pointercancel", onPointerUp);
   canvas.addEventListener("pointerleave", onPointerLeave);
   canvas.addEventListener("contextmenu", onContextMenu);
   canvas.addEventListener("wheel", onWheel, { passive: false });

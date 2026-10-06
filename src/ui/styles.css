@@ -553,3 +553,86 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .trend-row .delta { text-align: right; color: var(--muted); font-size: 11px; }
 .finish .chip.windows { background: linear-gradient(90deg, #9fd2ff 0 45%, #3b3f45 45% 55%, #9fd2ff 55%); border-color: #5a7a96; }
 .finish .chip.bulkhead { background: repeating-linear-gradient(135deg, #e0a03a 0 3px, #3b3f45 3px 6px); border-color: #3b3f45; }
+
+/* ---- Phones and tablets ---- */
+/* The views take every touch themselves (pan, pinch, twist); the page never scrolls or zooms under them. */
+canvas { touch-action: none; }
+html, body { overscroll-behavior: none; }
+body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+/* A long press shows what hover would, not the browser's text-selection or callout menu. */
+.view, .map-wrap, .dock { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* Full height as the mobile address bar comes and goes, and clear of notches and the home bar. */
+.app {
+  height: 100dvh; box-sizing: border-box;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.messages { max-width: min(420px, calc(100% - 24px)); }
+.event-cards { width: min(320px, calc(100% - 24px)); }
+.tutorial { width: min(300px, calc(100% - 24px)); box-sizing: border-box; }
+.corridor-confirm { min-width: min(260px, calc(100% - 48px)); max-width: calc(100% - 24px); box-sizing: border-box; }
+
+/* Fingers: bigger targets for the buttons used most. */
+@media (pointer: coarse) {
+  .speeds button, .menu-btn, .office-btn, .drill button { padding: 6px 12px; }
+  .dock-btn { padding: 6px 10px; }
+  .room-btn { padding: 7px 8px; }
+  .floor-picker button { padding: 6px 10px; }
+  .menu button { padding: 11px 12px; }
+  .cam-reset { padding: 4px 10px; }
+  /* No keyboard: hide the key hints. */
+  .dock-btn kbd, .room-btn kbd, .mode-btn kbd { display: none; }
+}
+
+/* Narrow screens (phones, and tablets in portrait): the 3D view first, panels as sheets over its bottom. */
+@media (max-width: 760px) {
+  .hud { gap: 8px 12px; padding: 6px 10px; }
+  .clock { min-width: 0; }
+  .tick { display: none; }
+  /* The resources run in one line that scrolls sideways, rather than eating the view's height. */
+  .resbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 5px 10px; gap: 18px; touch-action: pan-x; }
+  .resbar::-webkit-scrollbar { display: none; }
+  .resbar .group { flex-shrink: 0; }
+  .res { white-space: nowrap; }
+  .main { position: relative; }
+  .inspector {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; width: auto !important; max-height: 55%;
+    border-left: none; border-top: 1px solid #000; border-radius: 10px 10px 0 0; box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.5);
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+  .site-panel { position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; width: auto; max-height: 55%; border-left: none; border-top: 1px solid #000; }
+  .status { padding: 5px 10px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dock { left: 6px; right: 6px; bottom: 6px; flex-direction: column; align-items: stretch; gap: 6px; }
+  .dock-modes { margin-left: 0; justify-content: space-between; }
+  .mode-btn { flex: 1; min-width: 0; padding: 4px 4px; }
+  .dock-hint { display: none; }
+  .dock-card .room-card { max-height: 28vh; }
+  /* Up top, clear of the dock (whose height changes with what it shows). */
+  .tutorial, .tutorial-pill { right: 6px; top: 36px; bottom: auto; }
+  .event-cards { left: 6px; top: 32px; }
+  .messages { right: 6px; }
+  .floor-picker { right: 4px; max-height: 50%; }
+  .menu-backdrop { padding: 10px; }
+  .menu { padding: 16px; max-height: 100%; overflow-y: auto; box-sizing: border-box; }
+  .map-screen header { gap: 8px; padding: 6px 10px; flex-wrap: wrap; }
+}
+
+/* First person on a touch screen: a see-through stick, bottom left, and stair buttons beside it. */
+.walk-pad { position: absolute; left: 16px; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 5; display: flex; align-items: flex-end; gap: 12px; pointer-events: none; }
+.walk-pad[hidden] { display: none; }
+.walk-stick {
+  pointer-events: auto; touch-action: none; position: relative; width: 120px; height: 120px; border-radius: 50%;
+  background: radial-gradient(circle, #f0e0d014 0 55%, #f0e0d00a 56%); border: 2px solid #f0e0d040;
+  box-shadow: inset 0 0 18px #0006; opacity: 0.6; transition: opacity 0.15s;
+}
+.walk-stick.on { opacity: 0.9; }
+.walk-knob {
+  position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
+  background: #f0e0d055; border: 2px solid #f0e0d099; box-shadow: 0 2px 8px #0008; pointer-events: none;
+}
+.walk-stick:not(.on) .walk-knob { transition: transform 0.12s ease-out; }
+.walk-stairs { display: flex; flex-direction: column; gap: 6px; }
+.walk-stairs button {
+  pointer-events: auto; font: inherit; font-size: 13px; color: var(--text); cursor: pointer;
+  background: #1a0f0db0; border: 1px solid #f0e0d060; border-radius: 6px; padding: 8px 12px;
+}
+.walk-stairs button[hidden] { display: none; }

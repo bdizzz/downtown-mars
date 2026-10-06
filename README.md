@@ -48,6 +48,8 @@ The essentials:
 | ↑ ↓ | Floor up / down |
 | ? | All the controls |
 
+It plays in mobile browsers too: tap to aim and tap again to build, drag to turn, two fingers to pinch, twist and pan (best on a tablet in landscape; see Controls in the [guide](docs/GUIDE.md)).
+
 The game autosaves every game day in your browser. Use the menu to save to a slot or export a save file.
 
 ## Developing
