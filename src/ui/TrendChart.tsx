@@ -2,7 +2,7 @@ import { useState } from "react";
 import { config } from "../sim/config";
 import { gameTime } from "../sim/clock";
 import { num } from "./format";
-import { niceScale } from "./trends";
+import { niceScale, seriesNum } from "./trends";
 
 // Line charts drawn as SVG: a small sparkline for tooltips and rows, and a
 // detailed chart with axes, reference lines and a readout under the pointer.
@@ -53,14 +53,16 @@ interface TrendProps {
   daily?: boolean;
   /** Counts (people): whole numbers. */
   whole?: boolean;
+  /** Places after the point for the readout (the air's %). */
+  decimals?: number;
 }
 
 const W = 300;
 const H = 170;
 const M = { l: 38, r: 8, t: 8, b: 20 };
 
-export function TrendChart({ lines, ticks, refs = [], unit = "", daily = false, whole = false }: TrendProps) {
-  const fmt = (v: number) => (whole ? String(Math.round(v)) : num(v));
+export function TrendChart({ lines, ticks, refs = [], unit = "", daily = false, whole = false, decimals }: TrendProps) {
+  const fmt = (v: number) => seriesNum({ whole, decimals }, v);
   const [hover, setHover] = useState<number | null>(null);
   const n = ticks.length;
   const all = lines.flatMap((l) => l.values);
@@ -76,6 +78,9 @@ export function TrendChart({ lines, ticks, refs = [], unit = "", daily = false, 
   }
   if (lo >= 0 && lo < span * 0.3) lo = 0;
   const s = niceScale(lo, hi);
+  // Axis labels as precise as the steps between them (20.6, 20.8, 21 rather than 21, 21, 21).
+  const axisPlaces = Math.max(0, Math.min(3, -Math.floor(Math.log10(s.step) + 1e-9)));
+  const axisNum = (v: number) => (axisPlaces > 0 && Math.abs(v) < 1000 ? String(Number(v.toFixed(axisPlaces))) : num(v));
   const t0 = ticks[0]!;
   const t1 = ticks[n - 1]!;
   const x = (t: number) => M.l + ((t - t0) / Math.max(1, t1 - t0)) * (W - M.l - M.r);
@@ -119,7 +124,7 @@ export function TrendChart({ lines, ticks, refs = [], unit = "", daily = false, 
           <g key={v}>
             <line x1={M.l} x2={W - M.r} y1={y(v)} y2={y(v)} className="grid" />
             <text x={M.l - 4} y={y(v) + 3} className="axis" textAnchor="end">
-              {num(v)}
+              {axisNum(v)}
             </text>
           </g>
         ))}

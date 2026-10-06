@@ -3,7 +3,7 @@ import { averageFlows } from "../sim/ledger";
 import type { SimState } from "../sim/state";
 import { gameTime } from "../sim/clock";
 import { num, signed } from "../ui/format";
-import { everHad, perDay, points, RANGES, SERIES, seriesMeta, type Range, type SeriesMeta } from "../ui/trends";
+import { everHad, perDay, points, RANGES, SERIES, seriesMeta, seriesNum, type Range, type SeriesMeta } from "../ui/trends";
 import { FLOW_TABS, flowColor, recycledShare, river } from "../view/flows";
 
 // The Godot viewer's charts, worked out as the web's are (ui/trends.ts, ui/TrendsPanel.tsx and
@@ -76,7 +76,7 @@ export function trends(state: SimState, key: string, range: Range, mode: Mode): 
         key: row.key,
         label: row.label,
         lines: r.lines.map((l) => ({ color: l.color, dashed: l.dashed, values: thin(l.values) })),
-        value: `${row.whole ? Math.round(v.at(-1) ?? 0) : num(v.at(-1) ?? 0)}${row.unit === "%" ? "%" : ""}`,
+        value: `${seriesNum(row, v.at(-1) ?? 0)}${row.unit === "%" ? "%" : ""}`,
         delta: Math.abs(delta) < 0.05 ? "·" : `${delta > 0 ? "▲" : "▼"} ${num(Math.abs(delta))}`,
       };
     }),
@@ -95,7 +95,7 @@ export function trends(state: SimState, key: string, range: Range, mode: Mode): 
       unit: shown === "rate" ? "/day" : (meta.unit ?? ""),
       whole: shown === "amount" && !!meta.whole,
     },
-    sum: shown === "amount" ? `${num(first)} → ${num(now)}${meta.unit === "%" ? "%" : ""} (${signed(now - first)}) · low ${num(Math.min(...main))}, high ${num(Math.max(...main))}` : undefined,
+    sum: shown === "amount" ? `${seriesNum(meta, first)} → ${seriesNum(meta, now)}${meta.unit === "%" ? "%" : ""} (${signed(now - first)}) · low ${seriesNum(meta, Math.min(...main))}, high ${seriesNum(meta, Math.max(...main))}` : undefined,
     groups: groups.filter((g) => g.rows.length),
   };
 }
