@@ -237,3 +237,7 @@ Being underground also helps with Mars's other problems: temperature swings of m
 ## N-0029 · 2026-10-06 01:44
 when creating a PR, add a clickable link to the github pages preview of the code from that PR. it's okay if the link becomes non-functional after the PR merges
 → no ticket
+
+## N-0030 · 2026-10-06 01:58
+i'd like to be able to "install" the web page on mobile phones, so you don't have to look at the web browser bar while playing. i presume we need to make some fort of manifest or add special headers to the page to facilitate this. i don't want to go so far as building an actual mobile app for distribution in the app stores
+→ T-063
