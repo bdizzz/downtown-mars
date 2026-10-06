@@ -23,3 +23,4 @@ Work out the distance at which ring 6's outer diameter, plus about 10% padding, 
 
 ## History
 - 2026-10-06 00:48 opened from N-0022
+- 2026-10-06 02:19 building on t-051-iso-zoom-limit
