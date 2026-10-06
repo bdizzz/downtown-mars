@@ -513,9 +513,10 @@ function graphSvg(days) {
     return (depth[id] = inside.length ? 1 + Math.max(...inside.map((d) => depthOf(d, seen))) : 0);
   };
   const stepX = G.w + G.gapX;
-  const boxes = order.map((key) => {
+  /** A box's layout with rows wrapped at `cap` cards (six at most). */
+  const layoutBox = (key, cap) => {
     const ids = groups.get(key);
-    // Rows by depth; a row of more than six wraps onto the next.
+    // Rows by depth; a row longer than the cap wraps onto the next.
     const byDepth = [];
     for (const id of ids) (byDepth[depthOf(id)] ??= []).push(id);
     const rows = [];
@@ -523,28 +524,31 @@ function graphSvg(days) {
     for (const row of byDepth.filter(Boolean)) {
       const avg = (id) => (deps[id].length ? deps[id].reduce((s, d) => s + (local[d]?.x ?? 0), 0) / deps[id].length : 0);
       row.sort((a, z) => avg(a) - avg(z) || idNum(a) - idNum(z));
-      for (let i = 0; i < row.length; i += 6) rows.push(row.slice(i, i + 6));
-      rows.slice(-Math.ceil(row.length / 6)).forEach((r) => r.forEach((id, i) => (local[id] = { x: i * stepX })));
+      for (let i = 0; i < row.length; i += cap) rows.push(row.slice(i, i + cap));
+      rows.slice(-Math.ceil(row.length / cap)).forEach((r) => r.forEach((id, i) => (local[id] = { x: i * stepX })));
     }
     const cols = Math.max(...rows.map((r) => r.length));
     const w = cols * stepX - G.gapX + 2 * G.inset;
-    const title = wrap(key === "~" ? "Not part of a feature" : `${key} · ${titles[key] ?? ""}`, Math.floor((w - 2 * G.inset) / 6.8));
-    if (title.length > 2) title.splice(1, title.length, clip(`${title[1]} ${title.slice(2).join(" ")}`, Math.floor((w - 2 * G.inset) / 6.8)));
+    const per = Math.floor((w - 2 * G.inset) / 6.8);
+    const title = wrap(key === "~" ? "Not part of a feature" : `${key} · ${titles[key] ?? ""}`, per);
+    if (title.length > 2) title.splice(1, title.length, clip(`${title[1]} ${title.slice(2).join(" ")}`, per));
     let y = 8 + title.length * 15 + 4;
     for (const row of rows) {
       const h = Math.max(...row.map((id) => cardH(lines[id].length)));
       for (const id of row) local[id].y = y;
       y += h + G.gapY;
     }
-    return { key, local, w, h: y - G.gapY + G.inset, title };
-  });
+    return { key, cols, local, w, h: y - G.gapY + G.inset, title };
+  };
 
-  // Packing: each box goes as high as it can (then as far left), at the left
-  // edge or beside a box already placed, without overlapping any.
+  // Packing, the same for every box (features and the rest): try it at each
+  // width from six cards down, put each where it sits highest (then furthest
+  // left) beside or under the boxes already placed, and keep the width whose
+  // bottom edge ends highest (the wider one on a tie).
   const pos = {};
   const placed = [];
   const top = G.pad + G.legend;
-  for (const box of boxes) {
+  const spot = (box) => {
     let best = null;
     for (const cx of [G.pad, ...placed.map((p) => p.x + p.w + G.boxGap)]) {
       if (cx + box.w > G.width - G.pad) continue;
@@ -552,9 +556,19 @@ function graphSvg(days) {
       const cy = Math.max(top, ...under.map((p) => p.y + p.h + G.boxGap));
       if (!best || cy < best.y || (cy === best.y && cx < best.x)) best = { x: cx, y: cy };
     }
-    best ??= { x: G.pad, y: Math.max(top, ...placed.map((p) => p.y + p.h + G.boxGap)) };
-    placed.push({ ...box, ...best });
-    for (const [id, p] of Object.entries(box.local)) pos[id] = { x: best.x + G.inset + p.x, y: best.y + p.y };
+    return best ?? { x: G.pad, y: Math.max(top, ...placed.map((p) => p.y + p.h + G.boxGap)) };
+  };
+  for (const key of order) {
+    let best = null;
+    for (let cap = 6; cap >= 1; cap--) {
+      const box = layoutBox(key, cap);
+      if (best && box.cols === best.box.cols) continue;
+      const at = spot(box);
+      if (!best || at.y + box.h < best.at.y + best.box.h) best = { box, at };
+    }
+    const { box, at } = best;
+    placed.push({ ...box, ...at });
+    for (const [id, p] of Object.entries(box.local)) pos[id] = { x: at.x + G.inset + p.x, y: at.y + p.y };
   }
   const height = Math.max(top, ...placed.map((p) => p.y + p.h)) + G.pad;
 
