@@ -216,6 +216,13 @@ for (const it of items.values()) {
   if (gone.has(it.name) && !it.remote) continue;
   const isNamed = named.has(it.name);
   if (named.size && !isNamed) continue;
+  // A feature's own branch is only landed by name: a fresh one (nothing built
+  // on it yet) is already "in main", and a sweep mustn't take it for a leftover.
+  if (it.name.startsWith("feature/") && !isNamed) continue;
+  if (it.name.startsWith("feature/") && !it.pr && !force) {
+    skipped.push({ branch: it.name, why: "a feature's branch lands through its PR into main; open one first (--force drops the branch instead)" });
+    continue;
+  }
   const pr = it.pr;
   const tag = pr ? `PR #${pr.number}` : "no PR";
 
