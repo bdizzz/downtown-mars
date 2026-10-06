@@ -30,20 +30,21 @@ public partial class Welcome : Control
         var center = new CenterContainer();
         center.SetAnchorsPreset(LayoutPreset.FullRect);
         AddChild(center);
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(520, 0) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(580, 0) };
         panel.AddThemeStyleboxOverride("panel", Live.Panel());
         center.AddChild(panel);
         var rows = new VBoxContainer();
         rows.AddThemeConstantOverride("separation", 12);
         panel.AddChild(rows);
-        _title.AddThemeFontSizeOverride("font_size", 22);
+        _title.AddThemeFontSizeOverride("font_size", 25);
         _title.AddThemeColorOverride("font_color", new Color("#e8834a"));
         rows.AddChild(_title);
-        _body.AddThemeFontSizeOverride("normal_font_size", 15);
-        _body.AddThemeFontSizeOverride("bold_font_size", 15);
+        _body.AddThemeFontSizeOverride("normal_font_size", 17);
+        _body.AddThemeFontSizeOverride("bold_font_size", 17);
         _body.AddThemeConstantOverride("paragraph_separation", 10);
         rows.AddChild(_body);
-        _go.CustomMinimumSize = new Vector2(0, 36);
+        _go.CustomMinimumSize = new Vector2(0, 40);
+        _go.AddThemeFontSizeOverride("font_size", 17);
         _go.Pressed += Close;
         rows.AddChild(_go);
     }
