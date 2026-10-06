@@ -149,3 +149,7 @@ the "try" skill should be able take web/godot/both as input for what engine to s
 ## N-0020 · 2026-10-05 02:54
 sometimes the "hovering over the button for another floor shows you that floor" is jarring, we should make that a game setting (toggleable in the settings menu) wether to preview floors on hover
 → T-024
+
+## N-0021 · 2026-10-05 18:59
+we should care a little about loading the web version on mobile browsers -- gettign the viewport correct, gestures and controls, etc
+→ T-025
