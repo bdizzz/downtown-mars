@@ -30,7 +30,7 @@ The plan (`docs/PLAN-M15.md`, proposed Oct 5):
 Context: DECISIONS.md has glass as optional and marscrete replacing brick at 1.5×; ROOMS.md has a material substitution section. Corridors already carry a finish (`layout.corridors[id] = "marscrete"`, `data/corridors.json`), purely a look; rooms don't. Windows (M13) are the nearest example of an in-place upgrade. Looks: `rooms3d.ts` (around line 1070), `surfaces.ts`; Godot `godot/src/Looks.cs`, `godot/shaders/surfaces.gdshader`. Comfort: `sim/happiness.ts` (`homeFactors`), `sim/condition.ts` (`sharedWear`, `homeWearComfort`, decay), `sim/amenities.ts`, `sim/care.ts`. Output limits: `conditionOutput` in `condition.ts`. Jobs: `sim/construction.ts`.
 
 ## Open questions
-- **Rooms start as bare rock whatever their build cost?** Answered (Bryon, Oct 6): yes by default, but build mode gets a **building material** picker, defaulting to bare rock, so a room can be built straight away in a higher material. It always costs bare rock's cost plus the upgrade's, whichever way the room got there. → T-038
+- **Rooms start as bare rock whatever their build cost?** Answered (Bryon, Oct 6): yes by default, but build mode gets a **building material** picker, defaulting to bare rock, so a room can be built straight away in a higher material. It always costs bare rock's cost plus the upgrade's, whichever way the room got there, but building it outright takes only the room's build time (one construction effort, no refit work): that's the reward for choosing up front. → T-038
 - **Condition back to 100% when a refit finishes?** (Proposed: yes, a fresh lining; it makes refitting a worn room doubly worth it.)
 - **Half output only once crews start**, not while the job waits in the queue? (Proposed: once started.)
 - **Can a lining be downgraded** (metal → brick), paying the new one in full? (Proposed: yes; never back to bare rock.)
@@ -44,7 +44,7 @@ Agreed Oct 6. In build order; 5 can go any time before 6.
 - (M) Looks in Godot: the same surfaces, the material through the bridge, the Upgrade control working in the viewer → T-035
 - (S) Fibre: fiber hemp as a farm crop making a new `fiber` material, stored like other dry goods → T-036
 - (M) Floor upgrades: `flooring` upgrades starting with fibre-composite panels, the panel's Floor control, floor looks in web 3D and Godot → T-037
-- (M) Build in a material: build mode's material picker (defaults to bare rock), cost = bare rock + upgrade, work = build + refit; web and Godot → T-038
+- (M) Build in a material: build mode's material picker (defaults to bare rock), full cost (bare rock + upgrade) but a single construction effort (the build time only); web and Godot → T-038
 
 ## History
 - 2026-10-04 19:12 made from T-008 (T-012 moved room materials into a feature)
