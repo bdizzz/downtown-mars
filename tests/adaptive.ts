@@ -113,22 +113,23 @@ const limited = (hole: SimState, what: string) =>
   hole.layout.rooms.some((r) => !r.planned && hole.roomStatus[r.id]?.limit === what);
 
 /** What this hole needs most right now, in order of urgency. */
-export function wants(hole: SimState): { room: string; crop?: string; near?: Need }[] {
+export function wants(hole: SimState): { room: string; crop?: string; holds?: string; near?: Need }[] {
   const pop = hole.population.count;
   const res = hole.resources;
   const met = hole.population.needsMet;
-  const out: { room: string; crop?: string; near?: Need }[] = [];
+  const out: { room: string; crop?: string; holds?: string; near?: Need }[] = [];
   if ((res.co2 ?? 0) > 30 || (met.o2 ?? 1) < 1 || count(hole, "life_support") * 30 < pop) out.push({ room: "life_support" });
   if (limited(hole, "power")) out.push({ room: "solar_array" });
   // Maintenance eats machinery: another machine shop once there's barely any left for building.
   const shops = count(hole, "machine_shop");
   if (shops > 0 && (res.machinery ?? 0) < 6 && shops * roomDef("machine_shop").makes.machinery! < count(hole, "maintenance") * roomDef("maintenance").uses.machinery! + 1) out.push({ room: "machine_shop" });
-  if ((met.water ?? 1) < 1 || limited(hole, "water")) {
-    out.push({ room: count(hole, "water_recycler") * 36 < pop * 1.5 ? "water_recycler" : "water_tank" });
-  } else if (pop >= 30 && (res.water ?? 0) < pop * 4 && count(hole, "water_recycler") * 36 < pop * 1.5) {
-    // Water down to about two days' worth: stop leaning on Earth before it runs dry between drops.
-    out.push({ room: "water_recycler" });
-  }
+  // Water is a loop: enough recyclers to treat the gray water people and rooms make, and gray
+  // tanks to ride out the gaps. Clean water short with treatment to spare: a clean tank.
+  const treats = count(hole, "water_recycler") * roomDef("water_recycler").uses.grayWater!;
+  const grayMade = pop * (config.colonists.needsPerDay.water ?? 0) * 1.25;
+  if (treats < grayMade) out.push({ room: "water_recycler" });
+  else if (limited(hole, "drain:grayWater")) out.push({ room: "water_tank", holds: "grayWater" });
+  else if ((met.water ?? 1) < 1 || limited(hole, "water")) out.push({ room: "water_tank" });
   if (count(hole, "galley") * 25 < pop) out.push({ room: "galley" });
   else if (shortHome(hole, "seats")) out.push({ room: "galley", near: "seats" });
   if (count(hole, "farm") * 12 < pop * 0.6) out.push({ room: "farm", crop: "potatoes" });
@@ -245,7 +246,10 @@ export function adapt(hole: SimState, saving: string[] = []): string | null {
     if (w.room !== "life_support" && Object.keys(roomDef(w.room).cost).some((id) => saving.includes(id))) continue;
     const home = w.near ? shortHome(hole, w.near) : undefined;
     const placed = w.room === "ventilation_hub" ? ventilate(hole) : home ? placeNear(hole, w.room, home) : placeAnywhere(hole, w.room, w.crop);
-    if (placed) return w.room;
+    if (placed) {
+      if (w.holds) applyCommand(hole, { type: "setHolds", roomId: hole.layout.rooms.at(-1)!.id, holds: w.holds });
+      return w.room;
+    }
   }
   return null;
 }

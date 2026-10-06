@@ -42,5 +42,6 @@ export function troubleOf(status: RoomStatus | undefined): Trouble {
   if (limit === "ordinance") return { level: "warn", icon: "📜" };
   if (limit === "worn") return { level: "warn", icon: "🔧" };
   if (limit === "broken") return { level: "bad", icon: "⛔" };
+  if (limit.startsWith("drain:")) return { level: "bad", icon: "💧" };
   return { level: "bad", icon: SHORT_OF[limit] ?? "⚠" };
 }

@@ -7,7 +7,7 @@ import { conditionColor } from "../view/conditionView";
 import { useState } from "react";
 import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
-import { roomSpec } from "../sim/economy";
+import { holding, roomSpec } from "../sim/economy";
 import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
@@ -284,6 +284,18 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
             {cropDefs.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name} ({c.group}, {c.yield}/day)
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {holding(room) && (
+        <label title="What this tank holds. Whatever no longer fits when it changes over is lost.">
+          <span className="k">Holds</span>
+          <select value={holding(room)!} onChange={(e) => onCommand({ type: "setHolds", roomId: room.id, holds: e.target.value })}>
+            {def.holds!.map((id) => (
+              <option key={id} value={id}>
+                {resName(id)}
               </option>
             ))}
           </select>
