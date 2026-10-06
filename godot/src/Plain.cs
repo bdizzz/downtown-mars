@@ -68,7 +68,7 @@ void vertex() {{
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vcolor = COLOR;
 	room = room_lines ? CUSTOM1.z : 0.0;
-	if (walls) VERTEX = lower_wall(VERTEX, CUSTOM0, CUSTOM1.xy, wpos, CAMERA_POSITION_WORLD);
+	if (walls) VERTEX = lower_wall(VERTEX, CUSTOM0, CUSTOM1.xy, CUSTOM2.xyz, CUSTOM3.xyz, (inverse(MODEL_MATRIX) * vec4(CAMERA_POSITION_WORLD, 1.0)).xyz);
 	if (toward_camera > 0.0) VERTEX += (inverse(MODEL_MATRIX) * vec4(normalize(CAMERA_POSITION_WORLD - wpos) * toward_camera, 0.0)).xyz;
 }}
 void fragment() {{

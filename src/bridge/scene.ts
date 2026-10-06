@@ -48,9 +48,10 @@ export interface SceneChunk {
   normals?: string;
   /** Float32 rgb per vertex. */
   colors?: string;
-  /** Walls down: float32 per vertex, the wall tag (4) and a line's second wall (2), when any vertex has one. */
+  /** Walls down: float32 per vertex, the wall tag (4), a line's second wall (2), and where their faces stand (3 + 3, rooms3d.ts FaceTag.at), when any vertex has one. */
   walls?: string;
   walls2?: string;
+  faces?: string;
   /** Lines: each vertex's room (id + 1) on a room's outline, else 0 (float32). */
   rooms?: string;
 }
@@ -116,6 +117,8 @@ interface Bucket {
   /** Walls down (rooms3d.ts aWall, aWall2): each vertex's wall tag, and a line's second wall; with any set, `walled`. */
   wall: number[];
   wall2: number[];
+  /** Where each vertex's wall faces stand (rooms3d.ts aFace, aFace2): its wall's, and a line's second wall's. */
+  face: number[];
   walled: boolean;
   /** Lines: each vertex's room (its id + 1) when it's a room's outline, else 0, for the viewer to tint by the room's trouble or the hover. */
   room: number[];
@@ -200,9 +203,9 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     if (g.userData.people) spots.push(g.userData.people as RoomSpots);
     const accent = indexIn(accents, g.userData.accent as string);
     // A wall hanging carries its wall (as rooms3d.ts hangTag): normal, bottom and top, and the point on it behind the item.
-    for (const p of g.userData.placed as (Placed & { hang?: { nx: number; nz: number; y0: number; y1: number; ax: number; az: number } })[]) {
+    for (const p of g.userData.placed as (Placed & { hang?: { nx: number; nz: number; at: [number, number, number]; y0: number; y1: number; ax: number; az: number } })[]) {
       const base = [indexIn(items, p.item), accent, round(p.x), round(p.y), round(p.z), round(p.turn)];
-      placed.push(p.hang ? [...base, round(p.hang.nx), round(p.hang.nz), round(p.hang.y0), round(p.hang.y1), round(p.hang.ax), round(p.hang.az)] : base);
+      placed.push(p.hang ? [...base, round(p.hang.nx), round(p.hang.nz), round(p.hang.y0), round(p.hang.y1), round(p.hang.ax), round(p.hang.az), ...p.hang.at.map(round)] : base);
     }
     g.removeFromParent();
   }
@@ -224,6 +227,8 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     const colAttr = geo.getAttribute("color");
     const wallAttr = geo.getAttribute("aWall");
     const wall2Attr = geo.getAttribute("aWall2");
+    const faceAttr = geo.getAttribute("aFace");
+    const face2Attr = geo.getAttribute("aFace2");
     const lines = mesh instanceof THREE.LineSegments;
     const outlineOf = lines && typeof mesh.userData.roomId === "number" ? (mesh.userData.roomId as number) + 1 : 0;
     const count = mesh instanceof THREE.InstancedMesh ? mesh.count : 1;
@@ -251,7 +256,7 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
         const sector = Math.floor(((Math.atan2(centre.z, centre.x) / (Math.PI * 2) + 1) % 1) * SECTORS) % SECTORS;
         const key = `${mi}:${floor}:${sector}:${lines}`;
         let b = buckets.get(key);
-        if (!b) buckets.set(key, (b = { material: mi, floor, lines, pos: [], nrm: [], col: material.vertexColors ? [] : null, wall: [], wall2: [], walled: false, room: [], roomed: false }));
+        if (!b) buckets.set(key, (b = { material: mi, floor, lines, pos: [], nrm: [], col: material.vertexColors ? [] : null, wall: [], wall2: [], face: [], walled: false, room: [], roomed: false }));
         for (let j = 0; j < per; j++) {
           b.pos.push(pts[j]!.x, pts[j]!.y, pts[j]!.z);
           if (!lines) b.nrm.push(nrms[j]!.x, nrms[j]!.y, nrms[j]!.z);
@@ -265,6 +270,10 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
           } else b.wall.push(0, 0, 0, 0);
           if (wall2Attr) b.wall2.push(wall2Attr.getX(i + j), wall2Attr.getY(i + j));
           else b.wall2.push(0, 0);
+          if (faceAttr) b.face.push(faceAttr.getX(i + j), faceAttr.getY(i + j), faceAttr.getZ(i + j));
+          else b.face.push(0, 0, 0);
+          if (face2Attr) b.face.push(face2Attr.getX(i + j), face2Attr.getY(i + j), face2Attr.getZ(i + j));
+          else b.face.push(0, 0, 0);
           if (lines) {
             b.room.push(outlineOf);
             b.roomed ||= outlineOf > 0;
@@ -283,7 +292,7 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     positions: base64(b.pos),
     ...(b.lines ? {} : { normals: base64(b.nrm) }),
     ...(b.col ? { colors: base64(b.col) } : {}),
-    ...(b.walled ? { walls: base64(b.wall), walls2: base64(b.wall2) } : {}),
+    ...(b.walled ? { walls: base64(b.wall), walls2: base64(b.wall2), faces: base64(b.face) } : {}),
     ...(b.roomed ? { rooms: base64(b.room) } : {}),
   }));
   const message: SceneMessage = {

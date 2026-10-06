@@ -240,15 +240,10 @@ describe("walls down", () => {
       const [nx, nz] = [walls.getX(i), walls.getY(i)];
       if (nx === 0 && nz === 0) continue;
       tagged++;
-      // A step along the tag from any wall corner lands inside the room.
-      const x = pos.getX(i) + nx * 0.5;
-      const z = pos.getZ(i) + nz * 0.5;
-      const rad = Math.hypot(x, z);
-      const ang = (Math.atan2(z, x) + 2 * Math.PI) % (2 * Math.PI);
-      expect(rad).toBeGreaterThan(r0);
-      expect(rad).toBeLessThan(r1);
-      expect(ang).toBeGreaterThan(a0);
-      expect(ang).toBeLessThan(a1);
+      // From any wall corner, the tag points into the room: toward its middle.
+      const mid = (a0 + a1) / 2;
+      const rm = (r0 + r1) / 2;
+      expect(nx * (rm * Math.cos(mid) - pos.getX(i)) + nz * (rm * Math.sin(mid) - pos.getZ(i))).toBeGreaterThan(0);
       expect([walls.getZ(i), walls.getW(i)].every((y) => y >= floorSpan(2)[0] && y <= floorSpan(2)[1])).toBe(true);
     }
     // Inner, outer and two sides; the floor is untagged.
@@ -370,6 +365,71 @@ describe("walls down, across a corridor", () => {
     // In front of rock, never from its own side.
     const rock = setup(false);
     expect(loweredAt(rock.hit, rock.camera(0.5))).toBe(false);
+    setWallsDown(false);
+  });
+
+  it("drops just when the line over its top would clear the stubs and land on the room beyond", () => {
+    const { length, hit, camera } = setup(true);
+    const geo = (hit.object as THREE.Mesh).geometry;
+    const i = hit.face!.a;
+    const [y0, y1] = [geo.getAttribute("aWall").getZ(i), floorSpan(2)[1]];
+    // The face as a whole: the camera stands furthest in front of it at its ends (the arc curves away from it).
+    const face = geo.getAttribute("aFace");
+    const [c, a0, a1] = [face.getX(i), face.getY(i), face.getZ(i)];
+    const cam = camera(0);
+    const [dist, th] = [Math.hypot(cam.x, cam.z), Math.atan2(cam.z, cam.x)];
+    const most = c - dist * Math.min(Math.cos(a0 - th), Math.cos(a1 - th));
+    // Lowering it shows the far room's floor once rise < most · (height above the stub) / reach.
+    const threshold = (most * (y1 - y0) * (1 - WALLS_DOWN.stub)) / (length - 2);
+    setWallsDown(true);
+    expect(loweredAt(hit, camera(threshold * 1.2))).toBe(false);
+    expect(loweredAt(hit, camera(threshold * 0.8))).toBe(true);
+    setWallsDown(false);
+  });
+
+  it("judges a curved wall as one face, across all its cells", () => {
+    const layout = createLayout(createHole(10, 3, 3, config.geometry));
+    const placed = placeRoom(layout, "life_support", ring(2, 2, 3, 4));
+    const geo = roomGeometry(layout, layout.rooms.find((x) => x.id === placed.id)!.cells);
+    const pos = geo.getAttribute("position");
+    const walls = geo.getAttribute("aWall");
+    const faces = geo.getAttribute("aFace");
+    // The outer wall's vertices (tagged inward, toward the shaft) all carry one tag, and the face's radius and whole span.
+    const tags = new Set<string>();
+    for (let k = 0; k < pos.count; k++) {
+      const r = Math.hypot(pos.getX(k), pos.getZ(k));
+      if ((walls.getX(k) * pos.getX(k) + walls.getY(k) * pos.getZ(k)) / r < -0.5) tags.add([walls.getX(k), walls.getY(k), faces.getX(k), faces.getY(k), faces.getZ(k)].map((v) => v.toFixed(4)).join());
+    }
+    expect(tags.size).toBe(1);
+    const [a0] = slotAngles(3, layout.hole.ringSlots[1]!);
+    const [, a1] = slotAngles(6, layout.hole.ringSlots[1]!);
+    const k = [...Array(pos.count).keys()].find((i) => (walls.getX(i) * pos.getX(i) + walls.getY(i) * pos.getZ(i)) / Math.hypot(pos.getX(i), pos.getZ(i)) < -0.5)!;
+    // The span, whole (as angles, a turn either way the same).
+    const turn = (a: number) => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    expect(turn(faces.getY(k))).toBeCloseTo(turn(a0), 1);
+    expect(faces.getZ(k) - faces.getY(k)).toBeCloseTo(a1 - a0, 1);
+  });
+
+  it("drops a wide curved wall when any of it is seen from behind", () => {
+    // Four of ring 1's nine slots: its back wall curves through 160°.
+    const layout = createLayout(createHole(10, 3, 3, config.geometry));
+    const placed = placeRoom(layout, "life_support", ring(2, 1, 0, 4));
+    expect(placed.ok ? "" : placed.reason).toBe("");
+    const geo = roomGeometry(layout, layout.rooms.find((x) => x.id === placed.id)!.cells);
+    const pos = geo.getAttribute("position");
+    const walls = geo.getAttribute("aWall");
+    const [, top] = floorSpan(2);
+    const k = [...Array(pos.count).keys()].find(
+      (i) => (walls.getX(i) * pos.getX(i) + walls.getY(i) * pos.getZ(i)) / Math.hypot(pos.getX(i), pos.getZ(i)) < -0.5 && pos.getY(i) > top - 0.5,
+    )!;
+    const f = { a: k, b: k, c: k, normal: new THREE.Vector3(), materialIndex: 0 };
+    const hit = { distance: 1, point: new THREE.Vector3(pos.getX(k), top - 0.2, pos.getZ(k)), face: f, object: new THREE.Mesh(geo) } as THREE.Intersection;
+    // The camera out past one end, 90° round from its middle: in front of the middle's tangent, behind the end's.
+    const at = (deg: number) => new THREE.Vector3(60 * Math.cos((deg * Math.PI) / 180), top + 30, 60 * Math.sin((deg * Math.PI) / 180));
+    setWallsDown(true);
+    expect(loweredAt(hit, at(170))).toBe(true);
+    // Straight across the shaft from it, it's in front of all of it: up (rock behind it).
+    expect(loweredAt(hit, at(260))).toBe(false);
     setWallsDown(false);
   });
 

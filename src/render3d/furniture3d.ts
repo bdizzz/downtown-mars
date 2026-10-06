@@ -134,14 +134,16 @@ export function setFurnitureGlow(night: number): void {
 }
 
 /**
- * Wall hangings: each item's tag (its wall's inward normal, at twice its
- * length when there's something to see across the wall, the wall's base and
- * top, and a point on the wall), written to every vertex as `aWall` and
- * `aHang`, and how to adjust their materials so they react to them.
+ * Wall hangings: each item's tag (its wall face's tag, as rooms3d.ts
+ * `faceTag`: inward normal, longer with a room across the wall, and where
+ * the face stands; the wall's base and top; and a point on the wall), written
+ * to every vertex as `aWall`, `aFace` and `aHang`, and how to adjust their
+ * materials so they react to them.
  */
 export interface HangTag {
   nx: number;
   nz: number;
+  at: [number, number, number];
   y0: number;
   y1: number;
   ax: number;
@@ -184,12 +186,15 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
         if (tag) {
           const wall = new Float32Array(n * 4);
           const hang = new Float32Array(n * 2);
+          const face = new Float32Array(n * 3);
           for (let k = 0; k < n; k++) {
             wall.set([tag.nx, tag.nz, tag.y0, tag.y1], k * 4);
             hang.set([tag.ax, tag.az], k * 2);
+            face.set(tag.at, k * 3);
           }
           g.setAttribute("aWall", new THREE.BufferAttribute(wall, 4));
           g.setAttribute("aHang", new THREE.BufferAttribute(hang, 2));
+          g.setAttribute("aFace", new THREE.BufferAttribute(face, 3));
         }
         let list = byKind.get(kind);
         if (!list) byKind.set(kind, (list = []));

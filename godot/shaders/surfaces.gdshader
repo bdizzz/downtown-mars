@@ -22,7 +22,7 @@ uniform float floor_metallic = 0.0;
 uniform float grime = 0.0;
 // How much the pattern's relief bends the light.
 uniform float bump = 1.0;
-// The mesh carries walls' tags (CUSTOM0, CUSTOM1) for walls down.
+// The mesh carries walls' tags (CUSTOM0 to CUSTOM3) for walls down.
 uniform bool walls = false;
 
 varying vec3 wpos;
@@ -30,7 +30,7 @@ varying vec3 wnorm;
 
 void vertex() {
 	// Walls down: a wall the camera looks through drops to a stub.
-	if (walls) VERTEX = lower_wall(VERTEX, CUSTOM0, CUSTOM1.xy, (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz, CAMERA_POSITION_WORLD);
+	if (walls) VERTEX = lower_wall(VERTEX, CUSTOM0, CUSTOM1.xy, CUSTOM2.xyz, CUSTOM3.xyz, (inverse(MODEL_MATRIX) * vec4(CAMERA_POSITION_WORLD, 1.0)).xyz);
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }

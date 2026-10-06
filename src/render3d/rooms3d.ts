@@ -76,27 +76,106 @@ export interface Cut {
    * A curved wall can face several cells: then it's asked per segment, by angle.
    */
   across?: number | null | ((angle: number) => number | null);
+  /** The wall face this piece belongs to (by default, one per Cut): all its pieces go down or stay up together. */
+  face?: Face;
+  /** Set into the wall rather than part of it (glass, a door frame): takes its face's tag without shaping it. */
+  follows?: boolean;
+}
+
+/**
+ * One wall face, gathered from its pieces as they're drawn (every segment of
+ * a curved wall, across all the room's cells; every piece of a side wall), so
+ * walls down judges it as a whole: which side its room is on (the pieces'
+ * average normal), where it stands (a flat wall's plane, through the pieces'
+ * middles; a curved wall's radius and the angles it spans), and the nearest
+ * room across any of it.
+ */
+export interface Face {
+  nx: number;
+  nz: number;
+  px: number;
+  pz: number;
+  pieces: number;
+  reach: number | null;
+  floor: number;
+  /** A curved face: its radius, and each segment's angles. */
+  r: number;
+  arcs: [number, number][];
+}
+function newFace(floor = 0): Face {
+  return { nx: 0, nz: 0, px: 0, pz: 0, pieces: 0, reach: null, floor, r: 0, arcs: [] };
+}
+const facesOf = new WeakMap<Cut, Face>();
+function faceOf(cut: Cut): Face {
+  if (cut.face) return cut.face;
+  let f = facesOf.get(cut);
+  if (!f) facesOf.set(cut, (f = newFace()));
+  return f;
+}
+/**
+ * A face's tag: its normal into the room (length 1, or 2 + the reach to a room
+ * across), and where it stands, `at`: a flat face's plane offset along that
+ * normal [d, 0, 0], or a curved face's radius and angles [r, a0, a1], a1 > a0.
+ */
+export interface FaceTag {
+  nx: number;
+  nz: number;
+  at: [number, number, number];
+}
+const NO_FACE: FaceTag = { nx: 0, nz: 0, at: [0, 0, 0] };
+function faceTag(f: Face): FaceTag {
+  const len = Math.hypot(f.nx, f.nz);
+  if (!f.pieces || len === 0) return NO_FACE;
+  const [ux, uz] = [f.nx / len, f.nz / len];
+  const k = f.reach == null ? 1 : ACROSS + f.reach;
+  if (!f.arcs.length) return { nx: ux * k, nz: uz * k, at: [(f.px * ux + f.pz * uz) / f.pieces, 0, 0] };
+  // The angles it spans, around their middle (so a face across angle 0 doesn't wrap).
+  const mid = Math.atan2(f.pz, f.px);
+  const off = (a: number) => Math.atan2(Math.sin(a - mid), Math.cos(a - mid));
+  const ends = f.arcs.flat().map(off);
+  return { nx: ux * k, nz: uz * k, at: [f.r, mid + Math.min(...ends), mid + Math.max(...ends)] };
 }
 /**
  * How a wall with a room across it is tagged: its normal at this length plus
  * how far past the wall the room starts (metres), instead of 1.
  */
 const ACROSS = 2;
-/** A wall's tag length: its side, and the room across it if any. */
-function tagLength(cut: Cut, at: number): number {
-  const reach = typeof cut.across === "function" ? cut.across(at) : cut.across;
-  return cut.side * (reach == null ? 1 : ACROSS + reach);
-}
-/** Vertex arrays that carry wall tags (`aWall`: interior normal x, z, then base and top y). */
-const wallTags = new WeakMap<number[], number[]>();
+/**
+ * Vertex arrays that carry wall tags: per run of vertices, its face (or none)
+ * and the wall's base and top. Resolved into `aWall` (normal x, z, base, top)
+ * and `aFace` (where the face stands, `FaceTag.at`) when the geometry is made,
+ * by which time every piece of each face has been drawn.
+ */
+const wallTags = new WeakMap<number[], { count: number; face: Face | null; y0: number; y1: number }[]>();
 function tagged(): number[] {
   const pos: number[] = [];
   wallTags.set(pos, []);
   return pos;
 }
-function tag(pos: number[], count: number, nx = 0, nz = 0, y0 = 0, y1 = 0): void {
-  const t = wallTags.get(pos);
-  if (t) for (let i = 0; i < count; i++) t.push(nx, nz, y0, y1);
+function tag(pos: number[], count: number): void {
+  wallTags.get(pos)?.push({ count, face: null, y0: 0, y1: 0 });
+}
+/**
+ * Six vertices of a wall piece: its unit normal toward side +1, its middle
+ * (x, z), the angle to ask what's across at, and on a curved wall its radius
+ * and angles.
+ */
+function tagWall(pos: number[], cut: Cut, nx: number, nz: number, x: number, z: number, angle: number, y0: number, y1: number, arc?: [number, number, number]): void {
+  const f = faceOf(cut);
+  if (!cut.follows) {
+    if (arc) {
+      f.r = arc[0];
+      f.arcs.push([arc[1], arc[2]]);
+    }
+    f.nx += cut.side * nx;
+    f.nz += cut.side * nz;
+    f.px += x;
+    f.pz += z;
+    f.pieces++;
+    const reach = typeof cut.across === "function" ? cut.across(angle) : cut.across;
+    if (reach != null && (f.reach == null || reach < f.reach)) f.reach = reach;
+  }
+  wallTags.get(pos)?.push({ count: 6, face: f, y0: cut.y0 ?? y0, y1: cut.y1 ?? y1 });
 }
 
 function curvedFace(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number, cut?: Cut): void {
@@ -104,10 +183,9 @@ function curvedFace(pos: number[], r: number, a0: number, a1: number, y0: number
     const b0 = a0 + ((a1 - a0) * i) / ARC_STEPS;
     const b1 = a0 + ((a1 - a0) * (i + 1)) / ARC_STEPS;
     push(pos, at(r, b0, y0), at(r, b1, y0), at(r, b1, y1), at(r, b0, y0), at(r, b1, y1), at(r, b0, y1));
-    // One normal per segment (at its middle), so all six corners agree on whether it's cut.
+    // Each segment adds its normal and middle to its face.
     const m = (b0 + b1) / 2;
-    const k = cut ? tagLength(cut, m) : 0;
-    if (cut) tag(pos, 6, k * Math.cos(m), k * Math.sin(m), cut.y0 ?? y0, cut.y1 ?? y1);
+    if (cut) tagWall(pos, cut, Math.cos(m), Math.sin(m), r * Math.cos(m), r * Math.sin(m), m, y0, y1, [r, b0, b1]);
     else tag(pos, 6);
   }
 }
@@ -129,7 +207,7 @@ function curvedFaceWithOpenings(pos: number[], r: number, a0: number, a1: number
   const holes = openings
     .map((o) => ({ a0: Math.max(o.a0, a0), a1: Math.min(o.a1, a1), y0: Math.max(o.y0, y0), y1: Math.min(o.y1, y1) }))
     .filter((o) => o.a1 - o.a0 > 1e-9 && o.y1 - o.y0 > 1e-9);
-  const whole = { ...cut, y0: cut.y0 ?? y0, y1: cut.y1 ?? y1 };
+  const whole = { ...cut, face: faceOf(cut), y0: cut.y0 ?? y0, y1: cut.y1 ?? y1 };
   if (!holes.length) return curvedFace(pos, r, a0, a1, y0, y1, whole);
   const breaks = (list: number[]) => [...new Set(list)].sort((p, q) => p - q);
   const as = breaks([a0, a1, ...holes.flatMap((o) => [o.a0, o.a1])]);
@@ -162,8 +240,8 @@ function flatRing(pos: number[], r0: number, r1: number, a0: number, a1: number,
 
 function radialSide(pos: number[], r0: number, r1: number, a: number, y0: number, y1: number, cut?: Cut): void {
   push(pos, at(r0, a, y0), at(r1, a, y0), at(r1, a, y1), at(r0, a, y0), at(r1, a, y1), at(r0, a, y1));
-  const k = cut ? tagLength(cut, a) : 0;
-  if (cut) tag(pos, 6, -k * Math.sin(a), k * Math.cos(a), cut.y0 ?? y0, cut.y1 ?? y1);
+  const rm = (r0 + r1) / 2;
+  if (cut) tagWall(pos, cut, -Math.sin(a), Math.cos(a), rm * Math.cos(a), rm * Math.sin(a), a, y0, y1);
   else tag(pos, 6);
 }
 
@@ -200,8 +278,7 @@ function sideWall(pos: number[], r0: number, a0: number, r1: number, a1: number,
   // Toward larger angles: the direction a circle turns at the wall's middle.
   const m = (a0 + a1) / 2;
   if (nx * -Math.sin(m) + nz * Math.cos(m) < 0) [nx, nz] = [-nx, -nz];
-  const k = tagLength(cut, m);
-  tag(pos, 6, k * nx, k * nz, cut.y0 ?? y0, cut.y1 ?? y1);
+  tagWall(pos, cut, nx, nz, (x0! + x1!) / 2, (z0! + z1!) / 2, m, y0, y1);
 }
 
 function geometry(pos: number[]): THREE.BufferGeometry {
@@ -212,7 +289,26 @@ function geometry(pos: number[]): THREE.BufferGeometry {
   for (let i = 0; i < pos.length; i += 3) uv.push((pos[i]! + pos[i + 2]!) * UV_SCALE, pos[i + 1]! * UV_SCALE);
   g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
   const tags = wallTags.get(pos);
-  if (tags) g.setAttribute("aWall", new THREE.Float32BufferAttribute(tags, 4));
+  if (tags) {
+    const wall: number[] = [];
+    const faceAt: number[] = [];
+    const resolved = new Map<Face, FaceTag>();
+    for (const t of tags) {
+      let f = NO_FACE;
+      if (t.face) {
+        f = resolved.get(t.face) ?? faceTag(t.face);
+        resolved.set(t.face, f);
+      }
+      for (let i = 0; i < t.count; i++) {
+        wall.push(f.nx, f.nz, t.y0, t.y1);
+        faceAt.push(...f.at);
+      }
+    }
+    g.setAttribute("aWall", new THREE.Float32BufferAttribute(wall, 4));
+    g.setAttribute("aFace", new THREE.Float32BufferAttribute(faceAt, 3));
+    // Its faces, for the wall hangings to find theirs.
+    g.userData.faces = [...new Set(tags.map((t) => t.face).filter((f): f is Face => !!f && f.pieces > 0))].map((f) => ({ ...faceTag(f), floor: f.floor }));
+  }
   g.computeVertexNormals();
   return g;
 }
@@ -500,7 +596,7 @@ function sideWallWithOpenings(pos: number[], r0: number, a0: number, r1: number,
   const lo = Math.min(r0, r1);
   const hi = Math.max(r0, r1);
   const clipped = holes.map((h) => ({ ...h, s0: Math.max(h.s0, lo), s1: Math.min(h.s1, hi) })).filter((h) => h.s1 - h.s0 > 1e-6 && h.y1 > h.y0);
-  const whole = { ...cut, y0: cut.y0 ?? y0, y1: cut.y1 ?? y1 };
+  const whole = { ...cut, face: faceOf(cut), y0: cut.y0 ?? y0, y1: cut.y1 ?? y1 };
   if (!clipped.length) return sideWall(pos, r0, a0, r1, a1, y0, y1, whole);
   const breaks = (list: number[]) => [...new Set(list)].sort((p, q) => p - q);
   const rs = breaks([lo, hi, ...clipped.flatMap((h) => [h.s0, h.s1])]);
@@ -552,6 +648,13 @@ export function roomGeometry(
   const outer = Math.max(...rings);
   const joints = carve ? new Set(corridorJoints(layout).keys()) : new Set<string>();
   const pos = tagged();
+  // A curved wall is one face across all the room's cells (per floor, radius and side).
+  const faces = new Map<string, Face>();
+  const face = (key: string, floor: number) => {
+    let f = faces.get(key);
+    if (!f) faces.set(key, (f = newFace(floor)));
+    return f;
+  };
   for (const c of cells) {
     let [y0, y1] = floorSpan(c.floor);
     y0 += inset;
@@ -572,7 +675,7 @@ export function roomGeometry(
     /** Out from a side wall at (r, a), toward larger angles (+1) or smaller (−1). */
     const turning = (r: number, a: number, dir: 1 | -1) => beyond(r, a, -dir * Math.sin(a), dir * Math.cos(a));
     // Glass and frames go down with the wall they're set in.
-    const inWall = (wallCut: Cut): Cut => ({ ...wallCut, y0: base, y1: base + FLOOR_H });
+    const inWall = (wallCut: Cut): Cut => ({ ...wallCut, y0: base, y1: base + FLOOR_H, face: faceOf(wallCut), follows: true });
     // The borders along each curved face, as angle ranges within this cell.
     const arcsOn = (circle: number) =>
       cellEdges(layout.hole, c)
@@ -635,15 +738,15 @@ export function roomGeometry(
       const inside = pieceAt(cut, p, p.rr0);
       const outside = pieceAt(cut, p, p.rr1);
       if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) {
-        curved(p.rr0, inside, c.ring - 1, { side: 1, across: radially(p.rr0, -1) }, -1);
+        curved(p.rr0, inside, c.ring - 1, { side: 1, across: radially(p.rr0, -1), face: face(`${c.floor}:in:${p.rr0.toFixed(2)}`, c.floor) }, -1);
       }
-      if (c.ring === outer && !(publicRoom && p.outerHall)) curved(p.rr1, outside, c.ring, { side: -1, across: radially(p.rr1, 1) }, 1);
+      if (c.ring === outer && !(publicRoom && p.outerHall)) curved(p.rr1, outside, c.ring, { side: -1, across: radially(p.rr1, 1), face: face(`${c.floor}:out:${p.rr1.toFixed(2)}`, c.floor) }, 1);
       // A step where a corridor starts or stops partway along a side.
       if (prev) {
         // The room is on the side of whichever piece reaches further in (or out).
         // Across a step is the corridor that carved it, and whatever is past that.
         const step = (ra: number, rb: number, side: 1 | -1) =>
-          radialSide(pos, Math.min(ra, rb), Math.max(ra, rb), p.b0, y0, y1, { side, across: turning((ra + rb) / 2, p.b0, side === 1 ? -1 : 1) });
+          radialSide(pos, Math.min(ra, rb), Math.max(ra, rb), p.b0, y0, y1, { side, across: turning((ra + rb) / 2, p.b0, side === 1 ? -1 : 1), face: newFace(c.floor) });
         if (prev.rr0 !== p.rr0) step(prev.rr0, p.rr0, prev.rr0 < p.rr0 ? -1 : 1);
         if (prev.rr1 !== p.rr1) step(prev.rr1, p.rr1, prev.rr1 > p.rr1 ? -1 : 1);
       }
@@ -653,10 +756,10 @@ export function roomGeometry(
     const last = cut.pieces.at(-1);
     const n = layout.hole.ringSlots[c.ring - 1]!;
     if (cut.openLeft && first && !(publicRoom && cut.hallLeft)) {
-      side(`R${c.floor}.${c.ring}.${c.slot}`, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), { side: 1, across: turning((first.rr0 + first.rr1) / 2, cut.left((first.rr0 + first.rr1) / 2), -1) });
+      side(`R${c.floor}.${c.ring}.${c.slot}`, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), { side: 1, across: turning((first.rr0 + first.rr1) / 2, cut.left((first.rr0 + first.rr1) / 2), -1), face: newFace(c.floor) });
     }
     if (cut.openRight && last && !(publicRoom && cut.hallRight)) {
-      side(`R${c.floor}.${c.ring}.${(c.slot + 1) % n}`, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), { side: -1, across: turning((last.rr0 + last.rr1) / 2, cut.right((last.rr0 + last.rr1) / 2), 1) });
+      side(`R${c.floor}.${c.ring}.${(c.slot + 1) % n}`, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), { side: -1, across: turning((last.rr0 + last.rr1) / 2, cut.right((last.rr0 + last.rr1) / 2), 1), face: newFace(c.floor) });
     }
     const well = wells.find((w) => w.floor === c.floor);
     for (const p of floorCut.pieces) floorPiece(pos, p.rr0, p.rr1, pieceAt(floorCut, p, p.rr0), pieceAt(floorCut, p, p.rr1), y0, well);
@@ -746,7 +849,8 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
   const standing = fitted.filter((f) => !isMounted(f.item));
   const hanging = fitted.filter((f) => isMounted(f.item));
   const g = furnitureMeshes(standing, accent);
-  const hungAs = hanging.length ? { tags: hanging.map((f) => hangTag(layout, room, f)), key: "hung", material: withHangingDown } : null;
+  const faces = hanging.length ? wallFaces(layout, room) : [];
+  const hungAs = hanging.length ? { tags: hanging.map((f) => hangTag(layout, room, f, faces)), key: "hung", material: withHangingDown } : null;
   if (hungAs) g.add(...furnitureMeshes(hanging, accent, hungAs).children);
   g.userData.centre = centreOf(fitted);
   // What stands where, for the Godot bridge (src/bridge/scene.ts), which draws furniture its own way.
@@ -766,8 +870,16 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
   return g;
 }
 
-/** A wall hanging's tag: its wall's inward normal (longer when there's something to see across the wall), the wall's height, and the point on the wall behind it. */
-function hangTag(layout: Layout, room: RoomInstance, f: Fitted): HangTag {
+/** A room's wall faces, resolved (as its walls are drawn), for its hangings to go with. */
+function wallFaces(layout: Layout, room: RoomInstance): (FaceTag & { floor: number })[] {
+  const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public);
+  const faces = (geo.userData.faces ?? []) as (FaceTag & { floor: number })[];
+  geo.dispose();
+  return faces;
+}
+
+/** A wall hanging's tag: its wall face's tag (as `faceTag`), the wall's height, and the point on the wall behind it. */
+function hangTag(layout: Layout, room: RoomInstance, f: Fitted, faces: (FaceTag & { floor: number })[]): HangTag {
   const frame = frameOf(layout, room, f.floor)!;
   const a = Math.atan2(f.z, f.x);
   const r = Math.hypot(f.x, f.z);
@@ -791,10 +903,37 @@ function hangTag(layout: Layout, room: RoomInstance, f: Fitted): HangTag {
   const wall = dist + FIT.wallGap;
   const [ax, az] = [f.x - n[0] * wall, f.z - n[1] * wall];
   const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
-  const k = tagLength({ side: 1, across: roomBeyond(layout, own, f.floor, ax, az, -n[0], -n[1]) }, 0);
   const [y0, y1] = floorSpan(f.floor);
-  return { nx: n[0] * k, nz: n[1] * k, y0, y1, ax, az };
+  // Its face: on its floor, facing the same way there, standing nearest the point.
+  let best: FaceTag | null = null;
+  let off = HANG.near;
+  const ar = Math.hypot(ax, az);
+  const aa = Math.atan2(az, ax);
+  for (const face of faces) {
+    if (face.floor !== f.floor) continue;
+    const len = Math.hypot(face.nx, face.nz);
+    const [c, a0, a1] = face.at;
+    let o: number;
+    if (a1 > a0) {
+      // Curved: the point within its angles, the wall's normal there (into the room) facing the same way.
+      const s = Math.sign(face.nx * Math.cos((a0 + a1) / 2) + face.nz * Math.sin((a0 + a1) / 2));
+      if (s * (n[0] * Math.cos(aa) + n[1] * Math.sin(aa)) < HANG.facing || (((aa - a0) % TAU) + TAU) % TAU > a1 - a0 + 1e-6) continue;
+      o = Math.abs(ar - c);
+    } else {
+      if ((face.nx * n[0] + face.nz * n[1]) / len < HANG.facing) continue;
+      o = Math.abs((ax * face.nx + az * face.nz) / len - c);
+    }
+    if (o < off) [best, off] = [face, o];
+  }
+  if (best) return { nx: best.nx, nz: best.nz, at: best.at, y0, y1, ax, az };
+  // None (a wall drawn some other way): its own plane, there.
+  const reach = roomBeyond(layout, own, f.floor, ax, az, -n[0], -n[1]);
+  const k = reach == null ? 1 : ACROSS + reach;
+  return { nx: n[0] * k, nz: n[1] * k, at: [ax * n[0] + az * n[1], 0, 0], y0, y1, ax, az };
 }
+
+/** Matching a hanging to its wall face: how closely it must face the same way (cosine), and how near the face must stand (metres). */
+const HANG = { facing: 0.7, near: 0.6 };
 
 /** Solar panels: dark glass, dulled by dust in a storm (see `setPanelDust`). */
 const PANEL = { clean: 0x1d2a4a, dusty: 0x8a6048, roughness: [0.3, 0.9] as const, metalness: [0.5, 0.1] as const };
@@ -911,12 +1050,10 @@ function wallMaterial(key: string, make: () => THREE.Material): THREE.Material {
 // ---- walls down ----
 
 /**
- * How much of a lowered wall still stands; the height above the floor of what
- * there is to see in a room (people, furniture), and how far into a room a
- * wall must hide it to be lowered (metres); and how far past a wall, in what
+ * How much of a lowered wall still stands, and how far past a wall, in what
  * steps, to look for a room (across a corridor, but not across the shaft).
  */
-export const WALLS_DOWN = { stub: 0.15, head: 1.5, glimpse: 0.25, reach: 4, step: 0.25 };
+export const WALLS_DOWN = { stub: 0.15, reach: 4, step: 0.1 };
 const wallsDown = { uWallsDown: { value: 0 }, uWallStub: { value: WALLS_DOWN.stub } };
 
 /** Lower or raise the walls that stand between the camera and what's behind them. */
@@ -925,63 +1062,101 @@ export function setWallsDown(on: boolean): void {
 }
 
 /**
- * Is a wall at `p` (height y0 to y1), bounding the side `n` points to, in the
- * way of a camera at `cam`? Seen from its back it hides its own room. Seen
- * from its own side it hides a room across it (tagged with a longer normal: 2
- * plus how far past the wall that room starts) when the camera's line over
- * its top is still above head height where the room starts: so a wall right
- * against another room drops, and one in front of a corridor stands from high
- * up and drops once the camera is low enough to lose the room beyond it.
- * Rock, the shaft and tubes never count. (The same test as the shaders below.)
+ * How far in front of a wall face the camera stands (x, z in the model's
+ * frame), at the face's nearest and furthest: [least, most]. Negative means
+ * that part of it is seen from behind. A flat face stands on one plane; a
+ * curved one is a circle's arc, so how far in front changes along it, and
+ * the least and most are at its ends or where it faces the camera square on.
  */
-function inTheWay(nx: number, nz: number, y0: number, y1: number, px: number, pz: number, cam: THREE.Vector3): boolean {
+function inFront(nx: number, nz: number, [c, a0, a1]: [number, number, number], x: number, z: number): [number, number] {
   const len = Math.hypot(nx, nz);
-  if (len === 0) return false;
-  // How far the camera stands in front of the wall, on its own side.
-  const p = ((cam.x - px) * nx + (cam.z - pz) * nz) / len;
-  if (p < 0) return true;
-  if (len < (1 + ACROSS) / 2) return false;
-  // The line over its top comes down to head height this far past it: p · drop / rise (never, with the camera below the top).
-  const rise = cam.y - y1;
-  return rise <= 0 || p * (y1 - y0 - WALLS_DOWN.head) > (len - ACROSS + WALLS_DOWN.glimpse) * rise;
+  if (a1 <= a0) {
+    const q = (x * nx + z * nz) / len - c;
+    return [q, q];
+  }
+  const dist = Math.hypot(x, z);
+  const th = Math.atan2(z, x);
+  const within = (a: number) => (((a - a0) % TAU) + TAU) % TAU <= a1 - a0;
+  const [e0, e1] = [Math.cos(a0 - th), Math.cos(a1 - th)];
+  const hi = within(th) ? 1 : Math.max(e0, e1);
+  const lo = within(th + Math.PI) ? -1 : Math.min(e0, e1);
+  // Which side its room is on: out from the centre (an inner wall), or in.
+  const out = nx * Math.cos((a0 + a1) / 2) + nz * Math.sin((a0 + a1) / 2) > 0;
+  return out ? [dist * lo - c, dist * hi - c] : [c - dist * hi, c - dist * lo];
 }
 
-/** The shaders' copy of `inTheWay`, given the camera's offset from the point. */
+/**
+ * Is a wall face (inward normal `n`, standing where `face` says, y0 to y1) in
+ * the way of a camera at `cam` (in the model's frame)? The whole face answers
+ * as one, and it's in the way if any of it is. Seen from its back anywhere, it
+ * hides its own room. Seen from its own side it hides a room across it
+ * (tagged with a longer normal: 2 plus how far past the wall that room starts)
+ * only if lowering it would show some of that room's floor: when the camera's
+ * line over its top is still above stub height where the room starts. Lower
+ * than that, the stubs left standing (this one's and the far room's own) hide
+ * that floor anyway. So a wall right against another room drops; one in front
+ * of a corridor stands from high up and drops once the camera is low enough.
+ * Rock, the shaft and tubes never count. (The same test as the shaders below.)
+ */
+function inTheWay(nx: number, nz: number, face: [number, number, number], y0: number, y1: number, cam: THREE.Vector3): boolean {
+  const len = Math.hypot(nx, nz);
+  if (len === 0) return false;
+  const [least, most] = inFront(nx, nz, face, cam.x, cam.z);
+  if (least < 0) return true;
+  if (len < (1 + ACROSS) / 2) return false;
+  // The line over its top comes down to the stub's height this far past it: p · drop / rise (never, with the camera below the top).
+  const rise = cam.y - y1;
+  return rise <= 0 || most * (y1 - y0) * (1 - WALLS_DOWN.stub) > (len - ACROSS) * rise;
+}
+
+/** The shaders' copy of `inFront` and `inTheWay`, with the camera in the model's frame. */
 const IN_THE_WAY_GLSL = /* glsl */ `
-bool wallInTheWay(vec2 n, vec2 toCam, float camY, float y0, float y1) {
+vec2 wallInFront(vec2 n, vec3 face, vec2 cam) {
+  if (face.z <= face.y) {
+    float q = dot(cam, n) / length(n) - face.x;
+    return vec2(q);
+  }
+  float dist = length(cam);
+  float th = atan(cam.y, cam.x);
+  float span = face.z - face.y;
+  float e0 = cos(face.y - th);
+  float e1 = cos(face.z - th);
+  float hi = mod(th - face.y, ${TAU.toFixed(6)}) <= span ? 1.0 : max(e0, e1);
+  float lo = mod(th + ${Math.PI.toFixed(6)} - face.y, ${TAU.toFixed(6)}) <= span ? -1.0 : min(e0, e1);
+  float m = 0.5 * (face.y + face.z);
+  return dot(n, vec2(cos(m), sin(m))) > 0.0 ? vec2(dist * lo - face.x, dist * hi - face.x) : vec2(face.x - dist * hi, face.x - dist * lo);
+}
+bool wallInTheWay(vec2 n, vec3 face, vec3 cam, float y0, float y1) {
+  vec2 q = wallInFront(n, face, cam.xz);
+  if (q.x < 0.0) return true;
   float len = length(n);
-  float p = dot(toCam, n) / len;
-  if (p < 0.0) return true;
   if (len < ${((1 + ACROSS) / 2).toFixed(1)}) return false;
-  float rise = camY - y1;
-  return rise <= 0.0 || p * (y1 - y0 - ${WALLS_DOWN.head.toFixed(2)}) > (len - ${ACROSS.toFixed(1)} + ${WALLS_DOWN.glimpse.toFixed(2)}) * rise;
+  float rise = cam.y - y1;
+  return rise <= 0.0 || q.y * (y1 - y0) * ${(1 - WALLS_DOWN.stub).toFixed(3)} > (len - ${ACROSS.toFixed(1)}) * rise;
 }
 `;
 
 // Per vertex: lowered walls are squashed down to their stub (see `inTheWay`).
 // A line (a room's outline) may border two walls (`aWall2`, taken to stand as
-// high as the first), and only drops if both are lowered. Missing attributes
-// read as zero, which never lowers anything.
+// high as the first; where their faces stand in `aFace`, `aFace2`), and only
+// drops if both are lowered. Missing attributes read as zero, which never
+// lowers anything. The tags are in the model's own frame: the camera is taken
+// into it (a turned model, as in the dev tool's overview).
 const WALLS_GLSL = /* glsl */ `
   if (uWallsDown > 0.5 && dot(aWall.xy, aWall.xy) > 0.0) {
-    vec2 toCam = cameraPosition.xz - (modelMatrix * vec4(transformed, 1.0)).xz;
-    // The tags are in the model's own frame: turn them with it (a turned model, as in the dev tool's overview).
-    vec2 n1 = (modelMatrix * vec4(aWall.x, 0.0, aWall.y, 0.0)).xz;
-    vec2 m2 = (modelMatrix * vec4(aWall2.x, 0.0, aWall2.y, 0.0)).xz;
-    bool second = dot(aWall2.xy, aWall2.xy) == 0.0 || wallInTheWay(m2, toCam, cameraPosition.y, aWall.z, aWall.w);
-    if (second && wallInTheWay(n1, toCam, cameraPosition.y, aWall.z, aWall.w)) transformed.y = min(transformed.y, mix(aWall.z, aWall.w, uWallStub));
+    vec3 cam = transpose(mat3(modelMatrix)) * (cameraPosition - modelMatrix[3].xyz);
+    bool second = dot(aWall2.xy, aWall2.xy) == 0.0 || wallInTheWay(aWall2.xy, aFace2, cam, aWall.z, aWall.w);
+    if (second && wallInTheWay(aWall.xy, aFace, cam, aWall.z, aWall.w)) transformed.y = min(transformed.y, mix(aWall.z, aWall.w, uWallStub));
   }
 `;
 
-// Per vertex, for wall hangings: when their wall is lowered (the same test as
-// the walls, made at the point on the wall behind the item), the whole item
-// collapses to that point, so nothing of it shows. A hanging is tagged like
-// its wall (aWall) and carries that point (aHang).
+// Per vertex, for wall hangings: when their wall face is lowered, the whole
+// item collapses to the point on the wall behind it, so nothing of it shows.
+// A hanging is tagged like its face (aWall, aFace) and carries that point (aHang).
 const HANG_GLSL = /* glsl */ `
   if (uWallsDown > 0.5 && dot(aWall.xy, aWall.xy) > 0.0) {
-    vec2 toCam = cameraPosition.xz - (modelMatrix * vec4(aHang.x, 0.0, aHang.y, 1.0)).xz;
-    vec2 n1 = (modelMatrix * vec4(aWall.x, 0.0, aWall.y, 0.0)).xz;
-    if (wallInTheWay(n1, toCam, cameraPosition.y, aWall.z, aWall.w)) transformed = vec3(aHang.x, aWall.z, aHang.y);
+    vec3 cam = transpose(mat3(modelMatrix)) * (cameraPosition - modelMatrix[3].xyz);
+    if (wallInTheWay(aWall.xy, aFace, cam, aWall.z, aWall.w)) transformed = vec3(aHang.x, aWall.z, aHang.y);
   }
 `;
 
@@ -993,7 +1168,7 @@ export function withHangingDown<T extends THREE.Material>(m: T): T {
     prev.call(m, shader, renderer);
     Object.assign(shader.uniforms, wallsDown);
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", `#include <common>\nattribute vec4 aWall;\nattribute vec2 aHang;\nuniform float uWallsDown;\n${IN_THE_WAY_GLSL}`)
+      .replace("#include <common>", `#include <common>\nattribute vec4 aWall;\nattribute vec2 aHang;\nattribute vec3 aFace;\nuniform float uWallsDown;\n${IN_THE_WAY_GLSL}`)
       .replace("#include <begin_vertex>", `#include <begin_vertex>\n${HANG_GLSL}`);
   };
   m.customProgramCacheKey = () => `${prevKey}|hanging-down`;
@@ -1008,7 +1183,7 @@ export function withWallsDown<T extends THREE.Material>(m: T): T {
     prev.call(m, shader, renderer);
     Object.assign(shader.uniforms, wallsDown);
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", `#include <common>\nattribute vec4 aWall;\nattribute vec2 aWall2;\nuniform float uWallsDown;\nuniform float uWallStub;\n${IN_THE_WAY_GLSL}`)
+      .replace("#include <common>", `#include <common>\nattribute vec4 aWall;\nattribute vec2 aWall2;\nattribute vec3 aFace;\nattribute vec3 aFace2;\nuniform float uWallsDown;\nuniform float uWallStub;\n${IN_THE_WAY_GLSL}`)
       .replace("#include <begin_vertex>", `#include <begin_vertex>\n${WALLS_GLSL}`);
   };
   m.customProgramCacheKey = () => `${prevKey}|walls-down`;
@@ -1018,11 +1193,16 @@ export function withWallsDown<T extends THREE.Material>(m: T): T {
 /** Did the ray hit part of a wall that's lowered right now (so it isn't there to click)? */
 export function loweredAt(hit: THREE.Intersection, cam: THREE.Vector3): boolean {
   if (!wallsDown.uWallsDown.value || !hit.face) return false;
-  const attr = (hit.object as THREE.Mesh).geometry?.getAttribute("aWall");
+  const geo = (hit.object as THREE.Mesh).geometry;
+  const attr = geo?.getAttribute("aWall");
   if (!attr) return false;
   const i = hit.face.a;
   const [nx, nz, y0, y1] = [attr.getX(i), attr.getY(i), attr.getZ(i), attr.getW(i)];
-  if (!inTheWay(nx, nz, y0, y1, hit.point.x, hit.point.z, cam)) return false;
+  const fa = geo.getAttribute("aFace");
+  const face: [number, number, number] = fa ? [fa.getX(i), fa.getY(i), fa.getZ(i)] : [0, 0, 0];
+  // The camera in the model's own frame (as the shaders take it).
+  const rel = hit.object.worldToLocal(cam.clone());
+  if (!inTheWay(nx, nz, face, y0, y1, rel)) return false;
   return hit.point.y > y0 + (y1 - y0) * WALLS_DOWN.stub + 1e-3;
 }
 
@@ -1034,6 +1214,7 @@ export function outlineGeometry(geo: THREE.BufferGeometry): THREE.EdgesGeometry 
   const edges = new THREE.EdgesGeometry(geo, 30);
   const pos = geo.getAttribute("position");
   const walls = geo.getAttribute("aWall");
+  const faceAt = geo.getAttribute("aFace");
   if (!walls) return edges;
   const key = (x: number, y: number, z: number) => `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
   const vkey = (i: number) => key(pos.getX(i), pos.getY(i), pos.getZ(i));
@@ -1042,13 +1223,13 @@ export function outlineGeometry(geo: THREE.BufferGeometry): THREE.EdgesGeometry 
   const bySide = new Map<string, number[][]>();
   for (let t = 0; t < pos.count; t += 3) {
     if (walls.getX(t) === 0 && walls.getY(t) === 0) continue;
-    const w = [walls.getX(t), walls.getY(t), walls.getZ(t), walls.getW(t)];
+    const w = [walls.getX(t), walls.getY(t), walls.getZ(t), walls.getW(t), faceAt?.getX(t) ?? 0, faceAt?.getY(t) ?? 0, faceAt?.getZ(t) ?? 0];
     const k = [vkey(t), vkey(t + 1), vkey(t + 2)];
     for (const [a, b] of [[0, 1], [1, 2], [2, 0]] as const) {
       const id = pair(k[a]!, k[b]!);
       const list = bySide.get(id) ?? [];
-      // One entry per wall: the two triangles of a face agree.
-      if (!list.some((x) => x[0] === w[0] && x[1] === w[1])) list.push(w);
+      // One entry per wall face: its pieces all agree.
+      if (!list.some((x) => x[0] === w[0] && x[1] === w[1] && x[4] === w[4] && x[5] === w[5] && x[6] === w[6])) list.push(w);
       bySide.set(id, list);
     }
   }
@@ -1056,6 +1237,8 @@ export function outlineGeometry(geo: THREE.BufferGeometry): THREE.EdgesGeometry 
   const kept: number[] = [];
   const a1: number[] = [];
   const a2: number[] = [];
+  const f1: number[] = [];
+  const f2: number[] = [];
   for (let i = 0; i < ep.count; i += 2) {
     const id = pair(key(ep.getX(i), ep.getY(i), ep.getZ(i)), key(ep.getX(i + 1), ep.getY(i + 1), ep.getZ(i + 1)));
     const [w1, w2] = bySide.get(id) ?? [];
@@ -1064,13 +1247,17 @@ export function outlineGeometry(geo: THREE.BufferGeometry): THREE.EdgesGeometry 
     if (!w1) continue;
     for (let j = 0; j < 2; j++) {
       kept.push(ep.getX(i + j), ep.getY(i + j), ep.getZ(i + j));
-      a1.push(...w1);
+      a1.push(...w1.slice(0, 4));
       a2.push(w2?.[0] ?? 0, w2?.[1] ?? 0);
+      f1.push(...w1.slice(4));
+      f2.push(...(w2?.slice(4) ?? [0, 0, 0]));
     }
   }
   edges.setAttribute("position", new THREE.Float32BufferAttribute(kept, 3));
   edges.setAttribute("aWall", new THREE.Float32BufferAttribute(a1, 4));
   edges.setAttribute("aWall2", new THREE.Float32BufferAttribute(a2, 2));
+  edges.setAttribute("aFace", new THREE.Float32BufferAttribute(f1, 3));
+  edges.setAttribute("aFace2", new THREE.Float32BufferAttribute(f2, 3));
   return edges;
 }
 
