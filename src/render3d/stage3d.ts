@@ -46,6 +46,7 @@ const BADGE_ABOVE = 0.9;
 /** How much a full dust storm dims the sun and the sky's light, and how fast (per second) the view follows it. */
 const STORM_DIM = { sun: 0.7, sky: 0.3 };
 const STORM_EASE = 0.8;
+import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
 import { clear as walkClear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Four
@@ -1071,6 +1072,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
 
   let pointer: { clientX: number; clientY: number } | null = null;
+  /** The press under way is a finger's, not a mouse's. */
+  let fingerDown = false;
 
   /** Shift erases with the corridor tool. */
   let shift = false;
@@ -1131,7 +1134,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (done.edges.length > 1) opts.onPropose?.({ edges: done.edges, erase: chainErase });
     else if (done.edges.length === 1 && layout) {
       const info = hoverInfo();
-      if (info) clickWith(layout, tool, info, opts);
+      // By finger, a single border is aimed first, like a room.
+      if (info && (!fingerDown || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickWith(layout, tool, info, opts);
     }
     refreshHover(true);
   }
@@ -1294,14 +1298,18 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const speed = Math.max(ISO_PAN.minSpeed, cam.iso * ISO_PAN.speed) * dt;
     cam.panX += ((fwd * fx + side * rx) / len) * speed;
     cam.panZ += ((fwd * fz + side * rz) / len) * speed;
-    // Not off into the wilderness: within a little of the rings.
+    keepPanNear();
+    return true;
+  }
+
+  /** Not off into the wilderness: Iso's pan stays within a little of the rings. */
+  function keepPanNear(): void {
     const far = Math.hypot(cam.panX, cam.panZ);
     const most = outerRadius() * ISO_PAN.reach;
     if (far > most) {
       cam.panX *= most / far;
       cam.panZ *= most / far;
     }
-    return true;
   }
 
   // ---- Reset camera: back to where the current view starts ----
@@ -1375,7 +1383,57 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   let drag: { x: number; y: number; moved: number } | null = null;
 
+  // Fingers: two pinch, twist and pan; a long press shows the hover; with a tool, tap to aim, tap again to act.
+  const touches = new Touches();
+  const aim = new TapToAim();
+  const longPress = new LongPress(() => {
+    drag = null;
+    refreshHover(true);
+  });
+
+  /** Two fingers: pinch zooms, twisting turns the hole, moving both pans (or, in the section views, goes up and down). */
+  function gesture(g: Gesture): void {
+    if (view.mode === "walk") return;
+    // Twisting clockwise turns the world clockwise under the fingers.
+    cam.theta -= g.turn;
+    if (view.mode === "iso") {
+      cam.iso /= g.scale;
+      // Grab the ground: it follows the fingers.
+      const per = cam.iso / Math.max(1, canvas.clientHeight);
+      const [fx, fz] = [-Math.cos(cam.theta), -Math.sin(cam.theta)];
+      const [rx, rz] = [-fz, fx];
+      cam.panX += (g.dy * fx - g.dx * rx) * per;
+      cam.panZ += (g.dy * fz - g.dx * rz) * per;
+      keepPanNear();
+    } else if (view.mode === "top") {
+      cam.height /= g.scale;
+      topFitted = false;
+    } else {
+      if (view.mode === "shaft") cam.dist /= g.scale;
+      else {
+        cam.out /= g.scale;
+        cutawayFitted = false;
+      }
+      cam.theta += g.dx * 0.005;
+      cam.y += g.dy * (view.mode === "cutaway" ? 0.15 : 0.05);
+    }
+    applyCamera();
+  }
+
+  /** A second finger came down: whatever the first was doing stops. */
+  function startGesture(): void {
+    longPress.cancel();
+    drag = null;
+    if (snaking) {
+      snaking = false;
+      chain = EMPTY_CHAIN;
+      refreshHover(true);
+    }
+  }
+
   const onPointerDown = (e: PointerEvent) => {
+    if (touches.down(e)) startGesture();
+    if (touches.gesturing) return;
     if (e.button !== 0) return;
     // Mouse look: clicks land where the crosshair is.
     if (view.mode === "walk" && locked()) {
@@ -1386,6 +1444,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
 
     pointer = e; // a tap may arrive with no move before it
+    fingerDown = isTouch(e);
     shift = e.shiftKey;
     canvas.setPointerCapture(e.pointerId);
     if (paints(tool) && tool?.kind === "corridor") {
@@ -1396,8 +1455,23 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       return;
     }
     drag = { x: e.clientX, y: e.clientY, moved: 0 };
+    longPress.start(e);
   };
   const onPointerMove = (e: PointerEvent) => {
+    if (isTouch(e)) {
+      const g = touches.move(e);
+      if (touches.gesturing) {
+        if (g) gesture(g);
+        return;
+      }
+      longPress.move(e);
+      if (longPress.fired) {
+        // Held, then slid: the hover follows the finger.
+        pointer = e;
+        refreshHover();
+        return;
+      }
+    }
     if (view.mode === "walk" && locked()) {
       walker.yaw += e.movementX * WALK.lookTurn;
       walker.pitch -= e.movementY * WALK.lookTurn;
@@ -1434,11 +1508,21 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     applyCamera();
   };
   const onPointerUp = (e: PointerEvent) => {
+    const wasGesture = touches.gesturing;
+    touches.up(e);
+    longPress.cancel();
+    if (wasGesture) {
+      if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+      return;
+    }
     if (view.mode === "walk" && locked()) return;
     pointer = e;
-    if (drag && drag.moved <= CLICK_SLOP && layout) {
+    const finger = isTouch(e);
+    if (drag && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && layout && !longPress.fired) {
       const info = hoverInfo();
-      if (info) clickWith(layout, tool, info, opts);
+      if (finger) refreshHover();
+      // A finger can't hover first: with a tool, the first tap shows where it lands.
+      if (info && (!finger || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickWith(layout, tool, info, opts);
     }
     drag = null;
     if (snaking) endSnake();
@@ -1485,12 +1569,17 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
+  canvas.addEventListener("pointercancel", onPointerUp);
   canvas.addEventListener("wheel", onWheel, { passive: false });
   canvas.addEventListener("contextmenu", (e) => {
     e.preventDefault();
+    // A long press on a touch screen opens the context menu too; it isn't a cancel.
+    if (longPress.fired || touches.count) return;
     opts.onCancel?.();
   });
-  const onPointerLeave = () => {
+  const onPointerLeave = (e: PointerEvent) => {
+    // A lifted finger "leaves" too, but what it tapped should stay shown.
+    if (isTouch(e)) return;
     pointer = null;
     refreshHover();
   };
