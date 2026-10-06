@@ -1,7 +1,7 @@
 ---
 id: T-063
 title: Install the web game on a phone's home screen, without the browser bar
-status: open
+status: done
 size: M
 area: ui
 touches: [index.html, public/manifest.webmanifest, public/icons/, vite.config.ts, scripts/]
@@ -29,3 +29,5 @@ GUIDE.md and README: playing on a phone, how to add it to the home screen.
 ## History
 - 2026-10-06 01:58 opened from N-0030
 - 2026-10-06 02:01 questions answered
+- 2026-10-06 02:12 building on t-063-installable-web-app
+- 2026-10-06 02:14 built
