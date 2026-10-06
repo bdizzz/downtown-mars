@@ -35,6 +35,7 @@
 //                                            takes --status draft|agreed|done|dropped
 //   node scripts/board.mjs menu              print the board's short view; rewrite BOARD.md
 //   node scripts/board.mjs show <id>         print one ticket or feature with its live state
+//   node scripts/board.mjs graph [--days=7]  print the ticket dependency graph as SVG (done tickets shown for N days)
 //   node scripts/board.mjs publish <message> commit docs/tickets/ alone on main and push it
 //   node scripts/board.mjs base <id>         print the branch a ticket's PR goes into: its feature's branch, or main
 //   node scripts/board.mjs feature-branch <F-id>
@@ -438,6 +439,182 @@ function flags(args) {
   return out;
 }
 
+// ---- dependency graph -----------------------------------------------------
+
+/**
+ * Box colours by live state, as the Claude UI's diagram ramps (they follow
+ * light and dark mode): unblocked purple, blocked gray, in flight blue, done
+ * green. Needs answers is purple with a dashed border.
+ */
+const GRAPH_RAMP = { ready: "c-purple", noted: "c-purple", blocked: "c-gray", "in-flight": "c-blue", "in-review": "c-blue", done: "c-green" };
+const GRAPH_LEGEND = [["ready", "Ready"], ["noted", "Needs answers"], ["blocked", "Blocked"], ["in-flight", "In flight or review"], ["done", "Done"]];
+// Sized for the Claude UI's 680-wide diagrams: six cards to a row, small text
+// wrapped so a card shows its whole title (about 16 characters a line).
+const G = { width: 680, pad: 10, legend: 50, w: 97, gapX: 6, gapY: 22, inset: 6, boxGap: 10, chars: 15, line: 12 };
+const esc = (x) => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const clip = (x, n) => (x.length > n ? `${x.slice(0, n - 1)}…` : x);
+/** A title broken into lines of about `n` characters, at spaces where it can. */
+function wrap(x, n) {
+  const lines = [];
+  let rest = x.trim();
+  while (rest.length > n) {
+    // The last space that fits, else just after the last hyphen, else a hard cut.
+    const space = rest.lastIndexOf(" ", n);
+    const hyphen = rest.lastIndexOf("-", n - 1);
+    const at = space > 0 ? space : hyphen > 0 ? hyphen + 1 : n;
+    lines.push(rest.slice(0, at));
+    rest = rest.slice(at).trim();
+  }
+  if (rest) lines.push(rest);
+  return lines;
+}
+const cardH = (lines) => 20 + lines * G.line + 4;
+
+/**
+ * Tickets as cards and blocked_by as arrows. A feature's tasks sit in a shaded
+ * box titled with the feature, laid out top-down by depth within it (a task
+ * one row below its deepest blocker in the same feature), six cards to a row;
+ * feature boxes are packed side by side where they fit. Tickets outside any
+ * feature go in a box of their own at the end. Done tickets merged more than
+ * `days` ago, and dropped ones, are left out. Returns an SVG string.
+ */
+function graphSvg(days) {
+  const b = board();
+  const now = Date.now();
+  const shown = b.rows.filter((r) => {
+    if (r.state === "dropped") return false;
+    if (r.state !== "done") return true;
+    const at = Date.parse(String(r.since).replace(" ", "T"));
+    return Number.isFinite(at) && now - at <= days * 86400000;
+  });
+  const byId = Object.fromEntries(shown.map((r) => [r.t.meta.id, r]));
+  const deps = Object.fromEntries(
+    shown.map((r) => [r.t.meta.id, r.t.meta.blocked_by.filter((x) => !/^#?\d+$/.test(x)).map(parseId).filter((x) => byId[x])]),
+  );
+  const featureOf = (id) => (byId[id].t.meta.feature ? normId(byId[id].t.meta.feature) : null);
+  const lines = Object.fromEntries(shown.map((r) => [r.t.meta.id, wrap(r.t.meta.title, G.chars)]));
+
+  // Boxes: one per feature with tickets shown, in id order, then everything else.
+  const groups = new Map();
+  for (const r of shown) {
+    const f = featureOf(r.t.meta.id) ?? "~";
+    if (!groups.has(f)) groups.set(f, []);
+    groups.get(f).push(r.t.meta.id);
+  }
+  const titles = Object.fromEntries(b.features.map((x) => [x.f.meta.id, x.f.meta.title]));
+  const order = [...groups.keys()].sort((a, z) => (a === "~") - (z === "~") || idNum(a) - idNum(z));
+
+  const depth = {};
+  const depthOf = (id, seen = new Set()) => {
+    if (depth[id] !== undefined) return depth[id];
+    if (seen.has(id)) return 0;
+    seen.add(id);
+    const inside = deps[id].filter((d) => featureOf(d) === featureOf(id));
+    return (depth[id] = inside.length ? 1 + Math.max(...inside.map((d) => depthOf(d, seen))) : 0);
+  };
+  const stepX = G.w + G.gapX;
+  /** A box's layout with rows wrapped at `cap` cards (six at most). */
+  const layoutBox = (key, cap) => {
+    const ids = groups.get(key);
+    // Rows by depth; a row longer than the cap wraps onto the next.
+    const byDepth = [];
+    for (const id of ids) (byDepth[depthOf(id)] ??= []).push(id);
+    const rows = [];
+    const local = {};
+    for (const row of byDepth.filter(Boolean)) {
+      const avg = (id) => (deps[id].length ? deps[id].reduce((s, d) => s + (local[d]?.x ?? 0), 0) / deps[id].length : 0);
+      row.sort((a, z) => avg(a) - avg(z) || idNum(a) - idNum(z));
+      for (let i = 0; i < row.length; i += cap) rows.push(row.slice(i, i + cap));
+      rows.slice(-Math.ceil(row.length / cap)).forEach((r) => r.forEach((id, i) => (local[id] = { x: i * stepX })));
+    }
+    const cols = Math.max(...rows.map((r) => r.length));
+    const w = cols * stepX - G.gapX + 2 * G.inset;
+    const per = Math.floor((w - 2 * G.inset) / 6.8);
+    const title = wrap(key === "~" ? "Not part of a feature" : `${key} · ${titles[key] ?? ""}`, per);
+    if (title.length > 2) title.splice(1, title.length, clip(`${title[1]} ${title.slice(2).join(" ")}`, per));
+    let y = 8 + title.length * 15 + 4;
+    for (const row of rows) {
+      const h = Math.max(...row.map((id) => cardH(lines[id].length)));
+      for (const id of row) local[id].y = y;
+      y += h + G.gapY;
+    }
+    return { key, cols, local, w, h: y - G.gapY + G.inset, title };
+  };
+
+  // Packing, the same for every box (features and the rest): try it at each
+  // width from six cards down, put each where it sits highest (then furthest
+  // left) beside or under the boxes already placed, and keep the width whose
+  // bottom edge ends highest (the wider one on a tie).
+  const pos = {};
+  const placed = [];
+  const top = G.pad + G.legend;
+  const spot = (box) => {
+    let best = null;
+    for (const cx of [G.pad, ...placed.map((p) => p.x + p.w + G.boxGap)]) {
+      if (cx + box.w > G.width - G.pad) continue;
+      const under = placed.filter((p) => p.x < cx + box.w + G.boxGap && cx < p.x + p.w + G.boxGap);
+      const cy = Math.max(top, ...under.map((p) => p.y + p.h + G.boxGap));
+      if (!best || cy < best.y || (cy === best.y && cx < best.x)) best = { x: cx, y: cy };
+    }
+    return best ?? { x: G.pad, y: Math.max(top, ...placed.map((p) => p.y + p.h + G.boxGap)) };
+  };
+  for (const key of order) {
+    let best = null;
+    for (let cap = 6; cap >= 1; cap--) {
+      const box = layoutBox(key, cap);
+      if (best && box.cols === best.box.cols) continue;
+      const at = spot(box);
+      if (!best || at.y + box.h < best.at.y + best.box.h) best = { box, at };
+    }
+    const { box, at } = best;
+    placed.push({ ...box, ...at });
+    for (const [id, p] of Object.entries(box.local)) pos[id] = { x: at.x + G.inset + p.x, y: at.y + p.y };
+  }
+  const height = Math.max(top, ...placed.map((p) => p.y + p.h)) + G.pad;
+
+  const counts = { ready: 0, noted: 0, blocked: 0, "in-flight": 0, done: 0 };
+  for (const r of shown) counts[r.state === "in-review" ? "in-flight" : r.state] = (counts[r.state === "in-review" ? "in-flight" : r.state] ?? 0) + 1;
+  const out = [];
+  out.push(`<svg width="100%" viewBox="0 0 ${G.width} ${Math.ceil(height)}" role="img">`);
+  out.push(`<title>Ticket dependencies</title><desc>${shown.length} tickets as cards coloured by state, grouped by feature, with arrows from each ticket to the ones it unblocks.</desc>`);
+  out.push(`<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>`);
+  GRAPH_LEGEND.forEach(([st, label], i) => {
+    const lx = G.pad + 4 + (i % 3) * 220;
+    const ly = G.pad + Math.floor(i / 3) * 20;
+    out.push(`<rect class="${GRAPH_RAMP[st]}" x="${lx}" y="${ly}" width="14" height="14" rx="3" stroke-width="0.5"${st === "noted" ? ' stroke-dasharray="3 2"' : ""}/>`);
+    out.push(`<text class="ts" x="${lx + 20}" y="${ly + 11}">${esc(`${label} (${counts[st]})`)}</text>`);
+  });
+  out.push(`<text class="ts" x="${G.pad + 444}" y="${G.pad + 31}">Done: last ${days} day${days === 1 ? "" : "s"}</text>`);
+  // Feature boxes, behind everything.
+  for (const p of placed) {
+    out.push(`<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="8" fill="var(--bg2)" stroke="var(--b)" stroke-width="0.5"/>`);
+    p.title.forEach((line, i) => out.push(`<text class="th" x="${p.x + G.inset}" y="${p.y + 18 + i * 15}" style="font-size:12px">${esc(line)}</text>`));
+  }
+  for (const [id, ds] of Object.entries(deps))
+    for (const d of ds) {
+      const a = pos[d];
+      const z = pos[id];
+      const x1 = a.x + G.w / 2;
+      const y1 = a.y + cardH(lines[d].length);
+      const x2 = z.x + G.w / 2;
+      const y2 = z.y - 2;
+      const my = y2 > y1 ? (y1 + y2) / 2 : Math.max(y1, y2) + 10;
+      out.push(`<path d="M${x1} ${y1} C${x1} ${my} ${x2} ${my} ${x2} ${y2}" fill="none" stroke="#888780" stroke-width="1" marker-end="url(#arrow)"/>`);
+    }
+  for (const r of shown) {
+    const id = r.t.meta.id;
+    const { x, y } = pos[id];
+    const extra = r.pr && r.state === "in-review" ? ` · PR #${r.pr.number}` : "";
+    out.push(`<g class="${GRAPH_RAMP[r.state] ?? "c-purple"}"><title>${esc(`${id} ${r.t.meta.title} (${r.state}${r.waiting ? `; waits on ${r.waiting.join(", ")}` : ""})`)}</title>`);
+    out.push(`<rect x="${x}" y="${y}" width="${G.w}" height="${cardH(lines[id].length)}" rx="4" stroke-width="0.5"${r.state === "noted" ? ' stroke-dasharray="4 3"' : ""}/>`);
+    out.push(`<text class="th" x="${x + 6}" y="${y + 14}" style="font-size:11px">${esc(id)}<tspan class="ts" style="font-size:10px"> ${esc(`${r.t.meta.size || "?"}${extra}`)}</tspan></text>`);
+    lines[id].forEach((line, i) => out.push(`<text class="ts" x="${x + 6}" y="${y + 28 + i * G.line}" style="font-size:10px">${esc(line)}</text>`));
+    out.push("</g>");
+  }
+  out.push("</svg>");
+  return out.join("\n");
+}
+
 function nextId(prefix = "T") {
   const n = (prefix === "F" ? loadFeatures() : loadTickets()).reduce((max, t) => Math.max(max, idNum(t.meta.id)), 0);
   return normId(`${prefix}-${n + 1}`);
@@ -534,6 +711,13 @@ switch (cmd) {
   case "menu":
     menu();
     break;
+  case "graph": {
+    const d = args.find((a) => a.startsWith("--days="));
+    const days = d ? Number(d.slice(7)) : 7;
+    if (!Number.isFinite(days) || days < 0) throw new Error("--days takes a number of days (0 or more)");
+    console.log(graphSvg(days));
+    break;
+  }
   case "show": {
     const t = findItem(args[0]);
     const b = board();
