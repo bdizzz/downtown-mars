@@ -4,9 +4,9 @@ title: Room materials in the sim: material, finish, flooring, comfort and wear
 status: open
 size: M
 area: sim, data
+feature: F-003
 touches: [data/materials.json, src/sim/placement.ts, src/sim/condition.ts, src/sim/care.ts, src/sim/save.ts, src/view/roomCard.ts, tests/]
 blocked_by: []
-feature: F-003
 notes: [N-0006, N-0007]
 created: 2026-10-06 00:10
 ---
@@ -24,3 +24,4 @@ PLAN-M15.md Notes as built; DECISIONS.md (room linings).
 
 ## History
 - 2026-10-06 00:10 opened from F-003 (agreed)
+- 2026-10-06 09:47 building on t-032-materials-in-sim
