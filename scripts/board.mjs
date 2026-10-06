@@ -17,6 +17,11 @@
 // Live: needs answers (a draft with open questions), plan in flight / in review
 // (an f-0NN-… branch or PR), in progress (agreed, a task started), done (agreed,
 // and every planned task ticketed and finished).
+// A feature can be built on its own branch (`branch: feature/f-0NN-…` in its
+// file, made by `feature-branch`): its tasks branch from it and their PRs merge
+// into it, and it reaches main in one go at the end (a PR from it, merged with a
+// merge commit). Its live state is then "ready to merge" once every task is
+// finished, and done only when that PR is merged.
 // The inbox and the generated BOARD.md are local, in .tracker/ (gitignored) in
 // the main checkout, found from any worktree.
 //
@@ -31,6 +36,10 @@
 //   node scripts/board.mjs menu              print the board's short view; rewrite BOARD.md
 //   node scripts/board.mjs show <id>         print one ticket or feature with its live state
 //   node scripts/board.mjs publish <message> commit docs/tickets/ alone on main and push it
+//   node scripts/board.mjs base <id>         print the branch a ticket's PR goes into: its feature's branch, or main
+//   node scripts/board.mjs feature-branch <F-id>
+//                                            make the feature's branch from origin/main, push it, record it in the file
+//   node scripts/board.mjs sync <F-id>       merge origin/main into the feature's branch and push it (stops on a conflict)
 //   node scripts/board.mjs path              print the local tracker folder
 // Ids can be shorthand anywhere: t6, T6, t-6 and 6 mean T-006; f1 means F-001.
 // Everything works on the main checkout's tickets; add --here to edit this
@@ -77,6 +86,7 @@ const FEATURE_LABELS = {
   "in-review": "plan in review",
   agreed: "agreed",
   "in-progress": "in progress",
+  "ready-to-merge": "ready to merge",
   done: "done",
   dropped: "dropped",
 };
@@ -160,7 +170,7 @@ function parseTicket(file) {
 }
 
 function writeTicket(t) {
-  const order = ["id", "title", "status", "size", "area", "feature", "plan", "touches", "blocked_by", "notes", "created"];
+  const order = ["id", "title", "status", "size", "area", "feature", "plan", "branch", "touches", "blocked_by", "notes", "created"];
   const keep = (k) => t.written.has(k) || !(Array.isArray(t.meta[k]) && !t.meta[k].length);
   const keys = [...order, ...Object.keys(t.meta).filter((k) => !order.includes(k))].filter((k) => k in t.meta && keep(k));
   const fm = keys
@@ -226,8 +236,9 @@ const branchId = (name) => {
 function github() {
   const prs = {};
   const branches = {};
-  const list = trySh("gh pr list --state all --limit 300 --json number,state,headRefName,createdAt,mergedAt,url");
-  for (const pr of list ? JSON.parse(list) : []) {
+  const list = trySh("gh pr list --state all --limit 300 --json number,state,headRefName,baseRefName,createdAt,mergedAt,url");
+  const all = list ? JSON.parse(list) : [];
+  for (const pr of all) {
     const id = branchId(pr.headRefName);
     if (!id) continue;
     // Keep the most telling PR per item: open beats merged beats closed.
@@ -239,7 +250,13 @@ function github() {
     const id = branchId(name);
     if (id) branches[id] = name;
   }
-  return { prs, branches, online: list !== null };
+  return { prs, branches, all, online: list !== null };
+}
+
+/** The PR that takes a feature's own branch into main: open beats merged beats closed. */
+function branchPr(gh, branch) {
+  const mine = gh.all.filter((p) => p.headRefName === branch && p.baseRefName === "main");
+  return mine.find((p) => p.state === "OPEN") ?? mine.find((p) => p.state === "MERGED") ?? mine[0] ?? null;
 }
 
 /** The ticket's live state, from the file, its feature and GitHub. */
@@ -278,8 +295,17 @@ function featureState(f, gh, rows) {
   const pr = gh.prs[id];
   const finished = (r) => ["done", "dropped"].includes(r.state);
   if (f.meta.status === "dropped") return { ...out, state: "dropped" };
-  if (f.meta.status === "done" || (f.meta.status === "agreed" && tasks.length && !unticketed && tasks.every(finished)))
-    return { ...out, state: "done" };
+  const allFinished = f.meta.status === "agreed" && tasks.length && !unticketed && tasks.every(finished);
+  // On its own branch, a feature is done only once that branch is merged into main.
+  if (f.meta.branch) {
+    const into = branchPr(gh, f.meta.branch);
+    const withBranch = { ...out, branch: f.meta.branch, branchPr: into };
+    if (f.meta.status === "done" || into?.state === "MERGED") return { ...withBranch, state: "done" };
+    if (allFinished) return { ...withBranch, state: "ready-to-merge" };
+    const started = tasks.some((r) => ["in-flight", "in-review", "done"].includes(r.state));
+    return { ...withBranch, state: started ? "in-progress" : "agreed" };
+  }
+  if (f.meta.status === "done" || allFinished) return { ...out, state: "done" };
   if (pr?.state === "OPEN") return { ...out, state: "in-review", since: pr.createdAt, pr };
   // A merged plan PR leaves the feature where its file says (draft until Bryon agrees it).
   if (gh.branches[id] && pr?.state !== "MERGED") return { ...out, state: "in-flight", branch: gh.branches[id] };
@@ -321,7 +347,8 @@ function featureExtras(fr) {
   if (!fr.planned && !fr.tasks.length) out.push("no breakdown yet");
   if (fr.state === "noted") out.push(plural(openQuestions(fr.f), "open question"));
   if (fr.branch) out.push(fr.branch);
-  if (fr.pr) out.push(`PR #${fr.pr.number}`);
+  if (fr.pr && !fr.branchPr) out.push(`PR #${fr.pr.number}`);
+  if (fr.branchPr) out.push(`into main: PR #${fr.branchPr.number}${fr.branchPr.state === "OPEN" ? "" : ` (${fr.branchPr.state.toLowerCase()})`}`);
   return out;
 }
 const openFeatures = (features) => features.filter((x) => !["done", "dropped"].includes(x.state));
@@ -550,6 +577,60 @@ switch (cmd) {
   case "path":
     console.log(LOCAL);
     break;
+  case "base": {
+    const t = findItem(args[0]);
+    const feature = !isFeature(t.meta.id) && t.meta.feature ? findItem(t.meta.feature) : null;
+    console.log(feature?.meta.branch || "main");
+    break;
+  }
+  case "feature-branch": {
+    if (!isFeature(args[0] ?? "")) throw new Error("feature-branch needs a feature id (F-004 or f4)");
+    const f = findItem(args[0]);
+    if (f.meta.branch) {
+      console.log(`${f.meta.id} is already on ${f.meta.branch}.`);
+      break;
+    }
+    const slug = f.file.split("/").pop().replace(/^F-\d+-?/, "").replace(/\.md$/, "");
+    const branch = `feature/${f.meta.id.toLowerCase()}${slug ? `-${slug}` : ""}`;
+    sh("git fetch --quiet origin main");
+    if (trySh(`git ls-remote --exit-code --heads origin "refs/heads/${branch}"`) === null)
+      sh(`git push --quiet origin "origin/main:refs/heads/${branch}"`);
+    f.meta.branch = branch;
+    f.written.add("branch");
+    f.body = f.body.replace(/\s*$/, `\n- ${stamp()} built on ${branch}\n`);
+    writeTicket(f);
+    console.log(`${f.meta.id}: ${branch}, from origin/main. Publish the feature file so every machine sees it.`);
+    break;
+  }
+  case "sync": {
+    // In a throwaway worktree, so no checkout (or the session in it) is disturbed.
+    if (!isFeature(args[0] ?? "")) throw new Error("sync needs a feature id (F-004 or f4)");
+    const f = findItem(args[0]);
+    const branch = f.meta.branch;
+    if (!branch) throw new Error(`${f.meta.id} isn't built on a branch of its own`);
+    sh(`git fetch --quiet origin main "${branch}"`);
+    const behind = Number(sh(`git rev-list --count "origin/${branch}..origin/main"`));
+    if (!behind) {
+      console.log(`${branch} already has everything on main.`);
+      break;
+    }
+    const dir = join(LOCAL, `sync-${f.meta.id.toLowerCase()}`);
+    if (existsSync(dir)) sh(`git worktree remove --force "${dir}"`);
+    sh(`git worktree add --quiet --detach "${dir}" "origin/${branch}"`);
+    try {
+      const merged = trySh(`git -C "${dir}" merge --no-edit --quiet -m "chore: merge main into ${branch}" origin/main`);
+      if (merged === null) {
+        const conflicts = trySh(`git -C "${dir}" diff --name-only --diff-filter=U`) ?? "";
+        trySh(`git -C "${dir}" merge --abort`);
+        throw new Error(`merging main into ${branch} conflicts in: ${conflicts.split("\n").join(", ")}. Nothing was pushed.`);
+      }
+      sh(`git -C "${dir}" push --quiet origin "HEAD:refs/heads/${branch}"`);
+      console.log(`Merged ${plural(behind, "commit")} from main into ${branch} and pushed it.`);
+    } finally {
+      trySh(`git worktree remove --force "${dir}"`);
+    }
+    break;
+  }
   default:
     console.log(readFileSync(new URL(import.meta.url), "utf8").split("\n").filter((l) => l.startsWith("//")).join("\n"));
 }

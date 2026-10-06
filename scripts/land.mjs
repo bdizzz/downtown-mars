@@ -7,7 +7,9 @@
 // target:
 //   T-017, t17, 17, F-001, f1  the ticket's (or feature's) t-017-… / f-001-… branch
 //   #10                         that PR's branch
-//   <branch>                    that branch
+//   <branch>                    that branch (a feature's own feature/f-0NN-… branch is
+//                               only ever landed by name or PR, and merges with a
+//                               merge commit so its tasks' commits are kept)
 //   (nothing)                   sweep: everything whose PR is merged, plus leftover
 //                               branches and clean worktrees already in origin/main
 // --merge    a named target whose PR is still open: squash-merge it if CI passed
@@ -228,7 +230,8 @@ for (const it of items.values()) {
       skipped.push({ branch: it.name, why: `PR #${pr.number} isn't ready to merge (CI ${s.ci}, ${s.draft ? "draft, " : ""}${s.mergeState.toLowerCase()})` });
       continue;
     }
-    if (!dry) sh(`gh pr merge ${pr.number} --squash`);
+    // A feature's own branch keeps its tasks' commits: a merge commit, not a squash.
+    if (!dry) sh(`gh pr merge ${pr.number} ${it.name.startsWith("feature/") ? "--merge" : "--squash"}`);
     it.merged = true;
   } else if (pr?.state === "CLOSED") {
     if (!isNamed || !force) {

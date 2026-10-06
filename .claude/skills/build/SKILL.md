@@ -42,12 +42,14 @@ node scripts/board.mjs publish "chore(tickets): block T-0NN on T-007"   # plus a
 
 The ticket shows as ready again by itself once T-007 is done. Then go back to step 1.
 
-## 3. Branch from a fresh main
+## 3. Branch from a fresh base
 
-The branch is `t-0NN-<ticket-slug>`, e.g. `t-012-drill-button-hidden`.
+The branch is `t-0NN-<ticket-slug>`, e.g. `t-012-drill-button-hidden`. Its **base** is main, unless the ticket's feature is built on a branch of its own: `node scripts/board.mjs base T-0NN` prints which (`main`, or e.g. `feature/f-004-rooms-by-area`). Use that base wherever this skill says main below: the fetch, the branch point, the PR's `--base`, and the overlap check (PRs into the same feature branch overlap most).
+
+- **A feature branch behind main**: bring main in first with `node scripts/board.mjs sync F-0NN` (merges `origin/main` into the feature branch in a throwaway worktree and pushes it). If it reports a conflict, stop and tell Bryon which files; nothing was pushed.
 
 - If this session is in the main checkout (`git rev-parse --git-dir` equals `--git-common-dir`), don't build there; it's where Bryon takes notes and plays. Load `EnterWorktree` (ToolSearch `select:EnterWorktree`) and enter a worktree named after the branch.
-- In the worktree: `git fetch origin main` and `git switch -c t-0NN-<slug> origin/main`. If that fails because the worktree's branch already has commits of its own, stop and ask. (In an app-made worktree, use the `sync_with_base_branch` tool to bring in main later, not `git merge`.)
+- In the worktree: `git fetch origin <base>` and `git switch -c t-0NN-<slug> origin/<base>`. If that fails because the worktree's branch already has commits of its own, stop and ask. (In an app-made worktree, use the `sync_with_base_branch` tool to bring in main later, not `git merge`.)
 - **Claim it**: `node scripts/board.mjs log T-0NN "building on t-0NN-<slug>" --here`, commit that (`chore(tickets): claim T-0NN`), then `git push -u origin t-0NN-<slug>`. The pushed branch is what shows the ticket as in flight on every machine.
 - Install packages if `node_modules` is missing (`npm install`).
 
@@ -69,7 +71,7 @@ Work as CLAUDE.md says: brain and face, data in JSON, deterministic sim. Read on
 - Open the PR. Bryon is the only reviewer, so keep it short:
 
   ```sh
-  gh pr create --base main --title "<type>(<scope>): <summary> (T-0NN)" --body "$(cat <<'EOF'
+  gh pr create --base <base> --title "<type>(<scope>): <summary> (T-0NN)" --body "$(cat <<'EOF'
   <one to three lines: what changed and why>
 
   Tested: <npm test, what was checked in the browser>
@@ -79,7 +81,7 @@ Work as CLAUDE.md says: brain and face, data in JSON, deterministic sim. Read on
   EOF
   )"
   ```
-- Bind the PR with the ccd_pr tools (`get_status`, then `bind_pr` if needed), and finish with the PR link, its preview (`https://bdizzz.github.io/downtown-mars/pr-preview/pr-<N>/`, live a few minutes after the push), anything Bryon should look at when reviewing, and that `/land T-0NN` merges it and cleans up once he's happy.
+- Bind the PR with the ccd_pr tools (`get_status`, then `bind_pr` if needed), and finish with the PR link (for a feature-branch task, say it merges into that branch, not main), its preview (`https://bdizzz.github.io/downtown-mars/pr-preview/pr-<N>/`, live a few minutes after the push), anything Bryon should look at when reviewing, and that `/land T-0NN` merges it and cleans up once he's happy.
 
 If Bryon closes the PR without merging, the ticket goes back to ready on its own (it's still `open` on main), but the remote branch must go too, or it will keep showing as in flight: `/land T-0NN` with his OK to drop it.
 
@@ -92,4 +94,4 @@ The output is a plan Bryon can agree, not code. Same steps, with these changes:
 - **Branch** `f-0NN-<slug>` from `origin/main` in a worktree; claim it the same way (`log F-0NN "planning on f-0NN-<slug>" --here`, commit `chore(tickets): claim F-0NN`, push). The board then shows "plan in flight".
 - **Plan**: read the code and docs the feature touches, then fill in its Design and **Breakdown**: tasks in build order, each one line, each small enough for one PR (S–L, never XL), that leave the game working when merged one at a time. Big designs go in the next free `docs/PLAN-M*.md` (linked from the feature's `plan:`), shaped like the other milestone plans; the feature keeps the Goal, a short Design summary and the Breakdown. Put anything only Bryon can decide under Open questions.
 - **No code, no tests.** Commit as `docs(<scope>): plan F-0NN <title>`, open a PR titled the same, and give Bryon the Breakdown in your final message so he can agree it or ask for changes.
-- Don't set the feature to agreed or write its task tickets: that's Bryon's call, made in /board ("agree F-0NN") once the plan PR is merged.
+- Don't set the feature to agreed or write its task tickets: that's Bryon's call, made in /board ("agree F-0NN") once the plan PR is merged. That's also where he can put it on a feature branch of its own.
