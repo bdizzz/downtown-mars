@@ -34,3 +34,4 @@ A new `## Why not a game building habitats on the surface?` section in README.md
 
 ## History
 - 2026-10-06 01:53 opened from N-0028
+- 2026-10-06 01:57 building on t-062-readme-why-underground
