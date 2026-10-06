@@ -231,6 +231,13 @@ The web game plays in mobile browsers: fully on a tablet in landscape, cramped b
 
 On a narrow screen (under 760 px), the resources run in one line that scrolls sideways, the dock stacks its strip above the mode buttons, and panels (the inspector, charts) open as a sheet over the bottom of the view, closed with ×. Touching the view folds an open room list away, so it doesn't hide where the room goes; the tool stays in hand. Keys still work with a keyboard attached.
 
+**On the home screen.** The web game installs like an app, with its own icon (the borehole from above) and no browser bar round it:
+
+- **Android (Chrome):** open the game, then menu ⋮ → **Install app** (or **Add to Home screen**). It opens full screen, and shares its saves with the game in Chrome.
+- **iPhone and iPad (Safari):** open the game, then Share → **Add to Home Screen**. It opens without Safari's bars (the phone's status bar stays). A home-screen app on iOS keeps **its own saves, separate from Safari's**: export a save from the menu in Safari and import it in the app to carry a game across.
+
+Each install opens the build it was installed from, so a PR preview added to the home screen stays that preview (with its own saves, as in the browser). It still needs a connection to start; there's no offline play yet.
+
 ## Saving
 
 The game autosaves every game day in your browser. Use the menu to save to a slot, or export a save file to keep it somewhere safe.
