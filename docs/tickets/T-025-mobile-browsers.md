@@ -26,8 +26,9 @@ A first pass, honest about "a little": (1) viewport and page: no page zoom/scrol
 - GUIDE.md: Controls (touch), README.md (mobile support), DECISIONS.md (what mobile gets).
 
 ## Open questions
-- [ ] Which devices matter most? Proposed: tablets in landscape fully playable; phones playable but cramped (portrait and landscape), with the 3D view as the main one.
-- [ ] One-finger drag in 3D: orbit (and two fingers pan), or pan (and two fingers twist)? Proposed: one finger orbits in Cutaway and Iso, pans in Top and Plan; two fingers always pinch-zoom and pan.
+- [x] Tablets in landscape fully playable; phones playable but cramped (portrait and landscape), with the 3D view as the main one. (Bryon, Oct 5)
+- [x] One finger orbits in Cutaway and Iso and pans in Top and Plan; two fingers always pinch-zoom and pan. (Bryon, Oct 5)
 
 ## History
 - 2026-10-05 23:55 opened from N-0021
+- 2026-10-05 23:57 questions answered
