@@ -29,3 +29,4 @@ Add `floorHoverPreview: boolean` to the settings with a checkbox (e.g. under Vie
 ## History
 - 2026-10-05 02:54 opened from N-0020
 - 2026-10-05 02:55 questions answered: off by default
+- 2026-10-06 00:40 building on t-024-floor-hover-preview-setting
