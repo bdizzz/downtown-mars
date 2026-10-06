@@ -241,3 +241,7 @@ when creating a PR, add a clickable link to the github pages preview of the code
 ## N-0030 · 2026-10-06 01:58
 i'd like to be able to "install" the web page on mobile phones, so you don't have to look at the web browser bar while playing. i presume we need to make some fort of manifest or add special headers to the page to facilitate this. i don't want to go so far as building an actual mobile app for distribution in the app stores
 → T-063
+
+## N-0031 · 2026-10-06 02:02
+add an offline mode, and a way of updating the version of the game when a newer one is available
+→ T-064
