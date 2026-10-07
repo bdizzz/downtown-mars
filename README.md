@@ -8,6 +8,8 @@ A real-time city builder on Mars. Each city is a borehole: dig a shaft down, car
 
 This is an early playtest build: a hole or two, the first hour or so of play. Total population supported is your score.
 
+Working on the game? [docs/WORKFLOW.md](docs/WORKFLOW.md) shows how a playtest note becomes a merged change.
+
 | | |
 | --- | --- |
 | ![The hole sliced open, twelve floors of rooms round the shaft](docs/images/cutaway.jpg) | ![A floor at night, lit by lamps and furnaces](docs/images/night.jpg) |
