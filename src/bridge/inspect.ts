@@ -7,7 +7,7 @@ import type { Snapshot } from "../sim/snapshot";
 import { STORABLE } from "../sim/storage";
 import { conditionColor } from "../view/conditionView";
 import { conditionNote, constructionInfo, panelRows, seedKitInfo, stopAtInfo, type Row } from "../view/roomPanel";
-import { roomSpec } from "../sim/economy";
+import { holding, roomSpec } from "../sim/economy";
 import type { SimState } from "../sim/state";
 import { roomDef } from "../sim/rooms";
 import { roomName } from "../sim/roomName";
@@ -45,6 +45,8 @@ export interface InspectedMessage {
   kit?: { progress: number; goods: string; button: string | null; note: string; gathering: boolean };
   after?: Row[];
   crop?: { value: string; options: { id: string; label: string }[] };
+  /** What a tank holds (clean, gray water or tailings). */
+  holds?: { value: string; options: { id: string; label: string }[] };
   priority?: { value: string; options: { id: string; label: string }[] };
   /** Running, and (a room with an output) standing by at a stock of it: resource null when it has none. */
   controls?: { running: boolean; stopAt: number | null; suggested: number; resource: string | null };
@@ -114,6 +116,8 @@ export function inspect(state: SimState, s: Snapshot, roomId: number | null): In
   if (!room.connected && room.at.kind === "ring") msg.connect = { finish: corridors.defaultFinish, name: finishDef(corridors.defaultFinish).name.toLowerCase() };
   if (def.stagesSeedKit) msg.kit = { ...seedKitInfo(s), gathering: s.kit.gathering };
   if (def.growsCrops) msg.crop = { value: room.crop ?? "", options: cropDefs.map((c) => ({ id: c.id, label: `${c.name} (${c.group}, ${c.yield}/day)` })) };
+  const held = holding(room);
+  if (held) msg.holds = { value: held, options: (def.holds ?? []).map((id) => ({ id, label: resName(id) })) };
   if (spec.staff > 0) {
     msg.priority = { value: room.priority, options: config.economy.priorities.map((p) => ({ id: p, label: p[0]!.toUpperCase() + p.slice(1) })) };
     if (def.buildable) {

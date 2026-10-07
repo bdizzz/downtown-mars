@@ -5,6 +5,7 @@ import { isActive } from "./economy";
 import { postMessage } from "./messages";
 import type { RoomInstance } from "./placement";
 import { roomDef, type RoomSize } from "./rooms";
+import { liningWear } from "./materials";
 import { roomRef } from "./roomName";
 import type { SimState } from "./state";
 
@@ -124,11 +125,11 @@ export function stepCondition(state: SimState, cfg: SimConfig): void {
   const ms = (state.maintenance ??= { lanes: {} });
   const busy = beingRepaired(state);
 
-  // Wear: a little each tick, faster for heavy rooms; nothing while being repaired.
+  // Wear: a little each tick, faster for heavy rooms, slower for lined ones; nothing while being repaired.
   for (const r of wearing(state)) {
     if (busy.has(r.id)) continue;
     const heavy = CONDITION.heavyCategories.includes(roomDef(r.type).category) ? CONDITION.heavyDecay : 1;
-    r.condition = Math.max(0, (r.condition ?? 1) - (CONDITION.decayPerDay * heavy) / tpd);
+    r.condition = Math.max(0, (r.condition ?? 1) - (CONDITION.decayPerDay * heavy * liningWear(r)) / tpd);
   }
 
   // Breakdowns: once a day, maybe, something in one room.

@@ -33,12 +33,13 @@
       "id": "grayWater",
       "name": "Gray water",
       "group": "water",
-      "baseCapacity": 60,
-      "waste": true
+      "baseCapacity": 250,
+      "waste": true,
+      "backsUp": true
     },
     {
-      "id": "blackWater",
-      "name": "Black water",
+      "id": "tailings",
+      "name": "Tailings",
       "group": "water",
       "baseCapacity": 30,
       "waste": true
@@ -114,6 +115,12 @@
     {
       "id": "glass",
       "name": "Glass",
+      "group": "material",
+      "baseCapacity": 0
+    },
+    {
+      "id": "fiber",
+      "name": "Fiber",
       "group": "material",
       "baseCapacity": 0
     },

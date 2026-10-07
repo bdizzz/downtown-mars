@@ -1,7 +1,7 @@
 ---
 id: T-001
 title: Give room walls a real thickness (0.25 m, shared walls single)
-status: open
+status: done
 size: L
 area: render3d, godot
 touches: [src/render3d/rooms3d.ts, src/render3d/cylinder.ts, src/render3d/furniture3d.ts, src/view/, godot/src/]
@@ -33,3 +33,5 @@ Build each wall once per edge (room–room, room–corridor, room–rock), as a 
 ## History
 - 2026-10-04 16:12 opened from N-0001
 - 2026-10-04 16:14 questions answered
+- 2026-10-06 09:48 building on t-001-wall-thickness
+- 2026-10-06 10:09 built

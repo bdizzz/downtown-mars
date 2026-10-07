@@ -13,6 +13,7 @@
     "floorHeightM": 4,
     "surfaceDepthM": 3,
     "galleryWidthM": 2,
+    "wallThicknessM": 0.25,
     "pairedRings": true,
     "nestedPairs": true,
     "surfaceSlots": 12
@@ -60,7 +61,8 @@
     "undoWindowTicks": 60,
     "rateSmoothingDays": 0.25,
     "ledgerDays": 4,
-    "nominalSlots": { "S": 1, "M": 2, "L": 4, "H": 8 }
+    "nominalSlots": { "S": 1, "M": 2, "L": 4, "H": 8 },
+    "waterReturns": { "grayWater": 1 }
   },
   "air": {
     "_note": "The hole's air as a mix over its living volume (PLAN-M16). Levels are % of the air; amounts are volume (m3) x unitsPerM3.",

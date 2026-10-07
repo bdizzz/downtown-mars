@@ -4,6 +4,7 @@ import { mainOutput, roomSpec } from "../sim/economy";
 import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
 import { crowdedAir } from "../sim/happiness";
 import { network } from "../sim/network";
+import { canLine, liningText } from "../sim/materials";
 import type { RoomInstance } from "../sim/placement";
 import { roomName } from "../sim/roomName";
 import { roomDef } from "../sim/rooms";
@@ -155,6 +156,7 @@ export function panelRows(s: Snapshot, room: RoomInstance): { before: Row[]; aft
       : null,
     spec.sanitation > 0 ? { k: "Sanitation for", text: num(spec.sanitation) } : null,
     spec.serves > 0 ? { k: "Seats", text: `${num(spec.serves)} diners · ${dining(s)}` } : null,
+    canLine(room) ? { k: "Walls", text: liningText(room) } : null,
     room.at.kind === "ring" && !def.public ? windowsRow(s, room) : null,
     def.houses && crowdedAir(s, room) < -0.01 ? { k: "Crowded", text: `air ${signed(crowdedAir(s, room))}: more than ${config.effects.crowding.perCell} to a cell gets stuffy`, warn: true } : null,
     ...(def.houses ? withinReachRows(s, room) : []),

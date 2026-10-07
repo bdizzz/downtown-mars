@@ -18,8 +18,9 @@ export const LABELS = {
   digging: "Digging",
   earth: "Earth drops",
   excavation: "Excavation",
+  /** People's own water: drinking, washing, cooking at home. */
+  household: "Drinking and washing",
   lost: "Overflow",
-  restrooms: "Restrooms",
 } as const;
 
 export function createLedger(): Ledger {

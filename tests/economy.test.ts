@@ -146,6 +146,16 @@ describe("rooms", () => {
     expect(roomSpec(farm, config).makes.rawFood).toBe(8);
   });
 
+  it("fiber hemp makes fiber instead of food", () => {
+    const s = createInitialState(config);
+    const farm = build(s, "farm", ring(1, 1, 1, 4));
+    applyCommand(s, { type: "setCrop", roomId: farm.id, crop: "hemp" });
+    const spec = roomSpec(farm, config);
+    expect(spec.makes.fiber).toBe(6);
+    expect(spec.makes.rawFood).toBeUndefined();
+    expect(spec.makes.o2).toBe(roomDef("farm").makes.o2);
+  });
+
   it("a farm keeps growing food when oxygen storage is full", () => {
     const s = createInitialState(config);
     const farm = build(s, "farm", ring(1, 1, 1, 4));

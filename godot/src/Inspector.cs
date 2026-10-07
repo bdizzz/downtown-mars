@@ -12,7 +12,7 @@ namespace DowntownMars;
 /// doing, and its controls (from the bridge's inspect.ts, kept up to date twice a second while it's
 /// open): its name (✎ renames it), construction progress (and moving it up the queue), condition,
 /// storage shares, connecting it, the rows of what it uses, makes and feels, a staging bay's seed kit,
-/// crop, priority, running and stop-at, and demolish. Its outline is drawn over the scene. The widgets
+/// crop, what a tank holds, priority, running and stop-at, and demolish. Its outline is drawn over the scene. The widgets
 /// are made once and only their values change, so a field being typed in isn't reset under the pointer.
 /// </summary>
 public partial class Inspector : Node3D
@@ -46,8 +46,8 @@ public partial class Inspector : Node3D
     readonly Label _kitText = new(), _kitGoods = new(), _kitNote = new();
     readonly Button _kitButton = Btn("Gather a seed kit");
     // Crop, priority, controls.
-    readonly HBoxContainer _cropRow = new(), _priorityRow = new(), _stopRow = new();
-    readonly OptionButton _crop = new() { FocusMode = Control.FocusModeEnum.None }, _priority = new() { FocusMode = Control.FocusModeEnum.None };
+    readonly HBoxContainer _cropRow = new(), _holdsRow = new(), _priorityRow = new(), _stopRow = new();
+    readonly OptionButton _crop = new() { FocusMode = Control.FocusModeEnum.None }, _holds = new() { FocusMode = Control.FocusModeEnum.None }, _priority = new() { FocusMode = Control.FocusModeEnum.None };
     readonly CheckBox _running = new() { Text = "Running", FocusMode = Control.FocusModeEnum.None };
     readonly CheckBox _stopAt = new() { Text = "Stop at", FocusMode = Control.FocusModeEnum.None, TooltipText = "The room stands by, freeing its staff, while there's at least this much in store" };
     readonly SpinBox _stopAmount = new() { MinValue = 0, MaxValue = 100000, Step = 10, CustomMinimumSize = new Vector2(90, 0) };
@@ -62,7 +62,7 @@ public partial class Inspector : Node3D
     int _stopSuggested;
     Dictionary<string, int> _alloc = new();
     int _space;
-    string[] _cropIds = Array.Empty<string>(), _priorityIds = Array.Empty<string>();
+    string[] _cropIds = Array.Empty<string>(), _holdsIds = Array.Empty<string>(), _priorityIds = Array.Empty<string>();
     /// <summary>Set while values are filled in from a message, so the widgets' change signals don't send commands.</summary>
     bool _filling;
 
@@ -212,6 +212,13 @@ public partial class Inspector : Node3D
             if (!_filling) Send(new() { ["type"] = "setCrop", ["roomId"] = _roomId, ["crop"] = _cropIds[i] });
         };
         rows.AddChild(_cropRow);
+        _holdsRow.AddChild(Caption("Holds"));
+        _holdsRow.AddChild(_holds);
+        _holds.ItemSelected += i =>
+        {
+            if (!_filling) Send(new() { ["type"] = "setHolds", ["roomId"] = _roomId, ["holds"] = _holdsIds[i] });
+        };
+        rows.AddChild(_holdsRow);
         _priorityRow.AddChild(Caption("Priority"));
         _priorityRow.AddChild(_priority);
         _priority.ItemSelected += i =>
@@ -456,6 +463,8 @@ public partial class Inspector : Node3D
         _after.Visible = _after.Text != "";
         _cropRow.Visible = Has("crop", out var crop);
         if (_cropRow.Visible) Options(_crop, crop, ref _cropIds);
+        _holdsRow.Visible = Has("holds", out var holds);
+        if (_holdsRow.Visible) Options(_holds, holds, ref _holdsIds);
         _priorityRow.Visible = Has("priority", out var pri);
         if (_priorityRow.Visible) Options(_priority, pri, ref _priorityIds);
         var controls = Has("controls", out var ctl);

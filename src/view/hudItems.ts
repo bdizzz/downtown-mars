@@ -14,7 +14,7 @@ const MATERIALS = ["rock", "brick", "metal", "machinery", "electronics"] as cons
 /** Shown only where there's some: they come from the ground under certain sites. */
 const REGIONAL = ["ore", "silica"] as const;
 /** Shown once there's some: made later in the game. */
-const LATER = ["glass"] as const;
+const LATER = ["glass", "fiber"] as const;
 const WARN_DAYS = 2;
 /** Storage this full, with more coming in, shows as full. */
 const FULL_AT = 0.97;

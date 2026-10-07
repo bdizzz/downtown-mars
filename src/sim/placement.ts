@@ -35,6 +35,8 @@ export interface RoomInstance {
   priority: Priority;
   /** Farms only. */
   crop?: string;
+  /** What a tank holds, of its kind's choices (rooms.json holds); absent means the first. */
+  holds?: string;
   /** Committed but still in the construction queue: holds its slots, doesn't run. */
   building?: boolean;
   /** Stairs or an elevator reaching further: cells held for floors still being built. */
@@ -57,6 +59,12 @@ export interface RoomInstance {
   name?: string;
   /** Borders (edge ids) of its walls the player has put windows in (see windows.ts). */
   windows?: string[];
+  /** Its walls' lining (see materials.ts): absent means bare rock. */
+  material?: "rock" | "brick" | "metal";
+  /** The lining's finish: absent means its base step. */
+  finish?: "base" | "fine";
+  /** Its floor upgrade (a flooring id in data/materials.json): absent means it matches the walls. */
+  flooring?: string;
 }
 
 export interface Layout {

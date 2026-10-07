@@ -1,0 +1,25 @@
+{
+  "_note": "Room linings (docs/PLAN-M15.md): what a room's walls and floor are made of. Every room starts as bare rock. Costs and work are per cell (a 10 m slot on one floor); a fine finish's cost and work are on top of its material's base step. Comfort is the step's total. Wear multiplies the room's daily condition decay. How much of that a room gets depends on its kind (kinds); which kind a room is comes from byRoom, then homes (rooms that house), people rooms (condition.json's cleanable), then byCategory, else other.",
+  "walls": [
+    { "material": "rock", "finish": "base", "name": "Bare rock", "cost": {}, "work": 0, "comfort": 0, "wear": 1 },
+    { "material": "rock", "finish": "fine", "name": "Smoothed rock", "cost": { "rock": 4 }, "work": 2, "comfort": 0.25, "wear": 0.95 },
+    { "material": "brick", "finish": "base", "name": "Brick", "cost": { "brick": 8 }, "work": 3, "comfort": 0.5, "wear": 0.85 },
+    { "material": "brick", "finish": "fine", "name": "Patterned brick", "cost": { "brick": 4 }, "work": 3, "comfort": 0.75, "wear": 0.85 },
+    { "material": "metal", "finish": "base", "name": "Metal panels", "cost": { "metal": 6 }, "work": 3, "comfort": 0.5, "wear": 0.7 },
+    { "material": "metal", "finish": "fine", "name": "Inlaid metal", "cost": { "metal": 3, "glass": 1 }, "work": 4, "comfort": 1, "wear": 0.7 }
+  ],
+  "floorings": [
+    { "id": "fibre_panels", "name": "Fibre-composite panels", "cost": { "fiber": 3 }, "work": 1.5, "comfort": 0.25 }
+  ],
+  "kinds": {
+    "home": { "comfort": 1, "wearBenefit": 1 },
+    "people": { "comfort": 1, "wearBenefit": 1 },
+    "heavy": { "comfort": 0, "wearBenefit": 2 },
+    "other": { "comfort": 0, "wearBenefit": 1 }
+  },
+  "byCategory": { "industry": "heavy", "power": "heavy", "air": "heavy", "water": "heavy" },
+  "byRoom": {},
+  "shared": { "scale": 0.5, "max": 0.5 },
+  "leastWear": 0.1,
+  "exempt": ["entrance", "stairwell", "elevator", "cargo_elevator", "empty_room_s", "empty_room_m", "empty_room_l"]
+}

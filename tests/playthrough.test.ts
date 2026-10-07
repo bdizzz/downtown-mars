@@ -38,8 +38,19 @@ describe("first month playthrough", () => {
 
   it("keeps everyone reasonably healthy", () => {
     // Digging dilutes the air (T-026), and the bot digs faster than one life support refills it,
-    // so health dips in the first fortnight; T-031 rebalances the air loop. Was 60.
-    expect(Math.min(...log.map((d) => d.health))).toBeGreaterThan(45);
+    // so health dips in the first fortnight; T-031 rebalances the air loop. Was 60, then 45 until
+    // the water loop (T-005) joined it: water for the new air competes with the loop's. 40 now.
+    expect(Math.min(...log.map((d) => d.health))).toBeGreaterThan(35);
+  });
+
+  it("closes the water loop: two recyclers, and Earth brings little water in the last ten days", () => {
+    const last = log.slice(-10);
+    const used = last.reduce((a, d) => a + d.waterUsed, 0);
+    const fromEarth = last.reduce((a, d) => a + d.earthWater, 0);
+    // Water split into oxygen for the space the bot digs is the air's deliberate leak (T-026):
+    // Earth may cover that, but little of the rest. T-031 rebalances the air loop.
+    const intoAir = last.reduce((a, d) => a + d.airWater, 0);
+    expect(fromEarth).toBeLessThan(intoAir + (used - intoAir) * 0.1);
   });
 
   it("keeps morale from collapsing", () => {

@@ -7,7 +7,7 @@ Every room with its footprint, staff, inputs, outputs, neighbor effects, build c
 - **Size:** S = 1 slot, M = 2 slots, L = 4 slots, H = 8 slots (usually 2+ floors); L and H rooms can be laid out wide, deep or tall; Surface and Shaft rooms sit outside the ring.
 - **Amounts** are per game day. Effects run from −3 to +3, with radius r in slots (r0 = the room itself).
 - **Build cost:** R = rock, B = brick, M = metal, Mc = machinery, E = electronics.
-- **Per colonist per day:** 1 cooked food, 2 clean water, 1 oxygen; produces 1 CO2 and 1 solid waste. Housing rooms don't list these; residents carry them.
+- **Per colonist per day:** 1 cooked food, 2 clean water (back as 2 gray), 1 oxygen; produces 1 CO2 and 1 solid waste. Housing rooms don't list these; residents carry them.
 
 ## Size ladders
 
@@ -98,7 +98,7 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 | Fruit | Food: produce | 5 | 5 | 4 | Long | Comfort bonus; prized export |
 | Mushrooms | Food: protein | 8 | 2 | 1 | Short | Needs no light; uses organic waste; ideal for deep floors |
 | Algae | Food: staple | 14 | 6 | 2 | Short | Makes extra O2; tastes bland, comfort −1 if a diet relies on it |
-| Fiber hemp | Material: fiber | 6 | 4 | 3 | Medium | Feeds textile mills |
+| Fiber hemp | Material: fiber | 6 | 4 | 3 | Medium | Feeds textile mills and fibre-composite floor panels (M15) |
 | Oilseed | Material: bio-oil | 5 | 3 | 3 | Medium | Feeds chemical plants as a plastics alternative |
 | Herbs | Material: medicine | 3 | 2 | 2 | Short | Supplies clinics; raises their effectiveness |
 | Coffee and tea | Luxury | 3 | 3 | 3 | Long | Comfort +1 hole-wide when stocked; top belt and tourist export |
@@ -106,22 +106,24 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 
 **Diet variety:** kitchens combine crops into meals. Colonists want staples, protein and produce; a varied diet gives health and comfort bonuses, and a monotonous one gives penalties.
 
+**As built:** potatoes, soybeans, wheat, barley, leafy greens, mushrooms, algae and fiber hemp (`data/crops.json`). A crop's `makes` names what it yields when that isn't raw food: hemp makes `fiber`, a dry good kept in storage like other materials. Grow time and switching costs aren't modelled.
+
 ## Water and air
 
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Water tank ★ | S | 0 | — | Stores 200 water | — | R 10, M 5 | Start |
-| Deep well pump | M | 2 | Power 4 | Clean water 40 | Noise −1 r1 | M 15, Mc 3 | Aquifer site |
-| Water recycler ★ | L | 3 | Gray water 40, power 3 | Clean water 36, solid waste 1 | Noise −1 r1, smell −1 r1 | M 20, Mc 4 | Start |
-| Life support ★ | L | 4 | Water 60, power 5 | O2 300 up to the air's 21% (water only for what it makes), removes CO2 30 | Noise −2 r2 | M 25, Mc 5, E 2 | Start |
+| Water tank ★ | S | 0 | — | Stores 200 of clean water, gray water or tailings (the player picks; clean by default) | — | R 10, M 5 | Start |
+| Deep well pump | M | 2 | Power 4 | Gray water 40 (salty brine: it needs treating) | Noise −1 r1 | M 15, Mc 3 | Aquifer site |
+| Water recycler ★ | L | 3 | Gray water 80, power 3 | Clean water 78, soil 1 (sludge; a full soil store doesn't slow it) | Noise −1 r1, smell −1 r1 | M 20, Mc 4 | Start |
+| Life support ★ | L | 4 | Water 60 (gone for good: split into oxygen), power 5 | O2 300 up to the air's 21% (water only for what it makes), removes CO2 30 | Noise −2 r2 | M 25, Mc 5, E 2 | Start |
 | Ventilation hub | S | 1 | Power 2 | — | Air quality +2 r2, noise −1 r1 | M 8, Mc 1 | Start |
 
 ## Waste
 
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Restroom ★ | S | 1 | Users' water | Sanitation for 25; returns used water as 75% gray, 25% black | Smell −1 r1 | R 8, M 2 | Start |
-| Composter | M | 2 | Organic waste 4, black water 2, power 1 | Soil 3 | Smell −2 r2 | R 15, M 5 | Pop 100 |
+| Restroom ★ | S | 1 | — | Sanitation for 25 (people's water turns gray as they use it, restroom or not; T-006 makes restrooms an amenity) | Smell −1 r1 | R 8, M 2 | Start |
+| Composter | M | 2 | Organic waste 4, power 1 | Soil 3 | Smell −2 r2 | R 15, M 5 | Pop 100 |
 | Recycling center | L | 4 | Solid waste 6, power 3 | Metal 1, brick 1 | Noise −1 r1, smell −1 r1 | M 20, Mc 3 | Pop 100 |
 | Waste storage | S | 0 | — | Holds 100 solid waste and 50 organic | Smell −1 r1 (worse when full: not built yet) | R 10 | Start |
 
@@ -139,10 +141,10 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Excavator bay | M | 3 | Power 3 | Faster digging, rock | Noise −2 r2 | M 10, Mc 3 | Start |
-| Brickworks | M | 3 | Rock 6, water 1, power 2 | Brick 4 | Noise −1 r1, air quality −1 r1 | R 15, M 5, Mc 1 | Pop 50 |
+| Brickworks | M | 3 | Rock 6, water 1, power 2 | Brick 4; its water back as 75% gray, 25% tailings | Noise −1 r1, air quality −1 r1 | R 15, M 5, Mc 1 | Pop 50 |
 | Smelter | L | 5 | Ore 6, power 6 | Metal 3 | Noise −2 r2, heat +1 r2, air quality −1 r2 | B 20, M 10, Mc 3 | Ore site |
 | Machine shop | M | 4 | Metal 3, power 3 | Machinery 1 | Noise −2 r2 | B 15, M 10, Mc 2 | Pop 200 |
-| Electronics fab | M | 4 | Metal 1, silicon wafers 1, power 4 | Electronics 1 | — | M 15, Mc 3, E 2 | Pop 500 |
+| Electronics fab | M | 4 | Metal 1, silicon wafers 1, water 2, power 4 | Electronics 1; its water back as half gray, half tailings | — | M 15, Mc 3, E 2 | Pop 500 |
 | Reinforcement frame | S | 0 | — | — | Cave-in risk −2 r2 | M 10 | Depth 8 floors |
 | Staging bay | L | 2 | Seed kit goods | Founds a new hole | Noise −1 r1 | M 15, Mc 2 | Map mode |
 | Site office | S | 2 | Power 1 | Construction bandwidth +1 | — | R 10, M 5 | Start |
@@ -156,7 +158,7 @@ These rooms turn raw resources into construction materials, consumer goods, pipe
 
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Concrete plant | M | 3 | Rock 5, water 2, power 2 | Marscrete 4 | Noise −2 r2, air quality −1 r1 | R 15, M 5, Mc 1 | Pop 100 |
+| Concrete plant | M | 3 | Rock 5, water 2, power 2 | Marscrete 4; its water back as half gray, half tailings | Noise −2 r2, air quality −1 r1 | R 15, M 5, Mc 1 | Pop 100 |
 | Glassworks | M | 3 | Rock 4, power 4 | Glass 2 | Noise −1 r1, air quality −1 r1 (heat not built yet) | B 10, M 5, Mc 1 | Pop 200 |
 | Chemical plant | L | 5 | CO2 4, water 2, power 5 | Plastics 2, methane 2 | Noise −1 r1, air quality −2 r2 | M 20, Mc 4, E 2 | Pop 300 |
 | Mycelium vat | M | 2 | Organic waste 3, water 2, power 1 | Mycelium composite 3 (a wood substitute) | Smell −1 r1 | R 10, M 5 | Pop 150 |
@@ -167,7 +169,7 @@ These rooms turn raw resources into construction materials, consumer goods, pipe
 | Appliance assembly | M | 4 | Metal 1, plastics 1, electronics 1, power 2 | Appliances 1 | Noise −1 r1 | M 10, Mc 2, E 2 | Pop 500 |
 | Pipe mill | M | 4 | Metal 4, power 3 | Pipe segments 2 | Noise −2 r2 | B 15, M 10, Mc 2 | Map mode |
 | Vehicle works | L | 8 | Metal 6, machinery 2, electronics 2, power 4 | 1 rover every 3 days | Noise −2 r2 | B 30, M 20, Mc 5, E 3 | Map mode |
-| Silicon refinery | L | 5 | Silica 6, water 2, power 6 | Silicon wafers 2 | Heat +1 r2, noise −1 r1 | B 20, M 15, Mc 4 | Silica site or imports |
+| Silicon refinery | L | 5 | Silica 6, water 2, power 6 | Silicon wafers 2; its water back as half gray, half tailings | Heat +1 r2, noise −1 r1 | B 20, M 15, Mc 4 | Silica site or imports |
 
 **How the new outputs are used**
 
@@ -203,7 +205,7 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Maintenance | M | 2 | Power 1, machinery 0.5 | Repairs rooms back to 100% condition, one at a time, worst first | Noise −1 r1 | R 15, M 10, Mc 2 | Start |
-| Cleaning service | M | 3 | Power 1, water 4 | Repairs homes and other people-heavy rooms back to 100%; gray water 4 | — | R 15, B 5, M 8 | Pop 150 |
+| Cleaning service | M | 3 | Power 1, water 4 | Repairs homes and other people-heavy rooms back to 100%; its water back as gray | — | R 15, B 5, M 8 | Pop 150 |
 
 - **Condition:** every room except the entrance, stairs, elevators and these two starts at 100% when built and wears down about 1.2% a day (30% faster for industry, power, air and water). Breakdowns now and then knock a room down 20–30 points.
 - **Worn rooms:** below 50% they upset people (their own residents for homes; everyone, more so for galleys, restrooms and clinics); below 30% they work 30% slower; at 0% they stop.

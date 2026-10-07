@@ -19,7 +19,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 19;
+export const SAVE_VERSION = 21;
 
 type Raw = Record<string, unknown>;
 
@@ -155,9 +155,29 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       return { ...h, layout, resources: { ...resources, glass: Math.max(resources.glass ?? 0, kit) } };
     }),
   }),
-  // v19: the air is a mix over the living volume (PLAN-M16). Old O2 and CO2 pools meant nothing per m³:
-  // every hole's air starts over at the target, with CO2 at the scrub floor.
+  // v19: water is a loop (T-005). Black water became tailings; tanks hold clean water unless set otherwise.
   18: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const ledger = h.ledger as { current: Raw; days: Raw[] } | undefined;
+      const history = h.history as { hourly: Raw; daily: Raw; acc: Raw } | undefined;
+      return {
+        ...h,
+        resources: renameKey(h.resources as Raw, "blackWater", "tailings"),
+        rates: renameKey((h.rates ?? {}) as Raw, "blackWater", "tailings"),
+        ...(h.consoleSpace ? { consoleSpace: renameKey(h.consoleSpace as Raw, "blackWater", "tailings") } : {}),
+        ...(ledger ? { ledger: { current: renameKey(ledger.current, "blackWater", "tailings"), days: ledger.days.map((d) => renameKey(d, "blackWater", "tailings")) } } : {}),
+        ...(history
+          ? { history: { ...history, hourly: renameKey(history.hourly, "blackWater", "tailings"), daily: renameKey(history.daily, "blackWater", "tailings"), acc: renameKey(history.acc, "blackWater", "tailings") } }
+          : {}),
+      };
+    }),
+  }),
+  // v20: rooms have linings (material, finish, flooring). Absent means bare rock, which every old room is.
+  19: (s) => s,
+  // v21: the air is a mix over the living volume (PLAN-M16). Old O2 and CO2 pools meant nothing per m³:
+  // every hole's air starts over at the target, with CO2 at the scrub floor.
+  20: (s) => ({
     ...s,
     holes: (s.holes as Raw[]).map((h) => {
       const hole = { ...h, resources: { ...(h.resources as Record<string, number>) } } as unknown as SimState;
@@ -167,6 +187,13 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
     }),
   }),
 };
+
+/** A copy of a record with one key renamed (a resource that changed its id). */
+function renameKey(r: Raw, from: string, to: string): Raw {
+  if (!(from in r)) return r;
+  const { [from]: v, ...rest } = r;
+  return { ...rest, [to]: v };
+}
 
 /** What a hole could hold of each dry good before storage rooms (save v13 and older). */
 const LEGACY_CAPACITY: Record<string, number> = {meals:  30, rawFood:  200, rations:  200, soil:  100, rock:  400, ore:  300, silica:  300, brick:  200, marscrete:  200, metal:  200, machinery:  50, wafers:  100, electronics:  50};

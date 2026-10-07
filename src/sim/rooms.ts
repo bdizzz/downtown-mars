@@ -42,8 +42,12 @@ export interface RoomDef {
   topsUpAir?: boolean;
   /** Colonists served by restrooms. */
   sanitation?: number;
-  /** Share of users' water returned as each kind of wastewater. */
+  /** What becomes of the clean water it uses: its share as each kind of wastewater (default config economy.waterReturns, all gray). Anything left over is used up for good. */
   returnsWater?: Record<string, number>;
+  /** Made on the side: full storage of these never slows the room (the recycler's sludge soil). */
+  byproducts?: string[];
+  /** What its storage can be set to hold instead (a water tank: clean, gray or tailings); the first is the default. */
+  holds?: string[];
   growsCrops?: boolean;
   defaultCrop?: string;
   priority?: "critical" | "high" | "normal" | "low";

@@ -273,3 +273,43 @@ we should color the soil at a hole site to match the mars planet map where the p
 ## N-0037 · 2026-10-06 09:45
 we should add local weather report, even though the hole colony is insulated within their habitable space.
 → T-074
+
+## N-0038 · 2026-10-06 09:45
+we should make a favicon
+→ no ticket
+
+## N-0039 · 2026-10-06 09:46
+in a pr build on github.io, we should prepend the pr id to the page title
+→ T-075
+
+## N-0040 · 2026-10-06 19:11
+when in colored room mode, we currently show a variety of different floor textures. floor textures should match the building material always, regardless of room coloring mode or not
+→ T-076
+
+## N-0041 · 2026-10-06 19:12
+sometimes the room labels clip through the walls of the room (or a neighboring room). perhaps the should be centered on the room. but we should still make sure they never clip a wall.
+→ T-077
+
+## N-0042 · 2026-10-06 19:12
+is it possible to apply a tilt shift photography perspective to the cameras in iso view?
+→ T-078
+
+## N-0043 · 2026-10-06 19:14
+sometimes the walls of the entry room fight for visibility through other room's walls, and you can see portions of the entry room wall from within another room at certain angles.
+→ T-079
+
+## N-0044 · 2026-10-06 19:15
+in the tutorial, there is a step "someone is waiting in the office for you" but no one is. we should generate a person that is just saying hi when that tutorial step is selected. that person doesn't give up after waiting; but once you dismiss them the tutorial step completes
+→ T-080
+
+## N-0045 · 2026-10-06 19:16
+you should be able to move forwards in backwards in the tutorial steps without completing them, with left and right icons. that way some players can complete tutorial in a different order if they need
+→ T-081
+
+## N-0046 · 2026-10-06 19:18
+this is a larger feature: we should consider a version of the tutorial for people that are unfamiliar with city builder or colony sim games, that holds their hand much more through the first stages of game. in this mode, we should introduce UI elements like the clock speed buttons one by one, and not show other elements until they've been covered by the tutorial. perhaps we can create auto-playing mp4s of certain tasks and actions that can show in a popup if the player wants to see that for a step
+→ F-007
+
+## N-0047 · 2026-10-06 19:19
+when not in build mode, none of the keyboard commands should bind to building a room. the only way to enable a hotkey for a specific room is to enter build mode
+→ T-082

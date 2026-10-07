@@ -1,7 +1,7 @@
 import type { SimConfig } from "./config";
 import { airAmount } from "./air";
 import { capacities, isActive, roomSpec } from "./economy";
-import { LABELS, record } from "./ledger";
+import { averageFlows, LABELS, record } from "./ledger";
 import { postMessage } from "./messages";
 import { addAdults, needsWeight } from "./people";
 import { addNotable } from "./notables";
@@ -47,7 +47,25 @@ export function dailyGaps(state: SimState, cfg: SimConfig): Record<string, numbe
   let waterMade = 0;
   let o2Made = 0;
   let foodMade = 0;
-  for (const room of state.layout.rooms.filter(isActive)) {
+  // Rooms that top up the air run for scrubbing but make (and spend water on) only what the air
+  // is short of: count what they actually did, from the ledger, not their full rates. Digging comes
+  // in bursts, so plan their water on the busiest recent day. One with no record yet (just built,
+  // or still being built) is planned at its full rate: new rooms mean new air to make.
+  const days = state.ledger.days.length ? state.ledger.days : [state.ledger.current];
+  const flows = averageFlows(state, cfg);
+  const counted = new Set<string>();
+  for (const room of state.layout.rooms) {
+    const def = roomDef(room.type);
+    if (def.topsUpAir && !room.planned) {
+      if (counted.has(def.name)) continue;
+      counted.add(def.name);
+      const busiest = Math.max(...days.map((d) => d.water?.out[def.name] ?? 0), flows.water?.out[def.name] ?? 0);
+      const spec = roomSpec(room, cfg);
+      waterUse += busiest > 0 ? busiest : (spec.uses.water ?? 0);
+      o2Made += flows.o2?.in[def.name] ?? 0;
+      continue;
+    }
+    if (!isActive(room)) continue;
     const spec = roomSpec(room, cfg);
     const rate = state.roomStatus[room.id]?.rate ?? 0;
     waterUse += spec.uses.water ?? 0;
