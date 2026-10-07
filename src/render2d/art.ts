@@ -83,6 +83,12 @@ const GLYPHS: Record<string, Glyph> = {
     g.moveTo(cx + r * 0.95, cy - r * 0.55).lineTo(cx + r * 0.95, cy - r * 0.05).lineTo(cx + r * 0.5, cy - r * 0.3).stroke(line(1.5, c));
     g.moveTo(cx - r * 0.95, cy + r * 0.55).lineTo(cx - r * 0.95, cy + r * 0.05).lineTo(cx - r * 0.5, cy + r * 0.3).stroke(line(1.5, c));
   },
+  tailings_reclaimer: (g, cx, cy, s, c) => {
+    // A funnel, filtering down to a droplet.
+    g.moveTo(cx - s * 0.3, cy - s * 0.3).lineTo(cx + s * 0.3, cy - s * 0.3).lineTo(cx + s * 0.06, cy - s * 0.04).lineTo(cx - s * 0.06, cy - s * 0.04).closePath().stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.18, cy - s * 0.2).lineTo(cx + s * 0.18, cy - s * 0.2).stroke(line(1, c, 0.8));
+    g.moveTo(cx, cy + s * 0.04).quadraticCurveTo(cx + s * 0.16, cy + s * 0.24, cx, cy + s * 0.32).quadraticCurveTo(cx - s * 0.16, cy + s * 0.24, cx, cy + s * 0.04).stroke(line(1.5, c));
+  },
   restroom: (g, cx, cy, s, c) => {
     // A basin and tap.
     g.moveTo(cx - s * 0.25, cy).lineTo(cx + s * 0.25, cy).quadraticCurveTo(cx + s * 0.22, cy + s * 0.28, cx, cy + s * 0.28).quadraticCurveTo(cx - s * 0.22, cy + s * 0.28, cx - s * 0.25, cy).stroke(line(1.5, c));

@@ -162,6 +162,24 @@ describe("materials and waste", () => {
     expect(s.resources.solidWaste!).toBeCloseTo(80 + made - 6 / tpd, 5);
   });
 
+  it("a tailings reclaimer turns tailings back into gray water, for a lot of power and some machinery", () => {
+    const s = hole();
+    s.unlocks = [...s.unlocks!, "reclaimer"];
+    setAdults(s, 20, config);
+    const tr = build(s, "tailings_reclaimer", ring(1, 1, 3, 2));
+    s.resources.tailings = 25;
+    s.resources.grayWater = 0;
+    const machinery = s.resources.machinery!;
+    step(s, config);
+    expect(s.roomStatus[tr]!.rate).toBeGreaterThan(0);
+    const rate = s.roomStatus[tr]!.rate;
+    expect(s.resources.tailings!).toBeCloseTo(25 - (20 * rate) / tpd, 5);
+    expect(s.resources.machinery!).toBeCloseTo(machinery - (0.2 * rate) / tpd, 5);
+    // The water charts name it, as a source of gray water and a user of tailings.
+    expect(s.ledger.current.grayWater!.in["Tailings reclaimer"]).toBeCloseTo((18 * rate) / tpd, 5);
+    expect(s.ledger.current.tailings!.out["Tailings reclaimer"]).toBeCloseTo((20 * rate) / tpd, 5);
+  });
+
   it("waste storage holds more solid and organic waste", () => {
     const s = hole();
     const before = capacities(s, config);
@@ -186,6 +204,19 @@ describe("unlocks", () => {
     expect(s.unlocks).not.toContain("hospital");
     expect(applyCommand(s, { type: "build", room: "gym", at: ring(1, 1, 3, 2) }).ok).toBe(true);
     expect(s.messages.some((m) => m.text.includes("gyms and parks"))).toBe(true);
+  });
+
+  it("the tailings reclaimer waits for its population", () => {
+    const s = createInitialState(config);
+    s.drill.active = false;
+    Object.assign(s.resources, { metal: 2000, machinery: 500, electronics: 500 });
+    expect(applyCommand(s, { type: "build", room: "tailings_reclaimer", at: ring(1, 1, 3, 2) }).ok).toBe(false);
+    setAdults(s, config.unlocks.rooms.reclaimer, config);
+    s.tick = tpd;
+    stepUnlocks(s, config);
+    expect(s.unlocks).toContain("reclaimer");
+    expect(applyCommand(s, { type: "build", room: "tailings_reclaimer", at: ring(1, 1, 3, 2) }).ok).toBe(true);
+    expect(s.messages.some((m) => m.text.includes("tailings reclaimer"))).toBe(true);
   });
 });
 
