@@ -18,6 +18,7 @@ Vibe: SimCity, SimTower and Terraforming Mars, with some of Frostpunk's social t
 | `EVENTS.md` | Event catalog: citizen visits, strike chain, hazards, discoveries, network, Earth and belt, story and notable events, with what's built. |
 | `PLAN.md`, `PLAN-M2.md` … `PLAN-M15.md` | Milestone plans, each with "Notes as built". M1 first playable, M2 polish and saves, M3 3D, M4 two holes, M5 people, M6 corridors on edges, M7 construction time, M8 storage, M9 excavation and the entrance, M10 furnishing (and later work: condition, new rooms, afterglow, charts, air quality), M11 the sealed network: gallery tubes, air and smell through corridors, amenities and services by walking distance; M12 bulkheads, airlock dust, crowding, window walls, glass and the shaft dome; M13 doors on any wall and windows as an upgrade; M14 events with choices: drill discoveries, a belt ship in distress, celebrations; M15 (planned, F-003) room materials, finishes and floors, upgraded in place. |
 | `PLAN-GODOT.md` | The Godot + C# desktop viewer (`godot/`): how the live viewer works, its "Status and next" list, and notes as built. |
+| `WORKFLOW.md` | The dev workflow: from playtest note to merged PR, which skill runs each stage, and why it's done this way. |
 | `GUIDE.md` | The player's guide: everything the game does, by section (the README keeps only a short overview). |
 | `FURNITURE.md` | Furniture models and room layout templates. |
 | `ART.md` | Art direction: the cozy 3D look, palette, readability rules. |
@@ -92,7 +93,7 @@ Before committing, run `npm test` (unit tests plus scripted playthroughs) and ch
 
 ## Playtest notes and the board
 
-Bryon's playtest notes flow through seven skills (`.claude/skills/`):
+Bryon's playtest notes flow through seven skills (`.claude/skills/`). `docs/WORKFLOW.md` walks through the stages, with a diagram, and says why it works this way.
 
 | Skill | Does |
 | --- | --- |
@@ -104,9 +105,7 @@ Bryon's playtest notes flow through seven skills (`.claude/skills/`):
 | `/try [T-012] [web\|godot\|both]` | Starts the web dev server (on its own port from 5174), the Godot viewer (its bridge on a port from 7980, saving to a scratch folder), or both, for that ticket's (or branch's) worktree in the Terminal panel (`scripts/try.mjs` picks the checkout and ports), and says what to look at. Feedback you give afterwards goes on that PR as a checklist and gets fixed on the same branch. |
 | `/land [T-012]` | After review: squash-merges the PR if CI is green, stops that branch's dev servers, removes its worktree, deletes its local and remote branches, updates main and shows what's ready next (`scripts/land.mjs`). With nothing named, sweeps up everything already merged. Leaves alone worktrees a live session is in, uncommitted work and branches still in flight. |
 
-Tickets are checked in (`docs/tickets/`, see its README), so any machine can build one. They store only `open`, `done` or `dropped`; the rest is derived from GitHub (a pushed `t-0NN-…` branch is in flight, an open PR is in review, a merged one is done), so status never needs syncing or collides across branches. **Features** (`F-0NN`, the epics) hold the plan for a big item and its breakdown into tasks; tickets name theirs with `feature: F-0NN` and wait until Bryon agrees the feature (`draft` → `agreed`), and a task's build reads its feature first. A feature can be built **on a branch of its own** (`feature/f-0NN-…`, recorded as `branch:` in its file) to test as a whole before it reaches main: its tasks branch from it and their PRs merge into it, main is merged in to keep it current (`board.mjs sync F-0NN`), and it lands on main last, with a merge commit. Ids can be shorthand in commands and chat (`/build t6` is T-006, `f1` is F-001); files, branches and commits use the full form. `node scripts/board.mjs publish` commits ticket-only changes straight to main and pushes them. The inbox and the generated `BOARD.md` stay local, in `.tracker/` (gitignored). Doc changes for an item ride in its PR.
-
-A SessionStart hook (`.claude/hooks/fresh-main.sh`) fetches `origin/main` at the start of every session, and fast-forwards the checkout if it's on a clean `main`.
+Tickets are checked in (`docs/tickets/`, see its README) and store only `open`, `done` or `dropped`; the rest is derived from GitHub (a pushed `t-0NN-…` branch is in flight, an open PR in review, a merged one done). **Features** (`F-0NN`) hold the plan for a big item; their tasks name them with `feature: F-0NN`, wait until Bryon agrees the feature, and read it first when built. A feature can be built on a branch of its own (`feature/f-0NN-…`) and land on main last. Ids can be shorthand in commands and chat (`t6` is T-006, `f1` is F-001); files, branches and commits use the full form. `node scripts/board.mjs publish` commits ticket-only changes straight to main. The inbox and the generated `BOARD.md` stay local, in `.tracker/` (gitignored). Doc changes for an item ride in its PR. A SessionStart hook (`.claude/hooks/fresh-main.sh`) fetches `origin/main` at the start of every session and fast-forwards a clean `main`.
 
 ## Commit messages
 
