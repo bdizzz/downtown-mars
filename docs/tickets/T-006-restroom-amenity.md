@@ -34,3 +34,4 @@ Add restrooms to the amenity table with a walking radius and capacity; a home co
 - 2026-10-04 18:03 opened from N-0005
 - 2026-10-04 19:05 questions answered
 - 2026-10-04 19:13 part of F-001 (T-012)
+- 2026-10-07 19:04 building on t-006-restroom-amenity
