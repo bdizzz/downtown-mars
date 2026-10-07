@@ -1,7 +1,7 @@
 ---
 id: T-007
 title: Tailings reclaimer, a late room that turns tailings back into gray water
-status: open
+status: done
 size: M
 area: data, rooms
 feature: F-001
@@ -33,3 +33,4 @@ Add the room to `data/rooms.json` (uses tailings plus lots of power and some mac
 - 2026-10-04 19:05 questions answered
 - 2026-10-04 19:13 part of F-001 (T-012)
 - 2026-10-07 19:05 building on t-007-tailings-reclaimer
+- 2026-10-07 19:08 built
