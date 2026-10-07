@@ -122,7 +122,7 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Restroom ★ | S | 1 | — | Sanitation for 25 (people's water turns gray as they use it, restroom or not; T-006 makes restrooms an amenity) | Smell −1 r1 | R 8, M 2 | Start |
+| Restroom ★ | S | 0 | — | Restroom places for 25, by walking distance (6 steps, nearest homes first); without one, comfort −1 at home; close by, comfort +0.5. Homes with their own bathroom (studio and up) need none (T-006) | Smell −1 r1 | R 8, M 2 | Start |
 | Composter | M | 2 | Organic waste 4, power 1 | Soil 3 | Smell −2 r2 | R 15, M 5 | Pop 100 |
 | Recycling center | L | 4 | Solid waste 6, power 3 | Metal 1, brick 1 | Noise −1 r1, smell −1 r1 | M 20, Mc 3 | Pop 100 |
 | Waste storage | S | 0 | — | Holds 100 solid waste and 50 organic | Smell −1 r1 (worse when full: not built yet) | R 10 | Start |

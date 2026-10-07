@@ -110,7 +110,7 @@ Placement is the core puzzle: each room emits effects that fade with distance, l
 | Farm | Water + soil + CO2 + power → raw food and a little O2 | Smell −1 |
 | Kitchen | Raw food → cooked food | Smell −1 |
 | Canteen | Serves cooked food | Comfort +1 |
-| Restroom | Sanitation (since T-005 water turns gray as it's used, not through restrooms) | Smell −1 |
+| Restroom | Sanitation (since T-005 water turns gray as it's used, not through restrooms; since T-006 an amenity by walking distance, a comfort lever) | Smell −1 |
 | Life support | Water + power → O2; scrubs CO2 | Noise −2 |
 | Factory | Raw materials → goods | Noise, lowers comfort |
 | Clinic | Staff time → care | Health +2 |
