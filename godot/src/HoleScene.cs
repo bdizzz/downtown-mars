@@ -324,18 +324,21 @@ public partial class HoleScene : Node3D
             arrays[(int)Mesh.ArrayType.Color] = colors;
         }
         var mesh = new ArrayMesh();
-        // Walls down: each vertex's wall tag (CUSTOM0) and a line's second wall (CUSTOM1), zeros where none.
+        // Walls down: each vertex's wall tag (CUSTOM0), a line's second wall (CUSTOM1), and where their faces stand (CUSTOM2, CUSTOM3), zeros where none.
         var flags = (Mesh.ArrayFormat)0;
         // An outline's room (id + 1) rides in CUSTOM1.z, for the edge shader to tint by its trouble or the hover.
-        var walled = c.TryGetProperty("walls", out var we) & c.TryGetProperty("walls2", out var we2);
+        var walled = c.TryGetProperty("walls", out var we) & c.TryGetProperty("walls2", out var we2) & c.TryGetProperty("faces", out var wf);
         var roomed = c.TryGetProperty("rooms", out var re);
         if (walled || roomed)
         {
             var w = walled ? Floats(we) : null;
             var w2 = walled ? Floats(we2) : null;
+            var wfa = walled ? Floats(wf) : null;
             var r = roomed ? Floats(re) : null;
             var wall = new float[count * 4];
             var wall2 = new float[count * 4];
+            var face = new float[count * 4];
+            var face2 = new float[count * 4];
             for (var i = 0; i < count; i++)
             {
                 var k = order[i];
@@ -344,13 +347,22 @@ public partial class HoleScene : Node3D
                     for (var j = 0; j < 4; j++) wall[i * 4 + j] = w[k * 4 + j];
                     wall2[i * 4] = w2[k * 2];
                     wall2[i * 4 + 1] = w2[k * 2 + 1];
+                    for (var j = 0; j < 3; j++)
+                    {
+                        face[i * 4 + j] = wfa![k * 6 + j];
+                        face2[i * 4 + j] = wfa[k * 6 + 3 + j];
+                    }
                 }
                 if (r != null) wall2[i * 4 + 2] = r[k];
             }
             arrays[(int)Mesh.ArrayType.Custom0] = wall;
             arrays[(int)Mesh.ArrayType.Custom1] = wall2;
+            arrays[(int)Mesh.ArrayType.Custom2] = face;
+            arrays[(int)Mesh.ArrayType.Custom3] = face2;
             flags = (Mesh.ArrayFormat)((long)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom0Shift
-                | (long)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom1Shift);
+                | (long)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom1Shift
+                | (long)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom2Shift
+                | (long)Mesh.ArrayCustomFormat.RgbaFloat << (int)Mesh.ArrayFormat.FormatCustom3Shift);
         }
         mesh.AddSurfaceFromArrays(lines ? Mesh.PrimitiveType.Lines : Mesh.PrimitiveType.Triangles, arrays, null, null, flags);
         if (flags != 0) mesh.SetMeta("walls", true);

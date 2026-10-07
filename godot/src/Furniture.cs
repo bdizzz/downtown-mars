@@ -41,8 +41,8 @@ public class Furniture
     readonly Dictionary<(string, bool), Mesh?> _meshes = new();
     readonly Dictionary<Kind, ShaderMaterial> _materials = new();
 
-    /// <summary>Wall hangings, for walls down: each instance, where it stands, and its wall (normal, bottom, the point behind it).</summary>
-    record Hung(MultiMesh Mm, int Index, Transform3D At, Vector2 Normal, Vector2 Point, bool Down);
+    /// <summary>Wall hangings, for walls down: each instance, where it stands, and its wall face (normal, where it stands, bottom and top, the point behind it).</summary>
+    record Hung(MultiMesh Mm, int Index, Transform3D At, Vector2 Normal, Vector3 Face, float Y0, float Y1, Vector2 Point, bool Down);
     readonly List<Hung> _hung = new();
 
     public Furniture()
@@ -70,19 +70,43 @@ public class Furniture
 
     /// <summary>
     /// Walls down: a hanging whose wall is lowered goes (as the web's HANG_GLSL, tested at the point on the
-    /// wall behind it: the camera on the wall's far side, or the wall always lowered); back when it isn't.
+    /// wall behind it as view.gdshaderinc wall_in_the_way); back when it isn't.
     /// </summary>
     public void UpdateWalls(bool on, Vector3 camera)
     {
         for (var i = 0; i < _hung.Count; i++)
         {
             var h = _hung[i];
-            var toCam = new Vector2(camera.X - h.Point.X, camera.Z - h.Point.Y);
-            var down = on && (h.Normal.LengthSquared() > 2 || toCam.Dot(h.Normal) < 0);
+            var down = on && InTheWay(h.Normal, h.Face, camera, h.Y0, h.Y1);
             if (down == h.Down) continue;
             h.Mm.SetInstanceTransform(h.Index, down ? new Transform3D(Basis.FromScale(Vector3.Zero), h.At.Origin) : h.At);
             _hung[i] = h with { Down = down };
         }
+    }
+
+    /// <summary>view.gdshaderinc wall_in_front and wall_in_the_way (the web's rooms3d.ts inFront, inTheWay); the stub is 15%.</summary>
+    static bool InTheWay(Vector2 n, Vector3 face, Vector3 camera, float y0, float y1)
+    {
+        var cam = new Vector2(camera.X, camera.Z);
+        float least, most;
+        if (face.Z <= face.Y) least = most = cam.Dot(n) / n.Length() - face.X;
+        else
+        {
+            var dist = cam.Length();
+            var th = Mathf.Atan2(cam.Y, cam.X);
+            var span = face.Z - face.Y;
+            float e0 = Mathf.Cos(face.Y - th), e1 = Mathf.Cos(face.Z - th);
+            var hi = Mathf.PosMod(th - face.Y, Mathf.Tau) <= span ? 1 : Mathf.Max(e0, e1);
+            var lo = Mathf.PosMod(th + Mathf.Pi - face.Y, Mathf.Tau) <= span ? -1 : Mathf.Min(e0, e1);
+            var m = (face.Y + face.Z) / 2;
+            var outward = n.Dot(new Vector2(Mathf.Cos(m), Mathf.Sin(m))) > 0;
+            (least, most) = outward ? (dist * lo - face.X, dist * hi - face.X) : (face.X - dist * hi, face.X - dist * lo);
+        }
+        if (least < 0) return true;
+        var len = n.Length();
+        if (len < 1.5f) return false;
+        var rise = camera.Y - y1;
+        return rise <= 0 || most * (y1 - y0) * 0.85f > (len - 2f) * rise;
     }
 
     public void SetNight(float night) => _materials[Kind.Glow].SetShaderParameter("glow", GlowDay + night * GlowNight);
@@ -124,7 +148,7 @@ public class Furniture
                     var at = new Transform3D(new Basis(Vector3.Up, v[5]), new Vector3(v[2], v[3], v[4]));
                     mm.SetInstanceTransform(i, at);
                     mm.SetInstanceCustomData(i, accents[(int)v[1]]);
-                    if (v.Length >= 12) _hung.Add(new Hung(mm, i, at, new Vector2(v[6], v[7]), new Vector2(v[10], v[11]), false));
+                    if (v.Length >= 15) _hung.Add(new Hung(mm, i, at, new Vector2(v[6], v[7]), new Vector3(v[12], v[13], v[14]), v[8], v[9], new Vector2(v[10], v[11]), false));
                 }
                 root.AddChild(new MultiMeshInstance3D
                 {

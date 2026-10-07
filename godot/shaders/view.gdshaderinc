@@ -58,15 +58,41 @@ float slice_darken(vec3 world) {
 	return slice_look.y * max(smoothstep(0.0, slice_look.z, -world.y), slice_fade_at(world));
 }
 
-// Walls down, as the web's (rooms3d.ts WALLS_GLSL): a wall vertex tagged with its wall's inward normal
-// (xy) and the wall's bottom and top (zw), and a line's second wall (wall2), drops to a stub when the
-// camera is on its far side. A longer normal means there's something to see across it: always lowered.
-vec3 lower_wall(vec3 v, vec4 wall, vec2 wall2, vec3 world, vec3 camera) {
+// Walls down, as the web's (rooms3d.ts inFront, inTheWay). How far in front of a wall face the camera
+// stands, at the face's nearest and furthest (negative: seen from behind there). `face` is where it stands:
+// a flat face's plane offset along n (x), or a curved face's radius and angles (x, y < z).
+vec2 wall_in_front(vec2 n, vec3 face, vec2 cam) {
+	if (face.z <= face.y) return vec2(dot(cam, n) / length(n) - face.x);
+	float dist = length(cam);
+	float th = atan(cam.y, cam.x);
+	float span = face.z - face.y;
+	float e0 = cos(face.y - th);
+	float e1 = cos(face.z - th);
+	float hi = mod(th - face.y, TAU) <= span ? 1.0 : max(e0, e1);
+	float lo = mod(th + PI - face.y, TAU) <= span ? -1.0 : min(e0, e1);
+	float m = 0.5 * (face.y + face.z);
+	return dot(n, vec2(cos(m), sin(m))) > 0.0 ? vec2(dist * lo - face.x, dist * hi - face.x) : vec2(face.x - dist * hi, face.x - dist * lo);
+}
+
+// Is a wall face with inward normal n, from y0 to y1, in the camera's way (the camera in the model's frame)?
+// The whole face answers as one: seen from behind anywhere, yes. A normal of length 2 + r means a room starts
+// r metres past it: seen from its own side, it's in the way when the line over its top is still above the
+// stub's height (15%) at r, at the face's furthest from the camera.
+bool wall_in_the_way(vec2 n, vec3 face, vec3 cam, float y0, float y1) {
+	vec2 q = wall_in_front(n, face, cam.xz);
+	if (q.x < 0.0) return true;
+	float len = length(n);
+	if (len < 1.5) return false;
+	float rise = cam.y - y1;
+	return rise <= 0.0 || q.y * (y1 - y0) * 0.85 > (len - 2.0) * rise;
+}
+
+// A wall vertex tagged with its face's inward normal (xy) and the wall's bottom and top (zw), and a line's
+// second wall (wall2, as high as the first), with where their faces stand (face, face2), drops to a stub when
+// the wall is in the way (both, for a line). `camera` is in the model's frame.
+vec3 lower_wall(vec3 v, vec4 wall, vec2 wall2, vec3 face, vec3 face2, vec3 camera) {
 	if (walls_down < 0.5 || dot(wall.xy, wall.xy) <= 0.0) return v;
-	vec2 to_cam = camera.xz - world.xz;
-	float n2 = dot(wall2, wall2);
-	bool second = n2 == 0.0 || n2 > 2.0 || dot(to_cam, wall2) < 0.0;
-	bool first = dot(wall.xy, wall.xy) > 2.0 || dot(to_cam, wall.xy) < 0.0;
-	if (first && second) v.y = min(v.y, mix(wall.z, wall.w, 0.15));
+	bool second = dot(wall2, wall2) == 0.0 || wall_in_the_way(wall2, face2, camera, wall.z, wall.w);
+	if (second && wall_in_the_way(wall.xy, face, camera, wall.z, wall.w)) v.y = min(v.y, mix(wall.z, wall.w, 0.15));
 	return v;
 }
