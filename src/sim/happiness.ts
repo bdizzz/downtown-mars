@@ -11,7 +11,7 @@ import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 import { postMessage } from "./messages";
 import { config } from "./config";
-import { amenityFelt, updateDining } from "./amenities";
+import { amenityFelt, updateDining, updateSanitation } from "./amenities";
 import { eventMood, festivalWork } from "./events";
 
 // Happiness from three factors (noise, comfort, health), each −3..+3, felt
@@ -75,10 +75,12 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   const sharedComfort = mod.comfort + care.comfort - sharedWear(state) * CONDITION.happiness.sharedComfort + sharedLiningComfort(state);
   // Diners without a seat at a galley or canteen within reach eat on the go.
   const pop = state.population;
-  const unserved = (served: number) => (1 - served) * h.unservedComfort;
-  if (!room) return { noise: 0, comfort: clamp(h.homelessComfort + sharedComfort - unserved(pop.servedHomeless ?? pop.served ?? 1), -lim, lim), health: clamp(shared, -lim, lim) };
+  // And those without a restroom within reach (or a bathroom at home) go without.
+  const unserved = (served: number, sanitation: number) => (1 - served) * h.unservedComfort + (1 - sanitation) * h.noRestroomComfort;
+  if (!room) return { noise: 0, comfort: clamp(h.homelessComfort + sharedComfort - unserved(pop.servedHomeless ?? pop.served ?? 1, pop.sanitationHomeless ?? 1), -lim, lim), health: clamp(shared, -lim, lim) };
   const seated = pop.servedByHome?.[room.id] ?? pop.served ?? 1;
-  // Parks, plazas and gyms within walking reach.
+  const sanitation = pop.sanitationByHome?.[room.id] ?? 1;
+  // Parks, plazas, gyms and restrooms within walking reach.
   const amen = amenityFelt(state, room);
 
   const field = state.effects.field;
@@ -88,7 +90,7 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   const view = windowComfort(state.layout, room, cfg);
   return {
     noise: clamp(effectOnRoom(field, "noise", room) * mod.noiseFactor, -lim, lim),
-    comfort: clamp(own + view + sharedComfort - unserved(seated) + amen.comfort + homeWearComfort(room) + liningComfort(room) + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
+    comfort: clamp(own + view + sharedComfort - unserved(seated, sanitation) + amen.comfort + homeWearComfort(room) + liningComfort(room) + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
     // Stale air (outer rings, industry) wears on health; ventilation and green space freshen it.
     health: clamp(effectOnRoom(field, "health", room) + (effectOnRoom(field, "airQuality", room) + crowdedAir(state, room)) * h.airHealth + amen.health + shared, -lim, lim),
   };
@@ -131,8 +133,9 @@ export function createHappiness(): Happiness {
  */
 export function updateHappiness(state: SimState, cfg: SimConfig, settle = false): void {
   const h = cfg.happiness;
-  // Seats and care within reach, shared out by where people lived at the last update.
+  // Seats, restrooms and care within reach, shared out by where people lived at the last update.
   updateDining(state, cfg);
+  updateSanitation(state);
   updateCare(state);
   const prev = new Map(state.happiness.pools.map((p) => [p.roomId, p]));
   const homes = state.layout.rooms.filter((r) => isActive(r) && (roomDef(r.type).houses ?? 0) > 0);

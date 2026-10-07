@@ -51,8 +51,12 @@ export interface Population {
   health: number;
   /** 0..1 per need, last tick. */
   needsMet: Record<string, number>;
-  /** 0..1 of colonists with a restroom. */
+  /** 0..1 of colonists with a restroom within reach, or a bathroom at home (amenities.ts). */
   sanitation: number;
+  /** Each home's share of its residents with a restroom within reach (1 with its own bathroom). */
+  sanitationByHome?: Record<number, number>;
+  /** The homeless's share with a restroom (whatever places are left over anywhere). */
+  sanitationHomeless?: number;
   /** 0..1 of diners with a seat at a galley or canteen within reach (missing in old saves: all). */
   served?: number;
   /** Seats at working galleys and canteens, at the last happiness update. */
@@ -210,7 +214,7 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   state.roomStatus = status;
 
   // 3. Colonists.
-  stepColonists(state, rooms, specs, status, cfg, dt, mod);
+  stepColonists(state, cfg, dt, mod);
 
   // 4. Storage limits; the excess is lost.
   for (const [id, v] of Object.entries(res)) {
@@ -377,15 +381,7 @@ function scrubFloor(state: SimState, id: string, cfg: SimConfig): number {
   return id === "co2" ? airAmount(state, cfg, cfg.air.co2Floor) : 0;
 }
 
-function stepColonists(
-  state: SimState,
-  rooms: RoomInstance[],
-  specs: Map<number, RoomSpec>,
-  status: Record<number, RoomStatus>,
-  cfg: SimConfig,
-  dt: number,
-  mod: Modifiers,
-): void {
+function stepColonists(state: SimState, cfg: SimConfig, dt: number, mod: Modifiers): void {
   const c = cfg.colonists;
   const pop = state.population;
   const res = state.resources;
@@ -412,20 +408,15 @@ function stepColonists(
   }
   breathe(state, cfg, dt);
 
-  let seats = 0;
-  for (const r of rooms) {
-    const spec = specs.get(r.id)!;
-    if (spec.sanitation > 0) seats += spec.sanitation * status[r.id]!.rate;
-  }
-  const covered = Math.min(1, seats / pop.count);
+  // Restrooms are a comfort (amenities.ts); only very poor coverage wears on health.
+  const poor = Math.max(0, 1 - (pop.sanitation ?? 1) / c.poorSanitationBelow);
 
   let loss = 0;
   for (const [id, m] of Object.entries(met)) loss += (1 - m) * (c.healthLossPerDay[id] ?? 0);
-  loss += (1 - covered) * c.noSanitationHealthLossPerDay;
+  loss += poor * c.noSanitationHealthLossPerDay;
   loss += airHealthLoss(state, cfg);
   pop.health = Math.max(0, Math.min(100, pop.health + (loss > 0 ? -loss : c.healthRecoveryPerDay) * dt));
   pop.needsMet = met;
-  pop.sanitation = covered;
 }
 
 /** Smoothed net change per game day, for the resource bar. */
