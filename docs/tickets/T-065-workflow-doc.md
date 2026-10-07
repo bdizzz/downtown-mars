@@ -27,3 +27,4 @@ CLAUDE.md: the docs table, and point "Playtest notes and the board" at the new d
 
 ## History
 - 2026-10-06 02:12 opened from N-0033
+- 2026-10-07 19:05 building on t-065-workflow-doc
