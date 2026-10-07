@@ -18,7 +18,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 19;
+export const SAVE_VERSION = 20;
 
 type Raw = Record<string, unknown>;
 
@@ -172,6 +172,8 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       };
     }),
   }),
+  // v20: rooms have linings (material, finish, flooring). Absent means bare rock, which every old room is.
+  19: (s) => s,
 };
 
 /** A copy of a record with one key renamed (a resource that changed its id). */

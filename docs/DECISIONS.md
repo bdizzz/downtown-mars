@@ -174,6 +174,14 @@ See `PLAN-M14.md` (Bryon: drill discoveries, then the belt ship, then celebratio
 - **Full gray tanks stall the rooms that use water.** People still drink; their gray water overflows. Treatment runs before the rooms that use water each tick (Claude's default, so a recycler that keeps up never starves the galley).
 - **Numbers (Claude's defaults):** the recycler treats 80 gray a day into 78 clean and 1 soil (one per ~35 people); the pod holds 250 gray water to ride out the first days. In `data/rooms.json` and `data/resources.json`.
 
+## Decided for room linings (Oct 4–6, F-003)
+
+See `PLAN-M15.md` and `docs/tickets/F-003-room-materials.md` (Bryon's answers; the numbers are Claude's defaults, in `data/materials.json`).
+
+- **Every room starts as bare rock,** its build cost unchanged. The lining is `room.material` (`rock`, `brick`, `metal`) and `room.finish` (`base`, `fine`); the floor is `room.flooring`, absent meaning it matches the walls. Only ring rooms with walls of their own have one (not surface buildings, the entrance, stairs, lifts or empty rooms).
+- **What a lining does depends on the kind of room:** homes feel its comfort in full; people rooms (the cleanable ones) lift everyone's shared comfort (their average lining comfort × 0.5, up to +0.5); heavy rooms (industry, power, air, water) get no comfort but twice the wear benefit; the rest only wear slower. Cave-in resistance waits for cave-ins.
+- **Upgrades go through the construction queue,** usable at half output once crews start; condition back to 100% when done. Linings can be changed down or stripped to bare rock for a 50% refund of their material (T-033). Build mode can pick a material up front for the full price but one construction effort (T-038).
+
 ## Still open
 
 Deliberately not decided yet:
