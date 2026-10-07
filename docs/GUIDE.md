@@ -95,9 +95,18 @@ What people use counts by how far they'd walk. A step is about a room across, al
 - At 50 colonists, gyms and parks (a park makes a little oxygen, and is walk-through like a plaza). At 300, a **hospital**: care for 400 within 16 steps.
 - **Seeing reach:** while placing a room, the line at the bottom says what it would reach on foot ("On foot: Park 1 · Clinic 2 · Galley 3"). Select a galley, clinic, school, park or gym with no overlay on to see the homes it reaches in green and those it doesn't in red.
 
+## Water
+
+Water goes round in a loop. Everything that uses clean water (people, galleys, farms, clinics, industry) turns it into **gray water**; a **water recycler** treats gray back into clean, about 97% of it, with a little soil from the sludge. One recycler keeps up with about 35 people.
+
+- **Gray water needs somewhere to go.** The pod holds 250. When it's full, rooms that use water stall (the galley and farms first), and what people use spills away. Build a recycler early, and more as you grow; **Charts → Flows → Water** says how much gray water is overflowing.
+- **Water tanks** hold clean water unless you set them to hold gray water or tailings, in the tank's details panel.
+- **The leaks:** life support splits water into oxygen for good, and some industry (the silicon refinery, concrete plant, electronics fab and brickworks) sends part of its water to **tailings**, which can only be stored for now. Wells pump up gray water (brine), so it needs treating too. Earth's drops top up what's lost.
+
 ## Materials, waste and storage
 
 - At 50 colonists a **brickworks** makes brick from rock, so you're not waiting on Earth. At 100, a **recycling center** turns solid waste into metal and brick.
+- **Fiber:** set a farm's crop to **fiber hemp** and it grows fiber (6 a day) instead of food. Give it room in storage; it's shown in the resource bar once you have some.
 - **Waste storage** holds more solid and organic waste until something uses it.
 - **Storage:** dry goods (food and materials) only keep what storage has room for. Build storerooms, warehouses or depots and choose what each holds in its details panel; the landing pod has some to start. A good shown in amber has no room left, and what arrives is lost.
 
@@ -214,7 +223,7 @@ New games open in 3D, in Iso. Everything you can do in 2D works in 3D.
 | X | Demolish |
 | D G F T Y W L K A B S P | Dorm, galley, farm, tank, recycler, restroom, life support, clinic, admin office, battery, solar, landing pad |
 | E Q | School, elder care (unlock with the first child and the first elder) |
-| J | Composter: organic waste and black water into soil |
+| J | Composter: organic waste into soil |
 | U O H I N | Deep well pump, smelter, machine shop, silicon refinery, electronics fab (some need the right site) |
 
 ### Touch (phones and tablets)

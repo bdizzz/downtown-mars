@@ -22,6 +22,8 @@ export function limitText(limit: string | undefined): string {
   if (limit === "storm") return "dimmed by the dust storm";
   if (limit.startsWith("stocked:")) return `standing by: ${resName(limit.slice(8)).toLowerCase()} stocked`;
   if (limit.startsWith("full:")) return `idling: ${resName(limit.slice(5)).toLowerCase()} storage full`;
+  // Used water has nowhere to go (economy.ts).
+  if (limit.startsWith("drain:")) return `stalled: ${resName(limit.slice(6)).toLowerCase()} tanks full`;
   return `short of ${nameOf(limit)}`;
 }
 

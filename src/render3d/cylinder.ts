@@ -12,6 +12,8 @@ export const FLOOR_H = config.geometry.floorHeightM;
 /** Rock between floor 1's ceiling and the surface. */
 export const CRUST = config.geometry.surfaceDepthM;
 export const GALLERY_W = config.geometry.galleryWidthM;
+/** Room walls: this thick, centred on the edge line between two cells (so each room keeps half of it). */
+export const WALL_T = config.geometry.wallThicknessM;
 /**
  * How far below the sim's dig front the drill rig (and the glowing front) is drawn: half a floor, so the rig's
  * widest parts clear the deepest floor's gallery tubes. The shaft wall reaches that much below the last floor.

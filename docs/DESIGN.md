@@ -23,7 +23,7 @@ This doc is the design target; the game builds toward it. Milestones 1–12 are 
 | --- | --- | --- |
 | The borehole | Floors dug by the drill; rooms excavated from rock; entrance, stairs and elevators; the shaft open to Mars, with a sealed network of gallery tubes, corridors and stairs (milestone 11) | Rings 4–6; cave-ins; choosing a diameter |
 | Rooms | 56 room types (see `ROOM-STATUS.md`) | About half the catalog, H-size rooms, multi-floor rooms beyond stairs and elevators |
-| Resources | Air, water (clean, gray, black), food, soil, waste, rock and ores, brick, marscrete, metal, machinery, wafers, electronics; storage for dry goods | Glass, plastics, textiles, consumer goods, currency |
+| Resources | Air, water (clean, gray, tailings), food, soil, waste, rock and ores, brick, marscrete, metal, machinery, wafers, electronics; storage for dry goods | Glass, plastics, textiles, consumer goods, currency |
 | Happiness | Three factors: noise, health and comfort (smell, shaft views, homelessness, care, seating at meals, ordinances and room condition feed them); parks, plazas, gyms and clinics lift the homes within walking reach; air quality feeds health | Safety, entertainment, diet variety, crowding |
 | Office and ordinances | Citizen visits (noise complaint, clinic demand) and promises; 5 ordinances | The other 27 ordinances, delegation |
 | People | Children, adults, elders; births, aging, deaths, migration; notables | Skills, mentoring, factions and strikes |
@@ -110,7 +110,7 @@ Placement is the core puzzle: each room emits effects that fade with distance, l
 | Farm | Water + soil + CO2 + power → raw food and a little O2 | Smell −1 |
 | Kitchen | Raw food → cooked food | Smell −1 |
 | Canteen | Serves cooked food | Comfort +1 |
-| Restroom | Sanitation; returns users' water as gray and black water | Smell −1 |
+| Restroom | Sanitation (since T-005 water turns gray as it's used, not through restrooms) | Smell −1 |
 | Life support | Water + power → O2; scrubs CO2 | Noise −2 |
 | Factory | Raw materials → goods | Noise, lowers comfort |
 | Clinic | Staff time → care | Health +2 |
@@ -138,7 +138,7 @@ What a room faces shapes how it looks and what it earns. Walls and doors are gen
 Bryon's first room list, from before the room catalog existed. Most of these are now covered in ROOMS.md; library, restaurant and a drill production facility are ideas not yet in the catalog. The water-tank rule below still stands.
 
 - **Residential:** dorms, apartments, homes. Each trades off capacity, noise suppression, comfort and similar factors.
-- **Water:** well, reservoir tanks, restrooms, water treatment plant. A tank stores only one type of water (clean, gray or black).
+- **Water:** well, reservoir tanks, restrooms, water treatment plant. A tank stores only one type of water (clean, gray or tailings), chosen by the player.
 - **Food:** farms (several types), storage, kitchen, dining hall / mess / canteen, restaurant.
 - **Mining:** drill production facility, storage, brick works, refinery.
 - **Amenities:** library, medical clinic, plaza, school, theater, gymnasium, indoor park.
@@ -149,7 +149,7 @@ The economy is a set of conversion chains, and the player should always be able 
 
 - **Core resources:** water, food (raw and cooked), earth (excavated rock), electricity, money, soil, metals and ores, oxygen, CO2, solid waste, brick, marscrete, glass, silica, silicon wafers, plastics, fiber, methane, machinery, electronics, beer, consumer goods (clothing, furniture, toys, appliances), pipe segments, rovers.
 - **Chains:** rooms turn inputs into outputs, e.g. farm → raw food, kitchen → cooked food, restroom → dirty water.
-- **Water ledger:** track sources (deep well, imports, ice), transformations (drinking → gray → black water), recycling rates per room, and losses to leaks.
+- **Water ledger:** track sources (deep well, imports, ice), transformations (use → gray → treated back to clean; industry → tailings), recycling rates per room, and losses to leaks.
 - **Flow diagram UI:** a river-style chart shows each resource's full path, so a leak or bottleneck is visible at a glance.
 - **Self-sufficiency is hard at scale:** waste, noise and friction grow faster than population, and some essentials only exist in certain regions.
 

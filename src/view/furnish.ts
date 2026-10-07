@@ -3,7 +3,7 @@ import { corridors } from "../sim/corridors";
 import { edgeById } from "../sim/edges";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
-import { floorSpan, ringRadii, slotAngles } from "../render3d/cylinder";
+import { floorSpan, ringRadii, slotAngles, WALL_T } from "../render3d/cylinder";
 import { doorways, sideOf, type Doorway } from "./doors";
 import { glazedWalls, ownSide } from "../sim/windows";
 import { isFurnished, isItem, isMounted, itemDef, itemsFor } from "./furniture";
@@ -94,9 +94,11 @@ export const FIT = {
 
 export const isFlat = (item: string) => itemDef(item).size[2] <= FIT.flat;
 
-/** What a room gives up on a side: half a corridor where one runs, else the walls' hairline (as in 3D). */
-const HALL = corridors.widthM / 2;
-const INSET = 0.06;
+/** What a room gives up on a side: half its wall, plus half a corridor where one runs (as in 3D). */
+const WALL = WALL_T / 2;
+const HALL = corridors.widthM / 2 + WALL;
+/** How far the room's floor stands above the floor's base (as in 3D). */
+const FLOOR_LIFT = 0.06;
 
 /** A room's floor as furniture sees it: an annular sector with walls, on one floor. */
 export interface Frame {
@@ -144,10 +146,10 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
   const a1 = a0 + (room.at.w / n) * Math.PI * 2;
   // What runs along each side: a corridor pulls that wall back by half its width.
   const hall = (id: string) => !!layout.corridors?.[id];
-  let left = INSET;
-  let right = INSET;
-  let front = INSET;
-  let back = INSET;
+  let left = WALL;
+  let right = WALL;
+  let front = WALL;
+  let back = WALL;
   for (const c of cells) {
     const m = hole.ringSlots[c.ring - 1]!;
     if (!own.has(key({ ...c, slot: (c.slot - 1 + m) % m })) && hall(`R${floor}.${c.ring}.${c.slot}`)) left = HALL;
@@ -179,8 +181,8 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
       }),
   );
   return {
-    // On the room's floor, which stands the walls' hairline above the floor's base (as the 3D view draws it).
-    y: floorSpan(floor)[0] + INSET,
+    // On the room's floor, which stands a little above the floor's base (as the 3D view draws it).
+    y: floorSpan(floor)[0] + FLOOR_LIFT,
     rIn,
     rOut,
     left: (r) => a0 + side(left + g, r),

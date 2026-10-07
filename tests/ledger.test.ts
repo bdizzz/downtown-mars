@@ -43,7 +43,10 @@ describe("flow ledger", () => {
     const f = averageFlows(s, config);
     expect(Object.keys(f.o2!.in)).toContain("Life support");
     expect(Object.keys(f.o2!.out)).toContain(LABELS.colonists);
-    expect(Object.keys(f.grayWater!.in)).toContain(LABELS.restrooms);
+    // Clean water used, by user, comes back as gray water from the same user.
+    expect(Object.keys(f.water!.out)).toEqual(expect.arrayContaining([LABELS.household, "Galley", "Life support"]));
+    expect(Object.keys(f.grayWater!.in)).toEqual(expect.arrayContaining([LABELS.household, "Galley"]));
+    expect(Object.keys(f.grayWater!.in)).not.toContain("Life support");
     expect(Object.keys(f.rock!.in)).toContain(LABELS.digging);
     expect(Object.keys(f.rations!.in)).toContain(LABELS.earth);
     expect(Object.keys(f.rations!.out)).toContain("Galley");
