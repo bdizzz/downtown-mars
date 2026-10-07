@@ -18,14 +18,17 @@ created: 2026-10-06 09:45
 - Founding a new hole picks a map location (`src/sim/founding.ts`, the map screen).
 
 ## Approach
+Answered (Bryon, Oct 7): match the map as drawn; only the polar caps count as ice for now.
+
 Add a colour per 1° cell to the elevation grid (sampled from the relief map's palette before shading, so it's the map's colour without its lighting), and an `ice` flag for the polar caps (and any glacier regions we mark). The site's ground, near terrain and horizon tint toward that colour, softened so it still reads as Mars dust under the game's lighting. The map refuses ice cells: the cursor shows "Ice cap: can't dig here" and founding is blocked there (checked in the sim command too). Done: sites in dark lowlands and bright highlands look different and match the map; clicking a cap won't place a hole; Godot matches.
 
 ## Docs to update
 GUIDE.md: The map. DECISIONS.md: where holes can't go.
 
 ## Open questions
-- [ ] The map's colours are height tints, not Mars's real colours. Match the map as drawn (proposed: it's what the player sees), or use real colour imagery for both the map and the soil?
-- [ ] Which ice counts: the polar caps only (proposed, clear on the map), or also the mid-latitude buried glaciers (invisible on the map, so they'd need marking)?
+- [x] The map's colours are height tints, not Mars's real colours. Match the map as drawn (proposed: it's what the player sees), or use real colour imagery for both the map and the soil?
+- [x] Which ice counts: the polar caps only (proposed, clear on the map), or also the mid-latitude buried glaciers (invisible on the map, so they'd need marking)?
 
 ## History
 - 2026-10-06 09:45 opened from N-0036
+- 2026-10-07 18:43 questions answered

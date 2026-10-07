@@ -16,13 +16,16 @@ created: 2026-10-06 09:45
 T-063 (#29) made the game installable with `display: fullscreen` (`display_override: ["fullscreen", "standalone"]` in `public/manifest.webmanifest`), so on Android the status and navigation bars are hidden with no way back. A manifest's display mode can't change at runtime, but the Fullscreen API can: an app launched `standalone` can enter full screen with `document.documentElement.requestFullscreen()` (it needs a user gesture, so it applies on the first tap after launch) and leave it with `document.exitFullscreen()`.
 
 ## Approach
+Answered (Bryon, Oct 7): hidden by default.
+
 Launch `standalone` and let a setting, **Full screen (hide the system bar)**, on by default, request full screen on the first tap and whenever it's toggled on; off exits it. Show the setting only when installed on Android (`matchMedia("(display-mode: standalone)")` or `fullscreen`, and not iOS, where neither is possible). Done: on an installed Android app, the toggle shows and hides the system bar and the choice sticks across launches.
 
 ## Docs to update
 GUIDE.md: Settings, and the phone section T-063 added.
 
 ## Open questions
-- [ ] Default: hidden (as now, proposed) or shown?
+- [x] Default: hidden (as now, proposed) or shown?
 
 ## History
 - 2026-10-06 09:45 opened from N-0034
+- 2026-10-07 18:43 questions answered

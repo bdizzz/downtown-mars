@@ -1,7 +1,7 @@
 ---
 id: T-082
 title: Room hotkeys only work in build mode
-status: open
+status: dropped
 size: S
 area: ui, godot
 touches: [src/ui/App.tsx, src/ui/Help.tsx, godot/src/Live.cs]
@@ -23,3 +23,4 @@ Reproduce what Bryon saw, then make sure no build tool (rooms, corridor, demolis
 
 ## History
 - 2026-10-06 19:31 opened from N-0047
+- 2026-10-07 18:43 dropped: Bryon couldn't reproduce it

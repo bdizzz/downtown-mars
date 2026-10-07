@@ -16,10 +16,13 @@ created: 2026-10-06 19:31
 The deputy's card (`src/ui/Tutorial.tsx`; Godot's `Tutorial.cs`) shows the first unmet goal, its hint and a dot per goal. Goals are checked continuously (`src/ui/tutorialGoals.ts`, the bridge's `tutorial.ts`), so any goal can be met at any time.
 
 ## Approach
+Answered (Bryon, Oct 7): when you meet a goal you're not looking at, the card stays on your chosen step.
+
 ‹ and › buttons either side of the dots (and clicking a dot) pick which goal the card shows; done goals show ticked. Meeting the shown goal moves on to the next unmet one. Done goals stay done when you browse back. The tutorial ends when every goal is met. Done: you can jump to step 5, do it, and the card moves on to the next unmet step; same in Godot.
 
 ## Open questions
-- [ ] When you meet a goal you're not looking at, should the card stay on your chosen step (proposed), or jump to the first unmet one?
+- [x] When you meet a goal you're not looking at, should the card stay on your chosen step (proposed), or jump to the first unmet one?
 
 ## History
 - 2026-10-06 19:31 opened from N-0045
+- 2026-10-07 18:43 questions answered
