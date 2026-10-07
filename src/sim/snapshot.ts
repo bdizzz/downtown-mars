@@ -1,4 +1,5 @@
 import { maintenanceView, type MaintenanceView } from "./condition";
+import { airView, type AirView } from "./air";
 import { stormDue, stormLevel } from "./weather";
 import { gameTime, type GameTime } from "./clock";
 import type { SimConfig } from "./config";
@@ -132,6 +133,8 @@ export interface Snapshot {
   drill: DrillView;
   resources: Record<string, number>;
   capacities: Record<string, number>;
+  /** The air as a mix: living volume (m³), O2 and CO2 as % of it. */
+  air: AirView;
   /** Smoothed net change per game day. */
   rates: Record<string, number>;
   /** Power is a flow, so show what's made and used rather than a net rate. */
@@ -226,6 +229,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     },
     resources: state.resources,
     capacities: capacities(state, cfg),
+    air: airView(state, cfg),
     rates: state.rates,
     power: powerFlow(state, cfg),
     population: state.population,

@@ -10,6 +10,7 @@ import { storageCaps } from "./storage";
 import { stormOutput } from "./weather";
 import { conditionOutput, isCleanable, maintenanceQueue } from "./condition";
 import type { CareState } from "./care";
+import { airAmount, airHealthLoss, breathe } from "./air";
 
 // The per-tick economy: staff the rooms, run them, feed the colonists, cap
 // storage. Every amount in the data is per game day, so each tick moves
@@ -76,8 +77,11 @@ export function roomSpec(room: RoomInstance, cfg: SimConfig): RoomSpec {
     const crop = cropDef(room.crop);
     uses.water = crop.water;
     uses.power = crop.power;
-    makes.rawFood = crop.yield;
+    delete makes.rawFood;
+    makes[crop.makes ?? "rawFood"] = crop.yield;
   }
+  // Clean water comes back as wastewater as it's used.
+  for (const [id, share] of Object.entries(waterReturns(def.returnsWater, cfg))) makes[id] = (makes[id] ?? 0) + (uses.water ?? 0) * share;
   const nominal = cfg.economy.nominalSlots[def.size] ?? 1;
   const k = room.at.kind === "ring" ? room.cells.length / nominal : 1;
   const scale = (r: Record<string, number>) => Object.fromEntries(Object.entries(r).map(([id, v]) => [id, v * k]));
@@ -86,10 +90,30 @@ export function roomSpec(room: RoomInstance, cfg: SimConfig): RoomSpec {
     uses: scale(uses),
     makes: scale(makes),
     scrubs: scale(def.scrubs ?? {}),
-    stores: def.stores ?? {},
+    stores: storesOf(room),
     sanitation: (def.sanitation ?? 0) * k,
     serves: (def.serves ?? 0) * k,
   };
+}
+
+/** What becomes of used clean water: a room's own split, or the default (all gray). */
+export function waterReturns(split: Record<string, number> | undefined, cfg: SimConfig): Record<string, number> {
+  return split ?? cfg.economy.waterReturns;
+}
+
+/** What a tank holds: the kind it's set to, of its choices, or the first. */
+export function holding(room: RoomInstance): string | null {
+  const choices = roomDef(room.type).holds;
+  if (!choices?.length) return null;
+  return room.holds && choices.includes(room.holds) ? room.holds : choices[0]!;
+}
+
+/** A room's storage; a tank's whole volume goes to what it's set to hold. */
+function storesOf(room: RoomInstance): Record<string, number> {
+  const def = roomDef(room.type);
+  const held = holding(room);
+  if (!held) return def.stores ?? {};
+  return { [held]: Object.values(def.stores ?? {}).reduce((a, v) => a + v, 0) };
 }
 
 /** The stored good a room exists to make, if any: what "stop at" watches. */
@@ -121,7 +145,8 @@ export function isActive(room: RoomInstance): boolean {
 
 export function capacities(state: SimState, cfg: SimConfig): Record<string, number> {
   const caps: Record<string, number> = {};
-  for (const r of resourceDefs) caps[r.id] = r.baseCapacity;
+  // The air has no cap: it's a mix over the living volume (air.ts).
+  for (const r of resourceDefs) if (!r.air) caps[r.id] = r.baseCapacity;
   for (const room of state.layout.rooms) {
     if (room.planned || room.building) continue;
     for (const [id, v] of Object.entries(roomSpec(room, cfg).stores)) caps[id] = (caps[id] ?? 0) + v;
@@ -163,7 +188,8 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   }
   state.workforce = { total: adults, employed: adults - free };
 
-  // 2. Run rooms. Pure producers (solar) go first so power is there for the rest.
+  // 2. Run rooms. Pure producers (solar) go first so power is there for the rest,
+  // then treatment, draining wastewater so the rooms that make it have room to.
   const mod = modifiers(state);
   // Maintenance and cleaning crews with nothing to repair stand by: they keep the lights on, but use no parts or water.
   const waiting = rooms.some((r) => roomDef(r.type).maintains) ? maintenanceQueue(state) : [];
@@ -173,8 +199,10 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
     return !waiting.some((w) => kind === "all" || isCleanable(w.type));
   };
   const producers = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length === 0);
-  const others = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length > 0);
-  for (const r of [...producers, ...others]) {
+  const drains = (r: RoomInstance) => Object.keys(specs.get(r.id)!.uses).some((id) => resourceDef(id).backsUp);
+  const treatment = rooms.filter((r) => drains(r));
+  const others = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length > 0 && !drains(r));
+  for (const r of [...producers, ...treatment, ...others]) {
     const why = down.get(r.id);
     if (why) status[r.id] = { staff: 0, staffNeeded: specs.get(r.id)!.staff, rate: 0, limit: why };
     else runRoom(r, standby(r) ? idleSpec(specs.get(r.id)!) : specs.get(r.id)!, status[r.id]!, state, caps, cfg, dt, mod, standby(r));
@@ -253,9 +281,13 @@ function runRoom(
     limit ??= "ordinance";
   }
 
+  // A room that tops up the air makes its O2 only up to the target, and spends
+  // its inputs other than power only on the O2 it makes (checked below).
+  const topUp = !!roomDef(room.type).topsUpAir;
+  const forAir = (id: string) => topUp && id !== "power";
   for (const [id, perDay] of Object.entries(spec.uses)) {
     const need = perDay * rate * dt;
-    if (need <= 0) continue;
+    if (need <= 0 || forAir(id)) continue;
     const f = available(res, id, subs[id]) / need;
     if (f < 1) {
       rate *= Math.max(0, f);
@@ -266,35 +298,68 @@ function runRoom(
   // Don't make what can't be stored: slow down only when every main output is
   // full (a full byproduct, like a farm's oxygen, is just lost). Waste and
   // power never hold a room back. A room with air to scrub keeps running for
-  // that alone, venting whatever it makes.
+  // that alone.
+  const capOf = (id: string) => (topUp && resourceDef(id).air ? airAmount(state, cfg, cfg.air.o2Target) : (caps[id] ?? Infinity));
   let outputF = -1;
   let fullOf = "";
+  const byproducts = roomDef(room.type).byproducts ?? [];
   for (const [id, perDay] of Object.entries(spec.makes)) {
     const def = resourceDef(id);
-    if (def.waste || def.flow) continue;
+    if (def.waste || def.flow || byproducts.includes(id)) continue;
     const make = perDay * rate * dt;
     if (make <= 0) continue;
-    const f = Math.max(0, (caps[id] ?? Infinity) - (res[id] ?? 0)) / make;
+    const f = Math.max(0, capOf(id) - (res[id] ?? 0)) / make;
     if (f > outputF) outputF = f;
     if (f < 1) fullOf ||= id;
   }
   for (const [id, perDay] of Object.entries(spec.scrubs)) {
     const want = perDay * rate * dt;
-    if (want > 0) outputF = Math.max(outputF, (Math.max(0, (res[id] ?? 0) - scrubFloor(id, cfg))) / want);
+    if (want > 0) outputF = Math.max(outputF, (Math.max(0, (res[id] ?? 0) - scrubFloor(state, id, cfg))) / want);
   }
   if (outputF >= 0 && outputF < 1) {
     rate *= outputF;
-    limit = `full:${fullOf}`;
+    limit = topUp && fullOf && resourceDef(fullOf).air ? `air:${fullOf}` : `full:${fullOf}`;
+  }
+
+  // A top-up room's share of its O2 actually made: only what the air is short of
+  // the target, and only as far as its inputs (water) go. Scrubbing runs regardless.
+  let airShare = 1;
+  if (topUp) {
+    for (const [id, perDay] of Object.entries(spec.makes)) {
+      const make = perDay * rate * dt;
+      if (resourceDef(id).air && make > 0) airShare = Math.min(airShare, Math.max(0, capOf(id) - (res[id] ?? 0)) / make);
+    }
+    for (const [id, perDay] of Object.entries(spec.uses)) {
+      const need = perDay * rate * dt * airShare;
+      if (need <= 0 || !forAir(id)) continue;
+      const f = available(res, id, subs[id]) / need;
+      if (f < 1) {
+        airShare *= Math.max(0, f);
+        limit = id;
+      }
+    }
+  }
+  // Used water has to go somewhere: with the gray tanks full, the room stalls.
+  for (const [id, perDay] of Object.entries(spec.makes)) {
+    if (!resourceDef(id).backsUp) continue;
+    const make = perDay * rate * dt;
+    if (make <= 0) continue;
+    const f = Math.max(0, (caps[id] ?? Infinity) - (res[id] ?? 0)) / make;
+    if (f < 1) {
+      rate *= f;
+      limit = `drain:${id}`;
+    }
   }
 
   const label = roomDef(room.type).name;
-  for (const [id, perDay] of Object.entries(spec.uses)) consume(state, id, perDay * rate * dt, subs[id] ?? [], label);
+  for (const [id, perDay] of Object.entries(spec.uses)) consume(state, id, perDay * rate * dt * (forAir(id) ? airShare : 1), subs[id] ?? [], label);
   for (const [id, perDay] of Object.entries(spec.makes)) {
-    res[id] = (res[id] ?? 0) + perDay * rate * dt;
-    record(state, id, "in", label, perDay * rate * dt);
+    const made = perDay * rate * dt * (topUp && resourceDef(id).air ? airShare : 1);
+    res[id] = (res[id] ?? 0) + made;
+    record(state, id, "in", label, made);
   }
   for (const [id, perDay] of Object.entries(spec.scrubs)) {
-    const take = Math.min(perDay * rate * dt, Math.max(0, (res[id] ?? 0) - scrubFloor(id, cfg)));
+    const take = Math.min(perDay * rate * dt, Math.max(0, (res[id] ?? 0) - scrubFloor(state, id, cfg)));
     res[id] = (res[id] ?? 0) - take;
     record(state, id, "out", label, take);
   }
@@ -308,8 +373,8 @@ function runRoom(
 const NOTICEABLE = 0.99;
 
 /** Life support leaves a little CO2 in the air for farms. */
-function scrubFloor(id: string, cfg: SimConfig): number {
-  return id === "co2" ? cfg.economy.co2ScrubFloor : 0;
+function scrubFloor(state: SimState, id: string, cfg: SimConfig): number {
+  return id === "co2" ? airAmount(state, cfg, cfg.air.co2Floor) : 0;
 }
 
 function stepColonists(
@@ -332,34 +397,32 @@ function stepColonists(
     const want = weight * perDay * (mod.needsMultiplier[id] ?? 1) * dt;
     const got = Math.min(want, res[id] ?? 0);
     res[id] = (res[id] ?? 0) - got;
-    record(state, id, "out", LABELS.colonists, got);
+    record(state, id, "out", id === "water" ? LABELS.household : LABELS.colonists, got);
     met[id] = want > 0 ? got / want : 1;
+  }
+  // The water people drink and wash with comes straight back as gray water.
+  const used = weight * (c.needsPerDay.water ?? 0) * (mod.needsMultiplier.water ?? 1) * dt * (met.water ?? 1);
+  for (const [id, share] of Object.entries(waterReturns(undefined, cfg))) {
+    res[id] = (res[id] ?? 0) + used * share;
+    record(state, id, "in", LABELS.household, used * share);
   }
   for (const [id, perDay] of Object.entries(c.makesPerDay)) {
     res[id] = (res[id] ?? 0) + weight * perDay * dt;
     record(state, id, "in", LABELS.colonists, weight * perDay * dt);
   }
+  breathe(state, cfg, dt);
 
-  // Restrooms turn the water people drink into gray and black water.
   let seats = 0;
-  let split: Record<string, number> = {};
   for (const r of rooms) {
     const spec = specs.get(r.id)!;
-    if (spec.sanitation <= 0) continue;
-    seats += spec.sanitation * status[r.id]!.rate;
-    split = roomDef(r.type).returnsWater ?? split;
+    if (spec.sanitation > 0) seats += spec.sanitation * status[r.id]!.rate;
   }
   const covered = Math.min(1, seats / pop.count);
-  const drunk = weight * (c.needsPerDay.water ?? 0) * (mod.needsMultiplier.water ?? 1) * dt * (met.water ?? 1);
-  for (const [id, share] of Object.entries(split)) {
-    res[id] = (res[id] ?? 0) + drunk * covered * share;
-    record(state, id, "in", LABELS.restrooms, drunk * covered * share);
-  }
 
   let loss = 0;
   for (const [id, m] of Object.entries(met)) loss += (1 - m) * (c.healthLossPerDay[id] ?? 0);
   loss += (1 - covered) * c.noSanitationHealthLossPerDay;
-  if ((res.co2 ?? 0) > c.co2DangerLevel) loss += c.co2HealthLossPerDay;
+  loss += airHealthLoss(state, cfg);
   pop.health = Math.max(0, Math.min(100, pop.health + (loss > 0 ? -loss : c.healthRecoveryPerDay) * dt));
   pop.needsMet = met;
   pop.sanitation = covered;

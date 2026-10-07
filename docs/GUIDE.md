@@ -26,7 +26,7 @@ Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists
 
 **The afterglow:** everyone arrives thrilled. For the first 20 days happiness gets a boost (+20 at landing, easing away), so there's time to get air, water and food running and put something by before reality sets in. Newly founded holes get their own. Point at **Happy** to see how much is left.
 
-**Watch the bar at the top:** oxygen, water, meals and power, with how fast they're changing. Red means it runs out in under two days. Point at anything there for what it means and a sparkline of its last two days; click it to open it in **Charts → Trends**.
+**Watch the bar at the top:** the air, water, meals and power, with how fast they're changing. Red means it runs out in under two days. Point at anything there for what it means and a sparkline of its last two days; click it to open it in **Charts → Trends**.
 
 ## Building
 
@@ -95,15 +95,31 @@ What people use counts by how far they'd walk. A step is about a room across, al
 - At 50 colonists, gyms and parks (a park makes a little oxygen, and is walk-through like a plaza). At 300, a **hospital**: care for 400 within 16 steps.
 - **Seeing reach:** while placing a room, the line at the bottom says what it would reach on foot ("On foot: Park 1 · Clinic 2 · Galley 3"). Select a galley, clinic, school, park or gym with no overlay on to see the homes it reaches in green and those it doesn't in red.
 
+## Water
+
+Water goes round in a loop. Everything that uses clean water (people, galleys, farms, clinics, industry) turns it into **gray water**; a **water recycler** treats gray back into clean, about 97% of it, with a little soil from the sludge. One recycler keeps up with about 35 people.
+
+- **Gray water needs somewhere to go.** The pod holds 250. When it's full, rooms that use water stall (the galley and farms first), and what people use spills away. Build a recycler early, and more as you grow; **Charts → Flows → Water** says how much gray water is overflowing.
+- **Water tanks** hold clean water unless you set them to hold gray water or tailings, in the tank's details panel.
+- **The leaks:** life support splits water into oxygen for good, and some industry (the silicon refinery, concrete plant, electronics fab and brickworks) sends part of its water to **tailings**, which can only be stored for now. Wells pump up gray water (brine), so it needs treating too. Earth's drops top up what's lost.
+
 ## Materials, waste and storage
 
 - At 50 colonists a **brickworks** makes brick from rock, so you're not waiting on Earth. At 100, a **recycling center** turns solid waste into metal and brick.
+- **Fiber:** set a farm's crop to **fiber hemp** and it grows fiber (6 a day) instead of food. Give it room in storage; it's shown in the resource bar once you have some.
 - **Waste storage** holds more solid and organic waste until something uses it.
 - **Storage:** dry goods (food and materials) only keep what storage has room for. Build storerooms, warehouses or depots and choose what each holds in its details panel; the landing pod has some to start. A good shown in amber has no room left, and what arrives is lost.
 
 ## Air and smell
 
-The hole's air is a closed loop: life support makes it, and it moves where people do, through the corridors, gallery tubes and stairs (not through walls, and not by elevator).
+**The mix.** The hole's air fills its **living volume**: every dug cell (400 m³) and every built corridor and gallery tube; not the open shaft or the rock. The bar shows it as **Air 21.0% O2** and **CO2 0.20%**, and Charts → Trends → Air has both and the living volume.
+
+- People breathe oxygen into CO2, one for one. **Life support** scrubs the CO2 (down to 0.2%, left for the farms) and makes oxygen from water up to **21%**, then stops; plants turn CO2 back into oxygen.
+- **Digging dilutes the air:** a new room spreads the same oxygen over more space, and life support makes the difference from water. That's the cost of growing.
+- Below **18%** oxygen health falls; below **15%**, fast. Above **23.5%** is a fire risk. **CO2 above 1%** hurts health, above 3% fast.
+- A new game starts with its air made (the landing crew sealed the hole), but without a scrubber the CO2 passes 1% in about five days: build life support early.
+
+**Air quality.** The air also moves where people do, through the corridors, gallery tubes and stairs (not through walls, and not by elevator), and it can go stale or foul locally:
 
 - It goes stale away from the air trunk in the shaft wall (ring 3 starts at −1).
 - Smelters, brickworks and concrete plants foul it for the rooms down the corridors from them, fading with every step.
@@ -127,6 +143,7 @@ The hole's air is a closed loop: life support makes it, and it moves where peopl
 - **Maintenance** rooms (Build → Services) repair rooms back to 100%, one room per maintenance room at a time, taking the worst from the hole's queue (rooms at 60% or below). They use machinery.
 - From 150 colonists, **cleaning services** do the same for homes and other rooms people share, using clean water.
 - Understaffed crews work slower; a crew that stops hands its room back, part-done, to the front of the queue. A crew with nothing to repair stands by, using power but no machinery or water.
+- Every room is carved from **bare rock**; the room panel's **Walls** row says what its lining is and what that gives. Brick and metal linings (an upgrade, coming soon) make homes more comfortable, make shared rooms nicer for everyone, and wear more slowly (workshops and plants twice as much).
 - **Charts → Maintenance** shows the queue and what each crew is on; the **Condition** stat at the top and the Condition overlay show how things stand.
 
 ## Earth, storms, the office and events
@@ -157,7 +174,7 @@ Four buttons at the bottom right, as in SimCity. B, V, M and C open them from an
   - **Flows** draws power, water, air and food as pipes, with dashes running from what makes each to what uses it.
   - **Overlays** show noise, smell, health, comfort, air, happiness and condition.
 - **Map** opens the planet as a globe: drag or scroll sideways to spin it (it coasts to a stop), scroll to zoom, click to pick a site.
-- **Charts** has People, Trends, Flows, Network, Maintenance and the construction queue (its badge counts the jobs). **Trends** shows how everything has been changing: pick a series for a detailed chart over the last 2 days, 10 days or the whole game, as amounts or as change per day, with the lines that matter marked (happiness 50 and 45, CO2 100 and so on); point along it to read any hour.
+- **Charts** has People, Trends, Flows, Network, Maintenance and the construction queue (its badge counts the jobs). **Trends** shows how everything has been changing: pick a series for a detailed chart over the last 2 days, 10 days or the whole game, as amounts or as change per day, with the lines that matter marked (happiness 50 and 45, oxygen 18% and so on); point along it to read any hour.
 
 The floor picker stays on the right.
 
@@ -213,7 +230,7 @@ New games open in 3D, in Iso. Everything you can do in 2D works in 3D.
 | X | Demolish |
 | D G F T Y W L K A B S P | Dorm, galley, farm, tank, recycler, restroom, life support, clinic, admin office, battery, solar, landing pad |
 | E Q | School, elder care (unlock with the first child and the first elder) |
-| J | Composter: organic waste and black water into soil |
+| J | Composter: organic waste into soil |
 | U O H I N | Deep well pump, smelter, machine shop, silicon refinery, electronics fab (some need the right site) |
 
 ### Touch (phones and tablets)

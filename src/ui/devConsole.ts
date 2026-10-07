@@ -27,6 +27,8 @@ const HELP = `Downtown Mars console (the hole you're looking at):
   dm.showcase(10)           dig to 10 floors and fill rings 1–3 with built, furnished rooms (for looking at; not for playing)
   dm.skip(3)                run every hole ahead 3 days at once (up to 365)
   dm.wear(0.4)              every room's condition to 40% (dm.wear(0.2, roomId) for one room)
+  dm.lining(12, "brick")     line room 12's walls: rock, brick or metal (dm.lining(12, "brick", "fine") for the finer finish; "rock" back to bare)
+  dm.floor(12, "fibre_panels")  room 12's floor (dm.floor(12) back to matching the walls)
   dm.event("belt_ship")      raise an event now (aquifer, ore_vein, silica_bed, lava_tube, gas_pocket, microfossils, belt_ship)
   dm.storm(1)               a dust storm now, for a day (dm.storm(2, 3): in 3 days, for 2; dm.storm(0) clears it)
   dm.command({ ... })       send any simulation command, as the game would (see SimCommand in src/sim/commands.ts)`;
@@ -78,6 +80,12 @@ export function installConsole(api: Api): () => void {
     },
     wear(condition: number, roomId?: number) {
       return run({ type: "consoleWear", condition, roomId }, roomId === undefined ? `Every room at ${Math.round(condition * 100)}%` : `Room ${roomId} at ${Math.round(condition * 100)}%`);
+    },
+    lining(roomId: number, material: string, finish = "base") {
+      return run({ type: "consoleLining", roomId, material, finish }, `Room ${roomId}: ${material}${finish === "fine" ? ", finely finished" : ""}`);
+    },
+    floor(roomId: number, flooring?: string) {
+      return run({ type: "consoleLining", roomId, flooring: flooring ?? null }, `Room ${roomId}'s floor: ${flooring ?? "matches the walls"}`);
     },
     showcase(floors = 10) {
       return run({ type: "consoleShowcase", floors }, `Showcase: ${floors} floors`);

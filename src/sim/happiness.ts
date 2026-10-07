@@ -6,6 +6,7 @@ import { windowComfort } from "./windows";
 import { modifiers } from "./ordinances";
 import { careFactors, updateCare } from "./care";
 import { CONDITION, homeWearComfort, sharedWear } from "./condition";
+import { liningComfort, sharedLiningComfort } from "./materials";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 import { postMessage } from "./messages";
@@ -70,7 +71,8 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   const care = careFactors(state, room ? room.id : null);
   const shared = needsHealth(state, cfg) + (1 - care.clinic) * h.noCareHealth + mod.health + care.health;
   // Worn shared rooms (the galley, restrooms, workplaces) get everyone down; worn homes, their own residents.
-  const sharedComfort = mod.comfort + care.comfort - sharedWear(state) * CONDITION.happiness.sharedComfort;
+  // Lined ones (brick, metal) lift everyone a little; a home's own lining, its residents.
+  const sharedComfort = mod.comfort + care.comfort - sharedWear(state) * CONDITION.happiness.sharedComfort + sharedLiningComfort(state);
   // Diners without a seat at a galley or canteen within reach eat on the go.
   const pop = state.population;
   const unserved = (served: number) => (1 - served) * h.unservedComfort;
@@ -86,7 +88,7 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   const view = windowComfort(state.layout, room, cfg);
   return {
     noise: clamp(effectOnRoom(field, "noise", room) * mod.noiseFactor, -lim, lim),
-    comfort: clamp(own + view + sharedComfort - unserved(seated) + amen.comfort + homeWearComfort(room) + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
+    comfort: clamp(own + view + sharedComfort - unserved(seated) + amen.comfort + homeWearComfort(room) + liningComfort(room) + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
     // Stale air (outer rings, industry) wears on health; ventilation and green space freshen it.
     health: clamp(effectOnRoom(field, "health", room) + (effectOnRoom(field, "airQuality", room) + crowdedAir(state, room)) * h.airHealth + amen.health + shared, -lim, lim),
   };

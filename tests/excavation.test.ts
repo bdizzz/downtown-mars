@@ -71,7 +71,7 @@ describe("excavation and empty space", () => {
     const w = createWorld(config, 42);
     const back = deserialize(serialize(w));
     expect(back.ok && back.world.holes[0]!.layout.open).toEqual(w.holes[0]!.layout.open);
-    expect(SAVE_VERSION).toBe(18);
+    expect(SAVE_VERSION).toBe(21);
     const old = JSON.parse(serialize(w));
     old.version = 14;
     for (const h of old.state.holes) delete h.layout.open;

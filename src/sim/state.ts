@@ -1,4 +1,5 @@
 import { createEvents, type EventsState } from "./events";
+import { fillAir, type AirState } from "./air";
 import type { SimConfig } from "./config";
 import type { Drill } from "./digging";
 import { createEarth, type EarthState } from "./earth";
@@ -81,6 +82,8 @@ export interface SimState {
   history?: History;
   /** Events waiting for an answer, finds made, moods and festivals (PLAN-M14; absent in older saves until the first). */
   events?: EventsState;
+  /** The living volume, cached (air.ts; absent in older saves until the first tick). */
+  air?: AirState;
 }
 
 export interface HoleIdentity {
@@ -146,6 +149,8 @@ export function createInitialState(
     foundedTick: 0,
     events: createEvents(who.seed),
   };
+  // The landing crew sealed the hole and made its air: O2 at the target, CO2 at the scrub floor.
+  fillAir(state, cfg);
   addAdults(state, cfg.colonists.start, cfg); // the game starts with working adults only
   createNotables(state);
   updateHappiness(state, cfg, true);

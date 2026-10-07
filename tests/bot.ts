@@ -1,6 +1,7 @@
 import { applyCommand, type SimCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import type { Location } from "../src/sim/placement";
+import { LABELS } from "../src/sim/ledger";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
@@ -16,7 +17,7 @@ import { ensureStairs, quarry, tendStorage, tendUpkeep, tendWindows, tendEvents 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 const surface = (slot: number): Location => ({ kind: "surface", slot });
 
-type Plan = { room: string; at: Location; crop?: string };
+type Plan = { room: string; at: Location; crop?: string; holds?: string };
 
 export const PLAN: Plan[] = [
   // Tier 1: the critical set on floor 1.
@@ -27,11 +28,11 @@ export const PLAN: Plan[] = [
   { room: "life_support", at: ring(1, 2, 3, 4) },
   // Construction crews, so the rest doesn't take forever.
   { room: "site_office", at: ring(1, 1, 1) },
-  // Tier 2: weaning off Earth, mostly on floor 2.
+  // Tier 2: weaning off Earth, mostly on floor 2. Water first: used water fills the pod's gray tank in days.
+  { room: "water_recycler", at: ring(2, 2, 8, 4) },
   { room: "farm", at: ring(2, 1, 0, 4), crop: "potatoes" },
   { room: "farm", at: ring(2, 1, 4, 4), crop: "soybeans" },
   { room: "solar_array", at: surface(5) },
-  { room: "water_recycler", at: ring(2, 2, 8, 4) },
   { room: "clinic", at: ring(3, 1, 0) },
   { room: "admin_office", at: ring(1, 2, 1, 2) },
   // Growth: homes and services for arrivals, on floor 3.
@@ -40,13 +41,15 @@ export const PLAN: Plan[] = [
   { room: "restroom", at: ring(3, 1, 4) },
   { room: "solar_array", at: surface(6) },
   { room: "life_support", at: ring(3, 2, 12, 4) },
+  // One recycler treats about 35 people's water; a second before the gray tanks back up.
+  { room: "water_recycler", at: ring(3, 2, 8, 4) },
   { room: "bunk_dorm", at: ring(3, 1, 5, 2) },
   { room: "restroom", at: ring(3, 1, 7) },
   { room: "solar_array", at: surface(7) },
   // Keep up as the hole passes 50: food, water storage, air, on floor 4.
   { room: "galley", at: ring(4, 1, 0) },
   { room: "water_tank", at: ring(4, 1, 1) },
-  { room: "water_tank", at: ring(4, 1, 2) },
+  { room: "water_tank", at: ring(4, 1, 2), holds: "grayWater" },
   { room: "life_support", at: ring(4, 2, 10, 4) },
   { room: "solar_array", at: surface(8) },
   { room: "bunk_dorm", at: ring(4, 1, 3, 2) },
@@ -65,8 +68,15 @@ export interface Day {
   health: number;
   happy: number;
   prod: number;
+  /** % of the air. */
   o2: number;
   water: number;
+  gray: number;
+  /** Clean water used and brought by Earth over the day just ended. */
+  waterUsed: number;
+  earthWater: number;
+  /** Water split into oxygen by life support: the air's deliberate leak (T-026). */
+  airWater: number;
   food: number;
   power: string;
   metal: number;
@@ -74,6 +84,7 @@ export interface Day {
   built: number;
   floors: number;
   co2: number;
+  vol: number;
   met: string;
   san: number;
   farms: string;
@@ -99,6 +110,7 @@ export function run(days: number): { state: SimState; log: Day[]; builtAt: Recor
         }
         const room = s.layout.rooms.at(-1)!;
         if (p.crop) cmd({ type: "setCrop", roomId: room.id, crop: p.crop });
+        if (p.holds) cmd({ type: "setHolds", roomId: room.id, holds: p.holds });
         // Past ring 1, carve the shortest corridor to it.
         cmd({ type: "connectRoom", roomId: room.id, finish: "rock" });
         builtAt[next] = s.tick / config.ticksPerDay;
@@ -133,15 +145,20 @@ export function run(days: number): { state: SimState; log: Day[]; builtAt: Recor
         health: Math.round(s.population.health),
         happy: Math.round(s.happiness.average),
         prod: Math.round(s.happiness.productivity * 100),
-        o2: Math.round(r.o2 ?? 0),
+        o2: Math.round(snap.air.o2Pct * 10) / 10,
         water: Math.round(r.water ?? 0),
+        gray: Math.round(r.grayWater ?? 0),
+        waterUsed: Math.round(Object.entries(s.ledger.days.at(-1)?.water?.out ?? {}).reduce((a, [k, v]) => (k === LABELS.lost ? a : a + v), 0)),
+        earthWater: Math.round(s.ledger.days.at(-1)?.water?.in[LABELS.earth] ?? 0),
+        airWater: Math.round(s.ledger.days.at(-1)?.water?.out["Life support"] ?? 0),
         food: Math.round((r.rations ?? 0) + (r.rawFood ?? 0) + (r.meals ?? 0)),
         power: `${snap.power.used.toFixed(0)}/${snap.power.made.toFixed(0)}`,
         metal: Math.round(r.metal ?? 0),
         rock: Math.round(r.rock ?? 0),
         built: next,
         floors: s.layout.hole.floors,
-        co2: Math.round(r.co2 ?? 0),
+        co2: Math.round(snap.air.co2Pct * 100) / 100,
+        vol: Math.round(snap.air.volume),
         met: Object.entries(s.population.needsMet)
           .map(([k, v]) => `${k}:${v.toFixed(2)}`)
           .join(" "),

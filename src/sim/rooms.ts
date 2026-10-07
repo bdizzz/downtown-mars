@@ -34,10 +34,20 @@ export interface RoomDef {
   substitutes?: Record<string, string[]>;
   /** Removed from the air, above a reserve left for farms. */
   scrubs?: Record<string, number>;
+  /**
+   * The air it makes (O2) stops at the air's target: it fills the air, never past it.
+   * Its inputs other than power are spent only on the O2 it makes, so scrubbing at
+   * the target costs power alone.
+   */
+  topsUpAir?: boolean;
   /** Colonists served by restrooms. */
   sanitation?: number;
-  /** Share of users' water returned as each kind of wastewater. */
+  /** What becomes of the clean water it uses: its share as each kind of wastewater (default config economy.waterReturns, all gray). Anything left over is used up for good. */
   returnsWater?: Record<string, number>;
+  /** Made on the side: full storage of these never slows the room (the recycler's sludge soil). */
+  byproducts?: string[];
+  /** What its storage can be set to hold instead (a water tank: clean, gray or tailings); the first is the default. */
+  holds?: string[];
   growsCrops?: boolean;
   defaultCrop?: string;
   priority?: "critical" | "high" | "normal" | "low";

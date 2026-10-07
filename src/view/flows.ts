@@ -8,7 +8,7 @@ import { roomDefs } from "../sim/rooms";
 // viewer's (src/bridge/charts.ts).
 
 export const FLOW_TABS: { id: string; name: string; resources: string[] }[] = [
-  { id: "water", name: "Water", resources: ["water", "grayWater", "blackWater"] },
+  { id: "water", name: "Water", resources: ["water", "grayWater", "tailings"] },
   { id: "air", name: "Air", resources: ["o2", "co2"] },
   { id: "food", name: "Food", resources: ["rawFood", "rations", "meals"] },
   { id: "power", name: "Power", resources: ["power"] },
@@ -20,11 +20,11 @@ const FIXED_COLORS: Record<string, string> = {
   [LABELS.earth]: "#b48ad8",
   [LABELS.digging]: "#9a8574",
   [LABELS.lost]: "#e0503a",
-  [LABELS.restrooms]: cssColor(CATEGORY_COLORS.water!),
+  [LABELS.household]: "#e8b88a",
   Construction: "#c9a456",
 };
 
-/** A source's or a use's colour: its room's category, or its own for the colonists, Earth, digging and overflow. */
+/** A source's or a use's colour: its room's category, or its own for the colonists (and their household water), Earth, digging and overflow. */
 export function flowColor(label: string): string {
   if (FIXED_COLORS[label]) return FIXED_COLORS[label]!;
   if (label.startsWith("Rover ")) return "#6fb3c9";
@@ -76,4 +76,16 @@ export function recycledShare(flows: Flows): number | null {
     .filter(([k]) => k !== LABELS.lost)
     .reduce((a, [, v]) => a + v, 0);
   return used > 0 ? recycled / used : null;
+}
+
+/** The water tab's line on the loop: how much comes back, and what to build when it doesn't. Null with no water used. */
+export function waterNote(flows: Flows): string | null {
+  const share = recycledShare(flows);
+  if (share === null) return null;
+  const recycled = flows.water?.in["Water recycler"] ?? 0;
+  const spilled = flows.grayWater?.out[LABELS.lost] ?? 0;
+  let note = `${Math.round(share * 100)}% of the clean water used comes back from recycling.`;
+  if (recycled === 0) note += " Build a water recycler to close the loop.";
+  else if (spilled >= MIN_FLOW) note += ` ${Math.round(spilled)} gray water a day overflows: another recycler, or a tank set to hold gray water.`;
+  return note;
 }

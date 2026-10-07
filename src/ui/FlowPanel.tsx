@@ -2,7 +2,7 @@ import { useState } from "react";
 import { config } from "../sim/config";
 import type { Flows } from "../sim/ledger";
 import type { Snapshot } from "../sim/snapshot";
-import { FLOW_TABS, flowColor, recycledShare, river } from "../view/flows";
+import { FLOW_TABS, flowColor, river, waterNote } from "../view/flows";
 import { num } from "./format";
 
 // River-style flow diagrams: for each resource, where it comes from (left),
@@ -128,8 +128,7 @@ function River({ resource, flows, stock }: { resource: string; flows: Flows[stri
 export function FlowPanel({ s, onClose }: { s: Snapshot; onClose: () => void }) {
   const [tab, setTab] = useState("water");
   const current = FLOW_TABS.find((t) => t.id === tab)!;
-  const share = recycledShare(s.flows);
-  const recycled = s.flows.water?.in["Water recycler"] ?? 0;
+  const note = waterNote(s.flows);
   const twoStep = current.resources.some((r) => Object.keys(river(r, s.flows[r]).thens).length);
 
   return (
@@ -151,12 +150,7 @@ export function FlowPanel({ s, onClose }: { s: Snapshot; onClose: () => void }) 
         Per game day, averaged over the last {config.economy.ledgerDays} days. Overflow is what was made or delivered with nowhere
         to store it.
       </p>
-      {tab === "water" && share !== null && (
-        <p>
-          <strong>{Math.round(share * 100)}%</strong> of the clean water used comes back from recycling.
-          {recycled === 0 && " Build a water recycler to close the loop."}
-        </p>
-      )}
+      {tab === "water" && note !== null && <p>{note}</p>}
       {current.resources.map((r) => (
         <River key={r} resource={r} flows={s.flows[r]} stock={s.resources[r] ?? 0} />
       ))}

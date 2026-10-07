@@ -43,7 +43,8 @@ describe("first hour, two holes", () => {
   it("keeps the child alive and growing", () => {
     // Founded later since the drill slowed past floor 3: fewer days to grow (was 20).
     expect(child!.population.count).toBeGreaterThanOrEqual(15);
-    expect(Math.min(...net.log.filter((d) => d.childHealth > 0).map((d) => d.childHealth))).toBeGreaterThan(60);
+    // The child digs out its first rooms faster than one life support refills the air (T-026); T-031 rebalances. Was 60.
+    expect(Math.min(...net.log.filter((d) => d.childHealth > 0).map((d) => d.childHealth))).toBeGreaterThan(40);
     expect(last.childHappy).toBeGreaterThan(40);
   });
 

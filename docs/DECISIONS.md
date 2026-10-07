@@ -70,7 +70,7 @@ When documents disagree, trust them in this order:
 - **Gym and park:** originally one combined room; now separate rooms (gym for health, park for comfort and air).
 - **Mushrooms:** a crop choice for a regular farm, not a separate room (a diagram labeled it "Mushroom farm" for clarity).
 - **Electronics input:** "rare minerals" was replaced by silicon wafers.
-- **Restrooms:** no longer consume their own water; they provide sanitation for 25 and return users' water as gray and black water.
+- **Restrooms:** no longer consume their own water; they provide sanitation for 25. (They once returned users' water as gray and black water; since T-005 water turns gray as it's used, and black water became tailings.)
 - **Life support:** raised from 10 to 30 oxygen so the starting crew has margin.
 - **Corridors take slots** (spokes and ring segments, a "ring road" loop): replaced in milestone 6 by corridors that run along the edges between rooms, carved out of what they pass. Don't bring back 1-slot corridor rooms.
 - **Excavator bay as the digger:** replaced in milestone 9. The drill sinks the shaft on its own; every room slot is rock until it's excavated, and **empty rooms** dig ahead for rock and space. (An excavator bay may return as a faster drill; see ROOM-STATUS.md.)
@@ -89,7 +89,7 @@ These sections were brought in line with the catalogs, both in this kit and in t
 
 ## Standing rules easy to miss
 
-- Each water tank holds only one type of water: clean, gray or black (from Bryon's early room list).
+- Each water tank holds only one type of water: clean, gray or tailings, chosen by the player like a farm's crop (from Bryon's early room list; choosable since T-005).
 
 ## Decided while building (Sep 27–30)
 
@@ -100,7 +100,7 @@ Each milestone plan has the details, under "Notes as built".
 - **Build UI:** four modes as in SimCity (Build, View, Map, Charts); Build has a strip of room categories. Room keys work only in Build. A yellow frame shows Build is on (`PLAN-M2.md`, `PLAN-M6.md`, `PLAN-M10.md`).
 - **Save format:** autosave every game day in the browser, save slots, and export to a file (`PLAN-M2.md`).
 - **Tutorial:** a deputy walks new players through the start (`data/tutorial.json`).
-- **3D view (M3):** the main view; new games open in 3D Iso. Cutaway, Top, Iso and first person, X-ray and walls down. **Art direction:** a cozy, miniature look (soft shadows, glow, warm haze and grade, furnished rooms; `ART.md`, `PLAN-M10.md`). Space Grotesk for the UI and labels.
+- **3D view (M3):** the main view; new games open in 3D Iso. Cutaway, Top, Iso and first person, X-ray and walls down. Room walls are solid, 0.25 m thick and centred on the edge line, one wall per shared edge (T-001, Oct 6). **Art direction:** a cozy, miniature look (soft shadows, glow, warm haze and grade, furnished rooms; `ART.md`, `PLAN-M10.md`). Space Grotesk for the UI and labels.
 - **Network (M4):** a real Mars globe from NASA MOLA data. New holes are founded from a staging bay; rover depots and trade routes; culture drift and opinions between holes.
 - **People (M5):** cohorts of children, adults and elders; births, aging, retirement, deaths, migration; school, elder care and crypt.
 - **Corridors on edges (M6).** **Construction time (M7):** a queue per hole, paced by construction offices. **Storage (M8):** dry goods keep only what storerooms, warehouses and depots have room for.
@@ -165,6 +165,30 @@ See `PLAN-M14.md` (Bryon: drill discoveries, then the belt ship, then celebratio
 - **Tap to aim, tap again to act** for every tool (rooms, demolish, a single corridor border, windows, bulkheads), since a finger can't hover first; with no tool a tap selects at once. A long press stands in for hover. Claude's default; the shared logic is `src/view/touch.ts`.
 - **First person on touch:** a translucent joystick bottom left (analog: push further to walk faster, all the way to run), stair buttons beside it, drag elsewhere to look (Bryon asked for arrows or a stick, Oct 6; the stick won).
 - **Narrow screens (under 760 px)** get panels as bottom sheets and a one-line, sideways-scrolling resource bar; wider tablets keep the desktop layout.
+
+## Decided for the water loop (Oct 4–6, F-001, T-005)
+
+- **Water is a closed loop:** clean water used turns gray one for one; the recycler treats gray back to clean at about 97%, the rest as sludge soil. Only clean water can be used (Bryon, Oct 4).
+- **The leaks:** life support is a true sink (water split into oxygen), and industry sends part of its water to **tailings** (not "black water"): refinery, concrete plant and electronics fab half, brickworks a quarter. Tailings can only be stored; overflow just disappears for now (Bryon, Oct 4).
+- **Wells bring in gray water** (brine), which needs treating. The composter no longer takes water.
+- **Full gray tanks stall the rooms that use water.** People still drink; their gray water overflows. Treatment runs before the rooms that use water each tick (Claude's default, so a recycler that keeps up never starves the galley).
+- **Numbers (Claude's defaults):** the recycler treats 80 gray a day into 78 clean and 1 soil (one per ~35 people); the pod holds 250 gray water to ride out the first days. In `data/rooms.json` and `data/resources.json`.
+
+## Decided for room linings (Oct 4–6, F-003)
+
+See `PLAN-M15.md` and `docs/tickets/F-003-room-materials.md` (Bryon's answers; the numbers are Claude's defaults, in `data/materials.json`).
+
+- **Every room starts as bare rock,** its build cost unchanged. The lining is `room.material` (`rock`, `brick`, `metal`) and `room.finish` (`base`, `fine`); the floor is `room.flooring`, absent meaning it matches the walls. Only ring rooms with walls of their own have one (not surface buildings, the entrance, stairs, lifts or empty rooms).
+- **What a lining does depends on the kind of room:** homes feel its comfort in full; people rooms (the cleanable ones) lift everyone's shared comfort (their average lining comfort × 0.5, up to +0.5); heavy rooms (industry, power, air, water) get no comfort but twice the wear benefit; the rest only wear slower. Cave-in resistance waits for cave-ins.
+- **Upgrades go through the construction queue,** usable at half output once crews start; condition back to 100% when done. Linings can be changed down or stripped to bare rock for a 50% refund of their material (T-033). Build mode can pick a material up front for the full price but one construction effort (T-038).
+
+## Decided for the air mix (Oct 6, F-002 / T-026)
+
+See `PLAN-M16.md`.
+
+- **The air is a mix over the living volume** (dug cells, built corridors and tubes): O2 and CO2 stay amounts, read as % of `volume × air.unitsPerM3`; no caps, no nitrogen, no pressure. Digging dilutes it; that's growth's water cost. "Air quality" stays the separate local effect.
+- **Step 1 balance (Bryon: "fast top-up, softer bands"):** the planned density makes a dug cell 168 O2, so the maker must be fast: life support tops up at 300 O2 a day until the electrolyzer replaces it, spending water only on what it makes; health bands low below 18%, very low below 15%. T-031 rebalances the loop as a whole.
+- **Holes start with their air made**, new and founded; old saves' air starts over at the target (save v21).
 
 ## Still open
 

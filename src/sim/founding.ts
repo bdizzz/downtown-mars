@@ -14,6 +14,7 @@ import { capacities } from "./economy";
 import { roomDef } from "./rooms";
 import { foundFrom } from "./culture";
 import { createInitialState, type Site, type SimState } from "./state";
+import { fillAir } from "./air";
 import { holeById, holeSeed, nextHoleName, type World } from "./world";
 
 // Founding new holes: a staging bay gathers a seed kit from its hole's
@@ -127,12 +128,15 @@ export function stepConvoys(world: World, cfg: SimConfig): void {
       seed: holeSeed(world.seed, c.id),
     });
     hole.tick = world.tick;
-    // They start with what they brought, not Earth's starter stock.
+    // They start with what they brought, not Earth's starter stock. The crew seals what
+    // they blast out and fills it with air; the kit's oxygen goes into the air on top.
     hole.resources = {};
+    fillAir(hole, cfg);
     const caps = capacities(hole, cfg);
     for (const [id, v] of Object.entries(c.goods)) {
-      hole.resources[id] = Math.min(v, caps[id] ?? v);
-      record(hole, id, "in", SEED_KIT, hole.resources[id]!);
+      const got = Math.min(v, caps[id] ?? v);
+      hole.resources[id] = (hole.resources[id] ?? 0) + got;
+      record(hole, id, "in", SEED_KIT, got);
     }
     hole.population.cohorts = [];
     addCohorts(hole, c.people);

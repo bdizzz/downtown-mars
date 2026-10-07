@@ -1,6 +1,8 @@
 import type { History } from "../sim/history";
+import { config } from "../sim/config";
 import { resourceDefs } from "../sim/resources";
 import { CATEGORY_COLORS, cssColor } from "../render2d/palette";
+import { num } from "./format";
 
 // The charts' data: which series there are, how they're grouped and drawn,
 // and the points for a time range, as amounts or as change per day.
@@ -77,6 +79,13 @@ export interface SeriesMeta {
   hideWhenEmpty?: boolean;
   /** Counts (people): whole numbers. */
   whole?: boolean;
+  /** Places after the point, for series that move in small steps (the air's %). */
+  decimals?: number;
+}
+
+/** A series' value as text: whole for counts, its own decimals if it has them, else the usual rounding. */
+export function seriesNum(meta: { whole?: boolean; decimals?: number }, v: number): string {
+  return meta.whole ? String(Math.round(v)) : meta.decimals !== undefined ? v.toFixed(meta.decimals) : num(v);
 }
 
 const cat = (c: string) => cssColor(CATEGORY_COLORS[c] ?? 0xe07a3f);
@@ -144,11 +153,35 @@ export const SERIES: SeriesMeta[] = [
     ],
   },
   { ...res("power", "Power", "#c9a456", false), label: "Battery" },
-  res("o2", "Air", cat("air"), false),
-  { ...res("co2", "Air", "#b0a090", false), refs: [{ at: 100, label: "harms health" }] },
+  {
+    key: "o2Pct",
+    label: "Oxygen",
+    group: "Air",
+    unit: "%",
+    decimals: 1,
+    lines: [{ id: "o2Pct", label: "O2", color: cat("air") }],
+    refs: [
+      { at: config.air.o2High, label: "fire risk" },
+      { at: config.air.o2Low, label: "health falls" },
+      { at: config.air.o2VeryLow, label: "falls fast" },
+    ],
+  },
+  {
+    key: "co2Pct",
+    label: "CO2",
+    group: "Air",
+    unit: "%",
+    decimals: 2,
+    lines: [{ id: "co2Pct", label: "CO2", color: "#b0a090" }],
+    refs: [
+      { at: config.air.co2Harmful, label: "harms health" },
+      { at: config.air.co2Dangerous, label: "fast" },
+    ],
+  },
+  { key: "airVolume", label: "Living volume", group: "Air", unit: "m³", lines: [{ id: "airVolume", label: "Living volume", color: "#8ab0c0" }] },
   res("water", "Water", cat("water"), false),
   res("grayWater", "Water", "#8aa0a8"),
-  res("blackWater", "Water", "#7a6a5e"),
+  res("tailings", "Water", "#7a6a5e"),
   res("meals", "Food", cat("food"), false),
   res("rawFood", "Food", "#b8c060"),
   res("rations", "Food", "#d9a870"),
@@ -157,6 +190,7 @@ export const SERIES: SeriesMeta[] = [
   res("brick", "Materials", "#c0604a"),
   res("marscrete", "Materials", "#a8a098"),
   res("glass", "Materials", "#a8d4f0"),
+  res("fiber", "Materials", "#b9a36a"),
   res("metal", "Materials", "#b7bcc2"),
   res("machinery", "Materials", cat("industry")),
   res("electronics", "Materials", "#6fd0b0"),

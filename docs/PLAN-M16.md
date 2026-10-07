@@ -144,6 +144,21 @@ See the feature's Open questions (`docs/tickets/F-002-air-mix.md`).
 
 ## Notes as built
 
+**Step 1, living volume and the mix (T-026, Oct 6).**
+
+- `sim/air.ts`: `livingVolume` (open cells on dug floors at 400 m³, built corridors and tubes at length × 3 m × 4 m), cached on `state.air` by layout version, open-cell count and corridor counts (corridors finishing don't bump `layout.version`). `airPct`, `airAmount`, `fillAir`, `breathe`, `airHealthLoss`, `airView` (on the snapshot as `air`). The domed shaft isn't counted yet: step 3.
+- O2 and CO2 are flagged `air` in `resources.json` and have no capacity (`capacities()` leaves them out). `startingStock.o2`, `colonists.needsPerDay.o2`, `makesPerDay.co2`, `co2DangerLevel`, `co2HealthLossPerDay` and `economy.co2ScrubFloor` are gone; the `air` block in `config.json` holds the rest. `needsMet` no longer has `o2`.
+- **Balance for step 1 (Bryon, Oct 6: "fast top-up, softer bands").** At the planned 2 units/m³ a dug cell costs 168 O2, 11 days of 20 colonists' breathing, so with life support at 30 a day the bots suffocated while digging. Dig cost and the 5-day CO2 window are locked together through `unitsPerM3`, so the lever is the maker's speed. Until the electrolyzer (step 3):
+  - **Life support tops up fast:** O2 300 from water 60 (the old 5:1), `topsUpAir` (new room field): its O2 stops at the target, and its water is spent only on the O2 it makes. Scrubbing at the target costs power alone, plus the water to remake what's breathed (20 O2, 4 water a day for 20 people), since scrubbing doesn't yet return oxygen (step 3). Its status at the target is `air:o2`, "idling: the air's oxygen is at its target".
+  - **Softer bands:** low below **18%** (not 19.5) at −5 a day; very low below **15%** (not 16) at −20 a day. CO2 as planned (1% −7.5, 3% −30, floor 0.2%).
+  - With those, the month bot reaches 68 colonists with health no lower than 53 (it dips while the bot digs ~1,600 m³ a day on one life support); the bot health thresholds were eased (60 → 45, child 60 → 40, births 10 → 8) with notes pointing at T-031.
+- **New and founded holes** start with their air made (`fillAir`): O2 at the target, CO2 at the floor. A seed kit's 60 O2 lands in the air on top (a small overshoot), until step 4 puts it in tanks.
+- **Earth's O2 gap** is breathing less what's made, and only O2 above the target counts as on hand, so a drop also tops the air back up to the target.
+- **Save v19:** every hole's air starts over at the target and floor.
+- HUD: **Air 21.0% O2** (warns outside 18–23.5%) with a points-a-day rate, and **CO2 0.20%** (warns above 1%), each with its band and amounts in the tooltip. Charts: Oxygen % (lines at 23.5, 18, 15), CO2 % (1, 3) and Living volume, from three new history series (`o2Pct`, `co2Pct`, `airVolume`). Series can now carry `decimals`, and chart axes label as finely as their steps (`seriesNum` in `ui/trends.ts`, shared with the bridge).
+- **Merged with the water loop (T-005), Oct 7.** Life support is a sink there (`returnsWater: {}`), which fits. Earth's gap now plans a top-up room's water on its busiest recent day in the ledger, or its full rate before it has a record (one being built included), rather than its full rate always, which sent ~56 water a day too much to every steady colony. The two loops together cost the bots more than either alone; the eased tests are listed in T-031's Context.
+- The adaptive bot reads the air by %: life support when CO2 passes 0.5%, scrubbing falls short of the population, or O2 is below the low band with no life support at all (a dip after digging just needs time).
+
 **Step 2, two-step flows** (T-027, Oct 6, 2026):
 
 - `record(state, res, "out", label, amount, { then: "Air for new space" })` adds to the use as before and also to `flows[res].then[label][where]`. `then` is optional on each day's entry, so old saves' ledgers load as they are; `averageFlows` averages it like the rest. A use's `then` needn't cover all of it: what's left over just has no second step.

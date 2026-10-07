@@ -8,13 +8,13 @@ import { daysLeft, num, resName, signed } from "../ui/format";
 // ResourceBar and Hud and the Godot viewer's HUD (through the bridge).
 
 // The stocks a player watches, left to right: life, then food, then materials.
-const LIFE = ["o2", "water", "meals"] as const;
+const LIFE = ["water", "meals"] as const;
 const FOOD = ["rations", "rawFood", "soil"] as const;
 const MATERIALS = ["rock", "brick", "metal", "machinery", "electronics"] as const;
 /** Shown only where there's some: they come from the ground under certain sites. */
 const REGIONAL = ["ore", "silica"] as const;
 /** Shown once there's some: made later in the game. */
-const LATER = ["glass"] as const;
+const LATER = ["glass", "fiber"] as const;
 const WARN_DAYS = 2;
 /** Storage this full, with more coming in, shows as full. */
 const FULL_AT = 0.97;
@@ -53,6 +53,57 @@ function stock(id: string, s: Snapshot): BarItem {
   };
 }
 
+/** A % of the air: one decimal, or two for small amounts (CO2). */
+export function airPctText(v: number): string {
+  return `${v < 1 ? v.toFixed(2) : v.toFixed(1)}%`;
+}
+
+/** The air as a mix (sim/air.ts): O2 and CO2 as % of the living volume, with their bands. */
+function airItems(s: Snapshot): BarItem[] {
+  const a = config.air;
+  const { volume, o2Pct, co2Pct } = s.air;
+  const units = volume * a.unitsPerM3;
+  const pctRate = (id: string) => (units > 0 ? ((s.rates[id] ?? 0) / units) * 100 : 0);
+  const o2Rate = pctRate("o2");
+  const rate = (r: number) => (Math.abs(r) >= 0.05 ? { rate: { text: `${r > 0 ? "+" : "−"}${Math.abs(r).toFixed(1)}`, tone: r < 0 ? ("neg" as const) : ("pos" as const) } } : {});
+  const o2Band =
+    o2Pct < a.o2VeryLow
+      ? `Very low: below ${a.o2VeryLow}% health falls fast`
+      : o2Pct < a.o2Low
+        ? `Low: below ${a.o2Low}% health falls`
+        : o2Pct > a.o2High
+          ? `High: above ${a.o2High}% is a fire risk`
+          : `Comfortable (${a.o2Low}–${a.o2High}%); life support aims for ${a.o2Target}%`;
+  return [
+    {
+      trend: "o2Pct",
+      label: "Air",
+      value: `${airPctText(o2Pct)} O2`,
+      ...rate(o2Rate),
+      warn: o2Pct < a.o2Low || o2Pct > a.o2High,
+      full: false,
+      title: "Air: oxygen",
+      notes: [
+        o2Band,
+        `${num(s.resources.o2 ?? 0)} O2 in ${num(volume)} m³ of living space · ${signed(o2Rate)} points a day`,
+        "Digging dilutes the air: the same oxygen over more space",
+      ],
+    },
+    {
+      trend: "co2Pct",
+      label: "CO2",
+      value: airPctText(co2Pct),
+      warn: co2Pct > a.co2Harmful,
+      full: false,
+      title: "Air: CO2",
+      notes: [
+        co2Pct > a.co2Dangerous ? `Dangerous: above ${a.co2Dangerous}% health falls fast` : co2Pct > a.co2Harmful ? `Harmful: above ${a.co2Harmful}% health falls` : `Fine below ${a.co2Harmful}%; life support scrubs it down to ${a.co2Floor}%`,
+        `${num(s.resources.co2 ?? 0)} CO2 in the air, breathed out 1:1 for the oxygen breathed in`,
+      ],
+    },
+  ];
+}
+
 /** "38 adults, 4 children, 2 elders", leaving out stages nobody is in yet. */
 function stagesText(st: { child: number; adult: number; elder: number }): string {
   const parts = [
@@ -71,7 +122,6 @@ function stagesText(st: { child: number; adult: number; elder: number }): string
 /** The resource bar, in its groups: the colony, life, food, materials. */
 export function barItems(s: Snapshot): BarItem[][] {
   const { made, used } = s.power;
-  const co2 = s.resources.co2 ?? 0;
   const pop = s.population;
   const glow = s.afterglow.points >= 0.5;
   const colony: BarItem[] = [
@@ -83,7 +133,7 @@ export function barItems(s: Snapshot): BarItem[][] {
       warn: pop.health < 70,
       full: false,
       title: "Colonists",
-      notes: [`${pop.count} in ${s.beds} beds: ${stagesText(s.stages)}`, `Health ${Math.round(pop.health)}, from oxygen, water, meals, sanitation and CO2`],
+      notes: [`${pop.count} in ${s.beds} beds: ${stagesText(s.stages)}`, `Health ${Math.round(pop.health)}, from the air's oxygen and CO2, water, meals and sanitation`],
     },
     {
       trend: "happiness",
@@ -120,7 +170,8 @@ export function barItems(s: Snapshot): BarItem[][] {
       notes: [`Made ${num(made)}, used ${num(used)} a day`, `Battery ${num(s.resources.power ?? 0)} of ${num(s.capacities.power ?? 0)}`],
     },
   ];
-  const life = [...LIFE.map((id) => stock(id, s)), { trend: "co2", label: "CO2", value: num(co2), warn: co2 > 60, full: false, title: "CO2", notes: [`${num(co2)} in the air; above 100 harms health`] }];
+  const air = airItems(s);
+  const life = [air[0]!, ...LIFE.map((id) => stock(id, s)), air[1]!];
   const food = FOOD.map((id) => stock(id, s));
   const materials = [
     ...MATERIALS.map((id) => stock(id, s)),

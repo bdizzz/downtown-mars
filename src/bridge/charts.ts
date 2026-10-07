@@ -3,8 +3,8 @@ import { averageFlows } from "../sim/ledger";
 import type { SimState } from "../sim/state";
 import { gameTime } from "../sim/clock";
 import { num, signed } from "../ui/format";
-import { everHad, perDay, points, RANGES, SERIES, seriesMeta, type Range, type SeriesMeta } from "../ui/trends";
-import { FLOW_TABS, flowColor, recycledShare, river } from "../view/flows";
+import { everHad, perDay, points, RANGES, SERIES, seriesMeta, seriesNum, type Range, type SeriesMeta } from "../ui/trends";
+import { FLOW_TABS, flowColor, river, waterNote } from "../view/flows";
 
 // The Godot viewer's charts, worked out as the web's are (ui/trends.ts, ui/TrendsPanel.tsx and
 // view/flows.ts): trends for one series up close, with every series as a sparkline to pick from;
@@ -76,7 +76,7 @@ export function trends(state: SimState, key: string, range: Range, mode: Mode): 
         key: row.key,
         label: row.label,
         lines: r.lines.map((l) => ({ color: l.color, dashed: l.dashed, values: thin(l.values) })),
-        value: `${row.whole ? Math.round(v.at(-1) ?? 0) : num(v.at(-1) ?? 0)}${row.unit === "%" ? "%" : ""}`,
+        value: `${seriesNum(row, v.at(-1) ?? 0)}${row.unit === "%" ? "%" : ""}`,
         delta: Math.abs(delta) < 0.05 ? "·" : `${delta > 0 ? "▲" : "▼"} ${num(Math.abs(delta))}`,
       };
     }),
@@ -95,7 +95,7 @@ export function trends(state: SimState, key: string, range: Range, mode: Mode): 
       unit: shown === "rate" ? "/day" : (meta.unit ?? ""),
       whole: shown === "amount" && !!meta.whole,
     },
-    sum: shown === "amount" ? `${num(first)} → ${num(now)}${meta.unit === "%" ? "%" : ""} (${signed(now - first)}) · low ${num(Math.min(...main))}, high ${num(Math.max(...main))}` : undefined,
+    sum: shown === "amount" ? `${seriesNum(meta, first)} → ${seriesNum(meta, now)}${meta.unit === "%" ? "%" : ""} (${signed(now - first)}) · low ${seriesNum(meta, Math.min(...main))}, high ${seriesNum(meta, Math.max(...main))}` : undefined,
     groups: groups.filter((g) => g.rows.length),
   };
 }
@@ -112,14 +112,13 @@ export interface FlowsMessage {
 export function flows(state: SimState, tab: string): FlowsMessage {
   const f = averageFlows(state, config);
   const current = FLOW_TABS.find((t) => t.id === tab) ?? FLOW_TABS[0]!;
-  const share = recycledShare(f);
-  const recycledAny = (f.water?.in["Water recycler"] ?? 0) > 0;
+  const water = current.id === "water" ? waterNote(f) : null;
   return {
     type: "flows",
     tab: current.id,
     tabs: FLOW_TABS.map((t) => ({ id: t.id, name: t.name })),
     note: `Per game day, averaged over the last ${config.economy.ledgerDays} days. Overflow is what was made or delivered with nowhere to store it.`,
-    ...(current.id === "water" && share !== null ? { recycled: `${Math.round(share * 100)}% of the clean water used comes back from recycling.${recycledAny ? "" : " Build a water recycler to close the loop."}` } : {}),
+    ...(water !== null ? { recycled: water } : {}),
     rivers: current.resources.map((r) => {
       const rv = river(r, f[r]);
       const stock = state.resources[r] ?? 0;

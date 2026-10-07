@@ -54,6 +54,25 @@ describe("storage", () => {
     expect(applyCommand(s, { type: "setAllocation", roomId: pod(s).id, allocation: { metal: 400 } }).ok).toBe(true);
   });
 
+  it("a hemp farm fills a store with fiber", () => {
+    const s = createInitialState(config);
+    s.drill.active = false;
+    s.earth.nextDropTick = 1e9;
+    expect(isStorable("fiber")).toBe(true);
+    const w = applyCommand(s, { type: "build", room: "warehouse", at: ring(1, 1, 2, 2) });
+    const f = applyCommand(s, { type: "build", room: "farm", at: ring(1, 2, 9, 4) });
+    if (!w.ok || !f.ok) throw new Error(`build failed: ${w.ok ? "" : w.reason} ${f.ok ? "" : f.reason}`);
+    expect(applyCommand(s, { type: "connectRoom", roomId: f.roomId!, finish: "rock" }).ok).toBe(true);
+    applyCommand(s, { type: "setCrop", roomId: f.roomId!, crop: "hemp" });
+    applyCommand(s, { type: "setAllocation", roomId: w.roomId!, allocation: { fiber: 10 } });
+    s.resources.soil = 50;
+    const food = s.resources.rawFood ?? 0;
+    for (let i = 0; i < 3 * config.ticksPerDay; i++) step(s, config);
+    expect(s.resources.fiber).toBe(storageCaps(s).fiber);
+    expect(s.resources.fiber).toBe(10);
+    expect(s.resources.rawFood ?? 0).toBeLessThanOrEqual(food);
+  });
+
   it("what doesn't fit is lost", () => {
     const s = createInitialState(config);
     s.drill.active = false;
