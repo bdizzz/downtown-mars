@@ -313,3 +313,11 @@ this is a larger feature: we should consider a version of the tutorial for peopl
 ## N-0047 · 2026-10-06 19:19
 when not in build mode, none of the keyboard commands should bind to building a room. the only way to enable a hotkey for a specific room is to enter build mode
 → T-082
+
+## N-0048 · 2026-10-07 18:47
+a pass at the layout and presentation of the pause menu and settings, for ease of use and information density. should be usable on mobile and keyboard accessible
+→ T-088
+
+## N-0049 · 2026-10-07 18:49
+better, more intuitive UI for the top of the screen. there is a lot going on there and hard to tell what you need to know about immediately. consider ways to make the information more compact, such as icons instead of whole words. perhaps introduce a grid to put resources in
+→ T-089
