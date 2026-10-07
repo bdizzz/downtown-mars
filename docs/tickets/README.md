@@ -1,6 +1,6 @@
 # Tickets
 
-One file per item from Bryon's playtest notes, made by `/ingest` and built by `/build` (skills in `.claude/skills/`). Each ticket is the place to elaborate on that item: its problem, context, approach, docs to update, open questions and history. Shared docs change only when the item is built.
+One file per item from Bryon's playtest notes, made by `/ingest` and built by `/build` (skills in `.claude/skills/`; `docs/WORKFLOW.md` walks through the whole flow). Each ticket is the place to elaborate on that item: its problem, context, approach, docs to update, open questions and history. Shared docs change only when the item is built.
 
 - `T-0NN-<slug>.md`: the tickets. They store `status: open | done | dropped`. Everything else is worked out live by `node scripts/board.mjs menu`: open questions mean "needs answers", unfinished `blocked_by` (or a feature still in draft) means "blocked", a pushed `t-0NN-…` branch means "in flight", an open PR from one means "in review", and a merged PR means "done".
 - `F-0NN-<slug>.md`: the **features** (epics), for items too big to build from one ticket. See below.

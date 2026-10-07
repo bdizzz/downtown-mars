@@ -1,7 +1,7 @@
 ---
 id: T-065
 title: A doc describing the dev workflow: skills, stages and why
-status: open
+status: done
 size: S
 area: docs
 touches: [docs/WORKFLOW.md, CLAUDE.md, README.md, docs/tickets/README.md]
@@ -28,3 +28,4 @@ CLAUDE.md: the docs table, and point "Playtest notes and the board" at the new d
 ## History
 - 2026-10-06 02:12 opened from N-0033
 - 2026-10-07 19:05 building on t-065-workflow-doc
+- 2026-10-07 19:06 built
