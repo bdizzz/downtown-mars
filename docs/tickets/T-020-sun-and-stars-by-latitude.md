@@ -4,8 +4,9 @@ title: Sun and stars move across the sky by the site's latitude (equinox)
 status: open
 size: M
 area: render3d, godot
+feature: F-008
 touches: [src/render3d/stage3d.ts, src/render3d/sky3d.ts, src/render3d/lights3d.ts, godot/src/, godot/shaders/]
-blocked_by: []
+blocked_by: [T-073]
 notes: [N-0015]
 created: 2026-10-05 01:11
 ---
@@ -32,3 +33,4 @@ Give the scene a north (say −z), compute the sun's direction from the time of 
 ## History
 - 2026-10-05 01:11 opened from N-0015
 - 2026-10-05 01:17 questions answered
+- 2026-10-07 18:58 moved into F-008; waits on T-073

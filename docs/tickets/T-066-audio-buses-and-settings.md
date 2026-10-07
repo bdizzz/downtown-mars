@@ -4,9 +4,9 @@ title: Audio buses and volume sliders for music, effects and ambience
 status: open
 size: S
 area: audio, ui
-touches: [src/audio/sound.ts, src/ui/settings.ts, src/ui/SettingsView.tsx, src/ui/useSounds.ts]
-blocked_by: []
 feature: F-006
+touches: [src/audio/sound.ts, src/ui/settings.ts, src/ui/SettingsView.tsx, src/ui/useSounds.ts]
+blocked_by: [T-088]
 notes: [N-0032]
 created: 2026-10-06 02:20
 ---
@@ -24,3 +24,4 @@ GUIDE.md: Settings.
 
 ## History
 - 2026-10-06 02:20 opened from F-006's breakdown
+- 2026-10-07 18:58 waits on T-088 (settings layout)

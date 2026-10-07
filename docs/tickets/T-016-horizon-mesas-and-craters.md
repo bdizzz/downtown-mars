@@ -4,8 +4,9 @@ title: Believable mesas and mountains on the horizon, more 3D, more of them, and
 status: open
 size: L
 area: render3d, godot
+feature: F-008
 touches: [src/render3d/terrain3d.ts, src/bridge/terrain.ts, godot/src/Terrain.cs]
-blocked_by: []
+blocked_by: [T-073]
 notes: [N-0011, N-0035]
 created: 2026-10-05 00:52
 ---
@@ -35,3 +36,4 @@ More mesas (say 3–6, of different widths and heights, some buttes), at a few d
 - 2026-10-05 00:52 opened from N-0011
 - 2026-10-05 00:53 questions answered
 - 2026-10-06 09:46 added N-0035: mountains and plateaus too, more 3D; size M → L
+- 2026-10-07 18:58 moved into F-008; waits on T-073

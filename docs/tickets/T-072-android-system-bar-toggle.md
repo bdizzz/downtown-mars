@@ -5,7 +5,7 @@ status: open
 size: S
 area: ui
 touches: [public/manifest.webmanifest, src/ui/settings.ts, src/ui/SettingsView.tsx, src/ui/main.tsx]
-blocked_by: []
+blocked_by: [T-088]
 notes: [N-0034]
 created: 2026-10-06 09:45
 ---
@@ -29,3 +29,4 @@ GUIDE.md: Settings, and the phone section T-063 added.
 ## History
 - 2026-10-06 09:45 opened from N-0034
 - 2026-10-07 18:43 questions answered
+- 2026-10-07 18:58 waits on T-088 (settings layout)

@@ -4,6 +4,7 @@ title: Floors keep the building material's texture in room-colour mode
 status: open
 size: S
 area: render3d, godot
+feature: F-003
 touches: [src/render3d/rooms3d.ts, src/bridge/, godot/src/]
 blocked_by: []
 notes: [N-0040]
@@ -24,3 +25,4 @@ ART.md: room-colour mode.
 ## History
 - 2026-10-06 19:31 opened from N-0040
 - 2026-10-07 18:43 questions answered
+- 2026-10-07 18:58 moved into F-003

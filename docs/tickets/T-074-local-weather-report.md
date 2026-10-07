@@ -4,8 +4,9 @@ title: A local weather report for each hole
 status: open
 size: M
 area: sim, ui
+feature: F-008
 touches: [src/sim/weather.ts, src/sim/snapshot.ts, data/config.json, src/ui/Hud.tsx, src/ui/, src/view/, src/bridge/, godot/]
-blocked_by: []
+blocked_by: [T-073]
 notes: [N-0037]
 created: 2026-10-06 09:45
 ---
@@ -31,3 +32,4 @@ GUIDE.md: Weather. DECISIONS.md: the report is flavour (if agreed).
 ## History
 - 2026-10-06 09:45 opened from N-0037
 - 2026-10-07 18:43 questions answered
+- 2026-10-07 18:58 moved into F-008; waits on T-073

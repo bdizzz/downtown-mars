@@ -47,6 +47,7 @@ Agreed Oct 6. In build order; 5 can go any time before 6.
 - (S) Fibre: fiber hemp as a farm crop making a new `fiber` material, stored like other dry goods → T-036
 - (M) Floor upgrades: `flooring` upgrades starting with fibre-composite panels, the panel's Floor control, floor looks in web 3D and Godot → T-037
 - (M) Build in a material: build mode's material picker (defaults to bare rock), full cost (bare rock + upgrade) but a single construction effort (the build time only); web and Godot → T-038
+- (S) Room-colour mode tints floors but never changes their texture, which always follows the room's material and flooring; web and Godot (added Oct 7 from N-0040) → T-076
 
 ## History
 - 2026-10-04 19:12 made from T-008 (T-012 moved room materials into a feature)
@@ -56,3 +57,4 @@ Agreed Oct 6. In build order; 5 can go any time before 6.
 - 2026-10-06 00:17 questions answered
 - 2026-10-06 00:19 downgrades to bare rock with a partial refund (Bryon); 2 questions
 - 2026-10-06 00:20 questions answered
+- 2026-10-07 18:58 added T-076

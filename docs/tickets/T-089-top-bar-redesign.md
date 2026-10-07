@@ -4,6 +4,7 @@ title: A clearer, more compact top bar: icons, a resource grid, what needs you f
 status: open
 size: L
 area: ui, godot
+feature: F-009
 touches: [src/ui/Hud.tsx, src/ui/ResourceBar.tsx, src/ui/StatusBar.tsx, src/view/hudItems.ts, src/ui/styles.css, src/ui/icons/, src/bridge/, godot/src/]
 blocked_by: []
 notes: [N-0049]
@@ -34,3 +35,4 @@ GUIDE.md: The top bar. ART.md: the icon set.
 ## History
 - 2026-10-07 18:51 opened from N-0049
 - 2026-10-07 18:53 questions answered
+- 2026-10-07 18:58 moved into F-009

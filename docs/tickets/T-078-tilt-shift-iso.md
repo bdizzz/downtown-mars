@@ -5,7 +5,7 @@ status: open
 size: M
 area: render3d, godot
 touches: [src/render3d/stage3d.ts, src/ui/settings.ts, src/ui/SettingsView.tsx, godot/src/]
-blocked_by: []
+blocked_by: [T-088]
 notes: [N-0042]
 created: 2026-10-06 19:31
 ---
@@ -28,3 +28,4 @@ ART.md: the camera look. GUIDE.md: Settings.
 ## History
 - 2026-10-06 19:31 opened from N-0042
 - 2026-10-07 18:43 questions answered
+- 2026-10-07 18:58 waits on T-088 (settings layout)

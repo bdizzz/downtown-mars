@@ -4,6 +4,7 @@ title: Soil at a hole site matches the map's colour there; no sites on ice caps 
 status: open
 size: M
 area: render3d, ui
+feature: F-008
 touches: [src/render3d/stage3d.ts, src/render3d/terrain3d.ts, src/ui/MapScreen.tsx, src/ui/Globe.tsx, src/sim/founding.ts, data/mars-relief.jpg, data/mars-elevation.json, scripts/build-elevation.mjs, src/bridge/terrain.ts, godot/src/Terrain.cs]
 blocked_by: []
 notes: [N-0036]
@@ -32,3 +33,4 @@ GUIDE.md: The map. DECISIONS.md: where holes can't go.
 ## History
 - 2026-10-06 09:45 opened from N-0036
 - 2026-10-07 18:43 questions answered
+- 2026-10-07 18:58 moved into F-008

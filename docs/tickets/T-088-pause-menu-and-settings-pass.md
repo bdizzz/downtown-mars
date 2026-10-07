@@ -4,6 +4,7 @@ title: A layout pass on the pause menu and settings: easy to use, dense, mobile 
 status: open
 size: M
 area: ui, godot
+feature: F-009
 touches: [src/ui/Menu.tsx, src/ui/SettingsView.tsx, src/ui/settings.ts, src/ui/styles.css, godot/src/]
 blocked_by: []
 notes: [N-0048]
@@ -29,3 +30,4 @@ GUIDE.md: Settings.
 ## History
 - 2026-10-07 18:51 opened from N-0048
 - 2026-10-07 18:53 questions answered
+- 2026-10-07 18:58 moved into F-009

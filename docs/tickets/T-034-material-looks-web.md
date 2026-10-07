@@ -17,6 +17,8 @@ Each lining looks like what it is in 3D: smoothed rock, brick, patterned brick, 
 Read F-003 (`docs/tickets/F-003-room-materials.md`) and its plan, `docs/PLAN-M15.md`, first; this is step 3 of its Steps. All numbers come from the plan's Defaults, in `data/materials.json`.
 
 ## Approach
+Build on T-076: floors take their texture from the room's material and flooring in every mode; room-colour mode only tints them. Don't bring back per-kind floor patterns.
+
 Procedural surfaces in `render3d/surfaces.ts` (shared with corridor finishes), floors following the walls, the M7 hazard-stripe band and % label on rooms being refitted. Done: each step reads clearly in a room in 3D, day and night.
 
 ## Docs to update

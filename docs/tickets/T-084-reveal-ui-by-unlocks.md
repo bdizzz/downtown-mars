@@ -4,9 +4,9 @@ title: Hide the interface until the guided tutorial reveals it
 status: open
 size: M
 area: ui
-touches: [src/ui/Hud.tsx, src/ui/Dock.tsx, src/ui/BuildPalette.tsx, src/ui/App.tsx, src/ui/styles.css]
-blocked_by: [T-083]
 feature: F-007
+touches: [src/ui/Hud.tsx, src/ui/Dock.tsx, src/ui/BuildPalette.tsx, src/ui/App.tsx, src/ui/styles.css]
+blocked_by: [T-083, T-089]
 notes: [N-0046]
 created: 2026-10-07 18:44
 ---
@@ -21,3 +21,4 @@ A small `useUnlocked(id)` gate: in guided mode, elements not yet unlocked aren't
 
 ## History
 - 2026-10-07 18:44 opened from F-007's breakdown
+- 2026-10-07 18:58 waits on T-089 (top bar ids)
