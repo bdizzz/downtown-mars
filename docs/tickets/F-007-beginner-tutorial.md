@@ -1,7 +1,7 @@
 ---
 id: F-007
 title: A hand-holding tutorial for newcomers to city builders
-status: draft
+status: agreed
 plan:
 notes: [N-0046]
 created: 2026-10-06 19:31
@@ -19,11 +19,11 @@ A version of the tutorial for people unfamiliar with city builders or colony sim
 
 ## Breakdown
 Proposed; becomes tickets once this feature is agreed.
-- Guided steps in data and the choice on the welcome card; the step engine extended with "unlocks" per step.
-- Hiding and revealing the HUD, dock and build palette by what's unlocked, with the escape hatch.
-- Writing the guided steps: the speed controls, the drill, the first rooms, corridors, food and air, people and the office, in small pieces.
-- The "Show me" popup and a script that records the clips from a fixed save, run by hand now and then.
-- The guided tutorial in Godot.
+- Guided steps in data and the choice on the welcome card; the step engine extended with "unlocks" per step. → T-083
+- Hiding and revealing the HUD, dock and build palette by what's unlocked, with the escape hatch. → T-084
+- Writing the guided steps: the speed controls, the drill, the first rooms, corridors, food and air, people and the office, in small pieces. → T-085
+- The "Show me" popup and a script that records the clips from a fixed save, run by hand now and then. → T-086
+- The guided tutorial in Godot. → T-087
 
 ## Open questions
 - [x] Clips: recorded videos (proposed; a script remakes them), or live animated demonstrations in the game itself (always current, more work)?
@@ -33,3 +33,4 @@ Proposed; becomes tickets once this feature is agreed.
 ## History
 - 2026-10-06 19:31 opened from N-0046
 - 2026-10-07 18:43 questions answered
+- 2026-10-07 18:44 agreed
