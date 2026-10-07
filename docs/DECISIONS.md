@@ -182,6 +182,14 @@ See `PLAN-M15.md` and `docs/tickets/F-003-room-materials.md` (Bryon's answers; t
 - **What a lining does depends on the kind of room:** homes feel its comfort in full; people rooms (the cleanable ones) lift everyone's shared comfort (their average lining comfort × 0.5, up to +0.5); heavy rooms (industry, power, air, water) get no comfort but twice the wear benefit; the rest only wear slower. Cave-in resistance waits for cave-ins.
 - **Upgrades go through the construction queue,** usable at half output once crews start; condition back to 100% when done. Linings can be changed down or stripped to bare rock for a 50% refund of their material (T-033). Build mode can pick a material up front for the full price but one construction effort (T-038).
 
+## Decided for the air mix (Oct 6, F-002 / T-026)
+
+See `PLAN-M16.md`.
+
+- **The air is a mix over the living volume** (dug cells, built corridors and tubes): O2 and CO2 stay amounts, read as % of `volume × air.unitsPerM3`; no caps, no nitrogen, no pressure. Digging dilutes it; that's growth's water cost. "Air quality" stays the separate local effect.
+- **Step 1 balance (Bryon: "fast top-up, softer bands"):** the planned density makes a dug cell 168 O2, so the maker must be fast: life support tops up at 300 O2 a day until the electrolyzer replaces it, spending water only on what it makes; health bands low below 18%, very low below 15%. T-031 rebalances the loop as a whole.
+- **Holes start with their air made**, new and founded; old saves' air starts over at the target (save v21).
+
 ## Still open
 
 Deliberately not decided yet:

@@ -1,5 +1,5 @@
 {
-  "_note": "baseCapacity is what the landing pod stores before any tanks, batteries or warehouses. Dry goods (food and materials) have no base capacity: storage rooms decide it (data/storage.json).",
+  "_note": "baseCapacity is what the landing pod stores before any tanks, batteries or warehouses. Air (O2, CO2) has no capacity: it is a mix over the hole's living volume (sim/air.ts). Dry goods (food and materials) have no base capacity: storage rooms decide it (data/storage.json).",
   "resources": [
     {
       "id": "power",
@@ -12,14 +12,16 @@
       "id": "o2",
       "name": "Oxygen",
       "group": "air",
-      "baseCapacity": 200
+      "baseCapacity": 0,
+      "air": true
     },
     {
       "id": "co2",
       "name": "CO2",
       "group": "air",
-      "baseCapacity": 300,
-      "waste": true
+      "baseCapacity": 0,
+      "waste": true,
+      "air": true
     },
     {
       "id": "water",

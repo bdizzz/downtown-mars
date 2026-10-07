@@ -34,6 +34,12 @@ export interface RoomDef {
   substitutes?: Record<string, string[]>;
   /** Removed from the air, above a reserve left for farms. */
   scrubs?: Record<string, number>;
+  /**
+   * The air it makes (O2) stops at the air's target: it fills the air, never past it.
+   * Its inputs other than power are spent only on the O2 it makes, so scrubbing at
+   * the target costs power alone.
+   */
+  topsUpAir?: boolean;
   /** Colonists served by restrooms. */
   sanitation?: number;
   /** What becomes of the clean water it uses: its share as each kind of wastewater (default config economy.waterReturns, all gray). Anything left over is used up for good. */

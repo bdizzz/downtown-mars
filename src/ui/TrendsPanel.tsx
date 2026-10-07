@@ -3,7 +3,7 @@ import type { Snapshot } from "../sim/snapshot";
 import { config } from "../sim/config";
 import { num, signed } from "./format";
 import { Sparkline, TrendChart, type ChartLine } from "./TrendChart";
-import { everHad, perDay, points, RANGES, SERIES, seriesMeta, type Range, type SeriesMeta } from "./trends";
+import { everHad, perDay, points, RANGES, SERIES, seriesMeta, type Range, type SeriesMeta, seriesNum } from "./trends";
 
 // Charts → Trends: how everything has been changing. One series up close
 // (amounts, or change per day) over the last two days, ten days or the whole
@@ -83,11 +83,12 @@ export function TrendsPanel({ s, onClose, initial }: { s: Snapshot; onClose: () 
         refs={mode === "rate" && !flow ? [{ at: 0, label: "steady" }] : meta.refs}
         unit={mode === "rate" && !flow ? "/day" : (meta.unit ?? "")}
         whole={mode === "amount" && meta.whole}
+        decimals={mode === "amount" ? meta.decimals : undefined}
       />
       {mode === "amount" && (
         <p className="k trend-sum">
-          {num(first)} → {num(now)}
-          {meta.unit === "%" ? "%" : ""} ({signed(now - first)}) · low {num(Math.min(...main))}, high {num(Math.max(...main))}
+          {seriesNum(meta, first)} → {seriesNum(meta, now)}
+          {meta.unit === "%" ? "%" : ""} ({signed(now - first)}) · low {seriesNum(meta, Math.min(...main))}, high {seriesNum(meta, Math.max(...main))}
         </p>
       )}
 
@@ -106,7 +107,7 @@ export function TrendsPanel({ s, onClose, initial }: { s: Snapshot; onClose: () 
                   <span className="name">{row.label}</span>
                   <Sparkline lines={r.lines} width={96} height={22} />
                   <span className="val">
-                    {row.whole ? Math.round(v.at(-1) ?? 0) : num(v.at(-1) ?? 0)}
+                    {seriesNum(row, v.at(-1) ?? 0)}
                     {row.unit === "%" ? "%" : ""}
                   </span>
                   <span className="delta">{Math.abs(delta) < 0.05 ? "·" : `${delta > 0 ? "▲" : "▼"} ${num(Math.abs(delta))}`}</span>

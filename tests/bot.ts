@@ -68,12 +68,15 @@ export interface Day {
   health: number;
   happy: number;
   prod: number;
+  /** % of the air. */
   o2: number;
   water: number;
   gray: number;
   /** Clean water used and brought by Earth over the day just ended. */
   waterUsed: number;
   earthWater: number;
+  /** Water split into oxygen by life support: the air's deliberate leak (T-026). */
+  airWater: number;
   food: number;
   power: string;
   metal: number;
@@ -81,6 +84,7 @@ export interface Day {
   built: number;
   floors: number;
   co2: number;
+  vol: number;
   met: string;
   san: number;
   farms: string;
@@ -141,18 +145,20 @@ export function run(days: number): { state: SimState; log: Day[]; builtAt: Recor
         health: Math.round(s.population.health),
         happy: Math.round(s.happiness.average),
         prod: Math.round(s.happiness.productivity * 100),
-        o2: Math.round(r.o2 ?? 0),
+        o2: Math.round(snap.air.o2Pct * 10) / 10,
         water: Math.round(r.water ?? 0),
         gray: Math.round(r.grayWater ?? 0),
         waterUsed: Math.round(Object.entries(s.ledger.days.at(-1)?.water?.out ?? {}).reduce((a, [k, v]) => (k === LABELS.lost ? a : a + v), 0)),
         earthWater: Math.round(s.ledger.days.at(-1)?.water?.in[LABELS.earth] ?? 0),
+        airWater: Math.round(s.ledger.days.at(-1)?.water?.out["Life support"] ?? 0),
         food: Math.round((r.rations ?? 0) + (r.rawFood ?? 0) + (r.meals ?? 0)),
         power: `${snap.power.used.toFixed(0)}/${snap.power.made.toFixed(0)}`,
         metal: Math.round(r.metal ?? 0),
         rock: Math.round(r.rock ?? 0),
         built: next,
         floors: s.layout.hole.floors,
-        co2: Math.round(r.co2 ?? 0),
+        co2: Math.round(snap.air.co2Pct * 100) / 100,
+        vol: Math.round(snap.air.volume),
         met: Object.entries(s.population.needsMet)
           .map(([k, v]) => `${k}:${v.toFixed(2)}`)
           .join(" "),

@@ -28,6 +28,8 @@ Planned in `docs/PLAN-M16.md` (Claude's defaults, every number in data):
 - **Flows in two steps**: water → split into oxygen → air for new space · replacing breathed air · into the O2 reserve (Bryon, Oct 6).
 - **Vent event** after half a day above 23.5% with full tanks: vent to 21% (lost for good) or hold.
 
+Learned building step 1 (T-026, Oct 6): at 2 units/m³ a dug cell costs 168 O2, 11 days of 20 colonists' breathing, and that ratio is fixed by the 5-day CO2 window whatever `unitsPerM3` is. So **the O2 maker must be far faster than breathing**: life support tops up at 300 a day for now (water spent only on what it makes), and the bands are softer (low < 18%, very low < 15%). The electrolyzer's 40 a day (step 3) is too slow on these numbers; T-031 should size it against digging (~1,600 m³ a day early in the bot's game), not breathing. See PLAN-M16's Notes as built.
+
 ## Breakdown
 Agreed Oct 6. Steps 1–3 and 5 don't need F-001; step 4 builds on T-005's tank "holds" choice.
 - Living volume and the mix: `sim/air.ts`, O2/CO2 % with health bands, breathing 1:1, HUD "Air 21% O2" and charts, save migration, new games at target (L) → T-026
