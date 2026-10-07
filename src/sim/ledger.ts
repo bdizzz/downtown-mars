@@ -5,7 +5,15 @@ import type { SimState } from "./state";
 // summed per game day; the diagram averages the last few complete days so
 // lumpy things (Earth drops every few days) show as a steady share.
 
-export type Flows = Record<string, { in: Record<string, number>; out: Record<string, number> }>;
+export type Flows = Record<string, FlowEntry>;
+
+export interface FlowEntry {
+  in: Record<string, number>;
+  out: Record<string, number>;
+  /** Where a use went next, by use then by where (the flow panel's second step): water used by
+   * "Electrolyzer" → "Air for new space". Optional; most uses have none. */
+  then?: Record<string, Record<string, number>>;
+}
 
 export interface Ledger {
   current: Flows;
@@ -27,10 +35,15 @@ export function createLedger(): Ledger {
   return { current: {}, days: [] };
 }
 
-export function record(state: SimState, resource: string, dir: "in" | "out", label: string, amount: number): void {
+/** Record an amount coming in or going out; a use can also say where it went next (`then`). */
+export function record(state: SimState, resource: string, dir: "in" | "out", label: string, amount: number, opts?: { then?: string }): void {
   if (amount <= 0) return;
-  const r = (state.ledger.current[resource] ??= { in: {}, out: {} });
+  const r =(state.ledger.current[resource] ??= { in: {}, out: {} });
   r[dir][label] = (r[dir][label] ?? 0) + amount;
+  if (dir === "out" && opts?.then) {
+    const t = ((r.then ??= {})[label] ??= {});
+    t[opts.then] = (t[opts.then] ?? 0) + amount;
+  }
 }
 
 /** Close the day's books at midnight. */
@@ -52,6 +65,10 @@ export function averageFlows(state: SimState, cfg: SimConfig): Flows {
       const o = (out[res] ??= { in: {}, out: {} });
       for (const dir of ["in", "out"] as const) {
         for (const [label, v] of Object.entries(f[dir])) o[dir][label] = (o[dir][label] ?? 0) + v * scale;
+      }
+      for (const [use, next] of Object.entries(f.then ?? {})) {
+        const t = ((o.then ??= {})[use] ??= {});
+        for (const [label, v] of Object.entries(next)) t[label] = (t[label] ?? 0) + v * scale;
       }
     }
   }

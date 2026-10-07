@@ -202,7 +202,7 @@ public partial class Charts : Node
             }
             _rows.AddChild(Text(r.GetProperty("summary").GetString()!, 12, Muted));
             var river = new River(r);
-            river.CustomMinimumSize = new Vector2(340, river.Height);
+            river.CustomMinimumSize = new Vector2(river.TwoStep ? 460 : 340, river.Height);
             _rows.AddChild(river);
         }
     }
@@ -344,13 +344,17 @@ public partial class Charts : Node
         }
     }
 
-    /// <summary>A resource's river: sources on the left, uses on the right, ribbons through a bar in the middle.</summary>
+    /// <summary>A resource's river: sources on the left, uses on the right, ribbons through a bar in the middle;
+    /// a use that says where it went next (the ledger's `then`) gets a third column (as ui/FlowPanel.tsx).</summary>
     partial class River : Control
     {
         const float LabelW = 100, Bar = 6, Gap = 4, MaxH = 130;
         readonly List<(string label, double value, Color color)> _ins = new(), _outs = new();
+        /// <summary>The second step: which use it came from, how far down that use's bar, and where it went.</summary>
+        readonly List<(int from, float off, float y, float h, string label, double value)> _next = new();
         readonly float _scale, _mid;
         public float Height { get; }
+        public bool TwoStep => _next.Count > 0;
 
         public River(JsonElement r)
         {
@@ -359,7 +363,27 @@ public partial class Charts : Node
             double totalIn = _ins.Sum(x => x.value), totalOut = _outs.Sum(x => x.value);
             _scale = (float)(MaxH / Math.Max(Math.Max(totalIn, totalOut), 1e-6));
             _mid = (float)Math.Max(totalIn, totalOut) * _scale;
-            Height = Math.Max(_mid, Math.Max(Stack(_ins).LastOrDefault().end, Stack(_outs).LastOrDefault().end)) + 6;
+            var right = Stack(_outs).ToList();
+            var i = 0;
+            float end = 0;
+            foreach (var x in r.GetProperty("outs").EnumerateArray())
+            {
+                if (x.TryGetProperty("then", out var then))
+                {
+                    float y = Math.Max(right[i].y, _next.Count > 0 ? end + Gap : 0), off = 0;
+                    foreach (var t in then.EnumerateArray())
+                    {
+                        var v = t.GetProperty("value").GetDouble();
+                        var h = Math.Max(1.5f, (float)v * _scale);
+                        _next.Add((i, off, y, h, t.GetProperty("label").GetString()!, v));
+                        off += h;
+                        end = y + h;
+                        y += h + Gap;
+                    }
+                }
+                i++;
+            }
+            Height = Math.Max(Math.Max(_mid, end), Math.Max(Stack(_ins).LastOrDefault().end, right.LastOrDefault().end)) + 6;
         }
 
         IEnumerable<(float y, float h, float end)> Stack(List<(string label, double value, Color color)> list)
@@ -373,7 +397,7 @@ public partial class Charts : Node
             }
         }
 
-        void Ribbon(float x1, float y1, float x2, float y2, float h, Color color)
+        void Ribbon(float x1, float y1, float x2, float y2, float h, Color color, float alpha = 0.45f)
         {
             var top = new List<Vector2>();
             var bottom = new List<Vector2>();
@@ -386,13 +410,13 @@ public partial class Charts : Node
                 bottom.Add(new Vector2(x, Mathf.Lerp(y1 + h, y2 + h, s)));
             }
             bottom.Reverse();
-            DrawColoredPolygon(top.Concat(bottom).ToArray(), color with { A = 0.45f });
+            DrawColoredPolygon(top.Concat(bottom).ToArray(), color with { A = alpha });
         }
 
         public override void _Draw()
         {
             var w = Size.X;
-            float xL = LabelW, xM = w / 2 - Bar / 2, xR = w - LabelW - Bar;
+            float xL = LabelW, xM = TwoStep ? 160 : w / 2 - Bar / 2, xR = TwoStep ? 250 : w - LabelW - Bar, xT = w - LabelW - Bar;
             var left = Stack(_ins).ToList();
             var right = Stack(_outs).ToList();
             float offset = 0;
@@ -407,6 +431,7 @@ public partial class Charts : Node
                 Ribbon(xM + Bar, offset, xR, right[i].y, right[i].h, _outs[i].color);
                 offset += right[i].h;
             }
+            foreach (var n in _next) Ribbon(xR + Bar, right[n.from].y + n.off, xT, n.y, n.h, _outs[n.from].color, 0.3f);
             DrawRect(new Rect2(xM, 0, Bar, _mid), new Color("#f0e0d0") with { A = 0.8f });
             for (var i = 0; i < left.Count; i++)
             {
@@ -416,7 +441,16 @@ public partial class Charts : Node
             for (var i = 0; i < right.Count; i++)
             {
                 DrawRect(new Rect2(xR, right[i].y, Bar, right[i].h), _outs[i].color);
-                DrawString(Font, new Vector2(xR + Bar + 4, right[i].y + right[i].h / 2 + 4), $"{_outs[i].label} {Num(_outs[i].value)}", HorizontalAlignment.Left, LabelW - 8, 10, Body);
+                var at = new Vector2(xR + Bar + 4, right[i].y + right[i].h / 2 + 4);
+                var text = $"{_outs[i].label} {Num(_outs[i].value)}";
+                // Over the second step's ribbons, a halo keeps it readable.
+                if (TwoStep) DrawStringOutline(Font, at, text, HorizontalAlignment.Left, LabelW - 8, 10, 3, new Color(0, 0, 0, 0.6f));
+                DrawString(Font, at, text, HorizontalAlignment.Left, LabelW - 8, 10, Body);
+            }
+            foreach (var n in _next)
+            {
+                DrawRect(new Rect2(xT, n.y, Bar, n.h), _outs[n.from].color with { A = 0.8f });
+                DrawString(Font, new Vector2(xT + Bar + 4, n.y + n.h / 2 + 4), $"{n.label} {Num(n.value)}", HorizontalAlignment.Left, LabelW - 8, 10, Body);
             }
         }
     }

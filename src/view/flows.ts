@@ -40,6 +40,8 @@ export interface River {
   name: string;
   ins: [string, number][];
   outs: [string, number][];
+  /** Where a use went next, by the use's label, biggest first (only uses that say). */
+  thens: Record<string, [string, number][]>;
   totalIn: number;
   totalOut: number;
 }
@@ -50,11 +52,20 @@ export function river(resource: string, flows: Flows[string] | undefined): River
   const ins = Object.entries(flows?.in ?? {})
     .filter(([, v]) => v >= MIN_FLOW)
     .sort((a, b) => b[1] - a[1]);
+  const shown = (k: string) => (def.flow && k === LABELS.lost ? "Unused" : k);
   const outs = Object.entries(flows?.out ?? {})
     .filter(([, v]) => v >= MIN_FLOW)
-    .map(([k, v]) => [def.flow && k === LABELS.lost ? "Unused" : k, v] as [string, number])
+    .map(([k, v]) => [shown(k), v] as [string, number])
     .sort((a, b) => b[1] - a[1]);
-  return { resource, name: def.name, ins, outs, totalIn: ins.reduce((s, [, v]) => s + v, 0), totalOut: outs.reduce((s, [, v]) => s + v, 0) };
+  const thens: Record<string, [string, number][]> = {};
+  for (const [use, next] of Object.entries(flows?.then ?? {})) {
+    if ((flows?.out[use] ?? 0) < MIN_FLOW) continue;
+    const list = Object.entries(next)
+      .filter(([, v]) => v >= MIN_FLOW)
+      .sort((a, b) => b[1] - a[1]);
+    if (list.length) thens[shown(use)] = list;
+  }
+  return { resource, name: def.name, ins, outs, thens, totalIn: ins.reduce((s, [, v]) => s + v, 0), totalOut: outs.reduce((s, [, v]) => s + v, 0) };
 }
 
 /** The share of clean water used that comes back from recycling, or null with none used. */

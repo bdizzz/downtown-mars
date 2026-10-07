@@ -185,6 +185,7 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
   border: 1px solid var(--muted); border-radius: 3px; padding: 0 5px; cursor: pointer;
 }
 .flows { width: 340px; }
+.flows.wide { width: 480px; }
 .flows .tabs { display: flex; gap: 2px; flex-wrap: wrap; }
 .flows .tabs button {
   background: transparent; color: var(--text); font: inherit; font-size: 12px;
@@ -195,6 +196,7 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .river h4 { margin: 0 0 4px; font-size: 13px; }
 .river h4 .k { font-weight: 400; font-size: 11px; }
 .river svg .lbl { fill: var(--text); font-size: 9.5px; font-family: "Space Grotesk", system-ui, sans-serif; }
+.river svg .lbl.halo { stroke: var(--panel); stroke-width: 3px; paint-order: stroke; stroke-linejoin: round; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(224, 122, 63, 0.9); } 50% { box-shadow: 0 0 0 4px rgba(224, 122, 63, 0); } }
 .pulse { animation: pulse 1.4s ease-in-out infinite; border-color: var(--accent) !important; border-radius: 4px; }
 .tutorial {
