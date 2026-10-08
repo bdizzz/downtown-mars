@@ -31,3 +31,4 @@ GUIDE.md: Settings.
 - 2026-10-07 18:51 opened from N-0048
 - 2026-10-07 18:53 questions answered
 - 2026-10-07 18:58 moved into F-009
+- 2026-10-08 01:47 building on t-088-pause-menu-and-settings-pass
