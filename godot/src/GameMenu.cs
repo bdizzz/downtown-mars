@@ -76,6 +76,7 @@ public partial class GameMenu : Control
         Visible = true;
         _send(new Dictionary<string, object> { ["type"] = "saves" });
         Shown?.Invoke(true);
+        _first?.CallDeferred(Control.MethodName.GrabFocus);
     }
 
     public void Close()
@@ -93,7 +94,11 @@ public partial class GameMenu : Control
             _slots.Add((s.GetProperty("slot").GetString()!, s.GetProperty("label").GetString()!, s.GetProperty("text").ValueKind == JsonValueKind.String ? s.GetProperty("text").GetString() : null));
         _folder.Text = $"Saves are kept in {msg.GetProperty("folder").GetString()}";
         Build();
+        if (Visible) Refocus();
     }
+
+    /// <summary>Focus back on the menu: rebuilt, or a sheet over it closed.</summary>
+    public void Refocus() => _first?.CallDeferred(Control.MethodName.GrabFocus);
 
     /// <summary>The bridge's "saved" (asked for by Export): write the save where the player chose.</summary>
     public void Saved(JsonElement msg)
@@ -115,6 +120,7 @@ public partial class GameMenu : Control
             _rows.RemoveChild(c);
             if (c != _folder) c.QueueFree();
         }
+        _first = null;
         var title = new Label { Text = "Downtown Mars", HorizontalAlignment = HorizontalAlignment.Center };
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color("#e8834a"));
@@ -146,7 +152,7 @@ public partial class GameMenu : Control
             _export.PopupCentered(new Vector2I(800, 500));
         });
         Add("Settings…", () => SettingsPressed?.Invoke());
-        Add("Controls (?)", () => HelpPressed?.Invoke());
+        Add("Help (?)", () => HelpPressed?.Invoke());
         Add("Quit", () => GetTree().Quit());
         _folder.AddThemeFontSizeOverride("font_size", 12);
         _folder.AddThemeColorOverride("font_color", new Color("#b8a490"));
@@ -163,8 +169,12 @@ public partial class GameMenu : Control
 
     void Add(string text, Action pressed, bool disabled = false)
     {
-        var b = new Button { Text = text, Disabled = disabled, FocusMode = FocusModeEnum.None, Alignment = HorizontalAlignment.Left };
+        var b = new Button { Text = text, Disabled = disabled, Alignment = HorizontalAlignment.Left };
         b.Pressed += pressed;
         _rows.AddChild(b);
+        _first ??= b;
     }
+
+    /// <summary>The first button (Resume), focused on opening so the keyboard starts in the menu.</summary>
+    Button? _first;
 }

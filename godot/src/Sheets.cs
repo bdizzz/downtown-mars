@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using Godot;
 
 namespace DowntownMars;
@@ -146,55 +147,121 @@ public partial class HelpSheet : Sheet
 }
 
 /// <summary>
-/// Settings, as the web's (ui/SettingsView.tsx), those that apply here: autosave each game day,
-/// colour-blind overlays, the interface size, the graphics level, and the tutorial. Kept in
-/// user://settings.cfg with the view.
+/// Settings, as the web's (ui/SettingsView.tsx) and from the same table (data/settings.json): its
+/// sections as tabs, each setting a row with its name, a one-line hint and its control, those that
+/// apply here (autosave each game day, the tutorial, the graphics level, interface size, colour-blind
+/// overlays, and the keys). Kept in user://settings.cfg with the view. Every control takes the
+/// keyboard: Tab and the arrows move, Enter and Space act, Ctrl+Tab changes section.
 /// </summary>
 public partial class SettingsSheet : Sheet
 {
-    static readonly float[] Scales = { 0.85f, 1, 1.15f, 1.3f };
-    readonly CheckBox _autosave = new() { Text = "Autosave every month", FocusMode = FocusModeEnum.None };
-    readonly CheckBox _colorBlind = new() { Text = "Colour-blind friendly overlays (orange and blue)", FocusMode = FocusModeEnum.None };
-    readonly CheckBox _tutorial = new() { Text = "Show the tutorial", FocusMode = FocusModeEnum.None };
-    readonly OptionButton _scale = new() { FocusMode = FocusModeEnum.None };
-    readonly OptionButton _graphics = new() { FocusMode = FocusModeEnum.None };
+    readonly TabContainer _tabs = new() { CustomMinimumSize = new Vector2(0, 300) };
+    /// <summary>Each row's control, and how to fill it from the settings when the sheet opens.</summary>
+    readonly List<Action> _fill = new();
+    readonly List<Control> _first = new();
     bool _filling;
 
     /// <summary>Something changed: Live applies it (and tells the bridge what it needs to know).</summary>
     public Action? Changed { get; set; }
     public Func<int>? GetQuality { get; set; }
     public Action<int>? SetQuality { get; set; }
+    /// <summary>The keys (Help).</summary>
+    public Action? KeysPressed { get; set; }
 
-    public SettingsSheet() : base(460)
+    public SettingsSheet() : base(560)
     {
         Title("Settings");
-        foreach (var c in new[] { _autosave, _colorBlind, _tutorial }) Rows.AddChild(c);
-        _autosave.Toggled += on => Set(() => ViewSettings.Autosave = on);
-        _colorBlind.Toggled += on => Set(() => ViewSettings.ColorBlind = on);
-        _tutorial.Toggled += on => Set(() => ViewSettings.TutorialHidden = !on);
-        Row("Interface size", _scale);
-        foreach (var s in Scales) _scale.AddItem($"{Mathf.RoundToInt(s * 100)}%");
-        _scale.ItemSelected += i => Set(() => ViewSettings.UiScale = Scales[i]);
-        Row("Graphics", _graphics);
-        foreach (var q in Enum.GetNames<Quality>()) _graphics.AddItem(q);
-        _graphics.ItemSelected += i =>
+        Rows.AddChild(_tabs);
+        using var doc = JsonDocument.Parse(System.IO.File.ReadAllText(ProjectSettings.GlobalizePath("res://") + "../data/settings.json"));
+        var rows = doc.RootElement.GetProperty("settings").EnumerateArray()
+            .Where(r => !r.TryGetProperty("only", out var only) || only.GetString() == "godot")
+            .Select(r => r.Clone())
+            .ToList();
+        foreach (var section in doc.RootElement.GetProperty("sections").EnumerateArray())
         {
-            if (!_filling) SetQuality?.Invoke((int)i);
-        };
-        var back = new Button { Text = "Back", FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ShrinkCenter };
+            var id = section.GetProperty("id").GetString();
+            var mine = rows.Where(r => r.GetProperty("section").GetString() == id).ToList();
+            var list = new VBoxContainer { Name = section.GetProperty("name").GetString()! };
+            list.AddThemeConstantOverride("separation", 4);
+            Control? first = null;
+            foreach (var r in mine)
+                if (Make(r) is Control c)
+                {
+                    first ??= c;
+                    list.AddChild(RowOf(r, c));
+                }
+            if (first == null) continue;
+            _tabs.AddChild(list);
+            _first.Add(first);
+        }
+        _tabs.TabChanged += t => _first[(int)t].CallDeferred(Control.MethodName.GrabFocus);
+        var back = new Button { Text = "Back", SizeFlagsHorizontal = SizeFlags.ShrinkBegin };
         back.Pressed += Close;
         Rows.AddChild(back);
     }
 
-    void Row(string label, Control control)
+    /// <summary>A row's control, bound to its setting (a new row in the table gets a case here).</summary>
+    Control? Make(JsonElement r)
+    {
+        var id = r.GetProperty("id").GetString();
+        switch (id)
+        {
+            case "autosave": return Toggle(() => ViewSettings.Autosave, on => ViewSettings.Autosave = on);
+            case "tutorial": return Toggle(() => !ViewSettings.TutorialHidden, on => ViewSettings.TutorialHidden = !on);
+            case "colorBlind": return Toggle(() => ViewSettings.ColorBlind, on => ViewSettings.ColorBlind = on);
+            case "uiScale":
+            {
+                var scales = r.GetProperty("options").EnumerateArray().Select(o => (value: o.GetProperty("value").GetSingle(), name: o.GetProperty("name").GetString()!)).ToArray();
+                var pick = new OptionButton();
+                foreach (var s in scales) pick.AddItem(s.name);
+                pick.ItemSelected += i => Set(() => ViewSettings.UiScale = scales[i].value);
+                _fill.Add(() => pick.Select(Math.Max(0, Array.FindIndex(scales, s => Mathf.IsEqualApprox(s.value, ViewSettings.UiScale)))));
+                return pick;
+            }
+            case "graphics.quality":
+            {
+                var pick = new OptionButton();
+                foreach (var q in Enum.GetNames<Quality>()) pick.AddItem(q);
+                pick.ItemSelected += i =>
+                {
+                    if (!_filling) SetQuality?.Invoke((int)i);
+                };
+                _fill.Add(() => pick.Select(GetQuality?.Invoke() ?? 0));
+                return pick;
+            }
+            case "keys":
+            {
+                var b = new Button { Text = "Show" };
+                b.Pressed += () => KeysPressed?.Invoke();
+                return b;
+            }
+            default:
+                return null;
+        }
+    }
+
+    CheckButton Toggle(Func<bool> get, Action<bool> set)
+    {
+        var c = new CheckButton();
+        c.Toggled += on => Set(() => set(on));
+        _fill.Add(() => c.ButtonPressed = get());
+        return c;
+    }
+
+    /// <summary>Name and hint on the left, the control on the right.</summary>
+    static Control RowOf(JsonElement r, Control control)
     {
         var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 10);
-        var l = Text(label, 15, new Color("#e0cfbd"));
-        l.AutowrapMode = TextServer.AutowrapMode.Off;
-        row.AddChild(l);
+        row.AddThemeConstantOverride("separation", 12);
+        var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        text.AddThemeConstantOverride("separation", 0);
+        text.AddChild(Text(r.GetProperty("name").GetString()!, 15, new Color("#f0e0d0")));
+        text.AddChild(Text(r.GetProperty("hint").GetString()!, 12, new Color("#a88d7c")));
+        row.AddChild(text);
+        control.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        control.TooltipText = r.GetProperty("hint").GetString();
         row.AddChild(control);
-        Rows.AddChild(row);
+        return row;
     }
 
     void Set(Action change)
@@ -208,12 +275,9 @@ public partial class SettingsSheet : Sheet
     public override void Open()
     {
         _filling = true;
-        _autosave.ButtonPressed = ViewSettings.Autosave;
-        _colorBlind.ButtonPressed = ViewSettings.ColorBlind;
-        _tutorial.ButtonPressed = !ViewSettings.TutorialHidden;
-        _scale.Select(Math.Max(0, Array.IndexOf(Scales, ViewSettings.UiScale)));
-        _graphics.Select(GetQuality?.Invoke() ?? 0);
+        foreach (var f in _fill) f();
         _filling = false;
         base.Open();
+        _first[_tabs.CurrentTab].CallDeferred(Control.MethodName.GrabFocus);
     }
 }
