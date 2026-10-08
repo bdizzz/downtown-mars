@@ -2,6 +2,7 @@ import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
 import { points, seriesMeta } from "../ui/trends";
 import { barItems, topExtras, type BarItem, type TopExtras } from "../view/hudItems";
+import { monthsText } from "../view/months";
 
 // The top of the Godot viewer's screen, as the web's (view/hudItems.ts): the resource bar's items,
 // each with its tooltip and the lines of its two-day sparkline, and the drill, storm and supply drop.
@@ -14,10 +15,10 @@ export interface HudMessage {
   officeWaiting: number;
 }
 
-/** "Last 2 days", or "Last 5 hours" early on, for a span of ticks. */
+/** "Last 2 months", or "Last 5 hours" early on, for a span of ticks. */
 function spanText(ticks: number): string {
   const hours = (ticks * 24) / config.ticksPerDay;
-  return hours >= 24 ? `Last ${Math.round(hours / 24)} ${Math.round(hours / 24) === 1 ? "day" : "days"}` : `Last ${Math.round(hours)} ${Math.round(hours) === 1 ? "hour" : "hours"}`;
+  return hours >= 24 ? `Last ${monthsText(hours / 24)}` : `Last ${Math.round(hours)} ${Math.round(hours) === 1 ? "hour" : "hours"}`;
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;

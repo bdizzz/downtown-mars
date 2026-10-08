@@ -1,4 +1,5 @@
 import { resourceDef } from "../sim/resources";
+import { monthsText } from "../view/months";
 
 export const resName = (id: string) => resourceDef(id).name;
 
@@ -17,11 +18,11 @@ export function daysLeft(stock: number, ratePerDay: number): number | null {
   return ratePerDay < -0.01 ? stock / -ratePerDay : null;
 }
 
-/** Game hours as "40 min", "5 h" or "2.5 days". */
+/** Game hours as "40 min", "5 h" or "2.5 months" (a game day reads as a month). */
 export function hoursText(h: number): string {
   if (h < 1) return `${Math.max(1, Math.round(h * 60))} min`;
   if (h < 36) return `${Math.round(h * 10) / 10} h`;
-  return `${Math.round((h / 24) * 10) / 10} days`;
+  return monthsText(h / 24, true);
 }
 
 /** 1st, 2nd, 3rd, 4th... */

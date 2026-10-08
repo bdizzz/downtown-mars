@@ -139,7 +139,7 @@ public partial class Charts : Node
         }
         _rows.AddChild(Text(m.GetProperty("title").GetString()!, 18, Title));
         if (m.GetProperty("rates").GetBoolean())
-            _rows.AddChild(Segmented(new[] { ("amount", "Amount"), ("rate", "Change per day") }, _mode, id =>
+            _rows.AddChild(Segmented(new[] { ("amount", "Amount"), ("rate", "Change per month") }, _mode, id =>
             {
                 _mode = id;
                 Ask();
@@ -299,7 +299,7 @@ public partial class Charts : Node
             }
             DrawString(Font, new Vector2(l, Size.Y - 4), _from, HorizontalAlignment.Left, -1, 10, Muted);
             DrawString(Font, new Vector2(l, Size.Y - 4), _to, HorizontalAlignment.Right, r0 - l, 10, Muted);
-            if (_unit == "/day") DrawString(Font, new Vector2(l + 4, t + 10), "per day", HorizontalAlignment.Left, -1, 10, Muted);
+            if (_unit == "/month") DrawString(Font, new Vector2(l + 4, t + 10), "per month", HorizontalAlignment.Left, -1, 10, Muted);
         }
     }
 

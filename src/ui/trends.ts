@@ -9,9 +9,9 @@ import { num } from "./format";
 
 export type Range = "2d" | "10d" | "all";
 export const RANGES: { id: Range; label: string; hint: string }[] = [
-  { id: "2d", label: "2 days", hint: "The last two days, hour by hour" },
-  { id: "10d", label: "10 days", hint: "The last ten days, hour by hour" },
-  { id: "all", label: "All", hint: "The whole game, a day at a time" },
+  { id: "2d", label: "2 months", hint: "The last two months, hour by hour" },
+  { id: "10d", label: "10 months", hint: "The last ten months, hour by hour" },
+  { id: "all", label: "All", hint: "The whole game, a month at a time" },
 ];
 
 export interface Points {
@@ -146,7 +146,7 @@ export const SERIES: SeriesMeta[] = [
     key: "power:flow",
     label: "Power",
     group: "Power",
-    unit: "/day",
+    unit: "/month",
     lines: [
       { id: "powerMade", label: "Made", color: cat("power") },
       { id: "powerUsed", label: "Used", color: "#e89a7a" },

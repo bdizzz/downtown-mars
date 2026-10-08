@@ -86,6 +86,6 @@ export function waterNote(flows: Flows): string | null {
   const spilled = flows.grayWater?.out[LABELS.lost] ?? 0;
   let note = `${Math.round(share * 100)}% of the clean water used comes back from recycling.`;
   if (recycled === 0) note += " Build a water recycler to close the loop.";
-  else if (spilled >= MIN_FLOW) note += ` ${Math.round(spilled)} gray water a day overflows: another recycler, or a tank set to hold gray water.`;
+  else if (spilled >= MIN_FLOW) note += ` ${Math.round(spilled)} gray water a month overflows: another recycler, or a tank set to hold gray water.`;
   return note;
 }

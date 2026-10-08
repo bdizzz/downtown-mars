@@ -111,7 +111,7 @@ public partial class Choices : Node
     string Left(int ticks)
     {
         var h = (float)ticks / _ticksPerDay * 24;
-        return h >= 24 ? $"{h / 24:0.0} days" : $"{Math.Max(1, Mathf.RoundToInt(h))} h";
+        return h >= 24 ? Months.Span(h / 24) : $"{Math.Max(1, Mathf.RoundToInt(h))} h";
     }
 
     /// <summary>The snapshot's pending events: a card each (rebuilt when they or their choices change; the time left ticks down).</summary>

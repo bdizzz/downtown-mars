@@ -5,6 +5,7 @@ import { config } from "../sim/config";
 import { serialize, summarize, type SaveSummary } from "../sim/save";
 import { gameTime } from "../sim/clock";
 import type { World } from "../sim/world";
+import { monthLabel } from "../view/months";
 
 // Saves for the Godot viewer, as the web game keeps them (ui/saves.ts): an autosave (each new game
 // day) and three slots, each { data, summary, savedAt } with `data` the web's own save file, so a
@@ -58,7 +59,7 @@ export function savesList(): SavesMessage {
           const s = JSON.parse(readFileSync(file(slot), "utf8")) as StoredSave;
           const when = new Date(s.savedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
           const holes = (s.summary.holes ?? 1) > 1 ? ` · ${s.summary.holes} holes` : "";
-          text = `Day ${s.summary.day} · ${s.summary.population} colonists${holes} · ${s.summary.floors} floors · ${when}`;
+          text = `${monthLabel(s.summary.day)} · ${s.summary.population} colonists${holes} · ${s.summary.floors} floors · ${when}`;
         }
       } catch {
         text = "Unreadable";

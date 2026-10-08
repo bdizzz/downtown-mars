@@ -1,5 +1,6 @@
 import type { SaveSummary } from "../sim/save";
 import { storageKey } from "./storageKey";
+import { monthLabel } from "../view/months";
 
 // Saves live in the browser's localStorage. Every access can throw (private
 // windows, blocked storage, full quota), so each one is guarded and failure
@@ -49,7 +50,7 @@ export function slotLabel(slot: Slot): string {
 export function describeSave(s: StoredSave): string {
   const when = new Date(s.savedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   const holes = (s.summary.holes ?? 1) > 1 ? ` · ${s.summary.holes} holes` : "";
-  return `Day ${s.summary.day} · ${s.summary.population} colonists${holes} · ${s.summary.floors} floors · ${when}`;
+  return `${monthLabel(s.summary.day)} · ${s.summary.population} colonists${holes} · ${s.summary.floors} floors · ${when}`;
 }
 
 /** Offer a save as a .json download. */
@@ -58,7 +59,7 @@ export function downloadSave(s: StoredSave): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `downtown-mars-day-${s.summary.day}.json`;
+  a.download = `downtown-mars-month-${s.summary.day}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

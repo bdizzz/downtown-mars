@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
 import { topExtras } from "../view/hudItems";
+import { monthLabel } from "../view/months";
+import { SunDial } from "./SunDial";
 
 interface Props {
   snapshot: Snapshot | null;
@@ -87,7 +89,8 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
         )
       )}
       <span className="clock">
-        {t ? `Day ${t.day} · ${pad(t.hour)}:${pad(t.minute)}` : "Connecting…"}
+        {t ? `${monthLabel(t.day)} · ${pad(t.hour)}:${pad(t.minute)}` : "Connecting…"}
+        {t && <SunDial dayFraction={t.dayFraction} />}
       </span>
       <span className={`speeds${pulse("speed")}`}>
         {config.speeds.map((s) => (

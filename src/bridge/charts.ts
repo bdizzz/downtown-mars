@@ -5,6 +5,7 @@ import { gameTime } from "../sim/clock";
 import { num, signed } from "../ui/format";
 import { everHad, perDay, points, RANGES, SERIES, seriesMeta, seriesNum, type Range, type SeriesMeta } from "../ui/trends";
 import { FLOW_TABS, flowColor, river, waterNote } from "../view/flows";
+import { monthLabel } from "../view/months";
 
 // The Godot viewer's charts, worked out as the web's are (ui/trends.ts, ui/TrendsPanel.tsx and
 // view/flows.ts): trends for one series up close, with every series as a sparkline to pick from;
@@ -17,7 +18,7 @@ const SPARK_POINTS = 48;
 
 const when = (tick: number, daily: boolean) => {
   const t = gameTime(tick, config);
-  return daily ? `Day ${t.day}` : `Day ${t.day}, ${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}`;
+  return daily ? monthLabel(t.day) : `${monthLabel(t.day)}, ${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}`;
 };
 
 function linesFor(state: SimState, meta: SeriesMeta, range: Range, mode: Mode) {
@@ -92,7 +93,7 @@ export function trends(state: SimState, key: string, range: Range, mode: Mode): 
       from: ticks.length ? when(ticks[0]!, daily) : "",
       to: ticks.length ? when(ticks.at(-1)!, daily) : "",
       refs: shown === "rate" ? [{ at: 0, label: "steady" }] : (meta.refs ?? []),
-      unit: shown === "rate" ? "/day" : (meta.unit ?? ""),
+      unit: shown === "rate" ? "/month" : (meta.unit ?? ""),
       whole: shown === "amount" && !!meta.whole,
     },
     sum: shown === "amount" ? `${seriesNum(meta, first)} → ${seriesNum(meta, now)}${meta.unit === "%" ? "%" : ""} (${signed(now - first)}) · low ${seriesNum(meta, Math.min(...main))}, high ${seriesNum(meta, Math.max(...main))}` : undefined,
@@ -117,7 +118,7 @@ export function flows(state: SimState, tab: string): FlowsMessage {
     type: "flows",
     tab: current.id,
     tabs: FLOW_TABS.map((t) => ({ id: t.id, name: t.name })),
-    note: `Per game day, averaged over the last ${config.economy.ledgerDays} days. Overflow is what was made or delivered with nowhere to store it.`,
+    note: `Per month, averaged over the last ${config.economy.ledgerDays} months. Overflow is what was made or delivered with nowhere to store it.`,
     ...(water !== null ? { recycled: water } : {}),
     rivers: current.resources.map((r) => {
       const rv = river(r, f[r]);
@@ -126,7 +127,7 @@ export function flows(state: SimState, tab: string): FlowsMessage {
       const empty = !rv.ins.length && !rv.outs.length;
       return {
         name: rv.name,
-        summary: empty ? "" : `in ${num(rv.totalIn)} · out ${num(rv.totalOut)} a day · ${net >= 0 ? "+" : "−"}${num(Math.abs(net))} net · ${num(stock)} stored`,
+        summary: empty ? "" : `in ${num(rv.totalIn)} · out ${num(rv.totalOut)} a month · ${net >= 0 ? "+" : "−"}${num(Math.abs(net))} net · ${num(stock)} stored`,
         ...(empty ? { empty: `Nothing moving yet. In store: ${num(stock)}` } : {}),
         ins: rv.ins.map(([label, value]) => ({ label, value, color: flowColor(label) })),
         outs: rv.outs.map(([label, value]) => ({

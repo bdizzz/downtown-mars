@@ -94,11 +94,11 @@ export function installConsole(api: Api): () => void {
       return run({ type: "consoleEvent", kind }, `Event: ${kind}`);
     },
     storm(days = 1, inDays = 0) {
-      return run({ type: "consoleStorm", days, inDays }, days > 0 ? `Dust storm ${inDays ? `in ${inDays} days` : "now"}, for ${days} day${days === 1 ? "" : "s"}` : "Clear skies");
+      return run({ type: "consoleStorm", days, inDays }, days > 0 ? `Dust storm ${inDays ? `in ${inDays} months` : "now"}, for ${days} month${days === 1 ? "" : "s"}` : "Clear skies");
     },
     async skip(days = 1) {
       const r = await api.advance(days);
-      const msg = r.ok ? `Skipped ${days} day${days === 1 ? "" : "s"}` : `Couldn't: ${r.reason}`;
+      const msg = r.ok ? `Skipped ${days} month${days === 1 ? "" : "s"}` : `Couldn't: ${r.reason}`;
       console.log(msg);
       return msg;
     },

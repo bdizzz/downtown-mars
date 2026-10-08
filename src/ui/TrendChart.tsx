@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { config } from "../sim/config";
 import { gameTime } from "../sim/clock";
+import { monthLabel, monthShort } from "../view/months";
 import { num } from "./format";
 import { niceScale, seriesNum } from "./trends";
 
@@ -39,10 +40,10 @@ export function Sparkline({ lines, width = 120, height = 28 }: { lines: ChartLin
   );
 }
 
-/** "Day 12, 14:00" for a tick, or just "Day 12" for daily points. */
+/** "Month 12, 14:00" for a tick, or just "Month 12" for daily points (a game day reads as a month). */
 export function whenText(tick: number, daily = false): string {
   const t = gameTime(tick, config);
-  return daily ? `Day ${t.day}` : `Day ${t.day}, ${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}`;
+  return daily ? monthLabel(t.day) : `${monthLabel(t.day)}, ${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}`;
 }
 
 interface TrendProps {
@@ -132,7 +133,7 @@ export function TrendChart({ lines, ticks, refs = [], unit = "", daily = false, 
           const g = gameTime(t, config);
           return (
             <text key={t} x={x(t)} y={H - 5} className="axis" textAnchor="middle">
-              {days <= 3 ? `D${g.day} ${String(g.hour).padStart(2, "0")}h` : `D${g.day}`}
+              {days <= 3 ? `${monthShort(g.day)} ${String(g.hour).padStart(2, "0")}h` : monthShort(g.day)}
             </text>
           );
         })}

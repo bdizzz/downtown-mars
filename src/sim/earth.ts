@@ -94,7 +94,7 @@ export function stepEarth(state: SimState, cfg: SimConfig): void {
   if (!e.delayed && nextRandom(state) < ec.delayChance) {
     e.delayed = true;
     e.nextDropTick = state.tick + Math.round(ec.delayDays * cfg.ticksPerDay);
-    postMessage(state, cfg, "Supply drop delayed a day by dust over the landing zone.", "warn");
+    postMessage(state, cfg, "Supply drop delayed a month by dust over the landing zone.", "warn");
     return;
   }
 

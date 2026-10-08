@@ -180,7 +180,7 @@ function afterglowNews(state: SimState, cfg: SimConfig): void {
   const day = since / cfg.ticksPerDay;
   const { days } = cfg.happiness.afterglow;
   if (day === Math.round(days / 2)) {
-    postMessage(state, cfg, `The thrill of landing is wearing off in ${state.name}. In about ${days - day} days the colonists' spirits will rest on the life you've built them.`, "warn");
+    postMessage(state, cfg, `The thrill of landing is wearing off in ${state.name}. In about ${days - day} months the colonists' spirits will rest on the life you've built them.`, "warn");
   } else if (day === days) {
     postMessage(state, cfg, `The afterglow has faded in ${state.name}: from now on, happiness is down to homes, quiet, health and comfort.`, "warn");
   }

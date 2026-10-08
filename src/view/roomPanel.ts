@@ -157,9 +157,9 @@ export function panelRows(s: Snapshot, room: RoomInstance): { before: Row[]; aft
   const st = s.roomStatus[room.id];
   const before: (Row | null)[] = [
     spec.staff > 0 ? { k: "Staff", text: `${st?.staff ?? 0} / ${spec.staff}` } : null,
-    flows("Uses/day", spec.uses),
-    flows("Makes/day", spec.makes),
-    flows("Scrubs/day", spec.scrubs),
+    flows("Uses/month", spec.uses),
+    flows("Makes/month", spec.makes),
+    flows("Scrubs/month", spec.scrubs),
     flows("Stores", spec.stores),
   ];
   const after: (Row | null)[] = [

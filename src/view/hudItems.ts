@@ -2,6 +2,7 @@ import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
 import { isStorable } from "../sim/storage";
 import { daysLeft, num, resName, signed } from "../ui/format";
+import { monthsText } from "./months";
 
 // The top of the screen as data: the resource bar's items (what each shows, whether it's a worry, and
 // its tooltip's title and notes) and the top bar's drill, storm and supply-drop. Shared by the web's
@@ -49,7 +50,7 @@ function stock(id: string, s: Snapshot): BarItem {
     warn: left !== null && left < WARN_DAYS,
     full: full || (none && rate > 0),
     title: resName(id),
-    notes: [`${num(v)} of ${num(cap)} · ${signed(rate)} a day`, ...(left !== null ? [`Runs out in ${left.toFixed(1)} days`] : []), ...(!stored ? [] : none ? ["No storage set aside for it"] : full ? ["Storage full: more is lost"] : [])],
+    notes: [`${num(v)} of ${num(cap)} · ${signed(rate)} a month`, ...(left !== null ? [`Runs out in ${monthsText(left, true)}`] : []), ...(!stored ? [] : none ? ["No storage set aside for it"] : full ? ["Storage full: more is lost"] : [])],
   };
 }
 
@@ -85,7 +86,7 @@ function airItems(s: Snapshot): BarItem[] {
       title: "Air: oxygen",
       notes: [
         o2Band,
-        `${num(s.resources.o2 ?? 0)} O2 in ${num(volume)} m³ of living space · ${signed(o2Rate)} points a day`,
+        `${num(s.resources.o2 ?? 0)} O2 in ${num(volume)} m³ of living space · ${signed(o2Rate)} points a month`,
         "Digging dilutes the air: the same oxygen over more space",
       ],
     },
@@ -145,7 +146,7 @@ export function barItems(s: Snapshot): BarItem[][] {
       title: "Happiness",
       notes: [
         "The average, across every home",
-        ...(glow ? [`+${Math.round(s.afterglow.points)} afterglow: the thrill of arrival, gone in ${Math.ceil(s.afterglow.daysLeft)} days`] : []),
+        ...(glow ? [`+${Math.round(s.afterglow.points)} afterglow: the thrill of arrival, gone in ${monthsText(Math.ceil(s.afterglow.daysLeft))}`] : []),
         ...(s.happiness.productivity < 1 ? [`Rooms at ${Math.round(s.happiness.productivity * 100)}% from low morale`] : []),
         ...(s.happiness.homeless ? [`${s.happiness.homeless} homeless`] : []),
       ],
@@ -167,7 +168,7 @@ export function barItems(s: Snapshot): BarItem[][] {
       warn: used > made + 0.01,
       full: false,
       title: "Power",
-      notes: [`Made ${num(made)}, used ${num(used)} a day`, `Battery ${num(s.resources.power ?? 0)} of ${num(s.capacities.power ?? 0)}`],
+      notes: [`Made ${num(made)}, used ${num(used)} a month`, `Battery ${num(s.resources.power ?? 0)} of ${num(s.capacities.power ?? 0)}`],
     },
   ];
   const air = airItems(s);
@@ -181,10 +182,10 @@ export function barItems(s: Snapshot): BarItem[][] {
   return [colony, life, food, materials];
 }
 
-/** Game-time estimate, e.g. "~1.2 days" or "~5 h". */
+/** Game-time estimate, e.g. "~1.2 months" or "~5 h". */
 export function gameDuration(ticks: number): string {
   const days = ticks / config.ticksPerDay;
-  return days >= 1 ? `~${days.toFixed(1)} days` : `~${Math.ceil(days * 24)} h`;
+  return days >= 1 ? `~${monthsText(days, true)}` : `~${Math.ceil(days * 24)} h`;
 }
 
 export interface TopExtras {
