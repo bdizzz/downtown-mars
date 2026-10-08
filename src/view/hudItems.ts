@@ -12,9 +12,11 @@ import { isIcon, type IconId } from "./icons";
 // Every element has a stable id (HUD_IDS, and "res:<trend>" for the cells), for the tutorial to
 // point at and hide or reveal.
 
-// The stocks a player watches, left to right: life, then food, then materials.
-const LIFE = ["water", "meals"] as const;
-const FOOD = ["rations", "rawFood", "soil"] as const;
+// The stocks a player watches, left to right: life, then food, then materials. Meals and Earth
+// rations share one cell (EATING): what matters is how much there is to eat.
+const LIFE = ["water"] as const;
+const EATING = ["meals", "rations"] as const;
+const FOOD = ["rawFood", "soil"] as const;
 const MATERIALS = ["rock", "brick", "metal", "machinery", "electronics"] as const;
 /** Shown only where there's some: they come from the ground under certain sites. */
 const REGIONAL = ["ore", "silica"] as const;
@@ -34,6 +36,8 @@ const FULL_AT = 0.97;
 const STEADY = 0.05;
 /** At most this many things in the "needs you" slot; the rest wait behind a "+N". */
 export const NEEDS_SHOWN = 3;
+/** The grid's sections, in barItems' order. */
+export const GROUPS = ["Colony", "Life", "Food", "Materials"] as const;
 
 /** The top bar's elements, by their stable ids (the cells are "res:<trend>"). */
 export const HUD_IDS = ["menu", "hole", "clock", "speed", "needs", "drill", "drop", "office", "resources"] as const;
@@ -64,6 +68,13 @@ export interface BarItem {
 
 const dirOf = (rate: number): { dir?: "up" | "down" } => (Math.abs(rate) >= STEADY ? { dir: rate > 0 ? "up" : "down" } : {});
 
+function stockLevel(left: number | null, full: boolean): Level {
+  return left !== null && left < BAD_DAYS ? "bad" : left !== null && left < WARN_DAYS ? "warn" : full ? "full" : "ok";
+}
+
+/** What runs out, said in the "needs you" slot: "Out of water", "Water out in 5 h". */
+const runsOut = (name: string, v: number, left: number) => (v < EMPTY ? `Out of ${name.toLowerCase()}` : `${name} out in ${hoursText(left * 24)}`);
+
 function stock(id: string, s: Snapshot): BarItem {
   const v = s.resources[id] ?? 0;
   const cap = s.capacities[id] ?? 0;
@@ -73,7 +84,7 @@ function stock(id: string, s: Snapshot): BarItem {
   const stored = isStorable(id) && Number.isFinite(cap);
   const full = stored && cap > 0 && v >= cap * FULL_AT && rate > 0;
   const none = stored && cap <= 0;
-  const level: Level = left !== null && left < BAD_DAYS ? "bad" : left !== null && left < WARN_DAYS ? "warn" : full || (none && rate > 0) ? "full" : "ok";
+  const level = stockLevel(left, full || (none && rate > 0));
   return {
     id: `res:${id}`,
     icon: isIcon(id) ? id : "rock",
@@ -82,9 +93,42 @@ function stock(id: string, s: Snapshot): BarItem {
     value: num(v),
     ...dirOf(rate),
     level,
-    ...(left !== null && (level === "warn" || level === "bad") ? { alert: v < EMPTY ? `Out of ${resName(id).toLowerCase()}` : `${resName(id)} out in ${hoursText(left * 24)}` } : {}),
+    ...(left !== null && (level === "warn" || level === "bad") ? { alert: runsOut(resName(id), v, left) } : {}),
     title: resName(id),
     notes: [`${num(v)} of ${num(cap)} · ${signed(rate)} a month`, ...(left !== null ? [v < EMPTY ? "None left" : `Runs out in ${hoursText(left * 24)}`] : []), ...(!stored ? [] : none ? ["No storage set aside for it"] : full ? ["Storage full: more is lost"] : [])],
+  };
+}
+
+/**
+ * Meals and Earth rations as one cell: their sum, and when that runs out; each on its own in the
+ * tooltip. People eat only meals (kitchens cook rations in place of raw food), so meals running out
+ * is trouble whatever the rations say.
+ */
+function eating(s: Snapshot): BarItem {
+  const parts = EATING.map((id) => stock(id, s));
+  const v = EATING.reduce((n, id) => n + (s.resources[id] ?? 0), 0);
+  const rate = EATING.reduce((n, id) => n + (s.rates[id] ?? 0), 0);
+  const left = daysLeft(v, rate);
+  const meals = parts[0]!;
+  const mealsOut = meals.level === "bad";
+  const level = mealsOut ? "bad" : stockLevel(left, parts.some((p) => p.level === "full"));
+  const name = "Meals and rations";
+  const alert = mealsOut && (left === null || left >= BAD_DAYS) ? (meals.alert ?? "Out of meals") + ": cook the rations" : left !== null && (level === "warn" || level === "bad") ? runsOut("Food", v, left) : undefined;
+  return {
+    id: "res:food",
+    icon: "meals",
+    trend: "food",
+    label: name,
+    value: num(v),
+    ...dirOf(rate),
+    level,
+    ...(alert ? { alert } : {}),
+    title: name,
+    notes: [
+      `${num(v)} to eat · ${signed(rate)} a month${left !== null ? ` · ${v < EMPTY ? "none left" : `runs out in ${hoursText(left * 24)}`}` : ""}`,
+      ...parts.map((p) => `${p.label}: ${p.notes[0]}${p.level === "full" ? " (storage full)" : ""}`),
+      "People eat meals; kitchens cook rations into meals when raw food runs short",
+    ],
   };
 }
 
@@ -250,7 +294,7 @@ export function barItems(s: Snapshot): BarItem[][] {
   ];
   const air = airItems(s);
   const life = [air[0]!, ...LIFE.map((id) => stock(id, s)), air[1]!];
-  const food = FOOD.map((id) => stock(id, s));
+  const food = [eating(s), ...FOOD.map((id) => stock(id, s))];
   const materials = [
     ...MATERIALS.map((id) => stock(id, s)),
     ...REGIONAL.filter((id) => (s.resources[id] ?? 0) > 0 || s.holeDeposits.includes(id)).map((id) => stock(id, s)),

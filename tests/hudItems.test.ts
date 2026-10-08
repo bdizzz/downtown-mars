@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { makeSnapshot, type Snapshot } from "../src/sim/snapshot";
 import { createInitialState } from "../src/sim/state";
-import { barItems, HUD_IDS, needs, topExtras } from "../src/view/hudItems";
+import { barItems, GROUPS, HUD_IDS, needs, topExtras } from "../src/view/hudItems";
 import { ICONS, iconSvg, isIcon } from "../src/view/icons";
 
 const fresh = () => makeSnapshot(createInitialState(config), config);
@@ -43,12 +43,35 @@ describe("the top bar (T-089)", () => {
     expect(cell(low, "res:water").dir).toBe("down");
     const out: Snapshot = { ...low, resources: { ...low.resources, water: 0.2 } };
     expect(cell(out, "res:water").level).toBe("bad");
-    const n = needs({ ...out, resources: { ...out.resources, meals: 1 }, rates: { ...out.rates, meals: -1 } });
+    const n = needs({ ...out, resources: { ...out.resources, meals: 1, rations: 0 }, rates: { ...out.rates, meals: -1, rations: 0 } });
     expect(n[0]).toMatchObject({ id: "res:water", level: "bad", open: { trend: "water" } });
-    expect(n.find((x) => x.id === "res:meals")?.level).toBe("warn");
+    expect(n.find((x) => x.id === "res:food")?.level).toBe("warn");
     expect(n[0]!.text).toBe("Water out in 4.8 h");
     expect(needs({ ...out, resources: { ...out.resources, water: 0 } })[0]!.text).toBe("Out of water");
-    expect(n.find((x) => x.id === "res:meals")!.text).toMatch(/^Meals out in 2[34] h$/);
+    expect(n.find((x) => x.id === "res:food")!.text).toMatch(/^Food out in 2[34] h$/);
+  });
+
+  it("meals and rations share one cell in Food: their sum, each in the tooltip", () => {
+    const s = fresh();
+    const both: Snapshot = { ...s, resources: { ...s.resources, meals: 12, rations: 30 }, rates: { ...s.rates, meals: 0, rations: -1 } };
+    const groups = barItems(both);
+    expect(GROUPS).toEqual(["Colony", "Life", "Food", "Materials"]);
+    const ids = groups.map((g) => g.map((i) => i.id));
+    expect(ids[2]!.slice(0, 3)).toEqual(["res:food", "res:rawFood", "res:soil"]);
+    expect(ids.flat()).not.toContain("res:meals");
+    expect(ids.flat()).not.toContain("res:rations");
+    const food = cell(both, "res:food");
+    expect(food.value).toBe("42");
+    expect(food.level).toBe("ok");
+    expect(food.notes.some((n) => n.startsWith("Meals: 12 of"))).toBe(true);
+    expect(food.notes.some((n) => n.startsWith("Earth rations: 30 of"))).toBe(true);
+  });
+
+  it("out of meals is trouble even with rations in store", () => {
+    const s = fresh();
+    const f = cell({ ...s, resources: { ...s.resources, meals: 0, rations: 100 }, rates: { ...s.rates, meals: -1, rations: 0 } }, "res:food");
+    expect(f.level).toBe("bad");
+    expect(f.alert).toBe("Out of meals: cook the rations");
   });
 
   it("power short reads as a worry on battery and trouble once it's flat", () => {

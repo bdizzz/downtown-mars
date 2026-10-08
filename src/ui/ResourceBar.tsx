@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import type { Snapshot } from "../sim/snapshot";
 import { config } from "../sim/config";
 import { signed } from "./format";
-import { barItems, type BarItem } from "../view/hudItems";
+import { barItems, GROUPS, type BarItem } from "../view/hudItems";
 import { Sparkline } from "./TrendChart";
 import { points, seriesMeta } from "./trends";
 import { monthsText } from "../view/months";
@@ -97,13 +97,14 @@ function Item({ s, id, trend, className, title, notes, onTrend, children }: { s:
   );
 }
 
-/** One cell of the grid (view/hudItems.ts): icon, value, a rising or falling arrow, and the afterglow. */
-function BarEntry({ item, s, onTrend }: { item: BarItem; s: Snapshot; onTrend: OnTrend }) {
+/** One cell of the grid (view/hudItems.ts): icon, value, a rising or falling arrow, and the afterglow. Stocks keep
+ *  the arrow's room when steady, so cells don't shuffle; the colony's stats have no arrows. */
+function BarEntry({ item, s, onTrend, arrows }: { item: BarItem; s: Snapshot; onTrend: OnTrend; arrows: boolean }) {
   return (
     <Item s={s} id={item.id} trend={item.trend} className={`res ${item.level}`} title={`${item.title} · ${item.value}`} notes={item.notes} onTrend={onTrend}>
       <Icon id={item.icon} />
       <span className="val">{item.value}</span>
-      {item.sub ? <span className={`rate ${item.sub.tone}`}>{item.sub.text}</span> : item.dir ? <Icon id={item.dir} size={9} className={`dir ${item.dir}`} /> : <span className="dir" />}
+      {item.sub ? <span className={`rate ${item.sub.tone}`}>{item.sub.text}</span> : item.dir ? <Icon id={item.dir} size={9} className={`dir ${item.dir}`} /> : arrows && <span className="dir" />}
     </Item>
   );
 }
@@ -113,9 +114,12 @@ export function ResourceBar({ s, onTrend }: { s: Snapshot | null; onTrend: OnTre
   return (
     <div className="resbar" data-hud="resources">
       {barItems(s).map((group, i) => (
-        <span key={i} className="group">
+        <span key={i} className="group" data-hud={`group:${GROUPS[i]!.toLowerCase()}`} role="group" aria-label={GROUPS[i]}>
+          <span className="group-label" aria-hidden="true">
+            {GROUPS[i]}
+          </span>
           {group.map((item) => (
-            <BarEntry key={item.id} item={item} s={s} onTrend={onTrend} />
+            <BarEntry key={item.id} item={item} s={s} onTrend={onTrend} arrows={i > 0} />
           ))}
         </span>
       ))}

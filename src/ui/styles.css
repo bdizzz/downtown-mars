@@ -632,8 +632,10 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 @media (max-width: 760px) {
   .hud { gap: 6px 8px; padding: 5px 8px; }
   /* The cells in one grid that wraps, groups and all; the office keeps only its icon. */
-  .resbar { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 1px 2px; padding: 2px 6px; font-size: 12px; }
-  .resbar .group + .group > .res:first-child { margin-left: 0; box-shadow: none; }
+  /* A section to a row, its label in a fixed column so the rows line up. */
+  .resbar { flex-direction: column; flex-wrap: nowrap; gap: 2px; padding: 3px 6px; font-size: 12px; }
+  .group-label { width: 64px; box-sizing: border-box; padding: 0 5px; font-size: 8.5px; }
+  .res { min-width: 54px; }
   .res .ico svg { width: 14px; height: 14px; }
   .office-btn .office-label { display: none; }
   .clock { font-size: 13px; }
@@ -721,16 +723,24 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 }
 .office-btn.waiting { border-color: var(--accent); background: var(--accent); color: #1a0f0d; font-weight: 600; }
 .office-btn .badge { background: #1a0f0d; color: var(--accent); border-radius: 8px; padding: 0 5px; font-size: 11px; line-height: 15px; }
-/* One flowing grid of cells, each at least a fixed width so numbers don't shuffle their neighbours;
-   a hairline before each group after the first. */
+/* The grid's sections (colony, life, food, materials), each its own panel with a small label, so
+   you find the section first and then the cell; cells at least a fixed width so numbers don't
+   shuffle their neighbours. */
 .resbar {
-  display: flex; flex-wrap: wrap; gap: 2px 1px; padding: 3px 10px;
+  display: flex; flex-wrap: wrap; gap: 3px 6px; padding: 3px 8px;
   background: #22130f; border-bottom: 1px solid #000; font-size: 13px; min-height: 22px;
 }
-.resbar .group { display: contents; }
-.resbar .group + .group > .res:first-child { margin-left: 7px; box-shadow: -5px 0 0 -4px #ffffff24; }
+.resbar .group {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 1px; padding: 1px 3px 1px 0;
+  background: #ffffff08; border: 1px solid #ffffff1c; border-radius: 5px;
+}
+.group-label {
+  align-self: stretch; display: flex; align-items: center; padding: 0 5px; margin-right: 1px;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+  background: #ffffff0a; border-right: 1px solid #ffffff1c; border-radius: 4px 0 0 4px;
+}
 .res {
-  display: inline-flex; align-items: center; gap: 3px; padding: 1px 3px; white-space: nowrap; min-width: 50px; box-sizing: border-box;
+  display: inline-flex; align-items: center; gap: 3px; padding: 1px 3px; white-space: nowrap; min-width: 46px; box-sizing: border-box;
   border: 1px solid transparent; border-radius: 3px; font-variant-numeric: tabular-nums; cursor: pointer;
 }
 .res .ico { color: var(--muted); }

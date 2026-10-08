@@ -1,7 +1,7 @@
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
 import { points, seriesMeta } from "../ui/trends";
-import { barItems, needs, topExtras, type BarItem, type Need, type TopExtras } from "../view/hudItems";
+import { barItems, GROUPS, needs, topExtras, type BarItem, type Need, type TopExtras } from "../view/hudItems";
 import { ICONS, iconSvg, type IconId } from "../view/icons";
 import { monthsText } from "../view/months";
 
@@ -11,6 +11,8 @@ import { monthsText } from "../view/months";
 
 export interface HudMessage {
   type: "hud";
+  /** The sections' names, in the groups' order. */
+  groupNames: readonly string[];
   groups: (BarItem & { spark: { label: string; color: string; dashed: boolean; values: number[] }[]; span: string })[][];
   extras: TopExtras;
   /** What needs you first, trouble first. */
@@ -32,6 +34,7 @@ export function hudMessage(s: Snapshot): HudMessage {
   const groups = barItems(s);
   return {
     type: "hud",
+    groupNames: GROUPS,
     groups: groups.map((group) =>
       group.map((item) => {
         const meta = seriesMeta(item.trend);

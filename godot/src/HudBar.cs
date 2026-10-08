@@ -27,8 +27,8 @@ public partial class HudBar : HFlowContainer
     /// <summary>Groups wrap onto another line when the window's too narrow, as the web's.</summary>
     public HudBar()
     {
-        AddThemeConstantOverride("h_separation", 14);
-        AddThemeConstantOverride("v_separation", 2);
+        AddThemeConstantOverride("h_separation", 8);
+        AddThemeConstantOverride("v_separation", 3);
     }
 
     /// <summary>The bridge's "hud" message: the grid's groups of cells.</summary>
@@ -45,11 +45,23 @@ public partial class HudBar : HFlowContainer
                 c.QueueFree();
             }
             _items.Clear();
-            foreach (var g in groups)
+            var names = msg.TryGetProperty("groupNames", out var gn) ? gn.EnumerateArray().Select(n => n.GetString() ?? "").ToArray() : Array.Empty<string>();
+            for (var gi = 0; gi < groups.Length; gi++)
             {
+                var g = groups[gi];
+                var name = gi < names.Length ? names[gi] : "";
+                // Each section its own panel with a small label, as the web's: the section first, then the cell.
+                var panel = new PanelContainer { Name = $"group_{name.ToLowerInvariant()}" };
+                panel.AddThemeStyleboxOverride("panel", Section());
+                AddChild(panel);
                 var box = new HBoxContainer();
-                box.AddThemeConstantOverride("separation", 2);
-                AddChild(box);
+                box.AddThemeConstantOverride("separation", 1);
+                panel.AddChild(box);
+                var label = new Label { Text = name.ToUpperInvariant(), VerticalAlignment = VerticalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
+                label.AddThemeFontSizeOverride("font_size", 10);
+                label.AddThemeColorOverride("font_color", Muted);
+                label.AddThemeStyleboxOverride("normal", SectionLabel());
+                box.AddChild(label);
                 foreach (var i in g)
                 {
                     var id = i.GetProperty("id").GetString()!;
@@ -63,6 +75,23 @@ public partial class HudBar : HFlowContainer
         foreach (var g in groups)
             foreach (var i in g)
                 _items[i.GetProperty("id").GetString()!].Fill(i);
+    }
+
+    /// <summary>A section's panel: a faint fill and outline round its cells.</summary>
+    static StyleBoxFlat Section()
+    {
+        var box = new StyleBoxFlat { BgColor = new Color(1, 1, 1, 0.03f), BorderColor = new Color(1, 1, 1, 0.11f), ContentMarginRight = 3, ContentMarginTop = 1, ContentMarginBottom = 1 };
+        box.SetBorderWidthAll(1);
+        box.SetCornerRadiusAll(5);
+        return box;
+    }
+
+    /// <summary>A section's label: a darker tab at the panel's left, ruled off from its cells.</summary>
+    static StyleBoxFlat SectionLabel()
+    {
+        var box = new StyleBoxFlat { BgColor = new Color(1, 1, 1, 0.04f), BorderColor = new Color(1, 1, 1, 0.11f), BorderWidthRight = 1, ContentMarginLeft = 7, ContentMarginRight = 7 };
+        box.CornerRadiusTopLeft = box.CornerRadiusBottomLeft = 4;
+        return box;
     }
 
     /// <summary>A cell's frame for its level: none, a thin amber frame, a thick red filled one, or a blue underline.</summary>
