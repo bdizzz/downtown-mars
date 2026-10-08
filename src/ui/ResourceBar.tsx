@@ -6,16 +6,17 @@ import { signed } from "./format";
 import { barItems, type BarItem } from "../view/hudItems";
 import { Sparkline } from "./TrendChart";
 import { points, seriesMeta } from "./trends";
+import { monthsText } from "../view/months";
 
 // The stocks a player watches (view/hudItems.ts). Pointing at one shows what it means and a sparkline
 // of its last two days; clicking it opens Charts → Trends on it.
 
 type OnTrend = (key: string) => void;
 
-/** "Last 2 days", or "Last 5 hours" early on, for a span of ticks. */
+/** "Last 2 months", or "Last 5 hours" early on, for a span of ticks. */
 function spanText(ticks: number): string {
   const hours = (ticks * 24) / config.ticksPerDay;
-  return hours >= 24 ? `Last ${Math.round(hours / 24)} ${Math.round(hours / 24) === 1 ? "day" : "days"}` : `Last ${Math.round(hours)} ${Math.round(hours) === 1 ? "hour" : "hours"}`;
+  return hours >= 24 ? `Last ${monthsText(hours / 24)}` : `Last ${Math.round(hours)} ${Math.round(hours) === 1 ? "hour" : "hours"}`;
 }
 
 /** The tooltip: a title, notes, and the series' last two days. */

@@ -113,7 +113,7 @@ export function foundHole(world: World, cfg: SimConfig, fromHoleId: number, site
   convoy.people = takeAdults(from, k.volunteers);
   world.convoys.push(convoy);
   const days = ((convoy.arriveTick - convoy.departTick) / cfg.ticksPerDay).toFixed(1);
-  postMessage(from, cfg, `${k.volunteers} volunteers set off to found ${name}: ${days} days by convoy.`, "good");
+  postMessage(from, cfg, `${k.volunteers} volunteers set off to found ${name}: ${days} months by convoy.`, "good");
   return { ok: true };
 }
 

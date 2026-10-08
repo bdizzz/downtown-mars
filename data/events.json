@@ -41,12 +41,12 @@
     {
       "id": "celebration",
       "title": "Time to celebrate: {milestone}",
-      "text": "{milestone}! People want to mark it. A festival would cost a feast and a day of slow work, but it's the kind of thing people remember.",
+      "text": "{milestone}! People want to mark it. A festival would cost a feast and a month of slow work, but it's the kind of thing people remember.",
       "patienceDays": 1,
       "ignored": { "mood": { "amount": 1, "days": 1 }, "message": "{milestone}: marked with a quiet toast or two." },
       "choices": [
-        { "id": "festival", "label": "Throw a festival", "hint": "A feast (30 meals, or rations), lanterns in the shaft, and a day of slow work (80%). Everyone's lifted (+8 happiness, easing off over two days).", "festival": true, "message": "A festival for {milestone}! Lanterns are going up the shaft." },
-        { "id": "toast", "label": "Raise a toast", "hint": "A small lift (+2 happiness for a couple of days).", "mood": { "amount": 2, "days": 2 }, "message": "A toast to {milestone}." }
+        { "id": "festival", "label": "Throw a festival", "hint": "A feast (30 meals, or rations), lanterns in the shaft, and a month of slow work (80%). Everyone's lifted (+8 happiness, easing off over two months).", "festival": true, "message": "A festival for {milestone}! Lanterns are going up the shaft." },
+        { "id": "toast", "label": "Raise a toast", "hint": "A small lift (+2 happiness for a couple of months).", "mood": { "amount": 2, "days": 2 }, "message": "A toast to {milestone}." }
       ]
     },
     {
@@ -57,7 +57,7 @@
       "ignored": { "mood": { "amount": -5, "days": 4 }, "message": "The {ship} went quiet. Nobody answered her, and people know it." },
       "choices": [
         { "id": "rescue", "label": "Bring them down", "hint": "30 oxygen and 30 water. Her six crew join us, with their salvage (15 electronics, 10 machinery); their pilot becomes a notable.", "needsPad": true, "resources": { "o2": -30, "water": -30, "electronics": 15, "machinery": 10 }, "colonists": 6, "notableRole": "belt pilot", "landing": true, "mood": { "amount": 4, "days": 4 }, "message": "The {ship} came down on our pad: six belters, safe, and their salvage. Everyone turned out to see." },
-        { "id": "supplies", "label": "Send supplies up", "hint": "60 oxygen and 60 water. They limp on, and the belt doesn't forget: a thank-you drop in 10–15 days.", "resources": { "o2": -60, "water": -60 }, "mood": { "amount": 2, "days": 3 }, "followUp": { "days": [10, 15], "effect": { "resources": { "electronics": 20, "machinery": 15 }, "landing": true, "message": "A drop from the belt, with thanks from the crew we helped: 20 electronics, 15 machinery." } }, "message": "Supplies went up to the {ship}. She limps on toward Ceres." },
+        { "id": "supplies", "label": "Send supplies up", "hint": "60 oxygen and 60 water. They limp on, and the belt doesn't forget: a thank-you drop in 10–15 months.", "resources": { "o2": -60, "water": -60 }, "mood": { "amount": 2, "days": 3 }, "followUp": { "days": [10, 15], "effect": { "resources": { "electronics": 20, "machinery": 15 }, "landing": true, "message": "A drop from the belt, with thanks from the crew we helped: 20 electronics, 15 machinery." } }, "message": "Supplies went up to the {ship}. She limps on toward Ceres." },
         { "id": "ignore", "label": "Ignore the call", "hint": "Keep what we have. People won't like it (−5 happiness).", "mood": { "amount": -5, "days": 4 }, "message": "We let the {ship} go. People are quiet about it." }
       ]
     },
@@ -69,7 +69,7 @@
       "ignored": { "message": "Nobody decided about the aquifer on floor {floor}: the drill crew sealed it and carried on." },
       "choices": [
         { "id": "tap", "label": "Tap it", "hint": "The hole gains the aquifer (deep well pumps), and 150 water now.", "deposit": "aquifer", "resources": { "water": 150 }, "message": "The aquifer on floor {floor} is tapped: deep well pumps can draw on it." },
-        { "id": "seal", "label": "Seal it pristine", "hint": "Leave Mars's water untouched. Everyone's a little proud (+4 happiness for a few days).", "mood": { "amount": 4, "days": 3 }, "message": "The aquifer on floor {floor} is sealed, untouched. People are proud of that." }
+        { "id": "seal", "label": "Seal it pristine", "hint": "Leave Mars's water untouched. Everyone's a little proud (+4 happiness for a few months).", "mood": { "amount": 4, "days": 3 }, "message": "The aquifer on floor {floor} is sealed, untouched. People are proud of that." }
       ]
     },
     {
@@ -110,10 +110,10 @@
       "title": "Gas in the bore",
       "text": "Floor {floor}: the drill has opened a pocket of gas. The sensors are complaining and the crew wants to know how careful to be.",
       "patienceDays": 1,
-      "ignored": { "holdDrillDays": 1, "message": "With nobody deciding, the drill crew vented the gas slowly: a day lost." },
+      "ignored": { "holdDrillDays": 1, "message": "With nobody deciding, the drill crew vented the gas slowly: a month lost." },
       "choices": [
-        { "id": "vent", "label": "Vent it slowly", "hint": "Safe, but the drill loses a day.", "holdDrillDays": 1, "message": "The gas on floor {floor} is vented slowly: the drill is back at it tomorrow." },
-        { "id": "push", "label": "Push through", "hint": "Keep drilling: the rooms on the floor above lose 20 condition to the fumes, and people are rattled (−4 happiness for a few days).", "conditionFloorAbove": 20, "mood": { "amount": -4, "days": 3 }, "message": "The drill pushed through the gas on floor {floor}. The floor above smells of it." }
+        { "id": "vent", "label": "Vent it slowly", "hint": "Safe, but the drill loses a month.", "holdDrillDays": 1, "message": "The gas on floor {floor} is vented slowly: the drill is back at it next month." },
+        { "id": "push", "label": "Push through", "hint": "Keep drilling: the rooms on the floor above lose 20 condition to the fumes, and people are rattled (−4 happiness for a few months).", "conditionFloorAbove": 20, "mood": { "amount": -4, "days": 3 }, "message": "The drill pushed through the gas on floor {floor}. The floor above smells of it." }
       ]
     },
     {
@@ -123,7 +123,7 @@
       "patienceDays": 2,
       "ignored": { "mood": { "amount": -5, "days": 3 }, "message": "Nobody stopped the drill for the microfossils, and the scientists are sulking." },
       "choices": [
-        { "id": "study", "label": "Stop and study them", "hint": "The drill stops for 2 days. Everyone's thrilled (+10 happiness), and it's worth a celebration.", "holdDrillDays": 2, "mood": { "amount": 10, "days": 5 }, "celebrate": "microfossils", "message": "Life on Mars, once: the microfossils from floor {floor} are being studied." },
+        { "id": "study", "label": "Stop and study them", "hint": "The drill stops for 2 months. Everyone's thrilled (+10 happiness), and it's worth a celebration.", "holdDrillDays": 2, "mood": { "amount": 10, "days": 5 }, "celebrate": "microfossils", "message": "Life on Mars, once: the microfossils from floor {floor} are being studied." },
         { "id": "dig", "label": "Dig on", "hint": "No time lost; the scientists sulk (−5 happiness).", "mood": { "amount": -5, "days": 3 }, "message": "The drill digs on past the microfossils. The scientists are not pleased." }
       ]
     }

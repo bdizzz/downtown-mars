@@ -1,6 +1,7 @@
 import type { SimCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
+import { monthsText } from "../view/months";
 
 // Events waiting for an answer (PLAN-M14): a card each, over the view at the
 // top left, with its choices and how long you have. The game keeps running.
@@ -18,7 +19,7 @@ const ICON: Record<string, string> = {
 
 const left = (ticks: number) => {
   const h = (ticks / config.ticksPerDay) * 24;
-  return h >= 24 ? `${(h / 24).toFixed(1)} days` : `${Math.max(1, Math.round(h))} h`;
+  return h >= 24 ? monthsText(h / 24, true) : `${Math.max(1, Math.round(h))} h`;
 };
 
 export function EventCards({ s, onCommand }: { s: Snapshot | null; onCommand: (cmd: SimCommand) => void }) {

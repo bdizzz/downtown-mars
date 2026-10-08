@@ -3,6 +3,7 @@ import { config } from "../sim/config";
 import { ordinanceDefs } from "../sim/ordinances";
 import type { Snapshot } from "../sim/snapshot";
 import { visitDef } from "../sim/visits";
+import { monthsText } from "../view/months";
 
 interface Props {
   s: Snapshot;
@@ -12,7 +13,7 @@ interface Props {
 
 const days = (ticks: number) => {
   const d = ticks / config.ticksPerDay;
-  return d >= 1 ? `${d.toFixed(1)} days` : `${Math.max(1, Math.round(d * 24))} h`;
+  return d >= 1 ? monthsText(d, true) : `${Math.max(1, Math.round(d * 24))} h`;
 };
 
 const initials = (name: string) =>

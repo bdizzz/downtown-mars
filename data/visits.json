@@ -6,14 +6,14 @@
     {
       "id": "noise_complaint",
       "title": "Noise complaint",
-      "text": "{name} is here about the {home} on floor {floor}. \"Nobody in our block has slept properly in days. Something has to give.\"",
+      "text": "{name} is here about the {home} on floor {floor}. \"Nobody in our block has slept properly for months. Something has to give.\"",
       "cooldownDays": 3,
       "patienceDays": 2,
       "ignored": { "loyalty": -10, "homeHappiness": -5, "message": "{name} gave up waiting. The {home} is grumbling about the noise." },
       "choices": [
         {
           "id": "promise",
-          "label": "I'll fix it within 3 days",
+          "label": "I'll fix it within 3 months",
           "hint": "Move the noise away or buffer it with a corridor.",
           "loyalty": 5,
           "promise": {
@@ -52,7 +52,7 @@
       "choices": [
         {
           "id": "promise",
-          "label": "You'll have one within 5 days",
+          "label": "You'll have one within 5 months",
           "hint": "Build a clinic (needs brick, metal and electronics).",
           "loyalty": 5,
           "promise": {

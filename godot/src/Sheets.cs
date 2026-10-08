@@ -153,7 +153,7 @@ public partial class HelpSheet : Sheet
 public partial class SettingsSheet : Sheet
 {
     static readonly float[] Scales = { 0.85f, 1, 1.15f, 1.3f };
-    readonly CheckBox _autosave = new() { Text = "Autosave every game day", FocusMode = FocusModeEnum.None };
+    readonly CheckBox _autosave = new() { Text = "Autosave every month", FocusMode = FocusModeEnum.None };
     readonly CheckBox _colorBlind = new() { Text = "Colour-blind friendly overlays (orange and blue)", FocusMode = FocusModeEnum.None };
     readonly CheckBox _tutorial = new() { Text = "Show the tutorial", FocusMode = FocusModeEnum.None };
     readonly OptionButton _scale = new() { FocusMode = FocusModeEnum.None };

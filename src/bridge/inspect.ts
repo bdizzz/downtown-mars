@@ -115,7 +115,7 @@ export function inspect(state: SimState, s: Snapshot, roomId: number | null): In
   }
   if (!room.connected && room.at.kind === "ring") msg.connect = { finish: corridors.defaultFinish, name: finishDef(corridors.defaultFinish).name.toLowerCase() };
   if (def.stagesSeedKit) msg.kit = { ...seedKitInfo(s), gathering: s.kit.gathering };
-  if (def.growsCrops) msg.crop = { value: room.crop ?? "", options: cropDefs.map((c) => ({ id: c.id, label: `${c.name} (${c.group}, ${c.yield}/day)` })) };
+  if (def.growsCrops) msg.crop = { value: room.crop ?? "", options: cropDefs.map((c) => ({ id: c.id, label: `${c.name} (${c.group}, ${c.yield}/month)` })) };
   const held = holding(room);
   if (held) msg.holds = { value: held, options: (def.holds ?? []).map((id) => ({ id, label: resName(id) })) };
   if (spec.staff > 0) {

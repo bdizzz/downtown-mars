@@ -66,6 +66,7 @@ public partial class Live : Node3D
     // HUD.
     CanvasLayer _hud = null!;
     Label _title = null!, _clock = null!, _status = null!, _waiting = null!;
+    SunDial _sunDial = null!;
     PanelContainer _topPanel = null!;
     Tutorial _tutorial = null!;
     Welcome _welcome = null!;
@@ -578,7 +579,8 @@ public partial class Live : Node3D
         }
         var t = s.GetProperty("time");
         _title.Text = s.GetProperty("holeName").GetString();
-        _clock.Text = $"Day {t.GetProperty("day").GetInt32()} · {t.GetProperty("hour").GetInt32():00}:{t.GetProperty("minute").GetInt32():00}";
+        _clock.Text = $"{Months.Label(t.GetProperty("day").GetInt32())} · {t.GetProperty("hour").GetInt32():00}:{t.GetProperty("minute").GetInt32():00}";
+        _sunDial.DayFraction = t.GetProperty("dayFraction").GetSingle();
         for (var i = 0; i < Speeds.Length; i++) _speedButtons[i].ButtonPressed = Speeds[i] == _speed;
         _choices.SetEvents(s, TicksPerDay);
         _rig3d.Place(s.GetProperty("drill"), _shape.Floors, Cut);
@@ -1470,6 +1472,8 @@ public partial class Live : Node3D
         bar.AddChild(_holePicker);
         _clock = Text("", 18, new Color("#f3e6d8"));
         bar.AddChild(_clock);
+        _sunDial = new SunDial();
+        bar.AddChild(_sunDial);
         var speeds = new HBoxContainer();
         bar.AddChild(speeds);
         foreach (var sp in Speeds)

@@ -47,7 +47,7 @@ export function stepWeather(state: SimState, cfg: SimConfig): void {
   const end = start + Math.round(between(w.lastsDays, roll(state, day, 2)) * tpd);
   ws.storm = { start, end };
   const days = Math.round((start - state.tick) / tpd);
-  postMessage(state, cfg, `Dust storm forecast in about ${days} days: charge the batteries, and expect little from the solar arrays while it blows.`, "warn");
+  postMessage(state, cfg, `Dust storm forecast in about ${days} ${days === 1 ? "month" : "months"}: charge the batteries, and expect little from the solar arrays while it blows.`, "warn");
 }
 
 /** How hard the storm is blowing now: 0 (clear) to 1, building and clearing over the ramp. */

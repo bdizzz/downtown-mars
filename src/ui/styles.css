@@ -16,7 +16,16 @@ html, body, #root { margin: 0; height: 100%; }
   border-bottom: 1px solid #000;
 }
 .title { font-weight: 700; letter-spacing: 0.02em; }
-.clock { font-variant-numeric: tabular-nums; min-width: 120px; }
+.clock { font-variant-numeric: tabular-nums; min-width: 150px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+/* The sun/moon dial beside the clock: a disc turning once a sol behind a half-round window. */
+.sundial { flex-shrink: 0; overflow: visible; }
+.sundial .sky.day { fill: #d98a5c; }
+.sundial .sky.night { fill: #2b2140; }
+.sundial .sun { fill: #ffe7a8; }
+.sundial .moon { fill: #e8e2d4; }
+.sundial .moon-cut.day { fill: #d98a5c; }
+.sundial .moon-cut.night { fill: #2b2140; }
+.sundial .horizon { stroke: var(--muted); stroke-width: 1; }
 .tick { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
 .speeds { display: flex; gap: 4px; }
 .speeds button {

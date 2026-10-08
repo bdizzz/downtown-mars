@@ -77,7 +77,7 @@ function River({ resource, flows, stock }: { resource: string; flows: Flows[stri
         {name}
         <span className="k">
           {" "}
-          · in {num(totalIn)} · out {num(totalOut)} a day · {net >= 0 ? "+" : "−"}
+          · in {num(totalIn)} · out {num(totalOut)} a month · {net >= 0 ? "+" : "−"}
           {num(Math.abs(net))} net · {num(stock)} stored
         </span>
       </h4>

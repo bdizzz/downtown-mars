@@ -49,7 +49,7 @@ export function SettingsView({ settings, update, onBack }: Props) {
       </label>
       <label>
         <input type="checkbox" checked={settings.autosave} onChange={(e) => update({ autosave: e.target.checked })} />
-        <span>Autosave every game day</span>
+        <span>Autosave every month</span>
       </label>
       <label>
         <input type="checkbox" checked={settings.floorHoverPreview} onChange={(e) => update({ floorHoverPreview: e.target.checked })} />

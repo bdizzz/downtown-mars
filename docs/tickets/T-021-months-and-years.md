@@ -1,7 +1,7 @@
 ---
 id: T-021
 title: Call a game day a month, and show long spans as years and months
-status: open
+status: done
 size: M
 area: ui, data
 touches: [src/ui/Hud.tsx, src/ui/TrendChart.tsx, src/ui/saves.ts, src/view/hudItems.ts, src/view/roomPanel.ts, src/view/colony.ts, src/ui/, data/events.json, data/tutorial.json, src/sim/people.ts, godot/src/]
@@ -34,3 +34,5 @@ One shared formatter (in `src/view/`, so the bridge and Godot get it) for a game
 - 2026-10-05 01:11 opened from N-0016, N-0017
 - 2026-10-05 01:16 clock question answered: keep hh:mm, add a sun/moon dial
 - 2026-10-05 01:17 questions answered
+- 2026-10-08 01:32 building on t-021-months-and-years
+- 2026-10-08 01:40 built

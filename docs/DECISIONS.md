@@ -191,6 +191,11 @@ See `PLAN-M16.md`.
 - **Step 1 balance (Bryon: "fast top-up, softer bands"):** the planned density makes a dug cell 168 O2, so the maker must be fast: life support tops up at 300 O2 a day until the electrolyzer replaces it, spending water only on what it makes; health bands low below 18%, very low below 15%. T-031 rebalances the loop as a whole.
 - **Holes start with their air made**, new and founded; old saves' air starts over at the target (save v21).
 
+## Decided for time (Oct 5, T-021)
+
+- **A game day is shown as a month.** Labels only: the sim still counts days (`ticksPerDay`, `day` in saves and `data/*.json` fields), and one month is one sol of light and dark. Rates, durations and ages read per month; the hh:mm clock stays, with a sun/moon dial beside it.
+- **Long spans read as time elapsed, like an age:** 12 months a year, so month 45 is "Year 3, month 9" and month 12 is "Year 1" (not a calendar, where 45 would be year 4). One formatter for both faces: `src/view/months.ts` (Godot's clock mirrors it in `Months.cs`).
+
 ## Still open
 
 Deliberately not decided yet:

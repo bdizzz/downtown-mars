@@ -2,6 +2,7 @@ import { config } from "../sim/config";
 import { ordinanceDefs, ordinanceSlots } from "../sim/ordinances";
 import type { SimState } from "../sim/state";
 import { visitDef } from "../sim/visits";
+import { monthsText } from "../view/months";
 
 // The office for the Godot viewer, as the web's (ui/Office.tsx) lays it out: who's waiting, with
 // what they want and the answers you can give; promises to keep; ordinances, enacted or not, with
@@ -9,7 +10,7 @@ import { visitDef } from "../sim/visits";
 
 const days = (ticks: number) => {
   const d = ticks / config.ticksPerDay;
-  return d >= 1 ? `${d.toFixed(1)} days` : `${Math.max(1, Math.round(d * 24))} h`;
+  return d >= 1 ? monthsText(d, true) : `${Math.max(1, Math.round(d * 24))} h`;
 };
 
 const PROMISE_TEXT: Record<string, string> = {

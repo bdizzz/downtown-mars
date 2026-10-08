@@ -2,6 +2,7 @@ import { degreesApart, depositsAt, distanceKm, nearestFeature, wrapLon, type Dep
 import { network } from "../sim/network";
 import type { RouteView, Snapshot } from "../sim/snapshot";
 import { num } from "../ui/format";
+import { monthsText } from "./months";
 
 // The network as the map and the network panel show it, shared by the web (ui/MapScreen.tsx,
 // ui/NetworkPanel.tsx) and the Godot viewer (src/bridge/network.ts): deposits' look, each hole's
@@ -71,7 +72,7 @@ export function siteReport(s: Snapshot, site: { lat: number; lon: number }, elev
       .filter((h) => h.site)
       .map((h) => {
         const km = distanceKm(h.site!, site);
-        return `${h.name}: ${Math.round(km).toLocaleString()} km · ${(km / network.roverKmPerDay).toFixed(1)} days by rover`;
+        return `${h.name}: ${Math.round(km).toLocaleString()} km · ${monthsText(km / network.roverKmPerDay, true)} by rover`;
       }),
     checks,
     ready: checks.every(([ok]) => ok),

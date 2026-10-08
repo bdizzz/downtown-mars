@@ -26,9 +26,11 @@ Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists
 
 **The tutorial:** your deputy's card (bottom right) gives one goal at a time, with a hint and a dot per goal. The goals can be met in any order: **‹** and **›**, or a dot, show another step, and done ones show ticked. The card stays on the step you picked until you meet it, then moves on to the next one not done yet. – shrinks it; **Hide tutorial** puts it away (the menu brings it back).
 
-**The afterglow:** everyone arrives thrilled. For the first 20 days happiness gets a boost (+20 at landing, easing away), so there's time to get air, water and food running and put something by before reality sets in. Newly founded holes get their own. Point at **Happy** to see how much is left.
+**Time:** the clock at the top counts the colony's time in **months**, then years and months (month 45 reads "Year 3, month 9"). Each month passes as one sol of light and dark, with the hour beside it and a little dial where the sun rides over the horizon by day and the moon by night. Rates are per month and people age in months too. At 1× a month takes a real minute.
 
-**Watch the bar at the top:** the air, water, meals and power, with how fast they're changing. Red means it runs out in under two days. Point at anything there for what it means and a sparkline of its last two days; click it to open it in **Charts → Trends**.
+**The afterglow:** everyone arrives thrilled. For the first 20 months happiness gets a boost (+20 at landing, easing away), so there's time to get air, water and food running and put something by before reality sets in. Newly founded holes get their own. Point at **Happy** to see how much is left.
+
+**Watch the bar at the top:** the air, water, meals and power, with how fast they're changing. Red means it runs out in under two months. Point at anything there for what it means and a sparkline of its last two months; click it to open it in **Charts → Trends**.
 
 ## Building
 
@@ -47,7 +49,7 @@ Open **Build** (B), pick a room from its category (or press its key: room keys w
 - Rooms start without windows. The corridor tool's **Windows** mode puts them in, a whole wall at a click, on walls facing the shaft, a corridor or a walk-through room. Hover a wall: the room's half of the corridor along it lights up green where windows can go, with the cost and the comfort they'd give.
 - Windows cost glass (2 per 10 m of wall); the landing kit brings 100. Shift-click takes them out.
 - A home looking out over the shaft gets +1.5 comfort (a wall of glass where no tube runs), +1 behind a tube, less onto a plaza or a corridor, and a little more for each other glazed wall.
-- Glass comes from a **glassworks** (Industry, from the start: a small 2×1 room, 2 staff, rock and power → 3 glass a day).
+- Glass comes from a **glassworks** (Industry, from the start: a small 2×1 room, 2 staff, rock and power → 3 glass a month).
 
 ### The shaft dome
 
@@ -109,7 +111,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 ## Materials, waste and storage
 
 - At 50 colonists a **brickworks** makes brick from rock, so you're not waiting on Earth. At 100, a **recycling center** turns solid waste into metal and brick.
-- **Fiber:** set a farm's crop to **fiber hemp** and it grows fiber (6 a day) instead of food. Give it room in storage; it's shown in the resource bar once you have some.
+- **Fiber:** set a farm's crop to **fiber hemp** and it grows fiber (6 a month) instead of food. Give it room in storage; it's shown in the resource bar once you have some.
 - **Waste storage** holds more solid and organic waste until something uses it.
 - **Storage:** dry goods (food and materials) only keep what storage has room for. Build storerooms, warehouses or depots and choose what each holds in its details panel; the landing pod has some to start. A good shown in amber has no room left, and what arrives is lost.
 
@@ -120,7 +122,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 - People breathe oxygen into CO2, one for one. **Life support** scrubs the CO2 (down to 0.2%, left for the farms) and makes oxygen from water up to **21%**, then stops; plants turn CO2 back into oxygen.
 - **Digging dilutes the air:** a new room spreads the same oxygen over more space, and life support makes the difference from water. That's the cost of growing.
 - Below **18%** oxygen health falls; below **15%**, fast. Above **23.5%** is a fire risk. **CO2 above 1%** hurts health, above 3% fast.
-- A new game starts with its air made (the landing crew sealed the hole), but without a scrubber the CO2 passes 1% in about five days: build life support early.
+- A new game starts with its air made (the landing crew sealed the hole), but without a scrubber the CO2 passes 1% in about five months: build life support early.
 
 **Air quality.** The air also moves where people do, through the corridors, gallery tubes and stairs (not through walls, and not by elevator), and it can go stale or foul locally:
 
@@ -151,13 +153,13 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 
 ## Earth, storms, the office and events
 
-- **Earth** sends supply drops every few days until you can stand on your own.
-- **Dust storms** are forecast a few days ahead (the 🌪 chip at the top counts down), then blow for a day or two, halving what the solar arrays make. Charge your batteries before one hits. In 3D the sky thickens to a murk, grit streams past, and the panels dull over.
+- **Earth** sends supply drops every few months until you can stand on your own.
+- **Dust storms** are forecast a few months ahead (the 🌪 chip at the top counts down), then blow for a month or two, halving what the solar arrays make. Charge your batteries before one hits. In 3D the sky thickens to a murk, grit streams past, and the panels dull over.
 - **The office:** colonists visit with problems. What you promise, they remember.
 - **Events:** things happen, and you choose. A card slides in at the top left with the choices (each with what it costs and does) and how long you have. The game keeps running; if you don't decide, it takes its own course.
-  - **The drill strikes things:** each floor it finishes may break into an aquifer, an ore vein, a silica bed, a lava tube (free space, or rock), a gas pocket (vent it and lose a day, or push through and foul the floor above) or, deep down, microfossils. The rig shudders when it does.
-  - **A belt ship in distress** calls now and then from day 20: bring her down on your pad (her crew join you, with salvage), send supplies up (the belt sends thanks later), or ignore her.
-  - **Milestones** (the first birth; 50, 100 and 200 people; floors 5, 10 and 20; the dome) can be celebrated. A festival costs a feast and a slow day of work, lifts everyone for two days, and strings lights along the galleries with lanterns rising up the shaft; or just raise a toast.
+  - **The drill strikes things:** each floor it finishes may break into an aquifer, an ore vein, a silica bed, a lava tube (free space, or rock), a gas pocket (vent it and lose a month, or push through and foul the floor above) or, deep down, microfossils. The rig shudders when it does.
+  - **A belt ship in distress** calls now and then from month 20: bring her down on your pad (her crew join you, with salvage), send supplies up (the belt sends thanks later), or ignore her.
+  - **Milestones** (the first birth; 50, 100 and 200 people; floors 5, 10 and 20; the dome) can be celebrated. A festival costs a feast and a slow month of work, lifts everyone for two months, and strings lights along the galleries with lanterns rising up the shaft; or just raise a toast.
   - Gains need storage space, like Earth's drops.
 
 ## More holes
@@ -177,7 +179,7 @@ Four buttons at the bottom right, as in SimCity. B, V, M and C open them from an
   - **Flows** draws power, water, air and food as pipes, with dashes running from what makes each to what uses it.
   - **Overlays** show noise, smell, health, comfort, air, happiness and condition.
 - **Map** opens the planet as a globe: drag or scroll sideways to spin it (it coasts to a stop), scroll to zoom, click to pick a site.
-- **Charts** has People, Trends, Flows, Network, Maintenance and the construction queue (its badge counts the jobs). **Trends** shows how everything has been changing: pick a series for a detailed chart over the last 2 days, 10 days or the whole game, as amounts or as change per day, with the lines that matter marked (happiness 50 and 45, oxygen 18% and so on); point along it to read any hour.
+- **Charts** has People, Trends, Flows, Network, Maintenance and the construction queue (its badge counts the jobs). **Trends** shows how everything has been changing: pick a series for a detailed chart over the last 2 months, 10 months or the whole game, as amounts or as change per month, with the lines that matter marked (happiness 50 and 45, oxygen 18% and so on); point along it to read any hour.
 
 The floor picker stays on the right.
 
@@ -260,4 +262,4 @@ Each install opens the build it was installed from, so a PR preview added to the
 
 ## Saving
 
-The game autosaves every game day in your browser. Use the menu to save to a slot, or export a save file to keep it somewhere safe.
+The game autosaves every month in your browser. Use the menu to save to a slot, or export a save file to keep it somewhere safe.

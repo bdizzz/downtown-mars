@@ -71,8 +71,8 @@ export function TrendsPanel({ s, onClose, initial }: { s: Snapshot; onClose: () 
           <button className={mode === "amount" ? "on" : ""} onClick={() => setMode("amount")} aria-pressed={mode === "amount"}>
             Amount
           </button>
-          <button className={mode === "rate" ? "on" : ""} onClick={() => setMode("rate")} aria-pressed={mode === "rate"} title="How fast it was rising or falling, per game day">
-            Change per day
+          <button className={mode === "rate" ? "on" : ""} onClick={() => setMode("rate")} aria-pressed={mode === "rate"} title="How fast it was rising or falling, per month">
+            Change per month
           </button>
         </div>
       )}
@@ -81,7 +81,7 @@ export function TrendsPanel({ s, onClose, initial }: { s: Snapshot; onClose: () 
         ticks={ticks}
         daily={daily}
         refs={mode === "rate" && !flow ? [{ at: 0, label: "steady" }] : meta.refs}
-        unit={mode === "rate" && !flow ? "/day" : (meta.unit ?? "")}
+        unit={mode === "rate" && !flow ? "/month" : (meta.unit ?? "")}
         whole={mode === "amount" && meta.whole}
         decimals={mode === "amount" ? meta.decimals : undefined}
       />
