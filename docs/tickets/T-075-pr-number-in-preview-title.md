@@ -20,3 +20,4 @@ Pass `VITE_PR_NUMBER` in the preview build and, when set, make the title `#N · 
 
 ## History
 - 2026-10-06 19:31 opened from N-0039
+- 2026-10-08 01:10 building on t-075-pr-number-in-preview-title
