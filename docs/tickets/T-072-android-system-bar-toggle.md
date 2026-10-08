@@ -30,3 +30,4 @@ GUIDE.md: Settings, and the phone section T-063 added.
 - 2026-10-06 09:45 opened from N-0034
 - 2026-10-07 18:43 questions answered
 - 2026-10-07 18:58 waits on T-088 (settings layout)
+- 2026-10-08 02:07 building on t-072-android-system-bar-toggle
