@@ -321,3 +321,15 @@ a pass at the layout and presentation of the pause menu and settings, for ease o
 ## N-0049 · 2026-10-07 18:49
 better, more intuitive UI for the top of the screen. there is a lot going on there and hard to tell what you need to know about immediately. consider ways to make the information more compact, such as icons instead of whole words. perhaps introduce a grid to put resources in
 → T-089
+
+## N-0050 · 2026-10-08 01:57
+let's build a comprehensive playing guide, liek a wiki of interlinked information about all the mechanics, resources, rooms, event,s etc
+→ F-010
+
+## N-0051 · 2026-10-08 01:59
+let's build a snazzy title screen to show then the game is first launched. this should fit with the overall aesthetic. we can also show this screen while loading all the assets as a real game loads (with a loading bar ui).
+→ T-090
+
+## N-0052 · 2026-10-08 02:05
+in cutaway view, the space between the surface and the first floor should be opaque
+→ T-091
