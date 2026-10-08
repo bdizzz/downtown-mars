@@ -32,3 +32,4 @@ Remove the Shaft and Top cameras and X-ray from the web and Godot (code, buttons
 ## History
 - 2026-10-06 00:48 opened from N-0023, N-0024
 - 2026-10-06 00:50 questions answered: remove outright
+- 2026-10-08 02:12 building on t-052-camera-cleanup-free-view
