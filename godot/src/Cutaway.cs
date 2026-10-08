@@ -7,21 +7,26 @@ namespace DowntownMars;
 /// What the cutaway shows round the cut, as the web's stage: a rock backdrop behind the rooms (the
 /// inside of a cylinder just past the unlocked rings, closed at the bottom; the cut takes the near half
 /// of it too), and the cut face, where the ground is sliced (the section through the axis, either side
-/// of the hole out to the horizon and down, and a slab under the hole), turned with the camera.
+/// of the hole out to the horizon and down, the crust over floor 1 in to the shaft, and a slab under the hole), turned with the camera.
 /// </summary>
 public partial class Cutaway : Node3D
 {
     const float Margin = 6, Reach = 1700, Bottom = -900, FloorH = 4, Crust = 3;
+    /// <summary>The shaft wall's flat steps to a ring-1 slot (cylinder.ts ARC_STEPS), and how far behind it the crust's face tucks.</summary>
+    const int ArcSteps = 4;
+    const float Tuck = 0.01f;
     readonly MeshInstance3D _shell = new() { Name = "Shell" };
     readonly MeshInstance3D _section = new() { Name = "Section" };
     readonly MeshInstance3D _slice = new() { Name = "Slice" };
-    string _key = "";
+    readonly MeshInstance3D _crust = new() { Name = "Crust" };
+    string _key = "", _crustKey = "";
 
     public Cutaway()
     {
         AddChild(_shell);
         AddChild(_section);
         AddChild(_slice);
+        _section.AddChild(_crust);
         Visible = false;
     }
 
@@ -71,6 +76,37 @@ public partial class Cutaway : Node3D
         _section.MaterialOverride = Rock();
     }
 
+    /// <summary>
+    /// The crust over floor 1 is rock all the way in to the shaft wall, not open to the backdrop. The wall is
+    /// drawn in flat steps, so either side the face starts where the cut meets them (cylinder.ts shaftCollarRadius),
+    /// which moves as the cut turns.
+    /// </summary>
+    void BuildCrust(HoleShape h, float heading)
+    {
+        var key = $"{_key}:{heading}";
+        if (key == _crustKey) return;
+        _crustKey = key;
+        var inner = h.ShaftRadiusM + h.UnlockedRings * 10 + Margin;
+        var step = Mathf.Tau / (Mathf.Max(1, h.RingSlots.Length > 0 ? h.RingSlots[0] : 1) * ArcSteps);
+        float Collar(float angle)
+        {
+            var off = Mathf.PosMod(angle, step) - step / 2;
+            return h.ShaftRadiusM * Mathf.Cos(step / 2) / Mathf.Cos(off) - Tuck;
+        }
+        // Along the cut (u) is (-sin, cos) of the heading.
+        var along = Mathf.Atan2(Mathf.Cos(heading), -Mathf.Sin(heading));
+        var face = new List<Vector3>();
+        foreach (var sign in new[] { -1f, 1f })
+        {
+            // Left to right, as the other quads, so it faces the same way.
+            var wall = sign * Collar(sign > 0 ? along : along + Mathf.Pi);
+            float u0 = Mathf.Min(wall, sign * inner), u1 = Mathf.Max(wall, sign * inner);
+            face.AddRange(new[] { new Vector3(u0, 0, 0), new Vector3(u1, 0, 0), new Vector3(u1, -Crust, 0), new Vector3(u0, 0, 0), new Vector3(u1, -Crust, 0), new Vector3(u0, -Crust, 0) });
+        }
+        _crust.Mesh = Mesh(face);
+        _crust.MaterialOverride = Rock();
+    }
+
     static ArrayMesh Mesh(List<Vector3> verts)
     {
         var st = new SurfaceTool();
@@ -93,6 +129,7 @@ public partial class Cutaway : Node3D
         Build(hole);
         _shell.Visible = on;
         _section.Visible = on && whole;
+        if (_section.Visible) BuildCrust(hole, heading);
         _slice.Visible = sliced && !on;
         // Along the cut, a hair to the kept side so the cut doesn't take it.
         var outward = new Vector3(Mathf.Cos(heading), 0, Mathf.Sin(heading));

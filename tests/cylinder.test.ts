@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
-import { CRUST, FLOOR_H, floorSpan, openShaftRadius, pickAt, polar, ringRadii, slotAngles, TAU } from "../src/render3d/cylinder";
+import { ARC_STEPS, CRUST, FLOOR_H, floorSpan, openShaftRadius, pickAt, polar, ringRadii, shaftCollarRadius, slotAngles, TAU } from "../src/render3d/cylinder";
 import { pick as pick2d, slotX, TURN_W } from "../src/render2d/layout";
 
 const hole = createHole(10, 3, 3, config.geometry);
@@ -18,6 +18,20 @@ describe("3D cell geometry", () => {
     expect(ringRadii(hole, 1)).toEqual([10, 20]);
     expect(ringRadii(hole, 3)).toEqual([30, 40]);
     expect(openShaftRadius(hole)).toBe(8);
+  });
+
+  it("the shaft wall's flat steps reach the shaft's radius at their corners, in straight lines between", () => {
+    const step = TAU / (hole.ringSlots[0]! * ARC_STEPS);
+    expect(shaftCollarRadius(hole, 0)).toBeCloseTo(10);
+    expect(shaftCollarRadius(hole, 5 * step)).toBeCloseTo(10);
+    expect(shaftCollarRadius(hole, -step)).toBeCloseTo(10);
+    expect(shaftCollarRadius(hole, 2.5 * step)).toBeCloseTo(10 * Math.cos(step / 2));
+    // Any point at that radius is on the chord between the step's corners.
+    const a = 3.3 * step;
+    const [x, , z] = polar(shaftCollarRadius(hole, a), a, 0);
+    const [x0, , z0] = polar(10, 3 * step, 0);
+    const [x1, , z1] = polar(10, 4 * step, 0);
+    expect((x1 - x0) * (z - z0) - (z1 - z0) * (x - x0)).toBeCloseTo(0);
   });
 
   it("floors stack down from under the crust", () => {
