@@ -1,5 +1,5 @@
 {
-  "_comment": "The settings, in the order the menu shows them, read by the web (src/ui/settingsTable.ts) and Godot (SettingsSheet). Each row: id, section, name, a one-line hint, its control (toggle, slider, select or button), and for sliders min/max/step, for selects options (or none: the view fills them in). `only` keeps a row to one of the two (web or godot). Defaults for the plain settings; graphics take theirs from the preset.",
+  "_comment": "The settings, in the order the menu shows them, read by the web (src/ui/settingsTable.ts) and Godot (SettingsSheet). Each row: id, section, name, a one-line hint, its control (toggle, slider, select or button), and for sliders min/max/step, for selects options (or none: the view fills them in). `only` keeps a row to one of the two (web or godot); `when` shows it only where it applies (installedAndroid: the app installed on Android). Defaults for the plain settings; graphics take theirs from the preset.",
   "sections": [
     { "id": "game", "name": "Game" },
     { "id": "display", "name": "Display" },
@@ -11,6 +11,7 @@
     { "id": "autosave", "section": "game", "name": "Autosave", "hint": "Save to the autosave slot every month", "control": "toggle", "default": true },
     { "id": "tutorial", "section": "game", "name": "Tutorial", "hint": "The deputy's card with the next goal", "control": "toggle", "default": true },
 
+    { "id": "fullscreen", "section": "display", "name": "Full screen", "hint": "Hide the phone's status and navigation bars", "control": "toggle", "default": true, "only": "web", "when": "installedAndroid" },
     { "id": "graphics.quality", "section": "display", "name": "Graphics", "hint": "Low for slower machines; Ultra adds bounced light", "control": "select", "only": "godot" },
     { "id": "graphics.preset", "section": "display", "name": "Graphics", "hint": "Low for slower machines; changing an effect makes it custom", "control": "select", "only": "web" },
     { "id": "graphics.pixelRatio", "section": "display", "name": "Sharpness", "hint": "Sharper costs more on high-resolution screens", "control": "select", "only": "web",
@@ -20,7 +21,7 @@
     { "id": "graphics.ao", "section": "display", "name": "Soft shadows", "hint": "Shade where things meet: corners, under furniture", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
     { "id": "graphics.bloom", "section": "display", "name": "Glow", "hint": "Light around windows, lamps, screens and furnaces", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
     { "id": "graphics.haze", "section": "display", "name": "Haze", "hint": "Warm dust in the air, thicker far off and deep down", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
-    { "id": "graphics.tiltShift", "section": "display", "name": "Miniature blur", "hint": "In Iso, blur above and below the middle, like a model", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
+    { "id": "graphics.tiltShift", "section": "display", "name": "Miniature blur", "hint": "In Free view, blur above and below the middle, like a model", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
     { "id": "graphics.grade", "section": "display", "name": "Colour", "hint": "A warm colour grade and vignette", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
     { "id": "graphics.reflections", "section": "display", "name": "Reflections", "hint": "Metal, glass and screens pick up a soft light", "control": "toggle", "only": "web" },
     { "id": "graphics.life", "section": "display", "name": "Colonists and dust", "hint": "People walking the galleries, dust in the air", "control": "toggle", "only": "web" },

@@ -39,6 +39,7 @@ import {
   type UiFlags,
 } from "./tutorialGoals";
 import { play, setAudioSettings, unlockAudio } from "../audio/sound";
+import { applySystemBar, canHideSystemBar } from "./systemBar";
 import { useSettings } from "./settings";
 import { installConsole } from "./devConsole";
 import { FloorPicker, shownFloor } from "./FloorPicker";
@@ -137,6 +138,16 @@ export function App() {
 
   useSounds(snapshot);
   useEffect(() => setAudioSettings(settings), [settings]);
+  // The installed app's system bar: full screen needs a tap, so it's asked for when the
+  // setting changes (a tap on the switch) and on any tap while it's on but not yet hidden
+  // (the first after launch, or after the phone's back gesture left full screen).
+  useEffect(() => {
+    applySystemBar(settings.fullscreen);
+    if (!settings.fullscreen || !canHideSystemBar()) return;
+    const onTap = () => applySystemBar(true);
+    window.addEventListener("pointerup", onTap);
+    return () => window.removeEventListener("pointerup", onTap);
+  }, [settings.fullscreen]);
   // Browsers only allow sound after the player does something.
   useEffect(() => {
     const unlock = () => unlockAudio();
@@ -189,7 +200,7 @@ export function App() {
     }
   }, [send, flash]);
 
-  // Iso with every floor showing looks at the surface; picking up something to build
+  // Free view with every floor showing looks at the surface; picking up something to build
   // underground (a room below ground, or corridors) drops the view to floor 1.
   useEffect(() => {
     const below = tool?.kind === "corridor" || (tool?.kind === "build" && roomDef(tool.room).size !== "surface");

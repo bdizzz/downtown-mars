@@ -83,7 +83,7 @@ export function siteSeed(site: { lat: number; lon: number } | null, name: string
 
 export interface Terrain {
   group: THREE.Group;
-  /** The ground itself (its material shows through in X-ray). */
+  /** The ground itself. */
   ground: THREE.Mesh;
   style: HorizonStyle;
   /** The ground's height at a point, metres. */

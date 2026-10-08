@@ -23,7 +23,7 @@ import { createSky } from "./sky3d";
 import { buildTerrain, siteSeed, type Terrain } from "./terrain3d";
 import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { isoFitDistance } from "./isoReach";
-import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
+import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, makeDome, makeLander, placeLander } from "./scenery3d";
@@ -51,12 +51,10 @@ import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, touchFirst, type Gestu
 import { createWalkPad } from "./joystick";
 import { clear as walkClear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 
-// The 3D view: the same hole as the 2D view, as a real cylinder. Four
-// cameras: standing in the shaft looking at the wall, the way someone on the
-// gallery would; free look from the shaft's axis, aimed anywhere by dragging;
-// outside the hole with the near half sliced away (cutaway); and straight
-// down the shaft from above. X-ray fades the shaft wall and
-// ring 1 so deeper rings show from inside.
+// The 3D view: the same hole as the 2D view, as a real cylinder. Three
+// cameras: Free view, over one floor and off to one side (its id is "iso");
+// outside the hole with the near half sliced away (cutaway); and first
+// person, walking the galleries and corridors.
 
 const C = {
   rock: 0x6a3a28,
@@ -73,14 +71,13 @@ const C = {
 const EYE_HEIGHT = 1.7;
 const FOV = 55;
 const FAR = 3500;
-const MIN_DIST = 2;
 const CLICK_SLOP = 5;
-const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25 };
-const TOP = { min: 20, max: 300, start: 80, margin: 1.1 };
-/** Iso's WASD pan: metres a second as a share of the camera's distance (with a floor), and how far from the axis it may go, as a share of the rings' radius. */
+/** Cutaway: distance from the axis (fitted to frame the unlocked rings with `margin` to spare), and how far above the look point it sits, as a share of that. */
+const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25, margin: 1.1 };
+/** Free view's WASD pan: metres a second as a share of the camera's distance (with a floor), and how far from the axis it may go, as a share of the rings' radius. */
 const ISO_PAN = { speed: 0.6, minSpeed: 12, reach: 1.3 };
 /**
- * Iso: distance to the floor's centre (a multiple of the floor's radius to start), and how steeply it looks down.
+ * Free view: distance to the floor's centre (a multiple of the floor's radius to start), and how steeply it looks down.
  * Zooming out stops once every ring the hole can have (open or not) fits the view, with `pad` to spare.
  */
 const ISO = { start: 1.6, min: 12, pad: 1.1, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
@@ -88,14 +85,12 @@ const ISO = { start: 1.6, min: 12, pad: 1.1, elev: 0.75, minElev: 0.3, maxElev: 
 const WALK = { searchStep: 0.5, searchReach: 40, eye: 1.8, speed: 3, run: 9, turn: 0.004, lookTurn: 0.0025, keyTurn: 1.8 };
 /** Looking up and down (first person) stops just short of straight up or down. */
 const MAX_PITCH = Math.PI / 2 - 0.02;
-/** How much of the surface still shows in x-ray: enough to keep your bearings. */
-const XRAY_GROUND_OPACITY = 0.2;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
 const SHELL_MARGIN = 6;
 /** The rock wall and the land's cut sit this far past the rings' outer edge: flush, just clear of the outer walls. */
 const ROCK_FLUSH = 0.05;
 /**
- * Iso's cut-out round the picked floor (surfaces.ts withSlice): the land and its cut face thin out
+ * Free view's cut-out round the picked floor (surfaces.ts withSlice): the land and its cut face thin out
  * between these distances past the rings (metres) into the dark backdrop; where land meets the cut,
  * both crumble over `edge` metres; the cut rock darkens toward the backdrop by up to `tint`, fully by
  * `tintDepth` metres down; and opening it takes `seconds`. The cut runs where the rings look widest;
@@ -110,8 +105,8 @@ const FIELD_MAX = 3;
 /** Overlay tints sit just proud of the cells, in front of the rock and around rooms. */
 const FIELD_OUTSET = -0.04;
 const FIELD_ALPHA = 0.55;
-/** The camera's headlamp: how strong in the shaft view and walking, and where it rides (metres above and behind the eye). */
-const HEADLAMP = { shaft: 40, walk: 36, above: 1.2, behind: 1.5 };
+/** The camera's headlamp, walking: how strong, and where it rides (metres above and behind the eye). */
+const HEADLAMP = { walk: 36, above: 1.2, behind: 1.5 };
 /** The sun's shadow: map size at full setting, how far its box reaches (from 100 m up), the margin round the rings, and how far (radians) it moves before shadows are redrawn. */
 const SUN_SHADOW = { mapSize: 2048, far: 450, margin: 12, redrawAngle: 0.02, boost: 2.4 };
 /** Overlay tints lie on the rooms' own floors and walls: pulled toward the camera so they win the depth test. */
@@ -161,9 +156,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(hemi);
   scene.add(new THREE.AmbientLight(0xffe0c0, 0.25));
   // A warm lamp that travels with the camera, like a colonist's headlamp,
-  // so the shaft reads at night too. It rides above and behind the eye, so
+  // so the galleries read at night too. It rides above and behind the eye, so
   // what's right in front of you (glass, a colonist) isn't blown out.
-  const lamp = new THREE.PointLight(0xffd8a8, HEADLAMP.shaft, 60, 1.2);
+  const lamp = new THREE.PointLight(0xffd8a8, HEADLAMP.walk, 60, 1.2);
   lamp.position.set(0, HEADLAMP.above, HEADLAMP.behind);
   camera.add(lamp);
   scene.add(camera);
@@ -197,18 +192,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(digFront);
 
   // The camera and the see-through toggles: set from the View mode's buttons (setView3d).
-  const view = { mode: DEFAULT_VIEW3D.camera as Mode, xray: DEFAULT_VIEW3D.xray, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors, flows: DEFAULT_VIEW3D.flows };
-  // The surface: see-through in x-ray, so rooms under it show from above.
-  // Iso with a floor picked slices the land open through the hole's axis: the near half's gone.
+  const view = { mode: DEFAULT_VIEW3D.camera as Mode, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors, flows: DEFAULT_VIEW3D.flows };
+  // Free view with a floor picked slices the land open through the hole's axis: the near half's gone.
   const slice = makeSlice({ ...SLICE, earth: C.earth });
   const groundMat = withSlice(withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 })), slice, "land");
-  function applyGroundXray(): void {
-    groundMat.transparent = view.xray;
-    groundMat.opacity = view.xray ? XRAY_GROUND_OPACITY : 1;
-    groundMat.depthWrite = !view.xray;
-    groundMat.needsUpdate = true;
-    dirty = true;
-  }
   // The cutaway slices along a plane through the shaft's axis, facing away from the camera.
   const clip = new THREE.Plane(new THREE.Vector3(1, 0, 0), 0);
   let shell: THREE.Object3D | null = null;
@@ -233,7 +220,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     idx.push(slab, slab + 1, slab + 2, slab + 2, slab + 1, slab + 3);
     sectionGeo.setIndex(idx);
   }
-  // The cutaway's face is dark; Iso's cut through the land is the shaft wall's lighter rock.
+  // The cutaway's face is dark; Free view's cut through the land is the shaft wall's lighter rock.
   const sectionMat = withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.DoubleSide }));
   const sliceMat = withSlice(withRock(new THREE.MeshStandardMaterial({ color: C.rock, roughness: 1, side: THREE.DoubleSide })), slice, "face");
   const section = new THREE.Mesh(sectionGeo, sectionMat);
@@ -248,7 +235,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   rockWall.visible = false;
   scene.add(rockWall);
 
-  // The rock past the open rings at the cut floor: its own copies of rooms3d's materials, so Iso's
+  // The rock past the open rings at the cut floor: its own copies of rooms3d's materials, so Free view's
   // cut-out can fade it into the backdrop with the land (or far off, the two hazes wouldn't match).
   const outerCapMats = new Map<number, THREE.Material>();
   function outerCapMaterial(m: THREE.MeshStandardMaterial): THREE.Material {
@@ -272,7 +259,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
 
   /**
-   * Lay the cut face along the section plane, following the ground where it's cut. In Iso with a floor
+   * Lay the cut face along the section plane, following the ground where it's cut. In Free view with a floor
    * picked, the same face stands outside the rock wall (not under the hole), so the land looks sliced
    * open to show that floor: the far half of the planet stays as a cut face, the near half's gone.
    */
@@ -280,7 +267,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const underground = sliced();
     const out = new THREE.Vector3(Math.cos(cam.theta), 0, Math.sin(cam.theta));
     const r = hole ? hole.shaftRadiusM + hole.unlockedRings * RING_D + ROCK_FLUSH : 0;
-    // Iso's cut runs where the rings look widest: square to the camera (where it really is, panned or
+    // Free view's cut runs where the rings look widest: square to the camera (where it really is, panned or
     // not), through the points where its sightlines graze the rock wall, r²/D toward it from the axis.
     let offset = 0;
     if (underground) {
@@ -433,11 +420,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let tubesFor = "";
   /** The floor picked on the right (null: every floor). */
   let pickedFloor: number | null = null;
-  /** Show only this floor and those below it, i.e. deeper (null: every floor). Iso always looks at one floor. */
+  /** Show only this floor and those below it, i.e. deeper (null: every floor). Free view always looks at one floor. */
   // The floor picked (everything above it hidden), or null for all of them, surface and all.
   // Walking, nothing is lifted away: the picked floor is the one you're on.
   const cut = (): number | null => (view.mode === "walk" ? null : pickedFloor);
-  /** Iso with a floor picked: the land is sliced open through the hole's axis to show that floor. */
+  /** Free view with a floor picked: the land is sliced open through the hole's axis to show that floor. */
   const sliced = (): boolean => view.mode === "iso" && cut() !== null;
   // The land round the hole: the ground, boulders, craters and the horizon, for this site.
   let terrain: Terrain | null = null;
@@ -447,46 +434,29 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   // ---- camera ----
 
-  /**
-   * Shaft: looking at the wall point at angle `theta` and height `y`, from
-   * `dist` metres away across the shaft. Cutaway: `out` metres from the axis,
-   * facing it. Top: `height` metres above the rim, looking down.
-   */
+  /** Cutaway: `out` metres from the axis at angle `theta`, facing it, looking at height `y`. */
   const cam = {
     theta: Math.PI / 2,
     y: floorSpan(1)[0] + EYE_HEIGHT,
-    dist: 14,
     out: CUTAWAY.start,
-    height: TOP.start,
-    /** Iso: distance from the floor's centre (0 until first used) and elevation in radians. */
+    /** Free view: distance from the floor's centre (0 until first used) and elevation in radians. */
     iso: 0,
     isoElev: ISO.elev,
-    /** Iso: how far the view has been panned (WASD), in metres across the ground. */
+    /** Free view: how far the view has been panned (WASD), in metres across the ground. */
     panX: 0,
     panZ: 0,
   };
-  /** Where each camera starts: what Reset camera goes back to (Iso's distance and the fitted views are worked out from the hole). */
+  /** Where each camera starts: what Reset camera goes back to (Free view's distance and the fitted views are worked out from the hole). */
   const camHome = { ...cam };
   /** First person: where the walker stands (metres), on which floor, and where they look. */
   const walker = { x: 0, z: 0, floor: 1, yaw: 0, pitch: 0 };
-
-  function maxDist(): number {
-    // Stay inside the shaft: no further back than just short of the opposite ledge.
-    return hole ? hole.shaftRadiusM + openShaftRadius(hole) - 0.5 : 14;
-  }
-
-  /** y of the chosen floor's ceiling, or the surface. */
-  function cutTop(): number {
-    const f = cut();
-    return f === null ? 0 : floorSpan(f)[1];
-  }
 
   /** The outer edge of the unlocked rings. */
   function outerRadius(): number {
     return hole ? ringRadii(hole, hole.unlockedRings)[1] : 40;
   }
 
-  /** How far out Iso may zoom: all the rings' footprint, padded, just inside the view (isoReach.ts). */
+  /** How far out Free view may zoom: all the rings' footprint, padded, just inside the view (isoReach.ts). */
   let isoMaxKey = "";
   let isoMaxDist = 0;
   function isoMax(): number {
@@ -504,10 +474,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
 
   function clampCamera(): void {
-    cam.dist = Math.min(maxDist(), Math.max(MIN_DIST, cam.dist));
     cam.out = Math.min(CUTAWAY.max, Math.max(CUTAWAY.min, cam.out));
-    cam.height = Math.min(TOP.max, Math.max(TOP.min, cam.height));
-    // Iso's distance stays 0 ("not set yet") until the mode is first used and sizes it to the floor.
+    // Free view's distance stays 0 ("not set yet") until the mode is first used and sizes it to the floor.
     cam.isoElev = Math.min(ISO.maxElev, Math.max(ISO.minElev, cam.isoElev));
     if (cam.iso) cam.iso = Math.min(isoMax(), Math.max(ISO.min, cam.iso));
     walker.pitch = Math.min(MAX_PITCH, Math.max(-MAX_PITCH, walker.pitch));
@@ -519,41 +487,25 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function hazeFocus(): number {
     if (view.mode === "walk") return floorSpan(walker.floor)[0];
     if (view.mode === "iso") return cut() === null ? 0 : floorSpan(cut()!)[0];
-    if (view.mode === "top") return cut() === null ? 0 : floorSpan(cut()!)[0];
     return Math.min(0, camera.position.y - FLOOR_H);
   }
 
-  // Looking straight down: until the player zooms, frame the unlocked rings with a little margin.
-  let topFitted = true;
   /** Build mode is open: bare rock lights up under the pointer, as somewhere to build. */
   let building = false;
-  // Cutaway: the same, framing the unlocked rings across the section.
+  // Cutaway: until the player zooms, frame the unlocked rings across the section with a little margin.
   let cutawayFitted = true;
   function fitCutaway(): void {
     if (!hole) return;
     const r = ringRadii(hole, Math.max(1, Math.min(hole.ringSlots.length, hole.unlockedRings)))[1];
     const tan = Math.tan((FOV * Math.PI) / 360) * camera.aspect;
-    cam.out = Math.min(CUTAWAY.max, Math.max(CUTAWAY.min, (r * TOP.margin) / tan));
-  }
-  function fitTop(): void {
-    if (!hole) return;
-    const r = ringRadii(hole, Math.max(1, Math.min(hole.ringSlots.length, hole.unlockedRings)))[1];
-    const tan = Math.tan((FOV * Math.PI) / 360) * Math.min(1, camera.aspect);
-    cam.height = Math.min(TOP.max, Math.max(TOP.min, (r * TOP.margin) / tan));
+    cam.out = Math.min(CUTAWAY.max, Math.max(CUTAWAY.min, (r * CUTAWAY.margin) / tan));
   }
 
   function applyCamera(): void {
     clampCamera();
-    const R = hole?.shaftRadiusM ?? 10;
     const out = new THREE.Vector3(Math.cos(cam.theta), 0, Math.sin(cam.theta));
     camera.up.set(0, 1, 0);
-    if (view.mode === "shaft") {
-      // Above the surface, tip the view down into the hole.
-      const target = out.clone().multiplyScalar(R).setY(cam.y - 0.3 - Math.max(0, cam.y) * 2);
-      camera.position.copy(target).addScaledVector(out, -cam.dist).setY(cam.y);
-      camera.lookAt(target);
-
-    } else if (view.mode === "cutaway") {
+    if (view.mode === "cutaway") {
       camera.position.copy(out).multiplyScalar(cam.out).setY(cam.y + cam.out * CUTAWAY.lift);
       camera.lookAt(0, cam.y, 0);
       // Keep what's behind the axis from the camera's point of view.
@@ -568,31 +520,23 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       camera.position.z += cam.panZ;
       const past = outerRadius() * ISO.lookPast;
       camera.lookAt(-out.x * past + cam.panX, y, -out.z * past + cam.panZ);
-    } else if (view.mode === "walk") {
-      // On a flight of stairs, as high up it as you've climbed.
+    } else {
+      // First person. On a flight of stairs, as high up it as you've climbed.
       const lift = layout ? stairLift(layout, walker.floor, walker.x, walker.z) : 0;
       camera.position.set(walker.x, floorSpan(walker.floor)[0] + WALK.eye + lift, walker.z);
       const cp = Math.cos(walker.pitch);
       camera.lookAt(walker.x + Math.cos(walker.yaw) * cp, camera.position.y + Math.sin(walker.pitch), walker.z + Math.sin(walker.yaw) * cp);
-    } else {
-      // With a floor chosen, look down on it from the same height above its ceiling.
-      camera.position.set(0, cam.height + cutTop(), 0);
-      // Rotating the "up" direction turns the view around the shaft.
-      camera.up.copy(out);
-      camera.lookAt(0, -depth(), 0);
     }
     renderer.clippingPlanes = view.mode === "cutaway" ? [clip] : [];
     // Far-off cameras need a farther near plane, or the depth buffer can't tell
     // the ground from the roofs just under it.
-    const inside = view.mode === "shaft" || view.mode === "walk";
-    const near = inside ? 0.1 : Math.max(0.5, (view.mode === "top" ? cam.height : view.mode === "iso" ? cam.iso : cam.out) / 100);
+    const inside = view.mode === "walk";
+    const near = inside ? 0.1 : Math.max(0.5, (view.mode === "iso" ? cam.iso : cam.out) / 100);
     if (camera.near !== near) {
       camera.near = near;
       camera.updateProjectionMatrix();
     }
     lamp.visible = inside;
-    // Walking, you're close to everything: a gentler headlamp.
-    lamp.intensity = view.mode === "walk" ? HEADLAMP.walk : HEADLAMP.shaft;
     fill.intensity = inside ? 0.15 : 0.7;
     if (shell) shell.visible = view.mode === "cutaway";
     // Moved off where this view starts: offer the way back.
@@ -714,8 +658,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const u = hit.object.userData;
       // The raycaster ignores clipping: skip what the cutaway has sliced away.
       if (view.mode === "cutaway" && clip.distanceToPoint(hit.point) < -0.01) continue;
-      // In x-ray the wall and ring 1 are see-through: pick what's behind them.
-      if (view.xray && u.faint) continue;
       // With walls down, a lowered wall isn't there: pick the room behind it.
       if (loweredAt(hit, camera.position)) continue;
       // The cap over a chosen floor: pick the cell just under it.
@@ -728,26 +670,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       else offer(hit.distance, () => pickPast(h, ray, hit.distance));
       break;
     }
-    // The ground around the rim, for surface buildings. In x-ray you're looking
-    // through it, so it only counts when placing a surface building or when
-    // nothing underneath was hit.
+    // The ground around the rim, for surface buildings.
     const tGround = rayPlane(ray, ground);
     const groundPick = (): Pick => {
       const p = ray.at(tGround!, new THREE.Vector3());
       return Math.hypot(p.x, p.z) > h.shaftRadiusM ? surfacePickAt(p) : { kind: "rock" };
     };
-    const placingOnSurface = tool?.kind === "build" && roomDef(tool.room).size === "surface";
     // With a floor chosen, the surface is hidden: nothing up there to pick.
     const surfaceShown = cut() === null;
-    if (surfaceShown && (!view.xray || placingOnSurface)) offer(tGround, groundPick);
-    const inShaft = view.mode === "shaft" || view.mode === "walk";
-    if (inShaft && !view.xray) {
-      // Empty wall faces are part of the wall mesh; nothing more to add.
-    } else if (inShaft && view.xray) {
-      // Just behind ring 1: ring 2's inner face.
-      const t = rayCylinder(ray, h.shaftRadiusM + RING_D);
-      if (t !== null && inCarvedRegion(h, ray.at(t + 0.1, new THREE.Vector3()))) offer(t, () => pickPast(h, ray, t));
-    } else if (view.mode === "cutaway") {
+    if (surfaceShown) offer(tGround, groundPick);
+    if (view.mode === "cutaway") {
       // The sliced section itself: how you reach rings 2 and 3 from outside.
       const t = rayPlane(ray, clip);
       if (t !== null && inCarvedRegion(h, ray.at(t, new THREE.Vector3()))) offer(t, () => pickPast(h, ray, t - 0.2));
@@ -1114,7 +1046,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   function refreshHover(force = false): void {
     const info = hoverInfo();
-    const key = hoverKeyFor(info, tool, layout?.version ?? -1, selected) + view.mode + view.xray + building;
+    const key = hoverKeyFor(info, tool, layout?.version ?? -1, selected) + view.mode + building;
     const changed = key !== hoverKey;
     if (!force && !changed) return;
     hoverKey = key;
@@ -1230,7 +1162,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** Switching camera mode: set the new one up, and rebuild if what's hidden changed. */
   function enterMode(before: Mode): void {
     if (view.mode === "iso" && !cam.iso) cam.iso = outerRadius() * ISO.start;
-    if (view.mode === "top" && topFitted) fitTop();
     if (view.mode === "cutaway" && cutawayFitted) fitCutaway();
     if (view.mode === "walk" && before !== "walk") placeWalker();
     if (view.mode !== "iso") isoHeld.clear();
@@ -1293,7 +1224,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   };
   document.addEventListener("pointerlockchange", onLockChange);
 
-  // ---- Iso: WASD pans across the ground (outside Build, whose room keys W, A, S and D are) ----
+  // ---- Free view: WASD pans across the ground (outside Build, whose room keys W, A, S and D are) ----
   const isoHeld = new Set<string>();
   const ISO_KEYS = new Set(["w", "a", "s", "d"]);
   const onIsoKey = (e: KeyboardEvent) => {
@@ -1311,7 +1242,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   window.addEventListener("keydown", onIsoKey);
   window.addEventListener("keyup", onIsoKey);
 
-  /** One frame's panning in Iso: returns true if the view moved. */
+  /** One frame's panning in Free view: returns true if the view moved. */
   function isoFrame(dt: number): boolean {
     if (view.mode !== "iso" || !isoHeld.size) return false;
     const fwd = (isoHeld.has("w") ? 1 : 0) - (isoHeld.has("s") ? 1 : 0);
@@ -1328,7 +1259,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     return true;
   }
 
-  /** Not off into the wilderness: Iso's pan stays within a little of the rings. */
+  /** Not off into the wilderness: Free view's pan stays within a little of the rings. */
   function keepPanNear(): void {
     const far = Math.hypot(cam.panX, cam.panZ);
     const most = outerRadius() * ISO_PAN.reach;
@@ -1347,12 +1278,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     switch (view.mode) {
       case "iso":
         return !turned && near(cam.isoElev, camHome.isoElev) && near(cam.iso, outerRadius() * ISO.start) && !cam.panX && !cam.panZ;
-      case "shaft":
-        return !turned && near(cam.y, camHome.y) && near(cam.dist, camHome.dist);
       case "cutaway":
         return !turned && near(cam.y, camHome.y) && cutawayFitted;
-      case "top":
-        return !turned && topFitted;
       default:
         return true;
     }
@@ -1365,16 +1292,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       cam.iso = outerRadius() * ISO.start;
       cam.isoElev = camHome.isoElev;
       cam.panX = cam.panZ = 0;
-    } else if (view.mode === "shaft") {
-      cam.y = camHome.y;
-      cam.dist = camHome.dist;
     } else if (view.mode === "cutaway") {
       cam.y = camHome.y;
       cutawayFitted = true;
       fitCutaway();
-    } else if (view.mode === "top") {
-      topFitted = true;
-      fitTop();
     }
     applyCamera();
   }
@@ -1436,17 +1357,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       cam.panX += (g.dy * fx - g.dx * rx) * per;
       cam.panZ += (g.dy * fz - g.dx * rz) * per;
       keepPanNear();
-    } else if (view.mode === "top") {
-      cam.height /= g.scale;
-      topFitted = false;
     } else {
-      if (view.mode === "shaft") cam.dist /= g.scale;
-      else {
-        cam.out /= g.scale;
-        cutawayFitted = false;
-      }
+      cam.out /= g.scale;
+      cutawayFitted = false;
       cam.theta += g.dx * 0.005;
-      cam.y += g.dy * (view.mode === "cutaway" ? 0.15 : 0.05);
+      cam.y += g.dy * 0.15;
     }
     applyCamera();
   }
@@ -1532,7 +1447,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       // Grab the world: dragging left turns you right, dragging up takes you down (or, in iso, looks from higher up).
       cam.theta += dx * 0.005;
       if (view.mode === "iso") cam.isoElev += dy * 0.004;
-      else if (view.mode !== "top") cam.y += dy * (view.mode === "cutaway" ? 0.15 : 0.05);
+      else cam.y += dy * 0.15;
     }
     drag.x = e.clientX;
     drag.y = e.clientY;
@@ -1572,20 +1487,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       applyCamera();
       return;
     }
-    if (view.mode === "top") {
-      cam.height *= e.ctrlKey ? zoom : Math.exp(e.deltaY * 0.003);
-      topFitted = false;
-    }
-    else if (e.ctrlKey) {
-      if (view.mode === "shaft") cam.dist *= zoom;
-      else {
-        cam.out *= zoom;
-        cutawayFitted = false;
-      }
+    if (e.ctrlKey) {
+      cam.out *= zoom;
+      cutawayFitted = false;
     } else if (e.shiftKey) cam.theta += e.deltaY * 0.003;
     else {
       cam.theta += e.deltaX * 0.003;
-      cam.y -= e.deltaY * (view.mode === "cutaway" ? 0.08 : 0.03);
+      cam.y -= e.deltaY * 0.08;
     }
     applyCamera();
   };
@@ -1639,12 +1547,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       view.mode = v.camera;
       enterMode(before);
     }
-    if (v.xray !== view.xray) {
-      view.xray = v.xray;
-      layoutKey = ""; // rebuild with the new materials on the next update
-      applyGroundXray();
-      if (latest) stage.update(latest);
-    }
     if (!!v.flows !== view.flows) {
       view.flows = !!v.flows;
       flowsKey = "";
@@ -1667,12 +1569,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function updateReadout(): void {
     const f = cut();
     if (view.mode === "walk") readout.textContent = walkReadout();
-    else if (view.mode === "iso") readout.textContent = f === null ? "The surface, isometric" : `Floor ${f}, isometric`;
-    else if (f !== null) readout.textContent = `Floor ${f}${view.mode === "top" ? " from above" : " and below"}`;
-    else if (view.mode === "top") readout.textContent = "Looking down the shaft";
+    else if (view.mode === "iso") readout.textContent = f === null ? "The surface" : `Floor ${f}`;
+    else if (f !== null) readout.textContent = `Floor ${f} and below`;
     else readout.textContent = cam.y >= floorSpan(1)[1] ? "Surface" : `Floor ${floorAtY(cam.y)}`;
   }
-  applyGroundXray();
   setWallsDown(view.wallsDown);
 
   const resize = new ResizeObserver(() => {
@@ -1684,7 +1584,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     // The framing depends on the screen's shape: redo it until the player zooms.
-    if (topFitted) fitTop();
     if (cutawayFitted) fitCutaway();
     applyCamera();
     dirty = true;
@@ -1711,7 +1610,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       updateReadout();
     }
     if (isoFrame(dt)) applyCamera();
-    // Iso's cut-out opening: the land dissolves away round the floor, the backdrop darkens.
+    // Free view's cut-out opening: the land dissolves away round the floor, the backdrop darkens.
     if (slice.on.value > 0.5 && slice.amount.value < 1) {
       slice.amount.value = Math.min(1, slice.amount.value + dt / SLICE.seconds);
       applyBackground();
@@ -1747,7 +1646,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     lampLights.place(lampList, view.mode === "walk" ? new THREE.Vector3(walker.x, camera.position.y, walker.z) : camera.position, view.mode === "walk" ? walker.floor : cut());
     updateShadows();
     skyDome.follow(camera);
-    look.setView(hazeFocus(), view.mode === "walk" || view.mode === "shaft", view.mode === "iso");
+    look.setView(hazeFocus(), view.mode === "walk", view.mode === "iso");
     roomFx.setScale(renderer.getDrawingBufferSize(bufferSize).y / (2 * Math.tan((camera.fov * Math.PI) / 360)));
     look.render();
     stats.frameMs = performance.now() - t0;
@@ -1816,7 +1715,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     opts.onError?.("The 3D view lost its graphics context (the GPU may be busy or asleep). Switched to 2D.");
   });
 
-  /** The sky with every floor showing; earth below ground (Iso's cut-out darkening into it as it opens). */
+  /** The sky with every floor showing; earth below ground (Free view's cut-out darkening into it as it opens). */
   function applyBackground(): void {
     if (cut() === null) scene.background = skyColor;
     else if (sliced()) scene.background = skyColor.clone().lerp(new THREE.Color(C.earth), slice.on.value > 0.5 ? slice.amount.value : 1);
@@ -1830,7 +1729,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (typeof o.userData.floor === "number") o.visible = f === null || o.userData.floor >= f;
     });
     if (terrain) terrain.group.visible = cut() === null || sliced();
-    // With a floor picked you're looking underground: earth all round, no sky. Iso slices the land
+    // With a floor picked you're looking underground: earth all round, no sky. Free view slices the land
     // open instead (the cut face), so the sky shows over it.
     // (The sky's shader isn't ported to WebGPU yet: a plain sky colour there.)
     skyDome.mesh.visible = cut() === null && !webgpu;
@@ -1843,7 +1742,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     roomFx.group.visible = graphics.life;
     if (!graphics.life) roomFx.clear();
     // Sparks and steam only come from furniture that's shown.
-    roomFx.setView({ topFloor: cut(), xray: view.xray });
+    roomFx.setView({ topFloor: cut() });
     updateRockWall();
     dirty = true;
   }
@@ -1889,7 +1788,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             return performance.now() - t0;
           },
           setMode(m: Mode) {
-            setView3d({ camera: m, xray: view.xray, wallsDown: view.wallsDown, roomColors: view.roomColors, flows: view.flows });
+            setView3d({ camera: m, wallsDown: view.wallsDown, roomColors: view.roomColors, flows: view.flows });
           },
           // First person's position and heading, to put a walker somewhere.
           walker,
@@ -2001,8 +1900,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         hole = snapshot.layout.hole;
         buildHole(hole);
         terrainKey = ""; // the rim may have moved
-        // A new hole, or more rings: frame them from the top again.
-        if (topFitted) fitTop();
+        // A new hole, or more rings: frame them again.
         if (cutawayFitted) fitCutaway();
         dust.sync(hole);
         shaftLight.fit(openShaftRadius(hole), -floorSpan(hole.floors + 1)[0]);
@@ -2022,13 +1920,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const grime = new Map(snapshot.layout.rooms.map((r) => [r.id, grimeLevel(r)]));
       const grimeKey = [...grime.values()].join("");
       const refits = refitRooms(snapshot);
-      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}:${cut()}:${view.roomColors}:${grimeKey}:${[...refits].join(",")}`;
+      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${cut()}:${view.roomColors}:${grimeKey}:${[...refits].join(",")}`;
       if (lk !== layoutKey) {
         layoutKey = lk;
         scene.remove(layoutGroup);
         disposeLayout(layoutGroup);
         const t0 = performance.now();
-        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray, cut(), view.roomColors, (r) => grime.get(r.id) ?? 0, (r) => refits.has(r.id));
+        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, cut(), view.roomColors, (r) => grime.get(r.id) ?? 0, (r) => refits.has(r.id));
         stats.buildMs = performance.now() - t0;
         scene.add(layoutGroup);
         furnitureGroups = [];
@@ -2049,8 +1947,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           if (o.userData.label && typeof o.userData.roomId === "number") roomLabels.set(o.userData.roomId as number, o);
         });
         troubleKey = null;
-        // The floor picked or x-ray changed: hidden furniture's sparks and steam go with it.
-        roomFx.setView({ topFloor: cut(), xray: view.xray });
+        // The floor picked changed: hidden furniture's sparks and steam go with it.
+        roomFx.setView({ topFloor: cut() });
         dirty = true;
       }
       const d = snapshot.drill;

@@ -8,7 +8,7 @@ import { furniture } from "../view/furniture";
 // mouth, steam rising off life support's scrubber vents. They come from the
 // furniture itself (where the template put each furnace or scrubber), and
 // only while the room is running, and only while that furniture is shown
-// (not above a chosen floor, nor in x-ray's faded ring 1). Each kind is one set of points, animated
+// (not above a chosen floor). Each kind is one set of points, animated
 // on the CPU from a fixed pool, so a busy hole costs two draw calls.
 
 type Kind = "sparks" | "steam";
@@ -37,18 +37,15 @@ export interface Emitter {
   /** 0..1 of full output: a slowed room makes fewer. */
   rate: number;
   floor: number;
-  /** Its room reaches ring 1, whose furniture x-ray hides. */
-  ring1: boolean;
   owed: number;
 }
 
-/** What the view hides: every floor above a chosen one, and (in x-ray) ring 1's rooms. */
+/** What the view hides: every floor above a chosen one. */
 export interface FxView {
   topFloor: number | null;
-  xray: boolean;
 }
 
-const hiddenIn = (e: Emitter, v: FxView) => (v.topFloor !== null && e.floor < v.topFloor) || (v.xray && e.ring1);
+const hiddenIn = (e: Emitter, v: FxView) => v.topFloor !== null && e.floor < v.topFloor;
 /** Emitters are remade whenever a room's output changes: the same spot is the same emitter. */
 const spotKey = (e: Emitter) => `${e.kind}:${e.x.toFixed(3)}:${e.y.toFixed(3)}:${e.z.toFixed(3)}`;
 
@@ -203,7 +200,7 @@ export class RoomEffects {
   private kinds: Record<Kind, Particles> = { sparks: new Particles("sparks"), steam: new Particles("steam") };
   private emitters: Emitter[] = [];
   private key = "";
-  private view: FxView = { topFloor: null, xray: false };
+  private view: FxView = { topFloor: null };
 
   constructor() {
     this.group.add(this.kinds.sparks.points, this.kinds.steam.points);
@@ -282,13 +279,12 @@ export function emittersKey(layout: Layout, status: Record<number, RoomStatus>):
 export function emittersOf(layout: Layout, status: Record<number, RoomStatus>): Emitter[] {
   return withEmitters(layout).flatMap((room) => {
     const rate = status[room.id]?.rate ?? 0;
-    const ring1 = room.cells.some((c) => c.ring === 1);
-    return furnish(layout, room).flatMap((f) => (EMITTERS[f.item] ?? []).map((e) => emitterAt(f, e.kind, e.at, rate, ring1)));
+    return furnish(layout, room).flatMap((f) => (EMITTERS[f.item] ?? []).map((e) => emitterAt(f, e.kind, e.at, rate)));
   });
 }
 
 /** An emitter at a point in an item's own frame, turned and placed with the item. */
-function emitterAt(f: Fitted, kind: Kind, [lx, ly, lz]: [number, number, number], rate: number, ring1: boolean): Emitter {
+function emitterAt(f: Fitted, kind: Kind, [lx, ly, lz]: [number, number, number], rate: number): Emitter {
   const c = Math.cos(f.turn);
   const s = Math.sin(f.turn);
   return {
@@ -300,7 +296,6 @@ function emitterAt(f: Fitted, kind: Kind, [lx, ly, lz]: [number, number, number]
     fz: c,
     rate,
     floor: f.floor,
-    ring1,
     owed: 0,
   };
 }

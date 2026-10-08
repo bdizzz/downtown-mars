@@ -19,16 +19,16 @@ public partial class RockWall : MeshInstance3D
         Name = "RockWall";
         Visible = false;
         // The shaft wall's rock. Its shader draws both sides, but the camera's always inside the wall (Top,
-        // the shaft, walking), and in Iso's cut-out the shader leaves out the side nearer the camera.
+        // the shaft, walking), and in Free view's cut-out the shader leaves out the side nearer the camera.
         MaterialOverride = Looks.For("rock:wall", new Color("#6a3a28"), 1, 0, false);
-        // In Iso's cut-out its near side goes and it darkens with depth (view.gdshaderinc `slice_role` 3).
+        // In Free view's cut-out its near side goes and it darkens with depth (view.gdshaderinc `slice_role` 3).
         if (MaterialOverride is ShaderMaterial s) s.SetShaderParameter("slice_role", 3);
     }
 
     /// <summary>The wall's radius: just past the unlocked rings, where the cutaway's backdrop sits.</summary>
     public static float Radius(HoleShape hole) => hole.ShaftRadiusM + hole.UnlockedRings * 10 + Flush;
 
-    /// <summary>Shown down to the bottom of this floor (null: hidden). In Iso's cut-out the shader leaves out its near side.</summary>
+    /// <summary>Shown down to the bottom of this floor (null: hidden). In Free view's cut-out the shader leaves out its near side.</summary>
     public void Show(HoleShape hole, int? floor)
     {
         Visible = floor != null;

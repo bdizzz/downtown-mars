@@ -23,7 +23,7 @@ namespace DowntownMars;
 /// --build=&lt;room&gt; opens Build with that room in hand and --hover=x,y points there.
 /// Command line (after "--"): --scene=&lt;name&gt; views an exported scene instead; --bench[=seconds] circles the
 /// camera, writes bench/&lt;name&gt;.json and a screenshot, then quits; with --walk, in first person. --no-lamp-shadows: lamps light but cast no shadows; --lite: no SDFGI, SSIL or volumetric fog.
-/// Keys: Tab switches Iso and first person; F12 saves a screenshot to shots/.
+/// Keys: Tab switches Free view and first person; F12 saves a screenshot to shots/.
 /// </summary>
 public partial class Main : Node3D
 {
@@ -71,7 +71,7 @@ public partial class Main : Node3D
                 else if (arg == "--plan") live.StartPlan = true;
                 else if (arg == "--no-hud") live.NoHud = true;
                 else if (arg.StartsWith("--overlay=")) ViewSettings.Overlay = arg["--overlay=".Length..];
-                else if (arg.StartsWith("--view=") && System.Enum.TryParse<Overview>(arg["--view=".Length..], true, out var view)) ViewSettings.Camera = view;
+                else if (arg.StartsWith("--view=") && ViewSettings.ParseCamera(arg["--view=".Length..]) is Overview view) ViewSettings.Camera = view;
                 // For the bridge it starts: a test colony, a save to load, or a new game (else it continues the autosave).
                 else if (arg.StartsWith("--showcase=") || arg.StartsWith("--load=")) live.BridgeArgs.Add(arg);
                 else if (arg == "--new") live.BridgeArgs.Add("--speed=1");
@@ -133,7 +133,7 @@ public partial class Main : Node3D
         if (_scene == null) return;
         var calls = RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame);
         var prims = RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame);
-        _hud.Text = $"{_scene} · {Engine.GetFramesPerSecond()} fps · {calls} draw calls · {prims / 1000}k triangles · {_lampCount} lamps · {_rig.ModeName}\nTab: Iso / first person · drag to turn · wheel to zoom · WASD to move · F12 screenshot";
+        _hud.Text = $"{_scene} · {Engine.GetFramesPerSecond()} fps · {calls} draw calls · {prims / 1000}k triangles · {_lampCount} lamps · {_rig.ModeName}\nTab: Free view / first person · drag to turn · wheel to zoom · WASD to move · F12 screenshot";
 
         if (_benchSeconds <= 0) return;
         _benchTime += delta;

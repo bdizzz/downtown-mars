@@ -19,7 +19,7 @@ export const MODE_KEYS: Record<Mode, string> = { build: "KeyB", view: "KeyV", ma
 
 const MODES: { id: Mode; name: string; icon: string; hint: string }[] = [
   { id: "build", name: "Build", icon: "⚒", hint: "Rooms, corridors and demolition (B). The rooms' keys work in here" },
-  { id: "view", name: "View", icon: "◉", hint: "Cameras, the plan and unrolled views, X-ray, walls down and overlays (V)" },
+  { id: "view", name: "View", icon: "◉", hint: "Cameras, the plan and unrolled views, walls down and overlays (V)" },
   { id: "map", name: "Map", icon: "◍", hint: "The planet: terrain, deposits and your holes (M)" },
   { id: "charts", name: "Charts", icon: "▤", hint: "People, trends, flows, your network, and the construction and maintenance queues (C)" },
 ];
@@ -88,7 +88,7 @@ interface ViewProps {
   highlight: string | null;
 }
 
-/** The View mode: the 3D cameras; the plan and unrolled views; X-ray and walls down; overlays. */
+/** The View mode: the 3D cameras; the plan and unrolled views; walls down; overlays. */
 export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverlay, highlight }: ViewProps) {
   const in3d = view === "3d";
   return (
@@ -121,15 +121,6 @@ export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverla
       </span>
       <span className="dock-sep" />
       <span className="dock-section" aria-label="See through">
-        <button
-          className={`dock-btn${in3d && view3d.xray ? " on" : ""}`}
-          disabled={!in3d}
-          onClick={() => setView3d({ ...view3d, xray: !view3d.xray })}
-          title={in3d ? "Fade the shaft wall and ring 1 to see deeper rings" : "In the 3D views"}
-          aria-pressed={view3d.xray}
-        >
-          X-ray
-        </button>
         <button
           className={`dock-btn${in3d && view3d.wallsDown ? " on" : ""}`}
           disabled={!in3d}

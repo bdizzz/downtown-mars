@@ -13,7 +13,7 @@ import { hasPostEffects, type Graphics } from "../view/graphics";
 // The 3D view's look: what's drawn after the scene, scaled by the graphics
 // settings. The scene renders once (antialiased, with its depth kept), then:
 // ambient occlusion from that depth, a warm haze by distance and depth, glow
-// around bright things, a tilt-shift blur in Iso, tone mapping, and a final
+// around bright things, a tilt-shift blur in Free view, tone mapping, and a final
 // warm grade with a vignette. It reads the scene's own depth rather than
 // re-rendering it, so walls lowered by "walls down" cast no shade. With every
 // effect off, the scene renders straight to the screen, as before.
@@ -312,7 +312,7 @@ export class Look implements LookLike {
   /**
    * Where the view is: the height of the floor in view (what's below it hazes
    * over), whether it's from inside the hole (far things haze too), and whether
-   * it's Iso (the only view tilt-shift suits).
+   * it's Free view (the only view tilt-shift suits).
    */
   /** How hard a dust storm is blowing, 0 to 1: the haze thickens and browns, near and far. */
   setStorm(level: number): void {

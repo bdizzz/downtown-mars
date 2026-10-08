@@ -93,7 +93,7 @@ public partial class HelpSheet : Sheet
         ("1 2 3", "1×, 2×, 4×"),
         ("↑ ↓", "The floor up / down (Home: every floor)"),
         ("Tab", "First person and back"),
-        ("WASD", "First person: walk; Iso: pan"),
+        ("WASD", "First person: walk; Free view: pan"),
         ("Drag / scroll sideways", "Turn the view"),
         ("Scroll / pinch", "Zoom (in the cutaway, scroll moves along the hole)"),
         ("O  C  M  N  P", "Office, Charts, Map, Network, Colony"),
