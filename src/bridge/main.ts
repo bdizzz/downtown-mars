@@ -17,7 +17,7 @@ import { flows, trends } from "./charts";
 import { mapView, networkView, siteView } from "./network";
 import { constructionView, maintenanceViewOf, peopleView } from "./colony";
 import { rigKey, rigMessage } from "./rig";
-import { hudMessage } from "./hud";
+import { hudMessage, iconsMessage } from "./hud";
 import { tutorialMessage } from "./tutorial";
 import { advanceStep, FOLLOW, metGoals, pickGoal } from "../ui/tutorialGoals";
 import { planFieldKey, planFieldMessage, planKey, planMessage, type FieldView } from "./plan";
@@ -286,6 +286,7 @@ const server = createServer((socket) => {
   console.log(`Godot connected (${clients.size})`);
   // First, say who we are: the viewer counts itself connected only once it hears this (anything else could be on the port).
   socket.write(JSON.stringify({ type: "hello", bridge: "downtown-mars" }) + "\n");
+  socket.write(JSON.stringify(iconsMessage()) + "\n");
   // A new viewer needs the layout and the rest, whatever was sent before, and starts with every floor.
   topFloor = null;
   planFloor = null;

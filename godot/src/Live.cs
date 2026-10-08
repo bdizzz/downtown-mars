@@ -75,9 +75,12 @@ public partial class Live : Node3D
     bool _wasConnected;
     /// <summary>What the tutorial needs to know that the sim doesn't: the noise overlay seen, Flows opened.</summary>
     bool _sawNoise, _openedFlows;
-    /// <summary>The resource bar, and the top bar's drill (with its pause), storm and supply drop.</summary>
-    readonly HudBar _bar = new() { Name = "Bar" };
-    Label _drillText = null!, _stormDue = null!, _drop = null!;
+    /// <summary>The resource grid, and the top bar's "needs you" slot, drill (with its pause) and supply drop.</summary>
+    readonly HudBar _bar = new() { Name = "resources" };
+    HBoxContainer _needs = null!;
+    string _needsKey = "";
+    Label _drillText = null!, _drop = null!;
+    TextureRect _dropIcon = null!;
     Button _drillButton = null!;
     bool _drillActive;
     PanelContainer _pickerPanel = null!;
@@ -429,7 +432,7 @@ public partial class Live : Node3D
             else if (type == "office")
             {
                 _choices.SetOffice(msg.RootElement);
-                _officeButton.Text = _choices.Waiting > 0 ? $"Office · {_choices.Waiting} waiting" : "Office";
+                _officeButton.Text = _choices.Waiting > 0 ? $"Office · {_choices.Waiting}" : "Office";
                 _officeButton.AddThemeColorOverride("font_color", _choices.Waiting > 0 ? new Color("#f0a030") : new Color("#f3e6d8"));
             }
             else if (type == "palette") _build.SetPalette(msg.RootElement);
@@ -452,6 +455,7 @@ public partial class Live : Node3D
             }
             else if (type == "commandResult") OnCommandResult(msg.RootElement);
             else if (type == "hud") OnHud(msg.RootElement);
+            else if (type == "icons") Icons.Set(msg.RootElement);
             else if (type == "tutorial") _tutorial.Set(msg.RootElement);
             else if (type == "welcome") _welcome.Set(msg.RootElement);
             else if (type == "chained") _build.ShowChain(msg.RootElement);
@@ -1162,23 +1166,76 @@ public partial class Live : Node3D
     void OnHud(JsonElement m)
     {
         _bar.Set(m);
+        SetNeeds(m.GetProperty("needs"));
         var x = m.GetProperty("extras");
         var drill = x.GetProperty("drill");
         _drillText.Text = drill.GetProperty("text").GetString();
         _drillText.TooltipText = drill.GetProperty("tip").GetString();
         _drillButton.Visible = drill.GetProperty("canPause").GetBoolean();
         _drillActive = drill.GetProperty("active").GetBoolean();
-        _drillButton.Text = _drillActive ? "Pause drill" : "Resume drill";
-        _stormDue.Visible = x.GetProperty("storm").ValueKind == JsonValueKind.Object;
-        if (_stormDue.Visible)
-        {
-            _stormDue.Text = x.GetProperty("storm").GetProperty("text").GetString();
-            _stormDue.TooltipText = x.GetProperty("storm").GetProperty("tip").GetString();
-        }
+        _drillButton.Text = _drillActive ? "❚❚" : "▶";
+        _drillButton.TooltipText = _drillActive ? "Pause the drill" : "Resume the drill";
+        _drillText.AddThemeColorOverride("font_color", _drillActive || !_drillButton.Visible ? new Color("#f3e6d8") : new Color("#a8927e"));
         var drop = x.GetProperty("drop");
         _drop.Text = drop.GetProperty("text").GetString();
-        _drop.AddThemeColorOverride("font_color", drop.GetProperty("warn").GetBoolean() ? new Color("#f0a030") : new Color("#f3e6d8"));
+        _drop.TooltipText = drop.GetProperty("tip").GetString();
+        var dropColor = drop.GetProperty("warn").GetBoolean() ? new Color("#f4b860") : new Color("#f3e6d8");
+        _drop.AddThemeColorOverride("font_color", dropColor);
+        _dropIcon.Modulate = dropColor;
     }
+
+    /// <summary>What needs you first, as the web's: a few chips, trouble first, each opening what it's about; nothing when all is well.</summary>
+    void SetNeeds(JsonElement needs)
+    {
+        var key = needs.GetRawText();
+        if (key == _needsKey) return;
+        _needsKey = key;
+        foreach (var c in _needs.GetChildren())
+        {
+            _needs.RemoveChild(c);
+            c.QueueFree();
+        }
+        var all = needs.EnumerateArray().ToArray();
+        foreach (var n in all.Take(NeedsShown))
+        {
+            var bad = n.GetProperty("level").GetString() == "bad";
+            var color = bad ? new Color("#ff8a6c") : new Color("#f4b860");
+            var chip = new Button
+            {
+                Text = n.GetProperty("text").GetString(),
+                Icon = Icons.Get(bad ? "alert" : n.GetProperty("icon").GetString()!),
+                ExpandIcon = false,
+                FocusMode = Control.FocusModeEnum.None,
+                TooltipText = n.GetProperty("tip").GetString(),
+                Name = $"need_{n.GetProperty("id").GetString()!.Replace(":", "_")}",
+            };
+            chip.AddThemeFontSizeOverride("font_size", 13);
+            chip.AddThemeConstantOverride("icon_max_width", 16);
+            foreach (var c in new[] { "font_color", "font_hover_color", "font_pressed_color", "icon_normal_color", "icon_hover_color", "icon_pressed_color" }) chip.AddThemeColorOverride(c, color);
+            var box = new StyleBoxFlat { BgColor = new Color(color, bad ? 0.2f : 0.1f), BorderColor = bad ? color : new Color(color, 0.6f), ContentMarginLeft = 6, ContentMarginRight = 9, ContentMarginTop = 1, ContentMarginBottom = 1 };
+            box.SetBorderWidthAll(bad ? 2 : 1);
+            box.SetCornerRadiusAll(12);
+            foreach (var st in new[] { "normal", "hover", "pressed" }) chip.AddThemeStyleboxOverride(st, box);
+            var open = n.GetProperty("open");
+            if (open.ValueKind == JsonValueKind.Object && open.TryGetProperty("trend", out var trend))
+            {
+                var t = trend.GetString()!;
+                chip.Pressed += () => _charts.ShowTrend(t);
+            }
+            else if (open.ValueKind == JsonValueKind.Object && open.TryGetProperty("office", out _)) chip.Pressed += () => _choices.ToggleOffice();
+            _needs.AddChild(chip);
+        }
+        if (all.Length > NeedsShown)
+        {
+            var more = Text($"+{all.Length - NeedsShown}", 13, new Color("#a8927e"));
+            more.MouseFilter = Control.MouseFilterEnum.Pass;
+            more.TooltipText = string.Join("\n", all.Skip(NeedsShown).Select(n => n.GetProperty("text").GetString()));
+            _needs.AddChild(more);
+        }
+    }
+
+    /// <summary>At most this many things in the "needs you" slot, as the web's (view/hudItems.ts NEEDS_SHOWN).</summary>
+    const int NeedsShown = 3;
 
     /// <summary>12.4 → "12", 0.35 → "0.4": whole numbers unless small (ui/format.ts num).</summary>
     public static string Num(double v) => Math.Abs(v) >= 10 || v == 0 ? Math.Round(v).ToString() : v.ToString("0.0");
@@ -1468,6 +1525,7 @@ public partial class Live : Node3D
         bar.AddThemeConstantOverride("separation", 14);
         rows.AddChild(bar);
         _title = Text("Downtown Mars", 20, new Color("#e8834a"));
+        _title.Name = "hole";
         bar.AddChild(_title);
         // With more than one hole, the title is a picker: the hole in view.
         _holePicker = new OptionButton { Visible = false, FocusMode = Control.FocusModeEnum.None, TooltipText = "The hole in view" };
@@ -1476,10 +1534,11 @@ public partial class Live : Node3D
         _holePicker.ItemSelected += i => _bridge.Send(new Dictionary<string, object> { ["type"] = "setActiveHole", ["holeId"] = (int)_holePicker.GetItemId((int)i) });
         bar.AddChild(_holePicker);
         _clock = Text("", 18, new Color("#f3e6d8"));
+        _clock.Name = "clock";
         bar.AddChild(_clock);
         _sunDial = new SunDial();
         bar.AddChild(_sunDial);
-        var speeds = new HBoxContainer();
+        var speeds = new HBoxContainer { Name = "speed" };
         bar.AddChild(speeds);
         foreach (var sp in Speeds)
         {
@@ -1489,31 +1548,42 @@ public partial class Live : Node3D
             speeds.AddChild(b);
             _speedButtons.Add(b);
         }
-        // The drill, a coming storm and the next supply drop, as the web's top bar.
+        // What needs you first, then the drill and the next supply drop, as the web's top bar.
+        _needs = new HBoxContainer { Name = "needs" };
+        _needs.AddThemeConstantOverride("separation", 6);
+        bar.AddChild(_needs);
+        var drillBox = new HBoxContainer { Name = "drill" };
+        drillBox.AddThemeConstantOverride("separation", 5);
+        bar.AddChild(drillBox);
+        drillBox.AddChild(Icons.Rect("drill", 16, new Color("#f3e6d8")));
         _drillText = Text("", 15, new Color("#f3e6d8"));
-        bar.AddChild(_drillText);
-        _drillButton = new Button { Text = "Pause drill", FocusMode = Control.FocusModeEnum.None };
-        _drillButton.AddThemeFontSizeOverride("font_size", 13);
+        _drillText.MouseFilter = Control.MouseFilterEnum.Pass;
+        drillBox.AddChild(_drillText);
+        _drillButton = new Button { Text = "❚❚", FocusMode = Control.FocusModeEnum.None, TooltipText = "Pause the drill" };
+        _drillButton.AddThemeFontSizeOverride("font_size", 11);
         _drillButton.Pressed += () => SendCommand(new Dictionary<string, object> { ["type"] = "setDrill", ["active"] = !_drillActive });
-        bar.AddChild(_drillButton);
-        _stormDue = Text("", 15, new Color("#f0a030"));
-        _stormDue.MouseFilter = Control.MouseFilterEnum.Pass;
-        bar.AddChild(_stormDue);
+        drillBox.AddChild(_drillButton);
+        var dropBox = new HBoxContainer { Name = "drop" };
+        dropBox.AddThemeConstantOverride("separation", 5);
+        bar.AddChild(dropBox);
+        _dropIcon = Icons.Rect("drop", 16, new Color("#f3e6d8"));
+        dropBox.AddChild(_dropIcon);
         _drop = Text("", 15, new Color("#f3e6d8"));
         _drop.MouseFilter = Control.MouseFilterEnum.Pass;
-        _drop.TooltipText = "Next Earth supply drop";
-        bar.AddChild(_drop);
+        dropBox.AddChild(_drop);
         rows.AddChild(_bar);
         _bar.Clicked = trend => _charts.ShowTrend(trend);
         BuildViewBar(rows);
-        var menuButton = new Button { Text = "☰ Menu", FocusMode = Control.FocusModeEnum.None, TooltipText = "Save, load, new game (Esc)" };
+        var menuButton = new Button { Text = "☰", Name = "menu", FocusMode = Control.FocusModeEnum.None, TooltipText = "Menu: save, load, new game (Esc)" };
         menuButton.Pressed += () => _menu.Open();
         bar.AddChild(menuButton);
         bar.MoveChild(menuButton, 0);
         _buildButton = new Button { Text = "Build", FocusMode = Control.FocusModeEnum.None, TooltipText = "Rooms, corridors, demolish and undo (B)" };
         _buildButton.Pressed += () => _build.Toggle();
         bar.AddChild(_buildButton);
-        _officeButton = new Button { Text = "Office", FocusMode = Control.FocusModeEnum.None, TooltipText = "Visits, promises, ordinances and notables" };
+        _officeButton = new Button { Text = "Office", Name = "office", FocusMode = Control.FocusModeEnum.None, TooltipText = "Visits, promises, ordinances and notables (O)" };
+        _officeButton.AddThemeConstantOverride("icon_max_width", 16);
+        Icons.WhenReady(() => _officeButton.Icon = Icons.Get("office"));
         _officeButton.Pressed += () => _choices.ToggleOffice();
         bar.AddChild(_officeButton);
         var mapButton = new Button { Text = "Map", FocusMode = Control.FocusModeEnum.None, TooltipText = "Mars, your holes and where to found the next (M)" };
