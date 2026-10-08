@@ -68,7 +68,7 @@ The essentials:
 
 It plays in mobile browsers too: tap to aim and tap again to build, drag to turn, two fingers to pinch, twist and pan (best on a tablet in landscape; see Controls in the [guide](docs/GUIDE.md)). Add it to the home screen (Android: ⋮ → Install app; iPhone: Share → Add to Home Screen) and it opens full screen with its own icon.
 
-The game autosaves every game day in your browser. Use the menu to save to a slot or export a save file.
+The game autosaves every month (one game day) in your browser. Use the menu to save to a slot or export a save file.
 
 ## Developing
 
@@ -98,10 +98,10 @@ For testing, the browser console has `dm`, which acts on the hole you're looking
 | `dm.unlock()` | Unlocks every room waiting on a milestone (or one: `dm.unlock("cargo")`); `dm.unlock("ore")` puts a deposit under the hole |
 | `dm.finish()` | Finishes everything in the construction queue |
 | `dm.showcase(12)` | Digs 12 floors and fills rings 1–3 with furnished rooms, for looking at and stress-testing |
-| `dm.skip(3)` | Runs every hole ahead 3 days (up to 365) |
+| `dm.skip(3)` | Runs every hole ahead 3 months (game days; up to 365) |
 | `dm.wear(0.4)` | Sets every room's condition to 40% (`dm.wear(0.2, roomId)` for one) |
 | `dm.lining(12, "brick")` | Lines room 12's walls outright: `rock`, `brick` or `metal`, `"fine"` as a third argument for the finer finish; `dm.floor(12, "fibre_panels")` its floor (`dm.floor(12)` back to matching) |
-| `dm.storm(1)` | Starts a dust storm for a day; `dm.storm(2, 3)` forecasts one in 3 days; `dm.storm(0)` clears it |
+| `dm.storm(1)` | Starts a dust storm for a month; `dm.storm(2, 3)` forecasts one in 3 months; `dm.storm(0)` clears it |
 | `dm.event("belt_ship")` | Raises any event now |
 | `dm.snapshot()`, `dm.command({ ... })` | The latest snapshot; send any simulation command (`SimCommand` in `src/sim/commands.ts`) |
 
