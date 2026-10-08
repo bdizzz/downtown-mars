@@ -34,3 +34,4 @@ One shared formatter (in `src/view/`, so the bridge and Godot get it) for a game
 - 2026-10-05 01:11 opened from N-0016, N-0017
 - 2026-10-05 01:16 clock question answered: keep hh:mm, add a sun/moon dial
 - 2026-10-05 01:17 questions answered
+- 2026-10-08 01:32 building on t-021-months-and-years
