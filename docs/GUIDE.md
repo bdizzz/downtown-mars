@@ -28,9 +28,11 @@ Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists
 
 **Time:** the clock at the top counts the colony's time in **months**, then years and months (month 45 reads "Year 3, month 9"). Each month passes as one sol of light and dark, with the hour beside it and a little dial where the sun rides over the horizon by day and the moon by night. Rates are per month and people age in months too. At 1× a month takes a real minute.
 
-**The afterglow:** everyone arrives thrilled. For the first 20 months happiness gets a boost (+20 at landing, easing away), so there's time to get air, water and food running and put something by before reality sets in. Newly founded holes get their own. Point at **Happy** to see how much is left.
+**The afterglow:** everyone arrives thrilled. For the first 20 months happiness gets a boost (+20 at landing, easing away), so there's time to get air, water and food running and put something by before reality sets in. Newly founded holes get their own. Point at **Happiness** (the smiling face in the grid) to see how much is left.
 
-**Watch the bar at the top:** the air, water, meals and power, with how fast they're changing. Red means it runs out in under two months. Point at anything there for what it means and a sparkline of its last two months; click it to open it in **Charts → Trends**.
+**The top bar:** the menu (☰), the hole's name, the clock, the speed, then **what needs you first**, the drill and the next supply drop, and the **Office**. Everything that's fine stays quiet; anything in trouble shows as a chip in the middle, trouble (red, solid frame, a warning triangle) before worries (amber, dashed frame), at most three with a **+N** for the rest: a stock running out, oxygen or CO2 out of its band, health below 70, low morale, condition below 50%, power short, the homeless, a dust storm blowing or coming, a supply drop the pad can't land, people waiting at the office. Click a chip to open its trend (or the office). The drill shows its floor and progress with a small ❚❚ / ▶ to pause it; the rocket counts down to the next drop.
+
+**The resource grid** under it: one small cell per stat or stock, each an icon, its value and a tiny arrow (green rising, red falling), in four groups: the colony (colonists and beds, health, happiness with its ✦ afterglow, condition, workers, power used of made), life (oxygen, water, meals, CO2), food and materials. A cell turns amber in a dashed frame when it's a worry (a stock out in under two months), red in a solid frame when it's trouble (under half a month), and blue with a dotted frame when its storage is full. Point at a cell for its name, what it means and a sparkline of its last two months; click or tap it to open it in **Charts → Trends**. On a phone the grid wraps into rows, the chips get a row of their own, and the office keeps only its icon.
 
 ## Building
 
@@ -111,13 +113,13 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 ## Materials, waste and storage
 
 - At 50 colonists a **brickworks** makes brick from rock, so you're not waiting on Earth. At 100, a **recycling center** turns solid waste into metal and brick.
-- **Fiber:** set a farm's crop to **fiber hemp** and it grows fiber (6 a month) instead of food. Give it room in storage; it's shown in the resource bar once you have some.
+- **Fiber:** set a farm's crop to **fiber hemp** and it grows fiber (6 a month) instead of food. Give it room in storage; it's shown in the resource grid once you have some.
 - **Waste storage** holds more solid and organic waste until something uses it.
-- **Storage:** dry goods (food and materials) only keep what storage has room for. Build storerooms, warehouses or depots and choose what each holds in its details panel; the landing pod has some to start. A good shown in amber has no room left, and what arrives is lost.
+- **Storage:** dry goods (food and materials) only keep what storage has room for. Build storerooms, warehouses or depots and choose what each holds in its details panel; the landing pod has some to start. A good shown in blue with a dotted frame has no room left, and what arrives is lost.
 
 ## Air and smell
 
-**The mix.** The hole's air fills its **living volume**: every dug cell (400 m³) and every built corridor and gallery tube; not the open shaft or the rock. The bar shows it as **Air 21.0% O2** and **CO2 0.20%**, and Charts → Trends → Air has both and the living volume.
+**The mix.** The hole's air fills its **living volume**: every dug cell (400 m³) and every built corridor and gallery tube; not the open shaft or the rock. The grid shows it as oxygen (the bubbles) **21.0%** and CO2 (the cloud) **0.20%**, and Charts → Trends → Air has both and the living volume.
 
 - People breathe oxygen into CO2, one for one. **Life support** scrubs the CO2 (down to 0.2%, left for the farms) and makes oxygen from water up to **21%**, then stops; plants turn CO2 back into oxygen.
 - **Digging dilutes the air:** a new room spreads the same oxygen over more space, and life support makes the difference from water. That's the cost of growing.
@@ -154,7 +156,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 ## Earth, storms, the office and events
 
 - **Earth** sends supply drops every few months until you can stand on your own.
-- **Dust storms** are forecast a few months ahead (the 🌪 chip at the top counts down), then blow for a month or two, halving what the solar arrays make. Charge your batteries before one hits. In 3D the sky thickens to a murk, grit streams past, and the panels dull over.
+- **Dust storms** are forecast a few months ahead (a storm chip among what needs you counts down), then blow for a month or two, halving what the solar arrays make. Charge your batteries before one hits. In 3D the sky thickens to a murk, grit streams past, and the panels dull over.
 - **The office:** colonists visit with problems. What you promise, they remember.
 - **Events:** things happen, and you choose. A card slides in at the top left with the choices (each with what it costs and does) and how long you have. The game keeps running; if you don't decide, it takes its own course.
   - **The drill strikes things:** each floor it finishes may break into an aquifer, an ore vein, a silica bed, a lava tube (free space, or rock), a gas pocket (vent it and lose a month, or push through and foul the floor above) or, deep down, microfossils. The rig shudders when it does.

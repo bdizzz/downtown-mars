@@ -28,6 +28,15 @@ These matter more than style, because the game is a placement puzzle.
 5. **Blueprints are outlines,** translucent fill in the category colour. Stranded rooms get a red outline and a warning mark.
 6. **Walls are solid, 0.25 m thick** (`wallThicknessM` in `data/config.json`), centred on the edge line: one wall between two rooms (each builds its half), and the same thickness along corridors, gallery tubes and rock, so a room gives up 0.125 m on each walled side. Wall tops are always bare rock, whatever the room is built from or coloured, and doors and windows cut through them with reveals (T-001).
 
+## The icon set
+
+One small set drawn for the game (T-089), in `src/view/icons.ts`: the top bar and the resource grid use it on the web (`ui/Icon.tsx`), and the Godot viewer gets the same SVGs through the bridge and tints them (`godot/src/Icons.cs`).
+
+- **A 16-unit grid, a 1.5 stroke,** round caps and joins, drawn in one colour (`currentColor`), so each reads at 16–20 px and takes the colour of the text beside it. Only small solid details (the bolt, dots, the arrows) are filled.
+- **Shape first, colour second:** every icon is its own silhouette (a drop for water, a bowl for meals, a sprout for raw food, a chip for electronics), and a cell's state shows in its frame as well as its colour (dashed amber a worry, solid red trouble, dotted blue full), so nothing depends on telling red from green.
+- **Names live in tooltips:** the bar shows the icon and number; pointing (or a screen reader) gives the name.
+- Adding a resource means adding its icon under the same id; the tests check every one shown has its own.
+
 ## Palette
 
 | Use | Colour |

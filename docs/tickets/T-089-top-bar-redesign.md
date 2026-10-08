@@ -1,7 +1,7 @@
 ---
 id: T-089
 title: A clearer, more compact top bar: icons, a resource grid, what needs you first
-status: open
+status: done
 size: L
 area: ui, godot
 feature: F-009
@@ -37,3 +37,4 @@ GUIDE.md: The top bar. ART.md: the icon set.
 - 2026-10-07 18:53 questions answered
 - 2026-10-07 18:58 moved into F-009
 - 2026-10-08 06:33 building on claude/brave-fermat-mmtj7f
+- 2026-10-08 06:53 built: icons in src/view/icons.ts (Godot gets them through the bridge), cells with level/dir/stable ids, needs() for the slot; Godot not compiled here (no .NET in the session)
