@@ -174,7 +174,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 Four buttons at the bottom right, as in SimCity. B, V, M and C open them from anywhere. Pick the open mode again to close it; Esc steps back one thing at a time.
 
 - **Build** opens a strip of room categories along the bottom. Pick one (Storage, say) and its rooms pop up above it, with each room's details as you point at it. Demolish and Undo sit at the end. Only Build places rooms and corridors. The rooms' keys (and Z for corridors, X to demolish, R to rotate) work only in Build; outside it, bare rock doesn't light up under the pointer.
-- **View** has the 3D cameras, the plan and unrolled views, X-ray, walls down, room colours, Flows and the overlays.
+- **View** has the 3D cameras, the plan and unrolled views, walls down, room colours, Flows and the overlays.
   - **Room colours** off shows each room in what it's built from: rock, marscrete, brick or metal. On, walls and floors take the room's category colour, but the floor keeps its material's texture, only tinted.
   - **Flows** draws power, water, air and food as pipes, with dashes running from what makes each to what uses it.
   - **Overlays** show noise, smell, health, comfort, air, happiness and condition.
@@ -189,14 +189,14 @@ One floor from above, rings around the shaft. Pick the floor from the strip on t
 
 ### 3D
 
-New games open in 3D, in Iso. Everything you can do in 2D works in 3D.
+New games open in 3D, in Free view. Everything you can do in 2D works in 3D.
 
 **Cameras**
 
-- **Iso** looks at one floor (or, with All, the surface) from above and off to one side, so you see all of it: drag to turn it, scroll to zoom (out only as far as all six rings' footprint, open or not, fills the screen with a little to spare). With a floor picked, the planet is cut open to show it: the land across the hole stands with a rock face down to that floor, fading into the dark further out, and the near side is cut away.
-- **Cutaway** slices the hole open (it opens framing the unlocked rings); **Top** looks straight down. Pick a floor on the right to hide everything above it: from the Top it becomes a clear plan you can build on. **Surface** shows the whole hole again, from the surface down.
+- **Free view** looks at one floor (or, with All, the surface) from above and off to one side, so you see all of it: drag to turn it, scroll to zoom (out only as far as all six rings' footprint, open or not, fills the screen with a little to spare). With a floor picked, the planet is cut open to show it: the land across the hole stands with a rock face down to that floor, fading into the dark further out, and the near side is cut away.
+- **Cutaway** slices the hole open (it opens framing the unlocked rings). Pick a floor on the right to hide everything above it (for a flat plan to build on, there's the 2D **Plan** view). **Surface** shows the whole hole again, from the surface down.
 - **First person** puts you on a floor at eye height: WASD to walk (hold Shift to run), Q and E to turn, drag to look (or Tab for mouse look, where the browser allows it). Walk up or down a stairwell's wide flights to change floors (R or F also takes the stairs from anywhere in a stairwell; picking a floor on the right takes you there too). You can walk the gallery tubes, corridors, plazas and empty space, and into a room through its door, but not through walls or furniture. Build is off while you walk.
-- **X-ray** fades ring 1 so you can see behind it. **Walls down** lowers the walls that hide a room from you to a short stub, as in The Sims: a room's near walls, and a wall that stands in front of another room. Each wall goes down or stays up whole, curves and all. A wall that only hides a corridor, a gallery tube, the shaft or rock stays up; one with a corridor and then a room behind it stays up while the stubs would hide that room's floor anyway, and comes down once you tilt the camera low enough that lowering it would show some of that floor. Hangings on a lowered wall go with it.
+- **Walls down** lowers the walls that hide a room from you to a short stub, as in The Sims: a room's near walls, and a wall that stands in front of another room. Each wall goes down or stays up whole, curves and all. A wall that only hides a corridor, a gallery tube, the shaft or rock stays up; one with a corridor and then a room behind it stays up while the stubs would hide that room's floor anyway, and comes down once you tilt the camera low enough that lowering it would show some of that floor. Hangings on a lowered wall go with it.
 
 **What you'll see**
 
@@ -208,7 +208,7 @@ New games open in 3D, in Iso. Everything you can do in 2D works in 3D.
 - Around midday sunlight falls down the shaft; deeper down everything settles into lamp-light. Lamps, fires and grow lights light the rooms around them.
 - By day the sky fades from butterscotch at the horizon to a deeper tan overhead, with a bluish glow round the sun; at night the stars come out. The land round the hole rolls away in ridges, craters and boulders to mountains, mesas or low hills, depending on the site.
 
-**Graphics:** soft shadows where things meet, glow around lit windows and lamps, a warm haze, a miniature-style blur in Iso, and a warm colour grade. **Settings → Display** picks a preset (Low, Medium or High, the default) or sets each effect, including lamp light and shadows, so a laptop can scale them down. Shiny floors, metal and glass reflect a warm, lamp-lit cave. `?renderer=webgpu` tries three's WebGPU renderer with light bouncing and reflections (an experiment: see [WEBGPU.md](WEBGPU.md)).
+**Graphics:** soft shadows where things meet, glow around lit windows and lamps, a warm haze, a miniature-style blur in Free view, and a warm colour grade. **Settings → Display** picks a preset (Low, Medium or High, the default) or sets each effect, including lamp light and shadows, so a laptop can scale them down. Shiny floors, metal and glass reflect a warm, lamp-lit cave. `?renderer=webgpu` tries three's WebGPU renderer with light bouncing and reflections (an experiment: see [WEBGPU.md](WEBGPU.md)).
 
 ## Controls
 
@@ -222,7 +222,7 @@ New games open in 3D, in Iso. Everything you can do in 2D works in 3D.
 | ? | Controls help |
 | [ ] | Previous / next hole, once you have more than one |
 | ↑ ↓ or Page Up / Page Down | Floor up / down in the Plan and 3D views (walking, the arrows walk) |
-| W A S D | Iso: pan across the floor (outside Build). Once a 3D view has moved, **Reset camera** (top left) takes you back |
+| W A S D | Free view: pan across the floor (outside Build). Once a 3D view has moved, **Reset camera** (top left) takes you back |
 | Drag / scroll | Pan (drag paints corridors with the corridor tool) |
 | Pinch / Ctrl+scroll | Zoom |
 
@@ -246,8 +246,8 @@ The web game plays in mobile browsers: fully on a tablet in landscape, cramped b
 | --- | --- |
 | Tap | Select a room. With a tool in hand, the first tap only **aims** (the ghost shows where it lands and what it costs); a second tap on the same spot places, digs or demolishes |
 | Hold | Show what's under your finger, as hovering does with a mouse; slide to look around, lift to put it down (it isn't a tap) |
-| One finger | 3D: turn round the hole (Iso: up and down tilts, as with a mouse). Plan and Unrolled: pan. With the corridor tool: draw a corridor, confirmed on release |
-| Two fingers | Pinch to zoom, twist to turn, move together to pan (in Iso across the floor; in Cutaway and Shaft up and down). A second finger cancels whatever the first was doing |
+| One finger | 3D: turn round the hole (Free view: up and down tilts, as with a mouse). Plan and Unrolled: pan. With the corridor tool: draw a corridor, confirmed on release |
+| Two fingers | Pinch to zoom, twist to turn, move together to pan (in Free view across the floor; in Cutaway up and down). A second finger cancels whatever the first was doing |
 | First person | A see-through stick, bottom left, walks and strafes (pushed all the way, you run); drag anywhere else to look round. **▲ Up** and **▼ Down** appear beside it on stairs |
 | Map | Drag spins the planet, pinch zooms |
 

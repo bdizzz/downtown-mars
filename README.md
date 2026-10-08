@@ -128,7 +128,7 @@ It starts the game by itself, continuing the last autosave; quitting saves and s
 
 To run the game yourself instead (the viewer then just connects), use `npm run bridge -- --showcase=12`. The bridge serves on `127.0.0.1:17878` (its log: `~/.downtown-mars/bridge.log`) and takes `--load`, `--showcase`, `--speed`, `--hour=12` and `--verbose`. Saves go to `~/.downtown-mars/saves`; a web save exported to a file can be imported there, and back.
 
-The viewer has the web game's views (Iso, Cutaway, Top, first person, the plan with its overlays), building with the room card and effect halo, corridor chains, demolish and undo, the room panel, the resource bar with its tooltips, office, charts, map, network and colony panels, the tutorial, help (? or F1) and settings. F2 cycles the graphics level; F12 saves a screenshot.
+The viewer has the web game's views (Free view, Cutaway, first person, the plan with its overlays), building with the room card and effect halo, corridor chains, demolish and undo, the room panel, the resource bar with its tooltips, office, charts, map, network and colony panels, the tutorial, help (? or F1) and settings. F2 cycles the graphics level; F12 saves a screenshot.
 
 ### Furnishing tool
 

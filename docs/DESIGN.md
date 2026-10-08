@@ -298,7 +298,7 @@ The game runs in real time with pause and speed controls, and the player can swi
 - **3D cylinder** sells immersion and the feeling of a city in a hole.
 - **Build order:** 2D first, 3D later, with no data rework.
 
-**As built:** 3D is now the main view (new games open in 3D Iso), with Cutaway, Top, first person, X-ray and walls down; the unrolled 2D view and a top-down plan view sit beside it. 1× runs 2 ticks a second, 240 ticks a game day.
+**As built:** 3D is now the main view (new games open in 3D Free view), with Cutaway, first person and walls down (the Shaft and Top cameras and X-ray were dropped, T-052); the unrolled 2D view and a top-down plan view sit beside it. 1× runs 2 ticks a second, 240 ticks a game day.
 
 ## First 30 minutes
 
