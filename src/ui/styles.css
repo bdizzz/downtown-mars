@@ -212,10 +212,14 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .tutorial .who > span:nth-child(2) { flex: 1; }
 .tutorial .icon, .tutorial .link { background: none; border: none; color: var(--muted); cursor: pointer; font: inherit; }
 .tutorial .link { align-self: flex-end; font-size: 12px; text-decoration: underline; padding: 0; }
-.tutorial .progress { display: flex; gap: 3px; }
-.tutorial .progress span { flex: 1; height: 4px; border-radius: 2px; background: #3a241d; }
-.tutorial .progress span.done { background: var(--accent); }
-.tutorial .progress span.now { background: #8a5a40; }
+.tutorial .steps { display: flex; align-items: center; gap: 6px; }
+.tutorial .steps .icon { font-size: 18px; line-height: 1; padding: 0 4px; }
+.tutorial .steps .icon:hover { color: var(--text); }
+.tutorial .progress { display: flex; gap: 3px; flex: 1; }
+.tutorial .progress button { flex: 1; height: 12px; padding: 4px 0; border: none; background: #3a241d content-box; border-radius: 2px; cursor: pointer; }
+.tutorial .progress button.now { background-color: #8a5a40; padding: 2px 0; }
+.tutorial .progress button.done { background-color: var(--accent); }
+.tutorial .tick { color: var(--accent); }
 .tutorial-pill {
   position: absolute; right: 12px; bottom: 10px; z-index: 3; background: rgba(30, 17, 13, 0.96);
   color: var(--text); border: 1px solid var(--accent); border-radius: 12px; padding: 4px 12px; font: inherit; font-size: 12px; cursor: pointer;

@@ -25,9 +25,19 @@ import { ResourceBar } from "./ResourceBar";
 import { TrendsPanel } from "./TrendsPanel";
 import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
 import { StatusBar } from "./StatusBar";
-import { currentGoal, Tutorial } from "./Tutorial";
+import { Tutorial } from "./Tutorial";
 import { Welcome } from "./Welcome";
-import { setTutorialHidden, tutorialHidden, type UiFlags } from "./tutorialGoals";
+import {
+  advanceStep,
+  FOLLOW,
+  metGoals,
+  setTutorialHidden,
+  shownGoal,
+  tutorial,
+  tutorialHidden,
+  type TutorialStep,
+  type UiFlags,
+} from "./tutorialGoals";
 import { play, setAudioSettings, unlockAudio } from "../audio/sound";
 import { useSettings } from "./settings";
 import { installConsole } from "./devConsole";
@@ -303,8 +313,13 @@ export function App() {
   useEffect(() => {
     if (settings.view === "3d") setFlags((f) => (f.sawThreeD ? f : { ...f, sawThreeD: true }));
   }, [settings.view]);
-  const goal = snapshot && tutorialOn ? currentGoal(snapshot, flags) : null;
-  const highlight = goal?.highlight ?? null;
+  // The step the tutorial's card is on (the arrows and dots pick one), moved on when its goal is met.
+  const [tutorialStep, setTutorialStep] = useState<TutorialStep>(FOLLOW);
+  const met = snapshot ? metGoals(snapshot, flags) : null;
+  const step = met ? advanceStep(tutorialStep, met) : tutorialStep;
+  if (step !== tutorialStep) setTutorialStep(step);
+  const shown = met && tutorialOn ? shownGoal(step, met) : -1;
+  const highlight = shown >= 0 && !met![shown] ? tutorial.goals[shown]!.highlight : null;
 
   // Floors the plan and 3D views can focus on: every dug floor, plus the one being dug.
   const floorCount = snapshot ? (snapshot.drill.floor ?? snapshot.layout.hole.floors) : 1;
@@ -451,7 +466,9 @@ export function App() {
           {snapshot && tutorialOn && !menu && !welcome && (
             <Tutorial
               s={snapshot}
-              flags={flags}
+              met={met!}
+              step={step}
+              onStep={setTutorialStep}
               onHide={() => {
                 setTutorialOn(false);
                 setTutorialHidden(true);
