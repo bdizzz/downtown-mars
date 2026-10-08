@@ -14,8 +14,8 @@ import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
 import { glazedWalls } from "../sim/windows";
 import { tubeAt } from "../view/gallery";
-import { finishMaterial, withFloor, withFresnel, withGrime, withRock } from "./surfaces";
-import { roomFinish, type Finish } from "../view/roomFinish";
+import { finishMaterial, withFloor, withFresnel, withGrime, withRefit, withRock, withSurface, type SurfaceLook } from "./surfaces";
+import { roomLook, type Finish } from "../view/roomFinish";
 import { lampsOf, lightPools } from "./lights3d";
 import { withCondensation } from "./details3d";
 import { spotsOf, type RoomSpots } from "./people3d";
@@ -1629,29 +1629,35 @@ export function disposeRoomMaterials(): void {
   disposeFurnitureMaterials();
 }
 
-/** A room's walls and floor in the material it's built from, with walls down. */
-function finishWallMaterial(finish: Finish, grime = 0): THREE.Material {
-  return wallMaterial(`finish:${finish}:${grime}`, () => withGrime(finishMaterial(finish), grime));
+/** A room's walls and floor in the material it's built from, with walls down (and the refit band while it's being refitted). */
+function finishWallMaterial(finish: Finish, grime = 0, refit = false): THREE.Material {
+  return wallMaterial(`finish:${finish}:${grime}${refit ? ":refit" : ""}`, () => {
+    const m = withGrime(finishMaterial(finish), grime);
+    return refit ? withRefit(m) : m;
+  });
 }
 
-function roomMaterial(color: number, planned: boolean, building = false, floor: Finish = "rock", grime = 0): THREE.Material {
+function roomMaterial(color: number, planned: boolean, building = false, floor: Finish = "rock", grime = 0, refit = false): THREE.Material {
   // Under construction: the room's colour through semi-opaque diagonal stripes.
   if (building) {
     return wallMaterial(`building:${color}`, () =>
       new THREE.MeshStandardMaterial({ color, map: stripes(), transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9 }),
     );
   }
-  return wallMaterial(`room:${color}:${planned}:${planned ? "" : `${floor}:${grime}`}`, () =>
-    planned
-      ? new THREE.MeshStandardMaterial({
-          color,
-          transparent: true,
-          opacity: 0.3,
-          depthWrite: false,
-          side: THREE.DoubleSide,
-        })
-      : withGrime(withFloor(new THREE.MeshStandardMaterial({ color, roughness: 0.75, side: THREE.DoubleSide }), floor), grime),
-  );
+  if (planned)
+    return wallMaterial(`room:${color}:true:`, () =>
+      new THREE.MeshStandardMaterial({
+        color,
+        transparent: true,
+        opacity: 0.3,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+  return wallMaterial(`room:${color}:false:${floor}:${grime}${refit ? ":refit" : ""}`, () => {
+    const m = withGrime(withFloor(new THREE.MeshStandardMaterial({ color, roughness: 0.75, side: THREE.DoubleSide }), floor), grime);
+    return refit ? withRefit(m) : m;
+  });
 }
 
 /** A room's trouble, shown on it: a badge floating over its label, with the reason's icon. */
@@ -1852,6 +1858,8 @@ export function buildLayout(
   roomColors = true,
   /** Each room's wear, 0 (spotless) to 3: see view/grime.ts. */
   grimeOf: (room: RoomInstance) => number = () => 0,
+  /** Is a built room being refitted to another lining (PLAN-M15)? It shows a band of hazard stripes. */
+  refitting: (room: RoomInstance) => boolean = () => false,
 ): THREE.Group {
   const group = new THREE.Group();
   const hole = layout.hole;
@@ -1944,9 +1952,10 @@ export function buildLayout(
     // Built rooms show their category's colour, or (room colours off) what they're built from.
     // Either way its floor is laid in what it's built from: room colours only tint it.
     const shown = !roomColors && !room.planned && !room.building;
-    const finish = roomFinish(room.type);
+    const finish = roomLook(whole);
     const grime = grimeOf(whole);
-    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(finish, grime) : roomMaterial(color, room.planned, !!room.building, finish, grime));
+    const refit = !room.planned && !room.building && refitting(whole);
+    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(finish, grime, refit) : roomMaterial(color, room.planned, !!room.building, finish, grime, refit));
     mesh.userData = { pickable: true, roomId: room.id, cached: true };
     group.add(mesh);
     // Its walls' tops: bare rock once it's built, whatever it's made of or coloured (a plan keeps the room's look).
@@ -2195,8 +2204,8 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
     const see = building === "true" ? { transparent: true, opacity: 0.35, depthWrite: false } : {};
     const mat = material(`hall:${key}`, () => {
       const m = new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, ...FINISH_LOOK[finish!], ...see });
-      // A corridor cut through the rock shows the rock's layers underfoot.
-      return finish === "rock" ? withRock(m) : m;
+      // Underfoot, the finish's own surface, as on a room lined in it (a corridor cut through the rock shows its layers).
+      return finish! in FINISH_LOOK ? withSurface(m, finish as SurfaceLook) : m;
     });
     const mesh = new THREE.Mesh(geometry(pos), mat);
     mesh.userData = { pickable: true, hall: true };

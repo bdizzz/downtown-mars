@@ -5,7 +5,7 @@ namespace DowntownMars;
 
 /// <summary>
 /// The hole's surfaces with the procedural shader (shaders/surfaces.gdshader), chosen by the web
-/// game's material names: rooms ("room:&lt;colour&gt;:&lt;planned&gt;:&lt;faint&gt;:&lt;finish&gt;:&lt;grime&gt;", the floor laid in that finish),
+/// game's material names: rooms ("room:&lt;colour&gt;:&lt;planned&gt;:&lt;finish&gt;:&lt;grime&gt;[:refit]", the floor laid in that finish),
 /// rock, corridor and room finishes ("hall:&lt;finish&gt;…", "finish:&lt;finish&gt;:&lt;grime&gt;"), the gallery
 /// tubes' floors, and the ground. Anything else is left to Dress.cs.
 /// </summary>
@@ -29,6 +29,10 @@ static class Looks
         ["marscrete"] = (3, "#9c8f84", 0.9f, 0),
         ["brick"] = (4, "#9c5438", 0.85f, 0),
         ["metal"] = (5, "#8d9299", 0.32f, 0.6f),
+        // The fine finishes (PLAN-M15), in their base step's look until the shader has their own (T-035).
+        ["rock_fine"] = (1, "#86584a", 0.55f, 0),
+        ["brick_fine"] = (4, "#a65a3b", 0.8f, 0),
+        ["metal_fine"] = (5, "#9aa0a8", 0.28f, 0.65f),
     };
 
     /// <summary>How much a room's colour tints its floor, as the web's FLOOR_TINT.</summary>
@@ -43,14 +47,14 @@ static class Looks
         ShaderMaterial? m = null;
         switch (parts[0])
         {
-            case "room" when parts.Length >= 6 && parts[2] == "false" && parts[3] == "false" && Finishes.TryGetValue(parts[4], out var floor):
+            case "room" when parts.Length >= 5 && parts[2] == "false" && Finishes.TryGetValue(parts[3], out var floor):
                 m = Make(0, color, 0.75f, 0);
                 m.SetShaderParameter("floor_look", floor.look);
                 m.SetShaderParameter("floor_color", new Color(floor.color));
                 m.SetShaderParameter("floor_tint", FloorTint);
                 m.SetShaderParameter("floor_roughness", floor.rough);
                 m.SetShaderParameter("floor_metallic", floor.metal);
-                m.SetShaderParameter("grime", float.TryParse(parts[5], out var g) ? g : 0);
+                m.SetShaderParameter("grime", float.TryParse(parts[4], out var g) ? g : 0);
                 break;
             case "rock" when parts.Length > 1 && parts[1] == "ground":
                 m = Make(2, color, 0.95f, 0);

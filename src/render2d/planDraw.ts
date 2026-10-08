@@ -11,7 +11,7 @@ import { glazedWalls } from "../sim/windows";
 import { openShaftRadius, ringRadii, slotAngles } from "../render3d/cylinder";
 import { doorsOnFloor } from "../view/doors";
 import { tubeAt } from "../view/gallery";
-import { roomFinish } from "../view/roomFinish";
+import { roomLook } from "../view/roomFinish";
 import { shade, tint } from "./art";
 import { corridorStrip } from "./corridorArt";
 import { CATEGORY_COLORS } from "./palette";
@@ -51,7 +51,7 @@ export const C = {
 };
 
 /** Built rooms' colours with room colours off: what they're built from (as surfaces.ts FINISH_LOOK). */
-const FINISH_COLORS: Record<string, number> = { rock: 0x7a4f3c, marscrete: 0x9c8f84, brick: 0x9c5438, metal: 0x8d9299 };
+const FINISH_COLORS: Record<string, number> = { rock: 0x7a4f3c, rock_fine: 0x86584a, marscrete: 0x9c8f84, brick: 0x9c5438, brick_fine: 0xa65a3b, metal: 0x8d9299, metal_fine: 0x9aa0a8 };
 
 /** Pixels per metre at zoom 1. */
 export const PX = 7;
@@ -194,7 +194,7 @@ export function drawRooms(g: GraphicsContext, l: Layout, floor: number, opts: Ro
     const def = roomDef(room.type);
     const category = CATEGORY_COLORS[def.category] ?? 0x888888;
     // Room colours off (the 3D view's toggle): built rooms in what they're built from.
-    const color = opts.roomColors === false && !room.planned && !room.building ? FINISH_COLORS[roomFinish(room.type)]! : category;
+    const color = opts.roomColors === false && !room.planned && !room.building ? FINISH_COLORS[roomLook(room)]! : category;
     // A cargo elevator passing through this floor: just its shaft, with the cables.
     if (def.cargoShaft && floor < Math.max(...room.cells.map((c) => c.floor))) {
       for (const c of cells) {
