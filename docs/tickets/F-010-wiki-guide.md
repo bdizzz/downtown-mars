@@ -16,6 +16,8 @@ created: 2026-10-08 02:06
 - **Only what's built:** pages come from the game's data, so nothing describes a room that isn't in the game.
 - **In the game:** a Guide panel (replacing or extending Help), opened from the menu and from "?" links in room panels, the build palette and the top bar; Godot shows the same pages through the bridge.
 
+- **Answered (Bryon, Oct 8):** in the game first, the website later from the same pages; `GUIDE.md` is generated from the wiki's pages (one source); locked rooms and events are shown but marked locked, with how to unlock them.
+
 ## Breakdown
 Proposed; becomes tickets once this feature is agreed.
 - The page model and generator: pages from `data/*.json` (rooms, resources, crops, materials, events) plus hand-written mechanics pages, with links resolved and checked in a test.
@@ -26,9 +28,10 @@ Proposed; becomes tickets once this feature is agreed.
 - The guide in Godot.
 
 ## Open questions
-- [ ] Where: in the game (proposed), on a website, or both (proposed: in the game first, the website from the same pages later)?
-- [ ] `GUIDE.md`: generate it from the wiki's pages so there's one source (proposed), or retire it?
-- [ ] Spoilers: should pages for rooms and events you haven't unlocked or seen yet be hidden or marked until you reach them? Proposed: shown, but marked as locked, with how to unlock.
+- [x] Where: in the game (proposed), on a website, or both (proposed: in the game first, the website from the same pages later)?
+- [x] `GUIDE.md`: generate it from the wiki's pages so there's one source (proposed), or retire it?
+- [x] Spoilers: should pages for rooms and events you haven't unlocked or seen yet be hidden or marked until you reach them? Proposed: shown, but marked as locked, with how to unlock.
 
 ## History
 - 2026-10-08 02:06 opened from N-0050
+- 2026-10-08 02:14 questions answered
