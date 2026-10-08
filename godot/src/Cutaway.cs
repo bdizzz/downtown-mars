@@ -54,7 +54,7 @@ public partial class Cutaway : Node3D
             face.AddRange(new[] { new Vector3(u0, y1, 0), new Vector3(u1, y1, 0), new Vector3(u1, y0, 0), new Vector3(u0, y1, 0), new Vector3(u1, y0, 0), new Vector3(u0, y0, 0) });
         Quad(-Reach, -inner, Bottom, 0);
         Quad(inner, Reach, Bottom, 0);
-        // Iso's cut through the land, in the shaft wall's rock, where the rings look widest (Show places it).
+        // Free view's cut through the land, in the shaft wall's rock, where the rings look widest (Show places it).
         var cut = new List<Vector3>();
         void CutQuad(float u0, float u1) =>
             cut.AddRange(new[] { new Vector3(u0, 0, 0), new Vector3(u1, 0, 0), new Vector3(u1, Bottom, 0), new Vector3(u0, 0, 0), new Vector3(u1, Bottom, 0), new Vector3(u0, Bottom, 0) });
@@ -82,7 +82,7 @@ public partial class Cutaway : Node3D
 
     /// <summary>
     /// On in the cutaway: the backdrop always, the cut face with no floor picked (the ground's there to cut
-    /// then). Sliced (Iso with a floor picked), only the cut face either side of the rings, without the slab
+    /// then). Sliced (Free view with a floor picked), only the cut face either side of the rings, without the slab
     /// under the hole, so the land reads as cut open down to that floor: square to `toward` (from the axis
     /// toward the camera), `offset` metres toward it, where the rings look widest.
     /// </summary>

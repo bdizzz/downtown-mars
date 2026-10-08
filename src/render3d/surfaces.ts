@@ -169,7 +169,7 @@ function withPattern<T extends THREE.Material>(m: T, name: string, glsl: string,
 }
 
 /**
- * The land sliced open (Iso with a floor picked), along the line where the rings look widest from the
+ * The land sliced open (Free view with a floor picked), along the line where the rings look widest from the
  * camera: square to `dir` (from the axis towards the camera), `offset` metres toward it, through the
  * points where the camera's sightlines graze the rock wall. While `on`, what's on the camera's side of
  * that line isn't drawn; land isn't drawn

@@ -162,7 +162,7 @@ export function buildPeople(state: SimState, spots: RoomSpots[]): PeopleMessage 
 export function buildScene(state: SimState, gameId: number, topFloor: number | null, roomColors = true): { message: SceneMessage; spots: RoomSpots[] } {
   const t0 = performance.now();
   const layout = state.layout;
-  const group = buildLayout(layout, drillFloor(state), COLORS, false, topFloor, roomColors, grimeLevel);
+  const group = buildLayout(layout, drillFloor(state), COLORS, topFloor, roomColors, grimeLevel);
   group.updateMatrixWorld(true);
 
   const materials: SceneMaterial[] = [];

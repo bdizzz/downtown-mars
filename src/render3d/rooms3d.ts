@@ -47,8 +47,6 @@ export interface RoomColors {
   stranded: number;
 }
 
-/** How faint the shaft wall and ring-1 rooms get in x-ray, so deeper rings show. */
-const XRAY = { wall: 0.1, ring1: 0.28 };
 
 /** Vertices for a curved face at radius r, or a flat radial side, as triangles. */
 function push(pos: number[], ...pts: number[][]): void {
@@ -1637,19 +1635,19 @@ function finishWallMaterial(finish: Finish, grime = 0): THREE.Material {
   return wallMaterial(`finish:${finish}:${grime}`, () => withGrime(finishMaterial(finish), grime));
 }
 
-function roomMaterial(color: number, planned: boolean, faint = false, building = false, floor: Finish = "rock", grime = 0): THREE.Material {
+function roomMaterial(color: number, planned: boolean, building = false, floor: Finish = "rock", grime = 0): THREE.Material {
   // Under construction: the room's colour through semi-opaque diagonal stripes.
-  if (building && !faint) {
+  if (building) {
     return wallMaterial(`building:${color}`, () =>
       new THREE.MeshStandardMaterial({ color, map: stripes(), transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9 }),
     );
   }
-  return wallMaterial(`room:${color}:${planned}:${faint}:${planned || faint ? "" : `${floor}:${grime}`}`, () =>
-    planned || faint
+  return wallMaterial(`room:${color}:${planned}:${planned ? "" : `${floor}:${grime}`}`, () =>
+    planned
       ? new THREE.MeshStandardMaterial({
           color,
           transparent: true,
-          opacity: planned ? 0.3 : XRAY.ring1,
+          opacity: 0.3,
           depthWrite: false,
           side: THREE.DoubleSide,
         })
@@ -1851,7 +1849,6 @@ export function buildLayout(
   layout: Layout,
   digFloor: number | null,
   colors: RoomColors,
-  xray = false,
   topFloor: number | null = null,
   roomColors = true,
   /** Each room's wear, 0 (spotless) to 3: see view/grime.ts. */
@@ -1860,12 +1857,8 @@ export function buildLayout(
   const group = new THREE.Group();
   const hole = layout.hole;
   const n1 = hole.ringSlots[0]!;
-  const rock = wallMaterial(`rock:${colors.rock}:${xray}`, () =>
-    withRock(
-      xray
-        ? new THREE.MeshStandardMaterial({ color: colors.rock, transparent: true, opacity: XRAY.wall, depthWrite: false, side: THREE.DoubleSide })
-        : new THREE.MeshStandardMaterial({ color: colors.rock, roughness: 0.95, side: THREE.DoubleSide }),
-    ),
+  const rock = wallMaterial(`rock:${colors.rock}`, () =>
+    withRock(new THREE.MeshStandardMaterial({ color: colors.rock, roughness: 0.95, side: THREE.DoubleSide })),
   );
 
   // The shaft wall, wherever a built room doesn't replace it.
@@ -1895,13 +1888,11 @@ export function buildLayout(
     for (let slot = 0; slot < n1; slot++) curvedFace(wall, hole.shaftRadiusM, ...slotAngles(slot, n1), top, 0, { side: -1 });
   }
   const wallMesh = new THREE.Mesh(geometry(wall), rock);
-  wallMesh.userData = { pickable: true, wall: true, faint: xray };
+  wallMesh.userData = { pickable: true, wall: true };
   group.add(wallMesh);
-  // Solid rock where it meets dug-out space, so nothing shows through behind or above a room. X-ray looks past it.
-  if (!xray) {
-    const faces = rockFaces(layout, topFloor);
-    if (faces.length) group.add(new THREE.Mesh(geometry(faces), rock));
-  }
+  // Solid rock where it meets dug-out space, so nothing shows through behind or above a room.
+  const faces = rockFaces(layout, topFloor);
+  if (faces.length) group.add(new THREE.Mesh(geometry(faces), rock));
 
   const used = new Set<string>();
   // See-through glass: you can look into a room from the gallery, and out of it.
@@ -1912,7 +1903,7 @@ export function buildLayout(
   const strandedLine = wallMaterial(`stranded:${colors.stranded}`, () => new THREE.LineBasicMaterial({ color: colors.stranded })) as THREE.LineBasicMaterial;
   const edgeLine = wallMaterial("edges", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.5 })) as THREE.LineBasicMaterial;
 
-  if (topFloor !== null) group.add(...floorCap(layout, topFloor, xray));
+  if (topFloor !== null) group.add(...floorCap(layout, topFloor));
   // No corridors yet: add() with nothing to add is an error in three.js.
   const halls = corridorFloors(layout, topFloor);
   if (halls.length) group.add(...halls);
@@ -1951,26 +1942,25 @@ export function buildLayout(
     if (def.surfaceLink && !def.cargoShaft && topFloor === null) group.add(airlock(layout, room, color));
     const shape = roomShape(layout, room);
     used.add(shape.key);
-    const faint = xray && room.cells.some((c) => c.ring === 1);
     // Built rooms show their category's colour, or (room colours off) what they're built from.
     // Either way its floor is laid in what it's built from: room colours only tint it.
-    const shown = !roomColors && !room.planned && !room.building && !faint;
+    const shown = !roomColors && !room.planned && !room.building;
     const finish = roomFinish(room.type);
     const grime = grimeOf(whole);
-    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(finish, grime) : roomMaterial(color, room.planned, faint, !!room.building, finish, grime));
-    mesh.userData = { pickable: true, roomId: room.id, faint, cached: true };
+    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(finish, grime) : roomMaterial(color, room.planned, !!room.building, finish, grime));
+    mesh.userData = { pickable: true, roomId: room.id, cached: true };
     group.add(mesh);
-    // Its walls' tops: bare rock once it's built, whatever it's made of or coloured (a plan or x-ray's faded ring keeps the room's look).
+    // Its walls' tops: bare rock once it's built, whatever it's made of or coloured (a plan keeps the room's look).
     if (shape.tops) {
-      const tops = new THREE.Mesh(shape.tops, room.planned || faint ? mesh.material : rock);
-      tops.userData = { pickable: true, roomId: room.id, faint, cached: true };
+      const tops = new THREE.Mesh(shape.tops, room.planned ? mesh.material : rock);
+      tops.userData = { pickable: true, roomId: room.id, cached: true };
       group.add(tops);
     }
     const edges = new THREE.LineSegments(shape.edges, room.connected ? edgeLine : strandedLine);
     edges.userData = { cached: true, roomId: room.id, outline: !room.planned && !room.building && room.connected };
     group.add(edges);
-    // Its furniture, once it's built (not in x-ray's faded ring 1, nor above a chosen floor).
-    if (!faint && !whole.planned && !whole.building) {
+    // Its furniture, once it's built (not above a chosen floor).
+    if (!whole.planned && !whole.building) {
       const furniture = roomFurniture(layout, whole, shape.key, color, topFloor);
       if (furniture) {
         used.add(furniture.userData.key);
@@ -1979,7 +1969,7 @@ export function buildLayout(
     }
 
     // Its windows and doors: glass in the openings the shape cut, and a frame round each doorway.
-    if (!room.planned && !faint) {
+    if (!room.planned) {
       if (shape.glass) group.add(new THREE.Mesh(shape.glass, glass));
       if (shape.frames) group.add(new THREE.Mesh(shape.frames, doorFrame));
     }
@@ -2368,15 +2358,13 @@ const CAP = { rock: 0x4a2a1e, locked: 0x33201a, beyond: 0x241410, lift: 0.02, be
  * carved cells in rock, locked rings darker, and solid rock past the last
  * ring. Carved and locked cells are pickable, so they can be built on from above.
  */
-function floorCap(layout: Layout, floor: number, xray = false): THREE.Object3D[] {
+function floorCap(layout: Layout, floor: number): THREE.Object3D[] {
   const hole = layout.hole;
-  const [y0, y1] = floorSpan(floor);
+  const [, y1] = floorSpan(floor);
   const y = y1 - CAP.lift;
   const joints = new Set(corridorJoints(layout).keys());
   const open: number[] = [];
   const locked: number[] = [];
-  // Rock where a corridor has been carved into it: walls from the cap down to the corridor floor.
-  const cutWalls: number[] = [];
   hole.ringSlots.forEach((n, ri) => {
     const ring = ri + 1;
     for (let slot = 0; slot < n; slot++) {
@@ -2390,14 +2378,7 @@ function floorCap(layout: Layout, floor: number, xray = false): THREE.Object3D[]
         const inside = pieceAt(cut, p, p.rr0);
         const outside = pieceAt(cut, p, p.rr1);
         flatPiece(ring > hole.unlockedRings ? locked : open, p.rr0, p.rr1, inside, outside, y);
-        // Outside x-ray the rock's own faces (rockFaces) wall the corridors in.
-        if (xray && p.innerHall) curvedFace(cutWalls, p.rr0, ...inside, y0, y);
-        if (xray && p.outerHall) curvedFace(cutWalls, p.rr1, ...outside, y0, y);
       }
-      const first = cut.pieces[0];
-      const last = cut.pieces.at(-1);
-      if (xray && cut.hallLeft && first) sideWall(cutWalls, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y);
-      if (xray && cut.hallRight && last) sideWall(cutWalls, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y);
     }
   });
   const outer = ringRadii(hole, hole.ringSlots.length)[1];
@@ -2408,11 +2389,10 @@ function floorCap(layout: Layout, floor: number, xray = false): THREE.Object3D[]
   const openMesh = new THREE.Mesh(geometry(open), mat(CAP.rock));
   openMesh.userData = { pickable: true, cap: true };
   const lockedMesh = new THREE.Mesh(geometry(locked), mat(CAP.locked));
-  // outerCap: the rock past the open rings, which Iso's cut-out fades into the backdrop (stage3d.ts).
+  // outerCap: the rock past the open rings, which Free view's cut-out fades into the backdrop (stage3d.ts).
   lockedMesh.userData = { pickable: true, cap: true, outerCap: true };
   const beyondMesh = new THREE.Mesh(geometry(beyond), mat(CAP.beyond));
   beyondMesh.userData = { outerCap: true };
-  const wallsMesh = new THREE.Mesh(geometry(cutWalls), mat(CAP.locked));
   // Hairline slot edges on the carved cells, so the grid reads from above.
   const grid: number[] = [];
   hole.ringSlots.slice(0, hole.unlockedRings).forEach((n, ri) => {
@@ -2425,7 +2405,7 @@ function floorCap(layout: Layout, floor: number, xray = false): THREE.Object3D[]
   const gridGeo = new THREE.BufferGeometry();
   gridGeo.setAttribute("position", new THREE.Float32BufferAttribute(grid, 3));
   const gridLines = new THREE.LineSegments(gridGeo, material("capGrid", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.6 })));
-  return [openMesh, lockedMesh, beyondMesh, wallsMesh, gridLines];
+  return [openMesh, lockedMesh, beyondMesh, gridLines];
 }
 
 /** Free what a layout group owns outright. Cached shapes, labels and materials live on for reuse. */

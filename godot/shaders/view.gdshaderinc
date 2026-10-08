@@ -8,7 +8,7 @@ bool cut_away(vec3 world) {
 	return cut_plane.w > 0.5 && dot(world.xz, cut_plane.xz) > 0.0;
 }
 
-// Iso's cut-out with a floor picked, as the web's (surfaces.ts withSlice): the land sliced square to the
+// Free view's cut-out with a floor picked, as the web's (surfaces.ts withSlice): the land sliced square to the
 // camera (slice: xy toward the camera, z the radius of the opening over the rings, w 1 when on),
 // thinning out with distance past the rings in a fine stipple (slice_fade: x to y metres past them; z how
 // far it's opened, easing 0 to 1). The cut runs slice_look.w metres toward the camera from the axis, where

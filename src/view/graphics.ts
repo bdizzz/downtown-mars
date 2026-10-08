@@ -15,7 +15,7 @@ export interface Graphics {
   bloom: number;
   /** Warm dusty haze that thickens with distance and depth. */
   haze: number;
-  /** In Iso, blur above and below the middle, so the hole looks like a miniature. */
+  /** In Free view, blur above and below the middle, so the hole looks like a miniature. */
   tiltShift: number;
   /** The final warm colour grade and vignette. */
   grade: number;

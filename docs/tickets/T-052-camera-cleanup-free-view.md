@@ -1,7 +1,7 @@
 ---
 id: T-052
 title: Drop the Shaft and Top cameras and X-ray; rename Iso to Free view
-status: open
+status: done
 size: M
 area: render3d, ui
 touches: [src/view/cameras.ts, src/render3d/stage3d.ts, src/ui/Dock.tsx, src/ui/settings.ts, src/ui/SettingsView.tsx, src/render3d/look.ts, godot/src/CameraRig.cs, godot/src/ViewSettings.cs, godot/src/]
@@ -32,3 +32,5 @@ Remove the Shaft and Top cameras and X-ray from the web and Godot (code, buttons
 ## History
 - 2026-10-06 00:48 opened from N-0023, N-0024
 - 2026-10-06 00:50 questions answered: remove outright
+- 2026-10-08 02:12 building on t-052-camera-cleanup-free-view
+- 2026-10-08 02:21 built

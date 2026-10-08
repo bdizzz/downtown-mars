@@ -12,7 +12,7 @@ namespace DowntownMars;
 /// The sun crosses the sky by the game's hour; the HUD shows the day, the speed and the stocks, and
 /// picks a floor (the bridge sends the scene cut there).
 /// Keys: Space pauses, 1–3 set the speed, Up/Down step the picked floor, Home shows the surface (every floor),
-/// Tab switches Iso and first person, L hides the labels, F12 saves a screenshot.
+/// Tab switches Free view and first person, L hides the labels, F12 saves a screenshot.
 /// </summary>
 public partial class Live : Node3D
 {
@@ -773,7 +773,7 @@ public partial class Live : Node3D
     Meta MetaNow() => new() { Hole = _shape, Cut = _topFloor };
 
     /// <summary>
-    /// Pick a floor (null for all). In Iso the hole is cut there: everything above is left out. In first
+    /// Pick a floor (null for all). In Free view the hole is cut there: everything above is left out. In first
     /// person nothing is cut (you're inside); picking a floor takes you to its gallery instead.
     /// </summary>
     void PickFloor(int? floor)
@@ -792,14 +792,14 @@ public partial class Live : Node3D
         }
     }
 
-    /// <summary>The cut the scene shows: the picked floor in Iso, none in first person.</summary>
+    /// <summary>The cut the scene shows: the picked floor in Free view, none in first person.</summary>
     int? Cut => _rig?.Walking == true ? null : _topFloor;
 
-    /// <summary>Iso with a floor picked: the land's sliced open through the hole's axis to show that floor.</summary>
+    /// <summary>Free view with a floor picked: the land's sliced open through the hole's axis to show that floor.</summary>
     bool Sliced => Cut != null && _rig?.Mode == Overview.Iso;
 
     /// <summary>
-    /// Iso's cut-out, as the web's (stage3d.ts SLICE): the land thins out from and to these distances past
+    /// Free view's cut-out, as the web's (stage3d.ts SLICE): the land thins out from and to these distances past
     /// the rings, metres; land and cut crumble over SliceEdge metres; the cut rock darkens toward the
     /// backdrop by up to SliceTint, fully by SliceTintDepth metres down; opening it takes SliceSeconds.
     /// </summary>
@@ -861,9 +861,8 @@ public partial class Live : Node3D
             _viewButtons[id] = b;
             return b;
         }
-        Add("iso", "Iso", "One floor from above and off to one side (pick the floor on the right; drag to turn, scroll to zoom)", () => SetCamera(Overview.Iso));
+        Add("iso", "Free view", "One floor from above and off to one side (pick the floor on the right; drag to turn, scroll to zoom)", () => SetCamera(Overview.Iso));
         Add("cutaway", "Cutaway", "Look at the hole from outside, sliced open (scroll up and down to move along it)", () => SetCamera(Overview.Cutaway));
-        Add("top", "Top", "Look straight down the shaft", () => SetCamera(Overview.Top));
         Add("walk", "First person", "Walk the galleries, corridors and public spaces (Tab)", () =>
         {
             SetPlan(false);
@@ -955,7 +954,7 @@ public partial class Live : Node3D
         var cutaway = cut.W > 0.5f;
         var heading = _rig?.Heading ?? 0;
         var sliced = Sliced && !cutaway;
-        // Iso's cut runs where the rings look widest, as the web's: square to the camera (where it really
+        // Free view's cut runs where the rings look widest, as the web's: square to the camera (where it really
         // is, panned or not), through the points where its sightlines graze the rock wall, r²/D toward it.
         var r = RockWall.Radius(_shape);
         var toward = new Vector2(Mathf.Cos(heading), Mathf.Sin(heading));
@@ -1017,7 +1016,6 @@ public partial class Live : Node3D
         var mode = _rig?.Mode ?? Overview.Iso;
         _viewButtons["iso"].ButtonPressed = !plan && !walking && mode == Overview.Iso;
         _viewButtons["cutaway"].ButtonPressed = !plan && !walking && mode == Overview.Cutaway;
-        _viewButtons["top"].ButtonPressed = !plan && !walking && mode == Overview.Top;
         _viewButtons["walk"].ButtonPressed = walking;
         _viewButtons["plan"].ButtonPressed = plan;
         _overlayBox.Visible = plan;
@@ -1358,7 +1356,7 @@ public partial class Live : Node3D
             case Key.Key1: SetSpeed(1); break;
             case Key.Key2: SetSpeed(2); break;
             case Key.Key3: SetSpeed(4); break;
-            // In first person, up and down a floor from where you are; in Iso, the picked floor up and down.
+            // In first person, up and down a floor from where you are; in Free view, the picked floor up and down.
             case Key.Up when _rig?.Walking == true: PickFloor(Math.Max(1, (_rig.OnFoot ? _walker.Floor : _topFloor ?? 1) - 1)); break;
             case Key.Down when _rig?.Walking == true: PickFloor((_rig.OnFoot ? _walker.Floor : _topFloor ?? 1) + 1); break;
             case Key.Up: if (_topFloor != null) PickFloor(_topFloor == 1 ? null : _topFloor - 1); break;
