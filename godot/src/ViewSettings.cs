@@ -24,11 +24,21 @@ public static class ViewSettings
     public static bool ColorBlind { get; set; }
     public static float UiScale { get; set; } = 1;
 
+    /// <summary>A camera named on the command line (--view=): iso or free (Free view), or cutaway; null if it's neither.</summary>
+    public static Overview? ParseCamera(string name) => name.ToLowerInvariant() switch
+    {
+        "iso" or "free" => Overview.Iso,
+        "cutaway" => Overview.Cutaway,
+        _ => null,
+    };
+
     public static void Load()
     {
         var cfg = new ConfigFile();
         if (cfg.Load(File) != Error.Ok) return;
-        Camera = (Overview)(int)cfg.GetValue("view", "camera", (int)Overview.Iso);
+        // The Top camera (2) is gone (T-052): it, or anything else unknown, falls back to Free view.
+        var camera = (Overview)(int)cfg.GetValue("view", "camera", (int)Overview.Iso);
+        Camera = System.Enum.IsDefined(camera) ? camera : Overview.Iso;
         WallsDown = (bool)cfg.GetValue("view", "walls_down", false);
         RoomColors = (bool)cfg.GetValue("view", "room_colors", true);
         Plan = (bool)cfg.GetValue("view", "plan", false);

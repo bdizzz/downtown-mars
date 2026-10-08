@@ -2,15 +2,14 @@ using Godot;
 
 namespace DowntownMars;
 
-/// <summary>The overview cameras, as the web's (view/cameras.ts): from above and off to one side, the hole sliced open from outside, and straight down the shaft.</summary>
-public enum Overview { Iso, Cutaway, Top }
+/// <summary>The overview cameras, as the web's (view/cameras.ts): Free view (from above and off to one side; Iso inside, as the web's "iso" id) and the hole sliced open from outside.</summary>
+public enum Overview { Iso, Cutaway }
 
 /// <summary>
-/// The cameras, as in the web game, sharing one heading round the shaft. Iso: orbiting a point over the
+/// The cameras, as in the web game, sharing one heading round the shaft. Free view: orbiting a point over the
 /// hole (drag to turn; scroll sideways to turn and up or down to zoom, or pinch, with a wheel, trackpad or
 /// Magic Mouse alike; WASD to pan, Q/E to turn). Cutaway: outside the hole looking in, the near half cut
-/// away (drag or scroll sideways to turn, up and down to move up and down the hole, pinch to zoom).
-/// Top: straight down the shaft (drag or scroll sideways to turn, up and down or pinch to zoom). First
+/// away (drag or scroll sideways to turn, up and down to move up and down the hole, pinch to zoom). First
 /// person: on foot (Walker.cs), WASD, drag to look. Tab switches between first person and the overview.
 /// The benchmark circles the camera once.
 /// </summary>
@@ -19,7 +18,7 @@ public partial class CameraRig : Node3D
     readonly Camera3D _cam = new() { Fov = 50, Near = 0.1f, Far = 4000 };
     /// <summary>
     /// First person carries a headlamp, as the web's does: soft and warm, a little above and behind the
-    /// eyes so near walls don't flare, no shadows. Off in Iso.
+    /// eyes so near walls don't flare, no shadows. Off in Free view.
     /// </summary>
     readonly OmniLight3D _headlamp = new()
     {
@@ -37,8 +36,8 @@ public partial class CameraRig : Node3D
     /// <summary>The camera when not walking.</summary>
     public Overview Mode { get; private set; } = Overview.Iso;
     Meta _meta = new();
-    // Cutaway: the height looked at, and how far out; Top: how high above the picked floor (or the surface).
-    float _cutY, _cutOut = 70, _topHeight = 80;
+    // Cutaway: the height looked at, and how far out.
+    float _cutY, _cutOut = 70;
     const float CutawayLift = 0.25f, Margin = 1.1f;
     /// <summary>
     /// First person on foot (Walker.cs), once there's a walking map: WASD walks, sliding along walls and
@@ -53,7 +52,7 @@ public partial class CameraRig : Node3D
     public float StrollSeconds { get; set; }
     bool _onFoot;
     const float EyeHeight = 1.7f, WalkSpeed = 3f;
-    // Iso.
+    // Free view.
     Vector3 _target;
     float _yaw = Mathf.Pi / 2, _pitch = 0.75f, _dist;
     // First person.
@@ -63,7 +62,7 @@ public partial class CameraRig : Node3D
     float _benchSeconds;
     double _benchClock;
 
-    public string ModeName => _benchSeconds > 0 ? "benchmark" : _walking ? "first person" : Mode.ToString().ToLower();
+    public string ModeName => _benchSeconds > 0 ? "benchmark" : _walking ? "first person" : Mode == Overview.Iso ? "free view" : "cutaway";
 
     /// <summary>
     /// The cutaway's cut: the plane through the shaft's axis facing the camera (nx, 0, nz, 1): what's on
@@ -89,7 +88,7 @@ public partial class CameraRig : Node3D
     float Outer => _meta.Hole.ShaftRadiusM + _meta.Hole.UnlockedRings * 10;
 
     /// <summary>
-    /// How far out Iso may zoom, as the web's (render3d/isoReach.ts): every ring the hole can have, open
+    /// How far out Free view may zoom, as the web's (render3d/isoReach.ts): every ring the hole can have, open
     /// or not, with a tenth to spare, just inside the view.
     /// </summary>
     float IsoMax()
@@ -132,15 +131,13 @@ public partial class CameraRig : Node3D
         return hi;
     }
     float Depth => (_meta.Hole.Floors + 1) * _meta.Hole.FloorHeightM + 3;
-    float CutTop => _meta.Cut is int f ? (1 - f) * _meta.Hole.FloorHeightM - 3 : 0;
 
-    /// <summary>As the web's fitCutaway and fitTop: the unlocked rings framed, with a little margin.</summary>
+    /// <summary>As the web's fitCutaway: the unlocked rings framed, with a little margin.</summary>
     void Fit()
     {
         var aspect = IsInsideTree() ? GetViewport().GetVisibleRect().Size.Aspect() : 1.6f;
         var tan = Mathf.Tan(Mathf.DegToRad(_cam.Fov / 2));
         _cutOut = Mathf.Clamp(Outer * Margin / (tan * aspect), 25, 300);
-        _topHeight = Mathf.Clamp(Outer * Margin / (tan * Mathf.Min(1, aspect)), 20, 300);
         _cutY = _meta.Cut is int f ? -3 - f * _meta.Hole.FloorHeightM + 2 : -Mathf.Min(Depth, 20) / 2;
     }
 
@@ -150,8 +147,8 @@ public partial class CameraRig : Node3D
     }
 
     /// <summary>
-    /// Frame the hole: Iso over the picked floor (or the surface); first person in the gallery tube of
-    /// the picked floor (or floor 1). `walkToo` moves the walker as well (not when only the floor changes in Iso).
+    /// Frame the hole: Free view over the picked floor (or the surface); first person in the gallery tube of
+    /// the picked floor (or floor 1). `walkToo` moves the walker as well (not when only the floor changes in Free view).
     /// </summary>
     public void Frame(Meta meta, bool walkToo)
     {
@@ -159,7 +156,7 @@ public partial class CameraRig : Node3D
         Fit();
         var h = meta.Hole;
         var outer = h.ShaftRadiusM + h.UnlockedRings * 10;
-        // As the web game's Iso: over the picked floor (or the surface), a little past the middle, from 1.6 radii back.
+        // As the web game's Free view: over the picked floor (or the surface), a little past the middle, from 1.6 radii back.
         var floorY = meta.Cut is int f ? -3 - f * h.FloorHeightM : 0;
         _target = new Vector3(0, floorY, -outer * 0.12f);
         _dist = outer * 1.6f;
@@ -176,7 +173,7 @@ public partial class CameraRig : Node3D
 
     public bool Walking => _walking;
 
-    public string Describe() => $"mode={ModeName} yaw={Mathf.RadToDeg(_yaw):0} pitch={Mathf.RadToDeg(_pitch):0} dist={_dist:0.0} cutY={_cutY:0.0} cutOut={_cutOut:0} top={_topHeight:0}";
+    public string Describe() => $"mode={ModeName} yaw={Mathf.RadToDeg(_yaw):0} pitch={Mathf.RadToDeg(_pitch):0} dist={_dist:0.0} cutY={_cutY:0.0} cutOut={_cutOut:0}";
 
     /// <summary>Back to this camera (after the map's).</summary>
     public void MakeCurrent() => _cam.Current = true;
@@ -211,7 +208,7 @@ public partial class CameraRig : Node3D
         Apply();
     }
 
-    /// <summary>Circle once for the benchmark: the Iso camera round the hole, or (walking) a turn on the spot.</summary>
+    /// <summary>Circle once for the benchmark: the Free view camera round the hole, or (walking) a turn on the spot.</summary>
     public void StartBench(float seconds, bool walking)
     {
         _benchSeconds = seconds;
@@ -280,7 +277,6 @@ public partial class CameraRig : Node3D
                 _cutY += fwd * 12 * fast * dt;
                 _yaw += side * 1.2f * dt;
             }
-            else _yaw += side * 1.2f * dt;
         }
         Apply();
     }
@@ -302,25 +298,23 @@ public partial class CameraRig : Node3D
             }
             else
             {
-                // As the web's: sideways turns; up and down tilts Iso, moves the cutaway up and down the hole.
+                // As the web's: sideways turns; up and down tilts Free view, moves the cutaway up and down the hole.
                 _yaw += m.Relative.X * 0.005f;
                 if (Mode == Overview.Iso) _pitch = Mathf.Clamp(_pitch + m.Relative.Y * 0.004f, 0.15f, 1.5f);
                 else if (Mode == Overview.Cutaway) _cutY += m.Relative.Y * 0.15f;
             }
         }
         // Scrolling and pinching, from a wheel, a trackpad or a Magic Mouse alike (ScrollInput.cs), as the web's
-        // Iso: sideways turns the hole, up and down zooms (Shift turns instead), a pinch zooms. Not in first person.
-        // Cutaway: up and down moves up and down the hole; Top: zooms. As the web's.
+        // Free view: sideways turns the hole, up and down zooms (Shift turns instead), a pinch zooms. Not in first person.
+        // Cutaway: up and down moves up and down the hole. As the web's.
         if (!_walking && ScrollInput.Read(e, out var scroll, out var zoom))
         {
             _yaw += scroll.X * 0.003f;
             if (ScrollInput.Shift(e)) _yaw += scroll.Y * 0.003f;
             else if (Mode == Overview.Iso) _dist *= Mathf.Exp(scroll.Y * 0.003f);
-            else if (Mode == Overview.Cutaway) _cutY -= scroll.Y * 0.08f;
-            else _topHeight *= Mathf.Exp(scroll.Y * 0.003f);
+            else _cutY -= scroll.Y * 0.08f;
             _dist = Mathf.Clamp(_dist / zoom, 5, 800);
             _cutOut = Mathf.Clamp(_cutOut / zoom, 25, 300);
-            _topHeight = Mathf.Clamp(_topHeight / zoom, 20, 300);
             Apply();
             GetViewport().SetInputAsHandled();
         }
@@ -343,13 +337,6 @@ public partial class CameraRig : Node3D
             _cutY = Mathf.Clamp(_cutY, -Depth + EyeHeight, 12);
             _cam.GlobalPosition = outward * _cutOut + Vector3.Up * (_cutY + _cutOut * CutawayLift);
             _cam.LookAt(new Vector3(0, _cutY, 0), Vector3.Up);
-            return;
-        }
-        if (Mode == Overview.Top)
-        {
-            // Straight down the shaft from above the picked floor (or the surface), turned by the heading.
-            _cam.GlobalPosition = new Vector3(0, _topHeight + CutTop, 0);
-            _cam.LookAt(new Vector3(0, -Depth, 0), outward);
             return;
         }
         _dist = Mathf.Min(_dist, IsoMax());

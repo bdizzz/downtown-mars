@@ -53,7 +53,7 @@ public partial class Terrain : Node3D
         return mesh;
     }
 
-    /// <summary>Marks a material as land, for Iso's cut-out (view.gdshaderinc `slice_role`).</summary>
+    /// <summary>Marks a material as land, for Free view's cut-out (view.gdshaderinc `slice_role`).</summary>
     public static Material Land(Material m)
     {
         if (m is ShaderMaterial s) s.SetShaderParameter("slice_role", 1);
