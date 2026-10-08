@@ -1,4 +1,5 @@
 import raw from "../../data/settings.json";
+import { canHideSystemBar } from "./systemBar";
 
 // The settings as one table (data/settings.json): which section each sits in,
 // its name, a one-line hint and its control. The settings screen draws from it;
@@ -20,7 +21,14 @@ export interface SettingRow {
   default?: boolean | number;
   /** Shown in one of the two only. */
   only?: "web" | "godot";
+  /** Shown only where it applies (see WHEN). */
+  when?: keyof typeof WHEN;
 }
+
+/** Rows that apply only on some devices. */
+const WHEN = {
+  installedAndroid: canHideSystemBar,
+};
 
 export const SECTIONS = raw.sections as { id: SectionId; name: string }[];
 
@@ -28,7 +36,7 @@ export const SECTIONS = raw.sections as { id: SectionId; name: string }[];
 export const SETTING_ROWS = (raw.settings as SettingRow[]).filter((r) => r.only !== "godot");
 
 export function rowsIn(section: SectionId): SettingRow[] {
-  return SETTING_ROWS.filter((r) => r.section === section);
+  return SETTING_ROWS.filter((r) => r.section === section && (!r.when || WHEN[r.when]()));
 }
 
 /** A plain setting's default, from the table (a missing one is a mistake in the table). */

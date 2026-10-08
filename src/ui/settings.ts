@@ -26,6 +26,8 @@ export interface Settings {
   autosave: boolean;
   /** Pointing at a floor in the floor picker shows it before you click. */
   floorHoverPreview: boolean;
+  /** The installed app on Android: hide the system bar (systemBar.ts). */
+  fullscreen: boolean;
   /** Which view the player last used: the unrolled wall, one floor from above, or 3D. */
   view: ViewMode;
   /** 3D graphics: sharpness, ambient life, and how much of each effect. */
@@ -42,6 +44,7 @@ export const DEFAULT_SETTINGS: Settings = {
   colorBlind: defaultOf("colorBlind", "boolean"),
   autosave: defaultOf("autosave", "boolean"),
   floorHoverPreview: defaultOf("floorHoverPreview", "boolean"),
+  fullscreen: defaultOf("fullscreen", "boolean"),
   view: "3d",
   graphics: DEFAULT_GRAPHICS,
   view3d: DEFAULT_VIEW3D,
