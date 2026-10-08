@@ -1,7 +1,7 @@
 ---
 id: T-034
 title: Material and finish looks in the web 3D view
-status: open
+status: done
 size: M
 area: render3d
 feature: F-003
@@ -27,3 +27,4 @@ ART.md (room linings), PLAN-M15.md Notes as built.
 ## History
 - 2026-10-06 00:10 opened from F-003 (agreed)
 - 2026-10-08 02:08 building on t-034-material-looks-web
+- 2026-10-08 02:19 built
