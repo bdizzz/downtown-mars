@@ -32,7 +32,7 @@ static class Looks
     };
 
     /// <summary>How much a room's colour tints its floor, as the web's FLOOR_TINT.</summary>
-    const float FloorTint = 0.25f;
+    const float FloorTint = 0.4f;
 
     /// <summary>The surface for a web material, or null to leave it to Dress.cs. Transparent ones (blueprints, x-ray) are never ours.</summary>
     public static Material? For(string name, Color color, float roughness, float metallic, bool transparent)

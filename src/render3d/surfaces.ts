@@ -325,7 +325,7 @@ export function finishMaterial(finish: keyof typeof FINISH_LOOK): THREE.MeshStan
 // ---- floors with room colours on ----
 
 /** How much a room's category colour tints its floor with room colours on. */
-const FLOOR_TINT = 0.25;
+const FLOOR_TINT = 0.4;
 
 /**
  * A room's floor with room colours on: laid in the same material as with them off (the finish's own
