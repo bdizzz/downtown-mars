@@ -24,6 +24,8 @@ Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists
 
 **The welcome card:** every new game (not a loaded one) opens with a short card on why you're here and why the colony goes underground: the surface is open to radiation from the Sun and deep space, so you dig. Only Mars and the hole show behind it, and the game waits; **And so it begins...** brings in the rest of the interface and starts the clock at 1×. Its text is in `data/tutorial.json` (`welcome`).
 
+**The tutorial:** your deputy's card (bottom right) gives one goal at a time, with a hint and a dot per goal. The goals can be met in any order: **‹** and **›**, or a dot, show another step, and done ones show ticked. The card stays on the step you picked until you meet it, then moves on to the next one not done yet. – shrinks it; **Hide tutorial** puts it away (the menu brings it back).
+
 **The afterglow:** everyone arrives thrilled. For the first 20 days happiness gets a boost (+20 at landing, easing away), so there's time to get air, water and food running and put something by before reality sets in. Newly founded holes get their own. Point at **Happy** to see how much is left.
 
 **Watch the bar at the top:** the air, water, meals and power, with how fast they're changing. Red means it runs out in under two days. Point at anything there for what it means and a sparkline of its last two days; click it to open it in **Charts → Trends**.
