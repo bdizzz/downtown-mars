@@ -24,7 +24,7 @@ Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists
 
 **The welcome card:** every new game (not a loaded one) opens with a short card on why you're here and why the colony goes underground: the surface is open to radiation from the Sun and deep space, so you dig. Only Mars and the hole show behind it, and the game waits; **And so it begins...** brings in the rest of the interface and starts the clock at 1×. Its text is in `data/tutorial.json` (`welcome`).
 
-**The tutorial:** your deputy's card (bottom right) gives one goal at a time, with a hint and a dot per goal. The goals can be met in any order: **‹** and **›**, or a dot, show another step, and done ones show ticked. The card stays on the step you picked until you meet it, then moves on to the next one not done yet. – shrinks it; **Hide tutorial** puts it away (the menu brings it back).
+**The tutorial:** your deputy's card (bottom right) gives one goal at a time, with a hint and a dot per goal. The goals can be met in any order: **‹** and **›**, or a dot, show another step, and done ones show ticked. The card stays on the step you picked until you meet it, then moves on to the next one not done yet. – shrinks it; **Hide tutorial** puts it away (**Settings → Game → Tutorial** brings it back).
 
 **Time:** the clock at the top counts the colony's time in **months**, then years and months (month 45 reads "Year 3, month 9"). Each month passes as one sol of light and dark, with the hour beside it and a little dial where the sun rides over the horizon by day and the moon by night. Rates are per month and people age in months too. At 1× a month takes a real minute.
 
@@ -185,7 +185,7 @@ The floor picker stays on the right.
 
 ### The plan
 
-One floor from above, rings around the shaft. Pick the floor from the strip on the right (click a floor, or Page Up / Page Down; turn on **Settings → Preview floors on hover** to see a floor just by pointing at it). Everything you can do in the unrolled view works here too. Scroll or pinch to zoom and scroll sideways to turn it; it stays centred on the shaft, and opens with the unlocked rings filling the screen.
+One floor from above, rings around the shaft. Pick the floor from the strip on the right (click a floor, or Page Up / Page Down; turn on **Settings → Controls → Preview floors on hover** to see a floor just by pointing at it). Everything you can do in the unrolled view works here too. Scroll or pinch to zoom and scroll sideways to turn it; it stays centred on the shaft, and opens with the unlocked rings filling the screen.
 
 ### 3D
 
@@ -208,7 +208,7 @@ New games open in 3D, in Iso. Everything you can do in 2D works in 3D.
 - Around midday sunlight falls down the shaft; deeper down everything settles into lamp-light. Lamps, fires and grow lights light the rooms around them.
 - By day the sky fades from butterscotch at the horizon to a deeper tan overhead, with a bluish glow round the sun; at night the stars come out. The land round the hole rolls away in ridges, craters and boulders to mountains, mesas or low hills, depending on the site.
 
-**Graphics:** soft shadows where things meet, glow around lit windows and lamps, a warm haze, a miniature-style blur in Iso, and a warm colour grade. **Settings → 3D graphics** picks a preset (Low, Medium or High, the default) or sets each effect, including lamp light and shadows, so a laptop can scale them down. Shiny floors, metal and glass reflect a warm, lamp-lit cave. `?renderer=webgpu` tries three's WebGPU renderer with light bouncing and reflections (an experiment: see [WEBGPU.md](WEBGPU.md)).
+**Graphics:** soft shadows where things meet, glow around lit windows and lamps, a warm haze, a miniature-style blur in Iso, and a warm colour grade. **Settings → Display** picks a preset (Low, Medium or High, the default) or sets each effect, including lamp light and shadows, so a laptop can scale them down. Shiny floors, metal and glass reflect a warm, lamp-lit cave. `?renderer=webgpu` tries three's WebGPU renderer with light bouncing and reflections (an experiment: see [WEBGPU.md](WEBGPU.md)).
 
 ## Controls
 
@@ -217,7 +217,7 @@ New games open in 3D, in Iso. Everything you can do in 2D works in 3D.
 | B V C M | Build, View, Charts and Map modes (anywhere) |
 | Space | Pause / resume, at the speed you had |
 | − + | Slower / faster (1×, 2×, 4×); from paused, starts one step from the speed you had |
-| Esc | Put down the tool, close a panel or mode, or open the menu |
+| Esc | Put down the tool, close a panel or mode, or open the menu (in the menu, Esc goes back a step, then resumes) |
 | ⌘Z / Ctrl+Z | Undo your last placement |
 | ? | Controls help |
 | [ ] | Previous / next hole, once you have more than one |
@@ -263,3 +263,13 @@ Each install opens the build it was installed from, so a PR preview added to the
 ## Saving
 
 The game autosaves every month in your browser. Use the menu to save to a slot, or export a save file to keep it somewhere safe.
+
+## The menu and settings
+
+**The menu** (Esc, or ☰): **Resume** first, then Save, Load, New game, Settings, Help and **Quit to title** two by two, with exporting and importing a save file as links underneath. Quitting to the title (or starting a new game) asks first: progress since the last autosave is lost. On the title, **Continue** loads the autosave.
+
+**Settings** come in five sections: **Game** (autosave, the tutorial), **Display** (the 3D graphics preset, sharpness and each effect), **Sound** (volume, sound effects, ambient sound), **Controls** (preview floors on hover, the keys) and **Accessibility** (interface size, colour-blind overlays). Each setting is one row: its name, a one-line hint, and a switch, slider or list. On a wide screen the sections are tabs; on a phone they stack, and sliders take a line of their own.
+
+**By keyboard:** the menu opens with its first button ready. ↑ ↓ and Tab move (Tab stays inside the menu), Enter or Space acts, Esc goes back a step and then resumes. In Settings, ← → change section, sliders take ← →, switches flip with Enter or Space. Wherever you are, a ring shows what has the keyboard. On a touch screen every button, switch and list is at least a fingertip (44 px) tall.
+
+The Godot viewer's menu and settings follow the same sections (those that apply there: autosave, the tutorial, the graphics level, the keys, interface size and colour-blind overlays), from the same list (`data/settings.json`).
