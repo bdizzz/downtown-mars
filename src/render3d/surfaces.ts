@@ -322,69 +322,17 @@ export function finishMaterial(finish: keyof typeof FINISH_LOOK): THREE.MeshStan
   return withPattern(m, finish, f.glsl, f.call);
 }
 
-// ---- floors by kind of room, with room colours on ----
+// ---- floors with room colours on ----
+
+/** How much a room's category colour tints its floor with room colours on. */
+const FLOOR_TINT = 0.25;
 
 /**
- * A floor's look: its own colour (the room's category colour tints it a little), its pattern, and how
- * it takes the light: glazed tiles and steel plate shine (catching the lamps and the room in them),
- * honed stone a little, paving and concrete hardly at all. No wood: there are no trees on Mars.
+ * A room's floor with room colours on: laid in the same material as with them off (the finish's own
+ * pattern, colour and sheen), only tinted a little by the room's colour; the walls keep the room's colour.
  */
-export const FLOOR_LOOK = {
-  stone: { color: 0xa4826a, tint: 0.2, roughness: 0.55, metalness: 0 },
-  tiles: { color: 0xd8d2c8, tint: 0.25, roughness: 0.4, metalness: 0 },
-  plate: { color: 0x8d9299, tint: 0.2, roughness: 0.42, metalness: 0.45 },
-  paving: { color: 0xa89484, tint: 0.2, roughness: 0.78, metalness: 0 },
-  concrete: { color: 0x9c8f84, tint: 0.2, roughness: 0.82, metalness: 0 },
-} as const;
-export type FloorKind = keyof typeof FLOOR_LOOK;
-
-const FLOOR_GLSL = /* glsl */ `
-  float floorTone(vec3 p, int kind) {
-    vec2 uv = p.xz;
-    if (kind == 0) {
-      // Honed stone: the hole's own rock cut into 1.2 x 0.8 m slabs in offset rows, each its own
-      // shade, with soft clouding and the odd fine vein; tight joints.
-      vec2 b = uv / vec2(1.2, 0.8);
-      b.x += 0.5 * mod(floor(b.y), 2.0);
-      vec2 f = fract(b);
-      float joint = step(0.006, f.x) * step(0.008, f.y);
-      float cloud = mix(0.92, 1.05, srfFbm(vec3(uv * 1.5, srfHash(vec3(floor(b), 3.0)) * 9.0)));
-      float vein = 1.0 - 0.12 * smoothstep(0.96, 0.99, srfNoise(vec3(uv.x * 2.0 + uv.y * 7.0, uv.y * 2.0, floor(b.x))));
-      return mix(0.62, mix(0.9, 1.06, srfHash(vec3(floor(b), 4.0))) * cloud * vein, joint);
-    }
-    if (kind == 1) {
-      // Tiles, 40 cm, with grout, a faint glaze mottling.
-      vec2 f = fract(uv / 0.4);
-      float grout = step(0.035, f.x) * step(0.035, f.y);
-      return mix(0.72, mix(0.94, 1.04, srfHash(vec3(floor(uv / 0.4), 6.0))) * mix(0.97, 1.02, srfNoise(p * 8.0)), grout);
-    }
-    if (kind == 2) {
-      // Diamond plate in 2 m sheets.
-      vec2 d = uv * 6.0;
-      float plate = abs(fract(d.x + d.y) - 0.5) + abs(fract(d.x - d.y) - 0.5);
-      float seams = step(0.02, fract(uv.x / 2.0)) * step(0.02, fract(uv.y / 2.0));
-      return mix(0.7, mix(0.95, 1.08, smoothstep(0.35, 0.6, plate)), seams);
-    }
-    if (kind == 3) {
-      // Paving: irregular stones, in offset rows of 60 cm.
-      vec2 b = uv / vec2(0.8, 0.6);
-      b.x += 0.5 * mod(floor(b.y), 2.0);
-      vec2 f = fract(b);
-      float joint = step(0.05, f.x) * step(0.06, f.y) * step(f.x, 0.97) * step(f.y, 0.96);
-      return mix(0.68, mix(0.86, 1.08, srfHash(vec3(floor(b), 8.0))) * mix(0.93, 1.05, srfNoise(p * 3.0)), joint);
-    }
-    // Concrete: speckled, with joints every 3 m.
-    vec2 f = fract(uv / 3.0);
-    vec2 e = min(f, 1.0 - f) * 3.0;
-    float shade = mix(0.9, 1.06, srfFbm(p * 0.8)) * mix(0.94, 1.05, srfNoise(p * 14.0));
-    return shade * (1.0 - 0.2 * (1.0 - smoothstep(0.0, 0.015, min(e.x, e.y))));
-  }
-`;
-
-/** A room's floor laid in its kind (the walls keep the room's colour). */
-export function withFloor<T extends THREE.Material>(m: T, kind: FloorKind): T {
-  const look = FLOOR_LOOK[kind];
-  const index = (Object.keys(FLOOR_LOOK) as FloorKind[]).indexOf(kind);
+export function withFloor<T extends THREE.Material>(m: T, finish: keyof typeof FINISH_LOOK): T {
+  const look = FINISH_LOOK[finish];
   const own = new THREE.Color(look.color);
   const prev = m.onBeforeCompile;
   const prevKey = m.customProgramCacheKey();
@@ -394,17 +342,17 @@ export function withFloor<T extends THREE.Material>(m: T, kind: FloorKind): T {
       .replace("#include <common>", "#include <common>\nvarying vec3 vFloorPos;\nvarying vec3 vFloorNormal;")
       .replace("#include <project_vertex>", "vFloorPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvFloorNormal = normalize(mat3(modelMatrix) * objectNormal);\n#include <project_vertex>");
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", `#include <common>\nvarying vec3 vFloorPos;\nvarying vec3 vFloorNormal;\n${NOISE_GLSL}\n${FLOOR_GLSL}`)
+      .replace("#include <common>", `#include <common>\nvarying vec3 vFloorPos;\nvarying vec3 vFloorNormal;\n${NOISE_GLSL}\n${WALL_UV_GLSL}\n${look.glsl}`)
       .replace(
         "#include <color_fragment>",
         `#include <color_fragment>
-        if (abs(vFloorNormal.y) > 0.7) diffuseColor.rgb = mix(vec3(${own.r.toFixed(4)}, ${own.g.toFixed(4)}, ${own.b.toFixed(4)}), diffuseColor.rgb, ${look.tint.toFixed(2)}) * floorTone(vFloorPos, ${index});`,
+        if (abs(vFloorNormal.y) > 0.7) diffuseColor.rgb = mix(vec3(${own.r.toFixed(4)}, ${own.g.toFixed(4)}, ${own.b.toFixed(4)}), diffuseColor.rgb, ${FLOOR_TINT.toFixed(2)}) * ${look.call}(vFloorPos, normalize(vFloorNormal));`,
       )
       // The floor's own sheen (the walls keep the room's).
       .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\nif (abs(vFloorNormal.y) > 0.7) roughnessFactor = ${look.roughness.toFixed(2)};`)
       .replace("#include <metalnessmap_fragment>", `#include <metalnessmap_fragment>\nif (abs(vFloorNormal.y) > 0.7) metalnessFactor = ${look.metalness.toFixed(2)};`);
   };
-  m.customProgramCacheKey = () => `${prevKey}|floor-${kind}`;
+  m.customProgramCacheKey = () => `${prevKey}|floor-${finish}`;
   return m;
 }
 

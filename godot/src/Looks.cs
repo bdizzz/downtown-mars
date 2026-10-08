@@ -5,7 +5,7 @@ namespace DowntownMars;
 
 /// <summary>
 /// The hole's surfaces with the procedural shader (shaders/surfaces.gdshader), chosen by the web
-/// game's material names: rooms ("room:&lt;colour&gt;:&lt;planned&gt;:&lt;faint&gt;:&lt;floor kind&gt;:&lt;grime&gt;"),
+/// game's material names: rooms ("room:&lt;colour&gt;:&lt;planned&gt;:&lt;faint&gt;:&lt;finish&gt;:&lt;grime&gt;", the floor laid in that finish),
 /// rock, corridor and room finishes ("hall:&lt;finish&gt;…", "finish:&lt;finish&gt;:&lt;grime&gt;"), the gallery
 /// tubes' floors, and the ground. Anything else is left to Dress.cs.
 /// </summary>
@@ -22,16 +22,6 @@ static class Looks
         _shader = null;
     }
 
-    /// <summary>Floors by kind, as the web's FLOOR_LOOK (surfaces.ts): colour, how much the room's colour tints it, roughness, metalness.</summary>
-    static readonly Dictionary<string, (int kind, string color, float tint, float rough, float metal)> Floors = new()
-    {
-        ["stone"] = (0, "#a4826a", 0.2f, 0.55f, 0),
-        ["tiles"] = (1, "#d8d2c8", 0.25f, 0.4f, 0),
-        ["plate"] = (2, "#8d9299", 0.2f, 0.42f, 0.45f),
-        ["paving"] = (3, "#a89484", 0.2f, 0.78f, 0),
-        ["concrete"] = (4, "#9c8f84", 0.2f, 0.82f, 0),
-    };
-
     /// <summary>Finishes, as the web's FINISH_LOOK: their look in the shader, colour, roughness, metalness.</summary>
     static readonly Dictionary<string, (int look, string color, float rough, float metal)> Finishes = new()
     {
@@ -40,6 +30,9 @@ static class Looks
         ["brick"] = (4, "#9c5438", 0.85f, 0),
         ["metal"] = (5, "#8d9299", 0.32f, 0.6f),
     };
+
+    /// <summary>How much a room's colour tints its floor, as the web's FLOOR_TINT.</summary>
+    const float FloorTint = 0.25f;
 
     /// <summary>The surface for a web material, or null to leave it to Dress.cs. Transparent ones (blueprints, x-ray) are never ours.</summary>
     public static Material? For(string name, Color color, float roughness, float metallic, bool transparent)
@@ -50,11 +43,11 @@ static class Looks
         ShaderMaterial? m = null;
         switch (parts[0])
         {
-            case "room" when parts.Length >= 6 && parts[2] == "false" && parts[3] == "false" && Floors.TryGetValue(parts[4], out var floor):
+            case "room" when parts.Length >= 6 && parts[2] == "false" && parts[3] == "false" && Finishes.TryGetValue(parts[4], out var floor):
                 m = Make(0, color, 0.75f, 0);
-                m.SetShaderParameter("floor_kind", floor.kind);
+                m.SetShaderParameter("floor_look", floor.look);
                 m.SetShaderParameter("floor_color", new Color(floor.color));
-                m.SetShaderParameter("floor_tint", floor.tint);
+                m.SetShaderParameter("floor_tint", FloorTint);
                 m.SetShaderParameter("floor_roughness", floor.rough);
                 m.SetShaderParameter("floor_metallic", floor.metal);
                 m.SetShaderParameter("grime", float.TryParse(parts[5], out var g) ? g : 0);
