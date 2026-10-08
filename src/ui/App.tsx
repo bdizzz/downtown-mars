@@ -575,15 +575,16 @@ export function App() {
           mode={menu}
           {...menuActions}
           error={menuError}
-          tutorialHidden={!tutorialOn}
-          onShowTutorial={() => {
-            setTutorialOn(true);
-            setTutorialHidden(false);
-            startPlaying();
+          tutorial={tutorialOn}
+          onTutorial={(on) => {
+            setTutorialOn(on);
+            setTutorialHidden(!on);
           }}
           settings={settings}
           updateSettings={updateSettings}
           onHelp={() => setHelpOpen(true)}
+          covered={helpOpen}
+          onQuitToTitle={() => setMenu("title")}
         />
       )}
       {welcome && (
