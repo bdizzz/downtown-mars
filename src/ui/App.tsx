@@ -200,7 +200,7 @@ export function App() {
     }
   }, [send, flash]);
 
-  // Iso with every floor showing looks at the surface; picking up something to build
+  // Free view with every floor showing looks at the surface; picking up something to build
   // underground (a room below ground, or corridors) drops the view to floor 1.
   useEffect(() => {
     const below = tool?.kind === "corridor" || (tool?.kind === "build" && roomDef(tool.room).size !== "surface");

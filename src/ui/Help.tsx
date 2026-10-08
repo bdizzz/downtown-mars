@@ -22,7 +22,7 @@ const GENERAL: [string, string][] = [
   ["Pinch / Ctrl+scroll", "Zoom"],
   ["Right-click", "Cancel the current tool"],
   ["WASD, Q E", "First person: walk (Shift runs) and turn"],
-  ["WASD", "Iso: pan across the floor (not in Build, where they're room keys); Reset camera (top left) goes back"],
+  ["WASD", "Free view: pan across the floor (not in Build, where they're room keys); Reset camera (top left) goes back"],
   ["↑ ↓ / Page Up, Page Down", "Floor up / down in the Plan and 3D views"],
 ];
 
@@ -31,7 +31,7 @@ const TOUCH: [string, string][] = [
   ["Tap", "Select a room; with a tool, aim it (the ghost shows where it lands)"],
   ["Tap again", "Place, dig or demolish where you aimed"],
   ["Hold", "Show what's under your finger, as hovering does with a mouse"],
-  ["Drag", "3D: turn round the hole (Iso: drag up and down to tilt). Plan and Unrolled: pan. With the corridor tool: draw"],
+  ["Drag", "3D: turn round the hole (Free view: drag up and down to tilt). Plan and Unrolled: pan. With the corridor tool: draw"],
   ["Two fingers", "Pinch to zoom, twist to turn, move together to pan (in the side-on views, to go up and down)"],
   ["Stick", "First person: the stick bottom left walks (all the way runs); drag elsewhere to look; ▲ ▼ take the stairs"],
   ["Modes", "Build, View, Map and Charts along the bottom; tap the view to fold a room list away"],

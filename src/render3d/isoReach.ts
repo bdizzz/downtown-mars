@@ -1,5 +1,5 @@
 /**
- * How far out Iso may zoom: the distance at which a disc on the floor (every ring's footprint, with a
+ * How far out Free view may zoom: the distance at which a disc on the floor (every ring's footprint, with a
  * little padding) just fits the view. Pure maths, no Three.js, so the Godot viewer can mirror it.
  */
 

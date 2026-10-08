@@ -32,7 +32,7 @@ export interface Settings {
   view: ViewMode;
   /** 3D graphics: sharpness, ambient life, and how much of each effect. */
   graphics: Graphics;
-  /** The 3D camera, X-ray and walls down, as last used. */
+  /** The 3D camera, walls down and the overlays, as last used. */
   view3d: View3d;
 }
 
@@ -57,13 +57,14 @@ function cleanView3d(raw: Partial<View3d> | undefined): View3d {
   let v = raw;
   if (!v) {
     try {
-      const old = JSON.parse(localStorage.getItem(OLD_VIEW3D_KEY) ?? "{}") as { mode?: string; xray?: boolean; wallsDown?: boolean };
-      v = { camera: old.mode as View3d["camera"], xray: old.xray, wallsDown: old.wallsDown };
+      const old = JSON.parse(localStorage.getItem(OLD_VIEW3D_KEY) ?? "{}") as { mode?: string; wallsDown?: boolean };
+      v = { camera: old.mode as View3d["camera"], wallsDown: old.wallsDown };
     } catch {
       v = {};
     }
   }
-  return { camera: isCamera(v.camera) ? v.camera : DEFAULT_VIEW3D.camera, xray: !!v.xray, wallsDown: !!v.wallsDown, roomColors: v.roomColors ?? DEFAULT_VIEW3D.roomColors, flows: !!v.flows };
+  // The Shaft and Top cameras are gone (T-052): either falls back to Free view; an old xray flag is dropped.
+  return { camera: isCamera(v.camera) ? v.camera : DEFAULT_VIEW3D.camera, wallsDown: !!v.wallsDown, roomColors: v.roomColors ?? DEFAULT_VIEW3D.roomColors, flows: !!v.flows };
 }
 
 const KEY = storageKey("settings");

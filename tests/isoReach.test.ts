@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isoFitDistance } from "../src/render3d/isoReach";
 
-describe("Iso's zoom-out limit", () => {
+describe("Free view's zoom-out limit", () => {
   it("grows with the disc it has to fit", () => {
     const small = isoFitDistance(40, 0.75, 55, 1.6);
     const big = isoFitDistance(80, 0.75, 55, 1.6);

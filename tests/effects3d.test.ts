@@ -34,22 +34,15 @@ describe("sparks and steam", () => {
 
   it("vanish at once with furniture above the chosen floor, and don't come back while it's hidden", () => {
     const { fx } = running();
-    fx.setView({ topFloor: 2, xray: false });
+    fx.setView({ topFloor: 2 });
     expect(fx.live.sparks).toBe(0);
     expect(fx.live.steam).toBeGreaterThan(0);
     for (let i = 0; i < 20; i++) fx.step(0.1);
     expect(fx.live.sparks).toBe(0);
     // Back to every floor: they start again.
-    fx.setView({ topFloor: null, xray: false });
+    fx.setView({ topFloor: null });
     fx.step(0.2);
     expect(fx.live.sparks).toBeGreaterThan(0);
-  });
-
-  it("vanish with ring 1's furniture in x-ray", () => {
-    const { fx } = running();
-    fx.setView({ topFloor: null, xray: true });
-    expect(fx.live.sparks).toBe(0);
-    expect(fx.live.steam).toBeGreaterThan(0);
   });
 
   it("fade out when the room stops, and go at once when it's demolished", () => {

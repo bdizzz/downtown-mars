@@ -21,7 +21,7 @@
     { "id": "graphics.ao", "section": "display", "name": "Soft shadows", "hint": "Shade where things meet: corners, under furniture", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
     { "id": "graphics.bloom", "section": "display", "name": "Glow", "hint": "Light around windows, lamps, screens and furnaces", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
     { "id": "graphics.haze", "section": "display", "name": "Haze", "hint": "Warm dust in the air, thicker far off and deep down", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
-    { "id": "graphics.tiltShift", "section": "display", "name": "Miniature blur", "hint": "In Iso, blur above and below the middle, like a model", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
+    { "id": "graphics.tiltShift", "section": "display", "name": "Miniature blur", "hint": "In Free view, blur above and below the middle, like a model", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
     { "id": "graphics.grade", "section": "display", "name": "Colour", "hint": "A warm colour grade and vignette", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
     { "id": "graphics.reflections", "section": "display", "name": "Reflections", "hint": "Metal, glass and screens pick up a soft light", "control": "toggle", "only": "web" },
     { "id": "graphics.life", "section": "display", "name": "Colonists and dust", "hint": "People walking the galleries, dust in the air", "control": "toggle", "only": "web" },
