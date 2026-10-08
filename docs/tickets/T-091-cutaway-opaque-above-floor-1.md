@@ -20,3 +20,4 @@ Make the cut face solid from the surface down to the top of floor 1 (and between
 
 ## History
 - 2026-10-08 02:06 opened from N-0052
+- 2026-10-08 02:10 building on t-091-cutaway-opaque-above-floor-1
