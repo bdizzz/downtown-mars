@@ -1,133 +1,227 @@
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { GRAPHICS_PRESETS, presetOf, PRESET_NAMES, type Graphics, type Preset } from "../view/graphics";
 import type { Settings } from "./settings";
+import { rowsIn, SECTIONS, type SectionId, type SettingRow } from "./settingsTable";
 
 interface Props {
   settings: Settings;
   update: (patch: Partial<Settings>) => void;
   onBack: () => void;
+  /** The keys and gestures (Help). */
+  onKeys: () => void;
+  /** The tutorial's card is kept apart from the other settings (see App). */
+  tutorial: boolean;
+  onTutorial: (on: boolean) => void;
 }
 
-const SCALES = [0.85, 1, 1.15, 1.3];
+/** Wide enough for tabs; narrower, the sections stack. */
+const WIDE = "(min-width: 640px)";
 
-export function SettingsView({ settings, update, onBack }: Props) {
+function useWide(): boolean {
+  const [wide, setWide] = useState(() => matchMedia(WIDE).matches);
+  useEffect(() => {
+    const mq = matchMedia(WIDE);
+    const on = () => setWide(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return wide;
+}
+
+const SHOWN = SECTIONS.filter((s) => rowsIn(s.id).length > 0);
+
+export function SettingsView({ settings, update, onBack, onKeys, tutorial, onTutorial }: Props) {
+  const wide = useWide();
+  const [tab, setTab] = useState<SectionId>(SHOWN[0]!.id);
+  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
+  const ctx: Ctx = { settings, update, onKeys, tutorial, onTutorial };
+
+  // The tabs, as a tab list: arrows (and Home, End) move between them.
+  const onTabKey = (e: KeyboardEvent, i: number) => {
+    const to = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : e.key === "Home" ? 0 : e.key === "End" ? SHOWN.length - 1 : null;
+    if (to === null) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const j = (to + SHOWN.length) % SHOWN.length;
+    setTab(SHOWN[j]!.id);
+    tabs.current[j]?.focus();
+  };
+
   return (
     <div className="settings">
-      <label>
-        <span>Volume</span>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.05}
-          value={settings.volume}
-          onChange={(e) => update({ volume: Number(e.target.value) })}
-          aria-valuetext={`${Math.round(settings.volume * 100)}%`}
-        />
-        <span className="k">{Math.round(settings.volume * 100)}%</span>
-      </label>
-      <label>
-        <input type="checkbox" checked={settings.sfx} onChange={(e) => update({ sfx: e.target.checked })} />
-        <span>Sound effects</span>
-      </label>
-      <label>
-        <input type="checkbox" checked={settings.ambient} onChange={(e) => update({ ambient: e.target.checked })} />
-        <span>Ambient sound</span>
-      </label>
-      <label>
-        <span>Interface size</span>
-        <select value={settings.uiScale} onChange={(e) => update({ uiScale: Number(e.target.value) })}>
-          {SCALES.map((s) => (
-            <option key={s} value={s}>
-              {Math.round(s * 100)}%
-            </option>
+      {wide ? (
+        <>
+          <div className="settings-tabs" role="tablist" aria-label="Settings sections">
+            {SHOWN.map((s, i) => (
+              <button
+                key={s.id}
+                ref={(el) => void (tabs.current[i] = el)}
+                role="tab"
+                id={`tab-${s.id}`}
+                aria-selected={tab === s.id}
+                aria-controls={`sec-${s.id}`}
+                tabIndex={tab === s.id ? 0 : -1}
+                className={tab === s.id ? "on" : ""}
+                onClick={() => setTab(s.id)}
+                onKeyDown={(e) => onTabKey(e, i)}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
+          <div className="settings-body" role="tabpanel" id={`sec-${tab}`} aria-labelledby={`tab-${tab}`}>
+            {rowsIn(tab).map((r) => (
+              <Row key={r.id} row={r} ctx={ctx} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="settings-body">
+          {SHOWN.map((s) => (
+            <section key={s.id} aria-labelledby={`sec-${s.id}`}>
+              <h3 id={`sec-${s.id}`}>{s.name}</h3>
+              {rowsIn(s.id).map((r) => (
+                <Row key={r.id} row={r} ctx={ctx} />
+              ))}
+            </section>
           ))}
-        </select>
-      </label>
-      <label>
-        <input type="checkbox" checked={settings.colorBlind} onChange={(e) => update({ colorBlind: e.target.checked })} />
-        <span>Colour-blind friendly overlays (orange and blue)</span>
-      </label>
-      <label>
-        <input type="checkbox" checked={settings.autosave} onChange={(e) => update({ autosave: e.target.checked })} />
-        <span>Autosave every month</span>
-      </label>
-      <label>
-        <input type="checkbox" checked={settings.floorHoverPreview} onChange={(e) => update({ floorHoverPreview: e.target.checked })} />
-        <span>Preview floors on hover</span>
-      </label>
-      <GraphicsSettings graphics={settings.graphics} set={(g) => update({ graphics: { ...settings.graphics, ...g } })} />
-      <button onClick={onBack}>Back</button>
+        </div>
+      )}
+      <button className="settings-back" onClick={onBack}>
+        Back
+      </button>
     </div>
   );
 }
 
-/** The effects, each a slider from off to full. */
-const EFFECTS: { key: "ao" | "bloom" | "haze" | "tiltShift" | "grade" | "lamps" | "shadows"; name: string; hint: string }[] = [
-  { key: "lamps", name: "Lamp light", hint: "Lamps, fires and grow lights light the rooms around them" },
-  { key: "shadows", name: "Shadows", hint: "Sunlight down the shaft and on the surface casts shadows (sharper at full)" },
-  { key: "ao", name: "Soft shadows", hint: "Shade where things meet: corners, and under furniture" },
-  { key: "bloom", name: "Glow", hint: "Light around windows, lamps, screens and furnaces" },
-  { key: "haze", name: "Haze", hint: "Warm dust in the air, thicker far off and deep down" },
-  { key: "tiltShift", name: "Miniature blur", hint: "In Iso, blur above and below the middle, like a model" },
-  { key: "grade", name: "Colour", hint: "A warm colour grade and vignette" },
-];
+type Ctx = Pick<Props, "settings" | "update" | "onKeys" | "tutorial" | "onTutorial">;
 
-const SHARPNESS: { value: Graphics["pixelRatio"]; name: string }[] = [
-  { value: 1, name: "Standard" },
-  { value: 1.5, name: "Sharp" },
-  { value: 2, name: "Sharpest (high-resolution screens)" },
-];
+type GraphicsKey = Exclude<keyof Graphics, "pixelRatio" | "life" | "reflections">;
 
-/** 3D graphics: a preset, or each effect set by hand (which makes it custom). */
-function GraphicsSettings({ graphics, set }: { graphics: Graphics; set: (g: Partial<Graphics>) => void }) {
-  const preset = presetOf(graphics);
-  return (
-    <fieldset className="settings-graphics">
-      <legend>3D graphics</legend>
-      <label>
-        <span>Preset</span>
-        <select value={preset} onChange={(e) => e.target.value !== "custom" && set(GRAPHICS_PRESETS[e.target.value as Preset])}>
-          {PRESET_NAMES.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}: {p.hint}
-            </option>
-          ))}
-          {preset === "custom" && <option value="custom">Custom</option>}
-        </select>
-      </label>
-      <label>
-        <span>Sharpness</span>
-        <select value={graphics.pixelRatio} onChange={(e) => set({ pixelRatio: Number(e.target.value) as Graphics["pixelRatio"] })}>
-          {SHARPNESS.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      {EFFECTS.map((fx) => (
-        <label key={fx.key} title={fx.hint}>
-          <span>{fx.name}</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.1}
-            value={graphics[fx.key]}
-            onChange={(e) => set({ [fx.key]: Number(e.target.value) })}
-            aria-valuetext={graphics[fx.key] ? `${Math.round(graphics[fx.key] * 100)}%` : "Off"}
-          />
-          <span className="k">{graphics[fx.key] ? `${Math.round(graphics[fx.key] * 100)}%` : "Off"}</span>
-        </label>
-      ))}
-      <label title="Metal, glass and screens pick up a soft light">
-        <input type="checkbox" checked={graphics.reflections} onChange={(e) => set({ reflections: e.target.checked })} />
-        <span>Reflections</span>
-      </label>
-      <label>
-        <input type="checkbox" checked={graphics.life} onChange={(e) => set({ life: e.target.checked })} />
-        <span>Colonists and dust</span>
-      </label>
-    </fieldset>
+/** What each row reads and sets. A new setting in the table gets a line here. */
+function bind(row: SettingRow, { settings, update, tutorial, onTutorial }: Ctx): { value: number | boolean; set: (v: number | boolean) => void } | null {
+  const g = settings.graphics;
+  const setG = (patch: Partial<Graphics>) => update({ graphics: { ...g, ...patch } });
+  switch (row.id) {
+    case "tutorial":
+      return { value: tutorial, set: (v) => onTutorial(v as boolean) };
+    case "graphics.pixelRatio":
+      return { value: g.pixelRatio, set: (v) => setG({ pixelRatio: v as Graphics["pixelRatio"] }) };
+    case "graphics.reflections":
+    case "graphics.life": {
+      const k = row.id === "graphics.life" ? "life" : "reflections";
+      return { value: g[k], set: (v) => setG({ [k]: v }) };
+    }
+    default: {
+      if (row.id.startsWith("graphics.")) {
+        const k = row.id.slice("graphics.".length) as GraphicsKey;
+        return { value: g[k], set: (v) => setG({ [k]: v }) };
+      }
+      const k = row.id as keyof Settings;
+      const v = settings[k];
+      if (typeof v !== "number" && typeof v !== "boolean") return null;
+      return { value: v, set: (nv) => update({ [k]: nv } as Partial<Settings>) };
+    }
+  }
+}
+
+function pct(v: number, row: SettingRow): string {
+  return v === 0 && row.id.startsWith("graphics.") ? "Off" : `${Math.round(v * 100)}%`;
+}
+
+/** One setting: its name and hint on the left, its control on the right. */
+function Row({ row, ctx }: { row: SettingRow; ctx: Ctx }) {
+  const id = `set-${row.id.replace(".", "-")}`;
+  const text = (
+    <span className="set-text">
+      <span className="set-name">{row.name}</span>
+      <span className="set-hint" id={`${id}-hint`}>
+        {row.hint}
+      </span>
+    </span>
   );
+  const wrap = (control: ReactNode) => (
+    <div className={`set-row set-${row.control}`}>
+      <label htmlFor={id}>{text}</label>
+      <span className="set-ctl">{control}</span>
+    </div>
+  );
+  // The two that aren't one value: the graphics preset sets many, and a button opens something.
+  if (row.id === "graphics.preset") {
+    const g = ctx.settings.graphics;
+    const preset = presetOf(g);
+    return wrap(
+      <select id={id} value={preset} aria-describedby={`${id}-hint`} onChange={(e) => e.target.value !== "custom" && ctx.update({ graphics: { ...g, ...GRAPHICS_PRESETS[e.target.value as Preset] } })}>
+        {PRESET_NAMES.map((p) => (
+          <option key={p.id} value={p.id} title={p.hint}>
+            {p.name}
+          </option>
+        ))}
+        {preset === "custom" && <option value="custom">Custom</option>}
+      </select>,
+    );
+  }
+  if (row.control === "button") {
+    return wrap(
+      <button id={id} aria-describedby={`${id}-hint`} onClick={ctx.onKeys}>
+        Show
+      </button>,
+    );
+  }
+  const b = bind(row, ctx);
+  if (!b) return null;
+  switch (row.control) {
+    case "toggle":
+      return (
+        <label className="set-row">
+          {text}
+          <span className="set-ctl">
+            <input
+              id={id}
+              type="checkbox"
+              role="switch"
+              checked={b.value as boolean}
+              aria-describedby={`${id}-hint`}
+              onChange={(e) => b.set(e.target.checked)}
+              onKeyDown={(e) => {
+                // Enter flips a switch too, as Space does.
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  b.set(!b.value);
+                }
+              }}
+            />
+          </span>
+        </label>
+      );
+    case "slider": {
+      const v = b.value as number;
+      return wrap(
+        <>
+          <input
+            id={id}
+            type="range"
+            min={row.min}
+            max={row.max}
+            step={row.step}
+            value={v}
+            aria-describedby={`${id}-hint`}
+            aria-valuetext={pct(v, row)}
+            onChange={(e) => b.set(Number(e.target.value))}
+          />
+          <output htmlFor={id}>{pct(v, row)}</output>
+        </>,
+      );
+    }
+    case "select":
+      return wrap(
+        <select id={id} value={b.value as number} aria-describedby={`${id}-hint`} onChange={(e) => b.set(Number(e.target.value))}>
+          {(row.options ?? []).map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.name}
+            </option>
+          ))}
+        </select>,
+      );
+  }
 }

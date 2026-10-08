@@ -1,7 +1,7 @@
 ---
 id: T-088
 title: A layout pass on the pause menu and settings: easy to use, dense, mobile and keyboard friendly
-status: open
+status: done
 size: M
 area: ui, godot
 feature: F-009
@@ -31,3 +31,5 @@ GUIDE.md: Settings.
 - 2026-10-07 18:51 opened from N-0048
 - 2026-10-07 18:53 questions answered
 - 2026-10-07 18:58 moved into F-009
+- 2026-10-08 01:47 building on t-088-pause-menu-and-settings-pass
+- 2026-10-08 01:56 built

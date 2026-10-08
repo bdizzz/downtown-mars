@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { cleanGraphics, DEFAULT_GRAPHICS, GRAPHICS_PRESETS, type Graphics } from "../view/graphics";
 import { DEFAULT_VIEW3D, isCamera, type View3d } from "../view/cameras";
 import { storageKey } from "./storageKey";
+import { defaultOf } from "./settingsTable";
 
 // Player preferences, kept in browser storage. Reading or writing storage
 // can fail (private windows, blocked storage); the game then just uses the
@@ -34,13 +35,13 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  volume: 0.6,
-  sfx: true,
-  ambient: true,
-  uiScale: 1,
-  colorBlind: false,
-  autosave: true,
-  floorHoverPreview: false,
+  volume: defaultOf("volume", "number"),
+  sfx: defaultOf("sfx", "boolean"),
+  ambient: defaultOf("ambient", "boolean"),
+  uiScale: defaultOf("uiScale", "number"),
+  colorBlind: defaultOf("colorBlind", "boolean"),
+  autosave: defaultOf("autosave", "boolean"),
+  floorHoverPreview: defaultOf("floorHoverPreview", "boolean"),
   view: "3d",
   graphics: DEFAULT_GRAPHICS,
   view3d: DEFAULT_VIEW3D,

@@ -196,6 +196,11 @@ See `PLAN-M16.md`.
 - **A game day is shown as a month.** Labels only: the sim still counts days (`ticksPerDay`, `day` in saves and `data/*.json` fields), and one month is one sol of light and dark. Rates, durations and ages read per month; the hh:mm clock stays, with a sun/moon dial beside it.
 - **Long spans read as time elapsed, like an age:** 12 months a year, so month 45 is "Year 3, month 9" and month 12 is "Year 1" (not a calendar, where 45 would be year 4). One formatter for both faces: `src/view/months.ts` (Godot's clock mirrors it in `Months.cs`).
 
+## Decided for the menu and settings (Oct 8, F-009 / T-088)
+
+- **Settings live in one table, `data/settings.json`:** five sections (Game, Display, Sound, Controls, Accessibility), and per setting its section, name, one-line hint, control, range or options, and default; `only` keeps a row to the web or Godot. The web (`ui/settingsTable.ts`, `SettingsView.tsx`) and Godot (`SettingsSheet`) both draw from it; a new setting is a row there plus one binding in each face. Plain defaults come from the table; graphics take theirs from the preset.
+- Sections are tabs on wide screens (640 px and up) and stacked on narrower ones. The menu leads with Resume (or Continue), then the rest two by two; exporting and importing are quiet links. The tutorial moved from a menu button to **Settings → Game**, as Godot had it. **Quit to title** joins the menu.
+
 ## Still open
 
 Deliberately not decided yet:

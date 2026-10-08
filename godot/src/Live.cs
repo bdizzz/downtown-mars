@@ -284,6 +284,13 @@ public partial class Live : Node3D
             SendTutorialFlags();
         };
         _menu.HelpPressed = _help.Open;
+        _settings.KeysPressed = _help.Open;
+        // A sheet closing over the menu hands the keyboard back to it.
+        foreach (var sheet in new Sheet[] { _settings, _help })
+            sheet.VisibilityChanged += () =>
+            {
+                if (!sheet.Visible && _menu.Visible && !_settings.Visible) _menu.Refocus();
+            };
         ApplyGameSettings();
         RenderingServer.ViewportSetMeasureRenderTime(GetViewport().GetViewportRid(), true);
     }
