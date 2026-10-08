@@ -56,7 +56,7 @@ Ids can be shorthand in commands and chat (`t6` is T-006, `f1` is F-001); files,
 - **Status comes from GitHub.** A ticket file stores only `open`, `done` or `dropped`. A pushed `t-0NN-…` branch means in flight, an open PR in review, a merged PR done; open questions mean needs answers, and an unfinished `blocked_by` (or a draft feature) means blocked. `node scripts/board.mjs menu` works it all out live. See `docs/tickets/README.md`.
 - **Tickets go straight to main**; everything else goes through a PR. `board.mjs publish` commits only `docs/tickets/` and pushes it.
 - **A SessionStart hook** (`.claude/hooks/fresh-main.sh`) fetches `origin/main` at the start of every session, and fast-forwards a clean `main` checkout.
-- **CI** (`.github/workflows/ci.yml`) type-checks and tests every PR and push to main. **Previews** (`preview.yml`) publish each PR to `https://bdizzz.github.io/downtown-mars/pr-preview/pr-N/`, rebuilt on every push and removed when the PR closes, with their own saves. **Pages** (`pages.yml`) publishes main.
+- **CI** (`.github/workflows/ci.yml`) type-checks and tests every PR and push to main. **Previews** (`preview.yml`) publish each PR to `https://bdizzz.github.io/downtown-mars/pr-preview/pr-N/`, rebuilt on every push and removed when the PR closes, with their own saves and the PR number in the tab title (`#N · Downtown Mars`). **Pages** (`pages.yml`) publishes main.
 - **Commits** follow Conventional Commits (`fix(render3d): … (T-003)`; see CLAUDE.md, "Commit messages"), and PR titles do too.
 - **The main checkout** is for playing and taking notes; builds happen in worktrees under `.claude/worktrees/`.
 
