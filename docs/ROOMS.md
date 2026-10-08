@@ -115,7 +115,7 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 | Water tank ★ | S | 0 | — | Stores 200 of clean water, gray water or tailings (the player picks; clean by default) | — | R 10, M 5 | Start |
 | Deep well pump | M | 2 | Power 4 | Gray water 40 (salty brine: it needs treating) | Noise −1 r1 | M 15, Mc 3 | Aquifer site |
 | Water recycler ★ | L | 3 | Gray water 80, power 3 | Clean water 78, soil 1 (sludge; a full soil store doesn't slow it) | Noise −1 r1, smell −1 r1 | M 20, Mc 4 | Start |
-| Tailings reclaimer | M | 3 | Tailings 20, power 8, machinery 0.2 | Gray water 18 | Noise −1 r1, smell −1 r1 | M 30, Mc 6, E 4 | Pop 300 |
+| Tailings reclaimer | M | 3 | Tailings 20, power 8, machinery 0.2 | Gray water 18 | Noise −1 r1, smell −1 r1 | M 30, Mc 6, E 4 | Pop 150 |
 | Life support ★ | L | 4 | Water 60 (gone for good: split into oxygen), power 5 | O2 300 up to the air's 21% (water only for what it makes), removes CO2 30 | Noise −2 r2 | M 25, Mc 5, E 2 | Start |
 | Ventilation hub | S | 1 | Power 2 | — | Air quality +2 r2, noise −1 r1 | M 8, Mc 1 | Start |
 

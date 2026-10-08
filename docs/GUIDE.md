@@ -101,7 +101,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 
 - **Gray water needs somewhere to go.** The pod holds 250. When it's full, rooms that use water stall (the galley and farms first), and what people use spills away. Build a recycler early, and more as you grow; **Charts → Flows → Water** says how much gray water is overflowing.
 - **Water tanks** hold clean water unless you set them to hold gray water or tailings, in the tank's details panel.
-- **The leaks:** life support splits water into oxygen for good, and some industry (the silicon refinery, concrete plant, electronics fab and brickworks) sends part of its water to **tailings**, which can only be stored until 300 colonists, when a **tailings reclaimer** can turn them back into gray water (20 tailings into 18 gray a day, for a lot of power and a little machinery). Wells pump up gray water (brine), so it needs treating too. Earth's drops top up what's lost.
+- **The leaks:** life support splits water into oxygen for good, and some industry (the silicon refinery, concrete plant, electronics fab and brickworks) sends part of its water to **tailings**, which can only be stored until 150 colonists, when a **tailings reclaimer** can turn them back into gray water (20 tailings into 18 gray a day, for a lot of power and a little machinery). Wells pump up gray water (brine), so it needs treating too. Earth's drops top up what's lost.
 
 ## Materials, waste and storage
 

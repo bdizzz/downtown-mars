@@ -25,7 +25,7 @@ Add the room to `data/rooms.json` (uses tailings plus lots of power and some mac
 - ROOMS.md, ROOM-STATUS.md (rerun `node scripts/room-status.mjs`), GUIDE.md: Water, DECISIONS.md.
 
 ## Open questions
-- [x] Unlocks at 300 colonists, with the hospital. (Bryon, Oct 4)
+- [x] Unlocks at 300 colonists, with the hospital. (Bryon, Oct 4) Lowered to 150 in review. (Bryon, Oct 8)
 - [x] 2×1 room, 3 staff, tailings 20 + power 8 + machinery 0.2 → gray 18 a day; noise like the recycler. (Bryon, Oct 4)
 
 ## History
