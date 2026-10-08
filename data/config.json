@@ -132,7 +132,7 @@
   },
   "dome": { "population": 300, "cost": { "glass": 200, "metal": 120, "machinery": 20, "electronics": 10 }, "workHours": 240, "atriumComfort": 0.5, "air": 0.5 },
   "history": { "everyTicks": 10, "recentDays": 10, "maxDays": 2000 },
-  "unlocks": { "cargoPopulation": 100, "homes": { "basic": 50, "standard": 200, "luxury": 1000 }, "cleaningPopulation": 150, "rooms": { "brickworks": 50, "leisure": 50, "recycling": 100, "hospital": 300 } },
+  "unlocks": { "cargoPopulation": 100, "homes": { "basic": 50, "standard": 200, "luxury": 1000 }, "cleaningPopulation": 150, "rooms": { "brickworks": 50, "leisure": 50, "recycling": 100, "hospital": 300, "reclaimer": 150 } },
   "landingKit": {
     "surface": [
       { "room": "landing_pod", "slot": 0 },

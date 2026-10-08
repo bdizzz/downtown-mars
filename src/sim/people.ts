@@ -114,7 +114,7 @@ export function holeGates(state: SimState): string[] {
 }
 
 /** Everything a hole can reach that unlocks rooms. */
-export const UNLOCK_GATES = ["children", "elders", "cargo", "basicHomes", "standardHomes", "luxuryHomes", "cleaning", "brickworks", "leisure", "recycling", "hospital", "dome"] as const;
+export const UNLOCK_GATES = ["children", "elders", "cargo", "basicHomes", "standardHomes", "luxuryHomes", "cleaning", "brickworks", "leisure", "recycling", "hospital", "reclaimer", "dome"] as const;
 export type UnlockGate = (typeof UNLOCK_GATES)[number];
 
 /** Record that a hole has reached something that unlocks rooms (first child, first elder). */
@@ -237,5 +237,6 @@ export function stepUnlocks(state: SimState, cfg: SimConfig): void {
   reach("leisure", r.leisure, `${state.name} can build gyms and parks: somewhere to stay fit, and green space that cheers everyone near it.`);
   reach("recycling", r.recycling, `${state.name} can build a recycling center: solid waste back into metal and brick.`);
   reach("hospital", r.hospital, `${state.name} can support a hospital: care for hundreds, and health for everyone near it.`);
+  reach("reclaimer", r.reclaimer, `${state.name} can run a tailings reclaimer: industry's tailings back into gray water, for a lot of power.`);
   reach("dome", cfg.dome.population, `${state.name} is big enough to roof its shaft: a glass dome (Build → Public) would make the shaft air, and every gallery open walkway.`);
 }

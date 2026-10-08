@@ -1461,6 +1461,7 @@ const rooms = {
   farm: ["planter_bed", "hydroponic_rack", ...CROPS.filter((c) => c !== "leafyGreens").flatMap((c) => [`planter_bed_${c}`, `hydroponic_rack_${c}`]), "seed_table", "big_tank", "tool_cart", "shelf_unit", "pipe_run"],
   water_tank: ["big_tank", "pipe_run", "valve_panel", "pump"],
   water_recycler: ["filter_column", "big_tank", "pump", "pipe_run", "console", "valve_panel"],
+  tailings_reclaimer: ["filter_column", "big_tank", "pump", "pipe_run", "console", "barrel_group"],
   restroom: ["toilet_stall", "sink_basin", "shower_stall", "laundry_machine", "bench", "trash_bin"],
   life_support: ["scrubber_unit", "big_fan", "gas_bottles", "console", "pipe_run", "duct_riser"],
   clinic: ["medical_bed", "med_cabinet", "monitor_stand", "partition", "scanner", "desk", "office_chair", "chair", "plant_pot", "water_cooler"],
@@ -1516,6 +1517,7 @@ const hangings = {
   farm: ["gauge_panel", "chart_board", "wall_planter", "readout_panel"],
   water_tank: ["gauge_panel", "safety_sign"],
   water_recycler: ["gauge_panel", "readout_panel", "safety_sign", "chart_board"],
+  tailings_reclaimer: ["safety_sign", "gauge_panel", "readout_panel"],
   restroom: ["wall_mirror", "poster", "wall_lamp"],
   life_support: ["gauge_panel", "readout_panel", "safety_sign"],
   clinic: ["chart_board", "poster", "wall_clock", "readout_panel", "painting"],
@@ -1573,7 +1575,7 @@ const WALL_FILL = {
 };
 const FILL_KIND = {
   bunk_dorm: "home", studio: "home", apartment: "home", flat: "home", family_apartment: "home", suite: "home", residence: "home", elder_care: "home",
-  water_tank: "plant", water_recycler: "plant", life_support: "plant", battery_bank: "plant", deep_well_pump: "plant", smelter: "plant", silicon_refinery: "plant", composter: "plant", concrete_plant: "plant",
+  water_tank: "plant", water_recycler: "plant", tailings_reclaimer: "plant", life_support: "plant", battery_bank: "plant", deep_well_pump: "plant", smelter: "plant", silicon_refinery: "plant", composter: "plant", concrete_plant: "plant",
   machine_shop: "workshop", electronics_fab: "workshop", construction_yard: "workshop",
   admin_office: "office", site_office: "office", construction_office: "office", clinic: "office", school: "office",
   storeroom: "store", warehouse: "store", depot: "store", staging_bay: "store", cargo_elevator: "store",

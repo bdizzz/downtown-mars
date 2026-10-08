@@ -24,7 +24,7 @@ export function buildShowcase(state: SimState, floors: number): { rooms: number 
   const hole = layout.hole;
   hole.floors = Math.max(hole.floors, Math.min(floors, config.digging.maxFloors));
   ensureFloors(layout);
-  state.unlocks = [...new Set([...(state.unlocks ?? []), "basicHomes", "standardHomes", "luxuryHomes", "leisure", "recycling", "hospital", "cleaning", "brickworks", "cargo", "children", "elders"])];
+  state.unlocks = [...new Set([...(state.unlocks ?? []), "basicHomes", "standardHomes", "luxuryHomes", "leisure", "recycling", "hospital", "reclaimer", "cleaning", "brickworks", "cargo", "children", "elders"])];
   const types = mix();
   let next = 0;
   let placed = 0;

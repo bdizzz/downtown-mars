@@ -467,6 +467,42 @@
       "buildHours": 30
     },
     {
+      "id": "tailings_reclaimer",
+      "name": "Tailings reclaimer",
+      "short": "Reclaimer",
+      "category": "water",
+      "size": "M",
+      "staff": 3,
+      "uses": {
+        "tailings": 20,
+        "power": 8,
+        "machinery": 0.2
+      },
+      "makes": {
+        "grayWater": 18
+      },
+      "unlockedBy": "reclaimer",
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        },
+        {
+          "type": "smell",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "metal": 30,
+        "machinery": 6,
+        "electronics": 4
+      },
+      "buildable": true,
+      "buildHours": 36
+    },
+    {
       "id": "restroom",
       "name": "Restroom",
       "short": "WC",

@@ -179,7 +179,7 @@ export interface SimConfig {
     homes: { basic: number; standard: number; luxury: number };
     /** Colonists in a hole before it can have a cleaning service. */
     cleaningPopulation: number;
-    /** Colonists in a hole before each group of rooms: the brickworks, gym and park, recycling center, hospital. */
+    /** Colonists in a hole before each group of rooms: the brickworks, gym and park, recycling center, hospital, tailings reclaimer. */
     rooms: Record<RoomUnlock, number>;
   };
   landingKit: {

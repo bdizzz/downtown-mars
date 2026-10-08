@@ -1520,6 +1520,25 @@
       {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
+    "tailings_reclaimer:2x1": [
+      {"item":"console","wall":"left","y":0.1},
+      {"item":"barrel_group","wall":"right","y":0.2},
+      {"item":"filter_column","wall":"back","y":0.1,"repeat":{"every":1.8,"max":6}},
+      {"item":"big_tank","wall":"center","y":-0.6,"repeat":{"every":4.2,"max":2}},
+      {"item":"pump","wall":"front","x":-2.5,"y":0.3},
+      {"item":"pipe_run","wall":"front","x":3.5,"y":0.2},
+      {"item":"gauge_panel","wall":"left","x":-1.8},
+      {"item":"readout_panel","wall":"right","x":1.8},
+      {"item":"safety_sign","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":6}},
+      {"item":"work_light","wall":"back","x":2,"repeat":{"every":4,"max":2}},
+      {"item":"work_light","wall":"left","x":2,"repeat":{"every":4,"max":1}},
+      {"item":"work_light","wall":"right","x":-2,"repeat":{"every":4,"max":1}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"left","x":-3.2,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"right","x":3.2,"repeat":{"every":0.5,"max":1}}
+    ],
     "water_tank:1x1": [
       {"item":"valve_panel","wall":"left","y":0.1},
       {"item":"pump","wall":"front","x":-2,"y":0.3},

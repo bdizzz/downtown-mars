@@ -1,7 +1,7 @@
 ---
 id: T-007
 title: Tailings reclaimer, a late room that turns tailings back into gray water
-status: open
+status: done
 size: M
 area: data, rooms
 feature: F-001
@@ -25,10 +25,12 @@ Add the room to `data/rooms.json` (uses tailings plus lots of power and some mac
 - ROOMS.md, ROOM-STATUS.md (rerun `node scripts/room-status.mjs`), GUIDE.md: Water, DECISIONS.md.
 
 ## Open questions
-- [x] Unlocks at 300 colonists, with the hospital. (Bryon, Oct 4)
+- [x] Unlocks at 300 colonists, with the hospital. (Bryon, Oct 4) Lowered to 150 in review. (Bryon, Oct 8)
 - [x] 2×1 room, 3 staff, tailings 20 + power 8 + machinery 0.2 → gray 18 a day; noise like the recycler. (Bryon, Oct 4)
 
 ## History
 - 2026-10-04 18:03 opened from N-0005
 - 2026-10-04 19:05 questions answered
 - 2026-10-04 19:13 part of F-001 (T-012)
+- 2026-10-07 19:05 building on t-007-tailings-reclaimer
+- 2026-10-07 19:08 built
