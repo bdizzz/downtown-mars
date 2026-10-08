@@ -26,3 +26,4 @@ ART.md: room-colour mode.
 - 2026-10-06 19:31 opened from N-0040
 - 2026-10-07 18:43 questions answered
 - 2026-10-07 18:58 moved into F-003
+- 2026-10-08 01:09 building on t-076-floors-match-material
