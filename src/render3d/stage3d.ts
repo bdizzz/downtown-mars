@@ -21,7 +21,7 @@ import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
 import { createSky } from "./sky3d";
 import { buildTerrain, siteSeed, type Terrain } from "./terrain3d";
-import { CRUST, FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { CRUST, FLOOR_H, floorAtY, floorSpan, openShaftRadius, shaftCollarRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { isoFitDistance } from "./isoReach";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
@@ -216,7 +216,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // below the sliced-away land there's earth, not sky. It leaves a gap for the
   // hole's own section (the backdrop behind the rooms), but not for the crust above floor 1: that's
   // rock all the way in to the shaft wall.
-  const SECTION = { reach: 1700, bottom: -900, samples: 120 };
+  const SECTION = { reach: 1700, bottom: -900, samples: 120, tuck: 0.01 };
   const sectionPos = new Float32Array(3 * 2 * (SECTION.samples + 1) * 2 + 3 * 4 + 3 * 8);
   const sectionGeo = new THREE.BufferGeometry();
   sectionGeo.setAttribute("position", new THREE.BufferAttribute(sectionPos, 3));
@@ -330,8 +330,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     put(inner, deep);
     put(inner, SECTION.bottom);
     // The crust over floor 1, from the shaft wall out to the strips (underground, the strips start at the wall).
-    const shaft = underground ? inner : hole.shaftRadiusM;
+    // The wall is drawn in flat steps, so the face starts where the cut meets them, tucked just behind.
     for (const sign of [-1, 1]) {
+      const shaft = underground ? inner : shaftCollarRadius(hole, Math.atan2(sign * tz, sign * tx)) - SECTION.tuck;
       for (const u of [sign * shaft, sign * inner]) {
         put(u, terrain ? terrain.heightAt(u * tx + out.x * offset, u * tz + out.z * offset) : 0);
         put(u, -CRUST);

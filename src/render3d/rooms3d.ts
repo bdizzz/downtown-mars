@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
-import { FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { ARC_STEPS, FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef, hasBulkhead } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
@@ -30,7 +30,6 @@ import { centreOf, disposeFurniture, disposeFurnitureMaterials, furnitureMeshes,
 // no room faces it, plus props on the surface. Rebuilt whenever the layout
 // changes; everything here is plain geometry, no per-frame work.
 
-const ARC_STEPS = 4;
 const INSET = 0.06;
 /** The window band on a ring-1 face (above the floor's base), how far in from the face's ends it stops, and its glass. */
 const WINDOW = { bottom: 1.4, top: 3.0, inset: 0.03, margin: 0.02, color: 0x2d4f6e, opacity: 0.22 };

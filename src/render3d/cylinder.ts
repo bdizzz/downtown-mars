@@ -22,6 +22,8 @@ export const WALL_T = config.geometry.wallThicknessM;
 export const RIG_DROP = FLOOR_H / 2;
 export const RING_D = config.geometry.roomDepthM;
 export const TAU = Math.PI * 2;
+/** Curved walls are drawn as flat steps: this many to a ring-1 slot's arc (see shaftCollarRadius). */
+export const ARC_STEPS = 4;
 /** A gallery tube's floor: a slab this thick on the ledge inside the shaft wall. */
 export const LEDGE_THICKNESS = 0.4;
 /** The railing inside a gallery tube, above its floor. */
@@ -46,6 +48,17 @@ export function floorSpan(floor: number): [number, number] {
 /** The floor a height is on (floor 1 starts under the crust; above it, 0 or less). */
 export function floorAtY(y: number): number {
   return Math.floor((-y - CRUST) / FLOOR_H) + 1;
+}
+
+/**
+ * How far out the shaft wall reaches at an angle: it's drawn in flat steps (ARC_STEPS to each ring-1
+ * slot), so the shaft's radius at their corners and a little less between. The cutaway's cut face over
+ * the crust starts here, so it meets the wall wherever the cut falls.
+ */
+export function shaftCollarRadius(hole: Hole, angle: number): number {
+  const step = TAU / (hole.ringSlots[0]! * ARC_STEPS);
+  const off = (((angle % step) + step) % step) - step / 2;
+  return (hole.shaftRadiusM * Math.cos(step / 2)) / Math.cos(off);
 }
 
 /** The open shaft is narrower than the hole by the gallery ledge. */
