@@ -4,9 +4,9 @@ title: Material and finish looks in the web 3D view
 status: open
 size: M
 area: render3d
+feature: F-003
 touches: [src/render3d/surfaces.ts, src/render3d/rooms3d.ts]
 blocked_by: [T-032]
-feature: F-003
 notes: [N-0006, N-0007]
 created: 2026-10-06 00:10
 ---
@@ -26,3 +26,4 @@ ART.md (room linings), PLAN-M15.md Notes as built.
 
 ## History
 - 2026-10-06 00:10 opened from F-003 (agreed)
+- 2026-10-08 02:08 building on t-034-material-looks-web
