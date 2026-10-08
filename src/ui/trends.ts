@@ -182,6 +182,15 @@ export const SERIES: SeriesMeta[] = [
   res("water", "Water", cat("water"), false),
   res("grayWater", "Water", "#8aa0a8"),
   res("tailings", "Water", "#7a6a5e"),
+  {
+    key: "food",
+    label: "Meals and rations",
+    group: "Food",
+    lines: [
+      { id: "meals", label: "Meals", color: cat("food") },
+      { id: "rations", label: "Earth rations", color: "#d9a870" },
+    ],
+  },
   res("meals", "Food", cat("food"), false),
   res("rawFood", "Food", "#b8c060"),
   res("rations", "Food", "#d9a870"),

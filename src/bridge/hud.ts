@@ -1,16 +1,22 @@
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
 import { points, seriesMeta } from "../ui/trends";
-import { barItems, topExtras, type BarItem, type TopExtras } from "../view/hudItems";
+import { barItems, GROUPS, needs, topExtras, type BarItem, type Need, type TopExtras } from "../view/hudItems";
+import { ICONS, iconSvg, type IconId } from "../view/icons";
 import { monthsText } from "../view/months";
 
-// The top of the Godot viewer's screen, as the web's (view/hudItems.ts): the resource bar's items,
-// each with its tooltip and the lines of its two-day sparkline, and the drill, storm and supply drop.
+// The top of the Godot viewer's screen, as the web's (view/hudItems.ts): the resource grid's cells,
+// each with its tooltip and the lines of its two-day sparkline, what needs you first, and the drill
+// and supply drop. The icons (view/icons.ts) go once, when the viewer connects.
 
 export interface HudMessage {
   type: "hud";
+  /** The sections' names, in the groups' order. */
+  groupNames: readonly string[];
   groups: (BarItem & { spark: { label: string; color: string; dashed: boolean; values: number[] }[]; span: string })[][];
   extras: TopExtras;
+  /** What needs you first, trouble first. */
+  needs: Need[];
   /** People waiting at the office. */
   officeWaiting: number;
 }
@@ -25,9 +31,11 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 
 export function hudMessage(s: Snapshot): HudMessage {
   const h = s.history;
+  const groups = barItems(s);
   return {
     type: "hud",
-    groups: barItems(s).map((group) =>
+    groupNames: GROUPS,
+    groups: groups.map((group) =>
       group.map((item) => {
         const meta = seriesMeta(item.trend);
         const spark = meta && h ? meta.lines.map((l) => ({ label: l.label, color: l.color, dashed: !!l.dashed, values: points(h, l.id, "2d", config.ticksPerDay).values.map(r2) })) : [];
@@ -36,6 +44,12 @@ export function hudMessage(s: Snapshot): HudMessage {
       }),
     ),
     extras: topExtras(s),
+    needs: needs(s, groups.flat()),
     officeWaiting: s.office.waiting.length,
   };
+}
+
+/** Every icon as an SVG drawn in white, for the viewer to rasterize and tint. */
+export function iconsMessage(): { type: "icons"; icons: Record<string, string> } {
+  return { type: "icons", icons: Object.fromEntries((Object.keys(ICONS) as IconId[]).map((id) => [id, iconSvg(id)])) };
 }

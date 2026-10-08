@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
-import { topExtras } from "../view/hudItems";
+import { needs, NEEDS_SHOWN, topExtras, type Need } from "../view/hudItems";
+import { Icon } from "./Icon";
 import { monthLabel } from "../view/months";
 import { SunDial } from "./SunDial";
 
@@ -13,6 +14,8 @@ interface Props {
   toggleOffice: () => void;
   setActiveHole: (holeId: number) => void;
   openMenu: () => void;
+  /** A Trends series to open, from the "needs you" slot. */
+  openTrend: (key: string) => void;
   /** Tutorial highlight, e.g. "hud:office". */
   highlight: string | null;
   /** Off while a menu is open, so Space can't unpause behind it. */
@@ -36,9 +39,20 @@ export function nextSpeed(from: number, step: number): number | null {
   return j < 0 || j >= running.length ? null : running[j]!;
 }
 
-// The top bar: the menu, where and when you are, speed, the drill, the next
-// supply drop and the office. Everything else lives in the dock's modes.
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActiveHole, openMenu, keysEnabled, highlight }: Props) {
+/** One thing in the "needs you" slot: its icon and a few words, opening what it's about. */
+function NeedChip({ need, onOpen }: { need: Need; onOpen: (n: Need) => void }) {
+  return (
+    <button className={`need ${need.level}`} data-hud={`need:${need.id}`} title={need.tip} onClick={() => onOpen(need)} disabled={!need.open}>
+      <Icon id={need.level === "bad" ? "alert" : need.icon} />
+      {need.text}
+    </button>
+  );
+}
+
+// The top bar: the menu, where and when you are, speed, what needs you first, the drill, the next
+// supply drop and the office. Everything else lives in the dock's modes. Each element has a stable
+// id (data-hud, view/hudItems.ts HUD_IDS) for the tutorial.
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActiveHole, openMenu, openTrend, keysEnabled, highlight }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
   // Space toggles pause, remembering the last running speed; − and + step the speed down and up
   // (from paused, they start at one step from the remembered speed). Past either end, nothing.
@@ -66,14 +80,20 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
 
   const t = snapshot?.time;
   const extras = snapshot ? topExtras(snapshot) : null;
+  const list = snapshot ? needs(snapshot) : [];
+  const open = (n: Need) => {
+    if (!n.open) return;
+    if ("office" in n.open) toggleOffice();
+    else openTrend(n.open.trend);
+  };
+  const waiting = snapshot?.office.waiting.length ?? 0;
   return (
     <header className="hud">
-      <button className="menu-btn" onClick={openMenu} title="Menu (Esc)">
-        ☰
+      <button className="menu-btn" data-hud="menu" onClick={openMenu} title="Menu (Esc)" aria-label="Menu">
+        <Icon id="menu" />
       </button>
-      <span className="title">Downtown Mars</span>
       {snapshot && snapshot.holes.length > 1 ? (
-        <select className="hole-picker" value={snapshot.holeId} onChange={(e) => setActiveHole(Number(e.target.value))} title="Which hole you're looking at">
+        <select className="hole-picker" data-hud="hole" value={snapshot.holeId} onChange={(e) => setActiveHole(Number(e.target.value))} title="Which hole you're looking at">
           {snapshot.holes.map((h) => (
             <option key={h.id} value={h.id}>
               {h.name}{h.domed ? " ◓" : ""} · {h.population}
@@ -83,50 +103,58 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
         </select>
       ) : (
         snapshot && (
-          <span className="hole-name" title={snapshot.holeDeposits.length ? `Sits on: ${snapshot.holeDeposits.join(", ")}` : "Sits on plain rock"}>
+          <span className="hole-name" data-hud="hole" title={snapshot.holeDeposits.length ? `Sits on: ${snapshot.holeDeposits.join(", ")}` : "Sits on plain rock"}>
             {snapshot.holeName}
           </span>
         )
       )}
-      <span className="clock">
+      <span className="clock" data-hud="clock">
         {t ? `${monthLabel(t.day)} · ${pad(t.hour)}:${pad(t.minute)}` : "Connecting…"}
         {t && <SunDial dayFraction={t.dayFraction} />}
       </span>
-      <span className={`speeds${pulse("speed")}`}>
+      <span className={`speeds${pulse("speed")}`} data-hud="speed">
         {config.speeds.map((s) => (
-          <button key={s} className={s === speed ? "on" : ""} onClick={() => setSpeed(s)}>
+          <button key={s} className={s === speed ? "on" : ""} onClick={() => setSpeed(s)} aria-label={s === 0 ? "Pause" : `${s}× speed`}>
             {s === 0 ? "❚❚" : `${s}×`}
           </button>
         ))}
       </span>
-      {extras?.drill && (
-        <span className="drill">
-          {extras.drill.canPause ? (
-            <>
-              <span title={extras.drill.tip}>{extras.drill.text}</span>
-              <button onClick={() => setDrill(!extras.drill!.active)}>{extras.drill.active ? "Pause drill" : "Resume drill"}</button>
-            </>
-          ) : (
-            extras.drill.text
+      {/* What needs you first: loud and few; nothing at all when all is well. */}
+      <span className={`needs${list.length ? "" : " calm"}`} data-hud="needs" aria-live="polite">
+        {list.slice(0, NEEDS_SHOWN).map((n) => (
+          <NeedChip key={n.id} need={n} onOpen={open} />
+        ))}
+        {list.length > NEEDS_SHOWN && (
+          <span className="need more" title={list.slice(NEEDS_SHOWN).map((n) => n.text).join("\n")}>
+            +{list.length - NEEDS_SHOWN}
+          </span>
+        )}
+      </span>
+      {extras && (
+        <span className={`drill${extras.drill.active ? "" : " paused"}`} data-hud="drill" title={extras.drill.tip}>
+          <Icon id="drill" />
+          {extras.drill.text}
+          {extras.drill.canPause && (
+            <button onClick={() => setDrill(!extras.drill.active)} title={extras.drill.active ? "Pause the drill" : "Resume the drill"} aria-label={extras.drill.active ? "Pause the drill" : "Resume the drill"}>
+              {extras.drill.active ? "❚❚" : "▶"}
+            </button>
           )}
         </span>
       )}
-      {extras?.storm && (
-        <span className="drop warn" title={extras.storm.tip}>
-          {extras.storm.text}
-        </span>
-      )}
       {extras && (
-        <span className={`drop${extras.drop.warn ? " warn" : ""}`} title="Next Earth supply drop">
+        <span className={`drop${extras.drop.warn ? " warn" : ""}`} data-hud="drop" title={extras.drop.tip}>
+          <Icon id="drop" />
           {extras.drop.text}
         </span>
       )}
       {snapshot && (
-        <button className={`office-btn${snapshot.office.waiting.length ? " waiting" : ""}${pulse("office")}`} onClick={toggleOffice}>
-          Office{snapshot.office.waiting.length ? ` · ${snapshot.office.waiting.length} waiting` : ""}
+        <button className={`office-btn${waiting ? " waiting" : ""}${pulse("office")}`} data-hud="office" onClick={toggleOffice} title="The office: visits, promises, ordinances and notables (O)">
+          <Icon id="office" />
+          <span className="office-label">Office</span>
+          {waiting ? <span className="badge">{waiting}</span> : null}
         </button>
       )}
-      <span className="tick">tick {snapshot?.tick ?? 0}</span>
+      {import.meta.env.DEV && <span className="tick">tick {snapshot?.tick ?? 0}</span>}
     </header>
   );
 }

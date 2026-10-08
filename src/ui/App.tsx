@@ -414,6 +414,14 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [menu, helpOpen, welcome, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking]);
 
+  /** Charts → Trends on a series: from a cell of the resource grid, or the "needs you" slot. */
+  const openTrend = (key: string) => {
+    setTrendKey(key);
+    setMode("charts");
+    setPanel("trends");
+    setSelected(null);
+  };
+
   return (
     <div
       className={`app${settings.colorBlind ? " color-blind" : ""}${welcome ? " welcoming" : ""}`}
@@ -430,17 +438,10 @@ export function App() {
         setActiveHole={setActiveHole}
         highlight={highlight}
         openMenu={openMenu}
+        openTrend={openTrend}
         keysEnabled={!menu}
       />
-      <ResourceBar
-        s={snapshot}
-        onTrend={(key) => {
-          setTrendKey(key);
-          setMode("charts");
-          setPanel("trends");
-          setSelected(null);
-        }}
-      />
+      <ResourceBar s={snapshot} onTrend={openTrend} />
       <div className="main">
         <div className="view">
           {snapshot && (

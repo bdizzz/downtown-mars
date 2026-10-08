@@ -58,17 +58,6 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
   background: transparent; color: var(--text); font: inherit; font-size: 12px;
   border: 1px solid var(--muted); border-radius: 4px; padding: 2px 8px; cursor: pointer;
 }
-.resbar {
-  display: flex; flex-wrap: wrap; gap: 4px 22px; padding: 5px 16px;
-  background: #22130f; border-bottom: 1px solid #000; font-size: 13px; min-height: 18px;
-}
-.resbar .group { display: flex; gap: 14px; }
-.res { display: inline-flex; gap: 5px; align-items: baseline; font-variant-numeric: tabular-nums; }
-.res .label { color: var(--muted); font-size: 11px; }
-.res .rate { font-size: 11px; color: var(--muted); }
-.res .rate.neg { color: #e89a7a; }
-.res .rate.pos { color: #9fcf86; }
-.res.warn .val, .res.warn .label { color: #ff7a5c; }
 .room-btn.short .name { color: var(--muted); }
 .inspector {
   width: 240px; flex-shrink: 0; overflow-y: auto; background: var(--panel);
@@ -87,8 +76,6 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
   margin-top: 8px; background: transparent; color: #f08a70; border: 1px solid #f08a70;
   border-radius: 4px; padding: 4px; font: inherit; cursor: pointer;
 }
-.drop { font-size: 13px; font-variant-numeric: tabular-nums; }
-.drop.warn { color: #ff7a5c; }
 .view { flex: 1; min-width: 0; position: relative; display: flex; }
 .messages {
   position: absolute; top: 10px; right: 12px; z-index: 2; pointer-events: none;
@@ -117,11 +104,6 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 .legend i.bad { background: #ff4a2e; }
 .legend i.good { background: #5fe07a; margin-left: 6px; }
-.office-btn {
-  background: transparent; color: var(--text); font: inherit; font-size: 13px;
-  border: 1px solid var(--muted); border-radius: 4px; padding: 3px 10px; cursor: pointer;
-}
-.office-btn.waiting { border-color: var(--accent); background: var(--accent); color: #1a0f0d; font-weight: 600; }
 .office { width: 300px; }
 .office h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 10px 0 2px; }
 .office h3 .k { text-transform: none; letter-spacing: 0; margin-left: 6px; }
@@ -470,7 +452,6 @@ label.set-row { cursor: pointer; }
 .construction .actions { display: flex; gap: 3px; }
 .construction button.link { background: none; border: none; color: var(--text); padding: 0; font: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted; }
 .build-chip { border-color: #e0a03a !important; }
-.res.full .val, .res.full .label { color: #e0a03a; }
 
 /* Storage allocation */
 .storage { margin: 6px 0; font-size: 13px; }
@@ -567,9 +548,6 @@ label.set-row { cursor: pointer; }
 .inspector input.rename { font: inherit; font-size: 16px; font-weight: 600; background: #0006; color: var(--text); border: 1px solid #e0a03a; border-radius: 4px; padding: 2px 6px; width: 70%; }
 
 /* Resource bar tooltips (sparklines) and Charts → Trends */
-.res.has-tip { cursor: pointer; border-radius: 3px; padding: 0 2px; margin: 0 -2px; }
-.res.has-tip:hover, .res.has-tip:focus-visible { background: #ffffff10; outline: none; }
-.res .rate.glow { color: #f0c060; }
 .res-tip {
   position: fixed; z-index: 50; width: 220px; pointer-events: none;
   display: flex; flex-direction: column; gap: 3px;
@@ -652,14 +630,20 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 
 /* Narrow screens (phones, and tablets in portrait): the 3D view first, panels as sheets over its bottom. */
 @media (max-width: 760px) {
-  .hud { gap: 8px 12px; padding: 6px 10px; }
+  .hud { gap: 6px 8px; padding: 5px 8px; }
+  /* The cells in one grid that wraps, groups and all; the office keeps only its icon. */
+  /* A section to a row, its label in a fixed column so the rows line up. */
+  .resbar { flex-direction: column; flex-wrap: nowrap; gap: 2px; padding: 3px 6px; font-size: 12px; }
+  .group-label { width: 64px; box-sizing: border-box; padding: 0 5px; font-size: 8.5px; }
+  .res { min-width: 54px; }
+  .res .ico svg { width: 14px; height: 14px; }
+  .office-btn .office-label { display: none; }
+  .clock { font-size: 13px; }
+  .speeds button { padding: 4px 9px; }
+  .needs { order: 10; flex-basis: 100%; }
+  .needs.calm { display: none; }
   .clock { min-width: 0; }
   .tick { display: none; }
-  /* The resources run in one line that scrolls sideways, rather than eating the view's height. */
-  .resbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 5px 10px; gap: 18px; touch-action: pan-x; }
-  .resbar::-webkit-scrollbar { display: none; }
-  .resbar .group { flex-shrink: 0; }
-  .res { white-space: nowrap; }
   .main { position: relative; }
   .inspector {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; width: auto !important; max-height: 55%;
@@ -710,3 +694,63 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .welcome button.primary { margin-top: 6px; font-size: 16.5px; text-align: center; }
 /* Behind the welcome card, only Mars and the hole: the rest of the interface comes in when it's closed. */
 .app.welcoming > :not(.main):not(.menu-backdrop), .app.welcoming .view > :not(.pixi-host), .app.welcoming .pixi-host > :not(canvas) { display: none; }
+
+/* The top bar and the resource grid (T-089): icons from view/icons.ts, what needs you first, and
+   cells that frame themselves when they're a worry (dashed amber), trouble (solid red) or full (dotted
+   blue), so the line shows it as well as the colour. */
+.ico { display: inline-flex; flex-shrink: 0; }
+.ico svg { display: block; }
+.hud { gap: 6px 12px; padding: 5px 12px; }
+.menu-btn { display: inline-flex; align-items: center; padding: 3px 6px; }
+.needs { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.need {
+  display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: 12.5px; white-space: nowrap;
+  border: 1px dashed #f0a03090; border-radius: 12px; padding: 1px 9px 1px 6px; cursor: pointer;
+  background: #f0a03018; color: #f4b860;
+}
+.need.bad { border: 1px solid #ff5a3c; background: #ff4a2e30; color: #ff8a6c; font-weight: 600; }
+.need:hover:not(:disabled) { filter: brightness(1.2); }
+.need:disabled { cursor: default; }
+.need.more { border: 1px solid #ffffff30; background: none; color: var(--muted); cursor: help; }
+.drill, .drop { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.drill.paused { color: var(--muted); }
+.drill button { font-size: 10px; padding: 1px 6px; }
+.drop.warn { color: #f4b860; }
+.office-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: transparent; color: var(--text); font: inherit; font-size: 13px;
+  border: 1px solid var(--muted); border-radius: 4px; padding: 2px 8px; cursor: pointer;
+}
+.office-btn.waiting { border-color: var(--accent); background: var(--accent); color: #1a0f0d; font-weight: 600; }
+.office-btn .badge { background: #1a0f0d; color: var(--accent); border-radius: 8px; padding: 0 5px; font-size: 11px; line-height: 15px; }
+/* The grid's sections (colony, life, food, materials), each its own panel with a small label, so
+   you find the section first and then the cell; cells at least a fixed width so numbers don't
+   shuffle their neighbours. */
+.resbar {
+  display: flex; flex-wrap: wrap; gap: 3px 6px; padding: 3px 8px;
+  background: #22130f; border-bottom: 1px solid #000; font-size: 13px; min-height: 22px;
+}
+.resbar .group {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 1px; padding: 1px 3px 1px 0;
+  background: #ffffff08; border: 1px solid #ffffff1c; border-radius: 5px;
+}
+.group-label {
+  align-self: stretch; display: flex; align-items: center; padding: 0 5px; margin-right: 1px;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+  background: #ffffff0a; border-right: 1px solid #ffffff1c; border-radius: 4px 0 0 4px;
+}
+.res {
+  display: inline-flex; align-items: center; gap: 3px; padding: 1px 3px; white-space: nowrap; min-width: 46px; box-sizing: border-box;
+  border: 1px solid transparent; border-radius: 3px; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.res .ico { color: var(--muted); }
+.res .dir { width: 9px; }
+.res .dir.up { color: #9fcf86; }
+.res .dir.down { color: #e89a7a; }
+.res .rate { font-size: 11px; color: var(--muted); }
+.res .rate.glow { color: #f0c060; }
+.res:hover, .res:focus-visible { background: #ffffff10; outline: none; }
+.res.warn { color: #f4b860; border: 1px dashed #f0a03090; background: #f0a03014; }
+.res.bad { color: #ff8a6c; border: 1px solid #ff5a3c; background: #ff4a2e26; font-weight: 600; }
+.res.full { color: #8fc0ea; border: 1px dotted #7fb3e0a0; }
+.res.warn .ico, .res.bad .ico, .res.full .ico { color: inherit; }
