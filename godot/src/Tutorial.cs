@@ -8,23 +8,28 @@ namespace DowntownMars;
 /// <summary>
 /// The tutorial, as the web's (ui/Tutorial.tsx, its goals worked out by the bridge's tutorial.ts): the
 /// deputy's card at the bottom right, saying what to do next and how, with a dot per goal; it shrinks
-/// to a pill (–), and Hide puts it away (Settings brings it back). What the goal points at pulses
+/// to a pill (–), and Hide puts it away (Settings brings it back). ‹ and › (or a dot) pick the step
+/// shown; the bridge keeps it, and moves on when its goal is met. What the goal points at pulses
 /// (Live, from Highlight).
 /// </summary>
 public partial class Tutorial : PanelContainer
 {
     readonly Label _face = new(), _name = new(), _intro = new(), _say = new(), _hint = new();
     readonly HBoxContainer _dots = new();
+    readonly Button _prev = new() { Text = "‹", Flat = true, FocusMode = FocusModeEnum.None, TooltipText = "Previous step" };
+    readonly Button _next = new() { Text = "›", Flat = true, FocusMode = FocusModeEnum.None, TooltipText = "Next step" };
     readonly Button _hide = new() { Text = "Hide tutorial", Flat = true, FocusMode = FocusModeEnum.None };
     readonly Button _pill = new() { FocusMode = FocusModeEnum.None, Visible = false };
     readonly VBoxContainer _rows = new();
     bool _small;
-    int _total;
+    int _total, _at = -1;
 
     /// <summary>What the current goal points at: "room:&lt;id&gt;", "hud:&lt;button&gt;", "overlay:&lt;type&gt;" or "tool:corridors"; null with none.</summary>
     public string? Highlight { get; private set; }
     /// <summary>Hide pressed.</summary>
     public Action? Dismissed { get; set; }
+    /// <summary>A step picked (‹, › or a dot): the goal's index, which may run past either end (the bridge wraps it).</summary>
+    public Action<int>? Stepped { get; set; }
 
     static Label Style(Label l, int size, Color color)
     {
@@ -65,8 +70,22 @@ public partial class Tutorial : PanelContainer
         _rows.AddChild(Style(_intro, 14, new Color("#e0cfbd")));
         _rows.AddChild(Style(_say, 16, new Color("#f3e6d8")));
         _rows.AddChild(Style(_hint, 13, new Color("#a8927e")));
+        var steps = new HBoxContainer();
+        steps.AddThemeConstantOverride("separation", 6);
+        _rows.AddChild(steps);
+        foreach (var b in new[] { _prev, _next })
+        {
+            b.AddThemeFontSizeOverride("font_size", 20);
+            b.AddThemeColorOverride("font_color", new Color("#c9b29c"));
+        }
+        _prev.Pressed += () => Stepped?.Invoke(_at - 1);
+        _next.Pressed += () => Stepped?.Invoke(_at + 1);
+        steps.AddChild(_prev);
         _dots.AddThemeConstantOverride("separation", 4);
-        _rows.AddChild(_dots);
+        _dots.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _dots.Alignment = BoxContainer.AlignmentMode.Center;
+        steps.AddChild(_dots);
+        steps.AddChild(_next);
         _hide.AddThemeFontSizeOverride("font_size", 13);
         _hide.AddThemeColorOverride("font_color", new Color("#c9b29c"));
         _hide.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
@@ -116,20 +135,43 @@ public partial class Tutorial : PanelContainer
         if (_intro.Visible) _intro.Text = m.GetProperty("intro").GetString();
         var goal = m.GetProperty("goal");
         var has = goal.ValueKind == JsonValueKind.Object;
-        _say.Text = has ? goal.GetProperty("text").GetString() : m.GetProperty("outro").GetString();
+        var shownDone = has && goal.GetProperty("done").GetBoolean();
+        _say.Text = has ? (shownDone ? "✓ " : "") + goal.GetProperty("text").GetString() : m.GetProperty("outro").GetString();
         _hint.Visible = has;
         if (has) _hint.Text = goal.GetProperty("hint").GetString();
-        Highlight = has ? goal.GetProperty("highlight").GetString() : null;
+        Highlight = has && !shownDone ? goal.GetProperty("highlight").GetString() : null;
+        _at = m.GetProperty("at").GetInt32();
+        _prev.Visible = _next.Visible = has;
         _hide.Text = has ? "Hide tutorial" : "Close";
         var states = m.GetProperty("states").EnumerateArray().Select(x => x.GetString()).ToArray();
         _total = states.Length;
         if (_dots.GetChildCount() != states.Length)
         {
             foreach (var c in _dots.GetChildren()) c.QueueFree();
-            foreach (var _ in states) _dots.AddChild(new ColorRect { CustomMinimumSize = new Vector2(18, 5) });
+            for (var i = 0; i < states.Length; i++)
+            {
+                // A dot, in a taller box so it's easy to click.
+                var hit = new Control { CustomMinimumSize = new Vector2(18, 14), MouseFilter = MouseFilterEnum.Stop, MouseDefaultCursorShape = CursorShape.PointingHand };
+                hit.AddChild(new ColorRect { MouseFilter = MouseFilterEnum.Ignore });
+                var at = i;
+                hit.GuiInput += e =>
+                {
+                    if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) Stepped?.Invoke(at);
+                };
+                _dots.AddChild(hit);
+            }
         }
         for (var i = 0; i < states.Length; i++)
-            ((ColorRect)_dots.GetChild(i)).Color = states[i] switch { "done" => new Color("#9fd28a"), "now" => new Color("#e8834a"), _ => new Color(1, 1, 1, 0.15f) };
+        {
+            var hit = (Control)_dots.GetChild(i);
+            var dot = (ColorRect)hit.GetChild(0);
+            var now = i == _at;
+            // The step shown stands taller than the rest.
+            dot.Size = new Vector2(18, now ? 9 : 5);
+            dot.Position = new Vector2(0, now ? 2.5f : 4.5f);
+            dot.Color = states[i] == "done" ? new Color("#9fd28a") : now ? new Color("#e8834a") : new Color(1, 1, 1, 0.15f);
+            hit.TooltipText = $"Step {i + 1}" + (states[i] == "done" ? ", done" : "");
+        }
         _pill.Text = $"Tutorial · {m.GetProperty("done").GetInt32()}/{_total}";
         Refresh();
     }

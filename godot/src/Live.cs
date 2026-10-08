@@ -259,6 +259,7 @@ public partial class Live : Node3D
             ViewSettings.Save();
             _tutorial.Show(false);
         };
+        _tutorial.Stepped = at => _bridge.Send(new Dictionary<string, object> { ["type"] = "tutorialStep", ["at"] = at });
         _help = new HelpSheet { Name = "Help", RoomKeys = () => _build.RoomKeys };
         _hud.AddChild(_help);
         _settings = new SettingsSheet

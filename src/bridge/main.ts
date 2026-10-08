@@ -19,6 +19,7 @@ import { constructionView, maintenanceViewOf, peopleView } from "./colony";
 import { rigKey, rigMessage } from "./rig";
 import { hudMessage } from "./hud";
 import { tutorialMessage } from "./tutorial";
+import { advanceStep, FOLLOW, metGoals, pickGoal } from "../ui/tutorialGoals";
 import { planFieldKey, planFieldMessage, planKey, planMessage, type FieldView } from "./plan";
 import { terrainKey, terrainMessage } from "./terrain";
 import { welcomeCard } from "../view/welcome";
@@ -176,6 +177,8 @@ type BridgeMessage =
   /** Settings: autosave each game day, or not; and what the viewer saw for the tutorial. */
   | { type: "autosave"; on: boolean }
   | { type: "tutorialFlags"; sawNoise: boolean; openedFlows: boolean; sawThreeD: boolean }
+  /** The tutorial's arrows and dots: show goal `at` (wrapping). */
+  | { type: "tutorialStep"; at: number }
   /** The demolish tool: the room at a world point. */
   | { type: "demolishAt"; at: [number, number, number] }
   /** Saves (saves.ts): the slots, saving to one, loading one. */
@@ -233,6 +236,18 @@ let hudClock = 0;
 let sentHud = "";
 let sentTutorial = "";
 let tutorialFlags = { sawNoise: false, openedFlows: false, sawThreeD: true };
+/** The step the tutorial's card is on (ui/tutorialGoals.ts), moved on as goals are met. */
+let tutorialStep = FOLLOW;
+
+/** The tutorial's card to every viewer, when it changed. */
+function sendTutorial(snap = host.snapshot()): void {
+  const met = metGoals(snap, tutorialFlags);
+  tutorialStep = advanceStep(tutorialStep, met);
+  const tut = JSON.stringify(tutorialMessage(snap, met, tutorialStep));
+  if (tut === sentTutorial) return;
+  sentTutorial = tut;
+  for (const c of clients) c.write(tut + "\n");
+}
 /** Autosave each new game day (the viewer's setting; --no-autosave starts it off). */
 let dailyAutosave = !args["no-autosave"];
 function sendInspect(): void {
@@ -373,6 +388,9 @@ const server = createServer((socket) => {
           dailyAutosave = msg.on;
         } else if (msg.type === "tutorialFlags") {
           tutorialFlags = { sawNoise: msg.sawNoise, openedFlows: msg.openedFlows, sawThreeD: msg.sawThreeD };
+        } else if (msg.type === "tutorialStep") {
+          tutorialStep = pickGoal(msg.at, metGoals(host.snapshot(), tutorialFlags));
+          sendTutorial();
         } else if (msg.type === "demolishAt") {
           const roomId = roomAtPoint(host.active(), msg.at);
           if (roomId !== null) host.onMessage({ type: "command", id: commandId++, command: { type: "demolish", roomId } });
@@ -463,11 +481,7 @@ setInterval(() => {
       sentHud = line;
       for (const c of clients) c.write(line + "\n");
     }
-    const tut = JSON.stringify(tutorialMessage(snap, tutorialFlags));
-    if (tut !== sentTutorial) {
-      sentTutorial = tut;
-      for (const c of clients) c.write(tut + "\n");
-    }
+    sendTutorial(snap);
   }
 }, 1000 / config.snapshotsPerSecond);
 setInterval(() => {
