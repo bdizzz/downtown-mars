@@ -7,9 +7,11 @@ import { barItems, type BarItem } from "../view/hudItems";
 import { Sparkline } from "./TrendChart";
 import { points, seriesMeta } from "./trends";
 import { monthsText } from "../view/months";
+import { Icon } from "./Icon";
 
-// The stocks a player watches (view/hudItems.ts). Pointing at one shows what it means and a sparkline
-// of its last two days; clicking it opens Charts → Trends on it.
+// The resource grid: the stocks a player watches (view/hudItems.ts), each a small cell of icon,
+// value and trend arrow, amber or red when it's a worry or trouble. Pointing at one shows its name,
+// what it means and a sparkline of its last two days; clicking (or tapping) it opens Charts → Trends on it.
 
 type OnTrend = (key: string) => void;
 
@@ -59,11 +61,12 @@ function TipBody({ s, trend, title, notes }: { s: Snapshot; trend: string; title
 }
 
 /** An item in the bar, with its tooltip and a click through to Trends. */
-function Item({ s, trend, className, title, notes, onTrend, children }: { s: Snapshot; trend: string; className: string; title: string; notes: string[]; onTrend: OnTrend; children: ReactNode }) {
+function Item({ s, id, trend, className, title, notes, onTrend, children }: { s: Snapshot; id: string; trend: string; className: string; title: string; notes: string[]; onTrend: OnTrend; children: ReactNode }) {
   const [at, setAt] = useState<DOMRect | null>(null);
   return (
     <span
       className={`${className} has-tip`}
+      data-hud={id}
       role="button"
       tabIndex={0}
       aria-label={`${title}: ${notes.join(". ")}`}
@@ -94,25 +97,25 @@ function Item({ s, trend, className, title, notes, onTrend, children }: { s: Sna
   );
 }
 
-/** One item of the bar (view/hudItems.ts): label, value, and a rate or the like. */
+/** One cell of the grid (view/hudItems.ts): icon, value, a rising or falling arrow, and the afterglow. */
 function BarEntry({ item, s, onTrend }: { item: BarItem; s: Snapshot; onTrend: OnTrend }) {
   return (
-    <Item s={s} trend={item.trend} className={`res${item.warn ? " warn" : ""}${item.full ? " full" : ""}`} title={item.title} notes={item.notes} onTrend={onTrend}>
-      <span className="label">{item.label}</span>
+    <Item s={s} id={item.id} trend={item.trend} className={`res ${item.level}`} title={`${item.title} · ${item.value}`} notes={item.notes} onTrend={onTrend}>
+      <Icon id={item.icon} />
       <span className="val">{item.value}</span>
-      {item.rate && <span className={`rate${item.rate.tone ? ` ${item.rate.tone}` : ""}`}>{item.rate.text}</span>}
+      {item.sub ? <span className={`rate ${item.sub.tone}`}>{item.sub.text}</span> : item.dir ? <Icon id={item.dir} size={9} className={`dir ${item.dir}`} /> : <span className="dir" />}
     </Item>
   );
 }
 
 export function ResourceBar({ s, onTrend }: { s: Snapshot | null; onTrend: OnTrend }) {
-  if (!s) return <div className="resbar" />;
+  if (!s) return <div className="resbar" data-hud="resources" />;
   return (
-    <div className="resbar">
+    <div className="resbar" data-hud="resources">
       {barItems(s).map((group, i) => (
         <span key={i} className="group">
           {group.map((item) => (
-            <BarEntry key={item.trend} item={item} s={s} onTrend={onTrend} />
+            <BarEntry key={item.id} item={item} s={s} onTrend={onTrend} />
           ))}
         </span>
       ))}
