@@ -255,7 +255,7 @@ On a narrow screen (under 760 px), the resources run in one line that scrolls si
 
 **On the home screen.** The web game installs like an app, with its own icon (the borehole from above) and no browser bar round it:
 
-- **Android (Chrome):** open the game, then menu ⋮ → **Install app** (or **Add to Home screen**). It opens full screen, and shares its saves with the game in Chrome.
+- **Android (Chrome):** open the game, then menu ⋮ → **Install app** (or **Add to Home screen**). It opens without browser bars and, from your first tap, full screen too: the phone's status and navigation bars hide. **Settings → Display → Full screen** (only in the installed app) brings them back. It shares its saves with the game in Chrome.
 - **iPhone and iPad (Safari):** open the game, then Share → **Add to Home Screen**. It opens without Safari's bars (the phone's status bar stays). A home-screen app on iOS keeps **its own saves, separate from Safari's**: export a save from the menu in Safari and import it in the app to carry a game across.
 
 Each install opens the build it was installed from, so a PR preview added to the home screen stays that preview (with its own saves, as in the browser). It still needs a connection to start; there's no offline play yet.
@@ -268,7 +268,7 @@ The game autosaves every month in your browser. Use the menu to save to a slot, 
 
 **The menu** (Esc, or ☰): **Resume** first, then Save, Load, New game, Settings, Help and **Quit to title** two by two, with exporting and importing a save file as links underneath. Quitting to the title (or starting a new game) asks first: progress since the last autosave is lost. On the title, **Continue** loads the autosave.
 
-**Settings** come in five sections: **Game** (autosave, the tutorial), **Display** (the 3D graphics preset, sharpness and each effect), **Sound** (volume, sound effects, ambient sound), **Controls** (preview floors on hover, the keys) and **Accessibility** (interface size, colour-blind overlays). Each setting is one row: its name, a one-line hint, and a switch, slider or list. On a wide screen the sections are tabs; on a phone they stack, and sliders take a line of their own.
+**Settings** come in five sections: **Game** (autosave, the tutorial), **Display** (full screen in the installed Android app, the 3D graphics preset, sharpness and each effect), **Sound** (volume, sound effects, ambient sound), **Controls** (preview floors on hover, the keys) and **Accessibility** (interface size, colour-blind overlays). Each setting is one row: its name, a one-line hint, and a switch, slider or list. On a wide screen the sections are tabs; on a phone they stack, and sliders take a line of their own.
 
 **By keyboard:** the menu opens with its first button ready. ↑ ↓ and Tab move (Tab stays inside the menu), Enter or Space acts, Esc goes back a step and then resumes. In Settings, ← → change section, sliders take ← →, switches flip with Enter or Space. Wherever you are, a ring shows what has the keyboard. On a touch screen every button, switch and list is at least a fingertip (44 px) tall.
 

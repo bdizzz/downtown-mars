@@ -1,5 +1,5 @@
 {
-  "_comment": "The settings, in the order the menu shows them, read by the web (src/ui/settingsTable.ts) and Godot (SettingsSheet). Each row: id, section, name, a one-line hint, its control (toggle, slider, select or button), and for sliders min/max/step, for selects options (or none: the view fills them in). `only` keeps a row to one of the two (web or godot). Defaults for the plain settings; graphics take theirs from the preset.",
+  "_comment": "The settings, in the order the menu shows them, read by the web (src/ui/settingsTable.ts) and Godot (SettingsSheet). Each row: id, section, name, a one-line hint, its control (toggle, slider, select or button), and for sliders min/max/step, for selects options (or none: the view fills them in). `only` keeps a row to one of the two (web or godot); `when` shows it only where it applies (installedAndroid: the app installed on Android). Defaults for the plain settings; graphics take theirs from the preset.",
   "sections": [
     { "id": "game", "name": "Game" },
     { "id": "display", "name": "Display" },
@@ -11,6 +11,7 @@
     { "id": "autosave", "section": "game", "name": "Autosave", "hint": "Save to the autosave slot every month", "control": "toggle", "default": true },
     { "id": "tutorial", "section": "game", "name": "Tutorial", "hint": "The deputy's card with the next goal", "control": "toggle", "default": true },
 
+    { "id": "fullscreen", "section": "display", "name": "Full screen", "hint": "Hide the phone's status and navigation bars", "control": "toggle", "default": true, "only": "web", "when": "installedAndroid" },
     { "id": "graphics.quality", "section": "display", "name": "Graphics", "hint": "Low for slower machines; Ultra adds bounced light", "control": "select", "only": "godot" },
     { "id": "graphics.preset", "section": "display", "name": "Graphics", "hint": "Low for slower machines; changing an effect makes it custom", "control": "select", "only": "web" },
     { "id": "graphics.pixelRatio", "section": "display", "name": "Sharpness", "hint": "Sharper costs more on high-resolution screens", "control": "select", "only": "web",
