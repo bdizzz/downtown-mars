@@ -1,7 +1,7 @@
 ---
 id: F-010
 title: A comprehensive, interlinked playing guide (a wiki of the game)
-status: draft
+status: agreed
 plan:
 notes: [N-0050]
 created: 2026-10-08 02:06
@@ -19,13 +19,13 @@ created: 2026-10-08 02:06
 - **Answered (Bryon, Oct 8):** in the game first, the website later from the same pages; `GUIDE.md` is generated from the wiki's pages (one source); locked rooms and events are shown but marked locked, with how to unlock them.
 
 ## Breakdown
-Proposed; becomes tickets once this feature is agreed.
-- The page model and generator: pages from `data/*.json` (rooms, resources, crops, materials, events) plus hand-written mechanics pages, with links resolved and checked in a test.
-- The reader in the web game: a Guide panel with links, search, back and forward.
-- The mechanics pages: move `GUIDE.md`'s sections into linked pages (and generate `GUIDE.md` from them, or retire it).
-- "?" links from the game's UI into the right page (room panel, palette, top bar, event cards).
-- The guide as a website on GitHub Pages, from the same pages.
-- The guide in Godot.
+Agreed Oct 8. In build order after the first; 2 and 3 can go side by side.
+- The page model and generator: pages from `data/*.json` (rooms, resources, crops, materials, events) plus hand-written mechanics pages, with links resolved and checked in a test. → T-092
+- The reader in the web game: a Guide panel with links, search, back and forward. → T-093
+- The mechanics pages: move `GUIDE.md`'s sections into linked pages (and generate `GUIDE.md` from them, or retire it). → T-094
+- "?" links from the game's UI into the right page (room panel, palette, top bar, event cards). → T-095
+- The guide as a website on GitHub Pages, from the same pages. → T-096
+- The guide in Godot. → T-097
 
 ## Open questions
 - [x] Where: in the game (proposed), on a website, or both (proposed: in the game first, the website from the same pages later)?
@@ -35,3 +35,4 @@ Proposed; becomes tickets once this feature is agreed.
 ## History
 - 2026-10-08 02:06 opened from N-0050
 - 2026-10-08 02:14 questions answered
+- 2026-10-08 02:14 agreed
