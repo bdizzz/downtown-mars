@@ -1,7 +1,7 @@
 ---
 id: T-081
 title: Step back and forward through the tutorial with arrows
-status: open
+status: done
 size: S
 area: ui, godot
 touches: [src/ui/Tutorial.tsx, src/ui/tutorialGoals.ts, src/bridge/tutorial.ts, godot/src/Tutorial.cs]
@@ -26,3 +26,5 @@ Answered (Bryon, Oct 7): when you meet a goal you're not looking at, the card st
 ## History
 - 2026-10-06 19:31 opened from N-0045
 - 2026-10-07 18:43 questions answered
+- 2026-10-08 01:24 building on t-081-tutorial-step-arrows
+- 2026-10-08 01:29 built

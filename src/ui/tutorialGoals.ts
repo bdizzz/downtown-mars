@@ -43,6 +43,52 @@ export const CHECKS: Record<string, (s: Snapshot, ui: UiFlags) => boolean> = {
   three_d: (_, ui) => ui.sawThreeD,
 };
 
+/** Which goals are met right now, in order. */
+export function metGoals(s: Snapshot, flags: UiFlags): boolean[] {
+  return tutorial.goals.map((g) => !!CHECKS[g.id]?.(s, flags));
+}
+
+/**
+ * The step the card shows. With `at` null it follows the first unmet goal; the arrows and dots pick
+ * one (`at`), and the card stays there, met or not, until the player meets it, when it moves on to
+ * the next unmet goal. Meeting a goal the card isn't on doesn't move it. `wasMet` is whether the
+ * picked goal was met last time we looked, so meeting it is a change we can see.
+ */
+export interface TutorialStep {
+  at: number | null;
+  wasMet: boolean;
+}
+
+export const FOLLOW: TutorialStep = { at: null, wasMet: false };
+
+/** The index the card shows, or -1 when every goal is met (the tutorial's over). */
+export function shownGoal(step: TutorialStep, met: boolean[]): number {
+  if (met.every(Boolean)) return -1;
+  return step.at ?? met.indexOf(false);
+}
+
+/** Pick goal `i` (wrapping), as the arrows and dots do. */
+export function pickGoal(i: number, met: boolean[]): TutorialStep {
+  const n = met.length;
+  const at = ((i % n) + n) % n;
+  return { at, wasMet: met[at]! };
+}
+
+/** The step after the goals changed: on from a picked goal the player has just met. Returns `step` itself when nothing changes. */
+export function advanceStep(step: TutorialStep, met: boolean[]): TutorialStep {
+  if (step.at === null) return step;
+  const now = met[step.at]!;
+  if (now === step.wasMet) return step;
+  if (!now) return { at: step.at, wasMet: false };
+  // Met the picked goal: on to the next unmet one after it, round to the start.
+  const n = met.length;
+  for (let k = 1; k < n; k++) {
+    const i = (step.at + k) % n;
+    if (!met[i]) return { at: i, wasMet: false };
+  }
+  return FOLLOW;
+}
+
 const KEY = storageKey("tutorial.hidden");
 
 export function tutorialHidden(): boolean {

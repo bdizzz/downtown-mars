@@ -1,24 +1,24 @@
 import { useState } from "react";
 import type { Snapshot } from "../sim/snapshot";
-import { CHECKS, tutorial, type Goal, type UiFlags } from "./tutorialGoals";
+import { pickGoal, shownGoal, tutorial, type TutorialStep } from "./tutorialGoals";
 
 interface Props {
   s: Snapshot;
-  flags: UiFlags;
+  /** Which goals are met (metGoals), and the step the card is on (App keeps it, for the highlight). */
+  met: boolean[];
+  step: TutorialStep;
+  onStep: (step: TutorialStep) => void;
   onHide: () => void;
 }
 
-/** The goal the deputy is talking about now: the first one not yet met, or null when all are. */
-export function currentGoal(s: Snapshot, flags: UiFlags): Goal | null {
-  return tutorial.goals.find((g) => !CHECKS[g.id]?.(s, flags)) ?? null;
-}
-
-export function Tutorial({ s, flags, onHide }: Props) {
+export function Tutorial({ s, met, step, onStep, onHide }: Props) {
   const [small, setSmall] = useState(false);
   const deputy = s.notables[0];
   const name = deputy?.name ?? "your deputy";
-  const done = tutorial.goals.filter((g) => CHECKS[g.id]?.(s, flags)).length;
-  const goal = currentGoal(s, flags);
+  const done = met.filter(Boolean).length;
+  const at = shownGoal(step, met);
+  const goal = at >= 0 ? tutorial.goals[at]! : null;
+  const go = (i: number) => onStep(pickGoal(i, met));
   const fill = (t: string) => t.replaceAll("{name}", name);
 
   if (small) {
@@ -49,16 +49,37 @@ export function Tutorial({ s, flags, onHide }: Props) {
       {done === 0 && <p>{fill(tutorial.intro)}</p>}
       {goal ? (
         <>
-          <p className="say">{fill(goal.text)}</p>
+          <p className="say">
+            {met[at] && <span className="tick">✓ </span>}
+            {fill(goal.text)}
+          </p>
           <p className="k">{goal.hint}</p>
         </>
       ) : (
         <p className="say">{fill(tutorial.outro)}</p>
       )}
-      <div className="progress" aria-label={`${done} of ${tutorial.goals.length} goals done`}>
-        {tutorial.goals.map((g) => (
-          <span key={g.id} className={CHECKS[g.id]?.(s, flags) ? "done" : g === goal ? "now" : ""} title={g.text} />
-        ))}
+      <div className="steps">
+        {goal && (
+          <button className="icon" onClick={() => go(at - 1)} aria-label="Previous step" title="Previous step">
+            ‹
+          </button>
+        )}
+        <div className="progress" aria-label={`${done} of ${tutorial.goals.length} goals done`}>
+          {tutorial.goals.map((g, i) => (
+            <button
+              key={g.id}
+              className={[met[i] && "done", i === at && "now"].filter(Boolean).join(" ")}
+              title={fill(g.text)}
+              aria-label={`Step ${i + 1}${met[i] ? ", done" : ""}`}
+              onClick={() => go(i)}
+            />
+          ))}
+        </div>
+        {goal && (
+          <button className="icon" onClick={() => go(at + 1)} aria-label="Next step" title="Next step">
+            ›
+          </button>
+        )}
       </div>
       <button className="link" onClick={onHide}>
         {goal ? "Hide tutorial" : "Close"}

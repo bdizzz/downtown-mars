@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState } from "../src/sim/state";
-import { CHECKS, tutorial } from "../src/ui/tutorialGoals";
+import { advanceStep, CHECKS, FOLLOW, pickGoal, shownGoal, tutorial } from "../src/ui/tutorialGoals";
 import { run } from "./bot";
 import { construction } from "../src/sim/construction";
 import { storage } from "../src/sim/storage";
@@ -32,6 +32,42 @@ describe("tutorial", () => {
     expect(CHECKS.galley!(rooms("canteen"), flags)).toBe(false);
     expect(CHECKS.galley!(rooms("kitchen", "canteen"), flags)).toBe(true);
     expect(CHECKS.galley!(rooms("galley"), flags)).toBe(true);
+  });
+
+  describe("stepping through goals", () => {
+    const F = false;
+    const T = true;
+
+    it("follows the first unmet goal until a step is picked", () => {
+      expect(shownGoal(FOLLOW, [T, F, F])).toBe(1);
+      expect(advanceStep(FOLLOW, [T, T, F])).toBe(FOLLOW);
+      expect(shownGoal(FOLLOW, [T, T, F])).toBe(2);
+    });
+
+    it("stays on a picked step when another goal is met", () => {
+      const step = pickGoal(3, [F, F, F, F, F]);
+      expect(shownGoal(step, [F, F, F, F, F])).toBe(3);
+      expect(advanceStep(step, [T, F, F, F, F])).toBe(step);
+    });
+
+    it("meeting the picked goal moves on to the next unmet one, round to the start", () => {
+      const step = pickGoal(3, [F, F, F, F, T]);
+      const next = advanceStep(step, [F, F, F, T, T]);
+      expect(shownGoal(next, [F, F, F, T, T])).toBe(0);
+    });
+
+    it("browsing back to a done goal stays there, and the arrows wrap", () => {
+      const met = [T, F, F];
+      const back = pickGoal(0, met);
+      expect(advanceStep(back, met)).toBe(back);
+      expect(shownGoal(back, met)).toBe(0);
+      expect(pickGoal(-1, met).at).toBe(2);
+      expect(pickGoal(3, met).at).toBe(0);
+    });
+
+    it("ends when every goal is met, whatever step is picked", () => {
+      expect(shownGoal(pickGoal(1, [T, T, T]), [T, T, T])).toBe(-1);
+    });
   });
 
   it("a colony played like the docs' first 30 minutes meets every goal", () => {
