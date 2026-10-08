@@ -5,7 +5,8 @@
 # (scripts/gh-pages.sh): the repo allows only GitHub's own actions.
 #
 # Previews share the main game's origin, so they're built with their own
-# storage prefix (src/ui/storageKey.ts) to keep their saves apart.
+# storage prefix (src/ui/storageKey.ts) to keep their saves apart, and their
+# PR number in the page title ("#N · Downtown Mars", vite.config.ts).
 name: Preview
 
 on:
@@ -45,6 +46,7 @@ jobs:
         if: github.event.action != 'closed'
         env:
           VITE_STORAGE_PREFIX: pr-${{ github.event.number }}.
+          VITE_PR_NUMBER: ${{ github.event.number }}
       - run: |
           sh scripts/gh-pages.sh publish dist "pr-preview/pr-$PR" "Preview PR #$PR at ${{ github.event.pull_request.head.sha }}"
         if: github.event.action != 'closed'

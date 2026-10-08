@@ -42,6 +42,31 @@ function gitBranch(): Plugin {
 }
 
 /**
+ * A PR's preview build (the preview workflow sets VITE_PR_NUMBER): the page
+ * title, the home-screen title and the installed app's name read
+ * "#N · Downtown Mars", so preview tabs stand apart from the real game and
+ * from each other. Other builds and the dev server are untouched.
+ */
+function prTitle(): Plugin {
+  const pr = process.env.VITE_PR_NUMBER;
+  const name = "Downtown Mars";
+  const stamped = `#${pr} · ${name}`;
+  return {
+    name: "pr-title",
+    apply: () => /^\d+$/.test(pr ?? ""),
+    transformIndexHtml: (html) =>
+      html.replace(`<title>${name}</title>`, `<title>${stamped}</title>`).replace(`content="${name}"`, `content="${stamped}"`),
+    writeBundle(options) {
+      const file = `${options.dir}/manifest.webmanifest`;
+      const manifest = JSON.parse(readFileSync(file, "utf8")) as { name: string; short_name: string };
+      manifest.name = stamped;
+      manifest.short_name = `#${pr} ${name}`;
+      writeFileSync(file, JSON.stringify(manifest, null, 2) + "\n");
+    },
+  };
+}
+
+/**
  * The furnishing tool's save (dev server only): POST the templates to
  * /__dev/layouts and they're written to data/layouts.json, one placement per
  * line, keeping the file's note. Only well-formed templates are accepted.
@@ -124,7 +149,7 @@ function saveGodotScene(): Plugin {
 export default defineConfig({
   // Relative paths, so the build runs from any folder (itch.io serves games from a sub-path).
   base: "./",
-  plugins: [react(), saveLayouts(), saveGodotScene(), gitBranch()],
+  plugins: [react(), saveLayouts(), saveGodotScene(), gitBranch(), prTitle()],
   worker: { format: "es" },
   define: {
     __APP_VERSION__: JSON.stringify(`v${pkg.version} · ${commit()}`),
