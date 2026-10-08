@@ -21,7 +21,7 @@ import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
 import { createSky } from "./sky3d";
 import { buildTerrain, siteSeed, type Terrain } from "./terrain3d";
-import { FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { CRUST, FLOOR_H, floorAtY, floorSpan, openShaftRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { isoFitDistance } from "./isoReach";
 import { inCarvedRegion, NUDGE, pickPast, rayCylinder, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
@@ -214,13 +214,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let shell: THREE.Object3D | null = null;
   // Cutaway: the cut face of the ground, rock from the surface's profile down, so
   // below the sliced-away land there's earth, not sky. It leaves a gap for the
-  // hole's own section (the backdrop behind the rooms).
+  // hole's own section (the backdrop behind the rooms), but not for the crust above floor 1: that's
+  // rock all the way in to the shaft wall.
   const SECTION = { reach: 1700, bottom: -900, samples: 120 };
-  const sectionPos = new Float32Array(3 * 2 * (SECTION.samples + 1) * 2 + 3 * 4);
+  const sectionPos = new Float32Array(3 * 2 * (SECTION.samples + 1) * 2 + 3 * 4 + 3 * 8);
   const sectionGeo = new THREE.BufferGeometry();
   sectionGeo.setAttribute("position", new THREE.BufferAttribute(sectionPos, 3));
   {
-    // Two strips (each side of the hole) of top/bottom pairs, then the slab under the hole.
+    // Two strips (each side of the hole) of top/bottom pairs, the slab under the hole, then the crust either side of the shaft.
     const idx: number[] = [];
     const n = SECTION.samples + 1;
     for (const base of [0, 2 * n]) {
@@ -231,6 +232,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
     const slab = 4 * n;
     idx.push(slab, slab + 1, slab + 2, slab + 2, slab + 1, slab + 3);
+    for (const a of [slab + 4, slab + 8]) idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3);
     sectionGeo.setIndex(idx);
   }
   // The cutaway's face is dark; Iso's cut through the land is the shaft wall's lighter rock.
@@ -327,6 +329,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     put(-inner, SECTION.bottom);
     put(inner, deep);
     put(inner, SECTION.bottom);
+    // The crust over floor 1, from the shaft wall out to the strips (underground, the strips start at the wall).
+    const shaft = underground ? inner : hole.shaftRadiusM;
+    for (const sign of [-1, 1]) {
+      for (const u of [sign * shaft, sign * inner]) {
+        put(u, terrain ? terrain.heightAt(u * tx + out.x * offset, u * tz + out.z * offset) : 0);
+        put(u, -CRUST);
+      }
+    }
     sectionGeo.attributes.position!.needsUpdate = true;
     sectionGeo.computeVertexNormals();
   }

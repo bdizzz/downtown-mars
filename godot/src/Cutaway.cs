@@ -7,7 +7,7 @@ namespace DowntownMars;
 /// What the cutaway shows round the cut, as the web's stage: a rock backdrop behind the rooms (the
 /// inside of a cylinder just past the unlocked rings, closed at the bottom; the cut takes the near half
 /// of it too), and the cut face, where the ground is sliced (the section through the axis, either side
-/// of the hole out to the horizon and down, and a slab under the hole), turned with the camera.
+/// of the hole out to the horizon and down, the crust over floor 1 in to the shaft, and a slab under the hole), turned with the camera.
 /// </summary>
 public partial class Cutaway : Node3D
 {
@@ -54,6 +54,9 @@ public partial class Cutaway : Node3D
             face.AddRange(new[] { new Vector3(u0, y1, 0), new Vector3(u1, y1, 0), new Vector3(u1, y0, 0), new Vector3(u0, y1, 0), new Vector3(u1, y0, 0), new Vector3(u0, y0, 0) });
         Quad(-Reach, -inner, Bottom, 0);
         Quad(inner, Reach, Bottom, 0);
+        // The crust over floor 1 is rock all the way in to the shaft wall, not open to the backdrop.
+        Quad(-inner, -h.ShaftRadiusM, -Crust, 0);
+        Quad(h.ShaftRadiusM, inner, -Crust, 0);
         // Iso's cut through the land, in the shaft wall's rock, where the rings look widest (Show places it).
         var cut = new List<Vector3>();
         void CutQuad(float u0, float u1) =>

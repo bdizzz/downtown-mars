@@ -1,7 +1,7 @@
 ---
 id: T-091
 title: In the cutaway view, the ground between the surface and floor 1 is opaque
-status: open
+status: done
 size: S
 area: render3d, godot
 touches: [src/render3d/stage3d.ts, src/render3d/terrain3d.ts, godot/src/]
@@ -21,3 +21,4 @@ Make the cut face solid from the surface down to the top of floor 1 (and between
 ## History
 - 2026-10-08 02:06 opened from N-0052
 - 2026-10-08 02:10 building on t-091-cutaway-opaque-above-floor-1
+- 2026-10-08 02:14 built
