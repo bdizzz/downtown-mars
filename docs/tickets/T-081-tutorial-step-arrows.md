@@ -26,3 +26,4 @@ Answered (Bryon, Oct 7): when you meet a goal you're not looking at, the card st
 ## History
 - 2026-10-06 19:31 opened from N-0045
 - 2026-10-07 18:43 questions answered
+- 2026-10-08 01:24 building on t-081-tutorial-step-arrows
