@@ -11,8 +11,9 @@ import { falloff } from "./effects";
 // a plaza or a gym lifts the homes within its reach on foot, less the further
 // they are; the nearest of each kind counts, so a second park next door adds
 // nothing. Seats at galleys and canteens go to the homes nearest them first,
-// as far as each reaches; the same nearest-first sharing serves clinics,
-// schools and elder care (care.ts).
+// as far as each reaches; the same nearest-first sharing serves restrooms,
+// clinics, schools and elder care (care.ts). A home with its own bathroom
+// needs no restroom, and gets nothing from one nearby.
 
 /** Walking distances (metres) from each home to what it can reach, kept until the layout changes. */
 const walks = new WeakMap<Layout, { version: number; from: Map<number, Map<number, number>> }>();
@@ -73,12 +74,13 @@ export interface AmenityFelt {
 /** The lift a home gets from the amenities within its reach on foot: the nearest (best) of each kind. */
 export function amenityFelt(state: Where, home: RoomInstance): AmenityFelt {
   const byId = new Map(state.layout.rooms.map((r) => [r.id, r]));
+  const bathroom = !!roomDef(home.type).ownBathroom;
   const best = new Map<string, AmenityFelt["from"][number]>();
   for (const [id, m] of walkFrom(state.layout, home.id)) {
     if (id === home.id) continue;
     const room = byId.get(id);
     const a = room && roomDef(room.type).amenity;
-    if (!room || !a) continue;
+    if (!room || !a || (bathroom && roomDef(room.type).sanitation)) continue;
     const steps = m / STEP_M;
     const k = running(state, room);
     const comfort = falloff(a.comfort ?? 0, a.reach, steps) * k;
@@ -154,4 +156,38 @@ export function updateDining(state: SimState, _cfg: SimConfig): void {
   pop.servedByHome = servedByHome;
   pop.servedHomeless = homelessServed;
   pop.served = diners > 0 ? Math.min(1, seated / diners) : 1;
+}
+
+/**
+ * Restroom places, shared out to the homes within reach, nearest first (by
+ * last update's residents). Homes with their own bathroom are covered already;
+ * the homeless use whatever places are left. Sets each home's share covered,
+ * and the hole's.
+ */
+export function updateSanitation(state: SimState): void {
+  const pop = state.population;
+  const offers: { id: number; capacity: number; reachM: number }[] = [];
+  let places = 0;
+  for (const r of state.layout.rooms) {
+    const def = roomDef(r.type);
+    if (!def.sanitation || !isActive(r)) continue;
+    const capacity = def.sanitation * (state.roomStatus[r.id]?.rate ?? 0);
+    places += capacity;
+    offers.push({ id: r.id, capacity, reachM: reachOf(r.type) * STEP_M });
+  }
+  const byId = new Map(state.layout.rooms.map((r) => [r.id, r]));
+  const pools = state.happiness.pools.filter((p) => p.residents > 0);
+  const own = pools.filter((p) => roomDef(byId.get(p.roomId)?.type ?? "").ownBathroom);
+  const homes = pools.filter((p) => !own.includes(p)).map((p) => ({ id: p.roomId, need: p.residents }));
+  const { got, gave } = assignNearest(homes, offers, (id) => walkFrom(state.layout, id));
+  const byHome: Record<number, number> = {};
+  for (const p of own) byHome[p.roomId] = 1;
+  for (const h of homes) byHome[h.id] = Math.min(1, (got.get(h.id) ?? 0) / h.need);
+  const spare = Math.max(0, places - [...gave.values()].reduce((a, b) => a + b, 0));
+  const homeless = state.happiness.homeless;
+  const people = pools.reduce((s, p) => s + p.residents, 0) + homeless;
+  const covered = own.reduce((s, p) => s + p.residents, 0) + [...got.values()].reduce((a, b) => a + b, 0) + Math.min(spare, homeless);
+  pop.sanitationByHome = byHome;
+  pop.sanitationHomeless = homeless > 0 ? Math.min(1, spare / homeless) : 1;
+  pop.sanitation = people > 0 ? Math.min(1, covered / people) : 1;
 }

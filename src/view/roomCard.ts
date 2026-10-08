@@ -50,7 +50,8 @@ export function roomCard(def: RoomDef, resources: Record<string, number>, siteNo
     def.stores ? { text: `Stores ${flows(def.stores)}` } : null,
     def.houses ? { text: `Houses ${def.houses}` } : null,
     def.houses ? { text: `Windows (an upgrade): up to ${signed(config.windows.view.shaft)} comfort looking out over the shaft, less onto a plaza or a corridor`, tone: "good" } : null,
-    def.sanitation ? { text: `Sanitation for ${def.sanitation}` } : null,
+    def.sanitation ? { text: `Restroom for ${def.sanitation} people from homes within ${def.reach ?? 0} steps; without one, comfort suffers` } : null,
+    def.ownBathroom ? { text: "Has its own bathroom: no restroom needed", tone: "good" } : null,
     def.cares ? { text: `Care for ${def.cares}` } : null,
     def.serves ? { text: `Seats ${def.serves} diners${def.reach ? ` from homes within ${def.reach} steps` : ""}${def.makes.meals ? "" : " (meals cooked elsewhere)"}` } : null,
     def.amenity

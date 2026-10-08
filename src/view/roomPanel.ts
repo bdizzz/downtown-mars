@@ -1,5 +1,5 @@
 import { config } from "../sim/config";
-import { amenityFelt } from "../sim/amenities";
+import { amenityFelt, reachOf } from "../sim/amenities";
 import { mainOutput, roomSpec } from "../sim/economy";
 import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
 import { crowdedAir } from "../sim/happiness";
@@ -39,6 +39,12 @@ export function reachesRow(s: Snapshot, room: Room): Row | null {
   return { k: "Reaches", text: `${within.length} of ${tints.length} ${tints.length === 1 ? "home" : "homes"} within ${reachSteps(room.type)} steps${names}` };
 }
 
+/** The hole's restroom coverage, for a restroom's panel. */
+function sanitation(s: Snapshot): string {
+  const v = s.population.sanitation ?? 1;
+  return v >= 0.98 ? "everyone has one" : `${Math.round((1 - v) * 100)}% of people have none within reach`;
+}
+
 /** Clinic, school and elder-care places within reach of a home. */
 export function careRow(s: Snapshot, room: Room): Row | null {
   const c = s.population.care?.byHome[room.id];
@@ -55,13 +61,24 @@ export function withinReachRows(s: Snapshot, room: Room): Row[] {
   const felt = amenityFelt(s, room);
   const rows: Row[] = [];
   if (seated !== undefined) rows.push({ k: "Meals", text: seated >= 0.98 ? "a seat for everyone within reach" : `${Math.round(seated * 100)}% seated within reach; the rest eat on the go`, warn: seated < 0.98 });
+  const wc = s.population.sanitationByHome?.[room.id];
+  if (roomDef(room.type).ownBathroom) rows.push({ k: "Restroom", text: "its own bathroom" });
+  else if (wc !== undefined)
+    rows.push({
+      k: "Restroom",
+      text:
+        wc >= 0.98
+          ? "a place for everyone within reach"
+          : `${Math.round((1 - wc) * 100)}% without one within ${reachOf("restroom")} steps: comfort ${signed(-(1 - wc) * config.happiness.noRestroomComfort)}`,
+      warn: wc < 0.98,
+    });
   const care = careRow(s, room);
   if (care) rows.push(care);
   rows.push({
     k: "On foot",
     text: felt.from.length
       ? felt.from.map((f) => `${roomDef(f.type).name} ${Math.max(1, Math.round(f.steps))} steps (${[f.comfort ? `comfort ${signed(f.comfort)}` : "", f.health ? `health ${signed(f.health)}` : ""].filter(Boolean).join(", ")})`).join(" · ")
-      : "no park, plaza or gym in reach",
+      : "no park, plaza, gym or restroom in reach",
   });
   return rows;
 }
@@ -154,7 +171,7 @@ export function panelRows(s: Snapshot, room: RoomInstance): { before: Row[]; aft
     def.caresForElders
       ? { k: "Cares for", text: `up to ${def.caresForElders} elders · ${s.care.elders.who} in the hole, ${s.care.elders.missing > 0 ? `${num(s.care.elders.missing)} without care` : "all cared for"}` }
       : null,
-    spec.sanitation > 0 ? { k: "Sanitation for", text: num(spec.sanitation) } : null,
+    spec.sanitation > 0 ? { k: "Restroom for", text: `${num(spec.sanitation)} people from homes within ${def.reach ?? 0} steps · ${sanitation(s)}` } : null,
     spec.serves > 0 ? { k: "Seats", text: `${num(spec.serves)} diners · ${dining(s)}` } : null,
     canLine(room) ? { k: "Walls", text: liningText(room) } : null,
     room.at.kind === "ring" && !def.public ? windowsRow(s, room) : null,

@@ -138,7 +138,8 @@ export function wants(hole: SimState): { room: string; crop?: string; holds?: st
   if (count(hole, "galley") * 25 < pop) out.push({ room: "galley" });
   else if (shortHome(hole, "seats")) out.push({ room: "galley", near: "seats" });
   if (count(hole, "farm") * 12 < pop * 0.6) out.push({ room: "farm", crop: "potatoes" });
-  if (hole.population.sanitation < 0.99) out.push({ room: "restroom" });
+  // Restrooms within reach (T-006): near the home that's shortest of one.
+  if (hole.population.sanitation < 0.99) out.push({ room: "restroom", near: "sanitation" });
   if ((res.soil ?? 0) < 20 && count(hole, "farm") > 0 && (res.organicWaste ?? 0) > 10) out.push({ room: "composter" });
   if (countStage(hole, "elder") > cryptSpace(hole)) out.push({ room: "crypt" });
   // Services within reach: near the home that's shortest of them.
@@ -172,14 +173,14 @@ function ventilate(hole: SimState): boolean {
   return !!home && placeNear(hole, "ventilation_hub", home);
 }
 
-/** What a home can be short of, within reach: seats, or clinic, school or elder-care places. */
-type Need = "seats" | "care" | "school" | "elders";
+/** What a home can be short of, within reach: seats, restrooms, or clinic, school or elder-care places. */
+type Need = "seats" | "sanitation" | "care" | "school" | "elders";
 
 /** The home with the smallest share of a need met within reach, if any is short. */
 function shortHome(hole: SimState, need: Need): RoomInstance | undefined {
   const pop = hole.population;
   const by: Record<string, number> =
-    need === "seats" ? (pop.servedByHome ?? {}) : Object.fromEntries(Object.entries(pop.care?.byHome ?? {}).map(([id, c]) => [id, c[need]]));
+    need === "seats" ? (pop.servedByHome ?? {}) : need === "sanitation" ? (pop.sanitationByHome ?? {}) : Object.fromEntries(Object.entries(pop.care?.byHome ?? {}).map(([id, c]) => [id, c[need]]));
   const worst = Object.entries(by).filter(([, v]) => v < 0.98).sort((a, b) => a[1] - b[1])[0];
   const home = worst ? hole.layout.rooms.find((r) => r.id === Number(worst[0])) : undefined;
   // The pod's people walk in from the entrance: a galley near that.

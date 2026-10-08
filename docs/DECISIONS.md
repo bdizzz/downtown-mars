@@ -70,7 +70,7 @@ When documents disagree, trust them in this order:
 - **Gym and park:** originally one combined room; now separate rooms (gym for health, park for comfort and air).
 - **Mushrooms:** a crop choice for a regular farm, not a separate room (a diagram labeled it "Mushroom farm" for clarity).
 - **Electronics input:** "rare minerals" was replaced by silicon wafers.
-- **Restrooms:** no longer consume their own water; they provide sanitation for 25. (They once returned users' water as gray and black water; since T-005 water turns gray as it's used, and black water became tailings.)
+- **Restrooms:** no longer consume their own water. (They once returned users' water as gray and black water; since T-005 water turns gray as it's used, and black water became tailings.) Since T-006 they're an **amenity by walking distance**: 25 places each, shared out to the homes nearest them first within 6 steps, like galley seats. Homes with their own bathroom (studio and up: the ones furnished with a bathroom pod; `ownBathroom` in rooms.json) need none. Going without costs comfort at home (up to −1); a restroom close by is a small plus (+0.5, fading); health suffers only when under half the hole has one.
 - **Life support:** raised from 10 to 30 oxygen so the starting crew has margin.
 - **Corridors take slots** (spokes and ring segments, a "ring road" loop): replaced in milestone 6 by corridors that run along the edges between rooms, carved out of what they pass. Don't bring back 1-slot corridor rooms.
 - **Excavator bay as the digger:** replaced in milestone 9. The drill sinks the shaft on its own; every room slot is rock until it's excavated, and **empty rooms** dig ahead for rock and space. (An excavator bay may return as a faster drill; see ROOM-STATUS.md.)

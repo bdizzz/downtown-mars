@@ -68,7 +68,10 @@ export interface SimConfig {
     makesPerDay: Record<string, number>;
     /** Health lost per day when a need goes entirely unmet (scaled by the shortfall). */
     healthLossPerDay: Record<string, number>;
+    /** Health lost per day with no restroom places at all, scaled by how far coverage falls below `poorSanitationBelow`. */
     noSanitationHealthLossPerDay: number;
+    /** Hole-wide restroom coverage (0..1) below which health suffers. */
+    poorSanitationBelow: number;
     healthRecoveryPerDay: number;
   };
   economy: {
@@ -124,6 +127,8 @@ export interface SimConfig {
     noCareHealth: number;
     /** Comfort lost by everyone when nobody has a seat at a galley or canteen (in proportion). */
     unservedComfort: number;
+    /** Comfort lost at home when nobody there has a restroom within reach (in proportion). */
+    noRestroomComfort: number;
     /** Health from the air at home, per point of air quality. */
     airHealth: number;
     /** The thrill of arrival: happiness points added at a hole's founding, easing away to nothing over so many days. */

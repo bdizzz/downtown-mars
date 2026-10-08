@@ -40,8 +40,10 @@ export interface RoomDef {
    * the target costs power alone.
    */
   topsUpAir?: boolean;
-  /** Colonists served by restrooms. */
+  /** Restroom places: colonists it serves, from the homes nearest it first, within `reach` steps (amenities.ts). */
   sanitation?: number;
+  /** A home with its own bathroom: its residents don't need a restroom. */
+  ownBathroom?: boolean;
   /** What becomes of the clean water it uses: its share as each kind of wastewater (default config economy.waterReturns, all gray). Anything left over is used up for good. */
   returnsWater?: Record<string, number>;
   /** Made on the side: full storage of these never slows the room (the recycler's sludge soil). */
