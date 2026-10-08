@@ -543,7 +543,7 @@ Decided Sep 28, 2026 (Bryon):
 - **Browser check:** no shader errors after load. In the entrance, a colonist sits on the bench and another stands by the decon arch. The motion shows only while the game runs.
 
 **Step 8, textures** (procedural, in `surfaces.ts`):
-- **Floors by kind of room**, with room colours on (`withFloor`). Each uses its own colour, tinted 20–25% by the category colour.
+- **Floors by kind of room**, with room colours on (`withFloor`). Each uses its own colour, tinted 20–25% by the category colour. *Later (Oct 8, T-076): gone; with room colours on, a floor is laid in the room's material, as with them off, only tinted (`PLAN-M15.md`).*
   - Planks (homes, offices): 20 cm, staggered, each its own shade, with grain. *Later (Oct 5, T-009): honed stone slabs instead, 1.2 × 0.8 m in offset rows; there's no wood on Mars.*
   - Tiles (clinics, kitchens, halls): 40 cm, grouted.
   - Diamond plate (plants, workshops, farms).

@@ -171,7 +171,7 @@ Four buttons at the bottom right, as in SimCity. B, V, M and C open them from an
 
 - **Build** opens a strip of room categories along the bottom. Pick one (Storage, say) and its rooms pop up above it, with each room's details as you point at it. Demolish and Undo sit at the end. Only Build places rooms and corridors. The rooms' keys (and Z for corridors, X to demolish, R to rotate) work only in Build; outside it, bare rock doesn't light up under the pointer.
 - **View** has the 3D cameras, the plan and unrolled views, X-ray, walls down, room colours, Flows and the overlays.
-  - **Room colours** off shows each room in what it's built from: rock, marscrete, brick or metal.
+  - **Room colours** off shows each room in what it's built from: rock, marscrete, brick or metal. On, walls and floors take the room's category colour, but the floor keeps its material's texture, only tinted.
   - **Flows** draws power, water, air and food as pipes, with dashes running from what makes each to what uses it.
   - **Overlays** show noise, smell, health, comfort, air, happiness and condition.
 - **Map** opens the planet as a globe: drag or scroll sideways to spin it (it coasts to a stop), scroll to zoom, click to pick a site.

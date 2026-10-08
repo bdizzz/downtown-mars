@@ -7,10 +7,10 @@ shader_type spatial;
 render_mode cull_disabled;
 #include "res://shaders/view.gdshaderinc"
 
-// 0 a room (walls in its colour, floor by kind), 1 rock, 2 regolith, 3 marscrete, 4 brick, 5 metal.
+// 0 a room (walls in its colour, floor in its material), 1 rock, 2 regolith, 3 marscrete, 4 brick, 5 metal.
 uniform int look = 0;
-// Floors (look 0): 0 honed stone, 1 tiles, 2 diamond plate, 3 paving, 4 concrete.
-uniform int floor_kind = 4;
+// A room's floor (look 0): laid in its material, as the looks above (1 rock, 3 marscrete, 4 brick, 5 metal).
+uniform int floor_look = 1;
 uniform vec3 albedo : source_color = vec3(0.6);
 uniform vec3 floor_color : source_color = vec3(0.6);
 uniform float floor_tint = 0.2;
@@ -150,49 +150,6 @@ vec2 marscrete_tone(vec3 p, vec3 n) {
 	return vec2(shade, joint);
 }
 
-vec2 floor_tone(vec3 p, int kind) {
-	vec2 uv = p.xz;
-	if (kind == 0) {
-		// Honed stone (no wood on Mars): 1.2 x 0.8 m slabs in offset rows, clouded, the odd vein.
-		vec2 b = uv / vec2(1.2, 0.8);
-		b.x += 0.5 * mod(floor(b.y), 2.0);
-		vec2 f = fract(b);
-		float joint = step(0.006, f.x) * step(0.008, f.y);
-		float cloud = mix(0.92, 1.05, srf_fbm(vec3(uv * 1.5, srf_hash(vec3(floor(b), 3.0)) * 9.0)));
-		float vein = 1.0 - 0.12 * smoothstep(0.96, 0.99, srf_noise(vec3(uv.x * 2.0 + uv.y * 7.0, uv.y * 2.0, floor(b.x))));
-		return vec2(mix(0.62, mix(0.9, 1.06, srf_hash(vec3(floor(b), 4.0))) * cloud * vein, joint), joint);
-	}
-	if (kind == 1) {
-		// Tiles, 40 cm, with grout.
-		vec2 f = fract(uv / 0.4);
-		float grout = step(0.035, f.x) * step(0.035, f.y);
-		return vec2(mix(0.72, mix(0.94, 1.04, srf_hash(vec3(floor(uv / 0.4), 6.0))) * mix(0.97, 1.02, srf_noise(p * 8.0)), grout), grout);
-	}
-	if (kind == 2) {
-		// Diamond plate in 2 m sheets.
-		vec2 d = uv * 6.0;
-		float plate = abs(fract(d.x + d.y) - 0.5) + abs(fract(d.x - d.y) - 0.5);
-		float seams = step(0.02, fract(uv.x / 2.0)) * step(0.02, fract(uv.y / 2.0));
-		float raised = smoothstep(0.35, 0.6, plate);
-		return vec2(mix(0.7, mix(0.95, 1.08, raised), seams), seams * (0.6 + 0.4 * raised));
-	}
-	if (kind == 3) {
-		// Paving: stones in offset rows of 60 cm.
-		vec2 b = uv / vec2(0.8, 0.6);
-		b.x += 0.5 * mod(floor(b.y), 2.0);
-		vec2 f = fract(b);
-		float joint = step(0.05, f.x) * step(0.06, f.y) * step(f.x, 0.97) * step(f.y, 0.96);
-		float lumpy = srf_noise(p * 3.0);
-		return vec2(mix(0.68, mix(0.86, 1.08, srf_hash(vec3(floor(b), 8.0))) * mix(0.93, 1.05, lumpy), joint), joint * (0.8 + 0.2 * lumpy));
-	}
-	// Concrete: speckled, joints every 3 m.
-	vec2 f = fract(uv / 3.0);
-	vec2 e = min(f, 1.0 - f) * 3.0;
-	float joint = smoothstep(0.0, 0.015, min(e.x, e.y));
-	float shade = mix(0.9, 1.06, srf_fbm(p * 0.8)) * mix(0.94, 1.05, srf_noise(p * 14.0));
-	return vec2(shade * (1.0 - 0.2 * (1.0 - joint)), joint);
-}
-
 // Wear: walls streak and stain toward the floor, floors scuff (the web's grime, 4 m floors under a 3 m crust).
 float grime_tone(vec3 p, vec3 n, float level) {
 	if (level < 0.5) return 1.0;
@@ -223,8 +180,11 @@ void fragment() {
 	else if (look == 4) t = brick_tone(wpos, n);
 	else if (look == 5) t = metal_tone(wpos, n);
 	else if (is_floor) {
-		// A room's floor: its own colour, tinted by the room's, laid in its kind, with its own sheen.
-		t = floor_tone(wpos, floor_kind);
+		// A room's floor: its material's pattern and colour, tinted by the room's, with the material's sheen.
+		if (floor_look == 3) t = marscrete_tone(wpos, n);
+		else if (floor_look == 4) t = brick_tone(wpos, n);
+		else if (floor_look == 5) t = metal_tone(wpos, n);
+		else { t = rock_tone(wpos); relief = 3.0; }
 		color = mix(floor_color, albedo, floor_tint);
 		rough = floor_roughness;
 		metal = floor_metallic;

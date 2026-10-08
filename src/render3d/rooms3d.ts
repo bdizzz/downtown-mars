@@ -14,7 +14,7 @@ import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
 import { glazedWalls } from "../sim/windows";
 import { tubeAt } from "../view/gallery";
-import { finishMaterial, withFloor, withFresnel, withGrime, withRock, type FloorKind } from "./surfaces";
+import { finishMaterial, withFloor, withFresnel, withGrime, withRock } from "./surfaces";
 import { roomFinish, type Finish } from "../view/roomFinish";
 import { lampsOf, lightPools } from "./lights3d";
 import { withCondensation } from "./details3d";
@@ -1637,26 +1637,7 @@ function finishWallMaterial(finish: Finish, grime = 0): THREE.Material {
   return wallMaterial(`finish:${finish}:${grime}`, () => withGrime(finishMaterial(finish), grime));
 }
 
-/** What a built room's floor is laid in, by its category (room colours on). */
-const FLOOR_BY_CATEGORY: Record<string, FloorKind> = {
-  housing: "stone",
-  health: "tiles",
-  food: "tiles",
-  admin: "stone",
-  public: "paving",
-  circulation: "tiles",
-  industry: "plate",
-  power: "plate",
-  air: "plate",
-  water: "plate",
-  storage: "concrete",
-  logistics: "concrete",
-  construction: "concrete",
-  excavation: "concrete",
-  services: "tiles",
-};
-
-function roomMaterial(color: number, planned: boolean, faint = false, building = false, floor: FloorKind = "concrete", grime = 0): THREE.Material {
+function roomMaterial(color: number, planned: boolean, faint = false, building = false, floor: Finish = "rock", grime = 0): THREE.Material {
   // Under construction: the room's colour through semi-opaque diagonal stripes.
   if (building && !faint) {
     return wallMaterial(`building:${color}`, () =>
@@ -1972,10 +1953,11 @@ export function buildLayout(
     used.add(shape.key);
     const faint = xray && room.cells.some((c) => c.ring === 1);
     // Built rooms show their category's colour, or (room colours off) what they're built from.
+    // Either way its floor is laid in what it's built from: room colours only tint it.
     const shown = !roomColors && !room.planned && !room.building && !faint;
-    const floorKind = room.type === "farm" ? "plate" : (FLOOR_BY_CATEGORY[def.category] ?? "concrete");
+    const finish = roomFinish(room.type);
     const grime = grimeOf(whole);
-    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(roomFinish(room.type), grime) : roomMaterial(color, room.planned, faint, !!room.building, floorKind, grime));
+    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(finish, grime) : roomMaterial(color, room.planned, faint, !!room.building, finish, grime));
     mesh.userData = { pickable: true, roomId: room.id, faint, cached: true };
     group.add(mesh);
     // Its walls' tops: bare rock once it's built, whatever it's made of or coloured (a plan or x-ray's faded ring keeps the room's look).
