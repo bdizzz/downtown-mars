@@ -148,6 +148,91 @@ const MARSCRETE_GLSL = /* glsl */ `
   }
 `;
 
+/** Height above the floor a point is on, in metres (walls run floor to floor). */
+const ABOVE_GLSL = /* glsl */ `
+  float srfAbove(vec3 p) { return mod(p.y + ${CRUST.toFixed(2)}, ${FLOOR_H.toFixed(2)}); }
+`;
+
+/** Smoothed rock: the same strata, ground flat and sealed (soft contrast, no grain); polished flagstones underfoot. */
+const SMOOTH_ROCK_GLSL = /* glsl */ `
+  vec3 smoothRockTone(vec3 p, vec3 n) {
+    vec3 t = mix(vec3(1.0), rockTone(p, n), 0.6) * mix(0.97, 1.03, srfFbm(p * 0.2));
+    if (abs(n.y) > 0.7) {
+      vec2 c = floor(p.xz / 2.5);
+      vec2 f = fract(p.xz / 2.5);
+      vec2 e = min(f, 1.0 - f) * 2.5;
+      t *= mix(0.92, 1.06, srfHash(vec3(c, 4.0)));
+      t *= 1.0 - 0.22 * (1.0 - smoothstep(0.0, 0.02, min(e.x, e.y)));
+    }
+    return t;
+  }
+`;
+
+/**
+ * Patterned brick: banded courses (every third a shade darker), a darker accent band of upright
+ * bricks at waist height, and basket-weave pavers underfoot.
+ */
+const PATTERNED_BRICK_GLSL = /* glsl */ `
+  vec3 patternedBrickTone(vec3 p, vec3 n) {
+    vec2 uv = surfaceUv(p, n);
+    if (abs(n.y) > 0.7) {
+      // Basket weave: 60 cm squares of two bricks, each square turned against its neighbours.
+      vec2 q = uv / 0.6;
+      vec2 c = floor(q);
+      vec2 f = fract(q);
+      bool turn = mod(c.x + c.y, 2.0) > 0.5;
+      float across = turn ? f.x : f.y;
+      float along = turn ? f.y : f.x;
+      float piece = fract(across * 2.0);
+      float grout = step(0.04, along) * step(0.04, 1.0 - along) * step(0.06, piece) * step(0.06, 1.0 - piece);
+      float shade = mix(0.86, 1.06, srfHash(vec3(c, floor(across * 2.0) + 6.0)));
+      return vec3(mix(0.6, shade, grout));
+    }
+    float above = srfAbove(p);
+    vec2 b;
+    float accent = step(0.85, above) * (1.0 - step(1.25, above));
+    if (accent > 0.5) b = (uv - vec2(0.0, 0.85)) / vec2(0.2, 0.4);
+    else {
+      b = uv / vec2(0.5, 0.2);
+      b.x += 0.5 * mod(floor(b.y), 2.0);
+    }
+    vec2 f = fract(b);
+    float mortar = step(0.05, f.x) * step(0.06, f.y);
+    float shade = mix(0.84, 1.08, srfHash(vec3(floor(b), 5.0))) * mix(0.94, 1.04, srfNoise(p * 5.0));
+    shade *= mod(floor(b.y), 3.0) < 0.5 ? 0.88 : 1.0;
+    shade *= mix(1.0, 0.62, accent);
+    return mix(vec3(1.35, 1.3, 1.22), vec3(shade), mortar);
+  }
+`;
+
+/**
+ * Inlaid metal: the metal panels, with a darker inlay band at shoulder height (a row of brass diamonds
+ * between brass trim lines); underfoot, the steel plate with brass strips along its seams.
+ */
+const INLAID_METAL_GLSL = /* glsl */ `
+  vec3 inlaidMetalTone(vec3 p, vec3 n) {
+    vec3 t = metalTone(p, n);
+    vec3 brass = vec3(1.55, 1.2, 0.62);
+    vec2 uv = surfaceUv(p, n);
+    if (abs(n.y) > 0.7) {
+      vec2 f = fract(uv / 2.0);
+      vec2 e = min(f, 1.0 - f) * 2.0;
+      float strip = 1.0 - step(0.035, min(e.x, e.y));
+      return mix(t, brass * mix(0.92, 1.05, srfNoise(p * 9.0)), strip);
+    }
+    float above = srfAbove(p);
+    float lo = 1.2;
+    float hi = 1.6;
+    if (above < lo || above > hi) return t;
+    float v = (above - lo) / (hi - lo);
+    float trim = 1.0 - step(0.1, v) * step(v, 0.9);
+    vec2 d = vec2((fract(uv.x / 0.4) - 0.5) * 0.4, (v - 0.5) * (hi - lo));
+    float diamond = 1.0 - step(0.12, abs(d.x) + abs(d.y));
+    vec3 inlay = vec3(0.62, 0.66, 0.74) * mix(0.95, 1.04, srfNoise(vec3(uv.x * 30.0, above * 30.0, 0.0)));
+    return mix(inlay, brass, max(trim, diamond));
+  }
+`;
+
 /** Add a world-space pattern to a standard material: `tone(p, n)` multiplies its colour. */
 function withPattern<T extends THREE.Material>(m: T, name: string, glsl: string, call: string): T {
   const prev = m.onBeforeCompile;
@@ -307,19 +392,68 @@ export function withRegolith<T extends THREE.Material>(m: T): T {
   return withPattern(m, "regolith", REGOLITH_GLSL, "regolithTone");
 }
 
-/** What each room finish looks like: a base colour and roughness, and its pattern. */
+/**
+ * What each lining (and corridor finish) looks like: a base colour and roughness, and its pattern.
+ * The fine finishes draw on their base step's pattern, so theirs comes after it.
+ */
 const FINISH_LOOK = {
   rock: { glsl: ROCK_GLSL, call: "rockTone", color: 0x7a4f3c, roughness: 0.95, metalness: 0 },
+  rock_fine: { glsl: ROCK_GLSL + SMOOTH_ROCK_GLSL, call: "smoothRockTone", color: 0x86584a, roughness: 0.55, metalness: 0 },
   marscrete: { glsl: MARSCRETE_GLSL, call: "marscreteTone", color: 0x9c8f84, roughness: 0.9, metalness: 0 },
   brick: { glsl: BRICK_GLSL, call: "brickTone", color: 0x9c5438, roughness: 0.85, metalness: 0 },
+  brick_fine: { glsl: ABOVE_GLSL + PATTERNED_BRICK_GLSL, call: "patternedBrickTone", color: 0xa65a3b, roughness: 0.8, metalness: 0 },
   metal: { glsl: METAL_GLSL, call: "metalTone", color: 0x8d9299, roughness: 0.32, metalness: 0.6 },
+  metal_fine: { glsl: METAL_GLSL + ABOVE_GLSL + INLAID_METAL_GLSL, call: "inlaidMetalTone", color: 0x9aa0a8, roughness: 0.28, metalness: 0.65 },
 } as const;
 
+export type SurfaceLook = keyof typeof FINISH_LOOK;
+
 /** A room's walls and floor as the material it's built from (room colours off). */
-export function finishMaterial(finish: keyof typeof FINISH_LOOK): THREE.MeshStandardMaterial {
+export function finishMaterial(finish: SurfaceLook): THREE.MeshStandardMaterial {
   const f = FINISH_LOOK[finish];
   const m = new THREE.MeshStandardMaterial({ color: f.color, roughness: f.roughness, metalness: f.metalness, side: THREE.DoubleSide });
   return withPattern(m, finish, f.glsl, f.call);
+}
+
+/** A finish's pattern on a material of its own colour (a corridor's floor, in its finish). */
+export function withSurface<T extends THREE.Material>(m: T, finish: SurfaceLook): T {
+  const f = FINISH_LOOK[finish];
+  return withPattern(m, finish, f.glsl, f.call);
+}
+
+// ---- rooms being refitted ----
+
+/** The refit band: hazard stripes from `bottom` to `top` metres below the top of a room's walls, `stripe` metres a pair. */
+const REFIT = { top: 0.25, bottom: 0.85, stripe: 0.45 } as const;
+
+const REFIT_GLSL = /* glsl */ `
+  vec3 refitTone(vec3 p, vec3 n, vec3 c) {
+    if (abs(n.y) > 0.7) return c;
+    float above = mod(p.y + ${CRUST.toFixed(2)}, ${FLOOR_H.toFixed(2)});
+    if (above < ${(FLOOR_H - REFIT.bottom).toFixed(2)} || above > ${(FLOOR_H - REFIT.top).toFixed(2)}) return c;
+    // Along the wall: round a curved one, out along a radial one; either way the stripes lean.
+    float along = atan(p.z, p.x) * length(p.xz) + length(p.xz);
+    float s = fract((along + above) / ${REFIT.stripe.toFixed(2)});
+    return s < 0.5 ? vec3(0.88, 0.63, 0.23) : vec3(0.12, 0.1, 0.09);
+  }
+`;
+
+/** A room being refitted (PLAN-M15): a band of hazard stripes along the tops of its walls, so it reads as busy but in use. */
+export function withRefit<T extends THREE.Material>(m: T): T {
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vRefitPos;\nvarying vec3 vRefitNormal;")
+      .replace("#include <project_vertex>", "vRefitPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvRefitNormal = normalize(mat3(modelMatrix) * objectNormal);\n#include <project_vertex>");
+    // Over every pattern and the grime (they all multiply in at <color_fragment>), so the tape stays bright.
+    shader.fragmentShader = shader.fragmentShader
+      .replace("void main() {", `varying vec3 vRefitPos;\nvarying vec3 vRefitNormal;\n${REFIT_GLSL}\nvoid main() {`)
+      .replace("#include <alphamap_fragment>", "diffuseColor.rgb = refitTone(vRefitPos, normalize(vRefitNormal), diffuseColor.rgb);\n#include <alphamap_fragment>");
+  };
+  m.customProgramCacheKey = () => `${prevKey}|refit`;
+  return m;
 }
 
 // ---- floors with room colours on ----
@@ -331,7 +465,7 @@ const FLOOR_TINT = 0.4;
  * A room's floor with room colours on: laid in the same material as with them off (the finish's own
  * pattern, colour and sheen), only tinted a little by the room's colour; the walls keep the room's colour.
  */
-export function withFloor<T extends THREE.Material>(m: T, finish: keyof typeof FINISH_LOOK): T {
+export function withFloor<T extends THREE.Material>(m: T, finish: SurfaceLook): T {
   const look = FINISH_LOOK[finish];
   const own = new THREE.Color(look.color);
   const prev = m.onBeforeCompile;

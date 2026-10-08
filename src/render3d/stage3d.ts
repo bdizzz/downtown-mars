@@ -2021,13 +2021,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       // Wear and grime: each room's level, which changes over days, so rebuilds stay rare.
       const grime = new Map(snapshot.layout.rooms.map((r) => [r.id, grimeLevel(r)]));
       const grimeKey = [...grime.values()].join("");
-      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}:${cut()}:${view.roomColors}:${grimeKey}`;
+      const refits = refitRooms(snapshot);
+      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${view.xray}:${cut()}:${view.roomColors}:${grimeKey}:${[...refits].join(",")}`;
       if (lk !== layoutKey) {
         layoutKey = lk;
         scene.remove(layoutGroup);
         disposeLayout(layoutGroup);
         const t0 = performance.now();
-        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray, cut(), view.roomColors, (r) => grime.get(r.id) ?? 0);
+        layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, view.xray, cut(), view.roomColors, (r) => grime.get(r.id) ?? 0, (r) => refits.has(r.id));
         stats.buildMs = performance.now() - t0;
         scene.add(layoutGroup);
         furnitureGroups = [];
@@ -2290,6 +2291,21 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     },
   };
   return stage;
+}
+
+/**
+ * Rooms being refitted: those already built with a job of their own in the queue (other than another
+ * floor for stairs or a lift). That's the refit job (PLAN-M15), which the room's walls show as a band of
+ * hazard stripes; its % label is drawProgress's, as for any room's job.
+ */
+function refitRooms(s: Snapshot): Set<number> {
+  const out = new Set<number>();
+  for (const job of s.construction.jobs) {
+    if (job.roomId === undefined || job.kind === "extend") continue;
+    const room = s.layout.rooms.find((r) => r.id === job.roomId);
+    if (room && !room.building && !room.planned) out.add(room.id);
+  }
+  return out;
 }
 
 /** Free a terrain's geometry and its own materials (the ground's material belongs to the stage). */

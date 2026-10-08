@@ -29,6 +29,10 @@ static class Looks
         ["marscrete"] = (3, "#9c8f84", 0.9f, 0),
         ["brick"] = (4, "#9c5438", 0.85f, 0),
         ["metal"] = (5, "#8d9299", 0.32f, 0.6f),
+        // The fine finishes (PLAN-M15), in their base step's look until the shader has their own (T-035).
+        ["rock_fine"] = (1, "#86584a", 0.55f, 0),
+        ["brick_fine"] = (4, "#a65a3b", 0.8f, 0),
+        ["metal_fine"] = (5, "#9aa0a8", 0.28f, 0.65f),
     };
 
     /// <summary>How much a room's colour tints its floor, as the web's FLOOR_TINT.</summary>

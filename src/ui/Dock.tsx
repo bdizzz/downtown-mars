@@ -143,7 +143,7 @@ export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverla
           className={`dock-btn${in3d && view3d.roomColors ? " on" : ""}`}
           disabled={!in3d}
           onClick={() => setView3d({ ...view3d, roomColors: !view3d.roomColors })}
-          title={in3d ? "Rooms in their kind's colour; off, in what they're built from: rock, marscrete, brick or metal" : "In the 3D views (the plan and unrolled views always show room colours)"}
+          title={in3d ? "Rooms in their kind's colour; off, in what their walls are lined with: rock, brick or metal, plain or finely finished" : "In the 3D views (the plan and unrolled views always show room colours)"}
           aria-pressed={view3d.roomColors}
         >
           Room colours
