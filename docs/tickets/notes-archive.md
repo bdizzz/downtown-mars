@@ -337,3 +337,23 @@ in cutaway view, the space between the surface and the first floor should be opa
 ## N-0053 · 2026-10-08 02:28
 we don't need the floor picker in cutaway mode; always show all floors and the surface in this mode. going to another mode returns the floor picker to the same floor it was before going to cutaway mode.
 → T-098
+
+## N-0054 · 2026-10-09 01:29
+in godot, the different ui panels should hug their respective sides or corners of the window as it is resized. the floor picker container should only be shown just as tall as needed to show the current number of floors, not more. take another pass at the buttons in places like the build menu so that they feel more clickable and "square-ish" so more can fit side by side.
+→ T-099
+
+## N-0055 · 2026-10-09 01:31
+lessen the population requirements for unlocking more housing rooms. use 100 instead of 200 and use 200 instead of 1000
+→ T-100
+
+## N-0056 · 2026-10-09 01:32
+in godot, when looking at a floor in free view during the daytime, the engine is making complex shadows. we should consider lighting as if those floors are still underground; only bright daylight comes through the shaft and bleeds into the hole from there.
+→ T-101
+
+## N-0057 · 2026-10-09 01:36
+in web, there is a weird graphical artifact hovering over the hole in surface mode during the daytime. it looks like it is dependent on the position of the sun but it shouldn't be visible in the form or shape that it currently is. i'm not sure if it is supposed to represent something else or not; if so then fix why it is showing up as a ring above the hole. additionally, there is a ghost "ledge" shape along the inner wall of the hole on floors that haven't been excavated yet. this might be related to the inner walkway that can be built, but these floors haven't had any construction yet so nothing should be visible.
+→ T-102, T-103
+
+## N-0058 · 2026-10-09 01:56
+the "snake mode" of dragging out a series of corridors is a little difficult to use. never allow the snake to go down a path, make a turn, but then double back to the intersection where the turn occurred and then into a different direction. this happens often by mistake and it is very annoying.
+→ T-104
