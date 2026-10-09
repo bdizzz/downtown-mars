@@ -32,7 +32,7 @@ import { Festival } from "./festival3d";
 import { RIG_DROP } from "./cylinder";
 import { occupied, People, type RoomSpots } from "./people3d";
 import { Grit } from "./storm3d";
-import { LightShaft } from "./shafts3d";
+import { LightShaft, SunPools } from "./shafts3d";
 import { advanceDetails } from "./details3d";
 import { troubleOf, type Trouble } from "../view/roomTrouble";
 import { grimeLevel } from "../view/grime";
@@ -396,8 +396,18 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** Sunlight down the shaft at midday, and where the sun is. */
   const shaftLight = new LightShaft();
   const sunDir = new THREE.Vector3(0, 1, 0);
-  /** Light shafts show from above the floors (nothing picked), with haze on to catch them. */
-  const updateShaftLight = () => shaftLight.update(sunDir, storm, cut() === null && graphics.haze > 0);
+  /** Where it lands: on the gallery tubes, the bottom of the hole, and in rooms with windows onto the shaft. */
+  const sunPools = new SunPools();
+  /**
+   * Light shafts show with haze on to catch them: from above the floors (nothing picked), or in Free view
+   * from the picked floor's ceiling down. Their light lands whatever the view.
+   */
+  const updateShaftLight = () => {
+    const f = cut();
+    shaftLight.update(sunDir, storm, (f === null || view.mode === "iso") && graphics.haze > 0);
+    shaftLight.clip(f === null ? null : floorSpan(f)[1]);
+    sunPools.update(sunDir, storm, true);
+  };
   // Sparks and steam from working rooms.
   const roomFx = new RoomEffects();
   /** Every room's furniture in the current layout, to switch between near and far copies. */
@@ -1778,7 +1788,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     look.resize();
     applyFloorCut();
   }
-  scene.add(people.group, dust.points, roomFx.group, lampLights.group, grit.points, shaftLight.mesh, badges, flows.group);
+  scene.add(people.group, dust.points, roomFx.group, lampLights.group, grit.points, shaftLight.mesh, sunPools.mesh, badges, flows.group);
   lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
 
   let latest: Snapshot | null = null;
@@ -1822,6 +1832,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           people,
           // Sunlight down the shaft.
           shaftLight,
+          sunPools,
           // The overlay's meshes, to inspect.
           field: () => fieldGroup,
           // The renderer, to inspect its programs.
@@ -1947,6 +1958,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         });
         lampList = furnitureGroups.flatMap((g) => (g.userData.lamps as Lamp[] | undefined) ?? []);
         showPools();
+        sunPools.build(snapshot.layout, cut());
         // Each built room's outline and label, to show its trouble on.
         roomOutlines = new Map();
         roomLabels = new Map();
@@ -2179,6 +2191,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       dispose(dust.points);
       grit.dispose();
       shaftLight.dispose();
+      sunPools.dispose();
       flows.dispose();
       roomFx.dispose();
       fieldGroup.traverse((o) => o instanceof THREE.Mesh && o.geometry.dispose());

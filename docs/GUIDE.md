@@ -51,6 +51,7 @@ Open **Build** (B), pick a room from its category (or press its key: room keys w
 - Rooms start without windows. The corridor tool's **Windows** mode puts them in, a whole wall at a click, on walls facing the shaft, a corridor or a walk-through room. Hover a wall: the room's half of the corridor along it lights up green where windows can go, with the cost and the comfort they'd give.
 - Windows cost glass (2 per 10 m of wall); the landing kit brings 100. Shift-click takes them out.
 - A home looking out over the shaft gets +1.5 comfort (a wall of glass where no tube runs), +1 behind a tube, less onto a plaza or a corridor, and a little more for each other glazed wall.
+- Windows onto the shaft let the sun in too: +0.5 comfort on floor 1, less each floor down, none below floor 10. In 3D, around midday, sunlight falls down the shaft (still visible in Free view with a floor picked), lights the gallery tubes and pools on the floor inside rooms with windows onto the shaft, fainter the deeper they are.
 - Glass comes from a **glassworks** (Industry, from the start: a small 2×1 room, 2 staff, rock and power → 3 glass a month).
 
 ### The shaft dome
