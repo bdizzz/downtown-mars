@@ -13,6 +13,8 @@ const SHAFT = {
   strength: 0.18,
   color: 0xffd9a8,
   fade: 0.045,
+  /** It fades in over this many metres below the rim, so its open top never shows as a ring over the hole (T-102). */
+  top: 8,
   /** The sun must be at least this high (sin of its elevation) for any to reach down; full from `full`. */
   from: 0.35,
   full: 0.85,
@@ -37,6 +39,7 @@ const FRAGMENT = /* glsl */ `
   uniform float fade;
   uniform float time;
   uniform float columnLength;
+  uniform float top;
   varying vec3 vWorld;
   varying vec3 vNormal;
   varying float vDown;
@@ -44,8 +47,9 @@ const FRAGMENT = /* glsl */ `
     vec3 toCam = normalize(cameraPosition - vWorld);
     // Through the middle of the column there's the most light to see; its edges fade out.
     float through = pow(abs(dot(normalize(vNormal), toCam)), 1.6);
-    // Fading down the hole, and gone before the column's end, so it has no hard rim.
-    float depth = exp(-vDown * fade) * (1.0 - smoothstep(columnLength * 0.55, columnLength, vDown));
+    // Fading in below the rim (leaning lifts one side of its top above the ground), fading down
+    // the hole, and gone before the column's end, so it has no hard rim at either end.
+    float depth = smoothstep(0.0, top, vDown) * exp(-vDown * fade) * (1.0 - smoothstep(columnLength * 0.55, columnLength, vDown));
     // Faint streaks drifting down.
     float a = atan(vWorld.z, vWorld.x);
     float streaks = 0.75 + 0.25 * sin(a * 23.0 + vDown * 0.35 - time * 0.6) * sin(a * 7.0 - time * 0.23);
@@ -70,6 +74,7 @@ export class LightShaft {
         fade: { value: SHAFT.fade },
         time: { value: 0 },
         columnLength: { value: 1 },
+        top: { value: SHAFT.top },
       },
       vertexShader: VERTEX,
       fragmentShader: FRAGMENT,
