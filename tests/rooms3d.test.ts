@@ -15,6 +15,20 @@ const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location =>
 const CURVED = 4 * 2;
 const SIDE = 2;
 const triangles = (g: ReturnType<typeof roomGeometry>) => g.getAttribute("position").count / 3;
+/** Triangles standing up (walls), leaving out the floor, whose arcs keep to the hole-wide grid. */
+const upright = (g: ReturnType<typeof roomGeometry>) => {
+  const pos = g.getAttribute("position");
+  let n = 0;
+  for (let t = 0; t < pos.count; t += 3) if (!(pos.getY(t) === pos.getY(t + 1) && pos.getY(t) === pos.getY(t + 2))) n++;
+  return n;
+};
+/** A whole cell's floor: two triangles to each step of the hole-wide grid (every 1.5°) across it. */
+const ARC_GRID = (2 * Math.PI) / 240;
+const flat = (a0: number, a1: number) => {
+  let steps = 1;
+  for (let k = Math.floor(a0 / ARC_GRID) + 1; k * ARC_GRID < a1 - 1e-6; k++) if (k * ARC_GRID > a0 + 1e-6) steps++;
+  return 2 * steps;
+};
 
 describe("3D room geometry", () => {
   const layout = createLayout(createHole(10, 3, 3, config.geometry));
@@ -22,13 +36,46 @@ describe("3D room geometry", () => {
   it("a one-slot room is an open-topped wedge: inner, outer, floor and two sides, no ceiling", () => {
     const r = placeRoom(layout, "clinic", ring(2, 1, 0));
     const room = layout.rooms.find((x) => x.id === r.id)!;
-    expect(triangles(roomGeometry(layout, room.cells))).toBe(3 * CURVED + 2 * SIDE);
+    const geo = roomGeometry(layout, room.cells);
+    expect(upright(geo)).toBe(2 * CURVED + 2 * SIDE);
+    expect(triangles(geo)).toBe(2 * CURVED + 2 * SIDE + flat(...slotAngles(0, layout.hole.ringSlots[0]!)));
   });
 
   it("a wide room has no walls between its own slots", () => {
     const r = placeRoom(layout, "life_support", ring(2, 1, 3, 4));
     const room = layout.rooms.find((x) => x.id === r.id)!;
-    expect(triangles(roomGeometry(layout, room.cells))).toBe(4 * 3 * CURVED + 2 * SIDE);
+    const geo = roomGeometry(layout, room.cells);
+    expect(upright(geo)).toBe(4 * 2 * CURVED + 2 * SIDE);
+    const n = layout.hole.ringSlots[0]!;
+    expect(triangles(geo)).toBe(4 * 2 * CURVED + 2 * SIDE + [3, 4, 5, 6].reduce((sum, slot) => sum + flat(...slotAngles(slot, n)), 0));
+  });
+
+  it("floors keep their arcs on the hole-wide grid, so rooms in neighbouring rings meet without a seam (T-019)", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const innerId = placeRoom(l, "flat", ring(2, 1, 0)).id;
+    const outerId = placeRoom(l, "flat", ring(2, 2, 0)).id;
+    const inner = l.rooms.find((x) => x.id === innerId)!;
+    const outer = l.rooms.find((x) => x.id === outerId)!;
+    const border = ringRadii(l.hole, 1)[1];
+    // The floor stands a hairline (the inset) up from the floor's base.
+    const y = floorSpan(2)[0] + 0.06;
+    // Floor corners on the border between the rings, by angle.
+    const corners = (cells: typeof inner.cells) => {
+      const pos = roomGeometry(l, cells).getAttribute("position");
+      const out = new Set<string>();
+      for (let i = 0; i < pos.count; i++) {
+        if (Math.abs(pos.getY(i) - y) > 1e-6 || Math.abs(Math.hypot(pos.getX(i), pos.getZ(i)) - border) > 1e-6) continue;
+        out.add(Math.atan2(pos.getZ(i), pos.getX(i)).toFixed(5));
+      }
+      return out;
+    };
+    const a = corners(inner.cells);
+    const b = corners(outer.cells);
+    // Where the two floors overlap along the border, each has the other's corners (bar the cells' own ends).
+    const [lo, hi] = slotAngles(0, l.hole.ringSlots[1]!);
+    const within = [...a].filter((t) => Number(t) > lo + 1e-4 && Number(t) < hi - 1e-4);
+    expect(within.length).toBeGreaterThan(4);
+    for (const t of within) expect(b.has(t)).toBe(true);
   });
 
   it("stays within its cells' radii and floor", () => {
@@ -104,16 +151,16 @@ describe("public rooms", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     const r = placeRoom(l, "tiny_plaza", ring(1, 1, 2));
     const room = l.rooms.find((x) => x.id === r.id)!;
-    const walled = triangles(roomGeometry(l, room.cells)); // as a private room would be
+    const walled = upright(roomGeometry(l, room.cells)); // as a private room would be
     // No tube along it yet: the shaft side keeps its wall.
-    expect(triangles(roomGeometry(l, room.cells, undefined, true, true))).toBe(walled);
+    expect(upright(roomGeometry(l, room.cells, undefined, true, true))).toBe(walled);
     for (const e of galleryEdges(l.hole, 1)) l.corridors[e.id] = "gallery";
-    const open = triangles(roomGeometry(l, room.cells, undefined, true, true));
+    const open = upright(roomGeometry(l, room.cells, undefined, true, true));
     expect(walled - open).toBe(CURVED); // no inner wall onto the gallery
     l.corridors["R1.1.2"] = "metal"; // its left side
-    expect(triangles(roomGeometry(l, room.cells, undefined, true, true))).toBe(open - SIDE);
+    expect(upright(roomGeometry(l, room.cells, undefined, true, true))).toBe(open - SIDE);
     // A private room keeps its wall on a corridor side.
-    expect(triangles(roomGeometry(l, room.cells))).toBe(walled);
+    expect(upright(roomGeometry(l, room.cells))).toBe(walled);
   });
 });
 

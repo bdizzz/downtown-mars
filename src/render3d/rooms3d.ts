@@ -249,7 +249,9 @@ function curvedFaceWithOpenings(pos: number[], r: number, a0: number, a1: number
   }
 }
 
-function flatRing(pos: number[], r0: number, r1: number, a0: number, a1: number, y: number): void {
+/** A flat band between radii r0 and r1, in ARC_STEPS equal steps, or (`grid`, for whole cells) on the hole-wide grid. */
+function flatRing(pos: number[], r0: number, r1: number, a0: number, a1: number, y: number, grid = false): void {
+  if (grid) return flatPiece(pos, r0, r1, [a0, a1], [a0, a1], y);
   for (let i = 0; i < ARC_STEPS; i++) {
     const b0 = a0 + ((a1 - a0) * i) / ARC_STEPS;
     const b1 = a0 + ((a1 - a0) * (i + 1)) / ARC_STEPS;
@@ -265,15 +267,19 @@ function radialSide(pos: number[], r0: number, r1: number, a: number, y0: number
   else tag(pos, 6);
 }
 
-/** A floor between radii r0 and r1 whose ends stand at different angles inside ([i0, i1]) and out ([o0, o1]). */
+/**
+ * A floor between radii r0 and r1 whose ends stand at different angles inside
+ * ([i0, i1]) and out ([o0, o1]). Its arcs keep to the hole-wide grid, as solid
+ * walls do: equal steps per cell put a ring's corners off its neighbour's, and
+ * their chords left hairline seams along every ring border (T-019).
+ */
 function flatPiece(pos: number[], r0: number, r1: number, [i0, i1]: [number, number], [o0, o1]: [number, number], y: number): void {
-  for (let i = 0; i < ARC_STEPS; i++) {
-    const t0 = i / ARC_STEPS;
-    const t1 = (i + 1) / ARC_STEPS;
-    const bi0 = i0 + (i1 - i0) * t0;
-    const bi1 = i0 + (i1 - i0) * t1;
-    const bo0 = o0 + (o1 - o0) * t0;
-    const bo1 = o0 + (o1 - o0) * t1;
+  const ts = [...new Set([...arcAngles(i0, i1), ...arcAngles(o0, o1)])].sort((p, q) => p - q);
+  const clamp = (t: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, t));
+  for (let i = 0; i + 1 < ts.length; i++) {
+    const [t0, t1] = [ts[i]!, ts[i + 1]!];
+    if (t1 - t0 < 1e-9) continue;
+    const [bi0, bi1, bo0, bo1] = [clamp(t0, i0, i1), clamp(t1, i0, i1), clamp(t0, o0, o1), clamp(t1, o0, o1)];
     push(pos, at(r0, bi0, y), at(r1, bo0, y), at(r1, bo1, y), at(r0, bi0, y), at(r1, bo1, y), at(r0, bi1, y));
     tag(pos, 6);
   }
@@ -1133,7 +1139,7 @@ function rockFaces(layout: Layout, topFloor: number | null): number[] {
       for (let slot = 0; slot < n; slot++) {
         if (rock({ floor: 1, ring: ri + 1, slot })) continue;
         const [s0, s1] = slotAngles(slot, n);
-        flatRing(pos, r0, r1, s0, s1, y);
+        flatRing(pos, r0, r1, s0, s1, y, true);
       }
     });
   }
@@ -1147,7 +1153,7 @@ function rockFaces(layout: Layout, topFloor: number | null): number[] {
         if (!rock(c)) continue;
         const [s0, s1] = slotAngles(slot, n);
         // A ceiling over whatever's been dug out below.
-        if (floor < hole.floors && !rock({ floor: floor + 1, ring, slot })) flatRing(pos, r0, r1, s0, s1, y0);
+        if (floor < hole.floors && !rock({ floor: floor + 1, ring, slot })) flatRing(pos, r0, r1, s0, s1, y0, true);
         // Corridors carved into it: rock walls half a corridor back, facing the corridor.
         const cut = carveCell(layout, c, new Set([key(c)]), ring, ring, 0, true, false, joints);
         for (const p of cut.pieces) {
@@ -2043,7 +2049,7 @@ function emptySpace(layout: Layout, topFloor: number | null): THREE.Object3D[] {
         if (!isOpen(layout, c) || layout.grid[floor - 1]?.[ring - 1]?.[slot]) continue;
         const [a0, a1] = slotAngles(slot, n);
         // Edge to edge: no crack between two empty cells, or onto the gallery tube.
-        flatRing(floorPos, r0, r1, a0, a1, y0 + 0.02);
+        flatRing(floorPos, r0, r1, a0, a1, y0 + 0.02, true);
         for (const r of [r0 + PILLAR.inset, r1 - PILLAR.inset]) {
           for (const a of [a0 + PILLAR.inset / r, a1 - PILLAR.inset / r]) pillar(pillars, r * Math.cos(a), r * Math.sin(a), y0, y1, PILLAR.half);
         }
@@ -2401,19 +2407,8 @@ function floorCap(layout: Layout, floor: number): THREE.Object3D[] {
   lockedMesh.userData = { pickable: true, cap: true, outerCap: true };
   const beyondMesh = new THREE.Mesh(geometry(beyond), mat(CAP.beyond));
   beyondMesh.userData = { outerCap: true };
-  // Hairline slot edges on the carved cells, so the grid reads from above.
-  const grid: number[] = [];
-  hole.ringSlots.slice(0, hole.unlockedRings).forEach((n, ri) => {
-    const [r0, r1] = ringRadii(hole, ri + 1);
-    for (let slot = 0; slot < n; slot++) {
-      const [a] = slotAngles(slot, n);
-      grid.push(...at(r0, a, y + 0.01), ...at(r1, a, y + 0.01));
-    }
-  });
-  const gridGeo = new THREE.BufferGeometry();
-  gridGeo.setAttribute("position", new THREE.Float32BufferAttribute(grid, 3));
-  const gridLines = new THREE.LineSegments(gridGeo, material("capGrid", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.6 })));
-  return [openMesh, lockedMesh, beyondMesh, gridLines];
+  // No slot lines on the lid: they read as seams in the rock (T-019). Hovering a cell shows its slot.
+  return [openMesh, lockedMesh, beyondMesh];
 }
 
 /** Free what a layout group owns outright. Cached shapes, labels and materials live on for reuse. */
