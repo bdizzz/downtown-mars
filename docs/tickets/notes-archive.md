@@ -333,3 +333,7 @@ let's build a snazzy title screen to show then the game is first launched. this 
 ## N-0052 · 2026-10-08 02:05
 in cutaway view, the space between the surface and the first floor should be opaque
 → T-091
+
+## N-0053 · 2026-10-08 02:28
+we don't need the floor picker in cutaway mode; always show all floors and the surface in this mode. going to another mode returns the floor picker to the same floor it was before going to cutaway mode.
+→ T-098
