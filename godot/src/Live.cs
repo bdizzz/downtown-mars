@@ -764,6 +764,14 @@ public partial class Live : Node3D
         Graphics.Apply(_quality, _env.Environment, _sun, _haze, GetViewport());
         _hole.ShadowLamps = Graphics.ShadowLamps(_quality);
         _qualityButton.Text = $"Graphics: {_quality}";
+        ApplyMiniature();
+    }
+
+    /// <summary>The miniature blur in Free view: as set, but off at the Low level, and cheaper at Medium.</summary>
+    void ApplyMiniature()
+    {
+        RenderingServer.CameraAttributesSetDofBlurQuality(_quality >= Quality.High ? RenderingServer.DofBlurQuality.Medium : RenderingServer.DofBlurQuality.VeryLow, false);
+        if (_rig != null) _rig.Miniature = _quality == Quality.Low || Dev.Off("miniature") ? 0 : ViewSettings.Miniature;
     }
 
     /// <summary>The next graphics level round (F2 or the HUD button), kept for next time.</summary>
@@ -1125,6 +1133,7 @@ public partial class Live : Node3D
         GetTree().Root.ContentScaleFactor = ViewSettings.UiScale;
         _tutorial.Show(!ViewSettings.TutorialHidden);
         UpdateLegend();
+        ApplyMiniature();
         SendGameSettings();
         SendView();
     }

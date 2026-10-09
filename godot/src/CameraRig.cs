@@ -32,6 +32,29 @@ public partial class CameraRig : Node3D
         Visible = false,
     };
 
+    /// <summary>
+    /// Tilt-shift in Free view, as the web's (render3d/tiltShift.ts): a depth of field focused on what the camera
+    /// orbits, so the floor in view stays sharp and nearer and farther things blur, like a model. Off elsewhere.
+    /// </summary>
+    readonly CameraAttributesPractical _miniature = new();
+    /// <summary>
+    /// The sharp band either side of the focus (a share of the hole's outer radius), how far past it (a share of
+    /// the focus distance) the blur is full, and Godot's blur amount at full strength.
+    /// </summary>
+    const float MiniatureBand = 0.15f, MiniatureRamp = 0.3f, MiniatureBlur = 0.12f;
+    float _miniatureAmount;
+
+    /// <summary>How strong the miniature blur is, 0 (off) to 1 (Settings; off at the Low graphics level).</summary>
+    public float Miniature
+    {
+        get => _miniatureAmount;
+        set
+        {
+            _miniatureAmount = value;
+            if (IsInsideTree()) Apply();
+        }
+    }
+
     bool _walking;
     /// <summary>The camera when not walking.</summary>
     public Overview Mode { get; private set; } = Overview.Iso;
@@ -326,6 +349,7 @@ public partial class CameraRig : Node3D
     void Apply()
     {
         _headlamp.Visible = _walking;
+        _cam.Attributes = !_walking && Mode == Overview.Iso && _miniatureAmount > 0 ? _miniature : null;
         if (_walking)
         {
             _cam.GlobalPosition = _pos;
@@ -346,5 +370,14 @@ public partial class CameraRig : Node3D
         var offset = new Vector3(Mathf.Cos(_yaw) * Mathf.Cos(_pitch), Mathf.Sin(_pitch), Mathf.Sin(_yaw) * Mathf.Cos(_pitch)) * _dist;
         _cam.GlobalPosition = _target + offset;
         _cam.LookAt(_target, Vector3.Up);
+        if (_cam.Attributes == null) return;
+        var band = Outer * MiniatureBand;
+        _miniature.DofBlurAmount = MiniatureBlur * _miniatureAmount;
+        _miniature.DofBlurFarEnabled = true;
+        _miniature.DofBlurFarDistance = _dist + band;
+        _miniature.DofBlurFarTransition = _dist * MiniatureRamp;
+        _miniature.DofBlurNearEnabled = true;
+        _miniature.DofBlurNearDistance = Mathf.Max(0.1f, _dist - band);
+        _miniature.DofBlurNearTransition = Mathf.Min(_dist * MiniatureRamp, Mathf.Max(0.1f, _dist - band));
     }
 }
