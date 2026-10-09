@@ -969,6 +969,7 @@ public partial class Live : Node3D
         RenderingServer.GlobalShaderParameterSet("cut_plane", cut);
         RenderingServer.GlobalShaderParameterSet("walls_down", ViewSettings.WallsDown && !walking ? 1f : 0f);
         _hole.SetCut(cut);
+        _hole.SetSharpFloor(!walking && _topFloor is int f ? (-3 - f * _shape.FloorHeightM, -3 - (f - 1) * _shape.FloorHeightM) : null);
         if (GetViewport().GetCamera3D() is Camera3D view) _hole.UpdateWalls(ViewSettings.WallsDown && !walking, view.GlobalPosition);
         var cutaway = cut.W > 0.5f;
         var heading = _rig?.Heading ?? 0;

@@ -157,6 +157,7 @@ public partial class HoleScene : Node3D
                 OutlineModulate = new Color(0.1f, 0.05f, 0.04f, 0.8f),
                 NoDepthTest = false,
             };
+            label.Layers = LabelLayers(label.Position.Y);
             label.SetMeta("room", l.GetProperty("roomId").GetInt32());
             _labels!.AddChild(label);
         }
@@ -182,6 +183,7 @@ public partial class HoleScene : Node3D
                 l.AddChild(new Label3D
                 {
                     Name = "Badge",
+                    Layers = l.Layers,
                     Text = "⚠",
                     Position = new Vector3(0, BadgeAbove, 0),
                     Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
@@ -232,6 +234,26 @@ public partial class HoleScene : Node3D
     static bool CutAway(Vector4 cut, Vector3 p) => cut.W > 0.5f && p.X * cut.X + p.Z * cut.Z > 0;
 
     Vector4 _cut;
+    (float from, float to)? _sharp;
+
+    /// <summary>A label's layers: the rig's label layer (drawn sharp, apart from the miniature blur) on the floor in view, the scene's elsewhere.</summary>
+    uint LabelLayers(float y) => _sharp is var (from, to) && y >= from && y < to ? CameraRig.LabelLayer : 1u;
+
+    /// <summary>
+    /// The floor in view, as heights (null at the surface): its labels are drawn apart from the miniature blur
+    /// (CameraRig). Others stay in the scene, blurred, where floors and walls in front still hide them.
+    /// </summary>
+    public void SetSharpFloor((float from, float to)? span)
+    {
+        if (span == _sharp) return;
+        _sharp = span;
+        if (_labels == null) return;
+        foreach (var l in _labels.GetChildren().OfType<Label3D>())
+        {
+            l.Layers = LabelLayers(l.Position.Y);
+            if (l.GetNodeOrNull<Label3D>("Badge") is Label3D b) b.Layers = l.Layers;
+        }
+    }
 
     /// <summary>The cutaway's cut: labels on the cut-away side go (the surfaces' shaders take the rest).</summary>
     public void SetCut(Vector4 cut)
