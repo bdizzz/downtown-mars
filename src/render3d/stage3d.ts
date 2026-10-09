@@ -770,6 +770,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       sprite.scale.set(3.6, 1.2, 1);
       sprite.position.set(r * Math.cos(a), (y0 + y1) / 2, r * Math.sin(a));
       sprite.renderOrder = 11;
+      // Kept sharp, out of the miniature blur, as labels are.
+      sprite.layers.set(LABEL_LAYER);
       progressGroup.add(sprite);
     }
     dirty = true;
@@ -933,6 +935,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         plus.scale.set(2.2, 2.2, 1);
         plus.position.set(r * Math.cos(a), (y0 + y1) / 2, r * Math.sin(a));
         plus.renderOrder = 11;
+        plus.layers.set(LABEL_LAYER);
         overlay.add(plus);
       }
       return;

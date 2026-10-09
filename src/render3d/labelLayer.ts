@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-// Room labels (and their trouble badges) sit on a layer of their own, so the
+// Room labels, their trouble badges and construction progress sit on a layer of their own, so the
 // look can draw them after the tilt-shift blur and keep them sharp (look.ts).
 // Drawn then, they can't use the depth buffer (the post passes have none), so
 // they test against the scene's depth texture in their shader instead.
