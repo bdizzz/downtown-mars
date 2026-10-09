@@ -22,3 +22,4 @@ Find which it is: drop ceiling edges from the outlines, or build each ceiling/ro
 
 ## History
 - 2026-10-05 01:11 opened from N-0014
+- 2026-10-08 23:05 building on t-019-ceiling-seams
