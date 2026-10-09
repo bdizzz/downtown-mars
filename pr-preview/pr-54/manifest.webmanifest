@@ -1,0 +1,31 @@
+{
+  "name": "#54 · Downtown Mars",
+  "short_name": "#54 Downtown Mars",
+  "description": "A real-time city builder on Mars: dig a borehole, carve rooms into its walls, grow a network of holes.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1a0f0d",
+  "theme_color": "#1a0f0d",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
