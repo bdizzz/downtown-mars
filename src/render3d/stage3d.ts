@@ -1,4 +1,5 @@
 import { UI_FONT } from "../view/font";
+import { LABEL_LAYER } from "./labelLayer";
 import * as THREE from "three";
 import { previewEffects } from "../sim/effects";
 import type { Hole } from "../sim/geometry";
@@ -143,6 +144,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const scene = new THREE.Scene();
   // Far enough to see the horizon's ridges, wherever the camera stands.
   const camera = new THREE.PerspectiveCamera(FOV, host.clientWidth / Math.max(1, host.clientHeight), 0.1, FAR);
+  camera.layers.enable(LABEL_LAYER);
   // The sky: a gradient by day, stars by night.
   const skyDome = createSky();
   let skyColor = new THREE.Color(C.nightSky);

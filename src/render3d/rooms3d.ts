@@ -1,4 +1,5 @@
 import { UI_FONT } from "../view/font";
+import { LABEL_LAYER, testsSceneDepth } from "./labelLayer";
 import { roomLabel } from "../sim/roomName";
 import * as THREE from "three";
 import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
@@ -1696,6 +1697,8 @@ function label(text: string, color: string): THREE.Sprite {
   }
   const sprite = new THREE.Sprite(cached.material);
   sprite.scale.set(LABEL.heightM * cached.aspect, LABEL.heightM, 1);
+  // Drawn after the miniature blur, so it stays sharp (labelLayer.ts).
+  sprite.layers.set(LABEL_LAYER);
   return sprite;
 }
 
@@ -1716,7 +1719,7 @@ function drawLabel(text: string, color: string): { material: THREE.SpriteMateria
   ctx.fillText(text, 12, canvas.height / 2 + 2);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  return { material: new THREE.SpriteMaterial({ map: tex, depthTest: true, depthWrite: false, transparent: true }), aspect: w / canvas.height };
+  return { material: testsSceneDepth(new THREE.SpriteMaterial({ map: tex, depthTest: true, depthWrite: false, transparent: true })), aspect: w / canvas.height };
 }
 
 /**

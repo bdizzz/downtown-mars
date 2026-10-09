@@ -8,6 +8,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 import { hasPostEffects, type Graphics } from "../view/graphics";
 import { TiltShiftPass } from "./tiltShift";
+import { LABEL_LAYER, labelDepth } from "./labelLayer";
 
 // The 3D view's look: what's drawn after the scene, scaled by the graphics
 // settings. The scene renders once (antialiased, with its depth kept), then:
@@ -63,7 +64,10 @@ class ScenePass extends Pass {
   render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget): void {
     renderer.setRenderTarget(this.target);
     renderer.clear();
+    // Everything but the labels: they come after the blur (LabelPass).
+    this.camera.layers.disable(LABEL_LAYER);
     renderer.render(this.scene, this.camera);
+    this.camera.layers.enable(LABEL_LAYER);
     const m = this.copy.material as THREE.ShaderMaterial;
     m.uniforms.tDiffuse!.value = this.target.texture;
     renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
@@ -75,6 +79,42 @@ class ScenePass extends Pass {
     this.target.dispose();
     this.copy.material.dispose();
     this.copy.dispose();
+  }
+}
+
+/**
+ * The room labels, drawn over the picture after the tilt-shift blur so they stay
+ * sharp, hidden where the scene's depth says something stands in front of them.
+ */
+class LabelPass extends Pass {
+  constructor(
+    private scene: THREE.Scene,
+    private camera: THREE.Camera,
+    private depth: THREE.Texture,
+  ) {
+    super();
+    this.needsSwap = false;
+  }
+
+  render(renderer: THREE.WebGLRenderer, _writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget): void {
+    const { scene, camera } = this;
+    const background = scene.background;
+    const autoClear = renderer.autoClear;
+    const mask = camera.layers.mask;
+    scene.background = null;
+    renderer.autoClear = false;
+    camera.layers.set(LABEL_LAYER);
+    labelDepth.tSceneDepth.value = this.depth;
+    labelDepth.sceneDepthOn.value = 1;
+    labelDepth.sceneSize.value.set(readBuffer.width, readBuffer.height);
+    renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
+    // The buffer's own depth holds only the full-screen passes'; the scene's depth texture decides instead.
+    renderer.clearDepth();
+    renderer.render(scene, camera);
+    labelDepth.sceneDepthOn.value = 0;
+    camera.layers.mask = mask;
+    renderer.autoClear = autoClear;
+    scene.background = background;
   }
 }
 
@@ -268,7 +308,7 @@ export class Look implements LookLike {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), LOOK.bloom.strength, LOOK.bloom.radius, LOOK.bloom.threshold);
     this.tilt = new TiltShiftPass(this.scenePass.target.depthTexture!, camera);
     this.grade = new ShaderPass(GradeShader);
-    for (const p of [this.scenePass, this.ao, this.haze, this.bloom, this.tilt, new OutputPass(), this.grade]) this.composer.addPass(p);
+    for (const p of [this.scenePass, this.ao, this.haze, this.bloom, this.tilt, new LabelPass(scene, camera, this.scenePass.target.depthTexture!), new OutputPass(), this.grade]) this.composer.addPass(p);
   }
 
   /** Apply graphics settings: which effects run and how strongly, the resolution, and reflections. */

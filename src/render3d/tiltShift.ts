@@ -12,11 +12,13 @@ import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js"
 /** Tuning. Distances are shares of the focus distance or of the hole's radius. */
 const TILT = {
   /** How much of the hole's outer radius, either side of the focus, stays fully sharp. */
-  band: 0.15,
+  band: 0.35,
   /** Past the sharp band, how far (as a share of the focus distance) until the blur is full. */
-  ramp: 0.3,
+  ramp: 0.45,
   /** Blur spread in texels of each level; the quarter-size level's texels are twice the half's. */
-  spread: 1.6,
+  spread: 1.3,
+  /** How far toward the strongest blur the slider's full setting goes (1: all the way to the quarter-size blur). */
+  most: 0.7,
   /** Extra saturation at full strength. */
   saturation: 0.18,
 };
@@ -103,7 +105,7 @@ export class TiltShiftPass extends Pass {
 
   /** How strong, 0 (off) to 1. */
   setAmount(amount: number): void {
-    this.mixUniforms.amount!.value = amount;
+    this.mixUniforms.amount!.value = amount * TILT.most;
   }
 
   /** Where to focus: the distance from the camera to what it orbits, and the hole's outer radius (both in metres). */
