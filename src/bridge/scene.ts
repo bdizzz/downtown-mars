@@ -218,8 +218,9 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     const mesh = o as THREE.Mesh | THREE.LineSegments;
     if (!(mesh instanceof THREE.Mesh || mesh instanceof THREE.LineSegments) || !mesh.visible) return;
     const material = Array.isArray(mesh.material) ? mesh.material[0]! : mesh.material;
-    // The web's fake light pools: Godot has real lights.
-    if (material.blending === THREE.AdditiveBlending) return;
+    // Not drawn, only there to pick (the ledge where no gallery tube is built); and the web's
+    // fake light pools: Godot has real lights.
+    if (!material.visible || material.blending === THREE.AdditiveBlending) return;
     const geo = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry;
     const p = geo.getAttribute("position");
     if (!p || p.count === 0) return;
