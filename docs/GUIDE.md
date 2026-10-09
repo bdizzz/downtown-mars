@@ -183,7 +183,7 @@ Four buttons at the bottom right, as in SimCity. B, V, M and C open them from an
 - **Map** opens the planet as a globe: drag or scroll sideways to spin it (it coasts to a stop), scroll to zoom, click to pick a site.
 - **Charts** has People, Trends, Flows, Network, Maintenance and the construction queue (its badge counts the jobs). **Trends** shows how everything has been changing: pick a series for a detailed chart over the last 2 months, 10 months or the whole game, as amounts or as change per month, with the lines that matter marked (happiness 50 and 45, oxygen 18% and so on); point along it to read any hour.
 
-The floor picker stays on the right.
+The floor picker stays on the right (except in Cutaway, which shows every floor).
 
 ### The plan
 
@@ -196,7 +196,7 @@ New games open in 3D, in Free view. Everything you can do in 2D works in 3D.
 **Cameras**
 
 - **Free view** looks at one floor (or, with All, the surface) from above and off to one side, so you see all of it: drag to turn it, scroll to zoom (out only as far as all six rings' footprint, open or not, fills the screen with a little to spare). With a floor picked, the planet is cut open to show it: the land across the hole stands with a rock face down to that floor, fading into the dark further out, and the near side is cut away.
-- **Cutaway** slices the hole open (it opens framing the unlocked rings). Pick a floor on the right to hide everything above it (for a flat plan to build on, there's the 2D **Plan** view). **Surface** shows the whole hole again, from the surface down.
+- **Cutaway** slices the hole open and always shows the whole hole, from the surface down (it opens framing the unlocked rings). There's no floor picker here, and the floor keys do nothing; going back to Free view puts you on the floor you had picked. For a flat plan to build on, there's the 2D **Plan** view.
 - **First person** puts you on a floor at eye height: WASD to walk (hold Shift to run), Q and E to turn, drag to look (or Tab for mouse look, where the browser allows it). Walk up or down a stairwell's wide flights to change floors (R or F also takes the stairs from anywhere in a stairwell; picking a floor on the right takes you there too). You can walk the gallery tubes, corridors, plazas and empty space, and into a room through its door, but not through walls or furniture. Build is off while you walk.
 - **Walls down** lowers the walls that hide a room from you to a short stub, as in The Sims: a room's near walls, and a wall that stands in front of another room. Each wall goes down or stays up whole, curves and all. A wall that only hides a corridor, a gallery tube, the shaft or rock stays up; one with a corridor and then a room behind it stays up while the stubs would hide that room's floor anyway, and comes down once you tilt the camera low enough that lowering it would show some of that floor. Hangings on a lowered wall go with it.
 
