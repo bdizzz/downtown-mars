@@ -357,3 +357,20 @@ in web, there is a weird graphical artifact hovering over the hole in surface mo
 ## N-0058 · 2026-10-09 01:56
 the "snake mode" of dragging out a series of corridors is a little difficult to use. never allow the snake to go down a path, make a turn, but then double back to the intersection where the turn occurred and then into a different direction. this happens often by mistake and it is very annoying.
 → T-104
+
+## N-0059 · 2026-10-09 12:39
+you should be able to dismiss a notification manually by clicking an x button in the notification
+→ T-105
+
+## N-0060 · 2026-10-09 12:47
+on mobile, we should hide many of the elements that show at the top of the screen inside a collapsible menu. right now too much of the screen is taken over by this menu at phone sizes. perhaps the only things that are outside of the collapsing bit are:
+
+* system menu
+* hole name
+* pause/play toggle (the speed controls are inside the collapse).
+* how many warnings are active (like low food or happiness)
+* the "office" link
+
+
+and then everything else like the specific warnings and all the resource counts are collapsed
+→ T-106
