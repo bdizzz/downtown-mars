@@ -87,8 +87,8 @@ Bunk dorms from the start, then better homes as the hole grows:
 | --- | --- |
 | Start | Bunk dorms |
 | 50 | Studios and apartments |
-| 200 | Flats and family apartments |
-| 1,000 | Suites and residences |
+| 100 | Flats and family apartments |
+| 200 | Suites and residences |
 
 Each tier houses fewer people per slot and costs more, but its residents are more comfortable, and the finer tiers cheer their neighbours too.
 
