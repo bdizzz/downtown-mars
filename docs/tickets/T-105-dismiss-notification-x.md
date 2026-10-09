@@ -23,3 +23,4 @@ GUIDE.md: a line where notifications are described, if anywhere.
 
 ## History
 - 2026-10-09 13:03 opened from N-0059
+- 2026-10-09 19:19 building on t-100-housing-unlocks-sooner

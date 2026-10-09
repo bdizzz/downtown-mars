@@ -20,3 +20,4 @@ Draw walkway/ledge geometry only where a gallery segment is built (or under cons
 
 ## History
 - 2026-10-09 01:58 opened from N-0057
+- 2026-10-09 19:19 building on t-100-housing-unlocks-sooner
