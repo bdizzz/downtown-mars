@@ -470,7 +470,7 @@ public partial class Live : Node3D
             // The floor in view: where you stand in first person, else the picked floor (or the top).
             var cutaway = _rig?.Walking != true && _rig?.Mode == Overview.Cutaway;
             var focus = _rig?.Walking == true ? Mathf.FloorToInt((-cam.GlobalPosition.Y - 3) / 4) + 1
-                : cutaway ? Math.Max(_topFloor ?? 1, CameraRig.FloorAt(_rig!.CutawayY)) : _topFloor ?? 1;
+                : cutaway ? Math.Max(1, CameraRig.FloorAt(_rig!.CutawayY)) : _topFloor ?? 1;
             // Clicks find what they hit on the floors in view (and the surface, from above).
             _hole.EnsureCollision(new[] { 0, focus - 1, focus, focus + 1 });
             var (above, below) = Graphics.LampFloors(_quality);
@@ -497,7 +497,8 @@ public partial class Live : Node3D
         // While there's no game, say why in the middle of the screen, and hide what needs one.
         var waiting = !_bridge.Connected;
         _waiting.Visible = waiting;
-        _pickerPanel.Visible = !waiting && _pickerFloors >= 0 && !_map.Open;
+        // The cutaway always shows every floor, so it has no floor picker.
+        _pickerPanel.Visible = !waiting && _pickerFloors >= 0 && !_map.Open && !InCutaway;
         _waiting.Text = _bridge.Silent
             ? $"Something is on port {Port}, but it isn't the game's bridge.\nRun  npm run bridge  in the repo, or start both with --port=<n>."
             : _bridgePid > 0 && OS.IsProcessRunning(_bridgePid) ? "Starting the game…"
@@ -796,8 +797,14 @@ public partial class Live : Node3D
         }
     }
 
-    /// <summary>The cut the scene shows: the picked floor in Free view, none in first person.</summary>
-    int? Cut => _rig?.Walking == true ? null : _topFloor;
+    /// <summary>The cutaway camera, not walking: it shows every floor from the surface down, whatever floor is picked.</summary>
+    bool InCutaway => _rig?.Walking != true && _rig?.Mode == Overview.Cutaway;
+
+    /// <summary>
+    /// The cut the scene shows: the picked floor in Free view, none in first person or the cutaway. The picked floor
+    /// is kept meanwhile, so going back to Free view goes back to it.
+    /// </summary>
+    int? Cut => _rig?.Walking == true || InCutaway ? null : _topFloor;
 
     /// <summary>Free view with a floor picked: the land's sliced open through the hole's axis to show that floor.</summary>
     bool Sliced => Cut != null && _rig?.Mode == Overview.Iso;
@@ -1010,6 +1017,7 @@ public partial class Live : Node3D
         ViewSettings.Camera = mode;
         ViewSettings.Save();
         _rig?.SetMode(mode);
+        ApplyCut();
     }
 
     /// <summary>The View bar shows what's on (it can change by key, Tab, too).</summary>
@@ -1416,6 +1424,8 @@ public partial class Live : Node3D
             // In first person, up and down a floor from where you are; in Free view, the picked floor up and down.
             case Key.Up when _rig?.Walking == true: PickFloor(Math.Max(1, (_rig.OnFoot ? _walker.Floor : _topFloor ?? 1) - 1)); break;
             case Key.Down when _rig?.Walking == true: PickFloor((_rig.OnFoot ? _walker.Floor : _topFloor ?? 1) + 1); break;
+            // The cutaway shows every floor: no floor to step.
+            case Key.Up or Key.Down or Key.Home when InCutaway: break;
             case Key.Up: if (_topFloor != null) PickFloor(_topFloor == 1 ? null : _topFloor - 1); break;
             case Key.Down: PickFloor((_topFloor ?? 0) + 1); break;
             case Key.Home: PickFloor(null); break;

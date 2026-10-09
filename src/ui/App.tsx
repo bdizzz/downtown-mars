@@ -127,6 +127,14 @@ export function App() {
   const [tutorialOn, setTutorialOn] = useState(() => !tutorialHidden());
   const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false, sawThreeD: false });
   const [settings, updateSettings] = useSettings();
+  /**
+   * The cutaway always shows the whole hole, from the surface down, with no floor picker. The picked
+   * floor is kept as it was, so leaving the cutaway goes back to it.
+   */
+  const cutaway = settings.view === "3d" && settings.view3d.camera === "cutaway" && !walking;
+  useEffect(() => {
+    if (cutaway) setPreviewFloor(undefined);
+  }, [cutaway]);
   const [helpOpen, setHelpOpen] = useState(false);
   const mapOpen = mode === "map";
   const [plannedSite, setPlannedSite] = useState<SitePick | null>(null);
@@ -396,7 +404,7 @@ export function App() {
       // Page Up / Page Down, or the up and down arrows, step through floors in the plan and 3D views
       // (up is toward the surface). Walking, the arrows walk: the 3D view takes them first.
       const floorKey = { PageUp: -1, PageDown: 1, ArrowUp: -1, ArrowDown: 1 }[e.code];
-      if (floorKey && snapshot && settings.view !== "2d") {
+      if (floorKey && snapshot && settings.view !== "2d" && !cutaway) {
         e.preventDefault();
         stepFloor(floorKey);
       }
@@ -412,7 +420,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, helpOpen, welcome, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking]);
+  }, [menu, helpOpen, welcome, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking, cutaway]);
 
   /** Charts → Trends on a series: from a cell of the resource grid, or the "needs you" slot. */
   const openTrend = (key: string) => {
@@ -502,7 +510,7 @@ export function App() {
               }}
             />
           )}
-          {snapshot && settings.view !== "2d" && !mapOpen && (
+          {snapshot && settings.view !== "2d" && !mapOpen && !cutaway && (
             <FloorPicker
               floors={floorCount}
               floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
@@ -545,7 +553,7 @@ export function App() {
             onConfirmBuild={setPendingBuild}
             proposal={proposal}
             onPropose={setProposal}
-            floor={shownFloor(lookFloor, floorCount, settings.view === "plan")}
+            floor={cutaway ? null : shownFloor(lookFloor, floorCount, settings.view === "plan")}
             snapshot={snapshot}
             tool={tool}
             onHover={setHover}

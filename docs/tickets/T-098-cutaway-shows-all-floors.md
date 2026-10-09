@@ -1,7 +1,7 @@
 ---
 id: T-098
 title: Cutaway always shows every floor and the surface; the floor picker hides there
-status: open
+status: done
 size: S
 area: ui, godot
 touches: [src/ui/FloorPicker.tsx, src/ui/App.tsx, src/render3d/stage3d.ts, src/view/cameras.ts, godot/src/CameraRig.cs, godot/src/Live.cs]
@@ -23,3 +23,5 @@ GUIDE.md: The views (Cutaway).
 
 ## History
 - 2026-10-08 20:01 opened from N-0053
+- 2026-10-08 23:42 building on t-098-cutaway-shows-all-floors
+- 2026-10-08 23:46 built

@@ -132,13 +132,16 @@ public partial class CameraRig : Node3D
     }
     float Depth => (_meta.Hole.Floors + 1) * _meta.Hole.FloorHeightM + 3;
 
-    /// <summary>As the web's fitCutaway: the unlocked rings framed, with a little margin.</summary>
+    /// <summary>
+    /// As the web's fitCutaway: the unlocked rings framed, with a little margin, from the surface down (the
+    /// cutaway always shows every floor, whatever floor Free view has picked).
+    /// </summary>
     void Fit()
     {
         var aspect = IsInsideTree() ? GetViewport().GetVisibleRect().Size.Aspect() : 1.6f;
         var tan = Mathf.Tan(Mathf.DegToRad(_cam.Fov / 2));
         _cutOut = Mathf.Clamp(Outer * Margin / (tan * aspect), 25, 300);
-        _cutY = _meta.Cut is int f ? -3 - f * _meta.Hole.FloorHeightM + 2 : -Mathf.Min(Depth, 20) / 2;
+        _cutY = -Mathf.Min(Depth, 20) / 2;
     }
 
     public CameraRig(Meta meta)
