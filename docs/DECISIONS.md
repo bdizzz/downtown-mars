@@ -76,6 +76,7 @@ When documents disagree, trust them in this order:
 - **Excavator bay as the digger:** replaced in milestone 9. The drill sinks the shaft on its own; every room slot is rock until it's excavated, and **empty rooms** dig ahead for rock and space. (An excavator bay may return as a faster drill; see ROOM-STATUS.md.)
 - **Free space:** rooms used to sit on ready-made slots. Since milestone 9, space is dug, not given.
 - **Shaft and Top cameras, and X-ray:** dropped from the 3D view, web and Godot, removed outright rather than hidden (Bryon, Oct 6, T-052). Free view, Cutaway, first person and the 2D plan cover what they showed; walls down replaces seeing through ring 1. Saved settings with either camera open in Free view.
+- **Slot lines on the rock lid:** a picked floor's rock cap used to draw a hairline at every slot border "so the grid reads from above." Dropped (Bryon, T-019): they read as seams in the rock. Hovering a cell shows its slot. Floors, ceilings and the cap now keep their arcs on the same hole-wide grid as solid walls, so neighbouring rings meet without slivers.
 - **Automatic windows:** every ring-1 room used to get shaft windows and their view for free. Since milestone 13 windows are an upgrade the player puts in (old saves keep the shaft windows they had). Frontage is no longer fully automatic: doors are, windows aren't.
 
 ## Cleanup before handoff
