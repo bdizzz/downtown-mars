@@ -69,14 +69,15 @@ describe("happiness", () => {
     const home = s.layout.rooms.find((r) => r.id === inner!.roomId)!;
     setRoomWindows(home, shaftBorders(s.layout, home), true);
     updateHappiness(s, config, true);
-    // Floor 1 starts with its gallery all the way round: the view is through the tube.
+    // Floor 1 starts with its gallery all the way round: the view is through the tube, and the sun gets in.
     [inner, outer] = dorms();
-    expect(inner!.factors.comfort - outer!.factors.comfort).toBeCloseTo(config.windows.view.tube);
+    const sun = config.windows.sun.comfort;
+    expect(inner!.factors.comfort - outer!.factors.comfort).toBeCloseTo(config.windows.view.tube + sun);
     // Take the tube away from in front of one of its two cells: halfway between, along the wall.
     delete s.layout.corridors[galleryEdges(s.layout.hole, 1)[home.cells[0]!.slot]!.id];
     updateHappiness(s, config, true);
     [inner, outer] = dorms();
-    const half = (config.windows.view.shaft + config.windows.view.tube) / 2;
+    const half = (config.windows.view.shaft + config.windows.view.tube) / 2 + sun;
     expect(inner!.factors.comfort - outer!.factors.comfort).toBeCloseTo(half);
     expect(windowComfort(s.layout, home, config)).toBeCloseTo(half);
   });

@@ -160,13 +160,16 @@ export interface SimConfig {
    * Windows, an upgrade a room's walls can have (PLAN-M13): their price by
    * length, and the comfort a home gets from them: its best view (the open
    * shaft, the shaft through a gallery tube, a walk-through room, a corridor),
-   * plus `extraWall` for each other glazed wall, up to `cap`.
+   * plus `extraWall` for each other glazed wall, up to `cap`. Windows onto
+   * the shaft let the sun in too: `sun.comfort` on floor 1, less each floor
+   * down, none from floor `sun.floors + 1`.
    */
   windows: {
     costPer10m: Record<string, number>;
     view: Record<"shaft" | "tube" | "public" | "corridor", number>;
     extraWall: number;
     cap: number;
+    sun: { comfort: number; floors: number };
   };
   /** The shaft dome, a hole's end goal (PLAN-M12): when it opens up, what it costs, how long it takes, and what it gives. */
   dome: { population: number; cost: Record<string, number>; workHours: number; atriumComfort: number; air: number };
