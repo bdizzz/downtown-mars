@@ -1657,7 +1657,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     lampLights.place(lampList, view.mode === "walk" ? new THREE.Vector3(walker.x, camera.position.y, walker.z) : camera.position, view.mode === "walk" ? walker.floor : cut());
     updateShadows();
     skyDome.follow(camera);
-    look.setView(hazeFocus(), view.mode === "walk", view.mode === "iso");
+    look.setView(hazeFocus(), view.mode === "walk", view.mode === "iso" ? { distance: cam.iso, radius: outerRadius() } : null);
     roomFx.setScale(renderer.getDrawingBufferSize(bufferSize).y / (2 * Math.tan((camera.fov * Math.PI) / 360)));
     look.render();
     stats.frameMs = performance.now() - t0;
