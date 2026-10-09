@@ -1,7 +1,7 @@
 ---
 id: T-103
 title: "Web: a ghost ledge along the shaft wall on floors not yet excavated"
-status: open
+status: done
 size: S
 area: render3d
 touches: [src/render3d/rooms3d.ts, src/render3d/cylinder.ts, src/render3d/stage3d.ts]
@@ -21,3 +21,5 @@ Draw walkway/ledge geometry only where a gallery segment is built (or under cons
 ## History
 - 2026-10-09 01:58 opened from N-0057
 - 2026-10-09 19:19 building on t-100-housing-unlocks-sooner
+- 2026-10-09 19:28 cause: rooms3d's tube:none slab (3% white, kept for corridor picking); now an invisible material, still raycast; the bridge skips invisible materials
+- 2026-10-09 19:28 built

@@ -1,7 +1,7 @@
 ---
 id: T-100
 title: Standard homes unlock at 100 people and luxury at 200
-status: open
+status: done
 size: S
 area: balance
 touches: [data/config.json, docs/ROOMS.md, docs/GUIDE.md]
@@ -24,3 +24,4 @@ ROOMS.md: luxury apartment unlock; GUIDE.md: unlocks table.
 ## History
 - 2026-10-09 01:58 opened from N-0055
 - 2026-10-09 19:19 building on t-100-housing-unlocks-sooner
+- 2026-10-09 19:28 built

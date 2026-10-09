@@ -1,7 +1,7 @@
 ---
 id: T-102
 title: "Web: a sun-dependent ring artifact hovers over the hole in surface view"
-status: open
+status: done
 size: S
 area: render3d
 touches: [src/render3d/scenery3d.ts, src/render3d/stage3d.ts]
@@ -21,3 +21,5 @@ Identify the mesh, decide what it's meant to be, and either fix its shape/placem
 ## History
 - 2026-10-09 01:58 opened from N-0057
 - 2026-10-09 19:19 building on t-100-housing-unlocks-sooner
+- 2026-10-09 19:28 cause: the light shaft's open top (shafts3d.ts) sat at the surface at full strength and its lean lifted one side above ground; now fades in over its top 8 m
+- 2026-10-09 19:28 built
