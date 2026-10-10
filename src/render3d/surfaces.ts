@@ -388,7 +388,7 @@ export function withRock<T extends THREE.Material>(m: T): T {
 }
 
 /** How much stronger the cut rock's strata and mottling are than the walls' (see withCutRock). */
-const CUT_ROCK_CONTRAST = 2.2;
+const CUT_ROCK_CONTRAST = 1.5;
 
 const CUT_ROCK_GLSL = /* glsl */ `
   vec3 cutRockTone(vec3 p, vec3 n) {

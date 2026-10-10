@@ -60,7 +60,7 @@ const C = {
   rock: 0x6a3a28,
   rockDark: 0x3e2218,
   // The cutaway's cut face, land and rings alike: between the two above, as it only gets the fill light.
-  rockCut: 0x643929,
+  rockCut: 0x522d20,
   ground: 0x7a3b22,
   stranded: 0xe0503a,
   digFront: 0xe07a3f,
