@@ -11,24 +11,27 @@ created: 2026-10-10 00:18
 
 ## Design
 - The shaft radius R sets slots per ring: `slots(n) = round(2π · (R + (n − 0.5) · d) / w)`. The starter is R = 10 m (rings 1–3: 9, 16, 22 slots). Bigger R means more slots per ring, a wider shaft open to Mars, more gallery tube to build, and more light down the shaft.
-- "The size of the lift": presumably the drill or lift that bores the shaft (`src/render3d/drillRig.ts` draws the shaft-boring machine). A bigger rig digs a wider hole, costs more and perhaps digs slower.
-- Where the choice is made: when founding a hole (the first, or later ones from the network map), which ties in with F-011's base camp.
-- A first guess to react to: S = 10 m (today), M = 15 m, L = 20 m, XL = 30 m radius. Ring 1 would then have about 9, 13, 16 and 22 slots.
+- **Sizes (shaft radius):** S 10 m (today), M 15 m, L 25 m, XL 40 m. Ring 1 then has about 9, 13, 19 and 28 slots.
+- **Where it's chosen:** once, when building the seed kit at an existing hole to found another (`src/sim/founding.ts`, `network.seedKit` in data; rooms with `stagesSeedKit` stage it). A bigger hole needs a bigger drill sent with the kit, so more resources amassed and a larger drill built first. Size is fixed after founding.
+- **The first hole is always S.**
+- **Costs of going bigger: all of them:** more up front (the drill and kit), slower digging, more gallery tube to build and seal, and more dust and cold down the wider shaft. Ties in with F-011's base camp, which new holes start with.
 - Rendering and the views assume today's R in places; the sim already takes `hole.shaftRadiusM`.
 
 ## Breakdown
 Proposed; becomes tickets once this feature is agreed.
 - Sizes in data (radius, cost, dig speed, what the lift needs), and the sim honouring any radius (slot counts, adjacency, galleries, light).
-- Choosing the size when founding a hole (web), with its trade-offs shown.
+- Choosing the size when assembling the seed kit (web): the larger drill to build and the extra resources, with the trade-offs shown.
 - Views at any radius: 3D, plan, unrolled, cutaway, camera limits (T-051 capped zoom at six rings' width).
 - The bridge and Godot at any radius.
 - Balance: what makes a bigger hole worth it, and what it costs.
 
 ## Open questions
-- [ ] Are the four sizes radii (10/15/20/30 m) or something else? Any feel for how much bigger XL should be?
-- [ ] Is the size picked once at founding, or can a hole be widened later with a bigger lift?
-- [ ] What's the trade-off for going bigger: cost up front, slower digging, more gallery to build and seal, more dust and cold through the wider shaft?
-- [ ] Can the first hole be any size, or does it start small and bigger lifts unlock later?
+- [x] Sizes? Radii S 10, M 15, L 25, XL 40 m.
+- [x] Picked once? Yes, when building the seed kit; bigger needs more resources and a larger drill.
+- [x] Trade-offs? All of them.
+- [x] First hole? Always small.
 
 ## History
 - 2026-10-10 00:18 opened from N-0065
+- 2026-10-10 questions answered: sizes, chosen with the seed kit, all trade-offs, first hole small
+- 2026-10-10 00:35 questions answered
