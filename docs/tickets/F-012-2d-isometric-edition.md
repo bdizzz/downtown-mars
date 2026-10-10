@@ -19,7 +19,7 @@ A bigger, long-term idea: a version of the game in 2D sprites rather than 3D. Th
 
 ## Breakdown
 Proposed; too early to cut tasks. Likely first steps:
-- Art style exploration (can start now): mood boards and a few test sprites for rooms, furniture and people, Into the Breach-like.
+- Strategy and art direction (can start now, in this repo): how the edition differs, what it keeps, and the look: mood boards and a few test sprites for rooms, furniture and people, Into the Breach-like.
 - Layout tests in Pixi: the borehole round and square in fixed iso, compared side by side.
 - A vertical slice in Pixi: one floor, a few rooms and people, in sprites, driven by the forked sim.
 - Then a plan of its own.
@@ -29,7 +29,7 @@ Proposed; too early to cut tasks. Likely first steps:
 - [x] Round or square? Test both and decide from feedback.
 - [x] Engine? Pixi first, Godot 2D probably later.
 - [x] When? After the current game reaches a milestone; art style exploration in parallel.
-- [ ] Which milestone of the current game unlocks starting the edition proper?
+- [x] When does the edition start properly? Bryon will call it. Until then, strategy and art direction work happens here (with this repo's context); the fork comes when he says so.
 
 ## History
 - 2026-10-10 00:18 opened from N-0064
@@ -37,3 +37,5 @@ Proposed; too early to cut tasks. Likely first steps:
 - 2026-10-10 00:27 questions answered
 - 2026-10-10 questions answered: test both layouts, Pixi first, later with art style in parallel
 - 2026-10-10 00:35 questions answered
+- 2026-10-10 questions answered: strategy and art direction now, fork when Bryon says
+- 2026-10-10 00:38 questions answered

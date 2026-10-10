@@ -16,10 +16,12 @@ created: 2026-10-10 00:18
 Surface rooms take slots on one surface ring (`geometry.surfaceSlots: 12` in `data/config.json`, `surface` in `src/sim/placement.ts`). There's already a hover highlight for a surface spot; this adds a faint highlight on every free spot while build mode is open. T-108 adds surface rings 2 and 3, so draw spots generically per surface slot.
 
 ## Approach
-In build mode, draw a faint tint on each free surface slot (or the run of slots the selected surface room needs). With a surface room selected, hovering a spot shows the current stronger highlight. Done on web and Godot: open build mode and the buildable surface spots are visible at a glance.
+Once a surface room is picked in build mode, draw a faint tint on each free surface spot it fits (the run of slots it needs); hovering a spot shows the current stronger highlight. With no surface room picked, nothing extra shows. Done on web and Godot: open build mode and the buildable surface spots are visible at a glance.
 
 ## Open questions
-- [ ] Show the faint spots whenever build mode is open, or only once a surface room is picked?
+- [x] When do the faint spots show? Only once a surface room is picked.
 
 ## History
 - 2026-10-10 00:18 opened from N-0062
+- 2026-10-10 questions answered: spots show once a surface room is picked
+- 2026-10-10 00:38 questions answered
