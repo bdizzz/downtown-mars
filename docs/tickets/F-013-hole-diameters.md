@@ -3,6 +3,7 @@ id: F-013
 title: "Holes of different diameters (S to XL), set by the size of the lift"
 status: agreed
 plan:
+branch: feature/f-013-hole-diameters
 notes: [N-0065]
 created: 2026-10-10 00:18
 ---
@@ -36,3 +37,4 @@ Agreed; each line names its ticket.
 - 2026-10-10 questions answered: sizes, chosen with the seed kit, all trade-offs, first hole small
 - 2026-10-10 00:35 questions answered
 - 2026-10-10 00:40 agreed
+- 2026-10-10 00:46 built on feature/f-013-hole-diameters
