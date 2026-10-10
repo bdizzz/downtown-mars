@@ -387,6 +387,23 @@ export function withRock<T extends THREE.Material>(m: T): T {
   return withPattern(m, "rock", ROCK_GLSL, "rockTone");
 }
 
+/** How much stronger the cut rock's strata and mottling are than the walls' (see withCutRock). */
+const CUT_ROCK_CONTRAST = 2.2;
+
+const CUT_ROCK_GLSL = /* glsl */ `
+  vec3 cutRockTone(vec3 p, vec3 n) {
+    return max(vec3(0.0), vec3(1.0) + (rockTone(p, n) - vec3(1.0)) * ${CUT_ROCK_CONTRAST.toFixed(2)});
+  }
+`;
+
+/**
+ * The same rock, freshly cut (the cutaway's face through the rings): its strata drawn stronger, since a
+ * face square to the camera gets only the fill light, where the walls in Free view catch lamps and the sun.
+ */
+export function withCutRock<T extends THREE.Material>(m: T): T {
+  return withPattern(m, "cut-rock", ROCK_GLSL + CUT_ROCK_GLSL, "cutRockTone");
+}
+
 /** The surface's dust (regolith), for the ground around the hole. */
 export function withRegolith<T extends THREE.Material>(m: T): T {
   return withPattern(m, "regolith", REGOLITH_GLSL, "regolithTone");

@@ -15,7 +15,7 @@ import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } fr
 import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
 import { Look, type LookLike } from "./look";
 import { DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
-import { makeSlice, withRegolith, withRock, withSlice } from "./surfaces";
+import { makeSlice, withCutRock, withRegolith, withRock, withSlice } from "./surfaces";
 import { RoomEffects } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
@@ -59,6 +59,8 @@ import { clear as walkClear, stairLift, stairsHere, step as walkStep } from "../
 const C = {
   rock: 0x6a3a28,
   rockDark: 0x3e2218,
+  // The cutaway's face through the rings: the hole's rock, a touch lighter, as it only gets the fill light.
+  rockCut: 0x8a5038,
   ground: 0x7a3b22,
   stranded: 0xe0503a,
   digFront: 0xe07a3f,
@@ -231,9 +233,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(section);
   // Cutaway: the cut face across the hole's own section, below the crust: rock wherever the cut runs
   // through rock, open where rooms, corridors and dug-out space are (and the shaft). Rebuilt when the
-  // cut turns or the layout changes.
+  // cut turns or the layout changes. It's the hole's own rock, as Free view shows it underground (the
+  // rooms' rock faces, strata and all), not the darker face of the land round it.
   const capGeo = new THREE.BufferGeometry();
-  const cap = new THREE.Mesh(capGeo, sectionMat);
+  const cap = new THREE.Mesh(capGeo, withCutRock(new THREE.MeshStandardMaterial({ color: C.rockCut, roughness: 0.95, side: THREE.DoubleSide })));
   cap.frustumCulled = false;
   cap.visible = false;
   scene.add(cap);
