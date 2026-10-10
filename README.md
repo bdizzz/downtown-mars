@@ -1,13 +1,13 @@
 >[!NOTE]
 > ***Play the game in your browser here:*** https://bdizzz.github.io/downtown-mars/
 
-# Downtown Mars
 
+![A floor of the hole from above: homes, storage, a galley and furnaces in rings round the shaft](docs/images/downtown_mars_title.jpg)
+
+# Downtown Mars
 *Hole sweet hole.*
 
 A real-time city builder on Mars. Each city is a borehole: dig a shaft down, carve rooms into its walls in rings and floors, and keep everyone breathing, fed and sane. Rooms affect their neighbours, so where you put the noisy life support matters as much as whether you build it.
-
-![A floor of the hole from above: homes, storage, a galley and furnaces in rings round the shaft](docs/images/hero.jpg)
 
 This is an early playtest build: a hole or two, the first hour or so of play. Total population supported is your score.
 
