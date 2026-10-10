@@ -1,3 +1,6 @@
+>[!NOTE]
+> ***Play the game in your browser here:*** https://bdizzz.github.io/downtown-mars/
+
 # Downtown Mars
 
 *Hole sweet hole.*
