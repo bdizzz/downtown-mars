@@ -165,3 +165,10 @@ See the feature's Open questions (`docs/tickets/F-002-air-mix.md`).
 - `view/flows.ts`'s `river()` returns `thens` by the use's shown label, biggest first, dropping anything under `MIN_FLOW`. The web panel and the bridge both read it, so they agree.
 - Drawing: a river with a second step is drawn wider (the web panel widens to 480 px for that tab; Godot's river to 460) with the middle bar moved left; each use's next places stack from the use's own top, joined by fainter ribbons in the use's colour. Use labels sit over those ribbons, with a halo to keep them readable.
 - Nothing records a `then` yet; a test in `tests/ledger.test.ts` checks the ledger, `river()` and the bridge's flows message. Checked by hand in both viewers with the colonists' water split three ways (not committed). The electrolyzer (step 3) is the first real user.
+
+**Step 5, too much oxygen** (T-030, Oct 10, 2026), built before steps 3 and 4:
+
+- `checkAir` in `sim/events.ts`, every events check: O2 above `air.o2High` (23.5%) starts `events.o2HighSince` and posts a fire-risk warning (at most once a day, `ventAir.warnEveryDays`, so air bobbing over the line doesn't spam); after `ventAir.afterDays` (half a day) above it, the `vent_air` card, at most once every 3 days. Falling back under the line resets the clock. All in `data/events.json` (`ventAir` and the event).
+- No "tanks full" test yet: there are no gas tanks until T-029, and as ballast they'll soak up O2 above the target while they have room, so O2 only climbs this high once they're full. T-029 needn't touch the trigger.
+- **Vent the excess** (`ventAir`, a new event effect): O2 down to the target, the rest recorded as the O2 flow's "Vented" use, gone for good. **Hold it** changes nothing; ignored (1 day) it's held. The card's text names the level (`{o2}`, a new placeholder).
+- The HUD's O2 alert reads "Fire risk: oxygen at 24.6%" when high (it already warned above 23.5%). `dm.event("vent_air")` raises the card for testing.

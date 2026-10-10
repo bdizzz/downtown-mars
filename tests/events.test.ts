@@ -4,7 +4,8 @@ import { config } from "../src/sim/config";
 import { ticksToDig } from "../src/sim/digging";
 import { padReady } from "../src/sim/earth";
 import { capacities } from "../src/sim/economy";
-import { eventMood, eventsOf, festivalWork, raiseEvent, rollDiscovery, stepEvents } from "../src/sim/events";
+import { eventData, eventMood, eventsOf, festivalWork, raiseEvent, rollDiscovery, stepEvents } from "../src/sim/events";
+import { airAmount, airPct } from "../src/sim/air";
 import { isOpen } from "../src/sim/excavation";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
@@ -227,5 +228,57 @@ describe("celebrations", () => {
     raiseEvent(s, config, "microfossils", { floor: 6 });
     expect(answer(s, "study").ok).toBe(true);
     expect(s.events!.pending.find((e) => e.kind === "celebration")!.title).toMatch(/life on Mars/);
+  });
+});
+
+describe("too much oxygen (T-030)", () => {
+  /** Run the events check for `days`, a check at a time, with the air held where it is. */
+  const run = (s: SimState, days: number) => {
+    for (let t = 0; t < days * day; t += eventData.checkEveryTicks) {
+      s.tick += eventData.checkEveryTicks;
+      stepEvents(s, config);
+    }
+  };
+  const highAir = () => {
+    const s = hole();
+    s.resources.o2 = airAmount(s, config, 25);
+    return s;
+  };
+
+  it("warns of the fire risk at once, and offers to vent after half a day above the line", () => {
+    const s = highAir();
+    run(s, 0.25);
+    expect(s.messages.some((m) => m.kind === "warn" && /Fire risk/.test(m.text))).toBe(true);
+    expect(eventsOf(s).pending).toHaveLength(0);
+    run(s, 0.3);
+    const card = eventsOf(s).pending.find((e) => e.kind === "vent_air")!;
+    expect(card.text).toMatch(/25\.0%/);
+  });
+
+  it("venting brings O2 back to the target, and what's vented is gone", () => {
+    const s = highAir();
+    const before = s.resources.o2!;
+    run(s, 0.6);
+    expect(answer(s, "vent").ok).toBe(true);
+    expect(airPct(s, config, "o2")).toBeCloseTo(config.air.o2Target);
+    expect(s.ledger.current.o2!.out[eventData.ventAir.label]).toBeCloseTo(before - s.resources.o2!);
+  });
+
+  it("held, the air stays high and the card doesn't come back for a while", () => {
+    const s = highAir();
+    run(s, 0.6);
+    expect(answer(s, "hold").ok).toBe(true);
+    expect(airPct(s, config, "o2")).toBeCloseTo(25);
+    run(s, eventData.ventAir.cooldownDays - 1);
+    expect(eventsOf(s).pending).toHaveLength(0);
+    run(s, 1.5);
+    expect(eventsOf(s).pending.some((e) => e.kind === "vent_air")).toBe(true);
+  });
+
+  it("comfortable air raises nothing", () => {
+    const s = hole();
+    run(s, 2);
+    expect(eventsOf(s).pending).toHaveLength(0);
+    expect(s.messages.some((m) => /Fire risk/.test(m.text))).toBe(false);
   });
 });

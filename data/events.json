@@ -1,5 +1,5 @@
 {
-  "_note": "Events with choices (docs/PLAN-M14.md). Triggers live in src/sim/events.ts; everything else is here. An event waits patienceDays for an answer, then its `ignored` effect happens. Effects: resources (added; negative is a cost, and a choice you can't afford is greyed out), mood (happiness for everyone, easing off over its days), message, deposit (the hole gains it), openCavity (the lava tube's cells, dug free), holdDrillDays, conditionFloorAbove (condition lost by the rooms on the floor above the find), colonists, notableRole (one of the newcomers becomes a notable with that role), followUp (an effect some days later), celebrate (propose a celebration for that milestone), festival, landing (the lander comes down on the pad). Placeholders: {floor}, {ship}, {milestone}.",
+  "_note": "Events with choices (docs/PLAN-M14.md). Triggers live in src/sim/events.ts; everything else is here. An event waits patienceDays for an answer, then its `ignored` effect happens. Effects: resources (added; negative is a cost, and a choice you can't afford is greyed out), mood (happiness for everyone, easing off over its days), message, deposit (the hole gains it), openCavity (the lava tube's cells, dug free), holdDrillDays, conditionFloorAbove (condition lost by the rooms on the floor above the find), colonists, notableRole (one of the newcomers becomes a notable with that role), followUp (an effect some days later), celebrate (propose a celebration for that milestone), festival, landing (the lander comes down on the pad), ventAir (the air's O2 above the target vented to the planet, lost for good). Placeholders: {floor}, {ship}, {milestone}, {o2}.",
   "checkEveryTicks": 10,
   "discoveries": {
     "chance": 0.45,
@@ -37,7 +37,26 @@
     "cooldownDays": 25,
     "names": ["Ceres Dawn", "Vesta's Pride", "Long Haul", "Pallas Wren", "Hygiea Star", "Old Rockhopper", "Juno Queen", "Ida's Luck"]
   },
+  "ventAir": {
+    "_note": "Too much oxygen (PLAN-M16 step 5): above air.o2High (config.json) a fire-risk warning, and after afterDays above it the vent_air card, at most once every cooldownDays; the warning at most once every warnEveryDays. label names the vented O2 in the flows.",
+    "afterDays": 0.5,
+    "cooldownDays": 3,
+    "warnEveryDays": 1,
+    "label": "Vented",
+    "warning": "Fire risk: the air's at {o2} oxygen. Anything that sparks burns hotter."
+  },
   "events": [
+    {
+      "id": "vent_air",
+      "title": "Too much oxygen",
+      "text": "The air's at {o2} oxygen, and there's nowhere left to store it. The fire crews are nervous.",
+      "patienceDays": 1,
+      "ignored": { "message": "Nobody decided about the oxygen: it's held, and the fire risk stays." },
+      "choices": [
+        { "id": "vent", "label": "Vent the excess", "hint": "Oxygen back to 21%. What's vented is lost to the planet for good.", "ventAir": true, "message": "The excess oxygen is vented to the planet. The air's back to 21%." },
+        { "id": "hold", "label": "Hold it", "hint": "Keep it, and build gas tanks for it instead. The fire-risk warning stays.", "message": "The oxygen is held. The fire crews are keeping an eye on it." }
+      ]
+    },
     {
       "id": "celebration",
       "title": "Time to celebrate: {milestone}",

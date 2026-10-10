@@ -1,7 +1,7 @@
 ---
 id: T-030
 title: Too much oxygen: a fire-risk warning and the vent event
-status: open
+status: done
 size: S
 area: events, ui
 feature: F-002
@@ -25,3 +25,4 @@ EVENTS.md (vent excess air), DECISIONS.md (the vent exception to "nothing vents"
 ## History
 - 2026-10-06 00:08 opened from F-002 (agreed)
 - 2026-10-10 01:11 building on t-109-cutaway-rock-front-face
+- 2026-10-10 01:20 built

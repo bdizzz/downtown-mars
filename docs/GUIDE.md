@@ -162,6 +162,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 - **Events:** things happen, and you choose. A card slides in at the top left with the choices (each with what it costs and does) and how long you have. The game keeps running; if you don't decide, it takes its own course.
   - **The drill strikes things:** each floor it finishes may break into an aquifer, an ore vein, a silica bed, a lava tube (free space, or rock), a gas pocket (vent it and lose a month, or push through and foul the floor above) or, deep down, microfossils. The rig shudders when it does.
   - **A belt ship in distress** calls now and then from month 20: bring her down on your pad (her crew join you, with salvage), send supplies up (the belt sends thanks later), or ignore her.
+  - **Too much oxygen:** above 23.5% O2 the air is a fire risk (the HUD and a message say so). After half a month above it you're offered to vent the excess to the planet (back to 21%, gone for good) or hold it.
   - **Milestones** (the first birth; 50, 100 and 200 people; floors 5, 10 and 20; the dome) can be celebrated. A festival costs a feast and a slow month of work, lifts everyone for two months, and strings lights along the galleries with lanterns rising up the shaft; or just raise a toast.
   - Gains need storage space, like Earth's drops.
 - **News:** the latest few messages stack up in a corner of the view and fade over a month. Click a message's × to close it straight away.

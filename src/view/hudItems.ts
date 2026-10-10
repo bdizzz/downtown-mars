@@ -163,7 +163,7 @@ function airItems(s: Snapshot): BarItem[] {
       value: airPctText(o2Pct),
       ...dirOf(o2Rate),
       level: o2Level,
-      ...(o2Level !== "ok" ? { alert: `Oxygen ${o2Pct > a.o2High ? "high" : "low"}: ${airPctText(o2Pct)}` } : {}),
+      ...(o2Level !== "ok" ? { alert: o2Pct > a.o2High ? `Fire risk: oxygen at ${airPctText(o2Pct)}` : `Oxygen low: ${airPctText(o2Pct)}` } : {}),
       title: "Air: oxygen",
       notes: [
         o2Band,

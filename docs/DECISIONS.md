@@ -125,7 +125,7 @@ Each milestone plan has the details, under "Notes as built".
 See `PLAN-M11.md`: built (Sep 30), with its notes as built.
 
 - **The shaft is outside:** open to Mars, not breathable or walkable. People live in a sealed network of rooms, corridors, stairs and glass gallery tubes.
-- **Air is an internal loop:** ventilation hubs scrub and circulate; nothing vents to the planet. Stale air means contamination and distance from the air trunk in the shaft wall.
+- **Air is an internal loop:** ventilation hubs scrub and circulate; nothing vents to the planet. (One exception, F-002: the "too much oxygen" event lets the player vent O2 above the target, lost for good. The air never leaks on its own; venting is only ever the player's choice.) Stale air means contamination and distance from the air trunk in the shaft wall.
 - **The gallery becomes buildable corridor** (glass tubes along the shaft), built on floor 1 at the start, laid by the player elsewhere. Direct shaft windows get the bigger view bonus (1.5 comfort); rooms behind a gallery tube get less (1, the old bonus), so nothing already built gets worse.
 - **Effects travel three ways:** what you sense by nearness (noise, heat, view), what you breathe through the air network (air quality, smell), what you use by walking distance (parks, plazas, gyms, canteens, clinics, schools, elder care). Parks, plazas and canteens also keep a small nearness bonus.
 - **Noise stays nearness-based,** and corridors still soak it up; smell now rides the air through corridors.
