@@ -19,11 +19,11 @@ A difficulty picker when creating a new game. Players new to the game or the gen
 - Tests: the scripted playthroughs in `tests/` run on normal; maybe a smoke run on easy and hard.
 
 ## Breakdown
-Proposed; becomes tickets once this feature is agreed.
-- Difficulty in the sim: the data file of multipliers, applied where the knobs live, saved with the game.
-- The picker on the web's new-game screen, with a line on what each level means.
-- The picker in Godot.
-- Tuning pass: easy and hard played through and adjusted.
+Agreed; each line names its ticket.
+- Difficulty in the sim: the data file of multipliers, applied where the knobs live, saved with the game. → T-122
+- The picker on the web's new-game screen, with a line on what each level means. → T-123
+- The picker in Godot. → T-124
+- Tuning pass: easy and hard played through and adjusted. → T-125
 
 ## Open questions
 - [x] What changes? All of the above.

@@ -25,14 +25,14 @@ Holes after the first start with a **base camp** instead of a landing pod, since
 - Base camp: second and later holes start with a base camp instead of a pod (the network founding code in the sim, M4), plus resources brought by rover. It works **just like a landing pod**, including its own move-out mission and deconstruction.
 
 ## Breakdown
-Proposed; becomes tickets once this feature is agreed.
-- The missions system in the sim: catalogue in data, start triggers, checklist tracking, deadline, reward; saved.
-- The move-out mission: the pod's checklist, the radiation deadline and health penalty, and deconstructing the pod for resources.
-- Missions in the shared milestones/missions panel on the web (checklist, time left, the deconstruct choice), and a notice when a mission starts or ends.
-- Rewards that unlock rooms: move the chosen housing unlocks from population to the move-out mission.
-- Base camp: a second landing kit for new holes, a camp room that behaves like the pod (same mission), and the rover's resources.
-- Missions in Godot (via the bridge).
-- Ideas for later missions (a doc pass to collect them).
+Agreed; each line names its ticket.
+- The missions system in the sim: catalogue in data, start triggers, checklist tracking, deadline, reward; saved. → T-110
+- The move-out mission: the pod's checklist, the radiation deadline and health penalty, and deconstructing the pod for resources. → T-111
+- Missions in the shared milestones/missions panel on the web (checklist, time left, the deconstruct choice), and a notice when a mission starts or ends. → T-112
+- Rewards that unlock rooms: move the chosen housing unlocks from population to the move-out mission. → T-113
+- Base camp: a second landing kit for new holes, a camp room that behaves like the pod (same mission), and the rover's resources. → T-114
+- Missions in Godot (via the bridge). → T-115
+- Ideas for later missions (a doc pass to collect them). → T-116
 
 ## Open questions
 - [x] Timing on normal: start at month 12 (or when the tutorial ends, if sooner), deadline 24 months after that, penalty ramping in over 6 months. Agreed.

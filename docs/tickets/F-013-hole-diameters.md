@@ -18,12 +18,12 @@ created: 2026-10-10 00:18
 - Rendering and the views assume today's R in places; the sim already takes `hole.shaftRadiusM`.
 
 ## Breakdown
-Proposed; becomes tickets once this feature is agreed.
-- Sizes in data (radius, cost, dig speed, what the lift needs), and the sim honouring any radius (slot counts, adjacency, galleries, light).
-- Choosing the size when assembling the seed kit (web): the larger drill to build and the extra resources, with the trade-offs shown.
-- Views at any radius: 3D, plan, unrolled, cutaway, camera limits (T-051 capped zoom at six rings' width).
-- The bridge and Godot at any radius.
-- Balance: what makes a bigger hole worth it, and what it costs.
+Agreed; each line names its ticket.
+- Sizes in data (radius, cost, dig speed, what the lift needs), and the sim honouring any radius (slot counts, adjacency, galleries, light). → T-117
+- Choosing the size when assembling the seed kit (web): the larger drill to build and the extra resources, with the trade-offs shown. → T-118
+- Views at any radius: 3D, plan, unrolled, cutaway, camera limits (T-051 capped zoom at six rings' width). → T-119
+- The bridge and Godot at any radius. → T-120
+- Balance: what makes a bigger hole worth it, and what it costs. → T-121
 
 ## Open questions
 - [x] Sizes? Radii S 10, M 15, L 25, XL 40 m.
