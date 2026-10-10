@@ -4,9 +4,9 @@ title: Too much oxygen: a fire-risk warning and the vent event
 status: open
 size: S
 area: events, ui
+feature: F-002
 touches: [data/events.json, src/sim/events.ts, src/sim/air.ts, src/view/hudItems.ts]
 blocked_by: [T-026]
-feature: F-002
 notes: [N-0005]
 created: 2026-10-06 00:08
 ---
@@ -24,3 +24,4 @@ EVENTS.md (vent excess air), DECISIONS.md (the vent exception to "nothing vents"
 
 ## History
 - 2026-10-06 00:08 opened from F-002 (agreed)
+- 2026-10-10 01:11 building on t-109-cutaway-rock-front-face

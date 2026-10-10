@@ -20,3 +20,4 @@ Draw the cut plane's face across all solid rock, with holes only where rooms, co
 
 ## History
 - 2026-10-10 00:18 opened from N-0063
+- 2026-10-10 01:11 building on t-109-cutaway-rock-front-face
