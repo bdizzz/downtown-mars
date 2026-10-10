@@ -764,6 +764,14 @@ public partial class Live : Node3D
         Graphics.Apply(_quality, _env.Environment, _sun, _haze, GetViewport());
         _hole.ShadowLamps = Graphics.ShadowLamps(_quality);
         _qualityButton.Text = $"Graphics: {_quality}";
+        ApplyMiniature();
+    }
+
+    /// <summary>The miniature blur in Free view: as set, but off at the Low level, and cheaper at Medium.</summary>
+    void ApplyMiniature()
+    {
+        RenderingServer.CameraAttributesSetDofBlurQuality(_quality >= Quality.High ? RenderingServer.DofBlurQuality.Medium : RenderingServer.DofBlurQuality.VeryLow, false);
+        if (_rig != null) _rig.Miniature = _quality == Quality.Low || Dev.Off("miniature") ? 0 : ViewSettings.Miniature;
     }
 
     /// <summary>The next graphics level round (F2 or the HUD button), kept for next time.</summary>
@@ -961,6 +969,7 @@ public partial class Live : Node3D
         RenderingServer.GlobalShaderParameterSet("cut_plane", cut);
         RenderingServer.GlobalShaderParameterSet("walls_down", ViewSettings.WallsDown && !walking ? 1f : 0f);
         _hole.SetCut(cut);
+        _hole.SetSharpFloor(!walking && _topFloor is int f ? (-3 - f * _shape.FloorHeightM, -3 - (f - 1) * _shape.FloorHeightM) : null);
         if (GetViewport().GetCamera3D() is Camera3D view) _hole.UpdateWalls(ViewSettings.WallsDown && !walking, view.GlobalPosition);
         var cutaway = cut.W > 0.5f;
         var heading = _rig?.Heading ?? 0;
@@ -1125,6 +1134,7 @@ public partial class Live : Node3D
         GetTree().Root.ContentScaleFactor = ViewSettings.UiScale;
         _tutorial.Show(!ViewSettings.TutorialHidden);
         UpdateLegend();
+        ApplyMiniature();
         SendGameSettings();
         SendView();
     }

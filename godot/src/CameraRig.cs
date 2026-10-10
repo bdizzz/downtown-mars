@@ -32,6 +32,40 @@ public partial class CameraRig : Node3D
         Visible = false,
     };
 
+    /// <summary>
+    /// Tilt-shift in Free view, as the web's (render3d/tiltShift.ts): a depth of field focused on what the camera
+    /// orbits, so the floor in view stays sharp and nearer and farther things blur, like a model. Off elsewhere.
+    /// </summary>
+    readonly CameraAttributesPractical _miniature = new();
+    /// <summary>
+    /// The sharp band either side of the focus (a share of the hole's outer radius), how far past it (a share of
+    /// the focus distance) the blur is full, and Godot's blur amount at full strength.
+    /// </summary>
+    const float MiniatureBand = 0.35f, MiniatureRamp = 0.45f, MiniatureBlur = 0.08f;
+    float _miniatureAmount;
+
+    /// <summary>
+    /// Room labels and their badges sit on this layer. While the miniature blur is on, the main camera leaves
+    /// them out and a second camera, sharing the world, draws only them into a see-through view over the
+    /// 3D, so the blur never touches them (as the web's labelLayer.ts). Drawn apart, nothing stands in front of them.
+    /// </summary>
+    public const uint LabelLayer = 1 << 11;
+    readonly CanvasLayer _labelOverlay = new() { Layer = -1, Visible = false };
+    readonly SubViewportContainer _labelBox = new() { MouseFilter = Control.MouseFilterEnum.Ignore };
+    readonly SubViewport _labelView = new() { TransparentBg = true, Msaa3D = Viewport.Msaa.Msaa2X, GuiDisableInput = true, RenderTargetUpdateMode = SubViewport.UpdateMode.Disabled };
+    readonly Camera3D _labelCam = new() { CullMask = LabelLayer, Current = true, Environment = new Environment { BackgroundMode = Environment.BGMode.ClearColor } };
+
+    /// <summary>How strong the miniature blur is, 0 (off) to 1 (Settings; off at the Low graphics level).</summary>
+    public float Miniature
+    {
+        get => _miniatureAmount;
+        set
+        {
+            _miniatureAmount = value;
+            if (IsInsideTree()) Apply();
+        }
+    }
+
     bool _walking;
     /// <summary>The camera when not walking.</summary>
     public Overview Mode { get; private set; } = Overview.Iso;
@@ -208,7 +242,36 @@ public partial class CameraRig : Node3D
         AddChild(_cam);
         _cam.AddChild(_headlamp);
         _cam.Current = true;
+        AddChild(_labelOverlay);
+        _labelOverlay.AddChild(_labelBox);
+        _labelBox.AddChild(_labelView);
+        _labelView.World3D = GetViewport().World3D;
+        _labelView.AddChild(_labelCam);
+        RenderingServer.FramePreDraw += SyncLabels;
         Apply();
+    }
+
+    public override void _ExitTree() => RenderingServer.FramePreDraw -= SyncLabels;
+
+    /// <summary>Before each frame: the labels drawn apart while the blur is on (and this camera is the one in use), following the camera.</summary>
+    void SyncLabels()
+    {
+        var apart = _cam.Current && _cam.Attributes != null;
+        if (apart != _labelOverlay.Visible)
+        {
+            _labelOverlay.Visible = apart;
+            _labelView.RenderTargetUpdateMode = apart ? SubViewport.UpdateMode.Always : SubViewport.UpdateMode.Disabled;
+            _cam.CullMask = apart ? _cam.CullMask & ~LabelLayer : _cam.CullMask | LabelLayer;
+        }
+        if (!apart) return;
+        // At the window's own resolution, under the interface scale (Settings → Interface size).
+        var root = GetTree().Root;
+        if (_labelView.Size != root.Size) _labelView.Size = root.Size;
+        _labelBox.Scale = Vector2.One / root.ContentScaleFactor;
+        _labelCam.GlobalTransform = _cam.GlobalTransform;
+        _labelCam.Fov = _cam.Fov;
+        _labelCam.Near = _cam.Near;
+        _labelCam.Far = _cam.Far;
     }
 
     /// <summary>Circle once for the benchmark: the Free view camera round the hole, or (walking) a turn on the spot.</summary>
@@ -326,6 +389,7 @@ public partial class CameraRig : Node3D
     void Apply()
     {
         _headlamp.Visible = _walking;
+        _cam.Attributes = !_walking && Mode == Overview.Iso && _miniatureAmount > 0 ? _miniature : null;
         if (_walking)
         {
             _cam.GlobalPosition = _pos;
@@ -346,5 +410,14 @@ public partial class CameraRig : Node3D
         var offset = new Vector3(Mathf.Cos(_yaw) * Mathf.Cos(_pitch), Mathf.Sin(_pitch), Mathf.Sin(_yaw) * Mathf.Cos(_pitch)) * _dist;
         _cam.GlobalPosition = _target + offset;
         _cam.LookAt(_target, Vector3.Up);
+        if (_cam.Attributes == null) return;
+        var band = Outer * MiniatureBand;
+        _miniature.DofBlurAmount = MiniatureBlur * _miniatureAmount;
+        _miniature.DofBlurFarEnabled = true;
+        _miniature.DofBlurFarDistance = _dist + band;
+        _miniature.DofBlurFarTransition = _dist * MiniatureRamp;
+        _miniature.DofBlurNearEnabled = true;
+        _miniature.DofBlurNearDistance = Mathf.Max(0.1f, _dist - band);
+        _miniature.DofBlurNearTransition = Mathf.Min(_dist * MiniatureRamp, Mathf.Max(0.1f, _dist - band));
     }
 }

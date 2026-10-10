@@ -4,7 +4,7 @@ namespace DowntownMars;
 
 /// <summary>
 /// Switches for measuring what things cost: DM_FX=nosdfgi,nofog,nossil,nossao,noglow,nolamps,nofurniture,
-/// nopeople,nolabels,nosunshadow,nomsaa turns each off (see docs/PLAN-GODOT.md for numbers).
+/// nopeople,nolabels,nosunshadow,nomsaa,nominiature turns each off (see docs/PLAN-GODOT.md for numbers).
 /// </summary>
 static class Dev
 {
