@@ -8,6 +8,8 @@ import { capacities } from "./economy";
 import { resourceDef } from "./resources";
 import { addNotable } from "./notables";
 import { addAdults, hash01 } from "./people";
+import { airAmount, airPct } from "./air";
+import { record } from "./ledger";
 import type { Cell } from "./placement";
 import type { SimState } from "./state";
 
@@ -42,6 +44,8 @@ export interface EventEffect {
   festival?: boolean;
   /** The lander comes down on the pad. */
   landing?: boolean;
+  /** Vent the air's O2 above the target to the planet, lost for good (PLAN-M16). */
+  ventAir?: boolean;
 }
 
 export interface EventChoice extends EventEffect {
@@ -72,9 +76,10 @@ export interface PendingEvent {
   /** For a find: the floor it's on; for a lava tube, the cells it would open. */
   floor?: number;
   cells?: Cell[];
-  /** Filled into {ship} and {milestone}. */
+  /** Filled into {ship}, {milestone} and {o2} (the air's O2, as "24.6%"). */
   ship?: string;
   milestone?: string;
+  o2?: string;
 }
 
 interface Mood {
@@ -101,6 +106,8 @@ export interface EventsState {
   struckTick?: number;
   /** When the lander last came down for an event (a rescue), for the 3D view. */
   landingTick?: number;
+  /** Since when the air's O2 has been above the fire-risk level (unset while it isn't). */
+  o2HighSince?: number;
 }
 
 type EventsData = typeof eventData;
@@ -111,6 +118,7 @@ export const eventData = raw as unknown as {
     festival: { feast: number; mood: number; days: number; workDays: number; productivity: number };
   };
   beltShip: { fromDay: number; chancePerDay: number; cooldownDays: number; names: string[] };
+  ventAir: { afterDays: number; cooldownDays: number; warnEveryDays: number; label: string; warning: string };
   discoveries: {
     chance: number;
     firstAlways: boolean;
@@ -167,7 +175,8 @@ function fill(text: string, e: Partial<PendingEvent>): string {
   return text
     .replaceAll("{floor}", String(e.floor ?? ""))
     .replaceAll("{ship}", e.ship ?? "")
-    .replaceAll("{milestone}", e.milestone ?? "");
+    .replaceAll("{milestone}", e.milestone ?? "")
+    .replaceAll("{o2}", e.o2 ?? "");
 }
 
 /** Raise an event: a card waiting for an answer. */
@@ -255,6 +264,15 @@ export function applyEffect(state: SimState, cfg: SimConfig, e: EventEffect, at:
     ev.followUps.push({ dueTick: state.tick + Math.round(days * day), effect: e.followUp.effect, kind: at.kind ?? "" });
   }
   if (e.landing) ev.landingTick = state.tick;
+  if (e.ventAir) {
+    const target = airAmount(state, cfg, cfg.air.o2Target);
+    const vented = (state.resources.o2 ?? 0) - target;
+    if (vented > 0) {
+      state.resources.o2 = target;
+      record(state, "o2", "out", eventData.ventAir.label, vented);
+    }
+    ev.o2HighSince = undefined;
+  }
   if (e.festival) {
     const f = eventData.celebrations.festival;
     // The feast: meals first, rations for the rest.
@@ -356,7 +374,7 @@ export function consoleEvent(state: SimState, cfg: SimConfig, kind: string): { o
   const cells = kind === "lava_tube" ? cavityOn(state, floor, eventData.discoveries.cavityCells) : undefined;
   if (cells === null) return { ok: false, reason: "No rock left for a lava tube on the deepest floor" };
   if (byId.get(kind)!.text.includes("{floor}")) eventsOf(state).struckTick = state.tick;
-  raiseEvent(state, cfg, kind, { floor, ship: eventData.beltShip.names[0], milestone: "a console test", ...(cells ? { cells } : {}) });
+  raiseEvent(state, cfg, kind, { floor, ship: eventData.beltShip.names[0], milestone: "a console test", o2: o2Text(state, cfg), ...(cells ? { cells } : {}) });
   return { ok: true };
 }
 
@@ -382,7 +400,44 @@ export function stepEvents(state: SimState, cfg: SimConfig): void {
     const next = eventData.celebrations.milestones.find((m) => !ev.celebrated.includes(m.id) && reached(state, m));
     if (next) celebrate(state, cfg, next.id);
   }
+  checkAir(state, cfg);
   if (state.tick % cfg.ticksPerDay === 0) dailyEvents(state, cfg);
+}
+
+function o2Text(state: SimState, cfg: SimConfig): string {
+  return `${airPct(state, cfg, "o2").toFixed(1)}%`;
+}
+
+/**
+ * Too much oxygen (PLAN-M16 step 5): a fire-risk warning when the air's O2 passes the high band, and
+ * after a while above it, a card offering to vent the excess. Gas tanks (T-029) soak up O2 above the
+ * target while they have room, so O2 only gets this high once they're full.
+ */
+function checkAir(state: SimState, cfg: SimConfig): void {
+  const ev = eventsOf(state);
+  const v = eventData.ventAir;
+  if (airPct(state, cfg, "o2") <= cfg.air.o2High) {
+    ev.o2HighSince = undefined;
+    return;
+  }
+  if (ev.o2HighSince === undefined) {
+    ev.o2HighSince = state.tick;
+    // Once a while, not every time it bobs back over the line.
+    const warned = ev.lastTick.o2_high;
+    if (warned === undefined || state.tick - warned >= v.warnEveryDays * cfg.ticksPerDay) {
+      ev.lastTick.o2_high = state.tick;
+      postMessage(state, cfg, fill(v.warning, { o2: o2Text(state, cfg) }), "warn");
+    }
+    return;
+  }
+  const last = ev.lastTick.vent_air;
+  if (
+    state.tick - ev.o2HighSince >= v.afterDays * cfg.ticksPerDay &&
+    (last === undefined || state.tick - last >= v.cooldownDays * cfg.ticksPerDay) &&
+    !ev.pending.some((e) => e.kind === "vent_air")
+  ) {
+    raiseEvent(state, cfg, "vent_air", { o2: o2Text(state, cfg) });
+  }
 }
 
 /** Once a game day: does a belt ship call for help? */
