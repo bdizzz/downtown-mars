@@ -9,7 +9,7 @@ import type { RoomInstance } from "../sim/placement";
 import { roomName } from "../sim/roomName";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
-import { glazedWalls, windowComfort, type Across } from "../sim/windows";
+import { glazedWalls, sunlight, windowComfort, type Across } from "../sim/windows";
 import { dining, hoursText, num, ordinal, resName, signed } from "../ui/format";
 import { reachSteps, reachTints } from "./reachView";
 
@@ -91,7 +91,8 @@ export function windowsRow(s: Snapshot, room: Room): Row | null {
   const home = !!roomDef(room.type).houses;
   if (!walls.length) return home ? { k: "Windows", text: "none yet: add them with Build → Corridors → Windows, on a wall facing the shaft, a corridor or a plaza" } : null;
   const onto = [...new Set(walls.map((w) => ACROSS[w.across]))].join(", ");
-  return { k: "Windows", text: `onto ${onto}${home ? `: ${signed(windowComfort(s.layout, room, config))} comfort` : ""}` };
+  const sun = sunlight(s.layout, room, config) > 0 ? ", and the sun gets in" : "";
+  return { k: "Windows", text: `onto ${onto}${home ? `: ${signed(windowComfort(s.layout, room, config))} comfort` : ""}${sun}` };
 }
 
 /** The neighbours' effects felt in the room. */

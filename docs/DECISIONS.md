@@ -203,6 +203,11 @@ See `PLAN-M16.md`.
 - **Settings live in one table, `data/settings.json`:** five sections (Game, Display, Sound, Controls, Accessibility), and per setting its section, name, one-line hint, control, range or options, and default; `only` keeps a row to the web or Godot. The web (`ui/settingsTable.ts`, `SettingsView.tsx`) and Godot (`SettingsSheet`) both draw from it; a new setting is a row there plus one binding in each face. Plain defaults come from the table; graphics take theirs from the preset.
 - Sections are tabs on wide screens (640 px and up) and stacked on narrower ones. The menu leads with Resume (or Continue), then the rest two by two; exporting and importing are quiet links. The tutorial moved from a menu button to **Settings → Game**, as Godot had it. **Quit to title** joins the menu.
 
+## Decided for sunlight down the shaft (Oct 9, with PR #54)
+
+- **Sun through windows onto the shaft counts for comfort,** not just the look (Bryon): +0.5 for a home on floor 1, less each floor down, none below floor 10 (`windows.sun` in `data/config.json`), on top of the view and outside its cap. It's a steady bonus, not one that swings with the hour: a game day is a month to the player. Dust storms don't take it away yet.
+- **In 3D** the sunbeam stays in Free view with a floor picked, coming in from that floor's ceiling; where it lands is drawn as soft additive pools (gallery tube floors, the bottom of the hole, inside rooms with shaft windows), as bright as the beam is at that depth and following the sun through the day (`render3d/shafts3d.ts`). Godot doesn't have it yet (it skips the web's additive meshes).
+
 ## Still open
 
 Deliberately not decided yet:

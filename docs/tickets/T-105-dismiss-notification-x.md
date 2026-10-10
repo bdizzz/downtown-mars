@@ -1,7 +1,7 @@
 ---
 id: T-105
 title: Dismiss a notification with an × button
-status: open
+status: done
 size: S
 area: ui, godot
 touches: [src/ui/Messages.tsx, src/ui/styles.css, godot/src/Live.cs]
@@ -23,3 +23,5 @@ GUIDE.md: a line where notifications are described, if anywhere.
 
 ## History
 - 2026-10-09 13:03 opened from N-0059
+- 2026-10-09 19:19 building on t-100-housing-unlocks-sooner
+- 2026-10-09 19:28 built

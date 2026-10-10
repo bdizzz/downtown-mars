@@ -462,7 +462,7 @@ Rooms come in several footprints, and housing comes in several quality levels th
 | Standard apartment | Good | Brick and metal |
 | Luxury apartment | High | Metal and electronics, fewer residents per slot |
 
-**As built:** bunk dorms, then studios and apartments (50 colonists), flats and family apartments (200), suites and residences (1,000). Finer tiers house fewer per slot and cheer their neighbours.
+**As built:** bunk dorms, then studios and apartments (50 colonists), flats and family apartments (100), suites and residences (200). Finer tiers house fewer per slot and cheer their neighbours.
 
 ## Air and solid waste
 

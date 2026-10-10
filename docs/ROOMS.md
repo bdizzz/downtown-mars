@@ -61,8 +61,8 @@ Every housing tier comes in four sizes. Bigger buildings fit more residents per 
 | --- | --- | --- | --- | --- | --- | --- |
 | Bunk dorm ★ | 0 | 1 | −1 | — | R 10 | Start |
 | Basic apartment | 0 | 1 | 0 | — | R 8, B 5 | Pop 50 |
-| Standard apartment | 0 | 2 | +1 | Comfort +1 r1 | B 8, M 3 | Pop 200 |
-| Luxury apartment | 1 per 4 slots | 3 | +2 | Comfort +1 r1 | M 5, E 3 | Pop 1,000 |
+| Standard apartment | 0 | 2 | +1 | Comfort +1 r1 | B 8, M 3 | Pop 100 |
+| Luxury apartment | 1 per 4 slots | 3 | +2 | Comfort +1 r1 | M 5, E 3 | Pop 200 |
 
 **Size rules**
 

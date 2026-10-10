@@ -54,6 +54,7 @@ public partial class Choices : Node
         _news.Position = new Vector2(-470, -100);
         _news.Alignment = BoxContainer.AlignmentMode.End;
         _news.AddThemeConstantOverride("separation", 4);
+        _news.MouseFilter = Control.MouseFilterEnum.Ignore;
         hud.AddChild(_news);
 
         _office.Visible = false;
@@ -155,14 +156,18 @@ public partial class Choices : Node
     }
 
     string _newsKey = "";
+    /// <summary>Messages closed with their ×, by key, kept only while they'd still show.</summary>
+    readonly HashSet<string> _dismissed = new();
 
     /// <summary>The snapshot's messages: the latest four from the last game day, fading as they age.</summary>
     public void SetMessages(JsonElement snapshot, int ticksPerDay)
     {
         var tick = snapshot.GetProperty("tick").GetInt32();
         var holeId = snapshot.GetProperty("holeId").GetInt32();
-        var recent = snapshot.GetProperty("messages").EnumerateArray().Where(m => tick - m.GetProperty("tick").GetInt32() < ticksPerDay).TakeLast(4).ToList();
-        var key = string.Join("|", recent.Select(m => $"{m.GetProperty("tick").GetInt32()}:{m.GetProperty("text").GetString()}"));
+        var shown = snapshot.GetProperty("messages").EnumerateArray().Where(m => tick - m.GetProperty("tick").GetInt32() < ticksPerDay).ToList();
+        _dismissed.IntersectWith(shown.Select(MessageKey));
+        var recent = shown.Where(m => !_dismissed.Contains(MessageKey(m))).TakeLast(4).ToList();
+        var key = string.Join("|", recent.Select(MessageKey));
         if (key != _newsKey)
         {
             _newsKey = key;
@@ -182,14 +187,30 @@ public partial class Choices : Node
                 label.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
                 label.AddThemeConstantOverride("shadow_offset_x", 1);
                 label.AddThemeConstantOverride("shadow_offset_y", 1);
-                label.SetMeta("tick", m.GetProperty("tick").GetInt32());
-                _news.AddChild(label);
+                // The message and its ×, which closes it at once; the rest close up.
+                var row = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.End };
+                row.SetMeta("tick", m.GetProperty("tick").GetInt32());
+                row.AddChild(label);
+                var close = new Button { Text = "×", Flat = true, FocusMode = Control.FocusModeEnum.None, TooltipText = "Dismiss", CustomMinimumSize = new Vector2(28, 28) };
+                var mk = MessageKey(m);
+                close.Pressed += () =>
+                {
+                    _dismissed.Add(mk);
+                    _newsKey = "";
+                    _news.RemoveChild(row);
+                    row.QueueFree();
+                };
+                row.AddChild(close);
+                _news.AddChild(row);
             }
         }
         // Fading out over the day, as the web's.
-        foreach (var label in _news.GetChildren().OfType<Label>())
-            label.Modulate = new Color(1, 1, 1, 1 - Mathf.Pow((float)(tick - label.GetMeta("tick").AsInt32()) / ticksPerDay, 3));
+        foreach (var row in _news.GetChildren().OfType<HBoxContainer>())
+            row.Modulate = new Color(1, 1, 1, 1 - Mathf.Pow((float)(tick - row.GetMeta("tick").AsInt32()) / ticksPerDay, 3));
     }
+
+    static string MessageKey(JsonElement m) =>
+        $"{(m.TryGetProperty("holeId", out var h) ? h.GetInt32() : 0)}:{m.GetProperty("tick").GetInt32()}:{m.GetProperty("text").GetString()}";
 
     /// <summary>The bridge's office view.</summary>
     public void SetOffice(JsonElement msg)

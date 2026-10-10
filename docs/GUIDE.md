@@ -51,6 +51,7 @@ Open **Build** (B), pick a room from its category (or press its key: room keys w
 - Rooms start without windows. The corridor tool's **Windows** mode puts them in, a whole wall at a click, on walls facing the shaft, a corridor or a walk-through room. Hover a wall: the room's half of the corridor along it lights up green where windows can go, with the cost and the comfort they'd give.
 - Windows cost glass (2 per 10 m of wall); the landing kit brings 100. Shift-click takes them out.
 - A home looking out over the shaft gets +1.5 comfort (a wall of glass where no tube runs), +1 behind a tube, less onto a plaza or a corridor, and a little more for each other glazed wall.
+- Windows onto the shaft let the sun in too: +0.5 comfort on floor 1, less each floor down, none below floor 10. In 3D, around midday, sunlight falls down the shaft (still visible in Free view with a floor picked), lights the gallery tubes and pools on the floor inside rooms with windows onto the shaft, fainter the deeper they are.
 - Glass comes from a **glassworks** (Industry, from the start: a small 2×1 room, 2 staff, rock and power → 3 glass a month).
 
 ### The shaft dome
@@ -87,8 +88,8 @@ Bunk dorms from the start, then better homes as the hole grows:
 | --- | --- |
 | Start | Bunk dorms |
 | 50 | Studios and apartments |
-| 200 | Flats and family apartments |
-| 1,000 | Suites and residences |
+| 100 | Flats and family apartments |
+| 200 | Suites and residences |
 
 Each tier houses fewer people per slot and costs more, but its residents are more comfortable, and the finer tiers cheer their neighbours too.
 
@@ -163,6 +164,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
   - **A belt ship in distress** calls now and then from month 20: bring her down on your pad (her crew join you, with salvage), send supplies up (the belt sends thanks later), or ignore her.
   - **Milestones** (the first birth; 50, 100 and 200 people; floors 5, 10 and 20; the dome) can be celebrated. A festival costs a feast and a slow month of work, lifts everyone for two months, and strings lights along the galleries with lanterns rising up the shaft; or just raise a toast.
   - Gains need storage space, like Earth's drops.
+- **News:** the latest few messages stack up in a corner of the view and fade over a month. Click a message's × to close it straight away.
 
 ## More holes
 

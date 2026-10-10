@@ -132,11 +132,22 @@ function behindTube(layout: Layout, e: Edge): boolean {
 }
 
 /**
+ * How much sun a room's windows let in, 0 to 1: full through windows onto the
+ * shaft on floor 1, less each floor down (the sunbeam fades as it falls), none
+ * past `sun.floors`. A gallery tube's glass lets it through.
+ */
+export function sunlight(layout: Layout, room: RoomInstance, cfg: SimConfig = config): number {
+  const floors = glazedWalls(layout, room).filter((g) => g.across === "shaft").map((g) => g.edge.floor);
+  if (!floors.length) return 0;
+  return Math.max(0, 1 - (Math.min(...floors) - 1) / cfg.windows.sun.floors);
+}
+
+/**
  * The comfort a home's windows give it: the view through its best wall (each
  * wall's view averaged along its length: a shaft face with a tube along part
  * of it sees partly through the tube), plus `extraWall` for each other wall
- * it has windows in, up to `cap`; and under the dome, the atrium too for a
- * room looking out on the shaft.
+ * it has windows in, up to `cap`; the sun through windows onto the shaft; and
+ * under the dome, the atrium too for a room looking out on the shaft.
  */
 export function windowComfort(layout: Layout, room: RoomInstance, cfg: SimConfig = config): number {
   const w = cfg.windows;
@@ -154,7 +165,7 @@ export function windowComfort(layout: Layout, room: RoomInstance, cfg: SimConfig
   }
   const best = Math.max(...walls.map((x) => x.sum / x.len));
   const atrium = layout.domed && glazed.some((x) => x.across === "shaft") ? cfg.dome.atriumComfort : 0;
-  return Math.min(w.cap, best + w.extraWall * (walls.length - 1)) + atrium;
+  return Math.min(w.cap, best + w.extraWall * (walls.length - 1)) + w.sun.comfort * sunlight(layout, room, cfg) + atrium;
 }
 
 /** Put windows in (or take them out of) borders of a room: the borders' ids, kept on the room. */

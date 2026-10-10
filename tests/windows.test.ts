@@ -6,7 +6,7 @@ import { ensureFloors, type Location } from "../src/sim/placement";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { createWorld } from "../src/sim/world";
-import { glazedWalls, roomForWindows, roomSide, shaftBorders, wallOf, windowComfort, windowCost } from "../src/sim/windows";
+import { glazedWalls, roomForWindows, roomSide, shaftBorders, sunlight, wallOf, windowComfort, windowCost } from "../src/sim/windows";
 import { corridorStripGeometry, openingsOf } from "../src/render3d/rooms3d";
 import { frameOf } from "../src/view/furnish";
 import { corridorCommand, edgeHoverFor } from "../src/view/interaction";
@@ -54,8 +54,8 @@ describe("windows", () => {
     expect(glaze(s, dorm, tube).ok).toBe(true);
     expect(s.resources.glass).toBeCloseTo(glass - windowCost(s.layout, wall).glass!);
     expect(roomOf(s, dorm).windows).toHaveLength(2);
-    // Behind floor 1's tubes: the view through them. The 3D view cuts the glass.
-    expect(windowComfort(s.layout, roomOf(s, dorm))).toBeCloseTo(config.windows.view.tube);
+    // Behind floor 1's tubes: the view through them, and the sun. The 3D view cuts the glass.
+    expect(windowComfort(s.layout, roomOf(s, dorm))).toBeCloseTo(config.windows.view.tube + config.windows.sun.comfort);
     expect(openingsOf(s.layout, roomOf(s, dorm))!.windows.size).toBe(2);
     // A wall that's glazed already: nothing to do. Taking them out is free.
     expect(glaze(s, dorm, tube).ok).toBe(false);
@@ -63,6 +63,28 @@ describe("windows", () => {
     expect(glaze(s, dorm, tube, false).ok).toBe(true);
     expect(roomOf(s, dorm).windows).toBeUndefined();
     expect(s.resources.glass).toBe(after);
+  });
+
+  it("onto the shaft, let the sun in: less each floor down, none onto a corridor", () => {
+    const s = site();
+    s.layout.hole.floors = 12;
+    ensureFloors(s.layout);
+    const { floors } = config.windows.sun;
+    const at = (floor: number) => {
+      const dorm = build(s, "bunk_dorm", ring(floor, 1, 4, 2));
+      expect(glaze(s, dorm, galleryEdges(s.layout.hole, floor)[4]!.id).ok).toBe(true);
+      return sunlight(s.layout, roomOf(s, dorm));
+    };
+    expect(at(1)).toBeCloseTo(1);
+    expect(at(6)).toBeCloseTo(1 - 5 / floors);
+    expect(at(floors + 1)).toBe(0);
+    expect(at(floors + 2)).toBe(0);
+    // A lab looking onto a corridor: a view, no sun.
+    const lab = build(s, "bunk_dorm", ring(1, 2, 8, 2));
+    const corridor = radialEdge(s.layout.hole, 1, 2, 8);
+    s.layout.corridors[corridor.id] = "rock";
+    expect(glaze(s, lab, corridor.id).ok).toBe(true);
+    expect(sunlight(s.layout, roomOf(s, lab))).toBe(0);
   });
 
   it("need glass: none in stock, none put in", () => {
@@ -118,7 +140,7 @@ describe("windows", () => {
     const info = edgeHoverFor(s.layout, s.resources, tool, pick, tube, false);
     expect(info.edge!.refusal).toBeNull();
     expect(info.edge!.windows!.edges.sort()).toEqual(shaftBorders(s.layout, roomOf(s, dorm)).sort());
-    expect(info.edge!.windows!.comfort).toBeCloseTo(config.windows.view.tube);
+    expect(info.edge!.windows!.comfort).toBeCloseTo(config.windows.view.tube + config.windows.sun.comfort);
     const cmd = corridorCommand(tool, info.edge)!;
     expect(cmd).toMatchObject({ type: "setWindows", roomId: dorm, on: true });
     expect(applyCommand(s, cmd).ok).toBe(true);

@@ -2278,8 +2278,9 @@ const TUBE = { header: 0x6b4a3a, height: 3.3, ribEveryM: 2.4, ribM: 0.12, slab: 
  * Gallery tubes: on each floor, a glass-walled walkway on the ledge inside the
  * shaft wall wherever one's built: a floor slab, a curved glass wall and roof
  * (no roof with a floor picked: nothing has a ceiling then), ribs holding the
- * glass, a railing, and lamps along the roof. Where there's no tube, a nearly
- * invisible ledge, so the corridor tool can point at the shaft wall there.
+ * glass, a railing, and lamps along the roof. Where there's no tube, an
+ * invisible ledge, so the corridor tool can point at the shaft wall there:
+ * not drawn (it showed as a ghost ledge on bare floors, T-103), but still picked.
  */
 function galleryTubes(layout: Layout, digFloor: number | null, topFloor: number | null): THREE.Object3D[] {
   const hole = layout.hole;
@@ -2357,7 +2358,7 @@ function galleryTubes(layout: Layout, digFloor: number | null, topFloor: number 
   add(slab, "tube:slab", () => new THREE.MeshStandardMaterial({ color: TUBE.slab, roughness: 0.8, side: THREE.DoubleSide }), { pickable: true, hall: true });
   add(unlinked, "tube:unlinked", () => new THREE.MeshStandardMaterial({ color: UNLINKED, roughness: 0.8, side: THREE.DoubleSide }), { pickable: true, hall: true });
   add(ghostSlab, "tube:building", () => new THREE.MeshStandardMaterial({ color: TUBE.slab, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }), { pickable: true, hall: true });
-  add(empty, "tube:none", () => new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.03, depthWrite: false, side: THREE.DoubleSide }), { pickable: true, hall: true });
+  add(empty, "tube:none", () => new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }), { pickable: true, hall: true });
   add(glass, "tube:glass", () => withFresnel(new THREE.MeshStandardMaterial({ color: TUBE.glass, roughness: 0.05, metalness: 0.2, transparent: true, opacity: TUBE.glassOpacity, depthWrite: false, side: THREE.DoubleSide })));
   add(ribs, "tube:rib", () => new THREE.MeshStandardMaterial({ color: TUBE.rib, roughness: 0.4, metalness: 0.6, side: THREE.DoubleSide }));
   add(header, "tube:header", () => withRock(new THREE.MeshStandardMaterial({ color: TUBE.header, roughness: 0.95, side: THREE.DoubleSide })));
