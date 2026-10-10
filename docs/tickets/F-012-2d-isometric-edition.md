@@ -1,8 +1,9 @@
 ---
 id: F-012
 title: "A 2D isometric sprite edition, in the style of Into the Breach"
-status: draft
+status: agreed
 plan:
+branch: feature/f-012-2d-isometric-edition
 notes: [N-0064]
 created: 2026-10-10 00:18
 ---
@@ -18,10 +19,10 @@ A bigger, long-term idea: a version of the game in 2D sprites rather than 3D. Th
 - Timing: the edition itself waits until the current game reaches some milestone, but **exploring the art style can start in parallel** now.
 
 ## Breakdown
-Proposed; too early to cut tasks. Likely first steps:
-- Strategy and art direction (can start now, in this repo): how the edition differs, what it keeps, and the look: mood boards and a few test sprites for rooms, furniture and people, Into the Breach-like.
-- Layout tests in Pixi: the borehole round and square in fixed iso, compared side by side.
-- A vertical slice in Pixi: one floor, a few rooms and people, in sprites, driven by the forked sim.
+Agreed; each line names its ticket. The work before the fork happens on F-012's branch; the vertical slice happens in the fork when Bryon starts it.
+- Strategy and art direction (can start now, in this repo): how the edition differs, what it keeps, and the look: mood boards and a few test sprites for rooms, furniture and people, Into the Breach-like. → T-126, T-127
+- Layout tests in Pixi: the borehole round and square in fixed iso, compared side by side. → T-128
+- A vertical slice in Pixi: one floor, a few rooms and people, in sprites, driven by the forked sim. → T-129
 - Then a plan of its own.
 
 ## Open questions
@@ -39,3 +40,5 @@ Proposed; too early to cut tasks. Likely first steps:
 - 2026-10-10 00:35 questions answered
 - 2026-10-10 questions answered: strategy and art direction now, fork when Bryon says
 - 2026-10-10 00:38 questions answered
+- 2026-10-10 00:47 agreed
+- 2026-10-10 00:47 built on feature/f-012-2d-isometric-edition
