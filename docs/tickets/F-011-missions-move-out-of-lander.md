@@ -15,28 +15,34 @@ Holes after the first start with a **base camp** instead of a landing pod, since
 
 ## Design
 - Today the lander is the `landing_pod` surface room (`data/rooms.json`: houses 20, 2 surface slots, no cost) placed by `landingKit` in `data/config.json` along with the pad, a solar array, the entrance and a battery bank. It also counts for some services (`data/condition.json` lists it with galleys and clinics). What else it provides needs checking in `src/sim/` (meals, storage).
-- Checklist items, one per thing the pod provides: housing (its 20 beds), meals, storage, perhaps air/water or medical. Each ticks when the hole underground covers it without the pod.
-- Deadline: N months after the mission starts. Past it, anyone living in or regularly visiting the surface takes a health penalty (radiation), growing over time; ticking everything and deconstructing ends it.
+- Checklist: **everything the pod currently provides** (find the full list in the sim). An item ticks only when the hole has enough spare capacity elsewhere that losing the pod leaves it no worse off.
+- Start: after the tutorial or after a set number of months, **whichever comes first**. Deadline: N months later; the start and deadline months scale with difficulty (F-014).
+- Past the deadline, **everyone** takes a small health penalty (radiation): in the story all colonists still go back and forth to the pod for things through the month. Ticking everything and deconstructing ends it.
+- The mission is **required**. Some unlocks move from population thresholds to mission rewards: e.g. apartments/homes come from deconstructing the pod rather than at 100 people, with the story "we're really home now, there's no going back." (That would revisit T-100's thresholds for those rooms.)
 - Deconstruct: a choice (like an event card) that removes the pod and pays out resources, all numbers in data.
-- Missions as a system: a small catalogue in `data/missions.json` (trigger, checklist, deadline, reward, story text), tracked in the sim, shown in a missions panel. Close kin to F-005's milestones (`src/sim/events.ts` and the milestone tracking in T-055); they could share tracking code.
-- Base camp: a different landing kit for second and later holes (the network founding code in the sim, M4), with a camp room in place of the pod and resources brought by rover.
+- Missions as a system: a small catalogue in `data/missions.json` (trigger, checklist, deadline, reward including unlocks, story text), tracked in the sim. **Missions and milestones share** one panel and tracking (F-005, T-055), so this feature builds on F-005's catalogue and panel rather than a separate one.
+- Base camp: second and later holes start with a base camp instead of a pod (the network founding code in the sim, M4), plus resources brought by rover. It works **just like a landing pod**, including its own move-out mission and deconstruction.
 
 ## Breakdown
 Proposed; becomes tickets once this feature is agreed.
 - The missions system in the sim: catalogue in data, start triggers, checklist tracking, deadline, reward; saved.
 - The move-out mission: the pod's checklist, the radiation deadline and health penalty, and deconstructing the pod for resources.
-- The missions panel on the web (checklist, time left, the deconstruct choice), and a notice when a mission starts or ends.
-- Base camp: a second landing kit for new holes, a camp room, and the rover's resources.
+- Missions in the shared milestones/missions panel on the web (checklist, time left, the deconstruct choice), and a notice when a mission starts or ends.
+- Rewards that unlock rooms: move the chosen housing unlocks from population to the move-out mission.
+- Base camp: a second landing kit for new holes, a camp room that behaves like the pod (same mission), and the rover's resources.
 - Missions in Godot (via the bridge).
 - Ideas for later missions (a doc pass to collect them).
 
 ## Open questions
-- [ ] How many months for the move-out deadline, and when does the clock start: right after the tutorial, after a set number of months, or whichever comes first?
-- [ ] What exactly does the pod provide that goes on the checklist? Housing and meals for sure; storage, medical, air or water too?
-- [ ] After the deadline, who takes the health hit: people still living in the pod, anyone working at surface rooms, or everyone in the hole a little?
-- [ ] Is the move-out mission required, or can a player ignore it and live with the penalty?
-- [ ] Should the base camp provide anything the pod does (some housing for the rover crew), and get its own smaller checklist?
-- [ ] How does this fit with F-007's guided tutorial and F-005's milestones: one shared "goals" panel, or separate panels?
+- [ ] How many months for the start and the deadline on normal? (Start: whichever comes first of the tutorial ending or N months; both scale with difficulty.)
+- [x] What goes on the checklist? Everything the pod provides; spare capacity so removing it leaves the hole no worse off.
+- [x] Who takes the health hit? Everyone a little.
+- [x] Required? Yes; some rooms (homes) unlock from it instead of population.
+- [ ] Which rooms move from population unlocks to the move-out reward? Standard homes (now 100 people, T-100)? Luxury too?
+- [x] Base camp? Functionally just like a landing pod, including the deconstruct mission.
+- [x] Missions and milestones: shared panel and tracking.
 
 ## History
 - 2026-10-10 00:18 opened from N-0061
+- 2026-10-10 questions answered (start, checklist, penalty, required, base camp, shared with milestones)
+- 2026-10-10 00:27 questions answered
