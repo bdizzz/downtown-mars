@@ -402,3 +402,11 @@ we should consider the size of the lift to create holes of different diameters. 
 ## N-0066 · 2026-10-10 00:15
 we should introduce a difficulty picker when creating a new game. players new to the game or the genre can pick easy difficulty, and experienced players can go for a challenge in hard difficulty. the current difficuly would be considered "normal".
 → F-014
+
+## N-0067 · 2026-10-10 01:30
+i like the scroll action moving up and down a hole in cutaway view, but we should also figure out a way to zoom in and out in that view
+→ T-130
+
+## N-0068 · 2026-10-10 01:37
+we should make sure we've implemented all the rooms we talked about
+→ F-015
