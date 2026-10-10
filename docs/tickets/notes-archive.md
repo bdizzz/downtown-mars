@@ -374,3 +374,31 @@ on mobile, we should hide many of the elements that show at the top of the scree
 
 and then everything else like the specific warnings and all the resource counts are collapsed
 → T-106
+
+## N-0061 · 2026-10-09 19:43
+part of the early game should be framed around moving out of the landing pod so it is not needed for any housing, storage, meals, etc etc. the narrative here is that the colonists are experiencing unwanted low-level radiation while above the surface, so to keep people healthy they need to completely move all habitation underground in a certain number of months. after that point, people's health starts to deteriorate from going back up to the surface so often. 
+
+we should have a checklist of things that the lander provides (like housing and a place to eat), and as you build sufficient capacity within the hole, things are subsequently checked off the list. once everything is checked on that list, you get the option to "deconstruct the landing pod for resources" which gives a nice boost of things like metal, glass, electronics, machinery, etc. this can be framed as a "mission" that happens after the tutorial is complete (or a certain number of months have passed) and we can ideate on other missions that could occur throughout the rest of the game. 
+
+other holes after the first one should start with a "base camp" instead of a landing pod, since colonists are arriving via rovers from earlier holes with resources in tow.
+→ F-011
+
+## N-0062 · 2026-10-09 19:45
+when in build mode, we should show slightly shaded areas on the surface where surface buildings can be built. when hovering over one with a surface room (like the solar panels) selected, these shaded areas become more opaque (like the current presentation on hover). Also, we should add a 2nd and 3rd "ring" of above-ground building spots. let's not worry about opening up surface rings 4-6 yet.
+→ T-107, T-108
+
+## N-0063 · 2026-10-09 19:47
+when in cutaway view, the "front face" of rock seems to be missing. this is what obscures everything that isn't rooms and excavated space in the hole.
+→ T-109
+
+## N-0064 · 2026-10-09 20:00
+this is a bigger, long term idea: a version of the game that is 2d sprites, rather than rendered in 3d. the view would be stuck in isometric, and the graphical aesthetic would be similar to "into the breach". we wouldn't need to do all the complicated 3d stuff in this version and could instead invest more energy in detailed 2d graphics of things like furniture, rooms, and people. this might be a separate game that shares some resources and logic with the current web/godot versions, depending on how deep the changes are. i don't expect that this is a view that you can toggle in and out of from the existing game, and you probably can't even port a save back and forth. all the concepts and mechanics in this game would be the same as the current game, just a completely different presentation and we'll probably need to make some amount of gameplay changes to accommodate that
+→ F-012
+
+## N-0065 · 2026-10-10 00:13
+we should consider the size of the lift to create holes of different diameters. i would like for the current hole diameter to be the smallest, and we should figure out M, L, and XL diameters.
+→ F-013
+
+## N-0066 · 2026-10-10 00:15
+we should introduce a difficulty picker when creating a new game. players new to the game or the genre can pick easy difficulty, and experienced players can go for a challenge in hard difficulty. the current difficuly would be considered "normal".
+→ F-014
