@@ -1,7 +1,7 @@
 ---
 id: F-014
 title: "Difficulty levels: easy, normal and hard, picked for a new game"
-status: draft
+status: agreed
 plan:
 notes: [N-0066]
 created: 2026-10-10 00:18
@@ -34,3 +34,4 @@ Proposed; becomes tickets once this feature is agreed.
 - 2026-10-10 00:18 opened from N-0066
 - 2026-10-10 questions answered: all knobs, start only, easy turns on the tutorial
 - 2026-10-10 00:35 questions answered
+- 2026-10-10 00:40 agreed

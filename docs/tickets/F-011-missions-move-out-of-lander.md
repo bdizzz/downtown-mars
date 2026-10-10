@@ -1,7 +1,7 @@
 ---
 id: F-011
 title: "Missions, starting with moving out of the landing pod; later holes start from a base camp"
-status: draft
+status: agreed
 plan:
 notes: [N-0061]
 created: 2026-10-10 00:18
@@ -52,3 +52,4 @@ Proposed; becomes tickets once this feature is agreed.
 - 2026-10-10 00:38 questions answered
 - 2026-10-10 questions answered: timing as proposed; cargo and recycling join standard homes as the reward
 - 2026-10-10 00:39 questions answered
+- 2026-10-10 00:40 agreed
