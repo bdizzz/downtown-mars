@@ -59,8 +59,8 @@ import { clear as walkClear, stairLift, stairsHere, step as walkStep } from "../
 const C = {
   rock: 0x6a3a28,
   rockDark: 0x3e2218,
-  // The cutaway's face through the rings: the hole's rock, a touch lighter, as it only gets the fill light.
-  rockCut: 0x8a5038,
+  // The cutaway's cut face, land and rings alike: between the two above, as it only gets the fill light.
+  rockCut: 0x643929,
   ground: 0x7a3b22,
   stranded: 0xe0503a,
   digFront: 0xe07a3f,
@@ -224,8 +224,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     for (const a of [slab + 4, slab + 8]) idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3);
     sectionGeo.setIndex(idx);
   }
-  // The cutaway's face is dark; Free view's cut through the land is the shaft wall's lighter rock.
-  const sectionMat = withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.DoubleSide }));
+  // The cutaway's cut face, through the land and the rings alike, is one piece of freshly cut rock;
+  // Free view's cut through the land is the shaft wall's rock.
+  const sectionMat = withCutRock(new THREE.MeshStandardMaterial({ color: C.rockCut, roughness: 0.95, side: THREE.DoubleSide }));
   const sliceMat = withSlice(withRock(new THREE.MeshStandardMaterial({ color: C.rock, roughness: 1, side: THREE.DoubleSide })), slice, "face");
   const section = new THREE.Mesh(sectionGeo, sectionMat);
   section.frustumCulled = false;
@@ -233,10 +234,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(section);
   // Cutaway: the cut face across the hole's own section, below the crust: rock wherever the cut runs
   // through rock, open where rooms, corridors and dug-out space are (and the shaft). Rebuilt when the
-  // cut turns or the layout changes. It's the hole's own rock, as Free view shows it underground (the
-  // rooms' rock faces, strata and all), not the darker face of the land round it.
+  // cut turns or the layout changes. The same rock as the land's face round it, strata and all.
   const capGeo = new THREE.BufferGeometry();
-  const cap = new THREE.Mesh(capGeo, withCutRock(new THREE.MeshStandardMaterial({ color: C.rockCut, roughness: 0.95, side: THREE.DoubleSide })));
+  const cap = new THREE.Mesh(capGeo, sectionMat);
   cap.frustumCulled = false;
   cap.visible = false;
   scene.add(cap);
