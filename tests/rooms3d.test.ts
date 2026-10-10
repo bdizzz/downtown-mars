@@ -4,7 +4,7 @@ import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
 import * as THREE from "three";
-import { loweredAt, openingsOf, outlineGeometry, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
+import { loweredAt, openingsOf, outlineGeometry, rockAlong, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
 import { floorSpan, ringRadii, slotAngles } from "../src/render3d/cylinder";
 import { corridorJoints, corridors } from "../src/sim/corridors";
 import { DOOR, doorways } from "../src/view/doors";
@@ -660,5 +660,23 @@ describe("stair wells", () => {
         expect(covers).toBe(false);
       }
     }
+  });
+});
+
+describe("the cutaway's cut through the rock (T-109)", () => {
+  it("is solid wherever the cut runs through rock, open across rooms and the corridors carved beside them", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    placeRoom(l, "clinic", ring(1, 1, 0));
+    const n1 = l.hole.ringSlots[0]!;
+    const angle = (slotAngles(0, n1)[0] + slotAngles(0, n1)[1]) / 2;
+    const spans = (floor: number) => rockAlong(l, angle).filter((s) => s.floor === floor);
+    // Floor 1: the clinic in ring 1 is open, rings 2 and 3 are rock.
+    expect(spans(1).map((s) => [s.r0, s.r1])).toEqual([ringRadii(l.hole, 2), ringRadii(l.hole, 3)]);
+    // Deeper floors, and the floor being dug under them, are rock all the way across the rings.
+    for (let floor = 2; floor <= l.hole.floors + 1; floor++) expect(spans(floor)).toHaveLength(3);
+    // A corridor round the clinic's back carves half its width out of the ring-2 rock behind it.
+    const back = cellEdges(l.hole, { floor: 1, ring: 1, slot: 0 }).find((e) => e.kind === "arc" && e.circle === 1)!;
+    l.corridors[back.id] = "rock";
+    expect(spans(1)[0]!.r0).toBeCloseTo(ringRadii(l.hole, 2)[0] + corridors.widthM / 2);
   });
 });

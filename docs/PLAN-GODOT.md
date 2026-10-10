@@ -83,6 +83,7 @@ Still to do, roughly in order of value:
 - **The status line**: the web's bottom line saying what's under the pointer and what placing there would do (`ui/StatusBar.tsx`); Godot shows only key hints there.
 - **Tutorial hints** come from `data/tutorial.json` and name the web's buttons ("View, at the bottom right"); they need wording for both.
 - **Colour-blind colours** reach the plan's overlay and legend but not the build halo (`src/bridge/build.ts` `halo` uses `HEAT.normal`).
+- **The cutaway's cut through the rings** (T-109): the web caps the cut face across solid rock, open only where rooms, corridors and dug-out space are (`rockAlong` in `render3d/rooms3d.ts`, the `cap` mesh in `stage3d.ts`); Godot's `Cutaway.cs` still shows the hollow rock between the shaft and the backdrop. It needs the rock spans from the bridge for the cut's heading.
 - **Sound**: none yet in Godot (the web has synthesized sound in `src/audio/`).
 - Smaller: the trouble ⚠ badges are small; the interface-size setting hasn't been checked on screen; no first-person screenshot in the README yet (the shaft view is hazy).
 

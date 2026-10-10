@@ -25,7 +25,7 @@ import { CRUST, FLOOR_H, floorAtY, floorSpan, openShaftRadius, shaftCollarRadius
 import { isoFitDistance } from "./isoReach";
 import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
-import { buildLayout, corridorStripGeometry, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
+import { buildLayout, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, makeDome, makeLander, placeLander } from "./scenery3d";
 import { makeDrillRig, type DrillRig } from "./drillRig";
 import { Festival } from "./festival3d";
@@ -229,6 +229,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   section.frustumCulled = false;
   section.visible = false;
   scene.add(section);
+  // Cutaway: the cut face across the hole's own section, below the crust: rock wherever the cut runs
+  // through rock, open where rooms, corridors and dug-out space are (and the shaft). Rebuilt when the
+  // cut turns or the layout changes.
+  const capGeo = new THREE.BufferGeometry();
+  const cap = new THREE.Mesh(capGeo, sectionMat);
+  cap.frustumCulled = false;
+  cap.visible = false;
+  scene.add(cap);
+  let capKey = "";
   // Below ground (a floor picked, or walking): a wall of rock just past the unlocked rings, from the
   // floor in view up to the surface, so the view stops at rock instead of running off into the distance.
   // Only its inside is drawn, so a camera outside it (zoomed out) sees straight through it.
@@ -327,6 +336,37 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
     sectionGeo.attributes.position!.needsUpdate = true;
     sectionGeo.computeVertexNormals();
+    updateCap(out, back, inner, deep);
+  }
+
+  /** The cutaway's cut face through the rings (see `cap`), each side of the shaft, on the same plane as the section. */
+  function updateCap(out: THREE.Vector3, back: number, inner: number, deep: number): void {
+    cap.visible = section.visible && view.mode === "cutaway";
+    if (!cap.visible || !hole || !layout) return;
+    const key = `${layout.version}:${hole.floors}:${hole.unlockedRings}:${cam.theta.toFixed(4)}`;
+    if (key === capKey) return;
+    capKey = key;
+    const tx = -out.z;
+    const tz = out.x;
+    const pos: number[] = [];
+    const quad = (u0: number, u1: number, y0: number, y1: number) => {
+      const p = (u: number, y: number) => [u * tx + out.x * back, y, u * tz + out.z * back];
+      pos.push(...p(u0, y1), ...p(u1, y1), ...p(u1, y0), ...p(u0, y1), ...p(u1, y0), ...p(u0, y0));
+    };
+    const rings = hole.shaftRadiusM + hole.unlockedRings * RING_D;
+    const digBottom = floorSpan(hole.floors + 1)[0];
+    for (const sign of [-1, 1]) {
+      for (const s of rockAlong(layout, Math.atan2(sign * tz, sign * tx))) {
+        const [y0, y1] = floorSpan(s.floor);
+        quad(sign * s.r0, sign * s.r1, y0, y1);
+      }
+      // Past the unlocked rings, out to where the section starts.
+      quad(sign * rings, sign * inner, deep, -CRUST);
+    }
+    // Under the floor being dug, across the shaft too, down to the section's slab.
+    quad(-rings, rings, deep, digBottom);
+    capGeo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    capGeo.computeVertexNormals();
   }
   // Hover, ghost, halo and selection: rebuilt whenever what they show changes.
   let overlay = new THREE.Group();
@@ -1951,6 +1991,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         layoutGroup = buildLayout(snapshot.layout, snapshot.drill.floor, { rock: C.rock, stranded: C.stranded }, cut(), view.roomColors, (r) => grime.get(r.id) ?? 0, (r) => refits.has(r.id));
         stats.buildMs = performance.now() - t0;
         scene.add(layoutGroup);
+        // The cutaway's cut face follows what's dug.
+        updateSection();
         furnitureGroups = [];
         layoutGroup.traverse((o) => {
           if (o.userData.outerCap) (o as THREE.Mesh).material = outerCapMaterial((o as THREE.Mesh).material as THREE.MeshStandardMaterial);

@@ -1183,6 +1183,38 @@ function rockFaces(layout: Layout, topFloor: number | null): number[] {
 }
 
 /**
+ * Where the cutaway's cut, a half-line from the axis at `angle` (radians), runs through solid rock:
+ * for each floor down to the one being dug, the radial spans [r0, r1] of rock along it, as
+ * `rockFaces` sees it (dug-out cells, rooms and the corridors carved into the rock are open). Only
+ * the unlocked rings; past them, and below, the stage's own cut face takes over.
+ */
+export function rockAlong(layout: Layout, angle: number): { floor: number; r0: number; r1: number }[] {
+  const hole = layout.hole;
+  const joints = new Set(corridorJoints(layout).keys());
+  const a = ((angle % TAU) + TAU) % TAU;
+  const out: { floor: number; r0: number; r1: number }[] = [];
+  for (let floor = 1; floor <= hole.floors + 1; floor++) {
+    for (let ring = 1; ring <= hole.unlockedRings; ring++) {
+      const n = hole.ringSlots[ring - 1]!;
+      const slot = Math.min(Math.floor((a / TAU) * n), n - 1);
+      const c = { floor, ring, slot };
+      if (floor <= hole.floors && (layout.grid[floor - 1]?.[ring - 1]?.[slot] || isOpen(layout, c))) continue;
+      const cut = carveCell(layout, c, new Set([`${floor}:${ring}:${slot}`]), ring, ring, 0, true, false, joints);
+      const p = cut.pieces.find((q, i) => a >= (i === 0 ? -Infinity : q.b0) && a < (i === cut.pieces.length - 1 ? Infinity : q.b1));
+      if (!p) continue;
+      // A corridor along a side carves the rock back half a corridor from it: square to the border, so
+      // along the cut the rock starts only where it's that far from the border.
+      const [s0, s1] = slotAngles(slot, n);
+      let r0 = p.rr0;
+      if (cut.hallLeft) r0 = Math.max(r0, HALL / Math.max(1e-6, Math.sin(a - s0)));
+      if (cut.hallRight) r0 = Math.max(r0, HALL / Math.max(1e-6, Math.sin(s1 - a)));
+      if (r0 < p.rr1) out.push({ floor, r0, r1: p.rr1 });
+    }
+  }
+  return out;
+}
+
+/**
  * A built room's furniture, fitted from its template (src/view/furnish.ts)
  * and merged into a few meshes. Cached like its shape: the room's shape key
  * already changes with everything the fit depends on (its cells, and the
