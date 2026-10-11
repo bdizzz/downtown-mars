@@ -25,3 +25,4 @@ Make the cut a wedge with a width from 60° to 180°, centred on the camera's fa
 ## History
 - 2026-10-11 15:52 opened from N-0077
 - 2026-10-11 16:08 questions answered
+- 2026-10-11 18:41 building on t-143-cutaway-slice-angle
