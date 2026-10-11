@@ -6,14 +6,14 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
-import { HorizontalTiltShiftShader } from "three/examples/jsm/shaders/HorizontalTiltShiftShader.js";
-import { VerticalTiltShiftShader } from "three/examples/jsm/shaders/VerticalTiltShiftShader.js";
 import { hasPostEffects, type Graphics } from "../view/graphics";
+import { TiltShiftPass } from "./tiltShift";
+import { LABEL_LAYER, labelDepth } from "./labelLayer";
 
 // The 3D view's look: what's drawn after the scene, scaled by the graphics
 // settings. The scene renders once (antialiased, with its depth kept), then:
 // ambient occlusion from that depth, a warm haze by distance and depth, glow
-// around bright things, a tilt-shift blur in Free view, tone mapping, and a final
+// around bright things, a tilt-shift depth of field in Free view (tiltShift.ts), tone mapping, and a final
 // warm grade with a vignette. It reads the scene's own depth rather than
 // re-rendering it, so walls lowered by "walls down" cast no shade. With every
 // effect off, the scene renders straight to the screen, as before.
@@ -38,8 +38,6 @@ const LOOK = {
   /** A dust storm: haze turns dusty and thick, and reaches far things from anywhere. */
   storm: { color: 0x8a5838, density: 0.05, clear: 4, max: 0.88 },
   mood: { night: [0.72, 0.8, 1.02] as const, lamp: [1.07, 0.93, 0.78] as const, from: 2, deep: 22 },
-  /** Tilt-shift: blur at full (as a share of the screen), and where the sharp band sits (0 bottom, 1 top). */
-  tiltShift: { blur: 2.4, focus: 0.5 },
   /** The lamp-lit cave reflected by shiny floors, metal and glass. */
   environment: 0.55,
 };
@@ -66,7 +64,10 @@ class ScenePass extends Pass {
   render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget): void {
     renderer.setRenderTarget(this.target);
     renderer.clear();
+    // Everything but the labels: they come after the blur (LabelPass).
+    this.camera.layers.disable(LABEL_LAYER);
     renderer.render(this.scene, this.camera);
+    this.camera.layers.enable(LABEL_LAYER);
     const m = this.copy.material as THREE.ShaderMaterial;
     m.uniforms.tDiffuse!.value = this.target.texture;
     renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
@@ -78,6 +79,42 @@ class ScenePass extends Pass {
     this.target.dispose();
     this.copy.material.dispose();
     this.copy.dispose();
+  }
+}
+
+/**
+ * The room labels, drawn over the picture after the tilt-shift blur so they stay
+ * sharp, hidden where the scene's depth says something stands in front of them.
+ */
+class LabelPass extends Pass {
+  constructor(
+    private scene: THREE.Scene,
+    private camera: THREE.Camera,
+    private depth: THREE.Texture,
+  ) {
+    super();
+    this.needsSwap = false;
+  }
+
+  render(renderer: THREE.WebGLRenderer, _writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget): void {
+    const { scene, camera } = this;
+    const background = scene.background;
+    const autoClear = renderer.autoClear;
+    const mask = camera.layers.mask;
+    scene.background = null;
+    renderer.autoClear = false;
+    camera.layers.set(LABEL_LAYER);
+    labelDepth.tSceneDepth.value = this.depth;
+    labelDepth.sceneDepthOn.value = 1;
+    labelDepth.sceneSize.value.set(readBuffer.width, readBuffer.height);
+    renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
+    // The buffer's own depth holds only the full-screen passes'; the scene's depth texture decides instead.
+    renderer.clearDepth();
+    renderer.render(scene, camera);
+    labelDepth.sceneDepthOn.value = 0;
+    camera.layers.mask = mask;
+    renderer.autoClear = autoClear;
+    scene.background = background;
   }
 }
 
@@ -189,7 +226,7 @@ export interface LookLike {
   setGraphics(g: Graphics): void;
   setStorm(level: number): void;
   setDaylight(light: number): void;
-  setView(focusY: number, inside: boolean, iso: boolean): void;
+  setView(focusY: number, inside: boolean, iso: { distance: number; radius: number } | null): void;
   resize(): void;
   render(): void;
   dispose(): void;
@@ -252,8 +289,7 @@ export class Look implements LookLike {
   private ao: SceneAOPass;
   private haze: ShaderPass;
   private bloom: UnrealBloomPass;
-  private tiltH: ShaderPass;
-  private tiltV: ShaderPass;
+  private tilt: TiltShiftPass;
   private grade: ShaderPass;
   private envTexture: THREE.Texture | null = null;
 
@@ -270,12 +306,9 @@ export class Look implements LookLike {
     this.haze = new ShaderPass(HazeShader);
     this.haze.uniforms.tDepth!.value = this.scenePass.target.depthTexture;
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), LOOK.bloom.strength, LOOK.bloom.radius, LOOK.bloom.threshold);
-    this.tiltH = new ShaderPass(HorizontalTiltShiftShader);
-    this.tiltV = new ShaderPass(VerticalTiltShiftShader);
-    this.tiltH.uniforms.r!.value = LOOK.tiltShift.focus;
-    this.tiltV.uniforms.r!.value = LOOK.tiltShift.focus;
+    this.tilt = new TiltShiftPass(this.scenePass.target.depthTexture!, camera);
     this.grade = new ShaderPass(GradeShader);
-    for (const p of [this.scenePass, this.ao, this.haze, this.bloom, this.tiltH, this.tiltV, new OutputPass(), this.grade]) this.composer.addPass(p);
+    for (const p of [this.scenePass, this.ao, this.haze, this.bloom, this.tilt, new LabelPass(scene, camera, this.scenePass.target.depthTexture!), new OutputPass(), this.grade]) this.composer.addPass(p);
   }
 
   /** Apply graphics settings: which effects run and how strongly, the resolution, and reflections. */
@@ -309,11 +342,6 @@ export class Look implements LookLike {
     this.resize();
   }
 
-  /**
-   * Where the view is: the height of the floor in view (what's below it hazes
-   * over), whether it's from inside the hole (far things haze too), and whether
-   * it's Free view (the only view tilt-shift suits).
-   */
   /** How hard a dust storm is blowing, 0 to 1: the haze thickens and browns, near and far. */
   setStorm(level: number): void {
     this.storm = level;
@@ -329,27 +357,25 @@ export class Look implements LookLike {
     this.haze.uniforms.daylight!.value = light;
   }
 
-  setView(focusY: number, inside: boolean, iso: boolean): void {
+  /**
+   * Where the view is: the height of the floor in view (what's below it hazes
+   * over), whether it's from inside the hole (far things haze too), and, in
+   * Free view (the only view tilt-shift suits), how far the camera is from what
+   * it orbits and the hole's outer radius, for the miniature's focus.
+   */
+  setView(focusY: number, inside: boolean, iso: { distance: number; radius: number } | null): void {
     this.haze.uniforms.focusY!.value = focusY;
     this.haze.uniforms.byDistance!.value = Math.max(inside ? 1 : 0, this.storm);
-    if (iso === this.iso) return;
-    this.iso = iso;
+    if (iso) this.tilt.setFocus(iso.distance, iso.radius);
+    if (!!iso === this.iso) return;
+    this.iso = !!iso;
     this.applyTiltShift();
   }
 
   private applyTiltShift(): void {
     const t = this.graphics?.tiltShift ?? 0;
-    const on = this.iso && t > 0;
-    this.tiltH.enabled = on;
-    this.tiltV.enabled = on;
-    this.setTiltSize();
-  }
-
-  private setTiltSize(): void {
-    const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
-    const t = (this.graphics?.tiltShift ?? 0) * LOOK.tiltShift.blur;
-    this.tiltH.uniforms.h!.value = t / Math.max(1, size.x);
-    this.tiltV.uniforms.v!.value = t / Math.max(1, size.y);
+    this.tilt.enabled = this.iso && t > 0;
+    this.tilt.setAmount(t);
   }
 
   /** Match the canvas: call after the renderer's size or pixel ratio changes. */
@@ -359,7 +385,6 @@ export class Look implements LookLike {
     this.composer.setSize(css.x, css.y);
     const px = this.renderer.getDrawingBufferSize(new THREE.Vector2());
     this.scenePass.setSize(px.x, px.y);
-    this.setTiltSize();
   }
 
   render(): void {
@@ -378,6 +403,7 @@ export class Look implements LookLike {
     this.scenePass.dispose();
     this.ao.dispose();
     this.bloom.dispose();
+    this.tilt.dispose();
     this.envTexture?.dispose();
   }
 }

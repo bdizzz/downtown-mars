@@ -23,6 +23,8 @@ public static class ViewSettings
     public static bool Autosave { get; set; } = true;
     public static bool ColorBlind { get; set; }
     public static float UiScale { get; set; } = 1;
+    /// <summary>Tilt-shift in Free view, 0 (off) to 1: gentle by default, as the web's High preset.</summary>
+    public static float Miniature { get; set; } = 0.4f;
 
     /// <summary>A camera named on the command line (--view=): iso or free (Free view), or cutaway; null if it's neither.</summary>
     public static Overview? ParseCamera(string name) => name.ToLowerInvariant() switch
@@ -48,6 +50,7 @@ public static class ViewSettings
         Autosave = (bool)cfg.GetValue("game", "autosave", true);
         ColorBlind = (bool)cfg.GetValue("game", "color_blind", false);
         UiScale = (float)cfg.GetValue("game", "ui_scale", 1f);
+        Miniature = Mathf.Clamp((float)cfg.GetValue("graphics", "miniature", 0.4f), 0, 1);
     }
 
     /// <summary>A test run (a screenshot or a benchmark): nothing it changes is kept.</summary>
@@ -67,6 +70,7 @@ public static class ViewSettings
         cfg.SetValue("game", "autosave", Autosave);
         cfg.SetValue("game", "color_blind", ColorBlind);
         cfg.SetValue("game", "ui_scale", UiScale);
+        cfg.SetValue("graphics", "miniature", Miniature);
         cfg.Save(File);
     }
 }

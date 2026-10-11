@@ -213,7 +213,7 @@ New games open in 3D, in Free view. Everything you can do in 2D works in 3D.
 - Around midday sunlight falls down the shaft; deeper down everything settles into lamp-light. Lamps, fires and grow lights light the rooms around them.
 - By day the sky fades from butterscotch at the horizon to a deeper tan overhead, with a bluish glow round the sun; at night the stars come out. The land round the hole rolls away in ridges, craters and boulders to mountains, mesas or low hills, depending on the site.
 
-**Graphics:** soft shadows where things meet, glow around lit windows and lamps, a warm haze, a miniature-style blur in Free view, and a warm colour grade. **Settings → Display** picks a preset (Low, Medium or High, the default) or sets each effect, including lamp light and shadows, so a laptop can scale them down. Shiny floors, metal and glass reflect a warm, lamp-lit cave. `?renderer=webgpu` tries three's WebGPU renderer with light bouncing and reflections (an experiment: see [WEBGPU.md](WEBGPU.md)).
+**Graphics:** soft shadows where things meet, glow around lit windows and lamps, a warm haze, a miniature look in Free view (the floor you're looking at stays sharp while nearer and farther things blur, as in a photo of a model; **Miniature blur** sets how strongly, gentle by default), and a warm colour grade. **Settings → Display** picks a preset (Low, Medium or High, the default) or sets each effect, including lamp light and shadows, so a laptop can scale them down. Shiny floors, metal and glass reflect a warm, lamp-lit cave. `?renderer=webgpu` tries three's WebGPU renderer with light bouncing and reflections (an experiment: see [WEBGPU.md](WEBGPU.md)).
 
 ## Controls
 
@@ -277,4 +277,4 @@ The game autosaves every month in your browser. Use the menu to save to a slot, 
 
 **By keyboard:** the menu opens with its first button ready. ↑ ↓ and Tab move (Tab stays inside the menu), Enter or Space acts, Esc goes back a step and then resumes. In Settings, ← → change section, sliders take ← →, switches flip with Enter or Space. Wherever you are, a ring shows what has the keyboard. On a touch screen every button, switch and list is at least a fingertip (44 px) tall.
 
-The Godot viewer's menu and settings follow the same sections (those that apply there: autosave, the tutorial, the graphics level, the keys, interface size and colour-blind overlays), from the same list (`data/settings.json`).
+The Godot viewer's menu and settings follow the same sections (those that apply there: autosave, the tutorial, the graphics level, the miniature blur, the keys, interface size and colour-blind overlays), from the same list (`data/settings.json`).

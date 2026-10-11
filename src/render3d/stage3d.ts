@@ -1,4 +1,5 @@
 import { UI_FONT } from "../view/font";
+import { LABEL_LAYER } from "./labelLayer";
 import * as THREE from "three";
 import { previewEffects } from "../sim/effects";
 import type { Hole } from "../sim/geometry";
@@ -145,6 +146,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const scene = new THREE.Scene();
   // Far enough to see the horizon's ridges, wherever the camera stands.
   const camera = new THREE.PerspectiveCamera(FOV, host.clientWidth / Math.max(1, host.clientHeight), 0.1, FAR);
+  camera.layers.enable(LABEL_LAYER);
   // The sky: a gradient by day, stars by night.
   const skyDome = createSky();
   let skyColor = new THREE.Color(C.nightSky);
@@ -821,6 +823,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       sprite.scale.set(3.6, 1.2, 1);
       sprite.position.set(r * Math.cos(a), (y0 + y1) / 2, r * Math.sin(a));
       sprite.renderOrder = 11;
+      // Kept sharp, out of the miniature blur, as labels are.
+      sprite.layers.set(LABEL_LAYER);
       progressGroup.add(sprite);
     }
     dirty = true;
@@ -984,6 +988,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         plus.scale.set(2.2, 2.2, 1);
         plus.position.set(r * Math.cos(a), (y0 + y1) / 2, r * Math.sin(a));
         plus.renderOrder = 11;
+        plus.layers.set(LABEL_LAYER);
         overlay.add(plus);
       }
       return;
@@ -1710,7 +1715,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     lampLights.place(lampList, view.mode === "walk" ? new THREE.Vector3(walker.x, camera.position.y, walker.z) : camera.position, view.mode === "walk" ? walker.floor : cut());
     updateShadows();
     skyDome.follow(camera);
-    look.setView(hazeFocus(), view.mode === "walk", view.mode === "iso");
+    look.setView(hazeFocus(), view.mode === "walk", view.mode === "iso" ? { distance: cam.iso, radius: outerRadius() } : null);
     roomFx.setScale(renderer.getDrawingBufferSize(bufferSize).y / (2 * Math.tan((camera.fov * Math.PI) / 360)));
     look.render();
     stats.frameMs = performance.now() - t0;

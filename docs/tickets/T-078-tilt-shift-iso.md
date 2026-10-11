@@ -1,7 +1,7 @@
 ---
 id: T-078
 title: A tilt-shift (miniature) look for the Free view camera
-status: open
+status: done
 size: M
 area: render3d, godot
 touches: [src/render3d/stage3d.ts, src/ui/settings.ts, src/ui/SettingsView.tsx, godot/src/]
@@ -29,3 +29,5 @@ ART.md: the camera look. GUIDE.md: Settings.
 - 2026-10-06 19:31 opened from N-0042
 - 2026-10-07 18:43 questions answered
 - 2026-10-07 18:58 waits on T-088 (settings layout)
+- 2026-10-09 00:04 building on t-078-tilt-shift-iso
+- 2026-10-09 00:12 built
