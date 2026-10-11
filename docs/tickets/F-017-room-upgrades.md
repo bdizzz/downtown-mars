@@ -23,7 +23,7 @@ Agreed; each line names its ticket.
 - The room panel lists a room's upgrades with cost, upkeep and what they do; web and Godot through `roomPanel.ts`. → T-157
 - Furniture swaps in the 3D view: upgrade-only pieces in layouts. → T-158
 - The first upgrades: diagnostic tools (clinic) and noise-damping panels (heavy rooms), with their models. → T-159
-- An upgrade (or two) for every other kind of room, in batches by family, balanced in the playthroughs. → T-160
+- Several upgrades for every other kind of room, in batches by family, balanced in the playthroughs. → T-160
 
 ## Open questions
 - [x] One upgrade per room type, or several to pick from (and can a room have more than one)? → Several to pick from. (Bryon, Oct 11)
