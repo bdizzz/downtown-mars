@@ -1124,7 +1124,7 @@ export function roomGeometry(
  * the gallery is the shaft wall.) Rock faces are tagged like walls whose
  * room is the open side, so with walls down they drop when they're in the way.
  */
-function rockFaces(layout: Layout, topFloor: number | null): number[] {
+export function rockFaces(layout: Layout, topFloor: number | null): number[] {
   const hole = layout.hole;
   const pos = tagged();
   const joints = new Set(corridorJoints(layout).keys());
@@ -1166,6 +1166,8 @@ function rockFaces(layout: Layout, topFloor: number | null): number[] {
         if (cut.hallLeft && first) sideWall(pos, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y1, { side: -1 });
         if (cut.hallRight && last) sideWall(pos, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y1, { side: 1 });
         // A face on each border with something dug out beyond it (and no corridor there, which carves instead).
+        // Only where the rock still reaches the border: where corridors turn at its corner, the joint's square
+        // notches it back, and a face on the border line would stand across the corridor (T-145).
         for (const e of cellEdges(hole, c)) {
           if (layout.corridors?.[e.id]) continue;
           const [a, b] = edgeSides(hole, e);
@@ -1174,8 +1176,20 @@ function rockFaces(layout: Layout, topFloor: number | null): number[] {
           if (!other || key(other) === key(c) || rock(other)) continue;
           // The open side is toward smaller angles (or inward) when it's the edge's first side.
           const side = beyondFirst ? -1 : 1;
-          if (e.kind === "arc") curvedFace(pos, hole.shaftRadiusM + e.circle * RING_D, e.a0 * TAU, e.a1 * TAU, y0, y1, { side });
-          else sideWall(pos, r0, e.turn * TAU, r1, e.turn * TAU, y0, y1, { side });
+          if (e.kind === "arc") {
+            const r = hole.shaftRadiusM + e.circle * RING_D;
+            const inward = e.circle === ring - 1;
+            for (const p of cut.pieces) {
+              if (inward ? p.innerHall : p.outerHall) continue;
+              const [p0, p1] = pieceAt(cut, p, r);
+              const lo = Math.max(p0, e.a0 * TAU);
+              const hi = Math.min(p1, e.a1 * TAU);
+              if (hi - lo > 1e-9) curvedFace(pos, r, lo, hi, y0, y1, { side });
+            }
+          } else {
+            const p = e.id === `R${floor}.${ring}.${slot}` ? first : last;
+            if (p && p.rr1 - p.rr0 > 1e-9) sideWall(pos, p.rr0, e.turn * TAU, p.rr1, e.turn * TAU, y0, y1, { side });
+          }
         }
       }
     });

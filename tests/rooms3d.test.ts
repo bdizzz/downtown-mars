@@ -4,7 +4,7 @@ import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
 import * as THREE from "three";
-import { loweredAt, openingsOf, outlineGeometry, rockAlong, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
+import { loweredAt, openingsOf, outlineGeometry, rockAlong, rockFaces, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
 import { floorSpan, ringRadii, slotAngles } from "../src/render3d/cylinder";
 import { corridorJoints, corridors } from "../src/sim/corridors";
 import { DOOR, doorways } from "../src/view/doors";
@@ -678,5 +678,28 @@ describe("the cutaway's cut through the rock (T-109)", () => {
     const back = cellEdges(l.hole, { floor: 1, ring: 1, slot: 0 }).find((e) => e.kind === "arc" && e.circle === 1)!;
     l.corridors[back.id] = "rock";
     expect(spans(1)[0]!.r0).toBeCloseTo(ringRadii(l.hole, 2)[0] + corridors.widthM / 2);
+  });
+});
+
+describe("rock faces where corridors turn (T-145)", () => {
+  it("stop where the joint's square notches the rock, not on the border line across the corridor", () => {
+    const l = createLayout(createHole(10, 1, 3, config.geometry)); // one floor, and no crust: just the walls
+    placeRoom(l, "clinic", ring(1, 1, 4)); // ring-1 slot 4, ring-2 rock behind it
+    // Out along the clinic's right side, then round along circle 1: a turn at the clinic's outer-right corner.
+    l.corridors["R1.1.5"] = "rock";
+    l.corridors["A1.1.5/9"] = "rock";
+    const corner = (5 / 9) * Math.PI * 2;
+    const r = ringRadii(l.hole, 2)[0];
+    const notch = corridors.widthM / 2 / r;
+    const pos = rockFaces(l, 1);
+    // The rock's face toward the clinic, on circle 1 just short of the corner.
+    let reach = -Infinity;
+    for (let i = 0; i < pos.length; i += 3) {
+      const [x, z] = [pos[i]!, pos[i + 2]!];
+      const a = (Math.atan2(z, x) + Math.PI * 2) % (Math.PI * 2);
+      if (Math.abs(Math.hypot(x, z) - r) < 1e-3 && a > corner - 0.2 && a < corner + 1e-6) reach = Math.max(reach, a);
+    }
+    expect(reach).toBeGreaterThan(corner - 0.2);
+    expect(reach).toBeLessThan(corner - notch + 1e-6);
   });
 });
