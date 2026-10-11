@@ -1,7 +1,7 @@
 ---
 id: F-015
 title: Build the rest of the room catalog
-status: draft
+status: agreed
 plan:
 notes: [N-0068]
 created: 2026-10-10 01:41
@@ -28,14 +28,14 @@ created: 2026-10-10 01:41
 - **Order of the C systems:** 1. H-size (two-floor) rooms, 2. entertainment, 3. safety, 4. commutes and shaft transit, 5. tourism, 6. consumer goods (with goods and currency alongside it). The one-offs fit in where their systems land (research lab after F-005's milestones).
 
 ## Breakdown
-Proposed; becomes tickets once this feature is agreed.
-- Refresh ROOM-STATUS's grades against what's built now (fiber, glass, materials), add a "parked" status to the script, and propose which rooms to park for Bryon to confirm.
-- Grade A rooms: excavator bay, plaza, spiral stair (the escalator is likely parked).
-- Brewery and beer.
-- Geothermal plant and the depth unlock.
-- Chemical plant (plastics, methane) and mycelium vat (mycelium composite).
-- Grand staircase.
-- A feature per C system, in order: H-size rooms, entertainment, safety, commutes, tourism, consumer goods.
+Agreed; each line names its ticket.
+- Refresh ROOM-STATUS's grades against what's built now (fiber, glass, materials), add a "parked" status to the script, and propose which rooms to park for Bryon to confirm. → T-131
+- Grade A rooms: excavator bay, plaza, spiral stair (the escalator is likely parked). → T-132
+- Brewery and beer. → T-133
+- Geothermal plant and the depth unlock. → T-134
+- Chemical plant (plastics, methane) and mycelium vat (mycelium composite). → T-135
+- Grand staircase. → T-136
+- A feature per C system, in order: H-size rooms, entertainment, safety, commutes, tourism, consumer goods. → each drafted as its own feature when the A and B rooms are under way (not a ticket)
 
 ## Open questions
 - [x] Every room, or trim? Trim, but keep the trimmed ones listed in the plans (parked).
@@ -45,3 +45,4 @@ Proposed; becomes tickets once this feature is agreed.
 - 2026-10-10 01:41 opened from N-0068
 - 2026-10-11 questions answered: trim into a parked list; order of the C systems
 - 2026-10-11 15:48 questions answered
+- 2026-10-11 15:50 agreed
