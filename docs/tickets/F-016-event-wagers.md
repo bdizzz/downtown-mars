@@ -1,7 +1,7 @@
 ---
 id: F-016
 title: More events and office visits, many of them wagers with workers away and odds on the outcome
-status: draft
+status: agreed
 plan:
 notes: [N-0072, N-0076]
 created: 2026-10-11 15:52
@@ -26,13 +26,13 @@ The choices such an event offers:
 Context: M14 built events with choices (`docs/PLAN-M14.md`, `src/sim/events.ts`, `data/events.json`, about 39 events): an event waits `patienceDays` for an answer, effects include resources, mood, followUp (an effect some days later), colonists. Rolled outcomes, committing part of a request, workers away and injured are new. DECISIONS: "Events sting, they don't crush, and don't pause the game". `docs/EVENTS.md` catalogs the events planned (citizen visits, strikes, hazards, discoveries, network, Earth and the belt, story, notables) with what's built: the source of "more of those". The RNG is seeded, so rolls stay deterministic. Naming: these are just events, with a decision and sometimes a duration (F-011 keeps "missions" for the hole's goals). Odds are hidden from the player. Injured workers heal faster near a clinic.
 
 ## Breakdown
-Proposed; becomes tickets once this feature is agreed.
-- Rolled outcomes in the sim: weighted outcome tables per choice in `events.json`, odds shifting with how much you commit, the roll on return; tests with the seeded RNG.
-- Away and injured workers: a pool of colonists out on an event and a pool healing, both removed from the workforce for their days; in the snapshot and the save (version bump).
-- Partial commits: a choice that takes a slider or steps (fewer colonists or resources), with the odds hidden.
-- The top bar and tooltip: workers away and injured, what they're doing and when they're back; the Office card shows the stake and what might come of it. Web, and Godot through the shared view code.
-- The meteorite run as the first wager event, then an instant one (the jammed drill).
-- A batch of new events and office visits from EVENTS.md's unbuilt list, many of them wagers, balanced so cost and risk pay; bots that take and refuse them in the playthroughs.
+Agreed; each line names its ticket.
+- Rolled outcomes in the sim: weighted outcome tables per choice in `events.json`, odds shifting with how much you commit, the roll on return; tests with the seeded RNG. → T-150
+- Away and injured workers: a pool of colonists out on an event and a pool healing, both removed from the workforce for their days; in the snapshot and the save (version bump). → T-151
+- Partial commits: a choice that takes a slider or steps (fewer colonists or resources), with the odds hidden. → T-152
+- The top bar and tooltip: workers away and injured, what they're doing and when they're back; the Office card shows the stake and what might come of it. Web, and Godot through the shared view code. → T-153
+- The meteorite run as the first wager event, then an instant one (the jammed drill). → T-154
+- A batch of new events and office visits from EVENTS.md's unbuilt list, many of them wagers, balanced so cost and risk pay; bots that take and refuse them in the playthroughs. → T-155
 
 ## Open questions
 - [x] Which of EVENTS.md's unbuilt events first, or should the plan propose a list? (Claude's default: the plan proposes 8–10, mixing wagers, instant events and plain visits.) → The plan proposes 8–10. (Bryon, Oct 11)
@@ -43,3 +43,4 @@ Proposed; becomes tickets once this feature is agreed.
 ## History
 - 2026-10-11 15:52 opened from N-0072, N-0076
 - 2026-10-11 16:08 questions answered
+- 2026-10-11 16:10 agreed

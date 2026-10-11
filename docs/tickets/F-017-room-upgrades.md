@@ -1,7 +1,7 @@
 ---
 id: F-017
 title: Upgrades for each kind of room, with an up-front cost, a monthly upkeep and a new look
-status: draft
+status: agreed
 plan:
 notes: [N-0075]
 created: 2026-10-11 15:52
@@ -18,12 +18,12 @@ Bryon's examples:
 Context: F-003 (agreed) is the general version: wall linings and floors, upgraded in place through the construction queue (T-033 is its Upgrade action, not built yet). This feature should reuse that action and its job, half output while refitting and the room panel's Upgrade control, rather than build a second path. Room effects and inputs are data in `data/rooms.json`; furniture and layouts in `data/furniture.json` and `data/layouts.json` (FURNITURE.md); windows (M13) are an in-place upgrade already built. A monthly draw is just another input per day (a game day is a month, T-021).
 
 ## Breakdown
-Proposed; becomes tickets once this feature is agreed.
-- The upgrade model: `data/upgrades.json` (per room type: cost, upkeep per month, effect changes, furniture swaps, unlock), several per room type to pick from, some unlocked from the start (affordable or not: a path toward small, comfy holes or fast growth), `room.upgrades` in the sim and the save, applied through T-033's Upgrade action; what happens when the upkeep can't be paid (the upgrade idles).
-- The room panel lists a room's upgrades with cost, upkeep and what they do; web and Godot through `roomPanel.ts`.
-- Furniture swaps in the 3D view: upgrade-only pieces in layouts.
-- The first upgrades: diagnostic tools (clinic) and noise-damping panels (heavy rooms), with their models.
-- An upgrade (or two) for every other kind of room, in batches by family, balanced in the playthroughs.
+Agreed; each line names its ticket.
+- The upgrade model: `data/upgrades.json` (per room type: cost, upkeep per month, effect changes, furniture swaps, unlock), several per room type to pick from, some unlocked from the start (affordable or not: a path toward small, comfy holes or fast growth), `room.upgrades` in the sim and the save, applied through T-033's Upgrade action; what happens when the upkeep can't be paid (the upgrade idles). → T-156
+- The room panel lists a room's upgrades with cost, upkeep and what they do; web and Godot through `roomPanel.ts`. → T-157
+- Furniture swaps in the 3D view: upgrade-only pieces in layouts. → T-158
+- The first upgrades: diagnostic tools (clinic) and noise-damping panels (heavy rooms), with their models. → T-159
+- An upgrade (or two) for every other kind of room, in batches by family, balanced in the playthroughs. → T-160
 
 ## Open questions
 - [x] One upgrade per room type, or several to pick from (and can a room have more than one)? → Several to pick from. (Bryon, Oct 11)
@@ -34,3 +34,4 @@ Proposed; becomes tickets once this feature is agreed.
 ## History
 - 2026-10-11 15:52 opened from N-0075
 - 2026-10-11 16:08 questions answered
+- 2026-10-11 16:10 agreed
