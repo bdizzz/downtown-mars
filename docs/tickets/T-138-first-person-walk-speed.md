@@ -1,7 +1,7 @@
 ---
 id: T-138
 title: Walk faster in first person
-status: open
+status: done
 size: S
 area: render3d, godot
 touches: [src/render3d/stage3d.ts, godot/src/CameraRig.cs]
@@ -21,3 +21,4 @@ Raise the walk speed to about 4.5 m/s (a brisk walk; run stays 9, or goes to 10)
 ## History
 - 2026-10-11 15:52 opened from N-0070
 - 2026-10-11 18:41 building on t-139-grab-a-drink
+- 2026-10-11 18:53 built: walk 4.5 m/s, run 10 (web and Godot; Godot ran at 3 and 6)

@@ -1,7 +1,7 @@
 ---
 id: T-139
 title: "Easter egg: grab a hot drink in first person and carry the mug around"
-status: open
+status: done
 size: M
 area: render3d, godot
 touches: [src/render3d/stage3d.ts, data/furniture.json, src/ui/Help.tsx, godot/src/]
@@ -27,3 +27,4 @@ Mark drink-serving furniture with a flag in `furniture.json`. In first person, w
 - 2026-10-11 15:52 opened from N-0070
 - 2026-10-11 16:08 questions answered
 - 2026-10-11 18:41 building on t-139-grab-a-drink
+- 2026-10-11 18:53 built: F is shared with stairs down (web): on stairs it goes down, elsewhere at a counter it grabs a drink
