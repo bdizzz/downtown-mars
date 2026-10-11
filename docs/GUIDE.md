@@ -199,7 +199,7 @@ New games open in 3D, in Free view. Everything you can do in 2D works in 3D.
 **Cameras**
 
 - **Free view** looks at one floor (or, with All, the surface) from above and off to one side, so you see all of it: drag to turn it, scroll to zoom (out only as far as all six rings' footprint, open or not, fills the screen with a little to spare). With a floor picked, the planet is cut open to show it: the land across the hole stands with a rock face down to that floor, fading into the dark further out, and the near side is cut away.
-- **Cutaway** slices the hole open and always shows the whole hole, from the surface down (it opens framing the unlocked rings). The cut reads as a cross-section: solid rock, open only where rooms, corridors and dug-out space are. There's no floor picker here, and the floor keys do nothing; going back to Free view puts you on the floor you had picked. For a flat plan to build on, there's the 2D **Plan** view.
+- **Cutaway** slices the hole open and always shows the whole hole, from the surface down (it opens framing the unlocked rings). The cut reads as a cross-section: solid rock, open only where rooms, corridors and dug-out space are. There's no floor picker here, and the floor keys do nothing; going back to Free view puts you on the floor you had picked. **How much it cuts away** is yours: the slider top left (or **;** and **'**) goes from a flat slice through the middle (180°, as it opens) down to a 60° wedge, centred on you, so at 90° only the front quarter of the hole is gone and you see in from both sides. The angle is kept in your settings. **Zoom** with the **−** and **+** buttons beside it, **,** and **.**, Ctrl+scroll or a pinch; a plain scroll still moves up and down the hole. For a flat plan to build on, there's the 2D **Plan** view.
 - **First person** puts you on a floor at eye height: WASD to walk (hold Shift to run), Q and E to turn, drag to look (or Tab for mouse look, where the browser allows it). Walk up or down a stairwell's wide flights to change floors (R or F also takes the stairs from anywhere in a stairwell; picking a floor on the right takes you there too). You can walk the gallery tubes, corridors, plazas and empty space, and into a room through its door, but not through walls or furniture. Build is off while you walk.
 - **Walls down** lowers the walls that hide a room from you to a short stub, as in The Sims: a room's near walls, and a wall that stands in front of another room. Each wall goes down or stays up whole, curves and all. A wall that only hides a corridor, a gallery tube, the shaft or rock stays up; one with a corridor and then a room behind it stays up while the stubs would hide that room's floor anyway, and comes down once you tilt the camera low enough that lowering it would show some of that floor. Hangings on a lowered wall go with it.
 
@@ -230,6 +230,8 @@ New games open in 3D, in Free view. Everything you can do in 2D works in 3D.
 | W A S D | Free view: pan across the floor (outside Build). Once a 3D view has moved, **Reset camera** (top left) takes you back |
 | Drag / scroll | Pan (drag paints corridors with the corridor tool) |
 | Pinch / Ctrl+scroll | Zoom |
+| , . | Cutaway: zoom out / in (or **−** **+**, top left) |
+| ; ' | Cutaway: narrow / widen the cut, from 180° (flat) down to a 60° wedge (or the slider, top left) |
 
 **In Build only:**
 
