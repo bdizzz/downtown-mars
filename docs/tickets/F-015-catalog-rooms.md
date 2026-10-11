@@ -23,21 +23,25 @@ created: 2026-10-10 01:41
   - H-size (8-slot, 2-floor) rooms: farm atrium, reactor, grand plaza.
   - One-offs: research lab (milestones it speeds up, so after F-005), office (the coordination penalty), cultured meat lab (food groups), reinforcement frame (cave-ins and rings 4–6, still open in DECISIONS), pipe mill (pipelines between holes), vehicle works (rovers as a made good).
 - Some grades look stale (glass exists now, so "glass" is no longer a blocker for the grand staircase or panoramic elevator); the first task refreshes them.
-- Each C group is a system in its own right, likely a feature of its own once we get there; this feature covers A and B and decides the order for C.
+- Each C group is a system in its own right, likely a feature of its own once we get there; this feature covers A and B and sets the order for C.
+- **Trim:** not every catalog room has to go in. Rooms that don't earn their place are **parked**, not deleted: they stay listed in ROOMS.md and ROOM-STATUS.md marked as parked, with why, so they can come back. First candidate: the escalator (cosmetic while commutes aren't modelled).
+- **Order of the C systems:** 1. H-size (two-floor) rooms, 2. entertainment, 3. safety, 4. commutes and shaft transit, 5. tourism, 6. consumer goods (with goods and currency alongside it). The one-offs fit in where their systems land (research lab after F-005's milestones).
 
 ## Breakdown
 Proposed; becomes tickets once this feature is agreed.
-- Refresh ROOM-STATUS's grades against what's built now (fiber, glass, materials).
-- Grade A rooms: excavator bay, plaza, spiral stair, escalator (one PR, maybe two).
+- Refresh ROOM-STATUS's grades against what's built now (fiber, glass, materials), add a "parked" status to the script, and propose which rooms to park for Bryon to confirm.
+- Grade A rooms: excavator bay, plaza, spiral stair (the escalator is likely parked).
 - Brewery and beer.
 - Geothermal plant and the depth unlock.
 - Chemical plant (plastics, methane) and mycelium vat (mycelium composite).
 - Grand staircase.
-- Pick the order of the C systems; each becomes its own feature.
+- A feature per C system, in order: H-size rooms, entertainment, safety, commutes, tourism, consumer goods.
 
 ## Open questions
-- [ ] Should every catalog room really go in, or is it worth trimming the catalog where a room doesn't earn its place (e.g. the escalator while commutes aren't modelled)?
-- [ ] Which C systems matter most to you first: consumer goods, entertainment, tourism, safety, commutes, H-size rooms?
+- [x] Every room, or trim? Trim, but keep the trimmed ones listed in the plans (parked).
+- [x] Order of the C systems? H-size rooms, entertainment, safety, commutes, tourism, consumer goods.
 
 ## History
 - 2026-10-10 01:41 opened from N-0068
+- 2026-10-11 questions answered: trim into a parked list; order of the C systems
+- 2026-10-11 15:48 questions answered
