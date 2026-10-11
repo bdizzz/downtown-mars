@@ -507,7 +507,7 @@ public partial class Live : Node3D
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
             : _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(PlanShown ? $"plan, floor {PlanFloor}" : _rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}" : _rig?.Walking == true ? "first person (flying)" : _rig?.ModeName ?? "iso")}\nEsc menu · M map · N network · P colony · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home surface · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(PlanShown ? $"plan, floor {PlanFloor}" : _rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}{(_rig.CanDrink ? " · F to grab a drink" : "")}" : _rig?.Walking == true ? "first person (flying)" : _rig?.ModeName ?? "iso")}\nEsc menu · M map · N network · P colony · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home surface · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
             : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -1443,6 +1443,8 @@ public partial class Live : Node3D
             case Key.L: _hole.ShowLabels = !_hole.ShowLabels; break;
             case Key.O: _choices.ToggleOffice(); break;
             case Key.C when _rig?.Walking != true || _rig.OnFoot: _charts.Toggle(); break;
+            // At a kitchenette or serving counter in first person: a hot drink to carry round (T-139).
+            case Key.F when _rig?.CanDrink == true: _rig.GrabDrink(); break;
             case Key.F2: CycleQuality(); break;
             // The previous or next hole (as the picker).
             case Key.Bracketleft or Key.Bracketright when _holePicker.ItemCount > 1:

@@ -85,7 +85,10 @@ public partial class CameraRig : Node3D
     /// <summary>Testing: seconds to walk straight ahead once on foot, as if W were held.</summary>
     public float StrollSeconds { get; set; }
     bool _onFoot;
-    const float EyeHeight = 1.7f, WalkSpeed = 3f;
+    /// <summary>Eye height, and walking and running speeds (m/s), as the web's WALK (T-138).</summary>
+    const float EyeHeight = 1.7f, WalkSpeed = 4.5f, RunSpeed = 10f;
+    /// <summary>A hot drink in hand (T-139): grabbed at a counter with F, kept until you leave first person.</summary>
+    readonly Drink _drink = new();
     // Free view.
     Vector3 _target;
     float _yaw = Mathf.Pi / 2, _pitch = 0.75f, _dist;
@@ -241,6 +244,7 @@ public partial class CameraRig : Node3D
     {
         AddChild(_cam);
         _cam.AddChild(_headlamp);
+        _cam.AddChild(_drink);
         _cam.Current = true;
         AddChild(_labelOverlay);
         _labelOverlay.AddChild(_labelBox);
@@ -308,6 +312,7 @@ public partial class CameraRig : Node3D
         }
         var side = (Held(Key.D) ? 1 : 0) - (Held(Key.A) ? 1 : 0);
         var fast = Input.IsKeyPressed(Key.Shift) ? 3f : 1f;
+        var walked = 0f;
         if (_walking)
         {
             var f = new Vector3(Mathf.Cos(_lookYaw), 0, Mathf.Sin(_lookYaw));
@@ -317,8 +322,10 @@ public partial class CameraRig : Node3D
             if (_onFoot && Walker is Walker walker)
             {
                 // On foot: the walker decides where a step lands (and which floor).
-                var step = (f * fwd + r * side) * WalkSpeed * (fast > 1 ? 2 : 1) * dt;
+                var step = (f * fwd + r * side) * (fast > 1 ? RunSpeed : WalkSpeed) * dt;
+                var from = walker.At;
                 walker.Step(new Vector2(step.X, step.Z));
+                walked = walker.At.DistanceTo(from);
                 _pos = new Vector3(walker.At.X, walker.Height + EyeHeight, walker.At.Y);
             }
             else
@@ -344,7 +351,17 @@ public partial class CameraRig : Node3D
                 _yaw += side * 1.2f * dt;
             }
         }
+        _drink.Step(dt, walked);
         Apply();
+    }
+
+    /// <summary>On foot at a kitchenette or serving counter, facing it, with no drink yet (Walker.DrinkHere).</summary>
+    public bool CanDrink => _walking && _onFoot && !_drink.Held && Walker is Walker w && w.DrinkHere(_lookYaw);
+
+    /// <summary>Grab a hot drink, if there's one to grab here.</summary>
+    public void GrabDrink()
+    {
+        if (CanDrink) _drink.Held = true;
     }
 
     public override void _UnhandledInput(InputEvent e)
@@ -389,6 +406,8 @@ public partial class CameraRig : Node3D
     void Apply()
     {
         _headlamp.Visible = _walking;
+        // Leaving first person puts the drink down.
+        if (!_walking) _drink.Held = false;
         _cam.Attributes = !_walking && Mode == Overview.Iso && _miniatureAmount > 0 ? _miniature : null;
         if (_walking)
         {
