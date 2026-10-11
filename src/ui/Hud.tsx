@@ -20,6 +20,9 @@ interface Props {
   highlight: string | null;
   /** Off while a menu is open, so Space can't unpause behind it. */
   keysEnabled: boolean;
+  /** Phones: whether the drop-down with the speeds, the needs and the resource grid is open. */
+  open: boolean;
+  setOpen: (open: boolean) => void;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -51,8 +54,11 @@ function NeedChip({ need, onOpen }: { need: Need; onOpen: (n: Need) => void }) {
 
 // The top bar: the menu, where and when you are, speed, what needs you first, the drill, the next
 // supply drop and the office. Everything else lives in the dock's modes. Each element has a stable
-// id (data-hud, view/hudItems.ts HUD_IDS) for the tutorial.
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActiveHole, openMenu, openTrend, keysEnabled, highlight }: Props) {
+// id (data-hud, view/hudItems.ts HUD_IDS) for the tutorial. On phones (T-106) the bar is one short
+// row: the menu, the hole, a pause/play toggle, how many things need you, the office and a chevron;
+// the rest (.hud-more, and the resource grid below) drops down from the chevron and stays down
+// until it's closed. On wider screens .hud-more is display: contents and changes nothing.
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActiveHole, openMenu, openTrend, keysEnabled, highlight, open: drawer, setOpen }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
   // Space toggles pause, remembering the last running speed; − and + step the speed down and up
   // (from paused, they start at one step from the remembered speed). Past either end, nothing.
@@ -87,8 +93,9 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
     else openTrend(n.open.trend);
   };
   const waiting = snapshot?.office.waiting.length ?? 0;
+  const worst = list.some((n) => n.level === "bad") ? " bad" : "";
   return (
-    <header className="hud">
+    <header className={`hud${drawer ? " open" : ""}`}>
       <button className="menu-btn" data-hud="menu" onClick={openMenu} title="Menu (Esc)" aria-label="Menu">
         <Icon id="menu" />
       </button>
@@ -108,6 +115,17 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
           </span>
         )
       )}
+      {/* Phones only: one button for pause and play, and the count of what needs you. */}
+      <button className={`phone-only pause-btn${pulse("speed")}`} onClick={() => setSpeed(speed ? 0 : resumeRef.current)} aria-label={speed ? "Pause" : "Play"} title={speed ? "Pause" : "Play"}>
+        {speed ? "❚❚" : "▶"}
+      </button>
+      {list.length > 0 && (
+        <button className={`phone-only need-count${worst}`} onClick={() => setOpen(!drawer)} aria-label={`${list.length} ${list.length === 1 ? "thing needs" : "things need"} you`} title={list.map((n) => n.text).join("\n")}>
+          <Icon id="alert" />
+          {list.length}
+        </button>
+      )}
+      <span className="hud-more" id="hud-more">
       <span className="clock" data-hud="clock">
         {t ? `${monthLabel(t.day)} · ${pad(t.hour)}:${pad(t.minute)}` : "Connecting…"}
         {t && <SunDial dayFraction={t.dayFraction} />}
@@ -147,6 +165,7 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
           {extras.drop.text}
         </span>
       )}
+      </span>
       {snapshot && (
         <button className={`office-btn${waiting ? " waiting" : ""}${pulse("office")}`} data-hud="office" onClick={toggleOffice} title="The office: visits, promises, ordinances and notables (O)">
           <Icon id="office" />
@@ -154,6 +173,9 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
           {waiting ? <span className="badge">{waiting}</span> : null}
         </button>
       )}
+      <button className="phone-only hud-toggle" onClick={() => setOpen(!drawer)} aria-expanded={drawer} aria-controls="hud-more" aria-label={drawer ? "Hide speeds and resources" : "Show speeds and resources"}>
+        <span className="chev" aria-hidden="true">▾</span>
+      </button>
       {import.meta.env.DEV && <span className="tick">tick {snapshot?.tick ?? 0}</span>}
     </header>
   );
