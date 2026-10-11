@@ -1792,26 +1792,7 @@ function disposeShape(shape: Shape): void {
 }
 
 function roomShape(layout: Layout, room: RoomInstance): Shape & { key: string } {
-  // Corridors along its sides, and turns at its corners, change its shape, so they're part of the key.
-  const outside = outsideEdges(layout.hole, room.cells);
-  const joints = corridorJoints(layout);
-  const halls = [
-    ...outside.filter((e) => layout.corridors?.[e.id]).map((e) => e.id),
-    ...[...new Set(outside.flatMap((e) => edgeVertices(layout.hole, e)))].filter((v) => joints.has(v)),
-  ].join(",");
-  // What's around it (rock, or something to see) decides which walls can come down.
-  const around = neighborCells(layout.hole, room.cells)
-    .map((c) => (layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] || isOpen(layout, c) ? 1 : 0))
-    .join("");
-  // A room, once it's more than a plan, has its windows and doors cut through.
-  const open = openingsOf(layout, room);
-  const cut = open
-    ? [
-        ...open.doors.map((d) => `${d.edge}/${d.cell.ring}.${d.cell.slot}`),
-        ...[...open.windows].map(([e, w]) => `${e}=${w.bottom}-${w.top}`),
-      ].join(",")
-    : "shut";
-  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${cut}`;
+  const { key, open } = shapeKey(layout, room);
   let shape = shapeCache.get(key);
   if (!shape) {
     const parts: OpeningParts = { glass: tagged(), frames: tagged(), tops: tagged() };
@@ -1826,6 +1807,34 @@ function roomShape(layout: Layout, room: RoomInstance): Shape & { key: string } 
     shapeCache.set(key, shape);
   }
   return { ...shape, key };
+}
+
+/** What a room's cached shape depends on: everything that changes its geometry, and nothing else. */
+export function shapeKey(layout: Layout, room: RoomInstance): { key: string; open: RoomOpenings | null } {
+  // Corridors along its sides, and turns at its corners, change its shape, so they're part of the key.
+  const outside = outsideEdges(layout.hole, room.cells);
+  const joints = corridorJoints(layout);
+  const halls = [
+    ...outside.filter((e) => layout.corridors?.[e.id]).map((e) => e.id),
+    ...[...new Set(outside.flatMap((e) => edgeVertices(layout.hole, e)))].filter((v) => joints.has(v)),
+  ].join(",");
+  // What's around it decides which walls can come down, and how thick each is: a wall onto empty space
+  // stands its full thickness, with a face past the line, but onto a room it's only its own half. So a
+  // room (2) and empty space (1) must count apart, or a wall built for empty space stays when a room fills
+  // it, its face on the new room's wall face, and the two flicker through each other (T-079).
+  const around = neighborCells(layout.hole, room.cells)
+    .map((c) => (layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] ? 2 : isOpen(layout, c) ? 1 : 0))
+    .join("");
+  // A room, once it's more than a plan, has its windows and doors cut through.
+  const open = openingsOf(layout, room);
+  const cut = open
+    ? [
+        ...open.doors.map((d) => `${d.edge}/${d.cell.ring}.${d.cell.slot}`),
+        ...[...open.windows].map(([e, w]) => `${e}=${w.bottom}-${w.top}`),
+      ].join(",")
+    : "shut";
+  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${cut}`;
+  return { key, open };
 }
 
 // ---- surface props, standing on y = 0 around the rim ----

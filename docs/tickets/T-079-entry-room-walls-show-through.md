@@ -1,7 +1,7 @@
 ---
 id: T-079
 title: The entry room's walls show through other rooms' walls at some angles
-status: open
+status: done
 size: M
 area: render3d
 touches: [src/render3d/rooms3d.ts, src/render3d/stage3d.ts, godot/src/]
@@ -21,3 +21,4 @@ Reproduce next to the entrance at a few angles, find whether it's coplanar walls
 ## History
 - 2026-10-06 19:31 opened from N-0043
 - 2026-10-11 18:47 building on t-145-rock-wall-over-corridor (with T-145)
+- 2026-10-11 18:54 built: cause was the shape cache, not the entrance itself. Its key counted a room and empty dug space alike, but a wall onto empty space is drawn full thickness with a face past the line; when a room filled that space the stale wall's face sat on the new room's wall face and z-fought. Floor 1 ring 1 starts dug out, so the entrance hit it most. Reloading hid it

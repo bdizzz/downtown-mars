@@ -4,11 +4,12 @@ import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
 import * as THREE from "three";
-import { loweredAt, openingsOf, outlineGeometry, rockAlong, rockFaces, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
+import { loweredAt, openingsOf, outlineGeometry, rockAlong, rockFaces, shapeKey, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
 import { floorSpan, ringRadii, slotAngles } from "../src/render3d/cylinder";
 import { corridorJoints, corridors } from "../src/sim/corridors";
 import { DOOR, doorways } from "../src/view/doors";
 import { setRoomWindows, shaftBorders } from "../src/sim/windows";
+import { openCells } from "../src/sim/excavation";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 // Each curved face is split into 4 arc steps of 2 triangles; a radial side is 2 triangles.
@@ -678,6 +679,21 @@ describe("the cutaway's cut through the rock (T-109)", () => {
     const back = cellEdges(l.hole, { floor: 1, ring: 1, slot: 0 }).find((e) => e.kind === "arc" && e.circle === 1)!;
     l.corridors[back.id] = "rock";
     expect(spans(1)[0]!.r0).toBeCloseTo(ringRadii(l.hole, 2)[0] + corridors.widthM / 2);
+  });
+});
+
+describe("a room's cached shape (T-079)", () => {
+  it("is rebuilt when a room fills the empty space beside it, whose wall is thicker than a shared one", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    openCells(l, Array.from({ length: l.hole.ringSlots[0]! }, (_, slot) => ({ floor: 1, ring: 1, slot })));
+    placeRoom(l, "entrance", ring(1, 1, 3));
+    const entrance = l.rooms.find((r) => r.type === "entrance")!;
+    const solid = () => roomGeometry(l, entrance.cells, undefined, true, true, null, [], undefined, true).getAttribute("position").count;
+    const [beforeKey, beforeShape] = [shapeKey(l, entrance).key, solid()];
+    placeRoom(l, "clinic", ring(1, 1, 4)); // into the dug-out space on its right
+    // Its wall onto that side is now only its own half (no face past the line), so the cached shape must go.
+    expect(solid()).not.toBe(beforeShape);
+    expect(shapeKey(l, entrance).key).not.toBe(beforeKey);
   });
 });
 
