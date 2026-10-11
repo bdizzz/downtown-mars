@@ -19,7 +19,8 @@ Three.js does frustum culling per object, but only if objects are split up finel
 Measure first: draw calls, triangles and frame time on a big save (`renderer.info`), in Free view, Cutaway and first person. Then the cheap wins: per-floor (or per-room) groups so frustum culling works, and furniture and people skipped on floors well outside the view. Only if that isn't enough, a conservative visibility test: a room is visible if it's in the frustum and either faces the shaft, or connects to a visible room through a window, door or corridor (a portal walk). Never cull something that should show; a missing room is worse than a slow frame. Done: before and after numbers in the PR, nothing visibly missing in any camera.
 
 ## Open questions
-- [ ] Godot too, or the web only for now? (Its renderer culls differently; Claude's default: web first, Godot a follow-up if the numbers show it's needed.)
+- [x] Godot too, or the web only for now? (Its renderer culls differently; Claude's default: web first, Godot a follow-up if the numbers show it's needed.) → Yes, web first; Godot a follow-up if the numbers show it's needed, logged in PLAN-GODOT.md's Status and next. (Bryon, Oct 11)
 
 ## History
 - 2026-10-11 15:52 opened from N-0069
+- 2026-10-11 16:08 questions answered

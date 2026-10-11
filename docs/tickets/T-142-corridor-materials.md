@@ -17,14 +17,15 @@ created: 2026-10-11 15:52
 Read F-003 and `docs/PLAN-M15.md` first. Corridors already carry a finish (`layout.corridors[id]`, `data/corridors.json`), purely a look; the plan says they "keep their own finishes but share the new surface looks". This ticket makes them real upgrades through the same Upgrade action (T-033) and looks (T-034).
 
 ## Approach
-Corridor linings in `materials.json`, priced per corridor segment the way rooms are per cell; an upgrade job for a corridor through the construction queue; a corridor panel Upgrade control; the room surfaces on corridor walls and floors, web and Godot. Done: refit a corridor in brick and it looks like a brick room.
+One list of linings for rooms and corridors, with **marscrete** added between bare rock and brick (so rooms get it too, with its own look); existing corridor finishes map onto it. Corridor linings in `materials.json`, priced per corridor segment the way rooms are per cell; an upgrade job for a corridor through the construction queue; a corridor panel Upgrade control; the room surfaces on corridor walls and floors, web and Godot. Looks and wear only for now. Done: refit a corridor in brick and it looks like a brick room; line a room in marscrete.
 
 ## Docs to update
-PLAN-M15.md (corridors), GUIDE.md: Building.
+PLAN-M15.md (corridors, marscrete in the ladder), DECISIONS.md (marscrete as a lining), GUIDE.md: Building. Idea for later: a hole-wide bonus by the share of corridors upgraded to a given level.
 
 ## Open questions
-- [ ] What does a lined corridor do besides look nice: nothing, or less airlock dust and smell along it, or comfort for the rooms it serves? (Claude's default: looks and wear only.)
-- [ ] Do the existing corridor finishes (marscrete…) fold into the new materials, or stay a separate choice?
+- [x] What does a lined corridor do besides look nice: nothing, or less airlock dust and smell along it, or comfort for the rooms it serves? (Claude's default: looks and wear only.) → Looks and wear only for now. Later, maybe a hole-wide bonus by what share of corridors is upgraded to a given level. (Bryon, Oct 11)
+- [x] Do the existing corridor finishes (marscrete…) fold into the new materials, or stay a separate choice? → Yes: one list of materials for rooms and corridors. Marscrete joins it, between bare rock and brick, so rooms get marscrete linings too. (Bryon, Oct 11)
 
 ## History
 - 2026-10-11 15:52 opened from N-0074
+- 2026-10-11 16:08 questions answered

@@ -19,17 +19,18 @@ Context: F-003 (agreed) is the general version: wall linings and floors, upgrade
 
 ## Breakdown
 Proposed; becomes tickets once this feature is agreed.
-- The upgrade model: `data/upgrades.json` (per room type: cost, upkeep per month, effect changes, furniture swaps, unlock), `room.upgrades` in the sim and the save, applied through T-033's Upgrade action; what happens when the upkeep can't be paid (the upgrade idles).
+- The upgrade model: `data/upgrades.json` (per room type: cost, upkeep per month, effect changes, furniture swaps, unlock), several per room type to pick from, some unlocked from the start (affordable or not: a path toward small, comfy holes or fast growth), `room.upgrades` in the sim and the save, applied through T-033's Upgrade action; what happens when the upkeep can't be paid (the upgrade idles).
 - The room panel lists a room's upgrades with cost, upkeep and what they do; web and Godot through `roomPanel.ts`.
 - Furniture swaps in the 3D view: upgrade-only pieces in layouts.
 - The first upgrades: diagnostic tools (clinic) and noise-damping panels (heavy rooms), with their models.
 - An upgrade (or two) for every other kind of room, in batches by family, balanced in the playthroughs.
 
 ## Open questions
-- [ ] One upgrade per room type, or several to pick from (and can a room have more than one)?
-- [ ] Do upgrades go through the construction queue and take time, like F-003's refits? (Claude's default: yes, same job.)
-- [ ] Unlocks: available from the start, or gated by population or a tech (research lab, later)?
-- [ ] Should this wait until F-003's Upgrade action (T-033) is built? (Claude's default: yes.)
+- [x] One upgrade per room type, or several to pick from (and can a room have more than one)? → Several to pick from. (Bryon, Oct 11)
+- [x] Do upgrades go through the construction queue and take time, like F-003's refits? (Claude's default: yes, same job.) → Yes, the same construction job. (Bryon, Oct 11)
+- [x] Unlocks: available from the start, or gated by population or a tech (research lab, later)? → Some are unlocked from the beginning, even if you can't afford them yet: a path toward building small, comfy holes or expanding quickly. (Bryon, Oct 11)
+- [x] Should this wait until F-003's Upgrade action (T-033) is built? (Claude's default: yes.) → Yes, after T-033. (Bryon, Oct 11)
 
 ## History
 - 2026-10-11 15:52 opened from N-0075
+- 2026-10-11 16:08 questions answered

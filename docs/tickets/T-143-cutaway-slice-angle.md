@@ -16,11 +16,12 @@ created: 2026-10-11 15:52
 The cut is a half-line from the axis at an angle (`rooms3d.ts` around line 1186, "Where the cutaway's cut … runs through solid rock"); a flat cut is two such half-lines 180° apart. A wedge means two cut faces meeting at the axis, with the rock face drawn on both. T-130 (zoom in Cutaway) touches the same camera controls.
 
 ## Approach
-Make the cut a wedge with a width from 90° to 180°, centred on the camera's facing; draw the cut rock face on both sides. A control for it: a small slider in Cutaway (web), mirrored in Godot. Done: drag it to 90° and only the front quarter of the hole is removed.
+Make the cut a wedge with a width from 60° to 180°, centred on the camera's facing; draw the cut rock face on both sides. Controls: a small slider in Cutaway and keys (say [ and ]), listed in Help; the angle saved in settings; mirrored in Godot. Done: drag it to 90° and only the front quarter of the hole is removed.
 
 ## Open questions
-- [ ] The control: a slider in the view, keys (like [ and ]), or both? Is the angle saved in settings?
-- [ ] Should anything below 90° be allowed?
+- [x] The control: a slider in the view, keys (like [ and ]), or both? Is the angle saved in settings? → Both a slider and keys; the angle is saved in settings (Claude's default, Bryon didn't say). (Bryon, Oct 11)
+- [x] Should anything below 90° be allowed? → From 180° down to 60°. (Bryon, Oct 11)
 
 ## History
 - 2026-10-11 15:52 opened from N-0077
+- 2026-10-11 16:08 questions answered

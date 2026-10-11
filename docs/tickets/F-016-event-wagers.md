@@ -23,22 +23,23 @@ The choices such an event offers:
 **Injured workers:** an outcome can be "some workers were injured on the mission". They're out of the pool for some days while they heal, shown as a separate count, perhaps only in the tooltip. Cozy rule: **nobody dies on missions or events, and the injured always heal fully.**
 **Instant events:** some have no duration ("the drill is jammed and someone needs to get under it"), and resolve the moment you choose.
 
-Context: M14 built events with choices (`docs/PLAN-M14.md`, `src/sim/events.ts`, `data/events.json`, about 39 events): an event waits `patienceDays` for an answer, effects include resources, mood, followUp (an effect some days later), colonists. Rolled outcomes, committing part of a request, workers away and injured are new. DECISIONS: "Events sting, they don't crush, and don't pause the game". `docs/EVENTS.md` catalogs the events planned (citizen visits, strikes, hazards, discoveries, network, Earth and the belt, story, notables) with what's built: the source of "more of those". The RNG is seeded, so rolls stay deterministic. Naming: F-011 already uses "missions" for the hole's goals (moving out of the pod), so these may want another word in the UI ("expeditions"? "jobs"?).
+Context: M14 built events with choices (`docs/PLAN-M14.md`, `src/sim/events.ts`, `data/events.json`, about 39 events): an event waits `patienceDays` for an answer, effects include resources, mood, followUp (an effect some days later), colonists. Rolled outcomes, committing part of a request, workers away and injured are new. DECISIONS: "Events sting, they don't crush, and don't pause the game". `docs/EVENTS.md` catalogs the events planned (citizen visits, strikes, hazards, discoveries, network, Earth and the belt, story, notables) with what's built: the source of "more of those". The RNG is seeded, so rolls stay deterministic. Naming: these are just events, with a decision and sometimes a duration (F-011 keeps "missions" for the hole's goals). Odds are hidden from the player. Injured workers heal faster near a clinic.
 
 ## Breakdown
 Proposed; becomes tickets once this feature is agreed.
 - Rolled outcomes in the sim: weighted outcome tables per choice in `events.json`, odds shifting with how much you commit, the roll on return; tests with the seeded RNG.
 - Away and injured workers: a pool of colonists out on an event and a pool healing, both removed from the workforce for their days; in the snapshot and the save (version bump).
-- Partial commits: a choice that takes a slider or steps (fewer colonists or resources), with the odds shown as words ("risky", "good odds").
+- Partial commits: a choice that takes a slider or steps (fewer colonists or resources), with the odds hidden.
 - The top bar and tooltip: workers away and injured, what they're doing and when they're back; the Office card shows the stake and what might come of it. Web, and Godot through the shared view code.
 - The meteorite run as the first wager event, then an instant one (the jammed drill).
 - A batch of new events and office visits from EVENTS.md's unbuilt list, many of them wagers, balanced so cost and risk pay; bots that take and refuse them in the playthroughs.
 
 ## Open questions
-- [ ] Which of EVENTS.md's unbuilt events first, or should the plan propose a list? (Claude's default: the plan proposes 8–10, mixing wagers, instant events and plain visits.)
-- [ ] Should the odds be shown to the player as numbers, words, or hidden?
-- [ ] What do we call them in the UI, given F-011's "missions"?
-- [ ] Do injured workers need anything to heal faster (a clinic nearby), or just time?
+- [x] Which of EVENTS.md's unbuilt events first, or should the plan propose a list? (Claude's default: the plan proposes 8–10, mixing wagers, instant events and plain visits.) → The plan proposes 8–10. (Bryon, Oct 11)
+- [x] Should the odds be shown to the player as numbers, words, or hidden? → Hidden from the player. (Bryon, Oct 11)
+- [x] What do we call them in the UI, given F-011's "missions"? → They're just events, a different flavour: a decision and sometimes a duration. No separate name. (Bryon, Oct 11)
+- [x] Do injured workers need anything to heal faster (a clinic nearby), or just time? → They heal faster near a clinic. (Bryon, Oct 11)
 
 ## History
 - 2026-10-11 15:52 opened from N-0072, N-0076
+- 2026-10-11 16:08 questions answered
