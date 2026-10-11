@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { cleanGraphics, DEFAULT_GRAPHICS, GRAPHICS_PRESETS, type Graphics } from "../view/graphics";
-import { DEFAULT_VIEW3D, isCamera, type View3d } from "../view/cameras";
+import { clampCutAngle, DEFAULT_VIEW3D, isCamera, type View3d } from "../view/cameras";
 import { storageKey } from "./storageKey";
 import { defaultOf } from "./settingsTable";
 
@@ -64,7 +64,7 @@ function cleanView3d(raw: Partial<View3d> | undefined): View3d {
     }
   }
   // The Shaft and Top cameras are gone (T-052): either falls back to Free view; an old xray flag is dropped.
-  return { camera: isCamera(v.camera) ? v.camera : DEFAULT_VIEW3D.camera, wallsDown: !!v.wallsDown, roomColors: v.roomColors ?? DEFAULT_VIEW3D.roomColors, flows: !!v.flows };
+  return { camera: isCamera(v.camera) ? v.camera : DEFAULT_VIEW3D.camera, wallsDown: !!v.wallsDown, roomColors: v.roomColors ?? DEFAULT_VIEW3D.roomColors, flows: !!v.flows, cutAngle: clampCutAngle(v.cutAngle) };
 }
 
 const KEY = storageKey("settings");

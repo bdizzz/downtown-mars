@@ -19,9 +19,19 @@ export interface View3d {
   roomColors: boolean;
   /** Resource networks drawn as pipes: power, water, air and food, flowing from what makes them to what uses them. */
   flows: boolean;
+  /** Cutaway: how wide a wedge the cut takes out of the hole, in degrees, centred on the camera: 180 slices it flat through the axis. */
+  cutAngle: number;
 }
 
-export const DEFAULT_VIEW3D: View3d = { camera: "iso", wallsDown: false, roomColors: true, flows: false };
+/** The cutaway's wedge: from a quarter-and-a-bit (60°) to a flat cut (180°), in steps of `step` for the keys. */
+export const CUT_ANGLE = { min: 60, max: 180, step: 15 };
+
+/** A cut angle in range, whole degrees; anything that isn't a number is a flat cut. */
+export function clampCutAngle(deg: unknown): number {
+  return typeof deg === "number" && Number.isFinite(deg) ? Math.round(Math.min(CUT_ANGLE.max, Math.max(CUT_ANGLE.min, deg))) : CUT_ANGLE.max;
+}
+
+export const DEFAULT_VIEW3D: View3d = { camera: "iso", wallsDown: false, roomColors: true, flows: false, cutAngle: CUT_ANGLE.max };
 
 export function isCamera(id: unknown): id is Camera {
   return CAMERAS.some((c) => c.id === id);

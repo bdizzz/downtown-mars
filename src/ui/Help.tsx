@@ -20,6 +20,8 @@ const GENERAL: [string, string][] = [
   ["Drag", "Pan the view (draws corridors with the corridor tool)"],
   ["Scroll", "Pan up, down and around (zooms the plan)"],
   ["Pinch / Ctrl+scroll", "Zoom"],
+  [", .", "Cutaway: zoom out / in (or the − + buttons, top left)"],
+  ["; '", "Cutaway: narrow / widen the cut, from a flat slice through the middle (180°) to a 60° wedge (or the slider, top left)"],
   ["Right-click", "Cancel the current tool"],
   ["WASD, Q E", "First person: walk (Shift runs) and turn"],
   ["WASD", "Free view: pan across the floor (not in Build, where they're room keys); Reset camera (top left) goes back"],

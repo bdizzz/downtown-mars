@@ -307,7 +307,18 @@ label.set-row { cursor: pointer; }
 }
 .cam-reset:hover { border-color: var(--accent); color: var(--accent); }
 .cam-reset[hidden] { display: none; }
-.cam-readout:has(> span:empty):has(> .cam-reset[hidden]) { display: none; }
+.cam-readout:has(> span:empty):has(> .cam-reset[hidden]):not(:has(> .cam-cutaway:not([hidden]))) { display: none; }
+/* Cutaway: zoom buttons and the cut's angle. */
+.cam-cutaway { display: flex; align-items: center; gap: 4px; pointer-events: auto; }
+.cam-cutaway[hidden], .cam-wedge[hidden] { display: none; }
+.cam-zoom {
+  font: inherit; font-size: 13px; line-height: 1; color: var(--text); cursor: pointer; width: 22px; height: 20px;
+  background: transparent; border: 1px solid var(--muted); border-radius: 4px; padding: 0;
+}
+.cam-zoom:hover { border-color: var(--accent); color: var(--accent); }
+.cam-wedge { display: flex; align-items: center; gap: 6px; margin-left: 6px; font-size: 11px; white-space: nowrap; }
+.cam-wedge span { min-width: 52px; }
+.cam-wedge input[type="range"] { width: 90px; accent-color: var(--accent); }
 /* First person with mouse look: a small cross at the centre, where clicks land. */
 .walk-crosshair {
   position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; pointer-events: none;
@@ -633,6 +644,7 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   .set-ctl input[type="checkbox"]::after { width: 22px; height: 22px; }
   .set-ctl input[type="checkbox"]:checked::after { transform: translateX(20px); }
   .cam-reset { padding: 4px 10px; }
+  .cam-zoom { width: 36px; height: 32px; font-size: 16px; }
   /* No keyboard: hide the key hints. */
   .dock-btn kbd, .room-btn kbd, .mode-btn kbd { display: none; }
 }
