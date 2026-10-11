@@ -1678,6 +1678,13 @@ for (const [id, list] of Object.entries(SPOTS)) {
   items[id].spots = list.map(([kind, at, turn]) => ({ kind, at, ...(turn ? { turn } : {}) }));
 }
 
+// Where first person can grab a hot drink (T-139): a home's kitchenette, the galley's and canteen's serving counter.
+const DRINKS = ["kitchenette", "serving_counter"];
+for (const id of DRINKS) {
+  if (!items[id]) throw new Error(`drinks from unknown item "${id}"`);
+  items[id].drinks = true;
+}
+
 // Every item a room lists exists, and every item is used somewhere.
 for (const [room, ids] of Object.entries(rooms)) for (const id of ids) if (!items[id]) throw new Error(`${room}: no item "${id}"`);
 const unused = Object.keys(items).filter((id) => !Object.values(rooms).some((ids) => ids.includes(id)));
@@ -1694,7 +1701,7 @@ const lines = ["{", `  "_note": ${JSON.stringify(note)},`, '  "colors": {'];
 Object.entries(colors).forEach(([k, v], i, all) => lines.push(`    ${JSON.stringify(k)}: ${JSON.stringify(v)}${i < all.length - 1 ? "," : ""}`));
 lines.push("  },", '  "items": {');
 Object.entries(items).forEach(([id, it], i, all) => {
-  lines.push(`    ${JSON.stringify(id)}: { "name": ${JSON.stringify(it.name)}, "size": ${J(it.size)},${it.mount ? ` "mount": ${it.mount},` : ""}${it.opening ? ` "opening": true,` : ""}${it.climb ? ` "climb": true,` : ""}${it.light ? ` "light": ${J(it.light)},` : ""}${it.spots ? ` "spots": ${J(it.spots)},` : ""} "parts": [`);
+  lines.push(`    ${JSON.stringify(id)}: { "name": ${JSON.stringify(it.name)}, "size": ${J(it.size)},${it.mount ? ` "mount": ${it.mount},` : ""}${it.opening ? ` "opening": true,` : ""}${it.climb ? ` "climb": true,` : ""}${it.drinks ? ` "drinks": true,` : ""}${it.light ? ` "light": ${J(it.light)},` : ""}${it.spots ? ` "spots": ${J(it.spots)},` : ""} "parts": [`);
   it.parts.forEach((p, j) => lines.push(`      ${J(p)}${j < it.parts.length - 1 ? "," : ""}`));
   lines.push(`    ] }${i < all.length - 1 ? "," : ""}`);
 });

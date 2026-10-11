@@ -50,7 +50,8 @@ const STORM_DIM = { sun: 0.7, sky: 0.3 };
 const STORM_EASE = 0.8;
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, touchFirst, type Gesture } from "../view/touch";
 import { createWalkPad } from "./joystick";
-import { clear as walkClear, stairLift, stairsHere, step as walkStep } from "../view/walk";
+import { clear as walkClear, drinkHere, stairLift, stairsHere, step as walkStep } from "../view/walk";
+import { createDrink } from "./drink3d";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Three
 // cameras: Free view, over one floor and off to one side (its id is "iso");
@@ -85,7 +86,7 @@ const ISO_PAN = { speed: 0.6, minSpeed: 12, reach: 1.3 };
  */
 const ISO = { start: 1.6, min: 12, pad: 1.1, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
 /** First person: how finely and how far to look for room to stand on another floor (m), eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
-const WALK = { searchStep: 0.5, searchReach: 40, eye: 1.8, speed: 3, run: 9, turn: 0.004, lookTurn: 0.0025, keyTurn: 1.8 };
+const WALK = { searchStep: 0.5, searchReach: 40, eye: 1.8, speed: 4.5, run: 10, turn: 0.004, lookTurn: 0.0025, keyTurn: 1.8 };
 /** Looking up and down (first person) stops just short of straight up or down. */
 const MAX_PITCH = Math.PI / 2 - 0.02;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
@@ -1176,10 +1177,24 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   crosshair.style.display = "none";
   host.appendChild(crosshair);
   // On a touch screen: a stick to walk with, and stair buttons (no keys to press).
-  const walkPad = createWalkPad(host, (dir) => {
-    takeStairs(dir);
+  const walkPad = createWalkPad(
+    host,
+    (dir) => {
+      takeStairs(dir);
+      updateReadout();
+    },
+    () => grabDrink(),
+  );
+  // A hot drink to carry round (T-139): grabbed at a kitchenette or serving counter, kept until you leave first person.
+  const drink = createDrink(camera);
+  let walked = 0;
+  const canDrink = () => !drink.held && !!layout && view.mode === "walk" && drinkHere(layout, walker.floor, walker.x, walker.z, walker.yaw);
+  function grabDrink(): void {
+    if (!canDrink()) return;
+    drink.setHeld(true);
     updateReadout();
-  });
+    dirty = true;
+  }
 
   /** Stand on the gallery of the floor you were looking at, facing along it. */
   function placeWalker(): void {
@@ -1223,9 +1238,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const stairs = layout ? stairsHere(layout, walker.floor, walker.x, walker.z) : null;
     const flights = stairs ? ` · stairs: ${[stairs.up !== null ? "R up" : "", stairs.down !== null ? "F down" : ""].filter(Boolean).join(", ")}` : "";
     walkPad.setStairs(stairs?.up != null, stairs?.down != null);
-    if (touchFirst()) return `Floor ${walker.floor} · the stick walks (all the way runs), drag to look`;
+    // F goes down the stairs first; off them, at a counter, it grabs a drink.
+    const offer = canDrink() && !(stairs?.down != null);
+    walkPad.setDrink(canDrink());
+    if (touchFirst()) return `Floor ${walker.floor} · the stick walks (all the way runs), drag to look${canDrink() ? " · ☕ for a hot drink" : ""}`;
     const look = locked() ? "mouse to look (Tab or Esc to stop)" : "drag to look (Tab for mouse look)";
-    return `Floor ${walker.floor} · WASD to move, Q/E to turn, ${look}${flights}`;
+    return `Floor ${walker.floor} · WASD to move, Q/E to turn, ${look}${flights}${offer ? " · press F to grab a drink" : ""}`;
   }
 
   /** Switching camera mode: set the new one up, and rebuild if what's hidden changed. */
@@ -1236,6 +1254,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (view.mode !== "iso") isoHeld.clear();
     if (before === "walk" && view.mode !== "walk") {
       held.clear();
+      drink.setHeld(false);
       if (locked()) document.exitPointerLock();
     }
     if ((before === "walk") !== (view.mode === "walk")) opts.onWalking?.(view.mode === "walk");
@@ -1273,7 +1292,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
     if (e.repeat && (k === "r" || k === "f" || k === "tab")) return;
     if (k === "r") takeStairs("up");
-    else if (k === "f") takeStairs("down");
+    else if (k === "f") {
+      if (layout && stairsHere(layout, walker.floor, walker.x, walker.z)?.down != null) takeStairs("down");
+      else grabDrink();
+    }
     else if (k === "tab") {
       if (locked()) document.exitPointerLock();
       else canvas.requestPointerLock?.()?.catch?.(() => {});
@@ -1390,6 +1412,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const dz = ((fwd * fz + side * fx) / len) * speed;
     const [x, z, floor] = walkStep(layout, walker.floor, walker.x, walker.z, dx, dz);
     if (x === walker.x && z === walker.z) return turn !== 0;
+    walked += Math.hypot(x - walker.x, z - walker.z);
     walker.x = x;
     walker.z = z;
     // Up (or down) the stairs onto another floor.
@@ -1679,6 +1702,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       updateReadout();
     }
     if (isoFrame(dt)) applyCamera();
+    // The drink steams and bobs as you go.
+    if (drink.held) {
+      drink.step(dt, walked);
+      dirty = true;
+    }
+    walked = 0;
     // Free view's cut-out opening: the land dissolves away round the floor, the backdrop darkens.
     if (slice.on.value > 0.5 && slice.amount.value < 1) {
       slice.amount.value = Math.min(1, slice.amount.value + dt / SLICE.seconds);
@@ -2260,6 +2289,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       bar.remove();
       crosshair.remove();
       walkPad.dispose();
+      drink.dispose();
     },
   };
   return stage;

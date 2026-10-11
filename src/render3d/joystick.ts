@@ -1,6 +1,7 @@
 // First person on a touch screen: a translucent stick in the bottom-left
 // corner to walk with, and stair buttons beside it when you're standing in a
-// flight. Looking round stays a drag on the view itself.
+// flight (and a drink button at a kitchenette or serving counter). Looking
+// round stays a drag on the view itself.
 
 /** The stick's reach (px, from the centre to the knob's furthest), and how far out it starts to run (0–1). */
 const STICK = { reach: 44, run: 0.9, dead: 0.12 };
@@ -13,10 +14,12 @@ export interface WalkPad {
   show(on: boolean): void;
   /** Which stair buttons to offer where the walker stands. */
   setStairs(up: boolean, down: boolean): void;
+  /** Whether to offer a hot drink where the walker stands (T-139). */
+  setDrink(on: boolean): void;
   dispose(): void;
 }
 
-export function createWalkPad(host: HTMLElement, onStairs: (dir: "up" | "down") => void): WalkPad {
+export function createWalkPad(host: HTMLElement, onStairs: (dir: "up" | "down") => void, onDrink: () => void): WalkPad {
   const pad = document.createElement("div");
   pad.className = "walk-pad";
   pad.hidden = true;
@@ -41,6 +44,12 @@ export function createWalkPad(host: HTMLElement, onStairs: (dir: "up" | "down") 
   };
   const up = button("up", "▲ Up");
   const down = button("down", "▼ Down");
+  const drink = document.createElement("button");
+  drink.textContent = "☕ Drink";
+  drink.title = "Grab a hot drink";
+  drink.hidden = true;
+  drink.addEventListener("click", onDrink);
+  stairs.appendChild(drink);
   pad.appendChild(stairs);
   host.appendChild(pad);
 
@@ -103,6 +112,9 @@ export function createWalkPad(host: HTMLElement, onStairs: (dir: "up" | "down") 
     setStairs(canUp, canDown) {
       up.hidden = !canUp;
       down.hidden = !canDown;
+    },
+    setDrink(on) {
+      drink.hidden = !on;
     },
     dispose: () => pad.remove(),
   };
