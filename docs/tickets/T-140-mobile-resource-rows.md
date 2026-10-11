@@ -20,3 +20,4 @@ Make each category a two-column grid: the label in a left column spanning all ro
 
 ## History
 - 2026-10-11 15:52 opened from N-0071
+- 2026-10-11 18:43 building on t-106-mobile-collapsible-top-bar

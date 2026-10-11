@@ -35,3 +35,4 @@ GUIDE.md: the top bar on phones.
 - 2026-10-09 13:03 opened from N-0060
 - 2026-10-09 questions answered: the panel is toggled manually only
 - 2026-10-09 13:04 questions answered
+- 2026-10-11 18:43 building on t-106-mobile-collapsible-top-bar
