@@ -3,6 +3,7 @@ id: F-017
 title: Upgrades for each kind of room, with an up-front cost, a monthly upkeep and a new look
 status: agreed
 plan:
+branch: feature/f-017-room-upgrades
 notes: [N-0075]
 created: 2026-10-11 15:52
 ---
@@ -35,3 +36,4 @@ Agreed; each line names its ticket.
 - 2026-10-11 15:52 opened from N-0075
 - 2026-10-11 16:08 questions answered
 - 2026-10-11 16:10 agreed
+- 2026-10-11 16:17 built on feature/f-017-room-upgrades

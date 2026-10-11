@@ -3,6 +3,7 @@ id: F-016
 title: More events and office visits, many of them wagers with workers away and odds on the outcome
 status: agreed
 plan:
+branch: feature/f-016-event-wagers
 notes: [N-0072, N-0076]
 created: 2026-10-11 15:52
 ---
@@ -44,3 +45,4 @@ Agreed; each line names its ticket.
 - 2026-10-11 15:52 opened from N-0072, N-0076
 - 2026-10-11 16:08 questions answered
 - 2026-10-11 16:10 agreed
+- 2026-10-11 16:17 built on feature/f-016-event-wagers
