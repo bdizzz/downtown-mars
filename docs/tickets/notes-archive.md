@@ -410,3 +410,94 @@ i like the scroll action moving up and down a hole in cutaway view, but we shoul
 ## N-0068 · 2026-10-10 01:37
 we should make sure we've implemented all the rooms we talked about
 → F-015
+
+## N-0069 · 2026-10-10 13:51
+when in 3d views, are there any efficiencies optimization we can take in rendering the scene? for example, if you are in free view and looking at floor 2, i'm not sure if ALL of the rooms and furniture way down on floor 7 are being drawn in full. if there's a way to know which rooms are visible to the camera and which aren't, perhaps we can save some energy by not rendering rooms we can't see. this will be complicated by the fact that you can see through any number of rooms if they have windows in the right places, as well as rooms from a lot of different floors are visible from the main shaft. furniture might be the biggest savings if we know we don't have to render a specific room at all.
+→ T-137
+
+## N-0070 · 2026-10-10 13:58
+when in first person view, you should walk a little more quickly than presently, since you might get bored walking a long distance. a cool little easter egg could be that if you go to a room with the ability to serve meals (like a canteen, galley, etc, maybe even some of the nicer residences), there is an action you can take on a furniture that is able to serve beverages: "press <key> to grab a drink". doing this action will then render a first person pov arm holding a steaming beverage of dark brown liquid in a mug as you walk around. the effect would be similar to other first person perspective games where you're holding a gun or tool, only in this case it is just a mug of liquid. this state would last until you leave first person view, and the next tim you enter the view you would be back to normal (need to return to a meal room to re-trigger).
+→ T-138, T-139
+
+## N-0071 · 2026-10-10 14:07
+in mobile web view, if the number of resources in a category wraps onto another row, it's shouldn't wrap to underneath the resource category label. the label should span the entire height of that resource section, be anchored left, and then the resources will appear in multiple rows to the right of it.
+→ T-140
+
+## N-0072 · 2026-10-10 14:10
+the proof of concept for events and office visits has been solid. let's plan out some more of those.
+→ F-016
+
+## N-0073 · 2026-10-10 14:13
+before jumping into the rest of the room catalog we have planned out, we should add a 1x1 "lounge" room with furniture like couches, tvs, games tables, etc. this should add va comfort bonus to nearby rooms
+→ T-141, F-015
+
+## N-0074 · 2026-10-10 14:16
+corridors should be able to have their building materials upgraded, just like rooms with all the same visual changes and an analogous resource cost.
+→ T-142, F-003
+
+## N-0075 · 2026-10-10 14:24
+let's plan out singular room-specific upgrades. these should be tailored to each room type, and performing the upgrade comes with an up-front resource cost and/or continued resource draw every month. for example, a clinic could offer upgraded medical diagnostic tools, which carry a greater impact on health but also cost several electronics upfront and add something like a 0.1 or 0.2 electronics cost every month (we can balance the specific numbers). another example could be "fiber noise damping panels" in an industrial / life support room which decrease nearly noise impact, but cost fiber up front as well as a monthly "replace old fibers" budget. In most cases, performing a room upgrade changes the room visually, whether some of the furniture is replaced with new pieces (which are only available to rooms with that upgrade) or some other decoration.
+→ F-017
+
+## N-0076 · 2026-10-10 14:48
+some events should have a random change of working out favorably, depending on your choice (if you have a choice) within the event. 
+
+for example, someone might come to the office proposing that they take a party of colonists out on a metal-rich meteorite collection mission, and they need to bring 10 machinery with them on the trip. if you agree, then you lose 10 machinery for a day (or however long the event action is supposed to last narratively), and upon their return there is a random probability that:
+
+* all the machinery is safely returned, you gain back 10 machinery. 
+* some of the machinery was consumed when a winch broke, you gain back 8 machinery.
+* there were catastrophic problems with their tools and machines, they returned empty-handed and no machinery is returnend.
+
+additionally this example result would carry:
+
+* they found useful meteorites and you gain 25 metal ore (not available if they had catastrophic problems)
+* they were unsuccessful at finding anything so you gain no ore
+
+
+in events like these where some colonists are unavailable for a time, the pool of workers in the hole should be reduced by that amount for the duration of the event. one option in committing to an event could be posed as:
+
+1. agree to the full proposal
+2. agree, but commit fewer colonists than asked for. in some events, it might appear as committing fewer resources than asked for. this could impact the odds, but you have a smaller wager (cost) 
+3. deny the proposal. in some cases, this might come with a temporary impact on happiness as well
+
+
+we'll need a way to show visually in the "resource UI" at the top of the screen that some number of workers are on a mission like this and not working a normal job. we'll need to actually reduce the worker pool by that amount for the duration. the tooltip over the worker count can elaborate on the details. 
+
+lastly, some scenarios might complete with a negative outcome of "some workers were injured on the mission". a worker that was injured by an event  takes certain number of days to heal and recover before they can be added back to the worker pool. we'll need a separate indicator in the resource display of injured/healing workers. perhaps this info is only shown in the tooltip. since this is a cozy game, workers never die on missions/events, and workers always heal back to normal (after their duration of healing is completed). 
+
+some events don't have a duration. it could be like "the drill is jammed and we need someone to get underneath it and see what is wrong" which would give an immediate result to your choices.
+
+overall, we should balance these events/missions as a wager: generally the higher the cost, the higher the reward. and the higher the risk, the higher the reward. in an abstract sense, it will be an incentive to build your hole with spare capacity/resources in mind, so you don't encounter one of these events and don't have enough to commit to it, or can't take on the risk of a possible failure state and what that would mean to a tenuous balance in the hole.
+→ F-016
+
+## N-0077 · 2026-10-11 01:44
+we should add the ability to adjust the "slice angle" of cutaway view. the current behavior would be considered 180 degrees -- resulting in a flat line across the entire colony. this would be the maximum angle, and for example 90 degrees would show only the front-most quarter of the hole removed.
+→ T-143
+
+## N-0078 · 2026-10-11 02:02
+we should try adding a "concrete collar" around the top of the hole, where it transitions to surface. this would be keeping with some realism and prevent rock from crumbling in. additionally, some machinery should be attached to this collar, and that machinery should be managing the cables rising through the shaft form the drill. for now, this new element is purely decorative -- you can't select or interact with it, and it conveys no resources, costs, maintenance  or effects on its own.
+→ T-144
+
+## N-0079 · 2026-10-11 02:04
+in web 3d mode, sometimes corridors are obstructed by a thin wall of rock -- this happened when there is a room on an inner ring, then an unexcavated segment adjacent on an outer ring, and a corridor running in/out along one side of the room. the unwanted wall sticks out form the unexcavated segment and covers the corridor halfway.
+→ T-145
+
+## N-0080 · 2026-10-11 02:05
+when loading a game, it should start in paused mode
+→ T-146
+
+## N-0081 · 2026-10-11 02:05
+clicking the pause button while paused should unpause the simulation and return it to the speed before pausing (of 1x as a fallback)
+→ T-146
+
+## N-0082 · 2026-10-11 02:08
+the happiness metric and tooltip should tell you what is impacting the score
+→ T-147
+
+## N-0083 · 2026-10-11 02:17
+rooms shouldn't stall if gray water tanks are full; i this case gray water should be lost permenantly
+→ T-148
+
+## N-0084 · 2026-10-11 02:25
+we need to add a "floor directory" panel (accessible form the charts area) that lists all the floors and all the rooms on each floor. clicking on a room will show the detail panel for that room.
+→ T-149

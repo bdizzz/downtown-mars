@@ -3,7 +3,7 @@ id: F-003
 title: Room materials, finishes and floors, upgraded in place
 status: agreed
 plan: docs/PLAN-M15.md
-notes: [N-0006, N-0007]
+notes: [N-0006, N-0007, N-0074]
 created: 2026-10-04 19:12
 ---
 ## Goal
@@ -48,6 +48,7 @@ Agreed Oct 6. In build order; 5 can go any time before 6.
 - (M) Floor upgrades: `flooring` upgrades starting with fibre-composite panels, the panel's Floor control, floor looks in web 3D and Godot → T-037
 - (M) Build in a material: build mode's material picker (defaults to bare rock), full cost (bare rock + upgrade) but a single construction effort (the build time only); web and Godot → T-038
 - (S) Room-colour mode tints floors but never changes their texture, which always follows the room's material and flooring; web and Godot (added Oct 7 from N-0040) → T-076
+- (L) Corridors upgrade their materials like rooms, same looks, analogous cost (added Oct 11 from N-0074) → T-142
 
 ## History
 - 2026-10-04 19:12 made from T-008 (T-012 moved room materials into a feature)
@@ -58,3 +59,4 @@ Agreed Oct 6. In build order; 5 can go any time before 6.
 - 2026-10-06 00:19 downgrades to bare rock with a partial refund (Bryon); 2 questions
 - 2026-10-06 00:20 questions answered
 - 2026-10-07 18:58 added T-076
+- 2026-10-11 15:54 added N-0074 as T-142

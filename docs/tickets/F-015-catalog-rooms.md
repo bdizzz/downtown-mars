@@ -3,7 +3,7 @@ id: F-015
 title: Build the rest of the room catalog
 status: agreed
 plan:
-notes: [N-0068]
+notes: [N-0068, N-0073]
 created: 2026-10-10 01:41
 ---
 ## Goal
@@ -35,6 +35,7 @@ Agreed; each line names its ticket.
 - Geothermal plant and the depth unlock. → T-134
 - Chemical plant (plastics, methane) and mycelium vat (mycelium composite). → T-135
 - Grand staircase. → T-136
+- A 1×1 lounge (couches, TV, games tables) lifting nearby comfort, before the rest of the catalog (added from N-0073). → T-141
 - A feature per C system, in order: H-size rooms, entertainment, safety, commutes, tourism, consumer goods. → each drafted as its own feature when the A and B rooms are under way (not a ticket)
 
 ## Open questions
@@ -46,3 +47,4 @@ Agreed; each line names its ticket.
 - 2026-10-11 questions answered: trim into a parked list; order of the C systems
 - 2026-10-11 15:48 questions answered
 - 2026-10-11 15:50 agreed
+- 2026-10-11 15:54 added N-0073 as T-141
