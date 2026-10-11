@@ -35,6 +35,8 @@ public partial class Live : Node3D
     bool _planSeen;
     /// <summary>Start in the plan view (--plan), for this run.</summary>
     public bool StartPlan { get; set; }
+    /// <summary>The cutaway's wedge for this run, in degrees (--cut=); null keeps the saved one.</summary>
+    public float? StartCut { get; set; }
     /// <summary>No HUD (--no-hud): for screenshots of the game alone.</summary>
     public bool NoHud { get; set; }
     int PlanFloor => Math.Clamp(_topFloor ?? 1, 1, Math.Max(1, _shape.Floors));
@@ -84,6 +86,10 @@ public partial class Live : Node3D
     Button _drillButton = null!;
     bool _drillActive;
     PanelContainer _pickerPanel = null!;
+    /// <summary>The cutaway's own panel, where the floor picker is in Free view: zoom, and the cut's angle.</summary>
+    PanelContainer _cutPanel = null!;
+    HSlider _cutSlider = null!;
+    Label _cutLabel = null!;
     readonly List<Button> _speedButtons = new();
     VBoxContainer _floorPicker = null!;
     int _pickerFloors = -1;
@@ -173,6 +179,7 @@ public partial class Live : Node3D
         // A camera from the command line (--view=) wins over the saved one, for this run.
         if (asked != Overview.Iso) ViewSettings.Camera = asked;
         if (StartPlan) ViewSettings.Plan = true;
+        if (StartCut is float cutDeg) ViewSettings.CutAngle = ViewSettings.ClampCut(cutDeg);
         _rig = new CameraRig(MetaNow()) { Walker = _walker };
         AddChild(_rig);
         _rig.SetMode(ViewSettings.Camera);
@@ -499,6 +506,7 @@ public partial class Live : Node3D
         _waiting.Visible = waiting;
         // The cutaway always shows every floor, so it has no floor picker.
         _pickerPanel.Visible = !waiting && _pickerFloors >= 0 && !_map.Open && !InCutaway;
+        _cutPanel.Visible = !waiting && !_map.Open && InCutaway;
         _waiting.Text = _bridge.Silent
             ? $"Something is on port {Port}, but it isn't the game's bridge.\nRun  npm run bridge  in the repo, or start both with --port=<n>."
             : _bridgePid > 0 && OS.IsProcessRunning(_bridgePid) ? "Starting the game…"
@@ -985,7 +993,7 @@ public partial class Live : Node3D
             if (flat.Length() > 1e-3f) toward = flat.Normalized();
             offset = r * r / Mathf.Max(flat.Length(), r * SliceNearest);
         }
-        _cutaway.Show(cutaway, _shape, heading, Cut == null, sliced, toward, offset);
+        _cutaway.Show(cutaway, _shape, heading, Cut == null, sliced, toward, offset, CameraRig.CutWidth);
         // Underground, rock round the rings (the cutaway has its backdrop instead); walking, the whole hole's depth.
         var under = walking && GetViewport().GetCamera3D()?.GlobalPosition.Y < 0;
         _rockWall.Show(_shape, cutaway ? null : under ? _shape.Floors : Cut);
@@ -1436,6 +1444,11 @@ public partial class Live : Node3D
             case Key.Down when _rig?.Walking == true: PickFloor((_rig.OnFoot ? _walker.Floor : _topFloor ?? 1) + 1); break;
             // The cutaway shows every floor: no floor to step.
             case Key.Up or Key.Down or Key.Home when InCutaway: break;
+            // Cutaway, as the web's: , and . zoom out and in; ; and ' narrow and widen the cut.
+            case Key.Comma when InCutaway: _rig!.ZoomCutaway(CutZoomStep); break;
+            case Key.Period when InCutaway: _rig!.ZoomCutaway(1 / CutZoomStep); break;
+            case Key.Semicolon when InCutaway: SetCutAngle(ViewSettings.CutAngle - ViewSettings.CutStep); break;
+            case Key.Apostrophe when InCutaway: SetCutAngle(ViewSettings.CutAngle + ViewSettings.CutStep); break;
             case Key.Up: if (_topFloor != null) PickFloor(_topFloor == 1 ? null : _topFloor - 1); break;
             case Key.Down: PickFloor((_topFloor ?? 0) + 1); break;
             case Key.Home: PickFloor(null); break;
@@ -1646,6 +1659,52 @@ public partial class Live : Node3D
         pickerPanel.AddChild(scroll);
         _floorPicker = new VBoxContainer();
         scroll.AddChild(_floorPicker);
+
+        // The cutaway's panel, in the floor picker's place (it has no floors to pick): zoom, and the cut's angle.
+        var cutPanel = _cutPanel = new PanelContainer { Visible = false };
+        cutPanel.AddThemeStyleboxOverride("panel", Panel());
+        cutPanel.SetAnchorsPreset(Control.LayoutPreset.CenterRight);
+        cutPanel.GrowHorizontal = Control.GrowDirection.Begin;
+        cutPanel.Position = new Vector2(-150, -60);
+        layer.AddChild(cutPanel);
+        var cutRows = new VBoxContainer();
+        cutRows.AddThemeConstantOverride("separation", 6);
+        cutPanel.AddChild(cutRows);
+        var zoomRow = new HBoxContainer();
+        zoomRow.AddChild(Text("Zoom", 13, new Color("#c9b29c")));
+        zoomRow.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
+        foreach (var (text, tip, by) in new[] { ("−", "Zoom out (,)", CutZoomStep), ("+", "Zoom in (.)", 1 / CutZoomStep) })
+        {
+            var b = new Button { Text = text, FocusMode = Control.FocusModeEnum.None, TooltipText = tip, CustomMinimumSize = new Vector2(28, 0) };
+            b.Pressed += () => _rig?.ZoomCutaway(by);
+            zoomRow.AddChild(b);
+        }
+        cutRows.AddChild(zoomRow);
+        _cutLabel = Text($"Cut {ViewSettings.CutAngle:0}°", 13, new Color("#c9b29c"));
+        _cutLabel.TooltipText = "How much of the hole the cut takes away: 180° slices it flat through the middle, 90° takes only the front quarter (; narrower, ' wider)";
+        _cutLabel.MouseFilter = Control.MouseFilterEnum.Pass;
+        cutRows.AddChild(_cutLabel);
+        _cutSlider = new HSlider
+        {
+            MinValue = ViewSettings.CutMin, MaxValue = ViewSettings.CutMax, Step = 5, Value = ViewSettings.CutAngle,
+            CustomMinimumSize = new Vector2(120, 0), FocusMode = Control.FocusModeEnum.None,
+        };
+        _cutSlider.ValueChanged += v => SetCutAngle((float)v);
+        cutRows.AddChild(_cutSlider);
+    }
+
+    /// <summary>Cutaway: zoom buttons and keys change the distance by this factor, as the web's.</summary>
+    const float CutZoomStep = 1.25f;
+
+    /// <summary>Set how wide a wedge the cutaway's cut takes, in degrees, and keep it.</summary>
+    void SetCutAngle(float deg)
+    {
+        var a = ViewSettings.ClampCut(deg);
+        _cutLabel.Text = $"Cut {a:0}°";
+        if (!Mathf.IsEqualApprox((float)_cutSlider.Value, a)) _cutSlider.SetValueNoSignal(a);
+        if (a == ViewSettings.CutAngle) return;
+        ViewSettings.CutAngle = a;
+        ViewSettings.Save();
     }
 
     void BuildFloorPicker()

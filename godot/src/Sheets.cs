@@ -96,6 +96,8 @@ public partial class HelpSheet : Sheet
         ("WASD", "First person: walk; Free view: pan"),
         ("Drag / scroll sideways", "Turn the view"),
         ("Scroll / pinch", "Zoom (in the cutaway, scroll moves along the hole)"),
+        (",  .", "Cutaway: zoom out / in (or − + on the right)"),
+        (";  '", "Cutaway: narrow / widen the cut, from a flat slice (180°) to a 60° wedge (or the slider on the right)"),
         ("O  C  M  N  P", "Office, Charts, Map, Network, Colony"),
         ("[ ]", "Previous / next hole"),
         ("L", "Labels on or off"),

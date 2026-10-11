@@ -1,11 +1,12 @@
 // What every surface of the hole shares with the view (set by Live.cs as global shader parameters):
-// the cutaway's cut, a plane through the shaft's axis (xz its normal toward the camera, w 1 when on;
-// what's on the camera's side isn't drawn); and walls down (1 when on).
+// the cutaway's cut, a wedge round the shaft's axis centred on the camera (xz the way to the camera, y the
+// cosine of half the wedge's width, w 1 when on; what's inside the wedge isn't drawn: with y 0, a flat cut,
+// everything on the camera's side); and walls down (1 when on).
 global uniform vec4 cut_plane;
 global uniform float walls_down;
 
 bool cut_away(vec3 world) {
-	return cut_plane.w > 0.5 && dot(world.xz, cut_plane.xz) > 0.0;
+	return cut_plane.w > 0.5 && dot(world.xz, cut_plane.xz) > cut_plane.y * length(world.xz);
 }
 
 // Free view's cut-out with a floor picked, as the web's (surfaces.ts withSlice): the land sliced square to the

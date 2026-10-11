@@ -99,10 +99,23 @@ public partial class CameraRig : Node3D
     public string ModeName => _benchSeconds > 0 ? "benchmark" : _walking ? "first person" : Mode == Overview.Iso ? "free view" : "cutaway";
 
     /// <summary>
-    /// The cutaway's cut: the plane through the shaft's axis facing the camera (nx, 0, nz, 1): what's on
-    /// the camera's side of it isn't drawn. Zero in the other cameras.
+    /// The cutaway's cut: a wedge round the shaft's axis, centred on the camera (x and z the way to the camera,
+    /// y the cosine of half its width, w 1): what's inside it isn't drawn (view.gdshaderinc). A flat cut (180°)
+    /// has y 0: everything on the camera's side goes. Zero in the other cameras.
     /// </summary>
-    public Vector4 CutPlane => !_walking && Mode == Overview.Cutaway ? new Vector4(Mathf.Cos(_yaw), 0, Mathf.Sin(_yaw), 1) : Vector4.Zero;
+    public Vector4 CutPlane => !_walking && Mode == Overview.Cutaway
+        ? new Vector4(Mathf.Cos(_yaw), ViewSettings.CutAngle >= ViewSettings.CutMax ? 0 : Mathf.Cos(CutWidth / 2), Mathf.Sin(_yaw), 1)
+        : Vector4.Zero;
+
+    /// <summary>The cutaway's wedge, in radians (π: a flat cut).</summary>
+    public static float CutWidth => Mathf.DegToRad(ViewSettings.CutAngle);
+
+    /// <summary>Cutaway: zoom by a factor of the distance (above 1 is out), as the web's zoom buttons and keys.</summary>
+    public void ZoomCutaway(float by)
+    {
+        _cutOut = Mathf.Clamp(_cutOut * by, 25, 300);
+        Apply();
+    }
 
     /// <summary>The height the cutaway looks at, for which floors' lamps to light.</summary>
     public float CutawayY => _cutY;

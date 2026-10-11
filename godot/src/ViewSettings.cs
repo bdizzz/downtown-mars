@@ -25,6 +25,14 @@ public static class ViewSettings
     public static float UiScale { get; set; } = 1;
     /// <summary>Tilt-shift in Free view, 0 (off) to 1: gentle by default, as the web's High preset.</summary>
     public static float Miniature { get; set; } = 0.4f;
+    /// <summary>
+    /// The cutaway's wedge, in degrees, as the web's (view/cameras.ts CUT_ANGLE): how much of the hole the cut
+    /// takes away, centred on the camera, from a flat cut through the axis (180) down to 60. The keys step it by CutStep.
+    /// </summary>
+    public static float CutAngle { get; set; } = CutMax;
+    public const float CutMin = 60, CutMax = 180, CutStep = 15;
+    /// <summary>A cut angle in range, in whole degrees.</summary>
+    public static float ClampCut(float deg) => Mathf.Round(Mathf.Clamp(deg, CutMin, CutMax));
 
     /// <summary>A camera named on the command line (--view=): iso or free (Free view), or cutaway; null if it's neither.</summary>
     public static Overview? ParseCamera(string name) => name.ToLowerInvariant() switch
@@ -51,6 +59,7 @@ public static class ViewSettings
         ColorBlind = (bool)cfg.GetValue("game", "color_blind", false);
         UiScale = (float)cfg.GetValue("game", "ui_scale", 1f);
         Miniature = Mathf.Clamp((float)cfg.GetValue("graphics", "miniature", 0.4f), 0, 1);
+        CutAngle = ClampCut((float)cfg.GetValue("view", "cut_angle", CutMax));
     }
 
     /// <summary>A test run (a screenshot or a benchmark): nothing it changes is kept.</summary>
@@ -66,6 +75,7 @@ public static class ViewSettings
         cfg.SetValue("view", "room_colors", RoomColors);
         cfg.SetValue("view", "plan", Plan);
         cfg.SetValue("view", "overlay", Overlay ?? "");
+        cfg.SetValue("view", "cut_angle", CutAngle);
         cfg.SetValue("game", "tutorial_hidden", TutorialHidden);
         cfg.SetValue("game", "autosave", Autosave);
         cfg.SetValue("game", "color_blind", ColorBlind);
