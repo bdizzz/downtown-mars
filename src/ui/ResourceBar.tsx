@@ -118,9 +118,12 @@ export function ResourceBar({ s, onTrend }: { s: Snapshot | null; onTrend: OnTre
           <span className="group-label" aria-hidden="true">
             {GROUPS[i]}
           </span>
-          {group.map((item) => (
-            <BarEntry key={item.id} item={item} s={s} onTrend={onTrend} arrows={i > 0} />
-          ))}
+          {/* Its own box so that on phones the cells wrap beside the label, not under it (T-140). */}
+          <span className="group-cells">
+            {group.map((item) => (
+              <BarEntry key={item.id} item={item} s={s} onTrend={onTrend} arrows={i > 0} />
+            ))}
+          </span>
         </span>
       ))}
     </div>
