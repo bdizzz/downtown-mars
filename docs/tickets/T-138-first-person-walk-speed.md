@@ -20,3 +20,4 @@ Raise the walk speed to about 4.5 m/s (a brisk walk; run stays 9, or goes to 10)
 
 ## History
 - 2026-10-11 15:52 opened from N-0070
+- 2026-10-11 18:41 building on t-139-grab-a-drink
