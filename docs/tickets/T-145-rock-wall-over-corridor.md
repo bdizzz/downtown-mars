@@ -20,3 +20,4 @@ Reproduce in a test save (a ring-1 room, rock beyond it on ring 2, a radial corr
 
 ## History
 - 2026-10-11 15:52 opened from N-0079
+- 2026-10-11 18:47 building on t-145-rock-wall-over-corridor (with T-079)

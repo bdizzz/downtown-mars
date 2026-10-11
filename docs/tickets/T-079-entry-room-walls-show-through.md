@@ -20,3 +20,4 @@ Reproduce next to the entrance at a few angles, find whether it's coplanar walls
 
 ## History
 - 2026-10-06 19:31 opened from N-0043
+- 2026-10-11 18:47 building on t-145-rock-wall-over-corridor (with T-145)
