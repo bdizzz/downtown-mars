@@ -18,7 +18,7 @@ import { Look, type LookLike } from "./look";
 import { clampCutAngle, CUT_ANGLE, DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { intersectGlobalClipping } from "./wedgeClip";
 import { makeSlice, withCutRock, withRegolith, withRock, withSlice } from "./surfaces";
-import { RoomEffects } from "./effects3d";
+import { RoomEffects, type FxView } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
 import { createSky } from "./sky3d";
@@ -215,6 +215,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     sign: -1 | 1;
     along: THREE.Vector3;
     keep: THREE.Vector3;
+  }
+  /** What the sparks and steam need to know of the view: the floor picked, and in the cutaway, what's cut away. */
+  function fxView(): FxView {
+    const away = (x: number, z: number) => clips.every((c) => c.normal.x * x + c.normal.z * z < 0);
+    return { topFloor: cut(), cutAway: view.mode === "cutaway" ? away : undefined };
   }
   /**
    * How far past the axis the faces start, so a wedge's two meet: each sits a hair to its own kept
@@ -625,6 +630,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       camera.lookAt(walker.x + Math.cos(walker.yaw) * cp, camera.position.y + Math.sin(walker.pitch), walker.z + Math.sin(walker.yaw) * cp);
     }
     renderer.clippingPlanes = view.mode === "cutaway" ? clips : [];
+    // The cut turned or widened: sparks and steam from furniture it now takes go with it.
+    roomFx.setView(fxView());
     // Far-off cameras need a farther near plane, or the depth buffer can't tell
     // the ground from the roofs just under it.
     const inside = view.mode === "walk";
@@ -1910,7 +1917,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     roomFx.group.visible = graphics.life;
     if (!graphics.life) roomFx.clear();
     // Sparks and steam only come from furniture that's shown.
-    roomFx.setView({ topFloor: cut() });
+    roomFx.setView(fxView());
     updateRockWall();
     dirty = true;
   }
@@ -1984,6 +1991,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           field: () => fieldGroup,
           // The renderer, to inspect its programs.
           renderer,
+          // Sparks and steam alive and showing.
+          fx: () => roomFx.live,
           // How many rooms show their furniture near and far.
           detail() {
             const n = { near: 0, far: 0 };
@@ -2120,7 +2129,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         });
         troubleKey = null;
         // The floor picked changed: hidden furniture's sparks and steam go with it.
-        roomFx.setView({ topFloor: cut() });
+        roomFx.setView(fxView());
         dirty = true;
       }
       const d = snapshot.drill;
