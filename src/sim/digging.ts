@@ -2,8 +2,10 @@ import { rollDiscovery } from "./events";
 import type { SimConfig } from "./config";
 import { shaftSlots, yieldRock } from "./excavation";
 import { blueprintReady } from "./construction";
+import { isActive } from "./economy";
 import { LABELS } from "./ledger";
 import { ensureFloors, recomputeAccess } from "./placement";
+import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
 // The starter drill digs the floor below the deepest one, a little each tick.
@@ -29,6 +31,16 @@ export function rockPerFloor(state: SimState, cfg: SimConfig): number {
   return shaftSlots(state.layout, cfg) * cfg.digging.rockPerSlot;
 }
 
+/** How fast the drill digs: 1, plus every excavator bay's boost, scaled by how it's running. */
+export function drillSpeed(state: SimState): number {
+  let speed = 1;
+  for (const r of state.layout.rooms) {
+    const boost = roomDef(r.type).drillBoost;
+    if (boost && isActive(r)) speed += boost * (state.roomStatus[r.id]?.rate ?? 0);
+  }
+  return speed;
+}
+
 export function diggingFloor(state: SimState): number {
   return state.layout.hole.floors + 1;
 }
@@ -43,9 +55,10 @@ export function stepDigging(state: SimState, cfg: SimConfig): void {
   const floor = diggingFloor(state);
   const needed = ticksToDig(floor, cfg);
 
-  state.drill.progress += 1;
-  yieldRock(state, cfg, shaftSlots(state.layout, cfg) / needed, LABELS.digging);
-  if (state.drill.progress < needed) return;
+  const step = Math.min(drillSpeed(state), needed - state.drill.progress);
+  state.drill.progress += step;
+  yieldRock(state, cfg, (shaftSlots(state.layout, cfg) * step) / needed, LABELS.digging);
+  if (state.drill.progress < needed - 1e-9) return;
 
   const layout = state.layout;
   layout.hole.floors = floor;

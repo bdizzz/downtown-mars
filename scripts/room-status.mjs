@@ -90,7 +90,7 @@ const NEEDS = {
   "Security headquarters": ["C", "Safety as a happiness factor"],
   Plaza: ["A", "A bigger small plaza"],
   "Grand plaza": ["C", "H-size rooms; glass; events"],
-  "Bar and lounge": ["C", "Beer; entertainment as a happiness factor"],
+  "Bar": ["C", "Beer; entertainment as a happiness factor"],
   Theater: ["C", "Entertainment as a happiness factor; tall rooms"],
   Hotel: ["C", "Tourism"],
   "Experience venue": ["C", "Tourism"],

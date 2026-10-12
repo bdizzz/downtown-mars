@@ -1275,6 +1275,36 @@
       }
     },
     {
+      "id": "plaza",
+      "name": "Plaza",
+      "short": "Plaza",
+      "category": "public",
+      "size": "L",
+      "staff": 0,
+      "uses": {
+        "power": 2
+      },
+      "makes": {},
+      "public": true,
+      "unlockedBy": "plaza",
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": 2,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "brick": 20,
+        "metal": 5
+      },
+      "buildable": true,
+      "amenity": {
+        "comfort": 2,
+        "reach": 8
+      }
+    },
+    {
       "id": "park",
       "name": "Park",
       "short": "Park",
@@ -1312,6 +1342,31 @@
         "comfort": 2,
         "reach": 6
       }
+    },
+    {
+      "id": "lounge",
+      "name": "Lounge",
+      "short": "Lounge",
+      "category": "public",
+      "size": "S",
+      "staff": 0,
+      "uses": {
+        "power": 0.5
+      },
+      "makes": {},
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": 1,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "brick": 6,
+        "metal": 2
+      },
+      "buildable": true,
+      "buildHours": 6
     },
     {
       "id": "entrance",
@@ -1354,6 +1409,35 @@
       "stacks": true,
       "stackNoun": "stairs",
       "buildHours": 8
+    },
+    {
+      "id": "spiral_stair",
+      "name": "Spiral stair",
+      "short": "Spiral",
+      "category": "circulation",
+      "size": "S",
+      "floors": 2,
+      "stacks": true,
+      "stackNoun": "the spiral stair",
+      "maxFloors": 2,
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "public": true,
+      "unlockedBy": "spiralStair",
+      "effects": [
+        {
+          "type": "comfort",
+          "strength": 1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "brick": 6,
+        "metal": 4
+      },
+      "buildable": true,
+      "buildHours": 10
     },
     {
       "id": "elevator",
@@ -1544,6 +1628,32 @@
       },
       "buildHours": 30,
       "buildable": true
+    },
+    {
+      "id": "excavator_bay",
+      "name": "Excavator bay",
+      "short": "Excav",
+      "category": "construction",
+      "size": "M",
+      "staff": 3,
+      "uses": {
+        "power": 3
+      },
+      "makes": {},
+      "drillBoost": 0.5,
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -2,
+          "radius": 2
+        }
+      ],
+      "cost": {
+        "metal": 10,
+        "machinery": 3
+      },
+      "buildable": true,
+      "buildHours": 16
     },
     {
       "id": "storeroom",

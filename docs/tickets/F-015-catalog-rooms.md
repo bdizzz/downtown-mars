@@ -16,7 +16,7 @@ created: 2026-10-10 01:41
 - **C, a new system (30), grouped by the system they wait on:**
   - Consumer goods and colonists' needs for them: textile mill, clothing, furniture, toy and appliance workshops (fiber now exists from T-036, so the textile mill's grade may be stale).
   - Goods and currency: shop, market hall, currency exchange.
-  - Entertainment as a happiness factor: bar and lounge (also beer), theater (tall rooms), running track (a full-ring shape), experience venue.
+  - Entertainment as a happiness factor: bar (also beer), theater (tall rooms), running track (a full-ring shape), experience venue.
   - Tourism: hotel, tour company, panoramic elevator, experience venue.
   - Safety: security outpost and headquarters.
   - Commutes and shaft transit: elevator upgrade, express and freight elevators, sky lobby.

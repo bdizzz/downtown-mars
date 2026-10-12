@@ -141,7 +141,7 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Excavator bay | M | 3 | Power 3 | Faster digging, rock | Noise −2 r2 | M 10, Mc 3 | Start |
+| Excavator bay (as built) | M | 3 | Power 3 | Digs the shaft faster: +50% drill speed at full staff, so its rock comes up sooner | Noise −2 r2 | M 10, Mc 3 | Start |
 | Brickworks | M | 3 | Rock 6, water 1, power 2 | Brick 4; its water back as 75% gray, 25% tailings | Noise −1 r1, air quality −1 r1 | R 15, M 5, Mc 1 | Pop 50 |
 | Smelter | L | 5 | Ore 6, power 6 | Metal 3 | Noise −2 r2, heat +1 r2, air quality −1 r2 | B 20, M 10, Mc 3 | Ore site |
 | Machine shop | M | 4 | Metal 3, power 3 | Machinery 1 | Noise −2 r2 | B 15, M 10, Mc 2 | Pop 200 |
@@ -257,7 +257,7 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 | Entrance | S | 0 | — | Floor 1's way in from the surface: an airlock at the rim, and where people and goods arrive | — | Landing kit | Start |
 | Tiny plaza | S | 0 | — | Walk-through gathering corner | Comfort +1 on foot within 4 steps, +0.5 r1 next door | R 5, B 2 | Start |
 | Small plaza | M | 1 | Power 1 | Gathering space | Comfort +1.5 on foot within 6 steps, +0.5 r1 next door | R 10, B 5 | Pop 100 |
-| Plaza | L | 2 | Power 2 | Transit hub; shortens commutes | Comfort +2 r2, entertainment +1 r2 | B 20, M 5 | Pop 500 |
+| Plaza (as built) | L | 0 | Power 2 | Walk-through gathering space (transit hub once commutes exist) | Comfort +2 on foot within 8 steps, +2 r2 next door (entertainment +1 r2 once entertainment exists) | B 20, M 5 | Pop 500 |
 | Grand plaza | H | 4 | Power 4, glass for skylights | Transit hub; hosts events | Comfort +3 r3, entertainment +2 r3 | B 40, M 15, glass 10 | Pop 2,000 |
 | Shaft dome (as built) | Over the shaft, one per hole | 0 | — | Seals the shaft: every gallery open walkway; atrium comfort +0.5 for shaft-facing rooms; air quality +0.5 everywhere; no storm dust through the airlock | — | Glass 200, M 120, Mc 20, E 10; 240 work-hours | Pop 300 |
 
@@ -270,7 +270,8 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Bar and lounge | S | 2 | Beer 2, cooked food 1 | — | Entertainment +2 r2, noise −1 r1 | B 10 | Pop 50 |
+| Lounge (as built) | S | 0 | Power 0.5 | Couches, a media wall, a games table and arcade cabinets | Comfort +1 r2 | B 6, M 2 | Start |
+| Bar | S | 2 | Beer 2, cooked food 1 | — | Entertainment +2 r2, noise −1 r1 | B 10 | Pop 50 |
 | Theater | L | 6 | Power 3 | — | Entertainment +3 r3, noise −1 r1 | B 30, M 10, E 4 | Pop 500 |
 | Hotel | M | 3 | Water 3, cooked food 2, power 2 | Hosts 12 tourists; quality tiers like housing | Noise −1 r1 | B 15, M 5 and up by tier | Landing pad |
 | Experience venue | L | 6 | Power 4 | Tourist income | Entertainment +2 r2, noise −2 r2 | M 20, E 6 | First hotel |
@@ -283,7 +284,7 @@ The main shaft elevator is the spine, but stairs and extra elevators relieve it.
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Stairwell | S, spans 2–3 floors | 0 | — | Slow, cheap link between nearby floors; health +1 for regular users | — | R 8 | Start |
-| Spiral stair | S, spans 2 floors | 0 | — | Compact decorative link | Comfort +1 r1 | B 6, M 4 | Pop 200 |
+| Spiral stair (as built) | S, spans 2 floors | 0 | — | Compact decorative link; taken like an elevator in first person, not walked | Comfort +1 r1 | B 6, M 4 | Pop 200 |
 | Grand staircase | M, spans 2–3 floors | 0 | — | High-capacity link inside plazas | Comfort +1 r2 | B 20, glass 5 | First plaza |
 | Escalator | M, spans 1–2 floors | 0 | Power 1 | Fast, high capacity for short trips; boosts shops at both ends | Noise −1 r1 | M 10, Mc 2 | Pop 500 |
 | Local elevator | S, spans up to 8 floors | 0 | Power 1 | Serves a band of floors, easing the main shaft | Noise −1 r1 | M 10, Mc 2 | Pop 150 |
