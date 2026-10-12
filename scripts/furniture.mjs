@@ -440,6 +440,27 @@ item("tv_unit", "Media wall", [
   box([0, 1.25, -0.115], [1.6, 0.86, 0.01], "glow", glow),
   ...[-0.8, 0.8].map((x) => box([x, 0.7, 0.05], [0.18, 0.4, 0.18], "dark")),
 ]);
+// The lounge: somewhere to play.
+item("games_table", "Games table", [
+  ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => box([sx * 1.05, 0.38, sz * 0.55], [0.14, 0.76, 0.14], "fibre"))),
+  box([0, 0.72, 0], [2.4, 0.12, 1.4], "fibre"),
+  box([0, 0.79, 0], [2.2, 0.02, 1.2], "felt"),
+  ...[-1, 1].map((sz) => box([0, 0.82, sz * 0.65], [2.4, 0.06, 0.1], "composite")),
+  ...[-1, 1].map((sx) => box([sx * 1.15, 0.82, 0], [0.1, 0.06, 1.4], "composite")),
+  ...[-1, 0, 1].flatMap((sx) => [-1, 1].map((sz) => cyl([sx * 1.08, 0.8, sz * 0.58], 0.11, 0.03, "dark"))),
+  ...[[0.5, 0], [0.62, 0.07], [0.62, -0.07], [0.74, 0.14], [0.74, 0], [0.74, -0.14]].map(([x, z], k) => sph([x, 0.83, z], 0.06, k % 2 ? "red" : "cream")),
+  sph([-0.6, 0.83, 0.1], 0.06, "white"),
+  cyl([-0.2, 0.84, -0.25], 0.03, 1.4, "composite", { r: [0, 0, 88] }),
+]);
+item("arcade_cabinet", "Arcade cabinet", [
+  box([0, 0.8, -0.05], [0.75, 1.6, 0.7], "accent"),
+  box([0, 1.82, -0.1], [0.75, 0.44, 0.6], "accent"),
+  box([0, 1.85, 0.205], [0.66, 0.2, 0.01], "lamp", glow),
+  box([0, 1.32, 0.12], [0.62, 0.46, 0.06], "dark", { r: [-15, 0, 0] }),
+  box([0, 1.32, 0.155], [0.56, 0.4, 0.01], "glow", { r: [-15, 0, 0], glow: true }),
+  box([0, 0.98, 0.24], [0.75, 0.08, 0.32], "dark", { r: [15, 0, 0] }),
+  ...[-0.18, 0.12, 0.22].map((x, k) => (k ? cyl([x, 1.03, 0.24], 0.06, 0.03, k === 1 ? "red" : "power") : cyl([x, 1.06, 0.24], 0.03, 0.1, "dark"))),
+]);
 item("coat_rack", "Coat rack", [cyl([0, 0.02, 0], 0.4, 0.04, "dark"), cyl([0, 0.9, 0], 0.05, 1.8, "metal"), box([0.12, 1.4, 0.05], [0.24, 0.7, 0.14], "accent"), box([-0.1, 1.45, -0.04], [0.2, 0.6, 0.12], "cushion")]);
 // Homes: apartments of every tier (the finer the home, the more of these it holds).
 item("double_bed", "Double bed", [
@@ -929,6 +950,24 @@ item("drill_press", "Drill press", [
   cyl([0, 1.25, 0.15], 0.05, 0.3, "steel"),
   cyl([0.25, 1.5, 0.1], 0.03, 0.3, "metal", { r: [0, 0, 90] }),
 ]);
+// The excavator bay's diggers: a compact tracked excavator, boom raised, bucket forward (+z).
+item("excavator", "Excavator", [
+  ...[-1, 1].flatMap((sx) => [
+    box([sx * 0.75, 0.25, -0.2], [0.42, 0.5, 2.4], "rubber"),
+    box([sx * 0.75, 0.3, -0.2], [0.44, 0.2, 2.0], "dark"),
+  ]),
+  box([0, 0.55, -0.2], [1.1, 0.2, 1.4], "dark"),
+  box([0, 1.0, -0.45], [1.8, 0.7, 1.7], "hazard"),
+  box([0, 1.0, -1.32], [1.7, 0.6, 0.1], "dark"),
+  box([-0.45, 1.75, -0.1], [0.8, 0.85, 0.9], "dark"),
+  box([-0.45, 1.8, 0.36], [0.72, 0.6, 0.02], "mirror"),
+  box([0.35, 1.45, 0.1], [0.24, 0.24, 1.5], "hazard", { r: [-40, 0, 0] }),
+  box([0.35, 1.95, 1.0], [0.2, 0.2, 1.2], "hazard", { r: [35, 0, 0] }),
+  cyl([0.35, 1.25, 0.2], 0.1, 1.1, "steel", { r: [-48, 0, 0] }),
+  box([0.35, 0.55, 1.45], [0.7, 0.5, 0.45], "metal", { r: [-25, 0, 0] }),
+  ...[-0.2, 0, 0.2].map((dx) => box([0.35 + dx, 0.28, 1.62], [0.06, 0.12, 0.12], "steel")),
+  box([0, 1.36, -0.8], [0.5, 0.04, 0.6], "dark"),
+]);
 item("welding_station", "Welding bay", [
   ...table(1.6, 0.9, 0.85, "dark"),
   box([0, 0.95, 0], [0.8, 0.12, 0.3], "rust"),
@@ -1284,6 +1323,49 @@ const STAIRS = { width: 2.8, run: 0.4, rise: 0.25, steps: 16 };
   // A hole in the floor, not something standing on it: it doesn't count toward a room's crowding.
   items.stair_landing.opening = true;
 }
+// A spiral stair: one full turn of wedge treads round a column, a floor's height (as the flight's)
+// in the same 16 steps. It starts and arrives facing +z. Not walked up in first person: you take it
+// as you take an elevator. The floor above has a round well over it, railed all the way round.
+{
+  const { rise, steps: n } = STAIRS;
+  const R = 1.4;
+  const tread = (k) => {
+    const deg = (k * 360) / n;
+    const a = (deg * Math.PI) / 180;
+    return box([Math.sin(a) * (R / 2 + 0.08), (k + 1) * rise - 0.03, Math.cos(a) * (R / 2 + 0.08)], [0.5, 0.06, R - 0.1], k % 2 ? "composite" : "accent", { r: [0, r3(deg), 0] });
+  };
+  const post = (k) => {
+    const a = (k * 2 * Math.PI) / n;
+    return box([Math.sin(a) * (R - 0.08), (k + 1) * rise + 0.45, Math.cos(a) * (R - 0.08)], [0.04, 0.9, 0.04], "steel");
+  };
+  item("spiral_stair", "Spiral stair", [
+    cyl([0, (n * rise) / 2, 0], 0.24, n * rise, "metal"),
+    cyl([0, 0.03, 0], 0.6, 0.06, "dark"),
+    ...Array.from({ length: n }, (_, k) => tread(k)),
+    // Balusters up the lower three quarters: the well's rail takes over above.
+    ...Array.from({ length: 12 }, (_, k) => post(k)),
+    ...Array.from({ length: 12 }, (_, k) => sph([Math.sin((k * 2 * Math.PI) / n) * (R - 0.08), (k + 1) * rise + 0.92, Math.cos((k * 2 * Math.PI) / n) * (R - 0.08)], 0.07, "accent")),
+  ]);
+  // Its well in the floor above: a hazard rim round the hole.
+  const rim = 12;
+  const ring = (rad, y, h, c, t) =>
+    Array.from({ length: rim }, (_, k) => {
+      const deg = ((k + 0.5) * 360) / rim;
+      const a = (deg * Math.PI) / 180;
+      return box([Math.sin(a) * rad, y, Math.cos(a) * rad], [2 * rad * Math.sin(Math.PI / rim) + 0.02, h, t], c, { r: [0, r3(deg), 0] });
+    });
+  item("spiral_well", "Spiral stair well", ring(R + 0.05, 0.03, 0.06, "hazard", 0.08));
+  items.spiral_well.opening = true;
+  // And its railing, standing round the well (so it's walked round, not into).
+  item("spiral_rail", "Spiral stair rail", [
+    ...ring(R + 0.05, 1.0, 0.05, "steel", 0.05),
+    ...ring(R + 0.05, 0.5, 0.03, "steel", 0.04),
+    ...Array.from({ length: rim }, (_, k) => {
+      const a = (k * 2 * Math.PI) / rim;
+      return box([Math.sin(a) * (R + 0.05), 0.5, Math.cos(a) * (R + 0.05)], [0.05, 1.0, 0.05], "steel");
+    }),
+  ]);
+}
 function shaft(car) {
   const parts = [
     ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => box([sx * 1.15, 2.0, sz * 1.15], [0.1, 4.0, 0.1], "metal"))),
@@ -1502,6 +1584,10 @@ const rooms = {
   waste_storage: ["dumpster", "barrel_group", "trash_bin"],
   ventilation_hub: ["big_fan", "duct_riser", "filter_column", "console", "pipe_run"],
   glassworks: ["kiln", "glass_rack", "hopper", "pallet_jack", "console"],
+  excavator_bay: ["excavator", "ore_bin", "conveyor", "tool_wall", "tool_cart", "console", "barrel_group", "pallet_jack"],
+  plaza: ["fountain", "bench", "planter_tree", "lamp_post", "vending_machine", "kiosk", "trash_bin", "plant_pot", "flower_bed", "shrub"],
+  lounge: ["sofa", "armchair", "coffee_table", "tv_unit", "games_table", "arcade_cabinet", "rug", "floor_lamp", "side_table", "plant_pot", "bookshelf"],
+  spiral_stair: ["spiral_stair", "spiral_well", "spiral_rail", "bench", "plant_pot", "planter_tree"],
 };
 
 // What hangs on each room's walls: pictures and lamps at home, charts, readouts and signs at work.
@@ -1558,6 +1644,10 @@ const hangings = {
   waste_storage: ["safety_sign"],
   ventilation_hub: ["gauge_panel", "readout_panel", "safety_sign"],
   glassworks: ["safety_sign", "gauge_panel", "chart_board"],
+  excavator_bay: ["safety_sign", "chart_board", "readout_panel", "mars_map"],
+  plaza: ["banner", "wall_planter", "wall_lamp", "mars_map"],
+  lounge: ["painting_wide", "poster", "wall_lamp", "wall_clock", "wall_shelf"],
+  spiral_stair: ["painting", "wall_lamp", "wall_planter"],
 };
 // And more to fill the walls, by kind of room: a second pass that the templates spread along every wall.
 const WALL_FILL = {
@@ -1583,6 +1673,7 @@ const FILL_KIND = {
   tiny_plaza: "public", small_plaza: "public", stairwell: "public", elevator: "public", entrance: "entry",
   maintenance: "workshop", cleaning_service: "wash",
   kitchen: "galley", canteen: "public", hospital: "office", gym: "public", park: "public", brickworks: "plant", recycling_center: "plant", waste_storage: "store", ventilation_hub: "plant", glassworks: "plant",
+  excavator_bay: "workshop", plaza: "public", lounge: "home", spiral_stair: "public",
 };
 for (const room of Object.keys(rooms)) {
   const kind = FILL_KIND[room];
@@ -1601,7 +1692,7 @@ const colors = {
   rust: "#a0522d", copper: "#b87333", stone: "#8a7a6c", hazard: "#e0a03a", board: "#2f4a3a", glow: "#9fd2ff", grow: "#f0a8ff",
   fire: "#ff8a3d", lamp: "#ffe2b0", power: "#f4d35e", blueprint: "#3d6fb0", fibre: "#7a6352",
   potato: "#4f7a3a", soy: "#9cbf5a", stalk: "#b8a060", wheat: "#d8b35a", barley: "#cdbf86", substrate: "#4a3526",
-  mushroom: "#e6dccb", cap: "#b08a64", algae: "#3f9a5a", hemp: "#6f8f3e", hempLeaf: "#5c8a34", flower: "#f2f0e0", red: "#c8423a",
+  mushroom: "#e6dccb", cap: "#b08a64", algae: "#3f9a5a", hemp: "#6f8f3e", hempLeaf: "#5c8a34", flower: "#f2f0e0", red: "#c8423a", felt: "#2f7a4a",
 };
 
 // What gives light, and where from (in the item's own frame): lamps, fires, grow lights. The 3D view
@@ -1626,6 +1717,7 @@ const LIGHTS = {
   welding_station: ["fire", [0.1, 1.0, 0.2], 3.5, 0.9],
   reactor_vessel: ["fire", [0, 1.2, 0.9], 4, 0.8],
   candle_stand: ["fire", [0, 1.12, 0], 2.5, 0.6],
+  arcade_cabinet: ["cool", [0, 1.3, 0.4], 2.5, 0.6],
   memorial: ["fire", [0, 0.45, 0.3], 2.5, 0.5],
   serving_counter: ["cool", [0, 1.7, 0.5], 3, 0.4],
   decon_arch: ["cool", [0, 2.45, 0.4], 3.5, 0.7],

@@ -3,7 +3,7 @@ import { airView, type AirView } from "./air";
 import { stormDue, stormLevel } from "./weather";
 import { gameTime, type GameTime } from "./clock";
 import type { SimConfig } from "./config";
-import { canDig, diggingFloor, ticksToDig } from "./digging";
+import { canDig, diggingFloor, drillSpeed, ticksToDig } from "./digging";
 import { beds, padReady } from "./earth";
 import { capacities, powerFlow, type Population, type RoomStatus } from "./economy";
 import type { EffectField } from "./effects";
@@ -223,7 +223,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
       active: state.drill.active,
       floor,
       progress: floor ? state.drill.progress / needed : 0,
-      ticksLeft: floor ? needed - state.drill.progress : 0,
+      ticksLeft: floor ? (needed - state.drill.progress) / drillSpeed(state) : 0,
       holdUntil: state.drill.holdUntil !== undefined && state.drill.holdUntil > state.tick ? state.drill.holdUntil : null,
       struckTick: state.events?.struckTick ?? null,
     },

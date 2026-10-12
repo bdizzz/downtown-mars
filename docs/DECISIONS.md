@@ -66,7 +66,7 @@ When documents disagree, trust them in this order:
 
 - **Farm scaling:** farm yields were briefly raised ~1.7× so one farm fed the starting crew. Reverted: yields are back to original values, and the start uses **two farms** so players learn diet variety.
 - **Kitchen and canteen at start:** replaced by a single small **galley** for the opening; kitchen and canteen are later upgrades.
-- **Bar name:** briefly renamed to "Bar." Reverted to **"Bar and lounge."**
+- **Bar name:** briefly renamed to "Bar," reverted to "Bar and lounge," and since T-141 just **"Bar"** for good: the **lounge** is its own room now (S, unstaffed, comfort +1 r2), so the bar keeps beer and entertainment.
 - **Gym and park:** originally one combined room; now separate rooms (gym for health, park for comfort and air).
 - **Mushrooms:** a crop choice for a regular farm, not a separate room (a diagram labeled it "Mushroom farm" for clarity).
 - **Electronics input:** "rare minerals" was replaced by silicon wafers.

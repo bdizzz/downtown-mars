@@ -3,7 +3,7 @@ import raw from "../../data/rooms.json";
 import type { DepositKind } from "./mapgeo";
 
 /** Rooms that unlock when a hole reaches a size (config unlocks.rooms). */
-export type RoomUnlock = "brickworks" | "leisure" | "recycling" | "hospital" | "reclaimer";
+export type RoomUnlock = "brickworks" | "leisure" | "recycling" | "hospital" | "reclaimer" | "spiralStair" | "plaza";
 
 export type RoomSize = "S" | "M" | "L" | "H" | "surface";
 export type EffectType = "noise" | "smell" | "health" | "comfort" | "airQuality" | "heat" | "safety";
@@ -84,6 +84,8 @@ export interface RoomDef {
   buildHours?: number;
   /** Construction bandwidth it adds at full staff (construction offices). */
   constructionBandwidth?: number;
+  /** Extra drill speed at full staff, as a share of the drill's own (excavator bays). */
+  drillBoost?: number;
   /** Floors tall, counting down from the floor it's placed on (default 1). */
   floors?: number;
   /** Pieces chain: a new one placed on the bottom of an existing one extends it (stairs, elevators). */

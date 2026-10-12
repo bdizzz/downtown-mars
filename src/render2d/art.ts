@@ -20,7 +20,7 @@ export function tint(c: number, t: number): number {
 }
 
 /** Rooms that share another's glyph. */
-const ALIASES: Record<string, string> = { studio: "apartment", family_apartment: "flat", residence: "suite", empty_room_s: "empty_room", empty_room_m: "empty_room", empty_room_l: "empty_room", tiny_plaza: "small_plaza", construction_yard: "construction_office", storeroom: "warehouse", depot: "warehouse" };
+const ALIASES: Record<string, string> = { studio: "apartment", family_apartment: "flat", residence: "suite", empty_room_s: "empty_room", empty_room_m: "empty_room", empty_room_l: "empty_room", tiny_plaza: "small_plaza", plaza: "small_plaza", construction_yard: "construction_office", storeroom: "warehouse", depot: "warehouse" };
 
 type Glyph = (g: GraphicsContext, cx: number, cy: number, s: number, color: number) => void;
 
@@ -143,6 +143,31 @@ const GLYPHS: Record<string, Glyph> = {
     g.moveTo(cx - s * 0.3, cy - s * 0.3);
     for (let i = 0; i < 4; i++) g.lineTo(cx - s * 0.3 + st * (i + 1), cy - s * 0.3 + st * i).lineTo(cx - s * 0.3 + st * (i + 1), cy - s * 0.3 + st * (i + 1));
     g.stroke(line(1.5, c));
+  },
+  spiral_stair: (g, cx, cy, s, c) => {
+    // A spiral round a post.
+    g.moveTo(cx, cy);
+    for (let i = 1; i <= 24; i++) {
+      const a = (i / 24) * Math.PI * 3;
+      const r = s * 0.04 + (i / 24) * s * 0.28;
+      g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    }
+    g.stroke(line(1.5, c));
+    g.circle(cx, cy, s * 0.04).fill({ color: c });
+  },
+  lounge: (g, cx, cy, s, c) => {
+    // A sofa: back, seat and arms.
+    g.rect(cx - s * 0.28, cy - s * 0.14, s * 0.56, s * 0.16).stroke(line(1.5, c));
+    g.rect(cx - s * 0.22, cy + s * 0.02, s * 0.44, s * 0.12).stroke(line(1.5, c));
+    for (const dx of [-0.28, 0.22]) g.rect(cx + dx * s, cy - s * 0.02, s * 0.06, s * 0.2).fill({ color: c });
+    g.moveTo(cx - s * 0.22, cy + s * 0.14).lineTo(cx - s * 0.22, cy + s * 0.24).moveTo(cx + s * 0.22, cy + s * 0.14).lineTo(cx + s * 0.22, cy + s * 0.24).stroke(line(1.2, c));
+  },
+  excavator_bay: (g, cx, cy, s, c) => {
+    // A digger: tracks, cab, and an arm down to its bucket.
+    g.roundRect(cx - s * 0.3, cy + s * 0.16, s * 0.4, s * 0.12, s * 0.06).stroke(line(1.5, c));
+    g.rect(cx - s * 0.26, cy - s * 0.06, s * 0.26, s * 0.2).stroke(line(1.5, c));
+    g.moveTo(cx, cy).lineTo(cx + s * 0.2, cy - s * 0.24).lineTo(cx + s * 0.3, cy + s * 0.08).stroke(line(1.5, c));
+    g.moveTo(cx + s * 0.22, cy + s * 0.08).lineTo(cx + s * 0.34, cy + s * 0.08).lineTo(cx + s * 0.3, cy + s * 0.2).closePath().fill({ color: c });
   },
   entrance: (g, cx, cy, s, c) => {
     // An airlock door: a round-cornered hatch with a wheel, and an arrow in.

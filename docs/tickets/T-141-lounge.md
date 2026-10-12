@@ -1,7 +1,7 @@
 ---
 id: T-141
 title: A 1×1 lounge with couches, a TV and games tables, lifting comfort nearby
-status: open
+status: done
 size: M
 area: rooms, data
 feature: F-015
@@ -31,3 +31,5 @@ ROOMS.md (the lounge row; "Bar and lounge" renamed "Bar"), DECISIONS.md (the bar
 ## History
 - 2026-10-11 15:52 opened from N-0073
 - 2026-10-11 16:08 questions answered
+- 2026-10-12 01:07 building on t-132-grade-a-rooms
+- 2026-10-12 01:17 built

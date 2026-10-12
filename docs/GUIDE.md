@@ -74,6 +74,7 @@ Pause any staffed room, or have it stop at a stock level, from its details panel
 - The first floors go quickly; from floor 4 on, each floor takes twice as long (`digging.slowFromFloor`, `slowFactor`).
 - A new hole starts with only ring 1 of floor 1 dug out (and the landing kit's battery bank in ring 2). Every other slot is solid rock until it's dug out.
 - A room placed on rock is excavated first (3 hours a slot, bringing up its rock and whatever the hole sits on), then built.
+- An **excavator bay** (Build → Construction) speeds the drill: half as fast again at full staff, each, so floors and their rock come sooner. It's noisy.
 - **Empty rooms** (Build → Excavation) dig ahead for rock and space. Dug-out space with nothing in it has pillars and no walls, and is walk-through like a plaza; demolishing a room leaves it.
 
 ## Getting in and out
@@ -102,7 +103,9 @@ What people use counts by how far they'd walk. A step is about a room across, al
 - **Meals:** a galley cooks and seats 25. A **kitchen** cooks 40 but seats no one, so pair it with a **canteen** (seats 60). Seats go to the homes nearest them first, within 8 steps; anyone without a seat within reach eats on the go, and their home's comfort drops (a home's card says how many are seated).
 - **Amenities:** **plazas**, **parks** and **gyms** lift the homes within their reach (parks and plazas comfort, gyms health), less the further off. The nearest of each kind counts, so spread them out. Parks, plazas and canteens also cheer the rooms right next to them a little.
 - **Restrooms:** each has places for 25, going to the homes nearest it first, within 6 steps. People without one within reach lose comfort at home (up to −1), and a restroom close by is a small plus. Studios, apartments and the finer homes have their own bathroom and need none; the landing pod and bunk dorms do. Only when fewer than half the colony has a restroom does health suffer too.
-- At 50 colonists, gyms and parks (a park makes a little oxygen, and is walk-through like a plaza). At 300, a **hospital**: care for 400 within 16 steps.
+- At 50 colonists, gyms and parks (a park makes a little oxygen, and is walk-through like a plaza). At 300, a **hospital**: care for 400 within 16 steps. At 500, the large **plaza**: comfort within 8 steps, and a good deal for the rooms around it.
+- A **lounge** (Build → Public, from the start) is a small den of couches, a TV, a games table and arcade cabinets. It needs no staff and a little power, and cheers the rooms up to two slots away: put one among homes.
+- At 200 colonists, the **spiral stair**: a handsome two-floor link that cheers the rooms beside it. In first person you take it like an elevator (R or F), rather than walking it.
 - **Seeing reach:** while placing a room, the line at the bottom says what it would reach on foot ("On foot: Park 1 · Clinic 2 · Galley 3"). Select a galley, restroom, clinic, school, park or gym with no overlay on to see the homes it reaches in green and those it doesn't in red.
 
 ## Water
