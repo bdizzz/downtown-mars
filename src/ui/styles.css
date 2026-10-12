@@ -788,6 +788,8 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   .hud .hud-more { display: none; }
   .hud.open .hud-more { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; order: 10; flex-basis: 100%; padding-top: 4px; border-top: 1px solid #ffffff14; }
   .hud .hud-more .needs { flex: 1 1 100%; }
+  /* The row's pause/play already does pausing; the sun dial and a waiting drop (the "Drop waiting" chip says it) are left out. */
+  .hud .speeds .pause, .hud .sundial, .hud .drop.warn { display: none; }
   .hud .office-btn { margin-left: auto; }
   .app:not(.hud-open) .resbar { display: none; }
 }

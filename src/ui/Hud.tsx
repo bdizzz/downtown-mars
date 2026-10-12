@@ -132,7 +132,7 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
       </span>
       <span className={`speeds${pulse("speed")}`} data-hud="speed">
         {config.speeds.map((s) => (
-          <button key={s} className={s === speed ? "on" : ""} onClick={() => setSpeed(s)} aria-label={s === 0 ? "Pause" : `${s}× speed`}>
+          <button key={s} className={`${s === speed ? "on" : ""}${s === 0 ? " pause" : ""}`} onClick={() => setSpeed(s)} aria-label={s === 0 ? "Pause" : `${s}× speed`}>
             {s === 0 ? "❚❚" : `${s}×`}
           </button>
         ))}
