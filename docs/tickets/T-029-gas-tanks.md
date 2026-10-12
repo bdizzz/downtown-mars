@@ -4,9 +4,9 @@ title: Gas tanks: O2/CO2 ballast both ways, and the tank fill slider
 status: open
 size: M
 area: rooms, sim
+feature: F-002
 touches: [data/rooms.json, data/storage.json, src/sim/air.ts, src/sim/condition.ts, src/sim/earth.ts, src/view/roomPanel.ts]
 blocked_by: [T-026, T-028, T-005]
-feature: F-002
 notes: [N-0005]
 created: 2026-10-06 00:08
 ---
@@ -24,3 +24,4 @@ ROOMS.md (gas tank), GUIDE.md: Air and storage, DECISIONS.md (0% tanks), PLAN-M1
 
 ## History
 - 2026-10-06 00:08 opened from F-002 (agreed)
+- 2026-10-12 01:42 building on t-028-electrolyzer-and-scrubber

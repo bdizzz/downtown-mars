@@ -4,9 +4,9 @@ title: Rebalance the air loop
 status: open
 size: M
 area: balance, sim
+feature: F-002
 touches: [data/config.json, data/rooms.json, tests/]
 blocked_by: [T-028, T-029, T-030]
-feature: F-002
 notes: [N-0005]
 created: 2026-10-06 00:08
 ---
@@ -29,3 +29,4 @@ DECISIONS.md (air numbers), PLAN-M16.md Notes as built, and close out the plan.
 
 ## History
 - 2026-10-06 00:08 opened from F-002 (agreed)
+- 2026-10-12 01:42 building on t-028-electrolyzer-and-scrubber
