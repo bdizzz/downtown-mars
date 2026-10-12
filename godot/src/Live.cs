@@ -173,7 +173,8 @@ public partial class Live : Node3D
         // A camera from the command line (--view=) wins over the saved one, for this run.
         if (asked != Overview.Iso) ViewSettings.Camera = asked;
         if (StartPlan) ViewSettings.Plan = true;
-        _rig = new CameraRig(MetaNow()) { Walker = _walker };
+        // Test runs (a screenshot or key playback) leave the mouse alone.
+        _rig = new CameraRig(MetaNow()) { Walker = _walker, MouseLook = ShotAfter <= 0 && Keys == null };
         AddChild(_rig);
         _rig.SetMode(ViewSettings.Camera);
         BuildGround();
@@ -507,7 +508,7 @@ public partial class Live : Node3D
         _status.Text = _bridge.Silent
             ? $"Something is on port {Port} but it isn't the game's bridge. Run  npm run bridge  in the repo (or both with --port=<n>)."
             : _bridge.Connected
-            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(PlanShown ? $"plan, floor {PlanFloor}" : _rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}{(_rig.CanDrink ? " · F to grab a drink" : "")}" : _rig?.Walking == true ? "first person (flying)" : _rig?.ModeName ?? "iso")}\nEsc menu · M map · N network · P colony · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home surface · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
+            ? $"{Engine.GetFramesPerSecond()} fps · {RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame)} draw calls · {_hole.Chunks} chunks · {_hole.Lamps} lamps · {(PlanShown ? $"plan, floor {PlanFloor}" : _rig?.OnFoot == true ? $"on foot, floor {_walker.Floor}{(_rig.CanDrink ? " · F to grab a drink" : "")}{(_rig.MouseCaptured ? " · Esc frees the mouse" : _rig.MouseLook ? " · click to look with the mouse" : "")}" : _rig?.Walking == true ? "first person (flying)" : _rig?.ModeName ?? "iso")}\nEsc menu · M map · N network · P colony · O office · C charts · Click a room · B build · Space pause · 1–3 speed · ↑↓ floor · Home surface · Tab first person · drag or scroll sideways to turn · scroll or pinch to zoom · WASD to move · L labels · F2 graphics · [ ] holes"
             : $"Waiting for the game on port {Port}: run  npm run bridge  in the repo (add -- --showcase=12 for a big test colony).";
     }
 
@@ -1385,6 +1386,9 @@ public partial class Live : Node3D
                 {
                     if (FloorPoint(mb.Position) is Vector3 to) _build.ChainEnd(to);
                 }
+                // First person: a click in the view grabs the mouse back for looking; captured, it clicks what the crosshair's on.
+                else if (_rig?.Walking == true && _rig.MouseLook && !_rig.MouseCaptured) _rig.GrabMouse();
+                else if (_rig?.MouseCaptured == true) Click(GetViewport().GetVisibleRect().Size / 2);
                 else if (mb.Position.DistanceTo(_pressAt) < 5) Click(mb.Position);
             }
             return;
@@ -1411,6 +1415,8 @@ public partial class Live : Node3D
                 SetPlan(false);
                 _rig?.Walk(true);
                 break;
+            // First person: Esc lets the mouse go first; the next one opens the menu.
+            case Key.Escape when _rig?.MouseCaptured == true: _rig.FreeMouse(); break;
             case Key.Escape when _menu.Visible: _menu.Close(); break;
             case Key.Escape when _map.Open: ToggleMap(); break;
             case Key.M when !_build.Active: ToggleMap(); break;
