@@ -570,6 +570,7 @@ export function App() {
             mode={settings.view}
             graphics={settings.graphics}
             view3d={settings.view3d}
+            onCutAngle={(cutAngle) => updateSettings({ view3d: { ...settings.view3d, cutAngle } })}
             building={mode === "build"}
             onViewError={(message) => {
               flash(message);

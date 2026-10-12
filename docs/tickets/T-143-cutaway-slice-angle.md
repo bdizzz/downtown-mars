@@ -1,7 +1,7 @@
 ---
 id: T-143
 title: Set the cutaway's slice angle, from a flat cut down to a quarter wedge
-status: open
+status: done
 size: M
 area: render3d, godot
 touches: [src/render3d/rooms3d.ts, src/render3d/stage3d.ts, src/render3d/cylinder.ts, src/ui/, godot/src/CameraRig.cs]
@@ -15,6 +15,8 @@ created: 2026-10-11 15:52
 ## Context
 The cut is a half-line from the axis at an angle (`rooms3d.ts` around line 1186, "Where the cutaway's cut … runs through solid rock"); a flat cut is two such half-lines 180° apart. A wedge means two cut faces meeting at the axis, with the rock face drawn on both. T-130 (zoom in Cutaway) touches the same camera controls.
 
+As built: [ and ] already switch holes, so Bryon chose ; and ' to narrow and widen the cut (Oct 11). Three only unions the renderer's clip planes, so `render3d/wedgeClip.ts` patches its clipping chunk to intersect them; the WebGPU experiment keeps the flat cut.
+
 ## Approach
 Make the cut a wedge with a width from 60° to 180°, centred on the camera's facing; draw the cut rock face on both sides. Controls: a small slider in Cutaway and keys (say [ and ]), listed in Help; the angle saved in settings; mirrored in Godot. Done: drag it to 90° and only the front quarter of the hole is removed.
 
@@ -25,3 +27,5 @@ Make the cut a wedge with a width from 60° to 180°, centred on the camera's fa
 ## History
 - 2026-10-11 15:52 opened from N-0077
 - 2026-10-11 16:08 questions answered
+- 2026-10-11 18:41 building on t-143-cutaway-slice-angle
+- 2026-10-11 19:00 built

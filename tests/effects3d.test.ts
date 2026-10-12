@@ -45,6 +45,17 @@ describe("sparks and steam", () => {
     expect(fx.live.sparks).toBeGreaterThan(0);
   });
 
+  it("vanish at once where the cutaway cuts their furniture away, and come back when it doesn't", () => {
+    const { fx } = running();
+    fx.setView({ topFloor: null, cutAway: () => true });
+    expect(fx.live.sparks + fx.live.steam).toBe(0);
+    for (let i = 0; i < 20; i++) fx.step(0.1);
+    expect(fx.live.sparks + fx.live.steam).toBe(0);
+    fx.setView({ topFloor: null, cutAway: () => false });
+    fx.step(0.2);
+    expect(fx.live.sparks).toBeGreaterThan(0);
+  });
+
   it("fade out when the room stops, and go at once when it's demolished", () => {
     const { fx, layout, status } = running();
     const smelter = layout.rooms.find((r) => r.type === "smelter")!;

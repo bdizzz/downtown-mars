@@ -24,7 +24,7 @@ All in TSL, three's node shading language (JavaScript that compiles to WGSL for 
 1. **Surfaces and tweaks** as node functions on `MeshStandardNodeMaterial` (`colorNode`, `positionNode`, `emissiveNode`), one `with…` helper at a time, keeping the same names so callers don't change. The biggest piece.
 2. **Sky, flows, light shafts, overlay** as node materials.
 3. **The look** as a TSL post chain: `ao()`, `bloom()`, depth of field for tilt-shift, haze and grade as small node functions.
-4. **Cutaway** with a clipping group.
+4. **Cutaway** with a clipping group (an intersecting one, for the wedge: until then the WebGPU path keeps the flat cut, `render3d/wedgeClip.ts`).
 5. **Then the new things:** SSGI, SSR on glass and floors, TRAA, shadowed lamps, GPU particles.
 
 Once 1–4 are done, WebGPU could become the default with WebGL 2 as its automatic fallback, and the old GLSL path retired.

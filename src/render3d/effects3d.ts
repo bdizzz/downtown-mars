@@ -8,7 +8,7 @@ import { furniture } from "../view/furniture";
 // mouth, steam rising off life support's scrubber vents. They come from the
 // furniture itself (where the template put each furnace or scrubber), and
 // only while the room is running, and only while that furniture is shown
-// (not above a chosen floor). Each kind is one set of points, animated
+// (not above a chosen floor, nor cut away by the cutaway). Each kind is one set of points, animated
 // on the CPU from a fixed pool, so a busy hole costs two draw calls.
 
 type Kind = "sparks" | "steam";
@@ -43,9 +43,11 @@ export interface Emitter {
 /** What the view hides: every floor above a chosen one. */
 export interface FxView {
   topFloor: number | null;
+  /** The cutaway: is the spot at (x, z) cut away? Absent in the other cameras. */
+  cutAway?: (x: number, z: number) => boolean;
 }
 
-const hiddenIn = (e: Emitter, v: FxView) => v.topFloor !== null && e.floor < v.topFloor;
+const hiddenIn = (e: Emitter, v: FxView) => (v.topFloor !== null && e.floor < v.topFloor) || !!v.cutAway?.(e.x, e.z);
 /** Emitters are remade whenever a room's output changes: the same spot is the same emitter. */
 const spotKey = (e: Emitter) => `${e.kind}:${e.x.toFixed(3)}:${e.y.toFixed(3)}:${e.z.toFixed(3)}`;
 
@@ -54,17 +56,22 @@ const VERTEX = /* glsl */ `
   attribute float aAlpha;
   uniform float uScale;
   varying float vAlpha;
+  #include <clipping_planes_pars_vertex>
   void main() {
     vAlpha = aAlpha;
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vec4 mv = mvPosition;
     gl_Position = projectionMatrix * mv;
+    #include <clipping_planes_vertex>
     gl_PointSize = aSize * uScale / max(0.1, -mv.z);
   }
 `;
 const FRAGMENT = /* glsl */ `
   uniform vec3 uColor;
   varying float vAlpha;
+  #include <clipping_planes_pars_fragment>
   void main() {
+    #include <clipping_planes_fragment>
     float r = length(gl_PointCoord - 0.5) * 2.0;
     float a = (1.0 - smoothstep(0.2, 1.0, r)) * vAlpha;
     if (a < 0.01) discard;
@@ -108,6 +115,8 @@ class Particles {
       fragmentShader: FRAGMENT,
       transparent: true,
       depthWrite: false,
+      // The cutaway's cut takes any that drift across it.
+      clipping: true,
       blending: look.additive ? THREE.AdditiveBlending : THREE.NormalBlending,
     });
     this.points = new THREE.Points(geo, this.material);

@@ -1,7 +1,7 @@
 ---
 id: T-130
 title: A clear way to zoom in and out in Cutaway, alongside scrolling up and down the hole
-status: open
+status: done
 size: S
 area: render3d, godot
 touches: [src/render3d/stage3d.ts, godot/src/CameraRig.cs, src/ui/Help.tsx]
@@ -14,6 +14,8 @@ created: 2026-10-10 01:41
 
 ## Context
 The web's cutaway (`onWheel` in `src/render3d/stage3d.ts`) already zooms on Ctrl+wheel, which is also what a trackpad pinch sends; Shift+wheel turns, a plain wheel moves up and down. Godot (`godot/src/CameraRig.cs`) zooms the cutaway on a pinch. So zoom exists but is hidden from mouse users and isn't in the controls help. Touch already pinch-zooms (DECISIONS: gestures).
+
+As built: + and − already step the speed, so Bryon chose , and . to zoom (Oct 11). The − + buttons sit in the cutaway's camera bar with T-143's slider.
 
 ## Approach
 Keep the plain wheel for up and down. Add zoom that a mouse user can find: Ctrl/Cmd+wheel (already there), plus **both** + and − keys and small on-screen zoom buttons in Cutaway; list them in Help. Same in Godot. Done: with only a mouse wheel and keyboard, you can zoom the cutaway in and out, and Help says how.
@@ -28,3 +30,5 @@ GUIDE.md: camera controls.
 - 2026-10-10 01:41 opened from N-0067
 - 2026-10-11 questions answered: keys and on-screen buttons
 - 2026-10-11 15:48 questions answered
+- 2026-10-11 18:41 building on t-143-cutaway-slice-angle
+- 2026-10-11 19:00 built (with T-143)

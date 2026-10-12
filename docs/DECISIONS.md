@@ -208,6 +208,13 @@ See `PLAN-M16.md`.
 - **Sun through windows onto the shaft counts for comfort,** not just the look (Bryon): +0.5 for a home on floor 1, less each floor down, none below floor 10 (`windows.sun` in `data/config.json`), on top of the view and outside its cap. It's a steady bonus, not one that swings with the hour: a game day is a month to the player. Dust storms don't take it away yet.
 - **In 3D** the sunbeam stays in Free view with a floor picked, coming in from that floor's ceiling; where it lands is drawn as soft additive pools (gallery tube floors, the bottom of the hole, inside rooms with shaft windows), as bright as the beam is at that depth and following the sun through the day (`render3d/shafts3d.ts`). Godot doesn't have it yet (it skips the web's additive meshes).
 
+## Decided for the cutaway (Oct 11, T-130 / T-143)
+
+- **The cut is a wedge, 60° to 180°,** centred on the camera (Bryon): 180° is the old flat slice through the axis, 90° takes only the front quarter. A slider in the cutaway's camera bar (top left; on the right in Godot) and keys set it, and it's kept in the settings (`view3d.cutAngle`; Godot's `view/cut_angle`).
+- **Zoom has its own controls in the cutaway:** − and + buttons beside the slider, plus Ctrl+wheel and pinching as before; a plain wheel still moves up and down the hole.
+- **Keys: , and . zoom out and in; ; and ' narrow and widen the cut.** The tickets asked for + and − and for [ and ], but + and − already step the speed and [ and ] the holes, so Bryon picked these instead.
+- **How it's drawn:** on the web, two clip planes through the axis; three only unions the renderer's planes, so `render3d/wedgeClip.ts` makes them intersect (nothing in the game clips per material). The WebGPU experiment keeps the flat cut. In Godot the shader's `cut_plane.y` is the cosine of half the wedge (0 for a flat cut), and the cut face is two halves, each turned to its edge.
+
 ## Still open
 
 Deliberately not decided yet:
