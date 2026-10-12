@@ -86,6 +86,8 @@ export interface StageOptions {
   onError?: (message: string) => void;
   /** Walking around in first person (no building then), or not. */
   onWalking?: (walking: boolean) => void;
+  /** The cutaway's wedge was changed from the view (its slider or keys), in degrees: to keep in the settings. */
+  onCutAngle?: (deg: number) => void;
 }
 
 export type { Graphics } from "./graphics";

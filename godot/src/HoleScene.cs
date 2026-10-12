@@ -231,7 +231,7 @@ public partial class HoleScene : Node3D
     public void UpdateWalls(bool on, Vector3 camera) => _furniture.UpdateWalls(on, camera);
 
     /// <summary>On the cutaway's cut-away side (view.gdshaderinc cut_away)?</summary>
-    static bool CutAway(Vector4 cut, Vector3 p) => cut.W > 0.5f && p.X * cut.X + p.Z * cut.Z > 0;
+    static bool CutAway(Vector4 cut, Vector3 p) => cut.W > 0.5f && p.X * cut.X + p.Z * cut.Z > cut.Y * new Vector2(p.X, p.Z).Length();
 
     Vector4 _cut;
     (float from, float to)? _sharp;

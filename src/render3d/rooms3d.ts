@@ -1124,7 +1124,7 @@ export function roomGeometry(
  * the gallery is the shaft wall.) Rock faces are tagged like walls whose
  * room is the open side, so with walls down they drop when they're in the way.
  */
-function rockFaces(layout: Layout, topFloor: number | null): number[] {
+export function rockFaces(layout: Layout, topFloor: number | null): number[] {
   const hole = layout.hole;
   const pos = tagged();
   const joints = new Set(corridorJoints(layout).keys());
@@ -1166,6 +1166,8 @@ function rockFaces(layout: Layout, topFloor: number | null): number[] {
         if (cut.hallLeft && first) sideWall(pos, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y1, { side: -1 });
         if (cut.hallRight && last) sideWall(pos, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y1, { side: 1 });
         // A face on each border with something dug out beyond it (and no corridor there, which carves instead).
+        // Only where the rock still reaches the border: where corridors turn at its corner, the joint's square
+        // notches it back, and a face on the border line would stand across the corridor (T-145).
         for (const e of cellEdges(hole, c)) {
           if (layout.corridors?.[e.id]) continue;
           const [a, b] = edgeSides(hole, e);
@@ -1174,8 +1176,20 @@ function rockFaces(layout: Layout, topFloor: number | null): number[] {
           if (!other || key(other) === key(c) || rock(other)) continue;
           // The open side is toward smaller angles (or inward) when it's the edge's first side.
           const side = beyondFirst ? -1 : 1;
-          if (e.kind === "arc") curvedFace(pos, hole.shaftRadiusM + e.circle * RING_D, e.a0 * TAU, e.a1 * TAU, y0, y1, { side });
-          else sideWall(pos, r0, e.turn * TAU, r1, e.turn * TAU, y0, y1, { side });
+          if (e.kind === "arc") {
+            const r = hole.shaftRadiusM + e.circle * RING_D;
+            const inward = e.circle === ring - 1;
+            for (const p of cut.pieces) {
+              if (inward ? p.innerHall : p.outerHall) continue;
+              const [p0, p1] = pieceAt(cut, p, r);
+              const lo = Math.max(p0, e.a0 * TAU);
+              const hi = Math.min(p1, e.a1 * TAU);
+              if (hi - lo > 1e-9) curvedFace(pos, r, lo, hi, y0, y1, { side });
+            }
+          } else {
+            const p = e.id === `R${floor}.${ring}.${slot}` ? first : last;
+            if (p && p.rr1 - p.rr0 > 1e-9) sideWall(pos, p.rr0, e.turn * TAU, p.rr1, e.turn * TAU, y0, y1, { side });
+          }
         }
       }
     });
@@ -1778,26 +1792,7 @@ function disposeShape(shape: Shape): void {
 }
 
 function roomShape(layout: Layout, room: RoomInstance): Shape & { key: string } {
-  // Corridors along its sides, and turns at its corners, change its shape, so they're part of the key.
-  const outside = outsideEdges(layout.hole, room.cells);
-  const joints = corridorJoints(layout);
-  const halls = [
-    ...outside.filter((e) => layout.corridors?.[e.id]).map((e) => e.id),
-    ...[...new Set(outside.flatMap((e) => edgeVertices(layout.hole, e)))].filter((v) => joints.has(v)),
-  ].join(",");
-  // What's around it (rock, or something to see) decides which walls can come down.
-  const around = neighborCells(layout.hole, room.cells)
-    .map((c) => (layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] || isOpen(layout, c) ? 1 : 0))
-    .join("");
-  // A room, once it's more than a plan, has its windows and doors cut through.
-  const open = openingsOf(layout, room);
-  const cut = open
-    ? [
-        ...open.doors.map((d) => `${d.edge}/${d.cell.ring}.${d.cell.slot}`),
-        ...[...open.windows].map(([e, w]) => `${e}=${w.bottom}-${w.top}`),
-      ].join(",")
-    : "shut";
-  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${cut}`;
+  const { key, open } = shapeKey(layout, room);
   let shape = shapeCache.get(key);
   if (!shape) {
     const parts: OpeningParts = { glass: tagged(), frames: tagged(), tops: tagged() };
@@ -1812,6 +1807,34 @@ function roomShape(layout: Layout, room: RoomInstance): Shape & { key: string } 
     shapeCache.set(key, shape);
   }
   return { ...shape, key };
+}
+
+/** What a room's cached shape depends on: everything that changes its geometry, and nothing else. */
+export function shapeKey(layout: Layout, room: RoomInstance): { key: string; open: RoomOpenings | null } {
+  // Corridors along its sides, and turns at its corners, change its shape, so they're part of the key.
+  const outside = outsideEdges(layout.hole, room.cells);
+  const joints = corridorJoints(layout);
+  const halls = [
+    ...outside.filter((e) => layout.corridors?.[e.id]).map((e) => e.id),
+    ...[...new Set(outside.flatMap((e) => edgeVertices(layout.hole, e)))].filter((v) => joints.has(v)),
+  ].join(",");
+  // What's around it decides which walls can come down, and how thick each is: a wall onto empty space
+  // stands its full thickness, with a face past the line, but onto a room it's only its own half. So a
+  // room (2) and empty space (1) must count apart, or a wall built for empty space stays when a room fills
+  // it, its face on the new room's wall face, and the two flicker through each other (T-079).
+  const around = neighborCells(layout.hole, room.cells)
+    .map((c) => (layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] ? 2 : isOpen(layout, c) ? 1 : 0))
+    .join("");
+  // A room, once it's more than a plan, has its windows and doors cut through.
+  const open = openingsOf(layout, room);
+  const cut = open
+    ? [
+        ...open.doors.map((d) => `${d.edge}/${d.cell.ring}.${d.cell.slot}`),
+        ...[...open.windows].map(([e, w]) => `${e}=${w.bottom}-${w.top}`),
+      ].join(",")
+    : "shut";
+  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${cut}`;
+  return { key, open };
 }
 
 // ---- surface props, standing on y = 0 around the rim ----

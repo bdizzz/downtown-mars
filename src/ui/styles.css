@@ -27,13 +27,17 @@ html, body, #root { margin: 0; height: 100%; }
 .sundial .moon-cut.night { fill: #2b2140; }
 .sundial .horizon { stroke: var(--muted); stroke-width: 1; }
 .tick { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
-.speeds { display: flex; gap: 4px; }
+/* The speeds are one buttonset: joined buttons sharing their borders, rounded only at the ends. */
+.speeds { display: flex; }
 .speeds button {
-  background: transparent; color: var(--text);
-  border: 1px solid var(--muted); border-radius: 4px;
+  position: relative; background: transparent; color: var(--text);
+  border: 1px solid var(--muted); border-radius: 0;
   padding: 3px 10px; cursor: pointer; font: inherit;
 }
-.speeds button.on { background: var(--accent); border-color: var(--accent); color: #1a0f0d; }
+.speeds button + button { margin-left: -1px; }
+.speeds button:first-child { border-radius: 4px 0 0 4px; }
+.speeds button:last-child { border-radius: 0 4px 4px 0; }
+.speeds button.on { z-index: 1; background: var(--accent); border-color: var(--accent); color: #1a0f0d; }
 .pixi-host { flex: 1; min-height: 0; overflow: hidden; }
 .status {
   padding: 6px 16px; background: var(--panel); border-top: 1px solid #000;
@@ -307,7 +311,18 @@ label.set-row { cursor: pointer; }
 }
 .cam-reset:hover { border-color: var(--accent); color: var(--accent); }
 .cam-reset[hidden] { display: none; }
-.cam-readout:has(> span:empty):has(> .cam-reset[hidden]) { display: none; }
+.cam-readout:has(> span:empty):has(> .cam-reset[hidden]):not(:has(> .cam-cutaway:not([hidden]))) { display: none; }
+/* Cutaway: zoom buttons and the cut's angle. */
+.cam-cutaway { display: flex; align-items: center; gap: 4px; pointer-events: auto; }
+.cam-cutaway[hidden], .cam-wedge[hidden] { display: none; }
+.cam-zoom {
+  font: inherit; font-size: 13px; line-height: 1; color: var(--text); cursor: pointer; width: 22px; height: 20px;
+  background: transparent; border: 1px solid var(--muted); border-radius: 4px; padding: 0;
+}
+.cam-zoom:hover { border-color: var(--accent); color: var(--accent); }
+.cam-wedge { display: flex; align-items: center; gap: 6px; margin-left: 6px; font-size: 11px; white-space: nowrap; }
+.cam-wedge span { min-width: 52px; }
+.cam-wedge input[type="range"] { width: 90px; accent-color: var(--accent); }
 /* First person with mouse look: a small cross at the centre, where clicks land. */
 .walk-crosshair {
   position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; pointer-events: none;
@@ -633,6 +648,7 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   .set-ctl input[type="checkbox"]::after { width: 22px; height: 22px; }
   .set-ctl input[type="checkbox"]:checked::after { transform: translateX(20px); }
   .cam-reset { padding: 4px 10px; }
+  .cam-zoom { width: 36px; height: 32px; font-size: 16px; }
   /* No keyboard: hide the key hints. */
   .dock-btn kbd, .room-btn kbd, .mode-btn kbd { display: none; }
 }
@@ -763,3 +779,41 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .res.bad { color: #ff8a6c; border: 1px solid #ff5a3c; background: #ff4a2e26; font-weight: 600; }
 .res.full { color: #8fc0ea; border: 1px dotted #7fb3e0a0; }
 .res.warn .ico, .res.bad .ico, .res.full .ico { color: inherit; }
+
+/* Phones (T-106): the top bar is one short row (menu, hole, pause/play, how many things need you,
+   the office and a chevron); the clock, speeds, needs, drill, drop and the resource grid drop down
+   from the chevron and stay down until it closes them. Wider screens never see the difference. */
+.phone-only { display: none; }
+.hud-more, .resbar .group-cells { display: contents; }
+.pause-btn, .hud-toggle {
+  background: transparent; color: var(--text); font: inherit; font-size: 13px;
+  border: 1px solid var(--muted); border-radius: 4px; padding: 2px 8px; cursor: pointer;
+}
+.hud-toggle { gap: 5px; white-space: nowrap; }
+.hud-toggle .chev { display: inline-block; font-size: 14px; line-height: 1; transition: transform 0.15s; }
+.hud.open .hud-toggle .chev { transform: rotate(180deg); }
+.need-count {
+  gap: 4px; font: inherit; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer;
+  border: 1px dashed #f0a03090; border-radius: 12px; padding: 1px 9px 1px 6px; background: #f0a03018; color: #f4b860;
+}
+.need-count.bad { border: 1px solid #ff5a3c; background: #ff4a2e30; color: #ff8a6c; }
+@media (max-width: 639px) {
+  .hud { flex-wrap: wrap; }
+  .phone-only { display: inline-flex; align-items: center; }
+  .hud .hole-name, .hud .hole-picker { flex: 1; min-width: 0; max-width: max-content; overflow: hidden; text-overflow: ellipsis; }
+  .hud .hud-more { display: none; }
+  .hud.open .hud-more { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; order: 10; flex-basis: 100%; padding-top: 4px; border-top: 1px solid #ffffff14; }
+  .hud .hud-more .needs { flex: 1 1 100%; }
+  /* Left out: the sun dial, and a waiting drop (the "Drop waiting" chip says it). */
+  .hud .sundial, .hud .drop.warn { display: none; }
+  .hud .office-btn { margin-left: auto; }
+  .app:not(.hud-open) .resbar { display: none; }
+}
+@media (pointer: coarse) and (max-width: 639px) {
+  .pause-btn, .hud-toggle, .need-count { padding: 6px 12px; }
+}
+/* Narrow screens (T-140): a section's cells wrap in rows beside its label, which runs its full height. */
+@media (max-width: 760px) {
+  .resbar .group { flex-wrap: nowrap; }
+  .resbar .group-cells { display: flex; flex-wrap: wrap; align-items: center; gap: 1px; flex: 1; min-width: 0; }
+}

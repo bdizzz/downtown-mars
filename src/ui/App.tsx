@@ -92,6 +92,8 @@ export function App() {
   const officeOpen = panel === "office";
   /** The series Trends opens on (a resource clicked in the bar at the top). */
   const [trendKey, setTrendKey] = useState("happiness");
+  /** Phones: the top bar's drop-down (speeds, needs, resources) is open. Only its toggle closes it. */
+  const [hudOpen, setHudOpen] = useState(false);
   const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends") => {
     setPanel((cur) => (cur === p ? null : p));
     setSelected(null);
@@ -432,7 +434,7 @@ export function App() {
 
   return (
     <div
-      className={`app${settings.colorBlind ? " color-blind" : ""}${welcome ? " welcoming" : ""}`}
+      className={`app${settings.colorBlind ? " color-blind" : ""}${welcome ? " welcoming" : ""}${hudOpen ? " hud-open" : ""}`}
       style={{ "--ui-scale": settings.uiScale } as React.CSSProperties}
     >
       {/* Build mode: a thin yellow frame round the screen, so it's always clear you're building. Clicks go through it. */}
@@ -448,6 +450,8 @@ export function App() {
         openMenu={openMenu}
         openTrend={openTrend}
         keysEnabled={!menu}
+        open={hudOpen}
+        setOpen={setHudOpen}
       />
       <ResourceBar s={snapshot} onTrend={openTrend} />
       <div className="main">
@@ -566,6 +570,7 @@ export function App() {
             mode={settings.view}
             graphics={settings.graphics}
             view3d={settings.view3d}
+            onCutAngle={(cutAngle) => updateSettings({ view3d: { ...settings.view3d, cutAngle } })}
             building={mode === "build"}
             onViewError={(message) => {
               flash(message);

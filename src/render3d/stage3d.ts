@@ -15,9 +15,10 @@ import { roomSide } from "../sim/windows";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
 import { Look, type LookLike } from "./look";
-import { DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
+import { clampCutAngle, CUT_ANGLE, DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
+import { intersectGlobalClipping } from "./wedgeClip";
 import { makeSlice, withCutRock, withRegolith, withRock, withSlice } from "./surfaces";
-import { RoomEffects } from "./effects3d";
+import { RoomEffects, type FxView } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
 import { createSky } from "./sky3d";
@@ -77,7 +78,7 @@ const FOV = 55;
 const FAR = 3500;
 const CLICK_SLOP = 5;
 /** Cutaway: distance from the axis (fitted to frame the unlocked rings with `margin` to spare), and how far above the look point it sits, as a share of that. */
-const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25, margin: 1.1 };
+const CUTAWAY = { min: 25, max: 300, start: 70, lift: 0.25, margin: 1.1, zoomStep: 1.25 };
 /** Free view's WASD pan: metres a second as a share of the camera's distance (with a floor), and how far from the axis it may go, as a share of the rings' radius. */
 const ISO_PAN = { speed: 0.6, minSpeed: 12, reach: 1.3 };
 /**
@@ -91,6 +92,8 @@ const WALK = { searchStep: 0.5, searchReach: 40, eye: 1.8, speed: 4.5, run: 10, 
 const MAX_PITCH = Math.PI / 2 - 0.02;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
 const SHELL_MARGIN = 6;
+/** How far the cutaway's cut faces sit to the kept side of the cut, so its clip planes don't take them. */
+const CUT_FACE_BACK = 0.05;
 /** The rock wall and the land's cut sit this far past the rings' outer edge: flush, just clear of the outer walls. */
 const ROCK_FLUSH = 0.05;
 /**
@@ -197,23 +200,53 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(digFront);
 
   // The camera and the see-through toggles: set from the View mode's buttons (setView3d).
-  const view = { mode: DEFAULT_VIEW3D.camera as Mode, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors, flows: DEFAULT_VIEW3D.flows };
+  const view = { mode: DEFAULT_VIEW3D.camera as Mode, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors, flows: DEFAULT_VIEW3D.flows, cutAngle: DEFAULT_VIEW3D.cutAngle };
   // Free view with a floor picked slices the land open through the hole's axis: the near half's gone.
   const slice = makeSlice({ ...SLICE, earth: C.earth });
   const groundMat = withSlice(withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 })), slice, "land");
-  // The cutaway slices along a plane through the shaft's axis, facing away from the camera.
-  const clip = new THREE.Plane(new THREE.Vector3(1, 0, 0), 0);
+  // The cutaway takes a wedge out of the hole, centred on the camera: what's past both of these planes
+  // through the shaft's axis goes (wedgeClip.ts). A flat cut (180°) is the two the same, facing away from
+  // the camera. The WebGPU experiment can't intersect them, so it keeps the flat cut.
+  const clips = [new THREE.Plane(new THREE.Vector3(1, 0, 0), 0), new THREE.Plane(new THREE.Vector3(1, 0, 0), 0)];
+  const wedges = !webgpu && intersectGlobalClipping();
+  /** The cut's width in radians: flat (π) where wedges can't be drawn. */
+  const cutWidth = () => (wedges ? (view.cutAngle * Math.PI) / 180 : Math.PI);
+  /** One of the cutaway's two cut faces: the way it runs out from the axis, and the way to the side that's kept. */
+  interface CutSide {
+    sign: -1 | 1;
+    along: THREE.Vector3;
+    keep: THREE.Vector3;
+  }
+  /** What the sparks and steam need to know of the view: the floor picked, and in the cutaway, what's cut away. */
+  function fxView(): FxView {
+    const away = (x: number, z: number) => clips.every((c) => c.normal.x * x + c.normal.z * z < 0);
+    return { topFloor: cut(), cutAway: view.mode === "cutaway" ? away : undefined };
+  }
+  /**
+   * How far past the axis the faces start, so a wedge's two meet: each sits a hair to its own kept
+   * side, which would leave a sliver open down the axis. A flat cut's two are one plane: no overlap.
+   */
+  function wedgeSeam(sides: CutSide[]): number {
+    return sides[0]!.keep.dot(sides[1]!.keep) > 0.9999 ? 0 : CUT_FACE_BACK * 4;
+  }
+  /** The cut faces either side of the camera's heading, half the cut's width each way (a flat cut: back to back). */
+  function cutSides(width = cutWidth()): CutSide[] {
+    return ([-1, 1] as const).map((sign) => {
+      const a = cam.theta + (sign * width) / 2;
+      return { sign, along: new THREE.Vector3(Math.cos(a), 0, Math.sin(a)), keep: new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)).multiplyScalar(sign) };
+    });
+  }
   let shell: THREE.Object3D | null = null;
   // Cutaway: the cut face of the ground, rock from the surface's profile down, so
   // below the sliced-away land there's earth, not sky. It leaves a gap for the
   // hole's own section (the backdrop behind the rooms), but not for the crust above floor 1: that's
   // rock all the way in to the shaft wall.
   const SECTION = { reach: 1700, bottom: -900, samples: 120, tuck: 0.01 };
-  const sectionPos = new Float32Array(3 * 2 * (SECTION.samples + 1) * 2 + 3 * 4 + 3 * 8);
+  const sectionPos = new Float32Array(3 * 2 * (SECTION.samples + 1) * 2 + 3 * 8 + 3 * 8);
   const sectionGeo = new THREE.BufferGeometry();
   sectionGeo.setAttribute("position", new THREE.BufferAttribute(sectionPos, 3));
   {
-    // Two strips (each side of the hole) of top/bottom pairs, the slab under the hole, then the crust either side of the shaft.
+    // Two strips (one each side of the cut) of top/bottom pairs, the slab under the hole (half each side), then the crust either side of the shaft.
     const idx: number[] = [];
     const n = SECTION.samples + 1;
     for (const base of [0, 2 * n]) {
@@ -223,8 +256,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       }
     }
     const slab = 4 * n;
-    idx.push(slab, slab + 1, slab + 2, slab + 2, slab + 1, slab + 3);
-    for (const a of [slab + 4, slab + 8]) idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3);
+    for (const a of [slab, slab + 4, slab + 8, slab + 12]) idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3);
     sectionGeo.setIndex(idx);
   }
   // The cutaway's cut face, through the land and the rings alike, is one piece of freshly cut rock;
@@ -302,10 +334,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     section.material = underground ? sliceMat : sectionMat;
     section.visible = !!hole && ((view.mode === "cutaway" && cut() === null) || underground);
     if (!section.visible || !hole) return;
-    // Along the cut, and a hair to the kept side so the clip plane doesn't take it.
-    const tx = -out.z;
-    const tz = out.x;
-    const back = -0.05;
+    // Each side of the cut: the cutaway's wedge, or Free view's flat cut, square to `out` and `offset` toward it.
+    const sides = underground ? cutSides(Math.PI).map((side) => ({ ...side, keep: out.clone().negate(), along: new THREE.Vector3(-out.z * side.sign, 0, out.x * side.sign) })) : cutSides();
     // Underground the face starts at the wall, where the cut meets it; the cutaway's past the backdrop.
     const inner = underground ? Math.sqrt(Math.max(0, r * r - offset * offset)) : hole.shaftRadiusM + hole.unlockedRings * RING_D + SHELL_MARGIN;
     // Underground, no slab under the hole (the rooms below the picked floor stay in view), and the face
@@ -314,63 +344,69 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const bottom = underground ? floorSpan(cut()!)[1] : SECTION.bottom;
     const n = SECTION.samples + 1;
     let k = 0;
-    const put = (u: number, y: number) => {
-      sectionPos[k++] = u * tx + out.x * (offset + back);
+    /** `d` metres out along a side of the cut, a hair to its kept side so the clip planes don't take it. */
+    const put = (side: CutSide, d: number, y: number) => {
+      sectionPos[k++] = d * side.along.x + out.x * offset + side.keep.x * CUT_FACE_BACK;
       sectionPos[k++] = y;
-      sectionPos[k++] = u * tz + out.z * (offset + back);
+      sectionPos[k++] = d * side.along.z + out.z * offset + side.keep.z * CUT_FACE_BACK;
     };
-    for (const sign of [-1, 1]) {
+    const ground = (side: CutSide, d: number) => (terrain ? terrain.heightAt(d * side.along.x + out.x * offset, d * side.along.z + out.z * offset) : 0);
+    for (const side of sides) {
       for (let i = 0; i < n; i++) {
         // Denser near the hole, where the ground is seen close up.
-        const u = sign * (inner + (SECTION.reach - inner) * (i / SECTION.samples) ** 2);
-        put(u, terrain ? terrain.heightAt(u * tx + out.x * offset, u * tz + out.z * offset) : 0);
-        put(u, bottom);
+        const d = inner + (SECTION.reach - inner) * (i / SECTION.samples) ** 2;
+        put(side, d, ground(side, d));
+        put(side, d, bottom);
       }
     }
-    put(-inner, deep);
-    put(-inner, SECTION.bottom);
-    put(inner, deep);
-    put(inner, SECTION.bottom);
+    // The slab under the hole, from the axis out to the strips on each side.
+    const seam = wedgeSeam(sides);
+    for (const side of sides) {
+      put(side, -seam, deep);
+      put(side, -seam, SECTION.bottom);
+      put(side, inner, deep);
+      put(side, inner, SECTION.bottom);
+    }
     // The crust over floor 1, from the shaft wall out to the strips (underground, the strips start at the wall).
     // The wall is drawn in flat steps, so the face starts where the cut meets them, tucked just behind.
-    for (const sign of [-1, 1]) {
-      const shaft = underground ? inner : shaftCollarRadius(hole, Math.atan2(sign * tz, sign * tx)) - SECTION.tuck;
-      for (const u of [sign * shaft, sign * inner]) {
-        put(u, terrain ? terrain.heightAt(u * tx + out.x * offset, u * tz + out.z * offset) : 0);
-        put(u, -CRUST);
+    for (const side of sides) {
+      const shaft = underground ? inner : shaftCollarRadius(hole, Math.atan2(side.along.z, side.along.x)) - SECTION.tuck;
+      for (const d of [shaft, inner]) {
+        put(side, d, ground(side, d));
+        put(side, d, -CRUST);
       }
     }
     sectionGeo.attributes.position!.needsUpdate = true;
     sectionGeo.computeVertexNormals();
-    updateCap(out, back, inner, deep);
+    updateCap(sides, inner, deep);
   }
 
-  /** The cutaway's cut face through the rings (see `cap`), each side of the shaft, on the same plane as the section. */
-  function updateCap(out: THREE.Vector3, back: number, inner: number, deep: number): void {
+  /** The cutaway's cut face through the rings (see `cap`), on each side of the cut, in line with the section. */
+  function updateCap(sides: CutSide[], inner: number, deep: number): void {
     cap.visible = section.visible && view.mode === "cutaway";
     if (!cap.visible || !hole || !layout) return;
-    const key = `${layout.version}:${hole.floors}:${hole.unlockedRings}:${cam.theta.toFixed(4)}`;
+    const key = `${layout.version}:${hole.floors}:${hole.unlockedRings}:${sides.map((s) => `${s.along.x.toFixed(4)},${s.along.z.toFixed(4)}`).join(":")}`;
     if (key === capKey) return;
     capKey = key;
-    const tx = -out.z;
-    const tz = out.x;
     const pos: number[] = [];
-    const quad = (u0: number, u1: number, y0: number, y1: number) => {
-      const p = (u: number, y: number) => [u * tx + out.x * back, y, u * tz + out.z * back];
-      pos.push(...p(u0, y1), ...p(u1, y1), ...p(u1, y0), ...p(u0, y1), ...p(u1, y0), ...p(u0, y0));
+    /** From `d0` to `d1` metres out along a side, between two heights. */
+    const quad = (side: CutSide, d0: number, d1: number, y0: number, y1: number) => {
+      const p = (d: number, y: number) => [d * side.along.x + side.keep.x * CUT_FACE_BACK, y, d * side.along.z + side.keep.z * CUT_FACE_BACK];
+      pos.push(...p(d0, y1), ...p(d1, y1), ...p(d1, y0), ...p(d0, y1), ...p(d1, y0), ...p(d0, y0));
     };
     const rings = hole.shaftRadiusM + hole.unlockedRings * RING_D;
     const digBottom = floorSpan(hole.floors + 1)[0];
-    for (const sign of [-1, 1]) {
-      for (const s of rockAlong(layout, Math.atan2(sign * tz, sign * tx))) {
+    const seam = wedgeSeam(sides);
+    for (const side of sides) {
+      for (const s of rockAlong(layout, Math.atan2(side.along.z, side.along.x))) {
         const [y0, y1] = floorSpan(s.floor);
-        quad(sign * s.r0, sign * s.r1, y0, y1);
+        quad(side, s.r0, s.r1, y0, y1);
       }
       // Past the unlocked rings, out to where the section starts.
-      quad(sign * rings, sign * inner, deep, -CRUST);
+      quad(side, rings, inner, deep, -CRUST);
+      // Under the floor being dug, from the axis out, down to the section's slab.
+      quad(side, -seam, rings, deep, digBottom);
     }
-    // Under the floor being dug, across the shaft too, down to the section's slab.
-    quad(-rings, rings, deep, digBottom);
     capGeo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
     capGeo.computeVertexNormals();
   }
@@ -575,8 +611,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (view.mode === "cutaway") {
       camera.position.copy(out).multiplyScalar(cam.out).setY(cam.y + cam.out * CUTAWAY.lift);
       camera.lookAt(0, cam.y, 0);
-      // Keep what's behind the axis from the camera's point of view.
-      clip.normal.copy(out).negate();
+      // Keep what's outside the wedge, from the camera's point of view.
+      cutSides().forEach((side, i) => clips[i]!.normal.copy(side.keep));
     } else if (view.mode === "iso") {
       // Above the floor (or, with every floor showing, the surface) and off to one side, looking
       // across it, a little past its centre, so the far side fills the view.
@@ -594,7 +630,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const cp = Math.cos(walker.pitch);
       camera.lookAt(walker.x + Math.cos(walker.yaw) * cp, camera.position.y + Math.sin(walker.pitch), walker.z + Math.sin(walker.yaw) * cp);
     }
-    renderer.clippingPlanes = view.mode === "cutaway" ? [clip] : [];
+    renderer.clippingPlanes = view.mode === "cutaway" ? clips : [];
+    // The cut turned or widened: sparks and steam from furniture it now takes go with it.
+    roomFx.setView(fxView());
     // Far-off cameras need a farther near plane, or the depth buffer can't tell
     // the ground from the roofs just under it.
     const inside = view.mode === "walk";
@@ -724,7 +762,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     for (const hit of raycaster.intersectObjects(pickables, false)) {
       const u = hit.object.userData;
       // The raycaster ignores clipping: skip what the cutaway has sliced away.
-      if (view.mode === "cutaway" && clip.distanceToPoint(hit.point) < -0.01) continue;
+      if (view.mode === "cutaway" && clips.every((c) => c.distanceToPoint(hit.point) < -0.01)) continue;
       // With walls down, a lowered wall isn't there: pick the room behind it.
       if (loweredAt(hit, camera.position)) continue;
       // The cap over a chosen floor: pick the cell just under it.
@@ -747,9 +785,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const surfaceShown = cut() === null;
     if (surfaceShown) offer(tGround, groundPick);
     if (view.mode === "cutaway") {
-      // The sliced section itself: how you reach rings 2 and 3 from outside.
-      const t = rayPlane(ray, clip);
-      if (t !== null && inCarvedRegion(h, ray.at(t, new THREE.Vector3()))) offer(t, () => pickPast(h, ray, t - 0.2));
+      // The sliced section itself, either face of the cut: how you reach rings 2 and 3 from outside.
+      cutSides().forEach((side, i) => {
+        const t = rayPlane(ray, clips[i]!);
+        const p = t === null ? null : ray.at(t, new THREE.Vector3());
+        if (t !== null && p && p.dot(side.along) >= 0 && inCarvedRegion(h, p)) offer(t, () => pickPast(h, ray, t - 0.2));
+      });
     }
     const b = best as { t: number; pick: Pick; at: number } | null;
     if (!b && tGround !== null && surfaceShown) return groundPick();
@@ -1630,7 +1671,70 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   resetButton.hidden = true;
   resetButton.addEventListener("click", () => resetCamera());
   bar.appendChild(resetButton);
+  // Cutaway only: zoom in and out (as Ctrl+wheel and pinching do), and how wide a wedge the cut takes.
+  const cutawayControls = document.createElement("span");
+  cutawayControls.className = "cam-cutaway";
+  const zoomButton = (label: string, title: string, by: number) => {
+    const b = document.createElement("button");
+    b.className = "cam-zoom";
+    b.textContent = label;
+    b.title = title;
+    b.addEventListener("click", () => zoomCutaway(by));
+    cutawayControls.appendChild(b);
+  };
+  zoomButton("−", "Zoom out (,)", CUTAWAY.zoomStep);
+  zoomButton("+", "Zoom in (.)", 1 / CUTAWAY.zoomStep);
+  const wedgeLabel = document.createElement("label");
+  wedgeLabel.className = "cam-wedge";
+  wedgeLabel.title = "How much of the hole the cut takes away: 180° slices it flat through the middle, 90° takes only the front quarter (; narrower, ' wider)";
+  const wedgeSlider = document.createElement("input");
+  wedgeSlider.type = "range";
+  wedgeSlider.min = String(CUT_ANGLE.min);
+  wedgeSlider.max = String(CUT_ANGLE.max);
+  wedgeSlider.step = "5";
+  wedgeSlider.value = String(view.cutAngle);
+  wedgeSlider.setAttribute("aria-label", "Cut angle");
+  const wedgeValue = document.createElement("span");
+  wedgeValue.textContent = `Cut ${view.cutAngle}°`;
+  wedgeSlider.addEventListener("input", () => setCutAngle(Number(wedgeSlider.value)));
+  wedgeLabel.append(wedgeValue, wedgeSlider);
+  cutawayControls.appendChild(wedgeLabel);
+  // Wedges need WebGL (wedgeClip.ts).
+  wedgeLabel.hidden = !wedges;
+  bar.appendChild(cutawayControls);
   host.appendChild(bar);
+
+  /** Cutaway: zoom by a factor of the distance (above 1 is out), and stop fitting the view to the rings. */
+  function zoomCutaway(by: number): void {
+    cam.out *= by;
+    cutawayFitted = false;
+    applyCamera();
+  }
+
+  /** Cutaway: set how wide a wedge the cut takes (degrees); from the view, it's kept in the settings. */
+  function setCutAngle(deg: number, fromSettings = false): void {
+    const a = clampCutAngle(deg);
+    wedgeSlider.value = String(a);
+    wedgeValue.textContent = `Cut ${a}°`;
+    if (a === view.cutAngle) return;
+    view.cutAngle = a;
+    if (!fromSettings) opts.onCutAngle?.(a);
+    applyCamera();
+  }
+
+  // Cutaway keys: , and . zoom out and in; ; and ' narrow and widen the cut. (+ and − are the speed's, [ and ] the holes'.)
+  const onCutawayKey = (e: KeyboardEvent) => {
+    if (view.mode !== "cutaway" || e.metaKey || e.ctrlKey || e.altKey) return;
+    const target = e.target as HTMLElement | null;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+    if (e.code === "Comma") zoomCutaway(CUTAWAY.zoomStep);
+    else if (e.code === "Period") zoomCutaway(1 / CUTAWAY.zoomStep);
+    else if (e.code === "Semicolon" && wedges) setCutAngle(view.cutAngle - CUT_ANGLE.step);
+    else if (e.code === "Quote" && wedges) setCutAngle(view.cutAngle + CUT_ANGLE.step);
+    else return;
+    e.preventDefault();
+  };
+  window.addEventListener("keydown", onCutawayKey);
 
   /** Switch camera, or the see-through toggles, from the View mode's buttons. */
   function setView3d(v: View3d): void {
@@ -1655,10 +1759,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       dirty = true;
       if (pointer && layout) refreshHover();
     }
+    if (v.cutAngle !== view.cutAngle) setCutAngle(v.cutAngle, true);
     updateReadout();
   }
 
   function updateReadout(): void {
+    cutawayControls.hidden = view.mode !== "cutaway";
     const f = cut();
     if (view.mode === "walk") readout.textContent = walkReadout();
     else if (view.mode === "iso") readout.textContent = f === null ? "The surface" : `Floor ${f}`;
@@ -1840,7 +1946,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     roomFx.group.visible = graphics.life;
     if (!graphics.life) roomFx.clear();
     // Sparks and steam only come from furniture that's shown.
-    roomFx.setView({ topFloor: cut() });
+    roomFx.setView(fxView());
     updateRockWall();
     dirty = true;
   }
@@ -1886,7 +1992,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             return performance.now() - t0;
           },
           setMode(m: Mode) {
-            setView3d({ camera: m, wallsDown: view.wallsDown, roomColors: view.roomColors, flows: view.flows });
+            setView3d({ camera: m, wallsDown: view.wallsDown, roomColors: view.roomColors, flows: view.flows, cutAngle: view.cutAngle });
           },
           // First person's position and heading, to put a walker somewhere.
           walker,
@@ -1914,6 +2020,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           field: () => fieldGroup,
           // The renderer, to inspect its programs.
           renderer,
+          // Sparks and steam alive and showing.
+          fx: () => roomFx.live,
           // How many rooms show their furniture near and far.
           detail() {
             const n = { near: 0, far: 0 };
@@ -2050,7 +2158,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         });
         troubleKey = null;
         // The floor picked changed: hidden furniture's sparks and steam go with it.
-        roomFx.setView({ topFloor: cut() });
+        roomFx.setView(fxView());
         dirty = true;
       }
       const d = snapshot.drill;
@@ -2250,6 +2358,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (locked()) document.exitPointerLock();
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("keydown", onIsoKey);
+      window.removeEventListener("keydown", onCutawayKey);
       window.removeEventListener("keyup", onIsoKey);
       window.removeEventListener("keyup", onKey);
       resize.disconnect();
