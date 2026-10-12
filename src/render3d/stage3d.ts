@@ -1704,7 +1704,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (isoFrame(dt)) applyCamera();
     // The drink steams and bobs as you go.
     if (drink.held) {
-      drink.step(dt, walked);
+      drink.step(dt, walked, walker.pitch);
       dirty = true;
     }
     walked = 0;

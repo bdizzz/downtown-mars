@@ -351,7 +351,7 @@ public partial class CameraRig : Node3D
                 _yaw += side * 1.2f * dt;
             }
         }
-        _drink.Step(dt, walked);
+        _drink.Step(dt, walked, _lookPitch);
         Apply();
     }
 

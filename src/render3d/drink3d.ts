@@ -6,7 +6,7 @@ import * as THREE from "three";
 // goes to the sim, and it's gone once you leave first person.
 
 /** Where it sits in the camera's frame (metres; the camera looks down −z), how it bobs, and its steam. */
-const HOLD = { at: [0.091, -0.07, -0.294] as const, scale: 0.7, tip: 0.35, bobUp: 0.012, bobSide: 0.008, stride: 1.6, puffs: 6, rise: 0.16, puffLife: 1.6 };
+const HOLD = { at: [0.091, -0.07, -0.294] as const, scale: 0.7, bobUp: 0.012, bobSide: 0.008, stride: 1.6, puffs: 6, rise: 0.16, puffLife: 1.6 };
 const COLOR = { sleeve: "#c8643c", cuff: "#8a3f24", glove: "#d9c7a8", mug: "#efe6d6", band: "#c8643c", drink: "#3b2416", steam: "#f4efe8" };
 
 export interface Drink {
@@ -14,8 +14,8 @@ export interface Drink {
   /** Held or not. */
   held: boolean;
   setHeld(on: boolean): void;
-  /** Move the steam on, and bob by how far the walker went (metres) since the last step. */
-  step(dt: number, walked: number): void;
+  /** Move the steam on, bob by how far the walker went (metres) since the last step, and keep the mug level as the head tilts (`pitch`, radians, up positive). */
+  step(dt: number, walked: number, pitch: number): void;
   dispose(): void;
 }
 
@@ -45,7 +45,7 @@ export function createDrink(camera: THREE.Camera): Drink {
   const materials: THREE.Material[] = [];
   let order = 1000;
   // Drawn last. Held close (a walker keeps further than that from walls), and scaled down to look the same size, so it doesn't sink into a wall you walk up to.
-  const part = (geometry: THREE.BufferGeometry, color: string, at: [number, number, number], turn: [number, number, number] = [0, 0, 0], basic = false): THREE.Mesh => {
+  const part = (on: THREE.Object3D, geometry: THREE.BufferGeometry, color: string, at: [number, number, number], turn: [number, number, number] = [0, 0, 0], basic = false): THREE.Mesh => {
     const material = basic
       ? new THREE.MeshBasicMaterial({ color, depthWrite: false, transparent: true, opacity: 0 })
       : new THREE.MeshMatcapMaterial({ color, matcap: shading() });
@@ -57,33 +57,50 @@ export function createDrink(camera: THREE.Camera): Drink {
     mesh.raycast = () => {};
     geometries.push(geometry);
     materials.push(material);
-    hold.add(mesh);
+    on.add(mesh);
     return mesh;
   };
   const hold = new THREE.Group();
   hold.position.set(...HOLD.at);
   hold.scale.setScalar(HOLD.scale);
-  // Tipped toward you a little, so you see the drink in it.
-  hold.rotation.x = HOLD.tip;
   group.add(hold);
+  // The mug turns against the head's tilt, so its top stays level with the floor and nothing spills.
+  const mug = new THREE.Group();
+  hold.add(mug);
 
-  // The arm comes up from below right, toward the far side, to the hand on the handle.
-  const hand: [number, number, number] = [0.066, -0.004, 0.008];
-  const arm = new THREE.Vector3(-0.4, 0.6, -0.7).normalize();
-  const back = (d: number): [number, number, number] => [hand[0] - arm.x * d, hand[1] - arm.y * d, hand[2] - arm.z * d];
-  const up = new THREE.Vector3(0, 1, 0);
-  part(new THREE.CylinderGeometry(0.04, 0.05, 0.4, 12), COLOR.sleeve, back(0.24)).quaternion.setFromUnitVectors(up, arm);
-  part(new THREE.CylinderGeometry(0.036, 0.036, 0.04, 12), COLOR.cuff, back(0.045)).quaternion.setFromUnitVectors(up, arm);
   // The mug: cream, with a band of colour, a handle toward the hand, and dark coffee near the brim.
-  part(new THREE.CylinderGeometry(0.042, 0.038, 0.095, 18), COLOR.mug, [0, 0, 0]);
-  part(new THREE.CylinderGeometry(0.0425, 0.0425, 0.014, 18, 1, true), COLOR.band, [0, -0.014, 0]);
-  part(new THREE.CylinderGeometry(0.036, 0.036, 0.004, 18), COLOR.drink, [0, 0.0485, 0]);
-  part(new THREE.TorusGeometry(0.024, 0.008, 8, 14, Math.PI * 1.3), COLOR.mug, [0.043, 0.002, 0], [0, 0, -Math.PI * 0.65]);
-  // Fingers round the handle, in front of it.
-  part(new THREE.SphereGeometry(0.026, 12, 10), COLOR.glove, hand).scale.set(0.9, 1.25, 0.9);
+  part(mug, new THREE.CylinderGeometry(0.042, 0.038, 0.095, 18), COLOR.mug, [0, 0, 0]);
+  part(mug, new THREE.CylinderGeometry(0.0425, 0.0425, 0.014, 18, 1, true), COLOR.band, [0, -0.014, 0]);
+  part(mug, new THREE.CylinderGeometry(0.036, 0.036, 0.004, 18), COLOR.drink, [0, 0.0485, 0]);
+  part(mug, new THREE.TorusGeometry(0.024, 0.008, 8, 14, Math.PI * 1.3), COLOR.mug, [0.043, 0.002, 0], [0, 0, -Math.PI * 0.65]);
+  // Fingers round the handle, in front of it: they turn with the mug.
+  const grip: [number, number, number] = [0.066, -0.004, 0.008];
+  part(mug, new THREE.SphereGeometry(0.026, 12, 10), COLOR.glove, grip).scale.set(0.9, 1.25, 0.9);
+  // The arm comes up from a shoulder below right to wherever the hand is, its wrist bending to keep the mug level.
+  const reach = new THREE.Vector3(-0.4, 0.6, -0.7).normalize();
+  const shoulder = new THREE.Vector3(...grip).addScaledVector(reach, -0.44);
+  const sleeve = part(hold, new THREE.CylinderGeometry(0.04, 0.05, 1, 12), COLOR.sleeve, [0, 0, 0]);
+  const cuff = part(hold, new THREE.CylinderGeometry(0.036, 0.036, 0.04, 12), COLOR.cuff, [0, 0, 0]);
+  const up = new THREE.Vector3(0, 1, 0);
+  const hand = new THREE.Vector3();
+  const along = new THREE.Vector3();
+  function bendArm(): void {
+    mug.updateMatrix();
+    hand.set(...grip).applyMatrix4(mug.matrix);
+    along.subVectors(hand, shoulder);
+    const length = along.length();
+    along.divideScalar(length);
+    // The sleeve stops short of the hand, where the cuff is.
+    sleeve.position.copy(shoulder).addScaledVector(along, (length - 0.04) / 2);
+    sleeve.scale.set(1, length - 0.04, 1);
+    sleeve.quaternion.setFromUnitVectors(up, along);
+    cuff.position.copy(hand).addScaledVector(along, -0.045);
+    cuff.quaternion.setFromUnitVectors(up, along);
+  }
+  bendArm();
   // Steam: a few soft puffs rising off the top and fading.
   const puff = new THREE.SphereGeometry(0.008, 8, 6);
-  const puffs = Array.from({ length: HOLD.puffs }, (_, i) => ({ mesh: part(puff, COLOR.steam, [0, 0.05, 0], undefined, true), age: (i / HOLD.puffs) * HOLD.puffLife, sway: i * 1.7 }));
+  const puffs = Array.from({ length: HOLD.puffs }, (_, i) => ({ mesh: part(mug, puff, COLOR.steam, [0, 0.05, 0], undefined, true), age: (i / HOLD.puffs) * HOLD.puffLife, sway: i * 1.7 }));
 
   camera.add(group);
   let stride = 0;
@@ -95,8 +112,10 @@ export function createDrink(camera: THREE.Camera): Drink {
       this.held = on;
       group.visible = on;
     },
-    step(dt, walked) {
+    step(dt, walked, pitch) {
       if (!this.held) return;
+      mug.rotation.x = -pitch;
+      bendArm();
       stride += walked;
       const phase = (stride / HOLD.stride) * Math.PI * 2;
       group.position.set(Math.cos(phase / 2) * HOLD.bobSide, -Math.abs(Math.sin(phase / 2)) * HOLD.bobUp, 0);
