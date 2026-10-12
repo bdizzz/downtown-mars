@@ -1,7 +1,7 @@
 ---
 id: T-029
 title: Gas tanks: O2/CO2 ballast both ways, and the tank fill slider
-status: open
+status: done
 size: M
 area: rooms, sim
 feature: F-002
@@ -25,3 +25,4 @@ ROOMS.md (gas tank), GUIDE.md: Air and storage, DECISIONS.md (0% tanks), PLAN-M1
 ## History
 - 2026-10-06 00:08 opened from F-002 (agreed)
 - 2026-10-12 01:42 building on t-028-electrolyzer-and-scrubber
+- 2026-10-12 05:45 built

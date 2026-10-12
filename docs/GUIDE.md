@@ -114,7 +114,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 
 - **Gray water needs somewhere to go.** The pod holds 250. When it's full, rooms that use water stall (the galley and farms first), and what people use spills away. Build a recycler early, and more as you grow; **Charts → Flows → Water** says how much gray water is overflowing.
 - **Water tanks** hold clean water unless you set them to hold gray water or tailings, in the tank's details panel.
-- **The leaks:** life support splits water into oxygen for good, and some industry (the silicon refinery, concrete plant, electronics fab and brickworks) sends part of its water to **tailings**, which can only be stored until 150 colonists, when a **tailings reclaimer** can turn them back into gray water (20 tailings into 18 gray a day, for a lot of power and a little machinery). Wells pump up gray water (brine), so it needs treating too. Earth's drops top up what's lost.
+- **The leaks:** the electrolyzer splits water into oxygen for good (only as the hole grows), and some industry (the silicon refinery, concrete plant, electronics fab and brickworks) sends part of its water to **tailings**, which can only be stored until 150 colonists, when a **tailings reclaimer** can turn them back into gray water (20 tailings into 18 gray a day, for a lot of power and a little machinery). Wells pump up gray water (brine), so it needs treating too. Earth's drops top up what's lost.
 
 ## Materials, waste and storage
 
@@ -127,10 +127,12 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 
 **The mix.** The hole's air fills its **living volume**: every dug cell (400 m³) and every built corridor and gallery tube; not the open shaft or the rock. The grid shows it as oxygen (the bubbles) **21.0%** and CO2 (the cloud) **0.20%**, and Charts → Trends → Air has both and the living volume.
 
-- People breathe oxygen into CO2, one for one. **Life support** scrubs the CO2 (down to 0.2%, left for the farms) and makes oxygen from water up to **21%**, then stops; plants turn CO2 back into oxygen.
-- **Digging dilutes the air:** a new room spreads the same oxygen over more space, and life support makes the difference from water. That's the cost of growing.
+- People breathe oxygen into CO2, one for one. A **CO2 scrubber** turns it back into oxygen for power alone (down to 0.2% CO2, left for the farms); one covers about 30 people. Plants turn CO2 back into oxygen too, parks included.
+- **Digging dilutes the air:** a new room spreads the same oxygen over more space. An **electrolyzer** splits water into oxygen to make the difference (about 8 water a dug cell), and stands by once the air is at **21%**. A steady colony with enough scrubbers uses no water for air at all. Flows → Water shows where its water went: air for new space, replacing breathed air (build a scrubber), or into the O2 reserve.
+- **Gas tanks** hold oxygen or CO2 (pick in the tank's panel). They're ballast: oxygen above 21% goes in, and comes back out when the air runs short, before any water is split. Supply drops land oxygen in them first. The **tank fill** slider (in any electrolyzer's or O2 tank's panel) has the electrolyzers keep the O2 tanks that full as a reserve for digging or a breakdown. When the tanks are full, extra oxygen stays in the air: that's how it climbs too high. A tank at 0% condition (gas or water) keeps what it holds but takes no more.
+- **The shaft dome** pressurizes before it opens: the O2 reserve and the electrolyzers fill the shaft with air first (the HUD's oxygen note shows how far), so the hole's oxygen doesn't crash.
 - Below **18%** oxygen health falls; below **15%**, fast. Above **23.5%** is a fire risk. **CO2 above 1%** hurts health, above 3% fast.
-- A new game starts with its air made (the landing crew sealed the hole), but without a scrubber the CO2 passes 1% in about five months: build life support early.
+- A new game starts with its air made (the landing crew sealed the hole), but without a scrubber the CO2 passes 1% in about five months, and without an electrolyzer every room dug thins the air until Earth's next drop: build both early.
 
 **Air quality.** The air also moves where people do, through the corridors, gallery tubes and stairs (not through walls, and not by elevator), and it can go stale or foul locally:
 
@@ -214,7 +216,7 @@ New games open in 3D, in Free view. Everything you can do in 2D works in 3D.
 - Floors suit each room: honed stone at home and in offices, tiles in kitchens and clinics, plating in plants, paving in plazas. Nothing is wooden: there are no trees on Mars, so furniture frames and panels are fibre composite. Rooms get grubbier as their condition drops.
 - Colonists stroll the gallery tubes or are where you'd expect for the hour: at their posts, asleep in bed at night, sitting about in homes, plazas and offices.
 - Rooms in trouble are outlined in amber (slowed) or red (short of what they run on), with a ⚠ over their name; paused rooms in grey. The room's card says why.
-- Screens flicker, indicator lights blink, fires dance, plants sway and windows fog at the bottom. Working smelters throw sparks and life support vents steam.
+- Screens flicker, indicator lights blink, fires dance, plants sway and windows fog at the bottom. Working smelters throw sparks and scrubbers vent steam.
 - Around midday sunlight falls down the shaft; deeper down everything settles into lamp-light. Lamps, fires and grow lights light the rooms around them.
 - By day the sky fades from butterscotch at the horizon to a deeper tan overhead, with a bluish glow round the sun; at night the stars come out. The land round the hole rolls away in ridges, craters and boulders to mountains, mesas or low hills, depending on the site.
 
@@ -245,7 +247,7 @@ New games open in 3D, in Free view. Everything you can do in 2D works in 3D.
 | R | Rotate the room you're placing |
 | Z | Corridor tool (drag to snake a corridor, confirm on release; Shift fills in) |
 | X | Demolish |
-| D G F T Y W L K A B S P | Dorm, galley, farm, tank, recycler, restroom, life support, clinic, admin office, battery, solar, landing pad |
+| D G F T Y W L K A B S P | Dorm, galley, farm, tank, recycler, restroom, CO2 scrubber, clinic, admin office, battery, solar, landing pad |
 | E Q | School, elder care (unlock with the first child and the first elder) |
 | J | Composter: organic waste into soil |
 | U O H I N | Deep well pump, smelter, machine shop, silicon refinery, electronics fab (some need the right site) |

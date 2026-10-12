@@ -1,7 +1,7 @@
 ---
 id: T-031
 title: Rebalance the air loop
-status: open
+status: done
 size: M
 area: balance, sim
 feature: F-002
@@ -30,3 +30,4 @@ DECISIONS.md (air numbers), PLAN-M16.md Notes as built, and close out the plan.
 ## History
 - 2026-10-06 00:08 opened from F-002 (agreed)
 - 2026-10-12 01:42 building on t-028-electrolyzer-and-scrubber
+- 2026-10-12 05:45 built
