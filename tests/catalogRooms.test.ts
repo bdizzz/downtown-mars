@@ -27,7 +27,7 @@ describe("excavator bay", () => {
     const s = hole();
     expect(drillSpeed(s)).toBe(1);
     const r = applyCommand(s, { type: "build", room: "excavator_bay", at: ring(1, 1, 2, 2) });
-    expect(r).toMatchObject({ ok: true });
+    if (!r.ok) throw new Error(r.reason);
     for (let i = 0; i < 5; i++) step(s, config);
     const rate = s.roomStatus[r.roomId!]?.rate ?? 0;
     expect(rate).toBeGreaterThan(0);
@@ -73,7 +73,7 @@ describe("spiral stair and plaza unlocks", () => {
     for (let i = 0; i < 4000 && s.layout.hole.floors < 3; i++) step(s, config);
     expect(s.layout.hole.floors).toBe(3);
     const r = applyCommand(s, { type: "build", room: "spiral_stair", at: ring(1, 1, 5) });
-    expect(r).toMatchObject({ ok: true });
+    if (!r.ok) throw new Error(r.reason);
     const stair = s.layout.rooms.find((x) => x.id === r.roomId)!;
     expect(new Set(stair.cells.map((c) => c.floor))).toEqual(new Set([1, 2]));
     expect(applyCommand(s, { type: "build", room: "spiral_stair", at: ring(3, 1, 5) })).toMatchObject({ ok: false });
