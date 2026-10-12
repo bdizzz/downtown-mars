@@ -4,9 +4,9 @@ title: "Refresh ROOM-STATUS's grades, add a parked status, and propose rooms to 
 status: open
 size: S
 area: docs
+feature: F-015
 touches: [scripts/room-status.mjs, docs/ROOM-STATUS.md, docs/ROOMS.md]
 blocked_by: []
-feature: F-015
 notes: [N-0068]
 created: 2026-10-11 15:50
 ---
@@ -24,3 +24,4 @@ ROOMS.md and ROOM-STATUS.md (rerun `node scripts/room-status.mjs`); GUIDE.md for
 
 ## History
 - 2026-10-11 15:50 opened from F-015 (agreed)
+- 2026-10-12 01:35 building on t-131-room-status-refresh

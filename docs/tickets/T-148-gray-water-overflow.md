@@ -27,3 +27,4 @@ DECISIONS.md (replace "Full gray tanks stall the rooms that use water"), GUIDE.m
 ## History
 - 2026-10-11 15:52 opened from N-0083
 - 2026-10-11 16:08 questions answered
+- 2026-10-12 01:35 building on t-131-room-status-refresh
