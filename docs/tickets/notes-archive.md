@@ -501,3 +501,21 @@ rooms shouldn't stall if gray water tanks are full; i this case gray water shoul
 ## N-0084 · 2026-10-11 02:25
 we need to add a "floor directory" panel (accessible form the charts area) that lists all the floors and all the rooms on each floor. clicking on a room will show the detail panel for that room.
 → T-149
+
+## N-0085 · 2026-10-11 20:18
+when under 20 colonists, supply drops should sometimes carry a handful of replacement colonists. this can help get you out of a tailspin.
+→ T-161
+
+## N-0086 · 2026-10-11 20:19
+when you reach zero colonists, we should have some sort of "the game is over" screen that explains the hole has failed and there's no one to let new colonists in anymore. after that you get sent to the home screen to start a new game
+→ T-162
+
+## N-0087 · 2026-10-12 01:33
+when entering first person mode, if the floor doesn't have an inner glass walkway, then find an appropriate corridor to place the camera. right now the camera gets stuck in the shaft and unable to move
+→ T-163
+
+## N-0088 · 2026-10-12 19:53
+when starting a new game, the first hole should have a few things beyond the battery already added since a player is brand new to the experience. like they have battery, electrolyzer, co2 scrubber, clean and gray water tanks already built for them. this wouldn't go so far as to build dorms or galleys etc. this is just so that players figuring out how the game works won't lose their first hole immediately. perhaps we give people a choice, or if difficulty is high then you start with just a battery (but not on normal and easy).  also, subsequent holes in a game should start with just a battery (and surface stuff)
+
+we'll have to adapt the turorials etc depending on which version the player starts with
+→ T-164
