@@ -97,6 +97,11 @@ public partial class CameraRig : Node3D
     /// </summary>
     public bool MouseLook { get; set; } = true;
     bool _mouseFree, _wasWalking;
+    /// <summary>
+    /// First person turning, radians a point at a look speed of 1 (ViewSettings.LookSpeed): with mouse look, and
+    /// by dragging. The web's WALK, per CSS pixel. Points, not the window's pixels, which are twice as many on a Retina screen.
+    /// </summary>
+    const float LookTurn = 0.0035f, DragTurn = 0.004f;
     readonly CanvasLayer _crosshair = new() { Visible = false };
     // Free view.
     Vector3 _target;
@@ -426,8 +431,9 @@ public partial class CameraRig : Node3D
         {
             if (_walking)
             {
-                _lookYaw += m.Relative.X * 0.004f;
-                _lookPitch = Mathf.Clamp(_lookPitch - m.Relative.Y * 0.004f, -1.4f, 1.4f);
+                var turn = m.ScreenRelative / DisplayServer.ScreenGetScale() * (MouseCaptured ? LookTurn : DragTurn) * ViewSettings.LookSpeed;
+                _lookYaw += turn.X;
+                _lookPitch = Mathf.Clamp(_lookPitch - turn.Y, -1.4f, 1.4f);
             }
             else
             {

@@ -115,12 +115,23 @@ public partial class Tutorial : PanelContainer
         Refresh();
     }
 
-    bool _have;
+    bool _have, _away;
+
+    /// <summary>Out of the way in first person, as the web's: card or pill, it comes back as it was.</summary>
+    public bool Away
+    {
+        get => _away;
+        set
+        {
+            _away = value;
+            Refresh();
+        }
+    }
 
     void Refresh()
     {
-        Visible = _shown && _have && !_small;
-        _pill.Visible = _shown && _have && _small;
+        Visible = _shown && _have && !_small && !_away;
+        _pill.Visible = _shown && _have && _small && !_away;
         if (!_shown) Highlight = null;
     }
 

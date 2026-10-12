@@ -488,16 +488,19 @@ export function App() {
             </Dock>
           )}
           {snapshot && tutorialOn && !menu && !welcome && (
-            <Tutorial
-              s={snapshot}
-              met={met!}
-              step={step}
-              onStep={setTutorialStep}
-              onHide={() => {
-                setTutorialOn(false);
-                setTutorialHidden(true);
-              }}
-            />
+            // Out of the way in first person, but kept (folded or open, on the same step) for when you're back.
+            <div style={{ display: walking ? "none" : "contents" }}>
+              <Tutorial
+                s={snapshot}
+                met={met!}
+                step={step}
+                onStep={setTutorialStep}
+                onHide={() => {
+                  setTutorialOn(false);
+                  setTutorialHidden(true);
+                }}
+              />
+            </div>
           )}
           <Messages s={snapshot} />
           <EventCards s={snapshot} onCommand={onCommand} />
@@ -570,6 +573,7 @@ export function App() {
             mode={settings.view}
             graphics={settings.graphics}
             view3d={settings.view3d}
+            lookSpeed={settings.lookSpeed}
             onCutAngle={(cutAngle) => updateSettings({ view3d: { ...settings.view3d, cutAngle } })}
             building={mode === "build"}
             onViewError={(message) => {

@@ -26,6 +26,8 @@ export interface Settings {
   autosave: boolean;
   /** Pointing at a floor in the floor picker shows it before you click. */
   floorHoverPreview: boolean;
+  /** First person: how fast the mouse turns the head, 1 = normal (WALK in stage3d.ts, the same in Godot). */
+  lookSpeed: number;
   /** The installed app on Android: hide the system bar (systemBar.ts). */
   fullscreen: boolean;
   /** Which view the player last used: the unrolled wall, one floor from above, or 3D. */
@@ -44,6 +46,7 @@ export const DEFAULT_SETTINGS: Settings = {
   colorBlind: defaultOf("colorBlind", "boolean"),
   autosave: defaultOf("autosave", "boolean"),
   floorHoverPreview: defaultOf("floorHoverPreview", "boolean"),
+  lookSpeed: defaultOf("lookSpeed", "number"),
   fullscreen: defaultOf("fullscreen", "boolean"),
   view: "3d",
   graphics: DEFAULT_GRAPHICS,

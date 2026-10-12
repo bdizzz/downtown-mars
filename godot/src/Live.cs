@@ -1079,6 +1079,7 @@ public partial class Live : Node3D
         var walking = _rig?.Walking == true;
         if (walking == _wasWalking) return;
         _wasWalking = walking;
+        _tutorial.Away = walking;
         if (walking && _topFloor is int f && !_rig!.OnFoot) GoToFloor(f);
         ApplyCut();
     }

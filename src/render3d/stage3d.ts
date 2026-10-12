@@ -87,7 +87,8 @@ const ISO_PAN = { speed: 0.6, minSpeed: 12, reach: 1.3 };
  */
 const ISO = { start: 1.6, min: 12, pad: 1.1, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
 /** First person: how finely and how far to look for room to stand on another floor (m), eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
-const WALK = { searchStep: 0.5, searchReach: 40, eye: 1.8, speed: 4.5, run: 10, turn: 0.004, lookTurn: 0.0025, keyTurn: 1.8 };
+// Turning (radians a pixel) at the settings' look speed of 1: by dragging, and with mouse look. Godot's are the same, per point.
+const WALK = { searchStep: 0.5, searchReach: 40, eye: 1.8, speed: 4.5, run: 10, turn: 0.004, lookTurn: 0.0035, keyTurn: 1.8 };
 /** Looking up and down (first person) stops just short of straight up or down. */
 const MAX_PITCH = Math.PI / 2 - 0.02;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
@@ -502,6 +503,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     for (const g of furnitureGroups) for (const o of g.children) if (o.userData.pool) o.visible = graphics.lamps > 0;
   };
   let graphics: Graphics = DEFAULT_GRAPHICS;
+  // First person: how fast the mouse turns the head (settings), 1 = normal.
+  let lookSpeed = 1;
   /** Real time (ms) the sim last moved; walkers stop when the game is paused. */
   let lastTickChange = 0;
   let lastTick = -1;
@@ -1552,8 +1555,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       }
     }
     if (view.mode === "walk" && locked()) {
-      walker.yaw += e.movementX * WALK.lookTurn;
-      walker.pitch -= e.movementY * WALK.lookTurn;
+      walker.yaw += e.movementX * WALK.lookTurn * lookSpeed;
+      walker.pitch -= e.movementY * WALK.lookTurn * lookSpeed;
       pointer = centre();
       applyCamera();
       return;
@@ -1574,8 +1577,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (drag.moved > CLICK_SLOP) canvas.style.cursor = "grabbing";
     if (view.mode === "walk") {
       // Turn your head: drag right to look right, up to look up.
-      walker.yaw += dx * WALK.turn;
-      walker.pitch -= dy * WALK.turn;
+      walker.yaw += dx * WALK.turn * lookSpeed;
+      walker.pitch -= dy * WALK.turn * lookSpeed;
     } else {
       // Grab the world: dragging left turns you right, dragging up takes you down (or, in iso, looks from higher up).
       cam.theta += dx * 0.005;
@@ -2342,6 +2345,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       overlayType = type;
       fieldKey = "";
       if (latest) stage.update(latest);
+    },
+    setLookSpeed(speed) {
+      lookSpeed = speed;
     },
     setColorBlind(on) {
       heat = on ? HEAT.colorBlind : HEAT.normal;
