@@ -60,7 +60,7 @@ function NeedChip({ need, onOpen }: { need: Need; onOpen: (n: Need) => void }) {
 // until it's closed. On wider screens .hud-more is display: contents and changes nothing.
 export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActiveHole, openMenu, openTrend, keysEnabled, highlight, open: drawer, setOpen }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
-  // Space toggles pause, remembering the last running speed; − and + step the speed down and up
+  // Space and the pause button toggle pause, back to the last running speed (1× if none, T-146); − and + step the speed down and up
   // (from paused, they start at one step from the remembered speed). Past either end, nothing.
   const resumeRef = useRef(1);
   if (speed) resumeRef.current = speed;
@@ -132,7 +132,7 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
       </span>
       <span className={`speeds${pulse("speed")}`} data-hud="speed">
         {config.speeds.map((s) => (
-          <button key={s} className={s === speed ? "on" : ""} onClick={() => setSpeed(s)} aria-label={s === 0 ? "Pause" : `${s}× speed`}>
+          <button key={s} className={s === speed ? "on" : ""} onClick={() => setSpeed(s === 0 && !speed ? resumeRef.current : s)} aria-label={s === 0 ? "Pause" : `${s}× speed`}>
             {s === 0 ? "❚❚" : `${s}×`}
           </button>
         ))}

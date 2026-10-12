@@ -282,7 +282,8 @@ export function App() {
       const stored = readSave(slot);
       if (!stored) return setMenuError(`${slotLabel(slot)} is empty.`);
       const r = await load(stored.data);
-      if (r.ok) startPlaying();
+      // A loaded game starts paused (T-146); play resumes at the speed you had.
+      if (r.ok) startPlaying(true);
       else setMenuError(r.reason);
     },
     onExport: async () => {
@@ -293,7 +294,7 @@ export function App() {
       const text = await pickSaveFile();
       if (text === null) return;
       const r = await load(text);
-      if (r.ok) startPlaying();
+      if (r.ok) startPlaying(true);
       else setMenuError(r.reason);
     },
   };
