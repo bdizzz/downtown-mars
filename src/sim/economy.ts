@@ -200,7 +200,7 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   state.workforce = { total: adults, employed: adults - free };
 
   // 2. Run rooms. Pure producers (solar) go first so power is there for the rest,
-  // then treatment, draining wastewater so the rooms that make it have room to.
+  // then treatment, draining waste first so less of what the others make overflows.
   const mod = modifiers(state);
   // Maintenance and cleaning crews with nothing to repair stand by: they keep the lights on, but use no parts or water.
   const waiting = rooms.some((r) => roomDef(r.type).maintains) ? maintenanceQueue(state) : [];
@@ -212,7 +212,7 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   // Gas tanks release what the air is short of first, so the electrolyzer makes only the rest.
   releaseTanks(state, cfg);
   const producers = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length === 0);
-  const drains = (r: RoomInstance) => Object.keys(specs.get(r.id)!.uses).some((id) => resourceDef(id).backsUp);
+  const drains = (r: RoomInstance) => Object.keys(specs.get(r.id)!.uses).some((id) => resourceDef(id).waste);
   const treatment = rooms.filter((r) => drains(r));
   const others = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length > 0 && !drains(r));
   // Air rooms stand by while the air doesn't need them. The electrolyzer goes after the other
@@ -370,18 +370,6 @@ function runRoom(
       }
     }
   }
-  // Used water has to go somewhere: with the gray tanks full, the room stalls.
-  for (const [id, perDay] of Object.entries(spec.makes)) {
-    if (!resourceDef(id).backsUp) continue;
-    const make = perDay * rate * dt;
-    if (make <= 0) continue;
-    const f = Math.max(0, (caps[id] ?? Infinity) - (res[id] ?? 0)) / make;
-    if (f < 1) {
-      rate *= f;
-      limit = `drain:${id}`;
-    }
-  }
-
   const label = roomDef(room.type).name;
   // A top-up room's inputs show where its O2 went next: new space, breathed air, the reserve.
   const o2Before = res.o2 ?? 0;

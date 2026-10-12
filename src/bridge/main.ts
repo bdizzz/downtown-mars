@@ -257,9 +257,12 @@ function sendInspect(): void {
 
 /** A new game's welcome card (view/welcome.ts) hasn't been read yet: a loaded game doesn't get one. */
 let welcomePending = true;
+/** A loaded game starts paused (T-146), unless --speed says otherwise. */
+let loaded = false;
 if (args.load) {
   host.onMessage({ type: "load", id: 0, data: readFileSync(args.load, "utf8") });
   welcomePending = false;
+  loaded = true;
 }
 // Pick up where the last game left off, if there's an autosave (the viewer starts its bridge so).
 else if (args.continue) {
@@ -267,6 +270,7 @@ else if (args.continue) {
   if (data) {
     host.onMessage({ type: "load", id: 0, data });
     welcomePending = false;
+    loaded = true;
     console.log("Continuing from the autosave");
   }
 }
@@ -277,7 +281,7 @@ if (args.hour) {
   const world = host.world();
   for (let i = 0; i < config.ticksPerDay && gameTime(world.tick, config).hour !== Number(args.hour); i++) stepWorld(world, config);
 }
-host.onMessage({ type: "setSpeed", speed: Number(args.speed ?? 1) });
+host.onMessage({ type: "setSpeed", speed: Number(args.speed ?? (loaded ? 0 : 1)) });
 
 const server = createServer((socket) => {
   socket.setNoDelay(true);

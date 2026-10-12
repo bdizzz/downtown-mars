@@ -24,7 +24,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Processed by:** water recycler (gray to clean, plus soil), electrolyzer (splits clean water into oxygen).
 - **Used by:** colonists (2 a day), farms, kitchens, electrolyzers, clinics, hospitals, bars, hotels, gyms and parks, brickworks, concrete plant, chemical plant, mycelium vat, silicon refinery, electronics fab, geothermal plant and reactor.
 - **Tailings:** the silicon refinery, concrete plant and electronics fab send half their water to tailings, the brickworks a quarter. They can only be stored for now; with nowhere to keep them they're lost (the tailings reclaimer, T-007, turns them back into gray).
-- **Storage:** each tank holds one kind (clean, gray or tailings), chosen by the player. When gray water has nowhere to go, the rooms that use water stall.
+- **Storage:** each tank holds one kind (clean, gray or tailings), chosen by the player. When gray water has nowhere to go it overflows, lost for good, with a warning to build a recycler; rooms never stall for it (T-148).
 - **Lost to:** electrolyzers, tailings, the recycler's few percent, and overflow, all in the water ledger.
 
 **As built (T-005):** the loop above, with a room's split in `rooms.json` (`returnsWater`, default `economy.waterReturns` in `config.json`: all gray). The recycler runs before water users each tick, so they drain into the room it frees. The pod holds 250 gray water to ride out the first days. The Flows panel shows each user's clean water out and gray water back, and says how much gray water is overflowing. Restrooms still give sanitation but no longer handle water (T-006 makes them an amenity).

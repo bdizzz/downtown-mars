@@ -1,5 +1,6 @@
 import { airPct } from "../src/sim/air";
 import { maintenanceQueue } from "../src/sim/condition";
+import { capacities } from "../src/sim/economy";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { careCoverage, elderCoverage, schoolCoverage } from "../src/sim/care";
@@ -131,11 +132,11 @@ export function wants(hole: SimState): { room: string; crop?: string; holds?: st
   const shops = count(hole, "machine_shop");
   if (shops > 0 && (res.machinery ?? 0) < 6 && shops * roomDef("machine_shop").makes.machinery! < count(hole, "maintenance") * roomDef("maintenance").uses.machinery! + 1) out.push({ room: "machine_shop" });
   // Water is a loop: enough recyclers to treat the gray water people and rooms make, and gray
-  // tanks to ride out the gaps. Clean water short with treatment to spare: a clean tank.
+  // tanks to ride out the gaps (full ones overflow, losing the water for good). Clean water short with treatment to spare: a clean tank.
   const treats = count(hole, "water_recycler") * roomDef("water_recycler").uses.grayWater!;
   const grayMade = pop * (config.colonists.needsPerDay.water ?? 0) * 1.25;
   if (treats < grayMade) out.push({ room: "water_recycler" });
-  else if (limited(hole, "drain:grayWater")) out.push({ room: "water_tank", holds: "grayWater" });
+  else if ((res.grayWater ?? 0) >= capacities(hole, config).grayWater! - 1) out.push({ room: "water_tank", holds: "grayWater" });
   else if ((met.water ?? 1) < 1 || limited(hole, "water")) out.push({ room: "water_tank" });
   if (count(hole, "galley") * 25 < pop) out.push({ room: "galley" });
   else if (shortHome(hole, "seats")) out.push({ room: "galley", near: "seats" });
@@ -246,8 +247,9 @@ export function adapt(hole: SimState, saving: string[] = []): string | null {
   const late = backlog(hole);
   if (late > 24 && count(hole, "construction_office") === 0) list = [{ room: "construction_office" }, ...list];
   if (late > 72) list = list.filter((w) => AIR.includes(w.room) || w.room === "construction_office");
-  // Gray water backing up with no recycler at all stalls the galley and the farms: the first is as urgent as air.
-  const urgent = air ?? (limited(hole, "drain:grayWater") && count(hole, "water_recycler") === 0 ? "water_recycler" : null);
+  // Gray water overflowing with no recycler at all (T-148): the first is as urgent as air.
+  const grayFull = (hole.resources.grayWater ?? 0) >= (capacities(hole, config).grayWater ?? Infinity) - 1;
+  const urgent = air ?? (grayFull && count(hole, "water_recycler") === 0 ? "water_recycler" : null);
   if (urgent && freeHands < roomDef(urgent).staff) {
     const spare = hole.layout.rooms.find((r) => EXPENDABLE.includes(r.type) && !r.paused && (hole.roomStatus[r.id]?.staff ?? 0) > 0);
     if (spare) {

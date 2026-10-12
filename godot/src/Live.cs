@@ -98,6 +98,8 @@ public partial class Live : Node3D
     HoleShape _shape = new();
     int? _topFloor;
     int _speed = 1;
+    /// <summary>The last running speed, for pause to toggle back to (T-146).</summary>
+    int _resumeSpeed = 1;
     int _gameId = -1, _holeId = -1;
     OptionButton _holePicker = null!;
     string _holesKey = "";
@@ -249,7 +251,8 @@ public partial class Live : Node3D
         _menu.Shown = open =>
         {
             if (open) _speedBeforeMenu = _speed;
-            SetSpeed(open ? 0 : _speedBeforeMenu);
+            // A game loaded from the menu starts paused (the bridge pauses it); otherwise pick up where we were.
+            if (open || !_menu.ClosedByLoad) SetSpeed(open ? 0 : _speedBeforeMenu);
         };
         _hud.AddChild(_menu);
         // A new game's welcome card, on a layer of its own over the HUD: only Mars and the hole show
@@ -573,6 +576,7 @@ public partial class Live : Node3D
     void OnSnapshot(JsonElement msg)
     {
         _speed = msg.GetProperty("speed").GetInt32();
+        if (_speed > 0) _resumeSpeed = _speed;
         // A new layout: the walking maps are out of date (ask again as needed).
         var version = msg.GetProperty("snapshot").GetProperty("layoutVersion").GetInt32();
         if (version != _layoutVersion)
@@ -1443,7 +1447,7 @@ public partial class Live : Node3D
             case Key.B when !_build.Active: _build.Toggle(true); break;
             case Key.R when _build.HasTool: _build.Rotate(); break;
             case Key.X when _rig?.Walking != true: _build.ToggleDemolish(); break;
-            case Key.Space when _rig?.Walking != true: SetSpeed(_speed == 0 ? 1 : 0); break;
+            case Key.Space when _rig?.Walking != true: SetSpeed(_speed == 0 ? _resumeSpeed : 0); break;
             case Key.Key1: SetSpeed(1); break;
             case Key.Key2: SetSpeed(2); break;
             case Key.Key3: SetSpeed(4); break;
@@ -1587,7 +1591,8 @@ public partial class Live : Node3D
         {
             var b = new Button { Text = sp == 0 ? "❚❚" : $"{sp}×", ToggleMode = true, FocusMode = Control.FocusModeEnum.None, CustomMinimumSize = new Vector2(44, 0) };
             var speed = sp;
-            b.Pressed += () => SetSpeed(speed);
+            // Pause while paused plays again, at the speed you had (T-146).
+            b.Pressed += () => SetSpeed(speed == 0 && _speed == 0 ? _resumeSpeed : speed);
             speeds.AddChild(b);
             _speedButtons.Add(b);
         }

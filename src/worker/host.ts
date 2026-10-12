@@ -200,13 +200,18 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
         break;
       case "load": {
         const r = deserialize(msg.data);
-        if (r.ok) replaceWorld(r.world);
+        // A loaded game starts paused (T-146); a new one at 1×.
+        if (r.ok) {
+          replaceWorld(r.world);
+          speed = 0;
+        }
         reply({ type: "loaded", id: msg.id, result: r.ok ? { ok: true } : { ok: false, reason: r.reason } });
         break;
       }
       case "newGame":
         // Each new game gets its own seed, so the map (and everything else random) differs.
         replaceWorld(createWorld(config, (Math.random() * 0xffffffff) >>> 0 || 1));
+        speed = 1;
         reply({ type: "loaded", id: msg.id, result: { ok: true } });
         break;
     }

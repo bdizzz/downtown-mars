@@ -27,7 +27,6 @@ export function limitText(limit: string | undefined): string {
   if (limit === "air:co2") return "standing by: CO2 is down to the scrub floor";
   if (limit.startsWith("air:")) return `standing by: the air's ${resName(limit.slice(4)).toLowerCase()} is at its target`;
   // Used water has nowhere to go (economy.ts).
-  if (limit.startsWith("drain:")) return `stalled: ${resName(limit.slice(6)).toLowerCase()} tanks full`;
   return `short of ${nameOf(limit)}`;
 }
 

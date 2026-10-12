@@ -174,7 +174,7 @@ See `PLAN-M14.md` (Bryon: drill discoveries, then the belt ship, then celebratio
 - **The leaks:** life support is a true sink (water split into oxygen), and industry sends part of its water to **tailings** (not "black water"): refinery, concrete plant and electronics fab half, brickworks a quarter. Tailings can only be stored; overflow just disappears for now (Bryon, Oct 4).
 - **The tailings reclaimer** (T-007) opens at 150 colonists (first planned at 300 with the hospital; lowered by Bryon, Oct 8), with its own unlock message: an M room (2×1), 3 staff, tailings 20 + power 8 + machinery 0.2 into gray 18 a day, noise and smell like the recycler (Bryon, Oct 4). Its cost (metal 30, machinery 6, electronics 4) and 36-hour build are Claude's defaults.
 - **Wells bring in gray water** (brine), which needs treating. The composter no longer takes water.
-- **Full gray tanks stall the rooms that use water.** People still drink; their gray water overflows. Treatment runs before the rooms that use water each tick (Claude's default, so a recycler that keeps up never starves the galley).
+- **Full gray tanks overflow; nothing stalls** (T-148, Bryon, Oct 11; replaces "full gray tanks stall the rooms that use water"). Rooms keep running and the gray water that doesn't fit is lost for good, with a "gray water overflowing" warning (at most every 3 days) to build a recycler. Treatment still runs first each tick, so a recycler that keeps up loses nothing. Don't bring the stall back.
 - **Numbers (Claude's defaults):** the recycler treats 80 gray a day into 78 clean and 1 soil (one per ~35 people); the pod holds 250 gray water to ride out the first days. In `data/rooms.json` and `data/resources.json`.
 
 ## Decided for room linings (Oct 4–6, F-003)

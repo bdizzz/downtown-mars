@@ -3,7 +3,8 @@
 // first, to help decide what to build next. Run: node scripts/room-status.mjs
 //
 // The catalog and the room data are read fresh each time; only the notes on
-// what an unbuilt room needs are kept here, in NEEDS, by hand.
+// what an unbuilt room needs are kept here, in NEEDS, by hand, and why a room
+// is parked, in PARKED (ROOMS.md marks the same rooms "(parked)").
 
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -15,6 +16,7 @@ const norm = (s) =>
   s
     .replace(/★/g, "")
     .replace(/\(as built\)/i, "")
+    .replace(/\(parked\)/i, "")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
@@ -58,19 +60,19 @@ const NEEDS = {
   "Cultured meat lab": ["C", "Food groups in the diet; research lab unlock"],
   Kitchen: ["A", "Splitting cooking (kitchen) from serving (canteen); meals and raw food exist"],
   Canteen: ["B", "Serving capacity as its own step after cooking"],
-  Brewery: ["B", "Barley and beer as resources (barley is only a crop today)"],
+  Brewery: ["B", "Beer as a resource (barley is already a crop)"],
   "Ventilation hub": ["B", "An air-quality effect (only noise, smell, health and comfort exist)"],
   "Recycling center": ["A", "Solid waste to metal and brick: all exist"],
   "Waste storage": ["A", "Waste storage capacity (waste has base capacity today)"],
   "Geothermal plant": ["B", "A depth unlock (15 floors)"],
-  Reactor: ["C", "H-size rooms; a mid-game milestone"],
+  Reactor: ["C", "H-size (8-slot, 2-floor) rooms; a depth unlock"],
   "Excavator bay": ["A", "A faster drill (the drill exists)"],
   Brickworks: ["A", "Rock to brick: both exist"],
   "Reinforcement frame": ["C", "Cave-in risk, and unlocking rings 4–6"],
   Glassworks: ["B", "Glass as a resource"],
   "Chemical plant": ["B", "Plastics and methane"],
   "Mycelium vat": ["B", "Mycelium composite"],
-  "Textile mill": ["C", "Textiles, fiber crops; the consumer goods chain"],
+  "Textile mill": ["C", "Consumer goods and colonists' needs for them"],
   "Clothing workshop": ["C", "Consumer goods and colonists' needs for them"],
   "Furniture workshop": ["C", "Consumer goods and colonists' needs for them"],
   "Toy workshop": ["C", "Consumer goods and colonists' needs for them"],
@@ -80,7 +82,7 @@ const NEEDS = {
   Hospital: ["A", "A bigger clinic: care exists"],
   Gym: ["A", "A health effect: exists"],
   Park: ["A", "Comfort effect and a little O2: both exist"],
-  "Running track": ["C", "Entertainment; a full-ring room shape; races and festivals"],
+  "Running track": ["C", "Entertainment as a happiness factor"],
   "Research lab": ["C", "Milestones it speeds up"],
   Office: ["C", "The coordination penalty it cancels, and services"],
   Shop: ["C", "Goods and currency"],
@@ -89,21 +91,32 @@ const NEEDS = {
   "Security outpost": ["C", "Safety as a happiness factor"],
   "Security headquarters": ["C", "Safety as a happiness factor"],
   Plaza: ["A", "A bigger small plaza"],
-  "Grand plaza": ["C", "H-size rooms; glass; events"],
-  "Bar": ["C", "Beer; entertainment as a happiness factor"],
-  Theater: ["C", "Entertainment as a happiness factor; tall rooms"],
+  "Grand plaza": ["C", "H-size (8-slot, 2-floor) rooms; a depth unlock"],
+  "Bar": ["C", "Entertainment as a happiness factor"],
+  Theater: ["C", "Entertainment as a happiness factor"],
   Hotel: ["C", "Tourism"],
   "Experience venue": ["C", "Tourism"],
   "Tour company": ["C", "Tourism"],
   "Spiral stair": ["A", "A stairwell variant with a comfort effect"],
-  "Grand staircase": ["B", "Glass; placement inside plazas"],
+  "Grand staircase": ["B", "Placement inside plazas (glass and the plaza exist)"],
   Escalator: ["A", "A short, powered stair (commutes aren't modelled, so it would be cosmetic for now)"],
-  "Freight elevator": ["C", "Moving goods between floors"],
-  "Express elevator": ["C", "Commute times and sky lobbies"],
-  "Panoramic elevator": ["C", "Glass; tourism"],
-  "Sky lobby": ["C", "Commute times and express elevators"],
-  "Elevator upgrade": ["C", "Shaft transit capacity"],
+  "Freight elevator": ["C", "Commute times and shaft transit"],
+  "Express elevator": ["C", "Commute times and shaft transit"],
+  "Panoramic elevator": ["C", "Tourism"],
+  "Sky lobby": ["C", "Commute times and shaft transit"],
+  "Elevator upgrade": ["C", "Commute times and shaft transit"],
   Corridor: ["—", "Built as edges between rooms, not as rooms (PLAN-M6)"],
+};
+
+/**
+ * Rooms set aside (F-015): kept in the catalog so they can come back, but not
+ * planned. Each with why. ROOMS.md marks the same rooms "(parked)" after the name.
+ */
+const PARKED = {
+  Escalator: "Cosmetic while commutes aren't modelled; the stairs and elevator already move people. Revisit with commutes.",
+  "Currency exchange": "Needs a Mars currency, the last of the three money eras, which nothing plans yet.",
+  "Tour company": "Tourism starts with the hotel and the experience venue; excursions add a third room for the same income.",
+  "Toy workshop": "A fourth consumer good for one life stage; clothing, furniture and appliances carry the chain.",
 };
 
 // Parse the catalog's room tables: sections with a "| Room | Size |" table.
@@ -127,7 +140,7 @@ for (const line of catalog.split("\n")) {
   }
   if (!inTable || /^\|\s*---/.test(line)) continue;
   const cells = line.split("|").slice(1, -1).map((c) => c.trim());
-  rooms.push({ section, name: cells[0], size: cells[1], unlock: cells[7] ?? "" });
+  rooms.push({ section, name: cells[0], size: cells[1], unlock: cells[7] ?? "", marked: /\(parked\)/i.test(cells[0]) });
 }
 
 // The size ladders: families with a name at each size, and the housing tiers.
@@ -156,7 +169,14 @@ for (const line of ladderSection.split("\n")) {
 }
 
 const sizeOf = (r) => (r.size === "surface" ? "Surface" : r.size);
-const described = rooms.map((r) => ({ ...r, b: builtAs(r.name) }));
+const clean = (name) => name.replace(/★/g, "").replace(/\(parked\)/i, "").trim();
+const described = rooms.map((r) => ({ ...r, name: clean(r.name), b: builtAs(r.name) }));
+for (const r of described) {
+  if (r.marked !== r.name in PARKED) console.warn(`${r.name}: ${r.marked ? "marked (parked) in ROOMS.md but not in PARKED" : "in PARKED but not marked (parked) in ROOMS.md"}`);
+}
+const parked = (r) => !r.b && r.name in PARKED;
+/** Unbuilt, not parked: what's still to build. */
+const todo = (r) => !r.b && !parked(r);
 const catalogIds = new Set(described.filter((r) => r.b).map((r) => r.b.id));
 const ladderBuilt = ladder.map((l) => ({ ...l, b: l.id !== undefined ? built.find((r) => r.id === l.id) : builtAs(l.name) }));
 for (const l of ladderBuilt) if (l.b) catalogIds.add(l.b.id);
@@ -164,7 +184,7 @@ const builtOnly = built.filter((r) => !catalogIds.has(r.id));
 
 const status = (r) => {
   if (PROJECTS[norm(r.name)]) return "Built (a project)";
-  if (!r.b) return r.name === "Corridor" ? "Built differently" : "Described";
+  if (!r.b) return r.name === "Corridor" ? "Built differently" : parked(r) ? "Parked" : "Described";
   if (BUILT_AS[norm(r.name)]) return `Built as ${r.b.name.toLowerCase()}`;
   const catSize = r.size.split(/[ ,]/)[0];
   return catSize && sizeOf(r.b) !== catSize && !/span|Surface|Shaft/.test(r.size) ? "Built (other size)" : "Built";
@@ -173,13 +193,13 @@ const status = (r) => {
 const out = [];
 out.push("# Room status: built vs described");
 out.push("");
-out.push("Every room the catalog (ROOMS.md) describes, and whether it's in the game (`data/rooms.json`). Generated by `node scripts/room-status.mjs`; rerun it after adding rooms. What an unbuilt room needs first is kept by hand in the script.");
+out.push("Every room the catalog (ROOMS.md) describes, and whether it's in the game (`data/rooms.json`). Generated by `node scripts/room-status.mjs`; rerun it after adding rooms. What an unbuilt room needs first, and why a room is parked, are kept by hand in the script.");
 out.push("");
 const count = (s) => described.filter((r) => status(r).startsWith(s)).length;
-const needTier = (t) => described.filter((r) => !r.b && NEEDS[r.name]?.[0] === t).length;
-out.push(`**At a glance:** ${built.length} room types built. Of the ${described.length} rooms in the catalog's tables, ${count("Built")} are built and ${count("Described")} are described only. Of those, ${needTier("A")} need nothing new (A), ${needTier("B")} need one new resource, effect or unlock (B), and ${needTier("C")} need a new system (C).`);
+const needTier = (t) => described.filter((r) => todo(r) && NEEDS[r.name]?.[0] === t).length;
+out.push(`**At a glance:** ${built.length} room types built. Of the ${described.length} rooms in the catalog's tables, ${count("Built")} are built, ${count("Parked")} are parked and ${count("Described")} are still to build. Of those, ${needTier("A")} need nothing new (A), ${needTier("B")} need one new resource, effect or unlock (B), and ${needTier("C")} need a new system (C).`);
 out.push("");
-out.push("**Needs, graded:** **A** uses what the game already has (resources, effects, rules). **B** needs one new resource, effect type or unlock. **C** needs a whole new system (goods, tourism, safety, commutes, H-size rooms…).");
+out.push("**Needs, graded:** **A** uses what the game already has (resources, effects, rules). **B** needs one new resource, effect type or unlock. **C** needs a whole new system (goods, tourism, safety, commutes, H-size rooms…). **Parked** rooms stay in the catalog but aren't planned, each with why (see below); unpark one by taking it out of `PARKED` in the script and its \"(parked)\" mark out of ROOMS.md.");
 out.push("");
 
 out.push("## Catalog rooms");
@@ -188,8 +208,8 @@ out.push("| Room | Section | Size | Status | Built as | Needs first | Grade |");
 out.push("| --- | --- | --- | --- | --- | --- | --- |");
 for (const r of described) {
   const project = PROJECTS[norm(r.name)];
-  const [grade, need] = project ? ["", ""] : (NEEDS[r.name] ?? (r.b ? ["", ""] : ["?", "Not assessed yet"]));
-  out.push(`| ${r.name.replace(/★/g, "").trim()} | ${r.section} | ${r.size} | ${status(r)} | ${r.b ? `\`${r.b.id}\` (${sizeOf(r.b)})` : project ?? "—"} | ${r.b ? "" : need} | ${r.b ? "" : grade} |`);
+  const [grade, need] = project ? ["", ""] : parked(r) ? ["", PARKED[r.name]] : (NEEDS[r.name] ?? (r.b ? ["", ""] : ["?", "Not assessed yet"]));
+  out.push(`| ${r.name} | ${r.section} | ${r.size} | ${status(r)} | ${r.b ? `\`${r.b.id}\` (${sizeOf(r.b)})` : project ?? "—"} | ${r.b ? "" : need} | ${r.b ? "" : grade} |`);
 }
 out.push("");
 
@@ -200,19 +220,28 @@ for (const [t, title] of [
   ["B", "B: one new resource, effect or unlock"],
   ["C", "C: a new system"],
 ]) {
-  const list = described.filter((r) => !r.b && NEEDS[r.name]?.[0] === t);
+  const list = described.filter((r) => todo(r) && NEEDS[r.name]?.[0] === t);
   out.push(`**${title}** (${list.length}): ${list.map((r) => r.name).join(", ") || "none"}.`);
   out.push("");
 }
 // Group the C rooms by the system they wait on.
 const systems = new Map();
-for (const r of described.filter((x) => !x.b && NEEDS[x.name]?.[0] === "C")) {
+for (const r of described.filter((x) => todo(x) && NEEDS[x.name]?.[0] === "C")) {
   const key = NEEDS[r.name][1];
   systems.set(key, [...(systems.get(key) ?? []), r.name]);
 }
 out.push("**C rooms by what they wait on:**");
 out.push("");
 for (const [need, names] of [...systems].sort((a, b) => b[1].length - a[1].length)) out.push(`- ${need}: ${names.join(", ")}`);
+out.push("");
+
+out.push("## Parked");
+out.push("");
+out.push("Rooms set aside (F-015): still described in ROOMS.md, marked (parked) there, so they can come back.");
+out.push("");
+const parkedList = described.filter(parked);
+if (parkedList.length) for (const r of parkedList) out.push(`- **${r.name}** (${r.section}): ${PARKED[r.name]}`);
+else out.push("None.");
 out.push("");
 
 out.push("## Size ladder variants");

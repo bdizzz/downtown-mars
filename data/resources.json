@@ -47,8 +47,7 @@
       "name": "Gray water",
       "group": "water",
       "baseCapacity": 250,
-      "waste": true,
-      "backsUp": true
+      "waste": true
     },
     {
       "id": "tailings",

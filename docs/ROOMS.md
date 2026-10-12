@@ -7,6 +7,7 @@ Every room with its footprint, staff, inputs, outputs, neighbor effects, build c
 - **Size:** S = 1 slot, M = 2 slots, L = 4 slots, H = 8 slots (usually 2+ floors); L and H rooms can be laid out wide, deep or tall; Surface and Shaft rooms sit outside the ring.
 - **Amounts** are per game day. Effects run from −3 to +3, with radius r in slots (r0 = the room itself).
 - **Build cost:** R = rock, B = brick, M = metal, Mc = machinery, E = electronics.
+- **(parked)** after a name: set aside, not planned, but kept here so it can come back. ROOM-STATUS.md says why (F-015).
 - **Per colonist per day:** 1 cooked food, 2 clean water (back as 2 gray), 1 oxygen; produces 1 CO2 and 1 solid waste. Housing rooms don't list these; residents carry them.
 
 ## Size ladders
@@ -168,7 +169,7 @@ These rooms turn raw resources into construction materials, consumer goods, pipe
 | Textile mill | M | 3 | Fiber 4 or plastics 2, power 2 | Textiles 3 | Noise −1 r1 | B 10, M 5, Mc 2 | Pop 150 |
 | Clothing workshop | S | 2 | Textiles 2 | Clothing 2 | — | B 8, Mc 1 | Pop 150 |
 | Furniture workshop | M | 3 | Mycelium composite 2, textiles 1, metal 1 | Furniture 2 | Noise −1 r1 | B 10, Mc 2 | Pop 200 |
-| Toy workshop | S | 2 | Plastics 1, textiles 1 | Toys 2 | — | B 8, Mc 1 | First births |
+| Toy workshop (parked) | S | 2 | Plastics 1, textiles 1 | Toys 2 | — | B 8, Mc 1 | First births |
 | Appliance assembly | M | 4 | Metal 1, plastics 1, electronics 1, power 2 | Appliances 1 | Noise −1 r1 | M 10, Mc 2, E 2 | Pop 500 |
 | Pipe mill | M | 4 | Metal 4, power 3 | Pipe segments 2 | Noise −2 r2 | B 15, M 10, Mc 2 | Map mode |
 | Vehicle works | L | 8 | Metal 6, machinery 2, electronics 2, power 4 | 1 rover every 3 days | Noise −2 r2 | B 30, M 20, Mc 5, E 3 | Map mode |
@@ -237,7 +238,7 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 | Office | M | 12 | Power 2 | Services; cancels coordination penalty | Quiet; workers want comfort nearby | B 15, M 5, E 3 | Pop 1,000 |
 | Shop | S | 2 | Goods 1 | Circulates currency | Comfort +1 r2 | B 10 | Earth imports |
 | Market hall | L | 8 | Goods 4 | Circulates currency | Comfort +2 r3, noise −1 r2 | B 30, M 10 | Pop 500 |
-| Currency exchange | S | 3 | Power 1 | Stabilizes currency | — | M 10, E 3 | Mars currency founded |
+| Currency exchange (parked) | S | 3 | Power 1 | Stabilizes currency | — | M 10, E 3 | Mars currency founded |
 
 ## Security
 
@@ -277,7 +278,7 @@ When a material is short, rooms can be built with a substitute. Substitutes cost
 | Theater | L | 6 | Power 3 | — | Entertainment +3 r3, noise −1 r1 | B 30, M 10, E 4 | Pop 500 |
 | Hotel | M | 3 | Water 3, cooked food 2, power 2 | Hosts 12 tourists; quality tiers like housing | Noise −1 r1 | B 15, M 5 and up by tier | Landing pad |
 | Experience venue | L | 6 | Power 4 | Tourist income | Entertainment +2 r2, noise −2 r2 | M 20, E 6 | First hotel |
-| Tour company | S | 3 | Power 1 | Surface excursions; bonus near landmarks | — | M 10 | Hotel and rover depot |
+| Tour company (parked) | S | 3 | Power 1 | Surface excursions; bonus near landmarks | — | M 10 | Hotel and rover depot |
 
 ## Vertical transport
 
@@ -288,7 +289,7 @@ The main shaft elevator is the spine, but stairs and extra elevators relieve it.
 | Stairwell | S, spans 2–3 floors | 0 | — | Slow, cheap link between nearby floors; health +1 for regular users | — | R 8 | Start |
 | Spiral stair (as built) | S, spans 2 floors | 0 | — | Compact decorative link; taken like an elevator in first person, not walked | Comfort +1 r1 | B 6, M 4 | Pop 200 |
 | Grand staircase | M, spans 2–3 floors | 0 | — | High-capacity link inside plazas | Comfort +1 r2 | B 20, glass 5 | First plaza |
-| Escalator | M, spans 1–2 floors | 0 | Power 1 | Fast, high capacity for short trips; boosts shops at both ends | Noise −1 r1 | M 10, Mc 2 | Pop 500 |
+| Escalator (parked) | M, spans 1–2 floors | 0 | Power 1 | Fast, high capacity for short trips; boosts shops at both ends | Noise −1 r1 | M 10, Mc 2 | Pop 500 |
 | Local elevator | S, spans up to 8 floors | 0 | Power 1 | Serves a band of floors, easing the main shaft | Noise −1 r1 | M 10, Mc 2 | Pop 150 |
 | Elevator (as built) | S, spans 2–8 floors | 0 | Power 1 | A lift linking floors; extends a floor at a time | Noise −1 r1 | M 10, Mc 2 | Start |
 | Cargo elevator | S | 1 | Power 3 | Straight from the surface to one floor, if its column above is clear; brings drops in there | Noise −1 r1 | M 40, Mc 8, E 4 | Pop 100 |
