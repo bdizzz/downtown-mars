@@ -24,6 +24,8 @@ public partial class GameMenu : Control
 
     /// <summary>Opened and closed (Live pauses and resumes the game).</summary>
     public Action<bool>? Shown { get; set; }
+    /// <summary>Closed by loading a game, which starts paused (T-146): Live leaves it paused.</summary>
+    public bool ClosedByLoad { get; private set; }
     public Action<string>? Toast { get; set; }
     /// <summary>Settings and Help, opened over the menu.</summary>
     public Action? SettingsPressed { get; set; }
@@ -54,7 +56,7 @@ public partial class GameMenu : Control
             try
             {
                 _send(new Dictionary<string, object> { ["type"] = "load", ["id"] = _id++, ["data"] = System.IO.File.ReadAllText(path) });
-                Close();
+                Close(loaded: true);
             }
             catch (Exception e) { Toast?.Invoke($"Couldn't read it: {e.Message}"); }
         };
@@ -79,10 +81,11 @@ public partial class GameMenu : Control
         _first?.CallDeferred(Control.MethodName.GrabFocus);
     }
 
-    public void Close()
+    public void Close(bool loaded = false)
     {
         if (!Visible) return;
         Visible = false;
+        ClosedByLoad = loaded;
         Shown?.Invoke(false);
     }
 
@@ -125,7 +128,7 @@ public partial class GameMenu : Control
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color("#e8834a"));
         _rows.AddChild(title);
-        Add("Resume", Close);
+        Add("Resume", () => Close());
         Heading("Save");
         foreach (var (slot, label, text) in _slots)
         {
@@ -140,7 +143,7 @@ public partial class GameMenu : Control
             Add($"{label}: {text ?? "empty"}", () =>
             {
                 _send(new Dictionary<string, object> { ["type"] = "loadSlot", ["slot"] = s });
-                Close();
+                Close(loaded: true);
             }, text == null);
         }
         Heading("");
