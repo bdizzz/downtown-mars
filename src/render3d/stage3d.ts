@@ -1355,6 +1355,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   window.addEventListener("blur", onBlur);
   const onLockChange = () => {
     crosshair.style.display = view.mode === "walk" && locked() ? "block" : "none";
+    opts.onMouseLook?.(locked());
     updateReadout();
   };
   document.addEventListener("pointerlockchange", onLockChange);

@@ -86,6 +86,8 @@ export interface StageOptions {
   onError?: (message: string) => void;
   /** Walking around in first person (no building then), or not. */
   onWalking?: (walking: boolean) => void;
+  /** Mouse look in first person (the pointer locked to the view), or not: nothing else can be pointed at then. */
+  onMouseLook?: (on: boolean) => void;
   /** The cutaway's wedge was changed from the view (its slider or keys), in degrees: to keep in the settings. */
   onCutAngle?: (deg: number) => void;
 }

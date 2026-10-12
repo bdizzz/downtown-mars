@@ -62,6 +62,8 @@ export function App() {
   const [pendingBuild, setPendingBuild] = useState<PendingBuild | null>(null);
   // Walking around in first person: sightseeing, not building.
   const [walking, setWalking] = useState(false);
+  // Mouse look in first person: the pointer can't reach the floor picker, so it steps aside until the mouse is let go.
+  const [mouseLook, setMouseLook] = useState(false);
   // The mode open at the bottom (Build, View, Map or Charts), or none.
   const [mode, setModeState] = useState<Mode | null>(null);
   useEffect(() => {
@@ -517,7 +519,7 @@ export function App() {
               }}
             />
           )}
-          {snapshot && settings.view !== "2d" && !mapOpen && !cutaway && (
+          {snapshot && settings.view !== "2d" && !mapOpen && !cutaway && !mouseLook && (
             <FloorPicker
               floors={floorCount}
               floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
@@ -556,6 +558,7 @@ export function App() {
           )}
           <ViewHost
             onWalking={setWalking}
+            onMouseLook={setMouseLook}
             warning={buildWarning}
             onConfirmBuild={setPendingBuild}
             proposal={proposal}

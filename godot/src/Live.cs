@@ -506,7 +506,8 @@ public partial class Live : Node3D
         var waiting = !_bridge.Connected;
         _waiting.Visible = waiting;
         // The cutaway always shows every floor, so it has no floor picker.
-        _pickerPanel.Visible = !waiting && _pickerFloors >= 0 && !_map.Open && !InCutaway;
+        // Not with mouse look on: the pointer can't reach it (it comes back when the mouse is let go).
+        _pickerPanel.Visible = !waiting && _pickerFloors >= 0 && !_map.Open && !InCutaway && _rig?.MouseCaptured != true;
         _cutPanel.Visible = !waiting && !_map.Open && InCutaway;
         _waiting.Text = _bridge.Silent
             ? $"Something is on port {Port}, but it isn't the game's bridge.\nRun  npm run bridge  in the repo, or start both with --port=<n>."
@@ -1424,8 +1425,6 @@ public partial class Live : Node3D
                 SetPlan(false);
                 _rig?.Walk(true);
                 break;
-            // First person: Esc lets the mouse go first; the next one opens the menu.
-            case Key.Escape when _rig?.MouseCaptured == true: _rig.FreeMouse(); break;
             case Key.Escape when _menu.Visible: _menu.Close(); break;
             case Key.Escape when _map.Open: ToggleMap(); break;
             case Key.M when !_build.Active: ToggleMap(); break;
@@ -1438,6 +1437,8 @@ public partial class Live : Node3D
             case Key.Escape when _inspector.Open: Inspect(null); break;
             case Key.Escape when _choices.OfficeOpen: _choices.ToggleOffice(false); break;
             case Key.Escape when _charts.Open: _charts.Toggle(false); break;
+            // First person: once the panels are closed, Esc lets the mouse go; the next one opens the menu.
+            case Key.Escape when _rig?.MouseCaptured == true: _rig.FreeMouse(); break;
             case Key.Escape: _menu.Open(); break;
             case Key.B when !_build.Active: _build.Toggle(true); break;
             case Key.R when _build.HasTool: _build.Rotate(); break;
