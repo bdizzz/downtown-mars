@@ -4,9 +4,9 @@ title: "Excavator bay, plaza and spiral stair"
 status: open
 size: M
 area: rooms, data
+feature: F-015
 touches: [data/rooms.json, src/sim/, src/render3d/, data/furniture.json, data/layouts.json]
 blocked_by: []
-feature: F-015
 notes: [N-0068]
 created: 2026-10-11 15:50
 ---
@@ -24,3 +24,4 @@ ROOMS.md and ROOM-STATUS.md (rerun `node scripts/room-status.mjs`); GUIDE.md for
 
 ## History
 - 2026-10-11 15:50 opened from F-015 (agreed)
+- 2026-10-12 01:07 building on t-132-grade-a-rooms
