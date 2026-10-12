@@ -26,6 +26,10 @@ public class Walker
         public (bool open, int room, int door)[] Regions = Array.Empty<(bool, int, int)>();
         public List<(Vector2[] corners, Rect2 box)> Obstacles = new();
         public List<Flight> Flights = new();
+        /// <summary>Counters that serve a hot drink (T-139): the middle of each one's front, and the way it faces.</summary>
+        public List<(Vector2 at, Vector2 facing)> Drinks = new();
+        /// <summary>How near a counter's front you grab a drink, and how squarely you face it (cosine).</summary>
+        public float DrinkNear, DrinkFacing;
 
         public static Map Parse(JsonElement m)
         {
@@ -65,6 +69,17 @@ public class Walker
             {
                 Vector2 V(string k) => new(f.GetProperty(k)[0].GetSingle(), f.GetProperty(k)[1].GetSingle());
                 map.Flights.Add(new Flight(V("foot"), V("up"), V("across"), f.GetProperty("length").GetSingle(), f.GetProperty("half").GetSingle()));
+            }
+            if (m.TryGetProperty("drinks", out var drinks))
+                foreach (var d in drinks.EnumerateArray())
+                {
+                    Vector2 V(string k) => new(d.GetProperty(k)[0].GetSingle(), d.GetProperty(k)[1].GetSingle());
+                    map.Drinks.Add((V("at"), V("facing")));
+                }
+            if (m.TryGetProperty("drinkReach", out var reach))
+            {
+                map.DrinkNear = reach.GetProperty("near").GetSingle();
+                map.DrinkFacing = reach.GetProperty("facing").GetSingle();
             }
             return map;
         }
@@ -118,6 +133,24 @@ public class Walker
                 }
             return -Floor * FloorH - Crust + lift;
         }
+    }
+
+    /// <summary>
+    /// Can the walker grab a hot drink here, facing `yaw` (radians; 0 looks along +x)? Near a counter's front,
+    /// on its side of it, looking at it (walk.ts drinkHere).
+    /// </summary>
+    public bool DrinkHere(float yaw)
+    {
+        if (MapOf(Floor) is not Map map) return false;
+        var look = new Vector2(MathF.Cos(yaw), MathF.Sin(yaw));
+        foreach (var (at, facing) in map.Drinks)
+        {
+            var d = at - At;
+            var len = d.Length();
+            if (len > map.DrinkNear || d.Dot(facing) > 0) continue;
+            if (len < 1e-6f || d.Dot(look) / len >= map.DrinkFacing) return true;
+        }
+        return false;
     }
 
     /// <summary>Stand here if there's room; otherwise the nearest clear spot within a few metres. False if none (or no map yet).</summary>

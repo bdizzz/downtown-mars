@@ -32,6 +32,8 @@ export interface ItemDef {
   opening?: boolean;
   /** A flight of stairs: walked up from its foot (its front) to its head, a floor higher. */
   climb?: boolean;
+  /** Serves a hot drink: in first person, walk up to it and grab one (T-139). */
+  drinks?: boolean;
   /** It gives light: its colour, where from (in its own frame), how far it reaches (metres), and how strong. */
   light?: { color: string; at: [number, number, number]; reach: number; strength: number };
   /** Where people go: a seat, a bed or a work post, in its own frame, and which way they face (degrees; 0 is its front). */

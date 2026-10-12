@@ -86,6 +86,8 @@ export interface StageOptions {
   onError?: (message: string) => void;
   /** Walking around in first person (no building then), or not. */
   onWalking?: (walking: boolean) => void;
+  /** Mouse look in first person (the pointer locked to the view), or not: nothing else can be pointed at then. */
+  onMouseLook?: (on: boolean) => void;
   /** The cutaway's wedge was changed from the view (its slider or keys), in degrees: to keep in the settings. */
   onCutAngle?: (deg: number) => void;
 }
@@ -111,6 +113,8 @@ export interface Stage {
   setWarning(w: Warning | null): void;
   /** Detail level; views that have nothing to trade may ignore it. */
   setGraphics(g: Graphics): void;
+  /** First person: how fast the mouse turns the head, 1 = normal (views without first person ignore it). */
+  setLookSpeed?(speed: number): void;
   /** Is Build mode open? Outside it, bare rock doesn't light up under the pointer. */
   setBuildMode(on: boolean): void;
   /** The 3D camera and see-through toggles (the 2D views ignore it). */

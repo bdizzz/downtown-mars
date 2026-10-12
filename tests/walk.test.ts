@@ -4,7 +4,7 @@ import { config } from "../src/sim/config";
 import { ensureFloors, roomAt, type Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { openShaftRadius, ringRadii, slotAngles } from "../src/render3d/cylinder";
-import { clear, flights, OPEN, regionAt, stairLift, stairsHere, step, walkable } from "../src/view/walk";
+import { clear, drinkHere, drinkSpots, flights, OPEN, regionAt, stairLift, stairsHere, step, walkable } from "../src/view/walk";
 import { doorways } from "../src/view/doors";
 import { furnish, isFlat } from "../src/view/furnish";
 import { allRock } from "./worlds";
@@ -152,6 +152,35 @@ describe("walking in first person", () => {
     expect(stairsHere(s.layout, 2, ...mid(s, 1, 2))).toEqual({ up: 1, down: null });
     expect(stairsHere(s.layout, 1, ...mid(s, 1, 6))).toBeNull();
     expect(walkable(s.layout, 2, ...mid(s, 1, 2))).toBe(true);
+  });
+});
+
+describe("grabbing a drink in first person (T-139)", () => {
+  it("at a galley's serving counter: standing at its front and looking at it, not from behind or looking away", () => {
+    const s = site();
+    applyCommand(s, { type: "build", room: "galley", at: ring(1, 1, 4) });
+    const [spot] = drinkSpots(s.layout, 1);
+    expect(spot).toBeDefined();
+    const { at, facing } = spot!;
+    // A step out in front, looking back at it.
+    const [x, z] = [at[0] + facing[0], at[1] + facing[1]];
+    const toward = Math.atan2(-facing[1], -facing[0]);
+    expect(drinkHere(s.layout, 1, x, z, toward)).toBe(true);
+    expect(drinkHere(s.layout, 1, x, z, toward + Math.PI)).toBe(false);
+    // Too far, or behind it.
+    expect(drinkHere(s.layout, 1, at[0] + facing[0] * 3, at[1] + facing[1] * 3, toward)).toBe(false);
+    expect(drinkHere(s.layout, 1, at[0] - facing[0], at[1] - facing[1], toward + Math.PI)).toBe(false);
+  });
+
+  it("at a home's kitchenette, but not in a room with nothing to drink", () => {
+    // Fresh sites: a layout's spots are worked out once (the game gets a new layout with every snapshot).
+    const dorm = site();
+    expect(applyCommand(dorm, { type: "build", room: "bunk_dorm", at: ring(1, 1, 4, 2) }).ok).toBe(true);
+    expect(drinkSpots(dorm.layout, 1)).toHaveLength(0);
+    const home = site();
+    home.unlocks = ["basicHomes"];
+    expect(applyCommand(home, { type: "build", room: "apartment", at: ring(1, 1, 4, 2) }).ok).toBe(true);
+    expect(drinkSpots(home.layout, 1).length).toBeGreaterThan(0);
   });
 });
 

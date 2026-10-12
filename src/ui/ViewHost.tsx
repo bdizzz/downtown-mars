@@ -30,12 +30,16 @@ interface Props {
   onConfirmBuild: (b: PendingBuild) => void;
   graphics: Graphics;
   view3d: View3d;
+  /** First person: how fast the mouse turns the head (settings). */
+  lookSpeed: number;
   /** Build mode is open. */
   building: boolean;
   /** The chosen view couldn't start (e.g. no WebGL for 3D). */
   onViewError: (message: string) => void;
   /** Walking in first person (3D), or not. */
   onWalking: (walking: boolean) => void;
+  /** Mouse look in first person, or not. */
+  onMouseLook?: (on: boolean) => void;
   /** The cutaway's wedge changed in the view: keep it in the settings. */
   onCutAngle?: (deg: number) => void;
 }
@@ -48,12 +52,13 @@ const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => P
 };
 
 /** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
-export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onCutAngle }: Props) {
+export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
-  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onCutAngle });
-  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onCutAngle };
+  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle });
+  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle };
+  const lookSpeedRef = useRef(lookSpeed);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +72,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
       onPropose: (p) => props.current.onPropose(p),
       onConfirmBuild: (b) => props.current.onConfirmBuild(b),
       onWalking: (w) => props.current.onWalking(w),
+      onMouseLook: (on) => props.current.onMouseLook?.(on),
       onCutAngle: (deg) => props.current.onCutAngle?.(deg),
     }).then((stage) => {
       // StrictMode mounts twice; the first stage may resolve after cleanup.
@@ -78,6 +84,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
       stage.setColorBlind(props.current.colorBlind);
       stage.setGraphics(props.current.graphics);
       stage.setView3d(props.current.view3d);
+      stage.setLookSpeed?.(lookSpeedRef.current);
       stage.setBuildMode(props.current.building);
       stage.setFloor(props.current.floor);
       stage.setProposal(props.current.proposal);
@@ -89,6 +96,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
     return () => {
       cancelled = true;
       props.current.onWalking(false);
+      props.current.onMouseLook?.(false);
       stageRef.current?.destroy();
       stageRef.current = null;
     };
@@ -120,6 +128,10 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
   useEffect(() => {
     stageRef.current?.setView3d(view3d);
   }, [view3d]);
+  useEffect(() => {
+    lookSpeedRef.current = lookSpeed;
+    stageRef.current?.setLookSpeed?.(lookSpeed);
+  }, [lookSpeed]);
   useEffect(() => {
     stageRef.current?.setBuildMode(building);
   }, [building]);

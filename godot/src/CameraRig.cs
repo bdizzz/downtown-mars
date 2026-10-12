@@ -10,7 +10,8 @@ public enum Overview { Iso, Cutaway }
 /// hole (drag to turn; scroll sideways to turn and up or down to zoom, or pinch, with a wheel, trackpad or
 /// Magic Mouse alike; WASD to pan, Q/E to turn). Cutaway: outside the hole looking in, the near half cut
 /// away (drag or scroll sideways to turn, up and down to move up and down the hole, pinch to zoom). First
-/// person: on foot (Walker.cs), WASD, drag to look. Tab switches between first person and the overview.
+/// person: on foot (Walker.cs), WASD, the mouse captured to look round (Esc frees it, a click in the view grabs it
+/// again; free, a drag looks). Tab switches between first person and the overview.
 /// The benchmark circles the camera once.
 /// </summary>
 public partial class CameraRig : Node3D
@@ -85,7 +86,23 @@ public partial class CameraRig : Node3D
     /// <summary>Testing: seconds to walk straight ahead once on foot, as if W were held.</summary>
     public float StrollSeconds { get; set; }
     bool _onFoot;
-    const float EyeHeight = 1.7f, WalkSpeed = 3f;
+    /// <summary>Eye height, and walking and running speeds (m/s), as the web's WALK (T-138).</summary>
+    const float EyeHeight = 1.7f, WalkSpeed = 4.5f, RunSpeed = 10f;
+    /// <summary>A hot drink in hand (T-139): grabbed at a counter with F, kept until you leave first person.</summary>
+    readonly Drink _drink = new();
+    /// <summary>
+    /// Mouse look in first person: the mouse is captured on the way in, so moving it looks round, with a
+    /// crosshair in the middle. Esc frees it (`FreeMouse`), a click in the view grabs it again (`GrabMouse`).
+    /// Off for test runs (Live sets it), which mustn't take the mouse.
+    /// </summary>
+    public bool MouseLook { get; set; } = true;
+    bool _mouseFree, _wasWalking;
+    /// <summary>
+    /// First person turning, radians a point at a look speed of 1 (ViewSettings.LookSpeed): with mouse look, and
+    /// by dragging. The web's WALK, per CSS pixel. Points, not the window's pixels, which are twice as many on a Retina screen.
+    /// </summary>
+    const float LookTurn = 0.0035f, DragTurn = 0.004f;
+    readonly CanvasLayer _crosshair = new() { Visible = false };
     // Free view.
     Vector3 _target;
     float _yaw = Mathf.Pi / 2, _pitch = 0.75f, _dist;
@@ -254,6 +271,13 @@ public partial class CameraRig : Node3D
     {
         AddChild(_cam);
         _cam.AddChild(_headlamp);
+        _cam.AddChild(_drink);
+        AddChild(_crosshair);
+        var cross = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
+        cross.SetAnchorsPreset(Control.LayoutPreset.Center);
+        foreach (var (size, at) in new[] { (new Vector2(14, 2), new Vector2(-7, -1)), (new Vector2(2, 14), new Vector2(-1, -7)) })
+            cross.AddChild(new ColorRect { Color = new Color(1, 1, 1, 0.7f), Size = size, Position = at, MouseFilter = Control.MouseFilterEnum.Ignore });
+        _crosshair.AddChild(cross);
         _cam.Current = true;
         AddChild(_labelOverlay);
         _labelOverlay.AddChild(_labelBox);
@@ -321,6 +345,7 @@ public partial class CameraRig : Node3D
         }
         var side = (Held(Key.D) ? 1 : 0) - (Held(Key.A) ? 1 : 0);
         var fast = Input.IsKeyPressed(Key.Shift) ? 3f : 1f;
+        var walked = 0f;
         if (_walking)
         {
             var f = new Vector3(Mathf.Cos(_lookYaw), 0, Mathf.Sin(_lookYaw));
@@ -330,8 +355,10 @@ public partial class CameraRig : Node3D
             if (_onFoot && Walker is Walker walker)
             {
                 // On foot: the walker decides where a step lands (and which floor).
-                var step = (f * fwd + r * side) * WalkSpeed * (fast > 1 ? 2 : 1) * dt;
+                var step = (f * fwd + r * side) * (fast > 1 ? RunSpeed : WalkSpeed) * dt;
+                var from = walker.At;
                 walker.Step(new Vector2(step.X, step.Z));
+                walked = walker.At.DistanceTo(from);
                 _pos = new Vector3(walker.At.X, walker.Height + EyeHeight, walker.At.Y);
             }
             else
@@ -357,7 +384,38 @@ public partial class CameraRig : Node3D
                 _yaw += side * 1.2f * dt;
             }
         }
+        _drink.Step(dt, walked, _lookPitch);
+        CaptureMouse();
         Apply();
+    }
+
+    /// <summary>Is the mouse captured for looking round?</summary>
+    public bool MouseCaptured => Input.MouseMode == Input.MouseModeEnum.Captured;
+
+    /// <summary>Let the mouse go (Esc in first person): it drags to look again until a click grabs it back.</summary>
+    public void FreeMouse() => _mouseFree = true;
+
+    /// <summary>Take the mouse back for looking round (a click in the view in first person).</summary>
+    public void GrabMouse() => _mouseFree = false;
+
+    /// <summary>Captured while walking, unless it's been let go; each time you go into first person it's taken again.</summary>
+    void CaptureMouse()
+    {
+        if (_walking && !_wasWalking) _mouseFree = false;
+        _wasWalking = _walking;
+        var want = MouseLook && _walking && !_mouseFree && _benchSeconds <= 0;
+        if (want && !MouseCaptured) Input.MouseMode = Input.MouseModeEnum.Captured;
+        else if (!want && MouseCaptured) Input.MouseMode = Input.MouseModeEnum.Visible;
+        _crosshair.Visible = MouseCaptured;
+    }
+
+    /// <summary>On foot at a kitchenette or serving counter, facing it, with no drink yet (Walker.DrinkHere).</summary>
+    public bool CanDrink => _walking && _onFoot && !_drink.Held && Walker is Walker w && w.DrinkHere(_lookYaw);
+
+    /// <summary>Grab a hot drink, if there's one to grab here.</summary>
+    public void GrabDrink()
+    {
+        if (CanDrink) _drink.Held = true;
     }
 
     public override void _UnhandledInput(InputEvent e)
@@ -368,12 +426,14 @@ public partial class CameraRig : Node3D
             _onFoot = false;
             Apply();
         }
-        if (e is InputEventMouseMotion m && (m.ButtonMask & (LeftDragTurns ? MouseButtonMask.Left | MouseButtonMask.Right : MouseButtonMask.Right)) != 0)
+        // Captured, the mouse looks round as it moves; otherwise a drag does.
+        if (e is InputEventMouseMotion m && (_walking && MouseCaptured || (m.ButtonMask & (LeftDragTurns ? MouseButtonMask.Left | MouseButtonMask.Right : MouseButtonMask.Right)) != 0))
         {
             if (_walking)
             {
-                _lookYaw += m.Relative.X * 0.004f;
-                _lookPitch = Mathf.Clamp(_lookPitch - m.Relative.Y * 0.004f, -1.4f, 1.4f);
+                var turn = m.ScreenRelative / DisplayServer.ScreenGetScale() * (MouseCaptured ? LookTurn : DragTurn) * ViewSettings.LookSpeed;
+                _lookYaw += turn.X;
+                _lookPitch = Mathf.Clamp(_lookPitch - turn.Y, -1.4f, 1.4f);
             }
             else
             {
@@ -402,6 +462,8 @@ public partial class CameraRig : Node3D
     void Apply()
     {
         _headlamp.Visible = _walking;
+        // Leaving first person puts the drink down.
+        if (!_walking) _drink.Held = false;
         _cam.Attributes = !_walking && Mode == Overview.Iso && _miniatureAmount > 0 ? _miniature : null;
         if (_walking)
         {

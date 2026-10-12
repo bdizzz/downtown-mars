@@ -151,7 +151,7 @@ public partial class HelpSheet : Sheet
 /// <summary>
 /// Settings, as the web's (ui/SettingsView.tsx) and from the same table (data/settings.json): its
 /// sections as tabs, each setting a row with its name, a one-line hint and its control, those that
-/// apply here (autosave each game day, the tutorial, the graphics level, the miniature blur, interface size, colour-blind
+/// apply here (autosave each game day, the tutorial, the graphics level, the miniature blur, mouse look speed, interface size, colour-blind
 /// overlays, and the keys). Kept in user://settings.cfg with the view. Every control takes the
 /// keyboard: Tab and the arrows move, Enter and Space act, Ctrl+Tab changes section.
 /// </summary>
@@ -242,6 +242,19 @@ public partial class SettingsSheet : Sheet
                 };
                 slider.ValueChanged += v => Set(() => ViewSettings.Miniature = (float)v);
                 _fill.Add(() => slider.Value = ViewSettings.Miniature);
+                return slider;
+            }
+            case "lookSpeed":
+            {
+                var slider = new HSlider
+                {
+                    MinValue = r.GetProperty("min").GetDouble(),
+                    MaxValue = r.GetProperty("max").GetDouble(),
+                    Step = r.GetProperty("step").GetDouble(),
+                    CustomMinimumSize = new Vector2(140, 0),
+                };
+                slider.ValueChanged += v => Set(() => ViewSettings.LookSpeed = (float)v);
+                _fill.Add(() => slider.Value = ViewSettings.LookSpeed);
                 return slider;
             }
             case "keys":

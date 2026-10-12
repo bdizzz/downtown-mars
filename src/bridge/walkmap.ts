@@ -1,13 +1,13 @@
 import type { SimState } from "../sim/state";
 import { RING_D, openShaftRadius } from "../render3d/cylinder";
-import { WALKER_RADIUS, FURNITURE_CLEARANCE, flights, obstacles, regionAt } from "../view/walk";
+import { DRINK_REACH, WALKER_RADIUS, FURNITURE_CLEARANCE, drinkSpots, flights, obstacles, regionAt, type DrinkSpot } from "../view/walk";
 
 // A floor's walking map for the Godot viewer: the web's walk rules (view/walk.ts) sampled on a
 // grid, so Godot can walk a colonist's way (in rooms through their doors, along corridors and the
 // gallery tubes, round furniture, up and down stairs) without a copy of every rule. Each cell holds
 // the region at its centre (rock and the open shaft are 0; then indexes into `regions`, the web's
-// "open", "room:<id>" and "door:<id>"), run-length encoded; furniture's footprints and the stairs'
-// flights go as they are.
+// "open", "room:<id>" and "door:<id>"), run-length encoded; furniture's footprints, the stairs'
+// flights and the counters that serve a hot drink go as they are.
 
 /** Metres per cell: fine enough for doorways (a walker's width short of a door's). */
 const CELL = 0.15;
@@ -28,6 +28,9 @@ export interface WalkMapMessage {
   obstacles: [number, number][][];
   /** Flights of stairs on this floor, climbing to the one above: foot, up, across, length, half its width. */
   flights: { foot: [number, number]; up: [number, number]; across: [number, number]; length: number; half: number }[];
+  /** Counters that serve a hot drink (T-139), and how near and how squarely you stand to grab one (walk.ts drinkHere). */
+  drinks: DrinkSpot[];
+  drinkReach: { near: number; facing: number };
   walkerRadius: number;
   furnitureClearance: number;
   buildMs: number;
@@ -88,6 +91,8 @@ export function walkMap(state: SimState, floor: number): WalkMapMessage {
     runs: Buffer.from(new Uint16Array(runs).buffer).toString("base64"),
     obstacles: obstacles(layout, floor).map((o) => o.corners),
     flights: flights(layout, floor),
+    drinks: drinkSpots(layout, floor),
+    drinkReach: DRINK_REACH,
     walkerRadius: WALKER_RADIUS,
     furnitureClearance: FURNITURE_CLEARANCE,
     buildMs: performance.now() - t0,

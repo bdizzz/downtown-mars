@@ -24,6 +24,7 @@ const GENERAL: [string, string][] = [
   ["; '", "Cutaway: narrow / widen the cut, from a flat slice through the middle (180°) to a 60° wedge (or the slider, top left)"],
   ["Right-click", "Cancel the current tool"],
   ["WASD, Q E", "First person: walk (Shift runs) and turn"],
+  ["R F", "First person: up and down the stairs; F at a kitchenette or serving counter grabs a hot drink"],
   ["WASD", "Free view: pan across the floor (not in Build, where they're room keys); Reset camera (top left) goes back"],
   ["↑ ↓ / Page Up, Page Down", "Floor up / down in the Plan and 3D views"],
 ];
@@ -35,7 +36,7 @@ const TOUCH: [string, string][] = [
   ["Hold", "Show what's under your finger, as hovering does with a mouse"],
   ["Drag", "3D: turn round the hole (Free view: drag up and down to tilt). Plan and Unrolled: pan. With the corridor tool: draw"],
   ["Two fingers", "Pinch to zoom, twist to turn, move together to pan (in the side-on views, to go up and down)"],
-  ["Stick", "First person: the stick bottom left walks (all the way runs); drag elsewhere to look; ▲ ▼ take the stairs"],
+  ["Stick", "First person: the stick bottom left walks (all the way runs); drag elsewhere to look; ▲ ▼ take the stairs; ☕ grabs a hot drink at a kitchenette or serving counter"],
   ["Modes", "Build, View, Map and Charts along the bottom; tap the view to fold a room list away"],
 ];
 

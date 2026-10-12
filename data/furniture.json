@@ -633,7 +633,7 @@
       {"s": "box", "p": [-0.25, 0.47, 0.02], "z": [0.26, 0.03, 0.2], "c": "cream"},
       {"s": "cyl", "p": [0.3, 0.46, -0.05], "z": [0.09, 0.09], "c": "white"}
     ] },
-    "kitchenette": { "name": "Kitchenette", "size": [2.45, 0.7, 2.2], "light": {"color": "#ffd29a", "at": [0, 1.45, 0.1], "reach": 3, "strength": 0.7}, "parts": [
+    "kitchenette": { "name": "Kitchenette", "size": [2.45, 0.7, 2.2], "drinks": true, "light": {"color": "#ffd29a", "at": [0, 1.45, 0.1], "reach": 3, "strength": 0.7}, "parts": [
       {"s": "box", "p": [0, 0.44, 0], "z": [2.4, 0.88, 0.62], "c": "fibre"},
       {"s": "box", "p": [-0.9, 0.44, 0.311], "z": [0.56, 0.78, 0.01], "c": "composite"},
       {"s": "box", "p": [-0.3, 0.44, 0.311], "z": [0.56, 0.78, 0.01], "c": "composite"},
@@ -758,7 +758,7 @@
       {"s": "box", "p": [0.7, 0.77, 0.25], "z": [0.32, 0.02, 0.24], "c": "white"},
       {"s": "cyl", "p": [0, 0.82, 0], "z": [0.12, 0.12], "c": "accent"}
     ] },
-    "serving_counter": { "name": "Serving counter", "size": [2.45, 0.75, 2.55], "light": {"color": "#bfe0ff", "at": [0, 1.7, 0.5], "reach": 3, "strength": 0.4}, "spots": [{"kind": "post", "at": [0, 0, -0.75]}], "parts": [
+    "serving_counter": { "name": "Serving counter", "size": [2.45, 0.75, 2.55], "drinks": true, "light": {"color": "#bfe0ff", "at": [0, 1.7, 0.5], "reach": 3, "strength": 0.4}, "spots": [{"kind": "post", "at": [0, 0, -0.75]}], "parts": [
       {"s": "box", "p": [0, 0.5, 0], "z": [2.4, 1, 0.7], "c": "accent"},
       {"s": "box", "p": [0, 1.03, 0], "z": [2.44, 0.06, 0.74], "c": "steel"},
       {"s": "box", "p": [-0.8, 1.07, 0.05], "z": [0.45, 0.04, 0.5], "c": "steel"},

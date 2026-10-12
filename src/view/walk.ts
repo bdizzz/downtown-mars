@@ -363,3 +363,48 @@ export function stairsHere(layout: Layout, floor: number, x: number, z: number):
   const down = floors.has(floor + 1) && floor + 1 <= hole.floors ? floor + 1 : null;
   return up === null && down === null ? null : { up, down };
 }
+
+/** A counter that serves hot drinks (T-139): the middle of its front edge, and the way its front faces. */
+export interface DrinkSpot {
+  at: [number, number];
+  facing: [number, number];
+}
+
+/** Grabbing a drink: how near its front you stand (m), and how squarely you face it (cosine of the most you can look away). */
+export const DRINK_REACH = { near: 1.6, facing: 0.5 };
+
+const drinkCache = new WeakMap<Layout, Map<number, DrinkSpot[]>>();
+
+/** The drink counters on a floor: kitchenettes in homes, serving counters in the galley and canteen. */
+export function drinkSpots(layout: Layout, floor: number): DrinkSpot[] {
+  let byFloor = drinkCache.get(layout);
+  if (!byFloor) drinkCache.set(layout, (byFloor = new Map()));
+  let list = byFloor.get(floor);
+  if (!list) {
+    list = layout.rooms
+      .filter((room) => built(room) && room.cells.some((c) => c.floor === floor))
+      .flatMap((room) => furnish(layout, room))
+      .filter((f) => f.floor === floor && itemDef(f.item).drinks)
+      .map((f) => {
+        // Its front (+z, turned) faces into the room.
+        const facing: [number, number] = [Math.sin(f.turn), Math.cos(f.turn)];
+        const half = itemDef(f.item).size[1] / 2;
+        return { at: [f.x + facing[0] * half, f.z + facing[1] * half] as [number, number], facing };
+      });
+    byFloor.set(floor, list);
+  }
+  return list;
+}
+
+/** Can a walker here, facing `yaw` (radians, as the camera: 0 looks along +x), grab a drink? Near a counter's front, on its side of it, looking at it. */
+export function drinkHere(layout: Layout, floor: number, x: number, z: number, yaw: number): boolean {
+  const [lx, lz] = [Math.cos(yaw), Math.sin(yaw)];
+  return drinkSpots(layout, floor).some(({ at, facing }) => {
+    const [dx, dz] = [at[0] - x, at[1] - z];
+    const d = Math.hypot(dx, dz);
+    if (d > DRINK_REACH.near) return false;
+    // In front of it (not behind the counter, or through a wall), and looking its way.
+    if (dx * facing[0] + dz * facing[1] > 0) return false;
+    return d < 1e-6 || (dx * lx + dz * lz) / d >= DRINK_REACH.facing;
+  });
+}
