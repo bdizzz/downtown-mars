@@ -1,4 +1,5 @@
 import { roomName, roomRef } from "./roomName";
+import { shaftFull, startPressurizing } from "./air";
 import raw from "../../data/construction.json";
 import { config, type SimConfig } from "./config";
 import { recomputeAccess, shortfall } from "./corridors";
@@ -221,12 +222,20 @@ function finish(state: SimState, job: Job, cfg: SimConfig): void {
   if (job.kind !== "corridors" && job.kind !== "fill" && room) postMessage(state, cfg, `${roomRef(room)} ${job.kind === "extend" ? "extended" : "built"}.`);
 }
 
-/** The dome is up: the shaft is pressurized. */
+/** The dome is up and sealed: the shaft pressurizes before it opens (air.ts), so the hole's O2 doesn't crash. */
 function finishDome(state: SimState, cfg: SimConfig): void {
+  startPressurizing(state, cfg);
+  postMessage(state, cfg, `The dome over ${state.name}'s shaft is sealed. Now it's pressurizing: the O2 reserve and the electrolyzers fill the shaft with air before it opens.`, "good");
+  openDomeWhenFull(state, cfg);
+}
+
+/** Once its shaft's air is made, the dome opens: the shaft is air, every gallery open walkway. */
+export function openDomeWhenFull(state: SimState, cfg: SimConfig): void {
+  if (!shaftFull(state)) return;
   state.layout.domed = true;
   recomputeAccess(state.layout);
   state.layout.version++;
-  postMessage(state, cfg, `The dome over ${state.name}'s shaft is sealed: the shaft is air now, every gallery is open walkway, and the whole hole breathes easier.`, "good");
+  postMessage(state, cfg, `The dome over ${state.name}'s shaft is open: the shaft is air now, every gallery is open walkway, and the whole hole breathes easier.`, "good");
 }
 
 /** Start building the dome over the shaft (or, with construction time off, build it at once). */
@@ -239,6 +248,7 @@ export function queueDome(state: SimState, cfg: SimConfig): void {
 export function domeRefusal(state: SimState): string | null {
   if (state.layout.domed) return "The shaft already has its dome";
   if (domeQueued(state)) return "The dome is already being built";
+  if (state.air?.shaft) return "The dome is sealed and pressurizing";
   if (!(state.unlocks ?? []).includes("dome")) return `Unlocks at ${config.dome.population} colonists in this hole`;
   return shortfall(state.resources, config.dome.cost);
 }

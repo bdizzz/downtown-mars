@@ -8,9 +8,9 @@ import type { SimState } from "./state";
 import { countStage, needsWeight, type Cohort } from "./people";
 import { storageCaps } from "./storage";
 import { stormOutput } from "./weather";
-import { conditionOutput, isCleanable, maintenanceQueue } from "./condition";
+import { conditionOf, conditionOutput, isCleanable, maintenanceQueue } from "./condition";
 import type { CareState } from "./care";
-import { airAmount, airHealthLoss, breathe } from "./air";
+import { airAmount, airHealthLoss, airNeeds, breathe, o2Wanted, releaseTanks, splitMade, storeInTanks } from "./air";
 
 // The per-tick economy: staff the rooms, run them, feed the colonists, cap
 // storage. Every amount in the data is per game day, so each tick moves
@@ -151,10 +151,15 @@ export function capacities(state: SimState, cfg: SimConfig): Record<string, numb
   const caps: Record<string, number> = {};
   // The air has no cap: it's a mix over the living volume (air.ts).
   for (const r of resourceDefs) if (!r.air) caps[r.id] = r.baseCapacity;
+  // A tank at 0% condition keeps what it holds but takes no more: its space counts only
+  // as far as the stock already overflows the working tanks.
+  const broken: Record<string, number> = {};
   for (const room of state.layout.rooms) {
     if (room.planned || room.building) continue;
-    for (const [id, v] of Object.entries(roomSpec(room, cfg).stores)) caps[id] = (caps[id] ?? 0) + v;
+    const into = conditionOf(room) <= 0 ? broken : caps;
+    for (const [id, v] of Object.entries(roomSpec(room, cfg).stores)) into[id] = (into[id] ?? 0) + v;
   }
+  for (const [id, v] of Object.entries(broken)) caps[id] = (caps[id] ?? 0) + Math.min(v, Math.max(0, (state.resources[id] ?? 0) - (caps[id] ?? 0)));
   // Dry goods live in storage rooms: only as much as they've space allocated for.
   const all = { ...caps, ...storageCaps(state) };
   // Room the console made, for amounts given past what the hole could hold.
@@ -202,16 +207,33 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
     if (!kind || state.maintenance?.lanes[r.id]) return false;
     return !waiting.some((w) => kind === "all" || isCleanable(w.type));
   };
+  // Gas tanks release what the air is short of first, so the electrolyzer makes only the rest.
+  releaseTanks(state, cfg);
   const producers = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length === 0);
   const drains = (r: RoomInstance) => Object.keys(specs.get(r.id)!.uses).some((id) => resourceDef(id).backsUp);
   const treatment = rooms.filter((r) => drains(r));
   const others = rooms.filter((r) => Object.keys(specs.get(r.id)!.uses).length > 0 && !drains(r));
-  for (const r of [...producers, ...treatment, ...others]) {
+  // Air rooms stand by while the air doesn't need them. The electrolyzer goes after the other
+  // critical rooms (the scrubbers), so it makes only what they leave it, but before the rest, so
+  // it still gets its power.
+  const airIdle = (r: RoomInstance) => {
+    const need = roomDef(r.type).runsWhile;
+    return !!need && !airNeeds(state, cfg, caps, need);
+  };
+  const topUps = others.filter((r) => roomDef(r.type).topsUpAir);
+  const rest = others.filter((r) => !roomDef(r.type).topsUpAir);
+  const cut = rest.findIndex((r) => r.priority !== "critical");
+  const order = [...producers, ...treatment, ...(cut < 0 ? [...rest, ...topUps] : [...rest.slice(0, cut), ...topUps, ...rest.slice(cut)])];
+  for (const r of order) {
     const why = down.get(r.id);
     if (why) status[r.id] = { staff: 0, staffNeeded: specs.get(r.id)!.staff, rate: 0, limit: why };
+    // Switched off, crew on call: it uses nothing, not even power.
+    else if (airIdle(r)) status[r.id] = { ...status[r.id]!, rate: 0, limit: roomDef(r.type).runsWhile === "o2Short" ? "air:o2" : "air:co2" };
     else runRoom(r, standby(r) ? idleSpec(specs.get(r.id)!) : specs.get(r.id)!, status[r.id]!, state, caps, cfg, dt, mod, standby(r));
   }
   state.roomStatus = status;
+  // What's made above the target goes into a pressurizing dome and the gas tanks, before anyone breathes it.
+  storeInTanks(state, cfg, caps);
 
   // 3. Colonists.
   stepColonists(state, cfg, dt, mod);
@@ -235,14 +257,15 @@ function available(res: Record<string, number>, id: string, subs: string[] = [])
   return [id, ...subs].reduce((sum, k) => sum + (res[k] ?? 0), 0);
 }
 
-/** Take an input, falling back to substitutes; records what was actually used. */
-function consume(state: SimState, id: string, amount: number, subs: string[], label: string): void {
+/** Take an input, falling back to substitutes; records what was actually used, and where it went next by share. */
+function consume(state: SimState, id: string, amount: number, subs: string[], label: string, then: [string, number][] = []): void {
   const res = state.resources;
   let left = amount;
   for (const k of [id, ...subs]) {
     const take = Math.min(left, res[k] ?? 0);
     res[k] = (res[k] ?? 0) - take;
-    record(state, k, "out", label, take);
+    if (then.length) for (const [where, share] of then) record(state, k, "out", label, take * share, { then: where });
+    else record(state, k, "out", label, take);
     left -= take;
     if (left <= 0) break;
   }
@@ -303,7 +326,7 @@ function runRoom(
   // full (a full byproduct, like a farm's oxygen, is just lost). Waste and
   // power never hold a room back. A room with air to scrub keeps running for
   // that alone.
-  const capOf = (id: string) => (topUp && resourceDef(id).air ? airAmount(state, cfg, cfg.air.o2Target) : (caps[id] ?? Infinity));
+  const capOf = (id: string) => (topUp && resourceDef(id).air ? o2Wanted(state, cfg, caps) : (caps[id] ?? Infinity));
   let outputF = -1;
   let fullOf = "";
   const byproducts = roomDef(room.type).byproducts ?? [];
@@ -322,7 +345,9 @@ function runRoom(
   }
   if (outputF >= 0 && outputF < 1) {
     rate *= outputF;
-    limit = topUp && fullOf && resourceDef(fullOf).air ? `air:${fullOf}` : `full:${fullOf}`;
+    // Scrubbers slow as CO2 nears the floor; a top-up room as O2 nears the target.
+    const scrubbed = !fullOf ? Object.keys(spec.scrubs)[0] : undefined;
+    limit = scrubbed ? `air:${scrubbed}` : topUp && resourceDef(fullOf).air ? `air:${fullOf}` : `full:${fullOf}`;
   }
 
   // A top-up room's share of its O2 actually made: only what the air is short of
@@ -356,7 +381,10 @@ function runRoom(
   }
 
   const label = roomDef(room.type).name;
-  for (const [id, perDay] of Object.entries(spec.uses)) consume(state, id, perDay * rate * dt * (forAir(id) ? airShare : 1), subs[id] ?? [], label);
+  // A top-up room's inputs show where its O2 went next: new space, breathed air, the reserve.
+  const o2Before = res.o2 ?? 0;
+  const then = topUp ? splitMade(state, cfg, (spec.makes.o2 ?? 0) * rate * dt * airShare, o2Before) : [];
+  for (const [id, perDay] of Object.entries(spec.uses)) consume(state, id, perDay * rate * dt * (forAir(id) ? airShare : 1), subs[id] ?? [], label, forAir(id) ? then : []);
   for (const [id, perDay] of Object.entries(spec.makes)) {
     const made = perDay * rate * dt * (topUp && resourceDef(id).air ? airShare : 1);
     res[id] = (res[id] ?? 0) + made;

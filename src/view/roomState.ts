@@ -22,8 +22,10 @@ export function limitText(limit: string | undefined): string {
   if (limit === "storm") return "dimmed by the dust storm";
   if (limit.startsWith("stocked:")) return `standing by: ${resName(limit.slice(8)).toLowerCase()} stocked`;
   if (limit.startsWith("full:")) return `idling: ${resName(limit.slice(5)).toLowerCase()} storage full`;
-  // Life support stops making oxygen once the air is at its target (economy.ts).
-  if (limit.startsWith("air:")) return `idling: the air's ${resName(limit.slice(4)).toLowerCase()} is at its target`;
+  // Air rooms stand by when the air doesn't need them (economy.ts): the electrolyzer once
+  // oxygen is at its target, a scrubber once CO2 is down to what the farms are left.
+  if (limit === "air:co2") return "standing by: CO2 is down to the scrub floor";
+  if (limit.startsWith("air:")) return `standing by: the air's ${resName(limit.slice(4)).toLowerCase()} is at its target`;
   // Used water has nowhere to go (economy.ts).
   if (limit.startsWith("drain:")) return `stalled: ${resName(limit.slice(6)).toLowerCase()} tanks full`;
   return `short of ${nameOf(limit)}`;
@@ -55,6 +57,7 @@ export function roomState(layout: Layout, room: RoomInstance, st: RoomStatus | u
   if (st?.limit === "paused") return "Paused: its crew is free for other work";
   if (st?.limit === "kit") return "Idle until you ask for a seed kit";
   if (st?.limit === "standby") return "Standing by: nothing to repair";
+  if (st?.limit?.startsWith("air:") && st.rate < 0.001) return limitText(st.limit).replace(/^s/, "S");
   if (st?.limit?.startsWith("stocked:")) return `Standing by: ${resName(st.limit.slice(8)).toLowerCase()} is stocked to ${num(room.stopAt ?? 0)}`;
   if (st) return `Running at ${Math.round(st.rate * 100)}%${st.limit ? ` · ${limitText(st.limit)}` : ""}`;
   return "";

@@ -102,6 +102,19 @@ const GLYPHS: Record<string, Glyph> = {
       g.moveTo(cx, cy).quadraticCurveTo(cx + Math.cos(a + 0.6) * s * 0.3, cy + Math.sin(a + 0.6) * s * 0.3, cx + Math.cos(a) * s * 0.27, cy + Math.sin(a) * s * 0.27).stroke(line(1.5, c));
     }
   },
+  electrolyzer: (g, cx, cy, s, c) => {
+    // A drop splitting into two bubbles: water into oxygen.
+    g.moveTo(cx, cy - s * 0.04).quadraticCurveTo(cx + s * 0.14, cy + s * 0.14, cx, cy + s * 0.3).quadraticCurveTo(cx - s * 0.14, cy + s * 0.14, cx, cy - s * 0.04).stroke(line(1.5, c));
+    g.moveTo(cx, cy - s * 0.04).lineTo(cx - s * 0.14, cy - s * 0.16).moveTo(cx, cy - s * 0.04).lineTo(cx + s * 0.14, cy - s * 0.16).stroke(line(1.2, c));
+    g.circle(cx - s * 0.18, cy - s * 0.24, s * 0.08).stroke(line(1.5, c));
+    g.circle(cx + s * 0.18, cy - s * 0.24, s * 0.08).fill({ color: c });
+  },
+  gas_tank: (g, cx, cy, s, c) => {
+    // A sphere on legs.
+    g.circle(cx, cy - s * 0.06, s * 0.22).stroke(line(1.5, c));
+    g.moveTo(cx - s * 0.22, cy - s * 0.06).lineTo(cx + s * 0.22, cy - s * 0.06).stroke(line(1.2, c));
+    g.moveTo(cx - s * 0.14, cy + s * 0.11).lineTo(cx - s * 0.2, cy + s * 0.3).moveTo(cx + s * 0.14, cy + s * 0.11).lineTo(cx + s * 0.2, cy + s * 0.3).stroke(line(1.5, c));
+  },
   clinic: (g, cx, cy, s, c) => {
     const a = s * 0.1;
     const b = s * 0.28;

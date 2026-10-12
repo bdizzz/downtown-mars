@@ -30,7 +30,8 @@ export interface Route {
 /** What rovers can carry: stored goods, not flows (power) or waste. */
 export function tradeable(id: string): boolean {
   const def = resourceDefs.find((r) => r.id === id);
-  return !!def && !def.flow && !def.waste;
+  // Oxygen goes tank to tank: rovers never take it from the air.
+  return !!def && !def.flow && !def.waste && !def.air;
 }
 
 export const TRADEABLE = resourceDefs.filter((r) => tradeable(r.id)).map((r) => r.id);

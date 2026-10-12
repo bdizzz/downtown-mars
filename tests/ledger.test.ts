@@ -17,6 +17,7 @@ function colony(): SimState {
     ["galley", ring(1, 1, 2)],
     ["restroom", ring(1, 1, 3)],
     ["life_support", ring(1, 2, 3, 4)],
+    ["electrolyzer", ring(1, 2, 8, 2)],
   ] as const) {
     const r = applyCommand(s, { type: "build", room, at });
     if (!r.ok) throw new Error(`${room}: ${r.reason}`);
@@ -43,12 +44,14 @@ describe("flow ledger", () => {
     const s = colony();
     for (let i = 0; i < 4 * config.ticksPerDay; i++) step(s, config);
     const f = averageFlows(s, config);
-    expect(Object.keys(f.o2!.in)).toContain("Life support");
+    expect(Object.keys(f.o2!.in)).toEqual(expect.arrayContaining(["CO2 scrubber", "Electrolyzer"]));
     expect(Object.keys(f.o2!.out)).toContain(LABELS.colonists);
     // Clean water used, by user, comes back as gray water from the same user.
-    expect(Object.keys(f.water!.out)).toEqual(expect.arrayContaining([LABELS.household, "Galley", "Life support"]));
+    expect(Object.keys(f.water!.out)).toEqual(expect.arrayContaining([LABELS.household, "Galley", "Electrolyzer"]));
+    // The electrolyzer's water says where it went next: digging the rooms out made new space.
+    expect(Object.keys(f.water!.then!.Electrolyzer!)).toContain("Air for new space");
     expect(Object.keys(f.grayWater!.in)).toEqual(expect.arrayContaining([LABELS.household, "Galley"]));
-    expect(Object.keys(f.grayWater!.in)).not.toContain("Life support");
+    expect(Object.keys(f.grayWater!.in)).not.toContain("Electrolyzer");
     expect(Object.keys(f.rock!.in)).toContain(LABELS.digging);
     expect(Object.keys(f.rations!.in)).toContain(LABELS.earth);
     expect(Object.keys(f.rations!.out)).toContain("Galley");
@@ -67,19 +70,19 @@ describe("two-step flows", () => {
   it("keeps where a use went next, averaged, for the web panel and the bridge", () => {
     const s = colony();
     for (let day = 0; day < 2; day++) {
-      record(s, "water", "out", "Electrolyzer", 6, { then: "Air for new space" });
-      record(s, "water", "out", "Electrolyzer", 2, { then: "Replacing breathed air" });
+      record(s, "water", "out", "Splitter", 6, { then: "Air for new space" });
+      record(s, "water", "out", "Splitter", 2, { then: "Replacing breathed air" });
       for (let i = 0; i < config.ticksPerDay; i++) step(s, config);
     }
     const f = averageFlows(s, config);
-    expect(f.water!.then!["Electrolyzer"]!["Air for new space"]).toBeCloseTo(6, 6);
-    expect(f.water!.out["Electrolyzer"]).toBeCloseTo(8, 6);
+    expect(f.water!.then!["Splitter"]!["Air for new space"]).toBeCloseTo(6, 6);
+    expect(f.water!.out["Splitter"]).toBeCloseTo(8, 6);
 
     const rv = river("water", f.water);
-    expect(rv.thens["Electrolyzer"]!.map(([label]) => label)).toEqual(["Air for new space", "Replacing breathed air"]);
-    expect(Object.keys(rv.thens)).toEqual(["Electrolyzer"]); // other uses don't say
+    expect(rv.thens["Splitter"]!.map(([label]) => label)).toEqual(["Air for new space", "Replacing breathed air"]);
+    expect(Object.keys(rv.thens)).not.toContain("Galley"); // other uses don't say
 
-    const out = flows(s, "water").rivers[0]!.outs.find((o) => o.label === "Electrolyzer")!;
+    const out = flows(s, "water").rivers[0]!.outs.find((o) => o.label === "Splitter")!;
     expect(out.then!.map((t) => t.value)).toEqual([expect.closeTo(6, 6), expect.closeTo(2, 6)]);
   });
 });

@@ -1,6 +1,6 @@
 import { config } from "../sim/config";
 import { amenityFelt, reachOf } from "../sim/amenities";
-import { mainOutput, roomSpec } from "../sim/economy";
+import { holding, mainOutput, roomSpec } from "../sim/economy";
 import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
 import { crowdedAir } from "../sim/happiness";
 import { network } from "../sim/network";
@@ -190,4 +190,9 @@ export function stopAtInfo(s: Snapshot, room: RoomInstance): { resource: string;
   const out = mainOutput(room, config);
   if (!out) return null;
   return { resource: out, suggested: Math.max(10, Math.round(((s.resources[out] ?? 0) + 20) / 10) * 10) };
+}
+
+/** Does this room carry the hole-wide tank fill slider? Electrolyzers, and gas tanks holding O2. */
+export function fillsTanks(room: RoomInstance): boolean {
+  return !!roomDef(room.type).topsUpAir || holding(room) === "o2Tank";
 }

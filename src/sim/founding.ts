@@ -14,7 +14,7 @@ import { capacities } from "./economy";
 import { roomDef } from "./rooms";
 import { foundFrom } from "./culture";
 import { createInitialState, type Site, type SimState } from "./state";
-import { fillAir } from "./air";
+import { fillAir, intoTanks } from "./air";
 import { holeById, holeSeed, nextHoleName, type World } from "./world";
 
 // Founding new holes: a staging bay gathers a seed kit from its hole's
@@ -59,12 +59,18 @@ export function stepStaging(hole: SimState, cfg: SimConfig): void {
     const have = hole.kit[id] ?? 0;
     if (have >= want) continue;
     const perTick = (want / (k.fillDays * cfg.ticksPerDay)) * rate;
-    const spare = Math.max(0, (hole.resources[id] ?? 0) - want * k.reserveFraction);
-    const take = Math.min(want - have, perTick, spare);
-    if (take <= 0) continue;
-    hole.resources[id] = (hole.resources[id] ?? 0) - take;
-    hole.kit[id] = have + take;
-    record(hole, id, "out", SEED_KIT, take);
+    // Oxygen comes out of the O2 tanks first, then the air.
+    const from = id === "o2" ? ["o2Tank", "o2"] : [id];
+    let left = Math.min(want - have, perTick);
+    for (const src of from) {
+      const spare = Math.max(0, (hole.resources[src] ?? 0) - (src === id ? want * k.reserveFraction : 0));
+      const take = Math.min(left, spare);
+      if (take <= 0) continue;
+      hole.resources[src] = (hole.resources[src] ?? 0) - take;
+      hole.kit[id] = (hole.kit[id] ?? 0) + take;
+      record(hole, src, "out", SEED_KIT, take);
+      left -= take;
+    }
   }
   if (Object.entries(k.goods).every(([id, want]) => (hole.kit[id] ?? 0) >= want - 1e-9)) {
     hole.gatheringKit = false;
@@ -129,11 +135,13 @@ export function stepConvoys(world: World, cfg: SimConfig): void {
     });
     hole.tick = world.tick;
     // They start with what they brought, not Earth's starter stock. The crew seals what
-    // they blast out and fills it with air; the kit's oxygen goes into the air on top.
+    // they blast out and fills it with air; the kit's oxygen goes into tanks if there are
+    // any (a landing kit has none), and into the air on top.
     hole.resources = {};
     fillAir(hole, cfg);
     const caps = capacities(hole, cfg);
-    for (const [id, v] of Object.entries(c.goods)) {
+    for (const [id, all] of Object.entries(c.goods)) {
+      const v = id === "o2" ? all - intoTanks(hole, caps, all, SEED_KIT) : all;
       const got = Math.min(v, caps[id] ?? v);
       hole.resources[id] = (hole.resources[id] ?? 0) + got;
       record(hole, id, "in", SEED_KIT, got);

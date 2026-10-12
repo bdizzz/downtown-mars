@@ -14,7 +14,7 @@ import type { Snapshot } from "../sim/snapshot";
 import { corridors, finishDef } from "../sim/corridors";
 import { STORABLE } from "../sim/storage";
 import { num, resName } from "./format";
-import { conditionNote, constructionInfo, panelRows, seedKitInfo, stopAtInfo, type Row } from "../view/roomPanel";
+import { conditionNote, constructionInfo, fillsTanks, panelRows, seedKitInfo, stopAtInfo, type Row } from "../view/roomPanel";
 import { isProblem, roomState } from "../view/roomState";
 
 interface Props {
@@ -299,6 +299,21 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
               </option>
             ))}
           </select>
+        </label>
+      )}
+      {fillsTanks(room) && (
+        <label title="Hole-wide: once the air is at its target, electrolyzers fill the O2 tanks this far, a reserve for digging and breakdowns. The water it takes is gone for good.">
+          <span className="k">Tank fill</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={10}
+            value={Math.round(s.air.tankFill * 100)}
+            aria-valuetext={`${Math.round(s.air.tankFill * 100)}% of the O2 tanks`}
+            onChange={(e) => onCommand({ type: "setTankFill", fill: Number(e.target.value) / 100 })}
+          />
+          <output>{s.air.tankFill > 0 ? `${Math.round(s.air.tankFill * 100)}%` : "Off"}</output>
         </label>
       )}
       {spec.staff > 0 && (

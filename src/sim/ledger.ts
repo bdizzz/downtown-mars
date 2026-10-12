@@ -29,6 +29,13 @@ export const LABELS = {
   /** People's own water: drinking, washing, cooking at home. */
   household: "Drinking and washing",
   lost: "Overflow",
+  /** Gas tanks as ballast (air.ts): the air's side and the tanks' side of each move. */
+  fromTanks: "From tanks",
+  toTanks: "Into tanks",
+  fromAir: "From the air",
+  toAir: "Into the air",
+  /** A new dome's shaft, pressurized before it opens. */
+  shaft: "Pressurizing the shaft",
 } as const;
 
 export function createLedger(): Ledger {

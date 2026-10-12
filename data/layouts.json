@@ -853,6 +853,33 @@
       {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
     ],
+    "electrolyzer:2x1": [
+      {"item":"electrolysis_stack","wall":"back","y":0.1,"repeat":{"every":3.4,"max":4}},
+      {"item":"big_tank","wall":"left","y":0.2},
+      {"item":"gas_bottles","wall":"right","y":0.2,"repeat":{"every":1.6,"max":3}},
+      {"item":"console","wall":"center","x":-2,"y":-0.6},
+      {"item":"pipe_run","wall":"front","x":4,"y":0.3,"repeat":{"every":3.6,"max":2}},
+      {"item":"gauge_panel","wall":"left","x":-2.6},
+      {"item":"readout_panel","wall":"right","x":2.4},
+      {"item":"safety_sign","wall":"back","repeat":{"every":4,"max":3}},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":8}},
+      {"item":"work_light","wall":"back","x":2,"repeat":{"every":4,"max":2}},
+      {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"first_aid_kit","wall":"right","x":-1.8,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"left","x":-1,"repeat":{"every":0.5,"max":1}}
+    ],
+    "gas_tank:1x1": [
+      {"item":"gas_sphere","wall":"center","y":0.3},
+      {"item":"valve_panel","wall":"left","y":0.1},
+      {"item":"pipe_run","wall":"back","y":0.1,"repeat":{"every":3.4,"max":2}},
+      {"item":"gauge_panel","wall":"right","x":-1.2},
+      {"item":"safety_sign","wall":"back","x":2.2},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":3}},
+      {"item":"work_light","wall":"back","x":1,"repeat":{"every":4,"max":1}},
+      {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
+      {"item":"air_vent","wall":"right","x":1,"repeat":{"every":0.5,"max":1}}
+    ],
     "machine_shop:2x1": [
       {"item":"tool_wall","wall":"left"},
       {"item":"welding_station","wall":"right","y":0.1},
