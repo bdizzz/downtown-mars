@@ -1,5 +1,6 @@
 import { airPct } from "../src/sim/air";
 import { maintenanceQueue } from "../src/sim/condition";
+import { capacities } from "../src/sim/economy";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { careCoverage, elderCoverage, schoolCoverage } from "../src/sim/care";
@@ -129,11 +130,11 @@ export function wants(hole: SimState): { room: string; crop?: string; holds?: st
   const shops = count(hole, "machine_shop");
   if (shops > 0 && (res.machinery ?? 0) < 6 && shops * roomDef("machine_shop").makes.machinery! < count(hole, "maintenance") * roomDef("maintenance").uses.machinery! + 1) out.push({ room: "machine_shop" });
   // Water is a loop: enough recyclers to treat the gray water people and rooms make, and gray
-  // tanks to ride out the gaps. Clean water short with treatment to spare: a clean tank.
+  // tanks to ride out the gaps (full ones overflow, losing the water for good). Clean water short with treatment to spare: a clean tank.
   const treats = count(hole, "water_recycler") * roomDef("water_recycler").uses.grayWater!;
   const grayMade = pop * (config.colonists.needsPerDay.water ?? 0) * 1.25;
   if (treats < grayMade) out.push({ room: "water_recycler" });
-  else if (limited(hole, "drain:grayWater")) out.push({ room: "water_tank", holds: "grayWater" });
+  else if ((res.grayWater ?? 0) >= capacities(hole, config).grayWater! - 1) out.push({ room: "water_tank", holds: "grayWater" });
   else if ((met.water ?? 1) < 1 || limited(hole, "water")) out.push({ room: "water_tank" });
   if (count(hole, "galley") * 25 < pop) out.push({ room: "galley" });
   else if (shortHome(hole, "seats")) out.push({ room: "galley", near: "seats" });

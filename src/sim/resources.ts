@@ -12,8 +12,6 @@ export interface ResourceDef {
   flow?: boolean;
   /** In the air: no storage cap, read as a % of the hole's living volume (air.ts). */
   air?: boolean;
-  /** Wastewater with nowhere to go: rooms whose used water turns into it stall when it's full (gray water). */
-  backsUp?: boolean;
 }
 
 export interface CropDef {

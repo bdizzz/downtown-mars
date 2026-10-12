@@ -67,22 +67,27 @@ describe("the water loop", () => {
     expect(s.ledger.current.tailings?.out[LABELS.lost]).toBeGreaterThan(0);
   });
 
-  it("with the gray tanks full, rooms that use water stall", () => {
+  it("with the gray tanks full, rooms keep running: the overflow is lost, with a warning", () => {
     const s = hole();
     const galley = build(s, "galley", ring(1, 1, 2));
     s.resources.grayWater = capacities(s, config).grayWater!;
+    s.resources.water = 100;
     step(s, config);
-    expect(s.roomStatus[galley.id]).toMatchObject({ rate: 0, limit: "drain:grayWater" });
+    expect(s.roomStatus[galley.id]?.rate).toBeGreaterThan(0);
+    expect(s.ledger.current.grayWater?.out[LABELS.lost]).toBeGreaterThan(0);
+    for (let i = 0; i < 20; i++) step(s, config);
+    expect(s.messages.some((m) => m.text.startsWith("Gray water overflowing"))).toBe(true);
   });
 
-  it("the recycler drains gray water first, so rooms keep running while it keeps up", () => {
+  it("the recycler drains gray water first, so nothing overflows while it keeps up", () => {
     const s = hole();
     const galley = build(s, "galley", ring(1, 1, 2));
     build(s, "water_recycler", ring(1, 2, 3, 4));
     s.resources.grayWater = capacities(s, config).grayWater!;
     s.resources.water = 100;
     step(s, config);
-    expect(s.roomStatus[galley.id]?.limit).not.toBe("drain:grayWater");
+    expect(s.roomStatus[galley.id]?.rate).toBeGreaterThan(0);
+    expect(s.ledger.current.grayWater?.out[LABELS.lost] ?? 0).toBe(0);
   });
 
   it("the recycler returns about 97% as clean water, the rest as soil", () => {

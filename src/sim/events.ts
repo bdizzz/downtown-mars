@@ -119,6 +119,7 @@ export const eventData = raw as unknown as {
   };
   beltShip: { fromDay: number; chancePerDay: number; cooldownDays: number; names: string[] };
   ventAir: { afterDays: number; cooldownDays: number; warnEveryDays: number; label: string; warning: string };
+  grayOverflow: { warnEveryDays: number; warning: string };
   discoveries: {
     chance: number;
     firstAlways: boolean;
@@ -401,6 +402,7 @@ export function stepEvents(state: SimState, cfg: SimConfig): void {
     if (next) celebrate(state, cfg, next.id);
   }
   checkAir(state, cfg);
+  checkGrayOverflow(state, cfg);
   if (state.tick % cfg.ticksPerDay === 0) dailyEvents(state, cfg);
 }
 
@@ -438,6 +440,21 @@ function checkAir(state: SimState, cfg: SimConfig): void {
   ) {
     raiseEvent(state, cfg, "vent_air", { o2: o2Text(state, cfg) });
   }
+}
+
+/**
+ * Full gray tanks (T-148): rooms keep running and what doesn't fit is lost for good (economy.ts),
+ * so warn, at most once every warnEveryDays, to build a recycler.
+ */
+function checkGrayOverflow(state: SimState, cfg: SimConfig): void {
+  const ev = eventsOf(state);
+  const v = eventData.grayOverflow;
+  const cap = capacities(state, cfg).grayWater;
+  if (cap === undefined || (state.resources.grayWater ?? 0) < cap) return;
+  const warned = ev.lastTick.gray_overflow;
+  if (warned !== undefined && state.tick - warned < v.warnEveryDays * cfg.ticksPerDay) return;
+  ev.lastTick.gray_overflow = state.tick;
+  postMessage(state, cfg, v.warning, "warn");
 }
 
 /** Once a game day: does a belt ship call for help? */

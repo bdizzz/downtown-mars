@@ -45,6 +45,11 @@
     "label": "Vented",
     "warning": "Fire risk: the air's at {o2} oxygen. Anything that sparks burns hotter."
   },
+  "grayOverflow": {
+    "_note": "Full gray-water tanks (T-148): rooms keep running and the gray water that doesn't fit is lost for good. This warning, at most once every warnEveryDays.",
+    "warnEveryDays": 3,
+    "warning": "Gray water overflowing: the tanks are full and water is being lost for good. Build a water recycler, or a tank set to hold gray water."
+  },
   "events": [
     {
       "id": "vent_air",
