@@ -173,7 +173,8 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
           {waiting ? <span className="badge">{waiting}</span> : null}
         </button>
       )}
-      <button className="phone-only hud-toggle" onClick={() => setOpen(!drawer)} aria-expanded={drawer} aria-controls="hud-more" aria-label={drawer ? "Hide speeds and resources" : "Show speeds and resources"}>
+      <button className="phone-only hud-toggle" onClick={() => setOpen(!drawer)} aria-expanded={drawer} aria-controls="hud-more" title={drawer ? "Hide the clock, speeds and resources" : "Show the clock, speeds and resources"}>
+        {drawer ? "Hide stats" : "Show stats"}
         <span className="chev" aria-hidden="true">▾</span>
       </button>
       {import.meta.env.DEV && <span className="tick">tick {snapshot?.tick ?? 0}</span>}
