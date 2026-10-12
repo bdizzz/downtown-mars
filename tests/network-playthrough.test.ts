@@ -37,14 +37,15 @@ describe("first hour, two holes", () => {
 
   it("builds the child's critical set within a few days of arrival", () => {
     expect(net.childBuilt.length).toBeGreaterThanOrEqual(6);
-    expect(net.childBuilt[5]! - net.foundedDay!).toBeLessThan(8);
+    // The child builds its electrolyzer first and a recycler early (T-031): over six seeds its sixth room comes 7.8–10.6 days after founding. Was 8.
+    expect(net.childBuilt[5]! - net.foundedDay!).toBeLessThan(11);
   });
 
   it("keeps the child alive and growing", () => {
     // Founded later since the drill slowed past floor 3: fewer days to grow (was 20).
     expect(child!.population.count).toBeGreaterThanOrEqual(15);
-    // The child digs out its first rooms faster than one life support refills the air (T-026); T-031 rebalances. Was 60.
-    expect(Math.min(...net.log.filter((d) => d.childHealth > 0).map((d) => d.childHealth))).toBeGreaterThan(40);
+    // Eased to 40 while the child dug its air thin (T-026); restored with the electrolyzer built first (T-031).
+    expect(Math.min(...net.log.filter((d) => d.childHealth > 0).map((d) => d.childHealth))).toBeGreaterThan(60);
     expect(last.childHappy).toBeGreaterThan(40);
   });
 

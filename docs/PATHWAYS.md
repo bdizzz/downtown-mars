@@ -7,7 +7,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 | Pathway | In the game |
 | --- | --- |
 | Water | Complete loop: deep well pump, tanks, recycler, restrooms, composter |
-| Air | Complete: life support and farms |
+| Air | Complete: CO2 scrubbers, electrolyzers, gas tanks and plants |
 | Food | Farms (crops) → galley, or kitchen plus canteen → colonists; Earth rations fill gaps. No cultured meat |
 | Construction materials | Rock from every dig; concrete plant (marscrete); brickworks (rock to brick); recycling center |
 | Metals and machinery | Smelter (ore sites) and machine shop |
@@ -18,27 +18,27 @@ Each pathway follows one resource family from its source to the rooms that use i
 
 ## Water
 
-**Flow:** a closed loop (F-001). Clean water (one shared pool, like power) → colonists (2 a day), farms, galleys and kitchens, clinics, gyms, parks, industry → **gray water**, one for one, as it's used → water recycler (about 97% back to clean, the rest as sludge soil) → clean water. Two leaks: **life support** splits water into oxygen for good, and some **industry** sends part of its water to **tailings**. Wells bring in gray water (brine); drops and trade top up the rest.
+**Flow:** a closed loop (F-001). Clean water (one shared pool, like power) → colonists (2 a day), farms, galleys and kitchens, clinics, gyms, parks, industry → **gray water**, one for one, as it's used → water recycler (about 97% back to clean, the rest as sludge soil) → clean water. Two leaks: the **electrolyzer** splits water into oxygen for good (only as the living volume grows), and some **industry** sends part of its water to **tailings**. Wells bring in gray water (brine); drops and trade top up the rest.
 
 - **Made by:** water recycler (from gray water); deep well pump (gray water, at aquifer or ice sites); digging through ice; imports.
-- **Processed by:** water recycler (gray to clean, plus soil), life support (splits clean water into oxygen).
-- **Used by:** colonists (2 a day), farms, kitchens, life support, clinics, hospitals, bars, hotels, gyms and parks, brickworks, concrete plant, chemical plant, mycelium vat, silicon refinery, electronics fab, geothermal plant and reactor.
+- **Processed by:** water recycler (gray to clean, plus soil), electrolyzer (splits clean water into oxygen).
+- **Used by:** colonists (2 a day), farms, kitchens, electrolyzers, clinics, hospitals, bars, hotels, gyms and parks, brickworks, concrete plant, chemical plant, mycelium vat, silicon refinery, electronics fab, geothermal plant and reactor.
 - **Tailings:** the silicon refinery, concrete plant and electronics fab send half their water to tailings, the brickworks a quarter. They can only be stored for now; with nowhere to keep them they're lost (the tailings reclaimer, T-007, turns them back into gray).
 - **Storage:** each tank holds one kind (clean, gray or tailings), chosen by the player. When gray water has nowhere to go it overflows, lost for good, with a warning to build a recycler; rooms never stall for it (T-148).
-- **Lost to:** life support, tailings, the recycler's few percent, and overflow, all in the water ledger.
+- **Lost to:** electrolyzers, tailings, the recycler's few percent, and overflow, all in the water ledger.
 
 **As built (T-005):** the loop above, with a room's split in `rooms.json` (`returnsWater`, default `economy.waterReturns` in `config.json`: all gray). The recycler runs before water users each tick, so they drain into the room it frees. The pod holds 250 gray water to ride out the first days. The Flows panel shows each user's clean water out and gray water back, and says how much gray water is overflowing. Restrooms still give sanitation but no longer handle water (T-006 makes them an amenity).
 
 ## Air
 
-**Flow:** clean water + power → life support (water to O2); farms and algae (CO2 to O2) → oxygen → colonists (breathe 1 a day) → CO2 → back to farms, and to the chemical plant (CO2 to plastics and fuel). Plants and chemistry turn exhaled CO2 back into value.
+**Flow:** clean water + power → electrolyzer (water to O2, for new space); CO2 scrubbers, farms, parks and algae (CO2 to O2) → oxygen → colonists (breathe 1 a day) → CO2 → back to the scrubbers and farms, and to the chemical plant (CO2 to plastics and fuel). Plants and chemistry turn exhaled CO2 back into value.
 
-- **Oxygen made by:** life support, farms (especially algae).
+- **Oxygen made by:** CO2 scrubbers (from CO2), electrolyzers (from water), farms and parks (from CO2).
 - **CO2 made by:** colonists and some industry.
-- **CO2 used by:** farms, life support scrubbers, chemical plant.
+- **CO2 used by:** farms, parks, CO2 scrubbers, chemical plant.
 - **Air quality:** ventilation hubs raise it; smelters, brickworks, concrete and chemical plants lower it.
 
-**As built:** life support (30 O2 a day) and farms (2 O2, using CO2). Life support scrubs CO2 above a small reserve that farms draw on. Air quality is a neighbor effect: a baseline by ring (0, 0, −1, then −1.5, −2, −2.5), ventilation hubs +2 r2, parks +1 r2, smelters −1 r2, brickworks and concrete plants −1 r1; at home it adds to health. No algae or chemical plant yet.
+**As built (T-028, T-029, T-031):** a closed loop. CO2 scrubbers turn breathed CO2 back into O2 (30 a day, for power) above a small reserve the farms draw on; farms (2) and parks (1) do the same from CO2. Electrolyzers split water into O2 (500 a day from 25 water) only while the air is short of 21%, so a steady colony spends water on air only as it digs. Gas tanks hold O2 or CO2 as ballast both ways. Air quality is a neighbor effect: a baseline by ring (0, 0, −1, then −1.5, −2, −2.5), ventilation hubs +2 r2, parks +1 r2, smelters −1 r2, brickworks and concrete plants −1 r1; at home it adds to health. No algae or chemical plant yet.
 
 ## Food
 

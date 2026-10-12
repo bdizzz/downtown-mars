@@ -190,8 +190,13 @@ See `PLAN-M15.md` and `docs/tickets/F-003-room-materials.md` (Bryon's answers; t
 See `PLAN-M16.md`.
 
 - **The air is a mix over the living volume** (dug cells, built corridors and tubes): O2 and CO2 stay amounts, read as % of `volume × air.unitsPerM3`; no caps, no nitrogen, no pressure. Digging dilutes it; that's growth's water cost. "Air quality" stays the separate local effect.
-- **Step 1 balance (Bryon: "fast top-up, softer bands"):** the planned density makes a dug cell 168 O2, so the maker must be fast: life support tops up at 300 O2 a day until the electrolyzer replaces it, spending water only on what it makes; health bands low below 18%, very low below 15%. T-031 rebalances the loop as a whole.
+- **Step 1 balance (Bryon: "fast top-up, softer bands"):** the planned density makes a dug cell 168 O2, so the maker must be fast: life support topped up at 300 O2 a day until the electrolyzer replaced it (below); health bands low below 18%, very low below 15%.
 - **Holes start with their air made**, new and founded; old saves' air starts over at the target (save v21).
+- **The loop as built (T-028, T-029, T-031, Oct 12):** life support became the CO2 scrubber (same id): power only, CO2 back into O2 1:1, soil 0.5. The electrolyzer makes **500 O2 from 25 water** (20:1, about 8 water a dug cell; Bryon's "slowly") for **2 power**, M, metal 5: fast against digging, cheap enough for a founded hole's kit. It runs after the other critical rooms, so it only makes what scrubbers and plants leave, but before the rest, so it still gets power. Air rooms standing by use no power. Not in the landing kit (it would shift every test's slots); the tutorial asks for one after the scrubber's corridor.
+- **Gas tanks** (S, metal 10, not glass: they're needed before any glassworks) hold 200 of `o2Tank` or `co2Tank`, separate stocks from the air. They release before rooms run and store right after (before breathing, so a pressurizing dome or the tank fill can finish). CO2 is stored above 0.5%. Rovers carry O2 tank to tank only, never from the air.
+- **A tank at 0% condition** (gas or water) keeps what it holds but takes no more: its space counts only as far as the stock already overflows the working tanks.
+- **The seed kit carries no oxygen** (a founded hole's air is made on arrival) and 6 machinery as before. The bots build an electrolyzer early; the child builds it first, a gray tank and a recycler early (the water loop's old trouble for small holes).
+- **The domed shaft** pressurizes before it opens (Bryon, Oct 6): its 21% comes from the O2 tanks first, then electrolyzers, then it joins the volume with its air.
 
 ## Decided for time (Oct 5, T-021)
 

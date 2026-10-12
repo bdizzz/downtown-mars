@@ -76,6 +76,7 @@
     "co2Harmful": 1,
     "co2Dangerous": 3,
     "co2Floor": 0.2,
+    "co2StoreAbove": 0.5,
     "healthLossPerDay": { "o2Low": 5, "o2VeryLow": 20, "co2Harmful": 7.5, "co2Dangerous": 30 }
   },
   "weather": {

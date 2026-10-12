@@ -532,23 +532,26 @@
     },
     {
       "id": "life_support",
-      "name": "Life support",
-      "short": "Life sup.",
+      "name": "CO2 scrubber",
+      "short": "Scrubber",
       "category": "air",
       "size": "L",
       "staff": 3,
       "uses": {
-        "water": 60,
         "power": 5
       },
       "makes": {
-        "o2": 300
+        "o2": 30,
+        "soil": 0.5
       },
-      "returnsWater": {},
       "scrubs": {
         "co2": 30
       },
-      "topsUpAir": true,
+      "byproducts": [
+        "o2",
+        "soil"
+      ],
+      "runsWhile": "co2Over",
       "priority": "critical",
       "effects": [
         {
@@ -564,6 +567,61 @@
       },
       "buildable": true,
       "buildHours": 30
+    },
+    {
+      "id": "electrolyzer",
+      "name": "Electrolyzer",
+      "short": "Electrol.",
+      "category": "air",
+      "size": "M",
+      "staff": 1,
+      "uses": {
+        "water": 25,
+        "power": 2
+      },
+      "makes": {
+        "o2": 500
+      },
+      "returnsWater": {},
+      "topsUpAir": true,
+      "runsWhile": "o2Short",
+      "priority": "critical",
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "metal": 5,
+        "machinery": 2,
+        "electronics": 1
+      },
+      "buildable": true,
+      "buildHours": 16
+    },
+    {
+      "id": "gas_tank",
+      "name": "Gas tank",
+      "short": "Gas tank",
+      "category": "air",
+      "size": "S",
+      "staff": 0,
+      "uses": {},
+      "makes": {},
+      "stores": {
+        "o2Tank": 200
+      },
+      "holds": [
+        "o2Tank",
+        "co2Tank"
+      ],
+      "effects": [],
+      "cost": {
+        "metal": 10
+      },
+      "buildable": true
     },
     {
       "id": "ventilation_hub",
@@ -1313,7 +1371,8 @@
       "staff": 1,
       "uses": {
         "water": 2,
-        "power": 1
+        "power": 1,
+        "co2": 1
       },
       "makes": {
         "o2": 1

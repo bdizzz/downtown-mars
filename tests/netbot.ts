@@ -23,7 +23,7 @@ import { stageCounts } from "../src/sim/people";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 const surface = (slot: number): Location => ({ kind: "surface", slot });
-type Plan = { room: string; at: Location; crop?: string; stopAt?: number };
+type Plan = { room: string; at: Location; crop?: string; stopAt?: number; holds?: string };
 
 /** Once the map opens: industry for the kit, then get ready to found and trade. */
 export const HOME_EXTRA: Plan[] = [
@@ -33,14 +33,18 @@ export const HOME_EXTRA: Plan[] = [
   { room: "rover_depot", at: surface(9) },
 ];
 
-/** The child: the critical set, then its own rovers and food. */
+/** The child: the critical set (the electrolyzer first, for the air its rooms dilute), then its own rovers, water and food. */
 export const CHILD_PLAN: Plan[] = [
+  { room: "electrolyzer", at: ring(1, 2, 8, 2) },
   { room: "galley", at: ring(1, 1, 2) },
   { room: "restroom", at: ring(1, 1, 3) },
   { room: "rover_depot", at: surface(9) },
-  { room: "water_tank", at: ring(1, 1, 6) },
+  // Earth refills clean water; the pod alone holds too little gray until the recycler comes.
+  { room: "water_tank", at: ring(1, 1, 6), holds: "grayWater" },
   { room: "life_support", at: ring(1, 2, 3, 4) },
   { room: "site_office", at: ring(1, 1, 1) },
+  // Gray water fills the pod's tank in days: a recycler before the galley stalls.
+  { room: "water_recycler", at: ring(1, 3, 10, 4) },
   { room: "solar_array", at: surface(5) },
   { room: "farm", at: ring(2, 1, 0, 4), crop: "potatoes" },
   { room: "bunk_dorm", at: ring(1, 1, 4, 2) },
@@ -101,6 +105,7 @@ function builder(plan: Plan[]) {
         }
         if (p.crop) applyCommand(hole, { type: "setCrop", roomId: r.roomId!, crop: p.crop });
         if (p.stopAt !== undefined) applyCommand(hole, { type: "setRoomControl", roomId: r.roomId!, stopAt: p.stopAt });
+        if (p.holds) applyCommand(hole, { type: "setHolds", roomId: r.roomId!, holds: p.holds });
         applyCommand(hole, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
         builtAt.push(day);
         pending.splice(k, 1);

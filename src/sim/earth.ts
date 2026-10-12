@@ -1,5 +1,5 @@
 import type { SimConfig } from "./config";
-import { airAmount } from "./air";
+import { airAmount, intoTanks } from "./air";
 import { capacities, isActive, roomSpec } from "./economy";
 import { averageFlows, LABELS, record } from "./ledger";
 import { postMessage } from "./messages";
@@ -116,6 +116,10 @@ function land(state: SimState, cfg: SimConfig): Record<string, number> {
   const caps = capacities(state, cfg);
   const contents: Record<string, number> = {};
   const add = (id: string, amount: number) => {
+    // Oxygen lands in the gas tanks first, then the air.
+    const tanked = id === "o2" ? intoTanks(state, caps, amount, LABELS.earth) : 0;
+    if (tanked > 0) contents[id] = (contents[id] ?? 0) + tanked;
+    amount -= tanked;
     const fit = Math.max(0, Math.min(amount, (caps[id] ?? Infinity) - (res[id] ?? 0)));
     if (fit <= 0) return;
     res[id] = (res[id] ?? 0) + fit;
@@ -139,8 +143,8 @@ function land(state: SimState, cfg: SimConfig): Record<string, number> {
   const onHand: Record<string, number> = {
     rations: (res.rations ?? 0) + (res.rawFood ?? 0) + (res.meals ?? 0),
     water: res.water ?? 0,
-    // Only O2 above the target is spare: below it, the drop makes up the difference too.
-    o2: (res.o2 ?? 0) - airAmount(state, cfg, cfg.air.o2Target),
+    // Only O2 above the target is spare, and what's in the tanks: below the target, the drop makes up the difference too.
+    o2: (res.o2 ?? 0) - airAmount(state, cfg, cfg.air.o2Target) + (res.o2Tank ?? 0),
   };
   for (const [id, perDay] of Object.entries(gaps)) add(id, perDay * cover - (onHand[id] ?? 0));
   for (const [id, amount] of Object.entries(ec.fixed)) add(id, amount);

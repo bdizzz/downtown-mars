@@ -31,6 +31,7 @@ export const CHECKS: Record<string, (s: Snapshot, ui: UiFlags) => boolean> = {
     Object.entries(s.layout.corridorLinked ?? {}).some(([id, linked]) => linked && s.layout.corridors[id] !== "gallery") &&
     s.layout.rooms.some((r) => r.at.kind === "ring" && r.connected && !r.cells.some((c) => c.ring === 1)),
   life_support: (s) => has(s, "life_support"),
+  electrolyzer: (s) => has(s, "electrolyzer"),
   water_tank: (s) => has(s, "water_tank"),
   dorm: (s) => has(s, "bunk_dorm"),
   noise: (_, ui) => ui.sawNoise,

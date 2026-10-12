@@ -1,12 +1,12 @@
 ---
 id: T-028
 title: The electrolyzer and the CO2 scrubber replace life support
-status: open
+status: done
 size: M
 area: rooms, data
+feature: F-002
 touches: [data/rooms.json, data/furniture.json, data/layouts.json, data/tutorial.json, data/config.json, src/sim/air.ts, src/render2d/, godot/src/]
 blocked_by: [T-026, T-027]
-feature: F-002
 notes: [N-0005]
 created: 2026-10-06 00:08
 ---
@@ -24,3 +24,5 @@ ROOMS.md (life support → CO2 scrubber, electrolyzer), ROOM-STATUS.md (rerun), 
 
 ## History
 - 2026-10-06 00:08 opened from F-002 (agreed)
+- 2026-10-12 01:42 building on t-028-electrolyzer-and-scrubber (with T-029, T-031)
+- 2026-10-12 05:45 built (with T-029, T-031)

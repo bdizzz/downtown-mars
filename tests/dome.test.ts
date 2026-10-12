@@ -9,6 +9,8 @@ import { step } from "../src/sim/step";
 import { stepsBetween } from "../src/sim/paths";
 import { tubeRuns } from "../src/view/gallery";
 import { construction } from "../src/sim/construction";
+import { airPct, airVolume, shaftVolume } from "../src/sim/air";
+import { makeSnapshot } from "../src/sim/snapshot";
 
 // Milestone 12: the shaft dome, a hole's end goal.
 
@@ -111,6 +113,31 @@ describe("the shaft dome", () => {
     ).toBeCloseTo(air + config.dome.air);
     expect(tubeRuns(s.layout).every((r) => r.full)).toBe(true);
     expect(s.messages.some((m) => m.text.includes("dome"))).toBe(true);
+  });
+
+  it("pressurizes its shaft before it opens, from the O2 reserve and the electrolyzers, so the air holds", () => {
+    const s = hole();
+    s.unlocks = ["dome"];
+    const el = build(s, "electrolyzer", ring(1, 1, 5, 2));
+    const tank = build(s, "gas_tank", ring(1, 1, 7));
+    finish(s);
+    // The tanks hold some reserve; with construction instant the dome seals at once.
+    s.resources.o2Tank = 150;
+    const volume = airVolume(s, config);
+    expect(applyCommand(s, { type: "buildDome" }).ok).toBe(true);
+    expect(s.layout.domed).toBeFalsy();
+    expect(s.air?.shaft?.need).toBeCloseTo(shaftVolume(s.layout, config) * config.air.unitsPerM3 * 0.21);
+    expect(applyCommand(s, { type: "buildDome" })).toMatchObject({ ok: false, reason: expect.stringMatching(/pressurizing/) });
+    step(s, config);
+    // The reserve went in first.
+    expect(s.resources.o2Tank).toBe(0);
+    expect(makeSnapshot(s, config).air.pressurizing).toBeGreaterThan(0);
+    for (let i = 0; i < 10 * config.ticksPerDay && !s.layout.domed; i++) step(s, config);
+    expect(s.layout.domed).toBe(true);
+    expect(airVolume(s, config)).toBeCloseTo(volume + shaftVolume(s.layout, config));
+    expect(airPct(s, config, "o2")).toBeGreaterThan(config.air.o2Low);
+    expect(s.roomStatus[el]).toBeDefined();
+    expect(tank).toBeGreaterThan(0);
   });
 
   it("keeps storms from driving more dust through the airlock", () => {

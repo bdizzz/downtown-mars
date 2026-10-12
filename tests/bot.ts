@@ -26,6 +26,7 @@ export const PLAN: Plan[] = [
   { room: "bunk_dorm", at: ring(1, 1, 4, 2) },
   { room: "water_tank", at: ring(1, 1, 6) },
   { room: "life_support", at: ring(1, 2, 3, 4) },
+  { room: "electrolyzer", at: ring(1, 2, 8, 2) },
   // Construction crews, so the rest doesn't take forever.
   { room: "site_office", at: ring(1, 1, 1) },
   // Tier 2: weaning off Earth, mostly on floor 2. Water first: used water fills the pod's gray tank in days.
@@ -75,7 +76,7 @@ export interface Day {
   /** Clean water used and brought by Earth over the day just ended. */
   waterUsed: number;
   earthWater: number;
-  /** Water split into oxygen by life support: the air's deliberate leak (T-026). */
+  /** Water split into oxygen by electrolyzers: the air's deliberate leak (T-026, T-028). */
   airWater: number;
   food: number;
   power: string;
@@ -150,7 +151,7 @@ export function run(days: number): { state: SimState; log: Day[]; builtAt: Recor
         gray: Math.round(r.grayWater ?? 0),
         waterUsed: Math.round(Object.entries(s.ledger.days.at(-1)?.water?.out ?? {}).reduce((a, [k, v]) => (k === LABELS.lost ? a : a + v), 0)),
         earthWater: Math.round(s.ledger.days.at(-1)?.water?.in[LABELS.earth] ?? 0),
-        airWater: Math.round(s.ledger.days.at(-1)?.water?.out["Life support"] ?? 0),
+        airWater: Math.round(s.ledger.days.at(-1)?.water?.out["Electrolyzer"] ?? 0),
         food: Math.round((r.rations ?? 0) + (r.rawFood ?? 0) + (r.meals ?? 0)),
         power: `${snap.power.used.toFixed(0)}/${snap.power.made.toFixed(0)}`,
         metal: Math.round(r.metal ?? 0),

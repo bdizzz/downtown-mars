@@ -54,7 +54,7 @@
     "rations": 1,
     "rawFood": 0.8,
     "meals": 1.2,
-    "o2": 0.5,
+    "o2Tank": 0.5,
     "brick": 1,
     "metal": 2,
     "wafers": 4,

@@ -153,7 +153,7 @@ function airItems(s: Snapshot): BarItem[] {
         ? `Low: below ${a.o2Low}% health falls`
         : o2Pct > a.o2High
           ? `High: above ${a.o2High}% is a fire risk`
-          : `Comfortable (${a.o2Low}–${a.o2High}%); life support aims for ${a.o2Target}%`;
+          : `Comfortable (${a.o2Low}–${a.o2High}%); electrolyzers and gas tanks aim for ${a.o2Target}%`;
   return [
     {
       id: "res:o2Pct",
@@ -168,6 +168,8 @@ function airItems(s: Snapshot): BarItem[] {
       notes: [
         o2Band,
         `${num(s.resources.o2 ?? 0)} O2 in ${num(volume)} m³ of living space · ${signed(o2Rate)} points a month`,
+        ...((s.capacities.o2Tank ?? 0) > 0 ? [`${num(s.resources.o2Tank ?? 0)} of ${num(s.capacities.o2Tank!)} O2 in tanks, released when the air runs short`] : []),
+        ...(s.air.pressurizing !== null ? [`Pressurizing the shaft under the dome: ${Math.floor(s.air.pressurizing * 100)}%`] : []),
         "Digging dilutes the air: the same oxygen over more space",
       ],
     },
@@ -182,7 +184,7 @@ function airItems(s: Snapshot): BarItem[] {
       ...(co2Level !== "ok" ? { alert: `CO2 ${co2Level === "bad" ? "dangerous" : "harmful"}: ${airPctText(co2Pct)}` } : {}),
       title: "Air: CO2",
       notes: [
-        co2Pct > a.co2Dangerous ? `Dangerous: above ${a.co2Dangerous}% health falls fast` : co2Pct > a.co2Harmful ? `Harmful: above ${a.co2Harmful}% health falls` : `Fine below ${a.co2Harmful}%; life support scrubs it down to ${a.co2Floor}%`,
+        co2Pct > a.co2Dangerous ? `Dangerous: above ${a.co2Dangerous}% health falls fast` : co2Pct > a.co2Harmful ? `Harmful: above ${a.co2Harmful}% health falls` : `Fine below ${a.co2Harmful}%; CO2 scrubbers turn it back into oxygen down to ${a.co2Floor}%`,
         `${num(s.resources.co2 ?? 0)} CO2 in the air, breathed out 1:1 for the oxygen breathed in`,
       ],
     },

@@ -7,7 +7,7 @@
 # Downtown Mars
 *Hole sweet hole.*
 
-A real-time city builder on Mars. Each city is a borehole: dig a shaft down, carve rooms into its walls in rings and floors, and keep everyone breathing, fed and sane. Rooms affect their neighbours, so where you put the noisy life support matters as much as whether you build it.
+A real-time city builder on Mars. Each city is a borehole: dig a shaft down, carve rooms into its walls in rings and floors, and keep everyone breathing, fed and sane. Rooms affect their neighbours, so where you put the noisy CO2 scrubber matters as much as whether you build it.
 
 This is an early playtest build: a hole or two, the first hour or so of play. Total population supported is your score.
 
@@ -25,7 +25,7 @@ Working on the game? [docs/WORKFLOW.md](docs/WORKFLOW.md) shows how a playtest n
 ## What you do
 
 - **Dig.** A boring machine sinks the shaft floor by floor. Every room slot starts as rock: excavate it, then build.
-- **Build** homes, galleys, farms, life support, workshops and more in rings around the shaft, joined by glass gallery tubes, corridors and stairs.
+- **Build** homes, galleys, farms, CO2 scrubbers and electrolyzers, workshops and more in rings around the shaft, joined by glass gallery tubes, corridors and stairs.
 - **Mind the neighbours.** Rooms spread noise, smell, comfort and health. Air and smell travel the corridors, and people only use what they can walk to.
 - **Keep people going.** Watch oxygen, water, food and power; ride out dust storms; repair rooms as they wear; answer colonists at the office; decide what to do when the drill strikes something.
 - **Grow.** Better homes unlock as the colony grows. At 50 colonists the map opens: send a convoy to found another hole and trade between them.

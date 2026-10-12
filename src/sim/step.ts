@@ -11,7 +11,7 @@ import { stepVisits } from "./visits";
 import { stepEvents } from "./events";
 import { stepAging, stepGrief, stepUnlocks } from "./people";
 import { stepBirths } from "./births";
-import { stepConstruction } from "./construction";
+import { openDomeWhenFull, stepConstruction } from "./construction";
 import type { SimState } from "./state";
 
 import { stepHistory } from "./history";
@@ -25,6 +25,7 @@ export function step(state: SimState, cfg: SimConfig): void {
   // A dust storm drives more dust through the airlocks (the dome's are better sealed).
   state.effects = refreshEffects(state.layout, state.effects, dustNow(state.layout.domed ? 0 : stormLevel(state, cfg)));
   stepEconomy(state, cfg);
+  openDomeWhenFull(state, cfg);
   stepCondition(state, cfg);
   stepConstruction(state, cfg);
   // Rates show the hole's own production and use, so measure before drops land.

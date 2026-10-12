@@ -45,8 +45,8 @@ describe("the water loop", () => {
     expect(gray.Galley).toBeCloseTo(used.Galley!, 6);
   });
 
-  it("life support is a true sink: the water it splits for oxygen is gone", () => {
-    expect(roomSpec({ ...build(hole(), "life_support", ring(1, 2, 3, 4)) }, config).makes.grayWater).toBeUndefined();
+  it("the electrolyzer is a true sink: the water it splits for oxygen is gone", () => {
+    expect(roomSpec({ ...build(hole(), "electrolyzer", ring(1, 2, 3, 2)) }, config).makes.grayWater).toBeUndefined();
   });
 
   it("industry sends some of its water to tailings", () => {

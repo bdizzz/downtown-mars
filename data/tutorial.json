@@ -27,15 +27,21 @@
     },
     {
       "id": "life_support",
-      "text": "Life support makes our oxygen. It's loud, so put it in ring 2, behind the rooms on the shaft.",
+      "text": "We breathe out CO2. A CO2 scrubber turns it back into oxygen. It's loud, so put it in ring 2, behind the rooms on the shaft.",
       "hint": "In Build (B), press L. It takes 4 slots; R rotates it. It won't run until a corridor reaches it: that's next.",
       "highlight": "room:life_support"
     },
     {
       "id": "corridor",
-      "text": "Rooms past ring 1 need a corridor back to the shaft. Carve one along the borders between rooms, from the gallery to the life support.",
-      "hint": "In Build, press Z and drag along the borders, or click Connect in the life support's panel.",
+      "text": "Rooms past ring 1 need a corridor back to the shaft. Carve one along the borders between rooms, from the gallery to the scrubber.",
+      "hint": "In Build, press Z and drag along the borders, or click Connect in the scrubber's panel.",
       "highlight": "tool:corridors"
+    },
+    {
+      "id": "electrolyzer",
+      "text": "Every room we dig is new space to fill with air. An electrolyzer splits water into oxygen, and only runs when the air needs it.",
+      "hint": "In Build (B), open Air and pick the electrolyzer. It takes 2 slots; ring 2 is fine.",
+      "highlight": "room:electrolyzer"
     },
     {
       "id": "water_tank",

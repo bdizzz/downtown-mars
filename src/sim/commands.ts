@@ -1,4 +1,5 @@
 import { ROOM_NAME_MAX } from "./roomName";
+import { airVolume } from "./air";
 import { hasCondition } from "./condition";
 import { config } from "./config";
 import { charge, checkBuild, CONSTRUCTION, refund } from "./costs";
@@ -12,7 +13,7 @@ import { capacities, mainOutput } from "./economy";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById, outsideEdges } from "./edges";
 import { setRoomWindows, wallOf, windowCost, windowRefusal } from "./windows";
-import { domeRefusal, dropCorridors, dropRoomJobs, finishAll, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRoom } from "./construction";
+import { domeRefusal, dropCorridors, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRoom } from "./construction";
 import { holeGates, unlock, UNLOCK_GATES } from "./people";
 import { allocationRefusal } from "./storage";
 import { answerVisit } from "./visits";
@@ -31,8 +32,10 @@ export type SimCommand =
   | { type: "undoBuild"; roomId: number }
   | { type: "setDrill"; active: boolean }
   | { type: "setCrop"; roomId: number; crop: string }
-  /** What a tank holds: clean, gray water or tailings. */
+  /** What a tank holds: clean, gray water or tailings; O2 or CO2. */
   | { type: "setHolds"; roomId: number; holds: string }
+  /** The hole-wide tank fill: electrolyzers fill the O2 tanks this far (0..1) once the air is at its target. */
+  | { type: "setTankFill"; fill: number }
   | { type: "setPriority"; roomId: number; priority: Priority }
   /** Pause a room, or have it stop while its main output is at or above stopAt (null clears it). */
   | { type: "setRoomControl"; roomId: number; paused?: boolean; stopAt?: number | null }
@@ -293,6 +296,9 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     case "consoleFinish": {
       const n = state.construction?.queue.length ?? 0;
       finishAll(state, config);
+      // A sealed dome's shaft is filled at once too.
+      if (state.air?.shaft) state.air.shaft.made = state.air.shaft.need;
+      openDomeWhenFull(state, config);
       recomputeAccess(layout);
       return n ? { ok: true } : { ok: false, reason: "Nothing is waiting to be built" };
     }
@@ -470,12 +476,18 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     case "setHolds": {
       const room = layout.rooms.find((r) => r.id === cmd.roomId);
       const choices = room && roomDef(room.type).holds;
-      if (!choices) return { ok: false, reason: "Only tanks hold a choice of water" };
+      if (!choices) return { ok: false, reason: "Only tanks hold a choice of what they store" };
       if (!choices.includes(cmd.holds)) return { ok: false, reason: `A ${roomDef(room!.type).name.toLowerCase()} can't hold "${cmd.holds}"` };
       // Whatever no longer fits once the tank changes over is lost with the next overflow.
       if (cmd.holds === choices[0]) delete room!.holds;
       else room!.holds = cmd.holds;
       layout.version++;
+      return { ok: true };
+    }
+    case "setTankFill": {
+      if (!Number.isFinite(cmd.fill)) return { ok: false, reason: "Tank fill must be a number" };
+      airVolume(state, config);
+      state.air!.tankFill = Math.max(0, Math.min(1, cmd.fill));
       return { ok: true };
     }
     case "answerVisit":

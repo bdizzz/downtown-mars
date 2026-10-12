@@ -120,11 +120,13 @@ export function wants(hole: SimState): { room: string; crop?: string; holds?: st
   const res = hole.resources;
   const met = hole.population.needsMet;
   const out: { room: string; crop?: string; holds?: string; near?: Need }[] = [];
-  // The air: CO2 building up, too few scrubbers for everyone, or oxygen thinning with nothing to
-  // make more (with life support, a dip after digging just needs time to refill).
+  // The air: oxygen thin with no electrolyzer to make more (or every one flat out), then CO2
+  // building up or too few scrubbers for everyone. A dip after digging just needs time to refill.
   const scrubs = roomDef("life_support").scrubs!.co2!;
-  const thin = airPct(hole, config, "o2") < config.air.o2Low && count(hole, "life_support") === 0;
-  if (airPct(hole, config, "co2") > 0.5 || thin || count(hole, "life_support") * scrubs < pop) out.push({ room: "life_support" });
+  const splitters = hole.layout.rooms.filter((r) => r.type === "electrolyzer");
+  const flatOut = splitters.length > 0 && splitters.every((r) => (hole.roomStatus[r.id]?.rate ?? 0) > 0.99);
+  if (splitters.length === 0 || (airPct(hole, config, "o2") < config.air.o2Low && flatOut)) out.push({ room: "electrolyzer" });
+  if (airPct(hole, config, "co2") > 0.5 || count(hole, "life_support") * scrubs < pop) out.push({ room: "life_support" });
   if (limited(hole, "power")) out.push({ room: "solar_array" });
   // Maintenance eats machinery: another machine shop once there's barely any left for building.
   const shops = count(hole, "machine_shop");
@@ -219,6 +221,9 @@ function placeNear(hole: SimState, type: string, home: RoomInstance): boolean {
   return false;
 }
 
+/** The air's rooms: the CO2 scrubber and the electrolyzer. They jump the queue and skip the kit's savings. */
+const AIR = ["life_support", "electrolyzer"];
+
 /** Rooms a player would stand down first to free hands for air, food and water. */
 const EXPENDABLE = ["machine_shop", "smelter", "rover_depot", "staging_bay"];
 
@@ -232,16 +237,20 @@ function backlog(hole: SimState): number {
 export function adapt(hole: SimState, saving: string[] = []): string | null {
   let freeHands = hole.workforce.total - hole.workforce.employed;
   let list = wants(hole);
-  // Air first: a life support already in the queue goes to the front.
-  if (list[0]?.room === "life_support") {
-    const queued = hole.construction.queue.find((j) => hole.layout.rooms.find((r) => r.id === j.roomId)?.type === "life_support");
+  // Air first: a scrubber or electrolyzer already in the queue goes to the front.
+  const air = list[0] && AIR.includes(list[0].room) ? list[0].room : null;
+  if (air) {
+    const queued = hole.construction.queue.find((j) => hole.layout.rooms.find((r) => r.id === j.roomId)?.type === air);
     if (queued && hole.construction.queue[0] !== queued) applyCommand(hole, { type: "prioritize", jobId: queued.id });
   }
   // A long queue: more construction crews before anything else, and only essentials on top of it.
   const late = backlog(hole);
   if (late > 24 && count(hole, "construction_office") === 0) list = [{ room: "construction_office" }, ...list];
-  if (late > 72) list = list.filter((w) => w.room === "life_support" || w.room === "construction_office");
-  if (list[0]?.room === "life_support" && freeHands < roomDef("life_support").staff) {
+  if (late > 72) list = list.filter((w) => AIR.includes(w.room) || w.room === "construction_office");
+  // Gray water overflowing with no recycler at all (T-148): the first is as urgent as air.
+  const grayFull = (hole.resources.grayWater ?? 0) >= (capacities(hole, config).grayWater ?? Infinity) - 1;
+  const urgent = air ?? (grayFull && count(hole, "water_recycler") === 0 ? "water_recycler" : null);
+  if (urgent && freeHands < roomDef(urgent).staff) {
     const spare = hole.layout.rooms.find((r) => EXPENDABLE.includes(r.type) && !r.paused && (hole.roomStatus[r.id]?.staff ?? 0) > 0);
     if (spare) {
       applyCommand(hole, { type: "setRoomControl", roomId: spare.id, paused: true });
@@ -250,7 +259,7 @@ export function adapt(hole: SimState, saving: string[] = []): string | null {
   }
   for (const w of list) {
     if (roomDef(w.room).staff > freeHands) continue; // it would stand empty
-    if (w.room !== "life_support" && Object.keys(roomDef(w.room).cost).some((id) => saving.includes(id))) continue;
+    if (!AIR.includes(w.room) && Object.keys(roomDef(w.room).cost).some((id) => saving.includes(id))) continue;
     const home = w.near ? shortHome(hole, w.near) : undefined;
     const placed = w.room === "ventilation_hub" ? ventilate(hole) : home ? placeNear(hole, w.room, home) : placeAnywhere(hole, w.room, w.crop);
     if (placed) {

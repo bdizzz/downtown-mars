@@ -24,6 +24,19 @@
       "air": true
     },
     {
+      "id": "o2Tank",
+      "name": "O2 in tanks",
+      "group": "air",
+      "baseCapacity": 0
+    },
+    {
+      "id": "co2Tank",
+      "name": "CO2 in tanks",
+      "group": "air",
+      "baseCapacity": 0,
+      "waste": true
+    },
+    {
       "id": "water",
       "name": "Water",
       "group": "water",

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { airPct } from "../src/sim/air";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { foundHole, foundingRefusal, kitProgress } from "../src/sim/founding";
@@ -83,8 +84,8 @@ describe("founding", () => {
     expect(child.population.count).toBe(network.seedKit.volunteers);
     expect(child.resources.metal).toBeCloseTo(metalKit);
     expect(child.messages.at(-1)!.text).toMatch(/new hole is founded/);
-    // They arrive with air to breathe until they build life support.
-    expect(child.resources.o2).toBeGreaterThanOrEqual(network.seedKit.goods.o2! - 1e-6);
+    // The crew seals the new hole and makes its air on arrival: O2 at the target, no kit oxygen needed (T-031).
+    expect(airPct(child, config, "o2")).toBeCloseTo(config.air.o2Target);
   });
 
   it("both holes then run, and the world saves and loads with them", () => {

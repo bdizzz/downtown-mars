@@ -40,6 +40,12 @@ export interface RoomDef {
    * the target costs power alone.
    */
   topsUpAir?: boolean;
+  /**
+   * Stands by (power only, status "standby") unless the air needs it: `o2Short` while the air
+   * wants more O2 than it has (below the target, the tank fill, or a dome to pressurize),
+   * `co2Over` while CO2 is above the scrub floor (air.ts `airNeeds`).
+   */
+  runsWhile?: "o2Short" | "co2Over";
   /** Restroom places: colonists it serves, from the homes nearest it first, within `reach` steps (amenities.ts). */
   sanitation?: number;
   /** A home with its own bathroom: its residents don't need a restroom. */

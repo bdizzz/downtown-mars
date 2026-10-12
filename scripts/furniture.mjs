@@ -845,6 +845,27 @@ item("scrubber_unit", "CO2 scrubber", [
   cyl([0.8, 3.0, -0.3], 0.35, 0.8, "metal"),
   box([0, 2.62, 0], [2.44, 0.05, 1.34], "dark"),
 ]);
+// The electrolyzer: a stack of cells splitting water, O2 out one side and hydrogen vented the other.
+item("electrolysis_stack", "Electrolysis stack", [
+  box([0, 0.12, 0], [2.6, 0.24, 1.0], "dark"),
+  ...[-1.0, -0.6, -0.2, 0.2, 0.6, 1.0].map((x) => box([x, 0.85, 0], [0.32, 1.2, 0.9], "steel")),
+  ...[-0.8, -0.4, 0, 0.4, 0.8].map((x) => box([x, 0.85, 0], [0.08, 1.24, 0.94], "accent")),
+  box([0, 1.5, 0], [2.6, 0.1, 1.0], "metal"),
+  // Water in below, gas out on top: white for oxygen, a hazard band on the vent.
+  cyl([-1.45, 0.5, 0], 0.2, 0.3, "water", { r: [0, 0, 90] }),
+  cyl([-0.7, 1.95, 0], 0.22, 0.8, "white"),
+  cyl([0.7, 1.95, 0], 0.22, 0.8, "metal"),
+  cyl([0.7, 2.2, 0], 0.24, 0.08, "hazard"),
+  box([1.0, 0.9, 0.52], [0.4, 0.3, 0.02], "glow", glow),
+]);
+// A gas tank room's vessel: a squat sphere on legs, banded in the room's colour.
+item("gas_sphere", "Gas tank", [
+  ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => box([sx * 0.95, 0.6, sz * 0.95], [0.12, 1.2, 0.12], "metal"))),
+  sph([0, 2.0, 0], 2.6, "white"),
+  cyl([0, 2.0, 0], 2.64, 0.18, "accent"),
+  cyl([0, 3.35, 0], 0.3, 0.2, "metal"),
+  box([0, 1.0, 1.0], [0.3, 0.3, 0.04], "dark"),
+]);
 item("gas_bottles", "Gas bottles", [
   box([0, 0.05, 0], [1.3, 0.1, 0.6], "dark"),
   ...[["white", -0.45], ["leaf", -0.15], ["white", 0.15], ["leaf", 0.45]].map(([c, x]) => cyl([x, 0.8, 0], 0.26, 1.4, c)),
@@ -1546,6 +1567,8 @@ const rooms = {
   tailings_reclaimer: ["filter_column", "big_tank", "pump", "pipe_run", "console", "barrel_group"],
   restroom: ["toilet_stall", "sink_basin", "shower_stall", "laundry_machine", "bench", "trash_bin"],
   life_support: ["scrubber_unit", "big_fan", "gas_bottles", "console", "pipe_run", "duct_riser"],
+  electrolyzer: ["electrolysis_stack", "big_tank", "pump", "pipe_run", "gas_bottles", "console"],
+  gas_tank: ["gas_sphere", "pipe_run", "valve_panel"],
   clinic: ["medical_bed", "med_cabinet", "monitor_stand", "partition", "scanner", "desk", "office_chair", "chair", "plant_pot", "water_cooler"],
   admin_office: ["reception_desk", "desk", "office_chair", "filing_cabinet", "meeting_table", "wall_screen", "plant_pot", "water_cooler", "bookshelf", "sofa"],
   battery_bank: ["battery_rack", "inverter", "console", "duct_riser"],
@@ -1606,6 +1629,8 @@ const hangings = {
   tailings_reclaimer: ["safety_sign", "gauge_panel", "readout_panel"],
   restroom: ["wall_mirror", "poster", "wall_lamp"],
   life_support: ["gauge_panel", "readout_panel", "safety_sign"],
+  electrolyzer: ["gauge_panel", "readout_panel", "safety_sign"],
+  gas_tank: ["gauge_panel", "safety_sign"],
   clinic: ["chart_board", "poster", "wall_clock", "readout_panel", "painting"],
   admin_office: ["mars_map", "painting", "wall_clock", "notice_board", "painting_wide"],
   battery_bank: ["gauge_panel", "readout_panel", "safety_sign"],
@@ -1665,7 +1690,7 @@ const WALL_FILL = {
 };
 const FILL_KIND = {
   bunk_dorm: "home", studio: "home", apartment: "home", flat: "home", family_apartment: "home", suite: "home", residence: "home", elder_care: "home",
-  water_tank: "plant", water_recycler: "plant", tailings_reclaimer: "plant", life_support: "plant", battery_bank: "plant", deep_well_pump: "plant", smelter: "plant", silicon_refinery: "plant", composter: "plant", concrete_plant: "plant",
+  water_tank: "plant", water_recycler: "plant", tailings_reclaimer: "plant", life_support: "plant", electrolyzer: "plant", gas_tank: "plant", battery_bank: "plant", deep_well_pump: "plant", smelter: "plant", silicon_refinery: "plant", composter: "plant", concrete_plant: "plant",
   machine_shop: "workshop", electronics_fab: "workshop", construction_yard: "workshop",
   admin_office: "office", site_office: "office", construction_office: "office", clinic: "office", school: "office",
   storeroom: "store", warehouse: "store", depot: "store", staging_bay: "store", cargo_elevator: "store",

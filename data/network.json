@@ -60,9 +60,8 @@
     "extraDepositRadiusDeg": 1.5
   },
   "seedKit": {
-    "_note": "What a staging bay gathers before a new hole can be founded, and how long a fully staffed bay takes to gather it. It never takes a hole below reserveFraction of a kit's worth of anything. Oxygen is in the kit because a new hole has no life support yet.",
+    "_note": "What a staging bay gathers before a new hole can be founded, and how long a fully staffed bay takes to gather it. It never takes a hole below reserveFraction of a kit's worth of anything. No oxygen: the crew seals the new hole and makes its air on arrival (sim/founding.ts), and the machinery covers its electrolyzer, scrubber and recycler.",
     "goods": {
-      "o2": 60,
       "machinery": 6,
       "electronics": 4,
       "metal": 40,
