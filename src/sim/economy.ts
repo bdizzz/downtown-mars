@@ -122,9 +122,11 @@ function storesOf(room: RoomInstance): Record<string, number> {
 
 /** The stored good a room exists to make, if any: what "stop at" watches. */
 export function mainOutput(room: RoomInstance, cfg: SimConfig): string | null {
+  // Not the air (the electrolyzer and scrubbers already stop at its target), nor a byproduct.
+  const byproducts = roomDef(room.type).byproducts ?? [];
   const id = Object.keys(roomSpec(room, cfg).makes).find((k) => {
     const def = resourceDefs.find((r) => r.id === k);
-    return def && !def.flow && !def.waste;
+    return def && !def.flow && !def.waste && !def.air && !byproducts.includes(k);
   });
   return id ?? null;
 }
