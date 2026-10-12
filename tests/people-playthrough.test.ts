@@ -30,7 +30,8 @@ describe("ninety minutes of people", () => {
     // The closed water loop (T-005): recyclers early, and this seed's home hole sits at 49 happiness
     // and full beds; over six seeds 6–15 born (10–15 before). Was 10. The air mix (T-026) dips
     // health while the holes dig, and births wait on it.
-    expect(born).toBeGreaterThanOrEqual(5);
+    // The air loop (T-031): over six seeds 4–16 born; this seed founds its child early and sits at 4. Was 5.
+    expect(born).toBeGreaterThanOrEqual(4);
     const children = net.world.holes.reduce((n, h) => n + h.population.cohorts.filter((c) => c.stage === "child").reduce((k, c) => k + c.count, 0), 0);
     expect(children).toBeLessThan(born); // the earliest have grown up
   });
@@ -48,21 +49,22 @@ describe("ninety minutes of people", () => {
   });
 
   it("outgrows a single hole by a wide margin", () => {
-    // 1.3 until the air mix met the water loop (T-026 after T-005): the child hole now struggles (below). T-031.
-    expect(net.log.at(-1)!.total).toBeGreaterThan(solo.log.at(-1)!.total * 1.2);
+    // Eased to 1.2 while the air mix and the water loop starved the child (T-026 after T-005); back to 1.3 (T-031).
+    expect(net.log.at(-1)!.total).toBeGreaterThan(solo.log.at(-1)!.total * 1.3);
     // Gallery tubes on every new floor (milestone 11) cost rock and crew time: a little slower than before (was 160).
     // Windows paid for (milestone 13): this seed's run slows again; other seeds reach 139–147 (was 150).
     // Drill finds (milestone 14): the bot taps every one it's offered, and over six seeds day 80 lands at 115–159 (was 130).
     // The closed water loop (T-005): over six seeds day 80 lands at 104–142 (115–146 before), and day 90 ends higher
     // on average (148 against 137), with almost no water from Earth. Was 110.
-    expect(at(80).total).toBeGreaterThan(100);
+    // The air loop (T-031): the child is founded earlier (day 46 on this seed, sending 12 away sooner) and now thrives;
+    // over six seeds day 80 lands at 80–147 and the network beats solo by 1.04–1.79. Was 100.
+    expect(at(80).total).toBeGreaterThan(90);
   });
 
   it("keeps the child hole alive", () => {
-    // Was healthy (above 50) and above 50 people. With the air mix (T-026) on the water loop (T-005),
-    // this seed's child digs its air thin, health falls below Earth's bar for sending colonists, it
-    // never has hands for a recycler, gray water backs up and the galley stalls: it ends near 13
-    // people at 0 health. T-031 rebalances; restore these checks then.
-    expect(child!.population.count).toBeGreaterThan(5);
+    // Only "alive" while the air mix (T-026) on the water loop (T-005) starved it. Restored (T-031): the child builds
+    // its electrolyzer first, a gray tank and a recycler early, and over six seeds ends at 36–52 people, five of six healthy.
+    expect(child!.population.health).toBeGreaterThan(50);
+    expect(child!.population.count).toBeGreaterThan(50);
   });
 });
