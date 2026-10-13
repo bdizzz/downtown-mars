@@ -24,3 +24,4 @@ PLAN-M14.md or a new section in EVENTS.md: how outcomes work; the `_note` in eve
 
 ## History
 - 2026-10-11 16:09 opened from F-016 (agreed)
+- 2026-10-13 00:46 building on t-150-rolled-outcomes

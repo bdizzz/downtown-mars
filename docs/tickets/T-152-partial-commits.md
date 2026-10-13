@@ -21,3 +21,4 @@ A choice can declare a range (min to asked) for colonists or a resource; the car
 
 ## History
 - 2026-10-11 16:09 opened from F-016 (agreed)
+- 2026-10-13 00:46 building on t-150-rolled-outcomes (with T-150)
