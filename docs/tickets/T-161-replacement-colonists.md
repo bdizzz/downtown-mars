@@ -1,7 +1,7 @@
 ---
 id: T-161
 title: Below 20 colonists, supply drops sometimes bring replacements, to pull a hole out of a tailspin
-status: open
+status: done
 size: S
 area: sim, balance
 touches: [src/sim/earth.ts, data/config.json, tests/]
@@ -29,3 +29,5 @@ GUIDE.md: Earth and supply drops; DECISIONS.md: the rescue rule.
 ## History
 - 2026-10-12 19:55 opened from N-0085
 - 2026-10-12 19:59 questions answered
+- 2026-10-12 20:07 building on t-162-game-over
+- 2026-10-12 20:17 built

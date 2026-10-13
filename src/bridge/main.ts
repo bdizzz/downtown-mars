@@ -11,7 +11,7 @@ import type { RoomSpots } from "../render3d/people3d";
 import { inspect, roomAtPoint } from "./inspect";
 import { answerProposal, chainedMessage, chainEnd, chainStep, edgeCommand, edgeHover, hover, newChainState, palette, paletteKey, place, type BuildTool, type CorridorTool } from "./build";
 import { walkMap } from "./walkmap";
-import { dayOf, isSlot, readSlot, savesList, writeSlot } from "./saves";
+import { dayOf, isSlot, readSlot, savesList, slotFailed, writeSlot } from "./saves";
 import { office, officeKey } from "./office";
 import { flows, trends } from "./charts";
 import { mapView, networkView, siteView } from "./network";
@@ -23,6 +23,8 @@ import { advanceStep, FOLLOW, metGoals, pickGoal } from "../ui/tutorialGoals";
 import { planFieldKey, planFieldMessage, planKey, planMessage, type FieldView } from "./plan";
 import { terrainKey, terrainMessage } from "./terrain";
 import { welcomeCard } from "../view/welcome";
+import { nextFailureCard, type FailureCard } from "../view/failure";
+import type { Snapshot } from "../sim/snapshot";
 import { emittersKey, emittersOf } from "../render3d/effects3d";
 
 // The Godot bridge (docs/PLAN-GODOT.md): the simulation in Node, served over a local socket to the
@@ -199,7 +201,9 @@ type BridgeMessage =
   /** First person: a floor's walking map (walkmap.ts). */
   | { type: "walkmap"; floor: number }
   /** The new game's welcome card was read (it's sent until then, to every viewer that connects). */
-  | { type: "welcomeSeen" };
+  | { type: "welcomeSeen" }
+  /** The failure card on screen (view/failure.ts) was read. */
+  | { type: "failureSeen" };
 
 function send(msg: object): void {
   const line = JSON.stringify(msg) + "\n";
@@ -255,6 +259,35 @@ function sendInspect(): void {
   for (const c of clients) c.write(line);
 }
 
+/** A failed hole's card (view/failure.ts, T-162) waiting to be read: sent to every viewer that connects until it is. */
+let failureCard: FailureCard | null = null;
+/** Failed holes whose card was sent (or that had failed before the game loaded), per game. */
+let failedSeen = { gameId: -1, ids: new Set<number>(), over: false };
+
+/** A hole has failed: its card, once. When every hole has, the game is over, and the autosave keeps it, marked failed. */
+function checkFailure(snap: Snapshot): void {
+  if (failedSeen.gameId !== snap.gameId) {
+    failedSeen = { gameId: snap.gameId, ids: new Set(snap.holes.filter((h) => h.failed).map((h) => h.id)), over: false };
+    failureCard = null;
+    return;
+  }
+  if (failureCard || failedSeen.over) return;
+  const card = nextFailureCard(snap.holes, snap.gameOver, failedSeen.ids);
+  if (!card) return;
+  if (card.holeId !== null) failedSeen.ids.add(card.holeId);
+  if (card.kind === "over") failedSeen.over = true;
+  failureCard = card;
+  send(card);
+  if (card.kind === "over" && dailyAutosave) {
+    try {
+      writeSlot(host.world(), "autosave");
+      send(savesList());
+    } catch (e) {
+      console.error("Autosave failed:", e);
+    }
+  }
+}
+
 /** A new game's welcome card (view/welcome.ts) hasn't been read yet: a loaded game doesn't get one. */
 let welcomePending = true;
 /** A loaded game starts paused (T-146), unless --speed says otherwise. */
@@ -266,7 +299,8 @@ if (args.load) {
 }
 // Pick up where the last game left off, if there's an autosave (the viewer starts its bridge so).
 else if (args.continue) {
-  const data = readSlot("autosave");
+  // A failed game's autosave is kept to look back on, not continued (T-162): a new game instead.
+  const data = slotFailed("autosave") ? null : readSlot("autosave");
   if (data) {
     host.onMessage({ type: "load", id: 0, data });
     welcomePending = false;
@@ -303,6 +337,7 @@ const server = createServer((socket) => {
   sendPalette(true);
   sendOffice(true);
   if (welcomePending) socket.write(JSON.stringify(welcomeCard()) + "\n");
+  if (failureCard) socket.write(JSON.stringify(failureCard) + "\n");
   let buffer = "";
   socket.on("data", (chunk: string) => {
     buffer += chunk;
@@ -368,6 +403,8 @@ const server = createServer((socket) => {
           } else send({ type: "notice", text: "Nothing saved there" });
         } else if (msg.type === "welcomeSeen") {
           welcomePending = false;
+        } else if (msg.type === "failureSeen") {
+          failureCard = null;
         } else if (msg.type === "quit") {
           shutDown("the viewer closed");
         } else if (msg.type === "walkmap") {
@@ -487,6 +524,7 @@ setInterval(() => {
       for (const c of clients) c.write(line + "\n");
     }
     sendTutorial(snap);
+    checkFailure(snap);
   }
 }, 1000 / config.snapshotsPerSecond);
 setInterval(() => {

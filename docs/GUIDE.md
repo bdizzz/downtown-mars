@@ -163,7 +163,8 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 
 ## Earth, storms, the office and events
 
-- **Earth** sends supply drops every few months until you can stand on your own.
+- **Earth** sends supply drops every few months until you can stand on your own. Each one covers what you're short of in food, water and oxygen, plus some materials, and up to six colonists if there are free beds and your people are in good health (50 or more). A hole that's dwindling (under 20 people) gets **replacements** even in poor health: half its drops bring three colonists, as long as there are beds for them.
+- **A hole fails** when its last colonist is gone and it stays empty for half a month: with no one left to open the airlock, no newcomers can come in. Its card says how long it lasted and how many lived there at its peak. In a network, the others carry on; when **every** hole has failed the game is over and the card leads back to the start screen. The save is kept (shown as *Failed* in the menu) but can't be loaded to play on.
 - **Dust storms** are forecast a few months ahead (a storm chip among what needs you counts down), then blow for a month or two, halving what the solar arrays make. Charge your batteries before one hits. In 3D the sky thickens to a murk, grit streams past, and the panels dull over.
 - **The office:** colonists visit with problems. What you promise, they remember.
 - **Events:** things happen, and you choose. A card slides in at the top left with the choices (each with what it costs and does) and how long you have. The game keeps running; if you don't decide, it takes its own course.

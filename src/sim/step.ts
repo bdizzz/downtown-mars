@@ -15,6 +15,7 @@ import { openDomeWhenFull, stepConstruction } from "./construction";
 import type { SimState } from "./state";
 
 import { stepHistory } from "./history";
+import { stepFailure } from "./failure";
 
 // Advance the simulation by one fixed tick. Mutates state in place.
 export function step(state: SimState, cfg: SimConfig): void {
@@ -40,4 +41,5 @@ export function step(state: SimState, cfg: SimConfig): void {
   stepEvents(state, cfg);
   stepLedger(state, cfg);
   stepHistory(state, cfg);
+  stepFailure(state, cfg);
 }

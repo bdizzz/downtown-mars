@@ -98,6 +98,8 @@ export interface HoleSummary {
   cultureTarget: Culture;
   /** The shaft has its dome: a hole's crowning work. */
   domed?: boolean;
+  /** The hole has failed (T-162): how many days it lasted, and the most people it had. */
+  failed?: { days: number; peak: number };
 }
 
 // What the views get to see: the hole being looked at, in full, plus a line
@@ -125,6 +127,8 @@ export interface Snapshot {
   routes: RouteView[];
   /** How each hole sees each other hole. */
   relations: RelationView[];
+  /** Every hole has failed: the game is over (T-162). The worker fills it in. */
+  gameOver: boolean;
   tick: number;
   time: GameTime;
   layout: Layout;
@@ -215,6 +219,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     convoys: [],
     routes: [],
     relations: [],
+    gameOver: false,
     tick: state.tick,
     time: gameTime(state.tick, cfg),
     layout: state.layout,

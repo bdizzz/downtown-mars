@@ -205,6 +205,8 @@ export interface SaveSummary {
   /** Deepest hole. */
   floors: number;
   holes: number;
+  /** Every hole failed (T-162): kept to look back on, not to play on. */
+  failed?: boolean;
 }
 
 type StoredHole = Omit<SimState, "effects">;
@@ -220,6 +222,7 @@ export function summarize(world: World, cfg: SimConfig): SaveSummary {
     population: world.holes.reduce((n, h) => n + h.population.count, 0),
     floors: Math.max(...world.holes.map((h) => h.layout.hole.floors)),
     holes: world.holes.length,
+    ...(world.over ? { failed: true } : {}),
   };
 }
 
@@ -228,6 +231,9 @@ export function serialize(world: World): string {
   const file: SaveFile = { game: "downtown-mars", version: SAVE_VERSION, state: { ...world, holes } };
   return JSON.stringify(file);
 }
+
+/** Why a failed game's save won't load (T-162). */
+export const FAILED_SAVE = "That colony has failed: its save is kept to look back on, but it can't be played on.";
 
 export type LoadResult = { ok: true; world: World } | { ok: false; reason: string };
 
@@ -250,6 +256,7 @@ export function deserialize(json: string): LoadResult {
     const unknown = hole.layout?.rooms.find((r) => !isRoomType(r.type));
     if (unknown) return { ok: false, reason: `That save has a room this version doesn't know: "${unknown.type}".` };
   }
+  if (state.over) return { ok: false, reason: FAILED_SAVE };
   const holes = state.holes.map((h) => ({ ...h, effects: refreshEffects(h.layout, null) }) as SimState);
   return { ok: true, world: { ...state, holes } };
 }

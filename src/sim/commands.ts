@@ -14,7 +14,7 @@ import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, CORRIDORS, f
 import { edgeById, outsideEdges } from "./edges";
 import { setRoomWindows, wallOf, windowCost, windowRefusal } from "./windows";
 import { domeRefusal, dropCorridors, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRoom } from "./construction";
-import { holeGates, unlock, UNLOCK_GATES } from "./people";
+import { addAdults, holeGates, syncCount, unlock, UNLOCK_GATES } from "./people";
 import { allocationRefusal } from "./storage";
 import { answerVisit } from "./visits";
 import { answerEvent, consoleEvent } from "./events";
@@ -67,6 +67,8 @@ export type SimCommand =
   | { type: "consoleShowcase"; floors: number }
   /** Testing, from the browser console: a dust storm, starting in `inDays` (0: now) and lasting `days`; or clear skies (days 0). */
   | { type: "consoleStorm"; inDays?: number; days?: number }
+  /** Testing, from the browser console: everyone replaced by `count` working adults (0 empties the hole, to see it fail). */
+  | { type: "consolePeople"; count: number }
   /** Console: raise an event now (a find on the deepest floor, a belt ship, a celebration). */
   | { type: "consoleEvent"; kind: string }
   /** Testing, from the browser console: set rooms' condition (0..1): one room, or every room that has one. */
@@ -289,6 +291,11 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       state.weather = { storm: { start, end: start + Math.round(days * tpd) } };
       return { ok: true };
     }
+    case "consolePeople":
+      state.population.cohorts = [];
+      addAdults(state, Math.max(0, Math.round(cmd.count)), config);
+      syncCount(state);
+      return { ok: true };
     case "consoleShowcase": {
       const r = buildShowcase(state, cmd.floors);
       return r.rooms ? { ok: true } : { ok: false, reason: "No room left to fill" };
