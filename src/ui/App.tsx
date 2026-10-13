@@ -50,8 +50,13 @@ import type { PendingBuild, Proposal } from "../view/types";
 import { BuildConfirm } from "./BuildConfirm";
 import { useSim } from "./useSim";
 import { useSounds } from "./useSounds";
+import { bootStep } from "./boot";
+import { UpdateBanner } from "./UpdateBanner";
+import { presetOf } from "../view/graphics";
 
 const NOTICE_MS = 3000;
+/** How deep the showcase behind the title is dug, for a player with no autosave (only its first floor shows). */
+const TITLE_SHOWCASE_FLOORS = 2;
 
 export function App() {
   const { snapshot, speed, setSpeed, setActiveHole, send, found, route, save, load, newGame, advance } = useSim();
@@ -147,6 +152,29 @@ export function App() {
   }, [cutaway]);
   const [helpOpen, setHelpOpen] = useState(false);
   const mapOpen = mode === "map";
+
+  // Behind the title (T-090): its first floor, the camera drifting round it. Your own hole, from the
+  // autosave, or else a showcase colony (sim/showcase.ts) built into the fresh game the sim starts
+  // with, which New game replaces. Phones, low graphics and the flat views get a painted still
+  // instead. The loading screen waits for the hole to arrive.
+  const titling = menu === "title";
+  const [sceneLoaded, setSceneLoaded] = useState(false);
+  useEffect(() => {
+    let live = true;
+    // A failed game's autosave can't be loaded (T-162), so it gets the showcase too.
+    const auto = readSave("autosave");
+    const showcase = () => send({ type: "consoleShowcase", floors: TITLE_SHOWCASE_FLOORS });
+    void (auto && !auto.summary.failed ? load(auto.data).then((r) => (r.ok ? r : showcase())) : showcase()).then(() => live && setSceneLoaded(true));
+    return () => {
+      live = false;
+    };
+  }, [load, send]);
+  useEffect(() => {
+    if (sceneLoaded && snapshot) bootStep("world");
+  }, [sceneLoaded, snapshot]);
+  const titleStill = settings.view !== "3d" || presetOf(settings.graphics) === "low" || matchMedia("(pointer: coarse) and (max-width: 760px)").matches;
+  // The title always looks on from Free view, whichever camera you play with. Kept stable, or the view would be re-sent it every render.
+  const titleView3d = useMemo(() => ({ ...settings.view3d, camera: "iso" as const }), [settings.view3d]);
   const [plannedSite, setPlannedSite] = useState<SitePick | null>(null);
 
   // Testing helpers in the browser console (dm.help()).
@@ -465,7 +493,7 @@ export function App() {
 
   return (
     <div
-      className={`app${settings.colorBlind ? " color-blind" : ""}${welcome ? " welcoming" : ""}${hudOpen ? " hud-open" : ""}`}
+      className={`app${settings.colorBlind ? " color-blind" : ""}${welcome ? " welcoming" : ""}${titling ? " titling" : ""}${hudOpen ? " hud-open" : ""}`}
       style={{ "--ui-scale": settings.uiScale } as React.CSSProperties}
     >
       {/* Build mode: a thin yellow frame round the screen, so it's always clear you're building. Clicks go through it. */}
@@ -592,7 +620,7 @@ export function App() {
             onConfirmBuild={setPendingBuild}
             proposal={proposal}
             onPropose={setProposal}
-            floor={cutaway ? null : shownFloor(lookFloor, floorCount, settings.view === "plan")}
+            floor={titling && !titleStill ? 1 : cutaway ? null : shownFloor(lookFloor, floorCount, settings.view === "plan")}
             snapshot={snapshot}
             tool={tool}
             onHover={setHover}
@@ -604,7 +632,8 @@ export function App() {
             colorBlind={settings.colorBlind}
             mode={settings.view}
             graphics={settings.graphics}
-            view3d={settings.view3d}
+            view3d={titling && !titleStill ? titleView3d : settings.view3d}
+            showcase={titling && !titleStill}
             lookSpeed={settings.lookSpeed}
             onCutAngle={(cutAngle) => updateSettings({ view3d: { ...settings.view3d, cutAngle } })}
             building={mode === "build"}
@@ -634,6 +663,7 @@ export function App() {
       {menu && (
         <Menu
           mode={menu}
+          still={titleStill}
           {...menuActions}
           error={menuError}
           tutorial={tutorialOn}
@@ -667,6 +697,7 @@ export function App() {
         />
       )}
       {helpOpen && <Help onClose={() => setHelpOpen(false)} />}
+      <UpdateBanner saveFirst={titling ? null : () => saveTo("autosave")} />
     </div>
   );
 }

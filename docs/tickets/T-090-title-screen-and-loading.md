@@ -1,7 +1,7 @@
 ---
 id: T-090
 title: A snazzy title screen, shown while the game loads, with a loading bar
-status: open
+status: done
 size: L
 area: ui, render3d
 touches: [index.html, src/ui/main.tsx, src/ui/App.tsx, src/ui/Menu.tsx, src/ui/styles.css, src/render3d/, src/view/font.ts, godot/src/]
@@ -33,3 +33,5 @@ ART.md: the title screen. GUIDE.md: Getting started.
 ## History
 - 2026-10-08 02:06 opened from N-0051
 - 2026-10-08 02:14 questions answered
+- 2026-10-12 20:06 building on t-090-title-screen-and-loading (with T-064)
+- 2026-10-12 20:21 built: loading screen with real progress, SVG logotype, title over the hole's first floor drifting at dusk (autosave, else a sim showcase rather than a bundled save that would go stale); painted still on phones, low graphics and flat views

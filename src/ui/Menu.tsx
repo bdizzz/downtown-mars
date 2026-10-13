@@ -7,6 +7,8 @@ import { APP_VERSION, useGitBranch } from "./version";
 interface Props {
   /** "title" before a game starts; "pause" in the middle of one. */
   mode: "title" | "pause";
+  /** The title over a painted Mars dusk rather than the live hole (phones, low graphics, the flat views). */
+  still?: boolean;
   onResume: () => void;
   onNewGame: () => void;
   onSave: (slot: Slot) => void;
@@ -98,7 +100,8 @@ export function Menu(props: Props) {
   const heading = confirm ? null : view === "settings" ? "Settings" : view === "save" ? "Save to…" : view === "load" ? "Load…" : inGame ? "Paused" : null;
 
   return (
-    <div className="menu-backdrop">
+    <div className={`menu-backdrop${inGame ? "" : ` title-backdrop${props.still ? " mars-dusk" : ""}`}`}>
+      {!inGame && <Logo />}
       <div
         ref={box}
         className={`menu${view === "settings" ? " menu-wide" : ""}`}
@@ -106,14 +109,7 @@ export function Menu(props: Props) {
         aria-modal="true"
         aria-label={heading ?? "Downtown Mars"}
       >
-        {mode === "title" && view === "main" && !confirm ? (
-          <header className="menu-title">
-            <h1>Downtown Mars</h1>
-            <p>Hole sweet hole.</p>
-          </header>
-        ) : (
-          heading && <h2>{heading}</h2>
-        )}
+        {heading && <h2>{heading}</h2>}
 
         {error && (
           <p className="menu-error" role="alert">
@@ -215,5 +211,24 @@ export function Menu(props: Props) {
         </p>
       </div>
     </div>
+  );
+}
+
+/**
+ * The game's name, with the borehole from the app icon as the O (public/hole.svg, drawn by
+ * scripts/icons.mjs). The loading screen in index.html carries the same markup and styles.
+ */
+function Logo() {
+  return (
+    <h1 className="logo" aria-label="Downtown Mars">
+      <span className="logo-word" aria-hidden="true">
+        D<img className="logo-o" src="./hole.svg" alt="" />
+        WNTOWN
+      </span>
+      <span className="logo-mars" aria-hidden="true">
+        MARS
+      </span>
+      <span className="logo-tag">Hole sweet hole.</span>
+    </h1>
   );
 }

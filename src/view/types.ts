@@ -119,6 +119,8 @@ export interface Stage {
   setBuildMode(on: boolean): void;
   /** The 3D camera and see-through toggles (the 2D views ignore it). */
   setView3d(v: View3d): void;
+  /** Behind the title menu: the camera drifts slowly round the hole at dusk (views without it ignore it). */
+  setShowcase?(on: boolean): void;
   destroy(): void;
 }
 

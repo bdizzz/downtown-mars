@@ -113,3 +113,34 @@ for (const [name, size, scale] of icons) {
   writeFileSync(new URL(name, dir), png(size, scale));
   console.log(`public/icons/${name}`);
 }
+
+// The same borehole as an SVG, for the logotype's O (the title and loading
+// screens, T-090): the rings as wedges in the same colours, the rim, the
+// gallery tube and the drill's glow. Each ring has a class, so the title can
+// turn them slowly.
+const css = (c) => `#${c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
+const pt = (r, a) => `${(50 + r * Math.sin(a)).toFixed(2)} ${(50 - r * Math.cos(a)).toFixed(2)}`;
+function svgRing(r0, r1, n, seed, cls) {
+  const [i0, o0] = [r0 + 0.5, r1 - 0.5];
+  const half = 0.3 / ((r0 + r1) / 2); // half a rock seam between rooms
+  const paths = [];
+  for (let i = 0; i < n; i++) {
+    const [a0, a1] = [(i / n) * 2 * Math.PI + half, ((i + 1) / n) * 2 * Math.PI - half];
+    const fill = css(mix(rooms[Math.floor(hash(i + 1, seed) * rooms.length)], rock, 0.18));
+    paths.push(`<path fill="${fill}" d="M${pt(i0, a0)}L${pt(o0, a0)}A${o0} ${o0} 0 0 1 ${pt(o0, a1)}L${pt(i0, a1)}A${i0} ${i0} 0 0 0 ${pt(i0, a0)}Z"/>`);
+  }
+  return `<g class="${cls}">${paths.join("")}</g>`;
+}
+const svg = [
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">`,
+  `<defs><radialGradient id="glow"><stop offset="0" stop-color="${css(accent)}"/><stop offset="0.6" stop-color="${css(mix(accent, shaft, 0.75))}"/><stop offset="1" stop-color="${css(shaft)}"/></radialGradient></defs>`,
+  `<circle cx="50" cy="50" r="50" fill="${css(mix(accent, rock, 0.15))}"/>`,
+  `<circle cx="50" cy="50" r="46.5" fill="${css(rock)}"/>`,
+  svgRing(32, 46.5, 16, 2, "ring-2"),
+  svgRing(20, 32, 9, 1, "ring-1"),
+  `<circle cx="50" cy="50" r="19" fill="${css(mix(glass, shaft, 0.25))}"/>`,
+  `<circle cx="50" cy="50" r="18" fill="url(#glow)"/>`,
+  `</svg>`,
+].join("");
+writeFileSync(new URL("../hole.svg", dir), svg + "\n");
+console.log("public/hole.svg");

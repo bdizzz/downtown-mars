@@ -105,6 +105,13 @@ const ROCK_FLUSH = 0.05;
  * with the camera over the wall (nearer than `nearest` radii), as if it were that far out.
  */
 const SLICE = { fadeFrom: 6, fadeTo: 45, edge: 5, tint: 0.7, tintDepth: 30, seconds: 0.5, nearest: 1.05 };
+/**
+ * Behind the title (T-090): Free view drifting round a floor (radians a second), always at dusk (the hour, as a
+ * share of the day: low warm light, windows aglow), pulled back to `distance` of the farthest zoom and a little
+ * lower than play's view (`elev`, radians). On screens `wideFrom` px across or wider, the title sits on the left (styles.css .title-backdrop),
+ * so the picture moves right by `shift` of the width to put the hole beside it.
+ */
+const SHOWCASE = { turn: 0.04, dusk: 0.715, distance: 0.72, elev: 0.55, wideFrom: 900, shift: 0.2 };
 
 type Mode = Camera;
 
@@ -554,6 +561,23 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   };
   /** Where each camera starts: what Reset camera goes back to (Free view's distance and the fitted views are worked out from the hole). */
   const camHome = { ...cam };
+  /** Behind the title: drifting at dusk, and where the camera was pointing when it started (put back after). */
+  const showcase = {
+    on: false,
+    saved: { theta: cam.theta, iso: cam.iso, isoElev: cam.isoElev, panX: cam.panX, panZ: cam.panZ },
+    still: typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches,
+  };
+  /** The showcase's framing: pulled back and low, and on wide screens moved right of the title. */
+  function frameShowcase(): void {
+    const w = host.clientWidth;
+    const h = host.clientHeight;
+    if (showcase.on && w >= SHOWCASE.wideFrom) camera.setViewOffset(w, h, -w * SHOWCASE.shift, 0, w, h);
+    else camera.clearViewOffset();
+    if (!showcase.on || view.mode !== "iso") return;
+    cam.isoElev = SHOWCASE.elev;
+    cam.iso = isoMax() * SHOWCASE.distance;
+    cam.panX = cam.panZ = 0;
+  }
   /** First person: where the walker stands (metres), on which floor, and where they look. */
   const walker = { x: 0, z: 0, floor: 1, yaw: 0, pitch: 0 };
 
@@ -708,7 +732,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
 
   function updateSky(s: Snapshot): void {
-    const f = s.time.dayFraction;
+    const f = showcase.on ? SHOWCASE.dusk : s.time.dayFraction;
     const light = f > 0.25 && f < 0.75 ? Math.sin((Math.PI * (f - 0.25)) / 0.5) : 0;
     // Behind the sky dome, in case anything peeks past it (earth, with a floor picked).
     skyColor = new THREE.Color(C.nightSky).lerp(new THREE.Color(C.daySky), light);
@@ -1784,6 +1808,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     renderer.setSize(w, h);
     look.resize();
     camera.aspect = w / h;
+    frameShowcase();
     camera.updateProjectionMatrix();
     // The framing depends on the screen's shape: redo it until the player zooms.
     if (cutawayFitted) fitCutaway();
@@ -1812,6 +1837,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       updateReadout();
     }
     if (isoFrame(dt)) applyCamera();
+    if (showcase.on) {
+      frameShowcase();
+      if (!showcase.still) cam.theta += SHOWCASE.turn * dt;
+      applyCamera();
+    }
     // The drink steams and bobs as you go.
     if (drink.held) {
       drink.step(dt, walked, walker.pitch);
@@ -1827,7 +1857,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (graphics.life && hole && ambient >= 1 / AMBIENT_FPS) {
       dust.step(ambient);
       // Colonists, sparks and steam move only while the game runs.
-      if (performance.now() - lastTickChange < 400) {
+      if (performance.now() - lastTickChange < 400 || showcase.on) {
         people.step(ambient);
         grit.step(ambient, camera.position);
         shaftLight.step(ambient);
@@ -2331,6 +2361,17 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     setGraphics(g) {
       graphics = g;
       applyGraphics();
+    },
+    setShowcase(on) {
+      if (on === showcase.on) return;
+      showcase.on = on;
+      if (on) showcase.saved = { theta: cam.theta, iso: cam.iso, isoElev: cam.isoElev, panX: cam.panX, panZ: cam.panZ };
+      else Object.assign(cam, showcase.saved);
+      frameShowcase();
+      camera.updateProjectionMatrix();
+      applyCamera();
+      if (latest) updateSky(latest);
+      dirty = true;
     },
     setFloor(f) {
       if (f === pickedFloor) return;

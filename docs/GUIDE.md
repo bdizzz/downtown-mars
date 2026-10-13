@@ -22,6 +22,8 @@ Everything the game does, section by section. For a quick start, see the [README
 
 Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists, one pod, and a hole that goes nowhere yet.
 
+**The title screen:** while the game loads, a loading screen shows the name over a Mars dusk with a bar that fills as each part arrives (the code, the typeface, the colony, the 3D view, the map of Mars), then fades into the title. Behind the title menu your own hole drifts by at dusk, its first floor turning slowly: the one you were last playing (from the autosave), or a showcase colony if you haven't played yet or your last game failed. On a phone, on low graphics or with a flat view chosen, a painted dusk stands in for it.
+
 **The welcome card:** every new game (not a loaded one) opens with a short card on why you're here and why the colony goes underground: the surface is open to radiation from the Sun and deep space, so you dig. Only Mars and the hole show behind it, and the game waits; **And so it begins...** brings in the rest of the interface and starts the clock at 1×. Its text is in `data/tutorial.json` (`welcome`).
 
 **The tutorial:** your deputy's card (bottom right) gives one goal at a time, with a hint and a dot per goal. The goals can be met in any order: **‹** and **›**, or a dot, show another step, and done ones show ticked. The card stays on the step you picked until you meet it, then moves on to the next one not done yet. – shrinks it; **Hide tutorial** puts it away (**Settings → Game → Tutorial** brings it back).
@@ -273,7 +275,9 @@ On a narrow screen (under 760 px), the resources run in one line that scrolls si
 - **Android (Chrome):** open the game, then menu ⋮ → **Install app** (or **Add to Home screen**). It opens without browser bars and, from your first tap, full screen too: the phone's status and navigation bars hide. **Settings → Display → Full screen** (only in the installed app) brings them back. It shares its saves with the game in Chrome.
 - **iPhone and iPad (Safari):** open the game, then Share → **Add to Home Screen**. It opens without Safari's bars (the phone's status bar stays). A home-screen app on iOS keeps **its own saves, separate from Safari's**: export a save from the menu in Safari and import it in the app to carry a game across.
 
-Each install opens the build it was installed from, so a PR preview added to the home screen stays that preview (with its own saves, as in the browser). It still needs a connection to start; there's no offline play yet.
+Each install opens the build it was installed from, so a PR preview added to the home screen stays that preview (with its own saves, as in the browser).
+
+**Offline, and updates.** Once the game has loaded once, it plays without a connection (in airplane mode, say): the whole game and its typeface are kept on the device. When a newer version is out, the game downloads it quietly and shows a small banner at the top, **A new version is ready (v…) · Update**. Nothing changes until you tap **Update**: in the middle of a game it autosaves first, then reloads into the new version, and your saves carry over. ✕ puts the banner away until the next launch. It looks for a new version when you come back to the game and every hour while it runs. PR previews don't play offline; they always load fresh.
 
 ## Saving
 

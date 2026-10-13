@@ -158,8 +158,27 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
   padding: 20px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; gap: 12px;
 }
 .menu h2 { margin: 0; font-size: 18px; }
-.menu-title h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
-.menu-title p { margin: 4px 0 0; color: var(--accent); font-style: italic; }
+/* The title (T-090): the logotype over the hole drifting at dusk, or over the painted still
+   (.mars-dusk, from index.html). A vignette rather than a dimmer, so the hole shows through. */
+.title-backdrop {
+  flex-direction: column; gap: clamp(16px, 4vh, 36px); overflow-y: auto;
+  background: radial-gradient(ellipse 80% 70% at 50% 45%, transparent 35%, rgba(10, 5, 4, 0.6) 100%), linear-gradient(transparent 55%, rgba(10, 5, 4, 0.5));
+  animation: title-in 0.8s ease both;
+}
+.title-backdrop.mars-dusk { background: var(--mars-dusk); }
+.title-backdrop .menu { background: rgba(36, 22, 18, 0.82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); flex-shrink: 0; }
+.title-backdrop .logo-word { font-size: clamp(30px, min(11vw, 10vh), 76px); }
+.title-backdrop .logo-mars { font-size: clamp(18px, min(6.4vw, 6vh), 44px); }
+.title-backdrop .logo-o { animation: hole-turn 240s linear infinite; }
+/* Wide screens: the title on the left, the hole beside it (the 3D view moves its picture right to match, stage3d.ts SHOWCASE). */
+@media (min-width: 900px) {
+  .title-backdrop { align-items: flex-start; padding-left: 7vw; background: linear-gradient(90deg, rgba(10, 5, 4, 0.55), transparent 55%), linear-gradient(transparent 60%, rgba(10, 5, 4, 0.45)); }
+  .title-backdrop .logo { width: 420px; }
+}
+@keyframes title-in { from { opacity: 0; } }
+@keyframes hole-turn { to { transform: rotate(1turn); } }
+@media (prefers-reduced-motion: reduce) { .title-backdrop, .title-backdrop .logo-o { animation: none; } }
+@media (max-height: 520px) { .title-backdrop .logo-tag { display: none; } }
 .menu-slots, .menu-confirm { display: flex; flex-direction: column; gap: 6px; }
 .menu button {
   text-align: left; background: #2f1c16; color: var(--text); font: inherit;
@@ -717,8 +736,9 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .welcome h2 { font-size: 25px; color: var(--accent); }
 .welcome p { margin: 0; font-size: 16.5px; line-height: 1.5; }
 .welcome button.primary { margin-top: 6px; font-size: 16.5px; text-align: center; }
-/* Behind the welcome card, only Mars and the hole: the rest of the interface comes in when it's closed. */
-.app.welcoming > :not(.main):not(.menu-backdrop), .app.welcoming .view > :not(.pixi-host), .app.welcoming .pixi-host > :not(canvas) { display: none; }
+/* Behind the welcome card and the title, only Mars and the hole: the rest of the interface comes in when they're closed. */
+.app.welcoming > :not(.main):not(.menu-backdrop):not(.update-banner), .app.welcoming .view > :not(.pixi-host), .app.welcoming .pixi-host > :not(canvas),
+.app.titling > :not(.main):not(.menu-backdrop):not(.update-banner), .app.titling .view > :not(.pixi-host), .app.titling .pixi-host > :not(canvas), .app.titling .main > :not(.view) { display: none; }
 
 /* The top bar and the resource grid (T-089): icons from view/icons.ts, what needs you first, and
    cells that frame themselves when they're a worry (dashed amber), trouble (solid red) or full (dotted
@@ -817,3 +837,16 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   .resbar .group { flex-wrap: nowrap; }
   .resbar .group-cells { display: flex; flex-wrap: wrap; align-items: center; gap: 1px; flex: 1; min-width: 0; }
 }
+
+/* A new version is ready (T-064): a small banner at the top, over the title and the game alike, until tapped or dismissed. */
+.update-banner {
+  position: fixed; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 20;
+  display: flex; align-items: center; gap: 10px; max-width: calc(100% - 32px); box-sizing: border-box;
+  background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; padding: 6px 8px 6px 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5); font-size: 13.5px;
+}
+.update-banner button { font: inherit; border-radius: 5px; padding: 4px 12px; cursor: pointer; border: 1px solid var(--accent); }
+.update-banner button.primary { background: var(--accent); color: #1a0f0d; font-weight: 600; }
+.update-banner button:disabled { opacity: 0.6; cursor: default; }
+.update-banner .update-later { background: none; color: var(--text); border-color: transparent; padding: 4px 6px; opacity: 0.7; }
+.update-banner .update-later:hover { opacity: 1; }

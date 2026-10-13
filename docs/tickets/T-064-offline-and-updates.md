@@ -1,7 +1,7 @@
 ---
 id: T-064
 title: Offline play, and a prompt to update when a newer version is out
-status: open
+status: done
 size: M
 area: ui
 touches: [vite.config.ts, src/ui/main.tsx, src/ui/App.tsx, src/ui/version.ts, src/ui/Menu.tsx, package.json, .github/workflows/preview.yml]
@@ -34,3 +34,5 @@ GUIDE.md and README: offline play and updating. DECISIONS.md: previews and servi
 ## History
 - 2026-10-06 02:02 opened from N-0031
 - 2026-10-06 02:03 questions answered
+- 2026-10-12 20:06 building on t-090-title-screen-and-loading (with T-090)
+- 2026-10-12 20:21 built: vite-plugin-pwa 1.3.0 in prompt mode, update banner (autosaves mid-game), version.json for the waiting version; previews and dev get no service worker

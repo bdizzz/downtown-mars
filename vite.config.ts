@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
+import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig } from "vitest/config";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string };
@@ -64,6 +65,58 @@ function prTitle(): Plugin {
       writeFileSync(file, JSON.stringify(manifest, null, 2) + "\n");
     },
   };
+}
+
+/** The build's version, as the menu shows it: "v0.3.0 · 1a2b3c4". */
+const appVersion = `v${pkg.version} · ${commit()}`;
+
+/**
+ * Offline play and updates (T-064): a service worker that keeps the whole
+ * build (code, data, the map, icons) and the typeface, so an installed game
+ * opens without a connection. In "prompt" mode a new build downloads in the
+ * background and waits; the game offers it (ui/UpdateBanner.tsx) and only
+ * swaps when the player says so. version.json, left out of the cache, says
+ * which version is waiting. PR previews get no service worker, and the main
+ * game's leaves pr-preview/ alone (they share its origin and path). The dev
+ * server has none.
+ */
+function offline(): Plugin[] {
+  const preview = /^\d+$/.test(process.env.VITE_PR_NUMBER ?? "");
+  return [
+    {
+      name: "version-json",
+      apply: "build",
+      generateBundle() {
+        this.emitFile({ type: "asset", fileName: "version.json", source: JSON.stringify({ version: appVersion }) + "\n" });
+      },
+    },
+    ...VitePWA({
+      disable: preview,
+      registerType: "prompt",
+      injectRegister: false,
+      // public/manifest.webmanifest is the manifest (T-063); the plugin leaves it alone.
+      manifest: false,
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,svg,png,jpg,webmanifest}"],
+        // The map of Mars is the biggest file (about 2 MB).
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        navigateFallbackDenylist: [/\/pr-preview\//],
+        cleanupOutdatedCaches: true,
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
+            handler: "StaleWhileRevalidate",
+            options: { cacheName: "google-fonts-css" },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\//,
+            handler: "CacheFirst",
+            options: { cacheName: "google-fonts", expiration: { maxEntries: 20, maxAgeSeconds: 365 * 24 * 3600 }, cacheableResponse: { statuses: [0, 200] } },
+          },
+        ],
+      },
+    }),
+  ];
 }
 
 /**
@@ -149,10 +202,10 @@ function saveGodotScene(): Plugin {
 export default defineConfig({
   // Relative paths, so the build runs from any folder (itch.io serves games from a sub-path).
   base: "./",
-  plugins: [react(), saveLayouts(), saveGodotScene(), gitBranch(), prTitle()],
+  plugins: [react(), saveLayouts(), saveGodotScene(), gitBranch(), prTitle(), ...offline()],
   worker: { format: "es" },
   define: {
-    __APP_VERSION__: JSON.stringify(`v${pkg.version} · ${commit()}`),
+    __APP_VERSION__: JSON.stringify(appVersion),
   },
   build: {
     // Pixi alone is ~535 kB (~155 kB gzipped); it and Three.js each get their own chunk.
