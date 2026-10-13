@@ -44,6 +44,10 @@ public partial class BuildMode : Node3D
     readonly VBoxContainer _cardRows = new();
     string? _pointed;
     readonly StandardMaterial3D _good = Ghost(new Color(0.45f, 0.95f, 0.5f, 0.35f)), _bad = Ghost(new Color(1f, 0.35f, 0.3f, 0.35f));
+    /// <summary>A surface room in hand: every spot it could go, tinted faintly on the ground, and the one pointed at, stronger (T-107).</summary>
+    readonly MeshInstance3D _spots = new() { Name = "Spots", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+    readonly MeshInstance3D _spot = new() { Name = "Spot", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+    readonly StandardMaterial3D _spotsFaint = Spot(0.12f), _spotHover = Spot(0.3f);
     List<Room> _palette = new();
     List<(string id, string name)> _cats = new();
     string? _open;
@@ -82,6 +86,8 @@ public partial class BuildMode : Node3D
         _ghost.Visible = false;
         AddChild(_halo);
         AddChild(_chain);
+        AddChild(_spots);
+        AddChild(_spot);
 
         _strip.AddThemeStyleboxOverride("panel", Live.Panel());
         _strip.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
@@ -150,6 +156,39 @@ public partial class BuildMode : Node3D
         RenderPriority = 5,
     };
 
+    /// <summary>A surface spot's tint: as the ghost's green, but on the ground, so buildings and boulders stand over it.</summary>
+    static StandardMaterial3D Spot(float alpha) => new()
+    {
+        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        AlbedoColor = new Color(0.5f, 0.84f, 0.5f, alpha),
+        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+        RenderPriority = 4,
+    };
+
+    /// <summary>Triangles from the bridge (float32 xyz, base64) as a mesh in one material; empty when there are none.</summary>
+    static ArrayMesh TriMesh(string b64, Material m)
+    {
+        var f = MemoryMarshal.Cast<byte, float>(Convert.FromBase64String(b64)).ToArray();
+        var verts = new Vector3[f.Length / 3];
+        for (var i = 0; i < verts.Length; i++) verts[i] = new Vector3(f[i * 3], f[i * 3 + 1], f[i * 3 + 2]);
+        var mesh = new ArrayMesh();
+        if (verts.Length == 0) return mesh;
+        var arrays = new Godot.Collections.Array();
+        arrays.Resize((int)Mesh.ArrayType.Max);
+        arrays[(int)Mesh.ArrayType.Vertex] = verts;
+        mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
+        mesh.SurfaceSetMaterial(0, m);
+        return mesh;
+    }
+
+    /// <summary>The bridge's answer to picking a room: where it could go on the surface (nothing for a room inside the hole).</summary>
+    public void Spots(JsonElement msg)
+    {
+        _spots.Mesh = TriMesh(msg.GetProperty("tris").GetString() ?? "", _spotsFaint);
+        _spots.Visible = SurfaceTool;
+    }
+
     static void Style(Label l, int size, Color color)
     {
         l.AddThemeFontSizeOverride("font_size", size);
@@ -187,6 +226,7 @@ public partial class BuildMode : Node3D
         Demolishing = false;
         _demolishButton.ButtonPressed = false;
         _ghost.Visible = false;
+        _spots.Visible = _spot.Visible = false;
         ClearHalo();
         _tip.Visible = false;
         RefreshRooms();
@@ -408,6 +448,7 @@ public partial class BuildMode : Node3D
     {
         var same = Corridor == finish && _bulkhead == bulkhead && _windows == windows;
         Tool = null;
+        _spots.Visible = _spot.Visible = false;
         Demolishing = false;
         _demolishButton.ButtonPressed = false;
         Corridor = same ? null : finish;
@@ -505,6 +546,8 @@ public partial class BuildMode : Node3D
         _demolishButton.ButtonPressed = false;
         Tool = Tool == id ? null : id;
         _shape = 0;
+        _spots.Visible = _spot.Visible = false;
+        if (SurfaceTool) _send(new Dictionary<string, object> { ["type"] = "spots", ["room"] = Tool! });
         if (Tool == null) Drop();
         else if (_palette.FirstOrDefault(r => r.Id == id) is Room r && r.Category != _open) OpenCategory(r.Category);
         RefreshRooms();
@@ -613,6 +656,14 @@ public partial class BuildMode : Node3D
             _ghost.Visible = true;
         }
         else _ghost.Visible = false;
+        // A surface room: where it could go (fresh after each build), and the spot pointed at.
+        if (msg.TryGetProperty("spots", out var all))
+        {
+            _spots.Mesh = TriMesh(all.GetString()!, _spotsFaint);
+            _spots.Visible = SurfaceTool;
+        }
+        if (msg.TryGetProperty("spot", out var one)) _spot.Mesh = TriMesh(one.GetString()!, _spotHover);
+        _spot.Visible = SurfaceTool && msg.TryGetProperty("spot", out _);
         ShowHalo(msg);
     }
 
