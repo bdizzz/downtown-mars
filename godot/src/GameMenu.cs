@@ -18,7 +18,20 @@ public partial class GameMenu : Control
     readonly FileDialog _import = new() { FileMode = FileDialog.FileModeEnum.OpenFile, Access = FileDialog.AccessEnum.Filesystem, Filters = new[] { "*.json ; Downtown Mars saves" }, Title = "Import a save file", UseNativeDialog = true };
     readonly FileDialog _export = new() { FileMode = FileDialog.FileModeEnum.SaveFile, Access = FileDialog.AccessEnum.Filesystem, Filters = new[] { "*.json ; Downtown Mars saves" }, Title = "Export the game", UseNativeDialog = true };
     readonly ConfirmationDialog _confirmNew = new() { Title = "New game?", DialogText = "Start a new colony? The current game is lost unless it's saved.", OkButtonText = "New game" };
-    List<(string slot, string label, string? text)> _slots = new();
+    List<(string slot, string label, string? text, bool failed)> _slots = new();
+    bool _over;
+
+    /// <summary>Every hole has failed (T-162): nothing to resume, only a new game or another save.</summary>
+    public bool Over
+    {
+        get => _over;
+        set
+        {
+            if (_over == value) return;
+            _over = value;
+            Build();
+        }
+    }
     string? _exportPath;
     int _id = 2_000_000;
 
@@ -94,7 +107,8 @@ public partial class GameMenu : Control
     {
         _slots = new();
         foreach (var s in msg.GetProperty("slots").EnumerateArray())
-            _slots.Add((s.GetProperty("slot").GetString()!, s.GetProperty("label").GetString()!, s.GetProperty("text").ValueKind == JsonValueKind.String ? s.GetProperty("text").GetString() : null));
+            _slots.Add((s.GetProperty("slot").GetString()!, s.GetProperty("label").GetString()!, s.GetProperty("text").ValueKind == JsonValueKind.String ? s.GetProperty("text").GetString() : null,
+                s.TryGetProperty("failed", out var failed) && failed.GetBoolean()));
         _folder.Text = $"Saves are kept in {msg.GetProperty("folder").GetString()}";
         Build();
         if (Visible) Refocus();
@@ -128,23 +142,24 @@ public partial class GameMenu : Control
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color("#e8834a"));
         _rows.AddChild(title);
-        Add("Resume", () => Close());
+        if (!_over) Add("Resume", () => Close());
         Heading("Save");
-        foreach (var (slot, label, text) in _slots)
+        foreach (var (slot, label, text, _) in _slots)
         {
             if (slot == "autosave") continue;
             var s = slot;
             Add($"{label}: {text ?? "empty"}", () => _send(new Dictionary<string, object> { ["type"] = "saveSlot", ["slot"] = s }));
         }
         Heading("Load");
-        foreach (var (slot, label, text) in _slots)
+        foreach (var (slot, label, text, failed) in _slots)
         {
             var s = slot;
+            // A failed game's save is kept to look back on, not played on (T-162).
             Add($"{label}: {text ?? "empty"}", () =>
             {
                 _send(new Dictionary<string, object> { ["type"] = "loadSlot", ["slot"] = s });
                 Close(loaded: true);
-            }, text == null);
+            }, text == null || failed);
         }
         Heading("");
         Add("New game", () => _confirmNew.PopupCentered());

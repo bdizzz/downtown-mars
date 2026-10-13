@@ -1,5 +1,6 @@
 import type { SimConfig } from "./config";
 import { stepConvoys, stepStaging } from "./founding";
+import { everyHoleFailed } from "./failure";
 import { postMessage } from "./messages";
 import { network } from "./network";
 import { stepRoutes } from "./rovers";
@@ -13,6 +14,7 @@ import { totalPopulation, type World } from "./world";
  * stays deterministic), then what happens between holes.
  */
 export function stepWorld(world: World, cfg: SimConfig): void {
+  if (world.over) return; // every hole has failed: time stops
   world.tick += 1;
   for (const hole of world.holes) {
     step(hole, cfg);
@@ -34,4 +36,5 @@ export function stepWorld(world: World, cfg: SimConfig): void {
     world.mapUnlocked = true;
     postMessage(world.holes[0]!, cfg, "The map is open: scout a site for a second hole. Somewhere with what this one lacks.", "good");
   }
+  if (everyHoleFailed(world)) world.over = { tick: world.tick };
 }

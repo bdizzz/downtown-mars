@@ -147,6 +147,8 @@ export interface SimConfig {
     productivityFullAt: number;
   };
   messages: { keep: number };
+  /** A hole that stays empty this many days has failed (T-162): a dip shorter than that doesn't count. */
+  failure: { emptyDays: number };
   /** Neighbor effects: air quality every cell starts with, by ring (ring 1 first; the last carries on outward). */
   effects: {
     airQualityByRing: number[];

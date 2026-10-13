@@ -31,6 +31,7 @@ const HELP = `Downtown Mars console (the hole you're looking at):
   dm.floor(12, "fibre_panels")  room 12's floor (dm.floor(12) back to matching the walls)
   dm.event("belt_ship")      raise an event now (aquifer, ore_vein, silica_bed, lava_tube, gas_pocket, microfossils, belt_ship)
   dm.storm(1)               a dust storm now, for a day (dm.storm(2, 3): in 3 days, for 2; dm.storm(0) clears it)
+  dm.people(0)              everyone in the hole replaced by this many working adults (0 empties it: it fails in half a month)
   dm.command({ ... })       send any simulation command, as the game would (see SimCommand in src/sim/commands.ts)`;
 
 /** "metal", 50 or { metal: 50 }, as amounts. */
@@ -95,6 +96,9 @@ export function installConsole(api: Api): () => void {
     },
     storm(days = 1, inDays = 0) {
       return run({ type: "consoleStorm", days, inDays }, days > 0 ? `Dust storm ${inDays ? `in ${inDays} months` : "now"}, for ${days} month${days === 1 ? "" : "s"}` : "Clear skies");
+    },
+    people(count: number) {
+      return run({ type: "consolePeople", count }, `${count} ${count === 1 ? "colonist" : "colonists"}`);
     },
     async skip(days = 1) {
       const r = await api.advance(days);

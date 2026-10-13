@@ -39,6 +39,7 @@ export function destination(world: World, from: SimState): SimState | null {
   const options = world.holes.filter(
     (h) =>
       h !== from &&
+      !h.failed &&
       h.site &&
       !closedBorders(h) &&
       h.happiness.average >= from.happiness.average + m.happierBy &&

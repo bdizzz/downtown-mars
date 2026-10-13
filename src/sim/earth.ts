@@ -83,7 +83,8 @@ export function dailyGaps(state: SimState, cfg: SimConfig): Record<string, numbe
 export function stepEarth(state: SimState, cfg: SimConfig): void {
   const e = state.earth;
   const ec = cfg.earth;
-  if (state.tick < e.nextDropTick) return;
+  // A failed hole has no one to open the airlock (T-162).
+  if (state.tick < e.nextDropTick || state.failed) return;
 
   if (!padReady(state)) {
     if (!e.waiting) postMessage(state, cfg, "Supply drop is holding in orbit: the landing pad needs staff and power.", "warn");

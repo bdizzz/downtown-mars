@@ -115,7 +115,7 @@ describe("Earth supply drops", () => {
     const s = start();
     setAdults(s, 0, config); // nobody to staff the pad
     const metal = s.resources.metal;
-    ticks(s, firstDrop + 5);
+    ticks(s, firstDrop + 5, { ...noDelays, failure: { emptyDays: 100 } }); // an empty hole would fail first (T-162)
     expect(s.resources.metal).toBe(metal);
     expect(s.earth.waiting).toBe(true);
     expect(s.messages.find((m) => /orbit/.test(m.text))).toMatchObject({ kind: "warn" });

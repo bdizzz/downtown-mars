@@ -119,6 +119,7 @@
     "productivityFullAt": 50
   },
   "messages": { "keep": 20 },
+  "failure": { "emptyDays": 0.5 },
   "effects": {
     "airQualityByRing": [0, 0, -1, -1.5, -2, -2.5],
     "airborne": { "airQuality": { "leak": 0 }, "smell": { "leak": 1 } },
