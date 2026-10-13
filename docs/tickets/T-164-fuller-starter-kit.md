@@ -1,7 +1,7 @@
 ---
 id: T-164
 title: A new game's first hole starts with air, water tanks and power built; later holes with a battery only
-status: open
+status: done
 size: M
 area: sim, data
 touches: [data/config.json, src/sim/state.ts, src/sim/founding.ts, data/tutorial.json, src/ui/Welcome.tsx, tests/]
@@ -30,3 +30,4 @@ GUIDE.md: starting out; DECISIONS.md: the starter kits; tutorial text.
 - 2026-10-12 19:55 opened from N-0088
 - 2026-10-12 19:59 questions answered
 - 2026-10-13 00:52 building on t-164-fuller-starter-kit
+- 2026-10-13 01:01 built
