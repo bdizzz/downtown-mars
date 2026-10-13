@@ -40,7 +40,7 @@ Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists
 
 ## Building
 
-Open **Build** (B), pick a room from its category (or press its key: room keys work only in Build), then click a slot. Green means it fits; red says why not.
+Open **Build** (B), pick a room from its category (or press its key: room keys work only in Build), then click a slot. Green means it fits; red says why not. With a surface room in hand (solar arrays, the landing pad), every free spot round the hole it fits on is tinted faintly green on the ground, and the one under the pointer brighter.
 
 ### Tubes and corridors
 
@@ -80,7 +80,7 @@ Pause any staffed room, or have it stop at a stock level, from its details panel
 
 ## Digging
 
-- The drill only sinks the shaft. In 3D a big boring machine sits at the bottom of the hole, riding down as it digs: a turning cutterhead, grippers braced on the bore, a conveyor lifting spoil into a skip, and the hoist cable and power line up to the rim.
+- The drill only sinks the shaft. In 3D a big boring machine sits at the bottom of the hole, riding down as it digs: a turning cutterhead, grippers braced on the bore, a conveyor lifting spoil into a skip, and the hoist cable and power line up the shaft. The top of the shaft is lined with a concrete collar that rises into a rim round the hole, with a railed walkway on top (the shaft dome stands on it). On the rim, lattice towers hold a gantry over the hole with a sheave for each cable, and a winch at either end winds them in. The cables follow the drill down. It's only for looks.
 - The first floors go quickly; from floor 4 on, each floor takes twice as long (`digging.slowFromFloor`, `slowFactor`).
 - A new hole starts with only ring 1 of floor 1 dug out (and the landing kit's battery bank in ring 2). Every other slot is solid rock until it's dug out.
 - A room placed on rock is excavated first (3 hours a slot, bringing up its rock and whatever the hole sits on), then built.
@@ -89,7 +89,7 @@ Pause any staffed room, or have it stop at a stock level, from its details panel
 
 ## Getting in and out
 
-- People and goods come in through the **entrance** on floor 1 (its airlock stands at the rim).
+- People and goods come in through the **entrance** on floor 1 (its airlock is a concrete gatehouse built against the collar's rim).
 - Deeper floors are reached only by **stairs** or elevators down from there.
 - At 100 colonists a **cargo elevator** can run from the surface straight down to one floor, if its column above is clear.
 
