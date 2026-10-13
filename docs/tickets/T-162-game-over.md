@@ -1,7 +1,7 @@
 ---
 id: T-162
 title: A "the hole has failed" screen at zero colonists, then back to the start screen
-status: open
+status: done
 size: M
 area: sim, ui
 touches: [src/sim/, src/ui/App.tsx, src/ui/Menu.tsx, src/ui/Welcome.tsx, src/bridge/, godot/src/]
@@ -30,3 +30,4 @@ GUIDE.md: how a hole fails; DECISIONS.md: game over.
 - 2026-10-12 19:55 opened from N-0086
 - 2026-10-12 19:59 questions answered
 - 2026-10-12 20:07 building on t-162-game-over
+- 2026-10-12 20:17 built
