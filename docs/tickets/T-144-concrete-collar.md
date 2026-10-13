@@ -24,3 +24,4 @@ A ring of concrete (marscrete-coloured) lining the top couple of metres of the s
 ## History
 - 2026-10-11 15:52 opened from N-0078
 - 2026-10-11 16:08 questions answered
+- 2026-10-12 20:07 building on t-144-concrete-collar (with T-107)
