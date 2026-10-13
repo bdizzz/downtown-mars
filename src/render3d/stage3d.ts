@@ -30,6 +30,7 @@ import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, makeDome, makeLander, placeLander } from "./scenery3d";
 import { makeDrillRig, type DrillRig } from "./drillRig";
+import { makeCollar } from "./collar3d";
 import { Festival } from "./festival3d";
 import { RIG_DROP } from "./cylinder";
 import { occupied, People, type RoomSpots } from "./people3d";
@@ -521,6 +522,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** The glass dome over the shaft, once a hole has one. */
   let dome: THREE.Group | null = null;
   let domeFor = "";
+  /** The concrete collar round the top of the shaft, with the drill's headgear on it (T-144). */
+  let collar: THREE.Group | null = null;
+  let collarFor = "";
   /** The gallery tubes' runs, for the walkers: worked out again when the layout changes. */
   let tubes: TubeRun[] = [];
   let tubesFor = "";
@@ -1937,6 +1941,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (typeof o.userData.floor === "number") o.visible = f === null || o.userData.floor >= f;
     });
     if (terrain) terrain.group.visible = cut() === null || sliced();
+    if (collar) collar.visible = cut() === null;
     // With a floor picked you're looking underground: earth all round, no sky. Free view slices the land
     // open instead (the cut face), so the sky shows over it.
     // (The sky's shader isn't ported to WebGPU yet: a plain sky colour there.)
@@ -2019,6 +2024,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           people,
           // Sunlight down the shaft.
           shaftLight,
+          // The collar round the top of the shaft, and the camera, to inspect.
+          collar: () => collar,
+          camera,
           sunPools,
           // The overlay's meshes, to inspect.
           field: () => fieldGroup,
@@ -2041,7 +2049,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             const { GLTFExporter } = await import("three/examples/jsm/exporters/GLTFExporter.js");
             const { mergeGeometries } = await import("three/examples/jsm/utils/BufferGeometryUtils.js");
             const parts: THREE.Object3D[] = [];
-            for (const o of [holeGroup, layoutGroup, terrain?.group, rig?.group, dome]) {
+            for (const o of [holeGroup, layoutGroup, terrain?.group, rig?.group, dome, collar]) {
               if (!o) continue;
               o.updateMatrixWorld(true);
               // A copy, with instanced meshes baked into one plain mesh each (Godot doesn't read glTF's instancing extension).
@@ -2285,6 +2293,19 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const eventLanding = since < descent + config.ticksPerDay / 4 ? Math.min(1, since / descent) : null;
       const t = landing ? 1 - e.ticksToDrop / descent : eventLanding;
       placeLander(lander, snapshot.layout, t !== null && cut() === null ? t : null);
+      // The collar round the top of the shaft and its headgear: again for another hole (or game). Hidden with a floor picked, as the dome is.
+      const ck = `${gameId}:${snapshot.layout.hole.shaftRadiusM}`;
+      if (ck !== collarFor) {
+        collarFor = ck;
+        if (collar) {
+          scene.remove(collar);
+          dispose(collar);
+        }
+        collar = makeCollar(snapshot.layout.hole);
+        scene.add(collar);
+        applyFloorCut();
+        dirty = true;
+      }
       // The dome over the shaft, once it's built.
       const dk = snapshot.layout.domed ? `${gameId}:${snapshot.layout.hole.shaftRadiusM}` : "";
       if (dk !== domeFor) {

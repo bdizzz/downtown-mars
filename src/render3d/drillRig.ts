@@ -14,7 +14,8 @@ import { openShaftRadius, TAU } from "./cylinder";
 //                pads on the bore.
 //   muck         a conveyor carries spoil up the side, lumps riding it, into
 //                a skip on the deck; the skip hangs from the hoist cable,
-//                which runs from the mast's boom up to the rim.
+//                which runs from the mast's boom up to the headgear on the
+//                collar over the rim (collar3d.ts).
 //   deck         railed, with the cab (windows, a beacon, an aerial), a power
 //                pack (radiator, exhausts), tanks on saddles, a cable reel
 //                paying out the power line, gas bottles, crates and floodlights.
@@ -44,7 +45,7 @@ export interface DrillRig {
   group: THREE.Group;
   /**
    * Set where the dig front is (y of the cutter face), how much fresh bore there is above it (metres, up to the
-   * deepest floor), and whether it's boring. The hoist cable runs up to the rim; the grippers brace on the bore
+   * deepest floor), and whether it's boring. The cables run up to the headgear over the rim; the grippers brace on the bore
    * once there's room, and fold in clear of the gallery ledges above until then.
    */
   place(y: number, bore: number, active: boolean): void;
@@ -57,7 +58,7 @@ export interface DrillRig {
 }
 
 /** Diagonal black-and-yellow hazard stripes, as a repeating texture (none outside a browser). */
-function hazardTexture(): THREE.Texture | null {
+export function hazardTexture(): THREE.Texture | null {
   if (typeof document === "undefined") return null;
   const c = document.createElement("canvas");
   c.width = 64;
@@ -104,6 +105,25 @@ function gratingTexture(): THREE.Texture | null {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
+}
+
+/** The body drum's radius: the deck and everything on it are laid out from it. */
+function rigBodyRadius(hole: Hole): number {
+  return Math.min(openShaftRadius(hole) - 0.8, hole.shaftRadiusM * 0.5);
+}
+
+/**
+ * Where the two cables rise up the shaft (x, z round the shaft's axis): the hoist from the mast's sheave over
+ * the skip, the power line from the reel. The collar's headgear (collar3d.ts) hangs a sheave over each.
+ */
+export function rigCables(hole: Hole): { hoist: [number, number]; power: [number, number] } {
+  const bodyR = rigBodyRadius(hole);
+  return { hoist: [-bodyR * 0.15, -bodyR * 0.7], power: [bodyR * 0.05, bodyR * 0.62] };
+}
+
+/** How high above the rim the cables run (world y): into the headgear's sheaves, low enough to clear the shaft dome. */
+export function cableTop(hole: Hole): number {
+  return Math.min(3.7, hole.shaftRadiusM * 0.37);
 }
 
 export function makeDrillRig(hole: Hole): DrillRig {
@@ -207,7 +227,8 @@ export function makeDrillRig(hole: Hole): DrillRig {
   g.add(head);
 
   // ---- the drive: main bearing and its motors ----
-  const bodyR = Math.min(inner - 0.8, R * 0.5);
+  const bodyR = rigBodyRadius(hole);
+  const cables = rigCables(hole);
   add(g, new THREE.CylinderGeometry(bodyR * 1.15, bodyR * 1.2, 0.35, 48), steel, 0, 1.6, 0);
   bolts(g, bodyR * 1.12, 1.8, 32, 0.06);
   const motor = new THREE.CylinderGeometry(0.28, 0.28, 0.75, 14);
@@ -319,8 +340,7 @@ export function makeDrillRig(hole: Hole): DrillRig {
 
   // ---- the muck conveyor: up the side from the head to the skip on the deck ----
   // Up the side under the skip, so the spoil tips in.
-  const skipX = -bodyR * 0.15;
-  const skipZ = -bodyR * 0.7;
+  const [skipX, skipZ] = cables.hoist;
   const convA = Math.atan2(skipZ, skipX);
   const [cc, cs] = [Math.cos(convA), Math.sin(convA)];
   const conveyor = new THREE.Group();
@@ -420,7 +440,7 @@ export function makeDrillRig(hole: Hole): DrillRig {
     flange.rotation.x = Math.PI / 2;
   }
   for (const z of [-0.5, 0.5]) add(reel, new THREE.BoxGeometry(0.15, 0.8, 0.08), dark, 0, -0.3, z);
-  reel.position.set(bodyR * 0.05, 0.72, bodyR * 0.62);
+  reel.position.set(cables.power[0], 0.72, cables.power[1]);
   deck.add(reel);
 
   // Gas bottles in a rack, crates, and a toolbox.
@@ -491,12 +511,13 @@ export function makeDrillRig(hole: Hole): DrillRig {
     flood((deckR - 0.15) * Math.cos(a), 1.2, (deckR - 0.15) * Math.sin(a), a);
   }
 
-  // ---- cables up the shaft: the hoist from the sheave, the power line from the reel. Stretched in place(). ----
+  // ---- cables up the shaft to the collar's headgear: the hoist from the sheave, the power line from the reel. Stretched in place(). ----
+  const above = cableTop(hole);
   const hoistTop = deckY + 0.15 + mastH + 0.05;
   const hoist = add(g, new THREE.CylinderGeometry(0.06, 0.06, 1, 6), dark, skipX, 0, skipZ);
   hoist.name = "rig:hoist";
   const powerTop = deckY + 0.15 + 1.3;
-  const power = add(g, new THREE.CylinderGeometry(0.05, 0.05, 1, 6), rubber, bodyR * 0.05, 0, bodyR * 0.62);
+  const power = add(g, new THREE.CylinderGeometry(0.05, 0.05, 1, 6), rubber, cables.power[0], 0, cables.power[1]);
   power.name = "rig:power";
   g.userData.cableTops = { hoist: hoistTop, power: powerTop, conveyor: convLen };
 
@@ -511,7 +532,7 @@ export function makeDrillRig(hole: Hole): DrillRig {
       active = on;
       reachTo(bore >= GRIP_Y + PAD_H / 2 ? R : inner - 0.2);
       for (const [cable, top] of [[hoist, hoistTop], [power, powerTop]] as const) {
-        const len = Math.max(0.1, -y - top);
+        const len = Math.max(0.1, above - y - top);
         cable.scale.y = len;
         cable.position.y = top + len / 2;
       }
