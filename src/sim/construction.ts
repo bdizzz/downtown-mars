@@ -375,6 +375,9 @@ export interface JobView {
   label: string;
   /** For a room's job, a word before the room's name ("Refit"), if any. */
   lead?: string;
+  /** A refit: the lining it puts in, and what it cost (given back if it's replaced or cancelled). */
+  to?: { material: Material; finish: Finish };
+  paid?: Record<string, number>;
   /** For a room's job, what stage it's at beside the room's name ("excavating", "another floor"), if anything. */
   note?: string;
   /** 0..1. */
@@ -420,6 +423,7 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
       ...(job.roomId !== undefined ? { roomId: job.roomId } : {}),
       label,
       ...(lead ? { lead } : {}),
+      ...(job.to ? { to: job.to, paid: job.paid ?? {} } : {}),
       ...(note ? { note } : {}),
       progress: job.work > 0 ? job.done / job.work : 1,
       phase: phaseOf(job),

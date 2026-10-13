@@ -30,6 +30,7 @@ export function ConstructionPanel({ s, onCommand, onSelect, onClose }: { s: Snap
             <div className="row">
               {j.roomId !== undefined && byId.get(j.roomId) ? (
                 <span>
+                  {j.lead && <span>{j.lead} </span>}
                   <button className="link" onClick={() => onSelect(j.roomId!)} title="Show it">
                     <RoomName room={byId.get(j.roomId)!} />
                   </button>

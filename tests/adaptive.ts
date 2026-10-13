@@ -6,6 +6,7 @@ import { config } from "../src/sim/config";
 import { careCoverage, elderCoverage, schoolCoverage } from "../src/sim/care";
 import { beds } from "../src/sim/earth";
 import { roomDef } from "../src/sim/rooms";
+import { canLine } from "../src/sim/materials";
 import { bandwidth } from "../src/sim/construction";
 import { network } from "../src/sim/network";
 import { allocated, spaceOf, STORABLE, storageCaps } from "../src/sim/storage";
@@ -360,6 +361,18 @@ export function tendWindows(hole: SimState): boolean {
     if (applyCommand(hole, { type: "setWindows", roomId: room.id, edges, on: true }).ok) any = true;
   }
   return any;
+}
+
+/**
+ * Refit one home when the crews have nothing else queued: in brick once there's brick to spare (over 60),
+ * or else smoothed (rock over 120: the first month's bot makes no brick, so refits still get played). Once a day.
+ */
+export function tendLinings(hole: SimState): boolean {
+  if (hole.construction?.queue.length) return false;
+  const brick = (hole.resources.brick ?? 0) > 60;
+  if (!brick && (hole.resources.rock ?? 0) <= 120) return false;
+  const home = hole.layout.rooms.find((r) => roomDef(r.type).houses && canLine(r) && !r.planned && !r.building && (brick ? r.material !== "brick" : !r.material && !r.finish));
+  return !!home && applyCommand(hole, { type: "upgradeRoom", roomId: home.id, material: brick ? "brick" : "rock", finish: brick ? "base" : "fine" }).ok;
 }
 
 /** Answer whatever events are waiting: the first choice it can afford (a festival only with food to spare). Once a day. */
