@@ -470,6 +470,7 @@ public partial class Live : Node3D
             else if (type == "palette") _build.SetPalette(msg.RootElement);
             else if (type == "hovered" || type == "edgeHovered") _build.Hovered(msg.RootElement);
             else if (type == "notice") _build.Notice(msg.RootElement);
+            else if (type == "spots") _build.Spots(msg.RootElement);
             else if (type == "saves") _menu.SetSaves(msg.RootElement);
             else if (type == "trends") _charts.SetTrends(msg.RootElement);
             else if (type == "map") _map.SetMap(msg.RootElement);

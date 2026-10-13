@@ -9,7 +9,7 @@ import { gameTime } from "../sim/clock";
 import { stepWorld } from "../sim/worldstep";
 import type { RoomSpots } from "../render3d/people3d";
 import { inspect, roomAtPoint } from "./inspect";
-import { answerProposal, chainedMessage, chainEnd, chainStep, edgeCommand, edgeHover, hover, newChainState, palette, paletteKey, place, type BuildTool, type CorridorTool } from "./build";
+import { answerProposal, chainedMessage, chainEnd, chainStep, edgeCommand, edgeHover, hover, newChainState, palette, paletteKey, place, spots as surfaceSpotsMessage, type BuildTool, type CorridorTool } from "./build";
 import { walkMap } from "./walkmap";
 import { dayOf, isSlot, readSlot, savesList, slotFailed, writeSlot } from "./saves";
 import { office, officeKey } from "./office";
@@ -64,6 +64,14 @@ let roomColors = true;
 /** The plan view's floor while it's open (null when shut). */
 let planFloor: number | null = null;
 let sentPlan = "";
+
+/** What placing the tool's room at a point would do; with a floor picked, no surface spots, as the surface is hidden. */
+function hovered(tool: BuildTool, at: [number, number, number]) {
+  const msg = hover(host.active(), tool, at);
+  if (topFloor === null) return msg;
+  const { spots: _all, spot: _one, ...rest } = msg;
+  return rest;
+}
 /** The overlay picked (noise, smell, health, comfort, airQuality, happiness, condition, or none), and colour-blind colours. */
 const fieldView: FieldView = { overlay: null, selected: null, colorBlind: false };
 let sentField = "";
@@ -169,6 +177,8 @@ type BridgeMessage =
   /** Building: what placing the tool's room at a world point would do, and doing it. */
   | { type: "hover"; tool: BuildTool; at: [number, number, number] }
   | { type: "place"; tool: BuildTool; at: [number, number, number]; confirmed?: boolean }
+  /** A room picked: where it could go on the surface (answered with { type: "spots" }; T-107). */
+  | { type: "spots"; room: string }
   /** Corridors, bulkheads and windows: what the tool would do at the border nearest a point, and doing it (a click, or painting on a drag). */
   | { type: "edgeHover"; tool: CorridorTool; at: [number, number, number] }
   | { type: "edge"; tool: CorridorTool; at: [number, number, number]; painting?: boolean }
@@ -356,12 +366,15 @@ const server = createServer((socket) => {
           if (msg.colorBlind !== undefined) fieldView.colorBlind = msg.colorBlind;
           sendScene();
         } else if (msg.type === "hover") {
-          send(hover(host.active(), msg.tool, msg.at));
+          send(hovered(msg.tool, msg.at));
+        } else if (msg.type === "spots") {
+          // The surface is hidden with a floor picked: nothing to tint up there.
+          send(topFloor === null ? surfaceSpotsMessage(host.active(), msg.room) : { type: "spots", tris: "" });
         } else if (msg.type === "place") {
           const r = place(host.active(), msg.tool, msg.at, !!msg.confirmed);
           if (r.command) host.onMessage({ type: "command", id: commandId++, command: r.command });
           else send({ type: "notice", text: r.refusal ?? r.confirm, ...(r.confirm ? { confirm: { tool: msg.tool, at: msg.at } } : {}) });
-          send(hover(host.active(), msg.tool, msg.at));
+          send(hovered(msg.tool, msg.at));
         } else if (msg.type === "edgeHover") {
           send(edgeHover(host.active(), msg.tool, msg.at));
         } else if (msg.type === "edge") {
