@@ -105,10 +105,11 @@ describe("the upgradeRoom command", () => {
     const brick = s.resources.brick!;
     expect(upgrade(s, dorm, "rock").ok).toBe(true);
     expect(s.resources.brick).toBe(brick);
+    expect(queueView(s).jobs.find((j) => j.roomId === dorm)?.label).toBe("Strip Bunk dorm back to bare rock");
     finishRefit(s, dorm);
     expect(room(s, dorm).material).toBeUndefined();
     expect(s.resources.brick).toBe(brick + 8);
-    expect(s.messages.at(-1)?.text).toMatch(/back to bare rock: brick 8 salvaged\.$/);
+    expect(s.messages.at(-1)?.text).toMatch(/stripped back to bare rock: brick 8 salvaged\.$/);
   });
 
   it("cancelling refunds in full and leaves the lining", () => {

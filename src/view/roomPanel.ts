@@ -119,7 +119,7 @@ export function constructionInfo(s: Snapshot, roomId: number): { jobId: number; 
   const index = s.construction.jobs.findIndex((j) => j.roomId === roomId);
   const job = s.construction.jobs[index];
   if (!job) return null;
-  const lead = job.kind === "extend" ? "Another floor: " : job.kind === "upgrade" ? `Refit ${job.note}: ` : "";
+  const lead = job.kind === "extend" ? "Another floor: " : job.kind === "upgrade" ? `${job.lead} ${job.note}: ` : "";
   const text = `${lead}${job.phase === "excavating" ? "Excavating · " : ""}${Math.round(job.progress * 100)}% · ${ordinal(index + 1)} in the queue · ${job.hoursLeft === null ? "waits for its floor to be dug" : `done in about ${hoursText(job.hoursLeft)}`}`;
   return { jobId: job.id, progress: job.progress, text, canPrioritize: index > 0, canCancel: job.kind === "upgrade" };
 }
@@ -138,19 +138,21 @@ export function refitOptions(s: Snapshot, room: RoomInstance): RefitOption[] | n
   if (!canLine(room) || room.planned || room.building) return null;
   const queued = s.construction.jobs.find((j) => j.roomId === room.id && j.to);
   const own = liningOf(room);
+  // Whole amounts as they are ("brick 16", "6 h"), not "16.0".
+  const amount = (v: number) => (Number.isInteger(v) ? String(v) : num(v));
   return MATERIALS.walls
     .filter((w) => w !== own)
     .map((w) => {
       const plan = refitPlan(room, w)!;
-      const pay = Object.entries(plan.cost).map(([r, v]) => `${resName(r).toLowerCase()} ${num(v)}`);
-      const back = Object.entries(plan.salvage).map(([r, v]) => `${resName(r).toLowerCase()} ${num(v)}`);
+      const pay = Object.entries(plan.cost).map(([r, v]) => `${resName(r).toLowerCase()} ${amount(v)}`);
+      const back = Object.entries(plan.salvage).map(([r, v]) => `${resName(r).toLowerCase()} ${amount(v)}`);
       const price = [pay.length ? pay.join(", ") : "free", back.length ? `salvages ${back.join(", ")}` : ""].filter(Boolean).join(", ");
       const fitting = queued?.to?.material === w.material && queued.to.finish === w.finish;
       return {
         material: w.material,
         finish: w.finish,
         name: w.name,
-        text: `${liningText({ ...room, material: w.material, finish: w.finish })} · ${price} · ${num(plan.work)} h of work`,
+        text: `${liningText({ ...room, material: w.material, finish: w.finish })} · ${price} · ${amount(plan.work)} h of work`,
         refusal: fitting ? "being fitted now" : refitRefusal(room, plan, s.resources, queued?.paid),
       };
     });

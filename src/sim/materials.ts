@@ -212,3 +212,8 @@ export function refitComfort(state: SimState, room: RoomInstance): number {
 export function refitWords(to: WallStep): string {
   return to === MATERIALS.walls[0] ? "back to bare rock" : `in ${to.name.toLowerCase()}`;
 }
+
+/** "Refit", or "Strip" when it's back to bare rock. */
+export function refitVerb(to: WallStep): "Refit" | "Strip" {
+  return to === MATERIALS.walls[0] ? "Strip" : "Refit";
+}

@@ -9,7 +9,7 @@ import { postMessage } from "./messages";
 import type { Cell, Layout, RoomInstance } from "./placement";
 import { openCells, rockCells, yieldRock } from "./excavation";
 import { record } from "./ledger";
-import { refitWords, wallStep, type Finish, type Material, type RefitPlan } from "./materials";
+import { refitVerb, refitWords, wallStep, type Finish, type Material, type RefitPlan } from "./materials";
 import { resourceDef } from "./resources";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
@@ -184,7 +184,8 @@ function finishRefit(state: SimState, room: RoomInstance, to: { material: Materi
     record(state, r, "in", SALVAGE, v);
   }
   const back = Object.entries(salvage).map(([r, v]) => `${resourceDef(r).name.toLowerCase()} ${v}`);
-  postMessage(state, cfg, `${roomRef(room)} refitted ${refitWords(wallStep(to.material, to.finish))}${back.length ? `: ${back.join(", ")} salvaged` : ""}.`);
+  const step = wallStep(to.material, to.finish);
+  postMessage(state, cfg, `${roomRef(room)} ${refitVerb(step) === "Strip" ? "stripped" : "refitted"} ${refitWords(step)}${back.length ? `: ${back.join(", ")} salvaged` : ""}.`);
   state.layout.version++;
 }
 
@@ -396,14 +397,15 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
   const jobs = (state.construction?.queue ?? []).map((job): JobView => {
     const room = job.roomId !== undefined ? state.layout.rooms.find((r) => r.id === job.roomId) : undefined;
     const name = room ? roomName(room) : "";
-    const refit = job.kind === "upgrade" && job.to ? refitWords(wallStep(job.to.material, job.to.finish)) : undefined;
-    const lead = refit ? "Refit" : undefined;
+    const to = job.kind === "upgrade" && job.to ? wallStep(job.to.material, job.to.finish) : undefined;
+    const refit = to && refitWords(to);
+    const lead = to && refitVerb(to);
     const note =
       refit ?? (job.kind === "extend" ? "another floor" : phaseOf(job) === "excavating" && room && !roomDef(room.type).excavationOnly ? "excavating" : undefined);
     const n = job.edges?.length ?? 0;
     const label =
       refit
-        ? `Refit ${name} ${refit}`
+        ? `${lead} ${name} ${refit}`
         : job.kind === "dome"
         ? "Shaft dome"
         : job.kind === "corridors"
