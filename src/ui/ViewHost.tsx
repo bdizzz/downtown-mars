@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { bootStep } from "./boot";
 import { createStage } from "../render2d/stage";
 import { createPlanStage } from "../render2d/plan";
 import type { ViewMode } from "./settings";
@@ -42,6 +43,8 @@ interface Props {
   onMouseLook?: (on: boolean) => void;
   /** The cutaway's wedge changed in the view: keep it in the settings. */
   onCutAngle?: (deg: number) => void;
+  /** Behind the title menu: the 3D camera drifts round the hole at dusk. */
+  showcase?: boolean;
 }
 
 const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => Promise<Stage>> = {
@@ -52,13 +55,14 @@ const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => P
 };
 
 /** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
-export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed }: Props) {
+export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed, showcase = false }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
   const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle });
   props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle };
   const lookSpeedRef = useRef(lookSpeed);
+  const showcaseRef = useRef(showcase);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,8 +93,12 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
       stage.setFloor(props.current.floor);
       stage.setProposal(props.current.proposal);
       stage.setWarning(props.current.warning);
+      stage.setShowcase?.(showcaseRef.current);
       if (props.current.snapshot) stage.update(props.current.snapshot);
+      // The loading screen waits for the view's first frames.
+      requestAnimationFrame(() => requestAnimationFrame(() => bootStep("view")));
     }, (err: unknown) => {
+      bootStep("view");
       if (!cancelled) props.current.onViewError(err instanceof Error ? err.message : String(err));
     });
     return () => {
@@ -135,6 +143,10 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
   useEffect(() => {
     stageRef.current?.setBuildMode(building);
   }, [building]);
+  useEffect(() => {
+    showcaseRef.current = showcase;
+    stageRef.current?.setShowcase?.(showcase);
+  }, [showcase]);
 
   useEffect(() => {
     stageRef.current?.setFloor(floor);
