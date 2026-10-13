@@ -85,6 +85,7 @@ Still to do, roughly in order of value:
 - **Colour-blind colours** reach the plan's overlay and legend but not the build halo (`src/bridge/build.ts` `halo` uses `HEAT.normal`).
 - **The cutaway's cut through the rings** (T-109): the web caps the cut face across solid rock, open only where rooms, corridors and dug-out space are (`rockAlong` in `render3d/rooms3d.ts`, the `cap` mesh in `stage3d.ts`); Godot's `Cutaway.cs` still shows the hollow rock between the shaft and the backdrop. It needs the rock spans from the bridge for the cut's heading.
 - **The tank fill slider** (T-029): the web's room panel has it for electrolyzers and O2 gas tanks (`ui/Inspector.tsx`, `fillsTanks` in `view/roomPanel.ts`, the `setTankFill` command, `snapshot.air.tankFill`); Godot's panel doesn't yet. Gas tanks' O2/CO2 choice already comes through the bridge's `holds`, and the new rooms' models through `data/furniture.json`.
+- **The shaft's concrete collar** (T-144): the web draws a marscrete collar round the top of the shaft with the drill's headgear on it (`render3d/collar3d.ts`), and the rig's cables now run up to its sheaves (`cableTop` in `drillRig.ts`); Godot has neither yet, and still stretches the cables to the rim. To come in the same PR once the web's look is agreed: send it as the rig is sent (`src/bridge/rig.ts`).
 - **Sound**: none yet in Godot (the web has synthesized sound in `src/audio/`).
 - Smaller: the trouble ⚠ badges are small; the interface-size setting hasn't been checked on screen; no first-person screenshot in the README yet (the shaft view is hazy).
 
