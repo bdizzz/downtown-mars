@@ -22,7 +22,7 @@
   },
   "soil": {
     "_note": "How far a site's ground leans from the game's base dust toward the map's colour there (0 none, 1 all the way); its boulders and horizon shift in proportion. Short of 1, so a deep basin or a pale volcano still reads as Mars dust.",
-    "strength": 0.6
+    "strength": 0.5
   },
   "sky": {
     "_note": "The latitude for the sun and stars at a hole with no place on the map yet.",
