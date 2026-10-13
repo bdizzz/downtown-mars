@@ -128,9 +128,16 @@ function land(state: SimState, cfg: SimConfig): Record<string, number> {
   };
 
   // Colonists step off first, so the top-ups below include them. Earth won't
-  // send anyone into a hole whose people are already in poor health.
+  // send anyone into a hole whose people are already in poor health, unless
+  // it's dwindling: then, some of the time, a few replacements (T-161).
+  const count = state.population.count;
+  const free = Math.max(0, beds(state) - count);
   const healthy = state.population.health >= ec.colonistsNeedHealth;
-  const arrivals = healthy ? Math.max(0, Math.min(ec.colonistsPerDrop, beds(state) - state.population.count)) : 0;
+  let arrivals = healthy ? Math.min(ec.colonistsPerDrop, free) : 0;
+  if (arrivals === 0 && free > 0 && count > 0 && count < ec.rescue.belowPopulation && nextRandom(state) < ec.rescue.chance) {
+    arrivals = Math.min(ec.rescue.colonists, free);
+    postMessage(state, cfg, `Earth sent ${arrivals} replacement ${arrivals === 1 ? "colonist" : "colonists"} to help ${state.name} back on its feet.`, "good");
+  }
   if (arrivals > 0) {
     addAdults(state, arrivals, cfg);
     contents.colonists = arrivals;

@@ -62,6 +62,43 @@ describe("Earth supply drops", () => {
     expect(s.messages.some((m) => /Supply drop landed/.test(m.text))).toBe(true); // supplies still come
   });
 
+  // T-161: a dwindling hole in poor health still gets a few replacements, some of the time.
+  const rescue = config.earth.rescue;
+  const poorHealthDrops = (s: SimState, drops: number) => {
+    for (let i = 0; i < firstDrop + (drops - 1) * config.earth.intervalDays * config.ticksPerDay; i++) {
+      s.population.health = config.earth.colonistsNeedHealth - 20;
+      ticks(s, 1);
+    }
+  };
+
+  it("sends a dwindling hole replacements now and then, whatever its health", () => {
+    const s = start();
+    setAdults(s, 10, config);
+    poorHealthDrops(s, 6);
+    const rescues = s.messages.filter((m) => /replacement colonists/.test(m.text));
+    expect(rescues.length).toBeGreaterThan(0);
+    expect(rescues.length).toBeLessThan(6); // half of drops, not every one
+    expect(s.population.count).toBeGreaterThanOrEqual(10 + rescue.colonists);
+    expect(s.population.count).toBeLessThan(rescue.belowPopulation + rescue.colonists);
+  });
+
+  it("sends no replacements without free beds, or into an empty hole", () => {
+    // Always a rescue, however many there are: only beds and people to open up can stop it.
+    const always: SimConfig = { ...noDelays, earth: { ...noDelays.earth, rescue: { ...rescue, belowPopulation: 1000, chance: 1 } } };
+    const full = start(); // the pod's beds are all taken
+    for (let i = 0; i < firstDrop; i++) {
+      full.population.health = 0;
+      step(full, always);
+    }
+    expect(full.messages.some((m) => /Supply drop landed/.test(m.text))).toBe(true);
+    expect(full.population.count).toBe(config.colonists.start);
+
+    const empty = start();
+    setAdults(empty, 0, config);
+    for (let i = 0; i < firstDrop; i++) step(empty, always);
+    expect(empty.population.count).toBe(0);
+  });
+
   it("sizes the top-ups for the colonists who just arrived", () => {
     const s = start();
     applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 2) });
