@@ -3,7 +3,8 @@ import * as THREE from "three";
 // The sky: a dome round the camera, shaded by height. By day, butterscotch
 // dust at the horizon deepening to a darker tan overhead, with the bluish
 // glow Mars has round its sun; by night, near-black with stars coming out.
-// It moves with the camera, so it's always as far away as anything can be.
+// It moves with the camera, so it's always as far away as anything can be. The stars turn with the
+// sun round the celestial pole, for the site's latitude (view/sunPath.ts).
 
 const SKY = {
   radius: 3000,
@@ -36,6 +37,7 @@ const FRAGMENT = /* glsl */ `
   uniform vec3 nightZenith;
   uniform vec3 halo;
   uniform vec3 sunDir;
+  uniform mat3 starTurn;
   uniform float light;
   uniform float starDensity;
   uniform float starCells;
@@ -65,7 +67,8 @@ const FRAGMENT = /* glsl */ `
     // Stars: a scattering of sky cells each hold one, a point that fades in as the light goes.
     float dark = 1.0 - smoothstep(0.0, starsBy, light);
     if (dark > 0.0 && d.y > 0.0) {
-      vec3 p = d * starCells;
+      // Looked up in the field as it stood at noon, so the stars wheel round the pole as the sol turns.
+      vec3 p = (starTurn * d) * starCells;
       vec3 cell = floor(p);
       float h = hash(cell);
       if (h > 1.0 - starDensity) {
@@ -86,8 +89,8 @@ const FRAGMENT = /* glsl */ `
 
 export interface Sky {
   mesh: THREE.Mesh;
-  /** Daylight 0..1, and where the sun is (a direction). */
-  update(light: number, sunDir: THREE.Vector3): void;
+  /** Daylight 0..1, where the sun is (a direction), and the stars' turn (row-major 3 × 3, from view/sunPath.ts). */
+  update(light: number, sunDir: THREE.Vector3, starTurn: number[]): void;
   /** A dust storm's hold on the sky: 0 clear to 1. */
   setDust(level: number): void;
   /** Keep it centred on the camera. */
@@ -105,6 +108,7 @@ export function createSky(): Sky {
       nightZenith: { value: lin(SKY.night.zenith) },
       halo: { value: lin(SKY.halo) },
       sunDir: { value: new THREE.Vector3(0, 1, 0) },
+      starTurn: { value: new THREE.Matrix3() },
       light: { value: 1 },
       starDensity: { value: SKY.starDensity },
       starCells: { value: SKY.starCells },
@@ -123,9 +127,10 @@ export function createSky(): Sky {
   mesh.frustumCulled = false;
   return {
     mesh,
-    update(light, sunDir) {
+    update(light, sunDir, starTurn) {
       material.uniforms.light!.value = light;
       (material.uniforms.sunDir!.value as THREE.Vector3).copy(sunDir).normalize();
+      (material.uniforms.starTurn!.value as THREE.Matrix3).fromArray(starTurn).transpose();
     },
     setDust(level) {
       material.uniforms.dust!.value = level * 0.9;

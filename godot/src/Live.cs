@@ -652,8 +652,9 @@ public partial class Live : Node3D
     {
         // The sky's base colours by the hour; the storm (Storm.cs) thickens them to murk.
         _light = f > 0.25f && f < 0.75f ? Mathf.Sin(Mathf.Pi * (f - 0.25f) / 0.5f) : 0;
-        var a = (f - 0.25f) * Mathf.Tau;
-        var pos = new Vector3(Mathf.Cos(a) * 100, Mathf.Max(5, Mathf.Sin(a) * 100), 30);
+        // The sun by the site's latitude at the equinox, and the stars turning with it (T-020; the web's view/sunPath.ts).
+        var (sunDir, starTurn) = SunPath(f, _terrain.Latitude);
+        var pos = new Vector3(sunDir.X * 100, Mathf.Max(5, sunDir.Y * 100), sunDir.Z * 100);
         _sun.LookAtFromPosition(pos, Vector3.Zero, Vector3.Up);
         _sun.LightEnergy = (0.15f + 2.0f * _light) * (1 - 0.7f * storm);
         var env = _env.Environment;
@@ -667,9 +668,24 @@ public partial class Live : Node3D
         if (env.Sky.SkyMaterial is ShaderMaterial sky)
         {
             sky.SetShaderParameter("light", _light);
-            sky.SetShaderParameter("sun_dir", new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0.3f).Normalized());
+            sky.SetShaderParameter("sun_dir", sunDir);
+            sky.SetShaderParameter("star_turn", starTurn);
         }
         _hole.SetNight(1 - _light);
+    }
+
+    /// <summary>
+    /// Where the sun is at this time of day and latitude (degrees north), at the equinox, with north −z: up
+    /// at 90° − |latitude| at noon, toward the equator; and the turn that takes a direction in the sky now
+    /// back to where it stood at noon, about the celestial pole, for the stars. As the web's view/sunPath.ts.
+    /// </summary>
+    static (Vector3 sun, Basis stars) SunPath(float f, float latDeg)
+    {
+        var h = (f - 0.5f) * Mathf.Tau;
+        var lat = Mathf.DegToRad(latDeg);
+        var sun = new Vector3(-Mathf.Sin(h), Mathf.Cos(lat) * Mathf.Cos(h), Mathf.Sin(lat) * Mathf.Cos(h));
+        var pole = new Vector3(0, Mathf.Sin(lat), -Mathf.Cos(lat));
+        return (sun, new Basis(pole, h));
     }
 
     /// <summary>Each frame: the hour's light, then the storm on top of it (eased, as the web's).</summary>
