@@ -233,6 +233,12 @@ See `PLAN-M16.md`.
 - **Updates come as a banner you tap, never silently** (Bryon): the service worker runs in `prompt` mode (`vite-plugin-pwa`), and mid-game the update autosaves before reloading.
 - **PR previews get no service worker** (Bryon): they share the main game's origin and path, so the main game's worker skips `pr-preview/` and preview builds (`VITE_PR_NUMBER`) don't register one. The dev server has none either.
 
+## Decided for the site (Oct 13, F-008 / T-073 / T-020)
+
+- **A site's soil is the map's colour there, as drawn** (Bryon): the map colours Mars by height (and whitens the caps), not by its real colours, and the ground matches what the player sees. The height colours and caps live in `data/mars-map.json`, read by both `scripts/build-relief.mjs` and the game (`mapColor` in `sim/mapgeo.ts`, `soilAt` in `sim/map.ts`), so they can't drift apart. The ground leans 60% of the way from the base dust to that colour (`soil.strength`), so a basin or a pale volcano still reads as Mars; boulders and the horizon shift with it.
+- **Holes can't go on the polar caps,** only those for now (Bryon): from 80°N and 83°S, where the map starts whitening them. The buried mid-latitude glaciers aren't on the map, so they don't count. Founding refuses it in the sim (`foundingRefusal`), and both maps won't pick a site there.
+- **The sun and stars follow the site's latitude, at the equinox** (Bryon): no seasons. North is −z in the scene. The stars stay a procedural field, turned once a sol about the celestial pole with the sun (`view/sunPath.ts`; Godot's `Live.cs` does the same sums). A hole with no place on the map uses 45°N (`sky.defaultLatitude`). The daylight curve doesn't change: at the equinox day and night are 12 hours everywhere.
+
 ## Still open
 
 Deliberately not decided yet:

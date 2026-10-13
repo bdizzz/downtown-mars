@@ -180,6 +180,8 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 ## More holes
 
 - Once the network reaches 50 colonists the map opens. Build a **staging bay** to gather a seed kit, pick a site on the Map (M) and send a convoy.
+- **Not on the polar caps:** the white ice round the poles (from 80°N and 83°S) can't be dug. The map says "Ice cap: can't dig here" under the pointer and won't pick a site there.
+- **Each site looks like where it is:** its ground takes the colour the map shows there, so a hole in a dark lowland basin sits on dark red-brown dust and one high on Tharsis on pale tan, and the sun and stars move for its latitude (below).
 - With two holes, a **rover depot** gives a hole 2 rovers, and the **Network** panel sets up trade routes between holes.
 
 ## The views
@@ -220,8 +222,8 @@ New games open in 3D, in Free view. Everything you can do in 2D works in 3D.
 - Colonists stroll the gallery tubes or are where you'd expect for the hour: at their posts, asleep in bed at night, sitting about in homes, plazas and offices.
 - Rooms in trouble are outlined in amber (slowed) or red (short of what they run on), with a ⚠ over their name; paused rooms in grey. The room's card says why.
 - Screens flicker, indicator lights blink, fires dance, plants sway and windows fog at the bottom. Working smelters throw sparks and scrubbers vent steam.
-- Around midday sunlight falls down the shaft; deeper down everything settles into lamp-light. Lamps, fires and grow lights light the rooms around them.
-- By day the sky fades from butterscotch at the horizon to a deeper tan overhead, with a bluish glow round the sun; at night the stars come out. The land round the hole rolls away in ridges, craters and boulders to mountains, mesas or low hills, depending on the site.
+- The sun crosses the sky for the hole's latitude, always as at an equinox: it rises due east, sets due west, and at noon stands toward the equator, overhead at the equator and lower the further north or south the hole is. Around midday sunlight falls down the shaft (furthest at a hole near the equator); deeper down everything settles into lamp-light. Lamps, fires and grow lights light the rooms around them.
+- By day the sky fades from butterscotch at the horizon to a deeper tan overhead, with a bluish glow round the sun; at night the stars come out and wheel slowly round the celestial pole, which stands as high above the northern horizon as the hole is north (below it, south of the equator). The land round the hole rolls away in ridges, craters and boulders to mountains, mesas or low hills, depending on the site.
 
 **Graphics:** soft shadows where things meet, glow around lit windows and lamps, a warm haze, a miniature look in Free view (the floor you're looking at stays sharp while nearer and farther things blur, as in a photo of a model; **Miniature blur** sets how strongly, gentle by default), and a warm colour grade. **Settings → Display** picks a preset (Low, Medium or High, the default) or sets each effect, including lamp light and shadows, so a laptop can scale them down. Shiny floors, metal and glass reflect a warm, lamp-lit cave. `?renderer=webgpu` tries three's WebGPU renderer with light bouncing and reflections (an experiment: see [WEBGPU.md](WEBGPU.md)).
 
