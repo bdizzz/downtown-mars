@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Hole } from "../sim/geometry";
 import { cableTop, hazardTexture, rigCables } from "./drillRig";
-import { TAU } from "./cylinder";
+import { COLLAR_TOP, TAU } from "./cylinder";
 import { finishMaterial } from "./surfaces";
 
 // The collar (T-144): a ring of marscrete lining the top of the shaft, so the
@@ -13,24 +13,30 @@ import { finishMaterial } from "./surfaces";
 // pickable, no cost, no effects. It all fits under the shaft dome.
 
 const COLLAR = {
-  /** How far down the lining reaches below the rim (the crust is 3 m), how thick it is, and how high its lip stands. */
+  /** How far down the lining reaches below the ground (the crust is 3 m), and how thick it is inside the shaft's edge. */
   depth: 2.6,
   thick: 0.3,
-  lip: 0.3,
-  /** How far the lip reaches out from the shaft's edge, and its chamfered outer edge. */
-  reach: 2,
-  chamfer: 0.4,
+  /** The rim (its top is COLLAR_TOP): how far out its wall stands from the shaft's edge, the cap overhanging it, and the bevels on its edges. */
+  reach: 1.8,
+  cap: 0.2,
+  capH: 0.22,
+  bevel: 0.15,
+  /** The sloping apron at the rim's foot, out onto the ground, and how high up the wall it starts. */
+  apron: 0.9,
+  apronH: 0.35,
+  /** Joints down the outside of the wall, about this far apart (metres). */
+  jointEvery: 3,
   /** The sheaves' radius, and the gantry's beams: their half-gap across the shaft and how far out along it the legs meet them. */
   sheave: 0.5,
   beamGap: 1,
   legsAt: 0.75,
-  /** The legs' feet: out on the lip, and spread either side of the winch. */
+  /** The towers' feet: out on the rim, and spread either side of the winch. */
   footOut: 1,
   footSpread: 2.4,
-  /** The winches: how far out on the lip (from the shaft's edge), and their drum. */
-  winchOut: 0.5,
+  /** The winches: how far out on the rim (from the shaft's edge), and their drum. */
+  winchOut: 0.55,
   drum: 0.45,
-  /** Railing posts round the lip's inner edge, about this far apart (metres). */
+  /** Railing posts round both edges of the rim's walkway, about this far apart (metres). */
   postEvery: 2.5,
 };
 
@@ -38,6 +44,7 @@ const COLOR = {
   steel: 0xd9862f, // the rig's orange, so it reads as the same outfit's kit
   steelDark: 0xa8641f,
   dark: 0x3e3b38,
+  bolt: 0x8f8a84,
   cable: 0x2a2827,
   rail: 0xe0b030,
   lamp: 0xffb35c,
@@ -79,23 +86,49 @@ export function makeCollar(hole: Hole): THREE.Group {
   };
   const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
-  // ---- the concrete: the lining down the shaft's top, the lip on the ground, its chamfered edge ----
-  add(new THREE.CylinderGeometry(inner, inner, C.depth + C.lip, 96, 1, true), concrete, 0, (C.lip - C.depth) / 2, 0);
-  const top = add(new THREE.RingGeometry(inner, outer, 96, 1), concrete, 0, C.lip, 0);
-  top.rotation.x = -Math.PI / 2;
-  add(new THREE.CylinderGeometry(outer, outer + C.chamfer, C.lip + 0.2, 96, 1, true), concrete, 0, (C.lip - 0.2) / 2, 0);
-  // Hazard stripes painted round the lip's inner edge.
+  // ---- the concrete: a rim standing round the shaft, its profile turned round the axis ----
+  // Each face of the profile is a band of its own, so the edges between them stay crisp (one lathe would round them off).
+  const top = COLLAR_TOP;
+  const capOut = outer + C.cap;
+  const capBottom = top - C.capH;
+  const profile: [number, number][] = [
+    [inner, -C.depth], // the lining, down the shaft's top
+    [inner, top - C.bevel],
+    [inner + C.bevel, top], // bevelled onto the walkway
+    [capOut - C.bevel, top],
+    [capOut, top - C.bevel], // bevelled over the cap's edge
+    [capOut, capBottom],
+    [outer, capBottom], // the cap's underside, back to the wall
+    [outer, C.apronH],
+    [outer + C.apron, 0], // the apron, sloping out onto the ground
+    [outer + C.apron, -0.3],
+  ];
+  for (let i = 0; i + 1 < profile.length; i++) {
+    const [r0, y0] = profile[i]!;
+    const [r1, y1] = profile[i + 1]!;
+    add(new THREE.LatheGeometry([new THREE.Vector2(r0, y0), new THREE.Vector2(r1, y1)], 96), concrete);
+  }
+  // Hazard stripes painted round the walkway's inner edge, just under the bevel.
   const hazard = hazardTexture();
   if (hazard) {
     hazard.repeat.set(Math.round((TAU * inner) / 1.2), 1);
-    add(new THREE.CylinderGeometry(inner - 0.01, inner - 0.01, 0.28, 96, 1, true), new THREE.MeshStandardMaterial({ map: hazard, roughness: 0.7, side: THREE.DoubleSide }), 0, C.lip - 0.15, 0);
+    add(new THREE.CylinderGeometry(inner - 0.01, inner - 0.01, 0.28, 96, 1, true), new THREE.MeshStandardMaterial({ map: hazard, roughness: 0.7, side: THREE.DoubleSide }), 0, top - C.bevel - 0.16, 0);
   }
-  // Anchor bolts round the lip.
-  const boltGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.12, 6);
-  const nBolts = Math.round((TAU * (R + 1.6)) / 1.5);
+  // Joints down the outside of the wall, where its pours meet.
+  const nJoints = Math.round((TAU * outer) / C.jointEvery);
+  const joint = new THREE.BoxGeometry(0.06, capBottom - C.apronH, 0.1);
+  for (let k = 0; k < nJoints; k++) {
+    const a = (k / nJoints) * TAU;
+    add(joint, dark, (outer + 0.01) * Math.cos(a), (capBottom + C.apronH) / 2, (outer + 0.01) * Math.sin(a)).rotation.y = -a;
+  }
+  // Anchor bolts along the walkway.
+  const boltGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.1, 6);
+  const boltMat = mat(COLOR.bolt, { metalness: 0.6, roughness: 0.4 });
+  const boltR = (inner + capOut) / 2;
+  const nBolts = Math.round((TAU * boltR) / 1.5);
   for (let k = 0; k < nBolts; k++) {
     const a = (k / nBolts) * TAU;
-    add(boltGeo, dark, (R + 1.6) * Math.cos(a), C.lip + 0.06, (R + 1.6) * Math.sin(a));
+    add(boltGeo, boltMat, boltR * Math.cos(a), top + 0.06, boltR * Math.sin(a));
   }
 
   // ---- the headgear: two beams across the shaft, on an A-frame at each end, sheaves over the cables ----
@@ -105,10 +138,10 @@ export function makeCollar(hole: Hole): THREE.Group {
   for (const x of [-C.beamGap, C.beamGap]) add(new THREE.BoxGeometry(0.22, 0.32, reach * 2 + 0.4), steel, x, beamY, 0);
   // Cross ties between the beams.
   for (let k = -2; k <= 2; k++) add(new THREE.BoxGeometry(C.beamGap * 2, 0.14, 0.14), steelDark, 0, beamY, (k / 2) * reach);
-  const footY = C.lip;
+  const footY = top;
   const footR = R + C.footOut;
   for (const s of [-1, 1]) {
-    // The end of the gantry, and its legs out to the lip, braced.
+    // The end of the gantry, and its legs out to the rim, latticed like a tower.
     add(new THREE.BoxGeometry(C.beamGap * 2 + 0.3, 0.3, 0.3), steel, 0, beamY, s * reach);
     const feet: THREE.Vector3[] = [];
     for (const side of [-1, 1]) {
@@ -120,9 +153,13 @@ export function makeCollar(hole: Hole): THREE.Group {
       add(new THREE.BoxGeometry(0.6, 0.12, 0.6), dark, foot.x, footY + 0.06, foot.z);
       feet.push(head, foot);
     }
-    // Cross-bracing between the two legs.
-    strut(feet[0]!.clone().lerp(feet[1]!, 0.25), feet[2]!.clone().lerp(feet[3]!, 0.75), 0.06, steelDark);
-    strut(feet[2]!.clone().lerp(feet[3]!, 0.25), feet[0]!.clone().lerp(feet[1]!, 0.75), 0.06, steelDark);
+    // Lattice between the two legs: ties across at intervals, with a diagonal in each bay.
+    const at = (side: number, t: number) => feet[side * 2 + 1]!.clone().lerp(feet[side * 2]!, t);
+    const bays = [0.12, 0.4, 0.68, 0.94];
+    for (let k = 0; k < bays.length; k++) {
+      strut(at(0, bays[k]!), at(1, bays[k]!), 0.05, steelDark);
+      if (k + 1 < bays.length) strut(at(k % 2, bays[k]!), at(1 - (k % 2), bays[k + 1]!), 0.04, steelDark);
+    }
   }
   // A beacon atop the middle of the gantry, and floodlights looking down the shaft.
   add(new THREE.CylinderGeometry(0.12, 0.14, 0.15, 10), dark, 0, beamY + 0.24, 0);
@@ -137,7 +174,7 @@ export function makeCollar(hole: Hole): THREE.Group {
     g.add(f);
   }
 
-  // ---- each cable: a sheave over it on the gantry, then down to its winch on the lip ----
+  // ---- each cable: a sheave over it on the gantry, then down to its winch on the rim ----
   const cables = rigCables(hole);
   for (const [cx, cz] of [cables.hoist, cables.power]) {
     const s = Math.sign(cz) || 1;
@@ -155,37 +192,38 @@ export function makeCollar(hole: Hole): THREE.Group {
     for (const x of [-C.beamGap, C.beamGap]) add(new THREE.BoxGeometry(0.26, sheaveY - beamY, 0.3), dark, x, (sheaveY + beamY) / 2, sz);
     // The winch: a drum on a skid, its motor, a control cabinet with a lamp.
     const wz = s * (R + C.winchOut);
-    const drumY = C.lip + 0.2 + C.drum + 0.1;
-    add(new THREE.BoxGeometry(2.4, 0.2, 1.3), dark, cx + 0.3, C.lip + 0.1, wz);
+    const drumY = top + 0.2 + C.drum + 0.1;
+    add(new THREE.BoxGeometry(2.4, 0.2, 1.3), dark, cx + 0.3, top + 0.1, wz);
     const drum = add(new THREE.CylinderGeometry(C.drum, C.drum, 1.1, 18), mat(COLOR.cable, { metalness: 0.1, roughness: 0.9 }), cx, drumY, wz);
     drum.rotation.z = Math.PI / 2;
     for (const dx of [-0.6, 0.6]) {
       const flange = add(new THREE.CylinderGeometry(C.drum + 0.18, C.drum + 0.18, 0.06, 20), steel, cx + dx, drumY, wz);
       flange.rotation.z = Math.PI / 2;
-      add(new THREE.BoxGeometry(0.1, drumY - C.lip - 0.2, 0.4), steelDark, cx + dx + Math.sign(dx) * 0.1, (drumY + C.lip + 0.2) / 2, wz);
+      add(new THREE.BoxGeometry(0.1, drumY - top - 0.2, 0.4), steelDark, cx + dx + Math.sign(dx) * 0.1, (drumY + top + 0.2) / 2, wz);
     }
     const motor = add(new THREE.CylinderGeometry(0.3, 0.3, 0.6, 14), steel, cx + 1.05, drumY, wz);
     motor.rotation.z = Math.PI / 2;
-    add(new THREE.BoxGeometry(0.4, 0.9, 0.3), mat(COLOR.cabinet, { metalness: 0.3 }), cx - 1.1, C.lip + 0.65, wz + s * 0.35);
-    add(new THREE.BoxGeometry(0.12, 0.08, 0.08), lampMat, cx - 1.1, C.lip + 1.14, wz + s * 0.35);
+    add(new THREE.BoxGeometry(0.4, 0.9, 0.3), mat(COLOR.cabinet, { metalness: 0.3 }), cx - 1.1, top + 0.65, wz + s * 0.35);
+    add(new THREE.BoxGeometry(0.12, 0.08, 0.08), lampMat, cx - 1.1, top + 1.14, wz + s * 0.35);
     // The cable from the top of the sheave down onto the top of the drum.
     strut(v(cx, sheaveY + C.sheave - 0.06, sz), v(cx, drumY + C.drum, wz), 0.05, cableMat);
   }
 
-  // ---- a railing round the lip's inner edge, open where the winches stand ----
-  const railR = inner + 0.3;
+  // ---- railings round both edges of the walkway (the outer one clear of the dome's foot), open where the winches and towers stand ----
   const postGeo = new THREE.CylinderGeometry(0.04, 0.04, 1, 6);
   const gaps = [cables.hoist, cables.power].map(([, z]) => (Math.sign(z) || 1) * (Math.PI / 2));
-  const gapHalf = (C.footSpread + 0.4) / railR;
-  const open = (a: number) => gaps.some((ga) => Math.abs(((a - ga + TAU * 1.5) % TAU) - Math.PI) < gapHalf);
-  const nPosts = Math.round((TAU * railR) / C.postEvery);
-  for (let k = 0; k < nPosts; k++) {
-    const a0 = (k / nPosts) * TAU;
-    const a1 = ((k + 1) / nPosts) * TAU;
-    if (open(a0)) continue;
-    add(postGeo, railMat, railR * Math.cos(a0), C.lip + 0.5, railR * Math.sin(a0));
-    if (open(a1)) continue;
-    for (const y of [0.55, 1]) strut(v(railR * Math.cos(a0), C.lip + y, railR * Math.sin(a0)), v(railR * Math.cos(a1), C.lip + y, railR * Math.sin(a1)), 0.03, railMat);
+  for (const railR of [inner + C.bevel + 0.1, capOut - 0.08]) {
+    const gapHalf = (C.footSpread + 0.4) / railR;
+    const open = (a: number) => gaps.some((ga) => Math.abs(((a - ga + TAU * 1.5) % TAU) - Math.PI) < gapHalf);
+    const nPosts = Math.round((TAU * railR) / C.postEvery);
+    for (let k = 0; k < nPosts; k++) {
+      const a0 = (k / nPosts) * TAU;
+      const a1 = ((k + 1) / nPosts) * TAU;
+      if (open(a0)) continue;
+      add(postGeo, railMat, railR * Math.cos(a0), top + 0.5, railR * Math.sin(a0));
+      if (open(a1)) continue;
+      for (const y of [0.55, 1]) strut(v(railR * Math.cos(a0), top + y, railR * Math.sin(a0)), v(railR * Math.cos(a1), top + y, railR * Math.sin(a1)), 0.03, railMat);
+    }
   }
 
   return g;

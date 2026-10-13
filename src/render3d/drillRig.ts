@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Hole } from "../sim/geometry";
-import { openShaftRadius, TAU } from "./cylinder";
+import { COLLAR_TOP, openShaftRadius, TAU } from "./cylinder";
 
 // The shaft-boring machine at the bottom of the hole. Its origin is the
 // cutter face, at the dig front, so it rides down as the drill works.
@@ -121,9 +121,9 @@ export function rigCables(hole: Hole): { hoist: [number, number]; power: [number
   return { hoist: [-bodyR * 0.15, -bodyR * 0.7], power: [bodyR * 0.05, bodyR * 0.62] };
 }
 
-/** How high above the rim the cables run (world y): into the headgear's sheaves, low enough to clear the shaft dome. */
+/** How high the cables run (world y): into the headgear's sheaves over the collar's rim, low enough to clear the shaft dome. */
 export function cableTop(hole: Hole): number {
-  return Math.min(3.7, hole.shaftRadiusM * 0.37);
+  return COLLAR_TOP + Math.min(3.2, hole.shaftRadiusM * 0.32);
 }
 
 export function makeDrillRig(hole: Hole): DrillRig {

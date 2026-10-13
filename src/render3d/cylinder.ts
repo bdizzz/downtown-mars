@@ -28,6 +28,8 @@ export const ARC_STEPS = 4;
 export const LEDGE_THICKNESS = 0.4;
 /** The railing inside a gallery tube, above its floor. */
 export const RAIL_HEIGHT = 1.1;
+/** The top of the concrete collar's rim round the shaft, above the ground (collar3d.ts); the dome stands on it. */
+export const COLLAR_TOP = 1.5;
 
 /** The slot's angular span [start, end) in radians. */
 export function slotAngles(slot: number, n: number): [number, number] {

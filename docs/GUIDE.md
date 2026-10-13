@@ -70,7 +70,7 @@ Pause any staffed room, or have it stop at a stock level, from its details panel
 
 ## Digging
 
-- The drill only sinks the shaft. In 3D a big boring machine sits at the bottom of the hole, riding down as it digs: a turning cutterhead, grippers braced on the bore, a conveyor lifting spoil into a skip, and the hoist cable and power line up the shaft. The top of the shaft is lined with a concrete collar that lips out onto the ground; on it, a gantry over the hole carries a sheave for each cable, and a winch at either end winds them in. The cables follow the drill down. It's only for looks.
+- The drill only sinks the shaft. In 3D a big boring machine sits at the bottom of the hole, riding down as it digs: a turning cutterhead, grippers braced on the bore, a conveyor lifting spoil into a skip, and the hoist cable and power line up the shaft. The top of the shaft is lined with a concrete collar that rises into a rim round the hole, with a railed walkway on top (the shaft dome stands on it). On the rim, lattice towers hold a gantry over the hole with a sheave for each cable, and a winch at either end winds them in. The cables follow the drill down. It's only for looks.
 - The first floors go quickly; from floor 4 on, each floor takes twice as long (`digging.slowFromFloor`, `slowFactor`).
 - A new hole starts with only ring 1 of floor 1 dug out (and the landing kit's battery bank in ring 2). Every other slot is solid rock until it's dug out.
 - A room placed on rock is excavated first (3 hours a slot, bringing up its rock and whatever the hole sits on), then built.
