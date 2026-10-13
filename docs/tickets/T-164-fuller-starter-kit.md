@@ -29,3 +29,4 @@ GUIDE.md: starting out; DECISIONS.md: the starter kits; tutorial text.
 ## History
 - 2026-10-12 19:55 opened from N-0088
 - 2026-10-12 19:59 questions answered
+- 2026-10-13 00:52 building on t-164-fuller-starter-kit
