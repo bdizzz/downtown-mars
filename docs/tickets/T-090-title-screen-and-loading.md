@@ -33,3 +33,4 @@ ART.md: the title screen. GUIDE.md: Getting started.
 ## History
 - 2026-10-08 02:06 opened from N-0051
 - 2026-10-08 02:14 questions answered
+- 2026-10-12 20:06 building on t-090-title-screen-and-loading (with T-064)

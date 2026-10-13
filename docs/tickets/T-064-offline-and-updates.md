@@ -34,3 +34,4 @@ GUIDE.md and README: offline play and updating. DECISIONS.md: previews and servi
 ## History
 - 2026-10-06 02:02 opened from N-0031
 - 2026-10-06 02:03 questions answered
+- 2026-10-12 20:06 building on t-090-title-screen-and-loading (with T-090)
