@@ -132,7 +132,7 @@ export function stepConvoys(world: World, cfg: SimConfig): void {
       site: c.site,
       deposits: depositsAt(world.map, c.site),
       seed: holeSeed(world.seed, c.id),
-    });
+    }, cfg.landingKits.laterHoles);
     hole.tick = world.tick;
     // They start with what they brought, not Earth's starter stock. The crew seals what
     // they blast out and fills it with air; the kit's oxygen goes into tanks if there are

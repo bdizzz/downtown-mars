@@ -39,7 +39,10 @@ describe("saves", () => {
     applyCommand(first(w), { type: "consoleFinish" });
     expect(serialize(w)).not.toContain('"field"');
     const loaded = deserialize(serialize(w));
-    expect(loaded.ok && first(loaded.world).effects.field.noise![0]![0]![2]).toBe(-2);
+    // The concrete plant (and the landing kit's scrubber behind it) make the noise there.
+    const noise = first(w).effects.field.noise![0]![0]![2]!;
+    expect(noise).toBeLessThanOrEqual(-2);
+    expect(loaded.ok && first(loaded.world).effects.field.noise![0]![0]![2]).toBe(noise);
   });
 
   it("refuses garbage, other games and other versions", () => {

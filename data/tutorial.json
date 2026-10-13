@@ -33,8 +33,8 @@
     },
     {
       "id": "corridor",
-      "text": "Rooms past ring 1 need a corridor back to the shaft. Carve one along the borders between rooms, from the gallery to the scrubber.",
-      "hint": "In Build, press Z and drag along the borders, or click Connect in the scrubber's panel.",
+      "text": "Rooms past ring 1 need a corridor back to the shaft. Carve one along the borders between rooms, out from the gallery.",
+      "hint": "In Build, press Z and drag along the borders, or click Connect in a cut-off room's panel.",
       "highlight": "tool:corridors"
     },
     {

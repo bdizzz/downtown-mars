@@ -55,7 +55,7 @@ export function createWorld(cfg: SimConfig, seed = cfg.seed): World {
     site,
     deposits: depositsAt(map, site),
     seed: holeSeed(seed, 1),
-  });
+  }, cfg.landingKits.newGame);
   return { seed, tick: 0, holes: [first], nextHoleId: 2, map, mapUnlocked: false, convoys: [], routes: [], nextRouteId: 1, relations: {}, migrations: [] };
 }
 

@@ -11,7 +11,7 @@ import type { SimState } from "../src/sim/state";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
 import { ensureStairs, quarry, adapt, tendStorage, tendUpkeep, tendWindows, tendEvents } from "./adaptive";
-import { PLAN, VISIT_ANSWERS } from "./bot";
+import { planFor, VISIT_ANSWERS } from "./bot";
 import { beds } from "../src/sim/earth";
 import { stageCounts } from "../src/sim/people";
 
@@ -163,7 +163,8 @@ function childExport(child: SimState): string {
 export function runNetwork(days: number, seed = config.seed, found = true) {
   const world = createWorld(config, seed);
   const home = world.holes[0]!;
-  const homePlan = builder(PLAN);
+  const plan = planFor(config.landingKits.newGame);
+  const homePlan = builder(plan);
   // A player gets ready to found as soon as the map opens, alongside the rest.
   const netPlan = builder(HOME_EXTRA);
   const childPlan = builder(CHILD_PLAN);
@@ -190,7 +191,7 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
       }
       homePlan.step(home, day);
       // Past the opening plan, the player reacts to what's short, once a day.
-      if (homePlan.done === PLAN.length && t % config.ticksPerDay === 0) {
+      if (homePlan.done === plan.length &&t % config.ticksPerDay === 0) {
         // Saving up for the seed kit: the scarce goods it's still short of aren't spent on other rooms.
         const saving = home.gatheringKit ? SCARCE.filter((k) => (home.kit[k] ?? 0) < (network.seedKit.goods[k] ?? 0) - 1e-6) : [];
         const built = adapt(home, saving);

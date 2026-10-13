@@ -56,3 +56,28 @@ describe("first month playthrough", () => {
     expect(Math.min(...log.slice(5).map((d) => d.happy))).toBeGreaterThan(35);
   });
 });
+
+// A new game's first hole starts from the full landing kit (T-164): air, water tanks and power
+// already built, so the bot skips those and the hole should do at least as well.
+describe("first month playthrough, from the full landing kit", () => {
+  const { state, log, builtAt, plan } = run(30, "full");
+  const at = (room: string) => builtAt[plan.findIndex((p) => p.room === room)]!;
+
+  it("starts with the kit's air, water and power rooms working", () => {
+    const first = log[0]!;
+    expect(first.o2).toBeGreaterThan(15);
+    expect(plan.some((p) => p.room === "life_support" && p.at.kind === "ring" && p.at.floor === 1)).toBe(false);
+  });
+
+  it("finishes tier 2 within about two weeks", () => {
+    expect(at("admin_office")).toBeLessThan(15);
+  });
+
+  it("reaches about 50 colonists within the month", () => {
+    expect(state.population.count).toBeGreaterThanOrEqual(45);
+  });
+
+  it("keeps everyone reasonably healthy", () => {
+    expect(Math.min(...log.map((d) => d.health))).toBeGreaterThan(60);
+  });
+});
