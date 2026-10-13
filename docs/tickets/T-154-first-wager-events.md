@@ -24,3 +24,4 @@ EVENTS.md: both events, marked built.
 
 ## History
 - 2026-10-11 16:09 opened from F-016 (agreed)
+- 2026-10-13 00:58 T-150 added meteorite_run to events.json (machinery stake, console only, no trigger): T-154 adds its trigger, crew and injuries, and the GUIDE entry once wagers turn up in play
