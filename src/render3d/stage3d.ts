@@ -7,7 +7,7 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
+import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints, surfaceSpots } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
@@ -28,7 +28,7 @@ import { isoFitDistance } from "./isoReach";
 import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { buildLayout, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
-import { Dust, makeDome, makeLander, placeLander } from "./scenery3d";
+import { Dust, makeDome, makeLander, placeLander, surfaceSpotGeometry } from "./scenery3d";
 import { makeDrillRig, type DrillRig } from "./drillRig";
 import { makeCollar } from "./collar3d";
 import { Festival } from "./festival3d";
@@ -110,6 +110,8 @@ const SLICE = { fadeFrom: 6, fadeTo: 45, edge: 5, tint: 0.7, tintDepth: 30, seco
 type Mode = Camera;
 
 const HOVER = { ok: 0x7fd67f, bad: 0xe0503a, hover: 0xffe2b0, selected: 0xffffff };
+/** Where a surface room in hand could go: how strongly each spot is tinted, and the one under the pointer (T-107). */
+const SPOTS = { faint: 0.12, hover: 0.3 };
 const FIELD_MAX = 3;
 /** Overlay tints sit just proud of the cells, in front of the rock and around rooms. */
 const FIELD_OUTSET = -0.04;
@@ -934,6 +936,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     overlay.add(disc);
   }
 
+  /** Surface slots tinted on the ground (T-107): under the buildings and boulders round them, unlike the ghosts. */
+  function surfaceSpotTint(slots: number[], color: number, opacity: number): void {
+    if (!layout || !slots.length) return;
+    const m = overlayMat(`spot:${color}:${opacity}`, () => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }));
+    const mesh = new THREE.Mesh(surfaceSpotGeometry(layout.hole, layout.surface.length, slots), m);
+    mesh.renderOrder = 8;
+    overlay.add(mesh);
+  }
+
   function markRoom(room: RoomInstance, color: number): void {
     if (room.at.kind === "surface") surfaceMarker(room.surfaceCells, color);
     else outline(room.cells, color);
@@ -1009,6 +1020,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       for (const id of shown.edges) ghostEdge(id, shown.erase ? HOVER.bad : layout.corridors[id] ? HOVER.hover : HOVER.ok);
       return;
     }
+    // A surface room in hand: every spot it could go, faintly, the surface showing (T-107). The one under the pointer, stronger, below.
+    const spots = tool?.kind === "build" && cut() === null && view.mode !== "walk" ? surfaceSpots(layout, tool.room) : [];
+    surfaceSpotTint(spots, HOVER.ok, SPOTS.faint);
     // Walking, what's under the pointer isn't outlined (a click still picks it).
     if (!info || view.mode === "walk") return;
     const p = info.pick;
@@ -1023,6 +1037,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const cells = info.check.cells.length ? info.check.cells : p.kind === "slot" ? [p as Cell] : [];
       fillCells(cells, color, 0.4);
       outline(cells, color);
+      if (info.check.ok && spots.length) surfaceSpotTint(info.check.surfaceCells, HOVER.ok, SPOTS.hover);
       if (info.check.surfaceCells.length) surfaceMarker(info.check.surfaceCells, color);
       if (info.check.ok && cells.length) drawHalo(tool.room, cells);
       // Extending stairs or an elevator: a plus floating on the piece being added.

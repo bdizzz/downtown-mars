@@ -37,6 +37,33 @@ export function makeDome(hole: Hole): THREE.Group {
   return g;
 }
 
+/** The band of ground surface buildings stand on, either side of where they're placed (metres out from the rim). */
+const SPOT = { from: SURFACE_RING_M - 10, to: SURFACE_RING_M + 10, gap: 0.6, lift: 0.1 };
+
+/**
+ * Surface slots as patches of ground (T-107): one flat sector of the band per slot, a little apart so the
+ * slots read, just above the ground. `total` is how many surface slots there are round the hole.
+ */
+export function surfaceSpotGeometry(hole: Hole, total: number, slots: number[]): THREE.BufferGeometry {
+  const r0 = hole.shaftRadiusM + SPOT.from;
+  const r1 = hole.shaftRadiusM + SPOT.to;
+  const parts = slots.map((s) => {
+    const gap = SPOT.gap / r0;
+    const a0 = (s / total) * TAU + gap / 2;
+    const a1 = ((s + 1) / total) * TAU - gap / 2;
+    // A ring lies in the xy plane; laid flat (x turned -90°), its angle θ lands at -θ round the shaft.
+    const g = new THREE.RingGeometry(r0, r1, 16, 1, -a1, a1 - a0);
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, SPOT.lift, 0);
+    return g.toNonIndexed();
+  });
+  const pos = parts.flatMap((g) => Array.from(g.getAttribute("position").array));
+  parts.forEach((g) => g.dispose());
+  const out = new THREE.BufferGeometry();
+  out.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  return out;
+}
+
 /** The lander: a capsule with legs and a flame, positioned by the caller. */
 export function makeLander(): THREE.Group {
   const g = new THREE.Group();
