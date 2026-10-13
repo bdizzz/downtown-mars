@@ -46,6 +46,32 @@ export interface EventEffect {
   landing?: boolean;
   /** Vent the air's O2 above the target to the planet, lost for good (PLAN-M16). */
   ventAir?: boolean;
+  /** Its message is bad news (as it is anyway when its mood is negative). */
+  bad?: boolean;
+}
+
+/**
+ * What a wager puts up (F-016): resources taken from stock when it's agreed and held until it
+ * resolves, then given back as its outcome says. `min` is the least share of it you can commit
+ * instead (T-152); leave it out and it's all or nothing.
+ */
+export interface EventStake {
+  resources: Record<string, number>;
+  min?: number;
+}
+
+/**
+ * One result a wager can roll (T-150). Its effect happens when it's rolled; `returns` is the share
+ * of the stake given back (1 if left out). `weight` is its weight with the whole stake committed,
+ * `weightAtMin` with the least (straight between the two); `unless` rules it out if any of those
+ * results were rolled in an earlier table (no ore after a catastrophe).
+ */
+export interface EventOutcome extends EventEffect {
+  id: string;
+  weight: number;
+  weightAtMin?: number;
+  returns?: number;
+  unless?: string[];
 }
 
 export interface EventChoice extends EventEffect {
@@ -54,6 +80,12 @@ export interface EventChoice extends EventEffect {
   hint: string;
   /** Only with a working landing pad. */
   needsPad?: boolean;
+  /** Put up for a wager: held, then given back by its outcome. */
+  stake?: EventStake;
+  /** A wager that takes time: it resolves this many days after it's agreed (at once if left out). */
+  durationDays?: number;
+  /** Outcome tables, each rolled once in turn (so a trip can bring its gear back, and separately find ore). */
+  outcomes?: EventOutcome[][];
 }
 
 export interface EventDef {
@@ -82,6 +114,22 @@ export interface PendingEvent {
   o2?: string;
 }
 
+/** A wager on its way: the stake held until it resolves (T-150). */
+export interface Underway {
+  /** The event it came from, whose id seeds its dice. */
+  eventId: number;
+  kind: string;
+  choice: string;
+  title: string;
+  /** The share of the stake committed (its `min` to 1). */
+  share: number;
+  /** What's held, to be given back as the outcome says. */
+  held: Record<string, number>;
+  startTick: number;
+  dueTick: number;
+  floor?: number;
+}
+
 interface Mood {
   amount: number;
   startTick: number;
@@ -93,6 +141,8 @@ export interface EventsState {
   seed: number;
   pending: PendingEvent[];
   followUps: { dueTick: number; effect: EventEffect; kind: string }[];
+  /** Wagers away, waiting to resolve (older saves have none). */
+  underway?: Underway[];
   nextId: number;
   /** Last tick each kind of event arrived, for cooldowns. */
   lastTick: Record<string, number>;
@@ -172,8 +222,10 @@ function roll(state: SimState, ...about: number[]): number {
   return hash01(eventsOf(state).seed, state.holeId, ...about);
 }
 
-function fill(text: string, e: Partial<PendingEvent>): string {
+function fill(text: string, e: Partial<PendingEvent> & { back?: string; gains?: string }): string {
   return text
+    .replaceAll("{back}", e.back ?? "")
+    .replaceAll("{gains}", e.gains ?? "")
     .replaceAll("{floor}", String(e.floor ?? ""))
     .replaceAll("{ship}", e.ship ?? "")
     .replaceAll("{milestone}", e.milestone ?? "")
@@ -199,8 +251,36 @@ export function raiseEvent(state: SimState, cfg: SimConfig, kind: string, extra:
   return pending;
 }
 
-/** Why a choice can't be picked right now, or null if it can. */
-export function choiceRefusal(state: SimState, choice: EventChoice, padWorks: boolean): string | null {
+/** The least share of a choice's stake that can be committed (1: all or nothing). */
+export function stakeMin(choice: EventChoice): number {
+  return choice.stake ? Math.max(0, Math.min(1, choice.stake.min ?? 1)) : 1;
+}
+
+/** What committing `share` of a choice's stake takes from stock, in whole units. */
+export function stakeAmounts(choice: EventChoice, share: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [id, v] of Object.entries(choice.stake?.resources ?? {})) out[id] = Math.round(v * share);
+  return out;
+}
+
+/**
+ * A stake as a stepper sees it (T-152): counted in its first resource, from the least you can
+ * commit to what's asked, and the most the hole can put up now (below `min` when it can't).
+ * `name` is the resource's, lowercase, for the stepper's label.
+ */
+export type StakeRange = { resource: string; name: string; asked: number; min: number; max: number };
+export function stakeRange(state: SimState, choice: EventChoice): StakeRange | null {
+  const [resource, asked] = Object.entries(choice.stake?.resources ?? {})[0] ?? [];
+  if (!resource || !asked) return null;
+  const min = Math.ceil(asked * stakeMin(choice) - 1e-9);
+  let max = asked;
+  const short = (n: number) => Object.entries(stakeAmounts(choice, n / asked)).some(([id, v]) => (state.resources[id] ?? 0) - v < -1e-9);
+  while (max >= min && short(max)) max--;
+  return { resource, name: resourceDef(resource).name.toLowerCase(), asked, min, max };
+}
+
+/** Why a choice can't be picked right now (committing `share` of its stake), or null if it can. */
+export function choiceRefusal(state: SimState, choice: EventChoice, padWorks: boolean, share = stakeMin(choice)): string | null {
   if (choice.needsPad && !padWorks) return "Needs a staffed, powered landing pad";
   if (choice.festival && (state.resources.meals ?? 0) + (state.resources.rations ?? 0) < eventData.celebrations.festival.feast) {
     return `A feast needs ${eventData.celebrations.festival.feast} meals or rations`;
@@ -208,21 +288,103 @@ export function choiceRefusal(state: SimState, choice: EventChoice, padWorks: bo
   for (const [id, v] of Object.entries(choice.resources ?? {})) {
     if (v < 0 && (state.resources[id] ?? 0) + v < -1e-9) return `Not enough ${id}`;
   }
+  for (const [id, v] of Object.entries(stakeAmounts(choice, share))) {
+    if ((state.resources[id] ?? 0) - v < -1e-9) return `Not enough ${resourceDef(id).name.toLowerCase()}`;
+  }
   return null;
 }
 
-/** Answer an event with one of its choices. */
-export function answerEvent(state: SimState, cfg: SimConfig, eventId: number, choiceId: string, padWorks: boolean): { ok: true } | { ok: false; reason: string } {
+/** Answer an event with one of its choices, committing `share` of its stake (all of it if left out). */
+export function answerEvent(
+  state: SimState,
+  cfg: SimConfig,
+  eventId: number,
+  choiceId: string,
+  padWorks: boolean,
+  share?: number,
+): { ok: true } | { ok: false; reason: string } {
   const ev = eventsOf(state);
   const pending = ev.pending.find((e) => e.id === eventId);
   if (!pending) return { ok: false, reason: "That's already been decided" };
   const choice = eventDef(pending.kind).choices.find((c) => c.id === choiceId);
   if (!choice) return { ok: false, reason: "No such choice" };
-  const refusal = choiceRefusal(state, choice, padWorks);
+  if (share !== undefined && !Number.isFinite(share)) return { ok: false, reason: "The stake must be a number" };
+  const committed = Math.max(stakeMin(choice), Math.min(1, share ?? 1));
+  const refusal = choiceRefusal(state, choice, padWorks, committed);
   if (refusal) return { ok: false, reason: refusal };
   ev.pending = ev.pending.filter((e) => e !== pending);
   applyEffect(state, cfg, choice, pending);
+  if (choice.outcomes?.length) wager(state, cfg, pending, choice, committed);
   return { ok: true };
+}
+
+// ---- wagers (F-016) ----
+
+/** Put up the stake and send the wager off: it resolves now, or when its days are up. */
+function wager(state: SimState, cfg: SimConfig, pending: PendingEvent, choice: EventChoice, share: number): void {
+  const held = stakeAmounts(choice, share);
+  for (const [id, v] of Object.entries(held)) state.resources[id] = Math.max(0, (state.resources[id] ?? 0) - v);
+  const w: Underway = {
+    eventId: pending.id,
+    kind: pending.kind,
+    choice: choice.id,
+    title: pending.title,
+    share,
+    held,
+    startTick: state.tick,
+    dueTick: state.tick + Math.round((choice.durationDays ?? 0) * cfg.ticksPerDay),
+    ...(pending.floor !== undefined ? { floor: pending.floor } : {}),
+  };
+  if (w.dueTick <= state.tick) resolveWager(state, cfg, w);
+  else (eventsOf(state).underway ??= []).push(w);
+}
+
+/** An outcome's weight with `share` of the stake committed (`min` being the least that can be). */
+export function outcomeWeight(o: EventOutcome, share: number, min: number): number {
+  const t = min < 1 ? Math.max(0, Math.min(1, (share - min) / (1 - min))) : 1;
+  const atMin = o.weightAtMin ?? o.weight;
+  return Math.max(0, atMin + t * (o.weight - atMin));
+}
+
+const amountsText = (r: Record<string, number>) =>
+  Object.entries(r)
+    .filter(([, v]) => v >= 1)
+    .map(([id, v]) => `${Math.round(v)} ${resourceDef(id).name.toLowerCase()}`)
+    .join(", ") || "nothing";
+
+/**
+ * Roll a wager's outcome on the event's own dice, one table at a time. The stake comes back as the
+ * results say (the least `returns` among them), and what's found scales with the share put up.
+ * Returns the ids rolled.
+ */
+export function resolveWager(state: SimState, cfg: SimConfig, w: Underway): string[] {
+  const choice = eventDef(w.kind).choices.find((c) => c.id === w.choice);
+  const min = choice ? stakeMin(choice) : 1;
+  const rolled: EventOutcome[] = [];
+  for (const [t, table] of (choice?.outcomes ?? []).entries()) {
+    const options = table.filter((o) => !o.unless?.some((id) => rolled.some((r) => r.id === id)));
+    const weights = options.map((o) => outcomeWeight(o, w.share, min));
+    const total = weights.reduce((a, b) => a + b, 0);
+    if (total <= 0) continue;
+    let pick = roll(state, w.eventId, t, 8) * total;
+    const i = weights.findIndex((x) => (pick -= x) < 0);
+    rolled.push(options[i < 0 ? options.length - 1 : i]!);
+  }
+  const returns = Math.min(1, ...rolled.map((o) => o.returns ?? 1));
+  const back: Record<string, number> = {};
+  for (const [id, v] of Object.entries(w.held)) if (Math.round(v * returns) > 0) back[id] = Math.round(v * returns);
+  const at = { kind: w.kind, ...(w.floor !== undefined ? { floor: w.floor } : {}) };
+  // The stake comes home first (where there's room for it), then each result happens.
+  if (Object.keys(back).length) applyEffect(state, cfg, { resources: back }, at);
+  for (const o of rolled) {
+    const { id: _id, weight: _w, weightAtMin: _m, returns: _r, unless: _u, ...effect } = o;
+    const resources: Record<string, number> = {};
+    for (const [id, v] of Object.entries(o.resources ?? {})) resources[id] = v > 0 ? Math.round(v * w.share) : v;
+    const gains = Object.fromEntries(Object.entries(resources).filter(([, v]) => v > 0));
+    const message = o.message && fill(o.message, { back: amountsText(back), gains: amountsText(gains) });
+    applyEffect(state, cfg, { ...effect, resources, ...(message ? { message } : {}) }, at);
+  }
+  return rolled.map((o) => o.id);
 }
 
 /** What an effect does to the hole. */
@@ -284,7 +446,7 @@ export function applyEffect(state: SimState, cfg: SimConfig, e: EventEffect, at:
     ev.moods.push({ amount: f.mood, startTick: state.tick, untilTick: ev.festival.untilTick });
   }
   if (e.celebrate) celebrate(state, cfg, e.celebrate);
-  if (e.message) postMessage(state, cfg, fill(e.message, at), (e.mood?.amount ?? 0) < 0 ? "warn" : "good");
+  if (e.message) postMessage(state, cfg, fill(e.message, at), e.bad || (e.mood?.amount ?? 0) < 0 ? "warn" : "good");
   if (lost.length) postMessage(state, cfg, `No storage space for ${lost.join(", ")}: it was left behind.`, "warn");
 }
 
@@ -394,6 +556,11 @@ export function stepEvents(state: SimState, cfg: SimConfig): void {
   for (const f of ev.followUps.filter((x) => state.tick >= x.dueTick)) {
     ev.followUps = ev.followUps.filter((x) => x !== f);
     applyEffect(state, cfg, f.effect, { kind: f.kind });
+  }
+  // Wagers come home.
+  for (const w of (ev.underway ?? []).filter((x) => state.tick >= x.dueTick)) {
+    ev.underway = ev.underway!.filter((x) => x !== w);
+    resolveWager(state, cfg, w);
   }
   ev.moods = ev.moods.filter((m) => state.tick < m.untilTick);
   // Milestones reached: one celebration proposed at a time.

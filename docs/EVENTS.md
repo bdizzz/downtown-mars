@@ -26,6 +26,20 @@ Everything else here (the strike chain, cave-ins, outbreaks, the network events,
 - **Pacing director:** event frequency scales with hole size and difficulty, with guaranteed quiet stretches.
 - **Delegation:** events at holes outside your view are handled by the local administrator, according to the delegation dial and their personality.
 
+## Wagers (F-016)
+
+Built in T-150 and T-152; the events that use them come with T-154 and T-155.
+
+A wager is an event choice where you put something up and the result is rolled. In `data/events.json` a choice can carry:
+
+- **`stake`**: resources taken from stock when it's agreed and held until it resolves (`{ "resources": { "machinery": 10 }, "min": 0.5 }`). `min` is the least share you can commit instead; the card shows a − / + stepper counted in the stake's first resource. Without `min` it's all or nothing.
+- **`durationDays`**: it comes back that many days later (a month each in the player's calendar). Without it, it resolves the moment you choose (the jammed drill).
+- **`outcomes`**: a list of tables, each rolled once in turn. Each result is an ordinary effect (resources, mood, message…) plus `weight` (with the whole stake), `weightAtMin` (with the least; straight between the two), `returns` (the share of the stake given back, 1 if left out; the least across the tables counts) and `unless` (ruled out if one of those results came up in an earlier table).
+
+What an outcome finds scales with the share put up. Outcome messages can say `{back}` (the stake given back) and `{gains}` (what was found). The odds are never shown to the player. Rolls are on the events' own seeded dice, so the same game always rolls the same way.
+
+The first one, **A meteorite came down** (`meteorite_run`), only comes from the console for now (`dm.event("meteorite_run")`): send 5–10 machinery out for a month; all of it comes back (6 in 10 with the full stake), 8 in 10 of it (a winch broke, 3 in 10) or none (a catastrophe, 1 in 10). Separately, 25 ore is found 6 times in 10 (scaled to the stake; never after a catastrophe). Sending less makes a catastrophe and ore both rarer. Or decline, for a small dip in happiness. T-154 gives it a trigger, a crew away and injuries.
+
 ## Citizen visits
 
 | Event | Trigger | Choices |

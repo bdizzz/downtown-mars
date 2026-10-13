@@ -233,6 +233,13 @@ See `PLAN-M16.md`.
 - **Updates come as a banner you tap, never silently** (Bryon): the service worker runs in `prompt` mode (`vite-plugin-pwa`), and mid-game the update autosaves before reloading.
 - **PR previews get no service worker** (Bryon): they share the main game's origin and path, so the main game's worker skips `pr-preview/` and preview builds (`VITE_PR_NUMBER`) don't register one. The dev server has none either.
 
+## Decided for wagers (Oct 13, F-016 / T-150, T-152)
+
+- **A wager's stake is held, not spent:** taken from stock when it's agreed and given back when it resolves, as its outcome says (all, a share, or none). What comes back needs storage room like any gain, so space freed while it's away can fill up meanwhile.
+- **Outcomes are tables rolled in turn,** each result an effect with a weight; a later table can rule results out (`unless`: no ore after a catastrophe). The stake comes back by the least `returns` rolled. Rolls use the events' own dice, hashed with the event's id, so they never shift the hole's other luck.
+- **Committing less** (Claude's defaults): a choice's `min` is the least share you can put up; each outcome's weight runs straight from `weightAtMin` to `weight`; and what an outcome finds scales with the share committed (half the machinery, half the ore). The stepper counts in the stake's first resource; the others scale with it.
+- **Odds are never shown** (Bryon): not as numbers, words or bars. Hints describe what could happen, not how likely it is.
+
 ## Still open
 
 Deliberately not decided yet:

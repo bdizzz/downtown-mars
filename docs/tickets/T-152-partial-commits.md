@@ -1,7 +1,7 @@
 ---
 id: T-152
 title: Commit less than an event asks for, for a smaller stake and different odds
-status: open
+status: done
 size: M
 area: sim, ui
 feature: F-016
@@ -21,3 +21,5 @@ A choice can declare a range (min to asked) for colonists or a resource; the car
 
 ## History
 - 2026-10-11 16:09 opened from F-016 (agreed)
+- 2026-10-13 00:46 building on t-150-rolled-outcomes (with T-150)
+- 2026-10-13 00:58 built with T-150; the web and Godot cards have the stepper

@@ -24,3 +24,4 @@ DECISIONS.md: nobody dies on events; GUIDE.md: Events; README if save format not
 
 ## History
 - 2026-10-11 16:09 opened from F-016 (agreed)
+- 2026-10-13 00:58 T-150: stakes hold resources only; colonists in a stake (the away pool) are T-151's, on EventsState.underway (Underway records)

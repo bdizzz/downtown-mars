@@ -22,7 +22,7 @@ import type { Message } from "./messages";
 import type { Notable } from "./notables";
 import { ordinanceSlots } from "./ordinances";
 import type { Office } from "./visits";
-import { choiceRefusal, eventDef, eventMood, type PendingEvent } from "./events";
+import { choiceRefusal, eventDef, eventMood, stakeRange, type PendingEvent, type StakeRange } from "./events";
 import type { Layout } from "./placement";
 import type { SimState } from "./state";
 
@@ -42,7 +42,8 @@ export interface DrillView {
 
 /** An event waiting for an answer, with its choices and whether each can be picked now. */
 export interface EventView extends PendingEvent {
-  choices: { id: string; label: string; hint: string; refusal: string | null }[];
+  /** `stake`, for a wager: how much of it can be committed (counted in its first resource), for a stepper. */
+  choices: { id: string; label: string; hint: string; refusal: string | null; stake: StakeRange | null }[];
 }
 
 export interface ConvoyView {
@@ -195,7 +196,13 @@ function eventsView(state: SimState): Snapshot["events"] {
   return {
     pending: (ev?.pending ?? []).map((e) => ({
       ...e,
-      choices: eventDef(e.kind).choices.map((c) => ({ id: c.id, label: c.label, hint: c.hint.replaceAll("{floor}", String(e.floor ?? "")), refusal: choiceRefusal(state, c, pad) })),
+      choices: eventDef(e.kind).choices.map((c) => ({
+        id: c.id,
+        label: c.label,
+        hint: c.hint.replaceAll("{floor}", String(e.floor ?? "")),
+        refusal: choiceRefusal(state, c, pad),
+        stake: stakeRange(state, c),
+      })),
     })),
     mood: eventMood(state),
     festival: ev?.festival && ev.festival.untilTick > state.tick ? ev.festival : null,
