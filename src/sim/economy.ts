@@ -9,6 +9,7 @@ import { countStage, needsWeight, type Cohort } from "./people";
 import { storageCaps } from "./storage";
 import { stormOutput } from "./weather";
 import { conditionOf, conditionOutput, isCleanable, maintenanceQueue } from "./condition";
+import { MATERIALS, refitting } from "./materials";
 import type { CareState } from "./care";
 import { airAmount, airHealthLoss, airNeeds, breathe, o2Wanted, releaseTanks, splitMade, storeInTanks } from "./air";
 
@@ -298,6 +299,11 @@ function runRoom(
   if (worn.factor < 1) {
     rate *= worn.factor;
     limit ??= worn.limit;
+  }
+  // Being refitted: the crews are in, and it works around them.
+  if (refitting(state, room)) {
+    rate *= MATERIALS.refit.output;
+    limit ??= "refit";
   }
   // A dust storm dims the solar arrays.
   const storm = stormOutput(state, cfg, room.type);

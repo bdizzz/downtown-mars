@@ -5,7 +5,7 @@ import { LABELS } from "../src/sim/ledger";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
-import { ensureStairs, quarry, tendStorage, tendUpkeep, tendWindows, tendEvents } from "./adaptive";
+import { ensureStairs, quarry, tendStorage, tendUpkeep, tendWindows, tendLinings, tendEvents } from "./adaptive";
 
 // A scripted player for the first month, following DESIGN.md "First 30
 // minutes": the critical set on day 1, then tier 2 as drops and digging pay
@@ -124,6 +124,7 @@ export function run(days: number): { state: SimState; log: Day[]; builtAt: Recor
         tendStorage(s);
         tendUpkeep(s);
         tendWindows(s);
+        tendLinings(s);
         tendEvents(s);
       }
       // Anything still cut off (nothing to carve along yet, or short of rock): try again.

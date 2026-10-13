@@ -14,7 +14,7 @@ import type { Snapshot } from "../sim/snapshot";
 import { corridors, finishDef } from "../sim/corridors";
 import { STORABLE } from "../sim/storage";
 import { num, resName } from "./format";
-import { conditionNote, constructionInfo, fillsTanks, panelRows, seedKitInfo, stopAtInfo, type Row } from "../view/roomPanel";
+import { conditionNote, constructionInfo, fillsTanks, panelRows, refitOptions, seedKitInfo, stopAtInfo, type Row } from "../view/roomPanel";
 import { isProblem, roomState } from "../view/roomState";
 
 interface Props {
@@ -145,7 +145,35 @@ function UnderConstruction({ s, roomId, onCommand }: { s: Snapshot; roomId: numb
           Priority construction
         </button>
       )}
+      {job.canCancel && (
+        <button onClick={() => onCommand({ type: "cancelJob", jobId: job.jobId })} title="Call the refit off: the room keeps its walls, and what it cost comes back">
+          Cancel the refit (full refund)
+        </button>
+      )}
     </div>
+  );
+}
+
+/** Refit the walls in another lining, through the construction queue. */
+function Refit({ s, room, onCommand }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number]; onCommand: Props["onCommand"] }) {
+  const options = refitOptions(s, room);
+  if (!options) return null;
+  return (
+    <label title="Refit the walls through the construction queue. Once the crews start the room works at half speed (a home is less comfortable) until it's done, then it's as good as new. Taking brick or metal out gives half of it back.">
+      <span className="k">Refit</span>
+      <select value="" onChange={(e) => {
+        const o = options[Number(e.target.value)];
+        if (o) onCommand({ type: "upgradeRoom", roomId: room.id, material: o.material, finish: o.finish });
+      }}>
+        <option value="">Choose new walls…</option>
+        {options.map((o, i) => (
+          <option key={o.name} value={i} disabled={!!o.refusal}>
+            {o.text}
+            {o.refusal ? ` (${o.refusal})` : ""}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -277,6 +305,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
       <Rows rows={rows.before} />
       {def.stagesSeedKit && <SeedKit s={s} onCommand={onCommand} />}
       <Rows rows={rows.after} />
+      <Refit s={s} room={room} onCommand={onCommand} />
       {def.growsCrops && (
         <label>
           <span className="k">Crop</span>

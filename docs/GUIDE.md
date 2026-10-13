@@ -58,6 +58,14 @@ Open **Build** (B), pick a room from its category (or press its key: room keys w
 - Windows onto the shaft let the sun in too: +0.5 comfort on floor 1, less each floor down, none below floor 10. In 3D, around midday, sunlight falls down the shaft (still visible in Free view with a floor picked), lights the gallery tubes and pools on the floor inside rooms with windows onto the shaft, fainter the deeper they are.
 - Glass comes from a **glassworks** (Industry, from the start: a small 2×1 room, 2 staff, rock and power → 3 glass a month).
 
+### Refits and salvage
+
+- Every room is carved from **bare rock**. Its panel's **Refit** picker lines the walls in smoothed rock, brick, patterned brick, metal panels or inlaid metal, each showing the comfort it gives (homes in full, rooms people share for everyone), how much slower the room wears, the cost and the work. Bigger rooms cost more: the price is per 10 m cell.
+- Skipping a step costs both (bare rock straight to patterned brick pays for the brick and the pattern). Any lining can change to any other, including back to bare rock.
+- **Salvage:** taking brick or metal out gives half of it back (rounded down) when the job is done; the inlay's glass and smoothed rock's rock are lost. Stripping takes half the lining's work.
+- A refit is paid when you order it and goes in the **construction queue** ("Refit Dorm 3 in brick"). Once the crews start, the room works at half speed and a home is a little less comfortable; when it's done, the room is back to 100% condition. Order another and it replaces the queued one; cancelling (from the panel or the queue's ✕) refunds it in full.
+- In the plan and unrolled views a lined room has a thin border in its lining's colour.
+
 ### The shaft dome
 
 A hole's crowning work (Build → Public, from 300 colonists; glass, metal, machinery and electronics, and a long build). It seals the top of the shaft:
@@ -160,7 +168,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 - **Maintenance** rooms (Build → Services) repair rooms back to 100%, one room per maintenance room at a time, taking the worst from the hole's queue (rooms at 60% or below). They use machinery.
 - From 150 colonists, **cleaning services** do the same for homes and other rooms people share, using clean water.
 - Understaffed crews work slower; a crew that stops hands its room back, part-done, to the front of the queue. A crew with nothing to repair stands by, using power but no machinery or water.
-- Every room is carved from **bare rock**; the room panel's **Walls** row says what its lining is and what that gives. Brick and metal linings (an upgrade, coming soon) make homes more comfortable, make shared rooms nicer for everyone, and wear more slowly (workshops and plants twice as much).
+- Every room is carved from **bare rock**; the room panel's **Walls** row says what its lining is and what that gives. Brick and metal linings (a refit: see Building → Refits and salvage) make homes more comfortable, make shared rooms nicer for everyone, and wear more slowly (workshops and plants twice as much).
 - **Charts → Maintenance** shows the queue and what each crew is on; the **Condition** stat at the top and the Condition overlay show how things stand.
 
 ## Earth, storms, the office and events

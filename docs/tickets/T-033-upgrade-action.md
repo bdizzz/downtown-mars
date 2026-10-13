@@ -1,7 +1,7 @@
 ---
 id: T-033
 title: The Upgrade action: refit a room in place through the construction queue
-status: open
+status: done
 size: L
 area: sim, ui
 feature: F-003
@@ -25,3 +25,5 @@ GUIDE.md: Building (refits and salvage), DECISIONS.md (partial refunds replace "
 ## History
 - 2026-10-06 00:10 opened from F-003 (agreed)
 - 2026-10-06 00:19 added downgrades and salvage (Bryon)
+- 2026-10-13 00:51 building on t-033-upgrade-action
+- 2026-10-13 01:12 built

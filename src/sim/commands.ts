@@ -13,14 +13,14 @@ import { capacities, mainOutput } from "./economy";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById, outsideEdges } from "./edges";
 import { setRoomWindows, wallOf, windowCost, windowRefusal } from "./windows";
-import { domeRefusal, dropCorridors, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRoom } from "./construction";
+import { domeRefusal, dropCorridors, dropRefit, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRefit, queueRoom } from "./construction";
 import { addAdults, holeGates, syncCount, unlock, UNLOCK_GATES } from "./people";
 import { allocationRefusal } from "./storage";
 import { answerVisit } from "./visits";
 import { answerEvent, consoleEvent } from "./events";
 import { padReady } from "./earth";
 import { roomDef } from "./rooms";
-import { canLine, flooringDef, MATERIALS } from "./materials";
+import { canLine, flooringDef, MATERIALS, refitPlan, refitRefusal, refitWords } from "./materials";
 import { buildShowcase } from "./showcase";
 import type { SimState } from "./state";
 import type { DepositKind } from "./mapgeo";
@@ -75,6 +75,8 @@ export type SimCommand =
   | { type: "consoleWear"; condition: number; roomId?: number }
   /** Testing, from the browser console: line a room's walls (and floor) outright, for nothing. Null flooring: back to matching the walls. */
   | { type: "consoleLining"; roomId: number; material?: string; finish?: string; flooring?: string | null }
+  /** Refit a room's walls in another lining (bare rock strips it, salvaging part of the old one), through the construction queue. */
+  | { type: "upgradeRoom"; roomId: number; material: string; finish?: string }
   /** Fit sealed bulkheads across built corridor segments (on), or take them out (off, free). */
   | { type: "setBulkhead"; edges: string[]; on: boolean }
   /** Put windows in (or take them out of) a room's wall: the borders along it. */
@@ -278,6 +280,31 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       layout.version++;
       return { ok: true };
     }
+    case "upgradeRoom": {
+      const room = layout.rooms.find((r) => r.id === cmd.roomId);
+      if (!room) return { ok: false, reason: "No such room" };
+      const to = MATERIALS.walls.find((w) => w.material === cmd.material && w.finish === (cmd.finish ?? "base"));
+      if (!to) return { ok: false, reason: `No lining "${cmd.material}" (${cmd.finish ?? "base"})` };
+      // One refit at a time: a new one replaces any still queued, which is refunded.
+      const queued = state.construction?.queue.find((j) => j.kind === "upgrade" && j.roomId === room.id);
+      if (queued && queued.to?.material === to.material && queued.to.finish === to.finish) return { ok: false, reason: `Already being refitted ${refitWords(to)}` };
+      const plan = refitPlan(room, to);
+      // Back to what it has: just the queued refit called off.
+      if (!plan && queued) {
+        dropRefit(state, queued);
+        return { ok: true };
+      }
+      const refusal = refitRefusal(room, plan, state.resources, queued?.paid);
+      if (refusal || !plan) return { ok: false, reason: refusal ?? "Nothing to do" };
+      if (queued) dropRefit(state, queued);
+      for (const [r, v] of Object.entries(plan.cost)) {
+        state.resources[r] = (state.resources[r] ?? 0) - v;
+        record(state, r, "out", CONSTRUCTION, v);
+      }
+      queueRefit(state, room, plan, config);
+      layout.version++;
+      return { ok: true };
+    }
     case "consoleEvent":
       return consoleEvent(state, config, cmd.kind);
     case "consoleStorm": {
@@ -325,6 +352,11 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       if (!job) return { ok: false, reason: "Nothing in the queue by that number" };
       if (job.kind === "room" && job.roomId !== undefined) return apply(state, { type: "demolish", roomId: job.roomId });
       if (job.kind === "corridors") return apply(state, { type: "removeCorridors", edges: job.edges ?? [] });
+      if (job.kind === "upgrade") {
+        // The room keeps its lining; what was paid comes back, and nothing is salvaged.
+        dropRefit(state, job);
+        return { ok: true };
+      }
       if (job.kind === "fill") {
         // The corridors stay; what was paid to fill them in comes back.
         for (const id of job.edges ?? []) {
