@@ -58,11 +58,11 @@ export const PLAN: Plan[] = [
   { room: "restroom", at: ring(4, 1, 5) },
 ];
 
-/** The plan from a landing kit: floor 1's rooms the kit already brings are left out (one for each kit room). */
+/** The plan from a landing kit: floor 1's rooms the kit already brings are left out (tanks matched by what they hold); later floors' stay, as the hole grows into them. */
 export function planFor(kit: LandingKitName, plan: Plan[] = PLAN): Plan[] {
-  const brought = config.landingKits[kit].ring.filter((k) => k.floor === 1).map((k) => k.room);
+  const brought = config.landingKits[kit].ring.map((k) => `${k.room}/${k.holds ?? ""}`);
   return plan.filter((p) => {
-    const i = p.at.kind === "ring" && p.at.floor === 1 ? brought.indexOf(p.room) : -1;
+    const i = p.at.kind === "ring" && p.at.floor === 1 ? brought.indexOf(`${p.room}/${p.holds ?? ""}`) : -1;
     if (i >= 0) brought.splice(i, 1);
     return i < 0;
   });

@@ -105,10 +105,10 @@ describe("founding", () => {
 describe("landing kits (T-164)", () => {
   const ringRooms = (w: World, i: number) => w.holes[i]!.layout.rooms.filter((r) => r.at.kind === "ring").map((r) => r.type).sort();
 
-  it("a new game's first hole starts with air, water tanks and power built and working", () => {
+  it("a new game's first hole starts with air, water and power built and working, a corridor carved to what nothing else reaches", () => {
     const w = createWorld(config, 42);
     const home = w.holes[0]!;
-    expect(ringRooms(w, 0)).toEqual(["battery_bank", "electrolyzer", "entrance", "life_support", "water_tank", "water_tank"]);
+    expect(ringRooms(w, 0)).toEqual(["battery_bank", "electrolyzer", "entrance", "life_support", "water_recycler", "water_tank", "water_tank"]);
     const kit = home.layout.rooms.filter((r) => r.at.kind === "ring");
     expect(kit.every((r) => r.connected && !r.planned && !r.building)).toBe(true);
     expect(kit.filter((r) => r.type === "water_tank").map((r) => r.holds ?? "water").sort()).toEqual(["grayWater", "water"]);

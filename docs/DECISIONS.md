@@ -235,10 +235,10 @@ See `PLAN-M16.md`.
 
 ## Decided for the starter kits (Oct 12–13, T-164)
 
-- **Two landing kits** (`landingKits` in `config.json`), reversing "no scrubber in the landing kit" (PLAN-M16, Oct 6) for a new game: **full** for a new game's first hole (pod, pad, solar array, entrance, battery bank, CO2 scrubber, electrolyzer, a clean and a gray water tank, all in floor 1's ring 2, which it fills), so a newcomer doesn't lose their first hole while learning (Bryon, N-0088). No dorms or galleys: those stay the player's first builds. **Bare** (pod, pad, solar, entrance, battery) for holes founded later; their seed kit brings the rest.
+- **Two landing kits** (`landingKits` in `config.json`), reversing "no scrubber in the landing kit" (PLAN-M16, Oct 6) for a new game: **full** for a new game's first hole (pod, pad, solar array, entrance, battery bank, CO2 scrubber, electrolyzer, a clean and a gray water tank, filling floor 1's ring 2, and a water recycler behind them in ring 3, so gray water doesn't spill away before the player knows what it is; Bryon, Oct 13), so a newcomer doesn't lose their first hole while learning (Bryon, N-0088). No dorms or galleys: those stay the player's first builds. **Bare** (pod, pad, solar, entrance, battery) for holes founded later; their seed kit brings the rest.
 - **Difficulty picks the kit later** (F-014): hard gets the bare start, and normal offers it as a "veteran" option (Bryon, Oct 12). Until then every new game gets the full kit.
-- **The tutorial adapts by skipping:** goals are checked against what's built, so the scrubber, electrolyzer and tank steps are already met from the full kit. The corridor step no longer names the scrubber.
-- `createInitialState` defaults to the bare kit, so unit tests keep their slots; `createWorld` passes the full one. The bots build their plan less what the kit brings (`planFor` in `tests/bot.ts`), and the playthrough runs from both starts.
+- **The tutorial adapts by skipping:** goals are checked against what's built, so the scrubber, electrolyzer, tank and recycler steps are already met from the full kit, and so is the corridor step (the crew carves a corridor to any kit room nothing else reaches: the recycler). The corridor step no longer names the scrubber.
+- `createInitialState` defaults to the bare kit, so unit tests keep their slots; `createWorld` passes the full one. The bots build their plan less floor 1's rooms the kit brings (`planFor` in `tests/bot.ts`; later floors' recyclers stay, as the hole grows into them), and the playthrough runs from both starts. The full kit lifts a solo hole as much as a network, so the people playthrough's network-over-solo bar eased from 1.3 to 1.25 (six seeds: 1.27–1.65).
 
 ## Still open
 

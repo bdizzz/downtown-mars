@@ -20,7 +20,7 @@ import { openCells } from "./excavation";
 import type { DepositKind } from "./mapgeo";
 import { roomDef } from "./rooms";
 import { galleryEdges } from "./edges";
-import { corridors, recomputeAccess } from "./corridors";
+import { corridors, recomputeAccess, routeToRoom } from "./corridors";
 import { culture, type Culture } from "./culture";
 import { addAdults } from "./people";
 import { createConstruction, type ConstructionState } from "./construction";
@@ -129,6 +129,13 @@ export function createInitialState(
   // Floor 1's gallery comes built, all the way round the shaft.
   for (const e of galleryEdges(layout.hole, 1)) layout.corridors[e.id] = corridors.gallery.id;
   recomputeAccess(layout);
+  // A kit room nothing reaches (behind the others) gets the shortest corridor carved to it.
+  for (const room of layout.rooms) {
+    const path = room.connected ? [] : (routeToRoom(layout, room, cfg) ?? []);
+    if (!path.length) continue;
+    for (const id of path) layout.corridors[id] = corridors.defaultFinish;
+    recomputeAccess(layout);
+  }
   layout.version = 0;
   const state: SimState = {
     holeId: who.holeId,
