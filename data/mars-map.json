@@ -1,0 +1,31 @@
+{
+  "_note": "How the map colours Mars, shared by scripts/build-relief.mjs (the map image) and the game (each site's soil, and where the ice is).",
+  "ramp": {
+    "_note": "Colour by elevation (metres, then sRGB): deep basins dark, plains rust, heights pale.",
+    "stops": [
+      [-8000, [29, 34, 51]],
+      [-4000, [64, 42, 40]],
+      [-2000, [107, 58, 36]],
+      [0, [154, 82, 48]],
+      [2000, [184, 115, 63]],
+      [5000, [201, 154, 106]],
+      [10000, [220, 195, 160]],
+      [21000, [244, 236, 224]]
+    ]
+  },
+  "caps": {
+    "_note": "The residual polar caps: where they start (degrees of latitude), how far they fade in, and their colour. Holes can't be dug from where they start.",
+    "north": 80,
+    "south": 83,
+    "fade": 5,
+    "color": [236, 238, 240]
+  },
+  "soil": {
+    "_note": "How far a site's ground leans from the game's base dust toward the map's colour there (0 none, 1 all the way); its boulders and horizon shift in proportion. Short of 1, so a deep basin or a pale volcano still reads as Mars dust.",
+    "strength": 0.6
+  },
+  "sky": {
+    "_note": "The latitude for the sun and stars at a hole with no place on the map yet.",
+    "defaultLatitude": 45
+  }
+}

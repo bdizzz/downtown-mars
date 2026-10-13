@@ -1,10 +1,14 @@
 import * as THREE from "three";
-import { buildTerrain, siteSeed } from "../render3d/terrain3d";
+import { buildTerrain, GROUND_BASE, siteSeed, soilTint } from "../render3d/terrain3d";
+import { soilAt } from "../sim/map";
+import { siteLatitude } from "../view/sunPath";
 import type { SimState } from "../sim/state";
 
 // The land round the hole for the Godot viewer, built by the web's own code (render3d/terrain3d.ts),
 // so the same site gets the same land in both: the ground rolling away from the pad, with its craters;
 // the boulders, as one shape and a placement each; and the horizon's mountains, mesas or hills.
+// The ground's colour leans toward the map's at the site (T-073), and the site's latitude sets the
+// sun's path and the stars' turning (T-020, view/sunPath.ts; Godot's Live.cs does the same sums).
 // Sent once per hole.
 
 const b64f = (a: ArrayLike<number>) => Buffer.from(new Float32Array(a).buffer).toString("base64");
@@ -24,6 +28,9 @@ export interface TerrainMessage {
   type: "terrain";
   holeId: number;
   style: string;
+  /** Degrees north: the sun's path and the stars' pole. */
+  latitude: number;
+  groundColor: string;
   ground: ReturnType<typeof meshData>;
   rocks: { mesh: ReturnType<typeof meshData>; color: string; transforms: string };
   horizon: { mesh: ReturnType<typeof meshData>; color: string };
@@ -33,7 +40,8 @@ export const terrainKey = (state: SimState) => `${state.holeId}:${state.layout.h
 
 export function terrainMessage(state: SimState): TerrainMessage {
   const ground = new THREE.MeshStandardMaterial();
-  const t = buildTerrain(state.layout.hole.shaftRadiusM, siteSeed(state.site, state.name), ground);
+  const soil = state.site ? soilAt(state.site) : null;
+  const t = buildTerrain(state.layout.hole.shaftRadiusM, siteSeed(state.site, state.name), ground, soil);
   let rocks: TerrainMessage["rocks"] | null = null;
   let horizon: TerrainMessage["horizon"] | null = null;
   t.group.traverse((o) => {
@@ -51,7 +59,16 @@ export function terrainMessage(state: SimState): TerrainMessage {
       horizon = { mesh: meshData(o.geometry), color: `#${(o.material as THREE.MeshStandardMaterial).color.getHexString()}` };
     }
   });
-  const message: TerrainMessage = { type: "terrain", holeId: state.holeId, style: t.style, ground: meshData(t.ground.geometry), rocks: rocks!, horizon: horizon! };
+  const message: TerrainMessage = {
+    type: "terrain",
+    holeId: state.holeId,
+    style: t.style,
+    latitude: siteLatitude(state.site),
+    groundColor: `#${soilTint(GROUND_BASE, soil).toString(16).padStart(6, "0")}`,
+    ground: meshData(t.ground.geometry),
+    rocks: rocks!,
+    horizon: horizon!,
+  };
   t.group.traverse((o) => {
     if (o instanceof THREE.Mesh) {
       o.geometry.dispose();

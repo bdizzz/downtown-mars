@@ -20,23 +20,15 @@ const FACTOR = 2;
 const OUT = "data/mars-relief.jpg";
 const QUALITY = 86;
 
-/** Colour by elevation (metres): deep basins dark, plains rust, heights pale (as the map's always were). */
-const RAMP = [
-  [-8000, [29, 34, 51]],
-  [-4000, [64, 42, 40]],
-  [-2000, [107, 58, 36]],
-  [0, [154, 82, 48]],
-  [2000, [184, 115, 63]],
-  [5000, [201, 154, 106]],
-  [10000, [220, 195, 160]],
-  [21000, [244, 236, 224]],
-];
+// The height colours and the polar caps live in data/mars-map.json, which the game reads too (a site's
+// soil is the map's colour there, unlit; holes can't go on the caps).
+const MAP = JSON.parse(readFileSync("data/mars-map.json", "utf8"));
+const RAMP = MAP.ramp.stops;
 /** Lighting: the height difference across a cell's diagonal neighbours that lifts it by one; the shade's limits. */
 const SHADE_PER_M = 1 / 900;
 const SHADE_MIN = 0.55;
 const SHADE_MAX = 1.35;
-/** The residual polar caps: where they start (degrees of latitude) and how far they fade in. */
-const CAP = { north: 80, south: 83, fade: 5, color: [236, 238, 240] };
+const CAP = MAP.caps;
 
 function ramp(e) {
   for (let i = 1; i < RAMP.length; i++) {

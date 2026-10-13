@@ -1,4 +1,5 @@
 import featureData from "../../data/mars-features.json";
+import mapData from "../../data/mars-map.json";
 import { network } from "./network";
 
 // Map geometry that needs no elevation data: deposit types, named features,
@@ -58,3 +59,34 @@ export function nearestFeature(site: { lat: number; lon: number }): { feature: M
   }
   return best;
 }
+
+type RGB = [number, number, number];
+const RAMP = mapData.ramp.stops as unknown as [number, RGB][];
+const CAPS = mapData.caps as unknown as { north: number; south: number; fade: number; color: RGB };
+
+/** Whether a place is on a polar cap, where holes can't be dug (where the map starts whitening them). */
+export const onIceCap = (site: { lat: number }) => site.lat >= CAPS.north || site.lat <= -CAPS.south;
+
+/** Why a hole can't go here: the polar caps. */
+export const ICE_CAP_REFUSAL = "Ice cap: can't dig here";
+
+/**
+ * The map's colour at a place (sRGB, 0..255), as scripts/build-relief.mjs draws it but without its
+ * lighting: by elevation (metres), whitened toward the polar caps.
+ */
+export function mapColor(elevationM: number, lat: number): RGB {
+  let c: RGB = RAMP[RAMP.length - 1]![1];
+  for (let i = 1; i < RAMP.length; i++) {
+    const [e1, c1] = RAMP[i]!;
+    const [e0, c0] = RAMP[i - 1]!;
+    if (elevationM <= e1) {
+      const t = Math.max(0, (elevationM - e0) / (e1 - e0));
+      c = [c0[0] + (c1[0] - c0[0]) * t, c0[1] + (c1[1] - c0[1]) * t, c0[2] + (c1[2] - c0[2]) * t];
+      break;
+    }
+  }
+  const cap = Math.min(1, Math.max(0, (Math.abs(lat) - (lat > 0 ? CAPS.north : CAPS.south)) / CAPS.fade));
+  return c.map((v, i) => Math.round(v + (CAPS.color[i]! - v) * cap)) as RGB;
+}
+
+export const rgbHex = (c: RGB) => `#${c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;

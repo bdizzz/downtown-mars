@@ -8,6 +8,7 @@ import { foundHole, travelTicks } from "../sim/founding";
 import { daysLasted } from "../sim/failure";
 import { addRoute, removeRoute, routesFrom, roversAt, TRADEABLE } from "../sim/rovers";
 import { degreesApart } from "../sim/mapgeo";
+import { soilAt } from "../sim/map";
 import { network } from "../sim/network";
 import { createWorld, holeById, networkMessages, type World } from "../sim/world";
 import { stepWorld } from "../sim/worldstep";
@@ -42,6 +43,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       population: h.population.count,
       waiting: h.office.waiting.length,
       site: h.site,
+      soil: h.site ? soilAt(h.site) : null,
       deposits: h.deposits ?? [],
       rovers: roversAt(h),
       stock: Object.fromEntries(TRADEABLE.map((r) => [r, h.resources[r] ?? 0])),

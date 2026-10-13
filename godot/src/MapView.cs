@@ -52,6 +52,10 @@ public partial class MapView : Node3D
 
     // For the pointer readout.
     float[] _elevation = Array.Empty<float>();
+    /// <summary>Where the polar caps start (degrees of latitude, data/mars-map.json): no holes from there (T-073).</summary>
+    float _capNorth = 80, _capSouth = 83;
+    const string IceCap = "Ice cap: can't dig here";
+    bool OnIceCap(float lat) => lat >= _capNorth || lat <= -_capSouth;
     int _ew, _eh;
     readonly List<(string name, float lat, float lon)> _features = new();
     List<(string kind, float lat, float lon, float r)> _deposits = new();
@@ -110,6 +114,12 @@ public partial class MapView : Node3D
             _eh = e.GetProperty("height").GetInt32();
             var unit = e.GetProperty("unitMeters").GetSingle();
             _elevation = e.GetProperty("elevation").EnumerateArray().Select(v => v.GetSingle() * unit).ToArray();
+        }
+        using (var doc = JsonDocument.Parse(System.IO.File.ReadAllText(root + "mars-map.json")))
+        {
+            var caps = doc.RootElement.GetProperty("caps");
+            _capNorth = caps.GetProperty("north").GetSingle();
+            _capSouth = caps.GetProperty("south").GetSingle();
         }
         using (var doc = JsonDocument.Parse(System.IO.File.ReadAllText(root + "mars-features.json")))
             foreach (var f in doc.RootElement.GetProperty("features").EnumerateArray())
@@ -310,7 +320,8 @@ public partial class MapView : Node3D
             if (mb.Pressed) _press = mb.Position;
             else if (_press is Vector2 p && p.DistanceTo(mb.Position) < 5 && GlobeAt(mb.Position) is var (lat, lon))
             {
-                PickSite(lat, lon);
+                // The caps refuse a hole; the footer under the pointer already says so.
+                if (!OnIceCap(lat)) PickSite(lat, lon);
                 _press = null;
             }
         }
@@ -335,7 +346,7 @@ public partial class MapView : Node3D
         }
         var near = _features.Select(f => (f.name, km: Km(lat, lon, f.lat, f.lon))).MinBy(f => f.km);
         var here = _deposits.Where(d => Degrees(lat, lon, d.lat, d.lon) <= d.r).Select(d => _depositNames.GetValueOrDefault(d.kind, d.kind).ToLower()).Distinct().ToList();
-        _footer.Text = $"{Math.Abs(lat):0.0}°{(lat >= 0 ? "N" : "S")} {lon:0.0}°E · {ElevationAt(lat, lon):#,0} m · {(near.km < 600 ? near.name : $"{near.km:#,0} km from {near.name}")}{(here.Count > 0 ? " · " + string.Join(", ", here) : "")}";
+        _footer.Text = $"{Math.Abs(lat):0.0}°{(lat >= 0 ? "N" : "S")} {lon:0.0}°E · {ElevationAt(lat, lon):#,0} m · {(near.km < 600 ? near.name : $"{near.km:#,0} km from {near.name}")}{(here.Count > 0 ? " · " + string.Join(", ", here) : "")}{(OnIceCap(lat) ? " · " + IceCap : "")}";
     }
 
     static float Degrees(float lat1, float lon1, float lat2, float lon2) => Mathf.RadToDeg(At(lat1, lon1, 1).AngleTo(At(lat2, lon2, 1)));

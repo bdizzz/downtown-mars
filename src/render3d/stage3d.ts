@@ -22,7 +22,8 @@ import { RoomEffects, type FxView } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
 import { createSky } from "./sky3d";
-import { buildTerrain, siteSeed, type Terrain } from "./terrain3d";
+import { siteLatitude, starTurn, sunDirection } from "../view/sunPath";
+import { buildTerrain, GROUND_BASE, siteSeed, soilTint, type Terrain } from "./terrain3d";
 import { CRUST, FLOOR_H, floorAtY, floorSpan, openShaftRadius, shaftCollarRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { isoFitDistance } from "./isoReach";
 import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick3d";
@@ -64,7 +65,7 @@ const C = {
   rockDark: 0x3e2218,
   // The cutaway's cut face, land and rings alike: between the two above, as it only gets the fill light.
   rockCut: 0x522d20,
-  ground: 0x7a3b22,
+  ground: GROUND_BASE,
   stranded: 0xe0503a,
   digFront: 0xe07a3f,
   nightSky: 0x120a14,
@@ -747,12 +748,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     look.setDaylight(light);
     // At night, windows and the gallery tubes' lamps glow.
     setNightGlow(1 - light);
-    // The sun crosses the sky once a day.
-    const a = (f - 0.25) * TAU;
-    sun.position.set(Math.cos(a) * 100, Math.max(5, Math.sin(a) * 100), 30);
+    // The sun crosses the sky once a day, east to west, as high as the site's latitude lets it (at the
+    // equinox; north is -z), and the stars turn with it (T-020, view/sunPath.ts).
+    const lat = siteLatitude(s.holes.find((h) => h.id === s.holeId)?.site);
+    const [x, y, z] = sunDirection(f, lat);
+    sunDir.set(x, y, z);
+    sun.position.set(x * 100, Math.max(5, y * 100), z * 100);
     // The dome: its gradient by daylight, the sun's glow where the sun is (below the horizon at night).
-    skyDome.update(light, new THREE.Vector3(Math.cos(a), Math.sin(a), 0.3));
-    sunDir.set(Math.cos(a), Math.sin(a), 0.3).normalize();
+    skyDome.update(light, sunDir, starTurn(f, lat));
     updateShaftLight();
     dirty = true;
   }
@@ -2246,14 +2249,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       }
       // The land: rebuilt for another site (or another hole).
       const here = snapshot.holes.find((x) => x.id === snapshot.holeId);
-      const tk = `${snapshot.holeId}:${JSON.stringify(here?.site ?? null)}:${snapshot.holeName}:${snapshot.layout.hole.shaftRadiusM}`;
+      const tk = `${snapshot.holeId}:${JSON.stringify(here?.site ?? null)}:${here?.soil}:${snapshot.holeName}:${snapshot.layout.hole.shaftRadiusM}`;
       if (tk !== terrainKey) {
         terrainKey = tk;
         if (terrain) {
           scene.remove(terrain.group);
           disposeTerrain(terrain);
         }
-        terrain = buildTerrain(snapshot.layout.hole.shaftRadiusM, siteSeed(here?.site ?? null, snapshot.holeName), groundMat);
+        // The ground takes the colour the map shows at the site (T-073).
+        groundMat.color.setHex(soilTint(C.ground, here?.soil ?? null));
+        terrain = buildTerrain(snapshot.layout.hole.shaftRadiusM, siteSeed(here?.site ?? null, snapshot.holeName), groundMat, here?.soil ?? null);
         // Boulders and the horizon go with the slice too (the ground already does).
         const wrapped = new Set<THREE.Material>([groundMat]);
         terrain.group.traverse((o) => {
