@@ -34,3 +34,4 @@ GUIDE.md: The map. DECISIONS.md: where holes can't go.
 - 2026-10-06 09:45 opened from N-0036
 - 2026-10-07 18:43 questions answered
 - 2026-10-07 18:58 moved into F-008
+- 2026-10-13 00:47 building on t-073-site-soil-colour-and-no-ice (with T-020)
