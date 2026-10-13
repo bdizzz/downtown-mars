@@ -29,6 +29,8 @@ export interface World {
   relations: Record<string, Relation>;
   /** Colonists on the road from one hole to another. */
   migrations: Migration[];
+  /** Every hole has failed (T-162): the game is over, and time stops. Its save can't be played on. */
+  over?: { tick: number };
 }
 
 export { network };

@@ -220,6 +220,13 @@ See `PLAN-M16.md`.
 - **Keys: , and . zoom out and in; ; and ' narrow and widen the cut.** The tickets asked for + and − and for [ and ], but + and − already step the speed and [ and ] the holes, so Bryon picked these instead.
 - **How it's drawn:** on the web, two clip planes through the axis; three only unions the renderer's planes, so `render3d/wedgeClip.ts` makes them intersect (nothing in the game clips per material). The WebGPU experiment keeps the flat cut. In Godot the shader's `cut_plane.y` is the cosine of half the wedge (0 for a flat cut), and the cut face is two halves, each turned to its edge.
 
+## Decided for failing holes (Oct 12, T-161 / T-162)
+
+- **Earth throws a dwindling hole a line:** below 20 people, half of drops bring 3 replacement colonists even when health is too poor for the usual arrivals (`earth.rescue` in `config.json`). They still need free beds, and someone to let them in: an empty hole gets none. None on hard, once difficulty lands (F-014: T-122 should zero `earth.rescue.chance` there).
+- **A hole fails at zero colonists,** once it has stayed empty for `failure.emptyDays` (half a month), so a dip doesn't count (`sim/failure.ts`). Failed is for good: no drops, no migrants. **The game is over only when every hole has failed** (and no convoy or migrants are on the road); one empty hole is lost with a smaller card while the others go on. Once over, time stops.
+- **A failed game's save is kept, marked failed, and can't be loaded to play on** (`deserialize` refuses it; the menus show it as *Failed* and disabled, and don't offer it as Continue). The game-over card autosaves, if autosave is on, so the failure is what's kept.
+- **The cards' text** is shared by the web and Godot (`view/failure.ts`), like the welcome card.
+
 ## Decided for the title, offline play and updates (Oct 12, T-090 / T-064)
 
 - **Behind the title, a live 3D scene** (Bryon): the player's own hole from the autosave, or, with no autosave, a showcase colony (`sim/showcase.ts`, two floors) built into the fresh game the sim starts with, rather than a bundled save that would go stale with every save version. Its first floor shows, as it has the most to see. A painted still on phones, low graphics and the flat views. A simple SVG logotype; Godot is a follow-up.

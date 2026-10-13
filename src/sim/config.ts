@@ -109,6 +109,12 @@ export interface SimConfig {
     colonistsPerDrop: number;
     /** Earth sends no colonists while the hole's health is below this. */
     colonistsNeedHealth: number;
+    /**
+     * A hole in a tailspin: below `belowPopulation` people, a drop that would bring nobody (poor
+     * health) brings `colonists` replacements anyway, `chance` of the time. They still need free
+     * beds, and someone to let them in: an empty hole gets none (T-161).
+     */
+    rescue: { belowPopulation: number; chance: number; colonists: number };
     delayChance: number;
     delayDays: number;
     /** How often a drop waiting for a working landing pad tries again. */
@@ -141,6 +147,8 @@ export interface SimConfig {
     productivityFullAt: number;
   };
   messages: { keep: number };
+  /** A hole that stays empty this many days has failed (T-162): a dip shorter than that doesn't count. */
+  failure: { emptyDays: number };
   /** Neighbor effects: air quality every cell starts with, by ring (ring 1 first; the last carries on outward). */
   effects: {
     airQualityByRing: number[];

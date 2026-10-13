@@ -72,6 +72,10 @@ public partial class Live : Node3D
     PanelContainer _topPanel = null!;
     Tutorial _tutorial = null!;
     Welcome _welcome = null!;
+    /// <summary>A failed hole's card (T-162), drawn like the welcome card; "lost" or "over" (every hole failed).</summary>
+    Welcome _failure = null!;
+    string _failureKind = "lost";
+    int _speedBeforeFailure = 1;
     HelpSheet _help = null!;
     SettingsSheet _settings = null!;
     bool _wasConnected;
@@ -267,6 +271,23 @@ public partial class Live : Node3D
         var welcomeLayer = new CanvasLayer { Layer = 2, Name = "WelcomeLayer" };
         AddChild(welcomeLayer);
         welcomeLayer.AddChild(_welcome);
+        // A hole has failed (T-162): the game waits behind the card. A lost hole's goes back to play;
+        // when every hole has failed, the game is over and the button opens the menu, to start again.
+        _failure = new Welcome { Name = "Failure" };
+        _failure.Shown = open =>
+        {
+            if (open) _speedBeforeFailure = _speed;
+            _hud.Visible = !open && !NoHud;
+            if (open) { SetSpeed(0); return; }
+            _bridge.Send(new Dictionary<string, object> { ["type"] = "failureSeen" });
+            if (_failureKind == "over")
+            {
+                _menu.Over = true;
+                _menu.Open();
+            }
+            else SetSpeed(_speedBeforeFailure);
+        };
+        welcomeLayer.AddChild(_failure);
         // The tutorial, help and settings (the sheets over the menu).
         _tutorial.Dismissed = () =>
         {
@@ -462,6 +483,7 @@ public partial class Live : Node3D
             else if (type == "loaded")
             {
                 var result = msg.RootElement.GetProperty("result");
+                if (result.GetProperty("ok").GetBoolean()) _menu.Over = false; // a game to play again
                 _build.Toast(result.GetProperty("ok").GetBoolean() ? "Loaded" : $"Couldn't load: {(result.TryGetProperty("reason", out var why) ? why.GetString() : "unknown")}");
             }
             else if (type == "commandResult") OnCommandResult(msg.RootElement);
@@ -469,6 +491,11 @@ public partial class Live : Node3D
             else if (type == "icons") Icons.Set(msg.RootElement);
             else if (type == "tutorial") _tutorial.Set(msg.RootElement);
             else if (type == "welcome") _welcome.Set(msg.RootElement);
+            else if (type == "failure")
+            {
+                _failureKind = msg.RootElement.GetProperty("kind").GetString() ?? "lost";
+                _failure.Set(msg.RootElement);
+            }
             else if (type == "chained") _build.ShowChain(msg.RootElement);
             else if (type == "proposal") _build.Propose(msg.RootElement);
             msg.Dispose();
@@ -1409,7 +1436,7 @@ public partial class Live : Node3D
         }
         if (e is not InputEventKey { Pressed: true, Echo: false } k) return;
         // The welcome card takes no hotkeys: only its button (Enter or Space) closes it.
-        if (_welcome.Visible) return;
+        if (_welcome.Visible || _failure.Visible) return;
         // Help: ? (or F1).
         if (k.Unicode == '?' || k.Keycode == Key.F1)
         {
@@ -1429,7 +1456,7 @@ public partial class Live : Node3D
                 SetPlan(false);
                 _rig?.Walk(true);
                 break;
-            case Key.Escape when _menu.Visible: _menu.Close(); break;
+            case Key.Escape when _menu.Visible: if (!_menu.Over) _menu.Close(); break; // a game that's over has nothing to go back to
             case Key.Escape when _map.Open: ToggleMap(); break;
             case Key.M when !_build.Active: ToggleMap(); break;
             case Key.N when !_build.Active: _network.Toggle(); break;

@@ -5,6 +5,7 @@ import { makeSnapshot, type HoleSummary, type RelationView, type RouteView, type
 import { cultureTarget, loadFactor, relation, tier } from "../sim/culture";
 import { destination } from "../sim/migration";
 import { foundHole, travelTicks } from "../sim/founding";
+import { daysLasted } from "../sim/failure";
 import { addRoute, removeRoute, routesFrom, roversAt, TRADEABLE } from "../sim/rovers";
 import { degreesApart } from "../sim/mapgeo";
 import { network } from "../sim/network";
@@ -47,6 +48,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       culture: h.culture,
       cultureTarget: cultureTarget(h, config),
       domed: !!h.layout.domed,
+      ...(h.failed ? { failed: { days: daysLasted(h, config), peak: h.failed.peak } } : {}),
     }));
   }
 
@@ -119,6 +121,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       leavingFor: destination(world, hole)?.name ?? null,
       relations: relationViews(),
       mapUnlocked: world.mapUnlocked,
+      gameOver: !!world.over,
       // News from every hole, so nothing elsewhere goes unnoticed.
       messages: networkMessages(world, config.messages.keep),
     };

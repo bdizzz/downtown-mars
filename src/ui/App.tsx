@@ -27,6 +27,8 @@ import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot }
 import { StatusBar } from "./StatusBar";
 import { Tutorial } from "./Tutorial";
 import { Welcome } from "./Welcome";
+import { FailureCard } from "./FailureCard";
+import { nextFailureCard, type FailureCard as FailureCardData } from "../view/failure";
 import {
   advanceStep,
   FOLLOW,
@@ -132,6 +134,10 @@ export function App() {
   const [menuError, setMenuError] = useState<string | null>(null);
   /** The card a new game opens with (ui/Welcome.tsx); the game waits behind it. */
   const [welcome, setWelcome] = useState(false);
+  /** A hole has failed (ui/FailureCard.tsx, T-162); the game waits behind the card. */
+  const [failure, setFailure] = useState<FailureCardData | null>(null);
+  /** Failed holes whose card has been shown (or that had failed before the game loaded), per game. */
+  const seenFailed = useRef<{ gameId: number; ids: Set<number>; over: boolean }>({ gameId: -1, ids: new Set(), over: false });
   const resumeSpeed = useRef(1);
   const [tutorialOn, setTutorialOn] = useState(() => !tutorialHidden());
   const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false, sawThreeD: false });
@@ -155,8 +161,10 @@ export function App() {
   const [sceneLoaded, setSceneLoaded] = useState(false);
   useEffect(() => {
     let live = true;
+    // A failed game's autosave can't be loaded (T-162), so it gets the showcase too.
     const auto = readSave("autosave");
-    void (auto ? load(auto.data) : send({ type: "consoleShowcase", floors: TITLE_SHOWCASE_FLOORS })).then(() => live && setSceneLoaded(true));
+    const showcase = () => send({ type: "consoleShowcase", floors: TITLE_SHOWCASE_FLOORS });
+    void (auto && !auto.summary.failed ? load(auto.data).then((r) => (r.ok ? r : showcase())) : showcase()).then(() => live && setSceneLoaded(true));
     return () => {
       live = false;
     };
@@ -260,10 +268,10 @@ export function App() {
     });
   }, []);
 
-  // The sim stays paused behind any menu, and the welcome card.
+  // The sim stays paused behind any menu, and the welcome and failure cards.
   useEffect(() => {
-    if (menu || welcome) setSpeed(0);
-  }, [menu, welcome, setSpeed]);
+    if (menu || welcome || failure) setSpeed(0);
+  }, [menu, welcome, failure, setSpeed]);
 
   const openMenu = useCallback(() => {
     resumeSpeed.current = speed || resumeSpeed.current;
@@ -335,6 +343,28 @@ export function App() {
     }
     lastDay.current = day;
   }, [day, menu, saveTo, flash, settings.autosave]);
+
+  // A hole has failed (T-162): its card, once. When every hole has, the game is over: the save is
+  // kept, marked failed, and the card leads back to the start screen.
+  useEffect(() => {
+    if (!snapshot) return;
+    const seen = seenFailed.current;
+    if (seen.gameId !== snapshot.gameId) {
+      seenFailed.current = { gameId: snapshot.gameId, ids: new Set(snapshot.holes.filter((h) => h.failed).map((h) => h.id)), over: false };
+      return;
+    }
+    // Once per game: a new game's first snapshot can come after the menu closes on the old one.
+    if (failure || menu || seen.over) return;
+    const card = nextFailureCard(snapshot.holes, snapshot.gameOver, seen.ids);
+    if (!card) return;
+    if (card.holeId !== null) seen.ids.add(card.holeId);
+    if (card.kind === "over") seen.over = true;
+    resumeSpeed.current = speed || resumeSpeed.current;
+    setFailure(card);
+    if (card.kind === "over" && settings.autosave) {
+      saveTo("autosave").then((ok) => ok || flash("Autosave failed: browser storage is unavailable."));
+    }
+  }, [snapshot, failure, menu, speed, saveTo, flash, settings.autosave]);
 
   // Another hole: selections and undo belong to the old one.
   const holeId = snapshot?.holeId;
@@ -653,6 +683,16 @@ export function App() {
           onClose={() => {
             setWelcome(false);
             setSpeed(resumeSpeed.current);
+          }}
+        />
+      )}
+      {failure && (
+        <FailureCard
+          card={failure}
+          onClose={() => {
+            setFailure(null);
+            if (failure.kind === "over") setMenu("title");
+            else setSpeed(resumeSpeed.current);
           }}
         />
       )}

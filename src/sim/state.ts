@@ -2,6 +2,7 @@ import { createEvents, type EventsState } from "./events";
 import { fillAir, type AirState } from "./air";
 import type { SimConfig } from "./config";
 import type { Drill } from "./digging";
+import type { HoleFailure } from "./failure";
 import { createEarth, type EarthState } from "./earth";
 import { refreshEffects, type Effects } from "./effects";
 import { createHappiness, updateHappiness, type Happiness } from "./happiness";
@@ -84,6 +85,12 @@ export interface SimState {
   events?: EventsState;
   /** The living volume, cached (air.ts; absent in older saves until the first tick). */
   air?: AirState;
+  /** The most people this hole has had (failure.ts; absent in older saves until the first tick). */
+  peakPopulation?: number;
+  /** When the hole last emptied, while it stays empty. */
+  emptySince?: number;
+  /** Set when the hole has failed: empty, with no one to let newcomers in (T-162). For good. */
+  failed?: HoleFailure;
 }
 
 export interface HoleIdentity {

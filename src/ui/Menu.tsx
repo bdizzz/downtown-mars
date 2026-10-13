@@ -39,7 +39,8 @@ export function Menu(props: Props) {
   const branch = useGitBranch();
   // Re-read storage on every render: saves change underneath us.
   const saves = Object.fromEntries(SLOTS.map((s) => [s, readSave(s)])) as Record<Slot, ReturnType<typeof readSave>>;
-  const auto = saves.autosave;
+  // A failed game's autosave is kept to look back on, not continued (T-162).
+  const auto = saves.autosave?.summary.failed ? null : saves.autosave;
   const inGame = mode === "pause";
 
   const ask = (text: string, yes: string, run: () => void) => setConfirm({ text, yes, run });
@@ -186,7 +187,7 @@ export function Menu(props: Props) {
                     ? ask(`Load ${slotLabel(slot)}? Unsaved progress is lost.`, "Load", () => onLoad(slot))
                     : onLoad(slot);
               return (
-                <button key={slot} disabled={view === "load" && !existing} onClick={act}>
+                <button key={slot} disabled={view === "load" && (!existing || !!existing.summary.failed)} onClick={act}>
                   {slotLabel(slot)}
                   <span className="sub">{existing ? describeSave(existing) : "Empty"}</span>
                 </button>
