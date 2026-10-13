@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Hole } from "../sim/geometry";
 import { cableTop, hazardTexture, rigCables } from "./drillRig";
-import { COLLAR_TOP, TAU } from "./cylinder";
+import { COLLAR_REACH, COLLAR_TOP, TAU } from "./cylinder";
 import { finishMaterial } from "./surfaces";
 
 // The collar (T-144): a ring of marscrete lining the top of the shaft, so the
@@ -17,7 +17,7 @@ const COLLAR = {
   depth: 2.6,
   thick: 0.3,
   /** The rim (its top is COLLAR_TOP): how far out its wall stands from the shaft's edge, the cap overhanging it, and the bevels on its edges. */
-  reach: 1.8,
+  reach: COLLAR_REACH,
   cap: 0.2,
   capH: 0.22,
   bevel: 0.15,
@@ -51,6 +51,23 @@ const COLOR = {
   beacon: 0xff4a30,
   cabinet: 0x6b7a5a,
 };
+
+/**
+ * A box with chamfered edges, centred on the origin: the collar's poured-concrete look, for buildings that
+ * stand with it (the entrance's gatehouse, rooms3d.ts). Width along x, height along y, depth along z.
+ */
+export function bevelBox(w: number, h: number, d: number, bevel = 0.12): THREE.BufferGeometry {
+  const b = Math.min(bevel, w / 3, h / 3, d / 3);
+  const shape = new THREE.Shape();
+  shape.moveTo(-w / 2 + b, -h / 2 + b);
+  shape.lineTo(w / 2 - b, -h / 2 + b);
+  shape.lineTo(w / 2 - b, h / 2 - b);
+  shape.lineTo(-w / 2 + b, h / 2 - b);
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: d - 2 * b, bevelEnabled: true, bevelSize: b, bevelThickness: b, bevelSegments: 1 });
+  geo.translate(0, 0, -(d - 2 * b) / 2);
+  return geo;
+}
 
 /** Build the collar and its headgear for a hole, centred on the shaft at the surface. */
 export function makeCollar(hole: Hole): THREE.Group {

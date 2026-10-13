@@ -5,7 +5,9 @@ import * as THREE from "three";
 import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
-import { ARC_STEPS, FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { bevelBox } from "./collar3d";
+import { hazardTexture } from "./drillRig";
+import { ARC_STEPS, COLLAR_REACH, FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef, hasBulkhead } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
@@ -2139,31 +2141,81 @@ function rimSpot(layout: Layout, room: RoomInstance): { a: number; r: number } {
   return { a: Math.atan2(z, x), r: r / Math.max(1, top.length) };
 }
 
-/** The entrance's airlock on the surface: a long low hall along the rim, with round hatches and a ramp. */
+/** The entrance's gatehouse (T-144 follow-up): its size, and how far into the collar's rim its back is set so it reads as built onto it. */
+const GATEHOUSE = { deep: 5.4, high: 2.6, wide: 6, setIn: 0.4, cap: 0.22, overhang: 0.2, band: 0.25 };
+
+/**
+ * The entrance's airlock on the surface: a gatehouse poured in marscrete against the collar's rim, as the
+ * collar is (collar3d.ts): bevelled, with an overhanging cap, a band in the room's colour, an orange steel
+ * door frame under hazard paint, a ramp down to the ground, slit windows, and a railed roof with a beacon.
+ */
 function airlock(layout: Layout, room: RoomInstance, color: number): THREE.Object3D {
+  const G = GATEHOUSE;
   const { a } = rimSpot(layout, room);
-  const r = layout.hole.shaftRadiusM + 4;
+  // Local +x points out from the shaft; its back face sits just inside the rim's outer wall.
+  const back = layout.hole.shaftRadiusM + COLLAR_REACH - G.setIn;
+  const r = back + G.deep / 2;
   const g = new THREE.Group();
   g.position.set(r * Math.cos(a), 0, r * Math.sin(a));
   g.rotation.y = -a;
   const mat = (c: number, extra: THREE.MeshStandardMaterialParameters = {}) =>
     material(`prop:${c}:${JSON.stringify(extra)}`, () => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, ...extra }));
-  const hall = new THREE.Mesh(new THREE.CapsuleGeometry(1.6, 7, 6, 16), mat(color));
-  hall.rotation.x = Math.PI / 2;
-  hall.position.y = 1.6;
-  g.add(hall);
-  for (const dz of [-2.5, 0, 2.5]) {
-    const hatch = new THREE.Mesh(new THREE.CircleGeometry(0.7, 16), mat(0x3a2a22, { metalness: 0.4 }));
-    hatch.position.set(-1.62, 1.6, dz);
-    hatch.rotation.y = -Math.PI / 2;
-    g.add(hatch);
+  // Named as a finish, so the Godot viewer gives it its marscrete look too.
+  const concrete = material("finish:marscrete:0:surface", () => finishMaterial("marscrete"));
+  const steel = mat(0xd9862f, { metalness: 0.25, roughness: 0.55 });
+  const dark = mat(0x3e3b38, { metalness: 0.4 });
+  const rail = mat(0xe0b030, { metalness: 0.2 });
+  const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number) => {
+    const mesh = new THREE.Mesh(geo, m);
+    mesh.position.set(x, y, z);
+    g.add(mesh);
+    return mesh;
+  };
+  const front = G.deep / 2;
+  // The block, its painted band and the cap over it.
+  add(bevelBox(G.deep, G.high, G.wide, 0.15), concrete, 0, G.high / 2, 0);
+  add(new THREE.BoxGeometry(G.deep + 0.04, G.band, G.wide + 0.04), mat(color), 0, G.high - G.band / 2 - 0.12, 0);
+  add(bevelBox(G.deep + G.overhang * 2, G.cap, G.wide + G.overhang * 2, 0.08), concrete, 0, G.high + G.cap / 2, 0);
+  // Joints down the sides and front, as the rim's.
+  for (const z of [-G.wide / 2 - 0.01, G.wide / 2 + 0.01]) for (const x of [-front / 2, front / 2]) add(new THREE.BoxGeometry(0.06, G.high - 0.5, 0.06), dark, x, (G.high - 0.5) / 2 + 0.1, z);
+  // The door: a recess in an orange steel frame, a hatch with a round port, hazard paint over it.
+  add(new THREE.BoxGeometry(0.1, 2.1, 1.9), steel, front + 0.04, 1.05, 0);
+  add(new THREE.BoxGeometry(0.1, 1.85, 1.5), dark, front + 0.06, 0.95, 0);
+  const port = add(new THREE.CircleGeometry(0.25, 16), mat(0x9fd2ff, { emissive: 0x3a6f99, emissiveIntensity: 0.7, metalness: 0.2, roughness: 0.1 }), front + 0.12, 1.35, 0);
+  port.rotation.y = Math.PI / 2;
+  const hazard = material("prop:hazard", () => {
+    const map = hazardTexture();
+    map?.repeat.set(2, 1);
+    return new THREE.MeshStandardMaterial({ map, color: map ? 0xffffff : 0xe0b030, roughness: 0.7 });
+  });
+  add(new THREE.BoxGeometry(0.06, 0.22, 1.9), hazard, front + 0.04, 2.25, 0);
+  // The ramp down to the ground, with a kerb each side.
+  const rampLen = 2.6;
+  const ramp = add(new THREE.BoxGeometry(rampLen, 0.25, 2.2), concrete, front + rampLen / 2, 0.05, 0);
+  ramp.rotation.z = -0.06;
+  for (const z of [-1.15, 1.15]) add(new THREE.BoxGeometry(rampLen, 0.3, 0.12), dark, front + rampLen / 2, 0.15, z);
+  // Slit windows down each side, lit from inside.
+  const glow = mat(0xffd9a0, { emissive: 0xffb35c, emissiveIntensity: 0.8, metalness: 0 });
+  for (const z of [-G.wide / 2 - 0.02, G.wide / 2 + 0.02]) for (const x of [-1.2, 0, 1.2]) add(new THREE.BoxGeometry(0.7, 0.18, 0.04), glow, x, 1.75, z);
+  // On the roof: a vent unit, a railing round the edge, and the beacon.
+  const roof = G.high + G.cap;
+  add(bevelBox(1.4, 0.6, 1.1, 0.06), mat(0xbdb8ae, { metalness: 0.3 }), -front / 2, roof + 0.3, 0);
+  for (let s = 0; s < 4; s++) add(new THREE.BoxGeometry(0.03, 0.4, 0.9), dark, -front / 2 + 0.72, roof + 0.3, -0.33 + s * 0.22);
+  const rx = front + G.overhang - 0.12;
+  const rz = G.wide / 2 + G.overhang - 0.12;
+  const corners: [number, number][] = [[-rx, -rz], [rx, -rz], [rx, rz], [-rx, rz]];
+  for (const [x, z] of corners) add(new THREE.CylinderGeometry(0.04, 0.04, 1, 6), rail, x, roof + 0.5, z);
+  for (let k = 0; k < 4; k++) {
+    const [x0, z0] = corners[k]!;
+    const [x1, z1] = corners[(k + 1) % 4]!;
+    const len = Math.hypot(x1 - x0, z1 - z0);
+    for (const y of [0.55, 1]) {
+      const bar = add(new THREE.CylinderGeometry(0.03, 0.03, len, 6), rail, (x0 + x1) / 2, roof + y, (z0 + z1) / 2);
+      bar.rotation.set(x0 === x1 ? Math.PI / 2 : 0, 0, x0 === x1 ? 0 : Math.PI / 2);
+    }
   }
-  const ramp = new THREE.Mesh(new THREE.BoxGeometry(3, 0.3, 3), mat(new THREE.Color(color).multiplyScalar(0.6).getHex()));
-  ramp.position.set(2.6, 0.15, 0);
-  g.add(ramp);
-  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6), mat(0xe07a3f, { emissive: 0xe07a3f }));
-  beacon.position.set(0, 3.5, 0);
-  g.add(beacon);
+  add(new THREE.CylinderGeometry(0.14, 0.16, 0.15, 10), dark, front - 0.5, roof + 0.08, 0);
+  add(new THREE.SphereGeometry(0.2, 10, 6), mat(0xe07a3f, { emissive: 0xe07a3f }), front - 0.5, roof + 0.3, 0);
   g.traverse((o) => (o.userData = { pickable: true, roomId: room.id, surface: true }));
   return g;
 }

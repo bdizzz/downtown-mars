@@ -79,7 +79,7 @@ Pause any staffed room, or have it stop at a stock level, from its details panel
 
 ## Getting in and out
 
-- People and goods come in through the **entrance** on floor 1 (its airlock stands at the rim).
+- People and goods come in through the **entrance** on floor 1 (its airlock is a concrete gatehouse built against the collar's rim).
 - Deeper floors are reached only by **stairs** or elevators down from there.
 - At 100 colonists a **cargo elevator** can run from the surface straight down to one floor, if its column above is clear.
 

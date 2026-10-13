@@ -30,6 +30,8 @@ export const LEDGE_THICKNESS = 0.4;
 export const RAIL_HEIGHT = 1.1;
 /** The top of the concrete collar's rim round the shaft, above the ground (collar3d.ts); the dome stands on it. */
 export const COLLAR_TOP = 1.5;
+/** How far out from the shaft's edge the collar's rim wall stands; the entrance's gatehouse is built against it. */
+export const COLLAR_REACH = 1.8;
 
 /** The slot's angular span [start, end) in radians. */
 export function slotAngles(slot: number, n: number): [number, number] {
