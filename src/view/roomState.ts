@@ -18,6 +18,8 @@ export function limitText(limit: string | undefined): string {
   // Condition (condition.ts).
   if (limit === "worn") return "slowed: worn out, below 30% condition";
   if (limit === "broken") return "stopped: broken down (0% condition)";
+  // Refits (construction.ts, materials.ts).
+  if (limit === "refit") return "half speed while it's refitted";
   // A dust storm dims the solar arrays (weather.ts).
   if (limit === "storm") return "dimmed by the dust storm";
   if (limit.startsWith("stocked:")) return `standing by: ${resName(limit.slice(8)).toLowerCase()} stocked`;
