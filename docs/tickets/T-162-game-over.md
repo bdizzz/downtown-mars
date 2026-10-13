@@ -29,3 +29,4 @@ GUIDE.md: how a hole fails; DECISIONS.md: game over.
 ## History
 - 2026-10-12 19:55 opened from N-0086
 - 2026-10-12 19:59 questions answered
+- 2026-10-12 20:07 building on t-162-game-over

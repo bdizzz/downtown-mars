@@ -29,3 +29,4 @@ GUIDE.md: Earth and supply drops; DECISIONS.md: the rescue rule.
 ## History
 - 2026-10-12 19:55 opened from N-0085
 - 2026-10-12 19:59 questions answered
+- 2026-10-12 20:07 building on t-162-game-over
