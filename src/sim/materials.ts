@@ -1,8 +1,10 @@
 import raw from "../../data/materials.json";
 import conditionRaw from "../../data/condition.json";
+import type { SimConfig } from "./config";
 import { shortfall } from "./corridors";
 import { isActive } from "./economy";
-import type { RoomInstance } from "./placement";
+import { edgeById, edgeLengthM, isGalleryEdge } from "./edges";
+import type { Layout, RoomInstance } from "./placement";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
@@ -14,7 +16,7 @@ import type { SimState } from "./state";
 // comfort, heavy rooms (industry, power, air, water) get none but wear slower
 // still, and the rest only wear slower.
 
-export type Material = "rock" | "brick" | "metal";
+export type Material = "rock" | "marscrete" | "brick" | "metal";
 export type Finish = "base" | "fine";
 export type LiningKind = "home" | "people" | "heavy" | "other";
 
@@ -47,6 +49,7 @@ export const MATERIALS = raw as unknown as {
   leastWear: number;
   refit: { output: number; comfort: number };
   salvage: { share: number; lost: string[]; stripWork: number };
+  corridor: { perSegment: number };
   exempt: string[];
 };
 
@@ -55,6 +58,16 @@ const cleanable = conditionRaw as unknown as { cleanable: { categories: string[]
 /** The wall step for a material and finish (bare rock for anything unknown). */
 export function wallStep(material: string | undefined, finish: string | undefined): WallStep {
   return MATERIALS.walls.find((w) => w.material === (material ?? "rock") && w.finish === (finish ?? "base")) ?? MATERIALS.walls[0]!;
+}
+
+/** A lining's id, as corridors store it and the views name its look: "brick", "brick_fine". */
+export function liningId(step: WallStep): string {
+  return step.finish === "fine" ? `${step.material}_fine` : step.material;
+}
+
+/** The wall step a lining id names, or null (a gallery tube, or anything unknown). */
+export function liningById(id: string | undefined): WallStep | null {
+  return MATERIALS.walls.find((w) => liningId(w) === id) ?? null;
 }
 
 export function flooringDef(id: string | undefined): FlooringDef | null {
@@ -139,6 +152,11 @@ function whole(step: WallStep): { cost: Record<string, number>; work: number } {
   return { cost, work: step.work + (base?.work ?? 0) };
 }
 
+/** What a lining costs a cell from bare rock: its base step and, for a fine finish, the finish on top. */
+export function liningCost(step: WallStep): Record<string, number> {
+  return whole(step).cost;
+}
+
 function times(cost: Record<string, number>, n: number): Record<string, number> {
   return Object.fromEntries(Object.entries(cost).map(([r, v]) => [r, v * n]));
 }
@@ -162,17 +180,20 @@ export interface RefitPlan {
   salvage: Record<string, number>;
 }
 
-/**
- * Refitting a room from its lining to another, per cell times its cells.
- * Within a material only the finish changes: up pays the finish, down takes
- * it out. To another material the old lining comes out (stripping takes a
- * share of its work and gives back a share of it) and the new one goes in
- * whole, base and finish. Null if it's the lining the room has.
- */
+/** Refitting a room from its lining to another, per cell times its cells. Null if it's the lining the room has. */
 export function refitPlan(room: RoomInstance, to: WallStep): RefitPlan | null {
-  const from = liningOf(room);
+  return refitBetween(liningOf(room), to, Math.max(1, room.cells.length));
+}
+
+/**
+ * Refitting `n` cells of walls from one lining to another. Within a material
+ * only the finish changes: up pays the finish, down takes it out. To another
+ * material the old lining comes out (stripping takes a share of its work and
+ * gives back a share of it) and the new one goes in whole, base and finish.
+ * Null if it's the same lining.
+ */
+function refitBetween(from: WallStep, to: WallStep, n: number): RefitPlan | null {
   if (from === to) return null;
-  const n = Math.max(1, room.cells.length);
   const strip = MATERIALS.salvage.stripWork;
   if (from.material === to.material) {
     const fine = from.finish === "fine" ? from : to;
@@ -216,4 +237,40 @@ export function refitWords(to: WallStep): string {
 /** "Refit", or "Strip" when it's back to bare rock. */
 export function refitVerb(to: WallStep): "Refit" | "Strip" {
   return to === MATERIALS.walls[0] ? "Strip" : "Refit";
+}
+
+// ---- corridors (T-142) ----
+
+/** A corridor's lining: its finish read as a wall step (null for a gallery tube, which is glass). */
+export function corridorLining(layout: Layout, edgeId: string): WallStep | null {
+  return liningById(layout.corridors[edgeId]);
+}
+
+/** Is this corridor segment in a refit job already? */
+export function relining(layout: Layout, edgeId: string): boolean {
+  return layout.corridorsRelining?.[edgeId] !== undefined;
+}
+
+/** Refitting one corridor segment: as a room's walls, a 10 m segment counting as `corridor.perSegment` cells. Costs to a tenth. */
+export function corridorRefitPlan(layout: Layout, edgeId: string, to: WallStep, cfg: SimConfig): RefitPlan | null {
+  const e = edgeById(layout.hole, edgeId);
+  const from = corridorLining(layout, edgeId);
+  if (!e || !from) return null;
+  const n = (edgeLengthM(layout.hole, e, cfg.geometry.roomDepthM) / 10) * MATERIALS.corridor.perSegment;
+  const plan = refitBetween(from, to, n);
+  if (!plan) return null;
+  const cost = Object.fromEntries(Object.entries(plan.cost).map(([r, v]) => [r, Math.max(0.1, Math.round(v * 10) / 10)]));
+  return { ...plan, cost };
+}
+
+/** Why this corridor segment can't be refitted in this lining, or null (not counting what it costs). */
+export function corridorRefitRefusal(layout: Layout, edgeId: string, to: WallStep): string | null {
+  if (!layout.corridors[edgeId]) return "No corridor here";
+  const e = edgeById(layout.hole, edgeId);
+  if (!e || isGalleryEdge(e)) return "A gallery tube is glass: it can't be lined";
+  if (layout.corridorsBuilding?.[edgeId] !== undefined) return "Build it first";
+  if (layout.corridorsFilling?.[edgeId] !== undefined) return "It's being filled in";
+  if (relining(layout, edgeId)) return "Already being refitted";
+  if (corridorLining(layout, edgeId) === to) return `It's ${to.name.toLowerCase()} already`;
+  return null;
 }

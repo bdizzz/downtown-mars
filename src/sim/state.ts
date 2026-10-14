@@ -1,6 +1,6 @@
 import { createEvents, type EventsState } from "./events";
 import { fillAir, type AirState } from "./air";
-import type { SimConfig } from "./config";
+import type { LandingKitName, SimConfig } from "./config";
 import type { Drill } from "./digging";
 import type { HoleFailure } from "./failure";
 import { createEarth, type EarthState } from "./earth";
@@ -19,8 +19,8 @@ import { createLayout, placeRoom, type Layout } from "./placement";
 import { openCells } from "./excavation";
 import type { DepositKind } from "./mapgeo";
 import { roomDef } from "./rooms";
-import { galleryEdges } from "./edges";
-import { corridors, recomputeAccess } from "./corridors";
+import { galleryEdges, outsideEdges } from "./edges";
+import { corridors, recomputeAccess, routeToRoom } from "./corridors";
 import { culture, type Culture } from "./culture";
 import { addAdults } from "./people";
 import { createConstruction, type ConstructionState } from "./construction";
@@ -105,7 +105,9 @@ export interface HoleIdentity {
 export function createInitialState(
   cfg: SimConfig,
   who: HoleIdentity = { holeId: 1, name: "Bradbury", site: null, deposits: [], seed: cfg.seed },
+  kitName: LandingKitName = "bare",
 ): SimState {
+  const kit = cfg.landingKits[kitName];
   const h = cfg.starterHole;
   const layout = createLayout(createHole(h.shaftRadiusM, h.floors, h.unlockedRings, cfg.geometry), cfg);
   // The landing crew has blasted out floor 1's first ring (and the kit's rooms); the rest is rock.
@@ -113,18 +115,34 @@ export function createInitialState(
     openCells(layout, Array.from({ length: layout.hole.ringSlots[ring - 1]! }, (_, slot) => ({ floor: 1, ring, slot })));
   }
 
-  for (const k of cfg.landingKit.surface) {
+  for (const k of kit.surface) {
     must(placeRoom(layout, k.room, { kind: "surface", slot: k.slot }, cfg), k.room);
   }
-  for (const k of cfg.landingKit.ring) {
+  for (const k of kit.ring) {
     const [w, d] = cfg.shapes[roomDef(k.room).size as keyof SimConfig["shapes"]]![0]!;
     const placed = must(placeRoom(layout, k.room, { kind: "ring", floor: k.floor, ring: k.ring, slot: k.slot, w, d }, cfg), k.room);
     // The kit's rooms come with their space blasted out, wherever they stand.
     if (placed.ok) openCells(layout, placed.cells);
+    const room = layout.rooms.find((r) => "id" in placed && r.id === placed.id);
+    if (room && k.holds) room.holds = k.holds;
   }
   // Floor 1's gallery comes built, all the way round the shaft.
   for (const e of galleryEdges(layout.hole, 1)) layout.corridors[e.id] = corridors.gallery.id;
   recomputeAccess(layout);
+  // Kit rooms nothing reaches (deeper than ring 2) get a corridor along their fronts, and
+  // the shortest spoke carved out to it: one line in, rather than a spoke to each.
+  for (const room of layout.rooms) {
+    if (room.connected || room.at.kind !== "ring") continue;
+    const ring = room.at.ring;
+    for (const e of outsideEdges(layout.hole, room.cells)) if (e.kind === "arc" && e.circle === ring - 1) layout.corridors[e.id] = corridors.defaultFinish;
+  }
+  recomputeAccess(layout);
+  for (const room of layout.rooms) {
+    const path = room.connected ? [] : (routeToRoom(layout, room, cfg) ?? []);
+    if (!path.length) continue;
+    for (const id of path) layout.corridors[id] = corridors.defaultFinish;
+    recomputeAccess(layout);
+  }
   layout.version = 0;
   const state: SimState = {
     holeId: who.holeId,

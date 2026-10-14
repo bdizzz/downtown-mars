@@ -102,6 +102,27 @@ describe("founding", () => {
   });
 });
 
+describe("landing kits (T-164)", () => {
+  const ringRooms = (w: World, i: number) => w.holes[i]!.layout.rooms.filter((r) => r.at.kind === "ring").map((r) => r.type).sort();
+
+  it("a new game's first hole starts with air, water and power built and working, a corridor carved to what nothing else reaches", () => {
+    const w = createWorld(config, 42);
+    const home = w.holes[0]!;
+    expect(ringRooms(w, 0)).toEqual(["battery_bank", "electrolyzer", "entrance", "life_support", "water_recycler", "water_tank", "water_tank"]);
+    const kit = home.layout.rooms.filter((r) => r.at.kind === "ring");
+    expect(kit.every((r) => r.connected && !r.planned && !r.building)).toBe(true);
+    expect(kit.filter((r) => r.type === "water_tank").map((r) => r.holds ?? "water").sort()).toEqual(["grayWater", "water"]);
+  });
+
+  it("a founded hole starts with just the entrance and a battery", () => {
+    const w = ready();
+    gather(w);
+    foundHole(w, config, 1, site);
+    while (w.convoys.length) stepWorld(w, config);
+    expect(ringRooms(w, 1)).toEqual(["battery_bank", "entrance"]);
+  });
+});
+
 describe("two holes at once", () => {
   it("shows news from every hole in one feed, tagged with its hole", async () => {
     const { networkMessages } = await import("../src/sim/world");

@@ -22,6 +22,8 @@ Everything the game does, section by section. For a quick start, see the [README
 
 Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists, one pod, and a hole that goes nowhere yet.
 
+**The landing kit:** the landing crew sets up the basics before you arrive. On the surface, the landing pod, a landing pad and a solar array; on floor 1, the entrance, a **battery bank** in ring 2, and out in ring 3 two **water tanks** (one for clean water, one for gray), an **electrolyzer**, a **CO2 scrubber** and a **water recycler**, with a corridor along their fronts and one spoke in from ring 1. Air, water and power work from the start, ring 2 is left nearly free for what you want there, and you can begin with food, a restroom and beds. The tutorial skips the steps the kit has done. Holes you found later start with only the pod, pad, solar array, entrance and battery: their seed kit brings the rest. (Once difficulty levels arrive, hard starts bare too, and normal offers it as a veteran start.)
+
 **The title screen:** while the game loads, a loading screen shows the name over a Mars dusk with a bar that fills as each part arrives (the code, the typeface, the colony, the 3D view, the map of Mars), then fades into the title. Behind the title menu your own hole drifts by at dusk, its first floor turning slowly: the one you were last playing (from the autosave), or a showcase colony if you haven't played yet or your last game failed. On a phone, on low graphics or with a flat view chosen, a painted dusk stands in for it.
 
 **The welcome card:** every new game (not a loaded one) opens with a short card on why you're here and why the colony goes underground: the surface is open to radiation from the Sun and deep space, so you dig. Only Mars and the hole show behind it, and the game waits; **And so it begins...** brings in the rest of the interface and starts the clock at 1×. Its text is in `data/tutorial.json` (`welcome`).
@@ -47,7 +49,7 @@ Open **Build** (B), pick a room from its category (or press its key: room keys w
 - The shaft itself is open to Mars. People get about in a sealed network of **gallery tubes** (glass walkways along the shaft wall), corridors, plazas and stairs.
 - Floor 1 starts with its gallery tube all the way round. On deeper floors, lay tubes along the shaft wall where you want them (the corridor tool, on the shaft side of ring 1; **Connect** does it for you).
 - Every room needs a tube, corridor or plaza along one side. Rooms have a door on each floor, wherever they open onto a tube, a corridor or a plaza.
-- **The corridor tool** (Z): drag to snake a corridor along the borders between rooms. It follows the pointer, retracing takes it back, and on release you confirm the segments and cost. A plain click carves one segment. Pick a finish (bare rock, marscrete, brick or metal), or click **Connect** on a cut-off room.
+- **The corridor tool** (Z): drag to snake a corridor along the borders between rooms. It follows the pointer, retracing takes it back, and on release you confirm the segments and cost. A plain click carves one segment. Pick a finish (bare rock, marscrete, brick or metal), or click **Connect** on a cut-off room. **Refit** changes a built corridor's lining later (see Refits and salvage).
 - Shift snakes a fill-in instead, which costs as much as carving.
 
 ### Windows
@@ -60,11 +62,12 @@ Open **Build** (B), pick a room from its category (or press its key: room keys w
 
 ### Refits and salvage
 
-- Every room is carved from **bare rock**. Its panel's **Refit** picker lines the walls in smoothed rock, brick, patterned brick, metal panels or inlaid metal, each showing the comfort it gives (homes in full, rooms people share for everyone), how much slower the room wears, the cost and the work. Bigger rooms cost more: the price is per 10 m cell.
+- Every room is carved from **bare rock**. Its panel's **Refit** picker lines the walls in smoothed rock, marscrete, polished marscrete, brick, patterned brick, metal panels or inlaid metal, each showing the comfort it gives (homes in full, rooms people share for everyone), how much slower the room wears, the cost and the work. Bigger rooms cost more: the price is per 10 m cell.
 - Skipping a step costs both (bare rock straight to patterned brick pays for the brick and the pattern). Any lining can change to any other, including back to bare rock.
 - **Salvage:** taking brick or metal out gives half of it back (rounded down) when the job is done; the inlay's glass and smoothed rock's rock are lost. Stripping takes half the lining's work.
 - A refit is paid when you order it and goes in the **construction queue** ("Refit Dorm 3 in brick"). Once the crews start, the room works at half speed and a home is a little less comfortable; when it's done, the room is back to 100% condition. Order another and it replaces the queued one; cancelling (from the panel or the queue's ✕) refunds it in full.
 - In the plan and unrolled views a lined room has a thin border in its lining's colour.
+- **Corridors** take the same linings. The corridor tool's **Refit** mode lists them with their price per 10 m from bare rock (a quarter of a room cell: brick 2, the same as drawing a corridor in brick). Click a built corridor to refit it, or drag along several and confirm the chain's cost, work and salvage. A lined corridor's walls and floor take the lining's look, so a brick corridor looks like a brick room; for now that's all it does (no comfort). One job refits the lot ("Refit 4 corridor segments in brick"); the corridor stays in use meanwhile, and filling a segment in (or building over it) drops it from the refit, refunding just that one. Gallery tubes are glass and can't be lined. Corridors drawn in marscrete, brick or metal are already lined in it.
 
 ### The shaft dome
 
@@ -82,7 +85,7 @@ Pause any staffed room, or have it stop at a stock level, from its details panel
 
 - The drill only sinks the shaft. In 3D a big boring machine sits at the bottom of the hole, riding down as it digs: a turning cutterhead, grippers braced on the bore, a conveyor lifting spoil into a skip, and the hoist cable and power line up the shaft. The top of the shaft is lined with a concrete collar that rises into a rim round the hole, with a railed walkway on top (the shaft dome stands on it). On the rim, lattice towers hold a gantry over the hole with a sheave for each cable, and a winch at either end winds them in. The cables follow the drill down. It's only for looks.
 - The first floors go quickly; from floor 4 on, each floor takes twice as long (`digging.slowFromFloor`, `slowFactor`).
-- A new hole starts with only ring 1 of floor 1 dug out (and the landing kit's battery bank in ring 2). Every other slot is solid rock until it's dug out.
+- A new hole starts with only ring 1 of floor 1 dug out (and the landing kit's rooms and corridor in rings 2 and 3). Every other slot is solid rock until it's dug out.
 - A room placed on rock is excavated first (3 hours a slot, bringing up its rock and whatever the hole sits on), then built.
 - An **excavator bay** (Build → Construction) speeds the drill: half as fast again at full staff, each, so floors and their rock come sooner. It's noisy.
 - **Empty rooms** (Build → Excavation) dig ahead for rock and space. Dug-out space with nothing in it has pillars and no walls, and is walk-through like a plaza; demolishing a room leaves it.
@@ -122,7 +125,7 @@ What people use counts by how far they'd walk. A step is about a room across, al
 
 Water goes round in a loop. Everything that uses clean water (people, galleys, farms, clinics, industry) turns it into **gray water**; a **water recycler** treats gray back into clean, about 97% of it, with a little soil from the sludge. One recycler keeps up with about 35 people.
 
-- **Gray water needs somewhere to go.** The pod holds 250. When it's full, rooms keep running but the gray water that doesn't fit overflows and is lost for good, and a warning says so. Build a recycler early, and more as you grow; **Charts → Flows → Water** says how much gray water is overflowing.
+- **Gray water needs somewhere to go.** The pod holds 250. When it's full, rooms keep running but the gray water that doesn't fit overflows and is lost for good, and a warning says so. Build a recycler early, and more as you grow; **Charts → Flows → Water** says how much gray water is overflowing. A recycler that has treated all the gray water there is says it's **keeping up**: running below full speed then is fine, not a shortage (the same goes for a composter or a recycling center).
 - **Water tanks** hold clean water unless you set them to hold gray water or tailings, in the tank's details panel.
 - **The leaks:** the electrolyzer splits water into oxygen for good (only as the hole grows), and some industry (the silicon refinery, concrete plant, electronics fab and brickworks) sends part of its water to **tailings**, which can only be stored until 150 colonists, when a **tailings reclaimer** can turn them back into gray water (20 tailings into 18 gray a day, for a lot of power and a little machinery). Wells pump up gray water (brine), so it needs treating too. Earth's drops top up what's lost.
 
@@ -142,7 +145,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 - **Gas tanks** hold oxygen or CO2 (pick in the tank's panel). They're ballast: oxygen above 21% goes in, and comes back out when the air runs short, before any water is split. Supply drops land oxygen in them first. The **tank fill** slider (in any electrolyzer's or O2 tank's panel) has the electrolyzers keep the O2 tanks that full as a reserve for digging or a breakdown. When the tanks are full, extra oxygen stays in the air: that's how it climbs too high. A tank at 0% condition (gas or water) keeps what it holds but takes no more.
 - **The shaft dome** pressurizes before it opens: the O2 reserve and the electrolyzers fill the shaft with air first (the HUD's oxygen note shows how far), so the hole's oxygen doesn't crash.
 - Below **18%** oxygen health falls; below **15%**, fast. Above **23.5%** is a fire risk. **CO2 above 1%** hurts health, above 3% fast.
-- A new game starts with its air made (the landing crew sealed the hole), but without a scrubber the CO2 passes 1% in about five months, and without an electrolyzer every room dug thins the air until Earth's next drop: build both early.
+- A new game starts with its air made (the landing crew sealed the hole) and a scrubber and an electrolyzer built. A founded hole has neither: without a scrubber the CO2 passes 1% in about five months, and without an electrolyzer every room dug thins the air until Earth's next drop, so build both early there.
 
 **Air quality.** The air also moves where people do, through the corridors, gallery tubes and stairs (not through walls, and not by elevator), and it can go stale or foul locally:
 
@@ -200,7 +203,7 @@ Four buttons at the bottom right, as in SimCity. B, V, M and C open them from an
 
 - **Build** opens a strip of room categories along the bottom. Pick one (Storage, say) and its rooms pop up above it, with each room's details as you point at it. Demolish and Undo sit at the end. Only Build places rooms and corridors. The rooms' keys (and Z for corridors, X to demolish, R to rotate) work only in Build; outside it, bare rock doesn't light up under the pointer.
 - **View** has the 3D cameras, the plan and unrolled views, walls down, room colours, Flows and the overlays.
-  - **Room colours** off shows each room in what its walls are lined with: bare or smoothed rock, plain or patterned brick, metal panels or inlaid metal (stairs, lifts and the entrance in what they're built from). A room being refitted has a band of hazard stripes along the tops of its walls. On, walls and floors take the room's category colour, but the floor keeps its material's texture, only tinted.
+  - **Room colours** off shows each room in what its walls are lined with: bare or smoothed rock, plain or polished marscrete, plain or patterned brick, metal panels or inlaid metal (stairs, lifts and the entrance in what they're built from). A room being refitted has a band of hazard stripes along the tops of its walls. On, walls and floors take the room's category colour, but the floor keeps its material's texture, only tinted. Either way, the walls along a lined corridor are in the corridor's lining.
   - **Flows** draws power, water, air and food as pipes, with dashes running from what makes each to what uses it.
   - **Overlays** show noise, smell, health, comfort, air, happiness and condition.
 - **Map** opens the planet as a globe: drag or scroll sideways to spin it (it coasts to a stop), scroll to zoom, click to pick a site.

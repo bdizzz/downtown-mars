@@ -50,7 +50,8 @@ describe("ninety minutes of people", () => {
 
   it("outgrows a single hole by a wide margin", () => {
     // Eased to 1.2 while the air mix and the water loop starved the child (T-026 after T-005); back to 1.3 (T-031).
-    expect(net.log.at(-1)!.total).toBeGreaterThan(solo.log.at(-1)!.total * 1.3);
+    // The full landing kit (T-164) lifts the solo hole too: over six seeds the network beats solo by 1.27–1.65. Was 1.3.
+    expect(net.log.at(-1)!.total).toBeGreaterThan(solo.log.at(-1)!.total * 1.25);
     // Gallery tubes on every new floor (milestone 11) cost rock and crew time: a little slower than before (was 160).
     // Windows paid for (milestone 13): this seed's run slows again; other seeds reach 139–147 (was 150).
     // Drill finds (milestone 14): the bot taps every one it's offered, and over six seeds day 80 lands at 115–159 (was 130).
@@ -58,6 +59,7 @@ describe("ninety minutes of people", () => {
     // on average (148 against 137), with almost no water from Earth. Was 110.
     // The air loop (T-031): the child is founded earlier (day 46 on this seed, sending 12 away sooner) and now thrives;
     // over six seeds day 80 lands at 80–147 and the network beats solo by 1.04–1.79. Was 100.
+    // The full landing kit (T-164): over six seeds day 80 lands at 127–165.
     expect(at(80).total).toBeGreaterThan(90);
   });
 

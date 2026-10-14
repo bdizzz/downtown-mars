@@ -633,6 +633,9 @@ label.set-row { cursor: pointer; }
 .trend-row .delta { text-align: right; color: var(--muted); font-size: 11px; }
 .finish .chip.windows { background: linear-gradient(90deg, #9fd2ff 0 45%, #3b3f45 45% 55%, #9fd2ff 55%); border-color: #5a7a96; }
 .finish .chip.bulkhead { background: repeating-linear-gradient(135deg, #e0a03a 0 3px, #3b3f45 3px 6px); border-color: #3b3f45; }
+/* The refit tool: three linings side by side; a fine finish's chip has a pale inner rule. */
+.finish .chip.refit { background: linear-gradient(90deg, #8a6650 0 33%, #a45a3e 33% 66%, #b9c2c9 66%); border-color: #5c4031; }
+.finish .chip.fine { box-shadow: inset 0 0 0 1px rgba(255, 240, 210, 0.7); }
 
 /* ---- Phones and tablets ---- */
 /* The views take every touch themselves (pan, pinch, twist); the page never scrolls or zooms under them. */

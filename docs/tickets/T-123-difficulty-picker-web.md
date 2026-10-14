@@ -16,7 +16,7 @@ Pick easy, normal or hard when starting a new game, with a line on what each mea
 ## Context
 Read F-014 first: its Design holds the decisions this task builds on.
 
-Starter kits (T-164, Bryon Oct 12): hard starts with the bare kit (battery and the surface); normal offers it too as a "veteran" option; easy and normal default to the full kit.
+Starter kits (T-164, Bryon Oct 12): hard starts with the bare kit (battery and the surface); normal offers it too as a "veteran" option; easy and normal default to the full kit. As built (T-164): the kits are `landingKits.full` and `.bare` in `data/config.json`; `createWorld` gives the first hole `landingKits.newGame`, so pass the picked kit through there.
 
 ## Approach
 Add the picker to the new-game/welcome card (next to F-007's guided-tutorial choice); easy turns the guided tutorial on by default (still switchable). The level is shown somewhere in game (pause menu or settings) but can't be changed.

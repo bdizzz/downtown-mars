@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
-import { capacities, roomSpec } from "../src/sim/economy";
+import { capacities, clearsWaste, roomSpec } from "../src/sim/economy";
 import { LABELS } from "../src/sim/ledger";
 import type { Location } from "../src/sim/placement";
 import { roomName } from "../src/sim/roomName";
@@ -101,6 +101,18 @@ describe("the water loop", () => {
     Object.assign(s.resources, { grayWater: 100, water: 0, soil: capacities(s, config).soil ?? 0 });
     step(s, config);
     expect(s.roomStatus[rec.id]?.rate).toBeGreaterThan(0);
+  });
+
+  it("a recycler that has treated all the gray water there is is keeping up, not short (T-164)", () => {
+    const s = hole();
+    const rec = build(s, "water_recycler", ring(1, 2, 3, 4));
+    applyCommand(s, { type: "consoleFinish" });
+    Object.assign(s.resources, { grayWater: 0.01 });
+    step(s, config);
+    expect(s.roomStatus[rec.id]?.limit).toBe("clear:grayWater");
+    expect(clearsWaste("water_recycler")).toBe(true);
+    // A farm needs its CO2 alongside water and soil: short of it is a real shortage.
+    expect(clearsWaste("farm")).toBe(false);
   });
 
   it("wells bring in gray water, which needs treating", () => {

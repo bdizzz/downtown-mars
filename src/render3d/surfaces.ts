@@ -209,6 +209,28 @@ const SMOOTH_ROCK_GLSL = /* glsl */ `
 `;
 
 /**
+ * Polished marscrete: the same aggregate ground smooth (half the speckle), cast in form panels 2.4 by
+ * 1.2 m with a tie hole near each corner on walls; underfoot, a polished terrazzo of pale chips, no joints.
+ */
+const POLISHED_MARSCRETE_GLSL = /* glsl */ `
+  vec3 polishedMarscreteTone(vec3 p, vec3 n) {
+    vec2 uv = surfaceUv(p, n);
+    vec3 t = mix(vec3(1.0), marscreteTone(p, n), 0.5) * mix(0.98, 1.03, srfFbm(p * 0.3));
+    if (abs(n.y) > 0.7) {
+      float chip = smoothstep(0.78, 0.82, srfNoise(p * 22.0));
+      return t * (1.0 + 0.16 * chip) * (1.0 - 0.08 * smoothstep(0.8, 0.84, srfNoise(p * 31.0 + 7.0)));
+    }
+    vec2 size = vec2(2.4, 1.2);
+    vec2 f = fract(uv / size);
+    vec2 e = min(f, 1.0 - f) * size;
+    t *= 1.0 - 0.14 * (1.0 - smoothstep(0.0, 0.01, min(e.x, e.y)));
+    // Tie holes: 30 cm in from the panel's sides, 20 cm from its top and bottom.
+    float hole = step(length(e - vec2(0.3, 0.2)), 0.018);
+    return t * (1.0 - 0.35 * hole);
+  }
+`;
+
+/**
  * Patterned brick: banded courses (every third a shade darker), a darker accent band of upright
  * bricks at waist height, and basket-weave pavers underfoot.
  */
@@ -457,6 +479,7 @@ const FINISH_LOOK = {
   rock: { glsl: ROCK_GLSL, call: "rockTone", color: 0x7a4f3c, roughness: 0.95, metalness: 0 },
   rock_fine: { glsl: ROCK_GLSL + SMOOTH_ROCK_GLSL, call: "smoothRockTone", color: 0x86584a, roughness: 0.55, metalness: 0 },
   marscrete: { glsl: MARSCRETE_GLSL, call: "marscreteTone", color: 0x9c8f84, roughness: 0.9, metalness: 0 },
+  marscrete_fine: { glsl: MARSCRETE_GLSL + POLISHED_MARSCRETE_GLSL, call: "polishedMarscreteTone", color: 0xa69a8f, roughness: 0.45, metalness: 0 },
   brick: { glsl: BRICK_GLSL, call: "brickTone", color: 0x9c5438, roughness: 0.85, metalness: 0 },
   brick_fine: { glsl: ABOVE_GLSL + PATTERNED_BRICK_GLSL, call: "patternedBrickTone", color: 0xa65a3b, roughness: 0.8, metalness: 0 },
   metal: { glsl: METAL_GLSL, call: "metalTone", color: 0x8d9299, roughness: 0.32, metalness: 0.6 },
@@ -464,6 +487,11 @@ const FINISH_LOOK = {
 } as const;
 
 export type SurfaceLook = keyof typeof FINISH_LOOK;
+
+/** Is this a lining (or corridor finish) with a surface of its own? Not the gallery tube. */
+export function isSurfaceLook(id: string): id is SurfaceLook {
+  return id in FINISH_LOOK;
+}
 
 /** A room's walls and floor as the material it's built from (room colours off). */
 export function finishMaterial(finish: SurfaceLook): THREE.MeshStandardMaterial {

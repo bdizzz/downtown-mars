@@ -31,6 +31,7 @@ static class Looks
         ["metal"] = (5, "#8d9299", 0.32f, 0.6f),
         // The fine finishes (PLAN-M15), in their base step's look until the shader has their own (T-035).
         ["rock_fine"] = (1, "#86584a", 0.55f, 0),
+        ["marscrete_fine"] = (3, "#a69a8f", 0.45f, 0),
         ["brick_fine"] = (4, "#a65a3b", 0.8f, 0),
         ["metal_fine"] = (5, "#9aa0a8", 0.28f, 0.65f),
     };
