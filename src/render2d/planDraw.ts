@@ -4,6 +4,7 @@ import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
 import { edgeById, edgeSides, isGalleryEdge, type Edge } from "../sim/edges";
 import { isOpen } from "../sim/excavation";
 import type { Hole } from "../sim/geometry";
+import { canLine, liningOf, MATERIALS } from "../sim/materials";
 import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomLabel } from "../sim/roomName";
 import { roomDef } from "../sim/rooms";
@@ -215,6 +216,9 @@ export function drawRooms(g: GraphicsContext, l: Layout, floor: number, opts: Ro
     // Under construction: an orange outline, like tape around the works.
     if (room.building) outlineCells(g, h, cells, C.build, 2.5, !!def.public);
     else outlineCells(g, h, cells, room.connected ? shade(color, 0.45) : C.bad, room.connected ? 1.5 : 3, !!def.public);
+    // A lined room: a thin border inside its edge in the lining's colour (with room colours off, the fill already says it).
+    const accent = !room.planned && !room.building && opts.roomColors !== false ? liningAccent(room) : null;
+    if (accent !== null) outlineCells(g, h, cells, tint(accent, 0.25), 2, !!def.public, 0.9);
     const waiting = onFloor(room.pendingCells ?? []);
     if (waiting.length) {
       for (const c of waiting) g.poly(cellSector(h, c)).fill({ color, alpha: 0.4 }).poly(cellSector(h, c)).fill(opts.stripes);
@@ -356,7 +360,7 @@ export function drawCorridors(g: GraphicsContext, l: Layout, floor: number): voi
 
 
 /** The outline of a group of cells: arcs on the ring edges they don't share, sides where the next slot isn't theirs. */
-export function outlineCells(g: GraphicsContext, h: Hole, cells: Cell[], color: number, width: number, openToShaft = false): void {
+export function outlineCells(g: GraphicsContext, h: Hole, cells: Cell[], color: number, width: number, openToShaft = false, inset = 0): void {
   const own = new Set(cells.map((c) => `${c.ring}:${c.slot}`));
   const rings = cells.map((c) => c.ring);
   const inner = Math.min(...rings);
@@ -364,8 +368,16 @@ export function outlineCells(g: GraphicsContext, h: Hole, cells: Cell[], color: 
   const style = { color, width, cap: "round" as const };
   for (const c of cells) {
     const n = h.ringSlots[c.ring - 1]!;
-    const [a0, a1] = slotAngles(c.slot, n);
-    const [r0, r1] = ringRadii(h, c.ring);
+    let [a0, a1] = slotAngles(c.slot, n);
+    let [r0, r1] = ringRadii(h, c.ring);
+    // Inset (metres): the outline drawn that far inside the room's edges.
+    const before = own.has(`${c.ring}:${(c.slot - 1 + n) % n}`);
+    const after = own.has(`${c.ring}:${(c.slot + 1) % n}`);
+    const da = inset / ((r0 + r1) / 2);
+    if (!before) a0 += da;
+    if (!after) a1 -= da;
+    if (c.ring === inner) r0 += inset;
+    if (c.ring === outer) r1 -= inset;
     const arc = (r: number) => {
       const steps = Math.max(1, Math.ceil((a1 - a0) / ARC_STEP));
       g.moveTo(...xy(r, a0));
@@ -374,9 +386,14 @@ export function outlineCells(g: GraphicsContext, h: Hole, cells: Cell[], color: 
     };
     if (c.ring === inner && !(openToShaft && c.ring === 1)) arc(r0 + 0.15);
     if (c.ring === outer) arc(r1 - 0.15);
-    if (!own.has(`${c.ring}:${(c.slot - 1 + n) % n}`)) g.moveTo(...xy(r0, a0)).lineTo(...xy(r1, a0)).stroke(style);
-    if (!own.has(`${c.ring}:${(c.slot + 1) % n}`)) g.moveTo(...xy(r0, a1)).lineTo(...xy(r1, a1)).stroke(style);
+    if (!before) g.moveTo(...xy(r0, a0)).lineTo(...xy(r1, a0)).stroke(style);
+    if (!after) g.moveTo(...xy(r0, a1)).lineTo(...xy(r1, a1)).stroke(style);
   }
+}
+
+/** A lined room's accent colour on the 2D views (its lining's, as with room colours off); null for bare rock or a room that can't have one. */
+export function liningAccent(room: RoomInstance): number | null {
+  return canLine(room) && liningOf(room) !== MATERIALS.walls[0] ? (FINISH_COLORS[roomLook(room)] ?? null) : null;
 }
 
 

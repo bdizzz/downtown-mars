@@ -42,7 +42,7 @@ Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists
 
 ## Building
 
-Open **Build** (B), pick a room from its category (or press its key: room keys work only in Build), then click a slot. Green means it fits; red says why not.
+Open **Build** (B), pick a room from its category (or press its key: room keys work only in Build), then click a slot. Green means it fits; red says why not. With a surface room in hand (solar arrays, the landing pad), every free spot round the hole it fits on is tinted faintly green on the ground, and the one under the pointer brighter.
 
 ### Tubes and corridors
 
@@ -60,6 +60,14 @@ Open **Build** (B), pick a room from its category (or press its key: room keys w
 - Windows onto the shaft let the sun in too: +0.5 comfort on floor 1, less each floor down, none below floor 10. In 3D, around midday, sunlight falls down the shaft (still visible in Free view with a floor picked), lights the gallery tubes and pools on the floor inside rooms with windows onto the shaft, fainter the deeper they are.
 - Glass comes from a **glassworks** (Industry, from the start: a small 2×1 room, 2 staff, rock and power → 3 glass a month).
 
+### Refits and salvage
+
+- Every room is carved from **bare rock**. Its panel's **Refit** picker lines the walls in smoothed rock, brick, patterned brick, metal panels or inlaid metal, each showing the comfort it gives (homes in full, rooms people share for everyone), how much slower the room wears, the cost and the work. Bigger rooms cost more: the price is per 10 m cell.
+- Skipping a step costs both (bare rock straight to patterned brick pays for the brick and the pattern). Any lining can change to any other, including back to bare rock.
+- **Salvage:** taking brick or metal out gives half of it back (rounded down) when the job is done; the inlay's glass and smoothed rock's rock are lost. Stripping takes half the lining's work.
+- A refit is paid when you order it and goes in the **construction queue** ("Refit Dorm 3 in brick"). Once the crews start, the room works at half speed and a home is a little less comfortable; when it's done, the room is back to 100% condition. Order another and it replaces the queued one; cancelling (from the panel or the queue's ✕) refunds it in full.
+- In the plan and unrolled views a lined room has a thin border in its lining's colour.
+
 ### The shaft dome
 
 A hole's crowning work (Build → Public, from 300 colonists; glass, metal, machinery and electronics, and a long build). It seals the top of the shaft:
@@ -74,7 +82,7 @@ Pause any staffed room, or have it stop at a stock level, from its details panel
 
 ## Digging
 
-- The drill only sinks the shaft. In 3D a big boring machine sits at the bottom of the hole, riding down as it digs: a turning cutterhead, grippers braced on the bore, a conveyor lifting spoil into a skip, and the hoist cable and power line up to the rim.
+- The drill only sinks the shaft. In 3D a big boring machine sits at the bottom of the hole, riding down as it digs: a turning cutterhead, grippers braced on the bore, a conveyor lifting spoil into a skip, and the hoist cable and power line up the shaft. The top of the shaft is lined with a concrete collar that rises into a rim round the hole, with a railed walkway on top (the shaft dome stands on it). On the rim, lattice towers hold a gantry over the hole with a sheave for each cable, and a winch at either end winds them in. The cables follow the drill down. It's only for looks.
 - The first floors go quickly; from floor 4 on, each floor takes twice as long (`digging.slowFromFloor`, `slowFactor`).
 - A new hole starts with only ring 1 of floor 1 dug out (and the landing kit's rooms and corridor in rings 2 and 3). Every other slot is solid rock until it's dug out.
 - A room placed on rock is excavated first (3 hours a slot, bringing up its rock and whatever the hole sits on), then built.
@@ -83,7 +91,7 @@ Pause any staffed room, or have it stop at a stock level, from its details panel
 
 ## Getting in and out
 
-- People and goods come in through the **entrance** on floor 1 (its airlock stands at the rim).
+- People and goods come in through the **entrance** on floor 1 (its airlock is a concrete gatehouse built against the collar's rim).
 - Deeper floors are reached only by **stairs** or elevators down from there.
 - At 100 colonists a **cargo elevator** can run from the surface straight down to one floor, if its column above is clear.
 
@@ -162,7 +170,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 - **Maintenance** rooms (Build → Services) repair rooms back to 100%, one room per maintenance room at a time, taking the worst from the hole's queue (rooms at 60% or below). They use machinery.
 - From 150 colonists, **cleaning services** do the same for homes and other rooms people share, using clean water.
 - Understaffed crews work slower; a crew that stops hands its room back, part-done, to the front of the queue. A crew with nothing to repair stands by, using power but no machinery or water.
-- Every room is carved from **bare rock**; the room panel's **Walls** row says what its lining is and what that gives. Brick and metal linings (an upgrade, coming soon) make homes more comfortable, make shared rooms nicer for everyone, and wear more slowly (workshops and plants twice as much).
+- Every room is carved from **bare rock**; the room panel's **Walls** row says what its lining is and what that gives. Brick and metal linings (a refit: see Building → Refits and salvage) make homes more comfortable, make shared rooms nicer for everyone, and wear more slowly (workshops and plants twice as much).
 - **Charts → Maintenance** shows the queue and what each crew is on; the **Condition** stat at the top and the Condition overlay show how things stand.
 
 ## Earth, storms, the office and events
@@ -182,6 +190,8 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 ## More holes
 
 - Once the network reaches 50 colonists the map opens. Build a **staging bay** to gather a seed kit, pick a site on the Map (M) and send a convoy.
+- **Not on the polar caps:** the white ice round the poles (from 80°N and 83°S) can't be dug. The map says "Ice cap: can't dig here" under the pointer and won't pick a site there.
+- **Each site looks like where it is:** its ground takes the colour the map shows there, so a hole in a dark lowland basin sits on dark red-brown dust and one high on Tharsis on pale tan, and the sun and stars move for its latitude (below).
 - With two holes, a **rover depot** gives a hole 2 rovers, and the **Network** panel sets up trade routes between holes.
 
 ## The views
@@ -222,8 +232,8 @@ New games open in 3D, in Free view. Everything you can do in 2D works in 3D.
 - Colonists stroll the gallery tubes or are where you'd expect for the hour: at their posts, asleep in bed at night, sitting about in homes, plazas and offices.
 - Rooms in trouble are outlined in amber (slowed) or red (short of what they run on), with a ⚠ over their name; paused rooms in grey. The room's card says why.
 - Screens flicker, indicator lights blink, fires dance, plants sway and windows fog at the bottom. Working smelters throw sparks and scrubbers vent steam.
-- Around midday sunlight falls down the shaft; deeper down everything settles into lamp-light. Lamps, fires and grow lights light the rooms around them.
-- By day the sky fades from butterscotch at the horizon to a deeper tan overhead, with a bluish glow round the sun; at night the stars come out. The land round the hole rolls away in ridges, craters and boulders to mountains, mesas or low hills, depending on the site.
+- The sun crosses the sky for the hole's latitude, always as at an equinox: it rises due east, sets due west, and at noon stands toward the equator, overhead at the equator and lower the further north or south the hole is. Around midday sunlight falls down the shaft (furthest at a hole near the equator); deeper down everything settles into lamp-light. Lamps, fires and grow lights light the rooms around them.
+- By day the sky fades from butterscotch at the horizon to a deeper tan overhead, with a bluish glow round the sun; at night the stars come out and wheel slowly round the celestial pole, which stands as high above the northern horizon as the hole is north (below it, south of the equator). The land round the hole rolls away in ridges, craters and boulders to mountains, mesas or low hills, depending on the site.
 
 **Graphics:** soft shadows where things meet, glow around lit windows and lamps, a warm haze, a miniature look in Free view (the floor you're looking at stays sharp while nearer and farther things blur, as in a photo of a model; **Miniature blur** sets how strongly, gentle by default), and a warm colour grade. **Settings → Display** picks a preset (Low, Medium or High, the default) or sets each effect, including lamp light and shadows, so a laptop can scale them down. Shiny floors, metal and glass reflect a warm, lamp-lit cave. `?renderer=webgpu` tries three's WebGPU renderer with light bouncing and reflections (an experiment: see [WEBGPU.md](WEBGPU.md)).
 

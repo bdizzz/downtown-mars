@@ -1,4 +1,4 @@
-import { degreesApart, depositsAt, distanceKm, nearestFeature, wrapLon, type DepositKind } from "../sim/mapgeo";
+import { degreesApart, depositsAt, distanceKm, ICE_CAP_REFUSAL, nearestFeature, onIceCap, wrapLon, type DepositKind } from "../sim/mapgeo";
 import { network } from "../sim/network";
 import type { RouteView, Snapshot } from "../sim/snapshot";
 import { num } from "../ui/format";
@@ -55,6 +55,7 @@ export function siteReport(s: Snapshot, site: { lat: number; lon: number }, elev
   const pop = s.holes.find((h) => h.id === s.holeId)?.population ?? 0;
   const taken = [...s.holes.flatMap((h) => (h.site ? [h.site] : [])), ...s.convoys.map((c) => c.to)];
   const checks: [boolean, string][] = [
+    ...(onIceCap(site) ? [[false, ICE_CAP_REFUSAL] as [boolean, string]] : []),
     [s.mapUnlocked, `The map is open (at ${network.mapUnlockPopulation} colonists)`],
     [s.kit.hasBay, `${s.holeName} has a staging bay`],
     [s.kit.progress >= 0.999, `Seed kit gathered (${Math.floor(s.kit.progress * 100)}%${s.kit.progress < 0.999 && !s.kit.gathering ? ": ask the staging bay to gather" : ""})`],

@@ -1,5 +1,5 @@
 import elevationData from "../../data/mars-elevation.json";
-import { degreesApart, DEPOSIT_KINDS, depositsAt, wrapLon, type Deposit, type DepositKind, type MapState } from "./mapgeo";
+import { degreesApart, DEPOSIT_KINDS, depositsAt, mapColor, rgbHex, wrapLon, type Deposit, type DepositKind, type MapState } from "./mapgeo";
 import { network } from "./network";
 
 export * from "./mapgeo";
@@ -17,6 +17,11 @@ export function elevationAt(lat: number, lon: number): number {
   const y = Math.min(elev.height - 1, Math.max(0, Math.floor(90 - lat)));
   const x = Math.floor(wrapLon(lon)) % elev.width;
   return elev.elevation[y * elev.width + x]! * elev.unitMeters;
+}
+
+/** The map's colour at a site, unlit (#rrggbb): the soil the 3D ground leans toward there. */
+export function soilAt(site: { lat: number; lon: number }): string {
+  return rgbHex(mapColor(elevationAt(site.lat, site.lon), site.lat));
 }
 
 /** How likely each kind is at a place, from latitude and elevation. */

@@ -1,5 +1,6 @@
 import raw from "../../data/materials.json";
 import conditionRaw from "../../data/condition.json";
+import { shortfall } from "./corridors";
 import { isActive } from "./economy";
 import type { RoomInstance } from "./placement";
 import { roomDef } from "./rooms";
@@ -44,6 +45,8 @@ export const MATERIALS = raw as unknown as {
   byRoom: Record<string, LiningKind>;
   shared: { scale: number; max: number };
   leastWear: number;
+  refit: { output: number; comfort: number };
+  salvage: { share: number; lost: string[]; stripWork: number };
   exempt: string[];
 };
 
@@ -124,4 +127,93 @@ export function liningText(room: RoomInstance): string {
     slower > 0 ? `wears ${slower}% slower` : "",
   ].filter(Boolean);
   return `${walls.name}${floor ? `, ${floor.name.toLowerCase()} floor` : ""}${gives.length ? `: ${gives.join(", ")}` : ""}`;
+}
+
+// ---- refits (docs/PLAN-M15.md, "Upgrading") ----
+
+/** A lining's own cost and work per cell, counting its base step under a fine finish. */
+function whole(step: WallStep): { cost: Record<string, number>; work: number } {
+  const base = step.finish === "fine" ? wallStep(step.material, "base") : null;
+  const cost: Record<string, number> = { ...(base?.cost ?? {}) };
+  for (const [r, v] of Object.entries(step.cost)) cost[r] = (cost[r] ?? 0) + v;
+  return { cost, work: step.work + (base?.work ?? 0) };
+}
+
+function times(cost: Record<string, number>, n: number): Record<string, number> {
+  return Object.fromEntries(Object.entries(cost).map(([r, v]) => [r, v * n]));
+}
+
+/** What comes back from taking out lining worth this much: a share, rounded down, less what's lost. */
+function salvageOf(cost: Record<string, number>): Record<string, number> {
+  const s = MATERIALS.salvage;
+  const out: Record<string, number> = {};
+  for (const [r, v] of Object.entries(cost)) {
+    const back = Math.floor(v * s.share + 1e-9);
+    if (back > 0 && !s.lost.includes(r)) out[r] = back;
+  }
+  return out;
+}
+
+/** What refitting a room's walls to another step takes: paid on commit, its work-hours, and what comes back when it's done. */
+export interface RefitPlan {
+  to: WallStep;
+  cost: Record<string, number>;
+  work: number;
+  salvage: Record<string, number>;
+}
+
+/**
+ * Refitting a room from its lining to another, per cell times its cells.
+ * Within a material only the finish changes: up pays the finish, down takes
+ * it out. To another material the old lining comes out (stripping takes a
+ * share of its work and gives back a share of it) and the new one goes in
+ * whole, base and finish. Null if it's the lining the room has.
+ */
+export function refitPlan(room: RoomInstance, to: WallStep): RefitPlan | null {
+  const from = liningOf(room);
+  if (from === to) return null;
+  const n = Math.max(1, room.cells.length);
+  const strip = MATERIALS.salvage.stripWork;
+  if (from.material === to.material) {
+    const fine = from.finish === "fine" ? from : to;
+    return to.finish === "fine"
+      ? { to, cost: times(fine.cost, n), work: fine.work * n, salvage: {} }
+      : { to, cost: {}, work: fine.work * strip * n, salvage: salvageOf(times(fine.cost, n)) };
+  }
+  const out = whole(from);
+  const inn = whole(to);
+  return { to, cost: times(inn.cost, n), work: (out.work * strip + inn.work) * n, salvage: salvageOf(times(out.cost, n)) };
+}
+
+/**
+ * Why this refit can't be ordered, or null. `credit` is what a refit already
+ * queued for the room would give back (the new one replaces it).
+ */
+export function refitRefusal(room: RoomInstance, plan: RefitPlan | null, resources: Record<string, number>, credit: Record<string, number> = {}): string | null {
+  if (!canLine(room)) return `${roomDef(room.type).name} can't have a lining`;
+  if (room.planned || room.building) return "Build it first";
+  if (!plan) return `It's ${liningOf(room).name.toLowerCase()} already`;
+  const have = { ...resources };
+  for (const [r, v] of Object.entries(credit)) have[r] = (have[r] ?? 0) + v;
+  return shortfall(have, plan.cost);
+}
+
+/** Is a refit under way in this room (its job started)? It runs at part output, and a home's comfort dips. */
+export function refitting(state: SimState, room: RoomInstance): boolean {
+  return !!state.construction?.queue.some((j) => j.kind === "upgrade" && j.roomId === room.id && j.done > 0);
+}
+
+/** What a refit under way does to a home's comfort (0 when there's none). */
+export function refitComfort(state: SimState, room: RoomInstance): number {
+  return refitting(state, room) ? MATERIALS.refit.comfort : 0;
+}
+
+/** "in brick", "back to bare rock": how a refit reads in the queue and the news. */
+export function refitWords(to: WallStep): string {
+  return to === MATERIALS.walls[0] ? "back to bare rock" : `in ${to.name.toLowerCase()}`;
+}
+
+/** "Refit", or "Strip" when it's back to bare rock. */
+export function refitVerb(to: WallStep): "Refit" | "Strip" {
+  return to === MATERIALS.walls[0] ? "Strip" : "Refit";
 }

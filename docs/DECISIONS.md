@@ -183,7 +183,7 @@ See `PLAN-M15.md` and `docs/tickets/F-003-room-materials.md` (Bryon's answers; t
 
 - **Every room starts as bare rock,** its build cost unchanged. The lining is `room.material` (`rock`, `brick`, `metal`) and `room.finish` (`base`, `fine`); the floor is `room.flooring`, absent meaning it matches the walls. Only ring rooms with walls of their own have one (not surface buildings, the entrance, stairs, lifts or empty rooms).
 - **What a lining does depends on the kind of room:** homes feel its comfort in full; people rooms (the cleanable ones) lift everyone's shared comfort (their average lining comfort × 0.5, up to +0.5); heavy rooms (industry, power, air, water) get no comfort but twice the wear benefit; the rest only wear slower. Cave-in resistance waits for cave-ins.
-- **Upgrades go through the construction queue,** usable at half output once crews start; condition back to 100% when done. Linings can be changed down or stripped to bare rock for a 50% refund of their material (T-033). Build mode can pick a material up front for the full price but one construction effort (T-038).
+- **Upgrades go through the construction queue,** usable at half output once crews start; condition back to 100% when done. Linings can be changed down or stripped to bare rock for a 50% refund of their material (T-033), which replaces the Oct 4 "no refund for the old material"; don't revive it. As built (T-033): the salvage is paid when the job finishes, rounded down, and rock (smoothed rock) and glass (the inlay) don't come back; changing to another material strips the old lining (half its work) and puts the new one in whole, so it costs the new lining in full plus the strip's time; one refit per room, a new one replacing (and refunding) the queued one; cancelling refunds in full, salvaging nothing. Build mode can pick a material up front for the full price but one construction effort (T-038).
 
 ## Decided for the air mix (Oct 6, F-002 / T-026)
 
@@ -232,6 +232,12 @@ See `PLAN-M16.md`.
 - **Behind the title, a live 3D scene** (Bryon): the player's own hole from the autosave, or, with no autosave, a showcase colony (`sim/showcase.ts`, two floors) built into the fresh game the sim starts with, rather than a bundled save that would go stale with every save version. Its first floor shows, as it has the most to see. A painted still on phones, low graphics and the flat views. A simple SVG logotype; Godot is a follow-up.
 - **Updates come as a banner you tap, never silently** (Bryon): the service worker runs in `prompt` mode (`vite-plugin-pwa`), and mid-game the update autosaves before reloading.
 - **PR previews get no service worker** (Bryon): they share the main game's origin and path, so the main game's worker skips `pr-preview/` and preview builds (`VITE_PR_NUMBER`) don't register one. The dev server has none either.
+
+## Decided for the site (Oct 13, F-008 / T-073 / T-020)
+
+- **A site's soil is the map's colour there, as drawn** (Bryon): the map colours Mars by height (and whitens the caps), not by its real colours, and the ground matches what the player sees. The height colours and caps live in `data/mars-map.json`, read by both `scripts/build-relief.mjs` and the game (`mapColor` in `sim/mapgeo.ts`, `soilAt` in `sim/map.ts`), so they can't drift apart. The ground leans 30% of the way from the base dust to that colour (`soil.strength` 0.3, Bryon, Oct 13), so a basin or a pale volcano still reads as Mars; boulders and the horizon shift with it.
+- **Holes can't go on the polar caps,** only those for now (Bryon): from 80°N and 83°S, where the map starts whitening them. The buried mid-latitude glaciers aren't on the map, so they don't count. Founding refuses it in the sim (`foundingRefusal`), and both maps won't pick a site there.
+- **The sun and stars follow the site's latitude, at the equinox** (Bryon): no seasons. North is −z in the scene. The stars stay a procedural field, turned once a sol about the celestial pole with the sun (`view/sunPath.ts`; Godot's `Live.cs` does the same sums). A hole with no place on the map uses 45°N (`sky.defaultLatitude`). The daylight curve doesn't change: at the equinox day and night are 12 hours everywhere.
 
 ## Decided for the starter kits (Oct 12–13, T-164)
 

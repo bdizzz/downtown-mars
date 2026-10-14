@@ -8,6 +8,9 @@ import { isActive } from "./economy";
 import { postMessage } from "./messages";
 import type { Cell, Layout, RoomInstance } from "./placement";
 import { openCells, rockCells, yieldRock } from "./excavation";
+import { record } from "./ledger";
+import { refitVerb, refitWords, wallStep, type Finish, type Material, type RefitPlan } from "./materials";
+import { resourceDef } from "./resources";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
@@ -32,9 +35,13 @@ export const construction = raw as unknown as {
 
 export interface Job {
   id: number;
-  /** A room, corridor segments to carve or to fill in, or more floors for stairs or an elevator. */
-  kind: "room" | "corridors" | "fill" | "extend" | "dome";
+  /** A room, corridor segments to carve or to fill in, more floors for stairs or an elevator, the dome, or a room's walls refitted. */
+  kind: "room" | "corridors" | "fill" | "extend" | "dome" | "upgrade";
   roomId?: number;
+  /** A refit: the lining it puts in, what was paid for it (refunded if it's cancelled), and what comes back when it's done. */
+  to?: { material: Material; finish: Finish };
+  paid?: Record<string, number>;
+  salvage?: Record<string, number>;
   edges?: string[];
   /** Work needed and done, in work-hours (excavation included). */
   work: number;
@@ -154,6 +161,41 @@ export function queueFill(state: SimState, edges: string[], cfg: SimConfig): boo
   return true;
 }
 
+/** What salvage is recorded as in the ledger. */
+export const SALVAGE = "Salvage";
+
+/** A room's walls refitted (already paid for): queued, or with construction time off, done at once. */
+export function queueRefit(state: SimState, room: RoomInstance, plan: RefitPlan, cfg: SimConfig): void {
+  const to = { material: plan.to.material, finish: plan.to.finish };
+  const job = add(state, { kind: "upgrade", roomId: room.id, work: plan.work, to, paid: plan.cost, salvage: plan.salvage });
+  if (!job) finishRefit(state, room, to, plan.salvage, cfg);
+}
+
+/** A refit is done: the new lining (bare rock clears it), a fresh condition, and the old lining's salvage. */
+function finishRefit(state: SimState, room: RoomInstance, to: { material: Material; finish: Finish }, salvage: Record<string, number>, cfg: SimConfig): void {
+  if (to.material === "rock" && to.finish === "base") delete room.material;
+  else room.material = to.material;
+  if (to.finish === "base") delete room.finish;
+  else room.finish = to.finish;
+  room.condition = 1;
+  delete room.repair;
+  for (const [r, v] of Object.entries(salvage)) {
+    state.resources[r] = (state.resources[r] ?? 0) + v;
+    record(state, r, "in", SALVAGE, v);
+  }
+  const back = Object.entries(salvage).map(([r, v]) => `${resourceDef(r).name.toLowerCase()} ${v}`);
+  const step = wallStep(to.material, to.finish);
+  postMessage(state, cfg, `${roomRef(room)} ${refitVerb(step) === "Strip" ? "stripped" : "refitted"} ${refitWords(step)}${back.length ? `: ${back.join(", ")} salvaged` : ""}.`);
+  state.layout.version++;
+}
+
+/** Take a refit out of the queue, giving back what was paid for it (cancelled, replaced, or its room demolished). */
+export function dropRefit(state: SimState, job: Job): void {
+  for (const [r, v] of Object.entries(job.paid ?? {})) state.resources[r] = (state.resources[r] ?? 0) + v;
+  if (state.construction) state.construction.queue = state.construction.queue.filter((j) => j !== job);
+  state.layout.version++;
+}
+
 /** The job building this room (or extending it), if any. */
 export function jobForRoom(state: SimState, roomId: number): Job | undefined {
   return state.construction?.queue.find((j) => j.roomId === roomId);
@@ -197,6 +239,10 @@ function finish(state: SimState, job: Job, cfg: SimConfig): void {
   const layout = state.layout;
   if (job.kind === "dome") return finishDome(state, cfg);
   const room = job.roomId !== undefined ? layout.rooms.find((r) => r.id === job.roomId) : undefined;
+  if (job.kind === "upgrade") {
+    if (room && job.to) finishRefit(state, room, job.to, job.salvage ?? {}, cfg);
+    return;
+  }
   if (job.digCells) openCells(layout, job.digCells);
   // An empty room is only ever a hole in the rock: done, it's empty space.
   if (job.kind === "room" && room && roomDef(room.type).excavationOnly) {
@@ -287,10 +333,12 @@ export function prioritize(state: SimState, jobId: number): boolean {
   return true;
 }
 
-/** A room's job is cancelled (it was demolished or undone before it was built). */
+/** A room's jobs are cancelled (it was demolished, or undone before it was built); a refit's cost comes back. */
 export function dropRoomJobs(state: SimState, roomId: number): void {
   const c = state.construction;
-  if (c) c.queue = c.queue.filter((j) => j.roomId !== roomId);
+  if (!c) return;
+  for (const j of c.queue) if (j.roomId === roomId && j.kind === "upgrade") dropRefit(state, j);
+  c.queue = c.queue.filter((j) => j.roomId !== roomId);
 }
 
 /** Corridors taken off the plan before they were built: out of their job. Returns those that were pending. */
@@ -326,6 +374,11 @@ export interface JobView {
   kind: Job["kind"];
   roomId?: number;
   label: string;
+  /** For a room's job, a word before the room's name ("Refit"), if any. */
+  lead?: string;
+  /** A refit: the lining it puts in, and what it cost (given back if it's replaced or cancelled). */
+  to?: { material: Material; finish: Finish };
+  paid?: Record<string, number>;
   /** For a room's job, what stage it's at beside the room's name ("excavating", "another floor"), if anything. */
   note?: string;
   /** 0..1. */
@@ -344,11 +397,16 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
   const jobs = (state.construction?.queue ?? []).map((job): JobView => {
     const room = job.roomId !== undefined ? state.layout.rooms.find((r) => r.id === job.roomId) : undefined;
     const name = room ? roomName(room) : "";
+    const to = job.kind === "upgrade" && job.to ? wallStep(job.to.material, job.to.finish) : undefined;
+    const refit = to && refitWords(to);
+    const lead = to && refitVerb(to);
     const note =
-      job.kind === "extend" ? "another floor" : phaseOf(job) === "excavating" && room && !roomDef(room.type).excavationOnly ? "excavating" : undefined;
+      refit ?? (job.kind === "extend" ? "another floor" : phaseOf(job) === "excavating" && room && !roomDef(room.type).excavationOnly ? "excavating" : undefined);
     const n = job.edges?.length ?? 0;
     const label =
-      job.kind === "dome"
+      refit
+        ? `${lead} ${name} ${refit}`
+        : job.kind === "dome"
         ? "Shaft dome"
         : job.kind === "corridors"
         ? `Corridors (${n} ${n === 1 ? "segment" : "segments"})`
@@ -366,6 +424,8 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
       kind: job.kind,
       ...(job.roomId !== undefined ? { roomId: job.roomId } : {}),
       label,
+      ...(lead ? { lead } : {}),
+      ...(job.to ? { to: job.to, paid: job.paid ?? {} } : {}),
       ...(note ? { note } : {}),
       progress: job.work > 0 ? job.done / job.work : 1,
       phase: phaseOf(job),

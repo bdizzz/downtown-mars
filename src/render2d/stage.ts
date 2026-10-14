@@ -35,7 +35,8 @@ import {
 } from "./layout";
 
 export type { HoverInfo, Stage, StageOptions, Tool };
-import { drawAirlock, drawEmptySpace, drawGlyph, drawHeadframe, drawHills, drawLandingPad, drawPlus, drawPod, drawRockCell, drawRoverDepot, drawSolarArray, shade, STARS } from "./art";
+import { drawAirlock, drawEmptySpace, drawGlyph, drawHeadframe, drawHills, drawLandingPad, drawPlus, drawPod, drawRockCell, drawRoverDepot, drawSolarArray, shade, STARS, tint } from "./art";
+import { liningAccent } from "./planDraw";
 import { CATEGORY_COLORS, HEAT } from "./palette";
 
 // The unrolled view. One full turn of the hole is drawn into shared graphics
@@ -424,6 +425,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         if (room.planned) r.fill({ color, alpha: 0.3 }).stroke({ color, width: 2 });
         else if (room.building) scaffold(x, y, w, hh, color);
         else r.fill(color);
+        // A lined room: a thin border just inside, in the lining's colour.
+        const accent = !room.planned && !room.building ? liningAccent(room) : null;
+        if (accent !== null) roomsCtx.rect(x + 2.5, y + 2.5, w - 5, hh - 5).stroke({ color: tint(accent, 0.25), width: 2 });
         if (def.public && !room.planned && !room.building) {
           const wall = { color: shade(color, 0.45), width: 1.5, alpha: 0.9 };
           roomsCtx.moveTo(x, y).lineTo(x, y + hh).lineTo(x + w, y + hh).lineTo(x + w, y);

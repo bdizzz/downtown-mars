@@ -1,7 +1,7 @@
 import type { SimCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { checkBuild } from "../sim/costs";
-import { roomAt, type Layout, type Location } from "../sim/placement";
+import { checkPlacement, roomAt, type Layout, type Location } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { isOpen } from "../sim/excavation";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, shortfall } from "../sim/corridors";
@@ -15,6 +15,20 @@ import type { EdgeHover, HoverInfo, Pick, StageOptions, Tool } from "./types";
 
 export function surfaceSlotAt(angle: number, layout: Layout): number {
   return Math.floor((angle / 360) * layout.surface.length) % layout.surface.length;
+}
+
+/**
+ * The surface slots a surface room could go on (T-107): every slot in a run of free ones wide enough for it.
+ * Empty for a room that goes inside the hole.
+ */
+export function surfaceSpots(layout: Layout, room: string): number[] {
+  if (roomDef(room).size !== "surface") return [];
+  const spots = new Set<number>();
+  for (let slot = 0; slot < layout.surface.length; slot++) {
+    const check = checkPlacement(layout, room, { kind: "surface", slot });
+    if (check.ok) check.surfaceCells.forEach((s) => spots.add(s));
+  }
+  return [...spots].sort((a, b) => a - b);
 }
 
 /** Where the current build tool would put its room, for this pick. */

@@ -1,7 +1,7 @@
 ---
 id: T-107
 title: In build mode, show where surface buildings can go, and brighten a spot on hover
-status: open
+status: done
 size: M
 area: render3d, godot
 touches: [src/render3d/stage3d.ts, src/render3d/scenery3d.ts, godot/src/BuildMode.cs, godot/src/Scenery.cs]
@@ -25,3 +25,5 @@ Once a surface room is picked in build mode, draw a faint tint on each free surf
 - 2026-10-10 00:18 opened from N-0062
 - 2026-10-10 questions answered: spots show once a surface room is picked
 - 2026-10-10 00:38 questions answered
+- 2026-10-12 20:07 building on t-144-concrete-collar (with T-144)
+- 2026-10-12 20:20 built, web and Godot
