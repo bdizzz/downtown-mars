@@ -36,9 +36,11 @@ public partial class Inspector : Node3D
     // Storage.
     readonly VBoxContainer _storage = new();
     readonly Label _storageText = new();
-    readonly GridContainer _goods = new() { Columns = 3 };
-    readonly Button _shareEvenly = Btn("Share evenly", "Split the room's space evenly among the goods it keeps");
-    readonly Dictionary<string, (CheckBox on, SpinBox amount, ProgressBar fill)> _goodRows = new();
+    readonly HBoxContainer _storageBar = new() { CustomMinimumSize = new Vector2(0, 8) };
+    readonly HBoxContainer _allNone = new();
+    readonly Button _allowAll = Btn("All", "Let every good into this room"), _allowNone = Btn("None", "Keep every good out of this room");
+    readonly GridContainer _goods = new() { Columns = 2 };
+    readonly Dictionary<string, (CheckBox on, Label stored)> _goodRows = new();
     readonly Button _connect = Btn("Connect", "Carve the shortest corridor from the network to this room, along the borders of rooms");
     readonly RichTextLabel _before = Rows(), _after = Rows();
     // The seed kit.
@@ -60,8 +62,7 @@ public partial class Inspector : Node3D
     bool _gathering;
     string? _connectFinish;
     int _stopSuggested;
-    Dictionary<string, int> _alloc = new();
-    int _space;
+    List<string> _goodIds = new(), _allowed = new();
     string[] _cropIds = Array.Empty<string>(), _holdsIds = Array.Empty<string>(), _priorityIds = Array.Empty<string>();
     /// <summary>Set while values are filled in from a message, so the widgets' change signals don't send commands.</summary>
     bool _filling;
@@ -182,10 +183,15 @@ public partial class Inspector : Node3D
 
         Style(_storageText, 14, Ink);
         _storage.AddChild(_storageText);
+        _storageBar.AddThemeConstantOverride("separation", 0);
+        _storage.AddChild(_storageBar);
+        _allNone.AddChild(_allowAll);
+        _allNone.AddChild(_allowNone);
+        _allowAll.Pressed += () => SetAllows(_goodIds);
+        _allowNone.Pressed += () => SetAllows(new());
+        _storage.AddChild(_allNone);
         _goods.AddThemeConstantOverride("h_separation", 8);
         _storage.AddChild(_goods);
-        _storage.AddChild(_shareEvenly);
-        _shareEvenly.Pressed += ShareEvenly;
         rows.AddChild(_storage);
 
         rows.AddChild(_connect);
@@ -271,81 +277,61 @@ public partial class Inspector : Node3D
 
     // ---- storage ----
 
-    void SetAllocation(Dictionary<string, int> next) => Send(new() { ["type"] = "setAllocation", ["roomId"] = _roomId, ["allocation"] = next });
+    void SetAllows(List<string> ids) => Send(new() { ["type"] = "setAllows", ["roomId"] = _roomId, ["allows"] = ids });
 
-    /// <summary>A good ticked: it gets the free space (or, with none left, an even share of it all), as the web's.</summary>
-    void ToggleGood(string id, bool on)
-    {
-        var next = new Dictionary<string, int>(_alloc);
-        if (!on) next.Remove(id);
-        else
-        {
-            var free = _space - _alloc.Values.Sum();
-            if (free >= 1) next[id] = free;
-            else
-            {
-                var ids = next.Keys.Append(id).ToList();
-                var each = _space / ids.Count;
-                foreach (var k in ids) next[k] = each;
-            }
-        }
-        SetAllocation(next);
-    }
+    void ToggleGood(string id, bool on) => SetAllows(on ? _allowed.Append(id).ToList() : _allowed.Where(k => k != id).ToList());
 
-    void ShareEvenly()
-    {
-        if (_alloc.Count == 0) return;
-        var each = _space / _alloc.Count;
-        SetAllocation(_alloc.Keys.ToDictionary(k => k, _ => each));
-    }
-
-    void SetGood(string id, int amount)
-    {
-        var room = _space - _alloc.Values.Sum() + _alloc.GetValueOrDefault(id);
-        SetAllocation(new Dictionary<string, int>(_alloc) { [id] = Math.Clamp(amount, 0, room) });
-    }
-
+    /// <summary>A storage room: a bar of what it holds, and a checklist of the goods it allows, as the web's.</summary>
     void FillStorage(JsonElement st)
     {
-        _space = st.GetProperty("space").GetInt32();
+        var space = st.GetProperty("space").GetDouble();
         _storageText.Text = $"Storage: {st.GetProperty("summary").GetString()}";
-        _alloc = new();
+        foreach (var c in _storageBar.GetChildren()) c.QueueFree();
+        var used = 0.0;
+        foreach (var g in st.GetProperty("segments").EnumerateArray())
+        {
+            var units = g.GetProperty("units").GetDouble();
+            used += units;
+            _storageBar.AddChild(new ColorRect
+            {
+                Color = Color.FromHtml(g.GetProperty("color").GetString()!),
+                SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+                SizeFlagsStretchRatio = (float)Math.Max(units, 0.001),
+                TooltipText = $"{g.GetProperty("name").GetString()} {Math.Round(units)}",
+                MouseFilter = Control.MouseFilterEnum.Pass,
+            });
+        }
+        // The empty rest of the room.
+        if (space - used > 0.5)
+            _storageBar.AddChild(new ColorRect { Color = new Color(0, 0, 0, 0.33f), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, SizeFlagsStretchRatio = (float)(space - used) });
+        _goodIds = new();
+        _allowed = new();
         foreach (var g in st.GetProperty("goods").EnumerateArray())
         {
             var id = g.GetProperty("id").GetString()!;
-            var on = g.GetProperty("on").GetBoolean();
-            var amount = g.GetProperty("amount").GetInt32();
-            if (on) _alloc[id] = amount;
+            var on = g.GetProperty("allowed").GetBoolean();
+            var stored = g.GetProperty("stored").GetDouble();
+            _goodIds.Add(id);
+            if (on) _allowed.Add(id);
             if (!_goodRows.TryGetValue(id, out var row))
             {
                 var check = new CheckBox { Text = g.GetProperty("name").GetString(), FocusMode = Control.FocusModeEnum.None, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
                 check.AddThemeFontSizeOverride("font_size", 13);
-                var spin = new SpinBox { MinValue = 0, MaxValue = 100000, Step = 10, CustomMinimumSize = new Vector2(84, 0) };
-                var fill = Bar();
-                fill.CustomMinimumSize = new Vector2(60, 8);
-                fill.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+                check.AddThemeColorOverride("font_color", Color.FromHtml(g.GetProperty("color").GetString()!));
+                var amount = new Label { HorizontalAlignment = HorizontalAlignment.Right };
+                Style(amount, 13, Ink);
                 check.Toggled += v =>
                 {
                     if (!_filling) ToggleGood(id, v);
                 };
-                spin.ValueChanged += v =>
-                {
-                    if (!_filling) SetGood(id, (int)v);
-                };
                 _goods.AddChild(check);
-                _goods.AddChild(spin);
-                _goods.AddChild(fill);
-                _goodRows[id] = row = (check, spin, fill);
+                _goods.AddChild(amount);
+                _goodRows[id] = row = (check, amount);
             }
             row.on.ButtonPressed = on;
-            row.amount.Editable = on;
-            // Not while it's being typed in.
-            if (!row.amount.GetLineEdit().HasFocus()) row.amount.Value = amount;
-            // Kept in the grid (so the rows line up), just not shown.
-            row.fill.Modulate = on ? Colors.White : Colors.Transparent;
-            row.fill.Value = amount > 0 ? g.GetProperty("fill").GetDouble() / amount : 0;
+            row.on.Modulate = on ? Colors.White : new Color(1, 1, 1, 0.55f);
+            row.stored.Text = stored >= 0.5 ? Math.Round(stored).ToString() : "";
         }
-        _shareEvenly.Visible = _alloc.Count > 1;
     }
 
     // ---- showing ----

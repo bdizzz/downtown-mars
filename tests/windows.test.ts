@@ -161,14 +161,18 @@ describe("windows", () => {
     for (const h of old.state.holes) {
       h.resources.glass = 0;
       const pod = h.layout.rooms.find((r: { type: string }) => r.type === "landing_pod");
-      delete pod.allocation.glass;
+      // Before v22, the pod had space set aside per good, none of it for glass yet.
+      pod.allocation = { rock: 180, metal: 60 };
+      delete pod.contents;
     }
     const back = deserialize(JSON.stringify(old));
     expect(back.ok).toBe(true);
     if (!back.ok) return;
     for (const h of back.world.holes) {
       expect(h.resources.glass).toBe(config.startingStock.glass);
-      expect(h.layout.rooms.find((r) => r.type === "landing_pod")!.allocation!.glass).toBe(config.startingStock.glass);
+      const pod = h.layout.rooms.find((r) => r.type === "landing_pod")!;
+      expect(pod.allows).toContain("glass");
+      expect(pod.contents?.glass).toBe(config.startingStock.glass);
     }
   });
 

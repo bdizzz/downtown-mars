@@ -17,9 +17,9 @@ Decided (Bryon):
   | Depot | L | 440 (+10% per slot for L) | 2 | rock 30, metal 10, machinery 1 | 20 h |
 
   The depot also uses power 1 and has noise −1 r1.
-- **Allocation:** each storage room shares its space among goods by allocation (`setAllocation`: units per good, totalling no more than it holds; none to start). A hole's capacity for a good is the sum of its built storage rooms' allocations. Rooms under construction don't count. What doesn't fit is lost as overflow, and Earth drops only unload what fits.
+- **Allocation** (replaced by allowed goods, first come, first served, in T-166; see DECISIONS.md "Decided for storage"): each storage room shares its space among goods by allocation (`setAllocation`: units per good, totalling no more than it holds; none to start). A hole's capacity for a good is the sum of its built storage rooms' allocations. Rooms under construction don't count. What doesn't fit is lost as overflow, and Earth drops only unload what fits.
 - **Landing pod:** 400 units, preset to hold the starting stock with some room: rations 120, meals 30, raw food 20, soil 50, rock 80, metal 60, brick 20, machinery 10, electronics 10. Ore, silica and the rest get nothing until the player sets space aside.
-- **Inspector:** for any room with storage, "625 stored · 2330 of 2330 set aside", then a row per good with a tick box, the units (editable), and a fill bar showing that room's share of the hole's stock.
+- **Inspector** (since T-166: a bar of what the room holds and a checklist of the goods it allows, with All and None): for any room with storage, "625 stored · 2330 of 2330 set aside", then a row per good with a tick box, the units (editable), and a fill bar showing that room's share of the hole's stock.
   - Ticking a good gives it the free space, or an even share of everything if none is free.
   - "Share evenly" splits the space among the goods chosen.
 - **Resource bar:** a dry good turns amber when its storage is full and more is coming in, or when it has no storage at all. The tooltip says why.

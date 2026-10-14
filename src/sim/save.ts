@@ -13,13 +13,14 @@ import { galleryEdges } from "./edges";
 import { ensureFloors, placeRoom, type Layout } from "./placement";
 import { openCells } from "./excavation";
 import { fillAir } from "./air";
+import { setAllows } from "./storage";
 import type { World } from "./world";
 
 // Saves are the whole world as JSON, minus what can be rebuilt (each hole's
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 21;
+export const SAVE_VERSION = 22;
 
 type Raw = Record<string, unknown>;
 
@@ -184,6 +185,32 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       delete hole.air;
       fillAir(hole, config);
       return hole as unknown as Raw;
+    }),
+  }),
+  // v22: storage rooms allow goods instead of setting space aside (T-166). A room allows what it
+  // had space for (everything, if it had none), and holds its old share of the hole's stock.
+  21: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const layout = h.layout as Layout;
+      const resources = h.resources as Record<string, number>;
+      const caps: Record<string, number> = {};
+      for (const r of layout.rooms) for (const [id, v] of Object.entries(r.allocation ?? {})) caps[id] = (caps[id] ?? 0) + v;
+      for (const r of layout.rooms) {
+        const alloc = r.allocation;
+        delete r.allocation;
+        if (!alloc) continue;
+        const ids = Object.keys(alloc).filter((id) => alloc[id]! > 0);
+        if (ids.length) setAllows(r, ids);
+        if (r.planned || r.building) continue;
+        const contents: Record<string, number> = {};
+        for (const id of ids) {
+          const share = Math.min(alloc[id]!, ((resources[id] ?? 0) * alloc[id]!) / caps[id]!);
+          if (share > 0) contents[id] = share;
+        }
+        if (Object.keys(contents).length) r.contents = contents;
+      }
+      return { ...h, layout };
     }),
   }),
 };

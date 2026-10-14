@@ -16,6 +16,7 @@ import type { SimState } from "./state";
 
 import { stepHistory } from "./history";
 import { stepFailure } from "./failure";
+import { settleStorage } from "./storage";
 
 // Advance the simulation by one fixed tick. Mutates state in place.
 export function step(state: SimState, cfg: SimConfig): void {
@@ -39,6 +40,8 @@ export function step(state: SimState, cfg: SimConfig): void {
   stepHappiness(state, cfg);
   stepVisits(state, cfg);
   stepEvents(state, cfg);
+  // Dry goods find their rooms, nearest to where they were made; what doesn't fit is lost.
+  settleStorage(state);
   stepLedger(state, cfg);
   stepHistory(state, cfg);
   stepFailure(state, cfg);

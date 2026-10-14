@@ -15,7 +15,7 @@ import { edgeById, outsideEdges } from "./edges";
 import { setRoomWindows, wallOf, windowCost, windowRefusal } from "./windows";
 import { domeRefusal, dropCorridors, dropRefit, dropRelines, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRefit, queueReline, queueRoom, type SegmentRefit } from "./construction";
 import { addAdults, holeGates, syncCount, unlock, UNLOCK_GATES } from "./people";
-import { allocationRefusal } from "./storage";
+import { allowsRefusal, setAllows } from "./storage";
 import { answerVisit } from "./visits";
 import { answerEvent, consoleEvent } from "./events";
 import { padReady } from "./earth";
@@ -54,7 +54,7 @@ export type SimCommand =
   /** Take a job out of the queue before it's done, with a full refund. */
   | { type: "cancelJob"; jobId: number }
   /** Share a storage room's space among goods (units per good; the rest is left free). */
-  | { type: "setAllocation"; roomId: number; allocation: Record<string, number> }
+  | { type: "setAllows"; roomId: number; allows: string[] }
   /** Start or stop the staging bay gathering a seed kit. */
   | { type: "setGathering"; gathering: boolean }
   /** Testing, from the browser console: set resources to amounts, add to them (negative takes away), or raise them to at least an amount. */
@@ -574,12 +574,13 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       layout.version++;
       return { ok: true };
     }
-    case "setAllocation": {
+    case "setAllows": {
       const room = layout.rooms.find((r) => r.id === cmd.roomId);
       if (!room) return { ok: false, reason: "No such room" };
-      const refusal = allocationRefusal(room, cmd.allocation);
+      if (!Array.isArray(cmd.allows)) return { ok: false, reason: "Allows must be a list of goods" };
+      const refusal = allowsRefusal(room, cmd.allows);
       if (refusal) return { ok: false, reason: refusal };
-      room.allocation = Object.fromEntries(Object.entries(cmd.allocation).filter(([, v]) => v > 0));
+      setAllows(room, cmd.allows);
       layout.version++;
       return { ok: true };
     }

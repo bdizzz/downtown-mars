@@ -7,6 +7,7 @@ import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 import { countStage, needsWeight, type Cohort } from "./people";
 import { storageCaps } from "./storage";
+import { noteMade } from "./origins";
 import { stormOutput } from "./weather";
 import { conditionOf, conditionOutput, isCleanable, maintenanceQueue } from "./condition";
 import { MATERIALS, refitting } from "./materials";
@@ -169,7 +170,7 @@ export function capacities(state: SimState, cfg: SimConfig): Record<string, numb
     for (const [id, v] of Object.entries(roomSpec(room, cfg).stores)) into[id] = (into[id] ?? 0) + v;
   }
   for (const [id, v] of Object.entries(broken)) caps[id] = (caps[id] ?? 0) + Math.min(v, Math.max(0, (state.resources[id] ?? 0) - (caps[id] ?? 0)));
-  // Dry goods live in storage rooms: only as much as they've space allocated for.
+  // Dry goods live in storage rooms: what's stored, and the free space in the rooms that allow them.
   const all = { ...caps, ...storageCaps(state) };
   // Room the console made, for amounts given past what the hole could hold.
   for (const [id, v] of Object.entries(state.consoleSpace ?? {})) all[id] = (all[id] ?? 0) + v;
@@ -392,6 +393,7 @@ function runRoom(
     const made = perDay * rate * dt * (topUp && resourceDef(id).air ? airShare : 1);
     res[id] = (res[id] ?? 0) + made;
     record(state, id, "in", label, made);
+    noteMade(state, id, made, room.id);
   }
   for (const [id, perDay] of Object.entries(spec.scrubs)) {
     const take = Math.min(perDay * rate * dt, Math.max(0, (res[id] ?? 0) - scrubFloor(state, id, cfg)));

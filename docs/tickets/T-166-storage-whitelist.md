@@ -1,7 +1,7 @@
 ---
 id: T-166
 title: Storage rooms share their space first come, first served among the goods you allow
-status: open
+status: done
 size: L
 area: sim, ui
 touches: [src/sim/storage.ts, src/sim/commands.ts, src/sim/economy.ts, src/sim/save.ts, src/view/roomPanel.ts, src/ui/Inspector.tsx, tests/]
@@ -29,3 +29,5 @@ DECISIONS.md: storage (M8) changes; GUIDE.md: Storage; PLAN-M8.md Notes as built
 ## History
 - 2026-10-13 20:43 opened from N-0090
 - 2026-10-13 20:47 questions answered
+- 2026-10-13 21:50 building on t-166-storage-whitelist
+- 2026-10-13 22:02 built
