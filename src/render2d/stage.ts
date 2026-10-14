@@ -15,7 +15,7 @@ import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
 import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
+import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import type { HoverInfo, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
@@ -693,7 +693,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       }
     }
     // A snaked chain (while dragging, or waiting for confirmation): every border highlighted.
-    const shown = snaking ? { edges: chain.edges, erase: chainErase } : proposal;
+    const shown = snaking ? proposalFor(tool, chain.edges, chainErase) : proposal;
     if (shown?.edges.length) {
       for (const id of shown.edges) {
         const existing = !!layout.corridors[id];
@@ -916,7 +916,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     snaking = false;
     const done = chain;
     chain = EMPTY_CHAIN;
-    if (done.edges.length > 1) opts.onPropose?.({ edges: done.edges, erase: chainErase });
+    if (done.edges.length > 1) opts.onPropose?.(proposalFor(tool, done.edges, chainErase));
     else if (done.edges.length === 1) click(fingerDown);
     hoverKey = "";
     refreshHover();
@@ -973,7 +973,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     canvas.setPointerCapture(e.pointerId);
     if (paints(tool) && tool?.kind === "corridor") {
       snaking = true;
-      chainErase = shift || tool.erase;
+      chainErase = followsCorridors(tool, shift);
       chain = EMPTY_CHAIN;
       snake();
       return;

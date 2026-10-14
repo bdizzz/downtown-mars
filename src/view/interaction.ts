@@ -7,7 +7,8 @@ import { isOpen } from "../sim/excavation";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, shortfall } from "../sim/corridors";
 import type { Edge } from "../sim/edges";
 import { glazedAcross, glazedOnWall, roomForWindows, wallOf, windowComfort, windowCost, windowRefusal } from "../sim/windows";
-import type { EdgeHover, HoverInfo, Pick, StageOptions, Tool } from "./types";
+import { corridorRefitPlan, corridorRefitRefusal, liningById, MATERIALS } from "../sim/materials";
+import type { EdgeHover, HoverInfo, Pick, Proposal, StageOptions, Tool } from "./types";
 
 // The rules for turning "what's under the pointer" into hover info and
 // actions. Both views use these, so building, demolishing and selecting
@@ -62,6 +63,13 @@ export function edgeHoverFor(layout: Layout, resources: Record<string, number>, 
   const finish = layout.corridors[edge.id];
   const removing = erase || tool.erase;
   if (tool.windows) return windowHover(layout, resources, p, edge, removing);
+  if (tool.refit) {
+    const to = liningById(tool.refit) ?? MATERIALS.walls[0]!;
+    const refusal = corridorRefitRefusal(layout, edge.id, to);
+    const cost = refusal ? {} : (corridorRefitPlan(layout, edge.id, to, config)?.cost ?? {});
+    info.edge = { id: edge.id, refusal: refusal ?? shortfall(resources, cost), cost, erase: false, refit: tool.refit, ...(finish ? { finish, linked: !!layout.corridorLinked?.[edge.id] } : {}) };
+    return info;
+  }
   if (tool.bulkhead) {
     const refusal = bulkheadRefusal(layout, edge.id, !removing) ?? (removing ? null : shortfall(resources, corridors.bulkhead.cost));
     info.edge = { id: edge.id, refusal, cost: removing ? {} : corridors.bulkhead.cost, erase: removing, bulkhead: true, ...(finish ? { finish, linked: !!layout.corridorLinked?.[edge.id] } : {}) };
@@ -98,6 +106,7 @@ export function corridorCommand(tool: Tool, edge: EdgeHover | undefined): SimCom
   if (tool?.kind !== "corridor" || !edge) return null;
   if (tool.windows) return edge.windows?.roomId ? { type: "setWindows", roomId: edge.windows.roomId, edges: edge.windows.edges, on: !edge.erase } : null;
   if (tool.bulkhead) return { type: "setBulkhead", edges: [edge.id], on: !edge.erase };
+  if (tool.refit) return refitCommand([edge.id], tool.refit);
   return edge.erase ? { type: "removeCorridors", edges: [edge.id] } : { type: "drawCorridors", edges: [edge.id], finish: tool.finish };
 }
 
@@ -137,9 +146,26 @@ export function clickWith(layout: Layout, tool: Tool, info: HoverInfo, opts: Sta
   }
 }
 
-/** With the corridor tool, dragging draws (or erases) a corridor along every border it crosses. */
+/** With the corridor tool, dragging draws (or erases, or refits) a corridor along every border it crosses. */
 export function paints(tool: Tool): boolean {
   return tool?.kind === "corridor" && !tool.bulkhead && !tool.windows;
+}
+
+/** Does a snaked chain follow built corridors (filling in, or refitting) rather than carve new ones? */
+export function followsCorridors(tool: Tool, shift: boolean): boolean {
+  return tool?.kind === "corridor" && (shift || tool.erase || !!tool.refit);
+}
+
+/** The proposal a released chain makes: to carve, fill in, or refit in the tool's lining. */
+export function proposalFor(tool: Tool, edges: string[], follows: boolean): Proposal {
+  const refit = tool?.kind === "corridor" ? tool.refit : undefined;
+  return refit ? { edges, erase: false, refit } : { edges, erase: follows };
+}
+
+/** Refit these corridor segments in a lining, by its id ("brick_fine"). */
+export function refitCommand(edges: string[], lining: string): SimCommand {
+  const to = liningById(lining) ?? MATERIALS.walls[0]!;
+  return { type: "refitCorridors", edges, material: to.material, finish: to.finish };
 }
 
 /**

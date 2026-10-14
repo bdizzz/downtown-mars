@@ -152,6 +152,11 @@ function whole(step: WallStep): { cost: Record<string, number>; work: number } {
   return { cost, work: step.work + (base?.work ?? 0) };
 }
 
+/** What a lining costs a cell from bare rock: its base step and, for a fine finish, the finish on top. */
+export function liningCost(step: WallStep): Record<string, number> {
+  return whole(step).cost;
+}
+
 function times(cost: Record<string, number>, n: number): Record<string, number> {
   return Object.fromEntries(Object.entries(cost).map(([r, v]) => [r, v * n]));
 }

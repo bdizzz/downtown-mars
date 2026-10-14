@@ -6,6 +6,8 @@ import { finishDef } from "../src/sim/corridors";
 import { galleryEdges } from "../src/sim/edges";
 import { corridorRefitPlan, liningOf, wallStep } from "../src/sim/materials";
 import { createInitialState, type SimState } from "../src/sim/state";
+import { proposalSummary } from "../src/view/corridorProposal";
+import { followsCorridors, proposalFor } from "../src/view/interaction";
 import { withConstructionTime } from "./worlds";
 
 // Corridor linings (T-142): corridors take the same linings as rooms, refitted
@@ -117,6 +119,23 @@ describe("the refitCorridors command", () => {
     finishJob(s);
     expect(s.layout.corridors["R1.2.4"]).toBe("rock");
     expect(s.resources.brick).toBe(brick + 1);
+  });
+});
+
+describe("the refit tool", () => {
+  it("snakes along built corridors and proposes a refit, not a fill-in", () => {
+    const tool = { kind: "corridor" as const, finish: "rock", erase: false, refit: "brick" };
+    expect(followsCorridors(tool, false)).toBe(true);
+    expect(proposalFor(tool, EDGES, true)).toEqual({ edges: EDGES, erase: false, refit: "brick" });
+    expect(proposalFor({ ...tool, refit: undefined }, EDGES, true)).toEqual({ edges: EDGES, erase: true });
+  });
+
+  it("sums a chain's cost and salvage in the confirm, skipping what can't be refitted", () => {
+    const s = withCorridors("brick");
+    const tube = galleryEdges(s.layout.hole, 1)[0]!.id;
+    const p = proposalSummary({ edges: [...EDGES, tube], erase: false, refit: "metal" }, s.layout, s.resources, "rock");
+    expect(p).toMatchObject({ title: "Refit corridors in metal panels?", cost: "Costs 3.0 metal; 2 brick salvaged", ok: true, accept: "Refit" });
+    expect(p.size).toMatch(/^2 segments · 20 m · 1 skipped/);
   });
 });
 
