@@ -132,9 +132,9 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 ## Materials, waste and storage
 
 - At 50 colonists a **brickworks** makes brick from rock, so you're not waiting on Earth. At 100, a **recycling center** turns solid waste into metal and brick.
-- **Fiber:** set a farm's crop to **fiber hemp** and it grows fiber (6 a month) instead of food. Give it room in storage; it's shown in the resource grid once you have some.
+- **Fiber:** set a farm's crop to **fiber hemp** and it grows fiber (6 a month) instead of food. It needs room in storage; it's shown in the resource grid once you have some.
 - **Waste storage** holds more solid and organic waste until something uses it.
-- **Storage:** dry goods (food and materials) only keep what storage has room for. Build storerooms, warehouses or depots and choose what each holds in its details panel; the landing pod has some to start. A good shown in blue with a dotted frame has no room left, and what arrives is lost.
+- **Storage:** dry goods (food and materials) only keep what storage has room for. Build storerooms, warehouses or depots; the landing pod has 600 units to start. Every storage room takes in everything until you say otherwise: its details panel shows a bar of what it holds and a checklist of goods to allow (with All and None). Goods share the space first come, first served, each going to the allowing room nearest to where it was made (deliveries come in at the entrance), so keep rock out of a room you want for food. Goods you stop allowing move to rooms that take them, when there's space. A good shown in blue with a dotted frame has no room left, and what arrives is lost.
 
 ## Air and smell
 

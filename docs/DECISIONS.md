@@ -105,7 +105,7 @@ Each milestone plan has the details, under "Notes as built".
 - **3D view (M3):** the main view; new games open in 3D **Free view** (renamed from Iso; its id is still `iso`, T-052). Free view, Cutaway and first person, and walls down. Room walls are solid, 0.25 m thick and centred on the edge line, one wall per shared edge (T-001, Oct 6). Walls down lowers only walls that hide a room, and judges each wall face whole (a curved wall across all its cells, as an arc; a face drops if any of it would; a solid wall's outer face, top and reveals go with its face on the room's side): seen from behind, it hides its own room; from in front, a room across it, but only if lowering it would show some of that room's floor, that is if the camera's line over the wall's top is still above stub height where the room starts (below that, the stubs hide the floor anyway). So walls in front of corridors, tubes, the shaft and rock stay up. Judged in the shader as the camera moves, in every view that has walls down (T-002). **Art direction:** a cozy, miniature look (soft shadows, glow, warm haze and grade, furnished rooms; `ART.md`, `PLAN-M10.md`). Space Grotesk for the UI and labels.
 - **Network (M4):** a real Mars globe from NASA MOLA data. New holes are founded from a staging bay; rover depots and trade routes; culture drift and opinions between holes.
 - **People (M5):** cohorts of children, adults and elders; births, aging, retirement, deaths, migration; school, elder care and crypt.
-- **Corridors on edges (M6).** **Construction time (M7):** a queue per hole, paced by construction offices. **Storage (M8):** dry goods keep only what storerooms, warehouses and depots have room for.
+- **Corridors on edges (M6).** **Construction time (M7):** a queue per hole, paced by construction offices. **Storage (M8):** dry goods keep only what storerooms, warehouses and depots have room for (shared among the goods each allows since T-166).
 - **Excavation and the entrance (M9):** the entrance on floor 1 is the only way in; stairs and elevators reach deeper floors; a cargo elevator at 100 colonists.
 - **Furnishing (M10):** every room type has a furniture template; rooms of a kind vary (mirrored, stand-ins, shades).
 - **Condition and upkeep (Sep 30):** rooms wear; worn rooms upset people, slow down and stop at 0%; breakdowns now and then. Maintenance rooms (using machinery) and, from 150 colonists, cleaning services (using water) repair them from a hole-wide queue (`data/condition.json`).
@@ -249,6 +249,17 @@ See `PLAN-M16.md`.
 - `createInitialState` defaults to the bare kit, so unit tests keep their slots; `createWorld` passes the full one. The bots build their plan less floor 1's rooms the kit brings (`planFor` in `tests/bot.ts`; later floors' recyclers stay, as the hole grows into them), and the playthrough runs from both starts.
 - **A waste-clearing room keeping up isn't short** (Oct 13): a room whose inputs are all waste but power (water recycler, composter, recycling center) that has cleared everything there is gets `clear:<resource>` as its limit, shown as "keeping up" with no warning, web and Godot alike. An early recycler runs at half speed for months, and the kit puts one in front of every newcomer.
 - The full kit lifts a solo hole as much as a network, so the people playthrough's network-over-solo bar eased from 1.3 to 1.25 (six seeds: 1.27–1.65).
+
+## Decided for storage (Oct 13, T-166)
+
+Bryon's N-0090, reversing M8's space set aside per good:
+
+- **A storage room allows goods; it doesn't set space aside.** Each room has so many units and a list of goods it allows, **everything by default** (new rooms and the landing pod alike). Goods take the space **first come, first served**: a room that allows everything can fill with rock.
+- **Nearest first:** a good goes to the allowing room nearest on foot to where it was made (a farm, a works, the room being dug out), then the next nearest. Earth drops, rovers, the drill and anything else with no maker come in at the door: the cargo lift, else the entrance (the pod counts as at the entrance).
+- **No caps or reserved space for now** (no "never more than N rock", no priorities): allowing goods is enough.
+- **Each room keeps its own contents**; the hole's stock is the sum. What's used comes out of the rooms that no longer allow it first, then evenly from the rest. Goods a room stops allowing move to rooms that allow them, as space allows; a demolished room's goods look for room elsewhere. What finds no room is lost as overflow.
+- **Old saves (v22):** a room's allocation becomes the goods it allows (a room with none allows everything), and it keeps its old share of the stock.
+- The bots build a warehouse when less than 35% of their storage is free, since rock can now crowd out the meals.
 
 ## Still open
 
