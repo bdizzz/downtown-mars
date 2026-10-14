@@ -30,3 +30,4 @@ PLAN-M15.md (corridors, marscrete in the ladder), DECISIONS.md (marscrete as a l
 - 2026-10-11 15:52 opened from N-0074
 - 2026-10-11 16:08 questions answered
 - 2026-10-13 02:19 upgrade by drawing a corridor in another finish over an existing one (Bryon)
+- 2026-10-13 20:43 building on t-142-corridor-materials
