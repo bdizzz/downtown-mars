@@ -35,7 +35,7 @@ export const PLAN: Plan[] = [
   { room: "farm", at: ring(2, 1, 4, 4), crop: "soybeans" },
   { room: "solar_array", at: surface(5) },
   { room: "clinic", at: ring(3, 1, 0) },
-  // On floor 2: the full landing kit fills floor 1's ring 2.
+  // On floor 2: the full landing kit's corridor crosses floor 1's ring 2 here.
   { room: "admin_office", at: ring(2, 2, 4, 2) },
   // Growth: homes and services for arrivals, on floor 3.
   { room: "bunk_dorm", at: ring(3, 1, 1, 2) },

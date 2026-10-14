@@ -138,7 +138,7 @@
   "history": { "everyTicks": 10, "recentDays": 10, "maxDays": 2000 },
   "unlocks": { "cargoPopulation": 100, "homes": { "basic": 50, "standard": 100, "luxury": 200 }, "cleaningPopulation": 150, "rooms": { "brickworks": 50, "leisure": 50, "recycling": 100, "hospital": 300, "reclaimer": 150, "spiralStair": 200, "plaza": 500 } },
   "landingKits": {
-    "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. A ring room's holds sets what a tank holds; the crew carves a corridor to any room nothing reaches.",
+    "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. A ring room's holds sets what a tank holds; the crew lays a corridor along the fronts of rooms nothing reaches, and the shortest spoke in to it.",
     "newGame": "full",
     "laterHoles": "bare",
     "bare": {
@@ -160,12 +160,12 @@
       ],
       "ring": [
         { "room": "entrance", "floor": 1, "ring": 1, "slot": 0 },
-        { "room": "water_tank", "floor": 1, "ring": 2, "slot": 1 },
-        { "room": "water_tank", "floor": 1, "ring": 2, "slot": 2, "holds": "grayWater" },
-        { "room": "life_support", "floor": 1, "ring": 2, "slot": 3 },
         { "room": "battery_bank", "floor": 1, "ring": 2, "slot": 7 },
-        { "room": "electrolyzer", "floor": 1, "ring": 2, "slot": 8 },
-        { "room": "water_recycler", "floor": 1, "ring": 3, "slot": 2 }
+        { "room": "water_tank", "floor": 1, "ring": 3, "slot": 4 },
+        { "room": "water_tank", "floor": 1, "ring": 3, "slot": 5, "holds": "grayWater" },
+        { "room": "electrolyzer", "floor": 1, "ring": 3, "slot": 6 },
+        { "room": "life_support", "floor": 1, "ring": 3, "slot": 8 },
+        { "room": "water_recycler", "floor": 1, "ring": 3, "slot": 12 }
       ]
     }
   }

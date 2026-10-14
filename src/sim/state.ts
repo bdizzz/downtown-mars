@@ -19,7 +19,7 @@ import { createLayout, placeRoom, type Layout } from "./placement";
 import { openCells } from "./excavation";
 import type { DepositKind } from "./mapgeo";
 import { roomDef } from "./rooms";
-import { galleryEdges } from "./edges";
+import { galleryEdges, outsideEdges } from "./edges";
 import { corridors, recomputeAccess, routeToRoom } from "./corridors";
 import { culture, type Culture } from "./culture";
 import { addAdults } from "./people";
@@ -129,7 +129,14 @@ export function createInitialState(
   // Floor 1's gallery comes built, all the way round the shaft.
   for (const e of galleryEdges(layout.hole, 1)) layout.corridors[e.id] = corridors.gallery.id;
   recomputeAccess(layout);
-  // A kit room nothing reaches (behind the others) gets the shortest corridor carved to it.
+  // Kit rooms nothing reaches (deeper than ring 2) get a corridor along their fronts, and
+  // the shortest spoke carved out to it: one line in, rather than a spoke to each.
+  for (const room of layout.rooms) {
+    if (room.connected || room.at.kind !== "ring") continue;
+    const ring = room.at.ring;
+    for (const e of outsideEdges(layout.hole, room.cells)) if (e.kind === "arc" && e.circle === ring - 1) layout.corridors[e.id] = corridors.defaultFinish;
+  }
+  recomputeAccess(layout);
   for (const room of layout.rooms) {
     const path = room.connected ? [] : (routeToRoom(layout, room, cfg) ?? []);
     if (!path.length) continue;
