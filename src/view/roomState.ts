@@ -26,6 +26,8 @@ export function limitText(limit: string | undefined): string {
   // oxygen is at its target, a scrubber once CO2 is down to what the farms are left.
   if (limit === "air:co2") return "standing by: CO2 is down to the scrub floor";
   if (limit.startsWith("air:")) return `standing by: the air's ${resName(limit.slice(4)).toLowerCase()} is at its target`;
+  // A waste-clearing room that has cleared everything there is (economy.ts).
+  if (limit.startsWith("clear:")) return `keeping up: treating all the ${resName(limit.slice(6)).toLowerCase()} there is`;
   // Used water has nowhere to go (economy.ts).
   return `short of ${nameOf(limit)}`;
 }
@@ -42,7 +44,7 @@ function nameOf(id: string): string {
 /** Idling because output storage is full is fine; shortages and missing access aren't. */
 export function isProblem(room: { planned: boolean; connected: boolean }, st: { rate: number; limit?: string } | undefined): boolean {
   if (!room.planned && !room.connected) return true;
-  return !!st && st.rate < 0.999 && !st.limit?.startsWith("full:") && !st.limit?.startsWith("air:") && st.limit !== "paused" && st.limit !== "kit" && st.limit !== "standby" && !st.limit?.startsWith("stocked:");
+  return !!st && st.rate < 0.999 && !st.limit?.startsWith("full:") && !st.limit?.startsWith("air:") && st.limit !== "paused" && st.limit !== "kit" && st.limit !== "standby" && !st.limit?.startsWith("stocked:") && !st.limit?.startsWith("clear:");
 }
 
 /** The room's state in a line: a blueprint, building, cut off, paused, standing by, or running (and what holds it back). */

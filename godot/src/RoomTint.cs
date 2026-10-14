@@ -37,7 +37,7 @@ public static class RoomTint
         if (!status.TryGetProperty("limit", out var l) || l.ValueKind != JsonValueKind.String) return "ok";
         var limit = l.GetString()!;
         if (limit == "paused") return "idle";
-        if (limit is "kit" or "standby" || limit.StartsWith("full:") || limit.StartsWith("stocked:")) return "ok";
+        if (limit is "kit" or "standby" || limit.StartsWith("full:") || limit.StartsWith("stocked:") || limit.StartsWith("air:") || limit.StartsWith("clear:")) return "ok";
         if (limit is "staff" or "morale" or "storm" or "ordinance" or "worn") return "warn";
         return "bad";
     }

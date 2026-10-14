@@ -145,6 +145,12 @@ export function standDown(room: RoomInstance, state: SimState, cfg: SimConfig): 
 }
 
 /** A room does anything only once it's built and reachable. */
+/** Every input but power is waste: the room exists to clear it (a water recycler, a composter, a recycling center). */
+export function clearsWaste(type: string): boolean {
+  const uses = Object.keys(roomDef(type).uses).filter((id) => id !== "power");
+  return uses.length > 0 && uses.every((id) => resourceDef(id).waste);
+}
+
 export function isActive(room: RoomInstance): boolean {
   return !room.planned && !room.building && room.connected;
 }
@@ -320,7 +326,8 @@ function runRoom(
     const f = available(res, id, subs[id]) / need;
     if (f < 1) {
       rate *= Math.max(0, f);
-      limit = id;
+      // A room that only clears waste (a recycler, say) and has cleared it all is keeping up, not short.
+      limit = clearsWaste(room.type) && resourceDef(id).waste ? `clear:${id}` : id;
     }
   }
 
