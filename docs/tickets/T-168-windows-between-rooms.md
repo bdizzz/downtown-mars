@@ -16,14 +16,15 @@ created: 2026-10-13 20:43
 DECISIONS (M13): the corridor tool's Windows mode glazes a wall "only where the shaft, a corridor or a walk-through room is across it"; glass 2 per 10 m. Window comfort for homes: shaft 1.5, tube 1, plaza or stairs 0.75, corridor 0.25. This lifts the "only where" rule for room-to-room walls.
 
 ## Approach
-Allow glazing a wall between two rooms, same cost; draw it as glass you can see through in 3D (web and Godot). Done: glaze the wall between a park and a home and see the park from inside.
+Allow glazing a wall between two rooms, same cost; a home's window comfort counts what's across (a park or plaza 0.75, another room 0.25, a noisy or smelly room nothing); noise and smell pass as through a wall; draw it as glass you can see through in 3D (web and Godot). Done: glaze the wall between a park and a home and see the park from inside.
 
 ## Docs to update
 DECISIONS.md: windows between rooms; GUIDE.md: Windows.
 
 ## Open questions
-- [ ] Does a window onto another room count for comfort, and how much? (Claude's default: by what's across it: a park or plaza 0.75, another room 0.25 like a corridor, and a noisy or smelly room nothing.)
-- [ ] Does glass between rooms let noise or smell through more than a wall? (Default: no; same as a wall.)
+- [x] Does a window onto another room count for comfort, and how much? (Claude's default: by what's across it: a park or plaza 0.75, another room 0.25 like a corridor, and a noisy or smelly room nothing.) → By what's across: a park or plaza 0.75, another room 0.25, a noisy or smelly room nothing. (Bryon, Oct 13)
+- [x] Does glass between rooms let noise or smell through more than a wall? (Default: no; same as a wall.) → No; same as a wall. (Bryon, Oct 13)
 
 ## History
 - 2026-10-13 20:43 opened from N-0092
+- 2026-10-13 20:47 questions answered
