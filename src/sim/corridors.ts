@@ -1,4 +1,5 @@
 import raw from "../../data/corridors.json";
+import materialsJson from "../../data/materials.json";
 import type { SimConfig } from "./config";
 import { cellEdges, edgeById, edgeLengthM, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, sharedEdges, type Edge } from "./edges";
 import { ringSize, type Hole } from "./geometry";
@@ -39,6 +40,9 @@ export const corridors = raw as unknown as {
   finishes: FinishDef[];
 };
 
+/** The linings' names (materials.ts reads them in full; it imports this module, so not the other way round). */
+const materialsRaw = materialsJson as unknown as { walls: { material: string; finish: string; name: string }[] };
+
 /** The finish a corridor on this edge gets: a gallery tube on the shaft wall, else the one asked for. */
 export function finishFor(e: Edge, finish: string): string {
   return isGalleryEdge(e) ? corridors.gallery.id : finish;
@@ -46,9 +50,18 @@ export function finishFor(e: Edge, finish: string): string {
 
 export const CORRIDORS = "Corridors";
 
+/**
+ * A corridor's finish: one it can be drawn in, or the gallery tube. A fine
+ * lining it was refitted to (T-142: "brick_fine") is its base finish under
+ * the lining's own name: drawn in that colour, and filled in at that cost.
+ */
 export function finishDef(id: string): FinishDef {
   if (id === corridors.gallery.id) return corridors.gallery;
-  return corridors.finishes.find((f) => f.id === id) ?? corridors.finishes[0]!;
+  const own = corridors.finishes.find((f) => f.id === id);
+  if (own) return own;
+  const fine = id.endsWith("_fine") ? materialsRaw.walls.find((w) => w.finish === "fine" && `${w.material}_fine` === id) : undefined;
+  const base = fine && corridors.finishes.find((f) => f.id === fine.material);
+  return base ? { ...base, id, name: fine.name } : corridors.finishes[0]!;
 }
 
 export function isFinish(id: string): boolean {

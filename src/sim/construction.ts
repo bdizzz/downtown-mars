@@ -35,14 +35,17 @@ export const construction = raw as unknown as {
 
 export interface Job {
   id: number;
-  /** A room, corridor segments to carve or to fill in, more floors for stairs or an elevator, the dome, or a room's walls refitted. */
-  kind: "room" | "corridors" | "fill" | "extend" | "dome" | "upgrade";
+  /** A room, corridor segments to carve or to fill in, more floors for stairs or an elevator, the dome, a room's walls refitted, or corridors' (reline). */
+  kind: "room" | "corridors" | "fill" | "extend" | "dome" | "upgrade" | "reline";
   roomId?: number;
   /** A refit: the lining it puts in, what was paid for it (refunded if it's cancelled), and what comes back when it's done. */
   to?: { material: Material; finish: Finish };
   paid?: Record<string, number>;
   salvage?: Record<string, number>;
   edges?: string[];
+  /** A corridor refit: what was paid for each segment and what each gives back, so one can drop out on its own (filled in, built over). */
+  paidBy?: Record<string, Record<string, number>>;
+  salvageBy?: Record<string, Record<string, number>>;
   /** Work needed and done, in work-hours (excavation included). */
   work: number;
   done: number;
@@ -189,11 +192,92 @@ function finishRefit(state: SimState, room: RoomInstance, to: { material: Materi
   state.layout.version++;
 }
 
-/** Take a refit out of the queue, giving back what was paid for it (cancelled, replaced, or its room demolished). */
+/** Take a refit (a room's or corridors') out of the queue, giving back what was paid for it (cancelled, replaced, or its room demolished). */
 export function dropRefit(state: SimState, job: Job): void {
   for (const [r, v] of Object.entries(job.paid ?? {})) state.resources[r] = (state.resources[r] ?? 0) + v;
+  if (job.kind === "reline") unmarkRelining(state.layout, job.edges ?? []);
   if (state.construction) state.construction.queue = state.construction.queue.filter((j) => j !== job);
   state.layout.version++;
+}
+
+/** One segment's refit, as corridorRefitPlan prices it. */
+export interface SegmentRefit {
+  edge: string;
+  cost: Record<string, number>;
+  work: number;
+  salvage: Record<string, number>;
+}
+
+const sum = (list: Record<string, number>[]): Record<string, number> => {
+  const out: Record<string, number> = {};
+  for (const c of list) for (const [r, v] of Object.entries(c)) out[r] = Math.round(((out[r] ?? 0) + v) * 10) / 10;
+  return out;
+};
+
+/** Corridor segments refitted in a lining (already paid for): one job for them all, or with construction time off, done at once. */
+export function queueReline(state: SimState, to: { material: Material; finish: Finish }, segments: SegmentRefit[], cfg: SimConfig): void {
+  const job = add(state, {
+    kind: "reline",
+    edges: segments.map((s) => s.edge),
+    work: segments.reduce((w, s) => w + s.work, 0),
+    to,
+    paid: sum(segments.map((s) => s.cost)),
+    salvage: sum(segments.map((s) => s.salvage)),
+    paidBy: Object.fromEntries(segments.map((s) => [s.edge, s.cost])),
+    salvageBy: Object.fromEntries(segments.map((s) => [s.edge, s.salvage])),
+  });
+  if (!job) return finishReline(state, segments.map((s) => s.edge), to, sum(segments.map((s) => s.salvage)), cfg);
+  const layout = state.layout;
+  layout.corridorsRelining ??= {};
+  for (const s of segments) layout.corridorsRelining[s.edge] = job.id;
+}
+
+/** These segments are no longer waiting on a corridor refit. */
+function unmarkRelining(layout: Layout, edges: string[]): void {
+  for (const id of edges) delete layout.corridorsRelining?.[id];
+}
+
+/** A corridor refit is done: the segments take the lining (those still there), and the old lining's salvage comes back. */
+function finishReline(state: SimState, edges: string[], to: { material: Material; finish: Finish }, salvage: Record<string, number>, cfg: SimConfig): void {
+  const layout = state.layout;
+  const step = wallStep(to.material, to.finish);
+  const lining = to.finish === "fine" ? `${to.material}_fine` : to.material;
+  const done = edges.filter((id) => layout.corridors[id]);
+  for (const id of done) layout.corridors[id] = lining;
+  unmarkRelining(layout, edges);
+  for (const [r, v] of Object.entries(salvage)) {
+    state.resources[r] = (state.resources[r] ?? 0) + v;
+    record(state, r, "in", SALVAGE, v);
+  }
+  const back = Object.entries(salvage).map(([r, v]) => `${resourceDef(r).name.toLowerCase()} ${v}`);
+  const n = done.length;
+  postMessage(state, cfg, `${n} corridor ${n === 1 ? "segment" : "segments"} ${refitVerb(step) === "Strip" ? "stripped" : "refitted"} ${refitWords(step)}${back.length ? `: ${back.join(", ")} salvaged` : ""}.`);
+  layout.version++;
+}
+
+/**
+ * These corridor segments are going (filled in, or built over): out of any refit they're in, what was paid for
+ * them given back. A refit left with nothing to do is dropped.
+ */
+export function dropRelines(state: SimState, edges: string[]): void {
+  const c = state.construction;
+  if (!c) return;
+  const gone = new Set(edges);
+  for (const j of c.queue) {
+    if (j.kind !== "reline" || !j.edges?.some((id) => gone.has(id))) continue;
+    unmarkRelining(state.layout, j.edges.filter((x) => gone.has(x)));
+    for (const id of j.edges.filter((x) => gone.has(x))) {
+      for (const [r, v] of Object.entries(j.paidBy?.[id] ?? {})) state.resources[r] = (state.resources[r] ?? 0) + v;
+      delete j.paidBy?.[id];
+      delete j.salvageBy?.[id];
+    }
+    const before = j.edges.length;
+    j.edges = j.edges.filter((id) => !gone.has(id));
+    j.work = Math.max(j.done, (j.work * j.edges.length) / before);
+    j.paid = sum(Object.values(j.paidBy ?? {}));
+    j.salvage = sum(Object.values(j.salvageBy ?? {}));
+  }
+  c.queue = c.queue.filter((j) => j.kind !== "reline" || (j.edges ?? []).length);
 }
 
 /** The job building this room (or extending it), if any. */
@@ -204,7 +288,7 @@ export function jobForRoom(state: SimState, roomId: number): Job | undefined {
 /** Can the crews work on this job yet? A blueprint on a floor still being dug waits. */
 function workable(state: SimState, job: Job): boolean {
   if (job.kind === "dome") return true;
-  if (job.kind === "corridors" || job.kind === "fill") return (job.edges ?? []).every((id) => (edgeById(state.layout.hole, id)?.floor ?? 0) <= state.layout.hole.floors);
+  if (job.kind === "corridors" || job.kind === "fill" || job.kind === "reline") return (job.edges ?? []).every((id) => (edgeById(state.layout.hole, id)?.floor ?? 0) <= state.layout.hole.floors);
   const room = state.layout.rooms.find((r) => r.id === job.roomId);
   return !!room && !room.planned;
 }
@@ -241,6 +325,10 @@ function finish(state: SimState, job: Job, cfg: SimConfig): void {
   const room = job.roomId !== undefined ? layout.rooms.find((r) => r.id === job.roomId) : undefined;
   if (job.kind === "upgrade") {
     if (room && job.to) finishRefit(state, room, job.to, job.salvage ?? {}, cfg);
+    return;
+  }
+  if (job.kind === "reline") {
+    if (job.to) finishReline(state, job.edges ?? [], job.to, job.salvage ?? {}, cfg);
     return;
   }
   if (job.digCells) openCells(layout, job.digCells);
@@ -397,15 +485,16 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
   const jobs = (state.construction?.queue ?? []).map((job): JobView => {
     const room = job.roomId !== undefined ? state.layout.rooms.find((r) => r.id === job.roomId) : undefined;
     const name = room ? roomName(room) : "";
-    const to = job.kind === "upgrade" && job.to ? wallStep(job.to.material, job.to.finish) : undefined;
+    const to = (job.kind === "upgrade" || job.kind === "reline") && job.to ? wallStep(job.to.material, job.to.finish) : undefined;
     const refit = to && refitWords(to);
     const lead = to && refitVerb(to);
     const note =
       refit ?? (job.kind === "extend" ? "another floor" : phaseOf(job) === "excavating" && room && !roomDef(room.type).excavationOnly ? "excavating" : undefined);
     const n = job.edges?.length ?? 0;
+    const segments = `${n} corridor ${n === 1 ? "segment" : "segments"}`;
     const label =
       refit
-        ? `${lead} ${name} ${refit}`
+        ? `${lead} ${job.kind === "reline" ? segments : name} ${refit}`
         : job.kind === "dome"
         ? "Shaft dome"
         : job.kind === "corridors"

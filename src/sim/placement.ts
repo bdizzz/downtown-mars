@@ -60,7 +60,7 @@ export interface RoomInstance {
   /** Borders (edge ids) of its walls the player has put windows in (see windows.ts). */
   windows?: string[];
   /** Its walls' lining (see materials.ts): absent means bare rock. */
-  material?: "rock" | "brick" | "metal";
+  material?: "rock" | "marscrete" | "brick" | "metal";
   /** The lining's finish: absent means its base step. */
   finish?: "base" | "fine";
   /** Its floor upgrade (a flooring id in data/materials.json): absent means it matches the walls. */
@@ -90,6 +90,8 @@ export interface Layout {
   corridorsBuilding?: Record<string, number>;
   /** Corridors being filled in (still usable until the job's done): edge id → job id. */
   corridorsFilling?: Record<string, number>;
+  /** Corridors being refitted in another lining (still usable meanwhile): edge id → job id. */
+  corridorsRelining?: Record<string, number>;
   /** Corridor segments with a sealed bulkhead: people pass, air doesn't (edge id → true). */
   bulkheads?: Record<string, true>;
   /** The shaft dome is built: the shaft is pressurized, every floor's gallery open walkway. */
