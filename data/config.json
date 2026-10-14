@@ -139,8 +139,8 @@
   "unlocks": { "cargoPopulation": 100, "homes": { "basic": 50, "standard": 100, "luxury": 200 }, "cleaningPopulation": 150, "rooms": { "brickworks": 50, "leisure": 50, "recycling": 100, "hospital": 300, "reclaimer": 150, "spiralStair": 200, "plaza": 500 } },
   "landingKit": {
     "surface": [
-      { "room": "landing_pod", "slot": 0 },
-      { "room": "landing_pad", "slot": 2 },
+      { "room": "landing_pod", "slot": 10 },
+      { "room": "landing_pad", "slot": 1 },
       { "room": "solar_array", "slot": 4 }
     ],
     "ring": [

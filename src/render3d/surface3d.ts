@@ -54,6 +54,7 @@ function kit(g: THREE.Group, material: MaterialCache, color: number) {
     glow: mat(0xffd9a0, { emissive: KIT_COLOR.lamp, emissiveIntensity: 0.8, metalness: 0 }),
     lamp: mat(KIT_COLOR.lamp, { emissive: KIT_COLOR.lamp, emissiveIntensity: 2, metalness: 0 }),
     port: mat(0x9fd2ff, { emissive: 0x3a6f99, emissiveIntensity: 0.7, metalness: 0.2, roughness: 0.1 }),
+    scorch: mat(0x4e2e20, { roughness: 1 }),
     beacon: mat(KIT_COLOR.beacon, { emissive: KIT_COLOR.beacon, emissiveIntensity: 1.5, metalness: 0 }),
     hazard: material("prop:hazard", () => {
       const map = hazardTexture();
@@ -163,54 +164,72 @@ export function surfaceBuilding(room: RoomInstance, layout: Layout, color: numbe
 }
 
 /**
- * The landing pod: the capsule the first colonists came down in, set on a concrete plinth and lived in:
- * a white hull with a band in its colour, a domed roof, round ports lit from inside, its legs grouted into
- * footings, and a concrete porch with the airlock door facing the shaft.
+ * The landing pod: the rocket stage the first colonists came down in, still standing on its legs where it
+ * landed and lived in ever since. A white hull with dark interstage rings and a band in its colour, two
+ * decks of lit ports, its old fairing for a roof with the beacon on top, grid fins folded at the shoulder,
+ * engine bells under it over a scorched patch of ground, legs out to round concrete footings, and the
+ * colonists' additions: a concrete porch with the airlock door facing the shaft, a ladder and an antenna.
  */
-function landingPod({ m, add, strut, v, plinth, railing, beacon, door, lamp }: Kit): void {
-  const top = plinth(13, 13);
-  const R = 4.2;
-  const H = 3.2;
-  add(new THREE.CylinderGeometry(R, R + 0.15, H, 32), m.hull, 0, top + H / 2, 0);
-  // Grouted in: a concrete skirt round its foot.
-  add(new THREE.CylinderGeometry(R + 0.35, R + 0.55, 0.45, 32), m.concrete, 0, top + 0.2, 0);
-  add(new THREE.CylinderGeometry(R + 0.03, R + 0.03, 0.35, 32, 1, true), m.band, 0, top + H - 0.5, 0);
-  // Panel seams up the hull.
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * TAU;
-    add(new THREE.BoxGeometry(0.05, H - 0.2, 0.05), m.dark, (R + 0.09) * Math.cos(a), top + H / 2, (R + 0.09) * Math.sin(a));
+function landingPod({ m, add, strut, v, beacon, door, lamp }: Kit): void {
+  const R = 2.6;
+  const base = 1.8; // the hull's bottom, up on its legs
+  const top = 10.2; // where the body meets the fairing
+  const nose = 13.6;
+  // The patch its engines scorched coming down.
+  add(new THREE.CircleGeometry(5.5, 32), m.scorch, 0, 0.03, 0).rotation.x = -Math.PI / 2;
+  // Engine bells under the hull.
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * TAU + 0.5;
+    add(new THREE.CylinderGeometry(0.28, 0.75, 1.1, 16, 1, true), m.dark, 1.2 * Math.cos(a), base - 0.55, 1.2 * Math.sin(a));
   }
-  add(new THREE.SphereGeometry(R, 32, 10, 0, TAU, 0, Math.PI / 2), m.hull, 0, top + H, 0).scale.set(1, 0.45, 1);
-  // Round ports all round, lit from inside (none behind the porch).
-  for (let i = 0; i < 10; i++) {
-    const a = ((i + 0.5) / 10) * TAU;
-    if (Math.cos(a) < -0.85) continue;
-    const port = add(new THREE.CircleGeometry(0.36, 14), m.glow, (R + 0.17) * Math.cos(a), top + 1.9, (R + 0.17) * Math.sin(a));
-    port.rotation.y = Math.PI / 2 - a;
-    const rim = add(new THREE.TorusGeometry(0.4, 0.06, 6, 16), m.dark, (R + 0.16) * Math.cos(a), top + 1.9, (R + 0.16) * Math.sin(a));
-    rim.rotation.y = Math.PI / 2 - a;
+  add(new THREE.CylinderGeometry(R - 0.2, R - 0.2, 0.2, 32), m.dark, 0, base - 0.05, 0);
+  // The body, its interstage rings, the band, and seams up it.
+  add(new THREE.CylinderGeometry(R, R, top - base, 32), m.hull, 0, (base + top) / 2, 0);
+  for (const y of [base + 0.1, (base + top) / 2, top - 0.08]) add(new THREE.CylinderGeometry(R + 0.06, R + 0.06, 0.18, 32), m.dark, 0, y, 0);
+  add(new THREE.CylinderGeometry(R + 0.04, R + 0.04, 0.4, 32, 1, true), m.band, 0, top - 0.6, 0);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU;
+    add(new THREE.BoxGeometry(0.05, top - base - 0.3, 0.05), m.dark, (R + 0.03) * Math.cos(a), (base + top) / 2, (R + 0.03) * Math.sin(a));
   }
-  // Legs out to footings: it came down on them, and stays on them.
+  // The fairing for a roof, capped, with the beacon on top.
+  add(new THREE.CylinderGeometry(0.5, R, nose - top, 32), m.hull, 0, (top + nose) / 2, 0);
+  add(new THREE.CylinderGeometry(0.3, 0.5, 0.3, 16), m.dark, 0, nose + 0.15, 0);
+  beacon(0, nose + 0.3, 0);
+  // Grid fins, folded flat against the shoulder.
   for (let i = 0; i < 4; i++) {
-    const a = ((i + 0.5) / 4) * TAU;
-    const foot = v(5.6 * Math.cos(a), top, 5.6 * Math.sin(a));
-    strut(v((R + 0.1) * Math.cos(a), top + 2.2, (R + 0.1) * Math.sin(a)), foot, 0.17, m.steel);
-    add(new THREE.CylinderGeometry(0.32, 0.4, 0.18, 10), m.dark, foot.x, top + 0.09, foot.z);
+    const a = (i / 4) * TAU + Math.PI / 4;
+    add(new THREE.BoxGeometry(0.12, 1, 1.1), m.steelDark, (R + 0.12) * Math.cos(a), top - 1.3, (R + 0.12) * Math.sin(a)).rotation.y = -a;
   }
-  // The porch: a concrete airlock on the side facing the shaft, its door looking in.
-  const px = -R - 1.1;
-  add(bevelBox(2.6, 2.6, 2.8, 0.12), m.concrete, px, top + 1.3, 0);
-  add(bevelBox(2.9, 0.2, 3.1, 0.06), m.concrete, px, top + 2.7, 0);
-  door(px - 1.3, top, 0, -1, 1.7);
-  lamp(px - 1.6, top + 2.45, 1.1);
-  // A railing round the plinth's edge, open in front of the porch.
-  const e = 6.3;
-  railing([[-e, -1.6], [-e, -e], [e, -e], [e, e], [-e, e], [-e, 1.6]], top, false);
-  // An antenna mast and the beacon on the roof.
-  const crown = top + H + R * 0.45;
-  add(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 6), m.dark, 0.9, crown + 0.4, 0.6);
-  add(new THREE.CylinderGeometry(0.35, 0.05, 0.25, 10, 1, true), m.steelDark, 0.9, crown + 1.2, 0.6);
-  beacon(0, crown - 0.08, 0);
+  // Decks of round ports, lit from inside (none behind the porch).
+  for (const [y, n] of [[3.6, 7], [4.9, 7], [7.4, 8]] as const) {
+    for (let i = 0; i < n; i++) {
+      const a = ((i + 0.5) / n) * TAU;
+      if (y < 4 && Math.cos(a) < -0.7) continue;
+      add(new THREE.CircleGeometry(0.26, 14), m.glow, (R + 0.02) * Math.cos(a), y, (R + 0.02) * Math.sin(a)).rotation.y = Math.PI / 2 - a;
+      add(new THREE.TorusGeometry(0.3, 0.05, 6, 16), m.dark, (R + 0.01) * Math.cos(a), y, (R + 0.01) * Math.sin(a)).rotation.y = Math.PI / 2 - a;
+    }
+  }
+  // Landing legs: a main leg and a brace from the hull out to each foot, on a round concrete footing.
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * TAU + Math.PI / 4;
+    const at = (r: number, y: number) => v(r * Math.cos(a), y, r * Math.sin(a));
+    const foot = at(4.8, 0.35);
+    strut(at(R, 4.2), foot, 0.16, m.steel);
+    strut(at(R, base + 0.2), foot, 0.1, m.steelDark);
+    add(new THREE.CylinderGeometry(0.7, 0.85, 0.3, 16), m.concrete, foot.x, 0.1, foot.z);
+    add(new THREE.CylinderGeometry(0.45, 0.55, 0.15, 12), m.dark, foot.x, 0.3, foot.z);
+  }
+  // The porch: a concrete airlock built under the hull on the side facing the shaft, its door looking in.
+  const px = -R - 0.6;
+  add(bevelBox(3, 2.6, 2.8, 0.12), m.concrete, px, 1.3, 0);
+  add(bevelBox(3.3, 0.2, 3.1, 0.06), m.concrete, px, 2.7, 0);
+  door(px - 1.5, 0, 0, -1, 1.7);
+  lamp(px - 1.8, 2.45, 1.1);
+  // A ladder up the side to the upper deck, and an antenna on the shoulder.
+  for (const dz of [-0.3, 0.3]) add(new THREE.BoxGeometry(0.06, top - base - 1, 0.06), m.rail, R + 0.25, (base + top) / 2 - 0.3, dz);
+  for (let y = base + 0.6; y < top - 1; y += 0.4) add(new THREE.BoxGeometry(0.05, 0.05, 0.6), m.rail, R + 0.25, y, 0);
+  add(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 6), m.dark, 1.2, top + 1.2, 1.2);
+  add(new THREE.CylinderGeometry(0.4, 0.05, 0.25, 10, 1, true), m.steelDark, 1.2, top + 2.1, 1.2);
 }
 
 /**
