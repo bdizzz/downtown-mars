@@ -23,3 +23,4 @@ ART.md: the surface look.
 
 ## History
 - 2026-10-13 20:43 opened from N-0089
+- 2026-10-13 20:49 building on t-167-rock-floor-textures (with T-167)

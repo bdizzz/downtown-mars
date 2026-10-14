@@ -20,3 +20,4 @@ Bare rock floor: more detail at a couple of scales (grain, chisel marks, a few c
 
 ## History
 - 2026-10-13 20:43 opened from N-0091
+- 2026-10-13 20:49 building on t-167-rock-floor-textures (with T-165)
