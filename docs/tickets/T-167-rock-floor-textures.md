@@ -1,7 +1,7 @@
 ---
 id: T-167
 title: A richer bare-rock floor, and smoothed rock as nearly plain rock rather than tiles
-status: open
+status: done
 size: M
 area: render3d, godot
 touches: [src/render3d/surfaces.ts, godot/shaders/surfaces.gdshader]
@@ -21,3 +21,4 @@ Bare rock floor: more detail at a couple of scales (grain, chisel marks, a few c
 ## History
 - 2026-10-13 20:43 opened from N-0091
 - 2026-10-13 20:49 building on t-167-rock-floor-textures (with T-165)
+- 2026-10-13 20:55 built: richer bare-rock floor (web and Godot), smoothed rock without tiles (web; Godot has no fine finishes until T-035)
