@@ -1,7 +1,7 @@
 ---
 id: T-165
 title: Every surface building gets the collar and entry's new look
-status: open
+status: done
 size: L
 area: render3d, godot
 touches: [src/render3d/scenery3d.ts, src/render3d/rooms3d.ts, data/furniture.json, godot/src/Scenery.cs]
@@ -24,3 +24,4 @@ ART.md: the surface look.
 ## History
 - 2026-10-13 20:43 opened from N-0089
 - 2026-10-13 20:49 building on t-167-rock-floor-textures (with T-167)
+- 2026-10-13 21:03 built: surface3d.ts kit (plinths, caps, colour bands, orange steel, rails, lamps, beacons); pod, pad, solar array, rover depot, headframe and gatehouse rebuilt on it; Godot gets them through the bridge

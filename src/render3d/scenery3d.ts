@@ -3,12 +3,12 @@ import { softDot } from "./effects3d";
 import type { Hole } from "../sim/geometry";
 import type { Layout } from "../sim/placement";
 import { COLLAR_TOP, floorSpan, openShaftRadius, TAU } from "./cylinder";
+import { SURFACE_RING_M } from "./surface3d";
 
 // Things that bring the 3D shaft to life but don't depend on rooms: the
 // Earth lander coming down onto the pad before a supply drop, and dust.
 
 const LANDER = { startHeight: 60, body: 0xd9d4cc, trim: 0x6b6660, flame: 0xffb35c };
-const SURFACE_RING_M = 16;
 
 /** The shaft dome: a low glass dome over the shaft on the collar's rim, on ribs, with a ring at its foot. */
 export function makeDome(hole: Hole): THREE.Group {
