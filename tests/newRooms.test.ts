@@ -226,8 +226,7 @@ describe("glass", () => {
     s.unlocks = [];
     setAdults(s, 20, config);
     expect(s.resources.glass).toBe(config.startingStock.glass);
-    // Room to keep what it makes.
-    s.layout.rooms.find((r) => r.type === "landing_pod")!.allocation!.glass = 200;
+    // The pod has room to keep what it makes.
     const works = build(s, "glassworks", ring(1, 1, 3, 2));
     const rock = s.resources.rock!;
     for (let i = 0; i < tpd; i++) step(s, config);

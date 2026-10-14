@@ -95,7 +95,7 @@ function stock(id: string, s: Snapshot): BarItem {
     level,
     ...(left !== null && (level === "warn" || level === "bad") ? { alert: runsOut(resName(id), v, left) } : {}),
     title: resName(id),
-    notes: [`${num(v)} of ${num(cap)} · ${signed(rate)} a month`, ...(left !== null ? [v < EMPTY ? "None left" : `Runs out in ${hoursText(left * 24)}`] : []), ...(!stored ? [] : none ? ["No storage set aside for it"] : full ? ["Storage full: more is lost"] : [])],
+    notes: [`${num(v)} of ${num(cap)} · ${signed(rate)} a month`, ...(left !== null ? [v < EMPTY ? "None left" : `Runs out in ${hoursText(left * 24)}`] : []), ...(!stored ? [] : none ? ["No room for it in storage"] : full ? ["Storage full: more is lost"] : [])],
   };
 }
 

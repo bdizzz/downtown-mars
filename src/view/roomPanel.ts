@@ -8,6 +8,7 @@ import { canLine, liningOf, liningText, MATERIALS, refitPlan, refitRefusal, type
 import type { RoomInstance } from "../sim/placement";
 import { roomName } from "../sim/roomName";
 import { roomDef } from "../sim/rooms";
+import { allows, contentsOf, spaceOf, STORABLE, usedSpace } from "../sim/storage";
 import type { Snapshot } from "../sim/snapshot";
 import { glazedWalls, sunlight, windowComfort, type Across } from "../sim/windows";
 import { dining, hoursText, num, ordinal, resName, signed } from "../ui/format";
@@ -230,4 +231,36 @@ export function stopAtInfo(s: Snapshot, room: RoomInstance): { resource: string;
 /** Does this room carry the hole-wide tank fill slider? Electrolyzers, and gas tanks holding O2. */
 export function fillsTanks(room: RoomInstance): boolean {
   return !!roomDef(room.type).topsUpAir || holding(room) === "o2Tank";
+}
+
+/** Colours for the goods in a storage room's bar, by their place in the list of storable goods. */
+const GOOD_COLORS = ["#c9a46a", "#8fb86a", "#d9825b", "#7fa3c4", "#b98fc9", "#d8c070", "#9c8a6a", "#6fb3a6", "#c97a8a", "#a3a3a3"];
+
+export function goodColor(id: string): string {
+  const i = STORABLE.indexOf(id);
+  return GOOD_COLORS[(i < 0 ? 0 : i) % GOOD_COLORS.length]!;
+}
+
+export interface StorageInfo {
+  space: number;
+  used: number;
+  summary: string;
+  /** Every storable good, whether the room allows it, and how much of it the room holds. */
+  goods: { id: string; name: string; allowed: boolean; stored: number; color: string }[];
+  /** What's in the room now, largest first, for the bar. */
+  segments: { id: string; name: string; units: number; color: string }[];
+}
+
+/** A storage room's panel: what it holds and the goods it allows (shared by the web's and Godot's). */
+export function storageInfo(room: RoomInstance): StorageInfo | null {
+  const space = spaceOf(room);
+  if (!space) return null;
+  const used = usedSpace(room);
+  const contents = contentsOf(room);
+  const goods = STORABLE.map((id) => ({ id, name: resName(id), allowed: allows(room, id), stored: contents[id] ?? 0, color: goodColor(id) }));
+  const count = goods.filter((g) => g.allowed).length;
+  const what = count === goods.length ? "allows everything" : count === 0 ? "allows nothing" : `allows ${count} of ${goods.length} goods`;
+  const segments = goods.filter((g) => g.stored >= 0.5).map((g) => ({ id: g.id, name: g.name, units: g.stored, color: g.color }));
+  segments.sort((a, b) => b.units - a.units);
+  return { space, used, summary: `${num(used)} of ${space} full · ${what}`, goods, segments };
 }

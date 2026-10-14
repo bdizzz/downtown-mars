@@ -4,16 +4,15 @@ import { hasCondition } from "../sim/condition";
 import { corridors, finishDef } from "../sim/corridors";
 import { cropDefs } from "../sim/resources";
 import type { Snapshot } from "../sim/snapshot";
-import { STORABLE } from "../sim/storage";
 import { conditionColor } from "../view/conditionView";
-import { conditionNote, constructionInfo, panelRows, seedKitInfo, stopAtInfo, type Row } from "../view/roomPanel";
+import { conditionNote, constructionInfo, panelRows, seedKitInfo, stopAtInfo, storageInfo, type Row, type StorageInfo } from "../view/roomPanel";
 import { holding, roomSpec } from "../sim/economy";
 import type { SimState } from "../sim/state";
 import { roomDef } from "../sim/rooms";
 import { roomName } from "../sim/roomName";
 import { outlineGeometry, roomGeometry } from "../render3d/rooms3d";
 import { pickAt } from "../render3d/cylinder";
-import { num, resName } from "../ui/format";
+import { resName } from "../ui/format";
 import { isProblem, roomState } from "../view/roomState";
 
 // The Godot viewer's room panel: what was clicked, what that room is and how it's doing, and its
@@ -38,7 +37,7 @@ export interface InspectedMessage {
   /** As the web's inspector (ui/Inspector.tsx), top to bottom; each part only when it applies. */
   construction?: { jobId: number; progress: number; text: string; canPrioritize: boolean };
   condition?: { value: number; color: string; note: string };
-  storage?: { space: number; summary: string; goods: { id: string; name: string; on: boolean; amount: number; fill: number }[] };
+  storage?: StorageInfo;
   /** Connect with a corridor: the finish's name. */
   connect?: { finish: string; name: string };
   before?: Row[];
@@ -98,21 +97,8 @@ export function inspect(state: SimState, s: Snapshot, roomId: number | null): In
     const value = room.condition ?? 1;
     msg.condition = { value, color: hex(conditionColor(value)), note: conditionNote(s, room.id, room.repair) };
   }
-  const space = room.storageUnits ?? def.storage ?? 0;
-  if (space) {
-    const alloc = room.allocation ?? {};
-    const fill = (id: string) => {
-      const cap = s.capacities[id] ?? 0;
-      return cap > 0 && Number.isFinite(cap) ? Math.min(alloc[id] ?? 0, ((s.resources[id] ?? 0) * (alloc[id] ?? 0)) / cap) : 0;
-    };
-    const used = Object.values(alloc).reduce((a, b) => a + b, 0);
-    const stored = Object.keys(alloc).reduce((n, id) => n + fill(id), 0);
-    msg.storage = {
-      space,
-      summary: `${num(stored)} stored · ${num(used)} of ${space} set aside`,
-      goods: STORABLE.map((id) => ({ id, name: resName(id), on: alloc[id] !== undefined, amount: alloc[id] ?? 0, fill: fill(id) })),
-    };
-  }
+  const storage = storageInfo(room);
+  if (storage) msg.storage = storage;
   if (!room.connected && room.at.kind === "ring") msg.connect = { finish: corridors.defaultFinish, name: finishDef(corridors.defaultFinish).name.toLowerCase() };
   if (def.stagesSeedKit) msg.kit = { ...seedKitInfo(s), gathering: s.kit.gathering };
   if (def.growsCrops) msg.crop = { value: room.crop ?? "", options: cropDefs.map((c) => ({ id: c.id, label: `${c.name} (${c.group}, ${c.yield}/month)` })) };

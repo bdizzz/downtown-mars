@@ -303,7 +303,7 @@ function excavate(state: SimState, job: Job, before: number, cfg: SimConfig): vo
   if (!job.dig || !job.digCells) return;
   const dug = Math.min(job.done, job.dig) - Math.min(before, job.dig);
   if (dug <= 0) return;
-  yieldRock(state, cfg, dug / construction.excavationHoursPerSlot);
+  yieldRock(state, cfg, dug / construction.excavationHoursPerSlot, undefined, job.roomId);
   const cells = Math.min(job.digCells.length, Math.floor(Math.min(job.done, job.dig) / construction.excavationHoursPerSlot + 1e-9));
   const fresh = rockCells(state.layout, job.digCells.slice(0, cells));
   if (!fresh.length) return;

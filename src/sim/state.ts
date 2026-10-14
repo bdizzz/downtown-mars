@@ -24,6 +24,7 @@ import { corridors, recomputeAccess, routeToRoom } from "./corridors";
 import { culture, type Culture } from "./culture";
 import { addAdults } from "./people";
 import { createConstruction, type ConstructionState } from "./construction";
+import { settleStorage } from "./storage";
 
 /** Where a hole is on Mars, in degrees. */
 export interface Site {
@@ -179,6 +180,8 @@ export function createInitialState(
   addAdults(state, cfg.colonists.start, cfg); // the game starts with working adults only
   createNotables(state);
   updateHappiness(state, cfg, true);
+  // The kit's dry goods are stowed in the pod.
+  settleStorage(state);
   return state;
 }
 

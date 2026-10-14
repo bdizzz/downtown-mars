@@ -12,9 +12,8 @@ import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { corridors, finishDef } from "../sim/corridors";
-import { STORABLE } from "../sim/storage";
 import { num, resName } from "./format";
-import { conditionNote, constructionInfo, fillsTanks, panelRows, refitOptions, seedKitInfo, stopAtInfo, type Row } from "../view/roomPanel";
+import { conditionNote, constructionInfo, fillsTanks, panelRows, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type Row } from "../view/roomPanel";
 import { isProblem, roomState } from "../view/roomState";
 
 interface Props {
@@ -54,78 +53,37 @@ function SeedKit({ s, onCommand }: { s: Snapshot; onCommand: Props["onCommand"] 
 }
 
 /**
- * A storage room's space, shared among the goods chosen for it. Ticking a
- * good gives it the free space (or an even share, if there's none left);
- * the numbers can be set by hand.
+ * A storage room: a bar of what it holds, and the goods it allows. Goods take
+ * the space first come, first served, nearest to where they were made.
  */
-function StorageEditor({ s, room, onCommand }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number]; onCommand: Props["onCommand"] }) {
-  const space = room.storageUnits ?? roomDef(room.type).storage ?? 0;
-  const alloc = room.allocation ?? {};
-  const used = Object.values(alloc).reduce((a, b) => a + b, 0);
-  const [draft, setDraft] = useState<Record<string, string>>({});
-  const set = (next: Record<string, number>) => onCommand({ type: "setAllocation", roomId: room.id, allocation: next });
-  const toggle = (id: string, on: boolean) => {
-    const next = { ...alloc };
-    if (!on) delete next[id];
-    else {
-      const free = space - used;
-      if (free >= 1) next[id] = Math.floor(free);
-      else {
-        // No free space: share it evenly among everything chosen, the new good included.
-        const ids = [...Object.keys(next), id];
-        const each = Math.floor(space / ids.length);
-        for (const k of ids) next[k] = each;
-      }
-    }
-    set(next);
-  };
-  const even = () => {
-    const ids = Object.keys(alloc);
-    if (!ids.length) return;
-    const each = Math.floor(space / ids.length);
-    set(Object.fromEntries(ids.map((k) => [k, each])));
-  };
-  // How full: this room's share of the hole's stock of each good.
-  const fill = (id: string) => {
-    const cap = s.capacities[id] ?? 0;
-    return cap > 0 && Number.isFinite(cap) ? Math.min(alloc[id] ?? 0, ((s.resources[id] ?? 0) * (alloc[id] ?? 0)) / cap) : 0;
-  };
-  const stored = Object.keys(alloc).reduce((n, id) => n + fill(id), 0);
+function StorageEditor({ room, onCommand }: { room: Snapshot["layout"]["rooms"][number]; onCommand: Props["onCommand"] }) {
+  const info = storageInfo(room);
+  if (!info) return null;
+  const set = (ids: string[]) => onCommand({ type: "setAllows", roomId: room.id, allows: ids });
+  const allowed = info.goods.filter((g) => g.allowed).map((g) => g.id);
+  const toggle = (id: string, on: boolean) => set(on ? [...allowed, id] : allowed.filter((k) => k !== id));
   return (
     <div className="storage">
       <p className="summary">
-        <span className="k">Storage</span> {num(stored)} stored · {num(used)} of {space} set aside
+        <span className="k">Storage</span> {info.summary}
       </p>
-      {STORABLE.map((id) => {
-        const on = alloc[id] !== undefined;
-        const f = fill(id);
-        return (
-          <div key={id} className={`good${on ? "" : " off"}`}>
-            <input type="checkbox" checked={on} onChange={(e) => toggle(id, e.target.checked)} aria-label={`Store ${resName(id)}`} />
-            <span>{resName(id)}</span>
-            <input
-              type="number"
-              min={0}
-              step={10}
-              disabled={!on}
-              value={draft[id] ?? String(alloc[id] ?? 0)}
-              onChange={(e) => setDraft({ ...draft, [id]: e.target.value })}
-              onBlur={() => {
-                const n = Math.max(0, Math.floor(Number(draft[id])));
-                if (draft[id] !== undefined && Number.isFinite(n)) set({ ...alloc, [id]: Math.min(n, space - used + (alloc[id] ?? 0)) });
-                const { [id]: _, ...rest } = draft;
-                setDraft(rest);
-              }}
-            />
-            {on && (
-              <div className="fill" title={`${num(f)} / ${alloc[id]}`}>
-                <div className={f >= (alloc[id] ?? 0) * 0.97 ? "full" : ""} style={{ width: `${(alloc[id] ? f / alloc[id]! : 0) * 100}%` }} />
-              </div>
-            )}
-          </div>
-        );
-      })}
-      {Object.keys(alloc).length > 1 && <button onClick={even}>Share evenly</button>}
+      <div className="bar" title={info.segments.map((g) => `${g.name} ${num(g.units)}`).join(", ") || "Empty"}>
+        {info.segments.map((g) => (
+          <div key={g.id} style={{ width: `${(g.units / info.space) * 100}%`, background: g.color }} />
+        ))}
+      </div>
+      <div className="all">
+        <button onClick={() => set(info.goods.map((g) => g.id))}>All</button>
+        <button onClick={() => set([])}>None</button>
+      </div>
+      {info.goods.map((g) => (
+        <label key={g.id} className={`good${g.allowed ? "" : " off"}`}>
+          <input type="checkbox" checked={g.allowed} onChange={(e) => toggle(g.id, e.target.checked)} aria-label={`Allow ${g.name}`} />
+          <span className="swatch" style={{ background: g.color }} />
+          <span>{g.name}</span>
+          <span className="n">{g.stored >= 0.5 ? num(g.stored) : ""}</span>
+        </label>
+      ))}
     </div>
   );
 }
@@ -293,7 +251,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
       <p className={isProblem(room, st) ? "warn" : ""}>{state}</p>
       <UnderConstruction s={s} roomId={room.id} onCommand={onCommand} />
       {!room.planned && !room.building && hasCondition(room) && <ConditionRow s={s} roomId={room.id} condition={room.condition ?? 1} repairing={room.repair} />}
-      {(room.storageUnits ?? def.storage) ? <StorageEditor s={s} room={room} onCommand={onCommand} /> : null}
+      {(room.storageUnits ?? def.storage) ? <StorageEditor room={room} onCommand={onCommand} /> : null}
       {!room.connected && room.at.kind === "ring" && (
         <button
           onClick={() => onCommand({ type: "connectRoom", roomId: room.id, finish: finish ?? corridors.defaultFinish })}

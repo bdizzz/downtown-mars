@@ -41,7 +41,11 @@ export interface RoomInstance {
   building?: boolean;
   /** Stairs or an elevator reaching further: cells held for floors still being built. */
   pendingCells?: Cell[];
-  /** Storage rooms: space per good, in units (none by default). */
+  /** Storage rooms: the goods it takes in; absent means everything (storage.ts). */
+  allows?: string[];
+  /** Storage rooms: what it holds now, by good, in units. */
+  contents?: Record<string, number>;
+  /** Old saves only (before v22): space set aside per good, now `allows`. */
   allocation?: Record<string, number>;
   /** Storage space overriding the room's own (old saves' landing pod). */
   storageUnits?: number;
@@ -324,7 +328,6 @@ export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimCo
     planned: check.planned,
     priority: def.priority ?? cfg.economy.defaultPriority,
     ...(def.defaultCrop ? { crop: def.defaultCrop } : {}),
-    ...(def.defaultAllocation ? { allocation: { ...def.defaultAllocation } } : {}),
   });
   for (const c of check.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = id;
   for (const s of check.surfaceCells) layout.surface[s] = id;
