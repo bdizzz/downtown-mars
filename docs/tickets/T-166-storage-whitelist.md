@@ -29,3 +29,4 @@ DECISIONS.md: storage (M8) changes; GUIDE.md: Storage; PLAN-M8.md Notes as built
 ## History
 - 2026-10-13 20:43 opened from N-0090
 - 2026-10-13 20:47 questions answered
+- 2026-10-13 21:50 building on t-166-storage-whitelist
