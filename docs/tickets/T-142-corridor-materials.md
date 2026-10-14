@@ -1,7 +1,7 @@
 ---
 id: T-142
 title: Corridors upgrade their materials like rooms, with the same looks and costs
-status: open
+status: done
 size: L
 area: sim, render3d
 feature: F-003
@@ -31,3 +31,4 @@ PLAN-M15.md (corridors, marscrete in the ladder), DECISIONS.md (marscrete as a l
 - 2026-10-11 16:08 questions answered
 - 2026-10-13 02:19 upgrade by drawing a corridor in another finish over an existing one (Bryon)
 - 2026-10-13 20:43 building on t-142-corridor-materials
+- 2026-10-13 21:04 built

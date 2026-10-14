@@ -41,7 +41,7 @@ When documents disagree, trust them in this order:
 **Economy**
 - Natural resources: regolith (rock, silica), water ice, ores, CO2 atmosphere; energy from sun, geothermal, reactors. Everything else is made.
 - Silica → silicon refinery → wafers → electronics fab.
-- Glass is optional on every room; substitutes cost more and lower comfort. Marscrete can replace brick at 1.5× with a comfort penalty but better cave-in resistance.
+- Glass is optional on every room; substitutes cost more and lower comfort. Marscrete can replace brick at 1.5× with a comfort penalty but better cave-in resistance. (As built, T-142: marscrete is a lining between bare rock and brick; see "Decided for room linings".)
 - Money has three eras: Earth credits, barter after the break, then a player-founded Mars currency.
 - Rooms need staff; output scales with staffing; rooms have priority tiers for shortages.
 
@@ -181,9 +181,10 @@ See `PLAN-M14.md` (Bryon: drill discoveries, then the belt ship, then celebratio
 
 See `PLAN-M15.md` and `docs/tickets/F-003-room-materials.md` (Bryon's answers; the numbers are Claude's defaults, in `data/materials.json`).
 
-- **Every room starts as bare rock,** its build cost unchanged. The lining is `room.material` (`rock`, `brick`, `metal`) and `room.finish` (`base`, `fine`); the floor is `room.flooring`, absent meaning it matches the walls. Only ring rooms with walls of their own have one (not surface buildings, the entrance, stairs, lifts or empty rooms).
+- **Every room starts as bare rock,** its build cost unchanged. The lining is `room.material` (`rock`, `marscrete`, `brick`, `metal`) and `room.finish` (`base`, `fine`); the floor is `room.flooring`, absent meaning it matches the walls. Only ring rooms with walls of their own have one (not surface buildings, the entrance, stairs, lifts or empty rooms).
 - **What a lining does depends on the kind of room:** homes feel its comfort in full; people rooms (the cleanable ones) lift everyone's shared comfort (their average lining comfort × 0.5, up to +0.5); heavy rooms (industry, power, air, water) get no comfort but twice the wear benefit; the rest only wear slower. Cave-in resistance waits for cave-ins.
 - **Upgrades go through the construction queue,** usable at half output once crews start; condition back to 100% when done. Linings can be changed down or stripped to bare rock for a 50% refund of their material (T-033), which replaces the Oct 4 "no refund for the old material"; don't revive it. As built (T-033): the salvage is paid when the job finishes, rounded down, and rock (smoothed rock) and glass (the inlay) don't come back; changing to another material strips the old lining (half its work) and puts the new one in whole, so it costs the new lining in full plus the strip's time; one refit per room, a new one replacing (and refunding) the queued one; cancelling refunds in full, salvaging nothing. Build mode can pick a material up front for the full price but one construction effort (T-038).
+- **One list of linings for rooms and corridors (Bryon, Oct 11, T-142).** Marscrete is a lining, between bare rock and brick (marscrete and polished marscrete), so rooms get it too; the old "marscrete replaces brick at 1.5× with a comfort penalty" is how it's priced and placed (marscrete 12 a cell, comfort +0.25 and +0.4). The corridor finishes fold into the list: a corridor drawn in marscrete, brick or metal is lined in that material's base step, and the corridor tool's Refit mode changes it to any lining, priced as a quarter of a room cell per 10 m segment. A corridor's lining is **looks and wear only for now** (corridors have no condition yet, so in practice looks); no comfort, dust or smell effect. Later, maybe a hole-wide bonus by the share of corridors upgraded to a given level. Gallery tubes are glass and can't be lined.
 
 ## Decided for the air mix (Oct 6, F-002 / T-026)
 
