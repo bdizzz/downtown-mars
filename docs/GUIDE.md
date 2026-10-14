@@ -22,6 +22,8 @@ Everything the game does, section by section. For a quick start, see the [README
 
 Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists, one pod, and a hole that goes nowhere yet.
 
+**The landing kit:** the landing crew sets up the basics before you arrive. On the surface, the landing pod, a landing pad and a solar array; on floor 1, the entrance, a **battery bank** in ring 2, and out in ring 3 two **water tanks** (one for clean water, one for gray), an **electrolyzer**, a **CO2 scrubber** and a **water recycler**, with a corridor along their fronts and one spoke in from ring 1. Air, water and power work from the start, ring 2 is left nearly free for what you want there, and you can begin with food, a restroom and beds. The tutorial skips the steps the kit has done. Holes you found later start with only the pod, pad, solar array, entrance and battery: their seed kit brings the rest. (Once difficulty levels arrive, hard starts bare too, and normal offers it as a veteran start.)
+
 **The title screen:** while the game loads, a loading screen shows the name over a Mars dusk with a bar that fills as each part arrives (the code, the typeface, the colony, the 3D view, the map of Mars), then fades into the title. Behind the title menu your own hole drifts by at dusk, its first floor turning slowly: the one you were last playing (from the autosave), or a showcase colony if you haven't played yet or your last game failed. On a phone, on low graphics or with a flat view chosen, a painted dusk stands in for it.
 
 **The welcome card:** every new game (not a loaded one) opens with a short card on why you're here and why the colony goes underground: the surface is open to radiation from the Sun and deep space, so you dig. Only Mars and the hole show behind it, and the game waits; **And so it begins...** brings in the rest of the interface and starts the clock at 1×. Its text is in `data/tutorial.json` (`welcome`).
@@ -82,7 +84,7 @@ Pause any staffed room, or have it stop at a stock level, from its details panel
 
 - The drill only sinks the shaft. In 3D a big boring machine sits at the bottom of the hole, riding down as it digs: a turning cutterhead, grippers braced on the bore, a conveyor lifting spoil into a skip, and the hoist cable and power line up the shaft. The top of the shaft is lined with a concrete collar that rises into a rim round the hole, with a railed walkway on top (the shaft dome stands on it). On the rim, lattice towers hold a gantry over the hole with a sheave for each cable, and a winch at either end winds them in. The cables follow the drill down. It's only for looks.
 - The first floors go quickly; from floor 4 on, each floor takes twice as long (`digging.slowFromFloor`, `slowFactor`).
-- A new hole starts with only ring 1 of floor 1 dug out (and the landing kit's battery bank in ring 2). Every other slot is solid rock until it's dug out.
+- A new hole starts with only ring 1 of floor 1 dug out (and the landing kit's rooms and corridor in rings 2 and 3). Every other slot is solid rock until it's dug out.
 - A room placed on rock is excavated first (3 hours a slot, bringing up its rock and whatever the hole sits on), then built.
 - An **excavator bay** (Build → Construction) speeds the drill: half as fast again at full staff, each, so floors and their rock come sooner. It's noisy.
 - **Empty rooms** (Build → Excavation) dig ahead for rock and space. Dug-out space with nothing in it has pillars and no walls, and is walk-through like a plaza; demolishing a room leaves it.
@@ -122,7 +124,7 @@ What people use counts by how far they'd walk. A step is about a room across, al
 
 Water goes round in a loop. Everything that uses clean water (people, galleys, farms, clinics, industry) turns it into **gray water**; a **water recycler** treats gray back into clean, about 97% of it, with a little soil from the sludge. One recycler keeps up with about 35 people.
 
-- **Gray water needs somewhere to go.** The pod holds 250. When it's full, rooms keep running but the gray water that doesn't fit overflows and is lost for good, and a warning says so. Build a recycler early, and more as you grow; **Charts → Flows → Water** says how much gray water is overflowing.
+- **Gray water needs somewhere to go.** The pod holds 250. When it's full, rooms keep running but the gray water that doesn't fit overflows and is lost for good, and a warning says so. Build a recycler early, and more as you grow; **Charts → Flows → Water** says how much gray water is overflowing. A recycler that has treated all the gray water there is says it's **keeping up**: running below full speed then is fine, not a shortage (the same goes for a composter or a recycling center).
 - **Water tanks** hold clean water unless you set them to hold gray water or tailings, in the tank's details panel.
 - **The leaks:** the electrolyzer splits water into oxygen for good (only as the hole grows), and some industry (the silicon refinery, concrete plant, electronics fab and brickworks) sends part of its water to **tailings**, which can only be stored until 150 colonists, when a **tailings reclaimer** can turn them back into gray water (20 tailings into 18 gray a day, for a lot of power and a little machinery). Wells pump up gray water (brine), so it needs treating too. Earth's drops top up what's lost.
 
@@ -142,7 +144,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 - **Gas tanks** hold oxygen or CO2 (pick in the tank's panel). They're ballast: oxygen above 21% goes in, and comes back out when the air runs short, before any water is split. Supply drops land oxygen in them first. The **tank fill** slider (in any electrolyzer's or O2 tank's panel) has the electrolyzers keep the O2 tanks that full as a reserve for digging or a breakdown. When the tanks are full, extra oxygen stays in the air: that's how it climbs too high. A tank at 0% condition (gas or water) keeps what it holds but takes no more.
 - **The shaft dome** pressurizes before it opens: the O2 reserve and the electrolyzers fill the shaft with air first (the HUD's oxygen note shows how far), so the hole's oxygen doesn't crash.
 - Below **18%** oxygen health falls; below **15%**, fast. Above **23.5%** is a fire risk. **CO2 above 1%** hurts health, above 3% fast.
-- A new game starts with its air made (the landing crew sealed the hole), but without a scrubber the CO2 passes 1% in about five months, and without an electrolyzer every room dug thins the air until Earth's next drop: build both early.
+- A new game starts with its air made (the landing crew sealed the hole) and a scrubber and an electrolyzer built. A founded hole has neither: without a scrubber the CO2 passes 1% in about five months, and without an electrolyzer every room dug thins the air until Earth's next drop, so build both early there.
 
 **Air quality.** The air also moves where people do, through the corridors, gallery tubes and stairs (not through walls, and not by elevator), and it can go stale or foul locally:
 

@@ -83,7 +83,7 @@ describe("placement rules", () => {
 });
 
 describe("starting state", () => {
-  it("places the landing kit", () => {
+  it("places the bare landing kit (a new game's world gets the full one)", () => {
     const s = createInitialState(config);
     expect(s.layout.rooms.map((r) => r.type).sort()).toEqual(["battery_bank", "entrance", "landing_pad", "landing_pod", "solar_array"]);
   });
