@@ -1,5 +1,5 @@
 {
-  "_note": "Storage for dry goods (docs/PLAN-M8.md). Each storage room's space is allocated among the goods chosen for it; a hole's capacity for a good is the sum of its allocations. Water, air, waste and power keep their own storage (tanks, batteries, base capacity).",
+  "_note": "Storage for dry goods (docs/PLAN-M8.md). Each storage room has so many units of space and allows some goods (everything by default); goods share the space first come, first served, nearest to where they were made (T-166). Water, air, waste and power keep their own storage (tanks, batteries, base capacity).",
   "unlimited": false,
   "groups": [
     "food",

@@ -6,7 +6,7 @@ import { windowComfort } from "./windows";
 import { modifiers } from "./ordinances";
 import { careFactors, updateCare } from "./care";
 import { CONDITION, homeWearComfort, sharedWear } from "./condition";
-import { liningComfort, sharedLiningComfort } from "./materials";
+import { liningComfort, refitComfort, sharedLiningComfort } from "./materials";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 import { postMessage } from "./messages";
@@ -90,7 +90,7 @@ export function homeFactors(state: SimState, room: RoomInstance | null, cfg: Sim
   const view = windowComfort(state.layout, room, cfg);
   return {
     noise: clamp(effectOnRoom(field, "noise", room) * mod.noiseFactor, -lim, lim),
-    comfort: clamp(own + view + sharedComfort - unserved(seated, sanitation) + amen.comfort + homeWearComfort(room) + liningComfort(room) + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
+    comfort: clamp(own + view + sharedComfort - unserved(seated, sanitation) + amen.comfort + homeWearComfort(room) + liningComfort(room) + refitComfort(state, room) + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
     // Stale air (outer rings, industry) wears on health; ventilation and green space freshen it.
     health: clamp(effectOnRoom(field, "health", room) + (effectOnRoom(field, "airQuality", room) + crowdedAir(state, room)) * h.airHealth + amen.health + shared, -lim, lim),
   };

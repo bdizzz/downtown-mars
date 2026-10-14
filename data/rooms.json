@@ -17,19 +17,7 @@
       "cost": {},
       "buildable": false,
       "placeholder": true,
-      "storage": 600,
-      "defaultAllocation": {
-        "glass": 100,
-        "rations": 120,
-        "meals": 30,
-        "rawFood": 20,
-        "soil": 50,
-        "rock": 180,
-        "metal": 60,
-        "brick": 20,
-        "machinery": 10,
-        "electronics": 10
-      }
+      "storage": 600
     },
     {
       "id": "landing_pad",

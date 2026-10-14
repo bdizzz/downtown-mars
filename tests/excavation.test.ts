@@ -71,7 +71,7 @@ describe("excavation and empty space", () => {
     const w = createWorld(config, 42);
     const back = deserialize(serialize(w));
     expect(back.ok && back.world.holes[0]!.layout.open).toEqual(w.holes[0]!.layout.open);
-    expect(SAVE_VERSION).toBe(21);
+    expect(SAVE_VERSION).toBe(22);
     const old = JSON.parse(serialize(w));
     old.version = 14;
     for (const h of old.state.holes) delete h.layout.open;
@@ -82,7 +82,7 @@ describe("excavation and empty space", () => {
     expect(layout.openShaft).toBe(true);
     const battery = layout.rooms.find((r) => r.type === "battery_bank")!;
     expect(isOpen(layout, battery.cells[0]!)).toBe(true);
-    expect(isOpen(layout, { floor: 1, ring: 2, slot: 5 })).toBe(false);
+    expect(isOpen(layout, { floor: 1, ring: 3, slot: 1 })).toBe(false);
   });
 });
 

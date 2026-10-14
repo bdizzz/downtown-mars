@@ -1,7 +1,7 @@
 import { UI_FONT } from "../view/font";
 import { useEffect, useMemo, useState } from "react";
 import { Globe } from "./Globe";
-import { DEPOSIT_KINDS, depositsAt, features, nearestFeature, wrapLon, type DepositKind } from "../sim/mapgeo";
+import { DEPOSIT_KINDS, depositsAt, features, ICE_CAP_REFUSAL, nearestFeature, onIceCap, wrapLon, type DepositKind } from "../sim/mapgeo";
 import { network } from "../sim/network";
 import { DEPOSIT_STYLE, siteReport, type Elevation } from "../view/network";
 import type { Snapshot } from "../sim/snapshot";
@@ -198,6 +198,7 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
         : 0,
       near: near.km < 600 ? near.feature.name : `${Math.round(near.km)} km from ${near.feature.name}`,
       deposits: depositsAt({ deposits: s.deposits }, hover),
+      ice: onIceCap(hover),
     };
   }, [hover, s.deposits, elevation]);
 
@@ -224,18 +225,18 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
         </p>
       )}
       <div className="map-body">
-      <div className="map-wrap">
+      <div className="map-wrap" style={info?.ice ? { cursor: "not-allowed" } : undefined}>
         {!image ? (
           <p className="k">Loading the planet…</p>
         ) : (
-          <Globe map={canvas} version={version} focus={focus} onHover={setHover} onPick={onSite} />
+          <Globe map={canvas} version={version} focus={focus} onHover={setHover} onPick={(p) => !onIceCap(p) && onSite(p)} />
         )}
       </div>
       {site && <SitePanel s={s} site={site} elevation={elevation} onClear={() => onSite(null)} onFound={() => onFound(site)} />}
       </div>
       <footer className="k">
         {info
-          ? `${info.where} · ${Math.round(info.elevation).toLocaleString()} m · ${info.near}${info.deposits.length ? ` · ${info.deposits.map((k) => DEPOSIT_STYLE[k].name.toLowerCase()).join(", ")}` : ""}`
+          ? `${info.where} · ${Math.round(info.elevation).toLocaleString()} m · ${info.near}${info.deposits.length ? ` · ${info.deposits.map((k) => DEPOSIT_STYLE[k].name.toLowerCase()).join(", ")}` : ""}${info.ice ? ` · ${ICE_CAP_REFUSAL}` : ""}`
           : "Elevation: NASA Mars Global Surveyor MOLA. Deposits differ every game."}
       </footer>
     </div>

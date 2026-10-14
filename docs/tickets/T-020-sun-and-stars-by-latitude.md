@@ -1,7 +1,7 @@
 ---
 id: T-020
 title: Sun and stars move across the sky by the site's latitude (equinox)
-status: open
+status: done
 size: M
 area: render3d, godot
 feature: F-008
@@ -34,3 +34,5 @@ Give the scene a north (say −z), compute the sun's direction from the time of 
 - 2026-10-05 01:11 opened from N-0015
 - 2026-10-05 01:17 questions answered
 - 2026-10-07 18:58 moved into F-008; waits on T-073
+- 2026-10-13 00:47 building on t-073-site-soil-colour-and-no-ice (with T-073)
+- 2026-10-13 01:03 built (with T-073)

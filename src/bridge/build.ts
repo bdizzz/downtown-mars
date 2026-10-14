@@ -15,7 +15,8 @@ import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { proposalSummary, type ProposalSummary } from "../view/corridorProposal";
 import type { Proposal } from "../view/types";
 import { CATEGORY_NAMES, CATEGORY_ORDER, HOTKEYS, shapesFor } from "../view/buildCatalog";
-import { corridorCommand, edgeHoverFor, locationFor } from "../view/interaction";
+import { corridorCommand, edgeHoverFor, locationFor, surfaceSpots } from "../view/interaction";
+import { surfaceSpotGeometry } from "../render3d/scenery3d";
 import { resName } from "../ui/format";
 import { roomCard, type CardContent } from "../view/roomCard";
 import { previewEffects } from "../sim/effects";
@@ -111,6 +112,28 @@ export interface HoveredMessage {
   ghost?: string;
   /** Its strongest effect on the cells round it, as the web's halo: bands of cells (triangles, as the ghost) in a colour and opacity. */
   halo?: { color: string; alpha: number; tris: string }[];
+  /** A surface room: every spot it could go, tinted faintly, and the one pointed at, stronger (triangles, as the ghost; T-107). */
+  spots?: string;
+  spot?: string;
+}
+
+/** Where a surface room could go, answering a "spots" request when it's picked (T-107). */
+export interface SpotsMessage {
+  type: "spots";
+  /** Triangles (float32 xyz, base64), empty for a room that goes inside the hole. */
+  tris: string;
+}
+
+/** Surface slots as patches of ground, as triangles (render3d/scenery3d.ts surfaceSpotGeometry). */
+function spotTris(state: SimState, slots: number[]): string {
+  const geo = surfaceSpotGeometry(state.layout.hole, state.layout.surface.length, slots);
+  const tris = b64((geo.getAttribute("position") as THREE.BufferAttribute).array);
+  geo.dispose();
+  return tris;
+}
+
+export function spots(state: SimState, room: string): SpotsMessage {
+  return { type: "spots", tris: spotTris(state, surfaceSpots(state.layout, room)) };
 }
 
 const b64 = (a: ArrayLike<number>) => Buffer.from(new Float32Array(a).buffer).toString("base64");
@@ -153,7 +176,8 @@ export function hover(state: SimState, tool: BuildTool, at: [number, number, num
   const where = locate(state, tool, at);
   const def = roomDefs.find((d) => d.id === tool.room);
   const cost = def ? costText(def.cost) : "";
-  if (!where) return { type: "hovered", ok: false, text: def?.size === "surface" ? "Goes on the surface" : "Point at a slot in the hole", cost };
+  const all = def?.size === "surface" ? { spots: spots(state, tool.room).tris } : {};
+  if (!where) return { type: "hovered", ok: false, text: def?.size === "surface" ? "Goes on the surface" : "Point at a slot in the hole", cost, ...all };
   const check = checkBuild(state.layout, state.resources, tool.room, where, config, holeGates(state));
   let text = check.ok ? (check.note ?? (check.planned ? "A blueprint: builds when its floor is dug" : check.unconnected ? "No corridor reaches it yet: it won't work until one does" : "")) : check.reason;
   if (check.ok && check.destroys?.length) text = `Cuts through ${check.destroys.length} corridor segment${check.destroys.length > 1 ? "s" : ""}`;
@@ -166,7 +190,8 @@ export function hover(state: SimState, tool: BuildTool, at: [number, number, num
     g.dispose();
   }
   const glow = check.ok && check.cells.length ? halo(state, tool.room, check.cells) : undefined;
-  return { type: "hovered", ok: check.ok, text, cost, ...(ghost ? { ghost } : {}), ...(glow?.length ? { halo: glow } : {}) };
+  const spot = check.ok && check.surfaceCells.length ? { spot: spotTris(state, check.surfaceCells) } : {};
+  return { type: "hovered", ok: check.ok, text, cost, ...(ghost ? { ghost } : {}), ...(glow?.length ? { halo: glow } : {}), ...all, ...spot };
 }
 
 /** The command for a click with the tool: build it, or (cutting through corridors) only once confirmed; or why not. */

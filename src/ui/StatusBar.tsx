@@ -89,7 +89,8 @@ export function StatusBar({ info, snapshot, notice, overlay, view, tool }: Props
         const onto = e.windows.across === "shaft" ? "over the shaft" : e.windows.across === "public" ? "onto the walk-through room" : "onto the corridor";
         const felt = e.windows.comfort !== null ? `; the home's windows give comfort ${e.windows.comfort > 0 ? "+" : ""}${Math.round(e.windows.comfort * 100) / 100}` : "";
         text = e.erase ? `Take the windows out of this wall (free)${felt} · ${text}` : `Put windows in this wall, looking ${onto}: ${cost || "free"}${felt} · ${text}`;
-      } else if (e.bulkhead) text = e.erase ? `Take out this bulkhead (free) · ${text}` : `Fit a bulkhead here: ${cost}. Air and smell stop at it; people pass · ${text}`;
+      } else if (e.refit) text = `Refit this ${here.toLowerCase()} in ${finishDef(e.refit).name.toLowerCase()}: ${cost || "free"} · ${text}`;
+      else if (e.bulkhead) text = e.erase ? `Take out this bulkhead (free) · ${text}` : `Fit a bulkhead here: ${cost}. Air and smell stop at it; people pass · ${text}`;
       else if (e.erase) text = `Fill in this ${here.toLowerCase()}, rebuilding the walls: ${cost} · ${text}`;
       else text = `Carve a corridor here: ${cost} · ${text}`;
     } else if (info.check && !info.check.ok) {

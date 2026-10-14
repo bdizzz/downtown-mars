@@ -5,7 +5,7 @@ import { record } from "./ledger";
 
 /** The ledger label for goods going into, and arriving with, a seed kit. */
 export const SEED_KIT = "Seed kit";
-import { degreesApart, depositsAt, distanceKm } from "./mapgeo";
+import { degreesApart, depositsAt, distanceKm, ICE_CAP_REFUSAL, onIceCap } from "./mapgeo";
 import { postMessage } from "./messages";
 import { addCohorts, countStage, takeAdults, type Cohort } from "./people";
 import { network } from "./network";
@@ -81,6 +81,7 @@ export function stepStaging(hole: SimState, cfg: SimConfig): void {
 /** Why a hole can't found a new one at this site right now, or null if it can. */
 export function foundingRefusal(world: World, from: SimState, site: Site): string | null {
   const k = kitCfg();
+  if (onIceCap(site)) return ICE_CAP_REFUSAL;
   if (!world.mapUnlocked) return `The map opens at ${network.mapUnlockPopulation} colonists`;
   if (!hasStagingBay(from)) return `${from.name} needs a staging bay`;
   if (kitProgress(from) < 0.999) return `The seed kit is ${Math.floor(kitProgress(from) * 100)}% gathered`;
@@ -132,7 +133,7 @@ export function stepConvoys(world: World, cfg: SimConfig): void {
       site: c.site,
       deposits: depositsAt(world.map, c.site),
       seed: holeSeed(world.seed, c.id),
-    });
+    }, cfg.landingKits.laterHoles);
     hole.tick = world.tick;
     // They start with what they brought, not Earth's starter stock. The crew seals what
     // they blast out and fills it with air; the kit's oxygen goes into tanks if there are

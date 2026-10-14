@@ -193,10 +193,16 @@ export interface SimConfig {
     /** Colonists in a hole before each group of rooms: the brickworks, gym and park, recycling center, hospital, tailings reclaimer, spiral stair, plaza. */
     rooms: Record<RoomUnlock, number>;
   };
-  landingKit: {
-    surface: { room: string; slot: number }[];
-    ring: { room: string; floor: number; ring: number; slot: number }[];
-  };
+  /** What the landing crew sets up: a new game's first hole gets newGame's kit, later holes laterHoles'. */
+  landingKits: { newGame: LandingKitName; laterHoles: LandingKitName } & Record<LandingKitName, LandingKit>;
+}
+
+export type LandingKitName = "full" | "bare";
+
+export interface LandingKit {
+  surface: { room: string; slot: number }[];
+  /** `holds` sets what a tank holds (its first choice if left out). */
+  ring: { room: string; floor: number; ring: number; slot: number; holds?: string }[];
 }
 
 // JSON imports widen tuples to arrays, so cast via unknown; tests check the values.

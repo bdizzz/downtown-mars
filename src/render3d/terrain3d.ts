@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import mapData from "../../data/mars-map.json";
 
 // The land around the hole: the ground rolls away from a flat pad at the rim
 // (where surface buildings stand) in undulations and ridges, pocked with
@@ -30,6 +31,27 @@ const LAND = {
 };
 
 const COLORS = { rock: 0x4a2c20, horizon: 0x9a5c44 };
+/** The ground's own dust, before a site's soil tints it. */
+export const GROUND_BASE = 0x7a3b22;
+
+/**
+ * A site's colour on the land (T-073). The ground leans from its base dust toward the map's colour there
+ * (`soil`, from the sim's soilAt) by data/mars-map.json's soil strength, so dark lowlands and pale
+ * highlands differ but both still read as Mars. Boulders and the horizon shift with it, by as much as
+ * they're bright next to the ground (dark rock a little, the pale horizon a little more).
+ */
+export function soilTint(hex: number, soil: string | null): number {
+  if (!soil) return hex;
+  const k = mapData.soil.strength;
+  const channels = (n: number) => [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const lum = (c: number[]) => c[0]! + c[1]! + c[2]!;
+  const base = channels(GROUND_BASE);
+  const want = channels(parseInt(soil.slice(1), 16));
+  const c = channels(hex);
+  const share = lum(c) / lum(base);
+  const out = c.map((v, i) => Math.min(255, Math.max(0, Math.round(v + (want[i]! - base[i]!) * k * share))));
+  return (out[0]! << 16) | (out[1]! << 8) | out[2]!;
+}
 
 /** A small seeded random generator (mulberry32). */
 function random(seed: number): () => number {
@@ -90,8 +112,8 @@ export interface Terrain {
   heightAt: (x: number, z: number) => number;
 }
 
-/** The land around a hole of this rim radius, for this site. */
-export function buildTerrain(rim: number, seed: number, groundMaterial: THREE.Material): Terrain {
+/** The land around a hole of this rim radius, for this site, its boulders and horizon tinted by its soil. */
+export function buildTerrain(rim: number, seed: number, groundMaterial: THREE.Material, soil: string | null = null): Terrain {
   const style = horizonStyle(seed);
   const rand = random(seed);
   const roll = noise2(seed + 11);
@@ -156,7 +178,7 @@ export function buildTerrain(rim: number, seed: number, groundMaterial: THREE.Ma
   group.add(ground);
 
   // Boulders, sitting a little into the ground.
-  const rockMat = new THREE.MeshStandardMaterial({ color: COLORS.rock, roughness: 1, flatShading: true });
+  const rockMat = new THREE.MeshStandardMaterial({ color: soilTint(COLORS.rock, soil), roughness: 1, flatShading: true });
   const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), rockMat, LAND.rocks.count);
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -172,7 +194,7 @@ export function buildTerrain(rim: number, seed: number, groundMaterial: THREE.Ma
   }
   group.add(rocks);
 
-  group.add(horizon(style, seed));
+  group.add(horizon(style, seed, soilTint(COLORS.horizon, soil)));
   return { group, ground, style, heightAt };
 }
 
@@ -215,7 +237,7 @@ function skyline(style: HorizonStyle, seed: number): (a: number) => number {
  * The horizon: a ridge all the way round, faceted. Each point on the skyline
  * is a peak with a slope in front and behind, so the light catches it.
  */
-function horizon(style: HorizonStyle, seed: number): THREE.Mesh {
+function horizon(style: HorizonStyle, seed: number, color: number): THREE.Mesh {
   const H = skyline(style, seed);
   const { radius, segments } = LAND.horizon;
   const pos: number[] = [];
@@ -241,5 +263,5 @@ function horizon(style: HorizonStyle, seed: number): THREE.Mesh {
   const flat = geo.toNonIndexed();
   flat.computeVertexNormals();
   geo.dispose();
-  return new THREE.Mesh(flat, new THREE.MeshStandardMaterial({ color: COLORS.horizon, roughness: 1, flatShading: true, side: THREE.DoubleSide }));
+  return new THREE.Mesh(flat, new THREE.MeshStandardMaterial({ color, roughness: 1, flatShading: true, side: THREE.DoubleSide }));
 }

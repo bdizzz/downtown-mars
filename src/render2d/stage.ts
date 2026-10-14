@@ -15,7 +15,7 @@ import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
 import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
+import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import type { HoverInfo, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
@@ -35,7 +35,8 @@ import {
 } from "./layout";
 
 export type { HoverInfo, Stage, StageOptions, Tool };
-import { drawAirlock, drawEmptySpace, drawGlyph, drawHeadframe, drawHills, drawLandingPad, drawPlus, drawPod, drawRockCell, drawRoverDepot, drawSolarArray, shade, STARS } from "./art";
+import { drawAirlock, drawEmptySpace, drawGlyph, drawHeadframe, drawHills, drawLandingPad, drawPlus, drawPod, drawRockCell, drawRoverDepot, drawSolarArray, shade, STARS, tint } from "./art";
+import { liningAccent } from "./planDraw";
 import { CATEGORY_COLORS, HEAT } from "./palette";
 
 // The unrolled view. One full turn of the hole is drawn into shared graphics
@@ -424,6 +425,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         if (room.planned) r.fill({ color, alpha: 0.3 }).stroke({ color, width: 2 });
         else if (room.building) scaffold(x, y, w, hh, color);
         else r.fill(color);
+        // A lined room: a thin border just inside, in the lining's colour.
+        const accent = !room.planned && !room.building ? liningAccent(room) : null;
+        if (accent !== null) roomsCtx.rect(x + 2.5, y + 2.5, w - 5, hh - 5).stroke({ color: tint(accent, 0.25), width: 2 });
         if (def.public && !room.planned && !room.building) {
           const wall = { color: shade(color, 0.45), width: 1.5, alpha: 0.9 };
           roomsCtx.moveTo(x, y).lineTo(x, y + hh).lineTo(x + w, y + hh).lineTo(x + w, y);
@@ -689,7 +693,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       }
     }
     // A snaked chain (while dragging, or waiting for confirmation): every border highlighted.
-    const shown = snaking ? { edges: chain.edges, erase: chainErase } : proposal;
+    const shown = snaking ? proposalFor(tool, chain.edges, chainErase) : proposal;
     if (shown?.edges.length) {
       for (const id of shown.edges) {
         const existing = !!layout.corridors[id];
@@ -912,7 +916,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     snaking = false;
     const done = chain;
     chain = EMPTY_CHAIN;
-    if (done.edges.length > 1) opts.onPropose?.({ edges: done.edges, erase: chainErase });
+    if (done.edges.length > 1) opts.onPropose?.(proposalFor(tool, done.edges, chainErase));
     else if (done.edges.length === 1) click(fingerDown);
     hoverKey = "";
     refreshHover();
@@ -969,7 +973,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     canvas.setPointerCapture(e.pointerId);
     if (paints(tool) && tool?.kind === "corridor") {
       snaking = true;
-      chainErase = shift || tool.erase;
+      chainErase = followsCorridors(tool, shift);
       chain = EMPTY_CHAIN;
       snake();
       return;

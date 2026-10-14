@@ -507,16 +507,17 @@ label.set-row { cursor: pointer; }
 .construction button.link { background: none; border: none; color: var(--text); padding: 0; font: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted; }
 .build-chip { border-color: #e0a03a !important; }
 
-/* Storage allocation */
+/* Storage: what a room holds, and the goods it allows */
 .storage { margin: 6px 0; font-size: 13px; }
-.storage .summary { margin: 2px 0 6px; }
-.storage .good { display: grid; grid-template-columns: 18px 1fr 64px; align-items: center; gap: 6px; margin: 2px 0; }
-.storage .good.off { opacity: 0.6; }
-.storage .good input[type="number"] { width: 60px; font: inherit; background: #2f1c16; color: var(--text); border: 1px solid #000; border-radius: 4px; padding: 1px 4px; }
-.storage .good .fill { grid-column: 2 / 4; height: 4px; background: #0005; border-radius: 2px; overflow: hidden; }
-.storage .good .fill > div { height: 100%; background: #9c8a6a; }
-.storage .good .fill > div.full { background: #e0a03a; }
-.storage button { font: inherit; font-size: 12px; background: #2f1c16; color: var(--text); border: 1px solid #000; border-radius: 4px; padding: 2px 8px; cursor: pointer; margin-top: 4px; }
+.storage .summary { margin: 2px 0 4px; }
+.storage .bar { display: flex; height: 8px; background: #0005; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+.storage .bar > div { height: 100%; }
+.storage .all { display: flex; gap: 4px; margin-bottom: 4px; }
+.storage .good { display: grid; grid-template-columns: 18px 10px 1fr auto; align-items: center; gap: 6px; margin: 1px 0; cursor: pointer; }
+.storage .good.off { opacity: 0.55; }
+.storage .good .swatch { width: 10px; height: 10px; border-radius: 2px; }
+.storage .good .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.storage button { font: inherit; font-size: 12px; background: #2f1c16; color: var(--text); border: 1px solid #000; border-radius: 4px; padding: 2px 8px; cursor: pointer; }
 
 /* The dock, as in SimCity: mode buttons at the bottom right, the open mode's strip along the bottom. */
 .dock {
@@ -644,6 +645,9 @@ label.set-row { cursor: pointer; }
 .trend-row .delta { text-align: right; color: var(--muted); font-size: 11px; }
 .finish .chip.windows { background: linear-gradient(90deg, #9fd2ff 0 45%, #3b3f45 45% 55%, #9fd2ff 55%); border-color: #5a7a96; }
 .finish .chip.bulkhead { background: repeating-linear-gradient(135deg, #e0a03a 0 3px, #3b3f45 3px 6px); border-color: #3b3f45; }
+/* The refit tool: three linings side by side; a fine finish's chip has a pale inner rule. */
+.finish .chip.refit { background: linear-gradient(90deg, #8a6650 0 33%, #a45a3e 33% 66%, #b9c2c9 66%); border-color: #5c4031; }
+.finish .chip.fine { box-shadow: inset 0 0 0 1px rgba(255, 240, 210, 0.7); }
 
 /* ---- Phones and tablets ---- */
 /* The views take every touch themselves (pan, pinch, twist); the page never scrolls or zooms under them. */

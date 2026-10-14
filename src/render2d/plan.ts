@@ -9,7 +9,7 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { DrillView } from "../sim/snapshot";
 import { floorSpan, pickAt, ringRadii } from "../render3d/cylinder";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints } from "../view/interaction";
+import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
@@ -133,7 +133,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       }
     }
     // A snaked chain (while dragging, or waiting for confirmation): every border on this floor highlighted.
-    const shown = snaking ? { edges: chain.edges, erase: chainErase } : proposal;
+    const shown = snaking ? proposalFor(tool, chain.edges, chainErase) : proposal;
     if (shown?.edges.length) {
       for (const id of shown.edges) {
         if (shown.erase) ghostEdge(id, C.bad, null, 0.35);
@@ -311,7 +311,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     snaking = false;
     const done = chain;
     chain = EMPTY_CHAIN;
-    if (done.edges.length > 1) opts.onPropose?.({ edges: done.edges, erase: chainErase });
+    if (done.edges.length > 1) opts.onPropose?.(proposalFor(tool, done.edges, chainErase));
     else if (done.edges.length === 1 && layout) {
       const info = hoverInfo();
       // By finger, a single border is aimed first, like a room.
@@ -376,7 +376,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     canvas.setPointerCapture(e.pointerId);
     if (paints(tool) && tool?.kind === "corridor") {
       snaking = true;
-      chainErase = shift || tool.erase;
+      chainErase = followsCorridors(tool, shift);
       chain = EMPTY_CHAIN;
       snake();
       return;

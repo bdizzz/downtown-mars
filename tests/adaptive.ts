@@ -6,9 +6,10 @@ import { config } from "../src/sim/config";
 import { careCoverage, elderCoverage, schoolCoverage } from "../src/sim/care";
 import { beds } from "../src/sim/earth";
 import { roomDef } from "../src/sim/rooms";
+import { canLine } from "../src/sim/materials";
 import { bandwidth } from "../src/sim/construction";
 import { network } from "../src/sim/network";
-import { allocated, spaceOf, STORABLE, storageCaps } from "../src/sim/storage";
+import { freeSpace, spaceOf, storageRooms } from "../src/sim/storage";
 import { countStage, cryptSpace } from "../src/sim/people";
 import type { SimState } from "../src/sim/state";
 import { floorLinked } from "../src/sim/corridors";
@@ -271,37 +272,25 @@ export function adapt(hole: SimState, saving: string[] = []): string | null {
 }
 
 /**
- * Keep storage ahead of the goods: anything filling up (or coming in with
- * nowhere to go) gets free space in a storage room; with none free, a
- * warehouse goes on the list. Once a day.
+ * Keep storage ahead of the goods: every room allows everything, so the
+ * space is shared, and rock could crowd out the food. With the rooms getting
+ * full (or a seed kit needing room), a warehouse goes on the list. Once a day.
  */
 export function tendStorage(hole: SimState): boolean {
-  const caps = storageCaps(hole);
-  const day = hole.ledger.days.at(-1) ?? hole.ledger.current;
-  const inflow = (id: string) => Object.values(day[id]?.in ?? {}).reduce((a, b) => a + b, 0);
+  const rooms = storageRooms(hole.layout);
+  const space = rooms.reduce((n, r) => n + spaceOf(r), 0);
+  const free = rooms.reduce((n, r) => n + freeSpace(r), 0);
   // Gathering a seed kit: room for the kit on top of what the hole needs.
-  const kit = hole.gatheringKit ? network.seedKit.goods : {};
-  const tight = STORABLE.filter((id) => {
-    const cap = caps[id] ?? 0;
-    if (!Number.isFinite(cap)) return false;
-    if ((kit[id] ?? 0) * 2.5 > cap) return true;
-    return inflow(id) > 0 && (hole.resources[id] ?? 0) >= cap * 0.75 - 1;
-  });
-  let needMore = false;
-  for (const id of tight) {
-    const room = hole.layout.rooms.find((r) => !r.building && !r.planned && spaceOf(r) - allocated(r) >= 10);
-    if (!room) {
-      needMore = true;
-      continue;
-    }
-    const give = Math.min(spaceOf(room) - allocated(room), 60);
-    applyCommand(hole, { type: "setAllocation", roomId: room.id, allocation: { ...(room.allocation ?? {}), [id]: (room.allocation?.[id] ?? 0) + give } });
-  }
-  // Nothing free: more storage (unless one's already on the way).
+  const kit = hole.gatheringKit ? Object.values(network.seedKit.goods).reduce((a, b) => a + b, 0) : 0;
+  const tight = free < space * FREE_SHARE + kit * 1.5;
+  // More storage, unless one's already on the way.
   const onTheWay = hole.layout.rooms.some((r) => r.building && spaceOf(r) > 0);
-  if (needMore && !onTheWay) return placeStorage(hole);
+  if (tight && !onTheWay) return placeStorage(hole);
   return false;
 }
+
+/** The share of its storage space the bot keeps free. */
+const FREE_SHARE = 0.35;
 
 /** A warehouse out of the way (ring 3, then ring 2, of any dug floor), with a corridor carved to it. */
 function placeStorage(hole: SimState): boolean {
@@ -360,6 +349,18 @@ export function tendWindows(hole: SimState): boolean {
     if (applyCommand(hole, { type: "setWindows", roomId: room.id, edges, on: true }).ok) any = true;
   }
   return any;
+}
+
+/**
+ * Refit one home when the crews have nothing else queued: in brick once there's brick to spare (over 60),
+ * or else smoothed (rock over 120: the first month's bot makes no brick, so refits still get played). Once a day.
+ */
+export function tendLinings(hole: SimState): boolean {
+  if (hole.construction?.queue.length) return false;
+  const brick = (hole.resources.brick ?? 0) > 60;
+  if (!brick && (hole.resources.rock ?? 0) <= 120) return false;
+  const home = hole.layout.rooms.find((r) => roomDef(r.type).houses && canLine(r) && !r.planned && !r.building && (brick ? r.material !== "brick" : !r.material && !r.finish));
+  return !!home && applyCommand(hole, { type: "upgradeRoom", roomId: home.id, material: brick ? "brick" : "rock", finish: brick ? "base" : "fine" }).ok;
 }
 
 /** Answer whatever events are waiting: the first choice it can afford (a festival only with food to spare). Once a day. */

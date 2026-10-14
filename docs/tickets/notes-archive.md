@@ -519,3 +519,27 @@ when starting a new game, the first hole should have a few things beyond the bat
 
 we'll have to adapt the turorials etc depending on which version the player starts with
 → T-164
+
+## N-0089 · 2026-10-13 00:56
+i like the new art direction for the collar and surface-level entry room. let's apply a similar aesthetic to all of the other buildings on the surface
+→ T-165
+
+## N-0090 · 2026-10-13 20:42
+we should switch storage room to have so many slots of storage for their size, and then you whitelist which resources are allowed to be put into one of the slots. you don't reserve a certain number of slots for a bunch of resources anymore. in the new scenario, you could whitelist every resource to be stored in a given storage room with 200 capacity and still fill all 200 with rock if that's the first 200 resources to attempt to be stored there.
+→ T-166
+
+## N-0091 · 2026-10-13 20:42
+let's improve the floor texture for "bare rock" to be less lo-fi. additionally, the smoothed rock shouldn't show in square tiles; instead it should be a nearly textureless version of bare rock.
+→ T-167
+
+## N-0092 · 2026-10-13 20:42
+when placing windows on a wall that has a room on the other side instead of a corridor, the window should show through to the other room. you pay resources the same as if placing the windows between a corridor and a room, though.
+→ T-168
+
+## N-0093 · 2026-10-13 20:42
+when drawing a corridor over unexcavated rock, paint the corridor over the top "ceiling" of the rock instead of at the "bottom" of that segment. this applies to both hover while clicking to make single corridors as well as dragging/snaking a corridor chain.
+→ T-169
+
+## N-0094 · 2026-10-13 20:42
+you shouldn't be able to select a floor on the floor picker bar until the drill is complete with drilling out that floor. we should show visuallly an overlay on the new floor in that floor menu as it is drilled out, showing the progress %, this means we don't need the drill % or drill pause in the top menu anymore. clicking on the drill itself gives you a choice for pausing it.
+→ T-170

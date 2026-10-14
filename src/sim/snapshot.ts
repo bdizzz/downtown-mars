@@ -88,6 +88,8 @@ export interface HoleSummary {
   /** Visitors waiting at that hole's office. */
   waiting: number;
   site: { lat: number; lon: number } | null;
+  /** The map's colour at the site, unlit (#rrggbb), that its ground leans toward; null without a site. */
+  soil: string | null;
   /** What that hole sits on. */
   deposits: DepositKind[];
   /** Working rovers (from rover depots). */

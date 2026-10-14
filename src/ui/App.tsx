@@ -47,6 +47,7 @@ import { installConsole } from "./devConsole";
 import { FloorPicker, shownFloor } from "./FloorPicker";
 import { CorridorConfirm } from "./CorridorConfirm";
 import type { PendingBuild, Proposal } from "../view/types";
+import { refitCommand } from "../view/interaction";
 import { BuildConfirm } from "./BuildConfirm";
 import { useSim } from "./useSim";
 import { useSounds } from "./useSounds";
@@ -593,7 +594,9 @@ export function App() {
               resources={snapshot.resources}
               finish={lastFinish}
               onAccept={() => {
-                const cmd: SimCommand = proposal.erase
+                const cmd: SimCommand = proposal.refit
+                  ? refitCommand(proposal.edges, proposal.refit)
+                  : proposal.erase
                   ? { type: "removeCorridors", edges: proposal.edges, all: true }
                   : { type: "drawCorridors", edges: proposal.edges, finish: lastFinish, all: true };
                 onCommand(cmd);

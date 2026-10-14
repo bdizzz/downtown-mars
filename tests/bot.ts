@@ -1,11 +1,11 @@
 import { applyCommand, type SimCommand } from "../src/sim/commands";
-import { config } from "../src/sim/config";
+import { config, type LandingKitName } from "../src/sim/config";
 import type { Location } from "../src/sim/placement";
 import { LABELS } from "../src/sim/ledger";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
-import { ensureStairs, quarry, tendStorage, tendUpkeep, tendWindows, tendEvents } from "./adaptive";
+import { ensureStairs, quarry, tendStorage, tendUpkeep, tendWindows, tendLinings, tendEvents } from "./adaptive";
 
 // A scripted player for the first month, following DESIGN.md "First 30
 // minutes": the critical set on day 1, then tier 2 as drops and digging pay
@@ -35,7 +35,8 @@ export const PLAN: Plan[] = [
   { room: "farm", at: ring(2, 1, 4, 4), crop: "soybeans" },
   { room: "solar_array", at: surface(5) },
   { room: "clinic", at: ring(3, 1, 0) },
-  { room: "admin_office", at: ring(1, 2, 1, 2) },
+  // On floor 2: the full landing kit's corridor crosses floor 1's ring 2 here.
+  { room: "admin_office", at: ring(2, 2, 4, 2) },
   // Growth: homes and services for arrivals, on floor 3.
   { room: "bunk_dorm", at: ring(3, 1, 1, 2) },
   { room: "galley", at: ring(3, 1, 3) },
@@ -56,6 +57,16 @@ export const PLAN: Plan[] = [
   { room: "bunk_dorm", at: ring(4, 1, 3, 2) },
   { room: "restroom", at: ring(4, 1, 5) },
 ];
+
+/** The plan from a landing kit: floor 1's rooms the kit already brings are left out (tanks matched by what they hold); later floors' stay, as the hole grows into them. */
+export function planFor(kit: LandingKitName, plan: Plan[] = PLAN): Plan[] {
+  const brought = config.landingKits[kit].ring.map((k) => `${k.room}/${k.holds ?? ""}`);
+  return plan.filter((p) => {
+    const i = p.at.kind === "ring" && p.at.floor === 1 ? brought.indexOf(`${p.room}/${p.holds ?? ""}`) : -1;
+    if (i >= 0) brought.splice(i, 1);
+    return i < 0;
+  });
+}
 
 export const VISIT_ANSWERS: Record<string, string> = {
   noise_complaint: "quiet_hours",
@@ -91,8 +102,10 @@ export interface Day {
   farms: string;
 }
 
-export function run(days: number): { state: SimState; log: Day[]; builtAt: Record<number, number> } {
-  const s = createInitialState(config);
+/** Plays `days` from a landing kit (the bare one unless told otherwise), building the plan less what the kit brings. */
+export function run(days: number, kit: LandingKitName = "bare"): { state: SimState; log: Day[]; builtAt: Record<number, number>; plan: Plan[] } {
+  const s = createInitialState(config, undefined, kit);
+  const PLAN = planFor(kit);
   const log: Day[] = [];
   const builtAt: Record<number, number> = {};
   let next = 0;
@@ -124,6 +137,7 @@ export function run(days: number): { state: SimState; log: Day[]; builtAt: Recor
         tendStorage(s);
         tendUpkeep(s);
         tendWindows(s);
+        tendLinings(s);
         tendEvents(s);
       }
       // Anything still cut off (nothing to carve along yet, or short of rock): try again.
@@ -171,6 +185,6 @@ export function run(days: number): { state: SimState; log: Day[]; builtAt: Recor
       });
     }
   }
-  return { state: s, log, builtAt };
+  return { state: s, log, builtAt, plan: PLAN };
 }
 

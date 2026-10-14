@@ -1,6 +1,7 @@
 // The sky, as the web's (render3d/sky3d.ts): by day, butterscotch dust at the horizon deepening to a
 // darker tan overhead, with the bluish glow Mars has round its sun; by night, near-black with stars
-// coming out; in a dust storm, murk over everything, hiding the sun and stars.
+// coming out; in a dust storm, murk over everything, hiding the sun and stars. The stars turn with the sun
+// round the celestial pole, for the site's latitude (Live.cs SunPath).
 shader_type sky;
 
 uniform vec3 day_horizon : source_color = vec3(0.863, 0.655, 0.478);
@@ -11,6 +12,8 @@ uniform vec3 halo : source_color = vec3(0.604, 0.706, 0.847);
 uniform vec3 dust_day : source_color = vec3(0.604, 0.416, 0.290);
 uniform vec3 dust_night : source_color = vec3(0.102, 0.063, 0.047);
 uniform vec3 sun_dir = vec3(0.0, 1.0, 0.0);
+/** Takes a direction in the sky now back to where it stood at noon, so the star field wheels round the pole. */
+uniform mat3 star_turn = mat3(1.0);
 /** Daylight 0..1, a storm's hold 0..1, and how bright the whole sky is (for the tone mapping). */
 uniform float light = 1.0;
 uniform float dust = 0.0;
@@ -37,7 +40,7 @@ void sky() {
 	// Stars: a scattering of sky cells each hold one, a point that fades in as the light goes.
 	float dark = 1.0 - smoothstep(0.0, STARS_BY, light);
 	if (dark > 0.0 && d.y > 0.0 && !AT_CUBEMAP_PASS) {
-		vec3 p = d * STAR_CELLS;
+		vec3 p = (star_turn * d) * STAR_CELLS;
 		vec3 cell = floor(p);
 		if (hash(cell) > 1.0 - STAR_DENSITY) {
 			vec3 at = vec3(hash(cell + 1.3), hash(cell + 2.7), hash(cell + 4.1)) * 0.6 + 0.2;

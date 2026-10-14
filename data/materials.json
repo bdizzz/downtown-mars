@@ -1,8 +1,10 @@
 {
-  "_note": "Room linings (docs/PLAN-M15.md): what a room's walls and floor are made of. Every room starts as bare rock. Costs and work are per cell (a 10 m slot on one floor); a fine finish's cost and work are on top of its material's base step. Comfort is the step's total. Wear multiplies the room's daily condition decay. How much of that a room gets depends on its kind (kinds); which kind a room is comes from byRoom, then homes (rooms that house), people rooms (condition.json's cleanable), then byCategory, else other.",
+  "_note": "Room linings (docs/PLAN-M15.md): what a room's walls and floor are made of. Every room starts as bare rock. Costs and work are per cell (a 10 m slot on one floor); a fine finish's cost and work are on top of its material's base step. Comfort is the step's total. Wear multiplies the room's daily condition decay. Any lining can be refitted to any other (refit, salvage). How much of that a room gets depends on its kind (kinds); which kind a room is comes from byRoom, then homes (rooms that house), people rooms (condition.json's cleanable), then byCategory, else other.",
   "walls": [
     { "material": "rock", "finish": "base", "name": "Bare rock", "cost": {}, "work": 0, "comfort": 0, "wear": 1 },
     { "material": "rock", "finish": "fine", "name": "Smoothed rock", "cost": { "rock": 4 }, "work": 2, "comfort": 0.25, "wear": 0.95 },
+    { "material": "marscrete", "finish": "base", "name": "Marscrete", "cost": { "marscrete": 12 }, "work": 3, "comfort": 0.25, "wear": 0.9 },
+    { "material": "marscrete", "finish": "fine", "name": "Polished marscrete", "cost": { "marscrete": 4 }, "work": 2, "comfort": 0.4, "wear": 0.9 },
     { "material": "brick", "finish": "base", "name": "Brick", "cost": { "brick": 8 }, "work": 3, "comfort": 0.5, "wear": 0.85 },
     { "material": "brick", "finish": "fine", "name": "Patterned brick", "cost": { "brick": 4 }, "work": 3, "comfort": 0.75, "wear": 0.85 },
     { "material": "metal", "finish": "base", "name": "Metal panels", "cost": { "metal": 6 }, "work": 3, "comfort": 0.5, "wear": 0.7 },
@@ -21,5 +23,8 @@
   "byRoom": {},
   "shared": { "scale": 0.5, "max": 0.5 },
   "leastWear": 0.1,
+  "refit": { "_note": "While crews work on a refit (an upgrade job that has started), the room runs at this share of its output and a home's residents feel this comfort.", "output": 0.5, "comfort": -0.5 },
+  "salvage": { "_note": "Taking a lining out (stripping it, or changing to another material) returns this share of what it cost, rounded down, paid when the job is done; the materials in lost don't come back. Stripping takes this share of the lining's work.", "share": 0.5, "lost": ["rock", "glass"], "stripWork": 0.5 },
+  "corridor": { "_note": "Corridors take the same linings (T-142), priced and worked as this many cells per 10 m of corridor (a short arc in proportion): brick 2 a segment, as drawing one in brick costs. A gallery tube is glass, and can't be lined.", "perSegment": 0.25 },
   "exempt": ["entrance", "stairwell", "elevator", "cargo_elevator", "empty_room_s", "empty_room_m", "empty_room_l"]
 }

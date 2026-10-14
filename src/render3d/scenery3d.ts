@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { softDot } from "./effects3d";
 import type { Hole } from "../sim/geometry";
 import type { Layout } from "../sim/placement";
-import { floorSpan, openShaftRadius, TAU } from "./cylinder";
+import { COLLAR_TOP, floorSpan, openShaftRadius, TAU } from "./cylinder";
 
 // Things that bring the 3D shaft to life but don't depend on rooms: the
 // Earth lander coming down onto the pad before a supply drop, and dust.
@@ -10,7 +10,7 @@ import { floorSpan, openShaftRadius, TAU } from "./cylinder";
 const LANDER = { startHeight: 60, body: 0xd9d4cc, trim: 0x6b6660, flame: 0xffb35c };
 const SURFACE_RING_M = 16;
 
-/** The shaft dome: a low glass dome over the shaft at the rim, on ribs, with a ring at its foot. */
+/** The shaft dome: a low glass dome over the shaft on the collar's rim, on ribs, with a ring at its foot. */
 export function makeDome(hole: Hole): THREE.Group {
   const g = new THREE.Group();
   const r = hole.shaftRadiusM + 1.5;
@@ -33,8 +33,36 @@ export function makeDome(hole: Hole): THREE.Group {
   foot.rotation.x = Math.PI / 2;
   foot.position.y = 0.2;
   g.add(glass, foot);
-  g.position.y = 0.05;
+  // Standing on the collar's rim, its foot resting on the walkway.
+  g.position.y = COLLAR_TOP - 0.15;
   return g;
+}
+
+/** The band of ground surface buildings stand on, either side of where they're placed (metres out from the rim). */
+const SPOT = { from: SURFACE_RING_M - 10, to: SURFACE_RING_M + 10, gap: 0.6, lift: 0.1 };
+
+/**
+ * Surface slots as patches of ground (T-107): one flat sector of the band per slot, a little apart so the
+ * slots read, just above the ground. `total` is how many surface slots there are round the hole.
+ */
+export function surfaceSpotGeometry(hole: Hole, total: number, slots: number[]): THREE.BufferGeometry {
+  const r0 = hole.shaftRadiusM + SPOT.from;
+  const r1 = hole.shaftRadiusM + SPOT.to;
+  const parts = slots.map((s) => {
+    const gap = SPOT.gap / r0;
+    const a0 = (s / total) * TAU + gap / 2;
+    const a1 = ((s + 1) / total) * TAU - gap / 2;
+    // A ring lies in the xy plane; laid flat (x turned -90°), its angle θ lands at -θ round the shaft.
+    const g = new THREE.RingGeometry(r0, r1, 16, 1, -a1, a1 - a0);
+    g.rotateX(-Math.PI / 2);
+    g.translate(0, SPOT.lift, 0);
+    return g.toNonIndexed();
+  });
+  const pos = parts.flatMap((g) => Array.from(g.getAttribute("position").array));
+  parts.forEach((g) => g.dispose());
+  const out = new THREE.BufferGeometry();
+  out.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  return out;
 }
 
 /** The lander: a capsule with legs and a flame, positioned by the caller. */

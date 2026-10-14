@@ -1,5 +1,6 @@
 import type { SimConfig } from "./config";
 import { LABELS, record } from "./ledger";
+import { noteMade } from "./origins";
 import type { Cell, Layout } from "./placement";
 import type { SimState } from "./state";
 
@@ -48,16 +49,18 @@ export function shaftSlots(layout: Layout, cfg: SimConfig): number {
 }
 
 /** Rock, and whatever the hole sits on, from digging out `slots` slots' worth. */
-export function yieldRock(state: SimState, cfg: SimConfig, slots: number, label: string = LABELS.excavation): void {
+export function yieldRock(state: SimState, cfg: SimConfig, slots: number, label: string = LABELS.excavation, at?: number): void {
   if (slots <= 0) return;
   const rock = slots * cfg.digging.rockPerSlot;
   state.resources.rock = (state.resources.rock ?? 0) + rock;
   record(state, "rock", "in", label, rock);
+  noteMade(state, "rock", rock, at);
   for (const kind of state.deposits ?? []) {
     for (const [id, perSlot] of Object.entries(cfg.digging.depositYieldsPerSlot[kind] ?? {})) {
       const amount = slots * perSlot;
       state.resources[id] = (state.resources[id] ?? 0) + amount;
       record(state, id, "in", label, amount);
+      noteMade(state, id, amount, at);
     }
   }
 }

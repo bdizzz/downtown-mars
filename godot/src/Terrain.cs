@@ -8,11 +8,14 @@ namespace DowntownMars;
 /// <summary>
 /// The land round the hole, as the bridge sends it (src/bridge/terrain.ts, the web's own terrain3d.ts):
 /// the ground rolling away from the pad in the regolith surface, the boulders as one MultiMesh, and the
-/// horizon's mountains, mesas or hills, both faceted as the web's.
+/// horizon's mountains, mesas or hills, both faceted as the web's. The ground takes the colour the map
+/// shows at the site (T-073), and the site's latitude sets the sun's path and the stars (T-020, Live.cs).
 /// </summary>
 public partial class Terrain : Node3D
 {
     public int HoleId { get; private set; } = -1;
+    /// <summary>The site's latitude in degrees north (a default before it has a place on the map).</summary>
+    public float Latitude { get; private set; } = 45;
 
     static float[] Floats(JsonElement e) => MemoryMarshal.Cast<byte, float>(Convert.FromBase64String(e.GetString()!)).ToArray();
     static int[] Ints(JsonElement e) => MemoryMarshal.Cast<byte, int>(Convert.FromBase64String(e.GetString()!)).ToArray();
@@ -64,7 +67,8 @@ public partial class Terrain : Node3D
     {
         foreach (var c in GetChildren()) c.QueueFree();
         HoleId = m.GetProperty("holeId").GetInt32();
-        var groundMaterial = Looks.For("rock:ground", new Color("#7a3b22"), 1, 0, false)!;
+        Latitude = m.GetProperty("latitude").GetSingle();
+        var groundMaterial = Looks.For("rock:ground", new Color(m.GetProperty("groundColor").GetString()!), 1, 0, false)!;
         Land(groundMaterial);
         AddChild(new MeshInstance3D { Mesh = Mesh(m.GetProperty("ground"), groundMaterial), Name = "Ground" });
         var rocks = m.GetProperty("rocks");
