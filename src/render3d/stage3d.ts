@@ -7,7 +7,7 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, paints, surfaceSpots } from "../view/interaction";
+import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
@@ -1042,7 +1042,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       }
     }
     // A snaked chain (while dragging, or waiting for confirmation): every border highlighted.
-    const shown = snaking ? { edges: chain.edges, erase: chainErase } : proposal;
+    const shown = snaking ? proposalFor(tool, chain.edges, chainErase) : proposal;
     if (shown?.edges.length) {
       for (const id of shown.edges) ghostEdge(id, shown.erase ? HOVER.bad : layout.corridors[id] ? HOVER.hover : HOVER.ok);
       return;
@@ -1241,7 +1241,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     snaking = false;
     const done = chain;
     chain = EMPTY_CHAIN;
-    if (done.edges.length > 1) opts.onPropose?.({ edges: done.edges, erase: chainErase });
+    if (done.edges.length > 1) opts.onPropose?.(proposalFor(tool, done.edges, chainErase));
     else if (done.edges.length === 1 && layout) {
       const info = hoverInfo();
       // By finger, a single border is aimed first, like a room.
@@ -1578,7 +1578,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     canvas.setPointerCapture(e.pointerId);
     if (paints(tool) && tool?.kind === "corridor") {
       snaking = true;
-      chainErase = shift || tool.erase;
+      chainErase = followsCorridors(tool, shift);
       chain = EMPTY_CHAIN;
       snake();
       return;

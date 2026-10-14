@@ -9,7 +9,7 @@ import { roomDef } from "../sim/rooms";
 // look of whichever building material their cost uses most; rooms that cost
 // nothing are carved from the rock itself.
 
-export type Finish = "rock" | "rock_fine" | "marscrete" | "brick" | "brick_fine" | "metal" | "metal_fine";
+export type Finish = "rock" | "rock_fine" | "marscrete" | "marscrete_fine" | "brick" | "brick_fine" | "metal" | "metal_fine";
 
 /** Structural materials, in the order they win a tie. */
 const MATERIALS = ["marscrete", "brick", "metal", "rock"] as const;

@@ -7,7 +7,8 @@ import { missingCost, siteRefusal } from "../sim/costs";
 import { roomDefs, type RoomDef } from "../sim/rooms";
 import { CATEGORY_NAMES, CATEGORY_ORDER, CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, shapesFor } from "../view/buildCatalog";
 import { RoomCard } from "./RoomCard";
-import { corridors } from "../sim/corridors";
+import { corridors, finishDef } from "../sim/corridors";
+import { liningCost, liningId, MATERIALS } from "../sim/materials";
 import { resName } from "./format";
 
 export function buildTool(def: RoomDef): Tool {
@@ -70,12 +71,38 @@ function categoryOf(tool: Tool): string | null {
   return null;
 }
 
-/** The corridor tool's finishes and costs, and the eraser. */
+/** The lining the refit tool last used, this session. */
+let lastRefit = "brick";
+
+/** The corridor tool's finishes and costs (or with Refit, the linings), bulkheads, windows, and the eraser. */
 function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" | "resources">) {
   if (tool?.kind !== "corridor") return null;
+  // Every other mode off: drawing in the corridor's finish, or the mode asked for.
+  const { refit, bulkhead: _bulkhead, windows: _windows, ...plain } = tool;
+  const { refit: _refit, ...noRefit } = tool;
+  if (refit) lastRefit = refit;
+  const per10m = MATERIALS.corridor.perSegment;
   return (
     <div className="finishes">
-      {corridors.finishes.map((f) => {
+      {tool.refit
+        ? MATERIALS.walls.map((w) => {
+            const id = liningId(w);
+            const f = finishDef(id);
+            const cost = Object.entries(liningCost(w)).map(([r, v]) => [r, Math.round(v * per10m * 10) / 10] as const);
+            return (
+              <button
+                key={id}
+                className={`finish${tool.refit === id ? " on" : ""}${cost.some(([r, v]) => (resources[r] ?? 0) < v) ? " short" : ""}`}
+                title={`${w.name}: comfort +${w.comfort} in a room lined with it, wears ${Math.round((1 - w.wear) * 100)}% slower. A corridor only looks it, for now.`}
+                onClick={() => setTool({ ...plain, erase: false, refit: id })}
+              >
+                <span className={`chip${w.finish === "fine" ? " fine" : ""}`} style={{ background: f.color, borderColor: f.accent }} />
+                <span className="name">{w.name}</span>
+                <span className="k">{cost.length ? cost.map(([r, v]) => `${v} ${resName(r).toLowerCase()}`).join(", ") : "free"}</span>
+              </button>
+            );
+          })
+        : corridors.finishes.map((f) => {
         const short = Object.entries(f.cost).some(([id, v]) => (resources[id] ?? 0) < v);
         const picked = tool.finish === f.id && !tool.erase && !tool.bulkhead && !tool.windows;
         return (
@@ -94,7 +121,7 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
       <button
         className={`finish${tool.bulkhead ? " on" : ""}${Object.entries(corridors.bulkhead.cost).some(([id, v]) => (resources[id] ?? 0) < v) ? " short" : ""}`}
         title={`${corridors.bulkhead.hint}. Click a built corridor to fit one; Shift-click (or Erase) to take one out, free.`}
-        onClick={() => setTool({ ...tool, bulkhead: !tool.bulkhead, windows: false, erase: false })}
+        onClick={() => setTool(tool.bulkhead ? plain : { ...plain, bulkhead: true, erase: false })}
       >
         <span className="chip bulkhead" />
         <span className="name">{corridors.bulkhead.name}</span>
@@ -103,16 +130,25 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
       <button
         className={`finish${tool.windows ? " on" : ""}${Object.entries(config.windows.costPer10m).some(([id, v]) => (resources[id] ?? 0) < v) ? " short" : ""}`}
         title="Put windows in a room's wall, where it faces the shaft, a corridor or a walk-through room: a home's comfort goes up. Click a wall to glaze it all; Shift-click (or Erase) to take them out, free."
-        onClick={() => setTool({ ...tool, windows: !tool.windows, bulkhead: false, erase: false })}
+        onClick={() => setTool(tool.windows ? plain : { ...plain, windows: true, erase: false })}
       >
         <span className="chip windows" />
         <span className="name">Windows</span>
         <span className="k">{Object.entries(config.windows.costPer10m).map(([id, v]) => `${v} ${resName(id).toLowerCase()}`).join(", ")} per 10 m</span>
       </button>
       <button
+        className={`finish${tool.refit ? " on" : ""}`}
+        title="Refit built corridors in another lining, as rooms are: their walls and floor take its look. Pick a lining, then click a corridor or drag along several. Back to bare rock salvages half the old lining."
+        onClick={() => setTool(tool.refit ? plain : { ...plain, erase: false, refit: lastRefit })}
+      >
+        <span className="chip refit" />
+        <span className="name">Refit</span>
+        <span className="k">{tool.refit ? "per 10 m from bare rock" : "linings"}</span>
+      </button>
+      <button
         className={`finish erase${tool.erase ? " on" : ""}`}
         title="Fill corridors in. It costs as much as carving them: the walls around them are rebuilt. Or hold Shift while drawing."
-        onClick={() => setTool({ ...tool, erase: !tool.erase })}
+        onClick={() => setTool({ ...noRefit, erase: !tool.erase })}
       >
         <span className="name">Erase</span>
         <kbd>⇧</kbd>
@@ -122,7 +158,9 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
           ? "Hover a room's wall: it lights up where windows can go. Click to glaze it."
           : tool.bulkhead
             ? "Click a corridor to seal it: air and smell stop there."
-            : "Costs are per 10 m. Drag along the borders between rooms."}
+            : tool.refit
+              ? "Click a built corridor to refit it, or drag along several. The crews do it as they get to it."
+              : "Costs are per 10 m. Drag along the borders between rooms."}
       </p>
     </div>
   );

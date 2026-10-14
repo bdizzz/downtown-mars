@@ -49,7 +49,7 @@ Open **Build** (B), pick a room from its category (or press its key: room keys w
 - The shaft itself is open to Mars. People get about in a sealed network of **gallery tubes** (glass walkways along the shaft wall), corridors, plazas and stairs.
 - Floor 1 starts with its gallery tube all the way round. On deeper floors, lay tubes along the shaft wall where you want them (the corridor tool, on the shaft side of ring 1; **Connect** does it for you).
 - Every room needs a tube, corridor or plaza along one side. Rooms have a door on each floor, wherever they open onto a tube, a corridor or a plaza.
-- **The corridor tool** (Z): drag to snake a corridor along the borders between rooms. It follows the pointer, retracing takes it back, and on release you confirm the segments and cost. A plain click carves one segment. Pick a finish (bare rock, marscrete, brick or metal), or click **Connect** on a cut-off room.
+- **The corridor tool** (Z): drag to snake a corridor along the borders between rooms. It follows the pointer, retracing takes it back, and on release you confirm the segments and cost. A plain click carves one segment. Pick a finish (bare rock, marscrete, brick or metal), or click **Connect** on a cut-off room. **Refit** changes a built corridor's lining later (see Refits and salvage).
 - Shift snakes a fill-in instead, which costs as much as carving.
 
 ### Windows
@@ -62,11 +62,12 @@ Open **Build** (B), pick a room from its category (or press its key: room keys w
 
 ### Refits and salvage
 
-- Every room is carved from **bare rock**. Its panel's **Refit** picker lines the walls in smoothed rock, brick, patterned brick, metal panels or inlaid metal, each showing the comfort it gives (homes in full, rooms people share for everyone), how much slower the room wears, the cost and the work. Bigger rooms cost more: the price is per 10 m cell.
+- Every room is carved from **bare rock**. Its panel's **Refit** picker lines the walls in smoothed rock, marscrete, polished marscrete, brick, patterned brick, metal panels or inlaid metal, each showing the comfort it gives (homes in full, rooms people share for everyone), how much slower the room wears, the cost and the work. Bigger rooms cost more: the price is per 10 m cell.
 - Skipping a step costs both (bare rock straight to patterned brick pays for the brick and the pattern). Any lining can change to any other, including back to bare rock.
 - **Salvage:** taking brick or metal out gives half of it back (rounded down) when the job is done; the inlay's glass and smoothed rock's rock are lost. Stripping takes half the lining's work.
 - A refit is paid when you order it and goes in the **construction queue** ("Refit Dorm 3 in brick"). Once the crews start, the room works at half speed and a home is a little less comfortable; when it's done, the room is back to 100% condition. Order another and it replaces the queued one; cancelling (from the panel or the queue's ✕) refunds it in full.
 - In the plan and unrolled views a lined room has a thin border in its lining's colour.
+- **Corridors** take the same linings. The corridor tool's **Refit** mode lists them with their price per 10 m from bare rock (a quarter of a room cell: brick 2, the same as drawing a corridor in brick). Click a built corridor to refit it, or drag along several and confirm the chain's cost, work and salvage. A lined corridor's walls and floor take the lining's look, so a brick corridor looks like a brick room; for now that's all it does (no comfort). One job refits the lot ("Refit 4 corridor segments in brick"); the corridor stays in use meanwhile, and filling a segment in (or building over it) drops it from the refit, refunding just that one. Gallery tubes are glass and can't be lined. Corridors drawn in marscrete, brick or metal are already lined in it.
 
 ### The shaft dome
 
@@ -202,7 +203,7 @@ Four buttons at the bottom right, as in SimCity. B, V, M and C open them from an
 
 - **Build** opens a strip of room categories along the bottom. Pick one (Storage, say) and its rooms pop up above it, with each room's details as you point at it. Demolish and Undo sit at the end. Only Build places rooms and corridors. The rooms' keys (and Z for corridors, X to demolish, R to rotate) work only in Build; outside it, bare rock doesn't light up under the pointer.
 - **View** has the 3D cameras, the plan and unrolled views, walls down, room colours, Flows and the overlays.
-  - **Room colours** off shows each room in what its walls are lined with: bare or smoothed rock, plain or patterned brick, metal panels or inlaid metal (stairs, lifts and the entrance in what they're built from). A room being refitted has a band of hazard stripes along the tops of its walls. On, walls and floors take the room's category colour, but the floor keeps its material's texture, only tinted.
+  - **Room colours** off shows each room in what its walls are lined with: bare or smoothed rock, plain or polished marscrete, plain or patterned brick, metal panels or inlaid metal (stairs, lifts and the entrance in what they're built from). A room being refitted has a band of hazard stripes along the tops of its walls. On, walls and floors take the room's category colour, but the floor keeps its material's texture, only tinted. Either way, the walls along a lined corridor are in the corridor's lining.
   - **Flows** draws power, water, air and food as pipes, with dashes running from what makes each to what uses it.
   - **Overlays** show noise, smell, health, comfort, air, happiness and condition.
 - **Map** opens the planet as a globe: drag or scroll sideways to spin it (it coasts to a stop), scroll to zoom, click to pick a site.

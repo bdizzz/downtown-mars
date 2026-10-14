@@ -20,7 +20,7 @@ Today a room's build cost (`cost` in `data/rooms.json`) is a recipe of rock, bri
 - **Every room starts as bare rock**, whatever its build cost. The build cost stays what it is (the room's fittings and equipment), so no existing balance moves.
 - **The lining is a property of the room:** `room.material` (`rock`, `brick`, `metal`) and `room.finish` (`base` or `fine`). Absent means bare rock, so old saves need no migration beyond the version bump.
 - **The floor:** `room.flooring`, absent meaning "matches the walls"; otherwise a flooring id (`fibre_panels` first).
-- **Corridors** keep their own finishes (`data/corridors.json`), which are only a look. They share the new surface shaders, so a brick corridor and a brick room look alike.
+- **Corridors** keep their own finishes (`data/corridors.json`), which are only a look. They share the new surface shaders, so a brick corridor and a brick room look alike. (Revised Oct 11, T-142: one list of linings for rooms and corridors, and corridors can be refitted; see Notes as built.)
 
 ## Defaults (to confirm or change)
 
@@ -32,6 +32,8 @@ All numbers live in a new `data/materials.json`; nothing in sim code.
 | --- | --- | --- | --- | --- | --- | --- |
 | Rock | base | Bare rock (default) | — | — | 0 | ×1 |
 | Rock | fine | Smoothed rock | rock 4 | 2 h | +0.25 | ×0.95 |
+| Marscrete | base | Marscrete (T-142) | marscrete 12 | 3 h | +0.25 | ×0.9 |
+| Marscrete | fine | Polished marscrete (T-142) | marscrete 4 more | 2 h more | +0.4 | ×0.9 |
 | Brick | base | Brick | brick 8 | 3 h | +0.5 | ×0.85 |
 | Brick | fine | Patterned brick | brick 4 more | 3 h more | +0.75 | ×0.85 |
 | Metal | base | Metal panels | metal 6 | 3 h | +0.5 | ×0.7 |
@@ -94,7 +96,8 @@ Each step leaves the game working when merged on its own; 5 can go any time befo
 
 ## Later
 
-- **Marscrete** as a cheaper, plainer alternative to brick (DECISIONS: 1.5× the brick, comfort −1 against brick, better cave-in resistance), once the concrete plant is built.
+- ~~**Marscrete** as a cheaper, plainer alternative to brick~~ Built with T-142, between bare rock and brick.
+- A hole-wide bonus by the share of corridors lined to a given level (Bryon, Oct 11).
 - **Glass** linings (glass block walls) and more floorings (mycelium composite boards, rugs).
 - **Cave-in resistance** per material, once cave-ins exist.
 - **Choosing the material when building** (paying for the room and the lining together), if upgrading every room afterwards turns out to be tedious.
@@ -132,3 +135,12 @@ Each step leaves the game working when merged on its own; 5 can go any time befo
   - **Not built here:** the Upgrade control in Godot (T-035), floors (T-037). Demolishing a lined room doesn't salvage its lining (the room's own 50% refund only).
 
 - **Fibre (step 5, T-036).** Fiber hemp is a crop in `data/crops.json` with `"makes": "fiber"`; `roomSpec` swaps the farm's raw food for whatever its crop makes, so any future non-food crop is data only. `fiber` is a material in `data/resources.json`, so storage takes it with no change. It shows in the resource bar once there's some, and in Trends under Materials. The farm keeps its O2 and CO2 exchange. Hemp has its own planter and rack (tall stalks with fanned leaves) in `scripts/furniture.mjs`.
+
+- **Corridor linings and marscrete (T-142, Oct 13).**
+  - **One list:** marscrete (12 a cell, +0.25, wear ×0.9) and polished marscrete (+4, +0.4) join `walls` between smoothed rock and brick, so rooms get them through the same Refit picker. `Material` gained `marscrete`.
+  - **A corridor's finish is a lining id** (`liningId`: `brick`, `brick_fine`…; `liningById` back). The four drawable finishes were already the base steps' ids, so old saves need nothing, and drawing still offers only those four at their `corridors.json` prices. `finishDef` gives a fine id its base finish under the lining's name (colour, and fill-in cost). The gallery tube isn't a lining and can't be refitted.
+  - **Pricing:** `corridorRefitPlan` is the room's `refitBetween` with `n` = the segment's length / 10 × `corridor.perSegment` (0.25), costs to a tenth: brick 2 a segment from bare rock, as drawing in brick costs. Marscrete is 3 a segment, above drawing's 2, since the lining follows DECISIONS' 1.5× brick; the draw prices weren't moved.
+  - **The job:** `refitCorridors { edges, material, finish }` skips segments `corridorRefitRefusal` turns down (no corridor, gallery, unbuilt, being filled in, already refitting, already in it), charges the rest all or none (ledger "Corridors"), and queues one `reline` job with `paidBy` and `salvageBy` per segment. `layout.corridorsRelining` marks its segments, so the views (which see only the layout) can refuse them. Filling a segment in or building over it (`dropRelines`) refunds that segment and trims the job's work in proportion; cancelling refunds the lot. Done: the segments still there take the lining, salvage is paid ("Salvage"), and the news says "4 corridor segments refitted in brick." The corridor stays usable throughout, and has no half-output or comfort effect.
+  - **The tool:** the corridor palette's **Refit** button puts `refit: <lining>` on the tool and swaps the finish list for the eight linings, priced per 10 m from bare rock. A click refits one segment (`refitCommand`); a drag snakes along built corridors (`followsCorridors`, as Erase does) and proposes a refit (`proposalFor`), confirmed in the corridor popup with its cost, work and whole-unit salvage (`refitSummary`). The status line prices the segment under the pointer.
+  - **Looks (web, and Godot through the bridge):** a lined corridor (anything but bare rock) has its walls in its lining. In `solidWalls` each stretch along a corridor knows its edge (`hall`), and its outer face goes to `parts.halls` by lining (`hallFaces`); `roomShape` makes a mesh per lining in `finishWallMaterial` (walls-down included), and the outline still runs round them. Corridors cut through solid rock do the same in `rockFaces`. The shape key carries each corridor's lining. Bare-rock corridors look as before (the faces stay the rooms'). Floors take any lining's surface (`isSurfaceLook`). Polished marscrete's surface: the aggregate ground smooth, cast in 2.4 × 1.2 m form panels with tie holes, a terrazzo floor.
+  - **Not here:** no refit stripes on a corridor being refitted; the radial "steps" where a corridor stops partway along a room keep the room's look; a rock face along a run of corridors in different linings takes the one at its middle. Godot's corridor palette has no Refit mode yet (PLAN-GODOT.md).

@@ -20,9 +20,10 @@ export type Tool =
   | { kind: "demolish" }
   /**
    * Draw corridors along borders, in a finish; with erase, remove them. With bulkhead, fit (or take out)
-   * sealed bulkheads on built ones instead; with windows, put windows in (or take them out of) rooms' walls.
+   * sealed bulkheads on built ones instead; with windows, put windows in (or take them out of) rooms' walls;
+   * with refit, refit built ones in that lining ("brick_fine", see materials.ts liningId).
    */
-  | { kind: "corridor"; finish: string; erase: boolean; bulkhead?: boolean; windows?: boolean }
+  | { kind: "corridor"; finish: string; erase: boolean; bulkhead?: boolean; windows?: boolean; refit?: string }
   | null;
 
 /** The border under the pointer, with the corridor tool. */
@@ -39,6 +40,8 @@ export interface EdgeHover {
   erase: boolean;
   /** The bulkhead tool: fitting (or taking out) a bulkhead, not a corridor. */
   bulkhead?: boolean;
+  /** The refit tool: the lining a built corridor would be refitted in. */
+  refit?: string;
   /** The windows tool: the room, the borders of its wall that would be glazed (or cleared), what's across, and the comfort it'd give a home. */
   windows?: { roomId: number; edges: string[]; across: string | null; comfort: number | null };
 }
@@ -50,10 +53,11 @@ export interface HoverInfo {
   edge?: EdgeHover;
 }
 
-/** A snaked chain of corridors waiting for the player to confirm: to carve, or (erase) to fill in. */
+/** A snaked chain of corridors waiting for the player to confirm: to carve, (erase) to fill in, or (refit) to refit in a lining. */
 export interface Proposal {
   edges: string[];
   erase: boolean;
+  refit?: string;
 }
 
 /** A room waiting on the player's say-so because it would fill in corridors. */

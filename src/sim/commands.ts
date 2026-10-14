@@ -13,14 +13,14 @@ import { capacities, mainOutput } from "./economy";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById, outsideEdges } from "./edges";
 import { setRoomWindows, wallOf, windowCost, windowRefusal } from "./windows";
-import { domeRefusal, dropCorridors, dropRefit, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRefit, queueRoom } from "./construction";
+import { domeRefusal, dropCorridors, dropRefit, dropRelines, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRefit, queueReline, queueRoom, type SegmentRefit } from "./construction";
 import { addAdults, holeGates, syncCount, unlock, UNLOCK_GATES } from "./people";
 import { allocationRefusal } from "./storage";
 import { answerVisit } from "./visits";
 import { answerEvent, consoleEvent } from "./events";
 import { padReady } from "./earth";
 import { roomDef } from "./rooms";
-import { canLine, flooringDef, MATERIALS, refitPlan, refitRefusal, refitWords } from "./materials";
+import { canLine, corridorRefitPlan, corridorRefitRefusal, flooringDef, MATERIALS, refitPlan, refitRefusal, refitWords } from "./materials";
 import { buildShowcase } from "./showcase";
 import type { SimState } from "./state";
 import type { DepositKind } from "./mapgeo";
@@ -77,6 +77,8 @@ export type SimCommand =
   | { type: "consoleLining"; roomId: number; material?: string; finish?: string; flooring?: string | null }
   /** Refit a room's walls in another lining (bare rock strips it, salvaging part of the old one), through the construction queue. */
   | { type: "upgradeRoom"; roomId: number; material: string; finish?: string }
+  /** Refit built corridor segments in a lining, as rooms are, through the construction queue. Skips those that can't be (in it already, not built); the rest go all or none, like a snaked chain. */
+  | { type: "refitCorridors"; edges: string[]; material: string; finish?: string }
   /** Fit sealed bulkheads across built corridor segments (on), or take them out (off, free). */
   | { type: "setBulkhead"; edges: string[]; on: boolean }
   /** Put windows in (or take them out of) a room's wall: the borders along it. */
@@ -186,6 +188,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         for (const id of dropCorridors(state, check.destroys, config)) {
           for (const [r, v] of Object.entries(corridorCost(layout.hole, edgeById(layout.hole, id)!, layout.corridors[id]!, config))) state.resources[r] = (state.resources[r] ?? 0) + v;
         }
+        dropRelines(state, check.destroys);
         for (const id of check.destroys) {
           delete layout.corridors[id];
           if (layout.corridorsFilling?.[id] !== undefined) delete layout.corridorsFilling[id];
@@ -305,6 +308,28 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       layout.version++;
       return { ok: true };
     }
+    case "refitCorridors": {
+      const to = MATERIALS.walls.find((w) => w.material === cmd.material && w.finish === (cmd.finish ?? "base"));
+      if (!to) return { ok: false, reason: `No lining "${cmd.material}" (${cmd.finish ?? "base"})` };
+      const edges = cmd.edges.filter((id, i) => cmd.edges.indexOf(id) === i);
+      const ok = edges.filter((id) => corridorRefitRefusal(layout, id, to) === null);
+      if (!ok.length) return { ok: false, reason: corridorRefitRefusal(layout, edges[0] ?? "", to) ?? "Nothing to refit" };
+      const segments: SegmentRefit[] = ok.flatMap((edge) => {
+        const plan = corridorRefitPlan(layout, edge, to, config);
+        return plan ? [{ edge, cost: plan.cost, work: plan.work, salvage: plan.salvage }] : [];
+      });
+      const total: Record<string, number> = {};
+      for (const s of segments) for (const [r, v] of Object.entries(s.cost)) total[r] = (total[r] ?? 0) + v;
+      const short = shortfall(state.resources, total);
+      if (short) return { ok: false, reason: short };
+      for (const [r, v] of Object.entries(total)) {
+        state.resources[r] = (state.resources[r] ?? 0) - v;
+        record(state, r, "out", CORRIDORS, v);
+      }
+      queueReline(state, { material: to.material, finish: to.finish }, segments, config);
+      layout.version++;
+      return { ok: true };
+    }
     case "consoleEvent":
       return consoleEvent(state, config, cmd.kind);
     case "consoleStorm": {
@@ -352,8 +377,8 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       if (!job) return { ok: false, reason: "Nothing in the queue by that number" };
       if (job.kind === "room" && job.roomId !== undefined) return apply(state, { type: "demolish", roomId: job.roomId });
       if (job.kind === "corridors") return apply(state, { type: "removeCorridors", edges: job.edges ?? [] });
-      if (job.kind === "upgrade") {
-        // The room keeps its lining; what was paid comes back, and nothing is salvaged.
+      if (job.kind === "upgrade" || job.kind === "reline") {
+        // The room (or corridor) keeps its lining; what was paid comes back, and nothing is salvaged.
         dropRefit(state, job);
         return { ok: true };
       }
@@ -477,6 +502,8 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         removed++;
       }
       if (!removed) return { ok: false, reason: firstShort ?? "No corridor there" };
+      // A refit of a corridor being filled in is called off, and refunded.
+      dropRelines(state, filled);
       // Filling in takes construction time too; until then the corridor stays in use.
       if (!queueFill(state, filled, config)) for (const id of filled) delete layout.corridors[id];
       recomputeAccess(layout);

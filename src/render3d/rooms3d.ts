@@ -2,6 +2,7 @@ import { UI_FONT } from "../view/font";
 import { LABEL_LAYER, testsSceneDepth } from "./labelLayer";
 import { roomLabel } from "../sim/roomName";
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
@@ -17,7 +18,7 @@ import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
 import { glazedWalls } from "../sim/windows";
 import { tubeAt } from "../view/gallery";
-import { finishMaterial, withFloor, withFresnel, withGrime, withRefit, withRock, withSurface, type SurfaceLook } from "./surfaces";
+import { finishMaterial, isSurfaceLook, withFloor, withFresnel, withGrime, withRefit, withRock, withSurface, type SurfaceLook } from "./surfaces";
 import { roomLook, type Finish } from "../view/roomFinish";
 import { lampsOf, lightPools } from "./lights3d";
 import { withCondensation } from "./details3d";
@@ -551,6 +552,20 @@ export interface OpeningParts {
   frames: number[];
   /** The tops of solid walls: bare rock, whatever the room is built from or coloured. */
   tops?: number[];
+  /** Walls' outer faces onto a lined corridor (T-142), by its lining: drawn in that, not the room's. */
+  halls?: Map<SurfaceLook, number[]>;
+}
+
+/**
+ * The list a wall's outer face onto this corridor goes in: its lining's, if it's lined (anything but
+ * bare rock; a gallery tube is glass), else null, and the face stays with the room's walls.
+ */
+function hallFaces(layout: Layout, parts: OpeningParts | undefined, edgeId: string | undefined): number[] | null {
+  const lining = edgeId ? layout.corridors?.[edgeId] : undefined;
+  if (!parts?.halls || !lining || lining === "rock" || !isSurfaceLook(lining)) return null;
+  let list = parts.halls.get(lining);
+  if (!list) parts.halls.set(lining, (list = tagged()));
+  return list;
 }
 
 /**
@@ -692,6 +707,8 @@ interface Stretch {
   /** For openings: the circle an arc runs on, or the radial border a side wall stands on. */
   circle?: number;
   border?: string;
+  /** The corridor it faces (an edge id), for a hall wall: its outer face takes the corridor's lining. */
+  hall?: string;
 }
 
 const shifted = (p: Prim, by: number): Prim => (p.arc ? { ...p, r: p.r + p.s * by } : { ...p, d: p.d + p.s * by });
@@ -813,6 +830,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
       step: false,
       cut: { side: 1, across: (a) => fromFace(radially(p.rr0, -1)(a)), face: face(`${c.floor}:in:${p.rr0.toFixed(2)}`, c.floor) },
       circle: c.ring - 1,
+      ...(p.innerHall ? { hall: edgeAt(innerArcs, mid)?.id } : {}),
     });
   });
   const leftId = `R${c.floor}.${c.ring}.${c.slot}`;
@@ -824,6 +842,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
     step: false,
     cut: { side: -1, across: fromFace(turning(cMid, s1 - (base.openRight && base.hallRight ? HALL / cMid : 0), 1)), face: newFace(c.floor) },
     border: rightId,
+    ...(base.hallRight ? { hall: rightId } : {}),
   });
   for (let i = pieces.length - 1; i >= 0; i--) {
     const p = pieces[i]!;
@@ -835,6 +854,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
       step: false,
       cut: { side: -1, across: (a) => fromFace(radially(p.rr1, 1)(a)), face: face(`${c.floor}:out:${p.rr1.toFixed(2)}`, c.floor) },
       circle: c.ring,
+      ...(p.outerHall ? { hall: edgeAt(outerArcs, mid)?.id } : {}),
     });
     const prev = pieces[i - 1];
     if (prev) list.push(step(p.b0, (prev.rr1 + p.rr1) / 2, prev.rr1 > p.rr1 ? -1 : 1, Math.abs(prev.rr1 - p.rr1) > 1e-9));
@@ -846,6 +866,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
     step: false,
     cut: { side: 1, across: fromFace(turning(cMid, s0 + (base.openLeft && base.hallLeft ? HALL / cMid : 0), -1)), face: newFace(c.floor) },
     border: leftId,
+    ...(base.hallLeft ? { hall: leftId } : {}),
   });
 
   // The outline moved into the room (inner faces) and out (outer faces), and where its stretches meet.
@@ -876,6 +897,8 @@ function solidWalls(pos: number[], s: SolidCell): void {
     const cut: Cut = { ...ownerCut, y0, y1, face: faceOf(ownerCut), follows: capOnly };
     const follow: Cut = { ...cut, follows: true };
     const outerFace = (st.wall && OUTER[st.kind].face) || capOnly;
+    // Onto a lined corridor, the outer face is the corridor's: in its lining.
+    const outer = (st.kind === "hall" && hallFaces(layout, parts, st.hall)) || pos;
     if (pin.arc && pout.arc) {
       const rangeIn = sorted(pIn[1], qIn[1]);
       const rangeOut = sorted(pOut[1], qOut[1]);
@@ -883,7 +906,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
         open && st.wall && st.circle !== undefined ? wallOpenings(open, c, arcsOn(st.circle), floorBase, 1 / pin.r, WINDOW.margin * 1.25) : null;
       const cutHoles = (holes?.holes ?? []).map((h) => ({ a0: h.s0, a1: h.s1, y0: h.y0, y1: h.y1 }));
       if (st.wall && inLen > 1e-6) curvedFaceWithOpenings(pos, pin.r, ...rangeIn, y0, y1, cut, cutHoles, true);
-      if (outerFace && outLen > 1e-6) curvedFaceWithOpenings(pos, pout.r, ...rangeOut, floorBase, y1, follow, cutHoles, true);
+      if (outerFace && outLen > 1e-6) curvedFaceWithOpenings(outer, pout.r, ...rangeOut, floorBase, y1, follow, cutHoles, true);
       // The wall's top, between its two faces.
       const [lo, hi] = pin.r < pout.r ? [pin.r, pout.r] : [pout.r, pin.r];
       if (Math.abs(pin.r - pout.r) > 1e-6) {
@@ -924,7 +947,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
     if (pin.arc || pout.arc) return;
     const holes = open && st.wall && st.border ? wallOpenings(open, c, [{ id: st.border, s0: cr0, s1: cr1 }], floorBase, 1, 0.15) : null;
     if (st.wall && inLen > 1e-6) sideWallWithOpenings(pos, ...pIn, ...qIn, y0, y1, cut, holes?.holes ?? []);
-    if (outerFace && outLen > 1e-6) sideWallWithOpenings(pos, ...pOut, ...qOut, floorBase, y1, follow, holes?.holes ?? []);
+    if (outerFace && outLen > 1e-6) sideWallWithOpenings(outer, ...pOut, ...qOut, floorBase, y1, follow, holes?.holes ?? []);
     const t = follow;
     if (Math.abs(pin.d - pout.d) > 1e-6) {
       quad(tops, xz(pOut, y1), xz(qOut, y1), xz(qIn, y1), xz(pIn, y1), t);
@@ -1125,8 +1148,9 @@ export function roomGeometry(
  * always under a floor, the ground, or a chosen floor's lid; its side onto
  * the gallery is the shaft wall.) Rock faces are tagged like walls whose
  * room is the open side, so with walls down they drop when they're in the way.
+ * Given `halls`, the walls of lined corridors go there instead, by lining.
  */
-export function rockFaces(layout: Layout, topFloor: number | null): number[] {
+export function rockFaces(layout: Layout, topFloor: number | null, halls?: OpeningParts): number[] {
   const hole = layout.hole;
   const pos = tagged();
   const joints = new Set(corridorJoints(layout).keys());
@@ -1159,14 +1183,18 @@ export function rockFaces(layout: Layout, topFloor: number | null): number[] {
         if (floor < hole.floors && !rock({ floor: floor + 1, ring, slot })) flatRing(pos, r0, r1, s0, s1, y0, true);
         // Corridors carved into it: rock walls half a corridor back, facing the corridor.
         const cut = carveCell(layout, c, new Set([key(c)]), ring, ring, 0, true, false, joints);
+        // A lined corridor's walls are in its lining (T-142), found by the middle of each face.
+        const arcAt = (circle: number, a: number) => cellEdges(hole, c).find((e) => e.kind === "arc" && e.circle === circle && a >= e.a0 * TAU - 1e-9 && a < e.a1 * TAU - 1e-9)?.id;
+        const onto = (edgeId: string | undefined) => hallFaces(layout, halls, edgeId) ?? pos;
         for (const p of cut.pieces) {
-          if (p.innerHall) curvedFace(pos, p.rr0, ...pieceAt(cut, p, p.rr0), y0, y1, { side: -1 });
-          if (p.outerHall) curvedFace(pos, p.rr1, ...pieceAt(cut, p, p.rr1), y0, y1, { side: 1 });
+          const mid = (p.b0 + p.b1) / 2;
+          if (p.innerHall) curvedFace(onto(arcAt(ring - 1, mid)), p.rr0, ...pieceAt(cut, p, p.rr0), y0, y1, { side: -1 });
+          if (p.outerHall) curvedFace(onto(arcAt(ring, mid)), p.rr1, ...pieceAt(cut, p, p.rr1), y0, y1, { side: 1 });
         }
         const first = cut.pieces[0];
         const last = cut.pieces.at(-1);
-        if (cut.hallLeft && first) sideWall(pos, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y1, { side: -1 });
-        if (cut.hallRight && last) sideWall(pos, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y1, { side: 1 });
+        if (cut.hallLeft && first) sideWall(onto(`R${floor}.${ring}.${slot}`), first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y1, { side: -1 });
+        if (cut.hallRight && last) sideWall(onto(`R${floor}.${ring}.${(slot + 1) % n}`), last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y1, { side: 1 });
         // A face on each border with something dug out beyond it (and no corridor there, which carves instead).
         // Only where the rock still reaches the border: where corridors turn at its corner, the joint's square
         // notches it back, and a face on the border line would stand across the corridor (T-145).
@@ -1782,6 +1810,8 @@ interface Shape {
   glass: THREE.BufferGeometry | null;
   frames: THREE.BufferGeometry | null;
   tops: THREE.BufferGeometry | null;
+  /** Its walls' faces onto lined corridors, by lining. */
+  halls: [SurfaceLook, THREE.BufferGeometry][];
 }
 const shapeCache = new Map<string, Shape>();
 
@@ -1791,21 +1821,27 @@ function disposeShape(shape: Shape): void {
   shape.glass?.dispose();
   shape.frames?.dispose();
   shape.tops?.dispose();
+  for (const [, geo] of shape.halls) geo.dispose();
 }
 
 function roomShape(layout: Layout, room: RoomInstance): Shape & { key: string } {
   const { key, open } = shapeKey(layout, room);
   let shape = shapeCache.get(key);
   if (!shape) {
-    const parts: OpeningParts = { glass: tagged(), frames: tagged(), tops: tagged() };
+    const parts: OpeningParts = { glass: tagged(), frames: tagged(), tops: tagged(), halls: new Map() };
     const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, open, stairWells(layout, room), parts, true);
+    const halls = [...parts.halls!].filter(([, pos]) => pos.length).map(([lining, pos]): [SurfaceLook, THREE.BufferGeometry] => [lining, geometry(pos)]);
+    // The outline goes round the corridor faces too, as when they were the room's.
+    const whole = halls.length ? mergeGeometries([geo, ...halls.map(([, g]) => g)]) : null;
     shape = {
       geo,
-      edges: outlineGeometry(geo),
+      edges: outlineGeometry(whole ?? geo),
       glass: parts.glass.length ? geometry(parts.glass) : null,
       frames: parts.frames.length ? geometry(parts.frames) : null,
       tops: parts.tops!.length ? geometry(parts.tops!) : null,
+      halls,
     };
+    whole?.dispose();
     shapeCache.set(key, shape);
   }
   return { ...shape, key };
@@ -1817,7 +1853,8 @@ export function shapeKey(layout: Layout, room: RoomInstance): { key: string; ope
   const outside = outsideEdges(layout.hole, room.cells);
   const joints = corridorJoints(layout);
   const halls = [
-    ...outside.filter((e) => layout.corridors?.[e.id]).map((e) => e.id),
+    // With each one's lining, which the walls' faces onto it are drawn in.
+    ...outside.filter((e) => layout.corridors?.[e.id]).map((e) => `${e.id}=${layout.corridors[e.id]}`),
     ...[...new Set(outside.flatMap((e) => edgeVertices(layout.hole, e)))].filter((v) => joints.has(v)),
   ].join(",");
   // What's around it decides which walls can come down, and how thick each is: a wall onto empty space
@@ -1964,8 +2001,11 @@ export function buildLayout(
   wallMesh.userData = { pickable: true, wall: true };
   group.add(wallMesh);
   // Solid rock where it meets dug-out space, so nothing shows through behind or above a room.
-  const faces = rockFaces(layout, topFloor);
+  const carved: OpeningParts = { glass: [], frames: [], halls: new Map() };
+  const faces = rockFaces(layout, topFloor, carved);
   if (faces.length) group.add(new THREE.Mesh(geometry(faces), rock));
+  // Lined corridors cut through the rock: their walls in the lining.
+  for (const [lining, pos] of carved.halls!) if (pos.length) group.add(new THREE.Mesh(geometry(pos), finishWallMaterial(lining)));
 
   const used = new Set<string>();
   // See-through glass: you can look into a room from the gallery, and out of it.
@@ -2029,6 +2069,12 @@ export function buildLayout(
       const tops = new THREE.Mesh(shape.tops, room.planned ? mesh.material : rock);
       tops.userData = { pickable: true, roomId: room.id, cached: true };
       group.add(tops);
+    }
+    // Its walls' faces onto lined corridors: in the corridor's lining (a plan keeps the room's look).
+    for (const [lining, geo] of shape.halls) {
+      const clad = new THREE.Mesh(geo, room.planned ? mesh.material : finishWallMaterial(lining));
+      clad.userData = { pickable: true, roomId: room.id, cached: true };
+      group.add(clad);
     }
     const edges = new THREE.LineSegments(shape.edges, room.connected ? edgeLine : strandedLine);
     edges.userData = { cached: true, roomId: room.id, outline: !room.planned && !room.building && room.connected };
@@ -2249,6 +2295,11 @@ const FINISH_LOOK: Record<string, THREE.MeshStandardMaterialParameters> = {
   marscrete: { roughness: 0.85 },
   brick: { roughness: 0.9 },
   metal: { roughness: 0.35, metalness: 0.6 },
+  // The fine linings a corridor can be refitted in (T-142): smoother, with more sheen.
+  rock_fine: { roughness: 0.55 },
+  marscrete_fine: { roughness: 0.45 },
+  brick_fine: { roughness: 0.8 },
+  metal_fine: { roughness: 0.28, metalness: 0.65 },
 };
 const UNLINKED = 0xe0503a;
 
@@ -2321,7 +2372,7 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
     const mat = material(`hall:${key}`, () => {
       const m = new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, ...FINISH_LOOK[finish!], ...see });
       // Underfoot, the finish's own surface, as on a room lined in it (a corridor cut through the rock shows its layers).
-      return finish! in FINISH_LOOK ? withSurface(m, finish as SurfaceLook) : m;
+      return isSurfaceLook(finish!) ? withSurface(m, finish) : m;
     });
     const mesh = new THREE.Mesh(geometry(pos), mat);
     mesh.userData = { pickable: true, hall: true };
