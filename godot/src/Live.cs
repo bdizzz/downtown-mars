@@ -1183,6 +1183,7 @@ public partial class Live : Node3D
             _bridge.Send(new Dictionary<string, object?> { ["type"] = "pick", ["at"] = p is Vector3 q ? new[] { q.X, q.Y, q.Z } : null });
         }
         RoomTint.Hover(looking && _hovered is int h && (h != _inspector.Selected || _build.Demolishing) ? h : -1, _build.Demolishing);
+        _hole.ShowHoverLabel(looking && _hovered is int over ? over : _inspector.Selected);
     }
 
     // ---- settings, the tutorial ----

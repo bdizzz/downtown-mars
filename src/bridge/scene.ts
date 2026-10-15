@@ -65,7 +65,8 @@ export interface SceneMessage {
   materials: SceneMaterial[];
   chunks: SceneChunk[];
   lamps: Omit<Lamp, "px" | "pz">[];
-  labels: { text: string; x: number; y: number; z: number; roomId: number }[];
+  /** Room labels: centred in the room and fitted inside its walls (view/labelFit.ts), as lines in a box of width × height metres; hoverOnly ones show only while their room is hovered or picked. */
+  labels: { text: string; lines: string[]; x: number; y: number; z: number; width: number; height: number; hoverOnly: boolean; roomId: number }[];
   /** Furniture: item ids and accent colours, and per item placed [item, accent, x, y, z, turn] (indexes into those two lists). */
   furniture: { items: string[]; accents: string[]; placed: number[][] };
   buildMs: number;
@@ -212,7 +213,10 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
 
   group.traverse((o) => {
     if (o instanceof THREE.Sprite) {
-      if (o.userData.label && typeof o.userData.roomId === "number") labels.push({ text: (o.userData.text as string) ?? "", x: o.position.x, y: o.position.y, z: o.position.z, roomId: o.userData.roomId as number });
+      if (o.userData.label && typeof o.userData.roomId === "number") {
+        const u = o.userData;
+        labels.push({ text: (u.text as string) ?? "", lines: (u.lines as string[]) ?? [u.text as string], x: o.position.x, y: o.position.y, z: o.position.z, width: (u.widthM as number) ?? o.scale.x, height: (u.heightM as number) ?? o.scale.y, hoverOnly: !!u.hoverOnly, roomId: u.roomId as number });
+      }
       return;
     }
     const mesh = o as THREE.Mesh | THREE.LineSegments;

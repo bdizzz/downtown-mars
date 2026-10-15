@@ -144,23 +144,29 @@ public partial class HoleScene : Node3D
         if (!Dev.Off("labels"))
         foreach (var l in scene.GetProperty("labels").EnumerateArray())
         {
+            // Centred in its room and fitted to the box the bridge gives it (view/labelFit.ts), so it never crosses a wall.
+            var text = string.Join("\n", l.GetProperty("lines").EnumerateArray().Select(x => x.GetString()));
+            var hoverOnly = l.GetProperty("hoverOnly").GetBoolean();
             var label = new Label3D
             {
                 Visible = !CutAway(_cut, new Vector3(l.GetProperty("x").GetSingle(), 0, l.GetProperty("z").GetSingle())),
-                Text = l.GetProperty("text").GetString(),
+                Text = hoverOnly ? "" : text,
                 Position = new Vector3(l.GetProperty("x").GetSingle(), l.GetProperty("y").GetSingle(), l.GetProperty("z").GetSingle()),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                 FontSize = 48,
-                PixelSize = 0.01f,
                 OutlineSize = 10,
                 Modulate = new Color(1, 0.95f, 0.9f),
                 OutlineModulate = new Color(0.1f, 0.05f, 0.04f, 0.8f),
                 NoDepthTest = false,
             };
+            label.PixelSize = FitPixelSize(label, text, l.GetProperty("width").GetSingle(), l.GetProperty("height").GetSingle());
             label.Layers = LabelLayers(label.Position.Y);
             label.SetMeta("room", l.GetProperty("roomId").GetInt32());
+            label.SetMeta("height", l.GetProperty("height").GetSingle());
+            if (hoverOnly) label.SetMeta("hoverText", text);
             _labels!.AddChild(label);
         }
+        _hoverLabel = null;
         _badgesKey = "";
         SetBadges(_badged);
     }
@@ -185,7 +191,7 @@ public partial class HoleScene : Node3D
                     Name = "Badge",
                     Layers = l.Layers,
                     Text = "⚠",
-                    Position = new Vector3(0, BadgeAbove, 0),
+                    Position = new Vector3(0, l.GetMeta("height", LineM).AsSingle() / 2 + BadgeM / 2, 0),
                     Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
                     FontSize = 56,
                     PixelSize = 0.01f,
@@ -197,8 +203,29 @@ public partial class HoleScene : Node3D
         }
     }
 
-    /// <summary>How far above a room's label its trouble badge floats, metres (the web's BADGE_ABOVE).</summary>
-    const float BadgeAbove = 0.9f;
+    /// <summary>A one-line label's height, and the room over it for its trouble badge, metres (the web's LINE_M and BADGE_M, view/labelFit.ts).</summary>
+    const float LineM = 1.1f, BadgeM = 0.6f;
+    /// <summary>The most a label's pixel is, metres: its look when it has room to spare.</summary>
+    const float LabelPixel = 0.01f;
+
+    /// <summary>A label's pixel size, so its text (outline and all) fits the box the bridge fitted to its room.</summary>
+    static float FitPixelSize(Label3D label, string text, float width, float height)
+    {
+        var font = label.Font ?? ThemeDB.FallbackFont;
+        var size = font.GetMultilineStringSize(text, HorizontalAlignment.Center, -1, label.FontSize) + Vector2.One * 2 * label.OutlineSize;
+        if (size.X <= 0 || size.Y <= 0) return LabelPixel;
+        return Mathf.Min(LabelPixel, Mathf.Min(width / size.X, height / size.Y));
+    }
+
+    int? _hoverLabel;
+    /// <summary>Labels too big for their room show only while it's hovered or picked (T-077): this room's, if it has one.</summary>
+    public void ShowHoverLabel(int? room)
+    {
+        if (room == _hoverLabel || _labels == null) return;
+        _hoverLabel = room;
+        foreach (var l in _labels.GetChildren().OfType<Label3D>())
+            if (l.HasMeta("hoverText")) l.Text = room is int id && l.GetMeta("room").AsInt32() == id ? l.GetMeta("hoverText").AsString() : "";
+    }
 
     /// <summary>
     /// Lamps on these floors light up, the rest are off (each light costs every pixel it might reach);
