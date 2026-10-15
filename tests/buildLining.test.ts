@@ -6,8 +6,7 @@ import { liningOf } from "../src/sim/materials";
 import type { Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { withConstructionTime } from "./worlds";
-import { palette, place } from "../src/bridge/build";
-import { floorSpan, polar, ringRadii, slotAngles } from "../src/render3d/cylinder";
+import { liningFields } from "../src/view/interaction";
 
 // Building straight in a lining (T-038): the room's cost plus the lining's
 // from bare rock, as a refit would charge, but no refit work: just the room's
@@ -22,13 +21,6 @@ function hole(): SimState {
   return s;
 }
 const room = (s: SimState, id: number) => s.layout.rooms.find((r) => r.id === id)!;
-/** The world point in the middle of a slot, as the viewer would send it. */
-function ringCentre(s: SimState, floor: number, r: number, slot: number): [number, number, number] {
-  const [a0, a1] = slotAngles(slot, s.layout.hole.ringSlots[r - 1]!);
-  const [inner, outer] = ringRadii(s.layout.hole, r);
-  const [y0, y1] = floorSpan(floor);
-  return polar((inner + outer) / 2, (a0 + a1) / 2, (y0 + y1) / 2);
-}
 const job = (s: SimState, id: number) => s.construction?.queue.find((j) => j.roomId === id);
 
 describe("building in a lining", () => {
@@ -74,18 +66,12 @@ describe("building in a lining", () => {
     expect(applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 2), material: "gold" })).toMatchObject({ ok: false });
   });
 
-  it("the Godot bridge offers the linings and builds in the one in hand", () => {
-    const s = hole();
-    const p = palette(s);
-    expect(p.linings[0]).toMatchObject({ id: "rock", name: "Bare rock" });
-    expect(p.linings.find((l) => l.id === "brick")?.cost).toBe("Brick 8 a cell");
-    expect(p.rooms.find((r) => r.id === "bunk_dorm")?.lineable).toBe(true);
-    expect(p.rooms.find((r) => r.id === "stairwell")?.lineable).toBe(false);
-    // Pointing at ring 1, floor 1: the command carries the lining.
-    const at = ringCentre(s, 1, 1, 3);
-    const placed = place(s, { room: "bunk_dorm", shape: [2, 1], lining: "brick_fine" }, at, false);
-    expect(placed.command).toMatchObject({ type: "build", room: "bunk_dorm", material: "brick", finish: "fine" });
-    expect(place(s, { room: "bunk_dorm", shape: [2, 1], lining: "rock" }, at, false).command).not.toHaveProperty("material");
+  // The bridge (src/bridge, type-checked apart) spreads the same fields into its build command.
+  it("a build tool's lining becomes the command's material and finish, nothing for bare rock", () => {
+    expect(liningFields("brick_fine")).toEqual({ material: "brick", finish: "fine" });
+    expect(liningFields("metal")).toEqual({ material: "metal", finish: "base" });
+    expect(liningFields("rock")).toEqual({});
+    expect(liningFields(undefined)).toEqual({});
   });
 
   it("undo and cancelling give the lining back too", () => {
