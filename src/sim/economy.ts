@@ -5,7 +5,7 @@ import { modifiers, type Modifiers } from "./ordinances";
 import { cropDef, resourceDef, resourceDefs } from "./resources";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
-import { countStage, needsWeight, type Cohort } from "./people";
+import { availableAdults, awayCount, injuredCount, needsWeight, type Cohort } from "./people";
 import { storageCaps } from "./storage";
 import { noteMade } from "./origins";
 import { stormOutput } from "./weather";
@@ -191,8 +191,8 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   const status: Record<number, RoomStatus> = {};
 
   // 1. Staff, highest priority first. Rooms the player stood down take no one.
-  // Only adults work.
-  const adults = countStage(state, "adult");
+  // Only adults work, and not those away on an event or healing from one (T-151).
+  const adults = availableAdults(state);
   let free = adults;
   const down = new Map<number, string>();
   for (const r of rooms) {
@@ -205,7 +205,7 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
     free -= got;
     status[r.id] = { staff: got, staffNeeded: need, rate: 0 };
   }
-  state.workforce = { total: adults, employed: adults - free };
+  state.workforce = { total: adults, employed: adults - free, away: awayCount(state), injured: injuredCount(state) };
 
   // 2. Run rooms. Pure producers (solar) go first so power is there for the rest,
   // then treatment, draining waste first so less of what the others make overflows.

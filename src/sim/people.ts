@@ -28,6 +28,7 @@ export const people = raw as unknown as {
   births: { minHappiness: number; perAdultPerDay: number };
   school: { familySize: number; unschooledComfort: number };
   elderCare: { affectedPerElder: number; uncaredHealth: number };
+  injury: { clinicSpeedup: number };
   death: { soilPerPerson: number; griefPerUnrested: number; griefMaxComfort: number; griefFadePerDay: number };
   migration: {
     leaveBelow: number;
@@ -61,6 +62,21 @@ export function countStage(state: SimState, stage: Stage): number {
 
 export function stageCounts(state: SimState): Record<Stage, number> {
   return { child: countStage(state, "child"), adult: countStage(state, "adult"), elder: countStage(state, "elder") };
+}
+
+/** Colonists away on events, out of the workforce. */
+export function awayCount(state: SimState): number {
+  return (state.events?.underway ?? []).reduce((n, w) => n + (w.crew ?? 0), 0);
+}
+
+/** Colonists healing from events, out of the workforce. */
+export function injuredCount(state: SimState): number {
+  return (state.events?.healing ?? []).reduce((n, h) => n + h.count, 0);
+}
+
+/** Adults who could be put to work or sent out: those not away or healing. */
+export function availableAdults(state: SimState): number {
+  return Math.max(0, countStage(state, "adult") - awayCount(state) - injuredCount(state));
 }
 
 /** Keep the head count everything else reads in step with the cohorts. */

@@ -42,6 +42,10 @@
     "minAdultsLeft": 4,
     "culturePull": 1
   },
+  "injury": {
+    "_note": "Colonists hurt on events (T-151) are out of work while they heal; nobody dies and everyone heals. With a clinic in reach of every home they heal this many times as fast (the hole's clinic coverage scales it).",
+    "clinicSpeedup": 2
+  },
   "death": {
     "_note": "Elders who pass away rest in a crypt. With no crypt space, grief weighs on comfort until it fades. Under 'Return to the soil' they become soil instead.",
     "soilPerPerson": 10,
