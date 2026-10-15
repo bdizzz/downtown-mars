@@ -20,3 +20,4 @@ Where a previewed segment runs beside or through uncut rock, lift its preview to
 
 ## History
 - 2026-10-13 20:43 opened from N-0093
+- 2026-10-15 11:22 building on t-163-first-person-spawn
