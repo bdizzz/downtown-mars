@@ -20,14 +20,20 @@ import { answerVisit } from "./visits";
 import { answerEvent, consoleEvent } from "./events";
 import { padReady } from "./earth";
 import { roomDef } from "./rooms";
-import { canLine, corridorRefitPlan, corridorRefitRefusal, flooringDef, MATERIALS, refitPlan, refitRefusal, refitWords } from "./materials";
+import { buildLiningCost, canLine, corridorRefitPlan, corridorRefitRefusal, flooringDef, liningOf, MATERIALS, refitPlan, refitRefusal, refitWords, type WallStep } from "./materials";
+import type { RoomInstance } from "./placement";
 import { buildShowcase } from "./showcase";
 import type { SimState } from "./state";
 import type { DepositKind } from "./mapgeo";
 
 export type SimCommand =
-  /** `confirmed`: the player has agreed to fill in any corridors inside the footprint. */
-  | { type: "build"; room: string; at: Location; confirmed?: boolean }
+  /**
+   * `confirmed`: the player has agreed to fill in any corridors inside the footprint.
+   * `material` and `finish`: build it straight in that lining (T-038), paying for the
+   * lining from bare rock on top, in the room's own build time. Ignored for rooms that
+   * can't be lined (stairs, empty rooms…).
+   */
+  | { type: "build"; room: string; at: Location; confirmed?: boolean; material?: string; finish?: string }
   | { type: "demolish"; roomId: number }
   | { type: "undoBuild"; roomId: number }
   | { type: "setDrill"; active: boolean }
@@ -175,11 +181,21 @@ function drawCorridors(state: SimState, edges: string[], finish: string, all = f
   return { ok: true };
 }
 
+/** Everything paid for a room's lining from bare rock back, as when a room built in one is undone or never got built. */
+function refundLining(state: SimState, room: RoomInstance): void {
+  for (const [id, amt] of Object.entries(buildLiningCost(room.type, room.at, room.cells.length, liningOf(room)))) state.resources[id] = (state.resources[id] ?? 0) + amt;
+}
+
 function apply(state: SimState, cmd: SimCommand): CommandResult {
   const layout = state.layout;
   switch (cmd.type) {
     case "build": {
-      const check = checkBuild(layout, state.resources, cmd.room, cmd.at, config, holeGates(state));
+      let lining: WallStep | undefined;
+      if (cmd.material !== undefined) {
+        lining = MATERIALS.walls.find((w) => w.material === cmd.material && w.finish === (cmd.finish ?? "base"));
+        if (!lining) return { ok: false, reason: `No lining "${cmd.material}" (${cmd.finish ?? "base"})` };
+      }
+      const check = checkBuild(layout, state.resources, cmd.room, cmd.at, config, holeGates(state), lining);
       if (!check.ok) return { ok: false, reason: check.reason };
       if (check.destroys?.length) {
         const n = check.destroys.length;
@@ -211,6 +227,16 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         recomputeAccess(layout);
         return { ok: true };
       }
+      // Built straight in a lining: paid for now, and it goes in with the room, in the room's own build time.
+      const extra = buildLiningCost(room.type, room.at, room.cells.length, lining);
+      if (lining && Object.keys(extra).length) {
+        for (const [id, amt] of Object.entries(extra)) {
+          state.resources[id] = (state.resources[id] ?? 0) - amt;
+          record(state, id, "out", CONSTRUCTION, amt);
+        }
+        room.material = lining.material;
+        if (lining.finish === "fine") room.finish = lining.finish;
+      }
       room.builtTick = state.tick;
       queueRoom(state, room, config);
       recomputeAccess(layout);
@@ -231,6 +257,8 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         // Blueprints and rooms still waiting in the queue were never built: a full refund.
         const unbuilt = room.planned || room.building;
         refund(state.resources, room.type, (unbuilt ? 1 : config.economy.demolishRefund) * pieces);
+        // A room that was to be built in a lining: that comes back too.
+        if (unbuilt) refundLining(state, room);
         dropRoomJobs(state, room.id);
       }
       return result;
@@ -244,6 +272,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       const result = demolishRoom(layout, cmd.roomId);
       if (result.ok) {
         refund(state.resources, room.type, 1);
+        refundLining(state, room);
         dropRoomJobs(state, room.id);
       }
       return result;

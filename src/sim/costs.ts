@@ -3,10 +3,18 @@ import { checkPlacement, type CheckResult, type Layout, type Location } from "./
 import { resourceDef } from "./resources";
 import type { DepositKind } from "./mapgeo";
 import { roomDef } from "./rooms";
+import { buildLiningCost, type WallStep } from "./materials";
 
-/** What's missing to pay for a room, e.g. "Needs 15 more metal", or null if affordable. */
-export function missingCost(resources: Record<string, number>, type: string): string | null {
-  const short = Object.entries(roomDef(type).cost)
+/** A room's cost plus anything on top (a lining to build it in). */
+export function withExtra(type: string, extra: Record<string, number> = {}): Record<string, number> {
+  const cost = { ...roomDef(type).cost };
+  for (const [id, v] of Object.entries(extra)) cost[id] = (cost[id] ?? 0) + v;
+  return cost;
+}
+
+/** What's missing to pay for a room (and anything on top, `extra`), e.g. "Needs 15 more metal", or null if affordable. */
+export function missingCost(resources: Record<string, number>, type: string, extra: Record<string, number> = {}): string | null {
+  const short = Object.entries(withExtra(type, extra))
     .map(([id, amt]) => [id, Math.ceil(amt - Math.floor(resources[id] ?? 0))] as const)
     .filter(([, gap]) => gap > 0);
   if (!short.length) return null;
@@ -39,7 +47,7 @@ export function siteRefusal(type: string, gates: string[]): string | null {
   return null;
 }
 
-/** Placement rules, the site, and cost: what the build preview and the build command both use. */
+/** Placement rules, the site, and cost (with the lining to build it in, if any): what the build preview and the build command both use. */
 export function checkBuild(
   layout: Layout,
   resources: Record<string, number>,
@@ -47,12 +55,13 @@ export function checkBuild(
   at: Location,
   cfg: SimConfig = config,
   gates: string[] = [],
+  lining?: WallStep | null,
 ): CheckResult {
   const check = checkPlacement(layout, type, at, cfg);
   if (!check.ok) return check;
   const site = siteRefusal(type, gates);
   if (site) return { ok: false, reason: site, cells: check.cells, surfaceCells: check.surfaceCells };
-  const missing = missingCost(resources, type);
+  const missing = missingCost(resources, type, buildLiningCost(type, at, check.cells.length, lining));
   return missing ? { ok: false, reason: missing, cells: check.cells, surfaceCells: check.surfaceCells } : check;
 }
 
