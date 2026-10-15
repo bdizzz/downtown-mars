@@ -1,7 +1,7 @@
 ---
 id: T-163
 title: First person never starts stuck in the shaft on floors without a gallery tube
-status: open
+status: done
 size: S
 area: render3d, godot
 touches: [src/render3d/stage3d.ts, godot/src/]
@@ -20,3 +20,5 @@ Search the floor's walkable places (corridors, tubes, walk-through rooms, then a
 
 ## History
 - 2026-10-12 19:55 opened from N-0087
+- 2026-10-15 11:22 building on t-163-first-person-spawn
+- 2026-10-15 11:29 built

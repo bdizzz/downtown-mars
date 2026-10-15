@@ -29,7 +29,7 @@ import { isoFitDistance } from "./isoReach";
 import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { setPanelDust } from "./surface3d";
-import { buildLayout, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
+import { buildLayout, corridorGhostY, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, makeDome, makeLander, placeLander, surfaceSpotGeometry } from "./scenery3d";
 import { makeDrillRig, type DrillRig } from "./drillRig";
 import { makeCollar } from "./collar3d";
@@ -54,7 +54,7 @@ const STORM_DIM = { sun: 0.7, sky: 0.3 };
 const STORM_EASE = 0.8;
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, touchFirst, type Gesture } from "../view/touch";
 import { createWalkPad } from "./joystick";
-import { clear as walkClear, drinkHere, stairLift, stairsHere, step as walkStep } from "../view/walk";
+import { drinkHere, footing, footingNear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 import { createDrink } from "./drink3d";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Three
@@ -91,7 +91,7 @@ const ISO_PAN = { speed: 0.6, minSpeed: 12, reach: 1.3 };
 const ISO = { start: 1.6, min: 12, pad: 1.1, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
 /** First person: how finely and how far to look for room to stand on another floor (m), eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
 // Turning (radians a pixel) at the settings' look speed of 1: by dragging, and with mouse look. Godot's are the same, per point.
-const WALK = { searchStep: 0.5, searchReach: 40, eye: 1.8, speed: 4.5, run: 10, turn: 0.004, lookTurn: 0.0035, keyTurn: 1.8 };
+const WALK = { eye: 1.8, speed: 4.5, run: 10, turn: 0.004, lookTurn: 0.0035, keyTurn: 1.8 };
 /** Looking up and down (first person) stops just short of straight up or down. */
 const MAX_PITCH = Math.PI / 2 - 0.02;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
@@ -1013,7 +1013,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!layout) return;
     const e = edgeById(layout.hole, id);
     if (!e) return;
-    const y = floorSpan(e.floor)[0] + 0.08;
+    // On the rock's top where it runs through uncut rock (T-169); on the floor for a room's windows, and when walking.
+    const y = room || view.mode === "walk" ? floorSpan(e.floor)[0] + 0.08 : corridorGhostY(layout, e);
     const side = room ? (roomSide(layout, room, e) ?? undefined) : undefined;
     const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y, side), solid(color, 0.55));
     strip.renderOrder = 9;
@@ -1287,37 +1288,28 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     dirty = true;
   }
 
-  /** Stand on the gallery of the floor you were looking at, facing along it. */
+  /**
+   * Stand on the gallery of the floor you were looking at, facing along it; with no gallery tube there,
+   * on the nearest corridor or room (another floor's if this one has nowhere), never in the open shaft.
+   */
   function placeWalker(): void {
     if (!hole || !layout) return;
     const floor = Math.min(hole.floors, Math.max(1, pickedFloor ?? floorAtY(cam.y)));
     const r = (openShaftRadius(hole) + hole.shaftRadiusM) / 2;
-    walker.floor = floor;
-    walker.x = r * Math.cos(cam.theta);
-    walker.z = r * Math.sin(cam.theta);
+    const spot = footingNear(layout, floor, r * Math.cos(cam.theta), r * Math.sin(cam.theta));
+    walker.floor = spot?.floor ?? floor;
+    walker.x = spot?.x ?? r * Math.cos(cam.theta);
+    walker.z = spot?.z ?? r * Math.sin(cam.theta);
     walker.yaw = cam.theta + Math.PI / 2;
     walker.pitch = 0;
     walkerPlaced = true;
   }
 
-  /** Put the walker on another floor: straight down (or up) if there's room, else the nearest spot there is, else the gallery. */
+  /** Put the walker on another floor: straight down (or up) if there's room, else the nearest spot there is; never the open shaft. */
   function moveWalkerTo(floor: number): void {
     if (!hole || !layout || floor < 1 || floor > hole.floors) return;
-    const { x, z } = walker;
-    let spot: [number, number] | null = walkClear(layout, floor, x, z) ? [x, z] : null;
-    // Rings of candidates, each a little further out.
-    for (let d = WALK.searchStep; !spot && d <= WALK.searchReach; d += WALK.searchStep) {
-      const n = Math.max(8, Math.ceil((TAU * d) / WALK.searchStep));
-      for (let i = 0; i < n && !spot; i++) {
-        const a = (i / n) * TAU;
-        if (walkClear(layout, floor, x + d * Math.cos(a), z + d * Math.sin(a))) spot = [x + d * Math.cos(a), z + d * Math.sin(a)];
-      }
-    }
-    if (!spot) {
-      const r = (openShaftRadius(hole) + hole.shaftRadiusM) / 2;
-      const a = Math.atan2(z, x);
-      spot = [r * Math.cos(a), r * Math.sin(a)];
-    }
+    const spot = footing(layout, floor, walker.x, walker.z);
+    if (!spot) return; // nowhere to stand on that floor: stay where you are
     walker.floor = floor;
     [walker.x, walker.z] = spot;
     applyCamera();

@@ -351,7 +351,7 @@ public partial class CameraRig : Node3D
             var f = new Vector3(Mathf.Cos(_lookYaw), 0, Mathf.Sin(_lookYaw));
             var r = new Vector3(-f.Z, 0, f.X);
             if (Walker is Walker w && Walker.Has(FloorAt(_pos.Y)) && !_onFoot)
-                _onFoot = w.Place(FloorAt(_pos.Y), new Vector2(_pos.X, _pos.Z));
+                _onFoot = w.PlaceNear(FloorAt(_pos.Y), new Vector2(_pos.X, _pos.Z));
             if (_onFoot && Walker is Walker walker)
             {
                 // On foot: the walker decides where a step lands (and which floor).

@@ -4,7 +4,7 @@ import { config } from "../src/sim/config";
 import { ensureFloors, roomAt, type Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { openShaftRadius, ringRadii, slotAngles } from "../src/render3d/cylinder";
-import { clear, drinkHere, drinkSpots, flights, OPEN, regionAt, stairLift, stairsHere, step, walkable } from "../src/view/walk";
+import { clear, drinkHere, drinkSpots, flights, footing, footingNear, OPEN, regionAt, stairLift, stairsHere, step, walkable } from "../src/view/walk";
 import { doorways } from "../src/view/doors";
 import { furnish, isFlat } from "../src/view/furnish";
 import { allRock } from "./worlds";
@@ -121,6 +121,24 @@ describe("walking in first person", () => {
     expect(walkable(s.layout, 1, rr * Math.cos(a), rr * Math.sin(a))).toBe(true);
     // Well off to the side of it: rock.
     expect(walkable(s.layout, 1, ...mid(s, 3, 7))).toBe(false);
+  });
+
+  it("starts on a corridor, not in the open shaft, on a floor with no gallery tube (T-163)", () => {
+    const s = site();
+    const h = s.layout.hole;
+    const g = (openShaftRadius(h) + h.shaftRadiusM) / 2;
+    expect(walkable(s.layout, 2, g, 0.5)).toBe(false);
+    // Nowhere to stand on floor 2 yet: the nearest floor with somewhere is floor 1.
+    expect(footing(s.layout, 2, g, 0.5)).toBeNull();
+    expect(footingNear(s.layout, 2, g, 0.5)?.floor).toBe(1);
+    // A spoke through the rock of ring 3, far from the gallery spot: that's where you stand.
+    applyCommand(s, { type: "drawCorridors", edges: ["R2.3.6"], finish: "rock" });
+    const spot = footingNear(s.layout, 2, g, 0.5)!;
+    expect(spot.floor).toBe(2);
+    expect(clear(s.layout, 2, spot.x, spot.z)).toBe(true);
+    expect(Math.hypot(spot.x, spot.z)).toBeGreaterThan(h.shaftRadiusM + 2 * 10);
+    // On the gallery of floor 1, you stay put.
+    expect(footing(s.layout, 1, g, 0.5)).toEqual([g, 0.5]);
   });
 
   it("slides along a wall instead of stopping dead, and never walks into one", () => {
