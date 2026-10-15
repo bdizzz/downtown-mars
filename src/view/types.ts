@@ -16,7 +16,8 @@ export type Pick =
   | { kind: "rock" };
 
 export type Tool =
-  | { kind: "build"; room: string; shape: [number, number] }
+  /** `lining`: build it straight in that lining ("brick_fine", see materials.ts liningId); absent is bare rock. */
+  | { kind: "build"; room: string; shape: [number, number]; lining?: string }
   | { kind: "demolish" }
   /**
    * Draw corridors along borders, in a finish; with erase, remove them. With bulkhead, fit (or take out)
@@ -66,6 +67,9 @@ export interface PendingBuild {
   at: Location;
   destroys: string[];
   strands: { rooms: number[]; corridors: string[] };
+  /** The lining it's to be built in, as the build command takes it. */
+  material?: string;
+  finish?: string;
 }
 
 /** What to outline in red while a warning is up: corridors to be lost, and what they'd cut off. */
