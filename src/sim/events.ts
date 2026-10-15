@@ -7,7 +7,8 @@ import { postMessage } from "./messages";
 import { capacities } from "./economy";
 import { resourceDef } from "./resources";
 import { addNotable } from "./notables";
-import { addAdults, hash01 } from "./people";
+import { careCoverage } from "./care";
+import { addAdults, availableAdults, hash01, people } from "./people";
 import { airAmount, airPct } from "./air";
 import { record } from "./ledger";
 import type { Cell } from "./placement";
@@ -52,11 +53,13 @@ export interface EventEffect {
 
 /**
  * What a wager puts up (F-016): resources taken from stock when it's agreed and held until it
- * resolves, then given back as its outcome says. `min` is the least share of it you can commit
- * instead (T-152); leave it out and it's all or nothing.
+ * resolves, then given back as its outcome says, and a crew of colonists, out of the workforce
+ * until it's back (T-151). `min` is the least share of it you can commit instead (T-152); leave
+ * it out and it's all or nothing.
  */
 export interface EventStake {
-  resources: Record<string, number>;
+  resources?: Record<string, number>;
+  colonists?: number;
   min?: number;
 }
 
@@ -72,6 +75,8 @@ export interface EventOutcome extends EventEffect {
   weightAtMin?: number;
   returns?: number;
   unless?: string[];
+  /** Some of the crew come back hurt: this share of them (at least one), out of work while they heal for `days` (T-151). */
+  injures?: { share: number; days: number };
 }
 
 export interface EventChoice extends EventEffect {
@@ -125,6 +130,8 @@ export interface Underway {
   share: number;
   /** What's held, to be given back as the outcome says. */
   held: Record<string, number>;
+  /** Colonists away with it, out of the workforce until it's back (T-151). */
+  crew?: number;
   startTick: number;
   dueTick: number;
   floor?: number;
@@ -143,6 +150,8 @@ export interface EventsState {
   followUps: { dueTick: number; effect: EventEffect; kind: string }[];
   /** Wagers away, waiting to resolve (older saves have none). */
   underway?: Underway[];
+  /** Colonists hurt on events, out of work until they've healed (T-151). Nobody dies, and everyone heals. */
+  healing?: { count: number; daysLeft: number }[];
   nextId: number;
   /** Last tick each kind of event arrived, for cooldowns. */
   lastTick: Record<string, number>;
@@ -222,8 +231,9 @@ function roll(state: SimState, ...about: number[]): number {
   return hash01(eventsOf(state).seed, state.holeId, ...about);
 }
 
-function fill(text: string, e: Partial<PendingEvent> & { back?: string; gains?: string }): string {
+function fill(text: string, e: Partial<PendingEvent> & { back?: string; gains?: string; injured?: string }): string {
   return text
+    .replaceAll("{injured}", e.injured ?? "")
     .replaceAll("{back}", e.back ?? "")
     .replaceAll("{gains}", e.gains ?? "")
     .replaceAll("{floor}", String(e.floor ?? ""))
@@ -256,6 +266,11 @@ export function stakeMin(choice: EventChoice): number {
   return choice.stake ? Math.max(0, Math.min(1, choice.stake.min ?? 1)) : 1;
 }
 
+/** The crew committing `share` of a choice's stake sends, in whole colonists. */
+export function stakeCrew(choice: EventChoice, share: number): number {
+  return Math.round((choice.stake?.colonists ?? 0) * share);
+}
+
 /** What committing `share` of a choice's stake takes from stock, in whole units. */
 export function stakeAmounts(choice: EventChoice, share: number): Record<string, number> {
   const out: Record<string, number> = {};
@@ -264,19 +279,30 @@ export function stakeAmounts(choice: EventChoice, share: number): Record<string,
 }
 
 /**
- * A stake as a stepper sees it (T-152): counted in its first resource, from the least you can
- * commit to what's asked, and the most the hole can put up now (below `min` when it can't).
- * `name` is the resource's, lowercase, for the stepper's label.
+ * A stake as a stepper sees it (T-152): counted in its crew if it has one, else its first
+ * resource, from the least you can commit to what's asked, and the most the hole can put up now
+ * (below `min` when it can't). `name` is the resource's, lowercase ("colonists" for a crew), for
+ * the stepper's label.
  */
 export type StakeRange = { resource: string; name: string; asked: number; min: number; max: number };
 export function stakeRange(state: SimState, choice: EventChoice): StakeRange | null {
-  const [resource, asked] = Object.entries(choice.stake?.resources ?? {})[0] ?? [];
+  const crew = choice.stake?.colonists ?? 0;
+  const [resource, asked] = crew > 0 ? ["colonists", crew] : (Object.entries(choice.stake?.resources ?? {})[0] ?? []);
   if (!resource || !asked) return null;
   const min = Math.ceil(asked * stakeMin(choice) - 1e-9);
   let max = asked;
-  const short = (n: number) => Object.entries(stakeAmounts(choice, n / asked)).some(([id, v]) => (state.resources[id] ?? 0) - v < -1e-9);
+  const short = (n: number) => stakeShort(state, choice, n / asked) !== null;
   while (max >= min && short(max)) max--;
-  return { resource, name: resourceDef(resource).name.toLowerCase(), asked, min, max };
+  return { resource, name: resource === "colonists" ? "colonists" : resourceDef(resource).name.toLowerCase(), asked, min, max };
+}
+
+/** What the hole is short of to commit `share` of a choice's stake, or null if it has it all. */
+function stakeShort(state: SimState, choice: EventChoice, share: number): string | null {
+  if (stakeCrew(choice, share) > availableAdults(state)) return "Not enough colonists free to go";
+  for (const [id, v] of Object.entries(stakeAmounts(choice, share))) {
+    if ((state.resources[id] ?? 0) - v < -1e-9) return `Not enough ${resourceDef(id).name.toLowerCase()}`;
+  }
+  return null;
 }
 
 /** Why a choice can't be picked right now (committing `share` of its stake), or null if it can. */
@@ -288,10 +314,7 @@ export function choiceRefusal(state: SimState, choice: EventChoice, padWorks: bo
   for (const [id, v] of Object.entries(choice.resources ?? {})) {
     if (v < 0 && (state.resources[id] ?? 0) + v < -1e-9) return `Not enough ${id}`;
   }
-  for (const [id, v] of Object.entries(stakeAmounts(choice, share))) {
-    if ((state.resources[id] ?? 0) - v < -1e-9) return `Not enough ${resourceDef(id).name.toLowerCase()}`;
-  }
-  return null;
+  return stakeShort(state, choice, share);
 }
 
 /** Answer an event with one of its choices, committing `share` of its stake (all of it if left out). */
@@ -324,6 +347,7 @@ export function answerEvent(
 function wager(state: SimState, cfg: SimConfig, pending: PendingEvent, choice: EventChoice, share: number): void {
   const held = stakeAmounts(choice, share);
   for (const [id, v] of Object.entries(held)) state.resources[id] = Math.max(0, (state.resources[id] ?? 0) - v);
+  const crew = stakeCrew(choice, share);
   const w: Underway = {
     eventId: pending.id,
     kind: pending.kind,
@@ -331,6 +355,7 @@ function wager(state: SimState, cfg: SimConfig, pending: PendingEvent, choice: E
     title: pending.title,
     share,
     held,
+    ...(crew > 0 ? { crew } : {}),
     startTick: state.tick,
     dueTick: state.tick + Math.round((choice.durationDays ?? 0) * cfg.ticksPerDay),
     ...(pending.floor !== undefined ? { floor: pending.floor } : {}),
@@ -373,15 +398,19 @@ export function resolveWager(state: SimState, cfg: SimConfig, w: Underway): stri
   const returns = Math.min(1, ...rolled.map((o) => o.returns ?? 1));
   const back: Record<string, number> = {};
   for (const [id, v] of Object.entries(w.held)) if (Math.round(v * returns) > 0) back[id] = Math.round(v * returns);
+  // The whole crew comes home (nobody dies on events); the worst injury rolled sends some to heal.
+  const hurt = rolled.filter((o) => o.injures).sort((a, b) => b.injures!.share - a.injures!.share)[0]?.injures;
+  const injured = hurt && w.crew ? Math.min(w.crew, Math.max(1, Math.round(w.crew * hurt.share))) : 0;
+  if (injured > 0) (eventsOf(state).healing ??= []).push({ count: injured, daysLeft: hurt!.days });
   const at = { kind: w.kind, ...(w.floor !== undefined ? { floor: w.floor } : {}) };
   // The stake comes home first (where there's room for it), then each result happens.
   if (Object.keys(back).length) applyEffect(state, cfg, { resources: back }, at);
   for (const o of rolled) {
-    const { id: _id, weight: _w, weightAtMin: _m, returns: _r, unless: _u, ...effect } = o;
+    const { id: _id, weight: _w, weightAtMin: _m, returns: _r, unless: _u, injures: _i, ...effect } = o;
     const resources: Record<string, number> = {};
     for (const [id, v] of Object.entries(o.resources ?? {})) resources[id] = v > 0 ? Math.round(v * w.share) : v;
     const gains = Object.fromEntries(Object.entries(resources).filter(([, v]) => v > 0));
-    const message = o.message && fill(o.message, { back: amountsText(back), gains: amountsText(gains) });
+    const message = o.message && fill(o.message, { back: amountsText(back), gains: amountsText(gains), injured: String(injured) });
     applyEffect(state, cfg, { ...effect, resources, ...(message ? { message } : {}) }, at);
   }
   return rolled.map((o) => o.id);
@@ -562,6 +591,7 @@ export function stepEvents(state: SimState, cfg: SimConfig): void {
     ev.underway = ev.underway!.filter((x) => x !== w);
     resolveWager(state, cfg, w);
   }
+  healInjured(state, cfg);
   ev.moods = ev.moods.filter((m) => state.tick < m.untilTick);
   // Milestones reached: one celebration proposed at a time.
   if (!ev.pending.some((e) => e.kind === "celebration")) {
@@ -571,6 +601,21 @@ export function stepEvents(state: SimState, cfg: SimConfig): void {
   checkAir(state, cfg);
   checkGrayOverflow(state, cfg);
   if (state.tick % cfg.ticksPerDay === 0) dailyEvents(state, cfg);
+}
+
+/**
+ * The injured heal a little every check, faster with a clinic in reach of their homes (the
+ * hole's clinic coverage, as they aren't anyone in particular), and go back to work when healed.
+ */
+function healInjured(state: SimState, cfg: SimConfig): void {
+  const ev = eventsOf(state);
+  if (!ev.healing?.length) return;
+  const speed = 1 + (people.injury.clinicSpeedup - 1) * careCoverage(state);
+  const step = (eventData.checkEveryTicks / cfg.ticksPerDay) * speed;
+  for (const h of ev.healing) h.daysLeft -= step;
+  const healed = ev.healing.filter((h) => h.daysLeft <= 0).reduce((n, h) => n + h.count, 0);
+  ev.healing = ev.healing.filter((h) => h.daysLeft > 0);
+  if (healed) postMessage(state, cfg, `${healed} ${healed === 1 ? "colonist hurt on an event has" : "colonists hurt on an event have"} healed and gone back to work.`, "good");
 }
 
 function o2Text(state: SimState, cfg: SimConfig): string {

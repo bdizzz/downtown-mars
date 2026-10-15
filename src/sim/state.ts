@@ -57,7 +57,8 @@ export interface SimState {
   /** Smoothed net change per game day, by resource id. */
   rates: Record<string, number>;
   population: Population;
-  workforce: { total: number; employed: number };
+  /** Adults who can work (not away on an event or healing from one), how many of them have a post, and those away and healing (T-151). */
+  workforce: { total: number; employed: number; away?: number; injured?: number };
   roomStatus: Record<number, RoomStatus>;
   earth: EarthState;
   /** Dust storms forecast or blowing (absent in older saves until the first tick). */

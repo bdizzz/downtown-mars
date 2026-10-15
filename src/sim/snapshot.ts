@@ -162,7 +162,8 @@ export interface Snapshot {
   construction: { bandwidth: number; jobs: JobView[] };
   /** Cohorts moving on next, soonest first. */
   upcoming: { stage: Stage; count: number; daysLeft: number }[];
-  workforce: { total: number; employed: number };
+  /** Adults who can work (not away on an event or healing from one), how many of them have a post, and those away and healing (T-151). */
+  workforce: { total: number; employed: number; away?: number; injured?: number };
   roomStatus: Record<number, RoomStatus>;
   earth: { ticksToDrop: number; waiting: boolean; padReady: boolean; landed: number };
   /** Dust storms: how hard one is blowing (0 clear to 1), and the days until a forecast one arrives. */

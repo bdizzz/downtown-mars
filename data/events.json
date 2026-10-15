@@ -153,23 +153,23 @@
     },
     {
       "id": "meteorite_run",
-      "_note": "The first wager (T-150), raised only from the console for now: T-154 gives it a trigger, a crew away and injuries.",
+      "_note": "The first wager (T-150), raised only from the console for now: T-154 gives it a trigger. Its crew is away for the trip, and a broken winch can hurt some of them (T-151).",
       "title": "A meteorite came down",
-      "text": "A bright streak fell to the east last night. The surface crew wants to take 10 machinery out to the impact site and see what came down.",
+      "text": "A bright streak fell to the east last night. Four of the surface crew want to take 10 machinery out to the impact site and see what came down.",
       "patienceDays": 1,
       "ignored": { "message": "Nobody answered the surface crew; the impact site waits for someone else." },
       "choices": [
         {
           "id": "go",
           "label": "Send them out",
-          "hint": "The machinery goes with them and is gone for a month. Send less for a smaller haul, and less to lose.",
-          "stake": { "resources": { "machinery": 10 }, "min": 0.5 },
+          "hint": "The crew and the machinery are gone for a month, and the crew is off work. Send fewer for a smaller haul, and less to lose.",
+          "stake": { "resources": { "machinery": 10 }, "colonists": 4, "min": 0.5 },
           "durationDays": 1,
           "message": "The surface crew heads out for the impact site with the machinery. Back next month.",
           "outcomes": [
             [
               { "id": "all_back", "weight": 6, "weightAtMin": 7, "message": "The meteorite crew is back with all their gear ({back})." },
-              { "id": "winch", "weight": 3, "weightAtMin": 2.5, "returns": 0.8, "bad": true, "message": "A winch broke out at the impact site: {back} came home." },
+              { "id": "winch", "weight": 3, "weightAtMin": 2.5, "returns": 0.8, "injures": { "share": 0.25, "days": 2 }, "bad": true, "message": "A winch broke out at the impact site: {back} came home, and {injured} of the crew got hurt and needs time to heal." },
               { "id": "catastrophe", "weight": 1, "weightAtMin": 0.5, "returns": 0, "mood": { "amount": -2, "days": 2 }, "message": "Catastrophic tool failure at the impact site: the crew came home safe, empty-handed and without the machinery." }
             ],
             [

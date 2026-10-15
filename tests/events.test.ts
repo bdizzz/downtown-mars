@@ -20,6 +20,10 @@ import {
 } from "../src/sim/events";
 import { airAmount, airPct } from "../src/sim/air";
 import { isOpen } from "../src/sim/excavation";
+import { careCoverage } from "../src/sim/care";
+import { availableAdults, awayCount, countStage, injuredCount, people, setAdults } from "../src/sim/people";
+import { deserialize, serialize } from "../src/sim/save";
+import { createWorld } from "../src/sim/world";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 
@@ -303,7 +307,7 @@ describe("wagers (F-016)", () => {
   let base: SimState | undefined;
   function trip(seed: number, machinery = 40): SimState {
     const s = (base ??= hole());
-    s.events = { ...eventsOf(s), seed, nextId: 1, pending: [], underway: [], moods: [] };
+    s.events = { ...eventsOf(s), seed, nextId: 1, pending: [], underway: [], healing: [], moods: [] };
     s.resources.machinery = machinery;
     s.resources.ore = 0;
     raiseEvent(s, config, "meteorite_run");
@@ -375,10 +379,12 @@ describe("wagers (F-016)", () => {
 
   it("can't put up what the hole hasn't got, and the stepper stops at what it has", () => {
     const s = trip(1, 7);
-    expect(stakeRange(s, go())).toEqual({ resource: "machinery", name: "machinery", asked: 10, min: 5, max: 7 });
+    // The stepper counts the crew (4, at least 2); 3 of them would take 8 machinery.
+    expect(stakeRange(s, go())).toEqual({ resource: "colonists", name: "colonists", asked: 4, min: 2, max: 2 });
     expect(send(s).ok).toBe(false);
     expect(send(s, 0.7).ok).toBe(true);
     expect(s.resources.machinery).toBe(0);
+    expect(s.events!.underway![0]!.crew).toBe(3);
     const poor = trip(1, 4);
     expect(choiceRefusal(poor, go(), true)).toMatch(/Not enough machinery/);
     expect(stakeRange(poor, go())!.max).toBeLessThan(5);
@@ -394,5 +400,111 @@ describe("wagers (F-016)", () => {
     expect(s.resources.machinery).toBe(40);
     expect(eventMood(s)).toBeLessThan(0);
     expect(s.events!.underway ?? []).toHaveLength(0);
+  });
+});
+
+describe("crews away and the injured (T-151)", () => {
+  const go = () => eventDef("meteorite_run").choices.find((c) => c.id === "go")!;
+  function trip(seed: number): SimState {
+    const s = hole();
+    s.events = { ...eventsOf(s), seed, nextId: 1, pending: [], underway: [], healing: [], moods: [] };
+    s.resources.machinery = 40;
+    raiseEvent(s, config, "meteorite_run");
+    return s;
+  }
+  const send = (s: SimState, share?: number) =>
+    applyCommand(s, { type: "answerEvent", eventId: s.events!.pending[0]!.id, choice: "go", ...(share !== undefined ? { share } : {}) });
+  const every = eventData.checkEveryTicks;
+  /** Run the events alone until `tick`, a check at a time. */
+  const runTo = (s: SimState, tick: number) => {
+    while (s.tick < tick) {
+      s.tick = (Math.floor(s.tick / every) + 1) * every;
+      stepEventsOnly(s);
+    }
+  };
+  /** A seed whose trip breaks a winch (and so hurts one of the crew). */
+  const winchSeed = () => {
+    for (let seed = 1; ; seed++) {
+      const s = trip(seed);
+      send(s);
+      if (resolveWager(s, config, s.events!.underway!.pop()!).includes("winch")) return seed;
+    }
+  };
+
+  it("takes the crew out of the workforce while they're away, and puts them back when they return", () => {
+    const s = trip(3);
+    const adults = availableAdults(s);
+    expect(send(s).ok).toBe(true);
+    expect(awayCount(s)).toBe(4);
+    expect(availableAdults(s)).toBe(adults - 4);
+    step(s, config);
+    expect(s.workforce.total).toBe(adults - 4);
+    expect(s.workforce.away).toBe(4);
+    expect(s.workforce.employed).toBeLessThanOrEqual(adults - 4);
+    // They still live here: away isn't gone.
+    expect(countStage(s, "adult")).toBe(adults);
+    runTo(s, s.events!.underway![0]!.dueTick);
+    expect(awayCount(s)).toBe(0);
+    expect(availableAdults(s) + injuredCount(s)).toBe(adults);
+  });
+
+  it("sends a smaller crew with a smaller stake", () => {
+    const s = trip(3);
+    expect(send(s, 0.5).ok).toBe(true);
+    expect(s.events!.underway![0]).toMatchObject({ crew: 2, held: { machinery: 5 } });
+    expect(awayCount(s)).toBe(2);
+  });
+
+  it("can't send a crew the hole hasn't got free", () => {
+    const s = trip(3);
+    setAdults(s, 1, config);
+    expect(choiceRefusal(s, go(), true)).toMatch(/colonists free/);
+    expect(stakeRange(s, go())!.max).toBeLessThan(2);
+    expect(send(s).ok).toBe(false);
+  });
+
+  it("brings the injured home to heal, out of work until they have, and nobody dies", () => {
+    const s = trip(winchSeed());
+    const adults = availableAdults(s);
+    send(s);
+    runTo(s, s.events!.underway![0]!.dueTick);
+    expect(injuredCount(s)).toBe(1);
+    expect(availableAdults(s)).toBe(adults - 1);
+    expect(countStage(s, "adult")).toBe(adults);
+    expect(s.messages.some((m) => /1 of the crew got hurt/.test(m.text))).toBe(true);
+    // No clinic: the full two days.
+    const back = s.tick;
+    runTo(s, back + 1.5 * day);
+    expect(injuredCount(s)).toBe(1);
+    runTo(s, back + 2 * day);
+    expect(injuredCount(s)).toBe(0);
+    expect(availableAdults(s)).toBe(adults);
+    expect(s.messages.some((m) => /healed and gone back to work/.test(m.text))).toBe(true);
+  });
+
+  it("heals them faster with a clinic in reach", () => {
+    const s = trip(winchSeed());
+    send(s);
+    runTo(s, s.events!.underway![0]!.dueTick);
+    const pop = s.population.count;
+    const none = { who: 0, missing: 0 };
+    s.population.care = { byHome: {}, homeless: { care: 1, school: 1, elders: 1 }, care: { who: pop, missing: 0 }, school: none, elders: none } as never;
+    expect(careCoverage(s)).toBe(1);
+    runTo(s, s.tick + (2 / people.injury.clinicSpeedup) * day);
+    expect(injuredCount(s)).toBe(0);
+  });
+
+  it("keeps the crews away and the injured in a save", () => {
+    const w = createWorld(config);
+    const s = w.holes[0]!;
+    s.resources.machinery = 40;
+    raiseEvent(s, config, "meteorite_run");
+    expect(send(s).ok).toBe(true);
+    eventsOf(s).healing = [{ count: 2, daysLeft: 1.5 }];
+    const loaded = deserialize(serialize(w));
+    if (!loaded.ok) throw new Error(loaded.reason);
+    const h = loaded.world.holes[0]!;
+    expect(awayCount(h)).toBe(4);
+    expect(injuredCount(h)).toBe(2);
   });
 });

@@ -240,6 +240,9 @@ See `PLAN-M16.md`.
 - **Outcomes are tables rolled in turn,** each result an effect with a weight; a later table can rule results out (`unless`: no ore after a catastrophe). The stake comes back by the least `returns` rolled. Rolls use the events' own dice, hashed with the event's id, so they never shift the hole's other luck.
 - **Committing less** (Claude's defaults): a choice's `min` is the least share you can put up; each outcome's weight runs straight from `weightAtMin` to `weight`; and what an outcome finds scales with the share committed (half the machinery, half the ore). The stepper counts in the stake's first resource; the others scale with it.
 - **Odds are never shown** (Bryon): not as numbers, words or bars. Hints describe what could happen, not how likely it is.
+- **Nobody dies on events, and the injured always heal fully** (Bryon, T-151). A crew sent out stays part of the hole (counted, fed, ageing) but leaves the workforce until it's back; the hurt stay out while they heal. `workforce.total` is the adults who can work; `away` and `injured` sit beside it.
+- **Healing is faster with a clinic in reach** (Bryon); since the pools are head counts, not people with homes, it's the hole's clinic coverage that scales it (Claude's default: up to twice as fast).
+- **A stake's crew scales with the share like its resources,** and the stepper counts in the crew when there is one (Claude's default). Only adults not already away or healing can be sent.
 
 ## Decided for the site (Oct 13, F-008 / T-073 / T-020)
 
