@@ -18,7 +18,7 @@ namespace DowntownMars;
 /// </summary>
 public partial class BuildMode : Node3D
 {
-    record Room(string Id, string Name, string Category, int[][] Shapes, bool Surface, string Cost, string? Key, string? Locked, string? Short, JsonElement Card, bool Lineable);
+    record Room(string Id, string Name, string Category, int[][] Shapes, bool Surface, string Cost, string? Key, string? Locked, string? Short, JsonElement Card, bool Lineable, JsonElement? InLining);
 
     readonly Action<object> _send;
     readonly PanelContainer _strip = new();
@@ -253,7 +253,8 @@ public partial class BuildMode : Node3D
             r.TryGetProperty("locked", out var l) ? l.GetString() : null,
             r.TryGetProperty("short", out var s2) ? s2.GetString() : null,
             r.GetProperty("card").Clone(),
-            r.TryGetProperty("lineable", out var ln) && ln.GetBoolean())).ToList();
+            r.TryGetProperty("lineable", out var ln) && ln.GetBoolean(),
+            r.TryGetProperty("inLining", out var il) ? il.Clone() : null)).ToList();
         _linings = msg.TryGetProperty("linings", out var lns)
             ? lns.EnumerateArray().Select(f => (f.GetProperty("id").GetString()!, f.GetProperty("name").GetString()!, f.GetProperty("cost").GetString()!, f.GetProperty("hint").GetString()!)).ToList()
             : new();
@@ -326,8 +327,8 @@ public partial class BuildMode : Node3D
             pick.TooltipText = held != null && !held.Lineable ? $"{held.Name} can't be lined: built in bare rock" : "The material rooms are built in: its cost goes on top of the room's, with no extra build time";
             for (var i = 0; i < _linings.Count; i++)
             {
-                var (_, name, cost, hint) = _linings[i];
-                pick.AddItem($"Built in: {name}  ·  {cost}", i);
+                var (_, name, _, hint) = _linings[i];
+                pick.AddItem($"Built in: {name}", i);
                 pick.SetItemTooltip(i, hint);
             }
             pick.Selected = Math.Max(0, _linings.FindIndex(l => l.id == _lining));
@@ -335,15 +336,18 @@ public partial class BuildMode : Node3D
             {
                 _lining = _linings[(int)i].id;
                 _lastHover = null; // re-ask what placing it costs now
+                CallDeferred(nameof(RefreshRooms)); // the rooms' costs, now in this lining
             };
             _rooms.AddChild(pick);
         }
         foreach (var r in list)
         {
-            var why = r.Locked ?? r.Short;
+            var lined = Lined(r);
+            var shortOf = lined is JsonElement li ? (li.TryGetProperty("short", out var sh) ? sh.GetString() : null) : r.Short;
+            var why = r.Locked ?? shortOf;
             var b = new Button
             {
-                Text = $"{r.Name}{(r.Key != null ? $" [{r.Key}]" : "")}  ·  {r.Cost}",
+                Text = $"{r.Name}{(r.Key != null ? $" [{r.Key}]" : "")}  ·  {(lined is JsonElement lc ? lc.GetProperty("cost").GetString() : r.Cost)}",
                 TooltipText = why ?? "",
                 Alignment = HorizontalAlignment.Left,
                 ToggleMode = true,
@@ -352,7 +356,7 @@ public partial class BuildMode : Node3D
                 FocusMode = Control.FocusModeEnum.None,
                 CustomMinimumSize = new Vector2(280, 0),
             };
-            if (r.Short != null) b.AddThemeColorOverride("font_color", new Color("#e0a070"));
+            if (shortOf != null) b.AddThemeColorOverride("font_color", new Color("#e0a070"));
             var id = r.Id;
             b.SetMeta("highlight", "room:" + id);
             b.Pressed += () => Pick(id);
@@ -364,6 +368,9 @@ public partial class BuildMode : Node3D
         CallDeferred(nameof(PlacePopup));
         ShowCard();
     }
+
+    /// <summary>The room built in the lining picked (one cost for the lot), or null for bare rock or a room that can't be lined.</summary>
+    JsonElement? Lined(Room r) => _lining != BareRock && r.InLining is JsonElement il && il.TryGetProperty(_lining, out var v) ? v : null;
 
     // ---- the room card ----
 
@@ -402,7 +409,8 @@ public partial class BuildMode : Node3D
         // The cost, what the stocks are short of in red.
         var cost = new RichTextLabel { BbcodeEnabled = true, FitContent = true, ScrollActive = false, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(320, 0), MouseFilter = Control.MouseFilterEnum.Ignore };
         cost.AddThemeFontSizeOverride("normal_font_size", 14);
-        cost.Text = string.Join("   ", card.GetProperty("cost").EnumerateArray().Select(c => c.GetProperty("short").GetBoolean() ? $"[color=#f08070]{c.GetProperty("text").GetString()}[/color]" : $"[color=#f3e6d8]{c.GetProperty("text").GetString()}[/color]"));
+        var costs = Lined(room) is JsonElement lined ? lined.GetProperty("cardCost") : card.GetProperty("cost");
+        cost.Text = string.Join("   ", costs.EnumerateArray().Select(c => c.GetProperty("short").GetBoolean() ? $"[color=#f08070]{c.GetProperty("text").GetString()}[/color]" : $"[color=#f3e6d8]{c.GetProperty("text").GetString()}[/color]"));
         _cardRows.AddChild(cost);
         foreach (var l in card.GetProperty("lines").EnumerateArray())
             Line(l.GetProperty("text").GetString()!, 13, l.TryGetProperty("tone", out var t) && Tones.TryGetValue(t.GetString()!, out var c) ? c : new Color("#e0cfbd"));

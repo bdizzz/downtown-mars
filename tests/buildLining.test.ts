@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { applyCommand } from "../src/sim/commands";
 import { finishAll } from "../src/sim/construction";
-import { liningOf } from "../src/sim/materials";
+import { buildLiningCost, liningOf, wallStep } from "../src/sim/materials";
+import { roomDef } from "../src/sim/rooms";
+import { roomCard } from "../src/view/roomCard";
 import type { Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { withConstructionTime } from "./worlds";
@@ -72,6 +74,16 @@ describe("building in a lining", () => {
     expect(liningFields("metal")).toEqual({ material: "metal", finish: "base" });
     expect(liningFields("rock")).toEqual({});
     expect(liningFields(undefined)).toEqual({});
+  });
+
+  it("the room card shows one total: the room's cost with the lining's added in", () => {
+    const dorm = roomDef("bunk_dorm");
+    const extra = buildLiningCost("bunk_dorm", ring(1, 1, 3, 2), 2, wallStep("brick", "base"));
+    expect(roomCard(dorm, { rock: 20, brick: 10 }, null, extra).cost).toEqual([
+      { text: "Rock 20", short: false },
+      { text: "Brick 16", short: true },
+    ]);
+    expect(roomCard(dorm, {}, null).cost.map((c) => c.text)).toEqual(["Rock 20"]);
   });
 
   it("undo and cancelling give the lining back too", () => {

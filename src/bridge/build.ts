@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { config } from "../sim/config";
-import { checkBuild, missingCost, siteRefusal } from "../sim/costs";
+import { checkBuild, missingCost, siteRefusal, withExtra } from "../sim/costs";
 import { holeGates } from "../sim/people";
 import { roomDefs } from "../sim/rooms";
 import type { SimCommand } from "../sim/commands";
@@ -16,7 +16,7 @@ import { proposalSummary, type ProposalSummary } from "../view/corridorProposal"
 import type { Proposal } from "../view/types";
 import { CATEGORY_NAMES, CATEGORY_ORDER, HOTKEYS, shapesFor } from "../view/buildCatalog";
 import { corridorCommand, edgeHoverFor, liningFields, locationFor, surfaceSpots } from "../view/interaction";
-import { buildLiningCost, canLineAt, liningById, liningCost, liningId, MATERIALS } from "../sim/materials";
+import { buildLiningCost, canLineAt, liningById, liningCost, liningId, MATERIALS, type WallStep } from "../sim/materials";
 import { surfaceSpotGeometry } from "../render3d/scenery3d";
 import { resName } from "../ui/format";
 import { roomCard, type CardContent } from "../view/roomCard";
@@ -46,6 +46,15 @@ export interface PaletteRoom {
   card: CardContent;
   /** Can it be built in a lining (T-038)? Not surface buildings, stairs, lifts or empty rooms. */
   lineable: boolean;
+  /** Built in each lining but bare rock (by its first shape): the whole cost as one, whether it's short, and the card's cost lines. */
+  inLining?: Record<string, { cost: string; short?: string; cardCost: CardContent["cost"] }>;
+}
+
+/** What building a room (its first shape) in a lining adds to its cost. */
+function liningExtraFor(type: string, lining: WallStep): Record<string, number> {
+  if (roomDef(type).size === "surface") return {};
+  const [w, d] = shapesFor(roomDef(type))[0]!;
+  return buildLiningCost(type, { kind: "ring", floor: 1, ring: 1, slot: 0, w, d }, w * d * (roomDef(type).floors ?? 1), lining);
 }
 
 export interface PaletteMessage {
@@ -67,19 +76,32 @@ export function palette(state: SimState): PaletteMessage {
   const gates = holeGates(state);
   const rooms = roomDefs
     .filter((d) => d.buildable)
-    .map((d) => ({
-      id: d.id,
-      name: d.name,
-      category: d.category,
-      shapes: shapesFor(d),
-      surface: d.size === "surface",
-      cost: costText(d.cost),
-      ...(HOTKEYS[d.id] ? { key: HOTKEYS[d.id] } : {}),
-      ...(siteRefusal(d.id, gates) ? { locked: siteRefusal(d.id, gates)! } : {}),
-      ...(missingCost(state.resources, d.id) ? { short: missingCost(state.resources, d.id)! } : {}),
-      card: roomCard(d, state.resources, siteRefusal(d.id, gates)),
-      lineable: d.size !== "surface" && canLineAt(d.id, { kind: "ring", floor: 1, ring: 1, slot: 0, w: 1, d: 1 }),
-    }));
+    .map((d) => {
+      const lineable = d.size !== "surface" && canLineAt(d.id, { kind: "ring", floor: 1, ring: 1, slot: 0, w: 1, d: 1 });
+      const inLining = lineable
+        ? Object.fromEntries(
+            MATERIALS.walls.slice(1).map((w) => {
+              const extra = liningExtraFor(d.id, w);
+              const short = missingCost(state.resources, d.id, extra);
+              return [liningId(w), { cost: costText(withExtra(d.id, extra)), ...(short ? { short } : {}), cardCost: roomCard(d, state.resources, null, extra).cost }];
+            }),
+          )
+        : undefined;
+      return {
+        id: d.id,
+        name: d.name,
+        category: d.category,
+        shapes: shapesFor(d),
+        surface: d.size === "surface",
+        cost: costText(d.cost),
+        ...(HOTKEYS[d.id] ? { key: HOTKEYS[d.id] } : {}),
+        ...(siteRefusal(d.id, gates) ? { locked: siteRefusal(d.id, gates)! } : {}),
+        ...(missingCost(state.resources, d.id) ? { short: missingCost(state.resources, d.id)! } : {}),
+        card: roomCard(d, state.resources, siteRefusal(d.id, gates)),
+        lineable,
+        ...(inLining ? { inLining } : {}),
+      };
+    });
   const used = new Set(rooms.map((r) => r.category));
   used.add("circulation");
   return {
@@ -103,9 +125,11 @@ export function palette(state: SimState): PaletteMessage {
   };
 }
 
-/** What changes the palette: the gates, and which rooms the stocks can pay for. */
+/** What changes the palette: the gates, and which rooms the stocks can pay for, bare and in each lining. */
 export function paletteKey(state: SimState): string {
-  return state.holeId + ":" + holeGates(state).join(",") + ":" + roomDefs.map((d) => (d.buildable && missingCost(state.resources, d.id) ? 1 : 0)).join("");
+  const short = (d: (typeof roomDefs)[number]) =>
+    !d.buildable ? "" : MATERIALS.walls.map((w) => (missingCost(state.resources, d.id, liningExtraFor(d.id, w)) ? 1 : 0)).join("");
+  return state.holeId + ":" + holeGates(state).join(",") + ":" + roomDefs.map(short).join("");
 }
 
 export interface BuildTool {
@@ -198,7 +222,7 @@ export function hover(state: SimState, tool: BuildTool, at: [number, number, num
   const lining = liningById(tool.lining);
   const check = checkBuild(state.layout, state.resources, tool.room, where, config, holeGates(state), lining);
   const extra = buildLiningCost(tool.room, where, check.cells.length, lining);
-  if (Object.keys(extra).length) cost = `${cost} + ${costText(extra)} in ${lining!.name.toLowerCase()}`;
+  if (Object.keys(extra).length) cost = costText(withExtra(tool.room, extra));
   let text = check.ok ? (check.note ?? (check.planned ? "A blueprint: builds when its floor is dug" : check.unconnected ? "No corridor reaches it yet: it won't work until one does" : "")) : check.reason;
   if (check.ok && check.destroys?.length) text = `Cuts through ${check.destroys.length} corridor segment${check.destroys.length > 1 ? "s" : ""}`;
   let ghost: string | undefined;

@@ -44,7 +44,6 @@ const costWords = (cost: Record<string, number>) =>
 function LiningPicker({ lining, setLining, held, shape, resources }: { lining: string; setLining: (l: string) => void; held: RoomDef | null; shape: [number, number] | null; resources: Record<string, number> }) {
   const exempt = held && !canLineType(held);
   const step = liningById(lining) ?? MATERIALS.walls[0]!;
-  const extra = held && shape ? liningExtra(held, lining, shape) : {};
   return (
     <div className="linings" role="radiogroup" aria-label="Building material">
       <span className="k">Built in</span>
@@ -66,7 +65,7 @@ function LiningPicker({ lining, setLining, held, shape, resources }: { lining: s
             title={
               free
                 ? "Bare rock: the room as dug. Refit it later from its panel."
-                : `${w.name}: ${held && shape ? `+${costWords(cost)} for this room` : `${costWords(cost)} a cell`}, in the room's own build time (a refit later takes extra work). Comfort +${w.comfort} in a home, wears ${Math.round((1 - w.wear) * 100)}% slower.`
+                : `${w.name}: ${held && shape ? `${held.name} built in it costs ${costWords(total)}` : `${costWords(cost)} a cell on a room's cost`}, in the room's own build time (a refit later takes extra work). Comfort +${w.comfort} in a home, wears ${Math.round((1 - w.wear) * 100)}% slower.`
             }
             onClick={() => setLining(id)}
           >
@@ -81,8 +80,8 @@ function LiningPicker({ lining, setLining, held, shape, resources }: { lining: s
           : lining === BARE_ROCK
             ? "Bare rock: refit later from the room's panel"
             : held && shape
-              ? `+${costWords(extra)}, no extra build time`
-              : `${step.name}: ${costWords(liningCost(step))} a cell on top, no extra build time`}
+              ? `${step.name}: in its cost above, no extra build time`
+              : `${step.name}: ${costWords(liningCost(step))} a cell on a room's cost, no extra build time`}
       </span>
     </div>
   );
@@ -318,6 +317,7 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
                       siteNote={siteRefusal(shown.id, deposits)}
                       shape={tool?.kind === "build" && tool.room === shown.id ? tool.shape : shapesFor(shown)[0]!}
                       onRotate={tool?.kind === "build" && tool.room === shown.id && shapesFor(shown).length > 1 ? rotate : undefined}
+                      extra={liningExtra(shown, lining, tool?.kind === "build" && tool.room === shown.id ? tool.shape : undefined)}
                     />
                   </div>
                 )}
