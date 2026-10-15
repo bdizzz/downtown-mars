@@ -39,11 +39,31 @@ const NOISE_GLSL = /* glsl */ `
 
 /**
  * Martian rock: sediment laid down in bands a metre or so thick, bent a little
- * so they wander, each band its own shade; a fine grain over it, broad
- * mottling, and dark flecks. Soft contrast, for the cozy look.
+ * so they wander, each band its own shade, with broad mottling (rockBroad); and
+ * the fine detail over it (rockFine): on walls a grain and dark flecks, on
+ * floors a hewn bed of stone, with grain at two scales, patches of chisel marks,
+ * a few hairline cracks and scattered pebbles. Soft contrast, for the cozy look.
  */
 const ROCK_GLSL = /* glsl */ `
-  vec3 rockTone(vec3 p, vec3 n) {
+  // Cells across a floor, q in cell widths: distance to the nearest seed (x), how near the edge to the next (y), and the nearest cell's own number (z).
+  vec3 srfCells(vec2 q, float seed) {
+    vec2 i = floor(q);
+    vec2 f = fract(q);
+    float d1 = 8.0;
+    float d2 = 8.0;
+    float id = 0.0;
+    for (int y = -1; y <= 1; y++) {
+      for (int x = -1; x <= 1; x++) {
+        vec2 g = vec2(float(x), float(y));
+        vec3 c = vec3(i + g + 0.5, seed);
+        float d = length(g + vec2(srfHash(c), srfHash(c + 7.3)) - f);
+        if (d < d1) { d2 = d1; d1 = d; id = srfHash(c + 3.1); }
+        else if (d < d2) d2 = d;
+      }
+    }
+    return vec3(d1, d2 - d1, id);
+  }
+  float rockBroad(vec3 p) {
     // Strata: bands in height, warped by broad noise so they undulate round the hole.
     float s = p.y / 1.4 + (srfFbm(p * 0.05) - 0.5) * 0.9;
     float band = floor(s);
@@ -51,14 +71,39 @@ const ROCK_GLSL = /* glsl */ `
     float shade = mix(0.84, 1.1, srfHash(vec3(band, 3.1, 7.7)));
     // A thin darker seam between bands.
     shade *= mix(0.9, 1.0, edge);
-    // Mottling across metres, grain across centimetres.
-    shade *= mix(0.9, 1.08, srfFbm(p * 0.35));
-    shade *= mix(0.93, 1.05, srfNoise(p * 6.0));
-    // Flecks of darker stone.
-    shade *= 1.0 - 0.18 * smoothstep(0.78, 0.86, srfNoise(p * 2.7 + 11.0));
-    // Warmer in the lighter bands, a touch cooler in the dark ones.
-    return vec3(shade * 1.02, shade, shade * 0.97);
+    // Mottling across metres.
+    return shade * mix(0.9, 1.08, srfFbm(p * 0.35));
   }
+  float rockFine(vec3 p, vec3 n) {
+    if (abs(n.y) > 0.7) {
+      vec2 q = p.xz;
+      // Grain across centimetres, and finer still.
+      float shade = mix(0.9, 1.06, srfNoise(p * 5.0)) * mix(0.95, 1.04, srfNoise(p * 19.0));
+      // Chisel marks: patches a metre or so across, each worked in its own direction.
+      vec3 hewn = srfCells(q / 1.1 + (srfFbm(p * 0.7) - 0.5) * 0.6, 11.0);
+      float a = hewn.z * 3.14159;
+      vec2 r = vec2(dot(q, vec2(cos(a), sin(a))), dot(q, vec2(-sin(a), cos(a))));
+      float stroke = smoothstep(0.5, 0.85, srfNoise(vec3(r.x * 11.0, hewn.z * 40.0, r.y * 1.3)));
+      shade *= 1.0 - 0.12 * stroke;
+      shade *= mix(0.95, 1.04, hewn.z);
+      // Hairline cracks, here and there, wandering.
+      vec3 crack = srfCells(q / 2.3 + (srfFbm(p * 0.9 + 4.0) - 0.5) * 0.5, 23.0);
+      shade *= 1.0 - 0.24 * (1.0 - smoothstep(0.0, 0.018, crack.y)) * smoothstep(0.58, 0.7, srfNoise(p * 0.35 + 17.0));
+      // Pebbles: a few cells hold one, some darker than the bed and some lighter, soft-edged.
+      vec3 peb = srfCells(q / 0.32, 31.0);
+      float size = mix(0.1, 0.24, fract(peb.z * 13.0));
+      float stone = step(0.88, peb.z) * (1.0 - smoothstep(size * 0.6, size, peb.x));
+      shade *= mix(1.0, fract(peb.z * 29.0) < 0.5 ? 0.78 : 1.14, stone);
+      // Dark flecks, as on the walls.
+      return shade * (1.0 - 0.14 * smoothstep(0.8, 0.87, srfNoise(p * 2.7 + 11.0)));
+    }
+    // Grain across centimetres, and flecks of darker stone.
+    float shade = mix(0.93, 1.05, srfNoise(p * 6.0));
+    return shade * (1.0 - 0.18 * smoothstep(0.78, 0.86, srfNoise(p * 2.7 + 11.0)));
+  }
+  // Warmer in the lighter bands, a touch cooler in the dark ones.
+  vec3 rockShade(float shade) { return vec3(shade * 1.02, shade, shade * 0.97); }
+  vec3 rockTone(vec3 p, vec3 n) { return rockShade(rockBroad(p) * rockFine(p, n)); }
 `;
 
 /** The surface's dust: broad soft mottling, fine grain and scattered pebbles, no layers. */
@@ -153,18 +198,13 @@ const ABOVE_GLSL = /* glsl */ `
   float srfAbove(vec3 p) { return mod(p.y + ${CRUST.toFixed(2)}, ${FLOOR_H.toFixed(2)}); }
 `;
 
-/** Smoothed rock: the same strata, ground flat and sealed (soft contrast, no grain); polished flagstones underfoot. */
+/**
+ * Smoothed rock: the same stone ground flat and sealed, so it keeps bare rock's strata and mottling
+ * (a little softer) but almost none of its fine detail: no tiles, no seams, just a sheen.
+ */
 const SMOOTH_ROCK_GLSL = /* glsl */ `
   vec3 smoothRockTone(vec3 p, vec3 n) {
-    vec3 t = mix(vec3(1.0), rockTone(p, n), 0.6) * mix(0.97, 1.03, srfFbm(p * 0.2));
-    if (abs(n.y) > 0.7) {
-      vec2 c = floor(p.xz / 2.5);
-      vec2 f = fract(p.xz / 2.5);
-      vec2 e = min(f, 1.0 - f) * 2.5;
-      t *= mix(0.92, 1.06, srfHash(vec3(c, 4.0)));
-      t *= 1.0 - 0.22 * (1.0 - smoothstep(0.0, 0.02, min(e.x, e.y)));
-    }
-    return t;
+    return rockShade(mix(1.0, rockBroad(p), 0.8) * mix(1.0, rockFine(p, n), 0.12) * mix(0.96, 1.04, srfFbm(p * 0.2)));
   }
 `;
 

@@ -28,7 +28,8 @@ import { CRUST, FLOOR_H, floorAtY, floorSpan, openShaftRadius, shaftCollarRadius
 import { isoFitDistance } from "./isoReach";
 import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
-import { buildLayout, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setPanelDust, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
+import { setPanelDust } from "./surface3d";
+import { buildLayout, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, makeDome, makeLander, placeLander, surfaceSpotGeometry } from "./scenery3d";
 import { makeDrillRig, type DrillRig } from "./drillRig";
 import { makeCollar } from "./collar3d";

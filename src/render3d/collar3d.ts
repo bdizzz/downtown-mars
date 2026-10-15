@@ -40,7 +40,8 @@ const COLLAR = {
   postEvery: 2.5,
 };
 
-const COLOR = {
+/** The surface's colours, shared by the collar and every surface building (surface3d.ts). */
+export const KIT_COLOR = {
   steel: 0xd9862f, // the rig's orange, so it reads as the same outfit's kit
   steelDark: 0xa8641f,
   dark: 0x3e3b38,
@@ -50,6 +51,7 @@ const COLOR = {
   lamp: 0xffb35c,
   beacon: 0xff4a30,
   cabinet: 0x6b7a5a,
+  hull: 0xd9d4cc, // painted panels: the landing pod's hull, cabinets, the rovers' cabins
 };
 
 /**
@@ -79,13 +81,13 @@ export function makeCollar(hole: Hole): THREE.Group {
   g.name = "collar";
   const concrete = finishMaterial("marscrete");
   const mat = (color: number, extra: THREE.MeshStandardMaterialParameters = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.4, ...extra });
-  const steel = mat(COLOR.steel, { metalness: 0.25, roughness: 0.55 });
-  const steelDark = mat(COLOR.steelDark, { metalness: 0.25 });
-  const dark = mat(COLOR.dark);
-  const cableMat = mat(COLOR.cable, { metalness: 0.2, roughness: 0.8 });
-  const railMat = mat(COLOR.rail, { metalness: 0.2 });
-  const lampMat = mat(COLOR.lamp, { emissive: COLOR.lamp, emissiveIntensity: 2, metalness: 0 });
-  const beaconMat = mat(COLOR.beacon, { emissive: COLOR.beacon, emissiveIntensity: 1.5, metalness: 0 });
+  const steel = mat(KIT_COLOR.steel, { metalness: 0.25, roughness: 0.55 });
+  const steelDark = mat(KIT_COLOR.steelDark, { metalness: 0.25 });
+  const dark = mat(KIT_COLOR.dark);
+  const cableMat = mat(KIT_COLOR.cable, { metalness: 0.2, roughness: 0.8 });
+  const railMat = mat(KIT_COLOR.rail, { metalness: 0.2 });
+  const lampMat = mat(KIT_COLOR.lamp, { emissive: KIT_COLOR.lamp, emissiveIntensity: 2, metalness: 0 });
+  const beaconMat = mat(KIT_COLOR.beacon, { emissive: KIT_COLOR.beacon, emissiveIntensity: 1.5, metalness: 0 });
 
   const add = (geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0, parent: THREE.Object3D = g) => {
     const mesh = new THREE.Mesh(geo, m);
@@ -140,7 +142,7 @@ export function makeCollar(hole: Hole): THREE.Group {
   }
   // Anchor bolts along the walkway.
   const boltGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.1, 6);
-  const boltMat = mat(COLOR.bolt, { metalness: 0.6, roughness: 0.4 });
+  const boltMat = mat(KIT_COLOR.bolt, { metalness: 0.6, roughness: 0.4 });
   const boltR = (inner + capOut) / 2;
   const nBolts = Math.round((TAU * boltR) / 1.5);
   for (let k = 0; k < nBolts; k++) {
@@ -211,7 +213,7 @@ export function makeCollar(hole: Hole): THREE.Group {
     const wz = s * (R + C.winchOut);
     const drumY = top + 0.2 + C.drum + 0.1;
     add(new THREE.BoxGeometry(2.4, 0.2, 1.3), dark, cx + 0.3, top + 0.1, wz);
-    const drum = add(new THREE.CylinderGeometry(C.drum, C.drum, 1.1, 18), mat(COLOR.cable, { metalness: 0.1, roughness: 0.9 }), cx, drumY, wz);
+    const drum = add(new THREE.CylinderGeometry(C.drum, C.drum, 1.1, 18), mat(KIT_COLOR.cable, { metalness: 0.1, roughness: 0.9 }), cx, drumY, wz);
     drum.rotation.z = Math.PI / 2;
     for (const dx of [-0.6, 0.6]) {
       const flange = add(new THREE.CylinderGeometry(C.drum + 0.18, C.drum + 0.18, 0.06, 20), steel, cx + dx, drumY, wz);
@@ -220,7 +222,7 @@ export function makeCollar(hole: Hole): THREE.Group {
     }
     const motor = add(new THREE.CylinderGeometry(0.3, 0.3, 0.6, 14), steel, cx + 1.05, drumY, wz);
     motor.rotation.z = Math.PI / 2;
-    add(new THREE.BoxGeometry(0.4, 0.9, 0.3), mat(COLOR.cabinet, { metalness: 0.3 }), cx - 1.1, top + 0.65, wz + s * 0.35);
+    add(new THREE.BoxGeometry(0.4, 0.9, 0.3), mat(KIT_COLOR.cabinet, { metalness: 0.3 }), cx - 1.1, top + 0.65, wz + s * 0.35);
     add(new THREE.BoxGeometry(0.12, 0.08, 0.08), lampMat, cx - 1.1, top + 1.14, wz + s * 0.35);
     // The cable from the top of the sheave down onto the top of the drum.
     strut(v(cx, sheaveY + C.sheave - 0.06, sz), v(cx, drumY + C.drum, wz), 0.05, cableMat);

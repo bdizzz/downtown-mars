@@ -143,8 +143,8 @@
     "laterHoles": "bare",
     "bare": {
       "surface": [
-        { "room": "landing_pod", "slot": 0 },
-        { "room": "landing_pad", "slot": 2 },
+        { "room": "landing_pod", "slot": 10 },
+        { "room": "landing_pad", "slot": 1 },
         { "room": "solar_array", "slot": 4 }
       ],
       "ring": [
@@ -154,8 +154,8 @@
     },
     "full": {
       "surface": [
-        { "room": "landing_pod", "slot": 0 },
-        { "room": "landing_pad", "slot": 2 },
+        { "room": "landing_pod", "slot": 10 },
+        { "room": "landing_pad", "slot": 1 },
         { "room": "solar_array", "slot": 4 }
       ],
       "ring": [

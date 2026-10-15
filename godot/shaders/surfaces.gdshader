@@ -72,15 +72,56 @@ vec2 surface_uv(vec3 p, vec3 n) {
 
 // Each tone returns a shade (x) and a height for the relief (y): 1 on a face, lower in a gap.
 
-vec2 rock_tone(vec3 p) {
+// Cells across a floor, q in cell widths: distance to the nearest seed (x), how near the edge to the next (y), and the nearest cell's own number (z).
+vec3 srf_cells(vec2 q, float seed) {
+	vec2 i = floor(q);
+	vec2 f = fract(q);
+	float d1 = 8.0;
+	float d2 = 8.0;
+	float id = 0.0;
+	for (int y = -1; y <= 1; y++) {
+		for (int x = -1; x <= 1; x++) {
+			vec2 g = vec2(float(x), float(y));
+			vec3 c = vec3(i + g + 0.5, seed);
+			float d = length(g + vec2(srf_hash(c), srf_hash(c + 7.3)) - f);
+			if (d < d1) { d2 = d1; d1 = d; id = srf_hash(c + 3.1); }
+			else if (d < d2) d2 = d;
+		}
+	}
+	return vec3(d1, d2 - d1, id);
+}
+
+// Bare rock: strata and mottling (as the web's rockBroad), and the fine detail over them (rockFine):
+// on walls a grain and flecks, on floors a hewn bed with chisel marks, hairline cracks and pebbles.
+vec2 rock_tone(vec3 p, vec3 n) {
 	float s = p.y / 1.4 + (srf_fbm(p * 0.05) - 0.5) * 0.9;
 	float band = floor(s);
 	float edge = smoothstep(0.0, 0.12, fract(s)) * (1.0 - smoothstep(0.88, 1.0, fract(s)));
 	float shade = mix(0.84, 1.1, srf_hash(vec3(band, 3.1, 7.7)));
 	shade *= mix(0.9, 1.0, edge);
 	float mottle = srf_fbm(p * 0.35);
-	float grain = srf_noise(p * 6.0);
 	shade *= mix(0.9, 1.08, mottle);
+	if (abs(n.y) > 0.7) {
+		vec2 q = p.xz;
+		float grain = srf_noise(p * 5.0);
+		shade *= mix(0.9, 1.06, grain) * mix(0.95, 1.04, srf_noise(p * 19.0));
+		vec3 hewn = srf_cells(q / 1.1 + (srf_fbm(p * 0.7) - 0.5) * 0.6, 11.0);
+		float a = hewn.z * 3.14159;
+		vec2 r = vec2(dot(q, vec2(cos(a), sin(a))), dot(q, vec2(-sin(a), cos(a))));
+		float stroke = smoothstep(0.5, 0.85, srf_noise(vec3(r.x * 11.0, hewn.z * 40.0, r.y * 1.3)));
+		shade *= (1.0 - 0.12 * stroke) * mix(0.95, 1.04, hewn.z);
+		vec3 crack = srf_cells(q / 2.3 + (srf_fbm(p * 0.9 + 4.0) - 0.5) * 0.5, 23.0);
+		float split = (1.0 - smoothstep(0.0, 0.018, crack.y)) * smoothstep(0.58, 0.7, srf_noise(p * 0.35 + 17.0));
+		shade *= 1.0 - 0.24 * split;
+		vec3 peb = srf_cells(q / 0.32, 31.0);
+		float size = mix(0.1, 0.24, fract(peb.z * 13.0));
+		float stone = step(0.88, peb.z) * (1.0 - smoothstep(size * 0.6, size, peb.x));
+		shade *= mix(1.0, fract(peb.z * 29.0) < 0.5 ? 0.78 : 1.14, stone);
+		shade *= 1.0 - 0.14 * smoothstep(0.8, 0.87, srf_noise(p * 2.7 + 11.0));
+		// Relief: strokes and cracks sink, pebbles stand proud.
+		return vec2(shade, mottle * 0.3 + grain * 0.1 + 0.5 - stroke * 0.15 - split * 0.4 + stone * 0.3);
+	}
+	float grain = srf_noise(p * 6.0);
 	shade *= mix(0.93, 1.05, grain);
 	shade *= 1.0 - 0.18 * smoothstep(0.78, 0.86, srf_noise(p * 2.7 + 11.0));
 	// Relief: the seams between strata sink, the stone between is lumpy.
@@ -174,7 +215,7 @@ void fragment() {
 	float metal = metallic;
 	vec2 t = vec2(1.0);
 	float relief = 0.6;
-	if (look == 1) { t = rock_tone(wpos); relief = 3.0; }
+	if (look == 1) { t = rock_tone(wpos, n); relief = 3.0; }
 	else if (look == 2) { t = regolith_tone(wpos); relief = 2.0; }
 	else if (look == 3) t = marscrete_tone(wpos, n);
 	else if (look == 4) t = brick_tone(wpos, n);
@@ -184,7 +225,7 @@ void fragment() {
 		if (floor_look == 3) t = marscrete_tone(wpos, n);
 		else if (floor_look == 4) t = brick_tone(wpos, n);
 		else if (floor_look == 5) t = metal_tone(wpos, n);
-		else { t = rock_tone(wpos); relief = 3.0; }
+		else { t = rock_tone(wpos, n); relief = 3.0; }
 		color = mix(floor_color, albedo, floor_tint);
 		rough = floor_roughness;
 		metal = floor_metallic;

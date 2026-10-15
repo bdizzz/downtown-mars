@@ -30,7 +30,7 @@ export const HOME_EXTRA: Plan[] = [
   { room: "smelter", at: ring(5, 1, 4, 4) },
   { room: "machine_shop", at: ring(5, 2, 7, 2), stopAt: 12 },
   { room: "staging_bay", at: ring(5, 1, 0, 4) },
-  { room: "rover_depot", at: surface(9) },
+  { room: "rover_depot", at: surface(8) },
 ];
 
 /** The child: the critical set (the electrolyzer first, for the air its rooms dilute), then its own rovers, water and food. */
@@ -38,7 +38,7 @@ export const CHILD_PLAN: Plan[] = [
   { room: "electrolyzer", at: ring(1, 2, 8, 2) },
   { room: "galley", at: ring(1, 1, 2) },
   { room: "restroom", at: ring(1, 1, 3) },
-  { room: "rover_depot", at: surface(9) },
+  { room: "rover_depot", at: surface(8) },
   // Earth refills clean water; the pod alone holds too little gray until the recycler comes.
   { room: "water_tank", at: ring(1, 1, 6), holds: "grayWater" },
   { room: "life_support", at: ring(1, 2, 3, 4) },
