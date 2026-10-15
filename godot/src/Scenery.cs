@@ -18,7 +18,7 @@ public partial class Scenery : Node3D
     const float Fall = 0.25f, MoteSize = 0.12f;
 
     readonly Node3D _lander = new() { Name = "Lander", Visible = false };
-    readonly MeshInstance3D _flame = new();
+    readonly Node3D _flame = new() { Name = "Flame" };
     readonly OmniLight3D _flameLight = new() { LightColor = new Color("#ffb35c"), LightEnergy = 4, OmniRange = 30, ShadowEnabled = false };
     Node3D? _dome;
     string _domeKey = "";
@@ -65,25 +65,74 @@ void fragment() {
         return m;
     }
 
-    /// <summary>The lander: a capsule with a nose, four legs, and a flame below.</summary>
+    /// <summary>The lander's sizes, as the web's LANDER_PARTS: the descent stage, the cargo pods' height, how far out the feet stand.</summary>
+    const float StageR = 2.4f, StageH = 1.5f, StageY = 2.3f, PodH = 1.6f, FootR = 3.7f;
+
+    /// <summary>
+    /// The supply lander, as the web's makeLander: a white octagonal descent stage with a hazard band, an engine
+    /// bell and thruster quads, orange legs to footpads, four strapped cargo pods round a core, a beacon and dish,
+    /// and the flame (an amber cone round a white-hot core). Its feet at y = 0.
+    /// </summary>
     void BuildLander()
     {
-        var body = Plain.Make(new Color("#d9d4cc"), 0.5f, 0.3f);
-        var trim = Plain.Make(new Color("#6b6660"), 0.7f);
-        _lander.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 1.8f, BottomRadius = 2.6f, Height = 4, RadialSegments = 16, Material = body }, Position = new Vector3(0, 3, 0) });
-        _lander.AddChild(new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0, BottomRadius = 1.8f, Height = 2, RadialSegments = 16, Material = body }, Position = new Vector3(0, 6, 0) });
+        var hull = Plain.Make(new Color("#d9d4cc"), 0.5f, 0.3f);
+        var dark = Plain.Make(new Color("#3e3b38"), 0.6f, 0.4f);
+        var steel = Plain.Make(new Color("#d9862f"), 0.55f, 0.25f);
+        var steelDark = Plain.Make(new Color("#a8641f"), 0.6f, 0.25f);
+        var hazard = Plain.Make(new Color("#e0b030"), 0.7f);
+        var beacon = Plain.Make(new Color("#ff4a30"), 0.6f, emission: new Color("#ff4a30"), emissionEnergy: 1.5f);
+        MeshInstance3D Add(Mesh mesh, Vector3 at, float turn = 0)
+        {
+            var m = new MeshInstance3D { Mesh = mesh, Position = at, Rotation = new Vector3(0, turn, 0) };
+            _lander.AddChild(m);
+            return m;
+        }
+        CylinderMesh Cyl(float top, float bottom, float h, int sides, Material m, bool open = false) =>
+            new() { TopRadius = top, BottomRadius = bottom, Height = h, RadialSegments = sides, Rings = 1, CapTop = !open, CapBottom = !open, Material = m };
+        void Strut(Vector3 a, Vector3 b, float r, Material m)
+        {
+            var mesh = Add(Cyl(r, r, a.DistanceTo(b), 6, m), (a + b) / 2);
+            mesh.Basis = new Basis(new Quaternion(Vector3.Up, (b - a).Normalized()));
+        }
+        static Vector3 Around(float r, float y, float a) => new(r * Mathf.Cos(a), y, r * Mathf.Sin(a));
+        const float oct = Mathf.Tau / 16;
+
+        // The descent stage: an octagon, dark rims, a hazard band round its middle.
+        Add(Cyl(StageR, StageR, StageH, 8, hull), new Vector3(0, StageY, 0), oct);
+        foreach (var dy in new[] { -1, 1 }) Add(Cyl(StageR + 0.05f, StageR + 0.05f, 0.16f, 8, dark), new Vector3(0, StageY + dy * StageH / 2, 0), oct);
+        Add(Cyl(StageR + 0.03f, StageR + 0.03f, 0.3f, 8, hazard, open: true), new Vector3(0, StageY, 0), oct);
+        // The engine bell, and a thruster quad at four corners.
+        Add(Cyl(0.45f, 1.1f, 1.3f, 16, dark, open: true), new Vector3(0, StageY - StageH / 2 - 0.6f, 0));
+        for (var k = 0; k < 4; k++) Add(new BoxMesh { Size = Vector3.One * 0.4f, Material = dark }, Around(StageR + 0.15f, StageY + 0.2f, k / 4f * Mathf.Tau));
+        // Landing legs: a main leg and a brace down to each footpad.
         for (var k = 0; k < 4; k++)
         {
             var a = k / 4f * Mathf.Tau + Mathf.Pi / 4;
-            _lander.AddChild(new MeshInstance3D
-            {
-                Mesh = new CylinderMesh { TopRadius = 0.12f, BottomRadius = 0.12f, Height = 2.6f, RadialSegments = 8, Material = trim },
-                Position = new Vector3(Mathf.Cos(a) * 2.6f, 0.9f, Mathf.Sin(a) * 2.6f),
-                Rotation = new Vector3(Mathf.Sin(a) * 0.5f, 0, -Mathf.Cos(a) * 0.5f),
-            });
+            var foot = Around(FootR, 0.25f, a);
+            Strut(Around(StageR - 0.2f, StageY + 0.5f, a), foot, 0.13f, steel);
+            Strut(Around(StageR - 0.3f, StageY - StageH / 2, a), foot, 0.08f, steelDark);
+            Add(Cyl(0.5f, 0.6f, 0.18f, 12, dark), new Vector3(foot.X, 0.09f, foot.Z));
         }
-        _flame.Mesh = new CylinderMesh { TopRadius = 1.4f, BottomRadius = 0, Height = 4, RadialSegments = 12, Material = Plain.Make(new Color("#ffb35c") with { A = 0.85f }, transparent: true, unshaded: true, emission: new Color("#ffb35c"), emissionEnergy: 3) };
-        _flame.Position = new Vector3(0, -1, 0);
+        // The cargo: four pods strapped round a central core.
+        var deck = StageY + StageH / 2;
+        for (var k = 0; k < 4; k++)
+        {
+            var a = k / 4f * Mathf.Tau + Mathf.Pi / 4;
+            var at = Around(1.25f, 0, a);
+            Add(new BoxMesh { Size = new Vector3(1.3f, PodH, 1.3f), Material = hull }, at with { Y = deck + PodH / 2 }, -a);
+            foreach (var dy in new[] { 0.35f, PodH - 0.35f }) Add(new BoxMesh { Size = new Vector3(1.34f, 0.12f, 1.34f), Material = steel }, at with { Y = deck + dy }, -a);
+        }
+        Add(Cyl(0.7f, 0.8f, PodH + 0.6f, 12, hull), new Vector3(0, deck + (PodH + 0.6f) / 2, 0));
+        var crown = deck + PodH + 0.6f;
+        Add(Cyl(0.2f, 0.7f, 0.7f, 12, hull), new Vector3(0, crown + 0.35f, 0));
+        Add(new SphereMesh { Radius = 0.18f, Height = 0.36f, RadialSegments = 10, Rings = 6, Material = beacon }, new Vector3(0, crown + 0.85f, 0));
+        Add(Cyl(0.5f, 0.08f, 0.2f, 14, steelDark, open: true), new Vector3(0.9f, crown - 0.1f, 0.9f)).Rotation = new Vector3(0.5f, 0, -0.5f);
+        // The flame: an amber cone round a white-hot core, pointing down.
+        _flame.Position = new Vector3(0, StageY - StageH / 2 - 1.25f, 0);
+        var outer = Plain.Make(new Color("#ffb35c") with { A = 0.7f }, transparent: true, unshaded: true, emission: new Color("#ffb35c"), emissionEnergy: 3);
+        var core = Plain.Make(new Color("#fff1c8"), unshaded: true, emission: new Color("#fff1c8"), emissionEnergy: 4);
+        _flame.AddChild(new MeshInstance3D { Mesh = Cyl(1.2f, 0, 4.5f, 14, outer, open: true), Position = new Vector3(0, -2.25f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        _flame.AddChild(new MeshInstance3D { Mesh = Cyl(0.6f, 0, 2.6f, 12, core), Position = new Vector3(0, -1.3f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
         _lander.AddChild(_flame);
         _flame.AddChild(_flameLight);
         _flameLight.Position = new Vector3(0, -2, 0);
