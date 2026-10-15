@@ -234,6 +234,16 @@ See `PLAN-M16.md`.
 - **Updates come as a banner you tap, never silently** (Bryon): the service worker runs in `prompt` mode (`vite-plugin-pwa`), and mid-game the update autosaves before reloading.
 - **PR previews get no service worker** (Bryon): they share the main game's origin and path, so the main game's worker skips `pr-preview/` and preview builds (`VITE_PR_NUMBER`) don't register one. The dev server has none either.
 
+## Decided for wagers (Oct 13, F-016 / T-150, T-152)
+
+- **A wager's stake is held, not spent:** taken from stock when it's agreed and given back when it resolves, as its outcome says (all, a share, or none). What comes back needs storage room like any gain, so space freed while it's away can fill up meanwhile.
+- **Outcomes are tables rolled in turn,** each result an effect with a weight; a later table can rule results out (`unless`: no ore after a catastrophe). The stake comes back by the least `returns` rolled. Rolls use the events' own dice, hashed with the event's id, so they never shift the hole's other luck.
+- **Committing less** (Claude's defaults): a choice's `min` is the least share you can put up; each outcome's weight runs straight from `weightAtMin` to `weight`; and what an outcome finds scales with the share committed (half the machinery, half the ore). The stepper counts in the stake's first resource; the others scale with it.
+- **Odds are never shown** (Bryon): not as numbers, words or bars. Hints describe what could happen, not how likely it is.
+- **Nobody dies on events, and the injured always heal fully** (Bryon, T-151). A crew sent out stays part of the hole (counted, fed, ageing) but leaves the workforce until it's back; the hurt stay out while they heal. `workforce.total` is the adults who can work; `away` and `injured` sit beside it.
+- **Healing is faster with a clinic in reach** (Bryon); since the pools are head counts, not people with homes, it's the hole's clinic coverage that scales it (Claude's default: up to twice as fast).
+- **A stake's crew scales with the share like its resources,** and the stepper counts in the crew when there is one (Claude's default). Only adults not already away or healing can be sent.
+
 ## Decided for the site (Oct 13, F-008 / T-073 / T-020)
 
 - **A site's soil is the map's colour there, as drawn** (Bryon): the map colours Mars by height (and whitens the caps), not by its real colours, and the ground matches what the player sees. The height colours and caps live in `data/mars-map.json`, read by both `scripts/build-relief.mjs` and the game (`mapColor` in `sim/mapgeo.ts`, `soilAt` in `sim/map.ts`), so they can't drift apart. The ground leans 30% of the way from the base dust to that colour (`soil.strength` 0.3, Bryon, Oct 13), so a basin or a pale volcano still reads as Mars; boulders and the horizon shift with it.

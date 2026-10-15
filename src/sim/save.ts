@@ -20,7 +20,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 22;
+export const SAVE_VERSION = 23;
 
 type Raw = Record<string, unknown>;
 
@@ -213,6 +213,9 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       return { ...h, layout };
     }),
   }),
+  // v23: events can send a crew away and send some home hurt (T-151): each hole's events gain
+  // optional crews on wagers underway and a healing pool, which older saves start without.
+  22: (s) => s,
 };
 
 /** A copy of a record with one key renamed (a resource that changed its id). */

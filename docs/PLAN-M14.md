@@ -80,3 +80,5 @@ Choices: **Throw a festival** (30 meals or rations, and a day at 80% productivit
 **Step 5, docs:** README (Events), DECISIONS (milestone 14), EVENTS (as built), CLAUDE.md.
 
 **Not built yet:** events in a hole you're not looking at wait for you there (switch holes to answer them; ignored, they take their course), and nothing yet shows a count of them in the hole list.
+
+**Later, wagers (F-016, T-150 and T-152):** a choice can put up a stake, take days to come back and roll its outcome from weighted tables, with less committed for different odds. See `EVENTS.md` "Wagers". **T-151:** a stake can send a crew, out of the workforce while away, and outcomes can injure some of them, out while they heal (save v23).

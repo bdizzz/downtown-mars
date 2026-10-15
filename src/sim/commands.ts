@@ -40,8 +40,8 @@ export type SimCommand =
   /** Pause a room, or have it stop while its main output is at or above stopAt (null clears it). */
   | { type: "setRoomControl"; roomId: number; paused?: boolean; stopAt?: number | null }
   | { type: "answerVisit"; visitId: number; choice: string }
-  /** Answer an event (a find, a ship, a celebration) with one of its choices. */
-  | { type: "answerEvent"; eventId: number; choice: string }
+  /** Answer an event (a find, a ship, a celebration) with one of its choices; for a wager, `share` of its stake (all if left out). */
+  | { type: "answerEvent"; eventId: number; choice: string; share?: number }
   | { type: "setOrdinance"; id: string; enacted: boolean }
   /** Carve corridors along these borders (edge ids, see edges.ts), in a finish. Skips any that can't go. */
   /** With `all`, carve every one or none (a snaked chain is no use half built). */
@@ -559,7 +559,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     case "answerVisit":
       return answerVisit(state, config, cmd.visitId, cmd.choice);
     case "answerEvent":
-      return answerEvent(state, config, cmd.eventId, cmd.choice, padReady(state));
+      return answerEvent(state, config, cmd.eventId, cmd.choice, padReady(state), cmd.share);
     case "setOrdinance":
       if (!cmd.enacted) {
         repeal(state, cmd.id);

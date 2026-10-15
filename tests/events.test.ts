@@ -4,9 +4,26 @@ import { config } from "../src/sim/config";
 import { ticksToDig } from "../src/sim/digging";
 import { padReady } from "../src/sim/earth";
 import { capacities } from "../src/sim/economy";
-import { eventData, eventMood, eventsOf, festivalWork, raiseEvent, rollDiscovery, stepEvents } from "../src/sim/events";
+import {
+  choiceRefusal,
+  eventData,
+  eventDef,
+  eventMood,
+  eventsOf,
+  festivalWork,
+  outcomeWeight,
+  raiseEvent,
+  resolveWager,
+  rollDiscovery,
+  stakeRange,
+  stepEvents,
+} from "../src/sim/events";
 import { airAmount, airPct } from "../src/sim/air";
 import { isOpen } from "../src/sim/excavation";
+import { careCoverage } from "../src/sim/care";
+import { availableAdults, awayCount, countStage, injuredCount, people, setAdults } from "../src/sim/people";
+import { deserialize, serialize } from "../src/sim/save";
+import { createWorld } from "../src/sim/world";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 
@@ -280,5 +297,214 @@ describe("too much oxygen (T-030)", () => {
     run(s, 2);
     expect(eventsOf(s).pending).toHaveLength(0);
     expect(s.messages.some((m) => /Fire risk/.test(m.text))).toBe(false);
+  });
+});
+
+describe("wagers (F-016)", () => {
+  // The meteorite run: 10 machinery out for a month; all, 8 or none back; 25 ore or nothing.
+  const go = () => eventDef("meteorite_run").choices.find((c) => c.id === "go")!;
+  // One hole for every roll (making a fresh one each time is slow): a new seed, stock and card each trip.
+  let base: SimState | undefined;
+  function trip(seed: number, machinery = 40): SimState {
+    const s = (base ??= hole());
+    s.events = { ...eventsOf(s), seed, nextId: 1, pending: [], underway: [], healing: [], moods: [] };
+    s.resources.machinery = machinery;
+    s.resources.ore = 0;
+    raiseEvent(s, config, "meteorite_run");
+    return s;
+  }
+  const send = (s: SimState, share?: number) =>
+    applyCommand(s, { type: "answerEvent", eventId: s.events!.pending[0]!.id, choice: "go", ...(share !== undefined ? { share } : {}) });
+  /** Send the trip off, take it off the board and roll it now: what came of it. */
+  function rollTrip(seed: number, share?: number) {
+    const s = trip(seed);
+    expect(send(s, share).ok).toBe(true);
+    const w = s.events!.underway!.pop()!;
+    const ids = resolveWager(s, config, w);
+    return { ids, lost: 40 - s.resources.machinery!, ore: s.resources.ore ?? 0 };
+  }
+
+  it("holds the stake while the trip is away, and rolls the outcome when it's back", () => {
+    const s = trip(3);
+    expect(send(s).ok).toBe(true);
+    expect(s.resources.machinery).toBe(30);
+    const w = s.events!.underway![0]!;
+    expect(w.held).toEqual({ machinery: 10 });
+    expect(w.dueTick - s.tick).toBe(day);
+    const every = eventData.checkEveryTicks;
+    while (s.tick + every < w.dueTick) {
+      s.tick += every;
+      stepEventsOnly(s);
+    }
+    expect(s.events!.underway).toHaveLength(1);
+    s.tick = Math.ceil(w.dueTick / every) * every;
+    stepEventsOnly(s);
+    expect(s.events!.underway).toHaveLength(0);
+    expect([30, 38, 40]).toContain(s.resources.machinery);
+    expect(s.messages.some((m) => /meteorite crew|winch|impact site/.test(m.text))).toBe(true);
+  });
+
+  it("rolls the same way for the same game", () => {
+    expect(rollTrip(11).ids).toEqual(rollTrip(11).ids);
+  });
+
+  it("resolves into every outcome across seeds, with no ore after a catastrophe", () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 200; seed++) {
+      const { ids, lost, ore } = rollTrip(seed);
+      ids.forEach((id) => seen.add(id));
+      expect(lost).toBe(ids.includes("catastrophe") ? 10 : ids.includes("winch") ? 2 : 0);
+      expect(ore).toBe(ids.includes("ore") ? 25 : 0);
+      if (ids.includes("catastrophe")) expect(ids).not.toContain("ore");
+    }
+    expect([...seen].sort()).toEqual(["all_back", "catastrophe", "no_ore", "ore", "winch"]);
+  });
+
+  it("commits less than asked (T-152): a smaller stake, a smaller haul, and the odds shift", () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const { ids, lost, ore } = rollTrip(seed, 0.5);
+      expect(lost).toBe(ids.includes("catastrophe") ? 5 : ids.includes("winch") ? 1 : 0);
+      expect(ore).toBe(ids.includes("ore") ? 13 : 0);
+    }
+    // Weights run straight from weightAtMin (the least committed) to weight (all of it).
+    const ore = go().outcomes![1]![0]!;
+    expect(outcomeWeight(ore, 0.5, 0.5)).toBe(4);
+    expect(outcomeWeight(ore, 0.75, 0.5)).toBe(5);
+    expect(outcomeWeight(ore, 1, 0.5)).toBe(6);
+    // Across many games, half the machinery finds ore less often, and loses it all less often.
+    const count = (share: number | undefined, id: string) => Array.from({ length: 400 }, (_, i) => rollTrip(i + 1, share).ids.includes(id)).filter(Boolean).length;
+    expect(count(0.5, "ore")).toBeLessThan(count(undefined, "ore"));
+    expect(count(0.5, "catastrophe")).toBeLessThan(count(undefined, "catastrophe"));
+  });
+
+  it("can't put up what the hole hasn't got, and the stepper stops at what it has", () => {
+    const s = trip(1, 7);
+    // The stepper counts the crew (4, at least 2); 3 of them would take 8 machinery.
+    expect(stakeRange(s, go())).toEqual({ resource: "colonists", name: "colonists", asked: 4, min: 2, max: 2 });
+    expect(send(s).ok).toBe(false);
+    expect(send(s, 0.7).ok).toBe(true);
+    expect(s.resources.machinery).toBe(0);
+    expect(s.events!.underway![0]!.crew).toBe(3);
+    const poor = trip(1, 4);
+    expect(choiceRefusal(poor, go(), true)).toMatch(/Not enough machinery/);
+    expect(stakeRange(poor, go())!.max).toBeLessThan(5);
+    // Asking for less than the least commits the least.
+    const s2 = trip(1, 20);
+    expect(send(s2, 0.1).ok).toBe(true);
+    expect(s2.events!.underway![0]!.held).toEqual({ machinery: 5 });
+  });
+
+  it("declining keeps the machinery home, with a small dip", () => {
+    const s = trip(1);
+    expect(applyCommand(s, { type: "answerEvent", eventId: s.events!.pending[0]!.id, choice: "decline" }).ok).toBe(true);
+    expect(s.resources.machinery).toBe(40);
+    expect(eventMood(s)).toBeLessThan(0);
+    expect(s.events!.underway ?? []).toHaveLength(0);
+  });
+});
+
+describe("crews away and the injured (T-151)", () => {
+  const go = () => eventDef("meteorite_run").choices.find((c) => c.id === "go")!;
+  function trip(seed: number): SimState {
+    const s = hole();
+    s.events = { ...eventsOf(s), seed, nextId: 1, pending: [], underway: [], healing: [], moods: [] };
+    s.resources.machinery = 40;
+    raiseEvent(s, config, "meteorite_run");
+    return s;
+  }
+  const send = (s: SimState, share?: number) =>
+    applyCommand(s, { type: "answerEvent", eventId: s.events!.pending[0]!.id, choice: "go", ...(share !== undefined ? { share } : {}) });
+  const every = eventData.checkEveryTicks;
+  /** Run the events alone until `tick`, a check at a time. */
+  const runTo = (s: SimState, tick: number) => {
+    while (s.tick < tick) {
+      s.tick = (Math.floor(s.tick / every) + 1) * every;
+      stepEventsOnly(s);
+    }
+  };
+  /** A seed whose trip breaks a winch (and so hurts one of the crew). */
+  const winchSeed = () => {
+    for (let seed = 1; ; seed++) {
+      const s = trip(seed);
+      send(s);
+      if (resolveWager(s, config, s.events!.underway!.pop()!).includes("winch")) return seed;
+    }
+  };
+
+  it("takes the crew out of the workforce while they're away, and puts them back when they return", () => {
+    const s = trip(3);
+    const adults = availableAdults(s);
+    expect(send(s).ok).toBe(true);
+    expect(awayCount(s)).toBe(4);
+    expect(availableAdults(s)).toBe(adults - 4);
+    step(s, config);
+    expect(s.workforce.total).toBe(adults - 4);
+    expect(s.workforce.away).toBe(4);
+    expect(s.workforce.employed).toBeLessThanOrEqual(adults - 4);
+    // They still live here: away isn't gone.
+    expect(countStage(s, "adult")).toBe(adults);
+    runTo(s, s.events!.underway![0]!.dueTick);
+    expect(awayCount(s)).toBe(0);
+    expect(availableAdults(s) + injuredCount(s)).toBe(adults);
+  });
+
+  it("sends a smaller crew with a smaller stake", () => {
+    const s = trip(3);
+    expect(send(s, 0.5).ok).toBe(true);
+    expect(s.events!.underway![0]).toMatchObject({ crew: 2, held: { machinery: 5 } });
+    expect(awayCount(s)).toBe(2);
+  });
+
+  it("can't send a crew the hole hasn't got free", () => {
+    const s = trip(3);
+    setAdults(s, 1, config);
+    expect(choiceRefusal(s, go(), true)).toMatch(/colonists free/);
+    expect(stakeRange(s, go())!.max).toBeLessThan(2);
+    expect(send(s).ok).toBe(false);
+  });
+
+  it("brings the injured home to heal, out of work until they have, and nobody dies", () => {
+    const s = trip(winchSeed());
+    const adults = availableAdults(s);
+    send(s);
+    runTo(s, s.events!.underway![0]!.dueTick);
+    expect(injuredCount(s)).toBe(1);
+    expect(availableAdults(s)).toBe(adults - 1);
+    expect(countStage(s, "adult")).toBe(adults);
+    expect(s.messages.some((m) => /1 of the crew got hurt/.test(m.text))).toBe(true);
+    // No clinic: the full two days.
+    const back = s.tick;
+    runTo(s, back + 1.5 * day);
+    expect(injuredCount(s)).toBe(1);
+    runTo(s, back + 2 * day);
+    expect(injuredCount(s)).toBe(0);
+    expect(availableAdults(s)).toBe(adults);
+    expect(s.messages.some((m) => /healed and gone back to work/.test(m.text))).toBe(true);
+  });
+
+  it("heals them faster with a clinic in reach", () => {
+    const s = trip(winchSeed());
+    send(s);
+    runTo(s, s.events!.underway![0]!.dueTick);
+    const pop = s.population.count;
+    const none = { who: 0, missing: 0 };
+    s.population.care = { byHome: {}, homeless: { care: 1, school: 1, elders: 1 }, care: { who: pop, missing: 0 }, school: none, elders: none } as never;
+    expect(careCoverage(s)).toBe(1);
+    runTo(s, s.tick + (2 / people.injury.clinicSpeedup) * day);
+    expect(injuredCount(s)).toBe(0);
+  });
+
+  it("keeps the crews away and the injured in a save", () => {
+    const w = createWorld(config);
+    const s = w.holes[0]!;
+    s.resources.machinery = 40;
+    raiseEvent(s, config, "meteorite_run");
+    expect(send(s).ok).toBe(true);
+    eventsOf(s).healing = [{ count: 2, daysLeft: 1.5 }];
+    const loaded = deserialize(serialize(w));
+    if (!loaded.ok) throw new Error(loaded.reason);
+    const h = loaded.world.holes[0]!;
+    expect(awayCount(h)).toBe(4);
+    expect(injuredCount(h)).toBe(2);
   });
 });

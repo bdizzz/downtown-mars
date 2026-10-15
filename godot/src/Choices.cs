@@ -18,7 +18,11 @@ public partial class Choices : Node
     {
         ["aquifer"] = "💧", ["ore_vein"] = "⛏", ["silica_bed"] = "◇", ["lava_tube"] = "◠",
         ["gas_pocket"] = "⚠", ["microfossils"] = "✶", ["belt_ship"] = "🛰", ["celebration"] = "✦",
+        ["meteorite_run"] = "☄",
     };
+
+    /// <summary>How much of a wager's stake the player has stepped to, by "event:choice" (kept while cards rebuild).</summary>
+    readonly Dictionary<string, int> _stakes = new();
 
     readonly Action<Dictionary<string, object>> _command;
     readonly VBoxContainer _cards = new();
@@ -109,6 +113,53 @@ public partial class Choices : Node
         return b;
     }
 
+    static int StakeMax(JsonElement choice) =>
+        choice.TryGetProperty("stake", out var st) && st.ValueKind == JsonValueKind.Object ? st.GetProperty("max").GetInt32() : -1;
+
+    /// <summary>
+    /// A wager's choice, as the web's: the amount committed on the button, and a − / + stepper under
+    /// it from the least it takes to what's asked (or what the hole has). The odds stay hidden.
+    /// </summary>
+    Control StakeChoice(int eventId, string choice, string label, string hint, JsonElement st)
+    {
+        var name = st.GetProperty("name").GetString()!;
+        int asked = st.GetProperty("asked").GetInt32(), min = st.GetProperty("min").GetInt32(), max = Math.Min(asked, st.GetProperty("max").GetInt32());
+        var key = $"{eventId}:{choice}";
+        int Amount() => Math.Clamp(_stakes.GetValueOrDefault(key, asked), min, Math.Max(min, max));
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 3);
+        Button? button = null;
+        button = Choice($"{label} · {Amount()} {name}", hint, null, () =>
+        {
+            var cmd = new Dictionary<string, object> { ["type"] = "answerEvent", ["eventId"] = eventId, ["choice"] = choice };
+            if (Amount() < asked) cmd["share"] = (double)Amount() / asked;
+            _command(cmd);
+        });
+        box.AddChild(button);
+        if (min >= asked) return box;
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 8);
+        var less = new Button { Text = "−", FocusMode = Control.FocusModeEnum.None, CustomMinimumSize = new Vector2(28, 0) };
+        var more = new Button { Text = "+", FocusMode = Control.FocusModeEnum.None, CustomMinimumSize = new Vector2(28, 0) };
+        var count = Text("", 13, Muted, false);
+        void Show()
+        {
+            var n = Amount();
+            count.Text = $"{n} of {asked} {name}";
+            button!.Text = $"{label} · {n} {name}\n{hint}";
+            less.Disabled = n <= min;
+            more.Disabled = n >= max;
+        }
+        less.Pressed += () => { _stakes[key] = Amount() - 1; Show(); };
+        more.Pressed += () => { _stakes[key] = Amount() + 1; Show(); };
+        row.AddChild(less);
+        row.AddChild(count);
+        row.AddChild(more);
+        box.AddChild(row);
+        Show();
+        return box;
+    }
+
     string Left(int ticks)
     {
         var h = (float)ticks / _ticksPerDay * 24;
@@ -121,7 +172,7 @@ public partial class Choices : Node
         _ticksPerDay = ticksPerDay;
         var tick = snapshot.GetProperty("tick").GetInt32();
         var pending = snapshot.GetProperty("events").GetProperty("pending");
-        var key = string.Join("|", pending.EnumerateArray().Select(e => $"{e.GetProperty("id").GetInt32()}:{string.Join(",", e.GetProperty("choices").EnumerateArray().Select(c => c.GetProperty("refusal").ValueKind == JsonValueKind.String))}"));
+        var key = string.Join("|", pending.EnumerateArray().Select(e => $"{e.GetProperty("id").GetInt32()}:{string.Join(",", e.GetProperty("choices").EnumerateArray().Select(c => $"{c.GetProperty("refusal").ValueKind == JsonValueKind.String}{StakeMax(c)}"))}"));
         if (key != _cardsKey)
         {
             _cardsKey = key;
@@ -141,8 +192,12 @@ public partial class Choices : Node
                 {
                     var choice = c.GetProperty("id").GetString()!;
                     var refusal = c.GetProperty("refusal").ValueKind == JsonValueKind.String ? c.GetProperty("refusal").GetString() : null;
-                    rows.AddChild(Choice(c.GetProperty("label").GetString()!, c.GetProperty("hint").GetString()!, refusal,
-                        () => _command(new() { ["type"] = "answerEvent", ["eventId"] = id, ["choice"] = choice })));
+                    var label = c.GetProperty("label").GetString()!;
+                    var hint = c.GetProperty("hint").GetString()!;
+                    if (refusal == null && c.TryGetProperty("stake", out var st) && st.ValueKind == JsonValueKind.Object)
+                        rows.AddChild(StakeChoice(id, choice, label, hint, st));
+                    else
+                        rows.AddChild(Choice(label, hint, refusal, () => _command(new() { ["type"] = "answerEvent", ["eventId"] = id, ["choice"] = choice })));
                 }
                 var countdown = Text("", 13, Muted);
                 rows.AddChild(countdown);

@@ -21,3 +21,4 @@ A small "away" mark on the worker count; the tooltip lists who's away, on what, 
 
 ## History
 - 2026-10-11 16:09 opened from F-016 (agreed)
+- 2026-10-14 21:21 T-151: snapshot workforce has away and injured; the card's stake label now shows only the crew (4 colonists), not the machinery going with it

@@ -1,7 +1,7 @@
 ---
 id: T-150
 title: Events with rolled outcomes: weighted results per choice, odds shifting with the stake
-status: open
+status: done
 size: M
 area: sim, events
 feature: F-016
@@ -24,3 +24,5 @@ PLAN-M14.md or a new section in EVENTS.md: how outcomes work; the `_note` in eve
 
 ## History
 - 2026-10-11 16:09 opened from F-016 (agreed)
+- 2026-10-13 00:46 building on t-150-rolled-outcomes
+- 2026-10-13 00:58 built

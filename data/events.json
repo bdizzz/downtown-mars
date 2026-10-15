@@ -1,5 +1,5 @@
 {
-  "_note": "Events with choices (docs/PLAN-M14.md). Triggers live in src/sim/events.ts; everything else is here. An event waits patienceDays for an answer, then its `ignored` effect happens. Effects: resources (added; negative is a cost, and a choice you can't afford is greyed out), mood (happiness for everyone, easing off over its days), message, deposit (the hole gains it), openCavity (the lava tube's cells, dug free), holdDrillDays, conditionFloorAbove (condition lost by the rooms on the floor above the find), colonists, notableRole (one of the newcomers becomes a notable with that role), followUp (an effect some days later), celebrate (propose a celebration for that milestone), festival, landing (the lander comes down on the pad), ventAir (the air's O2 above the target vented to the planet, lost for good). Placeholders: {floor}, {ship}, {milestone}, {o2}.",
+  "_note": "Events with choices (docs/PLAN-M14.md). Triggers live in src/sim/events.ts; everything else is here. An event waits patienceDays for an answer, then its `ignored` effect happens. Effects: resources (added; negative is a cost, and a choice you can't afford is greyed out), mood (happiness for everyone, easing off over its days), message, deposit (the hole gains it), openCavity (the lava tube's cells, dug free), holdDrillDays, conditionFloorAbove (condition lost by the rooms on the floor above the find), colonists, notableRole (one of the newcomers becomes a notable with that role), followUp (an effect some days later), celebrate (propose a celebration for that milestone), festival, landing (the lander comes down on the pad), ventAir (the air's O2 above the target vented to the planet, lost for good), bad (show the message as bad news). Wagers (F-016, docs/EVENTS.md \"Wagers\"): a choice can put up a stake (resources held while it runs; min is the least share you can commit instead), take durationDays to come back (at once if left out), and roll outcomes: a list of tables, each rolled once in turn, each result an effect with a weight (with the whole stake), weightAtMin (with the least; straight between), returns (the share of the stake given back, 1 if left out; the least across the tables counts) and unless (ruled out if one of those results was rolled earlier). Gains in an outcome scale with the share put up. The odds are never shown to the player. Placeholders: {floor}, {ship}, {milestone}, {o2}, and in outcome messages {back} (the stake given back) and {gains} (what was found).",
   "checkEveryTicks": 10,
   "discoveries": {
     "chance": 0.45,
@@ -149,6 +149,36 @@
       "choices": [
         { "id": "study", "label": "Stop and study them", "hint": "The drill stops for 2 months. Everyone's thrilled (+10 happiness), and it's worth a celebration.", "holdDrillDays": 2, "mood": { "amount": 10, "days": 5 }, "celebrate": "microfossils", "message": "Life on Mars, once: the microfossils from floor {floor} are being studied." },
         { "id": "dig", "label": "Dig on", "hint": "No time lost; the scientists sulk (−5 happiness).", "mood": { "amount": -5, "days": 3 }, "message": "The drill digs on past the microfossils. The scientists are not pleased." }
+      ]
+    },
+    {
+      "id": "meteorite_run",
+      "_note": "The first wager (T-150), raised only from the console for now: T-154 gives it a trigger. Its crew is away for the trip, and a broken winch can hurt some of them (T-151).",
+      "title": "A meteorite came down",
+      "text": "A bright streak fell to the east last night. Four of the surface crew want to take 10 machinery out to the impact site and see what came down.",
+      "patienceDays": 1,
+      "ignored": { "message": "Nobody answered the surface crew; the impact site waits for someone else." },
+      "choices": [
+        {
+          "id": "go",
+          "label": "Send them out",
+          "hint": "The crew and the machinery are gone for a month, and the crew is off work. Send fewer for a smaller haul, and less to lose.",
+          "stake": { "resources": { "machinery": 10 }, "colonists": 4, "min": 0.5 },
+          "durationDays": 1,
+          "message": "The surface crew heads out for the impact site with the machinery. Back next month.",
+          "outcomes": [
+            [
+              { "id": "all_back", "weight": 6, "weightAtMin": 7, "message": "The meteorite crew is back with all their gear ({back})." },
+              { "id": "winch", "weight": 3, "weightAtMin": 2.5, "returns": 0.8, "injures": { "share": 0.25, "days": 2 }, "bad": true, "message": "A winch broke out at the impact site: {back} came home, and {injured} of the crew got hurt and needs time to heal." },
+              { "id": "catastrophe", "weight": 1, "weightAtMin": 0.5, "returns": 0, "mood": { "amount": -2, "days": 2 }, "message": "Catastrophic tool failure at the impact site: the crew came home safe, empty-handed and without the machinery." }
+            ],
+            [
+              { "id": "ore", "weight": 6, "weightAtMin": 4, "unless": ["catastrophe"], "resources": { "ore": 25 }, "message": "They found meteoric iron: {gains}." },
+              { "id": "no_ore", "weight": 4, "weightAtMin": 6 }
+            ]
+          ]
+        },
+        { "id": "decline", "label": "Not this time", "hint": "Keep the machinery home. The surface crew is let down (−1 happiness).", "mood": { "amount": -1, "days": 1 }, "message": "The meteorite stays where it fell." }
       ]
     }
   ]

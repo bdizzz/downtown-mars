@@ -26,6 +26,22 @@ Everything else here (the strike chain, cave-ins, outbreaks, the network events,
 - **Pacing director:** event frequency scales with hole size and difficulty, with guaranteed quiet stretches.
 - **Delegation:** events at holes outside your view are handled by the local administrator, according to the delegation dial and their personality.
 
+## Wagers (F-016)
+
+Built in T-150, T-152 and T-151; the events that use them come with T-154 and T-155.
+
+A wager is an event choice where you put something up and the result is rolled. In `data/events.json` a choice can carry:
+
+- **`stake`**: resources taken from stock when it's agreed and held until it resolves, and a crew of colonists who go with them (`{ "resources": { "machinery": 10 }, "colonists": 4, "min": 0.5 }`). `min` is the least share you can commit instead, of everything in the stake alike; the card shows a − / + stepper counted in the crew if there is one, else the stake's first resource. Without `min` it's all or nothing. The crew still live in the hole (they count, eat and age) but are out of the workforce until it's back (T-151); only adults not already away or healing can go.
+- **`durationDays`**: it comes back that many days later (a month each in the player's calendar). Without it, it resolves the moment you choose (the jammed drill).
+- **`outcomes`**: a list of tables, each rolled once in turn. Each result is an ordinary effect (resources, mood, message…) plus `weight` (with the whole stake), `weightAtMin` (with the least; straight between the two), `returns` (the share of the stake given back, 1 if left out; the least across the tables counts) and `unless` (ruled out if one of those results came up in an earlier table).
+
+An outcome can also carry **`injures`** (`{ "share": 0.25, "days": 2 }`): that share of the crew (at least one) come home hurt and are out of work while they heal, for that many days, or as little as half with a clinic in reach of every home (`injury.clinicSpeedup` in `people.json`, scaled by the hole's clinic coverage). The worst injury rolled counts. **Nobody dies on events, and the injured always heal fully.**
+
+What an outcome finds scales with the share put up. Outcome messages can say `{back}` (the stake given back), `{gains}` (what was found) and `{injured}` (how many were hurt). The odds are never shown to the player. Rolls are on the events' own seeded dice, so the same game always rolls the same way.
+
+The first one, **A meteorite came down** (`meteorite_run`), only comes from the console for now (`dm.event("meteorite_run")`): send 2–4 of the surface crew with 5–10 machinery out for a month; all of it comes back (6 in 10 with the full stake), 8 in 10 of it (a winch broke, 3 in 10, and one of the crew is hurt for two months) or none (a catastrophe, 1 in 10; the crew come home safe). Separately, 25 ore is found 6 times in 10 (scaled to the stake; never after a catastrophe). Sending less makes a catastrophe and ore both rarer. Or decline, for a small dip in happiness. T-154 gives it a trigger.
+
 ## Citizen visits
 
 | Event | Trigger | Choices |

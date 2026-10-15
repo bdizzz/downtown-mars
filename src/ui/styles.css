@@ -100,6 +100,17 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .event-card.belt_ship { border-left-color: #6fb0ff; }
 .event-card.gas_pocket { border-left-color: #ff7a5c; }
 .event-card.celebration { border-left-color: #f2c84b; }
+.event-card.meteorite_run { border-left-color: #c9a0ff; }
+.event-card .choice-wrap { display: flex; flex-direction: column; gap: 3px; }
+.event-card .choice .stake { color: var(--accent); }
+.event-card .stepper { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); padding-left: 8px; }
+.event-card .stepper button {
+  background: #2f1c16; color: var(--text); font: inherit; border: 1px solid var(--muted); border-radius: 4px;
+  min-width: 24px; min-height: 22px; padding: 0 6px; cursor: pointer;
+}
+.event-card .stepper button:hover:not(:disabled) { border-color: var(--accent); }
+.event-card .stepper button:disabled { opacity: 0.4; cursor: not-allowed; }
+@media (pointer: coarse) { .event-card .stepper button { min-width: 36px; min-height: 32px; } }
 @keyframes event-in { from { transform: translateX(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
 .msg {
   background: rgba(30, 17, 13, 0.92); border: 1px solid #000; border-left: 3px solid var(--muted); padding: 6px 4px 6px 10px; border-radius: 4px; font-size: 13px;
