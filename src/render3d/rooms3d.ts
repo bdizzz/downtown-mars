@@ -2125,6 +2125,22 @@ const FINISH_LOOK: Record<string, THREE.MeshStandardMaterialParameters> = {
 };
 const UNLINKED = 0xe0503a;
 
+/** How far over its floor (or the rock's top) a corridor's ghost is drawn. */
+const GHOST_LIFT = 0.08;
+
+/**
+ * The height a corridor's ghost (the build preview, hovered or snaked) is drawn at: on its floor where
+ * the border is open, but on top of the rock where it runs beside or through uncut rock, whose lid
+ * would otherwise sit over it and leave it showing a floor below the pointer (T-169).
+ */
+export function corridorGhostY(layout: Layout, e: Edge): number {
+  const [y0, y1] = floorSpan(e.floor);
+  const hole = layout.hole;
+  const rock = (c: Cell | null) => !!c && c.ring <= hole.unlockedRings && !layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] && !isOpen(layout, c);
+  const inRock = !layout.corridors[e.id] && !isGalleryEdge(e) && edgeSides(hole, e).some(rock);
+  return (inRock ? y1 : y0) + GHOST_LIFT;
+}
+
 /**
  * A corridor's floor: a strip centred on its border, `lift` above the floor (or on the cut, from above).
  * Given a side (as edgeSides orders them), just the half toward it: the windows tool's ghost, on the glazed room's side.

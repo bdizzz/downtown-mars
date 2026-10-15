@@ -7,7 +7,7 @@ import type { SimCommand } from "../sim/commands";
 import type { SimState } from "../sim/state";
 import type { Location } from "../sim/placement";
 import { floorSpan, pickAt, RING_D, TAU } from "../render3d/cylinder";
-import { corridorStripGeometry, roomGeometry } from "../render3d/rooms3d";
+import { corridorGhostY, corridorStripGeometry, roomGeometry } from "../render3d/rooms3d";
 import { corridors } from "../sim/corridors";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import { roomSide } from "../sim/windows";
@@ -245,7 +245,7 @@ export function edgeHover(state: SimState, tool: CorridorTool, at: [number, numb
   const edges = room && w ? w.edges.map((id) => edgeById(state.layout.hole, id)).filter((e): e is Edge => !!e) : [edge];
   const pos: number[] = [];
   for (const e of edges) {
-    const geo = corridorStripGeometry(state.layout, e, floorSpan(e.floor)[0] + 0.08, room ? (roomSide(state.layout, room, e) ?? undefined) : undefined);
+    const geo = corridorStripGeometry(state.layout, e, room ? floorSpan(e.floor)[0] + 0.08 : corridorGhostY(state.layout, e), room ? (roomSide(state.layout, room, e) ?? undefined) : undefined);
     pos.push(...(geo.getAttribute("position") as THREE.BufferAttribute).array);
     geo.dispose();
   }
@@ -297,7 +297,7 @@ export function chainedMessage(state: SimState, edges: string[], erase: boolean)
     const e = edgeById(state.layout.hole, id);
     if (!e) continue;
     const color = erase ? HOVER.bad : state.layout.corridors[id] ? HOVER.existing : HOVER.ok;
-    const geo = corridorStripGeometry(state.layout, e, floorSpan(e.floor)[0] + 0.08);
+    const geo = corridorStripGeometry(state.layout, e, corridorGhostY(state.layout, e));
     const a = (geo.getAttribute("position") as THREE.BufferAttribute).array;
     if (!byColor.has(color)) byColor.set(color, []);
     const list = byColor.get(color)!;
