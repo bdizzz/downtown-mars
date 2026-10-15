@@ -43,11 +43,9 @@ import { troubleOf, type Trouble } from "../view/roomTrouble";
 import { grimeLevel } from "../view/grime";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
 import { reachKey, reachTints } from "../view/reachView";
+import { badgeAbove, LINE_M } from "../view/labelFit";
 import { flowRooms, Flows } from "./flows3d";
 import type { RoomStatus } from "../sim/economy";
-
-/** How far above a room's label its trouble badge floats, metres. */
-const BADGE_ABOVE = 0.9;
 
 /** How much a full dust storm dims the sun and the sky's light, and how fast (per second) the view follows it. */
 const STORM_DIM = { sun: 0.7, sky: 0.3 };
@@ -467,7 +465,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const at = roomLabels.get(id);
       if ((t.level !== "warn" && t.level !== "bad") || !at) continue;
       const b = statusBadge("⚠");
-      b.position.copy(at.position).add(new THREE.Vector3(0, BADGE_ABOVE, 0));
+      b.position.copy(at.position).add(new THREE.Vector3(0, badgeAbove((at.userData.heightM as number | undefined) ?? LINE_M), 0));
       badges.add(b);
     }
     dirty = true;
@@ -1033,6 +1031,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     scene.add(overlay);
     dirty = true;
     if (!layout) return;
+    // A label too big for its room shows only while its room is hovered or picked (T-077).
+    for (const [id, o] of roomLabels) if (o.userData.hoverOnly) o.visible = id === selected || id === info?.room?.id;
     const sel = selected !== null ? layout.rooms.find((r) => r.id === selected) : undefined;
     if (sel) markRoom(sel, HOVER.selected);
     // A warning is up: the corridors it would fill in, and whatever they'd cut off, in red.

@@ -1,6 +1,7 @@
 import { UI_FONT } from "../view/font";
 import { LABEL_LAYER, testsSceneDepth } from "./labelLayer";
 import { roomLabel } from "../sim/roomName";
+import { BADGE_M, fitLabel, LABEL_PX, labelBox, labelSpot, labelY, LINE_M, roughMeasure } from "../view/labelFit";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
@@ -40,7 +41,7 @@ const WINDOW = { bottom: 1.4, top: 3.0, inset: 0.03, margin: 0.02, color: 0x2d4f
 const WINDOW_WALL = { bottom: 0.35, top: 3.55 };
 /** The door's frame: how wide, and its colour. */
 const DOOR_FRAME = { width: 0.12, color: 0x2a1a14 };
-const LABEL = { px: 40, heightM: 1.1 };
+const LABEL = { heightM: LINE_M };
 const GLOW = { windowBoost: 5 };
 
 export interface RoomColors {
@@ -1728,6 +1729,7 @@ function roomMaterial(color: number, planned: boolean, building = false, floor: 
 /** A room's trouble, shown on it: a badge floating over its label, with the reason's icon. */
 export function statusBadge(icon: string): THREE.Sprite {
   const sprite = label(icon, "#ffffff");
+  sprite.scale.multiplyScalar(BADGE_M / LABEL.heightM);
   sprite.userData = { badge: true };
   return sprite;
 }
@@ -1745,39 +1747,50 @@ export function troubleEdgeMaterial(level: keyof typeof TROUBLE_EDGE): THREE.Lin
 /** Label materials are shared by text: a colony has hundreds of rooms but few distinct names. */
 const labelCache = new Map<string, { material: THREE.SpriteMaterial; aspect: number }>();
 
-/** A name floating in front of the room, readable from across the shaft. */
-function label(text: string, color: string): THREE.Sprite {
-  const key = `${text}|${color}`;
+/** A name floating in its room, readable from across the shaft: one line, LABEL.heightM tall, unless `size` says otherwise. */
+function label(text: string, color: string, lines: string[] = [text], size?: { widthM: number; heightM: number }): THREE.Sprite {
+  const key = `${lines.join("\n")}|${color}`;
   let cached = labelCache.get(key);
   if (!cached) {
-    cached = drawLabel(text, color);
+    cached = drawLabel(lines, color);
     labelCache.set(key, cached);
   }
   const sprite = new THREE.Sprite(cached.material);
-  sprite.scale.set(LABEL.heightM * cached.aspect, LABEL.heightM, 1);
+  if (size) sprite.scale.set(size.widthM, size.heightM, 1);
+  else sprite.scale.set(LABEL.heightM * cached.aspect, LABEL.heightM, 1);
   // Drawn after the miniature blur, so it stays sharp (labelLayer.ts).
   sprite.layers.set(LABEL_LAYER);
   return sprite;
 }
 
-function drawLabel(text: string, color: string): { material: THREE.SpriteMaterial; aspect: number } {
+/** How wide a line of label text is, in canvas pixels (view/labelFit.ts sizes labels by it). */
+let measureCtx: CanvasRenderingContext2D | null = null;
+function measureLabel(line: string): number {
+  measureCtx ??= document.createElement("canvas").getContext("2d");
+  if (!measureCtx) return roughMeasure(line);
+  measureCtx.font = `600 ${LABEL_PX.font}px ${UI_FONT}`;
+  // No canvas to measure with (the bridge, in Node): a rough width.
+  return measureCtx.measureText(line).width || roughMeasure(line);
+}
+
+function drawLabel(lines: string[], color: string): { material: THREE.SpriteMaterial; aspect: number } {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d")!;
-  ctx.font = `600 ${LABEL.px}px ${UI_FONT}`;
-  const w = Math.ceil(ctx.measureText(text).width) + 24;
-  canvas.width = w;
-  canvas.height = LABEL.px + 20;
-  ctx.font = `600 ${LABEL.px}px ${UI_FONT}`;
+  const [w, h] = labelBox(lines, measureLabel);
+  canvas.width = Math.ceil(w);
+  canvas.height = h;
+  ctx.font = `600 ${LABEL_PX.font}px ${UI_FONT}`;
   ctx.fillStyle = "rgba(20, 10, 8, 0.72)";
   ctx.beginPath();
-  ctx.roundRect(0, 0, w, canvas.height, 12);
+  ctx.roundRect(0, 0, canvas.width, canvas.height, 12);
   ctx.fill();
   ctx.fillStyle = color;
   ctx.textBaseline = "middle";
-  ctx.fillText(text, 12, canvas.height / 2 + 2);
+  ctx.textAlign = "center";
+  lines.forEach((line, i) => ctx.fillText(line, canvas.width / 2, LABEL_PX.padY + LABEL_PX.font / 2 + 2 + i * LABEL_PX.lineGap));
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  return { material: testsSceneDepth(new THREE.SpriteMaterial({ map: tex, depthTest: true, depthWrite: false, transparent: true })), aspect: w / canvas.height };
+  return { material: testsSceneDepth(new THREE.SpriteMaterial({ map: tex, depthTest: true, depthWrite: false, transparent: true })), aspect: canvas.width / canvas.height };
 }
 
 /**
@@ -2019,16 +2032,16 @@ export function buildLayout(
     }
 
     if (def.short) {
-      const first = [...room.cells].sort((a, b) => a.ring - b.ring || a.slot - b.slot)[0]!;
-      const n = hole.ringSlots[first.ring - 1]!;
-      const [a0, a1] = slotAngles(first.slot, n);
-      const [r0] = ringRadii(hole, first.ring);
-      const y1 = floorSpan(first.floor)[1];
+      // Centred on its floor and fitted inside its walls (view/labelFit.ts); too big even shrunk, it shows on hover.
+      const spot = labelSpot(hole, room.cells, HALL + WALL_HALF);
+      if (!spot) continue;
       const name = roomLabel(whole);
-      const sprite = label(room.connected ? name : `${name} ⚠`, room.planned ? "#d8c0ae" : "#f6efe6");
-      const a = (a0 + a1) / 2;
-      sprite.position.set((r0 - 0.6) * Math.cos(a), y1 - 0.8, (r0 - 0.6) * Math.sin(a));
-      sprite.userData = { label: true, cached: true, roomId: room.id, text: name };
+      const text = room.connected ? name : `${name} ⚠`;
+      const fit = fitLabel(text, measureLabel, spot);
+      const sprite = label(text, room.planned ? "#d8c0ae" : "#f6efe6", fit.lines, fit);
+      sprite.position.set(spot.x, labelY(spot, fit), spot.z);
+      sprite.visible = !fit.hoverOnly;
+      sprite.userData = { label: true, cached: true, roomId: room.id, text: name, lines: fit.lines, widthM: fit.widthM, heightM: fit.heightM, hoverOnly: fit.hoverOnly };
       group.add(sprite);
     }
   }
