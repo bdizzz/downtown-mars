@@ -25,3 +25,4 @@ A material picker in build mode beside the room choice (the six wall steps, grey
 ## History
 - 2026-10-06 00:20 opened from Bryon's answer on F-003 (rooms start as bare rock unless a material is picked when building)
 - 2026-10-06 00:16 built outright: full cost, build time only (Bryon)
+- 2026-10-15 11:23 building on t-038-build-in-a-material
