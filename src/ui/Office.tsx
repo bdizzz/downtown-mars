@@ -4,6 +4,7 @@ import { ordinanceDefs } from "../sim/ordinances";
 import type { Snapshot } from "../sim/snapshot";
 import { visitDef } from "../sim/visits";
 import { monthsText } from "../view/months";
+import { Portrait } from "./Portrait";
 
 interface Props {
   s: Snapshot;
@@ -15,12 +16,6 @@ const days = (ticks: number) => {
   const d = ticks / config.ticksPerDay;
   return d >= 1 ? monthsText(d, true) : `${Math.max(1, Math.round(d * 24))} h`;
 };
-
-const initials = (name: string) =>
-  name
-    .split(" ")
-    .map((p) => p[0])
-    .join("");
 
 const PROMISE_TEXT: Record<string, string> = {
   noiseFixed: "Fix the noise",
@@ -47,7 +42,7 @@ export function Office({ s, onCommand, onClose }: Props) {
         return (
           <div key={v.id} className="visit">
             <div className="who">
-              <span className="face">{n ? initials(n.name) : "?"}</span>
+              <Portrait who={n} />
               <span>
                 <strong>{n?.name}</strong>
                 <br />
@@ -116,7 +111,7 @@ export function Office({ s, onCommand, onClose }: Props) {
       <h3>Notables</h3>
       {s.notables.map((n) => (
         <div key={n.id} className="notable">
-          <span className="face small">{initials(n.name)}</span>
+          <Portrait who={n} small />
           <span className="grow">
             {n.name}
             <br />
