@@ -15,7 +15,8 @@ import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { proposalSummary, type ProposalSummary } from "../view/corridorProposal";
 import type { Proposal } from "../view/types";
 import { CATEGORY_NAMES, CATEGORY_ORDER, HOTKEYS, shapesFor } from "../view/buildCatalog";
-import { corridorCommand, edgeHoverFor, locationFor, surfaceSpots } from "../view/interaction";
+import { corridorCommand, edgeHoverFor, liningFields, locationFor, surfaceSpots } from "../view/interaction";
+import { buildLiningCost, canLineAt, liningById, liningCost, liningId, MATERIALS } from "../sim/materials";
 import { surfaceSpotGeometry } from "../render3d/scenery3d";
 import { resName } from "../ui/format";
 import { roomCard, type CardContent } from "../view/roomCard";
@@ -43,12 +44,16 @@ export interface PaletteRoom {
   short?: string;
   /** The room card (view/roomCard.ts), shown while it's pointed at or in hand. */
   card: CardContent;
+  /** Can it be built in a lining (T-038)? Not surface buildings, stairs, lifts or empty rooms. */
+  lineable: boolean;
 }
 
 export interface PaletteMessage {
   type: "palette";
   categories: { id: string; name: string }[];
   rooms: PaletteRoom[];
+  /** The building materials rooms can be built in (T-038), bare rock first: what each adds a cell, and what it does. */
+  linings: { id: string; name: string; cost: string; hint: string }[];
   /** The corridor tool (in Access): its finishes, and bulkheads and windows, with what they cost. */
   corridors: { finishes: { id: string; name: string; cost: string; hint: string }[]; bulkhead: string; windows: string };
 }
@@ -73,6 +78,7 @@ export function palette(state: SimState): PaletteMessage {
       ...(siteRefusal(d.id, gates) ? { locked: siteRefusal(d.id, gates)! } : {}),
       ...(missingCost(state.resources, d.id) ? { short: missingCost(state.resources, d.id)! } : {}),
       card: roomCard(d, state.resources, siteRefusal(d.id, gates)),
+      lineable: d.size !== "surface" && canLineAt(d.id, { kind: "ring", floor: 1, ring: 1, slot: 0, w: 1, d: 1 }),
     }));
   const used = new Set(rooms.map((r) => r.category));
   used.add("circulation");
@@ -80,6 +86,15 @@ export function palette(state: SimState): PaletteMessage {
     type: "palette",
     categories: CATEGORY_ORDER.filter((c) => used.has(c)).map((id) => ({ id, name: CATEGORY_NAMES[id] ?? id })),
     rooms,
+    linings: MATERIALS.walls.map((w, i) => ({
+      id: liningId(w),
+      name: w.name,
+      cost: i === 0 ? "as dug" : `${costText(liningCost(w))} a cell`,
+      hint:
+        i === 0
+          ? "The room as dug: refit it later from its panel"
+          : `On top of the room's cost, in its own build time (a refit later takes extra work). Comfort +${w.comfort} in a home, wears ${Math.round((1 - w.wear) * 100)}% slower`,
+    })),
     corridors: {
       finishes: corridors.finishes.map((f) => ({ id: f.id, name: f.name, cost: `${costText(f.cost)} per 10 m`, hint: f.hint })),
       bulkhead: `${costText(corridors.bulkhead.cost)} each`,
@@ -96,6 +111,8 @@ export function paletteKey(state: SimState): string {
 export interface BuildTool {
   room: string;
   shape: [number, number];
+  /** The lining to build it in (a liningId; absent or "rock": bare rock). */
+  lining?: string;
 }
 
 function locate(state: SimState, tool: BuildTool, at: [number, number, number]): Location | null {
@@ -175,10 +192,13 @@ function halo(state: SimState, type: string, cells: Cell[]): HoveredMessage["hal
 export function hover(state: SimState, tool: BuildTool, at: [number, number, number]): HoveredMessage {
   const where = locate(state, tool, at);
   const def = roomDefs.find((d) => d.id === tool.room);
-  const cost = def ? costText(def.cost) : "";
+  let cost = def ? costText(def.cost) : "";
   const all = def?.size === "surface" ? { spots: spots(state, tool.room).tris } : {};
   if (!where) return { type: "hovered", ok: false, text: def?.size === "surface" ? "Goes on the surface" : "Point at a slot in the hole", cost, ...all };
-  const check = checkBuild(state.layout, state.resources, tool.room, where, config, holeGates(state));
+  const lining = liningById(tool.lining);
+  const check = checkBuild(state.layout, state.resources, tool.room, where, config, holeGates(state), lining);
+  const extra = buildLiningCost(tool.room, where, check.cells.length, lining);
+  if (Object.keys(extra).length) cost = `${cost} + ${costText(extra)} in ${lining!.name.toLowerCase()}`;
   let text = check.ok ? (check.note ?? (check.planned ? "A blueprint: builds when its floor is dug" : check.unconnected ? "No corridor reaches it yet: it won't work until one does" : "")) : check.reason;
   if (check.ok && check.destroys?.length) text = `Cuts through ${check.destroys.length} corridor segment${check.destroys.length > 1 ? "s" : ""}`;
   let ghost: string | undefined;
@@ -198,13 +218,13 @@ export function hover(state: SimState, tool: BuildTool, at: [number, number, num
 export function place(state: SimState, tool: BuildTool, at: [number, number, number], confirmed: boolean): { command?: SimCommand; confirm?: string; refusal?: string } {
   const where = locate(state, tool, at);
   if (!where) return { refusal: "Point at a slot in the hole" };
-  const check = checkBuild(state.layout, state.resources, tool.room, where, config, holeGates(state));
+  const check = checkBuild(state.layout, state.resources, tool.room, where, config, holeGates(state), liningById(tool.lining));
   if (!check.ok) return { refusal: check.reason };
   if (check.destroys?.length && !confirmed) {
     const stranded = check.strands?.rooms.length ?? 0;
     return { confirm: `This cuts through ${check.destroys.length} corridor segment${check.destroys.length > 1 ? "s" : ""}${stranded ? `, cutting off ${stranded} room${stranded > 1 ? "s" : ""}` : ""}. Build it anyway?` };
   }
-  return { command: { type: "build", room: tool.room, at: where, ...(confirmed ? { confirmed: true } : {}) } };
+  return { command: { type: "build", room: tool.room, at: where, ...(confirmed ? { confirmed: true } : {}), ...liningFields(tool.lining) } };
 }
 
 // ---- corridors, bulkheads and windows: the border under the pointer ----
