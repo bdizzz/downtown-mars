@@ -80,7 +80,7 @@ A hole's crowning work (Build → Public, from 300 colonists; glass, metal, mach
 
 ### Room controls
 
-Pause any staffed room, or have it stop at a stock level, from its details panel. Rename it there too.
+Pause any staffed room, or have it stop at a stock level, from its details panel. Rename it there too. A room's name floats in the middle of it, inside its walls: a long one wraps onto two lines or shrinks to fit, and one too long even then shows only while you point at the room (or have it picked).
 
 ## Digging
 
