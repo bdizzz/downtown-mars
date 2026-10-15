@@ -1,5 +1,6 @@
 import { config } from "../sim/config";
 import { roomWork } from "../sim/construction";
+import { withExtra } from "../sim/costs";
 import { resourceDef } from "../sim/resources";
 import type { EffectDef, RoomDef } from "../sim/rooms";
 import { num, resName, signed } from "../ui/format";
@@ -38,8 +39,12 @@ const flows = (r: Record<string, number>) =>
     .map(([id, v]) => `${resName(id)} ${num(v)}`)
     .join(", ");
 
-/** The card for a room: its size, cost, and what it takes, makes and does to its neighbours. */
-export function roomCard(def: RoomDef, resources: Record<string, number>, siteNote?: string | null): CardContent {
+/**
+ * The card for a room: its size, cost, and what it takes, makes and does to its neighbours.
+ * `extra` goes on top of the cost, as one total (the lining it's to be built in, T-038).
+ */
+export function roomCard(def: RoomDef, resources: Record<string, number>, siteNote?: string | null, extra: Record<string, number> = {}): CardContent {
+  const cost = withExtra(def.id, extra);
   const lines: (CardLine | null)[] = [
     { text: `Takes ${roomWork(def.id)} work-hours to build`, tone: "k" },
     def.storage ? { text: `Stores ${def.storage} units of goods, shared among those you choose`, tone: "good" } : null,
@@ -75,7 +80,7 @@ export function roomCard(def: RoomDef, resources: Record<string, number>, siteNo
     name: def.name,
     size: `${SIZE_NAMES[def.size]}${def.size === "surface" && def.surfaceSlots ? ` · ${def.surfaceSlots} surface ${def.surfaceSlots === 1 ? "slot" : "slots"}` : ""}`,
     surface: def.size === "surface",
-    cost: Object.keys(def.cost).length ? Object.entries(def.cost).map(([id, amt]) => ({ text: `${resourceDef(id).name} ${amt}`, short: (resources[id] ?? 0) < amt })) : [{ text: "Free", short: false }],
+    cost: Object.keys(cost).length ? Object.entries(cost).map(([id, amt]) => ({ text: `${resourceDef(id).name} ${amt}`, short: (resources[id] ?? 0) < amt })) : [{ text: "Free", short: false }],
     lines: lines.filter((l): l is CardLine => !!l),
   };
 }

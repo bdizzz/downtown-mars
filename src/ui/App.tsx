@@ -3,7 +3,7 @@ import type React from "react";
 import type { HoverInfo, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import { roomDef, roomDefs } from "../sim/rooms";
-import { BuildStrip, buildTool } from "./BuildPalette";
+import { BARE_ROCK, BuildStrip, buildTool } from "./BuildPalette";
 import { CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, shapesFor } from "../view/buildCatalog";
 import { ChartsStrip, Dock, MODE_KEYS, ViewStrip, type Chart, type Mode } from "./Dock";
 import { corridors } from "../sim/corridors";
@@ -253,6 +253,14 @@ export function App() {
     const below = tool?.kind === "corridor" || (tool?.kind === "build" && roomDef(tool.room).size !== "surface");
     if (below && viewFloor === null && settings.view === "3d" && settings.view3d.camera === "iso") setViewFloor(1);
   }, [tool, viewFloor, settings.view, settings.view3d.camera]);
+
+  // The lining rooms are built in (T-038): bare rock each time Build opens, then kept while placing room after room.
+  const [lining, setLining] = useState(BARE_ROCK);
+  useEffect(() => {
+    if (mode === "build") setLining(BARE_ROCK);
+  }, [mode]);
+  /** The tool as the views use it: a room in hand carries the lining it'll be built in. */
+  const placing = useMemo<Tool>(() => (tool?.kind === "build" && lining !== BARE_ROCK ? { ...tool, lining } : tool), [tool, lining]);
 
   // The corridor tool remembers its finish between uses.
   const [lastFinish, setLastFinish] = useState(corridors.defaultFinish);
@@ -521,6 +529,8 @@ export function App() {
               {mode === "build" && (
                 <BuildStrip
                   tool={tool}
+                  lining={lining}
+                  setLining={setLining}
                   lastFinish={lastFinish}
                   setTool={(t) => (setTool(t), setSelected(null))}
                   resources={snapshot.resources}
@@ -610,7 +620,8 @@ export function App() {
               build={pendingBuild}
               layout={snapshot.layout}
               onAccept={() => {
-                onCommand({ type: "build", room: pendingBuild.room, at: pendingBuild.at, confirmed: true });
+                const { room, at, material, finish } = pendingBuild;
+                onCommand({ type: "build", room, at, confirmed: true, ...(material ? { material, finish } : {}) });
                 setPendingBuild(null);
               }}
               onCancel={() => setPendingBuild(null)}
@@ -625,7 +636,7 @@ export function App() {
             onPropose={setProposal}
             floor={titling && !titleStill ? 1 : cutaway ? null : shownFloor(lookFloor, floorCount, settings.view === "plan")}
             snapshot={snapshot}
-            tool={tool}
+            tool={placing}
             onHover={setHover}
             onCommand={onCommand}
             onCancel={() => setTool(null)}
@@ -662,7 +673,7 @@ export function App() {
           <Inspector s={snapshot} finish={lastFinish} roomId={selected} onCommand={onCommand} onClose={() => setSelected(null)} />
         )}
       </div>
-      <StatusBar info={hover} snapshot={snapshot} notice={notice} overlay={overlay} view={settings.view} tool={tool} />
+      <StatusBar info={hover} snapshot={snapshot} notice={notice} overlay={overlay} view={settings.view} tool={placing} />
       {menu && (
         <Menu
           mode={menu}

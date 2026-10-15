@@ -8,8 +8,84 @@ import { roomDefs, type RoomDef } from "../sim/rooms";
 import { CATEGORY_NAMES, CATEGORY_ORDER, CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, shapesFor } from "../view/buildCatalog";
 import { RoomCard } from "./RoomCard";
 import { corridors, finishDef } from "../sim/corridors";
-import { liningCost, liningId, MATERIALS } from "../sim/materials";
+import { liningById, liningCost, liningId, MATERIALS } from "../sim/materials";
 import { resName } from "./format";
+
+/** The lining rooms are built in unless another is picked (T-038). */
+export const BARE_ROCK = liningId(MATERIALS.walls[0]!);
+
+/** Cells a room of this shape takes (for what its lining costs). */
+function cellsOf(def: RoomDef, shape: [number, number]): number {
+  return shape[0] * shape[1] * (def.floors ?? 1);
+}
+
+/** What lining a room in this lining adds to its cost, by its first shape (or its shape in hand). Nothing for rooms that can't be lined. */
+function liningExtra(def: RoomDef, lining: string, shape = shapesFor(def)[0]!): Record<string, number> {
+  const step = liningById(lining);
+  if (!step || lining === BARE_ROCK || !canLineType(def)) return {};
+  return Object.fromEntries(Object.entries(liningCost(step)).map(([r, v]) => [r, v * cellsOf(def, shape)]));
+}
+
+/** Rooms in the hole's rings that take a lining (not surface buildings, stairs, lifts or empty rooms). */
+function canLineType(def: RoomDef): boolean {
+  return def.size !== "surface" && !MATERIALS.exempt.includes(def.id) && !def.excavationOnly;
+}
+
+const costWords = (cost: Record<string, number>) =>
+  Object.entries(cost)
+    .map(([r, v]) => `${v} ${resName(r).toLowerCase()}`)
+    .join(", ");
+
+/**
+ * The building material: the lining rooms go in, bare rock unless one is
+ * picked. A room built in one pays the lining from bare rock on top of its
+ * cost but takes only its own build time.
+ */
+function LiningPicker({ lining, setLining, held, shape, resources }: { lining: string; setLining: (l: string) => void; held: RoomDef | null; shape: [number, number] | null; resources: Record<string, number> }) {
+  const exempt = held && !canLineType(held);
+  const step = liningById(lining) ?? MATERIALS.walls[0]!;
+  return (
+    <div className="linings" role="radiogroup" aria-label="Building material">
+      <span className="k">Built in</span>
+      {MATERIALS.walls.map((w) => {
+        const id = liningId(w);
+        const f = finishDef(id);
+        const cost = held && shape ? liningExtra(held, id, shape) : liningCost(w);
+        const total = held ? { ...held.cost } : {};
+        for (const [r, v] of Object.entries(cost)) total[r] = (total[r] ?? 0) + v;
+        const short = Object.entries(held ? total : cost).some(([r, v]) => (resources[r] ?? 0) < v);
+        const free = id === BARE_ROCK;
+        return (
+          <button
+            key={id}
+            role="radio"
+            aria-checked={lining === id}
+            className={`lining${lining === id ? " on" : ""}${short && !free ? " short" : ""}`}
+            disabled={!!exempt && !free}
+            title={
+              free
+                ? "Bare rock: the room as dug. Refit it later from its panel."
+                : `${w.name}: ${held && shape ? `${held.name} built in it costs ${costWords(total)}` : `${costWords(cost)} a cell on a room's cost`}, in the room's own build time (a refit later takes extra work). Comfort +${w.comfort} in a home, wears ${Math.round((1 - w.wear) * 100)}% slower.`
+            }
+            onClick={() => setLining(id)}
+          >
+            <span className={`chip${w.finish === "fine" ? " fine" : ""}`} style={{ background: f.color, borderColor: f.accent }} />
+            <span className="name">{w.name}</span>
+          </button>
+        );
+      })}
+      <span className="k note">
+        {exempt
+          ? `${held.name} can't be lined: built in bare rock`
+          : lining === BARE_ROCK
+            ? "Bare rock: refit later from the room's panel"
+            : held && shape
+              ? `${step.name}: in its cost above, no extra build time`
+              : `${step.name}: ${costWords(liningCost(step))} a cell on a room's cost, no extra build time`}
+      </span>
+    </div>
+  );
+}
 
 export function buildTool(def: RoomDef): Tool {
   return { kind: "build", room: def.id, shape: shapesFor(def)[0]! };
@@ -28,6 +104,9 @@ interface Props {
   deposits: string[];
   /** The finish the corridor tool last used. */
   lastFinish: string;
+  /** The lining rooms are built in (a liningId; bare rock unless picked). */
+  lining: string;
+  setLining: (lining: string) => void;
   /** The shaft dome: not yet, under way, or built. */
   dome?: "none" | "building" | "built";
   onBuildDome?: () => void;
@@ -172,7 +251,7 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
  * details of the room under the pointer or in hand; choosing a room (or its
  * key) opens its category. Demolish and undo sit at the end.
  */
-export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, highlight, deposits, lastFinish, dome = "none", onBuildDome }: Props) {
+export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, highlight, deposits, lastFinish, lining, setLining, dome = "none", onBuildDome }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(() => categoryOf(tool));
   // Groups in the right half of the screen open their popup leftward.
@@ -238,10 +317,20 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
                       siteNote={siteRefusal(shown.id, deposits)}
                       shape={tool?.kind === "build" && tool.room === shown.id ? tool.shape : shapesFor(shown)[0]!}
                       onRotate={tool?.kind === "build" && tool.room === shown.id && shapesFor(shown).length > 1 ? rotate : undefined}
+                      extra={liningExtra(shown, lining, tool?.kind === "build" && tool.room === shown.id ? tool.shape : undefined)}
                     />
                   </div>
                 )}
                 {cat === "circulation" && !shown && <Finishes tool={tool} setTool={setTool} resources={resources} />}
+                {cat !== "circulation" && (
+                  <LiningPicker
+                    lining={lining}
+                    setLining={setLining}
+                    held={defs.find((d) => d.id === selected) ?? null}
+                    shape={tool?.kind === "build" ? tool.shape : null}
+                    resources={resources}
+                  />
+                )}
                 {cat === "public" && hovered === "shaft_dome" && (
                   <div className="dock-card">
                     <DomeCard dome={dome} deposits={deposits} resources={resources} />
@@ -275,7 +364,7 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
                   )}
                   {defs.map((def) => {
                     const on = def.id === selected;
-                    const missing = siteRefusal(def.id, deposits) ?? missingCost(resources, def.id);
+                    const missing = siteRefusal(def.id, deposits) ?? missingCost(resources, def.id, liningExtra(def, lining));
                     return (
                       <button
                         key={def.id}

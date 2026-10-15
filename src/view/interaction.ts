@@ -45,7 +45,7 @@ export function hoverInfoFor(layout: Layout, resources: Record<string, number>, 
   const info: HoverInfo = { pick: p };
   if (tool?.kind === "build") {
     const at = locationFor(p, tool, layout);
-    if (at) info.check = checkBuild(layout, resources, tool.room, at, config, gates);
+    if (at) info.check = checkBuild(layout, resources, tool.room, at, config, gates, liningById(tool.lining));
     return info;
   }
   if (p.kind === "slot") info.room = roomAt(layout, p);
@@ -126,6 +126,12 @@ export function hoverKeyFor(info: HoverInfo | null, tool: Tool, layoutVersion: n
   return JSON.stringify([coarse, info?.room?.id, info?.check, info?.edge, tool, layoutVersion, selected]);
 }
 
+/** A build tool's lining as the build command takes it: its material and finish (nothing for bare rock). */
+export function liningFields(lining: string | undefined): { material?: string; finish?: string } {
+  const step = liningById(lining);
+  return step && step !== MATERIALS.walls[0] ? { material: step.material, finish: step.finish } : {};
+}
+
 /** What a click does with the current tool. */
 export function clickWith(layout: Layout, tool: Tool, info: HoverInfo, opts: StageOptions): void {
   if (tool?.kind === "corridor") {
@@ -136,8 +142,8 @@ export function clickWith(layout: Layout, tool: Tool, info: HoverInfo, opts: Sta
     const at = locationFor(info.pick, tool, layout);
     // Over corridors: the player confirms first.
     if (at && info.check?.ok && info.check.destroys?.length) {
-      opts.onConfirmBuild?.({ room: tool.room, at, destroys: info.check.destroys, strands: info.check.strands ?? { rooms: [], corridors: [] } });
-    } else if (at && info.check?.ok) opts.onCommand?.({ type: "build", room: tool.room, at });
+      opts.onConfirmBuild?.({ room: tool.room, at, destroys: info.check.destroys, strands: info.check.strands ?? { rooms: [], corridors: [] }, ...liningFields(tool.lining) });
+    } else if (at && info.check?.ok) opts.onCommand?.({ type: "build", room: tool.room, at, ...liningFields(tool.lining) });
     else if (info.check && !info.check.ok) opts.onInvalid?.(info.check.reason);
   } else if (tool?.kind === "demolish" && info.room) {
     opts.onCommand?.({ type: "demolish", roomId: info.room.id });

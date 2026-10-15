@@ -8,11 +8,13 @@ interface Props {
   onRotate?: () => void;
   /** Why this hole can't have the room at all (e.g. no ore under it). */
   siteNote?: string | null;
+  /** What goes on top of its cost (the lining it's to be built in), shown as one total. */
+  extra?: Record<string, number>;
 }
 
 /** Everything a player needs to decide where a room goes, before placing it (view/roomCard.ts). */
-export function RoomCard({ def, resources, shape, onRotate, siteNote }: Props) {
-  const card = roomCard(def, resources, siteNote);
+export function RoomCard({ def, resources, shape, onRotate, siteNote, extra }: Props) {
+  const card = roomCard(def, resources, siteNote, extra);
   return (
     <div className="room-card">
       <h3>{card.name}</h3>

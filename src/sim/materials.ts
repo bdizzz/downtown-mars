@@ -4,7 +4,7 @@ import type { SimConfig } from "./config";
 import { shortfall } from "./corridors";
 import { isActive } from "./economy";
 import { edgeById, edgeLengthM, isGalleryEdge } from "./edges";
-import type { Layout, RoomInstance } from "./placement";
+import type { Layout, Location, RoomInstance } from "./placement";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
@@ -76,7 +76,12 @@ export function flooringDef(id: string | undefined): FlooringDef | null {
 
 /** Can this room have a lining? Ring rooms with walls: not surface buildings, the entrance, stairs and lifts, or empty rooms. */
 export function canLine(room: RoomInstance): boolean {
-  return room.at.kind === "ring" && !MATERIALS.exempt.includes(room.type) && !roomDef(room.type).excavationOnly;
+  return canLineAt(room.type, room.at);
+}
+
+/** Can a room of this type, going here, have a lining? (canLine, before it's placed.) */
+export function canLineAt(type: string, at: Location): boolean {
+  return at.kind === "ring" && !MATERIALS.exempt.includes(type) && !roomDef(type).excavationOnly;
 }
 
 /** The room's walls: its material and finish (bare rock when it has none, or can't have one). */
@@ -155,6 +160,17 @@ function whole(step: WallStep): { cost: Record<string, number>; work: number } {
 /** What a lining costs a cell from bare rock: its base step and, for a fine finish, the finish on top. */
 export function liningCost(step: WallStep): Record<string, number> {
   return whole(step).cost;
+}
+
+/**
+ * What building a room straight in a lining adds to its cost (T-038): the
+ * lining from bare rock, per cell, as a refit from bare rock charges. No work
+ * is added: it goes in with the room. Nothing for bare rock, or for a room
+ * that can't be lined.
+ */
+export function buildLiningCost(type: string, at: Location, cells: number, step: WallStep | null | undefined): Record<string, number> {
+  if (!step || step === MATERIALS.walls[0] || !canLineAt(type, at)) return {};
+  return times(liningCost(step), Math.max(1, cells));
 }
 
 function times(cost: Record<string, number>, n: number): Record<string, number> {
