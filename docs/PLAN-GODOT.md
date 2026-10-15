@@ -181,6 +181,8 @@ Still to do, roughly in order of value:
 - In first person, WASD walks (Shift runs) at eye height (1.7 m) over the floor, rising up the flights; until a map comes, it flies as before. The HUD says "on foot, floor N".
 - Checked by script (`--stroll=<s>` walks ahead; test shots print where the walker is): from floor 1's gallery toward the shaft it stops at the railing; from the foot of a floor-2 flight it climbs (eye height between the floors partway) and comes off the top onto floor 1.
 - The showcase keeps corridors off the stairwells' sides: their doorways left no room for the flight, so its stairs had none.
+- Never stuck in the shaft (T-163, Oct 15, 2026): on a floor with no gallery tube, `Walker.Place` searches the whole floor's map (every third grid cell) for the nearest clear open ground, then any room, as the web's `footing` does; `PlaceNear` tries the floors there are maps for (this one and those above and below) nearest first.
+- Corridor ghosts over uncut rock sit on the rock's top, not its floor (T-169): the bridge's hover and chain strips take their height from the web's `corridorGhostY`.
 
 **Corridors, bulkheads and windows** (Oct 2, 2026):
 
