@@ -58,6 +58,15 @@ One small set drawn for the game (T-089), in `src/view/icons.ts`: the top bar an
 - **Names live in tooltips:** the bar shows the icon and number; pointing (or a screen reader) gives the name.
 - Adding a resource means adding its icon under the same id; the tests check every one shown has its own.
 
+## Notables' portraits (Oct 15, T-054)
+
+Every notable has a flat vector headshot (`src/view/portrait.ts`, palettes and odds in `data/portraits.json`), shown round in the office's waiting room and list and on the tutorial card. `?faces` opens a page of 48 of them, to check the look.
+
+- **Deterministic:** each face is picked from a hash of the notable's id and name, so the same person always looks the same, in every save, with nothing kept in the sim. Every pick is drawn whether or not it's used, so a trait changing the mood never reshuffles the rest of the face.
+- **Cozy, not caricature:** a head (round, oval, long or square), ears and neck in one of eight warm skin tones, ten hair styles in nine colours (greys and white included), dot eyes with a glint, simple brows, a stroke for the nose; now and then glasses, freckles, a beard or moustache, rosy cheeks.
+- **The trade shows twice:** the backdrop is a muted take on the category colour where they'd work (health pink for doctors, services teal for scientists, admin gold for administrators), and clothes come from the role's set. About half also carry a prop: a worker's hard hat or ear defenders, an organizer's armband or megaphone pin, a scientist's goggles or lab coat with pens, a doctor's stethoscope or head mirror, a merchant's scarf or ledger pin, an administrator's headset or tie, a belt pilot's goggles or headset. Roles not in the file get a plain look and no prop.
+- **Traits set the expression:** Hothead frowns, Charismatic grins, Idealist and Populist smile, Greedy smirks, Cautious keeps a flat line; anyone else is neutral or smiling.
+
 ## Palette
 
 | Use | Colour |

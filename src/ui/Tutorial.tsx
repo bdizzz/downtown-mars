@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Snapshot } from "../sim/snapshot";
+import { Portrait } from "./Portrait";
 import { pickGoal, shownGoal, tutorial, type TutorialStep } from "./tutorialGoals";
 
 interface Props {
@@ -32,12 +33,7 @@ export function Tutorial({ s, met, step, onStep, onHide }: Props) {
   return (
     <div className="tutorial" role="complementary" aria-label="Tutorial">
       <div className="who">
-        <span className="face">
-          {name
-            .split(" ")
-            .map((p) => p[0])
-            .join("")}
-        </span>
+        <Portrait who={deputy} />
         <span>
           <strong>{name}</strong>
           <span className="k"> · deputy</span>

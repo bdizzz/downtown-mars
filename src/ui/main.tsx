@@ -27,6 +27,10 @@ bootStep("font");
 if (import.meta.env.DEV && new URLSearchParams(location.search).has("furnish")) {
   finishBoot();
   void import("../devtools/FurnishTool").then(({ FurnishTool }) => root.render(<FurnishTool />));
+} else if (new URLSearchParams(location.search).has("faces")) {
+  // ?faces: a page of notables' headshots, in PR previews too, so the look can be reviewed there.
+  finishBoot();
+  void import("../devtools/Faces").then(({ Faces }) => root.render(<Faces />));
 } else {
   root.render(
     <StrictMode>

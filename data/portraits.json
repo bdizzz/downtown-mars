@@ -1,0 +1,37 @@
+{
+  "_note": "Notable headshots (T-054, src/view/portrait.ts): the palettes and odds a face is drawn from. Each face is picked from a hash of the notable's id and name, so the same person always looks the same.",
+  "skin": ["#f3d2b3", "#e8b98f", "#d9a274", "#c68a5c", "#a96e45", "#8a5434", "#6b3f26", "#4e2d1c"],
+  "hair": ["#1f1612", "#3a2418", "#5c3a22", "#8a5a32", "#b07a3e", "#d6b06a", "#a8461f", "#7e8088", "#d9d4cc"],
+  "eyes": ["#2a1a12", "#3b2a1c", "#3d5a6e", "#4f6b3a"],
+  "hairStyles": ["short", "crop", "side", "bun", "long", "curly", "bob", "bald", "buzz", "ponytail"],
+  "heads": ["round", "oval", "long", "square"],
+  "odds": {
+    "glasses": 0.2,
+    "freckles": 0.18,
+    "beard": 0.16,
+    "moustache": 0.1,
+    "blush": 0.35,
+    "prop": 0.5
+  },
+  "_roles": "Per role: the backdrop (a muted take on the category colour where they'd work), clothes, and the props a face may carry instead of plain clothes.",
+  "roles": {
+    "worker": { "backdrop": "#7a5a44", "clothes": ["#c96f2a", "#4a5d6e", "#6b5a3e"], "props": ["hardhat", "earDefenders"] },
+    "organizer": { "backdrop": "#4f6585", "clothes": ["#8a3a2e", "#3e4a5c", "#5e4a6e"], "props": ["megaphonePin", "armband"] },
+    "scientist": { "backdrop": "#3f7a72", "clothes": ["#e6e2da", "#5c6e78"], "props": ["goggles", "labCollar"] },
+    "doctor": { "backdrop": "#94586a", "clothes": ["#e6e2da", "#7fa8a4"], "props": ["stethoscope", "headMirror"] },
+    "merchant": { "backdrop": "#9a7448", "clothes": ["#6e3a4a", "#3e5a4a", "#7a5a2e"], "props": ["scarf", "ledgerPin"] },
+    "administrator": { "backdrop": "#8a7444", "clothes": ["#2e3440", "#4a3e36", "#3a4a5e"], "props": ["headset", "tie"] },
+    "belt pilot": { "backdrop": "#5e5272", "clothes": ["#6b6e5a", "#3e4a5c"], "props": ["goggles", "headset"] }
+  },
+  "_otherRoles": "Any role not listed above: a plain backdrop and clothes, and no prop.",
+  "otherRoles": { "backdrop": "#6e5a4e", "clothes": ["#5c4a3e", "#3e4a5c", "#4f5a44"], "props": [] },
+  "_moods": "Traits nudge the expression; a face with neither of these gets one at random from neutral and smile.",
+  "moods": {
+    "Hothead": "frown",
+    "Charismatic": "grin",
+    "Idealist": "smile",
+    "Greedy": "smirk",
+    "Cautious": "flat",
+    "Populist": "smile"
+  }
+}

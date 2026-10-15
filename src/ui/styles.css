@@ -128,6 +128,9 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
   display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0;
 }
 .face.small { width: 26px; height: 26px; font-size: 11px; }
+.visit .face { width: 46px; height: 46px; }
+.face:has(svg) { overflow: hidden; box-shadow: inset 0 0 0 1px #0006; }
+.face svg { width: 100%; height: 100%; display: block; }
 .choice {
   text-align: left; background: #2f1c16; color: var(--text); font: inherit;
   border: 1px solid var(--muted); border-radius: 4px; padding: 5px 8px; cursor: pointer;
