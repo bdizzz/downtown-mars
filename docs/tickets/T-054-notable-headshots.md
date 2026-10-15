@@ -28,3 +28,4 @@ ART.md: notable portraits. GUIDE.md: The office, if it describes the faces.
 ## History
 - 2026-10-06 01:26 opened from N-0027
 - 2026-10-06 01:29 questions answered
+- 2026-10-15 18:22 building on t-054-notable-headshots
