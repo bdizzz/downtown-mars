@@ -20,3 +20,4 @@ Anchor each label at the centre of the room's floor area (its angular middle, mi
 
 ## History
 - 2026-10-06 19:31 opened from N-0041
+- 2026-10-15 14:28 building on t-077-labels-never-clip-walls
