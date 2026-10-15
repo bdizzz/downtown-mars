@@ -153,7 +153,11 @@ public class Walker
         return false;
     }
 
-    /// <summary>Stand here if there's room; otherwise the nearest clear spot within a few metres. False if none (or no map yet).</summary>
+    /// <summary>
+    /// Stand here if there's room; otherwise the nearest clear spot within a few metres; otherwise the
+    /// nearest clear open ground anywhere on the floor (a corridor, say, when there's no gallery tube),
+    /// else the nearest clear spot in a room (walk.ts footing, T-163). False if none (or no map yet).
+    /// </summary>
     public bool Place(int floor, Vector2 at)
     {
         if (MapOf(floor) is not Map map) return false;
@@ -166,8 +170,28 @@ public class Walker
                 At = p;
                 return true;
             }
-        return false;
+        // The whole floor, every few cells of the map's grid.
+        Vector2? best = null;
+        var bestScore = float.MaxValue;
+        const int Stride = 3;
+        for (var j = 0; j < map.Size; j += Stride)
+            for (var i = 0; i < map.Size; i += Stride)
+            {
+                var region = map.Grid[j * map.Size + i];
+                if (region == 0) continue;
+                var p = new Vector2(-map.Half + (i + 0.5f) * map.Cell, -map.Half + (j + 0.5f) * map.Cell);
+                var score = (map.Regions[region].open ? 0 : 1e6f) + p.DistanceSquaredTo(at);
+                if (score < bestScore && Clear(map, p)) (best, bestScore) = (p, score);
+            }
+        if (best is not Vector2 spot) return false;
+        Floor = floor;
+        At = spot;
+        return true;
     }
+
+    /// <summary>Place on this floor, or failing that on the nearest other floor there's a map for.</summary>
+    public bool PlaceNear(int floor, Vector2 at) =>
+        _maps.Keys.OrderBy(f => Math.Abs(f - floor)).ThenBy(f => f).Any(f => Place(f, at));
 
     /// <summary>Is there room for a walker here: its centre and the edge of its footprint in one region (or a doorway joining two), and clear of furniture?</summary>
     static bool Clear(Map map, Vector2 p)

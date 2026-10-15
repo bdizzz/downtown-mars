@@ -141,6 +141,47 @@ export function clear(layout: Layout, floor: number, x: number, z: number): bool
   return !againstFurniture(layout, floor, x, z);
 }
 
+/** How finely (metres, along and across the rings) the floor is searched for somewhere to stand. */
+const FOOTING_STEP = 0.5;
+
+/**
+ * Where to stand on a floor, nearest (x, z): the point itself if there's room, else the
+ * nearest clear open ground (gallery tubes, corridors, public rooms, dug-out space) anywhere
+ * on the floor, else the nearest clear spot in a room. Null if the floor has nowhere at all.
+ * Never the open shaft (T-163).
+ */
+export function footing(layout: Layout, floor: number, x: number, z: number): [number, number] | null {
+  if (clear(layout, floor, x, z)) return [x, z];
+  const hole = layout.hole;
+  if (floor < 1 || floor > hole.floors) return null;
+  const outer = hole.shaftRadiusM + hole.unlockedRings * RING_D;
+  let best: [number, number] | null = null;
+  let bestScore = Infinity;
+  for (let r = openShaftRadius(hole) + FOOTING_STEP / 2; r < outer; r += FOOTING_STEP) {
+    const n = Math.max(8, Math.ceil((TAU * r) / FOOTING_STEP));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU;
+      const [px, pz] = [r * Math.cos(a), r * Math.sin(a)];
+      const region = regionAt(layout, floor, px, pz);
+      if (region === null) continue;
+      // Open ground first, wherever it is; a room only if there's none.
+      const score = (region === OPEN ? 0 : 1e6) + (px - x) ** 2 + (pz - z) ** 2;
+      if (score < bestScore && clear(layout, floor, px, pz)) [best, bestScore] = [[px, pz], score];
+    }
+  }
+  return best;
+}
+
+/** Somewhere to stand nearest (x, z) on this floor, or failing that on the nearest floor that has somewhere. */
+export function footingNear(layout: Layout, floor: number, x: number, z: number): { floor: number; x: number; z: number } | null {
+  for (let d = 0; d < layout.hole.floors; d++)
+    for (const f of d === 0 ? [floor] : [floor - d, floor + d]) {
+      const spot = footing(layout, f, x, z);
+      if (spot) return { floor: f, x: spot[0], z: spot[1] };
+    }
+  return null;
+}
+
 /** A standing item's footprint on the floor, with its bounding box for a quick first test. */
 interface Obstacle {
   corners: [number, number][];
