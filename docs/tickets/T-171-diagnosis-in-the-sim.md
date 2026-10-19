@@ -4,9 +4,9 @@ title: The sim names why health and happiness are falling; the home health facto
 status: open
 size: L
 area: sim, data
+feature: F-018
 touches: [src/sim/diagnosis.ts, src/sim/happiness.ts, src/sim/economy.ts, src/sim/air.ts, data/diagnosis.json, src/worker/, src/bridge/, src/view/roomPanel.ts, src/ui/, godot/src/Live.cs, tests/]
 blocked_by: []
-feature: F-018
 notes: [N-0095]
 created: 2026-10-19 21:57
 ---
@@ -28,3 +28,4 @@ DECISIONS.md: Wellbeing is the home factor; GUIDE.md: Health and happiness.
 
 ## History
 - 2026-10-19 21:57 opened from F-018
+- 2026-10-19 21:59 building on t-171-diagnosis-in-the-sim (with T-172)
