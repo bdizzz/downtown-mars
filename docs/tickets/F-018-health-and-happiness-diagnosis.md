@@ -15,6 +15,8 @@ created: 2026-10-19 21:55
 - **Happiness** is per home (`src/sim/happiness.ts`): 60 + 8 × (noise + comfort + health factors, each −3..+3) + afterglow + event mood. Each factor is a sum of a dozen parts: neighbour effects, air quality and crowding, smell, clinic reach, no seat at a galley, no restroom, wear, linings, windows, amenities, ordinances, homelessness, and the hole's own health (via `needsHealth`). The home panel (`src/view/roomPanel.ts`) shows only the three totals; the HUD only the average.
 - Two different things are both called "health": the hole meter and a home's health factor. Part of the confusion.
 
+**As built (T-171, T-172):** `src/sim/diagnosis.ts` with words in `data/diagnosis.json`; `happiness.points` (hole) and each pool's `points` hold the happiness parts in points, `population.healthDrain` the meter's drain; `healthWhy` / `happinessWhy` in `src/view/hudItems.ts` make the card lines. Cause sources (which room makes the noise) are left to T-174.
+
 **Answered (Bryon, Oct 19):** the home factor is renamed **Wellbeing** (Noise, Comfort, Wellbeing), so Health means only the hole's meter; visits are information only the first time a cause shows up, then a challenge to fix it within 3 months; tips are one-time deputy cards per cause (can be turned off in Settings); build order as in the Breakdown, attribution and HUD cards first.
 
 **The approach: one diagnosis in the sim, shown in several places.**

@@ -101,7 +101,7 @@ export function diagnose(state: SimState, cfg: SimConfig): Diagnosis {
       .sort((a, b) => (a.points?.[id] ?? 0) * sign - (b.points?.[id] ?? 0) * sign)
       .reverse()
       .map((p) => p.roomId);
-  const vars = (homes: number[]) => ({ homes: String(homes.length), health: String(Math.round(pop.health)) });
+  const vars = (homes: number[]) => ({ homes: `${homes.length} ${homes.length === 1 ? "home" : "homes"}`, health: String(Math.round(pop.health)) });
   const happyCauses: Cause[] = Object.entries(points)
     .filter(([, v]) => Math.abs(v) >= 0.05)
     .map(([id, amount]) => {

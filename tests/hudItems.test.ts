@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { makeSnapshot, type Snapshot } from "../src/sim/snapshot";
 import { createInitialState } from "../src/sim/state";
+import { updateHappiness } from "../src/sim/happiness";
 import { barItems, GROUPS, HUD_IDS, needs, topExtras } from "../src/view/hudItems";
 import { ICONS, iconSvg, isIcon } from "../src/view/icons";
 
@@ -92,5 +93,38 @@ describe("the top bar (T-089)", () => {
     const x = topExtras(fresh());
     expect(x.drill.text.length).toBeLessThanOrEqual(8);
     expect(x.drop.text).toMatch(/^~/);
+  });
+});
+
+describe("why health and happiness move (T-172)", () => {
+  it("a recovering hole says so on the Health card", () => {
+    const st = createInitialState(config);
+    st.population.health = 50;
+    st.population.healthDrain = { water: 0, meals: 0 };
+    expect(cell(makeSnapshot(st, config), "res:health").notes.join("\n")).toMatch(/Recovering: \+10 a month/);
+  });
+
+  it("a draining hole names each cause, its toll and the fix for the worst", () => {
+    const st = createInitialState(config);
+    st.population.health = 3;
+    st.population.needsMet = { water: 1, meals: 0.4 };
+    st.population.healthDrain = { water: 0, meals: 6, sanitation: 0, o2: 0, co2: 7.5 };
+    const notes = cell(makeSnapshot(st, config), "res:health").notes;
+    expect(notes).toContain("Falling 13.5 a month; it recovers only once nothing drains it");
+    expect(notes[2]).toMatch(/^−7\.5 a month · CO2 high: .*% of the air$/);
+    expect(notes[3]).toBe("−6 a month · Meals: people get 40% of what they need");
+    expect(notes[4]).toMatch(/^Fix: A CO2 scrubber/);
+  });
+
+  it("the Happiness card says where it's heading and the biggest pulls", () => {
+    const st = createInitialState(config);
+    st.population.count = st.happiness.pools.reduce((n, p) => n + p.capacity, 0) + 10;
+    st.population.health = 3;
+    updateHappiness(st, config, true);
+    const notes = cell(makeSnapshot(st, config), "res:happiness").notes;
+    expect(notes.some((n) => /^Heading for \d+$/.test(n))).toBe(true);
+    expect(notes.some((n) => /^−\d+(\.\d)? · Poor health \(the hole's health is 3\)$/.test(n))).toBe(true);
+    expect(notes.some((n) => /^−\d+(\.\d)? · Homeless colonists$/.test(n))).toBe(true);
+    expect(notes.some((n) => n.startsWith("Fix: "))).toBe(true);
   });
 });

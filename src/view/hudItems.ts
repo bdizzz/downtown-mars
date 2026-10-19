@@ -206,6 +206,41 @@ function stagesText(st: { child: number; adult: number; elder: number }): string
   );
 }
 
+/** Causes shown on a hover card, and how many of the rest are left unsaid. */
+const WHY_SHOWN = 3;
+
+/** A number to a tenth at most, signed: "−7.5", "+10", "−6". */
+const tenth = (v: number) => `${v < 0 ? "−" : "+"}${Math.round(Math.abs(v) * 10) / 10}`;
+
+/** Why health is moving: what drains it, by how much, and the fix for the worst (F-018). */
+export function healthWhy(s: Snapshot): string[] {
+  const d = s.diagnosis.health;
+  if (d.recovering) return [d.perDay > 0 ? `Recovering: ${tenth(d.perDay)} a month, with nothing draining it` : "Nothing is draining it"];
+  const top = d.causes[0]!;
+  return [
+    `Falling ${tenth(d.perDay).slice(1)} a month; it recovers only once nothing drains it`,
+    ...d.causes.slice(0, WHY_SHOWN).map((c) => `${tenth(c.amount)} a month · ${c.text}`),
+    ...(top.fix ? [`Fix: ${top.fix}`] : []),
+  ];
+}
+
+/** Why happiness is where it is: the biggest pulls down and lifts, in points, and the fix for the worst (F-018). */
+export function happinessWhy(s: Snapshot): string[] {
+  const d = s.diagnosis.happiness;
+  // The afterglow has its own line above; the base is the same for every hole.
+  const shown = d.causes.filter((c) => c.id !== "afterglow" && c.id !== "base" && Math.abs(c.amount) >= 0.5);
+  const down = shown.filter((c) => c.amount < 0).slice(0, WHY_SHOWN);
+  const up = shown.filter((c) => c.amount > 0).reverse().slice(0, 2);
+  const line = (c: (typeof shown)[number]) => `${tenth(c.amount)} · ${c.text}`;
+  const worst = down.find((c) => c.fix);
+  return [
+    `Heading for ${Math.round(d.target)}`,
+    ...down.map(line),
+    ...up.map(line),
+    ...(worst ? [`Fix: ${worst.fix}`] : []),
+  ];
+}
+
 /** The resource grid, in its groups: the colony, life, food, materials. */
 export function barItems(s: Snapshot): BarItem[][] {
   const { made, used } = s.power;
@@ -240,7 +275,7 @@ export function barItems(s: Snapshot): BarItem[][] {
       level: healthLevel,
       ...(healthLevel !== "ok" ? { alert: `Health ${health}` } : {}),
       title: "Health",
-      notes: [`The average, out of 100; below ${HEALTH_WARN} it's a worry`, "From the air's oxygen and CO2, water, meals and sanitation"],
+      notes: [`The average, out of 100; below ${HEALTH_WARN} it's a worry`, ...healthWhy(s)],
     },
     {
       id: "res:happiness",
@@ -256,6 +291,7 @@ export function barItems(s: Snapshot): BarItem[][] {
         "The average, across every home",
         ...(glow ? [`+${Math.round(s.afterglow.points)} afterglow: the thrill of arrival, gone in ${monthsText(Math.ceil(s.afterglow.daysLeft))}`] : []),
         ...(s.happiness.productivity < 1 ? [`Rooms at ${Math.round(s.happiness.productivity * 100)}% from low morale`] : []),
+        ...happinessWhy(s),
       ],
     },
     {
