@@ -543,3 +543,11 @@ when drawing a corridor over unexcavated rock, paint the corridor over the top "
 ## N-0094 · 2026-10-13 20:42
 you shouldn't be able to select a floor on the floor picker bar until the drill is complete with drilling out that floor. we should show visuallly an overlay on the new floor in that floor menu as it is drilled out, showing the progress %, this means we don't need the drill % or drill pause in the top menu anymore. clicking on the drill itself gives you a choice for pausing it.
 → T-170
+
+## N-0095 · 2026-10-19 21:55
+We need to add a way for the player to diagnose problems with hole health and happiness, so they know why it is dropping and what to do to turn it around. For example, a hole I'm playing has a health of 3 and I can't figure out why. A solution could take the form of
+- room details
+- office visits that are either information only or per a challenge to take an action in a time frame
+- specific charts interface 
+- extra tutorial steps like the purpose of building bulkheads
+→ F-018

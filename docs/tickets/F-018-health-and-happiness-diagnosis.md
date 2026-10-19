@@ -1,0 +1,45 @@
+---
+id: F-018
+title: Diagnosing health and happiness: why they're falling and what to do about it
+status: draft
+plan:
+notes: [N-0095]
+created: 2026-10-19 21:55
+---
+## Goal
+"A way for the player to diagnose problems with hole health and happiness, so they know why it is dropping and what to do to turn it around." Bryon's hole sits at health 3 and he can't tell why. His ideas: room details, office visits (information only, or a challenge to act within a time frame), a charts interface, and extra tutorial steps (e.g. what bulkheads are for).
+
+## Design
+**What the sim does today (the causes are all there, just never named):**
+- **Hole health** (0–100, the HUD's Health) is a meter that drains and refills (`stepColonists`, `src/sim/economy.ts`). Each game day it loses: water shortfall × 20, meals shortfall × 10 (`colonists.healthLossPerDay`), sanitation below 50% coverage up to 5 (`noSanitationHealthLossPerDay`), and O2 below 18% (−5, or −20 below 15%) or CO2 above 1% (−7.5, or −30 above 3%) (`airHealthLoss`, `src/sim/air.ts`). Only when *nothing* drains does it recover, +10 a day. So a hole stuck near 0 has at least one steady drain, and the HUD note just says "From the air's oxygen and CO2, water, meals and sanitation" without saying which.
+- **Happiness** is per home (`src/sim/happiness.ts`): 60 + 8 × (noise + comfort + health factors, each −3..+3) + afterglow + event mood. Each factor is a sum of a dozen parts: neighbour effects, air quality and crowding, smell, clinic reach, no seat at a galley, no restroom, wear, linings, windows, amenities, ordinances, homelessness, and the hole's own health (via `needsHealth`). The home panel (`src/view/roomPanel.ts`) shows only the three totals; the HUD only the average.
+- Two different things are both called "health": the hole meter and a home's health factor. Part of the confusion.
+
+**The approach: one diagnosis in the sim, shown in several places.**
+1. **Attribution in the sim** (`src/sim/diagnosis.ts`, pure, no UI): for health, the drain per cause per month and the recovery, with each need's % met; for happiness, each part's contribution in points, resident-weighted across homes, plus the worst homes and the rooms causing it (the loudest neighbours, the smelliest rooms, the homes out of reach of a clinic or restroom). Returned in the snapshot so web and Godot read the same thing. Each cause has an id, and its text and fix live in data (`data/diagnosis.json`): e.g. `meals` → "Meals 40% met: −6 a month. Build a galley, or more farms to feed it."; `smell` → "Smell from the recycler reaches 4 homes. A bulkhead on the corridor between stops it."
+2. **The HUD tells you at once:** Health and Happiness hover cards list the top causes with numbers ("Health −13.5 a month: meals 40% met −6, CO2 1.4% −7.5"), and say "recovering +10 a month" when nothing drains. Shared in `src/view/hudItems.ts`, so Godot gets it free. The quick win, and enough on its own to answer "why is my health 3".
+3. **A "Why?" panel:** clicking Health or Happiness opens a ranked list of causes, each with its fix and a "Show me" that highlights the rooms and homes involved (the same highlight the tutorial uses), and lists the unhappiest homes.
+4. **Room details:** a home's panel breaks each factor into its parts (comfort +1.2 = view +1, galley out of reach −1, worn −0.5, …) and names the rooms behind neighbour effects. Work rooms and industry show who they bother ("noise felt in 3 homes").
+5. **Charts:** the Trends Health chart gets a stacked band under it showing the drain by cause over time, so you can see *when* it started and what changed; Happiness gets the same by factor.
+6. **Office visits:** the colony doctor (health) or a residents' delegate (happiness) visits when a cause has held for a while. The first time it's information only (what's wrong, the fix, Show me); later ones offer a promise in the existing visit format (`data/visits.json`, like `noise_complaint`): fix it within N months for loyalty and happiness, or pay for breaking it.
+7. **Tips at the moment they matter:** a one-time deputy tip when a cause first appears, explaining the mechanic behind the fix: bulkheads when smell or stale air reaches homes through corridors, restrooms when sanitation drops, scrubbers when CO2 rises, clinics when homes are out of reach. Reuses the tutorial card (`data/tutorial.json`) as contextual steps, not a fixed sequence; F-007's guided tutorial can point at the same tips.
+
+## Breakdown
+Proposed; becomes tickets once this feature is agreed.
+- Attribution in the sim: `diagnosis.ts` with health drain by cause and happiness contribution by part, causes and fixes in `data/diagnosis.json`, in the snapshot and bridge; unit tests that each cause shows up when provoked.
+- HUD Health and Happiness hover cards list the top causes with numbers and the recovery (web and Godot via `hudItems.ts`).
+- The "Why?" panel: ranked causes with fixes, Show me highlights, unhappiest homes.
+- Home panel breakdown of each factor into its parts, and "felt in N homes" on rooms that bother others.
+- Trends: drain by cause under the Health chart, contribution by factor under Happiness (history records the causes).
+- Office visits from the doctor and a residents' delegate: information first, then a promise to fix within N months.
+- Contextual tips when a cause first appears (bulkheads, restrooms, scrubbers, clinics, crowding), and GUIDE.md's section on health and happiness.
+- The "Why?" panel, home breakdown and visits in Godot.
+
+## Open questions
+- [ ] The two "healths": rename the home factor (proposed: **Wellbeing**, with Noise and Comfort) so Health means only the hole's meter? Or keep both names and label them more clearly?
+- [ ] Office visits: proposed information only the first time a cause shows up, then a challenge (fix within 3 months: loyalty and +happiness if kept, −loyalty if broken). Or always offer both "thanks, noted" and "I'll fix it"?
+- [ ] Tips: a one-time deputy card per cause (proposed, can be turned off in Settings), or only messages in the news feed?
+- [ ] Build order: proposed the sim attribution and HUD cards first (they answer "why is my health 3" on their own), then the panel and home breakdown, then charts, visits and tips. OK?
+
+## History
+- 2026-10-19 21:55 opened from N-0095
