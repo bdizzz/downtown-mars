@@ -31,3 +31,4 @@ Treat a corridor end meeting a room's wall (curved inner/outer face, away from t
 ## History
 - 2026-10-05 02:42 opened from N-0018
 - 2026-10-05 02:43 questions answered
+- 2026-10-19 19:46 building on t-022-door-at-corridor-dead-end
