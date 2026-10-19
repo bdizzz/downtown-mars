@@ -126,6 +126,16 @@ export function hoverKeyFor(info: HoverInfo | null, tool: Tool, layoutVersion: n
   return JSON.stringify([coarse, info?.room?.id, info?.check, info?.edge, tool, layoutVersion, selected]);
 }
 
+/**
+ * The key a second tap must match to act (tap to aim). Like the hover key, but on the
+ * surface by slot rather than the exact angle, which no two finger taps share.
+ */
+export function aimKeyFor(info: HoverInfo, tool: Tool, layout: Layout): string {
+  const p = info.pick;
+  const pick: Pick = p.kind === "surface" ? { ...p, angle: surfaceSlotAt(p.angle, layout) } : p;
+  return hoverKeyFor({ ...info, pick }, tool, 0, null);
+}
+
 /** A build tool's lining as the build command takes it: its material and finish (nothing for bare rock). */
 export function liningFields(lining: string | undefined): { material?: string; finish?: string } {
   const step = liningById(lining);

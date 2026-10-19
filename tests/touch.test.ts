@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { TapToAim, Touches } from "../src/view/touch";
+import { config } from "../src/sim/config";
+import { createHole } from "../src/sim/geometry";
+import { createLayout } from "../src/sim/placement";
+import { aimKeyFor, hoverInfoFor } from "../src/view/interaction";
+import type { Tool } from "../src/view/types";
 
 const finger = (pointerId: number, clientX: number, clientY: number) => ({ pointerId, clientX, clientY, pointerType: "touch" }) as PointerEvent;
 
@@ -54,5 +59,20 @@ describe("tap to aim", () => {
     expect(aim.tap(tool, "b")).toBe(true);
     // Done: the next tap aims again.
     expect(aim.tap(tool, "b")).toBe(false);
+  });
+});
+
+describe("tap to aim on the surface", () => {
+  it("acts on a second tap in the same surface slot, wherever in it the finger lands", () => {
+    const layout = createLayout(createHole(10, 2, 3, config.geometry));
+    const tool = { kind: "build", room: "solar_array", shape: [1, 1] } as unknown as Tool;
+    const at = (angle: number) => hoverInfoFor(layout, {}, tool, { kind: "surface", angle });
+    const width = 360 / layout.surface.length;
+    const aim = new TapToAim();
+    expect(aim.tap(tool, aimKeyFor(at(width * 5.2), tool, layout))).toBe(false);
+    expect(aim.tap(tool, aimKeyFor(at(width * 5.7), tool, layout))).toBe(true);
+    // A different slot aims again.
+    expect(aim.tap(tool, aimKeyFor(at(width * 5.2), tool, layout))).toBe(false);
+    expect(aim.tap(tool, aimKeyFor(at(width * 6.5), tool, layout))).toBe(false);
   });
 });
