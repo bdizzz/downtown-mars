@@ -356,6 +356,12 @@ export function drawCorridors(g: GraphicsContext, l: Layout, floor: number): voi
     const half = BAND / 2 / PX;
     corridorStrip(g, (t) => xy(r - half + t / PX, a), () => [-Math.sin(a), Math.cos(a)], BAND, BAND, joint.finish, joint.floor > h.floors ? 0.45 : 1);
   }
+  // Doors where a corridor ends against a room's wall (none runs along it): at the door itself, just inside.
+  for (const d of doorsOnFloor(l, floor)) {
+    if (l.corridors[d.edge]) continue;
+    const r = d.side === "inner" ? d.r + 2 / PX : d.side === "outer" ? d.r - 2 / PX : d.r;
+    g.circle(...xy(r, d.angle), 3).fill(C.door);
+  }
 }
 
 

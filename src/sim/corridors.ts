@@ -7,6 +7,7 @@ import { resourceDef } from "./resources";
 import { roomDef } from "./rooms";
 import type { Cell, Layout, RoomInstance } from "./placement";
 import { emptyCells } from "./excavation";
+import { deadEnds } from "./deadEnds";
 
 // Corridors run along the borders between cells, carved out of the rooms and
 // rock on either side. They join up at shared vertices. Along the shaft wall
@@ -35,6 +36,8 @@ export const corridors = raw as unknown as {
   defaultFinish: string;
   /** The gallery tube: every corridor along the shaft wall is one, whatever finish was asked for. */
   gallery: FinishDef;
+  /** A private room's doorway: its width, how far its opening keeps from the room's corners, and its frame. */
+  door: { widthM: number; cornerClearM: number; frameM: number };
   /** A sealed door fitted across a built corridor segment. */
   bulkhead: { name: string; hint: string; cost: Record<string, number> };
   finishes: FinishDef[];
@@ -192,13 +195,14 @@ export function openTo(room: RoomInstance): Cell[] {
   return room.cells.filter((c) => c.floor === stop);
 }
 
-/** Does this group of cells open onto a reachable gallery, corridor or public room? */
+/** Does this group of cells open onto a reachable gallery, corridor or public room (or a corridor that ends against its wall)? */
 function opensOnto(layout: Layout, cells: Cell[], sets: Sets, publicEdges: Map<string, number>): boolean {
   const shaft = sets.find(SURFACE);
-  return outsideEdges(layout.hole, cells).some((e) => {
+  const along = outsideEdges(layout.hole, cells).some((e) => {
     if (!layout.corridors[e.id] && !publicEdges.has(e.id)) return false;
     return sets.find(edgeVertices(layout.hole, e)[0]) === shaft;
   });
+  return along || deadEnds(layout, cells).some((d) => sets.find(d.vertex) === shaft);
 }
 
 /** Which corridors are linked to the surface and which rooms are connected, without changing anything. */

@@ -1,4 +1,5 @@
 import { corridors } from "../sim/corridors";
+import { deadEnds, doorAlong } from "../sim/deadEnds";
 import { edgeLengthM, galleryEdges, isGalleryEdge, outsideEdges, type Edge } from "../sim/edges";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
@@ -8,13 +9,15 @@ import { RING_D, ringRadii, slotAngles, WALL_T } from "../render3d/cylinder";
 // A private room's doors: one on each of its floors, wherever it opens onto
 // something walkable: a gallery tube along its shaft face first, else the
 // longest stretch of corridor along one of its walls, else a walk-through room
-// (a plaza, stairs) beside it. A room with none of those on a floor has no
-// door there (it's cut off anyway). Public rooms are open, so they have none.
+// (a plaza, stairs) beside it, else where a corridor ends against one of its
+// walls (T-022). A door's opening keeps at least a metre from the room's
+// corners. A room with none of those on a floor has no door there (it's cut
+// off anyway). Public rooms are open, so they have none.
 // The 3D view cuts the doorway into the wall, furnishing keeps it clear, and
 // first-person walking goes through it.
 
 /** A doorway: its width, and its height above the base of the floor. */
-export const DOOR = { width: 1.3, height: 2.7 };
+export const DOOR = { width: corridors.door.widthM, height: 2.7 };
 /** How far either side of its wall a doorway reaches (metres): stand in it and you're both in the room and outside. */
 export const DOOR_DEPTH = 0.6;
 
@@ -63,18 +66,21 @@ function pullBack(layout: Layout, e: Edge): number {
   return layout.corridors?.[e.id] ? HALL + WALL : WALL;
 }
 
-/** A doorway on this edge of this cell, in the middle of the edge. */
-export function doorwayAt(layout: Layout, roomId: number, e: Edge, cell: Cell): Doorway {
+/**
+ * A doorway on this edge of this cell: in the middle of the edge, or at `at` along it
+ * (a turn on a curved wall, a radius on a side wall).
+ */
+export function doorwayAt(layout: Layout, roomId: number, e: Edge, cell: Cell, at?: number): Doorway {
   const hole = layout.hole;
   const side = sideOf(e, cell);
   const back = pullBack(layout, e);
   if (e.kind === "arc") {
     const [r0, r1] = ringRadii(hole, cell.ring);
     const r = side === "inner" ? r0 + back : r1 - back;
-    return { roomId, floor: e.floor, edge: e.id, cell, side, r, angle: ((e.a0 + e.a1) / 2) * Math.PI * 2, half: DOOR.width / 2 / r };
+    return { roomId, floor: e.floor, edge: e.id, cell, side, r, angle: (at ?? (e.a0 + e.a1) / 2) * Math.PI * 2, half: DOOR.width / 2 / r };
   }
   const [r0, r1] = ringRadii(hole, cell.ring);
-  const r = (r0 + r1) / 2;
+  const r = at ?? (r0 + r1) / 2;
   const [s0, s1] = slotAngles(cell.slot, hole.ringSlots[cell.ring - 1]!);
   const off = Math.asin(Math.min(0.99, back / r));
   return { roomId, floor: e.floor, edge: e.id, cell, side, r, angle: side === "left" ? s0 + off : s1 - off, half: DOOR.width / 2 };
@@ -107,15 +113,21 @@ export function doorways(layout: Layout, room: RoomInstance): Doorway[] {
       out.push(doorwayAt(layout, room.id, tubes[mid.slot]!, mid));
       continue;
     }
-    // Otherwise: the best border it opens onto (a corridor, then a walk-through room), the longest first.
+    // Otherwise: the best border it opens onto (a corridor, then a walk-through room), the longest first,
+    // the door slid along it if it would come too near a corner.
     const options = outsideEdges(hole, cells)
       .map((e) => ({ e, kind: acrossEdge(layout, e, own), len: edgeLengthM(hole, e, RING_D) }))
       .filter((o): o is { e: Edge; kind: "corridor" | "public"; len: number } => o.kind === "corridor" || o.kind === "public")
       .filter((o) => o.len >= FITS)
       .sort((a, b) => RANK[a.kind] - RANK[b.kind] || b.len - a.len || (a.e.id < b.e.id ? -1 : 1));
-    const best = options[0];
-    const cell = best && ownSide(layout, best.e, own);
-    if (best && cell) out.push(doorwayAt(layout, room.id, best.e, cell));
+    const best = options.map((o) => ({ ...o, at: doorAlong(layout, cells, o.e), cell: ownSide(layout, o.e, own) })).find((o) => o.at !== null && o.cell);
+    if (best) {
+      out.push(doorwayAt(layout, room.id, best.e, best.cell!, best.at!));
+      continue;
+    }
+    // Last: where a corridor runs up to one of its walls and stops.
+    const end = deadEnds(layout, cells)[0];
+    if (end) out.push(doorwayAt(layout, room.id, end.wall, end.cell, end.at));
   }
   return out;
 }

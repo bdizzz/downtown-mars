@@ -16,6 +16,12 @@
     "color": "#9fb8c4",
     "accent": "#5f7c8a"
   },
+  "door": {
+    "_note": "A private room's doorway. Never closer than cornerClearM to a corner of the room (its opening, not its middle). frameM is the frame either side, kept inside the wall it's cut in.",
+    "widthM": 1.3,
+    "cornerClearM": 1,
+    "frameM": 0.12
+  },
   "bulkhead": {
     "name": "Bulkhead",
     "hint": "A sealed door across a corridor: people pass, air and smell don't",
