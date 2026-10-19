@@ -563,6 +563,16 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const x = joint.turn * TURN_W;
       corridorBand(roomsCtx, x - BAND / 2, y - BAND / 2, BAND, BAND, "h", joint.finish, joint.floor > h.floors ? 0.45 : 1);
     }
+    // Doors where a corridor ends against a room's wall (none runs along it), at the door itself.
+    for (let floor = 1; floor <= h.floors; floor++) {
+      for (const d of doorsOnFloor(l, floor)) {
+        if (l.corridors[d.edge]) continue;
+        const x = (d.angle / (Math.PI * 2)) * TURN_W;
+        const top = ringTop(floor, d.cell.ring, maxRings);
+        if (d.side === "inner" || d.side === "outer") roomsCtx.rect(x - 7, d.side === "inner" ? top : top + RING_H - 3, 14, 3).fill(C.door);
+        else roomsCtx.rect(d.side === "left" ? x : x - 3, top + ((d.r - h.shaftRadiusM) / config.geometry.roomDepthM - (d.cell.ring - 1)) * RING_H - 7, 3, 14).fill(C.door);
+      }
+    }
   }
 
   /** Under construction: faint, under semi-opaque diagonal hazard stripes, taped in orange. */

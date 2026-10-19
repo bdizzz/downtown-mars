@@ -40,7 +40,7 @@ const WINDOW = { bottom: 1.4, top: 3.0, inset: 0.03, margin: 0.02, color: 0x2d4f
 /** With no gallery tube in front, a ring-1 room's shaft face is a window wall, nearly floor to ceiling. */
 const WINDOW_WALL = { bottom: 0.35, top: 3.55 };
 /** The door's frame: how wide, and its colour. */
-const DOOR_FRAME = { width: 0.12, color: 0x2a1a14 };
+const DOOR_FRAME = { width: corridors.door.frameM, color: 0x2a1a14 };
 const LABEL = { heightM: LINE_M };
 const GLOW = { windowBoost: 5 };
 

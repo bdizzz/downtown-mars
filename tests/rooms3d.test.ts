@@ -352,6 +352,23 @@ describe("doors and windows", () => {
     expect(parts.frames.length).toBeGreaterThan(0);
     expect(parts.glass.length).toBe(0); // no windows on it
   });
+
+  it("cut a door where a corridor dead-ends on a curved wall, inside one cell's wall (T-022)", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const r = placeRoom(l, "depot", ring(1, 3, 0, 4)); // ring 3, slots 0–3 of 18
+    const room = l.rooms.find((x) => x.id === r.id)!;
+    l.corridors["R1.2.1"] = "rock"; // a spoke through ring 2, ending on its inner wall where its cells 1 and 2 meet
+    const [door] = doorways(l, room);
+    expect(door).toMatchObject({ side: "inner", cell: { ring: 3, slot: 1 } });
+    const base = floorSpan(1)[0];
+    const solid = roomGeometry(l, room.cells);
+    const cut = roomGeometry(l, room.cells, undefined, true, false, openingsOf(l, room));
+    expect(covers(solid, door!.r, door!.angle, base + 0.5)).toBe(true);
+    expect(covers(cut, door!.r, door!.angle, base + 0.5)).toBe(false);
+    // Either side of it, and above it: still wall.
+    for (const a of [door!.angle - door!.half - 0.3 / door!.r, door!.angle + door!.half + 0.3 / door!.r]) expect(covers(cut, door!.r, a, base + 0.5)).toBe(true);
+    expect(covers(cut, door!.r, door!.angle, base + DOOR.height + 0.8)).toBe(true);
+  });
 });
 
 describe("corridor corners", () => {

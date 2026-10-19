@@ -1,6 +1,7 @@
 import { config } from "./config";
 import { hasBulkhead, openTo } from "./corridors";
 import { cellEdges, edgeById, edgeLengthM, edgeVertices, galleryEdges, outsideEdges } from "./edges";
+import { deadEnds } from "./deadEnds";
 import { emptyCells } from "./excavation";
 import type { Cell, Layout, RoomInstance } from "./placement";
 import { roomDef } from "./rooms";
@@ -13,9 +14,10 @@ import { roomDef } from "./rooms";
 // tubes too), each walk-through room on each of its floors (plazas, parks,
 // stairs, elevators, the entrance), each dug-out empty cell, and each private
 // room on each of its floors. Walkable pieces join where they share a corner;
-// a private room joins the walkable pieces along its sides (its doors), and is
-// never walked *through*. A room spanning floors (stairs, an elevator) links
-// its floors; an elevator (`lift`) carries people but not air.
+// a private room joins the walkable pieces along its sides (its doors), and any
+// corridor that ends against its wall (deadEnds.ts), and is never walked
+// *through*. A room spanning floors (stairs, an elevator) links its floors; an
+// elevator (`lift`) carries people but not air.
 //
 // Distances are metres: moving from one node to the next costs half of each
 // one's length (a corridor segment's own length, a room's by its size), so a
@@ -140,8 +142,11 @@ export function buildPaths(layout: Layout): Paths {
   }
   // Walkable pieces sharing a corner join up.
   for (const list of byVertex.values()) for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) link(list[i]!, list[j]!);
-  // A private room opens onto whatever walkable piece runs along one of its sides.
-  for (const p of privates) for (const e of outsideEdges(hole, p.cells)) for (const other of byEdge.get(e.id) ?? []) link(p.key, other);
+  // A private room opens onto whatever walkable piece runs along one of its sides, and any corridor that ends against its wall.
+  for (const p of privates) {
+    for (const e of outsideEdges(hole, p.cells)) for (const other of byEdge.get(e.id) ?? []) link(p.key, other);
+    for (const d of deadEnds(layout, p.cells)) if (nodes.has(`c:${d.corridor}`)) link(p.key, `c:${d.corridor}`);
+  }
   return { nodes, links, byRoom, byEdge };
 }
 
@@ -176,9 +181,9 @@ export function distancesFromCells(layout: Layout, cells: Cell[], mode: PathMode
   const paths = pathsFor(layout);
   const half = roomLength(cells.length) / 2;
   const seeds: [string, number][] = [];
-  for (const e of outsideEdges(layout.hole, cells)) {
-    for (const k of paths.byEdge.get(e.id) ?? []) seeds.push([k, half + paths.nodes.get(k)!.length / 2]);
-  }
+  const seed = (k: string) => seeds.push([k, half + paths.nodes.get(k)!.length / 2]);
+  for (const e of outsideEdges(layout.hole, cells)) for (const k of paths.byEdge.get(e.id) ?? []) seed(k);
+  for (const d of deadEnds(layout, cells)) if (paths.nodes.has(`c:${d.corridor}`)) seed(`c:${d.corridor}`);
   return walkOut(paths, seeds, -1, mode, maxM);
 }
 
