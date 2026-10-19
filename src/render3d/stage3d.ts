@@ -7,7 +7,7 @@ import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
+import { aimKeyFor, clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
@@ -1247,7 +1247,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     else if (done.edges.length === 1 && layout) {
       const info = hoverInfo();
       // By finger, a single border is aimed first, like a room.
-      if (info && (!fingerDown || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickWith(layout, tool, info, opts);
+      if (info && (!fingerDown || aim.tap(tool, aimKeyFor(info, tool, layout)))) clickWith(layout, tool, info, opts);
     }
     refreshHover(true);
   }
@@ -1644,7 +1644,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const info = hoverInfo();
       if (finger) refreshHover();
       // A finger can't hover first: with a tool, the first tap shows where it lands.
-      if (info && (!finger || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickWith(layout, tool, info, opts);
+      if (info && (!finger || aim.tap(tool, aimKeyFor(info, tool, layout)))) clickWith(layout, tool, info, opts);
     }
     drag = null;
     if (snaking) endSnake();
