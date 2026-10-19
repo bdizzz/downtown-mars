@@ -1,7 +1,7 @@
 ---
 id: T-022
 title: A corridor dead-ending on a room's long wall is a valid door spot
-status: open
+status: done
 size: M
 area: sim, render3d
 touches: [src/view/doors.ts, src/sim/paths.ts, src/sim/edges.ts, src/render3d/rooms3d.ts, src/view/walk.ts, tests/]
@@ -32,3 +32,4 @@ Treat a corridor end meeting a room's wall (curved inner/outer face, away from t
 - 2026-10-05 02:42 opened from N-0018
 - 2026-10-05 02:43 questions answered
 - 2026-10-19 19:46 building on t-022-door-at-corridor-dead-end
+- 2026-10-19 20:10 built

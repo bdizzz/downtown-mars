@@ -48,7 +48,7 @@ Open **Build** (B), pick a room from its category (or press its key: room keys w
 
 - The shaft itself is open to Mars. People get about in a sealed network of **gallery tubes** (glass walkways along the shaft wall), corridors, plazas and stairs.
 - Floor 1 starts with its gallery tube all the way round. On deeper floors, lay tubes along the shaft wall where you want them (the corridor tool, on the shaft side of ring 1; **Connect** does it for you).
-- Every room needs a tube, corridor or plaza along one side. Rooms have a door on each floor, wherever they open onto a tube, a corridor or a plaza.
+- Every room needs a tube, corridor or plaza along one side, or a corridor that runs straight up to one of its walls and stops there. Rooms have a door on each floor, wherever they open onto a tube, a corridor or a plaza; a room with none of those gets its door where such a corridor ends. A door always keeps at least a metre from the room's corners.
 - **The corridor tool** (Z): drag to snake a corridor along the borders between rooms. It follows the pointer, retracing takes it back, and on release you confirm the segments and cost. A plain click carves one segment. Through uncut rock the preview sits on the rock's top, where you're pointing. Pick a finish (bare rock, marscrete, brick or metal), or click **Connect** on a cut-off room. **Refit** changes a built corridor's lining later (see Refits and salvage).
 - Shift snakes a fill-in instead, which costs as much as carving.
 
