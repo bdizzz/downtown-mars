@@ -12,7 +12,7 @@ import { stormOutput } from "./weather";
 import { conditionOf, conditionOutput, isCleanable, maintenanceQueue } from "./condition";
 import { MATERIALS, refitting } from "./materials";
 import type { CareState } from "./care";
-import { airAmount, airHealthLoss, airNeeds, breathe, o2Wanted, releaseTanks, splitMade, storeInTanks } from "./air";
+import { airAmount, airHealthLosses, airNeeds, breathe, o2Wanted, releaseTanks, splitMade, storeInTanks } from "./air";
 
 // The per-tick economy: staff the rooms, run them, feed the colonists, cap
 // storage. Every amount in the data is per game day, so each tick moves
@@ -51,6 +51,8 @@ export interface Population {
   grief?: number;
   /** 0..100, hole-wide, from how well needs are met. */
   health: number;
+  /** Health lost a day to each cause (water, meals, sanitation, o2, co2), last tick; it recovers only when they're all 0 (missing in old saves). */
+  healthDrain?: Record<string, number>;
   /** 0..1 per need, last tick. */
   needsMet: Record<string, number>;
   /** 0..1 of colonists with a restroom within reach, or a bathroom at home (amenities.ts). */
@@ -444,10 +446,13 @@ function stepColonists(state: SimState, cfg: SimConfig, dt: number, mod: Modifie
   // Restrooms are a comfort (amenities.ts); only very poor coverage wears on health.
   const poor = Math.max(0, 1 - (pop.sanitation ?? 1) / c.poorSanitationBelow);
 
-  let loss = 0;
-  for (const [id, m] of Object.entries(met)) loss += (1 - m) * (c.healthLossPerDay[id] ?? 0);
-  loss += poor * c.noSanitationHealthLossPerDay;
-  loss += airHealthLoss(state, cfg);
+  // Each cause's loss a day, kept for the diagnosis (diagnosis.ts).
+  const drain: Record<string, number> = {};
+  for (const [id, m] of Object.entries(met)) drain[id] = (1 - m) * (c.healthLossPerDay[id] ?? 0);
+  drain.sanitation = poor * c.noSanitationHealthLossPerDay;
+  Object.assign(drain, airHealthLosses(state, cfg));
+  const loss = Object.values(drain).reduce((s, v) => s + v, 0);
+  pop.healthDrain = drain;
   pop.health = Math.max(0, Math.min(100, pop.health + (loss > 0 ? -loss : c.healthRecoveryPerDay) * dt));
   pop.needsMet = met;
 }

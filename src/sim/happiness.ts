@@ -31,6 +31,8 @@ export interface HousingPool {
   happiness: number;
   target: number;
   factors: Factors;
+  /** What makes up its target, in happiness points per cause (partPoints; missing in old saves until the next update). */
+  points?: Record<string, number>;
 }
 
 export interface Happiness {
@@ -42,9 +44,18 @@ export interface Happiness {
   productivity: number;
   /** Happiness points from the thrill of arrival, fading over the first weeks (missing in old saves: none). */
   afterglow?: number;
+  /** What makes up the average, in points per cause, weighted by who feels it (homes and the homeless; missing in old saves until the next update). */
+  points?: Record<string, number>;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/** Points rounded to a tenth, the negligible ones dropped, to keep saves small. */
+function tidy(points: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [id, v] of Object.entries(points)) if (Math.abs(v) >= 0.05) out[id] = Math.round(v * 10) / 10;
+  return out;
+}
 
 /**
  * A packed home's air: each resident past `crowding.perCell` a cell (as of the
@@ -63,37 +74,94 @@ function needsHealth(state: SimState, cfg: SimConfig): number {
   return ((state.population.health - 100) / 100) * cfg.happiness.factorLimit;
 }
 
-export function homeFactors(state: SimState, room: RoomInstance | null, cfg: SimConfig): Factors {
+/** One thing a home feels, on one factor (−3..+3 before the factor's clamp); ids name the causes in data/diagnosis.json. */
+export interface Part {
+  id: string;
+  factor: keyof Factors;
+  value: number;
+}
+
+/** Everything that adds up to a home's three factors (or, with no room, the homeless's), part by part. */
+export function homeParts(state: SimState, room: RoomInstance | null, cfg: SimConfig): Part[] {
   const h = cfg.happiness;
-  const lim = h.factorLimit;
   const mod = modifiers(state);
   // Clinic, school and elder-care places within reach of this home (or, for the homeless, whatever's left).
   const care = careFactors(state, room ? room.id : null);
-  const shared = needsHealth(state, cfg) + (1 - care.clinic) * h.noCareHealth + mod.health + care.health;
+  const pop = state.population;
+  const parts: Part[] = [];
+  const add = (id: string, factor: keyof Factors, value: number) => {
+    if (value) parts.push({ id, factor, value });
+  };
+  // Shared by everyone: the hole's own health, care, ordinances.
+  add("holeHealth", "health", needsHealth(state, cfg));
+  add("noClinic", "health", (1 - care.clinic) * h.noCareHealth);
+  add("elderCare", "health", care.health);
+  add("ordinanceHealth", "health", mod.health);
+  add("ordinanceComfort", "comfort", mod.comfort);
+  add("schooling", "comfort", care.school);
+  add("grief", "comfort", care.grief);
   // Worn shared rooms (the galley, restrooms, workplaces) get everyone down; worn homes, their own residents.
   // Lined ones (brick, metal) lift everyone a little; a home's own lining, its residents.
-  const sharedComfort = mod.comfort + care.comfort - sharedWear(state) * CONDITION.happiness.sharedComfort + sharedLiningComfort(state);
-  // Diners without a seat at a galley or canteen within reach eat on the go.
-  const pop = state.population;
-  // And those without a restroom within reach (or a bathroom at home) go without.
-  const unserved = (served: number, sanitation: number) => (1 - served) * h.unservedComfort + (1 - sanitation) * h.noRestroomComfort;
-  if (!room) return { noise: 0, comfort: clamp(h.homelessComfort + sharedComfort - unserved(pop.servedHomeless ?? pop.served ?? 1, pop.sanitationHomeless ?? 1), -lim, lim), health: clamp(shared, -lim, lim) };
-  const seated = pop.servedByHome?.[room.id] ?? pop.served ?? 1;
-  const sanitation = pop.sanitationByHome?.[room.id] ?? 1;
+  add("sharedWear", "comfort", -sharedWear(state) * CONDITION.happiness.sharedComfort);
+  add("sharedLining", "comfort", sharedLiningComfort(state));
+  // Diners without a seat at a galley or canteen within reach eat on the go;
+  // and those without a restroom within reach (or a bathroom at home) go without.
+  const seated = room ? (pop.servedByHome?.[room.id] ?? pop.served ?? 1) : (pop.servedHomeless ?? pop.served ?? 1);
+  const sanitation = room ? (pop.sanitationByHome?.[room.id] ?? 1) : (pop.sanitationHomeless ?? 1);
+  add("noSeat", "comfort", -(1 - seated) * h.unservedComfort);
+  add("noRestroom", "comfort", -(1 - sanitation) * h.noRestroomComfort);
+  if (!room) {
+    add("homeless", "comfort", h.homelessComfort);
+    return parts;
+  }
   // Parks, plazas, gyms and restrooms within walking reach.
   const amen = amenityFelt(state, room);
-
   const field = state.effects.field;
   const def = roomDef(room.type);
-  const own = def.effects.filter((e) => e.residentsOnly && e.type === "comfort").reduce((s, e) => s + e.strength, 0);
+  add("ownComfort", "comfort", def.effects.filter((e) => e.residentsOnly && e.type === "comfort").reduce((sum, e) => sum + e.strength, 0));
   // Its windows (none until the player puts them in): the view.
-  const view = windowComfort(state.layout, room, cfg);
-  return {
-    noise: clamp(effectOnRoom(field, "noise", room) * mod.noiseFactor, -lim, lim),
-    comfort: clamp(own + view + sharedComfort - unserved(seated, sanitation) + amen.comfort + homeWearComfort(room) + liningComfort(room) + refitComfort(state, room) + effectOnRoom(field, "comfort", room) + effectOnRoom(field, "smell", room), -lim, lim),
-    // Stale air (outer rings, industry) wears on health; ventilation and green space freshen it.
-    health: clamp(effectOnRoom(field, "health", room) + (effectOnRoom(field, "airQuality", room) + crowdedAir(state, room)) * h.airHealth + amen.health + shared, -lim, lim),
-  };
+  add("windows", "comfort", windowComfort(state.layout, room, cfg));
+  add("amenityComfort", "comfort", amen.comfort);
+  add("homeWear", "comfort", homeWearComfort(room));
+  add("lining", "comfort", liningComfort(room) + refitComfort(state, room));
+  add("neighbourComfort", "comfort", effectOnRoom(field, "comfort", room));
+  add("smell", "comfort", effectOnRoom(field, "smell", room));
+  add("noise", "noise", effectOnRoom(field, "noise", room) * mod.noiseFactor);
+  // Stale air (outer rings, industry) wears on health; ventilation and green space freshen it.
+  add("airQuality", "health", effectOnRoom(field, "airQuality", room) * h.airHealth);
+  add("crowding", "health", crowdedAir(state, room) * h.airHealth);
+  add("neighbourHealth", "health", effectOnRoom(field, "health", room));
+  add("amenityHealth", "health", amen.health);
+  return parts;
+}
+
+/** The three factors from their parts, each clamped to the factor limit. */
+export function sumParts(parts: Part[], cfg: SimConfig): Factors {
+  const lim = cfg.happiness.factorLimit;
+  const f: Factors = { noise: 0, comfort: 0, health: 0 };
+  for (const p of parts) f[p.factor] += p.value;
+  return { noise: clamp(f.noise, -lim, lim), comfort: clamp(f.comfort, -lim, lim), health: clamp(f.health, -lim, lim) };
+}
+
+/**
+ * Each part's share of a home's happiness, in points: its factor's weight
+ * times its value, scaled down with the rest of its factor when the factor
+ * hits its limit, so they add up to what the home feels.
+ */
+export function partPoints(parts: Part[], cfg: SimConfig): Record<string, number> {
+  const raw: Factors = { noise: 0, comfort: 0, health: 0 };
+  for (const p of parts) raw[p.factor] += p.value;
+  const felt = sumParts(parts, cfg);
+  const out: Record<string, number> = {};
+  for (const p of parts) {
+    const scale = raw[p.factor] ? felt[p.factor] / raw[p.factor] : 1;
+    out[p.id] = (out[p.id] ?? 0) + p.value * scale * cfg.happiness.weights[p.factor];
+  }
+  return out;
+}
+
+export function homeFactors(state: SimState, room: RoomInstance | null, cfg: SimConfig): Factors {
+  return sumParts(homeParts(state, room, cfg), cfg);
 }
 
 /**
@@ -143,10 +211,11 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
   // The afterglow, and how recent events have left everyone feeling.
   const glow = afterglow(state, cfg) + eventMood(state);
   const pools: HousingPool[] = homes.map((room) => {
-    const factors = homeFactors(state, room, cfg);
+    const parts = homeParts(state, room, cfg);
+    const factors = sumParts(parts, cfg);
     const target = clamp(targetHappiness(factors, cfg) + glow, 0, 100);
     const old = prev.get(room.id);
-    return { roomId: room.id, capacity: roomDef(room.type).houses!, residents: 0, happiness: old?.happiness ?? target, target, factors };
+    return { roomId: room.id, capacity: roomDef(room.type).houses!, residents: 0, happiness: old?.happiness ?? target, target, factors, points: tidy(partPoints(parts, cfg)) };
   });
 
   // Best homes fill first; ties go to the older room so people don't shuffle.
@@ -159,13 +228,22 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
   const ease = settle ? 1 : Math.min(1, h.updateEveryTicks / (h.easeDays * cfg.ticksPerDay));
   for (const p of pools) p.happiness += (p.target - p.happiness) * ease;
 
-  const homelessTarget = clamp(targetHappiness(homeFactors(state, null, cfg), cfg) + glow, 0, 100);
+  const homelessParts = homeParts(state, null, cfg);
+  const homelessTarget = clamp(targetHappiness(sumParts(homelessParts, cfg), cfg) + glow, 0, 100);
   const pop = state.population.count;
   const total = pools.reduce((s, p) => s + p.residents * p.happiness, 0) + left * homelessTarget;
   const average = pop > 0 ? total / pop : 50;
 
+  // The causes across the hole, weighted by how many feel each.
+  const points: Record<string, number> = {};
+  const weigh = (pts: Record<string, number>, n: number) => {
+    for (const [id, v] of Object.entries(pts)) points[id] = (points[id] ?? 0) + (v * n) / Math.max(1, pop);
+  };
+  for (const p of pools) if (p.residents > 0) weigh(p.points ?? {}, p.residents);
+  if (left > 0) weigh(partPoints(homelessParts, cfg), left);
+
   // A festival's day off slows work as well.
-  state.happiness = { pools, homeless: left, average, productivity: productivity(average, cfg) * festivalWork(state, cfg), afterglow: glow };
+  state.happiness = { pools, homeless: left, average, productivity: productivity(average, cfg) * festivalWork(state, cfg), afterglow: glow, points: tidy(points) };
 }
 
 export function stepHappiness(state: SimState, cfg: SimConfig): void {

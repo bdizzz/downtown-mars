@@ -134,15 +134,18 @@ export function breathe(state: SimState, cfg: SimConfig, dt: number): void {
 
 /** Health lost a day to the air: the worse O2 band plus the worse CO2 band. */
 export function airHealthLoss(state: SimState, cfg: SimConfig): number {
+  const { o2, co2 } = airHealthLosses(state, cfg);
+  return o2 + co2;
+}
+
+/** Health lost a day to thin oxygen and to CO2, each on its own (for the diagnosis). */
+export function airHealthLosses(state: SimState, cfg: SimConfig): { o2: number; co2: number } {
   const a = cfg.air;
   const o2 = airPct(state, cfg, "o2");
   const co2 = airPct(state, cfg, "co2");
-  let loss = 0;
-  if (o2 < a.o2VeryLow) loss += a.healthLossPerDay.o2VeryLow;
-  else if (o2 < a.o2Low) loss += a.healthLossPerDay.o2Low;
-  if (co2 > a.co2Dangerous) loss += a.healthLossPerDay.co2Dangerous;
-  else if (co2 > a.co2Harmful) loss += a.healthLossPerDay.co2Harmful;
-  return loss;
+  const lossO2 = o2 < a.o2VeryLow ? a.healthLossPerDay.o2VeryLow : o2 < a.o2Low ? a.healthLossPerDay.o2Low : 0;
+  const lossCo2 = co2 > a.co2Dangerous ? a.healthLossPerDay.co2Dangerous : co2 > a.co2Harmful ? a.healthLossPerDay.co2Harmful : 0;
+  return { o2: lossO2, co2: lossCo2 };
 }
 
 // ---------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import { config } from "../sim/config";
 import { roomWork } from "../sim/construction";
 import { withExtra } from "../sim/costs";
+import { effectName } from "../sim/effects";
 import { resourceDef } from "../sim/resources";
 import type { EffectDef, RoomDef } from "../sim/rooms";
 import { num, resName, signed } from "../ui/format";
@@ -27,7 +28,8 @@ export interface CardContent {
 }
 
 function effectText(e: EffectDef): string {
-  const name = e.type === "airQuality" ? "Air quality" : e.type[0]!.toUpperCase() + e.type.slice(1);
+  const word = e.type === "airQuality" ? "air quality" : effectName(e.type);
+  const name = word[0]!.toUpperCase() + word.slice(1);
   const v = `${e.strength > 0 ? "+" : "−"}${Math.abs(e.strength)}`;
   if (e.residentsOnly) return `${name} ${v} for its own residents`;
   if (e.radius === 0) return `${name} ${v} in the room`;
@@ -61,7 +63,7 @@ export function roomCard(def: RoomDef, resources: Record<string, number>, siteNo
     def.serves ? { text: `Seats ${def.serves} diners${def.reach ? ` from homes within ${def.reach} steps` : ""}${def.makes.meals ? "" : " (meals cooked elsewhere)"}` } : null,
     def.amenity
       ? {
-          text: `${[def.amenity.comfort ? `Comfort ${signed(def.amenity.comfort)}` : "", def.amenity.health ? `Health ${signed(def.amenity.health)}` : ""].filter(Boolean).join(", ")} for homes within ${def.amenity.reach} steps on foot, less further off (the nearest of each kind counts)`,
+          text: `${[def.amenity.comfort ? `Comfort ${signed(def.amenity.comfort)}` : "", def.amenity.health ? `Wellbeing ${signed(def.amenity.health)}` : ""].filter(Boolean).join(", ")} for homes within ${def.amenity.reach} steps on foot, less further off (the nearest of each kind counts)`,
           tone: "good",
         }
       : null,

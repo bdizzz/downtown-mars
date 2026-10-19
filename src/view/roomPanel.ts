@@ -78,7 +78,7 @@ export function withinReachRows(s: Snapshot, room: Room): Row[] {
   rows.push({
     k: "On foot",
     text: felt.from.length
-      ? felt.from.map((f) => `${roomDef(f.type).name} ${Math.max(1, Math.round(f.steps))} steps (${[f.comfort ? `comfort ${signed(f.comfort)}` : "", f.health ? `health ${signed(f.health)}` : ""].filter(Boolean).join(", ")})`).join(" · ")
+      ? felt.from.map((f) => `${roomDef(f.type).name} ${Math.max(1, Math.round(f.steps))} steps (${[f.comfort ? `comfort ${signed(f.comfort)}` : "", f.health ? `wellbeing ${signed(f.health)}` : ""].filter(Boolean).join(", ")})`).join(" · ")
       : "no park, plaza, gym or restroom in reach",
   });
   return rows;
@@ -111,7 +111,7 @@ export function homeRows(s: Snapshot, roomId: number, capacity: number): Row[] {
   return [
     { k: "Residents", text: `${pool.residents} / ${capacity}` },
     { k: "Happiness", text: `${Math.round(pool.happiness)}${trend} (heading for ${Math.round(pool.target)})`, warn: pool.happiness < 50 },
-    { k: "Noise", text: `${signed(f.noise)} · Comfort ${signed(f.comfort)} · Health ${signed(f.health)}` },
+    { k: "Noise", text: `${signed(f.noise)} · Comfort ${signed(f.comfort)} · Wellbeing ${signed(f.health)}` },
   ];
 }
 

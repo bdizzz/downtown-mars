@@ -20,8 +20,8 @@ import { config } from "./config";
 
 export const FIELD_TYPES: EffectType[] = ["noise", "smell", "health", "comfort", "airQuality"];
 
-/** How each effect reads in text ("air −1.2"). */
-export const EFFECT_NAMES: Record<string, string> = { noise: "noise", smell: "smell", health: "health", comfort: "comfort", airQuality: "air" };
+/** How each effect reads in text ("air −1.2"). The health effect reads as wellbeing, so Health means only the hole's meter (F-018). */
+export const EFFECT_NAMES: Record<string, string> = { noise: "noise", smell: "smell", health: "wellbeing", comfort: "comfort", airQuality: "air" };
 export const effectName = (t: string) => EFFECT_NAMES[t] ?? t;
 
 /** field[type][floor - 1][ring - 1][slot] */
