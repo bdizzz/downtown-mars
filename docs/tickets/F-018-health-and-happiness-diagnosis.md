@@ -1,7 +1,7 @@
 ---
 id: F-018
 title: Diagnosing health and happiness: why they're falling and what to do about it
-status: draft
+status: agreed
 plan:
 notes: [N-0095]
 created: 2026-10-19 21:55
@@ -15,6 +15,8 @@ created: 2026-10-19 21:55
 - **Happiness** is per home (`src/sim/happiness.ts`): 60 + 8 × (noise + comfort + health factors, each −3..+3) + afterglow + event mood. Each factor is a sum of a dozen parts: neighbour effects, air quality and crowding, smell, clinic reach, no seat at a galley, no restroom, wear, linings, windows, amenities, ordinances, homelessness, and the hole's own health (via `needsHealth`). The home panel (`src/view/roomPanel.ts`) shows only the three totals; the HUD only the average.
 - Two different things are both called "health": the hole meter and a home's health factor. Part of the confusion.
 
+**Answered (Bryon, Oct 19):** the home factor is renamed **Wellbeing** (Noise, Comfort, Wellbeing), so Health means only the hole's meter; visits are information only the first time a cause shows up, then a challenge to fix it within 3 months; tips are one-time deputy cards per cause (can be turned off in Settings); build order as in the Breakdown, attribution and HUD cards first.
+
 **The approach: one diagnosis in the sim, shown in several places.**
 1. **Attribution in the sim** (`src/sim/diagnosis.ts`, pure, no UI): for health, the drain per cause per month and the recovery, with each need's % met; for happiness, each part's contribution in points, resident-weighted across homes, plus the worst homes and the rooms causing it (the loudest neighbours, the smelliest rooms, the homes out of reach of a clinic or restroom). Returned in the snapshot so web and Godot read the same thing. Each cause has an id, and its text and fix live in data (`data/diagnosis.json`): e.g. `meals` → "Meals 40% met: −6 a month. Build a galley, or more farms to feed it."; `smell` → "Smell from the recycler reaches 4 homes. A bulkhead on the corridor between stops it."
 2. **The HUD tells you at once:** Health and Happiness hover cards list the top causes with numbers ("Health −13.5 a month: meals 40% met −6, CO2 1.4% −7.5"), and say "recovering +10 a month" when nothing drains. Shared in `src/view/hudItems.ts`, so Godot gets it free. The quick win, and enough on its own to answer "why is my health 3".
@@ -25,21 +27,22 @@ created: 2026-10-19 21:55
 7. **Tips at the moment they matter:** a one-time deputy tip when a cause first appears, explaining the mechanic behind the fix: bulkheads when smell or stale air reaches homes through corridors, restrooms when sanitation drops, scrubbers when CO2 rises, clinics when homes are out of reach. Reuses the tutorial card (`data/tutorial.json`) as contextual steps, not a fixed sequence; F-007's guided tutorial can point at the same tips.
 
 ## Breakdown
-Proposed; becomes tickets once this feature is agreed.
-- Attribution in the sim: `diagnosis.ts` with health drain by cause and happiness contribution by part, causes and fixes in `data/diagnosis.json`, in the snapshot and bridge; unit tests that each cause shows up when provoked.
-- HUD Health and Happiness hover cards list the top causes with numbers and the recovery (web and Godot via `hudItems.ts`).
-- The "Why?" panel: ranked causes with fixes, Show me highlights, unhappiest homes.
-- Home panel breakdown of each factor into its parts, and "felt in N homes" on rooms that bother others.
-- Trends: drain by cause under the Health chart, contribution by factor under Happiness (history records the causes).
-- Office visits from the doctor and a residents' delegate: information first, then a promise to fix within N months.
-- Contextual tips when a cause first appears (bulkheads, restrooms, scrubbers, clinics, crowding), and GUIDE.md's section on health and happiness.
-- The "Why?" panel, home breakdown and visits in Godot.
+- Rename the home health factor to Wellbeing; attribution in the sim: `diagnosis.ts` with health drain by cause and happiness contribution by part, causes and fixes in `data/diagnosis.json`, in the snapshot and bridge; unit tests that each cause shows up when provoked. → T-171
+- HUD Health and Happiness hover cards list the top causes with numbers and the recovery (web and Godot via `hudItems.ts`). → T-172
+- The "Why?" panel: ranked causes with fixes, Show me highlights, unhappiest homes. → T-173
+- Home panel breakdown of each factor into its parts, and "felt in N homes" on rooms that bother others. → T-174
+- Trends: drain by cause under the Health chart, contribution by factor under Happiness (history records the causes). → T-175
+- Office visits from the doctor and a residents' delegate: information first, then a promise to fix within N months. → T-176
+- Contextual tips when a cause first appears (bulkheads, restrooms, scrubbers, clinics, crowding), and GUIDE.md's section on health and happiness. → T-177
+- The "Why?" panel, home breakdown and visits in Godot. → T-178
 
 ## Open questions
-- [ ] The two "healths": rename the home factor (proposed: **Wellbeing**, with Noise and Comfort) so Health means only the hole's meter? Or keep both names and label them more clearly?
-- [ ] Office visits: proposed information only the first time a cause shows up, then a challenge (fix within 3 months: loyalty and +happiness if kept, −loyalty if broken). Or always offer both "thanks, noted" and "I'll fix it"?
-- [ ] Tips: a one-time deputy card per cause (proposed, can be turned off in Settings), or only messages in the news feed?
-- [ ] Build order: proposed the sim attribution and HUD cards first (they answer "why is my health 3" on their own), then the panel and home breakdown, then charts, visits and tips. OK?
+- [x] The two "healths": rename the home factor (proposed: **Wellbeing**, with Noise and Comfort) so Health means only the hole's meter? → Yes, Wellbeing. (Bryon, Oct 19)
+- [x] Office visits: proposed information only the first time a cause shows up, then a challenge (fix within 3 months). → Yes. (Bryon, Oct 19)
+- [x] Tips: a one-time deputy card per cause (can be turned off in Settings), or only messages in the news feed? → Cards. (Bryon, Oct 19)
+- [x] Build order: the sim attribution and HUD cards first, then the panel and home breakdown, then charts, visits and tips? → Yes. (Bryon, Oct 19)
 
 ## History
 - 2026-10-19 21:55 opened from N-0095
+- 2026-10-19 21:57 questions answered
+- 2026-10-19 21:57 agreed
