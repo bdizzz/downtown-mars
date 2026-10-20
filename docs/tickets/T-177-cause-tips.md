@@ -4,9 +4,9 @@ title: A one-time deputy card explains the fix when a cause first appears (bulkh
 status: open
 size: M
 area: ui, data
+feature: F-018
 touches: [data/tutorial.json, src/ui/Tutorial.tsx, src/ui/tutorialGoals.ts, src/ui/settings.ts, docs/GUIDE.md]
 blocked_by: [T-171]
-feature: F-018
 notes: [N-0095]
 created: 2026-10-19 21:57
 ---
@@ -24,3 +24,4 @@ GUIDE.md: Health and happiness.
 
 ## History
 - 2026-10-19 21:57 opened from F-018
+- 2026-10-20 12:39 building on ccr-ffc77851-fv2xl2 (with T-176, T-177, T-178)

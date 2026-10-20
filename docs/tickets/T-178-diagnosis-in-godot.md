@@ -4,9 +4,9 @@ title: The "Why?" panel, home breakdown, visits and tips in Godot
 status: open
 size: M
 area: godot, bridge
+feature: F-018
 touches: [godot/src/, src/bridge/]
 blocked_by: [T-173, T-174, T-176, T-177]
-feature: F-018
 notes: [N-0095]
 created: 2026-10-19 21:57
 ---
@@ -21,3 +21,4 @@ Port the "Why?" panel with Show me, the home breakdown, the new visits and the t
 
 ## History
 - 2026-10-19 21:57 opened from F-018
+- 2026-10-20 12:39 building on ccr-ffc77851-fv2xl2 (with T-176, T-177, T-178)

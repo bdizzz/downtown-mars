@@ -4,9 +4,9 @@ title: The doctor and a residents' delegate visit the office about a lasting pro
 status: open
 size: M
 area: sim, events
+feature: F-018
 touches: [data/visits.json, src/sim/visits.ts, src/ui/Office.tsx]
 blocked_by: [T-171]
-feature: F-018
 notes: [N-0095]
 created: 2026-10-19 21:57
 ---
@@ -24,3 +24,4 @@ EVENTS.md: citizen visits; GUIDE.md: The office.
 
 ## History
 - 2026-10-19 21:57 opened from F-018
+- 2026-10-20 12:39 building on ccr-ffc77851-fv2xl2 (with T-176, T-177, T-178)
