@@ -19,6 +19,8 @@ import { constructionView, maintenanceViewOf, peopleView } from "./colony";
 import { rigKey, rigMessage } from "./rig";
 import { hudMessage, iconsMessage } from "./hud";
 import { tutorialMessage } from "./tutorial";
+import { tipMessage, whyMessage } from "./why";
+import type { Spot } from "../view/reachView";
 import { advanceStep, FOLLOW, metGoals, pickGoal } from "../ui/tutorialGoals";
 import { planFieldKey, planFieldMessage, planKey, planMessage, type FieldView } from "./plan";
 import { terrainKey, terrainMessage } from "./terrain";
@@ -73,7 +75,7 @@ function hovered(tool: BuildTool, at: [number, number, number]) {
   return rest;
 }
 /** The overlay picked (noise, smell, health, comfort, airQuality, happiness, condition, or none), and colour-blind colours. */
-const fieldView: FieldView = { overlay: null, selected: null, colorBlind: false };
+const fieldView: FieldView = { overlay: null, selected: null, colorBlind: false, spot: null };
 let sentField = "";
 let shownEffects: unknown = null;
 let effectsVersion = 0;
@@ -189,6 +191,8 @@ type BridgeMessage =
   /** Settings: autosave each game day, or not; and what the viewer saw for the tutorial. */
   | { type: "autosave"; on: boolean }
   | { type: "tutorialFlags"; sawNoise: boolean; openedFlows: boolean; sawThreeD: boolean }
+  /** Show me (F-018): the rooms and homes to light up on the plan, or null. */
+  | { type: "spotlight"; spot: Spot | null }
   /** The tutorial's arrows and dots: show goal `at` (wrapping). */
   | { type: "tutorialStep"; at: number }
   /** The demolish tool: the room at a world point. */
@@ -228,7 +232,7 @@ function sendOffice(force = false): void {
   const key = officeKey(host.active());
   if (!force && key === sentOffice) return;
   sentOffice = key;
-  send(office(host.active()));
+  send(office(host.active(), host.snapshot()));
 }
 
 // The build palette: sent when what can be built changes.
@@ -249,6 +253,22 @@ let inspectClock = 0;
 let hudClock = 0;
 let sentHud = "";
 let sentTutorial = "";
+let sentWhy = "";
+let sentTip = "";
+
+/** The "Why?" panel's content and the deputy's tip due, to every viewer, when they changed. */
+function sendWhy(snap = host.snapshot()): void {
+  const why = JSON.stringify(whyMessage(snap));
+  if (why !== sentWhy) {
+    sentWhy = why;
+    for (const c of clients) c.write(why + "\n");
+  }
+  const tip = JSON.stringify(tipMessage(snap));
+  if (tip !== sentTip) {
+    sentTip = tip;
+    for (const c of clients) c.write(tip + "\n");
+  }
+}
 let tutorialFlags = { sawNoise: false, openedFlows: false, sawThreeD: true };
 /** The step the tutorial's card is on (ui/tutorialGoals.ts), moved on as goals are met. */
 let tutorialStep = FOLLOW;
@@ -344,6 +364,9 @@ const server = createServer((socket) => {
   sendScene(true);
   sentHud = "";
   sentTutorial = "";
+  sentWhy = "";
+  sentTip = "";
+  fieldView.spot = null;
   sendPalette(true);
   sendOffice(true);
   if (welcomePending) socket.write(JSON.stringify(welcomeCard()) + "\n");
@@ -443,6 +466,9 @@ const server = createServer((socket) => {
           dailyAutosave = msg.on;
         } else if (msg.type === "tutorialFlags") {
           tutorialFlags = { sawNoise: msg.sawNoise, openedFlows: msg.openedFlows, sawThreeD: msg.sawThreeD };
+        } else if (msg.type === "spotlight") {
+          fieldView.spot = msg.spot;
+          sendScene();
         } else if (msg.type === "tutorialStep") {
           tutorialStep = pickGoal(msg.at, metGoals(host.snapshot(), tutorialFlags));
           sendTutorial();
@@ -537,6 +563,7 @@ setInterval(() => {
       for (const c of clients) c.write(line + "\n");
     }
     sendTutorial(snap);
+    sendWhy(snap);
     checkFailure(snap);
   }
 }, 1000 / config.snapshotsPerSecond);

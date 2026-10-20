@@ -115,7 +115,19 @@ public partial class Tutorial : PanelContainer
         Refresh();
     }
 
-    bool _have, _away;
+    bool _have, _away, _covered;
+
+    /// <summary>A deputy's tip (TipCard) is up where the card sits: it steps aside until the tip's read.</summary>
+    public bool Covered
+    {
+        get => _covered;
+        set
+        {
+            if (value == _covered) return;
+            _covered = value;
+            Refresh();
+        }
+    }
 
     /// <summary>Out of the way in first person, as the web's: card or pill, it comes back as it was.</summary>
     public bool Away
@@ -130,8 +142,8 @@ public partial class Tutorial : PanelContainer
 
     void Refresh()
     {
-        Visible = _shown && _have && !_small && !_away;
-        _pill.Visible = _shown && _have && _small && !_away;
+        Visible = _shown && _have && !_small && !_away && !_covered;
+        _pill.Visible = _shown && _have && _small && !_away && !_covered;
         if (!_shown) Highlight = null;
     }
 

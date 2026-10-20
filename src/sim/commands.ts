@@ -46,6 +46,8 @@ export type SimCommand =
   /** Pause a room, or have it stop while its main output is at or above stopAt (null clears it). */
   | { type: "setRoomControl"; roomId: number; paused?: boolean; stopAt?: number | null }
   | { type: "answerVisit"; visitId: number; choice: string }
+  /** The deputy's tip (view/tips.ts) has been read: it won't show again. */
+  | { type: "seeTip"; id: string }
   /** Answer an event (a find, a ship, a celebration) with one of its choices. */
   | { type: "answerEvent"; eventId: number; choice: string }
   | { type: "setOrdinance"; id: string; enacted: boolean }
@@ -587,6 +589,9 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     }
     case "answerVisit":
       return answerVisit(state, config, cmd.visitId, cmd.choice);
+    case "seeTip":
+      if (!(state.tipsSeen ??= []).includes(cmd.id)) state.tipsSeen.push(cmd.id);
+      return { ok: true };
     case "answerEvent":
       return answerEvent(state, config, cmd.eventId, cmd.choice, padReady(state));
     case "setOrdinance":

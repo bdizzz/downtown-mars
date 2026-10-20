@@ -34,6 +34,16 @@ public partial class Choices : Node
     public Action? OfficeOpened { get; set; }
     public bool OfficeOpen => _office.Visible;
     public int Waiting { get; private set; }
+    /// <summary>Show me on a visit about a diagnosis cause (its key and spot), or off (null, null); and the cause it's on (Live keeps it).</summary>
+    public Action<string?, ShowSpot?>? Show { get; set; }
+    public string? Shown { get; set; }
+    JsonElement? _lastOffice;
+
+    /// <summary>Show me changed elsewhere: redraw the office's buttons.</summary>
+    public void Restyle()
+    {
+        if (_lastOffice is JsonElement m) SetOffice(m);
+    }
 
     /// <summary>The event cards shown, or set aside (while the map's open, where its own panel sits).</summary>
     public bool CardsVisible { set => _cards.Visible = value; }
@@ -215,6 +225,7 @@ public partial class Choices : Node
     /// <summary>The bridge's office view.</summary>
     public void SetOffice(JsonElement msg)
     {
+        _lastOffice = msg.Clone();
         Waiting = msg.GetProperty("waiting").GetArrayLength();
         foreach (var c in _officeRows.GetChildren())
         {
@@ -240,6 +251,16 @@ public partial class Choices : Node
             _officeRows.AddChild(Text(v.GetProperty("title").GetString()!, 14, Body));
             _officeRows.AddChild(Text(v.GetProperty("text").GetString()!, 13, Body));
             _officeRows.AddChild(Text(v.GetProperty("leaves").GetString()!, 12, Muted));
+            // A visit about a diagnosis cause (the doctor, the residents' delegate): Show me, as the "Why?" panel's.
+            if (v.TryGetProperty("cause", out var cause) && cause.ValueKind == JsonValueKind.String && v.TryGetProperty("spot", out var spotJson) && ShowSpot.Parse(spotJson) is { } spot)
+            {
+                var key = cause.GetString()!;
+                var on = Shown == key;
+                var show = new Button { Text = on ? "Showing" : "Show me", ToggleMode = true, ButtonPressed = on, FocusMode = Control.FocusModeEnum.None, SizeFlagsHorizontal = Control.SizeFlags.ShrinkBegin, TooltipText = "Light up the rooms behind it (red) and the homes feeling it (amber), on their floor" };
+                show.AddThemeFontSizeOverride("font_size", 12);
+                show.Pressed += () => Show?.Invoke(on ? null : key, on ? null : spot);
+                _officeRows.AddChild(show);
+            }
             foreach (var c in v.GetProperty("choices").EnumerateArray())
             {
                 var choice = c.GetProperty("id").GetString()!;

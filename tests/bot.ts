@@ -71,6 +71,10 @@ export function planFor(kit: LandingKitName, plan: Plan[] = PLAN): Plan[] {
 export const VISIT_ANSWERS: Record<string, string> = {
   noise_complaint: "quiet_hours",
   clinic_demand: "promise",
+  doctor_note: "noted",
+  delegate_note: "noted",
+  doctor_promise: "promise",
+  delegate_promise: "promise",
 };
 
 export interface Day {

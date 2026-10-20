@@ -2,13 +2,18 @@ import type { SimCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { ordinanceDefs } from "../sim/ordinances";
 import type { Snapshot } from "../sim/snapshot";
-import { visitDef } from "../sim/visits";
+import { causeLabel, visitDef } from "../sim/visits";
 import { monthsText } from "../view/months";
+import type { Spot } from "../view/reachView";
+import { causeSpot } from "../view/whyPanel";
 import { Portrait } from "./Portrait";
 
 interface Props {
   s: Snapshot;
   onCommand: (cmd: SimCommand) => void;
+  /** The cause Show me is on (its key), or null; and turning it on or off, as in the "Why?" panel. */
+  shown: string | null;
+  onShow: (id: string | null, spot: Spot | null) => void;
   onClose: () => void;
 }
 
@@ -22,7 +27,18 @@ const PROMISE_TEXT: Record<string, string> = {
   clinicBuilt: "Build a clinic",
 };
 
-export function Office({ s, onCommand, onClose }: Props) {
+/** Show me for a visit about a diagnosis cause: the homes and rooms behind it, while it lasts. */
+function ShowMe({ s, cause, shown, onShow }: { s: Snapshot; cause: string; shown: boolean; onShow: Props["onShow"] }) {
+  const spot = causeSpot(s, cause);
+  if (!spot) return null;
+  return (
+    <button className={`why-show${shown ? " on" : ""}`} onClick={() => onShow(shown ? null : cause, shown ? null : spot)} aria-pressed={shown}>
+      {shown ? "Showing" : "Show me"}
+    </button>
+  );
+}
+
+export function Office({ s, onCommand, shown, onShow, onClose }: Props) {
   const slotsFree = s.ordinanceSlots - s.ordinances.length;
   const notable = (id: number) => s.notables.find((n) => n.id === id);
 
@@ -54,6 +70,7 @@ export function Office({ s, onCommand, onClose }: Props) {
             <p className="title">{v.title}</p>
             <p>{v.text}</p>
             <p className="k">Leaves in {days(v.leavesTick - s.tick)}</p>
+            {v.cause && <ShowMe s={s} cause={v.cause} shown={shown === v.cause} onShow={onShow} />}
             {visitDef(v.kind).choices.map((c) => {
               const needsSlot = !!c.enact && !s.ordinances.includes(c.enact) && slotsFree <= 0;
               return (
@@ -78,7 +95,7 @@ export function Office({ s, onCommand, onClose }: Props) {
           <h3>Promises</h3>
           {s.office.promises.map((p, i) => (
             <p key={i}>
-              {PROMISE_TEXT[p.check] ?? p.check} for {notable(p.notableId)?.name}
+              {p.cause ? `Fix the ${causeLabel(p.cause)}` : (PROMISE_TEXT[p.check] ?? p.check)} for {notable(p.notableId)?.name}
               <span className="k"> · {days(p.dueTick - s.tick)} left</span>
             </p>
           ))}

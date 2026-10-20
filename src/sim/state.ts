@@ -70,6 +70,8 @@ export interface SimState {
   happiness: Happiness;
   notables: Notable[];
   office: Office;
+  /** The deputy's tips already shown (F-018, view/tips.ts; absent in older saves: none). */
+  tipsSeen?: string[];
   /** Enacted ordinance ids. */
   ordinances: string[];
   ledger: Ledger;

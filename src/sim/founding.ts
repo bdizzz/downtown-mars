@@ -155,6 +155,8 @@ export function stepConvoys(world: World, cfg: SimConfig): void {
     world.holes.push(hole);
     const parent = holeById(world, c.fromHoleId);
     if (parent) foundFrom(world, parent, hole);
+    // The deputy's tips are the player's: a new hole doesn't explain them again.
+    if (parent?.tipsSeen) hole.tipsSeen = [...parent.tipsSeen];
     const msg = `The convoy reached ${c.name}. A new hole is founded, ${Math.round(distanceKm(parent?.site ?? c.site, c.site)).toLocaleString()} km from ${parent?.name ?? "home"}.`;
     // Posted once, in the new hole; the network-wide feed shows it everywhere.
     postMessage(hole, cfg, msg, "good");

@@ -11,11 +11,15 @@ namespace DowntownMars;
 /// because its output's full or stocked shows nothing. The outlines are tinted on the GPU: each outline
 /// vertex carries its room, and the edge shader looks its colour up in a small texture (a pixel per
 /// room) held as the global <c>room_tint</c>; the hovered room is the global <c>hover_room</c>.
+/// Show me (F-018) outlines the rooms behind a problem in red and the homes feeling it in amber, over
+/// any trouble, as the web's spotlight (view/reachView.ts SPOT_COLORS).
 /// </summary>
 public static class RoomTint
 {
     const int Width = 256, Height = 64;
     static readonly Color Warn = new("#f0a030"), Bad = new("#e0503a"), Idle = new("#9a9a9a");
+    static readonly Color SpotSource = new("#e0503a"), SpotHome = new("#f0b040");
+    static int[] _spotRooms = System.Array.Empty<int>(), _spotHomes = System.Array.Empty<int>();
 
     static Image? _image;
     static ImageTexture? _texture;
@@ -53,7 +57,7 @@ public static class RoomTint
             var level = Level(p.Value);
             if (level != "ok") levels.Add((id, level));
         }
-        var key = string.Join(",", levels);
+        var key = $"{string.Join(",", levels)}|{string.Join(",", _spotRooms)}/{string.Join(",", _spotHomes)}";
         if (key == _key) return null;
         _key = key;
         _image!.Fill(new Color(0, 0, 0, 0));
@@ -63,8 +67,19 @@ public static class RoomTint
             _image.SetPixel(id % Width, id / Width, level switch { "warn" => Warn, "bad" => Bad, _ => Idle });
             if (level != "idle") badged.Add(id);
         }
+        foreach (var id in _spotHomes)
+            if (id >= 0 && id < Width * Height) _image.SetPixel(id % Width, id / Width, SpotHome);
+        foreach (var id in _spotRooms)
+            if (id >= 0 && id < Width * Height) _image.SetPixel(id % Width, id / Width, SpotSource);
         _texture!.Update(_image);
         return badged;
+    }
+
+    /// <summary>Show me's rooms and homes (empty for none); drawn with the next snapshot's statuses.</summary>
+    public static void Spotlight(int[] rooms, int[] homes)
+    {
+        _spotRooms = rooms;
+        _spotHomes = homes;
     }
 
     /// <summary>The room under the pointer, outlined in the hover colour, or red for the demolish tool (none: -1).</summary>

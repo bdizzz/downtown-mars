@@ -47,6 +47,10 @@ public partial class Live : Node3D
     GameMenu _menu = null!;
     Choices _choices = null!;
     Charts _charts = null!;
+    /// <summary>The "Why?" panel and the deputy's tips (F-018); and what Show me is on (a cause's id, "tip:&lt;id&gt;"), or null.</summary>
+    WhyPanel _why = null!;
+    TipCard _tip = null!;
+    string? _shownId;
     MapView _map = null!;
     NetworkPanel _network = null!;
     ColonyPanel _colony = null!;
@@ -206,6 +210,23 @@ public partial class Live : Node3D
         AddChild(_choices);
         _charts = new Charts(_hud, m => _bridge.Send(m)) { Name = "Charts" };
         AddChild(_charts);
+        // The "Why?" panel (Health or Happiness clicked on the bar) and the office's visits about a cause light up what's behind it.
+        _why = new WhyPanel(_hud) { Name = "Why", Show = ShowMe, Trend = t => _charts.ShowTrend(t) };
+        _why.SelectRoom = id =>
+        {
+            _why.Toggle(null);
+            Inspect(id);
+        };
+        _why.Opened = () =>
+        {
+            Inspect(null);
+            _choices.ToggleOffice(false);
+            _charts.Toggle(false);
+            _network.Toggle(false);
+            _colony.Toggle(false);
+        };
+        AddChild(_why);
+        _choices.Show = ShowMe;
         _network = new NetworkPanel(_hud, m => _bridge.Send(m)) { Name = "Network" };
         AddChild(_network);
         _colony = new ColonyPanel(_hud, m => _bridge.Send(m)) { Name = "Colony", ShowRoom = id => Inspect(id) };
@@ -226,10 +247,12 @@ public partial class Live : Node3D
         {
             Inspect(null);
             _charts.Toggle(false);
+            CloseWhy();
         };
         _charts.Opened = () =>
         {
             Inspect(null);
+            CloseWhy();
             _choices.ToggleOffice(false);
             _network.Toggle(false);
             _colony.Toggle(false);
@@ -237,6 +260,7 @@ public partial class Live : Node3D
         _network.Opened = () =>
         {
             Inspect(null);
+            CloseWhy();
             _choices.ToggleOffice(false);
             _charts.Toggle(false);
             _colony.Toggle(false);
@@ -244,6 +268,7 @@ public partial class Live : Node3D
         _colony.Opened = () =>
         {
             Inspect(null);
+            CloseWhy();
             _choices.ToggleOffice(false);
             _charts.Toggle(false);
             _network.Toggle(false);
@@ -251,6 +276,15 @@ public partial class Live : Node3D
         // The menu over everything; the game pauses while it's open.
         // The tutorial's card under the menu and the sheets.
         _tutorial = new Tutorial(_hud) { Name = "Tutorial" };
+        // The deputy's tip, where the tutorial's card sits (over it while it's up).
+        _tip = new TipCard(_hud) { Name = "Tip", OnShow = ShowMe };
+        _tip.Seen = id => SendCommand(new Dictionary<string, object> { ["type"] = "seeTip", ["id"] = id });
+        _tip.Off = () =>
+        {
+            ViewSettings.Tips = false;
+            ViewSettings.Save();
+            ApplyGameSettings();
+        };
         _menu = new GameMenu(m => _bridge.Send(m)) { Name = "Menu", Toast = t => _build.Toast(t) };
         _menu.Shown = open =>
         {
@@ -455,6 +489,7 @@ public partial class Live : Node3D
                 _inspector.Show(msg.RootElement);
                 if (_inspector.Open)
                 {
+                    CloseWhy();
                     _choices.ToggleOffice(false);
                     _charts.Toggle(false);
                     _network.Toggle(false);
@@ -491,6 +526,8 @@ public partial class Live : Node3D
             else if (type == "hud") OnHud(msg.RootElement);
             else if (type == "icons") Icons.Set(msg.RootElement);
             else if (type == "tutorial") _tutorial.Set(msg.RootElement);
+            else if (type == "why") _why.Set(msg.RootElement);
+            else if (type == "tip") _tip.Set(msg.RootElement);
             else if (type == "welcome") _welcome.Set(msg.RootElement);
             else if (type == "failure")
             {
@@ -518,6 +555,7 @@ public partial class Live : Node3D
             _hole.UpdateLamps(cam.GlobalPosition, focus - above, focus + below, _rig?.CutPlane ?? default);
         }
         _hole.ShowEdges = _rig?.Walking != true;
+        WatchShowMe();
         UpdateViewBar();
         ApplyViewToShaders();
         WatchWalking();
@@ -1129,11 +1167,52 @@ public partial class Live : Node3D
         if (walking == _wasWalking) return;
         _wasWalking = walking;
         _tutorial.Away = walking;
+        _tip.Away = walking;
         if (walking && _topFloor is int f && !_rig!.OnFoot) GoToFloor(f);
         ApplyCut();
     }
 
     void SetSpeed(int speed) => _bridge.Send(new Dictionary<string, object> { ["type"] = "setSpeed", ["speed"] = speed });
+
+    // ---- the "Why?" panel and Show me (F-018) ----
+
+    /// <summary>From the bar or the "needs you" slot: Health and Happiness open the "Why?" panel, as the web's; the rest Trends.</summary>
+    void OpenTrend(string key)
+    {
+        if (key is "health" or "happiness") _why.Toggle(key);
+        else _charts.ShowTrend(key);
+    }
+
+    void CloseWhy()
+    {
+        if (_why.Open) _why.Toggle(null);
+    }
+
+    /// <summary>
+    /// Show me: outline the rooms behind a problem in red and the homes feeling it in amber (tints on the plan),
+    /// and go to the floor of the one to look at first; off with (null, null).
+    /// </summary>
+    void ShowMe(string? id, ShowSpot? spot)
+    {
+        _shownId = spot == null ? null : id;
+        RoomTint.Spotlight(spot?.Rooms ?? Array.Empty<int>(), spot?.Homes ?? Array.Empty<int>());
+        _bridge.Send(new Dictionary<string, object?> { ["type"] = "spotlight", ["spot"] = spot?.ToMessage() });
+        if (spot?.Floor is int f && _rig?.Walking != true && !InCutaway) PickFloor(f);
+        _why.Shown = _shownId;
+        _why.Restyle();
+        _choices.Shown = _shownId;
+        _choices.Restyle();
+        if (_shownId == null || !_shownId.StartsWith("tip:")) _tip.ShowOff();
+    }
+
+    /// <summary>Show me lasts while what it came from is up: the "Why?" panel or the office, or the tip (as the web's).</summary>
+    void WatchShowMe()
+    {
+        _tutorial.Covered = _tip.Up;
+        if (_shownId == null) return;
+        var up = _shownId.StartsWith("tip:") ? _tip.Up && _tip.ShowId == _shownId : _why.Open || _choices.OfficeOpen;
+        if (!up) ShowMe(null, null);
+    }
 
     /// <summary>Show a room in the panel (null closes it).</summary>
     void Inspect(int? roomId) => _bridge.Send(new Dictionary<string, object?> { ["type"] = "inspect", ["roomId"] = roomId });
@@ -1193,6 +1272,7 @@ public partial class Live : Node3D
     {
         GetTree().Root.ContentScaleFactor = ViewSettings.UiScale;
         _tutorial.Show(!ViewSettings.TutorialHidden);
+        _tip.SetOn(ViewSettings.Tips);
         UpdateLegend();
         ApplyMiniature();
         SendGameSettings();
@@ -1298,7 +1378,7 @@ public partial class Live : Node3D
             if (open.ValueKind == JsonValueKind.Object && open.TryGetProperty("trend", out var trend))
             {
                 var t = trend.GetString()!;
-                chip.Pressed += () => _charts.ShowTrend(t);
+                chip.Pressed += () => OpenTrend(t);
             }
             else if (open.ValueKind == JsonValueKind.Object && open.TryGetProperty("office", out _)) chip.Pressed += () => _choices.ToggleOffice();
             _needs.AddChild(chip);
@@ -1485,6 +1565,7 @@ public partial class Live : Node3D
             case Key.Escape when _build.Active: _build.Toggle(false); break;
             case Key.Escape when _inspector.Open: Inspect(null); break;
             case Key.Escape when _choices.OfficeOpen: _choices.ToggleOffice(false); break;
+            case Key.Escape when _why.Open: _why.Toggle(null); break;
             case Key.Escape when _charts.Open: _charts.Toggle(false); break;
             // First person: once the panels are closed, Esc lets the mouse go; the next one opens the menu.
             case Key.Escape when _rig?.MouseCaptured == true: _rig.FreeMouse(); break;
@@ -1665,7 +1746,7 @@ public partial class Live : Node3D
         _drop.MouseFilter = Control.MouseFilterEnum.Pass;
         dropBox.AddChild(_drop);
         rows.AddChild(_bar);
-        _bar.Clicked = trend => _charts.ShowTrend(trend);
+        _bar.Clicked = OpenTrend;
         BuildViewBar(rows);
         var menuButton = new Button { Text = "☰", Name = "menu", FocusMode = Control.FocusModeEnum.None, TooltipText = "Menu: save, load, new game (Esc)" };
         menuButton.Pressed += () => _menu.Open();

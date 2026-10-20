@@ -1,5 +1,12 @@
 {
-  "_note": "Citizen visits. Triggers are in src/sim/visits.ts, keyed by id; everything else is here. Placeholders: {name}, {home}, {floor}.",
+  "_note": "Citizen visits. Triggers are in src/sim/visits.ts, keyed by id; everything else is here. Placeholders: {name}, {home}, {floor}; for the doctor and the delegate (F-018) also {cause} (the diagnosis cause's text), {what} (its short label), {amount} (what it costs) and {fix}. concerns: when the doctor (health) and a residents' delegate (happiness) come about a diagnosis cause. A cause counts once it drains health at all, or costs happiness problemPoints or more, and is fixed once it no longer drains health, or costs less than fixedPoints; skip leaves causes to other visits (noise_complaint) or to the doctor (holeHealth). They come once it has held holdDays: the first time about a cause only to tell you (the _note kinds), then, repeatDays after the last visit about it, asking for a promise (the _promise kinds).",
+  "concerns": {
+    "holdDays": 1,
+    "repeatDays": 3,
+    "problemPoints": 3,
+    "fixedPoints": 1.5,
+    "skip": ["noise", "holeHealth", "base", "afterglow", "events"]
+  },
   "checkEveryTicks": 10,
   "waitingRoomSize": 3,
   "visits": [
@@ -69,6 +76,74 @@
           "loyalty": -10,
           "allHappiness": -3
         }
+      ]
+    },
+    {
+      "id": "doctor_note",
+      "title": "The doctor's report",
+      "text": "{name} has been keeping an eye on everyone's health. \"{cause}. It's costing us {amount}. {fix}\"",
+      "cooldownDays": 1,
+      "patienceDays": 2,
+      "ignored": {},
+      "choices": [
+        { "id": "noted", "label": "Noted, thank you", "hint": "Nothing more for now. If it lasts, they'll be back to ask you to fix it.", "loyalty": 2 }
+      ]
+    },
+    {
+      "id": "doctor_promise",
+      "title": "The doctor wants it fixed",
+      "text": "{name} is back. \"{cause}, still. It's costing us {amount}. {fix} Can you sort it out?\"",
+      "cooldownDays": 1,
+      "patienceDays": 2,
+      "ignored": { "loyalty": -10, "allHappiness": -3, "message": "{name} gave up waiting. Word is the doctor's worried and you weren't listening." },
+      "choices": [
+        {
+          "id": "promise",
+          "label": "I'll fix it within 3 months",
+          "hint": "Kept: loyalty and happiness. Broken: loyalty.",
+          "loyalty": 5,
+          "promise": {
+            "check": "causeFixed",
+            "days": 3,
+            "kept": { "loyalty": 15, "allHappiness": 5, "message": "{name} thanks you for fixing it ({what}): one less thing for the doctor to worry about." },
+            "broken": { "loyalty": -20, "allHappiness": -3, "message": "{name} says you broke your promise to fix it ({what})." }
+          }
+        },
+        { "id": "refuse", "label": "Not now", "hint": "Loyalty and happiness drop a little.", "loyalty": -10, "allHappiness": -3 }
+      ]
+    },
+    {
+      "id": "delegate_note",
+      "title": "A word from the residents",
+      "text": "{name} speaks for the residents. \"{cause}. It's costing us {amount}. {fix}\"",
+      "cooldownDays": 1,
+      "patienceDays": 2,
+      "ignored": {},
+      "choices": [
+        { "id": "noted", "label": "Noted, thank you", "hint": "Nothing more for now. If it lasts, they'll be back to ask you to fix it.", "loyalty": 2 }
+      ]
+    },
+    {
+      "id": "delegate_promise",
+      "title": "The residents want it fixed",
+      "text": "{name} is back for the residents. \"{cause}, still. It's costing us {amount}. {fix} Will you do something about it?\"",
+      "cooldownDays": 1,
+      "patienceDays": 2,
+      "ignored": { "loyalty": -10, "allHappiness": -3, "message": "{name} gave up waiting. The residents feel ignored." },
+      "choices": [
+        {
+          "id": "promise",
+          "label": "I'll fix it within 3 months",
+          "hint": "Kept: loyalty and happiness. Broken: loyalty.",
+          "loyalty": 5,
+          "promise": {
+            "check": "causeFixed",
+            "days": 3,
+            "kept": { "loyalty": 15, "allHappiness": 5, "message": "{name} thanks you, for the residents, for fixing it ({what})." },
+            "broken": { "loyalty": -20, "allHappiness": -3, "message": "{name} says you broke your promise to the residents to fix it ({what})." }
+          }
+        },
+        { "id": "refuse", "label": "Not now", "hint": "Loyalty and happiness drop a little.", "loyalty": -10, "allHappiness": -3 }
       ]
     }
   ]

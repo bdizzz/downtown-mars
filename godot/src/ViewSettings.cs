@@ -20,6 +20,8 @@ public static class ViewSettings
     public static string? Overlay { get; set; }
     /// <summary>The game's settings, as the web's: the tutorial put away, autosave each game day, colour-blind overlays, interface size.</summary>
     public static bool TutorialHidden { get; set; }
+    /// <summary>The deputy's one-time tips when a problem first shows up (F-018).</summary>
+    public static bool Tips { get; set; } = true;
     public static bool Autosave { get; set; } = true;
     public static bool ColorBlind { get; set; }
     public static float UiScale { get; set; } = 1;
@@ -57,6 +59,7 @@ public static class ViewSettings
         var overlay = (string)cfg.GetValue("view", "overlay", "");
         Overlay = overlay == "" ? null : overlay;
         TutorialHidden = (bool)cfg.GetValue("game", "tutorial_hidden", false);
+        Tips = (bool)cfg.GetValue("game", "tips", true);
         Autosave = (bool)cfg.GetValue("game", "autosave", true);
         ColorBlind = (bool)cfg.GetValue("game", "color_blind", false);
         UiScale = (float)cfg.GetValue("game", "ui_scale", 1f);
@@ -80,6 +83,7 @@ public static class ViewSettings
         cfg.SetValue("view", "overlay", Overlay ?? "");
         cfg.SetValue("view", "cut_angle", CutAngle);
         cfg.SetValue("game", "tutorial_hidden", TutorialHidden);
+        cfg.SetValue("game", "tips", Tips);
         cfg.SetValue("game", "autosave", Autosave);
         cfg.SetValue("game", "color_blind", ColorBlind);
         cfg.SetValue("game", "ui_scale", UiScale);
