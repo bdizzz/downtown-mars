@@ -2,12 +2,13 @@ import { useState } from "react";
 import type { Snapshot } from "../sim/snapshot";
 import { config } from "../sim/config";
 import { num, signed } from "./format";
-import { Sparkline, TrendChart, type ChartLine } from "./TrendChart";
-import { everHad, perDay, points, RANGES, SERIES, seriesMeta, type Range, type SeriesMeta, seriesNum } from "./trends";
+import { CauseBand, Sparkline, TrendChart, type ChartLine } from "./TrendChart";
+import { causeBand, everHad, perDay, points, RANGES, SERIES, seriesMeta, type Range, type SeriesMeta, seriesNum } from "./trends";
 
 // Charts → Trends: how everything has been changing. One series up close
 // (amounts, or change per day) over the last two days, ten days or the whole
-// game; below it, every series as a sparkline to pick from.
+// game (Health and Happiness with a band of their causes under them); below
+// it, every series as a sparkline to pick from.
 
 type Mode = "amount" | "rate";
 
@@ -85,6 +86,11 @@ export function TrendsPanel({ s, onClose, initial }: { s: Snapshot; onClose: () 
         whole={mode === "amount" && meta.whole}
         decimals={mode === "amount" ? meta.decimals : undefined}
       />
+      {(() => {
+        // Under Health its drain by cause, under Happiness its factors (F-018).
+        const band = causeBand(h, meta.key, range, config.ticksPerDay);
+        return band && <CauseBand layers={band.layers} ticks={band.ticks} unit={band.unit} title={band.title} daily={daily} />;
+      })()}
       {mode === "amount" && (
         <p className="k trend-sum">
           {seriesNum(meta, first)} → {seriesNum(meta, now)}
