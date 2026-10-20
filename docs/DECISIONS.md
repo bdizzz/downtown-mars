@@ -262,6 +262,13 @@ Bryon's N-0090, reversing M8's space set aside per good:
 - **Old saves (v22):** a room's allocation becomes the goods it allows (a room with none allows everything), and it keeps its old share of the stock.
 - The bots build a warehouse when less than 35% of their storage is free, since rock can now crowd out the meals.
 
+## Decided for diagnosing health and happiness (Oct 19, F-018 / T-171 / T-172)
+
+- **Health means only the hole's meter.** A home's third factor, and the neighbour effect behind it, read as **Wellbeing** (with Noise and Comfort), in the panels, overlays and cards. Saves and data keep the `health` keys.
+- **One diagnosis in the sim, read everywhere** (`src/sim/diagnosis.ts`): the meter's drain by cause (`population.healthDrain`, kept by `stepColonists`) and each home's happiness by part, in points (`homeParts` / `partPoints` in `happiness.ts`; per home on its pool and resident-weighted for the hole, on `happiness.points`). A factor at its ±3 limit scales its parts down so they add up to what's felt. Words and fixes are data (`data/diagnosis.json`). It rides in the snapshot, so Godot gets it through the bridge.
+- **The HUD cards answer "why" first:** Health lists each drain a month and the fix for the worst, or "Recovering"; Happiness says where it's heading and its three biggest pulls down and two lifts, in points. The "Why?" panel, home breakdown, charts, visits and tips (T-173–T-178) build on the same diagnosis.
+- Bulkheads are named in the fixes for smell and stale air reaching homes; the one-time tips come later (T-177).
+
 ## Still open
 
 Deliberately not decided yet:

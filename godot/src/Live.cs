@@ -997,7 +997,7 @@ public partial class Live : Node3D
 
     static readonly (string? id, string name)[] Overlays =
     {
-        (null, "Off"), ("noise", "Noise"), ("smell", "Smell"), ("health", "Health"), ("comfort", "Comfort"),
+        (null, "Off"), ("noise", "Noise"), ("smell", "Smell"), ("health", "Wellbeing"), ("comfort", "Comfort"),
         ("airQuality", "Air"), ("happiness", "Happiness"), ("condition", "Condition"),
     };
     HBoxContainer _overlayBox = null!;

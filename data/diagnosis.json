@@ -1,0 +1,40 @@
+{
+  "_note": "What's hurting (or helping) a hole's health and happiness, cause by cause (F-018; src/sim/diagnosis.ts). health: what drains the hole's health meter, by the keys of population.healthDrain. happiness: the parts of every home's noise, comfort and wellbeing (happiness.ts homeParts), plus afterglow, events and base. text says what it is, fix what to do about it (left out where there's nothing to do). Placeholders: {met} a need's % met, {pct} the air's %, {health} the hole's health, {homes} how many homes feel it ('1 home', '3 homes'). homesFrom: the least a home's part (in points) must cost it to count as feeling it.",
+  "homesFrom": 1,
+  "health": {
+    "water": { "text": "Water: people get {met}% of what they need", "fix": "More water: a water recycler for the gray water, a deep well pump, or bigger water tanks." },
+    "meals": { "text": "Meals: people get {met}% of what they need", "fix": "People eat only cooked meals: a galley or kitchen cooks raw food (from farms) or Earth rations into them." },
+    "sanitation": { "text": "Sanitation: {met}% of people have a restroom", "fix": "Build restrooms near the homes, or homes with their own bathroom." },
+    "o2": { "text": "Oxygen thin: {pct}% of the air", "fix": "More oxygen: an electrolyzer (it needs water and power), a CO2 scrubber, or farms." },
+    "co2": { "text": "CO2 high: {pct}% of the air", "fix": "A CO2 scrubber, or farms to breathe it in. Both need power." }
+  },
+  "happiness": {
+    "base": { "factor": "base", "text": "Life on Mars" },
+    "afterglow": { "factor": "mood", "text": "The thrill of arrival, fading" },
+    "events": { "factor": "mood", "text": "Recent events" },
+    "holeHealth": { "factor": "health", "text": "Poor health (the hole's health is {health})", "fix": "See what's draining Health: water, meals, sanitation or the air." },
+    "noClinic": { "factor": "health", "text": "No clinic within reach: {homes}", "fix": "Build a clinic within about 10 steps of the homes, or a bigger one." },
+    "elderCare": { "factor": "health", "text": "Elders without care", "fix": "Elder care near the homes." },
+    "ordinanceHealth": { "factor": "health", "text": "Ordinances in force", "fix": "Check the ordinances in the office." },
+    "ordinanceComfort": { "factor": "comfort", "text": "Ordinances in force", "fix": "Check the ordinances in the office." },
+    "schooling": { "factor": "comfort", "text": "Children without a school", "fix": "A school within reach of the homes." },
+    "grief": { "factor": "comfort", "text": "Grief for the dead with no resting place", "fix": "A crypt to lay them to rest." },
+    "sharedWear": { "factor": "comfort", "text": "Worn shared rooms", "fix": "More maintenance and cleaning services." },
+    "sharedLining": { "factor": "comfort", "text": "Lined shared rooms" },
+    "noSeat": { "factor": "comfort", "text": "No seat at a galley within reach: {homes}", "fix": "A galley or canteen near the homes, or a bigger one." },
+    "noRestroom": { "factor": "comfort", "text": "No restroom within reach: {homes}", "fix": "Restrooms within 6 steps of the homes." },
+    "homeless": { "factor": "comfort", "text": "Homeless colonists", "fix": "Build more homes." },
+    "ownComfort": { "factor": "comfort", "text": "Comfortable homes" },
+    "windows": { "factor": "comfort", "text": "Windows with a view" },
+    "amenityComfort": { "factor": "comfort", "text": "Parks and plazas nearby" },
+    "homeWear": { "factor": "comfort", "text": "Worn homes: {homes}", "fix": "A cleaning service, and maintenance." },
+    "lining": { "factor": "comfort", "text": "Lined homes" },
+    "neighbourComfort": { "factor": "comfort", "text": "Pleasant or unpleasant neighbours", "fix": "Keep homes away from industry and next to parks and canteens." },
+    "smell": { "factor": "comfort", "text": "Smell reaching {homes}", "fix": "Smell rides the corridors: a bulkhead on the corridor between smelly rooms (galleys, farms, composters, recycling) and the homes stops it, and so does distance." },
+    "noise": { "factor": "noise", "text": "Noise in {homes}", "fix": "Move noisy rooms away from homes, or put a corridor between them. Quiet hours (an ordinance) halve it." },
+    "airQuality": { "factor": "health", "text": "Stale air in {homes}", "fix": "Stale air rides the corridors too: a bulkhead keeps it in with the industry (smelters). A ventilation hub or green space freshens it; outer rings are staler." },
+    "crowding": { "factor": "health", "text": "Crowded: {homes}", "fix": "More homes, so fewer people share each one." },
+    "neighbourHealth": { "factor": "health", "text": "Healthy or unhealthy neighbours", "fix": "Keep homes away from industry and near clinics." },
+    "amenityHealth": { "factor": "health", "text": "Gyms nearby" }
+  }
+}

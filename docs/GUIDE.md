@@ -110,12 +110,19 @@ Bunk dorms from the start, then better homes as the hole grows:
 
 Each tier houses fewer people per slot and costs more, but its residents are more comfortable, and the finer tiers cheer their neighbours too.
 
+## Health and happiness
+
+Two numbers sum up how your people are doing; point at either in the Colony section to see why it's moving.
+
+- **Health** (0–100) is the hole's: it drains while people go short of **water** or **meals**, while fewer than half have a restroom, and while oxygen is thin (below 18%) or CO2 high (above 1%). It recovers (+10 a month) only once **nothing** drains it, so a hole stuck low has a drain that never stops. Its card lists each drain and what it costs a month, and the fix for the worst. People eat only cooked meals: Earth rations and raw food need a galley or kitchen.
+- **Happiness** is each home's, averaged: a base, plus its **noise**, **comfort** and **wellbeing** (each −3 to +3, worth 8 points a step), plus the afterglow and recent events. Wellbeing is how healthy life at home feels: stale or crowded air, a clinic within reach, gyms, the neighbours, and the hole's own health. Its card says where happiness is heading, the biggest pulls down and up in points, and the fix for the worst. A home's own card shows its three factors.
+
 ## Meals, amenities and reach
 
 What people use counts by how far they'd walk. A step is about a room across, along corridors, tubes and stairs.
 
 - **Meals:** a galley cooks and seats 25. A **kitchen** cooks 40 but seats no one, so pair it with a **canteen** (seats 60). Seats go to the homes nearest them first, within 8 steps; anyone without a seat within reach eats on the go, and their home's comfort drops (a home's card says how many are seated).
-- **Amenities:** **plazas**, **parks** and **gyms** lift the homes within their reach (parks and plazas comfort, gyms health), less the further off. The nearest of each kind counts, so spread them out. Parks, plazas and canteens also cheer the rooms right next to them a little.
+- **Amenities:** **plazas**, **parks** and **gyms** lift the homes within their reach (parks and plazas comfort, gyms wellbeing), less the further off. The nearest of each kind counts, so spread them out. Parks, plazas and canteens also cheer the rooms right next to them a little.
 - **Restrooms:** each has places for 25, going to the homes nearest it first, within 6 steps. People without one within reach lose comfort at home (up to −1), and a restroom close by is a small plus. Studios, apartments and the finer homes have their own bathroom and need none; the landing pod and bunk dorms do. Only when fewer than half the colony has a restroom does health suffer too.
 - At 50 colonists, gyms and parks (a park makes a little oxygen, and is walk-through like a plaza). At 300, a **hospital**: care for 400 within 16 steps. At 500, the large **plaza**: comfort within 8 steps, and a good deal for the rooms around it.
 - A **lounge** (Build → Public, from the start) is a small den of couches, a TV, a games table and arcade cabinets. It needs no staff and a little power, and cheers the rooms up to two slots away: put one among homes.
@@ -152,7 +159,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 
 - It goes stale away from the air trunk in the shaft wall (ring 3 starts at −1).
 - Smelters, brickworks and concrete plants foul it for the rooms down the corridors from them, fading with every step.
-- At home, stale air costs health (and so happiness). Crowded homes get stuffy.
+- At home, stale air costs wellbeing (and so happiness). Crowded homes get stuffy.
 - **Ventilation hubs** (Build → Air) scrub and freshen the air for the rooms along the network from them, and parks help a little.
 - Smell travels the same way, and leaks into the room next door as well.
 - The entrance's airlock lets in Mars dust, fouling the air down the corridors from it, twice as badly in a dust storm.
@@ -162,7 +169,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 
 - Everyone starts as a working adult. Only adults work.
 - With a clinic and a happy hole, children are born (they need a school). Adults eventually retire as elders (who want elder care), and elders pass away in time: build a crypt, or enact Return to the soil.
-- Clinics, schools and elder care serve the homes within about 10 steps, nearest first. A home too far from one (or last in line at a full one) goes without, and feels it. A clinic nearby also lifts its neighbours' health.
+- Clinics, schools and elder care serve the homes within about 10 steps, nearest first. A home too far from one (or last in line at a full one) goes without, and feels it. A clinic nearby also lifts its neighbours' wellbeing.
 - The **People** panel shows what's holding births back, and colonists in a miserable hole move to a happier one.
 
 ## Condition and maintenance
@@ -206,7 +213,7 @@ Four buttons at the bottom right, as in SimCity. B, V, M and C open them from an
 - **View** has the 3D cameras, the plan and unrolled views, walls down, room colours, Flows and the overlays.
   - **Room colours** off shows each room in what its walls are lined with: bare or smoothed rock, plain or polished marscrete, plain or patterned brick, metal panels or inlaid metal (stairs, lifts and the entrance in what they're built from). A room being refitted has a band of hazard stripes along the tops of its walls. On, walls and floors take the room's category colour, but the floor keeps its material's texture, only tinted. Either way, the walls along a lined corridor are in the corridor's lining.
   - **Flows** draws power, water, air and food as pipes, with dashes running from what makes each to what uses it.
-  - **Overlays** show noise, smell, health, comfort, air, happiness and condition.
+  - **Overlays** show noise, smell, wellbeing, comfort, air, happiness and condition.
 - **Map** opens the planet as a globe: drag or scroll sideways to spin it (it coasts to a stop), scroll to zoom, click to pick a site.
 - **Charts** has People, Trends, Flows, Network, Maintenance and the construction queue (its badge counts the jobs). **Trends** shows how everything has been changing: pick a series for a detailed chart over the last 2 months, 10 months or the whole game, as amounts or as change per month, with the lines that matter marked (happiness 50 and 45, oxygen 18% and so on); point along it to read any hour.
 

@@ -1,12 +1,12 @@
 ---
 id: T-172
 title: Health and Happiness hover cards list the top causes, with numbers and the fix
-status: open
+status: done
 size: S
 area: ui
+feature: F-018
 touches: [src/view/hudItems.ts, src/ui/ResourceBar.tsx]
 blocked_by: [T-171]
-feature: F-018
 notes: [N-0095]
 created: 2026-10-19 21:57
 ---
@@ -24,3 +24,5 @@ GUIDE.md: Health and happiness.
 
 ## History
 - 2026-10-19 21:57 opened from F-018
+- 2026-10-19 21:59 building on t-171-diagnosis-in-the-sim (with T-171)
+- 2026-10-19 22:13 built

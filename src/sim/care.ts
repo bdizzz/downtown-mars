@@ -127,9 +127,9 @@ export function homeCare(state: SimState, homeId: number | null | undefined): Ho
  * clinic within reach. Grief for the unburied weighs on everyone. With no
  * home given, the hole as a whole.
  */
-export function careFactors(state: SimState, homeId?: number | null): { comfort: number; health: number; clinic: number } {
+export function careFactors(state: SimState, homeId?: number | null): { comfort: number; school: number; grief: number; health: number; clinic: number } {
   const pop = state.population.count;
-  if (pop <= 0) return { comfort: 0, health: 0, clinic: 0 };
+  if (pop <= 0) return { comfort: 0, school: 0, grief: 0, health: 0, clinic: 0 };
   const s = people.school;
   const e = people.elderCare;
   const c = homeCare(state, homeId);
@@ -137,5 +137,7 @@ export function careFactors(state: SimState, homeId?: number | null): { comfort:
   const elders = countStage(state, "elder") / pop;
   const families = Math.min(1, kids * (1 - c.school) * s.familySize);
   const burdened = Math.min(1, elders * (1 - c.elders) * e.affectedPerElder);
-  return { comfort: families * s.unschooledComfort + griefComfort(state), health: burdened * e.uncaredHealth, clinic: c.care };
+  const school = families * s.unschooledComfort;
+  const grief = griefComfort(state);
+  return { comfort: school + grief, school, grief, health: burdened * e.uncaredHealth, clinic: c.care };
 }

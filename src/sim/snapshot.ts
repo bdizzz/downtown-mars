@@ -10,6 +10,7 @@ import type { EffectField } from "./effects";
 import type { Deposit, DepositKind } from "./mapgeo";
 import { hasStagingBay, kitProgress } from "./founding";
 import { afterglow, afterglowDaysLeft, type Happiness } from "./happiness";
+import { diagnose, type Diagnosis } from "./diagnosis";
 import type { History } from "./history";
 import { cryptSpace, holeGates, stageCounts, type Stage } from "./people";
 import { ordinanceDef } from "./ordinances";
@@ -179,6 +180,8 @@ export interface Snapshot {
   happiness: Happiness;
   /** The thrill of arrival: happiness points it's adding now, and days until it's gone. */
   afterglow: { points: number; daysLeft: number };
+  /** Why health and happiness are where they are, cause by cause (diagnosis.ts). */
+  diagnosis: Diagnosis;
   /** Resources and vital signs over time (the worker sends it only when it has a new sample). */
   history: History | null;
   notables: Notable[];
@@ -271,6 +274,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     messages: state.messages,
     happiness: state.happiness,
     afterglow: { points: afterglow(state, cfg), daysLeft: afterglowDaysLeft(state, cfg) },
+    diagnosis: diagnose(state, cfg),
     history: state.history ?? null,
     notables: state.notables,
     office: state.office,
