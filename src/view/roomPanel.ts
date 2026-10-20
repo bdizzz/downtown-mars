@@ -2,6 +2,7 @@ import { config } from "../sim/config";
 import { amenityFelt, reachOf } from "../sim/amenities";
 import { holding, mainOutput, roomSpec } from "../sim/economy";
 import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
+import { DIAGNOSIS } from "../sim/diagnosis";
 import { crowdedAir } from "../sim/happiness";
 import { network } from "../sim/network";
 import { canLine, liningOf, liningText, MATERIALS, refitPlan, refitRefusal, type Finish, type Material } from "../sim/materials";
@@ -102,17 +103,82 @@ export function feltRow(s: Snapshot, room: Room): Row {
   return { k: "Felt here", text: felt.length ? felt.map(([t, v]) => `${effectName(t)} ${signed(v)}`).join(", ") : "nothing" };
 }
 
+/** Where a room is, for telling rooms of a kind apart in a list: "floor 2, ring 3". */
+export function placeText(room: RoomInstance): string {
+  return room.at.kind === "ring" ? `floor ${room.at.floor}, ring ${room.at.ring}` : "on the surface";
+}
+
+/** The rooms behind one neighbour effect in a home, biggest first: "Smelter −0.8, Pump −0.2" (F-018). */
+export function sourcesText(s: Snapshot, homeId: number, field: string, shown = 3): string {
+  const list = (s.diagnosis.sources[homeId] ?? []).filter((x) => x.type === field && x.from !== homeId);
+  const named = list.slice(0, shown).map((x) => {
+    const room = s.layout.rooms.find((r) => r.id === x.from);
+    return `${room ? roomName(room) : "a room"} ${signed(x.value)}`;
+  });
+  return named.length ? `${named.join(", ")}${list.length > shown ? "…" : ""}` : "";
+}
+
+/**
+ * A home's noise, comfort and wellbeing, each broken into its parts in the factor's own units (its share of
+ * the happiness points over the factor's weight, so they add up to the factor as felt), and the rooms behind
+ * the neighbour effects: "Comfort +0.5 = view +1, no galley seat −1, neighbours −0.3 (Farm −0.3)".
+ */
+export function factorRows(s: Snapshot, roomId: number): Row[] {
+  const pool = s.happiness.pools.find((p) => p.roomId === roomId);
+  if (!pool) return [];
+  const rows: Row[] = [];
+  for (const factor of ["noise", "comfort", "health"] as const) {
+    const total = pool.factors[factor];
+    const weight = config.happiness.weights[factor] || 1;
+    const parts = Object.entries(pool.points ?? {})
+      .map(([id, pts]) => ({ id, def: DIAGNOSIS.happiness[id], v: pts / weight }))
+      .filter((p) => p.def?.factor === factor && Math.abs(p.v) >= 0.05)
+      .sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
+    const text = parts.map(({ id, def, v }) => {
+      const from = def!.field ? sourcesText(s, roomId, def!.field) : "";
+      // Noise has one part, its neighbours: just name them.
+      if (parts.length === 1 && id === "noise") return from;
+      return `${def!.label ?? id} ${signed(v)}${from ? ` (${from})` : ""}`;
+    });
+    rows.push({ k: DIAGNOSIS.factors[factor] ?? factor, text: `${signed(total)}${text.length && text[0] ? ` = ${text.join(", ")}` : ""}`, warn: total <= -1 });
+  }
+  return rows;
+}
+
 /** A home's residents and their happiness, and what it's made of. */
 export function homeRows(s: Snapshot, roomId: number, capacity: number): Row[] {
   const pool = s.happiness.pools.find((p) => p.roomId === roomId);
   if (!pool) return [{ k: "Houses", text: String(capacity) }];
-  const f = pool.factors;
   const trend = pool.target > pool.happiness + 1 ? " ↑" : pool.target < pool.happiness - 1 ? " ↓" : "";
   return [
     { k: "Residents", text: `${pool.residents} / ${capacity}` },
     { k: "Happiness", text: `${Math.round(pool.happiness)}${trend} (heading for ${Math.round(pool.target)})`, warn: pool.happiness < 50 },
-    { k: "Noise", text: `${signed(f.noise)} · Comfort ${signed(f.comfort)} · Wellbeing ${signed(f.health)}` },
+    ...factorRows(s, roomId),
   ];
+}
+
+/** The least a room's effect must be felt in a home for it to count as bothering (or lifting) it. */
+const FELT_FROM = 0.1;
+
+/** Who a room's neighbour effects reach (F-018): "noise felt in 3 homes, smell reaches 4 homes"; the bad first, then the good. */
+export function feltByRows(s: Snapshot, roomId: number): Row[] {
+  const bad = new Map<string, number>();
+  const good = new Map<string, number>();
+  for (const [home, list] of Object.entries(s.diagnosis.sources)) {
+    if (Number(home) === roomId) continue;
+    for (const x of list) {
+      if (x.from !== roomId || Math.abs(x.value) < FELT_FROM) continue;
+      // Good air, wellbeing and comfort lift; noise and smell are only ever a bother.
+      const into = x.value < 0 ? bad : good;
+      into.set(x.type, (into.get(x.type) ?? 0) + 1);
+    }
+  }
+  const homes = (n: number) => `${n} ${n === 1 ? "home" : "homes"}`;
+  const say = (t: string, n: number) => (t === "smell" || t === "airQuality" ? `${t === "smell" ? "smell" : "stale air"} reaches ${homes(n)}` : `${effectName(t)} felt in ${homes(n)}`);
+  const rows: Row[] = [];
+  if (bad.size) rows.push({ k: "Bothers", text: [...bad].map(([t, n]) => say(t, n)).join(", "), warn: true });
+  if (good.size) rows.push({ k: "Lifts", text: [...good].map(([t, n]) => `${t === "airQuality" ? "fresher air" : effectName(t)} in ${homes(n)}`).join(", ") });
+  return rows;
 }
 
 /** A room (or its next floor, or its refit) waiting in the construction queue: progress, place, time left, whether it can move up, and (a refit) be called off. */
@@ -216,6 +282,7 @@ export function panelRows(s: Snapshot, room: RoomInstance): { before: Row[]; aft
     ...(def.houses ? withinReachRows(s, room) : []),
     reachesRow(s, room),
     room.at.kind === "ring" ? feltRow(s, room) : null,
+    ...(room.at.kind === "ring" ? feltByRows(s, room.id) : []),
   ];
   const keep = (rows: (Row | null)[]) => rows.filter((r): r is Row => !!r);
   return { before: keep(before), after: keep(after) };
