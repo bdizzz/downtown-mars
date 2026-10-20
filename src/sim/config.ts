@@ -97,6 +97,12 @@ export interface SimConfig {
      * `affects` (solar) make only `output` of what they would.
      */
     dustStorm: { earliestDay: number; chancePerDay: number; warningDays: [number, number]; lastsDays: [number, number]; rampHours: number; affects: string[]; output: number };
+    /**
+     * Day and night: the rooms in `affects` (solar) make nothing between `sunset` and `sunrise`
+     * (hours), and full output in between, easing up and down in an S-curve over `twilightHours`
+     * centred on each.
+     */
+    daylight: { sunrise: number; sunset: number; twilightHours: number; affects: string[] };
   };
   earth: {
     firstDropDay: number;

@@ -75,11 +75,28 @@ describe("the top bar (T-089)", () => {
     expect(f.alert).toBe("Out of meals: cook the rations");
   });
 
-  it("power short reads as a worry on battery and trouble once it's flat", () => {
+  it("power short by day reads as a worry on battery and trouble once it's flat", () => {
     const s = fresh();
-    const short: Snapshot = { ...s, power: { ...s.power, made: 1, used: 5 }, resources: { ...s.resources, power: 10 } };
+    const noon = { ...s.weather, daylight: 1, fullSunInDays: 0 };
+    const short: Snapshot = { ...s, weather: noon, power: { ...s.power, made: 1, used: 5 }, resources: { ...s.resources, power: 10 } };
     expect(cell(short, "res:power:flow").level).toBe("warn");
     expect(cell({ ...short, resources: { ...short.resources, power: 0 } }, "res:power:flow").level).toBe("bad");
+  });
+
+  it("by night the battery is fine if it lasts till the sun is up, a worry if it won't, and dark rooms are trouble", () => {
+    const s = fresh();
+    // Midnight: seven hours to full sun, using 6 a month (a day) needs 1.75.
+    const night: Snapshot = { ...s, weather: { ...s.weather, daylight: 0, fullSunInDays: 7 / 24 }, power: { ...s.power, made: 0, used: 6 }, resources: { ...s.resources, power: 10 } };
+    const ok = cell(night, "res:power:flow");
+    expect(ok.level).toBe("ok");
+    expect(ok.notes.some((n) => n.startsWith("Night"))).toBe(true);
+    const low = cell({ ...night, resources: { ...night.resources, power: 1 } }, "res:power:flow");
+    expect(low.level).toBe("warn");
+    expect(low.alert).toBe("Battery flat before dawn");
+    const roomId = s.layout.rooms[0]!.id;
+    const out = cell({ ...night, roomStatus: { ...night.roomStatus, [roomId]: { staff: 0, staffNeeded: 0, rate: 0, limit: "power" } } }, "res:power:flow");
+    expect(out.level).toBe("bad");
+    expect(out.alert).toBe("Power out: 1 room dark");
   });
 
   it("people waiting at the office and a storm coming show in the needs slot", () => {

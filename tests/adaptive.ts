@@ -1,6 +1,6 @@
 import { airPct } from "../src/sim/air";
 import { maintenanceQueue } from "../src/sim/condition";
-import { capacities } from "../src/sim/economy";
+import { capacities, roomSpec } from "../src/sim/economy";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { careCoverage, elderCoverage, schoolCoverage } from "../src/sim/care";
@@ -128,7 +128,12 @@ export function wants(hole: SimState): { room: string; crop?: string; holds?: st
   const flatOut = splitters.length > 0 && splitters.every((r) => (hole.roomStatus[r.id]?.rate ?? 0) > 0.99);
   if (splitters.length === 0 || (airPct(hole, config, "o2") < config.air.o2Low && flatOut)) out.push({ room: "electrolyzer" });
   if (airPct(hole, config, "co2") > 0.5 || count(hole, "life_support") * scrubs < pop) out.push({ room: "life_support" });
-  if (limited(hole, "power")) out.push({ room: "solar_array" });
+  // Short of power: the solar arrays rest by night, so first enough battery to carry the night
+  // (half a day's use, with a little over), then arrays to fill it by day.
+  if (limited(hole, "power")) {
+    const perDay = hole.layout.rooms.filter((r) => !r.planned && !r.building).reduce((n, r) => n + (roomSpec(r, config).uses.power ?? 0), 0);
+    out.push({ room: (capacities(hole, config).power ?? 0) < perDay * 0.6 ? "battery_bank" : "solar_array" });
+  }
   // Maintenance eats machinery: another machine shop once there's barely any left for building.
   const shops = count(hole, "machine_shop");
   if (shops > 0 && (res.machinery ?? 0) < 6 && shops * roomDef("machine_shop").makes.machinery! < count(hole, "maintenance") * roomDef("maintenance").uses.machinery! + 1) out.push({ room: "machine_shop" });

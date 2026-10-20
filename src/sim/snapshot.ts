@@ -1,6 +1,6 @@
 import { maintenanceView, type MaintenanceView } from "./condition";
 import { airView, type AirView } from "./air";
-import { stormDue, stormLevel } from "./weather";
+import { daylight, fullSunIn, stormDue, stormLevel } from "./weather";
 import { gameTime, type GameTime } from "./clock";
 import type { SimConfig } from "./config";
 import { canDig, diggingFloor, drillSpeed, ticksToDig } from "./digging";
@@ -166,7 +166,8 @@ export interface Snapshot {
   roomStatus: Record<number, RoomStatus>;
   earth: { ticksToDrop: number; waiting: boolean; padReady: boolean; landed: number };
   /** Dust storms: how hard one is blowing (0 clear to 1), and the days until a forecast one arrives. */
-  weather: { storm: number; dueInDays: number | null };
+  /** The storm (0..1) and days until one forecast; the sun's share of full strength on the solar arrays, and days until it's full again. */
+  weather: { storm: number; dueInDays: number | null; daylight: number; fullSunInDays: number };
   /** Room condition and upkeep: the overall condition, the queue, and what each service room is repairing. */
   maintenance: MaintenanceView;
   /**
@@ -269,7 +270,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
       padReady: padReady(state),
       landed: state.earth.landed ?? 0,
     },
-    weather: { storm: stormLevel(state, cfg), dueInDays: stormDue(state, cfg) },
+    weather: { storm: stormLevel(state, cfg), dueInDays: stormDue(state, cfg), daylight: daylight(state, cfg), fullSunInDays: fullSunIn(state, cfg) },
     maintenance: maintenanceView(state),
     conditions: Object.fromEntries(state.layout.rooms.filter((r) => r.condition !== undefined).map((r) => [r.id, r.condition!])),
     beds: beds(state),
