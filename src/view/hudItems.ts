@@ -252,7 +252,21 @@ export function barItems(s: Snapshot): BarItem[][] {
   const conditionLevel: Level = condition < CONDITION.wornBelow ? "bad" : condition < CONDITION.unhappyBelow ? "warn" : "ok";
   const short = used > made + 0.01;
   const battery = s.resources.power ?? 0;
-  const powerLevel: Level = !short ? "ok" : battery < 0.5 ? "bad" : "warn";
+  // Rooms going without: the battery is flat and the arrays can't keep up.
+  const dark = Object.values(s.roomStatus).filter((st) => st.limit === "power").length;
+  // By night (and through the dusk and dawn) the battery carries the colony: fine if it lasts till
+  // the arrays are back at full, a worry if it won't.
+  const sunDown = s.weather.daylight < 1;
+  const tillSun = s.weather.fullSunInDays;
+  const flatByDawn = sunDown && used > 0 && battery / used < tillSun;
+  const powerLevel: Level = dark > 0 || (short && battery < 0.5) ? "bad" : flatByDawn || (short && !sunDown) ? "warn" : "ok";
+  const powerAlert =
+    dark > 0 ? `Power out: ${dark} ${dark === 1 ? "room" : "rooms"} dark`
+    : short && battery < 0.5 ? "Power short, battery flat"
+    : flatByDawn ? "Battery flat before dawn"
+    : short && !sunDown ? "Power short: on battery"
+    : null;
+  const sunNote = !sunDown ? null : s.weather.daylight > 0 ? "Low sun: the solar arrays make less at dawn and dusk" : "Night: the solar arrays rest, and the battery carries the colony";
   const homeless = s.happiness.homeless;
   const colony: BarItem[] = [
     {
@@ -325,9 +339,14 @@ export function barItems(s: Snapshot): BarItem[][] {
       label: "Power",
       value: `${num(used)}/${num(made)}`,
       level: powerLevel,
-      ...(short ? { alert: powerLevel === "bad" ? "Power short, battery flat" : "Power short: on battery" } : {}),
+      ...(powerAlert ? { alert: powerAlert } : {}),
       title: "Power",
-      notes: [`Used ${num(used)} of ${num(made)} made a month`, `Battery ${num(battery)} of ${num(s.capacities.power ?? 0)}`],
+      notes: [
+        `Used ${num(used)} of ${num(made)} made a month`,
+        `Battery ${num(battery)} of ${num(s.capacities.power ?? 0)}`,
+        ...(sunNote ? [sunNote] : []),
+        ...(flatByDawn ? ["The battery won't last till the sun is up: build battery banks, or more solar arrays to fill them by day"] : []),
+      ],
     },
   ];
   const air = airItems(s);

@@ -88,6 +88,12 @@
       "rampHours": 6,
       "affects": ["solar_array"],
       "output": 0.5
+    },
+    "daylight": {
+      "sunrise": 6,
+      "sunset": 18,
+      "twilightHours": 2,
+      "affects": ["solar_array"]
     }
   },
   "earth": {

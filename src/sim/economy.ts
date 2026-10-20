@@ -8,7 +8,7 @@ import type { SimState } from "./state";
 import { countStage, needsWeight, type Cohort } from "./people";
 import { storageCaps } from "./storage";
 import { noteMade } from "./origins";
-import { stormOutput } from "./weather";
+import { daylightOutput, stormOutput } from "./weather";
 import { conditionOf, conditionOutput, isCleanable, maintenanceQueue } from "./condition";
 import { MATERIALS, refitting } from "./materials";
 import type { CareState } from "./care";
@@ -313,6 +313,12 @@ function runRoom(
   if (refitting(state, room)) {
     rate *= MATERIALS.refit.output;
     limit ??= "refit";
+  }
+  // Solar arrays make nothing by night, and less through the dawn and dusk.
+  const sun = daylightOutput(state, cfg, room.type);
+  if (sun < 1) {
+    rate *= sun;
+    limit ??= sun > 0 ? "twilight" : "night";
   }
   // A dust storm dims the solar arrays.
   const storm = stormOutput(state, cfg, room.type);

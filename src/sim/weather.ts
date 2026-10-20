@@ -1,8 +1,12 @@
+import { gameTime } from "./clock";
 import type { SimConfig } from "./config";
 import { postMessage } from "./messages";
 import type { SimState } from "./state";
 
-// The weather: dust storms. One may be forecast any day (after the first
+// The weather: day and night, and dust storms. Solar arrays make nothing by night, and ease up to
+// full output through the dawn and back down through dusk (`daylight`).
+//
+// Dust storms: one may be forecast any day (after the first
 // few), a few days ahead; it blows for a day or more, cutting what solar
 // arrays make. Whether a storm comes is decided by a hash of the hole and the
 // day, not the hole's random stream, so weather never changes anything else's luck.
@@ -70,4 +74,37 @@ export function stormOutput(state: SimState, cfg: SimConfig, roomType: string): 
   if (!w.affects.includes(roomType)) return 1;
   const level = stormLevel(state, cfg);
   return 1 - (1 - w.output) * level;
+}
+
+/**
+ * The sun's share of full strength at an hour of the day (0..24): 0 by night, 1 through most of the
+ * day, and a half-cosine S-curve through the twilight centred on sunrise and on sunset. A flattened
+ * sine: over a whole day it averages (sunset − sunrise) / 24.
+ */
+export function daylightAt(hour: number, cfg: SimConfig): number {
+  const d = cfg.weather.daylight;
+  const half = d.twilightHours / 2;
+  const ease = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : 0.5 - 0.5 * Math.cos(Math.PI * x));
+  const h = ((hour % 24) + 24) % 24;
+  return Math.min(ease((h - d.sunrise + half) / d.twilightHours), ease((d.sunset + half - h) / d.twilightHours));
+}
+
+const hourOf = (state: SimState, cfg: SimConfig) => gameTime(state.tick, cfg).dayFraction * 24;
+
+/** The sun's share of full strength now. */
+export function daylight(state: SimState, cfg: SimConfig): number {
+  return daylightAt(hourOf(state, cfg), cfg);
+}
+
+/** What a room makes in this light: its share of full output (1 for rooms that don't run on the sun). */
+export function daylightOutput(state: SimState, cfg: SimConfig, roomType: string): number {
+  return cfg.weather.daylight.affects.includes(roomType) ? daylight(state, cfg) : 1;
+}
+
+/** Days until the arrays are back at full strength (the end of the dawn), or 0 while they are. */
+export function fullSunIn(state: SimState, cfg: SimConfig): number {
+  if (daylight(state, cfg) >= 1) return 0;
+  const d = cfg.weather.daylight;
+  const full = d.sunrise + d.twilightHours / 2;
+  return ((((full - hourOf(state, cfg)) % 24) + 24) % 24) / 24;
 }

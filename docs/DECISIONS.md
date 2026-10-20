@@ -269,6 +269,16 @@ Bryon's N-0090, reversing M8's space set aside per good:
 - **The HUD cards answer "why" first:** Health lists each drain a month and the fix for the worst, or "Recovering"; Happiness says where it's heading and its three biggest pulls down and two lifts, in points. The "Why?" panel, home breakdown, charts, visits and tips (T-173–T-178) build on the same diagnosis.
 - Bulkheads are named in the fixes for smell and stale air reaching homes; the one-time tips come later (T-177).
 
+## Decided for day and night on the solar arrays (Oct 20)
+
+Bryon: solar only by day, to make batteries matter.
+
+- **The sun's curve is a flattened sine** (`daylightAt` in `src/sim/weather.ts`, numbers in `config.json` `weather.daylight`): 0 at night, 1 through the day, and a half-cosine S-curve over two hours centred on sunrise (6:00) and sunset (18:00). It averages 0.5 over a day.
+- **Solar's full-sun output doubled, 10 → 20 a day**, so a day's total is what it was; the battery bank stays at 50. What changes is that the night has to be carried: batteries need about half a day's use.
+- **Dust storms still cut the daytime output** (to half), on top of the curve.
+- **A flat battery before dawn darkens rooms by priority**, lowest first, as any power shortage does. A resting array is not trouble (no outline or icon; its panel says "dark until dawn" or "low sun"). The Power cell is fine at night if the battery will last till full sun, a worry if it won't ("Battery flat before dawn"), and trouble once rooms go dark.
+- The bots build a battery bank when they're short of power and their batteries hold less than 60% of a day's use, and a solar array otherwise.
+
 ## Still open
 
 Deliberately not decided yet:
