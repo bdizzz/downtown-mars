@@ -186,6 +186,8 @@ export interface Snapshot {
   history: History | null;
   notables: Notable[];
   office: Office;
+  /** The deputy's tips already shown (view/tips.ts). */
+  tipsSeen: string[];
   ordinances: string[];
   ordinanceSlots: number;
   /** Per-day flows by resource, averaged over recent days, for the flow diagram. */
@@ -278,6 +280,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     history: state.history ?? null,
     notables: state.notables,
     office: state.office,
+    tipsSeen: state.tipsSeen ?? [],
     ordinances: state.ordinances,
     ordinanceSlots: ordinanceSlots(state),
     flows: averageFlows(state, cfg),

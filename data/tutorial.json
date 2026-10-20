@@ -104,5 +104,70 @@
       "highlight": "hud:view"
     }
   ],
-  "outro": "That's a working colony. From here, every colonist we can support is a point on the board. Keep digging."
+  "outro": "That's a working colony. From here, every colonist we can support is a point on the board. Keep digging.",
+  "_tips": "Tips (F-018, T-177): a one-time deputy card the first time one of a tip's causes shows up (src/view/tips.ts), in data order. causes are diagnosis causes (data/diagnosis.json) as health:<id> (anything draining the hole's health) or happiness:<id> (costing happiness tipPoints or more). None before fromDay. Seen tips are kept in the save; Settings > Tips turns them off. {name} is the deputy.",
+  "tipPoints": 1,
+  "fromDay": 2,
+  "tips": [
+    {
+      "id": "bulkheads",
+      "causes": ["happiness:smell", "happiness:airQuality"],
+      "text": "Smell and stale air ride the corridors, the way they would in a ship. That's what bulkheads are for: a sealed door on a corridor stops them getting past.",
+      "hint": "In Build (B), press Z for corridors, then pick Bulkhead and click the corridor between the smelly rooms (galleys, farms, composters, smelters) and the homes. Show me lights up who's making it and who's feeling it."
+    },
+    {
+      "id": "restrooms",
+      "causes": ["health:sanitation", "happiness:noRestroom"],
+      "text": "People need a restroom within a short walk of home. Fewer than half with one and the hole's health starts to slide.",
+      "hint": "In Build (B), press W. Put restrooms near the homes: about 6 steps at most."
+    },
+    {
+      "id": "scrubbers",
+      "causes": ["health:co2"],
+      "text": "We're breathing out more CO2 than we take back, and above 1% of the air it starts making people ill.",
+      "hint": "In Build (B), press L for a CO2 scrubber. Farms breathe it in too. Both need power."
+    },
+    {
+      "id": "oxygen",
+      "causes": ["health:o2"],
+      "text": "The air's getting thin. Below 18% oxygen people start to suffer.",
+      "hint": "An electrolyzer (in Build, under Air) splits water into oxygen; a CO2 scrubber turns CO2 back into it. Every room you dig is more air to fill."
+    },
+    {
+      "id": "meals",
+      "causes": ["health:meals"],
+      "text": "People are going hungry. They eat only cooked meals: rations and crops need a galley or kitchen to cook them.",
+      "hint": "In Build (B), press G for a galley. Farms grow raw food for it; Earth sends rations."
+    },
+    {
+      "id": "water",
+      "causes": ["health:water"],
+      "text": "We're short of water, and people get ill without it.",
+      "hint": "A water recycler brings gray water back; tanks hold more of what Earth sends. Flows (under Charts) shows where it goes."
+    },
+    {
+      "id": "clinics",
+      "causes": ["happiness:noClinic"],
+      "text": "Some homes have no clinic within reach. Knowing help is close makes people feel safer.",
+      "hint": "In Build (B), press K. A clinic covers homes within about 10 steps; a bigger one reaches further."
+    },
+    {
+      "id": "galley_seats",
+      "causes": ["happiness:noSeat"],
+      "text": "Some people have nowhere to sit down to eat near home. Each galley seats so many, within a short walk.",
+      "hint": "Another galley or a canteen near the homes, or a bigger one."
+    },
+    {
+      "id": "crowding",
+      "causes": ["happiness:crowding"],
+      "text": "Homes are crowded: too many people sharing the air in too little space.",
+      "hint": "More homes, so fewer share each one. Roomier homes (studios, flats) help too."
+    },
+    {
+      "id": "noise",
+      "causes": ["happiness:noise"],
+      "text": "Noise is keeping people up. It travels through rock to the rooms around it, but stops at a corridor.",
+      "hint": "Move noisy rooms (scrubbers, pumps, workshops) away from homes or put a corridor between them. The Noise overlay (View) shows where it reaches."
+    }
+  ]
 }

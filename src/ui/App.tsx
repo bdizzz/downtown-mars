@@ -28,6 +28,8 @@ import type { Spot } from "../view/reachView";
 import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
 import { StatusBar } from "./StatusBar";
 import { Tutorial } from "./Tutorial";
+import { TipCard } from "./TipCard";
+import { dueTip } from "../view/tips";
 import { Welcome } from "./Welcome";
 import { FailureCard } from "./FailureCard";
 import { nextFailureCard, type FailureCard as FailureCardData } from "../view/failure";
@@ -114,9 +116,9 @@ export function App() {
   /** The "Why?" panel's tab, and what its Show me lights up (F-018). */
   const [whyTab, setWhyTab] = useState<WhyTab>("health");
   const [spotlight, setSpotlight] = useState<{ id: string; spot: Spot } | null>(null);
-  // Show me lasts while the "Why?" panel (or the office, for a visit about a cause) is open.
+  // Show me lasts while the "Why?" panel (or the office, for a visit about a cause) is open; a tip's lasts until it's read.
   useEffect(() => {
-    if (panel !== "why" && panel !== "office") setSpotlight(null);
+    if (panel !== "why" && panel !== "office") setSpotlight((cur) => (cur?.id.startsWith("tip:") ? cur : null));
   }, [panel]);
   /**
    * Open a mode (or close it, with null). Only Build places things, so
@@ -418,6 +420,12 @@ export function App() {
   if (step !== tutorialStep) setTutorialStep(step);
   const shown = met && tutorialOn ? shownGoal(step, met) : -1;
   const highlight = shown >= 0 && !met![shown] ? tutorial.goals[shown]!.highlight : null;
+  /** The deputy's one-time tip, when a problem first shows up (F-018); it covers the tutorial's card while it's up. */
+  const tip = snapshot && settings.tips ? dueTip(snapshot) : null;
+  // A tip's Show me goes with it, if its problem goes first.
+  useEffect(() => {
+    if (spotlight?.id.startsWith("tip:") && spotlight.id !== `tip:${tip?.id}`) setSpotlight(null);
+  }, [spotlight, tip?.id]);
 
   // Floors the plan and 3D views can focus on: every dug floor, plus the one being dug.
   const floorCount = snapshot ? (snapshot.drill.floor ?? snapshot.layout.hole.floors) : 1;
@@ -579,7 +587,25 @@ export function App() {
               {mode === "charts" && <ChartsStrip s={snapshot} chart={chart} toggle={togglePanel} highlight={highlight} />}
             </Dock>
           )}
-          {snapshot && tutorialOn && !menu && !welcome && (
+          {snapshot && tip && !menu && !welcome && (
+            <div style={{ display: walking ? "none" : "contents" }}>
+              <TipCard
+                s={snapshot}
+                tip={tip}
+                shown={spotlight?.id === `tip:${tip.id}`}
+                onShow={showMe}
+                onSeen={() => {
+                  if (spotlight?.id === `tip:${tip.id}`) setSpotlight(null);
+                  onCommand({ type: "seeTip", id: tip.id });
+                }}
+                onOff={() => {
+                  if (spotlight?.id === `tip:${tip.id}`) setSpotlight(null);
+                  updateSettings({ tips: false });
+                }}
+              />
+            </div>
+          )}
+          {snapshot && !tip && tutorialOn && !menu && !welcome && (
             // Out of the way in first person, but kept (folded or open, on the same step) for when you're back.
             <div style={{ display: walking ? "none" : "contents" }}>
               <Tutorial

@@ -884,3 +884,4 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .update-banner button:disabled { opacity: 0.6; cursor: default; }
 .update-banner .update-later { background: none; color: var(--text); border-color: transparent; padding: 4px 6px; opacity: 0.7; }
 .update-banner .update-later:hover { opacity: 1; }
+.tutorial .tip-actions { display: flex; gap: 6px; }
