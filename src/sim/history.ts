@@ -2,15 +2,17 @@ import type { SimConfig } from "./config";
 import { airPct, airVolume } from "./air";
 import { overallCondition } from "./condition";
 import { powerFlow } from "./economy";
+import { DIAGNOSIS, happinessByFactor } from "./diagnosis";
 import { beds } from "./earth";
 import { resourceDefs } from "./resources";
 import type { SimState } from "./state";
 
 // How the hole has been doing over time, for the charts: once a game hour,
 // every resource's stock and a few vital signs (people, happiness, health,
-// condition, workers, power made and used). The last few days are kept hour
-// by hour; the whole game, one average a day. Recorded without randomness, so
-// it never changes anything else.
+// condition, workers, power made and used), and why health and happiness are
+// moving (F-018): health's drain by cause, happiness by factor. The last few
+// days are kept hour by hour; the whole game, one average a day. Recorded
+// without randomness, so it never changes anything else.
 
 /** Series beyond the resources (whose series are their ids). */
 export const VITALS = ["population", "beds", "happiness", "health", "condition", "employed", "workers", "powerMade", "powerUsed", "o2Pct", "co2Pct", "airVolume"] as const;
@@ -34,9 +36,15 @@ export interface History {
   version: number;
 }
 
-/** Every series recorded, in order: vitals, then resources. */
+/** Health's drain by cause, a day ("drain:meals"), and happiness by factor, in points ("mood:noise"): the Trends bands. */
+export const DRAIN_SERIES = Object.keys(DIAGNOSIS.health).map((id) => `drain:${id}`);
+export const MOOD_SERIES = Object.keys(DIAGNOSIS.factors).map((id) => `mood:${id}`);
+/** Series a save from before them never had: padded with gaps (NaN, null once saved), not zeros, so the chart shows nothing for that stretch. */
+const GAPPED = new Set([...DRAIN_SERIES, ...MOOD_SERIES]);
+
+/** Every series recorded, in order: vitals, causes, then resources. */
 export function seriesIds(): string[] {
-  return [...VITALS, ...resourceDefs.map((r) => r.id)];
+  return [...VITALS, ...DRAIN_SERIES, ...MOOD_SERIES, ...resourceDefs.map((r) => r.id)];
 }
 
 export function createHistory(cfg: SimConfig): History {
@@ -61,6 +69,9 @@ export function sample(state: SimState, cfg: SimConfig): Record<string, number> 
     co2Pct: airPct(state, cfg, "co2"),
     airVolume: airVolume(state, cfg),
   };
+  const drain = state.population.healthDrain ?? {};
+  for (const id of Object.keys(DIAGNOSIS.health)) out[`drain:${id}`] = Math.max(0, drain[id] ?? 0);
+  for (const [id, v] of Object.entries(happinessByFactor(state, cfg))) out[`mood:${id}`] = v;
   for (const r of resourceDefs) out[r.id] = state.resources[r.id] ?? 0;
   return out;
 }
@@ -79,10 +90,10 @@ export function stepHistory(state: SimState, cfg: SimConfig): void {
   const hist = (state.history ??= createHistory(cfg));
   const now = sample(state, cfg);
   const keepHours = h.recentDays * (cfg.ticksPerDay / h.everyTicks);
-  // A series that's new since the history began (a resource added to the game) starts at zero.
+  // A series that's new since the history began (a resource added to the game) starts at zero; a cause, with a gap.
   const length = Math.max(0, ...Object.values(hist.hourly).map((l) => l.length));
   for (const [id, v] of Object.entries(now)) {
-    if (!hist.hourly[id]) hist.hourly[id] = Array(length).fill(0);
+    if (!hist.hourly[id]) hist.hourly[id] = Array(length).fill(GAPPED.has(id) ? NaN : 0);
     push(hist.hourly, id, v, keepHours);
     hist.acc[id] = (hist.acc[id] ?? 0) + v;
   }
@@ -92,7 +103,7 @@ export function stepHistory(state: SimState, cfg: SimConfig): void {
   if (state.tick % cfg.ticksPerDay === 0 && hist.accCount > 0) {
     const days = Math.max(0, ...Object.values(hist.daily).map((l) => l.length));
     for (const id of Object.keys(now)) {
-      if (!hist.daily[id]) hist.daily[id] = Array(days).fill(0);
+      if (!hist.daily[id]) hist.daily[id] = Array(days).fill(GAPPED.has(id) ? NaN : 0);
       push(hist.daily, id, (hist.acc[id] ?? 0) / hist.accCount, h.maxDays);
     }
     hist.acc = {};

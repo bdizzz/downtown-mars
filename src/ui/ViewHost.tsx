@@ -7,6 +7,7 @@ import type { View3d } from "../view/cameras";
 import type { HoverInfo, Graphics, PendingBuild, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import type { Snapshot } from "../sim/snapshot";
+import type { Spot } from "../view/reachView";
 
 interface Props {
   snapshot: Snapshot | null;
@@ -45,6 +46,8 @@ interface Props {
   onCutAngle?: (deg: number) => void;
   /** Behind the title menu: the 3D camera drifts round the hole at dusk. */
   showcase?: boolean;
+  /** Show me, from the "Why?" panel: rooms and homes to tint, and one to face (null: none). */
+  spotlight?: Spot | null;
 }
 
 const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => Promise<Stage>> = {
@@ -55,7 +58,7 @@ const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => P
 };
 
 /** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
-export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed, showcase = false }: Props) {
+export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed, showcase = false, spotlight = null }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
@@ -63,6 +66,8 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
   props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle };
   const lookSpeedRef = useRef(lookSpeed);
   const showcaseRef = useRef(showcase);
+  const spotlightRef = useRef(spotlight);
+  spotlightRef.current = spotlight;
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +99,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
       stage.setProposal(props.current.proposal);
       stage.setWarning(props.current.warning);
       stage.setShowcase?.(showcaseRef.current);
+      stage.setSpotlight?.(spotlightRef.current);
       if (props.current.snapshot) stage.update(props.current.snapshot);
       // The loading screen waits for the view's first frames.
       requestAnimationFrame(() => requestAnimationFrame(() => bootStep("view")));
@@ -125,6 +131,10 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
   useEffect(() => {
     stageRef.current?.setOverlay(overlay);
   }, [overlay]);
+
+  useEffect(() => {
+    stageRef.current?.setSpotlight?.(spotlight);
+  }, [spotlight]);
 
   useEffect(() => {
     stageRef.current?.setColorBlind(colorBlind);

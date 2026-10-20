@@ -3,7 +3,7 @@ import { config } from "../sim/config";
 import { gameTime } from "../sim/clock";
 import { monthLabel, monthShort } from "../view/months";
 import { num } from "./format";
-import { niceScale, seriesNum } from "./trends";
+import { niceScale, seriesNum, type Layer } from "./trends";
 
 // Line charts drawn as SVG: a small sparkline for tooltips and rows, and a
 // detailed chart with axes, reference lines and a readout under the pointer.
@@ -158,6 +158,106 @@ export function TrendChart({ lines, ticks, refs = [], unit = "", daily = false, 
           </g>
         )}
       </svg>
+    </div>
+  );
+}
+
+const BH = 90;
+
+/**
+ * Causes stacked over time (F-018): each layer a band, the positive ones stacked up from zero and the
+ * negative ones down from it. Where a layer has no record (an older save), nothing is drawn. Pointing
+ * at a time names the causes then, biggest first.
+ */
+export function CauseBand({ layers, ticks, unit, daily = false, title }: { layers: Layer[]; ticks: number[]; unit: string; daily?: boolean; title: string }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const n = ticks.length;
+  const known = (i: number) => layers.some((l) => Number.isFinite(l.values[i]));
+  if (n < 2 || !ticks.some((_, i) => known(i))) return null;
+  const v = (l: Layer, i: number) => (Number.isFinite(l.values[i]) ? l.values[i]! : 0);
+  // Each layer's band at each point: [from, to], stacked away from zero on its own side.
+  const bands = layers.map(() => [] as [number, number][]);
+  let lo = 0;
+  let hi = 0;
+  for (let i = 0; i < n; i++) {
+    let up = 0;
+    let down = 0;
+    layers.forEach((l, j) => {
+      const x = v(l, i);
+      if (x >= 0) bands[j]!.push([up, (up += x)]);
+      else bands[j]!.push([down, (down += x)]);
+    });
+    hi = Math.max(hi, up);
+    lo = Math.min(lo, down);
+  }
+  const s = niceScale(lo, Math.max(hi, lo + 1), 2);
+  const t0 = ticks[0]!;
+  const t1 = ticks[n - 1]!;
+  const x = (t: number) => M.l + ((t - t0) / Math.max(1, t1 - t0)) * (W - M.l - M.r);
+  const y = (val: number) => BH - 4 - ((val - s.lo) / (s.hi - s.lo)) * (BH - 8);
+  // Runs of points with a record, so the gaps before a save recorded causes stay empty.
+  const runs: [number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    if (!known(i)) continue;
+    const last = runs.at(-1);
+    if (last && last[1] === i - 1) last[1] = i;
+    else runs.push([i, i]);
+  }
+  const area = (b: [number, number][], [a, z]: [number, number]) => {
+    const top = [];
+    const bottom = [];
+    for (let i = a; i <= z; i++) top.push(`${x(ticks[i]!).toFixed(1)},${y(b[i]![1]).toFixed(1)}`);
+    for (let i = z; i >= a; i--) bottom.push(`${x(ticks[i]!).toFixed(1)},${y(b[i]![0]).toFixed(1)}`);
+    return `M${top.join("L")}L${bottom.join("L")}Z`;
+  };
+  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    const px = ((e.clientX - box.left) / box.width) * W;
+    const t = t0 + ((px - M.l) / (W - M.l - M.r)) * (t1 - t0);
+    let best = 0;
+    for (let i = 1; i < n; i++) if (Math.abs(ticks[i]! - t) < Math.abs(ticks[best]! - t)) best = i;
+    setHover(best);
+  };
+  const at = hover ?? n - 1;
+  const now = layers
+    .filter((l) => Number.isFinite(l.values[at]) && Math.abs(l.values[at]!) >= 0.05)
+    .sort((a, b) => Math.abs(b.values[at]!) - Math.abs(a.values[at]!));
+  return (
+    <div className="trend cause-band">
+      <p className="trend-readout">
+        <span className="k">
+          {title} · {hover === null ? "now" : whenText(ticks[at]!, daily && at < n - 1)}
+        </span>
+        {!known(at) ? (
+          <span className="k">not recorded then</span>
+        ) : now.length ? (
+          now.map((l) => (
+            <span key={l.label} style={{ color: l.color }}>
+              {l.label} {l.values[at]! > 0 ? "+" : "−"}
+              {num(Math.abs(l.values[at]!))}
+            </span>
+          ))
+        ) : (
+          <span className="k">nothing</span>
+        )}
+      </p>
+      <svg viewBox={`0 0 ${W} ${BH}`} className="trend-svg" onPointerMove={onMove} onPointerLeave={() => setHover(null)} role="img" aria-label={`${title}${unit}, over time`}>
+        <line x1={M.l} x2={W - M.r} y1={y(0)} y2={y(0)} className="grid" />
+        {[...new Set([s.lo, 0, s.hi])].map((val) => (
+          <text key={val} x={M.l - 4} y={y(val) + 3} className="axis" textAnchor="end">
+            {num(val)}
+          </text>
+        ))}
+        {layers.map((l, j) => runs.map((r) => <path key={`${l.label}:${r[0]}`} d={area(bands[j]!, r)} fill={l.color} opacity={0.75} />))}
+        {hover !== null && <line x1={x(ticks[at]!)} x2={x(ticks[at]!)} y1={2} y2={BH - 2} className="cursor" />}
+      </svg>
+      <p className="tip-legend">
+        {layers.map((l) => (
+          <i key={l.label} style={{ color: l.color, fontStyle: "normal", marginRight: 8, fontSize: 11 }}>
+            ■ {l.label}
+          </i>
+        ))}
+      </p>
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import type { History } from "../sim/history";
+import { DIAGNOSIS } from "../sim/diagnosis";
+import { DRAIN_SERIES, MOOD_SERIES, type History } from "../sim/history";
 import { config } from "../sim/config";
 import { resourceDefs } from "../sim/resources";
 import { CATEGORY_COLORS, cssColor } from "../render2d/palette";
@@ -229,4 +230,49 @@ export function niceScale(lo: number, hi: number, ticks = 4): { lo: number; hi: 
   const mag = 10 ** Math.floor(Math.log10(raw));
   const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw) ?? 10 * mag;
   return { lo: Math.floor(lo / step) * step, hi: Math.ceil(hi / step) * step, step };
+}
+
+/** A layer of a cause band: one cause's share over time (NaN where the save hadn't recorded it yet). */
+export interface Layer {
+  label: string;
+  color: string;
+  values: number[];
+}
+
+const CAUSE_COLORS: Record<string, string> = {
+  water: cat("water"),
+  meals: cat("food"),
+  sanitation: "#a0785a",
+  o2: cat("air"),
+  co2: "#b0a090",
+  noise: "#b98fc9",
+  comfort: "#e07a3f",
+  health: "#d48092",
+  mood: "#f0c060",
+};
+const cap = (t: string) => t[0]!.toUpperCase() + t.slice(1);
+
+/**
+ * The band under a chart (F-018): under Health, its drain by cause (a month, stacked down from zero); under Happiness,
+ * its points by factor (noise, comfort, wellbeing, mood: above zero what lifts it, below what pulls it down).
+ * Null for any other series.
+ */
+export function causeBand(h: History, key: string, range: Range, tpd: number): { layers: Layer[]; ticks: number[]; title: string; unit: string } | null {
+  const ids = key === "health" ? DRAIN_SERIES : key === "happiness" ? MOOD_SERIES : null;
+  if (!ids) return null;
+  let ticks: number[] = [];
+  const layers = ids.map((sid) => {
+    const id = sid.slice(sid.indexOf(":") + 1);
+    const p = points(h, sid, range, tpd);
+    ticks = p.ticks;
+    const label = key === "health" ? cap(DIAGNOSIS.health[id]?.label ?? id) : (DIAGNOSIS.factors[id] ?? id);
+    // Saved as null where the save didn't record it yet; a gap either way.
+    // A drain pulls health down: drawn below zero.
+    const sign = key === "health" ? -1 : 1;
+    const values = p.values.map((v) => (typeof v === "number" ? sign * v : NaN));
+    return { label, color: CAUSE_COLORS[id] ?? "#a88d7c", values };
+  });
+  return key === "health"
+    ? { layers, ticks, title: "Drain by cause", unit: " a month" }
+    : { layers, ticks, title: "By factor", unit: " points" };
 }

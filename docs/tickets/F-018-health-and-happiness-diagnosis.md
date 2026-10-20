@@ -17,6 +17,8 @@ created: 2026-10-19 21:55
 
 **As built (T-171, T-172):** `src/sim/diagnosis.ts` with words in `data/diagnosis.json`; `happiness.points` (hole) and each pool's `points` hold the happiness parts in points, `population.healthDrain` the meter's drain; `healthWhy` / `happinessWhy` in `src/view/hudItems.ts` make the card lines. Cause sources (which room makes the noise) are left to T-174.
 
+**As built (T-173, T-174, T-175):** `effectSources` (`src/sim/effects.ts`) splits each home's neighbour effects by the room making them; the diagnosis carries them as `sources` (occupied homes, cached on the layout's version and the dust) and names each neighbour cause's `rooms`. `data/diagnosis.json` gained `label` (a part's short name), `field` (the effect behind it), `shared` (felt by all: no Show me) and `factors`. The "Why?" panel's text is `src/view/whyPanel.ts` (for T-178 to reuse), the home breakdown `factorRows` / `feltByRows` in `src/view/roomPanel.ts` (already in Godot through the bridge's inspector). Show me is `Stage.setSpotlight` with tints from `roomTints` (`src/view/reachView.ts`), which `planDraw.drawField` takes as an optional `spot`. History records `drain:<cause>` and `mood:<factor>` series; a save from before them gets NaN (null once saved) for the stretch it didn't record, drawn as a gap.
+
 **Answered (Bryon, Oct 19):** the home factor is renamed **Wellbeing** (Noise, Comfort, Wellbeing), so Health means only the hole's meter; visits are information only the first time a cause shows up, then a challenge to fix it within 3 months; tips are one-time deputy cards per cause (can be turned off in Settings); build order as in the Breakdown, attribution and HUD cards first.
 
 **The approach: one diagnosis in the sim, shown in several places.**

@@ -105,34 +105,69 @@ function radiate(layout: Layout, field: EffectField, room: RoomInstance): void {
   }
 }
 
+/** One of a built room's effects, where it gets to: by nearness, and if it's airborne along the network too. */
+function spreadBuilt(layout: Layout, room: RoomInstance, base: EffectDef, rooms: Map<number, RoomInstance>, dust: number): Map<string, [Cell, number]> {
+  const fx = config.effects;
+  // An airlock lets in Mars dust: worse in a storm.
+  const eff = roomDef(room.type).surfaceLink && base.type === "airQuality" ? { ...base, strength: base.strength * dust } : base;
+  const air = fx.airborne[eff.type];
+  if (!air) return nearness(layout, room.cells, eff, eff.radius);
+  const got = nearness(layout, room.cells, eff, Math.min(eff.radius, air.leak));
+  const reach = eff.radius * fx.stepsPerRadius;
+  for (const [id, m] of distancesFrom(pathsFor(layout), room.id, "air", (reach + 1) * STEP_M)) {
+    if (id === room.id) continue;
+    const v = falloff(eff.strength, reach, m / STEP_M);
+    if (!v) continue;
+    for (const c of rooms.get(id)?.cells ?? []) {
+      const k = cellKey(c);
+      const had = got.get(k)?.[1] ?? 0;
+      // The stronger way wins, not both.
+      if (Math.abs(v) > Math.abs(had)) got.set(k, [c, v]);
+    }
+  }
+  return got;
+}
+
+/** The effects a built room radiates onto others (not those felt only by its own residents). */
+const radiated = (room: RoomInstance) => roomDef(room.type).effects.filter((e) => !e.residentsOnly && FIELD_TYPES.includes(e.type));
+
 /** Everything a built room radiates: by nearness, and airborne effects along the network too. */
 function radiateBuilt(layout: Layout, field: EffectField, room: RoomInstance, rooms: Map<number, RoomInstance>, dust: number): void {
-  const fx = config.effects;
-  const def = roomDef(room.type);
-  for (const base of def.effects) {
-    // An airlock lets in Mars dust: worse in a storm.
-    const eff = def.surfaceLink && base.type === "airQuality" ? { ...base, strength: base.strength * dust } : base;
-    if (eff.residentsOnly || !field[eff.type]) continue;
-    const air = fx.airborne[eff.type];
-    if (!air) {
-      addTo(field, eff.type, nearness(layout, room.cells, eff, eff.radius));
-      continue;
-    }
-    const got = nearness(layout, room.cells, eff, Math.min(eff.radius, air.leak));
-    const reach = eff.radius * fx.stepsPerRadius;
-    for (const [id, m] of distancesFrom(pathsFor(layout), room.id, "air", (reach + 1) * STEP_M)) {
-      if (id === room.id) continue;
-      const v = falloff(eff.strength, reach, m / STEP_M);
-      if (!v) continue;
-      for (const c of rooms.get(id)?.cells ?? []) {
-        const k = cellKey(c);
-        const had = got.get(k)?.[1] ?? 0;
-        // The stronger way wins, not both.
-        if (Math.abs(v) > Math.abs(had)) got.set(k, [c, v]);
+  for (const eff of radiated(room)) addTo(field, eff.type, spreadBuilt(layout, room, eff, rooms, dust));
+}
+
+/** One room's share of an effect felt in another (F-018): which room, which effect, and how much (averaged over its cells, as effectOnRoom). */
+export interface EffectSource {
+  from: number;
+  type: string;
+  value: number;
+}
+
+/**
+ * Who makes what the target rooms feel: for each target, every built room's
+ * effects on it, room by room (the parts that add up to its field, bar the
+ * air's baseline by ring and the dome). Values under `least` are left out.
+ */
+export function effectSources(layout: Layout, targets: RoomInstance[], dust = 1, least = 0.05): Map<number, EffectSource[]> {
+  const out = new Map<number, EffectSource[]>(targets.map((t) => [t.id, []]));
+  const rooms = new Map(layout.rooms.map((r) => [r.id, r]));
+  for (const room of layout.rooms) {
+    if (room.planned || room.building || room.at.kind !== "ring") continue;
+    for (const eff of radiated(room)) {
+      const got = spreadBuilt(layout, room, eff, rooms, dust);
+      for (const t of targets) {
+        if (!t.cells.length) continue;
+        const sum = t.cells.reduce((s, c) => s + (got.get(cellKey(c))?.[1] ?? 0), 0);
+        const value = sum / t.cells.length;
+        if (Math.abs(value) < least) continue;
+        const list = out.get(t.id)!;
+        const same = list.find((x) => x.from === room.id && x.type === eff.type);
+        if (same) same.value += value;
+        else list.push({ from: room.id, type: eff.type, value });
       }
     }
-    addTo(field, eff.type, got);
   }
+  return out;
 }
 
 /**

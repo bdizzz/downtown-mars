@@ -1,12 +1,12 @@
 ---
 id: T-173
 title: A "Why?" panel ranks what's hurting health and happiness, with fixes and Show me
-status: open
+status: done
 size: M
 area: ui
+feature: F-018
 touches: [src/ui/WhyPanel.tsx, src/ui/Hud.tsx, src/ui/App.tsx, src/view/]
 blocked_by: [T-171]
-feature: F-018
 notes: [N-0095]
 created: 2026-10-19 21:57
 ---
@@ -24,3 +24,4 @@ GUIDE.md: Health and happiness.
 
 ## History
 - 2026-10-19 21:57 opened from F-018
+- 2026-10-20 03:04 built on ccr-ae9918df-rbn2zw (with T-173–T-175)

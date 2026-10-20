@@ -19,7 +19,7 @@ import { CATEGORY_COLORS } from "./palette";
 import type { EffectField } from "../sim/effects";
 import type { Happiness } from "../sim/happiness";
 import { CONDITION_ALPHA, conditionTints } from "../view/conditionView";
-import { reachTints } from "../view/reachView";
+import { roomTints, type Spot } from "../view/reachView";
 
 // The plan view's drawing: one floor seen from above, drawn flat, onto a Pixi GraphicsContext. The
 // web's plan stage (plan.ts) draws with it, and so does the Godot viewer's bridge (src/bridge/plan.ts),
@@ -418,6 +418,8 @@ export interface FieldOptions {
   heat: { bad: number; good: number };
   /** With no overlay on, a selected service or amenity tints the homes it reaches on foot and those it doesn't. */
   selected: number | null;
+  /** With no overlay on and no reach to show, what Show me points at (the "Why?" panel). */
+  spot?: Spot | null;
 }
 
 /** The overlay on a floor, each cell tinted: an effect field, the homes' happiness, rooms' condition, or a service's reach. */
@@ -425,7 +427,7 @@ export function drawField(g: GraphicsContext, layout: Layout, floor: number, o: 
   const h = layout.hole;
   const onFloor = (cells: Cell[]) => cells.filter((c) => c.floor === floor);
   if (!o.overlay) {
-    for (const { room, color, alpha } of reachTints(layout, o.selected) ?? []) {
+    for (const { room, color, alpha } of roomTints(layout, o.selected, o.spot ?? null)) {
       for (const c of onFloor(room.cells)) g.poly(cellSector(h, c, 0.15)).fill({ color, alpha });
     }
     return;

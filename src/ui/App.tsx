@@ -23,6 +23,8 @@ import { EventCards } from "./EventCards";
 import { ViewHost } from "./ViewHost";
 import { ResourceBar } from "./ResourceBar";
 import { TrendsPanel } from "./TrendsPanel";
+import { WhyPanel, type WhyTab } from "./WhyPanel";
+import type { Spot } from "../view/reachView";
 import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
 import { StatusBar } from "./StatusBar";
 import { Tutorial } from "./Tutorial";
@@ -98,7 +100,7 @@ export function App() {
    */
   const lookFloor = previewFloor !== undefined && !walking ? previewFloor : viewFloor;
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
-  const [panel, setPanel] = useState<"office" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | null>(null);
+  const [panel, setPanel] = useState<"office" | "why" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | null>(null);
   const officeOpen = panel === "office";
   /** The series Trends opens on (a resource clicked in the bar at the top). */
   const [trendKey, setTrendKey] = useState("happiness");
@@ -108,7 +110,14 @@ export function App() {
     setPanel((cur) => (cur === p ? null : p));
     setSelected(null);
   };
-  const chart: Chart | null = panel && panel !== "office" ? panel : null;
+  const chart: Chart | null = panel && panel !== "office" && panel !== "why" ? panel : null;
+  /** The "Why?" panel's tab, and what its Show me lights up (F-018). */
+  const [whyTab, setWhyTab] = useState<WhyTab>("health");
+  const [spotlight, setSpotlight] = useState<{ id: string; spot: Spot } | null>(null);
+  // Show me lasts while the "Why?" panel is open.
+  useEffect(() => {
+    if (panel !== "why") setSpotlight(null);
+  }, [panel]);
   /**
    * Open a mode (or close it, with null). Only Build places things, so
    * leaving it drops the tool in hand; the charts' panels belong to Charts.
@@ -119,7 +128,7 @@ export function App() {
       setTool(null);
       setProposal(null);
     }
-    if (m !== "charts") setPanel((p) => (p === "office" ? p : null));
+    if (m !== "charts") setPanel((p) => (p === "office" || p === "why" ? p : null));
   }, []);
   /** Pick up a build tool, opening Build mode if it isn't (a room's key works from any mode). */
   const takeTool = useCallback(
@@ -492,12 +501,25 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [menu, helpOpen, welcome, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking, cutaway]);
 
-  /** Charts → Trends on a series: from a cell of the resource grid, or the "needs you" slot. */
-  const openTrend = (key: string) => {
+  /** Charts → Trends on a series. */
+  const showTrend = (key: string) => {
     setTrendKey(key);
     setMode("charts");
     setPanel("trends");
     setSelected(null);
+  };
+  /** From a cell of the resource grid, or the "needs you" slot: Health and Happiness open the "Why?" panel (F-018), the rest Trends. */
+  const openTrend = (key: string) => {
+    if (key !== "health" && key !== "happiness") return showTrend(key);
+    setWhyTab(key);
+    setPanel("why");
+    setSelected(null);
+  };
+  /** Show me: light up the rooms and homes, and bring the focus's floor into view. */
+  const showMe = (id: string | null, spot: Spot | null) => {
+    setSpotlight(id && spot ? { id, spot } : null);
+    const room = spot && snapshot?.layout.rooms.find((r) => r.id === spot.focus);
+    if (room?.at.kind === "ring" && settings.view !== "2d" && !walking) setViewFloor(room.at.floor);
   };
 
   return (
@@ -656,9 +678,22 @@ export function App() {
               updateSettings({ view: "2d" });
             }}
             overlay={overlay}
+            spotlight={spotlight?.spot ?? null}
           />
         </div>
         {snapshot && officeOpen && <Office s={snapshot} onCommand={onCommand} onClose={() => setPanel(null)} />}
+        {snapshot && panel === "why" && (
+          <WhyPanel
+            s={snapshot}
+            tab={whyTab}
+            setTab={setWhyTab}
+            shown={spotlight?.id ?? null}
+            onShow={showMe}
+            onSelect={(id) => (setSelected(id), setPanel(null))}
+            onTrend={showTrend}
+            onClose={() => setPanel(null)}
+          />
+        )}
         {snapshot && panel === "flows" && <FlowPanel s={snapshot} onClose={() => setPanel(null)} />}
         {snapshot && panel === "people" && <PeoplePanel s={snapshot} onClose={() => setPanel(null)} />}
         {snapshot && panel === "trends" && <TrendsPanel key={trendKey} s={snapshot} initial={trendKey} onClose={() => setPanel(null)} />}
