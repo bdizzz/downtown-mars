@@ -42,7 +42,7 @@ import { advanceDetails } from "./details3d";
 import { troubleOf, type Trouble } from "../view/roomTrouble";
 import { grimeLevel } from "../view/grime";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
-import { reachKey, reachTints } from "../view/reachView";
+import { reachKey, roomTints, type Spot } from "../view/reachView";
 import { badgeAbove, LINE_M } from "../view/labelFit";
 import { flowRooms, Flows } from "./flows3d";
 import type { RoomStatus } from "../sim/economy";
@@ -426,6 +426,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(overlay);
   let tool: Tool = null;
   let selected: number | null = null;
+  /** What Show me points at (the "Why?" panel): tinted while no overlay is on. */
+  let spot: Spot | null = null;
   let heat = HEAT.normal;
   let layout: Layout | null = null;
   let resources: Record<string, number> = {};
@@ -1101,10 +1103,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     scene.add(fieldGroup);
     dirty = true;
     const l = s.layout;
-    // No overlay on, and a service or amenity selected: the homes it reaches on foot, and those it doesn't.
+    // No overlay on, and a service or amenity selected: the homes it reaches on foot, and those it doesn't; else what Show me points at.
     if (!overlayType) {
       const byLook = new Map<string, Cell[]>();
-      for (const { room, color, alpha } of reachTints(l, selected) ?? []) {
+      for (const { room, color, alpha } of roomTints(l, selected, spot)) {
         const k = `${color}:${Math.round(alpha * 20) / 20}`;
         byLook.set(k, [...(byLook.get(k) ?? []), ...room.cells]);
       }
@@ -2322,7 +2324,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       updateSky(snapshot);
       const happy =
         overlayType === "happiness" ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",") : overlayType === "condition" ? conditionKey(snapshot.layout.rooms) : "";
-      const fk = `${overlayType}:${gameId}:${snapshot.layout.version}:${happy}:${heat.bad}:${cut()}:${reachKey(snapshot.layout, selected)}`;
+      const fk = `${overlayType}:${gameId}:${snapshot.layout.version}:${happy}:${heat.bad}:${cut()}:${reachKey(snapshot.layout, selected, spot)}`;
       if (fk !== fieldKey) {
         fieldKey = fk;
         buildField(snapshot);
@@ -2380,6 +2382,23 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     setProposal(p) {
       proposal = p;
       refreshHover(true);
+    },
+    setSpotlight(s) {
+      spot = s;
+      fieldKey = "";
+      const room = s && layout?.rooms.find((r) => r.id === s.focus);
+      // Turn to face it: the free view and the cutaway look across the shaft, so the camera goes to the far side.
+      if (room?.at.kind === "ring" && view.mode !== "walk") {
+        const n = layout!.hole.ringSlots[room.at.ring - 1]!;
+        const a = ((room.at.slot + room.at.w / 2) / n) * TAU;
+        cam.theta = a + Math.PI;
+        cam.panX = 0;
+        cam.panZ = 0;
+        if (view.mode === "cutaway") cam.y = floorSpan(room.at.floor)[0] + EYE_HEIGHT;
+        applyCamera();
+      }
+      if (latest) stage.update(latest);
+      dirty = true;
     },
     setWarning(w) {
       warning = w;

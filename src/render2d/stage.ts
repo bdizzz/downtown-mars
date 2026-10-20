@@ -2,7 +2,7 @@ import { UI_FONT } from "../view/font";
 import { roomLabel } from "../sim/roomName";
 import { crewsAt, crewsKey } from "../view/crews";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
-import { reachTints } from "../view/reachView";
+import { roomTints, type Spot } from "../view/reachView";
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
@@ -132,6 +132,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let resources: Record<string, number> = {};
   let deposits: string[] = [];
   let selected: number | null = null;
+  let spot: Spot | null = null;
   /** Build mode is open: bare rock lights up under the pointer, as somewhere to build. */
   let building = false;
   let overlayType: string | null = null;
@@ -193,10 +194,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
   }
 
-  /** With no overlay on and a service or amenity selected: the homes it reaches on foot, and those it doesn't. */
+  /** With no overlay on and a service or amenity selected: the homes it reaches on foot, and those it doesn't; else what Show me points at. */
   function drawReach(): void {
     if (!layout) return;
-    for (const { room, color, alpha } of reachTints(layout, selected) ?? []) {
+    for (const { room, color, alpha } of roomTints(layout, selected, spot)) {
       for (const row of cellRows(layout.hole, room.cells)) fieldCtx.rect(...rowRect(layout.hole, row)).fill({ color, alpha });
     }
   }
@@ -1172,6 +1173,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       hoverKey = ""; // force a redraw of the selection outline
       refreshHover();
       drawField(); // a service's reach, when no overlay is on
+    },
+    setSpotlight(s) {
+      spot = s;
+      drawField();
     },
     destroy() {
       canvas.removeEventListener("wheel", onWheel);

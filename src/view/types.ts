@@ -3,6 +3,7 @@ import type { Graphics } from "./graphics";
 import type { SimCommand } from "../sim/commands";
 import type { CheckResult, Location, RoomInstance } from "../sim/placement";
 import type { Snapshot } from "../sim/snapshot";
+import type { Spot } from "./reachView";
 
 // What the UI and a view (2D or 3D) say to each other. Both views implement
 // Stage, and turn pointer input into the same Picks and commands, so the
@@ -129,6 +130,8 @@ export interface Stage {
   setView3d(v: View3d): void;
   /** Behind the title menu: the camera drifts slowly round the hole at dusk (views without it ignore it). */
   setShowcase?(on: boolean): void;
+  /** Show me (the "Why?" panel): tint these rooms and homes while no overlay is on, and (3D) turn to face the focus. null: none. */
+  setSpotlight?(spot: Spot | null): void;
   destroy(): void;
 }
 

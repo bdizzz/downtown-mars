@@ -1,7 +1,7 @@
 import { UI_FONT } from "../view/font";
 import { crewsAt, crewsKey } from "../view/crews";
 import { conditionKey } from "../view/conditionView";
-import { reachKey } from "../view/reachView";
+import { reachKey, type Spot } from "../view/reachView";
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import { previewEffects, type EffectField } from "../sim/effects";
 import type { Happiness } from "../sim/happiness";
@@ -58,6 +58,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   let resources: Record<string, number> = {};
   let gates: string[] = [];
   let selected: number | null = null;
+  let spot: Spot | null = null;
   /** Build mode is open: bare rock lights up under the pointer, as somewhere to build. */
   let building = false;
   let tool: Tool = null;
@@ -84,7 +85,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   function drawField(): void {
     fieldCtx.clear();
     if (!layout) return;
-    drawFieldOn(fieldCtx, layout, floor, { overlay: overlayType, field, happiness, heat, selected });
+    drawFieldOn(fieldCtx, layout, floor, { overlay: overlayType, field, happiness, heat, selected, spot });
   }
 
   function drawHalo(type: string, cells: Cell[]): void {
@@ -521,7 +522,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   }
 
   function redrawField(force = false): void {
-    const key = `${overlayType}:${floor}:${heat.bad}:${layout ? reachKey(layout, selected) : ""}`;
+    const key = `${overlayType}:${floor}:${heat.bad}:${layout ? reachKey(layout, selected, spot) : ""}`;
     if (!force && key === fieldKey) return;
     fieldKey = key;
     drawField();
@@ -559,6 +560,10 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     setSelected(id) {
       selected = id;
       refreshHover(true);
+      redrawField();
+    },
+    setSpotlight(s) {
+      spot = s;
       redrawField();
     },
     setOverlay(type) {

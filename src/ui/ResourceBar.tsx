@@ -11,7 +11,8 @@ import { Icon } from "./Icon";
 
 // The resource grid: the stocks a player watches (view/hudItems.ts), each a small cell of icon,
 // value and trend arrow, amber or red when it's a worry or trouble. Pointing at one shows its name,
-// what it means and a sparkline of its last two days; clicking (or tapping) it opens Charts → Trends on it.
+// what it means and a sparkline of its last two days; clicking (or tapping) it opens Charts → Trends on it
+// (Health and Happiness: the "Why?" panel).
 
 type OnTrend = (key: string) => void;
 
@@ -28,6 +29,8 @@ function TipBody({ s, trend, title, notes }: { s: Snapshot; trend: string; title
   const lines = meta && h ? meta.lines.map((l) => ({ label: l.label, color: l.color, dashed: l.dashed, values: points(h, l.id, "2d", config.ticksPerDay).values })) : [];
   const main = lines[0]?.values ?? [];
   const change = main.length > 1 ? main.at(-1)! - main[0]! : null;
+  // Health and Happiness open the "Why?" panel (F-018); the rest, Trends.
+  const click = trend === "health" || trend === "happiness" ? "click for why" : "click for Trends";
   return (
     <>
       <strong>{title}</strong>
@@ -50,11 +53,11 @@ function TipBody({ s, trend, title, notes }: { s: Snapshot; trend: string; title
             </span>
           )}
           <span className="tip-foot">
-            {spanText((main.length - 1) * (h?.every ?? 10))}: {change !== null ? signed(change) : ""} · click for Trends
+            {spanText((main.length - 1) * (h?.every ?? 10))}: {change !== null ? signed(change) : ""} · {click}
           </span>
         </>
       ) : (
-        <span className="tip-foot">History builds up hour by hour · click for Trends</span>
+        <span className="tip-foot">History builds up hour by hour · {click}</span>
       )}
     </>
   );

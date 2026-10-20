@@ -41,9 +41,36 @@ export function reachTints(layout: Layout, selected: number | null): ReachTint[]
   return out;
 }
 
+/** What Show me lights up (the "Why?" panel, F-018): the rooms making a problem, and the homes feeling it; `focus` is where to look first. */
+export interface Spot {
+  rooms: number[];
+  homes: number[];
+  focus: number;
+}
+
+export const SPOT_COLORS = { source: 0xe0503a, home: 0xf0b040 };
+
+/** Show me's tints: the rooms behind a problem in red, the homes feeling it in amber. */
+export function spotTints(layout: Layout, spot: Spot | null): ReachTint[] | null {
+  if (!spot) return null;
+  const out: ReachTint[] = [];
+  for (const room of layout.rooms) {
+    if (room.at.kind !== "ring") continue;
+    if (spot.rooms.includes(room.id)) out.push({ room, color: SPOT_COLORS.source, alpha: 0.55, steps: null });
+    else if (spot.homes.includes(room.id)) out.push({ room, color: SPOT_COLORS.home, alpha: 0.45, steps: null });
+  }
+  return out;
+}
+
+/** With no overlay on: a selected service's reach, else what Show me points at. */
+export function roomTints(layout: Layout, selected: number | null, spot: Spot | null): ReachTint[] {
+  return reachTints(layout, selected) ?? spotTints(layout, spot) ?? [];
+}
+
 /** A key that changes when the tints would. */
-export function reachKey(layout: Layout, selected: number | null): string {
-  return selected === null || !layout.rooms.some((r) => r.id === selected && reachSteps(r.type)) ? "" : `${selected}:${layout.version}`;
+export function reachKey(layout: Layout, selected: number | null, spot: Spot | null = null): string {
+  const spotted = spot ? `s${spot.rooms.join(",")}/${spot.homes.join(",")}:${layout.version}` : "";
+  return selected === null || !layout.rooms.some((r) => r.id === selected && reachSteps(r.type)) ? spotted : `${selected}:${layout.version}`;
 }
 
 /**

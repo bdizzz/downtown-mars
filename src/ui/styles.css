@@ -644,6 +644,24 @@ label.set-row { cursor: pointer; }
 .trend-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trend-row .val { text-align: right; }
 .trend-row .delta { text-align: right; color: var(--muted); font-size: 11px; }
+/* The "Why?" panel (F-018): causes biggest first, each with its fix and Show me; the unhappiest homes. */
+.why { width: 320px; }
+.why > * { flex-shrink: 0; }
+.why h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 10px 0 2px; }
+.why h3.why-head { color: var(--text); text-transform: none; letter-spacing: 0; font-size: 14px; margin: 6px 0 0; }
+.why-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.why-item { border-left: 3px solid #ff9a7c; padding: 2px 0 2px 8px; display: flex; flex-direction: column; gap: 2px; }
+.why-item.good { border-left-color: #7fd67f; }
+.why-amount { font-variant-numeric: tabular-nums; }
+.why-fix { font-size: 12px; color: #f0d8b0; }
+.why-show, .why-trend { align-self: flex-start; background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; font: inherit; font-size: 11px; padding: 1px 8px; cursor: pointer; }
+.why-show.on { background: var(--accent); color: #1a0f0d; }
+.why-trend { margin-top: 10px; border: none; padding: 0; font-size: 12px; }
+.why-home { background: transparent; color: var(--text); border: 1px solid transparent; border-radius: 4px; font: inherit; font-size: 12px; padding: 2px 4px; cursor: pointer; text-align: left; width: 100%; }
+.why-home:hover { background: #ffffff0c; }
+/* Trends: the band of causes under Health and Happiness. */
+.cause-band { margin-top: 6px; }
+.cause-band .trend-readout span { font-size: 11px; }
 .finish .chip.windows { background: linear-gradient(90deg, #9fd2ff 0 45%, #3b3f45 45% 55%, #9fd2ff 55%); border-color: #5a7a96; }
 .finish .chip.bulkhead { background: repeating-linear-gradient(135deg, #e0a03a 0 3px, #3b3f45 3px 6px); border-color: #3b3f45; }
 /* The refit tool: three linings side by side; a fine finish's chip has a pale inner rule. */
