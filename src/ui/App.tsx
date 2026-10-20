@@ -114,9 +114,9 @@ export function App() {
   /** The "Why?" panel's tab, and what its Show me lights up (F-018). */
   const [whyTab, setWhyTab] = useState<WhyTab>("health");
   const [spotlight, setSpotlight] = useState<{ id: string; spot: Spot } | null>(null);
-  // Show me lasts while the "Why?" panel is open.
+  // Show me lasts while the "Why?" panel (or the office, for a visit about a cause) is open.
   useEffect(() => {
-    if (panel !== "why") setSpotlight(null);
+    if (panel !== "why" && panel !== "office") setSpotlight(null);
   }, [panel]);
   /**
    * Open a mode (or close it, with null). Only Build places things, so
@@ -681,7 +681,7 @@ export function App() {
             spotlight={spotlight?.spot ?? null}
           />
         </div>
-        {snapshot && officeOpen && <Office s={snapshot} onCommand={onCommand} onClose={() => setPanel(null)} />}
+        {snapshot && officeOpen && <Office s={snapshot} onCommand={onCommand} shown={spotlight?.id ?? null} onShow={showMe} onClose={() => setPanel(null)} />}
         {snapshot && panel === "why" && (
           <WhyPanel
             s={snapshot}

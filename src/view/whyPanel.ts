@@ -64,6 +64,14 @@ export function spotFor(s: Snapshot, c: Pick<Cause, "id" | "rooms" | "homes">): 
   return focus === undefined ? null : { rooms, homes, focus };
 }
 
+/** Show me for a cause by its key ("health:meals", "happiness:smell"), as visits and tips name them; null when it's gone or there's nothing to show. */
+export function causeSpot(s: Snapshot, key: string): Spot | null {
+  const [kind, id] = key.split(":");
+  const causes = kind === "health" ? s.diagnosis.health.causes : s.diagnosis.happiness.causes;
+  const c = causes.find((x) => x.id === id);
+  return c ? spotFor(s, c) : null;
+}
+
 function fromText(s: Snapshot, ids: number[] | undefined): string | undefined {
   if (!ids?.length) return undefined;
   const byId = new Map(s.layout.rooms.map((r) => [r.id, r]));

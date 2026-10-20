@@ -7,6 +7,7 @@ import type { Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { setAdults } from "../src/sim/people";
+import { visitDef } from "../src/sim/visits";
 
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
@@ -144,5 +145,91 @@ describe("ordinances", () => {
     const usedA = 240 - a.resources.water!;
     const usedB = 240 - b.resources.water!;
     expect(usedB).toBeCloseTo(usedA * 0.75, 0);
+  });
+});
+
+const richHole = rich;
+
+describe("the doctor and the residents' delegate (F-018)", () => {
+  /** A hole with no meals at all, held at none. */
+  const hungry = (s: SimState, h: number) => {
+    for (let i = 0; i < h * 10; i++) {
+      s.resources.meals = 0;
+      s.resources.rations = 0;
+      step(s, config);
+    }
+  };
+  const fed = (s: SimState, h: number) => {
+    for (let i = 0; i < h * 10; i++) {
+      s.resources.meals = 500;
+      s.resources.water = 500;
+      step(s, config);
+    }
+  };
+  const visitOf = (s: SimState, kind: string) => s.office.waiting.find((v) => v.kind === kind);
+  /** With a restroom, so meals are the only thing draining health. */
+  const rich = () => {
+    const s = richHole();
+    build(s, "restroom", ring(1, 1, 2));
+    return s;
+  };
+
+  it("the doctor comes about a lasting meals shortage: first to tell you, then for a promise", () => {
+    const s = rich();
+    hungry(s, 12);
+    expect(visitOf(s, "doctor_note")).toBeUndefined(); // not lasted a month yet
+    hungry(s, 13);
+    const note = visitOf(s, "doctor_note")!;
+    expect(note.cause).toBe("health:meals");
+    expect(note.text).toMatch(/Meals: people get 0% of what they need/);
+    expect(note.text).toMatch(/health a month/);
+    expect(visitDef("doctor_note").choices.map((c) => c.id)).toEqual(["noted"]);
+    expect(applyCommand(s, { type: "answerVisit", visitId: note.id, choice: "noted" })).toEqual({ ok: true });
+    expect(s.office.promises).toHaveLength(0);
+
+    // Still hungry: no second visit until a while after the first...
+    hungry(s, 24);
+    expect(visitOf(s, "doctor_promise")).toBeUndefined();
+    hungry(s, 2 * 24);
+    // ...then the doctor's back, asking for a fix.
+    const again = visitOf(s, "doctor_promise")!;
+    expect(again.cause).toBe("health:meals");
+    expect(visitOf(s, "doctor_note")).toBeUndefined();
+    const doctor = () => s.notables.find((n) => n.id === again.notableId)!;
+    const before = doctor().loyalty;
+    expect(applyCommand(s, { type: "answerVisit", visitId: again.id, choice: "promise" })).toEqual({ ok: true });
+    expect(s.office.promises[0]).toMatchObject({ check: "causeFixed", cause: "health:meals" });
+
+    // Meals recover: the promise is kept.
+    fed(s, 2);
+    expect(s.office.promises).toHaveLength(0);
+    expect(doctor().loyalty).toBe(Math.min(100, before + 5 + 15));
+    expect(s.messages.some((m) => /fixing it \(meals\)/.test(m.text))).toBe(true);
+  });
+
+  it("a promise to fix a cause that's still there by the deadline is broken", () => {
+    const s = rich();
+    hungry(s, 25);
+    applyCommand(s, { type: "answerVisit", visitId: visitOf(s, "doctor_note")!.id, choice: "noted" });
+    hungry(s, 3 * 24);
+    const again = visitOf(s, "doctor_promise")!;
+    const before = s.notables.find((n) => n.id === again.notableId)!.loyalty;
+    applyCommand(s, { type: "answerVisit", visitId: again.id, choice: "promise" });
+    hungry(s, 3 * 24 + 1);
+    expect(s.office.promises.some((p) => p.cause === "health:meals")).toBe(false);
+    expect(s.notables.find((n) => n.id === again.notableId)!.loyalty).toBe(Math.max(0, before + 5 - 20));
+  });
+
+  it("the delegate comes about noise only through the noise complaint, not twice", () => {
+    const s = noisyDorm();
+    fed(s, 26);
+    expect(s.office.waiting.some((v) => v.cause === "happiness:noise")).toBe(false);
+  });
+
+  it("a cause that goes away before it has lasted brings nobody", () => {
+    const s = rich();
+    hungry(s, 12);
+    fed(s, 14);
+    expect(visitOf(s, "doctor_note")).toBeUndefined();
   });
 });
