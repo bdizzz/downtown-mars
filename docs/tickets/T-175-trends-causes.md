@@ -1,12 +1,12 @@
 ---
 id: T-175
 title: Trends show health's drain by cause, and happiness by factor, over time
-status: open
+status: done
 size: M
 area: sim, ui
+feature: F-018
 touches: [src/sim/history.ts, src/ui/trends.ts, src/ui/TrendChart.tsx, src/ui/TrendsPanel.tsx]
 blocked_by: [T-171]
-feature: F-018
 notes: [N-0095]
 created: 2026-10-19 21:57
 ---
@@ -21,3 +21,4 @@ Record the diagnosis causes in history. Under the Health chart, a stacked band o
 
 ## History
 - 2026-10-19 21:57 opened from F-018
+- 2026-10-20 03:04 built on ccr-ae9918df-rbn2zw (with T-173–T-175)
