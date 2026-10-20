@@ -210,6 +210,7 @@ public partial class SettingsSheet : Sheet
         {
             case "autosave": return Toggle(() => ViewSettings.Autosave, on => ViewSettings.Autosave = on);
             case "tutorial": return Toggle(() => !ViewSettings.TutorialHidden, on => ViewSettings.TutorialHidden = !on);
+            case "tips": return Toggle(() => ViewSettings.Tips, on => ViewSettings.Tips = on);
             case "colorBlind": return Toggle(() => ViewSettings.ColorBlind, on => ViewSettings.ColorBlind = on);
             case "uiScale":
             {

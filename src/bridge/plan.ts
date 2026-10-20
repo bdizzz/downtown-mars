@@ -6,7 +6,7 @@ import { queueView } from "../sim/construction";
 import { config } from "../sim/config";
 import { canDig, diggingFloor, ticksToDig } from "../sim/digging";
 import { conditionKey } from "../view/conditionView";
-import { reachKey } from "../view/reachView";
+import { reachKey, type Spot } from "../view/reachView";
 import type { SimState } from "../sim/state";
 import { crewsAt } from "../view/crews";
 import { maintenanceView } from "../sim/condition";
@@ -112,6 +112,8 @@ export interface FieldView {
   overlay: string | null;
   selected: number | null;
   colorBlind: boolean;
+  /** Show me's rooms and homes (F-018), or null. */
+  spot: Spot | null;
 }
 
 /** How far the drill is through this floor (0..1), or null when it isn't digging it. */
@@ -127,12 +129,12 @@ export function planFieldKey(state: SimState, floor: number, v: FieldView, effec
   const cond = v.overlay === "condition" ? conditionKey(l.rooms) : "";
   const jobs = queueView(state).jobs.map((j) => `${j.roomId}:${j.phase}:${Math.floor(j.progress * 100)}`).join(",");
   const drill = Math.floor((dugShare(state, floor) ?? -0.01) * 100);
-  return `${state.holeId}:${floor}:${l.version}:${v.overlay}:${v.colorBlind}:${reachKey(l, v.selected)}:${effectsVersion}:${happy}:${cond}:${jobs}:${drill}`;
+  return `${state.holeId}:${floor}:${l.version}:${v.overlay}:${v.colorBlind}:${reachKey(l, v.selected, v.spot)}:${effectsVersion}:${happy}:${cond}:${jobs}:${drill}`;
 }
 
 export function planFieldMessage(state: SimState, floor: number, v: FieldView): PlanFieldMessage {
   const g = new GraphicsContext();
-  drawField(g, state.layout, floor, { overlay: v.overlay, field: state.effects.field, happiness: state.happiness, heat: v.colorBlind ? HEAT.colorBlind : HEAT.normal, selected: v.selected });
+  drawField(g, state.layout, floor, { overlay: v.overlay, field: state.effects.field, happiness: state.happiness, heat: v.colorBlind ? HEAT.colorBlind : HEAT.normal, selected: v.selected, spot: v.spot });
   const ops = record(g);
   g.destroy();
   const progress = progressLabels(state.layout, floor, queueView(state).jobs).map((p) => ({ x: r2(p.x), y: r2(p.y), text: p.text }));

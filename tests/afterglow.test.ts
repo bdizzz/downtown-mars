@@ -52,8 +52,13 @@ describe("afterglow", () => {
   it("says when it's half gone, and when it's gone", () => {
     const s = createInitialState(config);
     s.drill.active = false;
-    for (let i = 0; i < a.days * tpd; i++) step(s, config);
-    const texts = s.messages.map((m) => m.text).join("\n");
+    // Gathered as they come: the news keeps only the latest few.
+    const seen = new Set<string>();
+    for (let i = 0; i < a.days * tpd; i++) {
+      step(s, config);
+      for (const m of s.messages) seen.add(m.text);
+    }
+    const texts = [...seen].join("\n");
     expect(texts).toMatch(/thrill of landing is wearing off/);
     expect(texts).toMatch(/afterglow has faded/);
   });
