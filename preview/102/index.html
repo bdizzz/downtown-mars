@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#1a0f0d" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="#102 · Downtown Mars" />
+    <title>#102 · Downtown Mars</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!--
+      The loading screen (T-090): plain HTML and CSS, so it shows the moment the page does, before
+      the game's code arrives. The bar creeps on its own until src/ui/boot.ts takes over and moves it
+      as each part of startup finishes, then fades this away over the title. The dusk backdrop
+      (.mars-dusk) and the logotype (.logo) are shared with the title menu.
+    -->
+    <style>html,body{background:#1a0f0d;margin:0}:root{--mars-dusk:radial-gradient(1px 1px at 12% 14%, #fff8 50%, transparent 51%), radial-gradient(1px 1px at 27% 31%, #fff6 50%, transparent 51%), radial-gradient(1.5px 1.5px at 41% 9%, #fffa 50%, transparent 51%), radial-gradient(1px 1px at 58% 22%, #fff5 50%, transparent 51%), radial-gradient(1px 1px at 69% 6%, #fff8 50%, transparent 51%), radial-gradient(1.5px 1.5px at 83% 18%, #fff9 50%, transparent 51%), radial-gradient(1px 1px at 93% 33%, #fff5 50%, transparent 51%), radial-gradient(1px 1px at 6% 38%, #fff5 50%, transparent 51%), radial-gradient(1px 1px at 51% 37%, #fff4 50%, transparent 51%), radial-gradient(1px 1px at 76% 40%, #fff4 50%, transparent 51%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 300' preserveAspectRatio='none'%3E%3Cpath fill='%233a1c14' d='M0 120 L90 100 L180 112 L300 70 L390 96 L520 84 L640 104 L760 62 L860 90 L980 78 L1100 100 L1200 88 V300 H0Z'/%3E%3Cpath fill='%232a1510' d='M0 170 L140 150 L260 168 L420 140 L560 160 L700 150 L840 172 L1000 146 L1200 166 V300 H0Z'/%3E%3Cellipse cx='600' cy='214' rx='120' ry='14' fill='%23e07a3f' opacity='0.35'/%3E%3Cellipse cx='600' cy='214' rx='62' ry='7' fill='%23120a14'/%3E%3C/svg%3E") bottom / 100% 34% no-repeat, radial-gradient(ellipse 70% 30% at 50% 74%, #e07a3f55, transparent 70%), linear-gradient(#120a14 0%, #241224 38%, #5a2a2e 62%, #b0603a 74%, #2a1510 74.5%)}.mars-dusk{background:var(--mars-dusk)}#boot{z-index:100;color:#f0e0d0;flex-direction:column;justify-content:center;align-items:center;gap:28px;padding:16px;font-family:Space Grotesk,system-ui,sans-serif;transition:opacity .6s;display:flex;position:fixed;inset:0}#boot.boot-out{opacity:0;pointer-events:none}#boot .logo{opacity:0;transition:opacity .4s}#boot.fonts-in .logo{opacity:1}.logo{color:#f0e0d0;text-shadow:0 2px 18px #0008;flex-direction:column;align-items:center;margin:0;font-weight:700;line-height:1;display:flex}.logo-word{letter-spacing:.04em;align-items:center;font-size:clamp(34px,11vw,76px);display:flex}.logo-o{border-radius:50%;width:.84em;height:.84em;margin:0 .04em;box-shadow:0 0 24px #e07a3f66}.logo-mars{letter-spacing:.9em;color:#e07a3f;margin:.32em -.9em 0 0;font-size:clamp(20px,6.4vw,44px)}.logo-tag{letter-spacing:.04em;color:#f0e0d0b0;margin:14px 0 0;font-size:clamp(13px,2.4vw,17px);font-style:italic;font-weight:400}.boot-bar{background:#f0e0d01f;border-radius:3px;width:min(320px,70vw);height:6px;overflow:hidden;box-shadow:inset 0 1px 2px #0008}.boot-bar i{transform-origin:0;background:linear-gradient(90deg,#c45a2a,#ffb070);height:100%;display:block;transform:scaleX(0);box-shadow:0 0 10px #e07a3f}.boot-step{letter-spacing:.06em;color:#f0e0d080;min-height:1.2em;margin:-16px 0 0;font-size:12px}@media (prefers-reduced-motion:reduce){#boot{transition:none}}</style>
+    <script type="module" crossorigin src="./assets/index-CXzkzxg7.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-CbXtAM7H.js">
+    <link rel="modulepreload" crossorigin href="./assets/three-CMNi9Um6.js">
+    <link rel="modulepreload" crossorigin href="./assets/roomFinish-DATWydwD.js">
+    <link rel="modulepreload" crossorigin href="./assets/Portrait-kGpPsitf.js">
+    <link rel="modulepreload" crossorigin href="./assets/pixi-DGk02CUh.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-e81qiQP9.css">
+  </head>
+  <body>
+    <div id="boot" class="mars-dusk" role="progressbar" aria-label="Loading Downtown Mars" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <h1 class="logo" aria-label="Downtown Mars">
+        <span class="logo-word" aria-hidden="true">D<img class="logo-o" src="./hole.svg" alt="" />WNTOWN</span>
+        <span class="logo-mars" aria-hidden="true">MARS</span>
+        <span class="logo-tag">Hole sweet hole.</span>
+      </h1>
+      <div class="boot-bar"><i id="boot-fill"></i></div>
+      <p class="boot-step" id="boot-step">Loading the game</p>
+    </div>
+    <script>
+      // The bar until the game's code takes over (src/ui/boot.ts): `floor` is what's finished, and the
+      // bar creeps from there toward `ceil` (never reaching it) so it keeps moving while a step runs.
+      (function () {
+        var boot = document.getElementById("boot");
+        var fill = document.getElementById("boot-fill");
+        var b = (window.__boot = { floor: 0, ceil: 0.27, at: 0 });
+        (function frame() {
+          b.floor += (b.ceil - b.floor) * 0.01;
+          b.at += (b.floor - b.at) * 0.12;
+          fill.style.transform = "scaleX(" + b.at.toFixed(4) + ")";
+          boot.setAttribute("aria-valuenow", String(Math.round(b.at * 100)));
+          if (boot.isConnected) requestAnimationFrame(frame);
+        })();
+        // The wordmark waits for its typeface (a moment at most), so it never jumps from the stand-in.
+        var show = function () { boot.classList.add("fonts-in"); };
+        setTimeout(show, 1500);
+        if (document.fonts) document.fonts.load('700 40px "Space Grotesk"').then(show, show);
+        else show();
+      })();
+    </script>
+    <div id="root"></div>
+  </body>
+</html>
