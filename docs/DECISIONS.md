@@ -287,6 +287,14 @@ Bryon: solar only by day, to make batteries matter.
 - **Older saves** mark what they'd already passed, and anything already celebrated, as reached on a day unknown (`day: null`), without news or a celebration. No save version bump: the field is filled on first use, as events are.
 - Missions (F-011) will share this tracking and the panel; candidates are collected in `EVENTS.md` "Missions (ideas)" (T-116).
 
+## Decided for difficulty in the sim (Oct 25, F-014 / T-122)
+
+- **Difficulty rescales the data, not the code.** `data/difficulty.json` gives each level a multiplier per knob; `setDifficulty` (`src/sim/difficulty.ts`) rescales the numbers in the loaded data in place, from the values as written, when a game is made or loaded. No system asks for its multiplier, so the build palette's prices, the unlock lines and the Godot bridge all see the level's numbers for free, and new rooms or events are covered as soon as they're in the data. Normal puts every number back exactly.
+- **One game per process.** The worker (or the bridge) sets the level when it makes or loads a game; the main thread follows the snapshot's `difficulty`. Tests that change it set it back to normal.
+- **Saved on the world** (`World.difficulty`, absent for normal and in older saves), so no save migration. Set by the `newGame` message's `difficulty`; the pickers are T-123 (web) and T-124 (Godot).
+- **The knobs:** starting stock; build costs (rooms, corridors, linings and floors, bulkheads, windows, the dome); build time; dig time (the drill and excavation); decay; health lost to unmet needs, poor sanitation and bad air; base happiness; hazards (dust storms and breakdowns, how often); event severity (an event's lost resources, low mood and wear, not its good outcomes); unlock thresholds (and the dome's population); deadlines (how long an event waits; F-011's move-out to join when built); Earth's rescue chance, 0 on hard. Discoveries and the belt ship aren't scaled: they're opportunities, not setbacks.
+- Costs, thresholds and stock stay whole numbers, never rounding a cost to free. First values are rough (easy mostly 0.6–0.75×, hard 1.25–1.5×); T-125 tunes them by playing.
+
 ## Still open
 
 Deliberately not decided yet:

@@ -221,7 +221,7 @@ Four buttons at the bottom right, as in SimCity. B, V, M and C open them from an
   - **Flows** draws power, water, air and food as pipes, with dashes running from what makes each to what uses it.
   - **Overlays** show noise, smell, wellbeing, comfort, air, happiness and condition.
 - **Map** opens the planet as a globe: drag or scroll sideways to spin it (it coasts to a stop), scroll to zoom, click to pick a site.
-- **Charts** has People, Trends, Flows, Network, Maintenance and the construction queue (its badge counts the jobs). **Trends** shows how everything has been changing: pick a series for a detailed chart over the last 2 months, 10 months or the whole game, as amounts or as change per month, with the lines that matter marked (happiness 50 and 45, oxygen 18% and so on); point along it to read any hour.
+- **Charts** has People, Trends, Flows, Network, Maintenance, the construction queue (its badge counts the jobs) and the Directory. **Directory** lists every floor from the surface down and the rooms on each, with a dot for how each is doing: green running, blue being built, yellow worn (below 50%), red stalled (short of staff or supplies, cut off, broken). Type part of a name to find a room, pick a kind of room, or choose **Problems** for only the worn and stalled ones; click a room to open its panel on its floor. **Trends** shows how everything has been changing: pick a series for a detailed chart over the last 2 months, 10 months or the whole game, as amounts or as change per month, with the lines that matter marked (happiness 50 and 45, oxygen 18% and so on); point along it to read any hour.
 
 The floor picker stays on the right (except in Cutaway, which shows every floor).
 

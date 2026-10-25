@@ -23,16 +23,20 @@ export function missingCost(resources: Record<string, number>, type: string, ext
 
 const DEPOSIT_NAMES: Record<DepositKind, string> = { ice: "ice", aquifer: "an aquifer", ore: "ore", silica: "silica" };
 
-const UNLOCKS: Record<string, string> = {
-  children: "Unlocks with the first child born here",
-  elders: "Unlocks when the first colonists retire",
-  cargo: `Unlocks at ${config.unlocks.cargoPopulation} colonists in this hole`,
-  basicHomes: `Unlocks at ${config.unlocks.homes.basic} colonists in this hole`,
-  standardHomes: `Unlocks at ${config.unlocks.homes.standard} colonists in this hole`,
-  luxuryHomes: `Unlocks at ${config.unlocks.homes.luxury} colonists in this hole`,
-  cleaning: `Unlocks at ${config.unlocks.cleaningPopulation} colonists in this hole`,
-  ...Object.fromEntries(Object.entries(config.unlocks.rooms).map(([g, n]) => [g, `Unlocks at ${n} colonists in this hole`])),
-};
+/** Why a room is still locked. Read each time: the thresholds scale with difficulty (difficulty.ts). */
+function unlockText(gate: string): string {
+  const u = config.unlocks;
+  const at = (n: number) => `Unlocks at ${n} colonists in this hole`;
+  if (gate === "children") return "Unlocks with the first child born here";
+  if (gate === "elders") return "Unlocks when the first colonists retire";
+  if (gate === "cargo") return at(u.cargoPopulation);
+  if (gate === "basicHomes") return at(u.homes.basic);
+  if (gate === "standardHomes") return at(u.homes.standard);
+  if (gate === "luxuryHomes") return at(u.homes.luxury);
+  if (gate === "cleaning") return at(u.cleaningPopulation);
+  const n = (u.rooms as Record<string, number>)[gate];
+  return n !== undefined ? at(n) : "Locked";
+}
 
 /**
  * Why this hole can't have a room at all, whatever the spot, or null.
@@ -43,7 +47,7 @@ export function siteRefusal(type: string, gates: string[]): string | null {
   const def = roomDef(type);
   const need = def.requiresDeposit;
   if (need && !gates.includes(need)) return `Needs a site on ${DEPOSIT_NAMES[need]}: this hole doesn't sit on any`;
-  if (def.unlockedBy && !gates.includes(def.unlockedBy)) return UNLOCKS[def.unlockedBy]!;
+  if (def.unlockedBy && !gates.includes(def.unlockedBy)) return unlockText(def.unlockedBy);
   return null;
 }
 

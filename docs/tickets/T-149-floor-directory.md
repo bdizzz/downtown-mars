@@ -1,7 +1,7 @@
 ---
 id: T-149
 title: A floor directory: every floor and its rooms, click one to open it
-status: open
+status: done
 size: M
 area: ui
 touches: [src/ui/TrendsPanel.tsx, src/ui/Dock.tsx, src/ui/, src/view/]
@@ -28,3 +28,5 @@ PLAN-GODOT.md: Status and next (the directory, for a follow-up), GUIDE.md.
 ## History
 - 2026-10-11 15:52 opened from N-0084
 - 2026-10-11 16:08 questions answered
+- 2026-10-24 23:53 building on t-149-floor-directory
+- 2026-10-24 23:58 built

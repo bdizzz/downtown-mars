@@ -1,4 +1,5 @@
 import { maintenanceView, type MaintenanceView } from "./condition";
+import { currentDifficulty, type Level } from "./difficulty";
 import { airView, type AirView } from "./air";
 import { daylight, fullSunIn, stormDue, stormLevel } from "./weather";
 import { gameTime, type GameTime } from "./clock";
@@ -119,6 +120,8 @@ export interface Snapshot {
   deposits: Deposit[];
   /** Whether the whole map is known yet. */
   mapUnlocked: boolean;
+  /** The game's difficulty (F-014); the worker fills it in. The main thread scales its data to it. */
+  difficulty: Level;
   /** What the hole you're looking at sits on. */
   holeDeposits: DepositKind[];
   /** Deposits and unlocks together, for which rooms this hole can build. */
@@ -224,6 +227,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     holes: [],
     deposits: [],
     mapUnlocked: false,
+    difficulty: currentDifficulty(),
     holeDeposits: state.deposits ?? [],
     holeGates: holeGates(state),
     kit: { loaded: state.kit ?? {}, progress: kitProgress(state), hasBay: hasStagingBay(state), gathering: state.gatheringKit },
