@@ -35,10 +35,11 @@ Proposed; becomes tickets once this feature is agreed. Each step lands in web an
 - [x] What should be in the header at a glance for most rooms? My default: name, status color, staff, and the room's main output (or, for a home, residents and happiness).
 - [x] Sparklines worth the per-room history (a little save size and snapshot traffic), or icons, colors and meters first and sparklines later?
 - [x] Godot in the same feature, or web first with Godot as its own follow-up?
-- [ ] Remember the open sections across rooms, or reset to the defaults for each room? Default: remembered.
-- [ ] Demolish at the bottom of Building, or behind a ⋯ menu in the header? Default: the bottom of Building.
+- [x] Remember the open sections across rooms, or reset to the defaults for each room? → Remembered. (Bryon, Oct 25)
+- [x] Demolish at the bottom of Building, or behind a ⋯ menu in the header? → The bottom of Building. (Bryon, Oct 25)
 
 ## History
 - 2026-10-25 10:43 opened from N-0097
 - 2026-10-25 10:45 questions answered
 - 2026-10-25 10:49 planning on f-019-room-panel-hierarchy
+- 2026-10-25 10:56 questions answered

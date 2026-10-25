@@ -7,6 +7,8 @@ Goal: the room panel stops being a wall of text. What matters most is visible at
 - The header shows the name, a status color, staff and the room's main output; a home shows residents and happiness instead.
 - No sparklines: icons, colors and meters only, so the sim keeps no per-room history.
 - Web and Godot change together: every step lands in both viewers in one PR.
+- Open sections are remembered per section across rooms, not reset for each room.
+- Demolish sits at the bottom of the Building section, not behind a menu in the header.
 
 ## Where it stands today
 
@@ -194,7 +196,7 @@ Each is one PR that leaves both viewers working.
 
 ## Open questions
 
-- [ ] Remember the open sections across rooms (close Surroundings once, it stays closed everywhere), or reset to the defaults for each room? Default: remembered.
-- [ ] Demolish at the bottom of Building, or behind a ⋯ menu in the header? Default: the bottom of Building, so it's out of sight but where it was.
+- [x] Remember the open sections across rooms, or reset to the defaults for each room? → Remembered (Bryon, Oct 25).
+- [x] Demolish at the bottom of Building, or behind a ⋯ menu in the header? → The bottom of Building (Bryon, Oct 25).
 
 ## Notes as built
