@@ -4,9 +4,9 @@ title: "Difficulty in the sim: easy, normal and hard multipliers from data, save
 status: open
 size: L
 area: sim, data
+feature: F-014
 touches: [data/difficulty.json, src/sim/]
 blocked_by: []
-feature: F-014
 notes: [N-0066]
 created: 2026-10-10 00:40
 ---
@@ -23,3 +23,4 @@ T-161 added Earth's replacement colonists for a dwindling hole (`earth.rescue` i
 
 ## History
 - 2026-10-10 00:40 opened from F-014 (agreed)
+- 2026-10-24 23:53 building on t-149-floor-directory
