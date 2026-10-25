@@ -4,9 +4,9 @@ title: "Collect ideas for later missions"
 status: open
 size: S
 area: docs
+feature: F-011
 touches: [docs/EVENTS.md, docs/DESIGN.md]
 blocked_by: []
-feature: F-011
 notes: [N-0061]
 created: 2026-10-10 00:40
 ---
@@ -21,3 +21,4 @@ A missions section (in `docs/EVENTS.md` or a new catalogue) listing candidate mi
 
 ## History
 - 2026-10-10 00:40 opened from F-011 (agreed)
+- 2026-10-24 23:50 building on t-055-milestone-catalog
