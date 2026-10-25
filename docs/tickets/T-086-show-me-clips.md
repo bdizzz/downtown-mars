@@ -1,12 +1,12 @@
 ---
 id: T-086
 title: "Show me" clips: the popup, and a script to record them by hand
-status: open
+status: hibernating
 size: M
 area: ui, devtools
+feature: F-007
 touches: [src/ui/Tutorial.tsx, scripts/clips.mjs, public/clips/, package.json]
 blocked_by: [T-085]
-feature: F-007
 notes: [N-0046]
 created: 2026-10-07 18:44
 ---
@@ -24,3 +24,4 @@ README: Developing (how and when to remake the clips).
 
 ## History
 - 2026-10-07 18:44 opened from F-007's breakdown
+- 2026-10-25 19:54 hibernating: set aside for now (Bryon, Oct 25)

@@ -3,13 +3,16 @@
 //
 // Tickets live in docs/tickets/ (checked in, so any machine can build one) and
 // store only what doesn't churn: the content, a coarse status (open, done,
-// dropped) and a history. Live state is derived, never stored:
+// dropped, hibernating) and a history. Live state is derived, never stored:
 //   needs answers  unticked "- [ ]" lines under ## Open questions
 //   blocked        a blocked_by ticket that isn't done (or PR that isn't merged),
 //                  or a feature that's still a draft
 //   in flight      a pushed t-0NN-… branch with no PR yet
 //   in review      an open PR from a t-0NN-… branch
 //   done           status: done, or a merged PR from a t-0NN-… branch
+// Hibernating (status: hibernating) is set aside for now but not given up: off
+// Ready and the dependency graph, listed on its own, and `--status open` wakes
+// it. Its feature isn't done while it sleeps, and anything it blocks stays blocked.
 //
 // Features (F-0NN-….md, the epics) hold the plan for a big item and its
 // Breakdown into tasks; tickets name theirs with `feature: F-0NN`. A feature
@@ -30,7 +33,7 @@
 //   node scripts/board.mjs ingest-start      take the inbox, give each note an id, archive it verbatim
 //   node scripts/board.mjs ingest-done       link each archived note to its tickets; clear the ingest file
 //   node scripts/board.mjs next-id [F]       print the next free ticket id (F: feature id)
-//   node scripts/board.mjs log <id> <text> [--status open|done|dropped] [--blocked-by T-7,#41|none] [--feature F-1|none]
+//   node scripts/board.mjs log <id> <text> [--status open|done|dropped|hibernating] [--blocked-by T-7,#41|none] [--feature F-1|none]
 //                                            append a timestamped history line (and set fields); a feature
 //                                            takes --status draft|agreed|done|dropped
 //   node scripts/board.mjs menu              print the board's short view; rewrite BOARD.md
@@ -65,7 +68,7 @@ process.on("uncaughtException", (e) => {
   process.exit(1);
 });
 
-const STORED_STATUSES = ["open", "done", "dropped"];
+const STORED_STATUSES = ["open", "done", "dropped", "hibernating"];
 const FEATURE_STATUSES = ["draft", "agreed", "done", "dropped"];
 const SIZES = ["S", "M", "L", "XL"];
 const COLUMNS = [
@@ -74,6 +77,7 @@ const COLUMNS = [
   ["blocked", "Blocked"],
   ["in-flight", "In flight"],
   ["in-review", "In review"],
+  ["hibernating", "Hibernating"],
   ["done", "Done"],
 ];
 /** Done tickets shown on BOARD.md; older ones drop off the view. */
@@ -265,6 +269,7 @@ function liveState(t, gh, byId) {
   const id = t.meta.id;
   const pr = gh.prs[id];
   if (t.meta.status === "dropped") return { state: "dropped", since: lastHistory(t) };
+  if (t.meta.status === "hibernating") return { state: "hibernating", since: lastHistory(t) };
   if (t.meta.status === "done" || pr?.state === "MERGED")
     return { state: "done", since: pr?.mergedAt ?? lastHistory(t), pr };
   if (pr?.state === "OPEN") return { state: "in-review", since: pr.createdAt, pr };
@@ -482,7 +487,7 @@ function graphSvg(days) {
   const b = board();
   const now = Date.now();
   const shown = b.rows.filter((r) => {
-    if (r.state === "dropped") return false;
+    if (r.state === "dropped" || r.state === "hibernating") return false;
     if (r.state !== "done") return true;
     const at = Date.parse(String(r.since).replace(" ", "T"));
     return Number.isFinite(at) && now - at <= days * 86400000;
