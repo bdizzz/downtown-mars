@@ -904,3 +904,19 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .dir-room .dot.building { background: #6ab0e0; }
 .dir-room .dot.worn { background: #e6b33c; }
 .dir-room .dot.stalled { background: #ff6a5a; }
+
+/* Milestones panel (F-005) */
+.milestones { width: 300px; }
+.milestones > * { flex-shrink: 0; }
+.milestones h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 10px 0 2px; display: flex; justify-content: space-between; }
+.milestones h3 .k { text-transform: none; letter-spacing: 0; }
+.ms-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 13px; color: var(--muted); }
+.ms-row.done { color: var(--text); }
+.ms-row .mark { width: 14px; text-align: center; }
+.ms-row.done .mark { color: var(--accent); }
+.ms-row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-progress { display: flex; align-items: center; gap: 4px; }
+.ms-progress .bar { width: 48px; height: 4px; background: #0006; border-radius: 2px; overflow: hidden; }
+.ms-progress .bar > span { display: block; height: 100%; background: var(--accent); opacity: 0.7; }
+.ms-hole { margin-bottom: 6px; }
+.ms-hole p { font-size: 13px; }

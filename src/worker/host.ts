@@ -51,6 +51,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       culture: h.culture,
       cultureTarget: cultureTarget(h, config),
       domed: !!h.layout.domed,
+      milestones: (h.milestones ?? []).map((m) => ({ ...m })),
       ...(h.failed ? { failed: { days: daysLasted(h, config), peak: h.failed.peak } } : {}),
     }));
   }

@@ -1,7 +1,7 @@
 ---
 id: T-056
 title: The milestones panel on the web
-status: open
+status: done
 size: M
 area: ui
 feature: F-005
@@ -25,3 +25,4 @@ GUIDE.md: a Milestones section. README: the short overview.
 ## History
 - 2026-10-06 01:40 opened from F-005's breakdown
 - 2026-10-25 10:55 building on t-056-milestones-panel-web
+- 2026-10-25 11:06 built

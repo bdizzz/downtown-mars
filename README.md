@@ -28,7 +28,7 @@ Working on the game? [docs/WORKFLOW.md](docs/WORKFLOW.md) shows how a playtest n
 - **Build** homes, galleys, farms, CO2 scrubbers and electrolyzers, workshops and more in rings around the shaft, joined by glass gallery tubes, corridors and stairs.
 - **Mind the neighbours.** Rooms spread noise, smell, comfort and health. Air and smell travel the corridors, and people only use what they can walk to.
 - **Keep people going.** Watch oxygen, water, food and power; ride out dust storms; repair rooms as they wear; answer colonists at the office; decide what to do when the drill strikes something.
-- **Grow.** Better homes unlock as the colony grows. At 50 colonists the map opens: send a convoy to found another hole and trade between them.
+- **Grow.** Better homes unlock as the colony grows. At 50 colonists the map opens: send a convoy to found another hole and trade between them. **Charts → Milestones** keeps the record: the first harvest, the first Martian adult, five floors down, and what's still ahead.
 
 New games open with a short welcome card, then a tutorial from your deputy. The [player's guide](docs/GUIDE.md) covers everything in detail.
 

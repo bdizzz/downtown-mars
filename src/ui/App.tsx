@@ -17,6 +17,7 @@ import { PeoplePanel } from "./PeoplePanel";
 import { ConstructionPanel } from "./ConstructionPanel";
 import { MaintenancePanel } from "./MaintenancePanel";
 import { DirectoryPanel } from "./DirectoryPanel";
+import { MilestonesPanel } from "./MilestonesPanel";
 import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
@@ -104,13 +105,13 @@ export function App() {
    */
   const lookFloor = previewFloor !== undefined && !walking ? previewFloor : viewFloor;
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
-  const [panel, setPanel] = useState<"office" | "why" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory" | null>(null);
+  const [panel, setPanel] = useState<"office" | "why" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory" | "milestones" | null>(null);
   const officeOpen = panel === "office";
   /** The series Trends opens on (a resource clicked in the bar at the top). */
   const [trendKey, setTrendKey] = useState("happiness");
   /** Phones: the top bar's drop-down (speeds, needs, resources) is open. Only its toggle closes it. */
   const [hudOpen, setHudOpen] = useState(false);
-  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory") => {
+  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory" | "milestones") => {
     setPanel((cur) => (cur === p ? null : p));
     setSelected(null);
   };
@@ -736,6 +737,7 @@ export function App() {
           <MaintenancePanel s={snapshot} onSelect={(id) => (setSelected(id), setPanel(null))} onClose={() => setPanel(null)} />
         )}
         {snapshot && panel === "directory" && <DirectoryPanel s={snapshot} onSelect={goToRoom} onClose={() => setPanel(null)} />}
+        {snapshot && panel === "milestones" && <MilestonesPanel s={snapshot} onClose={() => setPanel(null)} />}
         {snapshot && panel === "construction" && (
           <ConstructionPanel s={snapshot} onCommand={onCommand} onSelect={(id) => (setSelected(id), setPanel(null))} onClose={() => setPanel(null)} />
         )}
