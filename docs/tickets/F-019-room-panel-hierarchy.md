@@ -1,7 +1,7 @@
 ---
 id: F-019
 title: The room panel at a glance: a hierarchy of info, with icons, colors and sparklines instead of a wall of text
-status: draft
+status: agreed
 plan: docs/PLAN-M18.md
 notes: [N-0097]
 created: 2026-10-25 10:43
@@ -24,12 +24,12 @@ Bryon wants "a pass at the information architecture in the room detail panel" so
 **Related:** T-157 (upgrades listed in the room panel), T-147 (the happiness tooltip names what's raising and lowering it), F-003's refit block, F-017's upgrades. Whichever lands first, the other should slot into the new sections.
 
 ## Breakdown
-Proposed; becomes tickets once this feature is agreed. Each step lands in web and Godot together (see `docs/PLAN-M18.md`, Steps).
-- The panel model: `panelModel()` in `view/roomPanel.ts` (status, headline, alerts, glance, sections), `roomTone()`, new icons; the bridge sends it; both viewers draw today's rows from it, no visible change; tests (M)
-- Header and alerts: status pill, headline chips, warnings raised to an alerts band with Connect in it (M)
-- Collapsible sections with the controls moved into them, open state remembered (M)
-- At a glance: glance chips, signed meters for felt effects and a home's factors, resource chips, long text into tooltips (M)
-- Copy pass: shorter row text, every room family checked in both viewers, GUIDE.md screenshots (S)
+Each step lands in web and Godot together (see `docs/PLAN-M18.md`, Steps).
+- The panel model: `panelModel()` in `view/roomPanel.ts` (status, headline, alerts, glance, sections), `roomTone()`, new icons; the bridge sends it; both viewers draw today's rows from it, no visible change; tests (M) → T-181
+- Header and alerts: status pill, headline chips, warnings raised to an alerts band with Connect in it (M) → T-182
+- Collapsible sections with the controls moved into them, open state remembered (M) → T-183
+- At a glance: glance chips, signed meters for felt effects and a home's factors, resource chips, long text into tooltips (M) → T-184
+- Copy pass: shorter row text, every room family checked in both viewers, GUIDE.md screenshots (S) → T-185
 
 ## Open questions
 - [x] What should be in the header at a glance for most rooms? My default: name, status color, staff, and the room's main output (or, for a home, residents and happiness).
@@ -43,3 +43,4 @@ Proposed; becomes tickets once this feature is agreed. Each step lands in web an
 - 2026-10-25 10:45 questions answered
 - 2026-10-25 10:49 planning on f-019-room-panel-hierarchy
 - 2026-10-25 10:56 questions answered
+- 2026-10-25 10:58 agreed
