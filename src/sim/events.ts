@@ -328,6 +328,8 @@ function cavityOn(state: SimState, floor: number, cells: number): Cell[] | null 
 
 /** The drill finished a floor: perhaps it struck something. */
 export function rollDiscovery(state: SimState, cfg: SimConfig, floor: number): void {
+  // Not during the guided tutorial's calm start; the first floor after it still always strikes something.
+  if (state.guide?.calm) return;
   const d = eventData.discoveries;
   const ev = eventsOf(state);
   const first = ev.found.length === 0 && !ev.lastTick.discovery;
@@ -384,13 +386,17 @@ export function stepEvents(state: SimState, cfg: SimConfig): void {
   ev.moods = ev.moods.filter((m) => state.tick < m.untilTick);
   // Milestones reached are news, and some are worth a celebration: one proposed at a time.
   trackMilestones(state, cfg);
-  if (!ev.pending.some((e) => e.kind === "celebration")) {
+  // The guided tutorial's calm start (T-083): nothing new happens to the player until its basics are
+  // done. Celebrations wait (the milestone stays reached), and so do belt ships. Warnings about the
+  // player's own air and water still come.
+  const calm = !!state.guide?.calm;
+  if (!calm && !ev.pending.some((e) => e.kind === "celebration")) {
     const next = milestoneData.milestones.find((m) => m.celebrate && !ev.celebrated.includes(m.id) && hasReached(state, m.id));
     if (next) celebrate(state, cfg, next.id);
   }
   checkAir(state, cfg);
   checkGrayOverflow(state, cfg);
-  if (state.tick % cfg.ticksPerDay === 0) dailyEvents(state, cfg);
+  if (!calm && state.tick % cfg.ticksPerDay === 0) dailyEvents(state, cfg);
 }
 
 function o2Text(state: SimState, cfg: SimConfig): string {

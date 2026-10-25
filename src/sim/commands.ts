@@ -23,7 +23,7 @@ import { roomDef } from "./rooms";
 import { buildLiningCost, canLine, corridorRefitPlan, corridorRefitRefusal, flooringDef, liningOf, MATERIALS, refitPlan, refitRefusal, refitWords, type WallStep } from "./materials";
 import type { RoomInstance } from "./placement";
 import { buildShowcase } from "./showcase";
-import type { SimState } from "./state";
+import type { GuideState, SimState } from "./state";
 import type { DepositKind } from "./mapgeo";
 
 export type SimCommand =
@@ -48,6 +48,8 @@ export type SimCommand =
   | { type: "answerVisit"; visitId: number; choice: string }
   /** The deputy's tip (view/tips.ts) has been read: it won't show again. */
   | { type: "seeTip"; id: string }
+  /** Start, move on or leave (null) the guided tutorial; its `calm` holds off storms and events. */
+  | { type: "setGuide"; guide: GuideState | null }
   /** Answer an event (a find, a ship, a celebration) with one of its choices. */
   | { type: "answerEvent"; eventId: number; choice: string }
   | { type: "setOrdinance"; id: string; enacted: boolean }
@@ -591,6 +593,10 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       return answerVisit(state, config, cmd.visitId, cmd.choice);
     case "seeTip":
       if (!(state.tipsSeen ??= []).includes(cmd.id)) state.tipsSeen.push(cmd.id);
+      return { ok: true };
+    case "setGuide":
+      if (cmd.guide === null) delete state.guide;
+      else state.guide = { step: Math.max(0, Math.floor(cmd.guide.step)), unlocked: [...new Set(cmd.guide.unlocked)], calm: !!cmd.guide.calm };
       return { ok: true };
     case "answerEvent":
       return answerEvent(state, config, cmd.eventId, cmd.choice, padReady(state));
