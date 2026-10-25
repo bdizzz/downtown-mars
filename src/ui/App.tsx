@@ -433,6 +433,12 @@ export function App() {
   const guide = snapshot?.guide ?? null;
   const gStep = guide ? guideStep(guide) : null;
   const gMet = !!(gStep && snapshot && stepMet(gStep, snapshot, flags));
+  // The floor picker step (T-085) has you click F1. A view without the picker (Unrolled, the
+  // cutaway, kept from an earlier game) can't be left yet, so the step moves on by itself there.
+  const pickerOff = settings.view === "2d" || cutaway;
+  useEffect(() => {
+    if (gStep?.check === "floor1" && pickerOff) setFlags((f) => (f.pickedFloor1 ? f : { ...f, pickedFloor1: true }));
+  }, [gStep?.check, pickerOff]);
   // A met step moves on by itself, once (the snapshot with the next step can take a moment to come).
   const sentGuide = useRef<string | null>(null);
   useEffect(() => {
