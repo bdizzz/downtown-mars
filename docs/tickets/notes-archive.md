@@ -551,3 +551,7 @@ We need to add a way for the player to diagnose problems with hole health and ha
 - specific charts interface 
 - extra tutorial steps like the purpose of building bulkheads
 → F-018
+
+## N-0096 · 2026-10-13 23:43
+let's try using 0.5m for wall thickness, not 0.25m
+→ T-179
