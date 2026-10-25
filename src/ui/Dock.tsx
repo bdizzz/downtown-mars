@@ -5,6 +5,7 @@ import { FIELD_TYPES } from "../sim/effects";
 import { CAMERAS, type View3d } from "../view/cameras";
 import type { ViewMode } from "./settings";
 import { hoursText } from "./format";
+import { freshClass, SHOW_ALL, type Reveal } from "./reveal";
 
 // The bottom of the screen, as in SimCity: a handful of mode buttons at the
 // bottom right, and the chosen mode's options in a strip along the bottom.
@@ -42,22 +43,26 @@ interface DockProps {
   highlight: string | null;
   /** Construction jobs waiting, for a badge on Charts. */
   jobs: number;
+  /** Which modes show (the guided tutorial's unlocks, T-084). */
+  reveal?: Reveal;
   children?: React.ReactNode;
 }
 
 /** The mode buttons, and whatever strip the open mode shows. */
-export function Dock({ mode, setMode, walking, highlight, jobs, children }: DockProps) {
+export function Dock({ mode, setMode, walking, highlight, jobs, reveal = SHOW_ALL, children }: DockProps) {
   const wanted = modeFor(highlight);
+  const modes = MODES.filter((m) => reveal.shown(`mode:${m.id}`));
+  if (!modes.length) return null;
   return (
     <div className="dock">
       {children}
       <div className="dock-modes" role="toolbar" aria-label="Modes">
-        {MODES.map((m) => {
+        {modes.map((m) => {
           const off = m.id === "build" && walking;
           return (
             <button
               key={m.id}
-              className={`mode-btn${mode === m.id ? " on" : ""}${wanted === m.id && mode !== m.id ? " pulse" : ""}`}
+              className={`mode-btn${mode === m.id ? " on" : ""}${wanted === m.id && mode !== m.id ? " pulse" : ""}${freshClass(reveal, `mode:${m.id}`)}`}
               onClick={() => setMode(mode === m.id ? null : m.id)}
               disabled={off}
               title={off ? "No building while walking: switch to another camera" : m.hint}
@@ -86,14 +91,20 @@ interface ViewProps {
   overlay: string | null;
   setOverlay: (t: string | null) => void;
   highlight: string | null;
+  reveal?: Reveal;
 }
 
 /** The View mode: the 3D cameras; the plan and unrolled views; walls down; overlays. */
-export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverlay, highlight }: ViewProps) {
+export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverlay, highlight, reveal = SHOW_ALL }: ViewProps) {
   const in3d = view === "3d";
+  const part = (id: string) => reveal.shown(`view:${id}`);
+  // Off, then the overlays unlocked so far (none: no Overlay section at all).
+  const kinds = [...FIELD_TYPES, "happiness", "condition"].filter((t) => reveal.shown(`overlay:${t}`));
+  const overlays = kinds.length ? [null, ...kinds] : [];
   return (
     <div className="dock-strip" role="toolbar" aria-label="View">
-      <span className="dock-section" aria-label="3D cameras">
+      {part("cameras") && (
+      <span className={`dock-section${freshClass(reveal, "view:cameras")}`} aria-label="3D cameras">
         <span className="dock-label">3D</span>
         {CAMERAS.map((c) => (
           <button
@@ -109,8 +120,10 @@ export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverla
           </button>
         ))}
       </span>
-      <span className="dock-sep" />
-      <span className="dock-section" aria-label="2D views">
+      )}
+      {part("cameras") && part("2d") && <span className="dock-sep" />}
+      {part("2d") && (
+      <span className={`dock-section${freshClass(reveal, "view:2d")}`} aria-label="2D views">
         <span className="dock-label">2D</span>
         <button className={`dock-btn${view === "plan" ? " on" : ""}`} onClick={() => setView("plan")} title="One floor from above, rings around the shaft">
           Plan
@@ -119,8 +132,10 @@ export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverla
           Unrolled
         </button>
       </span>
-      <span className="dock-sep" />
-      <span className="dock-section" aria-label="See through">
+      )}
+      {part("see") && <span className="dock-sep" />}
+      {part("see") && (
+      <span className={`dock-section${freshClass(reveal, "view:see")}`} aria-label="See through">
         <button
           className={`dock-btn${in3d && view3d.wallsDown ? " on" : ""}`}
           disabled={!in3d}
@@ -158,13 +173,15 @@ export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverla
           </span>
         )}
       </span>
-      <span className="dock-sep" />
+      )}
+      {overlays.length > 0 && <span className="dock-sep" />}
+      {overlays.length > 0 && (
       <span className="dock-section" aria-label="Overlay">
         <span className="dock-label">Overlay</span>
-        {[null, ...FIELD_TYPES, "happiness", "condition"].map((t) => (
+        {overlays.map((t) => (
           <button
             key={t ?? "off"}
-            className={`dock-btn${t === overlay ? " on" : ""}${t && highlight === `overlay:${t}` && t !== overlay ? " pulse" : ""}`}
+            className={`dock-btn${t === overlay ? " on" : ""}${t && highlight === `overlay:${t}` && t !== overlay ? " pulse" : ""}${t ? freshClass(reveal, `overlay:${t}`) : ""}`}
             onClick={() => setOverlay(t)}
           >
             {t ? (OVERLAYS[t] ?? t) : "Off"}
@@ -177,6 +194,7 @@ export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverla
           </span>
         )}
       </span>
+      )}
     </div>
   );
 }
@@ -186,14 +204,15 @@ interface ChartsProps {
   chart: Chart | null;
   toggle: (c: Chart) => void;
   highlight: string | null;
+  reveal?: Reveal;
 }
 
 /** The Charts mode: each opens its panel on the right (again to close it). */
-export function ChartsStrip({ s, chart, toggle, highlight }: ChartsProps) {
+export function ChartsStrip({ s, chart, toggle, highlight, reveal = SHOW_ALL }: ChartsProps) {
   const jobs = s?.construction.jobs ?? [];
   const oneHole = (s?.holes.length ?? 1) < 2;
-  const btn = (c: Chart, label: React.ReactNode, title: string, disabled = false, pulse = false) => (
-    <button className={`dock-btn${chart === c ? " on" : ""}${pulse && chart !== c ? " pulse" : ""}`} onClick={() => toggle(c)} title={title} disabled={disabled} aria-pressed={chart === c}>
+  const btn = (c: Chart, label: React.ReactNode, title: string, disabled = false, pulse = false) => reveal.shown(`chart:${c}`) && (
+    <button className={`dock-btn${chart === c ? " on" : ""}${pulse && chart !== c ? " pulse" : ""}${freshClass(reveal, `chart:${c}`)}`} onClick={() => toggle(c)} title={title} disabled={disabled} aria-pressed={chart === c}>
       {label}
     </button>
   );

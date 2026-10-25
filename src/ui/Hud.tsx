@@ -5,6 +5,7 @@ import { needs, NEEDS_SHOWN, topExtras, type Need } from "../view/hudItems";
 import { Icon } from "./Icon";
 import { monthLabel } from "../view/months";
 import { SunDial } from "./SunDial";
+import { freshClass, SHOW_ALL, type Reveal } from "./reveal";
 
 interface Props {
   snapshot: Snapshot | null;
@@ -23,6 +24,8 @@ interface Props {
   /** Phones: whether the drop-down with the speeds, the needs and the resource grid is open. */
   open: boolean;
   setOpen: (open: boolean) => void;
+  /** What shows: in the guided tutorial, only what it has unlocked (T-084). */
+  reveal?: Reveal;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -58,15 +61,17 @@ function NeedChip({ need, onOpen }: { need: Need; onOpen: (n: Need) => void }) {
 // row: the menu, the hole, a pause/play toggle, how many things need you, the office and a chevron;
 // the rest (.hud-more, and the resource grid below) drops down from the chevron and stays down
 // until it's closed. On wider screens .hud-more is display: contents and changes nothing.
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActiveHole, openMenu, openTrend, keysEnabled, highlight, open: drawer, setOpen }: Props) {
-  const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "");
+export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActiveHole, openMenu, openTrend, keysEnabled, highlight, open: drawer, setOpen, reveal = SHOW_ALL }: Props) {
+  const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "") + freshClass(reveal, `hud:${id}`);
+  const shown = (id: string) => reveal.shown(`hud:${id}`);
+  const speedKeys = keysEnabled && shown("speed");
   // Space and the pause button toggle pause, back to the last running speed (1× if none, T-146); − and + step the speed down and up
   // (from paused, they start at one step from the remembered speed). Past either end, nothing.
   const resumeRef = useRef(1);
   if (speed) resumeRef.current = speed;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!keysEnabled || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!speedKeys || e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
       if (target && ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) return;
       if (e.code === "Space") {
@@ -82,7 +87,7 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [speed, setSpeed, keysEnabled]);
+  }, [speed, setSpeed, speedKeys]);
 
   const t = snapshot?.time;
   const extras = snapshot ? topExtras(snapshot) : null;
@@ -99,8 +104,8 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
       <button className="menu-btn" data-hud="menu" onClick={openMenu} title="Menu (Esc)" aria-label="Menu">
         <Icon id="menu" />
       </button>
-      {snapshot && snapshot.holes.length > 1 ? (
-        <select className="hole-picker" data-hud="hole" value={snapshot.holeId} onChange={(e) => setActiveHole(Number(e.target.value))} title="Which hole you're looking at">
+      {!shown("hole") ? null : snapshot && snapshot.holes.length > 1 ? (
+        <select className={`hole-picker${pulse("hole")}`} data-hud="hole" value={snapshot.holeId} onChange={(e) => setActiveHole(Number(e.target.value))} title="Which hole you're looking at">
           {snapshot.holes.map((h) => (
             <option key={h.id} value={h.id}>
               {h.name}{h.domed ? " ◓" : ""} · {h.population}
@@ -110,26 +115,29 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
         </select>
       ) : (
         snapshot && (
-          <span className="hole-name" data-hud="hole" title={snapshot.holeDeposits.length ? `Sits on: ${snapshot.holeDeposits.join(", ")}` : "Sits on plain rock"}>
+          <span className={`hole-name${pulse("hole")}`} data-hud="hole" title={snapshot.holeDeposits.length ? `Sits on: ${snapshot.holeDeposits.join(", ")}` : "Sits on plain rock"}>
             {snapshot.holeName}
           </span>
         )
       )}
       {/* Phones only: one button for pause and play, and the count of what needs you. */}
-      <button className={`phone-only pause-btn${pulse("speed")}`} onClick={() => setSpeed(speed ? 0 : resumeRef.current)} aria-label={speed ? "Pause" : "Play"} title={speed ? "Pause" : "Play"}>
+      {shown("speed") && <button className={`phone-only pause-btn${pulse("speed")}`} onClick={() => setSpeed(speed ? 0 : resumeRef.current)} aria-label={speed ? "Pause" : "Play"} title={speed ? "Pause" : "Play"}>
         {speed ? "❚❚" : "▶"}
-      </button>
-      {list.length > 0 && (
+      </button>}
+      {list.length > 0 && shown("needs") && (
         <button className={`phone-only need-count${worst}`} onClick={() => setOpen(!drawer)} aria-label={`${list.length} ${list.length === 1 ? "thing needs" : "things need"} you`} title={list.map((n) => n.text).join("\n")}>
           <Icon id="alert" />
           {list.length}
         </button>
       )}
       <span className="hud-more" id="hud-more">
-      <span className="clock" data-hud="clock">
+      {shown("clock") && (
+      <span className={`clock${pulse("clock")}`} data-hud="clock">
         {t ? `${monthLabel(t.day)} · ${pad(t.hour)}:${pad(t.minute)}` : "Connecting…"}
         {t && <SunDial dayFraction={t.dayFraction} />}
       </span>
+      )}
+      {shown("speed") && (
       <span className={`speeds${pulse("speed")}`} data-hud="speed">
         {config.speeds.map((s) => (
           <button key={s} className={s === speed ? "on" : ""} onClick={() => setSpeed(s === 0 && !speed ? resumeRef.current : s)} aria-label={s === 0 ? "Pause" : `${s}× speed`}>
@@ -137,8 +145,10 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
           </button>
         ))}
       </span>
+      )}
       {/* What needs you first: loud and few; nothing at all when all is well. */}
-      <span className={`needs${list.length ? "" : " calm"}`} data-hud="needs" aria-live="polite">
+      {shown("needs") && (
+      <span className={`needs${list.length ? "" : " calm"}${pulse("needs")}`} data-hud="needs" aria-live="polite">
         {list.slice(0, NEEDS_SHOWN).map((n) => (
           <NeedChip key={n.id} need={n} onOpen={open} />
         ))}
@@ -148,8 +158,9 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
           </span>
         )}
       </span>
-      {extras && (
-        <span className={`drill${extras.drill.active ? "" : " paused"}`} data-hud="drill" title={extras.drill.tip}>
+      )}
+      {extras && shown("drill") && (
+        <span className={`drill${extras.drill.active ? "" : " paused"}${pulse("drill")}`} data-hud="drill" title={extras.drill.tip}>
           <Icon id="drill" />
           {extras.drill.text}
           {extras.drill.canPause && (
@@ -159,14 +170,14 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
           )}
         </span>
       )}
-      {extras && (
-        <span className={`drop${extras.drop.warn ? " warn" : ""}`} data-hud="drop" title={extras.drop.tip}>
+      {extras && shown("drop") && (
+        <span className={`drop${extras.drop.warn ? " warn" : ""}${pulse("drop")}`} data-hud="drop" title={extras.drop.tip}>
           <Icon id="drop" />
           {extras.drop.text}
         </span>
       )}
       </span>
-      {snapshot && (
+      {snapshot && shown("office") && (
         <button className={`office-btn${waiting ? " waiting" : ""}${pulse("office")}`} data-hud="office" onClick={toggleOffice} title="The office: visits, promises, ordinances and notables (O)">
           <Icon id="office" />
           <span className="office-label">Office</span>

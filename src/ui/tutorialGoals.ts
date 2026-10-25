@@ -17,6 +17,11 @@ export interface UiFlags {
   sawNoise: boolean;
   openedFlows: boolean;
   sawThreeD: boolean;
+  /** For the guided tutorial (T-085); the Godot viewer doesn't send them yet. */
+  inspectedRoom?: boolean;
+  openedOffice?: boolean;
+  /** Clicked F1 in the floor picker. */
+  pickedFloor1?: boolean;
 }
 
 const has = (s: Snapshot, type: string, n = 1) => s.layout.rooms.filter((r) => r.type === type).length >= n;
@@ -42,6 +47,13 @@ export const CHECKS: Record<string, (s: Snapshot, ui: UiFlags) => boolean> = {
   recycler: (s) => has(s, "water_recycler"),
   clinic: (s) => has(s, "clinic"),
   three_d: (_, ui) => ui.sawThreeD,
+  // The guided tutorial's own (T-085). The landing kit already meets the regular corridor goal, so
+  // the guided one asks for a farm, then a corridor (or luck) that reaches it.
+  inspect: (_, ui) => !!ui.inspectedRoom,
+  office: (_, ui) => !!ui.openedOffice,
+  floor1: (_, ui) => !!ui.pickedFloor1,
+  farm: (s) => has(s, "farm"),
+  farm_linked: (s) => s.layout.rooms.some((r) => r.type === "farm" && r.connected),
 };
 
 /** Which goals are met right now, in order. */

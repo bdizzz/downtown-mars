@@ -112,10 +112,11 @@ function BarEntry({ item, s, onTrend, arrows }: { item: BarItem; s: Snapshot; on
   );
 }
 
-export function ResourceBar({ s, onTrend }: { s: Snapshot | null; onTrend: OnTrend }) {
+/** `fresh`: just revealed by the guided tutorial (T-084), so it glows as it appears. */
+export function ResourceBar({ s, onTrend, fresh = false }: { s: Snapshot | null; onTrend: OnTrend; fresh?: boolean }) {
   if (!s) return <div className="resbar" data-hud="resources" />;
   return (
-    <div className="resbar" data-hud="resources">
+    <div className={`resbar${fresh ? " fresh" : ""}`} data-hud="resources">
       {barItems(s).map((group, i) => (
         <span key={i} className="group" data-hud={`group:${GROUPS[i]!.toLowerCase()}`} role="group" aria-label={GROUPS[i]}>
           <span className="group-label" aria-hidden="true">

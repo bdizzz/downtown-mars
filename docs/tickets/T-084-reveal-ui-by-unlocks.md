@@ -1,7 +1,7 @@
 ---
 id: T-084
 title: Hide the interface until the guided tutorial reveals it
-status: open
+status: done
 size: M
 area: ui
 feature: F-007
@@ -22,3 +22,5 @@ A small `useUnlocked(id)` gate: in guided mode, elements not yet unlocked aren't
 ## History
 - 2026-10-07 18:44 opened from F-007's breakdown
 - 2026-10-07 18:58 waits on T-089 (top bar ids)
+- 2026-10-25 15:22 building on t-084-reveal-ui-by-unlocks
+- 2026-10-25 15:30 built

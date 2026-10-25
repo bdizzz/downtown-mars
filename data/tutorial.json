@@ -13,17 +13,62 @@
     "guidedButton": "I'm new to games like this",
     "guidedNote": "Your deputy walks you through it one step at a time, with the game slowed down and no surprises."
   },
-  "_guided": "The guided tutorial (F-007, T-083), picked on the welcome card for newcomers to city builders. One step at a time, in order. check: a goal id from src/ui/tutorialGoals.ts CHECKS (none: the step is read, and the player clicks the button to go on). unlocks: the UI elements the step reveals (hud:<id> from view/hudItems.ts HUD_IDS, mode:<build|view|charts|map>, room:<id>, overlay:<type>, tool:<id>), recorded in the save for T-084 to hide the rest. pace: slow (the game runs at config slowSpeed) or read (paused until the button). clip: an optional \"Show me\" clip (T-086). Storms and events wait until calmUntil's step is done. These are placeholders; T-085 writes the real steps.",
+  "_guided": "The guided tutorial (F-007), picked on the welcome card for newcomers to city builders. One step at a time, in order. check: a goal id from src/ui/tutorialGoals.ts CHECKS (none: the step is read, and the player clicks the button to go on). unlocks: the interface the step reveals; everything else stays hidden until a step unlocks it (ui/reveal.ts lists the ids; <kind>:* is every one of a kind). Past the last step everything shows. pace: slow (the game runs at config slowSpeed) or read (paused until the button). clip: the \"Show me\" clip for the step (T-086). Storms and events wait until calmUntil's step is done. {name} is the deputy.",
   "guided": {
     "intro": "I'm {name}, your deputy. I'll show you around one thing at a time, and I've slowed things down so nothing runs away from us.",
-    "calmUntil": "restroom",
+    "calmUntil": "overlays",
     "steps": [
       {
         "id": "speed",
-        "text": "First, time. Up top are the speed buttons: pause, and faster. While we're learning I'll keep things slow, and pause when there's something to read.",
-        "hint": "Space pauses and unpauses. You can speed up whenever you like.",
+        "text": "First, time. Up top are the clock and the speed buttons. I'll keep things slow while we learn, and pause whenever there's something to read.",
+        "hint": "❚❚ pauses, 1× to 4× go faster. Space pauses and unpauses too.",
         "highlight": "hud:speed",
         "unlocks": ["hud:speed", "hud:clock"],
+        "pace": "read",
+        "button": "Got it"
+      },
+      {
+        "id": "drill",
+        "text": "Up top, the drill is boring down to floor 2. Each floor it finishes is new rock to build in.",
+        "hint": "The drill's ❚❚ pauses it, if you'd rather it waited; ▶ starts it again.",
+        "highlight": "hud:drill",
+        "unlocks": ["hud:drill"],
+        "pace": "read",
+        "button": "Got it"
+      },
+      {
+        "id": "floors",
+        "check": "floor1",
+        "text": "The floors are down the side, one button each, to look at one at a time. Click F1 to look at the first floor.",
+        "hint": "Page Up and Page Down step between floors too.",
+        "highlight": "hud:floors",
+        "unlocks": ["hud:floors"],
+        "pace": "slow"
+      },
+      {
+        "id": "hole",
+        "text": "This is our hole: the shaft in the middle, open to the sky, and rooms dug into the rock around it in rings. Ring 1 faces the shaft; rings 2 and 3 sit behind it.",
+        "hint": "Drag to look around, scroll to zoom.",
+        "highlight": "hud:hole",
+        "unlocks": ["hud:hole"],
+        "pace": "read",
+        "button": "Got it"
+      },
+      {
+        "id": "kit",
+        "check": "inspect",
+        "text": "The landing crew got the basics going before we arrived: air, water and power, out in ring 3. Click one of their rooms to see what it does.",
+        "hint": "Try the CO2 scrubber or the electrolyzer. Esc closes the panel.",
+        "highlight": "",
+        "unlocks": [],
+        "pace": "slow"
+      },
+      {
+        "id": "resources",
+        "text": "Under the clock is everything we have: people, health and happiness, air, water, food and building materials. When something needs you, it shows up top, in red.",
+        "hint": "Hover any of them for more; click one to see how it's been going.",
+        "highlight": "hud:resources",
+        "unlocks": ["hud:resources", "hud:needs"],
         "pace": "read",
         "button": "Got it"
       },
@@ -31,22 +76,97 @@
         "id": "galley",
         "check": "galley",
         "text": "Twenty people and nowhere to cook. Let's build a galley in ring 1, right on the shaft.",
-        "hint": "Click Build at the bottom right, then Food, then the galley, and click a free slot in ring 1.",
+        "hint": "Click Build at the bottom right, then Food, then Galley, and click a free spot in ring 1.",
         "highlight": "room:galley",
         "unlocks": ["mode:build", "room:galley"],
-        "pace": "slow"
+        "pace": "slow",
+        "clip": "place-room"
       },
       {
         "id": "restroom",
         "check": "restroom",
         "text": "Next, a restroom. People like one within a short walk of home.",
-        "hint": "In Build, pick the restroom and place it in ring 1.",
+        "hint": "In Build, open Water and pick the restroom. Ring 1 is fine.",
         "highlight": "room:restroom",
         "unlocks": ["room:restroom"],
         "pace": "slow"
+      },
+      {
+        "id": "dorm",
+        "check": "dorm",
+        "text": "The pod is cramped. Let's give people somewhere to sleep: a bunk dorm, away from anything noisy.",
+        "hint": "In Build, open Housing and pick the bunk dorm. New rooms take a while to dig and build: you'll see them fill in.",
+        "highlight": "room:bunk_dorm",
+        "unlocks": ["room:bunk_dorm"],
+        "pace": "slow"
+      },
+      {
+        "id": "farm",
+        "check": "farm",
+        "text": "The rations Earth sent won't last forever. A farm grows food: let's put one in ring 2.",
+        "hint": "In Build, open Food and pick the farm. It needs soil, water, power and CO2, and it's a bit smelly, so not right next to homes.",
+        "highlight": "room:farm",
+        "unlocks": ["room:farm"],
+        "pace": "slow"
+      },
+      {
+        "id": "corridor",
+        "check": "farm_linked",
+        "text": "Rooms behind ring 1 need a corridor back to the shaft, or nobody can get to them. Carve one along the borders between rooms, out to the farm.",
+        "hint": "In Build, open Access and pick Corridors, then drag along the edges between rooms. Or click the farm and press Connect.",
+        "highlight": "tool:corridors",
+        "unlocks": ["tool:corridors"],
+        "pace": "slow",
+        "clip": "draw-corridor"
+      },
+      {
+        "id": "drop",
+        "check": "drop",
+        "text": "We're running. Earth sends a supply drop every few months; the next one's time is up top. Speed things up if you like, and let's wait for it.",
+        "hint": "Try 2× or 4×. I'll slow us down again when there's more to show you.",
+        "highlight": "hud:drop",
+        "unlocks": ["hud:drop"],
+        "pace": "slow"
+      },
+      {
+        "id": "office",
+        "check": "office",
+        "text": "Our people will come to you with what's on their minds. They wait in the office: hear them out, they remember how you treat them.",
+        "hint": "Click Office in the top right. When someone's waiting, it shows a number.",
+        "highlight": "hud:office",
+        "unlocks": ["hud:office"],
+        "pace": "slow"
+      },
+      {
+        "id": "flows",
+        "check": "flows",
+        "text": "Charts tell you how things are going. Flows shows where everything comes from and where it goes: let's look at water.",
+        "hint": "Click Charts at the bottom right, then Flows, and the Water tab.",
+        "highlight": "hud:flows",
+        "unlocks": ["mode:charts", "chart:flows", "chart:trends", "chart:people", "chart:construction"],
+        "pace": "slow",
+        "clip": "read-flows"
+      },
+      {
+        "id": "overlays",
+        "check": "noise",
+        "text": "Noisy rooms keep people up. View has the cameras and overlays: turn on Noise and see where it reaches. Red is where nobody will sleep.",
+        "hint": "Click View at the bottom right, then Noise under Overlay.",
+        "highlight": "overlay:noise",
+        "unlocks": ["mode:view", "view:cameras", "view:2d", "view:see", "overlay:*"],
+        "pace": "slow"
+      },
+      {
+        "id": "done",
+        "text": "That's the basics. There's plenty more: more rooms, the map and other holes, the charts. I'll show you all of it now, and I'll be around if anything goes wrong.",
+        "hint": "The regular tutorial picks up from here, if it's on.",
+        "highlight": "",
+        "unlocks": [],
+        "pace": "read",
+        "button": "Show me everything"
       }
     ],
-    "outro": "That's the start of a colony. There's more to learn; for now, keep digging.",
+    "outro": "You've got a fed, breathing colony. From here, every colonist we can support is a point on the board. Keep digging.",
     "leave": "Show everything"
   },
   "intro": "I'm {name}, your deputy. Twenty of us, one pod, and a hole that goes nowhere yet. Let's make it a home.",
