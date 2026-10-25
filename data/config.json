@@ -9,6 +9,7 @@
   "geometry": {
     "slotWidthM": 10,
     "roomDepthM": 10,
+    "notchesPerTurn": 1440,
     "maxRings": 6,
     "floorHeightM": 4,
     "surfaceDepthM": 3,

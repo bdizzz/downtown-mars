@@ -10,7 +10,7 @@ import { culture } from "./culture";
 import { addAdults } from "./people";
 import { corridors, migrateCorridorRooms, recomputeAccess } from "./corridors";
 import { galleryEdges } from "./edges";
-import { ensureFloors, placeRoom, type Layout } from "./placement";
+import { ensureFloors, placeRoom, withAngles, type Layout } from "./placement";
 import { openCells } from "./excavation";
 import { fillAir } from "./air";
 import { setAllows } from "./storage";
@@ -20,7 +20,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 22;
+export const SAVE_VERSION = 23;
 
 type Raw = Record<string, unknown>;
 
@@ -210,6 +210,15 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
         }
         if (Object.keys(contents).length) r.contents = contents;
       }
+      return { ...h, layout };
+    }),
+  }),
+  // v23: every ring room has an angle range in notches alongside its slots (F-004, T-039).
+  22: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const layout = h.layout as Layout;
+      layout.rooms = layout.rooms.map((r) => ({ ...r, at: withAngles(layout.hole, r.at) }));
       return { ...h, layout };
     }),
   }),
