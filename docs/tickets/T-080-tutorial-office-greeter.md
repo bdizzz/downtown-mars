@@ -20,3 +20,4 @@ A new visit kind in data, "Just saying hi" (one of the notables or a colonist, a
 
 ## History
 - 2026-10-06 19:31 opened from N-0044
+- 2026-10-25 19:36 building on t-080-tutorial-office-greeter
