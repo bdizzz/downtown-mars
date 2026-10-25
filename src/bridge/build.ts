@@ -264,9 +264,10 @@ export interface CorridorTool {
 function edgeAt(state: SimState, at: [number, number, number]) {
   const hole = state.layout.hole;
   const p = pickAt(hole, ...at);
-  if (p.kind !== "slot" && p.kind !== "gallery") return { pick: p, edge: null };
+  if (p.kind !== "slot" && p.kind !== "gallery") return { pick: p, edge: null, point: null };
   const rings = Math.max(0.001, (Math.hypot(at[0], at[2]) - hole.shaftRadiusM) / RING_D);
-  return { pick: p, edge: nearestEdge(hole, p.floor, rings, Math.atan2(at[2], at[0]) / TAU, RING_D) };
+  const point = { rings, turn: Math.atan2(at[2], at[0]) / TAU };
+  return { pick: p, edge: nearestEdge(hole, p.floor, point.rings, point.turn, RING_D), point };
 }
 
 export interface EdgeHoveredMessage {
@@ -359,7 +360,8 @@ export function chainStep(state: SimState, cs: ChainState, tool: CorridorTool, a
     cs.finish = tool.finish;
     cs.proposal = null;
   }
-  const next = extendChain(state.layout, cs.chain, edgeAt(state, at).edge, cs.erase);
+  const { edge, point } = edgeAt(state, at);
+  const next = extendChain(state.layout, cs.chain, edge, cs.erase, point);
   if (next === cs.chain && !start) return null;
   cs.chain = next;
   return chainedMessage(state, next.edges, cs.erase);

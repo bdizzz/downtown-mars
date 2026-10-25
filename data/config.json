@@ -143,6 +143,10 @@
   "dome": { "population": 300, "cost": { "glass": 200, "metal": 120, "machinery": 20, "electronics": 10 }, "workHours": 240, "atriumComfort": 0.5, "air": 0.5 },
   "history": { "everyTicks": 10, "recentDays": 10, "maxDays": 2000 },
   "unlocks": { "cargoPopulation": 100, "homes": { "basic": 50, "standard": 100, "luxury": 200 }, "cleaningPopulation": 150, "rooms": { "brickworks": 50, "leisure": 50, "recycling": 100, "hospital": 300, "reclaimer": 150, "spiralStair": 200, "plaza": 500 } },
+  "corridorTool": {
+    "_note": "Snaking corridors: a border joins the chain only once the pointer is this far along it from the chain's end.",
+    "commitAlong": 0.25
+  },
   "landingKits": {
     "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. A ring room's holds sets what a tank holds; the crew lays a corridor along the fronts of rooms nothing reaches, and the shortest spoke in to it.",
     "newGame": "full",

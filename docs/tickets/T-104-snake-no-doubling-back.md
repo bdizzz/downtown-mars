@@ -1,7 +1,7 @@
 ---
 id: T-104
 title: Corridor snake never doubles back through a turn, and commits a segment only after 25% of it
-status: open
+status: done
 size: M
 area: ui, render2d
 touches: [src/view/corridorPlan.ts, src/render2d/plan.ts, src/bridge/build.ts]
@@ -32,3 +32,4 @@ Unit tests: the wobble-at-a-turn case, and a pointer that crosses an intersectio
 - 2026-10-09 questions answered: keep shortening, block the new direction; add a 25% commit threshold (size S → M)
 - 2026-10-09 12:52 questions answered
 - 2026-10-24 23:58 building on t-104-snake-no-doubling-back
+- 2026-10-25 00:11 built

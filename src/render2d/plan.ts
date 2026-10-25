@@ -10,7 +10,7 @@ import { roomDef } from "../sim/rooms";
 import type { DrillView } from "../sim/snapshot";
 import { floorSpan, pickAt, ringRadii } from "../render3d/cylinder";
 import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
-import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
+import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
 import { drawGlyph, drawPlus } from "./art";
@@ -266,13 +266,16 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   let shift = false;
 
   /** The border nearest the pointer, on this floor. */
-  function edgeHere(): Edge | null {
+  /** Where the pointer is on this floor: rings out from the shaft wall, and the angle in turns. */
+  function pointHere(): ChainPoint | null {
     if (!layout || !pointer) return null;
-    const h = layout.hole;
     const [px, py] = screenToPlan(pointer);
-    const r = Math.hypot(px, py) / PX;
-    const rings = (r - h.shaftRadiusM) / RING_D;
-    return nearestEdge(h, floor, rings, Math.atan2(py, px) / TAU, RING_D);
+    return { rings: (Math.hypot(px, py) / PX - layout.hole.shaftRadiusM) / RING_D, turn: Math.atan2(py, px) / TAU };
+  }
+
+  function edgeHere(): Edge | null {
+    const p = pointHere();
+    return layout && p ? nearestEdge(layout.hole, floor, p.rings, p.turn, RING_D) : null;
   }
 
   function hoverInfo(): HoverInfo | null {
@@ -301,7 +304,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
 
   function snake(): void {
     if (!layout) return;
-    const next = extendChain(layout, chain, edgeHere(), chainErase);
+    const next = extendChain(layout, chain, edgeHere(), chainErase, pointHere());
     if (next === chain) return;
     chain = next;
     refreshHover(true);
