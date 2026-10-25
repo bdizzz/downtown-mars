@@ -12,6 +12,7 @@ import { soilAt } from "../sim/map";
 import { network } from "../sim/network";
 import { createWorld, holeById, networkMessages, type World } from "../sim/world";
 import { stepWorld } from "../sim/worldstep";
+import { isLevel, setDifficulty } from "../sim/difficulty";
 import type { FromWorker, ToWorker, WireSnapshot } from "./protocol";
 
 /**
@@ -123,6 +124,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       leavingFor: destination(world, hole)?.name ?? null,
       relations: relationViews(),
       mapUnlocked: world.mapUnlocked,
+      difficulty: world.difficulty ?? "normal",
       gameOver: !!world.over,
       // News from every hole, so nothing elsewhere goes unnoticed.
       messages: networkMessages(world, config.messages.keep),
@@ -166,6 +168,8 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
 
   function replaceWorld(next: World): void {
     world = next;
+    // A loaded game brings its own level; a new one has just set it.
+    setDifficulty(world.difficulty ?? "normal");
     activeHoleId = world.holes[0]!.holeId;
     gameId++;
     tickDebt = 0;
@@ -215,7 +219,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       }
       case "newGame":
         // Each new game gets its own seed, so the map (and everything else random) differs.
-        replaceWorld(createWorld(config, (Math.random() * 0xffffffff) >>> 0 || 1));
+        replaceWorld(createWorld(config, (Math.random() * 0xffffffff) >>> 0 || 1, isLevel(msg.difficulty) ? msg.difficulty : "normal"));
         speed = 1;
         reply({ type: "loaded", id: msg.id, result: { ok: true } });
         break;

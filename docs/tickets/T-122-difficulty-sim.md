@@ -1,7 +1,7 @@
 ---
 id: T-122
 title: "Difficulty in the sim: easy, normal and hard multipliers from data, saved with the game"
-status: open
+status: done
 size: L
 area: sim, data
 feature: F-014
@@ -24,3 +24,4 @@ T-161 added Earth's replacement colonists for a dwindling hole (`earth.rescue` i
 ## History
 - 2026-10-10 00:40 opened from F-014 (agreed)
 - 2026-10-24 23:53 building on t-149-floor-directory
+- 2026-10-25 00:05 built: data/difficulty.json, setDifficulty rescales the loaded data; World.difficulty saved; newGame takes a level
