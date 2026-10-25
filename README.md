@@ -50,7 +50,7 @@ Being underground also helps with Mars's other problems: temperature swings of m
 
 ## Playing
 
-The latest `main` is playable at **https://mars.bryon.site/** (rebuilt on every push), and each open pull request at `…/pr-preview/pr-<N>/` (linked from the PR, with saves of its own). To run it locally (Node 24; `nvm use` picks it up from `.nvmrc`):
+The latest `main` is playable at **https://mars.bryon.site/** (rebuilt on every push), and each open pull request at `…/preview/<N>/` (linked from the PR, with saves of its own). To run it locally (Node 24; `nvm use` picks it up from `.nvmrc`):
 
 ```bash
 npm install

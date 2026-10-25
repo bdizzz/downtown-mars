@@ -8,7 +8,7 @@
 #   sh scripts/gh-pages.sh remove <path> "<message>"
 #
 # <path> "." is the site root: main's build, which replaces everything there
-# except pr-preview/. Any other path (pr-preview/pr-12) is replaced whole.
+# except preview/. Any other path (preview/12) is replaced whole.
 set -eu
 
 action=$1
@@ -31,7 +31,7 @@ else
 fi
 
 if [ "$path" = . ]; then
-  find "$site" -mindepth 1 -maxdepth 1 ! -name .git ! -name pr-preview -exec rm -rf {} +
+  find "$site" -mindepth 1 -maxdepth 1 ! -name .git ! -name preview -exec rm -rf {} +
 else
   rm -rf "${site:?}/$path"
 fi

@@ -233,7 +233,7 @@ See `PLAN-M16.md`.
 
 - **Behind the title, a live 3D scene** (Bryon): the player's own hole from the autosave, or, with no autosave, a showcase colony (`sim/showcase.ts`, two floors) built into the fresh game the sim starts with, rather than a bundled save that would go stale with every save version. Its first floor shows, as it has the most to see. A painted still on phones, low graphics and the flat views. A simple SVG logotype; Godot is a follow-up.
 - **Updates come as a banner you tap, never silently** (Bryon): the service worker runs in `prompt` mode (`vite-plugin-pwa`), and mid-game the update autosaves before reloading.
-- **PR previews get no service worker** (Bryon): they share the main game's origin and path, so the main game's worker skips `pr-preview/` and preview builds (`VITE_PR_NUMBER`) don't register one. The dev server has none either.
+- **PR previews get no service worker** (Bryon): they share the main game's origin and path, so the main game's worker skips `preview/` and preview builds (`VITE_PR_NUMBER`) don't register one. The dev server has none either.
 
 ## Decided for the site (Oct 13, F-008 / T-073 / T-020)
 
