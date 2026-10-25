@@ -218,6 +218,7 @@ describe("celebrations", () => {
     const s = hole();
     s.layout.hole.floors = 12;
     delete s.events;
+    delete s.milestones;
     stepEventsOnly(s);
     expect(s.events!.pending).toHaveLength(0);
     expect(s.events!.celebrated).toEqual(expect.arrayContaining(["floor_5", "floor_10"]));

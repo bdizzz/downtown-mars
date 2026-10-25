@@ -1,7 +1,7 @@
 ---
 id: T-055
 title: Milestone catalog and tracking in the sim
-status: open
+status: done
 size: M
 area: sim, data
 feature: F-005
@@ -25,3 +25,4 @@ DECISIONS.md: milestones and celebrations are one list. PLAN-M14.md notes as bui
 ## History
 - 2026-10-06 01:40 opened from F-005's breakdown
 - 2026-10-24 23:50 building on t-055-milestone-catalog
+- 2026-10-24 23:55 built

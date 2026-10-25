@@ -15,20 +15,7 @@
     "cavityCells": 3
   },
   "celebrations": {
-    "_note": "Milestones a hole celebrates, once each: check is population (at least `at` people), born (at least `at` children born), floors (at least `at` floors dug) or domed; event milestones come only from an event's `celebrate`. A festival costs `feast` meals (or rations, if meals run short), lifts everyone for `days`, and the first `workDays` run at `productivity`.",
-    "milestones": [
-      { "id": "first_birth", "check": "born", "at": 1, "title": "the first child born on Mars" },
-      { "id": "pop_50", "check": "population", "at": 50, "title": "fifty people" },
-      { "id": "pop_100", "check": "population", "at": 100, "title": "a hundred people" },
-      { "id": "pop_200", "check": "population", "at": 200, "title": "two hundred people" },
-      { "id": "pop_300", "check": "population", "at": 300, "title": "three hundred people" },
-      { "id": "pop_500", "check": "population", "at": 500, "title": "five hundred people" },
-      { "id": "floor_5", "check": "floors", "at": 5, "title": "five floors down" },
-      { "id": "floor_10", "check": "floors", "at": 10, "title": "ten floors down" },
-      { "id": "floor_20", "check": "floors", "at": 20, "title": "twenty floors down" },
-      { "id": "dome", "check": "domed", "title": "the dome over the shaft" },
-      { "id": "microfossils", "check": "event", "title": "life on Mars, once" }
-    ],
+    "_note": "The milestones a hole celebrates are those with celebrate: true in data/milestones.json, once each. A festival costs `feast` meals (or rations, if meals run short), lifts everyone for `days`, and the first `workDays` run at `productivity`.",
     "festival": { "feast": 30, "mood": 8, "days": 2, "workDays": 1, "productivity": 0.8 }
   },
   "beltShip": {

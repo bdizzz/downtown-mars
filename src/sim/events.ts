@@ -10,6 +10,7 @@ import { addNotable } from "./notables";
 import { addAdults, hash01 } from "./people";
 import { airAmount, airPct } from "./air";
 import { record } from "./ledger";
+import { hasReached, milestoneData, milestoneDef, milestonesOf, reachMilestone, trackMilestones } from "./milestones";
 import type { Cell } from "./placement";
 import type { SimState } from "./state";
 
@@ -38,7 +39,7 @@ export interface EventEffect {
   notableRole?: string;
   /** Something that happens later: an effect after a number of days, picked between the two. */
   followUp?: { days: [number, number]; effect: EventEffect };
-  /** Propose a celebration for this milestone. */
+  /** Reach this milestone (data/milestones.json), proposing its celebration if it has one. */
   celebrate?: string;
   /** Hold a festival. */
   festival?: boolean;
@@ -110,11 +111,9 @@ export interface EventsState {
   o2HighSince?: number;
 }
 
-type EventsData = typeof eventData;
 export const eventData = raw as unknown as {
   checkEveryTicks: number;
   celebrations: {
-    milestones: { id: string; check: "population" | "born" | "floors" | "domed" | "event"; at?: number; title: string }[];
     festival: { feast: number; mood: number; days: number; workDays: number; productivity: number };
   };
   beltShip: { fromDay: number; chancePerDay: number; cooldownDays: number; names: string[] };
@@ -144,27 +143,11 @@ export function createEvents(seed: number): EventsState {
 /** The hole's events, made on first use (older saves have none: milestones they've already passed aren't news). */
 export function eventsOf(state: SimState): EventsState {
   if (!state.events) {
+    const reached = milestonesOf(state).map((m) => m.id);
     state.events = createEvents(state.holeId * 7919 + 17);
-    state.events.celebrated = eventData.celebrations.milestones.filter((m) => reached(state, m)).map((m) => m.id);
+    state.events.celebrated = reached;
   }
   return state.events;
-}
-
-type Milestone = EventsData["celebrations"]["milestones"][number];
-
-function reached(state: SimState, m: Milestone): boolean {
-  switch (m.check) {
-    case "population":
-      return state.population.count >= (m.at ?? 0);
-    case "born":
-      return (state.population.born ?? 0) >= (m.at ?? 1);
-    case "floors":
-      return state.layout.hole.floors >= (m.at ?? 0);
-    case "domed":
-      return !!state.layout.domed;
-    case "event":
-      return false;
-  }
 }
 
 /** A die for an event: 0..1, the same every time for the same hole, seed and things asked about. */
@@ -283,7 +266,10 @@ export function applyEffect(state: SimState, cfg: SimConfig, e: EventEffect, at:
     ev.festival = { startTick: state.tick, untilTick: state.tick + Math.round(f.days * day) };
     ev.moods.push({ amount: f.mood, startTick: state.tick, untilTick: ev.festival.untilTick });
   }
-  if (e.celebrate) celebrate(state, cfg, e.celebrate);
+  if (e.celebrate) {
+    reachMilestone(state, cfg, e.celebrate);
+    if (milestoneDef(e.celebrate)?.celebrate) celebrate(state, cfg, e.celebrate);
+  }
   if (e.message) postMessage(state, cfg, fill(e.message, at), (e.mood?.amount ?? 0) < 0 ? "warn" : "good");
   if (lost.length) postMessage(state, cfg, `No storage space for ${lost.join(", ")}: it was left behind.`, "warn");
 }
@@ -301,7 +287,7 @@ function celebrate(state: SimState, cfg: SimConfig, milestone: string): void {
   const ev = eventsOf(state);
   if (ev.celebrated.includes(milestone)) return;
   ev.celebrated.push(milestone);
-  const title = eventData.celebrations.milestones.find((m) => m.id === milestone)?.title ?? milestone;
+  const title = milestoneDef(milestone)?.title ?? milestone;
   raiseEvent(state, cfg, "celebration", { milestone: title });
 }
 
@@ -396,9 +382,10 @@ export function stepEvents(state: SimState, cfg: SimConfig): void {
     applyEffect(state, cfg, f.effect, { kind: f.kind });
   }
   ev.moods = ev.moods.filter((m) => state.tick < m.untilTick);
-  // Milestones reached: one celebration proposed at a time.
+  // Milestones reached are news, and some are worth a celebration: one proposed at a time.
+  trackMilestones(state, cfg);
   if (!ev.pending.some((e) => e.kind === "celebration")) {
-    const next = eventData.celebrations.milestones.find((m) => !ev.celebrated.includes(m.id) && reached(state, m));
+    const next = milestoneData.milestones.find((m) => m.celebrate && !ev.celebrated.includes(m.id) && hasReached(state, m.id));
     if (next) celebrate(state, cfg, next.id);
   }
   checkAir(state, cfg);
