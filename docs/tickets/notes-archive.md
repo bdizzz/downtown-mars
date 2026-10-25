@@ -555,3 +555,7 @@ We need to add a way for the player to diagnose problems with hole health and ha
 ## N-0096 · 2026-10-13 23:43
 let's try using 0.5m for wall thickness, not 0.25m
 → T-179
+
+## N-0097 · 2026-10-25 10:38
+let's take a pass at the information architecture in the room detail panel. what can we do to make the UI feel less like a wall of text? can we have a hierarchy of info that is visible at once, like hide some info behind a tooltip or accordion? can we represent some of the information with icons, colors, sparklines, etc?
+→ F-019
