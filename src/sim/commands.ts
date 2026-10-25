@@ -16,7 +16,7 @@ import { setRoomWindows, wallOf, windowCost, windowRefusal } from "./windows";
 import { domeRefusal, dropCorridors, dropRefit, dropRelines, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRefit, queueReline, queueRoom, type SegmentRefit } from "./construction";
 import { addAdults, holeGates, syncCount, unlock, UNLOCK_GATES } from "./people";
 import { allowsRefusal, setAllows } from "./storage";
-import { answerVisit } from "./visits";
+import { answerVisit, greet } from "./visits";
 import { answerEvent, consoleEvent } from "./events";
 import { padReady } from "./earth";
 import { roomDef } from "./rooms";
@@ -46,6 +46,8 @@ export type SimCommand =
   /** Pause a room, or have it stop while its main output is at or above stopAt (null clears it). */
   | { type: "setRoomControl"; roomId: number; paused?: boolean; stopAt?: number | null }
   | { type: "answerVisit"; visitId: number; choice: string }
+  /** The tutorial's office step (T-080): someone comes to say hello, if nobody's waiting. */
+  | { type: "greet" }
   /** The deputy's tip (view/tips.ts) has been read: it won't show again. */
   | { type: "seeTip"; id: string }
   /** Start, move on or leave (null) the guided tutorial; its `calm` holds off storms and events. */
@@ -591,6 +593,8 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     }
     case "answerVisit":
       return answerVisit(state, config, cmd.visitId, cmd.choice);
+    case "greet":
+      return greet(state, config);
     case "seeTip":
       if (!(state.tipsSeen ??= []).includes(cmd.id)) state.tipsSeen.push(cmd.id);
       return { ok: true };

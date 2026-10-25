@@ -69,7 +69,7 @@ export function Office({ s, onCommand, shown, onShow, onClose }: Props) {
             </div>
             <p className="title">{v.title}</p>
             <p>{v.text}</p>
-            <p className="k">Leaves in {days(v.leavesTick - s.tick)}</p>
+            {v.leavesTick !== undefined && <p className="k">Leaves in {days(v.leavesTick - s.tick)}</p>}
             {v.cause && <ShowMe s={s} cause={v.cause} shown={shown === v.cause} onShow={onShow} />}
             {visitDef(v.kind).choices.map((c) => {
               const needsSlot = !!c.enact && !s.ordinances.includes(c.enact) && slotsFree <= 0;

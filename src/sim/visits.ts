@@ -60,7 +60,8 @@ export interface Visit {
   title: string;
   text: string;
   arrivedTick: number;
-  leavesTick: number;
+  /** When they give up and go; absent for one who waits until answered (the tutorial's greeter). */
+  leavesTick?: number;
 }
 
 export interface OpenPromise {
@@ -263,10 +264,10 @@ export function stepVisits(state: SimState, cfg: SimConfig): void {
   const office = state.office;
 
   // Visitors who waited too long leave.
-  for (const v of office.waiting.filter((v) => state.tick >= v.leavesTick)) {
+  for (const v of office.waiting.filter((v) => v.leavesTick !== undefined && state.tick >= v.leavesTick)) {
     applyOutcome(state, cfg, visitDef(v.kind).ignored, v.notableId, v.roomId, promiseVars(v.cause));
   }
-  office.waiting = office.waiting.filter((v) => state.tick < v.leavesTick);
+  office.waiting = office.waiting.filter((v) => v.leavesTick === undefined || state.tick < v.leavesTick);
 
   // Promises come due, or are kept early.
   for (const p of [...office.promises]) {
@@ -302,11 +303,41 @@ export function stepVisits(state: SimState, cfg: SimConfig): void {
       title: def.title,
       text: fill(def.text, state, notableId, trig.roomId, trig.vars),
       arrivedTick: state.tick,
-      leavesTick: state.tick + def.patienceDays * cfg.ticksPerDay,
+      ...(def.patienceDays > 0 ? { leavesTick: state.tick + def.patienceDays * cfg.ticksPerDay } : {}),
     });
     const name = state.notables.find((n) => n.id === notableId)?.name ?? "Someone";
     postMessage(state, cfg, `${name} is waiting at the office: ${def.title.toLowerCase()}.`, "info");
   }
+}
+
+/** The tutorial's greeter (T-080): a visit kind with no trigger, sent for by the greet command. */
+export const GREETER = "greeter";
+
+/**
+ * Someone drops by the office to say hello, so the tutorial's office step always has a visitor
+ * (T-080). Only when nobody's waiting: anyone at all will do for the step. A notable other than the
+ * deputy, who's the one talking you through the tutorial. They wait until answered.
+ */
+export function greet(state: SimState, cfg: SimConfig): { ok: true } {
+  const office = state.office;
+  if (office.waiting.length) return { ok: true };
+  const def = visitDef(GREETER);
+  const others = state.notables.slice(1);
+  const from = others.length ? others : state.notables;
+  if (!from.length) return { ok: true };
+  const notableId = from[Math.floor(nextRandom(state) * from.length)]!.id;
+  office.lastVisit[def.id] = state.tick;
+  office.waiting.push({
+    id: office.nextVisitId++,
+    kind: def.id,
+    notableId,
+    title: def.title,
+    text: fill(def.text, state, notableId),
+    arrivedTick: state.tick,
+  });
+  const name = state.notables.find((n) => n.id === notableId)?.name ?? "Someone";
+  postMessage(state, cfg, `${name} is waiting at the office: ${def.title.toLowerCase()}.`, "info");
+  return { ok: true };
 }
 
 export function answerVisit(

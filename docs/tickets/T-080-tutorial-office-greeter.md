@@ -1,7 +1,7 @@
 ---
 id: T-080
 title: The tutorial's office step brings someone to say hello
-status: open
+status: done
 size: M
 area: sim, ui
 touches: [src/sim/visits.ts, data/tutorial.json, data/visits.json, src/ui/tutorialGoals.ts, src/ui/Office.tsx, src/bridge/tutorial.ts, godot/src/]
@@ -21,3 +21,4 @@ A new visit kind in data, "Just saying hi" (one of the notables or a colonist, a
 ## History
 - 2026-10-06 19:31 opened from N-0044
 - 2026-10-25 19:36 building on t-080-tutorial-office-greeter
+- 2026-10-25 19:40 built

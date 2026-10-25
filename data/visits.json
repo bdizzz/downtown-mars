@@ -1,5 +1,5 @@
 {
-  "_note": "Citizen visits. Triggers are in src/sim/visits.ts, keyed by id; everything else is here. Placeholders: {name}, {home}, {floor}; for the doctor and the delegate (F-018) also {cause} (the diagnosis cause's text), {what} (its short label), {amount} (what it costs) and {fix}. concerns: when the doctor (health) and a residents' delegate (happiness) come about a diagnosis cause. A cause counts once it drains health at all, or costs happiness problemPoints or more, and is fixed once it no longer drains health, or costs less than fixedPoints; skip leaves causes to other visits (noise_complaint) or to the doctor (holeHealth). They come once it has held holdDays: the first time about a cause only to tell you (the _note kinds), then, repeatDays after the last visit about it, asking for a promise (the _promise kinds).",
+  "_note": "Citizen visits. Triggers are in src/sim/visits.ts, keyed by id; everything else is here. Placeholders: {name}, {home}, {floor}; for the doctor and the delegate (F-018) also {cause} (the diagnosis cause's text), {what} (its short label), {amount} (what it costs) and {fix}. concerns: when the doctor (health) and a residents' delegate (happiness) come about a diagnosis cause. A cause counts once it drains health at all, or costs happiness problemPoints or more, and is fixed once it no longer drains health, or costs less than fixedPoints; skip leaves causes to other visits (noise_complaint) or to the doctor (holeHealth). They come once it has held holdDays: the first time about a cause only to tell you (the _note kinds), then, repeatDays after the last visit about it, asking for a promise (the _promise kinds). patienceDays 0: they wait until answered. greeter has no trigger: the tutorial's office step sends for one (the greet command, T-080) when nobody's waiting.",
   "concerns": {
     "holdDays": 1,
     "repeatDays": 3,
@@ -144,6 +144,17 @@
           }
         },
         { "id": "refuse", "label": "Not now", "hint": "Loyalty and happiness drop a little.", "loyalty": -10, "allHappiness": -3 }
+      ]
+    },
+    {
+      "id": "greeter",
+      "title": "Just saying hi",
+      "text": "{name} pokes their head round the door. \"Don't mind me, I only wanted to say hello. It's good to have someone in charge down here.\"",
+      "cooldownDays": 0,
+      "patienceDays": 0,
+      "ignored": {},
+      "choices": [
+        { "id": "hello", "label": "Nice to meet you", "hint": "They'll be back when something's on their mind.", "message": "{name} heads back to work, smiling." }
       ]
     }
   ]

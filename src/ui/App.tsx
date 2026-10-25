@@ -415,7 +415,6 @@ export function App() {
   }, [overlay]);
   useEffect(() => {
     if (panel === "flows") setFlags((f) => (f.openedFlows ? f : { ...f, openedFlows: true }));
-    if (panel === "office") setFlags((f) => (f.openedOffice ? f : { ...f, openedOffice: true }));
   }, [panel]);
   useEffect(() => {
     if (selected !== null) setFlags((f) => (f.inspectedRoom ? f : { ...f, inspectedRoom: true }));
@@ -462,7 +461,18 @@ export function App() {
   const guideKey = guide ? `${guide.step}|${guide.unlocked.join()}` : "";
   const reveal = useMemo(() => revealFor(guide), [guideKey]);
   const shown = met && tutorialOn && !guide ? shownGoal(step, met) : -1;
-  const highlight = gStep ? (gMet ? null : gStep.highlight) : shown >= 0 && !met![shown] ? tutorial.goals[shown]!.highlight : null;
+  const wantedHighlight = gStep ? (gMet ? null : gStep.highlight) : shown >= 0 && !met![shown] ? tutorial.goals[shown]!.highlight : null;
+  // With the office open, its button has done its job: no pulse, and the guided card stops pointing
+  // at it and covering the visit.
+  const highlight = wantedHighlight === "hud:office" && panel === "office" ? null : wantedHighlight;
+  // The office step, in either tutorial (T-080): with nobody waiting, someone comes to say hello, so
+  // there's always a visit to answer. The greeter never leaves, so this can't repeat; the sim sends
+  // no one if the office already has company.
+  const officeStep = gStep ? !gMet && gStep.check === "visit" : shown >= 0 && !met![shown] && tutorial.goals[shown]!.id === "visit";
+  const officeEmpty = !!snapshot && snapshot.office.waiting.length === 0;
+  useEffect(() => {
+    if (officeStep && officeEmpty && !menu && !welcome) send({ type: "greet" });
+  }, [officeStep, officeEmpty, menu, welcome, send]);
   /** The deputy's one-time tip, when a problem first shows up (F-018); it covers the tutorial's card while it's up. */
   const tip = snapshot && settings.tips ? dueTip(snapshot) : null;
   // A tip's Show me goes with it, if its problem goes first.
