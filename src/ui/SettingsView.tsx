@@ -126,7 +126,7 @@ function bind(row: SettingRow, { settings, update, tutorial, onTutorial }: Ctx):
 }
 
 function pct(v: number, row: SettingRow): string {
-  return v === 0 && row.id.startsWith("graphics.") ? "Off" : `${Math.round(v * 100)}%`;
+  return v === 0 && (row.id.startsWith("graphics.") || row.section === "sound") ? "Off" : `${Math.round(v * 100)}%`;
 }
 
 /** One setting: its name and hint on the left, its control on the right. */

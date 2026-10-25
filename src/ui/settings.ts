@@ -16,9 +16,11 @@ export const VIEW_MODES: { id: ViewMode; name: string; hint: string }[] = [
 ];
 
 export interface Settings {
+  /** Master volume; the three below are buses under it (src/audio/sound.ts). */
   volume: number;
-  sfx: boolean;
-  ambient: boolean;
+  music: number;
+  effects: number;
+  ambience: number;
   /** 1 = normal. */
   uiScale: number;
   /** Orange/blue instead of red/green in overlays. */
@@ -42,8 +44,9 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   volume: defaultOf("volume", "number"),
-  sfx: defaultOf("sfx", "boolean"),
-  ambient: defaultOf("ambient", "boolean"),
+  music: defaultOf("music", "number"),
+  effects: defaultOf("effects", "number"),
+  ambience: defaultOf("ambience", "number"),
   uiScale: defaultOf("uiScale", "number"),
   colorBlind: defaultOf("colorBlind", "boolean"),
   autosave: defaultOf("autosave", "boolean"),
@@ -78,11 +81,13 @@ const KEY = storageKey("settings");
 export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
-    const stored = raw ? (JSON.parse(raw) as Partial<Settings> & { quality3d?: "high" | "low" }) : {};
+    const stored = raw ? (JSON.parse(raw) as Partial<Settings> & { quality3d?: "high" | "low"; sfx?: boolean; ambient?: boolean }) : {};
     // Before graphics settings there was one "3D detail" choice: low becomes the low preset.
     const graphics = stored.graphics ? cleanGraphics(stored.graphics) : stored.quality3d === "low" ? GRAPHICS_PRESETS.low : DEFAULT_GRAPHICS;
-    const { quality3d: _old, ...rest } = stored;
-    const s: Settings = { ...DEFAULT_SETTINGS, ...rest, graphics, view3d: cleanView3d(stored.view3d) };
+    // Sound effects and ambience were on/off switches (T-066): off becomes silent, on the default.
+    const { quality3d: _old, sfx, ambient, ...rest } = stored;
+    const sound = { effects: sfx === false ? 0 : DEFAULT_SETTINGS.effects, ambience: ambient === false ? 0 : DEFAULT_SETTINGS.ambience };
+    const s: Settings = { ...DEFAULT_SETTINGS, ...sound, ...rest, graphics, view3d: cleanView3d(stored.view3d) };
     return VIEW_MODES.some((m) => m.id === s.view) ? s : { ...s, view: DEFAULT_SETTINGS.view };
   } catch {
     return DEFAULT_SETTINGS;

@@ -1,0 +1,18 @@
+{
+  "_note": "What the game sounds like when things happen (F-006, T-066): one table, read by src/audio/cues.ts. happenings maps each happening to the effect it plays (src/audio/sound.ts Sfx; null for silence). The player's own happenings (built, demolished, refused) come from the UI; the rest are read off the snapshot: a new floor, and new messages, matched by the first rule in messages that fits (startsWith or includes the text, or its kind). hum: the rooms whose number swells the life-support hum on the ambience bus.",
+  "happenings": {
+    "built": "build",
+    "demolished": "demolish",
+    "refused": "refuse",
+    "floorDug": "floor",
+    "supplyDrop": "landing",
+    "visitor": "chime",
+    "warning": "alert"
+  },
+  "messages": [
+    { "startsWith": "Supply drop landed", "is": "supplyDrop" },
+    { "includes": "waiting at the office", "is": "visitor" },
+    { "kind": "warn", "is": "warning" }
+  ],
+  "hum": { "rooms": ["life_support"] }
+}

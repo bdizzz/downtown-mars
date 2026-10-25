@@ -1,17 +1,26 @@
 // Synthesized sound: no audio files, just Web Audio oscillators and noise.
 // The AudioContext is created on the first user gesture, as browsers require.
+// Three buses under the master volume: music, effects and ambience, each with its own slider.
 
 export type Sfx = "click" | "build" | "demolish" | "refuse" | "landing" | "chime" | "alert" | "floor";
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+let musicBus: GainNode | null = null;
 let sfxBus: GainNode | null = null;
 let ambientBus: GainNode | null = null;
 let hum: OscillatorNode | null = null;
 let humGain: GainNode | null = null;
 let noiseBuffer: AudioBuffer | null = null;
 
-const settings = { volume: 0.6, sfx: true, ambient: true };
+export interface AudioSettings {
+  volume: number;
+  music: number;
+  effects: number;
+  ambience: number;
+}
+
+const settings: AudioSettings = { volume: 0.6, music: 0.5, effects: 1, ambience: 1 };
 
 /** Call from a user gesture (click, key) to unlock audio. Safe to call repeatedly. */
 export function unlockAudio(): void {
@@ -26,6 +35,8 @@ export function unlockAudio(): void {
   }
   master = ctx.createGain();
   master.connect(ctx.destination);
+  musicBus = ctx.createGain();
+  musicBus.connect(master);
   sfxBus = ctx.createGain();
   sfxBus.connect(master);
   ambientBus = ctx.createGain();
@@ -35,17 +46,26 @@ export function unlockAudio(): void {
   applySettings();
 }
 
-export function setAudioSettings(s: { volume: number; sfx: boolean; ambient: boolean }): void {
-  Object.assign(settings, s);
+export function setAudioSettings(s: AudioSettings): void {
+  settings.volume = s.volume;
+  settings.music = s.music;
+  settings.effects = s.effects;
+  settings.ambience = s.ambience;
   applySettings();
 }
 
+/** Where the music plays (T-069 connects its voices here); null until audio is unlocked. */
+export function musicOutput(): GainNode | null {
+  return musicBus;
+}
+
 function applySettings(): void {
-  if (!ctx || !master || !sfxBus || !ambientBus) return;
+  if (!ctx || !master || !musicBus || !sfxBus || !ambientBus) return;
   const t = ctx.currentTime;
   master.gain.setTargetAtTime(settings.volume, t, 0.05);
-  sfxBus.gain.setTargetAtTime(settings.sfx ? 1 : 0, t, 0.05);
-  ambientBus.gain.setTargetAtTime(settings.ambient ? 1 : 0, t, 0.3);
+  musicBus.gain.setTargetAtTime(settings.music, t, 0.3);
+  sfxBus.gain.setTargetAtTime(settings.effects, t, 0.05);
+  ambientBus.gain.setTargetAtTime(settings.ambience, t, 0.3);
 }
 
 /** Brown noise: the rumble of rock and air handlers. */
@@ -122,7 +142,7 @@ function noise(dur: number, gain: number, cutoff: number, when = 0): void {
 }
 
 export function play(sfx: Sfx): void {
-  if (!ctx || !settings.sfx) return;
+  if (!ctx || settings.effects <= 0) return;
   switch (sfx) {
     case "click":
       tone(1400, 0.04, "square", 0.03);

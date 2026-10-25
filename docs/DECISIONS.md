@@ -301,7 +301,7 @@ Bryon: solar only by day, to make batteries matter.
 Deliberately not decided yet:
 
 - **Simulation at scale:** how many holes (and 10,000-person holes) run efficiently. Two holes run fine today.
-- **Audio direction.** Today's sound is synthesized placeholder effects and a hum (`src/audio/sound.ts`). (Art direction is settled: the cozy 3D look.)
+- **Audio direction.** Today's sound is synthesized placeholder effects and a hum (`src/audio/sound.ts`), on three buses under the master volume (music, effects, ambience; T-066), with what plays when in `data/sounds.json`. (Art direction is settled: the cozy 3D look.)
 - **Full balancing pass:** the starter rooms and the first month are tuned (the playtest bots check them); mid- and late-game numbers are rough placeholders.
 - **Build roadmap past milestone 10:** what to build next. `ROOM-STATUS.md` grades the unbuilt rooms by how big a step each is.
 - **Rings 4–6** and how they unlock.

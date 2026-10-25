@@ -45,7 +45,8 @@ import {
   type TutorialStep,
   type UiFlags,
 } from "./tutorialGoals";
-import { play, setAudioSettings, unlockAudio } from "../audio/sound";
+import { cue } from "../audio/cues";
+import { setAudioSettings, unlockAudio } from "../audio/sound";
 import { applySystemBar, canHideSystemBar } from "./systemBar";
 import { useSettings } from "./settings";
 import { installConsole } from "./devConsole";
@@ -235,13 +236,13 @@ export function App() {
       if (!result.ok) {
         if (!quiet) {
           flash(result.reason);
-          play("refuse");
+          cue("refused");
         }
       } else if (result.roomId !== undefined) {
         undoStack.current.push(result.roomId);
         setCanUndo(true);
-        play("build");
-      } else if (cmd.type === "demolish") play("demolish");
+        cue("built");
+      } else if (cmd.type === "demolish") cue("demolished");
     },
     [send, flash],
   );
@@ -251,7 +252,7 @@ export function App() {
     setCanUndo(undoStack.current.length > 0);
     if (roomId === undefined) return;
     const result = await send({ type: "undoBuild", roomId });
-    if (result.ok) play("demolish");
+    if (result.ok) cue("demolished");
     if (!result.ok) {
       flash(result.reason);
       undoStack.current = []; // older ones are older still
@@ -698,7 +699,7 @@ export function App() {
             onCancel={() => setTool(null)}
             selected={selected}
             onSelect={(id) => (setSelected(id), id !== null && setPanel(null))}
-            onInvalid={(reason) => (flash(reason), play("refuse"))}
+            onInvalid={(reason) => (flash(reason), cue("refused"))}
             colorBlind={settings.colorBlind}
             mode={settings.view}
             graphics={settings.graphics}

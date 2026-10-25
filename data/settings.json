@@ -28,8 +28,9 @@
     { "id": "graphics.life", "section": "display", "name": "Colonists and dust", "hint": "People walking the galleries, dust in the air", "control": "toggle", "only": "web" },
 
     { "id": "volume", "section": "sound", "name": "Volume", "hint": "Everything the game plays", "control": "slider", "min": 0, "max": 1, "step": 0.05, "default": 0.6, "only": "web" },
-    { "id": "sfx", "section": "sound", "name": "Sound effects", "hint": "Clicks, building, landings and alerts", "control": "toggle", "default": true, "only": "web" },
-    { "id": "ambient", "section": "sound", "name": "Ambient sound", "hint": "The rumble of rock and air, and the machines' hum", "control": "toggle", "default": true, "only": "web" },
+    { "id": "music", "section": "sound", "name": "Music", "hint": "The soundtrack", "control": "slider", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "only": "web" },
+    { "id": "effects", "section": "sound", "name": "Sound effects", "hint": "Clicks, building, landings and alerts", "control": "slider", "min": 0, "max": 1, "step": 0.05, "default": 1, "only": "web" },
+    { "id": "ambience", "section": "sound", "name": "Ambience", "hint": "The rumble of rock and air, and the machines' hum", "control": "slider", "min": 0, "max": 1, "step": 0.05, "default": 1, "only": "web" },
 
     { "id": "floorHoverPreview", "section": "controls", "name": "Preview floors on hover", "hint": "Pointing at a floor in the floor picker shows it", "control": "toggle", "default": false, "only": "web" },
     { "id": "lookSpeed", "section": "controls", "name": "Mouse look speed", "hint": "How fast the mouse turns your head in first person", "control": "slider", "min": 0.25, "max": 2, "step": 0.05, "default": 1 },
