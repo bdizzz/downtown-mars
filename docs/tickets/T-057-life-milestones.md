@@ -4,9 +4,9 @@ title: Life milestones: first harvest, Martian adult, third generation and more
 status: open
 size: M
 area: sim, data
+feature: F-005
 touches: [data/milestones.json, src/sim/milestones.ts, src/sim/people.ts, src/sim/events.ts]
 blocked_by: [T-055]
-feature: F-005
 notes: [N-0025]
 created: 2026-10-06 01:40
 ---
@@ -21,3 +21,4 @@ Add each check to the catalog and the sim, with tests. Done: each can be reached
 
 ## History
 - 2026-10-06 01:40 opened from F-005's breakdown
+- 2026-10-25 10:55 building on t-056-milestones-panel-web
