@@ -15,7 +15,8 @@
     "bridge": "node scripts/bridge.mjs",
     "playtest": "PLAYTEST=1 vitest run tests/playthrough.test.ts --reporter=default --silent=false",
     "package": "npm run build && node scripts/package.mjs",
-    "playtest:net": "PLAYTEST=1 vitest run tests/network-playthrough.test.ts --reporter=default --silent=false"
+    "playtest:net": "PLAYTEST=1 vitest run tests/network-playthrough.test.ts --reporter=default --silent=false",
+    "saves": "node scripts/saves.mjs"
   },
   "dependencies": {
     "pixi.js": "^8.22.0",

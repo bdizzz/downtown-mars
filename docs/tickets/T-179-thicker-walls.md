@@ -1,7 +1,7 @@
 ---
 id: T-179
 title: Try 0.5 m thick walls instead of 0.25 m
-status: open
+status: done
 size: S
 area: render3d, data
 touches: [data/config.json, src/render3d/rooms3d.ts, src/view/doors.ts, src/view/furnish.ts, godot/src/]
@@ -23,3 +23,5 @@ DECISIONS.md: 3D view (wall thickness), if it sticks.
 
 ## History
 - 2026-10-24 23:44 opened from N-0096
+- 2026-10-24 23:48 building on t-179-thicker-walls
+- 2026-10-25 00:02 built: 0.5 m walls; three wall-mounted items nudged to fit; first-person walker keeps its gap from the wall

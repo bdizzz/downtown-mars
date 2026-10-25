@@ -102,7 +102,7 @@ Still to do, roughly in order of value:
 - **Flags** (after `--`): `--shot=<s>` saves `godot/shots/live.png` and quits; `--no-hud` hides the interface; `--new`, `--showcase=12`, `--load=`; `--view=free|cutaway` (`iso` still works for Free view), `--plan`, `--walk`, `--floor=`; `--overlay=noise`; `--build=<room>` or `--build=corridor:rock` puts a tool in hand; `--hover=x,y` and `--click=x,y` point and click in the scene.
 - **Key playback** (`--keys=`, comma-separated, each `name@seconds`): key names (`B@8`, `F1@9`; letters type into fields), `tap:x:y` (a click through the GUI), `down:x:y`, `drag:x:y`, `up:x:y` (a drag), `move:x:y` (hover, for tooltips), `pan:dx:dy`, `pinch:f`, `wheel:up`.
 - Test runs don't save settings (`ViewSettings.ReadOnly`), but they do read Bryon's, so pass the view you want on the command line.
-- **Test saves**: make one with a small script under `scripts/` run by `npx tsx` (`createSimHost`, a `consoleShowcase` command, `stepWorld`, then `serialize` from `sim/save`), and delete the script afterwards. Topping up stocks every tick makes the HUD's rates absurd: top up once at the end.
+- **Test saves**: the dev saves in `public/` (early, mid, network, late; `npm run saves` rebuilds them, see the README) load with `--load=` and the save's absolute path. For anything else, make one with a small script under `scripts/` run by `npx tsx` (`createSimHost`, a `consoleShowcase` command, `stepWorld`, then `serialize` from `sim/save`), and delete the script afterwards. Topping up stocks every tick makes the HUD's rates absurd: top up once at the end.
 - Godot's screenshots come from the viewport, so they include the HUD unless `--no-hud`.
 
 ### Notes as built

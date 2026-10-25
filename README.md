@@ -79,10 +79,12 @@ The game autosaves every month (one game day) in your browser. Use the menu to s
 npm test              # simulation tests
 npm run playtest      # scripted first month, printed day by day
 npm run playtest:net  # scripted first hour across two holes
+npm run saves         # rebuild the dev saves in public/
 npm run package       # build and zip for a playtest upload
 ```
 
 - **CI:** GitHub Actions type-checks and tests every PR and push to `main` (`.github/workflows/ci.yml`), and publishes each push to `main` to GitHub Pages (`pages.yml`). Dependabot opens one grouped PR a week for npm packages and one for Actions.
+- **Dev saves:** `public/dev-save-early.json` (month 6, 26 people), `-mid` (month 31, one hole furnished, 68 people), `-network` (month 61, two holes trading by rover) and `-late` (month 121, two holes, 133 people), checked in. Open one with the menu's **Import save file…**, or in Godot with `--load=`. `npm run saves` replays the network bot (`tests/netbot.ts`) on the default seed and writes them again: rerun it when the game moves on (`-- --probe=160` prints how the holes fare, to re-pick the moments). Builds leave them out.
 - **Packaging:** `npm run package` writes `release/downtown-mars-v<version>.zip` with `index.html` at the top. To publish on itch.io, create an HTML project, upload the zip, and tick "This file will be played in the browser". Nothing is uploaded automatically.
 - **Home-screen install:** `public/manifest.webmanifest` makes the web game installable; its icons in `public/icons/` (and the logotype's borehole, `public/hole.svg`) are drawn by `node scripts/icons.mjs` (rerun after changing the drawing, and commit the files).
 - **Offline and updates:** built games register a service worker (`vite-plugin-pwa` in `vite.config.ts`, `offline()`) that precaches the build and caches the typeface; `ui/UpdateBanner.tsx` offers a new build when one is waiting. The dev server and PR previews have none. To try it, `npm run build && npx vite preview`.
