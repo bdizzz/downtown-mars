@@ -30,3 +30,4 @@ A script (e.g. `npm run saves`, running the bots headless with fixed seeds) that
 ## History
 - 2026-10-04 19:23 opened from N-0009
 - 2026-10-04 19:25 questions answered
+- 2026-10-24 23:48 building on t-179-thicker-walls

@@ -23,3 +23,4 @@ DECISIONS.md: 3D view (wall thickness), if it sticks.
 
 ## History
 - 2026-10-24 23:44 opened from N-0096
+- 2026-10-24 23:48 building on t-179-thicker-walls
