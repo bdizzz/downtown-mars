@@ -186,6 +186,7 @@ Open questions for Bryon:
   - A plain click still carves one segment at once.
 
   Tested (`tests/corridorPlan.test.ts`): growing, retracing, bridging a skip, refusing a branch, rock-only borders, erase mode. In the browser (plan view): a snake along ring 1's outer edge, retraced to 4 segments, confirmed at 7.2 rock.
+  - **Later (Oct 25, 2026, T-104):** steadier. A border joins only once the pointer is `config.corridorTool.commitAlong` (25%) of the way along it from the chain's end, so jitter through a crossing commits nothing; every caller (2D, plan, 3D, the bridge) now passes the pointer's spot (`ChainPoint`: rings out and turn) as well as the edge. Retracing to a vertex where the chain turned (a radial and an arc meet) leaves a `lock`: from there it may only regrow along the border it left by, never a third way, until it's retraced further. A bridge may no longer end back at the vertex it set off from (a loop through the chain's end).
 - **Clean corners** (Bryon, Sep 27): corridors followed only their midlines, so where one turned the outer corner had a notch (the SVG stroke-join problem).
   - `corridorJoints` finds every turn: a vertex where a radial corridor and a ring corridor meet. Straight runs and dead ends aren't turns.
   - All three views draw a square joint there in the corridor's finish, centred on the vertex, radial and tangential in the plan and 3D.

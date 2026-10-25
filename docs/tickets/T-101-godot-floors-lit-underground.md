@@ -1,7 +1,7 @@
 ---
 id: T-101
 title: "Godot: floors stay lit as underground in daytime, daylight only through the shaft"
-status: open
+status: done
 size: M
 area: godot, render3d
 touches: [godot/src/Lighting.cs, godot/src/HoleScene.cs, godot/src/Cutaway.cs]
@@ -28,3 +28,5 @@ PLAN-GODOT.md: notes as built.
 - 2026-10-09 01:58 opened from N-0056
 - 2026-10-09 questions answered: Godot only for now
 - 2026-10-09 13:02 questions answered
+- 2026-10-24 23:58 building on t-104-snake-no-doubling-back
+- 2026-10-25 00:11 built

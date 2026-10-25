@@ -8,7 +8,7 @@ import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
 import { aimKeyFor, clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
-import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
+import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import { roomSide } from "../sim/windows";
@@ -1194,10 +1194,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   /** The border nearest the point the last pick landed on. */
   function edgeAtPick(p: Pick): Edge | null {
-    if (!hole || !pickedAt || (p.kind !== "slot" && p.kind !== "gallery")) return null;
-    const r = Math.hypot(pickedAt.x, pickedAt.z);
-    const rings = Math.max(0.001, (r - hole.shaftRadiusM) / RING_D);
-    return nearestEdge(hole, p.floor, rings, Math.atan2(pickedAt.z, pickedAt.x) / TAU, RING_D);
+    const at = pickedPoint();
+    if (!hole || !at || (p.kind !== "slot" && p.kind !== "gallery")) return null;
+    return nearestEdge(hole, p.floor, at.rings, at.turn, RING_D);
+  }
+
+  /** Where the last pick landed on its floor: rings out from the shaft wall, and the angle in turns. */
+  function pickedPoint(): ChainPoint | null {
+    if (!hole || !pickedAt) return null;
+    const rings = Math.max(0.001, (Math.hypot(pickedAt.x, pickedAt.z) - hole.shaftRadiusM) / RING_D);
+    return { rings, turn: Math.atan2(pickedAt.z, pickedAt.x) / TAU };
   }
 
   function hoverInfo(): HoverInfo | null {
@@ -1234,7 +1240,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   function snake(): void {
     if (!layout) return;
-    const next = extendChain(layout, chain, edgeUnderPointer(), chainErase);
+    const edge = edgeUnderPointer();
+    const next = extendChain(layout, chain, edge, chainErase, pickedPoint());
     if (next === chain) return;
     chain = next;
     refreshHover(true);

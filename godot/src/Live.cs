@@ -67,6 +67,16 @@ public partial class Live : Node3D
     /// <summary>The night's dust glow from overhead: dim, warm, no shadows (with GI on, Godot's ambient light doesn't reach).</summary>
     readonly DirectionalLight3D _glow = new() { Name = "NightGlow", LightColor = new Color(0.7f, 0.62f, 0.62f), ShadowEnabled = false, LightSpecular = 0.1f, LightEnergy = 0 };
     FogVolume? _haze;
+    /// <summary>
+    /// With a floor in view, daylight comes in only down the shaft (T-101): a warm light at the floor's
+    /// height in the open shaft, spilling into ring-1 rooms through gallery glass, windows and open walls.
+    /// </summary>
+    readonly OmniLight3D _shaftDay = new() { Name = "ShaftDaylight", LightColor = new Color(1, 0.86f, 0.68f), ShadowEnabled = true, OmniAttenuation = 0.5f, LightVolumetricFogEnergy = 0.5f, LightEnergy = 0, LightCullMask = SunLayers, Visible = false };
+    const float ShaftDayEnergy = 14.0f, ShaftDayReach = 16;
+    /// <summary>The land above ground (the terrain): the only thing the sun lights while a floor is in view.</summary>
+    const uint SurfaceLayer = 1 << 12;
+    /// <summary>What the sun lights with every floor showing: everything but the map's globe.</summary>
+    const uint SunLayers = 0xFFFFF & ~MapView.MapLayer;
     MeshInstance3D _ground = null!;
 
     // HUD.
@@ -112,6 +122,8 @@ public partial class Live : Node3D
     OptionButton _holePicker = null!;
     string _holesKey = "";
     float _light = 1;
+    /// <summary>The daylight inside the rooms: the hour's, but none with a floor in view (lit as underground, T-101).</summary>
+    float _roomLight = 1;
     double _clockSeconds, _shadowClock;
 
     /// <summary>Start-up options from the command line (Main.cs): a floor to pick, first person, and a screenshot then quit.</summary>
@@ -157,6 +169,7 @@ public partial class Live : Node3D
         AddChild(_sun);
         AddChild(_glow);
         _glow.LookAtFromPosition(new Vector3(-20, 100, 35), Vector3.Zero, Vector3.Up);
+        AddChild(_shaftDay);
         _hole = new HoleScene { Name = "Hole" };
         AddChild(_hole);
         AddChild(_rig3d);
@@ -177,7 +190,7 @@ public partial class Live : Node3D
         if (!Dev.Off("people")) AddChild(_people);
         if (Dev.Off("sunshadow")) _sun.ShadowEnabled = false;
         if (Dev.Off("msaa")) GetViewport().Msaa3D = Viewport.Msaa.Disabled;
-        _ground = new MeshInstance3D { Name = "Ground" };
+        _ground = new MeshInstance3D { Name = "Ground", Layers = 1 | SurfaceLayer };
         AddChild(_ground);
         // The land, once the bridge sends it: under the ground node, so it shows and hides with it.
         _ground.AddChild(_terrain);
@@ -234,7 +247,7 @@ public partial class Live : Node3D
         _map = new MapView(_hud, m => _bridge.Send(m)) { Name = "Map", Toast = t => _build.Toast(t) };
         AddChild(_map);
         // The map has its own layer: the hole's sun doesn't light it.
-        _sun.LightCullMask &= ~MapView.MapLayer;
+        _sun.LightCullMask = SunLayers;
         _glow.LightCullMask &= ~MapView.MapLayer;
         _map.Closed = () =>
         {
@@ -472,6 +485,7 @@ public partial class Live : Node3D
             else if (type == "terrain")
             {
                 _terrain.Set(msg.RootElement);
+                OnSurface(_terrain);
                 // The flat ring was a stand-in.
                 _ground.Mesh = null;
             }
@@ -627,7 +641,7 @@ public partial class Live : Node3D
         if (sceneFloor != Cut || ViewSettings.Plan && !_planSeen) SendView();
         var t0 = Time.GetTicksMsec();
         _hole.Build(scene);
-        _hole.SetNight(1 - _light);
+        _hole.SetNight(1 - _roomLight);
         GD.Print($"Scene built: {_hole.Chunks} chunks, {_hole.Lamps} lamps in {Time.GetTicksMsec() - t0} ms");
         if (!_framed && _rig != null)
         {
@@ -695,13 +709,19 @@ public partial class Live : Node3D
         var pos = new Vector3(sunDir.X * 100, Mathf.Max(5, sunDir.Y * 100), sunDir.Z * 100);
         _sun.LookAtFromPosition(pos, Vector3.Zero, Vector3.Up);
         _sun.LightEnergy = (0.15f + 2.0f * _light) * (1 - 0.7f * storm);
+        // A floor in view has the rock above it lifted away, but it's still underground (T-101): the sun lights
+        // only the land, and the rooms are lit as at night, by their lamps, plus the daylight down the shaft.
+        var under = Cut != null;
+        _roomLight = under ? 0 : _light;
+        _sun.LightCullMask = under ? SurfaceLayer : SunLayers;
+        ShaftDaylight(under ? Cut : null, storm);
         var env = _env.Environment;
         // Nights stay readable: as the sky darkens, the ambient light turns to the dust's dim glow, never black.
-        env.AmbientLightEnergy = (0.12f + 0.16f * _light) * (1 - 0.4f * storm);
-        env.AmbientLightSkyContribution = Graphics.SkyShare * Mathf.Lerp(0.35f, 1f, _light);
-        _glow.LightEnergy = 0.35f * (1 - _light) * (1 - 0.5f * storm);
+        env.AmbientLightEnergy = (0.12f + 0.16f * _roomLight) * (1 - 0.4f * storm);
+        env.AmbientLightSkyContribution = Graphics.SkyShare * Mathf.Lerp(0.35f, 1f, _roomLight);
+        _glow.LightEnergy = 0.35f * (1 - _roomLight) * (1 - 0.5f * storm);
         // The colour boost suits daylight; at night it pushes dark red regolith to pure red.
-        env.AdjustmentSaturation = Mathf.Lerp(0.75f, 1.2f, _light);
+        env.AdjustmentSaturation = Mathf.Lerp(0.75f, 1.2f, _roomLight);
         // The sky by the hour: its light, and where the sun is (stars come out as it goes).
         if (env.Sky.SkyMaterial is ShaderMaterial sky)
         {
@@ -709,7 +729,24 @@ public partial class Live : Node3D
             sky.SetShaderParameter("sun_dir", sunDir);
             sky.SetShaderParameter("star_turn", starTurn);
         }
-        _hole.SetNight(1 - _light);
+        _hole.SetNight(1 - _roomLight);
+    }
+
+    /// <summary>Daylight down the shaft onto the floor in view (none with every floor showing: the sun does that), by the hour and the storm.</summary>
+    void ShaftDaylight(int? floor, float storm)
+    {
+        _shaftDay.Visible = floor != null && _light > 0;
+        if (floor is not int f) return;
+        _shaftDay.Position = new Vector3(0, -3 - (f - 0.5f) * _shape.FloorHeightM, 0);
+        _shaftDay.OmniRange = _shape.ShaftRadiusM + ShaftDayReach;
+        _shaftDay.LightEnergy = ShaftDayEnergy * _light * (1 - 0.7f * storm);
+    }
+
+    /// <summary>Put the land on the surface layer, so the sun still lights it while a floor is in view.</summary>
+    static void OnSurface(Node n)
+    {
+        if (n is VisualInstance3D v) v.Layers |= SurfaceLayer;
+        foreach (var c in n.GetChildren()) OnSurface(c);
     }
 
     /// <summary>

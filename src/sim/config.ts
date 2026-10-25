@@ -200,6 +200,8 @@ export interface SimConfig {
     rooms: Record<RoomUnlock, number>;
   };
   /** What the landing crew sets up: a new game's first hole gets newGame's kit, later holes laterHoles'. */
+  /** Snaking corridors (view/corridorPlan.ts): how far along a border, 0..1 from the chain's end, the pointer goes before it joins. */
+  corridorTool: { commitAlong: number };
   landingKits: { newGame: LandingKitName; laterHoles: LandingKitName } & Record<LandingKitName, LandingKit>;
 }
 
