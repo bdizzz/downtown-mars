@@ -1,0 +1,24 @@
+{
+  "_note": "The hole's milestones (F-005): one list, tracked per hole with the day each was reached, saved. check is population (at least `at` people), born (at least `at` children born), floors (at least `at` floors dug) or domed; event milestones are reached only by an event's `celebrate` effect (data/events.json). celebrate: true also proposes a celebration (events.json `celebrations`), one at a time. title fills {title} in `reached` (the news) and {milestone} on the celebration card. group sorts them for the milestones panel. Older saves mark what they've already passed as reached, day unknown, without news.",
+  "reached": "Milestone: {title}.",
+  "groups": [
+    { "id": "people", "label": "People" },
+    { "id": "population", "label": "Population" },
+    { "id": "depth", "label": "Depth" },
+    { "id": "hole", "label": "The hole" },
+    { "id": "discoveries", "label": "Discoveries" }
+  ],
+  "milestones": [
+    { "id": "first_birth", "title": "the first child born on Mars", "group": "people", "check": "born", "at": 1, "celebrate": true },
+    { "id": "pop_50", "title": "fifty people", "group": "population", "check": "population", "at": 50, "celebrate": true },
+    { "id": "pop_100", "title": "a hundred people", "group": "population", "check": "population", "at": 100, "celebrate": true },
+    { "id": "pop_200", "title": "two hundred people", "group": "population", "check": "population", "at": 200, "celebrate": true },
+    { "id": "pop_300", "title": "three hundred people", "group": "population", "check": "population", "at": 300, "celebrate": true },
+    { "id": "pop_500", "title": "five hundred people", "group": "population", "check": "population", "at": 500, "celebrate": true },
+    { "id": "floor_5", "title": "five floors down", "group": "depth", "check": "floors", "at": 5, "celebrate": true },
+    { "id": "floor_10", "title": "ten floors down", "group": "depth", "check": "floors", "at": 10, "celebrate": true },
+    { "id": "floor_20", "title": "twenty floors down", "group": "depth", "check": "floors", "at": 20, "celebrate": true },
+    { "id": "dome", "title": "the dome over the shaft", "group": "hole", "check": "domed", "celebrate": true },
+    { "id": "microfossils", "title": "life on Mars, once", "group": "discoveries", "check": "event", "celebrate": true }
+  ]
+}

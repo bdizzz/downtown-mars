@@ -1,6 +1,7 @@
 import { createEvents, type EventsState } from "./events";
 import { fillAir, type AirState } from "./air";
 import type { LandingKitName, SimConfig } from "./config";
+import type { ReachedMilestone } from "./milestones";
 import type { Drill } from "./digging";
 import type { HoleFailure } from "./failure";
 import { createEarth, type EarthState } from "./earth";
@@ -86,6 +87,8 @@ export interface SimState {
   history?: History;
   /** Events waiting for an answer, finds made, moods and festivals (PLAN-M14; absent in older saves until the first). */
   events?: EventsState;
+  /** Milestones reached, with the day (F-005, data/milestones.json; absent in older saves until the first check). */
+  milestones?: ReachedMilestone[];
   /** The living volume, cached (air.ts; absent in older saves until the first tick). */
   air?: AirState;
   /** The most people this hole has had (failure.ts; absent in older saves until the first tick). */
@@ -176,6 +179,7 @@ export function createInitialState(
     parentHoleId: null,
     foundedTick: 0,
     events: createEvents(who.seed),
+    milestones: [],
   };
   // The landing crew sealed the hole and made its air: O2 at the target, CO2 at the scrub floor.
   fillAir(state, cfg);
