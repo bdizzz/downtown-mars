@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -38,6 +38,28 @@ function gitBranch(): Plugin {
         res.setHeader("Cache-Control", "no-store");
         res.end(name);
       });
+    },
+  };
+}
+
+/**
+ * The dev saves in public/ (npm run saves) are for the dev server and the
+ * Godot viewer: leave them out of builds, which would otherwise copy them in.
+ */
+function dropDevSaves(): Plugin {
+  let outDir = "dist";
+  return {
+    name: "drop-dev-saves",
+    apply: "build",
+    configResolved(c) {
+      outDir = c.build.outDir;
+    },
+    closeBundle() {
+      try {
+        for (const f of readdirSync(outDir)) if (/^dev-save.*\.json$/.test(f)) rmSync(`${outDir}/${f}`);
+      } catch {
+        // No output folder (a library or SSR build elsewhere): nothing to drop.
+      }
     },
   };
 }
@@ -202,7 +224,7 @@ function saveGodotScene(): Plugin {
 export default defineConfig({
   // Relative paths, so the build runs from any folder (itch.io serves games from a sub-path).
   base: "./",
-  plugins: [react(), saveLayouts(), saveGodotScene(), gitBranch(), prTitle(), ...offline()],
+  plugins: [react(), saveLayouts(), saveGodotScene(), gitBranch(), prTitle(), dropDevSaves(), ...offline()],
   worker: { format: "es" },
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),

@@ -1,7 +1,7 @@
 ---
 id: T-013
 title: Fresh dev saves in public/, made by a script so they stay current
-status: open
+status: done
 size: M
 area: sim, docs
 touches: [public/, scripts/, tests/bot.ts, src/sim/save.ts, .gitignore]
@@ -31,3 +31,4 @@ A script (e.g. `npm run saves`, running the bots headless with fixed seeds) that
 - 2026-10-04 19:23 opened from N-0009
 - 2026-10-04 19:25 questions answered
 - 2026-10-24 23:48 building on t-179-thicker-walls
+- 2026-10-25 00:02 built: npm run saves writes early, mid, network and late saves to public/, checked in

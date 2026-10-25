@@ -3,6 +3,5 @@ dist
 .DS_Store
 *.log
 release
-public/dev-save*.json
 .tracker/
 .claude/worktrees/
