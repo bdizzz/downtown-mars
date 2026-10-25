@@ -12,6 +12,8 @@ import { CHECKS } from "../src/ui/tutorialGoals";
 import { HUD_IDS } from "../src/view/hudItems";
 import { roomDef } from "../src/sim/rooms";
 import { nextSpeed } from "../src/ui/Hud";
+import { revealFor } from "../src/ui/reveal";
+import { FIELD_TYPES } from "../src/sim/effects";
 
 // The guided tutorial (F-007, T-083): steps in data, their unlocks, and the calm start.
 
@@ -42,19 +44,69 @@ describe("the guided tutorial's data", () => {
 
   it("unlocks only interface elements that exist", () => {
     const modes = ["build", "view", "charts", "map"];
+    const charts = ["people", "flows", "network", "construction", "maintenance", "trends", "directory", "milestones"];
+    const views = ["cameras", "2d", "see"];
+    const tools = ["corridors", "demolish", "linings", "bulkhead", "windows", "refit"];
     for (const s of guided.steps) {
       expect(["slow", "read"]).toContain(s.pace);
       for (const u of s.unlocks) {
         const [kind, id] = u.split(":");
         const known =
-          (kind === "hud" && (HUD_IDS as readonly string[]).includes(id!)) ||
+          (id === "*" && ["hud", "mode", "room", "tool", "view", "overlay", "chart"].includes(kind!)) ||
+          (kind === "hud" && ([...HUD_IDS, "floors"] as string[]).includes(id!)) ||
           (kind === "mode" && modes.includes(id!)) ||
           (kind === "room" && !!roomDef(id!)) ||
-          kind === "overlay" ||
-          kind === "tool";
+          (kind === "overlay" && [...FIELD_TYPES, "happiness", "condition"].includes(id!)) ||
+          (kind === "tool" && tools.includes(id!)) ||
+          (kind === "view" && views.includes(id!)) ||
+          (kind === "chart" && charts.includes(id!));
         expect(known, `${s.id}: ${u}`).toBe(true);
       }
     }
+  });
+
+  it("points only at what's already on screen", () => {
+    // Highlights named for where they lead: Flows is a Charts button; the 3D view is View's.
+    const shownAs: Record<string, string> = { "hud:flows": "chart:flows", "hud:view": "mode:view" };
+    guided.steps.forEach((s, i) => {
+      if (!s.highlight) return;
+      expect(revealFor(guideAt(i)).shown(shownAs[s.highlight] ?? s.highlight), `${s.id}: ${s.highlight}`).toBe(true);
+    });
+  });
+
+  it("introduces every room it asks for before asking", () => {
+    guided.steps.forEach((s, i) => {
+      const room = s.check && { galley: "galley", restroom: "restroom", dorm: "bunk_dorm", farm: "farm" }[s.check];
+      if (room) expect(revealFor(guideAt(i)).shown(`room:${room}`), s.id).toBe(true);
+    });
+  });
+});
+
+describe("the interface the guide reveals", () => {
+  it("is everything outside the guide, and once it's over", () => {
+    expect(revealFor(null).shown("mode:map")).toBe(true);
+    expect(revealFor(guideAt(guided.steps.length)).shown("mode:map")).toBe(true);
+  });
+
+  it("starts with only the first step's, and adds as it goes", () => {
+    const first = revealFor(startGuide());
+    for (const u of guided.steps[0]!.unlocks) expect(first.shown(u)).toBe(true);
+    expect(first.shown("mode:build")).toBe(false);
+    expect(first.shown("room:galley")).toBe(false);
+    expect(first.shown("hud:office")).toBe(false);
+    const galley = guided.steps.findIndex((s) => s.id === "galley");
+    const at = revealFor(guideAt(galley));
+    expect(at.shown("mode:build") && at.shown("room:galley")).toBe(true);
+    expect(at.shown("room:farm")).toBe(false);
+    // Only what this step brought glows.
+    expect(at.fresh("room:galley")).toBe(true);
+    expect(at.fresh("hud:speed")).toBe(false);
+  });
+
+  it("takes <kind>:* for every one of a kind", () => {
+    const r = revealFor({ step: 0, unlocked: ["overlay:*"], calm: true });
+    expect(r.shown("overlay:noise") && r.shown("overlay:smell")).toBe(true);
+    expect(r.shown("room:galley")).toBe(false);
   });
 });
 
