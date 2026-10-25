@@ -4,7 +4,7 @@ import { isOpen } from "../sim/excavation";
 import type { Hole } from "../sim/geometry";
 import { roomAt, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
-import { FLOOR_H, openShaftRadius, RING_D, TAU } from "../render3d/cylinder";
+import { FLOOR_H, openShaftRadius, RING_D, TAU, WALL_T } from "../render3d/cylinder";
 import { doorsOnFloor, inDoorway } from "./doors";
 import { furnish, isFlat } from "./furnish";
 import { isMounted, itemDef } from "./furniture";
@@ -17,8 +17,8 @@ import { isMounted, itemDef } from "./furniture";
 // door. Solid rock is solid, and so is furniture. Positions are metres around
 // the shaft's axis (x, z), as in the 3D view.
 
-/** A walker's radius: how close to a wall or the railing it can get. */
-export const WALKER_RADIUS = 0.3;
+/** A walker's radius: how close to a wall's edge line or the railing it can get (the camera keeps clear of the wall's face). */
+export const WALKER_RADIUS = WALL_T / 2 + 0.175;
 /** How close to furniture: less than to a wall, so a walker fits down the aisles a room is furnished with. */
 export const FURNITURE_CLEARANCE = 0.2;
 const HALL = corridors.widthM / 2;

@@ -5,7 +5,7 @@ import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
 import * as THREE from "three";
 import { loweredAt, openingsOf, outlineGeometry, rockAlong, rockFaces, shapeKey, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
-import { floorSpan, ringRadii, slotAngles } from "../src/render3d/cylinder";
+import { floorSpan, ringRadii, slotAngles, WALL_T } from "../src/render3d/cylinder";
 import { corridorJoints, corridors } from "../src/sim/corridors";
 import { DOOR, doorways } from "../src/view/doors";
 import { setRoomWindows, shaftBorders } from "../src/sim/windows";
@@ -188,8 +188,8 @@ describe("solid walls", () => {
     const top = floorSpan(1)[1];
     // Signed distance from the border line, into each room.
     const faceAt = (ps: typeof pa, side: 1 | -1) => ps.filter((p) => Math.abs(p.y - top) < 1e-6).map((p) => side * p.r * Math.sin(p.a - border)).filter((d) => Math.abs(d) < 0.5);
-    expect(Math.max(...faceAt(pa, 1).filter((d) => d < -1e-6))).toBeCloseTo(-0.125, 2);
-    expect(Math.max(...faceAt(pb, -1).filter((d) => d < -1e-6))).toBeCloseTo(-0.125, 2);
+    expect(Math.max(...faceAt(pa, 1).filter((d) => d < -1e-6))).toBeCloseTo(-WALL_T / 2, 2);
+    expect(Math.max(...faceAt(pb, -1).filter((d) => d < -1e-6))).toBeCloseTo(-WALL_T / 2, 2);
   });
 
   it("stand centred on a corridor's edge, with a face on the corridor side", () => {
@@ -205,8 +205,9 @@ describe("solid walls", () => {
     expect(before).toBeCloseTo(r0, 4);
     const walls = pts.filter((p) => p.y > floorSpan(1)[0] + 0.5);
     const radii = [...new Set(walls.map((p) => p.r.toFixed(3)))].map(Number).filter((r) => r < r0 + 2);
-    expect(radii).toContain(Number((r0 + 1.375).toFixed(3)));
-    expect(radii).toContain(Number((r0 + 1.625).toFixed(3)));
+    const hall = corridors.widthM / 2;
+    expect(radii).toContain(Number((r0 + hall - WALL_T / 2).toFixed(3)));
+    expect(radii).toContain(Number((r0 + hall + WALL_T / 2).toFixed(3)));
   });
 
   it("have a top: wall pieces at the ceiling between the two faces", () => {
@@ -287,7 +288,7 @@ describe("windows", () => {
     l.corridors["R1.1.2"] = "rock"; // along its left side
     const [b0, b1] = span();
     // Back to where the side wall meets the shaft face (r = 10): half a corridor and half a wall from the border, where there was only half a wall.
-    expect(b0 - a0).toBeCloseTo(Math.asin(1.625 / 10) - Math.asin(0.125 / 10), 6);
+    expect(b0 - a0).toBeCloseTo(Math.asin((corridors.widthM / 2 + WALL_T / 2) / 10) - Math.asin(WALL_T / 2 / 10), 6);
     expect(b1).toBeCloseTo(a1, 9);
     // The windows stay inside the room's walls.
     const geo = roomGeometry(l, room.cells);
