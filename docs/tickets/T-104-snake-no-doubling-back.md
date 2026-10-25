@@ -31,3 +31,4 @@ Unit tests: the wobble-at-a-turn case, and a pointer that crosses an intersectio
 - 2026-10-09 01:58 opened from N-0058
 - 2026-10-09 questions answered: keep shortening, block the new direction; add a 25% commit threshold (size S → M)
 - 2026-10-09 12:52 questions answered
+- 2026-10-24 23:58 building on t-104-snake-no-doubling-back

@@ -28,3 +28,4 @@ PLAN-GODOT.md: notes as built.
 - 2026-10-09 01:58 opened from N-0056
 - 2026-10-09 questions answered: Godot only for now
 - 2026-10-09 13:02 questions answered
+- 2026-10-24 23:58 building on t-104-snake-no-doubling-back
