@@ -4,9 +4,9 @@ title: Guided tutorial mode: chosen on the welcome card, steps with unlocks, a c
 status: open
 size: L
 area: ui, sim
+feature: F-007
 touches: [data/tutorial.json, src/ui/Tutorial.tsx, src/ui/tutorialGoals.ts, src/ui/App.tsx, src/sim/commands.ts, src/sim/weather.ts, src/sim/events.ts]
 blocked_by: []
-feature: F-007
 notes: [N-0046]
 created: 2026-10-07 18:44
 ---
@@ -24,3 +24,4 @@ DECISIONS.md: the guided tutorial and the calm start.
 
 ## History
 - 2026-10-07 18:44 opened from F-007's breakdown
+- 2026-10-25 15:11 building on t-083-guided-tutorial-engine
