@@ -162,6 +162,15 @@ describe("rooms", () => {
     expect(spec.makes.o2).toBe(roomDef("farm").makes.o2);
   });
 
+  it("what a farm grows counts toward the first harvest; its byproducts don't", () => {
+    const s = createInitialState(config);
+    build(s, "farm", ring(1, 1, 1, 4));
+    days(s, 1);
+    expect(s.harvested).toBeGreaterThan(10);
+    expect(s.harvested).toBeLessThanOrEqual(12.01);
+    expect(s.milestones!.some((m) => m.id === "first_harvest")).toBe(true);
+  });
+
   it("a farm keeps growing food when oxygen storage is full", () => {
     const s = createInitialState(config);
     const farm = build(s, "farm", ring(1, 1, 1, 4));

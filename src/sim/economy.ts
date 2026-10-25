@@ -45,6 +45,12 @@ export interface Population {
   birthProgress?: number;
   /** Children born in this hole, ever. */
   born?: number;
+  /** Children who grew up in this hole, ever (missing in older saves). */
+  grownUp?: number;
+  /** The latest generation born here: arrivals are the first, their children the second (missing in older saves: 1). */
+  generation?: number;
+  /** Elders who passed away in this hole, ever (missing in older saves). */
+  passedAway?: number;
   /** The dead laid to rest in this hole's crypts, which stay full for good. */
   interred?: number;
   /** Dead with no resting place, fading daily; weighs on comfort. */
@@ -393,6 +399,8 @@ function runRoom(
     }
   }
   const label = roomDef(room.type).name;
+  // What a farm grows counts toward its hole's harvest (the first harvest milestone).
+  const crop = roomDef(room.type).growsCrops ? (room.crop ? (cropDef(room.crop).makes ?? "rawFood") : "rawFood") : null;
   // A top-up room's inputs show where its O2 went next: new space, breathed air, the reserve.
   const o2Before = res.o2 ?? 0;
   const then = topUp ? splitMade(state, cfg, (spec.makes.o2 ?? 0) * rate * dt * airShare, o2Before) : [];
@@ -402,6 +410,7 @@ function runRoom(
     res[id] = (res[id] ?? 0) + made;
     record(state, id, "in", label, made);
     noteMade(state, id, made, room.id);
+    if (id === crop) state.harvested = (state.harvested ?? 0) + made;
   }
   for (const [id, perDay] of Object.entries(spec.scrubs)) {
     const take = Math.min(perDay * rate * dt, Math.max(0, (res[id] ?? 0) - scrubFloor(state, id, cfg)));

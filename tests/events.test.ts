@@ -145,6 +145,7 @@ describe("a belt ship in distress", () => {
     expect(s.notables.at(-1)!.role).toBe("belt pilot");
     expect(s.resources.electronics).toBeCloseTo(electronics + 15);
     expect(s.events!.landingTick).toBe(s.tick);
+    expect(s.milestones!.find((m) => m.id === "good_neighbors")?.day).not.toBeNull();
   });
 
   it("sent supplies, it sends thanks later", () => {
