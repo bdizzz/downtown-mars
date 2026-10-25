@@ -5,6 +5,8 @@ import type { RoomUnlock } from "./rooms";
 export interface GeometryConfig {
   slotWidthM: number;
   roomDepthM: number;
+  /** Angles are whole notches, this many a turn (F-004): 1,440 divides by 9, 16, 18 and 36. */
+  notchesPerTurn: number;
   maxRings: number;
   /** Height of one floor, used by the 3D view. */
   floorHeightM: number;

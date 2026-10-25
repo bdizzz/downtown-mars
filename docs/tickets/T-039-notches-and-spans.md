@@ -1,7 +1,7 @@
 ---
 id: T-039
 title: Notches and spans: rooms get an angle alongside their slots
-status: open
+status: done
 size: M
 area: sim
 feature: F-004
@@ -25,3 +25,4 @@ PLAN-M17.md Notes as built.
 ## History
 - 2026-10-06 00:32 opened from F-004 (agreed)
 - 2026-10-24 23:57 building on t-039-notches-and-spans
+- 2026-10-24 23:57 built
