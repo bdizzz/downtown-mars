@@ -37,3 +37,4 @@ Proposed; becomes tickets once this feature is agreed.
 ## History
 - 2026-10-25 10:43 opened from N-0097
 - 2026-10-25 10:45 questions answered
+- 2026-10-25 10:49 planning on f-019-room-panel-hierarchy
