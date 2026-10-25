@@ -130,9 +130,9 @@
       },
       {
         "id": "office",
-        "check": "office",
-        "text": "Our people will come to you with what's on their minds. They wait in the office: hear them out, they remember how you treat them.",
-        "hint": "Click Office in the top right. When someone's waiting, it shows a number.",
+        "check": "visit",
+        "text": "Our people will come to you with what's on their minds. Someone's waiting in the office now: go and say hello. Hear people out, they remember how you treat them.",
+        "hint": "Click Office in the top right; the number is how many are waiting. Pick an answer to send them on their way.",
         "highlight": "hud:office",
         "unlocks": ["hud:office"],
         "pace": "slow"
