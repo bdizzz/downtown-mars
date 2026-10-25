@@ -13,7 +13,7 @@ Events are how the colony talks back: citizen visits, hazards, discoveries, netw
 | People | Births, retirements, deaths, migration between holes, opinion shifts between holes |
 | Drill discoveries (M14) | Aquifer, rich ore vein, silica bed, lava tube, gas pocket and microfossils, struck as floors are finished, each with a choice (`data/events.json`, `sim/events.ts`) |
 | Belt ship in distress (M14) | From day 20: bring her down (crew and salvage), send supplies up (thanks later), or ignore her |
-| Celebrations (M14) | Milestones proposed as a festival (a feast, a slow day, lights and lanterns) or a toast |
+| Celebrations (M14) | Milestones proposed as a festival (a feast, a slow day, lights and lanterns) or a toast. The milestones are one catalog, `data/milestones.json` (F-005, T-055): each reached is news, and those marked `celebrate` propose one |
 | Too much oxygen (F-002, T-030) | Above 23.5% O2 a fire-risk warning; after half a day above it, **vent the excess** (back to 21%, lost for good) or hold it. At most once every 3 days |
 
 Everything else here (the strike chain, cave-ins, outbreaks, the network events, the rest of Earth and the belt, story beats, notable life events) is still design. Visits and the M14 events offer choices; M14 events arrive as cards and don't pause the game.
@@ -94,6 +94,28 @@ Every hazard is forecast before it hits.
 
 - **Independence arc:** rumblings, then a petition, a debate and a vote, with player choices at each step shaping timing and terms.
 - **Earth collapse:** the alternate path. The news arrives, and the player chooses who fills the vacuum.
+
+## Missions (ideas)
+
+A **mission** (F-011) is a goal with a story, a checklist that ticks itself as the hole gets there, a deadline, and a reward that often unlocks rooms. The first is moving out of the landing pod (T-111); later holes move out of their base camp the same way (T-114). Missions share the milestones panel and tracking (F-005). These are candidates for the rest of the game, collected for Bryon to pick from (T-116); none is built, and the ones he picks become tickets. Deadlines are in game months (a game day), on normal; difficulty would scale them (F-014). **Needs** names what the game doesn't have yet.
+
+| Mission | Story | Checklist | Deadline | Reward | Needs |
+| --- | --- | --- | --- | --- | --- |
+| **Move out of the pod** | Radiation on the surface; everyone must live and eat below ground. | Everything the pod provides, covered elsewhere | 24 months from start | The pod's salvage; standard homes, cargo, recycling | Planned (T-111) |
+| **Feed ourselves** | Earth warns the drops will thin out. | Food made covers food eaten for a month, without drops; two crops growing | 18 months | Drops of seed stock; the brewery or a new crop | Steady-state balance (shared with T-058) |
+| **Close the water loop** | Ice is hard to haul; every litre lost is a litre mined. | Treatment returns more than the hole loses over a month; gray tanks never overflow | 12 months | Water tanks at a discount, the "closed loop" milestone | F-001's loop (T-060) |
+| **The first school** | The first children are walking; parents want them taught. | A school within reach of every home with children; a clinic and a park nearby | 12 months after the first birth | Happiness boost for families; elder care unlocked early | Built pieces only |
+| **Deep enough for heat** | Geologists say the rock warms below floor 15. | Dig to floor 15; a power reserve; a reinforcement frame on the deep floors | None (an open goal) | The geothermal plant, a supply drop of machinery | Geothermal plant (T-134), cave-ins |
+| **A second hole** | Earth wants proof the colony can spread. | A staging bay; a full kit loaded; a site picked; the convoy arrives | 36 months | A new hole on the map, Earth credits, network milestones | Built pieces only (founding, M4) |
+| **Earth's quota** | Before independence, Earth asks for something back. | Ship N metal (or electronics) by the deadline, up the pad | 12 months | Extra drops and goodwill; refusing sours relations | Exports, Earth relations |
+| **The inspector** | An Earth inspector lands for a month. | Health and happiness above a bar; no room in disrepair; no smell reaching homes | The visit's month | A bigger supply drop, or a smaller one | An inspector event (EVENTS "Earth and the belt") |
+| **Good neighbors** | A belt ship crew stays on after a rescue and wants a home. | Homes for the crew; a bar or lounge nearby; a landing pad staffed | 6 months after a rescue | A belt trade offer; the crew's notable | Belt trade |
+| **Under glass** | The shaft is open to Mars; the dome is a hole's end goal. | Glass in stock; every gallery sealed; the dome built | None (an open goal) | Daylight and a lift to everyone's comfort, the "under glass" milestone | Built pieces only (M12) |
+| **Ready for independence** | The vote is coming; the hole must stand alone. | Self-sufficient for food, water, air and power for a month, without drops or trade | Before the vote | Independence on good terms; holding out loses Earth's goodwill | The independence arc, self-sufficiency (T-058) |
+| **A trade route** | Two holes have what the other lacks. | A rover depot in each; a route set up; a round trip delivered | 12 months after the second hole | Cheaper goods both ways, the "first trade route" milestone | Trade routes (built) |
+| **Tourist season** | A hole near a landmark could host visitors from Earth. | A hotel, an experience venue, happiness above a bar, a pad free | 24 months | Tourist income | Tourism rooms |
+
+**Shapes they share:** most checklists are counts the sim already keeps (rooms built, floors dug, people, stock), a held balance (as T-058 needs), or an event that has happened. Rewards are resources, unlocks moved from population thresholds (as T-113 does for homes), or a milestone. Some are required (the pod), most optional with a gentle deadline: missing one costs goodwill or a smaller drop, never the hole, in keeping with "no pure losses".
 
 ## Notable life events
 
