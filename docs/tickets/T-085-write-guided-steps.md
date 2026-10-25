@@ -4,9 +4,9 @@ title: Write the guided tutorial steps
 status: open
 size: M
 area: ui, data
+feature: F-007
 touches: [data/tutorial.json]
 blocked_by: [T-084]
-feature: F-007
 notes: [N-0046]
 created: 2026-10-07 18:44
 ---
@@ -24,3 +24,4 @@ GUIDE.md: Starting out (the two tutorials).
 
 ## History
 - 2026-10-07 18:44 opened from F-007's breakdown
+- 2026-10-25 15:22 building on t-084-reveal-ui-by-unlocks, with T-084
