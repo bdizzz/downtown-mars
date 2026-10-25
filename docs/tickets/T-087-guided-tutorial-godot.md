@@ -4,9 +4,9 @@ title: The guided tutorial in Godot
 status: open
 size: L
 area: godot, bridge
-touches: [godot/src/Tutorial.cs, godot/src/Live.cs, src/bridge/tutorial.ts]
-blocked_by: [T-085, T-086]
 feature: F-007
+touches: [godot/src/Tutorial.cs, godot/src/Live.cs, src/bridge/tutorial.ts]
+blocked_by: [T-085]
 notes: [N-0046]
 created: 2026-10-07 18:44
 ---
@@ -24,3 +24,4 @@ PLAN-GODOT.md: Status and next.
 
 ## History
 - 2026-10-07 18:44 opened from F-007's breakdown
+- 2026-10-25 19:56 no longer waits on T-086 (hibernating): the Godot guided tutorial goes ahead without the clips (Bryon, Oct 25)
