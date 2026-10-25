@@ -25,3 +25,4 @@ GUIDE.md: Settings.
 ## History
 - 2026-10-06 02:20 opened from F-006's breakdown
 - 2026-10-07 18:58 waits on T-088 (settings layout)
+- 2026-10-25 10:44 building on t-060-closed-loop-milestone

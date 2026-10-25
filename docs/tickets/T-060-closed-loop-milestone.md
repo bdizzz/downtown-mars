@@ -4,9 +4,9 @@ title: Closed loop milestone: water treatment returns more than it loses
 status: open
 size: S
 area: sim, data
+feature: F-005
 touches: [src/sim/milestones.ts, data/milestones.json]
 blocked_by: [T-055, T-005]
-feature: F-005
 notes: [N-0025]
 created: 2026-10-06 01:40
 ---
@@ -21,3 +21,4 @@ A monthly tally of treated water against losses; a check in the catalog. Test. D
 
 ## History
 - 2026-10-06 01:40 opened from F-005's breakdown
+- 2026-10-25 10:44 building on t-060-closed-loop-milestone
