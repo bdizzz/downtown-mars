@@ -1,14 +1,17 @@
 import raw from "../../data/milestones.json";
 import { gameTime } from "./clock";
 import type { SimConfig } from "./config";
+import { LABELS } from "./ledger";
 import { postMessage } from "./messages";
+import { resourceDef } from "./resources";
+import { roomDefs } from "./rooms";
 import type { SimState } from "./state";
 
 // Milestones (F-005): one catalog of what a hole can achieve, tracked per hole
 // with the day each was reached. Some also propose a celebration (events.ts).
 // Everything but the checks is data (data/milestones.json).
 
-export type MilestoneCheck = "population" | "born" | "floors" | "domed" | "event";
+export type MilestoneCheck = "population" | "born" | "floors" | "domed" | "closedLoop" | "event";
 
 export interface MilestoneDef {
   id: string;
@@ -16,6 +19,8 @@ export interface MilestoneDef {
   group: string;
   check: MilestoneCheck;
   at?: number;
+  /** closedLoop: the resources that make up the loop (clean and gray water). */
+  loop?: string[];
   /** Reaching it proposes a celebration. */
   celebrate?: boolean;
 }
@@ -49,9 +54,45 @@ export function passed(state: SimState, m: MilestoneDef): boolean {
       return state.layout.hole.floors >= (m.at ?? 0);
     case "domed":
       return !!state.layout.domed;
+    case "closedLoop":
+      return closedLoop(state, m.loop ?? []);
     case "event":
       return false;
   }
+}
+
+/** Rooms by their ledger label; treatment is any that uses a waste (the water recycler, the tailings reclaimer). */
+const ROOM_LABELS = new Set(roomDefs.map((r) => r.name));
+const TREATMENT = new Set(roomDefs.filter((r) => Object.keys(r.uses).some((id) => resourceDef(id).waste)).map((r) => r.name));
+
+/**
+ * Over the last whole month (a ledger day), did treatment put back into the loop more than the
+ * loop lost for good? Each room's (and the household's) loss is what it took from the loop beyond
+ * what it put back: the recycler's sludge, industry's tailings, the electrolyzer's oxygen; overflow
+ * is lost too. Water moved in or out (drops, rovers, kits, building) isn't the loop leaking.
+ */
+export function closedLoop(state: SimState, loop: string[]): boolean {
+  const month = state.ledger.days.at(-1);
+  if (!month) return false;
+  const taken = new Map<string, number>();
+  const own = (label: string) => ROOM_LABELS.has(label) || label === LABELS.household;
+  let returned = 0;
+  let lost = 0;
+  for (const id of loop) {
+    const f = month[id];
+    if (!f) continue;
+    for (const [label, v] of Object.entries(f.out)) {
+      if (label === LABELS.lost) lost += v;
+      else if (own(label)) taken.set(label, (taken.get(label) ?? 0) + v);
+    }
+    for (const [label, v] of Object.entries(f.in)) {
+      if (TREATMENT.has(label)) returned += v;
+      if (own(label)) taken.set(label, (taken.get(label) ?? 0) - v);
+    }
+  }
+  // A source (a well) puts in without taking: no loss, and no return either.
+  for (const v of taken.values()) lost += Math.max(0, v);
+  return returned > lost;
 }
 
 /**

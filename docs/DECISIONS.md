@@ -285,6 +285,7 @@ Bryon: solar only by day, to make batteries matter.
 - **Each hole keeps the milestones it reached, with the game day** (`state.milestones`, saved, and in the snapshot for the panels). Reaching one is news ("Milestone: five floors down."); a record and news, no rewards.
 - **Event milestones** (microfossils) are reached by the event's `celebrate` effect, which also records them.
 - **Older saves** mark what they'd already passed, and anything already celebrated, as reached on a day unknown (`day: null`), without news or a celebration. No save version bump: the field is filled on first use, as events are.
+- **Closed loop (T-060)** reads the last whole month's ledger: treatment (rooms that use a waste: the recycler, the reclaimer) must put more clean and gray water back than the loop lost for good. Each room's loss is what it took from the loop beyond what it returned (sludge, tailings, the electrolyzer's oxygen), plus overflow; water moved in or out (drops, rovers, kits, building) doesn't count either way. Not celebrated.
 - Missions (F-011) will share this tracking and the panel; candidates are collected in `EVENTS.md` "Missions (ideas)" (T-116).
 
 ## Decided for difficulty in the sim (Oct 25, F-014 / T-122)

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { raiseEvent, stepEvents } from "../src/sim/events";
-import { milestoneData, milestonesOf } from "../src/sim/milestones";
+import { LABELS, type FlowEntry } from "../src/sim/ledger";
+import { hasReached, milestoneData, milestonesOf, passed } from "../src/sim/milestones";
 import { deserialize, serialize } from "../src/sim/save";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
@@ -100,5 +101,46 @@ describe("milestones", () => {
     stepEvents(s, config);
     expect(s.events!.celebrated).toEqual(["floor_5"]);
     expect(s.events!.pending).toHaveLength(0);
+  });
+});
+
+// T-060: a closed water loop, from the last whole month's ledger.
+describe("a closed water loop", () => {
+  const loop = milestoneData.milestones.find((m) => m.id === "closed_loop")!;
+  const month = (water: FlowEntry, grayWater: FlowEntry): SimState => {
+    const s = hole();
+    s.ledger.days = [{ water, grayWater }];
+    return s;
+  };
+
+  it("is reached once treatment puts back more than the loop loses", () => {
+    // Recycler: 80 gray in, 78 clean back (2 lost as sludge). Household: 20 out, 20 back gray. Electrolyzer: 50 split for good.
+    const s = month(
+      { in: { "Water recycler": 78, [LABELS.earth]: 500 }, out: { [LABELS.household]: 20, Electrolyzer: 50 } },
+      { in: { [LABELS.household]: 20 }, out: { "Water recycler": 80 } },
+    );
+    expect(passed(s, loop)).toBe(true);
+    stepEvents(s, config);
+    expect(hasReached(s, "closed_loop")).toBe(true);
+    expect(s.messages.some((m) => m.text === "Milestone: a closed water loop.")).toBe(true);
+  });
+
+  it("isn't while the leaks outpace treatment, or with no treatment at all", () => {
+    const leaky = month(
+      { in: { "Water recycler": 78 }, out: { Electrolyzer: 70, "Concrete plant": 20 } },
+      { in: { "Concrete plant": 10 }, out: { "Water recycler": 80, [LABELS.lost]: 5 } },
+    );
+    expect(passed(leaky, loop)).toBe(false);
+    const untreated = month({ in: { [LABELS.earth]: 500 }, out: { [LABELS.household]: 20 } }, { in: { [LABELS.household]: 20 }, out: {} });
+    expect(passed(untreated, loop)).toBe(false);
+    expect(passed(hole(), loop)).toBe(false);
+  });
+
+  it("water moved in and out (rovers, a seed kit) isn't the loop leaking", () => {
+    const s = month(
+      { in: { "Water recycler": 78 }, out: { "Rover to Second Hole": 300, [LABELS.household]: 20 } },
+      { in: { [LABELS.household]: 20 }, out: { "Water recycler": 80 } },
+    );
+    expect(passed(s, loop)).toBe(true);
   });
 });
