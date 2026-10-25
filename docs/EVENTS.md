@@ -13,7 +13,7 @@ Events are how the colony talks back: citizen visits, hazards, discoveries, netw
 | People | Births, retirements, deaths, migration between holes, opinion shifts between holes |
 | Drill discoveries (M14) | Aquifer, rich ore vein, silica bed, lava tube, gas pocket and microfossils, struck as floors are finished, each with a choice (`data/events.json`, `sim/events.ts`) |
 | Belt ship in distress (M14) | From day 20: bring her down (crew and salvage), send supplies up (thanks later), or ignore her |
-| Celebrations (M14) | Milestones proposed as a festival (a feast, a slow day, lights and lanterns) or a toast. The milestones are one catalog, `data/milestones.json` (F-005, T-055): each reached is news, and those marked `celebrate` propose one |
+| Celebrations (M14) | Milestones proposed as a festival (a feast, a slow day, lights and lanterns) or a toast. The milestones are one catalog, `data/milestones.json` (F-005, T-055): each reached is news, and those marked `celebrate` propose one. Bringing a belt ship down reaches "good neighbors" (T-057). All shown in Charts → Milestones (T-056) |
 | Too much oxygen (F-002, T-030) | Above 23.5% O2 a fire-risk warning; after half a day above it, **vent the excess** (back to 21%, lost for good) or hold it. At most once every 3 days |
 
 Everything else here (the strike chain, cave-ins, outbreaks, the network events, the rest of Earth and the belt, story beats, notable life events) is still design. Visits and the M14 events offer choices; M14 events arrive as cards and don't pause the game.

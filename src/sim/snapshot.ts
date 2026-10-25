@@ -25,7 +25,7 @@ import type { Notable } from "./notables";
 import { ordinanceSlots } from "./ordinances";
 import type { Office } from "./visits";
 import { choiceRefusal, eventDef, eventMood, type PendingEvent } from "./events";
-import type { ReachedMilestone } from "./milestones";
+import { milestoneData, progress, type ReachedMilestone } from "./milestones";
 import type { Layout } from "./placement";
 import type { SimState } from "./state";
 
@@ -105,6 +105,8 @@ export interface HoleSummary {
   domed?: boolean;
   /** The hole has failed (T-162): how many days it lasted, and the most people it had. */
   failed?: { days: number; peak: number };
+  /** Milestones that hole has reached, with the day (F-005), for the network section of the milestones panel. */
+  milestones: ReachedMilestone[];
 }
 
 // What the views get to see: the hole being looked at, in full, plus a line
@@ -201,6 +203,18 @@ export interface Snapshot {
   events: { pending: EventView[]; mood: number; festival: { startTick: number; untilTick: number } | null; landingTick: number | null };
   /** Milestones this hole has reached, in the order reached, with the game day (null: an older save's, day unknown). The catalog is data/milestones.json. */
   milestones: ReachedMilestone[];
+  /** How far along each counted milestone not yet reached is (people, floors, children born…), for the panel. */
+  milestoneProgress: Record<string, number>;
+}
+
+function milestoneProgress(state: SimState): Record<string, number> {
+  const reached = new Set((state.milestones ?? []).map((m) => m.id));
+  const out: Record<string, number> = {};
+  for (const m of milestoneData.milestones) {
+    const p = reached.has(m.id) ? null : progress(state, m);
+    if (p !== null) out[m.id] = p;
+  }
+  return out;
 }
 
 function eventsView(state: SimState): Snapshot["events"] {
@@ -294,5 +308,6 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     flows: averageFlows(state, cfg),
     events: eventsView(state),
     milestones: (state.milestones ?? []).map((m) => ({ ...m })),
+    milestoneProgress: milestoneProgress(state),
   };
 }

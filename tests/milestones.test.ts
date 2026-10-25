@@ -3,7 +3,11 @@ import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { raiseEvent, stepEvents } from "../src/sim/events";
 import { LABELS, type FlowEntry } from "../src/sim/ledger";
-import { hasReached, milestoneData, milestonesOf, passed } from "../src/sim/milestones";
+import { newbornGeneration } from "../src/sim/births";
+import { openCells } from "../src/sim/excavation";
+import { fullRing, hasReached, milestoneData, milestonesOf, passed, progress } from "../src/sim/milestones";
+import { stepAging } from "../src/sim/people";
+import { milestonesView } from "../src/view/milestones";
 import { deserialize, serialize } from "../src/sim/save";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
@@ -142,5 +146,101 @@ describe("a closed water loop", () => {
       { in: { [LABELS.household]: 20 }, out: { "Water recycler": 80 } },
     );
     expect(passed(s, loop)).toBe(true);
+  });
+});
+
+// T-057: life milestones.
+describe("life milestones", () => {
+  const def = (id: string) => milestoneData.milestones.find((m) => m.id === id)!;
+
+  it("the first Martian adult: a child born here grows up", () => {
+    const s = hole();
+    s.population.cohorts.push({ stage: "child", count: 2, until: s.tick, gen: 2 });
+    expect(passed(s, def("martian_adult"))).toBe(false);
+    stepAging(s, config);
+    expect(s.population.grownUp).toBe(2);
+    stepEvents(s, config);
+    expect(hasReached(s, "martian_adult")).toBe(true);
+  });
+
+  it("the third generation: a child born to adults who were born here", () => {
+    const s = hole();
+    expect(newbornGeneration(s)).toBe(2);
+    expect(passed(s, def("third_generation"))).toBe(false);
+    s.population.cohorts.push({ stage: "adult", count: 2, until: s.tick + 100 * day, gen: 2 });
+    expect(newbornGeneration(s)).toBe(3);
+    s.population.generation = 3;
+    expect(passed(s, def("third_generation"))).toBe(true);
+  });
+
+  it("laid to rest: the first elder passes away", () => {
+    const s = hole();
+    s.population.cohorts.push({ stage: "elder", count: 1, until: s.tick });
+    expect(passed(s, def("laid_to_rest"))).toBe(false);
+    stepAging(s, config);
+    expect(s.population.passedAway).toBe(1);
+    expect(passed(s, def("laid_to_rest"))).toBe(true);
+    // An older save counted only those in a crypt.
+    const old = hole();
+    old.population.interred = 3;
+    expect(progress(old, def("laid_to_rest"))).toBe(3);
+  });
+
+  it("a full ring: every slot of a ring dug, but not the one the landing crew blasted out", () => {
+    const s = hole();
+    expect(fullRing(s)).toBe(false);
+    const cells = Array.from({ length: s.layout.hole.ringSlots[1]! }, (_, slot) => ({ floor: 1, ring: 2, slot }));
+    openCells(s.layout, cells.slice(1));
+    expect(fullRing(s)).toBe(false);
+    openCells(s.layout, cells);
+    expect(fullRing(s)).toBe(true);
+    stepEvents(s, config);
+    expect(hasReached(s, "full_ring")).toBe(true);
+  });
+
+  it("an older save with a working farm has had its first harvest", () => {
+    const s = hole();
+    s.layout.rooms.push({ ...s.layout.rooms.find((r) => r.at.kind === "ring")!, id: 999, type: "farm" });
+    delete s.milestones;
+    expect(milestonesOf(s)).toContainEqual({ id: "first_harvest", day: null });
+  });
+
+  it("a new hole has none of them", () => {
+    const s = hole();
+    for (const id of ["first_harvest", "martian_adult", "third_generation", "laid_to_rest", "full_ring", "good_neighbors"]) expect(passed(s, def(id))).toBe(false);
+  });
+});
+
+// T-056: the panel's text.
+describe("the milestones panel", () => {
+  it("groups earned ones (with when) and what's ahead (with progress), and the other holes'", () => {
+    const w = createWorld(config, 42);
+    const h = w.holes[0]!;
+    h.tick = 14 * day;
+    h.layout.hole.floors = 5;
+    stepEvents(h, config);
+    const s = makeSnapshot(h, config);
+    s.holes = [
+      { id: h.holeId, name: h.name, milestones: s.milestones } as never,
+      { id: 99, name: "Second", milestones: [{ id: "first_birth", day: null }, { id: "pop_50", day: 30 }] } as never,
+    ];
+    const v = milestonesView(s);
+    expect(v.reached).toBe(1);
+    expect(v.total).toBe(milestoneData.milestones.length);
+    const growth = v.groups.find((g) => g.id === "growth")!;
+    expect(growth.reached).toEqual([{ id: "floor_5", title: "Five floors down", when: "Year 1, month 3" }]);
+    expect(growth.ahead.find((m) => m.id === "floor_10")!.progress).toEqual({ value: 5, at: 10 });
+    expect(growth.ahead.find((m) => m.id === "dome")!.progress).toBeUndefined();
+    expect(v.groups.find((g) => g.id === "life")!.ahead[0]!.hint).toBeTruthy();
+    expect(v.network).toEqual([
+      {
+        holeId: 99,
+        name: "Second",
+        reached: [
+          { id: "pop_50", title: "Fifty people", when: "Year 2, month 6" },
+          { id: "first_birth", title: "The first child born on Mars", when: "" },
+        ],
+      },
+    ]);
   });
 });

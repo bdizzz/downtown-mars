@@ -1,21 +1,34 @@
 import raw from "../../data/milestones.json";
 import { gameTime } from "./clock";
-import type { SimConfig } from "./config";
+import { config, type SimConfig } from "./config";
 import { LABELS } from "./ledger";
 import { postMessage } from "./messages";
 import { resourceDef } from "./resources";
-import { roomDefs } from "./rooms";
+import { roomDef, roomDefs } from "./rooms";
 import type { SimState } from "./state";
 
 // Milestones (F-005): one catalog of what a hole can achieve, tracked per hole
 // with the day each was reached. Some also propose a celebration (events.ts).
 // Everything but the checks is data (data/milestones.json).
 
-export type MilestoneCheck = "population" | "born" | "floors" | "domed" | "closedLoop" | "event";
+export type MilestoneCheck =
+  | "population"
+  | "born"
+  | "floors"
+  | "harvest"
+  | "grownUp"
+  | "generation"
+  | "passedAway"
+  | "fullRing"
+  | "domed"
+  | "closedLoop"
+  | "event";
 
 export interface MilestoneDef {
   id: string;
   title: string;
+  /** How to get there, for the milestones panel. */
+  hint?: string;
   group: string;
   check: MilestoneCheck;
   at?: number;
@@ -43,15 +56,43 @@ export function milestoneDef(id: string): MilestoneDef | undefined {
   return byId.get(id);
 }
 
+/** How far along a counted milestone is (people, floors, children born…); null for the yes-or-no ones. */
+export function progress(state: SimState, m: MilestoneDef): number | null {
+  const pop = state.population;
+  switch (m.check) {
+    case "population":
+      return pop.count;
+    case "born":
+      return pop.born ?? 0;
+    case "floors":
+      return state.layout.hole.floors;
+    case "harvest":
+      return state.harvested ?? 0;
+    case "grownUp":
+      return pop.grownUp ?? 0;
+    case "generation":
+      return pop.generation ?? 1;
+    case "passedAway":
+      // Older saves kept only those laid in a crypt.
+      return pop.passedAway ?? pop.interred ?? 0;
+    default:
+      return null;
+  }
+}
+
 /** Has the hole got there? Event milestones never are by themselves: an event reaches them. */
 export function passed(state: SimState, m: MilestoneDef): boolean {
   switch (m.check) {
     case "population":
-      return state.population.count >= (m.at ?? 0);
     case "born":
-      return (state.population.born ?? 0) >= (m.at ?? 1);
     case "floors":
-      return state.layout.hole.floors >= (m.at ?? 0);
+    case "harvest":
+    case "grownUp":
+    case "generation":
+    case "passedAway":
+      return progress(state, m)! >= (m.at ?? 1);
+    case "fullRing":
+      return fullRing(state);
     case "domed":
       return !!state.layout.domed;
     case "closedLoop":
@@ -59,6 +100,19 @@ export function passed(state: SimState, m: MilestoneDef): boolean {
     case "event":
       return false;
   }
+}
+
+/** Is every slot of some floor's ring dug out, beyond the rings the landing crew blasted out of floor 1? */
+export function fullRing(state: SimState): boolean {
+  const { hole, open } = state.layout;
+  for (let f = 0; f < Math.min(hole.floors, open?.length ?? 0); f++) {
+    for (let r = 0; r < hole.unlockedRings; r++) {
+      if (f === 0 && r < config.starterHole.openRings) continue;
+      const row = open![f]![r];
+      if (row && row.length === hole.ringSlots[r] && row.every((v) => v === 1)) return true;
+    }
+  }
+  return false;
 }
 
 /** Rooms by their ledger label; treatment is any that uses a waste (the water recycler, the tailings reclaimer). */
@@ -98,11 +152,14 @@ export function closedLoop(state: SimState, loop: string[]): boolean {
 /**
  * The hole's milestones, made on first use. Older saves mark what they've already passed (and any
  * milestone they celebrated, an event's among them) as reached on a day unknown, without news.
+ * They didn't count harvests, so a working farm means the first harvest is behind them.
  */
 export function milestonesOf(state: SimState): ReachedMilestone[] {
   if (!state.milestones) {
     const celebrated = new Set(state.events?.celebrated ?? []);
-    state.milestones = milestoneData.milestones.filter((m) => celebrated.has(m.id) || passed(state, m)).map((m) => ({ id: m.id, day: null }));
+    const farming = state.layout.rooms.some((r) => !r.planned && !r.building && roomDef(r.type).growsCrops);
+    const before = (m: MilestoneDef) => celebrated.has(m.id) || passed(state, m) || (m.check === "harvest" && farming);
+    state.milestones = milestoneData.milestones.filter(before).map((m) => ({ id: m.id, day: null }));
   }
   return state.milestones;
 }

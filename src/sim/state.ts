@@ -87,6 +87,8 @@ export interface SimState {
   history?: History;
   /** Events waiting for an answer, finds made, moods and festivals (PLAN-M14; absent in older saves until the first). */
   events?: EventsState;
+  /** Crops grown here, all told (economy.ts; for the first harvest milestone; absent in older saves). */
+  harvested?: number;
   /** Milestones reached, with the day (F-005, data/milestones.json; absent in older saves until the first check). */
   milestones?: ReachedMilestone[];
   /** The living volume, cached (air.ts; absent in older saves until the first tick). */
