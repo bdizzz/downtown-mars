@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { Snapshot } from "../sim/snapshot";
 import { Portrait } from "./Portrait";
 import { pickGoal, shownGoal, tutorial, type TutorialStep } from "./tutorialGoals";
+import { guided, guideStep } from "./guided";
+import type { GuideState } from "../sim/state";
 
 interface Props {
   s: Snapshot;
@@ -79,6 +81,80 @@ export function Tutorial({ s, met, step, onStep, onHide }: Props) {
       </div>
       <button className="link" onClick={onHide}>
         {goal ? "Hide tutorial" : "Close"}
+      </button>
+    </div>
+  );
+}
+
+interface GuidedProps {
+  s: Snapshot;
+  guide: GuideState;
+  /** Whether the step's check is met (it moves on by itself a moment later). */
+  met: boolean;
+  /** Paused on a step that has a check: its button carries on, slowly. */
+  paused: boolean;
+  /** The step's button: on from a step to read, or carry on after reading. */
+  onButton: () => void;
+  /** Leave the guided tutorial (or close it once it's over). */
+  onLeave: () => void;
+}
+
+/** The guided tutorial's card (F-007, T-083): one step at a time, in order. */
+export function GuidedTutorial({ s, guide, met, paused, onButton, onLeave }: GuidedProps) {
+  const [small, setSmall] = useState(false);
+  const deputy = s.notables[0];
+  const name = deputy?.name ?? "your deputy";
+  const fill = (t: string) => t.replaceAll("{name}", name);
+  const step = guideStep(guide);
+  const n = guided.steps.length;
+  const done = Math.min(guide.step, n);
+
+  if (small) {
+    return (
+      <button className="tutorial-pill" onClick={() => setSmall(false)}>
+        Guide · {done}/{n}
+      </button>
+    );
+  }
+
+  return (
+    <div className="tutorial guided" role="complementary" aria-label="Guided tutorial">
+      <div className="who">
+        <Portrait who={deputy} />
+        <span>
+          <strong>{name}</strong>
+          <span className="k"> · deputy</span>
+        </span>
+        <button className="icon" onClick={() => setSmall(true)} aria-label="Minimize" title="Minimize">
+          –
+        </button>
+      </div>
+      {guide.step === 0 && <p>{fill(guided.intro)}</p>}
+      {step ? (
+        <>
+          <p className="say">
+            {met && <span className="tick">✓ </span>}
+            {fill(step.text)}
+          </p>
+          <p className="k">{step.hint}</p>
+          {(!step.check || paused) && (
+            <button className="primary" onClick={onButton}>
+              {(!step.check && step.button) || "Go on"}
+            </button>
+          )}
+        </>
+      ) : (
+        <p className="say">{fill(guided.outro)}</p>
+      )}
+      <div className="steps">
+        <div className="progress" aria-label={`${done} of ${n} steps done`}>
+          {guided.steps.map((g, i) => (
+            <span key={g.id} className={[i < guide.step && "done", i === guide.step && "now"].filter(Boolean).join(" ")} />
+          ))}
+        </div>
+      </div>
+      <button className="link" onClick={onLeave}>
+        {step ? guided.leave : "Close"}
       </button>
     </div>
   );

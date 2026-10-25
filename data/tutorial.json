@@ -9,7 +9,45 @@
       "You have **{colonists} colonists**, enough supplies to get started, and **one very large drill**. As it bores into the ground, you'll carve homes, farms and workshops into the walls of the hole.",
       "It's the only way to live here for good. Let's dig in."
     ],
-    "button": "And so it begins..."
+    "button": "And so it begins...",
+    "guidedButton": "I'm new to games like this",
+    "guidedNote": "Your deputy walks you through it one step at a time, with the game slowed down and no surprises."
+  },
+  "_guided": "The guided tutorial (F-007, T-083), picked on the welcome card for newcomers to city builders. One step at a time, in order. check: a goal id from src/ui/tutorialGoals.ts CHECKS (none: the step is read, and the player clicks the button to go on). unlocks: the UI elements the step reveals (hud:<id> from view/hudItems.ts HUD_IDS, mode:<build|view|charts|map>, room:<id>, overlay:<type>, tool:<id>), recorded in the save for T-084 to hide the rest. pace: slow (the game runs at config slowSpeed) or read (paused until the button). clip: an optional \"Show me\" clip (T-086). Storms and events wait until calmUntil's step is done. These are placeholders; T-085 writes the real steps.",
+  "guided": {
+    "intro": "I'm {name}, your deputy. I'll show you around one thing at a time, and I've slowed things down so nothing runs away from us.",
+    "calmUntil": "restroom",
+    "steps": [
+      {
+        "id": "speed",
+        "text": "First, time. Up top are the speed buttons: pause, and faster. While we're learning I'll keep things slow, and pause when there's something to read.",
+        "hint": "Space pauses and unpauses. You can speed up whenever you like.",
+        "highlight": "hud:speed",
+        "unlocks": ["hud:speed", "hud:clock"],
+        "pace": "read",
+        "button": "Got it"
+      },
+      {
+        "id": "galley",
+        "check": "galley",
+        "text": "Twenty people and nowhere to cook. Let's build a galley in ring 1, right on the shaft.",
+        "hint": "Click Build at the bottom right, then Food, then the galley, and click a free slot in ring 1.",
+        "highlight": "room:galley",
+        "unlocks": ["mode:build", "room:galley"],
+        "pace": "slow"
+      },
+      {
+        "id": "restroom",
+        "check": "restroom",
+        "text": "Next, a restroom. People like one within a short walk of home.",
+        "hint": "In Build, pick the restroom and place it in ring 1.",
+        "highlight": "room:restroom",
+        "unlocks": ["room:restroom"],
+        "pace": "slow"
+      }
+    ],
+    "outro": "That's the start of a colony. There's more to learn; for now, keep digging.",
+    "leave": "Show everything"
   },
   "intro": "I'm {name}, your deputy. Twenty of us, one pod, and a hole that goes nowhere yet. Let's make it a home.",
   "goals": [

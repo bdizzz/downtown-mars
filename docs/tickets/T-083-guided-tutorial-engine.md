@@ -1,7 +1,7 @@
 ---
 id: T-083
 title: Guided tutorial mode: chosen on the welcome card, steps with unlocks, a calm start
-status: open
+status: done
 size: L
 area: ui, sim
 feature: F-007
@@ -25,3 +25,4 @@ DECISIONS.md: the guided tutorial and the calm start.
 ## History
 - 2026-10-07 18:44 opened from F-007's breakdown
 - 2026-10-25 15:11 building on t-083-guided-tutorial-engine
+- 2026-10-25 15:17 built

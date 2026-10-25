@@ -298,6 +298,14 @@ Bryon: solar only by day, to make batteries matter.
 - **The knobs:** starting stock; build costs (rooms, corridors, linings and floors, bulkheads, windows, the dome); build time; dig time (the drill and excavation); decay; health lost to unmet needs, poor sanitation and bad air; base happiness; hazards (dust storms and breakdowns, how often); event severity (an event's lost resources, low mood and wear, not its good outcomes); unlock thresholds (and the dome's population); deadlines (how long an event waits; F-011's move-out to join when built); Earth's rescue chance, 0 on hard. Discoveries and the belt ship aren't scaled: they're opportunities, not setbacks.
 - Costs, thresholds and stock stay whole numbers, never rounding a cost to free. First values are rough (easy mostly 0.6–0.75×, hard 1.25–1.5×); T-125 tunes them by playing.
 
+## Decided for the guided tutorial (Oct 25, F-007 / T-083)
+
+- **Two tutorials, picked on the welcome card.** **And so it begins...** keeps the regular one (goals in any order); **I'm new to games like this** starts the guided one. Its steps (`data/tutorial.json` `guided`) go one at a time, in order, each finished by a goal check (reusing the regular tutorial's `CHECKS`) or, for a step to read, by its button. Leaving it (**Show everything**, or Close at the end) drops back to the regular tutorial, if that's on, with whatever's been done ticked.
+- **Its progress is in the save, on the hole** (`SimState.guide`: step, interface unlocked so far, calm), set by the `setGuide` command, like the deputy's tips. A loaded guided game carries on at its step. Absent for every other game, so no migration.
+- **The pace:** each step sets it as it starts, paused (`pace: "read"`) or slow (`config.slowSpeed`, 0.5×, not one of the speed buttons; + from it goes to 1×). After that the speed is the player's. Finishing or leaving the guide goes back to 1×.
+- **The calm start:** while `guide.calm` is on (until the step named `calmUntil` is done), no dust storm is forecast, no belt ship calls, no celebration is proposed and the drill strikes nothing. Celebrations aren't lost (the milestone stays reached and is celebrated after), and the first floor dug after the calm still always strikes something. Warnings about the player's own air and water still come: they're feedback, not surprises.
+- **Unlocks are recorded, not yet acted on:** each step lists the interface ids it reveals (`hud:<id>`, `mode:<id>`, `room:<id>`, `overlay:<id>`, `tool:<id>`); T-084 hides the rest. The steps in the data are placeholders until T-085.
+
 ## Still open
 
 Deliberately not decided yet:
