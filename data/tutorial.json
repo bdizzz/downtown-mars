@@ -28,6 +28,15 @@
         "button": "Got it"
       },
       {
+        "id": "drill",
+        "text": "Up top, the drill is boring down to floor 2. Each floor it finishes is new rock to build in. The floors are on the right, to look at one at a time.",
+        "hint": "The drill's ❚❚ pauses it. Page Up and Page Down step between floors.",
+        "highlight": "hud:drill",
+        "unlocks": ["hud:drill", "hud:floors"],
+        "pace": "read",
+        "button": "Got it"
+      },
+      {
         "id": "hole",
         "text": "This is our hole: the shaft in the middle, open to the sky, and rooms dug into the rock around it in rings. Ring 1 faces the shaft; rings 2 and 3 sit behind it.",
         "hint": "Drag to look around, scroll to zoom.",
@@ -81,15 +90,6 @@
         "highlight": "room:bunk_dorm",
         "unlocks": ["room:bunk_dorm"],
         "pace": "slow"
-      },
-      {
-        "id": "drill",
-        "text": "Up top, the drill is boring down to floor 2. Each floor it finishes is new rock to build in. The floors are on the right, to look at one at a time.",
-        "hint": "The drill's ❚❚ pauses it. Page Up and Page Down step between floors.",
-        "highlight": "hud:drill",
-        "unlocks": ["hud:drill", "hud:floors"],
-        "pace": "read",
-        "button": "Got it"
       },
       {
         "id": "farm",
