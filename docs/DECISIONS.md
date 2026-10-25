@@ -279,6 +279,14 @@ Bryon: solar only by day, to make batteries matter.
 - **A flat battery before dawn darkens rooms by priority**, lowest first, as any power shortage does. A resting array is not trouble (no outline or icon; its panel says "dark until dawn" or "low sun"). The Power cell is fine at night if the battery will last till full sun, a worry if it won't ("Battery flat before dawn"), and trouble once rooms go dark.
 - The bots build a battery bank when they're short of power and their batteries hold less than 60% of a day's use, and a solar array otherwise.
 
+## Decided for milestones (Oct 24, F-005 / T-055)
+
+- **Milestones and celebrations are one list,** `data/milestones.json` (id, title, group, check, threshold). Every celebration is a milestone; not every milestone gets one: `celebrate: true` proposes a festival or toast, as M14 did. M14's `celebrations.milestones` moved there; `events.json` keeps only the festival's numbers.
+- **Each hole keeps the milestones it reached, with the game day** (`state.milestones`, saved, and in the snapshot for the panels). Reaching one is news ("Milestone: five floors down."); a record and news, no rewards.
+- **Event milestones** (microfossils) are reached by the event's `celebrate` effect, which also records them.
+- **Older saves** mark what they'd already passed, and anything already celebrated, as reached on a day unknown (`day: null`), without news or a celebration. No save version bump: the field is filled on first use, as events are.
+- Missions (F-011) will share this tracking and the panel; candidates are collected in `EVENTS.md` "Missions (ideas)" (T-116).
+
 ## Decided for difficulty in the sim (Oct 25, F-014 / T-122)
 
 - **Difficulty rescales the data, not the code.** `data/difficulty.json` gives each level a multiplier per knob; `setDifficulty` (`src/sim/difficulty.ts`) rescales the numbers in the loaded data in place, from the values as written, when a game is made or loaded. No system asks for its multiplier, so the build palette's prices, the unlock lines and the Godot bridge all see the level's numbers for free, and new rooms or events are covered as soon as they're in the data. Normal puts every number back exactly.

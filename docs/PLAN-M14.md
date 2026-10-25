@@ -76,6 +76,7 @@ Choices: **Throw a festival** (30 meals or rations, and a day at 80% productivit
 - **Throw a festival:** a feast of 30 (meals first, then rations; greyed out without), a mood of +8 easing off over two days, and the first day at 80% productivity (`festivalWork`). **Raise a toast:** +2 for two days. Left a day, it passes with a toast (+1).
 - **3D** (`render3d/festival3d.ts`): strings of coloured lights looped round every floor's gallery (from a picked floor down), sagging between hangers, and 90 lanterns rising up the middle of the shaft, swaying, glowing additively; shown while the festival lasts.
 - **Bots** throw a festival only with 120 meals and rations to spare, else raise a toast.
+- **Moved (Oct 24, T-055):** the milestone list now lives in `data/milestones.json`, the hole's one milestone catalog (F-005), with `celebrate: true` on each of these. `sim/milestones.ts` records each with the day it was reached and posts the news; `sim/events.ts` still proposes the celebrations, one at a time, as before.
 
 **Step 5, docs:** README (Events), DECISIONS (milestone 14), EVENTS (as built), CLAUDE.md.
 

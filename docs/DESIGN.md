@@ -288,6 +288,7 @@ The sandbox has a loose three-act shape: an Earth-supported start, a break, then
 
 - Earth may ask for something back early, such as export quotas, creating tension before the break.
 - The break is telegraphed through rising independence sentiment or shaky Earth news, so players can prepare.
+- **Missions** give each act its goals: a story, a checklist, a deadline and a reward, starting with moving out of the landing pod (F-011). Candidates for the rest of the game, from feeding ourselves to readiness for independence, are collected in `EVENTS.md` "Missions (ideas)".
 
 ## Presentation and time
 

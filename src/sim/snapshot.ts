@@ -25,6 +25,7 @@ import type { Notable } from "./notables";
 import { ordinanceSlots } from "./ordinances";
 import type { Office } from "./visits";
 import { choiceRefusal, eventDef, eventMood, type PendingEvent } from "./events";
+import type { ReachedMilestone } from "./milestones";
 import type { Layout } from "./placement";
 import type { SimState } from "./state";
 
@@ -198,6 +199,8 @@ export interface Snapshot {
   flows: Flows;
   /** Events waiting for an answer (PLAN-M14), what they're doing to everyone's mood, a festival on, and the last event landing. */
   events: { pending: EventView[]; mood: number; festival: { startTick: number; untilTick: number } | null; landingTick: number | null };
+  /** Milestones this hole has reached, in the order reached, with the game day (null: an older save's, day unknown). The catalog is data/milestones.json. */
+  milestones: ReachedMilestone[];
 }
 
 function eventsView(state: SimState): Snapshot["events"] {
@@ -290,5 +293,6 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     ordinanceSlots: ordinanceSlots(state),
     flows: averageFlows(state, cfg),
     events: eventsView(state),
+    milestones: (state.milestones ?? []).map((m) => ({ ...m })),
   };
 }
