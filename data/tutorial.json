@@ -29,12 +29,21 @@
       },
       {
         "id": "drill",
-        "text": "Up top, the drill is boring down to floor 2. Each floor it finishes is new rock to build in. The floors are on the right, to look at one at a time.",
-        "hint": "The drill's ❚❚ pauses it. Page Up and Page Down step between floors.",
+        "text": "Up top, the drill is boring down to floor 2. Each floor it finishes is new rock to build in.",
+        "hint": "The drill's ❚❚ pauses it, if you'd rather it waited; ▶ starts it again.",
         "highlight": "hud:drill",
-        "unlocks": ["hud:drill", "hud:floors"],
+        "unlocks": ["hud:drill"],
         "pace": "read",
         "button": "Got it"
+      },
+      {
+        "id": "floors",
+        "check": "floor1",
+        "text": "The floors are down the side, one button each, to look at one at a time. Click F1 to look at the first floor.",
+        "hint": "Page Up and Page Down step between floors too.",
+        "highlight": "hud:floors",
+        "unlocks": ["hud:floors"],
+        "pace": "slow"
       },
       {
         "id": "hole",

@@ -119,7 +119,8 @@ export function GuidedTutorial({ s, guide, met, paused, onButton, onLeave, highl
     const measure = () => {
       const target = findTarget(highlight);
       const box = card.current?.getBoundingClientRect();
-      const next = target && box ? place(target.getBoundingClientRect(), box, { width: window.innerWidth, height: window.innerHeight }, obstacle()) : null;
+      const view = { width: window.innerWidth, height: window.innerHeight };
+      const next = target && box ? place(target.getBoundingClientRect(), box, view, obstacle(), !!target.closest('[data-anchor="side"]')) : null;
       setAnchor((prev) => (sameAnchor(prev, next) ? prev : next));
     };
     measure();
@@ -188,9 +189,9 @@ export function GuidedTutorial({ s, guide, met, paused, onButton, onLeave, highl
   );
   if (!anchor) return body;
   return (
-    <div className={`guide-anchor ${anchor.below ? "below" : "above"}`} style={{ left: anchor.left, top: anchor.top }}>
+    <div className={`guide-anchor ${anchor.side}`} style={{ left: anchor.left, top: anchor.top }}>
       {body}
-      <span className="guide-arrow" style={{ left: anchor.arrow }} aria-hidden="true" />
+      <span className="guide-arrow" style={anchor.side === "below" || anchor.side === "above" ? { left: anchor.arrow } : { top: anchor.arrow }} aria-hidden="true" />
     </div>
   );
 }

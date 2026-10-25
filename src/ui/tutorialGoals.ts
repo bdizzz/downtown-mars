@@ -20,6 +20,8 @@ export interface UiFlags {
   /** For the guided tutorial (T-085); the Godot viewer doesn't send them yet. */
   inspectedRoom?: boolean;
   openedOffice?: boolean;
+  /** Clicked F1 in the floor picker. */
+  pickedFloor1?: boolean;
 }
 
 const has = (s: Snapshot, type: string, n = 1) => s.layout.rooms.filter((r) => r.type === type).length >= n;
@@ -49,6 +51,7 @@ export const CHECKS: Record<string, (s: Snapshot, ui: UiFlags) => boolean> = {
   // the guided one asks for a farm, then a corridor (or luck) that reaches it.
   inspect: (_, ui) => !!ui.inspectedRoom,
   office: (_, ui) => !!ui.openedOffice,
+  floor1: (_, ui) => !!ui.pickedFloor1,
   farm: (s) => has(s, "farm"),
   farm_linked: (s) => s.layout.rooms.some((r) => r.type === "farm" && r.connected),
 };

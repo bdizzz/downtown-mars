@@ -711,7 +711,12 @@ export function App() {
               floors={floorCount}
               floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
               allowAll={settings.view === "3d" && !walking}
-              onPick={setViewFloor}
+              onPick={(f) => {
+                setViewFloor(f);
+                // The guided tutorial has you pick F1 (T-085).
+                if (f === 1) setFlags((fl) => (fl.pickedFloor1 ? fl : { ...fl, pickedFloor1: true }));
+              }}
+              highlight={highlight}
               preview={walking ? undefined : previewFloor}
               onPreview={walking || !settings.floorHoverPreview ? () => {} : setPreviewFloor}
             />

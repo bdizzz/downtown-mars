@@ -313,13 +313,18 @@ label.set-row { cursor: pointer; }
 /* The guided card next to what its step is about (ui/anchor.ts), with a small arrow to it. The
    wrapper is placed in real pixels; the card inside keeps the interface-size zoom. */
 .guide-anchor { position: fixed; z-index: 4; transition: left 0.2s ease, top 0.2s ease; }
-.guide-anchor .tutorial.anchored { position: relative; inset: auto; }
+/* A set width: the fixed wrapper shrinks to fit near the screen's edge, and a share of it would squeeze the card. */
+.guide-anchor .tutorial.anchored { position: relative; inset: auto; width: min(300px, calc(100vw - 24px)); }
 .guide-arrow {
   position: absolute; width: 12px; height: 12px; background: var(--accent);
   transform: translateX(-50%) rotate(45deg); pointer-events: none;
 }
 .guide-anchor.below .guide-arrow { top: -6px; }
 .guide-anchor.above .guide-arrow { bottom: -6px; }
+/* Beside a target down the side of the screen: the arrow on the card's near edge, pointing at it. */
+.guide-anchor.left .guide-arrow, .guide-anchor.right .guide-arrow { transform: translateY(-50%) rotate(45deg); }
+.guide-anchor.left .guide-arrow { right: -6px; }
+.guide-anchor.right .guide-arrow { left: -6px; }
 @media (prefers-reduced-motion: reduce) { .guide-anchor { transition: none; } }
 .tutorial-pill {
   position: absolute; right: 12px; bottom: 10px; z-index: 3; background: rgba(30, 17, 13, 0.96);
