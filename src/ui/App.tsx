@@ -663,6 +663,7 @@ export function App() {
                 guide={guide}
                 met={gMet}
                 paused={speed === 0}
+                highlight={highlight}
                 onButton={() => {
                   // A step to read moves on (and the next sets its pace); otherwise carry on, slowly.
                   if (gStep && !gStep.check) send({ type: "setGuide", guide: nextGuide(guide) });

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { findTarget, obstacle, place, sameAnchor, type Anchor } from "./anchor";
 import type { Snapshot } from "../sim/snapshot";
 import { Portrait } from "./Portrait";
 import { pickGoal, shownGoal, tutorial, type TutorialStep } from "./tutorialGoals";
@@ -97,11 +98,38 @@ interface GuidedProps {
   onButton: () => void;
   /** Leave the guided tutorial (or close it once it's over). */
   onLeave: () => void;
+  /** What the step points at ("hud:speed", "room:galley"…): the card sits next to it, with an arrow. */
+  highlight: string | null;
 }
 
-/** The guided tutorial's card (F-007, T-083): one step at a time, in order. */
-export function GuidedTutorial({ s, guide, met, paused, onButton, onLeave }: GuidedProps) {
+/** How often the card checks where its target is: things open, close and move under it. */
+const ANCHOR_EVERY_MS = 250;
+
+/**
+ * The guided tutorial's card (F-007, T-083): one step at a time, in order. It sits next to what the
+ * step is about, with an arrow to it (anchor.ts), or in the corner when there's nothing on screen to
+ * point at.
+ */
+export function GuidedTutorial({ s, guide, met, paused, onButton, onLeave, highlight }: GuidedProps) {
   const [small, setSmall] = useState(false);
+  const card = useRef<HTMLDivElement>(null);
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
+  useEffect(() => {
+    if (small) return setAnchor(null);
+    const measure = () => {
+      const target = findTarget(highlight);
+      const box = card.current?.getBoundingClientRect();
+      const next = target && box ? place(target.getBoundingClientRect(), box, { width: window.innerWidth, height: window.innerHeight }, obstacle()) : null;
+      setAnchor((prev) => (sameAnchor(prev, next) ? prev : next));
+    };
+    measure();
+    const id = window.setInterval(measure, ANCHOR_EVERY_MS);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("resize", measure);
+    };
+  }, [highlight, small, guide.step]);
   const deputy = s.notables[0];
   const name = deputy?.name ?? "your deputy";
   const fill = (t: string) => t.replaceAll("{name}", name);
@@ -117,8 +145,8 @@ export function GuidedTutorial({ s, guide, met, paused, onButton, onLeave }: Gui
     );
   }
 
-  return (
-    <div className="tutorial guided" role="complementary" aria-label="Guided tutorial">
+  const body = (
+    <div ref={card} className={`tutorial guided${anchor ? " anchored" : ""}`} role="complementary" aria-label="Guided tutorial">
       <div className="who">
         <Portrait who={deputy} />
         <span>
@@ -156,6 +184,13 @@ export function GuidedTutorial({ s, guide, met, paused, onButton, onLeave }: Gui
       <button className="link" onClick={onLeave}>
         {step ? guided.leave : "Close"}
       </button>
+    </div>
+  );
+  if (!anchor) return body;
+  return (
+    <div className={`guide-anchor ${anchor.below ? "below" : "above"}`} style={{ left: anchor.left, top: anchor.top }}>
+      {body}
+      <span className="guide-arrow" style={{ left: anchor.arrow }} aria-hidden="true" />
     </div>
   );
 }
