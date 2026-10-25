@@ -27,7 +27,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Storage:** each tank holds one kind (clean, gray or tailings), chosen by the player. When gray water has nowhere to go it overflows, lost for good, with a warning to build a recycler; rooms never stall for it (T-148).
 - **Lost to:** electrolyzers, tailings, the recycler's few percent, and overflow, all in the water ledger.
 
-**As built (T-005):** the loop above, with a room's split in `rooms.json` (`returnsWater`, default `economy.waterReturns` in `config.json`: all gray). The recycler runs before water users each tick, so they drain into the room it frees. The pod holds 250 gray water to ride out the first days. The Flows panel shows each user's clean water out and gray water back, and says how much gray water is overflowing. Restrooms still give sanitation but no longer handle water (T-006 makes them an amenity).
+**As built (T-005):** the loop above, with a room's split in `rooms.json` (`returnsWater`, default `economy.waterReturns` in `config.json`: all gray). The recycler runs before water users each tick, so they drain into the room it frees. The pod holds 250 gray water to ride out the first days. The Flows panel shows each user's clean water out and gray water back, and says how much gray water is overflowing. Restrooms still give sanitation but no longer handle water (T-006 makes them an amenity). The **closed water loop** milestone (T-060) is reached in a month when treatment returns more than the loop loses for good.
 
 ## Air
 

@@ -1,5 +1,5 @@
 {
-  "_note": "The hole's milestones (F-005): one list, tracked per hole with the day each was reached, saved. check is population (at least `at` people), born (at least `at` children born), floors (at least `at` floors dug) or domed; event milestones are reached only by an event's `celebrate` effect (data/events.json). celebrate: true also proposes a celebration (events.json `celebrations`), one at a time. title fills {title} in `reached` (the news) and {milestone} on the celebration card. group sorts them for the milestones panel. Older saves mark what they've already passed as reached, day unknown, without news.",
+  "_note": "The hole's milestones (F-005): one list, tracked per hole with the day each was reached, saved. check is population (at least `at` people), born (at least `at` children born), floors (at least `at` floors dug), domed or closedLoop (over the last whole month, treatment put back into `loop` more than the loop lost for good: each room's water taken beyond what it returned, plus overflow; sim/milestones.ts); event milestones are reached only by an event's `celebrate` effect (data/events.json). celebrate: true also proposes a celebration (events.json `celebrations`), one at a time. title fills {title} in `reached` (the news) and {milestone} on the celebration card. group sorts them for the milestones panel. Older saves mark what they've already passed as reached, day unknown, without news.",
   "reached": "Milestone: {title}.",
   "groups": [
     { "id": "people", "label": "People" },
@@ -19,6 +19,7 @@
     { "id": "floor_10", "title": "ten floors down", "group": "depth", "check": "floors", "at": 10, "celebrate": true },
     { "id": "floor_20", "title": "twenty floors down", "group": "depth", "check": "floors", "at": 20, "celebrate": true },
     { "id": "dome", "title": "the dome over the shaft", "group": "hole", "check": "domed", "celebrate": true },
+    { "id": "closed_loop", "title": "a closed water loop", "group": "hole", "check": "closedLoop", "loop": ["water", "grayWater"] },
     { "id": "microfossils", "title": "life on Mars, once", "group": "discoveries", "check": "event", "celebrate": true }
   ]
 }
