@@ -1,5 +1,5 @@
 # Publish each PR as a playable preview at
-# https://bdizzz.github.io/downtown-mars/pr-preview/pr-N/, with a comment on
+# https://mars.bryon.site/pr-preview/pr-N/, with a comment on
 # the PR carrying the link (kept up to date, not repeated). It's rebuilt on
 # every push and removed when the PR closes. Plain git and gh only
 # (scripts/gh-pages.sh): the repo allows only GitHub's own actions.
@@ -23,7 +23,7 @@ permissions:
 
 env:
   PR: ${{ github.event.number }}
-  URL: https://bdizzz.github.io/downtown-mars/pr-preview/pr-${{ github.event.number }}/
+  URL: https://mars.bryon.site/pr-preview/pr-${{ github.event.number }}/
   GH_TOKEN: ${{ github.token }}
 
 jobs:
