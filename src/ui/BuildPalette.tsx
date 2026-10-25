@@ -10,6 +10,7 @@ import { RoomCard } from "./RoomCard";
 import { corridors, finishDef } from "../sim/corridors";
 import { liningById, liningCost, liningId, MATERIALS } from "../sim/materials";
 import { resName } from "./format";
+import { freshClass, SHOW_ALL, type Reveal } from "./reveal";
 
 /** The lining rooms are built in unless another is picked (T-038). */
 export const BARE_ROCK = liningId(MATERIALS.walls[0]!);
@@ -110,6 +111,8 @@ interface Props {
   /** The shaft dome: not yet, under way, or built. */
   dome?: "none" | "building" | "built";
   onBuildDome?: () => void;
+  /** Which rooms and tools show (the guided tutorial's unlocks, T-084). */
+  reveal?: Reveal;
 }
 
 /** Why the dome can't be started, as the hole stands (null: it can). */
@@ -154,8 +157,9 @@ function categoryOf(tool: Tool): string | null {
 let lastRefit = "brick";
 
 /** The corridor tool's finishes and costs (or with Refit, the linings), bulkheads, windows, and the eraser. */
-function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" | "resources">) {
+function Finishes({ tool, setTool, resources, reveal = SHOW_ALL }: Pick<Props, "tool" | "setTool" | "resources" | "reveal">) {
   if (tool?.kind !== "corridor") return null;
+  const has = (id: string) => reveal.shown(`tool:${id}`);
   // Every other mode off: drawing in the corridor's finish, or the mode asked for.
   const { refit, bulkhead: _bulkhead, windows: _windows, ...plain } = tool;
   const { refit: _refit, ...noRefit } = tool;
@@ -197,7 +201,7 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
           </button>
         );
       })}
-      <button
+      {has("bulkhead") && <button
         className={`finish${tool.bulkhead ? " on" : ""}${Object.entries(corridors.bulkhead.cost).some(([id, v]) => (resources[id] ?? 0) < v) ? " short" : ""}`}
         title={`${corridors.bulkhead.hint}. Click a built corridor to fit one; Shift-click (or Erase) to take one out, free.`}
         onClick={() => setTool(tool.bulkhead ? plain : { ...plain, bulkhead: true, erase: false })}
@@ -205,8 +209,8 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
         <span className="chip bulkhead" />
         <span className="name">{corridors.bulkhead.name}</span>
         <span className="k">{Object.entries(corridors.bulkhead.cost).map(([id, v]) => `${v} ${resName(id).toLowerCase()}`).join(", ")} each</span>
-      </button>
-      <button
+      </button>}
+      {has("windows") && <button
         className={`finish${tool.windows ? " on" : ""}${Object.entries(config.windows.costPer10m).some(([id, v]) => (resources[id] ?? 0) < v) ? " short" : ""}`}
         title="Put windows in a room's wall, where it faces the shaft, a corridor or a walk-through room: a home's comfort goes up. Click a wall to glaze it all; Shift-click (or Erase) to take them out, free."
         onClick={() => setTool(tool.windows ? plain : { ...plain, windows: true, erase: false })}
@@ -214,8 +218,8 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
         <span className="chip windows" />
         <span className="name">Windows</span>
         <span className="k">{Object.entries(config.windows.costPer10m).map(([id, v]) => `${v} ${resName(id).toLowerCase()}`).join(", ")} per 10 m</span>
-      </button>
-      <button
+      </button>}
+      {has("refit") && <button
         className={`finish${tool.refit ? " on" : ""}`}
         title="Refit built corridors in another lining, as rooms are: their walls and floor take its look. Pick a lining, then click a corridor or drag along several. Back to bare rock salvages half the old lining."
         onClick={() => setTool(tool.refit ? plain : { ...plain, erase: false, refit: lastRefit })}
@@ -223,7 +227,7 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
         <span className="chip refit" />
         <span className="name">Refit</span>
         <span className="k">{tool.refit ? "per 10 m from bare rock" : "linings"}</span>
-      </button>
+      </button>}
       <button
         className={`finish erase${tool.erase ? " on" : ""}`}
         title="Fill corridors in. It costs as much as carving them: the walls around them are rebuilt. Or hold Shift while drawing."
@@ -251,7 +255,7 @@ function Finishes({ tool, setTool, resources }: Pick<Props, "tool" | "setTool" |
  * details of the room under the pointer or in hand; choosing a room (or its
  * key) opens its category. Demolish and undo sit at the end.
  */
-export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, highlight, deposits, lastFinish, lining, setLining, dome = "none", onBuildDome }: Props) {
+export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, highlight, deposits, lastFinish, lining, setLining, dome = "none", onBuildDome, reveal = SHOW_ALL }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(() => categoryOf(tool));
   // Groups in the right half of the screen open their popup leftward.
@@ -262,7 +266,9 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
     if (b) setLeftward(b.getBoundingClientRect().left > window.innerWidth / 2);
     setOpen(cat);
   };
-  const buildable = roomDefs.filter((d) => d.buildable);
+  const buildable = roomDefs.filter((d) => d.buildable && reveal.shown(`room:${d.id}`));
+  const corridorsShown = reveal.shown("tool:corridors");
+  const domeShown = reveal.shown("room:shaft_dome");
   const selected = tool?.kind === "build" ? tool.room : null;
   // A room chosen by its key opens its category.
   const toolCategory = categoryOf(tool);
@@ -278,10 +284,12 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
     return () => window.removeEventListener("pointerdown", fold, { capture: true });
   }, []);
 
-  // Access always shows, for the corridor tool.
+  // Access always shows, for the corridor tool (unless the guided tutorial hasn't got to corridors yet).
   const groups = CATEGORY_ORDER.map((cat) => [cat, buildable.filter((d) => d.category === cat)] as const).filter(
-    ([cat, ds]) => ds.length || cat === "circulation",
+    ([cat, ds]) => ds.length || (cat === "circulation" && corridorsShown) || (cat === "public" && domeShown),
   );
+  const freshCat = (cat: string, defs: readonly RoomDef[]) =>
+    defs.some((d) => reveal.fresh(`room:${d.id}`)) || (cat === "circulation" && reveal.fresh("tool:corridors"));
   const corridorOn = tool?.kind === "corridor";
   const wanted = (cat: string, defs: readonly RoomDef[]) =>
     defs.some((d) => highlight === `room:${d.id}` && d.id !== selected) || (cat === "circulation" && highlight === "tool:corridors" && !corridorOn);
@@ -295,7 +303,7 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
         return (
           <div key={cat} className={`dock-group${isOpen && leftward ? " leftward" : ""}`}>
             <button
-              className={`dock-btn category${isOpen ? " open" : ""}${toolCategory === cat ? " on" : ""}${wanted(cat, defs) && !isOpen ? " pulse" : ""}`}
+              className={`dock-btn category${isOpen ? " open" : ""}${toolCategory === cat ? " on" : ""}${wanted(cat, defs) && !isOpen ? " pulse" : ""}${freshCat(cat, defs) && !isOpen ? " fresh" : ""}`}
               style={{ "--cat": color } as React.CSSProperties}
               ref={(b) => {
                 buttons.current[cat] = b;
@@ -321,8 +329,8 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
                     />
                   </div>
                 )}
-                {cat === "circulation" && !shown && <Finishes tool={tool} setTool={setTool} resources={resources} />}
-                {cat !== "circulation" && (
+                {cat === "circulation" && !shown && <Finishes tool={tool} setTool={setTool} resources={resources} reveal={reveal} />}
+                {cat !== "circulation" && reveal.shown("tool:linings") && (
                   <LiningPicker
                     lining={lining}
                     setLining={setLining}
@@ -337,7 +345,7 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
                   </div>
                 )}
                 <div className="dock-popup-row">
-                  {cat === "circulation" && (
+                  {cat === "circulation" && corridorsShown && (
                     <button
                       className={`room-btn${corridorOn ? " on" : ""}${highlight === "tool:corridors" && !corridorOn ? " pulse" : ""}`}
                       style={{ "--cat": color } as React.CSSProperties}
@@ -349,7 +357,7 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
                       <kbd>{CORRIDOR_KEY}</kbd>
                     </button>
                   )}
-                  {cat === "public" && (
+                  {cat === "public" && domeShown && (
                     <button
                       className={`room-btn${dome === "built" ? " on" : ""}${domeRefusal(dome, deposits, resources) && dome !== "built" ? " short" : ""}`}
                       style={{ "--cat": color } as React.CSSProperties}
@@ -368,7 +376,7 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
                     return (
                       <button
                         key={def.id}
-                        className={`room-btn${on ? " on" : ""}${missing ? " short" : ""}${highlight === `room:${def.id}` && !on ? " pulse" : ""}`}
+                        className={`room-btn${on ? " on" : ""}${missing ? " short" : ""}${highlight === `room:${def.id}` && !on ? " pulse" : ""}${freshClass(reveal, `room:${def.id}`)}`}
                         style={{ "--cat": cssColor(CATEGORY_COLORS[def.category] ?? 0x888888) } as React.CSSProperties}
                         onClick={() => setTool(on ? null : buildTool(def))}
                         onMouseEnter={() => setHovered(def.id)}
@@ -388,8 +396,8 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
         );
       })}
       <span className="dock-sep" />
-      <button
-        className={`dock-btn demolish${tool?.kind === "demolish" ? " on" : ""}`}
+      {reveal.shown("tool:demolish") && <button
+        className={`dock-btn demolish${tool?.kind === "demolish" ? " on" : ""}${freshClass(reveal, "tool:demolish")}`}
         onClick={() => {
           openAt(null);
           setTool(tool?.kind === "demolish" ? null : { kind: "demolish" });
@@ -397,7 +405,7 @@ export function BuildStrip({ tool, setTool, resources, rotate, canUndo, undo, hi
         title="Demolish a room (half its cost back)"
       >
         Demolish <kbd>{DEMOLISH_KEY}</kbd>
-      </button>
+      </button>}
       <button className="dock-btn" disabled={!canUndo} onClick={undo} title="Undo your last placement for a full refund, within a few game hours">
         Undo <kbd>⌘Z</kbd>
       </button>

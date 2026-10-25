@@ -279,6 +279,11 @@ label.set-row { cursor: pointer; }
 .river svg .lbl.halo { stroke: var(--panel); stroke-width: 3px; paint-order: stroke; stroke-linejoin: round; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(224, 122, 63, 0.9); } 50% { box-shadow: 0 0 0 4px rgba(224, 122, 63, 0); } }
 .pulse { animation: pulse 1.4s ease-in-out infinite; border-color: var(--accent) !important; border-radius: 4px; }
+/* Just revealed by the guided tutorial (T-084): fades in with a soft glow that settles, once. */
+@keyframes reveal-in { 0% { opacity: 0; box-shadow: 0 0 0 0 rgba(255, 214, 150, 0); } 30% { opacity: 1; box-shadow: 0 0 14px 3px rgba(255, 214, 150, 0.55); } 100% { box-shadow: 0 0 0 0 rgba(255, 214, 150, 0); } }
+.fresh { animation: reveal-in 2.4s ease-out; border-radius: 4px; }
+.fresh.pulse { animation: reveal-in 2.4s ease-out, pulse 1.4s ease-in-out 2.4s infinite; }
+@media (prefers-reduced-motion: reduce) { .fresh, .fresh.pulse { animation: none; } }
 .tutorial {
   position: absolute; right: 12px; bottom: 10px; z-index: 3; width: 300px;
   background: rgba(30, 17, 13, 0.96); border: 1px solid #000; border-left: 3px solid var(--accent);

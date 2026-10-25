@@ -63,6 +63,7 @@ import { useSounds } from "./useSounds";
 import { bootStep } from "./boot";
 import { UpdateBanner } from "./UpdateBanner";
 import { presetOf } from "../view/graphics";
+import { revealFor } from "./reveal";
 
 const NOTICE_MS = 3000;
 /** How deep the showcase behind the title is dug, for a player with no autosave (only its first floor shows). */
@@ -414,7 +415,11 @@ export function App() {
   }, [overlay]);
   useEffect(() => {
     if (panel === "flows") setFlags((f) => (f.openedFlows ? f : { ...f, openedFlows: true }));
+    if (panel === "office") setFlags((f) => (f.openedOffice ? f : { ...f, openedOffice: true }));
   }, [panel]);
+  useEffect(() => {
+    if (selected !== null) setFlags((f) => (f.inspectedRoom ? f : { ...f, inspectedRoom: true }));
+  }, [selected]);
   useEffect(() => {
     if (settings.view === "3d") setFlags((f) => (f.sawThreeD ? f : { ...f, sawThreeD: true }));
   }, [settings.view]);
@@ -446,6 +451,10 @@ export function App() {
     pacedGuide.current = key;
     setSpeed(stepSpeed(gStep));
   }, [guide, gStep, gameId, menu, welcome, failure, setSpeed]);
+  /** What of the interface shows: in the guided tutorial, only what it has unlocked (T-084). */
+  // Keyed on the guide's content: the snapshot brings a new guide object every time.
+  const guideKey = guide ? `${guide.step}|${guide.unlocked.join()}` : "";
+  const reveal = useMemo(() => revealFor(guide), [guideKey]);
   const shown = met && tutorialOn && !guide ? shownGoal(step, met) : -1;
   const highlight = gStep ? (gMet ? null : gStep.highlight) : shown >= 0 && !met![shown] ? tutorial.goals[shown]!.highlight : null;
   /** The deputy's one-time tip, when a problem first shows up (F-018); it covers the tutorial's card while it's up. */
@@ -500,11 +509,13 @@ export function App() {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       // The modes' keys work anywhere: V, C and M open (or close) View, Charts and Map;
       // B opens Build (inside Build, B is the battery bank's key).
+      // In the guided tutorial, only the modes it has shown you (T-084).
       const toggle = (m: Mode) => setMode(mode === m ? null : m);
-      if (e.code === MODE_KEYS.view) return toggle("view");
-      if (e.code === MODE_KEYS.charts) return toggle("charts");
-      if (e.code === MODE_KEYS.map) return toggle("map");
-      if (e.code === MODE_KEYS.build && mode !== "build") {
+      const has = (m: Mode) => reveal.shown(`mode:${m}`);
+      if (e.code === MODE_KEYS.view && has("view")) return toggle("view");
+      if (e.code === MODE_KEYS.charts && has("charts")) return toggle("charts");
+      if (e.code === MODE_KEYS.map && has("map")) return toggle("map");
+      if (e.code === MODE_KEYS.build && mode !== "build" && has("build")) {
         if (!walking) setMode("build");
         return;
       }
@@ -519,7 +530,7 @@ export function App() {
       // Page Up / Page Down, or the up and down arrows, step through floors in the plan and 3D views
       // (up is toward the surface). Walking, the arrows walk: the 3D view takes them first.
       const floorKey = { PageUp: -1, PageDown: 1, ArrowUp: -1, ArrowDown: 1 }[e.code];
-      if (floorKey && snapshot && settings.view !== "2d" && !cutaway) {
+      if (floorKey && snapshot && settings.view !== "2d" && !cutaway && reveal.shown("hud:floors")) {
         e.preventDefault();
         stepFloor(floorKey);
       }
@@ -527,15 +538,15 @@ export function App() {
       if (mode !== "build" || walking) return;
       if (e.code === "KeyR") rotate();
       const letter = e.key.toUpperCase();
-      if (letter === CORRIDOR_KEY) takeTool((t) => (t?.kind === "corridor" ? null : { kind: "corridor", finish: lastFinish, erase: false }));
-      if (letter === DEMOLISH_KEY) takeTool((t) => (t?.kind === "demolish" ? null : { kind: "demolish" }));
+      if (letter === CORRIDOR_KEY && reveal.shown("tool:corridors")) takeTool((t) => (t?.kind === "corridor" ? null : { kind: "corridor", finish: lastFinish, erase: false }));
+      if (letter === DEMOLISH_KEY && reveal.shown("tool:demolish")) takeTool((t) => (t?.kind === "demolish" ? null : { kind: "demolish" }));
       const room = Object.entries(HOTKEYS).find(([, k]) => k === letter)?.[0];
-      const def = room ? roomDefs.find((d) => d.id === room && d.buildable) : undefined;
+      const def = room ? roomDefs.find((d) => d.id === room && d.buildable && reveal.shown(`room:${d.id}`)) : undefined;
       if (def) takeTool((t) => (t?.kind === "build" && t.room === def.id ? null : buildTool(def)));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, helpOpen, welcome, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking, cutaway]);
+  }, [menu, helpOpen, welcome, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking, cutaway, reveal]);
 
   /** Charts → Trends on a series. */
   const showTrend = (key: string) => {
@@ -585,12 +596,15 @@ export function App() {
         keysEnabled={!menu}
         open={hudOpen}
         setOpen={setHudOpen}
+        reveal={reveal}
       />
-      <ResourceBar s={snapshot} onTrend={openTrend} />
+      {reveal.shown("hud:resources") && (
+        <ResourceBar s={snapshot} onTrend={openTrend} fresh={reveal.fresh("hud:resources")} />
+      )}
       <div className="main">
         <div className="view">
           {snapshot && (
-            <Dock mode={mode} setMode={setMode} walking={walking} highlight={highlight} jobs={snapshot.construction.jobs.length}>
+            <Dock mode={mode} setMode={setMode} walking={walking} highlight={highlight} jobs={snapshot.construction.jobs.length} reveal={reveal}>
               {mode === "build" && (
                 <BuildStrip
                   tool={tool}
@@ -606,6 +620,7 @@ export function App() {
                   undo={undo}
                   dome={snapshot.layout.domed ? "built" : snapshot.construction.jobs.some((j) => j.kind === "dome") ? "building" : "none"}
                   onBuildDome={() => onCommand({ type: "buildDome" })}
+                  reveal={reveal}
                 />
               )}
               {mode === "view" && (
@@ -617,9 +632,10 @@ export function App() {
                   overlay={overlay}
                   setOverlay={setOverlay}
                   highlight={highlight}
+                  reveal={reveal}
                 />
               )}
-              {mode === "charts" && <ChartsStrip s={snapshot} chart={chart} toggle={togglePanel} highlight={highlight} />}
+              {mode === "charts" && <ChartsStrip s={snapshot} chart={chart} toggle={togglePanel} highlight={highlight} reveal={reveal} />}
             </Dock>
           )}
           {snapshot && tip && !menu && !welcome && (
@@ -689,7 +705,7 @@ export function App() {
               }}
             />
           )}
-          {snapshot && settings.view !== "2d" && !mapOpen && !cutaway && !mouseLook && (
+          {snapshot && settings.view !== "2d" && !mapOpen && !cutaway && !mouseLook && reveal.shown("hud:floors") && (
             <FloorPicker
               floors={floorCount}
               floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
