@@ -885,3 +885,22 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .update-banner .update-later { background: none; color: var(--text); border-color: transparent; padding: 4px 6px; opacity: 0.7; }
 .update-banner .update-later:hover { opacity: 1; }
 .tutorial .tip-actions { display: flex; gap: 6px; }
+/* Charts → Directory (T-149): floors from the surface down, their rooms with a status dot. */
+.directory { width: 300px; }
+.directory > * { flex-shrink: 0; }
+.directory h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 10px 0 2px; display: flex; align-items: center; gap: 6px; }
+.dir-search, .dir-filters select { font: inherit; font-size: 12px; background: #2f1c16; color: var(--text); border: 1px solid #000; border-radius: 4px; padding: 3px 6px; }
+.dir-filters { display: flex; gap: 6px; align-items: center; }
+.dir-filters select { flex: 1; min-width: 0; }
+.dir-floor { display: flex; flex-direction: column; }
+.dir-room {
+  display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 6px;
+  background: transparent; color: var(--text); border: 1px solid transparent; border-radius: 4px;
+  font: inherit; font-size: 12px; padding: 2px 4px; cursor: pointer; text-align: left;
+}
+.dir-room:hover { background: #ffffff0c; }
+.dir-room .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dir-room .dot { width: 8px; height: 8px; border-radius: 50%; background: #7fd67f; }
+.dir-room .dot.building { background: #6ab0e0; }
+.dir-room .dot.worn { background: #e6b33c; }
+.dir-room .dot.stalled { background: #ff6a5a; }

@@ -12,7 +12,7 @@ import { hoursText } from "./format";
 // mode is the only one that places rooms and corridors.
 
 export type Mode = "build" | "view" | "map" | "charts";
-export type Chart = "people" | "flows" | "network" | "construction" | "maintenance" | "trends";
+export type Chart = "people" | "flows" | "network" | "construction" | "maintenance" | "trends" | "directory";
 
 /** Each mode's key, anywhere in the game (as KeyboardEvent codes). */
 export const MODE_KEYS: Record<Mode, string> = { build: "KeyB", view: "KeyV", map: "KeyM", charts: "KeyC" };
@@ -21,7 +21,7 @@ const MODES: { id: Mode; name: string; icon: string; hint: string }[] = [
   { id: "build", name: "Build", icon: "⚒", hint: "Rooms, corridors and demolition (B). The rooms' keys work in here" },
   { id: "view", name: "View", icon: "◉", hint: "Cameras, the plan and unrolled views, walls down and overlays (V)" },
   { id: "map", name: "Map", icon: "◍", hint: "The planet: terrain, deposits and your holes (M)" },
-  { id: "charts", name: "Charts", icon: "▤", hint: "People, trends, flows, your network, and the construction and maintenance queues (C)" },
+  { id: "charts", name: "Charts", icon: "▤", hint: "People, trends, flows, your network, the construction and maintenance queues, and a directory of every room (C)" },
 ];
 
 /** Where a tutorial highlight lives: which mode holds it. */
@@ -213,6 +213,7 @@ export function ChartsStrip({ s, chart, toggle, highlight }: ChartsProps) {
         s ? `Maintenance · ${Math.round(s.maintenance.overall * 100)}%${s.maintenance.queue.length ? ` · ${s.maintenance.queue.length} waiting` : ""}` : "Maintenance",
         "Room condition: what the maintenance and cleaning crews are repairing, and the queue",
       )}
+      {btn("directory", "Directory", "Every floor and the rooms on it: find one and jump to it")}
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { NetworkPanel } from "./NetworkPanel";
 import { PeoplePanel } from "./PeoplePanel";
 import { ConstructionPanel } from "./ConstructionPanel";
 import { MaintenancePanel } from "./MaintenancePanel";
+import { DirectoryPanel } from "./DirectoryPanel";
 import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
@@ -102,13 +103,13 @@ export function App() {
    */
   const lookFloor = previewFloor !== undefined && !walking ? previewFloor : viewFloor;
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
-  const [panel, setPanel] = useState<"office" | "why" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | null>(null);
+  const [panel, setPanel] = useState<"office" | "why" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory" | null>(null);
   const officeOpen = panel === "office";
   /** The series Trends opens on (a resource clicked in the bar at the top). */
   const [trendKey, setTrendKey] = useState("happiness");
   /** Phones: the top bar's drop-down (speeds, needs, resources) is open. Only its toggle closes it. */
   const [hudOpen, setHudOpen] = useState(false);
-  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends") => {
+  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory") => {
     setPanel((cur) => (cur === p ? null : p));
     setSelected(null);
   };
@@ -523,6 +524,13 @@ export function App() {
     setPanel("why");
     setSelected(null);
   };
+  /** From the directory: open a room's panel and bring its floor into view. */
+  const goToRoom = (id: number) => {
+    setSelected(id);
+    setPanel(null);
+    const room = snapshot?.layout.rooms.find((r) => r.id === id);
+    if (room?.at.kind === "ring" && settings.view !== "2d" && !walking) setViewFloor(room.at.floor);
+  };
   /** Show me: light up the rooms and homes, and bring the focus's floor into view. */
   const showMe = (id: string | null, spot: Spot | null) => {
     setSpotlight(id && spot ? { id, spot } : null);
@@ -726,6 +734,7 @@ export function App() {
         {snapshot && panel === "maintenance" && (
           <MaintenancePanel s={snapshot} onSelect={(id) => (setSelected(id), setPanel(null))} onClose={() => setPanel(null)} />
         )}
+        {snapshot && panel === "directory" && <DirectoryPanel s={snapshot} onSelect={goToRoom} onClose={() => setPanel(null)} />}
         {snapshot && panel === "construction" && (
           <ConstructionPanel s={snapshot} onCommand={onCommand} onSelect={(id) => (setSelected(id), setPanel(null))} onClose={() => setPanel(null)} />
         )}
