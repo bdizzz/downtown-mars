@@ -179,7 +179,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
   function onMessage(msg: ToWorker): void {
     switch (msg.type) {
       case "setSpeed":
-        if (config.speeds.includes(msg.speed)) speed = msg.speed;
+        if (config.speeds.includes(msg.speed) || msg.speed === config.slowSpeed) speed = msg.speed;
         break;
       case "advance": {
         const ticks = Math.max(0, Math.min(365, msg.days)) * config.ticksPerDay;

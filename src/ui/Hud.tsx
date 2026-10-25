@@ -34,11 +34,11 @@ export function speedStep(e: Pick<KeyboardEvent, "code" | "key">): number {
   return 0;
 }
 
-/** The running speed one step from `from` (1×, 2×, 4×), or null past either end. */
+/** The running speed one step from `from` (1×, 2×, 4×), or null past either end. The guided tutorial's slow pace sits just below 1×. */
 export function nextSpeed(from: number, step: number): number | null {
   const running = config.speeds.filter((s) => s > 0);
   const i = running.indexOf(from);
-  const j = (i < 0 ? 0 : i) + step;
+  const j = (i < 0 ? (from > 0 && from < running[0]! ? -1 : 0) : i) + step;
   return j < 0 || j >= running.length ? null : running[j]!;
 }
 

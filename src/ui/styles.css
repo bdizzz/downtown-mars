@@ -300,6 +300,11 @@ label.set-row { cursor: pointer; }
 .tutorial .progress button.now { background-color: #8a5a40; padding: 2px 0; }
 .tutorial .progress button.done { background-color: var(--accent); }
 .tutorial .tick { color: var(--accent); }
+/* The guided tutorial's steps go in order, so its dots are just a progress bar, not buttons. */
+.tutorial.guided .progress span { flex: 1; height: 4px; margin: 4px 0; background: #3a241d; border-radius: 2px; }
+.tutorial.guided .progress span.now { background: #8a5a40; }
+.tutorial.guided .progress span.done { background: var(--accent); }
+.tutorial.guided .primary { align-self: flex-start; }
 .tutorial-pill {
   position: absolute; right: 12px; bottom: 10px; z-index: 3; background: rgba(30, 17, 13, 0.96);
   color: var(--text); border: 1px solid var(--accent); border-radius: 12px; padding: 4px 12px; font: inherit; font-size: 12px; cursor: pointer;
@@ -770,6 +775,8 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .welcome h2 { font-size: 25px; color: var(--accent); }
 .welcome p { margin: 0; font-size: 16.5px; line-height: 1.5; }
 .welcome button.primary { margin-top: 6px; font-size: 16.5px; text-align: center; }
+.welcome .welcome-guided { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.welcome .welcome-guided .k { color: var(--muted); font-size: 12.5px; }
 /* Behind the welcome card and the title, only Mars and the hole: the rest of the interface comes in when they're closed. */
 .app.welcoming > :not(.main):not(.menu-backdrop):not(.update-banner), .app.welcoming .view > :not(.pixi-host), .app.welcoming .pixi-host > :not(canvas),
 .app.titling > :not(.main):not(.menu-backdrop):not(.update-banner), .app.titling .view > :not(.pixi-host), .app.titling .pixi-host > :not(canvas), .app.titling .main > :not(.view) { display: none; }

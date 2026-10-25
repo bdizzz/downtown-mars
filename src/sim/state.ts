@@ -34,6 +34,16 @@ export interface Site {
 }
 
 /** One hole's state. Every system that runs inside a hole works on this; the World holds several. */
+/** The guided tutorial's progress (SimState.guide). */
+export interface GuideState {
+  /** Index into the guided track's steps (data/tutorial.json `guided`); past the end when it's finished. */
+  step: number;
+  /** UI element ids unlocked so far ("hud:speed", "mode:build", "room:galley"…), for T-084 to reveal. */
+  unlocked: string[];
+  /** Storms and events wait while this is on: the guided track's basics aren't done yet. */
+  calm: boolean;
+}
+
 export interface SimState {
   holeId: number;
   name: string;
@@ -73,6 +83,12 @@ export interface SimState {
   office: Office;
   /** The deputy's tips already shown (F-018, view/tips.ts; absent in older saves: none). */
   tipsSeen?: string[];
+  /**
+   * The guided tutorial (F-007, T-083), while the player follows it: the step it's on, the interface
+   * it has unlocked so far, and whether the start is still calm (no storms or events). Absent: not
+   * guided (the regular tutorial, or none).
+   */
+  guide?: GuideState;
   /** Enacted ordinance ids. */
   ordinances: string[];
   ledger: Ledger;

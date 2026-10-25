@@ -42,8 +42,8 @@ export function stepWeather(state: SimState, cfg: SimConfig): void {
     }
     return;
   }
-  // Once a day, a chance of a storm on the way.
-  if (state.tick % tpd !== 0) return;
+  // Once a day, a chance of a storm on the way; none while the guided tutorial's start is calm.
+  if (state.tick % tpd !== 0 || state.guide?.calm) return;
   const day = state.tick / tpd;
   if (day < w.earliestDay || roll(state, day, 0) >= w.chancePerDay) return;
   const between = ([a, b]: [number, number], r: number) => a + (b - a) * r;

@@ -29,7 +29,9 @@ import { WhyPanel, type WhyTab } from "./WhyPanel";
 import type { Spot } from "../view/reachView";
 import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
 import { StatusBar } from "./StatusBar";
-import { Tutorial } from "./Tutorial";
+import { GuidedTutorial, Tutorial } from "./Tutorial";
+import { guideStep, nextGuide, startGuide, stepMet, stepSpeed } from "./guided";
+import { config } from "../sim/config";
 import { TipCard } from "./TipCard";
 import { dueTip } from "../view/tips";
 import { Welcome } from "./Welcome";
@@ -421,8 +423,31 @@ export function App() {
   const met = snapshot ? metGoals(snapshot, flags) : null;
   const step = met ? advanceStep(tutorialStep, met) : tutorialStep;
   if (step !== tutorialStep) setTutorialStep(step);
-  const shown = met && tutorialOn ? shownGoal(step, met) : -1;
-  const highlight = shown >= 0 && !met![shown] ? tutorial.goals[shown]!.highlight : null;
+  // The guided tutorial (F-007, T-083), when the player picked it on the welcome card: one step at a
+  // time, its progress in the save. Its card replaces the regular tutorial's while it runs.
+  const guide = snapshot?.guide ?? null;
+  const gStep = guide ? guideStep(guide) : null;
+  const gMet = !!(gStep && snapshot && stepMet(gStep, snapshot, flags));
+  // A met step moves on by itself, once (the snapshot with the next step can take a moment to come).
+  const sentGuide = useRef<string | null>(null);
+  useEffect(() => {
+    if (!guide || !gMet) return;
+    const key = `${gameId}:${guide.step}`;
+    if (sentGuide.current === key) return;
+    sentGuide.current = key;
+    send({ type: "setGuide", guide: nextGuide(guide) });
+  }, [guide, gMet, gameId, send]);
+  // Each step sets the pace as it starts: paused to read, or slow. After that the speed is the player's.
+  const pacedGuide = useRef<string | null>(null);
+  useEffect(() => {
+    if (!guide || menu || welcome || failure) return;
+    const key = `${gameId}:${guide.step}`;
+    if (pacedGuide.current === key) return;
+    pacedGuide.current = key;
+    setSpeed(stepSpeed(gStep));
+  }, [guide, gStep, gameId, menu, welcome, failure, setSpeed]);
+  const shown = met && tutorialOn && !guide ? shownGoal(step, met) : -1;
+  const highlight = gStep ? (gMet ? null : gStep.highlight) : shown >= 0 && !met![shown] ? tutorial.goals[shown]!.highlight : null;
   /** The deputy's one-time tip, when a problem first shows up (F-018); it covers the tutorial's card while it's up. */
   const tip = snapshot && settings.tips ? dueTip(snapshot) : null;
   // A tip's Show me goes with it, if its problem goes first.
@@ -615,7 +640,26 @@ export function App() {
               />
             </div>
           )}
-          {snapshot && !tip && tutorialOn && !menu && !welcome && (
+          {snapshot && !tip && guide && !menu && !welcome && (
+            <div style={{ display: walking ? "none" : "contents" }}>
+              <GuidedTutorial
+                s={snapshot}
+                guide={guide}
+                met={gMet}
+                paused={speed === 0}
+                onButton={() => {
+                  // A step to read moves on (and the next sets its pace); otherwise carry on, slowly.
+                  if (gStep && !gStep.check) send({ type: "setGuide", guide: nextGuide(guide) });
+                  else setSpeed(config.slowSpeed);
+                }}
+                onLeave={() => {
+                  send({ type: "setGuide", guide: null });
+                  if (speed === config.slowSpeed) setSpeed(1);
+                }}
+              />
+            </div>
+          )}
+          {snapshot && !tip && !guide && tutorialOn && !menu && !welcome && (
             // Out of the way in first person, but kept (folded or open, on the same step) for when you're back.
             <div style={{ display: walking ? "none" : "contents" }}>
               <Tutorial
@@ -767,9 +811,11 @@ export function App() {
       )}
       {welcome && (
         <Welcome
-          onClose={() => {
+          onClose={(guided) => {
             setWelcome(false);
-            setSpeed(resumeSpeed.current);
+            // The guided tutorial sets its own pace once its first step comes back in a snapshot.
+            if (guided) send({ type: "setGuide", guide: startGuide() });
+            else setSpeed(resumeSpeed.current);
           }}
         />
       )}

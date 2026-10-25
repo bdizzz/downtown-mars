@@ -35,6 +35,8 @@ export interface SimConfig {
   startHour: number;
   ticksPerSecondAt1x: number;
   speeds: number[];
+  /** The guided tutorial's slow pace (T-083), below 1×; not one of the speed buttons. */
+  slowSpeed: number;
   snapshotsPerSecond: number;
   maxTicksPerFrame: number;
   seed: number;

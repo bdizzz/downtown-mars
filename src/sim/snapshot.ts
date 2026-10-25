@@ -27,7 +27,7 @@ import type { Office } from "./visits";
 import { choiceRefusal, eventDef, eventMood, type PendingEvent } from "./events";
 import { milestoneData, progress, type ReachedMilestone } from "./milestones";
 import type { Layout } from "./placement";
-import type { SimState } from "./state";
+import type { GuideState, SimState } from "./state";
 
 export interface DrillView {
   active: boolean;
@@ -195,6 +195,8 @@ export interface Snapshot {
   office: Office;
   /** The deputy's tips already shown (view/tips.ts). */
   tipsSeen: string[];
+  /** The guided tutorial's progress, or null when not guided. */
+  guide: GuideState | null;
   ordinances: string[];
   ordinanceSlots: number;
   /** Per-day flows by resource, averaged over recent days, for the flow diagram. */
@@ -303,6 +305,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     notables: state.notables,
     office: state.office,
     tipsSeen: state.tipsSeen ?? [],
+    guide: state.guide ?? null,
     ordinances: state.ordinances,
     ordinanceSlots: ordinanceSlots(state),
     flows: averageFlows(state, cfg),

@@ -3,6 +3,7 @@
   "startHour": 6,
   "ticksPerSecondAt1x": 2,
   "speeds": [0, 1, 2, 4],
+  "slowSpeed": 0.5,
   "snapshotsPerSecond": 20,
   "maxTicksPerFrame": 64,
   "seed": 1,
