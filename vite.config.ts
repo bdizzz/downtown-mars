@@ -99,7 +99,7 @@ const appVersion = `v${pkg.version} · ${commit()}`;
  * background and waits; the game offers it (ui/UpdateBanner.tsx) and only
  * swaps when the player says so. version.json, left out of the cache, says
  * which version is waiting. PR previews get no service worker, and the main
- * game's leaves pr-preview/ alone (they share its origin and path). The dev
+ * game's leaves preview/ alone (they share its origin and path). The dev
  * server has none.
  */
 function offline(): Plugin[] {
@@ -122,7 +122,7 @@ function offline(): Plugin[] {
         globPatterns: ["**/*.{js,css,html,svg,png,jpg,webmanifest}"],
         // The map of Mars is the biggest file (about 2 MB).
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-        navigateFallbackDenylist: [/\/pr-preview\//],
+        navigateFallbackDenylist: [/\/preview\//],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {

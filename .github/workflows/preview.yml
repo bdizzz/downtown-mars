@@ -1,5 +1,5 @@
 # Publish each PR as a playable preview at
-# https://mars.bryon.site/pr-preview/pr-N/, with a comment on
+# https://mars.bryon.site/preview/N/, with a comment on
 # the PR carrying the link (kept up to date, not repeated). It's rebuilt on
 # every push and removed when the PR closes. Plain git and gh only
 # (scripts/gh-pages.sh): the repo allows only GitHub's own actions.
@@ -23,7 +23,7 @@ permissions:
 
 env:
   PR: ${{ github.event.number }}
-  URL: https://mars.bryon.site/pr-preview/pr-${{ github.event.number }}/
+  URL: https://mars.bryon.site/preview/${{ github.event.number }}/
   GH_TOKEN: ${{ github.token }}
 
 jobs:
@@ -48,11 +48,11 @@ jobs:
           VITE_STORAGE_PREFIX: pr-${{ github.event.number }}.
           VITE_PR_NUMBER: ${{ github.event.number }}
       - run: |
-          sh scripts/gh-pages.sh publish dist "pr-preview/pr-$PR" "Preview PR #$PR at ${{ github.event.pull_request.head.sha }}"
+          sh scripts/gh-pages.sh publish dist "preview/$PR" "Preview PR #$PR at ${{ github.event.pull_request.head.sha }}"
         if: github.event.action != 'closed'
 
       - run: |
-          sh scripts/gh-pages.sh remove "pr-preview/pr-$PR" "Remove the preview of PR #$PR"
+          sh scripts/gh-pages.sh remove "preview/$PR" "Remove the preview of PR #$PR"
         if: github.event.action == 'closed'
 
       - name: Comment the link on the PR
