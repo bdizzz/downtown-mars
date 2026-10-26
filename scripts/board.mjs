@@ -293,7 +293,7 @@ function toItem(i, idOf) {
       branch: h.branch,
       touches: h.touches,
       notes: h.notes,
-      blocked_by: i.blockedBy.nodes.map((b) => idOf(b.number)).filter(Boolean),
+      blocked_by: i.blockedBy.nodes.sort((a, b) => a.number - b.number).map((b) => idOf(b.number)).filter(Boolean),
       blocked_prs: h.blockedPrs,
       created,
     },

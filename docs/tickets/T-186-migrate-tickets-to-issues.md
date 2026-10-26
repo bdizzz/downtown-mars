@@ -1,7 +1,7 @@
 ---
 id: T-186
 title: Migration script copies every ticket and feature to GitHub Issues
-status: open
+status: done
 size: M
 area: docs
 feature: F-020
@@ -24,3 +24,4 @@ As built: the first run made 801 writes (211 issues and their history comments, 
 ## History
 - 2026-10-26 19:02 opened from F-020 (agreed)
 - 2026-10-26 19:05 building on t-186-migrate-tickets-to-issues
+- 2026-10-26 19:40 built; migrated for real (211 issues, #106–#316), 10 sampled items match their files

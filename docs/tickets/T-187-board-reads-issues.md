@@ -1,7 +1,7 @@
 ---
 id: T-187
 title: board.mjs reads and writes the board through GitHub Issues
-status: open
+status: done
 size: L
 area: docs
 feature: F-020
@@ -24,3 +24,4 @@ One GraphQL query (paged) for issues with labels, parent, blocked-by, linked PRs
 ## History
 - 2026-10-26 19:02 opened from F-020 (agreed)
 - 2026-10-26 19:05 building on t-186-migrate-tickets-to-issues
+- 2026-10-26 19:40 built; menu and graph match the files' board (titles lose stray quotes; T-180 no longer stuck on "#94")
