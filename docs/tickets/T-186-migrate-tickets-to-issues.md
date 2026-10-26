@@ -4,9 +4,9 @@ title: Migration script copies every ticket and feature to GitHub Issues
 status: open
 size: M
 area: docs
+feature: F-020
 touches: [scripts/migrate-issues.mjs, docs/ticket-ids.json]
 blocked_by: []
-feature: F-020
 notes: []
 created: 2026-10-26 19:02
 ---
@@ -21,3 +21,4 @@ F-020's Design has the mapping table and the migration section; follow it. Sub-i
 
 ## History
 - 2026-10-26 19:02 opened from F-020 (agreed)
+- 2026-10-26 19:05 building on t-186-migrate-tickets-to-issues
