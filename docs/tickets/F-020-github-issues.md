@@ -1,7 +1,8 @@
 ---
 id: F-020
 title: Move the board to GitHub Issues
-status: draft
+status: agreed
+branch: feature/f-020-github-issues
 notes: []
 created: 2026-10-26 10:00
 ---
@@ -55,12 +56,12 @@ Done: `docs/tickets/` is gone, every T and F item is an issue with its state, pa
 
 ## Breakdown
 Built in order on `feature/f-020-github-issues`; main keeps using files until the feature branch merges.
-- The migration script: labels, issues, sub-issues, blocked-by, closed states, shipped-in PR links, `docs/ticket-ids.json`; dry run by default, idempotent; run it for real once, and check a sample of 10 items against their files (M)
-- `board.mjs` on issues: read the board with one GraphQL query (menu, show, graph, base); writes through `gh` (log as comments, status, blocked-by, feature parent, agree into sub-issues, feature-branch); id resolution for `#212`, `212`, `t80`; drop `publish` and `--here`; same output as today against the migrated issues (L)
-- Notes as issues: `/note` creates a `note` issue; `/ingest` reads open notes, creates issues and closes notes with links; remove `.tracker/` inbox handling (M)
-- The other skills and scripts: `/board`, `/deps`, `/build` (`212-slug` branches, `Closes #N`, a claim comment), `/try` and `land.mjs` (close issues on feature-branch merges, keep the deletion when `docs/tickets/` conflicts), settings permissions (M)
-- Docs and cutover: rewrite `docs/WORKFLOW.md` and the board sections of `CLAUDE.md`, move `notes-archive.md` to `docs/`, delete `docs/tickets/`, rerun the migration, add `Closes #N` to open PRs, merge the feature branch (S)
-- The Projects board: create the Project, its Status field, and have `board.mjs menu` sync each item's state to it (S, optional; needs `gh auth refresh -s project`)
+- The migration script: labels, issues, sub-issues, blocked-by, closed states, shipped-in PR links, `docs/ticket-ids.json`; dry run by default, idempotent; run it for real once, and check a sample of 10 items against their files (M) → T-186
+- `board.mjs` on issues: read the board with one GraphQL query (menu, show, graph, base); writes through `gh` (log as comments, status, blocked-by, feature parent, agree into sub-issues, feature-branch); id resolution for `#212`, `212`, `t80`; drop `publish` and `--here`; same output as today against the migrated issues (L) → T-187
+- Notes as issues: `/note` creates a `note` issue; `/ingest` reads open notes, creates issues and closes notes with links; remove `.tracker/` inbox handling (M) → T-188
+- The other skills and scripts: `/board`, `/deps`, `/build` (`212-slug` branches, `Closes #N`, a claim comment), `/try` and `land.mjs` (close issues on feature-branch merges, keep the deletion when `docs/tickets/` conflicts), settings permissions (M) → T-189
+- Docs and cutover: rewrite `docs/WORKFLOW.md` and the board sections of `CLAUDE.md`, move `notes-archive.md` to `docs/`, delete `docs/tickets/`, rerun the migration, add `Closes #N` to open PRs, merge the feature branch (S) → T-190
+- The Projects board: create the Project, its Status field, and have `board.mjs menu` sync each item's state to it (S, optional; needs `gh auth refresh -s project`) → T-191
 
 ## Open questions
 - [x] A GitHub Projects board? → Default: yes, as an extra view kept in sync by `board.mjs`, built last and optional.
@@ -73,3 +74,5 @@ Built in order on `feature/f-020-github-issues`; main keeps using files until th
 ## History
 - 2026-10-26 10:00 opened from a chat with Bryon
 - 2026-10-26 18:57 planning on f-020-github-issues
+- 2026-10-26 19:03 agreed
+- 2026-10-26 19:03 built on feature/f-020-github-issues
