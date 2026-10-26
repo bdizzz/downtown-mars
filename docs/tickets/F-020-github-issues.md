@@ -18,3 +18,4 @@ To be written by `/build F-020`.
 
 ## History
 - 2026-10-26 10:00 opened from a chat with Bryon
+- 2026-10-26 18:57 planning on f-020-github-issues
