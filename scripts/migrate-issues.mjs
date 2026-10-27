@@ -30,6 +30,8 @@
 // Breakdown lines become a checklist, ticked once a ticket exists for them.
 // Writes are paced a second apart and wait out GitHub's rate limits. The map
 // from old ids to issue numbers is written to docs/ticket-ids.json.
+// It reads docs/tickets/, so it only runs where those files still exist; after
+// the cutover (scripts/cutover.mjs, which ran it one last time) it's a record.
 
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
