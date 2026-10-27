@@ -6,6 +6,7 @@
 //
 // target:
 //   T-003, t-003, t3, 3 the worktree on that ticket's t-003-… branch
+//   #212, 212           the worktree on issue 212's 212-… branch
 //   <branch>            the worktree with that branch checked out (main: the main checkout)
 //   (nothing)           this worktree, if run from one; else the only other worktree
 // web|godot|both        what to start (web if left out)
@@ -61,10 +62,16 @@ function worktrees() {
   return out;
 }
 
-/** A ticket id (T-003, t-3, 3) as its branch prefix (t-003-), or null. */
-function ticketPrefix(arg) {
-  const m = /^(?:t-?)?0*(\d+)$/i.exec(arg);
-  return m ? `t-${m[1].padStart(3, "0")}-` : null;
+/**
+ * An id as the branch prefixes it may be built on, or null: T-003 and t3 are
+ * t-003-…; #212 is 212-… (an issue); a bare 3 or 212 is either.
+ */
+function ticketPrefixes(arg) {
+  const m = /^(t-?|#)?0*(\d+)$/i.exec(arg);
+  if (!m) return null;
+  const old = `t-${m[2].padStart(3, "0")}-`;
+  const issue = `${m[2]}-`;
+  return m[1] === "#" ? [issue] : m[1] ? [old] : [old, issue];
 }
 
 /** The pids listening on each local TCP port, from lsof. */
@@ -112,14 +119,14 @@ const here = resolve(quiet("git rev-parse --show-toplevel") || process.cwd());
 let tree;
 let wanted = target ?? null;
 if (target) {
-  const prefix = ticketPrefix(target);
-  const matches = all.filter((w) => w.branch && (prefix ? w.branch.startsWith(prefix) : w.branch === target));
+  const prefixes = ticketPrefixes(target);
+  const matches = all.filter((w) => w.branch && (prefixes ? prefixes.some((p) => w.branch.startsWith(p)) : w.branch === target));
   if (matches.length > 1) fail(`More than one worktree for ${target}: ${matches.map((w) => w.branch).join(", ")}`);
   tree = matches[0];
-  if (!tree && prefix) {
+  if (!tree && prefixes) {
     // No worktree: is the ticket's branch on GitHub?
-    const remote = quiet(`git ls-remote --heads origin "refs/heads/${prefix}*"`)
-      .split("\n")
+    const remote = prefixes
+      .flatMap((p) => quiet(`git ls-remote --heads origin "refs/heads/${p}*"`).split("\n"))
       .map((l) => l.split("refs/heads/")[1])
       .filter(Boolean);
     if (remote.length > 1) fail(`More than one branch for ${target} on origin: ${remote.join(", ")}`);

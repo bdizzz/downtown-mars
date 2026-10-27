@@ -180,7 +180,7 @@ See `PLAN-M14.md` (Bryon: drill discoveries, then the belt ship, then celebratio
 
 ## Decided for room linings (Oct 4–6, F-003)
 
-See `PLAN-M15.md` and `docs/tickets/F-003-room-materials.md` (Bryon's answers; the numbers are Claude's defaults, in `data/materials.json`).
+See `PLAN-M15.md` and F-003 ([#108](https://github.com/bdizzz/downtown-mars/issues/108)) (Bryon's answers; the numbers are Claude's defaults, in `data/materials.json`).
 
 - **Every room starts as bare rock,** its build cost unchanged. The lining is `room.material` (`rock`, `marscrete`, `brick`, `metal`) and `room.finish` (`base`, `fine`); the floor is `room.flooring`, absent meaning it matches the walls. Only ring rooms with walls of their own have one (not surface buildings, the entrance, stairs, lifts or empty rooms).
 - **What a lining does depends on the kind of room:** homes feel its comfort in full; people rooms (the cleanable ones) lift everyone's shared comfort (their average lining comfort × 0.5, up to +0.5); heavy rooms (industry, power, air, water) get no comfort but twice the wear benefit; the rest only wear slower. Cave-in resistance waits for cave-ins.

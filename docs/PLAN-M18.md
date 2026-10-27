@@ -1,6 +1,6 @@
 # Milestone 18 plan: the room panel at a glance
 
-Goal: the room panel stops being a wall of text. What matters most is visible at once, in a fixed order; the rest folds into sections and tooltips; and numbers show as icons, colors and meters where a sentence isn't needed. Feature F-019 (`docs/tickets/F-019-room-panel-hierarchy.md`).
+Goal: the room panel stops being a wall of text. What matters most is visible at once, in a fixed order; the rest folds into sections and tooltips; and numbers show as icons, colors and meters where a sentence isn't needed. Feature F-019 (F-019 ([#124](https://github.com/bdizzz/downtown-mars/issues/124))).
 
 ## Decided (Bryon, Oct 25)
 

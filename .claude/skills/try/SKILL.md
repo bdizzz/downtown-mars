@@ -3,9 +3,9 @@ name: try
 description: Start the web game's dev server, the Godot viewer, or both, for a ticket's or branch's worktree in Bryon's Terminal panel, on their own ports, so he can try a change; then takes his feedback back to that PR and fixes it on the same branch. Use when Bryon types /try, asks to run, test or try a ticket, PR or branch in web or Godot, or gives feedback on a change he is trying.
 ---
 
-# /try [T-0NN | branch | main] [web | godot | both]
+# /try [T-0NN | #N | branch | main] [web | godot | both]
 
-Ticket ids can be shorthand: `t6`, `T6` and `6` all mean T-006. Pass them to the script as typed; say the full id back to Bryon. The engine is `web` if he names none.
+Ticket ids can be shorthand: `t6`, `T6` and `6` all mean T-006 (its `t-006-…` branch), and `#212` or `212` means issue 212 (its `212-…` branch). Pass them to the script as typed; say the full id back to Bryon. The engine is `web` if he names none.
 
 Bryon plays his own web game on port 5173 and his own Godot game with its bridge on 17878, saving to `~/.downtown-mars/saves`. Never touch either: every other checkout's web server gets a port from 5174 up (a different origin, so separate saves), and its Godot viewer a bridge port from 7980 up and a scratch saves folder of its own.
 
@@ -36,7 +36,7 @@ One short message:
 
 - **Web**: the URL, and that the menu's bottom left should read `git: <branch>`. Ctrl-C in its tab stops it.
 - **Godot**: that the viewer window is opening on a fresh game (or that checkout's last test game: saves are kept per branch, in `saves`). Closing the window stops its bridge too; if it's left running, `stop` does it.
-- **What to look at**: if it's a ticket, read it (`node scripts/board.mjs show T-0NN`) and turn its "Done:" line and what was built into a few concrete steps to see the change. For a branch without a ticket, the PR description or the commits (`git log origin/main..<branch> --oneline`).
+- **What to look at**: if it's a ticket, read it (`node scripts/board.mjs show <id>`) and turn its "Done:" line and what was built into a few concrete steps to see the change. For a branch without a ticket, the PR description or the commits (`git log origin/main..<branch> --oneline`).
 
 - If the branch has a PR, its playable preview too, for his phone or another machine: `https://mars.bryon.site/preview/<N>/` (a comment on the PR links it; it updates a minute or two after each push).
 - That anything he wants changed, he can just say here.
@@ -62,6 +62,6 @@ When Bryon comes back with what he saw ("the badge still flickers", "make it bri
    )"
    ```
 3. **Fix it in that worktree.** If a live session already holds it (`git worktree list` marks it `locked` with a pid that's still running), it's that session's to fix: say which, and ask whether to fix here anyway. Otherwise `EnterWorktree` with `path: <dir>` from step 1, and work as /build does: small change, data in JSON, `npm test`, and for something visible a look at the running try server (Vite reloads by itself; a Godot change needs the viewer restarted, so stop and rerun its tab). Stop and ask if it turns out bigger than a tweak.
-4. **Push to the same branch**: commit as /build does (`fix(<scope>): <what> (T-0NN)`, attribution line), `git push`. The PR, its CI and its preview update by themselves.
+4. **Push to the same branch**: commit as /build does (`fix(<scope>): <what> (T-0NN)` or `(#212)`, attribution line), `git push`. The PR, its CI and its preview update by themselves.
 5. **Tick it off**: `gh pr comment <N> --edit-last --body …` with the same comment, boxes ticked and the commit's short sha after each. Anything you didn't do stays unticked, with why.
-6. Tell Bryon in a line what changed and to have another look (same URL), then `ExitWorktree` with `action: "keep"`. The server keeps running for the next round; `/land T-0NN` when he's happy.
+6. Tell Bryon in a line what changed and to have another look (same URL), then `ExitWorktree` with `action: "keep"`. The server keeps running for the next round; `/land <id>` when he's happy.
