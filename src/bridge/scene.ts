@@ -10,6 +10,7 @@ import { occupied, type RoomSpots } from "../render3d/people3d";
 import { gameTime } from "../sim/clock";
 import { tubeRuns, type TubeRun } from "../view/gallery";
 import { grimeLevel } from "../view/grime";
+import { refitRooms } from "../view/roomFinish";
 
 // The hole's 3D scene for the Godot viewer, built by the web game's own code (render3d/rooms3d.ts),
 // so both draw the same rooms, walls, doors, windows, tubes and corridors. Triangles are merged by
@@ -75,7 +76,13 @@ export interface SceneMessage {
 /** What decides the scene: when it changes, build again. */
 export function sceneKey(state: SimState, gameId: number, topFloor: number | null, roomColors = true): string {
   const grime = state.layout.rooms.map(grimeLevel).join("");
-  return `${gameId}:${state.holeId}:${state.layout.version}:${drillFloor(state)}:${topFloor}:${roomColors}:${grime}`;
+  const refits = [...refitting(state)].join(",");
+  return `${gameId}:${state.holeId}:${state.layout.version}:${drillFloor(state)}:${topFloor}:${roomColors}:${grime}:${refits}`;
+}
+
+/** Rooms being refitted, whose walls carry the hazard band (their materials end in ":refit"). */
+function refitting(state: SimState): Set<number> {
+  return refitRooms(state.construction?.queue ?? [], state.layout.rooms);
 }
 
 function drillFloor(state: SimState): number | null {
@@ -163,7 +170,8 @@ export function buildPeople(state: SimState, spots: RoomSpots[]): PeopleMessage 
 export function buildScene(state: SimState, gameId: number, topFloor: number | null, roomColors = true): { message: SceneMessage; spots: RoomSpots[] } {
   const t0 = performance.now();
   const layout = state.layout;
-  const group = buildLayout(layout, drillFloor(state), COLORS, topFloor, roomColors, grimeLevel);
+  const refits = refitting(state);
+  const group = buildLayout(layout, drillFloor(state), COLORS, topFloor, roomColors, grimeLevel, (r) => refits.has(r.id));
   group.updateMatrixWorld(true);
 
   const materials: SceneMaterial[] = [];
