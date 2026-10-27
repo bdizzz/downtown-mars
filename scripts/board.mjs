@@ -59,12 +59,15 @@
 //   node scripts/board.mjs feature-branch <F-id>
 //                                            make the feature's branch from origin/main, push it, record it in the issue
 //   node scripts/board.mjs sync <F-id>       merge origin/main into the feature's branch and push it (stops on a conflict)
+//   node scripts/board.mjs project           make the Projects board if there's none ("Downtown Mars board", a
+//                                            Kanban by derived state; needs gh's project scope) and sync it.
+//                                            `menu` syncs it too, once it exists
 //   node scripts/board.mjs path              print the local tracker folder
 // Ids can be shorthand anywhere: t6, T6, t-6 and 6 mean T-006; f1 means F-001;
 // #212 is issue 212 (and so is 212, past the old tickets' ids). Writes go
 // through `gh`; nothing about tickets is committed any more.
 
-import { exec, execFileSync, execSync } from "node:child_process";
+import { exec, execFileSync, execSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -176,7 +179,7 @@ function api(method, path, body) {
 
 // ---- tickets as issues ------------------------------------------------------
 
-const ISSUE_FIELDS = `number databaseId title body url state stateReason createdAt closedAt
+const ISSUE_FIELDS = `id number databaseId title body url state stateReason createdAt closedAt
   author{login}
   labels(first:30){nodes{name}}
   parent{number}
@@ -287,6 +290,7 @@ function toItem(i, idOf) {
     kind,
     number: i.number,
     databaseId: i.databaseId,
+    nodeId: i.id,
     url: i.url,
     labels,
     closingPrs: i.closedByPullRequestsReferences.nodes,
@@ -534,10 +538,162 @@ function writeBoard({ gh, rows, features }) {
   writeFileSync(BOARD, out);
 }
 
+// ---- the Projects board -------------------------------------------------------
+
+/**
+ * A GitHub Project kept in step with the board, for a Kanban view: every task
+ * (dropped ones aside) as an item, its Status the derived state. GitHub's own
+ * automations only know open and closed, so `menu` and `project` write it.
+ */
+const PROJECT_TITLE = "Downtown Mars board";
+const PROJECT_STATES = [
+  ["ready", "Ready", "PURPLE", "Can be built now"],
+  ["noted", "Needs answers", "PINK", "Open questions for Bryon"],
+  ["blocked", "Blocked", "GRAY", "Waits on another ticket, a PR or a draft feature"],
+  ["in-flight", "In flight", "BLUE", "A branch is pushed"],
+  ["in-review", "In review", "YELLOW", "A PR is open"],
+  ["hibernating", "Hibernating", "GRAY", "Set aside for now"],
+  ["done", "Done", "GREEN", "Merged, or closed as done"],
+];
+
+/** One GraphQL call, its query and variables as JSON on stdin (no shell quoting). */
+function gql(query, variables = {}) {
+  return new Promise((done, fail) => {
+    const p = spawn("gh", ["api", "graphql", "--input", "-"]);
+    let out = "";
+    let err = "";
+    p.stdout.on("data", (d) => (out += d));
+    p.stderr.on("data", (d) => (err += d));
+    p.on("close", (code) => {
+      let json = null;
+      try {
+        json = JSON.parse(out);
+      } catch {}
+      if (json?.errors?.length) return fail(new Error(json.errors.map((e) => e.message).join("; ")));
+      if (code || !json) return fail(new Error(err.trim() || `gh exited with ${code}`));
+      done(json.data);
+    });
+    p.stdin.end(JSON.stringify({ query, variables }));
+  });
+}
+
+const PROJECT_FIELDS = `id number url title field(name:"Status"){... on ProjectV2SingleSelectField{id options{id name}}}`;
+
+/** The board's Project, with its Status field and every item; null if there's none (or no `project` scope). */
+async function fetchProject() {
+  let project;
+  try {
+    const d = await gql(`query($owner:String!){user(login:$owner){projectsV2(first:20){nodes{${PROJECT_FIELDS}}}}}`, { owner: OWNER });
+    project = d.user?.projectsV2.nodes.find((p) => p?.title === PROJECT_TITLE);
+  } catch {
+    return null;
+  }
+  if (!project) return null;
+  const items = [];
+  let after = null;
+  do {
+    const d = await gql(
+      `query($id:ID!,$after:String){node(id:$id){... on ProjectV2{items(first:100,after:$after){pageInfo{hasNextPage endCursor} nodes{id content{... on Issue{number}} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}`,
+      { id: project.id, after },
+    );
+    const page = d.node.items;
+    items.push(...page.nodes);
+    after = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  } while (after);
+  return { ...project, items };
+}
+
+/**
+ * Several mutations in one request, 10 at a time; each `[alias, call]` comes
+ * back under its alias. GitHub answers big project batches with the odd 502,
+ * so a chunk is tried up to three times.
+ */
+async function mutateAll(calls) {
+  const out = {};
+  for (let i = 0; i < calls.length; i += 10) {
+    const query = `mutation{${calls.slice(i, i + 10).map(([alias, call]) => `${alias}: ${call}`).join("\n")}}`;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        Object.assign(out, await gql(query));
+        break;
+      } catch (e) {
+        if (attempt >= 3 || !/HTTP 5\d\d|timed? ?out/i.test(e.message)) throw e;
+        await new Promise((r) => setTimeout(r, 3000 * attempt));
+      }
+    }
+  }
+  return out;
+}
+
+/** Bring the Project in line with the board's rows: add, set Status, drop. Returns how many changes it made. */
+async function syncProject(project, rows) {
+  const status = project.field;
+  if (!status) throw new Error(`the Project has no Status field`);
+  const optionId = Object.fromEntries(PROJECT_STATES.map(([state, name]) => [state, status.options.find((o) => o.name === name)?.id]));
+  const byNumber = new Map(project.items.filter((x) => x.content?.number).map((x) => [x.content.number, x]));
+  const q = JSON.stringify;
+  const wanted = rows.filter((r) => r.state !== "dropped" && optionId[r.state]);
+  // Add the tasks the Project doesn't have yet.
+  const missing = wanted.filter((r) => !byNumber.has(r.t.number));
+  const added = await mutateAll(
+    missing.map((r) => [`a${r.t.number}`, `addProjectV2ItemById(input:{projectId:${q(project.id)},contentId:${q(r.t.nodeId)}}){item{id}}`]),
+  );
+  for (const r of missing) byNumber.set(r.t.number, { id: added[`a${r.t.number}`].item.id, fieldValueByName: null });
+  // Set each one's Status where it differs.
+  const name = Object.fromEntries(PROJECT_STATES.map(([state, n]) => [state, n]));
+  const stale = wanted.filter((r) => byNumber.get(r.t.number).fieldValueByName?.name !== name[r.state]);
+  await mutateAll(
+    stale.map((r) => [
+      `s${r.t.number}`,
+      `updateProjectV2ItemFieldValue(input:{projectId:${q(project.id)},itemId:${q(byNumber.get(r.t.number).id)},fieldId:${q(status.id)},value:{singleSelectOptionId:${q(optionId[r.state])}}}){projectV2Item{id}}`,
+    ]),
+  );
+  // Dropped tasks leave it.
+  const keep = new Set(wanted.map((r) => r.t.number));
+  const gone = rows.filter((r) => !keep.has(r.t.number) && byNumber.has(r.t.number));
+  await mutateAll(gone.map((r) => [`d${r.t.number}`, `deleteProjectV2Item(input:{projectId:${q(project.id)},itemId:${q(byNumber.get(r.t.number).id)}}){deletedItemId}`]));
+  // A task just added is always stale too (it has no Status yet).
+  return stale.length + gone.length;
+}
+
+/** Make the Project if there's none (linked to the repo), and make sure its Status options are the board's states. */
+async function setupProject() {
+  let project = await fetchProject();
+  const made = !project;
+  if (made) {
+    const d = await gql(`query($owner:String!,$name:String!){repository(owner:$owner,name:$name){id owner{id}}}`, { owner: OWNER, name: NAME });
+    const r = await gql(`mutation($owner:ID!,$repo:ID!,$title:String!){createProjectV2(input:{ownerId:$owner,repositoryId:$repo,title:$title}){projectV2{${PROJECT_FIELDS}}}}`, {
+      owner: d.repository.owner.id,
+      repo: d.repository.id,
+      title: PROJECT_TITLE,
+    });
+    project = { ...r.createProjectV2.projectV2, items: [] };
+  }
+  const names = project.field.options.map((o) => o.name);
+  if (PROJECT_STATES.some(([, name]) => !names.includes(name))) {
+    // Replacing the options clears any Status already set; the sync sets them all again.
+    await gql(`mutation($field:ID!,$options:[ProjectV2SingleSelectFieldOptionInput!]!){updateProjectV2Field(input:{fieldId:$field,singleSelectOptions:$options}){projectV2Field{... on ProjectV2SingleSelectField{id}}}}`, {
+      field: project.field.id,
+      options: PROJECT_STATES.map(([, name, color, description]) => ({ name, color, description })),
+    });
+    project = await fetchProject();
+  }
+  return { project, made };
+}
+
 async function menu() {
-  const b = await board();
+  const [b, project] = await Promise.all([board(), fetchProject()]);
   writeBoard(b);
   const lines = [];
+  // The Projects board follows along; a failure there never stops the menu.
+  if (project) {
+    try {
+      const n = await syncProject(project, b.rows);
+      if (n) lines.push(`(Projects board: ${plural(n, "change")} synced.)`, "");
+    } catch (e) {
+      lines.push(`(Projects board not synced: ${e.message.split("\n")[0]})`, "");
+    }
+  }
   if (!b.gh.online) lines.push("(GitHub PRs unreachable: in review and merged states may be missing.)", "");
   if (b.gh.notes.length) lines.push(`${plural(b.gh.notes.length, "note")} waiting (not on the board until /ingest).`, "");
   const feats = openFeatures(b.features);
@@ -1013,11 +1169,19 @@ switch (cmd) {
   case "path":
     console.log(LOCAL);
     break;
+  case "project": {
+    const [b, { project, made }] = await Promise.all([board(), setupProject()]);
+    const n = await syncProject(project, b.rows);
+    console.log(`${made ? "Made" : "Synced"} the Projects board: ${plural(n, "change")}. ${project.url}`);
+    break;
+  }
   case "base": {
     const b = await board();
     const t = findIn(b.items, args[0]);
+    // A feature that's done has merged its branch into main (and the branch is gone).
     const feature = t.kind === "task" && t.meta.feature ? findIn(b.items, t.meta.feature) : null;
-    console.log(feature?.meta.branch || "main");
+    const open = feature && !["done", "dropped"].includes(b.features.find((x) => x.f === feature)?.state);
+    console.log((open && feature.meta.branch) || "main");
     break;
   }
   case "feature-branch": {
