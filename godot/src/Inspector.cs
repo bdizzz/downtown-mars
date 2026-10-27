@@ -10,9 +10,9 @@ namespace DowntownMars;
 /// <summary>
 /// The room panel, as the web's inspector (ui/Inspector.tsx): what the clicked room is and how it's
 /// doing, and its controls (from the bridge's inspect.ts, kept up to date twice a second while it's
-/// open): its name (✎ renames it), construction progress (and moving it up the queue), condition,
+/// open): its name (✎ renames it), construction progress (and moving it up the queue, or calling a refit off), condition,
 /// storage shares, connecting it, the rows of what it uses, makes and feels, a staging bay's seed kit,
-/// crop, what a tank holds, priority, running and stop-at, and demolish. Its outline is drawn over the scene. The widgets
+/// refitting its walls, crop, what a tank holds, priority, running and stop-at, and demolish. Its outline is drawn over the scene. The widgets
 /// are made once and only their values change, so a field being typed in isn't reset under the pointer.
 /// </summary>
 public partial class Inspector : Node3D
@@ -29,6 +29,7 @@ public partial class Inspector : Node3D
     readonly ProgressBar _buildBar = Bar();
     readonly Label _buildText = new();
     readonly Button _prioritize = Btn("Priority construction", "Move it to the front of the construction queue");
+    readonly Button _cancelRefit = Btn("Cancel the refit (full refund)", "Call the refit off: the room keeps its walls, and what it cost comes back");
     readonly VBoxContainer _condition = new();
     readonly Label _conditionText = new();
     readonly ProgressBar _conditionBar = Bar();
@@ -47,7 +48,9 @@ public partial class Inspector : Node3D
     readonly VBoxContainer _kit = new();
     readonly Label _kitText = new(), _kitGoods = new(), _kitNote = new();
     readonly Button _kitButton = Btn("Gather a seed kit");
-    // Crop, priority, controls.
+    // Refit, crop, priority, controls.
+    readonly HBoxContainer _refitRow = new() { TooltipText = "Refit the walls through the construction queue. Once the crews start the room works at half speed (a home is less comfortable) until it's done, then it's as good as new. Taking brick or metal out gives half of it back." };
+    readonly OptionButton _refit = new() { FocusMode = Control.FocusModeEnum.None, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, ClipText = true, FitToLongestItem = false };
     readonly HBoxContainer _cropRow = new(), _holdsRow = new(), _priorityRow = new(), _stopRow = new();
     readonly OptionButton _crop = new() { FocusMode = Control.FocusModeEnum.None }, _holds = new() { FocusMode = Control.FocusModeEnum.None }, _priority = new() { FocusMode = Control.FocusModeEnum.None };
     readonly CheckBox _running = new() { Text = "Running", FocusMode = Control.FocusModeEnum.None };
@@ -63,6 +66,9 @@ public partial class Inspector : Node3D
     string? _connectFinish;
     int _stopSuggested;
     List<string> _goodIds = new(), _allowed = new();
+    /// <summary>The refit picker's linings (material, finish), after its "Choose new walls…" item, and their texts.</summary>
+    (string material, string finish)[] _refits = Array.Empty<(string, string)>();
+    string[] _refitTexts = Array.Empty<string>();
     string[] _cropIds = Array.Empty<string>(), _holdsIds = Array.Empty<string>(), _priorityIds = Array.Empty<string>();
     /// <summary>Set while values are filled in from a message, so the widgets' change signals don't send commands.</summary>
     bool _filling;
@@ -171,7 +177,9 @@ public partial class Inspector : Node3D
         _building.AddChild(_buildBar);
         _building.AddChild(_buildText);
         _building.AddChild(_prioritize);
+        _building.AddChild(_cancelRefit);
         _prioritize.Pressed += () => Send(new() { ["type"] = "prioritize", ["jobId"] = _jobId });
+        _cancelRefit.Pressed += () => Send(new() { ["type"] = "cancelJob", ["jobId"] = _jobId });
         _buildBar.AddThemeStyleboxOverride("fill", new StyleBoxFlat { BgColor = new Color("#e0a03b") });
         rows.AddChild(_building);
 
@@ -210,6 +218,17 @@ public partial class Inspector : Node3D
         rows.AddChild(_kit);
 
         rows.AddChild(_after);
+
+        _refitRow.AddChild(Caption("Refit"));
+        _refitRow.AddChild(_refit);
+        _refit.ItemSelected += i =>
+        {
+            if (_filling || i < 1) return;
+            var (material, finish) = _refits[i - 1];
+            Send(new() { ["type"] = "upgradeRoom", ["roomId"] = _roomId, ["material"] = material, ["finish"] = finish });
+            _refit.Select(0);
+        };
+        rows.AddChild(_refitRow);
 
         _cropRow.AddChild(Caption("Crop"));
         _cropRow.AddChild(_crop);
@@ -365,6 +384,27 @@ public partial class Inspector : Node3D
         pick.Select(Array.IndexOf(ids, o.GetProperty("value").GetString()));
     }
 
+    /// <summary>The refit picker, as the web's: "Choose new walls…", then each lining with what it gives and costs, greyed out with why when it can't be ordered.</summary>
+    void FillRefit(JsonElement options)
+    {
+        var all = options.EnumerateArray().ToArray();
+        static string? Refusal(JsonElement o) => o.GetProperty("refusal").ValueKind == JsonValueKind.String ? o.GetProperty("refusal").GetString() : null;
+        var texts = all.Select(o => o.GetProperty("text").GetString() + (Refusal(o) is { } why ? $" ({why})" : "")).ToArray();
+        if (!texts.SequenceEqual(_refitTexts))
+        {
+            _refit.Clear();
+            _refit.AddItem("Choose new walls…");
+            for (var i = 0; i < all.Length; i++)
+            {
+                _refit.AddItem(texts[i]);
+                _refit.SetItemDisabled(i + 1, Refusal(all[i]) != null);
+            }
+            _refits = all.Select(o => (o.GetProperty("material").GetString()!, o.GetProperty("finish").GetString()!)).ToArray();
+            _refitTexts = texts;
+        }
+        _refit.Select(0);
+    }
+
     /// <summary>The bridge's "inspected" message: a room's panel and outline, or roomId null to close.</summary>
     public void Show(JsonElement msg)
     {
@@ -415,6 +455,7 @@ public partial class Inspector : Node3D
             _buildBar.Value = job.GetProperty("progress").GetDouble();
             _buildText.Text = job.GetProperty("text").GetString();
             _prioritize.Visible = job.GetProperty("canPrioritize").GetBoolean();
+            _cancelRefit.Visible = job.GetProperty("canCancel").GetBoolean();
         }
         _condition.Visible = Has("condition", out var cond);
         if (_condition.Visible)
@@ -447,6 +488,8 @@ public partial class Inspector : Node3D
         }
         _after.Text = RowsText(msg.GetProperty("after"));
         _after.Visible = _after.Text != "";
+        _refitRow.Visible = Has("refit", out var refit);
+        if (_refitRow.Visible) FillRefit(refit);
         _cropRow.Visible = Has("crop", out var crop);
         if (_cropRow.Visible) Options(_crop, crop, ref _cropIds);
         _holdsRow.Visible = Has("holds", out var holds);

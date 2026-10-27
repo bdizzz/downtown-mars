@@ -35,3 +35,18 @@ export function roomLook(room: RoomInstance): Finish {
   const w = liningOf(room);
   return w.finish === "fine" ? `${w.material}_fine` : w.material;
 }
+
+/**
+ * Rooms being refitted: those already built with a job of their own in the queue (other than another
+ * floor for stairs or a lift). That's the refit job (PLAN-M15), which the room's walls show as a band of
+ * hazard stripes. `jobs` is the snapshot's queue on the web, the sim's own in the bridge.
+ */
+export function refitRooms(jobs: readonly { kind: string; roomId?: number }[], rooms: readonly RoomInstance[]): Set<number> {
+  const out = new Set<number>();
+  for (const job of jobs) {
+    if (job.roomId === undefined || job.kind === "extend") continue;
+    const room = rooms.find((r) => r.id === job.roomId);
+    if (room && !room.building && !room.planned) out.add(room.id);
+  }
+  return out;
+}

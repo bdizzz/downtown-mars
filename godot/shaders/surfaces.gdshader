@@ -7,9 +7,10 @@ shader_type spatial;
 render_mode cull_disabled;
 #include "res://shaders/view.gdshaderinc"
 
-// 0 a room (walls in its colour, floor in its material), 1 rock, 2 regolith, 3 marscrete, 4 brick, 5 metal.
+// 0 a room (walls in its colour, floor in its material), 1 rock, 2 regolith, 3 marscrete, 4 brick, 5 metal,
+// and the fine finishes (PLAN-M15): 6 smoothed rock, 7 polished marscrete, 8 patterned brick, 9 inlaid metal.
 uniform int look = 0;
-// A room's floor (look 0): laid in its material, as the looks above (1 rock, 3 marscrete, 4 brick, 5 metal).
+// A room's floor (look 0): laid in its material, as the looks above (1, 3 to 9).
 uniform int floor_look = 1;
 uniform vec3 albedo : source_color = vec3(0.6);
 uniform vec3 floor_color : source_color = vec3(0.6);
@@ -22,6 +23,8 @@ uniform float floor_metallic = 0.0;
 uniform float grime = 0.0;
 // How much the pattern's relief bends the light.
 uniform float bump = 1.0;
+// Being refitted: a band of hazard stripes along the tops of the walls (the web's withRefit).
+uniform bool refit = false;
 // The mesh carries walls' tags (CUSTOM0 to CUSTOM3) for walls down.
 uniform bool walls = false;
 
@@ -191,6 +194,128 @@ vec2 marscrete_tone(vec3 p, vec3 n) {
 	return vec2(shade, joint);
 }
 
+// Height above the floor a point is on, in metres (4 m floors under a 3 m crust).
+float srf_above(vec3 p) { return mod(p.y + 3.0, 4.0); }
+
+// Smoothed rock: bare rock's strata and mottling a little softer, ground flat and sealed: almost none of its fine detail.
+vec2 smooth_rock_tone(vec3 p) {
+	float s = p.y / 1.4 + (srf_fbm(p * 0.05) - 0.5) * 0.9;
+	float edge = smoothstep(0.0, 0.12, fract(s)) * (1.0 - smoothstep(0.88, 1.0, fract(s)));
+	float mottle = srf_fbm(p * 0.35);
+	float broad = mix(0.84, 1.1, srf_hash(vec3(floor(s), 3.1, 7.7))) * mix(0.9, 1.0, edge) * mix(0.9, 1.08, mottle);
+	float fine = mix(0.93, 1.05, srf_noise(p * 6.0));
+	float shade = mix(1.0, broad, 0.8) * mix(1.0, fine, 0.12) * mix(0.96, 1.04, srf_fbm(p * 0.2));
+	return vec2(shade, edge * 0.3 + mottle * 0.2 + 0.5);
+}
+
+// Polished marscrete: the aggregate ground smooth, in form panels 2.4 by 1.2 m with a tie hole near each
+// corner on walls; underfoot, a polished terrazzo of pale chips, no joints.
+vec2 polished_marscrete_tone(vec3 p, vec3 n) {
+	vec2 uv = surface_uv(p, n);
+	float t = mix(1.0, marscrete_tone(p, n).x, 0.5) * mix(0.98, 1.03, srf_fbm(p * 0.3));
+	if (abs(n.y) > 0.7) {
+		float chip = smoothstep(0.78, 0.82, srf_noise(p * 22.0));
+		return vec2(t * (1.0 + 0.16 * chip) * (1.0 - 0.08 * smoothstep(0.8, 0.84, srf_noise(p * 31.0 + 7.0))), 1.0);
+	}
+	vec2 size = vec2(2.4, 1.2);
+	vec2 f = fract(uv / size);
+	vec2 e = min(f, 1.0 - f) * size;
+	float joint = smoothstep(0.0, 0.01, min(e.x, e.y));
+	t *= 1.0 - 0.14 * (1.0 - joint);
+	// Tie holes: 30 cm in from the panel's sides, 20 cm from its top and bottom.
+	float hole = step(length(e - vec2(0.3, 0.2)), 0.018);
+	return vec2(t * (1.0 - 0.35 * hole), joint * (1.0 - hole));
+}
+
+// Patterned brick: banded courses (every third a shade darker), a darker accent band of upright bricks
+// at waist height, and basket-weave pavers underfoot.
+vec2 patterned_brick_tone(vec3 p, vec3 n) {
+	vec2 uv = surface_uv(p, n);
+	if (abs(n.y) > 0.7) {
+		// Basket weave: 60 cm squares of two bricks, each square turned against its neighbours.
+		vec2 q = uv / 0.6;
+		vec2 c = floor(q);
+		vec2 f = fract(q);
+		bool turn = mod(c.x + c.y, 2.0) > 0.5;
+		float across = turn ? f.x : f.y;
+		float along = turn ? f.y : f.x;
+		float piece = fract(across * 2.0);
+		float grout = step(0.04, along) * step(0.04, 1.0 - along) * step(0.06, piece) * step(0.06, 1.0 - piece);
+		float shade = mix(0.86, 1.06, srf_hash(vec3(c, floor(across * 2.0) + 6.0)));
+		return vec2(mix(0.6, shade, grout), grout);
+	}
+	float above = srf_above(p);
+	vec2 b;
+	float accent = step(0.85, above) * (1.0 - step(1.25, above));
+	if (accent > 0.5) b = (uv - vec2(0.0, 0.85)) / vec2(0.2, 0.4);
+	else {
+		b = uv / vec2(0.5, 0.2);
+		b.x += 0.5 * mod(floor(b.y), 2.0);
+	}
+	vec2 f = fract(b);
+	float mortar = step(0.05, f.x) * step(0.06, f.y);
+	float shade = mix(0.84, 1.08, srf_hash(vec3(floor(b), 5.0))) * mix(0.94, 1.04, srf_noise(p * 5.0));
+	shade *= mod(floor(b.y), 3.0) < 0.5 ? 0.88 : 1.0;
+	shade *= mix(1.0, 0.62, accent);
+	return vec2(mix(1.3, shade, mortar), mortar);
+}
+
+// Inlaid metal: the metal panels with a darker inlay band at shoulder height (brass diamonds between
+// brass trim lines); underfoot, the steel plate with brass strips along its seams. In colour (rgb), with its height (a).
+vec4 inlaid_metal_tone(vec3 p, vec3 n) {
+	vec2 m = metal_tone(p, n);
+	vec3 t = vec3(m.x);
+	vec3 brass = vec3(1.55, 1.2, 0.62);
+	vec2 uv = surface_uv(p, n);
+	if (abs(n.y) > 0.7) {
+		vec2 f = fract(uv / 2.0);
+		vec2 e = min(f, 1.0 - f) * 2.0;
+		float strip = 1.0 - step(0.035, min(e.x, e.y));
+		return vec4(mix(t, brass * mix(0.92, 1.05, srf_noise(p * 9.0)), strip), mix(m.y, 0.9, strip));
+	}
+	float above = srf_above(p);
+	float lo = 1.2;
+	float hi = 1.6;
+	if (above < lo || above > hi) return vec4(t, m.y);
+	float v = (above - lo) / (hi - lo);
+	float trim = 1.0 - step(0.1, v) * step(v, 0.9);
+	vec2 d = vec2((fract(uv.x / 0.4) - 0.5) * 0.4, (v - 0.5) * (hi - lo));
+	float diamond = 1.0 - step(0.12, abs(d.x) + abs(d.y));
+	vec3 inlay = vec3(0.62, 0.66, 0.74) * mix(0.95, 1.04, srf_noise(vec3(uv.x * 30.0, above * 30.0, 0.0)));
+	float brassy = max(trim, diamond);
+	return vec4(mix(inlay, brass, brassy), mix(0.55, 1.0, brassy));
+}
+
+// A lining's pattern by look (1, 3 to 9): its shade in colour (rgb) and its height (a).
+vec4 lining_tone(int which, vec3 p, vec3 n) {
+	if (which == 3) return marscrete_tone(p, n).xxxy;
+	if (which == 4) return brick_tone(p, n).xxxy;
+	if (which == 5) return metal_tone(p, n).xxxy;
+	if (which == 6) return smooth_rock_tone(p).xxxy;
+	if (which == 7) return polished_marscrete_tone(p, n).xxxy;
+	if (which == 8) return patterned_brick_tone(p, n).xxxy;
+	if (which == 9) return inlaid_metal_tone(p, n);
+	return rock_tone(p, n).xxxy;
+}
+
+// How far a lining's relief bends the light: bare rock is rough-hewn, smoothed rock barely.
+float lining_relief(int which) {
+	if (which == 1) return 3.0;
+	if (which == 6) return 0.8;
+	return 0.6;
+}
+
+// The refit band (the web's REFIT): hazard stripes from 0.85 to 0.25 m below the top of the walls, 0.45 m a pair.
+vec3 refit_tone(vec3 p, vec3 n, vec3 c) {
+	if (abs(n.y) > 0.7) return c;
+	float above = srf_above(p);
+	if (above < 3.15 || above > 3.75) return c;
+	// Along the wall: round a curved one, out along a radial one; either way the stripes lean.
+	float along = atan(p.z, p.x) * length(p.xz) + length(p.xz);
+	float s = fract((along + above) / 0.45);
+	return s < 0.5 ? vec3(0.88, 0.63, 0.23) : vec3(0.12, 0.1, 0.09);
+}
+
 // Wear: walls streak and stain toward the floor, floors scuff (the web's grime, 4 m floors under a 3 m crust).
 float grime_tone(vec3 p, vec3 n, float level) {
 	if (level < 0.5) return 1.0;
@@ -213,36 +338,33 @@ void fragment() {
 	vec3 color = albedo;
 	float rough = roughness;
 	float metal = metallic;
-	vec2 t = vec2(1.0);
+	vec4 t = vec4(1.0);
 	float relief = 0.6;
-	if (look == 1) { t = rock_tone(wpos, n); relief = 3.0; }
-	else if (look == 2) { t = regolith_tone(wpos); relief = 2.0; }
-	else if (look == 3) t = marscrete_tone(wpos, n);
-	else if (look == 4) t = brick_tone(wpos, n);
-	else if (look == 5) t = metal_tone(wpos, n);
+	if (look == 2) { t = regolith_tone(wpos).xxxy; relief = 2.0; }
+	else if (look != 0) { t = lining_tone(look, wpos, n); relief = lining_relief(look); }
 	else if (is_floor) {
 		// A room's floor: its material's pattern and colour, tinted by the room's, with the material's sheen.
-		if (floor_look == 3) t = marscrete_tone(wpos, n);
-		else if (floor_look == 4) t = brick_tone(wpos, n);
-		else if (floor_look == 5) t = metal_tone(wpos, n);
-		else { t = rock_tone(wpos, n); relief = 3.0; }
+		t = lining_tone(floor_look, wpos, n);
+		relief = lining_relief(floor_look);
 		color = mix(floor_color, albedo, floor_tint);
 		rough = floor_roughness;
 		metal = floor_metallic;
 	} else {
 		// A room's walls: its colour, a fine plaster grain.
 		float g = srf_noise(wpos * 9.0);
-		t = vec2(mix(0.96, 1.03, g), g * 0.3);
+		t = vec4(vec3(mix(0.96, 1.03, g)), g * 0.3);
 		relief = 0.25;
 	}
-	color *= t.x * grime_tone(wpos, n, grime);
+	color *= t.rgb * grime_tone(wpos, n, grime);
+	// Over the pattern and the grime, so the tape stays bright.
+	if (refit) color = refit_tone(wpos, n, color);
 	ALBEDO = mix(color, SLICE_EARTH, slice_darken(wpos));
 	// Gaps hold dust: rougher than the faces.
-	ROUGHNESS = clamp(rough + (1.0 - t.y) * 0.25, 0.0, 1.0);
+	ROUGHNESS = clamp(rough + (1.0 - t.a) * 0.25, 0.0, 1.0);
 	METALLIC = metal;
 
 	// Relief from the pattern's height, by its screen-space slope (bump mapping without a map).
-	float h = t.y * relief * bump * 0.02;
+	float h = t.a * relief * bump * 0.02;
 	vec3 dpdx = dFdx(VERTEX);
 	vec3 dpdy = dFdy(VERTEX);
 	float dhx = dFdx(h);
