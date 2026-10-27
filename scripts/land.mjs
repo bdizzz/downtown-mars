@@ -37,7 +37,8 @@ import { join, resolve, sep } from "node:path";
 
 const KEEP = new Set(["main", "HEAD", "pr-assets"]);
 
-const sh = (cmd) => execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+// The PR list (with bodies) is a few hundred KB and grows; give it room.
+const sh = (cmd) => execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 << 20 }).trim();
 const quiet = (cmd) => {
   try {
     return sh(cmd);
@@ -154,9 +155,25 @@ const inMain = (ref) => ok(`git merge-base --is-ancestor "${ref}" origin/main`);
 const trees = worktrees();
 const local = quiet("git for-each-ref --format='%(refname:short)' refs/heads").split("\n").filter(Boolean);
 const remote = quiet("git for-each-ref --format='%(refname:lstrip=3)' refs/remotes/origin").split("\n").filter(Boolean);
-const prs = JSON.parse(
-  quiet("gh pr list --state all --limit 1000 --json number,headRefName,baseRefName,state,title,url,body") || "[]",
-);
+/**
+ * Every PR. Without them nothing here can be judged (a merged branch would
+ * look like one still in flight), so if GitHub can't be reached, after one
+ * retry for a passing blip, stop rather than go on as if there were none.
+ */
+function pullRequests() {
+  const cmd = "gh pr list --state all --limit 1000 --json number,headRefName,baseRefName,state,title,url,body";
+  let why = "";
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return JSON.parse(sh(cmd));
+    } catch (e) {
+      why = `${e.stderr ?? ""}`.trim().split("\n")[0] || e.message;
+      if (attempt === 1) execSync("sleep 3");
+    }
+  }
+  fail(`Can't reach GitHub to list the PRs (${why}). Nothing was changed; try /land again in a moment.`);
+}
+const prs = pullRequests();
 const prFor = (branch) => {
   const mine = prs.filter((p) => p.headRefName === branch);
   return mine.find((p) => p.state === "OPEN") ?? mine.find((p) => p.state === "MERGED") ?? mine[0] ?? null;
