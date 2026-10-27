@@ -23,6 +23,8 @@ It prints `{ landed, skipped, open, notes }`:
 - **open**: PRs still open, with `ci` (passing, failing, pending, none) and `mergeState`.
 - **skipped**: why something was left alone: a live session still in the worktree, uncommitted changes, a PR closed without merging, a branch with no PR that isn't in main (in flight).
 
+If it stops with "Can't reach GitHub", nothing was changed: say so, and try again in a moment rather than guessing.
+
 ## 3. Do it
 
 - **A named ticket, PR or branch whose PR is open**: Bryon naming it is the go-ahead to merge. If its CI is passing and it's `clean`, rerun with `--merge` (and without `--dry-run`); the script squash-merges it, the same way the history has gone so far. If CI is failing or pending, or it's conflicting or a draft, say so and stop; don't wait on CI.
