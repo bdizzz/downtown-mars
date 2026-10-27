@@ -1,5 +1,5 @@
-// The playtest board. Notes go into a local inbox; /ingest turns them into
-// tickets (or features); /build turns a ticket into a PR.
+// The playtest board. Notes are issues; /ingest turns them into tickets (or
+// features); /build turns a ticket into a PR.
 //
 // Tickets and features are GitHub issues (F-020), labeled task or feature; the
 // ones moved from docs/tickets/ keep their old id at the front of the title
@@ -30,20 +30,25 @@
 // merge into it, and it reaches main in one go at the end (a PR from it, merged
 // with a merge commit). Its live state is then "ready to merge" once every task
 // is finished, and done only when that PR is merged.
-// The inbox and the generated BOARD.md are local, in .tracker/ (gitignored) in
-// the main checkout, found from any worktree.
+// A note is any open issue that isn't a task or feature (labeled note when made
+// here, or nothing at all when jotted in GitHub's app): its body is the note,
+// verbatim. Items made from it list it ("notes #208"), and /ingest closes it
+// with a comment linking them ("→ #212, #213"). The old notes (N-0001…) stay
+// in docs/notes-archive.md. The generated BOARD.md is local, in .tracker/
+// (gitignored) in the main checkout, found from any worktree.
 //
-//   node scripts/board.mjs note <text>       add a note to the inbox (or text on stdin)
-//   node scripts/board.mjs inbox             print notes waiting to be ingested
-//   node scripts/board.mjs ingest-start      take the inbox, give each note an id, archive it verbatim
-//   node scripts/board.mjs ingest-done       link each archived note to its tickets; clear the ingest file
+//   node scripts/board.mjs note <text>       make a note issue (or text on stdin)
+//   node scripts/board.mjs notes             print the notes waiting to be ingested
+//   node scripts/board.mjs ingest-done       close every waiting note that an item lists, linking what it became
+//   node scripts/board.mjs close-note <#N> <why>
+//                                            close a note that became nothing (praise, already done)
 //   node scripts/board.mjs new task|feature <title> [--size M] [--area sim,ui] [--feature F-1] [--blocked-by T-7,#41]
-//                              [--touches a,b] [--notes N-0001] [--breakdown <n>] [--status draft|agreed]
+//                              [--touches a,b] [--notes #208,#209] [--breakdown <n>] [--status draft|agreed]
 //                                            make an issue, its sections on stdin; prints its id. --breakdown ticks
 //                                            line n of the feature's Breakdown (a task made when agreeing it)
 //   node scripts/board.mjs log <id> [text] [--status open|done|dropped|hibernating] [--blocked-by T-7,#41|none] [--feature F-1|none]
-//                                            comment on the item (and set fields); a feature takes
-//                                            --status draft|agreed|done|dropped
+//                              [--notes #208]   comment on the item (and set fields; --notes adds to its notes); a
+//                                            feature takes --status draft|agreed|done|dropped
 //   node scripts/board.mjs body <id>         print the item's body (its sections), to edit
 //   node scripts/board.mjs set-body <id> [file]
 //                                            replace the item's body with the file (or stdin)
@@ -60,7 +65,7 @@
 // through `gh`; nothing about tickets is committed any more.
 
 import { exec, execFileSync, execSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -122,13 +127,9 @@ const tryShAsync = (cmd) =>
     () => null,
   );
 
-// The notes archive and the local tracker belong to the main checkout, even
-// when run from a worktree.
+// The local tracker belongs to the main checkout, even when run from a worktree.
 const MAIN = dirname(resolve(sh("git rev-parse --git-common-dir")));
-const ARCHIVE = join(MAIN, "docs", "tickets", "notes-archive.md");
 const LOCAL = join(MAIN, ".tracker");
-const INBOX = join(LOCAL, "inbox.md");
-const INGESTING = join(LOCAL, "ingesting.md");
 const BOARD = join(LOCAL, "BOARD.md");
 mkdirSync(LOCAL, { recursive: true });
 const REPO = sh("git remote get-url origin").match(/github\.com[:/](.+?)(?:\.git)?$/)?.[1];
@@ -146,26 +147,17 @@ const ago = (s) => {
   if (mins < 60 * 24) return `${Math.round(mins / 60)}h`;
   return `${Math.round(mins / 60 / 24)}d`;
 };
-const read = (p) => (existsSync(p) ? readFileSync(p, "utf8") : "");
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // ---- notes ----------------------------------------------------------------
 
-/** Entries are "## <stamp>" (inbox) or "## N-0001 · <stamp>" (archive) headings, then the note verbatim. */
-function parseNotes(text) {
-  return text
-    .split(/^## /m)
-    .slice(1)
-    .map((chunk) => {
-      const nl = chunk.indexOf("\n");
-      const head = (nl < 0 ? chunk : chunk.slice(0, nl)).trim();
-      const body = nl < 0 ? "" : chunk.slice(nl + 1).trim();
-      const m = head.match(/^(N-\d+) · (.*)$/);
-      return m ? { id: m[1], at: m[2], body } : { id: null, at: head, body };
-    })
-    .filter((n) => n.body);
+/** A note's title: its first line, cut at a word to about 60 characters. */
+function noteTitle(text) {
+  const first = text.trim().split("\n")[0].replace(/\s+/g, " ");
+  if (first.length <= 60) return first;
+  const cut = first.slice(0, 60);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 40))}…`;
 }
-const pendingNotes = () => parseNotes(read(INBOX)).length + parseNotes(read(INGESTING)).length;
 
 // ---- GitHub writes ----------------------------------------------------------
 
@@ -185,6 +177,7 @@ function api(method, path, body) {
 // ---- tickets as issues ------------------------------------------------------
 
 const ISSUE_FIELDS = `number databaseId title body url state stateReason createdAt closedAt
+  author{login}
   labels(first:30){nodes{name}}
   parent{number}
   blockedBy(first:50){nodes{number databaseId}}
@@ -208,6 +201,21 @@ async function fetchIssues() {
   return out;
 }
 
+/** "notes N-0005, #208" in the header: the archived notes (N-…) and note issues (#…) an item came from. */
+const NOTES_RE = /notes ((?:(?:N-\d+|#\d+)(?:, )?)+)/;
+
+/** The body with these notes in its "> From …" line (made if there's none). */
+function withNotes(body, notes) {
+  const at = body.search(/^## /m);
+  const head = at < 0 ? body : body.slice(0, at);
+  const rest = at < 0 ? "" : body.slice(at);
+  const text = `notes ${notes.join(", ")}`;
+  const from = head.match(/^>.*$/m)?.[0];
+  if (!from) return `> From ${text}\n${head.trim() ? head : "\n"}${rest}`;
+  const line = NOTES_RE.test(from) ? from.replace(NOTES_RE, text) : `${from} · ${text}`;
+  return head.replace(from, line) + rest;
+}
+
 /** The short header above an issue's sections: "> From … · opened … · notes …" and "**Key:** value" lines. */
 function header(body) {
   const head = body.split(/^## /m)[0];
@@ -215,7 +223,7 @@ function header(body) {
   const list = (v) => (v ? v.split(",").map((s) => s.trim().replace(/^`|`$/g, "")).filter(Boolean) : []);
   return {
     created: head.match(/opened (\d{4}-\d\d-\d\d \d\d:\d\d)/)?.[1] ?? null,
-    notes: head.match(/notes ((?:N-\d+(?:, )?)+)/)?.[1].split(", ") ?? [],
+    notes: head.match(NOTES_RE)?.[1].split(", ") ?? [],
     touches: list(field("Touches")),
     plan: field("Plan")?.replace(/`/g, "") ?? null,
     branch: field("Branch")?.replace(/`/g, "") ?? null,
@@ -356,6 +364,18 @@ async function github() {
   const known = new Set(issues.filter((i) => i.labels.nodes.some((l) => ["task", "feature"].includes(l.name))).map((i) => i.number));
   const idOf = (n) => (known.has(n) ? (oldIds[n] ?? `#${n}`) : null);
   const items = issues.map((i) => toItem(i, idOf)).filter(Boolean).sort((a, b) => a.number - b.number);
+  // Notes: open issues that aren't tasks or features, oldest first.
+  const notes = issues
+    .filter((i) => i.state === "OPEN" && !known.has(i.number))
+    .sort((a, b) => a.number - b.number)
+    .map((i) => ({
+      number: i.number,
+      title: i.title,
+      body: i.body.replace(/\r\n/g, "\n"),
+      url: i.url,
+      createdAt: i.createdAt,
+      author: i.author?.login ?? "ghost",
+    }));
 
   const prs = {};
   const branches = {};
@@ -372,7 +392,7 @@ async function github() {
     const id = branchItem(name, items);
     if (id) branches[id] = name;
   }
-  return { items, prs, branches, all, online: list !== null };
+  return { items, notes, prs, branches, all, online: list !== null };
 }
 
 /** The PR that takes a feature's own branch into main: open beats merged beats closed. */
@@ -489,7 +509,7 @@ function columns(rows) {
 function writeBoard({ gh, rows, features }) {
   let out = `# Board\n\nGenerated ${stamp()} by \`node scripts/board.mjs menu\` from GitHub Issues on ${REPO}. Don't edit.\n\n`;
   if (!gh.online) out += "**GitHub PRs unreachable: in review and merged states may be missing.**\n\n";
-  if (pendingNotes()) out += `**${plural(pendingNotes(), "note")} waiting in the inbox.** Run /ingest.\n\n`;
+  if (gh.notes.length) out += `**${plural(gh.notes.length, "note")} waiting to be ingested.** Run /ingest.\n\n`;
   const link = (t) => `[${t.meta.id}](${t.url})`;
   out += `## Features (${openFeatures(features).length})\n\n`;
   if (!features.length) out += "—\n\n";
@@ -519,7 +539,7 @@ async function menu() {
   writeBoard(b);
   const lines = [];
   if (!b.gh.online) lines.push("(GitHub PRs unreachable: in review and merged states may be missing.)", "");
-  if (pendingNotes()) lines.push(`${plural(pendingNotes(), "note")} waiting in the inbox (not on the board until /ingest).`, "");
+  if (b.gh.notes.length) lines.push(`${plural(b.gh.notes.length, "note")} waiting (not on the board until /ingest).`, "");
   const feats = openFeatures(b.features);
   if (feats.length) {
     lines.push(`Features (${feats.length})`);
@@ -817,68 +837,62 @@ function tickBreakdown(f, n, task) {
 }
 
 const readStdin = () => (process.stdin.isTTY ? "" : readFileSync(0, "utf8"));
+/** "208, #209, N-0005" as note refs: #208, #209, N-0005. */
+const noteRefs = (s) =>
+  s
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .map((x) => (/^#?\d+$/.test(x) ? `#${x.replace("#", "")}` : x.toUpperCase()));
 
 // `--here` edited a checkout's own ticket files; with issues there's nothing to point it at.
 const [cmd, ...args] = process.argv.slice(2).filter((a) => a !== "--here");
 switch (cmd) {
   case "note": {
     let text = args.join(" ").trim();
-    if (!text && !process.stdin.isTTY) text = readFileSync(0, "utf8").trim();
+    if (!text) text = readStdin().trim();
     if (!text) throw new Error("nothing to note");
-    appendFileSync(INBOX, `${read(INBOX) ? "\n" : ""}## ${stamp()}\n${text}\n`);
-    console.log(`Noted (${parseNotes(read(INBOX)).length} in the inbox).`);
+    const made = api("POST", "issues", { title: noteTitle(text), body: `${text}\n`, labels: ["note"] });
+    const waiting = (await board()).gh.notes.length;
+    console.log(`Noted as #${made.number} (${plural(waiting, "note")} waiting).`);
     break;
   }
-  case "inbox": {
-    const waiting = [...parseNotes(read(INGESTING)), ...parseNotes(read(INBOX))];
-    if (!waiting.length) console.log("The inbox is empty.");
-    for (const n of waiting) console.log(`## ${n.id ? `${n.id} · ` : ""}${n.at}\n${n.body}\n`);
-    break;
-  }
-  case "ingest-start": {
-    // Resumes an interrupted ingest; otherwise takes the whole inbox. Renaming
-    // the file first means a /note during ingestion lands in a fresh inbox.
-    if (!existsSync(INGESTING)) {
-      if (!parseNotes(read(INBOX)).length) {
-        console.log("The inbox is empty.");
-        break;
-      }
-      renameSync(INBOX, INGESTING);
-      let n = Math.max(0, ...parseNotes(read(ARCHIVE)).map((x) => Number(x.id.replace(/\D/g, ""))));
-      const notes = parseNotes(read(INGESTING)).map((x) => ({ ...x, id: `N-${String(++n).padStart(4, "0")}` }));
-      const entries = notes.map((x) => `## ${x.id} · ${x.at}\n${x.body}\n`).join("\n");
-      writeFileSync(INGESTING, entries);
-      appendFileSync(
-        ARCHIVE,
-        `${read(ARCHIVE) ? "\n" : "# Notes archive\n\nEvery playtest note, verbatim, with the tickets it became.\n\n"}${entries}`,
-      );
-    } else console.log("(Resuming an ingest that didn't finish.)\n");
-    console.log(read(INGESTING));
-    console.log("New tickets and features get their numbers from `board.mjs new`.");
+  case "notes": {
+    const { notes } = (await board()).gh;
+    if (!notes.length) console.log("No notes waiting.");
+    // Anyone can open an issue on a public repo: say whose each note is.
+    for (const n of notes)
+      console.log(`## #${n.number} · ${stamp(new Date(n.createdAt))} · ${n.author === OWNER ? n.author : `${n.author} (not ${OWNER})`}\n${n.body.trim()}\n`);
     break;
   }
   case "ingest-done": {
-    const notes = parseNotes(read(INGESTING));
-    const ids = new Set(notes.map((n) => n.id));
     const b = await board();
+    const linked = [];
     const unlinked = [];
-    // Rebuild the archive entry by entry, adding "→ tickets" under each note just ingested.
-    const [preamble, ...entries] = read(ARCHIVE).split(/^(?=## )/m);
-    const archive =
-      preamble +
-      entries
-        .map((entry) => {
-          const id = entry.match(/^## (N-\d+)/)?.[1];
-          if (!ids.has(id) || /^→ /m.test(entry)) return entry;
-          const into = b.items.filter((t) => t.meta.notes.includes(id)).map((t) => t.meta.id);
-          if (!into.length) unlinked.push(id);
-          return `${entry.replace(/\s*$/, "")}\n→ ${into.length ? into.join(", ") : "no ticket"}\n\n`;
-        })
-        .join("");
-    writeFileSync(ARCHIVE, archive.replace(/\s*$/, "\n"));
-    if (existsSync(INGESTING)) unlinkSync(INGESTING);
-    writeBoard(b);
-    console.log(`Ingested ${plural(notes.length, "note")}.${unlinked.length ? ` No ticket for: ${unlinked.join(", ")}.` : ""}`);
+    for (const n of b.gh.notes) {
+      const into = b.items.filter((t) => t.meta.notes.includes(`#${n.number}`));
+      if (!into.length) {
+        unlinked.push(`#${n.number}`);
+        continue;
+      }
+      api("POST", `issues/${n.number}/comments`, { body: `→ ${into.map((t) => (t.meta.id.startsWith("#") ? t.meta.id : `${t.meta.id} (#${t.number})`)).join(", ")}` });
+      api("PATCH", `issues/${n.number}`, { state: "closed", state_reason: "completed" });
+      linked.push(`#${n.number}`);
+    }
+    writeBoard(await board());
+    console.log(`Ingested ${plural(linked.length, "note")}${linked.length ? ` (${linked.join(", ")})` : ""}.${unlinked.length ? ` Still waiting, with nothing made from them: ${unlinked.join(", ")}.` : ""}`);
+    break;
+  }
+  case "close-note": {
+    const [ref, ...words] = args;
+    const why = words.join(" ").trim();
+    if (!why) throw new Error('close-note needs a reason, e.g. close-note #208 "praise; nothing to do"');
+    const b = await board();
+    const n = b.gh.notes.find((x) => `#${x.number}` === `#${String(ref).replace("#", "")}`);
+    if (!n) throw new Error(`${ref} isn't a note waiting to be ingested`);
+    api("POST", `issues/${n.number}/comments`, { body: `→ no ticket: ${why}` });
+    api("PATCH", `issues/${n.number}`, { state: "closed", state_reason: "not_planned" });
+    console.log(`#${n.number}: closed (${why})`);
     break;
   }
   case "new": {
@@ -894,9 +908,9 @@ switch (cmd) {
     const status = f.status ?? (kind === "feature" ? "draft" : null);
     if (kind === "feature" && !["draft", "agreed"].includes(status)) throw new Error("a new feature is draft or agreed");
     const head = [];
-    if (f.notes) head.push(`> From notes ${f.notes.split(",").map((s) => s.trim()).join(", ")}`);
     if (f.touches) head.push(`**Touches:** ${f.touches.split(",").map((s) => `\`${s.trim()}\``).join(", ")}`);
-    const body = `${head.length ? `${head.join("\n")}\n\n` : ""}${sections}\n`;
+    let body = `${head.length ? `${head.join("\n")}\n\n` : ""}${sections}\n`;
+    if (f.notes) body = withNotes(body, noteRefs(f.notes));
     const labels = [kind, ...(f.size ? [`size:${f.size}`] : []), ...areas.map((a) => `area:${a}`), ...(kind === "feature" ? [status] : [])];
     const made = api("POST", "issues", { title, body, labels });
     console.log(`#${made.number} ${made.html_url}`);
@@ -921,6 +935,10 @@ switch (cmd) {
     if (f.status) setStatus(t, f.status);
     if (f.feature) setFeature(t, f.feature === "none" ? null : findIn(b.items, f.feature), b.items);
     if (f["blocked-by"]) setBlockers(t, f["blocked-by"] === "none" ? [] : f["blocked-by"].split(",").map((s) => s.trim()), b.items, b.gh.all);
+    if (f.notes) {
+      const notes = [...new Set([...t.meta.notes, ...noteRefs(f.notes)])];
+      if (notes.length !== t.meta.notes.length) api("PATCH", `issues/${t.number}`, { body: withNotes(t.body, notes) });
+    }
     const text = words.join(" ").trim();
     if (text) api("POST", `issues/${t.number}/comments`, { body: text });
     console.log(`${t.meta.id}: ${stamp()} ${text}`.trimEnd());
