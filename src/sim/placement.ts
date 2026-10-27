@@ -1,5 +1,5 @@
 import { config, type Priority, type SimConfig } from "./config";
-import { overlappingSlots, ringSize, wrapSlot, type Hole } from "./geometry";
+import { overlappingSlots, ringSize, slotsToAngles, wrapSlot, type Hole } from "./geometry";
 import { corridorsInside, recomputeAccess, strandedBy, wouldConnect } from "./corridors";
 import { isRoomType, roomDef } from "./rooms";
 import { rockCells } from "./excavation";
@@ -16,7 +16,22 @@ export interface Cell {
 }
 
 export type Location =
-  | { kind: "ring"; floor: number; ring: number; slot: number; w: number; d: number }
+  | {
+      kind: "ring";
+      floor: number;
+      ring: number;
+      slot: number;
+      w: number;
+      d: number;
+      /**
+       * Its angle range in notches (F-004): from `start`, `span` notches round, `depth` rings
+       * outward. Set when placed (a command needn't carry them); deep rooms take the inner
+       * ring's angles. Nothing reads them yet: rooms are still placed on slots (PLAN-M17).
+       */
+      start?: number;
+      span?: number;
+      depth?: number;
+    }
   | { kind: "surface"; slot: number };
 
 export interface RoomInstance {
@@ -312,6 +327,13 @@ function nameOf(layout: Layout, id: number): string {
   return r ? roomDef(r.type).name : "another room";
 }
 
+/** A ring location with its angles filled in from its slots (a surface one as it is). */
+export function withAngles(hole: Hole, at: Location, cfg: SimConfig = config): Location {
+  if (at.kind !== "ring") return at;
+  const { start, span } = slotsToAngles(at.slot, at.w, ringSize(hole, at.ring), cfg.geometry.notchesPerTurn);
+  return { ...at, start, span, depth: at.d };
+}
+
 export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimConfig = config): CheckResult & { id?: number; extended?: boolean; fresh?: Cell[] } {
   const check = checkPlacement(layout, type, at, cfg);
   if (!check.ok) return check;
@@ -321,7 +343,7 @@ export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimCo
   layout.rooms.push({
     id,
     type,
-    at,
+    at: withAngles(layout.hole, at, cfg),
     cells: check.cells,
     surfaceCells: check.surfaceCells,
     connected: true,
