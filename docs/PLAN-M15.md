@@ -2,7 +2,7 @@
 
 Goal: a room carved out of bare rock early can be **upgraded in place** later, to smoothed rock, brick or metal, each with a finer finish, and its floor can be upgraded on its own. Upgrades make a room nicer to live or work in and slower to wear out, by different amounts for different kinds of room.
 
-Feature: `docs/tickets/F-003-room-materials.md` (from Bryon's notes N-0006 and N-0007, Oct 4, 2026).
+Feature: F-003 ([#108](https://github.com/bdizzz/downtown-mars/issues/108)) (from Bryon's notes N-0006 and N-0007, Oct 4, 2026).
 
 ## Decided (Bryon, Oct 4)
 

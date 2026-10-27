@@ -1,6 +1,6 @@
 # Milestone 16 plan: air as a mix — O2 % of the living volume, the O2 ↔ CO2 loop, gas tanks
 
-Goal: oxygen and CO2 form a stable loop, so once a hole's air is made it doesn't keep costing water. Water turns into oxygen for good **only as the hole's living volume grows**. Feature F-002 (`docs/tickets/F-002-air-mix.md`).
+Goal: oxygen and CO2 form a stable loop, so once a hole's air is made it doesn't keep costing water. Water turns into oxygen for good **only as the hole's living volume grows**. Feature F-002 (F-002 ([#107](https://github.com/bdizzz/downtown-mars/issues/107))).
 
 Bryon's design (Oct 4, N-0005, first written up in T-011) is settled; the numbers and the smaller rules below are Claude's defaults, which Bryon agreed on Oct 6. Every one is easy to change in balancing. Every number lives in data (`data/config.json` under a new `air` block, and `data/rooms.json`).
 
@@ -140,7 +140,7 @@ Each step is one PR and leaves the game working.
 
 ## Open questions
 
-See the feature's Open questions (`docs/tickets/F-002-air-mix.md`).
+See the feature's Open questions (F-002 ([#107](https://github.com/bdizzz/downtown-mars/issues/107))).
 
 ## Notes as built
 
