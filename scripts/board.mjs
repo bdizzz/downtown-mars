@@ -1,30 +1,35 @@
 // The playtest board. Notes go into a local inbox; /ingest turns them into
 // tickets (or features); /build turns a ticket into a PR.
 //
-// Tickets live in docs/tickets/ (checked in, so any machine can build one) and
-// store only what doesn't churn: the content, a coarse status (open, done,
-// dropped, hibernating) and a history. Live state is derived, never stored:
+// Tickets and features are GitHub issues (F-020), labeled task or feature; the
+// ones moved from docs/tickets/ keep their old id at the front of the title
+// ("T-080 · …"), new ones go by their issue number (#212). The issue stores
+// only what doesn't churn: the content, open or closed (with its reason),
+// labels, its parent feature and its blockers; the history is its comments.
+// Live state is derived, never stored:
 //   needs answers  unticked "- [ ]" lines under ## Open questions
-//   blocked        a blocked_by ticket that isn't done (or PR that isn't merged),
-//                  or a feature that's still a draft
-//   in flight      a pushed t-0NN-… branch with no PR yet
-//   in review      an open PR from a t-0NN-… branch
-//   done           status: done, or a merged PR from a t-0NN-… branch
-// Hibernating (status: hibernating) is set aside for now but not given up: off
+//   blocked        a blocked-by issue that isn't done (or a PR that isn't
+//                  merged), or a feature that's still a draft
+//   in flight      a pushed branch for the item (t-0NN-…, or 212-… for new ones) with no PR yet
+//   in review      an open PR from that branch, or one that closes the issue
+//   done           closed as completed, or that PR merged
+//   dropped        closed as not planned
+// Hibernating (label hibernating) is set aside for now but not given up: off
 // Ready and the dependency graph, listed on its own, and `--status open` wakes
 // it. Its feature isn't done while it sleeps, and anything it blocks stays blocked.
 //
-// Features (F-0NN-….md, the epics) hold the plan for a big item and its
-// Breakdown into tasks; tickets name theirs with `feature: F-0NN`. A feature
-// stores draft, agreed, done or dropped, and its tasks wait until it's agreed.
+// Features (the epics) hold the plan for a big item and its Breakdown into
+// tasks; tasks are the feature's sub-issues. A feature is labeled draft or
+// agreed, closed when done or dropped, and its tasks wait until it's agreed.
+// Its Breakdown lines are a checklist, ticked (with "→ #N") once a task exists.
 // Live: needs answers (a draft with open questions), plan in flight / in review
-// (an f-0NN-… branch or PR), in progress (agreed, a task started), done (agreed,
-// and every planned task ticketed and finished).
-// A feature can be built on its own branch (`branch: feature/f-0NN-…` in its
-// file, made by `feature-branch`): its tasks branch from it and their PRs merge
-// into it, and it reaches main in one go at the end (a PR from it, merged with a
-// merge commit). Its live state is then "ready to merge" once every task is
-// finished, and done only when that PR is merged.
+// (an f-0NN-… or 212-… branch or PR), in progress (agreed, a task started), done
+// (agreed, and every planned task ticketed and finished).
+// A feature can be built on its own branch (a "**Branch:** `feature/…`" line in
+// its body, made by `feature-branch`): its tasks branch from it and their PRs
+// merge into it, and it reaches main in one go at the end (a PR from it, merged
+// with a merge commit). Its live state is then "ready to merge" once every task
+// is finished, and done only when that PR is merged.
 // The inbox and the generated BOARD.md are local, in .tracker/ (gitignored) in
 // the main checkout, found from any worktree.
 //
@@ -32,38 +37,39 @@
 //   node scripts/board.mjs inbox             print notes waiting to be ingested
 //   node scripts/board.mjs ingest-start      take the inbox, give each note an id, archive it verbatim
 //   node scripts/board.mjs ingest-done       link each archived note to its tickets; clear the ingest file
-//   node scripts/board.mjs next-id [F]       print the next free ticket id (F: feature id)
-//   node scripts/board.mjs log <id> <text> [--status open|done|dropped|hibernating] [--blocked-by T-7,#41|none] [--feature F-1|none]
-//                                            append a timestamped history line (and set fields); a feature
-//                                            takes --status draft|agreed|done|dropped
+//   node scripts/board.mjs new task|feature <title> [--size M] [--area sim,ui] [--feature F-1] [--blocked-by T-7,#41]
+//                              [--touches a,b] [--notes N-0001] [--breakdown <n>] [--status draft|agreed]
+//                                            make an issue, its sections on stdin; prints its id. --breakdown ticks
+//                                            line n of the feature's Breakdown (a task made when agreeing it)
+//   node scripts/board.mjs log <id> [text] [--status open|done|dropped|hibernating] [--blocked-by T-7,#41|none] [--feature F-1|none]
+//                                            comment on the item (and set fields); a feature takes
+//                                            --status draft|agreed|done|dropped
+//   node scripts/board.mjs body <id>         print the item's body (its sections), to edit
+//   node scripts/board.mjs set-body <id> [file]
+//                                            replace the item's body with the file (or stdin)
 //   node scripts/board.mjs menu              print the board's short view; rewrite BOARD.md
-//   node scripts/board.mjs show <id>         print one ticket or feature with its live state
+//   node scripts/board.mjs show <id>         print one ticket or feature with its live state and history
 //   node scripts/board.mjs graph [--days=7]  print the ticket dependency graph as SVG (done tickets shown for N days)
-//   node scripts/board.mjs publish <message> commit docs/tickets/ alone on main and push it
 //   node scripts/board.mjs base <id>         print the branch a ticket's PR goes into: its feature's branch, or main
 //   node scripts/board.mjs feature-branch <F-id>
-//                                            make the feature's branch from origin/main, push it, record it in the file
+//                                            make the feature's branch from origin/main, push it, record it in the issue
 //   node scripts/board.mjs sync <F-id>       merge origin/main into the feature's branch and push it (stops on a conflict)
 //   node scripts/board.mjs path              print the local tracker folder
-// Ids can be shorthand anywhere: t6, T6, t-6 and 6 mean T-006; f1 means F-001.
-// Everything works on the main checkout's tickets; add --here to edit this
-// checkout's copy instead.
+// Ids can be shorthand anywhere: t6, T6, t-6 and 6 mean T-006; f1 means F-001;
+// #212 is issue 212 (and so is 212, past the old tickets' ids). Writes go
+// through `gh`; nothing about tickets is committed any more.
 
-import { execSync } from "node:child_process";
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  renameSync,
-  unlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { exec, execFileSync, execSync } from "node:child_process";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { promisify } from "node:util";
 
 // Mistakes (a bad id, a wrong status) print one line, not a stack trace.
 process.on("uncaughtException", (e) => {
+  console.error(`board: ${e.message}`);
+  process.exit(1);
+});
+process.on("unhandledRejection", (e) => {
   console.error(`board: ${e.message}`);
   process.exit(1);
 });
@@ -71,6 +77,7 @@ process.on("uncaughtException", (e) => {
 const STORED_STATUSES = ["open", "done", "dropped", "hibernating"];
 const FEATURE_STATUSES = ["draft", "agreed", "done", "dropped"];
 const SIZES = ["S", "M", "L", "XL"];
+const AREAS = ["sim", "data", "ui", "render3d", "render2d", "godot", "bridge", "audio", "docs", "balance", "events", "rooms", "tickets", "devtools"];
 const COLUMNS = [
   ["ready", "Ready"],
   ["noted", "Needs answers"],
@@ -82,8 +89,12 @@ const COLUMNS = [
 ];
 /** Done tickets shown on BOARD.md; older ones drop off the view. */
 const DONE_SHOWN = 15;
-/** t-0NN-… builds a ticket; f-0NN-… writes a feature's plan. */
-const BRANCH_RE = /^([tf])-(\d+)-/;
+/** t-0NN-… builds a ticket; f-0NN-… writes a feature's plan; 212-… is issue 212 (GitHub's "create a branch"). */
+const BRANCH_RE = /^(?:([tf])-(\d+)|(\d+))-/;
+/** The old id at the front of a migrated issue's title. */
+const TITLE_ID = /^([TF]-\d{3}) · ([\s\S]*)$/;
+/** The migration's history comment (scripts/migrate-issues.mjs). */
+const HISTORY_MARK = "<!-- migrated: history -->";
 const FEATURE_LABELS = {
   draft: "draft",
   noted: "needs answers",
@@ -104,21 +115,25 @@ const trySh = (cmd) => {
     return null;
   }
 };
+const shAsync = promisify(exec);
+const tryShAsync = (cmd) =>
+  shAsync(cmd, { encoding: "utf8", maxBuffer: 64 << 20 }).then(
+    (r) => r.stdout.trim(),
+    () => null,
+  );
 
-// Tickets, the archive and the local tracker all default to the main checkout,
-// even when run from a worktree; `--here` points ticket edits at this checkout
-// instead (a /build branch changing its own ticket).
+// The notes archive and the local tracker belong to the main checkout, even
+// when run from a worktree.
 const MAIN = dirname(resolve(sh("git rev-parse --git-common-dir")));
-const HERE = process.argv.includes("--here");
-const CHECKOUT = HERE ? sh("git rev-parse --show-toplevel") : MAIN;
-const TICKETS = join(CHECKOUT, "docs", "tickets");
-const ARCHIVE = join(TICKETS, "notes-archive.md");
+const ARCHIVE = join(MAIN, "docs", "tickets", "notes-archive.md");
 const LOCAL = join(MAIN, ".tracker");
 const INBOX = join(LOCAL, "inbox.md");
 const INGESTING = join(LOCAL, "ingesting.md");
 const BOARD = join(LOCAL, "BOARD.md");
-mkdirSync(TICKETS, { recursive: true });
 mkdirSync(LOCAL, { recursive: true });
+const REPO = sh("git remote get-url origin").match(/github\.com[:/](.+?)(?:\.git)?$/)?.[1];
+if (!REPO) throw new Error("origin isn't a GitHub repository");
+const [OWNER, NAME] = REPO.split("/");
 
 const pad = (n) => String(n).padStart(2, "0");
 const stamp = (d = new Date()) =>
@@ -152,110 +167,212 @@ function parseNotes(text) {
 }
 const pendingNotes = () => parseNotes(read(INBOX)).length + parseNotes(read(INGESTING)).length;
 
-// ---- tickets --------------------------------------------------------------
+// ---- GitHub writes ----------------------------------------------------------
 
-/** Tickets are markdown with a small frontmatter: `key: value`, lists as `[a, b]`. */
-function parseTicket(file) {
-  const text = readFileSync(file, "utf8");
-  const m = text.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!m) throw new Error(`${file}: no frontmatter`);
-  const meta = {};
-  for (const line of m[1].split("\n")) {
-    const kv = line.match(/^(\w[\w-]*):\s*(.*)$/);
-    if (!kv) continue;
-    let v = kv[2].replace(/\s+#.*$/, "").trim();
-    if (v.startsWith("[")) v = v.slice(1, -1).split(",").map((s) => s.trim()).filter(Boolean);
-    meta[kv[1]] = v;
+function gh(args, input) {
+  return execFileSync("gh", args, { encoding: "utf8", input, stdio: ["pipe", "pipe", "pipe"], maxBuffer: 64 << 20 });
+}
+/** A REST call; the body goes as JSON. */
+function api(method, path, body) {
+  try {
+    const out = gh(["api", "-X", method, `repos/${REPO}/${path}`, ...(body ? ["--input", "-"] : [])], body ? JSON.stringify(body) : undefined);
+    return out.trim() ? JSON.parse(out) : null;
+  } catch (e) {
+    throw new Error(`${method} ${path}: ${`${e.stderr ?? ""}${e.stdout ?? ""}`.trim() || e.message}`);
   }
-  // Lists default to empty, but only fields the file had are written back
-  // (features have no touches or blocked_by).
-  const written = new Set(Object.keys(meta));
-  for (const k of ["touches", "notes", "blocked_by"]) if (!Array.isArray(meta[k])) meta[k] = meta[k] ? [meta[k]] : [];
-  return { file, meta, written, body: m[2] };
 }
 
-function writeTicket(t) {
-  const order = ["id", "title", "status", "size", "area", "feature", "plan", "branch", "touches", "blocked_by", "notes", "created"];
-  const keep = (k) => t.written.has(k) || !(Array.isArray(t.meta[k]) && !t.meta[k].length);
-  const keys = [...order, ...Object.keys(t.meta).filter((k) => !order.includes(k))].filter((k) => k in t.meta && keep(k));
-  const fm = keys
-    .map((k) => {
-      const v = t.meta[k];
-      return `${k}: ${Array.isArray(v) ? `[${v.join(", ")}]` : (v ?? "")}`.trimEnd();
-    })
-    .join("\n");
-  writeFileSync(t.file, `---\n${fm}\n---\n${t.body}`);
+// ---- tickets as issues ------------------------------------------------------
+
+const ISSUE_FIELDS = `number databaseId title body url state stateReason createdAt closedAt
+  labels(first:30){nodes{name}}
+  parent{number}
+  blockedBy(first:50){nodes{number databaseId}}
+  firstComment: comments(first:1){nodes{body createdAt}}
+  lastComment: comments(last:1){nodes{body createdAt}}
+  closedByPullRequestsReferences(first:10, includeClosedPrs:true){nodes{number state headRefName baseRefName createdAt mergedAt url}}`;
+
+/** Every issue on the repo, a hundred to a page. */
+async function fetchIssues() {
+  const query = `query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){issues(first:100,after:$after,states:[OPEN,CLOSED]){pageInfo{hasNextPage endCursor} nodes{${ISSUE_FIELDS}}}}}`;
+  const out = [];
+  let after = null;
+  do {
+    const vars = `-F owner=${OWNER} -F name=${NAME}${after ? ` -F after=${after}` : ""}`;
+    const text = await tryShAsync(`gh api graphql -f query='${query}' ${vars}`);
+    if (text === null) throw new Error("can't read the board: GitHub unreachable (or gh not signed in)");
+    const page = JSON.parse(text).data.repository.issues;
+    out.push(...page.nodes);
+    after = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  } while (after);
+  return out;
 }
 
-const idNum = (id) => Number(String(id).replace(/\D/g, ""));
-/** Ids in full or shorthand: T-006, t-6, t6, T6 and 6 are T-006; F-001, f1 and F1 are F-001. Null if it isn't one. */
+/** The short header above an issue's sections: "> From … · opened … · notes …" and "**Key:** value" lines. */
+function header(body) {
+  const head = body.split(/^## /m)[0];
+  const field = (key) => head.match(new RegExp(`^\\*\\*${key}:\\*\\* (.*)$`, "m"))?.[1].trim() ?? null;
+  const list = (v) => (v ? v.split(",").map((s) => s.trim().replace(/^`|`$/g, "")).filter(Boolean) : []);
+  return {
+    created: head.match(/opened (\d{4}-\d\d-\d\d \d\d:\d\d)/)?.[1] ?? null,
+    notes: head.match(/notes ((?:N-\d+(?:, )?)+)/)?.[1].split(", ") ?? [],
+    touches: list(field("Touches")),
+    plan: field("Plan")?.replace(/`/g, "") ?? null,
+    branch: field("Branch")?.replace(/`/g, "") ?? null,
+    blockedPrs: list(field("Blocked by PR")).map((s) => s.replace("#", "")).map(Number),
+  };
+}
+
+/** Set (or with null, remove) one "**Key:** value" header line, keeping the rest of the body. */
+function setHeaderLine(body, key, value) {
+  const at = body.search(/^## /m);
+  let head = at < 0 ? body : body.slice(0, at);
+  const rest = at < 0 ? "" : body.slice(at);
+  const re = new RegExp(`^\\*\\*${key}:\\*\\* .*\\n?`, "m");
+  head = head.replace(re, "");
+  if (value !== null) {
+    const lines = head.replace(/\s*$/, "").split("\n").filter((l, i, a) => l || i < a.length - 1);
+    // After the "> From …" line and the other header lines, before the blank line.
+    let i = 0;
+    while (i < lines.length && (lines[i].startsWith(">") || lines[i].startsWith("**"))) i++;
+    lines.splice(i, 0, `**${key}:** ${value}`);
+    head = `${lines.join("\n")}\n\n`;
+  }
+  return head.trim() ? `${head.replace(/\s*$/, "")}\n\n${rest}` : rest;
+}
+
+/** The newest "- <stamp>" line in the migrated history, or the newest comment, or when it closed. */
+function since(i, created) {
+  const times = [created];
+  const first = i.firstComment.nodes[0];
+  const migrated = first?.body.startsWith(HISTORY_MARK);
+  if (migrated) {
+    const last = [...first.body.matchAll(/^- (\d{4}-\d\d-\d\d \d\d:\d\d)/gm)].pop()?.[1];
+    if (last) times.push(last);
+  }
+  const last = i.lastComment.nodes[0];
+  if (last && !last.body.startsWith(HISTORY_MARK)) times.push(last.createdAt);
+  // The migration closed done items as it made them; that isn't when they were done.
+  const closedByMigration = migrated && i.closedAt && toDate(i.closedAt) - toDate(first.createdAt) < 86400000;
+  if (i.closedAt && !closedByMigration) times.push(i.closedAt);
+  return times.filter(Boolean).sort((a, b) => toDate(a) - toDate(b)).pop();
+}
+
+/**
+ * An issue as the board's item: `meta` as the ticket files had it (id, title,
+ * status, size, area, feature, branch, blocked_by …), `body` its sections.
+ * Null for issues that aren't tickets or features.
+ */
+function toItem(i, idOf) {
+  const labels = new Set(i.labels.nodes.map((l) => l.name));
+  const kind = labels.has("feature") ? "feature" : labels.has("task") ? "task" : null;
+  if (!kind) return null;
+  const old = i.title.match(TITLE_ID);
+  const h = header(i.body);
+  const closed = i.state === "CLOSED" ? (i.stateReason === "NOT_PLANNED" ? "dropped" : "done") : null;
+  const status =
+    kind === "feature"
+      ? (closed ?? (labels.has("agreed") ? "agreed" : "draft"))
+      : (closed ?? (labels.has("hibernating") ? "hibernating" : "open"));
+  const created = h.created ?? i.createdAt;
+  return {
+    kind,
+    number: i.number,
+    databaseId: i.databaseId,
+    url: i.url,
+    labels,
+    closingPrs: i.closedByPullRequestsReferences.nodes,
+    meta: {
+      id: idOf(i.number) ?? old?.[1] ?? `#${i.number}`,
+      title: old ? old[2] : i.title,
+      status,
+      size: SIZES.find((s) => labels.has(`size:${s}`)) ?? "",
+      area: AREAS.filter((a) => labels.has(`area:${a}`)).join(", "),
+      feature: i.parent ? idOf(i.parent.number) : null,
+      plan: h.plan,
+      branch: h.branch,
+      touches: h.touches,
+      notes: h.notes,
+      blocked_by: i.blockedBy.nodes.sort((a, b) => a.number - b.number).map((b) => idOf(b.number)).filter(Boolean),
+      blocked_prs: h.blockedPrs,
+      created,
+    },
+    since: since(i, created),
+    body: i.body.replace(/\r\n/g, "\n"),
+  };
+}
+
+/** Ids: T-006, t-6, t6, T6 are T-006; F-001, f1, F1 are F-001; #212 is issue 212; a bare 6 is T-006 if there is one, else #6. */
 function parseId(s) {
-  const m = /^([tf])?-?0*(\d+)$/i.exec(String(s).trim());
-  return m ? `${(m[1] ?? "T").toUpperCase()}-${m[2].padStart(3, "0")}` : null;
+  const x = String(s ?? "").trim();
+  let m = /^#(\d+)$/.exec(x);
+  if (m) return { number: Number(m[1]) };
+  m = /^([tf])-?0*(\d+)$/i.exec(x);
+  if (m) return { old: `${m[1].toUpperCase()}-${m[2].padStart(3, "0")}` };
+  m = /^0*(\d+)$/.exec(x);
+  if (m) return { old: `T-${m[1].padStart(3, "0")}`, number: Number(m[1]) };
+  return null;
 }
-function normId(s) {
-  const id = parseId(s);
-  if (!id) throw new Error(`"${s}" isn't a ticket or feature id (T-006, t6 or 6; F-001 or f1)`);
-  return id;
-}
-const isFeature = (s) => parseId(s)?.startsWith("F") ?? false;
 
-function load(prefix) {
-  return readdirSync(TICKETS)
-    .filter((f) => new RegExp(`^${prefix}-\\d+.*\\.md$`).test(f))
-    .map((f) => parseTicket(join(TICKETS, f)))
-    .sort((a, b) => idNum(a.meta.id) - idNum(b.meta.id));
-}
-const loadTickets = () => load("T");
-const loadFeatures = () => load("F");
-
-/** A ticket or a feature, by id. */
-function findItem(id) {
-  const kind = isFeature(id) ? "feature" : "ticket";
-  const t = (isFeature(id) ? loadFeatures() : loadTickets()).find((x) => x.meta.id === normId(id));
-  if (!t) throw new Error(`no ${kind} ${normId(id)} in ${TICKETS}`);
-  return t;
+/** An item by id, shorthand or issue number, from the loaded board. */
+function findIn(items, s) {
+  const p = parseId(s);
+  if (!p) throw new Error(`"${s}" isn't a ticket or feature id (T-006, t6 or 6; F-001 or f1; #212)`);
+  const it = (p.old && items.find((x) => x.meta.id === p.old)) || (p.number && items.find((x) => x.number === p.number));
+  if (!it) throw new Error(`no ticket or feature ${s} on ${REPO}`);
+  return it;
 }
 
 /** The text of one "## <name>" section of a ticket or feature. */
 const section = (t, name) => t.body.split(/^(?=## )/m).find((s) => s.startsWith(`## ${name}\n`))?.slice(name.length + 4) ?? "";
 const openQuestions = (t) => (section(t, "Open questions").match(/^- \[ \]/gm) ?? []).length;
-/** A feature's planned tasks: the top-level "- " lines under ## Breakdown, with the ticket each became ("→ T-0NN"). */
+/** A feature's planned tasks: the top-level "- " lines under ## Breakdown, with the task each became ("→ T-0NN" or "→ #212"). */
 const breakdown = (f) =>
   section(f, "Breakdown")
     .split("\n")
     .filter((l) => l.startsWith("- "))
-    .map((l) => ({ line: l.slice(2), ticket: l.match(/→\s*(T-\d+)/)?.[1] ?? null }));
-/** The last "- <stamp> …" line under ## History, for "how long in this state". */
-const lastHistory = (t) => [...t.body.matchAll(/^- (\d{4}-\d\d-\d\d \d\d:\d\d)/gm)].pop()?.[1] ?? t.meta.created;
+    .map((l) => ({ line: l.slice(2), ticket: l.match(/→\s*(T-\d+|#\d+)/)?.[1] ?? null }));
+const lastHistory = (t) => t.since;
 
-// ---- GitHub ---------------------------------------------------------------
+// ---- GitHub reads -----------------------------------------------------------
 
-/** The ticket or feature a t-0NN-… or f-0NN-… branch belongs to. */
-const branchId = (name) => {
+/** The item a branch belongs to: t-0NN-… and f-0NN-… by old id, 212-… by issue number. */
+function branchItem(name, items) {
   const m = name?.match(BRANCH_RE);
-  return m ? normId(`${m[1]}-${m[2]}`) : null;
-};
+  if (!m) return null;
+  if (m[3]) return items.find((x) => x.number === Number(m[3]))?.meta.id ?? null;
+  const old = `${m[1].toUpperCase()}-${m[2].padStart(3, "0")}`;
+  return items.some((x) => x.meta.id === old) ? old : null;
+}
 
-/** PRs and pushed branches named t-0NN-… or f-0NN-…, by id (T-012, F-001). Empty if GitHub can't be reached. */
-function github() {
+/** Issues, PRs and pushed branches, read together. */
+async function github() {
+  const [issues, list, heads] = await Promise.all([
+    fetchIssues(),
+    tryShAsync("gh pr list --state all --limit 1000 --json number,state,headRefName,baseRefName,createdAt,mergedAt,url"),
+    tryShAsync("git ls-remote --heads origin 't-*' 'f-*' '[0-9]*'"),
+  ]);
+  const oldIds = Object.fromEntries(issues.map((i) => [i.number, i.title.match(TITLE_ID)?.[1] ?? null]));
+  const known = new Set(issues.filter((i) => i.labels.nodes.some((l) => ["task", "feature"].includes(l.name))).map((i) => i.number));
+  const idOf = (n) => (known.has(n) ? (oldIds[n] ?? `#${n}`) : null);
+  const items = issues.map((i) => toItem(i, idOf)).filter(Boolean).sort((a, b) => a.number - b.number);
+
   const prs = {};
   const branches = {};
-  const list = trySh("gh pr list --state all --limit 300 --json number,state,headRefName,baseRefName,createdAt,mergedAt,url");
   const all = list ? JSON.parse(list) : [];
-  for (const pr of all) {
-    const id = branchId(pr.headRefName);
-    if (!id) continue;
-    // Keep the most telling PR per item: open beats merged beats closed.
-    const rank = { OPEN: 3, MERGED: 2, CLOSED: 1 };
-    if (!prs[id] || rank[pr.state] > rank[prs[id].state]) prs[id] = pr;
-  }
-  for (const line of (trySh("git ls-remote --heads origin 't-*' 'f-*'") ?? "").split("\n")) {
+  // Keep the most telling PR per item: open beats merged beats closed.
+  const rank = { OPEN: 3, MERGED: 2, CLOSED: 1 };
+  const offer = (id, pr) => {
+    if (id && (!prs[id] || rank[pr.state] > rank[prs[id].state])) prs[id] = pr;
+  };
+  for (const pr of all) offer(branchItem(pr.headRefName, items), pr);
+  for (const it of items) for (const pr of it.closingPrs) offer(it.meta.id, pr);
+  for (const line of (heads ?? "").split("\n")) {
     const name = line.split("refs/heads/")[1];
-    const id = branchId(name);
+    const id = branchItem(name, items);
     if (id) branches[id] = name;
   }
-  return { prs, branches, all, online: list !== null };
+  return { items, prs, branches, all, online: list !== null };
 }
 
 /** The PR that takes a feature's own branch into main: open beats merged beats closed. */
@@ -264,7 +381,7 @@ function branchPr(gh, branch) {
   return mine.find((p) => p.state === "OPEN") ?? mine.find((p) => p.state === "MERGED") ?? mine[0] ?? null;
 }
 
-/** The ticket's live state, from the file, its feature and GitHub. */
+/** The ticket's live state, from the issue, its feature and GitHub. */
 function liveState(t, gh, byId) {
   const id = t.meta.id;
   const pr = gh.prs[id];
@@ -275,28 +392,25 @@ function liveState(t, gh, byId) {
   if (pr?.state === "OPEN") return { state: "in-review", since: pr.createdAt, pr };
   if (gh.branches[id]) return { state: "in-flight", since: lastHistory(t), branch: gh.branches[id] };
   const waiting = t.meta.blocked_by.filter((b) => {
-    if (/^#?\d+$/.test(b)) {
-      const pr = Object.values(gh.prs).find((p) => p.number === Number(b.replace("#", "")));
-      return pr?.state !== "MERGED";
-    }
-    const other = byId[parseId(b)];
+    const other = byId[b];
     return !other || liveState(other, gh, byId).state !== "done";
   });
+  for (const n of t.meta.blocked_prs) if (gh.all.find((p) => p.number === n)?.state !== "MERGED") waiting.push(`#${n}`);
   // A feature's tasks wait until it's agreed. Only its stored status counts
   // here, so the feature's live state can depend on its tasks' without a loop.
-  const feature = t.meta.feature && byId[normId(t.meta.feature)];
+  const feature = t.meta.feature && byId[t.meta.feature];
   if (feature?.meta.status === "draft") waiting.push(`${feature.meta.id} (draft)`);
   if (waiting.length) return { state: "blocked", since: lastHistory(t), waiting };
   if (openQuestions(t)) return { state: "noted", since: lastHistory(t) };
   return { state: "ready", since: lastHistory(t) };
 }
 
-/** A feature's live state, from the file, its tasks' states and GitHub. */
+/** A feature's live state, from the issue, its tasks' states and GitHub. */
 function featureState(f, gh, rows) {
   const id = f.meta.id;
-  const tasks = rows.filter((r) => r.t.meta.feature && normId(r.t.meta.feature) === id);
+  const tasks = rows.filter((r) => r.t.meta.feature === id);
   const planned = breakdown(f);
-  const unticketed = planned.filter((p) => !p.ticket || !tasks.some((r) => r.t.meta.id === normId(p.ticket))).length;
+  const unticketed = planned.filter((p) => !p.ticket || !tasks.some((r) => r.t.meta.id === p.ticket || `#${r.t.number}` === p.ticket)).length;
   const out = { tasks, planned: planned.length, unticketed, since: lastHistory(f) };
   const pr = gh.prs[id];
   const finished = (r) => ["done", "dropped"].includes(r.state);
@@ -313,7 +427,7 @@ function featureState(f, gh, rows) {
   }
   if (f.meta.status === "done" || allFinished) return { ...out, state: "done" };
   if (pr?.state === "OPEN") return { ...out, state: "in-review", since: pr.createdAt, pr };
-  // A merged plan PR leaves the feature where its file says (draft until Bryon agrees it).
+  // A merged plan PR leaves the feature where its issue says (draft until Bryon agrees it).
   if (gh.branches[id] && pr?.state !== "MERGED") return { ...out, state: "in-flight", branch: gh.branches[id] };
   if (f.meta.status === "agreed") {
     const started = tasks.some((r) => ["in-flight", "in-review", "done"].includes(r.state));
@@ -322,20 +436,20 @@ function featureState(f, gh, rows) {
   return { ...out, state: openQuestions(f) ? "noted" : "draft" };
 }
 
-function board() {
-  const gh = github();
-  const tickets = loadTickets();
-  const features = loadFeatures();
-  const byId = Object.fromEntries([...tickets, ...features].map((t) => [t.meta.id, t]));
+async function board() {
+  const gh = await github();
+  const tickets = gh.items.filter((x) => x.kind === "task");
+  const features = gh.items.filter((x) => x.kind === "feature");
+  const byId = Object.fromEntries(gh.items.map((t) => [t.meta.id, t]));
   const rows = tickets.map((t) => ({ t, ...liveState(t, gh, byId) }));
-  return { gh, rows, features: features.map((f) => ({ f, ...featureState(f, gh, rows) })) };
+  return { gh, items: gh.items, rows, features: features.map((f) => ({ f, ...featureState(f, gh, rows) })) };
 }
 
 // ---- views ----------------------------------------------------------------
 
 function extras(r) {
   const out = [];
-  const feature = r.t.meta.feature && normId(r.t.meta.feature);
+  const feature = r.t.meta.feature;
   if (feature && !r.waiting?.some((w) => w.startsWith(feature))) out.push(feature);
   if (r.waiting) out.push(`waits on ${r.waiting.join(", ")}`);
   if (r.state === "noted") out.push(plural(openQuestions(r.t), "open question"));
@@ -373,10 +487,10 @@ function columns(rows) {
 }
 
 function writeBoard({ gh, rows, features }) {
-  let out = `# Board\n\nGenerated ${stamp()} by \`node scripts/board.mjs menu\` from \`docs/tickets/\` and GitHub. Don't edit.\n\n`;
-  if (!gh.online) out += "**GitHub unreachable: in flight, in review and merged states may be missing.**\n\n";
+  let out = `# Board\n\nGenerated ${stamp()} by \`node scripts/board.mjs menu\` from GitHub Issues on ${REPO}. Don't edit.\n\n`;
+  if (!gh.online) out += "**GitHub PRs unreachable: in review and merged states may be missing.**\n\n";
   if (pendingNotes()) out += `**${plural(pendingNotes(), "note")} waiting in the inbox.** Run /ingest.\n\n`;
-  const link = (t) => `[${t.meta.id}](${CHECKOUT}/docs/tickets/${t.file.split("/").pop()})`;
+  const link = (t) => `[${t.meta.id}](${t.url})`;
   out += `## Features (${openFeatures(features).length})\n\n`;
   if (!features.length) out += "—\n\n";
   else {
@@ -400,11 +514,11 @@ function writeBoard({ gh, rows, features }) {
   writeFileSync(BOARD, out);
 }
 
-function menu() {
-  const b = board();
+async function menu() {
+  const b = await board();
   writeBoard(b);
   const lines = [];
-  if (!b.gh.online) lines.push("(GitHub unreachable: in flight, in review and merged states may be missing.)", "");
+  if (!b.gh.online) lines.push("(GitHub PRs unreachable: in review and merged states may be missing.)", "");
   if (pendingNotes()) lines.push(`${plural(pendingNotes(), "note")} waiting in the inbox (not on the board until /ingest).`, "");
   const feats = openFeatures(b.features);
   if (feats.length) {
@@ -476,15 +590,15 @@ function wrap(x, n) {
 const cardH = (lines) => 20 + lines * G.line + 4;
 
 /**
- * Tickets as cards and blocked_by as arrows. A feature's tasks sit in a shaded
+ * Tickets as cards and blocked-by as arrows. A feature's tasks sit in a shaded
  * box titled with the feature, laid out top-down by depth within it (a task
  * one row below its deepest blocker in the same feature), six cards to a row;
  * feature boxes are packed side by side where they fit. Tickets outside any
  * feature go in a box of their own at the end. Done tickets merged more than
  * `days` ago, and dropped ones, are left out. Returns an SVG string.
  */
-function graphSvg(days) {
-  const b = board();
+async function graphSvg(days) {
+  const b = await board();
   const now = Date.now();
   const shown = b.rows.filter((r) => {
     if (r.state === "dropped" || r.state === "hibernating") return false;
@@ -493,11 +607,10 @@ function graphSvg(days) {
     return Number.isFinite(at) && now - at <= days * 86400000;
   });
   const byId = Object.fromEntries(shown.map((r) => [r.t.meta.id, r]));
-  const deps = Object.fromEntries(
-    shown.map((r) => [r.t.meta.id, r.t.meta.blocked_by.filter((x) => !/^#?\d+$/.test(x)).map(parseId).filter((x) => byId[x])]),
-  );
-  const featureOf = (id) => (byId[id].t.meta.feature ? normId(byId[id].t.meta.feature) : null);
+  const deps = Object.fromEntries(shown.map((r) => [r.t.meta.id, r.t.meta.blocked_by.filter((x) => byId[x])]));
+  const featureOf = (id) => byId[id].t.meta.feature ?? null;
   const lines = Object.fromEntries(shown.map((r) => [r.t.meta.id, wrap(r.t.meta.title, G.chars)]));
+  const numberOf = Object.fromEntries(b.items.map((x) => [x.meta.id, x.number]));
 
   // Boxes: one per feature with tickets shown, in id order, then everything else.
   const groups = new Map();
@@ -507,7 +620,7 @@ function graphSvg(days) {
     groups.get(f).push(r.t.meta.id);
   }
   const titles = Object.fromEntries(b.features.map((x) => [x.f.meta.id, x.f.meta.title]));
-  const order = [...groups.keys()].sort((a, z) => (a === "~") - (z === "~") || idNum(a) - idNum(z));
+  const order = [...groups.keys()].sort((a, z) => (a === "~") - (z === "~") || numberOf[a] - numberOf[z]);
 
   const depth = {};
   const depthOf = (id, seen = new Set()) => {
@@ -528,7 +641,7 @@ function graphSvg(days) {
     const local = {};
     for (const row of byDepth.filter(Boolean)) {
       const avg = (id) => (deps[id].length ? deps[id].reduce((s, d) => s + (local[d]?.x ?? 0), 0) / deps[id].length : 0);
-      row.sort((a, z) => avg(a) - avg(z) || idNum(a) - idNum(z));
+      row.sort((a, z) => avg(a) - avg(z) || numberOf[a] - numberOf[z]);
       for (let i = 0; i < row.length; i += cap) rows.push(row.slice(i, i + cap));
       rows.slice(-Math.ceil(row.length / cap)).forEach((r) => r.forEach((id, i) => (local[id] = { x: i * stepX })));
     }
@@ -620,11 +733,92 @@ function graphSvg(days) {
   return out.join("\n");
 }
 
-function nextId(prefix = "T") {
-  const n = (prefix === "F" ? loadFeatures() : loadTickets()).reduce((max, t) => Math.max(max, idNum(t.meta.id)), 0);
-  return normId(`${prefix}-${n + 1}`);
+// ---- writes -----------------------------------------------------------------
+
+/** Add and remove labels on an issue. */
+function relabel(t, add = [], remove = []) {
+  const toAdd = add.filter((l) => !t.labels.has(l));
+  if (toAdd.length) api("POST", `issues/${t.number}/labels`, { labels: toAdd });
+  for (const l of remove) if (t.labels.has(l)) api("DELETE", `issues/${t.number}/labels/${encodeURIComponent(l)}`);
 }
 
+/** Open, close or relabel an item for a stored status. */
+function setStatus(t, status) {
+  const allowed = t.kind === "feature" ? FEATURE_STATUSES : STORED_STATUSES;
+  if (!allowed.includes(status)) throw new Error(`status must be one of ${allowed.join(", ")}`);
+  const closed = { done: "completed", dropped: "not_planned" }[status];
+  const isClosed = ["done", "dropped"].includes(t.meta.status);
+  if (closed) api("PATCH", `issues/${t.number}`, { state: "closed", state_reason: closed });
+  else if (isClosed) api("PATCH", `issues/${t.number}`, { state: "open", state_reason: "reopened" });
+  if (t.kind === "feature") {
+    if (status === "draft") relabel(t, ["draft"], ["agreed"]);
+    if (status === "agreed") relabel(t, ["agreed"], ["draft"]);
+  } else if (status === "hibernating") relabel(t, ["hibernating"]);
+  else relabel(t, [], ["hibernating"]);
+}
+
+/**
+ * Blockers as given ("T-7,#41"): items become native blocked-by links; a #N
+ * that isn't one of the board's issues is a PR, kept as a header line (and the
+ * label blocked while it's open). Replaces what was there.
+ */
+function setBlockers(t, list, items, prs) {
+  const issues = [];
+  const prNums = [];
+  for (const s of list) {
+    const p = parseId(s);
+    const it = p && ((p.old && items.find((x) => x.meta.id === p.old)) || (p.number && items.find((x) => x.number === p.number)));
+    if (it) issues.push(it);
+    else if (/^#\d+$/.test(s)) {
+      // A PR from an item's branch stands for that item.
+      const pr = prs.find((x) => x.number === Number(s.slice(1)));
+      const owner = pr && branchItem(pr.headRefName, items);
+      if (owner) issues.push(items.find((x) => x.meta.id === owner));
+      else prNums.push(Number(s.slice(1)));
+    } else throw new Error(`no ticket ${s} to be blocked by`);
+  }
+  const want = new Set(issues.map((x) => x.number));
+  const byNumber = Object.fromEntries(items.map((x) => [x.number, x]));
+  for (const b of t.meta.blocked_by.map((id) => items.find((x) => x.meta.id === id)).filter(Boolean))
+    if (!want.has(b.number)) api("DELETE", `issues/${t.number}/dependencies/blocked_by/${b.databaseId}`);
+  const have = new Set(t.meta.blocked_by.map((id) => items.find((x) => x.meta.id === id)?.number));
+  for (const n of want) if (!have.has(n)) api("POST", `issues/${t.number}/dependencies/blocked_by`, { issue_id: byNumber[n].databaseId });
+  const body = setHeaderLine(t.body, "Blocked by PR", prNums.length ? prNums.map((n) => `#${n}`).join(", ") : null);
+  if (body !== t.body) api("PATCH", `issues/${t.number}`, { body });
+  const open = prNums.some((n) => prs.find((x) => x.number === n)?.state !== "MERGED");
+  if (open) relabel(t, ["blocked"]);
+  else relabel(t, [], ["blocked"]);
+}
+
+/** Make the item a sub-issue of a feature, or with null take it out of its feature. */
+function setFeature(t, feature, items) {
+  if (feature) {
+    if (feature.kind !== "feature") throw new Error(`${feature.meta.id} isn't a feature`);
+    api("POST", `issues/${feature.number}/sub_issues`, { sub_issue_id: t.databaseId, replace_parent: true });
+  } else if (t.meta.feature) {
+    const parent = items.find((x) => x.meta.id === t.meta.feature);
+    api("DELETE", `issues/${parent.number}/sub_issue`, { sub_issue_id: t.databaseId });
+  }
+}
+
+/** A feature's Breakdown line n (1-based) ticked, pointing at the new task. */
+function tickBreakdown(f, n, task) {
+  const at = f.body.search(/^## Breakdown\n/m);
+  if (at < 0) throw new Error(`${f.meta.id} has no ## Breakdown`);
+  const end = f.body.slice(at + 1).search(/^## /m);
+  const stop = end < 0 ? f.body.length : at + 1 + end;
+  let seen = 0;
+  const part = f.body.slice(at, stop).replace(/^- (?:\[[ x]\] )?(.*)$/gm, (line, text) => {
+    if (++seen !== n) return line;
+    return `- [x] ${text.replace(/\s*→\s*(T-\d+|#\d+).*$/, "")} → #${task.number}`;
+  });
+  if (seen < n) throw new Error(`${f.meta.id}'s Breakdown has ${plural(seen, "line")}, not ${n}`);
+  api("PATCH", `issues/${f.number}`, { body: f.body.slice(0, at) + part + f.body.slice(stop) });
+}
+
+const readStdin = () => (process.stdin.isTTY ? "" : readFileSync(0, "utf8"));
+
+// `--here` edited a checkout's own ticket files; with issues there's nothing to point it at.
 const [cmd, ...args] = process.argv.slice(2).filter((a) => a !== "--here");
 switch (cmd) {
   case "note": {
@@ -650,7 +844,7 @@ switch (cmd) {
         break;
       }
       renameSync(INBOX, INGESTING);
-      let n = Math.max(0, ...parseNotes(read(ARCHIVE)).map((x) => idNum(x.id)));
+      let n = Math.max(0, ...parseNotes(read(ARCHIVE)).map((x) => Number(x.id.replace(/\D/g, ""))));
       const notes = parseNotes(read(INGESTING)).map((x) => ({ ...x, id: `N-${String(++n).padStart(4, "0")}` }));
       const entries = notes.map((x) => `## ${x.id} · ${x.at}\n${x.body}\n`).join("\n");
       writeFileSync(INGESTING, entries);
@@ -660,13 +854,13 @@ switch (cmd) {
       );
     } else console.log("(Resuming an ingest that didn't finish.)\n");
     console.log(read(INGESTING));
-    console.log(`Next free ids: ticket ${nextId()}, feature ${nextId("F")}`);
+    console.log("New tickets and features get their numbers from `board.mjs new`.");
     break;
   }
   case "ingest-done": {
     const notes = parseNotes(read(INGESTING));
     const ids = new Set(notes.map((n) => n.id));
-    const tickets = [...loadTickets(), ...loadFeatures()];
+    const b = await board();
     const unlinked = [];
     // Rebuild the archive entry by entry, adding "→ tickets" under each note just ingested.
     const [preamble, ...entries] = read(ARCHIVE).split(/^(?=## )/m);
@@ -676,125 +870,162 @@ switch (cmd) {
         .map((entry) => {
           const id = entry.match(/^## (N-\d+)/)?.[1];
           if (!ids.has(id) || /^→ /m.test(entry)) return entry;
-          const into = tickets.filter((t) => t.meta.notes.includes(id)).map((t) => t.meta.id);
+          const into = b.items.filter((t) => t.meta.notes.includes(id)).map((t) => t.meta.id);
           if (!into.length) unlinked.push(id);
           return `${entry.replace(/\s*$/, "")}\n→ ${into.length ? into.join(", ") : "no ticket"}\n\n`;
         })
         .join("");
     writeFileSync(ARCHIVE, archive.replace(/\s*$/, "\n"));
     if (existsSync(INGESTING)) unlinkSync(INGESTING);
-    writeBoard(board());
+    writeBoard(b);
     console.log(`Ingested ${plural(notes.length, "note")}.${unlinked.length ? ` No ticket for: ${unlinked.join(", ")}.` : ""}`);
     break;
   }
-  case "next-id":
-    console.log(nextId(/^f/i.test(args[0] ?? "") ? "F" : "T"));
+  case "new": {
+    const f = flags(args);
+    const [kind, ...words] = f.rest;
+    if (!["task", "feature"].includes(kind)) throw new Error("new needs a kind: task or feature");
+    const title = words.join(" ").trim();
+    if (!title) throw new Error("new needs a title");
+    const sections = readStdin().trim();
+    const areas = (f.area ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    for (const a of areas) if (!AREAS.includes(a)) throw new Error(`area must be among ${AREAS.join(", ")}`);
+    if (f.size && !SIZES.includes(f.size)) throw new Error(`size must be one of ${SIZES.join(", ")}`);
+    const status = f.status ?? (kind === "feature" ? "draft" : null);
+    if (kind === "feature" && !["draft", "agreed"].includes(status)) throw new Error("a new feature is draft or agreed");
+    const head = [];
+    if (f.notes) head.push(`> From notes ${f.notes.split(",").map((s) => s.trim()).join(", ")}`);
+    if (f.touches) head.push(`**Touches:** ${f.touches.split(",").map((s) => `\`${s.trim()}\``).join(", ")}`);
+    const body = `${head.length ? `${head.join("\n")}\n\n` : ""}${sections}\n`;
+    const labels = [kind, ...(f.size ? [`size:${f.size}`] : []), ...areas.map((a) => `area:${a}`), ...(kind === "feature" ? [status] : [])];
+    const made = api("POST", "issues", { title, body, labels });
+    console.log(`#${made.number} ${made.html_url}`);
+    if (f.feature || f["blocked-by"] || f.breakdown) {
+      const b = await board();
+      const t = findIn(b.items, `#${made.number}`);
+      const feature = f.feature ? findIn(b.items, f.feature) : null;
+      if (feature) setFeature(t, feature, b.items);
+      if (f["blocked-by"]) setBlockers(t, f["blocked-by"].split(",").map((s) => s.trim()), b.items, b.gh.all);
+      if (f.breakdown) {
+        if (!feature) throw new Error("--breakdown needs --feature");
+        tickBreakdown(feature, Number(f.breakdown), t);
+      }
+    }
     break;
+  }
   case "log": {
     const f = flags(args);
     const [id, ...words] = f.rest;
-    const t = findItem(id);
-    if (f.status) {
-      const allowed = isFeature(id) ? FEATURE_STATUSES : STORED_STATUSES;
-      if (!allowed.includes(f.status)) throw new Error(`status must be one of ${allowed.join(", ")}`);
-      t.meta.status = f.status;
-    }
-    if (f.feature === "none") delete t.meta.feature;
-    else if (f.feature) t.meta.feature = normId(`F-${idNum(f.feature)}`);
-    // "#41" is a PR; anything else is a ticket id, shorthand allowed (t7 → T-007).
-    const blocker = (s) => (s.startsWith("#") ? s : normId(s));
-    if (f["blocked-by"])
-      t.meta.blocked_by = f["blocked-by"] === "none" ? [] : f["blocked-by"].split(",").map((s) => blocker(s.trim()));
-    const line = `- ${stamp()} ${words.join(" ")}`.trimEnd();
-    t.body = /^## History\s*$/m.test(t.body)
-      ? t.body.replace(/\s*$/, `\n${line}\n`)
-      : `${t.body.replace(/\s*$/, "")}\n\n## History\n${line}\n`;
-    writeTicket(t);
-    console.log(`${t.meta.id}: ${line.slice(2)}`);
+    const b = await board();
+    const t = findIn(b.items, id);
+    if (f.status) setStatus(t, f.status);
+    if (f.feature) setFeature(t, f.feature === "none" ? null : findIn(b.items, f.feature), b.items);
+    if (f["blocked-by"]) setBlockers(t, f["blocked-by"] === "none" ? [] : f["blocked-by"].split(",").map((s) => s.trim()), b.items, b.gh.all);
+    const text = words.join(" ").trim();
+    if (text) api("POST", `issues/${t.number}/comments`, { body: text });
+    console.log(`${t.meta.id}: ${stamp()} ${text}`.trimEnd());
+    break;
+  }
+  case "body": {
+    const b = await board();
+    process.stdout.write(findIn(b.items, args[0]).body);
+    break;
+  }
+  case "set-body": {
+    const b = await board();
+    const t = findIn(b.items, args[0]);
+    const body = args[1] && args[1] !== "-" ? readFileSync(args[1], "utf8") : readStdin();
+    if (!body.trim()) throw new Error("set-body needs the new body (a file, or stdin)");
+    api("PATCH", `issues/${t.number}`, { body });
+    console.log(`${t.meta.id}: body updated`);
     break;
   }
   case "menu":
-    menu();
+    await menu();
     break;
   case "graph": {
     const d = args.find((a) => a.startsWith("--days="));
     const days = d ? Number(d.slice(7)) : 7;
     if (!Number.isFinite(days) || days < 0) throw new Error("--days takes a number of days (0 or more)");
-    console.log(graphSvg(days));
+    console.log(await graphSvg(days));
     break;
   }
   case "show": {
-    const t = findItem(args[0]);
-    const b = board();
+    const b = await board();
+    const t = findIn(b.items, args[0]);
     let head;
-    if (isFeature(t.meta.id)) {
-      const fr = b.features.find((x) => x.f.meta.id === t.meta.id);
+    if (t.kind === "feature") {
+      const fr = b.features.find((x) => x.f === t);
       const x = featureExtras(fr);
       head = `Live state: ${FEATURE_LABELS[fr.state]}${x.length ? ` (${x.join(" · ")})` : ""}`;
       for (const r of fr.tasks) head += `\n  ${r.t.meta.id}  ${(r.t.meta.size || "?").padEnd(2)}  ${r.t.meta.title}  · ${r.state}`;
     } else {
-      const r = b.rows.find((x) => x.t.meta.id === t.meta.id);
+      const r = b.rows.find((x) => x.t === t);
       const x = extras(r);
       head = `Live state: ${r.state}${x.length ? ` (${x.join(" · ")})` : ""}`;
-      const feature = t.meta.feature && normId(t.meta.feature);
-      if (feature) head += `\nPart of ${feature}; read it first: node scripts/board.mjs show ${feature}`;
+      if (t.meta.feature) head += `\nPart of ${t.meta.feature}; read it first: node scripts/board.mjs show ${t.meta.feature}`;
     }
-    console.log(`${t.file}\n${head}\n\n${readFileSync(t.file, "utf8")}`);
-    break;
-  }
-  case "publish": {
-    // Ticket-only commits go straight to main so other machines see them;
-    // only docs/tickets/ is committed, whatever else is staged or changed.
-    const message = args.join(" ").trim();
-    if (!message) throw new Error("publish needs a commit message");
-    const git = (c) => sh(`git -C "${MAIN}" ${c}`);
-    if (git("branch --show-current") !== "main") throw new Error(`the main checkout (${MAIN}) isn't on main`);
-    if (!git("status --porcelain -- docs/tickets")) {
-      console.log("No ticket changes to publish.");
-      break;
-    }
-    git("fetch --quiet origin main");
-    if (git("rev-list --count origin/main..HEAD") !== "0")
-      throw new Error("main has local commits that aren't on GitHub; push or sort those out first");
-    if (git("rev-list --count HEAD..origin/main") !== "0") git("merge --ff-only --quiet origin/main");
-    git("add -- docs/tickets");
-    execSync(`git -C "${MAIN}" commit --quiet -F - -- docs/tickets`, { input: message });
-    git("push --quiet origin main");
-    console.log(`Published: ${git("log --oneline -1")}`);
+    // The item as its file read: the fields, its sections, then its history (the comments).
+    const m = t.meta;
+    const fields = [
+      ["id", m.id],
+      ["issue", `#${t.number}`],
+      ["title", m.title],
+      ["status", m.status],
+      ["size", m.size],
+      ["area", m.area],
+      ["feature", m.feature],
+      ["plan", m.plan],
+      ["branch", m.branch],
+      ["touches", m.touches.length ? `[${m.touches.join(", ")}]` : null],
+      ["blocked_by", m.blocked_by.length || m.blocked_prs.length ? `[${[...m.blocked_by, ...m.blocked_prs.map((n) => `#${n}`)].join(", ")}]` : null],
+      ["notes", m.notes.length ? `[${m.notes.join(", ")}]` : null],
+      ["created", m.created],
+    ].filter(([, v]) => v);
+    const comments = JSON.parse(gh(["api", "--paginate", `repos/${REPO}/issues/${t.number}/comments?per_page=100`, "--slurp"])).flat();
+    const history = comments.flatMap((c) =>
+      c.body.startsWith(HISTORY_MARK)
+        ? c.body.split("\n").filter((l) => l.startsWith("- "))
+        : [`- ${stamp(new Date(c.created_at))} ${c.body.trim().replace(/\n+/g, " ")}`],
+    );
+    const body = t.body.replace(/^>[^\n]*\n/, "").trim();
+    console.log(`${t.url}\n${head}\n\n---\n${fields.map(([k, v]) => `${k}: ${v}`).join("\n")}\n---\n${body}\n\n## History\n${history.join("\n") || "- (none)"}`);
     break;
   }
   case "path":
     console.log(LOCAL);
     break;
   case "base": {
-    const t = findItem(args[0]);
-    const feature = !isFeature(t.meta.id) && t.meta.feature ? findItem(t.meta.feature) : null;
+    const b = await board();
+    const t = findIn(b.items, args[0]);
+    const feature = t.kind === "task" && t.meta.feature ? findIn(b.items, t.meta.feature) : null;
     console.log(feature?.meta.branch || "main");
     break;
   }
   case "feature-branch": {
-    if (!isFeature(args[0] ?? "")) throw new Error("feature-branch needs a feature id (F-004 or f4)");
-    const f = findItem(args[0]);
+    const b = await board();
+    const f = findIn(b.items, args[0] ?? "");
+    if (f.kind !== "feature") throw new Error("feature-branch needs a feature id (F-004, f4 or #212)");
     if (f.meta.branch) {
       console.log(`${f.meta.id} is already on ${f.meta.branch}.`);
       break;
     }
-    const slug = f.file.split("/").pop().replace(/^F-\d+-?/, "").replace(/\.md$/, "");
-    const branch = `feature/${f.meta.id.toLowerCase()}${slug ? `-${slug}` : ""}`;
+    const slug = f.meta.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").split("-").filter(Boolean).slice(0, 4).join("-");
+    const name = f.meta.id.startsWith("#") ? f.meta.id.slice(1) : f.meta.id.toLowerCase();
+    const branch = `feature/${name}${slug ? `-${slug}` : ""}`;
     sh("git fetch --quiet origin main");
     if (trySh(`git ls-remote --exit-code --heads origin "refs/heads/${branch}"`) === null)
       sh(`git push --quiet origin "origin/main:refs/heads/${branch}"`);
-    f.meta.branch = branch;
-    f.written.add("branch");
-    f.body = f.body.replace(/\s*$/, `\n- ${stamp()} built on ${branch}\n`);
-    writeTicket(f);
-    console.log(`${f.meta.id}: ${branch}, from origin/main. Publish the feature file so every machine sees it.`);
+    api("PATCH", `issues/${f.number}`, { body: setHeaderLine(f.body, "Branch", `\`${branch}\``) });
+    api("POST", `issues/${f.number}/comments`, { body: `built on ${branch}` });
+    console.log(`${f.meta.id}: ${branch}, from origin/main.`);
     break;
   }
   case "sync": {
     // In a throwaway worktree, so no checkout (or the session in it) is disturbed.
-    if (!isFeature(args[0] ?? "")) throw new Error("sync needs a feature id (F-004 or f4)");
-    const f = findItem(args[0]);
+    const b = await board();
+    const f = findIn(b.items, args[0] ?? "");
+    if (f.kind !== "feature") throw new Error("sync needs a feature id (F-004, f4 or #212)");
     const branch = f.meta.branch;
     if (!branch) throw new Error(`${f.meta.id} isn't built on a branch of its own`);
     sh(`git fetch --quiet origin main "${branch}"`);
@@ -803,7 +1034,7 @@ switch (cmd) {
       console.log(`${branch} already has everything on main.`);
       break;
     }
-    const dir = join(LOCAL, `sync-${f.meta.id.toLowerCase()}`);
+    const dir = join(LOCAL, `sync-${f.meta.id.replace("#", "").toLowerCase()}`);
     if (existsSync(dir)) sh(`git worktree remove --force "${dir}"`);
     sh(`git worktree add --quiet --detach "${dir}" "origin/${branch}"`);
     try {
