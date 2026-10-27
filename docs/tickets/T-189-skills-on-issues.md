@@ -21,3 +21,4 @@ Update `/board`, `/deps`, `/build` (branch names, PR body, claim comment, no tic
 
 ## History
 - 2026-10-26 19:02 opened from F-020 (agreed)
+- 2026-10-26 20:05 building on t-188-notes-as-issues

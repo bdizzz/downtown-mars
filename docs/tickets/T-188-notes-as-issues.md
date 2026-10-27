@@ -21,3 +21,4 @@ F-020's Design, "Notes". The note text stays verbatim as the issue body.
 
 ## History
 - 2026-10-26 19:02 opened from F-020 (agreed)
+- 2026-10-26 20:05 building on t-188-notes-as-issues
