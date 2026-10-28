@@ -129,6 +129,7 @@ Still to do, roughly in order of value:
 | Lamp reach as the web's (1.6× before), 4 shadowed lamps with two-pass (dual paraboloid) shadows, the sun's shadows in 2 cascades | 36 | 27 |
 | Floor occluders (each floor's slab, from the picked floor down): 3,800 draw calls to 1,900 | 38 | 27 |
 
+- **The web skips what's hidden behind a floor** since #262 (`render3d/cull3d.ts`; Free view on floor 2 of the late dev save, 792 draw calls to 296). Godot's floor occluders already do this its own way, so nothing to port.
 - **Where the time goes** now (first person): lamps about 14 ms with their shadows, SDFGI 8, SSIL 4, volumetric fog 4; with all of those off it's held at 60 fps (vsync). Chunks per floor and eighth of the ring changed nothing measurable, and neither did MSAA or the labels. So Godot's cost here is lighting quality, which graphics presets (step 5) can trade, and which a desktop graphics card has far more room for than the M4's.
 - The bridge resets the picked floor when a viewer connects, and the viewer asks again if a scene comes for another floor.
 
