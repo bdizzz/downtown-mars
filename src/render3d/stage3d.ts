@@ -20,6 +20,7 @@ import { intersectGlobalClipping } from "./wedgeClip";
 import { makeSlice, withCutRock, withRegolith, withRock, withSlice } from "./surfaces";
 import { RoomEffects, type FxView } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
+import { behindSlab, clippedAway, slabBelow, type Slab } from "./cull3d";
 import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
 import { createSky } from "./sky3d";
 import { siteLatitude, starTurn, sunDirection } from "../view/sunPath";
@@ -129,6 +130,9 @@ const HEADLAMP = { walk: 36, above: 1.2, behind: 1.5 };
 /** The sun's shadow: map size at full setting, how far its box reaches (from 100 m up), the margin round the rings, and how far (radians) it moves before shadows are redrawn. */
 const SUN_SHADOW = { mapSize: 2048, far: 450, margin: 12, redrawAngle: 0.02, boost: 2.4 };
 /** Overlay tints lie on the rooms' own floors and walls: pulled toward the camera so they win the depth test. */
+/** Bounds of what may be culled are grown this much (metres): shaders move some of it (sway, walls lowered, hangings). */
+const CULL_SLACK = 0.3;
+
 const OVERLAY_OFFSET = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 };
 
 export async function createStage3D(host: HTMLElement, opts: StageOptions = {}): Promise<Stage> {
@@ -441,7 +445,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const lander = makeLander();
   scene.add(lander);
   // Timing for the dev console (window.__stage3d in dev builds only).
-  const stats = { buildMs: 0, frameMs: 0, calls: 0, triangles: 0 };
+  const stats = { buildMs: 0, frameMs: 0, calls: 0, triangles: 0, culled: 0 };
   const people = new People();
   /** Resource networks as pipes (View → Flows), and what they were last built for. */
   const flows = new Flows();
@@ -529,6 +533,73 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(festival.group);
   let rig: DrillRig | null = null;
   let rigFor = "";
+
+  // What the camera can't see goes undrawn (cull3d.ts): the layout's pieces, each with its bounds (fixed
+  // until the layout's rebuilt), and the floors between floors, worked out when first needed.
+  let cullables: { object: THREE.Object3D; box: THREE.Box3; clips: boolean }[] = [];
+  let slabs = new Map<number, Slab>();
+  /** Off from the dev console, to compare (window.__stage3d.setCulling). */
+  let culling = true;
+  const rigBox = new THREE.Box3();
+  function collectCullables(): void {
+    slabs = new Map();
+    cullables = [];
+    for (const object of layoutGroup.children) {
+      // Labels face the camera and keep their size on screen: their bounds don't hold still.
+      let sprite = false;
+      // Only what the cutaway's planes actually clip can be skipped for being cut away.
+      let clips = true;
+      object.traverse((o) => {
+        if (o instanceof THREE.Sprite) sprite = true;
+        const m = (o as THREE.Mesh).material;
+        for (const mat of Array.isArray(m) ? m : m ? [m] : []) if (mat instanceof THREE.ShaderMaterial && !mat.clipping) clips = false;
+      });
+      if (sprite) continue;
+      cullables.push({ object, box: new THREE.Box3().setFromObject(object).expandByScalar(CULL_SLACK), clips });
+    }
+  }
+  function slab(floor: number): Slab {
+    let s = slabs.get(floor);
+    if (!s) slabs.set(floor, (s = slabBelow(layout!, floor)));
+    return s;
+  }
+  /** What's in the scene but can't be seen from here: behind the floor under the camera (or over it, in first person), or cut away. */
+  function unseen(): THREE.Object3D[] {
+    if (!culling || !layout || !hole) return [];
+    // The sun's shadows are about to be redrawn: everything casts, seen or not.
+    if (renderer.shadowMap.enabled && renderer.shadowMap.needsUpdate && sun.castShadow) return [];
+    const eye = camera.position;
+    const behind: Slab[] = [];
+    if (view.mode === "iso") {
+      const f = cut();
+      if (f !== null) behind.push(slab(f));
+      else if (eye.y > floorSpan(1)[1]) behind.push(slab(0));
+    } else if (view.mode === "walk") {
+      const f = floorAtY(eye.y);
+      if (f >= 1) behind.push(slab(f), slab(f - 1));
+    }
+    const planes = view.mode === "cutaway" && !webgpu ? clips : [];
+    if (!behind.length && !planes.length) return [];
+    const gone = (box: THREE.Box3, clipped: boolean) => behind.some((s) => behindSlab(s, eye, box)) || (clipped && clippedAway(planes, box));
+    const out: THREE.Object3D[] = [];
+    for (const c of cullables) if (c.object.visible && gone(c.box, c.clips)) out.push(c.object);
+    // The rig moves as it digs: its parts are measured where they are now.
+    if (rig?.group.visible) {
+      for (const o of rig.group.children) if (o.visible && gone(rigBox.setFromObject(o).expandByScalar(CULL_SLACK), true)) out.push(o);
+    }
+    return out;
+  }
+  /** Draw with what can't be seen left out, then put it back (picking, shadows and the rest see it all). */
+  function drawSeen(draw: () => void): number {
+    const hidden = unseen();
+    for (const o of hidden) o.visible = false;
+    try {
+      draw();
+    } finally {
+      for (const o of hidden) o.visible = true;
+    }
+    return hidden.length;
+  }
   /** The drill's last strike we've seen, so the rig shudders once for each (undefined until the first snapshot). */
   let rigStruck: number | null | undefined;
   /** The glass dome over the shaft, once a hole has one. */
@@ -1911,7 +1982,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     skyDome.follow(camera);
     look.setView(hazeFocus(), view.mode === "walk", view.mode === "iso" ? { distance: cam.iso, radius: outerRadius() } : null);
     roomFx.setScale(renderer.getDrawingBufferSize(bufferSize).y / (2 * Math.tan((camera.fov * Math.PI) / 360)));
-    look.render();
+    stats.culled = drawSeen(() => look.render());
     stats.frameMs = performance.now() - t0;
     stats.calls = renderer.info.render.calls;
     stats.triangles = renderer.info.render.triangles;
@@ -2056,6 +2127,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           },
           // First person's position and heading, to put a walker somewhere.
           walker,
+          // The orbit of Free view and the cutaway, to sweep the camera round.
+          cam,
+          // Pick a floor (null: the surface), as the floor buttons do.
+          setFloor: (f: number | null) => stage.setFloor(f),
           // Stand somewhere and look (first person), and redraw.
           walkTo(x: number, z: number, yaw: number, floor = walker.floor, pitch = 0) {
             Object.assign(walker, { x, z, yaw, floor, pitch });
@@ -2090,6 +2165,54 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             const n = { near: 0, far: 0 };
             for (const g of furnitureGroups) n[(g.userData.detailShown ?? "near") as "near" | "far"]++;
             return n;
+          },
+          /**
+           * What a frame of the main scene costs (#262): draw calls and triangles, in all and for
+           * furniture, people and the rest, plus the GPU time of `repeat` renders, in milliseconds.
+           * The post-processing passes are left out: they cost the same whatever the scene holds.
+           */
+          cost(repeat = 20) {
+            applyCamera();
+            for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : "near");
+            const info = renderer.info;
+            const reset = info.autoReset;
+            info.autoReset = false;
+            let culled = 0;
+            const once = () => {
+              info.reset();
+              culled = drawSeen(() => renderer.render(scene, camera));
+              return { calls: info.render.calls, triangles: info.render.triangles };
+            };
+            // Any shadow redraw first: nothing's culled while shadows are drawn.
+            renderer.render(scene, camera);
+            const all = { ...once(), culled };
+            const c0 = performance.now();
+            for (let i = 0; i < repeat; i++) unseen();
+            const cullMs = Math.round(((performance.now() - c0) / repeat) * 1000) / 1000;
+            // Each kind on its own: hide the others for one render.
+            const kinds: Record<string, THREE.Object3D[]> = { furniture: furnitureGroups, people: [people.group] };
+            const each: Record<string, { calls: number; triangles: number }> = {};
+            for (const [name, objs] of Object.entries(kinds)) {
+              const was = objs.map((o) => o.visible);
+              objs.forEach((o) => (o.visible = false));
+              const without = once();
+              objs.forEach((o, i) => (o.visible = was[i]!));
+              each[name] = { calls: all.calls - without.calls, triangles: all.triangles - without.triangles };
+            }
+            if (!webgpu) renderer.getContext().finish();
+            const t0 = performance.now();
+            for (let i = 0; i < repeat; i++) drawSeen(() => renderer.render(scene, camera));
+            if (!webgpu) renderer.getContext().finish();
+            const ms = (performance.now() - t0) / repeat;
+            info.autoReset = reset;
+            return { ...all, ms: Math.round(ms * 100) / 100, cullMs, ...each };
+          },
+          // What's culled now, the floors between floors, and what may be culled, to inspect.
+          cull: { unseen, slab, cullables: () => cullables, layout: () => layout },
+          // Skip what the camera can't see (on by default), to compare with it all drawn.
+          setCulling(on: boolean) {
+            culling = on;
+            dirty = true;
           },
           /**
            * The Godot experiment (docs/PLAN-GODOT.md): the scene as drawn (the shaft, the rooms and their
@@ -2206,6 +2329,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           if (o.userData.outerCap) (o as THREE.Mesh).material = outerCapMaterial((o as THREE.Mesh).material as THREE.MeshStandardMaterial);
           if (o.userData.furniture) furnitureGroups.push(o);
         });
+        collectCullables();
         lampList = furnitureGroups.flatMap((g) => (g.userData.lamps as Lamp[] | undefined) ?? []);
         showPools();
         sunPools.build(snapshot.layout, cut());
