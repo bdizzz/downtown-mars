@@ -1,0 +1,24 @@
+{
+  "_about": "Underground lighting in the Godot viewer (T-180, #305): ceiling lights in rooms and corridors, placed by the bridge (src/bridge/scene.ts), and the day and night modes Godot eases between by the hour (godot/src/Lighting.cs). Energies are Godot light energies; reaches in metres.",
+  "overhead": {
+    "_about": "One ceiling light per room cell (10 m square) and one per corridorSpacingM of corridor, dropM under the ceiling.",
+    "corridorSpacingM": 10,
+    "dropM": 0.3,
+    "color": "#ffe6c8",
+    "room": { "energy": 4.5, "reachM": 10 },
+    "corridor": { "energy": 2.5, "reachM": 7 },
+    "fixtureRadiusM": 0.35
+  },
+  "day": {
+    "_about": "By day, underground: every ceiling light on, lamps lampBoost brighter (0.5 is half again), and colour of the daylight's colour boost (0..1).",
+    "lampBoost": 0.8,
+    "colour": 0.7
+  },
+  "night": {
+    "_about": "By night: this share of ceiling lights stays on, dimmed to overheadDim; this share of lamps dims to lampDim. Which ones goes by a stable hash of where they are, so the same ones every night.",
+    "overheadShareOn": 0.25,
+    "overheadDim": 0.35,
+    "lampShareDimmed": 0.4,
+    "lampDim": 0.45
+  }
+}
