@@ -1,6 +1,6 @@
 # The dev workflow
 
-How a playtest note becomes a merged change: the stages, which skill runs each, and why it's done this way. The skills live in `.claude/skills/` and lean on three scripts: `scripts/board.mjs` (notes, tickets and the board, all on GitHub Issues), `scripts/try.mjs` (running a branch) and `scripts/land.mjs` (merging and cleaning up).
+How a playtest note becomes a merged change: the stages, which skill runs each, and why it's done this way. The skills live in `.claude/skills/` and lean on three scripts: `scripts/board.mjs` (the notes inbox, and tickets and the board on GitHub Issues), `scripts/try.mjs` (running a branch) and `scripts/land.mjs` (merging and cleaning up).
 
 Think of it as a restaurant: notes are orders scribbled on a pad, tickets are the order slips pinned on the rail, each `/build` is one cook at their own station, `/try` is the tasting, and `/land` sends the plate out and wipes the station.
 
@@ -8,7 +8,7 @@ Think of it as a restaurant: notes are orders scribbled on a pad, tickets are th
 
 ```mermaid
 flowchart LR
-  play([Play]) --> note["/note<br/>a note issue"]
+  play([Play]) --> note["/note<br/>the local inbox"]
   note --> ingest["/ingest<br/>tickets, features"]
   ingest --> answer{Open<br/>questions?}
   answer -- yes --> reply[Bryon answers] --> pick
@@ -20,8 +20,8 @@ flowchart LR
   land --> play
 ```
 
-1. **Play and note.** While playing, `/note <text>` opens a GitHub issue labeled `note`, the text word for word. A note can also come straight from GitHub (the phone app, the web, the Note issue template): any open issue that isn't a ticket or feature counts. Nothing else happens, so it's quick and never breaks the flow of play.
-2. **Ingest.** `/ingest` turns the waiting notes into tickets (issues labeled `task`) with a size (S, M, L), the likely files, an approach and any open questions; big items become features (labeled `feature`, below). Each note is closed with a comment linking what it became, and each ticket names the notes it came from. The notes from before the move to issues are in `docs/notes-archive.md`.
+1. **Play and note.** While playing, `/note <text>` adds the text, word for word, to a local inbox (`.tracker/inbox.md`, gitignored) as `L-12`. Away from the machine, a note can come straight from GitHub instead (the phone app, the web, the Note issue template): any open issue that isn't a ticket or feature counts. Nothing else happens, so it's quick and never breaks the flow of play.
+2. **Ingest.** `/ingest` turns the waiting notes into tickets (issues labeled `task`) with a size (S, M, L), the likely files, an approach and any open questions; big items become features (labeled `feature`, below). Each note is filed away with what it became (local ones in `.tracker/notes-done.md`, GitHub ones closed with a comment), and each ticket names the notes it came from and quotes the local ones. The notes from before the move to issues are in `docs/notes-archive.md`.
 3. **Answer.** Tickets with open questions (unticked boxes under "Open questions") show as "needs answers". Answer them in one reply (to `/ingest`, `/board` or `/build`), and they become ready.
 4. **Pick.** `/board` lists features, then what's ready, needs answers, blocked, in flight and in review. `/deps` draws the dependency tree. Ask for "a quick win" or "the oldest" if nothing in particular calls.
 5. **Build.** `/build #N` checks open PRs for overlap, makes a branch (`212-…`) from a fresh `origin/main` in its own worktree, claims the ticket by pushing that branch and commenting on the issue, builds it, runs `npm test`, checks it in the browser on `[::1]:5173` (so the main game's saves aren't touched), updates the docs, and opens a PR that `Closes #N`, with a link to its playable preview.
@@ -65,7 +65,7 @@ Ids: tickets and features go by issue number (`#212`, or just `212`). The old id
 
 - **Notes are kept word for word**, so nothing is lost in translation; a ticket can always be checked against what was actually said.
 - **Notes and tickets are separate steps**, so jotting a note costs nothing while playing, and the thinking (size, files, questions) happens later in one batch.
-- **Notes are issues**, so one can be jotted anywhere GitHub runs, the phone included, and every machine sees it.
+- **Notes stay local until ingested**, so the issue list holds only real work, not a pile of half-formed jottings. A GitHub issue still works as a note when you're away from the machine.
 - **Questions are asked up front**, on the ticket, so a build session doesn't stall halfway or guess at a design call that's Bryon's.
 - **Tickets are issues**, not files in the repo, so editing one never conflicts with a branch in flight, and any machine (or a cloud session) can build one with all its context.
 - **Status is worked out from GitHub**, so it never needs syncing and two sessions can't write conflicting states.
