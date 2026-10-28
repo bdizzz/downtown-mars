@@ -11,6 +11,8 @@ export interface Overhead {
   z: number;
   floor: number;
   kind: "room" | "corridor";
+  /** The room it lights (-1 for a corridor), so a room's lights switch together. */
+  room: number;
 }
 
 const round = (x: number) => Math.round(x * 1000) / 1000;
@@ -23,8 +25,8 @@ export function overheadLights(layout: Layout): Overhead[] {
   const { corridorSpacingM, dropM } = lighting.overhead;
   const hole = layout.hole;
   const out: Overhead[] = [];
-  const at = (r: number, turn: number, floor: number, kind: Overhead["kind"]) =>
-    out.push({ x: round(r * Math.cos(turn * TAU)), y: round(floorSpan(floor)[1] - dropM), z: round(r * Math.sin(turn * TAU)), floor, kind });
+  const at = (r: number, turn: number, floor: number, room: number) =>
+    out.push({ x: round(r * Math.cos(turn * TAU)), y: round(floorSpan(floor)[1] - dropM), z: round(r * Math.sin(turn * TAU)), floor, kind: room < 0 ? "corridor" : "room", room });
   for (const room of layout.rooms) {
     if (room.planned || room.building) continue;
     // A room taller than a floor has its light at the top, once per column of cells.
@@ -36,7 +38,7 @@ export function overheadLights(layout: Layout): Overhead[] {
     for (const [key, floor] of top) {
       const [ring, slot] = key.split(":").map(Number) as [number, number];
       const [r0, r1] = ringRadii(hole, ring);
-      at((r0 + r1) / 2, (slot + 0.5) / hole.ringSlots[ring - 1]!, floor, "room");
+      at((r0 + r1) / 2, (slot + 0.5) / hole.ringSlots[ring - 1]!, floor, room.id);
     }
   }
   for (const id of Object.keys(layout.corridors ?? {})) {
@@ -45,13 +47,13 @@ export function overheadLights(layout: Layout): Overhead[] {
     if (!e) continue;
     if (e.kind === "radial") {
       const [r0, r1] = ringRadii(hole, e.ring);
-      at((r0 + r1) / 2, e.turn, e.floor, "corridor");
+      at((r0 + r1) / 2, e.turn, e.floor, -1);
       continue;
     }
     // Along an arc, as many as fit at the spacing (a short piece between cuts may have none); circle 0 is the gallery tube.
     const n = Math.round(edgeLengthM(hole, e, RING_D) / corridorSpacingM);
     const r = e.circle === 0 ? hole.shaftRadiusM - GALLERY_W / 2 : hole.shaftRadiusM + e.circle * RING_D;
-    for (let i = 0; i < n; i++) at(r, e.a0 + ((i + 0.5) / n) * (e.a1 - e.a0), e.floor, "corridor");
+    for (let i = 0; i < n; i++) at(r, e.a0 + ((i + 0.5) / n) * (e.a1 - e.a0), e.floor, -1);
   }
   return out;
 }

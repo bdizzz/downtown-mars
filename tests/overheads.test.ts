@@ -16,6 +16,11 @@ describe("ceiling lights", () => {
     expect(lights.filter((l) => l.kind === "room")).toHaveLength(cells);
   });
 
+  it("tags each room's lights with its room, so they switch together", () => {
+    const ids = new Set(s.layout.rooms.map((r) => r.id));
+    for (const l of lights) expect(l.kind === "room" ? ids.has(l.room) : l.room === -1).toBe(true);
+  });
+
   it("lights the built corridors and the floor-1 gallery tube", () => {
     const tube = lights.filter((l) => l.kind === "corridor" && l.floor === 1 && Math.hypot(l.x, l.z) < s.layout.hole.shaftRadiusM);
     expect(tube.length).toBeGreaterThan(0);
