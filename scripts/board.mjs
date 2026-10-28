@@ -63,9 +63,10 @@
 //                                            Kanban by derived state; needs gh's project scope) and sync it.
 //                                            `menu` syncs it too, once it exists
 //   node scripts/board.mjs path              print the local tracker folder
-// Ids can be shorthand anywhere: t6, T6, t-6 and 6 mean T-006; f1 means F-001;
-// #212 is issue 212 (and so is 212, past the old tickets' ids). Writes go
-// through `gh`; nothing about tickets is committed any more.
+// Items go by issue number (#212). The old ids from before the move to issues
+// (T-006, F-001) still work as aliases, through docs/ticket-ids.json: t6, T6 and
+// t-6 mean T-006, f1 means F-001; a bare 212 is issue 212 if that's a ticket or
+// feature, else T-212. Writes go through `gh`; nothing about tickets is committed.
 
 import { exec, execFileSync, execSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -97,9 +98,9 @@ const COLUMNS = [
 ];
 /** Done tickets shown on BOARD.md; older ones drop off the view. */
 const DONE_SHOWN = 15;
-/** t-0NN-… builds a ticket; f-0NN-… writes a feature's plan; 212-… is issue 212 (GitHub's "create a branch"). */
+/** 212-… is issue 212 (GitHub's "create a branch"); t-0NN-… and f-0NN-… are older branches, by old id. */
 const BRANCH_RE = /^(?:([tf])-(\d+)|(\d+))-/;
-/** The old id at the front of a migrated issue's title. */
+/** The old id at the front of a migrated issue's title (closed ones keep it). */
 const TITLE_ID = /^([TF]-\d{3}) · ([\s\S]*)$/;
 /** The migration's history comment (scripts/migrate-issues.mjs). */
 const HISTORY_MARK = "<!-- migrated: history -->";
@@ -134,6 +135,10 @@ const tryShAsync = (cmd) =>
 const MAIN = dirname(resolve(sh("git rev-parse --git-common-dir")));
 const LOCAL = join(MAIN, ".tracker");
 const BOARD = join(LOCAL, "BOARD.md");
+/** Old ids by issue number, from the map the move to issues wrote (T-040 → 165). */
+const OLD_IDS = Object.fromEntries(
+  Object.entries(JSON.parse(readFileSync(new URL("../docs/ticket-ids.json", import.meta.url), "utf8"))).map(([id, n]) => [n, id]),
+);
 mkdirSync(LOCAL, { recursive: true });
 const REPO = sh("git remote get-url origin").match(/github\.com[:/](.+?)(?:\.git)?$/)?.[1];
 if (!REPO) throw new Error("origin isn't a GitHub repository");
@@ -295,7 +300,8 @@ function toItem(i, idOf) {
     labels,
     closingPrs: i.closedByPullRequestsReferences.nodes,
     meta: {
-      id: idOf(i.number) ?? old?.[1] ?? `#${i.number}`,
+      id: `#${i.number}`,
+      old: OLD_IDS[i.number] ?? old?.[1] ?? null,
       title: old ? old[2] : i.title,
       status,
       size: SIZES.find((s) => labels.has(`size:${s}`)) ?? "",
@@ -314,7 +320,7 @@ function toItem(i, idOf) {
   };
 }
 
-/** Ids: T-006, t-6, t6, T6 are T-006; F-001, f1, F1 are F-001; #212 is issue 212; a bare 6 is T-006 if there is one, else #6. */
+/** Ids: #212 is issue 212; T-006, t-6, t6, T6 are old id T-006; F-001, f1, F1 are F-001; a bare 6 is issue 6 if it's an item, else T-006. */
 function parseId(s) {
   const x = String(s ?? "").trim();
   let m = /^#(\d+)$/.exec(x);
@@ -326,11 +332,15 @@ function parseId(s) {
   return null;
 }
 
+/** The item a parsed id names: by issue number first, then by old id. */
+const resolveIn = (items, p) =>
+  (p.number && items.find((x) => x.number === p.number)) || (p.old && items.find((x) => x.meta.old === p.old)) || null;
+
 /** An item by id, shorthand or issue number, from the loaded board. */
 function findIn(items, s) {
   const p = parseId(s);
   if (!p) throw new Error(`"${s}" isn't a ticket or feature id (T-006, t6 or 6; F-001 or f1; #212)`);
-  const it = (p.old && items.find((x) => x.meta.id === p.old)) || (p.number && items.find((x) => x.number === p.number));
+  const it = resolveIn(items, p);
   if (!it) throw new Error(`no ticket or feature ${s} on ${REPO}`);
   return it;
 }
@@ -338,7 +348,7 @@ function findIn(items, s) {
 /** The text of one "## <name>" section of a ticket or feature. */
 const section = (t, name) => t.body.split(/^(?=## )/m).find((s) => s.startsWith(`## ${name}\n`))?.slice(name.length + 4) ?? "";
 const openQuestions = (t) => (section(t, "Open questions").match(/^- \[ \]/gm) ?? []).length;
-/** A feature's planned tasks: the top-level "- " lines under ## Breakdown, with the task each became ("→ T-0NN" or "→ #212"). */
+/** A feature's planned tasks: the top-level "- " lines under ## Breakdown, with the task each became ("→ #212", or an old "→ T-0NN"). */
 const breakdown = (f) =>
   section(f, "Breakdown")
     .split("\n")
@@ -348,13 +358,13 @@ const lastHistory = (t) => t.since;
 
 // ---- GitHub reads -----------------------------------------------------------
 
-/** The item a branch belongs to: t-0NN-… and f-0NN-… by old id, 212-… by issue number. */
+/** The item a branch belongs to: 212-… by issue number, older t-0NN-… and f-0NN-… by old id. */
 function branchItem(name, items) {
   const m = name?.match(BRANCH_RE);
   if (!m) return null;
   if (m[3]) return items.find((x) => x.number === Number(m[3]))?.meta.id ?? null;
   const old = `${m[1].toUpperCase()}-${m[2].padStart(3, "0")}`;
-  return items.some((x) => x.meta.id === old) ? old : null;
+  return items.find((x) => x.meta.old === old)?.meta.id ?? null;
 }
 
 /** Issues, PRs and pushed branches, read together. */
@@ -364,9 +374,8 @@ async function github() {
     tryShAsync("gh pr list --state all --limit 1000 --json number,state,headRefName,baseRefName,createdAt,mergedAt,url"),
     tryShAsync("git ls-remote --heads origin 't-*' 'f-*' '[0-9]*'"),
   ]);
-  const oldIds = Object.fromEntries(issues.map((i) => [i.number, i.title.match(TITLE_ID)?.[1] ?? null]));
   const known = new Set(issues.filter((i) => i.labels.nodes.some((l) => ["task", "feature"].includes(l.name))).map((i) => i.number));
-  const idOf = (n) => (known.has(n) ? (oldIds[n] ?? `#${n}`) : null);
+  const idOf = (n) => (known.has(n) ? `#${n}` : null);
   const items = issues.map((i) => toItem(i, idOf)).filter(Boolean).sort((a, b) => a.number - b.number);
   // Notes: open issues that aren't tasks or features, oldest first.
   const notes = issues
@@ -434,7 +443,7 @@ function featureState(f, gh, rows) {
   const id = f.meta.id;
   const tasks = rows.filter((r) => r.t.meta.feature === id);
   const planned = breakdown(f);
-  const unticketed = planned.filter((p) => !p.ticket || !tasks.some((r) => r.t.meta.id === p.ticket || `#${r.t.number}` === p.ticket)).length;
+  const unticketed = planned.filter((p) => !p.ticket || !tasks.some((r) => r.t.meta.id === p.ticket || r.t.meta.old === p.ticket)).length;
   const out = { tasks, planned: planned.length, unticketed, since: lastHistory(f) };
   const pr = gh.prs[id];
   const finished = (r) => ["done", "dropped"].includes(r.state);
@@ -482,7 +491,7 @@ function extras(r) {
   return out;
 }
 
-/** A feature's tasks and what's left to ticket, e.g. "T-005 ready, T-006 blocked · 1 not ticketed". */
+/** A feature's tasks and what's left to ticket, e.g. "#130 ready, #131 blocked · 1 not ticketed". */
 function featureExtras(fr) {
   const out = [];
   const state = (r) => (r.state === "noted" ? "needs answers" : r.state);
@@ -943,7 +952,7 @@ function setBlockers(t, list, items, prs) {
   const prNums = [];
   for (const s of list) {
     const p = parseId(s);
-    const it = p && ((p.old && items.find((x) => x.meta.id === p.old)) || (p.number && items.find((x) => x.number === p.number)));
+    const it = p && resolveIn(items, p);
     if (it) issues.push(it);
     else if (/^#\d+$/.test(s)) {
       // A PR from an item's branch stands for that item.
@@ -1031,7 +1040,7 @@ switch (cmd) {
         unlinked.push(`#${n.number}`);
         continue;
       }
-      api("POST", `issues/${n.number}/comments`, { body: `→ ${into.map((t) => (t.meta.id.startsWith("#") ? t.meta.id : `${t.meta.id} (#${t.number})`)).join(", ")}` });
+      api("POST", `issues/${n.number}/comments`, { body: `→ ${into.map((t) => t.meta.id).join(", ")}` });
       api("PATCH", `issues/${n.number}`, { state: "closed", state_reason: "completed" });
       linked.push(`#${n.number}`);
     }
@@ -1143,7 +1152,7 @@ switch (cmd) {
     const m = t.meta;
     const fields = [
       ["id", m.id],
-      ["issue", `#${t.number}`],
+      ["old id", m.old],
       ["title", m.title],
       ["status", m.status],
       ["size", m.size],
@@ -1193,8 +1202,7 @@ switch (cmd) {
       break;
     }
     const slug = f.meta.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").split("-").filter(Boolean).slice(0, 4).join("-");
-    const name = f.meta.id.startsWith("#") ? f.meta.id.slice(1) : f.meta.id.toLowerCase();
-    const branch = `feature/${name}${slug ? `-${slug}` : ""}`;
+    const branch = `feature/${f.number}${slug ? `-${slug}` : ""}`;
     sh("git fetch --quiet origin main");
     if (trySh(`git ls-remote --exit-code --heads origin "refs/heads/${branch}"`) === null)
       sh(`git push --quiet origin "origin/main:refs/heads/${branch}"`);
@@ -1216,7 +1224,7 @@ switch (cmd) {
       console.log(`${branch} already has everything on main.`);
       break;
     }
-    const dir = join(LOCAL, `sync-${f.meta.id.replace("#", "").toLowerCase()}`);
+    const dir = join(LOCAL, `sync-${f.number}`);
     if (existsSync(dir)) sh(`git worktree remove --force "${dir}"`);
     sh(`git worktree add --quiet --detach "${dir}" "origin/${branch}"`);
     try {

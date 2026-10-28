@@ -5,8 +5,9 @@
 //   node scripts/land.mjs [target ...] [--merge] [--force] [--dry-run] [--json]
 //
 // target:
-//   T-017, t17, 17, F-001, f1  the ticket's (or feature's) t-017-… / f-001-… branch
 //   212, #212                   issue 212's 212-… branch (a bare number is also tried as T-0NN)
+//   T-017, t17, 17, F-001, f1  an old id: its issue's branch (142-…, through docs/ticket-ids.json),
+//                               or an older t-017-… / f-001-… one
 //   #10                         that PR's branch, when 10 is a PR
 //   <branch>                    that branch (a feature's own feature/f-0NN-… branch is
 //                               only ever landed by name or PR, and merges with a
@@ -32,7 +33,7 @@
 // inside the worktree.
 
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 
 const KEEP = new Set(["main", "HEAD", "pr-assets"]);
@@ -197,6 +198,9 @@ for (const it of items.values()) {
 
 // --- Which ones to land -----------------------------------------------------
 
+/** Issue numbers by old id (T-017 → 142), from the move to issues. */
+const IDS = JSON.parse(readFileSync(new URL("../docs/ticket-ids.json", import.meta.url), "utf8"));
+
 function resolveTarget(t) {
   if (/^#\d+$/.test(t)) {
     const pr = prs.find((p) => p.number === Number(t.slice(1)));
@@ -208,8 +212,11 @@ function resolveTarget(t) {
   }
   const m = /^([tf])?-?0*(\d+)$/i.exec(t);
   if (m) {
-    const prefixes = [`${(m[1] ?? "t").toLowerCase()}-${m[2].padStart(3, "0")}-`, ...(m[1] ? [] : [`${m[2]}-`])];
-    const names = [...items.keys()].filter((n) => prefixes.some((p) => n.startsWith(p)));
+    // Most likely first: a bare number is an issue, then an old ticket id.
+    const old = `${(m[1] ?? "t").toUpperCase()}-${m[2].padStart(3, "0")}`;
+    const prefixes = [...(m[1] ? [] : [`${m[2]}-`]), ...(IDS[old] ? [`${IDS[old]}-`] : []), `${old.toLowerCase()}-`];
+    const keys = [...items.keys()];
+    const names = prefixes.map((p) => keys.filter((n) => n.startsWith(p))).find((x) => x.length) ?? [];
     if (!names.length) fail(`Nothing to land for ${t}: no ${prefixes.join(" or ")}… branch, worktree or PR.`);
     return names;
   }
