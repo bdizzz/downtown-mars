@@ -1954,6 +1954,8 @@ export function buildLayout(
   if (seals.length) group.add(...seals);
   const empty = emptySpace(layout, topFloor);
   if (empty.length) group.add(...empty);
+  const plates = floorPlates(layout, topFloor, colors.rock);
+  if (plates.length) group.add(...plates);
 
   for (const whole of layout.rooms) {
     // Above the chosen floor there's nothing; tall rooms keep only the part at or below it.
@@ -2104,6 +2106,60 @@ function emptySpace(layout: Layout, topFloor: number | null): THREE.Object3D[] {
   floorMesh.userData = { pickable: true, empty: true };
   const pillarMesh = new THREE.Mesh(geometry(pillars), material("pillar", () => new THREE.MeshStandardMaterial({ color: PILLAR.color, roughness: 0.9 })));
   return [floorMesh, pillarMesh];
+}
+
+/** How far under a floor its plate lies (metres): enough to stay clear of the floors on it at a distance. */
+const PLATE_DROP = 0.04;
+
+/**
+ * Under every floor, a plate of rock just below what's laid on it, so a
+ * hairline seam where two floors meet (a room's and a corridor's, two rings')
+ * shows rock rather than the floor below (#262). It runs from the shaft wall to
+ * the last ring, cut away where a room runs through to the floor below and at
+ * stair wells. Only its top is drawn: from below, ceilings are as they were.
+ */
+export function floorPlates(layout: Layout, topFloor: number | null, rockColor: number): THREE.Object3D[] {
+  const hole = layout.hole;
+  const pos: number[] = [];
+  const key = (ring: number, slot: number) => `${ring}.${slot}`;
+  for (let floor = topFloor ?? 1; floor <= hole.floors; floor++) {
+    const y = floorSpan(floor)[0] - PLATE_DROP;
+    const through = new Set<string>();
+    const wells: FloorHole[] = [];
+    for (const room of layout.rooms) {
+      if (room.at.kind === "surface" || !room.cells.some((c) => c.floor === floor)) continue;
+      if (roomDef(room.type).stacks) {
+        wells.push(...stairWells(layout, room).filter((w) => w.floor === floor));
+        continue;
+      }
+      const below = new Set(room.cells.filter((c) => c.floor === floor + 1).map((c) => key(c.ring, c.slot)));
+      for (const c of room.cells) if (c.floor === floor && below.has(key(c.ring, c.slot))) through.add(key(c.ring, c.slot));
+    }
+    for (let ring = 1; ring <= hole.unlockedRings; ring++) {
+      const n = hole.ringSlots[ring - 1]!;
+      const [r0, r1] = ringRadii(hole, ring);
+      for (let slot = 0; slot < n; slot++) {
+        if (through.has(key(ring, slot))) continue;
+        const [a0, a1] = slotAngles(slot, n);
+        const inCell = wells.filter((w) => w.r0 < r1 && w.r1 > r0 && angleOverlap(w.a0, w.a1, a0, a1));
+        // A piece takes one well; with more in one cell, leave it open rather than cover one.
+        if (inCell.length > 1) continue;
+        floorPiece(pos, r0, r1, [a0, a1], [a0, a1], y, inCell[0]);
+      }
+    }
+  }
+  if (!pos.length) return [];
+  // Floor pieces face down (see `flatPiece`): turn each triangle over, so the plate faces up.
+  for (let i = 0; i < pos.length; i += 9) for (let k = 0; k < 3; k++) [pos[i + 3 + k], pos[i + 6 + k]] = [pos[i + 6 + k]!, pos[i + 3 + k]!];
+  const plate = new THREE.Mesh(geometry(pos), material(`plate:${rockColor}`, () => new THREE.MeshStandardMaterial({ color: rockColor, roughness: 0.95 })));
+  plate.userData = { plate: true };
+  return [plate];
+}
+
+/** Do two spans of angle overlap, either way round the circle? */
+function angleOverlap(a0: number, a1: number, b0: number, b1: number): boolean {
+  const shift = Math.round(((b0 + b1) / 2 - (a0 + a1) / 2) / TAU) * TAU;
+  return a0 + shift < b1 && a1 + shift > b0;
 }
 
 /** Where a ring room meets the rim, above its floor-1 cells: the angle, and just outside the shaft's edge. */

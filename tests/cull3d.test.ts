@@ -5,6 +5,7 @@ import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Layout, type Location } from "../src/sim/placement";
 import { behindSlab, clippedAway, slabBelow, type Slab } from "../src/render3d/cull3d";
 import { floorSpan } from "../src/render3d/cylinder";
+import { floorPlates } from "../src/render3d/rooms3d";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 function room(layout: Layout, type: string, at: Location) {
@@ -98,5 +99,47 @@ describe("cut away", () => {
     expect(clippedAway(planes, box(-5, 0, -5, 1, 1, -1))).toBe(false);
     expect(clippedAway(planes, box(-5, 0, 1, -1, 1, 5))).toBe(false);
     expect(clippedAway([], box(-5, 0, -5, -1, 1, -1))).toBe(false);
+  });
+});
+
+describe("the plate under each floor (#262)", () => {
+  /** Plan area of the plate's triangles, m². */
+  const area = (layout: Layout) => {
+    const g = (floorPlates(layout, null, 0x6a3a28)[0] as THREE.Mesh).geometry.getAttribute("position");
+    let a = 0;
+    for (let t = 0; t < g.count; t += 3) {
+      const [ax, az, bx, bz, cx, cz] = [g.getX(t), g.getZ(t), g.getX(t + 1), g.getZ(t + 1), g.getX(t + 2), g.getZ(t + 2)];
+      a += Math.abs((bx - ax) * (cz - az) - (cx - ax) * (bz - az)) / 2;
+    }
+    return a;
+  };
+
+  it("faces up just under each floor, from the shaft wall to the last ring", () => {
+    const layout = createLayout(createHole(10, 3, 3, config.geometry));
+    const [plate] = floorPlates(layout, null, 0x6a3a28) as THREE.Mesh[];
+    const pos = plate!.geometry.getAttribute("position");
+    const nrm = plate!.geometry.getAttribute("normal");
+    const ys = new Set<number>();
+    let inner = Infinity;
+    let outer = 0;
+    for (let i = 0; i < pos.count; i++) {
+      expect(nrm.getY(i)).toBeCloseTo(1, 6);
+      ys.add(Math.round(pos.getY(i) * 100) / 100);
+      const r = Math.hypot(pos.getX(i), pos.getZ(i));
+      inner = Math.min(inner, r);
+      outer = Math.max(outer, r);
+    }
+    expect([...ys].sort((a, b) => b - a)).toEqual([1, 2, 3].map((f) => Math.round((floorSpan(f)[0] - 0.04) * 100) / 100));
+    expect(inner).toBeCloseTo(10, 3);
+    expect(outer).toBeCloseTo(40, 3);
+  });
+
+  it("is open where a room runs through to the floor below", () => {
+    const layout = createLayout(createHole(10, 3, 3, config.geometry));
+    const before = area(layout);
+    const tall = room(layout, "flat", ring(1, 2, 3));
+    tall.cells.push({ ...tall.cells[0]!, floor: 2 });
+    // One ring-2 cell: 10 m deep and about 12 m across.
+    expect(before - area(layout)).toBeGreaterThan(100);
   });
 });
