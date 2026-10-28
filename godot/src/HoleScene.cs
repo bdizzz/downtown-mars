@@ -136,10 +136,14 @@ public partial class HoleScene : Node3D
                 LightVolumetricFogEnergy = 0,
             };
             lamp.SetMeta("floor", l.GetProperty("floor").GetInt32());
+            lamp.SetMeta("energy", lamp.LightEnergy);
+            // Some dim at night (#305), the same ones every night.
+            lamp.SetMeta("dims", Lighting.Indoor.Pick(lamp.Position) < Lighting.Indoor.NightLampShare);
             AddChild(lamp);
             _lamps.Add(lamp);
             Lamps++;
         }
+        BuildOverheads(scene);
 
         if (!Dev.Off("labels"))
         foreach (var l in scene.GetProperty("labels").EnumerateArray())
@@ -238,6 +242,8 @@ public partial class HoleScene : Node3D
             var f = l.GetMeta("floor").AsInt32();
             l.Visible = f >= fromFloor && f <= toFloor && !Dev.Off("lamps") && !CutAway(cut, l.Position);
         }
+        _lampFloors = (fromFloor, toFloor, cut);
+        ShowOverheads();
         var near = _lamps
             .Where(l => l.Visible)
             .Select(l => (l, d: l.Position.DistanceSquaredTo(camera)))
@@ -251,6 +257,135 @@ public partial class HoleScene : Node3D
             var close = near.Contains(l);
             l.ShadowEnabled = close;
             l.LightVolumetricFogEnergy = close ? FogEnergy : 0;
+        }
+    }
+
+    readonly List<OmniLight3D> _overheads = new();
+    MultiMeshInstance3D? _fixtures;
+    (int from, int to, Vector4 cut) _lampFloors = (1, 1, default);
+    /// <summary>How lit the ceiling lights are now, 0..1 of their full energy each (#305), and whether a night-time one stays on.</summary>
+    float _dayMode = -1;
+    bool _indoor;
+
+    /// <summary>
+    /// The ceiling lights the bridge places, one per room cell and per stretch of corridor (#305): a light
+    /// each, no shadows, short reach; and their fixtures, discs on the ceiling, shown only in first person.
+    /// </summary>
+    void BuildOverheads(JsonElement scene)
+    {
+        _overheads.Clear();
+        _fixtures = null;
+        _dayMode = -1;
+        if (!scene.TryGetProperty("overheads", out var list)) return;
+        var spots = new List<Vector3>();
+        foreach (var o in list.EnumerateArray())
+        {
+            var room = o.GetProperty("kind").GetString() == "room";
+            var p = new Vector3(o.GetProperty("x").GetSingle(), o.GetProperty("y").GetSingle(), o.GetProperty("z").GetSingle());
+            var light = new OmniLight3D
+            {
+                Position = p - new Vector3(0, 0.1f, 0),
+                LightColor = Lighting.Indoor.OverheadColor,
+                LightEnergy = 0,
+                OmniRange = room ? Lighting.Indoor.RoomReach : Lighting.Indoor.CorridorReach,
+                OmniAttenuation = 1.2f,
+                ShadowEnabled = false,
+                LightIndirectEnergy = 1.0f,
+                LightBakeMode = Light3D.BakeMode.Static,
+                LightVolumetricFogEnergy = 0,
+                Visible = false,
+                DistanceFadeEnabled = _showFixtures,
+                DistanceFadeBegin = FadeFrom,
+                DistanceFadeLength = FadeLength,
+            };
+            light.SetMeta("floor", o.GetProperty("floor").GetInt32());
+            light.SetMeta("energy", room ? Lighting.Indoor.RoomEnergy : Lighting.Indoor.CorridorEnergy);
+            light.SetMeta("night", Lighting.Indoor.Pick(p) < Lighting.Indoor.NightOverheadShare);
+            AddChild(light);
+            _overheads.Add(light);
+            spots.Add(p);
+        }
+        if (spots.Count == 0) return;
+        var mm = new MultiMesh
+        {
+            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+            Mesh = new CylinderMesh
+            {
+                TopRadius = Lighting.Indoor.FixtureRadius,
+                BottomRadius = Lighting.Indoor.FixtureRadius,
+                Height = 0.06f,
+                RadialSegments = 16,
+                Rings = 1,
+                Material = new StandardMaterial3D
+                {
+                    AlbedoColor = new Color(1, 0.97f, 0.9f),
+                    EmissionEnabled = true,
+                    Emission = Lighting.Indoor.OverheadColor,
+                    EmissionEnergyMultiplier = 0,
+                },
+            },
+            InstanceCount = spots.Count,
+        };
+        for (var i = 0; i < spots.Count; i++) mm.SetInstanceTransform(i, new Transform3D(Basis.Identity, spots[i] + new Vector3(0, 0.03f, 0)));
+        _fixtures = new MultiMeshInstance3D { Name = "Fixtures", Multimesh = mm, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Visible = _showFixtures };
+        AddChild(_fixtures);
+    }
+
+    bool _showFixtures;
+    /// <summary>
+    /// The ceiling fixtures: drawn only in first person (from above they'd only clutter); their light shows in
+    /// every view. In first person the ceiling lights also fade out with distance: most far ones are behind walls.
+    /// </summary>
+    public bool ShowFixtures
+    {
+        get => _showFixtures;
+        set
+        {
+            if (value == _showFixtures) return;
+            _showFixtures = value;
+            if (_fixtures != null) _fixtures.Visible = value;
+            foreach (var o in _overheads) o.DistanceFadeEnabled = value;
+        }
+    }
+
+    /// <summary>In first person, ceiling lights fade out from this far, metres, over FadeLength.</summary>
+    const float FadeFrom = 28, FadeLength = 8;
+
+    /// <summary>
+    /// Underground (a floor in view, or on foot below ground), rooms are lit from inside, by the hour (#305):
+    /// by day (1) every ceiling light on and lamps brighter; by night (0) a few ceiling lights on, dimmed, and
+    /// some lamps dimmed. Above ground, the lamps as they are and no ceiling lights: the sky lights the rooms.
+    /// </summary>
+    public void SetIndoor(bool indoor, float day)
+    {
+        day = Mathf.Clamp(day, 0, 1);
+        if (indoor == _indoor && Mathf.Abs(day - _dayMode) < 0.005f) return;
+        _indoor = indoor;
+        _dayMode = day;
+        var boost = Lighting.Indoor.DayLampBoost;
+        foreach (var l in _lamps)
+        {
+            var night = l.GetMeta("dims").AsBool() ? Lighting.Indoor.NightLampDim : 1;
+            l.LightEnergy = l.GetMeta("energy").AsSingle() * (indoor ? Mathf.Lerp(night, 1 + boost, day) : 1);
+        }
+        foreach (var o in _overheads)
+        {
+            var night = o.GetMeta("night").AsBool() ? Lighting.Indoor.NightOverheadDim : 0;
+            o.LightEnergy = indoor ? o.GetMeta("energy").AsSingle() * Mathf.Lerp(night, 1, day) : 0;
+        }
+        // The fixtures glow by day; by night they all look off (one material), though a few still light.
+        if (_fixtures?.Multimesh.Mesh is CylinderMesh c && c.Material is StandardMaterial3D m) m.EmissionEnergyMultiplier = indoor ? Mathf.Lerp(0.1f, 2.5f, day) : 0.1f;
+        ShowOverheads();
+    }
+
+    /// <summary>Ceiling lights on the lamps' floors that are lit at all (each light costs every pixel it might reach).</summary>
+    void ShowOverheads()
+    {
+        var (from, to, cut) = _lampFloors;
+        foreach (var o in _overheads)
+        {
+            var f = o.GetMeta("floor").AsInt32();
+            o.Visible = o.LightEnergy > 0.01f && f >= from && f <= to && !Dev.Off("lamps") && !CutAway(cut, o.Position);
         }
     }
 
