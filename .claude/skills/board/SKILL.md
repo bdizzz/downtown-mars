@@ -14,10 +14,10 @@ description: Show the Downtown Mars playtest board (features, ready, needs answe
    - notes waiting ("run /ingest")
    - tickets or features under "Needs answers": offer to go through their questions now
    - draft features with a plan ready (their plan PR merged, or the Breakdown filled in): offer to agree them
-   - features **ready to merge** (on their own branch, every task finished): offer `/try feature/f-0NN-… --checkout` to test the whole thing, then `/land feature/f-0NN-…` to merge it into main
+   - features **ready to merge** (on their own branch, every task finished): offer `/try feature/<branch> --checkout` to test the whole thing, then `/land feature/<branch>` to merge it into main
    - in-flight branches that look abandoned (Bryon will know): offer to delete the remote branch so the item shows as ready again (ask first; it's his branch)
 
-Ids: the tickets and features from before the move to issues keep their old ids (`T-006`, `F-001`) at the front of their titles; new ones go by issue number (`#212`). Shorthand works everywhere: `t6` or `6` is T-006, `f1` is F-001, `#212` or `212` is issue 212. `board.mjs` takes them as typed, and you say the full id back.
+Ids: everything goes by issue number (`#212`, or just `212`). The old ids from before the move to issues (`T-080`, `F-004`) still work as aliases, through `docs/ticket-ids.json`: `t6` is T-006's issue, `f1` is F-001's. `board.mjs` takes them as typed and prints `#N`; say `#N` back. (Closed issues from before the move keep `T-0NN · ` in their titles, as history.)
 
 Editing an item's text is always the same three steps: `node scripts/board.mjs body <id> > <scratch file>`, edit the file, `node scripts/board.mjs set-body <id> <scratch file>`. Every change is live on GitHub at once: there's nothing to commit or publish.
 
@@ -25,9 +25,9 @@ Things Bryon might ask for:
 - **"quick wins"**: only Ready tickets of size S.
 - **"answer questions"**: for each Needs answers ticket or feature, show its Problem (or Goal) and open questions, take his answers, then edit it (tick the questions, fold the answers into Problem/Approach, or a feature's Design) and `node scripts/board.mjs log <id> "questions answered"`.
 - **an id**: `node scripts/board.mjs show <id>` and summarize it.
-- **"drop T-0NN"** / **"drop F-0NN"**: `node scripts/board.mjs log <id> "dropped: <his reason>" --status dropped`. Dropping a feature: ask whether its open tasks go too.
+- **"drop #212"**: `node scripts/board.mjs log <id> "dropped: <his reason>" --status dropped`. Dropping a feature: ask whether its open tasks go too.
 - **more context for a ticket**: add it to the ticket's Context section (or the feature's Design, if it's about the whole feature).
-- **"agree F-0NN"**: show the feature's Breakdown and confirm it in one line. Then `node scripts/board.mjs log F-0NN "agreed" --status agreed`, and for each unticked Breakdown line (the nth `- ` line under `## Breakdown`), make its task as /ingest does, with `--feature F-0NN --breakdown <n>` (which makes it a sub-issue and ticks that line with "→ #N"), `--notes` from the feature, and `--blocked-by` for tasks that need an earlier one. Lean on the feature for context rather than repeating it. The tasks show as Ready (or Blocked) straight away. If he wants it **on a feature branch** (to test the whole feature before it reaches main), also run `node scripts/board.mjs feature-branch F-0NN`: tasks then branch from `feature/f-0NN-…` and merge into it.
-- **"new feature …"** or **"make T-0NN a feature"**: make it as /ingest does (`new feature`); to fold a ticket in, move its design into the feature, then drop it (`"dropped: folded into F-0NN"`) or keep it as a task (`--feature F-0NN`).
+- **"agree #109"**: show the feature's Breakdown and confirm it in one line. Then `node scripts/board.mjs log #109 "agreed" --status agreed`, and for each unticked Breakdown line (the nth `- ` line under `## Breakdown`), make its task as /ingest does, with `--feature F-0NN --breakdown <n>` (which makes it a sub-issue and ticks that line with "→ #N"), `--notes` from the feature, and `--blocked-by` for tasks that need an earlier one. Lean on the feature for context rather than repeating it. The tasks show as Ready (or Blocked) straight away. If he wants it **on a feature branch** (to test the whole feature before it reaches main), also run `node scripts/board.mjs feature-branch F-0NN`: tasks then branch from `feature/f-0NN-…` and merge into it.
+- **"new feature …"** or **"make #212 a feature"**: make it as /ingest does (`new feature`); to fold a ticket in, move its design into the feature, then drop it (`"dropped: folded into F-0NN"`) or keep it as a task (`--feature F-0NN`).
 
-This skill doesn't build anything; for that it's /build (`/build F-0NN` writes a feature's plan). For the dependency tree as a diagram, it's /deps.
+This skill doesn't build anything; for that it's /build (`/build #109` on a feature writes its plan). For the dependency tree as a diagram, it's /deps.
