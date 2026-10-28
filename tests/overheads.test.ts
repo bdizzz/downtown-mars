@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { overheadLights } from "../src/bridge/scene";
+import { overheadLights } from "../src/view/overheads";
 import { floorSpan } from "../src/render3d/cylinder";
 import { config } from "../src/sim/config";
 import { createInitialState } from "../src/sim/state";
