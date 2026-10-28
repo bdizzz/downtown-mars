@@ -229,6 +229,8 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     }
     const mesh = o as THREE.Mesh | THREE.LineSegments;
     if (!(mesh instanceof THREE.Mesh || mesh instanceof THREE.LineSegments) || !mesh.visible) return;
+    // The plates under the floors (#262) aren't sent yet: see PLAN-GODOT.md, Status and next.
+    if (mesh.userData.plate) return;
     const material = Array.isArray(mesh.material) ? mesh.material[0]! : mesh.material;
     // Not drawn, only there to pick (the ledge where no gallery tube is built); and the web's
     // fake light pools: Godot has real lights.
