@@ -3,9 +3,9 @@ name: land
 description: Close the loop on a Downtown Mars ticket or branch after review — merge its PR if CI is green, stop its dev servers, remove its worktree, delete its branches, update main and show what's ready next. With nothing named, sweep up everything already merged. Use when Bryon types /land, or says a PR is good to merge, or asks to clean up worktrees, branches or stray dev servers.
 ---
 
-# /land [T-0NN | #N … | #PR | branch]
+# /land [#N … | #PR | branch]
 
-Ticket ids can be shorthand (`t17`, `17`, `f1`; `#212` or `212` for an issue, landing its `212-…` branch; `#N` is a PR when N is one); pass them to the script as typed and say the full id back. `scripts/land.mjs` does the work; never run the git, gh or kill commands by hand.
+Tickets go by issue number (`#212` or `212`, landing its `212-…` branch; `#N` is a PR when N is one). Old ids still work (`t17`, `f1` find their issue's branch, or an older `t-017-…` one). Pass them to the script as typed and say `#N` back. `scripts/land.mjs` does the work; never run the git, gh or kill commands by hand.
 
 ## 1. Get out of the way
 
@@ -30,7 +30,7 @@ If it stops with "Can't reach GitHub", nothing was changed: say so, and try agai
 - **A named ticket, PR or branch whose PR is open**: Bryon naming it is the go-ahead to merge. If its CI is passing and it's `clean`, rerun with `--merge` (and without `--dry-run`); the script squash-merges it, the same way the history has gone so far. If CI is failing or pending, or it's conflicting or a draft, say so and stop; don't wait on CI.
   A PR into main closes its issue itself (`Closes #N`).
 - **A task of a feature on its own branch** (`node scripts/board.mjs base <id>` isn't `main`): the same, but it merges into that feature branch, not main; say so. GitHub doesn't close issues on merges into other branches, so the script closes the task's issue itself (`closed` in its output). If no PR takes the feature branch into main yet, open one as a draft so Bryon has a playable preview of the whole feature so far: `gh pr create --draft --base main --head feature/f-0NN-<slug> --title "<type>(<scope>): <feature title> (F-0NN)"`, body: one line on the feature, `Feature: #<the feature's issue number>`, and the PR attribution line. Give him its preview link (`https://mars.bryon.site/preview/<N>/`).
-- **The feature branch itself** (`/land feature/f-0NN-…` or its PR number; `F-0NN` alone lands only its plan branch): only when Bryon names it, after he's tested it. Mark the PR ready (`gh pr ready <N>`) if it's a draft, then `--merge` as above; the script merges it with a merge commit, keeping each task's commit. Afterwards `node scripts/board.mjs log F-0NN "merged into main" --status done`.
+- **The feature branch itself** (`/land feature/<branch>` or its PR number; the feature's issue number alone lands only its plan branch): only when Bryon names it, after he's tested it. Mark the PR ready (`gh pr ready <N>`) if it's a draft, then `--merge` as above; the script merges it with a merge commit, keeping each task's commit. Afterwards `node scripts/board.mjs log F-0NN "merged into main" --status done`.
 - **A branch from before the move to issues** that still edits `docs/tickets/` (now gone from main): the script merges main into it keeping the deletion, pushes that and skips the merge ("dropped its docs/tickets/ changes … /land again once CI passes"). Say so; landing it again once CI is green finishes the job.
 - **Already merged, or the sweep (nothing named)**: rerun without `--dry-run`. It's all already in main, so no need to ask. In a sweep, list the open PRs but don't merge them; offer to.
 - **Skipped**: never add `--force` by yourself. Show the reason, and ask only where it's his call: uncommitted changes in a merged worktree ("discard them?"), or a PR closed without merging ("drop the branch?"). A live session in the worktree is for him to close or archive; say which.

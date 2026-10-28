@@ -24,7 +24,7 @@ flowchart LR
 2. **Ingest.** `/ingest` turns the waiting notes into tickets (issues labeled `task`) with a size (S, M, L), the likely files, an approach and any open questions; big items become features (labeled `feature`, below). Each note is closed with a comment linking what it became, and each ticket names the notes it came from. The notes from before the move to issues are in `docs/notes-archive.md`.
 3. **Answer.** Tickets with open questions (unticked boxes under "Open questions") show as "needs answers". Answer them in one reply (to `/ingest`, `/board` or `/build`), and they become ready.
 4. **Pick.** `/board` lists features, then what's ready, needs answers, blocked, in flight and in review. `/deps` draws the dependency tree. Ask for "a quick win" or "the oldest" if nothing in particular calls.
-5. **Build.** `/build #N` checks open PRs for overlap, makes a branch (`212-…`, or `t-0NN-…` for tickets from before the move) from a fresh `origin/main` in its own worktree, claims the ticket by pushing that branch and commenting on the issue, builds it, runs `npm test`, checks it in the browser on `[::1]:5173` (so the main game's saves aren't touched), updates the docs, and opens a PR that `Closes #N`, with a link to its playable preview.
+5. **Build.** `/build #N` checks open PRs for overlap, makes a branch (`212-…`) from a fresh `origin/main` in its own worktree, claims the ticket by pushing that branch and commenting on the issue, builds it, runs `npm test`, checks it in the browser on `[::1]:5173` (so the main game's saves aren't touched), updates the docs, and opens a PR that `Closes #N`, with a link to its playable preview.
 6. **Try.** `/try #N web|godot|both` starts that worktree's dev server (a port from 5174) or Godot viewer (a bridge port from 7980, scratch saves) in the Terminal panel, and says what to look at. Or play the PR preview on any device. Feedback given afterwards goes on the PR as a checklist and gets fixed on the same branch.
 7. **Land.** `/land #N` squash-merges the PR if CI is green (which closes the issue), stops its servers, removes its worktree, deletes its branches, updates main and shows what's ready next. `/land` alone sweeps up anything already merged.
 
@@ -33,8 +33,8 @@ flowchart LR
 For items too big for one ticket (a new system, a milestone's worth):
 
 1. `/ingest` makes a **draft** feature with a goal, a design sketch and a rough breakdown (a checklist).
-2. `/build F-0NN` writes or revises its plan: in the issue, or as a doc-only PR with a `docs/PLAN-M*.md` if the design is big. Merge it with `/land`.
-3. **Agree** it in `/board` ("agree F-0NN"): each breakdown line becomes a task, a sub-issue of the feature, and the line is ticked with a link to it. Each task's build reads the feature first and treats its design as settled.
+2. `/build #N` on a feature writes or revises its plan: in the issue, or as a doc-only PR with a `docs/PLAN-M*.md` if the design is big. Merge it with `/land`.
+3. **Agree** it in `/board` ("agree #109"): each breakdown line becomes a task, a sub-issue of the feature, and the line is ticked with a link to it. Each task's build reads the feature first and treats its design as settled.
 4. Optionally, build it **on a branch of its own** (`feature/…`) to test the whole thing before it reaches main: tasks branch from it and their PRs merge into it (`/land` closes their issues, since GitHub only does that on main), `board.mjs sync F-0NN` keeps it current with main, a draft PR into main gives a preview of the feature so far, and it lands last with a merge commit.
 
 ## Which skill when
@@ -43,13 +43,13 @@ For items too big for one ticket (a new system, a milestone's worth):
 | --- | --- | --- |
 | `/note` | Something strikes you while playing | `/note glass rooms look too dark at night` |
 | `/ingest` | Notes are waiting (the board says so) | `/ingest` |
-| `/board` | Choosing what's next, answering questions, agreeing a feature | `/board`, "agree F-004" |
+| `/board` | Choosing what's next, answering questions, agreeing a feature | `/board`, "agree #109" |
 | `/deps` | Seeing what's blocked on what | `/deps 14` (keep done tickets on it for 14 days) |
-| `/build` | Building a ticket, or planning a feature | `/build 212`, `/build t65`, `/build quick win`, `/build F-008` |
+| `/build` | Building a ticket, or planning a feature | `/build 212`, `/build quick win`, `/build #113` |
 | `/try` | Playing a branch before it merges, then giving feedback | `/try 212 both`, then "make it brighter" |
 | `/land` | A PR is good to merge, or to tidy up after merges | `/land 212`, `/land` |
 
-Ids: new tickets and features go by issue number (`#212`, or just `212`). The ones from before the move keep their old ids at the front of their titles (`T-080 · …`), and shorthand still works for them (`t6` is T-006, `f1` is F-001); `docs/ticket-ids.json` maps each old id to its issue.
+Ids: tickets and features go by issue number (`#212`, or just `212`). The old ids from before the move to issues (`T-080`, `F-004`) still work as aliases, through `docs/ticket-ids.json` (`t6` is T-006's issue, `f1` is F-001's); open issues dropped the `T-080 · ` prefix from their titles in #331, and closed ones keep it as history.
 
 ## Behind the scenes
 

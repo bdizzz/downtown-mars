@@ -5,8 +5,9 @@
 //   node scripts/try.mjs [target] [web|godot|both] [--checkout] [--json]
 //
 // target:
-//   T-003, t-003, t3, 3 the worktree on that ticket's t-003-… branch
 //   #212, 212           the worktree on issue 212's 212-… branch
+//   T-003, t-003, t3, 3 an old id: its issue's branch (128-…, through docs/ticket-ids.json),
+//                       or an older t-003-… one (a bare number is tried as an issue first)
 //   <branch>            the worktree with that branch checked out (main: the main checkout)
 //   (nothing)           this worktree, if run from one; else the only other worktree
 // web|godot|both        what to start (web if left out)
@@ -26,7 +27,7 @@
 // runs the viewer and stops its bridge when the viewer closes.
 
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -62,17 +63,31 @@ function worktrees() {
   return out;
 }
 
+/** Issue numbers by old id (T-003 → 128), from the move to issues. */
+const IDS = JSON.parse(readFileSync(new URL("../docs/ticket-ids.json", import.meta.url), "utf8"));
+
 /**
- * An id as the branch prefixes it may be built on, or null: T-003 and t3 are
- * t-003-…; #212 is 212-… (an issue); a bare 3 or 212 is either.
+ * An id as the branch prefixes it may be built on, most likely first, or null:
+ * #212 is 212-…; T-003 and t3 are its issue's 128-… or an older t-003-…; a bare
+ * 3 is issue 3's 3-… first, then T-003's.
  */
 function ticketPrefixes(arg) {
   const m = /^(t-?|#)?0*(\d+)$/i.exec(arg);
   if (!m) return null;
-  const old = `t-${m[2].padStart(3, "0")}-`;
+  const old = `T-${m[2].padStart(3, "0")}`;
+  const asOld = [...(IDS[old] ? [`${IDS[old]}-`] : []), `${old.toLowerCase()}-`];
   const issue = `${m[2]}-`;
-  return m[1] === "#" ? [issue] : m[1] ? [old] : [old, issue];
+  return m[1] === "#" ? [issue] : m[1] ? asOld : [issue, ...asOld];
 }
+
+/** The names that start with the first prefix any of them start with. */
+const firstMatching = (names, prefixes) => {
+  for (const p of prefixes) {
+    const hit = names.filter((n) => n.startsWith(p));
+    if (hit.length) return hit;
+  }
+  return [];
+};
 
 /** The pids listening on each local TCP port, from lsof. */
 function listeners() {
@@ -120,15 +135,20 @@ let tree;
 let wanted = target ?? null;
 if (target) {
   const prefixes = ticketPrefixes(target);
-  const matches = all.filter((w) => w.branch && (prefixes ? prefixes.some((p) => w.branch.startsWith(p)) : w.branch === target));
+  const named = all.filter((w) => w.branch);
+  const hit = prefixes ? firstMatching(named.map((w) => w.branch), prefixes) : [target];
+  const matches = named.filter((w) => hit.includes(w.branch));
   if (matches.length > 1) fail(`More than one worktree for ${target}: ${matches.map((w) => w.branch).join(", ")}`);
   tree = matches[0];
   if (!tree && prefixes) {
     // No worktree: is the ticket's branch on GitHub?
-    const remote = prefixes
-      .flatMap((p) => quiet(`git ls-remote --heads origin "refs/heads/${p}*"`).split("\n"))
-      .map((l) => l.split("refs/heads/")[1])
-      .filter(Boolean);
+    const remote = firstMatching(
+      prefixes
+        .flatMap((p) => quiet(`git ls-remote --heads origin "refs/heads/${p}*"`).split("\n"))
+        .map((l) => l.split("refs/heads/")[1])
+        .filter(Boolean),
+      prefixes,
+    );
     if (remote.length > 1) fail(`More than one branch for ${target} on origin: ${remote.join(", ")}`);
     if (!remote.length) fail(`No worktree or pushed branch for ${target}. Is it built yet? (node scripts/board.mjs show ${target})`);
     wanted = remote[0];
