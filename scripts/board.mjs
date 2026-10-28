@@ -1,4 +1,4 @@
-// The playtest board. Notes are issues; /ingest turns them into tickets (or
+// The playtest board. Notes wait in a local inbox; /ingest turns them into tickets (or
 // features); /build turns a ticket into a PR.
 //
 // Tickets and features are GitHub issues (F-020), labeled task or feature; the
@@ -30,17 +30,21 @@
 // merge into it, and it reaches main in one go at the end (a PR from it, merged
 // with a merge commit). Its live state is then "ready to merge" once every task
 // is finished, and done only when that PR is merged.
-// A note is any open issue that isn't a task or feature (labeled note when made
-// here, or nothing at all when jotted in GitHub's app): its body is the note,
-// verbatim. Items made from it list it ("notes #208"), and /ingest closes it
-// with a comment linking them ("→ #212, #213"). The old notes (N-0001…) stay
-// in docs/notes-archive.md. The generated BOARD.md is local, in .tracker/
+// A note made here (`note`) stays on this machine, in .tracker/inbox.md: a
+// "## L-12 · <when>" heading, the text verbatim below it. Items made from it
+// list it ("notes L-12", and quote it, since nobody else can read the inbox),
+// and /ingest moves it to .tracker/notes-done.md with what it became. A note can
+// also come from GitHub: any open issue that isn't a task or feature (labeled
+// note from the issue template, or nothing at all when jotted in GitHub's app),
+// its body the note. Items list it ("notes #208"), and /ingest closes it with a
+// comment linking them ("→ #212, #213"). The old notes (N-0001…) stay in
+// docs/notes-archive.md. The generated BOARD.md is local, in .tracker/
 // (gitignored) in the main checkout, found from any worktree.
 //
-//   node scripts/board.mjs note <text>       make a note issue (or text on stdin)
-//   node scripts/board.mjs notes             print the notes waiting to be ingested
-//   node scripts/board.mjs ingest-done       close every waiting note that an item lists, linking what it became
-//   node scripts/board.mjs close-note <#N> <why>
+//   node scripts/board.mjs note <text>       add a note to the local inbox (or text on stdin)
+//   node scripts/board.mjs notes             print the notes waiting to be ingested, local and on GitHub
+//   node scripts/board.mjs ingest-done       file away every waiting note that an item lists, linking what it became
+//   node scripts/board.mjs close-note <L-12|#N> <why>
 //                                            close a note that became nothing (praise, already done)
 //   node scripts/board.mjs new task|feature <title> [--size M] [--area sim,ui] [--feature F-1] [--blocked-by T-7,#41]
 //                              [--touches a,b] [--notes #208,#209] [--breakdown <n>] [--status draft|agreed]
@@ -69,7 +73,7 @@
 // feature, else T-212. Writes go through `gh`; nothing about tickets is committed.
 
 import { exec, execFileSync, execSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -159,12 +163,40 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // ---- notes ----------------------------------------------------------------
 
-/** A note's title: its first line, cut at a word to about 60 characters. */
-function noteTitle(text) {
-  const first = text.trim().split("\n")[0].replace(/\s+/g, " ");
-  if (first.length <= 60) return first;
-  const cut = first.slice(0, 60);
-  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 40))}…`;
+const INBOX = join(LOCAL, "inbox.md");
+const NOTES_DONE = join(LOCAL, "notes-done.md");
+const LOCAL_HEAD = /^## (L-\d+) · (.*)$/m;
+
+/** The local notes in a file, oldest first: { id, when, body }. */
+function readLocalNotes(file) {
+  if (!existsSync(file)) return [];
+  return readFileSync(file, "utf8")
+    .split(/^(?=## L-\d+ · )/m)
+    .filter((s) => LOCAL_HEAD.test(s))
+    .map((s) => {
+      const [, id, when] = s.match(LOCAL_HEAD);
+      return { id, when, body: s.slice(s.indexOf("\n") + 1).trim() };
+    });
+}
+const localNotes = () => readLocalNotes(INBOX);
+
+/** Add a note to the inbox; its id is one past the highest ever used here. */
+function addLocalNote(text) {
+  const used = [...localNotes(), ...readLocalNotes(NOTES_DONE)].map((n) => Number(n.id.slice(2)));
+  const id = `L-${Math.max(0, ...used) + 1}`;
+  appendFileSync(INBOX, `## ${id} · ${stamp()}\n${text}\n\n`);
+  return id;
+}
+
+/** Move these inbox notes to notes-done.md, each with what it became (id → "→ #212" or "no ticket: …"). */
+function fileLocalNotes(outcomes) {
+  const keep = [];
+  for (const n of localNotes()) {
+    const entry = (head) => `## ${n.id} · ${head}\n${n.body}\n\n`;
+    if (outcomes.has(n.id)) appendFileSync(NOTES_DONE, entry(`${n.when} · ${outcomes.get(n.id)}`));
+    else keep.push(entry(n.when));
+  }
+  writeFileSync(INBOX, keep.join(""));
 }
 
 // ---- GitHub writes ----------------------------------------------------------
@@ -209,8 +241,8 @@ async function fetchIssues() {
   return out;
 }
 
-/** "notes N-0005, #208" in the header: the archived notes (N-…) and note issues (#…) an item came from. */
-const NOTES_RE = /notes ((?:(?:N-\d+|#\d+)(?:, )?)+)/;
+/** "notes N-0005, L-12, #208" in the header: the archived (N-…), local (L-…) and GitHub (#…) notes an item came from. */
+const NOTES_RE = /notes ((?:(?:[NL]-\d+|#\d+)(?:, )?)+)/;
 
 /** The body with these notes in its "> From …" line (made if there's none). */
 function withNotes(body, notes) {
@@ -522,7 +554,8 @@ function columns(rows) {
 function writeBoard({ gh, rows, features }) {
   let out = `# Board\n\nGenerated ${stamp()} by \`node scripts/board.mjs menu\` from GitHub Issues on ${REPO}. Don't edit.\n\n`;
   if (!gh.online) out += "**GitHub PRs unreachable: in review and merged states may be missing.**\n\n";
-  if (gh.notes.length) out += `**${plural(gh.notes.length, "note")} waiting to be ingested.** Run /ingest.\n\n`;
+  const waiting = gh.notes.length + localNotes().length;
+  if (waiting) out += `**${plural(waiting, "note")} waiting to be ingested.** Run /ingest.\n\n`;
   const link = (t) => `[${t.meta.id}](${t.url})`;
   out += `## Features (${openFeatures(features).length})\n\n`;
   if (!features.length) out += "—\n\n";
@@ -704,7 +737,8 @@ async function menu() {
     }
   }
   if (!b.gh.online) lines.push("(GitHub PRs unreachable: in review and merged states may be missing.)", "");
-  if (b.gh.notes.length) lines.push(`${plural(b.gh.notes.length, "note")} waiting (not on the board until /ingest).`, "");
+  const waiting = b.gh.notes.length + localNotes().length;
+  if (waiting) lines.push(`${plural(waiting, "note")} waiting (not on the board until /ingest).`, "");
   const feats = openFeatures(b.features);
   if (feats.length) {
     lines.push(`Features (${feats.length})`);
@@ -1002,7 +1036,7 @@ function tickBreakdown(f, n, task) {
 }
 
 const readStdin = () => (process.stdin.isTTY ? "" : readFileSync(0, "utf8"));
-/** "208, #209, N-0005" as note refs: #208, #209, N-0005. */
+/** "208, #209, l-12" as note refs: #208, #209, L-12. */
 const noteRefs = (s) =>
   s
     .split(",")
@@ -1017,14 +1051,15 @@ switch (cmd) {
     let text = args.join(" ").trim();
     if (!text) text = readStdin().trim();
     if (!text) throw new Error("nothing to note");
-    const made = api("POST", "issues", { title: noteTitle(text), body: `${text}\n`, labels: ["note"] });
-    const waiting = (await board()).gh.notes.length;
-    console.log(`Noted as #${made.number} (${plural(waiting, "note")} waiting).`);
+    const id = addLocalNote(text);
+    console.log(`Noted as ${id} (${plural(localNotes().length, "note")} waiting).`);
     break;
   }
   case "notes": {
     const { notes } = (await board()).gh;
-    if (!notes.length) console.log("No notes waiting.");
+    const local = localNotes();
+    if (!notes.length && !local.length) console.log("No notes waiting.");
+    for (const n of local) console.log(`## ${n.id} · ${n.when} · local\n${n.body}\n`);
     // Anyone can open an issue on a public repo: say whose each note is.
     for (const n of notes)
       console.log(`## #${n.number} · ${stamp(new Date(n.createdAt))} · ${n.author === OWNER ? n.author : `${n.author} (not ${OWNER})`}\n${n.body.trim()}\n`);
@@ -1034,13 +1069,20 @@ switch (cmd) {
     const b = await board();
     const linked = [];
     const unlinked = [];
+    const into = (ref) => b.items.filter((t) => t.meta.notes.includes(ref));
+    const filed = new Map();
+    for (const n of localNotes()) {
+      if (into(n.id).length) filed.set(n.id, `→ ${into(n.id).map((t) => t.meta.id).join(", ")}`);
+      (into(n.id).length ? linked : unlinked).push(n.id);
+    }
+    fileLocalNotes(filed);
     for (const n of b.gh.notes) {
-      const into = b.items.filter((t) => t.meta.notes.includes(`#${n.number}`));
-      if (!into.length) {
+      const made = into(`#${n.number}`);
+      if (!made.length) {
         unlinked.push(`#${n.number}`);
         continue;
       }
-      api("POST", `issues/${n.number}/comments`, { body: `→ ${into.map((t) => t.meta.id).join(", ")}` });
+      api("POST", `issues/${n.number}/comments`, { body: `→ ${made.map((t) => t.meta.id).join(", ")}` });
       api("PATCH", `issues/${n.number}`, { state: "closed", state_reason: "completed" });
       linked.push(`#${n.number}`);
     }
@@ -1051,7 +1093,13 @@ switch (cmd) {
   case "close-note": {
     const [ref, ...words] = args;
     const why = words.join(" ").trim();
-    if (!why) throw new Error('close-note needs a reason, e.g. close-note #208 "praise; nothing to do"');
+    if (!why) throw new Error('close-note needs a reason, e.g. close-note L-12 "praise; nothing to do"');
+    const lid = String(ref).toUpperCase();
+    if (localNotes().some((n) => n.id === lid)) {
+      fileLocalNotes(new Map([[lid, `no ticket: ${why}`]]));
+      console.log(`${lid}: filed away (${why})`);
+      break;
+    }
     const b = await board();
     const n = b.gh.notes.find((x) => `#${x.number}` === `#${String(ref).replace("#", "")}`);
     if (!n) throw new Error(`${ref} isn't a note waiting to be ingested`);
