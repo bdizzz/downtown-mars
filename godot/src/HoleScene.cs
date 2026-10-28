@@ -137,8 +137,9 @@ public partial class HoleScene : Node3D
             };
             lamp.SetMeta("floor", l.GetProperty("floor").GetInt32());
             lamp.SetMeta("energy", lamp.LightEnergy);
-            // Some dim at night (#305), the same ones every night.
+            // Some dim at night (#305), the same ones every night; a room's lamps switch together.
             lamp.SetMeta("dims", Lighting.Indoor.Pick(lamp.Position) < Lighting.Indoor.NightLampShare);
+            Switches(lamp, l.TryGetProperty("room", out var lr) ? lr.GetInt32() : -1);
             AddChild(lamp);
             _lamps.Add(lamp);
             Lamps++;
@@ -264,8 +265,10 @@ public partial class HoleScene : Node3D
     MultiMeshInstance3D? _fixtures;
     (int from, int to, Vector4 cut) _lampFloors = (1, 1, default);
     /// <summary>How lit the ceiling lights are now, 0..1 of their full energy each (#305), and whether a night-time one stays on.</summary>
-    float _dayMode = -1;
-    bool _indoor;
+    Lighting.Indoor.Mode _mode, _was;
+    /// <summary>When the last switch of mode began (real seconds); each light follows at its own delay within the spread.</summary>
+    double _switchAt;
+    bool _switching, _fresh = true;
 
     /// <summary>
     /// The ceiling lights the bridge places, one per room cell and per stretch of corridor (#305): a light
@@ -275,7 +278,7 @@ public partial class HoleScene : Node3D
     {
         _overheads.Clear();
         _fixtures = null;
-        _dayMode = -1;
+        _fresh = true;
         if (!scene.TryGetProperty("overheads", out var list)) return;
         var spots = new List<Vector3>();
         foreach (var o in list.EnumerateArray())
@@ -301,6 +304,7 @@ public partial class HoleScene : Node3D
             light.SetMeta("floor", o.GetProperty("floor").GetInt32());
             light.SetMeta("energy", room ? Lighting.Indoor.RoomEnergy : Lighting.Indoor.CorridorEnergy);
             light.SetMeta("night", Lighting.Indoor.Pick(p) < Lighting.Indoor.NightOverheadShare);
+            Switches(light, o.GetProperty("room").GetInt32());
             AddChild(light);
             _overheads.Add(light);
             spots.Add(p);
@@ -316,17 +320,16 @@ public partial class HoleScene : Node3D
                 Height = 0.06f,
                 RadialSegments = 16,
                 Rings = 1,
-                Material = new StandardMaterial3D
-                {
-                    AlbedoColor = new Color(1, 0.97f, 0.9f),
-                    EmissionEnabled = true,
-                    Emission = Lighting.Indoor.OverheadColor,
-                    EmissionEnergyMultiplier = 0,
-                },
+                Material = FixtureMaterial(),
             },
+            UseColors = true,
             InstanceCount = spots.Count,
         };
-        for (var i = 0; i < spots.Count; i++) mm.SetInstanceTransform(i, new Transform3D(Basis.Identity, spots[i] + new Vector3(0, 0.03f, 0)));
+        for (var i = 0; i < spots.Count; i++)
+        {
+            mm.SetInstanceTransform(i, new Transform3D(Basis.Identity, spots[i] + new Vector3(0, 0.03f, 0)));
+            mm.SetInstanceColor(i, Colors.Black);
+        }
         _fixtures = new MultiMeshInstance3D { Name = "Fixtures", Multimesh = mm, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Visible = _showFixtures };
         AddChild(_fixtures);
     }
@@ -352,31 +355,85 @@ public partial class HoleScene : Node3D
     const float FadeFrom = 28, FadeLength = 8;
 
     /// <summary>
-    /// Underground (a floor in view, or on foot below ground), rooms are lit from inside, by the hour (#305):
-    /// by day (1) every ceiling light on and lamps brighter; by night (0) a few ceiling lights on, dimmed, and
-    /// some lamps dimmed. Above ground, the lamps as they are and no ceiling lights: the sky lights the rooms.
+    /// A light's room (-1 for none: a corridor's light, or a lamp outside a room), and its moment in a switch
+    /// of mode: a room's lights share one, and each room has its own, within the spread.
     /// </summary>
-    public void SetIndoor(bool indoor, float day)
+    static void Switches(Light3D light, int room)
     {
-        day = Mathf.Clamp(day, 0, 1);
-        if (indoor == _indoor && Mathf.Abs(day - _dayMode) < 0.005f) return;
-        _indoor = indoor;
-        _dayMode = day;
-        var boost = Lighting.Indoor.DayLampBoost;
-        foreach (var l in _lamps)
+        light.SetMeta("room", room);
+        var pick = room >= 0 ? Lighting.Indoor.Pick(new Vector3(room * 0.37f, room * 0.11f, 0)) : Lighting.Indoor.Pick(light.Position);
+        light.SetMeta("delay", pick * Lighting.Indoor.SpreadS);
+    }
+
+    /// <summary>The fixtures' glow: each disc's instance colour (its red) is how lit its light is, 0..1.</summary>
+    static ShaderMaterial FixtureMaterial()
+    {
+        var m = new ShaderMaterial { Shader = new Shader { Code = @"
+shader_type spatial;
+uniform vec3 glow : source_color;
+varying float lit;
+void vertex() { lit = COLOR.r; }
+void fragment() {
+    ALBEDO = vec3(1.0, 0.97, 0.9);
+    EMISSION = glow * mix(0.1, 2.5, lit);
+}" } };
+        m.SetShaderParameter("glow", Lighting.Indoor.OverheadColor);
+        return m;
+    }
+
+    /// <summary>
+    /// Underground (a floor in view, or on foot below ground), rooms are lit from inside, in the hour's mode
+    /// (#305): by day every ceiling light on and lamps brighter; by night a few ceiling lights on, dimmed, and
+    /// some lamps dimmed; after midnight the rooms dark. Above ground, the lamps as they are and no ceiling
+    /// lights: the sky lights the rooms. A change of hour switches each room's lights at once, but the rooms
+    /// one after another, all within the spread (real seconds, whatever the game speed); going above or below
+    /// ground switches every light at once. Called every frame.
+    /// </summary>
+    internal void SetMode(Lighting.Indoor.Mode mode)
+    {
+        if (mode == _mode && !_switching && !_fresh) return;
+        var now = Time.GetTicksMsec() / 1000.0;
+        if (mode != _mode || _fresh)
         {
-            var night = l.GetMeta("dims").AsBool() ? Lighting.Indoor.NightLampDim : 1;
-            l.LightEnergy = l.GetMeta("energy").AsSingle() * (indoor ? Mathf.Lerp(night, 1 + boost, day) : 1);
+            var sweep = !_fresh && mode != Lighting.Indoor.Mode.Surface && _mode != Lighting.Indoor.Mode.Surface;
+            _was = sweep ? _mode : mode;
+            _mode = mode;
+            _switchAt = now;
+            _switching = sweep;
+            _fresh = false;
         }
-        foreach (var o in _overheads)
+        var since = now - _switchAt;
+        Lighting.Indoor.Mode ModeOf(Light3D l) => !_switching || since >= l.GetMeta("delay").AsSingle() ? _mode : _was;
+        foreach (var l in _lamps) l.LightEnergy = l.GetMeta("energy").AsSingle() * LampLevel(ModeOf(l), l.GetMeta("dims").AsBool(), l.GetMeta("room").AsInt32() >= 0);
+        var mm = _fixtures?.Multimesh;
+        for (var i = 0; i < _overheads.Count; i++)
         {
-            var night = o.GetMeta("night").AsBool() ? Lighting.Indoor.NightOverheadDim : 0;
-            o.LightEnergy = indoor ? o.GetMeta("energy").AsSingle() * Mathf.Lerp(night, 1, day) : 0;
+            var o = _overheads[i];
+            var level = OverheadLevel(ModeOf(o), o.GetMeta("night").AsBool(), o.GetMeta("room").AsInt32() >= 0);
+            o.LightEnergy = o.GetMeta("energy").AsSingle() * level;
+            mm?.SetInstanceColor(i, new Color(level, 0, 0));
         }
-        // The fixtures glow by day; by night they all look off (one material), though a few still light.
-        if (_fixtures?.Multimesh.Mesh is CylinderMesh c && c.Material is StandardMaterial3D m) m.EmissionEnergyMultiplier = indoor ? Mathf.Lerp(0.1f, 2.5f, day) : 0.1f;
+        if (_switching && since >= Lighting.Indoor.SpreadS) _switching = false;
         ShowOverheads();
     }
+
+    /// <summary>A lamp's share of its energy in a mode (a room's go dark after midnight; one outside a room keeps the night's).</summary>
+    static float LampLevel(Lighting.Indoor.Mode mode, bool dims, bool inRoom) => mode switch
+    {
+        Lighting.Indoor.Mode.Day => 1 + Lighting.Indoor.DayLampBoost,
+        Lighting.Indoor.Mode.Off when inRoom => Lighting.Indoor.OffLampDim,
+        Lighting.Indoor.Mode.Night or Lighting.Indoor.Mode.Off => dims ? Lighting.Indoor.NightLampDim : 1,
+        _ => 1,
+    };
+
+    /// <summary>A ceiling light's share of its energy in a mode (none above ground; a corridor's keep the night's after midnight).</summary>
+    static float OverheadLevel(Lighting.Indoor.Mode mode, bool staysOn, bool inRoom) => mode switch
+    {
+        Lighting.Indoor.Mode.Day => 1,
+        Lighting.Indoor.Mode.Off when inRoom => Lighting.Indoor.OffOverheadDim,
+        Lighting.Indoor.Mode.Night or Lighting.Indoor.Mode.Off => staysOn ? Lighting.Indoor.NightOverheadDim : 0,
+        _ => 0,
+    };
 
     /// <summary>Ceiling lights on the lamps' floors that are lit at all (each light costs every pixel it might reach).</summary>
     void ShowOverheads()

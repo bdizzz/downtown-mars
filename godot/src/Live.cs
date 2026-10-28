@@ -718,16 +718,16 @@ public partial class Live : Node3D
         _roomLight = under ? 0 : _light;
         _sun.LightCullMask = under ? SurfaceLayer : SunLayers;
         ShaftDaylight(underFloor, storm);
-        // Lights go up soon after dawn and down near dusk, whatever the weather outside.
-        var indoorDay = Mathf.SmoothStep(0, 0.3f, _light);
-        _hole.SetIndoor(under, indoorDay);
+        // The lights switch by the clock, whatever the weather outside: on after dawn, down at dusk, rooms dark after midnight.
+        var mode = under ? Lighting.Indoor.At(f) : Lighting.Indoor.Mode.Surface;
+        _hole.SetMode(mode);
         var env = _env.Environment;
         // Nights stay readable: as the sky darkens, the ambient light turns to the dust's dim glow, never black.
         env.AmbientLightEnergy = (0.12f + 0.16f * _roomLight) * (1 - 0.4f * storm);
         env.AmbientLightSkyContribution = Graphics.SkyShare * Mathf.Lerp(0.35f, 1f, _roomLight);
         _glow.LightEnergy = 0.35f * (1 - _roomLight) * (1 - 0.5f * storm);
         // The colour boost suits daylight (and the warm ceiling lights of an underground day); at night it pushes dark red regolith to pure red.
-        env.AdjustmentSaturation = Mathf.Lerp(0.75f, 1.2f, Mathf.Max(_roomLight, under ? Lighting.Indoor.DayColour * indoorDay : 0));
+        env.AdjustmentSaturation = Mathf.Lerp(0.75f, 1.2f, Mathf.Max(_roomLight, mode == Lighting.Indoor.Mode.Day ? Lighting.Indoor.DayColour : 0));
         // The sky by the hour: its light, and where the sun is (stars come out as it goes).
         if (env.Sky.SkyMaterial is ShaderMaterial sky)
         {

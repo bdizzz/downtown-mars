@@ -16,14 +16,18 @@ static class Lighting
 
     /// <summary>
     /// Underground lighting (#305), from data/lighting.json: the ceiling lights in rooms and corridors, and
-    /// the day and night modes (by day every ceiling light on and lamps brighter; by night a few ceiling
-    /// lights on, dimmed, and some lamps dimmed).
+    /// the modes by the hour (by day every ceiling light on and lamps brighter; by night a few ceiling
+    /// lights on, dimmed, and some lamps dimmed; after midnight the rooms dark, the corridors as by night).
     /// </summary>
     public static class Indoor
     {
         public static readonly Color OverheadColor;
         public static readonly float RoomEnergy, RoomReach, CorridorEnergy, CorridorReach, FixtureRadius;
         public static readonly float DayLampBoost, DayColour, NightOverheadShare, NightOverheadDim, NightLampShare, NightLampDim;
+        public static readonly float DawnHour, DuskHour, OffHour, SpreadS, OffLampDim, OffOverheadDim;
+
+        /// <summary>The lights' modes: above ground (the sky lights the rooms), and underground by day, by night and after midnight.</summary>
+        public enum Mode { Surface, Day, Night, Off }
 
         static Indoor()
         {
@@ -43,6 +47,25 @@ static class Lighting
             NightOverheadDim = n.GetProperty("overheadDim").GetSingle();
             NightLampShare = n.GetProperty("lampShareDimmed").GetSingle();
             NightLampDim = n.GetProperty("lampDim").GetSingle();
+            var s = doc.RootElement.GetProperty("switch");
+            DawnHour = s.GetProperty("dawnHour").GetSingle();
+            DuskHour = s.GetProperty("duskHour").GetSingle();
+            OffHour = s.GetProperty("offHour").GetSingle();
+            SpreadS = s.GetProperty("spreadS").GetSingle();
+            var off = doc.RootElement.GetProperty("off");
+            OffLampDim = off.GetProperty("lampDim").GetSingle();
+            OffOverheadDim = off.GetProperty("overheadDim").GetSingle();
+        }
+
+        /// <summary>The underground mode at this time of day (0..1): day from dawn, night from dusk, off from offHour (midnight) to dawn.</summary>
+        public static Mode At(float dayFraction)
+        {
+            var h = dayFraction * 24;
+            if (h >= DawnHour && h < DuskHour) return Mode.Day;
+            // Night runs from dusk round to offHour, which may be past midnight.
+            var sinceDusk = (h - DuskHour + 24) % 24;
+            var nightLong = (OffHour - DuskHour + 24) % 24;
+            return sinceDusk < nightLong ? Mode.Night : Mode.Off;
         }
 
         /// <summary>A stable 0..1 for a light, from where it is: the same lights dim every night.</summary>
