@@ -22,8 +22,12 @@ public partial class BuildMode : Node3D
 
     readonly Action<object> _send;
     readonly PanelContainer _strip = new();
-    readonly HBoxContainer _categories = new();
+    /// <summary>The strip's buttons, categories first: one row while it fits the window, wrapping when it doesn't (#224).</summary>
+    readonly HFlowContainer _row = new();
+    readonly List<Button> _categories = new();
     readonly PanelContainer _popup = new();
+    /// <summary>The popup: tools that take a whole row (the corridor tool's, the building material), then the rooms as tiles.</summary>
+    readonly VBoxContainer _tools = new();
     readonly GridContainer _rooms = new() { Columns = 1 };
     readonly Label _tip = new();
     readonly Label _toast = new();
@@ -49,7 +53,7 @@ public partial class BuildMode : Node3D
     readonly MeshInstance3D _spot = new() { Name = "Spot", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
     readonly StandardMaterial3D _spotsFaint = Spot(0.12f), _spotHover = Spot(0.3f);
     List<Room> _palette = new();
-    List<(string id, string name)> _cats = new();
+    List<(string id, string name, Color color)> _cats = new();
     string? _open;
     double _toastUntil, _clock;
     object? _pendingConfirm;
@@ -78,6 +82,8 @@ public partial class BuildMode : Node3D
     public bool Painting => Corridor != null && !_bulkhead && !_windows;
     int _shape;
     public bool Active => _strip.Visible;
+    /// <summary>Where the strip's top edge is now, in the window, for what sits above it (the news).</summary>
+    public float StripTop => _strip.Position.Y;
     /// <summary>The ghost (or corridor strip) as last hovered: world-space triangles, and whether it can go there (for the plan view).</summary>
     public (Vector3[] tris, bool ok) GhostShape => _ghost.Visible && HasTool ? (_ghostVerts, _ghostOk) : (Array.Empty<Vector3>(), false);
     Vector3[] _ghostVerts = Array.Empty<Vector3>();
@@ -94,30 +100,36 @@ public partial class BuildMode : Node3D
         AddChild(_spot);
 
         _strip.AddThemeStyleboxOverride("panel", Live.Panel());
+        // Centred on the bottom edge, its width set by FitStrip: as wide as its buttons, or the window.
         _strip.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
         _strip.GrowHorizontal = Control.GrowDirection.Both;
         _strip.GrowVertical = Control.GrowDirection.Begin;
-        _strip.Position = new Vector2(0, -80);
+        _strip.OffsetBottom = _strip.OffsetTop = StripBottom;
         _strip.Visible = false;
         hud.AddChild(_strip);
-        var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 6);
-        _strip.AddChild(row);
-        row.AddChild(_categories);
-        row.AddChild(new VSeparator());
+        _row.AddThemeConstantOverride("h_separation", 6);
+        _row.AddThemeConstantOverride("v_separation", 4);
+        _strip.AddChild(_row);
+        _row.AddChild(new VSeparator());
         _demolishButton.Pressed += ToggleDemolish;
         _demolishButton.AddThemeColorOverride("font_color", new Color("#f0a090"));
-        row.AddChild(_demolishButton);
+        _row.AddChild(_demolishButton);
         _undoButton.Pressed += () => UndoPressed?.Invoke();
-        row.AddChild(_undoButton);
+        _row.AddChild(_undoButton);
         var hint = new Label { Text = "R rotates · Esc or right-click cancels", VerticalAlignment = VerticalAlignment.Center };
         Style(hint, 12, new Color("#a8927e"));
-        row.AddChild(hint);
+        _row.AddChild(hint);
 
         _popup.AddThemeStyleboxOverride("panel", Live.Panel());
         _popup.Visible = false;
         hud.AddChild(_popup);
-        _popup.AddChild(_rooms);
+        var popupRows = new VBoxContainer();
+        popupRows.AddThemeConstantOverride("separation", 6);
+        _popup.AddChild(popupRows);
+        popupRows.AddChild(_tools);
+        _rooms.AddThemeConstantOverride("h_separation", 4);
+        _rooms.AddThemeConstantOverride("v_separation", 4);
+        popupRows.AddChild(_rooms);
 
         _card.AddThemeStyleboxOverride("panel", Live.Panel());
         _card.Visible = false;
@@ -135,7 +147,7 @@ public partial class BuildMode : Node3D
         _toast.AddThemeStyleboxOverride("normal", Live.Panel());
         _toast.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
         _toast.GrowHorizontal = Control.GrowDirection.Both;
-        _toast.Position = new Vector2(0, -150);
+        _toast.Position = new Vector2(0, ToastTop);
         _toast.Visible = false;
         hud.AddChild(_toast);
 
@@ -199,11 +211,68 @@ public partial class BuildMode : Node3D
         l.AddThemeColorOverride("font_color", color);
     }
 
+    public override void _Ready() => GetViewport().SizeChanged += FitStrip;
+
+    /// <summary>The strip's bottom edge, up from the window's, clear of the status lines.</summary>
+    const float StripBottom = -58;
+    float _stripBottom = StripBottom;
+
+    /// <summary>Keep the strip's bottom edge just above this window height (the status lines' top, however many they wrap to).</summary>
+    public void KeepAbove(float y)
+    {
+        var bottom = y - 6 - GetViewport().GetVisibleRect().Size.Y;
+        if (Mathf.Abs(bottom - _stripBottom) < 0.5f) return;
+        _stripBottom = bottom;
+        _strip.OffsetTop = _strip.OffsetBottom = bottom;
+    }
+    /// <summary>Room tiles: about square, a few to a row (#224).</summary>
+    static readonly Vector2 TileSize = new(112, 62);
+    const int MostColumns = 6;
+
+    /// <summary>
+    /// Size the strip to the window: one row as wide as its buttons when that fits, else as wide as the
+    /// window allows, its buttons wrapping onto more rows, centred on the bottom edge either way.
+    /// </summary>
+    void FitStrip()
+    {
+        if (!IsInsideTree()) return;
+        var room = GetViewport().GetVisibleRect().Size.X - 24;
+        var gap = _row.GetThemeConstant("h_separation");
+        var shown = _row.GetChildren().OfType<Control>().Where(c => c.Visible).ToList();
+        var oneRow = shown.Sum(c => c.GetCombinedMinimumSize().X) + gap * Math.Max(0, shown.Count - 1);
+        var margins = _strip.GetThemeStylebox("panel") is StyleBox sb ? sb.GetMinimumSize().X : 0;
+        var w = Mathf.Min(oneRow + margins, room);
+        _strip.OffsetLeft = -w / 2;
+        _strip.OffsetRight = w / 2;
+        // Let it grow upward to however many rows the flow needs at that width.
+        _strip.OffsetTop = _strip.OffsetBottom = _stripBottom;
+        if (_popup.Visible) CallDeferred(nameof(RefreshRooms));
+    }
+
     public override void _Process(double delta)
     {
         _clock += delta;
         if (_toast.Visible && _clock > _toastUntil) _toast.Visible = false;
+        // The toast and the room popup above the strip, however many rows it wraps to (growing to fit
+        // moves its rect, not its offsets, so they go by where it actually is).
+        if (_toast.Visible)
+        {
+            var y = _strip.Visible ? _strip.Position.Y - 10 - _toast.Size.Y : GetViewport().GetVisibleRect().Size.Y + ToastTop;
+            if (!Mathf.IsEqualApprox(_toast.Position.Y, y)) _toast.Position = _toast.Position with { Y = y };
+        }
+        if (_popup.Visible)
+        {
+            var y = _strip.Position.Y - _popup.Size.Y - 8;
+            if (!Mathf.IsEqualApprox(_popup.Position.Y, y))
+            {
+                _popup.Position = _popup.Position with { Y = y };
+                PlaceCard();
+            }
+        }
     }
+
+    /// <summary>A toast's top, up from the window's bottom edge, with the strip shut.</summary>
+    const float ToastTop = -150;
 
     public void Toast(string text)
     {
@@ -217,7 +286,11 @@ public partial class BuildMode : Node3D
     {
         var was = _strip.Visible;
         _strip.Visible = on ?? !_strip.Visible;
-        if (_strip.Visible && !was) _lining = BareRock;
+        if (_strip.Visible && !was)
+        {
+            _lining = BareRock;
+            FitStrip();
+        }
         if (!_strip.Visible)
         {
             Drop();
@@ -241,7 +314,10 @@ public partial class BuildMode : Node3D
     /// <summary>The bridge's palette: categories, and each buildable room with its shapes, cost and whether it's locked or unaffordable.</summary>
     public void SetPalette(JsonElement msg)
     {
-        _cats = msg.GetProperty("categories").EnumerateArray().Select(c => (c.GetProperty("id").GetString()!, c.GetProperty("name").GetString()!)).ToList();
+        _cats = msg.GetProperty("categories").EnumerateArray().Select(c => (
+            c.GetProperty("id").GetString()!,
+            c.GetProperty("name").GetString()!,
+            c.TryGetProperty("color", out var cc) ? new Color(cc.GetString()!) : new Color("#888888"))).ToList();
         _palette = msg.GetProperty("rooms").EnumerateArray().Select(r => new Room(
             r.GetProperty("id").GetString()!,
             r.GetProperty("name").GetString()!,
@@ -262,31 +338,65 @@ public partial class BuildMode : Node3D
         _finishes = cor.GetProperty("finishes").EnumerateArray().Select(f => (f.GetProperty("id").GetString()!, f.GetProperty("name").GetString()!, f.GetProperty("cost").GetString()!, f.GetProperty("hint").GetString()!)).ToList();
         _bulkheadCost = cor.GetProperty("bulkhead").GetString()!;
         _windowsCost = cor.GetProperty("windows").GetString()!;
-        foreach (var c in _categories.GetChildren()) c.QueueFree();
-        foreach (var (id, name) in _cats)
+        foreach (var c in _categories)
         {
-            var b = new Button { Text = name, ToggleMode = true, FocusMode = Control.FocusModeEnum.None };
+            _row.RemoveChild(c);
+            c.QueueFree();
+        }
+        _categories.Clear();
+        foreach (var (id, name, color) in _cats)
+        {
+            // A swatch of the category's colour before its name, as the web's.
+            var b = new Button { Text = name, ToggleMode = true, FocusMode = Control.FocusModeEnum.None, Icon = Swatch(color, 9) };
             var cat = id;
             b.Pressed += () => OpenCategory(_open == cat ? null : cat);
             b.SetMeta("cat", id);
-            _categories.AddChild(b);
+            _row.AddChild(b);
+            _row.MoveChild(b, _categories.Count);
+            _categories.Add(b);
         }
+        FitStrip();
         RefreshRooms();
     }
+
+    static readonly Dictionary<(Color, int), Texture2D> Swatches = new();
+    /// <summary>A small rounded square of a category's colour, for its buttons.</summary>
+    static Texture2D Swatch(Color color, int size)
+    {
+        if (Swatches.TryGetValue((color, size), out var t)) return t;
+        var img = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
+        img.Fill(color);
+        // Round the corners off a little.
+        foreach (var (x, y) in new[] { (0, 0), (size - 1, 0), (0, size - 1), (size - 1, size - 1) }) img.SetPixel(x, y, Colors.Transparent);
+        return Swatches[(color, size)] = ImageTexture.CreateFromImage(img);
+    }
+
+    /// <summary>A room tile's look: a rounded fill, framed in the accent when it's the room in hand.</summary>
+    static StyleBoxFlat Tile(Color fill, Color frame) => new()
+    {
+        BgColor = fill,
+        BorderColor = frame,
+        BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderWidthBottom = 2,
+        CornerRadiusTopLeft = 6, CornerRadiusTopRight = 6, CornerRadiusBottomLeft = 6, CornerRadiusBottomRight = 6,
+        ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 8, ContentMarginBottom = 6,
+    };
+
+    /// <summary>The colour of a room's category.</summary>
+    Color CategoryColor(string cat) => _cats.FirstOrDefault(c => c.id == cat).color is var c && c != default ? c : new Color("#888888");
 
     void OpenCategory(string? cat)
     {
         _open = cat;
-        foreach (var b in _categories.GetChildren().OfType<Button>()) b.ButtonPressed = b.GetMeta("cat").AsString() == cat;
+        foreach (var b in _categories) b.ButtonPressed = b.GetMeta("cat").AsString() == cat;
         RefreshRooms();
     }
 
     void RefreshRooms()
     {
         // Out at once (not at the end of the frame), so the popup sizes to the new list.
-        foreach (var c in _rooms.GetChildren())
+        foreach (var c in _rooms.GetChildren().Concat(_tools.GetChildren()))
         {
-            _rooms.RemoveChild(c);
+            c.GetParent().RemoveChild(c);
             c.QueueFree();
         }
         _popup.Visible = _open != null && _strip.Visible;
@@ -294,16 +404,17 @@ public partial class BuildMode : Node3D
         var list = _palette.Where(r => r.Category == _open).ToList();
         // Access starts with the corridor tool: its finishes, bulkheads, windows, and Erase.
         // Other groups start with the building material.
-        var tools = _open == "circulation" ? _finishes.Count + 3 : _linings.Count > 0 ? 1 : 0;
-        // Long lists in two columns, so they don't run off the top.
-        _rooms.Columns = list.Count + tools > 8 ? 2 : 1;
+        // The rooms as tiles, as many to a row as fit the window (up to a few), so long lists stay low.
+        var fit = (int)((GetViewport().GetVisibleRect().Size.X - 60 - CardRoom) / (TileSize.X + 4));
+        _rooms.Columns = Math.Max(1, Math.Min(Math.Min(MostColumns, fit), list.Count));
+        _rooms.Visible = list.Count > 0;
         if (_open == "circulation")
         {
             Button ToolButton(string text, string tip, bool on, Action pressed)
             {
                 var b = new Button { Text = text, TooltipText = tip, Alignment = HorizontalAlignment.Left, ToggleMode = true, ButtonPressed = on, FocusMode = Control.FocusModeEnum.None, CustomMinimumSize = new Vector2(280, 0) };
                 b.Pressed += pressed;
-                _rooms.AddChild(b);
+                _tools.AddChild(b);
                 return b;
             }
             foreach (var f in _finishes)
@@ -338,24 +449,38 @@ public partial class BuildMode : Node3D
                 _lastHover = null; // re-ask what placing it costs now
                 CallDeferred(nameof(RefreshRooms)); // the rooms' costs, now in this lining
             };
-            _rooms.AddChild(pick);
+            _tools.AddChild(pick);
         }
+        _tools.Visible = _tools.GetChildCount() > 0;
         foreach (var r in list)
         {
             var lined = Lined(r);
             var shortOf = lined is JsonElement li ? (li.TryGetProperty("short", out var sh) ? sh.GetString() : null) : r.Short;
             var why = r.Locked ?? shortOf;
+            var cost = lined is JsonElement lc ? lc.GetProperty("cost").GetString() : r.Cost;
+            // A tile: the category's swatch over the name (wrapped) and its key; the cost and the rest on the card.
             var b = new Button
             {
-                Text = $"{r.Name}{(r.Key != null ? $" [{r.Key}]" : "")}  ·  {(lined is JsonElement lc ? lc.GetProperty("cost").GetString() : r.Cost)}",
-                TooltipText = why ?? "",
-                Alignment = HorizontalAlignment.Left,
+                Text = r.Key != null ? $"{r.Name}\n[{r.Key}]" : r.Name,
+                TooltipText = string.Join("\n", new[] { cost, why }.Where(s => !string.IsNullOrEmpty(s))),
+                Icon = Swatch(CategoryColor(r.Category), 10),
+                IconAlignment = HorizontalAlignment.Center,
+                VerticalIconAlignment = VerticalAlignment.Top,
+                Alignment = HorizontalAlignment.Center,
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
                 ToggleMode = true,
                 ButtonPressed = Tool == r.Id,
                 Disabled = r.Locked != null,
                 FocusMode = Control.FocusModeEnum.None,
-                CustomMinimumSize = new Vector2(280, 0),
+                CustomMinimumSize = TileSize,
+                SizeFlagsHorizontal = Control.SizeFlags.Fill,
             };
+            b.AddThemeFontSizeOverride("font_size", 13);
+            b.AddThemeStyleboxOverride("normal", Tile(new Color(0.18f, 0.11f, 0.09f), new Color(0, 0, 0, 0)));
+            b.AddThemeStyleboxOverride("hover", Tile(new Color(0.23f, 0.14f, 0.11f), new Color(0, 0, 0, 0)));
+            b.AddThemeStyleboxOverride("pressed", Tile(new Color(0.23f, 0.14f, 0.11f), new Color("#e8834a")));
+            b.AddThemeStyleboxOverride("hover_pressed", Tile(new Color(0.27f, 0.16f, 0.12f), new Color("#e8834a")));
+            b.AddThemeStyleboxOverride("disabled", Tile(new Color(0.14f, 0.09f, 0.08f), new Color(0, 0, 0, 0)));
             if (shortOf != null) b.AddThemeColorOverride("font_color", new Color("#e0a070"));
             var id = r.Id;
             b.SetMeta("highlight", "room:" + id);
@@ -421,9 +546,23 @@ public partial class BuildMode : Node3D
     {
         if (!_card.Visible) return;
         _card.ResetSize();
-        var x = Mathf.Clamp(_popup.Position.X, 10, GetViewport().GetVisibleRect().Size.X - _card.Size.X - 10);
-        _card.Position = new Vector2(x, Mathf.Max(10, _popup.Position.Y - _card.Size.Y - 8));
+        var view = GetViewport().GetVisibleRect().Size;
+        var above = _popup.Position.Y - _card.Size.Y - 8;
+        if (above >= 10)
+        {
+            var x = Mathf.Clamp(_popup.Position.X, 10, view.X - _card.Size.X - 10);
+            _card.Position = new Vector2(x, above);
+            return;
+        }
+        // No room above in a short window: beside the popup, on whichever side has more room, its foot level with the popup's.
+        var right = view.X - (_popup.Position.X + _popup.Size.X);
+        var bx = right >= _popup.Position.X ? _popup.Position.X + _popup.Size.X + 8 : _popup.Position.X - _card.Size.X - 8;
+        var by = _popup.Position.Y + _popup.Size.Y - _card.Size.Y;
+        _card.Position = new Vector2(Mathf.Clamp(bx, 10, view.X - _card.Size.X - 10), Mathf.Max(10, by));
     }
+
+    /// <summary>The card's width, kept free beside the room tiles for when it can't go above them.</summary>
+    const float CardRoom = 350;
 
     // ---- the halo ----
 
@@ -474,7 +613,7 @@ public partial class BuildMode : Node3D
 
     void PlacePopup()
     {
-        var button = _categories.GetChildren().OfType<Button>().FirstOrDefault(b => b.GetMeta("cat").AsString() == _open);
+        var button = _categories.FirstOrDefault(b => b.GetMeta("cat").AsString() == _open);
         if (button == null) return;
         _popup.ResetSize();
         var x = Mathf.Clamp(button.GlobalPosition.X, 10, GetViewport().GetVisibleRect().Size.X - _popup.Size.X - 10);
@@ -624,9 +763,9 @@ public partial class BuildMode : Node3D
     public IEnumerable<Control> HighlightTargets(string highlight)
     {
         var category = highlight == "tool:corridors" ? "circulation" : _palette.FirstOrDefault(r => "room:" + r.Id == highlight)?.Category;
-        foreach (var b in _categories.GetChildren().OfType<Button>())
+        foreach (var b in _categories)
             if (b.GetMeta("cat").AsString() == category) yield return b;
-        foreach (var b in _rooms.GetChildren().OfType<Button>())
+        foreach (var b in _tools.GetChildren().Concat(_rooms.GetChildren()).OfType<Button>())
             if (b.HasMeta("highlight") && b.GetMeta("highlight").AsString() == highlight) yield return b;
     }
 

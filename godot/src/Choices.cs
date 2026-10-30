@@ -26,6 +26,20 @@ public partial class Choices : Node
     readonly VBoxContainer _officeRows = new();
     readonly Dictionary<int, Label> _countdowns = new();
     readonly VBoxContainer _news = new();
+    /// <summary>The news's bottom edge, up from the window's: clear of the status lines.</summary>
+    const float NewsBottom = -100;
+
+    /// <summary>
+    /// Keep the news above this window height (the build strip's or the status lines' top), and this far in
+    /// from the right edge (clear of the floor picker).
+    /// </summary>
+    public void KeepNewsAbove(float y, float right)
+    {
+        var bottom = Mathf.Min(y - 8 - GetViewport().GetVisibleRect().Size.Y, NewsBottom);
+        if (!Mathf.IsEqualApprox(_news.OffsetBottom, bottom)) _news.OffsetTop = _news.OffsetBottom = bottom;
+        if (!Mathf.IsEqualApprox(_news.OffsetRight, -right)) _news.OffsetLeft = _news.OffsetRight = -right;
+    }
+
     static readonly System.Text.RegularExpressions.Regex RoomToken = new(@"\[\[room:\d+\|([^|\]]*)\|([^\]]*)\]\]");
     string _cardsKey = "";
     int _ticksPerDay = 240;
@@ -61,7 +75,9 @@ public partial class Choices : Node
         _news.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
         _news.GrowHorizontal = Control.GrowDirection.Begin;
         _news.GrowVertical = Control.GrowDirection.Begin;
-        _news.Position = new Vector2(-470, -100);
+        // On the right edge, growing left and up from it (#224); NewsBottom lifts it over the build strip.
+        _news.OffsetLeft = _news.OffsetRight = -14;
+        _news.OffsetTop = _news.OffsetBottom = NewsBottom;
         _news.Alignment = BoxContainer.AlignmentMode.End;
         _news.AddThemeConstantOverride("separation", 4);
         _news.MouseFilter = Control.MouseFilterEnum.Ignore;
