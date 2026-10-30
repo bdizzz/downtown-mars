@@ -104,6 +104,7 @@ public partial class Live : Node3D
     Button _drillButton = null!;
     bool _drillActive;
     PanelContainer _pickerPanel = null!;
+    ScrollContainer _pickerScroll = null!;
     /// <summary>The cutaway's own panel, where the floor picker is in Free view: zoom, and the cut's angle.</summary>
     PanelContainer _cutPanel = null!;
     HSlider _cutSlider = null!;
@@ -414,6 +415,13 @@ public partial class Live : Node3D
         _festival.Step((float)delta);
         _scenery.Step((float)delta);
         KeepUnderTop();
+        FitFloorPicker();
+        _build.KeepAbove(_status.Position.Y);
+        var bottom = _build.Active ? _build.StripTop : _status.Position.Y;
+        _choices.KeepNewsAbove(bottom, _pickerPanel.Visible ? _pickerPanel.Size.X + 24 : 14);
+        _choices.KeepCardsAbove(bottom);
+        _choices.NewsVisible = !_build.PopupOpen;
+        _build.KeepLeftOf(_pickerPanel.Visible ? _pickerPanel.Size.X + 14 : 0);
         Pulse();
         if (NoHud) _hud.Visible = false;
         // A bridge (re)connected: it needs the game settings it acts on.
@@ -1005,8 +1013,10 @@ public partial class Live : Node3D
     /// <summary>The View bar: the cameras, then walls down and room colours (as the web's View mode).</summary>
     void BuildViewBar(VBoxContainer rows)
     {
-        var bar = new HBoxContainer();
-        bar.AddThemeConstantOverride("separation", 4);
+        // Wrapping, as the top bar's rows, in a narrow window.
+        var bar = new HFlowContainer();
+        bar.AddThemeConstantOverride("h_separation", 4);
+        bar.AddThemeConstantOverride("v_separation", 4);
         rows.AddChild(bar);
         var label = Text("View", 14, new Color("#c9b29c"));
         bar.AddChild(label);
@@ -1732,13 +1742,18 @@ public partial class Live : Node3D
     {
         var layer = _hud = new CanvasLayer();
         AddChild(layer);
-        var top = _topPanel = new PanelContainer { Position = new Vector2(10, 10) };
+        // Along the top edge, the window's width: its rows wrap when the window's too narrow for them (#224).
+        var top = _topPanel = new PanelContainer();
         top.AddThemeStyleboxOverride("panel", Panel());
+        top.SetAnchorsPreset(Control.LayoutPreset.TopWide);
+        top.OffsetLeft = top.OffsetTop = 10;
+        top.OffsetRight = -10;
         layer.AddChild(top);
         var rows = new VBoxContainer();
         top.AddChild(rows);
-        var bar = new HBoxContainer();
-        bar.AddThemeConstantOverride("separation", 14);
+        var bar = new HFlowContainer();
+        bar.AddThemeConstantOverride("h_separation", 14);
+        bar.AddThemeConstantOverride("v_separation", 4);
         rows.AddChild(bar);
         _title = Text("Downtown Mars", 20, new Color("#e8834a"));
         _title.Name = "hole";
@@ -1820,9 +1835,13 @@ public partial class Live : Node3D
         bar.AddChild(_qualityButton);
 
         _status = Text("", 13, new Color(1, 0.93f, 0.85f, 0.85f));
-        _status.SetAnchorsPreset(Control.LayoutPreset.BottomLeft);
-        _status.Position = new Vector2(12, -52);
+        // Along the bottom edge, wrapping in a narrow window, growing up from it (#224).
+        _status.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
+        _status.OffsetLeft = 12;
+        _status.OffsetRight = -12;
+        _status.OffsetTop = _status.OffsetBottom = -10;
         _status.GrowVertical = Control.GrowDirection.Begin;
+        _status.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         layer.AddChild(_status);
 
         _waiting = Text("", 20, new Color("#f3e6d8"));
@@ -1835,11 +1854,12 @@ public partial class Live : Node3D
 
         var pickerPanel = _pickerPanel = new PanelContainer();
         pickerPanel.AddThemeStyleboxOverride("panel", Panel());
+        // On the right edge; FitFloorPicker makes it as tall as its floors and centres it below the top bar.
         pickerPanel.SetAnchorsPreset(Control.LayoutPreset.CenterRight);
         pickerPanel.GrowHorizontal = Control.GrowDirection.Begin;
-        pickerPanel.Position = new Vector2(-70, -200);
+        pickerPanel.OffsetLeft = pickerPanel.OffsetRight = -10;
         layer.AddChild(pickerPanel);
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(56, 420), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        var scroll = _pickerScroll = new ScrollContainer { CustomMinimumSize = new Vector2(56, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         pickerPanel.AddChild(scroll);
         _floorPicker = new VBoxContainer();
         scroll.AddChild(_floorPicker);
@@ -1849,7 +1869,8 @@ public partial class Live : Node3D
         cutPanel.AddThemeStyleboxOverride("panel", Panel());
         cutPanel.SetAnchorsPreset(Control.LayoutPreset.CenterRight);
         cutPanel.GrowHorizontal = Control.GrowDirection.Begin;
-        cutPanel.Position = new Vector2(-150, -60);
+        cutPanel.GrowVertical = Control.GrowDirection.Both;
+        cutPanel.OffsetLeft = cutPanel.OffsetRight = -10;
         layer.AddChild(cutPanel);
         var cutRows = new VBoxContainer();
         cutRows.AddThemeConstantOverride("separation", 6);
@@ -1894,7 +1915,12 @@ public partial class Live : Node3D
     void BuildFloorPicker()
     {
         _pickerFloors = _shape.Floors;
-        foreach (var c in _floorPicker.GetChildren()) c.QueueFree();
+        // Out at once, so the picker sizes to the new floors this frame.
+        foreach (var c in _floorPicker.GetChildren())
+        {
+            _floorPicker.RemoveChild(c);
+            c.QueueFree();
+        }
         for (var f = 0; f <= _shape.Floors; f++)
         {
             var floor = f == 0 ? (int?)null : f;
@@ -1904,6 +1930,32 @@ public partial class Live : Node3D
             _floorPicker.AddChild(b);
         }
     }
+
+    /// <summary>
+    /// The floor picker as tall as its floors (#224), centred on the right edge in the space below the top
+    /// bar; a hole too deep for the window scrolls instead.
+    /// </summary>
+    void FitFloorPicker()
+    {
+        var view = GetViewport().GetVisibleRect().Size.Y;
+        var top = _topPanel.Position.Y + _topPanel.Size.Y + 10;
+        var bottom = view - PickerBottomClear;
+        var frame = _pickerPanel.GetThemeStylebox("panel").GetMinimumSize().Y;
+        var h = Mathf.Max(0, Mathf.Min(_floorPicker.GetCombinedMinimumSize().Y, bottom - top - frame));
+        if (!Mathf.IsEqualApprox(_pickerScroll.CustomMinimumSize.Y, h)) _pickerScroll.CustomMinimumSize = new Vector2(56, h);
+        // Centred on the window's middle when there's room, else pushed down clear of the top bar.
+        var total = h + frame;
+        var y0 = Mathf.Clamp(view / 2 - total / 2, top, Mathf.Max(top, bottom - total));
+        var offset = y0 - view / 2;
+        if (!Mathf.IsEqualApprox(_pickerPanel.OffsetTop, offset) || !Mathf.IsEqualApprox(_pickerPanel.OffsetBottom, offset + total))
+        {
+            _pickerPanel.OffsetTop = offset;
+            _pickerPanel.OffsetBottom = offset + total;
+        }
+    }
+
+    /// <summary>The floor picker keeps this clear of the window's bottom edge (the status lines and the build strip).</summary>
+    const float PickerBottomClear = 70;
 
     static Label Text(string text, int size, Color color)
     {

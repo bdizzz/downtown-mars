@@ -22,10 +22,37 @@ public partial class Choices : Node
 
     readonly Action<Dictionary<string, object>> _command;
     readonly VBoxContainer _cards = new();
+    /// <summary>The event cards, scrolling when there are more than fit above the status lines.</summary>
+    readonly ScrollContainer _cardScroll = new() { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
     readonly PanelContainer _office = new();
     readonly VBoxContainer _officeRows = new();
     readonly Dictionary<int, Label> _countdowns = new();
     readonly VBoxContainer _news = new();
+    /// <summary>The news's bottom edge, up from the window's: clear of the status lines.</summary>
+    const float NewsBottom = -100;
+
+    /// <summary>
+    /// Keep the news above this window height (the build strip's or the status lines' top), and this far in
+    /// from the right edge (clear of the floor picker).
+    /// </summary>
+    public void KeepNewsAbove(float y, float right)
+    {
+        var bottom = Mathf.Min(y - 8 - GetViewport().GetVisibleRect().Size.Y, NewsBottom);
+        if (!Mathf.IsEqualApprox(_news.OffsetBottom, bottom)) _news.OffsetTop = _news.OffsetBottom = bottom;
+        if (!Mathf.IsEqualApprox(_news.OffsetRight, -right)) _news.OffsetLeft = _news.OffsetRight = -right;
+        // Narrower, wrapping onto more lines, where it would run into the event cards.
+        var cardsRight = _cardScroll.Visible && _cards.GetChildCount() > 0 ? _cardScroll.Position.X + _cardScroll.Size.X : 0;
+        var width = Mathf.Clamp(GetViewport().GetVisibleRect().Size.X - right - 28 - cardsRight - 12, NewsNarrowest, NewsWidth);
+        if (Mathf.IsEqualApprox(width, _newsWidth)) return;
+        _newsWidth = width;
+        foreach (var row in _news.GetChildren().OfType<HBoxContainer>())
+            if (row.GetChild(0) is Label label) label.CustomMinimumSize = new Vector2(width, 0);
+    }
+
+    /// <summary>A news line's width, and the least it narrows to beside the event cards.</summary>
+    const float NewsWidth = 440, NewsNarrowest = 220;
+    float _newsWidth = NewsWidth;
+
     static readonly System.Text.RegularExpressions.Regex RoomToken = new(@"\[\[room:\d+\|([^|\]]*)\|([^\]]*)\]\]");
     string _cardsKey = "";
     int _ticksPerDay = 240;
@@ -46,22 +73,41 @@ public partial class Choices : Node
     }
 
     /// <summary>The event cards shown, or set aside (while the map's open, where its own panel sits).</summary>
-    public bool CardsVisible { set => _cards.Visible = value; }
+    public bool CardsVisible { set => _cardScroll.Visible = value; }
+
+    /// <summary>The news shown, or set aside (while the build menu's room popup is open, where it would sit on the tiles).</summary>
+    public bool NewsVisible { set => _news.Visible = value; }
+
+    /// <summary>Keep the event cards above this window height (the build strip's or the status lines' top), scrolling the rest.</summary>
+    public void KeepCardsAbove(float y)
+    {
+        var want = _cards.GetCombinedMinimumSize();
+        var h = Mathf.Max(0, Mathf.Min(want.Y, y - 8 - _cardScroll.Position.Y));
+        // Room for the scroll bar beside the cards when they scroll.
+        var w = want.X + (h < want.Y ? 14 : 0);
+        var size = new Vector2(w, h);
+        if (_cardScroll.CustomMinimumSize == size) return;
+        _cardScroll.CustomMinimumSize = size;
+        _cardScroll.Size = size;
+    }
 
     public Choices(CanvasLayer hud, Action<Dictionary<string, object>> command)
     {
         _command = command;
-        _cards.Position = new Vector2(10, 100);
+        _cardScroll.Position = new Vector2(10, 100);
         // Kept just under the top bar, however tall it wraps (Live).
-        _cards.SetMeta("under_top", true);
+        _cardScroll.SetMeta("under_top", true);
         _cards.AddThemeConstantOverride("separation", 8);
-        hud.AddChild(_cards);
+        _cardScroll.AddChild(_cards);
+        hud.AddChild(_cardScroll);
 
         // News, as the web's messages: the latest few, fading over a game day, at the bottom right.
         _news.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
         _news.GrowHorizontal = Control.GrowDirection.Begin;
         _news.GrowVertical = Control.GrowDirection.Begin;
-        _news.Position = new Vector2(-470, -100);
+        // On the right edge, growing left and up from it (#224); NewsBottom lifts it over the build strip.
+        _news.OffsetLeft = _news.OffsetRight = -14;
+        _news.OffsetTop = _news.OffsetBottom = NewsBottom;
         _news.Alignment = BoxContainer.AlignmentMode.End;
         _news.AddThemeConstantOverride("separation", 4);
         _news.MouseFilter = Control.MouseFilterEnum.Ignore;
@@ -192,7 +238,7 @@ public partial class Choices : Node
                 if (m.TryGetProperty("holeId", out var h) && h.GetInt32() != holeId && m.TryGetProperty("holeName", out var name)) text = $"{name.GetString()}: {text}";
                 var kind = m.GetProperty("kind").GetString();
                 var label = Text(text, 14, kind == "warn" ? Warn : kind == "good" ? new Color("#9fd28a") : Body);
-                label.CustomMinimumSize = new Vector2(440, 0);
+                label.CustomMinimumSize = new Vector2(_newsWidth, 0);
                 label.HorizontalAlignment = HorizontalAlignment.Right;
                 label.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
                 label.AddThemeConstantOverride("shadow_offset_x", 1);
