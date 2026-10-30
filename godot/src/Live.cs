@@ -569,6 +569,7 @@ public partial class Live : Node3D
             _hole.UpdateLamps(cam.GlobalPosition, focus - above, focus + below, _rig?.CutPlane ?? default);
         }
         _hole.ShowEdges = _rig?.Walking != true;
+        _hole.ShowFixtures = _rig?.Walking == true;
         WatchShowMe();
         UpdateViewBar();
         ApplyViewToShaders();
@@ -710,18 +711,23 @@ public partial class Live : Node3D
         _sun.LookAtFromPosition(pos, Vector3.Zero, Vector3.Up);
         _sun.LightEnergy = (0.15f + 2.0f * _light) * (1 - 0.7f * storm);
         // A floor in view has the rock above it lifted away, but it's still underground (T-101): the sun lights
-        // only the land, and the rooms are lit as at night, by their lamps, plus the daylight down the shaft.
-        var under = Cut != null;
+        // only the land, and the rooms are lit from inside, by their lamps and ceiling lights in the hour's mode
+        // (#305), plus the daylight down the shaft. On foot below ground is underground too.
+        var underFloor = Cut ?? (_rig?.Walking == true && GetViewport().GetCamera3D() is Camera3D cam && CameraRig.FloorAt(cam.GlobalPosition.Y) is var f1 && f1 >= 1 ? f1 : null);
+        var under = underFloor != null;
         _roomLight = under ? 0 : _light;
         _sun.LightCullMask = under ? SurfaceLayer : SunLayers;
-        ShaftDaylight(under ? Cut : null, storm);
+        ShaftDaylight(underFloor, storm);
+        // The lights switch by the clock, whatever the weather outside: on after dawn, down at dusk, rooms dark after midnight.
+        var mode = under ? Lighting.Indoor.At(f) : Lighting.Indoor.Mode.Surface;
+        _hole.SetMode(mode);
         var env = _env.Environment;
         // Nights stay readable: as the sky darkens, the ambient light turns to the dust's dim glow, never black.
         env.AmbientLightEnergy = (0.12f + 0.16f * _roomLight) * (1 - 0.4f * storm);
         env.AmbientLightSkyContribution = Graphics.SkyShare * Mathf.Lerp(0.35f, 1f, _roomLight);
         _glow.LightEnergy = 0.35f * (1 - _roomLight) * (1 - 0.5f * storm);
-        // The colour boost suits daylight; at night it pushes dark red regolith to pure red.
-        env.AdjustmentSaturation = Mathf.Lerp(0.75f, 1.2f, _roomLight);
+        // The colour boost suits daylight (and the warm ceiling lights of an underground day); at night it pushes dark red regolith to pure red.
+        env.AdjustmentSaturation = Mathf.Lerp(0.75f, 1.2f, Mathf.Max(_roomLight, mode == Lighting.Indoor.Mode.Day ? Lighting.Indoor.DayColour : 0));
         // The sky by the hour: its light, and where the sun is (stars come out as it goes).
         if (env.Sky.SkyMaterial is ShaderMaterial sky)
         {

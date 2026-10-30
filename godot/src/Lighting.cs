@@ -14,6 +14,71 @@ static class Lighting
     /// <summary>Lamp brightness and reach, relative to the web game's numbers (a longer reach costs every pixel it touches).</summary>
     public const float LampEnergy = 1.4f, LampRange = 1.0f;
 
+    /// <summary>
+    /// Underground lighting (#305), from data/lighting.json: the ceiling lights in rooms and corridors, and
+    /// the modes by the hour (by day every ceiling light on and lamps brighter; by night a few ceiling
+    /// lights on, dimmed, and some lamps dimmed; after midnight the rooms dark, the corridors as by night).
+    /// </summary>
+    public static class Indoor
+    {
+        public static readonly Color OverheadColor;
+        public static readonly float RoomEnergy, RoomReach, CorridorEnergy, CorridorReach, FixtureRadius;
+        public static readonly float DayLampBoost, DayColour, NightOverheadShare, NightOverheadDim, NightLampShare, NightLampDim;
+        public static readonly float DawnHour, DuskHour, OffHour, SpreadS, OffLampDim, OffOverheadDim;
+
+        /// <summary>The lights' modes: above ground (the sky lights the rooms), and underground by day, by night and after midnight.</summary>
+        public enum Mode { Surface, Day, Night, Off }
+
+        static Indoor()
+        {
+            var path = ProjectSettings.GlobalizePath("res://") + "../data/lighting.json";
+            using var doc = System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(path));
+            var o = doc.RootElement.GetProperty("overhead");
+            OverheadColor = new Color(o.GetProperty("color").GetString()!);
+            RoomEnergy = o.GetProperty("room").GetProperty("energy").GetSingle();
+            RoomReach = o.GetProperty("room").GetProperty("reachM").GetSingle();
+            CorridorEnergy = o.GetProperty("corridor").GetProperty("energy").GetSingle();
+            CorridorReach = o.GetProperty("corridor").GetProperty("reachM").GetSingle();
+            FixtureRadius = o.GetProperty("fixtureRadiusM").GetSingle();
+            DayLampBoost = doc.RootElement.GetProperty("day").GetProperty("lampBoost").GetSingle();
+            DayColour = doc.RootElement.GetProperty("day").GetProperty("colour").GetSingle();
+            var n = doc.RootElement.GetProperty("night");
+            NightOverheadShare = n.GetProperty("overheadShareOn").GetSingle();
+            NightOverheadDim = n.GetProperty("overheadDim").GetSingle();
+            NightLampShare = n.GetProperty("lampShareDimmed").GetSingle();
+            NightLampDim = n.GetProperty("lampDim").GetSingle();
+            var s = doc.RootElement.GetProperty("switch");
+            DawnHour = s.GetProperty("dawnHour").GetSingle();
+            DuskHour = s.GetProperty("duskHour").GetSingle();
+            OffHour = s.GetProperty("offHour").GetSingle();
+            SpreadS = s.GetProperty("spreadS").GetSingle();
+            var off = doc.RootElement.GetProperty("off");
+            OffLampDim = off.GetProperty("lampDim").GetSingle();
+            OffOverheadDim = off.GetProperty("overheadDim").GetSingle();
+        }
+
+        /// <summary>The underground mode at this time of day (0..1): day from dawn, night from dusk, off from offHour (midnight) to dawn.</summary>
+        public static Mode At(float dayFraction)
+        {
+            var h = dayFraction * 24;
+            if (h >= DawnHour && h < DuskHour) return Mode.Day;
+            // Night runs from dusk round to offHour, which may be past midnight.
+            var sinceDusk = (h - DuskHour + 24) % 24;
+            var nightLong = (OffHour - DuskHour + 24) % 24;
+            return sinceDusk < nightLong ? Mode.Night : Mode.Off;
+        }
+
+        /// <summary>A stable 0..1 for a light, from where it is: the same lights dim every night.</summary>
+        public static float Pick(Vector3 p)
+        {
+            var h = (uint)(Mathf.RoundToInt(p.X * 10) * 73856093) ^ (uint)(Mathf.RoundToInt(p.Y * 10) * 19349663) ^ (uint)(Mathf.RoundToInt(p.Z * 10) * 83492791);
+            h ^= h >> 13;
+            h *= 0x5bd1e995;
+            h ^= h >> 15;
+            return (h & 0xFFFF) / 65536f;
+        }
+    }
+
     /// <param name="lite">Without the costly parts (SDFGI, SSIL, volumetric fog), to measure what they cost.</param>
     /// <summary>The sky's top, horizon and ground-horizon colours by day and by night.</summary>
     public static readonly (Color top, Color horizon, Color ground) DaySky = (new(0.62f, 0.45f, 0.33f), new(0.86f, 0.66f, 0.47f), new(0.55f, 0.36f, 0.25f));

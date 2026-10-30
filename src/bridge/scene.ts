@@ -4,6 +4,7 @@ import { canDig, diggingFloor } from "../sim/digging";
 import type { SimState } from "../sim/state";
 import { buildLayout, disposeLayout } from "../render3d/rooms3d";
 import { floorAtY } from "../render3d/cylinder";
+import { overheadLights, type Overhead } from "../view/overheads";
 import type { Lamp } from "../render3d/lights3d";
 import type { Placed } from "../view/furnish";
 import { occupied, type RoomSpots } from "../render3d/people3d";
@@ -65,7 +66,10 @@ export interface SceneMessage {
   floors: number;
   materials: SceneMaterial[];
   chunks: SceneChunk[];
-  lamps: Omit<Lamp, "px" | "pz">[];
+  /** Each with the room it stands in, so a room's lights switch together (#305). */
+  lamps: (Omit<Lamp, "px" | "pz"> & { room: number })[];
+  /** Ceiling lights (#305): one per room cell and per stretch of corridor, which Godot lights by the hour. */
+  overheads: Overhead[];
   /** Room labels: centred in the room and fitted inside its walls (view/labelFit.ts), as lines in a box of width × height metres; hoverOnly ones show only while their room is hovered or picked. */
   labels: { text: string; lines: string[]; x: number; y: number; z: number; width: number; height: number; hoverOnly: boolean; roomId: number }[];
   /** Furniture: item ids and accent colours, and per item placed [item, accent, x, y, z, turn] (indexes into those two lists). */
@@ -208,7 +212,7 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     if (o.userData.furniture && o.userData.placed) furnitureGroups.push(o);
   });
   for (const g of furnitureGroups) {
-    for (const l of (g.userData.lamps as Lamp[] | undefined) ?? []) lamps.push({ x: l.x, y: l.y, z: l.z, floor: l.floor, color: l.color, reach: l.reach, strength: l.strength });
+    for (const l of (g.userData.lamps as Lamp[] | undefined) ?? []) lamps.push({ x: l.x, y: l.y, z: l.z, floor: l.floor, color: l.color, reach: l.reach, strength: l.strength, room: l.room ?? -1 });
     if (g.userData.people) spots.push(g.userData.people as RoomSpots);
     const accent = indexIn(accents, g.userData.accent as string);
     // A wall hanging carries its wall (as rooms3d.ts hangTag): normal, bottom and top, and the point on it behind the item.
@@ -319,6 +323,7 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     materials,
     chunks,
     lamps,
+    overheads: overheadLights(layout),
     labels,
     furniture: { items, accents, placed },
     buildMs: performance.now() - t0,
