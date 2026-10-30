@@ -84,6 +84,7 @@ public partial class BuildMode : Node3D
     public bool Active => _strip.Visible;
     /// <summary>Where the strip's top edge is now, in the window, for what sits above it (the news).</summary>
     public float StripTop => _strip.Position.Y;
+    public bool PopupOpen => _popup.Visible;
     /// <summary>The ghost (or corridor strip) as last hovered: world-space triangles, and whether it can go there (for the plan view).</summary>
     public (Vector3[] tris, bool ok) GhostShape => _ghost.Visible && HasTool ? (_ghostVerts, _ghostOk) : (Array.Empty<Vector3>(), false);
     Vector3[] _ghostVerts = Array.Empty<Vector3>();
@@ -225,6 +226,20 @@ public partial class BuildMode : Node3D
         _stripBottom = bottom;
         _strip.OffsetTop = _strip.OffsetBottom = bottom;
     }
+
+    /// <summary>How much of the window's right side the popup and card keep clear of (the floor picker's width, or none).</summary>
+    float _clearRight;
+
+    /// <summary>Keep the room popup and its card left of this much of the window's right side (the floor picker's).</summary>
+    public void KeepLeftOf(float right)
+    {
+        if (Mathf.Abs(right - _clearRight) < 0.5f) return;
+        _clearRight = right;
+        if (_popup.Visible) CallDeferred(nameof(RefreshRooms));
+    }
+
+    /// <summary>The popup and card's right limit: the window's edge, less the floor picker.</summary>
+    float RightEdge => GetViewport().GetVisibleRect().Size.X - _clearRight;
     /// <summary>Room tiles: about square, a few to a row (#224).</summary>
     static readonly Vector2 TileSize = new(112, 62);
     const int MostColumns = 6;
@@ -405,7 +420,7 @@ public partial class BuildMode : Node3D
         // Access starts with the corridor tool: its finishes, bulkheads, windows, and Erase.
         // Other groups start with the building material.
         // The rooms as tiles, as many to a row as fit the window (up to a few), so long lists stay low.
-        var fit = (int)((GetViewport().GetVisibleRect().Size.X - 60 - CardRoom) / (TileSize.X + 4));
+        var fit = (int)((RightEdge - 60 - CardRoom) / (TileSize.X + 4));
         _rooms.Columns = Math.Max(1, Math.Min(Math.Min(MostColumns, fit), list.Count));
         _rooms.Visible = list.Count > 0;
         if (_open == "circulation")
@@ -546,19 +561,19 @@ public partial class BuildMode : Node3D
     {
         if (!_card.Visible) return;
         _card.ResetSize();
-        var view = GetViewport().GetVisibleRect().Size;
+        var edge = RightEdge;
         var above = _popup.Position.Y - _card.Size.Y - 8;
         if (above >= 10)
         {
-            var x = Mathf.Clamp(_popup.Position.X, 10, view.X - _card.Size.X - 10);
+            var x = Mathf.Clamp(_popup.Position.X, 10, edge - _card.Size.X - 10);
             _card.Position = new Vector2(x, above);
             return;
         }
         // No room above in a short window: beside the popup, on whichever side has more room, its foot level with the popup's.
-        var right = view.X - (_popup.Position.X + _popup.Size.X);
+        var right = edge - (_popup.Position.X + _popup.Size.X);
         var bx = right >= _popup.Position.X ? _popup.Position.X + _popup.Size.X + 8 : _popup.Position.X - _card.Size.X - 8;
         var by = _popup.Position.Y + _popup.Size.Y - _card.Size.Y;
-        _card.Position = new Vector2(Mathf.Clamp(bx, 10, view.X - _card.Size.X - 10), Mathf.Max(10, by));
+        _card.Position = new Vector2(Mathf.Clamp(bx, 10, edge - _card.Size.X - 10), Mathf.Max(10, by));
     }
 
     /// <summary>The card's width, kept free beside the room tiles for when it can't go above them.</summary>
@@ -616,7 +631,7 @@ public partial class BuildMode : Node3D
         var button = _categories.FirstOrDefault(b => b.GetMeta("cat").AsString() == _open);
         if (button == null) return;
         _popup.ResetSize();
-        var x = Mathf.Clamp(button.GlobalPosition.X, 10, GetViewport().GetVisibleRect().Size.X - _popup.Size.X - 10);
+        var x = Mathf.Clamp(button.GlobalPosition.X, 10, RightEdge - _popup.Size.X - 10);
         _popup.Position = new Vector2(x, _strip.GlobalPosition.Y - _popup.Size.Y - 8);
     }
 

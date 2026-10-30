@@ -417,7 +417,11 @@ public partial class Live : Node3D
         KeepUnderTop();
         FitFloorPicker();
         _build.KeepAbove(_status.Position.Y);
-        _choices.KeepNewsAbove(_build.Active ? _build.StripTop : _status.Position.Y, _pickerPanel.Visible ? _pickerPanel.Size.X + 24 : 14);
+        var bottom = _build.Active ? _build.StripTop : _status.Position.Y;
+        _choices.KeepNewsAbove(bottom, _pickerPanel.Visible ? _pickerPanel.Size.X + 24 : 14);
+        _choices.KeepCardsAbove(bottom);
+        _choices.NewsVisible = !_build.PopupOpen;
+        _build.KeepLeftOf(_pickerPanel.Visible ? _pickerPanel.Size.X + 14 : 0);
         Pulse();
         if (NoHud) _hud.Visible = false;
         // A bridge (re)connected: it needs the game settings it acts on.
