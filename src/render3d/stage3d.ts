@@ -22,6 +22,9 @@ import { RoomEffects, type FxView } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { behindSlab, clippedAway, slabBelow, type Slab } from "./cull3d";
 import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
+import { IndoorLights } from "./indoorLights";
+import { modeAt } from "../view/lightModes";
+import lighting from "../../data/lighting.json";
 import { createSky } from "./sky3d";
 import { siteLatitude, starTurn, sunDirection } from "../view/sunPath";
 import { buildTerrain, GROUND_BASE, siteSeed, soilTint, type Terrain } from "./terrain3d";
@@ -515,9 +518,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** Every lamp in the layout, and the point lights that follow the camera round them. */
   let lampList: Lamp[] = [];
   const lampLights = new LampLights();
+  /** The ceiling lights, and every room's lights by the hour below ground (#305). */
+  const indoor = new IndoorLights();
   /** Light pools on the floor show whenever lamp light is on at all. */
   const showPools = () => {
     for (const g of furnitureGroups) for (const o of g.children) if (o.userData.pool) o.visible = graphics.lamps > 0;
+    indoor.setPoolsShown(graphics.lamps > 0);
   };
   let graphics: Graphics = DEFAULT_GRAPHICS;
   // First person: how fast the mouse turns the head (settings), 1 = normal.
@@ -819,10 +825,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     applyBackground();
     // Deep in the shaft, daylight matters less than the lamps; keep it gentle.
     // A dust storm blots out the sun, and some of the sky's light.
-    hemi.intensity = (0.45 + 0.35 * light) * (1 - STORM_DIM.sky * storm);
+    hemiBase = (0.45 + 0.35 * light) * (1 - STORM_DIM.sky * storm);
     // With shadows the rock keeps the sun out of the rooms, so it can shine harder down the shaft and on the surface.
     sunBase = (0.15 + 0.9 * light) * (1 - STORM_DIM.sun * storm);
-    sun.intensity = sunBase * (sun.castShadow ? SUN_SHADOW.boost : 1);
+    lightHour = f;
+    applySkyLight();
     // Near the surface, the view takes the hour's light; deeper down, the lamps'.
     look.setDaylight(light);
     // At night, windows and the gallery tubes' lamps glow.
@@ -1976,8 +1983,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const t0 = performance.now();
     // Far rooms draw their furniture coarser.
     for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : "near");
-    // The nearest lamps light their rooms.
-    lampLights.place(lampList, view.mode === "walk" ? new THREE.Vector3(walker.x, camera.position.y, walker.z) : camera.position, view.mode === "walk" ? walker.floor : cut());
+    // The rooms' lights in the hour's mode below ground (as they are above), mid-switch drawing on; the nearest light their rooms.
+    applySkyLight();
+    if (indoor.update(belowGround() ? modeAt(lightsHeld ?? lightHour) : "surface", performance.now() / 1000)) dirty = true;
+    indoor.setFixturesShown(view.mode === "walk");
+    lampLights.place(indoor.lit,view.mode === "walk" ? new THREE.Vector3(walker.x, camera.position.y, walker.z) : camera.position, view.mode === "walk" ? walker.floor : cut());
     updateShadows();
     skyDome.follow(camera);
     look.setView(hazeFocus(), view.mode === "walk", view.mode === "iso" ? { distance: cam.iso, radius: outerRadius() } : null);
@@ -1997,6 +2007,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let shadowSun = new THREE.Vector3();
   /** The sun's strength before the shadow boost (set with the sky). */
   let sunBase = 1;
+  let hemiBase = 1.1;
+  /** The time of day the sky was last set for (0..1), which the rooms' lights go by. */
+  let lightHour = 0.5;
+  /** The hour the dev console holds the rooms' lights at, if any. */
+  let lightsHeld: number | null = null;
   function updateShadows(): void {
     if (!renderer.shadowMap.enabled) return;
     setSunShadow();
@@ -2030,7 +2045,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const on = renderer.shadowMap.enabled && cut() === null;
     if (sun.castShadow !== on) shadowKey = "";
     sun.castShadow = on;
-    sun.intensity = sunBase * (on ? SUN_SHADOW.boost : 1);
+    applySkyLight();
+  }
+
+  /** Below ground: a floor picked, or on foot. The rooms are lit from inside then, in the hour's mode (#305). */
+  const belowGround = () => view.mode === "walk" || cut() !== null;
+  /** The sky's and sun's light by the hour; below ground, only some of it reaches the rooms (as Godot's T-101). */
+  function applySkyLight(): void {
+    const under = belowGround();
+    hemi.intensity = hemiBase * (under ? lighting.web.undergroundSky : 1);
+    sun.intensity = sunBase * (sun.castShadow ? SUN_SHADOW.boost : 1) * (under ? lighting.web.undergroundSun : 1);
   }
 
   /** The sun's shadow box: round the hole and its rings, deep enough for every floor. */
@@ -2102,7 +2126,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     look.resize();
     applyFloorCut();
   }
-  scene.add(people.group, dust.points, roomFx.group, lampLights.group, grit.points, shaftLight.mesh, sunPools.mesh, badges, flows.group);
+  scene.add(people.group, dust.points, roomFx.group, lampLights.group, indoor.group,grit.points, shaftLight.mesh, sunPools.mesh, badges, flows.group);
   lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
 
   let latest: Snapshot | null = null;
@@ -2129,6 +2153,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           walker,
           // The orbit of Free view and the cutaway, to sweep the camera round.
           cam,
+          // Hold the rooms' lights at an hour (0..24; null: the clock's), to see their modes (#305).
+          lightsAt(hour: number | null) {
+            lightsHeld = hour === null ? null : hour / 24;
+            dirty = true;
+          },
           // Pick a floor (null: the surface), as the floor buttons do.
           setFloor: (f: number | null) => stage.setFloor(f),
           // Stand somewhere and look (first person), and redraw.
@@ -2331,6 +2360,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         });
         collectCullables();
         lampList = furnitureGroups.flatMap((g) => (g.userData.lamps as Lamp[] | undefined) ?? []);
+        indoor.build(snapshot.layout, furnitureGroups, cut());
         showPools();
         sunPools.build(snapshot.layout, cut());
         // Each built room's outline and label, to show its trouble on.

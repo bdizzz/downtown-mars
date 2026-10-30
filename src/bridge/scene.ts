@@ -212,8 +212,7 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     if (o.userData.furniture && o.userData.placed) furnitureGroups.push(o);
   });
   for (const g of furnitureGroups) {
-    const room = (g.userData.people as RoomSpots | undefined)?.roomId ?? -1;
-    for (const l of (g.userData.lamps as Lamp[] | undefined) ?? []) lamps.push({ x: l.x, y: l.y, z: l.z, floor: l.floor, color: l.color, reach: l.reach, strength: l.strength, room });
+    for (const l of (g.userData.lamps as Lamp[] | undefined) ?? []) lamps.push({ x: l.x, y: l.y, z: l.z, floor: l.floor, color: l.color, reach: l.reach, strength: l.strength, room: l.room ?? -1 });
     if (g.userData.people) spots.push(g.userData.people as RoomSpots);
     const accent = indexIn(accents, g.userData.accent as string);
     // A wall hanging carries its wall (as rooms3d.ts hangTag): normal, bottom and top, and the point on it behind the item.

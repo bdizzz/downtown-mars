@@ -1285,7 +1285,7 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
   const def = roomDef(room.type);
   g.userData.people = { roomId: room.id, spots: spotsOf(fitted), accent, social: SOCIAL.has(def.category) || SOCIAL_ROOMS.has(room.type) } satisfies RoomSpots;
   // Its lamps: pooled on the floor always, and for the stage to light the nearest.
-  const lamps = lampsOf(fitted);
+  const lamps = lampsOf(fitted).map((l) => ({ ...l, room: room.id }));
   g.userData.lamps = lamps;
   const pools = lightPools(lamps);
   if (pools) g.add(pools);

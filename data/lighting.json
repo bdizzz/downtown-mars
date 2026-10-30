@@ -38,5 +38,18 @@
     "_about": "After offHour, rooms go dark: their lamps and ceiling lights to these shares (0 is off). Corridors stay in the night mode.",
     "lampDim": 0,
     "overheadDim": 0
+  },
+  "web": {
+    "_about": "The web 3D view (src/render3d/indoorLights.ts): ceiling lights as lamps (strength and reach as furniture lights in data/furniture.json, pooled on the floor; the nearest also get a point light), and how much of the sky and sun still reach the rooms underground (T-101 in Godot).",
+    "room": {
+      "strength": 1.1,
+      "reachM": 6
+    },
+    "corridor": {
+      "strength": 0.8,
+      "reachM": 4.5
+    },
+    "undergroundSky": 0.35,
+    "undergroundSun": 0.5
   }
 }
