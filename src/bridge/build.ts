@@ -23,7 +23,7 @@ import { roomCard, type CardContent } from "../view/roomCard";
 import { previewEffects } from "../sim/effects";
 import { roomDef } from "../sim/rooms";
 import type { Cell } from "../sim/placement";
-import { HEAT } from "../render2d/palette";
+import { CATEGORY_COLORS, cssColor, HEAT } from "../render2d/palette";
 import { FIELD_MAX } from "../render2d/planDraw";
 
 // Building from the Godot viewer, by the web game's rules (view/interaction.ts, sim/costs.ts): the
@@ -59,7 +59,8 @@ function liningExtraFor(type: string, lining: WallStep): Record<string, number> 
 
 export interface PaletteMessage {
   type: "palette";
-  categories: { id: string; name: string }[];
+  /** Each with its colour, as the web palette's swatches (#224). */
+  categories: { id: string; name: string; color: string }[];
   rooms: PaletteRoom[];
   /** The building materials rooms can be built in (T-038), bare rock first: what each adds a cell, and what it does. */
   linings: { id: string; name: string; cost: string; hint: string }[];
@@ -106,7 +107,7 @@ export function palette(state: SimState): PaletteMessage {
   used.add("circulation");
   return {
     type: "palette",
-    categories: CATEGORY_ORDER.filter((c) => used.has(c)).map((id) => ({ id, name: CATEGORY_NAMES[id] ?? id })),
+    categories: CATEGORY_ORDER.filter((c) => used.has(c)).map((id) => ({ id, name: CATEGORY_NAMES[id] ?? id, color: cssColor(CATEGORY_COLORS[id] ?? 0x888888) })),
     rooms,
     linings: MATERIALS.walls.map((w, i) => ({
       id: liningId(w),
