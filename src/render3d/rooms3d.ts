@@ -699,6 +699,8 @@ interface Stretch {
   prim: Prim;
   /** A wall stands here (not a side onto the room's own cells, nor a public room's open side). */
   wall: boolean;
+  /** No wall because a public room opens onto a corridor (or its gallery tube) here: the walls either side end at it. */
+  opens?: boolean;
   kind: WallKind;
   /** A radial step where a corridor starts or stops partway along a side. */
   step: boolean;
@@ -850,6 +852,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
     list.push({
       prim: { arc: true, r: p.rr0, s: 1 },
       wall: innerWall(p),
+      opens: c.ring === inner && (onGallery || (publicRoom && p.innerHall)),
       kind: kindOf(edgeAt(innerArcs, mid), p.innerHall),
       step: false,
       cut: { side: 1, across: (a) => fromFace(radially(p.rr0, -1)(a)), face: face(`${c.floor}:in:${p.rr0.toFixed(2)}`, c.floor) },
@@ -862,6 +865,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
   list.push({
     prim: { arc: false, theta: s1, d: base.openRight && base.hallRight ? -HALL : 0, s: -1 },
     wall: base.openRight && !(publicRoom && base.hallRight),
+    opens: base.openRight && publicRoom && base.hallRight,
     kind: kindOf(edgeById(hole, rightId) ?? undefined, base.hallRight),
     step: false,
     cut: { side: -1, across: fromFace(turning(cMid, s1 - (base.openRight && base.hallRight ? HALL / cMid : 0), 1)), face: newFace(c.floor) },
@@ -874,6 +878,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
     list.push({
       prim: { arc: true, r: p.rr1, s: -1 },
       wall: outerWall(p),
+      opens: c.ring === outer && publicRoom && p.outerHall,
       kind: kindOf(edgeAt(outerArcs, mid), p.outerHall),
       step: false,
       cut: { side: -1, across: (a) => fromFace(radially(p.rr1, 1)(a)), face: face(`${c.floor}:out:${p.rr1.toFixed(2)}`, c.floor) },
@@ -886,6 +891,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
   list.push({
     prim: { arc: false, theta: s0, d: base.openLeft && base.hallLeft ? HALL : 0, s: 1 },
     wall: base.openLeft && !(publicRoom && base.hallLeft),
+    opens: base.openLeft && publicRoom && base.hallLeft,
     kind: kindOf(edgeById(hole, leftId) ?? undefined, base.hallLeft),
     step: false,
     cut: { side: 1, across: fromFace(turning(cMid, s0 + (base.openLeft && base.hallLeft ? HALL / cMid : 0), -1)), face: newFace(c.floor) },
@@ -928,6 +934,18 @@ function solidWalls(pos: number[], s: SolidCell): void {
     // step between the two at the corner, or a slit shows down it into the hollow behind (#340). Set a
     // centimetre behind the line, so a rock face on it stands in front rather than flickering through.
     // Where the corridor stops, its end is closed right across instead (`corridorEnds`).
+    // Where a public room opens onto a corridor beside it, the wall ends there: close its end, across its
+    // thickness, or from the corridor you see into it (between the halves of a wall shared with a neighbour).
+    if (st.wall) {
+      for (const [k, pi, po] of [[(i - 1 + list.length) % list.length, pIn, pOut], [j, qIn, qOut]] as const) {
+        if (!list[k]!.opens) continue;
+        const along = outsides[k]!;
+        if (along.arc) {
+          const [a0, a1] = sorted(pi[1], po[1]);
+          if (a1 - a0 > 1e-6) curvedFace(pos, along.r, a0, a1, floorBase, y1, follow);
+        } else if (Math.abs(pi[0] - po[0]) > 1e-6) sideWall(pos, ...pi, ...po, floorBase, y1, follow);
+      }
+    }
     if (st.wall && OUTER[st.kind].d !== 0) {
       for (const [k, end] of [[(i - 1 + list.length) % list.length, false], [j, true]] as const) {
         const nb = list[k]!;

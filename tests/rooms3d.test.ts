@@ -821,4 +821,39 @@ describe("first person: ceilings and closed corridors (#340)", () => {
     });
     expect(cap).toBeGreaterThan(0);
   });
+
+  it("closes the end of the wall a public room shares with its neighbour, where it opens onto a corridor", () => {
+    // A tiny plaza (no wall onto the corridor) beside a clinic, a corridor along both their outer sides.
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const placed = placeRoom(l, "tiny_plaza", ring(2, 2, 1));
+    expect(placeRoom(l, "clinic", ring(2, 2, 2)).ok).toBe(true);
+    const plaza = l.rooms.find((x) => x.id === placed.id)!;
+    for (const slot of [1, 2]) for (const e of cellEdges(l.hole, { floor: 2, ring: 2, slot })) if (e.kind === "arc" && e.circle === 2) l.corridors[e.id] = "rock";
+    const pos = roomGeometry(l, plaza.cells, 0.06, true, true, null, [], undefined, true).getAttribute("position").array as Float32Array;
+    // Along the corridor's edge, across the plaza's half of the wall: from the border in by half a wall.
+    const side = slotAngles(1, l.hole.ringSlots[1]!)[1];
+    const edge = ringRadii(l.hole, 2)[1] - corridors.widthM / 2;
+    const end = upright(pos, (x, z) => {
+      const [r, t] = polar(x, z);
+      return Math.abs(r - edge) < 0.02 && (side - t) * r > -0.02 && (side - t) * r < WALL_T / 2 + 0.02;
+    });
+    expect(end).toBeGreaterThan(0);
+  });
+
+  it("closes it too where a public room on ring 1 opens onto its gallery tube", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    for (const e of galleryEdges(l.hole, 2)) l.corridors[e.id] = "gallery";
+    const placed = placeRoom(l, "tiny_plaza", ring(2, 1, 1));
+    expect(placeRoom(l, "clinic", ring(2, 1, 2)).ok).toBe(true);
+    const plaza = l.rooms.find((x) => x.id === placed.id)!;
+    const pos = roomGeometry(l, plaza.cells, 0.06, true, true, null, [], undefined, true).getAttribute("position").array as Float32Array;
+    // Along the shaft wall's line, across the plaza's half of the wall it shares with the clinic.
+    const side = slotAngles(1, l.hole.ringSlots[0]!)[1];
+    const shaft = ringRadii(l.hole, 1)[0];
+    const end = upright(pos, (x, z) => {
+      const [r, t] = polar(x, z);
+      return Math.abs(r - shaft) < 0.02 && (side - t) * r > -0.02 && (side - t) * r < WALL_T / 2 + 0.02;
+    });
+    expect(end).toBeGreaterThan(0);
+  });
 });
