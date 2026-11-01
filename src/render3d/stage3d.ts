@@ -581,8 +581,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (f !== null) behind.push(slab(f));
       else if (eye.y > floorSpan(1)[1]) behind.push(slab(0));
     } else if (view.mode === "walk") {
+      // Overhead, the ceilings close the corridors' open tops (#340): nothing's seen up through them.
       const f = floorAtY(eye.y);
-      if (f >= 1) behind.push(slab(f), slab(f - 1));
+      if (f >= 1) behind.push(slab(f), { ...slab(f - 1), fromBelow: [] });
     }
     const planes = view.mode === "cutaway" && !webgpu ? clips : [];
     if (!behind.length && !planes.length) return [];
@@ -1987,6 +1988,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     applySkyLight();
     if (indoor.update(belowGround() ? modeAt(lightsHeld ?? lightHour) : "surface", performance.now() / 1000)) dirty = true;
     indoor.setFixturesShown(view.mode === "walk");
+    // Ceilings only on foot: from above you look in (#340).
+    for (const o of layoutGroup.children) if (o.userData.ceiling) o.visible = view.mode === "walk";
     lampLights.place(indoor.lit,view.mode === "walk" ? new THREE.Vector3(walker.x, camera.position.y, walker.z) : camera.position, view.mode === "walk" ? walker.floor : cut());
     updateShadows();
     skyDome.follow(camera);
@@ -2024,7 +2027,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         if (!m.isMesh) return;
         const mat = m.material as THREE.Material | THREE.Material[];
         const seeThrough = Array.isArray(mat) ? mat.some((x) => x.transparent) : mat.transparent;
-        m.castShadow = !seeThrough;
+        // Ceilings (on foot only) cast none, or the shadows would change with the camera.
+        m.castShadow = !seeThrough && !m.userData.ceiling;
         m.receiveShadow = true;
       });
       // Not the sky, nor colonists (who move between redraws).

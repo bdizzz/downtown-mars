@@ -18,7 +18,8 @@ import { corridorStripGeometry } from "./rooms3d";
 // hole's outer edge (where nothing is drawn to stop it). Seen from below there
 // are more: a corridor has no ceiling, and one cut through rock is open all the
 // way up (nothing's drawn inside rock, and the land isn't drawn from beneath),
-// so every corridor under the floor is a hole in it. Never cull something that
+// so every corridor under the floor is a hole in it; except in first person,
+// which has ceilings (#340, `unseen` in stage3d.ts). Never cull something that
 // should show: every test errs toward drawing.
 
 /** How much each opening (and the shaft) is widened, and the rim drawn in, metres: room for wobble (swaying plants, lowered walls). */
