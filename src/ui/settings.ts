@@ -73,7 +73,7 @@ function cleanView3d(raw: Partial<View3d> | undefined): View3d {
     }
   }
   // The Shaft and Top cameras are gone (T-052): either falls back to Free view; an old xray flag is dropped.
-  return { camera: isCamera(v.camera) ? v.camera : DEFAULT_VIEW3D.camera, wallsDown: !!v.wallsDown, roomColors: v.roomColors ?? DEFAULT_VIEW3D.roomColors, flows: !!v.flows, cutAngle: clampCutAngle(v.cutAngle) };
+  return { camera: isCamera(v.camera) ? v.camera : DEFAULT_VIEW3D.camera, wallsDown: !!v.wallsDown, roomColors: v.roomColors ?? DEFAULT_VIEW3D.roomColors, roomTints: v.roomTints ?? DEFAULT_VIEW3D.roomTints, flows: !!v.flows, cutAngle: clampCutAngle(v.cutAngle) };
 }
 
 const KEY = storageKey("settings");
