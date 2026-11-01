@@ -34,7 +34,7 @@ import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick
 import { config } from "../sim/config";
 import { setPanelDust } from "./surface3d";
 import { refitRooms } from "../view/roomFinish";
-import { buildLayout, corridorGhostY, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
+import { buildLayout, corridorGhostY, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, statusBadge, TROUBLE_EDGE, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, makeDome, makeLander, placeLander, surfaceSpotGeometry } from "./scenery3d";
 import { makeDrillRig, type DrillRig } from "./drillRig";
 import { makeCollar } from "./collar3d";
@@ -122,6 +122,13 @@ const SHOWCASE = { turn: 0.04, dusk: 0.715, distance: 0.72, elev: 0.55, wideFrom
 type Mode = Camera;
 
 const HOVER = { ok: 0x7fd67f, bad: 0xe0503a, hover: 0xffe2b0, selected: 0xffffff };
+/**
+ * Tints laid over a room's own walls and floor (#337), in place of a recoloured outline: hover and the
+ * selection brighten them (added light, the selection more), a tool's red or green tints them, an empty
+ * slot under the pointer takes a faint wash, and trouble pulses in its colour between `pulse.low` and
+ * `pulse.high` every `pulse.seconds` (redrawn at `pulse.fps`), paused rooms a steady grey.
+ */
+const TINT = { hover: 0.09, selected: 0.18, tool: 0.38, slot: 0.18, idle: 0.3, pulse: { low: 0.08, high: 0.28, seconds: 2.4, fps: 15 } };
 /** Where a surface room in hand could go: how strongly each spot is tinted, and the one under the pointer (T-107). */
 const SPOTS = { faint: 0.12, hover: 0.3 };
 const FIELD_MAX = 3;
@@ -219,7 +226,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(digFront);
 
   // The camera and the see-through toggles: set from the View mode's buttons (setView3d).
-  const view = { mode: DEFAULT_VIEW3D.camera as Mode, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors, flows: DEFAULT_VIEW3D.flows, cutAngle: DEFAULT_VIEW3D.cutAngle };
+  const view = { mode: DEFAULT_VIEW3D.camera as Mode, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors, roomTints: DEFAULT_VIEW3D.roomTints, flows: DEFAULT_VIEW3D.flows, cutAngle: DEFAULT_VIEW3D.cutAngle };
   // Free view with a floor picked slices the land open through the hole's axis: the near half's gone.
   const slice = makeSlice({ ...SLICE, earth: C.earth });
   const groundMat = withSlice(withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 })), slice, "land");
@@ -459,16 +466,76 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const badges = new THREE.Group();
   /** What the outlines and badges were last drawn for; null after a rebuild, so they're redrawn even with no rooms in view (an empty key). */
   let troubleKey: string | null = null;
-  /** Show each room's trouble: its outline's colour, and a caution sign over its label when it's slowed or short (not when it's only paused). */
+  /** Each room's own surfaces (walls, floor, linings, wall tops), to lay its tints over, by room. */
+  let roomSkins = new Map<number, THREE.Mesh[]>();
+  /** The tints laid over rooms, by layer: trouble follows each room's status, marks the hover, selection and tools. */
+  const tinted = { trouble: new Map<number, THREE.Mesh[]>(), mark: new Map<number, THREE.Mesh[]>() };
+  /** Lay a tint over a room's surfaces, or take it off (null); false if the room has none to tint (a surface room, or not drawn). */
+  function tintRoom(layer: keyof typeof tinted, id: number, mat: THREE.Material | null): boolean {
+    for (const t of tinted[layer].get(id) ?? []) t.removeFromParent();
+    tinted[layer].delete(id);
+    const skins = roomSkins.get(id);
+    if (!skins?.length) return false;
+    if (!mat) return true;
+    const list = skins.map((s) => {
+      // The room's own geometry, so the tint drops with its walls; never disposed with the overlay.
+      const t = new THREE.Mesh(s.geometry, mat);
+      t.userData = { cached: true, tint: true };
+      t.renderOrder = layer === "mark" ? 7 : 6;
+      s.add(t);
+      return t;
+    });
+    tinted[layer].set(id, list);
+    return true;
+  }
+  function clearTints(layer: keyof typeof tinted): void {
+    for (const id of [...tinted[layer].keys()]) tintRoom(layer, id, null);
+  }
+  /** A tint's material: on the room's surfaces where they show (depth-tested), lowered with its walls. Light added brightens; otherwise a colour wash. */
+  const tintMats = new Map<string, THREE.MeshBasicMaterial>();
+  function tintMaterial(color: number, opacity: number, add = false): THREE.MeshBasicMaterial {
+    const key = `${color}:${opacity}:${add}`;
+    let m = tintMats.get(key);
+    if (!m)
+      tintMats.set(key, (m = withWallsDown(
+        new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity,
+          blending: add ? THREE.AdditiveBlending : THREE.NormalBlending,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          polygonOffset: true,
+          polygonOffsetFactor: -1,
+          polygonOffsetUnits: -1,
+        }),
+      )));
+    return m;
+  }
+  /** Trouble's tints: amber and red pulse (their opacity moved in the frame loop), grey holds steady. */
+  const pulseMats = { warn: tintMaterial(TROUBLE_EDGE.warn, TINT.pulse.low), bad: tintMaterial(TROUBLE_EDGE.bad, TINT.pulse.low) };
+  let pulsing = false;
+  let pulseClock = 0;
+  /** Show each room's trouble: a tint over its walls (or, with room tints off, its outline's colour), and a caution sign over its label when it's slowed or short (not when it's only paused). */
   function showTrouble(status: Record<number, RoomStatus>): void {
     const troubles = new Map<number, Trouble>();
     for (const id of roomOutlines.keys()) troubles.set(id, troubleOf(status[id]));
-    const key = [...troubles].map(([id, t]) => `${id}${t.level}`).join(",");
+    const key = `${view.roomTints}:` + [...troubles].map(([id, t]) => `${id}${t.level}`).join(",");
     if (key === troubleKey) return;
     troubleKey = key;
+    clearTints("trouble");
+    pulsing = false;
     for (const [id, edges] of roomOutlines) {
-      const t = troubles.get(id)!;
-      edges.material = t.level === "ok" || t.level === "work" ? (edges.userData.baseMaterial as THREE.Material) : troubleEdgeMaterial(t.level);
+      const { level } = troubles.get(id)!;
+      const base = edges.userData.baseMaterial as THREE.Material;
+      if (level === "ok" || level === "work") {
+        edges.material = base;
+        continue;
+      }
+      edges.material = view.roomTints ? base : troubleEdgeMaterial(level);
+      if (!view.roomTints) continue;
+      tintRoom("trouble", id, level === "idle" ? tintMaterial(TROUBLE_EDGE.idle, TINT.idle) : pulseMats[level]);
+      if (level !== "idle") pulsing = true;
     }
     badges.clear();
     for (const [id, t] of troubles) {
@@ -1052,9 +1119,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     overlay.add(mesh);
   }
 
+  /** Mark a room: a tint over its walls (brighter for the selection than the hover; a tool's red or green), or with room tints off its outline in that colour. */
   function markRoom(room: RoomInstance, color: number): void {
-    if (room.at.kind === "surface") surfaceMarker(room.surfaceCells, color);
-    else outline(room.cells, color);
+    if (room.at.kind === "surface") return surfaceMarker(room.surfaceCells, color);
+    if (view.roomTints) {
+      const mat = color === HOVER.hover ? tintMaterial(0xffffff, TINT.hover, true) : color === HOVER.selected ? tintMaterial(0xffffff, TINT.selected, true) : tintMaterial(color, TINT.tool);
+      if (tintRoom("mark", room.id, mat)) return;
+    }
+    outline(room.cells, color);
   }
 
   /** The room's strongest effect, spread the way the sim spreads it, as tinted cells. */
@@ -1103,7 +1175,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     overlay.add(edges);
   }
 
+  /** What the overlay was last drawn for, to redraw it when the rooms are rebuilt (their tints go with them). */
+  let shownHover: HoverInfo | null = null;
   function drawOverlay(info: HoverInfo | null): void {
+    shownHover = info;
+    clearTints("mark");
     scene.remove(overlay);
     overlay.traverse((o) => {
       if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) o.geometry.dispose();
@@ -1146,7 +1222,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const color = info.check.ok ? HOVER.ok : HOVER.bad;
       const cells = info.check.cells.length ? info.check.cells : p.kind === "slot" ? [p as Cell] : [];
       fillCells(cells, color, 0.4);
-      outline(cells, color);
+      if (!view.roomTints) outline(cells, color);
       if (info.check.ok && spots.length) surfaceSpotTint(info.check.surfaceCells, HOVER.ok, SPOTS.hover);
       if (info.check.surfaceCells.length) surfaceMarker(info.check.surfaceCells, color);
       if (info.check.ok && cells.length) drawHalo(tool.room, cells);
@@ -1171,7 +1247,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (info.room.id !== selected || tool?.kind === "demolish") markRoom(info.room, tool?.kind === "demolish" ? HOVER.bad : HOVER.hover);
       return;
     }
-    if (p.kind === "slot" && highlightsSlot(layout, p, building)) outline([p as Cell], HOVER.hover);
+    if (p.kind === "slot" && highlightsSlot(layout, p, building)) {
+      if (view.roomTints) fillCells([p as Cell], HOVER.hover, TINT.slot);
+      else outline([p as Cell], HOVER.hover);
+    }
   }
 
   /** Tint cells by an effect, or homes by happiness, banded so each band is one mesh. */
@@ -1884,6 +1963,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       layoutKey = ""; // rebuild with the rooms' new materials on the next update
       if (latest) stage.update(latest);
     }
+    if (!!v.roomTints !== view.roomTints) {
+      view.roomTints = !!v.roomTints;
+      troubleKey = null;
+      if (latest) showTrouble(latest.roomStatus);
+      drawOverlay(shownHover);
+    }
     if (v.wallsDown !== view.wallsDown) {
       view.wallsDown = v.wallsDown;
       setWallsDown(view.wallsDown);
@@ -1955,6 +2040,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (slice.on.value > 0.5 && slice.amount.value < 1) {
       slice.amount.value = Math.min(1, slice.amount.value + dt / SLICE.seconds);
       applyBackground();
+      dirty = true;
+    }
+    // Rooms in trouble pulse gently, redrawn a few times a second.
+    pulseClock += dt;
+    if (pulsing && view.roomTints && pulseClock >= 1 / TINT.pulse.fps) {
+      pulseClock = 0;
+      const wave = 0.5 - 0.5 * Math.cos((performance.now() / 1000 / TINT.pulse.seconds) * TAU);
+      pulseMats.warn.opacity = pulseMats.bad.opacity = TINT.pulse.low + (TINT.pulse.high - TINT.pulse.low) * wave;
       dirty = true;
     }
     if (graphics.life && hole && ambient >= 1 / AMBIENT_FPS) {
@@ -2140,6 +2233,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         // For the dev console: timings, plus a synchronous render timed through the GPU.
         (window as unknown as { __stage3d: unknown }).__stage3d = {
           ...stats,
+          // The rooms tinted now (#337): by trouble, and by the hover or selection.
+          tints: () => ({ trouble: tinted.trouble.size, mark: tinted.mark.size, skins: roomSkins.size, outlines: roomOutlines.size, pulsing, on: view.roomTints, key: troubleKey }),
           measure(): number {
             const t0 = performance.now();
             renderer.render(scene, camera);
@@ -2147,7 +2242,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             return performance.now() - t0;
           },
           setMode(m: Mode) {
-            setView3d({ camera: m, wallsDown: view.wallsDown, roomColors: view.roomColors, flows: view.flows, cutAngle: view.cutAngle });
+            setView3d({ camera: m, wallsDown: view.wallsDown, roomColors: view.roomColors, roomTints: view.roomTints, flows: view.flows, cutAngle: view.cutAngle });
           },
           // First person's position and heading, to put a walker somewhere.
           walker,
@@ -2363,10 +2458,17 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         indoor.build(snapshot.layout, furnitureGroups, cut());
         showPools();
         sunPools.build(snapshot.layout, cut());
-        // Each built room's outline and label, to show its trouble on.
+        // Each built room's outline, label and surfaces, to show its trouble and marks on.
         roomOutlines = new Map();
         roomLabels = new Map();
+        roomSkins = new Map();
+        tinted.trouble.clear();
+        tinted.mark.clear();
         layoutGroup.traverse((o) => {
+          if (o instanceof THREE.Mesh && o.userData.pickable && !o.userData.surface && typeof o.userData.roomId === "number") {
+            const id = o.userData.roomId as number;
+            roomSkins.set(id, [...(roomSkins.get(id) ?? []), o]);
+          }
           if (o.userData.outline && o instanceof THREE.LineSegments) {
             o.userData.baseMaterial ??= o.material;
             roomOutlines.set(o.userData.roomId as number, o);
@@ -2374,6 +2476,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           if (o.userData.label && typeof o.userData.roomId === "number") roomLabels.set(o.userData.roomId as number, o);
         });
         troubleKey = null;
+        drawOverlay(shownHover);
         // The floor picked changed: hidden furniture's sparks and steam go with it.
         roomFx.setView(fxView());
         dirty = true;

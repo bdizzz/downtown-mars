@@ -48,6 +48,7 @@ These matter more than style, because the game is a placement puzzle.
 4. **Overlays sit on top of the art,** so art must stay mid-value: no pure black or white fills that would swallow a red or green heat-map tint.
 5. **Blueprints are outlines,** translucent fill in the category colour. Stranded rooms get a red outline and a warning mark.
 6. **Walls are solid, 0.25 m thick** (`wallThicknessM` in `data/config.json`), centred on the edge line: one wall between two rooms (each builds its half), and the same thickness along corridors, gallery tubes and rock, so a room gives up 0.125 m on each walled side. Wall tops are always bare rock, whatever the room is built from or coloured, and doors and windows cut through them with reveals (T-001).
+7. **A room's state tints its surfaces, not its outline** (#337): hover adds a little light over its walls and floor, the selection more; trouble washes them amber or red, pulsing gently, or a steady grey when paused; tools tint red or green. The outline keeps its base colour. (`TINT` in `render3d/stage3d.ts`; the View → Room tints toggle brings the coloured outlines back.)
 
 ## The icon set
 

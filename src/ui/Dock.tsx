@@ -155,6 +155,15 @@ export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverla
           Room colours
         </button>
         <button
+          className={`dock-btn${in3d && view3d.roomTints ? " on" : ""}`}
+          disabled={!in3d}
+          onClick={() => setView3d({ ...view3d, roomTints: !view3d.roomTints })}
+          title={in3d ? "Rooms brighten when hovered or picked, and pulse amber or red when in trouble; off, they're outlined in those colours instead" : "In the 3D views"}
+          aria-pressed={view3d.roomTints}
+        >
+          Room tints
+        </button>
+        <button
           className={`dock-btn${in3d && view3d.flows ? " on" : ""}`}
           disabled={!in3d}
           onClick={() => setView3d({ ...view3d, flows: !view3d.flows })}

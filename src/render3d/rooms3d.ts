@@ -1734,8 +1734,8 @@ export function statusBadge(icon: string): THREE.Sprite {
   return sprite;
 }
 
-/** Outlines for rooms in trouble: amber when slowed (staff, morale, the weather), red when short of what they run on, grey when paused. */
-const TROUBLE_EDGE = { warn: 0xf0a030, bad: 0xe0503a, idle: 0x9a9a9a } as const;
+/** Rooms in trouble, in colour (as tints over their walls, or with room tints off as outlines): amber when slowed (staff, morale, the weather), red when short of what they run on, grey when paused. */
+export const TROUBLE_EDGE = { warn: 0xf0a030, bad: 0xe0503a, idle: 0x9a9a9a } as const;
 const troubleEdges = new Map<string, THREE.LineBasicMaterial>();
 export function troubleEdgeMaterial(level: keyof typeof TROUBLE_EDGE): THREE.LineBasicMaterial {
   let m = troubleEdges.get(level);

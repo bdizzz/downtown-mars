@@ -17,6 +17,8 @@ export interface View3d {
   wallsDown: boolean;
   /** Rooms in their category's colour (on), or in the material they're built from: rock, marscrete, brick, metal (off). */
   roomColors: boolean;
+  /** Rooms marked by tints over their walls (on): brighter when hovered or picked, pulsing when in trouble; off, by coloured outlines. */
+  roomTints: boolean;
   /** Resource networks drawn as pipes: power, water, air and food, flowing from what makes them to what uses them. */
   flows: boolean;
   /** Cutaway: how wide a wedge the cut takes out of the hole, in degrees, centred on the camera: 180 slices it flat through the axis. */
@@ -31,7 +33,7 @@ export function clampCutAngle(deg: unknown): number {
   return typeof deg === "number" && Number.isFinite(deg) ? Math.round(Math.min(CUT_ANGLE.max, Math.max(CUT_ANGLE.min, deg))) : CUT_ANGLE.max;
 }
 
-export const DEFAULT_VIEW3D: View3d = { camera: "iso", wallsDown: false, roomColors: true, flows: false, cutAngle: CUT_ANGLE.max };
+export const DEFAULT_VIEW3D: View3d = { camera: "iso", wallsDown: false, roomColors: true, roomTints: true, flows: false, cutAngle: CUT_ANGLE.max };
 
 export function isCamera(id: unknown): id is Camera {
   return CAMERAS.some((c) => c.id === id);
