@@ -13,16 +13,73 @@ import { allows, contentsOf, spaceOf, STORABLE, usedSpace } from "../sim/storage
 import type { Snapshot } from "../sim/snapshot";
 import { glazedWalls, sunlight, windowComfort, type Across } from "../sim/windows";
 import { dining, hoursText, num, ordinal, resName, signed } from "../ui/format";
+import { CONDITION, hasCondition } from "../sim/condition";
+import { isIcon, type IconId } from "./icons";
 import { reachSteps, reachTints } from "./reachView";
+import { roomState, roomTone, statusWord, type Tone } from "./roomState";
 
-// What the room panel says about a room, as rows of text: shared by the web's inspector
-// (ui/Inspector.tsx) and the Godot viewer's (bridge/inspect.ts), so both say the same.
+// What the room panel says about a room: shared by the web's inspector (ui/Inspector.tsx) and the
+// Godot viewer's (bridge/inspect.ts), so both say the same. `panelModel` is the whole panel as data
+// (status, headline, alerts, glance, sections: docs/PLAN-M18.md §7); `panelRows` the flat rows.
 
-/** A line of the panel: an optional label (dimmed), its text, and whether it's a warning. */
+/** A meter from 0 to max (condition, staff), and a signed one from −range to +range (noise −1.6 of 3). */
+export interface Meter {
+  value: number;
+  max: number;
+}
+export interface Signed {
+  value: number;
+  range: number;
+}
+
+/** A line of the panel: an optional label (dimmed), its text (always a whole sentence), and whether it's a warning. */
 export interface Row {
   k?: string;
   text: string;
   warn?: boolean;
+  icon?: IconId;
+  tone?: Tone;
+  signed?: Signed;
+  tip?: string;
+}
+
+export type SectionId = "work" | "home" | "serves" | "surroundings" | "building" | "kit" | "storage";
+
+/** An icon and a short value, with what it is (its label) and maybe a meter, a tone and a longer tip. */
+export interface Chip {
+  icon: IconId;
+  value: string;
+  label: string;
+  tone?: Tone;
+  meter?: Meter;
+  signed?: Signed;
+  tip?: string;
+  section?: SectionId;
+}
+
+/** A warning raised to the top of the panel, naming the section it comes from. */
+export interface Alert {
+  text: string;
+  tone: "warn" | "bad";
+  section: SectionId;
+  action?: "connect";
+}
+
+export interface Section {
+  id: SectionId;
+  title: string;
+  icon: IconId;
+  open: boolean;
+  rows: Row[];
+  chips?: Chip[];
+}
+
+export interface PanelModel {
+  status: { text: string; tone: Tone; tip: string };
+  headline: Chip[];
+  alerts: Alert[];
+  glance: Chip[];
+  sections: Section[];
 }
 
 type Room = Snapshot["layout"]["rooms"][number];
@@ -250,42 +307,240 @@ export function seedKitInfo(s: Snapshot): { progress: number; goods: string; but
   return { progress: s.kit.progress, goods, button, note };
 }
 
-/**
- * The panel's rows after its controls at the top (construction, condition, storage, connect): staff and
- * flows (`before`), then (after the seed kit, if any) what it does for the hole and what reaches it (`after`).
- */
-export function panelRows(s: Snapshot, room: RoomInstance): { before: Row[]; after: Row[] } {
+/** A row of the panel, where today's flat list puts it (before or after the seed kit) and the section it belongs in. */
+interface Entry {
+  part: "before" | "after";
+  section: SectionId;
+  row: Row;
+}
+
+/** Each row label's icon, where it has one. */
+const ROW_ICONS: Record<string, IconId> = {
+  Staff: "workers",
+  Residents: "colonists",
+  Houses: "colonists",
+  Happiness: "happiness",
+  Noise: "noise",
+  Comfort: "comfort",
+  Wellbeing: "health",
+  Teaches: "school",
+  "Cares for": "clinic",
+  "Restroom for": "restroom",
+  Restroom: "restroom",
+  Seats: "seat",
+  Meals: "meals",
+  Walls: "walls",
+  Windows: "window",
+  Crowded: "air",
+  "Within reach": "clinic",
+  "On foot": "reach",
+  Reaches: "reach",
+  "Felt here": "smell",
+  Bothers: "alert",
+};
+
+/** Every row of the panel, in the order today's flat list has them, each tagged with its section. */
+function panelEntries(s: Snapshot, room: RoomInstance): Entry[] {
   const def = roomDef(room.type);
   const spec = roomSpec(room, config);
   const st = s.roomStatus[room.id];
-  const before: (Row | null)[] = [
-    spec.staff > 0 ? { k: "Staff", text: `${st?.staff ?? 0} / ${spec.staff}` } : null,
-    flows("Uses/month", spec.uses),
-    flows("Makes/month", spec.makes),
-    flows("Scrubs/month", spec.scrubs),
-    flows("Stores", spec.stores),
+  const ring = room.at.kind === "ring";
+  const tagged = (part: Entry["part"], section: SectionId, rows: (Row | null)[]): Entry[] => rows.filter((r): r is Row => !!r).map((row) => ({ part, section, row }));
+  const entries = [
+    ...tagged("before", "work", [
+      spec.staff > 0 ? { k: "Staff", text: `${st?.staff ?? 0} / ${spec.staff}` } : null,
+      flows("Uses/month", spec.uses),
+      flows("Makes/month", spec.makes),
+      flows("Scrubs/month", spec.scrubs),
+      flows("Stores", spec.stores),
+    ]),
+    ...tagged("after", "home", def.houses ? homeRows(s, room.id, def.houses) : []),
+    ...tagged("after", "serves", [
+      def.teaches
+        ? { k: "Teaches", text: `up to ${def.teaches} children · ${s.care.school.who} in the hole, ${s.care.school.missing > 0 ? `${num(s.care.school.missing)} without a place` : "all with a place"}` }
+        : null,
+      def.rests ? { k: "Rests", text: `up to ${def.rests} · ${s.rest.interred} laid to rest here, ${s.rest.space} places left` } : null,
+      def.caresForElders
+        ? { k: "Cares for", text: `up to ${def.caresForElders} elders · ${s.care.elders.who} in the hole, ${s.care.elders.missing > 0 ? `${num(s.care.elders.missing)} without care` : "all cared for"}` }
+        : null,
+      spec.sanitation > 0 ? { k: "Restroom for", text: `${num(spec.sanitation)} people from homes within ${def.reach ?? 0} steps · ${sanitation(s)}` } : null,
+      spec.serves > 0 ? { k: "Seats", text: `${num(spec.serves)} diners · ${dining(s)}` } : null,
+    ]),
+    ...tagged("after", "building", [canLine(room) ? { k: "Walls", text: liningText(room) } : null]),
+    ...tagged("after", "surroundings", [
+      ring && !def.public ? windowsRow(s, room) : null,
+      def.houses && crowdedAir(s, room) < -0.01 ? { k: "Crowded", text: `air ${signed(crowdedAir(s, room))}: more than ${config.effects.crowding.perCell} to a cell gets stuffy`, warn: true } : null,
+    ]),
+    ...tagged("after", "home", def.houses ? withinReachRows(s, room) : []),
+    ...tagged("after", "serves", [reachesRow(s, room)]),
+    ...tagged("after", "surroundings", [ring ? feltRow(s, room) : null, ...(ring ? feltByRows(s, room.id) : [])]),
   ];
-  const after: (Row | null)[] = [
-    ...(def.houses ? homeRows(s, room.id, def.houses) : []),
-    def.teaches
-      ? { k: "Teaches", text: `up to ${def.teaches} children · ${s.care.school.who} in the hole, ${s.care.school.missing > 0 ? `${num(s.care.school.missing)} without a place` : "all with a place"}` }
-      : null,
-    def.rests ? { k: "Rests", text: `up to ${def.rests} · ${s.rest.interred} laid to rest here, ${s.rest.space} places left` } : null,
-    def.caresForElders
-      ? { k: "Cares for", text: `up to ${def.caresForElders} elders · ${s.care.elders.who} in the hole, ${s.care.elders.missing > 0 ? `${num(s.care.elders.missing)} without care` : "all cared for"}` }
-      : null,
-    spec.sanitation > 0 ? { k: "Restroom for", text: `${num(spec.sanitation)} people from homes within ${def.reach ?? 0} steps · ${sanitation(s)}` } : null,
-    spec.serves > 0 ? { k: "Seats", text: `${num(spec.serves)} diners · ${dining(s)}` } : null,
-    canLine(room) ? { k: "Walls", text: liningText(room) } : null,
-    room.at.kind === "ring" && !def.public ? windowsRow(s, room) : null,
-    def.houses && crowdedAir(s, room) < -0.01 ? { k: "Crowded", text: `air ${signed(crowdedAir(s, room))}: more than ${config.effects.crowding.perCell} to a cell gets stuffy`, warn: true } : null,
-    ...(def.houses ? withinReachRows(s, room) : []),
-    reachesRow(s, room),
-    room.at.kind === "ring" ? feltRow(s, room) : null,
-    ...(room.at.kind === "ring" ? feltByRows(s, room.id) : []),
-  ];
-  const keep = (rows: (Row | null)[]) => rows.filter((r): r is Row => !!r);
-  return { before: keep(before), after: keep(after) };
+  for (const { row } of entries) {
+    const icon = row.k ? ROW_ICONS[row.k] : undefined;
+    if (icon) row.icon = icon;
+    if (row.warn) row.tone = "warn";
+  }
+  return entries;
+}
+
+/**
+ * The panel's rows after its controls at the top (construction, condition, storage, connect): staff and
+ * flows (`before`), then (after the seed kit, if any) what it does for the hole and what reaches it (`after`).
+ * The same rows `panelModel` sorts into sections, in the order the viewers draw them today.
+ */
+export function panelRows(s: Snapshot, room: RoomInstance): { before: Row[]; after: Row[] } {
+  const entries = panelEntries(s, room);
+  const part = (p: Entry["part"]) => entries.filter((e) => e.part === p).map((e) => e.row);
+  return { before: part("before"), after: part("after") };
+}
+
+/** Each section's title and icon, in the order the panel shows them. */
+const SECTIONS: Record<SectionId, { title: string; icon: IconId }> = {
+  work: { title: "Work", icon: "workers" },
+  home: { title: "Home", icon: "colonists" },
+  serves: { title: "Serves", icon: "reach" },
+  surroundings: { title: "Surroundings", icon: "air" },
+  building: { title: "Building", icon: "walls" },
+  kit: { title: "Seed kit", icon: "crate" },
+  storage: { title: "Storage", icon: "crate" },
+};
+
+/** The neighbour effects as felt (and a home's factors) run −3..+3. */
+const FELT_RANGE = 3;
+const FELT_ICONS: Record<string, IconId> = { noise: "noise", smell: "smell", health: "health", comfort: "comfort", airQuality: "air" };
+
+const signedTone = (v: number): Tone => (v <= -1 ? "bad" : v < -0.05 ? "warn" : v >= 0.05 ? "good" : "idle");
+const shareChip = (icon: IconId, label: string, v: number, section: SectionId): Chip => ({
+  icon,
+  label,
+  value: v >= 0.98 ? "✓" : `${Math.round(v * 100)}%`,
+  tone: v >= 0.98 ? "good" : "warn",
+  meter: { value: v, max: 1 },
+  section,
+});
+
+/** The room's few numbers that matter most: staff and main output, a home's residents and happiness, a store's fill. */
+function headlineChips(s: Snapshot, room: RoomInstance): Chip[] {
+  const def = roomDef(room.type);
+  const spec = roomSpec(room, config);
+  const chips: Chip[] = [];
+  if (def.houses) {
+    const pool = s.happiness.pools.find((p) => p.roomId === room.id);
+    const residents = pool?.residents ?? 0;
+    chips.push({ icon: "colonists", label: "Residents", value: `${residents}/${def.houses}`, meter: { value: residents, max: def.houses }, section: "home" });
+    if (pool) {
+      const trend = pool.target > pool.happiness + 1 ? " ↑" : pool.target < pool.happiness - 1 ? " ↓" : "";
+      chips.push({
+        icon: "happiness",
+        label: "Happiness",
+        value: `${Math.round(pool.happiness)}${trend}`,
+        tone: pool.happiness < 50 ? "bad" : "good",
+        meter: { value: pool.happiness, max: 100 },
+        tip: `Heading for ${Math.round(pool.target)}`,
+        section: "home",
+      });
+    }
+    return chips;
+  }
+  if (spec.staff > 0) {
+    const staff = s.roomStatus[room.id]?.staff ?? 0;
+    chips.push({ icon: "workers", label: "Staff", value: `${staff}/${spec.staff}`, ...(staff < spec.staff ? { tone: "warn" as const } : {}), meter: { value: staff, max: spec.staff }, section: "work" });
+  }
+  const out = mainOutput(room, config);
+  if (out) chips.push({ icon: isIcon(out) ? out : "machinery", label: resName(out), value: `${num(spec.makes[out] ?? 0)}/mo`, section: "work" });
+  const store = storageInfo(room);
+  if (store) chips.push({ icon: "crate", label: "Storage", value: `${num(store.used)}/${store.space}`, meter: { value: store.used, max: store.space }, section: "storage" });
+  else if (!out) {
+    // A tank: what it holds, and how much.
+    const held = Object.entries(spec.stores).find(([, v]) => v > 0);
+    if (held) chips.push({ icon: isIcon(held[0]) ? held[0] : "crate", label: resName(held[0]), value: num(held[1]), tip: `Stores ${num(held[1])} ${resName(held[0]).toLowerCase()}`, section: "work" });
+  }
+  return chips;
+}
+
+/** The at-a-glance band: condition, what's felt here (a home: its factors, meals and restroom), and a service's reach. */
+function glanceChips(s: Snapshot, room: RoomInstance): Chip[] {
+  const def = roomDef(room.type);
+  const chips: Chip[] = [];
+  if (!room.planned && !room.building && hasCondition(room)) {
+    const v = room.condition ?? 1;
+    const note = conditionNote(s, room.id, room.repair);
+    chips.push({
+      icon: "condition",
+      label: "Condition",
+      value: `${Math.round(v * 100)}%`,
+      tone: v <= 0 ? "bad" : v < CONDITION.wornBelow ? "warn" : "good",
+      meter: { value: v, max: 1 },
+      ...(note ? { tip: note } : {}),
+      section: "building",
+    });
+  }
+  const pool = def.houses ? s.happiness.pools.find((p) => p.roomId === room.id) : undefined;
+  if (pool) {
+    for (const f of ["comfort", "noise", "health"] as const) {
+      const v = pool.factors[f];
+      chips.push({ icon: FELT_ICONS[f]!, label: DIAGNOSIS.factors[f] ?? f, value: signed(v), tone: signedTone(v), signed: { value: v, range: FELT_RANGE }, section: "home" });
+    }
+    const seated = s.population.servedByHome?.[room.id];
+    if (seated !== undefined) chips.push(shareChip("meals", "Meals", seated, "home"));
+    const wc = s.population.sanitationByHome?.[room.id];
+    if (!def.ownBathroom && wc !== undefined) chips.push(shareChip("restroom", "Restroom", wc, "home"));
+  } else if (room.at.kind === "ring") {
+    for (const t of FIELD_TYPES) {
+      const v = effectOnRoom(s.effects, t, room);
+      if (Math.abs(v) < 0.05) continue;
+      chips.push({ icon: FELT_ICONS[t] ?? "air", label: effectName(t), value: signed(v), tone: signedTone(v), signed: { value: v, range: FELT_RANGE }, section: "surroundings" });
+    }
+  }
+  const tints = reachTints(s.layout, room.id);
+  if (tints) {
+    const within = tints.filter((t) => t.steps !== null).length;
+    chips.push({ icon: "reach", label: "Reach", value: `${within}/${tints.length} homes`, meter: { value: within, max: tints.length }, section: "serves" });
+  }
+  return chips;
+}
+
+/** A section with no rows still shows when it holds the room's controls (crop, priority, demolish, the kit, storage). */
+function hasControls(id: SectionId, room: RoomInstance): boolean {
+  const def = roomDef(room.type);
+  if (id === "work") return roomSpec(room, config).staff > 0 || !!def.growsCrops || !!holding(room) || fillsTanks(room);
+  if (id === "building") return !!def.buildable || canLine(room);
+  if (id === "kit") return !!def.stagesSeedKit;
+  if (id === "storage") return !!storageInfo(room);
+  return false;
+}
+
+/** Is a section open before the player opens or closes it? Its kind of room's own, and any holding a warning. */
+function openByDefault(id: SectionId, room: RoomInstance, rows: Row[]): boolean {
+  const def = roomDef(room.type);
+  if (rows.some((r) => r.warn)) return true;
+  if (id === "work") return roomSpec(room, config).staff > 0;
+  if (id === "home") return !!def.houses;
+  if (id === "serves") return !def.houses;
+  if (id === "building") return room.planned || !!room.building;
+  return id === "kit" || id === "storage";
+}
+
+/** The whole room panel as data (docs/PLAN-M18.md §7), for both viewers to draw. */
+export function panelModel(s: Snapshot, room: RoomInstance): PanelModel {
+  const st = s.roomStatus[room.id];
+  const entries = panelEntries(s, room);
+  const job = room.building ? s.construction.jobs.find((j) => j.roomId === room.id) : undefined;
+  const tone = roomTone(room, st);
+  const status = { text: statusWord(room, st, job?.progress), tone, tip: roomState(s.layout, room, st) };
+
+  const sections: Section[] = (Object.keys(SECTIONS) as SectionId[])
+    .map((id) => ({ id, rows: entries.filter((e) => e.section === id).map((e) => e.row) }))
+    .filter(({ id, rows }) => rows.length > 0 || hasControls(id, room))
+    .map(({ id, rows }) => ({ id, ...SECTIONS[id], open: openByDefault(id, room, rows), rows }));
+
+  // The room's own state first (cut off, short of an input, slowed), then every warning row.
+  const alerts: Alert[] = [];
+  if (!room.planned && !room.connected) alerts.push({ text: status.tip, tone: "bad", section: "building", ...(room.at.kind === "ring" ? { action: "connect" as const } : {}) });
+  else if (tone === "bad" || tone === "warn") alerts.push({ text: status.tip, tone, section: "work" });
+  for (const { section, row } of entries) if (row.warn) alerts.push({ text: row.k ? `${row.k}: ${row.text}` : row.text, tone: "warn", section });
+
+  return { status, headline: headlineChips(s, room), alerts, glance: glanceChips(s, room), sections };
 }
 
 /** Stop at: the output a room can stand by on, and a suggested level (a little over what's in store). */
