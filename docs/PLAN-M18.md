@@ -200,3 +200,14 @@ Each is one PR that leaves both viewers working.
 - [x] Demolish at the bottom of Building, or behind a ⋯ menu in the header? → The bottom of Building (Bryon, Oct 25).
 
 ## Notes as built
+
+**Step 1, the panel model ([#306](https://github.com/bdizzz/downtown-mars/issues/306)).** `panelModel(s, room)` in `view/roomPanel.ts` returns the types in §7 (`Tone` lives in `view/roomState.ts`, beside `roomTone()` and `statusWord()`, the pill's few words). Nothing on screen changed: both viewers still draw `panelRows`.
+- One list feeds both. `panelEntries()` (private) makes every row once, in today's order, tagged with its section and whether it comes before or after the seed kit. `panelModel` groups them into sections; `panelRows` keeps today's order. The rows are the same objects in both, so a row's icon and tone show up in the flat list too (the viewers ignore them for now). A test checked every room in the four dev saves against main's `panelRows`: same labels, text and warnings.
+- Rows get an icon from their label (`ROW_ICONS`). A warning row also gets the `warn` tone, and its section opens.
+- **Alerts:** first the room's own state, when its tone is `bad` or `warn` (the `roomState` sentence; "cut off" carries `action: "connect"` and points at Building), then one per warning row, as "Label: text".
+- **Headline:** a home shows residents and happiness. A working room shows staff and its `mainOutput` a month (resources without an icon of their own use `machinery`). A storage room shows `used/space`. A tank shows what it stores, not how full it is, because the sim keeps no per-tank fill (only the hole's stock against its total capacity). Step 2 can revisit that.
+- **Glance:** condition (tone from `CONDITION.wornBelow`, with the repair note as its tip). Then a home's comfort, noise and wellbeing as signed meters (±3), plus meals and restroom; any other ring room gets what's felt there. A service or amenity adds its reach.
+- **Sections:** a section shows when it has rows or holds controls (Work for staffed rooms, crops, tanks and tank fill; Building for anything buildable or lined; the kit; storage). It's open by default by kind of room, or when it holds a warning.
+- **New icons:** `comfort`, `noise`, `smell`, `air`, `reach`, `walls`, `window`, `seat`, `school`, `clinic`, `restroom`, `crate` and `chevron`. Godot gets them through the `icons` message as usual.
+- The bridge sends the model as `inspected.model`. Godot doesn't read it yet, so it needed no C# change.
+- A room with no work (the landing pod) has no state line and no status pill (text `""`, tone `idle`), just as it has no state line today.
