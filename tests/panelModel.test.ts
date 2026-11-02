@@ -72,8 +72,13 @@ describe("the room panel model (#306)", () => {
     expect(roomTone(built, { rate: 0.5, limit: "staff" })).toBe("warn");
     expect(roomTone(built, { rate: 0, limit: "water" })).toBe("bad");
     expect(roomTone(built, { rate: 0, limit: "broken" })).toBe("bad");
+    // Quiet hours slow noisy rooms; at full rate a leftover limit holds nothing back (#310).
+    expect(roomTone(built, { rate: 0.95, limit: "ordinance" })).toBe("warn");
+    expect(roomTone(built, { rate: 1, limit: "power" })).toBe("good");
     expect(roomTone({ planned: true, connected: false }, undefined)).toBe("info");
     const room = makeSnapshot(createInitialState(config), config).layout.rooms[0]!;
     expect(statusWord({ ...room, planned: false, connected: true }, { staff: 0, staffNeeded: 1, rate: 0, limit: "water" })).toBe("Short of water");
+    expect(statusWord({ ...room, planned: false, connected: true }, { staff: 1, staffNeeded: 1, rate: 0.95, limit: "ordinance" })).toBe("Slowed");
+    expect(statusWord({ ...room, planned: false, connected: true }, { staff: 1, staffNeeded: 1, rate: 1, limit: "power" })).toBe("Running");
   });
 });

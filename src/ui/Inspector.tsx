@@ -1,9 +1,6 @@
 import { ROOM_NAME_MAX, roomName } from "../sim/roomName";
 import type { RoomInstance } from "../sim/placement";
 import { RoomName } from "./RoomName";
-import { cssColor } from "../render2d/palette";
-import { hasCondition } from "../sim/condition";
-import { conditionColor } from "../view/conditionView";
 import { useState, type ReactNode } from "react";
 import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
@@ -15,7 +12,7 @@ import { corridors, finishDef } from "../sim/corridors";
 import { num, resName } from "./format";
 import { Icon } from "./Icon";
 import { useOpenSections } from "./settings";
-import { conditionNote, constructionInfo, fillsTanks, floorOptions, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type Alert, type Chip, type Row, type Section, type SectionId } from "../view/roomPanel";
+import { constructionInfo, fillsTanks, floorOptions, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type Alert, type Chip, type Row, type Section, type SectionId } from "../view/roomPanel";
 
 interface Props {
   s: Snapshot;
@@ -26,19 +23,46 @@ interface Props {
   onClose: () => void;
 }
 
-/** Rows of a section (view/roomPanel.ts): an icon, a dimmed label, then the text, in its tone. */
+/** Rows of a section (view/roomPanel.ts): an icon, a dimmed label, then the text (or its resources as chips), in its tone; the longer version as a tooltip. */
 function Rows({ rows }: { rows: Row[] }) {
   return (
     <>
       {rows.map((r, i) => (
-        <p key={i} className={`row${r.tone ? ` tone-${r.tone}` : ""}`} title={r.tip}>
+        <p key={i} className={`row${r.tone ? ` tone-${r.tone}` : ""}${r.tip ? " has-tip" : ""}`} title={r.tip}>
           {r.icon && <Icon id={r.icon} size={13} />}
           <span>
-            {r.k && <span className="k">{r.k}</span>} {r.text}
+            {r.k && <span className="k">{r.k}</span>}{" "}
+            {r.chips ? (
+              <span className="chips">
+                {r.chips.map((c, j) => (
+                  <ChipView key={j} chip={c} />
+                ))}
+              </span>
+            ) : (
+              r.text
+            )}
           </span>
         </p>
       ))}
     </>
+  );
+}
+
+/** A meter under a glance chip: filled from the left (0..max), or signed, from the middle out (−range..+range). */
+function MeterView({ chip }: { chip: Chip }) {
+  if (chip.signed) {
+    const f = Math.max(-1, Math.min(1, chip.signed.value / chip.signed.range)) / 2;
+    return (
+      <span className="meter signed">
+        <span style={{ left: `${50 + Math.min(0, f) * 100}%`, width: `${Math.abs(f) * 100}%` }} />
+      </span>
+    );
+  }
+  if (!chip.meter) return null;
+  return (
+    <span className="meter">
+      <span style={{ width: `${Math.max(0, Math.min(1, chip.meter.value / (chip.meter.max || 1))) * 100}%` }} />
+    </span>
   );
 }
 
@@ -52,12 +76,13 @@ function StatusPill({ status }: { status: { text: string; tone: string; tip: str
   );
 }
 
-/** A headline chip: an icon and a short value, its label (and any tip) as the tooltip. */
-function ChipView({ chip }: { chip: Chip }) {
+/** A chip: an icon and a short value, its label (and any tip) as the tooltip; at a glance, a meter under it too. */
+function ChipView({ chip, meter }: { chip: Chip; meter?: boolean }) {
   return (
-    <span className={`chip${chip.tone ? ` tone-${chip.tone}` : ""}`} title={chip.tip ? `${chip.label}: ${chip.tip}` : chip.label}>
+    <span className={`chip${chip.tone ? ` tone-${chip.tone}` : ""}${meter ? " glance" : ""}`} title={chip.tip ? `${chip.label}: ${chip.tip}` : chip.label}>
       <Icon id={chip.icon} size={13} />
       {chip.value}
+      {meter && <MeterView chip={chip} />}
     </span>
   );
 }
@@ -71,7 +96,7 @@ function Alerts({ alerts, sections, onOpen, connect }: { alerts: Alert[]; sectio
       {alerts.map((a, i) => (
         <div key={i} className={`alert tone-${a.tone}`}>
           <Icon id="alert" size={13} />
-          <span className="text" title={a.text}>
+          <span className="text" title={a.tip ?? a.text}>
             {a.text}
           </span>
           {title(a.section) && (
@@ -302,21 +327,6 @@ function RoomTitle({ room, onCommand }: { room: RoomInstance; onCommand: (c: Sim
   );
 }
 
-/** A room's condition, as a bar, and who's repairing it or where it is in the queue. */
-function ConditionRow({ s, roomId, condition, repairing }: { s: Snapshot; roomId: number; condition: number; repairing?: { done: number; work: number } }) {
-  const note = conditionNote(s, roomId, repairing);
-  return (
-    <div className="condition">
-      <p>
-        <span className="k">Condition</span> {Math.round(condition * 100)}%{note ? <span className="k"> · {note}</span> : null}
-      </p>
-      <div className="bar">
-        <div style={{ width: `${Math.round(condition * 100)}%`, background: cssColor(conditionColor(condition)) }} />
-      </div>
-    </div>
-  );
-}
-
 export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
   const [remembered, setOpen] = useOpenSections();
   const room = s.layout.rooms.find((r) => r.id === roomId);
@@ -442,8 +452,13 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
         </div>
       )}
       <Alerts alerts={model.alerts} sections={model.sections} onOpen={openSection} connect={connect} />
-      {/* At a glance: condition for now; the rest of the glance band comes with #309. */}
-      {!room.planned && !room.building && hasCondition(room) && <ConditionRow s={s} roomId={room.id} condition={room.condition ?? 1} repairing={room.repair} />}
+      {model.glance.length > 0 && (
+        <div className="glance">
+          {model.glance.map((c, i) => (
+            <ChipView key={i} chip={c} meter />
+          ))}
+        </div>
+      )}
       {model.sections.map((x) => (
         <SectionView key={x.id} section={x} open={isOpen(x)} onToggle={() => setOpen(x.id, !isOpen(x))}>
           {body(x)}

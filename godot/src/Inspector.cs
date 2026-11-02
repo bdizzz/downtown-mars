@@ -50,6 +50,113 @@ public partial class Inspector : Node3D
     }
     readonly Dictionary<string, Fold> _folds = new();
 
+    /// <summary>
+    /// A row of chips (the model's Chip: an icon and a short value in its tone, label and tip as the tooltip),
+    /// made as they're needed and reused, in a flow that wraps. At a glance each has a meter under it, as the web's.
+    /// </summary>
+    sealed class ChipRow
+    {
+        readonly HFlowContainer _flow;
+        readonly bool _meters;
+        readonly List<(PanelContainer box, TextureRect icon, Label value, Meter meter, string id)> _chips = new();
+
+        public ChipRow(HFlowContainer flow, bool meters)
+        {
+            _flow = flow;
+            _meters = meters;
+            flow.AddThemeConstantOverride("h_separation", 4);
+            flow.AddThemeConstantOverride("v_separation", 4);
+        }
+
+        /// <summary>Show these chips; returns how many.</summary>
+        public int Fill(JsonElement list)
+        {
+            var chips = list.EnumerateArray().ToArray();
+            for (var i = 0; i < chips.Length; i++)
+            {
+                var c = chips[i];
+                var icon = c.GetProperty("icon").GetString()!;
+                if (i >= _chips.Count)
+                {
+                    var box = new PanelContainer();
+                    box.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0, 0, 0, 0.27f), CornerRadiusTopLeft = 4, CornerRadiusTopRight = 4, CornerRadiusBottomLeft = 4, CornerRadiusBottomRight = 4, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 1, ContentMarginBottom = _meters ? 3 : 1 });
+                    var stack = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+                    stack.AddThemeConstantOverride("separation", 2);
+                    var line = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+                    line.AddThemeConstantOverride("separation", 3);
+                    var rect = Icons.Rect(icon, 13, Ink);
+                    var value = new Label { MouseFilter = Control.MouseFilterEnum.Ignore };
+                    value.AddThemeFontSizeOverride("font_size", 13);
+                    line.AddChild(rect);
+                    line.AddChild(value);
+                    stack.AddChild(line);
+                    var meter = new Meter { Visible = _meters };
+                    stack.AddChild(meter);
+                    box.AddChild(stack);
+                    _flow.AddChild(box);
+                    _chips.Add((box, rect, value, meter, icon));
+                }
+                var chip = _chips[i];
+                if (chip.id != icon)
+                {
+                    Icons.Show(chip.icon, icon);
+                    _chips[i] = chip = (chip.box, chip.icon, chip.value, chip.meter, icon);
+                }
+                var tone = ToneOf(c, "tone", Ink);
+                chip.value.Text = c.GetProperty("value").GetString();
+                chip.value.AddThemeColorOverride("font_color", tone);
+                chip.icon.Modulate = tone;
+                var label = c.GetProperty("label").GetString();
+                chip.box.TooltipText = c.TryGetProperty("tip", out var tip) ? $"{label}: {tip.GetString()}" : label;
+                if (_meters) chip.meter.Set(c, tone);
+                chip.box.Visible = true;
+            }
+            for (var i = chips.Length; i < _chips.Count; i++) _chips[i].box.Visible = false;
+            return chips.Length;
+        }
+    }
+
+    /// <summary>A chip's meter, as the web's: filled from the left (0..max), or signed, from the middle out (−range..+range).</summary>
+    partial class Meter : Control
+    {
+        float _from, _to;
+        bool _signed;
+        Color _tone = Ink;
+
+        public Meter()
+        {
+            CustomMinimumSize = new Vector2(34, 3);
+            MouseFilter = MouseFilterEnum.Ignore;
+        }
+
+        public void Set(JsonElement chip, Color tone)
+        {
+            _tone = tone;
+            _signed = chip.TryGetProperty("signed", out var s);
+            if (_signed)
+            {
+                var f = Mathf.Clamp((float)(s.GetProperty("value").GetDouble() / s.GetProperty("range").GetDouble()), -1, 1) / 2;
+                (_from, _to) = (0.5f + Mathf.Min(0, f), 0.5f + Mathf.Max(0, f));
+            }
+            else if (chip.TryGetProperty("meter", out var m))
+            {
+                var max = m.GetProperty("max").GetDouble();
+                (_from, _to) = (0, Mathf.Clamp((float)(m.GetProperty("value").GetDouble() / (max > 0 ? max : 1)), 0, 1));
+            }
+            else (_from, _to) = (0, 0);
+            Visible = _signed || chip.TryGetProperty("meter", out _);
+            QueueRedraw();
+        }
+
+        public override void _Draw()
+        {
+            var w = Size.X;
+            DrawRect(new Rect2(0, 0, w, Size.Y), new Color(0, 0, 0, 0.4f));
+            DrawRect(new Rect2(w * _from, 0, w * (_to - _from), Size.Y), _tone);
+            if (_signed) DrawRect(new Rect2(w / 2 - 0.5f, 0, 1, Size.Y), Dim);
+        }
+    }
+
     readonly PanelContainer _panel = new();
     readonly ScrollContainer _scroll = new() { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
     readonly Label _title = new(), _subtitle = new();
@@ -58,22 +165,21 @@ public partial class Inspector : Node3D
     readonly PanelContainer _pill = new();
     readonly StyleBoxFlat _pillBox = new() { CornerRadiusTopLeft = 9, CornerRadiusTopRight = 9, CornerRadiusBottomLeft = 9, CornerRadiusBottomRight = 9, ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 1, ContentMarginBottom = 1 };
     readonly Label _pillText = new();
-    readonly List<(PanelContainer box, TextureRect icon, Label value, string id)> _chips = new();
+    readonly ChipRow _headChips;
+    // At a glance: chips with a meter under each.
+    readonly HFlowContainer _glance = new();
+    readonly ChipRow _glanceChips;
     // The alerts band.
     readonly VBoxContainer _alerts = new();
     readonly List<(HBoxContainer row, TextureRect icon, Label text, Button to)> _alertRows = new();
     readonly List<string> _alertSections = new();
     readonly LineEdit _rename = new() { MaxLength = RoomNameMax, Visible = false };
-    // Construction, condition.
+    // Construction.
     readonly VBoxContainer _building = new();
     readonly ProgressBar _buildBar = Bar();
     readonly Label _buildText = new();
     readonly Button _prioritize = Btn("Priority construction", "Move it to the front of the construction queue");
     readonly Button _cancelRefit = Btn("Cancel the refit (full refund)", "Call the refit off: the room keeps its walls, and what it cost comes back");
-    readonly VBoxContainer _condition = new();
-    readonly Label _conditionText = new();
-    readonly ProgressBar _conditionBar = Bar();
-    readonly StyleBoxFlat _conditionFill = new() { BgColor = Good };
     // Storage.
     readonly VBoxContainer _storage = new();
     readonly Label _storageText = new();
@@ -223,6 +329,7 @@ public partial class Inspector : Node3D
         _pillText.AddThemeColorOverride("font_color", new Color("#1a0f0d"));
         _pill.AddChild(_pillText);
         _headline.AddChild(_pill);
+        _headChips = new ChipRow(_headline, false);
         rows.AddChild(_headline);
 
         // The alerts band: one line per warning, each with a button to its section; Connect below.
@@ -240,12 +347,9 @@ public partial class Inspector : Node3D
         _cancelRefit.Pressed += () => Send(new() { ["type"] = "cancelJob", ["jobId"] = _jobId });
         _buildBar.AddThemeStyleboxOverride("fill", new StyleBoxFlat { BgColor = new Color("#e0a03b") });
 
-        // At a glance: condition (the rest of the glance band comes with #309).
-        Style(_conditionText, 14, Ink);
-        _condition.AddChild(_conditionText);
-        _conditionBar.AddThemeStyleboxOverride("fill", _conditionFill);
-        _condition.AddChild(_conditionBar);
-        rows.AddChild(_condition);
+        // At a glance: condition, what's felt here (a home's factors, meals, restroom), a service's reach.
+        _glanceChips = new ChipRow(_glance, true);
+        rows.AddChild(_glance);
 
         // The sections, each made once; the controls go into the one they belong to.
         foreach (var id in SectionIds)
@@ -454,7 +558,10 @@ public partial class Inspector : Node3D
     public Vector3[] OutlineLines => _panel.Visible ? _outlineVerts : System.Array.Empty<Vector3>();
     Vector3[] _outlineVerts = System.Array.Empty<Vector3>();
 
-    /// <summary>A section's rows, as the web's: an icon, a dimmed label, then the text, in its tone. Redrawn only when they change.</summary>
+    /// <summary>
+    /// A section's rows, as the web's: an icon, a dimmed label, then the text (or its resources as icons and
+    /// amounts), in its tone, with the longer version as the row's tooltip. Redrawn only when they change.
+    /// </summary>
     static void FillRows(Fold f, JsonElement rows)
     {
         var key = rows.GetRawText();
@@ -468,6 +575,8 @@ public partial class Inspector : Node3D
             if (!first) r.Newline();
             first = false;
             var tone = ToneOf(row, "tone", Ink);
+            var tip = row.TryGetProperty("tip", out var t) ? t.GetString() : null;
+            if (tip != null) r.PushHint(tip);
             if (row.TryGetProperty("icon", out var icon) && Icons.Get(icon.GetString()!) is { } tex) r.AddImage(tex, 13, 13, tone == Ink ? Dim : tone);
             r.AddText(" ");
             if (row.TryGetProperty("k", out var k))
@@ -477,8 +586,15 @@ public partial class Inspector : Node3D
                 r.Pop();
             }
             r.PushColor(tone);
-            r.AddText(row.GetProperty("text").GetString()!);
+            if (row.TryGetProperty("chips", out var chips))
+                foreach (var c in chips.EnumerateArray())
+                {
+                    if (Icons.Get(c.GetProperty("icon").GetString()!) is { } ctex) r.AddImage(ctex, 13, 13, Ink, tooltip: c.GetProperty("label").GetString()!);
+                    r.AddText($"{c.GetProperty("value").GetString()}  ");
+                }
+            else r.AddText(row.GetProperty("text").GetString()!);
             r.Pop();
+            if (tip != null) r.Pop();
         }
         // Icons that arrive later redraw it.
         if (Icons.Get("workers") == null) f.RowsKey = "";
@@ -520,42 +636,9 @@ public partial class Inspector : Node3D
         _pill.TooltipText = status.GetProperty("tip").GetString();
         _pillBox.BgColor = ToneOf(status, "tone", Dim);
 
-        var chips = model.GetProperty("headline").EnumerateArray().ToArray();
-        for (var i = 0; i < chips.Length; i++)
-        {
-            var c = chips[i];
-            var icon = c.GetProperty("icon").GetString()!;
-            if (i >= _chips.Count)
-            {
-                var box = new PanelContainer();
-                box.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0, 0, 0, 0.27f), CornerRadiusTopLeft = 4, CornerRadiusTopRight = 4, CornerRadiusBottomLeft = 4, CornerRadiusBottomRight = 4, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 1, ContentMarginBottom = 1 });
-                var line = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-                line.AddThemeConstantOverride("separation", 3);
-                var rect = Icons.Rect(icon, 13, Ink);
-                var value = new Label { MouseFilter = Control.MouseFilterEnum.Ignore };
-                value.AddThemeFontSizeOverride("font_size", 13);
-                line.AddChild(rect);
-                line.AddChild(value);
-                box.AddChild(line);
-                _headline.AddChild(box);
-                _chips.Add((box, rect, value, icon));
-            }
-            var chip = _chips[i];
-            if (chip.id != icon)
-            {
-                Icons.Show(chip.icon, icon);
-                _chips[i] = chip = (chip.box, chip.icon, chip.value, icon);
-            }
-            var tone = ToneOf(c, "tone", Ink);
-            chip.value.Text = c.GetProperty("value").GetString();
-            chip.value.AddThemeColorOverride("font_color", tone);
-            chip.icon.Modulate = tone;
-            var label = c.GetProperty("label").GetString();
-            chip.box.TooltipText = c.TryGetProperty("tip", out var tip) ? $"{label}: {tip.GetString()}" : label;
-            chip.box.Visible = true;
-        }
-        for (var i = chips.Length; i < _chips.Count; i++) _chips[i].box.Visible = false;
-        _headline.Visible = _pill.Visible || chips.Length > 0;
+        var chips = _headChips.Fill(model.GetProperty("headline"));
+        _headline.Visible = _pill.Visible || chips > 0;
+        _glance.Visible = _glanceChips.Fill(model.GetProperty("glance")) > 0;
 
         var sections = model.GetProperty("sections").EnumerateArray().ToDictionary(x => x.GetProperty("id").GetString()!);
         var alerts = model.GetProperty("alerts").EnumerateArray().ToArray();
@@ -595,7 +678,7 @@ public partial class Inspector : Node3D
             var tone = ToneOf(a, "tone", Warn);
             icon.Modulate = tone;
             label.Text = a.GetProperty("text").GetString();
-            label.TooltipText = label.Text;
+            label.TooltipText = a.TryGetProperty("tip", out var alertTip) ? alertTip.GetString() : label.Text;
             label.AddThemeColorOverride("font_color", tone);
             button.Visible = sections.TryGetValue(section, out var target);
             if (button.Visible) button.Text = $"→ {target.GetProperty("title").GetString()}";
@@ -728,15 +811,6 @@ public partial class Inspector : Node3D
             _buildText.Text = job.GetProperty("text").GetString();
             _prioritize.Visible = job.GetProperty("canPrioritize").GetBoolean();
             _cancelRefit.Visible = job.GetProperty("canCancel").GetBoolean();
-        }
-        _condition.Visible = Has("condition", out var cond);
-        if (_condition.Visible)
-        {
-            var v = cond.GetProperty("value").GetDouble();
-            var note = cond.GetProperty("note").GetString();
-            _conditionText.Text = $"Condition {Math.Round(v * 100)}%{(string.IsNullOrEmpty(note) ? "" : " · " + note)}";
-            _conditionBar.Value = v;
-            _conditionFill.BgColor = new Color(cond.GetProperty("color").GetString()!);
         }
         _storage.Visible = Has("storage", out var st);
         if (_storage.Visible) FillStorage(st);

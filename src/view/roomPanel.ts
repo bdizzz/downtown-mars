@@ -32,7 +32,11 @@ export interface Signed {
   range: number;
 }
 
-/** A line of the panel: an optional label (dimmed), its text (always a whole sentence), and whether it's a warning. */
+/**
+ * A line of the panel: an optional label (dimmed), its text (short: the label, icon and tone carry the rest),
+ * whether it's a warning, and the longer version as a tooltip where there's more to say. A row of resources
+ * (uses, makes) also has them as chips, which the viewers draw instead of the text.
+ */
 export interface Row {
   k?: string;
   text: string;
@@ -41,6 +45,7 @@ export interface Row {
   tone?: Tone;
   signed?: Signed;
   tip?: string;
+  chips?: Chip[];
 }
 
 export type SectionId = "work" | "home" | "serves" | "surroundings" | "building" | "kit" | "storage";
@@ -63,6 +68,8 @@ export interface Alert {
   tone: "warn" | "bad";
   section: SectionId;
   action?: "connect";
+  /** The row's longer version, when it has one. */
+  tip?: string;
 }
 
 export interface Section {
@@ -84,9 +91,12 @@ export interface PanelModel {
 
 type Room = Snapshot["layout"]["rooms"][number];
 
+/** A resource as a chip: its icon (machinery for one without its own) and amount. */
+const resourceChip = (id: string, v: number): Chip => ({ icon: isIcon(id) ? id : "machinery", value: num(v), label: resName(id) });
+
 const flows = (label: string, f: Record<string, number>): Row | null => {
   const entries = Object.entries(f).filter(([, v]) => v > 0);
-  return entries.length ? { k: label, text: entries.map(([id, v]) => `${resName(id)} ${num(v)}`).join(", ") } : null;
+  return entries.length ? { k: label, text: entries.map(([id, v]) => `${resName(id)} ${num(v)}`).join(", "), chips: entries.map(([id, v]) => resourceChip(id, v)) } : null;
 };
 
 /** A service's or amenity's reach on foot: the homes within it (tinted on the map when no overlay is on). */
@@ -94,8 +104,8 @@ export function reachesRow(s: Snapshot, room: Room): Row | null {
   const tints = reachTints(s.layout, room.id);
   if (!tints) return null;
   const within = tints.filter((t) => t.steps !== null).sort((a, b) => a.steps! - b.steps!);
-  const names = within.length ? `: ${within.slice(0, 4).map((t) => `${roomName(t.room)} ${Math.max(1, Math.round(t.steps!))}`).join(", ")}${within.length > 4 ? "…" : ""}` : "";
-  return { k: "Reaches", text: `${within.length} of ${tints.length} ${tints.length === 1 ? "home" : "homes"} within ${reachSteps(room.type)} steps${names}` };
+  const names = within.map((t) => `${roomName(t.room)} ${Math.max(1, Math.round(t.steps!))} steps`).join(", ");
+  return { k: "Reaches", text: `${within.length} of ${tints.length} ${tints.length === 1 ? "home" : "homes"} within ${reachSteps(room.type)} steps`, ...(names ? { tip: names } : {}) };
 }
 
 /** The hole's restroom coverage, for a restroom's panel. */
@@ -119,26 +129,37 @@ export function withinReachRows(s: Snapshot, room: Room): Row[] {
   const seated = s.population.servedByHome?.[room.id];
   const felt = amenityFelt(s, room);
   const rows: Row[] = [];
-  if (seated !== undefined) rows.push({ k: "Meals", text: seated >= 0.98 ? "a seat for everyone within reach" : `${Math.round(seated * 100)}% seated within reach; the rest eat on the go`, warn: seated < 0.98 });
+  if (seated !== undefined)
+    rows.push(
+      seated >= 0.98
+        ? { k: "Meals", text: "a seat for everyone", warn: false }
+        : { k: "Meals", text: `${Math.round(seated * 100)}% seated`, tip: `${Math.round(seated * 100)}% have a seat at a galley or canteen within reach; the rest eat on the go`, warn: true },
+    );
   const wc = s.population.sanitationByHome?.[room.id];
   if (roomDef(room.type).ownBathroom) rows.push({ k: "Restroom", text: "its own bathroom" });
   else if (wc !== undefined)
-    rows.push({
-      k: "Restroom",
-      text:
-        wc >= 0.98
-          ? "a place for everyone within reach"
-          : `${Math.round((1 - wc) * 100)}% without one within ${reachOf("restroom")} steps: comfort ${signed(-(1 - wc) * config.happiness.noRestroomComfort)}`,
-      warn: wc < 0.98,
-    });
+    rows.push(
+      wc >= 0.98
+        ? { k: "Restroom", text: "a place for everyone", warn: false }
+        : {
+            k: "Restroom",
+            text: `${Math.round((1 - wc) * 100)}% without one`,
+            tip: `${Math.round((1 - wc) * 100)}% without one within ${reachOf("restroom")} steps: comfort ${signed(-(1 - wc) * config.happiness.noRestroomComfort)}`,
+            warn: true,
+          },
+    );
   const care = careRow(s, room);
   if (care) rows.push(care);
-  rows.push({
-    k: "On foot",
-    text: felt.from.length
-      ? felt.from.map((f) => `${roomDef(f.type).name} ${Math.max(1, Math.round(f.steps))} steps (${[f.comfort ? `comfort ${signed(f.comfort)}` : "", f.health ? `wellbeing ${signed(f.health)}` : ""].filter(Boolean).join(", ")})`).join(" · ")
-      : "no park, plaza, gym or restroom in reach",
-  });
+  const steps = (f: (typeof felt.from)[number]) => `${roomDef(f.type).name} ${Math.max(1, Math.round(f.steps))}`;
+  rows.push(
+    felt.from.length
+      ? {
+          k: "On foot",
+          text: `${felt.from.slice(0, 3).map(steps).join(", ")}${felt.from.length > 3 ? "…" : ""} steps`,
+          tip: felt.from.map((f) => `${steps(f)} steps (${[f.comfort ? `comfort ${signed(f.comfort)}` : "", f.health ? `wellbeing ${signed(f.health)}` : ""].filter(Boolean).join(", ")})`).join(" · "),
+        }
+      : { k: "On foot", text: "nothing in reach", tip: "No park, plaza, gym or restroom within walking distance" },
+  );
   return rows;
 }
 
@@ -148,7 +169,7 @@ const ACROSS: Record<Across, string> = { shaft: "the shaft", corridor: "a corrid
 export function windowsRow(s: Snapshot, room: Room): Row | null {
   const walls = glazedWalls(s.layout, room);
   const home = !!roomDef(room.type).houses;
-  if (!walls.length) return home ? { k: "Windows", text: "none yet: add them with Build → Corridors → Windows, on a wall facing the shaft, a corridor or a plaza" } : null;
+  if (!walls.length) return home ? { k: "Windows", text: "none yet", tip: "Add them with Build → Corridors → Windows, on a wall facing the shaft, a corridor or a plaza" } : null;
   const onto = [...new Set(walls.map((w) => ACROSS[w.across]))].join(", ");
   const sun = sunlight(s.layout, room, config) > 0 ? ", and the sun gets in" : "";
   return { k: "Windows", text: `onto ${onto}${home ? `: ${signed(windowComfort(s.layout, room, config))} comfort` : ""}${sun}` };
@@ -191,13 +212,18 @@ export function factorRows(s: Snapshot, roomId: number): Row[] {
       .map(([id, pts]) => ({ id, def: DIAGNOSIS.happiness[id], v: pts / weight }))
       .filter((p) => p.def?.factor === factor && Math.abs(p.v) >= 0.05)
       .sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
-    const text = parts.map(({ id, def, v }) => {
+    // Noise has one part, its neighbours: just name them.
+    const named = parts.length === 1 && parts[0]!.id === "noise";
+    const full = parts.map(({ id, def, v }) => {
       const from = def!.field ? sourcesText(s, roomId, def!.field) : "";
-      // Noise has one part, its neighbours: just name them.
-      if (parts.length === 1 && id === "noise") return from;
-      return `${def!.label ?? id} ${signed(v)}${from ? ` (${from})` : ""}`;
+      return named ? from : `${def!.label ?? id} ${signed(v)}${from ? ` (${from})` : ""}`;
     });
-    rows.push({ k: DIAGNOSIS.factors[factor] ?? factor, text: `${signed(total)}${text.length && text[0] ? ` = ${text.join(", ")}` : ""}`, warn: total <= -1 });
+    // The row says the biggest two parts; the tooltip all of them, with the rooms behind each.
+    const short = named ? [sourcesText(s, roomId, parts[0]!.def!.field!, 2)] : parts.slice(0, 2).map(({ id, def, v }) => `${def!.label ?? id} ${signed(v)}`);
+    const sum = (list: string[], more = false) => (Math.abs(total) < 0.05 && !parts.length ? "none" : `${signed(total)}${list.length && list[0] ? ` = ${list.join(", ")}${more ? "…" : ""}` : ""}`);
+    const text = sum(short, !named && parts.length > 2);
+    const tip = sum(full);
+    rows.push({ k: DIAGNOSIS.factors[factor] ?? factor, text, ...(tip !== text ? { tip } : {}), warn: total <= -1 });
   }
   return rows;
 }
@@ -209,7 +235,7 @@ export function homeRows(s: Snapshot, roomId: number, capacity: number): Row[] {
   const trend = pool.target > pool.happiness + 1 ? " ↑" : pool.target < pool.happiness - 1 ? " ↓" : "";
   return [
     { k: "Residents", text: `${pool.residents} / ${capacity}` },
-    { k: "Happiness", text: `${Math.round(pool.happiness)}${trend} (heading for ${Math.round(pool.target)})`, warn: pool.happiness < 50 },
+    { k: "Happiness", text: `${Math.round(pool.happiness)}${trend}${trend ? `, heading for ${Math.round(pool.target)}` : ", steady"}`, warn: pool.happiness < 50 },
     ...factorRows(s, roomId),
   ];
 }
@@ -390,19 +416,21 @@ function panelEntries(s: Snapshot, room: RoomInstance): Entry[] {
     ...tagged("after", "home", def.houses ? homeRows(s, room.id, def.houses) : []),
     ...tagged("after", "serves", [
       def.teaches
-        ? { k: "Teaches", text: `up to ${def.teaches} children · ${s.care.school.who} in the hole, ${s.care.school.missing > 0 ? `${num(s.care.school.missing)} without a place` : "all with a place"}` }
+        ? { k: "Teaches", text: `up to ${def.teaches} children`, tip: `${s.care.school.who} children in the hole, ${s.care.school.missing > 0 ? `${num(s.care.school.missing)} without a place` : "all with a place"}` }
         : null,
-      def.rests ? { k: "Rests", text: `up to ${def.rests} · ${s.rest.interred} laid to rest here, ${s.rest.space} places left` } : null,
+      def.rests ? { k: "Rests", text: `up to ${def.rests}`, tip: `${s.rest.interred} laid to rest here, ${s.rest.space} places left` } : null,
       def.caresForElders
-        ? { k: "Cares for", text: `up to ${def.caresForElders} elders · ${s.care.elders.who} in the hole, ${s.care.elders.missing > 0 ? `${num(s.care.elders.missing)} without care` : "all cared for"}` }
+        ? { k: "Cares for", text: `up to ${def.caresForElders} elders`, tip: `${s.care.elders.who} elders in the hole, ${s.care.elders.missing > 0 ? `${num(s.care.elders.missing)} without care` : "all cared for"}` }
         : null,
-      spec.sanitation > 0 ? { k: "Restroom for", text: `${num(spec.sanitation)} people from homes within ${def.reach ?? 0} steps · ${sanitation(s)}` } : null,
-      spec.serves > 0 ? { k: "Seats", text: `${num(spec.serves)} diners · ${dining(s)}` } : null,
+      spec.sanitation > 0 ? { k: "Restroom for", text: `${num(spec.sanitation)} people within ${def.reach ?? 0} steps`, tip: `Across the hole, ${sanitation(s)}` } : null,
+      spec.serves > 0 ? { k: "Seats", text: `${num(spec.serves)} diners`, tip: `Across the hole: ${dining(s)}` } : null,
     ]),
     ...tagged("after", "building", [canLine(room) ? { k: "Walls", text: liningText(room) } : null]),
     ...tagged("after", "surroundings", [
       ring && !def.public ? windowsRow(s, room) : null,
-      def.houses && crowdedAir(s, room) < -0.01 ? { k: "Crowded", text: `air ${signed(crowdedAir(s, room))}: more than ${config.effects.crowding.perCell} to a cell gets stuffy`, warn: true } : null,
+      def.houses && crowdedAir(s, room) < -0.01
+        ? { k: "Crowded", text: `air ${signed(crowdedAir(s, room))}`, tip: `More than ${config.effects.crowding.perCell} people to a cell gets stuffy`, warn: true }
+        : null,
     ]),
     ...tagged("after", "home", def.houses ? withinReachRows(s, room) : []),
     ...tagged("after", "serves", [reachesRow(s, room)]),
@@ -510,9 +538,13 @@ function glanceChips(s: Snapshot, room: RoomInstance): Chip[] {
   }
   const pool = def.houses ? s.happiness.pools.find((p) => p.roomId === room.id) : undefined;
   if (pool) {
+    // Each factor's breakdown, with the rooms behind it, as its tooltip.
+    const parts = new Map(factorRows(s, room.id).map((r) => [r.k, r.tip ?? r.text]));
     for (const f of ["comfort", "noise", "health"] as const) {
       const v = pool.factors[f];
-      chips.push({ icon: FELT_ICONS[f]!, label: DIAGNOSIS.factors[f] ?? f, value: signed(v), tone: signedTone(v), signed: { value: v, range: FELT_RANGE }, section: "home" });
+      const label = DIAGNOSIS.factors[f] ?? f;
+      const tip = parts.get(label);
+      chips.push({ icon: FELT_ICONS[f]!, label, value: Math.abs(v) < 0.05 ? "0" : signed(v), tone: signedTone(v), signed: { value: v, range: FELT_RANGE }, ...(tip ? { tip } : {}), section: "home" });
     }
     const seated = s.population.servedByHome?.[room.id];
     if (seated !== undefined) chips.push(shareChip("meals", "Meals", seated, "home"));
@@ -571,9 +603,9 @@ export function panelModel(s: Snapshot, room: RoomInstance): PanelModel {
 
   // The room's own state first (cut off, short of an input, slowed), then every warning row.
   const alerts: Alert[] = [];
-  if (!room.planned && !room.connected) alerts.push({ text: status.tip, tone: "bad", section: "building", ...(room.at.kind === "ring" ? { action: "connect" as const } : {}) });
+  if (!room.planned && !room.building && !room.connected) alerts.push({ text: status.tip, tone: "bad", section: "building", ...(room.at.kind === "ring" ? { action: "connect" as const } : {}) });
   else if (tone === "bad" || tone === "warn") alerts.push({ text: status.tip, tone, section: "work" });
-  for (const { section, row } of entries) if (row.warn) alerts.push({ text: row.k ? `${row.k}: ${row.text}` : row.text, tone: "warn", section });
+  for (const { section, row } of entries) if (row.warn) alerts.push({ text: row.k ? `${row.k}: ${row.text}` : row.text, tone: "warn", section, ...(row.tip ? { tip: row.tip } : {}) });
 
   return { status, headline: headlineChips(s, room), alerts, glance: glanceChips(s, room), sections };
 }
