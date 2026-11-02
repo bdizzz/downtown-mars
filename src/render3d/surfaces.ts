@@ -295,7 +295,10 @@ const INLAID_METAL_GLSL = /* glsl */ `
   }
 `;
 
-/** Add a world-space pattern to a standard material: `tone(p, n)` multiplies its colour. */
+/**
+ * Add a world-space pattern to a standard material: `tone(p, n)` multiplies its colour. Not on the floor
+ * of a material with a floor of its own (withFlooring defines DM_OWN_FLOOR), whichever was added first.
+ */
 function withPattern<T extends THREE.Material>(m: T, name: string, glsl: string, call: string): T {
   const prev = m.onBeforeCompile;
   const prevKey = m.customProgramCacheKey();
@@ -309,7 +312,10 @@ function withPattern<T extends THREE.Material>(m: T, name: string, glsl: string,
       );
     shader.fragmentShader = shader.fragmentShader
       .replace("#include <common>", `#include <common>\nvarying vec3 vSurfacePos;\nvarying vec3 vSurfaceNormal;\n${NOISE_GLSL}\n${WALL_UV_GLSL}\n${glsl}`)
-      .replace("#include <color_fragment>", `#include <color_fragment>\ndiffuseColor.rgb *= ${call}(vSurfacePos, normalize(vSurfaceNormal));`);
+      .replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>\n#ifdef DM_OWN_FLOOR\nif (abs(vSurfaceNormal.y) <= 0.7)\n#endif\ndiffuseColor.rgb *= ${call}(vSurfacePos, normalize(vSurfaceNormal));`,
+      );
   };
   m.customProgramCacheKey = () => `${prevKey}|${name}`;
   return m;
@@ -573,6 +579,78 @@ export function withFloor<T extends THREE.Material>(m: T, finish: SurfaceLook): 
   };
   m.customProgramCacheKey = () => `${prevKey}|floor-${finish}`;
   return m;
+}
+
+// ---- floor upgrades (T-037) ----
+
+/**
+ * Fibre-composite panels: 50 cm square tiles of pressed hemp, each a basket weave of flat strands
+ * (turned against its neighbours, over and under), with thin dark joints and each tile its own shade.
+ */
+const FIBRE_PANELS_GLSL = /* glsl */ `
+  vec3 fibrePanelTone(vec3 p) {
+    vec2 q = p.xz / 0.5;
+    vec2 c = floor(q);
+    vec2 f = fract(q);
+    float joint = step(0.025, f.x) * step(f.x, 0.975) * step(0.025, f.y) * step(f.y, 0.975);
+    bool turn = mod(c.x + c.y, 2.0) > 0.5;
+    float across = (turn ? f.x : f.y) * 18.0;
+    float along = (turn ? f.y : f.x) * 9.0;
+    // Each strand rounded across, and passing over then under the ones it crosses.
+    float ridge = 0.86 + 0.14 * sin(fract(across) * 3.14159);
+    float over = mod(floor(across) + floor(along), 2.0);
+    float weave = ridge * mix(0.9, 1.05, over) * mix(0.94, 1.05, srfNoise(p * 14.0));
+    float shade = mix(0.92, 1.06, srfHash(vec3(c, 11.0)));
+    return vec3(mix(0.5, weave * shade, joint));
+  }
+`;
+
+/** What each floor upgrade looks like: its colour, sheen and pattern (`data/materials.json` floorings). */
+const FLOORING_LOOK = {
+  fibre_panels: { glsl: FIBRE_PANELS_GLSL, call: "fibrePanelTone", color: 0xb48a58, roughness: 0.7, metalness: 0 },
+} as const;
+
+export type FlooringLook = keyof typeof FLOORING_LOOK;
+
+export function isFlooringLook(id: string | undefined): id is FlooringLook {
+  return !!id && id in FLOORING_LOOK;
+}
+
+/**
+ * A room's floor laid in a floor upgrade, whatever its walls are: the flooring's own colour, pattern and
+ * sheen underfoot, tinted `tint` by the material's colour (the room's, with room colours on; none off).
+ * The walls keep theirs, and any wall pattern stays off the floor (DM_OWN_FLOOR). Set before every other
+ * colour change, so grime still scuffs it.
+ */
+export function withFlooring<T extends THREE.Material>(m: T, flooring: FlooringLook, tint: number): T {
+  const look = FLOORING_LOOK[flooring];
+  const own = new THREE.Color(look.color);
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    const hasNoise = shader.fragmentShader.includes("srfNoise");
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vFlooringPos;\nvarying vec3 vFlooringNormal;")
+      .replace("#include <project_vertex>", "vFlooringPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvFlooringNormal = normalize(mat3(modelMatrix) * objectNormal);\n#include <project_vertex>");
+    // Its pattern just before main (as grime's), so the noise it calls is defined whether or not a pattern brought it.
+    shader.fragmentShader = `#define DM_OWN_FLOOR\n${shader.fragmentShader}`
+      .replace("void main() {", `varying vec3 vFlooringPos;\nvarying vec3 vFlooringNormal;\n${hasNoise ? "" : NOISE_GLSL}\n${look.glsl}\nvoid main() {`)
+      // Before <color_fragment>, which every other pattern and the grime multiply in after.
+      .replace(
+        "#include <color_fragment>",
+        `if (abs(vFlooringNormal.y) > 0.7) diffuseColor.rgb = mix(vec3(${own.r.toFixed(4)}, ${own.g.toFixed(4)}, ${own.b.toFixed(4)}), diffuseColor.rgb, ${tint.toFixed(2)}) * ${look.call}(vFlooringPos);\n#include <color_fragment>`,
+      )
+      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>\nif (abs(vFlooringNormal.y) > 0.7) roughnessFactor = ${look.roughness.toFixed(2)};`)
+      .replace("#include <metalnessmap_fragment>", `#include <metalnessmap_fragment>\nif (abs(vFlooringNormal.y) > 0.7) metalnessFactor = ${look.metalness.toFixed(2)};`);
+  };
+  m.customProgramCacheKey = () => `${prevKey}|flooring-${flooring}-${tint}`;
+  return m;
+}
+
+/** withFlooring with room colours on: tinted by the room's colour as much as any floor is (FLOOR_TINT). */
+export function withRoomFlooring<T extends THREE.Material>(m: T, flooring: FlooringLook): T {
+  return withFlooring(m, flooring, FLOOR_TINT);
 }
 
 // ---- furniture: what each part is made of ----

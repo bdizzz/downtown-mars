@@ -18,8 +18,9 @@ import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
 import { glazedWalls } from "../sim/windows";
 import { tubeAt } from "../view/gallery";
-import { finishMaterial, isSurfaceLook, withFloor, withFresnel, withGrime, withRefit, withRock, withSurface, type SurfaceLook } from "./surfaces";
+import { finishMaterial, isFlooringLook, isSurfaceLook, withFloor, withFlooring, withFresnel, withGrime, withRefit, withRock, withRoomFlooring, withSurface, type SurfaceLook } from "./surfaces";
 import { roomLook, type Finish } from "../view/roomFinish";
+import { flooringOf } from "../sim/materials";
 import { lampsOf, lightPools } from "./lights3d";
 import { withCondensation } from "./details3d";
 import { spotsOf, type RoomSpots } from "./people3d";
@@ -1909,15 +1910,19 @@ export function disposeRoomMaterials(): void {
   disposeFurnitureMaterials();
 }
 
-/** A room's walls and floor in the material it's built from, with walls down (and the refit band while it's being refitted). */
-function finishWallMaterial(finish: Finish, grime = 0, refit = false): THREE.Material {
-  return wallMaterial(`finish:${finish}:${grime}${refit ? ":refit" : ""}`, () => {
-    const m = withGrime(finishMaterial(finish), grime);
+/**
+ * A room's walls and floor in the material it's built from, with walls down (and the refit band while it's
+ * being refitted). A floor upgrade (T-037) lays its own floor over it. Names end `:<flooring>` when there's one.
+ */
+function finishWallMaterial(finish: Finish, grime = 0, refit = false, flooring?: string): THREE.Material {
+  const own = isFlooringLook(flooring) ? flooring : null;
+  return wallMaterial(`finish:${finish}:${grime}${refit ? ":refit" : ""}${own ? `:${own}` : ""}`, () => {
+    const m = withGrime(own ? withFlooring(finishMaterial(finish), own, 0) : finishMaterial(finish), grime);
     return refit ? withRefit(m) : m;
   });
 }
 
-function roomMaterial(color: number, planned: boolean, building = false, floor: Finish = "rock", grime = 0, refit = false): THREE.Material {
+function roomMaterial(color: number, planned: boolean, building = false, floor: Finish = "rock", grime = 0, refit = false, flooring?: string): THREE.Material {
   // Under construction: the room's colour through semi-opaque diagonal stripes.
   if (building) {
     return wallMaterial(`building:${color}`, () =>
@@ -1934,8 +1939,11 @@ function roomMaterial(color: number, planned: boolean, building = false, floor: 
         side: THREE.DoubleSide,
       }),
     );
-  return wallMaterial(`room:${color}:false:${floor}:${grime}${refit ? ":refit" : ""}`, () => {
-    const m = withGrime(withFloor(new THREE.MeshStandardMaterial({ color, roughness: 0.75, side: THREE.DoubleSide }), floor), grime);
+  // A floor upgrade instead of the walls' material underfoot, tinted the same.
+  const own = isFlooringLook(flooring) ? flooring : null;
+  return wallMaterial(`room:${color}:false:${floor}:${grime}${refit ? ":refit" : ""}${own ? `:${own}` : ""}`, () => {
+    const base = new THREE.MeshStandardMaterial({ color, roughness: 0.75, side: THREE.DoubleSide });
+    const m = withGrime(own ? withRoomFlooring(base, own) : withFloor(base, floor), grime);
     return refit ? withRefit(m) : m;
   });
 }
@@ -2216,7 +2224,8 @@ export function buildLayout(
     const finish = roomLook(whole);
     const grime = grimeOf(whole);
     const refit = !room.planned && !room.building && refitting(whole);
-    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(finish, grime, refit) : roomMaterial(color, room.planned, !!room.building, finish, grime, refit));
+    const flooring = flooringOf(whole)?.id;
+    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(finish, grime, refit, flooring) : roomMaterial(color, room.planned, !!room.building, finish, grime, refit, flooring));
     mesh.userData = { pickable: true, roomId: room.id, cached: true };
     group.add(mesh);
     // Its walls' tops: bare rock once it's built, whatever it's made of or coloured (a plan keeps the room's look).

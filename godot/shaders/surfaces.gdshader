@@ -10,8 +10,11 @@ render_mode cull_disabled;
 // 0 a room (walls in its colour, floor in its material), 1 rock, 2 regolith, 3 marscrete, 4 brick, 5 metal,
 // and the fine finishes (PLAN-M15): 6 smoothed rock, 7 polished marscrete, 8 patterned brick, 9 inlaid metal.
 uniform int look = 0;
-// A room's floor (look 0): laid in its material, as the looks above (1, 3 to 9).
+// A room's floor (look 0, or any look with own_floor): laid in its material, as the looks above (1, 3 to 9),
+// or a floor upgrade (T-037): 10 fibre-composite panels.
 uniform int floor_look = 1;
+// A floor upgrade underfoot, whatever the walls' look (the web's withFlooring).
+uniform bool own_floor = false;
 uniform vec3 albedo : source_color = vec3(0.6);
 uniform vec3 floor_color : source_color = vec3(0.6);
 uniform float floor_tint = 0.2;
@@ -286,8 +289,27 @@ vec4 inlaid_metal_tone(vec3 p, vec3 n) {
 	return vec4(mix(inlay, brass, brassy), mix(0.55, 1.0, brassy));
 }
 
-// A lining's pattern by look (1, 3 to 9): its shade in colour (rgb) and its height (a).
+// Fibre-composite panels (the web's fibrePanelTone): 50 cm tiles of pressed hemp, each a basket weave of flat
+// strands turned against its neighbours, over and under, with thin dark joints and each tile its own shade.
+vec4 fibre_panel_tone(vec3 p) {
+	vec2 q = p.xz / 0.5;
+	vec2 c = floor(q);
+	vec2 f = fract(q);
+	float joint = step(0.025, f.x) * step(f.x, 0.975) * step(0.025, f.y) * step(f.y, 0.975);
+	bool turn = mod(c.x + c.y, 2.0) > 0.5;
+	float across = (turn ? f.x : f.y) * 18.0;
+	float along = (turn ? f.y : f.x) * 9.0;
+	float ridge = 0.86 + 0.14 * sin(fract(across) * 3.14159);
+	float over = mod(floor(across) + floor(along), 2.0);
+	float weave = ridge * mix(0.9, 1.05, over) * mix(0.94, 1.05, srf_noise(p * 14.0));
+	float shade = mix(0.92, 1.06, srf_hash(vec3(c, 11.0)));
+	// Height: the strands' ridges and the over-under, the joints sunk.
+	return vec4(vec3(mix(0.5, weave * shade, joint)), joint * (0.5 * ridge + 0.3 * over));
+}
+
+// A lining's pattern by look (1, 3 to 10): its shade in colour (rgb) and its height (a).
 vec4 lining_tone(int which, vec3 p, vec3 n) {
+	if (which == 10) return fibre_panel_tone(p);
 	if (which == 3) return marscrete_tone(p, n).xxxy;
 	if (which == 4) return brick_tone(p, n).xxxy;
 	if (which == 5) return metal_tone(p, n).xxxy;
@@ -341,15 +363,15 @@ void fragment() {
 	vec4 t = vec4(1.0);
 	float relief = 0.6;
 	if (look == 2) { t = regolith_tone(wpos).xxxy; relief = 2.0; }
-	else if (look != 0) { t = lining_tone(look, wpos, n); relief = lining_relief(look); }
-	else if (is_floor) {
-		// A room's floor: its material's pattern and colour, tinted by the room's, with the material's sheen.
+	else if (is_floor && (look == 0 || own_floor)) {
+		// A room's floor: its material's (or floor upgrade's) pattern and colour, tinted by the room's (or the walls'), with its sheen.
 		t = lining_tone(floor_look, wpos, n);
 		relief = lining_relief(floor_look);
 		color = mix(floor_color, albedo, floor_tint);
 		rough = floor_roughness;
 		metal = floor_metallic;
-	} else {
+	} else if (look != 0) { t = lining_tone(look, wpos, n); relief = lining_relief(look); }
+	else {
 		// A room's walls: its colour, a fine plaster grain.
 		float g = srf_noise(wpos * 9.0);
 		t = vec4(vec3(mix(0.96, 1.03, g)), g * 0.3);
