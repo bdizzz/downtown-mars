@@ -4,7 +4,7 @@ import { createInitialState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { applyCommand } from "../src/sim/commands";
 import { makeSnapshot } from "../src/sim/snapshot";
-import { daylightAt, stepWeather, stormLevel, stormOutput } from "../src/sim/weather";
+import { daylightAt, stepWeather, stormLevel, stormOutput, weatherReport } from "../src/sim/weather";
 import { gameTime } from "../src/sim/clock";
 
 const tpd = config.ticksPerDay;
@@ -112,5 +112,62 @@ describe("day and night", () => {
     toHour(12);
     step(s, config);
     expect(s.roomStatus[id]!.rate).toBeCloseTo(1, 5);
+  });
+});
+
+describe("the local weather report", () => {
+  // A tick at this hour of the day, ten days in (the clock starts at config.startHour).
+  const at = (hour: number) => Math.round((((hour - config.startHour + 24) % 24) / 24) * tpd) + 10 * tpd;
+
+  it("reads differently low near the equator and high in the north", () => {
+    const low = createInitialState(config);
+    low.site = { lat: 12, lon: 88 }; // Isidis Planitia, below the datum
+    const high = createInitialState(config);
+    high.site = { lat: 40, lon: -110 }; // Alba Mons
+    for (const s of [low, high]) s.tick = at(14);
+    const a = weatherReport(low, config);
+    const b = weatherReport(high, config);
+    expect(a.elevationKm).toBeLessThan(-2);
+    expect(b.elevationKm).toBeGreaterThan(4);
+    expect(a.pressureMbar).toBeGreaterThan(1.5 * b.pressureMbar);
+    expect(a.tempC - b.tempC).toBeGreaterThan(15);
+    expect(a.noonSunDeg).toBe(78);
+    expect(b.noonSunDeg).toBe(50);
+  });
+
+  it("stays in believable Martian ranges, warmest in the afternoon and coldest at dawn", () => {
+    const s = createInitialState(config);
+    s.site = { lat: 5, lon: 0 };
+    const temps: number[] = [];
+    for (let h = 0; h < 24; h++) {
+      s.tick = at(h);
+      const r = weatherReport(s, config);
+      temps.push(r.tempC);
+      expect(r.tempC).toBeGreaterThanOrEqual(-125);
+      expect(r.tempC).toBeLessThanOrEqual(25);
+      expect(r.pressureMbar).toBeGreaterThan(1);
+      expect(r.pressureMbar).toBeLessThan(15);
+    }
+    expect(temps.indexOf(Math.max(...temps))).toBe(config.weather.report.warmestHour);
+    expect(temps.indexOf(Math.min(...temps))).toBe(config.weather.daylight.sunrise);
+    // Calmer by night than in the afternoon.
+    s.tick = at(2);
+    const night = weatherReport(s, config).windMs;
+    s.tick = at(14);
+    expect(weatherReport(s, config).windMs).toBeGreaterThan(night);
+  });
+
+  it("darkens the sky, whips up the wind and narrows the swing in a storm", () => {
+    const s = createInitialState(config);
+    s.site = { lat: 20, lon: 30 };
+    s.tick = at(14);
+    const clear = weatherReport(s, config);
+    s.weather = { storm: { start: s.tick - tpd, end: s.tick + tpd, started: true } };
+    const storm = weatherReport(s, config);
+    expect(storm.tau).toBeGreaterThan(3);
+    expect(clear.tau).toBeLessThan(1);
+    expect(storm.windMs).toBeGreaterThan(clear.windMs);
+    expect(storm.highC - storm.lowC).toBeLessThan(clear.highC - clear.lowC);
+    expect(makeSnapshot(s, config).weather.report.tau).toBeCloseTo(storm.tau);
   });
 });

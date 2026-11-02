@@ -105,6 +105,34 @@ export interface SimConfig {
      * centred on each.
      */
     daylight: { sunrise: number; sunset: number; twilightHours: number; affects: string[] };
+    /**
+     * The local weather report (flavour only): the day's high and low run from the equator's to the
+     * poles' by the cosine of the latitude, `coolingPerKmC` colder per km above the datum, never
+     * below `frostPointC`; the coldest hour is sunrise and the warmest `warmestHour`. A storm drops
+     * the high and lifts the low. Pressure falls with height over `scaleHeightKm`, with a small daily
+     * tide; the wind is calm by night and picks up in the afternoon (a [least, most] peak each day);
+     * dust opacity (τ) is somewhere in `clearTau` on a clear day, thinner up high, `stormTau` in a storm.
+     */
+    report: {
+      equatorHighC: number;
+      equatorLowC: number;
+      poleHighC: number;
+      poleLowC: number;
+      frostPointC: number;
+      coolingPerKmC: number;
+      warmestHour: number;
+      stormHighDropC: number;
+      stormLowRiseC: number;
+      datumPressureMbar: number;
+      scaleHeightKm: number;
+      tideShare: number;
+      tidePeakHour: number;
+      calmWindMs: number;
+      afternoonWindMs: [number, number];
+      stormWindMs: number;
+      clearTau: [number, number];
+      stormTau: number;
+    };
   };
   earth: {
     firstDropDay: number;
