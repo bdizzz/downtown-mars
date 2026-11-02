@@ -95,6 +95,27 @@
       "sunset": 18,
       "twilightHours": 2,
       "affects": ["solar_array"]
+    },
+    "report": {
+      "_note": "The local weather report (T-074): flavour only, outside the hole. Highs and lows run from the equator's to the poles' by the cosine of the latitude, colder with height; dust narrows the day's swing.",
+      "equatorHighC": 15,
+      "equatorLowC": -78,
+      "poleHighC": -105,
+      "poleLowC": -125,
+      "frostPointC": -125,
+      "coolingPerKmC": 1.5,
+      "warmestHour": 14,
+      "stormHighDropC": 25,
+      "stormLowRiseC": 20,
+      "datumPressureMbar": 6.1,
+      "scaleHeightKm": 11.1,
+      "tideShare": 0.02,
+      "tidePeakHour": 8,
+      "calmWindMs": 2,
+      "afternoonWindMs": [4, 12],
+      "stormWindMs": 25,
+      "clearTau": [0.3, 0.9],
+      "stormTau": 4.5
     }
   },
   "earth": {

@@ -40,7 +40,7 @@ export const NEEDS_SHOWN = 3;
 export const GROUPS = ["Colony", "Life", "Food", "Materials"] as const;
 
 /** The top bar's elements, by their stable ids (the cells are "res:<trend>"). */
-export const HUD_IDS = ["menu", "hole", "clock", "speed", "needs", "drill", "drop", "office", "resources"] as const;
+export const HUD_IDS = ["menu", "hole", "clock", "weather", "speed", "needs", "drill", "drop", "office", "resources"] as const;
 export type HudId = (typeof HUD_IDS)[number];
 
 /** How a cell reads: fine, a worry (amber), trouble (red), or storage full (blue). */

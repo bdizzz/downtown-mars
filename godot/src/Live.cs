@@ -103,6 +103,11 @@ public partial class Live : Node3D
     TextureRect _dropIcon = null!;
     Button _drillButton = null!;
     bool _drillActive;
+    /// <summary>The local weather report (T-074): the air outside as a chip, opening its card below the top bar.</summary>
+    Button _weatherChip = null!;
+    readonly PanelContainer _weatherCard = new() { Name = "weather_card", Visible = false };
+    readonly VBoxContainer _weatherRows = new();
+    string _weatherKey = "";
     PanelContainer _pickerPanel = null!;
     ScrollContainer _pickerScroll = null!;
     /// <summary>The cutaway's own panel, where the floor picker is in Free view: zoom, and the cut's angle.</summary>
@@ -1393,6 +1398,45 @@ public partial class Live : Node3D
         var dropColor = drop.GetProperty("warn").GetBoolean() ? new Color("#f4b860") : new Color("#f3e6d8");
         _drop.AddThemeColorOverride("font_color", dropColor);
         _dropIcon.Modulate = dropColor;
+        if (m.TryGetProperty("weather", out var weather)) SetWeather(weather);
+    }
+
+    /// <summary>The weather chip's text, and its card's lines (rebuilt only when they change), as the web's (view/weatherCard.ts).</summary>
+    void SetWeather(JsonElement w)
+    {
+        var chip = w.GetProperty("chip");
+        _weatherChip.Text = chip.GetProperty("text").GetString();
+        _weatherChip.TooltipText = chip.GetProperty("tip").GetString();
+        var key = w.GetRawText();
+        if (key == _weatherKey) return;
+        _weatherKey = key;
+        foreach (var c in _weatherRows.GetChildren())
+        {
+            _weatherRows.RemoveChild(c);
+            c.QueueFree();
+        }
+        _weatherRows.AddChild(Text(w.GetProperty("title").GetString()!, 15, new Color("#e07a3f")));
+        _weatherRows.AddChild(Text(w.GetProperty("place").GetString()!, 12, new Color("#a88d7c")));
+        var grid = new GridContainer { Columns = 2 };
+        grid.AddThemeConstantOverride("h_separation", 10);
+        grid.AddThemeConstantOverride("v_separation", 3);
+        foreach (var r in w.GetProperty("rows").EnumerateArray())
+        {
+            grid.AddChild(Text(r.GetProperty("label").GetString()!, 13, new Color("#a88d7c")));
+            grid.AddChild(Text(r.GetProperty("value").GetString()!, 13, new Color("#f0e0d0")));
+        }
+        _weatherRows.AddChild(grid);
+        // Unwrapped: the card is as wide as its widest line, and a wrapped label would measure tall before its first layout.
+        _weatherRows.AddChild(Text(w.GetProperty("note").GetString()!, 12, new Color("#a88d7c")));
+        Callable.From(_weatherCard.ResetSize).CallDeferred();
+    }
+
+    void ToggleWeather()
+    {
+        _weatherCard.Visible = !_weatherCard.Visible;
+        if (!_weatherCard.Visible) return;
+        _weatherCard.Position = _weatherCard.Position with { X = _weatherChip.GlobalPosition.X };
+        _weatherCard.ResetSize();
     }
 
     /// <summary>What needs you first, as the web's: a few chips, trouble first, each opening what it's about; nothing when all is well.</summary>
@@ -1609,6 +1653,7 @@ public partial class Live : Node3D
                 break;
             case Key.Escape when _menu.Visible: if (!_menu.Over) _menu.Close(); break; // a game that's over has nothing to go back to
             case Key.Escape when _map.Open: ToggleMap(); break;
+            case Key.Escape when _weatherCard.Visible: _weatherCard.Visible = false; break;
             case Key.M when !_build.Active: ToggleMap(); break;
             case Key.N when !_build.Active: _network.Toggle(); break;
             case Key.P when !_build.Active: _colony.Toggle(); break;
@@ -1769,6 +1814,18 @@ public partial class Live : Node3D
         bar.AddChild(_clock);
         _sunDial = new SunDial();
         bar.AddChild(_sunDial);
+        _weatherChip = new Button { Name = "weather", FocusMode = Control.FocusModeEnum.None, ExpandIcon = false };
+        _weatherChip.AddThemeFontSizeOverride("font_size", 14);
+        _weatherChip.AddThemeConstantOverride("icon_max_width", 16);
+        Icons.WhenReady(() => _weatherChip.Icon = Icons.Get("weather"));
+        _weatherChip.Pressed += ToggleWeather;
+        bar.AddChild(_weatherChip);
+        _weatherCard.SetMeta("under_top", true);
+        _weatherCard.AddThemeStyleboxOverride("panel", Panel());
+        _weatherRows.CustomMinimumSize = new Vector2(300, 0);
+        _weatherRows.AddThemeConstantOverride("separation", 4);
+        _weatherCard.AddChild(_weatherRows);
+        _hud.AddChild(_weatherCard);
         var speeds = new HBoxContainer { Name = "speed" };
         bar.AddChild(speeds);
         foreach (var sp in Speeds)

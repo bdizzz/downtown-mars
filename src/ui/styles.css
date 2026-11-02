@@ -823,6 +823,27 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .drill.paused { color: var(--muted); }
 .drill button { font-size: 10px; padding: 1px 6px; }
 .drop.warn { color: #f4b860; }
+/* The local weather report (T-074): the air outside as a chip, and its card dropping down below. */
+.weather { position: relative; display: inline-flex; }
+.weather-chip {
+  display: inline-flex; align-items: center; gap: 4px; font: inherit; font-size: 13px; font-variant-numeric: tabular-nums;
+  white-space: nowrap; color: var(--text); background: none; border: 1px solid #ffffff20; border-radius: 12px; padding: 1px 8px 1px 5px; cursor: pointer;
+}
+.weather-chip:hover, .weather-chip[aria-expanded="true"] { background: #ffffff12; border-color: #ffffff40; }
+.weather-card {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 30; width: 290px; max-width: calc(100vw - 32px);
+  background: var(--panel); border: 1px solid #f0e0d030; border-radius: 8px; padding: 10px 12px; box-shadow: 0 6px 20px #000a;
+  font-size: 12.5px; box-sizing: border-box; white-space: normal;
+}
+/* Phones: across the screen between the gutters, just under the chip (--below, measured in Hud.tsx). */
+@media (max-width: 639px) { .weather-card { position: fixed; top: var(--below); left: 16px; right: 16px; width: auto; max-width: none; } }
+.weather-card h3 { margin: 0; font-size: 14px; color: var(--accent); }
+.weather-place { color: var(--muted); margin: 2px 0 8px; }
+.weather-card dl { margin: 0; display: grid; gap: 4px; }
+.weather-card dl > div { display: grid; grid-template-columns: 64px 1fr; gap: 8px; }
+.weather-card dt { color: var(--muted); }
+.weather-card dd { margin: 0; font-variant-numeric: tabular-nums; }
+.weather-card p { margin: 8px 0 0; color: var(--muted); font-style: italic; }
 .office-btn {
   display: inline-flex; align-items: center; gap: 5px;
   background: transparent; color: var(--text); font: inherit; font-size: 13px;

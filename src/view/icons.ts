@@ -35,6 +35,7 @@ export const ICONS = {
   menu: '<path d="M2.5 4h11M2.5 8h11M2.5 12h11"/>',
   drill: '<path d="M5 1.5h6v3H5zM6 4.5V8l2 6.5L10 8V4.5M6 7.5l4 1.5M6.5 10.5l3 1"/>',
   storm: '<path d="M1.5 5.5H10a2 2 0 1 0-2-2M1.5 8.5h11a2 2 0 1 1-2 2M1.5 11.5h5"/>',
+  weather: '<path d="M6.5 9.3V3a1.5 1.5 0 0 1 3 0v6.3a3 3 0 1 1-3 0z"/><circle cx="8" cy="11.8" r="1" fill="currentColor"/><path d="M11.5 4h2M11.5 6.5h2"/>',
   drop: '<path d="M8 1.5c2.5 2 3.5 5 3 8.5H5c-.5-3.5.5-6.5 3-8.5zM5 10l-2 3h3M11 10l2 3h-3M8 12v2.5"/><circle cx="8" cy="6" r="1"/>',
   office: '<path d="M2 3h12v7.5H8l-3.5 3v-3H2z"/>',
   alert: '<path d="M8 1.5 14.8 13.5H1.2z"/><path d="M8 6v3.5"/><circle cx="8" cy="11.5" r=".8" fill="currentColor"/>',

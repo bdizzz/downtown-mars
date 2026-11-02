@@ -1,7 +1,7 @@
 import { maintenanceView, type MaintenanceView } from "./condition";
 import { currentDifficulty, type Level } from "./difficulty";
 import { airView, type AirView } from "./air";
-import { daylight, fullSunIn, stormDue, stormLevel } from "./weather";
+import { daylight, fullSunIn, stormDue, stormLevel, weatherReport, type WeatherReport } from "./weather";
 import { gameTime, type GameTime } from "./clock";
 import type { SimConfig } from "./config";
 import { canDig, diggingFloor, drillSpeed, ticksToDig } from "./digging";
@@ -171,9 +171,11 @@ export interface Snapshot {
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
   earth: { ticksToDrop: number; waiting: boolean; padReady: boolean; landed: number };
-  /** Dust storms: how hard one is blowing (0 clear to 1), and the days until a forecast one arrives. */
-  /** The storm (0..1) and days until one forecast; the sun's share of full strength on the solar arrays, and days until it's full again. */
-  weather: { storm: number; dueInDays: number | null; daylight: number; fullSunInDays: number };
+  /**
+   * The storm (0..1) and days until one forecast; the sun's share of full strength on the solar arrays,
+   * and days until it's full again; and the local weather report outside (flavour only).
+   */
+  weather: { storm: number; dueInDays: number | null; daylight: number; fullSunInDays: number; report: WeatherReport };
   /** Room condition and upkeep: the overall condition, the queue, and what each service room is repairing. */
   maintenance: MaintenanceView;
   /**
@@ -293,7 +295,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
       padReady: padReady(state),
       landed: state.earth.landed ?? 0,
     },
-    weather: { storm: stormLevel(state, cfg), dueInDays: stormDue(state, cfg), daylight: daylight(state, cfg), fullSunInDays: fullSunIn(state, cfg) },
+    weather: { storm: stormLevel(state, cfg), dueInDays: stormDue(state, cfg), daylight: daylight(state, cfg), fullSunInDays: fullSunIn(state, cfg), report: weatherReport(state, cfg) },
     maintenance: maintenanceView(state),
     conditions: Object.fromEntries(state.layout.rooms.filter((r) => r.condition !== undefined).map((r) => [r.id, r.condition!])),
     beds: beds(state),
