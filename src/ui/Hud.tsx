@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
 import { needs, NEEDS_SHOWN, topExtras, type Need } from "../view/hudItems";
+import { weatherCard } from "../view/weatherCard";
 import { Icon } from "./Icon";
 import { monthLabel } from "../view/months";
 import { SunDial } from "./SunDial";
@@ -52,6 +53,53 @@ function NeedChip({ need, onOpen }: { need: Need; onOpen: (n: Need) => void }) {
       <Icon id={need.level === "bad" ? "alert" : need.icon} />
       {need.text}
     </button>
+  );
+}
+
+/** The air outside now (T-074); click for the local weather report, a card that drops down below it. */
+function WeatherChip({ snapshot, className }: { snapshot: Snapshot; className: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("pointerdown", away);
+    window.addEventListener("keydown", esc);
+    return () => {
+      window.removeEventListener("pointerdown", away);
+      window.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  const card = weatherCard(snapshot);
+  // Phones pin the card across the screen, just under the chip wherever the drawer has put it.
+  const below = (ref.current?.getBoundingClientRect().bottom ?? 0) + 8;
+  return (
+    <span className={`weather${className}`} data-hud="weather" ref={ref}>
+      <button className="weather-chip" onClick={() => setOpen(!open)} title={card.chip.tip} aria-expanded={open}>
+        <Icon id="weather" />
+        {card.chip.text}
+      </button>
+      {open && (
+        <div className="weather-card" role="dialog" aria-label={card.title} style={{ "--below": `${below}px` } as CSSProperties}>
+          <h3>{card.title}</h3>
+          <div className="weather-place">{card.place}</div>
+          <dl>
+            {card.rows.map((r) => (
+              <div key={r.label}>
+                <dt>{r.label}</dt>
+                <dd>{r.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p>{card.note}</p>
+        </div>
+      )}
+    </span>
   );
 }
 
@@ -137,6 +185,7 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
         {t && <SunDial dayFraction={t.dayFraction} />}
       </span>
       )}
+      {snapshot && shown("weather") && <WeatherChip snapshot={snapshot} className={pulse("weather")} />}
       {shown("speed") && (
       <span className={`speeds${pulse("speed")}`} data-hud="speed">
         {config.speeds.map((s) => (
