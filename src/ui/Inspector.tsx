@@ -4,7 +4,7 @@ import { RoomName } from "./RoomName";
 import { cssColor } from "../render2d/palette";
 import { hasCondition } from "../sim/condition";
 import { conditionColor } from "../view/conditionView";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
 import { holding, roomSpec } from "../sim/economy";
@@ -13,8 +13,9 @@ import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { corridors, finishDef } from "../sim/corridors";
 import { num, resName } from "./format";
-import { conditionNote, constructionInfo, fillsTanks, panelRows, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type Row } from "../view/roomPanel";
-import { isProblem, roomState } from "../view/roomState";
+import { Icon } from "./Icon";
+import { useOpenSections } from "./settings";
+import { conditionNote, constructionInfo, fillsTanks, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type Alert, type Chip, type Row, type Section, type SectionId } from "../view/roomPanel";
 
 interface Props {
   s: Snapshot;
@@ -25,16 +26,79 @@ interface Props {
   onClose: () => void;
 }
 
-/** Rows of the panel (view/roomPanel.ts): a dimmed label, then the text. */
+/** Rows of a section (view/roomPanel.ts): an icon, a dimmed label, then the text, in its tone. */
 function Rows({ rows }: { rows: Row[] }) {
   return (
     <>
       {rows.map((r, i) => (
-        <p key={i} className={r.warn ? "warn" : undefined}>
-          {r.k && <span className="k">{r.k}</span>} {r.text}
+        <p key={i} className={`row${r.tone ? ` tone-${r.tone}` : ""}`} title={r.tip}>
+          {r.icon && <Icon id={r.icon} size={13} />}
+          <span>
+            {r.k && <span className="k">{r.k}</span>} {r.text}
+          </span>
         </p>
       ))}
     </>
+  );
+}
+
+/** The header's status pill: a few words in the room's tone, the whole state sentence as its tooltip. */
+function StatusPill({ status }: { status: { text: string; tone: string; tip: string } }) {
+  if (!status.text) return null;
+  return (
+    <span className={`pill tone-${status.tone}`} title={status.tip}>
+      {status.text}
+    </span>
+  );
+}
+
+/** A headline chip: an icon and a short value, its label (and any tip) as the tooltip. */
+function ChipView({ chip }: { chip: Chip }) {
+  return (
+    <span className={`chip${chip.tone ? ` tone-${chip.tone}` : ""}`} title={chip.tip ? `${chip.label}: ${chip.tip}` : chip.label}>
+      <Icon id={chip.icon} size={13} />
+      {chip.value}
+    </span>
+  );
+}
+
+/** The alerts band: every warning in the panel, each pointing at its section (a click opens it), and Connect beside "cut off". */
+function Alerts({ alerts, sections, onOpen, connect }: { alerts: Alert[]; sections: Section[]; onOpen: (id: SectionId) => void; connect: ReactNode }) {
+  if (!alerts.length) return null;
+  const title = (id: SectionId) => sections.find((x) => x.id === id)?.title;
+  return (
+    <div className="alerts">
+      {alerts.map((a, i) => (
+        <div key={i} className={`alert tone-${a.tone}`}>
+          <Icon id="alert" size={13} />
+          <span className="text" title={a.text}>
+            {a.text}
+          </span>
+          {title(a.section) && (
+            <button className="to" onClick={() => onOpen(a.section)} title={`Open ${title(a.section)}`}>
+              → {title(a.section)}
+            </button>
+          )}
+          {a.action === "connect" && connect}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A section that folds open and closed: its header shows a warning dot or, while closed, how many rows it has. */
+function SectionView({ section, open, onToggle, children }: { section: Section; open: boolean; onToggle: () => void; children?: ReactNode }) {
+  const warns = section.rows.some((r) => r.warn);
+  return (
+    <section className={`fold${open ? " open" : ""}`} data-section={section.id}>
+      <button className="fold-head" onClick={onToggle} aria-expanded={open}>
+        <Icon id="chevron" size={12} className="chev" />
+        <Icon id={section.icon} size={13} />
+        <span className="title">{section.title}</span>
+        {warns ? <span className="dot tone-warn" aria-label="Has a warning" /> : !open && section.rows.length > 0 ? <span className="count">{section.rows.length}</span> : null}
+      </button>
+      {open && <div className="fold-body">{children}</div>}
+    </section>
   );
 }
 
@@ -231,96 +295,136 @@ function ConditionRow({ s, roomId, condition, repairing }: { s: Snapshot; roomId
 }
 
 export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
+  const [remembered, setOpen] = useOpenSections();
   const room = s.layout.rooms.find((r) => r.id === roomId);
   if (!room) return null;
   const def = roomDef(room.type);
   const spec = roomSpec(room, config);
-  const st = s.roomStatus[room.id];
+  const model = panelModel(s, room);
+  // The player's own open or close wins over the model's default (docs/PLAN-M18.md §5).
+  const isOpen = (x: Section) => remembered[x.id] ?? x.open;
+  const openSection = (id: SectionId) => {
+    setOpen(id, true);
+    requestAnimationFrame(() => document.querySelector(`.room-panel [data-section="${id}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+  };
+  const connectFinish = finish ?? corridors.defaultFinish;
+  const connect = room.at.kind === "ring" && (
+    <button
+      className="connect"
+      onClick={() => onCommand({ type: "connectRoom", roomId: room.id, finish: connectFinish })}
+      title={`Carve the shortest corridor from the network to this room, along the borders of rooms (${finishDef(connectFinish).name.toLowerCase()})`}
+    >
+      Connect
+    </button>
+  );
 
-  const state = roomState(s.layout, room, st);
-  const rows = panelRows(s, room);
+  // What each section holds besides its rows: the room's controls, where they belong.
+  const body = (x: Section): ReactNode => {
+    switch (x.id) {
+      case "work":
+        return (
+          <>
+            <Rows rows={x.rows} />
+            {def.growsCrops && (
+              <label>
+                <span className="k">Crop</span>
+                <select value={room.crop} onChange={(e) => onCommand({ type: "setCrop", roomId: room.id, crop: e.target.value })}>
+                  {cropDefs.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.group}, {c.yield}/day)
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {holding(room) && (
+              <label title="What this tank holds. Whatever no longer fits when it changes over is lost.">
+                <span className="k">Holds</span>
+                <select value={holding(room)!} onChange={(e) => onCommand({ type: "setHolds", roomId: room.id, holds: e.target.value })}>
+                  {def.holds!.map((id) => (
+                    <option key={id} value={id}>
+                      {resName(id)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {fillsTanks(room) && (
+              <label title="Hole-wide: once the air is at its target, electrolyzers fill the O2 tanks this far, a reserve for digging and breakdowns. The water it takes is gone for good.">
+                <span className="k">Tank fill</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={10}
+                  value={Math.round(s.air.tankFill * 100)}
+                  aria-valuetext={`${Math.round(s.air.tankFill * 100)}% of the O2 tanks`}
+                  onChange={(e) => onCommand({ type: "setTankFill", fill: Number(e.target.value) / 100 })}
+                />
+                <output>{s.air.tankFill > 0 ? `${Math.round(s.air.tankFill * 100)}%` : "Off"}</output>
+              </label>
+            )}
+            {spec.staff > 0 && (
+              <label>
+                <span className="k">Priority</span>
+                <select value={room.priority} onChange={(e) => onCommand({ type: "setPriority", roomId: room.id, priority: e.target.value as Priority })}>
+                  {config.economy.priorities.map((p) => (
+                    <option key={p} value={p}>
+                      {p[0]!.toUpperCase() + p.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {spec.staff > 0 && def.buildable && <Controls room={room} s={s} onCommand={onCommand} />}
+          </>
+        );
+      case "building":
+        return (
+          <>
+            <UnderConstruction s={s} roomId={room.id} onCommand={onCommand} />
+            <Rows rows={x.rows} />
+            <Refit s={s} room={room} onCommand={onCommand} />
+            {def.buildable && (
+              <button className="danger" onClick={() => onCommand({ type: "demolish", roomId: room.id })}>
+                {room.building ? "Cancel construction (full refund)" : `Demolish (${room.planned ? "full refund" : `${config.economy.demolishRefund * 100}% refund`})`}
+              </button>
+            )}
+          </>
+        );
+      case "kit":
+        return <SeedKit s={s} onCommand={onCommand} />;
+      case "storage":
+        return <StorageEditor room={room} onCommand={onCommand} />;
+      default:
+        return <Rows rows={x.rows} />;
+    }
+  };
 
   return (
-    <aside className="inspector">
+    <aside className="inspector room-panel">
       <header>
         <RoomTitle room={room} onCommand={onCommand} />
         <button onClick={onClose} aria-label="Close">
           ×
         </button>
       </header>
-      <p className={isProblem(room, st) ? "warn" : ""}>{state}</p>
-      <UnderConstruction s={s} roomId={room.id} onCommand={onCommand} />
+      {(model.status.text || model.headline.length > 0) && (
+        <div className="headline">
+          <StatusPill status={model.status} />
+          {model.headline.map((c, i) => (
+            <ChipView key={i} chip={c} />
+          ))}
+        </div>
+      )}
+      <Alerts alerts={model.alerts} sections={model.sections} onOpen={openSection} connect={connect} />
+      {/* At a glance: condition for now; the rest of the glance band comes with #309. */}
       {!room.planned && !room.building && hasCondition(room) && <ConditionRow s={s} roomId={room.id} condition={room.condition ?? 1} repairing={room.repair} />}
-      {(room.storageUnits ?? def.storage) ? <StorageEditor room={room} onCommand={onCommand} /> : null}
-      {!room.connected && room.at.kind === "ring" && (
-        <button
-          onClick={() => onCommand({ type: "connectRoom", roomId: room.id, finish: finish ?? corridors.defaultFinish })}
-          title="Carve the shortest corridor from the network to this room, along the borders of rooms"
-        >
-          Connect with a corridor ({finishDef(finish ?? corridors.defaultFinish).name.toLowerCase()})
-        </button>
-      )}
-      <Rows rows={rows.before} />
-      {def.stagesSeedKit && <SeedKit s={s} onCommand={onCommand} />}
-      <Rows rows={rows.after} />
-      <Refit s={s} room={room} onCommand={onCommand} />
-      {def.growsCrops && (
-        <label>
-          <span className="k">Crop</span>
-          <select value={room.crop} onChange={(e) => onCommand({ type: "setCrop", roomId: room.id, crop: e.target.value })}>
-            {cropDefs.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.group}, {c.yield}/day)
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {holding(room) && (
-        <label title="What this tank holds. Whatever no longer fits when it changes over is lost.">
-          <span className="k">Holds</span>
-          <select value={holding(room)!} onChange={(e) => onCommand({ type: "setHolds", roomId: room.id, holds: e.target.value })}>
-            {def.holds!.map((id) => (
-              <option key={id} value={id}>
-                {resName(id)}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {fillsTanks(room) && (
-        <label title="Hole-wide: once the air is at its target, electrolyzers fill the O2 tanks this far, a reserve for digging and breakdowns. The water it takes is gone for good.">
-          <span className="k">Tank fill</span>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={10}
-            value={Math.round(s.air.tankFill * 100)}
-            aria-valuetext={`${Math.round(s.air.tankFill * 100)}% of the O2 tanks`}
-            onChange={(e) => onCommand({ type: "setTankFill", fill: Number(e.target.value) / 100 })}
-          />
-          <output>{s.air.tankFill > 0 ? `${Math.round(s.air.tankFill * 100)}%` : "Off"}</output>
-        </label>
-      )}
-      {spec.staff > 0 && (
-        <label>
-          <span className="k">Priority</span>
-          <select value={room.priority} onChange={(e) => onCommand({ type: "setPriority", roomId: room.id, priority: e.target.value as Priority })}>
-            {config.economy.priorities.map((p) => (
-              <option key={p} value={p}>
-                {p[0]!.toUpperCase() + p.slice(1)}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {spec.staff > 0 && def.buildable && <Controls room={room} s={s} onCommand={onCommand} />}
-      {def.buildable && (
-        <button className="danger" onClick={() => onCommand({ type: "demolish", roomId: room.id })}>
-          {room.building ? "Cancel construction (full refund)" : `Demolish (${room.planned ? "full refund" : `${config.economy.demolishRefund * 100}% refund`})`}
-        </button>
-      )}
+      {model.sections.map((x) => (
+        <SectionView key={x.id} section={x} open={isOpen(x)} onToggle={() => setOpen(x.id, !isOpen(x))}>
+          {body(x)}
+        </SectionView>
+      ))}
     </aside>
   );
 }

@@ -5,7 +5,7 @@ import { corridors, finishDef } from "../sim/corridors";
 import { cropDefs } from "../sim/resources";
 import type { Snapshot } from "../sim/snapshot";
 import { conditionColor } from "../view/conditionView";
-import { conditionNote, constructionInfo, panelModel, panelRows, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type PanelModel, type Row, type StorageInfo } from "../view/roomPanel";
+import { conditionNote, constructionInfo, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type PanelModel, type StorageInfo } from "../view/roomPanel";
 import { holding, roomSpec } from "../sim/economy";
 import type { SimState } from "../sim/state";
 import { roomDef } from "../sim/rooms";
@@ -13,7 +13,6 @@ import { roomName } from "../sim/roomName";
 import { outlineGeometry, roomGeometry } from "../render3d/rooms3d";
 import { pickAt } from "../render3d/cylinder";
 import { resName } from "../ui/format";
-import { isProblem, roomState } from "../view/roomState";
 
 // The Godot viewer's room panel: what was clicked, what that room is and how it's doing, and its
 // controls, as the web's inspector (ui/Inspector.tsx) has them (the rows from view/roomPanel.ts, shared
@@ -27,8 +26,6 @@ export interface InspectedMessage {
   name?: string;
   defaultName?: string;
   subtitle?: string;
-  state?: string;
-  problem?: boolean;
   /** The room's outline: float32 line segments (xyz pairs), base64. */
   outline?: string;
   /** For its buttons: whether a corridor reaches it, and whether it's still a blueprint or being built. */
@@ -41,9 +38,7 @@ export interface InspectedMessage {
   storage?: StorageInfo;
   /** Connect with a corridor: the finish's name. */
   connect?: { finish: string; name: string };
-  before?: Row[];
   kit?: { progress: number; goods: string; button: string | null; note: string; gathering: boolean };
-  after?: Row[];
   /** The linings it could be refitted in (view/roomPanel.ts refitOptions): upgradeRoom's material and finish, and why not (null when it can be ordered). */
   refit?: { material: string; finish: string; text: string; refusal: string | null }[];
   crop?: { value: string; options: { id: string; label: string }[] };
@@ -53,7 +48,7 @@ export interface InspectedMessage {
   /** Running, and (a room with an output) standing by at a stock of it: resource null when it has none. */
   controls?: { running: boolean; stopAt: number | null; suggested: number; resource: string | null };
   demolish?: string;
-  /** The whole panel as data (view/roomPanel.ts panelModel, docs/PLAN-M18.md §7): status, headline, alerts, glance and sections. The flat rows above are the same rows. */
+  /** The whole panel as data (view/roomPanel.ts panelModel, docs/PLAN-M18.md §7): the status pill, headline chips, alerts and the sections with their rows. The controls above go in the sections they belong to. */
   model?: PanelModel;
 }
 
@@ -68,7 +63,6 @@ export function inspect(state: SimState, s: Snapshot, roomId: number | null): In
   const room = roomId === null ? undefined : state.layout.rooms.find((r) => r.id === roomId);
   if (!room) return { type: "inspected", roomId: null };
   const def = roomDef(room.type);
-  const st = state.roomStatus[room.id];
   const spec = roomSpec(room, config);
   const floors = [...new Set(room.cells.map((c) => c.floor))].sort((a, b) => a - b);
   const where = floors.length > 1 ? `floors ${floors[0]}–${floors.at(-1)}` : `floor ${floors[0] ?? "surface"}`;
@@ -89,12 +83,9 @@ export function inspect(state: SimState, s: Snapshot, roomId: number | null): In
     name: room.name ?? "",
     defaultName: def.name,
     subtitle: `${def.name} · ${where}`,
-    state: roomState(state.layout, room, st),
-    problem: isProblem(room, st),
     outline,
     connected: room.connected,
     unbuilt: room.planned || !!room.building,
-    ...panelRows(s, room),
     model: panelModel(s, room),
   };
   const job = constructionInfo(s, room.id);

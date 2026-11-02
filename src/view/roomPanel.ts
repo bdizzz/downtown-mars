@@ -500,24 +500,25 @@ function glanceChips(s: Snapshot, room: RoomInstance): Chip[] {
   return chips;
 }
 
-/** A section with no rows still shows when it holds the room's controls (crop, priority, demolish, the kit, storage). */
-function hasControls(id: SectionId, room: RoomInstance): boolean {
+/** A section with no rows still shows when it holds the room's controls (crop, priority, construction, demolish, the kit, storage). */
+function hasControls(id: SectionId, room: RoomInstance, queued: boolean): boolean {
   const def = roomDef(room.type);
   if (id === "work") return roomSpec(room, config).staff > 0 || !!def.growsCrops || !!holding(room) || fillsTanks(room);
-  if (id === "building") return !!def.buildable || canLine(room);
+  if (id === "building") return !!def.buildable || canLine(room) || queued;
   if (id === "kit") return !!def.stagesSeedKit;
   if (id === "storage") return !!storageInfo(room);
   return false;
 }
 
 /** Is a section open before the player opens or closes it? Its kind of room's own, and any holding a warning. */
-function openByDefault(id: SectionId, room: RoomInstance, rows: Row[]): boolean {
+function openByDefault(id: SectionId, room: RoomInstance, rows: Row[], queued: boolean): boolean {
   const def = roomDef(room.type);
   if (rows.some((r) => r.warn)) return true;
   if (id === "work") return roomSpec(room, config).staff > 0;
   if (id === "home") return !!def.houses;
   if (id === "serves") return !def.houses;
-  if (id === "building") return room.planned || !!room.building;
+  // A blueprint, or a room (or its refit) in the construction queue.
+  if (id === "building") return room.planned || !!room.building || queued;
   return id === "kit" || id === "storage";
 }
 
@@ -529,10 +530,11 @@ export function panelModel(s: Snapshot, room: RoomInstance): PanelModel {
   const tone = roomTone(room, st);
   const status = { text: statusWord(room, st, job?.progress), tone, tip: roomState(s.layout, room, st) };
 
+  const queued = !!constructionInfo(s, room.id);
   const sections: Section[] = (Object.keys(SECTIONS) as SectionId[])
     .map((id) => ({ id, rows: entries.filter((e) => e.section === id).map((e) => e.row) }))
-    .filter(({ id, rows }) => rows.length > 0 || hasControls(id, room))
-    .map(({ id, rows }) => ({ id, ...SECTIONS[id], open: openByDefault(id, room, rows), rows }));
+    .filter(({ id, rows }) => rows.length > 0 || hasControls(id, room, queued))
+    .map(({ id, rows }) => ({ id, ...SECTIONS[id], open: openByDefault(id, room, rows, queued), rows }));
 
   // The room's own state first (cut off, short of an input, slowed), then every warning row.
   const alerts: Alert[] = [];

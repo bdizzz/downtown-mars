@@ -102,6 +102,36 @@ function saveSettings(s: Settings): void {
   }
 }
 
+/**
+ * The room panel's sections the player has opened or closed (F-019): remembered per section, not per
+ * room, so closing Surroundings once keeps it closed on every room. A section not in here opens or
+ * stays closed as the panel's model says.
+ */
+export type OpenSections = Partial<Record<string, boolean>>;
+const SECTIONS_KEY = storageKey("panelSections");
+
+function loadOpenSections(): OpenSections {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SECTIONS_KEY) ?? "{}") as unknown;
+    return raw && typeof raw === "object" ? (raw as OpenSections) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function useOpenSections() {
+  const [open, setOpen] = useState<OpenSections>(loadOpenSections);
+  useEffect(() => {
+    try {
+      localStorage.setItem(SECTIONS_KEY, JSON.stringify(open));
+    } catch {
+      // Not persisted; fine for this session.
+    }
+  }, [open]);
+  const set = useCallback((id: string, on: boolean) => setOpen((o) => ({ ...o, [id]: on })), []);
+  return [open, set] as const;
+}
+
 export function useSettings() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   useEffect(() => saveSettings(settings), [settings]);
