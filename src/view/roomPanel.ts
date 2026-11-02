@@ -5,7 +5,7 @@ import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
 import { DIAGNOSIS } from "../sim/diagnosis";
 import { crowdedAir } from "../sim/happiness";
 import { network } from "../sim/network";
-import { canLine, liningOf, liningText, MATERIALS, refitPlan, refitRefusal, type Finish, type Material } from "../sim/materials";
+import { canLine, flooringOf, floorPlan, floorRefusal, liningOf, liningText, MATERIALS, refitPlan, refitRefusal, type Finish, type Material } from "../sim/materials";
 import type { RoomInstance } from "../sim/placement";
 import { roomName } from "../sim/roomName";
 import { roomDef } from "../sim/rooms";
@@ -260,10 +260,9 @@ export interface RefitOption {
 /** The linings a built room could be refitted in (every one but its own), or null if it can't have one. */
 export function refitOptions(s: Snapshot, room: RoomInstance): RefitOption[] | null {
   if (!canLine(room) || room.planned || room.building) return null;
-  const queued = s.construction.jobs.find((j) => j.roomId === room.id && j.to);
+  // A queued refit of the walls or the floor: the new one replaces it.
+  const queued = s.construction.jobs.find((j) => j.roomId === room.id && j.kind === "upgrade");
   const own = liningOf(room);
-  // Whole amounts as they are ("brick 16", "6 h"), not "16.0".
-  const amount = (v: number) => (Number.isInteger(v) ? String(v) : num(v));
   return MATERIALS.walls
     .filter((w) => w !== own)
     .map((w) => {
@@ -280,6 +279,40 @@ export function refitOptions(s: Snapshot, room: RoomInstance): RefitOption[] | n
         refusal: fitting ? "being fitted now" : refitRefusal(room, plan, s.resources, queued?.paid),
       };
     });
+}
+
+/** Whole amounts as they are ("brick 16", "6 h"), not "16.0". */
+const amount = (v: number) => (Number.isInteger(v) ? String(v) : num(v));
+
+/** A floor a room could have laid (flooring null: back to matching the walls), what it gives, costs and takes, and why not (null when it can). */
+export interface FloorOption {
+  flooring: string | null;
+  name: string;
+  text: string;
+  refusal: string | null;
+}
+
+/** The floors a built room could have instead of its own (T-037), or null if it can't have one. Its walls stay as they are. */
+export function floorOptions(s: Snapshot, room: RoomInstance): FloorOption[] | null {
+  if (!canLine(room) || room.planned || room.building) return null;
+  const queued = s.construction.jobs.find((j) => j.roomId === room.id && j.kind === "upgrade");
+  const own = flooringOf(room);
+  const out: FloorOption[] = [];
+  // Taking a floor up is free and at once (as is calling off one queued).
+  if (own || queued?.flooring)
+    out.push({ flooring: null, name: "Matches the walls", text: `Matches the walls (${liningText({ ...room, flooring: undefined })}) · free, at once`, refusal: null });
+  for (const f of MATERIALS.floorings) {
+    if (f === own) continue;
+    const plan = floorPlan(room, f)!;
+    const pay = Object.entries(plan.cost).map(([r, v]) => `${resName(r).toLowerCase()} ${amount(v)}`);
+    out.push({
+      flooring: f.id,
+      name: f.name,
+      text: `${liningText({ ...room, flooring: f.id })} · ${pay.length ? pay.join(", ") : "free"} · ${amount(plan.work)} h of work`,
+      refusal: queued?.flooring === f.id ? "being laid now" : floorRefusal(room, plan, s.resources, queued?.paid),
+    });
+  }
+  return out;
 }
 
 /** Who's repairing a room, or where it is in the maintenance queue ("" when neither). */
