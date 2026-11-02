@@ -82,7 +82,9 @@ A hole's crowning work (Build → Public, from 300 colonists; glass, metal, mach
 
 ### Room controls
 
-Pause any staffed room, or have it stop at a stock level, from its details panel. Rename it there too. A room's name floats in the middle of it, inside its walls: a long one wraps onto two lines or shrinks to fit, and one too long even then shows only while you point at the room (or have it picked).
+Click a room to open its panel. At the top: its name (✎ renames it), a colored **status pill** (green running, gray resting by choice, amber slowed, red stopped or cut off, blue not built yet; point at it for the whole sentence) and a few **headline chips**: staff and what it makes a month, a home's residents and happiness, a store's fill. Below them, every warning in the room is raised into one **alerts** band, each with a button to the section it comes from; a room with no corridor gets **Connect** there. Then its condition, and the rest in sections that fold open and closed: **Work** (what it uses and makes, and its controls: crop, what a tank holds, tank fill, priority, Running and Stop at), **Home**, **Serves**, **Surroundings**, **Building** (construction, its walls, Refit, and Demolish at the bottom), **Seed kit** and **Storage**. A closed section shows how many lines it holds, or a dot when one is a warning. Open or close a section and it stays that way on every room you open.
+
+Pause any staffed room, or have it stop at a stock level, from its Work section. A room's name floats in the middle of it, inside its walls: a long one wraps onto two lines or shrinks to fit, and one too long even then shows only while you point at the room (or have it picked).
 
 ## Digging
 

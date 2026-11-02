@@ -35,6 +35,11 @@ public static class ViewSettings
     /// </summary>
     public static float CutAngle { get; set; } = CutMax;
     public const float CutMin = 60, CutMax = 180, CutStep = 15;
+    /// <summary>
+    /// The room panel's sections the player has opened or closed (F-019), by section id, as the web's
+    /// (ui/settings.ts useOpenSections): remembered per section, not per room. One not in here follows the panel's model.
+    /// </summary>
+    public static readonly System.Collections.Generic.Dictionary<string, bool> PanelSections = new();
     /// <summary>A cut angle in range, in whole degrees.</summary>
     public static float ClampCut(float deg) => Mathf.Round(Mathf.Clamp(deg, CutMin, CutMax));
 
@@ -66,6 +71,9 @@ public static class ViewSettings
         LookSpeed = Mathf.Clamp((float)cfg.GetValue("controls", "look_speed", 1f), 0.25f, 2);
         Miniature = Mathf.Clamp((float)cfg.GetValue("graphics", "miniature", 0.4f), 0, 1);
         CutAngle = ClampCut((float)cfg.GetValue("view", "cut_angle", CutMax));
+        PanelSections.Clear();
+        if (cfg.HasSection("panel_sections"))
+            foreach (var id in cfg.GetSectionKeys("panel_sections")) PanelSections[id] = (bool)cfg.GetValue("panel_sections", id, false);
     }
 
     /// <summary>A test run (a screenshot or a benchmark): nothing it changes is kept.</summary>
@@ -89,6 +97,7 @@ public static class ViewSettings
         cfg.SetValue("game", "ui_scale", UiScale);
         cfg.SetValue("controls", "look_speed", LookSpeed);
         cfg.SetValue("graphics", "miniature", Miniature);
+        foreach (var (id, open) in PanelSections) cfg.SetValue("panel_sections", id, open);
         cfg.Save(File);
     }
 }

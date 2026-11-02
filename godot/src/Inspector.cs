@@ -8,21 +8,61 @@ using Godot;
 namespace DowntownMars;
 
 /// <summary>
-/// The room panel, as the web's inspector (ui/Inspector.tsx): what the clicked room is and how it's
-/// doing, and its controls (from the bridge's inspect.ts, kept up to date twice a second while it's
-/// open): its name (✎ renames it), construction progress (and moving it up the queue, or calling a refit off), condition,
-/// storage shares, connecting it, the rows of what it uses, makes and feels, a staging bay's seed kit,
-/// refitting its walls, crop, what a tank holds, priority, running and stop-at, and demolish. Its outline is drawn over the scene. The widgets
-/// are made once and only their values change, so a field being typed in isn't reset under the pointer.
+/// The room panel, as the web's inspector (ui/Inspector.tsx), drawn from the bridge's panel model
+/// (view/roomPanel.ts panelModel, kept up to date twice a second while it's open): its name (✎ renames
+/// it), a status pill and headline chips, the alerts band (with Connect), condition, then the sections
+/// that fold open and closed (Work, Home, Serves, Surroundings, Building, Seed kit, Storage), each with
+/// its rows and its controls: crop, what a tank holds, priority, running and stop-at in Work;
+/// construction, refitting its walls and demolish in Building. Which sections are open is remembered per
+/// section (ViewSettings.PanelSections). Its outline is drawn over the scene. The widgets are made once
+/// and only their values change, so a field being typed in isn't reset under the pointer.
 /// </summary>
 public partial class Inspector : Node3D
 {
     const int RoomNameMax = 32;
     static readonly Color Dim = new("#a8927e"), Ink = new("#e0cfbd"), Warn = new("#f0a030"), Good = new("#9fd28a"), Danger = new("#e0503a");
+    /// <summary>The panel's five tones, the same hex values as the web's (ui/styles.css --tone-*).</summary>
+    static readonly Dictionary<string, Color> Tones = new()
+    {
+        ["good"] = Good,
+        ["idle"] = Dim,
+        ["warn"] = Warn,
+        ["bad"] = new("#ff7a5c"),
+        ["info"] = new("#7fb0e0"),
+    };
+    static Color ToneOf(JsonElement e, string key, Color fallback) =>
+        e.TryGetProperty(key, out var t) && t.ValueKind == JsonValueKind.String && Tones.TryGetValue(t.GetString()!, out var c) ? c : fallback;
+    /// <summary>The sections in the order the panel shows them (view/roomPanel.ts SECTIONS).</summary>
+    static readonly string[] SectionIds = { "work", "home", "serves", "surroundings", "building", "kit", "storage" };
+
+    /// <summary>A section that folds: its header (chevron, icon, title, and a warning dot or row count) and its body.</summary>
+    sealed class Fold
+    {
+        public readonly VBoxContainer Root = new();
+        public readonly Button Head = new() { Flat = true, FocusMode = Control.FocusModeEnum.None, Alignment = HorizontalAlignment.Left, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        public readonly TextureRect Chevron = Icons.Rect("chevron", 12, Dim);
+        public readonly TextureRect Icon = Icons.Rect("walls", 14, Ink);
+        public readonly Label Count = new();
+        public readonly VBoxContainer Body = new();
+        public readonly RichTextLabel Rows = Inspector.Rows();
+        public string RowsKey = "";
+        public bool Open;
+    }
+    readonly Dictionary<string, Fold> _folds = new();
 
     readonly PanelContainer _panel = new();
     readonly ScrollContainer _scroll = new() { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-    readonly Label _title = new(), _subtitle = new(), _state = new();
+    readonly Label _title = new(), _subtitle = new();
+    // The header strip: the status pill and headline chips.
+    readonly HFlowContainer _headline = new();
+    readonly PanelContainer _pill = new();
+    readonly StyleBoxFlat _pillBox = new() { CornerRadiusTopLeft = 9, CornerRadiusTopRight = 9, CornerRadiusBottomLeft = 9, CornerRadiusBottomRight = 9, ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 1, ContentMarginBottom = 1 };
+    readonly Label _pillText = new();
+    readonly List<(PanelContainer box, TextureRect icon, Label value, string id)> _chips = new();
+    // The alerts band.
+    readonly VBoxContainer _alerts = new();
+    readonly List<(HBoxContainer row, TextureRect icon, Label text, Button to)> _alertRows = new();
+    readonly List<string> _alertSections = new();
     readonly LineEdit _rename = new() { MaxLength = RoomNameMax, Visible = false };
     // Construction, condition.
     readonly VBoxContainer _building = new();
@@ -43,7 +83,6 @@ public partial class Inspector : Node3D
     readonly GridContainer _goods = new() { Columns = 2 };
     readonly Dictionary<string, (CheckBox on, Label stored)> _goodRows = new();
     readonly Button _connect = Btn("Connect", "Carve the shortest corridor from the network to this room, along the borders of rooms");
-    readonly RichTextLabel _before = Rows(), _after = Rows();
     // The seed kit.
     readonly VBoxContainer _kit = new();
     readonly Label _kitText = new(), _kitGoods = new(), _kitNote = new();
@@ -170,8 +209,22 @@ public partial class Inspector : Node3D
 
         Style(_subtitle, 14, new Color("#c9b29c"));
         rows.AddChild(_subtitle);
-        Style(_state, 15, Good);
-        rows.AddChild(_state);
+
+        // The header strip: status pill, then the headline chips.
+        _headline.AddThemeConstantOverride("h_separation", 4);
+        _headline.AddThemeConstantOverride("v_separation", 4);
+        _pill.AddThemeStyleboxOverride("panel", _pillBox);
+        _pillText.AddThemeFontSizeOverride("font_size", 13);
+        _pillText.AddThemeColorOverride("font_color", new Color("#1a0f0d"));
+        _pill.AddChild(_pillText);
+        _headline.AddChild(_pill);
+        rows.AddChild(_headline);
+
+        // The alerts band: one line per warning, each with a button to its section; Connect below.
+        _alerts.AddThemeConstantOverride("separation", 3);
+        _alerts.AddChild(_connect);
+        rows.AddChild(_alerts);
+        _connect.Pressed += () => Send(new() { ["type"] = "connectRoom", ["roomId"] = _roomId, ["finish"] = _connectFinish ?? "rock" });
 
         Style(_buildText, 13, Dim);
         _building.AddChild(_buildBar);
@@ -181,13 +234,44 @@ public partial class Inspector : Node3D
         _prioritize.Pressed += () => Send(new() { ["type"] = "prioritize", ["jobId"] = _jobId });
         _cancelRefit.Pressed += () => Send(new() { ["type"] = "cancelJob", ["jobId"] = _jobId });
         _buildBar.AddThemeStyleboxOverride("fill", new StyleBoxFlat { BgColor = new Color("#e0a03b") });
-        rows.AddChild(_building);
 
+        // At a glance: condition (the rest of the glance band comes with #309).
         Style(_conditionText, 14, Ink);
         _condition.AddChild(_conditionText);
         _conditionBar.AddThemeStyleboxOverride("fill", _conditionFill);
         _condition.AddChild(_conditionBar);
         rows.AddChild(_condition);
+
+        // The sections, each made once; the controls go into the one they belong to.
+        foreach (var id in SectionIds)
+        {
+            var f = new Fold();
+            var line = new HBoxContainer();
+            line.AddThemeConstantOverride("separation", 4);
+            f.Chevron.PivotOffset = new Vector2(6, 6);
+            line.AddChild(f.Chevron);
+            line.AddChild(f.Icon);
+            f.Head.AddThemeFontSizeOverride("font_size", 14);
+            f.Head.AddThemeColorOverride("font_color", Ink);
+            line.AddChild(f.Head);
+            Style(f.Count, 13, Dim);
+            f.Count.CustomMinimumSize = Vector2.Zero;
+            f.Count.AutowrapMode = TextServer.AutowrapMode.Off;
+            line.AddChild(f.Count);
+            f.Root.AddChild(new HSeparator());
+            f.Root.AddChild(line);
+            f.Body.AddThemeConstantOverride("separation", 6);
+            f.Root.AddChild(f.Body);
+            var sectionId = id;
+            f.Head.Pressed += () => SetOpen(sectionId, !_folds[sectionId].Open);
+            _folds[id] = f;
+            rows.AddChild(f.Root);
+        }
+        var work = _folds["work"].Body;
+        var building = _folds["building"].Body;
+        foreach (var id in new[] { "work", "home", "serves", "surroundings" }) _folds[id].Body.AddChild(_folds[id].Rows);
+        building.AddChild(_building);
+        building.AddChild(_folds["building"].Rows);
 
         Style(_storageText, 14, Ink);
         _storage.AddChild(_storageText);
@@ -200,12 +284,7 @@ public partial class Inspector : Node3D
         _storage.AddChild(_allNone);
         _goods.AddThemeConstantOverride("h_separation", 8);
         _storage.AddChild(_goods);
-        rows.AddChild(_storage);
-
-        rows.AddChild(_connect);
-        _connect.Pressed += () => Send(new() { ["type"] = "connectRoom", ["roomId"] = _roomId, ["finish"] = _connectFinish ?? "rock" });
-
-        rows.AddChild(_before);
+        _folds["storage"].Body.AddChild(_storage);
 
         Style(_kitText, 14, Ink);
         Style(_kitGoods, 13, Dim);
@@ -215,9 +294,7 @@ public partial class Inspector : Node3D
         _kit.AddChild(_kitButton);
         _kit.AddChild(_kitNote);
         _kitButton.Pressed += () => Send(new() { ["type"] = "setGathering", ["gathering"] = !_gathering });
-        rows.AddChild(_kit);
-
-        rows.AddChild(_after);
+        _folds["kit"].Body.AddChild(_kit);
 
         _refitRow.AddChild(Caption("Refit"));
         _refitRow.AddChild(_refit);
@@ -228,7 +305,7 @@ public partial class Inspector : Node3D
             Send(new() { ["type"] = "upgradeRoom", ["roomId"] = _roomId, ["material"] = material, ["finish"] = finish });
             _refit.Select(0);
         };
-        rows.AddChild(_refitRow);
+        building.AddChild(_refitRow);
 
         _cropRow.AddChild(Caption("Crop"));
         _cropRow.AddChild(_crop);
@@ -236,23 +313,23 @@ public partial class Inspector : Node3D
         {
             if (!_filling) Send(new() { ["type"] = "setCrop", ["roomId"] = _roomId, ["crop"] = _cropIds[i] });
         };
-        rows.AddChild(_cropRow);
+        work.AddChild(_cropRow);
         _holdsRow.AddChild(Caption("Holds"));
         _holdsRow.AddChild(_holds);
         _holds.ItemSelected += i =>
         {
             if (!_filling) Send(new() { ["type"] = "setHolds", ["roomId"] = _roomId, ["holds"] = _holdsIds[i] });
         };
-        rows.AddChild(_holdsRow);
+        work.AddChild(_holdsRow);
         _priorityRow.AddChild(Caption("Priority"));
         _priorityRow.AddChild(_priority);
         _priority.ItemSelected += i =>
         {
             if (!_filling) Send(new() { ["type"] = "setPriority", ["roomId"] = _roomId, ["priority"] = _priorityIds[i] });
         };
-        rows.AddChild(_priorityRow);
+        work.AddChild(_priorityRow);
 
-        rows.AddChild(_running);
+        work.AddChild(_running);
         _running.Toggled += on =>
         {
             if (!_filling) Send(new() { ["type"] = "setRoomControl", ["roomId"] = _roomId, ["paused"] = !on });
@@ -268,11 +345,11 @@ public partial class Inspector : Node3D
         {
             if (!_filling && _stopAt.ButtonPressed) Send(new() { ["type"] = "setRoomControl", ["roomId"] = _roomId, ["stopAt"] = (int)v });
         };
-        rows.AddChild(_stopRow);
+        work.AddChild(_stopRow);
 
         _demolish.AddThemeColorOverride("font_color", Danger);
         _demolish.Pressed += () => Send(new() { ["type"] = "demolish", ["roomId"] = _roomId });
-        rows.AddChild(_demolish);
+        building.AddChild(_demolish);
     }
 
     // ---- renaming ----
@@ -362,14 +439,175 @@ public partial class Inspector : Node3D
     public Vector3[] OutlineLines => _panel.Visible ? _outlineVerts : System.Array.Empty<Vector3>();
     Vector3[] _outlineVerts = System.Array.Empty<Vector3>();
 
-    static string RowsText(JsonElement rows) => string.Join("\n", rows.EnumerateArray().Select(r =>
+    /// <summary>A section's rows, as the web's: an icon, a dimmed label, then the text, in its tone. Redrawn only when they change.</summary>
+    static void FillRows(Fold f, JsonElement rows)
     {
-        var k = r.TryGetProperty("k", out var kk) ? $"[color=#{Dim.ToHtml(false)}]{Escape(kk.GetString()!)}[/color] " : "";
-        var text = Escape(r.GetProperty("text").GetString()!);
-        return r.TryGetProperty("warn", out var w) && w.GetBoolean() ? $"{k}[color=#{Warn.ToHtml(false)}]{text}[/color]" : k + text;
-    }));
+        var key = rows.GetRawText();
+        if (key == f.RowsKey) return;
+        f.RowsKey = key;
+        var r = f.Rows;
+        r.Clear();
+        var first = true;
+        foreach (var row in rows.EnumerateArray())
+        {
+            if (!first) r.Newline();
+            first = false;
+            var tone = ToneOf(row, "tone", Ink);
+            if (row.TryGetProperty("icon", out var icon) && Icons.Get(icon.GetString()!) is { } tex) r.AddImage(tex, 13, 13, tone == Ink ? Dim : tone);
+            r.AddText(" ");
+            if (row.TryGetProperty("k", out var k))
+            {
+                r.PushColor(Dim);
+                r.AddText(k.GetString()! + " ");
+                r.Pop();
+            }
+            r.PushColor(tone);
+            r.AddText(row.GetProperty("text").GetString()!);
+            r.Pop();
+        }
+        // Icons that arrive later redraw it.
+        if (Icons.Get("workers") == null) f.RowsKey = "";
+        r.Visible = !first;
+    }
 
-    static string Escape(string s) => s.Replace("[", "[lb]");
+    /// <summary>Open or close a section, and remember it for every room (as the web's useOpenSections).</summary>
+    void SetOpen(string id, bool open)
+    {
+        ViewSettings.PanelSections[id] = open;
+        ViewSettings.Save();
+        ShowFold(_folds[id], open);
+        CallDeferred(nameof(FitHeight));
+    }
+
+    static void ShowFold(Fold f, bool open)
+    {
+        f.Open = open;
+        f.Body.Visible = open;
+        f.Chevron.RotationDegrees = open ? 90 : 0;
+    }
+
+    /// <summary>An alert's button: open its section and bring it into view.</summary>
+    void GoTo(string id)
+    {
+        SetOpen(id, true);
+        CallDeferred(nameof(ScrollTo), id);
+    }
+
+    void ScrollTo(string id) => _scroll.EnsureControlVisible(_folds[id].Root);
+
+    /// <summary>The header strip, the alerts band and the sections from the panel model (view/roomPanel.ts panelModel).</summary>
+    void FillModel(JsonElement model, bool canConnect)
+    {
+        var status = model.GetProperty("status");
+        var word = status.GetProperty("text").GetString()!;
+        _pill.Visible = word != "";
+        _pillText.Text = word;
+        _pill.TooltipText = status.GetProperty("tip").GetString();
+        _pillBox.BgColor = ToneOf(status, "tone", Dim);
+
+        var chips = model.GetProperty("headline").EnumerateArray().ToArray();
+        for (var i = 0; i < chips.Length; i++)
+        {
+            var c = chips[i];
+            var icon = c.GetProperty("icon").GetString()!;
+            if (i >= _chips.Count)
+            {
+                var box = new PanelContainer();
+                box.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = new Color(0, 0, 0, 0.27f), CornerRadiusTopLeft = 4, CornerRadiusTopRight = 4, CornerRadiusBottomLeft = 4, CornerRadiusBottomRight = 4, ContentMarginLeft = 6, ContentMarginRight = 6, ContentMarginTop = 1, ContentMarginBottom = 1 });
+                var line = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+                line.AddThemeConstantOverride("separation", 3);
+                var rect = Icons.Rect(icon, 13, Ink);
+                var value = new Label { MouseFilter = Control.MouseFilterEnum.Ignore };
+                value.AddThemeFontSizeOverride("font_size", 13);
+                line.AddChild(rect);
+                line.AddChild(value);
+                box.AddChild(line);
+                _headline.AddChild(box);
+                _chips.Add((box, rect, value, icon));
+            }
+            var chip = _chips[i];
+            if (chip.id != icon)
+            {
+                Icons.Show(chip.icon, icon);
+                _chips[i] = chip = (chip.box, chip.icon, chip.value, icon);
+            }
+            var tone = ToneOf(c, "tone", Ink);
+            chip.value.Text = c.GetProperty("value").GetString();
+            chip.value.AddThemeColorOverride("font_color", tone);
+            chip.icon.Modulate = tone;
+            var label = c.GetProperty("label").GetString();
+            chip.box.TooltipText = c.TryGetProperty("tip", out var tip) ? $"{label}: {tip.GetString()}" : label;
+            chip.box.Visible = true;
+        }
+        for (var i = chips.Length; i < _chips.Count; i++) _chips[i].box.Visible = false;
+        _headline.Visible = _pill.Visible || chips.Length > 0;
+
+        var sections = model.GetProperty("sections").EnumerateArray().ToDictionary(x => x.GetProperty("id").GetString()!);
+        var alerts = model.GetProperty("alerts").EnumerateArray().ToArray();
+        var connect = false;
+        _alertSections.Clear();
+        for (var i = 0; i < alerts.Length; i++)
+        {
+            var a = alerts[i];
+            if (i >= _alertRows.Count)
+            {
+                var row = new HBoxContainer();
+                row.AddThemeConstantOverride("separation", 5);
+                var rect = Icons.Rect("alert", 13, Warn);
+                var text = new Label { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+                Style(text, 13, Warn);
+                text.CustomMinimumSize = Vector2.Zero;
+                // One line each, the whole of it as the tooltip (it's in full in its section too).
+                text.AutowrapMode = TextServer.AutowrapMode.Off;
+                text.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+                text.ClipText = true;
+                text.MouseFilter = Control.MouseFilterEnum.Pass;
+                var to = new Button { Flat = true, FocusMode = Control.FocusModeEnum.None, SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
+                to.AddThemeFontSizeOverride("font_size", 12);
+                to.AddThemeColorOverride("font_color", Dim);
+                var n = i;
+                to.Pressed += () => GoTo(_alertSections[n]);
+                row.AddChild(rect);
+                row.AddChild(text);
+                row.AddChild(to);
+                _alerts.AddChild(row);
+                _alerts.MoveChild(_connect, -1);
+                _alertRows.Add((row, rect, text, to));
+            }
+            var (r, icon, label, button) = _alertRows[i];
+            var section = a.GetProperty("section").GetString()!;
+            _alertSections.Add(section);
+            var tone = ToneOf(a, "tone", Warn);
+            icon.Modulate = tone;
+            label.Text = a.GetProperty("text").GetString();
+            label.TooltipText = label.Text;
+            label.AddThemeColorOverride("font_color", tone);
+            button.Visible = sections.TryGetValue(section, out var target);
+            if (button.Visible) button.Text = $"→ {target.GetProperty("title").GetString()}";
+            r.Visible = true;
+            if (a.TryGetProperty("action", out var act) && act.GetString() == "connect") connect = true;
+        }
+        for (var i = alerts.Length; i < _alertRows.Count; i++) _alertRows[i].row.Visible = false;
+        _connect.Visible = connect && canConnect;
+        _alerts.Visible = alerts.Length > 0;
+
+        foreach (var id in SectionIds)
+        {
+            var f = _folds[id];
+            f.Root.Visible = sections.TryGetValue(id, out var x);
+            if (!f.Root.Visible) continue;
+            f.Head.Text = x.GetProperty("title").GetString();
+            Icons.Show(f.Icon, x.GetProperty("icon").GetString()!);
+            var rows = x.GetProperty("rows");
+            var warns = rows.EnumerateArray().Any(r => r.TryGetProperty("warn", out var w) && w.GetBoolean());
+            var open = ViewSettings.PanelSections.TryGetValue(id, out var remembered) ? remembered : x.GetProperty("open").GetBoolean();
+            ShowFold(f, open);
+            var count = rows.GetArrayLength();
+            f.Count.Text = warns ? "●" : !open && count > 0 ? count.ToString() : "";
+            f.Count.AddThemeColorOverride("font_color", warns ? Warn : Dim);
+            if (f.Rows.GetParent() != null) FillRows(f, rows);
+        }
+    }
 
     static void Options(OptionButton pick, JsonElement o, ref string[] ids)
     {
@@ -445,8 +683,6 @@ public partial class Inspector : Node3D
         _name = msg.GetProperty("name").GetString() is { Length: > 0 } n ? n : msg.GetProperty("title").GetString()!;
         _rename.PlaceholderText = msg.GetProperty("defaultName").GetString();
         _subtitle.Text = msg.GetProperty("subtitle").GetString();
-        _state.Text = msg.GetProperty("state").GetString();
-        _state.AddThemeColorOverride("font_color", msg.GetProperty("problem").GetBoolean() ? Warn : Good);
 
         _building.Visible = Has("construction", out var job);
         if (_building.Visible)
@@ -468,14 +704,13 @@ public partial class Inspector : Node3D
         }
         _storage.Visible = Has("storage", out var st);
         if (_storage.Visible) FillStorage(st);
-        _connect.Visible = Has("connect", out var conn);
-        if (_connect.Visible)
+        var canConnect = Has("connect", out var conn);
+        if (canConnect)
         {
             _connectFinish = conn.GetProperty("finish").GetString();
             _connect.Text = $"Connect with a corridor ({conn.GetProperty("name").GetString()})";
         }
-        _before.Text = RowsText(msg.GetProperty("before"));
-        _before.Visible = _before.Text != "";
+        FillModel(msg.GetProperty("model"), canConnect);
         _kit.Visible = Has("kit", out var kit);
         if (_kit.Visible)
         {
@@ -486,8 +721,6 @@ public partial class Inspector : Node3D
             if (_kitButton.Visible) _kitButton.Text = kit.GetProperty("button").GetString();
             _kitNote.Text = kit.GetProperty("note").GetString();
         }
-        _after.Text = RowsText(msg.GetProperty("after"));
-        _after.Visible = _after.Text != "";
         _refitRow.Visible = Has("refit", out var refit);
         if (_refitRow.Visible) FillRefit(refit);
         _cropRow.Visible = Has("crop", out var crop);
