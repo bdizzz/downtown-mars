@@ -5,7 +5,7 @@ import { corridors, finishDef } from "../sim/corridors";
 import { cropDefs } from "../sim/resources";
 import type { Snapshot } from "../sim/snapshot";
 import { conditionColor } from "../view/conditionView";
-import { conditionNote, constructionInfo, panelRows, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type Row, type StorageInfo } from "../view/roomPanel";
+import { conditionNote, constructionInfo, panelModel, panelRows, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type PanelModel, type Row, type StorageInfo } from "../view/roomPanel";
 import { holding, roomSpec } from "../sim/economy";
 import type { SimState } from "../sim/state";
 import { roomDef } from "../sim/rooms";
@@ -53,6 +53,8 @@ export interface InspectedMessage {
   /** Running, and (a room with an output) standing by at a stock of it: resource null when it has none. */
   controls?: { running: boolean; stopAt: number | null; suggested: number; resource: string | null };
   demolish?: string;
+  /** The whole panel as data (view/roomPanel.ts panelModel, docs/PLAN-M18.md §7): status, headline, alerts, glance and sections. The flat rows above are the same rows. */
+  model?: PanelModel;
 }
 
 /** The room at a world point (as the web view picks), or null. */
@@ -93,6 +95,7 @@ export function inspect(state: SimState, s: Snapshot, roomId: number | null): In
     connected: room.connected,
     unbuilt: room.planned || !!room.building,
     ...panelRows(s, room),
+    model: panelModel(s, room),
   };
   const job = constructionInfo(s, room.id);
   if (job) msg.construction = job;

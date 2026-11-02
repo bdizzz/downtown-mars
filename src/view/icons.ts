@@ -40,6 +40,20 @@ export const ICONS = {
   alert: '<path d="M8 1.5 14.8 13.5H1.2z"/><path d="M8 6v3.5"/><circle cx="8" cy="11.5" r=".8" fill="currentColor"/>',
   up: '<path d="M8 3.5 13 11.5H3z" fill="currentColor" stroke="none"/>',
   down: '<path d="M8 12.5 3 4.5h10z" fill="currentColor" stroke="none"/>',
+  // The room panel (F-019): what a room feels and does, and its sections.
+  comfort: '<path d="M2 12.5V8.5a1.5 1.5 0 0 1 3 0V10h6V8.5a1.5 1.5 0 0 1 3 0v4M5 10V6a3 3 0 0 1 6 0v4M3 12.5v1.5M13 12.5v1.5M2 12.5h12"/>',
+  noise: '<path d="M2 6v4h2.5L8 13V3L4.5 6zM10.5 5.5a3.5 3.5 0 0 1 0 5M12.5 3.5a6.5 6.5 0 0 1 0 9"/>',
+  smell: '<path d="M4 14c-1.5-2 1.5-3.5 0-6S5 4 4 2M8 14c-1.5-2 1.5-3.5 0-6S9 4 8 2M12 14c-1.5-2 1.5-3.5 0-6s1-4 0-6"/>',
+  air: '<path d="M1.5 5.5H10a2 2 0 1 0-2-2M1.5 8.5h12M1.5 11.5H9a2 2 0 1 1-2 2"/>',
+  reach: '<path d="M4.5 9.5c-1.5 0-2-1.5-2-3s.6-3.5 2-3.5 2 2 2 3.5-.5 3-2 3zM3 11.5h3M11.5 13c-1.5 0-2-1.5-2-3s.6-3.5 2-3.5 2 2 2 3.5-.5 3-2 3zM10 14.5h3"/>',
+  walls: '<path d="M1.5 2.5h13v11h-13zM1.5 6h13M1.5 9.5h13M5.5 2.5V6M10.5 2.5V6M8 6v3.5M3.5 6v3.5M12.5 6v3.5M5.5 9.5v4M10.5 9.5v4"/>',
+  window: '<rect x="2.5" y="2" width="11" height="12" rx="1"/><path d="M8 2v12M2.5 8h11"/>',
+  seat: '<path d="M4 1.5v12.5M4 8.5h8v5.5M4 8.5V1.5M12 8.5V5"/>',
+  school: '<path d="M8 3 1 6.5 8 10l7-3.5zM4 8v3.5c2 1.8 6 1.8 8 0V8M15 6.5V11"/>',
+  clinic: '<rect x="2" y="2" width="12" height="12" rx="2"/><path d="M8 5v6M5 8h6"/>',
+  restroom: '<path d="M2.5 7.5h11v1a5.5 4 0 0 1-11 0zM4.5 7.5V2.5h3v5M5.5 12.5l-1 2h7l-1-2"/>',
+  crate: '<path d="M2 5 8 2l6 3v6.5l-6 3-6-3zM2 5l6 3 6-3M8 8v6.5"/>',
+  chevron: '<path d="M6 3.5 10.5 8 6 12.5"/>',
 } as const;
 
 export type IconId = keyof typeof ICONS;
