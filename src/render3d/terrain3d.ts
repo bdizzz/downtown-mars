@@ -3,12 +3,16 @@ import mapData from "../../data/mars-map.json";
 
 // The land around the hole: the ground rolls away from a flat pad at the rim
 // (where surface buildings stand) in undulations and ridges, pocked with
-// craters and scattered with boulders; on the horizon, a ring of mountains,
-// a mesa or two, or low hills, depending on the site. All of it is real
-// geometry, so it turns and shifts with the camera. The same site always
-// gets the same land.
+// craters and scattered with boulders; toward the horizon, landforms of their
+// own at several distances (mountain massifs, mesas and buttes, plateaus,
+// domed hills and the raised rims of big craters) in front of a far ridge of
+// mountains, low ground or hills, depending on the site. All of it is real
+// geometry, so it turns, shades with the sun and shifts with the camera, and
+// the farther it stands the paler and dustier it is. The same site always gets
+// the same land.
 
 export type HorizonStyle = "mountains" | "mesas" | "hills";
+type LandformKind = "massif" | "mesa" | "butte" | "plateau" | "dome" | "crater";
 
 /** Sizes in metres. */
 const LAND = {
@@ -28,9 +32,29 @@ const LAND = {
   rocks: { count: 320, min: 0.25, max: 2.2, near: 50, far: 900 },
   /** The horizon ring: where its ridge line runs, and how finely. */
   horizon: { radius: 1500, segments: 720 },
+  /** Landforms in front of it, by kind: how far out, how wide (their footprint's radius) and how tall, and how many facets round. */
+  landforms: {
+    massif: { near: 750, far: 1300, radius: [180, 380], height: [90, 230], segments: 40 },
+    mesa: { near: 600, far: 1300, radius: [110, 260], height: [50, 120], segments: 40 },
+    butte: { near: 550, far: 1250, radius: [60, 110], height: [45, 95], segments: 28 },
+    plateau: { near: 950, far: 1300, radius: [280, 460], height: [35, 75], segments: 48 },
+    dome: { near: 700, far: 1300, radius: [200, 400], height: [25, 60], segments: 36 },
+    /** A crater's height is its rim's, a share of its radius. */
+    crater: { near: 850, far: 1250, radius: [180, 360], height: [0.06, 0.09], segments: 48 },
+  },
+  /** How many of each a site gets, by its horizon style: [fewest, most]. Every site has a big crater or two, more on flatter land (Bryon, Oct 5). */
+  mix: {
+    mountains: { massif: [4, 6], plateau: [1, 1], crater: [1, 2] },
+    mesas: { mesa: [3, 6], plateau: [1, 1], crater: [2, 3] },
+    hills: { dome: [3, 5], plateau: [1, 1], crater: [2, 3] },
+  } as Record<HorizonStyle, Partial<Record<LandformKind, [number, number]>>>,
+  /** Of the mesas, this share are narrow buttes. */
+  buttes: 0.35,
+  /** Aerial perspective: the farthest land leans this far toward the dust of the sky at the horizon. */
+  haze: { near: 400, far: 1600, most: 0.42 },
 };
 
-const COLORS = { rock: 0x4a2c20, horizon: 0x9a5c44 };
+const COLORS = { rock: 0x4a2c20, horizon: 0x9a5c44, haze: 0xdca77a };
 /** The ground's own dust, before a site's soil tints it. */
 export const GROUND_BASE = 0x7a3b22;
 
@@ -194,11 +218,13 @@ export function buildTerrain(rim: number, seed: number, groundMaterial: THREE.Ma
   }
   group.add(rocks);
 
-  group.add(horizon(style, seed, soilTint(COLORS.horizon, soil)));
+  const tint = soilTint(COLORS.horizon, soil);
+  group.add(horizon(style, seed, tint));
+  for (const m of landforms(style, seed, rim, heightAt, tint)) group.add(m);
   return { group, ground, style, heightAt };
 }
 
-/** The skyline's height at an angle, for a style: jagged peaks, flat-topped mesas, or soft hills. */
+/** The far skyline's height at an angle, for a style: jagged peaks, low broken ground (behind the mesas), or soft hills. */
 function skyline(style: HorizonStyle, seed: number): (a: number) => number {
   const n = noise2(seed + 101);
   // Noise round a circle, so the skyline joins up where it started.
@@ -215,22 +241,8 @@ function skyline(style: HorizonStyle, seed: number): (a: number) => number {
       return 30 + 190 * (h / 1.8) ** 2.2;
     };
   }
-  const rand = random(seed + 7);
-  const mesas = Array.from({ length: 1 + Math.floor(rand() * 2.4) }, () => ({
-    at: rand() * Math.PI * 2,
-    half: 0.07 + rand() * 0.14,
-    height: 60 + rand() * 60,
-  }));
-  return (a) => {
-    let h = 6 + 12 * ring(a, 3);
-    for (const m of mesas) {
-      const d = Math.abs(Math.atan2(Math.sin(a - m.at), Math.cos(a - m.at)));
-      // Steep sides, a flat (slightly worn) top.
-      const top = m.height * (0.96 + 0.04 * ring(a, 40));
-      h = Math.max(h, top * smoothstep(m.half, m.half * 0.8, d));
-    }
-    return h;
-  };
+  // Mesas stand in front as landforms of their own; behind them, low broken ground.
+  return (a) => 6 + 14 * (ring(a, 3) * 0.75 + ring(a, 9) * 0.25);
 }
 
 /**
@@ -248,7 +260,7 @@ function horizon(style: HorizonStyle, seed: number, color: number): THREE.Mesh {
     const c = Math.cos(a);
     const s = Math.sin(a);
     // In front (toward the hole), the peak, and behind.
-    const front = radius - h * (style === "mesas" ? 0.35 : 1.3);
+    const front = radius - h * 1.3;
     const back = radius + h * 1.3;
     pos.push(front * c, -2, front * s, radius * c, h, radius * s, back * c, -2, back * s);
   }
@@ -263,5 +275,139 @@ function horizon(style: HorizonStyle, seed: number, color: number): THREE.Mesh {
   const flat = geo.toNonIndexed();
   flat.computeVertexNormals();
   geo.dispose();
-  return new THREE.Mesh(flat, new THREE.MeshStandardMaterial({ color, roughness: 1, flatShading: true, side: THREE.DoubleSide }));
+  const mesh = new THREE.Mesh(flat, new THREE.MeshStandardMaterial({ color: hazed(color, radius), roughness: 1, flatShading: true, side: THREE.DoubleSide }));
+  mesh.name = "horizon";
+  return mesh;
+}
+
+/** A colour paled toward the sky's dust by how far off it stands (aerial perspective). */
+function hazed(hex: number, distance: number): number {
+  const t = LAND.haze.most * smoothstep(LAND.haze.near, LAND.haze.far, distance);
+  const mix = (shift: number) => Math.round(((hex >> shift) & 255) * (1 - t) + ((COLORS.haze >> shift) & 255) * t);
+  return (mix(16) << 16) | (mix(8) << 8) | mix(0);
+}
+
+/**
+ * A landform's cross-section, from its foot to its middle: each step a share of its radius and of its
+ * height, how much that ring wanders in and out round the landform, and how much it jags up and down.
+ */
+type Profile = [r: number, h: number, wander: number, jag: number][];
+
+const between = (rand: () => number, [lo, hi]: number[]) => lo! + (hi! - lo!) * rand();
+
+/** The cross-section for a kind, varied a little per landform. */
+function profile(kind: LandformKind, rand: () => number): Profile {
+  switch (kind) {
+    case "mesa": {
+      // A talus slope at the foot, a cliff, a ledge where a softer stratum wore back, a second cliff, and a worn top edge.
+      const talus = 0.22 + rand() * 0.12;
+      const ledge = talus + (0.95 - talus) * (0.35 + rand() * 0.3);
+      const back = 0.05 + rand() * 0.05;
+      return [[1, -0.1, 0.06, 0], [0.8, talus, 0.1, 0.06], [0.77, ledge, 0.06, 0], [0.77 - back, ledge + 0.03, 0.08, 0.02], [0.74 - back, 0.96, 0.08, 0], [0.7 - back, 1, 0.14, 0.03], [0, 1, 0, 0]];
+    }
+    case "butte":
+      // Mostly talus, with a narrow cap of hard rock on top.
+      return [[1, -0.1, 0.08, 0], [0.62, 0.36 + rand() * 0.1, 0.1, 0.08], [0.52, 0.94, 0.06, 0], [0.47, 1, 0.12, 0.03], [0, 1, 0, 0]];
+    case "plateau":
+      return [[1, -0.1, 0.05, 0], [0.9, 0.2, 0.08, 0.05], [0.88, 0.5, 0.05, 0], [0.84, 0.54, 0.06, 0.02], [0.82, 0.97, 0.05, 0], [0.79, 1, 0.1, 0.02], [0, 1, 0, 0]];
+    case "massif":
+      // Spurs and gullies wander most halfway up; the peaks are jagged.
+      return [[1, -0.08, 0.12, 0], [0.8, 0.16, 0.22, 0.1], [0.6, 0.38, 0.32, 0.14], [0.42, 0.6, 0.32, 0.16], [0.24, 0.82, 0.28, 0.14], [0.09, 0.96, 0.25, 0.06], [0, 1, 0, 0]];
+    case "dome":
+      return [[1, -0.08, 0.1, 0], [0.78, 0.26, 0.14, 0.06], [0.54, 0.62, 0.14, 0.06], [0.28, 0.9, 0.1, 0.04], [0, 1, 0, 0]];
+    case "crater":
+      // A wide apron rising to the rim, then a steeper fall inside to a floor a little above the plain.
+      return [[1, -0.15, 0.04, 0], [0.8, 0.25, 0.05, 0.1], [0.67, 0.8, 0.04, 0.1], [0.6, 1, 0.04, 0.12], [0.54, 0.72, 0.04, 0.06], [0.42, 0.18, 0.05, 0.04], [0, 0.12, 0, 0]];
+  }
+}
+
+/**
+ * The landforms toward the horizon for a site: a handful, spread round it at different distances so nearer
+ * ones stand in front of farther ones. Each is a faceted solid of its own, so the sun shades its sides
+ * differently as the day goes and the camera sees round it as it orbits.
+ */
+function landforms(style: HorizonStyle, seed: number, rim: number, heightAt: (x: number, z: number) => number, color: number): THREE.Mesh[] {
+  const rand = random(seed + 7);
+  const kinds: LandformKind[] = [];
+  for (const [kind, range] of Object.entries(LAND.mix[style]) as [LandformKind, [number, number]][]) {
+    const n = range[0] + Math.floor(rand() * (range[1] - range[0] + 1));
+    for (let i = 0; i < n; i++) kinds.push(kind === "mesa" && rand() < LAND.buttes ? "butte" : kind);
+  }
+  // Shuffled, then each given a share of the circle, so they spread round rather than bunch.
+  for (let i = kinds.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [kinds[i], kinds[j]] = [kinds[j]!, kinds[i]!];
+  }
+  const start = rand() * Math.PI * 2;
+  return kinds.map((kind, k) => {
+    const spec = LAND.landforms[kind];
+    const at = start + ((k + 0.15 + rand() * 0.7) / kinds.length) * Math.PI * 2;
+    const distance = rim + between(rand, [spec.near, spec.far]);
+    const radius = between(rand, spec.radius);
+    const shape = {
+      x: distance * Math.cos(at),
+      z: distance * Math.sin(at),
+      radius,
+      height: kind === "crater" ? radius * between(rand, spec.height) : between(rand, spec.height),
+      // Stretched one way and turned, so footprints aren't circles; peaks and domes lean off centre.
+      stretch: kind === "crater" ? 0.85 + rand() * 0.3 : 0.6 + rand() * 0.8,
+      turn: rand() * Math.PI,
+      lean: kind === "massif" || kind === "dome" ? [(rand() - 0.5) * 0.5, (rand() - 0.5) * 0.5] : [0, 0],
+      segments: spec.segments,
+    };
+    const mesh = landform(shape, profile(kind, rand), noise2(seed + 211 + k * 31), heightAt, hazed(color, distance));
+    mesh.name = "landform";
+    return mesh;
+  });
+}
+
+/** One landform: its profile turned round its middle, wandering by noise, sat on the ground and faceted. */
+function landform(
+  s: { x: number; z: number; radius: number; height: number; stretch: number; turn: number; lean: number[]; segments: number },
+  prof: Profile,
+  n: (x: number, y: number) => number,
+  heightAt: (x: number, z: number) => number,
+  color: number,
+): THREE.Mesh {
+  const cos = Math.cos(s.turn);
+  const sin = Math.sin(s.turn);
+  // Its foot sits at the lowest ground under it, so no edge floats.
+  let base = heightAt(s.x, s.z);
+  for (let j = 0; j < 12; j++) {
+    const a = (j / 12) * Math.PI * 2;
+    base = Math.min(base, heightAt(s.x + s.radius * Math.cos(a), s.z + s.radius * Math.sin(a)));
+  }
+  const S = s.segments;
+  const pos: number[] = [];
+  prof.forEach(([r, h, wander, jag], i) => {
+    for (let j = 0; j < S; j++) {
+      const a = (j / S) * Math.PI * 2;
+      const c = Math.cos(a);
+      const si = Math.sin(a);
+      // Broad swells and finer gullies round the ring, different on each ring.
+      const w = (n(c * 1.6 + 20, si * 1.6 + i * 0.45) - 0.5) * 1.4 + (n(c * 5 + 40, si * 5 + i * 0.7) - 0.5) * 0.8;
+      const rr = s.radius * r * (1 + wander * w);
+      const lx = rr * c * s.stretch + s.lean[0]! * s.radius * h;
+      const lz = rr * si + s.lean[1]! * s.radius * h;
+      const y = base + s.height * (h + jag * (n(c * 9 + 60, si * 9 + i * 1.3) - 0.5) * 2);
+      pos.push(s.x + lx * cos - lz * sin, y, s.z + lx * sin + lz * cos);
+    }
+  });
+  const index: number[] = [];
+  for (let i = 0; i < prof.length - 1; i++) {
+    for (let j = 0; j < S; j++) {
+      const a = i * S + j;
+      const b = i * S + ((j + 1) % S);
+      const c = (i + 1) * S + j;
+      const d = (i + 1) * S + ((j + 1) % S);
+      index.push(a, c, b, b, c, d);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(index);
+  const flat = geo.toNonIndexed();
+  flat.computeVertexNormals();
+  geo.dispose();
+  return new THREE.Mesh(flat, new THREE.MeshStandardMaterial({ color, roughness: 1, flatShading: true }));
 }
