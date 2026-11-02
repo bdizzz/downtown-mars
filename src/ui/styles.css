@@ -1018,3 +1018,13 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .room-panel .row > .ico { color: var(--muted); flex-shrink: 0; position: relative; top: 2px; }
 .room-panel .row.tone-warn, .room-panel .row.tone-bad { color: var(--tone); }
 .room-panel .row.tone-warn > .ico, .room-panel .row.tone-bad > .ico { color: var(--tone); }
+.room-panel .row.has-tip { cursor: help; }
+.room-panel .row .chips { display: inline-flex; flex-wrap: wrap; gap: 3px; vertical-align: middle; }
+.room-panel .row .chips .chip { padding: 0 5px; }
+/* At a glance: chips with a meter under them, filled from the left, or (signed) from the middle out. */
+.room-panel .glance { display: flex; flex-wrap: wrap; gap: 4px; }
+.room-panel .chip.glance { display: inline-grid; grid-template-columns: auto auto; column-gap: 3px; row-gap: 2px; align-items: center; padding: 2px 6px 3px; }
+.room-panel .chip.glance .meter { grid-column: 1 / -1; }
+.room-panel .meter { position: relative; display: block; height: 3px; min-width: 34px; background: #0006; border-radius: 2px; overflow: hidden; }
+.room-panel .meter > span { position: absolute; top: 0; bottom: 0; left: 0; background: var(--tone, var(--text)); border-radius: 2px; }
+.room-panel .meter.signed::after { content: ""; position: absolute; left: calc(50% - 0.5px); top: 0; bottom: 0; width: 1px; background: var(--muted); }
