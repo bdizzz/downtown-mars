@@ -1,11 +1,9 @@
 import * as THREE from "three";
 import { config } from "../sim/config";
-import { hasCondition } from "../sim/condition";
 import { corridors, finishDef } from "../sim/corridors";
 import { cropDefs } from "../sim/resources";
 import type { Snapshot } from "../sim/snapshot";
-import { conditionColor } from "../view/conditionView";
-import { conditionNote, constructionInfo, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type PanelModel, type StorageInfo } from "../view/roomPanel";
+import { constructionInfo, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type PanelModel, type StorageInfo } from "../view/roomPanel";
 import { holding, roomSpec } from "../sim/economy";
 import type { SimState } from "../sim/state";
 import { roomDef } from "../sim/rooms";
@@ -34,7 +32,6 @@ export interface InspectedMessage {
   /** As the web's inspector (ui/Inspector.tsx), top to bottom; each part only when it applies. */
   /** canCancel: a refit, which can be called off with a full refund. */
   construction?: { jobId: number; progress: number; text: string; canPrioritize: boolean; canCancel: boolean };
-  condition?: { value: number; color: string; note: string };
   storage?: StorageInfo;
   /** Connect with a corridor: the finish's name. */
   connect?: { finish: string; name: string };
@@ -66,7 +63,6 @@ export function inspect(state: SimState, s: Snapshot, roomId: number | null): In
   const spec = roomSpec(room, config);
   const floors = [...new Set(room.cells.map((c) => c.floor))].sort((a, b) => a - b);
   const where = floors.length > 1 ? `floors ${floors[0]}–${floors.at(-1)}` : `floor ${floors[0] ?? "surface"}`;
-  const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
 
   // Its outline, in world space, as line pairs.
   const geo = roomGeometry(state.layout, room.cells);
@@ -90,10 +86,6 @@ export function inspect(state: SimState, s: Snapshot, roomId: number | null): In
   };
   const job = constructionInfo(s, room.id);
   if (job) msg.construction = job;
-  if (!room.planned && !room.building && hasCondition(room)) {
-    const value = room.condition ?? 1;
-    msg.condition = { value, color: hex(conditionColor(value)), note: conditionNote(s, room.id, room.repair) };
-  }
   const storage = storageInfo(room);
   if (storage) msg.storage = storage;
   if (!room.connected && room.at.kind === "ring") msg.connect = { finish: corridors.defaultFinish, name: finishDef(corridors.defaultFinish).name.toLowerCase() };

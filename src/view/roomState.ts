@@ -25,6 +25,8 @@ export function limitText(limit: string | undefined): string {
   if (limit === "twilight") return "low sun: easing through dawn or dusk";
   // A dust storm dims the solar arrays (weather.ts).
   if (limit === "storm") return "dimmed by the dust storm";
+  // An ordinance (quiet hours) slows noisy rooms (economy.ts).
+  if (limit === "ordinance") return "slowed by an ordinance: noisy rooms work slower";
   if (limit.startsWith("stocked:")) return `standing by: ${resName(limit.slice(8)).toLowerCase()} stocked`;
   if (limit.startsWith("full:")) return `idling: ${resName(limit.slice(5)).toLowerCase()} storage full`;
   // Air rooms stand by when the air doesn't need them (economy.ts): the electrolyzer once
@@ -76,7 +78,7 @@ export type Tone = "good" | "idle" | "warn" | "bad" | "info";
 const RESTING = ["paused", "kit", "standby", "night", "twilight"];
 const RESTING_PREFIX = ["stocked:", "full:", "air:", "clear:"];
 /** Limits that slow a room without stopping it. */
-const SLOWED = ["staff", "morale", "worn", "refit", "storm"];
+const SLOWED = ["staff", "morale", "worn", "refit", "storm", "ordinance"];
 
 /** A room's status color: the pill in the panel's header, and (later) the 3D view's labels. */
 export function roomTone(room: { planned: boolean; building?: unknown; connected: boolean }, st: { rate: number; limit?: string } | undefined): Tone {
@@ -86,6 +88,8 @@ export function roomTone(room: { planned: boolean; building?: unknown; connected
   const limit = st.limit;
   if (!limit) return st.rate < 0.999 ? "warn" : "good";
   if (RESTING.includes(limit) || RESTING_PREFIX.some((p) => limit.startsWith(p))) return "idle";
+  // At full rate a leftover limit holds nothing back (as isProblem has it).
+  if (st.rate >= 0.999) return "good";
   if (SLOWED.includes(limit)) return "warn";
   // Broken, or short of an input.
   return "bad";
@@ -98,14 +102,14 @@ export function statusWord(room: RoomInstance, st: RoomStatus | undefined, progr
   if (!room.connected) return "Cut off";
   if (!st) return "";
   const limit = st.limit;
-  if (!limit) return "Running";
+  if (!limit || roomTone(room, st) === "good") return "Running";
   if (limit === "paused") return "Paused";
   if (limit === "kit") return "Idle";
   if (limit === "night") return "Night";
   if (limit === "twilight") return "Low sun";
   if (limit === "storm") return "Dimmed";
   if (limit === "staff") return "Short of staff";
-  if (limit === "morale" || limit === "worn") return "Slowed";
+  if (limit === "morale" || limit === "worn" || limit === "ordinance") return "Slowed";
   if (limit === "refit") return "Refitting";
   if (limit === "broken") return "Broken";
   if (limit === "standby" || limit.startsWith("stocked:") || limit.startsWith("air:")) return "Standing by";
