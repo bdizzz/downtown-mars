@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { config } from "../src/sim/config";
 import { serialize, summarize } from "../src/sim/save";
 import type { SimState } from "../src/sim/state";
+import { DEV_GAMES, type DevGame } from "../src/ui/devGames";
 import { runNetwork } from "../tests/netbot";
 
 // The dev saves (T-013): the network bot on the default seed, saved at the
@@ -11,12 +12,8 @@ import { runNetwork } from "../tests/netbot";
 // home hole runs short of water and declines, so "late" stops there, with both
 // holes healthy.
 
-const MOMENTS: Record<number, { name: string; what: string }> = {
-  5: { name: "early", what: "the first rooms and corridors" },
-  30: { name: "mid", what: "one hole, furnished, windows, a few events seen" },
-  60: { name: "network", what: "two holes, a few days after founding, rovers running both ways" },
-  120: { name: "late", what: "as big as the bots get while both holes are healthy" },
-};
+// The moments are listed in src/ui/devGames.ts, which the menu's "Load a dev game…" reads too (#351).
+const MOMENTS: Record<number, DevGame> = Object.fromEntries(DEV_GAMES.map((g) => [g.day, g]));
 
 // --probe=<days>: write nothing, just print how each hole is doing every 5 days, to pick the moments.
 const probe = Number(process.argv.find((a) => a.startsWith("--probe="))?.slice(8) ?? 0);

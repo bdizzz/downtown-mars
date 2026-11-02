@@ -43,14 +43,15 @@ function gitBranch(): Plugin {
 }
 
 /**
- * The dev saves in public/ (npm run saves) are for the dev server and the
- * Godot viewer: leave them out of builds, which would otherwise copy them in.
+ * The dev saves in public/ (npm run saves) are for the dev server, PR previews
+ * (the menu's "Load a dev game…", #351) and the Godot viewer: leave them out of
+ * release builds, which would otherwise copy them in.
  */
 function dropDevSaves(): Plugin {
   let outDir = "dist";
   return {
     name: "drop-dev-saves",
-    apply: "build",
+    apply: (_config, env) => env.command === "build" && !/^\d+$/.test(process.env.VITE_PR_NUMBER ?? ""),
     configResolved(c) {
       outDir = c.build.outDir;
     },
