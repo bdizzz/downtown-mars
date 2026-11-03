@@ -379,18 +379,21 @@ vFloorNormal = normalize(mat3(modelMatrix) * objectNormal);
     vec2 q = p.xz / 0.5;
     vec2 c = floor(q);
     vec2 f = fract(q);
-    float joint = step(0.025, f.x) * step(f.x, 0.975) * step(0.025, f.y) * step(f.y, 0.975);
+    // Soft, shallow seams between the tiles, like carpet tiles butted together, not grout.
+    vec2 e = min(f, 1.0 - f);
+    float joint = smoothstep(0.0, 0.05, min(e.x, e.y));
     bool turn = mod(c.x + c.y, 2.0) > 0.5;
     float across = (turn ? f.x : f.y) * 18.0;
     float along = (turn ? f.y : f.x) * 9.0;
-    // Each strand rounded across, and passing over then under the ones it crosses.
-    float ridge = 0.86 + 0.14 * sin(fract(across) * 3.14159);
+    // Each strand rounded across and passing over then under the ones it crosses, faintly, under a fine pile.
+    float ridge = 0.95 + 0.05 * sin(fract(across) * 3.14159);
     float over = mod(floor(across) + floor(along), 2.0);
-    float weave = ridge * mix(0.9, 1.05, over) * mix(0.94, 1.05, srfNoise(p * 14.0));
-    float shade = mix(0.92, 1.06, srfHash(vec3(c, 11.0)));
-    return vec3(mix(0.5, weave * shade, joint));
+    float pile = mix(0.94, 1.03, srfNoise(p * 40.0)) * mix(0.97, 1.02, srfNoise(p * 9.0));
+    float weave = ridge * mix(0.97, 1.02, over) * pile;
+    float shade = mix(0.97, 1.03, srfHash(vec3(c, 11.0)));
+    return vec3(mix(0.86, weave * shade, joint));
   }
-`,call:`fibrePanelTone`,color:11831896,roughness:.7,metalness:0}};function Y(e){return!!e&&e in nr}function rr(e,t,n){let r=nr[t],i=new Lt(r.color),a=e.onBeforeCompile,o=e.customProgramCacheKey();return e.onBeforeCompile=(t,o)=>{a.call(e,t,o);let s=t.fragmentShader.includes(`srfNoise`);t.vertexShader=t.vertexShader.replace(`#include <common>`,`#include <common>
+`,call:`fibrePanelTone`,color:11831896,roughness:.95,metalness:0}};function Y(e){return!!e&&e in nr}function rr(e,t,n){let r=nr[t],i=new Lt(r.color),a=e.onBeforeCompile,o=e.customProgramCacheKey();return e.onBeforeCompile=(t,o)=>{a.call(e,t,o);let s=t.fragmentShader.includes(`srfNoise`);t.vertexShader=t.vertexShader.replace(`#include <common>`,`#include <common>
 varying vec3 vFlooringPos;
 varying vec3 vFlooringNormal;`).replace(`#include <project_vertex>`,`vFlooringPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
 vFlooringNormal = normalize(mat3(modelMatrix) * objectNormal);
