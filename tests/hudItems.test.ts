@@ -3,7 +3,7 @@ import { config } from "../src/sim/config";
 import { makeSnapshot, type Snapshot } from "../src/sim/snapshot";
 import { createInitialState } from "../src/sim/state";
 import { updateHappiness } from "../src/sim/happiness";
-import { barItems, GROUPS, HUD_IDS, needs, topExtras } from "../src/view/hudItems";
+import { barItems, GROUPS, happinessWhy, HUD_IDS, needs, topExtras, whyLines } from "../src/view/hudItems";
 import { ICONS, iconSvg, isIcon } from "../src/view/icons";
 
 const fresh = () => makeSnapshot(createInitialState(config), config);
@@ -118,19 +118,26 @@ describe("why health and happiness move (T-172)", () => {
     const st = createInitialState(config);
     st.population.health = 50;
     st.population.healthDrain = { water: 0, meals: 0 };
-    expect(cell(makeSnapshot(st, config), "res:health").notes.join("\n")).toMatch(/Recovering: \+10 a month/);
+    const why = cell(makeSnapshot(st, config), "res:health").why!;
+    expect(why.head).toBe("Recovering: +10 a month");
+    expect(why.groups).toEqual([]);
   });
 
-  it("a draining hole names each cause, its toll and the fix for the worst", () => {
+  it("a draining hole names each cause, its toll a month, its figure and the fix for the worst", () => {
     const st = createInitialState(config);
     st.population.health = 3;
     st.population.needsMet = { water: 1, meals: 0.4 };
     st.population.healthDrain = { water: 0, meals: 6, sanitation: 0, o2: 0, co2: 7.5 };
-    const notes = cell(makeSnapshot(st, config), "res:health").notes;
-    expect(notes).toContain("Falling 13.5 a month; it recovers only once nothing drains it");
-    expect(notes[2]).toMatch(/^−7\.5 a month · CO2 high: .*% of the air$/);
-    expect(notes[3]).toBe("−6 a month · Meals: people get 40% of what they need");
-    expect(notes[4]).toMatch(/^Fix: A CO2 scrubber/);
+    const item = cell(makeSnapshot(st, config), "res:health");
+    expect(item.notes).toContain("It recovers only once nothing drains it");
+    const why = item.why!;
+    expect(why.head).toBe("Falling 13.5 a month");
+    expect(why.groups[0]!.title).toBe("Draining it, a month");
+    const [co2, meals] = why.groups[0]!.rows;
+    expect(co2).toMatchObject({ amount: "−7.5", label: "CO2", share: 1, tone: "bad" });
+    expect(co2!.detail).toMatch(/^\d+(\.\d)?% of the air$/);
+    expect(meals).toMatchObject({ amount: "−6", label: "Meals", detail: "40% met", share: 0.8 });
+    expect(why.fix).toMatch(/^A CO2 scrubber/);
   });
 
   it("the Happiness card says where it's heading and the biggest pulls", () => {
@@ -138,10 +145,32 @@ describe("why health and happiness move (T-172)", () => {
     st.population.count = st.happiness.pools.reduce((n, p) => n + p.capacity, 0) + 10;
     st.population.health = 3;
     updateHappiness(st, config, true);
-    const notes = cell(makeSnapshot(st, config), "res:happiness").notes;
-    expect(notes.some((n) => /^Heading for \d+$/.test(n))).toBe(true);
-    expect(notes.some((n) => /^−\d+(\.\d)? · Poor health \(the hole's health is 3\)$/.test(n))).toBe(true);
-    expect(notes.some((n) => /^−\d+(\.\d)? · Homeless colonists$/.test(n))).toBe(true);
-    expect(notes.some((n) => n.startsWith("Fix: "))).toBe(true);
+    const why = cell(makeSnapshot(st, config), "res:happiness").why!;
+    expect(why.head).toMatch(/^Heading for \d+$/);
+    expect(why.groups[0]!.title).toBe("Pulling it down");
+    const down = why.groups[0]!.rows;
+    expect(down.map((r) => r.label)).toContain("Hole's health");
+    expect(down.map((r) => r.label)).toContain("Homeless");
+    expect(down.every((r) => r.tone === "bad" && /^−\d+(\.\d)?$/.test(r.amount))).toBe(true);
+    expect(why.fix).toBeTruthy();
+    // As plain lines for screen readers and the "needs you" slot.
+    expect(whyLines(why)).toContain(`Fix: ${why.fix}`);
+  });
+
+  it("the Happiness card lists the three biggest pulls each way, biggest first", () => {
+    const st = createInitialState(config);
+    updateHappiness(st, config, true);
+    const s = makeSnapshot(st, config);
+    const cause = (id: string, amount: number) => ({ id, amount, text: id });
+    s.diagnosis.happiness.causes = [
+      cause("a", -9), cause("b", -6), cause("c", -4), cause("d", -2),
+      cause("base", 10), cause("e", 1), cause("f", 3), cause("g", 5), cause("h", 7),
+    ];
+    const [down, up] = happinessWhy(s).groups;
+    expect(down!.rows.map((r) => `${r.amount} ${r.label}`)).toEqual(["−9 A", "−6 B", "−4 C"]);
+    expect(up!.rows.map((r) => `${r.amount} ${r.label}`)).toEqual(["+7 H", "+5 G", "+3 F"]);
+    // Bars scale to the biggest shown, either way.
+    expect(down!.rows[0]!.share).toBe(1);
+    expect(up!.rows[0]!.share).toBeCloseTo(7 / 9);
   });
 });

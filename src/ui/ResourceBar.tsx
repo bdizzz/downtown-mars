@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import type { Snapshot } from "../sim/snapshot";
 import { config } from "../sim/config";
 import { signed } from "./format";
-import { barItems, GROUPS, type BarItem } from "../view/hudItems";
+import { barItems, GROUPS, whyLines, type BarItem, type Why } from "../view/hudItems";
 import { Sparkline } from "./TrendChart";
 import { points, seriesMeta } from "./trends";
 import { monthsText } from "../view/months";
@@ -22,8 +22,39 @@ function spanText(ticks: number): string {
   return hours >= 24 ? `Last ${monthsText(hours / 24)}` : `Last ${Math.round(hours)} ${Math.round(hours) === 1 ? "hour" : "hours"}`;
 }
 
-/** The tooltip: a title, notes, and the series' last two days. */
-function TipBody({ s, trend, title, notes }: { s: Snapshot; trend: string; title: string; notes: string[] }) {
+/** A card's reasons as a ledger: where it's heading, then each cause's points, a bar for its weight and its name, in groups, and the fix. */
+function WhyLedger({ why }: { why: Why }) {
+  return (
+    <div className="tip-why">
+      <span className="why-head">{why.head}</span>
+      {why.groups.map((g) => (
+        <div key={g.title} className="why-group">
+          <span className="why-title">{g.title}</span>
+          {g.rows.map((r) => (
+            <span key={r.label} className={`why-row ${r.tone}`}>
+              <b className="why-amt">{r.amount}</b>
+              <span className="why-bar">
+                <i style={{ width: `${Math.max(8, r.share * 100)}%` }} />
+              </span>
+              <span className="why-label">
+                {r.label}
+                {r.detail && <em> · {r.detail}</em>}
+              </span>
+            </span>
+          ))}
+        </div>
+      ))}
+      {why.fix && (
+        <span className="why-fix">
+          <b>Fix</b> {why.fix}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** The tooltip: a title, notes, its reasons, and the series' last two days. */
+function TipBody({ s, trend, title, notes, why }: { s: Snapshot; trend: string; title: string; notes: string[]; why?: Why }) {
   const meta = seriesMeta(trend);
   const h = s.history;
   const lines = meta && h ? meta.lines.map((l) => ({ label: l.label, color: l.color, dashed: l.dashed, values: points(h, l.id, "2d", config.ticksPerDay).values })) : [];
@@ -39,6 +70,7 @@ function TipBody({ s, trend, title, notes }: { s: Snapshot; trend: string; title
           {n}
         </span>
       ))}
+      {why && <WhyLedger why={why} />}
       {main.length > 1 ? (
         <>
           <Sparkline lines={lines} width={200} height={40} />
@@ -64,7 +96,7 @@ function TipBody({ s, trend, title, notes }: { s: Snapshot; trend: string; title
 }
 
 /** An item in the bar, with its tooltip and a click through to Trends. */
-function Item({ s, id, trend, className, title, notes, onTrend, children }: { s: Snapshot; id: string; trend: string; className: string; title: string; notes: string[]; onTrend: OnTrend; children: ReactNode }) {
+function Item({ s, id, trend, className, title, notes, why, onTrend, children }: { s: Snapshot; id: string; trend: string; className: string; title: string; notes: string[]; why?: Why; onTrend: OnTrend; children: ReactNode }) {
   const [at, setAt] = useState<DOMRect | null>(null);
   return (
     <span
@@ -72,7 +104,7 @@ function Item({ s, id, trend, className, title, notes, onTrend, children }: { s:
       data-hud={id}
       role="button"
       tabIndex={0}
-      aria-label={`${title}: ${notes.join(". ")}`}
+      aria-label={`${title}: ${[...notes, ...(why ? whyLines(why) : [])].join(". ")}`}
       onPointerEnter={(e) => setAt(e.currentTarget.getBoundingClientRect())}
       onPointerLeave={() => setAt(null)}
       onFocus={(e) => setAt(e.currentTarget.getBoundingClientRect())}
@@ -91,8 +123,8 @@ function Item({ s, id, trend, className, title, notes, onTrend, children }: { s:
       {children}
       {at &&
         createPortal(
-          <div className="res-tip" style={{ left: Math.max(8, Math.min(at.left, window.innerWidth - 232)), top: at.bottom + 6 }} role="tooltip">
-            <TipBody s={s} trend={trend} title={title} notes={notes} />
+          <div className={`res-tip${why ? " wide" : ""}`} style={{ left: Math.max(8, Math.min(at.left, window.innerWidth - (why ? 272 : 232))), top: at.bottom + 6 }} role="tooltip">
+            <TipBody s={s} trend={trend} title={title} notes={notes} why={why} />
           </div>,
           document.body,
         )}
@@ -104,7 +136,7 @@ function Item({ s, id, trend, className, title, notes, onTrend, children }: { s:
  *  the arrow's room when steady, so cells don't shuffle; the colony's stats have no arrows. */
 function BarEntry({ item, s, onTrend, arrows }: { item: BarItem; s: Snapshot; onTrend: OnTrend; arrows: boolean }) {
   return (
-    <Item s={s} id={item.id} trend={item.trend} className={`res ${item.level}`} title={`${item.title} · ${item.value}`} notes={item.notes} onTrend={onTrend}>
+    <Item s={s} id={item.id} trend={item.trend} className={`res ${item.level}`} title={`${item.title} · ${item.value}`} notes={item.notes} why={item.why} onTrend={onTrend}>
       <Icon id={item.icon} />
       <span className="val">{item.value}</span>
       {item.sub ? <span className={`rate ${item.sub.tone}`}>{item.sub.text}</span> : item.dir ? <Icon id={item.dir} size={9} className={`dir ${item.dir}`} /> : arrows && <span className="dir" />}

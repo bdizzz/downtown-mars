@@ -1,6 +1,7 @@
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
 import { CONDITION } from "../sim/condition";
+import { DIAGNOSIS, type CauseDef } from "../sim/diagnosis";
 import { isStorable } from "../sim/storage";
 import { daysLeft, hoursText, num, resName, signed } from "../ui/format";
 import { monthsText } from "./months";
@@ -64,6 +65,8 @@ export interface BarItem {
   alert?: string;
   title: string;
   notes: string[];
+  /** Its reasons as a ledger, under the notes (Happiness). */
+  why?: Why;
 }
 
 const dirOf = (rate: number): { dir?: "up" | "down" } => (Math.abs(rate) >= STEADY ? { dir: rate > 0 ? "up" : "down" } : {});
@@ -212,33 +215,75 @@ const WHY_SHOWN = 3;
 /** A number to a tenth at most, signed: "−7.5", "+10", "−6". */
 const tenth = (v: number) => `${v < 0 ? "−" : "+"}${Math.round(Math.abs(v) * 10) / 10}`;
 
-/** Why health is moving: what drains it, by how much, and the fix for the worst (F-018). */
-export function healthWhy(s: Snapshot): string[] {
-  const d = s.diagnosis.health;
-  if (d.recovering) return [d.perDay > 0 ? `Recovering: ${tenth(d.perDay)} a month, with nothing draining it` : "Nothing is draining it"];
-  const top = d.causes[0]!;
-  return [
-    `Falling ${tenth(d.perDay).slice(1)} a month; it recovers only once nothing drains it`,
-    ...d.causes.slice(0, WHY_SHOWN).map((c) => `${tenth(c.amount)} a month · ${c.text}`),
-    ...(top.fix ? [`Fix: ${top.fix}`] : []),
-  ];
+/** One cause in a hover card's ledger: its points, short name, who feels it, and its bar (0..1 of the biggest shown). */
+export interface WhyRow {
+  amount: string;
+  label: string;
+  detail?: string;
+  share: number;
+  tone: "good" | "bad";
 }
 
-/** Why happiness is where it is: the biggest pulls down and lifts, in points, and the fix for the worst (F-018). */
-export function happinessWhy(s: Snapshot): string[] {
+/** A hover card's reasons as a ledger, not lines of text: where it's heading, the pulls each way in groups, and the fix (#272). */
+export interface Why {
+  head: string;
+  groups: { title: string; rows: WhyRow[] }[];
+  fix?: string;
+}
+
+/** A ledger as plain lines, for screen readers and the "needs you" slot's tooltip. */
+export function whyLines(w: Why): string[] {
+  return [w.head, ...w.groups.flatMap((g) => g.rows.map((r) => `${r.amount} · ${r.label}${r.detail ? ` (${r.detail})` : ""}`)), ...(w.fix ? [`Fix: ${w.fix}`] : [])];
+}
+
+type Cause = Snapshot["diagnosis"]["happiness"]["causes"][number];
+
+/** A cause as a ledger row: its short name, beside it its figure ("40% met") or how many homes feel it, its bar against the biggest shown. */
+function whyRow(c: Cause, def: CauseDef | undefined, biggest: number): WhyRow {
+  const label = def?.label ?? c.id;
+  const n = def?.shared ? 0 : (c.homes?.length ?? 0);
+  const detail = c.detail ?? (n ? `${n} ${n === 1 ? "home" : "homes"}` : undefined);
+  return {
+    amount: tenth(c.amount),
+    label: label[0]!.toUpperCase() + label.slice(1),
+    ...(detail ? { detail } : {}),
+    share: Math.abs(c.amount) / Math.max(1, biggest),
+    tone: c.amount < 0 ? "bad" : "good",
+  };
+}
+
+/** Why health is moving: what drains it, by how much a month, and the fix for the worst (F-018, #272). */
+export function healthWhy(s: Snapshot): Why {
+  const d = s.diagnosis.health;
+  if (d.recovering) return { head: d.perDay > 0 ? `Recovering: ${tenth(d.perDay)} a month` : "Nothing is draining it", groups: [] };
+  const drains = d.causes.slice(0, WHY_SHOWN);
+  const biggest = Math.max(...drains.map((c) => -c.amount));
+  const fix = d.causes[0]!.fix;
+  return {
+    head: `Falling ${tenth(d.perDay).slice(1)} a month`,
+    groups: [{ title: "Draining it, a month", rows: drains.map((c) => whyRow(c, DIAGNOSIS.health[c.id], biggest)) }],
+    ...(fix ? { fix } : {}),
+  };
+}
+
+/** Why happiness is where it is: the three biggest pulls down and lifts, in points, and the fix for the worst (F-018, #272). */
+export function happinessWhy(s: Snapshot): Why {
   const d = s.diagnosis.happiness;
   // The afterglow has its own line above; the base is the same for every hole.
   const shown = d.causes.filter((c) => c.id !== "afterglow" && c.id !== "base" && Math.abs(c.amount) >= 0.5);
   const down = shown.filter((c) => c.amount < 0).slice(0, WHY_SHOWN);
-  const up = shown.filter((c) => c.amount > 0).reverse().slice(0, 2);
-  const line = (c: (typeof shown)[number]) => `${tenth(c.amount)} · ${c.text}`;
+  const up = shown.filter((c) => c.amount > 0).reverse().slice(0, WHY_SHOWN);
+  const biggest = Math.max(...[...down, ...up].map((c) => Math.abs(c.amount)));
+  const row = (c: Cause) => whyRow(c, DIAGNOSIS.happiness[c.id], biggest);
   const worst = down.find((c) => c.fix);
-  return [
-    `Heading for ${Math.round(d.target)}`,
-    ...down.map(line),
-    ...up.map(line),
-    ...(worst ? [`Fix: ${worst.fix}`] : []),
-  ];
+  return {
+    head: `Heading for ${Math.round(d.target)}`,
+    groups: [
+      ...(down.length ? [{ title: "Pulling it down", rows: down.map(row) }] : []),
+      ...(up.length ? [{ title: "Lifting it", rows: up.map(row) }] : []),
+    ],
+    ...(worst?.fix ? { fix: worst.fix } : {}),
+  };
 }
 
 /** The resource grid, in its groups: the colony, life, food, materials. */
@@ -289,7 +334,8 @@ export function barItems(s: Snapshot): BarItem[][] {
       level: healthLevel,
       ...(healthLevel !== "ok" ? { alert: `Health ${health}` } : {}),
       title: "Health",
-      notes: [`The average, out of 100; below ${HEALTH_WARN} it's a worry`, ...healthWhy(s)],
+      notes: [`The average, out of 100; below ${HEALTH_WARN} it's a worry`, ...(s.diagnosis.health.recovering ? [] : ["It recovers only once nothing drains it"])],
+      why: healthWhy(s),
     },
     {
       id: "res:happiness",
@@ -305,8 +351,8 @@ export function barItems(s: Snapshot): BarItem[][] {
         "The average, across every home",
         ...(glow ? [`+${Math.round(s.afterglow.points)} afterglow: the thrill of arrival, gone in ${monthsText(Math.ceil(s.afterglow.daysLeft))}`] : []),
         ...(s.happiness.productivity < 1 ? [`Rooms at ${Math.round(s.happiness.productivity * 100)}% from low morale`] : []),
-        ...happinessWhy(s),
       ],
+      why: happinessWhy(s),
     },
     {
       id: "res:condition",
@@ -378,7 +424,7 @@ export interface Need {
 export function needs(s: Snapshot, items = barItems(s).flat()): Need[] {
   const out: Need[] = [];
   for (const i of items)
-    if (i.alert && (i.level === "warn" || i.level === "bad")) out.push({ id: i.id, icon: i.icon, text: i.alert, tip: i.notes.join(" · "), level: i.level, open: { trend: i.trend } });
+    if (i.alert && (i.level === "warn" || i.level === "bad")) out.push({ id: i.id, icon: i.icon, text: i.alert, tip: [...i.notes, ...(i.why ? whyLines(i.why) : [])].join(" · "), level: i.level, open: { trend: i.trend } });
   const w = s.weather;
   if (w.storm > 0) out.push({ id: "storm", icon: "storm", text: "Dust storm", tip: "A dust storm is blowing: the solar arrays make less", level: "warn", open: null });
   else if (w.dueInDays !== null)

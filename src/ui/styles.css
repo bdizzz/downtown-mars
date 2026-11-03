@@ -638,6 +638,23 @@ label.set-row { cursor: pointer; }
 }
 .res-tip strong { font-size: 13px; }
 .res-tip .tip-note { color: var(--muted); }
+/* A card's reasons as a ledger (Happiness): points, a bar for the weight, the cause's name */
+.res-tip .tip-why { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; padding-top: 6px; border-top: 1px solid #ffffff14; }
+.res-tip .why-head { font-weight: 600; }
+.res-tip .why-group { display: flex; flex-direction: column; gap: 2px; }
+.res-tip .why-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.res-tip .why-row { display: grid; grid-template-columns: 34px 32px 1fr; align-items: center; gap: 6px; line-height: 1.3; }
+.res-tip .why-amt { font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; }
+.res-tip .why-row.bad .why-amt { color: var(--tone-bad); }
+.res-tip .why-row.good .why-amt { color: var(--tone-good); }
+.res-tip .why-bar { height: 5px; border-radius: 3px; background: #ffffff10; overflow: hidden; }
+.res-tip .why-bar i { display: block; height: 100%; border-radius: 3px; }
+.res-tip .why-row.bad .why-bar i { background: var(--tone-bad); }
+.res-tip .why-row.good .why-bar i { background: var(--tone-good); }
+.res-tip.wide { width: 260px; }
+.res-tip .why-label em { font-style: normal; color: var(--muted); white-space: nowrap; }
+.res-tip .why-fix { padding: 4px 7px; border-radius: 4px; background: #e07a3f1f; border-left: 2px solid var(--accent); line-height: 1.35; }
+.res-tip .why-fix b { color: var(--accent); margin-right: 2px; }
 .res-tip .spark { margin-top: 4px; }
 .res-tip .tip-foot { color: var(--muted); font-size: 11px; }
 .res-tip .tip-legend { display: flex; gap: 10px; font-size: 11px; }
