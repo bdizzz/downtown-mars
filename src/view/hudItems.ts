@@ -1,7 +1,7 @@
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
 import { CONDITION } from "../sim/condition";
-import { DIAGNOSIS } from "../sim/diagnosis";
+import { DIAGNOSIS, type CauseDef } from "../sim/diagnosis";
 import { isStorable } from "../sim/storage";
 import { daysLeft, hoursText, num, resName, signed } from "../ui/format";
 import { monthsText } from "./months";
@@ -215,18 +215,6 @@ const WHY_SHOWN = 3;
 /** A number to a tenth at most, signed: "−7.5", "+10", "−6". */
 const tenth = (v: number) => `${v < 0 ? "−" : "+"}${Math.round(Math.abs(v) * 10) / 10}`;
 
-/** Why health is moving: what drains it, by how much, and the fix for the worst (F-018). */
-export function healthWhy(s: Snapshot): string[] {
-  const d = s.diagnosis.health;
-  if (d.recovering) return [d.perDay > 0 ? `Recovering: ${tenth(d.perDay)} a month, with nothing draining it` : "Nothing is draining it"];
-  const top = d.causes[0]!;
-  return [
-    `Falling ${tenth(d.perDay).slice(1)} a month; it recovers only once nothing drains it`,
-    ...d.causes.slice(0, WHY_SHOWN).map((c) => `${tenth(c.amount)} a month · ${c.text}`),
-    ...(top.fix ? [`Fix: ${top.fix}`] : []),
-  ];
-}
-
 /** One cause in a hover card's ledger: its points, short name, who feels it, and its bar (0..1 of the biggest shown). */
 export interface WhyRow {
   amount: string;
@@ -248,6 +236,36 @@ export function whyLines(w: Why): string[] {
   return [w.head, ...w.groups.flatMap((g) => g.rows.map((r) => `${r.amount} · ${r.label}${r.detail ? ` (${r.detail})` : ""}`)), ...(w.fix ? [`Fix: ${w.fix}`] : [])];
 }
 
+type Cause = Snapshot["diagnosis"]["happiness"]["causes"][number];
+
+/** A cause as a ledger row: its short name, beside it its figure ("40% met") or how many homes feel it, its bar against the biggest shown. */
+function whyRow(c: Cause, def: CauseDef | undefined, biggest: number): WhyRow {
+  const label = def?.label ?? c.id;
+  const n = def?.shared ? 0 : (c.homes?.length ?? 0);
+  const detail = c.detail ?? (n ? `${n} ${n === 1 ? "home" : "homes"}` : undefined);
+  return {
+    amount: tenth(c.amount),
+    label: label[0]!.toUpperCase() + label.slice(1),
+    ...(detail ? { detail } : {}),
+    share: Math.abs(c.amount) / Math.max(1, biggest),
+    tone: c.amount < 0 ? "bad" : "good",
+  };
+}
+
+/** Why health is moving: what drains it, by how much a month, and the fix for the worst (F-018, #272). */
+export function healthWhy(s: Snapshot): Why {
+  const d = s.diagnosis.health;
+  if (d.recovering) return { head: d.perDay > 0 ? `Recovering: ${tenth(d.perDay)} a month` : "Nothing is draining it", groups: [] };
+  const drains = d.causes.slice(0, WHY_SHOWN);
+  const biggest = Math.max(...drains.map((c) => -c.amount));
+  const fix = d.causes[0]!.fix;
+  return {
+    head: `Falling ${tenth(d.perDay).slice(1)} a month`,
+    groups: [{ title: "Draining it, a month", rows: drains.map((c) => whyRow(c, DIAGNOSIS.health[c.id], biggest)) }],
+    ...(fix ? { fix } : {}),
+  };
+}
+
 /** Why happiness is where it is: the three biggest pulls down and lifts, in points, and the fix for the worst (F-018, #272). */
 export function happinessWhy(s: Snapshot): Why {
   const d = s.diagnosis.happiness;
@@ -255,19 +273,8 @@ export function happinessWhy(s: Snapshot): Why {
   const shown = d.causes.filter((c) => c.id !== "afterglow" && c.id !== "base" && Math.abs(c.amount) >= 0.5);
   const down = shown.filter((c) => c.amount < 0).slice(0, WHY_SHOWN);
   const up = shown.filter((c) => c.amount > 0).reverse().slice(0, WHY_SHOWN);
-  const biggest = Math.max(1, ...[...down, ...up].map((c) => Math.abs(c.amount)));
-  const row = (c: (typeof shown)[number]): WhyRow => {
-    const def = DIAGNOSIS.happiness[c.id];
-    const label = def?.label ?? c.id;
-    const n = def?.shared ? 0 : (c.homes?.length ?? 0);
-    return {
-      amount: tenth(c.amount),
-      label: label[0]!.toUpperCase() + label.slice(1),
-      ...(n ? { detail: `${n} ${n === 1 ? "home" : "homes"}` } : {}),
-      share: Math.abs(c.amount) / biggest,
-      tone: c.amount < 0 ? "bad" : "good",
-    };
-  };
+  const biggest = Math.max(...[...down, ...up].map((c) => Math.abs(c.amount)));
+  const row = (c: Cause) => whyRow(c, DIAGNOSIS.happiness[c.id], biggest);
   const worst = down.find((c) => c.fix);
   return {
     head: `Heading for ${Math.round(d.target)}`,
@@ -327,7 +334,8 @@ export function barItems(s: Snapshot): BarItem[][] {
       level: healthLevel,
       ...(healthLevel !== "ok" ? { alert: `Health ${health}` } : {}),
       title: "Health",
-      notes: [`The average, out of 100; below ${HEALTH_WARN} it's a worry`, ...healthWhy(s)],
+      notes: [`The average, out of 100; below ${HEALTH_WARN} it's a worry`, ...(s.diagnosis.health.recovering ? [] : ["It recovers only once nothing drains it"])],
+      why: healthWhy(s),
     },
     {
       id: "res:happiness",

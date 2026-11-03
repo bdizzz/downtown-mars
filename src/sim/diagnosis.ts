@@ -20,6 +20,8 @@ export interface CauseDef {
   factor?: string;
   /** Its short name in a breakdown ("view", "no galley seat"). */
   label?: string;
+  /** The figure behind it, beside the label on a hover card ("40% met"). */
+  detail?: string;
   /** The neighbour effect behind it, whose source rooms are named. */
   field?: string;
   /** Felt by everyone alike (the hole's health, ordinances): no homes or rooms to show. */
@@ -41,6 +43,8 @@ export interface Cause {
   /** Health a day (negative: a drain), or happiness points (negative: a pull down). */
   amount: number;
   text: string;
+  /** The figure behind it, filled in ("40% met"), where its kind has one. */
+  detail?: string;
   fix?: string;
   /** happiness only: noise, comfort, health (wellbeing), mood or base. */
   factor?: string;
@@ -74,9 +78,9 @@ export interface Diagnosis {
 
 const pct = (v: number) => String(Math.round(v * 100));
 
-function fill(def: CauseDef | undefined, id: string, vars: Record<string, string>): { text: string; fix?: string } {
+function fill(def: CauseDef | undefined, id: string, vars: Record<string, string>): { text: string; detail?: string; fix?: string } {
   const sub = (t: string) => t.replace(/\{(\w+)\}/g, (m, k: string) => vars[k] ?? m);
-  return def ? { text: sub(def.text), ...(def.fix ? { fix: sub(def.fix) } : {}) } : { text: id };
+  return def ? { text: sub(def.text), ...(def.detail ? { detail: sub(def.detail) } : {}), ...(def.fix ? { fix: sub(def.fix) } : {}) } : { text: id };
 }
 
 /** What drains the hole's health, biggest first. */

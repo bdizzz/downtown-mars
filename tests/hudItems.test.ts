@@ -118,19 +118,26 @@ describe("why health and happiness move (T-172)", () => {
     const st = createInitialState(config);
     st.population.health = 50;
     st.population.healthDrain = { water: 0, meals: 0 };
-    expect(cell(makeSnapshot(st, config), "res:health").notes.join("\n")).toMatch(/Recovering: \+10 a month/);
+    const why = cell(makeSnapshot(st, config), "res:health").why!;
+    expect(why.head).toBe("Recovering: +10 a month");
+    expect(why.groups).toEqual([]);
   });
 
-  it("a draining hole names each cause, its toll and the fix for the worst", () => {
+  it("a draining hole names each cause, its toll a month, its figure and the fix for the worst", () => {
     const st = createInitialState(config);
     st.population.health = 3;
     st.population.needsMet = { water: 1, meals: 0.4 };
     st.population.healthDrain = { water: 0, meals: 6, sanitation: 0, o2: 0, co2: 7.5 };
-    const notes = cell(makeSnapshot(st, config), "res:health").notes;
-    expect(notes).toContain("Falling 13.5 a month; it recovers only once nothing drains it");
-    expect(notes[2]).toMatch(/^−7\.5 a month · CO2 high: .*% of the air$/);
-    expect(notes[3]).toBe("−6 a month · Meals: people get 40% of what they need");
-    expect(notes[4]).toMatch(/^Fix: A CO2 scrubber/);
+    const item = cell(makeSnapshot(st, config), "res:health");
+    expect(item.notes).toContain("It recovers only once nothing drains it");
+    const why = item.why!;
+    expect(why.head).toBe("Falling 13.5 a month");
+    expect(why.groups[0]!.title).toBe("Draining it, a month");
+    const [co2, meals] = why.groups[0]!.rows;
+    expect(co2).toMatchObject({ amount: "−7.5", label: "CO2", share: 1, tone: "bad" });
+    expect(co2!.detail).toMatch(/^\d+(\.\d)?% of the air$/);
+    expect(meals).toMatchObject({ amount: "−6", label: "Meals", detail: "40% met", share: 0.8 });
+    expect(why.fix).toMatch(/^A CO2 scrubber/);
   });
 
   it("the Happiness card says where it's heading and the biggest pulls", () => {
