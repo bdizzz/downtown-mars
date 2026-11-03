@@ -94,7 +94,7 @@ const ISO_PAN = { speed: 0.6, minSpeed: 12, reach: 1.3 };
 const ISO = { start: 1.6, min: 12, pad: 1.1, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
 /** First person: how finely and how far to look for room to stand on another floor (m), eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
 // Turning (radians a pixel) at the settings' look speed of 1: by dragging, and with mouse look. Godot's are the same, per point.
-const WALK = { eye: 1.8, speed: 4.5, run: 10, turn: 0.004, lookTurn: 0.0035, keyTurn: 1.8 };
+const WALK = { eye: 1.8, speed: 4.5, run: 10, turn: 0.007, lookTurn: 0.006, keyTurn: 1.8 };
 /** Looking up and down (first person) stops just short of straight up or down. */
 const MAX_PITCH = Math.PI / 2 - 0.02;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */

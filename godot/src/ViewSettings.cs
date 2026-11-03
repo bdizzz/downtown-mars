@@ -68,7 +68,7 @@ public static class ViewSettings
         Autosave = (bool)cfg.GetValue("game", "autosave", true);
         ColorBlind = (bool)cfg.GetValue("game", "color_blind", false);
         UiScale = (float)cfg.GetValue("game", "ui_scale", 1f);
-        LookSpeed = Mathf.Clamp((float)cfg.GetValue("controls", "look_speed", 1f), 0.25f, 2);
+        LookSpeed = Mathf.Clamp((float)cfg.GetValue("controls", "look_speed", 1f), 0.25f, 3);
         Miniature = Mathf.Clamp((float)cfg.GetValue("graphics", "miniature", 0.4f), 0, 1);
         CutAngle = ClampCut((float)cfg.GetValue("view", "cut_angle", CutMax));
         PanelSections.Clear();
