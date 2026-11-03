@@ -3,7 +3,7 @@ import { config } from "../src/sim/config";
 import { makeSnapshot, type Snapshot } from "../src/sim/snapshot";
 import { createInitialState } from "../src/sim/state";
 import { updateHappiness } from "../src/sim/happiness";
-import { barItems, GROUPS, HUD_IDS, needs, topExtras } from "../src/view/hudItems";
+import { barItems, GROUPS, happinessWhy, HUD_IDS, needs, topExtras } from "../src/view/hudItems";
 import { ICONS, iconSvg, isIcon } from "../src/view/icons";
 
 const fresh = () => makeSnapshot(createInitialState(config), config);
@@ -143,5 +143,19 @@ describe("why health and happiness move (T-172)", () => {
     expect(notes.some((n) => /^−\d+(\.\d)? · Poor health \(the hole's health is 3\)$/.test(n))).toBe(true);
     expect(notes.some((n) => /^−\d+(\.\d)? · Homeless colonists$/.test(n))).toBe(true);
     expect(notes.some((n) => n.startsWith("Fix: "))).toBe(true);
+  });
+
+  it("the Happiness card lists the three biggest pulls each way, biggest first", () => {
+    const st = createInitialState(config);
+    updateHappiness(st, config, true);
+    const s = makeSnapshot(st, config);
+    const cause = (id: string, amount: number) => ({ id, amount, text: id });
+    s.diagnosis.happiness.causes = [
+      cause("a", -9), cause("b", -6), cause("c", -4), cause("d", -2),
+      cause("base", 10), cause("e", 1), cause("f", 3), cause("g", 5), cause("h", 7),
+    ];
+    const notes = happinessWhy(s);
+    expect(notes.filter((n) => n.startsWith("−"))).toEqual(["−9 · a", "−6 · b", "−4 · c"]);
+    expect(notes.filter((n) => n.startsWith("+"))).toEqual(["+7 · h", "+5 · g", "+3 · f"]);
   });
 });

@@ -224,13 +224,13 @@ export function healthWhy(s: Snapshot): string[] {
   ];
 }
 
-/** Why happiness is where it is: the biggest pulls down and lifts, in points, and the fix for the worst (F-018). */
+/** Why happiness is where it is: the three biggest pulls down and lifts, in points, and the fix for the worst (F-018, #272). */
 export function happinessWhy(s: Snapshot): string[] {
   const d = s.diagnosis.happiness;
   // The afterglow has its own line above; the base is the same for every hole.
   const shown = d.causes.filter((c) => c.id !== "afterglow" && c.id !== "base" && Math.abs(c.amount) >= 0.5);
   const down = shown.filter((c) => c.amount < 0).slice(0, WHY_SHOWN);
-  const up = shown.filter((c) => c.amount > 0).reverse().slice(0, 2);
+  const up = shown.filter((c) => c.amount > 0).reverse().slice(0, WHY_SHOWN);
   const line = (c: (typeof shown)[number]) => `${tenth(c.amount)} · ${c.text}`;
   const worst = down.find((c) => c.fix);
   return [
