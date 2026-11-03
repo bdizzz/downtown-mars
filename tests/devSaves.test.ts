@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { deserialize, SAVE_VERSION } from "../src/sim/save";
+import { DEV_GAMES } from "../src/ui/devGames";
 
 // The dev saves in public/ (T-013) open in today's game. If one is behind
 // SAVE_VERSION it still loads through migrations; `npm run saves` brings it current.
@@ -15,5 +16,11 @@ describe("dev saves", () => {
     const r = deserialize(json);
     expect(r.ok ? "ok" : r.reason).toBe("ok");
     expect((JSON.parse(json) as { version: number }).version).toBeLessThanOrEqual(SAVE_VERSION);
+  });
+});
+
+describe("the menu's dev games (#351)", () => {
+  it("lists exactly the dev saves in public/", () => {
+    expect(DEV_GAMES.map((g) => `dev-save-${g.name}.json`).sort()).toEqual(saves.map(([name]) => name).sort());
   });
 });

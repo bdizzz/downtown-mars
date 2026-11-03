@@ -28,6 +28,7 @@ import { TrendsPanel } from "./TrendsPanel";
 import { WhyPanel, type WhyTab } from "./WhyPanel";
 import type { Spot } from "../view/reachView";
 import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
+import { fetchDevGame, type DevGame } from "./devGames";
 import { StatusBar } from "./StatusBar";
 import { GuidedTutorial, Tutorial } from "./Tutorial";
 import { guideStep, nextGuide, startGuide, stepMet, stepSpeed } from "./guided";
@@ -349,6 +350,13 @@ export function App() {
     onExport: async () => {
       const { data, summary } = await save();
       downloadSave({ data, summary, savedAt: Date.now() });
+    },
+    onLoadDev: async (game: DevGame) => {
+      const text = await fetchDevGame(game);
+      if (text === null) return setMenuError(`Couldn't fetch the ${game.name} dev game.`);
+      const r = await load(text);
+      if (r.ok) startPlaying(true);
+      else setMenuError(r.reason);
     },
     onImport: async () => {
       const text = await pickSaveFile();
