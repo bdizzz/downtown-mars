@@ -295,16 +295,19 @@ vec4 fibre_panel_tone(vec3 p) {
 	vec2 q = p.xz / 0.5;
 	vec2 c = floor(q);
 	vec2 f = fract(q);
-	float joint = step(0.025, f.x) * step(f.x, 0.975) * step(0.025, f.y) * step(f.y, 0.975);
+	// Soft, shallow seams, as carpet tiles butted together (the web's fibrePanelTone).
+	vec2 e = min(f, 1.0 - f);
+	float joint = smoothstep(0.0, 0.05, min(e.x, e.y));
 	bool turn = mod(c.x + c.y, 2.0) > 0.5;
 	float across = (turn ? f.x : f.y) * 18.0;
 	float along = (turn ? f.y : f.x) * 9.0;
-	float ridge = 0.86 + 0.14 * sin(fract(across) * 3.14159);
+	float ridge = 0.95 + 0.05 * sin(fract(across) * 3.14159);
 	float over = mod(floor(across) + floor(along), 2.0);
-	float weave = ridge * mix(0.9, 1.05, over) * mix(0.94, 1.05, srf_noise(p * 14.0));
-	float shade = mix(0.92, 1.06, srf_hash(vec3(c, 11.0)));
-	// Height: the strands' ridges and the over-under, the joints sunk.
-	return vec4(vec3(mix(0.5, weave * shade, joint)), joint * (0.5 * ridge + 0.3 * over));
+	float pile = mix(0.94, 1.03, srf_noise(p * 40.0)) * mix(0.97, 1.02, srf_noise(p * 9.0));
+	float weave = ridge * mix(0.97, 1.02, over) * pile;
+	float shade = mix(0.97, 1.03, srf_hash(vec3(c, 11.0)));
+	// Height: a soft pile, the seams barely sunk.
+	return vec4(vec3(mix(0.86, weave * shade, joint)), 0.6 + 0.25 * joint + 0.15 * pile);
 }
 
 // A lining's pattern by look (1, 3 to 10): its shade in colour (rgb) and its height (a).
@@ -324,6 +327,7 @@ vec4 lining_tone(int which, vec3 p, vec3 n) {
 float lining_relief(int which) {
 	if (which == 1) return 3.0;
 	if (which == 6) return 0.8;
+	if (which == 10) return 0.4;
 	return 0.6;
 }
 

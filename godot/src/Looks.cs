@@ -40,7 +40,7 @@ static class Looks
     /// <summary>Floor upgrades (T-037), as the web's FLOORING_LOOK: their look in the shader, colour, roughness. A name ending in one lays it underfoot.</summary>
     static readonly Dictionary<string, (int look, string color, float rough)> Floorings = new()
     {
-        ["fibre_panels"] = (10, "#b48a58", 0.7f),
+        ["fibre_panels"] = (10, "#b48a58", 0.95f),
     };
 
     /// <summary>How much a room's colour tints its floor, as the web's FLOOR_TINT.</summary>
