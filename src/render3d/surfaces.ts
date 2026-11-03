@@ -598,10 +598,14 @@ const FIBRE_PANELS_GLSL = /* glsl */ `
     bool turn = mod(c.x + c.y, 2.0) > 0.5;
     float across = (turn ? f.x : f.y) * 18.0;
     float along = (turn ? f.y : f.x) * 9.0;
-    // Each strand rounded across and passing over then under the ones it crosses, faintly, under a fine pile.
+    // Each strand rounded across and passing over then under the ones it crosses, faintly, under a medium
+    // pile: tufts catching the light or not, a finer grain between them, and a soft mottle where it's been walked.
     float ridge = 0.95 + 0.05 * sin(fract(across) * 3.14159);
     float over = mod(floor(across) + floor(along), 2.0);
-    float pile = mix(0.94, 1.03, srfNoise(p * 40.0)) * mix(0.97, 1.02, srfNoise(p * 9.0));
+    float tufts = mix(0.88, 1.08, srfNoise(p * 70.0));
+    float grain = mix(0.93, 1.05, srfNoise(p * 160.0));
+    float mottle = mix(0.94, 1.04, srfNoise(p * 4.0));
+    float pile = tufts * grain * mottle;
     float weave = ridge * mix(0.97, 1.02, over) * pile;
     float shade = mix(0.97, 1.03, srfHash(vec3(c, 11.0)));
     return vec3(mix(0.86, weave * shade, joint));

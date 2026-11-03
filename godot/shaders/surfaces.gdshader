@@ -303,7 +303,11 @@ vec4 fibre_panel_tone(vec3 p) {
 	float along = (turn ? f.y : f.x) * 9.0;
 	float ridge = 0.95 + 0.05 * sin(fract(across) * 3.14159);
 	float over = mod(floor(across) + floor(along), 2.0);
-	float pile = mix(0.94, 1.03, srf_noise(p * 40.0)) * mix(0.97, 1.02, srf_noise(p * 9.0));
+	// A medium pile: tufts, a finer grain between them and a soft mottle.
+	float tufts = mix(0.88, 1.08, srf_noise(p * 70.0));
+	float grain = mix(0.93, 1.05, srf_noise(p * 160.0));
+	float mottle = mix(0.94, 1.04, srf_noise(p * 4.0));
+	float pile = tufts * grain * mottle;
 	float weave = ridge * mix(0.97, 1.02, over) * pile;
 	float shade = mix(0.97, 1.03, srf_hash(vec3(c, 11.0)));
 	// Height: a soft pile, the seams barely sunk.
