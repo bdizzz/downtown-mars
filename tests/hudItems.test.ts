@@ -3,7 +3,7 @@ import { config } from "../src/sim/config";
 import { makeSnapshot, type Snapshot } from "../src/sim/snapshot";
 import { createInitialState } from "../src/sim/state";
 import { updateHappiness } from "../src/sim/happiness";
-import { barItems, GROUPS, happinessWhy, HUD_IDS, needs, topExtras } from "../src/view/hudItems";
+import { barItems, GROUPS, happinessWhy, HUD_IDS, needs, topExtras, whyLines } from "../src/view/hudItems";
 import { ICONS, iconSvg, isIcon } from "../src/view/icons";
 
 const fresh = () => makeSnapshot(createInitialState(config), config);
@@ -138,11 +138,16 @@ describe("why health and happiness move (T-172)", () => {
     st.population.count = st.happiness.pools.reduce((n, p) => n + p.capacity, 0) + 10;
     st.population.health = 3;
     updateHappiness(st, config, true);
-    const notes = cell(makeSnapshot(st, config), "res:happiness").notes;
-    expect(notes.some((n) => /^Heading for \d+$/.test(n))).toBe(true);
-    expect(notes.some((n) => /^−\d+(\.\d)? · Poor health \(the hole's health is 3\)$/.test(n))).toBe(true);
-    expect(notes.some((n) => /^−\d+(\.\d)? · Homeless colonists$/.test(n))).toBe(true);
-    expect(notes.some((n) => n.startsWith("Fix: "))).toBe(true);
+    const why = cell(makeSnapshot(st, config), "res:happiness").why!;
+    expect(why.head).toMatch(/^Heading for \d+$/);
+    expect(why.groups[0]!.title).toBe("Pulling it down");
+    const down = why.groups[0]!.rows;
+    expect(down.map((r) => r.label)).toContain("Hole's health");
+    expect(down.map((r) => r.label)).toContain("Homeless");
+    expect(down.every((r) => r.tone === "bad" && /^−\d+(\.\d)?$/.test(r.amount))).toBe(true);
+    expect(why.fix).toBeTruthy();
+    // As plain lines for screen readers and the "needs you" slot.
+    expect(whyLines(why)).toContain(`Fix: ${why.fix}`);
   });
 
   it("the Happiness card lists the three biggest pulls each way, biggest first", () => {
@@ -154,8 +159,11 @@ describe("why health and happiness move (T-172)", () => {
       cause("a", -9), cause("b", -6), cause("c", -4), cause("d", -2),
       cause("base", 10), cause("e", 1), cause("f", 3), cause("g", 5), cause("h", 7),
     ];
-    const notes = happinessWhy(s);
-    expect(notes.filter((n) => n.startsWith("−"))).toEqual(["−9 · a", "−6 · b", "−4 · c"]);
-    expect(notes.filter((n) => n.startsWith("+"))).toEqual(["+7 · h", "+5 · g", "+3 · f"]);
+    const [down, up] = happinessWhy(s).groups;
+    expect(down!.rows.map((r) => `${r.amount} ${r.label}`)).toEqual(["−9 A", "−6 B", "−4 C"]);
+    expect(up!.rows.map((r) => `${r.amount} ${r.label}`)).toEqual(["+7 H", "+5 G", "+3 F"]);
+    // Bars scale to the biggest shown, either way.
+    expect(down!.rows[0]!.share).toBe(1);
+    expect(up!.rows[0]!.share).toBeCloseTo(7 / 9);
   });
 });
