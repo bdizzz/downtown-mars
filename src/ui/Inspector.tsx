@@ -12,7 +12,7 @@ import { corridors, finishDef } from "../sim/corridors";
 import { num, resName } from "./format";
 import { Icon } from "./Icon";
 import { useOpenSections } from "./settings";
-import { constructionInfo, fillsTanks, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type Alert, type Chip, type Row, type Section, type SectionId } from "../view/roomPanel";
+import { constructionInfo, fillsTanks, floorOptions, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type Alert, type Chip, type Row, type Section, type SectionId } from "../view/roomPanel";
 
 interface Props {
   s: Snapshot;
@@ -224,6 +224,29 @@ function Refit({ s, room, onCommand }: { s: Snapshot; room: Snapshot["layout"]["
   );
 }
 
+/** Lay a new floor, the walls untouched, through the construction queue; or take it up, free and at once. */
+function Floor({ s, room, onCommand }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number]; onCommand: Props["onCommand"] }) {
+  const options = floorOptions(s, room);
+  if (!options) return null;
+  return (
+    <label title="Lay a new floor through the construction queue: the walls stay as they are. While the crews work the room runs at half speed (a home is less comfortable). Taking a floor up, back to matching the walls, is free and at once.">
+      <span className="k">Floor</span>
+      <select value="" onChange={(e) => {
+        const o = options[Number(e.target.value)];
+        if (o) onCommand({ type: "upgradeFloor", roomId: room.id, flooring: o.flooring });
+      }}>
+        <option value="">Choose a new floor…</option>
+        {options.map((o, i) => (
+          <option key={o.name} value={i} disabled={!!o.refusal}>
+            {o.text}
+            {o.refusal ? ` (${o.refusal})` : ""}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 /** Pause a room, or have it stand by while its output is stocked. */
 function Controls({ room, s, onCommand }: { room: Snapshot["layout"]["rooms"][number]; s: Snapshot; onCommand: Props["onCommand"] }) {
   const stop = stopAtInfo(s, room);
@@ -395,6 +418,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
             <UnderConstruction s={s} roomId={room.id} onCommand={onCommand} />
             <Rows rows={x.rows} />
             <Refit s={s} room={room} onCommand={onCommand} />
+            <Floor s={s} room={room} onCommand={onCommand} />
             {def.buildable && (
               <button className="danger" onClick={() => onCommand({ type: "demolish", roomId: room.id })}>
                 {room.building ? "Cancel construction (full refund)" : `Demolish (${room.planned ? "full refund" : `${config.economy.demolishRefund * 100}% refund`})`}

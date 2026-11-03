@@ -235,6 +235,37 @@ export function refitRefusal(room: RoomInstance, plan: RefitPlan | null, resourc
   return shortfall(have, plan.cost);
 }
 
+// ---- floors (T-037) ----
+
+/** What laying a flooring in a room takes: paid on commit, and its work-hours. */
+export interface FloorPlan {
+  flooring: FlooringDef;
+  cost: Record<string, number>;
+  work: number;
+}
+
+/** Laying a flooring in a room, per cell times its cells. Null if it has that floor already. The walls aren't touched. */
+export function floorPlan(room: RoomInstance, f: FlooringDef): FloorPlan | null {
+  if (flooringOf(room)?.id === f.id) return null;
+  const n = Math.max(1, room.cells.length);
+  return { flooring: f, cost: times(f.cost, n), work: f.work * n };
+}
+
+/** Why this floor can't be laid, or null. `credit` is what a refit already queued for the room would give back (the new one replaces it). */
+export function floorRefusal(room: RoomInstance, plan: FloorPlan | null, resources: Record<string, number>, credit: Record<string, number> = {}): string | null {
+  if (!canLine(room)) return `${roomDef(room.type).name} can't have a new floor`;
+  if (room.planned || room.building) return "Build it first";
+  if (!plan) return `It has ${flooringOf(room)!.name.toLowerCase()} already`;
+  const have = { ...resources };
+  for (const [r, v] of Object.entries(credit)) have[r] = (have[r] ?? 0) + v;
+  return shortfall(have, plan.cost);
+}
+
+/** "with fibre-composite panels": how a floor job reads in the queue and the news. */
+export function floorWords(f: FlooringDef): string {
+  return `with ${f.name.toLowerCase()}`;
+}
+
 /** Is a refit under way in this room (its job started)? It runs at part output, and a home's comfort dips. */
 export function refitting(state: SimState, room: RoomInstance): boolean {
   return !!state.construction?.queue.some((j) => j.kind === "upgrade" && j.roomId === room.id && j.done > 0);

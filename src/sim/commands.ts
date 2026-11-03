@@ -13,14 +13,14 @@ import { capacities, mainOutput } from "./economy";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById, outsideEdges } from "./edges";
 import { setRoomWindows, wallOf, windowCost, windowRefusal } from "./windows";
-import { domeRefusal, dropCorridors, dropRefit, dropRelines, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRefit, queueReline, queueRoom, type SegmentRefit } from "./construction";
+import { domeRefusal, dropCorridors, dropRefit, dropRelines, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueFloor, queueRefit, queueReline, queueRoom, type SegmentRefit } from "./construction";
 import { addAdults, holeGates, syncCount, unlock, UNLOCK_GATES } from "./people";
 import { allowsRefusal, setAllows } from "./storage";
 import { answerVisit, greet } from "./visits";
 import { answerEvent, consoleEvent } from "./events";
 import { padReady } from "./earth";
 import { roomDef } from "./rooms";
-import { buildLiningCost, canLine, corridorRefitPlan, corridorRefitRefusal, flooringDef, liningOf, MATERIALS, refitPlan, refitRefusal, refitWords, type WallStep } from "./materials";
+import { buildLiningCost, canLine, corridorRefitPlan, corridorRefitRefusal, flooringDef, floorPlan, floorRefusal, floorWords, liningOf, MATERIALS, refitPlan, refitRefusal, refitWords, type WallStep } from "./materials";
 import type { RoomInstance } from "./placement";
 import { buildShowcase } from "./showcase";
 import type { GuideState, SimState } from "./state";
@@ -89,6 +89,8 @@ export type SimCommand =
   | { type: "consoleLining"; roomId: number; material?: string; finish?: string; flooring?: string | null }
   /** Refit a room's walls in another lining (bare rock strips it, salvaging part of the old one), through the construction queue. */
   | { type: "upgradeRoom"; roomId: number; material: string; finish?: string }
+  /** Lay a new floor in a room, its walls untouched, through the construction queue (T-037). Null takes it out, back to matching the walls: free and at once. */
+  | { type: "upgradeFloor"; roomId: number; flooring: string | null }
   /** Refit built corridor segments in a lining, as rooms are, through the construction queue. Skips those that can't be (in it already, not built); the rest go all or none, like a snaked chain. */
   | { type: "refitCorridors"; edges: string[]; material: string; finish?: string }
   /** Fit sealed bulkheads across built corridor segments (on), or take them out (off, free). */
@@ -340,6 +342,35 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         record(state, r, "out", CONSTRUCTION, v);
       }
       queueRefit(state, room, plan, config);
+      layout.version++;
+      return { ok: true };
+    }
+    case "upgradeFloor": {
+      const room = layout.rooms.find((r) => r.id === cmd.roomId);
+      if (!room) return { ok: false, reason: "No such room" };
+      // One refit at a time, walls or floor: a new one replaces any still queued, which is refunded.
+      const queued = state.construction?.queue.find((j) => j.kind === "upgrade" && j.roomId === room.id);
+      if (cmd.flooring === null) {
+        // Back to matching the walls: the panels come up free and at once, and a floor still queued is called off.
+        if (!canLine(room)) return { ok: false, reason: `${roomDef(room.type).name} can't have a new floor` };
+        if (!room.flooring && !queued?.flooring) return { ok: false, reason: "Its floor matches the walls already" };
+        if (queued?.flooring) dropRefit(state, queued);
+        delete room.flooring;
+        layout.version++;
+        return { ok: true };
+      }
+      const f = flooringDef(cmd.flooring);
+      if (!f) return { ok: false, reason: `No flooring "${cmd.flooring}": ${MATERIALS.floorings.map((x) => x.id).join(", ")}` };
+      if (queued?.flooring === f.id) return { ok: false, reason: `Already being floored ${floorWords(f)}` };
+      const plan = floorPlan(room, f);
+      const refusal = floorRefusal(room, plan, state.resources, queued?.paid);
+      if (refusal || !plan) return { ok: false, reason: refusal ?? "Nothing to do" };
+      if (queued) dropRefit(state, queued);
+      for (const [r, v] of Object.entries(plan.cost)) {
+        state.resources[r] = (state.resources[r] ?? 0) - v;
+        record(state, r, "out", CONSTRUCTION, v);
+      }
+      queueFloor(state, room, plan, config);
       layout.version++;
       return { ok: true };
     }

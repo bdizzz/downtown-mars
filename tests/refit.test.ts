@@ -202,3 +202,96 @@ describe("while a refit is under way", () => {
     expect(restroom.building).toBe(true);
   });
 });
+
+// Floors (T-037): laid on their own, the walls untouched; taking one up is free and at once.
+const floor = (s: SimState, id: number, flooring: string | null) => applyCommand(s, { type: "upgradeFloor", roomId: id, flooring });
+
+describe("the upgradeFloor command", () => {
+  withConstructionTime();
+
+  it("lays fibre panels in a brick home without touching its walls, for fibre 3 a cell and 1.5 h a cell", () => {
+    const s = hole();
+    s.resources.fiber = 100;
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    line(s, dorm, "brick");
+    room(s, dorm).condition = 0.6;
+    const before = homeFactors(s, room(s, dorm), config).comfort;
+    expect(floor(s, dorm, "fibre_panels").ok).toBe(true);
+    expect(s.resources.fiber).toBe(94);
+    expect(refitJob(s, dorm)).toMatchObject({ flooring: "fibre_panels", work: 3, paid: { fiber: 6 } });
+    expect(refitJob(s, dorm)?.to).toBeUndefined();
+    expect(queueView(s).jobs.find((j) => j.roomId === dorm)).toMatchObject({ lead: "Refloor", note: "with fibre-composite panels", label: "Refloor Bunk dorm with fibre-composite panels" });
+    expect(room(s, dorm).flooring).toBeUndefined();
+    finishRefit(s, dorm);
+    expect(room(s, dorm)).toMatchObject({ material: "brick", flooring: "fibre_panels", condition: 0.6 });
+    expect(s.messages.at(-1)?.text).toMatch(/floored with fibre-composite panels\.$/);
+    expect(homeFactors(s, room(s, dorm), config).comfort).toBeCloseTo(before + 0.25);
+  });
+
+  it("the panels stay when the walls change", () => {
+    const s = hole();
+    s.resources.fiber = 100;
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    expect(floor(s, dorm, "fibre_panels").ok).toBe(true);
+    finishRefit(s, dorm);
+    expect(upgrade(s, dorm, "metal").ok).toBe(true);
+    finishRefit(s, dorm);
+    expect(room(s, dorm)).toMatchObject({ material: "metal", flooring: "fibre_panels" });
+  });
+
+  it("taking the panels up is free and at once; a queued floor is called off and refunded", () => {
+    const s = hole();
+    s.resources.fiber = 100;
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    expect(floor(s, dorm, null)).toMatchObject({ ok: false, reason: "Its floor matches the walls already" });
+    expect(floor(s, dorm, "fibre_panels").ok).toBe(true);
+    expect(floor(s, dorm, "fibre_panels")).toMatchObject({ ok: false, reason: "Already being floored with fibre-composite panels" });
+    expect(floor(s, dorm, null).ok).toBe(true);
+    expect(refitJob(s, dorm)).toBeUndefined();
+    expect(s.resources.fiber).toBe(100);
+    expect(floor(s, dorm, "fibre_panels").ok).toBe(true);
+    finishRefit(s, dorm);
+    expect(floor(s, dorm, "fibre_panels")).toMatchObject({ ok: false, reason: "It has fibre-composite panels already" });
+    expect(floor(s, dorm, null).ok).toBe(true);
+    expect(room(s, dorm).flooring).toBeUndefined();
+    expect(s.resources.fiber).toBe(94);
+  });
+
+  it("one refit at a time, walls or floor: each replaces the other, refunding it", () => {
+    const s = hole();
+    s.resources.fiber = 100;
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const brick = s.resources.brick!;
+    expect(upgrade(s, dorm, "brick").ok).toBe(true);
+    expect(floor(s, dorm, "fibre_panels").ok).toBe(true);
+    expect(s.resources.brick).toBe(brick);
+    expect(s.construction!.queue.filter((j) => j.roomId === dorm)).toHaveLength(1);
+    expect(upgrade(s, dorm, "brick").ok).toBe(true);
+    expect(s.resources.fiber).toBe(100);
+    expect(refitJob(s, dorm)?.to).toMatchObject({ material: "brick" });
+  });
+
+  it("cancelling refunds the fibre, and refuses what it can't afford or can't floor", () => {
+    const s = hole();
+    s.resources.fiber = 100;
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    expect(floor(s, dorm, "fibre_panels").ok).toBe(true);
+    expect(applyCommand(s, { type: "cancelJob", jobId: refitJob(s, dorm)!.id }).ok).toBe(true);
+    expect(s.resources.fiber).toBe(100);
+    s.resources.fiber = 2;
+    expect(floor(s, dorm, "fibre_panels")).toMatchObject({ ok: false, reason: "Needs 4 more fiber" });
+    const entrance = s.layout.rooms.find((r) => r.type === "entrance")!;
+    expect(floor(s, entrance.id, "fibre_panels")).toMatchObject({ ok: false });
+    expect(floor(s, dorm, "carpet")).toMatchObject({ ok: false });
+  });
+});
+
+describe("with construction time off, a floor", () => {
+  it("is laid at once", () => {
+    const s = hole();
+    s.resources.fiber = 100;
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    expect(floor(s, dorm, "fibre_panels").ok).toBe(true);
+    expect(room(s, dorm).flooring).toBe("fibre_panels");
+  });
+});

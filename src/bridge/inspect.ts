@@ -3,7 +3,7 @@ import { config } from "../sim/config";
 import { corridors, finishDef } from "../sim/corridors";
 import { cropDefs } from "../sim/resources";
 import type { Snapshot } from "../sim/snapshot";
-import { constructionInfo, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type PanelModel, type StorageInfo } from "../view/roomPanel";
+import { constructionInfo, floorOptions, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type PanelModel, type StorageInfo } from "../view/roomPanel";
 import { holding, roomSpec } from "../sim/economy";
 import type { SimState } from "../sim/state";
 import { roomDef } from "../sim/rooms";
@@ -38,6 +38,8 @@ export interface InspectedMessage {
   kit?: { progress: number; goods: string; button: string | null; note: string; gathering: boolean };
   /** The linings it could be refitted in (view/roomPanel.ts refitOptions): upgradeRoom's material and finish, and why not (null when it can be ordered). */
   refit?: { material: string; finish: string; text: string; refusal: string | null }[];
+  /** The floors it could have laid (view/roomPanel.ts floorOptions): upgradeFloor's flooring (null: back to matching the walls), and why not. */
+  floor?: { flooring: string | null; text: string; refusal: string | null }[];
   crop?: { value: string; options: { id: string; label: string }[] };
   /** What a tank holds (clean, gray water or tailings). */
   holds?: { value: string; options: { id: string; label: string }[] };
@@ -92,6 +94,8 @@ export function inspect(state: SimState, s: Snapshot, roomId: number | null): In
   if (def.stagesSeedKit) msg.kit = { ...seedKitInfo(s), gathering: s.kit.gathering };
   const refit = refitOptions(s, room);
   if (refit) msg.refit = refit.map(({ material, finish, text, refusal }) => ({ material, finish, text, refusal }));
+  const floor = floorOptions(s, room);
+  if (floor) msg.floor = floor.map(({ flooring, text, refusal }) => ({ flooring, text, refusal }));
   if (def.growsCrops) msg.crop = { value: room.crop ?? "", options: cropDefs.map((c) => ({ id: c.id, label: `${c.name} (${c.group}, ${c.yield}/month)` })) };
   const held = holding(room);
   if (held) msg.holds = { value: held, options: (def.holds ?? []).map((id) => ({ id, label: resName(id) })) };

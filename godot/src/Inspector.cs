@@ -13,7 +13,7 @@ namespace DowntownMars;
 /// it), a status pill and headline chips, the alerts band (with Connect), condition, then the sections
 /// that fold open and closed (Work, Home, Serves, Surroundings, Building, Seed kit, Storage), each with
 /// its rows and its controls: crop, what a tank holds, priority, running and stop-at in Work;
-/// construction, refitting its walls and demolish in Building. Which sections are open is remembered per
+/// construction, refitting its walls, a new floor and demolish in Building. Which sections are open is remembered per
 /// section (ViewSettings.PanelSections). Its outline is drawn over the scene. The widgets are made once
 /// and only their values change, so a field being typed in isn't reset under the pointer.
 /// </summary>
@@ -196,6 +196,8 @@ public partial class Inspector : Node3D
     // Refit, crop, priority, controls.
     readonly HBoxContainer _refitRow = new() { TooltipText = "Refit the walls through the construction queue. Once the crews start the room works at half speed (a home is less comfortable) until it's done, then it's as good as new. Taking brick or metal out gives half of it back." };
     readonly OptionButton _refit = new() { FocusMode = Control.FocusModeEnum.None, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, ClipText = true, FitToLongestItem = false };
+    readonly HBoxContainer _floorRow = new() { TooltipText = "Lay a new floor through the construction queue: the walls stay as they are. While the crews work the room runs at half speed (a home is less comfortable). Taking a floor up, back to matching the walls, is free and at once." };
+    readonly OptionButton _floor = new() { FocusMode = Control.FocusModeEnum.None, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, ClipText = true, FitToLongestItem = false };
     readonly HBoxContainer _cropRow = new(), _holdsRow = new(), _priorityRow = new(), _stopRow = new();
     readonly OptionButton _crop = new() { FocusMode = Control.FocusModeEnum.None }, _holds = new() { FocusMode = Control.FocusModeEnum.None }, _priority = new() { FocusMode = Control.FocusModeEnum.None };
     readonly CheckBox _running = new() { Text = "Running", FocusMode = Control.FocusModeEnum.None };
@@ -214,6 +216,9 @@ public partial class Inspector : Node3D
     /// <summary>The refit picker's linings (material, finish), after its "Choose new walls…" item, and their texts.</summary>
     (string material, string finish)[] _refits = Array.Empty<(string, string)>();
     string[] _refitTexts = Array.Empty<string>();
+    /// <summary>The floor picker's floorings (null: back to matching the walls), after its "Choose a new floor…" item, and their texts.</summary>
+    string?[] _floors = Array.Empty<string?>();
+    string[] _floorTexts = Array.Empty<string>();
     string[] _cropIds = Array.Empty<string>(), _holdsIds = Array.Empty<string>(), _priorityIds = Array.Empty<string>();
     /// <summary>Set while values are filled in from a message, so the widgets' change signals don't send commands.</summary>
     bool _filling;
@@ -410,6 +415,16 @@ public partial class Inspector : Node3D
             _refit.Select(0);
         };
         building.AddChild(_refitRow);
+
+        _floorRow.AddChild(Caption("Floor"));
+        _floorRow.AddChild(_floor);
+        _floor.ItemSelected += i =>
+        {
+            if (_filling || i < 1) return;
+            Send(new() { ["type"] = "upgradeFloor", ["roomId"] = _roomId, ["flooring"] = _floors[i - 1]! }); // null (back to matching the walls) goes as JSON null
+            _floor.Select(0);
+        };
+        building.AddChild(_floorRow);
 
         _cropRow.AddChild(Caption("Crop"));
         _cropRow.AddChild(_crop);
@@ -726,6 +741,27 @@ public partial class Inspector : Node3D
         _refit.Select(0);
     }
 
+    /// <summary>The floor picker, as the web's: "Choose a new floor…", then each floor (and, with one down, matching the walls again), greyed out with why.</summary>
+    void FillFloor(JsonElement options)
+    {
+        var all = options.EnumerateArray().ToArray();
+        static string? Str(JsonElement o, string key) => o.GetProperty(key).ValueKind == JsonValueKind.String ? o.GetProperty(key).GetString() : null;
+        var texts = all.Select(o => o.GetProperty("text").GetString() + (Str(o, "refusal") is { } why ? $" ({why})" : "")).ToArray();
+        if (!texts.SequenceEqual(_floorTexts))
+        {
+            _floor.Clear();
+            _floor.AddItem("Choose a new floor…");
+            for (var i = 0; i < all.Length; i++)
+            {
+                _floor.AddItem(texts[i]);
+                _floor.SetItemDisabled(i + 1, Str(all[i], "refusal") != null);
+            }
+            _floors = all.Select(o => Str(o, "flooring")).ToArray();
+            _floorTexts = texts;
+        }
+        _floor.Select(0);
+    }
+
     /// <summary>The bridge's "inspected" message: a room's panel and outline, or roomId null to close.</summary>
     public void Show(JsonElement msg)
     {
@@ -797,6 +833,8 @@ public partial class Inspector : Node3D
         }
         _refitRow.Visible = Has("refit", out var refit);
         if (_refitRow.Visible) FillRefit(refit);
+        _floorRow.Visible = Has("floor", out var floor);
+        if (_floorRow.Visible) FillFloor(floor);
         _cropRow.Visible = Has("crop", out var crop);
         if (_cropRow.Visible) Options(_crop, crop, ref _cropIds);
         _holdsRow.Visible = Has("holds", out var holds);

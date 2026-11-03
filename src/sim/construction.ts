@@ -9,7 +9,7 @@ import { postMessage } from "./messages";
 import type { Cell, Layout, RoomInstance } from "./placement";
 import { openCells, rockCells, yieldRock } from "./excavation";
 import { record } from "./ledger";
-import { refitVerb, refitWords, wallStep, type Finish, type Material, type RefitPlan } from "./materials";
+import { flooringDef, floorWords, refitVerb, refitWords, wallStep, type Finish, type FloorPlan, type Material, type RefitPlan } from "./materials";
 import { resourceDef } from "./resources";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
@@ -40,6 +40,8 @@ export interface Job {
   roomId?: number;
   /** A refit: the lining it puts in, what was paid for it (refunded if it's cancelled), and what comes back when it's done. */
   to?: { material: Material; finish: Finish };
+  /** A floor refit (T-037), instead of the walls: the flooring it lays. */
+  flooring?: string;
   paid?: Record<string, number>;
   salvage?: Record<string, number>;
   edges?: string[];
@@ -172,6 +174,21 @@ export function queueRefit(state: SimState, room: RoomInstance, plan: RefitPlan,
   const to = { material: plan.to.material, finish: plan.to.finish };
   const job = add(state, { kind: "upgrade", roomId: room.id, work: plan.work, to, paid: plan.cost, salvage: plan.salvage });
   if (!job) finishRefit(state, room, to, plan.salvage, cfg);
+}
+
+/** A room's floor relaid (already paid for), its walls untouched: queued as a refit, or with construction time off, done at once. */
+export function queueFloor(state: SimState, room: RoomInstance, plan: FloorPlan, cfg: SimConfig): void {
+  const job = add(state, { kind: "upgrade", roomId: room.id, work: plan.work, flooring: plan.flooring.id, paid: plan.cost });
+  if (!job) finishFloor(state, room, plan.flooring.id, cfg);
+}
+
+/** A floor refit is done: the room has its new floor. The walls, and their condition, stay as they were. */
+function finishFloor(state: SimState, room: RoomInstance, flooring: string, cfg: SimConfig): void {
+  const f = flooringDef(flooring);
+  if (!f) return;
+  room.flooring = f.id;
+  postMessage(state, cfg, `${roomRef(room)} floored ${floorWords(f)}.`);
+  state.layout.version++;
 }
 
 /** A refit is done: the new lining (bare rock clears it), a fresh condition, and the old lining's salvage. */
@@ -325,6 +342,7 @@ function finish(state: SimState, job: Job, cfg: SimConfig): void {
   const room = job.roomId !== undefined ? layout.rooms.find((r) => r.id === job.roomId) : undefined;
   if (job.kind === "upgrade") {
     if (room && job.to) finishRefit(state, room, job.to, job.salvage ?? {}, cfg);
+    else if (room && job.flooring) finishFloor(state, room, job.flooring, cfg);
     return;
   }
   if (job.kind === "reline") {
@@ -466,6 +484,8 @@ export interface JobView {
   lead?: string;
   /** A refit: the lining it puts in, and what it cost (given back if it's replaced or cancelled). */
   to?: { material: Material; finish: Finish };
+  /** A floor refit: the flooring it lays (and what it cost, in paid). */
+  flooring?: string;
   paid?: Record<string, number>;
   /** For a room's job, what stage it's at beside the room's name ("excavating", "another floor"), if anything. */
   note?: string;
@@ -486,8 +506,9 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
     const room = job.roomId !== undefined ? state.layout.rooms.find((r) => r.id === job.roomId) : undefined;
     const name = room ? roomName(room) : "";
     const to = (job.kind === "upgrade" || job.kind === "reline") && job.to ? wallStep(job.to.material, job.to.finish) : undefined;
-    const refit = to && refitWords(to);
-    const lead = to && refitVerb(to);
+    const floor = job.kind === "upgrade" ? flooringDef(job.flooring) : null;
+    const refit = floor ? floorWords(floor) : to && refitWords(to);
+    const lead = floor ? "Refloor" : to && refitVerb(to);
     const note =
       refit ?? (job.kind === "extend" ? "another floor" : phaseOf(job) === "excavating" && room && !roomDef(room.type).excavationOnly ? "excavating" : undefined);
     const n = job.edges?.length ?? 0;
@@ -515,6 +536,7 @@ export function queueView(state: SimState): { bandwidth: number; jobs: JobView[]
       label,
       ...(lead ? { lead } : {}),
       ...(job.to ? { to: job.to, paid: job.paid ?? {} } : {}),
+      ...(job.flooring ? { flooring: job.flooring, paid: job.paid ?? {} } : {}),
       ...(note ? { note } : {}),
       progress: job.work > 0 ? job.done / job.work : 1,
       phase: phaseOf(job),
