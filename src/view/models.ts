@@ -33,7 +33,7 @@ export interface FpTextures {
 }
 
 export interface FpModels {
-  limits: { triangles: { fp: number } };
+  limits: { triangles: { fp: number }; textures: { size: number; count: number } };
   textures: FpTextures;
   items: Record<string, Model>;
 }
