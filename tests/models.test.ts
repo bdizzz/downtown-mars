@@ -39,6 +39,8 @@ describe("first-person furniture models", () => {
 
   describe("once loaded", () => {
     beforeAll(() => setFpModels(readFp()));
+    // An item still drawn from its parts in first person (the catalogue fills up, #359).
+    const noModel = () => Object.keys(furniture.items).find((id) => !modelIds().includes(id))!;
 
     it("each is an item in the catalogue, within the limit, in its colours", () => {
       expect(modelIds()).toContain("bunk_bed");
@@ -82,12 +84,12 @@ describe("first-person furniture models", () => {
     });
 
     it("textured surfaces carry their texture into the first-person copy, and only there", () => {
-      const g = furnitureMeshes([...at("sofa"), { item: "locker", x: 2, y: 0, z: 0, turn: 0 }], "#6f93bd", undefined, "fp");
+      const g = furnitureMeshes([...at("sofa"), { item: noModel(), x: 2, y: 0, z: 0, turn: 0 }], "#6f93bd", undefined, "fp");
       const plain = g.children.find((o) => o instanceof THREE.Mesh && o.geometry.getAttribute("aTex")) as THREE.Mesh;
       expect(plain).toBeDefined();
       const tex = plain.geometry.getAttribute("aTex").array as Float32Array;
       expect(tex.some((x) => x >= 0)).toBe(true); // the sofa's fabric
-      expect(tex.some((x) => x < 0)).toBe(true); // the locker's parts
+      expect(tex.some((x) => x < 0)).toBe(true); // the other item's parts
       expect(plain.geometry.getAttribute("aFpUv").count).toBe(plain.geometry.getAttribute("position").count);
       const near = furnitureMeshes(at("sofa"), "#6f93bd");
       near.traverse((o) => {
@@ -115,15 +117,15 @@ describe("first-person furniture models", () => {
     });
 
     it("a room shows its first-person copy only when it has an item with a model", () => {
-      const withModel = furnitureMeshes([...at("bunk_bed"), { item: "locker", x: 1.5, y: 0, z: 0, turn: 0 }], "#6f93bd");
+      const withModel = furnitureMeshes([...at("bunk_bed"), { item: noModel(), x: 1.5, y: 0, z: 0, turn: 0 }], "#6f93bd");
       expect(showDetail(withModel, "fp")).toBe(true);
       const shown = withModel.children.filter((o) => o.visible && o.userData.detail);
       expect(shown.every((o) => o.userData.detail === "fp")).toBe(true);
-      expect(triangles(shown)).toBe(modelTris(fpModelFor("bunk_bed")!) + triangles(furnitureMeshes(at("locker"), "#6f93bd")));
+      expect(triangles(shown)).toBe(modelTris(fpModelFor("bunk_bed")!) + triangles(furnitureMeshes(at(noModel()), "#6f93bd")));
       expect(showDetail(withModel, "near")).toBe(true);
       expect(withModel.children.filter((o) => o.visible && o.userData.detail).every((o) => o.userData.detail === "near")).toBe(true);
 
-      const without = furnitureMeshes(at("locker"), "#6f93bd");
+      const without = furnitureMeshes(at(noModel()), "#6f93bd");
       expect(showDetail(without, "fp")).toBe(false); // stays on its near copy, nothing new built
       expect(without.userData.fpBuilt).toBeUndefined();
     });
