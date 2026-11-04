@@ -4,7 +4,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 import * as THREE from "three";
 import { furnitureMeshes, showDetail } from "../src/render3d/furniture3d";
 import { furniture, itemDef } from "../src/view/furniture";
-import { fpModelFor, modelIds, modelLimits, parseFpModels, setFpModels, setModelsEnabled, type Model } from "../src/view/models";
+import { fpModelFor, fpTextures, modelIds, modelLimits, parseFpModels, setFpModels, setModelsEnabled, type Model } from "../src/view/models";
+// @ts-expect-error: a plain .mjs script, untyped
+import { TEXTURE_NAMES } from "../scripts/textures.mjs";
 
 // Furniture models made in Blender (#357), drawn only in first person (#360): public/models/fp.bin,
 // packed from models/*.glb by scripts/models.mjs, fetched by the game the first time it goes into first person.
@@ -53,8 +55,41 @@ describe("first-person furniture models", () => {
           expect(s.n.length, `${id} normals`).toBe(s.v.length);
           if (s.shade) expect(s.shade.length, `${id} shade`).toBe(verts);
           expect(s.i.every((k) => k < verts), `${id} indices`).toBe(true);
+          if (s.tex !== undefined) {
+            expect(s.tex, `${id} texture`).toBeLessThan(fpTextures()!.names.length);
+            expect(s.uv?.length, `${id} uvs`).toBe(verts * 2);
+          }
         }
       }
+    });
+
+    it("carry the shared fine textures: small grey tiles that leave the colour be on average", () => {
+      const t = fpTextures()!;
+      expect(t.names).toEqual(TEXTURE_NAMES);
+      expect(t.size).toBeLessThanOrEqual(128);
+      expect(t.pixels.length).toBe(t.names.length * t.size * t.size);
+      t.names.forEach((name, k) => {
+        const tile = t.pixels.subarray(k * t.size * t.size, (k + 1) * t.size * t.size);
+        const mean = tile.reduce((a, b) => a + b, 0) / tile.length / 255;
+        expect(mean, `${name}'s average grey`).toBeGreaterThan(0.4);
+        expect(mean, `${name}'s average grey`).toBeLessThan(0.6);
+      });
+      // The remodelled items use them (#361).
+      for (const id of ["bunk_bed", "sofa", "lathe"]) expect(fpModelFor(id)!.some((s) => s.tex !== undefined), id).toBe(true);
+    });
+
+    it("textured surfaces carry their texture into the first-person copy, and only there", () => {
+      const g = furnitureMeshes([...at("sofa"), { item: "locker", x: 2, y: 0, z: 0, turn: 0 }], "#6f93bd", undefined, "fp");
+      const plain = g.children.find((o) => o instanceof THREE.Mesh && o.geometry.getAttribute("aTex")) as THREE.Mesh;
+      expect(plain).toBeDefined();
+      const tex = plain.geometry.getAttribute("aTex").array as Float32Array;
+      expect(tex.some((x) => x >= 0)).toBe(true); // the sofa's fabric
+      expect(tex.some((x) => x < 0)).toBe(true); // the locker's parts
+      expect(plain.geometry.getAttribute("aFpUv").count).toBe(plain.geometry.getAttribute("position").count);
+      const near = furnitureMeshes(at("sofa"), "#6f93bd");
+      near.traverse((o) => {
+        if (o instanceof THREE.Mesh) expect(o.geometry.getAttribute("aTex")).toBeUndefined();
+      });
     });
 
     it("draw in first person only, in place of the item's parts, and fit its footprint", () => {

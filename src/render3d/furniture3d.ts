@@ -4,7 +4,7 @@ import { itemDef, partColor, type Part } from "../view/furniture";
 import { GLOW_MODE, withGlowFx, withShimmer, withSway } from "./details3d";
 import { PART_MAT, withPartPatterns } from "./surfaces";
 import type { Placed } from "../view/furnish";
-import { fpModelFor, slotExtent, type ModelSlot } from "../view/models";
+import { fpModelFor, fpTextures, slotExtent, type ModelSlot } from "../view/models";
 
 // Furniture as meshes. An item is built from its parts (data/furniture.json);
 // a room's worth of placed items is merged into one mesh for what's plain and
@@ -52,6 +52,7 @@ function slotGeometry(slot: ModelSlot): THREE.BufferGeometry {
   g.setAttribute("position", new THREE.BufferAttribute(slot.v, 3));
   g.setAttribute("normal", new THREE.BufferAttribute(slot.n, 3));
   if (slot.shade) g.setAttribute("shade", new THREE.BufferAttribute(slot.shade, 1));
+  if (slot.uv) g.setAttribute("aFpUv", new THREE.BufferAttribute(slot.uv, 2));
   g.setIndex(new THREE.BufferAttribute(slot.i, 1));
   const flat = g.toNonIndexed();
   g.dispose();
@@ -92,6 +93,8 @@ interface Look {
   c: string;
   glow?: boolean;
   size: number;
+  /** A model slot's fine texture (#361), an index into fpTextures(). */
+  tex?: number;
 }
 const PLANT_COLORS = new Set(["plant", "leaf", "potato", "soy", "stalk", "wheat", "barley", "algae", "flower"]);
 function kindOf(part: Look): Kind {
@@ -130,8 +133,8 @@ const GLOW_BLINK_UNDER = 0.12;
  */
 const materials = new Map<string, { material: THREE.MeshStandardMaterial; glow: boolean }>();
 let nightGlow = 0;
-function material(kind: Kind, hung?: Hung): THREE.MeshStandardMaterial {
-  const key = `${kind}${hung ? `:${hung.key}` : ""}`;
+function material(kind: Kind, hung?: Hung, textured = false): THREE.MeshStandardMaterial {
+  const key = `${kind}${textured ? ":fp" : ""}${hung ? `:${hung.key}` : ""}`;
   let entry = materials.get(key);
   if (!entry) {
     let m: THREE.MeshStandardMaterial;
@@ -139,11 +142,51 @@ function material(kind: Kind, hung?: Hung): THREE.MeshStandardMaterial {
     else if (kind === "plant") m = withSway(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }));
     else if (kind === "water") m = withShimmer(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.25, metalness: 0.1 }));
     else m = withPartPatterns(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 }));
+    if (textured) m = withFpTextures(m);
     entry = { material: hung ? hung.material(m) : m, glow: kind === "glow" };
     entry.material.name = `furniture:${key}`;
     materials.set(key, entry);
   }
   return entry.material;
+}
+
+/**
+ * The first-person models' fine textures (#361, view/models.ts) as one array texture, made the
+ * first time it's needed: grey detail, doubled and multiplied into the colour, so 0.5 leaves it be.
+ */
+let fpTextureArray: THREE.DataArrayTexture | null = null;
+function fpTextureFor(): THREE.DataArrayTexture | null {
+  if (fpTextureArray) return fpTextureArray;
+  const t = fpTextures();
+  if (!t) return null;
+  const tex = new THREE.DataArrayTexture(t.pixels, t.size, t.size, t.names.length);
+  tex.format = THREE.RedFormat;
+  tex.type = THREE.UnsignedByteType;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  return (fpTextureArray = tex);
+}
+
+/** Furniture's first-person copy: each vertex's texture (`aTex`, -1 for none) at `aFpUv` tints its colour. */
+function withFpTextures(m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    shader.uniforms.fpTextures = { value: fpTextureFor() };
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute vec2 aFpUv;\nattribute float aTex;\nvarying vec2 vFpUv;\nvarying float vFpTex;")
+      .replace("#include <project_vertex>", "vFpUv = aFpUv;\nvFpTex = aTex;\n#include <project_vertex>");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nuniform highp sampler2DArray fpTextures;\nvarying vec2 vFpUv;\nvarying float vFpTex;")
+      .replace("#include <color_fragment>", "#include <color_fragment>\nif (vFpTex > -0.5) diffuseColor.rgb *= texture(fpTextures, vec3(vFpUv, floor(vFpTex + 0.5))).r * 2.0;");
+  };
+  m.customProgramCacheKey = () => `${prevKey}|fp-textures`;
+  return m;
 }
 
 /** Emissive light tinted by the vertex colour, so every glowing part shares one material. */
@@ -215,7 +258,13 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
       }
       g.setAttribute("color", new THREE.BufferAttribute(rgb, 3));
       if (kind === "glow") g.setAttribute("aGlow", new THREE.BufferAttribute(new Float32Array(n).fill(glowMode(look)), 1));
-      if (kind === "plain") g.setAttribute("aMat", new THREE.BufferAttribute(new Float32Array(n).fill(PART_MATS[look.c] ?? PART_MAT.none), 1));
+      // A textured model slot takes its texture rather than its colour's pattern.
+      if (kind === "plain") g.setAttribute("aMat", new THREE.BufferAttribute(new Float32Array(n).fill(look.tex !== undefined ? PART_MAT.none : (PART_MATS[look.c] ?? PART_MAT.none)), 1));
+      // The first-person copy's plain surfaces all carry a texture and where on it (none: -1), so they merge.
+      if (detail === "fp" && kind === "plain") {
+        if (!g.getAttribute("aFpUv")) g.setAttribute("aFpUv", new THREE.BufferAttribute(new Float32Array(n * 2), 2));
+        g.setAttribute("aTex", new THREE.BufferAttribute(new Float32Array(n).fill(look.tex ?? -1), 1));
+      } else if (g.getAttribute("aFpUv")) g.deleteAttribute("aFpUv");
       if (tag) {
         const wall = new Float32Array(n * 4);
         const hang = new Float32Array(n * 2);
@@ -239,7 +288,7 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
       const tag = hung?.tags[i];
       const model = detail === "fp" ? fpModelFor(p.item) : undefined;
       if (model) {
-        for (const slot of model) add(slotGeometry(slot), { c: slot.c, glow: slot.glow, size: slotSize(slot) }, tag);
+        for (const slot of model) add(slotGeometry(slot), { c: slot.c, glow: slot.glow, size: slotSize(slot), tex: slot.tex }, tag);
         return;
       }
       for (const part of def.parts) {
@@ -251,7 +300,7 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
       const merged = mergeGeometries(parts);
       parts.forEach((g) => g.dispose());
       if (!merged) continue;
-      const mesh = new THREE.Mesh(merged, material(kind, hung));
+      const mesh = new THREE.Mesh(merged, material(kind, hung, detail === "fp" && kind === "plain"));
       mesh.userData.detail = detail;
       group.add(mesh);
     }
