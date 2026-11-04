@@ -5,7 +5,7 @@ namespace DowntownMars;
 /// <summary>
 /// Switches for measuring what things cost: DM_FX=nosdfgi,nofog,nossil,nossao,noglow,nolamps,nofurniture,
 /// nopeople,nolabels,nosunshadow,nomsaa,nominiature,nomodels turns each off (see docs/PLAN-GODOT.md for numbers;
-/// nomodels draws the Blender-made furniture models, #357, as their code-built parts).
+/// nomodels draws first person's Blender-made furniture models, #357 and #360, as their code-built parts).
 /// </summary>
 static class Dev
 {

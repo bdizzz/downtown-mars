@@ -583,6 +583,7 @@ public partial class Live : Node3D
         }
         _hole.ShowEdges = _rig?.Walking != true;
         _hole.ShowFixtures = _rig?.Walking == true;
+        _hole.FirstPersonFurniture = _rig?.Walking == true;
         WatchShowMe();
         UpdateViewBar();
         ApplyViewToShaders();

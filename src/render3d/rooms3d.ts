@@ -30,7 +30,7 @@ const SOCIAL = new Set(["housing", "public", "admin", "circulation"]);
 /** Rooms outside those categories where people gather: they sit about in them, not only work. */
 const SOCIAL_ROOMS = new Set(["galley", "canteen", "elder_care", "gym"]);
 import { centreOf, disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow, type HangTag } from "./furniture3d";
-import { modelsKey } from "../view/models";
+import { fpModelFor, modelsKey } from "../view/models";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
 // no room faces it, plus props on the surface. Rebuilt whenever the layout
@@ -1421,8 +1421,11 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
   g.userData.lamps = lamps;
   const pools = lightPools(lamps);
   if (pools) g.add(pools);
-  // Far away: coarser copies of both, made when first needed.
-  g.userData.far = () => [...furnitureMeshes(standing, accent, undefined, "far").children, ...(hungAs ? furnitureMeshes(hanging, accent, hungAs, "far").children : [])];
+  // Far away: coarser copies of both, made when first needed; in first person, close up, Blender-made models where items have them (#360).
+  const copy = (detail: "far" | "fp") => () => [...furnitureMeshes(standing, accent, undefined, detail).children, ...(hungAs ? furnitureMeshes(hanging, accent, hungAs, detail).children : [])];
+  g.userData.far = copy("far");
+  g.userData.fp = copy("fp");
+  g.userData.hasFp = () => fitted.some((f) => fpModelFor(f.item));
   return g;
 }
 

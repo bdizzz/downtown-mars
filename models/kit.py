@@ -4,7 +4,7 @@
 #
 # (or `node scripts/models.mjs --export`, which runs every model script and then converts).
 #
-# Each script describes an item twice, near and far, in the game's own frame: metres, x across
+# Each script describes an item's first-person copy (#360) in the game's own frame: metres, x across
 # the item, y up from the floor, z out from its back (-z) to its front (+z), as the parts in
 # scripts/furniture.mjs. The kit turns that into Blender's frame (z up) at the end, so glTF's
 # y-up export lands back in the game's frame.
@@ -14,7 +14,8 @@
 # exported as glTF extras. Corners are shaded by a little ambient occlusion baked into a
 # colour attribute ("shade", exported as COLOR_0), so detail costs no triangles.
 #
-# Near and far are two objects, `<item>` and `<item>.far`, in one models/<item>.glb.
+# The copy is one object, `<item>`, in models/<item>.glb. It's drawn only in first person, up close
+# (about 800 triangles); every other view draws the item's code-built parts (data/furniture.json).
 
 import math
 import os
@@ -194,16 +195,15 @@ def _bake_shade(obj):
     mesh.color_attributes.active_color = attr
 
 
-def build(item, near, far):
-    """Build an item's near and far copies (functions filling a Lod) and export models/<item>.glb."""
+def build(item, fp):
+    """Build an item's first-person copy (a function filling a Lod) and export models/<item>.glb."""
     bpy.ops.wm.read_factory_settings(use_empty=True)
     counts = {}
-    for name, make in ((item, near), (f"{item}.far", far)):
-        lod = Lod()
-        make(lod)
-        obj = _object(name, lod)
-        _bake_shade(obj)
-        counts[name] = len(obj.data.polygons)
+    lod = Lod()
+    fp(lod)
+    obj = _object(item, lod)
+    _bake_shade(obj)
+    counts[item] = len(obj.data.polygons)
     path = os.path.join(HERE, f"{item}.glb")
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.export_scene.gltf(
