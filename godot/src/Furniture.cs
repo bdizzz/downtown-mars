@@ -296,7 +296,7 @@ public class Furniture
         if (lod == Lod.Fp)
         {
             // Only items with a model have a first-person copy; the rest show their near parts in first person too.
-            if (_fp == null || !_fp.TryGetValue(id, out var model)) return _meshes[(id, lod)] = null;
+            if (_fp == null || !_fp.TryGetValue(Dev.FpStress ?? id, out var model)) return _meshes[(id, lod)] = null;
             foreach (var slot in model)
             {
                 var c = slot.C;

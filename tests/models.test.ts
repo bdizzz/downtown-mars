@@ -66,7 +66,10 @@ describe("first-person furniture models", () => {
     it("carry the shared fine textures: small grey tiles that leave the colour be on average", () => {
       const t = fpTextures()!;
       expect(t.names).toEqual(TEXTURE_NAMES);
-      expect(t.size).toBeLessThanOrEqual(128);
+      const limits = modelLimits()!.textures;
+      expect(limits).toEqual({ size: 128, count: 16 });
+      expect(t.size).toBeLessThanOrEqual(limits.size);
+      expect(t.names.length).toBeLessThanOrEqual(limits.count);
       expect(t.pixels.length).toBe(t.names.length * t.size * t.size);
       t.names.forEach((name, k) => {
         const tile = t.pixels.subarray(k * t.size * t.size, (k + 1) * t.size * t.size);
