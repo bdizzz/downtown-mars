@@ -59,6 +59,7 @@ import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, touchFirst, type Gestu
 import { createWalkPad } from "./joystick";
 import { drinkHere, footing, footingNear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 import { createDrink } from "./drink3d";
+import { setModelsEnabled } from "../view/models";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Three
 // cameras: Free view, over one floor and off to one side (its id is "iso");
@@ -2341,6 +2342,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           setCulling(on: boolean) {
             culling = on;
             dirty = true;
+          },
+          // Draw the Blender-made furniture models (#357; on by default), or the code-built items, to compare;
+          // `stress` (an item with a model) draws that model for every item, to measure models everywhere.
+          models(on: boolean, stress: string | null = null) {
+            setModelsEnabled(on, stress);
+            layoutKey = "";
+            dirty = true;
+            if (latest) stage.update(latest);
           },
           /**
            * The Godot experiment (docs/PLAN-GODOT.md): the scene as drawn (the shaft, the rooms and their

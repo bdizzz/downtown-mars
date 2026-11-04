@@ -38,6 +38,8 @@ public class Furniture
 
     readonly Dictionary<string, string> _colors = new();
     readonly Dictionary<string, JsonElement> _items = new();
+    /// <summary>Items made in Blender (#357, data/models.json): drawn from their model, near and far, in place of their parts.</summary>
+    readonly Dictionary<string, JsonElement> _models = new();
     readonly Dictionary<(string, bool), Mesh?> _meshes = new();
     readonly Dictionary<Kind, ShaderMaterial> _materials = new();
 
@@ -51,6 +53,12 @@ public class Furniture
         using var doc = JsonDocument.Parse(System.IO.File.ReadAllText(path));
         foreach (var c in doc.RootElement.GetProperty("colors").EnumerateObject()) _colors[c.Name] = c.Value.GetString()!;
         foreach (var i in doc.RootElement.GetProperty("items").EnumerateObject()) _items[i.Name] = i.Value.Clone();
+        var models = ProjectSettings.GlobalizePath("res://") + "../data/models.json";
+        if (System.IO.File.Exists(models) && !Dev.Off("models"))
+        {
+            using var m = JsonDocument.Parse(System.IO.File.ReadAllText(models));
+            foreach (var i in m.RootElement.GetProperty("items").EnumerateObject()) _models[i.Name] = i.Value.Clone();
+        }
         var shader = new Shader { Code = ShaderCode };
         _materials[Kind.Plain] = Make(shader, 0.8f, 0.05f, 0, 0);
         _materials[Kind.Glow] = Make(shader, 0.4f, 0, GlowDay, 0);
@@ -172,7 +180,18 @@ public class Furniture
         if (_meshes.TryGetValue((id, far), out var cached)) return cached;
         if (!_items.TryGetValue(id, out var def)) return _meshes[(id, far)] = null;
         var byKind = new Dictionary<Kind, (List<Vector3> v, List<Vector3> n, List<Color> c, List<Vector2> uv)>();
-        foreach (var part in def.GetProperty("parts").EnumerateArray())
+        if (_models.TryGetValue(id, out var model))
+        {
+            foreach (var slot in model.GetProperty(far ? "far" : "near").EnumerateArray())
+            {
+                var c = slot.GetProperty("c").GetString()!;
+                var kind = slot.TryGetProperty("glow", out var g) && g.GetBoolean() ? Kind.Glow : PlantColors.Contains(c) ? Kind.Plant : c == "water" ? Kind.Water : Kind.Plain;
+                var color = c == "accent" ? new Color(1, 1, 1, 0) : new Color(_colors.GetValueOrDefault(c, "#ff00ff")).SrgbToLinear() with { A = 1 };
+                if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new(), new());
+                AddSlot(slot, color, PartMats.GetValueOrDefault(c, 0), s.v, s.n, s.c, s.uv);
+            }
+        }
+        else foreach (var part in def.GetProperty("parts").EnumerateArray())
         {
             var c = part.GetProperty("c").GetString()!;
             if (far && part.GetProperty("z").EnumerateArray().Max(x => x.GetSingle()) < FarSmallest) continue;
@@ -195,6 +214,26 @@ public class Furniture
             mesh.SurfaceSetMaterial(mesh.GetSurfaceCount() - 1, _materials[kind]);
         }
         return _meshes[(id, far)] = mesh;
+    }
+
+    /// <summary>
+    /// One slot of a Blender-made model (data/models.json): its triangles as they are, the baked shade in UV.y.
+    /// glTF winds front faces counter-clockwise, Godot clockwise, so each triangle is turned over.
+    /// </summary>
+    static void AddSlot(JsonElement slot, Color color, int mat, List<Vector3> verts, List<Vector3> norms, List<Color> cols, List<Vector2> uvs)
+    {
+        var v = slot.GetProperty("v").EnumerateArray().Select(x => x.GetSingle()).ToArray();
+        var n = slot.GetProperty("n").EnumerateArray().Select(x => x.GetSingle()).ToArray();
+        var shade = slot.TryGetProperty("shade", out var sh) ? sh.EnumerateArray().Select(x => x.GetSingle()).ToArray() : null;
+        var idx = slot.GetProperty("i").EnumerateArray().Select(x => x.GetInt32()).ToArray();
+        for (var t = 0; t < idx.Length; t += 3)
+            foreach (var k in new[] { idx[t], idx[t + 2], idx[t + 1] })
+            {
+                verts.Add(new Vector3(v[k * 3], v[k * 3 + 1], v[k * 3 + 2]));
+                norms.Add(new Vector3(n[k * 3], n[k * 3 + 1], n[k * 3 + 2]));
+                cols.Add(color);
+                uvs.Add(new Vector2(mat, shade?[k] ?? 1));
+            }
     }
 
     /// <summary>One part: a unit shape scaled, turned (degrees, X then Y then Z as three.js's "XYZ"), and moved to its centre.</summary>
@@ -236,7 +275,7 @@ public class Furniture
                 verts.Add(v);
                 norms.Add(n);
                 cols.Add(color);
-                uvs.Add(new Vector2(mat, 0));
+                uvs.Add(new Vector2(mat, 1));
             }
         }
     }
@@ -365,7 +404,7 @@ public class Furniture
     }
 
     /// <summary>
-    /// Furniture's surface: its part's colour, or (vertex alpha 0) its room's accent from the instance;
+    /// Furniture's surface: its part's colour, or (vertex alpha 0) its room's accent from the instance, darkened by a model's baked shade (UV.y);
     /// glowing parts light up in their own colour; growing ones sway a little, more toward their tops.
     /// </summary>
     const string ShaderCode = @"
@@ -378,10 +417,12 @@ uniform float sway = 0.0;
 varying vec3 tint;
 varying vec3 wpos;
 varying float mat;
+varying float shade;
 void vertex() {
     tint = mix(INSTANCE_CUSTOM.rgb, COLOR.rgb, COLOR.a);
     wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
     mat = UV.x;
+    shade = UV.y;
     if (sway > 0.0) {
         vec3 w = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
         float h = max(0.0, VERTEX.y);
@@ -433,7 +474,7 @@ vec2 part_tone(vec3 p, float m) {
 void fragment() {
     if (cut_away(wpos)) discard;
     vec2 t = part_tone(wpos, mat);
-    ALBEDO = tint * t.x;
+    ALBEDO = tint * t.x * shade;
     ROUGHNESS = clamp(roughness + t.y, 0.05, 1.0);
     METALLIC = mat > 2.5 && mat < 3.5 ? max(metallic, 0.5) : metallic;
     EMISSION = tint * glow;

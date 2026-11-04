@@ -30,6 +30,7 @@ const SOCIAL = new Set(["housing", "public", "admin", "circulation"]);
 /** Rooms outside those categories where people gather: they sit about in them, not only work. */
 const SOCIAL_ROOMS = new Set(["galley", "canteen", "elder_care", "gym"]);
 import { centreOf, disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow, type HangTag } from "./furniture3d";
+import { modelsKey } from "../view/models";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
 // no room faces it, plus props on the surface. Rebuilt whenever the layout
@@ -1504,7 +1505,7 @@ function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, col
   // Stairs and elevators are furnished on several floors: above a chosen floor, theirs go too.
   // A farm's crop changes what grows in its planters.
   // Each room varies its template its own way (furnish.ts), so its id is part of the key.
-  const key = `furniture:${room.id}:${shapeKey}:${topFloor ?? "all"}:${room.crop ?? ""}`;
+  const key = `furniture:${room.id}:${shapeKey}:${topFloor ?? "all"}:${room.crop ?? ""}:${modelsKey()}`;
   let g = furnitureCache.get(key);
   if (!g) {
     const fitted = furnish(layout, room).filter((f) => topFloor === null || f.floor >= topFloor);

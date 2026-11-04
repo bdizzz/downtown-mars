@@ -16,7 +16,8 @@
     "playtest": "PLAYTEST=1 vitest run tests/playthrough.test.ts --reporter=default --silent=false",
     "package": "npm run build && node scripts/package.mjs",
     "playtest:net": "PLAYTEST=1 vitest run tests/network-playthrough.test.ts --reporter=default --silent=false",
-    "saves": "node scripts/saves.mjs"
+    "saves": "node scripts/saves.mjs",
+    "models": "node scripts/models.mjs"
   },
   "dependencies": {
     "pixi.js": "^8.22.0",
