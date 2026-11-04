@@ -59,7 +59,7 @@ import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, touchFirst, type Gestu
 import { createWalkPad } from "./joystick";
 import { drinkHere, footing, footingNear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 import { createDrink } from "./drink3d";
-import { setModelsEnabled } from "../view/models";
+import { fpLoaded, loadFpModels, setModelsEnabled } from "../view/models";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Three
 // cameras: Free view, over one floor and off to one side (its id is "iso");
@@ -2073,11 +2073,20 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     drawFrame();
   });
 
+  /**
+   * Far rooms draw their furniture coarser; in first person, near ones draw the Blender-made models
+   * (#360), fetched the first time you go into first person (until they're in, the near parts).
+   */
+  function showFurnitureDetail(): void {
+    const walking = view.mode === "walk";
+    if (walking && !fpLoaded()) void loadFpModels(`${import.meta.env.BASE_URL}models/fp.bin`).then((ok) => (dirty ||= ok));
+    for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : walking ? "fp" : "near");
+  }
+
   /** Draw the scene now, with everything that follows the camera brought up to date. */
   function drawFrame(): void {
     const t0 = performance.now();
-    // Far rooms draw their furniture coarser.
-    for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : "near");
+    showFurnitureDetail();
     // The rooms' lights in the hour's mode below ground (as they are above), mid-switch drawing on; the nearest light their rooms.
     applySkyLight();
     if (indoor.update(belowGround() ? modeAt(lightsHeld ?? lightHour) : "surface", performance.now() / 1000)) dirty = true;
@@ -2302,7 +2311,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
            */
           cost(repeat = 20) {
             applyCamera();
-            for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : "near");
+            showFurnitureDetail();
             const info = renderer.info;
             const reset = info.autoReset;
             info.autoReset = false;
@@ -2343,8 +2352,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             culling = on;
             dirty = true;
           },
-          // Draw the Blender-made furniture models (#357; on by default), or the code-built items, to compare;
-          // `stress` (an item with a model) draws that model for every item, to measure models everywhere.
+          // In first person, draw the Blender-made furniture models (#357, #360; on by default), or the code-built
+          // items, to compare; `stress` (an item with a model) draws that model for every item, to measure models everywhere.
+          // `fpLoaded()` says whether the models file has been fetched (it is the first time you go into first person).
+          fpLoaded,
           models(on: boolean, stress: string | null = null) {
             setModelsEnabled(on, stress);
             layoutKey = "";

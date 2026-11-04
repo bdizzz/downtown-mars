@@ -11,7 +11,9 @@ namespace DowntownMars;
 /// each item from its parts (boxes, cylinders, spheres), one surface per kind of part (plain,
 /// glowing, growing, water). Every copy of an item in the hole is one MultiMesh instance, its
 /// room's accent colour in the instance's custom data, so the whole hole's furniture is a few
-/// hundred draw calls at most.
+/// hundred draw calls at most. In first person, items with a Blender-made model (#360,
+/// public/models/fp.bin from scripts/models.mjs, read the first time you go into first person)
+/// draw it instead of their parts, near the camera; every other view draws the parts.
 /// </summary>
 public class Furniture
 {
@@ -38,9 +40,18 @@ public class Furniture
 
     readonly Dictionary<string, string> _colors = new();
     readonly Dictionary<string, JsonElement> _items = new();
-    /// <summary>Items made in Blender (#357, data/models.json): drawn from their model, near and far, in place of their parts.</summary>
-    readonly Dictionary<string, JsonElement> _models = new();
-    readonly Dictionary<(string, bool), Mesh?> _meshes = new();
+    /// <summary>Items made in Blender (#357), first person only (#360): public/models/fp.bin, read when first needed.</summary>
+    Dictionary<string, FpSlot[]>? _fp;
+    bool _fpTried, _firstPerson;
+    /// <summary>One material's worth of a first-person model: its colour, whether it glows, and its triangles (as view/models.ts).</summary>
+    record FpSlot(string C, bool Glow, float[] V, float[] N, float[]? Shade, int[] I);
+    enum Lod { Near, Far, Fp }
+    readonly Dictionary<(string, Lod), Mesh?> _meshes = new();
+    /// <summary>The batches last built (item, its placed copies), the node they're under, and which show only in or out of first person.</summary>
+    readonly List<(string item, List<float[]> list, MultiMeshInstance3D near)> _batches = new();
+    Color[] _accents = Array.Empty<Color>();
+    Node3D? _root;
+    readonly List<(MultiMeshInstance3D fp, MultiMeshInstance3D parts)> _fpPairs = new();
     readonly Dictionary<Kind, ShaderMaterial> _materials = new();
 
     /// <summary>Wall hangings, for walls down: each instance, where it stands, and its wall face (normal, where it stands, bottom and top, the point behind it).</summary>
@@ -53,12 +64,6 @@ public class Furniture
         using var doc = JsonDocument.Parse(System.IO.File.ReadAllText(path));
         foreach (var c in doc.RootElement.GetProperty("colors").EnumerateObject()) _colors[c.Name] = c.Value.GetString()!;
         foreach (var i in doc.RootElement.GetProperty("items").EnumerateObject()) _items[i.Name] = i.Value.Clone();
-        var models = ProjectSettings.GlobalizePath("res://") + "../data/models.json";
-        if (System.IO.File.Exists(models) && !Dev.Off("models"))
-        {
-            using var m = JsonDocument.Parse(System.IO.File.ReadAllText(models));
-            foreach (var i in m.RootElement.GetProperty("items").EnumerateObject()) _models[i.Name] = i.Value.Clone();
-        }
         var shader = new Shader { Code = ShaderCode };
         _materials[Kind.Plain] = Make(shader, 0.8f, 0.05f, 0, 0);
         _materials[Kind.Glow] = Make(shader, 0.4f, 0, GlowDay, 0);
@@ -117,6 +122,72 @@ public class Furniture
         return rise <= 0 || most * (y1 - y0) * 0.85f > (len - 2f) * rise;
     }
 
+    /// <summary>
+    /// In first person or not: items with a model swap their near parts for it. The models are read the first
+    /// time (DM_FX=nomodels leaves them out), and added to the furniture already built.
+    /// </summary>
+    public bool FirstPerson
+    {
+        get => _firstPerson;
+        set
+        {
+            if (value == _firstPerson) return;
+            _firstPerson = value;
+            if (value && !_fpTried)
+            {
+                _fpTried = true;
+                _fp = LoadFp();
+                if (_fp != null && _root != null) foreach (var (item, list, near) in _batches) AddFp(item, list, near);
+            }
+            foreach (var (fp, parts) in _fpPairs)
+            {
+                fp.Visible = value;
+                parts.Visible = !value;
+            }
+        }
+    }
+
+    /// <summary>public/models/fp.bin (its format is in scripts/models.mjs), or null if it's missing, unreadable or switched off.</summary>
+    static Dictionary<string, FpSlot[]>? LoadFp()
+    {
+        var path = ProjectSettings.GlobalizePath("res://") + "../public/models/fp.bin";
+        if (Dev.Off("models") || !System.IO.File.Exists(path)) return null;
+        try
+        {
+            var buf = System.IO.File.ReadAllBytes(path);
+            if (System.Text.Encoding.ASCII.GetString(buf, 0, 4) != "DMFP" || BitConverter.ToUInt32(buf, 4) != 1) throw new Exception("not a version 1 fp.bin");
+            var len = (int)BitConverter.ToUInt32(buf, 8);
+            using var header = JsonDocument.Parse(new ReadOnlyMemory<byte>(buf, 12, len));
+            var start = 12 + len;
+            float[] Floats(int at, int n) { var a = new float[n]; Buffer.BlockCopy(buf, start + at, a, 0, n * 4); return a; }
+            var models = new Dictionary<string, FpSlot[]>();
+            foreach (var item in header.RootElement.GetProperty("items").EnumerateObject())
+                models[item.Name] = item.Value.EnumerateArray().Select(s =>
+                {
+                    var verts = s.GetProperty("verts").GetInt32();
+                    var tris = s.GetProperty("tris").GetInt32();
+                    var at = s.GetProperty("i").GetInt32();
+                    var idx = new int[tris * 3];
+                    for (var k = 0; k < idx.Length; k++) idx[k] = BitConverter.ToUInt16(buf, start + at + k * 2);
+                    float[]? shade = null;
+                    if (s.TryGetProperty("shade", out var sh))
+                    {
+                        shade = new float[verts];
+                        for (var k = 0; k < verts; k++) shade[k] = buf[start + sh.GetInt32() + k] / 255f;
+                    }
+                    return new FpSlot(s.GetProperty("c").GetString()!, s.TryGetProperty("glow", out var g) && g.GetBoolean(),
+                        Floats(s.GetProperty("v").GetInt32(), verts * 3), Floats(s.GetProperty("n").GetInt32(), verts * 3), shade, idx);
+                }).ToArray();
+            GD.Print($"First-person furniture: {models.Count} models from public/models/fp.bin");
+            return models;
+        }
+        catch (Exception e)
+        {
+            GD.PushWarning($"public/models/fp.bin didn't load ({e.Message}); first person draws the code-built parts");
+            return null;
+        }
+    }
+
     public void SetNight(float night) => _materials[Kind.Glow].SetShaderParameter("glow", GlowDay + night * GlowNight);
 
     /// <summary>The scene's furniture: { items, accents, placed: [item, accent, x, y, z, turn] }.</summary>
@@ -137,55 +208,80 @@ public class Furniture
             if (!byItem.TryGetValue(key, out var list)) byItem[key] = list = new();
             list.Add(v);
         }
+        _root = root;
+        _accents = accents;
+        _batches.Clear();
+        _fpPairs.Clear();
         foreach (var ((item, _, _), list) in byItem)
         {
-            foreach (var far in new[] { false, true })
-            {
-                var mesh = MeshFor(items[item], far);
-                if (mesh == null) continue;
-                var mm = new MultiMesh
-                {
-                    TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
-                    UseCustomData = true,
-                    Mesh = mesh,
-                    InstanceCount = list.Count,
-                };
-                for (var i = 0; i < list.Count; i++)
-                {
-                    var v = list[i];
-                    var at = new Transform3D(new Basis(Vector3.Up, v[5]), new Vector3(v[2], v[3], v[4]));
-                    mm.SetInstanceTransform(i, at);
-                    mm.SetInstanceCustomData(i, accents[(int)v[1]]);
-                    if (v.Length >= 15) _hung.Add(new Hung(mm, i, at, new Vector2(v[6], v[7]), new Vector3(v[12], v[13], v[14]), v[8], v[9], new Vector2(v[10], v[11]), false));
-                }
-                root.AddChild(new MultiMeshInstance3D
-                {
-                    Multimesh = mm,
-                    Name = items[item] + (far ? " far" : ""),
-                    VisibilityRangeBegin = far ? FarFrom : 0,
-                    VisibilityRangeEnd = far ? 0 : FarFrom,
-                    CastShadow = far ? GeometryInstance3D.ShadowCastingSetting.Off : GeometryInstance3D.ShadowCastingSetting.On,
-                });
-            }
+            var id = items[item];
+            if (MeshFor(id, Lod.Near) is not { } nearMesh) continue;
+            var near = Batch(nearMesh, list, id, false, true);
+            root.AddChild(near);
+            if (MeshFor(id, Lod.Far) is { } farMesh) root.AddChild(Batch(farMesh, list, id + " far", true, true));
+            _batches.Add((id, list, near));
+            if (_fp != null) AddFp(id, list, near);
         }
         return root;
+    }
+
+    /// <summary>A batch of one item's copies as a MultiMesh: near (to FarFrom metres) or far (from there, casting no shadow).</summary>
+    MultiMeshInstance3D Batch(Mesh mesh, List<float[]> list, string name, bool far, bool hang)
+    {
+        var mm = new MultiMesh
+        {
+            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+            UseCustomData = true,
+            Mesh = mesh,
+            InstanceCount = list.Count,
+        };
+        for (var i = 0; i < list.Count; i++)
+        {
+            var v = list[i];
+            var at = new Transform3D(new Basis(Vector3.Up, v[5]), new Vector3(v[2], v[3], v[4]));
+            mm.SetInstanceTransform(i, at);
+            mm.SetInstanceCustomData(i, _accents[(int)v[1]]);
+            if (hang && v.Length >= 15) _hung.Add(new Hung(mm, i, at, new Vector2(v[6], v[7]), new Vector3(v[12], v[13], v[14]), v[8], v[9], new Vector2(v[10], v[11]), false));
+        }
+        return new MultiMeshInstance3D
+        {
+            Multimesh = mm,
+            Name = name,
+            VisibilityRangeBegin = far ? FarFrom : 0,
+            VisibilityRangeEnd = far ? 0 : FarFrom,
+            CastShadow = far ? GeometryInstance3D.ShadowCastingSetting.Off : GeometryInstance3D.ShadowCastingSetting.On,
+        };
+    }
+
+    /// <summary>A batch's first-person copy, if its item has a model: shown in first person in place of its near parts.</summary>
+    void AddFp(string item, List<float[]> list, MultiMeshInstance3D near)
+    {
+        if (_root == null || MeshFor(item, Lod.Fp) is not { } mesh) return;
+        var fp = Batch(mesh, list, item + " fp", false, false);
+        fp.Visible = _firstPerson;
+        near.Visible = !_firstPerson;
+        _root.AddChild(fp);
+        _fpPairs.Add((fp, near));
     }
 
     /// <summary>The floor a height is on (src/render3d/cylinder.ts floorAtY, with the crust 3 m and floors 4 m).</summary>
     static int FloorAt(float y) => Mathf.FloorToInt((-y - 3) / 4) + 1;
 
     /// <summary>An item's mesh, one surface per kind of part; vertex colour alpha 0 marks accent-coloured parts.</summary>
-    Mesh? MeshFor(string id, bool far)
+    Mesh? MeshFor(string id, Lod lod)
     {
-        if (_meshes.TryGetValue((id, far), out var cached)) return cached;
-        if (!_items.TryGetValue(id, out var def)) return _meshes[(id, far)] = null;
+        if (_meshes.TryGetValue((id, lod), out var cached)) return cached;
+        if (!_items.TryGetValue(id, out var def)) return _meshes[(id, lod)] = null;
+        var far = lod == Lod.Far;
         var byKind = new Dictionary<Kind, (List<Vector3> v, List<Vector3> n, List<Color> c, List<Vector2> uv)>();
-        if (_models.TryGetValue(id, out var model))
+        if (lod == Lod.Fp)
         {
-            foreach (var slot in model.GetProperty(far ? "far" : "near").EnumerateArray())
+            // Only items with a model have a first-person copy; the rest show their near parts in first person too.
+            if (_fp == null || !_fp.TryGetValue(id, out var model)) return _meshes[(id, lod)] = null;
+            foreach (var slot in model)
             {
-                var c = slot.GetProperty("c").GetString()!;
-                var kind = slot.TryGetProperty("glow", out var g) && g.GetBoolean() ? Kind.Glow : PlantColors.Contains(c) ? Kind.Plant : c == "water" ? Kind.Water : Kind.Plain;
+                var c = slot.C;
+                var kind = slot.Glow ? Kind.Glow : PlantColors.Contains(c) ? Kind.Plant : c == "water" ? Kind.Water : Kind.Plain;
                 var color = c == "accent" ? new Color(1, 1, 1, 0) : new Color(_colors.GetValueOrDefault(c, "#ff00ff")).SrgbToLinear() with { A = 1 };
                 if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new(), new());
                 AddSlot(slot, color, PartMats.GetValueOrDefault(c, 0), s.v, s.n, s.c, s.uv);
@@ -200,7 +296,7 @@ public class Furniture
             if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new(), new());
             AddPart(part, color, PartMats.GetValueOrDefault(c, 0), s.v, s.n, s.c, s.uv, far);
         }
-        if (byKind.Count == 0) return _meshes[(id, far)] = null;
+        if (byKind.Count == 0) return _meshes[(id, lod)] = null;
         var mesh = new ArrayMesh();
         foreach (var (kind, s) in byKind)
         {
@@ -213,19 +309,16 @@ public class Furniture
             mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
             mesh.SurfaceSetMaterial(mesh.GetSurfaceCount() - 1, _materials[kind]);
         }
-        return _meshes[(id, far)] = mesh;
+        return _meshes[(id, lod)] = mesh;
     }
 
     /// <summary>
-    /// One slot of a Blender-made model (data/models.json): its triangles as they are, the baked shade in UV.y.
+    /// One slot of a Blender-made model (public/models/fp.bin): its triangles as they are, the baked shade in UV.y.
     /// glTF winds front faces counter-clockwise, Godot clockwise, so each triangle is turned over.
     /// </summary>
-    static void AddSlot(JsonElement slot, Color color, int mat, List<Vector3> verts, List<Vector3> norms, List<Color> cols, List<Vector2> uvs)
+    static void AddSlot(FpSlot slot, Color color, int mat, List<Vector3> verts, List<Vector3> norms, List<Color> cols, List<Vector2> uvs)
     {
-        var v = slot.GetProperty("v").EnumerateArray().Select(x => x.GetSingle()).ToArray();
-        var n = slot.GetProperty("n").EnumerateArray().Select(x => x.GetSingle()).ToArray();
-        var shade = slot.TryGetProperty("shade", out var sh) ? sh.EnumerateArray().Select(x => x.GetSingle()).ToArray() : null;
-        var idx = slot.GetProperty("i").EnumerateArray().Select(x => x.GetInt32()).ToArray();
+        var (v, n, shade, idx) = (slot.V, slot.N, slot.Shade, slot.I);
         for (var t = 0; t < idx.Length; t += 3)
             foreach (var k in new[] { idx[t], idx[t + 2], idx[t + 1] })
             {

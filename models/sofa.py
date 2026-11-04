@@ -1,11 +1,11 @@
-# The sofa (#357): a deep fibre-composite frame in the room's colour, two soft seat cushions,
+# The sofa (#357; first person since #360): a deep fibre-composite frame in the room's colour, two soft seat cushions,
 # a rounded back and arms, and a cream throw pillow. Run: blender -b --factory-startup -P models/sofa.py
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from kit import build
 
 
-def near(m):
+def fp(m):
     m.box([0, 0.2, 0], [2.0, 0.4, 0.9], "accent", bevel=0.05, edges="upper", omit=("bottom",))
     m.box([0, 0.73, -0.36], [1.74, 0.56, 0.18], "accent", bevel=0.07, seg=2, edges="top", omit=("bottom",))
     for sx in (-1, 1):
@@ -17,10 +17,4 @@ def near(m):
         m.box([sx * 0.88, 0.02, 0.32], [0.08, 0.04, 0.08], "dark", omit=("top", "bottom"))
 
 
-def far(m):
-    m.box([0, 0.27, 0.03], [2.0, 0.54, 0.84], "accent", omit=("bottom",))
-    m.box([0, 0.73, -0.36], [1.74, 0.56, 0.18], "accent", omit=("bottom",))
-    m.box([0, 0.55, 0.06], [1.66, 0.04, 0.74], "cushion", omit=("bottom",))
-
-
-build("sofa", near, far)
+build("sofa", fp)

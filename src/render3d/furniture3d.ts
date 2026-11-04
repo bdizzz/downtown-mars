@@ -4,14 +4,16 @@ import { itemDef, partColor, type Part } from "../view/furniture";
 import { GLOW_MODE, withGlowFx, withShimmer, withSway } from "./details3d";
 import { PART_MAT, withPartPatterns } from "./surfaces";
 import type { Placed } from "../view/furnish";
-import { modelFor, slotExtent, type ModelSlot } from "../view/models";
+import { fpModelFor, slotExtent, type ModelSlot } from "../view/models";
 
 // Furniture as meshes. An item is built from its parts (data/furniture.json);
 // a room's worth of placed items is merged into one mesh for what's plain and
 // one for what glows, coloured per vertex, so a furnished room costs a couple
 // of draw calls. Glowing parts share an emissive material that brightens at
 // night. Each room also gets a coarser copy for when it's far from the camera
-// (fewer facets, no small parts); the stage swaps between them.
+// (fewer facets, no small parts); the stage swaps between them. In first person, rooms near
+// the camera get a third copy, `fp`: items with a Blender-made model (view/models.ts, #360) draw
+// it, the rest their near parts.
 
 const SEGMENTS = { cyl: 12, sphW: 10, sphH: 8 };
 /** The far copy: rounder things with fewer facets, and parts smaller than `smallest` (metres, their longest side) left out. */
@@ -21,11 +23,12 @@ const GLOW = { day: 0.35, nightBoost: 0.9 };
 /** Beyond this distance (metres) from the camera, a room's furniture draws its far copy. */
 export const FURNITURE_LOD = { far: 55 };
 
-export type Detail = "near" | "far";
+/** How detailed a room's furniture is drawn: near, far (past FURNITURE_LOD.far), or fp (first person, near: models where items have them). */
+export type Detail = "near" | "far" | "fp";
 export type { Placed };
 
 /** Unit shapes, scaled per part, for each level of detail. */
-const unit: Record<Detail, Record<Part["s"], THREE.BufferGeometry>> = {
+const unit: Record<Exclude<Detail, "fp">, Record<Part["s"], THREE.BufferGeometry>> = {
   near: {
     box: new THREE.BoxGeometry(1, 1, 1),
     cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, SEGMENTS.cyl),
@@ -43,13 +46,13 @@ function extent(part: Part): number {
   return Math.max(...part.z);
 }
 
-/** A model slot's triangles (data/models.json) as unindexed geometry, in its item's own frame. */
+/** A model slot's triangles (public/models/fp.bin) as unindexed geometry, in its item's own frame. */
 function slotGeometry(slot: ModelSlot): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(slot.v, 3));
-  g.setAttribute("normal", new THREE.Float32BufferAttribute(slot.n, 3));
-  if (slot.shade) g.setAttribute("shade", new THREE.Float32BufferAttribute(slot.shade, 1));
-  g.setIndex(slot.i);
+  g.setAttribute("position", new THREE.BufferAttribute(slot.v, 3));
+  g.setAttribute("normal", new THREE.BufferAttribute(slot.n, 3));
+  if (slot.shade) g.setAttribute("shade", new THREE.BufferAttribute(slot.shade, 1));
+  g.setIndex(new THREE.BufferAttribute(slot.i, 1));
   const flat = g.toNonIndexed();
   g.dispose();
   return flat;
@@ -64,7 +67,7 @@ function slotSize(slot: ModelSlot): number {
 
 /** One part's geometry, in its item's own frame. */
 function partGeometry(part: Part, detail: Detail = "near"): THREE.BufferGeometry {
-  const g = unit[detail][part.s].clone();
+  const g = unit[detail === "far" ? "far" : "near"][part.s].clone();
   const a = part.z[0]!;
   const b = part.z[1] ?? a;
   const c = part.z[2] ?? a;
@@ -184,8 +187,8 @@ export interface Hung {
 /**
  * Placed items as meshes, at one level of detail: one for plain parts and one
  * for glowing ones, merged, each tagged with its detail (`userData.detail`).
- * `accent` is the room's category colour. The far copy is built the first time
- * it's shown (see `showDetail`). Returns an empty group when there's nothing to place.
+ * `accent` is the room's category colour. The far and first-person copies are
+ * built the first time they're shown (see `showDetail`). Returns an empty group when there's nothing to place.
  */
 export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, detail: Detail = "near"): THREE.Group {
   const group = new THREE.Group();
@@ -197,6 +200,9 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
     const add = (g: THREE.BufferGeometry, look: Look, tag: HangTag | undefined): void => {
       const kind = kindOf(look);
       g.applyMatrix4(m);
+      // Parts come with uvs and models don't: nothing reads them (patterns go by position, surfaces.ts),
+      // and geometries merge only with the same attributes, so a room mixing the two needs them gone.
+      if (g.getAttribute("uv")) g.deleteAttribute("uv");
       const n = g.getAttribute("position").count;
       colour.set(partColor(look, accent));
       const rgb = new Float32Array(n * 3);
@@ -231,9 +237,9 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
       const def = itemDef(p.item);
       m.makeRotationY(p.turn).setPosition(p.x, p.y, p.z);
       const tag = hung?.tags[i];
-      const model = modelFor(p.item);
+      const model = detail === "fp" ? fpModelFor(p.item) : undefined;
       if (model) {
-        for (const slot of model[detail]) add(slotGeometry(slot), { c: slot.c, glow: slot.glow, size: slotSize(slot) }, tag);
+        for (const slot of model) add(slotGeometry(slot), { c: slot.c, glow: slot.glow, size: slotSize(slot) }, tag);
         return;
       }
       for (const part of def.parts) {
@@ -250,7 +256,13 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
       group.add(mesh);
     }
   }
-  group.userData = { furniture: true, centre: centreOf(placed), far: () => furnitureMeshes(placed, accent, hung, "far").children };
+  group.userData = {
+    furniture: true,
+    centre: centreOf(placed),
+    far: () => furnitureMeshes(placed, accent, hung, "far").children,
+    fp: () => furnitureMeshes(placed, accent, hung, "fp").children,
+    hasFp: () => placed.some((p) => fpModelFor(p.item)),
+  };
   return group;
 }
 
@@ -261,13 +273,18 @@ export function centreOf(placed: Placed[]): THREE.Vector3 {
   return placed.length ? c.divideScalar(placed.length) : c;
 }
 
-/** Show a furniture group's near or far copy (building the far one the first time). Returns whether anything changed. */
-export function showDetail(group: THREE.Object3D, detail: Detail): boolean {
+/**
+ * Show a furniture group's near, far or first-person copy (building the far and first-person ones the
+ * first time). A room with no item that has a model (or before the models are in) shows near for fp.
+ * Returns whether anything changed.
+ */
+export function showDetail(group: THREE.Object3D, wanted: Detail): boolean {
+  const detail = wanted === "fp" && !(group.userData.hasFp as (() => boolean) | undefined)?.() ? "near" : wanted;
   if ((group.userData.detailShown ?? "near") === detail) return false;
   group.userData.detailShown = detail;
-  if (detail === "far" && !group.userData.farBuilt) {
-    group.userData.farBuilt = true;
-    const make = group.userData.far as (() => THREE.Object3D[]) | undefined;
+  if (detail !== "near" && !group.userData[`${detail}Built`]) {
+    group.userData[`${detail}Built`] = true;
+    const make = group.userData[detail] as (() => THREE.Object3D[]) | undefined;
     if (make) group.add(...make());
   }
   for (const o of group.children) if (o.userData.detail) o.visible = o.userData.detail === detail;
