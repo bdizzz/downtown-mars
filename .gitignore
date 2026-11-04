@@ -5,3 +5,4 @@ dist
 release
 .tracker/
 .claude/worktrees/
+models/__pycache__/

@@ -4,6 +4,7 @@ import { itemDef, partColor, type Part } from "../view/furniture";
 import { GLOW_MODE, withGlowFx, withShimmer, withSway } from "./details3d";
 import { PART_MAT, withPartPatterns } from "./surfaces";
 import type { Placed } from "../view/furnish";
+import { modelFor, slotExtent, type ModelSlot } from "../view/models";
 
 // Furniture as meshes. An item is built from its parts (data/furniture.json);
 // a room's worth of placed items is merged into one mesh for what's plain and
@@ -42,6 +43,25 @@ function extent(part: Part): number {
   return Math.max(...part.z);
 }
 
+/** A model slot's triangles (data/models.json) as unindexed geometry, in its item's own frame. */
+function slotGeometry(slot: ModelSlot): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(slot.v, 3));
+  g.setAttribute("normal", new THREE.Float32BufferAttribute(slot.n, 3));
+  if (slot.shade) g.setAttribute("shade", new THREE.Float32BufferAttribute(slot.shade, 1));
+  g.setIndex(slot.i);
+  const flat = g.toNonIndexed();
+  g.dispose();
+  return flat;
+}
+
+const slotSizes = new WeakMap<ModelSlot, number>();
+function slotSize(slot: ModelSlot): number {
+  let s = slotSizes.get(slot);
+  if (s === undefined) slotSizes.set(slot, (s = slotExtent(slot)));
+  return s;
+}
+
 /** One part's geometry, in its item's own frame. */
 function partGeometry(part: Part, detail: Detail = "near"): THREE.BufferGeometry {
   const g = unit[detail][part.s].clone();
@@ -64,8 +84,14 @@ function partGeometry(part: Part, detail: Detail = "near"): THREE.BufferGeometry
  * fires, in their own colour); growing (it sways); or water (it shimmers).
  */
 type Kind = "plain" | "glow" | "plant" | "water";
+/** What decides a part's (or a model slot's) material: its colour, whether it glows, and its longest side (metres). */
+interface Look {
+  c: string;
+  glow?: boolean;
+  size: number;
+}
 const PLANT_COLORS = new Set(["plant", "leaf", "potato", "soy", "stalk", "wheat", "barley", "algae", "flower"]);
-function kindOf(part: Part): Kind {
+function kindOf(part: Look): Kind {
   if (part.glow) return "glow";
   if (PLANT_COLORS.has(part.c)) return "plant";
   if (part.c === "water") return "water";
@@ -73,10 +99,10 @@ function kindOf(part: Part): Kind {
 }
 
 /** How a glowing part behaves: fires dance, lamps and grow lights hold steady, small lights blink, screens flicker. */
-function glowMode(part: Part): number {
+function glowMode(part: Look): number {
   if (part.c === "fire") return GLOW_MODE.fire;
   if (part.c === "lamp" || part.c === "grow") return GLOW_MODE.steady;
-  return extent(part) < GLOW_BLINK_UNDER ? GLOW_MODE.blink : GLOW_MODE.screen;
+  return part.size < GLOW_BLINK_UNDER ? GLOW_MODE.blink : GLOW_MODE.screen;
 }
 /** What parts are made of, by colour, for their fine pattern (surfaces.ts). */
 const PART_MATS: Record<string, number> = {
@@ -167,38 +193,52 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
   const colour = new THREE.Color();
   {
     const byKind = new Map<Kind, THREE.BufferGeometry[]>();
+    /** Adds one part's (or model slot's) geometry, in its item's frame, to its kind's list. */
+    const add = (g: THREE.BufferGeometry, look: Look, tag: HangTag | undefined): void => {
+      const kind = kindOf(look);
+      g.applyMatrix4(m);
+      const n = g.getAttribute("position").count;
+      colour.set(partColor(look, accent));
+      const rgb = new Float32Array(n * 3);
+      // A model's baked shade darkens its corners (code-built parts have none).
+      const shade = g.getAttribute("shade");
+      if (shade) g.deleteAttribute("shade");
+      for (let k = 0; k < n; k++) {
+        const s = shade ? shade.getX(k) : 1;
+        rgb.set([colour.r * s, colour.g * s, colour.b * s], k * 3);
+      }
+      g.setAttribute("color", new THREE.BufferAttribute(rgb, 3));
+      if (kind === "glow") g.setAttribute("aGlow", new THREE.BufferAttribute(new Float32Array(n).fill(glowMode(look)), 1));
+      if (kind === "plain") g.setAttribute("aMat", new THREE.BufferAttribute(new Float32Array(n).fill(PART_MATS[look.c] ?? PART_MAT.none), 1));
+      if (tag) {
+        const wall = new Float32Array(n * 4);
+        const hang = new Float32Array(n * 2);
+        const face = new Float32Array(n * 3);
+        for (let k = 0; k < n; k++) {
+          wall.set([tag.nx, tag.nz, tag.y0, tag.y1], k * 4);
+          hang.set([tag.ax, tag.az], k * 2);
+          face.set(tag.at, k * 3);
+        }
+        g.setAttribute("aWall", new THREE.BufferAttribute(wall, 4));
+        g.setAttribute("aHang", new THREE.BufferAttribute(hang, 2));
+        g.setAttribute("aFace", new THREE.BufferAttribute(face, 3));
+      }
+      let list = byKind.get(kind);
+      if (!list) byKind.set(kind, (list = []));
+      list.push(g);
+    };
     placed.forEach((p, i) => {
       const def = itemDef(p.item);
       m.makeRotationY(p.turn).setPosition(p.x, p.y, p.z);
       const tag = hung?.tags[i];
+      const model = modelFor(p.item);
+      if (model) {
+        for (const slot of model[detail]) add(slotGeometry(slot), { c: slot.c, glow: slot.glow, size: slotSize(slot) }, tag);
+        return;
+      }
       for (const part of def.parts) {
         if (detail === "far" && extent(part) < FAR.smallest) continue;
-        const kind = kindOf(part);
-        const g = partGeometry(part, detail).toNonIndexed();
-        g.applyMatrix4(m);
-        const n = g.getAttribute("position").count;
-        colour.set(partColor(part, accent));
-        const rgb = new Float32Array(n * 3);
-        for (let k = 0; k < n; k++) rgb.set([colour.r, colour.g, colour.b], k * 3);
-        g.setAttribute("color", new THREE.BufferAttribute(rgb, 3));
-        if (kind === "glow") g.setAttribute("aGlow", new THREE.BufferAttribute(new Float32Array(n).fill(glowMode(part)), 1));
-        if (kind === "plain") g.setAttribute("aMat", new THREE.BufferAttribute(new Float32Array(n).fill(PART_MATS[part.c] ?? PART_MAT.none), 1));
-        if (tag) {
-          const wall = new Float32Array(n * 4);
-          const hang = new Float32Array(n * 2);
-          const face = new Float32Array(n * 3);
-          for (let k = 0; k < n; k++) {
-            wall.set([tag.nx, tag.nz, tag.y0, tag.y1], k * 4);
-            hang.set([tag.ax, tag.az], k * 2);
-            face.set(tag.at, k * 3);
-          }
-          g.setAttribute("aWall", new THREE.BufferAttribute(wall, 4));
-          g.setAttribute("aHang", new THREE.BufferAttribute(hang, 2));
-          g.setAttribute("aFace", new THREE.BufferAttribute(face, 3));
-        }
-        let list = byKind.get(kind);
-        if (!list) byKind.set(kind, (list = []));
-        list.push(g);
+        add(partGeometry(part, detail).toNonIndexed(), { c: part.c, glow: part.glow, size: extent(part) }, tag);
       }
     });
     for (const [kind, parts] of byKind) {
