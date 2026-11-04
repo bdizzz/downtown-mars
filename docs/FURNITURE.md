@@ -2,6 +2,45 @@
 
 What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built in `scripts/furniture.mjs`, which writes `data/furniture.json` (run `node scripts/furniture.mjs` after editing it): each item is a few boxes, cylinders and spheres, with named colours and "accent" for the room's category colour. Sizes are width × depth × height in metres. The back of an item goes against its wall. Wall hangings (pictures, lamps, charts, readouts, signs) hang at a height and go flat on a solid wall; with walls down they vanish with their wall. Where things go in each room is in `data/layouts.json`, edited with the dev tool (`?furnish` in the dev build). Stairwells and elevators are furnished on every floor they span, with their own templates for the top or bottom floor where those differ.
 
+## Models made in Blender (trial, #357)
+
+Three items are made in Blender instead of from parts: the **bunk bed**, the **sofa** and the **lathe**. An item with a model draws it in place of its parts, near and far, on the web and in Godot. Its size, spots, light and layouts still come from `data/furniture.json`, and its parts stay there as the code-built version.
+
+**How a model is made.** Each model is a Python script, `models/<item>.py`, run by Blender without its window. It uses the kit in `models/kit.py`: boxes with rounded edges (`bevel`, on all edges, the top or the upright ones), cylinders and cones, and a sheet in folds (`strip`). Faces nobody sees can be left off (`omit`). Positions are in the item's frame, as the parts are (metres; x across, y up, z to its front), and the kit turns them into Blender's frame. Each script describes the item twice: `near` (what first person sees) and `far` (drawn past 55 m). The kit exports both as `models/<item>.glb`, objects `<item>` and `<item>.far`. Every material is named for a colour in `data/furniture.json` (or `accent` for the room's colour); a glowing one has a `glow` custom property. Corners are shaded by ambient occlusion baked into the vertex colours (48 rays per corner, reaching 35 cm, and the floor counts), so the shading costs no triangles. Edges sharper than 35° stay hard; softer ones are smoothed.
+
+```sh
+node scripts/models.mjs --export   # run every models/*.py in Blender, then convert
+node scripts/models.mjs            # just convert the committed .glb files (no Blender needed)
+```
+
+`scripts/models.mjs` reads each `.glb` (any `.glb` that follows the rules works, whether scripted, made by hand or from a CC0 pack) and writes `data/models.json`, which the game reads. The build and CI never run Blender: the `.glb` files and `data/models.json` are committed, with the scripts that make them next to them. `BLENDER=/path/to/blender` picks a Blender other than the one on the PATH (Homebrew: `brew install --cask blender`; built with 5.2).
+
+**Limits.** At most **300 triangles near** and **60 far** per item. The converter refuses a model over either, and `tests/models.test.ts` checks the limits, the colours and that each model fits its item's footprint. Only the named colours are used, with no textures.
+
+**Comparing.** In the dev build, `__stage3d.models(false)` draws the code-built items and `__stage3d.models(true)` the models again. `__stage3d.models(true, "bunk_bed")` draws the bunk bed for every item, to measure models everywhere. In Godot, `DM_FX=nomodels` draws the code-built items.
+
+| Item | Code-built, near / far | Model, near / far | What the model adds |
+| --- | --- | --- | --- |
+| Bunk bed | 228 / 192 | 294 / 60 | Soft mattresses and pillows, blankets turned down over the front, a curtain in folds |
+| Sofa | 84 / 72 | 220 / 30 | Rounded arms, back and seat cushions; a tilted throw pillow; feet |
+| Lathe | 120 / 60 | 274 / 50 | A three-jaw chuck, a carriage with handwheel and tool post, the tailstock's centre, twin bed ways, a drip tray, a plinth |
+
+Triangle counts are the web's. Godot chamfers the code-built boxes, so its code-built versions are heavier than these, and the models are the same in both.
+
+**What it cost (Nov 3, 2026, M4, the 13-floor showcase).**
+
+- **Web, Free view from the surface (every floor):** with the code-built items, furniture was 391,000 triangles in 259 draw calls and a frame took 1.55–1.64 ms on the GPU. With the three models it was 358,000 triangles in 249 calls and 1.56–1.60 ms; their light far copies more than pay for their near ones. With the bunk bed drawn for **every** item (models everywhere, each at the near limit), it was 634,000 triangles (+62%) in 161 calls and 1.33 ms. Rebuilding the hole's furniture took about the same either way (2.0 s with the code-built items, 1.5 s with the bunk bed everywhere).
+- **Web, Free view at F4:** 0.68–0.93 ms with the code-built items, 0.91–0.96 ms with the models, 0.80 ms with the bunk bed everywhere. That's all within the noise between runs.
+- **Godot, Iso at F4, `--bench=10`:** 61.2 and 61.6 fps with the models, 63.2 and 62.2 fps without (5,941 draw calls and 2.99 M triangles either way).
+- **Size:** about 20 KB of `data/models.json` per item (60 KB for three, 10 KB gzipped). The `.glb` files are 20–31 KB each.
+
+**Go or no-go: go, one item at a time.** On this machine, models within the limits cost nothing measurable, even with every item at the limit. They also make the web and Godot draw the same thing. Two things to watch as more items move over:
+
+- **The JSON grows.** At about 20 KB per item, 199 items would be about 4 MB (about 0.7 MB gzipped). Past a few dozen items, store the triangles in binary (the `.glb` itself, or base64 typed arrays) instead of JSON numbers.
+- **A weaker GPU is still untested** (a typical Windows laptop), as for the rest of the 3D view.
+
+Not done yet: wall hangings, plants and water have no models (the path supports them; none was tried), and Godot reads `data/models.json` itself rather than from the bridge.
+
 ## By room
 
 | Room | Size | Items |
