@@ -4,7 +4,7 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 
 ## Models made in Blender (first person, #357, #360)
 
-Some items have a detailed model made in Blender, drawn **only in first person**, close up: every bed and seat in the homes (the **bunk bed**, **bed**, **double bed**, **sofa**, **armchair**, **chair**, **office chair** and **stool**, #363) and the **lathe** so far (#359 brings the rest). Every other view (Free view, the cutaway, the overhead and plan views) draws every item from its code-built parts, as does first person past 55 m and for an item with no model. Like a film set: the overhead camera sees the set from across the lot, first person walks onto it and gets the props. An item's size, spots, light and layouts still come from `data/furniture.json`.
+Some items have a detailed model made in Blender, drawn **only in first person**, close up: **every item in the home rooms** (the dorm, studio, flat, apartment, family apartment, suite and residence: 45 items; beds and seats in #363, the rest in #364) and the **lathe** so far (#359 brings the rest). Every other view (Free view, the cutaway, the overhead and plan views) draws every item from its code-built parts, as does first person past 55 m and for an item with no model. Like a film set: the overhead camera sees the set from across the lot, first person walks onto it and gets the props. An item's size, spots, light and layouts still come from `data/furniture.json`.
 
 **How a model is made.** Each model is a Python script, `models/<item>.py`, run by Blender without its window. It uses the kit in `models/kit.py` (below). Faces nobody sees can be left off (`omit`). Positions are in the item's frame, as the parts are (metres; x across, y up, z to its front), and the kit turns them into Blender's frame. Each script describes the item's first-person copy, `fp(m)`, and the kit exports it as `models/<item>.glb`, one object named `<item>`. Every material is named for a colour in `data/furniture.json` (or `accent` for the room's colour), then `+glow` for a glowing one and `@<texture>` for a textured one (`cushion@fabric`). Corners are shaded by ambient occlusion baked into the vertex colours (48 rays per corner, reaching 35 cm, and the floor counts), so the shading costs no triangles. Edges sharper than 35° stay hard; softer ones are smoothed, and round things (cylinders, lathes, sweeps, soft goods) stay smooth round their sides up to 70°, so an eight-sided bar still looks round.
 
@@ -18,7 +18,10 @@ Some items have a detailed model made in Blender, drawn **only in first person**
 | `sweep(path, d, c, seg, smooth)` | A tube along a path of points, through a smooth curve (`smooth` steps a span; 1 keeps corners) | The lathe's coolant hose, handwheel and door handles; the sofa's piping |
 | `soft(p, size, c, round, puff, cuts)` | Something soft: a subdivided box with rounded edges, puffed up in the middle of its top and bottom | The sofa's cushions, arms, back and throw pillow |
 | `strip(points, y0, y1, depth, c)` | An upright sheet in folds | The bunk bed's curtain |
+| `blade(p, yaw, pitch, length, width, c, droop, roll, seg)` | A thin leaf coming to a point, sagging at its tip; about 18 triangles at `seg=2` (#364) | The plant pot's leaves, the wall planter's herbs, the tree's crown |
 | `side(faces, s)`, `split(face, n, along)`, `inset(faces, by, depth, c)` | Pick a shape's face, cut it into strips, inset each and push it in (or out) | The lathe's cabinet doors, its vent grille, the headstock's control panel |
+
+**Gotchas (#364).** `split` and `inset` want a plain four-sided face: on a box whose edges are bevelled, `split` does nothing and `inset` pushes the bevelled corners outward, past the item's footprint (the test catches it). Inset first and bevel something else, or leave that box square. A thin raised panel (`inset` with a small negative depth) barely shows under the game's front light; recess it instead, so the baked shading draws its edges.
 
 Every tool takes `tex` for a texture and `r` (where it makes sense) to turn it.
 
@@ -61,11 +64,24 @@ Frame times don't move: first person draws a room or two, and an 800-triangle mo
 
 The sofa and lathe were remodelled with the richer kit (#361), one tool or more each.
 
+**The rest of the homes (#364)**, with each model's triangles:
+
+| Group | Items (triangles) |
+| --- | --- |
+| Storage | Wardrobe (188: recessed door panels, bar handles, vent slots), dresser (604: three drawers with cup handles, a framed mirror, a potted plant), bookshelf (760: rows of spines, a leaning book, a stack lying flat), shelf unit (384: perforated shelves, crates with handle cut-outs, a tool box, a tub), locker (254: louvres, a name card, a lever handle and padlock), footlocker (346: a domed lid, straps, a hasp, rope handles) |
+| Tables | Table (494: an apron, rubber feet, paper, a pen, a mug), dining table (694: padded benches on trestles, six plates and cups, a bowl), coffee table (310: a lower shelf, books, a cup, a magazine), desk (528: a drawer pedestal, a monitor with a glowing screen, a keyboard, a pen pot), side table (408: a turned pedestal and a little lamp), TV unit (312: a glowing screen on a bracket, speakers with perforated grilles) |
+| Fixtures | Kitchenette (684: doors, a sunk sink and gooseneck tap, a hob, a kettle, a glowing strip under the wall cabinets), bathroom pod (394: a door with a frosted window and lever, a grille, a lamp, a towel hook), bathtub (456: a rolled rim, a deep basin of water, a mixer tap, a towel), fireplace (742: coursed stone, a grate, logs and dancing flames, candlesticks), piano (759: keys black and white, a music rest, turned legs, pedals, a quilted bench) |
+| Soft and standing | Partition (296: a quilted screen in a bent-tube frame), rug (310: bands, a diamond, fringes), floor lamp (516: a turned base, a flared fabric shade, a cord and switch), coat rack (622: curled hooks, a coat and a scarf) |
+| Plants | Plant pot (794: four tiers of leaves round a cane), wall planter (788: herbs and a trailing plant), planter tree (790: a forked trunk and a crown of soft foliage clumps) |
+| On the walls | Painting (168) and wide painting (198) in relief, wall lamp (322), mirror (100), clock (404: hour marks and hands), wall shelf (526: books, a copper jar, a mirrored globe), family photos (300), textile (632: bands in folds, tassels), Earth photo (284), coat hooks (730: a coat, a bag, a hi-vis vest), intercom (194: a glowing screen, a blinking light), air vent (170), poster (202: pins, a curling corner) |
+
+Colours keep their effects: `fire` dances, `glow` screens flicker, small glowing parts blink, `plant` and `leaf` sway, `water` shimmers, as on the code-built items.
+
 **What it costs (Nov 3, 2026, M4).** Standing in the early dev game's dormitory in first person (eight bunk beds), facing two of them:
 
 - **Web** (`__stage3d.cost(30)`): furniture 56,900 triangles in 26 draw calls with the models, 52,900 in 25 without; 0.44 ms a frame on the GPU against 0.46–0.75 ms, within the noise.
 - **Godot** (`--walk --at=… --bench=8`, Medium): 66.0 fps with the models, 63.1 without (1,476 and 1,470 draw calls; 1.765 M and 1.768 M triangles, since Godot's code-built boxes are chamfered and heavier).
-- **Size:** `fp.bin` is 62 KB for three models (15 KB gzipped), fetched once, on the way into first person. With #361's six textures (96 KB raw) and the bigger sofa and lathe, it's 206 KB (76 KB gzipped). With #363's six home models (nine in all), 376 KB.
+- **Size:** `fp.bin` is 62 KB for three models (15 KB gzipped), fetched once, on the way into first person. With #361's six textures (96 KB raw) and the bigger sofa and lathe, it's 206 KB (76 KB gzipped). With #363's six home models (nine in all), 376 KB. With #364's 37 more (46 in all), 1.17 MB (377 KB gzipped), about 25 KB a model: #371 decides how to keep it small as the catalog fills.
 - **#361's remodelled lathe**, standing at it in the late dev game (web, `cost(30)`): 14,600 furniture triangles with the models, 13,900 without, the same 37 draw calls, 0.37–0.40 ms either way.
 
 **The trial (#357)** drew the models in every view, near and far, from `data/models.json`, within 300 triangles near and 60 far; on the 13-floor showcase they cost nothing measurable, even with the bunk bed drawn for every item (+62% furniture triangles, 1.33 ms against 1.55–1.64 ms a frame). #359 then made them first person only, so they can be far more detailed while the overhead views keep their chunky look, and moved them to binary, since JSON numbers would have grown to about 4 MB for every item.
