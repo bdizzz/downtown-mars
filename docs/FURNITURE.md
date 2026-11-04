@@ -6,7 +6,23 @@ What's in each room type in the 3D view (docs/PLAN-M10.md). The models are built
 
 Some items have a detailed model made in Blender, drawn **only in first person**, close up: the **bunk bed**, the **sofa** and the **lathe** so far (#359 brings the rest). Every other view (Free view, the cutaway, the overhead and plan views) draws every item from its code-built parts, as does first person past 55 m and for an item with no model. Like a film set: the overhead camera sees the set from across the lot, first person walks onto it and gets the props. An item's size, spots, light and layouts still come from `data/furniture.json`.
 
-**How a model is made.** Each model is a Python script, `models/<item>.py`, run by Blender without its window. It uses the kit in `models/kit.py`: boxes with rounded edges (`bevel`, on all edges, the top or the upright ones), cylinders and cones, and a sheet in folds (`strip`). Faces nobody sees can be left off (`omit`). Positions are in the item's frame, as the parts are (metres; x across, y up, z to its front), and the kit turns them into Blender's frame. Each script describes the item's first-person copy, `fp(m)`, and the kit exports it as `models/<item>.glb`, one object named `<item>`. Every material is named for a colour in `data/furniture.json` (or `accent` for the room's colour); a glowing one has a `glow` custom property. Corners are shaded by ambient occlusion baked into the vertex colours (48 rays per corner, reaching 35 cm, and the floor counts), so the shading costs no triangles. Edges sharper than 35° stay hard; softer ones are smoothed.
+**How a model is made.** Each model is a Python script, `models/<item>.py`, run by Blender without its window. It uses the kit in `models/kit.py` (below). Faces nobody sees can be left off (`omit`). Positions are in the item's frame, as the parts are (metres; x across, y up, z to its front), and the kit turns them into Blender's frame. Each script describes the item's first-person copy, `fp(m)`, and the kit exports it as `models/<item>.glb`, one object named `<item>`. Every material is named for a colour in `data/furniture.json` (or `accent` for the room's colour), then `+glow` for a glowing one and `@<texture>` for a textured one (`cushion@fabric`). Corners are shaded by ambient occlusion baked into the vertex colours (48 rays per corner, reaching 35 cm, and the floor counts), so the shading costs no triangles. Edges sharper than 35° stay hard; softer ones are smoothed, and round things (cylinders, lathes, sweeps, soft goods) stay smooth round their sides up to 70°, so an eight-sided bar still looks round.
+
+**The kit** (#361), the tools a model is built from rather than a pile of boxes:
+
+| Tool | Makes | Example |
+| --- | --- | --- |
+| `box(p, size, c, bevel, seg, edges, taper)` | A box, its edges rounded (`bevel` on all, the top, the upper or the upright edges), its top scaled by `taper` [x, z] | The lathe's tapered tailstock, the sofa's feet |
+| `cyl(p, d, h, c, seg, d2)` | A cylinder, or a cone with `d2` | The bunk bed's posts and rungs |
+| `lathe(p, profile, c, seg)` | A profile of (radius, y) points turned round the y axis, ends capped or closed to a point | The lathe's chuck and tailstock centre |
+| `sweep(path, d, c, seg, smooth)` | A tube along a path of points, through a smooth curve (`smooth` steps a span; 1 keeps corners) | The lathe's coolant hose, handwheel and door handles; the sofa's piping |
+| `soft(p, size, c, round, puff, cuts)` | Something soft: a subdivided box with rounded edges, puffed up in the middle of its top and bottom | The sofa's cushions, arms, back and throw pillow |
+| `strip(points, y0, y1, depth, c)` | An upright sheet in folds | The bunk bed's curtain |
+| `side(faces, s)`, `split(face, n, along)`, `inset(faces, by, depth, c)` | Pick a shape's face, cut it into strips, inset each and push it in (or out) | The lathe's cabinet doors, its vent grille, the headstock's control panel |
+
+Every tool takes `tex` for a texture and `r` (where it makes sense) to turn it.
+
+**Textures** (#361) are small and shared: six 128 × 128 grey tiles made by code in `scripts/textures.mjs` (`fabric`, `quilt`, `brushed`, `perforated`, `tread`, `grain`), packed into `fp.bin` with the models. They're detail only: grey around 0.5, doubled and multiplied into the part's colour, so the named colours and the room's accent still set the palette. The kit gives faces texture coordinates by box projection, `TEX_SCALE` metres to a tile per texture. A textured surface takes its texture in place of its colour's procedural pattern. `node scripts/textures.mjs` writes `models/textures.png`, a contact sheet to look at; to add a texture, add a function at the end of `TEXTURES` (it must tile) and name it in a model.
 
 ```sh
 node scripts/models.mjs --export   # run every models/*.py in Blender, then convert
@@ -15,25 +31,26 @@ node scripts/models.mjs            # just convert the committed .glb files (no B
 
 `scripts/models.mjs` reads each `.glb` (any `.glb` that follows the rules works, whether scripted, made by hand or from a CC0 pack) and packs them all into **`public/models/fp.bin`**: a small JSON header (each model's colours and where its arrays are) followed by the arrays in binary (float32 positions and normals, a byte of shade per vertex, uint16 triangles); the script's header comment has the layout. The build and CI never run Blender: the `.glb` files and `fp.bin` are committed, with the scripts that make them next to them. `BLENDER=/path/to/blender` picks a Blender other than the one on the PATH (Homebrew: `brew install --cask blender`; built with 5.2).
 
-**Loaded on demand.** The web game fetches `fp.bin` the first time you go into first person (`loadFpModels` in `src/view/models.ts`), so the overhead game's download doesn't grow; until it's in (or if it fails), first person draws the parts. Each room's furniture then gets a third copy beside near and far, `fp` (`showDetail` in `render3d/furniture3d.ts`), built the first time a room near you in first person has an item with a model; rooms without one keep their near copy. Godot (`Furniture.cs`) reads the same file the first time you go into first person and adds a first-person MultiMesh beside each batch whose item has a model, swapping it with the near parts in and out of first person.
+**Loaded on demand.** The web game fetches `fp.bin` the first time you go into first person (`loadFpModels` in `src/view/models.ts`), so the overhead game's download doesn't grow; until it's in (or if it fails), first person draws the parts. Each room's furniture then gets a third copy beside near and far, `fp` (`showDetail` in `render3d/furniture3d.ts`), built the first time a room near you in first person has an item with a model; rooms without one keep their near copy. Godot (`Furniture.cs`) reads the same file the first time you go into first person and adds a first-person MultiMesh beside each batch whose item has a model, swapping it with the near parts in and out of first person. Textured surfaces draw with one array texture (web: `withFpTextures` in `furniture3d.ts`, Godot: a `sampler2DArray` in the furniture shader, the texture's layer in `UV.x` and its coordinates in `UV2`).
 
-**Limits.** About **800 triangles** per item (#359). The converter refuses a model over it, and `tests/models.test.ts` checks the limit, the colours, that each model fits its item's footprint, and that only first person draws it. Named colours only for now; textures come with #361.
+**Limits.** About **800 triangles** per item (#359). The converter refuses a model over it, and `tests/models.test.ts` checks the limit, the colours, the textures (each tile averages close to 0.5), that each model fits its item's footprint, and that only first person draws it. #362 adds a benchmark and ART.md's first-person rule.
 
 **Comparing.** In the dev build, `__stage3d.models(false)` draws the code-built items in first person too, and `__stage3d.models(true)` the models again; `__stage3d.models(true, "bunk_bed")` draws the bunk bed for every item, to measure models everywhere. `__stage3d.fpLoaded()` says whether `fp.bin` has been fetched. In Godot, `DM_FX=nomodels` leaves the models out.
 
 | Item | Code-built (web) | First-person model | What the model adds |
 | --- | --- | --- | --- |
-| Bunk bed | 228 | 724 | Round tube posts with caps, side rails and slats, soft mattresses, blankets turned down with a folded hem, plump pillows, a guard rail, a ladder of round rungs hooked over the rail, a curtain in folds on rings along a rod, a clip-on reading lamp, a drawer underneath |
-| Sofa | 84 | 220 | Rounded arms, back and seat cushions; a tilted throw pillow; feet |
-| Lathe | 120 | 274 | A three-jaw chuck, a carriage with handwheel and tool post, the tailstock's centre, twin bed ways, a drip tray, a plinth |
+| Bunk bed | 228 | 724 | Round tube posts with caps, side rails and slats, soft mattresses, blankets turned down with a folded hem, plump pillows, a guard rail, a ladder of round rungs hooked over the rail, a curtain in folds on rings along a rod, a clip-on reading lamp, a drawer underneath; quilted mattresses, fabric bedding |
+| Sofa | 84 | 754 | Soft, rounded seat and back cushions and arms (soft), piping down the arm fronts (sweep), a tipped throw pillow, tapered feet; fabric throughout |
+| Lathe | 120 | 781 | A turned chuck and tailstock centre (lathe), a coolant hose and a handwheel (sweep), cabinet doors with handles and a vent grille (split, inset), an inset control panel, a tapered tailstock; brushed steel, tread plate, grained panels |
 
-The sofa and lathe are the trial's near copies for now; #363 and #365 redo them at the first-person budget.
+The sofa and lathe were remodelled with the richer kit (#361), one tool or more each.
 
 **What it costs (Nov 3, 2026, M4).** Standing in the early dev game's dormitory in first person (eight bunk beds), facing two of them:
 
 - **Web** (`__stage3d.cost(30)`): furniture 56,900 triangles in 26 draw calls with the models, 52,900 in 25 without; 0.44 ms a frame on the GPU against 0.46–0.75 ms, within the noise.
 - **Godot** (`--walk --at=… --bench=8`, Medium): 66.0 fps with the models, 63.1 without (1,476 and 1,470 draw calls; 1.765 M and 1.768 M triangles, since Godot's code-built boxes are chamfered and heavier).
-- **Size:** `fp.bin` is 62 KB for three models (15 KB gzipped), fetched once, on the way into first person.
+- **Size:** `fp.bin` is 62 KB for three models (15 KB gzipped), fetched once, on the way into first person. With #361's six textures (96 KB raw) and the bigger sofa and lathe, it's 206 KB (76 KB gzipped).
+- **#361's remodelled lathe**, standing at it in the late dev game (web, `cost(30)`): 14,600 furniture triangles with the models, 13,900 without, the same 37 draw calls, 0.37–0.40 ms either way.
 
 **The trial (#357)** drew the models in every view, near and far, from `data/models.json`, within 300 triangles near and 60 far; on the 13-floor showcase they cost nothing measurable, even with the bunk bed drawn for every item (+62% furniture triangles, 1.33 ms against 1.55–1.64 ms a frame). #359 then made them first person only, so they can be far more detailed while the overhead views keep their chunky look, and moved them to binary, since JSON numbers would have grown to about 4 MB for every item.
 
