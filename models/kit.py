@@ -18,7 +18,8 @@
 #
 # The tools (#361): box (rounded edges, tapered), cyl (and cones), lathe (a profile turned round
 # an axis), sweep (a tube along a curve), soft (a cushion: a subdivided box rounded and puffed),
-# strip (a sheet in folds), and side / split / inset to cut panels, vents and grilles into a face.
+# strip (a sheet in folds), and side / split / inset to cut panels, vents and grilles into a face;
+# blade (#364), a thin pointed leaf, for plants.
 #
 # The copy is one object, `<item>`, in models/<item>.glb. It's drawn only in first person, up close
 # (about 800 triangles); every other view draws the item's code-built parts (data/furniture.json).
@@ -272,7 +273,8 @@ class Lod:
 
     def inset(self, faces, by, depth=0.0, c=None, glow=False, tex=None):
         """Inset each face by `by` metres and push its middle in by `depth` (out if negative): panels,
-        vents, buttons. With `c`, the middle takes that colour. Returns the middles."""
+        vents, buttons. With `c`, the middle takes that colour. Returns the middles. Not on a face of a box
+        with bevelled corners: the inset pushes those corners outward, past the item's footprint (#364)."""
         res = bmesh.ops.inset_individual(self.bm, faces=faces, thickness=by, depth=-depth, use_even_offset=True)
         if c is not None:
             m = self.mat(c, glow, tex)
@@ -307,6 +309,30 @@ class Lod:
                 f.normal_flip()
         top = self.bm.faces.new([front[i][1] for i in range(n)] + [back[i][1] for i in reversed(range(n))])
         bot = self.bm.faces.new([front[i][0] for i in reversed(range(n))] + [back[i][0] for i in range(n)])
+        bmesh.ops.recalc_face_normals(self.bm, faces=[f for f in self.bm.faces if f not in before])
+        return self._take(before, c, glow, tex=tex)
+
+    def blade(self, p, yaw, pitch, length, width, c, droop=0.0, roll=0.0, seg=3, thick=0.004, glow=False, tex=None):
+        """A leaf or a blade of grass (#364): a thin sheet from p, `length` long, widest a third of the way
+        and coming to a point, heading `yaw` degrees round from +x toward +z and `pitch` degrees up, its
+        tip sagging `droop` metres, turned `roll` degrees about its own length. About 8 triangles a segment."""
+        before = set(self.bm.faces)
+        y, pt = math.radians(yaw), math.radians(pitch)
+        d = Vector((math.cos(pt) * math.cos(y), math.sin(pt), math.cos(pt) * math.sin(y)))
+        across = Vector((-math.sin(y), 0, math.cos(y)))
+        across = Matrix.Rotation(math.radians(roll), 3, d) @ across
+        rows = []
+        for i in range(seg + 1):
+            t = i / seg
+            centre = Vector(p) + d * (length * t) + Vector((0, -droop * t * t, 0))
+            ahead = d * length + Vector((0, -2 * droop * t, 0))  # the curve's direction here
+            up = ahead.cross(across).normalized() * (thick / 2)
+            w = max(width * math.sin(math.pi * (0.2 + 0.8 * t)) / 2, 0.001)
+            rows.append([self.bm.verts.new(centre + across * s * w + up * u) for s, u in ((-1, 1), (1, 1), (1, -1), (-1, -1))])
+        for a, b in zip(rows, rows[1:]):
+            for k in range(4):
+                self.bm.faces.new((a[k], a[(k + 1) % 4], b[(k + 1) % 4], b[k]))
+        self.bm.faces.new(rows[0])
         bmesh.ops.recalc_face_normals(self.bm, faces=[f for f in self.bm.faces if f not in before])
         return self._take(before, c, glow, tex=tex)
 
