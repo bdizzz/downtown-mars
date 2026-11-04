@@ -15,6 +15,9 @@ export interface ModelSlot {
   n: Float32Array;
   /** Baked shade per vertex (ambient occlusion, 1 is unshaded). */
   shade?: Float32Array;
+  /** Its fine texture (an index into the textures, #361), and where on it each vertex is (u, v, tiles across). */
+  tex?: number;
+  uv?: Float32Array;
   /** Triangles, three vertex indices each, counter-clockwise from outside. */
   i: Uint16Array;
 }
@@ -22,14 +25,24 @@ export interface ModelSlot {
 /** An item's first-person model: its slots. */
 export type Model = ModelSlot[];
 
+/** The fine textures (scripts/textures.mjs): grey tiles, size by size bytes each, one after another in the order of `names`. */
+export interface FpTextures {
+  size: number;
+  names: string[];
+  pixels: Uint8Array;
+}
+
 export interface FpModels {
   limits: { triangles: { fp: number } };
+  textures: FpTextures;
   items: Record<string, Model>;
 }
 
 interface SlotHeader {
   c: string;
   glow?: boolean;
+  tex?: number;
+  uv?: number;
   verts: number;
   tris: number;
   v: number;
@@ -39,7 +52,7 @@ interface SlotHeader {
 }
 
 const MAGIC = "DMFP";
-const VERSION = 1;
+const VERSION = 2;
 
 /** fp.bin's bytes as models. Throws if they aren't an fp.bin this game reads. */
 export function parseFpModels(buf: ArrayBuffer): FpModels {
@@ -49,8 +62,14 @@ export function parseFpModels(buf: ArrayBuffer): FpModels {
   const version = view.getUint32(4, true);
   if (version !== VERSION) throw new Error(`fp.bin: version ${version}, expected ${VERSION}`);
   const len = view.getUint32(8, true);
-  const header = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 12, len))) as { limits: FpModels["limits"]; items: Record<string, SlotHeader[]> };
+  const header = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 12, len))) as {
+    limits: FpModels["limits"];
+    textures: { size: number; names: string[]; at: number };
+    items: Record<string, SlotHeader[]>;
+  };
   const base = 12 + len;
+  const t = header.textures;
+  const textures: FpTextures = { size: t.size, names: t.names, pixels: new Uint8Array(buf, base + t.at, t.names.length * t.size * t.size) };
   const items: Record<string, Model> = {};
   for (const [id, slots] of Object.entries(header.items)) {
     items[id] = slots.map((s) => {
@@ -62,10 +81,14 @@ export function parseFpModels(buf: ArrayBuffer): FpModels {
       };
       if (s.glow) slot.glow = true;
       if (s.shade !== undefined) slot.shade = Float32Array.from(new Uint8Array(buf, base + s.shade, s.verts), (x) => x / 255);
+      if (s.tex !== undefined && s.uv !== undefined) {
+        slot.tex = s.tex;
+        slot.uv = new Float32Array(buf, base + s.uv, s.verts * 2);
+      }
       return slot;
     });
   }
-  return { limits: header.limits, items };
+  return { limits: header.limits, textures, items };
 }
 
 let models: FpModels | null = null;
@@ -131,6 +154,11 @@ export function modelIds(): string[] {
 
 export function modelLimits(): FpModels["limits"] | undefined {
   return models?.limits;
+}
+
+/** The models' fine textures, once loaded. */
+export function fpTextures(): FpTextures | undefined {
+  return models?.textures;
 }
 
 /** A slot's longest side, metres (for whether a glowing slot blinks, as a part's extent). */

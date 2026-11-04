@@ -44,7 +44,9 @@ public class Furniture
     Dictionary<string, FpSlot[]>? _fp;
     bool _fpTried, _firstPerson;
     /// <summary>One material's worth of a first-person model: its colour, whether it glows, and its triangles (as view/models.ts).</summary>
-    record FpSlot(string C, bool Glow, float[] V, float[] N, float[]? Shade, int[] I);
+    record FpSlot(string C, bool Glow, float[] V, float[] N, float[]? Shade, int[] I, int Tex, float[]? Uv);
+    /// <summary>The models' fine textures (#361): grey tiles, one layer each, sampled by the shader where a slot names one.</summary>
+    Texture2DArray? _fpTextures;
     enum Lod { Near, Far, Fp }
     readonly Dictionary<(string, Lod), Mesh?> _meshes = new();
     /// <summary>The batches last built (item, its placed copies), the node they're under, and which show only in or out of first person.</summary>
@@ -136,7 +138,8 @@ public class Furniture
             if (value && !_fpTried)
             {
                 _fpTried = true;
-                _fp = LoadFp();
+                (_fp, _fpTextures) = LoadFp();
+                if (_fpTextures != null) foreach (var m in _materials.Values) m.SetShaderParameter("fp_textures", _fpTextures);
                 if (_fp != null && _root != null) foreach (var (item, list, near) in _batches) AddFp(item, list, near);
             }
             foreach (var (fp, parts) in _fpPairs)
@@ -148,14 +151,14 @@ public class Furniture
     }
 
     /// <summary>public/models/fp.bin (its format is in scripts/models.mjs), or null if it's missing, unreadable or switched off.</summary>
-    static Dictionary<string, FpSlot[]>? LoadFp()
+    static (Dictionary<string, FpSlot[]>?, Texture2DArray?) LoadFp()
     {
         var path = ProjectSettings.GlobalizePath("res://") + "../public/models/fp.bin";
-        if (Dev.Off("models") || !System.IO.File.Exists(path)) return null;
+        if (Dev.Off("models") || !System.IO.File.Exists(path)) return (null, null);
         try
         {
             var buf = System.IO.File.ReadAllBytes(path);
-            if (System.Text.Encoding.ASCII.GetString(buf, 0, 4) != "DMFP" || BitConverter.ToUInt32(buf, 4) != 1) throw new Exception("not a version 1 fp.bin");
+            if (System.Text.Encoding.ASCII.GetString(buf, 0, 4) != "DMFP" || BitConverter.ToUInt32(buf, 4) != 2) throw new Exception("not a version 2 fp.bin");
             var len = (int)BitConverter.ToUInt32(buf, 8);
             using var header = JsonDocument.Parse(new ReadOnlyMemory<byte>(buf, 12, len));
             var start = 12 + len;
@@ -175,16 +178,32 @@ public class Furniture
                         shade = new float[verts];
                         for (var k = 0; k < verts; k++) shade[k] = buf[start + sh.GetInt32() + k] / 255f;
                     }
+                    var tex = s.TryGetProperty("tex", out var t) ? t.GetInt32() : -1;
+                    var uv = tex >= 0 && s.TryGetProperty("uv", out var u) ? Floats(u.GetInt32(), verts * 2) : null;
                     return new FpSlot(s.GetProperty("c").GetString()!, s.TryGetProperty("glow", out var g) && g.GetBoolean(),
-                        Floats(s.GetProperty("v").GetInt32(), verts * 3), Floats(s.GetProperty("n").GetInt32(), verts * 3), shade, idx);
+                        Floats(s.GetProperty("v").GetInt32(), verts * 3), Floats(s.GetProperty("n").GetInt32(), verts * 3), shade, idx, uv == null ? -1 : tex, uv);
                 }).ToArray();
-            GD.Print($"First-person furniture: {models.Count} models from public/models/fp.bin");
-            return models;
+            var tx = header.RootElement.GetProperty("textures");
+            var size = tx.GetProperty("size").GetInt32();
+            var layers = new Godot.Collections.Array<Image>();
+            var names = tx.GetProperty("names").EnumerateArray().Select(n => n.GetString()!).ToArray();
+            for (var k = 0; k < names.Length; k++)
+            {
+                var px = new byte[size * size];
+                Buffer.BlockCopy(buf, start + tx.GetProperty("at").GetInt32() + k * size * size, px, 0, px.Length);
+                var img = Image.CreateFromData(size, size, false, Image.Format.L8, px);
+                img.GenerateMipmaps();
+                layers.Add(img);
+            }
+            var textures = new Texture2DArray();
+            textures.CreateFromImages(layers);
+            GD.Print($"First-person furniture: {models.Count} models and {names.Length} textures from public/models/fp.bin");
+            return (models, textures);
         }
         catch (Exception e)
         {
             GD.PushWarning($"public/models/fp.bin didn't load ({e.Message}); first person draws the code-built parts");
-            return null;
+            return (null, null);
         }
     }
 
@@ -273,7 +292,7 @@ public class Furniture
         if (_meshes.TryGetValue((id, lod), out var cached)) return cached;
         if (!_items.TryGetValue(id, out var def)) return _meshes[(id, lod)] = null;
         var far = lod == Lod.Far;
-        var byKind = new Dictionary<Kind, (List<Vector3> v, List<Vector3> n, List<Color> c, List<Vector2> uv)>();
+        var byKind = new Dictionary<Kind, (List<Vector3> v, List<Vector3> n, List<Color> c, List<Vector2> uv, List<Vector2> uv2)>();
         if (lod == Lod.Fp)
         {
             // Only items with a model have a first-person copy; the rest show their near parts in first person too.
@@ -283,8 +302,8 @@ public class Furniture
                 var c = slot.C;
                 var kind = slot.Glow ? Kind.Glow : PlantColors.Contains(c) ? Kind.Plant : c == "water" ? Kind.Water : Kind.Plain;
                 var color = c == "accent" ? new Color(1, 1, 1, 0) : new Color(_colors.GetValueOrDefault(c, "#ff00ff")).SrgbToLinear() with { A = 1 };
-                if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new(), new());
-                AddSlot(slot, color, PartMats.GetValueOrDefault(c, 0), s.v, s.n, s.c, s.uv);
+                if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new(), new(), new());
+                AddSlot(slot, color, PartMats.GetValueOrDefault(c, 0), s.v, s.n, s.c, s.uv, s.uv2);
             }
         }
         else foreach (var part in def.GetProperty("parts").EnumerateArray())
@@ -293,7 +312,7 @@ public class Furniture
             if (far && part.GetProperty("z").EnumerateArray().Max(x => x.GetSingle()) < FarSmallest) continue;
             var kind = part.TryGetProperty("glow", out var g) && g.GetBoolean() ? Kind.Glow : PlantColors.Contains(c) ? Kind.Plant : c == "water" ? Kind.Water : Kind.Plain;
             var color = c == "accent" ? new Color(1, 1, 1, 0) : new Color(_colors.GetValueOrDefault(c, "#ff00ff")).SrgbToLinear() with { A = 1 };
-            if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new(), new());
+            if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new(), new(), new());
             AddPart(part, color, PartMats.GetValueOrDefault(c, 0), s.v, s.n, s.c, s.uv, far);
         }
         if (byKind.Count == 0) return _meshes[(id, lod)] = null;
@@ -306,6 +325,7 @@ public class Furniture
             arrays[(int)Mesh.ArrayType.Normal] = s.n.ToArray();
             arrays[(int)Mesh.ArrayType.Color] = s.c.ToArray();
             arrays[(int)Mesh.ArrayType.TexUV] = s.uv.ToArray();
+            if (s.uv2.Count == s.v.Count && s.uv2.Count > 0) arrays[(int)Mesh.ArrayType.TexUV2] = s.uv2.ToArray();
             mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
             mesh.SurfaceSetMaterial(mesh.GetSurfaceCount() - 1, _materials[kind]);
         }
@@ -314,11 +334,14 @@ public class Furniture
 
     /// <summary>
     /// One slot of a Blender-made model (public/models/fp.bin): its triangles as they are, the baked shade in UV.y.
-    /// glTF winds front faces counter-clockwise, Godot clockwise, so each triangle is turned over.
+    /// A textured slot (#361) puts 10 + its texture's layer in UV.x, in place of its colour's pattern, and where
+    /// on the texture each vertex is in UV2. glTF winds front faces counter-clockwise, Godot clockwise, so each
+    /// triangle is turned over.
     /// </summary>
-    static void AddSlot(FpSlot slot, Color color, int mat, List<Vector3> verts, List<Vector3> norms, List<Color> cols, List<Vector2> uvs)
+    static void AddSlot(FpSlot slot, Color color, int mat, List<Vector3> verts, List<Vector3> norms, List<Color> cols, List<Vector2> uvs, List<Vector2> uvs2)
     {
         var (v, n, shade, idx) = (slot.V, slot.N, slot.Shade, slot.I);
+        if (slot.Tex >= 0) mat = 10 + slot.Tex;
         for (var t = 0; t < idx.Length; t += 3)
             foreach (var k in new[] { idx[t], idx[t + 2], idx[t + 1] })
             {
@@ -326,6 +349,7 @@ public class Furniture
                 norms.Add(new Vector3(n[k * 3], n[k * 3 + 1], n[k * 3 + 2]));
                 cols.Add(color);
                 uvs.Add(new Vector2(mat, shade?[k] ?? 1));
+                uvs2.Add(slot.Uv != null ? new Vector2(slot.Uv[k * 2], slot.Uv[k * 2 + 1]) : Vector2.Zero);
             }
     }
 
@@ -507,6 +531,9 @@ uniform float roughness = 0.8;
 uniform float metallic = 0.05;
 uniform float glow = 0.0;
 uniform float sway = 0.0;
+// The first-person models' fine textures (#361): a slot with one has 10 + its layer in UV.x, its place in UV2.
+uniform sampler2DArray fp_textures : filter_linear_mipmap_anisotropic, repeat_enable;
+varying vec2 fpuv;
 varying vec3 tint;
 varying vec3 wpos;
 varying float mat;
@@ -516,6 +543,7 @@ void vertex() {
     wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
     mat = UV.x;
     shade = UV.y;
+    fpuv = UV2;
     if (sway > 0.0) {
         vec3 w = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
         float h = max(0.0, VERTEX.y);
@@ -566,8 +594,9 @@ vec2 part_tone(vec3 p, float m) {
 }
 void fragment() {
     if (cut_away(wpos)) discard;
-    vec2 t = part_tone(wpos, mat);
+    vec2 t = mat > 9.5 ? vec2(1.0, 0.0) : part_tone(wpos, mat);
     ALBEDO = tint * t.x * shade;
+    if (mat > 9.5) ALBEDO *= texture(fp_textures, vec3(fpuv, floor(mat - 10.0 + 0.5))).r * 2.0;
     ROUGHNESS = clamp(roughness + t.y, 0.05, 1.0);
     METALLIC = mat > 2.5 && mat < 3.5 ? max(metallic, 0.5) : metallic;
     EMISSION = tint * glow;
