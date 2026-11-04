@@ -138,7 +138,7 @@ The viewer has the web game's views (Free view, Cutaway, first person, the plan 
 
 ### Furnishing tool
 
-Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture models (Catalogue) and lay out the template for any room type and shape (Templates). Drag items in the plan, set their wall, offsets, turn, repeat and priority, and save: the tool writes `data/layouts.json`. **Overview** shows every template side by side. Models are built in `scripts/furniture.mjs` (`node scripts/furniture.mjs` writes `data/furniture.json`); a few are made in Blender instead (`models/`, `npm run models`); see `docs/FURNITURE.md`.
+Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture models (Catalogue) and lay out the template for any room type and shape (Templates). Drag items in the plan, set their wall, offsets, turn, repeat and priority, and save: the tool writes `data/layouts.json`. **Overview** shows every template side by side. Models are built in `scripts/furniture.mjs` (`node scripts/furniture.mjs` writes `data/furniture.json`); a few also have a detailed version made in Blender for first person (`models/`, `npm run models`); see `docs/FURNITURE.md`.
 
 ## Credits
 
