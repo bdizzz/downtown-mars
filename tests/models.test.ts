@@ -4,9 +4,11 @@ import { beforeAll, describe, expect, it } from "vitest";
 import * as THREE from "three";
 import { furnitureMeshes, showDetail } from "../src/render3d/furniture3d";
 import { furniture, itemDef } from "../src/view/furniture";
-import { fpModelFor, fpTextures, modelIds, modelLimits, parseFpModels, setFpModels, setModelsEnabled, type Model } from "../src/view/models";
+import { fpModelFor, fpTextures, modelIds, modelLimits, parseFpModels, setFpModels, setModelsEnabled, unpackNormal, type Model } from "../src/view/models";
 // @ts-expect-error: a plain .mjs script, untyped
 import { TEXTURE_NAMES } from "../scripts/textures.mjs";
+// @ts-expect-error: a plain .mjs script, untyped
+import { projectFirstFetch } from "../scripts/fpsize.mjs";
 
 // Furniture models made in Blender (#357), drawn only in first person (#360): public/models/fp.bin,
 // packed from models/*.glb by scripts/models.mjs, fetched by the game the first time it goes into first person.
@@ -62,6 +64,33 @@ describe("first-person furniture models", () => {
             expect(s.uv?.length, `${id} uvs`).toBe(verts * 2);
           }
         }
+      }
+    });
+
+    it("stay small enough to fetch: under 1 MB gzipped even with a model for every item (#371)", () => {
+      const buf = new Uint8Array(readFileSync(new URL("../public/models/fp.bin", import.meta.url)));
+      const t = fpTextures()!;
+      const limit = modelLimits()!.firstFetch;
+      expect(limit).toBe(1_000_000);
+      const projected = projectFirstFetch(buf, t.pixels.length, modelIds().length, Object.keys(furniture.items).length);
+      expect(projected, "fp.bin gzipped, projected to every item").toBeLessThan(limit);
+      // Packed tight: about 12 bytes a vertex and 3 a triangle, where floats took about 40 and 6.
+      const verts = modelIds().reduce((n, id) => n + fpModelFor(id)!.reduce((m, s) => m + s.v.length / 3, 0), 0);
+      expect(buf.length - t.pixels.length).toBeLessThan(verts * 16);
+    });
+
+    it("unpack cleanly: unit normals, shades between 0 and 1", () => {
+      for (const id of modelIds()) {
+        for (const s of fpModelFor(id)!) {
+          for (let k = 0; k < s.n.length; k += 3) expect(Math.hypot(s.n[k]!, s.n[k + 1]!, s.n[k + 2]!), `${id} normal`).toBeCloseTo(1, 5);
+          expect(s.shade!.every((x) => x >= 0 && x <= 1), `${id} shade`).toBe(true);
+        }
+      }
+      // The octahedral normals: the axes come back exactly, the rest within a degree.
+      const out = new Float32Array(3);
+      for (const [a, b, want] of [[0, 0, [0, 0, 1]], [127, 0, [1, 0, 0]], [0, -127, [0, -1, 0]], [-127, 0, [-1, 0, 0]]] as const) {
+        unpackNormal(a, b, out, 0);
+        expect([...out].map((x) => Math.round(x * 1e6) / 1e6 + 0)).toEqual(want);
       }
     });
 
