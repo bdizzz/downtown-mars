@@ -39,7 +39,7 @@ const VERSION = 2;
 
 if (process.argv.includes("--export")) {
   const blender = process.env.BLENDER ?? "blender";
-  for (const f of readdirSync(dir).filter((f) => f.endsWith(".py") && f !== "kit.py").sort()) {
+  for (const f of readdirSync(dir).filter((f) => f.endsWith(".py") && f !== "kit.py" && !f.startsWith("_")).sort()) {
     const out = execFileSync(blender, ["-b", "--factory-startup", "-P", join(dir, f)], { encoding: "utf8" });
     for (const line of out.split("\n")) if (line.startsWith("MODEL")) console.log(line);
   }
