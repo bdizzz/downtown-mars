@@ -33,7 +33,8 @@ export interface FpTextures {
 }
 
 export interface FpModels {
-  limits: { triangles: { fp: number }; textures: { size: number; count: number } };
+  /** firstFetch (#371): bytes, gzipped, that fp.bin may reach when every item has a model. */
+  limits: { triangles: { fp: number }; textures: { size: number; count: number }; firstFetch: number };
   textures: FpTextures;
   items: Record<string, Model>;
 }
@@ -42,17 +43,26 @@ interface SlotHeader {
   c: string;
   glow?: boolean;
   tex?: number;
-  uv?: number;
+  /** A textured slot's texture coordinates' range, [u0, v0, u1, v1]. */
+  uv?: [number, number, number, number];
   verts: number;
   tris: number;
-  v: number;
-  n: number;
-  shade?: number;
-  i: number;
 }
 
 const MAGIC = "DMFP";
-const VERSION = 2;
+const VERSION = 3;
+
+/** An octahedral normal (two signed bytes, #371) back to a unit vector, into `out` at `at`. */
+export function unpackNormal(a: number, b: number, out: Float32Array, at: number): void {
+  let x = Math.max(-1, a / 127);
+  let y = Math.max(-1, b / 127);
+  const z = 1 - Math.abs(x) - Math.abs(y);
+  if (z < 0) [x, y] = [(1 - Math.abs(y)) * (x < 0 ? -1 : 1), (1 - Math.abs(x)) * (y < 0 ? -1 : 1)];
+  const l = Math.hypot(x, y, z) || 1;
+  out[at] = x / l;
+  out[at + 1] = y / l;
+  out[at + 2] = z / l;
+}
 
 /** fp.bin's bytes as models. Throws if they aren't an fp.bin this game reads. */
 export function parseFpModels(buf: ArrayBuffer): FpModels {
@@ -64,30 +74,54 @@ export function parseFpModels(buf: ArrayBuffer): FpModels {
   const len = view.getUint32(8, true);
   const header = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 12, len))) as {
     limits: FpModels["limits"];
-    textures: { size: number; names: string[]; at: number };
-    items: Record<string, SlotHeader[]>;
+    textures: { size: number; names: string[] };
+    items: Record<string, { box: number[]; slots: SlotHeader[] }>;
   };
-  const base = 12 + len;
+  // The streams' starts (the format is in scripts/models.mjs): textures, positions, normals, shade, uv, triangles.
   const t = header.textures;
-  const textures: FpTextures = { size: t.size, names: t.names, pixels: new Uint8Array(buf, base + t.at, t.names.length * t.size * t.size) };
+  const slots = Object.values(header.items).flatMap((it) => it.slots);
+  const verts = slots.reduce((n, s) => n + s.verts, 0);
+  const uvVerts = slots.reduce((n, s) => n + (s.uv ? s.verts : 0), 0);
+  let pos = 12 + len;
+  const textures: FpTextures = { size: t.size, names: t.names, pixels: new Uint8Array(buf, pos, t.names.length * t.size * t.size) };
+  pos += textures.pixels.length;
+  let nrm = pos + verts * 6;
+  let shade = nrm + verts * 2;
+  let uv = shade + verts;
+  let tri = uv + uvVerts * 4;
+  const bytes = new Uint8Array(buf);
   const items: Record<string, Model> = {};
-  for (const [id, slots] of Object.entries(header.items)) {
+  for (const [id, { box, slots }] of Object.entries(header.items)) {
+    const scale = [0, 1, 2].map((a) => (box[3 + a]! - box[a]!) / 65535);
     items[id] = slots.map((s) => {
-      const slot: ModelSlot = {
-        c: s.c,
-        v: new Float32Array(buf, base + s.v, s.verts * 3),
-        n: new Float32Array(buf, base + s.n, s.verts * 3),
-        i: new Uint16Array(buf, base + s.i, s.tris * 3),
-      };
+      const v = new Float32Array(s.verts * 3);
+      for (let k = 0; k < v.length; k++, pos += 2) v[k] = box[k % 3]! + view.getUint16(pos, true) * scale[k % 3]!;
+      const n = new Float32Array(s.verts * 3);
+      for (let k = 0; k < s.verts; k++, nrm += 2) unpackNormal(view.getInt8(nrm), view.getInt8(nrm + 1), n, k * 3);
+      const i = new Uint16Array(s.tris * 3);
+      for (let k = 0, next = 0; k < i.length; k++) {
+        const b = bytes[tri++]!;
+        const at = b < 255 ? next - b : view.getUint16(tri, true);
+        if (b === 255) tri += 2;
+        i[k] = at;
+        next = Math.max(next, at + 1);
+      }
+      const slot: ModelSlot = { c: s.c, v, n, i, shade: Float32Array.from(bytes.subarray(shade, shade + s.verts), (x) => x / 255) };
+      shade += s.verts;
       if (s.glow) slot.glow = true;
-      if (s.shade !== undefined) slot.shade = Float32Array.from(new Uint8Array(buf, base + s.shade, s.verts), (x) => x / 255);
-      if (s.tex !== undefined && s.uv !== undefined) {
-        slot.tex = s.tex;
-        slot.uv = new Float32Array(buf, base + s.uv, s.verts * 2);
+      if (s.uv) {
+        const [u0, v0, u1, v1] = s.uv;
+        const coords = new Float32Array(s.verts * 2);
+        for (let k = 0; k < coords.length; k++, uv += 2) coords[k] = k % 2 ? v0 + view.getUint16(uv, true) * ((v1 - v0) / 65535) : u0 + view.getUint16(uv, true) * ((u1 - u0) / 65535);
+        if (s.tex !== undefined) {
+          slot.tex = s.tex;
+          slot.uv = coords;
+        }
       }
       return slot;
     });
   }
+  if (tri !== buf.byteLength) throw new Error(`fp.bin: ${buf.byteLength - tri} bytes left over`);
   return { limits: header.limits, textures, items };
 }
 

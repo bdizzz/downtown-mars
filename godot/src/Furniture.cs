@@ -158,39 +158,72 @@ public class Furniture
         try
         {
             var buf = System.IO.File.ReadAllBytes(path);
-            if (System.Text.Encoding.ASCII.GetString(buf, 0, 4) != "DMFP" || BitConverter.ToUInt32(buf, 4) != 2) throw new Exception("not a version 2 fp.bin");
+            if (System.Text.Encoding.ASCII.GetString(buf, 0, 4) != "DMFP" || BitConverter.ToUInt32(buf, 4) != 3) throw new Exception("not a version 3 fp.bin");
             var len = (int)BitConverter.ToUInt32(buf, 8);
             using var header = JsonDocument.Parse(new ReadOnlyMemory<byte>(buf, 12, len));
-            var start = 12 + len;
-            float[] Floats(int at, int n) { var a = new float[n]; Buffer.BlockCopy(buf, start + at, a, 0, n * 4); return a; }
+            // The streams (#371; the format is in scripts/models.mjs): textures, positions, normals, shade, uv, triangles.
+            var tx = header.RootElement.GetProperty("textures");
+            var size = tx.GetProperty("size").GetInt32();
+            var names = tx.GetProperty("names").EnumerateArray().Select(n => n.GetString()!).ToArray();
+            var items = header.RootElement.GetProperty("items").EnumerateObject().ToArray();
+            var slots = items.SelectMany(it => it.Value.GetProperty("slots").EnumerateArray()).ToArray();
+            var allVerts = slots.Sum(s => s.GetProperty("verts").GetInt32());
+            var uvVerts = slots.Where(s => s.TryGetProperty("uv", out _)).Sum(s => s.GetProperty("verts").GetInt32());
+            var texAt = 12 + len;
+            var pos = texAt + names.Length * size * size;
+            var nrm = pos + allVerts * 6;
+            var shd = nrm + allVerts * 2;
+            var uvs = shd + allVerts;
+            var tri = uvs + uvVerts * 4;
             var models = new Dictionary<string, FpSlot[]>();
-            foreach (var item in header.RootElement.GetProperty("items").EnumerateObject())
-                models[item.Name] = item.Value.EnumerateArray().Select(s =>
+            foreach (var item in items)
+            {
+                var box = item.Value.GetProperty("box").EnumerateArray().Select(b => b.GetSingle()).ToArray();
+                models[item.Name] = item.Value.GetProperty("slots").EnumerateArray().Select(s =>
                 {
                     var verts = s.GetProperty("verts").GetInt32();
                     var tris = s.GetProperty("tris").GetInt32();
-                    var at = s.GetProperty("i").GetInt32();
-                    var idx = new int[tris * 3];
-                    for (var k = 0; k < idx.Length; k++) idx[k] = BitConverter.ToUInt16(buf, start + at + k * 2);
-                    float[]? shade = null;
-                    if (s.TryGetProperty("shade", out var sh))
+                    var v = new float[verts * 3];
+                    for (var k = 0; k < v.Length; k++, pos += 2) v[k] = box[k % 3] + BitConverter.ToUInt16(buf, pos) * ((box[3 + k % 3] - box[k % 3]) / 65535f);
+                    var n = new float[verts * 3];
+                    for (var k = 0; k < verts; k++, nrm += 2)
                     {
-                        shade = new float[verts];
-                        for (var k = 0; k < verts; k++) shade[k] = buf[start + sh.GetInt32() + k] / 255f;
+                        // Octahedral: two signed bytes back to a unit vector.
+                        float x = Math.Max(-1f, (sbyte)buf[nrm] / 127f), y = Math.Max(-1f, (sbyte)buf[nrm + 1] / 127f), z = 1 - Math.Abs(x) - Math.Abs(y);
+                        if (z < 0) (x, y) = ((1 - Math.Abs(y)) * (x < 0 ? -1 : 1), (1 - Math.Abs(x)) * (y < 0 ? -1 : 1));
+                        var l = MathF.Sqrt(x * x + y * y + z * z);
+                        if (l == 0) l = 1;
+                        (n[k * 3], n[k * 3 + 1], n[k * 3 + 2]) = (x / l, y / l, z / l);
+                    }
+                    var shade = new float[verts];
+                    for (var k = 0; k < verts; k++) shade[k] = buf[shd++] / 255f;
+                    float[]? uv = null;
+                    if (s.TryGetProperty("uv", out var ur))
+                    {
+                        var r = ur.EnumerateArray().Select(a => a.GetSingle()).ToArray();
+                        uv = new float[verts * 2];
+                        for (var k = 0; k < uv.Length; k++, uvs += 2) uv[k] = r[k % 2] + BitConverter.ToUInt16(buf, uvs) * ((r[2 + k % 2] - r[k % 2]) / 65535f);
+                    }
+                    var idx = new int[tris * 3];
+                    for (int k = 0, next = 0; k < idx.Length; k++)
+                    {
+                        var b = buf[tri++];
+                        var at = b < 255 ? next - b : BitConverter.ToUInt16(buf, tri);
+                        if (b == 255) tri += 2;
+                        idx[k] = at;
+                        next = Math.Max(next, at + 1);
                     }
                     var tex = s.TryGetProperty("tex", out var t) ? t.GetInt32() : -1;
-                    var uv = tex >= 0 && s.TryGetProperty("uv", out var u) ? Floats(u.GetInt32(), verts * 2) : null;
                     return new FpSlot(s.GetProperty("c").GetString()!, s.TryGetProperty("glow", out var g) && g.GetBoolean(),
-                        Floats(s.GetProperty("v").GetInt32(), verts * 3), Floats(s.GetProperty("n").GetInt32(), verts * 3), shade, idx, uv == null ? -1 : tex, uv);
+                        v, n, shade, idx, uv == null ? -1 : tex, tex >= 0 ? uv : null);
                 }).ToArray();
-            var tx = header.RootElement.GetProperty("textures");
-            var size = tx.GetProperty("size").GetInt32();
+            }
+            if (tri != buf.Length) throw new Exception($"{buf.Length - tri} bytes left over");
             var layers = new Godot.Collections.Array<Image>();
-            var names = tx.GetProperty("names").EnumerateArray().Select(n => n.GetString()!).ToArray();
             for (var k = 0; k < names.Length; k++)
             {
                 var px = new byte[size * size];
-                Buffer.BlockCopy(buf, start + tx.GetProperty("at").GetInt32() + k * size * size, px, 0, px.Length);
+                Buffer.BlockCopy(buf, texAt + k * size * size, px, 0, px.Length);
                 var img = Image.CreateFromData(size, size, false, Image.Format.L8, px);
                 img.GenerateMipmaps();
                 layers.Add(img);
