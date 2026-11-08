@@ -40,9 +40,28 @@ describe("first-person furniture models", () => {
   });
 
   describe("once loaded", () => {
-    beforeAll(() => setFpModels(readFp()));
-    // An item still drawn from its parts in first person (the catalogue fills up, #359).
-    const noModel = () => Object.keys(furniture.items).find((id) => !modelIds().includes(id))!;
+    let fp: ReturnType<typeof readFp>;
+    beforeAll(() => {
+      fp = readFp();
+      setFpModels(fp);
+    });
+    // Every item has a model since #367, so the tests of the fallback drop one: the plaque, drawn from
+    // its parts as if fp.bin had no model for it.
+    const noModel = () => "plaque";
+    const withoutOne = (run: () => void) => {
+      const { [noModel()]: _dropped, ...items } = fp.items;
+      setFpModels({ ...fp, items });
+      try {
+        run();
+      } finally {
+        setFpModels(fp);
+      }
+    };
+
+    it("cover the whole catalogue: every item has a first-person model (#367)", () => {
+      const missing = Object.keys(furniture.items).filter((id) => !modelIds().includes(id));
+      expect(missing).toEqual([]);
+    });
 
     it("each is an item in the catalogue, within the limit, in its colours", () => {
       expect(modelIds()).toContain("bunk_bed");
@@ -112,7 +131,7 @@ describe("first-person furniture models", () => {
       for (const id of ["bunk_bed", "sofa", "lathe"]) expect(fpModelFor(id)!.some((s) => s.tex !== undefined), id).toBe(true);
     });
 
-    it("textured surfaces carry their texture into the first-person copy, and only there", () => {
+    it("textured surfaces carry their texture into the first-person copy, and only there", () => withoutOne(() => {
       const g = furnitureMeshes([...at("sofa"), { item: noModel(), x: 2, y: 0, z: 0, turn: 0 }], "#6f93bd", undefined, "fp");
       const plain = g.children.find((o) => o instanceof THREE.Mesh && o.geometry.getAttribute("aTex")) as THREE.Mesh;
       expect(plain).toBeDefined();
@@ -124,7 +143,7 @@ describe("first-person furniture models", () => {
       near.traverse((o) => {
         if (o instanceof THREE.Mesh) expect(o.geometry.getAttribute("aTex")).toBeUndefined();
       });
-    });
+    }));
 
     it("draw in first person only, in place of the item's parts, and fit its footprint", () => {
       for (const id of modelIds()) {
@@ -145,7 +164,7 @@ describe("first-person furniture models", () => {
       }
     });
 
-    it("a room shows its first-person copy only when it has an item with a model", () => {
+    it("a room shows its first-person copy only when it has an item with a model", () => withoutOne(() => {
       const withModel = furnitureMeshes([...at("bunk_bed"), { item: noModel(), x: 1.5, y: 0, z: 0, turn: 0 }], "#6f93bd");
       expect(showDetail(withModel, "fp")).toBe(true);
       const shown = withModel.children.filter((o) => o.visible && o.userData.detail);
@@ -157,7 +176,7 @@ describe("first-person furniture models", () => {
       const without = furnitureMeshes(at(noModel()), "#6f93bd");
       expect(showDetail(without, "fp")).toBe(false); // stays on its near copy, nothing new built
       expect(without.userData.fpBuilt).toBeUndefined();
-    });
+    }));
 
     it("can be switched off for the code-built parts", () => {
       setModelsEnabled(false);
