@@ -1,3 +1,4 @@
+import { cropDef } from "../src/sim/resources";
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
@@ -113,6 +114,8 @@ describe("storage", () => {
     applyCommand(s, { type: "setAllows", roomId: pod(s).id, allows: STORABLE.filter((id) => id !== "fiber") });
     const d = distancesFrom(pathsFor(s.layout), farm.id, "walk");
     const [near, far] = d.get(a.id)! < d.get(b.id)! ? [a, b] : [b, a];
+    // Hemp comes in whole harvests: bring this one close to ready.
+    farm.growth = { days: cropDef("hemp").growMonths - 0.5, banked: 20 };
     for (let i = 0; i < config.ticksPerDay; i++) step(s, config);
     expect(s.resources.fiber ?? 0).toBeGreaterThan(0);
     expect(near.contents?.fiber ?? 0).toBeCloseTo(s.resources.fiber!);

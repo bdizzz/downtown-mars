@@ -1,0 +1,14 @@
+{
+  "_note": "Food by type and meal variety (#375; src/sim/food.ts). Raw food is stored per food type, one per edible crop (data/crops.json); raw food from elsewhere (convoys, the console) with no crop to it is `mixed`, one type of its own. A galley or kitchen cooks each meal from up to maxTypes types in equal shares, always the best the stocks allow, and the meal's quality is by how many went in: qualities[n - 1] for n types. Earth rations cooked into meals are always the first (poor). Meals with no known quality (old saves, convoys) count as `unknownMeals`. The hole's food variety is the quality of the meals eaten over the last varietyMonths, by their average; it adds `comfort` to every home's comfort factor (−3..+3; a point of comfort is happiness.weights.comfort points of happiness). visits: the two citizen visits about meals come when at least onlyShare of the meals eaten were poor (or average, with the rest no better), once people have been eating at least minMealsPerPerson a month.",
+  "maxTypes": 4,
+  "mixed": { "id": "mixed", "name": "Other stores" },
+  "unknownMeals": 1,
+  "varietyMonths": 1,
+  "qualities": [
+    { "id": "poor", "name": "Poor", "comfort": -0.5 },
+    { "id": "average", "name": "Average", "comfort": 0 },
+    { "id": "good", "name": "Good", "comfort": 0.5 },
+    { "id": "great", "name": "Great", "comfort": 1 }
+  ],
+  "visits": { "onlyShare": 0.9, "minMealsPerPerson": 0.5 }
+}

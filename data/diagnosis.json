@@ -22,6 +22,7 @@
     "grief": { "shared": true, "label": "grief", "factor": "comfort", "text": "Grief for the dead with no resting place", "fix": "A crypt to lay them to rest." },
     "sharedWear": { "shared": true, "label": "worn shared rooms", "factor": "comfort", "text": "Worn shared rooms", "fix": "More maintenance and cleaning services." },
     "sharedLining": { "shared": true, "label": "lined shared rooms", "factor": "comfort", "text": "Lined shared rooms" },
+    "variety": { "shared": true, "label": "meal variety", "factor": "comfort", "text": "Meal variety: how many kinds of food go into the meals", "fix": "Grow more kinds of crop: a galley cooks up to four kinds into each meal, and the more kinds, the better (rations are always poor fare)." },
     "noSeat": { "label": "no galley seat", "factor": "comfort", "text": "No seat at a galley within reach: {homes}", "fix": "A galley or canteen near the homes, or a bigger one." },
     "noRestroom": { "label": "no restroom", "factor": "comfort", "text": "No restroom within reach: {homes}", "fix": "Restrooms within 6 steps of the homes." },
     "homeless": { "shared": true, "label": "homeless", "factor": "comfort", "text": "Homeless colonists", "fix": "Build more homes." },

@@ -1,3 +1,4 @@
+import { varietyComfort } from "./food";
 import type { SimConfig } from "./config";
 import { isActive } from "./economy";
 import { effectOnRoom } from "./effects";
@@ -104,6 +105,8 @@ export function homeParts(state: SimState, room: RoomInstance | null, cfg: SimCo
   // Lined ones (brick, metal) lift everyone a little; a home's own lining, its residents.
   add("sharedWear", "comfort", -sharedWear(state) * CONDITION.happiness.sharedComfort);
   add("sharedLining", "comfort", sharedLiningComfort(state));
+  // How varied the meals have been this past month (food.ts).
+  add("variety", "comfort", varietyComfort(state));
   // Diners without a seat at a galley or canteen within reach eat on the go;
   // and those without a restroom within reach (or a bathroom at home) go without.
   const seated = room ? (pop.servedByHome?.[room.id] ?? pop.served ?? 1) : (pop.servedHomeless ?? pop.served ?? 1);

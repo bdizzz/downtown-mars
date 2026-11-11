@@ -1,3 +1,4 @@
+import type { Growth } from "./food";
 import { config, type Priority, type SimConfig } from "./config";
 import { overlappingSlots, ringSize, wrapSlot, type Hole } from "./geometry";
 import { corridorsInside, recomputeAccess, strandedBy, wouldConnect } from "./corridors";
@@ -35,6 +36,8 @@ export interface RoomInstance {
   priority: Priority;
   /** Farms only. */
   crop?: string;
+  /** Farms only: the harvest cycle (food.ts); absent until it first works. */
+  growth?: Growth;
   /** What a tank holds, of its kind's choices (rooms.json holds); absent means the first. */
   holds?: string;
   /** Committed but still in the construction queue: holds its slots, doesn't run. */

@@ -55,6 +55,18 @@ describe("first month playthrough", () => {
   it("keeps morale from collapsing", () => {
     expect(Math.min(...log.slice(5).map((d) => d.happy))).toBeGreaterThan(35);
   });
+
+  it("feeds everyone from the starting rations until the first harvests come in (#377)", () => {
+    const first = log.findIndex((d) => d.harvested > 0);
+    expect(first).toBeGreaterThan(0);
+    // The food on hand never runs out while the first crops grow, with a margin to spare.
+    expect(Math.min(...log.slice(0, first + 2).map((d) => d.larder))).toBeGreaterThan(10);
+  });
+
+  it("cooks some meals from both its crops once they're in", () => {
+    // Two farms can't feed fifty, so rations (always poor) still make most meals in the first month.
+    expect(state.food!.eaten[1]).toBeGreaterThan(0);
+  });
 });
 
 // A new game's first hole starts from the full landing kit (T-164): air, water tanks and power
