@@ -355,4 +355,6 @@ Deliberately not decided yet:
 - **Side panels open on their numbers:** they share one header (`ui/PanelHeader.tsx`), and a panel's explanation of its rules (Construction, Maintenance, Flows) folds behind a ? in it rather than sitting above the figures.
 - **The status line is in two parts:** what the pointer's on or what placing there would do on the left, a part at a time with warnings in red; where that is (floor, ring, slot) at the far right.
 - **The top bar's alerts never stack:** they sit side by side at full width, moving together to the bar's second row on a narrow window.
+- **The View strip is three groups:** Camera (one set for the 3D cameras, Plan and Unrolled, since only one shows at a time), Show (switches) and Overlay (one set). Exclusive choices look like one joined set and switches like switches, everywhere.
+- **A decision waiting comes first:** an event's card sits over the deputy's card and clear of the dock, and the toasts narrow (on phones, hide) while it's up.
 - **Web only for now.** Godot keeps its palette of categories; see "Status and next" in `PLAN-GODOT.md`.

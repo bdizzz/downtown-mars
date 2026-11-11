@@ -555,7 +555,6 @@ label.set-row { cursor: pointer; }
 .dock-btn:disabled { opacity: 0.4; cursor: not-allowed; background: transparent; }
 .dock-btn kbd { opacity: 0.7; }
 .dock-btn.demolish { color: #f08a70; }
-.dock-section { display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; }
 .dock-label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 4px 0 2px; }
 .dock-sep { width: 1px; align-self: stretch; background: #4a3027; margin: 0 6px; }
 .dock-hint { color: var(--muted); font-size: 11px; margin-left: auto; padding-left: 8px; }
@@ -1297,8 +1296,16 @@ kbd {
 .need { min-width: 0; flex-shrink: 1; }
 .need:not(.more) { display: inline-block; overflow: hidden; text-overflow: ellipsis; }
 .need:not(.more) > .ico { vertical-align: -3px; margin-right: 4px; }
+/* The View strip: the camera, what shows, and the overlay, each a group with room between them. */
+.view-strip { gap: 6px 16px; }
+.view-strip .seg { flex-wrap: wrap; }
+/* A decision waiting (an event's card, down the left) comes first: it sits over the deputy's card, keeps clear of the dock, and the toasts narrow to leave it room. */
+.event-cards { z-index: 5; max-height: calc(100% - 120px); overflow-y: auto; scrollbar-width: thin; }
+.view:has(.event-card) .messages { max-width: max(0px, calc(100% - 510px)); overflow: hidden; }
 /* The floor picker owns the right edge: toasts and the deputy's card keep clear of it. */
 .messages, .tutorial, .tutorial-pill { right: 84px; }
+/* The deputy's card clears a strip two rows deep. */
+.tutorial, .tutorial-pill { bottom: calc(98px * var(--ui-scale, 1)); }
 .messages { max-width: min(380px, calc(100% - 190px)); font-size: 12.5px; }
 .msg { background: var(--face); border: 1px solid var(--line); border-left: 3px solid var(--muted); border-radius: 4px; box-shadow: var(--bevel), 0 4px 14px rgba(0, 0, 0, 0.4); padding: 6px 4px 6px 10px; }
 .msg.good { border-left-color: #8fcf6f; }
@@ -1379,9 +1386,11 @@ kbd {
   .cam-readout, .event-cards { left: 62px; }
   .tool-bar .dock-hint { display: none; }
   .inspector { width: auto; }
+  .view:has(.event-card) .messages { display: none; }
   .needs { flex-wrap: wrap; overflow: visible; }
   .status-place { display: none; }
   .messages, .tutorial, .tutorial-pill { right: 6px; }
+  .tutorial, .tutorial-pill { bottom: auto; }
   .messages { max-width: calc(100% - 70px); }
   /* Beside the rail, not under it. */
   .tutorial, .event-cards { width: min(300px, calc(100% - 74px)); }

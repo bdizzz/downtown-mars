@@ -91,7 +91,7 @@ export function Office({ s, onCommand, shown, onShow, onClose }: Props) {
           <h3>Promises</h3>
           {s.office.promises.map((p, i) => (
             <p key={i}>
-              {p.cause ? `Fix the ${causeLabel(p.cause)}` : (PROMISE_TEXT[p.check] ?? p.check)} for {notable(p.notableId)?.name}
+              {p.cause ? `Fix ${causeLabel(p.cause).startsWith("the ") ? "" : "the "}${causeLabel(p.cause)}` : (PROMISE_TEXT[p.check] ?? p.check)} for {notable(p.notableId)?.name}
               <span className="k"> · {days(p.dueTick - s.tick)} left</span>
             </p>
           ))}
