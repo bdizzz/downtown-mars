@@ -6,7 +6,7 @@ Events are how the colony talks back: citizen visits, hazards, discoveries, netw
 
 | Event | In the game |
 | --- | --- |
-| Citizen visits | Noise complaint and clinic demand, with promises the notable remembers (`data/visits.json`); the doctor and a residents' delegate about a lasting health or happiness cause (F-018, T-176) |
+| Citizen visits | Noise complaint and clinic demand, with promises the notable remembers (`data/visits.json`); the doctor and a residents' delegate about a lasting health or happiness cause (F-018, T-176); poor or average meals (#382) |
 | Dust storm | Forecast a few days ahead; halves solar for a day or two |
 | Equipment failure | Breakdowns: now and then something in a room breaks and knocks its condition down 20–30 points. Rooms also wear, and maintenance or cleaning crews repair them |
 | Supply drops | Every few days from Earth, sometimes delayed |
@@ -34,6 +34,8 @@ Everything else here (the strike chain, cave-ins, outbreaks, the network events,
 | The doctor's report (built, T-176) | Something has drained the hole's health for a month (meals, water, sanitation, thin oxygen, CO2) | The first time: information only, with the cause, what it costs and the fix ("Noted") |
 | The doctor wants it fixed (built, T-176) | The same cause, still there 3 months after the last visit about it | Promise to fix it within 3 months (kept: +15 loyalty, +5 happiness; broken: −20 loyalty, −3 happiness); not now |
 | A word from the residents / the residents want it fixed (built, T-176) | A happiness cause costing 3 points or more for a month (smell, stale air, no galley seat, crowding…; noise is left to the noise complaint) | As the doctor's: information first, then a promise. A residents' delegate (an organizer) comes |
+| The same meal again (built, #382) | Nearly every meal eaten over the last month was poor (one kind of food, or rations), from month 8 | Promise more kinds of food within 4 months (kept once variety is average or better: +10 loyalty, +4 happiness; broken: −15, −4); "Food is food". Names crops not grown yet |
+| A better table (built, #382) | Nearly every meal eaten over the last month was average (two kinds), none better | Promise three or four kinds within 4 months (kept once variety is good or better); "Food is food" |
 | Just saying hi (built, T-080) | The tutorial's office step comes up (either tutorial) and nobody's waiting: the `greet` command | "Nice to meet you", with no effect. A notable other than the deputy; waits until answered |
 | Room demand | A cohort lacks a service, e.g. a gym or bar | Grant it by a deadline; offer something smaller; refuse and risk a strike |
 | Scientist's proposal | A research lab and a notable scientist | Fund the experiment to unlock a milestone early; decline |

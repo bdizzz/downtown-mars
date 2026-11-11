@@ -49,7 +49,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Served by:** canteens, galleys, bars, hotels.
 - **Eaten by:** colonists (1 a day) and tourists. Kitchen scraps return to composters, mycelium vats and mushroom crops.
 
-**As built:** farms (crop chosen per farm, named after it) → raw food → galley → meals. The galley cooks Earth rations when there's no raw food. Diet variety doesn't count yet. Galley and kitchen scraps go to the composter. **Seating:** a galley cooks and seats 25; a kitchen cooks 40 but seats no one, so it pairs with a canteen (seats 60, comfort +1 around it). Diners without a seat cost everyone a little comfort. No cultured meat lab or food groups yet.
+**As built:** farms (crop chosen per farm, named after it) → whole harvests every 1.5–4 months → raw food, kept by type (one per crop) → galley → meals of up to four types (poor, average, good or great) → food variety, felt on comfort (#375). The galley cooks Earth rations when there's no raw food; those meals are always poor. Galley and kitchen scraps go to the composter. **Seating:** a galley cooks and seats 25; a kitchen cooks 40 but seats no one, so it pairs with a canteen (seats 60, comfort +1 around it). Diners without a seat cost everyone a little comfort. No cultured meat lab or food groups yet.
 
 ## Construction materials
 
