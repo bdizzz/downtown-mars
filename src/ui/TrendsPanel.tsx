@@ -4,6 +4,7 @@ import { config } from "../sim/config";
 import { num, signed } from "./format";
 import { CauseBand, Sparkline, TrendChart, type ChartLine } from "./TrendChart";
 import { causeBand, everHad, perDay, points, RANGES, SERIES, seriesMeta, type Range, type SeriesMeta, seriesNum } from "./trends";
+import { PanelHeader } from "./PanelHeader";
 
 // Charts → Trends: how everything has been changing. One series up close
 // (amounts, or change per day) over the last two days, ten days or the whole
@@ -32,12 +33,7 @@ export function TrendsPanel({ s, onClose, initial }: { s: Snapshot; onClose: () 
   const h = s.history;
   const meta = seriesMeta(key) ?? SERIES[0]!;
   const header = (
-    <header>
-      <h2>Trends</h2>
-      <button onClick={onClose} aria-label="Close">
-        ×
-      </button>
-    </header>
+    <PanelHeader title="Trends" onClose={onClose} />
   );
   if (!h || !(h.hourly.population?.length ?? 0)) {
     return (

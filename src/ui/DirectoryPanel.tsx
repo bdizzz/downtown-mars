@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Snapshot } from "../sim/snapshot";
 import { directory, directoryCategories, type DirFilter, NO_FILTER } from "../view/directory";
 import { FloorBadge } from "./RoomName";
+import { PanelHeader } from "./PanelHeader";
 
 // Charts → Directory (T-149): every floor from the surface down and the rooms on
 // each, with a dot for how each is doing. Filter by kind of room, by name, or to
@@ -16,12 +17,7 @@ export function DirectoryPanel({ s, onSelect, onClose }: { s: Snapshot; onSelect
   const count = floors.reduce((n, f) => n + f.rooms.length, 0);
   return (
     <aside className="inspector directory">
-      <header>
-        <h2>Directory</h2>
-        <button onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </header>
+      <PanelHeader title="Directory" onClose={onClose} />
       <input className="dir-search" type="search" placeholder="Find a room by name" value={filter.text} onChange={(e) => setFilter({ ...filter, text: e.target.value })} aria-label="Find a room" />
       <div className="dir-filters">
         <select value={filter.category ?? ""} onChange={(e) => setFilter({ ...filter, category: e.target.value || null })} aria-label="Kind of room">

@@ -1,5 +1,6 @@
 import type { Snapshot } from "../sim/snapshot";
 import { milestonesView, type MilestoneRow } from "../view/milestones";
+import { PanelHeader } from "./PanelHeader";
 
 // Charts → Milestones (F-005 / T-056): what this hole has achieved, with when,
 // and what's still ahead, with how far along; then what the other holes have
@@ -32,14 +33,7 @@ export function MilestonesPanel({ s, onClose }: { s: Snapshot; onClose: () => vo
   const v = milestonesView(s);
   return (
     <aside className="inspector milestones">
-      <header>
-        <h2>
-          Milestones <span className="k">· {v.reached} of {v.total}</span>
-        </h2>
-        <button onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </header>
+      <PanelHeader title={<>Milestones <span className="k">· {v.reached} of {v.total}</span></>} onClose={onClose} />
       {v.groups.map((g) => (
         <section key={g.id}>
           <h3>

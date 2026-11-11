@@ -497,8 +497,8 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
     <aside className="inspector room-panel">
       <header>
         <RoomTitle room={room} onCommand={onCommand} />
-        <button onClick={onClose} aria-label="Close">
-          ×
+        <button onClick={onClose} aria-label="Close" title="Close (Esc)">
+          <Icon id="close" size={13} />
         </button>
       </header>
       {model.status.text && (

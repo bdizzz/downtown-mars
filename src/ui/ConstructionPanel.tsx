@@ -2,6 +2,7 @@ import { RoomName } from "./RoomName";
 import type { SimCommand } from "../sim/commands";
 import type { Snapshot } from "../sim/snapshot";
 import { hoursText, num } from "./format";
+import { PanelHeader } from "./PanelHeader";
 
 // The construction queue: what's being built, in order, how far along, and
 // when each will be done at today's bandwidth. Jobs can be moved to the front.
@@ -11,17 +12,9 @@ export function ConstructionPanel({ s, onCommand, onSelect, onClose }: { s: Snap
   const byId = new Map(s.layout.rooms.map((r) => [r.id, r]));
   return (
     <aside className="inspector construction">
-      <header>
-        <h2>Construction</h2>
-        <button onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </header>
+      <PanelHeader title="Construction" help={"One job at a time, in order. Construction offices add bandwidth; staff them well."} onClose={onClose} />
       <p>
         <span className="k">Bandwidth</span> {num(bandwidth)} work-hours an hour
-      </p>
-      <p className="k">
-        One job at a time, in order. Construction offices add bandwidth; staff them well.
       </p>
       {!jobs.length && <p className="k">Nothing in the queue.</p>}
       <ol className="queue">

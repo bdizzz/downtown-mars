@@ -1,6 +1,7 @@
 import type { Snapshot } from "../sim/snapshot";
 import type { Spot } from "../view/reachView";
 import { whyContent, type WhyItem } from "../view/whyPanel";
+import { PanelHeader } from "./PanelHeader";
 
 // The "Why?" panel (F-018): what's hurting health and happiness, biggest first, each with its fix and a
 // Show me that lights up the rooms and homes involved and turns to them; then the unhappiest homes, a click
@@ -42,12 +43,7 @@ export function WhyPanel({ s, tab, setTab, shown, onShow, onSelect, onTrend, onC
   const section = why[tab];
   return (
     <aside className="inspector why">
-      <header>
-        <h2>Why?</h2>
-        <button onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </header>
+      <PanelHeader title="Why?" onClose={onClose} />
       <div className="seg" role="group" aria-label="What to explain">
         {(["health", "happiness"] as const).map((t) => (
           <button key={t} className={tab === t ? "on" : ""} onClick={() => setTab(t)} aria-pressed={tab === t}>

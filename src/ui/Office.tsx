@@ -7,6 +7,7 @@ import { monthsText } from "../view/months";
 import type { Spot } from "../view/reachView";
 import { causeSpot } from "../view/whyPanel";
 import { Portrait } from "./Portrait";
+import { PanelHeader } from "./PanelHeader";
 
 interface Props {
   s: Snapshot;
@@ -44,12 +45,7 @@ export function Office({ s, onCommand, shown, onShow, onClose }: Props) {
 
   return (
     <aside className="inspector office">
-      <header>
-        <h2>Administration</h2>
-        <button onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </header>
+      <PanelHeader title="Administration" onClose={onClose} />
 
       <h3>Waiting room</h3>
       {s.office.waiting.length === 0 && <p className="k">Nobody is waiting.</p>}
