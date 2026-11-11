@@ -6,7 +6,7 @@ import type { Snapshot } from "../sim/snapshot";
 // Recent sim messages over the view, fading out after a game day. Each has a
 // × that closes it at once; the rest of the stack closes up.
 const SHOW_TICKS = config.ticksPerDay;
-const MAX_SHOWN = 4;
+const MAX_SHOWN = 3;
 
 export function Messages({ s }: { s: Snapshot | null }) {
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());

@@ -43,7 +43,9 @@ export function place(target: Box, card: Pick<Box, "width" | "height">, view: Pi
   const maxTop = view.height - card.height - MARGIN;
   if (beside) {
     const side = cx > view.width / 2 ? "left" : "right";
-    const left = side === "left" ? target.left - GAP - card.width : target.left + target.width + GAP;
+    // Past whatever else sits beside the target (a room's details beside the build rail's list).
+    const near = side === "left" ? Math.min(target.left, avoid?.left ?? Infinity) : Math.max(target.left + target.width, avoid ? avoid.left + avoid.width : -Infinity);
+    const left = side === "left" ? near - GAP - card.width : near + GAP;
     const top = clamp(cy - card.height / 2, MARGIN, maxTop);
     return {
       left: Math.round(clamp(left, MARGIN, maxLeft)),
@@ -65,7 +67,7 @@ export function place(target: Box, card: Pick<Box, "width" | "height">, view: Pi
   };
 }
 
-/** The room details floating over the build palette, while one shows. */
+/** The room details floating beside the build rail's list, while they show. */
 export function obstacle(): Box | null {
   const e = document.querySelector(".build-card");
   const r = e?.getBoundingClientRect();

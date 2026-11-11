@@ -22,27 +22,40 @@ interface Props {
   onClose: () => void;
 }
 
-/** Rows of a section (view/roomPanel.ts): an icon, a dimmed label, then the text (or its resources as chips), in its tone; the longer version as a tooltip. */
+/**
+ * Rows of a section (view/roomPanel.ts) as a small table: an icon, a dimmed label in its own column,
+ * then the text (or its resources as chips), in its tone; the longer version as a tooltip. A
+ * breakdown ("−0.1 = view +1.5, the home itself −1.0") shows its figure first and the causes on a
+ * quieter line under it.
+ */
 function Rows({ rows }: { rows: Row[] }) {
   return (
     <>
-      {rows.map((r, i) => (
-        <p key={i} className={`row${r.tone ? ` tone-${r.tone}` : ""}${r.tip ? " has-tip" : ""}`} title={r.tip}>
-          {r.icon && <Icon id={r.icon} size={13} />}
-          <span>
-            {r.k && <span className="k">{r.k}</span>}{" "}
-            {r.chips ? (
-              <span className="chips">
-                {r.chips.map((c, j) => (
-                  <ChipView key={j} chip={c} />
-                ))}
-              </span>
-            ) : (
-              r.text
-            )}
-          </span>
-        </p>
-      ))}
+      {rows.map((r, i) => {
+        const cut = r.chips ? -1 : r.text.indexOf(" = ");
+        return (
+          <p key={i} className={`row${r.tone ? ` tone-${r.tone}` : ""}${r.tip ? " has-tip" : ""}${r.k ? "" : " wide"}`} title={r.tip}>
+            {r.icon ? <Icon id={r.icon} size={13} /> : <span className="ico" />}
+            {r.k && <span className="k">{r.k}</span>}
+            <span className="v">
+              {r.chips ? (
+                <span className="chips">
+                  {r.chips.map((c, j) => (
+                    <ChipView key={j} chip={c} />
+                  ))}
+                </span>
+              ) : cut < 0 ? (
+                r.text
+              ) : (
+                <>
+                  <b>{r.text.slice(0, cut)}</b>
+                  <small>{r.text.slice(cut + 3)}</small>
+                </>
+              )}
+            </span>
+          </p>
+        );
+      })}
     </>
   );
 }
@@ -75,24 +88,47 @@ function StatusPill({ status }: { status: { text: string; tone: string; tip: str
   );
 }
 
-/** A chip: an icon and a short value, its label (and any tip) as the tooltip; at a glance, a meter under it too. */
-function ChipView({ chip, meter }: { chip: Chip; meter?: boolean }) {
+/** A chip: an icon and a short value, its label (and any tip) as the tooltip. */
+function ChipView({ chip }: { chip: Chip }) {
   return (
-    <span className={`chip${chip.tone ? ` tone-${chip.tone}` : ""}${meter ? " glance" : ""}`} title={chip.tip ? `${chip.label}: ${chip.tip}` : chip.label}>
+    <span className={`chip${chip.tone ? ` tone-${chip.tone}` : ""}`} title={chip.tip ? `${chip.label}: ${chip.tip}` : chip.label}>
       <Icon id={chip.icon} size={13} />
       {chip.value}
-      {meter && <MeterView chip={chip} />}
     </span>
   );
 }
 
+const capital = (t: string) => (t ? t[0]!.toUpperCase() + t.slice(1) : t);
+
+/** A figure at a glance, as a tile: what it is in small capitals, then its icon and value in its tone, and a meter under them when it has one. */
+function StatTile({ chip }: { chip: Chip }) {
+  return (
+    <span className={`stat${chip.tone ? ` tone-${chip.tone}` : ""}`} title={chip.tip ? `${chip.label}: ${chip.tip}` : chip.label}>
+      <span className="stat-k">{capital(chip.label)}</span>
+      <span className="stat-v">
+        <Icon id={chip.icon} size={13} />
+        {chip.value}
+      </span>
+      <MeterView chip={chip} />
+    </span>
+  );
+}
+
+/** How many alerts show before the rest fold behind "more". */
+const ALERTS_SHOWN = 2;
+
 /** The alerts band: every warning in the panel, each pointing at its section (a click opens it), and Connect beside "cut off". */
 function Alerts({ alerts, sections, onOpen, connect }: { alerts: Alert[]; sections: Section[]; onOpen: (id: SectionId) => void; connect: ReactNode }) {
+  const [all, setAll] = useState(false);
   if (!alerts.length) return null;
   const title = (id: SectionId) => sections.find((x) => x.id === id)?.title;
+  // The worst first, so what folds away is the least of it.
+  const rank = (a: Alert) => (a.tone === "bad" ? 0 : a.tone === "warn" ? 1 : 2);
+  const sorted = [...alerts].sort((a, b) => rank(a) - rank(b));
+  const shown = all ? sorted : sorted.slice(0, ALERTS_SHOWN);
   return (
     <div className="alerts">
-      {alerts.map((a, i) => (
+      {shown.map((a, i) => (
         <div key={i} className={`alert tone-${a.tone}`}>
           <Icon id="alert" size={13} />
           <span className="text" title={a.tip ?? a.text}>
@@ -106,6 +142,11 @@ function Alerts({ alerts, sections, onOpen, connect }: { alerts: Alert[]; sectio
           {a.action === "connect" && connect}
         </div>
       ))}
+      {sorted.length > ALERTS_SHOWN && (
+        <button className="more" onClick={() => setAll(!all)} aria-expanded={all}>
+          {all ? "Show fewer" : `${sorted.length - ALERTS_SHOWN} more`}
+        </button>
+      )}
     </div>
   );
 }
@@ -200,26 +241,58 @@ function UnderConstruction({ s, roomId, onCommand }: { s: Snapshot; roomId: numb
   );
 }
 
+/**
+ * Choices that order work (new walls, a new floor): folded behind one button, then a short list, each
+ * its name and what it costs; one that can't be ordered is dimmed and says why.
+ */
+function Choices({ label, hint, options, onPick }: { label: string; hint: string; options: { name: string; text: string; refusal: string | null }[]; onPick: (i: number) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="choices">
+      <button className={`btn sm${open ? " on" : ""}`} onClick={() => setOpen(!open)} aria-expanded={open} title={hint}>
+        <Icon id="chevron" size={11} className="chev" />
+        {label}
+      </button>
+      {open && (
+        <div className="choice-list">
+          {options.map((o, i) => {
+            // "Brick: comfort +0.5, wears 15% slower · brick 16 · 6 h of work": what it does, then what it takes.
+            const [does, ...takes] = o.text.split(" · ");
+            const gain = does!.includes(": ") ? does!.slice(does!.indexOf(": ") + 2) : "";
+            return (
+              <button
+                key={o.name}
+                className="choice-row"
+                disabled={!!o.refusal}
+                title={o.refusal ?? hint}
+                onClick={() => {
+                  onPick(i);
+                  setOpen(false);
+                }}
+              >
+                <span className="name">{o.name}</span>
+                <span className="takes">{takes.join(" · ")}</span>
+                {(o.refusal || gain) && <span className={`gain${o.refusal ? " no" : ""}`}>{o.refusal ?? gain}</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Refit the walls in another lining, through the construction queue. */
 function Refit({ s, room, onCommand }: { s: Snapshot; room: Snapshot["layout"]["rooms"][number]; onCommand: Props["onCommand"] }) {
   const options = refitOptions(s, room);
   if (!options) return null;
   return (
-    <label title="Refit the walls through the construction queue. Once the crews start the room works at half speed (a home is less comfortable) until it's done, then it's as good as new. Taking brick or metal out gives half of it back.">
-      <span className="k">Refit</span>
-      <select value="" onChange={(e) => {
-        const o = options[Number(e.target.value)];
-        if (o) onCommand({ type: "upgradeRoom", roomId: room.id, material: o.material, finish: o.finish });
-      }}>
-        <option value="">Choose new walls…</option>
-        {options.map((o, i) => (
-          <option key={o.name} value={i} disabled={!!o.refusal}>
-            {o.text}
-            {o.refusal ? ` (${o.refusal})` : ""}
-          </option>
-        ))}
-      </select>
-    </label>
+    <Choices
+      label="Refit the walls"
+      hint="Refit the walls through the construction queue. Once the crews start the room works at half speed (a home is less comfortable) until it's done, then it's as good as new. Taking brick or metal out gives half of it back."
+      options={options}
+      onPick={(i) => onCommand({ type: "upgradeRoom", roomId: room.id, material: options[i]!.material, finish: options[i]!.finish })}
+    />
   );
 }
 
@@ -228,21 +301,12 @@ function Floor({ s, room, onCommand }: { s: Snapshot; room: Snapshot["layout"]["
   const options = floorOptions(s, room);
   if (!options) return null;
   return (
-    <label title="Lay a new floor through the construction queue: the walls stay as they are. While the crews work the room runs at half speed (a home is less comfortable). Taking a floor up, back to matching the walls, is free and at once.">
-      <span className="k">Floor</span>
-      <select value="" onChange={(e) => {
-        const o = options[Number(e.target.value)];
-        if (o) onCommand({ type: "upgradeFloor", roomId: room.id, flooring: o.flooring });
-      }}>
-        <option value="">Choose a new floor…</option>
-        {options.map((o, i) => (
-          <option key={o.name} value={i} disabled={!!o.refusal}>
-            {o.text}
-            {o.refusal ? ` (${o.refusal})` : ""}
-          </option>
-        ))}
-      </select>
-    </label>
+    <Choices
+      label="Lay a new floor"
+      hint="Lay a new floor through the construction queue: the walls stay as they are. While the crews work the room runs at half speed (a home is less comfortable). Taking a floor up, back to matching the walls, is free and at once."
+      options={options}
+      onPick={(i) => onCommand({ type: "upgradeFloor", roomId: room.id, flooring: options[i]!.flooring })}
+    />
   );
 }
 
@@ -254,14 +318,9 @@ function Controls({ room, s, onCommand }: { room: Snapshot["layout"]["rooms"][nu
   const suggested = stop?.suggested ?? 10;
   return (
     <div className="controls">
-      <label>
-        <input
-          type="checkbox"
-          checked={!room.paused}
-          onChange={(e) => onCommand({ type: "setRoomControl", roomId: room.id, paused: !e.target.checked })}
-        />
-        Running
-      </label>
+      <button className={`toggle${room.paused ? "" : " on"}`} aria-pressed={!room.paused} onClick={() => onCommand({ type: "setRoomControl", roomId: room.id, paused: !room.paused })} title={room.paused ? "Paused: its staff are free for other rooms. Click to run it again." : "Click to pause it, freeing its staff"}>
+        {room.paused ? "Paused" : "Running"}
+      </button>
       {out && (
         <label title="The room stands by, freeing its staff, while there's at least this much in store">
           <input
@@ -397,16 +456,16 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
               </label>
             )}
             {spec.staff > 0 && (
-              <label>
+              <div className="field" title="Who gets staff first when there aren't enough to go round">
                 <span className="k">Priority</span>
-                <select value={room.priority} onChange={(e) => onCommand({ type: "setPriority", roomId: room.id, priority: e.target.value as Priority })}>
+                <span className="seg">
                   {config.economy.priorities.map((p) => (
-                    <option key={p} value={p}>
+                    <button key={p} className={room.priority === p ? "on" : ""} aria-pressed={room.priority === p} onClick={() => onCommand({ type: "setPriority", roomId: room.id, priority: p as Priority })}>
                       {p[0]!.toUpperCase() + p.slice(1)}
-                    </option>
+                    </button>
                   ))}
-                </select>
-              </label>
+                </span>
+              </div>
             )}
             {spec.staff > 0 && def.buildable && <Controls room={room} s={s} onCommand={onCommand} />}
           </>
@@ -442,22 +501,19 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
           ×
         </button>
       </header>
-      {(model.status.text || model.headline.length > 0) && (
+      {model.status.text && (
         <div className="headline">
           <StatusPill status={model.status} />
-          {model.headline.map((c, i) => (
-            <ChipView key={i} chip={c} />
+        </div>
+      )}
+      {model.headline.length + model.glance.length > 0 && (
+        <div className="stats">
+          {[...model.headline, ...model.glance].map((c, i) => (
+            <StatTile key={i} chip={c} />
           ))}
         </div>
       )}
       <Alerts alerts={model.alerts} sections={model.sections} onOpen={openSection} connect={connect} />
-      {model.glance.length > 0 && (
-        <div className="glance">
-          {model.glance.map((c, i) => (
-            <ChipView key={i} chip={c} meter />
-          ))}
-        </div>
-      )}
       {model.sections.map((x) => (
         <SectionView key={x.id} section={x} open={isOpen(x)} onToggle={() => setOpen(x.id, !isOpen(x))}>
           {body(x)}

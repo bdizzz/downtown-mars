@@ -300,7 +300,7 @@ label.set-row { cursor: pointer; }
 .tutorial.guided .primary { align-self: flex-start; }
 /* The guided card next to what its step is about (ui/anchor.ts), with a small arrow to it. The
    wrapper is placed in real pixels; the card inside keeps the interface-size zoom. */
-.guide-anchor { position: fixed; z-index: 4; transition: left 0.2s ease, top 0.2s ease; }
+.guide-anchor { position: fixed; z-index: 12; transition: left 0.2s ease, top 0.2s ease; }
 /* A set width: the fixed wrapper shrinks to fit near the screen's edge, and a share of it would squeeze the card. */
 .guide-anchor .tutorial.anchored { position: relative; inset: auto; width: min(300px, calc(100vw - 24px)); }
 .guide-arrow {
@@ -1279,6 +1279,9 @@ kbd {
 .event-cards { top: 40px; }
 
 /* ---- What floats over the view ---- */
+/* The floor picker owns the right edge: toasts and the deputy's card keep clear of it. */
+.messages, .tutorial, .tutorial-pill { right: 84px; }
+.messages { max-width: min(380px, calc(100% - 190px)); font-size: 12.5px; }
 .msg { background: var(--face); border: 1px solid var(--line); border-left: 3px solid var(--muted); border-radius: 4px; box-shadow: var(--bevel), 0 4px 14px rgba(0, 0, 0, 0.4); padding: 6px 4px 6px 10px; }
 .msg.good { border-left-color: #8fcf6f; }
 .msg.warn { border-left-color: #ff7a5c; }
@@ -1298,12 +1301,54 @@ kbd {
 .menu { padding: 22px; }
 .map-screen header, .map-screen footer { background: linear-gradient(180deg, #37221b, #2a1814); }
 .site-panel { background: linear-gradient(180deg, #2f1c16, #24140f); box-shadow: inset 1px 0 0 rgba(160, 122, 92, 0.22); }
-/* The room panel: its sections as shelves. */
+/* The room panel: a status pill, figures at a glance as labelled tiles, the two worst alerts, then its sections as shelves. */
 .room-panel .fold { border-top: 1px solid rgba(160, 122, 92, 0.2); }
 .room-panel .fold-head { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 0; }
+.room-panel .fold-body { gap: 5px; padding: 0 0 8px; }
 .room-panel .chip { background: var(--well); border: 1px solid var(--line); }
-.room-panel .alerts { border-color: rgba(160, 122, 92, 0.2); }
-.room-panel .glance { padding: 2px 0; }
+.room-panel .pill { font-family: var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; font-size: 11px; padding: 2px 10px; }
+.room-panel .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.room-panel .stat {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 4px 6px 5px; cursor: default;
+  background: var(--well); border: 1px solid var(--line); border-radius: 4px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.room-panel .stat-k { font-family: var(--font-display); font-size: 9px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-panel .stat-v { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--tone, var(--text)); white-space: nowrap; }
+.room-panel .stat .meter { min-width: 0; }
+.room-panel .alerts { border: none; padding: 0; gap: 3px; }
+.room-panel .alert { padding: 3px 7px; border-radius: 4px; border-left: 3px solid var(--tone); background: color-mix(in srgb, var(--tone) 10%, transparent); }
+.room-panel .alerts .more { align-self: flex-start; background: none; border: none; color: var(--muted); font: inherit; font-size: 11px; padding: 0 0 0 10px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.room-panel .alerts .more:hover { color: var(--text); }
+/* Rows as a table: icon, label, value; a breakdown's causes on a quieter line under its figure. */
+.room-panel .row { display: grid; grid-template-columns: 14px 78px minmax(0, 1fr); column-gap: 6px; align-items: baseline; line-height: 1.35; }
+.room-panel .row.wide .v { grid-column: 2 / -1; }
+.room-panel .row .k { margin: 0; font-size: 12px; }
+.room-panel .row .v b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.room-panel .row .v small { display: block; font-size: 11.5px; color: var(--muted); }
+.room-panel .row.tone-warn .v small, .room-panel .row.tone-bad .v small { color: inherit; opacity: 0.8; }
+/* The room's controls: a label, then the choice. */
+.room-panel .field, .room-panel label:has(select), .room-panel label:has(input[type="range"]) { display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding-left: 20px; }
+.room-panel .field .k, .room-panel label .k { margin: 0; font-size: 12px; }
+.room-panel .field .seg { align-self: center; }
+.room-panel .field .seg button { padding: 2px 6px; font-size: 11.5px; flex: 1; justify-content: center; }
+.room-panel input[type="range"] { accent-color: var(--accent); min-width: 0; }
+.inspector .controls { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-left: 20px; margin: 2px 0; }
+.choices { display: flex; flex-direction: column; gap: 3px; }
+.choices > .btn { align-self: flex-start; }
+.choices > .btn .chev { transition: transform 0.12s; color: var(--muted); }
+.choices > .btn.on .chev { transform: rotate(90deg); }
+.choice-list { display: flex; flex-direction: column; gap: 2px; padding: 3px; background: var(--well); border: 1px solid var(--line); border-radius: 4px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45); }
+.choice-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 0 8px; text-align: left; background: transparent; color: var(--text); font: inherit; font-size: 12px;
+  border: 1px solid transparent; border-radius: 3px; padding: 3px 6px; cursor: pointer;
+}
+.choice-row:hover:not(:disabled) { background: var(--hover); border-color: var(--edge); }
+.choice-row .name { font-weight: 500; }
+.choice-row .takes { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.choice-row .gain { grid-column: 1 / -1; font-size: 11px; color: var(--tone-good); }
+.choice-row .gain.no { color: var(--tone-bad); }
+.choice-row:disabled { cursor: not-allowed; }
+.choice-row:disabled .name, .choice-row:disabled .takes { opacity: 0.5; }
 
 /* ---- Phones ---- */
 @media (max-width: 760px) {
@@ -1316,6 +1361,8 @@ kbd {
   .cam-readout, .event-cards { left: 62px; }
   .tool-bar .dock-hint { display: none; }
   .inspector { width: auto; }
+  .messages, .tutorial, .tutorial-pill { right: 6px; }
+  .messages { max-width: calc(100% - 70px); }
   /* Beside the rail, not under it. */
   .tutorial, .event-cards { width: min(300px, calc(100% - 74px)); }
 }
