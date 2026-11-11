@@ -3,8 +3,9 @@ import { roomDefs } from "../sim/rooms";
 import { touchFirst } from "../view/touch";
 
 const GENERAL: [string, string][] = [
-  ["Modes", "Build, View, Map and Charts, bottom right: each opens its buttons along the bottom (again to close). Only Build places rooms and corridors"],
-  ["B", "Build mode (the rooms' keys, on the right, work only in Build)"],
+  ["Build", "The rail down the left: open a group, pick a room, click where it goes. What's in hand shows its choices (size, walls, the corridor tool's jobs) along the bottom"],
+  ["Modes", "View, Map and Charts, bottom right: each opens its buttons along the bottom (again to close)"],
+  ["B", "Build: opens the rail's last group (the rooms' keys, on the right, work only in Build)"],
   ["V", "View mode: cameras, plan and unrolled views, overlays"],
   ["C", "Charts mode: people, flows, network, construction"],
   ["M", "Map mode: the planet"],
@@ -37,7 +38,8 @@ const TOUCH: [string, string][] = [
   ["Drag", "3D: turn round the hole (Free view: drag up and down to tilt). Plan and Unrolled: pan. With the corridor tool: draw"],
   ["Two fingers", "Pinch to zoom, twist to turn, move together to pan (in the side-on views, to go up and down)"],
   ["Stick", "First person: the stick bottom left walks (all the way runs); drag elsewhere to look; ▲ ▼ take the stairs; ☕ grabs a hot drink at a kitchenette or serving counter"],
-  ["Modes", "Build, View, Map and Charts along the bottom; tap the view to fold a room list away"],
+  ["Build", "The rail down the left; tap the view to fold a room list away"],
+  ["Modes", "View, Map and Charts along the bottom"],
 ];
 
 export function Help({ onClose }: { onClose: () => void }) {

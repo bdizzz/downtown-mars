@@ -341,3 +341,13 @@ Deliberately not decided yet:
 - **Smaller items:** difficulty settings, accessibility, mod support.
 - **Trademark check** for "Downtown Mars."
 - **Web or Godot, and the repo's layout.** The Godot viewer (`godot/`) is close to parity with the web game, with the sim still in TypeScript; whether it becomes the main version (and the sim moves to C#) isn't decided. Moving the web code into its own folder was considered (Oct 3) and held off: if it's done, split into `core/` (sim and shared view code), `web/`, `godot/` and `bridge/`, not a bare `web/`.
+
+## Decided for the interface pass (Nov 11, in conversation)
+
+- **Build is a rail down the left edge**, not a mode button with a strip of fifteen categories. Seven groups (`BUILD_GROUPS` in `view/buildCatalog.ts`), each a list of tiles with costs; opening one turns Build mode on, and B opens the last. The dock keeps View, Map and Charts. On phones the rail is icons only.
+- **Sizes and grades of one thing are one tile.** Rooms share a `family` in `data/rooms.json` (named in its `families`): stairs, lifts, empty rooms, plazas, storage, and each tier of home. The tile hands you the member last picked; the tool bar's picker swaps it.
+- **Choices show only for what's in hand**, in a tool bar along the bottom: size, rotation and walls for a room; the corridor tool's jobs, finish and Erase. Walls are a material plus a fine-finish toggle, not eight chips. Nothing in hand, no bar.
+- **Room cards are facts, not prose:** cost and work-hours, a table (staff, uses, makes), effects as chips, and only the notes particular to the room. The universal ones ("needs a corridor along one side") are gone from the card; `roomCard` still returns the full lines for Godot.
+- **The resource bar is quiet by default** (vitals, life support, eating, and any stock not fine), with Stock to open the rest and a setting to show everything. The guided tutorial always shows everything it has revealed.
+- **The look is bolder game chrome:** framed panels with a bevel and bronze corner ticks, headings in a display face (Chakra Petch) over Space Grotesk, raised buttons, joined button sets, keycaps. The tokens are at the top of `ui/styles.css`, the chrome in its last section. The yellow frame round the screen in Build is gone: the rail and the tool bar glow instead.
+- **Web only for now.** Godot keeps its palette of categories; see "Status and next" in `PLAN-GODOT.md`.

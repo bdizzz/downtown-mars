@@ -76,7 +76,7 @@
         "id": "galley",
         "check": "galley",
         "text": "Twenty people and nowhere to cook. Let's build a galley in ring 1, right on the shaft.",
-        "hint": "Click Build at the bottom right, then Food, then Galley, and click a free spot in ring 1.",
+        "hint": "On the build rail down the left, click Food & water, then Galley, and click a free spot in ring 1.",
         "highlight": "room:galley",
         "unlocks": ["mode:build", "room:galley"],
         "pace": "slow",
@@ -86,7 +86,7 @@
         "id": "restroom",
         "check": "restroom",
         "text": "Next, a restroom. People like one within a short walk of home.",
-        "hint": "In Build, open Water and pick the restroom. Ring 1 is fine.",
+        "hint": "On the build rail, open Food & water and pick the restroom. Ring 1 is fine.",
         "highlight": "room:restroom",
         "unlocks": ["room:restroom"],
         "pace": "slow"
@@ -95,7 +95,7 @@
         "id": "dorm",
         "check": "dorm",
         "text": "The pod is cramped. Let's give people somewhere to sleep: a bunk dorm, away from anything noisy.",
-        "hint": "In Build, open Housing and pick the bunk dorm. New rooms take a while to dig and build: you'll see them fill in.",
+        "hint": "On the build rail, open Homes and pick the bunk dorm. New rooms take a while to dig and build: you'll see them fill in.",
         "highlight": "room:bunk_dorm",
         "unlocks": ["room:bunk_dorm"],
         "pace": "slow"
@@ -104,7 +104,7 @@
         "id": "farm",
         "check": "farm",
         "text": "The rations Earth sent won't last forever. A farm grows food: let's put one in ring 2.",
-        "hint": "In Build, open Food and pick the farm. It needs soil, water, power and CO2, and it's a bit smelly, so not right next to homes.",
+        "hint": "On the build rail, open Food & water and pick the farm. It needs soil, water, power and CO2, and it's a bit smelly, so not right next to homes.",
         "highlight": "room:farm",
         "unlocks": ["room:farm"],
         "pace": "slow"
@@ -113,7 +113,7 @@
         "id": "corridor",
         "check": "farm_linked",
         "text": "Rooms behind ring 1 need a corridor back to the shaft, or nobody can get to them. Carve one along the borders between rooms, out to the farm.",
-        "hint": "In Build, open Access and pick Corridors, then drag along the edges between rooms. Or click the farm and press Connect.",
+        "hint": "On the build rail, open Access and pick Corridors, then drag along the edges between rooms. Or click the farm and press Connect.",
         "highlight": "tool:corridors",
         "unlocks": ["tool:corridors"],
         "pace": "slow",
@@ -174,7 +174,7 @@
     {
       "id": "galley",
       "text": "Twenty people and nowhere to cook. Put a galley in ring 1, on the shaft.",
-      "hint": "Press B for Build, then G for a galley (or Build, bottom right, then Food), and click a free slot in ring 1. A kitchen plus a canteen does the same job.",
+      "hint": "Press B for Build, then G for a galley (or Food & water on the left, then Galley), and click a free slot in ring 1. A kitchen plus a canteen does the same job.",
       "highlight": "room:galley"
     },
     {
@@ -198,7 +198,7 @@
     {
       "id": "electrolyzer",
       "text": "Every room we dig is new space to fill with air. An electrolyzer splits water into oxygen, and only runs when the air needs it.",
-      "hint": "In Build (B), open Air and pick the electrolyzer. It takes 2 slots; ring 2 is fine.",
+      "hint": "In Build (B), open Air & power and pick the electrolyzer. It takes 2 slots; ring 2 is fine.",
       "highlight": "room:electrolyzer"
     },
     {
@@ -271,7 +271,7 @@
       "id": "bulkheads",
       "causes": ["happiness:smell", "happiness:airQuality"],
       "text": "Smell and stale air ride the corridors, the way they would in a ship. That's what bulkheads are for: a sealed door on a corridor stops them getting past.",
-      "hint": "In Build (B), press Z for corridors, then pick Bulkhead and click the corridor between the smelly rooms (galleys, farms, composters, smelters) and the homes. Show me lights up who's making it and who's feeling it."
+      "hint": "In Build (B), press Z for corridors, then pick Bulkhead in the tool bar and click the corridor between the smelly rooms (galleys, farms, composters, smelters) and the homes. Show me lights up who's making it and who's feeling it."
     },
     {
       "id": "restrooms",
@@ -289,7 +289,7 @@
       "id": "oxygen",
       "causes": ["health:o2"],
       "text": "The air's getting thin. Below 18% oxygen people start to suffer.",
-      "hint": "An electrolyzer (in Build, under Air) splits water into oxygen; a CO2 scrubber turns CO2 back into it. Every room you dig is more air to fill."
+      "hint": "An electrolyzer (in Build, under Air & power) splits water into oxygen; a CO2 scrubber turns CO2 back into it. Every room you dig is more air to fill."
     },
     {
       "id": "meals",

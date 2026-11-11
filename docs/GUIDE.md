@@ -28,7 +28,7 @@ Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists
 
 **The welcome card:** every new game (not a loaded one) opens with a short card on why you're here and why the colony goes underground: the surface is open to radiation from the Sun and deep space, so you dig. Only Mars and the hole show behind it, and the game waits; **And so it begins...** brings in the rest of the interface and starts the clock at 1×; **I'm new to games like this** starts the guided tutorial instead. Its text is in `data/tutorial.json` (`welcome`).
 
-**The guided tutorial:** for people new to city builders. It starts with almost nothing on screen, just the clock and the speed buttons, and your deputy brings in the rest one piece at a time, each with a soft glow as it appears; anything not shown yet doesn't answer to its key either. The deputy's card sits next to whatever the step is about (beside the floor picker, above or below everything else), with a small arrow to it, and follows along as you click your way there (Build, then the category, then the room); steps with nothing on screen to point at keep it in the corner. The game runs at half speed, pauses on steps with something to read (**Got it** goes on), and each step moves on by itself once it's done. In order: the speed buttons; the drill (and its pause, up top); the floor picker down the side (click F1 to go on); the hole and its rings; the landing kit (click one of its rooms); the resources and what needs you; a galley, a restroom and a bunk dorm (Build shows only the room you're on, and the ones before it); a farm in ring 2 and a corridor out to it; waiting for the first supply drop; the office; Charts and Flows; View and the noise overlay. Until that last one is done there are no dust storms, belt ships, celebrations or drill finds. Then **Show me everything** brings in the whole interface. **Show everything** leaves the guide at any point, with everything at once, for the regular tutorial. A saved game carries on where it was.
+**The guided tutorial:** for people new to city builders. It starts with almost nothing on screen, just the clock and the speed buttons, and your deputy brings in the rest one piece at a time, each with a soft glow as it appears; anything not shown yet doesn't answer to its key either. The deputy's card sits next to whatever the step is about (beside the floor picker, above or below everything else), with a small arrow to it, and follows along as you click your way there (the group on the build rail, then the room); steps with nothing on screen to point at keep it in the corner. The game runs at half speed, pauses on steps with something to read (**Got it** goes on), and each step moves on by itself once it's done. In order: the speed buttons; the drill (and its pause, up top); the floor picker down the side (click F1 to go on); the hole and its rings; the landing kit (click one of its rooms); the resources and what needs you; a galley, a restroom and a bunk dorm (Build shows only the room you're on, and the ones before it); a farm in ring 2 and a corridor out to it; waiting for the first supply drop; the office; Charts and Flows; View and the noise overlay. Until that last one is done there are no dust storms, belt ships, celebrations or drill finds. Then **Show me everything** brings in the whole interface. **Show everything** leaves the guide at any point, with everything at once, for the regular tutorial. A saved game carries on where it was.
 
 **The tutorial:** your deputy's card (bottom right) gives one goal at a time, with a hint and a dot per goal. The goals can be met in any order: **‹** and **›**, or a dot, show another step, and done ones show ticked. The card stays on the step you picked until you meet it, then moves on to the next one not done yet. – shrinks it; **Hide tutorial** puts it away (**Settings → Game → Tutorial** brings it back). When the card gets to the office step and nobody's there, someone drops by just to say hi, and waits for as long as it takes; saying hello (or answering anyone) ticks the step. The guided tutorial's office step works the same way.
 
@@ -44,7 +44,7 @@ Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists
 
 ## Building
 
-Open **Build** (B), pick a room from its category (or press its key: room keys work only in Build), then click a slot. Green means it fits; red says why not. With a surface room in hand (solar arrays, the landing pad), every free spot round the hole it fits on is tinted faintly green on the ground, and the one under the pointer brighter.
+Open a group on the **build rail** down the left edge (or press B), pick a room from its list (or press its key: room keys work only in Build), then click a slot. Green means it fits; red says why not. With a surface room in hand (solar arrays, the landing pad), every free spot round the hole it fits on is tinted faintly green on the ground, and the one under the pointer brighter.
 
 ### Tubes and corridors
 
@@ -64,7 +64,7 @@ Open **Build** (B), pick a room from its category (or press its key: room keys w
 
 ### Refits and salvage
 
-- **Building in a material:** above each category's rooms in Build, **Built in** picks the lining new rooms go in. It's **bare rock** each time you open Build and stays on what you pick while you place room after room. A room built in brick (say) pays its own cost plus the brick a refit from bare rock would cost, but takes only its own build time: no refit afterwards. Undo and cancelling refund the lining too. Stairs, lifts, empty rooms and surface buildings ignore it and go in bare rock.
+- **Building in a material:** with a room in hand, **Walls** in the tool bar along the bottom picks the lining new rooms go in: a material (rock, marscrete, brick, metal) and whether it's finely finished. It's **bare rock** each time you open Build and stays on what you pick while you place room after room. A room built in brick (say) pays its own cost plus the brick a refit from bare rock would cost, but takes only its own build time: no refit afterwards. Undo and cancelling refund the lining too. Stairs, lifts, empty rooms and surface buildings ignore it and go in bare rock.
 - Otherwise every room is carved from **bare rock**. Its panel's **Refit** picker lines the walls in smoothed rock, marscrete, polished marscrete, brick, patterned brick, metal panels or inlaid metal, each showing the comfort it gives (homes in full, rooms people share for everyone), how much slower the room wears, the cost and the work. Bigger rooms cost more: the price is per 10 m cell.
 - Skipping a step costs both (bare rock straight to patterned brick pays for the brick and the pattern). Any lining can change to any other, including back to bare rock.
 - **Salvage:** taking brick or metal out gives half of it back (rounded down) when the job is done; the inlay's glass and smoothed rock's rock are lost. Stripping takes half the lining's work.
@@ -75,7 +75,7 @@ Open **Build** (B), pick a room from its category (or press its key: room keys w
 
 ### The shaft dome
 
-A hole's crowning work (Build → Public, from 300 colonists; glass, metal, machinery and electronics, and a long build). It seals the top of the shaft:
+A hole's crowning work (Build → Community, from 300 colonists; glass, metal, machinery and electronics, and a long build). It seals the top of the shaft:
 
 - every gallery becomes open walkway, and the shaft becomes an atrium (more comfort facing it);
 - the air freshens everywhere;
@@ -93,8 +93,8 @@ Pause any staffed room, or have it stop at a stock level, from its Work section.
 - The first floors go quickly; from floor 4 on, each floor takes twice as long (`digging.slowFromFloor`, `slowFactor`).
 - A new hole starts with only ring 1 of floor 1 dug out (and the landing kit's rooms and corridor in rings 2 and 3). Every other slot is solid rock until it's dug out.
 - A room placed on rock is excavated first (3 hours a slot, bringing up its rock and whatever the hole sits on), then built.
-- An **excavator bay** (Build → Construction) speeds the drill: half as fast again at full staff, each, so floors and their rock come sooner. It's noisy.
-- **Empty rooms** (Build → Excavation) dig ahead for rock and space. Dug-out space with nothing in it has pillars and no walls, and is walk-through like a plaza; demolishing a room leaves it.
+- An **excavator bay** (Build → Industry) speeds the drill: half as fast again at full staff, each, so floors and their rock come sooner. It's noisy.
+- **Empty rooms** (Build → Access) dig ahead for rock and space. Dug-out space with nothing in it has pillars and no walls, and is walk-through like a plaza; demolishing a room leaves it.
 
 ## Getting in and out
 
@@ -137,7 +137,7 @@ What people use counts by how far they'd walk. A step is about a room across, al
 - **Amenities:** **plazas**, **parks** and **gyms** lift the homes within their reach (parks and plazas comfort, gyms wellbeing), less the further off. The nearest of each kind counts, so spread them out. Parks, plazas and canteens also cheer the rooms right next to them a little.
 - **Restrooms:** each has places for 25, going to the homes nearest it first, within 6 steps. People without one within reach lose comfort at home (up to −1), and a restroom close by is a small plus. Studios, apartments and the finer homes have their own bathroom and need none; the landing pod and bunk dorms do. Only when fewer than half the colony has a restroom does health suffer too.
 - At 50 colonists, gyms and parks (a park makes a little oxygen, and is walk-through like a plaza). At 300, a **hospital**: care for 400 within 16 steps. At 500, the large **plaza**: comfort within 8 steps, and a good deal for the rooms around it.
-- A **lounge** (Build → Public, from the start) is a small den of couches, a TV, a games table and arcade cabinets. It needs no staff and a little power, and cheers the rooms up to two slots away: put one among homes.
+- A **lounge** (Build → Community, from the start) is a small den of couches, a TV, a games table and arcade cabinets. It needs no staff and a little power, and cheers the rooms up to two slots away: put one among homes.
 - At 200 colonists, the **spiral stair**: a handsome two-floor link that cheers the rooms beside it. In first person you take it like an elevator (R or F), rather than walking it.
 - **Seeing reach:** while placing a room, the line at the bottom says what it would reach on foot ("On foot: Park 1 · Clinic 2 · Galley 3"). Select a galley, restroom, clinic, school, park or gym with no overlay on to see the homes it reaches in green and those it doesn't in red.
 
@@ -172,7 +172,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 - It goes stale away from the air trunk in the shaft wall (ring 3 starts at −1).
 - Smelters, brickworks and concrete plants foul it for the rooms down the corridors from them, fading with every step.
 - At home, stale air costs wellbeing (and so happiness). Crowded homes get stuffy.
-- **Ventilation hubs** (Build → Air) scrub and freshen the air for the rooms along the network from them, and parks help a little.
+- **Ventilation hubs** (Build → Air & power) scrub and freshen the air for the rooms along the network from them, and parks help a little.
 - Smell travels the same way, and leaks into the room next door as well.
 - The entrance's airlock lets in Mars dust, fouling the air down the corridors from it, twice as badly in a dust storm.
 - **Bulkheads** (the corridor tool's Bulkhead button: click a corridor, 2 metal) seal a corridor against air and smell; people pass through.
@@ -188,7 +188,7 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 
 - Rooms wear down once they're built (all but the entrance, stairs, elevators and the service rooms), and look grubbier as they do.
 - Below 50%, people in and around them get unhappy (more so for homes, galleys, restrooms and clinics); below 30% they work 30% slower; at 0% they stop. Now and then something breaks and knocks a room down 20 or 30 points.
-- **Maintenance** rooms (Build → Services) repair rooms back to 100%, one room per maintenance room at a time, taking the worst from the hole's queue (rooms at 60% or below). They use machinery.
+- **Maintenance** rooms (Build → Industry) repair rooms back to 100%, one room per maintenance room at a time, taking the worst from the hole's queue (rooms at 60% or below). They use machinery.
 - From 150 colonists, **cleaning services** do the same for homes and other rooms people share, using clean water.
 - Understaffed crews work slower; a crew that stops hands its room back, part-done, to the front of the queue. A crew with nothing to repair stands by, using power but no machinery or water.
 - Every room is carved from **bare rock**; the room panel's **Walls** row says what its lining is and what that gives. Brick and metal linings (a refit: see Building → Refits and salvage) make homes more comfortable, make shared rooms nicer for everyone, and wear more slowly (workshops and plants twice as much).
@@ -223,7 +223,8 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 
 Four buttons at the bottom right, as in SimCity. B, V, M and C open them from anywhere. Pick the open mode again to close it; Esc steps back one thing at a time.
 
-- **Build** opens a strip of room categories along the bottom. Pick one (Storage, say) and its rooms pop up above it, with each room's details as you point at it. Demolish and Undo sit at the end. Only Build places rooms and corridors. The rooms' keys (and Z for corridors, X to demolish, R to rotate) work only in Build; outside it, bare rock doesn't light up under the pointer.
+- **Build** is the rail down the left edge: seven groups (Access, Homes, Food & water, Air & power, Community, Industry, Storage), then Demolish and Undo. Open a group and its rooms list beside it, each with its cost, and the details of the one you point at: cost and build time, a short table (staff, what it uses and makes), and what it does to its neighbours as chips. Rooms that are sizes or grades of one thing (storeroom, warehouse and depot; the three plazas; empty rooms; stairs; lifts; each tier of home) share one tile. While something is in hand a **tool bar** runs along the bottom with just its choices: the size (for a family), which way round (R), the walls, and what it all costs; for corridors, what the tool does (Draw, Bulkhead, Windows, Refit), the finish, and Erase. **Done** (or Esc, or right-click) puts it down. Only Build places rooms and corridors. The rooms' keys (and Z for corridors, X to demolish, R to rotate) work only in Build; outside it, bare rock doesn't light up under the pointer.
+- **The resource bar** is quiet by default: the colony's vitals, life support, what you're eating, and any stock that's short, in trouble or full. **Stock** shows the rest until you close it again; **Settings → Display → Show every resource** keeps them all showing.
 - **View** has the 3D cameras, the plan and unrolled views, walls down, room colours, room tints, Flows and the overlays.
   - **Room tints** (on by default) marks rooms by tinting their walls and floor: brighter when pointed at or picked, pulsing when in trouble. Off, they're outlined in those colours instead.
   - **Room colours** off shows each room in what its walls are lined with: bare or smoothed rock, plain or polished marscrete, plain or patterned brick, metal panels or inlaid metal (stairs, lifts and the entrance in what they're built from). A room being refitted has a band of hazard stripes along the tops of its walls. On, walls and floors take the room's category colour, but the floor keeps its material's texture, only tinted. A room with fibre-composite panels has them underfoot either way: warm woven tiles, whatever its walls are. Either way, the walls along a lined corridor are in the corridor's lining.

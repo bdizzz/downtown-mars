@@ -1015,8 +1015,9 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   border-bottom: 1px solid transparent; border-image: linear-gradient(90deg, var(--accent), rgba(224, 122, 63, 0.15) 70%, transparent) 1;
 }
 .panel-head h2, .inspector > header h2, .site-panel > header h3, .menu h2, .map-screen h2, .corridor-confirm h3, .weather-card h3 {
-  margin: 0; flex: 1; min-width: 0; font-family: var(--font-display); font-weight: 600; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase;
+  margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase;
 }
+.panel-head h2, .inspector > header h2, .site-panel > header h3 { flex: 1; min-width: 0; }
 .menu h2 { font-size: 17px; color: var(--accent-hi); }
 .welcome h2 { text-transform: none; letter-spacing: 0.02em; font-size: 25px; }
 .panel-head > .ico { color: var(--accent); }
@@ -1272,7 +1273,7 @@ kbd {
 .tool-cost { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
 .tool-cost.short { color: #ff8a6c; }
 .tool-bar .done { margin-left: auto; }
-.tool-bar .dock-hint { margin-left: 0; padding-left: 0; }
+.tool-bar .dock-hint { margin-left: 0; padding-left: 0; flex: 1 1 80px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Clear of the rail. */
 .cam-readout, .event-cards { left: 90px; }
 .event-cards { top: 40px; }
@@ -1315,4 +1316,6 @@ kbd {
   .cam-readout, .event-cards { left: 62px; }
   .tool-bar .dock-hint { display: none; }
   .inspector { width: auto; }
+  /* Beside the rail, not under it. */
+  .tutorial, .event-cards { width: min(300px, calc(100% - 74px)); }
 }
