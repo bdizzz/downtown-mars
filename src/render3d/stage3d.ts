@@ -5,6 +5,7 @@ import { previewEffects } from "../sim/effects";
 import type { Hole } from "../sim/geometry";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
+import { cropStagesKey } from "../view/furnish";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
 import { aimKeyFor, clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
@@ -2461,7 +2462,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const grime = new Map(snapshot.layout.rooms.map((r) => [r.id, grimeLevel(r)]));
       const grimeKey = [...grime.values()].join("");
       const refits = refitRooms(snapshot.construction.jobs, snapshot.layout.rooms);
-      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${cut()}:${view.roomColors}:${grimeKey}:${[...refits].join(",")}`;
+      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${cut()}:${view.roomColors}:${grimeKey}:${[...refits].join(",")}:${cropStagesKey(snapshot.layout)}`;
       if (lk !== layoutKey) {
         layoutKey = lk;
         scene.remove(layoutGroup);

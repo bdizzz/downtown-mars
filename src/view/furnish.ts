@@ -1,4 +1,6 @@
 import raw from "../../data/layouts.json";
+import growthRaw from "../../data/growth.json";
+import { farmCrop } from "../sim/food";
 import { corridors } from "../sim/corridors";
 import { edgeById } from "../sim/edges";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
@@ -50,6 +52,8 @@ export interface Placed {
   y: number;
   z: number;
   turn: number;
+  /** A crop's planter or rack: how far its crop has grown, by GROWTH.stages' index (absent: fully grown, as in the catalog). */
+  stage?: number;
 }
 
 /** A placed item with what the editor needs: which placement made it, and its footprint's corners on the floor. */
@@ -452,10 +456,70 @@ export function furnish(layout: Layout, room: RoomInstance, templates: Record<st
     const frame = template && frameOf(layout, room, floor);
     if (frame && template) out.push(...fit(frame, varied(template, room)));
   }
-  // A farm shows what it grows: its planters and racks swap for that crop's (same footprints).
+  // A farm shows what it grows: its planters and racks swap for that crop's (same footprints),
+  // grown as far as its harvest counter has gone.
   const crop = room.crop ?? roomDef(room.type).defaultCrop;
-  if (crop) for (const f of out) f.item = cropVariant(f.item, crop);
+  if (crop) {
+    const stage = cropStage(room);
+    for (const f of out) {
+      f.item = cropVariant(f.item, crop);
+      if (growsCrop(f.item)) f.stage = stage;
+    }
+  }
   return out;
+}
+
+export interface GrowthStage {
+  id: string;
+  name: string;
+  /** Reached at this share of the grow time. */
+  from: number;
+  /** The growing parts' size, 0..1. */
+  scale: number;
+  /** Tubers, flowers, grain heads and pods show. */
+  produce: boolean;
+}
+
+/** The growth stages a farm's planters go through (data/growth.json). */
+export const GROWTH = growthRaw as { stages: GrowthStage[]; growing: string[]; produce: string[] };
+const GROWING = new Set(GROWTH.growing);
+const PRODUCE = new Set(GROWTH.produce);
+
+/** A farm's growth stage, by GROWTH.stages' index, from its harvest counter (a farm with no counter yet: just planted). */
+export function cropStage(room: RoomInstance): number {
+  const crop = farmCrop(room);
+  if (!crop) return GROWTH.stages.length - 1;
+  const share = (room.growth?.days ?? 0) / crop.growMonths;
+  let stage = 0;
+  GROWTH.stages.forEach((s, i) => {
+    if (share >= s.from) stage = i;
+  });
+  return stage;
+}
+
+/** Every farm's growth stage, for the 3D views' rebuild keys: they rebuild a farm's furniture only when it changes stage. */
+export function cropStagesKey(layout: Layout): string {
+  return layout.rooms
+    .filter((r) => r.growth && roomDef(r.type).growsCrops)
+    .map((r) => `${r.id}.${cropStage(r)}`)
+    .join(",");
+}
+
+/** Whether an item has a crop in it that grows (a planter or rack), so it goes through the stages. */
+export function growsCrop(item: string): boolean {
+  return isItem(item) && itemDef(item).parts.some((p) => GROWING.has(p.c) || PRODUCE.has(p.c));
+}
+
+/**
+ * How a part (or model slot) of colour `c` looks at a growth stage: its scale about its own foot
+ * (0: not there at all). Parts that don't grow keep their size.
+ */
+export function stageScale(c: string, stage: number | undefined): number {
+  if (stage === undefined) return 1;
+  const s = GROWTH.stages[stage];
+  if (!s) return 1;
+  if (PRODUCE.has(c)) return s.produce ? 1 : 0;
+  return GROWING.has(c) ? s.scale : 1;
 }
 
 // ---- variety: no two rooms of a kind quite alike ----

@@ -6,7 +6,7 @@ import { buildLayout, disposeLayout } from "../render3d/rooms3d";
 import { floorAtY } from "../render3d/cylinder";
 import { overheadLights, type Overhead } from "../view/overheads";
 import type { Lamp } from "../render3d/lights3d";
-import type { Placed } from "../view/furnish";
+import { cropStagesKey, type Placed } from "../view/furnish";
 import { occupied, type RoomSpots } from "../render3d/people3d";
 import { gameTime } from "../sim/clock";
 import { tubeRuns, type TubeRun } from "../view/gallery";
@@ -81,7 +81,7 @@ export interface SceneMessage {
 export function sceneKey(state: SimState, gameId: number, topFloor: number | null, roomColors = true): string {
   const grime = state.layout.rooms.map(grimeLevel).join("");
   const refits = [...refitting(state)].join(",");
-  return `${gameId}:${state.holeId}:${state.layout.version}:${drillFloor(state)}:${topFloor}:${roomColors}:${grime}:${refits}`;
+  return `${gameId}:${state.holeId}:${state.layout.version}:${drillFloor(state)}:${topFloor}:${roomColors}:${grime}:${refits}:${cropStagesKey(state.layout)}`;
 }
 
 /** Rooms being refitted, whose walls carry the hazard band (their materials end in ":refit"). */
@@ -217,7 +217,8 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     const accent = indexIn(accents, g.userData.accent as string);
     // A wall hanging carries its wall (as rooms3d.ts hangTag): normal, bottom and top, and the point on it behind the item.
     for (const p of g.userData.placed as (Placed & { hang?: { nx: number; nz: number; at: [number, number, number]; y0: number; y1: number; ax: number; az: number } })[]) {
-      const base = [indexIn(items, p.item), accent, round(p.x), round(p.y), round(p.z), round(p.turn)];
+      // A crop's planter at a growth stage goes as "item#stage" (Godot's Furniture.cs builds that stage's look).
+      const base = [indexIn(items, p.stage === undefined ? p.item : `${p.item}#${p.stage}`), accent, round(p.x), round(p.y), round(p.z), round(p.turn)];
       placed.push(p.hang ? [...base, round(p.hang.nx), round(p.hang.nz), round(p.hang.y0), round(p.hang.y1), round(p.hang.ax), round(p.hang.az), ...p.hang.at.map(round)] : base);
     }
     g.removeFromParent();

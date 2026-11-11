@@ -1,3 +1,4 @@
+import { variety, type Growth, type Variety } from "./food";
 import { maintenanceView, type MaintenanceView } from "./condition";
 import { currentDifficulty, type Level } from "./difficulty";
 import { airView, type AirView } from "./air";
@@ -184,6 +185,8 @@ export interface Snapshot {
    * version moves, so it's sent on its own and put back on the rooms there.
    */
   conditions: Record<number, number>;
+  /** Each farm's harvest cycle, which moves every tick: the main thread puts it back on the rooms it keeps (food.ts). */
+  growth: Record<number, Growth>;
   beds: number;
   messages: Message[];
   happiness: Happiness;
@@ -209,6 +212,8 @@ export interface Snapshot {
   milestones: ReachedMilestone[];
   /** How far along each counted milestone not yet reached is (people, floors, children born…), for the panel. */
   milestoneProgress: Record<string, number>;
+  /** Raw food by type (crop id, or mixed stores), and the food variety from the meals eaten over the last month (food.ts). */
+  food: { types: Record<string, number>; variety: Variety | null };
 }
 
 function milestoneProgress(state: SimState): Record<string, number> {
@@ -298,6 +303,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     weather: { storm: stormLevel(state, cfg), dueInDays: stormDue(state, cfg), daylight: daylight(state, cfg), fullSunInDays: fullSunIn(state, cfg), report: weatherReport(state, cfg) },
     maintenance: maintenanceView(state),
     conditions: Object.fromEntries(state.layout.rooms.filter((r) => r.condition !== undefined).map((r) => [r.id, r.condition!])),
+    growth: Object.fromEntries(state.layout.rooms.filter((r) => r.growth).map((r) => [r.id, { ...r.growth! }])),
     beds: beds(state),
     messages: state.messages,
     happiness: state.happiness,
@@ -314,5 +320,6 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     events: eventsView(state),
     milestones: (state.milestones ?? []).map((m) => ({ ...m })),
     milestoneProgress: milestoneProgress(state),
+    food: { types: { ...(state.food?.types ?? {}) }, variety: variety(state) },
   };
 }

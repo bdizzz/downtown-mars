@@ -40,6 +40,9 @@ public class Furniture
 
     readonly Dictionary<string, string> _colors = new();
     readonly Dictionary<string, JsonElement> _items = new();
+    /// <summary>A crop's growth stages (data/growth.json, as src/view/furnish.ts): each one's size for growing parts, and whether produce shows.</summary>
+    readonly List<(float scale, bool produce)> _stages = new();
+    readonly HashSet<string> _growing = new(), _produce = new();
     /// <summary>Items made in Blender (#357), first person only (#360): public/models/fp.bin, read when first needed.</summary>
     Dictionary<string, FpSlot[]>? _fp;
     bool _fpTried, _firstPerson;
@@ -66,6 +69,10 @@ public class Furniture
         using var doc = JsonDocument.Parse(System.IO.File.ReadAllText(path));
         foreach (var c in doc.RootElement.GetProperty("colors").EnumerateObject()) _colors[c.Name] = c.Value.GetString()!;
         foreach (var i in doc.RootElement.GetProperty("items").EnumerateObject()) _items[i.Name] = i.Value.Clone();
+        using var growth = JsonDocument.Parse(System.IO.File.ReadAllText(ProjectSettings.GlobalizePath("res://") + "../data/growth.json"));
+        foreach (var s in growth.RootElement.GetProperty("stages").EnumerateArray()) _stages.Add((s.GetProperty("scale").GetSingle(), s.GetProperty("produce").GetBoolean()));
+        foreach (var c in growth.RootElement.GetProperty("growing").EnumerateArray()) _growing.Add(c.GetString()!);
+        foreach (var c in growth.RootElement.GetProperty("produce").EnumerateArray()) _produce.Add(c.GetString()!);
         var shader = new Shader { Code = ShaderCode };
         _materials[Kind.Plain] = Make(shader, 0.8f, 0.05f, 0, 0);
         _materials[Kind.Glow] = Make(shader, 0.4f, 0, GlowDay, 0);
@@ -319,36 +326,68 @@ public class Furniture
     /// <summary>The floor a height is on (src/render3d/cylinder.ts floorAtY, with the crust 3 m and floors 4 m).</summary>
     static int FloorAt(float y) => Mathf.FloorToInt((-y - 3) / 4) + 1;
 
-    /// <summary>An item's mesh, one surface per kind of part; vertex colour alpha 0 marks accent-coloured parts.</summary>
-    Mesh? MeshFor(string id, Lod lod)
+    /// <summary>
+    /// A part's size at a crop's growth stage, as src/view/furnish.ts stageScale: growing parts at the stage's
+    /// size, produce only when it shows (0: left out), everything else as it is.
+    /// </summary>
+    float StageScale(string c, int stage)
     {
-        if (_meshes.TryGetValue((id, lod), out var cached)) return cached;
-        if (!_items.TryGetValue(id, out var def)) return _meshes[(id, lod)] = null;
+        if (stage < 0 || stage >= _stages.Count) return 1;
+        if (_produce.Contains(c)) return _stages[stage].produce ? 1 : 0;
+        return _growing.Contains(c) ? _stages[stage].scale : 1;
+    }
+
+    /// <summary>Shrinks the vertices added since `from` toward their foot (the bottom of their bounds, in the middle), as furniture3d.ts does.</summary>
+    static void Shrink(List<Vector3> verts, int from, float k)
+    {
+        if (k >= 1 || from >= verts.Count) return;
+        var (min, max) = (verts[from], verts[from]);
+        for (var i = from; i < verts.Count; i++) (min, max) = (min.Min(verts[i]), max.Max(verts[i]));
+        var foot = new Vector3((min.X + max.X) / 2, min.Y, (min.Z + max.Z) / 2);
+        for (var i = from; i < verts.Count; i++) verts[i] = foot + (verts[i] - foot) * k;
+    }
+
+    /// <summary>An item's mesh, one surface per kind of part; vertex colour alpha 0 marks accent-coloured parts. A crop's planter at a growth stage comes as "item#stage".</summary>
+    Mesh? MeshFor(string key, Lod lod)
+    {
+        if (_meshes.TryGetValue((key, lod), out var cached)) return cached;
+        var hash = key.IndexOf('#');
+        var id = hash < 0 ? key : key[..hash];
+        var stage = hash < 0 ? -1 : int.Parse(key[(hash + 1)..]);
+        if (!_items.TryGetValue(id, out var def)) return _meshes[(key, lod)] = null;
         var far = lod == Lod.Far;
         var byKind = new Dictionary<Kind, (List<Vector3> v, List<Vector3> n, List<Color> c, List<Vector2> uv, List<Vector2> uv2)>();
         if (lod == Lod.Fp)
         {
             // Only items with a model have a first-person copy; the rest show their near parts in first person too.
-            if (_fp == null || !_fp.TryGetValue(Dev.FpStress ?? id, out var model)) return _meshes[(id, lod)] = null;
+            if (_fp == null || !_fp.TryGetValue(Dev.FpStress ?? id, out var model)) return _meshes[(key, lod)] = null;
             foreach (var slot in model)
             {
                 var c = slot.C;
+                var k = StageScale(c, stage);
+                if (k <= 0) continue;
                 var kind = slot.Glow ? Kind.Glow : PlantColors.Contains(c) ? Kind.Plant : c == "water" ? Kind.Water : Kind.Plain;
                 var color = c == "accent" ? new Color(1, 1, 1, 0) : new Color(_colors.GetValueOrDefault(c, "#ff00ff")).SrgbToLinear() with { A = 1 };
                 if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new(), new(), new());
+                var start = s.v.Count;
                 AddSlot(slot, color, PartMats.GetValueOrDefault(c, 0), s.v, s.n, s.c, s.uv, s.uv2);
+                Shrink(s.v, start, k);
             }
         }
         else foreach (var part in def.GetProperty("parts").EnumerateArray())
         {
             var c = part.GetProperty("c").GetString()!;
             if (far && part.GetProperty("z").EnumerateArray().Max(x => x.GetSingle()) < FarSmallest) continue;
+            var k = StageScale(c, stage);
+            if (k <= 0) continue;
             var kind = part.TryGetProperty("glow", out var g) && g.GetBoolean() ? Kind.Glow : PlantColors.Contains(c) ? Kind.Plant : c == "water" ? Kind.Water : Kind.Plain;
             var color = c == "accent" ? new Color(1, 1, 1, 0) : new Color(_colors.GetValueOrDefault(c, "#ff00ff")).SrgbToLinear() with { A = 1 };
             if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new(), new(), new());
+            var start = s.v.Count;
             AddPart(part, color, PartMats.GetValueOrDefault(c, 0), s.v, s.n, s.c, s.uv, far);
+            Shrink(s.v, start, k);
         }
-        if (byKind.Count == 0) return _meshes[(id, lod)] = null;
+        if (byKind.Count == 0) return _meshes[(key, lod)] = null;
         var mesh = new ArrayMesh();
         foreach (var (kind, s) in byKind)
         {
@@ -362,7 +401,7 @@ public class Furniture
             mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
             mesh.SurfaceSetMaterial(mesh.GetSurfaceCount() - 1, _materials[kind]);
         }
-        return _meshes[(id, lod)] = mesh;
+        return _meshes[(key, lod)] = mesh;
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+import { FOOD, foodTypeName, QUALITIES } from "../sim/food";
 import { config } from "../sim/config";
 import type { Snapshot } from "../sim/snapshot";
 import { CONDITION } from "../sim/condition";
@@ -17,7 +18,7 @@ import { isIcon, type IconId } from "./icons";
 // rations share one cell (EATING): what matters is how much there is to eat.
 const LIFE = ["water"] as const;
 const EATING = ["meals", "rations"] as const;
-const FOOD = ["rawFood", "soil"] as const;
+const FOOD_STOCKS = ["rawFood", "soil"] as const;
 const MATERIALS = ["rock", "brick", "metal", "machinery", "electronics"] as const;
 /** Shown only where there's some: they come from the ground under certain sites. */
 const REGIONAL = ["ore", "silica"] as const;
@@ -130,7 +131,37 @@ function eating(s: Snapshot): BarItem {
     notes: [
       `${num(v)} to eat · ${signed(rate)} a month${left !== null ? ` · ${v < EMPTY ? "none left" : `runs out in ${hoursText(left * 24)}`}` : ""}`,
       ...parts.map((p) => `${p.label}: ${p.notes[0]}${p.level === "full" ? " (storage full)" : ""}`),
+      varietyNote(s),
       "People eat meals; kitchens cook rations into meals when raw food runs short",
+    ],
+  };
+}
+
+/** The food variety, from the meals eaten this past month: its rating and the mix behind it. */
+export function varietyNote(s: Snapshot): string {
+  const v = s.food.variety;
+  if (!v) return "Food variety: not rated yet (it goes by the meals eaten over a month)";
+  const mix = QUALITIES.map((q, i) => ({ q, share: v.shares[i] ?? 0 }))
+    .filter((x) => x.share >= 0.05)
+    .map((x) => `${Math.round(x.share * 100)}% ${x.q.name.toLowerCase()}`)
+    .join(", ");
+  const felt = QUALITIES[v.rating]!.comfort;
+  return `Food variety: ${QUALITIES[v.rating]!.name} (meals this past month: ${mix})${felt ? `, ${signed(felt)} comfort` : ""}`;
+}
+
+/** Raw food, with each food type's stock: one per crop, for meal variety. */
+function rawFood(s: Snapshot): BarItem {
+  const item = stock("rawFood", s);
+  const types = Object.entries(s.food.types)
+    .filter(([, v]) => v >= 0.5)
+    .sort((a, b) => b[1] - a[1]);
+  const lines = types.map(([id, v]) => `${foodTypeName(id)}: ${num(v)}`);
+  return {
+    ...item,
+    notes: [
+      ...item.notes,
+      ...(lines.length ? [`By kind: ${lines.join(" · ")}`] : []),
+      `Galleys cook each meal from up to ${FOOD.maxTypes} kinds: the more kinds in store, the better the meals`,
     ],
   };
 }
@@ -397,7 +428,7 @@ export function barItems(s: Snapshot): BarItem[][] {
   ];
   const air = airItems(s);
   const life = [air[0]!, ...LIFE.map((id) => stock(id, s)), air[1]!];
-  const food = [eating(s), ...FOOD.map((id) => stock(id, s))];
+  const food = [eating(s), ...FOOD_STOCKS.map((id) => (id === "rawFood" ? rawFood(s) : stock(id, s)))];
   const materials = [
     ...MATERIALS.map((id) => stock(id, s)),
     ...REGIONAL.filter((id) => (s.resources[id] ?? 0) > 0 || s.holeDeposits.includes(id)).map((id) => stock(id, s)),

@@ -12,7 +12,7 @@ import { ARC_STEPS, FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openS
 import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef, hasBulkhead } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
-import { FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
+import { cropStage, FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
 import { isMounted, itemDef } from "../view/furniture";
 import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
@@ -1508,7 +1508,7 @@ function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, col
   // Stairs and elevators are furnished on several floors: above a chosen floor, theirs go too.
   // A farm's crop changes what grows in its planters.
   // Each room varies its template its own way (furnish.ts), so its id is part of the key.
-  const key = `furniture:${room.id}:${shapeKey}:${topFloor ?? "all"}:${room.crop ?? ""}:${modelsKey()}`;
+  const key = `furniture:${room.id}:${shapeKey}:${topFloor ?? "all"}:${room.crop ?? ""}:${roomDef(room.type).growsCrops ? cropStage(room) : ""}:${modelsKey()}`;
   let g = furnitureCache.get(key);
   if (!g) {
     const fitted = furnish(layout, room).filter((f) => topFloor === null || f.floor >= topFloor);

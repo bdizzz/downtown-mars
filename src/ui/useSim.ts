@@ -27,10 +27,12 @@ export function useSim() {
         if (!lastLayout.current) return;
         // Prices and thresholds the UI shows come from the same data the sim scales (F-014).
         if (rest.difficulty !== currentDifficulty()) setDifficulty(rest.difficulty);
-        // Conditions change every tick, but the layout only comes when it changes: put them back on its rooms.
+        // Conditions and farms' harvest cycles change every tick, but the layout only comes when it changes: put them back on its rooms.
         for (const r of lastLayout.current.layout.rooms) {
           const c = rest.conditions[r.id];
           if (c !== undefined) r.condition = c;
+          const g = rest.growth[r.id];
+          if (g) r.growth = g;
         }
         setSnapshot({ ...rest, ...lastLayout.current, history: lastHistory.current });
         setSpeedState(msg.speed);

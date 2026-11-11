@@ -3,7 +3,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { itemDef, partColor, type Part } from "../view/furniture";
 import { GLOW_MODE, withGlowFx, withShimmer, withSway } from "./details3d";
 import { PART_MAT, withPartPatterns } from "./surfaces";
-import type { Placed } from "../view/furnish";
+import { stageScale, type Placed } from "../view/furnish";
 import { fpModelFor, fpTextures, slotExtent, type ModelSlot } from "../view/models";
 
 // Furniture as meshes. An item is built from its parts (data/furniture.json);
@@ -239,9 +239,21 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
   const colour = new THREE.Color();
   {
     const byKind = new Map<Kind, THREE.BufferGeometry[]>();
-    /** Adds one part's (or model slot's) geometry, in its item's frame, to its kind's list. */
-    const add = (g: THREE.BufferGeometry, look: Look, tag: HangTag | undefined): void => {
+    /** Adds one part's (or model slot's) geometry, in its item's own frame, to its kind's list; a growing crop's part at its stage's size. */
+    const add = (g: THREE.BufferGeometry, look: Look, tag: HangTag | undefined, stage?: number): void => {
       const kind = kindOf(look);
+      const k = stageScale(look.c, stage);
+      if (k <= 0) {
+        g.dispose();
+        return;
+      }
+      if (k < 1) {
+        // Shrunk toward its own foot: it comes up out of the soil as it grows.
+        g.computeBoundingBox();
+        const b = g.boundingBox!;
+        const foot = new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2);
+        g.applyMatrix4(new THREE.Matrix4().makeTranslation(-foot.x, -foot.y, -foot.z)).applyMatrix4(new THREE.Matrix4().makeScale(k, k, k)).applyMatrix4(new THREE.Matrix4().makeTranslation(foot.x, foot.y, foot.z));
+      }
       g.applyMatrix4(m);
       // Parts come with uvs and models don't: nothing reads them (patterns go by position, surfaces.ts),
       // and geometries merge only with the same attributes, so a room mixing the two needs them gone.
@@ -288,12 +300,12 @@ export function furnitureMeshes(placed: Placed[], accent: string, hung?: Hung, d
       const tag = hung?.tags[i];
       const model = detail === "fp" ? fpModelFor(p.item) : undefined;
       if (model) {
-        for (const slot of model) add(slotGeometry(slot), { c: slot.c, glow: slot.glow, size: slotSize(slot), tex: slot.tex }, tag);
+        for (const slot of model) add(slotGeometry(slot), { c: slot.c, glow: slot.glow, size: slotSize(slot), tex: slot.tex }, tag, p.stage);
         return;
       }
       for (const part of def.parts) {
         if (detail === "far" && extent(part) < FAR.smallest) continue;
-        add(partGeometry(part, detail).toNonIndexed(), { c: part.c, glow: part.glow, size: extent(part) }, tag);
+        add(partGeometry(part, detail).toNonIndexed(), { c: part.c, glow: part.glow, size: extent(part) }, tag, p.stage);
       }
     });
     for (const [kind, parts] of byKind) {
