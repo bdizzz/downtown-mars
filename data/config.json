@@ -44,7 +44,7 @@
     "maxFloors": 40
   },
   "startingStock": {
-    "rations": 100, "water": 240, "soil": 40,
+    "rations": 180, "water": 240, "soil": 40,
     "rock": 160, "brick": 20, "metal": 60, "machinery": 10, "electronics": 10, "glass": 100
   },
   "colonists": {

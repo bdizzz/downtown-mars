@@ -1,3 +1,4 @@
+import { cropsNotGrown, FOOD, variety } from "./food";
 import raw from "../../data/visits.json";
 import type { SimConfig } from "./config";
 import { DIAGNOSIS, diagnose } from "./diagnosis";
@@ -25,7 +26,7 @@ export interface Outcome {
 }
 
 export interface PromiseDef {
-  check: "noiseFixed" | "clinicBuilt" | "causeFixed";
+  check: "noiseFixed" | "clinicBuilt" | "causeFixed" | "varietyUp";
   days: number;
   kept: Outcome;
   broken: Outcome;
@@ -186,7 +187,28 @@ function concernTrigger(state: SimState, cfg: SimConfig, health: boolean, again:
   };
 }
 
+// ---- meals: food variety stuck at poor, or at average (#375) ----
+
+/** The rating each meal visit is about (QUALITIES' index): its promise is kept once variety is past it. */
+const MEAL_VISITS: Record<string, number> = { poor_meals: 0, average_meals: 1 };
+
+/** Nearly every meal eaten over the last month was of this quality, and people have been eating. */
+function mealTrigger(state: SimState, kind: string): Trigger | null {
+  const level = MEAL_VISITS[kind]!;
+  const v = variety(state);
+  if (!v || v.rating !== level || (v.shares[level] ?? 0) < FOOD.visits.onlyShare) return null;
+  if (v.perMonth < FOOD.visits.minMealsPerPerson * state.population.count) return null;
+  if (state.office.promises.some((p) => p.kind === kind)) return null;
+  const crops = cropsNotGrown(state);
+  return { vars: { crops: crops.length ? orList(crops.slice(0, 3)) : "more of what we have" } };
+}
+
+/** "a, b or c". */
+const orList = (items: string[]) => (items.length < 2 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} or ${items.at(-1)}`);
+
 const TRIGGERS: Record<string, (state: SimState, cfg: SimConfig) => Trigger | null> = {
+  poor_meals: (state) => mealTrigger(state, "poor_meals"),
+  average_meals: (state) => mealTrigger(state, "average_meals"),
   noise_complaint: (state) => {
     const home = noisiestHome(state);
     if (!home) return null;
@@ -211,6 +233,7 @@ const CHECKS: Record<PromiseDef["check"], (state: SimState, p: OpenPromise) => b
   },
   clinicBuilt: (state) => hasClinic(state),
   causeFixed: (state, p) => !p.cause || causeFixed(state, p.cause),
+  varietyUp: (state, p) => (variety(state)?.rating ?? -1) > (MEAL_VISITS[p.kind] ?? Infinity),
 };
 
 // ---- helpers ----
@@ -222,7 +245,7 @@ function fill(text: string, state: SimState, notableId: number, roomId?: number,
     .replaceAll("{name}", notable?.name ?? "A colonist")
     .replaceAll("{home}", room ? roomDef(room.type).name.toLowerCase() : "homes")
     .replaceAll("{floor}", room?.at.kind === "ring" ? String(room.at.floor) : "1")
-    .replace(/\{(cause|what|amount|fix)\}/g, (m, k: string) => vars[k] ?? m)
+    .replace(/\{(cause|what|amount|fix|crops)\}/g, (m, k: string) => vars[k] ?? m)
     // A cause with no fix leaves a gap.
     .replace(/ +"(?=\s|$)/g, '"')
     .replace(/ {2,}/g, " ")

@@ -71,7 +71,8 @@ export function dailyGaps(state: SimState, cfg: SimConfig): Record<string, numbe
     waterUse += spec.uses.water ?? 0;
     waterMade += (spec.makes.water ?? 0) * rate;
     o2Made += (spec.makes.o2 ?? 0) * rate;
-    foodMade += (spec.makes.rawFood ?? 0) * rate;
+    // A farm's food counts once it has brought in a harvest: until then it's only growing.
+    if (!roomDef(room.type).growsCrops || room.growth?.harvests) foodMade += (spec.makes.rawFood ?? 0) * rate;
   }
   return {
     rations: Math.max(0, pop * (needs.meals ?? 0) - foodMade),

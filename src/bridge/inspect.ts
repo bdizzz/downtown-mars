@@ -1,9 +1,8 @@
 import * as THREE from "three";
 import { config } from "../sim/config";
 import { corridors, finishDef } from "../sim/corridors";
-import { cropDefs } from "../sim/resources";
 import type { Snapshot } from "../sim/snapshot";
-import { constructionInfo, floorOptions, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type PanelModel, type StorageInfo } from "../view/roomPanel";
+import { constructionInfo, cropOptions, floorOptions, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type PanelModel, type StorageInfo } from "../view/roomPanel";
 import { holding, roomSpec } from "../sim/economy";
 import type { SimState } from "../sim/state";
 import { roomDef } from "../sim/rooms";
@@ -96,7 +95,7 @@ export function inspect(state: SimState, s: Snapshot, roomId: number | null): In
   if (refit) msg.refit = refit.map(({ material, finish, text, refusal }) => ({ material, finish, text, refusal }));
   const floor = floorOptions(s, room);
   if (floor) msg.floor = floor.map(({ flooring, text, refusal }) => ({ flooring, text, refusal }));
-  if (def.growsCrops) msg.crop = { value: room.crop ?? "", options: cropDefs.map((c) => ({ id: c.id, label: `${c.name} (${c.group}, ${c.yield}/month)` })) };
+  if (def.growsCrops) msg.crop = { value: room.crop ?? "", options: cropOptions(room) };
   const held = holding(room);
   if (held) msg.holds = { value: held, options: (def.holds ?? []).map((id) => ({ id, label: resName(id) })) };
   if (spec.staff > 0) {

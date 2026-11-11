@@ -1,3 +1,6 @@
+import { cropMakes, farmCrop, harvestProgress, harvestSize } from "../sim/food";
+import { cropDefs } from "../sim/resources";
+import { monthsText } from "./months";
 import { config } from "../sim/config";
 import { amenityFelt, reachOf } from "../sim/amenities";
 import { holding, mainOutput, roomSpec } from "../sim/economy";
@@ -376,6 +379,7 @@ interface Entry {
 /** Each row label's icon, where it has one. */
 const ROW_ICONS: Record<string, IconId> = {
   Staff: "workers",
+  Harvest: "rawFood",
   Residents: "colonists",
   Houses: "colonists",
   Happiness: "happiness",
@@ -410,6 +414,7 @@ function panelEntries(s: Snapshot, room: RoomInstance): Entry[] {
       spec.staff > 0 ? { k: "Staff", text: `${st?.staff ?? 0} / ${spec.staff}` } : null,
       flows("Uses/month", spec.uses),
       flows("Makes/month", spec.makes),
+      harvestRow(room),
       flows("Scrubs/month", spec.scrubs),
       flows("Stores", spec.stores),
     ]),
@@ -509,6 +514,18 @@ function headlineChips(s: Snapshot, room: RoomInstance): Chip[] {
   }
   const out = mainOutput(room, config);
   if (out) chips.push({ icon: isIcon(out) ? out : "machinery", label: resName(out), value: `${num(spec.makes[out] ?? 0)}/mo`, section: "work" });
+  const harvest = harvestInfo(room);
+  if (harvest && !room.planned && !room.building) {
+    chips.push({
+      icon: isIcon(harvest.makes) ? harvest.makes : "rawFood",
+      label: "Next harvest",
+      value: `${Math.round(harvest.share * 100)}%`,
+      ...(harvest.slowed ? { tone: "warn" as const } : {}),
+      meter: { value: harvest.share, max: 1 },
+      tip: harvest.text,
+      section: "work",
+    });
+  }
   const store = storageInfo(room);
   if (store) chips.push({ icon: "crate", label: "Storage", value: `${num(store.used)}/${store.space}`, meter: { value: store.used, max: store.space }, section: "storage" });
   else if (!out) {
@@ -608,6 +625,42 @@ export function panelModel(s: Snapshot, room: RoomInstance): PanelModel {
   for (const { section, row } of entries) if (row.warn) alerts.push({ text: row.k ? `${row.k}: ${row.text}` : row.text, tone: "warn", section, ...(row.tip ? { tip: row.tip } : {}) });
 
   return { status, headline: headlineChips(s, room), alerts, glance: glanceChips(s, room), sections };
+}
+
+/** A farm's harvest: how far along, what it should bring and when, in words; null for other rooms. */
+export function harvestInfo(room: RoomInstance): { share: number; makes: string; slowed: boolean; text: string } | null {
+  const crop = farmCrop(room);
+  if (!crop) return null;
+  const makes = cropMakes(crop);
+  const perMonth = roomSpec(room, config).makes[makes] ?? 0;
+  const h = harvestProgress(room, perMonth)!;
+  const what = resName(makes).toLowerCase();
+  const when = h.monthsLeft < 0.05 ? "any moment" : `in ${monthsText(h.monthsLeft, true)}`;
+  const text = h.slowed
+    ? `About ${num(h.expected)} ${what} ${when}, short of a full ${num(h.full)}: the farm has been slowed this cycle`
+    : `About ${num(h.expected)} ${what} ${when}, all at once (every ${monthsText(crop.growMonths, true)})`;
+  return { share: h.share, makes, slowed: h.slowed, text };
+}
+
+function harvestRow(room: RoomInstance): Row | null {
+  if (room.planned || room.building) return null;
+  const h = harvestInfo(room);
+  if (!h) return null;
+  return { k: "Harvest", text: `${Math.round(h.share * 100)}% grown`, tip: h.text };
+}
+
+/**
+ * The crops a farm can grow, each with its harvest on this farm and how long it takes: shared by the
+ * web's crop picker and the Godot viewer's (through the bridge).
+ */
+export function cropOptions(room: RoomInstance): { id: string; label: string }[] {
+  const current = farmCrop(room);
+  // Its size: a deep farm makes more than the catalog's L farm.
+  const scale = current ? (roomSpec(room, config).makes[cropMakes(current)] ?? current.yield) / current.yield : 1;
+  return cropDefs.map((c) => {
+    const what = cropMakes(c) === "rawFood" ? c.group : resName(cropMakes(c)).toLowerCase();
+    return { id: c.id, label: `${c.name} (${what}): ${num(harvestSize(c, c.yield * scale))} every ${monthsText(c.growMonths, true)}` };
+  });
 }
 
 /** Stop at: the output a room can stand by on, and a suggested level (a little over what's in store). */

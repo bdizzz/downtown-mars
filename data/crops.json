@@ -1,13 +1,14 @@
 {
-  "_note": "Per L farm per day, from ROOMS.md Crops. Replaces the farm's rawFood output and its water and power use; makes, when given, is the resource it yields instead of rawFood. Grow time is not modelled yet.",
+  "_note": "Per L farm. yield is what a farm makes a month on average; it comes in whole harvests every growMonths (a month is a game day): yield × growMonths × (1 + the long-grow bonus), the bonus rising from 0 at longGrowBonus.fromMonths to longGrowBonus.max at toMonths (src/sim/food.ts). A farm short of staff, power or water gives a smaller harvest, not a later one. Replaces the farm's rawFood output and its water and power use; makes, when given, is the resource it yields instead of rawFood (non-food crops sit at the long end). Each edible crop is its own food type for meal variety (data/food.json).",
+  "longGrowBonus": { "fromMonths": 1.5, "toMonths": 4, "max": 0.2 },
   "crops": [
-    { "id": "potatoes", "name": "Potatoes", "farmName": "Potato farm", "group": "staple", "yield": 12, "water": 4, "power": 3 },
-    { "id": "soybeans", "name": "Soybeans", "farmName": "Soybean farm", "group": "protein", "yield": 8, "water": 4, "power": 3 },
-    { "id": "wheat", "name": "Wheat", "farmName": "Wheat farm", "group": "staple", "yield": 9, "water": 3, "power": 3 },
-    { "id": "barley", "name": "Barley", "farmName": "Barley farm", "group": "staple", "yield": 9, "water": 3, "power": 3 },
-    { "id": "leafyGreens", "name": "Leafy greens", "farmName": "Greens farm", "group": "produce", "yield": 7, "water": 3, "power": 2 },
-    { "id": "mushrooms", "name": "Mushrooms", "farmName": "Mushroom farm", "group": "protein", "yield": 8, "water": 2, "power": 1 },
-    { "id": "algae", "name": "Algae", "farmName": "Algae farm", "group": "staple", "yield": 14, "water": 6, "power": 2 },
-    { "id": "hemp", "name": "Fiber hemp", "farmName": "Hemp farm", "group": "material", "makes": "fiber", "yield": 6, "water": 4, "power": 3 }
+    { "id": "potatoes", "name": "Potatoes", "farmName": "Potato farm", "group": "staple", "yield": 12, "growMonths": 2.5, "water": 4, "power": 3 },
+    { "id": "soybeans", "name": "Soybeans", "farmName": "Soybean farm", "group": "protein", "yield": 8, "growMonths": 3, "water": 4, "power": 3 },
+    { "id": "wheat", "name": "Wheat", "farmName": "Wheat farm", "group": "staple", "yield": 9, "growMonths": 3, "water": 3, "power": 3 },
+    { "id": "barley", "name": "Barley", "farmName": "Barley farm", "group": "staple", "yield": 9, "growMonths": 2.5, "water": 3, "power": 3 },
+    { "id": "leafyGreens", "name": "Leafy greens", "farmName": "Greens farm", "group": "produce", "yield": 7, "growMonths": 1.5, "water": 3, "power": 2 },
+    { "id": "mushrooms", "name": "Mushrooms", "farmName": "Mushroom farm", "group": "protein", "yield": 8, "growMonths": 2, "water": 2, "power": 1 },
+    { "id": "algae", "name": "Algae", "farmName": "Algae farm", "group": "staple", "yield": 14, "growMonths": 1.5, "water": 6, "power": 2 },
+    { "id": "hemp", "name": "Fiber hemp", "farmName": "Hemp farm", "group": "material", "makes": "fiber", "yield": 6, "growMonths": 4, "water": 4, "power": 3 }
   ]
 }

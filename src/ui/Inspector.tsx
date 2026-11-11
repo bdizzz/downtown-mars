@@ -5,14 +5,13 @@ import { useState, type ReactNode } from "react";
 import type { SimCommand } from "../sim/commands";
 import { config, type Priority } from "../sim/config";
 import { holding, roomSpec } from "../sim/economy";
-import { cropDefs } from "../sim/resources";
 import { roomDef } from "../sim/rooms";
 import type { Snapshot } from "../sim/snapshot";
 import { corridors, finishDef } from "../sim/corridors";
 import { num, resName } from "./format";
 import { Icon } from "./Icon";
 import { useOpenSections } from "./settings";
-import { constructionInfo, fillsTanks, floorOptions, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type Alert, type Chip, type Row, type Section, type SectionId } from "../view/roomPanel";
+import { constructionInfo, cropOptions, fillsTanks, floorOptions, panelModel, refitOptions, seedKitInfo, stopAtInfo, storageInfo, type Alert, type Chip, type Row, type Section, type SectionId } from "../view/roomPanel";
 
 interface Props {
   s: Snapshot;
@@ -362,9 +361,9 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
               <label>
                 <span className="k">Crop</span>
                 <select value={room.crop} onChange={(e) => onCommand({ type: "setCrop", roomId: room.id, crop: e.target.value })}>
-                  {cropDefs.map((c) => (
+                  {cropOptions(room).map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name} ({c.group}, {c.yield}/day)
+                      {c.label}
                     </option>
                   ))}
                 </select>

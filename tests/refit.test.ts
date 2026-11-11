@@ -198,7 +198,8 @@ describe("while a refit is under way", () => {
     applyCommand(s, { type: "prioritize", jobId: refitJob(s, dorm)!.id });
     step(s, config);
     expect(refitting(s, room(s, dorm))).toBe(true);
-    expect(homeFactors(s, room(s, dorm), config).comfort).toBeCloseTo(comfort + MATERIALS.refit.comfort, 5);
+    // (Clamped at the factor's limit: rations-only meals already weigh on comfort.)
+    expect(homeFactors(s, room(s, dorm), config).comfort).toBeCloseTo(Math.max(-config.happiness.factorLimit, comfort + MATERIALS.refit.comfort), 5);
     expect(restroom.building).toBe(true);
   });
 });

@@ -1,11 +1,11 @@
 {
-  "_note": "Citizen visits. Triggers are in src/sim/visits.ts, keyed by id; everything else is here. Placeholders: {name}, {home}, {floor}; for the doctor and the delegate (F-018) also {cause} (the diagnosis cause's text), {what} (its short label), {amount} (what it costs) and {fix}. concerns: when the doctor (health) and a residents' delegate (happiness) come about a diagnosis cause. A cause counts once it drains health at all, or costs happiness problemPoints or more, and is fixed once it no longer drains health, or costs less than fixedPoints; skip leaves causes to other visits (noise_complaint) or to the doctor (holeHealth). They come once it has held holdDays: the first time about a cause only to tell you (the _note kinds), then, repeatDays after the last visit about it, asking for a promise (the _promise kinds). patienceDays 0: they wait until answered. greeter has no trigger: the tutorial's office step sends for one (the greet command, T-080) when nobody's waiting.",
+  "_note": "Citizen visits. Triggers are in src/sim/visits.ts, keyed by id; everything else is here. Placeholders: {name}, {home}, {floor}; for the doctor and the delegate (F-018) also {cause} (the diagnosis cause's text), {what} (its short label), {amount} (what it costs) and {fix}; for the meal visits (#375) {crops}, the edible crops the hole doesn't grow yet. poor_meals and average_meals come when food variety over the last month has been poor, or average with nothing better (data/food.json visits); variety is left to them (skip), and their promise is kept once variety reaches the next rating. concerns: when the doctor (health) and a residents' delegate (happiness) come about a diagnosis cause. A cause counts once it drains health at all, or costs happiness problemPoints or more, and is fixed once it no longer drains health, or costs less than fixedPoints; skip leaves causes to other visits (noise_complaint) or to the doctor (holeHealth). They come once it has held holdDays: the first time about a cause only to tell you (the _note kinds), then, repeatDays after the last visit about it, asking for a promise (the _promise kinds). patienceDays 0: they wait until answered. greeter has no trigger: the tutorial's office step sends for one (the greet command, T-080) when nobody's waiting.",
   "concerns": {
     "holdDays": 1,
     "repeatDays": 3,
     "problemPoints": 3,
     "fixedPoints": 1.5,
-    "skip": ["noise", "holeHealth", "base", "afterglow", "events"]
+    "skip": ["noise", "holeHealth", "base", "afterglow", "events", "variety"]
   },
   "checkEveryTicks": 10,
   "waitingRoomSize": 3,
@@ -144,6 +144,66 @@
           }
         },
         { "id": "refuse", "label": "Not now", "hint": "Loyalty and happiness drop a little.", "loyalty": -10, "allHappiness": -3 }
+      ]
+    },
+    {
+      "id": "poor_meals",
+      "title": "The same meal again",
+      "text": "{name} sets a tray down on your desk. \"Ration paste, or one crop boiled every way there is. A galley can mix up to four kinds of food into one meal: two would already be a real change. We could grow {crops}.\"",
+      "minDay": 8,
+      "cooldownDays": 8,
+      "patienceDays": 2,
+      "ignored": { "loyalty": -5, "allHappiness": -2, "message": "{name} left the office without an answer. The galley crew is grumbling." },
+      "choices": [
+        {
+          "id": "promise",
+          "label": "More kinds of food within 4 months",
+          "hint": "Grow a second crop (or more), and keep both stocked: meals with two kinds are average, not poor.",
+          "loyalty": 5,
+          "promise": {
+            "check": "varietyUp",
+            "days": 4,
+            "kept": { "loyalty": 10, "allHappiness": 4, "message": "{name} brought you a plate with two kinds of food on it. Word is the galley's improving." },
+            "broken": { "loyalty": -15, "allHappiness": -4, "message": "Still the same meal. {name} is telling everyone you forgot about the galley." }
+          }
+        },
+        {
+          "id": "refuse",
+          "label": "Food is food",
+          "hint": "\"There are holes on Mars with less.\" Loyalty and happiness drop a little.",
+          "loyalty": -10,
+          "allHappiness": -2
+        }
+      ]
+    },
+    {
+      "id": "average_meals",
+      "title": "A better table",
+      "text": "{name} is here from the galley crew. \"Two kinds of food in every meal keeps us going, but three or four would make a proper meal, the kind people look forward to. We could grow {crops}.\"",
+      "minDay": 8,
+      "cooldownDays": 8,
+      "patienceDays": 2,
+      "ignored": { "loyalty": -5, "allHappiness": -2, "message": "{name} left the office without an answer. The galley crew is grumbling." },
+      "choices": [
+        {
+          "id": "promise",
+          "label": "Three or four kinds within 4 months",
+          "hint": "Grow more crops, and keep their stocks up: meals with three kinds are good, with four great.",
+          "loyalty": 5,
+          "promise": {
+            "check": "varietyUp",
+            "days": 4,
+            "kept": { "loyalty": 10, "allHappiness": 4, "message": "Good meals in the galley at last. {name} says people linger over dinner now." },
+            "broken": { "loyalty": -15, "allHappiness": -4, "message": "Still the same two things on every plate. {name} says you broke your word." }
+          }
+        },
+        {
+          "id": "refuse",
+          "label": "Food is food",
+          "hint": "\"There are holes on Mars with less.\" Loyalty and happiness drop a little.",
+          "loyalty": -10,
+          "allHappiness": -2
+        }
       ]
     },
     {

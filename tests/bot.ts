@@ -1,3 +1,4 @@
+import { QUALITIES, variety } from "../src/sim/food";
 import { applyCommand, type SimCommand } from "../src/sim/commands";
 import { config, type LandingKitName } from "../src/sim/config";
 import type { Location } from "../src/sim/placement";
@@ -75,6 +76,8 @@ export const VISIT_ANSWERS: Record<string, string> = {
   delegate_note: "noted",
   doctor_promise: "promise",
   delegate_promise: "promise",
+  poor_meals: "promise",
+  average_meals: "promise",
 };
 
 export interface Day {
@@ -94,6 +97,12 @@ export interface Day {
   /** Water split into oxygen by electrolyzers: the air's deliberate leak (T-026, T-028). */
   airWater: number;
   food: number;
+  /** The least food on hand (rations, raw food and meals) at any tick of the day: 0 means it ran out. */
+  larder: number;
+  /** Crops harvested so far, all told. */
+  harvested: number;
+  /** Food variety, from the meals eaten over the last month (food.ts). */
+  variety: string;
   power: string;
   metal: number;
   rock: number;
@@ -113,6 +122,7 @@ export function run(days: number, kit: LandingKitName = "bare"): { state: SimSta
   const log: Day[] = [];
   const builtAt: Record<number, number> = {};
   let next = 0;
+  let larder = Infinity;
   const cmd = (c: SimCommand) => applyCommand(s, c);
 
   for (let t = 0; t < days * config.ticksPerDay; t++) {
@@ -154,6 +164,7 @@ export function run(days: number, kit: LandingKitName = "bare"): { state: SimSta
       }
     }
     step(s, config);
+    larder = Math.min(larder, (s.resources.rations ?? 0) + (s.resources.rawFood ?? 0) + (s.resources.meals ?? 0));
     if (s.tick % config.ticksPerDay === 0) {
       const snap = makeSnapshot(s, config);
       const r = s.resources;
@@ -171,6 +182,9 @@ export function run(days: number, kit: LandingKitName = "bare"): { state: SimSta
         earthWater: Math.round(s.ledger.days.at(-1)?.water?.in[LABELS.earth] ?? 0),
         airWater: Math.round(s.ledger.days.at(-1)?.water?.out["Electrolyzer"] ?? 0),
         food: Math.round((r.rations ?? 0) + (r.rawFood ?? 0) + (r.meals ?? 0)),
+        larder: Math.round(larder),
+        harvested: Math.round(s.harvested ?? 0),
+        variety: QUALITIES[variety(s)?.rating ?? -1]?.name ?? "-",
         power: `${snap.power.used.toFixed(0)}/${snap.power.made.toFixed(0)}`,
         metal: Math.round(r.metal ?? 0),
         rock: Math.round(r.rock ?? 0),
@@ -187,6 +201,7 @@ export function run(days: number, kit: LandingKitName = "bare"): { state: SimSta
           .map((r) => `${Math.round((s.roomStatus[r.id]?.rate ?? 0) * 100)}${s.roomStatus[r.id]?.limit ? ":" + s.roomStatus[r.id]!.limit : ""}${r.planned ? ":plan" : ""}`)
           .join(" "),
       });
+      larder = Infinity;
     }
   }
   return { state: s, log, builtAt, plan: PLAN };

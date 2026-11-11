@@ -1,3 +1,4 @@
+import type { FoodState } from "./food";
 import { createEvents, type EventsState } from "./events";
 import { fillAir, type AirState } from "./air";
 import type { LandingKitName, SimConfig } from "./config";
@@ -103,8 +104,10 @@ export interface SimState {
   history?: History;
   /** Events waiting for an answer, finds made, moods and festivals (PLAN-M14; absent in older saves until the first). */
   events?: EventsState;
-  /** Crops grown here, all told (economy.ts; for the first harvest milestone; absent in older saves). */
+  /** Crops harvested here, all told (food.ts; for the first harvest milestone; absent in older saves). */
   harvested?: number;
+  /** Raw food by type, meals by quality and what's been eaten, for food variety (food.ts; absent until the first harvest or meal). */
+  food?: FoodState;
   /** Milestones reached, with the day (F-005, data/milestones.json; absent in older saves until the first check). */
   milestones?: ReachedMilestone[];
   /** The living volume, cached (air.ts; absent in older saves until the first tick). */

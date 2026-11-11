@@ -107,7 +107,7 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 
 **Diet variety:** kitchens combine crops into meals. Colonists want staples, protein and produce; a varied diet gives health and comfort bonuses, and a monotonous one gives penalties.
 
-**As built:** potatoes, soybeans, wheat, barley, leafy greens, mushrooms, algae and fiber hemp (`data/crops.json`). A crop's `makes` names what it yields when that isn't raw food: hemp makes `fiber`, a dry good kept in storage like other materials. Grow time and switching costs aren't modelled.
+**As built:** potatoes, soybeans, wheat, barley, leafy greens, mushrooms, algae and fiber hemp (`data/crops.json`). A crop's `makes` names what it yields when that isn't raw food: hemp makes `fiber`, a dry good kept in storage like other materials. **Grow time** (#375): each crop has `growMonths` (greens and algae 1.5, mushrooms 2, potatoes and barley 2.5, wheat and soybeans 3, hemp 4); the yield above is the monthly average, and it comes in whole harvests, yield × grow time × a long-grow bonus (0 at 1.5 months to +20% at 4). Switching crops costs the cycle under way. **Diet variety** is built as meal quality by the number of crops (food types) in each meal, not by staple/protein/produce groups; the per-crop bonuses (bread, greens, algae's blandness) aren't.
 
 ## Water and air
 

@@ -1,3 +1,4 @@
+import { replant } from "./food";
 import { ROOM_NAME_MAX } from "./roomName";
 import { airVolume } from "./air";
 import { hasCondition } from "./condition";
@@ -601,6 +602,8 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       const room = layout.rooms.find((r) => r.id === cmd.roomId);
       if (!room || !roomDef(room.type).growsCrops) return { ok: false, reason: "Only farms grow crops" };
       if (!isCrop(cmd.crop)) return { ok: false, reason: `Unknown crop "${cmd.crop}"` };
+      // A new crop starts its harvest cycle over.
+      if (room.crop !== cmd.crop) replant(room);
       room.crop = cmd.crop;
       layout.version++;
       return { ok: true };

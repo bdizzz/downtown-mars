@@ -1,0 +1,12 @@
+{
+  "_note": "How a farm's planters look as its crop grows (#379; src/view/furnish.ts cropStage, src/render3d/furniture3d.ts). A farm is at the last stage whose `from` its harvest counter has reached (0..1 of the grow time). Each crop item's parts in a `growing` colour are scaled by the stage's `scale`, each about its own foot, so they come up out of the soil (0 hides them); parts in a `produce` colour (tubers, flowers, grain heads, pods) show only at a stage with produce: true. Everything else (the bed, the rack, the soil, the lights) stays as it is.",
+  "stages": [
+    { "id": "planted", "name": "Freshly planted", "from": 0, "scale": 0, "produce": false },
+    { "id": "sprouts", "name": "Sprouts", "from": 0.12, "scale": 0.3, "produce": false },
+    { "id": "modest", "name": "Modest plants", "from": 0.4, "scale": 0.6, "produce": false },
+    { "id": "full", "name": "Full plants", "from": 0.7, "scale": 1, "produce": false },
+    { "id": "ready", "name": "Ready to harvest", "from": 0.9, "scale": 1, "produce": true }
+  ],
+  "growing": ["plant", "leaf", "stalk", "hemp", "hempLeaf", "mushroom", "cap", "algae"],
+  "produce": ["potato", "flower", "wheat", "barley", "soy"]
+}
