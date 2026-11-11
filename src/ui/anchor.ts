@@ -67,7 +67,7 @@ export function place(target: Box, card: Pick<Box, "width" | "height">, view: Pi
 
 /** The room details floating over the build palette, while one shows. */
 export function obstacle(): Box | null {
-  const e = document.querySelector(".dock-card");
+  const e = document.querySelector(".build-card");
   const r = e?.getBoundingClientRect();
   return r && r.width > 0 && r.height > 0 ? r : null;
 }

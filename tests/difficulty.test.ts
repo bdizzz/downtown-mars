@@ -11,7 +11,7 @@ import { CONDITION } from "../src/sim/condition";
 import { missingCost, siteRefusal } from "../src/sim/costs";
 import { DIFFICULTY, factor, knobValues, LEVELS, setDifficulty, currentDifficulty, type Knob } from "../src/sim/difficulty";
 import { ticksToDig } from "../src/sim/digging";
-import { roomDef, roomDefs } from "../src/sim/rooms";
+import { roomDef, roomDefs, roomFamilies } from "../src/sim/rooms";
 import { construction } from "../src/sim/construction";
 import { corridors } from "../src/sim/corridors";
 import { eventData } from "../src/sim/events";
@@ -54,7 +54,7 @@ describe("difficulty (T-122)", () => {
     setDifficulty("hard");
     setDifficulty("easy");
     setDifficulty("normal");
-    const loaded: Record<string, unknown> = { config, condition: CONDITION, construction, corridors, events: eventData, materials: MATERIALS, rooms: { rooms: roomDefs } };
+    const loaded: Record<string, unknown> = { config, condition: CONDITION, construction, corridors, events: eventData, materials: MATERIALS, rooms: { rooms: roomDefs, families: roomFamilies } };
     for (const [name, data] of Object.entries(loaded)) {
       const written = json(name) as Record<string, unknown>;
       // (The tests' setup turns on instant construction; that isn't difficulty's.)

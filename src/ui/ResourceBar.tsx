@@ -144,24 +144,45 @@ function BarEntry({ item, s, onTrend, arrows }: { item: BarItem; s: Snapshot; on
   );
 }
 
-/** `fresh`: just revealed by the guided tutorial (T-084), so it glows as it appears. */
-export function ResourceBar({ s, onTrend, fresh = false }: { s: Snapshot | null; onTrend: OnTrend; fresh?: boolean }) {
+/** Quiet: the groups shown whole (the colony's vitals and life support); the others show their first cell and whatever isn't fine. */
+const QUIET_WHOLE = 2;
+
+/**
+ * `fresh`: just revealed by the guided tutorial (T-084), so it glows as it appears.
+ * `quiet`: only what's worth a look: the colony and life support, what you eat, and any stock
+ * that's short, in trouble or full. Stock opens the rest (until it's closed again).
+ */
+export function ResourceBar({ s, onTrend, fresh = false, quiet = false }: { s: Snapshot | null; onTrend: OnTrend; fresh?: boolean; quiet?: boolean }) {
+  const [all, setAll] = useState(false);
   if (!s) return <div className="resbar" data-hud="resources" />;
+  const groups = barItems(s);
+  const calm = quiet && !all;
+  const shown = groups.map((group, i) => (calm && i >= QUIET_WHOLE ? group.filter((item, j) => (i === QUIET_WHOLE && j === 0) || item.level !== "ok") : group));
+  const hidden = groups.flat().length - shown.flat().length;
   return (
-    <div className={`resbar${fresh ? " fresh" : ""}`} data-hud="resources">
-      {barItems(s).map((group, i) => (
-        <span key={i} className="group" data-hud={`group:${GROUPS[i]!.toLowerCase()}`} role="group" aria-label={GROUPS[i]}>
-          <span className="group-label" aria-hidden="true">
-            {GROUPS[i]}
+    <div className={`resbar${fresh ? " fresh" : ""}${calm ? " quiet" : ""}`} data-hud="resources">
+      {shown.map((group, i) =>
+        group.length === 0 ? null : (
+          <span key={i} className="group" data-hud={`group:${GROUPS[i]!.toLowerCase()}`} role="group" aria-label={GROUPS[i]}>
+            <span className="group-label" aria-hidden="true">
+              {GROUPS[i]}
+            </span>
+            {/* Its own box so that on phones the cells wrap beside the label, not under it (T-140). */}
+            <span className="group-cells">
+              {group.map((item) => (
+                <BarEntry key={item.id} item={item} s={s} onTrend={onTrend} arrows={i > 0} />
+              ))}
+            </span>
           </span>
-          {/* Its own box so that on phones the cells wrap beside the label, not under it (T-140). */}
-          <span className="group-cells">
-            {group.map((item) => (
-              <BarEntry key={item.id} item={item} s={s} onTrend={onTrend} arrows={i > 0} />
-            ))}
-          </span>
-        </span>
-      ))}
+        ),
+      )}
+      {quiet && (
+        <button className="stock-btn" onClick={() => setAll(!all)} aria-expanded={all} title={all ? "Back to the vitals and what needs a look" : `Show every stock: ${hidden} more, all fine (Settings → Display keeps them showing)`}>
+          <Icon id="stock" size={13} />
+          Stock
+          {!all && hidden > 0 && <span className="n">+{hidden}</span>}
+        </button>
+      )}
     </div>
   );
 }

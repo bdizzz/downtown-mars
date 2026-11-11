@@ -3,7 +3,7 @@ import type React from "react";
 import type { HoverInfo, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import { roomDef, roomDefs } from "../sim/rooms";
-import { BARE_ROCK, BuildStrip, buildTool } from "./BuildPalette";
+import { BARE_ROCK, BuildRail, buildTool, ToolBar } from "./BuildPalette";
 import { CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, shapesFor } from "../view/buildCatalog";
 import { ChartsStrip, Dock, MODE_KEYS, ViewStrip, type Chart, type Mode } from "./Dock";
 import { corridors } from "../sim/corridors";
@@ -605,8 +605,6 @@ export function App() {
       className={`app${settings.colorBlind ? " color-blind" : ""}${welcome ? " welcoming" : ""}${titling ? " titling" : ""}${hudOpen ? " hud-open" : ""}`}
       style={{ "--ui-scale": settings.uiScale } as React.CSSProperties}
     >
-      {/* Build mode: a thin yellow frame round the screen, so it's always clear you're building. Clicks go through it. */}
-      {mode === "build" && <div className="build-frame" aria-hidden="true" />}
       <Hud
         snapshot={snapshot}
         speed={speed}
@@ -623,27 +621,22 @@ export function App() {
         reveal={reveal}
       />
       {reveal.shown("hud:resources") && (
-        <ResourceBar s={snapshot} onTrend={openTrend} fresh={reveal.fresh("hud:resources")} />
+        <ResourceBar s={snapshot} onTrend={openTrend} fresh={reveal.fresh("hud:resources")} quiet={!settings.allResources && reveal.all} />
       )}
       <div className="main">
         <div className="view">
           {snapshot && (
-            <Dock mode={mode} setMode={setMode} walking={walking} highlight={highlight} jobs={snapshot.construction.jobs.length} reveal={reveal}>
+            <Dock mode={mode} setMode={setMode} highlight={highlight} jobs={snapshot.construction.jobs.length} reveal={reveal}>
               {mode === "build" && (
-                <BuildStrip
+                <ToolBar
                   tool={tool}
                   lining={lining}
                   setLining={setLining}
-                  lastFinish={lastFinish}
                   setTool={(t) => (setTool(t), setSelected(null))}
                   resources={snapshot.resources}
                   highlight={highlight}
                   deposits={snapshot.holeGates}
                   rotate={rotate}
-                  canUndo={canUndo}
-                  undo={undo}
-                  dome={snapshot.layout.domed ? "built" : snapshot.construction.jobs.some((j) => j.kind === "dome") ? "building" : "none"}
-                  onBuildDome={() => onCommand({ type: "buildDome" })}
                   reveal={reveal}
                 />
               )}
@@ -661,6 +654,25 @@ export function App() {
               )}
               {mode === "charts" && <ChartsStrip s={snapshot} chart={chart} toggle={togglePanel} highlight={highlight} reveal={reveal} />}
             </Dock>
+          )}
+          {/* Building: the rail down the left edge, always there to open (not while walking, or over the map). */}
+          {snapshot && !walking && !mapOpen && reveal.shown("mode:build") && (
+            <BuildRail
+              active={mode === "build"}
+              setActive={(on) => setMode(on ? "build" : null)}
+              tool={tool}
+              setTool={(t) => (setTool(t), setSelected(null))}
+              lining={lining}
+              lastFinish={lastFinish}
+              resources={snapshot.resources}
+              highlight={highlight}
+              deposits={snapshot.holeGates}
+              canUndo={canUndo}
+              undo={undo}
+              dome={snapshot.layout.domed ? "built" : snapshot.construction.jobs.some((j) => j.kind === "dome") ? "building" : "none"}
+              onBuildDome={() => onCommand({ type: "buildDome" })}
+              reveal={reveal}
+            />
           )}
           {snapshot && tip && !menu && !welcome && (
             <div style={{ display: walking ? "none" : "contents" }}>

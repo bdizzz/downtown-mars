@@ -1,5 +1,15 @@
 {
-  "_note": "Amounts are per game day. Values from ROOMS.md (★ rooms) unless marked placeholder. requiresDeposit: the hole must sit on that deposit (Unlock column in ROOMS.md).",
+  "_note": "Amounts are per game day. Values from ROOMS.md (★ rooms) unless marked placeholder. requiresDeposit: the hole must sit on that deposit (Unlock column in ROOMS.md). family: rooms that are sizes or grades of one thing share a family (named in families), and the build menu shows them as one tile with a picker.",
+  "families": {
+    "stairs": "Stairs",
+    "lift": "Elevator",
+    "empty_room": "Empty room",
+    "plaza": "Plaza",
+    "storage": "Storage",
+    "basic_home": "Basic home",
+    "standard_home": "Standard home",
+    "luxury_home": "Luxury home"
+  },
   "rooms": [
     {
       "id": "landing_pod",
@@ -108,7 +118,8 @@
         "brick": 5
       },
       "buildable": true,
-      "unlockedBy": "basicHomes"
+      "unlockedBy": "basicHomes",
+      "family": "basic_home"
     },
     {
       "id": "apartment",
@@ -129,7 +140,8 @@
         "brick": 10
       },
       "buildable": true,
-      "unlockedBy": "basicHomes"
+      "unlockedBy": "basicHomes",
+      "family": "basic_home"
     },
     {
       "id": "flat",
@@ -162,7 +174,8 @@
         "metal": 3
       },
       "buildable": true,
-      "unlockedBy": "standardHomes"
+      "unlockedBy": "standardHomes",
+      "family": "standard_home"
     },
     {
       "id": "family_apartment",
@@ -195,7 +208,8 @@
         "metal": 6
       },
       "buildable": true,
-      "unlockedBy": "standardHomes"
+      "unlockedBy": "standardHomes",
+      "family": "standard_home"
     },
     {
       "id": "suite",
@@ -228,7 +242,8 @@
         "electronics": 3
       },
       "buildable": true,
-      "unlockedBy": "luxuryHomes"
+      "unlockedBy": "luxuryHomes",
+      "family": "luxury_home"
     },
     {
       "id": "residence",
@@ -261,7 +276,8 @@
         "electronics": 6
       },
       "buildable": true,
-      "unlockedBy": "luxuryHomes"
+      "unlockedBy": "luxuryHomes",
+      "family": "luxury_home"
     },
     {
       "id": "galley",
@@ -1230,7 +1246,8 @@
       "effects": [],
       "cost": {},
       "buildable": true,
-      "buildHours": 0
+      "buildHours": 0,
+      "family": "empty_room"
     },
     {
       "id": "empty_room_m",
@@ -1246,7 +1263,8 @@
       "effects": [],
       "cost": {},
       "buildable": true,
-      "buildHours": 0
+      "buildHours": 0,
+      "family": "empty_room"
     },
     {
       "id": "empty_room_l",
@@ -1262,7 +1280,8 @@
       "effects": [],
       "cost": {},
       "buildable": true,
-      "buildHours": 0
+      "buildHours": 0,
+      "family": "empty_room"
     },
     {
       "id": "tiny_plaza",
@@ -1289,7 +1308,8 @@
       "amenity": {
         "comfort": 1,
         "reach": 4
-      }
+      },
+      "family": "plaza"
     },
     {
       "id": "small_plaza",
@@ -1318,7 +1338,8 @@
       "amenity": {
         "comfort": 1.5,
         "reach": 6
-      }
+      },
+      "family": "plaza"
     },
     {
       "id": "plaza",
@@ -1348,7 +1369,8 @@
       "amenity": {
         "comfort": 2,
         "reach": 8
-      }
+      },
+      "family": "plaza"
     },
     {
       "id": "park",
@@ -1455,7 +1477,8 @@
       "buildable": true,
       "stacks": true,
       "stackNoun": "stairs",
-      "buildHours": 8
+      "buildHours": 8,
+      "family": "stairs"
     },
     {
       "id": "spiral_stair",
@@ -1484,7 +1507,8 @@
         "metal": 4
       },
       "buildable": true,
-      "buildHours": 10
+      "buildHours": 10,
+      "family": "stairs"
     },
     {
       "id": "elevator",
@@ -1515,7 +1539,8 @@
       },
       "buildable": true,
       "buildHours": 10,
-      "lift": true
+      "lift": true,
+      "family": "lift"
     },
     {
       "id": "cargo_elevator",
@@ -1551,7 +1576,8 @@
       },
       "buildable": true,
       "buildHours": 40,
-      "lift": true
+      "lift": true,
+      "family": "lift"
     },
     {
       "id": "site_office",
@@ -1718,7 +1744,8 @@
         "metal": 2
       },
       "buildHours": 5,
-      "buildable": true
+      "buildable": true,
+      "family": "storage"
     },
     {
       "id": "warehouse",
@@ -1736,7 +1763,8 @@
         "metal": 5
       },
       "buildHours": 10,
-      "buildable": true
+      "buildable": true,
+      "family": "storage"
     },
     {
       "id": "depot",
@@ -1763,7 +1791,8 @@
         "machinery": 1
       },
       "buildHours": 20,
-      "buildable": true
+      "buildable": true,
+      "family": "storage"
     },
     {
       "id": "waste_storage",

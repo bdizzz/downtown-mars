@@ -6,11 +6,14 @@ import { CAMERAS, type View3d } from "../view/cameras";
 import type { ViewMode } from "./settings";
 import { hoursText } from "./format";
 import { freshClass, SHOW_ALL, type Reveal } from "./reveal";
+import { Icon } from "./Icon";
+import type { IconId } from "../view/icons";
 
-// The bottom of the screen, as in SimCity: a handful of mode buttons at the
-// bottom right, and the chosen mode's options in a strip along the bottom.
-// Choosing the open mode again closes it, so no mode is open at all. Build
-// mode is the only one that places rooms and corridors.
+// The bottom of the screen: a few mode buttons at the bottom right, and the
+// chosen mode's options in a strip along the bottom. Choosing the open mode
+// again closes it, so no mode is open at all. Build mode is the only one that
+// places rooms and corridors; it opens from its rail down the left edge, and
+// its strip here is the tool bar, there while something is in hand.
 
 export type Mode = "build" | "view" | "map" | "charts";
 export type Chart = "people" | "flows" | "network" | "construction" | "maintenance" | "trends" | "directory" | "milestones";
@@ -18,11 +21,11 @@ export type Chart = "people" | "flows" | "network" | "construction" | "maintenan
 /** Each mode's key, anywhere in the game (as KeyboardEvent codes). */
 export const MODE_KEYS: Record<Mode, string> = { build: "KeyB", view: "KeyV", map: "KeyM", charts: "KeyC" };
 
-const MODES: { id: Mode; name: string; icon: string; hint: string }[] = [
-  { id: "build", name: "Build", icon: "⚒", hint: "Rooms, corridors and demolition (B). The rooms' keys work in here" },
-  { id: "view", name: "View", icon: "◉", hint: "Cameras, the plan and unrolled views, walls down and overlays (V)" },
-  { id: "map", name: "Map", icon: "◍", hint: "The planet: terrain, deposits and your holes (M)" },
-  { id: "charts", name: "Charts", icon: "▤", hint: "People, trends, flows, your network, the construction and maintenance queues, a directory of every room, and milestones (C)" },
+// Build has no button here: its rail runs down the left edge (ui/BuildPalette.tsx), and B opens it.
+const MODES: { id: Mode; name: string; icon: IconId; hint: string }[] = [
+  { id: "view", name: "View", icon: "eye", hint: "Cameras, the plan and unrolled views, walls down and overlays (V)" },
+  { id: "map", name: "Map", icon: "globe", hint: "The planet: terrain, deposits and your holes (M)" },
+  { id: "charts", name: "Charts", icon: "charts", hint: "People, trends, flows, your network, the construction and maintenance queues, a directory of every room, and milestones (C)" },
 ];
 
 /** Where a tutorial highlight lives: which mode holds it. */
@@ -38,8 +41,6 @@ export function modeFor(highlight: string | null): Mode | null {
 interface DockProps {
   mode: Mode | null;
   setMode: (m: Mode | null) => void;
-  /** Build mode is off while walking in first person. */
-  walking: boolean;
   highlight: string | null;
   /** Construction jobs waiting, for a badge on Charts. */
   jobs: number;
@@ -49,33 +50,28 @@ interface DockProps {
 }
 
 /** The mode buttons, and whatever strip the open mode shows. */
-export function Dock({ mode, setMode, walking, highlight, jobs, reveal = SHOW_ALL, children }: DockProps) {
+export function Dock({ mode, setMode, highlight, jobs, reveal = SHOW_ALL, children }: DockProps) {
   const wanted = modeFor(highlight);
   const modes = MODES.filter((m) => reveal.shown(`mode:${m.id}`));
-  if (!modes.length) return null;
   return (
     <div className="dock">
       {children}
-      <div className="dock-modes" role="toolbar" aria-label="Modes">
-        {modes.map((m) => {
-          const off = m.id === "build" && walking;
-          return (
-            <button
-              key={m.id}
-              className={`mode-btn${mode === m.id ? " on" : ""}${wanted === m.id && mode !== m.id ? " pulse" : ""}${freshClass(reveal, `mode:${m.id}`)}`}
-              onClick={() => setMode(mode === m.id ? null : m.id)}
-              disabled={off}
-              title={off ? "No building while walking: switch to another camera" : m.hint}
-              aria-pressed={mode === m.id}
-            >
-              <span className="icon">{m.icon}</span>
-              <span>
-                {m.name} <kbd>{MODE_KEYS[m.id].slice(3)}</kbd>
-              </span>
-              {m.id === "charts" && jobs > 0 && <span className="badge" title="Construction jobs waiting">{jobs}</span>}
-            </button>
-          );
-        })}
+      <div className="dock-modes" role="toolbar" aria-label="Modes" hidden={!modes.length}>
+        {modes.map((m) => (
+          <button
+            key={m.id}
+            className={`mode-btn${mode === m.id ? " on" : ""}${wanted === m.id && mode !== m.id ? " pulse" : ""}${freshClass(reveal, `mode:${m.id}`)}`}
+            onClick={() => setMode(mode === m.id ? null : m.id)}
+            title={m.hint}
+            aria-pressed={mode === m.id}
+          >
+            <Icon id={m.icon} size={18} />
+            <span>
+              {m.name} <kbd>{MODE_KEYS[m.id].slice(3)}</kbd>
+            </span>
+            {m.id === "charts" && jobs > 0 && <span className="badge" title="Construction jobs waiting">{jobs}</span>}
+          </button>
+        ))}
       </div>
     </div>
   );
