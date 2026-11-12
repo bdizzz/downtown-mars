@@ -28,6 +28,8 @@ export interface Settings {
   autosave: boolean;
   /** The deputy's one-time tips when a problem first shows up (F-018). */
   tips: boolean;
+  /** The resource bar shows every stock all the time; off (quiet), the vitals and whatever needs a look, the rest behind its Stock button. */
+  allResources: boolean;
   /** Pointing at a floor in the floor picker shows it before you click. */
   floorHoverPreview: boolean;
   /** First person: how fast the mouse turns the head, 1 = normal (WALK in stage3d.ts, the same in Godot). */
@@ -51,6 +53,7 @@ export const DEFAULT_SETTINGS: Settings = {
   colorBlind: defaultOf("colorBlind", "boolean"),
   autosave: defaultOf("autosave", "boolean"),
   tips: defaultOf("tips", "boolean"),
+  allResources: defaultOf("allResources", "boolean"),
   floorHoverPreview: defaultOf("floorHoverPreview", "boolean"),
   lookSpeed: defaultOf("lookSpeed", "number"),
   fullscreen: defaultOf("fullscreen", "boolean"),

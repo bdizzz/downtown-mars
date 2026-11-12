@@ -170,7 +170,7 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
       )}
       {/* Phones only: one button for pause and play, and the count of what needs you. */}
       {shown("speed") && <button className={`phone-only pause-btn${pulse("speed")}`} onClick={() => setSpeed(speed ? 0 : resumeRef.current)} aria-label={speed ? "Pause" : "Play"} title={speed ? "Pause" : "Play"}>
-        {speed ? "❚❚" : "▶"}
+        <Icon id={speed ? "pause" : "play"} size={13} />
       </button>}
       {list.length > 0 && shown("needs") && (
         <button className={`phone-only need-count${worst}`} onClick={() => setOpen(!drawer)} aria-label={`${list.length} ${list.length === 1 ? "thing needs" : "things need"} you`} title={list.map((n) => n.text).join("\n")}>
@@ -190,7 +190,7 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
       <span className={`speeds${pulse("speed")}`} data-hud="speed">
         {config.speeds.map((s) => (
           <button key={s} className={s === speed ? "on" : ""} onClick={() => setSpeed(s === 0 && !speed ? resumeRef.current : s)} aria-label={s === 0 ? "Pause" : `${s}× speed`}>
-            {s === 0 ? "❚❚" : `${s}×`}
+            {s === 0 ? <Icon id="pause" size={13} /> : `${s}×`}
           </button>
         ))}
       </span>
@@ -214,7 +214,7 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
           {extras.drill.text}
           {extras.drill.canPause && (
             <button onClick={() => setDrill(!extras.drill.active)} title={extras.drill.active ? "Pause the drill" : "Resume the drill"} aria-label={extras.drill.active ? "Pause the drill" : "Resume the drill"}>
-              {extras.drill.active ? "❚❚" : "▶"}
+              <Icon id={extras.drill.active ? "pause" : "play"} size={11} />
             </button>
           )}
         </span>

@@ -1,5 +1,6 @@
 import type { Snapshot } from "../sim/snapshot";
 import { peopleReport } from "../view/colony";
+import { PanelHeader } from "./PanelHeader";
 
 // The hole's people: who they are by life stage, what's coming, and why
 // children are or aren't being born (the words: view/colony.ts).
@@ -10,12 +11,7 @@ export function PeoplePanel({ s, onClose }: { s: Snapshot; onClose: () => void }
   const r = peopleReport(s);
   return (
     <aside className="inspector people">
-      <header>
-        <h2>People</h2>
-        <button onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </header>
+      <PanelHeader title="People" onClose={onClose} />
       <div className="stages" role="img" aria-label={`${child} children, ${adult} adults, ${elder} elders`}>
         <div className="child" style={{ width: `${(child / total) * 100}%` }} />
         <div className="adult" style={{ width: `${(adult / total) * 100}%` }} />

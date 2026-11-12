@@ -6,6 +6,7 @@ import type { CommandResult } from "../sim/commands";
 import type { RouteAction } from "../worker/protocol";
 import { num } from "./format";
 import { holeColor, phaseText } from "../view/network";
+import { PanelHeader } from "./PanelHeader";
 
 // The network: every hole, its rovers, and the trade routes between them.
 
@@ -33,12 +34,7 @@ export function NetworkPanel({
 
   return (
     <aside className="inspector network">
-      <header>
-        <h2>Network</h2>
-        <button onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </header>
+      <PanelHeader title="Network" onClose={onClose} />
       <table className="holes">
         <thead>
           <tr>

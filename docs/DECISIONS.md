@@ -341,3 +341,25 @@ Deliberately not decided yet:
 - **Smaller items:** difficulty settings, accessibility, mod support.
 - **Trademark check** for "Downtown Mars."
 - **Web or Godot, and the repo's layout.** The Godot viewer (`godot/`) is close to parity with the web game, with the sim still in TypeScript; whether it becomes the main version (and the sim moves to C#) isn't decided. Moving the web code into its own folder was considered (Oct 3) and held off: if it's done, split into `core/` (sim and shared view code), `web/`, `godot/` and `bridge/`, not a bare `web/`.
+
+## Decided for the interface pass (Nov 11, in conversation)
+
+- **Build is a rail down the left edge**, not a mode button with a strip of fifteen categories. Seven groups (`BUILD_GROUPS` in `view/buildCatalog.ts`), each a list of tiles with costs; opening one turns Build mode on, and B opens the last. The dock keeps View, Map and Charts. On phones the rail is icons only.
+- **Sizes and grades of one thing are one tile.** Rooms share a `family` in `data/rooms.json` (named in its `families`): stairs, lifts, empty rooms, plazas, storage, and each tier of home. The tile hands you the member last picked; the tool bar's picker swaps it.
+- **Choices show only for what's in hand**, in a tool bar along the bottom: size, rotation and walls for a room; the corridor tool's jobs, finish and Erase. Walls are a material plus a fine-finish toggle, not eight chips. Nothing in hand, no bar.
+- **Room cards are facts, not prose:** cost and work-hours, a table (staff, uses, makes), effects as chips, and only the notes particular to the room. The universal ones ("needs a corridor along one side") are gone from the card; `roomCard` still returns the full lines for Godot.
+- **The resource bar is quiet by default** (vitals, life support, eating, and any stock not fine), with Stock to open the rest and a setting to show everything. The guided tutorial always shows everything it has revealed.
+- **The look is bolder game chrome:** framed panels with a bevel and bronze corner ticks, headings in a display face (Chakra Petch) over Space Grotesk, raised buttons, joined button sets, keycaps. The tokens are at the top of `ui/styles.css`, the chrome in its last section. The yellow frame round the screen in Build is gone: the rail and the tool bar glow instead.
+- **The room panel reads at a glance on the web:** the headline and glance chips are one grid of labelled tiles; the alerts show the two worst, the rest behind "more"; rows are a label-and-value table with a breakdown's causes on a second, quieter line; priority is four buttons, Running a toggle, and refit and floor are lists of choices rather than dropdowns of sentences. Only `ui/Inspector.tsx` changed: `panelModel` is as it was, so Godot's panel is unaffected.
+- **The right edge belongs to the floor picker:** toasts (three at most) and the deputy's card sit clear of it.
+- **Side panels open on their numbers:** they share one header (`ui/PanelHeader.tsx`), and a panel's explanation of its rules (Construction, Maintenance, Flows) folds behind a ? in it rather than sitting above the figures.
+- **The status line is in two parts:** what the pointer's on or what placing there would do on the left, a part at a time with warnings in red; where that is (floor, ring, slot) at the far right.
+- **The top bar's alerts never stack:** they sit side by side at full width, moving together to the bar's second row on a narrow window.
+- **The View strip is three groups:** Camera (one set for the 3D cameras, Plan and Unrolled, since only one shows at a time), Show (switches) and Overlay (one set). Exclusive choices look like one joined set and switches like switches, everywhere.
+- **A decision waiting comes first:** an event's card sits over the deputy's card and clear of the dock, and the toasts narrow (on phones, hide) while it's up.
+- **The deputy's card is part of the dock:** the dock is a grid (the strip and the mode buttons along the bottom, the card above them at the right), so a strip of any height never runs under the card. On phones the card stays at the top of the view. The guided tutorial's card is in the dock too until its step has something to point at; then it's placed beside that, over the view (and, beside the rail, below the top bars).
+- **1–7 open the build rail's groups** from anywhere (again to close), so any room is two keys or two clicks away; each rail button shows its number.
+- **The "Why?" panel is a list first:** each cause is a line (its points, what it is, an eye for Show me); where it comes from and the fix fold open under it, the biggest cause open to start.
+- **Dialogs scroll inside the screen** rather than running off it (the controls list did on a short window), and the controls dialog is wide enough that a line of help is a line.
+- **A tip says what's wrong first:** the deputy's tip card shows the problem and its buttons; the step-by-step fix folds open from How?, so the card is about half the height.
+- **Web only for now.** Godot keeps its palette of categories; see "Status and next" in `PLAN-GODOT.md`.

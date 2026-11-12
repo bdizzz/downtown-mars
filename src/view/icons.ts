@@ -24,6 +24,7 @@ export const ICONS = {
   // Materials.
   rock: '<path d="M2 12.5 4 6l4-3 4.5 2.5 1.5 7zM4 6l3.5 3L12.5 5.5M7.5 9 6.5 12.5"/>',
   brick: '<rect x="1.5" y="3.5" width="13" height="9"/><path d="M1.5 8h13M6 3.5V8M10 8v4.5"/>',
+  marscrete: '<path d="M2 5.5 8 3l6 2.5v5L8 13l-6-2.5zM2 5.5 8 8l6-2.5M8 8v5"/><circle cx="5" cy="9" r=".6" fill="currentColor"/><circle cx="11" cy="9.5" r=".6" fill="currentColor"/>',
   metal: '<path d="M1.5 13h13l-2-5h-9zM4 8l1.5-4.5h5L12 8"/>',
   machinery: '<circle cx="8" cy="8" r="4.5"/><circle cx="8" cy="8" r="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.5 1.5M11.5 11.5 13 13M3 13l1.5-1.5M11.5 4.5 13 3"/>',
   electronics: '<rect x="4" y="4" width="8" height="8" rx="1"/><path d="M6.5 1.5V4M9.5 1.5V4M6.5 12v2.5M9.5 12v2.5M1.5 6.5H4M1.5 9.5H4M12 6.5h2.5M12 9.5h2.5"/>',
@@ -55,6 +56,22 @@ export const ICONS = {
   restroom: '<path d="M2.5 7.5h11v1a5.5 4 0 0 1-11 0zM4.5 7.5V2.5h3v5M5.5 12.5l-1 2h7l-1-2"/>',
   crate: '<path d="M2 5 8 2l6 3v6.5l-6 3-6-3zM2 5l6 3 6-3M8 8v6.5"/>',
   chevron: '<path d="M6 3.5 10.5 8 6 12.5"/>',
+  // The dock and the build rail: modes, tools and the groups of rooms.
+  build: '<path d="M9.5 2.5 13.5 6.5 11.5 8.5 7.5 4.5zM8.5 5.5 2.5 11.5 4.5 13.5 10.5 7.5"/>',
+  eye: '<path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>',
+  globe: '<circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12"/>',
+  charts: '<path d="M2 14h12M4 14V9M8 14V3.5M12 14V6.5"/>',
+  pause: '<path d="M5.5 3.5v9M10.5 3.5v9"/>',
+  play: '<path d="M5 3 12.5 8 5 13z" fill="currentColor"/>',
+  close: '<path d="M4 4l8 8M12 4l-8 8"/>',
+  rotate: '<path d="M13 8a5 5 0 1 1-1.7-3.7M13 2.5v3h-3"/>',
+  undo: '<path d="M3 6.5h6.5a3.5 3.5 0 0 1 0 7H6M3 6.5l3-3M3 6.5l3 3"/>',
+  demolish: '<path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9M7 7v4M9 7v4"/>',
+  home: '<path d="M2 8 8 2.5 14 8M3.5 7v6.5h9V7M6.5 13.5V10h3v3.5"/>',
+  stairs: '<path d="M2 13.5h3.5V10H9V6.5h3.5V3H14"/>',
+  community: '<circle cx="5.5" cy="5" r="2"/><circle cx="11" cy="6" r="1.5"/><path d="M1.5 13c0-2.5 1.8-4 4-4s4 1.5 4 4M10 9.6c.3-.1.7-.1 1-.1 1.9 0 3.5 1.2 3.5 3.5"/>',
+  stock: '<path d="M2 4.5h12M2 8h12M2 11.5h12"/><circle cx="5" cy="4.5" r="1.2" fill="currentColor"/><circle cx="10.5" cy="8" r="1.2" fill="currentColor"/><circle cx="7" cy="11.5" r="1.2" fill="currentColor"/>',
+  corridor: '<path d="M2 5.5h8.5a2 2 0 0 1 2 2V14M2 9.5h6.5V14"/>',
 } as const;
 
 export type IconId = keyof typeof ICONS;

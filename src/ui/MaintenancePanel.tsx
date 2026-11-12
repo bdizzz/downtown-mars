@@ -2,6 +2,7 @@ import type { Snapshot } from "../sim/snapshot";
 import { RoomName } from "./RoomName";
 import { conditionColor } from "../view/conditionView";
 import { cssColor } from "../render2d/palette";
+import { PanelHeader } from "./PanelHeader";
 
 // Upkeep: the hole's overall condition, what each maintenance or cleaning
 // room is repairing now, and the queue of rooms waiting their turn (those at
@@ -31,22 +32,13 @@ export function MaintenancePanel({ s, onSelect, onClose }: { s: Snapshot; onSele
   };
   return (
     <aside className="inspector construction maintenance">
-      <header>
-        <h2>Maintenance</h2>
-        <button onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </header>
+      <PanelHeader title="Maintenance" help={"Rooms wear down. Below 50% they get people down, below 30% they slow, and at 0% they stop. Each maintenance room repairs one room at a time, worst first; cleaning services take only homes and other rooms people share."} onClose={onClose} />
       <p>
         <span className="k">Overall condition</span> {pct(overall)}
       </p>
       <Condition value={overall} />
-      <p className="k">
-        Rooms wear down. Below 50% they get people down, below 30% they slow, and at 0% they stop. Each maintenance room repairs one room at a time, worst first; cleaning services
-        take only homes and other rooms people share.
-      </p>
       <h3>At work</h3>
-      {!lanes.length && <p className="k">No maintenance rooms yet: build one (Build → Services).</p>}
+      {!lanes.length && <p className="k">No maintenance rooms yet: build one (Build → Industry).</p>}
       <ol className="queue">
         {lanes.map((l) => (
           <li key={l.by}>

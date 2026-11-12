@@ -5,6 +5,7 @@ import { Portrait } from "./Portrait";
 import { pickGoal, shownGoal, tutorial, type TutorialStep } from "./tutorialGoals";
 import { guided, guideStep } from "./guided";
 import type { GuideState } from "../sim/state";
+import { createPortal } from "react-dom";
 
 interface Props {
   s: Snapshot;
@@ -120,7 +121,9 @@ export function GuidedTutorial({ s, guide, met, paused, onButton, onLeave, highl
       const target = findTarget(highlight);
       const box = card.current?.getBoundingClientRect();
       const view = { width: window.innerWidth, height: window.innerHeight };
-      const next = target && box ? place(target.getBoundingClientRect(), box, view, obstacle(), !!target.closest('[data-anchor="side"]')) : null;
+      // Beside a strip down the side, the card keeps below the top bar and the resources.
+      const top = (document.querySelector(".view")?.getBoundingClientRect().top ?? 0) + 8;
+      const next = target && box ? place(target.getBoundingClientRect(), box, view, obstacle(), !!target.closest('[data-anchor="side"]'), top) : null;
       setAnchor((prev) => (sameAnchor(prev, next) ? prev : next));
     };
     measure();
@@ -187,11 +190,15 @@ export function GuidedTutorial({ s, guide, met, paused, onButton, onLeave, highl
       </button>
     </div>
   );
+  // With nothing to point at, the card sits where it's put (above the dock's mode buttons). Pointing at
+  // something, it's placed in real pixels over the view, outside the dock and its interface-size zoom.
   if (!anchor) return body;
-  return (
+  const placed = (
     <div className={`guide-anchor ${anchor.side}`} style={{ left: anchor.left, top: anchor.top }}>
       {body}
       <span className="guide-arrow" style={anchor.side === "below" || anchor.side === "above" ? { left: anchor.arrow } : { top: anchor.arrow }} aria-hidden="true" />
     </div>
   );
+  const view = document.querySelector(".view");
+  return view ? createPortal(placed, view) : placed;
 }
