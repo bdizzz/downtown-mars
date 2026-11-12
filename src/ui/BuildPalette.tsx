@@ -123,6 +123,8 @@ interface RailProps {
   onBuildDome?: () => void;
   /** Which rooms and tools show (the guided tutorial's unlocks, T-084). */
   reveal?: Reveal;
+  /** A group's number key was pressed (1 for the first group…): open it, or close it if it's open. `n` changes with every press. */
+  jump?: { group: number; n: number } | null;
 }
 
 /** The group a tool belongs to: its room's, or Access for corridors. */
@@ -141,7 +143,7 @@ type Hovered = { id: string; top: number; bottom: number; up: boolean } | null;
  * choosing a tile (or a room's key) puts it in hand. The details of the tile under the pointer
  * float beside the list, level with it.
  */
-export function BuildRail({ active, setActive, tool, setTool, resources, canUndo, undo, highlight, deposits, lastFinish, lining, dome = "none", onBuildDome, reveal = SHOW_ALL }: RailProps) {
+export function BuildRail({ active, setActive, tool, setTool, resources, canUndo, undo, highlight, deposits, lastFinish, lining, dome = "none", onBuildDome, reveal = SHOW_ALL, jump = null }: RailProps) {
   const [open, setOpen] = useState<string | null>(null);
   const [hovered, setHovered] = useState<Hovered>(null);
   const lastOpen = useRef<string | null>(null);
@@ -172,6 +174,21 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
   useEffect(() => {
     if (toolGroup) pick(toolGroup);
   }, [toolGroup]);
+  /** Open a group (turning Build on), or close the open one (and Build off, with nothing in hand). */
+  const toggle = (id: string) => {
+    if (open !== id) {
+      setActive(true);
+      pick(id);
+    } else {
+      pick(null);
+      if (!tool) setActive(false);
+    }
+  };
+  // A group's number key.
+  useEffect(() => {
+    const g = jump ? BUILD_GROUPS[jump.group] : undefined;
+    if (g && groups.some(([x]) => x.id === g.id)) toggle(g.id);
+  }, [jump?.n]);
   // A finger on the view folds the list away, so it doesn't hide where the room goes (the tool stays in hand).
   useEffect(() => {
     const fold = (e: PointerEvent) => {
@@ -209,20 +226,13 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
               key={g.id}
               className={`rail-btn${isOpen ? " open" : ""}${toolGroup === g.id ? " on" : ""}${wanted(g, ts) && !isOpen ? " pulse" : ""}${fresh(g, ts) && !isOpen ? " fresh" : ""}`}
               style={catColor(g.categories[0]!)}
-              onClick={() => {
-                if (!isOpen) {
-                  setActive(true);
-                  pick(g.id);
-                } else {
-                  pick(null);
-                  if (!tool) setActive(false);
-                }
-              }}
+              onClick={() => toggle(g.id)}
               aria-expanded={isOpen}
-              title={`${g.name}: ${g.categories.map((c) => CATEGORY_NAMES[c] ?? c).join(", ").toLowerCase()}`}
+              title={`${g.name}: ${g.categories.map((c) => CATEGORY_NAMES[c] ?? c).join(", ").toLowerCase()} (${BUILD_GROUPS.indexOf(g) + 1})`}
             >
               <Icon id={g.icon} size={20} />
               <span className="label">{g.name}</span>
+              <kbd>{BUILD_GROUPS.indexOf(g) + 1}</kbd>
             </button>
           );
         })}

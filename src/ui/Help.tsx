@@ -6,6 +6,7 @@ const GENERAL: [string, string][] = [
   ["Build", "The rail down the left: open a group, pick a room, click where it goes. What's in hand shows its choices (size, walls, the corridor tool's jobs) along the bottom"],
   ["Modes", "View, Map and Charts, bottom right: each opens its buttons along the bottom (again to close)"],
   ["B", "Build: opens the rail's last group (the rooms' keys, on the right, work only in Build)"],
+  ["1 – 7", "Open a group on the build rail (again to close)"],
   ["V", "View mode: cameras, plan and unrolled views, overlays"],
   ["C", "Charts mode: people, flows, network, construction"],
   ["M", "Map mode: the planet"],

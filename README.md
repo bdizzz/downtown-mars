@@ -62,6 +62,7 @@ The essentials:
 | Key | Does |
 | --- | --- |
 | B V C M | Build, View, Charts and Map |
+| 1 – 7 | Open a group on the build rail: Access, Homes, Food & water, Air & power, Community, Industry, Storage (again to close) |
 | Space | Pause / resume |
 | − + | Slower / faster |
 | R, Z, X | Rotate, corridor tool, demolish (in Build) |

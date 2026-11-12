@@ -357,4 +357,6 @@ Deliberately not decided yet:
 - **The top bar's alerts never stack:** they sit side by side at full width, moving together to the bar's second row on a narrow window.
 - **The View strip is three groups:** Camera (one set for the 3D cameras, Plan and Unrolled, since only one shows at a time), Show (switches) and Overlay (one set). Exclusive choices look like one joined set and switches like switches, everywhere.
 - **A decision waiting comes first:** an event's card sits over the deputy's card and clear of the dock, and the toasts narrow (on phones, hide) while it's up.
+- **The deputy's card is part of the dock:** the dock is a grid (the strip and the mode buttons along the bottom, the card above them at the right), so a strip of any height never runs under the card. On phones the card stays at the top of the view. The guided tutorial's card still places itself.
+- **1–7 open the build rail's groups** from anywhere (again to close), so any room is two keys or two clicks away; each rail button shows its number.
 - **Web only for now.** Godot keeps its palette of categories; see "Status and next" in `PLAN-GODOT.md`.

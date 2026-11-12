@@ -687,7 +687,7 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   .cam-reset { padding: 4px 10px; }
   .cam-zoom { width: 36px; height: 32px; font-size: 16px; }
   /* No keyboard: hide the key hints. */
-  .dock-btn kbd, .tile kbd, .mode-btn kbd, .tool-bar kbd { display: none; }
+  .dock-btn kbd, .tile kbd, .mode-btn kbd, .tool-bar kbd, .rail-btn kbd { display: none; }
 }
 
 /* Narrow screens (phones, and tablets in portrait): the 3D view first, panels as sheets over its bottom. */
@@ -1217,6 +1217,11 @@ kbd {
 .rail-btn.demolish.on { background: #4a211a; border-color: #f08a70; }
 .rail-btn.demolish.on::after { display: none; }
 .rail-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+/* A group's number key, in its corner. */
+.rail-btn kbd { position: absolute; top: 2px; right: 2px; min-width: 0; padding: 0 3px; font-size: 8.5px; line-height: 1.25; border-bottom-width: 1px; opacity: 0.75; }
+.rail-btn.open kbd { color: var(--ink); background: rgba(26, 15, 13, 0.15); border-color: rgba(26, 15, 13, 0.4); }
+/* Keys on a lit button. */
+.primary kbd { color: var(--ink); background: rgba(26, 15, 13, 0.15); border-color: rgba(26, 15, 13, 0.4); }
 .rail-sep { height: 1px; margin: 3px 4px; background: linear-gradient(90deg, transparent, var(--edge), transparent); flex-shrink: 0; }
 .build-flyout { position: relative; display: flex; align-items: flex-start; max-height: 100%; min-height: 0; }
 .flyout-panel { width: 264px; max-height: 100%; display: flex; flex-direction: column; padding: 8px 8px 6px; box-sizing: border-box; font-size: 13px; animation: flyout-in 0.14s ease-out; }
@@ -1304,8 +1309,17 @@ kbd {
 .view:has(.event-card) .messages { max-width: max(0px, calc(100% - 510px)); overflow: hidden; }
 /* The floor picker owns the right edge: toasts and the deputy's card keep clear of it. */
 .messages, .tutorial, .tutorial-pill { right: 84px; }
-/* The deputy's card clears a strip two rows deep. */
-.tutorial, .tutorial-pill { bottom: calc(98px * var(--ui-scale, 1)); }
+/* The dock is a grid: the open mode's strip and the mode buttons along the bottom, and above them, at the
+   right, the deputy's card. Stacked, so a strip of any height never runs under the card. */
+.dock { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+.dock > .dock-strip { grid-row: 2; grid-column: 1; }
+.dock > .dock-modes { grid-row: 2; grid-column: 2; margin-left: 0; }
+.dock-aside { grid-row: 1; grid-column: 1 / -1; justify-self: end; margin-right: 74px; display: flex; flex-direction: column; align-items: flex-end; }
+.dock-aside:empty { display: none; }
+/* Only the card takes clicks: beside it, they go through to the view. */
+.dock > .dock-aside { pointer-events: none; }
+.dock-aside .tutorial, .dock-aside .tutorial-pill { pointer-events: auto; }
+.dock-aside .tutorial, .dock-aside .tutorial-pill { position: static; zoom: 1; }
 .messages { max-width: min(380px, calc(100% - 190px)); font-size: 12.5px; }
 .msg { background: var(--face); border: 1px solid var(--line); border-left: 3px solid var(--muted); border-radius: 4px; box-shadow: var(--bevel), 0 4px 14px rgba(0, 0, 0, 0.4); padding: 6px 4px 6px 10px; }
 .msg.good { border-left-color: #8fcf6f; }
@@ -1323,6 +1337,10 @@ kbd {
   box-shadow: inset 0 1px 0 rgba(160, 122, 92, 0.18); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .corridor-confirm { background: var(--face); border-color: #7a3a16; padding: 12px 14px; }
+/* Clear of a tool bar two rows deep. */
+.corridor-confirm { bottom: 100px; }
+/* The dev server's tick counter: tucked in the bar's corner, never taking a row of its own. */
+.tick { position: absolute; right: 10px; bottom: 0; margin: 0; font-size: 9.5px; line-height: 1; pointer-events: none; }
 .menu { padding: 22px; }
 .map-screen header, .map-screen footer { background: linear-gradient(180deg, #37221b, #2a1814); }
 .site-panel { background: linear-gradient(180deg, #2f1c16, #24140f); box-shadow: inset 1px 0 0 rgba(160, 122, 92, 0.22); }
@@ -1390,7 +1408,7 @@ kbd {
   .needs { flex-wrap: wrap; overflow: visible; }
   .status-place { display: none; }
   .messages, .tutorial, .tutorial-pill { right: 6px; }
-  .tutorial, .tutorial-pill { bottom: auto; }
+  .dock { display: flex; }
   .messages { max-width: calc(100% - 70px); }
   /* Beside the rail, not under it. */
   .tutorial, .event-cards { width: min(300px, calc(100% - 74px)); }

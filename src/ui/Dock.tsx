@@ -46,15 +46,18 @@ interface DockProps {
   jobs: number;
   /** Which modes show (the guided tutorial's unlocks, T-084). */
   reveal?: Reveal;
+  /** What sits above the mode buttons: the deputy's card. */
+  aside?: React.ReactNode;
   children?: React.ReactNode;
 }
 
 /** The mode buttons, and whatever strip the open mode shows. */
-export function Dock({ mode, setMode, highlight, jobs, reveal = SHOW_ALL, children }: DockProps) {
+export function Dock({ mode, setMode, highlight, jobs, reveal = SHOW_ALL, aside, children }: DockProps) {
   const wanted = modeFor(highlight);
   const modes = MODES.filter((m) => reveal.shown(`mode:${m.id}`));
   return (
     <div className="dock">
+      {aside && <div className="dock-aside">{aside}</div>}
       {children}
       <div className="dock-modes" role="toolbar" aria-label="Modes" hidden={!modes.length}>
         {modes.map((m) => (

@@ -273,6 +273,8 @@ export function App() {
   }, [tool, viewFloor, settings.view, settings.view3d.camera]);
 
   // The lining rooms are built in (T-038): bare rock each time Build opens, then kept while placing room after room.
+  /** A build group's number key, for the rail (1–7). */
+  const [railJump, setRailJump] = useState<{ group: number; n: number } | null>(null);
   const [lining, setLining] = useState(BARE_ROCK);
   useEffect(() => {
     if (mode === "build") setLining(BARE_ROCK);
@@ -543,6 +545,9 @@ export function App() {
         if (!walking) setMode("build");
         return;
       }
+      // 1–7 open the build rail's groups from anywhere (again to close).
+      const digit = /^Digit[1-9]$/.test(e.code) ? Number(e.code.slice(5)) : 0;
+      if (digit && has("build") && !walking && !mapOpen) return setRailJump((j) => ({ group: digit - 1, n: (j?.n ?? 0) + 1 }));
       // [ and ] step through the holes.
       const next = e.code === "BracketRight" || e.key === "]";
       const prev = e.code === "BracketLeft" || e.key === "[";
@@ -600,6 +605,48 @@ export function App() {
     if (room?.at.kind === "ring" && settings.view !== "2d" && !walking) setViewFloor(room.at.floor);
   };
 
+  // The deputy's card (a tip, else the tutorial's goal) sits above the dock's mode buttons, stacked with
+  // the dock so a tall strip can never run under it. On phones it's at the top of the view instead,
+  // clear of the dock. The guided tutorial's card places itself (ui/anchor.ts).
+  const narrow = matchMedia("(max-width: 760px)").matches;
+  const deputyCard = (
+    <>
+      {snapshot && tip && !menu && !welcome && (
+      <div style={{ display: walking ? "none" : "contents" }}>
+        <TipCard
+          s={snapshot}
+          tip={tip}
+          shown={spotlight?.id === `tip:${tip.id}`}
+          onShow={showMe}
+          onSeen={() => {
+            if (spotlight?.id === `tip:${tip.id}`) setSpotlight(null);
+            onCommand({ type: "seeTip", id: tip.id });
+          }}
+          onOff={() => {
+            if (spotlight?.id === `tip:${tip.id}`) setSpotlight(null);
+            updateSettings({ tips: false });
+          }}
+        />
+      </div>
+    )}
+      {snapshot && !tip && !guide && tutorialOn && !menu && !welcome && (
+      // Out of the way in first person, but kept (folded or open, on the same step) for when you're back.
+      <div style={{ display: walking ? "none" : "contents" }}>
+        <Tutorial
+          s={snapshot}
+          met={met!}
+          step={step}
+          onStep={setTutorialStep}
+          onHide={() => {
+            setTutorialOn(false);
+            setTutorialHidden(true);
+          }}
+        />
+      </div>
+    )}
+    </>
+  );
+
   return (
     <div
       className={`app${settings.colorBlind ? " color-blind" : ""}${welcome ? " welcoming" : ""}${titling ? " titling" : ""}${hudOpen ? " hud-open" : ""}`}
@@ -626,7 +673,7 @@ export function App() {
       <div className="main">
         <div className="view">
           {snapshot && (
-            <Dock mode={mode} setMode={setMode} highlight={highlight} jobs={snapshot.construction.jobs.length} reveal={reveal}>
+            <Dock mode={mode} setMode={setMode} highlight={highlight} jobs={snapshot.construction.jobs.length} reveal={reveal} aside={narrow ? null : deputyCard}>
               {mode === "build" && (
                 <ToolBar
                   tool={tool}
@@ -672,25 +719,8 @@ export function App() {
               dome={snapshot.layout.domed ? "built" : snapshot.construction.jobs.some((j) => j.kind === "dome") ? "building" : "none"}
               onBuildDome={() => onCommand({ type: "buildDome" })}
               reveal={reveal}
+              jump={railJump}
             />
-          )}
-          {snapshot && tip && !menu && !welcome && (
-            <div style={{ display: walking ? "none" : "contents" }}>
-              <TipCard
-                s={snapshot}
-                tip={tip}
-                shown={spotlight?.id === `tip:${tip.id}`}
-                onShow={showMe}
-                onSeen={() => {
-                  if (spotlight?.id === `tip:${tip.id}`) setSpotlight(null);
-                  onCommand({ type: "seeTip", id: tip.id });
-                }}
-                onOff={() => {
-                  if (spotlight?.id === `tip:${tip.id}`) setSpotlight(null);
-                  updateSettings({ tips: false });
-                }}
-              />
-            </div>
           )}
           {snapshot && !tip && guide && !menu && !welcome && (
             <div style={{ display: walking ? "none" : "contents" }}>
@@ -712,21 +742,7 @@ export function App() {
               />
             </div>
           )}
-          {snapshot && !tip && !guide && tutorialOn && !menu && !welcome && (
-            // Out of the way in first person, but kept (folded or open, on the same step) for when you're back.
-            <div style={{ display: walking ? "none" : "contents" }}>
-              <Tutorial
-                s={snapshot}
-                met={met!}
-                step={step}
-                onStep={setTutorialStep}
-                onHide={() => {
-                  setTutorialOn(false);
-                  setTutorialHidden(true);
-                }}
-              />
-            </div>
-          )}
+          {narrow && deputyCard}
           <Messages s={snapshot} />
           <EventCards s={snapshot} onCommand={onCommand} />
           {snapshot && mapOpen && (

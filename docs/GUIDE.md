@@ -275,6 +275,7 @@ New games open in 3D, in Free view. Everything you can do in 2D works in 3D.
 | Key | Action |
 | --- | --- |
 | B V C M | Build, View, Charts and Map modes (anywhere) |
+| 1 – 7 | Open a group on the build rail: Access, Homes, Food & water, Air & power, Community, Industry, Storage (again to close) |
 | Space | Pause / resume, at the speed you had |
 | − + | Slower / faster (1×, 2×, 4×); from paused, starts one step from the speed you had |
 | Esc | Put down the tool, close a panel or mode, or open the menu (in the menu, Esc goes back a step, then resumes) |
