@@ -332,7 +332,7 @@ Bryon: solar only by day, to make batteries matter.
 ## Decided for furniture detail and the frame rate (Nov 12, #391, Bryon)
 
 - **Detailed furniture is a setting with three choices**, not a fixed first-person-only rule: simple shapes everywhere, detailed on foot (what #360 did), detailed everywhere. **The default is detailed everywhere**; players with slower machines turn it down. It's separate from the Low/Medium/High presets.
-- **The game watches its own frame rate** and charts the last two minutes in Settings → Display. When the middle of the last 20 seconds is under 30 fps it recommends scaling back the furniture or lowering the graphics (a button for each). It only advises; it never changes settings itself.
+- **The game watches its own frame rate** and charts the last two minutes in Settings → Display. When the middle of the last 20 seconds is under 30 fps it recommends scaling back the furniture or lowering the graphics (a button for each). It only advises; it never changes settings itself. Under 10 fps for that stretch the game itself shows a card with a one-click **Lighten graphics** (Low preset, simple shapes), so the player needn't leave the game.
 - **`fp.bin`'s download budget rises from 1 MB to 3 MB gzipped**, since the setting lets anyone skip it. Today's file is 0.97 MB.
 
 ## Still open

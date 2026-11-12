@@ -898,6 +898,19 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .update-banner button:disabled { opacity: 0.6; cursor: default; }
 .update-banner .update-later { background: none; color: var(--text); border-color: transparent; padding: 4px 6px; opacity: 0.7; }
 .update-banner .update-later:hover { opacity: 1; }
+
+/* The frame rate has been very low for a while (#391): a card at the bottom of the game with a one-click fix. */
+.slow-card {
+  position: fixed; bottom: calc(44px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 20;
+  display: flex; align-items: center; gap: 10px; max-width: calc(100% - 32px); box-sizing: border-box;
+  background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; padding: 6px 8px 6px 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5); font-size: 13.5px;
+}
+.slow-card button { font: inherit; border-radius: 5px; padding: 4px 12px; cursor: pointer; border: 1px solid var(--accent); white-space: nowrap; }
+.slow-card button.primary { background: var(--accent); color: #1a0f0d; font-weight: 600; }
+.slow-card .slow-later { background: none; color: var(--text); border-color: transparent; padding: 4px 6px; opacity: 0.7; }
+.slow-card .slow-later:hover { opacity: 1; }
+@media (max-width: 560px) { .slow-card { flex-wrap: wrap; } }
 .tutorial .tip-actions { display: flex; gap: 6px; }
 /* Charts → Directory (T-149): floors from the surface down, their rooms with a status dot. */
 .directory { width: 300px; }

@@ -9,6 +9,9 @@ export const FPS_HISTORY = 120;
 /** "Consistently low": the middle reading of the last `seconds` is under `below`. */
 export const LOW_FPS = { below: 30, seconds: 20 };
 
+/** So slow the game itself speaks up (a card over the game, not just the settings): the same stretch, under this. */
+export const VERY_LOW_FPS = 10;
+
 /** A gap this long between frames (a hidden tab, a stall while loading) isn't slowness: that second is dropped. */
 const GAP_MS = 1000;
 
@@ -69,7 +72,12 @@ export function recentFps(h: readonly number[] = history, seconds = LOW_FPS.seco
 }
 
 /** Has it been consistently low: the last LOW_FPS.seconds readings' middle is under LOW_FPS.below. */
-export function isLowFps(h: readonly number[] = history): boolean {
+export function isLowFps(h: readonly number[] = history, below = LOW_FPS.below): boolean {
   const r = recentFps(h);
-  return r !== null && r < LOW_FPS.below;
+  return r !== null && r < below;
+}
+
+/** Has it been under VERY_LOW_FPS for the whole stretch (by its middle reading). */
+export function isVeryLowFps(h: readonly number[] = history): boolean {
+  return isLowFps(h, VERY_LOW_FPS);
 }

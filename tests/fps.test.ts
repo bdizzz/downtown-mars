@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { cleanGraphics, DEFAULT_GRAPHICS, drawsDetailedFurniture, GRAPHICS_PRESETS, lighterFurniture, lowerPreset, presetOf } from "../src/view/graphics";
-import { FPS_HISTORY, fpsHistory, isLowFps, LOW_FPS, onFps, recentFps, recordFrame, resetFps } from "../src/view/fps";
+import { FPS_HISTORY, fpsHistory, isLowFps, isVeryLowFps, LOW_FPS, onFps, recentFps, recordFrame, resetFps } from "../src/view/fps";
 
 /** Feed `seconds` of frames at `fps`, starting at `from` ms; returns the time after. */
 function feed(from: number, seconds: number, fps: number): number {
@@ -44,6 +44,15 @@ describe("frame rate history (#391)", () => {
   it("calls it low when the middle of the last stretch is under the limit", () => {
     feed(0, LOW_FPS.seconds + 2, 15);
     expect(isLowFps()).toBe(true);
+  });
+
+  it("speaks up in the game only when it's under 10 fps, not merely under 30", () => {
+    feed(0, LOW_FPS.seconds + 2, 15);
+    expect(isLowFps()).toBe(true);
+    expect(isVeryLowFps()).toBe(false);
+    resetFps();
+    feed(0, LOW_FPS.seconds + 2, 6);
+    expect(isVeryLowFps()).toBe(true);
   });
 
   it("does not call a fine frame rate low, or one brief dip", () => {
