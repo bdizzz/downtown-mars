@@ -2,6 +2,8 @@ import type { Snapshot } from "../sim/snapshot";
 import type { Spot } from "../view/reachView";
 import { whyContent, type WhyItem } from "../view/whyPanel";
 import { PanelHeader } from "./PanelHeader";
+import { useState } from "react";
+import { Icon } from "./Icon";
 
 // The "Why?" panel (F-018): what's hurting health and happiness, biggest first, each with its fix and a
 // Show me that lights up the rooms and homes involved and turns to them; then the unhappiest homes, a click
@@ -21,18 +23,38 @@ interface Props {
   onClose: () => void;
 }
 
-function Item({ item, shown, onShow }: { item: WhyItem; shown: boolean; onShow: Props["onShow"] }) {
+/**
+ * One cause: how much it weighs and what it is, with Show me beside it. Where it comes from and how to
+ * fix it fold open under it (the biggest cause starts open), so the list reads as a list first.
+ */
+function Item({ item, shown, onShow, first }: { item: WhyItem; shown: boolean; onShow: Props["onShow"]; first: boolean }) {
+  const [open, setOpen] = useState(first);
+  const more = !!(item.from || item.fix);
   return (
-    <li className={`why-item${item.bad ? " bad" : " good"}`}>
-      <p>
-        <strong className="why-amount">{item.amount}</strong> {item.text}
-      </p>
-      {item.from && <p className="k">{item.from}</p>}
-      {item.fix && <p className="why-fix">Fix: {item.fix}</p>}
-      {item.spot && (
-        <button className={`why-show${shown ? " on" : ""}`} onClick={() => onShow(shown ? null : item.id, shown ? null : item.spot)} aria-pressed={shown}>
-          {shown ? "Showing" : "Show me"}
+    <li className={`why-item${item.bad ? " bad" : " good"}${open ? " open" : ""}`}>
+      <div className="why-top">
+        <button className="why-what" onClick={() => setOpen(!open)} aria-expanded={open} disabled={!more} title={more ? (open ? "Hide the details" : "Where it comes from, and the fix") : undefined}>
+          <strong className="why-amount">{item.amount.replace(/ points?$/, "")}</strong>
+          <span>{item.text}</span>
+          {more && <Icon id="chevron" size={11} className="chev" />}
         </button>
+        {item.spot && (
+          <button
+            className={`why-show eye${shown ? " on" : ""}`}
+            onClick={() => onShow(shown ? null : item.id, shown ? null : item.spot)}
+            aria-pressed={shown}
+            aria-label="Show me"
+            title={shown ? "Showing: the rooms behind it and the homes that feel it are lit up. Click to stop." : "Show me: light up the rooms behind it and the homes that feel it"}
+          >
+            <Icon id="eye" size={14} />
+          </button>
+        )}
+      </div>
+      {open && item.from && <p className="why-from">{item.from}</p>}
+      {open && item.fix && (
+        <p className="why-fix">
+          <b>Fix</b> {item.fix}
+        </p>
       )}
     </li>
   );
@@ -56,7 +78,7 @@ export function WhyPanel({ s, tab, setTab, shown, onShow, onSelect, onTrend, onC
       {section.items.length ? (
         <ul className="why-list">
           {section.items.map((item) => (
-            <Item key={item.id} item={item} shown={shown === item.id} onShow={onShow} />
+            <Item key={item.id} item={item} shown={shown === item.id} onShow={onShow} first={item === section.items[0]} />
           ))}
         </ul>
       ) : (

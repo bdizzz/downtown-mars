@@ -359,4 +359,6 @@ Deliberately not decided yet:
 - **A decision waiting comes first:** an event's card sits over the deputy's card and clear of the dock, and the toasts narrow (on phones, hide) while it's up.
 - **The deputy's card is part of the dock:** the dock is a grid (the strip and the mode buttons along the bottom, the card above them at the right), so a strip of any height never runs under the card. On phones the card stays at the top of the view. The guided tutorial's card is in the dock too until its step has something to point at; then it's placed beside that, over the view (and, beside the rail, below the top bars).
 - **1–7 open the build rail's groups** from anywhere (again to close), so any room is two keys or two clicks away; each rail button shows its number.
+- **The "Why?" panel is a list first:** each cause is a line (its points, what it is, an eye for Show me); where it comes from and the fix fold open under it, the biggest cause open to start.
+- **Dialogs scroll inside the screen** rather than running off it (the controls list did on a short window), and the controls dialog is wide enough that a line of help is a line.
 - **Web only for now.** Godot keeps its palette of categories; see "Status and next" in `PLAN-GODOT.md`.

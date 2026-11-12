@@ -1290,6 +1290,33 @@ kbd {
 .event-cards { top: 40px; }
 
 /* ---- What floats over the view ---- */
+/* The "Why?" panel: causes as a list of figures; where each comes from and its fix fold open under it. */
+.why-list { gap: 4px; }
+.why-item { --tone: var(--tone-bad); border: 1px solid var(--line); border-left: 3px solid var(--tone); border-radius: 4px; padding: 0; background: var(--well); gap: 0; }
+.why-item.good { --tone: var(--tone-good); border-left-color: var(--tone); }
+.why-top { display: flex; align-items: center; gap: 6px; padding: 4px 6px; }
+.why-what { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 7px; background: none; border: none; color: var(--text); font: inherit; font-size: 13px; text-align: left; padding: 0; cursor: pointer; }
+.why-what:disabled { cursor: default; }
+.why-what > span:not(.ico) { flex: 1; min-width: 0; }
+.why-what .chev { color: var(--muted); align-self: center; transition: transform 0.12s; }
+.why-item.open .why-what .chev { transform: rotate(90deg); }
+.why-amount { min-width: 34px; text-align: right; font-weight: 700; color: var(--tone, var(--text)); }
+.why-from { margin: 0; padding: 0 8px 5px 47px; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+.why .why-fix { margin: 0 6px 6px; padding: 4px 7px; border-radius: 4px; background: #e07a3f1f; border-left: 2px solid var(--accent); font-size: 12px; line-height: 1.35; color: var(--text); }
+.why .why-fix b { color: var(--accent-hi); margin-right: 3px; font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+.why .why-show { align-self: center; flex-shrink: 0; }
+.why .why-show.eye { display: inline-flex; padding: 3px 6px; }
+.why-home .why-amount { display: inline-block; min-width: 24px; margin-right: 4px; color: var(--text); }
+/* Dialogs never run off the screen: they scroll inside it. */
+.menu { max-height: calc(100dvh - 32px); overflow-y: auto; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: var(--edge) transparent; }
+/* The controls: wide enough that a line of help is a line. */
+.help { width: min(820px, 100%); }
+.help-cols { grid-template-columns: 1.7fr 1fr; gap: 4px 28px; }
+.help dl { gap: 5px; }
+.help dt { min-width: 128px; flex-shrink: 0; }
+.help dd { line-height: 1.35; }
+.help .primary { align-self: flex-start; }
+@media (max-width: 560px) { .help-cols { grid-template-columns: 1fr; } }
 /* The status line: what the pointer's on, a part at a time, and where that is at the far end. */
 .status { display: flex; align-items: center; gap: 12px; min-height: 18px; }
 .status-main { flex: 1; min-width: 0; display: flex; overflow: hidden; }
