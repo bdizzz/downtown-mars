@@ -1194,7 +1194,7 @@ kbd {
 
 /* ---- Building: the rail down the left edge, a group's tiles beside it, the tool bar ---- */
 .build-rail { position: absolute; left: 10px; top: 10px; bottom: 64px; z-index: 6; display: flex; align-items: flex-start; gap: 8px; pointer-events: none; zoom: var(--ui-scale, 1); }
-.build-rail > * { pointer-events: auto; }
+.build-rail > .rail { pointer-events: auto; }
 .rail { display: flex; flex-direction: column; gap: 3px; padding: 4px; max-height: 100%; overflow-y: auto; scrollbar-width: none; box-sizing: border-box; }
 .build-rail.active .rail { border-color: #7a3a16; box-shadow: var(--bevel), 0 0 0 1px rgba(224, 122, 63, 0.55), 0 0 16px rgba(224, 122, 63, 0.3), var(--float); }
 .rail-btn {
@@ -1223,7 +1223,9 @@ kbd {
 /* Keys on a lit button. */
 .primary kbd { color: var(--ink); background: rgba(26, 15, 13, 0.15); border-color: rgba(26, 15, 13, 0.4); }
 .rail-sep { height: 1px; margin: 3px 4px; background: linear-gradient(90deg, transparent, var(--edge), transparent); flex-shrink: 0; }
-.build-flyout { position: relative; display: flex; align-items: flex-start; max-height: 100%; min-height: 0; }
+/* As tall as the rail's space, so its list can scroll within it and the card can be placed against it; only the panel and the card take clicks. */
+.build-flyout { position: relative; display: flex; align-items: flex-start; align-self: stretch; min-height: 0; pointer-events: none; }
+.build-flyout > * { pointer-events: auto; }
 .flyout-panel { width: 264px; max-height: 100%; display: flex; flex-direction: column; padding: 8px 8px 6px; box-sizing: border-box; font-size: 13px; animation: flyout-in 0.14s ease-out; }
 @keyframes flyout-in { from { opacity: 0; transform: translateX(-8px); } }
 @media (prefers-reduced-motion: reduce) { .flyout-panel { animation: none; } }
@@ -1408,7 +1410,7 @@ kbd {
   .needs { flex-wrap: wrap; overflow: visible; }
   .status-place { display: none; }
   .messages, .tutorial, .tutorial-pill { right: 6px; }
-  .dock { display: flex; }
+  .dock { display: flex; align-items: stretch; }
   .messages { max-width: calc(100% - 70px); }
   /* Beside the rail, not under it. */
   .tutorial, .event-cards { width: min(300px, calc(100% - 74px)); }

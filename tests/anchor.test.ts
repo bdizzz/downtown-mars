@@ -38,6 +38,13 @@ describe("the guided card's anchor", () => {
     expect(place({ ...f1, left: 8 }, card, view, null, true).side).toBe("right");
   });
 
+  it("beside a strip, keeps below the bars across the top, the arrow still on the target", () => {
+    const railButton = { left: 15, top: 118, width: 58, height: 50 };
+    const a = place(railButton, card, view, null, true, 110);
+    expect(a.top).toBe(110);
+    expect(a.top + a.arrow).toBe(143);
+  });
+
   it("beside a strip, goes past what's already beside the target", () => {
     // A tile in the build rail's list, with its room's details floating to its right.
     const tile = { left: 80, top: 200, width: 250, height: 30 };

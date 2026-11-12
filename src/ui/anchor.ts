@@ -34,9 +34,9 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
  * `avoid`: something else on screen the card mustn't cover (the room details over the build
  * palette): the card clears it as well as the target, and the arrow still points at the target.
  * `beside`: the target is in a strip down the side of the screen: the card goes beside it, toward
- * the middle, the arrow pointing sideways.
+ * the middle, the arrow pointing sideways; `minTop` keeps it below the bars across the top.
  */
-export function place(target: Box, card: Pick<Box, "width" | "height">, view: Pick<Box, "width" | "height">, avoid?: Box | null, beside = false): Anchor {
+export function place(target: Box, card: Pick<Box, "width" | "height">, view: Pick<Box, "width" | "height">, avoid?: Box | null, beside = false, minTop = MARGIN): Anchor {
   const cx = target.left + target.width / 2;
   const cy = target.top + target.height / 2;
   const maxLeft = view.width - card.width - MARGIN;
@@ -46,7 +46,7 @@ export function place(target: Box, card: Pick<Box, "width" | "height">, view: Pi
     // Past whatever else sits beside the target (a room's details beside the build rail's list).
     const near = side === "left" ? Math.min(target.left, avoid?.left ?? Infinity) : Math.max(target.left + target.width, avoid ? avoid.left + avoid.width : -Infinity);
     const left = side === "left" ? near - GAP - card.width : near + GAP;
-    const top = clamp(cy - card.height / 2, MARGIN, maxTop);
+    const top = clamp(cy - card.height / 2, Math.max(MARGIN, minTop), maxTop);
     return {
       left: Math.round(clamp(left, MARGIN, maxLeft)),
       top: Math.round(top),

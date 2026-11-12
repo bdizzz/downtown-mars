@@ -607,7 +607,8 @@ export function App() {
 
   // The deputy's card (a tip, else the tutorial's goal) sits above the dock's mode buttons, stacked with
   // the dock so a tall strip can never run under it. On phones it's at the top of the view instead,
-  // clear of the dock. The guided tutorial's card places itself (ui/anchor.ts).
+  // clear of the dock. The guided tutorial's card is there too until it has something to point at;
+  // then it places itself beside that (ui/anchor.ts).
   const narrow = matchMedia("(max-width: 760px)").matches;
   const deputyCard = (
     <>
@@ -625,6 +626,26 @@ export function App() {
           onOff={() => {
             if (spotlight?.id === `tip:${tip.id}`) setSpotlight(null);
             updateSettings({ tips: false });
+          }}
+        />
+      </div>
+    )}
+      {snapshot && !tip && guide && !menu && !welcome && (
+      <div style={{ display: walking ? "none" : "contents" }}>
+        <GuidedTutorial
+          s={snapshot}
+          guide={guide}
+          met={gMet}
+          paused={speed === 0}
+          highlight={highlight}
+          onButton={() => {
+            // A step to read moves on (and the next sets its pace); otherwise carry on, slowly.
+            if (gStep && !gStep.check) send({ type: "setGuide", guide: nextGuide(guide) });
+            else setSpeed(config.slowSpeed);
+          }}
+          onLeave={() => {
+            send({ type: "setGuide", guide: null });
+            if (speed === config.slowSpeed) setSpeed(1);
           }}
         />
       </div>
@@ -721,26 +742,6 @@ export function App() {
               reveal={reveal}
               jump={railJump}
             />
-          )}
-          {snapshot && !tip && guide && !menu && !welcome && (
-            <div style={{ display: walking ? "none" : "contents" }}>
-              <GuidedTutorial
-                s={snapshot}
-                guide={guide}
-                met={gMet}
-                paused={speed === 0}
-                highlight={highlight}
-                onButton={() => {
-                  // A step to read moves on (and the next sets its pace); otherwise carry on, slowly.
-                  if (gStep && !gStep.check) send({ type: "setGuide", guide: nextGuide(guide) });
-                  else setSpeed(config.slowSpeed);
-                }}
-                onLeave={() => {
-                  send({ type: "setGuide", guide: null });
-                  if (speed === config.slowSpeed) setSpeed(1);
-                }}
-              />
-            </div>
           )}
           {narrow && deputyCard}
           <Messages s={snapshot} />

@@ -207,8 +207,11 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
     const el = e.currentTarget;
     const box = list.current;
     if (!box) return;
-    const top = el.offsetTop - box.scrollTop;
-    setHovered({ id, top, bottom: box.clientHeight - top - el.offsetHeight, up: el.getBoundingClientRect().top > window.innerHeight / 2 });
+    // In the flyout's own pixels (the card is placed in it): the tile within the list, the list within its panel.
+    const flyout = box.parentElement?.parentElement;
+    if (!flyout) return;
+    const top = el.offsetTop - box.scrollTop + box.offsetTop;
+    setHovered({ id, top, bottom: flyout.clientHeight - top - el.offsetHeight, up: el.getBoundingClientRect().top > window.innerHeight / 2 });
   };
   const out = () => setHovered(null);
 
@@ -217,8 +220,8 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
   const domeWhy = domeRefusal(dome, deposits, resources);
 
   return (
-    <div className={`build-rail${active ? " active" : ""}${freshClass(reveal, "mode:build")}`} data-anchor="side">
-      <div className="rail" role="toolbar" aria-label="Build" aria-orientation="vertical">
+    <div className={`build-rail${active ? " active" : ""}`} data-anchor="side">
+      <div className={`rail${freshClass(reveal, "mode:build")}`} role="toolbar" aria-label="Build" aria-orientation="vertical">
         {groups.map(([g, ts]) => {
           const isOpen = open === g.id;
           return (
