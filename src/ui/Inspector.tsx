@@ -202,17 +202,21 @@ function StorageEditor({ room, onCommand }: { room: Snapshot["layout"]["rooms"][
         ))}
       </div>
       <div className="all">
+        <span className="k">Allow</span>
         <button onClick={() => set(info.goods.map((g) => g.id))}>All</button>
         <button onClick={() => set([])}>None</button>
       </div>
-      {info.goods.map((g) => (
-        <label key={g.id} className={`good${g.allowed ? "" : " off"}`}>
-          <input type="checkbox" checked={g.allowed} onChange={(e) => toggle(g.id, e.target.checked)} aria-label={`Allow ${g.name}`} />
-          <span className="swatch" style={{ background: g.color }} />
-          <span>{g.name}</span>
-          <span className="n">{g.stored >= 0.5 ? num(g.stored) : ""}</span>
-        </label>
-      ))}
+      {/* Each good a switch, two to a row: lit when the room takes it, with what it holds of it. */}
+      <div className="goods">
+        {info.goods.map((g) => (
+          <label key={g.id} className={`good${g.allowed ? "" : " off"}`} title={g.allowed ? `${g.name}: allowed. Click to keep it out.` : `${g.name}: kept out. Click to allow it.`}>
+            <input type="checkbox" checked={g.allowed} onChange={(e) => toggle(g.id, e.target.checked)} aria-label={`Allow ${g.name}`} />
+            <span className="swatch" style={{ background: g.color }} />
+            <span className="name">{g.name}</span>
+            <span className="n">{g.stored >= 0.5 ? num(g.stored) : ""}</span>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
