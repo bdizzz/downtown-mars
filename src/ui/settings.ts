@@ -86,7 +86,7 @@ export function loadSettings(): Settings {
     const raw = localStorage.getItem(KEY);
     const stored = raw ? (JSON.parse(raw) as Partial<Settings> & { quality3d?: "high" | "low"; sfx?: boolean; ambient?: boolean }) : {};
     // Before graphics settings there was one "3D detail" choice: low becomes the low preset.
-    const graphics = stored.graphics ? cleanGraphics(stored.graphics) : stored.quality3d === "low" ? GRAPHICS_PRESETS.low : DEFAULT_GRAPHICS;
+    const graphics = stored.graphics ? cleanGraphics(stored.graphics) : stored.quality3d === "low" ? cleanGraphics(GRAPHICS_PRESETS.low) : DEFAULT_GRAPHICS;
     // Sound effects and ambience were on/off switches (T-066): off becomes silent, on the default.
     const { quality3d: _old, sfx, ambient, ...rest } = stored;
     const sound = { effects: sfx === false ? 0 : DEFAULT_SETTINGS.effects, ambience: ambient === false ? 0 : DEFAULT_SETTINGS.ambience };

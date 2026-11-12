@@ -329,6 +329,12 @@ Bryon: solar only by day, to make batteries matter.
 - **Growth stages** (`data/growth.json`): planters and racks show five stages following the counter (freshly planted, sprouts, modest plants, full plants, ready to harvest). Rather than five models per crop, growing parts are scaled up from their foot and produce (tubers, flowers, grain heads, pods) appears only at "ready", the same in the web view, its first-person models and Godot (`Furniture.cs`). Farms rebuild their furniture only when they change stage.
 - **Two farms can't feed fifty:** in the bot's first month, most meals are still rations (poor), and the larder runs low before a drop around day 19 as it outgrows its two farms. More farms and crops are the player's answer; whether the early game needs a nudge is for the balancing pass.
 
+## Decided for furniture detail and the frame rate (Nov 12, #391, Bryon)
+
+- **Detailed furniture is a setting with three choices**, not a fixed first-person-only rule: simple shapes everywhere, detailed on foot (what #360 did), detailed everywhere. **The default is detailed everywhere**; players with slower machines turn it down. It's separate from the Low/Medium/High presets.
+- **The game watches its own frame rate** and charts the last two minutes in Settings → Display. When the middle of the last 20 seconds is under 30 fps it recommends scaling back the furniture or lowering the graphics (a button for each). It only advises; it never changes settings itself.
+- **`fp.bin`'s download budget rises from 1 MB to 3 MB gzipped**, since the setting lets anyone skip it. Today's file is 0.97 MB.
+
 ## Still open
 
 Deliberately not decided yet:

@@ -43,9 +43,9 @@ const furniture = JSON.parse(readFileSync(join(root, "data/furniture.json"), "ut
  * most 16 tiles of 128 by 128 (256 KB in all). The benchmark in docs/FURNITURE.md drew a near-limit
  * model for every item and found no cost in frames, web or Godot; download size is what to watch.
  * `firstFetch` (#371): fp.bin gzipped, projected to a model for every item in data/furniture.json at
- * today's average size, stays under 1 MB (also checked by tests/models.test.ts).
+ * today's average size, stays under 3 MB (raised from 1 MB in #391, when the models became the default everywhere and a setting to opt out; also checked by tests/models.test.ts).
  */
-const LIMITS = { triangles: { fp: 800 }, textures: { size: 128, count: 16 }, firstFetch: 1_000_000 };
+const LIMITS = { triangles: { fp: 800 }, textures: { size: 128, count: 16 }, firstFetch: 3_000_000 };
 const VERSION = 3;
 
 if (process.argv.includes("--export")) {

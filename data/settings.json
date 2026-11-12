@@ -16,6 +16,7 @@
     { "id": "allResources", "section": "display", "name": "Show every resource", "hint": "Off: the top bar shows the vitals and what needs a look; Stock opens the rest", "control": "toggle", "default": false, "only": "web" },
     { "id": "graphics.quality", "section": "display", "name": "Graphics", "hint": "Low for slower machines; Ultra adds bounced light", "control": "select", "only": "godot" },
     { "id": "graphics.preset", "section": "display", "name": "Graphics", "hint": "Low for slower machines; changing an effect makes it custom", "control": "select", "only": "web" },
+    { "id": "graphics.furniture", "section": "display", "name": "Furniture", "hint": "Detailed models cost more; simple shapes suit slower machines", "control": "select", "only": "web" },
     { "id": "graphics.pixelRatio", "section": "display", "name": "Sharpness", "hint": "Sharper costs more on high-resolution screens", "control": "select", "only": "web",
       "options": [{ "value": 1, "name": "Standard" }, { "value": 1.5, "name": "Sharp" }, { "value": 2, "name": "Sharpest" }] },
     { "id": "graphics.lamps", "section": "display", "name": "Lamp light", "hint": "Lamps, fires and grow lights light the rooms around them", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },

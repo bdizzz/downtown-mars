@@ -79,6 +79,8 @@ The viewer plays the whole game: every camera (Free view, Cutaway, first person)
 
 Still to do, roughly in order of value:
 
+- **Furniture detail and the frame rate** (#391, web only so far): the web's Settings → Display has a Furniture choice (simple shapes, detailed on foot, detailed everywhere, the default) and a chart of the recent frame rate with advice when it's low (`graphics.furniture` in the saved settings, `view/graphics.ts`, `view/fps.ts`). Godot keeps today's behavior, detailed models in first person only (`Furniture.FirstPerson`). To match: a Furniture row in its settings (same three choices, from `data/settings.json`), `Furniture.FirstPerson` driven by the choice and the camera rather than the camera alone (so "everywhere" shows the models in Free view and Cutaway too, "simple shapes" never reads `fp.bin`), and an fps chart from `Engine.GetFramesPerSecond()` (already in the dev readout).
+
 - **The title and loading screens** (T-090): the web shows a loading screen with a real progress bar (`index.html`, `ui/boot.ts`), then the logotype (`public/hole.svg` as the O) over the hole's first floor drifting at dusk (`setShowcase` in `render3d/stage3d.ts`, `title-backdrop` in `ui/styles.css`); Godot opens straight to its menu.
 - **Overlays in 3D** (they're plan-only so far; the web tints cells in 3D too: `render3d/stage3d.ts`, around `overlayType`).
 - **The status line**: the web's bottom line saying what's under the pointer and what placing there would do (`ui/StatusBar.tsx`); Godot shows only key hints there.

@@ -26,7 +26,7 @@ describe("the settings table", () => {
   it("gives sliders a range and plain selects their options", () => {
     for (const r of all) {
       if (r.control === "slider") expect([r.min, r.max, r.step].every((v) => typeof v === "number"), r.id).toBe(true);
-      if (r.control === "select" && !["graphics.preset", "graphics.quality"].includes(r.id)) expect(r.options?.length, r.id).toBeGreaterThan(0);
+      if (r.control === "select" && !["graphics.preset", "graphics.furniture", "graphics.quality"].includes(r.id)) expect(r.options?.length, r.id).toBeGreaterThan(0);
     }
   });
 
