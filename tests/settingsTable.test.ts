@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import raw from "../data/settings.json";
 import { DEFAULT_SETTINGS } from "../src/ui/settings";
 import { SECTIONS, SETTING_ROWS } from "../src/ui/settingsTable";
-import { DEFAULT_GRAPHICS } from "../src/view/graphics";
+import { DEFAULT_GRAPHICS, FURNITURE_DETAILS } from "../src/view/graphics";
 
 describe("the settings table", () => {
   const all = raw.settings as { id: string; section: string; control: string; options?: unknown[]; only?: string; min?: number; max?: number; step?: number }[];
@@ -28,6 +28,13 @@ describe("the settings table", () => {
       if (r.control === "slider") expect([r.min, r.max, r.step].every((v) => typeof v === "number"), r.id).toBe(true);
       if (r.control === "select" && !["graphics.preset", "graphics.quality"].includes(r.id)) expect(r.options?.length, r.id).toBeGreaterThan(0);
     }
+  });
+
+  it("lists the furniture choices as the web names them, in the same order (Godot reads the table)", () => {
+    const row = all.find((r) => r.id === "graphics.furniture") as unknown as { options: { value: number; name: string }[]; only?: string };
+    expect(row.only).toBeUndefined(); // both viewers have it
+    expect(row.options.map((o) => o.value)).toEqual([0, 1, 2]);
+    expect(row.options.map((o) => o.name)).toEqual(FURNITURE_DETAILS.map((f) => f.name));
   });
 
   it("takes the plain defaults from the table", () => {

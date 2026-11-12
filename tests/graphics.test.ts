@@ -35,7 +35,7 @@ describe("graphics settings", () => {
     };
     store({ volume: 0.2, quality3d: "low" });
     const s = loadSettings();
-    expect(s.graphics).toEqual(GRAPHICS_PRESETS.low);
+    expect(s.graphics).toEqual({ ...GRAPHICS_PRESETS.low, furniture: "everywhere" });
     expect(s.volume).toBe(0.2);
     expect("quality3d" in s).toBe(false);
     store({ quality3d: "high" });

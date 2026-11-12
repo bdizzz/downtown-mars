@@ -193,6 +193,13 @@ public partial class SettingsSheet : Sheet
                     list.AddChild(RowOf(r, c));
                 }
             if (first == null) continue;
+            // The recent frame rate, under the display settings (#391).
+            if (id == "display")
+                list.AddChild(new FpsPanel(() => GetQuality?.Invoke() ?? 0, q => SetQuality?.Invoke(q), () =>
+                {
+                    Refill();
+                    Changed?.Invoke();
+                }));
             _tabs.AddChild(list);
             _first.Add(first);
         }
@@ -230,6 +237,15 @@ public partial class SettingsSheet : Sheet
                     if (!_filling) SetQuality?.Invoke((int)i);
                 };
                 _fill.Add(() => pick.Select(GetQuality?.Invoke() ?? 0));
+                return pick;
+            }
+            case "graphics.furniture":
+            {
+                var names = r.GetProperty("options").EnumerateArray().Select(o => o.GetProperty("name").GetString()!).ToArray();
+                var pick = new OptionButton();
+                foreach (var n in names) pick.AddItem(n);
+                pick.ItemSelected += i => Set(() => ViewSettings.Furniture = (ViewSettings.FurnitureDetail)(int)i);
+                _fill.Add(() => pick.Select((int)ViewSettings.Furniture));
                 return pick;
             }
             case "graphics.tiltShift":
@@ -301,11 +317,17 @@ public partial class SettingsSheet : Sheet
         Changed?.Invoke();
     }
 
-    public override void Open()
+    /// <summary>Every control reads its setting again (it changed from somewhere else, like the frame rate advice).</summary>
+    void Refill()
     {
         _filling = true;
         foreach (var f in _fill) f();
         _filling = false;
+    }
+
+    public override void Open()
+    {
+        Refill();
         base.Open();
         _first[_tabs.CurrentTab].CallDeferred(Control.MethodName.GrabFocus);
     }

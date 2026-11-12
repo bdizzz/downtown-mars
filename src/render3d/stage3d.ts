@@ -14,7 +14,8 @@ import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import { roomSide } from "../sim/windows";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
-import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
+import { DEFAULT_GRAPHICS, drawsDetailedFurniture, type Graphics } from "../view/graphics";
+import { recordFrame } from "../view/fps";
 import { Look, type LookLike } from "./look";
 import { clampCutAngle, CUT_ANGLE, DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { intersectGlobalClipping } from "./wedgeClip";
@@ -2015,6 +2016,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const clock = new THREE.Clock();
   let ambient = 0;
   renderer.setAnimationLoop(() => {
+    if (document.visibilityState === "visible") recordFrame(performance.now()); // the frame rate, for the graphics settings (#391)
     const dt = Math.min(0.1, clock.getDelta());
     ambient += dt;
     // The storm builds and clears smoothly, even when the sim jumps.
@@ -2075,13 +2077,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   });
 
   /**
-   * Far rooms draw their furniture coarser; in first person, near ones draw the Blender-made models
-   * (#360), fetched the first time you go into first person (until they're in, the near parts).
+   * Far rooms draw their furniture coarser; near ones draw the Blender-made models (#360) where the
+   * furniture setting says (#391): never, in first person only, or in every view. The models file is
+   * fetched the first time a view wants them (until it's in, the near parts).
    */
   function showFurnitureDetail(): void {
-    const walking = view.mode === "walk";
-    if (walking && !fpLoaded()) void loadFpModels(`${import.meta.env.BASE_URL}models/fp.bin`).then((ok) => (dirty ||= ok));
-    for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : walking ? "fp" : "near");
+    const detailed = drawsDetailedFurniture(graphics.furniture, view.mode === "walk");
+    if (detailed && !fpLoaded()) void loadFpModels(`${import.meta.env.BASE_URL}models/fp.bin`).then((ok) => (dirty ||= ok));
+    for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : detailed ? "fp" : "near");
   }
 
   /** Draw the scene now, with everything that follows the camera brought up to date. */

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { GRAPHICS_PRESETS, presetOf, PRESET_NAMES, type Graphics, type Preset } from "../view/graphics";
+import { FURNITURE_DETAILS, GRAPHICS_PRESETS, presetOf, PRESET_NAMES, type FurnitureDetail, type Graphics, type Preset } from "../view/graphics";
+import { FpsPanel } from "./FpsPanel";
 import type { Settings } from "./settings";
 import { rowsIn, SECTIONS, type SectionId, type SettingRow } from "./settingsTable";
 
@@ -73,6 +74,7 @@ export function SettingsView({ settings, update, onBack, onKeys, tutorial, onTut
             {rowsIn(tab).map((r) => (
               <Row key={r.id} row={r} ctx={ctx} />
             ))}
+            {tab === "display" && <FpsPanel graphics={settings.graphics} onGraphics={(graphics) => update({ graphics })} />}
           </div>
         </>
       ) : (
@@ -83,6 +85,7 @@ export function SettingsView({ settings, update, onBack, onKeys, tutorial, onTut
               {rowsIn(s.id).map((r) => (
                 <Row key={r.id} row={r} ctx={ctx} />
               ))}
+              {s.id === "display" && <FpsPanel graphics={settings.graphics} onGraphics={(graphics) => update({ graphics })} />}
             </section>
           ))}
         </div>
@@ -96,7 +99,7 @@ export function SettingsView({ settings, update, onBack, onKeys, tutorial, onTut
 
 type Ctx = Pick<Props, "settings" | "update" | "onKeys" | "tutorial" | "onTutorial">;
 
-type GraphicsKey = Exclude<keyof Graphics, "pixelRatio" | "life" | "reflections">;
+type GraphicsKey = Exclude<keyof Graphics, "furniture" | "pixelRatio" | "life" | "reflections">;
 
 /** What each row reads and sets. A new setting in the table gets a line here. */
 function bind(row: SettingRow, { settings, update, tutorial, onTutorial }: Ctx): { value: number | boolean; set: (v: number | boolean) => void } | null {
@@ -158,6 +161,18 @@ function Row({ row, ctx }: { row: SettingRow; ctx: Ctx }) {
           </option>
         ))}
         {preset === "custom" && <option value="custom">Custom</option>}
+      </select>,
+    );
+  }
+  if (row.id === "graphics.furniture") {
+    const g = ctx.settings.graphics;
+    return wrap(
+      <select id={id} value={g.furniture} aria-describedby={`${id}-hint`} onChange={(e) => ctx.update({ graphics: { ...g, furniture: e.target.value as FurnitureDetail } })}>
+        {FURNITURE_DETAILS.map((f) => (
+          <option key={f.id} value={f.id} title={f.hint}>
+            {f.name}
+          </option>
+        ))}
       </select>,
     );
   }
