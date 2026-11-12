@@ -1317,6 +1317,11 @@ kbd {
 .help dd { line-height: 1.35; }
 .help .primary { align-self: flex-start; }
 @media (max-width: 560px) { .help-cols { grid-template-columns: 1fr; } }
+/* The deputy's tip: what's wrong and its buttons on one row; the steps fold open from How?. */
+.tutorial .tip-actions { align-items: center; flex-wrap: wrap; gap: 6px 8px; }
+.tutorial .tip-actions .link { align-self: center; }
+.tutorial .tip-actions .link:last-child { margin-left: auto; }
+.tutorial .tip-actions .link.how { color: var(--accent-hi); }
 /* The status line: what the pointer's on, a part at a time, and where that is at the far end. */
 .status { display: flex; align-items: center; gap: 12px; min-height: 18px; }
 .status-main { flex: 1; min-width: 0; display: flex; overflow: hidden; }

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { Snapshot } from "../sim/snapshot";
 import type { Spot } from "../view/reachView";
 import type { Tip } from "../view/tips";
@@ -19,6 +20,9 @@ interface Props {
 }
 
 export function TipCard({ s, tip, shown, onShow, onSeen, onOff }: Props) {
+  // What's wrong, first; the steps to fix it fold open from How? (each tip starts folded).
+  const [how, setHow] = useState(false);
+  useEffect(() => setHow(false), [tip.id]);
   return (
     <div className="tutorial tip" role="complementary" aria-label="Tip">
       <div className="who">
@@ -29,7 +33,7 @@ export function TipCard({ s, tip, shown, onShow, onSeen, onOff }: Props) {
         </span>
       </div>
       <p className="say">{tip.text}</p>
-      <p className="k">{tip.hint}</p>
+      {how && <p className="k">{tip.hint}</p>}
       <div className="tip-actions">
         {tip.spot && (
           <button className={`why-show${shown ? " on" : ""}`} onClick={() => onShow(shown ? null : `tip:${tip.id}`, shown ? null : tip.spot)} aria-pressed={shown}>
@@ -39,10 +43,15 @@ export function TipCard({ s, tip, shown, onShow, onSeen, onOff }: Props) {
         <button className="why-show on" onClick={onSeen}>
           Got it
         </button>
+        {!how && (
+          <button className="link how" onClick={() => setHow(true)} title="How to fix it, step by step">
+            How?
+          </button>
+        )}
+        <button className="link" onClick={onOff} title="Settings > Tips turns them back on">
+          No more tips
+        </button>
       </div>
-      <button className="link" onClick={onOff} title="Settings > Tips turns them back on">
-        No more tips
-      </button>
     </div>
   );
 }

@@ -361,4 +361,5 @@ Deliberately not decided yet:
 - **1–7 open the build rail's groups** from anywhere (again to close), so any room is two keys or two clicks away; each rail button shows its number.
 - **The "Why?" panel is a list first:** each cause is a line (its points, what it is, an eye for Show me); where it comes from and the fix fold open under it, the biggest cause open to start.
 - **Dialogs scroll inside the screen** rather than running off it (the controls list did on a short window), and the controls dialog is wide enough that a line of help is a line.
+- **A tip says what's wrong first:** the deputy's tip card shows the problem and its buttons; the step-by-step fix folds open from How?, so the card is about half the height.
 - **Web only for now.** Godot keeps its palette of categories; see "Status and next" in `PLAN-GODOT.md`.
