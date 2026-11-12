@@ -3,14 +3,18 @@
 // Settings can chart it and say when it has been low for a while. Pure: no DOM, no clock of its
 // own (callers pass the time), so tests can feed it frames.
 
+import settings from "../../data/settings.json";
+
+// The numbers are in data/settings.json ("fps"), shared with Godot (Fps.cs).
+
 /** Seconds of history kept. */
-export const FPS_HISTORY = 120;
+export const FPS_HISTORY = settings.fps.history;
 
 /** "Consistently low": the middle reading of the last `seconds` is under `below`. */
-export const LOW_FPS = { below: 30, seconds: 20 };
+export const LOW_FPS = { below: settings.fps.low, seconds: settings.fps.seconds };
 
 /** So slow the game itself speaks up (a card over the game, not just the settings): the same stretch, under this. */
-export const VERY_LOW_FPS = 10;
+export const VERY_LOW_FPS = settings.fps.veryLow;
 
 /** A gap this long between frames (a hidden tab, a stall while loading) isn't slowness: that second is dropped. */
 const GAP_MS = 1000;

@@ -92,7 +92,7 @@ public partial class Live : Node3D
     int _speedBeforeFailure = 1;
     HelpSheet _help = null!;
     SettingsSheet _settings = null!;
-    bool _wasConnected;
+    SlowCard _slowCard = null!;    bool _wasConnected;
     /// <summary>What the tutorial needs to know that the sim doesn't: the noise overlay seen, Flows opened.</summary>
     bool _sawNoise, _openedFlows;
     /// <summary>The resource grid, and the top bar's "needs you" slot, drill (with its pause) and supply drop.</summary>
@@ -297,6 +297,9 @@ public partial class Live : Node3D
         _tutorial = new Tutorial(_hud) { Name = "Tutorial" };
         // The deputy's tip, where the tutorial's card sits (over it while it's up).
         _tip = new TipCard(_hud) { Name = "Tip", OnShow = ShowMe };
+        // Very low frame rate (#391): one click to the lightest graphics.
+        _slowCard = new SlowCard { Name = "SlowCard", Lighten = LightenGraphics };
+        _hud.AddChild(_slowCard);
         _tip.Seen = id => SendCommand(new Dictionary<string, object> { ["type"] = "seeTip", ["id"] = id });
         _tip.Off = () =>
         {
@@ -412,6 +415,8 @@ public partial class Live : Node3D
 
     void Step(double delta)
     {
+        Fps.Record(Time.GetTicksMsec());
+        _slowCard.Update(!_menu.Visible && !_settings.Visible && !_welcome.Visible && !_failure.Visible, _quality == Quality.Low && ViewSettings.Furniture == ViewSettings.FurnitureDetail.Basic);
         _clockSeconds += delta;
         PlayKeys();
         // The rig moves at the game's pace (still when paused).
@@ -583,7 +588,7 @@ public partial class Live : Node3D
         }
         _hole.ShowEdges = _rig?.Walking != true;
         _hole.ShowFixtures = _rig?.Walking == true;
-        _hole.FirstPersonFurniture = _rig?.Walking == true;
+        _hole.DetailedFurniture = ViewSettings.DrawsModels(_rig?.Walking == true);
         WatchShowMe();
         UpdateViewBar();
         ApplyViewToShaders();
@@ -925,6 +930,17 @@ public partial class Live : Node3D
     {
         RenderingServer.CameraAttributesSetDofBlurQuality(_quality >= Quality.High ? RenderingServer.DofBlurQuality.Medium : RenderingServer.DofBlurQuality.VeryLow, false);
         if (_rig != null) _rig.Miniature = _quality == Quality.Low || Dev.Off("miniature") ? 0 : ViewSettings.Miniature;
+    }
+
+    /// <summary>The slow-game card's one click (#391): the Low level and simple furniture shapes, both kept for next time.</summary>
+    void LightenGraphics()
+    {
+        _quality = Quality.Low;
+        Graphics.Save(_quality);
+        ApplyQuality();
+        ViewSettings.Furniture = ViewSettings.FurnitureDetail.Basic;
+        ViewSettings.Save();
+        _build.Toast("Graphics: Low, simple furniture");
     }
 
     /// <summary>The next graphics level round (F2 or the HUD button), kept for next time.</summary>

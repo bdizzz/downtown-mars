@@ -1,5 +1,6 @@
 {
   "_comment": "The settings, in the order the menu shows them, read by the web (src/ui/settingsTable.ts) and Godot (SettingsSheet). Each row: id, section, name, a one-line hint, its control (toggle, slider, select or button), and for sliders min/max/step, for selects options (or none: the view fills them in). `only` keeps a row to one of the two (web or godot); `when` shows it only where it applies (installedAndroid: the app installed on Android). Defaults for the plain settings; graphics take theirs from the preset.",
+  "fps": { "_comment": "The frame rate watch (#391), read by the web (src/view/fps.ts) and Godot (Fps.cs): one reading a second, the last `history` kept; 'low' is the middle of the last `seconds` readings under `low` (Settings advises), 'veryLow' under `veryLow` (the game itself offers one click to lighter graphics).", "history": 120, "seconds": 20, "low": 30, "veryLow": 10 },
   "sections": [
     { "id": "game", "name": "Game" },
     { "id": "display", "name": "Display" },
@@ -16,7 +17,8 @@
     { "id": "allResources", "section": "display", "name": "Show every resource", "hint": "Off: the top bar shows the vitals and what needs a look; Stock opens the rest", "control": "toggle", "default": false, "only": "web" },
     { "id": "graphics.quality", "section": "display", "name": "Graphics", "hint": "Low for slower machines; Ultra adds bounced light", "control": "select", "only": "godot" },
     { "id": "graphics.preset", "section": "display", "name": "Graphics", "hint": "Low for slower machines; changing an effect makes it custom", "control": "select", "only": "web" },
-    { "id": "graphics.furniture", "section": "display", "name": "Furniture", "hint": "Detailed models cost more; simple shapes suit slower machines", "control": "select", "only": "web" },
+    { "id": "graphics.furniture", "section": "display", "name": "Furniture", "hint": "Detailed models cost more; simple shapes suit slower machines", "control": "select",
+      "options": [{ "value": 0, "name": "Simple shapes" }, { "value": 1, "name": "Detailed on foot" }, { "value": 2, "name": "Detailed everywhere" }] },
     { "id": "graphics.pixelRatio", "section": "display", "name": "Sharpness", "hint": "Sharper costs more on high-resolution screens", "control": "select", "only": "web",
       "options": [{ "value": 1, "name": "Standard" }, { "value": 1.5, "name": "Sharp" }, { "value": 2, "name": "Sharpest" }] },
     { "id": "graphics.lamps", "section": "display", "name": "Lamp light", "hint": "Lamps, fires and grow lights light the rooms around them", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },

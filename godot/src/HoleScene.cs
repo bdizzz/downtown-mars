@@ -351,11 +351,11 @@ public partial class HoleScene : Node3D
         }
     }
 
-    /// <summary>In first person, furniture with a Blender-made model draws it close up (#360; read the first time).</summary>
-    public bool FirstPersonFurniture
+    /// <summary>Furniture with a Blender-made model draws it where the furniture setting says (#360, #391; read the first time it's wanted).</summary>
+    public bool DetailedFurniture
     {
-        get => _furniture.FirstPerson;
-        set => _furniture.FirstPerson = value;
+        get => _furniture.Detailed;
+        set => _furniture.Detailed = value;
     }
 
     /// <summary>In first person, ceiling lights fade out from this far, metres, over FadeLength.</summary>

@@ -337,4 +337,4 @@ The game autosaves every month in your browser. Use the menu to save to a slot, 
 
 **By keyboard:** the menu opens with its first button ready. ↑ ↓ and Tab move (Tab stays inside the menu), Enter or Space acts, Esc goes back a step and then resumes. In Settings, ← → change section, sliders take ← →, switches flip with Enter or Space. Wherever you are, a ring shows what has the keyboard. On a touch screen every button, switch and list is at least a fingertip (44 px) tall.
 
-The Godot viewer's menu and settings follow the same sections (those that apply there: autosave, the tutorial, the tips, the graphics level, the miniature blur, the keys, interface size and colour-blind overlays), from the same list (`data/settings.json`).
+The Godot viewer's menu and settings follow the same sections (those that apply there: autosave, the tutorial, the tips, the graphics level, the furniture detail with its frame rate chart (and the same one-click card when the game runs very slowly), the miniature blur, the keys, interface size and colour-blind overlays), from the same list (`data/settings.json`).
