@@ -138,20 +138,30 @@ function scaleOf(room: RoomInstance, cfg: SimConfig): number {
 
 const ready = (room: RoomInstance) => !room.planned && !room.building && room.connected;
 
+interface Sums {
+  body: number;
+  waste: number;
+  heatersFull: number;
+  radiatorsFull: number;
+  heatersOn: number;
+  radiatorsOn: number;
+  heaters: number;
+  radiators: number;
+}
+
 /** Every floor's heat budget this tick (rooms' running rates from the economy's last run). */
 export function floorHeats(state: SimState, cfg: SimConfig): FloorHeat[] {
   const tc = cfg.temperature;
   const t = temperatureOf(state, cfg);
   const floors = state.layout.hole.floors;
   const ref = referenceCells(cfg);
-  const body = new Array<number>(floors + 1).fill(0);
-  const waste = new Array<number>(floors + 1).fill(0);
-  const heatersFull = new Array<number>(floors + 1).fill(0);
-  const radiatorsFull = new Array<number>(floors + 1).fill(0);
-  const heatersOn = new Array<number>(floors + 1).fill(0);
-  const radiatorsOn = new Array<number>(floors + 1).fill(0);
-  const heaters = new Array<number>(floors + 1).fill(0);
-  const radiators = new Array<number>(floors + 1).fill(0);
+  // What each floor gets, by floor number: only floors with rooms on them have an entry.
+  const sums = new Map<number, Sums>();
+  const at = (floor: number): Sums => {
+    let v = sums.get(floor);
+    if (!v) sums.set(floor, (v = { body: 0, waste: 0, heatersFull: 0, radiatorsFull: 0, heatersOn: 0, radiatorsOn: 0, heaters: 0, radiators: 0 }));
+    return v;
+  };
   const residents = new Map(state.happiness.pools.map((p) => [p.roomId, p.residents]));
   for (const room of state.layout.rooms) {
     if (!ready(room)) continue;
@@ -164,35 +174,38 @@ export function floorHeats(state: SimState, cfg: SimConfig): FloorHeat[] {
     const k = scaleOf(room, cfg);
     for (const [floor, share] of byFloor(room)) {
       if (floor < 1 || floor > floors) continue;
-      body[floor]! += people * share * tc.bodyHeatPerPersonC;
-      waste[floor]! += hot * share * tc.wasteHeatPerStrengthC;
+      const f = at(floor);
+      f.body += people * share * tc.bodyHeatPerPersonC;
+      f.waste += hot * share * tc.wasteHeatPerStrengthC;
       if (def.heats && !room.paused) {
-        heatersFull[floor]! += def.heats * k * share;
-        heatersOn[floor]! += def.heats * k * share * rate;
-        heaters[floor]! += share;
+        f.heatersFull += def.heats * k * share;
+        f.heatersOn += def.heats * k * share * rate;
+        f.heaters += share;
       }
       if (def.cools && !room.paused) {
-        radiatorsFull[floor]! += def.cools * k * share;
-        radiatorsOn[floor]! += def.cools * k * share * rate;
-        radiators[floor]! += share;
+        f.radiatorsFull += def.cools * k * share;
+        f.radiatorsOn += def.cools * k * share * rate;
+        f.radiators += share;
       }
     }
   }
   const out: FloorHeat[] = [];
   for (let floor = 1; floor <= floors; floor++) {
+    const sum = sums.get(floor);
+    const get = (k: keyof Sums) => sum?.[k] ?? 0;
     const cells = dugCells(state, floor);
     // Heat spreads over the floor's dug space: a bigger floor gets less from the same source.
     const spread = ref / Math.max(cells, tc.minCells);
     const rest = floorRest(t, floor, cfg);
-    const b = body[floor]! * spread;
-    const w = waste[floor]! * spread;
+    const b = get("body") * spread;
+    const w = get("waste") * spread;
     const passive = rest + b + w;
     const setpoint = setpointOf(t, floor);
-    const hFull = heatersFull[floor]! * spread;
-    const rFull = radiatorsFull[floor]! * spread;
+    const hFull = get("heatersFull") * spread;
+    const rFull = get("radiatorsFull") * spread;
     // What the heaters and radiators delivered: their full lift, times the power share asked for, times how much of it they got.
-    const heating = heatersOn[floor]! * spread * (t.heat[floor - 1] ?? 1);
-    const cooling = radiatorsOn[floor]! * spread * (t.cool[floor - 1] ?? 1);
+    const heating = get("heatersOn") * spread * (t.heat[floor - 1] ?? 1);
+    const cooling = get("radiatorsOn") * spread * (t.cool[floor - 1] ?? 1);
     out.push({
       floor,
       now: t.floors[floor - 1] ?? rest,
@@ -200,16 +213,16 @@ export function floorHeats(state: SimState, cfg: SimConfig): FloorHeat[] {
       body: b,
       waste: w,
       heatersFull: hFull,
-      heatersOn: heatersOn[floor]! * spread,
+      heatersOn: get("heatersOn") * spread,
       heating,
       radiatorsFull: rFull,
-      radiatorsOn: radiatorsOn[floor]! * spread,
+      radiatorsOn: get("radiatorsOn") * spread,
       cooling,
       target: passive + heating - cooling,
       setpoint,
       override: t.overrides?.[floor] !== undefined,
-      heaters: Math.round(heaters[floor]!),
-      radiators: Math.round(radiators[floor]!),
+      heaters: Math.round(get("heaters")),
+      radiators: Math.round(get("radiators")),
       cells,
     });
   }
