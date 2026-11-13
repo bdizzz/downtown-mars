@@ -12,17 +12,17 @@ import { roomDef } from "./rooms";
 /** What's across a wall, to look out on (or walk out to). */
 export type Across = "shaft" | "corridor" | "public";
 
-const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+const key = (c: Cell) => `${c.floor}:${c.ring}:${c.a0}`;
 const ownCells = (room: RoomInstance) => new Set(room.cells.map(key));
 
 /** The cell across an edge from a room (the one not its own), or null at the shaft. */
 export function otherSide(layout: Layout, e: Edge, own: Set<string>): Cell | null {
-  return edgeSides(layout.hole, e).find((c) => c && !own.has(key(c))) ?? null;
+  return edgeSides(layout, e).find((c) => c && !own.has(key(c))) ?? null;
 }
 
 /** The room's own cell along an edge. */
 export function ownSide(layout: Layout, e: Edge, own: Set<string>): Cell | null {
-  return edgeSides(layout.hole, e).find((c) => c && own.has(key(c))) ?? null;
+  return edgeSides(layout, e).find((c) => c && own.has(key(c))) ?? null;
 }
 
 /** What's across an outside border of a room: the shaft (tube or not), a built corridor, a built walk-through room, or nothing to see. */
@@ -39,7 +39,7 @@ export function viewAcross(layout: Layout, e: Edge, own: Set<string>): Across | 
 function sameWall(a: Edge, b: Edge): boolean {
   if (a.floor !== b.floor || a.kind !== b.kind) return false;
   if (a.kind === "arc" && b.kind === "arc") return a.circle === b.circle;
-  if (a.kind === "radial" && b.kind === "radial") return a.index === b.index && a.ring === b.ring;
+  if (a.kind === "radial" && b.kind === "radial") return a.angle === b.angle && a.ring === b.ring;
   return false;
 }
 
@@ -50,7 +50,7 @@ function sameWall(a: Edge, b: Edge): boolean {
  */
 export function wallOf(layout: Layout, room: RoomInstance, edgeId: string): Edge[] | null {
   const own = ownCells(room);
-  const outside = outsideEdges(layout.hole, room.cells);
+  const outside = outsideEdges(layout, room.cells);
   const e = outside.find((x) => x.id === edgeId);
   if (!e) return null;
   return outside.filter((x) => sameWall(x, e) && viewAcross(layout, x, own) !== null);
@@ -59,7 +59,7 @@ export function wallOf(layout: Layout, room: RoomInstance, edgeId: string): Edge
 /** Which side of a border a room is on, in edgeSides' order (0: the lower slot, or the inner ring), or null if neither. */
 export function roomSide(layout: Layout, room: RoomInstance, e: Edge): 0 | 1 | null {
   const own = ownCells(room);
-  const i = edgeSides(layout.hole, e).findIndex((c) => !!c && own.has(key(c)));
+  const i = edgeSides(layout, e).findIndex((c) => !!c && own.has(key(c)));
   return i === 0 || i === 1 ? i : null;
 }
 
@@ -83,7 +83,7 @@ export function glazedAcross(layout: Layout, room: RoomInstance, e: Edge): Acros
 export function roomForWindows(layout: Layout, edgeId: string, near?: Cell | null): RoomInstance | null {
   const e = edgeById(layout.hole, edgeId);
   if (!e) return null;
-  const sides = edgeSides(layout.hole, e).filter((c): c is Cell => !!c);
+  const sides = edgeSides(layout, e).filter((c): c is Cell => !!c);
   const rooms = sides.map((c) => roomAt(layout, c)).filter((r): r is RoomInstance => !!r && glazable(r));
   const at = near ? roomAt(layout, near) : undefined;
   return rooms.find((r) => r === at) ?? rooms[0] ?? null;
@@ -181,7 +181,7 @@ export function setRoomWindows(room: RoomInstance, edges: string[], on: boolean)
 
 /** The ring-1 borders a room faces the shaft along: where old saves had their windows. */
 export function shaftBorders(layout: Layout, room: RoomInstance): string[] {
-  return outsideEdges(layout.hole, room.cells)
+  return outsideEdges(layout, room.cells)
     .filter((e) => isGalleryEdge(e))
     .map((e) => e.id);
 }

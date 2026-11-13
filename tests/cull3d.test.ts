@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
-import { createLayout, placeRoom, type Layout, type Location } from "../src/sim/placement";
+import { createLayout, placeRoom, type Layout, type Spot } from "../src/sim/placement";
 import { behindSlab, clippedAway, slabBelow, type Slab } from "../src/render3d/cull3d";
 import { floorSpan } from "../src/render3d/cylinder";
 import { floorPlates } from "../src/render3d/rooms3d";
+import { ringAt } from "./spots";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
-function room(layout: Layout, type: string, at: Location) {
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
+function room(layout: Layout, type: string, at: Spot) {
   const r = placeRoom(layout, type, at);
   if (!r.ok) throw new Error(r.reason);
   return layout.rooms.find((x) => x.id === r.id)!;
@@ -75,12 +76,12 @@ describe("the openings in a floor", () => {
 
   it("include corridors: those being built from either side, the rest only from below", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
-    layout.corridors = { "R2.2.3": "rock" };
+    layout.corridors = { "R2.2.480": "rock" };
     const under1 = slabBelow(layout, 1);
     expect(under1.openings).toEqual([]);
     expect(under1.fromBelow.length).toBeGreaterThan(0);
     expect(slabBelow(layout, 2).fromBelow).toEqual([]);
-    layout.corridorsBuilding = { "R2.2.3": 0 };
+    layout.corridorsBuilding = { "R2.2.480": 0 };
     expect(slabBelow(layout, 1).openings.length).toBeGreaterThan(0);
     expect(slabBelow(layout, 2).openings.length).toBeGreaterThan(0);
   });

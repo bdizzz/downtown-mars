@@ -4,11 +4,12 @@ import { config as baseConfig, type SimConfig } from "../src/sim/config";
 import { capacities, clearsWaste, roomSpec } from "../src/sim/economy";
 import { LABELS } from "../src/sim/ledger";
 import { hasReached, milestoneData, passed } from "../src/sim/milestones";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { roomName } from "../src/sim/roomName";
 import { roomDef } from "../src/sim/rooms";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { ringAt } from "./spots";
 
 // Water as a closed loop (T-005): clean water used turns gray, the recycler
 // treats gray back into clean, tailings and life support are the leaks.
@@ -16,8 +17,8 @@ import { step } from "../src/sim/step";
 // No Earth drops: these are about what the hole does with its own water.
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
-const build = (s: SimState, room: string, at: Location) => {
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
+const build = (s: SimState, room: string, at: Spot) => {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   if (at.kind === "ring" && at.ring > 1) applyCommand(s, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });

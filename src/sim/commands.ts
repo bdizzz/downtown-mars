@@ -4,10 +4,10 @@ import { ROOM_NAME_MAX } from "./roomName";
 import { airVolume } from "./air";
 import { hasCondition } from "./condition";
 import { config } from "./config";
-import { charge, checkBuild, CONSTRUCTION, refund } from "./costs";
+import { charge, checkBuild, CONSTRUCTION, refund, scaled } from "./costs";
 import { record } from "./ledger";
 import { refreshEffects } from "./effects";
-import { demolishRoom, placeRoom, type Location } from "./placement";
+import { areaScale, demolishRoom, placeRoom, roomUnits, type Spot } from "./placement";
 import type { Priority } from "./config";
 import { enact, repeal } from "./ordinances";
 import { isCrop, resourceDefs } from "./resources";
@@ -15,7 +15,7 @@ import { capacities, mainOutput } from "./economy";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById, outsideEdges } from "./edges";
 import { setRoomWindows, wallOf, windowCost, windowRefusal } from "./windows";
-import { domeRefusal, dropCorridors, dropRefit, dropRelines, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueFloor, queueRefit, queueReline, queueRoom, type SegmentRefit } from "./construction";
+import { domeRefusal, dropCorridors, followSplits, dropRefit, dropRelines, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueFloor, queueRefit, queueReline, queueRoom, type SegmentRefit } from "./construction";
 import { addAdults, holeGates, syncCount, unlock, UNLOCK_GATES } from "./people";
 import { allowsRefusal, setAllows } from "./storage";
 import { answerVisit, greet } from "./visits";
@@ -36,7 +36,7 @@ export type SimCommand =
    * lining from bare rock on top, in the room's own build time. Ignored for rooms that
    * can't be lined (stairs, empty rooms…).
    */
-  | { type: "build"; room: string; at: Location; confirmed?: boolean; material?: string; finish?: string }
+  | { type: "build"; room: string; at: Spot; confirmed?: boolean; material?: string; finish?: string }
   | { type: "demolish"; roomId: number }
   | { type: "undoBuild"; roomId: number }
   | { type: "setDrill"; active: boolean }
@@ -113,7 +113,9 @@ export type SimCommand =
 export type CommandResult = { ok: true; roomId?: number } | { ok: false; reason: string };
 
 export function applyCommand(state: SimState, cmd: SimCommand): CommandResult {
+  followSplits(state);
   const result = apply(state, cmd);
+  followSplits(state);
   state.effects = refreshEffects(state.layout, state.effects);
   return result;
 }
@@ -198,7 +200,7 @@ function drawCorridors(state: SimState, edges: string[], finish: string, all = f
 
 /** Everything paid for a room's lining from bare rock back, as when a room built in one is undone or never got built. */
 function refundLining(state: SimState, room: RoomInstance): void {
-  for (const [id, amt] of Object.entries(buildLiningCost(room.type, room.at, room.cells.length, liningOf(room)))) state.resources[id] = (state.resources[id] ?? 0) + amt;
+  for (const [id, amt] of Object.entries(buildLiningCost(room.type, room.at, roomUnits(room), liningOf(room)))) state.resources[id] = (state.resources[id] ?? 0) + amt;
 }
 
 function apply(state: SimState, cmd: SimCommand): CommandResult {
@@ -233,8 +235,10 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       }
       const r = placeRoom(layout, cmd.room, cmd.at);
       if (!r.ok) return { ok: false, reason: r.reason };
-      charge(state.resources, cmd.room);
-      for (const [id, amt] of Object.entries(roomDef(cmd.room).cost)) record(state, id, "out", CONSTRUCTION, amt);
+      // A fill room (empty space, a plaza, the park) pays for the floor it takes.
+      const scale = r.extended ? 1 : areaScale(layout.hole, cmd.room, r.at);
+      charge(state.resources, cmd.room, scale);
+      for (const [id, amt] of Object.entries(scaled(roomDef(cmd.room).cost, scale))) record(state, id, "out", CONSTRUCTION, amt);
       const room = layout.rooms.find((x) => x.id === r.id)!;
       // Extending stairs or an elevator isn't a new room: nothing to undo as one.
       if (r.extended) {
@@ -243,7 +247,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         return { ok: true };
       }
       // Built straight in a lining: paid for now, and it goes in with the room, in the room's own build time.
-      const extra = buildLiningCost(room.type, room.at, room.cells.length, lining);
+      const extra = buildLiningCost(room.type, room.at, roomUnits(room), lining);
       if (lining && Object.keys(extra).length) {
         for (const [id, amt] of Object.entries(extra)) {
           state.resources[id] = (state.resources[id] ?? 0) - amt;
@@ -271,7 +275,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
         const pieces = roomDef(room.type).stacks ? Math.max(1, new Set(cells.map((c) => c.floor)).size - 1) : 1;
         // Blueprints and rooms still waiting in the queue were never built: a full refund.
         const unbuilt = room.planned || room.building;
-        refund(state.resources, room.type, (unbuilt ? 1 : config.economy.demolishRefund) * pieces);
+        refund(state.resources, room.type, (unbuilt ? 1 : config.economy.demolishRefund) * pieces, areaScale(layout.hole, room.type, room.at));
         // A room that was to be built in a lining: that comes back too.
         if (unbuilt) refundLining(state, room);
         dropRoomJobs(state, room.id);
@@ -286,7 +290,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       }
       const result = demolishRoom(layout, cmd.roomId);
       if (result.ok) {
-        refund(state.resources, room.type, 1);
+        refund(state.resources, room.type, 1, areaScale(layout.hole, room.type, room.at));
         refundLining(state, room);
         dropRoomJobs(state, room.id);
       }
@@ -468,7 +472,6 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       } else if (job.kind === "extend" && job.roomId !== undefined) {
         // The waiting floors are let go, and their piece refunded.
         const room = layout.rooms.find((r) => r.id === job.roomId);
-        for (const c of room?.pendingCells ?? []) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = 0;
         if (room) {
           delete room.pendingCells;
           refund(state.resources, room.type, 1);
@@ -509,7 +512,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
     }
     case "setWindows": {
       const room = layout.rooms.find((r) => r.id === cmd.roomId);
-      const own = room ? new Set(outsideEdges(layout.hole, room.cells).map((e) => e.id)) : new Set<string>();
+      const own = room ? new Set(outsideEdges(layout, room.cells).map((e) => e.id)) : new Set<string>();
       // Only the room's own borders, and (putting them in) only where there's something to look out on.
       const edges = room ? cmd.edges.filter((id, i) => cmd.edges.indexOf(id) === i && own.has(id) && (!cmd.on || (wallOf(layout, room, id) ?? []).some((e) => e.id === id))) : [];
       const refusal = windowRefusal(room, edges, cmd.on);

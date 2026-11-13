@@ -2,15 +2,16 @@ import { describe, expect, it } from "vitest";
 import * as THREE from "three";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
-import { createLayout, placeRoom, type Layout, type Location } from "../src/sim/placement";
+import { createLayout, placeRoom, type Layout, type Spot } from "../src/sim/placement";
 import { FIT, fit, frameOf, furnish, isFlat, type Template } from "../src/view/furnish";
 import { furniture, isMounted, itemDef } from "../src/view/furniture";
 import { furnitureGroup } from "../src/render3d/rooms3d";
 import { obstacles } from "../src/view/walk";
 import { setRoomWindows, shaftBorders } from "../src/sim/windows";
+import { ringAt } from "./spots";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
-function room(layout: Layout, type: string, at: Location) {
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
+function room(layout: Layout, type: string, at: Spot) {
   const r = placeRoom(layout, type, at);
   if (!r.ok) throw new Error(r.reason);
   return layout.rooms.find((x) => x.id === r.id)!;

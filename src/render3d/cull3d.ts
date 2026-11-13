@@ -3,7 +3,7 @@ import type { Cell, Layout } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { edgeById, isGalleryEdge } from "../sim/edges";
 import { corridors } from "../sim/corridors";
-import { floorSpan, RING_D, ringRadii, slotAngles } from "./cylinder";
+import { floorSpan, RING_D, ringRadii, cellAngles } from "./cylinder";
 import { corridorStripGeometry } from "./rooms3d";
 
 // Skipping what the camera can't see (#262). Three.js already skips what's
@@ -52,10 +52,8 @@ export interface Slab {
 function circleOf(layout: Layout, cells: Cell[]): Opening | null {
   const pts: [number, number][] = [];
   for (const c of cells) {
-    const n = layout.hole.ringSlots[c.ring - 1];
-    if (!n) continue;
     const [r0, r1] = ringRadii(layout.hole, c.ring);
-    const [a0, a1] = slotAngles(c.slot, n);
+    const [a0, a1] = cellAngles(c);
     for (const a of [a0, (a0 + a1) / 2, a1]) for (const r of [r0, r1]) pts.push([r * Math.cos(a), r * Math.sin(a)]);
   }
   return circleRound(pts);

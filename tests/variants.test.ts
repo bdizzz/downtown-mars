@@ -4,12 +4,13 @@ import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom } from "../src/sim/placement";
 import { furnish, templateFor, varied } from "../src/view/furnish";
 import { itemsFor } from "../src/view/furniture";
+import { ringAt } from "./spots";
 
 function rooms(type: string, n: number, w = 1) {
   const layout = createLayout(createHole(10, 3, 3, config.geometry));
   const out = [];
   for (let i = 0; i < n; i++) {
-    const r = placeRoom(layout, type, { kind: "ring", floor: 1, ring: 2, slot: i * (w + 1), w, d: 1 });
+    const r = placeRoom(layout, type, ringAt(1, 2, i * (w + 1), w));
     if (!r.ok) throw new Error(r.reason);
     out.push(layout.rooms.find((x) => x.id === r.id)!);
   }

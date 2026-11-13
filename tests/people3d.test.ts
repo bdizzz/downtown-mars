@@ -6,10 +6,11 @@ import { createLayout, placeRoom } from "../src/sim/placement";
 import { furnish } from "../src/view/furnish";
 import { furnitureGroup } from "../src/render3d/rooms3d";
 import { occupied, People, spotsOf, type RoomSpots } from "../src/render3d/people3d";
+import { ringAt } from "./spots";
 
 function room(type: string, w = 1) {
   const layout = createLayout(createHole(10, 3, 3, config.geometry));
-  const r = placeRoom(layout, type, { kind: "ring", floor: 1, ring: 2, slot: 3, w, d: 1 });
+  const r = placeRoom(layout, type, ringAt(1, 2, 3, w));
   if (!r.ok) throw new Error(r.reason);
   const rm = layout.rooms.find((x) => x.id === r.id)!;
   const fitted = furnish(layout, rm);

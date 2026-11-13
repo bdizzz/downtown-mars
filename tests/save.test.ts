@@ -4,6 +4,7 @@ import { config } from "../src/sim/config";
 import { deserialize, SAVE_VERSION, serialize, summarize } from "../src/sim/save";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
+import { ringAt } from "./spots";
 
 const run = (w: World, ticks: number) => {
   for (let i = 0; i < ticks; i++) stepWorld(w, config);
@@ -21,7 +22,7 @@ function oldSave(w: World, version: 1 | 2): string {
 describe("saves", () => {
   it("round-trip: a loaded world continues exactly as the original would", () => {
     const a = createWorld(config);
-    applyCommand(first(a), { type: "build", room: "galley", at: { kind: "ring", floor: 1, ring: 1, slot: 2, w: 1, d: 1 } });
+    applyCommand(first(a), { type: "build", room: "galley", at: ringAt(1, 1, 2) });
     run(a, 900); // past the first drop, so RNG, messages and notables have moved
     const loaded = deserialize(serialize(a));
     expect(loaded.ok).toBe(true);
@@ -35,7 +36,7 @@ describe("saves", () => {
     const w = createWorld(config);
     applyCommand(first(w), { type: "consoleFinish" });
     applyCommand(first(w), { type: "consoleResources", atLeast: { rock: 100, metal: 50, machinery: 10 } });
-    expect(applyCommand(first(w), { type: "build", room: "concrete_plant", at: { kind: "ring", floor: 1, ring: 1, slot: 2, w: 2, d: 1 } }).ok).toBe(true);
+    expect(applyCommand(first(w), { type: "build", room: "concrete_plant", at: ringAt(1, 1, 2, 2) }).ok).toBe(true);
     applyCommand(first(w), { type: "consoleFinish" });
     expect(serialize(w)).not.toContain('"field"');
     const loaded = deserialize(serialize(w));

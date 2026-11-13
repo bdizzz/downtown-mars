@@ -5,7 +5,7 @@ import type { HoverInfo, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import { roomDef, roomDefs } from "../sim/rooms";
 import { BARE_ROCK, BuildRail, buildTool, ToolBar } from "./BuildPalette";
-import { CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, shapesFor } from "../view/buildCatalog";
+import { CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, depthsOf, SNAP_KEY } from "../view/buildCatalog";
 import { ChartsStrip, Dock, MODE_KEYS, ViewStrip, type Chart, type Mode } from "./Dock";
 import { corridors } from "../sim/corridors";
 import { FlowPanel } from "./FlowPanel";
@@ -57,7 +57,10 @@ import { useSettings } from "./settings";
 import { installConsole } from "./devConsole";
 import { FloorPicker, shownFloor } from "./FloorPicker";
 import { CorridorConfirm } from "./CorridorConfirm";
-import type { PendingBuild, Proposal } from "../view/types";
+import type { PendingBuild, Proposal, RoomProposal } from "../view/types";
+import { commitBuild } from "../view/interaction";
+import { checkBuild } from "../sim/costs";
+import { liningById } from "../sim/materials";
 import { refitCommand } from "../view/interaction";
 import { BuildConfirm } from "./BuildConfirm";
 import { useSim } from "./useSim";
@@ -292,12 +295,21 @@ export function App() {
     if (tool?.kind === "corridor") setLastFinish(tool.finish);
   }, [tool]);
 
+  /** A ring room put down to be adjusted (or dropped: null): kept on the build tool until it's built. */
+  const proposeRoom = useCallback((p: RoomProposal | null) => {
+    setTool((t) => {
+      if (t?.kind !== "build") return t;
+      const { proposal: _old, ...rest } = t;
+      return p ? { ...rest, proposal: p } : rest;
+    });
+  }, []);
+
   const rotate = useCallback(() => {
     setTool((t) => {
       if (t?.kind !== "build") return t;
-      const shapes = shapesFor(roomDef(t.room));
-      const i = shapes.findIndex(([w, d]) => w === t.shape[0] && d === t.shape[1]);
-      return { ...t, shape: shapes[(i + 1) % shapes.length]! };
+      const depths = depthsOf(roomDef(t.room));
+      const { proposal: _dropped, ...rest } = t;
+      return { ...rest, depth: depths[(depths.indexOf(t.depth) + 1) % depths.length]! };
     });
   }, []);
 
@@ -525,6 +537,8 @@ export function App() {
       if (e.code === "Escape") {
         // Esc backs out of whatever is open, one step at a time; with nothing open, it opens the menu.
         if (mapOpen) setMode(null);
+        // A room put down but not yet built: Esc drops it, and keeps the room in hand.
+        else if (tool?.kind === "build" && tool.proposal) proposeRoom(null);
         else if (tool) setTool(null);
         else if (selected !== null || panel) {
           setSelected(null);
@@ -571,6 +585,16 @@ export function App() {
       // Everything else is Build's: its tools and rooms answer to their keys only there.
       if (mode !== "build" || walking) return;
       if (e.code === "KeyR") rotate();
+      // A room that's down with its handles out: Enter builds it.
+      if (e.code === "Enter" && placing?.kind === "build" && placing.proposal && snapshot) {
+        const check = checkBuild(snapshot.layout, snapshot.resources, placing.room, placing.proposal, config, snapshot.holeGates, liningById(placing.lining));
+        commitBuild(placing, { pick: { kind: "rock" }, at: placing.proposal, check }, { onCommand, onConfirmBuild: setPendingBuild, onInvalid: (reason) => (flash(reason), cue("refused")), onProposeRoom: proposeRoom });
+        return;
+      }
+      if (e.key === SNAP_KEY && tool?.kind === "build") {
+        setTool((t) => (t?.kind === "build" ? { ...t, snap: t.snap === false } : t));
+        return;
+      }
       const letter = e.key.toUpperCase();
       if (letter === CORRIDOR_KEY && reveal.shown("tool:corridors")) takeTool((t) => (t?.kind === "corridor" ? null : { kind: "corridor", finish: lastFinish, erase: false }));
       if (letter === DEMOLISH_KEY && reveal.shown("tool:demolish")) takeTool((t) => (t?.kind === "demolish" ? null : { kind: "demolish" }));
@@ -817,6 +841,7 @@ export function App() {
             onConfirmBuild={setPendingBuild}
             proposal={proposal}
             onPropose={setProposal}
+            onProposeRoom={proposeRoom}
             floor={titling && !titleStill ? 1 : cutaway ? null : shownFloor(lookFloor, floorCount, settings.view === "plan")}
             snapshot={snapshot}
             tool={placing}

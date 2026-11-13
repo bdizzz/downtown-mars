@@ -106,6 +106,10 @@ export interface RoomDef {
   cargoShaft?: boolean;
   /** Only digs out rock: when the job's done, the room is gone and its cells are empty space. */
   excavationOnly?: boolean;
+  /** Its own target floor area, m² (else its size's: config.sizes). Set from the furnishing tool. */
+  area?: number;
+  /** A fill room (empty space, a plaza, the park): stretches from half to three times its area to close a gap, and costs by its area. */
+  fill?: boolean;
   /** Walk-through: every side counts as a corridor, so neighbours open onto it. */
   public?: boolean;
   /** Moves people between floors in a car: people ride it, air doesn't (elevators). */

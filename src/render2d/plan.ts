@@ -6,6 +6,7 @@ import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js
 import { previewEffects, type EffectField } from "../sim/effects";
 import type { Happiness } from "../sim/happiness";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
+import { covers, floorPieces } from "../sim/space";
 import { roomDef } from "../sim/rooms";
 import type { DrillView } from "../sim/snapshot";
 import { floorSpan, pickAt, ringRadii } from "../render3d/cylinder";
@@ -97,13 +98,11 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
     const grid = previewEffects(layout, type, cells)[main.type]?.[floor - 1];
     if (!grid) return;
-    const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
-    grid.forEach((slots, ri) =>
-      slots.forEach((v, slot) => {
-        if (Math.abs(v) < 0.05 || own.has(`${floor}:${ri + 1}:${slot}`)) return;
-        overlayCtx.poly(cellSector(layout!.hole, { ring: ri + 1, slot }, 0.15)).fill({ color: v < 0 ? heat.bad : heat.good, alpha: Math.min(1, Math.abs(v) / FIELD_MAX) * 0.6 });
-      }),
-    );
+    for (const piece of floorPieces(layout, floor)) {
+      const v = grid[piece.ring - 1]?.[piece.a0] ?? 0;
+      if (Math.abs(v) < 0.05 || covers(cells, floor, piece.ring, (piece.a0 + piece.a1) / 2)) continue;
+      overlayCtx.poly(cellSector(layout.hole, piece, 0.15)).fill({ color: v < 0 ? heat.bad : heat.good, alpha: Math.min(1, Math.abs(v) / FIELD_MAX) * 0.6 });
+    }
   }
 
   function markRoom(room: RoomInstance, color: number): void {
@@ -261,7 +260,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     const [px, py] = screenToPlan(pointer);
     // Mid-height of this floor, in the same metres as the 3D view.
     const [y0, y1] = floorSpan(floor);
-    return pickAt(layout.hole, px / PX, (y0 + y1) / 2, py / PX);
+    return pickAt(layout, px / PX, (y0 + y1) / 2, py / PX);
   }
 
   /** Shift erases with the corridor tool. */
@@ -277,7 +276,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
 
   function edgeHere(): Edge | null {
     const p = pointHere();
-    return layout && p ? nearestEdge(layout.hole, floor, p.rings, p.turn, RING_D) : null;
+    return layout && p ? nearestEdge(layout, floor, p.rings, p.turn, RING_D) : null;
   }
 
   function hoverInfo(): HoverInfo | null {

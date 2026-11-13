@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
-import { createLayout, placeRoom, type Layout, type Location } from "../src/sim/placement";
+import { createLayout, placeRoom, type Layout, type Spot } from "../src/sim/placement";
 import { FIT, fit, frameOf, furnish, furnishedFloors, inside, layouts, place, templateFor, tooClose, unplace, type Template } from "../src/view/furnish";
 import { isFurnished, itemDef, itemsFor } from "../src/view/furniture";
 import { roomDef, roomDefs } from "../src/sim/rooms";
 import { galleryEdges } from "../src/sim/edges";
+import { ringAt } from "./spots";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
-function room(layout: Layout, type: string, at: Location) {
+function room(layout: Layout, type: string, at: Spot) {
   const r = placeRoom(layout, type, at);
   if (!r.ok) throw new Error(r.reason);
   return layout.rooms.find((x) => x.id === r.id)!;
@@ -25,7 +26,7 @@ const DORM: Template = [
 describe("fitting furniture into a room", () => {
   const layout = createLayout(createHole(10, 3, 3, config.geometry));
   // Floor 1's gallery tube, so ring-1 rooms have a door onto it.
-  for (const e of galleryEdges(layout.hole, 1)) layout.corridors[e.id] = "gallery";
+  for (const e of galleryEdges(layout, 1)) layout.corridors[e.id] = "gallery";
   const near = room(layout, "bunk_dorm", ring(1, 1, 0, 2)); // ring 1: narrow, with a door on the shaft
   const far = room(layout, "bunk_dorm", ring(1, 2, 3, 2)); // ring 2: the same slots as ring 1, further out, so wider
 
@@ -76,7 +77,7 @@ describe("fitting furniture into a room", () => {
   it("keeps a side doorway clear too, where a corridor runs along a wall", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     const lab = room(l, "bunk_dorm", ring(1, 2, 3, 2));
-    l.corridors["R1.2.3"] = "rock"; // along its left side
+    l.corridors["R1.2.480"] = "rock"; // along its left side
     const frame = frameOf(l, lab)!;
     expect(frame.doors).toHaveLength(1);
     const locker: Template = [{ item: "locker", wall: "left", y: 0.1 }];
@@ -98,7 +99,7 @@ describe("fitting furniture into a room", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     const r = room(l, "bunk_dorm", ring(1, 2, 3, 2));
     const before = frameOf(l, r)!.left(17);
-    l.corridors["R1.2.3"] = "rock";
+    l.corridors["R1.2.480"] = "rock";
     expect(frameOf(l, r)!.left(17)).toBeGreaterThan(before);
   });
 
@@ -177,9 +178,9 @@ describe("the templates", () => {
         // Four floors dug: a stairwell or elevator on floor 2 reaches floor 3, and a second
         // piece on floor 3 extends it to floor 4, so it has a top, a middle and a bottom.
         const layout = createLayout(createHole(10, 4, 6, config.geometry));
-        const placed = placeRoom(layout, type, { kind: "ring", floor: 2, ring: r, slot: 0, w, d });
+        const placed = placeRoom(layout, type, ringAt(2, r, 0, w, d));
         expect(placed.ok, `${key} in ring ${r}`).toBe(true);
-        if (roomDef(type).stacks) placeRoom(layout, type, { kind: "ring", floor: 3, ring: r, slot: 0, w, d });
+        if (roomDef(type).stacks) placeRoom(layout, type, ringAt(3, r, 0, w, d));
         const room = layout.rooms.find((x) => x.id === placed.id)!;
         // The floors this template furnishes (a stack's top or bottom floor may have its own).
         const floors = furnishedFloors(room).filter(({ role }) => templateFor(type, w, d, layouts.templates, role) === t);

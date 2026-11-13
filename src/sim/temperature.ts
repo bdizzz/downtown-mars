@@ -1,5 +1,5 @@
-import type { SimConfig } from "./config";
-import { slotsInRing } from "./geometry";
+import { config, type SimConfig } from "./config";
+import { spanArea } from "./geometry";
 import type { RoomInstance } from "./placement";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
@@ -106,20 +106,21 @@ export function setpointOf(t: TemperatureState, floor: number): number {
   return t.overrides?.[floor] ?? t.setpoint;
 }
 
-/** Cells on the reference floor: a small hole's floor dug across its unlocked rings. */
+/** The reference floor, in hundreds of m²: a small hole's floor dug across its unlocked rings. */
 export function referenceCells(cfg: SimConfig): number {
   const h = cfg.starterHole;
-  let n = 0;
-  for (let ring = 1; ring <= h.unlockedRings; ring++) n += slotsInRing(h.shaftRadiusM, ring, cfg.geometry);
-  return n;
+  return spanArea(h.shaftRadiusM, 1, h.unlockedRings, cfg.geometry.notchesPerTurn, cfg.geometry) / 100;
 }
 
 function dugCells(state: SimState, floor: number): number {
+  // How much of the floor is dug, in hundreds of m².
   const rings = state.layout.open?.[floor - 1];
   if (!rings) return 0;
-  let n = 0;
-  for (const ring of rings) for (const v of ring) if (v === 1) n++;
-  return n;
+  let area = 0;
+  rings.forEach((spans, r) => {
+    for (const [a0, a1] of spans) area += spanArea(state.layout.hole.shaftRadiusM, r + 1, 1, a1 - a0, config.geometry);
+  });
+  return area / 100;
 }
 
 /** How a room's share of something splits over the floors its cells are on. */
@@ -132,8 +133,9 @@ function byFloor(room: RoomInstance): Map<number, number> {
 
 /** How much of a size's nominal a room covers (a deep wedge covers more), as economy.ts scales its numbers. */
 function scaleOf(room: RoomInstance, cfg: SimConfig): number {
-  const nominal = cfg.economy.nominalSlots[roomDef(room.type).size] ?? 1;
-  return room.at.kind === "ring" ? room.cells.length / nominal : 1;
+  void room;
+  void cfg;
+  return 1;
 }
 
 const ready = (room: RoomInstance) => !room.planned && !room.building && room.connected;

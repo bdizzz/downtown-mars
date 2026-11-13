@@ -2,7 +2,8 @@ import { config } from "./config";
 import { hasBulkhead, openTo } from "./corridors";
 import { cellEdges, edgeById, edgeLengthM, edgeVertices, galleryEdges, outsideEdges } from "./edges";
 import { deadEnds } from "./deadEnds";
-import { emptyCells } from "./excavation";
+import { areaOf, cellWidthM, emptyCells } from "./space";
+import type { Hole } from "./geometry";
 import type { Cell, Layout, RoomInstance } from "./placement";
 import { roomDef } from "./rooms";
 
@@ -60,7 +61,8 @@ export interface Paths {
 }
 
 const built = (r: RoomInstance) => !r.planned && !r.building;
-const roomLength = (cells: number) => STEP_M * Math.sqrt(Math.max(1, cells));
+/** How far it is across a room: the side of a square of its floor area (10 m for 100 m²). */
+const roomLength = (hole: Hole, cells: Cell[]) => STEP_M * Math.sqrt(Math.max(1, areaOf(hole, cells) / (STEP_M * STEP_M)));
 
 /** Build the graph for a layout. Prefer `pathsFor`, which keeps it until the layout changes. */
 export function buildPaths(layout: Layout): Paths {
@@ -97,7 +99,7 @@ export function buildPaths(layout: Layout): Paths {
   // Under the dome, every floor's gallery is open walkway, as if tubes ran all the way round.
   if (layout.domed) {
     for (let f = 1; f <= hole.floors; f++) {
-      for (const e of galleryEdges(hole, f)) {
+      for (const e of galleryEdges(layout, f)) {
         const key = `c:${e.id}`;
         if (nodes.has(key)) continue;
         add(key, { roomId: 0, floor: f, length: edgeLengthM(hole, e, depth), through: true });
@@ -117,9 +119,9 @@ export function buildPaths(layout: Layout): Paths {
     for (const floor of floors) {
       const here = cells.filter((c) => c.floor === floor);
       const key = `r:${room.id}:${floor}`;
-      add(key, { roomId: room.id, floor, length: roomLength(here.length), through: !!def.public });
+      add(key, { roomId: room.id, floor, length: roomLength(hole, here), through: !!def.public });
       if (def.public) {
-        for (const e of outsideEdges(hole, here)) {
+        for (const e of outsideEdges(layout, here)) {
           for (const v of edgeVertices(hole, e)) index(byVertex, v, key);
           index(byEdge, e.id, key);
         }
@@ -133,9 +135,9 @@ export function buildPaths(layout: Layout): Paths {
   }
   // Dug-out empty space: walk-through, a cell at a time.
   for (const cell of emptyCells(layout)) {
-    const key = `e:${cell.floor}:${cell.ring}:${cell.slot}`;
-    add(key, { roomId: 0, floor: cell.floor, length: STEP_M, through: true });
-    for (const e of cellEdges(hole, cell)) {
+    const key = `e:${cell.floor}:${cell.ring}:${cell.a0}`;
+    add(key, { roomId: 0, floor: cell.floor, length: Math.min(STEP_M, cellWidthM(hole, cell)), through: true });
+    for (const e of cellEdges(layout, cell)) {
       for (const v of edgeVertices(hole, e)) index(byVertex, v, key);
       index(byEdge, e.id, key);
     }
@@ -144,7 +146,7 @@ export function buildPaths(layout: Layout): Paths {
   for (const list of byVertex.values()) for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) link(list[i]!, list[j]!);
   // A private room opens onto whatever walkable piece runs along one of its sides, and any corridor that ends against its wall.
   for (const p of privates) {
-    for (const e of outsideEdges(hole, p.cells)) for (const other of byEdge.get(e.id) ?? []) link(p.key, other);
+    for (const e of outsideEdges(layout, p.cells)) for (const other of byEdge.get(e.id) ?? []) link(p.key, other);
     for (const d of deadEnds(layout, p.cells)) if (nodes.has(`c:${d.corridor}`)) link(p.key, `c:${d.corridor}`);
   }
   return { nodes, links, byRoom, byEdge };
@@ -179,10 +181,10 @@ export function distancesFrom(paths: Paths, roomId: number, mode: PathMode, maxM
  */
 export function distancesFromCells(layout: Layout, cells: Cell[], mode: PathMode, maxM = Infinity): Map<number, number> {
   const paths = pathsFor(layout);
-  const half = roomLength(cells.length) / 2;
+  const half = roomLength(layout.hole, cells) / 2;
   const seeds: [string, number][] = [];
   const seed = (k: string) => seeds.push([k, half + paths.nodes.get(k)!.length / 2]);
-  for (const e of outsideEdges(layout.hole, cells)) for (const k of paths.byEdge.get(e.id) ?? []) seed(k);
+  for (const e of outsideEdges(layout, cells)) for (const k of paths.byEdge.get(e.id) ?? []) seed(k);
   for (const d of deadEnds(layout, cells)) if (paths.nodes.has(`c:${d.corridor}`)) seed(`c:${d.corridor}`);
   return walkOut(paths, seeds, -1, mode, maxM);
 }

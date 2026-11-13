@@ -5,16 +5,17 @@ import { finishAll } from "../src/sim/construction";
 import { buildLiningCost, liningOf, wallStep } from "../src/sim/materials";
 import { roomDef } from "../src/sim/rooms";
 import { roomCard } from "../src/view/roomCard";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { withConstructionTime } from "./worlds";
 import { liningFields } from "../src/view/interaction";
+import { ringAt } from "./spots";
 
 // Building straight in a lining (T-038): the room's cost plus the lining's
 // from bare rock, as a refit would charge, but no refit work: just the room's
 // own build time, and it comes out lined.
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
 function hole(): SimState {
   const s = createInitialState(config);
@@ -46,7 +47,7 @@ describe("building in a lining", () => {
   });
 
   it("bare rock, or rooms that can't be lined, cost the same as ever", () => {
-    const same = (type: string, at: Location, material: string) => {
+    const same = (type: string, at: Spot, material: string) => {
       const lined = hole();
       const plain = hole();
       expect(applyCommand(lined, { type: "build", room: type, at, material })).toMatchObject({ ok: true });

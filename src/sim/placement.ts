@@ -1,46 +1,49 @@
 import type { Growth } from "./food";
 import { config, type Priority, type SimConfig } from "./config";
-import { overlappingSlots, ringSize, slotsToAngles, wrapSlot, type Hole } from "./geometry";
+import { ringSize, slotsToAngles, spanArea, wrapNotch, wrapSlot, type Hole } from "./geometry";
 import { corridorsInside, recomputeAccess, strandedBy, wouldConnect } from "./corridors";
 import { isRoomType, roomDef } from "./rooms";
-import { rockCells } from "./excavation";
+import { areaOf, cell, cellKey, covers, pieceAt, piecesIn, rockCells, type Cell, type Span } from "./space";
 
-// Where rooms can go. A ring room is anchored at its innermost ring and
-// lowest slot, and spans w slots along that ring and d rings outward. Outer
-// rings are wider, so a deep room takes every outer slot whose centre falls
-// inside its angle range: the "wedge".
+// Where rooms can go. A ring room is anchored at its innermost ring and its
+// start angle, spans `span` notches round and `depth` rings outward, and takes
+// the same angles on every ring it covers: a clean wedge (F-004, PLAN-M17).
+// Its size is an area: placing it turns its target area and the ring's depth
+// into an angle.
 
-export interface Cell {
-  floor: number;
-  ring: number;
-  slot: number;
-}
+export type { Cell } from "./space";
 
 export type Location =
   | {
       kind: "ring";
       floor: number;
       ring: number;
-      slot: number;
-      w: number;
-      d: number;
-      /**
-       * Its angle range in notches (F-004): from `start`, `span` notches round, `depth` rings
-       * outward. Set when placed (a command needn't carry them); deep rooms take the inner
-       * ring's angles. Nothing reads them yet: rooms are still placed on slots (PLAN-M17).
-       */
-      start?: number;
-      span?: number;
-      depth?: number;
+      /** How many rings deep, outward from `ring`. */
+      depth: number;
+      /** Its angle range in notches: from `start`, `span` notches round. */
+      start: number;
+      span: number;
     }
+  | { kind: "surface"; slot: number };
+
+/**
+ * Where a room is asked to go. A ring room may leave out its span (its target
+ * area on that ring) and depth (its size's first). `fixed` takes the span as
+ * given, whatever its area: old slot-shaped rooms, and tests laid out on the
+ * old slots.
+ */
+export type Spot =
+  | { kind: "ring"; floor: number; ring: number; start: number; span?: number; depth?: number; fixed?: boolean }
   | { kind: "surface"; slot: number };
 
 export interface RoomInstance {
   id: number;
   type: string;
   at: Location;
-  /** Ring cells covered (empty for surface rooms). */
+  /** The ring cells covered: its angle range on each floor and ring it spans (empty for surface rooms). */
   cells: Cell[];
+  /** Its floor in whole units of 100 m² (unitsOf): what its linings, floors and crowding count by. Set as it is placed, extended and loaded. */
+  units?: number;
   /** Surface slots covered (empty for ring rooms). */
   surfaceCells: number[];
   /** Reachable from the surface, through the entrance. Surface rooms always are. */
@@ -93,16 +96,16 @@ export interface Layout {
   version: number;
   hole: Hole;
   rooms: RoomInstance[];
-  /** grid[floor - 1][ring - 1][slot] = room id, or 0 if empty. */
-  grid: number[][][];
-  /** open[floor - 1][ring - 1][slot] = 1 once excavated (a room or empty space), 0 while solid rock. */
-  open?: number[][][];
+  /** open[floor - 1][ring - 1] = the angle ranges excavated (a room or empty space), merged and in order; the rest is solid rock. */
+  open?: Span[][][];
+  /** Corridors whose border has been cut since a job last looked: old id → its parts (space.ts; construction.ts follows them). */
+  corridorSplits?: Record<string, string[]>;
   /** Old saves (v14 and older): the shaft still links every floor, as it did before stairs mattered. */
   openShaft?: boolean;
   /** surface[slot] = room id, or 0 if empty. */
   surface: number[];
   nextRoomId: number;
-  /** Corridors along the borders between cells: edge id (see edges.ts) → finish. */
+  /** Corridors along the borders between pieces: edge id (see edges.ts) → finish. Each is one whole edge piece. */
   corridors: Record<string, string>;
   /** Which floors' galleries are reached from the surface (floorLinked[floor - 1]); recomputed with access. */
   floorLinked?: boolean[];
@@ -123,6 +126,8 @@ export interface Layout {
 export type CheckResult =
   | {
       ok: true;
+      /** Where it goes, with its span and depth filled in. */
+      at: Location;
       cells: Cell[];
       surfaceCells: number[];
       planned: boolean;
@@ -132,7 +137,7 @@ export type CheckResult =
       merges?: number[];
       /** What the placement does, when it isn't obvious ("Extend stairs to cover floors 1–3"). */
       note?: string;
-      /** Cells still solid rock: they're excavated first. */
+      /** Floor area still solid rock, m²: it's excavated first. */
       rock?: number;
       /** Corridors inside the footprint that placing it would fill in, and what that would cut off. */
       destroys?: string[];
@@ -140,14 +145,13 @@ export type CheckResult =
     }
   | { ok: false; reason: string; cells: Cell[]; surfaceCells: number[] };
 
-const EPS = 1e-9;
+const N = config.geometry.notchesPerTurn;
 
 export function createLayout(hole: Hole, cfg: SimConfig = config): Layout {
   const layout: Layout = {
     version: 0,
     hole,
     rooms: [],
-    grid: [],
     surface: new Array(cfg.geometry.surfaceSlots).fill(0),
     nextRoomId: 1,
     corridors: {},
@@ -156,77 +160,134 @@ export function createLayout(hole: Hole, cfg: SimConfig = config): Layout {
   return layout;
 }
 
-/** Grow the grid to cover every dug floor plus the one being dug. */
+/** Grow what's kept per floor to cover every dug floor plus the one being dug. */
 export function ensureFloors(layout: Layout): void {
-  while (layout.grid.length < layout.hole.floors + 1) {
-    layout.grid.push(layout.hole.ringSlots.map((n) => new Array(n).fill(0)));
-  }
   layout.open ??= [];
-  while (layout.open.length < layout.grid.length) layout.open.push(layout.hole.ringSlots.map((n) => new Array(n).fill(0)));
+  while (layout.open.length < layout.hole.floors + 1) layout.open.push(layout.hole.ringSlots.map(() => []));
 }
 
-export function footprint(hole: Hole, floor: number, ring: number, slot: number, w: number, d: number): Cell[] {
-  const n0 = ringSize(hole, ring);
+/** The cells a room covers on one floor: the same angles on each ring it spans. */
+export function footprint(hole: Hole, floor: number, ring: number, start: number, span: number, depth: number): Cell[] {
   const cells: Cell[] = [];
-  for (let i = 0; i < w; i++) cells.push({ floor, ring, slot: wrapSlot(slot + i, n0) });
-  const a = wrapSlot(slot, n0) / n0;
-  const b = a + w / n0;
-  for (let r = ring + 1; r < ring + d && r <= hole.ringSlots.length; r++) {
-    const m = ringSize(hole, r);
-    const kStart = Math.ceil(a * m - 0.5 - EPS);
-    const kEnd = Math.ceil(b * m - 0.5 - EPS);
-    for (let k = kStart; k < kEnd; k++) cells.push({ floor, ring: r, slot: wrapSlot(k, m) });
-  }
+  for (let r = ring; r < ring + depth && r <= hole.ringSlots.length; r++) cells.push(cell(floor, r, start, span));
   return cells;
 }
 
-/** Cells sharing a side with the group: along the ring, or across rings by angle. */
-export function neighborCells(hole: Hole, cells: Cell[]): Cell[] {
-  const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
-  const own = new Set(cells.map(key));
+/** Pieces sharing a side with the group: along the ring, or across rings by angle. */
+export function neighborCells(layout: Layout, cells: Cell[]): Cell[] {
   const out = new Map<string, Cell>();
-  const add = (c: Cell) => {
-    const k = key(c);
-    if (!own.has(k)) out.set(k, c);
+  const add = (p: Cell | null) => {
+    if (p && !covers(cells, p.floor, p.ring, (p.a0 + p.a1) / 2)) out.set(cellKey(p), p);
   };
   for (const c of cells) {
-    const n = ringSize(hole, c.ring);
-    add({ ...c, slot: wrapSlot(c.slot - 1, n) });
-    add({ ...c, slot: wrapSlot(c.slot + 1, n) });
+    add(pieceAt(layout, c.floor, c.ring, c.a0 - 0.5));
+    add(pieceAt(layout, c.floor, c.ring, c.a1 + 0.5));
     for (const r of [c.ring - 1, c.ring + 1]) {
-      if (r < 1 || r > hole.ringSlots.length) continue;
-      for (const s of overlappingSlots(hole, c.ring, c.slot, r)) add({ floor: c.floor, ring: r, slot: s });
+      if (r < 1 || r > layout.hole.ringSlots.length) continue;
+      for (const p of piecesIn(layout, { ...c, ring: r })) add(p);
     }
   }
   return [...out.values()];
 }
 
+/** The room holding the start of a cell. */
 export function roomAt(layout: Layout, c: Cell): RoomInstance | undefined {
-  const id = layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot];
+  const id = pieceAt(layout, c.floor, c.ring, c.a0 + 0.5)?.room;
   return id ? layout.rooms.find((r) => r.id === id) : undefined;
 }
 
-export function checkPlacement(layout: Layout, type: string, at: Location, cfg: SimConfig = config): CheckResult {
+/** A room type's target floor area, m²: its own, or its size's. */
+export function targetArea(type: string, cfg: SimConfig = config): number {
+  const def = roomDef(type);
+  return def.area ?? cfg.sizes[def.size as "S"] ?? cfg.sizes.S!;
+}
+
+/** The depths (in rings) a room type may be. */
+export function depthsFor(type: string, cfg: SimConfig = config): number[] {
+  return cfg.depths[roomDef(type).size as "S"] ?? [1];
+}
+
+/** How wide a room may be on a ring, in notches: its target, and the least and most its leeway (or a fill room's range) allows. */
+export function spanRange(hole: Hole, type: string, ring: number, depth: number, cfg: SimConfig = config): { target: number; min: number; max: number } {
+  const def = roomDef(type);
+  const per = spanArea(hole.shaftRadiusM, ring, depth, 1, cfg.geometry);
+  const area = targetArea(type, cfg);
+  const p = cfg.placement;
+  const lo = def.fill ? p.fill.min : 1 - p.leeway;
+  const hi = def.fill ? p.fill.max : 1 + p.leeway;
+  const cap = def.fill ? Math.floor(p.fill.maxTurn * N) : N;
+  const target = Math.min(cap, Math.max(1, Math.round(area / per)));
+  return { target, min: Math.min(target, Math.max(1, Math.ceil((area * lo) / per - 1e-9))), max: Math.max(target, Math.min(cap, Math.floor((area * hi) / per + 1e-9))) };
+}
+
+/** The floor area of a ring location, m². */
+export function areaAt(hole: Hole, at: { ring: number; depth: number; span: number }, cfg: SimConfig = config): number {
+  return spanArea(hole.shaftRadiusM, at.ring, at.depth, at.span, cfg.geometry);
+}
+
+/** A room's floor area, m² (0 on the surface). */
+export function roomArea(hole: Hole, room: RoomInstance, cfg: SimConfig = config): number {
+  return room.at.kind === "ring" ? areaAt(hole, room.at, cfg) : 0;
+}
+
+/**
+ * How a room's cost and work scale with its area: 1, except a fill room (empty
+ * space, a plaza, the park), which pays for the floor it takes.
+ */
+export function areaScale(hole: Hole, type: string, at: Location | Spot, cfg: SimConfig = config): number {
+  if (at.kind !== "ring" || !isRoomType(type) || !roomDef(type).fill) return 1;
+  const depth = at.depth ?? depthsFor(type, cfg)[0]!;
+  const span = at.span ?? spanRange(hole, type, at.ring, depth, cfg).target;
+  return spanArea(hole.shaftRadiusM, at.ring, depth, span, cfg.geometry) / targetArea(type, cfg);
+}
+
+/**
+ * How much floor these cells are, in whole units of 100 m² (at least one a floor): what linings, floors and
+ * crowding count by. An S room is 1, an M 2, an L 4, whatever its exact area.
+ */
+export function unitsOf(hole: Hole, cells: Cell[]): number {
+  const byFloor = new Map<number, number>();
+  for (const c of cells) byFloor.set(c.floor, (byFloor.get(c.floor) ?? 0) + spanArea(hole.shaftRadiusM, c.ring, 1, c.a1 - c.a0, config.geometry));
+  let n = 0;
+  for (const area of byFloor.values()) n += Math.max(1, Math.round(area / 100));
+  return n;
+}
+
+/** A room's floor in whole units of 100 m² (a surface room: its slots). */
+export function roomUnits(room: RoomInstance): number {
+  return Math.max(1, room.units ?? (room.cells.length || room.surfaceCells.length));
+}
+
+/** The spot the old slots gave: `w` slots from `slot` of the ring's grid, `d` rings deep, its span taken as it is. */
+export function slotSpot(hole: Hole, floor: number, ring: number, slot: number, w = 1, d = 1): Spot & { kind: "ring" } {
+  const { start, span } = slotsToAngles(slot, w, ringSize(hole, ring), N);
+  return { kind: "ring", floor, ring, start, span, depth: d, fixed: true };
+}
+
+export function checkPlacement(layout: Layout, type: string, spot: Spot, cfg: SimConfig = config): CheckResult {
   const none = { cells: [], surfaceCells: [] };
   if (!isRoomType(type)) return { ok: false, reason: `Unknown room "${type}"`, ...none };
   const def = roomDef(type);
   const hole = layout.hole;
 
-  if (at.kind === "surface") {
+  if (spot.kind === "surface") {
     if (def.size !== "surface") return { ok: false, reason: `${def.name} goes inside the hole`, ...none };
     const n = layout.surface.length;
     const width = def.surfaceSlots ?? 1;
-    const surfaceCells = Array.from({ length: width }, (_, i) => wrapSlot(at.slot + i, n));
+    const surfaceCells = Array.from({ length: width }, (_, i) => wrapSlot(spot.slot + i, n));
     const hit = surfaceCells.map((s) => layout.surface[s]).find((id) => id);
     if (hit) return { ok: false, reason: `Overlaps ${nameOf(layout, hit)}`, cells: [], surfaceCells };
-    return { ok: true, cells: [], surfaceCells, planned: false };
+    return { ok: true, at: spot, cells: [], surfaceCells, planned: false };
   }
 
   if (def.size === "surface") return { ok: false, reason: `${def.name} goes on the surface`, ...none };
-  const shapes = (cfg.shapes as Record<string, [number, number][]>)[def.size] ?? [];
-  if (!shapes.some(([w, d]) => w === at.w && d === at.d)) {
-    return { ok: false, reason: `${def.name} can't be ${at.w}×${at.d}`, ...none };
-  }
+  const depths = depthsFor(type, cfg);
+  const depth = spot.depth ?? depths[0]!;
+  if (!depths.includes(depth)) return { ok: false, reason: `${def.name} can't be ${depth} rings deep`, ...none };
+  if (spot.ring < 1 || spot.ring > hole.ringSlots.length) return { ok: false, reason: "Not a ring", ...none };
+  const range = spanRange(hole, type, spot.ring, depth, cfg);
+  const span = Math.round(spot.span ?? range.target);
+  const at: Location = { kind: "ring", floor: spot.floor, ring: spot.ring, depth, start: wrapNotch(Math.round(spot.start), N), span };
   // The floor below the deepest dug one is being excavated and can be planned.
   // Tall rooms (stairs, elevators) reach down to floors that must already be dug.
   const height = def.floors ?? 1;
@@ -235,45 +296,52 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
   if (height > 1 && bottom > hole.floors) {
     return { ok: false, reason: `The floor below (floor ${bottom}) isn't excavated yet`, ...none };
   }
-  if (at.ring < 1) return { ok: false, reason: "Not a ring", ...none };
   // A cargo elevator runs from the surface down to its stop, which must be below the entrance's floor, and dug.
   if (def.cargoShaft && at.floor < 2) return { ok: false, reason: "Its stop goes below floor 1: the entrance serves floor 1", ...none };
   if (def.cargoShaft && at.floor > hole.floors) return { ok: false, reason: "That floor isn't dug yet", ...none };
-
-  const lastRing = at.ring + at.d - 1;
-  if (lastRing > hole.unlockedRings) {
-    const cells = at.ring <= hole.ringSlots.length ? footprint(hole, at.floor, at.ring, at.slot, at.w, at.d) : [];
-    return { ok: false, reason: `Ring ${hole.unlockedRings + 1}+ needs reinforcement frames`, cells, surfaceCells: [] };
-  }
-  if (at.w > ringSize(hole, at.ring)) return { ok: false, reason: "Too wide for this ring", ...none };
+  if (span < 1 || span > N) return { ok: false, reason: "Too wide for this ring", ...none };
 
   // Tall rooms repeat their footprint on each floor they span; a cargo shaft on every floor above its stop too.
   const cells: Cell[] = [];
   const top = def.cargoShaft ? 1 : at.floor;
-  for (let f = top; f <= bottom; f++) cells.push(...footprint(hole, f, at.ring, at.slot, at.w, at.d));
+  for (let f = top; f <= bottom; f++) cells.push(...footprint(hole, f, at.ring, at.start, span, depth));
+  const lastRing = at.ring + depth - 1;
+  if (lastRing > hole.unlockedRings) {
+    return { ok: false, reason: `Ring ${hole.unlockedRings + 1}+ needs reinforcement frames`, cells, surfaceCells: [] };
+  }
+  const sameSpot = (other: RoomInstance) => other.type === type && other.at.kind === "ring" && other.at.ring === at.ring && other.at.start === at.start && other.at.span === span && other.at.depth === depth;
   const merges = new Set<number>();
   let fresh = 0;
   for (const c of cells) {
-    const other = roomAt(layout, c);
-    if (!other) {
+    const others = piecesIn(layout, c).filter((p) => p.room);
+    if (!others.length) {
       fresh++;
       continue;
     }
-    // Stairs and elevators chain: a piece may sit on an existing one of the same kind and join it.
-    if (def.stacks && other.type === type && other.at.kind === "ring" && other.at.ring === at.ring && other.at.slot === at.slot) {
-      merges.add(other.id);
-      continue;
+    for (const p of others) {
+      const other = layout.rooms.find((r) => r.id === p.room)!;
+      // Stairs and elevators chain: a piece may sit on an existing one of the same kind and join it.
+      if (def.stacks && sameSpot(other)) {
+        merges.add(other.id);
+        continue;
+      }
+      const where = c.floor === at.floor ? "Overlaps" : c.floor < at.floor ? `Floor ${c.floor} above: its shaft overlaps` : `Floor ${c.floor} below: overlaps`;
+      return { ok: false, reason: `${where} ${roomDef(other.type).name}`, cells, surfaceCells: [] };
     }
-    const where = c.floor === at.floor ? "Overlaps" : c.floor < at.floor ? `Floor ${c.floor} above: its shaft overlaps` : `Floor ${c.floor} below: overlaps`;
-    return { ok: false, reason: `${where} ${roomDef(other.type).name}`, cells, surfaceCells: [] };
   }
   if (!fresh) return { ok: false, reason: `Already ${def.stackNoun ?? def.name.toLowerCase()} here`, cells, surfaceCells: [] };
   // A piece that meets a stack end to end (just above its top, or just below its bottom) joins it too.
   if (def.stacks) {
     for (const f of [at.floor - 1, bottom + 1]) {
-      const r = f >= 1 ? roomAt(layout, { floor: f, ring: at.ring, slot: at.slot }) : undefined;
-      if (r && r.type === type) merges.add(r.id);
+      const r = f >= 1 ? roomAt(layout, cell(f, at.ring, at.start, span)) : undefined;
+      if (r && sameSpot(r)) merges.add(r.id);
     }
+  }
+  // Its size: within its leeway of its target area (a fill room, much further). A piece joining a stack takes the stack's.
+  if (!spot.fixed && !merges.size) {
+    const area = Math.round(spanArea(hole.shaftRadiusM, at.ring, depth, 1, cfg.geometry) * (span < range.min ? range.min : range.max));
+    if (span < range.min) return { ok: false, reason: `Too small: at least ${area} m²`, cells, surfaceCells: [] };
+    if (span > range.max) return { ok: false, reason: def.fill && range.max >= Math.floor(cfg.placement.fill.maxTurn * N) ? "Too wide: at most a quarter of the way round" : `Too big: up to ${area} m²`, cells, surfaceCells: [] };
   }
   let note: string | undefined;
   if (merges.size) {
@@ -285,7 +353,7 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
     }
     note = `Extend ${def.stackNoun ?? def.name.toLowerCase()} to cover floors ${top}–${low}`;
   }
-  const rock = rockCells(layout, cells).length;
+  const rock = Math.round(areaOf(hole, rockCells(layout, cells)));
   if (def.excavationOnly && !rock) return { ok: false, reason: "Already dug out", cells, surfaceCells: [] };
   // Rooms can go anywhere; one no corridor reaches yet just won't work until one does.
   const unconnected = !def.public && !wouldConnect(layout, cells);
@@ -293,6 +361,7 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
   const destroys = corridorsInside(layout, cells);
   return {
     ok: true,
+    at,
     cells,
     surfaceCells: [],
     planned: bottom > hole.floors,
@@ -307,7 +376,7 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
 function extendStack(layout: Layout, check: Extract<CheckResult, { ok: true }>): CheckResult & { id?: number; extended?: boolean; fresh?: Cell[] } {
   const [keep, ...others] = check.merges!.map((id) => layout.rooms.find((r) => r.id === id)!);
   const room = keep!;
-  const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+  const key = (c: Cell) => `${c.floor}:${c.ring}`;
   const before = new Set([room, ...others].flatMap((r) => [...r!.cells, ...(r!.pendingCells ?? [])]).map(key));
   const fresh = check.cells.filter((c) => !before.has(key(c)));
   const cells = new Map(room.cells.map((c) => [key(c), c]));
@@ -316,12 +385,12 @@ function extendStack(layout: Layout, check: Extract<CheckResult, { ok: true }>):
     if (other!.pendingCells?.length) room.pendingCells = [...(room.pendingCells ?? []), ...other!.pendingCells];
   }
   for (const c of check.cells) cells.set(key(c), c);
-  room.cells = [...cells.values()].sort((a, b) => a.floor - b.floor);
+  room.cells = [...cells.values()].sort((a, b) => a.floor - b.floor || a.ring - b.ring);
+  room.units = unitsOf(layout.hole, [...room.cells, ...(room.pendingCells ?? [])]);
   if (room.at.kind === "ring") room.at = { ...room.at, floor: room.cells[0]!.floor };
   layout.rooms = layout.rooms.filter((r) => !others.includes(r));
-  for (const c of room.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = room.id;
-  recomputeAccess(layout);
   layout.version++;
+  recomputeAccess(layout);
   return { ...check, id: room.id, extended: true, fresh };
 }
 
@@ -330,14 +399,7 @@ function nameOf(layout: Layout, id: number): string {
   return r ? roomDef(r.type).name : "another room";
 }
 
-/** A ring location with its angles filled in from its slots (a surface one as it is). */
-export function withAngles(hole: Hole, at: Location, cfg: SimConfig = config): Location {
-  if (at.kind !== "ring") return at;
-  const { start, span } = slotsToAngles(at.slot, at.w, ringSize(hole, at.ring), cfg.geometry.notchesPerTurn);
-  return { ...at, start, span, depth: at.d };
-}
-
-export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimConfig = config): CheckResult & { id?: number; extended?: boolean; fresh?: Cell[] } {
+export function placeRoom(layout: Layout, type: string, at: Spot, cfg: SimConfig = config): CheckResult & { id?: number; extended?: boolean; fresh?: Cell[] } {
   const check = checkPlacement(layout, type, at, cfg);
   if (!check.ok) return check;
   if (check.merges?.length) return extendStack(layout, check);
@@ -346,18 +408,18 @@ export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimCo
   layout.rooms.push({
     id,
     type,
-    at: withAngles(layout.hole, at, cfg),
+    at: check.at,
     cells: check.cells,
+    ...(check.cells.length ? { units: unitsOf(layout.hole, check.cells) } : {}),
     surfaceCells: check.surfaceCells,
     connected: true,
     planned: check.planned,
     priority: def.priority ?? cfg.economy.defaultPriority,
     ...(def.defaultCrop ? { crop: def.defaultCrop } : {}),
   });
-  for (const c of check.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = id;
   for (const s of check.surfaceCells) layout.surface[s] = id;
-  recomputeAccess(layout);
   layout.version++;
+  recomputeAccess(layout);
   return { ...check, id };
 }
 
@@ -367,11 +429,10 @@ export function demolishRoom(layout: Layout, id: number): { ok: true } | { ok: f
   const def = roomDef(room.type);
   if (!def.buildable) return { ok: false, reason: `The ${def.name.toLowerCase()} can't be demolished` };
   // What was dug stays dug: the room's cells are empty space now (a blueprint's rock stays rock).
-  for (const c of room.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = 0;
   for (const s of room.surfaceCells) layout.surface[s] = 0;
   layout.rooms = layout.rooms.filter((r) => r.id !== id);
-  recomputeAccess(layout);
   layout.version++;
+  recomputeAccess(layout);
   return { ok: true };
 }
 

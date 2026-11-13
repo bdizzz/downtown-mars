@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { galleryEdges, radialEdge } from "../src/sim/edges";
-import { ensureFloors, type Location } from "../src/sim/placement";
+import { ensureFloors, type Spot } from "../src/sim/placement";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { createWorld } from "../src/sim/world";
@@ -10,10 +10,13 @@ import { glazedWalls, roomForWindows, roomSide, shaftBorders, sunlight, wallOf, 
 import { corridorStripGeometry, openingsOf } from "../src/render3d/rooms3d";
 import { frameOf } from "../src/view/furnish";
 import { corridorCommand, edgeHoverFor } from "../src/view/interaction";
+import { ringAt, cellAt } from "./spots";
+import { tubeAt } from "./spots";
+import { notchOf } from "./spots";
 
 // Milestone 13, step 2: windows as an upgrade.
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
 function site(): SimState {
   const s = createInitialState(config);
@@ -23,7 +26,7 @@ function site(): SimState {
   Object.assign(s.resources, { rock: 900, brick: 300, metal: 300, machinery: 60, electronics: 60 });
   return s;
 }
-function build(s: SimState, room: string, at: Location): number {
+function build(s: SimState, room: string, at: Spot): number {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return r.roomId!;
@@ -47,7 +50,7 @@ describe("windows", () => {
   it("go in a whole wall at a time, facing the shaft, for their price", () => {
     const s = site();
     const dorm = build(s, "bunk_dorm", ring(1, 1, 1, 2));
-    const tube = galleryEdges(s.layout.hole, 1)[1]!.id;
+    const tube = tubeAt(s.layout, 1, 1).id;
     const wall = wallOf(s.layout, roomOf(s, dorm), tube)!;
     expect(wall.map((e) => e.id).sort()).toEqual(shaftBorders(s.layout, roomOf(s, dorm)).sort());
     const glass = s.resources.glass!;
@@ -72,7 +75,7 @@ describe("windows", () => {
     const { floors } = config.windows.sun;
     const at = (floor: number) => {
       const dorm = build(s, "bunk_dorm", ring(floor, 1, 4, 2));
-      expect(glaze(s, dorm, galleryEdges(s.layout.hole, floor)[4]!.id).ok).toBe(true);
+      expect(glaze(s, dorm, tubeAt(s.layout, floor, 4).id).ok).toBe(true);
       return sunlight(s.layout, roomOf(s, dorm));
     };
     expect(at(1)).toBeCloseTo(1);
@@ -81,7 +84,7 @@ describe("windows", () => {
     expect(at(floors + 2)).toBe(0);
     // A lab looking onto a corridor: a view, no sun.
     const lab = build(s, "bunk_dorm", ring(1, 2, 8, 2));
-    const corridor = radialEdge(s.layout.hole, 1, 2, 8);
+    const corridor = radialEdge(1, 2, notchOf(2, 8));
     s.layout.corridors[corridor.id] = "rock";
     expect(glaze(s, lab, corridor.id).ok).toBe(true);
     expect(sunlight(s.layout, roomOf(s, lab))).toBe(0);
@@ -91,7 +94,7 @@ describe("windows", () => {
     const s = site();
     const dorm = build(s, "bunk_dorm", ring(1, 1, 1, 2));
     s.resources.glass = 0;
-    const r = glaze(s, dorm, galleryEdges(s.layout.hole, 1)[1]!.id);
+    const r = glaze(s, dorm, tubeAt(s.layout, 1, 1).id);
     expect(r.ok).toBe(false);
     expect(!r.ok && r.reason).toMatch(/glass/);
   });
@@ -99,7 +102,7 @@ describe("windows", () => {
   it("only where there's something across: a corridor or a plaza, not rock; never in a walk-through room", () => {
     const s = site();
     const lab = build(s, "bunk_dorm", ring(1, 2, 3, 2));
-    const side = radialEdge(s.layout.hole, 1, 2, 3).id;
+    const side = radialEdge(1, 2, notchOf(2, 3)).id;
     // Rock along its left side: refused.
     expect(glaze(s, lab, side).ok).toBe(false);
     applyCommand(s, { type: "drawCorridors", edges: [side], finish: "rock" });
@@ -110,12 +113,12 @@ describe("windows", () => {
     // A plaza on its other side: a better view, and the extra wall counts a little.
     const plaza = build(s, "tiny_plaza", ring(1, 2, 5));
     applyCommand(s, { type: "consoleFinish" });
-    const right = radialEdge(s.layout.hole, 1, 2, 5).id;
+    const right = radialEdge(1, 2, notchOf(2, 5)).id;
     expect(glaze(s, lab, right).ok).toBe(true);
     expect(windowComfort(s.layout, roomOf(s, lab))).toBeCloseTo(config.windows.view.public + config.windows.extraWall);
     // The plaza itself is open: no windows for it, and its border goes to the dorm.
     expect(applyCommand(s, { type: "setWindows", roomId: plaza, edges: [right], on: true }).ok).toBe(false);
-    expect(roomForWindows(s.layout, right, { floor: 1, ring: 2, slot: 5 })?.id).toBe(lab);
+    expect(roomForWindows(s.layout, right, cellAt(1, 2, 5))?.id).toBe(lab);
     // Fill the corridor in: those windows go blind (no view, no glass), the plaza's stay.
     applyCommand(s, { type: "removeCorridors", edges: [side] });
     applyCommand(s, { type: "consoleFinish" });
@@ -127,7 +130,7 @@ describe("windows", () => {
     const s = site();
     const dorm = build(s, "bunk_dorm", ring(1, 1, 1, 2));
     expect(frameOf(s.layout, roomOf(s, dorm))!.solid.front).toBe(true);
-    glaze(s, dorm, galleryEdges(s.layout.hole, 1)[1]!.id);
+    glaze(s, dorm, tubeAt(s.layout, 1, 1).id);
     expect(frameOf(s.layout, roomOf(s, dorm))!.solid.front).toBe(false);
   });
 
@@ -135,7 +138,7 @@ describe("windows", () => {
     const s = site();
     const dorm = build(s, "bunk_dorm", ring(1, 1, 1, 2));
     const tool = { kind: "corridor" as const, finish: "rock", erase: false, windows: true };
-    const tube = galleryEdges(s.layout.hole, 1)[2]!;
+    const tube = tubeAt(s.layout, 1, 2);
     const pick = { kind: "slot" as const, floor: 1, ring: 1, slot: 2, locked: false, digging: false, angle: 0 };
     const info = edgeHoverFor(s.layout, s.resources, tool, pick, tube, false);
     expect(info.edge!.refusal).toBeNull();
@@ -150,7 +153,7 @@ describe("windows", () => {
     expect(applyCommand(s, corridorCommand(tool, out.edge)!).ok).toBe(true);
     expect(roomOf(s, dorm).windows).toBeUndefined();
     // Over rock: refused, with a reason.
-    const rock = radialEdge(s.layout.hole, 1, 1, 3); // its right side: nothing built across
+    const rock = radialEdge(1, 1, notchOf(1, 3)); // its right side: nothing built across
     expect(edgeHoverFor(s.layout, s.resources, tool, pick, rock, false).edge!.refusal).toMatch(/Nothing to look out on/);
   });
 
@@ -197,13 +200,13 @@ describe("windows", () => {
     const room = roomOf(s, build(s, "bunk_dorm", ring(1, 1, 1, 2)));
     const hole = s.layout.hole;
     // Its side walls: the room is past the left one, before the right one; the shaft wall is outside it.
-    const left = radialEdge(hole, 1, 1, 1);
-    const right = radialEdge(hole, 1, 1, 3);
-    const shaft = galleryEdges(hole, 1).find((e) => roomSide(s.layout, room, e) !== null)!;
+    const left = radialEdge(1, 1, notchOf(1, 1));
+    const right = radialEdge(1, 1, notchOf(1, 3));
+    const shaft = galleryEdges(s.layout, 1).find((e) => roomSide(s.layout, room, e) !== null)!;
     expect(roomSide(s.layout, room, left)).toBe(1);
     expect(roomSide(s.layout, room, right)).toBe(0);
     expect(roomSide(s.layout, room, shaft)).toBe(1);
-    expect(roomSide(s.layout, room, radialEdge(hole, 1, 1, 5))).toBeNull();
+    expect(roomSide(s.layout, room, radialEdge(1, 1, notchOf(1, 5)))).toBeNull();
     // Strips: the half toward the room, half as wide.
     const radii = (side?: 0 | 1): [number, number] => {
       const a = corridorStripGeometry(s.layout, shaft, 0, side).getAttribute("position").array;

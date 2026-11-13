@@ -2,14 +2,18 @@ import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { bandwidth, construction, corridorWork, roomWork } from "../src/sim/construction";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { createWorld } from "../src/sim/world";
 import { withConstructionTime } from "./worlds";
+import { ringAt } from "./spots";
+import { ensureFloors } from "../src/sim/placement";
+import { GRID, cellAt } from "./spots";
+import { areaOf } from "../src/sim/space";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const HOUR = config.ticksPerDay / 24;
 
 function site(): SimState {
@@ -22,7 +26,7 @@ function site(): SimState {
 const hours = (s: SimState, h: number) => {
   for (let i = 0; i < Math.round(h * HOUR); i++) step(s, config);
 };
-const build = (s: SimState, room: string, at: Location) => {
+const build = (s: SimState, room: string, at: Spot) => {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return s.layout.rooms.find((x) => x.id === r.roomId)!;
@@ -94,53 +98,53 @@ describe("construction time", () => {
     const s = site();
     build(s, "galley", ring(1, 1, 2));
     hours(s, 7);
-    expect(applyCommand(s, { type: "drawCorridors", edges: ["R1.1.2"], finish: "rock" }).ok).toBe(true);
-    expect(s.layout.corridorLinked?.["R1.1.2"]).toBe(false);
+    expect(applyCommand(s, { type: "drawCorridors", edges: ["R1.1.320"], finish: "rock" }).ok).toBe(true);
+    expect(s.layout.corridorLinked?.["R1.1.320"]).toBe(false);
     const job = s.construction.queue.at(-1)!;
-    expect(job).toMatchObject({ kind: "corridors", edges: ["R1.1.2"] });
-    expect(job.work).toBeCloseTo(corridorWork(s.layout, ["R1.1.2"], config));
+    expect(job).toMatchObject({ kind: "corridors", edges: ["R1.1.320"] });
+    expect(job.work).toBeCloseTo(corridorWork(s.layout, ["R1.1.320"], config));
     expect(job.work).toBeLessThan(roomWork("galley"));
     hours(s, job.work + 0.2);
-    expect(s.layout.corridorLinked?.["R1.1.2"]).toBe(true);
+    expect(s.layout.corridorLinked?.["R1.1.320"]).toBe(true);
   });
 
   it("filling in a corridor not built yet takes it off the plan with a full refund", () => {
     const s = site();
     build(s, "galley", ring(1, 1, 2));
     const rock = s.resources.rock!;
-    applyCommand(s, { type: "drawCorridors", edges: ["R1.1.2"], finish: "rock" });
-    applyCommand(s, { type: "removeCorridors", edges: ["R1.1.2"] });
+    applyCommand(s, { type: "drawCorridors", edges: ["R1.1.320"], finish: "rock" });
+    applyCommand(s, { type: "removeCorridors", edges: ["R1.1.320"] });
     expect(s.resources.rock).toBe(rock);
-    expect(s.layout.corridors["R1.1.2"]).toBeUndefined();
+    expect(s.layout.corridors["R1.1.320"]).toBeUndefined();
     expect(s.construction.queue.some((j) => j.kind === "corridors")).toBe(false);
   });
 
   it("filling a corridor in takes construction time; it stays in use until it's done", () => {
     const s = site();
     build(s, "galley", ring(1, 1, 2));
-    applyCommand(s, { type: "drawCorridors", edges: ["R1.1.2"], finish: "rock" });
+    applyCommand(s, { type: "drawCorridors", edges: ["R1.1.320"], finish: "rock" });
     hours(s, 12);
-    expect(s.layout.corridorLinked?.["R1.1.2"]).toBe(true);
-    expect(applyCommand(s, { type: "removeCorridors", edges: ["R1.1.2"] }).ok).toBe(true);
+    expect(s.layout.corridorLinked?.["R1.1.320"]).toBe(true);
+    expect(applyCommand(s, { type: "removeCorridors", edges: ["R1.1.320"] }).ok).toBe(true);
     const job = s.construction.queue.at(-1)!;
-    expect(job).toMatchObject({ kind: "fill", edges: ["R1.1.2"] });
-    expect(s.layout.corridorLinked?.["R1.1.2"]).toBe(true); // still there
+    expect(job).toMatchObject({ kind: "fill", edges: ["R1.1.320"] });
+    expect(s.layout.corridorLinked?.["R1.1.320"]).toBe(true); // still there
     hours(s, job.work + 0.2);
-    expect(s.layout.corridors["R1.1.2"]).toBeUndefined();
+    expect(s.layout.corridors["R1.1.320"]).toBeUndefined();
   });
 
   it("cancelling a fill-in keeps the corridor and refunds it", () => {
     const s = site();
     build(s, "galley", ring(1, 1, 2));
-    applyCommand(s, { type: "drawCorridors", edges: ["R1.1.2"], finish: "rock" });
+    applyCommand(s, { type: "drawCorridors", edges: ["R1.1.320"], finish: "rock" });
     hours(s, 12);
     const rock = s.resources.rock!;
-    applyCommand(s, { type: "removeCorridors", edges: ["R1.1.2"] });
+    applyCommand(s, { type: "removeCorridors", edges: ["R1.1.320"] });
     const job = s.construction.queue.at(-1)!;
     expect(applyCommand(s, { type: "cancelJob", jobId: job.id }).ok).toBe(true);
     expect(s.resources.rock).toBeCloseTo(rock, 6);
-    expect(s.layout.corridors["R1.1.2"]).toBe("rock");
-    expect(s.layout.corridorsFilling?.["R1.1.2"]).toBeUndefined();
+    expect(s.layout.corridors["R1.1.320"]).toBe("rock");
+    expect(s.layout.corridorsFilling?.["R1.1.320"]).toBeUndefined();
   });
 
   it("cancelling any job refunds it: a room, corridors, another floor of stairs", () => {
@@ -151,18 +155,18 @@ describe("construction time", () => {
     expect(room(s, g.id)).toBeUndefined();
     expect(s.resources.metal).toBe(metal);
     const rock = s.resources.rock!;
-    applyCommand(s, { type: "drawCorridors", edges: ["R1.1.5"], finish: "rock" });
+    applyCommand(s, { type: "drawCorridors", edges: ["R1.1.800"], finish: "rock" });
     applyCommand(s, { type: "cancelJob", jobId: s.construction.queue[0]!.id });
-    expect(s.layout.corridors["R1.1.5"]).toBeUndefined();
+    expect(s.layout.corridors["R1.1.800"]).toBeUndefined();
     expect(s.resources.rock).toBeCloseTo(rock, 6);
   });
 
   it("stairs reach their new floor when the extension is built", () => {
     const s = site();
     s.layout.hole.floors = 4;
-    while (s.layout.grid.length < 5) s.layout.grid.push(s.layout.hole.ringSlots.map((n) => new Array(n).fill(0)));
+    ensureFloors(s.layout);
     // Floor 2's cell is rock: it's dug out first.
-    const dig = construction.excavationHoursPerSlot;
+    const dig = (areaOf(GRID, [cellAt(1, 1, 3)]) / 100) * construction.excavationHoursPer100m2;
     const stairs = build(s, "stairwell", ring(1, 1, 3));
     hours(s, dig + roomWork("stairwell") + 0.2);
     applyCommand(s, { type: "build", room: "stairwell", at: ring(2, 1, 3) });

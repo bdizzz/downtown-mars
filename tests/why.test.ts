@@ -5,7 +5,7 @@ import { diagnose } from "../src/sim/diagnosis";
 import { effectOnRoom, effectSources } from "../src/sim/effects";
 import { updateHappiness } from "../src/sim/happiness";
 import { createHistory, stepHistory } from "../src/sim/history";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { roomDef } from "../src/sim/rooms";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
@@ -14,14 +14,15 @@ import { causeBand } from "../src/ui/trends";
 import { roomTints, SPOT_COLORS } from "../src/view/reachView";
 import { factorRows, feltByRows } from "../src/view/roomPanel";
 import { whyContent } from "../src/view/whyPanel";
+import { ringAt } from "./spots";
 
 // F-018's "Why?" panel, home breakdown and trend bands (T-173, T-174, T-175): the rooms behind each
 // neighbour effect, the panel's causes and Show me, and the causes recorded over time.
 
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
-function withRooms(rooms: [string, Location][]): SimState {
+function withRooms(rooms: [string, Spot][]): SimState {
   const s = createInitialState(config);
   s.drill.active = false;
   Object.assign(s.resources, { metal: 500, rock: 500, brick: 500, machinery: 50, electronics: 50 });

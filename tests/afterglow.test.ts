@@ -5,14 +5,15 @@ import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { afterglow, afterglowDaysLeft, updateHappiness } from "../src/sim/happiness";
 import { setAdults } from "../src/sim/people";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
+import { ringAt } from "./spots";
 
 // The thrill of arrival: extra happiness at a hole's founding that eases away,
 // and maintenance crews that stand by (using no parts) when there's nothing to fix.
 
 const tpd = config.ticksPerDay;
 const a = config.happiness.afterglow;
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const at = (s: SimState, day: number) => {
   s.tick = s.foundedTick + Math.round(day * tpd);
   return afterglow(s, config);

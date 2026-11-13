@@ -7,7 +7,8 @@ import { Amounts } from "./Cost";
 interface Props {
   def: RoomDef;
   resources: Record<string, number>;
-  shape: [number, number];
+  /** How many rings deep it would be built (an L room turned the other way is 2). */
+  depth: number;
   /** Why this hole can't have the room at all (e.g. no ore under it). */
   siteNote?: string | null;
   /** What goes on top of its cost (the lining it's to be built in), shown as one total. */
@@ -19,7 +20,9 @@ interface Props {
  * size and cost, a short table of facts, what it does to its neighbours as chips, and only the
  * notes that are particular to it.
  */
-export function RoomCard({ def, resources, shape, siteNote, extra }: Props) {
+import { areaOf } from "../view/buildCatalog";
+
+export function RoomCard({ def, resources, depth, siteNote, extra }: Props) {
   const card = roomCard(def, resources, siteNote, extra);
   return (
     <div className="room-card" style={{ "--cat": cssColor(CATEGORY_COLORS[def.category] ?? 0x888888) } as React.CSSProperties}>
@@ -28,7 +31,7 @@ export function RoomCard({ def, resources, shape, siteNote, extra }: Props) {
         <h3>{card.name}</h3>
         <span className="size">
           {card.size}
-          {!card.surface && ` · ${shape[0]}×${shape[1]}`}
+          {!card.surface && ` · ${areaOf(def)} m²${depth > 1 ? ` · ${depth} rings deep` : ""}`}
         </span>
       </header>
       <p className="price">

@@ -4,6 +4,8 @@ import { createHole } from "../src/sim/geometry";
 import type { Cell } from "../src/sim/placement";
 import { ringRadii, slotAngles, TAU, WALL_T } from "../src/render3d/cylinder";
 import { badgeAbove, BADGE_M, fitLabel, labelSpot, labelY, LINE_M, roughMeasure } from "../src/view/labelFit";
+import { cellAt } from "./spots";
+import { cellAngles } from "../src/render3d/cylinder";
 
 const hole = createHole(10, 3, 3, config.geometry);
 /** As rooms3d: half a corridor and half a wall in from each edge line. */
@@ -12,15 +14,12 @@ const WALL_IN = 1.5 + WALL_T / 2;
 /** Is (x, y, z) inside the room of these cells (one floor, one ring), at least `inset` from every wall? */
 function inside(cells: Cell[], x: number, z: number, inset: number): boolean {
   const ring = cells[0]!.ring;
-  const n = hole.ringSlots[ring - 1]!;
   const [r0, r1] = ringRadii(hole, ring);
   const r = Math.hypot(x, z);
   if (r < r0 + inset - 1e-6 || r > r1 - inset + 1e-6) return false;
   const turn = (Math.atan2(z, x) + TAU) % TAU;
   // Its angular span, unwrapped from the first cell.
-  const [s0] = slotAngles(cells[0]!.slot, n);
-  const a0 = s0;
-  const a1 = s0 + (cells.length * TAU) / n;
+  const [a0, a1] = cellAngles(cells[0]!);
   const rel = (((turn - a0) % TAU) + TAU) % TAU;
   if (rel > a1 - a0) return false;
   // Perpendicular distance to each radial side.
@@ -44,7 +43,7 @@ describe("room labels (T-077)", () => {
     for (let ring = 1; ring <= 3; ring++) {
       const n = hole.ringSlots[ring - 1]!;
       for (const slot of [0, 3, n - 1]) {
-        const cells = [{ floor: 2, ring, slot }];
+        const cells = [cellAt(2, ring, slot)];
         const spot = labelSpot(hole, cells, WALL_IN)!;
         for (const text of names) {
           const fit = fitLabel(text, roughMeasure, spot);
@@ -65,7 +64,7 @@ describe("room labels (T-077)", () => {
   });
 
   it("sits in the middle of the room's floor", () => {
-    const cells = [{ floor: 1, ring: 2, slot: 4 }, { floor: 1, ring: 2, slot: 5 }];
+    const cells = [cellAt(1, 2, 4), cellAt(1, 2, 5)];
     const spot = labelSpot(hole, cells, WALL_IN)!;
     const [r0, r1] = ringRadii(hole, 2);
     expect(Math.hypot(spot.x, spot.z)).toBeCloseTo((r0 + r1) / 2);
@@ -74,19 +73,19 @@ describe("room labels (T-077)", () => {
 
   it("a room across the seam is centred on the seam", () => {
     const n = hole.ringSlots[0]!;
-    const spot = labelSpot(hole, [{ floor: 1, ring: 1, slot: n - 1 }, { floor: 1, ring: 1, slot: 0 }], WALL_IN)!;
+    const spot = labelSpot(hole, [cellAt(1, 1, n - 1), cellAt(1, 1, 0)], WALL_IN)!;
     expect(Math.atan2(spot.z, spot.x)).toBeCloseTo(0);
   });
 
   it("short names stay whole at full size; long ones wrap, then shrink, then wait for a hover", () => {
-    const spot = labelSpot(hole, [{ floor: 1, ring: 2, slot: 0 }], WALL_IN)!;
+    const spot = labelSpot(hole, [cellAt(1, 2, 0)], WALL_IN)!;
     const dorm = fitLabel("Dorm", roughMeasure, spot);
     expect(dorm).toMatchObject({ lines: ["Dorm"], hoverOnly: false });
     expect(dorm.heightM).toBeCloseTo(LINE_M);
     expect(fitLabel("The Long Weekend Recreation Hall", roughMeasure, spot).lines).toHaveLength(2);
     expect(fitLabel("Supercalifragilisticexpialidociousness", roughMeasure, spot).hoverOnly).toBe(true);
     // A big room (three rings deep) has room to spare.
-    const big = labelSpot(hole, [[1, 2], [2, 4], [3, 5]].flatMap(([ring, w]) => Array.from({ length: w! }, (_, slot) => ({ floor: 1, ring: ring!, slot }))), WALL_IN)!;
+    const big = labelSpot(hole, [[1, 2], [2, 4], [3, 5]].flatMap(([ring, w]) => Array.from({ length: w! }, (_, slot) => (cellAt(1, ring!, slot)))), WALL_IN)!;
     expect(fitLabel("The Long Weekend Recreation Hall", roughMeasure, big).lines).toHaveLength(1);
   });
 });

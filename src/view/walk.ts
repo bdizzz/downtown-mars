@@ -3,9 +3,13 @@ import { cellEdges, galleryEdges, isGalleryEdge, type Edge } from "../sim/edges"
 import { isOpen } from "../sim/excavation";
 import type { Hole } from "../sim/geometry";
 import { roomAt, type Layout, type RoomInstance } from "../sim/placement";
+import { pieceAt } from "../sim/space";
+import { config } from "../sim/config";
 import { roomDef } from "../sim/rooms";
 import { FLOOR_H, openShaftRadius, RING_D, TAU, WALL_T } from "../render3d/cylinder";
 import { doorsOnFloor, inDoorway } from "./doors";
+
+const NOTCHES = config.geometry.notchesPerTurn;
 import { furnish, isFlat } from "./furnish";
 import { isMounted, itemDef } from "./furniture";
 
@@ -45,10 +49,10 @@ export function regionAt(layout: Layout, floor: number, x: number, z: number): R
   const ring = Math.floor((r - hole.shaftRadiusM) / RING_D) + 1;
   if (ring > hole.unlockedRings) return null;
   const turn = (((a / TAU) % 1) + 1) % 1;
-  const n = hole.ringSlots[ring - 1]!;
-  const cell = { floor, ring, slot: Math.min(Math.floor(turn * n), n - 1) };
+  const cell = pieceAt(layout, floor, ring, turn * NOTCHES);
+  if (!cell) return null;
   // A corridor carved into this cell's sides is open ground, even along a private room.
-  if (cellEdges(hole, cell).some((e) => onCorridor(layout, e, r, turn * TAU))) return OPEN;
+  if (cellEdges(layout, cell).some((e) => onCorridor(layout, e, r, turn * TAU))) return OPEN;
   const room = roomAt(layout, cell);
   if (!room) return isOpen(layout, cell) ? OPEN : null;
   if (!built(room)) return null;
@@ -61,7 +65,7 @@ function inTube(layout: Layout, floor: number, a: number): boolean {
   if (layout.domed) return true;
   const n = layout.hole.ringSlots[0]!;
   const turn = (((a / TAU) % 1) + 1) % 1;
-  const e = galleryEdges(layout.hole, floor)[Math.min(Math.floor(turn * n), n - 1)];
+  const e = galleryEdges(layout, floor)[Math.min(Math.floor(turn * n), n - 1)];
   return !!e && !!layout.corridors?.[e.id] && layout.corridorsBuilding?.[e.id] === undefined;
 }
 
@@ -96,9 +100,8 @@ export function onCorridorAt(layout: Layout, floor: number, x: number, z: number
   const ring = Math.floor((r - hole.shaftRadiusM) / RING_D) + 1;
   if (ring > hole.unlockedRings) return false;
   const turn = (((Math.atan2(z, x) / TAU) % 1) + 1) % 1;
-  const n = hole.ringSlots[ring - 1]!;
-  const cell = { floor, ring, slot: Math.min(Math.floor(turn * n), n - 1) };
-  return cellEdges(hole, cell).some((e) => onCorridor(layout, e, r, turn * TAU));
+  const cell = pieceAt(layout, floor, ring, turn * NOTCHES);
+  return !!cell && cellEdges(layout, cell).some((e) => onCorridor(layout, e, r, turn * TAU));
 }
 
 /** Is a point (radius r, angle a) inside the band a built corridor on this edge carves? */
@@ -396,8 +399,8 @@ export function stairsHere(layout: Layout, floor: number, x: number, z: number):
   const ring = Math.floor((r - hole.shaftRadiusM) / RING_D) + 1;
   if (ring > hole.unlockedRings) return null;
   const turn = (((Math.atan2(z, x) / TAU) % 1) + 1) % 1;
-  const n = hole.ringSlots[ring - 1]!;
-  const room = roomAt(layout, { floor, ring, slot: Math.min(Math.floor(turn * n), n - 1) });
+  const here = pieceAt(layout, floor, ring, turn * NOTCHES);
+  const room = here ? roomAt(layout, here) : undefined;
   if (!room || !roomDef(room.type).stacks || room.building || room.planned) return null;
   const floors = new Set(room.cells.map((c) => c.floor));
   const up = floors.has(floor - 1) ? floor - 1 : null;

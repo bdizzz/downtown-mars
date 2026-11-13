@@ -3,7 +3,6 @@
   "families": {
     "stairs": "Stairs",
     "lift": "Elevator",
-    "empty_room": "Empty room",
     "plaza": "Plaza",
     "storage": "Storage",
     "basic_home": "Basic home",
@@ -1317,10 +1316,11 @@
     },
     {
       "id": "empty_room_s",
-      "name": "Small empty room",
+      "name": "Empty space",
       "short": "Empty",
       "category": "excavation",
       "size": "S",
+      "fill": true,
       "staff": 0,
       "uses": {},
       "makes": {},
@@ -1329,42 +1329,7 @@
       "effects": [],
       "cost": {},
       "buildable": true,
-      "buildHours": 0,
-      "family": "empty_room"
-    },
-    {
-      "id": "empty_room_m",
-      "name": "Empty room",
-      "short": "Empty",
-      "category": "excavation",
-      "size": "M",
-      "staff": 0,
-      "uses": {},
-      "makes": {},
-      "public": true,
-      "excavationOnly": true,
-      "effects": [],
-      "cost": {},
-      "buildable": true,
-      "buildHours": 0,
-      "family": "empty_room"
-    },
-    {
-      "id": "empty_room_l",
-      "name": "Large empty room",
-      "short": "Empty",
-      "category": "excavation",
-      "size": "L",
-      "staff": 0,
-      "uses": {},
-      "makes": {},
-      "public": true,
-      "excavationOnly": true,
-      "effects": [],
-      "cost": {},
-      "buildable": true,
-      "buildHours": 0,
-      "family": "empty_room"
+      "buildHours": 0
     },
     {
       "id": "tiny_plaza",
@@ -1372,6 +1337,7 @@
       "short": "Plaza",
       "category": "public",
       "size": "S",
+      "fill": true,
       "staff": 0,
       "uses": {},
       "makes": {},
@@ -1400,6 +1366,7 @@
       "short": "Plaza",
       "category": "public",
       "size": "M",
+      "fill": true,
       "staff": 0,
       "uses": {
         "power": 1
@@ -1461,6 +1428,7 @@
       "short": "Park",
       "category": "public",
       "size": "M",
+      "fill": true,
       "staff": 1,
       "uses": {
         "water": 2,

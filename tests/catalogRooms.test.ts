@@ -5,15 +5,16 @@ import { drillSpeed } from "../src/sim/digging";
 import { computeEffects, effectAt } from "../src/sim/effects";
 import { createHole } from "../src/sim/geometry";
 import { stepUnlocks } from "../src/sim/people";
-import { createLayout, placeRoom, type Location } from "../src/sim/placement";
+import { createLayout, placeRoom, type Spot } from "../src/sim/placement";
 import { roomDef } from "../src/sim/rooms";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { ringAt, cellAt } from "./spots";
 
 // The catalog rooms built for F-015 (T-132, T-141): excavator bay, plaza,
 // spiral stair and lounge.
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
 function hole(): SimState {
   const s = createInitialState(config);
@@ -85,10 +86,10 @@ describe("lounge", () => {
     const l = createLayout(createHole(10, 2, 3, config.geometry));
     placeRoom(l, "lounge", ring(1, 1, 4));
     const f = computeEffects(l);
-    expect(effectAt(f, "comfort", { floor: 1, ring: 1, slot: 4 })).toBeCloseTo(1);
-    expect(effectAt(f, "comfort", { floor: 1, ring: 1, slot: 5 })).toBeGreaterThan(0);
-    expect(effectAt(f, "comfort", { floor: 1, ring: 1, slot: 6 })).toBeGreaterThan(0);
-    expect(effectAt(f, "comfort", { floor: 1, ring: 1, slot: 7 })).toBe(0);
+    expect(effectAt(f, "comfort", cellAt(1, 1, 4))).toBeCloseTo(1);
+    expect(effectAt(f, "comfort", cellAt(1, 1, 5))).toBeGreaterThan(0);
+    expect(effectAt(f, "comfort", cellAt(1, 1, 6))).toBeGreaterThan(0);
+    expect(effectAt(f, "comfort", cellAt(1, 1, 7))).toBe(0);
   });
 
   it("is open from the start, unstaffed, on a little power", () => {

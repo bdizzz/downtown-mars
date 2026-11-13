@@ -167,7 +167,7 @@ function saveLayouts(): Plugin {
             const templates = JSON.parse(body) as Record<string, Record<string, unknown>[]>;
             const items = (JSON.parse(readFileSync(new URL("./data/furniture.json", import.meta.url), "utf8")) as { items: Record<string, unknown> }).items;
             for (const [key, list] of Object.entries(templates)) {
-              if (!/^[a-z_]+:\d+x\d+(:(top|bottom|middle))?$/.test(key) || !Array.isArray(list)) throw new Error(`bad template "${key}"`);
+              if (!/^[a-z_]+:[SMLH]\d?(:(top|bottom|middle))?$/.test(key) || !Array.isArray(list)) throw new Error(`bad template "${key}"`);
               for (const p of list) if (!(String(p.item) in items) || !walls.has(String(p.wall))) throw new Error(`bad placement in "${key}": ${JSON.stringify(p)}`);
             }
             const note = (JSON.parse(readFileSync(file, "utf8")) as { _note?: string })._note ?? "";
@@ -181,6 +181,47 @@ function saveLayouts(): Plugin {
             });
             lines.push("  }", "}");
             writeFileSync(file, lines.join("\n") + "\n");
+            res.end("saved");
+          } catch (e) {
+            res.statusCode = 400;
+            res.end(String(e instanceof Error ? e.message : e));
+          }
+        });
+      });
+    },
+  };
+}
+
+/**
+ * The furnishing tool's "set target area" (dev server only, PLAN-M17): POST {"room": id, "area": m2} to
+ * /__dev/room-area and that room type's `area` is written to data/rooms.json (or cleared, when it's its
+ * size's own area). The file is edited as text, so nothing else in it moves.
+ */
+function saveRoomArea(): Plugin {
+  const file = new URL("./data/rooms.json", import.meta.url);
+  return {
+    name: "dev-save-room-area",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/__dev/room-area", (req, res) => {
+        if (req.method !== "POST") {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+        let body = "";
+        req.on("data", (chunk: Buffer) => (body += chunk.toString()));
+        req.on("end", () => {
+          try {
+            const { room, area } = JSON.parse(body) as { room: string; area: number | null };
+            if (!/^[a-z_]+$/.test(room) || (area !== null && !(Number.isFinite(area) && area >= 20 && area <= 2000))) throw new Error("bad room or area");
+            const text = readFileSync(file, "utf8");
+            const at = text.indexOf(`"id": "${room}"`);
+            if (at < 0) throw new Error(`no room "${room}"`);
+            const end = text.indexOf("\n    }", at);
+            let block = text.slice(at, end).replace(/\n      "area": [\d.]+,/, "");
+            if (area !== null) block = block.replace(/("size": "[SMLH]",)/, `$1\n      "area": ${Math.round(area)},`);
+            writeFileSync(file, text.slice(0, at) + block + text.slice(end));
             res.end("saved");
           } catch (e) {
             res.statusCode = 400;
@@ -225,7 +266,7 @@ function saveGodotScene(): Plugin {
 export default defineConfig({
   // Relative paths, so the build runs from any folder (itch.io serves games from a sub-path).
   base: "./",
-  plugins: [react(), saveLayouts(), saveGodotScene(), gitBranch(), prTitle(), dropDevSaves(), ...offline()],
+  plugins: [react(), saveLayouts(), saveRoomArea(), saveGodotScene(), gitBranch(), prTitle(), dropDevSaves(), ...offline()],
   worker: { format: "es" },
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),

@@ -16,14 +16,20 @@
     "surfaceDepthM": 3,
     "galleryWidthM": 2,
     "wallThicknessM": 0.5,
+    "_grid": "pairedRings and nestedPairs set each ring's grid (9, 9, 18, 18, 36, 36 round a 10 m shaft): where rock and empty space are cut into pieces of about 10 m. Rooms don't sit on it: they're placed by angle.",
     "pairedRings": true,
     "nestedPairs": true,
     "surfaceSlots": 12
   },
-  "shapes": {
-    "S": [[1, 1]],
-    "M": [[2, 1]],
-    "L": [[4, 1], [2, 2]]
+  "_sizes": "A room's target floor area by size, m2 (a room type may set its own `area` in rooms.json), and how many rings deep each size may be (PLAN-M17).",
+  "sizes": { "S": 100, "M": 200, "L": 400, "H": 800 },
+  "depths": { "S": [1], "M": [1], "L": [1, 2], "H": [1, 2] },
+  "placement": {
+    "_note": "Placing by area (PLAN-M17). leeway: how far from its target area a room may be to make a snap or a handle drag. fill: the range of a fill room (empty space, plazas, the park), as multiples of its target area, and the most of a turn it may take. snapM: how near (metres along the ring's middle) an end must be to snap. gridNotches: the shared grid ends snap to last (40 notches = 10 degrees).",
+    "leeway": 0.15,
+    "fill": { "min": 0.5, "max": 3, "maxTurn": 0.25 },
+    "snapM": 2.5,
+    "gridNotches": 40
   },
   "starterHole": {
     "shaftRadiusM": 10,
@@ -36,8 +42,8 @@
     "depthGrowth": 0.2,
     "slowFromFloor": 4,
     "slowFactor": 2,
-    "rockPerSlot": 6,
-    "depositYieldsPerSlot": {
+    "rockPer100m2": 6,
+    "depositYieldsPer100m2": {
       "ore": { "ore": 2 },
       "silica": { "silica": 2 },
       "ice": { "water": 2.5 }
@@ -194,7 +200,7 @@
     "commitAlong": 0.25
   },
   "landingKits": {
-    "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. The full kit brings a heater for floor 1 (#403); a founded hole's seed kit brings one, set up on arrival (founding.ts). A ring room's holds sets what a tank holds; the crew lays a corridor along the fronts of rooms nothing reaches, and the shortest spoke in to it.",
+    "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. The full kit brings a heater for floor 1 (#403); a founded hole's seed kit brings one, set up on arrival (founding.ts). A ring room goes at its start angle (notches, 1,440 a turn) with its target area; its holds sets what a tank holds; the crew lays a corridor along the fronts of rooms nothing reaches, and the shortest spoke in to it.",
     "newGame": "full",
     "laterHoles": "bare",
     "bare": {
@@ -204,8 +210,8 @@
         { "room": "solar_array", "slot": 4 }
       ],
       "ring": [
-        { "room": "entrance", "floor": 1, "ring": 1, "slot": 0 },
-        { "room": "battery_bank", "floor": 1, "ring": 2, "slot": 7 }
+        { "room": "entrance", "floor": 1, "ring": 1, "start": 0 },
+        { "room": "battery_bank", "floor": 1, "ring": 2, "start": 1120 }
       ]
     },
     "full": {
@@ -215,14 +221,14 @@
         { "room": "solar_array", "slot": 4 }
       ],
       "ring": [
-        { "room": "entrance", "floor": 1, "ring": 1, "slot": 0 },
-        { "room": "battery_bank", "floor": 1, "ring": 2, "slot": 7 },
-        { "room": "water_tank", "floor": 1, "ring": 3, "slot": 4 },
-        { "room": "water_tank", "floor": 1, "ring": 3, "slot": 5, "holds": "grayWater" },
-        { "room": "electrolyzer", "floor": 1, "ring": 3, "slot": 6 },
-        { "room": "life_support", "floor": 1, "ring": 3, "slot": 8 },
-        { "room": "water_recycler", "floor": 1, "ring": 3, "slot": 12 },
-        { "room": "heater", "floor": 1, "ring": 3, "slot": 16 }
+        { "room": "entrance", "floor": 1, "ring": 1, "start": 0 },
+        { "room": "battery_bank", "floor": 1, "ring": 2, "start": 1120 },
+        { "room": "water_tank", "floor": 1, "ring": 3, "start": 320 },
+        { "room": "water_tank", "floor": 1, "ring": 3, "start": 385, "holds": "grayWater" },
+        { "room": "electrolyzer", "floor": 1, "ring": 3, "start": 450 },
+        { "room": "life_support", "floor": 1, "ring": 3, "start": 581 },
+        { "room": "water_recycler", "floor": 1, "ring": 3, "start": 843 },
+        { "room": "heater", "floor": 1, "ring": 3, "start": 1105 }
       ]
     }
   }

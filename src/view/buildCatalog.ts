@@ -56,10 +56,25 @@ export const CATEGORY_NAMES: Record<string, string> = {
   logistics: "Logistics",
 };
 
-export function shapesFor(def: RoomDef): [number, number][] {
-  if (def.size === "surface") return [[1, 1]];
-  return config.shapes[def.size] ?? [[1, 1]];
+/** How many rings deep a room may be (R turns it the other way): one for a surface room. */
+export function depthsOf(def: RoomDef): number[] {
+  if (def.size === "surface") return [1];
+  return config.depths[def.size] ?? [1];
 }
+
+/** A room's target floor area, m² (its own, or its size's); nothing for a surface room. */
+export function areaOf(def: RoomDef): number | null {
+  if (def.size === "surface") return null;
+  return def.area ?? config.sizes[def.size] ?? null;
+}
+
+/** A room's floor in units of 100 m², over every floor it spans: what its lining costs by. */
+export function unitsFor(def: RoomDef): number {
+  return Math.max(1, Math.round((areaOf(def) ?? 100) / 100)) * (def.floors ?? 1);
+}
+
+/** The key that turns snapping on and off while placing (PLAN-M17): every letter is a room's or a mode's. */
+export const SNAP_KEY = ".";
 
 // ---- The web's build rail: a few groups down the left edge, each a short list of tiles ----
 

@@ -3,10 +3,11 @@ import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom } from "../src/sim/placement";
 import { GRIME, grimeLevel } from "../src/view/grime";
+import { ringAt } from "./spots";
 
 function room(type: string) {
   const l = createLayout(createHole(10, 3, 3, config.geometry));
-  const r = placeRoom(l, type, { kind: "ring", floor: 1, ring: 1, slot: 2, w: 1, d: 1 });
+  const r = placeRoom(l, type, ringAt(1, 1, 2));
   if (!r.ok) throw new Error(r.reason);
   return l.rooms.find((x) => x.id === r.id)!;
 }

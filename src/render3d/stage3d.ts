@@ -31,7 +31,8 @@ import lighting from "../../data/lighting.json";
 import { createSky } from "./sky3d";
 import { siteLatitude, starTurn, sunDirection } from "../view/sunPath";
 import { buildTerrain, GROUND_BASE, siteSeed, soilTint, type Terrain } from "./terrain3d";
-import { CRUST, FLOOR_H, floorAtY, floorSpan, openShaftRadius, shaftCollarRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { CRUST, FLOOR_H, floorAtY, floorSpan, notchRad, openShaftRadius, shaftCollarRadius, RING_D, ringRadii, cellAngles, TAU } from "./cylinder";
+import { covers, floorPieces, spaceOf } from "../sim/space";
 import { isoFitDistance } from "./isoReach";
 import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
@@ -941,7 +942,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** The nearest thing the ray meets that this camera mode lets you pick. */
   function pickRay(ray: THREE.Ray): Pick {
     pickedAt = null;
-    if (!hole) return { kind: "rock" };
+    if (!hole || !layout) return { kind: "rock" };
     const h = hole;
     let best: { t: number; pick: Pick; at: number } | null = null;
     // `at` is the distance whose point the pick describes (usually just past the hit).
@@ -962,9 +963,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       // A corridor floor, or a room's floor seen from above (rooms have no ceilings):
       // what's just above it, on its floor, not the floor below.
       else if (u.hall || u.empty || (u.roomId !== undefined && Math.abs(hit.face?.normal.y ?? 0) > 0.9 && ray.direction.y < 0)) {
-        offer(hit.distance, () => pickPast(h, ray, hit.distance - 0.3), hit.distance - 0.3 + NUDGE);
+        offer(hit.distance, () => pickPast(layout!, ray, hit.distance - 0.3), hit.distance - 0.3 + NUDGE);
       }
-      else offer(hit.distance, () => pickPast(h, ray, hit.distance));
+      else offer(hit.distance, () => pickPast(layout!, ray, hit.distance));
       break;
     }
     // The ground around the rim, for surface buildings.
@@ -981,7 +982,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       cutSides().forEach((side, i) => {
         const t = rayPlane(ray, clips[i]!);
         const p = t === null ? null : ray.at(t, new THREE.Vector3());
-        if (t !== null && p && p.dot(side.along) >= 0 && inCarvedRegion(h, p)) offer(t, () => pickPast(h, ray, t - 0.2));
+        if (t !== null && p && p.dot(side.along) >= 0 && inCarvedRegion(h, p)) offer(t, () => pickPast(layout!, ray, t - 0.2));
       });
     }
     const b = best as { t: number; pick: Pick; at: number } | null;
@@ -1047,8 +1048,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const cells = (job.kind === "extend" ? (room.pendingCells ?? []) : room.cells).filter((c) => cf === null || c.floor >= cf);
       const c = cells[0];
       if (!c) continue;
-      const n = h.ringSlots[c.ring - 1]!;
-      const [a0, a1] = slotAngles(c.slot, n);
+      const [a0, a1] = cellAngles(c);
       const [r0, r1] = ringRadii(h, c.ring);
       const [y0, y1] = floorSpan(c.floor);
       const a = (a0 + a1) / 2;
@@ -1146,19 +1146,20 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
     const grid = previewEffects(layout, type, cells)[main.type];
     if (!grid) return;
-    const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
     // Group cells by strength so each band is one mesh.
     const bands = new Map<number, Cell[]>();
-    grid.forEach((rings, fi) =>
-      rings.forEach((slots, ri) =>
-        slots.forEach((v, slot) => {
-          if (Math.abs(v) < 0.05 || own.has(`${fi + 1}:${ri + 1}:${slot}`)) return;
+    for (const rings of spaceOf(layout).pieces) {
+      for (const list of rings) {
+        for (const piece of list) {
+          const v = grid[piece.floor - 1]?.[piece.ring - 1]?.[piece.a0] ?? 0;
+          // Not the room's own floor: whatever its cells cover.
+          if (Math.abs(v) < 0.05 || covers(cells, piece.floor, piece.ring, (piece.a0 + piece.a1) / 2)) continue;
           const band = Math.round(v * 3) / 3;
           if (!bands.has(band)) bands.set(band, []);
-          bands.get(band)!.push({ floor: fi + 1, ring: ri + 1, slot });
-        }),
-      ),
-    );
+          bands.get(band)!.push(piece);
+        }
+      }
+    }
     for (const [v, list] of bands) {
       const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * 0.6;
       for (const c of list) fillCells([c], v < 0 ? heat.bad : heat.good, alpha);
@@ -1237,8 +1238,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (info.check.ok && cells.length) drawHalo(tool.room, cells);
       // Extending stairs or an elevator: a plus floating on the piece being added.
       if (info.check.ok && info.check.merges && p.kind === "slot") {
-        const n = layout.hole.ringSlots[p.ring - 1]!;
-        const [a0, a1] = slotAngles(p.slot, n);
+        const [a0, a1] = cellAngles(info.check.cells.find((c) => c.floor === p.floor) ?? p);
         const [r0, r1] = ringRadii(layout.hole, p.ring);
         const [y0, y1] = floorSpan(p.floor);
         const a = (a0 + a1) / 2;
@@ -1324,7 +1324,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         const { color, alpha } = temperatureTint(f.now);
         const k = `${color}:${Math.round(alpha * 20) / 20}`;
         const cells: Cell[] = [];
-        l.open?.[f.floor - 1]?.forEach((slots, ri) => slots.forEach((v, slot) => v === 1 && cells.push({ floor: f.floor, ring: ri + 1, slot })));
+        for (const piece of floorPieces(l, f.floor)) if (piece.open) cells.push(piece);
         byLook.set(k, [...(byLook.get(k) ?? []), ...cells]);
       });
       for (const [k, cells] of byLook) {
@@ -1356,11 +1356,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       }
     } else {
       const grid = s.effects[overlayType];
-      grid?.forEach((rings, fi) => {
-        for (let ring = 1; ring <= l.hole.unlockedRings; ring++) {
-          rings[ring - 1]?.forEach((v, slot) => add(v, [{ floor: fi + 1, ring, slot }]));
+      if (grid) {
+        for (const rings of spaceOf(l).pieces) {
+          for (const list of rings) for (const piece of list) if (piece.ring <= l.hole.unlockedRings) add(grid[piece.floor - 1]?.[piece.ring - 1]?.[piece.a0] ?? 0, [piece]);
         }
-      });
+      }
     }
     for (const [v, cells] of bands) {
       const color = v < 0 ? heat.bad : heat.good;
@@ -1382,8 +1382,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** The border nearest the point the last pick landed on. */
   function edgeAtPick(p: Pick): Edge | null {
     const at = pickedPoint();
-    if (!hole || !at || (p.kind !== "slot" && p.kind !== "gallery")) return null;
-    return nearestEdge(hole, p.floor, at.rings, at.turn, RING_D);
+    if (!layout || !at || (p.kind !== "slot" && p.kind !== "gallery")) return null;
+    return nearestEdge(layout, p.floor, at.rings, at.turn, RING_D);
   }
 
   /** Where the last pick landed on its floor: rings out from the shaft wall, and the angle in turns. */
@@ -2729,8 +2729,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const room = s && layout?.rooms.find((r) => r.id === s.focus);
       // Turn to face it: the free view and the cutaway look across the shaft, so the camera goes to the far side.
       if (room?.at.kind === "ring" && view.mode !== "walk") {
-        const n = layout!.hole.ringSlots[room.at.ring - 1]!;
-        const a = ((room.at.slot + room.at.w / 2) / n) * TAU;
+        const a = notchRad(room.at.start + room.at.span / 2);
         cam.theta = a + Math.PI;
         cam.panX = 0;
         cam.panZ = 0;

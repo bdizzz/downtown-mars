@@ -3,14 +3,14 @@ import type { FillInput, GraphicsContext } from "pixi.js";
 import { config } from "../sim/config";
 import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
 import { edgeById, edgeSides, isGalleryEdge, type Edge } from "../sim/edges";
-import { isOpen } from "../sim/excavation";
 import type { Hole } from "../sim/geometry";
 import { canLine, liningOf, MATERIALS } from "../sim/materials";
-import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
+import type { Cell, Layout, RoomInstance } from "../sim/placement";
+import { covers, floorPieces, piecesOn } from "../sim/space";
 import { roomLabel } from "../sim/roomName";
 import { roomDef } from "../sim/rooms";
 import { glazedWalls } from "../sim/windows";
-import { openShaftRadius, ringRadii, slotAngles } from "../render3d/cylinder";
+import { openShaftRadius, ringRadii, cellAngles } from "../render3d/cylinder";
 import { doorsOnFloor } from "../view/doors";
 import { tubeAt } from "../view/gallery";
 import { roomLook } from "../view/roomFinish";
@@ -79,18 +79,16 @@ export function sector(r0: number, r1: number, a0: number, a1: number): number[]
   return pts;
 }
 
-export function cellSector(hole: Hole, c: { ring: number; slot: number }, inset = 0): number[] {
-  const n = hole.ringSlots[c.ring - 1]!;
-  const [a0, a1] = slotAngles(c.slot, n);
+export function cellSector(hole: Hole, c: { ring: number; a0: number; a1: number }, inset = 0): number[] {
+  const [a0, a1] = cellAngles(c);
   const [r0, r1] = ringRadii(hole, c.ring);
   const da = inset / r0;
   return sector(r0 + inset, r1 - inset, a0 + da, a1 - da);
 }
 
 /** A cell's sector, from a given inner radius (metres). */
-export function cellSectorFrom(hole: Hole, c: { ring: number; slot: number }, rInner: number): number[] {
-  const n = hole.ringSlots[c.ring - 1]!;
-  const [a0, a1] = slotAngles(c.slot, n);
+export function cellSectorFrom(hole: Hole, c: { ring: number; a0: number; a1: number }, rInner: number): number[] {
+  const [a0, a1] = cellAngles(c);
   return sector(rInner, ringRadii(hole, c.ring)[1], a0, a1);
 }
 
@@ -101,8 +99,7 @@ export function roomCentre(hole: Hole, cells: Cell[]): { x: number; y: number; s
   let rSum = 0;
   let size = Infinity;
   for (const c of cells) {
-    const n = hole.ringSlots[c.ring - 1]!;
-    const [a0, a1] = slotAngles(c.slot, n);
+    const [a0, a1] = cellAngles(c);
     const [r0, r1] = ringRadii(hole, c.ring);
     const a = (a0 + a1) / 2;
     vx += Math.cos(a);
@@ -138,12 +135,11 @@ export interface RoomsOptions {
 export function drawBase(g: GraphicsContext, h: Hole, domed = false): void {
   const outer = ringRadii(h, h.ringSlots.length)[1] + RIM_M;
   g.circle(0, 0, outer * PX).fill(C.rock);
-  // Every slot of every ring: carved ones open, locked ones darker.
-  h.ringSlots.forEach((n, ri) => {
+  // Every ring, as a band: the ones the hole reaches open, locked ones darker.
+  h.ringSlots.forEach((_, ri) => {
     const ring = ri + 1;
-    for (let slot = 0; slot < n; slot++) {
-      g.poly(cellSector(h, { ring, slot })).fill(ring > h.unlockedRings ? C.locked : C.slot).stroke({ color: C.slotEdge, width: 1 });
-    }
+    const [r0, r1] = ringRadii(h, ring);
+    g.poly(sector(r0, r1, 0, TAU)).fill(ring > h.unlockedRings ? C.locked : C.slot).stroke({ color: C.slotEdge, width: 1 });
   });
   // The open shaft, Mars air, out to the shaft wall: gallery tubes hang in it where they're built (drawn with the corridors).
   g.circle(0, 0, h.shaftRadiusM * PX).fill(domed ? C.gallery : C.shaft).stroke({ color: C.galleryEdge, width: 2 });
@@ -162,13 +158,11 @@ export function drawRooms(g: GraphicsContext, l: Layout, floor: number, opts: Ro
   // Cells with no room: solid rock (speckled), or dug-out empty space with a pillar at each corner.
   if (floor <= h.floors) {
     for (let ring = 1; ring <= h.unlockedRings; ring++) {
-      const n = h.ringSlots[ring - 1]!;
       const [r0, r1] = ringRadii(h, ring);
-      for (let slot = 0; slot < n; slot++) {
-        const c = { floor, ring, slot };
-        if (roomAt(l, c)) continue;
-        const [a0, a1] = slotAngles(slot, n);
-        if (isOpen(l, c)) {
+      for (const c of piecesOn(l, floor, ring)) {
+        if (c.room) continue;
+        const [a0, a1] = cellAngles(c);
+        if (c.open) {
           g.poly(cellSector(h, c, 0.3)).fill(C.empty);
           for (const [r, a] of [[r0 + 1, a0 + 1 / r0], [r0 + 1, a1 - 1 / r0], [r1 - 1, a0 + 1 / r1], [r1 - 1, a1 - 1 / r1]] as const) {
             const [x, y] = xy(r, a);
@@ -176,7 +170,7 @@ export function drawRooms(g: GraphicsContext, l: Layout, floor: number, opts: Ro
           }
         } else {
           g.poly(cellSector(h, c, 0.3)).fill(C.rockCell);
-          let seed = ((ring * 97 + slot) * 2654435761) >>> 0;
+          let seed = ((ring * 97 + c.a0) * 2654435761) >>> 0;
           for (let i = 0; i < 3; i++) {
             seed = (seed * 1103515245 + 12345) >>> 0;
             const t = seed / 4294967296;
@@ -209,7 +203,7 @@ export function drawRooms(g: GraphicsContext, l: Layout, floor: number, opts: Ro
     // Cells fill edge to edge, so a room reads as one piece; its outline marks where it ends.
     for (const c of cells) {
       // Public rooms on a gallery tube open onto it: fill over the shaft wall's line.
-      const poly = def.public && c.ring === 1 && tubeAt(l, c.floor, c.slot) ? cellSectorFrom(h, c, h.shaftRadiusM - 0.3) : cellSector(h, c);
+      const poly = def.public && c.ring === 1 && tubeAt(l, c) ? cellSectorFrom(h, c, h.shaftRadiusM - 0.3) : cellSector(h, c);
       if (room.planned) g.poly(poly).fill({ color, alpha: 0.3 });
       else if (room.building) g.poly(poly).fill({ color, alpha: 0.4 }).poly(poly).fill(opts.stripes);
       else g.poly(poly).fill(color);
@@ -247,7 +241,7 @@ export function drawRooms(g: GraphicsContext, l: Layout, floor: number, opts: Ro
 /** A room's windows on this floor: panes along its side of each glazed border (just inside the shaft wall on ring 1), around its door. */
 export function drawWindows(g: GraphicsContext, l: Layout, floor: number, room: RoomInstance): void {
   const h = l.hole;
-  const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+  const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.a0}`));
   for (const { edge: e } of glazedWalls(l, room)) {
     if (e.floor !== floor) continue;
     let s = stripOf(h, e);
@@ -259,8 +253,8 @@ export function drawWindows(g: GraphicsContext, l: Layout, floor: number, room: 
       const len = (e.a1 - e.a0) * TAU * r * PX;
       s = { at: (t) => xy(r, a0 + t / (r * PX)), normal: (t) => [Math.cos(a0 + t / (r * PX)), Math.sin(a0 + t / (r * PX))], len, mid: len / 2 };
     } else {
-      const [a] = edgeSides(h, e);
-      const sign = a && own.has(`${a.floor}:${a.ring}:${a.slot}`) ? -1 : 1;
+      const [a] = edgeSides(l, e);
+      const sign = a && own.has(`${a.floor}:${a.ring}:${a.a0}`) ? -1 : 1;
       off = sign * ((l.corridors[e.id] ? BAND / 2 : 0) + 2);
     }
     const door = doorsOnFloor(l, floor).some((d) => d.edge === e.id && d.roomId === room.id);
@@ -329,10 +323,10 @@ export function drawCorridors(g: GraphicsContext, l: Layout, floor: number): voi
       g.poly(poly).stroke({ color: C.bad, width: 2 });
       continue;
     }
-    const [a, z] = edgeSides(h, e);
+    const [a, z] = edgeSides(l, e);
     // Only where a room's door is (one a floor, on the best border it has).
     const doors = doorsOnFloor(l, e.floor).filter((d) => d.edge === id);
-    const opens = (c: Cell | null) => !!c && doors.some((d) => d.cell.ring === c.ring && d.cell.slot === c.slot);
+    const opens = (c: Cell | null) => !!c && doors.some((d) => d.cell.ring === c.ring && d.cell.a0 === c.a0);
     // A tube's door is in the shaft wall, into the ring-1 room behind it.
     if (tube) {
       if (opens(z)) g.circle(...xy(h.shaftRadiusM + 0.5, ((e.kind === "arc" ? e.a0 + e.a1 : 0) / 2) * TAU), 3).fill(C.door);
@@ -368,18 +362,16 @@ export function drawCorridors(g: GraphicsContext, l: Layout, floor: number): voi
 
 /** The outline of a group of cells: arcs on the ring edges they don't share, sides where the next slot isn't theirs. */
 export function outlineCells(g: GraphicsContext, h: Hole, cells: Cell[], color: number, width: number, openToShaft = false, inset = 0): void {
-  const own = new Set(cells.map((c) => `${c.ring}:${c.slot}`));
   const rings = cells.map((c) => c.ring);
   const inner = Math.min(...rings);
   const outer = Math.max(...rings);
   const style = { color, width, cap: "round" as const };
   for (const c of cells) {
-    const n = h.ringSlots[c.ring - 1]!;
-    let [a0, a1] = slotAngles(c.slot, n);
+    let [a0, a1] = cellAngles(c);
     let [r0, r1] = ringRadii(h, c.ring);
     // Inset (metres): the outline drawn that far inside the room's edges.
-    const before = own.has(`${c.ring}:${(c.slot - 1 + n) % n}`);
-    const after = own.has(`${c.ring}:${(c.slot + 1) % n}`);
+    const before = covers(cells, c.floor, c.ring, c.a0 - 0.5);
+    const after = covers(cells, c.floor, c.ring, c.a1 + 0.5);
     const da = inset / ((r0 + r1) / 2);
     if (!before) a0 += da;
     if (!after) a1 -= da;
@@ -435,7 +427,7 @@ export function drawField(g: GraphicsContext, layout: Layout, floor: number, o: 
     }
     return;
   }
-  const tintCell = (c: { ring: number; slot: number }, v: number) => {
+  const tintCell = (c: { ring: number; a0: number; a1: number }, v: number) => {
     if (Math.abs(v) < 0.05) return;
     g.poly(cellSector(h, c, 0.15)).fill({ color: v < 0 ? o.heat.bad : o.heat.good, alpha: Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA });
   };
@@ -449,10 +441,7 @@ export function drawField(g: GraphicsContext, layout: Layout, floor: number, o: 
     const now = o.temps?.find((f) => f.floor === floor)?.now;
     if (now === undefined) return;
     const { color, alpha } = temperatureTint(now);
-    layout.open?.[floor - 1]?.forEach((slots, ri) => {
-      if (ri + 1 > h.unlockedRings) return;
-      slots.forEach((v, slot) => v === 1 && g.poly(cellSector(h, { ring: ri + 1, slot }, 0.15)).fill({ color, alpha }));
-    });
+    for (const c of floorPieces(layout, floor)) if (c.open && c.ring <= h.unlockedRings) g.poly(cellSector(h, c, 0.15)).fill({ color, alpha });
     return;
   }
   if (o.overlay === "happiness") {
@@ -464,10 +453,8 @@ export function drawField(g: GraphicsContext, layout: Layout, floor: number, o: 
     return;
   }
   const grid = o.field?.[o.overlay]?.[floor - 1];
-  grid?.forEach((slots, ri) => {
-    if (ri + 1 > h.unlockedRings) return;
-    slots.forEach((v, slot) => tintCell({ ring: ri + 1, slot }, v));
-  });
+  if (!grid) return;
+  for (const c of floorPieces(layout, floor)) if (c.ring <= h.unlockedRings) tintCell(c, grid[c.ring - 1]?.[c.a0] ?? 0);
 }
 
 export interface ProgressJob {

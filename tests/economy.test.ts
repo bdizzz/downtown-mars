@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
 import { roomSpec } from "../src/sim/economy";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
@@ -10,15 +10,16 @@ import { setAdults } from "../src/sim/people";
 import { roomDef } from "../src/sim/rooms";
 import { airAmount, airPct, fillAir } from "../src/sim/air";
 import { openCells } from "../src/sim/excavation";
+import { ringAt, cellAt } from "./spots";
 
 // No Earth drops here: these tests are about what the hole does on its own.
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const days = (s: SimState, n: number) => {
   for (let i = 0; i < n * config.ticksPerDay; i++) step(s, config);
 };
-const build = (s: SimState, room: string, at: Location) => {
+const build = (s: SimState, room: string, at: Spot) => {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return s.layout.rooms[s.layout.rooms.length - 1]!;
@@ -219,7 +220,7 @@ describe("rooms", () => {
     const owedBefore = s.air?.owed ?? 0;
     expect(owedBefore).toBe(0);
     // Dig a cell: 400 m³ more to fill, at 21%.
-    openCells(s.layout, [{ floor: 1, ring: 3, slot: 0 }]);
+    openCells(s.layout, [cellAt(1, 3, 0)]);
     s.layout.version++;
     days(s, 1);
     const then = s.ledger.days.at(-1)!.water?.then?.Electrolyzer ?? {};

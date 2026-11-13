@@ -1,12 +1,13 @@
 import { QUALITIES, variety } from "../src/sim/food";
 import { applyCommand, type SimCommand } from "../src/sim/commands";
 import { config, type LandingKitName } from "../src/sim/config";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { LABELS } from "../src/sim/ledger";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { ensureStairs, quarry, tendStorage, tendUpkeep, tendWindows, tendLinings, tendEvents } from "./adaptive";
+import { ringAt } from "./spots";
 
 // A scripted player for the first month, following DESIGN.md "First 30
 // minutes": the critical set on day 1, then tier 2 as drops and digging pay
@@ -15,10 +16,10 @@ import { ensureStairs, quarry, tendStorage, tendUpkeep, tendWindows, tendLinings
 // strictly in order, waiting until the next item fits and is affordable, and
 // answers office visits sensibly. Used by the playthrough test and dev tools.
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
-const surface = (slot: number): Location => ({ kind: "surface", slot });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
+const surface = (slot: number): Spot => ({ kind: "surface", slot });
 
-type Plan = { room: string; at: Location; crop?: string; holds?: string };
+type Plan = { room: string; at: Spot; crop?: string; holds?: string };
 
 export const PLAN: Plan[] = [
   // Tier 1: the critical set on floor 1.

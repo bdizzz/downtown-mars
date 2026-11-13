@@ -5,7 +5,7 @@ import { relation, tier } from "../src/sim/culture";
 import { foundHole, kitProgress } from "../src/sim/founding";
 import { degreesApart, type DepositKind } from "../src/sim/mapgeo";
 import { network } from "../src/sim/network";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { addRoute } from "../src/sim/rovers";
 import type { SimState } from "../src/sim/state";
 import { createWorld, type World } from "../src/sim/world";
@@ -14,6 +14,7 @@ import { ensureStairs, quarry, adapt, tendStorage, tendUpkeep, tendWindows, tend
 import { planFor, VISIT_ANSWERS } from "./bot";
 import { beds } from "../src/sim/earth";
 import { stageCounts } from "../src/sim/people";
+import { ringAt } from "./spots";
 
 // A scripted player for the first hour (60 game days) across two holes:
 // the first hole follows the one-hole bot, then, once the map opens, builds a
@@ -21,9 +22,9 @@ import { stageCounts } from "../src/sim/people";
 // lacks, builds that hole's critical set, and runs rovers both ways. Past
 // their opening plans, both holes build whatever is short (adaptive.ts).
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
-const surface = (slot: number): Location => ({ kind: "surface", slot });
-type Plan = { room: string; at: Location; crop?: string; stopAt?: number; holds?: string };
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
+const surface = (slot: number): Spot => ({ kind: "surface", slot });
+type Plan = { room: string; at: Spot; crop?: string; stopAt?: number; holds?: string };
 
 /** Once the map opens: industry for the kit, then get ready to found and trade. */
 export const HOME_EXTRA: Plan[] = [

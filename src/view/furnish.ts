@@ -5,8 +5,11 @@ import { corridors } from "../sim/corridors";
 import { edgeById } from "../sim/edges";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
-import { floorSpan, ringRadii, slotAngles, WALL_T } from "../render3d/cylinder";
+import { floorSpan, ringRadii, cellAngles, WALL_T } from "../render3d/cylinder";
 import { doorways, sideOf, type Doorway } from "./doors";
+import { config } from "../sim/config";
+
+const NOTCHES = config.geometry.notchesPerTurn;
 import { glazedWalls, ownSide } from "../sim/windows";
 import { isFurnished, isItem, isMounted, itemDef, itemsFor } from "./furniture";
 
@@ -129,7 +132,7 @@ export interface Frame {
   solid: Record<"back" | "front" | "left" | "right", boolean>;
 }
 
-const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+const key = (c: Cell) => `${c.floor}:${c.ring}:${c.a0}`;
 
 /**
  * A room's frame on one of its floors (by default the one it's furnished on:
@@ -145,9 +148,9 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
   const rings = cells.map((c) => c.ring);
   const inner = Math.min(...rings);
   const outer = Math.max(...rings);
-  const n = hole.ringSlots[room.at.ring - 1]!;
-  const a0 = slotAngles(room.at.slot, n)[0];
-  const a1 = a0 + (room.at.w / n) * Math.PI * 2;
+  // The angles its cells on this floor cover (a room from an old save may be wider on its outer ring).
+  const first = cells.find((c) => c.ring === inner) ?? cells[0]!;
+  const [a0, a1] = cellAngles(first);
   // What runs along each side: a corridor pulls that wall back by half its width.
   const hall = (id: string) => !!layout.corridors?.[id];
   let left = WALL;
@@ -155,9 +158,8 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
   let front = WALL;
   let back = WALL;
   for (const c of cells) {
-    const m = hole.ringSlots[c.ring - 1]!;
-    if (!own.has(key({ ...c, slot: (c.slot - 1 + m) % m })) && hall(`R${floor}.${c.ring}.${c.slot}`)) left = HALL;
-    if (!own.has(key({ ...c, slot: (c.slot + 1) % m })) && hall(`R${floor}.${c.ring}.${(c.slot + 1) % m}`)) right = HALL;
+    if (hall(`R${floor}.${c.ring}.${c.a0}`)) left = HALL;
+    if (hall(`R${floor}.${c.ring}.${c.a1 % NOTCHES}`)) right = HALL;
   }
   for (const id of Object.keys(layout.corridors ?? {})) {
     const e = id.startsWith(`A${floor}.`) ? edgeById(hole, id) : null;
@@ -431,13 +433,18 @@ export function fit(frame: Frame, template: Template): Fitted[] {
 export type FloorRole = "top" | "bottom" | "middle";
 
 /**
- * The template for a room type and shape ("bunk_dorm:2x1"), if there is one.
+ * The template for a room type and shape ("bunk_dorm:M", "farm:L2"), if there is one.
  * A floor of a stairwell or elevator looks for its role's own first
- * ("stairwell:1x1:top"), then the plain one.
+ * ("stairwell:S:top"), then the plain one.
  */
-export function templateFor(type: string, w: number, d: number, templates: Record<string, Template> = layouts.templates, role?: FloorRole): Template | null {
-  const key = `${type}:${w}x${d}`;
+export function templateFor(type: string, depth: number, templates: Record<string, Template> = layouts.templates, role?: FloorRole): Template | null {
+  const key = templateKey(type, depth);
   return (role && templates[`${key}:${role}`]) || templates[key] || null;
+}
+
+/** A template's key: the room type, its size, and its depth in rings when it's more than one ("galley:S", "farm:L2"). */
+export function templateKey(type: string, depth: number): string {
+  return `${type}:${roomDef(type).size}${depth > 1 ? depth : ""}`;
 }
 
 /** The floors a room is furnished on, each with its role: every built floor of a stairwell or elevator, otherwise just the one. */
@@ -452,7 +459,7 @@ export function furnish(layout: Layout, room: RoomInstance, templates: Record<st
   if (room.planned || room.building || room.at.kind !== "ring") return [];
   const out: Fitted[] = [];
   for (const { floor, role } of furnishedFloors(room)) {
-    const template = templateFor(room.type, room.at.w, room.at.d, templates, role);
+    const template = templateFor(room.type, room.at.depth, templates, role);
     const frame = template && frameOf(layout, room, floor);
     if (frame && template) out.push(...fit(frame, varied(template, room)));
   }

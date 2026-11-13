@@ -1,8 +1,10 @@
 import { config } from "../sim/config";
 import type { Hole } from "../sim/geometry";
+import type { Layout } from "../sim/placement";
+import { pieceAt } from "../sim/space";
 import type { Pick } from "../view/types";
 
-// Where (floor, ring, slot) sits in 3D, in metres. The shaft's axis is the y
+// Where (floor, ring, angle) sits in 3D, in metres. The shaft's axis is the y
 // axis and the surface is y = 0, so floors go down into negative y. Angles
 // are radians around the axis, measured the same way as the 2D view's x axis
 // (0 at the seam, a full turn at 2π). This module has no Three.js in it, so
@@ -22,6 +24,7 @@ export const WALL_T = config.geometry.wallThicknessM;
 export const RIG_DROP = FLOOR_H / 2;
 export const RING_D = config.geometry.roomDepthM;
 export const TAU = Math.PI * 2;
+const NOTCHES = config.geometry.notchesPerTurn;
 /** Curved walls are drawn as flat steps: this many to a ring-1 slot's arc (see shaftCollarRadius). */
 export const ARC_STEPS = 4;
 /** A gallery tube's floor: a slab this thick on the ledge inside the shaft wall. */
@@ -33,7 +36,15 @@ export const COLLAR_TOP = 1.5;
 /** How far out from the shaft's edge the collar's rim wall stands; the entrance's gatehouse is built against it. */
 export const COLLAR_REACH = 1.8;
 
-/** The slot's angular span [start, end) in radians. */
+/** A cell's angular span [start, end) in radians (its angles are in notches: space.ts). */
+export function cellAngles(c: { a0: number; a1: number }): [number, number] {
+  return [(c.a0 / NOTCHES) * TAU, (c.a1 / NOTCHES) * TAU];
+}
+
+/** Notches to radians. */
+export const notchRad = (notch: number) => (notch / NOTCHES) * TAU;
+
+/** One slot of a ring cut into `n` equal parts: its angular span [start, end) in radians (the surface's slots, and old layouts). */
 export function slotAngles(slot: number, n: number): [number, number] {
   return [(slot / n) * TAU, ((slot + 1) / n) * TAU];
 }
@@ -75,7 +86,8 @@ export function polar(r: number, angle: number, y: number): [number, number, num
 }
 
 /** What's at a world point: the inverse of the functions above. */
-export function pickAt(hole: Hole, x: number, y: number, z: number): Pick {
+export function pickAt(layout: Layout, x: number, y: number, z: number): Pick {
+  const hole = layout.hole;
   const turn = (((Math.atan2(z, x) / TAU) % 1) + 1) % 1;
   const angle = turn * 360;
   if (y >= 0) return { kind: "surface", angle };
@@ -90,7 +102,8 @@ export function pickAt(hole: Hole, x: number, y: number, z: number): Pick {
 
   const ring = Math.floor((r - hole.shaftRadiusM) / RING_D) + 1;
   if (ring > hole.ringSlots.length) return { kind: "rock" };
-  const n = hole.ringSlots[ring - 1]!;
-  const slot = Math.min(Math.floor(turn * n), n - 1);
-  return { kind: "slot", floor, ring, slot, locked: ring > hole.unlockedRings, digging, angle };
+  // The piece under the point: a room's part of the ring, a stretch of empty space, or rock.
+  const piece = pieceAt(layout, floor, ring, turn * NOTCHES);
+  if (!piece) return { kind: "rock" };
+  return { kind: "slot", floor, ring, a0: piece.a0, a1: piece.a1, locked: ring > hole.unlockedRings, digging, angle };
 }

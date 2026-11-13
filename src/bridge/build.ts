@@ -187,7 +187,7 @@ function halo(state: SimState, type: string, cells: Cell[]): HoveredMessage["hal
   const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
   const grid = previewEffects(state.layout, type, cells)[main.type];
   if (!grid) return undefined;
-  const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+  const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.a0}`));
   const bands = new Map<number, Cell[]>();
   grid.forEach((rings, fi) =>
     rings.forEach((slots, ri) =>

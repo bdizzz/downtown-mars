@@ -5,19 +5,20 @@ import { applyCommand } from "../src/sim/commands";
 import { homeFactors, updateHappiness } from "../src/sim/happiness";
 import { stepsBetween } from "../src/sim/paths";
 import { setAdults } from "../src/sim/people";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { roomDef, roomDefs } from "../src/sim/rooms";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { withinReachRows } from "../src/view/roomPanel";
+import { ringAt } from "./spots";
 
 // T-006: restrooms are an amenity by walking distance. Places go to the homes
 // nearest first, within reach; homes with their own bathroom need none. Going
 // without costs comfort, and only very poor coverage costs health.
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
-function build(s: SimState, room: string, at: Location): number {
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
+function build(s: SimState, room: string, at: Spot): number {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return r.roomId!;

@@ -2,47 +2,51 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
-import { checkPlacement, createLayout, footprint, placeRoom, type Layout, type Location } from "../src/sim/placement";
+import { checkPlacement, createLayout, footprint, placeRoom, type Layout, type Spot } from "../src/sim/placement";
 import { roomDefs } from "../src/sim/rooms";
 import { galleryEdges } from "../src/sim/edges";
 import { createInitialState } from "../src/sim/state";
+import { ringAt } from "./spots";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const hole = () => createHole(10, 3, 3, config.geometry);
 
 describe("room data", () => {
-  it("every room has a valid size and shape", () => {
+  it("every room has a valid size, with a target area and the depths it may be", () => {
     for (const r of roomDefs) {
       expect(["S", "M", "L", "surface"]).toContain(r.size);
       if (r.size === "surface") expect(r.surfaceSlots).toBeGreaterThan(0);
-      else expect(config.shapes[r.size as "S" | "M" | "L"]?.length).toBeGreaterThan(0);
+      else {
+        expect(config.sizes[r.size as "S" | "M" | "L"]).toBeGreaterThan(0);
+        expect(config.depths[r.size as "S" | "M" | "L"]?.length).toBeGreaterThan(0);
+      }
     }
+    expect(config.sizes).toMatchObject({ S: 100, M: 200, L: 400, H: 800 });
   });
 });
 
 describe("footprint", () => {
-  it("a wide room covers w slots in one ring, wrapping", () => {
-    expect(footprint(hole(), 1, 1, 7, 4, 1).map((c) => c.slot)).toEqual([7, 8, 0, 1]);
+  it("a room covers its angle range on its ring, wrapping past a turn", () => {
+    expect(footprint(hole(), 1, 1, 1120, 640, 1)).toEqual([{ floor: 1, ring: 1, a0: 1120, a1: 1760 }]);
   });
 
-  it("a deep room in a ring pair lines up slot for slot", () => {
-    const cells = footprint(hole(), 1, 1, 0, 2, 2);
-    expect(cells.filter((c) => c.ring === 1).map((c) => c.slot)).toEqual([0, 1]);
-    expect(cells.filter((c) => c.ring === 2).map((c) => c.slot)).toEqual([0, 1]);
+  it("a deep room takes the same angles on every ring it covers: a clean wedge", () => {
+    const cells = footprint(hole(), 1, 2, 77, 300, 2);
+    expect(cells).toEqual([
+      { floor: 1, ring: 2, a0: 77, a1: 377 },
+      { floor: 1, ring: 3, a0: 77, a1: 377 },
+    ]);
   });
 
-  it("a deep room across a pair boundary widens into a wedge", () => {
-    // Ring 2 slots 0–1 span 0°–80°; ring 3 has twice the slots (18), so exactly four of them.
-    const cells = footprint(hole(), 1, 2, 0, 2, 2);
-    expect(cells.filter((c) => c.ring === 3).map((c) => c.slot)).toEqual([0, 1, 2, 3]);
-  });
-
-  it("neighbouring deep rooms never claim the same outer slot", () => {
-    const a = footprint(hole(), 1, 1, 0, 2, 2);
-    const b = footprint(hole(), 1, 1, 2, 2, 2);
-    const key = (c: { ring: number; slot: number }) => `${c.ring}:${c.slot}`;
-    const shared = a.map(key).filter((k) => b.map(key).includes(k));
-    expect(shared).toEqual([]);
+  it("neighbouring rooms that meet at an angle share no floor", () => {
+    const l = createLayout(hole());
+    expect(placeRoom(l, "farm", { kind: "ring", floor: 1, ring: 1, start: 0, depth: 2 }).ok).toBe(true);
+    const farm = l.rooms[0]!.at;
+    if (farm.kind !== "ring") throw new Error("a ring room");
+    // Right against it, on either ring: fine. A notch inside it: not.
+    expect(checkPlacement(l, "galley", { kind: "ring", floor: 1, ring: 2, start: farm.span })).toMatchObject({ ok: true });
+    expect(checkPlacement(l, "galley", { kind: "ring", floor: 1, ring: 2, start: farm.span - 1 })).toMatchObject({ ok: false, reason: "Overlaps Farm" });
+    expect(checkPlacement(l, "galley", { kind: "ring", floor: 1, ring: 1, start: 1440 - 153 })).toMatchObject({ ok: true });
   });
 });
 
@@ -52,7 +56,7 @@ describe("placement rules", () => {
     // A bare hole with no entrance: an old-style open shaft links its floors, and (as old saves are
     // migrated) every floor has its gallery, so ring 1 is reachable.
     layout = createLayout(hole());
-    for (let f = 1; f <= layout.hole.floors; f++) for (const e of galleryEdges(layout.hole, f)) layout.corridors[e.id] = "gallery";
+    for (let f = 1; f <= layout.hole.floors; f++) for (const e of galleryEdges(layout, f)) layout.corridors[e.id] = "gallery";
     layout.openShaft = true;
   });
 
@@ -71,7 +75,7 @@ describe("placement rules", () => {
     expect(checkPlacement(layout, "clinic", ring(1, 4, 0))).toMatchObject({ ok: false, reason: "Ring 4+ needs reinforcement frames" });
     expect(checkPlacement(layout, "farm", ring(1, 2, 0, 2, 3))).toMatchObject({ ok: false });
     expect(checkPlacement(layout, "clinic", ring(5, 1, 0))).toMatchObject({ ok: false, reason: "That floor isn't dug yet" });
-    expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 1, 2))).toMatchObject({ ok: false, reason: "Bunk dorm can't be 1×2" });
+    expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 1, 2))).toMatchObject({ ok: false, reason: "Bunk dorm can't be 2 rings deep" });
   });
 
   it("surface rooms go on the surface only", () => {
@@ -102,7 +106,7 @@ describe("starting state", () => {
 });
 
 describe("undo", () => {
-  const at = { kind: "ring" as const, floor: 1, ring: 1, slot: 3, w: 1, d: 1 };
+  const at = ringAt(1, 1, 3);
 
   it("refunds in full shortly after building", () => {
     const s = createInitialState(config);

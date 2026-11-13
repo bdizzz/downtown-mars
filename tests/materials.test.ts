@@ -4,13 +4,14 @@ import { applyCommand } from "../src/sim/commands";
 import { CONDITION, conditionOf, stepCondition } from "../src/sim/condition";
 import { homeFactors } from "../src/sim/happiness";
 import { canLine, liningKind, liningOf, liningText, liningWear, MATERIALS, sharedLiningComfort } from "../src/sim/materials";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { createWorld } from "../src/sim/world";
+import { ringAt } from "./spots";
 
 const tpd = config.ticksPerDay;
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
 function hole(): SimState {
   const s = createInitialState(config);
@@ -18,7 +19,7 @@ function hole(): SimState {
   Object.assign(s.resources, { rock: 2000, metal: 2000, brick: 2000, machinery: 500, electronics: 500, water: 2000, rations: 2000 });
   return s;
 }
-function build(s: SimState, room: string, at: Location): number {
+function build(s: SimState, room: string, at: Spot): number {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return r.roomId!;

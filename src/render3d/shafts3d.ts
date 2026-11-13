@@ -222,7 +222,7 @@ export class SunPools {
     for (let floor = first; floor <= hole.floors; floor++) {
       const y = floorSpan(floor)[0] + LEDGE_THICKNESS + SUN_POOL.lift;
       const k = at(floor) * SUN_POOL.gallery;
-      for (const e of galleryEdges(hole, floor)) {
+      for (const e of galleryEdges(layout, floor)) {
         if (!layout.domed && (!layout.corridors?.[e.id] || layout.corridorsBuilding?.[e.id] !== undefined)) continue;
         band(rOpen, R, e.a0 * TAU, e.a1 * TAU, y, k, k);
       }

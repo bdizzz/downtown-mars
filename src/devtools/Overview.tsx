@@ -55,9 +55,10 @@ export function Overview() {
 
     const keys = Object.keys(layouts.templates).sort();
     keys.forEach((key, i) => {
+      // "galley:S", "farm:L2", "stairwell:S:top": the type, its size (and depth in rings, past 1), and a floor's role.
       const [type, shape, role] = key.split(":") as [string, string, string | undefined];
-      const [w, d] = shape.split("x").map(Number) as [number, number];
-      const sample = sampleRoom(type, [w, d], Math.min(ring, 7 - d), { left: false, right: false });
+      const d = Number(shape.slice(1)) || 1;
+      const sample = sampleRoom(type, d, Math.min(ring, 7 - d), { left: false, right: false });
       if (!sample) return;
       const { layout, room } = sample;
       // Stairs and elevators span floors 2–3: show the floor this template is for.

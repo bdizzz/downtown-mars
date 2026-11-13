@@ -2,7 +2,7 @@ import { varietyComfort } from "./food";
 import type { SimConfig } from "./config";
 import { isActive } from "./economy";
 import { effectOnRoom } from "./effects";
-import type { RoomInstance } from "./placement";
+import { roomUnits, type RoomInstance } from "./placement";
 import { windowComfort } from "./windows";
 import { modifiers } from "./ordinances";
 import { careFactors, updateCare } from "./care";
@@ -66,7 +66,7 @@ function tidy(points: Record<string, number>): Record<string, number> {
 export function crowdedAir(state: Pick<SimState, "happiness">, room: RoomInstance): number {
   const c = config.effects.crowding;
   const residents = state.happiness.pools.find((p) => p.roomId === room.id)?.residents ?? 0;
-  const cells = Math.max(1, room.cells.length || room.surfaceCells.length);
+  const cells = roomUnits(room);
   const over = residents / cells - c.perCell;
   return over > 0 ? -over * c.air : 0;
 }

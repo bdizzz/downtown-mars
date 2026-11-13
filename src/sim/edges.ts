@@ -1,20 +1,23 @@
-import { ringSize, wrapSlot, type Hole } from "./geometry";
-import type { Cell } from "./placement";
+import { config } from "./config";
+import { wrapNotch, type Hole } from "./geometry";
+import type { Layout } from "./placement";
+import { circleCuts, contains, covers, overlap, pieceAt, piecesOn, type Cell } from "./space";
 
-// The borders between cells on a floor, where corridors run.
+// The borders on a floor, where corridors run.
 //
 // Rings are bounded by circles: circle 0 is the shaft wall (gallery tubes run
-// along it, on the shaft side), circle n is the outer edge of ring n. Slots are bounded by
-// radial lines. An edge is either a radial line between two slots of one
-// ring, or a piece of a circle. Outer rings have more slots, so the circle
-// between ring n and ring n+1 is cut at every slot boundary of either ring;
-// that way each arc piece has exactly one cell inside and one outside.
+// along it, on the shaft side), circle n is the outer edge of ring n. Across a
+// ring run radial lines, at any angle. An edge is either a radial line across
+// one ring, or a piece of a circle.
 //
-// Angles are exact fractions of a turn (numerator/denominator, reduced), so
-// the same point on a circle always gets the same vertex, and corridors meet
-// exactly where they should.
+// Angles are whole notches (F-004), so the same point always gets the same
+// vertex and corridors meet exactly where they should. Circles are cut at
+// every vertex: wherever a piece (a room's end, the rock's grid) starts on
+// either side, and wherever a corridor meets or ends (space.ts). So each arc
+// piece has exactly one piece inside and one outside. An edge's id is its own
+// integers: `R{floor}.{ring}.{angle}` and `A{floor}.{circle}.{from}-{to}`.
 
-export type Frac = [number, number];
+const N = config.geometry.notchesPerTurn;
 
 export interface RadialEdge {
   kind: "radial";
@@ -22,8 +25,8 @@ export interface RadialEdge {
   floor: number;
   /** The ring it crosses, from circle ring−1 to circle ring. */
   ring: number;
-  /** Slot boundary index: the edge sits between slot i−1 and slot i. */
-  index: number;
+  /** Its angle, in notches. */
+  angle: number;
   /** Angle in turns. */
   turn: number;
 }
@@ -34,150 +37,124 @@ export interface ArcEdge {
   floor: number;
   /** Which circle: 1 is between ring 1 and ring 2, and so on. */
   circle: number;
-  from: Frac;
-  to: Frac;
-  /** Start and end in turns; end may be 1 for the last piece. */
+  /** Start and end in notches: 0 ≤ from < N, from < to ≤ from + N. */
+  from: number;
+  to: number;
+  /** Start and end in turns; the end may pass 1. */
   a0: number;
   a1: number;
 }
 
 export type Edge = RadialEdge | ArcEdge;
 
-function gcd(a: number, b: number): number {
-  while (b) [a, b] = [b, a % b];
-  return a;
-}
-
-export function frac(p: number, q: number): Frac {
-  const p2 = ((p % q) + q) % q;
-  const g = gcd(p2, q) || q;
-  return [p2 / g, q / g];
-}
-
-const fracKey = ([p, q]: Frac) => `${p}/${q}`;
-const turnOf = ([p, q]: Frac) => p / q;
-
 /** A vertex: where edges meet. */
-export function vertexKey(floor: number, circle: number, f: Frac): string {
-  return `${floor}|${circle}|${fracKey(f)}`;
+export function vertexKey(floor: number, circle: number, notch: number): string {
+  return `${floor}|${circle}|${wrapNotch(notch, N)}`;
 }
 
-const cuts = new Map<string, Frac[]>();
-
-/** Where circle k is cut, in order around the turn: every slot boundary of the rings on either side. */
-export function circleCuts(hole: Hole, circle: number): Frac[] {
-  const key = `${hole.ringSlots.join(",")}:${circle}`;
-  let list = cuts.get(key);
-  if (!list) {
-    const seen = new Map<string, Frac>();
-    for (const ring of [circle, circle + 1]) {
-      if (ring < 1 || ring > hole.ringSlots.length) continue;
-      const n = ringSize(hole, ring);
-      for (let i = 0; i < n; i++) {
-        const f = frac(i, n);
-        seen.set(fracKey(f), f);
-      }
-    }
-    list = [...seen.values()].sort((a, b) => turnOf(a) - turnOf(b));
-    cuts.set(key, list);
-  }
-  return list;
+export function radialEdge(floor: number, ring: number, angle: number): RadialEdge {
+  const a = wrapNotch(angle, N);
+  return { kind: "radial", id: `R${floor}.${ring}.${a}`, floor, ring, angle: a, turn: a / N };
 }
 
-export function radialEdge(hole: Hole, floor: number, ring: number, index: number): RadialEdge {
-  const n = ringSize(hole, ring);
-  const i = wrapSlot(index, n);
-  return { kind: "radial", id: `R${floor}.${ring}.${i}`, floor, ring, index: i, turn: i / n };
+export function arcEdge(floor: number, circle: number, from: number, to: number): ArcEdge {
+  const f = wrapNotch(from, N);
+  const t = f + (to - from);
+  return { kind: "arc", id: `A${floor}.${circle}.${f}-${wrapNotch(t - 1, N) + 1}`, floor, circle, from: f, to: t, a0: f / N, a1: t / N };
 }
 
-/** The arc piece of circle k that starts at cut `i`. */
-function arcPiece(hole: Hole, floor: number, circle: number, i: number): ArcEdge {
-  const list = circleCuts(hole, circle);
-  const from = list[wrapSlot(i, list.length)]!;
-  const to = list[wrapSlot(i + 1, list.length)]!;
-  const a0 = turnOf(from);
-  const a1 = turnOf(to) <= a0 ? turnOf(to) + 1 : turnOf(to);
-  return { kind: "arc", id: `A${floor}.${circle}.${fracKey(from)}`, floor, circle, from, to, a0, a1 };
-}
-
-/** Look an edge up by its id. */
+/** Look an edge up by its id (any range of a circle, or a radial line at any angle). */
 export function edgeById(hole: Hole, id: string): Edge | null {
-  const m = /^([RA])(\d+)\.(\d+)\.(\d+)(?:\/(\d+))?$/.exec(id);
-  if (!m) return null;
-  const floor = Number(m[2]);
-  const k = Number(m[3]);
-  if (m[1] === "R") {
-    if (k < 1 || k > hole.ringSlots.length) return null;
-    return radialEdge(hole, floor, k, Number(m[4]));
+  const r = /^R(\d+)\.(\d+)\.(\d+)$/.exec(id);
+  if (r) {
+    const ring = Number(r[2]);
+    if (ring < 1 || ring > hole.ringSlots.length || Number(r[3]) >= N) return null;
+    return radialEdge(Number(r[1]), ring, Number(r[3]));
   }
-  if (k < 0 || k > hole.ringSlots.length || m[5] === undefined) return null;
-  const want = fracKey(frac(Number(m[4]), Number(m[5])));
-  const i = circleCuts(hole, k).findIndex((f) => fracKey(f) === want);
-  return i < 0 ? null : arcPiece(hole, floor, k, i);
+  const a = /^A(\d+)\.(\d+)\.(\d+)-(\d+)$/.exec(id);
+  if (!a) return null;
+  const circle = Number(a[2]);
+  const from = Number(a[3]);
+  const to = Number(a[4]);
+  if (circle < 0 || circle > hole.ringSlots.length || from >= N || to < 1 || to > N) return null;
+  return arcEdge(Number(a[1]), circle, from, to <= from ? to + N : to);
 }
 
 /** The two ends of an edge, as vertex keys. */
-export function edgeVertices(hole: Hole, e: Edge): [string, string] {
-  if (e.kind === "radial") {
-    const f = frac(e.index, ringSize(hole, e.ring));
-    return [vertexKey(e.floor, e.ring - 1, f), vertexKey(e.floor, e.ring, f)];
-  }
+export function edgeVertices(_hole: Hole, e: Edge): [string, string] {
+  if (e.kind === "radial") return [vertexKey(e.floor, e.ring - 1, e.angle), vertexKey(e.floor, e.ring, e.angle)];
   return [vertexKey(e.floor, e.circle, e.from), vertexKey(e.floor, e.circle, e.to)];
 }
 
-/** The cells on either side of an edge; null where it's outside every ring. */
-export function edgeSides(hole: Hole, e: Edge): [Cell | null, Cell | null] {
-  if (e.kind === "radial") {
-    const n = ringSize(hole, e.ring);
-    return [
-      { floor: e.floor, ring: e.ring, slot: wrapSlot(e.index - 1, n) },
-      { floor: e.floor, ring: e.ring, slot: e.index },
-    ];
-  }
-  const mid = ((e.a0 + e.a1) / 2) % 1;
-  const cellIn = (ring: number): Cell | null =>
-    ring >= 1 && ring <= hole.ringSlots.length ? { floor: e.floor, ring, slot: Math.floor(mid * ringSize(hole, ring)) } : null;
-  return [cellIn(e.circle), cellIn(e.circle + 1)];
-}
-
-/** Every edge of a cell. Ring 1's inner side is on the shaft wall (circle 0), where a gallery tube can run. */
-export function cellEdges(hole: Hole, c: Cell): Edge[] {
-  const n = ringSize(hole, c.ring);
-  const out: Edge[] = [radialEdge(hole, c.floor, c.ring, c.slot), radialEdge(hole, c.floor, c.ring, c.slot + 1)];
-  const s0 = c.slot / n;
-  const s1 = (c.slot + 1) / n;
-  for (const circle of [c.ring - 1, c.ring]) {
-    if (circle < 0) continue;
-    const list = circleCuts(hole, circle);
-    list.forEach((f, i) => {
-      const t = turnOf(f);
-      if (t >= s0 - 1e-12 && t < s1 - 1e-12) out.push(arcPiece(hole, c.floor, circle, i));
-    });
-  }
+/** The pieces of a circle between two angles (a1 may pass a turn), cut at every vertex along it. */
+export function arcPieces(layout: Layout, floor: number, circle: number, a0: number, a1: number): ArcEdge[] {
+  const from = wrapNotch(a0, N);
+  const to = from + (a1 - a0);
+  const at = [from, to];
+  for (const c of circleCuts(layout, floor, circle)) for (const x of [c, c + N]) if (x > from && x < to) at.push(x);
+  at.sort((x, y) => x - y);
+  const out: ArcEdge[] = [];
+  for (let i = 0; i + 1 < at.length; i++) if (at[i + 1]! > at[i]!) out.push(arcEdge(floor, circle, at[i]!, at[i + 1]!));
   return out;
 }
 
-const cellKey = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+/** The pieces on either side of an edge (at its middle); null where it's outside every ring. */
+export function edgeSides(layout: Layout, e: Edge): [Cell | null, Cell | null] {
+  if (e.kind === "radial") return [pieceAt(layout, e.floor, e.ring, e.angle - 0.5), pieceAt(layout, e.floor, e.ring, e.angle + 0.5)];
+  const mid = (e.from + e.to) / 2;
+  const rings = layout.hole.ringSlots.length;
+  return [e.circle >= 1 ? pieceAt(layout, e.floor, e.circle, mid) : null, e.circle + 1 <= rings ? pieceAt(layout, e.floor, e.circle + 1, mid) : null];
+}
+
+/** Every edge of a cell. Ring 1's inner side is on the shaft wall (circle 0), where a gallery tube can run. */
+export function cellEdges(layout: Layout, c: Cell): Edge[] {
+  const out: Edge[] = [radialEdge(c.floor, c.ring, c.a0)];
+  if (c.a1 - c.a0 < N) out.push(radialEdge(c.floor, c.ring, c.a1));
+  for (const circle of [c.ring - 1, c.ring]) out.push(...arcPieces(layout, c.floor, circle, c.a0, c.a1));
+  return out;
+}
 
 /** The edges around a group of cells: those with something else on the other side. */
-export function outsideEdges(hole: Hole, cells: Cell[]): Edge[] {
-  const own = new Set(cells.map(cellKey));
+export function outsideEdges(layout: Layout, cells: Cell[]): Edge[] {
   const out = new Map<string, Edge>();
   for (const c of cells) {
-    for (const e of cellEdges(hole, c)) {
-      const [a, b] = edgeSides(hole, e);
-      const inside = [a, b].filter((x) => x && own.has(cellKey(x))).length;
-      if (inside === 1) out.set(e.id, e);
+    const whole = c.a1 - c.a0 >= N;
+    if (!whole && !covers(cells, c.floor, c.ring, c.a0 - 0.5)) {
+      const e = radialEdge(c.floor, c.ring, c.a0);
+      out.set(e.id, e);
+    }
+    if (!whole && !covers(cells, c.floor, c.ring, c.a1 + 0.5)) {
+      const e = radialEdge(c.floor, c.ring, c.a1);
+      out.set(e.id, e);
+    }
+    for (const [circle, other] of [
+      [c.ring - 1, c.ring - 1],
+      [c.ring, c.ring + 1],
+    ] as const) {
+      for (const e of arcPieces(layout, c.floor, circle, c.a0, c.a1)) {
+        if (!covers(cells, c.floor, other, (e.from + e.to) / 2)) out.set(e.id, e);
+      }
     }
   }
   return [...out.values()];
 }
 
-/** The edges two neighbouring cells share (one radial, or one or more arc pieces). */
-export function sharedEdges(hole: Hole, a: Cell, b: Cell): Edge[] {
+/** The edges two neighbouring cells share (a radial line, or one or more arc pieces). */
+export function sharedEdges(layout: Layout, a: Cell, b: Cell): Edge[] {
   if (a.floor !== b.floor) return [];
-  const kb = cellKey(b);
-  return cellEdges(hole, a).filter((e) => edgeSides(hole, e).some((x) => x && cellKey(x) === kb));
+  if (a.ring === b.ring) {
+    const out = new Map<string, Edge>();
+    for (const [x, y] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      if (wrapNotch(x.a1, N) === y.a0) out.set(`R${x.floor}.${x.ring}.${y.a0}`, radialEdge(x.floor, x.ring, y.a0));
+    }
+    return [...out.values()];
+  }
+  if (Math.abs(a.ring - b.ring) !== 1) return [];
+  const circle = Math.min(a.ring, b.ring);
+  return overlap(a, b).flatMap(([lo, hi]) => arcPieces(layout, a.floor, circle, lo, hi));
 }
 
 /** An edge's length in metres, for costs. */
@@ -187,40 +164,42 @@ export function edgeLengthM(hole: Hole, e: Edge, ringDepthM: number): number {
 }
 
 /**
- * The edge nearest a point on a floor: the cell it's in, then whichever of
- * that cell's sides is closest. `rings` is the distance out from the shaft
+ * The edge nearest a point on a floor: the piece it's in, then whichever of
+ * that piece's sides is closest. `rings` is the distance out from the shaft
  * wall in rings (0 at the wall, 1 at the outer edge of ring 1), `turn` the
  * angle in turns. Just inside the shaft wall (down to `galleryRings` in), it's ring 1's gallery side.
  */
-export function nearestEdge(hole: Hole, floor: number, rings: number, turn: number, ringDepthM: number, galleryRings = 0.3): Edge | null {
-  if (rings < 0 && rings >= -galleryRings) return arcAt(hole, floor, 0, turn);
+export function nearestEdge(layout: Layout, floor: number, rings: number, turn: number, ringDepthM: number, galleryRings = 0.3): Edge | null {
+  const hole = layout.hole;
+  if (rings < 0 && rings >= -galleryRings) return arcAt(layout, floor, 0, turn);
   if (rings < 0 || rings >= hole.ringSlots.length) return null;
   const ring = Math.floor(rings) + 1;
   const v = rings - (ring - 1);
-  const n = ringSize(hole, ring);
   const t = ((turn % 1) + 1) % 1;
-  const slot = Math.min(n - 1, Math.floor(t * n));
-  const u = t * n - slot;
-  const radius = hole.shaftRadiusM + (ring - 0.5) * ringDepthM;
-  const slotM = (2 * Math.PI * radius) / n;
+  const piece = pieceAt(layout, floor, ring, t * N);
+  if (!piece) return null;
+  const mPerNotch = (2 * Math.PI * (hole.shaftRadiusM + (ring - 0.5) * ringDepthM)) / N;
+  const u = (((t * N - piece.a0) % N) + N) % N;
   const options: [number, () => Edge | null][] = [
-    [u * slotM, () => radialEdge(hole, floor, ring, slot)],
-    [(1 - u) * slotM, () => radialEdge(hole, floor, ring, slot + 1)],
-    [(1 - v) * ringDepthM, () => arcAt(hole, floor, ring, t)],
+    [u * mPerNotch, () => radialEdge(floor, ring, piece.a0)],
+    [(piece.a1 - piece.a0 - u) * mPerNotch, () => radialEdge(floor, ring, piece.a1)],
+    [(1 - v) * ringDepthM, () => arcAt(layout, floor, ring, t)],
+    [v * ringDepthM, () => arcAt(layout, floor, ring - 1, t)],
   ];
-  options.push([v * ringDepthM, () => arcAt(hole, floor, ring - 1, t)]);
   options.sort((a, b) => a[0] - b[0]);
   return options[0]![1]();
 }
 
 /** The arc piece of a circle at an angle. */
-export function arcAt(hole: Hole, floor: number, circle: number, turn: number): ArcEdge | null {
-  if (circle < 0 || circle > hole.ringSlots.length) return null;
-  const list = circleCuts(hole, circle);
-  const t = ((turn % 1) + 1) % 1;
-  let i = list.length - 1;
-  for (let k = 0; k < list.length; k++) if (turnOf(list[k]!) <= t + 1e-12) i = k;
-  return arcPiece(hole, floor, circle, i);
+export function arcAt(layout: Layout, floor: number, circle: number, turn: number): ArcEdge | null {
+  if (circle < 0 || circle > layout.hole.ringSlots.length) return null;
+  const cuts = circleCuts(layout, floor, circle);
+  const x = (((turn % 1) + 1) % 1) * N;
+  let i = cuts.length - 1;
+  for (let k = 0; k < cuts.length; k++) if (cuts[k]! <= x + 1e-9) i = k;
+  const from = cuts[i]!;
+  const next = cuts[(i + 1) % cuts.length]!;
+  return arcEdge(floor, circle, from, next > from ? next : next + N);
 }
 
 /** Is this a gallery edge: on the shaft wall, where a gallery tube runs? */
@@ -228,7 +207,21 @@ export function isGalleryEdge(e: Edge): boolean {
   return e.kind === "arc" && e.circle === 0;
 }
 
-/** A floor's gallery edges, all the way round the shaft: one per ring-1 slot. */
-export function galleryEdges(hole: Hole, floor: number): ArcEdge[] {
-  return circleCuts(hole, 0).map((_, i) => arcPiece(hole, floor, 0, i));
+/** A floor's gallery edges, all the way round the shaft. */
+export function galleryEdges(layout: Layout, floor: number): ArcEdge[] {
+  return arcPieces(layout, floor, 0, 0, N);
+}
+
+/** Every edge of a floor: each piece's sides, once each. */
+export function floorEdges(layout: Layout, floor: number): Edge[] {
+  const out = new Map<string, Edge>();
+  for (let ring = 1; ring <= layout.hole.ringSlots.length; ring++) {
+    for (const p of piecesOn(layout, floor, ring)) for (const e of cellEdges(layout, p)) out.set(e.id, e);
+  }
+  return [...out.values()];
+}
+
+/** Does this arc lie along a cell's side of a circle? */
+export function arcAlong(e: ArcEdge, c: Cell): boolean {
+  return (e.circle === c.ring || e.circle === c.ring - 1) && contains(c, (e.from + e.to) / 2);
 }

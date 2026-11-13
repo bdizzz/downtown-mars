@@ -3,7 +3,7 @@ import { config } from "../src/sim/config";
 import { applyCommand } from "../src/sim/commands";
 import { computeEffects, effectAt } from "../src/sim/effects";
 import { setRoomWindows, shaftBorders, windowComfort } from "../src/sim/windows";
-import { ensureFloors, type Location } from "../src/sim/placement";
+import { ensureFloors, type Spot } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { stepsBetween } from "../src/sim/paths";
@@ -11,6 +11,8 @@ import { tubeRuns } from "../src/view/gallery";
 import { construction } from "../src/sim/construction";
 import { airPct, airVolume, shaftVolume } from "../src/sim/air";
 import { makeSnapshot } from "../src/sim/snapshot";
+import { ringAt } from "./spots";
+import { cellAt } from "./spots";
 
 // Milestone 12: the shaft dome, a hole's end goal.
 
@@ -20,7 +22,7 @@ const ring = (
   slot: number,
   w = 1,
   d = 1,
-): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+): Spot => (ringAt(floor, r, slot, w, d));
 function hole(): SimState {
   const s = createInitialState(config);
   s.drill.active = false;
@@ -39,7 +41,7 @@ function hole(): SimState {
       r.allocation = { ...(r.allocation ?? {}), glass: 300, metal: 400 };
   return s;
 }
-function build(s: SimState, room: string, at: Location): number {
+function build(s: SimState, room: string, at: Spot): number {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return r.roomId!;
@@ -87,11 +89,7 @@ describe("the shaft dome", () => {
     const clinic = s.layout.rooms.find((r) => r.id === b)!;
     setRoomWindows(clinic, shaftBorders(s.layout, clinic), true);
     const view = windowComfort(s.layout, clinic, config);
-    const air = effectAt(computeEffects(s.layout), "airQuality", {
-      floor: 2,
-      ring: 3,
-      slot: 0,
-    });
+    const air = effectAt(computeEffects(s.layout), "airQuality", cellAt(2, 3, 0));
     expect(applyCommand(s, { type: "buildDome" }).ok).toBe(true);
     finish(s);
     expect(s.layout.domed).toBe(true);
@@ -105,11 +103,7 @@ describe("the shaft dome", () => {
       ),
     ).toBeCloseTo(view + config.dome.atriumComfort);
     expect(
-      effectAt(computeEffects(s.layout), "airQuality", {
-        floor: 2,
-        ring: 3,
-        slot: 0,
-      }),
+      effectAt(computeEffects(s.layout), "airQuality", cellAt(2, 3, 0)),
     ).toBeCloseTo(air + config.dome.air);
     expect(tubeRuns(s.layout).every((r) => r.full)).toBe(true);
     expect(s.messages.some((m) => m.text.includes("dome"))).toBe(true);

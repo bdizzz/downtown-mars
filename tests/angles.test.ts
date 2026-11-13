@@ -6,6 +6,7 @@ import type { Cell, Layout, RoomInstance } from "../src/sim/placement";
 import { deserialize, serialize } from "../src/sim/save";
 import { createWorld } from "../src/sim/world";
 import { run } from "./bot";
+import { ringAt } from "./spots";
 
 // F-004 step 1 (T-039): every ring room has an angle range in notches alongside its slots.
 
@@ -35,7 +36,7 @@ function expectAnglesMatchSlots(layout: Layout): number {
     expect(room.at.depth).toBe(room.at.d);
     const floors = [...new Set(room.cells.map((c) => c.floor))];
     for (const f of floors) {
-      const own = room.cells.filter((c: Cell) => c.floor === f).map((c) => `${c.floor}:${c.ring}:${c.slot}`);
+      const own = room.cells.filter((c: Cell) => c.floor === f).map((c) => `${c.floor}:${c.ring}:${c.a0}`);
       expect(cellsFromAngles(layout, room, f).sort(), `${room.type} #${room.id} on floor ${f}`).toEqual(own.sort());
     }
     n++;
@@ -88,7 +89,7 @@ describe("notches and spans", () => {
     applyCommand(hole, { type: "consoleFinish" });
     applyCommand(hole, { type: "consoleResources", atLeast: { rock: 500, metal: 200, machinery: 50, brick: 200, marscrete: 200 } });
     // A 2×2 farm across rings 2 and 3 (9 slots inside, 18 outside).
-    const r = applyCommand(hole, { type: "build", room: "farm", at: { kind: "ring", floor: 1, ring: 2, slot: 0, w: 2, d: 2 } });
+    const r = applyCommand(hole, { type: "build", room: "farm", at: ringAt(1, 2, 0, 2, 2) });
     expect(r, JSON.stringify(r)).toMatchObject({ ok: true });
     const farm = hole.layout.rooms.at(-1)!;
     expect(farm.at).toMatchObject({ start: 0, span: 320, depth: 2 });

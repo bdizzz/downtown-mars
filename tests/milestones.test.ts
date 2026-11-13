@@ -12,6 +12,7 @@ import { deserialize, serialize } from "../src/sim/save";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { createWorld } from "../src/sim/world";
+import { cellAt } from "./spots";
 
 // F-005 / T-055: one milestone catalog, tracked per hole with the day each was reached.
 
@@ -189,7 +190,7 @@ describe("life milestones", () => {
   it("a full ring: every slot of a ring dug, but not the one the landing crew blasted out", () => {
     const s = hole();
     expect(fullRing(s)).toBe(false);
-    const cells = Array.from({ length: s.layout.hole.ringSlots[1]! }, (_, slot) => ({ floor: 1, ring: 2, slot }));
+    const cells = Array.from({ length: s.layout.hole.ringSlots[1]! }, (_, slot) => (cellAt(1, 2, slot)));
     openCells(s.layout, cells.slice(1));
     expect(fullRing(s)).toBe(false);
     openCells(s.layout, cells);

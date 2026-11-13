@@ -32,7 +32,7 @@ export function overheadLights(layout: Layout): Overhead[] {
     // A room taller than a floor has its light at the top, once per column of cells.
     const top = new Map<string, number>();
     for (const c of room.cells) {
-      const key = `${c.ring}:${c.slot}`;
+      const key = `${c.ring}:${c.a0}`;
       top.set(key, Math.min(top.get(key) ?? Infinity, c.floor));
     }
     for (const [key, floor] of top) {

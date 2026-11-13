@@ -3,17 +3,19 @@ import { config } from "../src/sim/config";
 import { applyCommand } from "../src/sim/commands";
 import { corridors, corridorCost, floorLinked, strandedBy } from "../src/sim/corridors";
 import { edgeById, galleryEdges } from "../src/sim/edges";
-import { ensureFloors, type Location } from "../src/sim/placement";
+import { ensureFloors, type Spot } from "../src/sim/placement";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { createWorld } from "../src/sim/world";
 import { tubeRuns } from "../src/view/gallery";
+import { ringAt } from "./spots";
+import { tubeAt } from "./spots";
 
 // Milestone 11, step 1: the gallery is built, like corridors. Along the shaft
 // wall a corridor is always a gallery tube; floor 1 starts with one all the
 // way round, and other floors get theirs as the player lays it.
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
 function deep(): SimState {
   const s = createInitialState(config);
@@ -23,7 +25,7 @@ function deep(): SimState {
   Object.assign(s.resources, { rock: 500, brick: 200, metal: 200, machinery: 50, electronics: 50 });
   return s;
 }
-const build = (s: SimState, room: string, at: Location) => {
+const build = (s: SimState, room: string, at: Spot) => {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return s.layout.rooms.find((x) => x.id === r.roomId)!;
@@ -32,10 +34,10 @@ const build = (s: SimState, room: string, at: Location) => {
 describe("the gallery", () => {
   it("comes built all the way round floor 1, and only floor 1", () => {
     const s = createInitialState(config);
-    const f1 = galleryEdges(s.layout.hole, 1);
+    const f1 = galleryEdges(s.layout, 1);
     expect(f1.every((e) => s.layout.corridors[e.id] === "gallery")).toBe(true);
     expect(f1.every((e) => s.layout.corridorLinked?.[e.id])).toBe(true);
-    expect(galleryEdges(s.layout.hole, 2).some((e) => s.layout.corridors[e.id])).toBe(false);
+    expect(galleryEdges(s.layout, 2).some((e) => s.layout.corridors[e.id])).toBe(false);
   });
 
   it("links ring-1 rooms along it, and taking it away strands them", () => {
@@ -44,7 +46,7 @@ describe("the gallery", () => {
     // Floor 2 is rock but for what's built: a room two slots from the stairs, joined by tubes.
     build(s, "stairwell", ring(1, 1, 5));
     const galley = build(s, "galley", ring(2, 1, 3));
-    const tubes = galleryEdges(s.layout.hole, 2).slice(3, 6).map((e) => e.id);
+    const tubes = galleryEdges(s.layout, 2).slice(3, 6).map((e) => e.id);
     expect(applyCommand(s, { type: "drawCorridors", edges: tubes, finish: "rock" }).ok).toBe(true);
     applyCommand(s, { type: "consoleFinish" });
     expect(s.layout.rooms.find((r) => r.id === galley.id)!.connected).toBe(true);
@@ -55,7 +57,7 @@ describe("the gallery", () => {
     const s = deep();
     build(s, "stairwell", ring(1, 1, 5));
     expect(floorLinked(s.layout, 2)).toBe(true);
-    const e = galleryEdges(s.layout.hole, 2)[4]!;
+    const e = tubeAt(s.layout, 2, 4);
     expect(corridorCost(s.layout.hole, e, "metal", config)).not.toHaveProperty("metal");
     expect(Object.keys(corridorCost(s.layout.hole, e, "metal", config))).toEqual(Object.keys(corridors.gallery.cost));
     expect(applyCommand(s, { type: "drawCorridors", edges: [e.id], finish: "metal" }).ok).toBe(true);
@@ -85,7 +87,7 @@ describe("the gallery", () => {
     expect(back.ok).toBe(true);
     if (!back.ok) return;
     const layout = back.world.holes[0]!.layout;
-    for (let f = 1; f <= 3; f++) expect(galleryEdges(layout.hole, f).every((e) => layout.corridors[e.id] === "gallery"), `floor ${f}`).toBe(true);
+    for (let f = 1; f <= 3; f++) expect(galleryEdges(layout, f).every((e) => layout.corridors[e.id] === "gallery"), `floor ${f}`).toBe(true);
   });
 });
 
@@ -95,7 +97,7 @@ describe("tube runs", () => {
     s.layout.hole.floors = 2;
     ensureFloors(s.layout);
     expect(tubeRuns(s.layout)).toEqual([{ floor: 1, t0: 0, t1: 1, full: true }]);
-    const f2 = galleryEdges(s.layout.hole, 2);
+    const f2 = galleryEdges(s.layout, 2);
     const n = f2.length;
     // The last two slots and the first one: one run across 0°.
     for (const e of [f2[n - 2]!, f2[n - 1]!, f2[0]!]) s.layout.corridors[e.id] = "gallery";

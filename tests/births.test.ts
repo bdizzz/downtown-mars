@@ -5,6 +5,7 @@ import { config } from "../src/sim/config";
 import { people, setAdults, stageCounts } from "../src/sim/people";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { ringAt } from "./spots";
 
 const day = config.ticksPerDay;
 
@@ -15,7 +16,7 @@ function nursery(): SimState {
   s.earth.nextDropTick = 1e9;
   Object.assign(s.resources, { brick: 100, metal: 100, electronics: 20, rock: 200 });
   const build = (room: string, slot: number, w = 1) => {
-    const r = applyCommand(s, { type: "build", room, at: { kind: "ring", floor: 1, ring: 1, slot, w, d: 1 } });
+    const r = applyCommand(s, { type: "build", room, at: ringAt(1, 1, slot, w) });
     if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   };
   build("clinic", 1);

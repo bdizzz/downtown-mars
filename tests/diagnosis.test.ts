@@ -4,15 +4,16 @@ import { airAmount } from "../src/sim/air";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
 import { diagnose } from "../src/sim/diagnosis";
 import { targetHappiness, updateHappiness } from "../src/sim/happiness";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { ringAt } from "./spots";
 
 // No Earth drops in the numbers.
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
-function withRooms(rooms: [string, Location][]): SimState {
+function withRooms(rooms: [string, Spot][]): SimState {
   const s = createInitialState(config);
   s.drill.active = false;
   Object.assign(s.resources, { metal: 500, rock: 500, brick: 500, machinery: 50, electronics: 50 });

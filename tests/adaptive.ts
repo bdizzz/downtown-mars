@@ -20,6 +20,7 @@ import { crowdedAir } from "../src/sim/happiness";
 import { eventDef } from "../src/sim/events";
 import { outsideEdges } from "../src/sim/edges";
 import { viewAcross, wallOf, type Across } from "../src/sim/windows";
+import { ringAt } from "./spots";
 
 // A scripted player that reacts: once a day it looks at what its hole is
 // short of and builds the room that fixes it, in the first free spot on the
@@ -42,7 +43,7 @@ export function ensureStairs(hole: SimState): boolean {
   const floors = stairs ? [...stairs.cells, ...(stairs.pendingCells ?? [])].map((c) => c.floor) : [];
   const bottom = floors.length ? Math.max(...floors) : 1;
   if (bottom >= hole.layout.hole.floors) return false;
-  return applyCommand(hole, { type: "build", room: "stairwell", at: { kind: "ring", floor: bottom, ring: 1, slot, w: 1, d: 1 } }).ok;
+  return applyCommand(hole, { type: "build", room: "stairwell", at: ringAt(bottom, 1, slot) }).ok;
 }
 
 /** Does the hole need its stairs to go deeper: a room waiting on a floor they don't reach, or no room for a two-slot room on ring 1 where they do? */
@@ -71,7 +72,7 @@ export function quarry(hole: SimState): boolean {
     if (!floorLinked(l, floor)) continue;
     for (let ring = l.hole.unlockedRings; ring >= 2; ring--) {
       for (let slot = 0; slot < l.hole.ringSlots[ring - 1]!; slot += 2) {
-        const r = applyCommand(hole, { type: "build", room: "empty_room_m", at: { kind: "ring", floor, ring, slot, w, d } });
+        const r = applyCommand(hole, { type: "build", room: "empty_room_m", at: ringAt(floor, ring, slot, w, d) });
         if (r.ok) return true;
       }
     }
@@ -96,7 +97,7 @@ export function placeAnywhere(hole: SimState, room: string, crop?: string): bool
       if (!floorLinked(hole.layout, floor)) continue; // no way down yet
       for (let slot = 0; slot < slots; slot++) {
         if (footprint(hole.layout.hole, floor, ring, slot, w, d).some((c) => c.ring === 1 && c.slot === stairSlot(hole))) continue;
-        const r = applyCommand(hole, { type: "build", room, at: { kind: "ring", floor, ring, slot, w, d } });
+        const r = applyCommand(hole, { type: "build", room, at: ringAt(floor, ring, slot, w, d) });
         if (r.ok) {
           if (crop) applyCommand(hole, { type: "setCrop", roomId: r.roomId!, crop });
           if (ring > 1) applyCommand(hole, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
@@ -215,7 +216,7 @@ function placeNear(hole: SimState, type: string, home: RoomInstance): boolean {
     for (const floor of floors) {
       for (const slot of byAngle(ring)) {
         if (footprint(hole.layout.hole, floor, ring, slot, w, d).some((c) => c.ring === 1 && c.slot === stairSlot(hole))) continue;
-        const r = applyCommand(hole, { type: "build", room: type, at: { kind: "ring", floor, ring, slot, w, d } });
+        const r = applyCommand(hole, { type: "build", room: type, at: ringAt(floor, ring, slot, w, d) });
         if (r.ok) {
           if (ring > 1) applyCommand(hole, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
           return true;
@@ -305,7 +306,7 @@ function placeStorage(hole: SimState): boolean {
     for (let floor = 1; floor <= hole.layout.hole.floors; floor++) {
       if (!floorLinked(hole.layout, floor)) continue;
       for (let slot = 0; slot < hole.layout.hole.ringSlots[ring - 1]!; slot++) {
-        const r = applyCommand(hole, { type: "build", room: "warehouse", at: { kind: "ring", floor, ring, slot, w, d } });
+        const r = applyCommand(hole, { type: "build", room: "warehouse", at: ringAt(floor, ring, slot, w, d) });
         if (r.ok) {
           applyCommand(hole, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
           return true;
@@ -342,8 +343,8 @@ export function tendWindows(hole: SimState): boolean {
   let any = false;
   for (const room of layout.rooms) {
     if (!roomDef(room.type).houses || room.planned || room.windows?.length) continue;
-    const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
-    const walls = outsideEdges(layout.hole, room.cells)
+    const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.a0}`));
+    const walls = outsideEdges(layout, room.cells)
       .map((e) => ({ e, across: viewAcross(layout, e, own) }))
       .filter((w): w is { e: (typeof w)["e"]; across: Across } => w.across !== null)
       .sort((a, b) => rank[b.across] - rank[a.across]);

@@ -4,13 +4,14 @@ import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Layout } from "../src/sim/placement";
 import type { RoomStatus } from "../src/sim/economy";
 import { RoomEffects } from "../src/render3d/effects3d";
+import { ringAt } from "./spots";
 
 /** A running smelter (sparks) in ring 1, and running life support (steam) in ring 2 on floor 2. */
 function hole(): { layout: Layout; status: Record<number, RoomStatus> } {
   const layout = createLayout(createHole(10, 4, 3, config.geometry));
   const status: Record<number, RoomStatus> = {};
   for (const [type, floor, ring] of [["smelter", 1, 1], ["life_support", 2, 2]] as const) {
-    const r = placeRoom(layout, type, { kind: "ring", floor, ring, slot: 2, w: 4, d: 1 });
+    const r = placeRoom(layout, type, ringAt(floor, ring, 2, 4));
     if (!r.ok) throw new Error(r.reason);
     status[r.id!] = { rate: 1 } as RoomStatus;
   }

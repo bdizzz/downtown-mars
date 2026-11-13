@@ -6,6 +6,7 @@ import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { createWorld } from "../src/sim/world";
+import { cellAt } from "./spots";
 
 // The air as a mix over the living volume (PLAN-M16 step 1, T-026).
 
@@ -22,7 +23,7 @@ describe("living volume", () => {
   it("grows by a cell's 400 m³ when one is dug out", () => {
     const s = createInitialState(config);
     const before = airVolume(s, config);
-    openCells(s.layout, [{ floor: 1, ring: 3, slot: 0 }]);
+    openCells(s.layout, [cellAt(1, 3, 0)]);
     expect(airVolume(s, config)).toBeCloseTo(before + cell);
     expect(livingVolume(s.layout, config)).toBeCloseTo(before + cell);
   });
@@ -46,7 +47,7 @@ describe("the mix", () => {
   it("thins when the hole digs: the same oxygen over more space", () => {
     const s = createInitialState(config);
     const o2 = s.resources.o2;
-    openCells(s.layout, [0, 1, 2, 3].map((slot) => ({ floor: 1, ring: 2, slot })));
+    openCells(s.layout, [0, 1, 2, 3].map((slot) => (cellAt(1, 2, slot))));
     expect(s.resources.o2).toBe(o2);
     expect(airPct(s, config, "o2")).toBeLessThan(config.air.o2Target - 1);
   });

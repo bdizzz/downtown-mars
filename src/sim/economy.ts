@@ -98,8 +98,8 @@ export function roomSpec(room: RoomInstance, cfg: SimConfig): RoomSpec {
   }
   // Clean water comes back as wastewater as it's used.
   for (const [id, share] of Object.entries(waterReturns(def.returnsWater, cfg))) makes[id] = (makes[id] ?? 0) + (uses.water ?? 0) * share;
-  const nominal = cfg.economy.nominalSlots[def.size] ?? 1;
-  const k = room.at.kind === "ring" ? room.cells.length / nominal : 1;
+  // What a room does doesn't depend on its exact floor area (PLAN-M17): a galley seats 25 at 88 m² or 115.
+  const k = 1;
   const scale = (r: Record<string, number>) => Object.fromEntries(Object.entries(r).map(([id, v]) => [id, v * k]));
   return {
     staff: Math.round(def.staff * k),

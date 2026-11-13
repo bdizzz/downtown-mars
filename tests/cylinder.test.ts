@@ -3,8 +3,10 @@ import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { ARC_STEPS, CRUST, FLOOR_H, floorSpan, openShaftRadius, pickAt, polar, ringRadii, shaftCollarRadius, slotAngles, TAU } from "../src/render3d/cylinder";
 import { pick as pick2d, slotX, TURN_W } from "../src/render2d/layout";
+import { createLayout } from "../src/sim/placement";
 
 const hole = createHole(10, 3, 3, config.geometry);
+const layout = createLayout(hole);
 
 describe("3D cell geometry", () => {
   it("slots tile the full turn", () => {
@@ -49,7 +51,7 @@ describe("3D cell geometry", () => {
         for (let slot = 0; slot < n; slot++) {
           const [a0, a1] = slotAngles(slot, n);
           const [x, y, z] = polar((r0 + r1) / 2, (a0 + a1) / 2, (y0 + y1) / 2);
-          expect(pickAt(hole, x, y, z)).toMatchObject({ kind: "slot", floor, ring, slot });
+          expect(pickAt(layout, x, y, z)).toMatchObject({ kind: "slot", floor, ring, a0: Math.round((slot * 1440) / n), a1: Math.round(((slot + 1) * 1440) / n) });
         }
       }
     }
@@ -59,25 +61,25 @@ describe("3D cell geometry", () => {
     for (const deg of [0.5, 45, 100, 179.9, 205, 359.5]) {
       const a = (deg / 360) * TAU;
       const [x, y, z] = polar(25, a, -FLOOR_H * 1.5 - CRUST);
-      const three = pickAt(hole, x, y, z);
+      const three = pickAt(layout, x, y, z);
       // Same floor 2, ring 2, at the same fraction of a turn in the 2D layout.
       const n = hole.ringSlots[1]!;
       const [x0] = slotX(0, n);
-      const two = pick2d(hole, x0 + (deg / 360) * TURN_W, 120 + 1 * (16 + 6 * 48 + 10) + 16 + 48 + 1);
+      const two = pick2d(layout, x0 + (deg / 360) * TURN_W, 120 + 1 * (16 + 6 * 48 + 10) + 16 + 48 + 1);
       expect(three).toMatchObject({ kind: "slot", ring: 2, floor: 2 });
       expect(two).toMatchObject({ kind: "slot", ring: 2, floor: 2 });
-      expect(three.kind === "slot" && two.kind === "slot" && three.slot).toBe(two.kind === "slot" && two.slot);
+      expect(three.kind === "slot" && two.kind === "slot" && three.a0).toBe(two.kind === "slot" && two.a0);
     }
   });
 
   it("finds the gallery, the surface and rock", () => {
-    expect(pickAt(hole, 9, -1 - CRUST, 0)).toMatchObject({ kind: "gallery", floor: 1 });
-    expect(pickAt(hole, 3, -1 - CRUST, 0)).toMatchObject({ kind: "rock" }); // open air in the shaft
-    expect(pickAt(hole, 30, 1, 0)).toMatchObject({ kind: "surface" });
+    expect(pickAt(layout, 9, -1 - CRUST, 0)).toMatchObject({ kind: "gallery", floor: 1 });
+    expect(pickAt(layout, 3, -1 - CRUST, 0)).toMatchObject({ kind: "rock" }); // open air in the shaft
+    expect(pickAt(layout, 30, 1, 0)).toMatchObject({ kind: "surface" });
     // The crust between the surface and floor 1 is rock.
-    expect(pickAt(hole, 15, -1, 0)).toMatchObject({ kind: "rock" });
+    expect(pickAt(layout, 15, -1, 0)).toMatchObject({ kind: "rock" });
     // Floors 1–3 are dug and floor 4 is being dug; below that is rock.
-    expect(pickAt(hole, 15, -FLOOR_H * 3.5 - CRUST, 0)).toMatchObject({ kind: "slot", floor: 4, digging: true });
-    expect(pickAt(hole, 15, -FLOOR_H * 4.5 - CRUST, 0)).toMatchObject({ kind: "rock" });
+    expect(pickAt(layout, 15, -FLOOR_H * 3.5 - CRUST, 0)).toMatchObject({ kind: "slot", floor: 4, digging: true });
+    expect(pickAt(layout, 15, -FLOOR_H * 4.5 - CRUST, 0)).toMatchObject({ kind: "rock" });
   });
 });

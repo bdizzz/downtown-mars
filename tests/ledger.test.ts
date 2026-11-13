@@ -3,12 +3,13 @@ import { flows } from "../src/bridge/charts";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { averageFlows, LABELS, record } from "../src/sim/ledger";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { river } from "../src/view/flows";
+import { ringAt } from "./spots";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
 
 function colony(): SimState {

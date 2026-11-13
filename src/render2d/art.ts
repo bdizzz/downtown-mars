@@ -20,7 +20,7 @@ export function tint(c: number, t: number): number {
 }
 
 /** Rooms that share another's glyph. */
-const ALIASES: Record<string, string> = { studio: "apartment", family_apartment: "flat", residence: "suite", empty_room_s: "empty_room", empty_room_m: "empty_room", empty_room_l: "empty_room", tiny_plaza: "small_plaza", plaza: "small_plaza", construction_yard: "construction_office", storeroom: "warehouse", depot: "warehouse" };
+const ALIASES: Record<string, string> = { studio: "apartment", family_apartment: "flat", residence: "suite", empty_room_s: "empty_room", tiny_plaza: "small_plaza", plaza: "small_plaza", construction_yard: "construction_office", storeroom: "warehouse", depot: "warehouse" };
 
 type Glyph = (g: GraphicsContext, cx: number, cy: number, s: number, color: number) => void;
 
