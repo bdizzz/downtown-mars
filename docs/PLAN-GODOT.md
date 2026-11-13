@@ -79,6 +79,7 @@ The viewer plays the whole game: every camera (Free view, Cutaway, first person)
 
 Still to do, roughly in order of value:
 
+- **Temperature** (#393, #397, #401, #402): the room panel already shows a floor's temperature and a heater's rows (shared `view/roomPanel.ts`, in °F), and the bridge's plan draws the temperature overlay (`render2d/planDraw.ts`). Still web-only: the overlay's button and legend, the thermostat slider and per-floor switch (`setThermostat`), the °C setting (`celsius` in `data/settings.json`, web-only for now), the Temperature chart, and the tutorial's overlay step (the bridge counts it met).
 - **The title and loading screens** (T-090): the web shows a loading screen with a real progress bar (`index.html`, `ui/boot.ts`), then the logotype (`public/hole.svg` as the O) over the hole's first floor drifting at dusk (`setShowcase` in `render3d/stage3d.ts`, `title-backdrop` in `ui/styles.css`); Godot opens straight to its menu.
 - **Overlays in 3D** (they're plan-only so far; the web tints cells in 3D too: `render3d/stage3d.ts`, around `overlayType`).
 - **The status line**: the web's bottom line saying what's under the pointer and what placing there would do (`ui/StatusBar.tsx`); Godot shows only key hints there.
