@@ -63,6 +63,7 @@ import { BuildConfirm } from "./BuildConfirm";
 import { useSim } from "./useSim";
 import { useSounds } from "./useSounds";
 import { bootStep } from "./boot";
+import { SlowCard } from "./SlowCard";
 import { UpdateBanner } from "./UpdateBanner";
 import { presetOf } from "../view/graphics";
 import { revealFor } from "./reveal";
@@ -910,6 +911,7 @@ export function App() {
       )}
       {helpOpen && <Help onClose={() => setHelpOpen(false)} />}
       <UpdateBanner saveFirst={titling ? null : () => saveTo("autosave")} />
+      <SlowCard graphics={settings.graphics} onGraphics={(graphics) => updateSettings({ graphics })} active={!menu && !welcome && settings.view === "3d"} />
     </div>
   );
 }

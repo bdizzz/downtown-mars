@@ -11,6 +11,26 @@ public static class ViewSettings
 {
     const string File = "user://settings.cfg";
 
+    /// <summary>
+    /// Where the Blender-made furniture models draw (#391), as the web's FurnitureDetail (view/graphics.ts) and in its order
+    /// (the numbers are the options in data/settings.json): never, in first person only, or in every view.
+    /// </summary>
+    public enum FurnitureDetail { Basic, FirstPerson, Everywhere }
+
+    /// <summary>Furniture detail: detailed everywhere by default.</summary>
+    public static FurnitureDetail Furniture { get; set; } = FurnitureDetail.Everywhere;
+
+    /// <summary>Does this choice draw the models in this view (walking or not)?</summary>
+    public static bool DrawsModels(bool walking) => Furniture == FurnitureDetail.Everywhere || (Furniture == FurnitureDetail.FirstPerson && walking);
+
+    /// <summary>One step lighter (everywhere, then on foot, then simple shapes), or null from the lightest.</summary>
+    public static FurnitureDetail? LighterFurniture() => Furniture switch
+    {
+        FurnitureDetail.Everywhere => FurnitureDetail.FirstPerson,
+        FurnitureDetail.FirstPerson => FurnitureDetail.Basic,
+        _ => null,
+    };
+
     public static Overview Camera { get; set; } = Overview.Iso;
     public static bool WallsDown { get; set; }
     public static bool RoomColors { get; set; } = true;
@@ -71,6 +91,8 @@ public static class ViewSettings
         LookSpeed = Mathf.Clamp((float)cfg.GetValue("controls", "look_speed", 1f), 0.25f, 3);
         Miniature = Mathf.Clamp((float)cfg.GetValue("graphics", "miniature", 0.4f), 0, 1);
         CutAngle = ClampCut((float)cfg.GetValue("view", "cut_angle", CutMax));
+        var furniture = (FurnitureDetail)(int)cfg.GetValue("graphics", "furniture", (int)FurnitureDetail.Everywhere);
+        Furniture = System.Enum.IsDefined(furniture) ? furniture : FurnitureDetail.Everywhere;
         PanelSections.Clear();
         if (cfg.HasSection("panel_sections"))
             foreach (var id in cfg.GetSectionKeys("panel_sections")) PanelSections[id] = (bool)cfg.GetValue("panel_sections", id, false);
@@ -97,6 +119,7 @@ public static class ViewSettings
         cfg.SetValue("game", "ui_scale", UiScale);
         cfg.SetValue("controls", "look_speed", LookSpeed);
         cfg.SetValue("graphics", "miniature", Miniature);
+        cfg.SetValue("graphics", "furniture", (int)Furniture);
         foreach (var (id, open) in PanelSections) cfg.SetValue("panel_sections", id, open);
         cfg.Save(File);
     }

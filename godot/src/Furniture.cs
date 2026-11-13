@@ -45,7 +45,7 @@ public class Furniture
     readonly HashSet<string> _growing = new(), _produce = new();
     /// <summary>Items made in Blender (#357), first person only (#360): public/models/fp.bin, read when first needed.</summary>
     Dictionary<string, FpSlot[]>? _fp;
-    bool _fpTried, _firstPerson;
+    bool _fpTried, _detailed;
     /// <summary>One material's worth of a first-person model: its colour, whether it glows, and its triangles (as view/models.ts).</summary>
     record FpSlot(string C, bool Glow, float[] V, float[] N, float[]? Shade, int[] I, int Tex, float[]? Uv);
     /// <summary>The models' fine textures (#361): grey tiles, one layer each, sampled by the shader where a slot names one.</summary>
@@ -132,16 +132,17 @@ public class Furniture
     }
 
     /// <summary>
-    /// In first person or not: items with a model swap their near parts for it. The models are read the first
-    /// time (DM_FX=nomodels leaves them out), and added to the furniture already built.
+    /// Draw the detailed models or not (#391: Live sets it from the furniture setting and the camera): items with a
+    /// model swap their near parts for it. The models are read the first time they're wanted (never under "simple
+    /// shapes"; DM_FX=nomodels leaves them out), and added to the furniture already built.
     /// </summary>
-    public bool FirstPerson
+    public bool Detailed
     {
-        get => _firstPerson;
+        get => _detailed;
         set
         {
-            if (value == _firstPerson) return;
-            _firstPerson = value;
+            if (value == _detailed) return;
+            _detailed = value;
             if (value && !_fpTried)
             {
                 _fpTried = true;
@@ -317,8 +318,8 @@ public class Furniture
     {
         if (_root == null || MeshFor(item, Lod.Fp) is not { } mesh) return;
         var fp = Batch(mesh, list, item + " fp", false, false);
-        fp.Visible = _firstPerson;
-        near.Visible = !_firstPerson;
+        fp.Visible = _detailed;
+        near.Visible = !_detailed;
         _root.AddChild(fp);
         _fpPairs.Add((fp, near));
     }

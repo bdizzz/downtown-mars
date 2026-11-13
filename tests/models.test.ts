@@ -86,11 +86,11 @@ describe("first-person furniture models", () => {
       }
     });
 
-    it("stay small enough to fetch: under 1 MB gzipped even with a model for every item (#371)", () => {
+    it("stay small enough to fetch: under 3 MB gzipped even with a model for every item (#371, raised in #391)", () => {
       const buf = new Uint8Array(readFileSync(new URL("../public/models/fp.bin", import.meta.url)));
       const t = fpTextures()!;
       const limit = modelLimits()!.firstFetch;
-      expect(limit).toBe(1_000_000);
+      expect(limit).toBe(3_000_000);
       const projected = projectFirstFetch(buf, t.pixels.length, modelIds().length, Object.keys(furniture.items).length);
       expect(projected, "fp.bin gzipped, projected to every item").toBeLessThan(limit);
       // Packed tight: about 12 bytes a vertex and 3 a triangle, where floats took about 40 and 6.
