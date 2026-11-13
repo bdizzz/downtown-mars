@@ -139,7 +139,7 @@ describe("windows", () => {
     const dorm = build(s, "bunk_dorm", ring(1, 1, 1, 2));
     const tool = { kind: "corridor" as const, finish: "rock", erase: false, windows: true };
     const tube = tubeAt(s.layout, 1, 2);
-    const pick = { kind: "slot" as const, floor: 1, ring: 1, slot: 2, locked: false, digging: false, angle: 0 };
+    const pick = { kind: "slot" as const, ...cellAt(1, 1, 2), locked: false, digging: false, angle: 0 };
     const info = edgeHoverFor(s.layout, s.resources, tool, pick, tube, false);
     expect(info.edge!.refusal).toBeNull();
     expect(info.edge!.windows!.edges.sort()).toEqual(shaftBorders(s.layout, roomOf(s, dorm)).sort());
@@ -198,7 +198,6 @@ describe("windows", () => {
   it("the hover ghost covers only the glazed room's half of the corridor", () => {
     const s = site();
     const room = roomOf(s, build(s, "bunk_dorm", ring(1, 1, 1, 2)));
-    const hole = s.layout.hole;
     // Its side walls: the room is past the left one, before the right one; the shaft wall is outside it.
     const left = radialEdge(1, 1, notchOf(1, 1));
     const right = radialEdge(1, 1, notchOf(1, 3));

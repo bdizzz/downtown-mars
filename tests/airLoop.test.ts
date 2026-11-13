@@ -9,6 +9,8 @@ import { roomDef } from "../src/sim/rooms";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { ringAt, cellAt } from "./spots";
+import { GRID } from "./spots";
+import { areaOf } from "../src/sim/space";
 
 // The air loop (PLAN-M16 steps 3, 4 and 6; T-028, T-029, T-031): the CO2 scrubber turns breath back
 // into oxygen, the electrolyzer makes new air from water only as the hole grows, and gas tanks are
@@ -44,10 +46,10 @@ describe("the air loop", () => {
     // Scrubbing turns what's breathed back into oxygen: the electrolyzer stands by.
     expect(electrolyzerWater(s)).toBeLessThan(0.5);
     expect(airPct(s, config, "o2")).toBeGreaterThan(config.air.o2Target - 0.3);
-    // Dig out four cells: 1,600 m³ of new air to make, at 21%.
+    // Dig out four pieces of ring 3: about 1,950 m³ of new air to make, at 21%.
     openCells(s.layout, [0, 1, 2, 3].map((slot) => (cellAt(1, 3, slot))));
     days(s, 2);
-    const want = 1600 * config.air.unitsPerM3 * (config.air.o2Target / 100);
+    const want = areaOf(GRID, [0, 1, 2, 3].map((slot) => cellAt(1, 3, slot))) * config.geometry.floorHeightM * config.air.unitsPerM3 * (config.air.o2Target / 100);
     const el = roomDef("electrolyzer");
     const split = s.ledger.days.slice(-2).reduce((a, d) => a + (d.water?.out.Electrolyzer ?? 0), 0);
     const newSpace = s.ledger.days.slice(-2).reduce((a, d) => a + (d.water?.then?.Electrolyzer?.["Air for new space"] ?? 0), 0);

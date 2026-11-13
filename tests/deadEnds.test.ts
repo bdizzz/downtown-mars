@@ -77,7 +77,7 @@ describe("a corridor dead-ending on a room's wall", () => {
     expect(doors).toHaveLength(1);
     const door = doors[0]!;
     expect(door.side).toBe("inner");
-    // Off the cells' boundary (the 3D view cuts each cell's wall on its own), but inside the corridor's mouth.
+    // Off the end of the wall's piece (the 3D view cuts each piece of a wall on its own), but inside the corridor's mouth.
     const off = Math.abs(door.angle - TAU / 3) * circle2(s);
     expect(off).toBeGreaterThanOrEqual(DOOR.width / 2 + corridors.door.frameM - 1e-6);
     expect(off + DOOR.width / 2).toBeLessThanOrEqual(corridors.widthM / 2 + 1e-6);
@@ -112,11 +112,10 @@ describe("a corridor dead-ending on a room's wall", () => {
 
   it("works on a side wall too: a curved corridor running into a deep room's side", () => {
     const s = site();
-    const h = s.layout.hole;
     // Rings 2–3, from ring 2 slot 4 (turn 4/9). A corridor round circle 2 from the spoke at 1/3 ends on its side.
     const depot = build(s, "depot", ring(1, 2, 4, 2, 2));
     spokeTo(s, 3);
-    const run = [arcAt(h, 1, 2, 0.36)!.id, arcAt(h, 1, 2, 0.42)!.id];
+    const run = [arcAt(s.layout, 1, 2, 0.36)!.id, arcAt(s.layout, 1, 2, 0.42)!.id];
     draw(s, run);
     const r = room(s, depot);
     expect(deadEnds(s.layout, r.cells).map((d) => d.corridor)).toEqual([run[1]]);

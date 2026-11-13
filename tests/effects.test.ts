@@ -25,7 +25,7 @@ describe("effect field", () => {
     const l = layout();
     placeRoom(l, "life_support", ring(1, 1, 0, 4)); // slots 0–3
     const f = computeEffects(l);
-    expect(effectAt(f, "noise", cell(1, 1, 2))).toBeCloseTo(-2);
+    expect(effectAt(f, "noise", cell(1, 1, 0))).toBeCloseTo(-2); // the room itself, one piece from slot 0
     expect(effectAt(f, "noise", cell(1, 1, 4))).toBeCloseTo(-4 / 3);
     expect(effectAt(f, "noise", cell(1, 1, 5))).toBeCloseTo(-2 / 3);
     expect(effectAt(f, "noise", cell(1, 1, 6))).toBe(0);
@@ -89,7 +89,7 @@ describe("effect field", () => {
     expect(effectAt(f, "comfort", cell(1, 1, 5))).toBe(0);
   });
 
-  it("averages over a room's cells", () => {
+  it("a wide room feels what reaches its middle: the average over its floor", () => {
     const l = layout();
     placeRoom(l, "life_support", ring(1, 1, 0, 4));
     const dorm = placeRoom(l, "bunk_dorm", ring(1, 1, 4, 2));

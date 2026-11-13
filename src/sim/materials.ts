@@ -4,7 +4,7 @@ import type { SimConfig } from "./config";
 import { shortfall } from "./corridors";
 import { isActive } from "./economy";
 import { edgeById, edgeLengthM, isGalleryEdge } from "./edges";
-import { roomUnits, type Layout, type Location, type RoomInstance } from "./placement";
+import { roomUnits, type Layout, type Location, type RoomInstance, type Spot } from "./placement";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
@@ -80,7 +80,7 @@ export function canLine(room: RoomInstance): boolean {
 }
 
 /** Can a room of this type, going here, have a lining? (canLine, before it's placed.) */
-export function canLineAt(type: string, at: Location): boolean {
+export function canLineAt(type: string, at: Location | Spot): boolean {
   return at.kind === "ring" && !MATERIALS.exempt.includes(type) && !roomDef(type).excavationOnly;
 }
 
@@ -168,7 +168,7 @@ export function liningCost(step: WallStep): Record<string, number> {
  * is added: it goes in with the room. Nothing for bare rock, or for a room
  * that can't be lined.
  */
-export function buildLiningCost(type: string, at: Location, cells: number, step: WallStep | null | undefined): Record<string, number> {
+export function buildLiningCost(type: string, at: Location | Spot, cells: number, step: WallStep | null | undefined): Record<string, number> {
   if (!step || step === MATERIALS.walls[0] || !canLineAt(type, at)) return {};
   return times(liningCost(step), Math.max(1, cells));
 }

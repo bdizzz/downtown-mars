@@ -175,8 +175,10 @@ interface Space {
   rooms: number;
   /** pieces[floor - 1][ring - 1], sorted by a0. */
   pieces: Piece[][][];
-  /** Where each circle is cut, by `${floor}|${circle}`: sorted notches in the turn. */
+  /** Where each circle is cut, by `${floor}|${circle}`: sorted notches in the turn. Redone when corridors come or go. */
   cuts: Map<string, number[]>;
+  /** How many corridors there were when the cuts were worked out. */
+  corridors: number;
 }
 
 const cache = new WeakMap<Layout, Space>();
@@ -335,9 +337,7 @@ export function spaceOf(layout: Layout): Space {
   let s = cache.get(layout);
   if (s && s.version === layout.version && s.rooms === layout.rooms.length) return s;
   const pieces = buildPieces(layout);
-  const cuts = buildCuts(layout, pieces);
-  resplit(layout, cuts);
-  s = { version: layout.version, rooms: layout.rooms.length, pieces, cuts };
+  s = { version: layout.version, rooms: layout.rooms.length, pieces, cuts: new Map(), corridors: -1 };
   cache.set(layout, s);
   return s;
 }
@@ -377,7 +377,18 @@ export function piecesIn(layout: Layout, c: Cell): Piece[] {
 
 /** Where circle `circle` of a floor is cut: sorted notches in the turn. */
 export function circleCuts(layout: Layout, floor: number, circle: number): number[] {
-  return spaceOf(layout).cuts.get(`${floor}|${circle}`) ?? [0];
+  const s = spaceOf(layout);
+  // Corridors cut the circles they meet: the cuts are redone whenever one has come or gone (even set by hand).
+  let n = 0;
+  for (const _ in layout.corridors) n++;
+  if (s.corridors !== n) {
+    s.cuts = buildCuts(layout, s.pieces);
+    resplit(layout, s.cuts);
+    n = 0;
+    for (const _ in layout.corridors) n++;
+    s.corridors = n;
+  }
+  return s.cuts.get(`${floor}|${circle}`) ?? [0];
 }
 
 /** Excavated pieces with no room in them, on dug floors. */

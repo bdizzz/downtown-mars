@@ -41,6 +41,6 @@ describe("apartments", () => {
     expect(holeGates(s)).toContain("basicHomes");
     expect(holeGates(s)).not.toContain("standardHomes");
     expect(applyCommand(s, { type: "build", room: "studio", at }).ok).toBe(true);
-    expect(applyCommand(s, { type: "build", room: "suite", at: { ...at, slot: 5 } }).ok).toBe(false);
+    expect(applyCommand(s, { type: "build", room: "suite", at: ringAt(1, 1, 5) }).ok).toBe(false);
   });
 });

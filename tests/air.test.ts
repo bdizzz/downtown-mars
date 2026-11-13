@@ -7,11 +7,14 @@ import { createInitialState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { createWorld } from "../src/sim/world";
 import { cellAt } from "./spots";
+import { GRID } from "./spots";
+import { areaOf } from "../src/sim/space";
 
 // The air as a mix over the living volume (PLAN-M16 step 1, T-026).
 
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
-const cell = 10 * 10 * 4;
+// One piece of ring 3's grid (about 122 m²), a floor high: the living volume goes by floor area.
+const cell = areaOf(GRID, [cellAt(1, 3, 0)]) * config.geometry.floorHeightM;
 
 describe("living volume", () => {
   it("is the dug cells and the built gallery: about 4,750 m³ for a new hole", () => {
@@ -20,7 +23,7 @@ describe("living volume", () => {
     expect(airVolume(s, config)).toBeLessThan(5000);
   });
 
-  it("grows by a cell's 400 m³ when one is dug out", () => {
+  it("grows by its floor area times the floor's height when rock is dug out", () => {
     const s = createInitialState(config);
     const before = airVolume(s, config);
     openCells(s.layout, [cellAt(1, 3, 0)]);

@@ -7,6 +7,8 @@ import { isFurnished, itemDef, itemsFor } from "../src/view/furniture";
 import { roomDef, roomDefs } from "../src/sim/rooms";
 import { galleryEdges } from "../src/sim/edges";
 import { ringAt } from "./spots";
+import { depthsFor, slotSpot, spanRange } from "../src/sim/placement";
+import { templateKey } from "../src/view/furnish";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
@@ -106,10 +108,10 @@ describe("fitting furniture into a room", () => {
   it("furnishes only built rooms that have a template", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     const r = room(l, "bunk_dorm", ring(1, 1, 0, 2));
-    expect(furnish(l, r, { "bunk_dorm:2x1": DORM }).length).toBeGreaterThan(0);
+    expect(furnish(l, r, { "bunk_dorm:M": DORM }).length).toBeGreaterThan(0);
     expect(furnish(l, r, {})).toEqual([]);
     r.building = true;
-    expect(furnish(l, r, { "bunk_dorm:2x1": DORM })).toEqual([]);
+    expect(furnish(l, r, { "bunk_dorm:M": DORM })).toEqual([]);
   });
 });
 
@@ -152,14 +154,12 @@ describe("turned items", () => {
 });
 
 describe("the templates", () => {
-  const shapes = config.shapes as Record<string, [number, number][]>;
-
-  it("cover every furnished room type in every shape, with that room's own items", () => {
+  it("cover every furnished room type at every depth it can be, with that room's own items", () => {
     for (const def of roomDefs) {
       if (!isFurnished(def.id)) continue;
-      for (const [w, d] of shapes[def.size] ?? []) {
-        const t = templateFor(def.id, w, d);
-        expect(t, `${def.id}:${w}x${d}`).not.toBeNull();
+      for (const depth of depthsFor(def.id)) {
+        const t = templateFor(def.id, depth);
+        expect(t, templateKey(def.id, depth)).not.toBeNull();
         for (const p of t!) expect(itemsFor(def.id), `${def.id}: ${p.item}`).toContain(p.item);
       }
     }
@@ -169,29 +169,61 @@ describe("the templates", () => {
     }
   });
 
-  it("furnish a room in every ring it can go in, and every placement fits somewhere", () => {
+  it("furnish a room at its target area in every ring it can go in, and every placement fits somewhere", () => {
+    const never: string[] = [];
+    const slotsWide: Record<string, number> = { S: 1, M: 2, L: 4, L2: 2 };
     for (const [key, t] of Object.entries(layouts.templates)) {
+      // "galley:S", "farm:L2", "stairwell:S:top": the type, its size and (past one) its depth in rings.
       const [type, shape] = key.split(":") as [string, string];
-      const [w, d] = shape.split("x").map(Number) as [number, number];
+      const d = Number(shape.slice(1)) || 1;
       const used = new Set<number>();
-      for (let r = 1; r + d - 1 <= 6; r++) {
+      /** A room of this type in ring r, placed by `spot`: how many of the template's placements fit, each noted. */
+      const fitIn = (r: number, spot: (layout: Layout) => Spot): number | null => {
         // Four floors dug: a stairwell or elevator on floor 2 reaches floor 3, and a second
         // piece on floor 3 extends it to floor 4, so it has a top, a middle and a bottom.
         const layout = createLayout(createHole(10, 4, 6, config.geometry));
-        const placed = placeRoom(layout, type, ringAt(2, r, 0, w, d));
+        const at = spot(layout);
+        const placed = placeRoom(layout, type, at);
         expect(placed.ok, `${key} in ring ${r}`).toBe(true);
-        if (roomDef(type).stacks) placeRoom(layout, type, ringAt(3, r, 0, w, d));
+        if (roomDef(type).stacks) placeRoom(layout, type, { ...at, floor: 3 } as Spot);
         const room = layout.rooms.find((x) => x.id === placed.id)!;
         // The floors this template furnishes (a stack's top or bottom floor may have its own).
-        const floors = furnishedFloors(room).filter(({ role }) => templateFor(type, w, d, layouts.templates, role) === t);
+        const floors = furnishedFloors(room).filter(({ role }) => templateFor(type, d, layouts.templates, role) === t);
         expect(floors.length, key).toBeGreaterThan(0);
+        let least = Infinity;
         for (const { floor } of floors) {
           const items = fit(frameOf(layout, room, floor)!, t);
-          expect(items.length, `${key} in ring ${r}`).toBeGreaterThanOrEqual(3);
+          least = Math.min(least, items.length);
           items.forEach((i) => used.add(i.placement));
         }
+        return least;
+      };
+      for (let r = 1; r + d - 1 <= 6; r++) {
+        // At its target area: furnished, on every ring.
+        expect(fitIn(r, () => ({ kind: "ring", floor: 2, ring: r, start: 0, depth: d })), `${key} in ring ${r}`).toBeGreaterThanOrEqual(3);
+        // At the top of its leeway, and as an old slot-shaped room (a save from before rooms went by area,
+        // up to 175 m² for an S): the template's extras for a roomier room go in there.
+        fitIn(r, (l) => ({ kind: "ring", floor: 2, ring: r, start: 0, depth: d, span: spanRange(l.hole, type, r, d).max }));
+        fitIn(r, (l) => slotSpot(l.hole, 2, r, 0, slotsWide[shape] ?? 1, d));
       }
-      t.forEach((p, i) => expect(used.has(i), `${key} #${i} ${p.item} never fits`).toBe(true));
+      t.forEach((p, i) => !used.has(i) && never.push(`${key} #${i} ${p.item}`));
+    }
+    expect(never).toEqual([]);
+  });
+
+  it("the same room keeps most of its furniture from ring 1 to ring 3, and across its leeway", () => {
+    // What rooms by area are for (PLAN-M17): a galley on ring 2 is furnished much as one on ring 1.
+    for (const type of ["galley", "bunk_dorm", "clinic", "canteen"]) {
+      const t = templateFor(type, 1)!;
+      const count = (ring: number, scale: number) => {
+        const layout = createLayout(createHole(10, 1, 3, config.geometry));
+        const range = spanRange(layout.hole, type, ring, 1);
+        const span = Math.round(range.target * scale);
+        placeRoom(layout, type, { kind: "ring", floor: 1, ring, start: 0, span, depth: 1 });
+        return fit(frameOf(layout, layout.rooms[0]!)!, t).length;
+      };
+      const base = count(1, 1);
+      for (const ring of [1, 2, 3]) for (const scale of [0.86, 1, 1.14]) expect(count(ring, scale), `${type} ring ${ring} ×${scale}`).toBeGreaterThanOrEqual(Math.ceil(base * 0.7));
     }
   });
 });

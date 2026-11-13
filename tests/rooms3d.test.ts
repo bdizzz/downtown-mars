@@ -43,13 +43,13 @@ describe("3D room geometry", () => {
     expect(triangles(geo)).toBe(2 * CURVED + 2 * SIDE + flat(...slotAngles(0, layout.hole.ringSlots[0]!)));
   });
 
-  it("a wide room has no walls between its own slots", () => {
+  it("a wide room is one piece: no walls inside it", () => {
     const r = placeRoom(layout, "life_support", ring(2, 1, 3, 4));
     const room = layout.rooms.find((x) => x.id === r.id)!;
     const geo = roomGeometry(layout, room.cells);
     expect(upright(geo)).toBe(4 * 2 * CURVED + 2 * SIDE);
     const n = layout.hole.ringSlots[0]!;
-    expect(triangles(geo)).toBe(4 * 2 * CURVED + 2 * SIDE + [3, 4, 5, 6].reduce((sum, slot) => sum + flat(...slotAngles(slot, n)), 0));
+    expect(triangles(geo)).toBe(4 * 2 * CURVED + 2 * SIDE + flat(slotAngles(3, n)[0], slotAngles(6, n)[1])); // one floor, from end to end
   });
 
   it("floors keep their arcs on the hole-wide grid, so rooms in neighbouring rings meet without a seam (T-019)", () => {
@@ -361,7 +361,7 @@ describe("doors and windows", () => {
     const room = l.rooms.find((x) => x.id === r.id)!;
     l.corridors["R1.2.160"] = "rock"; // a spoke through ring 2, ending on its inner wall where its cells 1 and 2 meet
     const [door] = doorways(l, room);
-    expect(door).toMatchObject({ side: "inner", cell: { ring: 3, slot: 1 } });
+    expect(door).toMatchObject({ side: "inner", cell: { ring: 3, a0: 0 } });
     const base = floorSpan(1)[0];
     const solid = roomGeometry(l, room.cells);
     const cut = roomGeometry(l, room.cells, undefined, true, false, openingsOf(l, room));

@@ -16,7 +16,6 @@ const data = raw as unknown as { widthM: number; door: { widthM: number; cornerC
 const HALL = data.widthM / 2;
 const HALF = data.door.widthM / 2;
 const DEPTH = config.geometry.roomDepthM;
-const N = config.geometry.notchesPerTurn;
 
 export interface DeadEnd {
   /** The corridor that ends against the wall. */
@@ -164,21 +163,21 @@ function onCurvedWall(layout: Layout, own: Set<string>, v: End, walls: Edge[], c
   const r = circleR(layout, v.circle);
   const metres = (t: number) => turnDiff(t, v.turn) * 2 * Math.PI * r;
   const cornerPositions = corners.filter((c) => c.circle === v.circle).map((c) => metres(c.turn));
-  let best: { x: number; cell: Cell } | null = null;
+  let best: { x: number; cell: Cell; wall: Edge } | null = null;
   for (const w of walls) {
+    if (w.kind !== "arc") continue;
     const cell = ownCell(layout, own, w);
     if (!cell) continue;
-    // The cell's span either side of the vertex (which may be one of its own ends).
-    const s0 = (cell.a0 / N) % 1;
+    // The wall's own piece either side of the vertex (which is one of its ends): the 3D view cuts each piece of a wall on its own.
+    const s0 = w.a0 % 1;
     const lo = sameTurn(s0, v.turn) ? 0 : metres(s0);
-    const hi = sameTurn((cell.a1 / N) % 1, v.turn) ? 0 : metres((cell.a1 / N) % 1);
+    const hi = sameTurn(w.a1 % 1, v.turn) ? 0 : metres(w.a1 % 1);
     const x = place(lo, hi, cornerPositions);
-    if (x !== null && (!best || Math.abs(x) < Math.abs(best.x))) best = { x, cell };
+    if (x !== null && (!best || Math.abs(x) < Math.abs(best.x))) best = { x, cell, wall: w };
   }
   if (!best) return null;
   const turn = (((v.turn + best.x / (2 * Math.PI * r)) % 1) + 1) % 1;
-  const wall = cellEdges(layout, best.cell).find((e) => e.kind === "arc" && e.circle === v.circle && (((turn - e.a0) % 1) + 1) % 1 < e.a1 - e.a0 - 1e-12);
-  return wall ? { wall, cell: best.cell, at: turn } : null;
+  return { wall: best.wall, cell: best.cell, at: turn };
 }
 
 /** A curved corridor ending on a side wall: the door goes in that wall, near the corridor's end. */

@@ -43,23 +43,26 @@ function emptyField(layout: Layout): EffectField {
   return field;
 }
 
-/** The middle of a cell on the floor plan, metres from the shaft's axis. */
-function middle(layout: Layout, c: Cell): [number, number] {
-  const r = layout.hole.shaftRadiusM + (c.ring - 0.5) * config.geometry.roomDepthM;
-  const a = ((c.a0 + c.a1) / 2 / N) * 2 * Math.PI;
-  return [r * Math.cos(a), r * Math.sin(a)];
+/** A piece's width in steps: a step is one piece of its ring's grid (about 10 m), as a slot was. */
+function widthSteps(layout: Layout, c: Cell): number {
+  return ((c.a1 - c.a0) * (layout.hole.ringSlots[c.ring - 1] ?? 1)) / N;
 }
 
 /**
- * How far it is from one piece to a neighbour, in steps of 10 m: between their
- * middles along the ring (never more than a step: a wide room's far side is
- * still its next-door neighbour), one step across rings or between floors.
+ * How far it is from one piece to a neighbour, in steps: along the ring, between their middles
+ * (half of each), so a wide room's middle is further from its neighbour than a small one's, and what
+ * reaches it is what it would feel averaged over its floor. The source room's own pieces count one
+ * step wide whatever their size: an effect starts at the room's walls. Across rings or between
+ * floors is one step.
  */
-function stepCost(layout: Layout, from: Cell, to: Cell): number {
+function stepCost(layout: Layout, from: Cell, to: Cell, fromSource: boolean): number {
   if (from.floor !== to.floor || from.ring !== to.ring) return 1;
-  const [x0, y0] = middle(layout, from);
-  const [x1, y1] = middle(layout, to);
-  return Math.min(1, Math.hypot(x1 - x0, y1 - y0) / STEP_M);
+  return ((fromSource ? 1 : widthSteps(layout, from)) + widthSteps(layout, to)) / 2;
+}
+
+/** Fading with distance, for distances that needn't be whole steps: full strength at the source, nothing from a step past the radius. */
+function fade(strength: number, radius: number, distance: number): number {
+  return distance >= radius + 1 ? 0 : strength * (1 - distance / (radius + 1));
 }
 
 /** Pieces one step away: along the ring, across rings by angle, and straight up and down. */
@@ -93,8 +96,8 @@ function blocks(layout: Layout, from: Cell, to: Cell, type: EffectType): boolean
 
 
 /**
- * One effect by nearness, out to `reach` steps of 10 m: each piece it gets to, and how much. It
- * spreads from the room's own pieces through neighbouring ones, the cheapest way to each.
+ * One effect by nearness, out to `reach` steps: each piece it gets to, and how much. It spreads
+ * from the room's own pieces through neighbouring ones, the cheapest way to each.
  */
 function nearness(layout: Layout, cells: Cell[], eff: EffectDef, reach: number): Map<string, [Cell, number]> {
   const out = new Map<string, [Cell, number]>();
@@ -114,8 +117,8 @@ function nearness(layout: Layout, cells: Cell[], eff: EffectDef, reach: number):
       const d = dist.get(cellKey(c))!;
       for (const nb of stepNeighbors(layout, c)) {
         const k = cellKey(nb);
-        const nd = d + stepCost(layout, c, nb);
-        if (nd > reach + 1e-9 || nd >= (dist.get(k) ?? Infinity) - 1e-9) continue;
+        const nd = d + stepCost(layout, c, nb, d === 0);
+        if (nd >= reach + 1 - 1e-9 || nd >= (dist.get(k) ?? Infinity) - 1e-9) continue;
         // A corridor between them soaks it up; it may still get there another way.
         if (blocks(layout, c, nb, eff.type)) continue;
         dist.set(k, nd);
@@ -126,7 +129,7 @@ function nearness(layout: Layout, cells: Cell[], eff: EffectDef, reach: number):
   }
   const cellOf = new Map<string, Cell>();
   for (const f of spaceOf(layout).pieces) for (const ring of f) for (const p of ring) if (dist.has(cellKey(p))) cellOf.set(cellKey(p), p);
-  for (const [k, d] of dist) out.set(k, [cellOf.get(k)!, falloff(eff.strength, eff.radius, d)]);
+  for (const [k, d] of dist) out.set(k, [cellOf.get(k)!, d > reach + 1e-9 && reach < eff.radius ? 0 : fade(eff.strength, eff.radius, d)]);
   return out;
 }
 

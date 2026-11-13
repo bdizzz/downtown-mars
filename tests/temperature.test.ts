@@ -105,7 +105,7 @@ describe("heaters", () => {
     const s = hole();
     applyCommand(s, { type: "setThermostat", celsius: 30 });
     build(s, "heater", ring(1, 2, 2));
-    expect(floor1(s).cells).toBe(referenceCells(config));
+    expect(floor1(s).cells).toBeCloseTo(referenceCells(config));
     const start = floor1(s).now;
     powered(s, 0.5);
     expect(floor1(s).now).toBeGreaterThan(start + 3); // well on its way

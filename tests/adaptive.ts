@@ -13,14 +13,15 @@ import { freeSpace, spaceOf, storageRooms } from "../src/sim/storage";
 import { countStage, cryptSpace } from "../src/sim/people";
 import type { SimState } from "../src/sim/state";
 import { floorLinked } from "../src/sim/corridors";
-import { footprint, type RoomInstance } from "../src/sim/placement";
+import { spanRange, type RoomInstance } from "../src/sim/placement";
+import { piecesOn } from "../src/sim/space";
 import { missingCost } from "../src/sim/costs";
 import { effectOnRoom } from "../src/sim/effects";
 import { crowdedAir } from "../src/sim/happiness";
 import { eventDef } from "../src/sim/events";
 import { outsideEdges } from "../src/sim/edges";
 import { viewAcross, wallOf, type Across } from "../src/sim/windows";
-import { ringAt } from "./spots";
+import { notchOf, ringAt } from "./spots";
 
 // A scripted player that reacts: once a day it looks at what its hole is
 // short of and builds the room that fixes it, in the first free spot on the
@@ -28,8 +29,40 @@ import { ringAt } from "./spots";
 // for the stairs themselves, which follow the drill down). Used after the fixed opening plans, so
 // long playtests measure the game's systems rather than a stale build list.
 
-/** The ring-1 slot every scripted player keeps for its stairs: the last one. */
+/** The ring-1 slot of the grid every scripted player keeps for its stairs: the last one. */
 export const stairSlot = (hole: SimState) => hole.layout.hole.ringSlots[0]! - 1;
+
+const N = config.geometry.notchesPerTurn;
+/** The angles kept for the stairs on ring 1: the grid's last slot. */
+const stairRange = (hole: SimState) => ({ a0: notchOf(1, stairSlot(hole)), a1: N });
+
+/**
+ * Where a room of this type could start on a floor and ring, at its target area (PLAN-M17): wall to wall
+ * from the start of each stretch no room holds, as a player packing a ring would. Ring 1 keeps the stairs' spot.
+ */
+export function starts(hole: SimState, type: string, floor: number, ring: number, span = spanRange(hole.layout.hole, type, ring, 1).target): number[] {
+  const list = piecesOn(hole.layout, floor, ring);
+  const keep = stairRange(hole);
+  const taken = (p: { a0: number; a1: number; room: number }) => !!p.room || (ring === 1 && p.a0 >= keep.a0 && p.a1 <= keep.a1);
+  // The free stretches, each from where it starts (after something taken) for as long as it runs.
+  const runs: [number, number][] = [];
+  const first = list.findIndex(taken);
+  if (first < 0) runs.push([0, ring === 1 ? keep.a0 : N]);
+  else {
+    let run: [number, number] | null = null;
+    for (let k = 1; k <= list.length; k++) {
+      const p = list[(first + k) % list.length]!;
+      if (taken(p)) {
+        if (run) runs.push(run);
+        run = null;
+      } else if (run) run[1] += p.a1 - p.a0;
+      else run = [p.a0, p.a0 + p.a1 - p.a0];
+    }
+  }
+  const out: number[] = [];
+  for (const [a, b] of runs) for (let x = a; x + span <= b; x += span) out.push(x % N);
+  return out;
+}
 
 /**
  * Stairs down to the deepest dug floor: a stack in ring 1's last slot, one
@@ -39,7 +72,7 @@ export const stairSlot = (hole: SimState) => hole.layout.hole.ringSlots[0]! - 1;
 export function ensureStairs(hole: SimState): boolean {
   if (!wantsDeeper(hole)) return false;
   const slot = stairSlot(hole);
-  const stairs = hole.layout.rooms.find((r) => r.type === "stairwell" && r.at.kind === "ring" && r.at.ring === 1 && r.at.slot === slot);
+  const stairs = hole.layout.rooms.find((r) => r.type === "stairwell" && r.at.kind === "ring" && r.at.ring === 1 && r.at.start === notchOf(1, slot));
   const floors = stairs ? [...stairs.cells, ...(stairs.pendingCells ?? [])].map((c) => c.floor) : [];
   const bottom = floors.length ? Math.max(...floors) : 1;
   if (bottom >= hole.layout.hole.floors) return false;
@@ -50,12 +83,9 @@ export function ensureStairs(hole: SimState): boolean {
 function wantsDeeper(hole: SimState): boolean {
   const l = hole.layout;
   if (l.rooms.some((r) => r.at.kind === "ring" && r.cells.some((c) => !floorLinked(l, c.floor)))) return true;
-  const slot = stairSlot(hole);
-  const n = l.hole.ringSlots[0]!;
-  const free = (floor: number, s: number) => s !== slot && !l.grid[floor - 1]?.[0]?.[s];
+  // Room on ring 1 for a medium room, somewhere the stairs reach?
   for (let floor = 1; floor <= l.hole.floors; floor++) {
-    if (!floorLinked(l, floor)) continue;
-    for (let s = 0; s < n; s++) if (free(floor, s) && free(floor, (s + 1) % n)) return false;
+    if (floorLinked(l, floor) && starts(hole, "bunk_dorm", floor, 1).length) return false;
   }
   return true;
 }
@@ -67,12 +97,13 @@ function wantsDeeper(hole: SimState): boolean {
 export function quarry(hole: SimState): boolean {
   const l = hole.layout;
   if (hole.construction.queue.some((j) => roomDef(l.rooms.find((r) => r.id === j.roomId)?.type ?? "entrance").excavationOnly)) return false;
-  const [w, d] = config.shapes.M![0]!;
   for (let floor = 1; floor <= l.hole.floors; floor++) {
     if (!floorLinked(l, floor)) continue;
     for (let ring = l.hole.unlockedRings; ring >= 2; ring--) {
-      for (let slot = 0; slot < l.hole.ringSlots[ring - 1]!; slot += 2) {
-        const r = applyCommand(hole, { type: "build", room: "empty_room_m", at: ringAt(floor, ring, slot, w, d) });
+      // Empty space is a fill room: twice its 100 m² at a go.
+      const span = 2 * spanRange(l.hole, "empty_room_s", ring, 1).target;
+      for (const start of starts(hole, "empty_room_s", floor, ring, span)) {
+        const r = applyCommand(hole, { type: "build", room: "empty_room_s", at: { kind: "ring", floor, ring, start, span } });
         if (r.ok) return true;
       }
     }
@@ -89,15 +120,12 @@ export function placeAnywhere(hole: SimState, room: string, crop?: string): bool
     }
     return false;
   }
-  const [w, d] = config.shapes[def.size as keyof typeof config.shapes]![0]!;
   // Ring 1 of the shallowest floor with room; failing that, ring 2 behind it, with a corridor carved to it.
   for (const ring of [1, 2]) {
-    const slots = hole.layout.hole.ringSlots[ring - 1]!;
     for (let floor = 1; floor <= hole.layout.hole.floors; floor++) {
       if (!floorLinked(hole.layout, floor)) continue; // no way down yet
-      for (let slot = 0; slot < slots; slot++) {
-        if (footprint(hole.layout.hole, floor, ring, slot, w, d).some((c) => c.ring === 1 && c.slot === stairSlot(hole))) continue;
-        const r = applyCommand(hole, { type: "build", room, at: ringAt(floor, ring, slot, w, d) });
+      for (const start of starts(hole, room, floor, ring)) {
+        const r = applyCommand(hole, { type: "build", room, at: { kind: "ring", floor, ring, start } });
         if (r.ok) {
           if (crop) applyCommand(hole, { type: "setCrop", roomId: r.roomId!, crop });
           if (ring > 1) applyCommand(hole, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
@@ -204,19 +232,17 @@ function shortHome(hole: SimState, need: Need): RoomInstance | undefined {
  */
 function placeNear(hole: SimState, type: string, home: RoomInstance): boolean {
   if (home.at.kind !== "ring") return false;
-  const [w, d] = config.shapes[roomDef(type).size as keyof typeof config.shapes]![0]!;
-  const angle = (home.at.slot + 0.5) / hole.layout.hole.ringSlots[home.at.ring - 1]!;
-  const byAngle = (ring: number) => {
-    const n = hole.layout.hole.ringSlots[ring - 1]!;
-    const gap = (s: number) => Math.min(Math.abs((s + 0.5) / n - angle), 1 - Math.abs((s + 0.5) / n - angle));
-    return [...Array(n).keys()].sort((a, b) => gap(a) - gap(b));
+  const angle = home.at.start + home.at.span / 2;
+  const byAngle = (floor: number, ring: number) => {
+    const half = spanRange(hole.layout.hole, type, ring, 1).target / 2;
+    const gap = (s: number) => Math.min(Math.abs(s + half - angle) % N, N - (Math.abs(s + half - angle) % N));
+    return starts(hole, type, floor, ring).sort((a, b) => gap(a) - gap(b) || a - b);
   };
   const floors = [home.at.floor, home.at.floor - 1, home.at.floor + 1].filter((f) => f >= 1 && floorLinked(hole.layout, f));
   for (const ring of [1, 2]) {
     for (const floor of floors) {
-      for (const slot of byAngle(ring)) {
-        if (footprint(hole.layout.hole, floor, ring, slot, w, d).some((c) => c.ring === 1 && c.slot === stairSlot(hole))) continue;
-        const r = applyCommand(hole, { type: "build", room: type, at: ringAt(floor, ring, slot, w, d) });
+      for (const start of byAngle(floor, ring)) {
+        const r = applyCommand(hole, { type: "build", room: type, at: { kind: "ring", floor, ring, start } });
         if (r.ok) {
           if (ring > 1) applyCommand(hole, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
           return true;
@@ -300,13 +326,12 @@ const FREE_SHARE = 0.35;
 
 /** A warehouse out of the way (ring 3, then ring 2, of any dug floor), with a corridor carved to it. */
 function placeStorage(hole: SimState): boolean {
-  const [w, d] = config.shapes.M![0]!;
   for (const ring of [3, 2]) {
     if (ring > hole.layout.hole.unlockedRings) continue;
     for (let floor = 1; floor <= hole.layout.hole.floors; floor++) {
       if (!floorLinked(hole.layout, floor)) continue;
-      for (let slot = 0; slot < hole.layout.hole.ringSlots[ring - 1]!; slot++) {
-        const r = applyCommand(hole, { type: "build", room: "warehouse", at: ringAt(floor, ring, slot, w, d) });
+      for (const start of starts(hole, "warehouse", floor, ring)) {
+        const r = applyCommand(hole, { type: "build", room: "warehouse", at: { kind: "ring", floor, ring, start } });
         if (r.ok) {
           applyCommand(hole, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
           return true;

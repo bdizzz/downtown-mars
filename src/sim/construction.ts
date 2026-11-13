@@ -8,7 +8,7 @@ import { isActive } from "./economy";
 import { postMessage } from "./messages";
 import { areaScale, type Cell, type Layout, type RoomInstance } from "./placement";
 import { openCells, rockCells, yieldRock } from "./excavation";
-import { areaOf, spaceOf } from "./space";
+import { areaOf, circleCuts } from "./space";
 import { record } from "./ledger";
 import { flooringDef, floorWords, refitVerb, refitWords, wallStep, type Finish, type FloorPlan, type Material, type RefitPlan } from "./materials";
 import { resourceDef } from "./resources";
@@ -175,7 +175,7 @@ export function queueExtension(state: SimState, room: RoomInstance, cells: Cell[
  */
 export function followSplits(state: SimState): void {
   // Make sure the layout's pieces are up to date, so anything due to split has.
-  spaceOf(state.layout);
+  circleCuts(state.layout, 1, 0);
   const splits = state.layout.corridorSplits;
   if (!splits) return;
   const expand = (id: string): string[] => (splits[id] ? splits[id]!.flatMap(expand) : [id]);

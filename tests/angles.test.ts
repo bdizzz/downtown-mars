@@ -1,60 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
-import { ringRadii, ringSize, slotNotch, slotsToAngles, spanArea, spanForArea, wrapNotch } from "../src/sim/geometry";
-import type { Cell, Layout, RoomInstance } from "../src/sim/placement";
+import { ringRadii, slotNotch, slotsToAngles, spanArea, spanForArea } from "../src/sim/geometry";
 import { deserialize, serialize } from "../src/sim/save";
 import { createWorld } from "../src/sim/world";
-import { run } from "./bot";
-import { ringAt } from "./spots";
+import { floorEdges } from "../src/sim/edges";
+import { isOpen, piecesOn } from "../src/sim/space";
+import { targetArea } from "../src/sim/placement";
 
-// F-004 step 1 (T-039): every ring room has an angle range in notches alongside its slots.
+// F-004 (PLAN-M17): angles in whole notches; rooms and old saves by angle.
 
 const geo = config.geometry;
 const N = geo.notchesPerTurn;
-
-/** The cells a room's angles cover: on each ring it spans, the slots whose centre falls in its range. */
-function cellsFromAngles(layout: Layout, room: RoomInstance, floor: number): string[] {
-  const at = room.at;
-  if (at.kind !== "ring") return [];
-  const out: string[] = [];
-  for (let ring = at.ring; ring < at.ring + at.depth!; ring++) {
-    const m = ringSize(layout.hole, ring);
-    for (let k = 0; k < m; k++) {
-      const centre = ((k + 0.5) * N) / m;
-      if (wrapNotch(centre - at.start!, N) < at.span!) out.push(`${floor}:${ring}:${k}`);
-    }
-  }
-  return out;
-}
-
-function expectAnglesMatchSlots(layout: Layout): number {
-  let n = 0;
-  for (const room of layout.rooms) {
-    if (room.at.kind !== "ring") continue;
-    expect(room.at.start, `${room.type} #${room.id}`).toBeTypeOf("number");
-    expect(room.at.depth).toBe(room.at.d);
-    const floors = [...new Set(room.cells.map((c) => c.floor))];
-    for (const f of floors) {
-      const own = room.cells.filter((c: Cell) => c.floor === f).map((c) => `${c.floor}:${c.ring}:${c.a0}`);
-      expect(cellsFromAngles(layout, room, f).sort(), `${room.type} #${room.id} on floor ${f}`).toEqual(own.sort());
-    }
-    n++;
-  }
-  return n;
-}
-
-/** A save as v23 wrote it: no angles on any room. */
-function asV23(json: string): string {
-  const file = JSON.parse(json);
-  file.version = 23;
-  for (const h of file.state.holes) for (const r of h.layout.rooms) {
-    delete r.at.start;
-    delete r.at.span;
-    delete r.at.depth;
-  }
-  return JSON.stringify(file);
-}
 
 describe("notches and spans", () => {
   it("rings' radii and the area of a span", () => {
@@ -83,31 +39,91 @@ describe("notches and spans", () => {
     expect(slotsToAngles(-1, 1, 9, N)).toEqual({ start: 1280, span: 160 });
   });
 
-  it("every room of the starter hole and a deep one has angles matching its slots", () => {
-    const w = createWorld(config);
-    const hole = w.holes[0]!;
-    applyCommand(hole, { type: "consoleFinish" });
-    applyCommand(hole, { type: "consoleResources", atLeast: { rock: 500, metal: 200, machinery: 50, brick: 200, marscrete: 200 } });
-    // A 2×2 farm across rings 2 and 3 (9 slots inside, 18 outside).
-    const r = applyCommand(hole, { type: "build", room: "farm", at: ringAt(1, 2, 0, 2, 2) });
-    expect(r, JSON.stringify(r)).toMatchObject({ ok: true });
-    const farm = hole.layout.rooms.at(-1)!;
-    expect(farm.at).toMatchObject({ start: 0, span: 320, depth: 2 });
-    expect(expectAnglesMatchSlots(hole.layout)).toBeGreaterThan(1);
+  it("a new game's rooms go by angle, at their target areas", () => {
+    const hole = createWorld(config).holes[0]!;
+    for (const room of hole.layout.rooms) {
+      if (room.at.kind !== "ring") continue;
+      const { start, span, depth, ring } = room.at;
+      expect(room.cells).toEqual([{ floor: 1, ring, a0: start, a1: start + span }]);
+      expect(depth).toBe(1);
+      const area = spanArea(10, ring, depth, span, geo);
+      expect(Math.abs(area - targetArea(room.type)) / targetArea(room.type)).toBeLessThan(0.02);
+    }
   });
 
-  it("a played save from v23 gets angles matching its slots, the same as a new game sets", () => {
-    const { state } = run(40);
-    const w = createWorld(config);
-    w.holes[0] = state;
-    const json = serialize(w);
-    const loaded = deserialize(asV23(json));
+  it("a save kept by slot (v24 and older) is turned to angles: nothing moves", () => {
+    const file = JSON.parse(serialize(createWorld(config)));
+    file.version = 24;
+    const hole = file.state.holes[0];
+    const layout = hole.layout;
+    const blank = { surfaceCells: [], connected: true, planned: false, priority: "normal" };
+    // As it was kept: rooms on slots, a grid of who holds each, what's dug per slot, and edges by slot index and fraction.
+    layout.rooms = [
+      ...layout.rooms.filter((r: { at: { kind: string } }) => r.at.kind === "surface"),
+      { ...blank, id: 50, type: "galley", at: { kind: "ring", floor: 1, ring: 1, slot: 2, w: 1, d: 1 }, cells: [{ floor: 1, ring: 1, slot: 2 }], windows: ["A1.0.2/9"] },
+      // A 2×2 farm across rings 2 and 3 (9 slots inside, 18 outside), wrapping past slot 0.
+      {
+        ...blank,
+        id: 51,
+        type: "farm",
+        at: { kind: "ring", floor: 1, ring: 2, slot: 8, w: 2, d: 2 },
+        cells: [8, 0].map((slot) => ({ floor: 1, ring: 2, slot })).concat([16, 17, 0, 1].map((slot) => ({ floor: 1, ring: 3, slot }))),
+      },
+      { ...blank, id: 52, type: "empty_room_l", at: { kind: "ring", floor: 1, ring: 3, slot: 8, w: 4, d: 1 }, cells: [8, 9, 10, 11].map((slot) => ({ floor: 1, ring: 3, slot })), building: true },
+    ];
+    layout.nextRoomId = 53;
+    const slots = layout.hole.ringSlots as number[];
+    layout.grid = [0, 1].map(() => slots.map((n) => new Array(n).fill(0)));
+    layout.open = [0, 1].map((f) => slots.map((n, r) => new Array(n).fill(f === 0 && r === 0 ? 1 : 0)));
+    for (const room of layout.rooms) {
+      for (const c of room.cells) {
+        layout.grid[c.floor - 1][c.ring - 1][c.slot] = room.id;
+        if (!room.building) layout.open[c.floor - 1][c.ring - 1][c.slot] = 1;
+      }
+    }
+    layout.corridors = { "A1.0.2/9": "gallery", "A1.0.3/9": "gallery", "R1.2.8": "rock", "R1.1.8": "rock", "A1.2.1/18": "brick" };
+    layout.corridorsBuilding = { "A1.2.1/18": 7 };
+    layout.bulkheads = { "R1.2.8": true };
+    delete layout.corridorLinked;
+    hole.construction = { nextJobId: 8, queue: [{ id: 7, kind: "corridors", edges: ["A1.2.1/18"], work: 4, done: 0 }] };
+
+    const loaded = deserialize(JSON.stringify(file));
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
-    const layout = loaded.world.holes[0]!.layout;
-    expect(layout.rooms.length).toBeGreaterThan(10);
-    expect(expectAnglesMatchSlots(layout)).toBeGreaterThan(10);
-    // No behaviour change: the migrated world is the one that was saved.
-    expect(serialize(loaded.world)).toEqual(json);
-  }, 30_000);
+    const l = loaded.world.holes[0]!.layout;
+    const room = (id: number) => l.rooms.find((r) => r.id === id)!;
+    expect((l as unknown as { grid?: unknown }).grid).toBeUndefined();
+    // Each keeps its exact angles, and so its old area (a ring-1 slot is 105 m², not 100).
+    expect(room(50).at).toEqual({ kind: "ring", floor: 1, ring: 1, depth: 1, start: 320, span: 160 });
+    expect(room(50).cells).toEqual([{ floor: 1, ring: 1, a0: 320, a1: 480 }]);
+    expect(room(51).at).toEqual({ kind: "ring", floor: 1, ring: 2, depth: 2, start: 1280, span: 320 });
+    expect(room(51).cells).toEqual([
+      { floor: 1, ring: 2, a0: 1280, a1: 1600 },
+      { floor: 1, ring: 3, a0: 1280, a1: 1600 },
+    ]);
+    // The three empty rooms are one now.
+    expect(room(52).type).toBe("empty_room_s");
+    // What's dug, as merged ranges: all of ring 1, and the farm's wedge through the turn.
+    expect(l.open![0]![0]).toEqual([[0, 1440]]);
+    expect(l.open![0]![1]).toEqual([
+      [0, 160],
+      [1280, 1440],
+    ]);
+    expect(isOpen(l, room(51).cells[1]!)).toBe(true);
+    expect(isOpen(l, room(52).cells[0]!)).toBe(false);
+    // Edges by their own notches: corridors, the bulkhead, windows, and the job waiting on one.
+    expect(Object.keys(l.corridors).sort()).toEqual(["A1.0.320-480", "A1.0.480-640", "A1.2.80-160", "R1.1.1280", "R1.2.1280"]);
+    expect(l.corridors["A1.2.80-160"]).toBe("brick");
+    expect(l.corridorsBuilding).toEqual({ "A1.2.80-160": 7 });
+    expect(l.bulkheads).toEqual({ "R1.2.1280": true });
+    expect(room(50).windows).toEqual(["A1.0.320-480"]);
+    expect(loaded.world.holes[0]!.construction.queue[0]!.edges).toEqual(["A1.2.80-160"]);
+    // Every stored corridor is an edge of the floor as it stands, and the pieces are the old slots.
+    const edges = new Set(floorEdges(l, 1).map((e) => e.id));
+    for (const id of Object.keys(l.corridors)) expect(edges.has(id), id).toBe(true);
+    expect(piecesOn(l, 1, 1).map((p) => p.a1 - p.a0)).toEqual(new Array(9).fill(160));
+    // And it saves and loads again as it is.
+    const again = deserialize(serialize(loaded.world));
+    expect(again.ok && again.world.holes[0]!.layout.rooms.map((r) => r.at)).toEqual(l.rooms.map((r) => r.at));
+  });
 });

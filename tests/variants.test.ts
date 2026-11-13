@@ -21,20 +21,20 @@ const signature = (fitted: { item: string; wall: string }[]) => fitted.map((f) =
 describe("room variety", () => {
   it("gives rooms of one kind different layouts, the same room always the same one", () => {
     const { layout, out } = rooms("studio", 6);
-    const sigs = new Set(out.map((r) => signature(varied(templateFor("studio", 1, 1)!, r))));
+    const sigs = new Set(out.map((r) => signature(varied(templateFor("studio", 1)!, r))));
     expect(sigs.size).toBeGreaterThan(1);
     expect(signature(furnish(layout, out[0]!))).toBe(signature(furnish(layout, out[0]!)));
   });
 
   it("only ever swaps in what that kind of room may have", () => {
     const { out } = rooms("bunk_dorm", 3, 2);
-    for (const r of out) for (const p of varied(templateFor("bunk_dorm", 2, 1)!, r)) expect(itemsFor("bunk_dorm")).toContain(p.item);
+    for (const r of out) for (const p of varied(templateFor("bunk_dorm", 1)!, r)) expect(itemsFor("bunk_dorm")).toContain(p.item);
   });
 
   it("leaves stairs exactly as they are", () => {
     const { out } = rooms("stairwell", 3);
     for (const r of out) {
-      const t = templateFor("stairwell", 1, 1)!;
+      const t = templateFor("stairwell", 1)!;
       expect(varied(t, r)).toBe(t);
     }
   });
