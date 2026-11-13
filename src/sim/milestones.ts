@@ -22,6 +22,7 @@ export type MilestoneCheck =
   | "fullRing"
   | "domed"
   | "closedLoop"
+  | "holesCapped"
   | "event";
 
 export interface MilestoneDef {
@@ -97,6 +98,7 @@ export function passed(state: SimState, m: MilestoneDef): boolean {
       return !!state.layout.domed;
     case "closedLoop":
       return closedLoop(state, m.loop ?? []);
+    case "holesCapped": // the network's: trackNetworkMilestones reaches them
     case "event":
       return false;
   }
@@ -175,6 +177,22 @@ export function reachMilestone(state: SimState, cfg: SimConfig, id: string): boo
   const title = byId.get(id)?.title ?? id;
   postMessage(state, cfg, milestoneData.reached.replaceAll("{title}", title), "good");
   return true;
+}
+
+/** The network's milestones: holes capped, all told (#413). */
+export const NETWORK_CHECKS: MilestoneCheck[] = ["holesCapped"];
+
+/**
+ * The network's milestones, once a day or so from the world's step: each is reached once for the whole
+ * network, in the hole that got it there (the latest capped), and counts as reached in every hole's panel.
+ */
+export function trackNetworkMilestones(holes: SimState[], cfg: SimConfig): void {
+  const capped = holes.filter((h) => h.depth?.capped).sort((a, b) => a.depth!.capped!.tick - b.depth!.capped!.tick);
+  for (const m of milestoneData.milestones) {
+    if (m.check !== "holesCapped" || capped.length < (m.at ?? 1)) continue;
+    if (holes.some((h) => hasReached(h, m.id))) continue;
+    reachMilestone(capped.at(-1)!, cfg, m.id);
+  }
 }
 
 /** Every milestone passed since the last check is reached now. */

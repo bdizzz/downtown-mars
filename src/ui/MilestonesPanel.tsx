@@ -50,6 +50,17 @@ export function MilestonesPanel({ s, onClose }: { s: Snapshot; onClose: () => vo
           ))}
         </section>
       ))}
+      {v.records.length > 0 && (
+        <section className="ms-records">
+          <h3>Records</h3>
+          {v.records.map((r) => (
+            <div key={r.label} className="ms-row">
+              <span className="name">{r.label}</span>
+              <span className="k">{r.value}</span>
+            </div>
+          ))}
+        </section>
+      )}
       {v.network.length > 0 && (
         <section>
           <h3>Network</h3>

@@ -359,16 +359,18 @@ export function conditionNote(s: Snapshot, roomId: number, repairing?: { done: n
 
 /** The seed kit at a staging bay: how far along, what's in it, the button's label (null when it's ready), and a note. */
 export function seedKitInfo(s: Snapshot): { progress: number; goods: string; button: string | null; note: string } {
-  const goods = Object.entries(network.seedKit.goods)
+  const goods = Object.entries(s.kit.wants ?? network.seedKit.goods)
     .map(([id, want]) => `${resName(id)} ${num(s.kit.loaded[id] ?? 0)}/${want}`)
     .join(" · ");
+  // A capped hole's crated drill (#411) rides with the next kit, so the kit needs less.
+  const crate = s.kit.crates ? ` A crated drill is waiting in store: it goes with this kit, so the kit needs less.` : "";
   const button = s.kit.progress < 0.999 ? (s.kit.gathering ? "Stop gathering" : s.kit.progress > 0 ? "Resume gathering" : "Gather a seed kit") : null;
   const note = s.kit.gathering
     ? "The bay's crew is moving goods into the kit, never leaving less than a reserve in store."
     : s.kit.progress >= 0.999
       ? `Ready. Pick a site on the map (M) and send ${network.seedKit.volunteers} volunteers to found a new hole.`
       : "The bay stands idle, its crew free for other work, until you ask for a kit.";
-  return { progress: s.kit.progress, goods, button, note };
+  return { progress: s.kit.progress, goods, button, note: note + crate };
 }
 
 /** A row of the panel, where today's flat list puts it (before or after the seed kit) and the section it belongs in. */

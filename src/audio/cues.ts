@@ -36,10 +36,12 @@ export interface Heard {
   gameId: number;
   lastMessageTick: number;
   floors: number;
+  /** The drill's last omen of a depth limit (#408). */
+  omenTick: number | null;
 }
 
 export function heard(s: Snapshot): Heard {
-  return { gameId: s.gameId, lastMessageTick: s.messages.at(-1)?.tick ?? -1, floors: s.layout.hole.floors };
+  return { gameId: s.gameId, lastMessageTick: s.messages.at(-1)?.tick ?? -1, floors: s.layout.hole.floors, omenTick: s.drill.omenTick };
 }
 
 /** What happened since `before`: none for a new or loaded game, so old events aren't replayed. */
@@ -52,6 +54,7 @@ export function happeningsSince(before: Heard | null, s: Snapshot): Happening[] 
     if (h) out.push(h);
   }
   if (s.layout.hole.floors > before.floors) out.push("floorDug");
+  if (s.drill.omenTick !== null && s.drill.omenTick !== before.omenTick) out.push("omen");
   return out;
 }
 

@@ -49,6 +49,11 @@ export function NetworkPanel({
               <td>
                 <i className="dot" style={{ background: holeColor(s, h.id) }} />
                 {h.name}{h.domed ? " ◓" : ""}
+                {h.capped && (
+                  <span className="k identity" title={`Capped at ${h.capped.floors} floors`}>
+                    {" "}· {h.capped.identity}, {h.capped.floors} floors
+                  </span>
+                )}
               </td>
               <td>{h.population}</td>
               <td>

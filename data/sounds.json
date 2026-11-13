@@ -7,7 +7,8 @@
     "floorDug": "floor",
     "supplyDrop": "landing",
     "visitor": "chime",
-    "warning": "alert"
+    "warning": "alert",
+    "omen": "strain"
   },
   "messages": [
     { "startsWith": "Supply drop landed", "is": "supplyDrop" },

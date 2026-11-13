@@ -1,0 +1,76 @@
+{
+  "_note": "Every hole's hidden depth (#390, sim/depth.ts). When a hole is founded it rolls a hard limit (the last floor the drill can reach, between hard[0] and hard[1]; the first hole at least firstHoleMin) and one or two soft limits above it (softCount, chance of a second: secondSoftChance; never above floor softMin). The drill digs a limit's floor, then stops: a soft limit raises one of the softEvents and holds the drill, with no timer, until the player pays to go on or stops for good; the hard limit raises one of the hardEvents. Each is picked when the limits are rolled, by weight (times boost when the hole sits on boostIfDeposit), so its omens can match it. Nothing shows the numbers. omenLead: an omen comes this many floors before a limit (one or the other, rolled per limit); each event kind has its own omens, one picked. tremor: that omen shakes the rig and the camera. The drill: what a seed kit's drill is made of. A repair (a new bit, pumps, shoring) costs repairShare of it, scrapping it returns scrapShare, and crating it for the next seed kit takes the drill's whole share off that kit's goods, once. endings: the hole's name from how it ended, in the network panel and on the map; plaque: the capping ceremony's words ({depth}: \"12 floors\"). digging.maxFloors (config.json) stays the absolute ceiling.",
+  "hard": [5, 20],
+  "firstHoleMin": 8,
+  "softMin": 3,
+  "secondSoftChance": 0.35,
+  "omenLead": [1, 2],
+  "drill": { "machinery": 4, "metal": 24, "electronics": 2 },
+  "repairShare": 0.25,
+  "scrapShare": 0.5,
+  "magmaCells": 6,
+  "softEvents": [
+    { "event": "drill_breakdown", "weight": 3 },
+    { "event": "hard_basalt", "weight": 3 },
+    { "event": "groundwater", "weight": 2, "boostIfDeposit": "aquifer", "boost": 2 },
+    { "event": "tremors", "weight": 2 }
+  ],
+  "hardEvents": [
+    { "event": "geothermal_pocket", "weight": 3 },
+    { "event": "deep_reservoir", "weight": 3, "boostIfDeposit": "aquifer", "boost": 2 },
+    { "event": "brine_lake", "weight": 2, "boostIfDeposit": "ice", "boost": 2 },
+    { "event": "magma_chamber", "weight": 2 },
+    { "event": "fault_line", "weight": 0.6 }
+  ],
+  "omens": {
+    "drill_breakdown": [
+      { "text": "The drill's bearings are running hot, and the crew is changing them more often than they'd like." },
+      { "text": "A shudder comes up the drill string now and then. The crew says it's nothing.", "tremor": true }
+    ],
+    "hard_basalt": [
+      { "text": "The cutterhead is wearing faster: the spoil coming up is darker and harder." },
+      { "text": "The drill groans through a band of glassy black rock." }
+    ],
+    "groundwater": [
+      { "text": "The spoil is coming up damp, and the bore smells of wet stone." },
+      { "text": "Frost is forming on the drill's cooling lines. There's water somewhere near." }
+    ],
+    "tremors": [
+      { "text": "A small tremor shakes the shaft. The lamps sway, then settle.", "tremor": true },
+      { "text": "The seismometers are twitching more than usual.", "tremor": true }
+    ],
+    "geothermal_pocket": [
+      { "text": "The rock is running warm. The drill crew has taken their jackets off." },
+      { "text": "Steam hisses from a crack in the bore wall, and the rock's warm to the touch." }
+    ],
+    "deep_reservoir": [
+      { "text": "The drill's sounding back hollow, and the spoil is wet." },
+      { "text": "Water's beading on the bore wall, a long way down." }
+    ],
+    "brine_lake": [
+      { "text": "White crust is forming on the drill bit: salt." },
+      { "text": "The spoil tastes of salt, the crew says. Don't ask how they know." }
+    ],
+    "magma_chamber": [
+      { "text": "The drill drops a hand's width now and then, as if the rock below were hollow.", "tremor": true },
+      { "text": "The bore wall is glassy and smooth here, melted once, long ago." }
+    ],
+    "fault_line": [
+      { "text": "A small tremor shakes the shaft. The drill crew looks at each other.", "tremor": true },
+      { "text": "The rock is cracked and shifting. The drill strains to hold its line." }
+    ]
+  },
+  "endings": {
+    "drill_breakdown": "the hole where the drill gave out",
+    "hard_basalt": "the basalt hole",
+    "groundwater": "the wellspring hole",
+    "tremors": "the trembling hole",
+    "geothermal_pocket": "the geothermal hole",
+    "deep_reservoir": "the reservoir hole",
+    "brine_lake": "the brine hole",
+    "magma_chamber": "the cavern hole",
+    "fault_line": "the fault-line hole",
+    "stopped": "the settled hole"
+  },
+  "plaque": "{name}, {ending}: {depth} deep"
+}

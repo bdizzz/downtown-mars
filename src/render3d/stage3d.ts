@@ -680,6 +680,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
   /** The drill's last strike we've seen, so the rig shudders once for each (undefined until the first snapshot). */
   let rigStruck: number | null | undefined;
+  /** A tremor's omen (#408): the last one seen (undefined until the first snapshot), and when the camera's shake ends. */
+  let tremorSeen: number | null | undefined;
+  let tremorUntil = 0;
+  const TREMOR_MS = 1400;
   /** The glass dome over the shaft, once a hole has one. */
   let dome: THREE.Group | null = null;
   let domeFor = "";
@@ -2092,6 +2096,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       ambient = 0;
       dirty = true;
     }
+    if (performance.now() < tremorUntil + 50) dirty = true; // the camera shakes for a moment
     if (!dirty) return;
     dirty = false;
     drawFrame();
@@ -2123,7 +2128,18 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     skyDome.follow(camera);
     look.setView(hazeFocus(), view.mode === "walk", view.mode === "iso" ? { distance: cam.iso, radius: outerRadius() } : null);
     roomFx.setScale(renderer.getDrawingBufferSize(bufferSize).y / (2 * Math.tan((camera.fov * Math.PI) / 360)));
+    // A tremor (#408): the camera judders a little, dying away, then settles back where it was.
+    const shake = Math.max(0, tremorUntil - performance.now()) / TREMOR_MS;
+    const was = camera.position.clone();
+    if (shake > 0) {
+      const t = performance.now() / 1000;
+      const k = shake * shake * 0.12;
+      camera.position.x += Math.sin(t * 53) * k;
+      camera.position.y += Math.sin(t * 71) * k * 0.6;
+      camera.position.z += Math.cos(t * 47) * k;
+    }
     stats.culled = drawSeen(() => look.render());
+    if (shake > 0) camera.position.copy(was);
     stats.frameMs = performance.now() - t0;
     stats.calls = renderer.info.render.calls;
     stats.triangles = renderer.info.render.triangles;
@@ -2555,6 +2571,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         rig = makeDrillRig(snapshot.layout.hole);
         scene.add(rig.group);
         rigStruck = undefined; // another hole (or game): its old strikes aren't news
+        tremorSeen = undefined;
       }
       if (rig) {
         const deepest = snapshot.layout.hole.floors;
@@ -2572,6 +2589,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           dirty = true;
         }
       }
+      // A tremor's omen just now (not one from before a load): the camera shakes.
+      if (tremorSeen !== undefined && d.tremorTick !== null && d.tremorTick !== tremorSeen) tremorUntil = performance.now() + TREMOR_MS;
+      tremorSeen = d.tremorTick;
       // A festival on: lights along the galleries (from a picked floor down) and lanterns up the shaft.
       const partying = snapshot.events.festival !== null;
       if (partying) festival.sync(snapshot.layout.hole, cf);

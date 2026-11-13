@@ -14,6 +14,7 @@ Events are how the colony talks back: citizen visits, hazards, discoveries, netw
 | Drill discoveries (M14) | Aquifer, rich ore vein, silica bed, lava tube, gas pocket and microfossils, struck as floors are finished, each with a choice (`data/events.json`, `sim/events.ts`) |
 | Belt ship in distress (M14) | From day 20: bring her down (crew and salvage), send supplies up (thanks later), or ignore her |
 | Celebrations (M14) | Milestones proposed as a festival (a feast, a slow day, lights and lanterns) or a toast. The milestones are one catalog, `data/milestones.json` (F-005, T-055): each reached is news, and those marked `celebrate` propose one. Bringing a belt ship down reaches "good neighbors" (T-057). All shown in Charts → Milestones (T-056) |
+| Depth limits (#390) | Every hole has a hidden depth: one or two **soft limits** and a **hard limit** (5–20 floors, the first hole at least 8), rolled when it's founded and never shown. A floor or two before each, an **omen** (no numbers): the drill strains, the rock runs warm, a tremor shakes the rig and the camera. At a soft limit the drill stops until you choose, with no timer: **drill breakdown**, **hard basalt**, **groundwater** or **tremors**, each paid past (a repair, a new bit, pumps, shoring: a quarter of the drill) or the end of the hole (scrap the drill for half its materials, or crate it for the next seed kit). At the hard limit the place gives the reason: **geothermal pocket** (a heat well: the only way to unlock the geothermal plant), **deep reservoir** (a deep water pump: the aquifer and 300 water), **brine lake** (ore, silica and water), **old magma chamber** (a free cavern) or a **fault line** (nothing); each also offers to scrap or crate the drill. The player can also stop drilling for good from the top bar. **Capping** is final: a ceremony (festival or toast), a plaque with the final depth, and a name from how it ended ("the geothermal hole"), in the Network panel and on the map. `data/depth.json`, `data/events.json`, `sim/depth.ts` |
 | Too much oxygen (F-002, T-030) | Above 23.5% O2 a fire-risk warning; after half a day above it, **vent the excess** (back to 21%, lost for good) or hold it. At most once every 3 days |
 
 Everything else here (the strike chain, cave-ins, outbreaks, the network events, the rest of Earth and the belt, story beats, notable life events) is still design. Visits and the M14 events offer choices; M14 events arrive as cards and don't pause the game.
@@ -72,6 +73,25 @@ Every hazard is forecast before it hits.
 | Lava tube found | Digging into a natural cavity | Turn it into a plaza; open it as a tourist attraction |
 | Rich ore vein | Digging into a deposit | Open smelting in a hole that couldn't before |
 | Microfossil find | Rare, deep digging | Research boost and tourism draw, plus a debate over continuing to dig there |
+
+### Depth limits (#390, built Nov 2026)
+
+Each hole's limits are rolled from its seed when it's founded (an older save rolls them on load, all below what it's dug) and kept in the save, never in the snapshot. Omens come a floor or two before each limit, picked from that limit's own pool (`data/depth.json` `omens`), so a geothermal pocket runs warm and a fault line shakes. The drill digs the limit's floor, then stops; the card waits with no timer (`waits`), and the drill stays stopped until it's answered.
+
+| Limit | Event | Go on | Or |
+| --- | --- | --- | --- |
+| Soft | The drill breaks down | Repair it (1 machinery, 6 metal, 1 electronics) | Scrap the drill (2 machinery, 12 metal, 1 electronics back) or crate it; either caps the hole |
+| Soft | Hard basalt | A new bit (same cost) | As above |
+| Soft | Groundwater (likelier on an aquifer) | Pumps (same cost) | As above |
+| Soft | Tremors | Shoring (same cost) | As above |
+| Hard | Geothermal pocket | — | A heat well: unlocks the geothermal plant here (the only way), +4 happiness; or scrap or crate |
+| Hard | Deep reservoir (likelier on an aquifer) | — | A deep water pump: the aquifer deposit and 300 water; or scrap or crate |
+| Hard | Brine lake (likelier on ice) | — | A brine works: 80 ore, 80 silica, 120 water; or scrap or crate |
+| Hard | Old magma chamber | — | Open the chamber: 6 slots dug out for free; or scrap or crate |
+| Hard | Fault line (rare) | — | Scrap or crate the drill |
+| Any time | Stop drilling for good (top bar ■) | Keep drilling | Cap it, and scrap or crate the drill |
+
+Capping proposes **the capping of …**, a celebration like the milestone ones (festival or toast), with the plaque: "Bradbury, the geothermal hole: 12 floors deep". A **crated drill** waits at its hole; the next seed kit gathered there needs the drill's materials (4 machinery, 24 metal, 2 electronics) less, once (#411). Rovers don't carry crates yet.
 
 ## Network events
 

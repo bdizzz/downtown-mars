@@ -13,6 +13,8 @@ interface Props {
   speed: number;
   setSpeed: (speed: number) => void;
   setDrill: (active: boolean) => void;
+  /** Ask to stop drilling for good (a card confirms it). */
+  stopDrill?: () => void;
   toggleOffice: () => void;
   setActiveHole: (holeId: number) => void;
   openMenu: () => void;
@@ -109,7 +111,7 @@ function WeatherChip({ snapshot, className }: { snapshot: Snapshot; className: s
 // row: the menu, the hole, a pause/play toggle, how many things need you, the office and a chevron;
 // the rest (.hud-more, and the resource grid below) drops down from the chevron and stays down
 // until it's closed. On wider screens .hud-more is display: contents and changes nothing.
-export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActiveHole, openMenu, openTrend, keysEnabled, highlight, open: drawer, setOpen, reveal = SHOW_ALL }: Props) {
+export function Hud({ snapshot, speed, setSpeed, setDrill, stopDrill, toggleOffice, setActiveHole, openMenu, openTrend, keysEnabled, highlight, open: drawer, setOpen, reveal = SHOW_ALL }: Props) {
   const pulse = (id: string) => (highlight === `hud:${id}` ? " pulse" : "") + freshClass(reveal, `hud:${id}`);
   const shown = (id: string) => reveal.shown(`hud:${id}`);
   const speedKeys = keysEnabled && shown("speed");
@@ -215,6 +217,11 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, toggleOffice, setActi
           {extras.drill.canPause && (
             <button onClick={() => setDrill(!extras.drill.active)} title={extras.drill.active ? "Pause the drill" : "Resume the drill"} aria-label={extras.drill.active ? "Pause the drill" : "Resume the drill"}>
               <Icon id={extras.drill.active ? "pause" : "play"} size={11} />
+            </button>
+          )}
+          {extras.drill.canStop && stopDrill && (
+            <button className="drill-stop" onClick={stopDrill} title="Stop drilling for good: cap this hole (you'll be asked to confirm)" aria-label="Stop drilling for good">
+              ■
             </button>
           )}
         </span>
