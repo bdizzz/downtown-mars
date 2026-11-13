@@ -335,6 +335,21 @@ Bryon: solar only by day, to make batteries matter.
 - **The game watches its own frame rate** and charts the last two minutes in Settings → Display. When the middle of the last 20 seconds is under 30 fps it recommends scaling back the furniture or lowering the graphics (a button for each). It only advises; it never changes settings itself. Under 10 fps for that stretch the game itself shows a card with a one-click **Lighten graphics** (Low preset, simple shapes), so the player needn't leave the game.
 - **`fp.bin`'s download budget rises from 1 MB to 3 MB gzipped**, since the setting lets anyone skip it. Today's file is 0.97 MB.
 
+## Decided for hidden depth (Nov 12, #390 / #407–#414)
+
+Talked through with Bryon (Nov 12, voice) and built as one PR.
+
+- **Every hole has a hidden depth**, rolled from its seed when it's founded (`data/depth.json`, `sim/depth.ts`): a hard limit of 5–20 floors (the first hole at least 8) and one or two soft limits above it, possibly close together. **Independent of hole size** (#118) for now. Kept in the save, left out of the snapshot. Older saves roll theirs on load, all below what they've dug. `digging.maxFloors` (40) stays the absolute ceiling.
+- **Always a surprise:** no survey or readout. **Omens without numbers** a floor or two before each limit (Bryon), from a pool per ending, so they match what's coming; tremors shake the rig and the camera, and the drill strains (a sound).
+- **The drill digs the limit's floor, then stops** with a card that has **no timer** (`waits`): the drill waits for the player.
+- **Costs** (Bryon): a repair (or bit, pumps, shoring) is a quarter of a seed kit's drill; scrapping gives back half. The drill is defined in data as 4 machinery, 24 metal, 2 electronics: so 1/6/1 to repair (rounded up), 2/12/1 back (rounded down).
+- **Capping is final**, at a soft limit, at the hard limit, or by the player's own call (the top bar's ■, confirmed by a card). It brings a ceremony like the milestone celebrations, a plaque, and a name from how it ended ("the geothermal hole"; stopping by choice is "the settled hole").
+- **The geothermal plant is unlocked only by the geothermal pocket** (#259 changes to match): the event sets the `geothermal` gate; the room itself is #259's.
+- **A magma chamber needs rock to open**: on a floor with none left the hole ends on a fault line instead.
+- **The crated drill stays at its hole** and discounts the next seed kit gathered there, once (Bryon's "with the next seed kit"); rovers don't carry crates yet.
+- **Holes-capped milestones belong to the network:** reached once, in the hole that got there, and shown as reached in every hole's panel. The widest-hole record waits for #118 (every hole is the same width today).
+- **Not now:** a survey, depth by hole size, rovers carrying crates, the Godot viewer's stop button and camera shake.
+
 ## Still open
 
 Deliberately not decided yet:
