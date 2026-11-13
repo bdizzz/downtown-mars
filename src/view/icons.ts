@@ -8,6 +8,7 @@ export const ICONS = {
   // The colony.
   colonists: '<circle cx="8" cy="4.5" r="2.5"/><path d="M3 14c0-3 2.2-5 5-5s5 2 5 5"/>',
   health: '<path d="M8 13.5S2 10 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4-6 7.5-6 7.5z"/>',
+  temperature: '<path d="M6.5 9.8V3a1.5 1.5 0 0 1 3 0v6.8a3 3 0 1 1-3 0z"/><path d="M8 11.5V6"/>',
   happiness: '<circle cx="8" cy="8" r="6"/><path d="M5.5 9.5c1.3 1.5 3.7 1.5 5 0M6 6v.5M10 6v.5"/>',
   condition: '<path d="M10.5 2a3.5 3.5 0 0 0-3.3 4.6L2 11.8 4.2 14l5.2-5.2A3.5 3.5 0 0 0 14 5.5l-2.2 1.2-2-2L11 2.2z"/>',
   workers: '<path d="M1.5 12.5h13M3 12.5a5 5 0 0 1 10 0M6.5 8V5.5M9.5 8V5.5"/>',

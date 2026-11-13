@@ -1,3 +1,4 @@
+import { TEMPERATURE_COLORS } from "../view/temperature";
 import { FLOW_NETS } from "../render3d/flows3d";
 import type React from "react";
 import type { Snapshot } from "../sim/snapshot";
@@ -80,7 +81,8 @@ export function Dock({ mode, setMode, highlight, jobs, reveal = SHOW_ALL, aside,
   );
 }
 
-const OVERLAYS: Record<string, string> = { noise: "Noise", smell: "Smell", health: "Wellbeing", comfort: "Comfort", airQuality: "Air", happiness: "Happiness", condition: "Condition" };
+const cssHex = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
+const OVERLAYS: Record<string, string> = { noise: "Noise", smell: "Smell", health: "Wellbeing", comfort: "Comfort", airQuality: "Air", happiness: "Happiness", condition: "Condition", temperature: "Temperature" };
 
 interface ViewProps {
   view: ViewMode;
@@ -98,7 +100,7 @@ export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverla
   const in3d = view === "3d";
   const part = (id: string) => reveal.shown(`view:${id}`);
   // Off, then the overlays unlocked so far (none: no Overlay section at all).
-  const kinds = [...FIELD_TYPES, "happiness", "condition"].filter((t) => reveal.shown(`overlay:${t}`));
+  const kinds = [...FIELD_TYPES, "happiness", "condition", "temperature"].filter((t) => reveal.shown(`overlay:${t}`));
   const overlays = kinds.length ? [null, ...kinds] : [];
   return (
     <div className="dock-strip view-strip" role="toolbar" aria-label="View">
@@ -201,7 +203,13 @@ export function ViewStrip({ view, setView, view3d, setView3d, overlay, setOverla
               </button>
             ))}
           </span>
-          {overlay && (
+          {overlay === "temperature" && (
+            <span className="legend">
+              <i style={{ background: cssHex(TEMPERATURE_COLORS.cold) }} /> cold <i style={{ background: cssHex(TEMPERATURE_COLORS.comfortable) }} /> comfortable{" "}
+              <i style={{ background: cssHex(TEMPERATURE_COLORS.hot) }} /> hot
+            </span>
+          )}
+          {overlay && overlay !== "temperature" && (
             <span className="legend">
               <i className="bad" /> {overlay === "happiness" ? "unhappy" : overlay === "condition" ? "worn out" : "hurts"} <i className="good" />{" "}
               {overlay === "happiness" ? "happy" : overlay === "condition" ? "good repair" : "helps"}

@@ -12,7 +12,7 @@ import { guideStep } from "./guided";
 //   room:<id>     a room in the build palette (its category shows once one of its rooms does)
 //   tool:<id>     corridors, demolish, linings; and in the corridor tool, bulkhead, windows, refit
 //   view:<id>     the View strip's parts: cameras, 2d, see (walls down, room colours, flows)
-//   overlay:<id>  an overlay (noise, smell, health, comfort, airQuality, happiness, condition)
+//   overlay:<id>  an overlay (noise, smell, health, comfort, airQuality, happiness, condition, temperature)
 //   chart:<id>    a Charts button (people, trends, flows, network, construction, ...)
 
 export interface Reveal {

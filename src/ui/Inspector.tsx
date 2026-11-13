@@ -1,3 +1,4 @@
+import { formatTemperature, fromUnits, inUnits, temperatureUnits } from "../view/temperature";
 import { ROOM_NAME_MAX, roomName } from "../sim/roomName";
 import type { RoomInstance } from "../sim/placement";
 import { RoomName } from "./RoomName";
@@ -459,6 +460,7 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
                 <output>{s.air.tankFill > 0 ? `${Math.round(s.air.tankFill * 100)}%` : "Off"}</output>
               </label>
             )}
+            {(def.heats || def.cools) && room.at.kind === "ring" && <Thermostat s={s} floor={room.at.floor} onCommand={onCommand} />}
             {spec.staff > 0 && (
               <div className="field" title="Who gets staff first when there aren't enough to go round">
                 <span className="k">Priority</span>
@@ -524,5 +526,37 @@ export function Inspector({ s, roomId, onCommand, onClose, finish }: Props) {
         </SectionView>
       ))}
     </aside>
+  );
+}
+
+/** The thermostat (#393): the whole hole's, or, ticked, this floor's own. Shown on heaters and radiators. */
+function Thermostat({ s, floor, onCommand }: { s: Snapshot; floor: number; onCommand: (c: SimCommand) => void }) {
+  const t = s.temperature;
+  const f = t.floors[floor - 1];
+  const own = !!f?.override;
+  const c = f?.setpoint ?? t.setpoint;
+  const u = temperatureUnits();
+  const [lo, hi] = t.range.map((v) => Math.round(inUnits(v, u)));
+  const set = (v: number) => onCommand({ type: "setThermostat", celsius: fromUnits(v, u), ...(own ? { floor } : {}) });
+  return (
+    <>
+      <label title={own ? `Floor ${floor}'s own thermostat; the rest of the hole is at ${formatTemperature(t.setpoint)}` : "The whole hole's thermostat: every heater and radiator works toward it. Lower it to save power, at a cost to comfort."}>
+        <span className="k">Thermostat</span>
+        <input
+          type="range"
+          min={lo}
+          max={hi}
+          step={1}
+          value={Math.round(inUnits(c, u))}
+          aria-valuetext={formatTemperature(c)}
+          onChange={(e) => set(Number(e.target.value))}
+        />
+        <output>{formatTemperature(c)}</output>
+      </label>
+      <label title="Set this floor apart from the hole's thermostat (a cooler floor for industry, say)">
+        <span className="k">Floor {floor} only</span>
+        <input type="checkbox" checked={own} onChange={(e) => onCommand({ type: "setThermostat", celsius: e.target.checked ? c : null, floor })} />
+      </label>
+    </>
   );
 }

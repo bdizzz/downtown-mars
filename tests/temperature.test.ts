@@ -259,3 +259,40 @@ describe("the kits", () => {
     expect(snap.temperature.setpoint).toBe(cfg0.temperature.setpointC);
   });
 });
+
+describe("the views", () => {
+  it("read °F by default, °C by the setting, and change the units back and forth", async () => {
+    const t = await import("../src/view/temperature");
+    expect(t.formatTemperature(18.3)).toBe("65 °F");
+    expect(t.formatTemperature(18.3, "C")).toBe("18 °C");
+    expect(t.formatTemperatureChange(12.5)).toBe("+23 °F");
+    expect(t.fromUnits(t.inUnits(21.4))).toBeCloseTo(21.4, 6);
+    expect(t.temperatureTint(0).color).toBe(t.TEMPERATURE_COLORS.cold);
+    expect(t.temperatureTint(20).color).toBe(t.TEMPERATURE_COLORS.comfortable);
+    expect(t.temperatureTint(35).color).toBe(t.TEMPERATURE_COLORS.hot);
+  });
+
+  it("the room panel shows a room's floor temperature, and a heater's lift, load and thermostat", async () => {
+    const { panelModel } = await import("../src/view/roomPanel");
+    const s = hole();
+    const id = build(s, "heater", ring(1, 2, 2));
+    powered(s, 0.2);
+    const snap = makeSnapshot(s, config);
+    const room = s.layout.rooms.find((r) => r.id === id)!;
+    const m = panelModel(snap, room);
+    const rows = m.sections.flatMap((x) => x.rows);
+    expect(rows.find((r) => r.k === "Temperature")?.text).toMatch(/°F/);
+    expect(rows.find((r) => r.k === "Heats")?.text).toMatch(/^\+\d+ °F at full power/);
+    expect(rows.find((r) => r.k === "Working")?.text).toMatch(/% of full power/);
+    expect(rows.find((r) => r.k === "Thermostat")).toBeDefined();
+    expect(m.sections.find((x) => x.id === "work")?.open).toBe(true);
+    expect(m.glance.some((c) => c.label === "Temperature")).toBe(true);
+  });
+
+  it("the charts record the floors' average, the coldest and the thermostat", () => {
+    const s = hole();
+    day(s, 0.2);
+    expect(s.history!.hourly.tempAverage!.length).toBeGreaterThan(0);
+    expect(s.history!.hourly.thermostat!.at(-1)).toBeCloseTo(config.temperature.setpointC, 1);
+  });
+});

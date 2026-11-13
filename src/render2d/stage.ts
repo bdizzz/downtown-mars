@@ -1,3 +1,4 @@
+import { temperatureTint } from "../view/temperature";
 import { UI_FONT } from "../view/font";
 import { roomLabel } from "../sim/roomName";
 import { crewsAt, crewsKey } from "../view/crews";
@@ -139,6 +140,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let heat = HEAT.normal;
   let field: EffectField | null = null;
   let happiness: Happiness | null = null;
+  /** Each floor's temperature, °C, for the temperature overlay. */
+  let temps: { floor: number; now: number }[] = [];
   let digKey = "";
   let tool: Tool = null;
   let hoverKey = "";
@@ -185,6 +188,26 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
   }
 
+  /** Every dug cell in its floor's colour: cold blue, comfortable green, hot red. */
+  function drawTemperature(): void {
+    if (!layout) return;
+    const h = layout.hole;
+    for (const f of temps) {
+      const { color, alpha } = temperatureTint(f.now);
+      layout.open?.[f.floor - 1]?.forEach((slots, ri) => {
+        const ring = ri + 1;
+        if (ring > h.unlockedRings) return;
+        const n = h.ringSlots[ring - 1]!;
+        const y = ringTop(f.floor, ring, h.ringSlots.length);
+        slots.forEach((v, slot) => {
+          if (v !== 1) return;
+          const [x0, x1] = slotX(slot, n);
+          fieldCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2).fill({ color, alpha });
+        });
+      });
+    }
+  }
+
   /** Each room in its condition's colour, green to red. */
   function drawCondition(): void {
     if (!layout) return;
@@ -207,6 +230,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     if (!overlayType) return drawReach();
     if (overlayType === "happiness") return drawHappiness();
     if (overlayType === "condition") return drawCondition();
+    if (overlayType === "temperature") return drawTemperature();
     if (!layout || !field || !overlayType) return;
     const grid = field[overlayType];
     if (!grid) return;
@@ -1115,7 +1139,13 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         drawDig(l.hole, drill);
         updateDigLabel(drill);
       }
-      const ck = overlayType === "condition" ? conditionKey(snapshot.layout.rooms) : "";
+      const ck =
+        overlayType === "condition"
+          ? conditionKey(snapshot.layout.rooms)
+          : overlayType === "temperature"
+            ? snapshot.temperature.floors.map((f) => `${Math.round(f.now)}/${f.cells}`).join(",")
+            : "";
+      temps = snapshot.temperature.floors;
       if (snapshot.effects !== field || (overlayType === "happiness" && snapshot.happiness.pools !== happiness?.pools) || ck !== conditionShown) {
         conditionShown = ck;
         field = snapshot.effects;

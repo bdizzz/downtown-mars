@@ -63,6 +63,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   let building = false;
   let tool: Tool = null;
   let overlayType: string | null = null;
+  /** Each floor's temperature, °C, for the temperature overlay. */
+  let temps: { floor: number; now: number }[] = [];
   let heat = HEAT.normal;
   let field: EffectField | null = null;
   let happiness: Happiness | null = null;
@@ -85,7 +87,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   function drawField(): void {
     fieldCtx.clear();
     if (!layout) return;
-    drawFieldOn(fieldCtx, layout, floor, { overlay: overlayType, field, happiness, heat, selected, spot });
+    drawFieldOn(fieldCtx, layout, floor, { overlay: overlayType, field, happiness, heat, selected, spot, temps });
   }
 
   function drawHalo(type: string, cells: Cell[]): void {
@@ -545,7 +547,13 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       drill = snapshot.drill;
       resources = snapshot.resources;
       gates = snapshot.holeGates;
-      const ck = overlayType === "condition" ? conditionKey(snapshot.layout.rooms) : "";
+      const ck =
+        overlayType === "condition"
+          ? conditionKey(snapshot.layout.rooms)
+          : overlayType === "temperature"
+            ? snapshot.temperature.floors.map((f) => `${Math.round(f.now)}/${f.cells}`).join(",")
+            : "";
+      temps = snapshot.temperature.floors;
       const fieldChanged = snapshot.effects !== field || (overlayType === "happiness" && snapshot.happiness.pools !== happiness?.pools) || ck !== conditionShown;
       conditionShown = ck;
       field = snapshot.effects;

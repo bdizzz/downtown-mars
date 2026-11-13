@@ -269,7 +269,8 @@ function sendWhy(snap = host.snapshot()): void {
     for (const c of clients) c.write(tip + "\n");
   }
 }
-let tutorialFlags = { sawNoise: false, openedFlows: false, sawThreeD: true };
+// Godot has no temperature overlay yet (#401): its tutorial step counts as met.
+let tutorialFlags = { sawNoise: false, openedFlows: false, sawThreeD: true, sawTemperature: true };
 /** The step the tutorial's card is on (ui/tutorialGoals.ts), moved on as goals are met. */
 let tutorialStep = FOLLOW;
 
@@ -471,7 +472,7 @@ const server = createServer((socket) => {
         } else if (msg.type === "autosave") {
           dailyAutosave = msg.on;
         } else if (msg.type === "tutorialFlags") {
-          tutorialFlags = { sawNoise: msg.sawNoise, openedFlows: msg.openedFlows, sawThreeD: msg.sawThreeD };
+          tutorialFlags = { sawNoise: msg.sawNoise, openedFlows: msg.openedFlows, sawThreeD: msg.sawThreeD, sawTemperature: true };
         } else if (msg.type === "spotlight") {
           fieldView.spot = msg.spot;
           sendScene();

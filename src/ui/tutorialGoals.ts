@@ -21,6 +21,8 @@ export interface UiFlags {
   inspectedRoom?: boolean;
   /** Clicked F1 in the floor picker. */
   pickedFloor1?: boolean;
+  /** Turned on the temperature overlay (#403); the Godot viewer doesn't send it yet, so the bridge counts it met. */
+  sawTemperature?: boolean;
 }
 
 const has = (s: Snapshot, type: string, n = 1) => s.layout.rooms.filter((r) => r.type === type).length >= n;
@@ -39,6 +41,7 @@ export const CHECKS: Record<string, (s: Snapshot, ui: UiFlags) => boolean> = {
   water_tank: (s) => has(s, "water_tank"),
   dorm: (s) => has(s, "bunk_dorm"),
   noise: (_, ui) => ui.sawNoise,
+  temperature: (_, ui) => !!ui.sawTemperature,
   drop: (s) => s.earth.landed > 0,
   farms: (s) => new Set(s.layout.rooms.filter((r) => r.type === "farm").map((r) => r.crop)).size >= 2,
   visit: (s) => (s.office.answered ?? 0) > 0,

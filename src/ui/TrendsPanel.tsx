@@ -1,3 +1,4 @@
+import { inUnits, temperatureUnits } from "../view/temperature";
 import { useState } from "react";
 import type { Snapshot } from "../sim/snapshot";
 import { config } from "../sim/config";
@@ -19,6 +20,8 @@ function linesFor(s: Snapshot, meta: SeriesMeta, range: Range, mode: Mode): { li
   let ticks: number[] = [];
   const lines = meta.lines.map((l) => {
     let p = points(h, l.id, range, tpd);
+    // Temperatures are kept in °C and shown in the player's units.
+    if (meta.temperature) p = { ...p, values: p.values.map((v) => inUnits(v)) };
     if (mode === "rate") p = perDay(p, tpd, range === "all" ? 1 : 6);
     ticks = p.ticks;
     return { label: l.label, color: l.color, dashed: l.dashed, values: p.values };
@@ -77,8 +80,8 @@ export function TrendsPanel({ s, onClose, initial }: { s: Snapshot; onClose: () 
         lines={lines}
         ticks={ticks}
         daily={daily}
-        refs={mode === "rate" && !flow ? [{ at: 0, label: "steady" }] : meta.refs}
-        unit={mode === "rate" && !flow ? "/month" : (meta.unit ?? "")}
+        refs={mode === "rate" && !flow ? [{ at: 0, label: "steady" }] : meta.temperature ? meta.refs?.map((r) => ({ ...r, at: inUnits(r.at) })) : meta.refs}
+        unit={mode === "rate" && !flow ? "/month" : meta.temperature ? `°${temperatureUnits()}` : (meta.unit ?? "")}
         whole={mode === "amount" && meta.whole}
         decimals={mode === "amount" ? meta.decimals : undefined}
       />

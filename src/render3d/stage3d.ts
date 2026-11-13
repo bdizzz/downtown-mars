@@ -1,3 +1,4 @@
+import { temperatureTint } from "../view/temperature";
 import { UI_FONT } from "../view/font";
 import { LABEL_LAYER } from "./labelLayer";
 import * as THREE from "three";
@@ -1311,6 +1312,26 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       }
       return;
     }
+    if (overlayType === "temperature") {
+      // Every dug cell in its floor's colour: cold blue, comfortable green, hot red (view/temperature.ts).
+      const byLook = new Map<string, Cell[]>();
+      s.temperature.floors.forEach((f) => {
+        const { color, alpha } = temperatureTint(f.now);
+        const k = `${color}:${Math.round(alpha * 20) / 20}`;
+        const cells: Cell[] = [];
+        l.open?.[f.floor - 1]?.forEach((slots, ri) => slots.forEach((v, slot) => v === 1 && cells.push({ floor: f.floor, ring: ri + 1, slot })));
+        byLook.set(k, [...(byLook.get(k) ?? []), ...cells]);
+      });
+      for (const [k, cells] of byLook) {
+        if (!cells.length) continue;
+        const [color, alpha] = k.split(":").map(Number) as [number, number];
+        const mat = overlayMat(`t:${k}`, () =>
+          withWallsDown(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, depthWrite: false, side: THREE.DoubleSide, ...OVERLAY_OFFSET })),
+        );
+        fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET, false), mat));
+      }
+      return;
+    }
     if (overlayType === "happiness") {
       for (const pool of s.happiness.pools) {
         const room = l.rooms.find((r) => r.id === pool.roomId);
@@ -2613,7 +2634,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       roomFx.sync(snapshot.layout, snapshot.roomStatus);
       updateSky(snapshot);
       const happy =
-        overlayType === "happiness" ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",") : overlayType === "condition" ? conditionKey(snapshot.layout.rooms) : "";
+        overlayType === "happiness"
+          ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",")
+          : overlayType === "condition"
+            ? conditionKey(snapshot.layout.rooms)
+            : overlayType === "temperature"
+              ? snapshot.temperature.floors.map((f) => `${Math.round(f.now)}/${f.cells}`).join(",")
+              : "";
       const fk = `${overlayType}:${gameId}:${snapshot.layout.version}:${happy}:${heat.bad}:${cut()}:${reachKey(snapshot.layout, selected, spot)}`;
       if (fk !== fieldKey) {
         fieldKey = fk;
