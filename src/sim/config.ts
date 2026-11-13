@@ -37,6 +37,8 @@ export interface SimConfig {
   startHour: number;
   ticksPerSecondAt1x: number;
   speeds: number[];
+  /** The guided tutorial's slow pace (T-083), below 1×; not one of the speed buttons. */
+  slowSpeed: number;
   snapshotsPerSecond: number;
   maxTicksPerFrame: number;
   seed: number;
@@ -105,6 +107,34 @@ export interface SimConfig {
      * centred on each.
      */
     daylight: { sunrise: number; sunset: number; twilightHours: number; affects: string[] };
+    /**
+     * The local weather report (flavour only): the day's high and low run from the equator's to the
+     * poles' by the cosine of the latitude, `coolingPerKmC` colder per km above the datum, never
+     * below `frostPointC`; the coldest hour is sunrise and the warmest `warmestHour`. A storm drops
+     * the high and lifts the low. Pressure falls with height over `scaleHeightKm`, with a small daily
+     * tide; the wind is calm by night and picks up in the afternoon (a [least, most] peak each day);
+     * dust opacity (τ) is somewhere in `clearTau` on a clear day, thinner up high, `stormTau` in a storm.
+     */
+    report: {
+      equatorHighC: number;
+      equatorLowC: number;
+      poleHighC: number;
+      poleLowC: number;
+      frostPointC: number;
+      coolingPerKmC: number;
+      warmestHour: number;
+      stormHighDropC: number;
+      stormLowRiseC: number;
+      datumPressureMbar: number;
+      scaleHeightKm: number;
+      tideShare: number;
+      tidePeakHour: number;
+      calmWindMs: number;
+      afternoonWindMs: [number, number];
+      stormWindMs: number;
+      clearTau: [number, number];
+      stormTau: number;
+    };
   };
   earth: {
     firstDropDay: number;
@@ -154,6 +184,8 @@ export interface SimConfig {
     productivityAtZero: number;
     productivityFullAt: number;
   };
+  /** Each floor's temperature (#393, temperature.ts), in °C. */
+  temperature: TemperatureConfig;
   messages: { keep: number };
   /** A hole that stays empty this many days has failed (T-162): a dip shorter than that doesn't count. */
   failure: { emptyDays: number };
@@ -202,7 +234,32 @@ export interface SimConfig {
     rooms: Record<RoomUnlock, number>;
   };
   /** What the landing crew sets up: a new game's first hole gets newGame's kit, later holes laterHoles'. */
+  /** Snaking corridors (view/corridorPlan.ts): how far along a border, 0..1 from the chain's end, the pointer goes before it joins. */
+  corridorTool: { commitAlong: number };
   landingKits: { newGame: LandingKitName; laterHoles: LandingKitName } & Record<LandingKitName, LandingKit>;
+}
+
+export interface TemperatureConfig {
+  /** Floor 1's resting temperature by latitude: a low..high band at each latitude, straight-line between them (and on past the first toward the equator). */
+  restBands: { lat: number; lowC: number; highC: number }[];
+  /** No floor rests warmer than this, whatever its latitude or depth. */
+  restCapC: number;
+  /** Each floor down rests this much warmer than the one above. */
+  depthWarmingPerFloorC: number;
+  /** A new hole's thermostat. */
+  setpointC: number;
+  /** The thermostat's range. */
+  setpointRangeC: [number, number];
+  /** Heat is spread over a floor's dug cells, but never fewer than this. */
+  minCells: number;
+  /** With no heaters at work, a floor drifts toward where it's headed this fast (at most), °C a game day. */
+  driftPerDayC: number;
+  /** Each person living or working on a floor warms it this much, on the reference floor. */
+  bodyHeatPerPersonC: number;
+  /** Each point of a running room's heat effect warms its floor this much, on the reference floor. */
+  wasteHeatPerStrengthC: number;
+  /** Comfort felt at home by the floor's temperature: the first band it's below. */
+  comfort: { belowC: number; comfort: number }[];
 }
 
 export type LandingKitName = "full" | "bare";

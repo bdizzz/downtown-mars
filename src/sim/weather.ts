@@ -1,5 +1,7 @@
+import mapData from "../../data/mars-map.json";
 import { gameTime } from "./clock";
 import type { SimConfig } from "./config";
+import { elevationAt } from "./map";
 import { postMessage } from "./messages";
 import type { SimState } from "./state";
 
@@ -42,8 +44,8 @@ export function stepWeather(state: SimState, cfg: SimConfig): void {
     }
     return;
   }
-  // Once a day, a chance of a storm on the way.
-  if (state.tick % tpd !== 0) return;
+  // Once a day, a chance of a storm on the way; none while the guided tutorial's start is calm.
+  if (state.tick % tpd !== 0 || state.guide?.calm) return;
   const day = state.tick / tpd;
   if (day < w.earliestDay || roll(state, day, 0) >= w.chancePerDay) return;
   const between = ([a, b]: [number, number], r: number) => a + (b - a) * r;
@@ -107,4 +109,69 @@ export function fullSunIn(state: SimState, cfg: SimConfig): number {
   const d = cfg.weather.daylight;
   const full = d.sunrise + d.twilightHours / 2;
   return ((((full - hourOf(state, cfg)) % 24) + 24) % 24) / 24;
+}
+
+/** The local weather report outside a hole (T-074): flavour only, it changes nothing in the sim. */
+export interface WeatherReport {
+  /** Where: the site's latitude (degrees, north positive), longitude (east positive), and height above the datum (km). */
+  lat: number;
+  lon: number;
+  elevationKm: number;
+  /** The air now, and today's high and low, °C. */
+  tempC: number;
+  highC: number;
+  lowC: number;
+  pressureMbar: number;
+  /** The wind's speed (m/s) and the compass bearing it blows from (degrees, 0 north). */
+  windMs: number;
+  windFrom: number;
+  /** Dust opacity, τ: about 0.5 on a clear day, several in a storm. */
+  tau: number;
+  /** Sunrise and sunset (hours) and the sun's height at noon (degrees): the equinox, so no seasons. */
+  sunrise: number;
+  sunset: number;
+  noonSunDeg: number;
+}
+
+/** The report for this hole now: from its latitude and height, the time of day, and the storm. */
+export function weatherReport(state: SimState, cfg: SimConfig): WeatherReport {
+  const r = cfg.weather.report;
+  const d = cfg.weather.daylight;
+  const lat = state.site?.lat ?? mapData.sky.defaultLatitude;
+  const lon = state.site?.lon ?? 0;
+  const elevationKm = state.site ? elevationAt(state.site.lat, state.site.lon) / 1000 : 0;
+  const storm = stormLevel(state, cfg);
+  const hour = hourOf(state, cfg);
+  const day = gameTime(state.tick, cfg).day;
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+  const ease = (t: number) => 0.5 - 0.5 * Math.cos(Math.PI * t);
+  const wrap = (h: number) => ((h % 24) + 24) % 24;
+
+  // Highs and lows: the equator's toward the poles', colder with height, the swing narrowed by dust.
+  const sun = Math.cos((lat * Math.PI) / 180);
+  const cooling = r.coolingPerKmC * elevationKm;
+  const frost = (t: number) => Math.max(r.frostPointC, t);
+  const highC = frost(lerp(r.poleHighC, r.equatorHighC, sun) - cooling - r.stormHighDropC * storm);
+  const lowC = Math.min(highC, frost(lerp(r.poleLowC, r.equatorLowC, sun) - cooling + r.stormLowRiseC * storm));
+  // Coldest at sunrise, warming to the warmest hour, then cooling slowly through the night.
+  const rising = r.warmestHour - d.sunrise;
+  const sinceDawn = wrap(hour - d.sunrise);
+  const tempC = sinceDawn <= rising ? lerp(lowC, highC, ease(sinceDawn / rising)) : lerp(highC, lowC, ease((sinceDawn - rising) / (24 - rising)));
+
+  const thin = Math.exp(-elevationKm / r.scaleHeightKm);
+  const tide = 1 + r.tideShare * Math.cos(((hour - r.tidePeakHour) / 24) * 2 * Math.PI);
+  const pressureMbar = r.datumPressureMbar * thin * tide;
+
+  // The wind: calm by night, gusting up through the afternoon to the day's peak; a gale in a storm.
+  const peak = lerp(r.afternoonWindMs[0], r.afternoonWindMs[1], roll(state, day, 10));
+  const daySpan = d.sunset - d.sunrise + d.twilightHours;
+  const gust = sinceDawn < daySpan ? Math.sin((Math.PI * sinceDawn) / daySpan) : 0;
+  const windMs = lerp(r.calmWindMs + (peak - r.calmWindMs) * gust, r.stormWindMs, storm);
+  const windFrom = Math.floor(roll(state, day, 11) * 8) * 45;
+
+  // Dust: a little different each day, thinner high up where the air is thin.
+  const clear = lerp(r.clearTau[0], r.clearTau[1], roll(state, day, 12)) * Math.min(1, thin);
+  const tau = lerp(clear, r.stormTau, storm);
+
+  return { lat, lon, elevationKm, tempC, highC, lowC, pressureMbar, windMs, windFrom, tau, sunrise: d.sunrise, sunset: d.sunset, noonSunDeg: 90 - Math.abs(lat) };
 }

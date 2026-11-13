@@ -18,6 +18,8 @@ export interface Cohort {
   count: number;
   /** Tick this cohort moves to its next stage (or, for elders, passes away). */
   until: number;
+  /** Generation: arrivals are the first, children born to them the second (missing: 1). */
+  gen?: number;
 }
 
 export const people = raw as unknown as {
@@ -114,7 +116,7 @@ export function holeGates(state: SimState): string[] {
 }
 
 /** Everything a hole can reach that unlocks rooms. */
-export const UNLOCK_GATES = ["children", "elders", "cargo", "basicHomes", "standardHomes", "luxuryHomes", "cleaning", "brickworks", "leisure", "recycling", "hospital", "reclaimer", "spiralStair", "plaza", "dome"] as const;
+export const UNLOCK_GATES = ["children", "elders", "cargo", "basicHomes", "standardHomes", "luxuryHomes", "cleaning", "brickworks", "leisure", "recycling", "hospital", "reclaimer", "spiralStair", "plaza", "dome", "geothermal"] as const;
 export type UnlockGate = (typeof UNLOCK_GATES)[number];
 
 /** Record that a hole has reached something that unlocks rooms (first child, first elder). */
@@ -154,6 +156,8 @@ export function stepAging(state: SimState, cfg: SimConfig): void {
   }
   state.population.cohorts = state.population.cohorts.filter((c) => c.count > 0);
   syncCount(state);
+  state.population.grownUp = (state.population.grownUp ?? 0) + grown;
+  state.population.passedAway = (state.population.passedAway ?? 0) + passed;
   const first = retired > 0 && !(state.unlocks ?? []).includes("elders");
   if (retired) unlock(state, "elders");
   if (retired) {

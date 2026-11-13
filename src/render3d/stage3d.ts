@@ -1,3 +1,4 @@
+import { temperatureTint } from "../view/temperature";
 import { UI_FONT } from "../view/font";
 import { LABEL_LAYER } from "./labelLayer";
 import * as THREE from "three";
@@ -5,22 +6,28 @@ import { previewEffects } from "../sim/effects";
 import type { Hole } from "../sim/geometry";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
+import { cropStagesKey } from "../view/furnish";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
 import { aimKeyFor, clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
-import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
+import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import { roomSide } from "../sim/windows";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
-import { DEFAULT_GRAPHICS, type Graphics } from "../view/graphics";
+import { DEFAULT_GRAPHICS, drawsDetailedFurniture, type Graphics } from "../view/graphics";
+import { recordFrame } from "../view/fps";
 import { Look, type LookLike } from "./look";
 import { clampCutAngle, CUT_ANGLE, DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { intersectGlobalClipping } from "./wedgeClip";
 import { makeSlice, withCutRock, withRegolith, withRock, withSlice } from "./surfaces";
 import { RoomEffects, type FxView } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
+import { behindSlab, clippedAway, slabBelow, type Slab } from "./cull3d";
 import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
+import { IndoorLights } from "./indoorLights";
+import { modeAt } from "../view/lightModes";
+import lighting from "../../data/lighting.json";
 import { createSky } from "./sky3d";
 import { siteLatitude, starTurn, sunDirection } from "../view/sunPath";
 import { buildTerrain, GROUND_BASE, siteSeed, soilTint, type Terrain } from "./terrain3d";
@@ -29,7 +36,8 @@ import { isoFitDistance } from "./isoReach";
 import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { setPanelDust } from "./surface3d";
-import { buildLayout, corridorGhostY, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, statusBadge, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
+import { refitRooms } from "../view/roomFinish";
+import { buildLayout, corridorGhostY, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, statusBadge, TROUBLE_EDGE, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, makeDome, makeLander, placeLander, surfaceSpotGeometry } from "./scenery3d";
 import { makeDrillRig, type DrillRig } from "./drillRig";
 import { makeCollar } from "./collar3d";
@@ -54,6 +62,7 @@ import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, touchFirst, type Gestu
 import { createWalkPad } from "./joystick";
 import { drinkHere, footing, footingNear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 import { createDrink } from "./drink3d";
+import { fpLoaded, loadFpModels, setModelsEnabled } from "../view/models";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Three
 // cameras: Free view, over one floor and off to one side (its id is "iso");
@@ -89,7 +98,7 @@ const ISO_PAN = { speed: 0.6, minSpeed: 12, reach: 1.3 };
 const ISO = { start: 1.6, min: 12, pad: 1.1, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
 /** First person: how finely and how far to look for room to stand on another floor (m), eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
 // Turning (radians a pixel) at the settings' look speed of 1: by dragging, and with mouse look. Godot's are the same, per point.
-const WALK = { eye: 1.8, speed: 4.5, run: 10, turn: 0.004, lookTurn: 0.0035, keyTurn: 1.8 };
+const WALK = { eye: 1.8, speed: 4.5, run: 10, turn: 0.007, lookTurn: 0.006, keyTurn: 1.8 };
 /** Looking up and down (first person) stops just short of straight up or down. */
 const MAX_PITCH = Math.PI / 2 - 0.02;
 /** How far the rock backdrop reaches past the outermost ring, and below the dig. */
@@ -117,6 +126,13 @@ const SHOWCASE = { turn: 0.04, dusk: 0.715, distance: 0.72, elev: 0.55, wideFrom
 type Mode = Camera;
 
 const HOVER = { ok: 0x7fd67f, bad: 0xe0503a, hover: 0xffe2b0, selected: 0xffffff };
+/**
+ * Tints laid over a room's own walls and floor (#337), in place of a recoloured outline: hover and the
+ * selection brighten them (added light, the selection more), a tool's red or green tints them, an empty
+ * slot under the pointer takes a faint wash, and trouble pulses in its colour between `pulse.low` and
+ * `pulse.high` every `pulse.seconds` (redrawn at `pulse.fps`), paused rooms a steady grey.
+ */
+const TINT = { hover: 0.09, selected: 0.18, tool: 0.38, slot: 0.18, idle: 0.3, pulse: { low: 0.08, high: 0.28, seconds: 2.4, fps: 15 } };
 /** Where a surface room in hand could go: how strongly each spot is tinted, and the one under the pointer (T-107). */
 const SPOTS = { faint: 0.12, hover: 0.3 };
 const FIELD_MAX = 3;
@@ -128,6 +144,9 @@ const HEADLAMP = { walk: 36, above: 1.2, behind: 1.5 };
 /** The sun's shadow: map size at full setting, how far its box reaches (from 100 m up), the margin round the rings, and how far (radians) it moves before shadows are redrawn. */
 const SUN_SHADOW = { mapSize: 2048, far: 450, margin: 12, redrawAngle: 0.02, boost: 2.4 };
 /** Overlay tints lie on the rooms' own floors and walls: pulled toward the camera so they win the depth test. */
+/** Bounds of what may be culled are grown this much (metres): shaders move some of it (sway, walls lowered, hangings). */
+const CULL_SLACK = 0.3;
+
 const OVERLAY_OFFSET = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 };
 
 export async function createStage3D(host: HTMLElement, opts: StageOptions = {}): Promise<Stage> {
@@ -211,7 +230,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(digFront);
 
   // The camera and the see-through toggles: set from the View mode's buttons (setView3d).
-  const view = { mode: DEFAULT_VIEW3D.camera as Mode, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors, flows: DEFAULT_VIEW3D.flows, cutAngle: DEFAULT_VIEW3D.cutAngle };
+  const view = { mode: DEFAULT_VIEW3D.camera as Mode, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors, roomTints: DEFAULT_VIEW3D.roomTints, flows: DEFAULT_VIEW3D.flows, cutAngle: DEFAULT_VIEW3D.cutAngle };
   // Free view with a floor picked slices the land open through the hole's axis: the near half's gone.
   const slice = makeSlice({ ...SLICE, earth: C.earth });
   const groundMat = withSlice(withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 })), slice, "land");
@@ -440,7 +459,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const lander = makeLander();
   scene.add(lander);
   // Timing for the dev console (window.__stage3d in dev builds only).
-  const stats = { buildMs: 0, frameMs: 0, calls: 0, triangles: 0 };
+  const stats = { buildMs: 0, frameMs: 0, calls: 0, triangles: 0, culled: 0 };
   const people = new People();
   /** Resource networks as pipes (View → Flows), and what they were last built for. */
   const flows = new Flows();
@@ -451,16 +470,76 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const badges = new THREE.Group();
   /** What the outlines and badges were last drawn for; null after a rebuild, so they're redrawn even with no rooms in view (an empty key). */
   let troubleKey: string | null = null;
-  /** Show each room's trouble: its outline's colour, and a caution sign over its label when it's slowed or short (not when it's only paused). */
+  /** Each room's own surfaces (walls, floor, linings, wall tops), to lay its tints over, by room. */
+  let roomSkins = new Map<number, THREE.Mesh[]>();
+  /** The tints laid over rooms, by layer: trouble follows each room's status, marks the hover, selection and tools. */
+  const tinted = { trouble: new Map<number, THREE.Mesh[]>(), mark: new Map<number, THREE.Mesh[]>() };
+  /** Lay a tint over a room's surfaces, or take it off (null); false if the room has none to tint (a surface room, or not drawn). */
+  function tintRoom(layer: keyof typeof tinted, id: number, mat: THREE.Material | null): boolean {
+    for (const t of tinted[layer].get(id) ?? []) t.removeFromParent();
+    tinted[layer].delete(id);
+    const skins = roomSkins.get(id);
+    if (!skins?.length) return false;
+    if (!mat) return true;
+    const list = skins.map((s) => {
+      // The room's own geometry, so the tint drops with its walls; never disposed with the overlay.
+      const t = new THREE.Mesh(s.geometry, mat);
+      t.userData = { cached: true, tint: true };
+      t.renderOrder = layer === "mark" ? 7 : 6;
+      s.add(t);
+      return t;
+    });
+    tinted[layer].set(id, list);
+    return true;
+  }
+  function clearTints(layer: keyof typeof tinted): void {
+    for (const id of [...tinted[layer].keys()]) tintRoom(layer, id, null);
+  }
+  /** A tint's material: on the room's surfaces where they show (depth-tested), lowered with its walls. Light added brightens; otherwise a colour wash. */
+  const tintMats = new Map<string, THREE.MeshBasicMaterial>();
+  function tintMaterial(color: number, opacity: number, add = false): THREE.MeshBasicMaterial {
+    const key = `${color}:${opacity}:${add}`;
+    let m = tintMats.get(key);
+    if (!m)
+      tintMats.set(key, (m = withWallsDown(
+        new THREE.MeshBasicMaterial({
+          color,
+          transparent: true,
+          opacity,
+          blending: add ? THREE.AdditiveBlending : THREE.NormalBlending,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          polygonOffset: true,
+          polygonOffsetFactor: -1,
+          polygonOffsetUnits: -1,
+        }),
+      )));
+    return m;
+  }
+  /** Trouble's tints: amber and red pulse (their opacity moved in the frame loop), grey holds steady. */
+  const pulseMats = { warn: tintMaterial(TROUBLE_EDGE.warn, TINT.pulse.low), bad: tintMaterial(TROUBLE_EDGE.bad, TINT.pulse.low) };
+  let pulsing = false;
+  let pulseClock = 0;
+  /** Show each room's trouble: a tint over its walls (or, with room tints off, its outline's colour), and a caution sign over its label when it's slowed or short (not when it's only paused). */
   function showTrouble(status: Record<number, RoomStatus>): void {
     const troubles = new Map<number, Trouble>();
     for (const id of roomOutlines.keys()) troubles.set(id, troubleOf(status[id]));
-    const key = [...troubles].map(([id, t]) => `${id}${t.level}`).join(",");
+    const key = `${view.roomTints}:` + [...troubles].map(([id, t]) => `${id}${t.level}`).join(",");
     if (key === troubleKey) return;
     troubleKey = key;
+    clearTints("trouble");
+    pulsing = false;
     for (const [id, edges] of roomOutlines) {
-      const t = troubles.get(id)!;
-      edges.material = t.level === "ok" || t.level === "work" ? (edges.userData.baseMaterial as THREE.Material) : troubleEdgeMaterial(t.level);
+      const { level } = troubles.get(id)!;
+      const base = edges.userData.baseMaterial as THREE.Material;
+      if (level === "ok" || level === "work") {
+        edges.material = base;
+        continue;
+      }
+      edges.material = view.roomTints ? base : troubleEdgeMaterial(level);
+      if (!view.roomTints) continue;
+      tintRoom("trouble", id, level === "idle" ? tintMaterial(TROUBLE_EDGE.idle, TINT.idle) : pulseMats[level]);
+      if (level !== "idle") pulsing = true;
     }
     badges.clear();
     for (const [id, t] of troubles) {
@@ -510,9 +589,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** Every lamp in the layout, and the point lights that follow the camera round them. */
   let lampList: Lamp[] = [];
   const lampLights = new LampLights();
+  /** The ceiling lights, and every room's lights by the hour below ground (#305). */
+  const indoor = new IndoorLights();
   /** Light pools on the floor show whenever lamp light is on at all. */
   const showPools = () => {
     for (const g of furnitureGroups) for (const o of g.children) if (o.userData.pool) o.visible = graphics.lamps > 0;
+    indoor.setPoolsShown(graphics.lamps > 0);
   };
   let graphics: Graphics = DEFAULT_GRAPHICS;
   // First person: how fast the mouse turns the head (settings), 1 = normal.
@@ -528,8 +610,80 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(festival.group);
   let rig: DrillRig | null = null;
   let rigFor = "";
+
+  // What the camera can't see goes undrawn (cull3d.ts): the layout's pieces, each with its bounds (fixed
+  // until the layout's rebuilt), and the floors between floors, worked out when first needed.
+  let cullables: { object: THREE.Object3D; box: THREE.Box3; clips: boolean }[] = [];
+  let slabs = new Map<number, Slab>();
+  /** Off from the dev console, to compare (window.__stage3d.setCulling). */
+  let culling = true;
+  const rigBox = new THREE.Box3();
+  function collectCullables(): void {
+    slabs = new Map();
+    cullables = [];
+    for (const object of layoutGroup.children) {
+      // Labels face the camera and keep their size on screen: their bounds don't hold still.
+      let sprite = false;
+      // Only what the cutaway's planes actually clip can be skipped for being cut away.
+      let clips = true;
+      object.traverse((o) => {
+        if (o instanceof THREE.Sprite) sprite = true;
+        const m = (o as THREE.Mesh).material;
+        for (const mat of Array.isArray(m) ? m : m ? [m] : []) if (mat instanceof THREE.ShaderMaterial && !mat.clipping) clips = false;
+      });
+      if (sprite) continue;
+      cullables.push({ object, box: new THREE.Box3().setFromObject(object).expandByScalar(CULL_SLACK), clips });
+    }
+  }
+  function slab(floor: number): Slab {
+    let s = slabs.get(floor);
+    if (!s) slabs.set(floor, (s = slabBelow(layout!, floor)));
+    return s;
+  }
+  /** What's in the scene but can't be seen from here: behind the floor under the camera (or over it, in first person), or cut away. */
+  function unseen(): THREE.Object3D[] {
+    if (!culling || !layout || !hole) return [];
+    // The sun's shadows are about to be redrawn: everything casts, seen or not.
+    if (renderer.shadowMap.enabled && renderer.shadowMap.needsUpdate && sun.castShadow) return [];
+    const eye = camera.position;
+    const behind: Slab[] = [];
+    if (view.mode === "iso") {
+      const f = cut();
+      if (f !== null) behind.push(slab(f));
+      else if (eye.y > floorSpan(1)[1]) behind.push(slab(0));
+    } else if (view.mode === "walk") {
+      // Overhead, the ceilings close the corridors' open tops (#340): nothing's seen up through them.
+      const f = floorAtY(eye.y);
+      if (f >= 1) behind.push(slab(f), { ...slab(f - 1), fromBelow: [] });
+    }
+    const planes = view.mode === "cutaway" && !webgpu ? clips : [];
+    if (!behind.length && !planes.length) return [];
+    const gone = (box: THREE.Box3, clipped: boolean) => behind.some((s) => behindSlab(s, eye, box)) || (clipped && clippedAway(planes, box));
+    const out: THREE.Object3D[] = [];
+    for (const c of cullables) if (c.object.visible && gone(c.box, c.clips)) out.push(c.object);
+    // The rig moves as it digs: its parts are measured where they are now.
+    if (rig?.group.visible) {
+      for (const o of rig.group.children) if (o.visible && gone(rigBox.setFromObject(o).expandByScalar(CULL_SLACK), true)) out.push(o);
+    }
+    return out;
+  }
+  /** Draw with what can't be seen left out, then put it back (picking, shadows and the rest see it all). */
+  function drawSeen(draw: () => void): number {
+    const hidden = unseen();
+    for (const o of hidden) o.visible = false;
+    try {
+      draw();
+    } finally {
+      for (const o of hidden) o.visible = true;
+    }
+    return hidden.length;
+  }
   /** The drill's last strike we've seen, so the rig shudders once for each (undefined until the first snapshot). */
   let rigStruck: number | null | undefined;
+  /** A tremor's omen (#408): the last one seen (undefined until the first snapshot), and when the camera's shake ends. */
+  let tremorSeen: number | null | undefined;
+  let tremorUntil = 0;
+  const TREMOR_MS = 1400;
   /** The glass dome over the shaft, once a hole has one. */
   let dome: THREE.Group | null = null;
   let domeFor = "";
@@ -747,10 +901,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     applyBackground();
     // Deep in the shaft, daylight matters less than the lamps; keep it gentle.
     // A dust storm blots out the sun, and some of the sky's light.
-    hemi.intensity = (0.45 + 0.35 * light) * (1 - STORM_DIM.sky * storm);
+    hemiBase = (0.45 + 0.35 * light) * (1 - STORM_DIM.sky * storm);
     // With shadows the rock keeps the sun out of the rooms, so it can shine harder down the shaft and on the surface.
     sunBase = (0.15 + 0.9 * light) * (1 - STORM_DIM.sun * storm);
-    sun.intensity = sunBase * (sun.castShadow ? SUN_SHADOW.boost : 1);
+    lightHour = f;
+    applySkyLight();
     // Near the surface, the view takes the hour's light; deeper down, the lamps'.
     look.setDaylight(light);
     // At night, windows and the gallery tubes' lamps glow.
@@ -973,9 +1128,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     overlay.add(mesh);
   }
 
+  /** Mark a room: a tint over its walls (brighter for the selection than the hover; a tool's red or green), or with room tints off its outline in that colour. */
   function markRoom(room: RoomInstance, color: number): void {
-    if (room.at.kind === "surface") surfaceMarker(room.surfaceCells, color);
-    else outline(room.cells, color);
+    if (room.at.kind === "surface") return surfaceMarker(room.surfaceCells, color);
+    if (view.roomTints) {
+      const mat = color === HOVER.hover ? tintMaterial(0xffffff, TINT.hover, true) : color === HOVER.selected ? tintMaterial(0xffffff, TINT.selected, true) : tintMaterial(color, TINT.tool);
+      if (tintRoom("mark", room.id, mat)) return;
+    }
+    outline(room.cells, color);
   }
 
   /** The room's strongest effect, spread the way the sim spreads it, as tinted cells. */
@@ -1024,7 +1184,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     overlay.add(edges);
   }
 
+  /** What the overlay was last drawn for, to redraw it when the rooms are rebuilt (their tints go with them). */
+  let shownHover: HoverInfo | null = null;
   function drawOverlay(info: HoverInfo | null): void {
+    shownHover = info;
+    clearTints("mark");
     scene.remove(overlay);
     overlay.traverse((o) => {
       if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) o.geometry.dispose();
@@ -1067,7 +1231,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const color = info.check.ok ? HOVER.ok : HOVER.bad;
       const cells = info.check.cells.length ? info.check.cells : p.kind === "slot" ? [p as Cell] : [];
       fillCells(cells, color, 0.4);
-      outline(cells, color);
+      if (!view.roomTints) outline(cells, color);
       if (info.check.ok && spots.length) surfaceSpotTint(info.check.surfaceCells, HOVER.ok, SPOTS.hover);
       if (info.check.surfaceCells.length) surfaceMarker(info.check.surfaceCells, color);
       if (info.check.ok && cells.length) drawHalo(tool.room, cells);
@@ -1092,7 +1256,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (info.room.id !== selected || tool?.kind === "demolish") markRoom(info.room, tool?.kind === "demolish" ? HOVER.bad : HOVER.hover);
       return;
     }
-    if (p.kind === "slot" && highlightsSlot(layout, p, building)) outline([p as Cell], HOVER.hover);
+    if (p.kind === "slot" && highlightsSlot(layout, p, building)) {
+      if (view.roomTints) fillCells([p as Cell], HOVER.hover, TINT.slot);
+      else outline([p as Cell], HOVER.hover);
+    }
   }
 
   /** Tint cells by an effect, or homes by happiness, banded so each band is one mesh. */
@@ -1150,6 +1317,26 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       }
       return;
     }
+    if (overlayType === "temperature") {
+      // Every dug cell in its floor's colour: cold blue, comfortable green, hot red (view/temperature.ts).
+      const byLook = new Map<string, Cell[]>();
+      s.temperature.floors.forEach((f) => {
+        const { color, alpha } = temperatureTint(f.now);
+        const k = `${color}:${Math.round(alpha * 20) / 20}`;
+        const cells: Cell[] = [];
+        l.open?.[f.floor - 1]?.forEach((slots, ri) => slots.forEach((v, slot) => v === 1 && cells.push({ floor: f.floor, ring: ri + 1, slot })));
+        byLook.set(k, [...(byLook.get(k) ?? []), ...cells]);
+      });
+      for (const [k, cells] of byLook) {
+        if (!cells.length) continue;
+        const [color, alpha] = k.split(":").map(Number) as [number, number];
+        const mat = overlayMat(`t:${k}`, () =>
+          withWallsDown(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, depthWrite: false, side: THREE.DoubleSide, ...OVERLAY_OFFSET })),
+        );
+        fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET, false), mat));
+      }
+      return;
+    }
     if (overlayType === "happiness") {
       for (const pool of s.happiness.pools) {
         const room = l.rooms.find((r) => r.id === pool.roomId);
@@ -1194,10 +1381,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   /** The border nearest the point the last pick landed on. */
   function edgeAtPick(p: Pick): Edge | null {
-    if (!hole || !pickedAt || (p.kind !== "slot" && p.kind !== "gallery")) return null;
-    const r = Math.hypot(pickedAt.x, pickedAt.z);
-    const rings = Math.max(0.001, (r - hole.shaftRadiusM) / RING_D);
-    return nearestEdge(hole, p.floor, rings, Math.atan2(pickedAt.z, pickedAt.x) / TAU, RING_D);
+    const at = pickedPoint();
+    if (!hole || !at || (p.kind !== "slot" && p.kind !== "gallery")) return null;
+    return nearestEdge(hole, p.floor, at.rings, at.turn, RING_D);
+  }
+
+  /** Where the last pick landed on its floor: rings out from the shaft wall, and the angle in turns. */
+  function pickedPoint(): ChainPoint | null {
+    if (!hole || !pickedAt) return null;
+    const rings = Math.max(0.001, (Math.hypot(pickedAt.x, pickedAt.z) - hole.shaftRadiusM) / RING_D);
+    return { rings, turn: Math.atan2(pickedAt.z, pickedAt.x) / TAU };
   }
 
   function hoverInfo(): HoverInfo | null {
@@ -1234,7 +1427,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   function snake(): void {
     if (!layout) return;
-    const next = extendChain(layout, chain, edgeUnderPointer(), chainErase);
+    const edge = edgeUnderPointer();
+    const next = extendChain(layout, chain, edge, chainErase, pickedPoint());
     if (next === chain) return;
     chain = next;
     refreshHover(true);
@@ -1798,6 +1992,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       layoutKey = ""; // rebuild with the rooms' new materials on the next update
       if (latest) stage.update(latest);
     }
+    if (!!v.roomTints !== view.roomTints) {
+      view.roomTints = !!v.roomTints;
+      troubleKey = null;
+      if (latest) showTrouble(latest.roomStatus);
+      drawOverlay(shownHover);
+    }
     if (v.wallsDown !== view.wallsDown) {
       view.wallsDown = v.wallsDown;
       setWallsDown(view.wallsDown);
@@ -1841,6 +2041,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const clock = new THREE.Clock();
   let ambient = 0;
   renderer.setAnimationLoop(() => {
+    if (document.visibilityState === "visible") recordFrame(performance.now()); // the frame rate, for the graphics settings (#391)
     const dt = Math.min(0.1, clock.getDelta());
     ambient += dt;
     // The storm builds and clears smoothly, even when the sim jumps.
@@ -1871,6 +2072,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       applyBackground();
       dirty = true;
     }
+    // Rooms in trouble pulse gently, redrawn a few times a second.
+    pulseClock += dt;
+    if (pulsing && view.roomTints && pulseClock >= 1 / TINT.pulse.fps) {
+      pulseClock = 0;
+      const wave = 0.5 - 0.5 * Math.cos((performance.now() / 1000 / TINT.pulse.seconds) * TAU);
+      pulseMats.warn.opacity = pulseMats.bad.opacity = TINT.pulse.low + (TINT.pulse.high - TINT.pulse.low) * wave;
+      dirty = true;
+    }
     if (graphics.life && hole && ambient >= 1 / AMBIENT_FPS) {
       dust.step(ambient);
       // Colonists, sparks and steam move only while the game runs.
@@ -1887,23 +2096,50 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       ambient = 0;
       dirty = true;
     }
+    if (performance.now() < tremorUntil + 50) dirty = true; // the camera shakes for a moment
     if (!dirty) return;
     dirty = false;
     drawFrame();
   });
 
+  /**
+   * Far rooms draw their furniture coarser; near ones draw the Blender-made models (#360) where the
+   * furniture setting says (#391): never, in first person only, or in every view. The models file is
+   * fetched the first time a view wants them (until it's in, the near parts).
+   */
+  function showFurnitureDetail(): void {
+    const detailed = drawsDetailedFurniture(graphics.furniture, view.mode === "walk");
+    if (detailed && !fpLoaded()) void loadFpModels(`${import.meta.env.BASE_URL}models/fp.bin`).then((ok) => (dirty ||= ok));
+    for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : detailed ? "fp" : "near");
+  }
+
   /** Draw the scene now, with everything that follows the camera brought up to date. */
   function drawFrame(): void {
     const t0 = performance.now();
-    // Far rooms draw their furniture coarser.
-    for (const g of furnitureGroups) showDetail(g, camera.position.distanceTo(g.userData.centre as THREE.Vector3) > FURNITURE_LOD.far ? "far" : "near");
-    // The nearest lamps light their rooms.
-    lampLights.place(lampList, view.mode === "walk" ? new THREE.Vector3(walker.x, camera.position.y, walker.z) : camera.position, view.mode === "walk" ? walker.floor : cut());
+    showFurnitureDetail();
+    // The rooms' lights in the hour's mode below ground (as they are above), mid-switch drawing on; the nearest light their rooms.
+    applySkyLight();
+    if (indoor.update(belowGround() ? modeAt(lightsHeld ?? lightHour) : "surface", performance.now() / 1000)) dirty = true;
+    indoor.setFixturesShown(view.mode === "walk");
+    // Ceilings only on foot: from above you look in (#340).
+    for (const o of layoutGroup.children) if (o.userData.ceiling) o.visible = view.mode === "walk";
+    lampLights.place(indoor.lit,view.mode === "walk" ? new THREE.Vector3(walker.x, camera.position.y, walker.z) : camera.position, view.mode === "walk" ? walker.floor : cut());
     updateShadows();
     skyDome.follow(camera);
     look.setView(hazeFocus(), view.mode === "walk", view.mode === "iso" ? { distance: cam.iso, radius: outerRadius() } : null);
     roomFx.setScale(renderer.getDrawingBufferSize(bufferSize).y / (2 * Math.tan((camera.fov * Math.PI) / 360)));
-    look.render();
+    // A tremor (#408): the camera judders a little, dying away, then settles back where it was.
+    const shake = Math.max(0, tremorUntil - performance.now()) / TREMOR_MS;
+    const was = camera.position.clone();
+    if (shake > 0) {
+      const t = performance.now() / 1000;
+      const k = shake * shake * 0.12;
+      camera.position.x += Math.sin(t * 53) * k;
+      camera.position.y += Math.sin(t * 71) * k * 0.6;
+      camera.position.z += Math.cos(t * 47) * k;
+    }
+    stats.culled = drawSeen(() => look.render());
+    if (shake > 0) camera.position.copy(was);
     stats.frameMs = performance.now() - t0;
     stats.calls = renderer.info.render.calls;
     stats.triangles = renderer.info.render.triangles;
@@ -1918,6 +2154,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let shadowSun = new THREE.Vector3();
   /** The sun's strength before the shadow boost (set with the sky). */
   let sunBase = 1;
+  let hemiBase = 1.1;
+  /** The time of day the sky was last set for (0..1), which the rooms' lights go by. */
+  let lightHour = 0.5;
+  /** The hour the dev console holds the rooms' lights at, if any. */
+  let lightsHeld: number | null = null;
   function updateShadows(): void {
     if (!renderer.shadowMap.enabled) return;
     setSunShadow();
@@ -1930,7 +2171,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         if (!m.isMesh) return;
         const mat = m.material as THREE.Material | THREE.Material[];
         const seeThrough = Array.isArray(mat) ? mat.some((x) => x.transparent) : mat.transparent;
-        m.castShadow = !seeThrough;
+        // Ceilings (on foot only) cast none, or the shadows would change with the camera.
+        m.castShadow = !seeThrough && !m.userData.ceiling;
         m.receiveShadow = true;
       });
       // Not the sky, nor colonists (who move between redraws).
@@ -1951,7 +2193,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const on = renderer.shadowMap.enabled && cut() === null;
     if (sun.castShadow !== on) shadowKey = "";
     sun.castShadow = on;
-    sun.intensity = sunBase * (on ? SUN_SHADOW.boost : 1);
+    applySkyLight();
+  }
+
+  /** Below ground: a floor picked, or on foot. The rooms are lit from inside then, in the hour's mode (#305). */
+  const belowGround = () => view.mode === "walk" || cut() !== null;
+  /** The sky's and sun's light by the hour; below ground, only some of it reaches the rooms (as Godot's T-101). */
+  function applySkyLight(): void {
+    const under = belowGround();
+    hemi.intensity = hemiBase * (under ? lighting.web.undergroundSky : 1);
+    sun.intensity = sunBase * (sun.castShadow ? SUN_SHADOW.boost : 1) * (under ? lighting.web.undergroundSun : 1);
   }
 
   /** The sun's shadow box: round the hole and its rings, deep enough for every floor. */
@@ -2023,7 +2274,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     look.resize();
     applyFloorCut();
   }
-  scene.add(people.group, dust.points, roomFx.group, lampLights.group, grit.points, shaftLight.mesh, sunPools.mesh, badges, flows.group);
+  scene.add(people.group, dust.points, roomFx.group, lampLights.group, indoor.group,grit.points, shaftLight.mesh, sunPools.mesh, badges, flows.group);
   lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
 
   let latest: Snapshot | null = null;
@@ -2037,6 +2288,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         // For the dev console: timings, plus a synchronous render timed through the GPU.
         (window as unknown as { __stage3d: unknown }).__stage3d = {
           ...stats,
+          // The rooms tinted now (#337): by trouble, and by the hover or selection.
+          tints: () => ({ trouble: tinted.trouble.size, mark: tinted.mark.size, skins: roomSkins.size, outlines: roomOutlines.size, pulsing, on: view.roomTints, key: troubleKey }),
           measure(): number {
             const t0 = performance.now();
             renderer.render(scene, camera);
@@ -2044,10 +2297,19 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             return performance.now() - t0;
           },
           setMode(m: Mode) {
-            setView3d({ camera: m, wallsDown: view.wallsDown, roomColors: view.roomColors, flows: view.flows, cutAngle: view.cutAngle });
+            setView3d({ camera: m, wallsDown: view.wallsDown, roomColors: view.roomColors, roomTints: view.roomTints, flows: view.flows, cutAngle: view.cutAngle });
           },
           // First person's position and heading, to put a walker somewhere.
           walker,
+          // The orbit of Free view and the cutaway, to sweep the camera round.
+          cam,
+          // Hold the rooms' lights at an hour (0..24; null: the clock's), to see their modes (#305).
+          lightsAt(hour: number | null) {
+            lightsHeld = hour === null ? null : hour / 24;
+            dirty = true;
+          },
+          // Pick a floor (null: the surface), as the floor buttons do.
+          setFloor: (f: number | null) => stage.setFloor(f),
           // Stand somewhere and look (first person), and redraw.
           walkTo(x: number, z: number, yaw: number, floor = walker.floor, pitch = 0) {
             Object.assign(walker, { x, z, yaw, floor, pitch });
@@ -2082,6 +2344,64 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             const n = { near: 0, far: 0 };
             for (const g of furnitureGroups) n[(g.userData.detailShown ?? "near") as "near" | "far"]++;
             return n;
+          },
+          /**
+           * What a frame of the main scene costs (#262): draw calls and triangles, in all and for
+           * furniture, people and the rest, plus the GPU time of `repeat` renders, in milliseconds.
+           * The post-processing passes are left out: they cost the same whatever the scene holds.
+           */
+          cost(repeat = 20) {
+            applyCamera();
+            showFurnitureDetail();
+            const info = renderer.info;
+            const reset = info.autoReset;
+            info.autoReset = false;
+            let culled = 0;
+            const once = () => {
+              info.reset();
+              culled = drawSeen(() => renderer.render(scene, camera));
+              return { calls: info.render.calls, triangles: info.render.triangles };
+            };
+            // Any shadow redraw first: nothing's culled while shadows are drawn.
+            renderer.render(scene, camera);
+            const all = { ...once(), culled };
+            const c0 = performance.now();
+            for (let i = 0; i < repeat; i++) unseen();
+            const cullMs = Math.round(((performance.now() - c0) / repeat) * 1000) / 1000;
+            // Each kind on its own: hide the others for one render.
+            const kinds: Record<string, THREE.Object3D[]> = { furniture: furnitureGroups, people: [people.group] };
+            const each: Record<string, { calls: number; triangles: number }> = {};
+            for (const [name, objs] of Object.entries(kinds)) {
+              const was = objs.map((o) => o.visible);
+              objs.forEach((o) => (o.visible = false));
+              const without = once();
+              objs.forEach((o, i) => (o.visible = was[i]!));
+              each[name] = { calls: all.calls - without.calls, triangles: all.triangles - without.triangles };
+            }
+            if (!webgpu) renderer.getContext().finish();
+            const t0 = performance.now();
+            for (let i = 0; i < repeat; i++) drawSeen(() => renderer.render(scene, camera));
+            if (!webgpu) renderer.getContext().finish();
+            const ms = (performance.now() - t0) / repeat;
+            info.autoReset = reset;
+            return { ...all, ms: Math.round(ms * 100) / 100, cullMs, ...each };
+          },
+          // What's culled now, the floors between floors, and what may be culled, to inspect.
+          cull: { unseen, slab, cullables: () => cullables, layout: () => layout },
+          // Skip what the camera can't see (on by default), to compare with it all drawn.
+          setCulling(on: boolean) {
+            culling = on;
+            dirty = true;
+          },
+          // In first person, draw the Blender-made furniture models (#357, #360; on by default), or the code-built
+          // items, to compare; `stress` (an item with a model) draws that model for every item, to measure models everywhere.
+          // `fpLoaded()` says whether the models file has been fetched (it is the first time you go into first person).
+          fpLoaded,
+          models(on: boolean, stress: string | null = null) {
+            setModelsEnabled(on, stress);
+            layoutKey = "";
+            dirty = true;
+            if (latest) stage.update(latest);
           },
           /**
            * The Godot experiment (docs/PLAN-GODOT.md): the scene as drawn (the shaft, the rooms and their
@@ -2181,8 +2501,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       // Wear and grime: each room's level, which changes over days, so rebuilds stay rare.
       const grime = new Map(snapshot.layout.rooms.map((r) => [r.id, grimeLevel(r)]));
       const grimeKey = [...grime.values()].join("");
-      const refits = refitRooms(snapshot);
-      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${cut()}:${view.roomColors}:${grimeKey}:${[...refits].join(",")}`;
+      const refits = refitRooms(snapshot.construction.jobs, snapshot.layout.rooms);
+      const lk = `${gameId}:${snapshot.layout.version}:${snapshot.drill.floor}:${key}:${cut()}:${view.roomColors}:${grimeKey}:${[...refits].join(",")}:${cropStagesKey(snapshot.layout)}`;
       if (lk !== layoutKey) {
         layoutKey = lk;
         scene.remove(layoutGroup);
@@ -2198,13 +2518,22 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           if (o.userData.outerCap) (o as THREE.Mesh).material = outerCapMaterial((o as THREE.Mesh).material as THREE.MeshStandardMaterial);
           if (o.userData.furniture) furnitureGroups.push(o);
         });
+        collectCullables();
         lampList = furnitureGroups.flatMap((g) => (g.userData.lamps as Lamp[] | undefined) ?? []);
+        indoor.build(snapshot.layout, furnitureGroups, cut());
         showPools();
         sunPools.build(snapshot.layout, cut());
-        // Each built room's outline and label, to show its trouble on.
+        // Each built room's outline, label and surfaces, to show its trouble and marks on.
         roomOutlines = new Map();
         roomLabels = new Map();
+        roomSkins = new Map();
+        tinted.trouble.clear();
+        tinted.mark.clear();
         layoutGroup.traverse((o) => {
+          if (o instanceof THREE.Mesh && o.userData.pickable && !o.userData.surface && typeof o.userData.roomId === "number") {
+            const id = o.userData.roomId as number;
+            roomSkins.set(id, [...(roomSkins.get(id) ?? []), o]);
+          }
           if (o.userData.outline && o instanceof THREE.LineSegments) {
             o.userData.baseMaterial ??= o.material;
             roomOutlines.set(o.userData.roomId as number, o);
@@ -2212,6 +2541,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           if (o.userData.label && typeof o.userData.roomId === "number") roomLabels.set(o.userData.roomId as number, o);
         });
         troubleKey = null;
+        drawOverlay(shownHover);
         // The floor picked changed: hidden furniture's sparks and steam go with it.
         roomFx.setView(fxView());
         dirty = true;
@@ -2241,6 +2571,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         rig = makeDrillRig(snapshot.layout.hole);
         scene.add(rig.group);
         rigStruck = undefined; // another hole (or game): its old strikes aren't news
+        tremorSeen = undefined;
       }
       if (rig) {
         const deepest = snapshot.layout.hole.floors;
@@ -2258,6 +2589,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
           dirty = true;
         }
       }
+      // A tremor's omen just now (not one from before a load): the camera shakes.
+      if (tremorSeen !== undefined && d.tremorTick !== null && d.tremorTick !== tremorSeen) tremorUntil = performance.now() + TREMOR_MS;
+      tremorSeen = d.tremorTick;
       // A festival on: lights along the galleries (from a picked floor down) and lanterns up the shaft.
       const partying = snapshot.events.festival !== null;
       if (partying) festival.sync(snapshot.layout.hole, cf);
@@ -2323,7 +2657,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       roomFx.sync(snapshot.layout, snapshot.roomStatus);
       updateSky(snapshot);
       const happy =
-        overlayType === "happiness" ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",") : overlayType === "condition" ? conditionKey(snapshot.layout.rooms) : "";
+        overlayType === "happiness"
+          ? snapshot.happiness.pools.map((p) => Math.round(p.happiness)).join(",")
+          : overlayType === "condition"
+            ? conditionKey(snapshot.layout.rooms)
+            : overlayType === "temperature"
+              ? snapshot.temperature.floors.map((f) => `${Math.round(f.now)}/${f.cells}`).join(",")
+              : "";
       const fk = `${overlayType}:${gameId}:${snapshot.layout.version}:${happy}:${heat.bad}:${cut()}:${reachKey(snapshot.layout, selected, spot)}`;
       if (fk !== fieldKey) {
         fieldKey = fk;
@@ -2503,21 +2843,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     },
   };
   return stage;
-}
-
-/**
- * Rooms being refitted: those already built with a job of their own in the queue (other than another
- * floor for stairs or a lift). That's the refit job (PLAN-M15), which the room's walls show as a band of
- * hazard stripes; its % label is drawProgress's, as for any room's job.
- */
-function refitRooms(s: Snapshot): Set<number> {
-  const out = new Set<number>();
-  for (const job of s.construction.jobs) {
-    if (job.roomId === undefined || job.kind === "extend") continue;
-    const room = s.layout.rooms.find((r) => r.id === job.roomId);
-    if (room && !room.building && !room.planned) out.add(room.id);
-  }
-  return out;
 }
 
 /** Free a terrain's geometry and its own materials (the ground's material belongs to the stage). */

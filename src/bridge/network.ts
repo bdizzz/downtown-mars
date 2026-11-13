@@ -34,7 +34,7 @@ export function mapView(s: Snapshot): MapMessage {
     locked: s.mapUnlocked ? null : `Only the ground near your holes is known yet. The map opens at ${network.mapUnlockPopulation} colonists (you have ${pop}).`,
     legend: Object.entries(DEPOSIT_STYLE).map(([kind, d]) => ({ kind, name: d.name, color: d.color, hint: d.hint })),
     deposits: s.deposits.map((d) => ({ kind: d.kind, lat: d.lat, lon: d.lon, radiusDeg: d.radiusDeg, color: DEPOSIT_STYLE[d.kind].color })),
-    holes: s.holes.flatMap((h) => (h.site ? [{ id: h.id, name: h.name, lat: h.site.lat, lon: h.site.lon, color: holeColor(s, h.id), here: h.id === s.holeId }] : [])),
+    holes: s.holes.flatMap((h) => (h.site ? [{ id: h.id, name: h.capped ? `${h.name} · ${h.capped.identity}` : h.name, lat: h.site.lat, lon: h.site.lon, color: holeColor(s, h.id), here: h.id === s.holeId }] : [])),
     convoys: s.convoys.map((c) => ({ from: c.from, to: c.to, progress: Math.min(1, Math.max(0, c.progress)), label: `${c.name} · ${c.daysLeft.toFixed(1)} d` })),
     routes: s.routes.flatMap((r) => {
       const a = siteOf(r.fromHoleId);
@@ -105,7 +105,7 @@ export function networkView(s: Snapshot): NetworkMessage {
   return {
     type: "network",
     holes: s.holes.map((h) => ({
-      name: `${h.name}${h.domed ? " ◓" : ""}`,
+      name: `${h.name}${h.domed ? " ◓" : ""}${h.capped ? ` · ${h.capped.identity}, ${h.capped.floors} floors` : ""}`,
       color: holeColor(s, h.id),
       here: h.id === s.holeId,
       people: h.population,

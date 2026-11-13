@@ -9,5 +9,5 @@
     "types": ["node"],
     "resolveJsonModule": true
   },
-  "include": ["vite.config.ts", "src/bridge"]
+  "include": ["vite.config.ts", "src/bridge", "scripts/saves.ts"]
 }

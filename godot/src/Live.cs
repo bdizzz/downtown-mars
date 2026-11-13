@@ -67,6 +67,16 @@ public partial class Live : Node3D
     /// <summary>The night's dust glow from overhead: dim, warm, no shadows (with GI on, Godot's ambient light doesn't reach).</summary>
     readonly DirectionalLight3D _glow = new() { Name = "NightGlow", LightColor = new Color(0.7f, 0.62f, 0.62f), ShadowEnabled = false, LightSpecular = 0.1f, LightEnergy = 0 };
     FogVolume? _haze;
+    /// <summary>
+    /// With a floor in view, daylight comes in only down the shaft (T-101): a warm light at the floor's
+    /// height in the open shaft, spilling into ring-1 rooms through gallery glass, windows and open walls.
+    /// </summary>
+    readonly OmniLight3D _shaftDay = new() { Name = "ShaftDaylight", LightColor = new Color(1, 0.86f, 0.68f), ShadowEnabled = true, OmniAttenuation = 0.5f, LightVolumetricFogEnergy = 0.5f, LightEnergy = 0, LightCullMask = SunLayers, Visible = false };
+    const float ShaftDayEnergy = 14.0f, ShaftDayReach = 16;
+    /// <summary>The land above ground (the terrain): the only thing the sun lights while a floor is in view.</summary>
+    const uint SurfaceLayer = 1 << 12;
+    /// <summary>What the sun lights with every floor showing: everything but the map's globe.</summary>
+    const uint SunLayers = 0xFFFFF & ~MapView.MapLayer;
     MeshInstance3D _ground = null!;
 
     // HUD.
@@ -82,7 +92,7 @@ public partial class Live : Node3D
     int _speedBeforeFailure = 1;
     HelpSheet _help = null!;
     SettingsSheet _settings = null!;
-    bool _wasConnected;
+    SlowCard _slowCard = null!;    bool _wasConnected;
     /// <summary>What the tutorial needs to know that the sim doesn't: the noise overlay seen, Flows opened.</summary>
     bool _sawNoise, _openedFlows;
     /// <summary>The resource grid, and the top bar's "needs you" slot, drill (with its pause) and supply drop.</summary>
@@ -93,7 +103,13 @@ public partial class Live : Node3D
     TextureRect _dropIcon = null!;
     Button _drillButton = null!;
     bool _drillActive;
+    /// <summary>The local weather report (T-074): the air outside as a chip, opening its card below the top bar.</summary>
+    Button _weatherChip = null!;
+    readonly PanelContainer _weatherCard = new() { Name = "weather_card", Visible = false };
+    readonly VBoxContainer _weatherRows = new();
+    string _weatherKey = "";
     PanelContainer _pickerPanel = null!;
+    ScrollContainer _pickerScroll = null!;
     /// <summary>The cutaway's own panel, where the floor picker is in Free view: zoom, and the cut's angle.</summary>
     PanelContainer _cutPanel = null!;
     HSlider _cutSlider = null!;
@@ -112,6 +128,8 @@ public partial class Live : Node3D
     OptionButton _holePicker = null!;
     string _holesKey = "";
     float _light = 1;
+    /// <summary>The daylight inside the rooms: the hour's, but none with a floor in view (lit as underground, T-101).</summary>
+    float _roomLight = 1;
     double _clockSeconds, _shadowClock;
 
     /// <summary>Start-up options from the command line (Main.cs): a floor to pick, first person, and a screenshot then quit.</summary>
@@ -157,6 +175,7 @@ public partial class Live : Node3D
         AddChild(_sun);
         AddChild(_glow);
         _glow.LookAtFromPosition(new Vector3(-20, 100, 35), Vector3.Zero, Vector3.Up);
+        AddChild(_shaftDay);
         _hole = new HoleScene { Name = "Hole" };
         AddChild(_hole);
         AddChild(_rig3d);
@@ -177,7 +196,7 @@ public partial class Live : Node3D
         if (!Dev.Off("people")) AddChild(_people);
         if (Dev.Off("sunshadow")) _sun.ShadowEnabled = false;
         if (Dev.Off("msaa")) GetViewport().Msaa3D = Viewport.Msaa.Disabled;
-        _ground = new MeshInstance3D { Name = "Ground" };
+        _ground = new MeshInstance3D { Name = "Ground", Layers = 1 | SurfaceLayer };
         AddChild(_ground);
         // The land, once the bridge sends it: under the ground node, so it shows and hides with it.
         _ground.AddChild(_terrain);
@@ -234,7 +253,7 @@ public partial class Live : Node3D
         _map = new MapView(_hud, m => _bridge.Send(m)) { Name = "Map", Toast = t => _build.Toast(t) };
         AddChild(_map);
         // The map has its own layer: the hole's sun doesn't light it.
-        _sun.LightCullMask &= ~MapView.MapLayer;
+        _sun.LightCullMask = SunLayers;
         _glow.LightCullMask &= ~MapView.MapLayer;
         _map.Closed = () =>
         {
@@ -278,6 +297,9 @@ public partial class Live : Node3D
         _tutorial = new Tutorial(_hud) { Name = "Tutorial" };
         // The deputy's tip, where the tutorial's card sits (over it while it's up).
         _tip = new TipCard(_hud) { Name = "Tip", OnShow = ShowMe };
+        // Very low frame rate (#391): one click to the lightest graphics.
+        _slowCard = new SlowCard { Name = "SlowCard", Lighten = LightenGraphics };
+        _hud.AddChild(_slowCard);
         _tip.Seen = id => SendCommand(new Dictionary<string, object> { ["type"] = "seeTip", ["id"] = id });
         _tip.Off = () =>
         {
@@ -393,6 +415,8 @@ public partial class Live : Node3D
 
     void Step(double delta)
     {
+        Fps.Record(Time.GetTicksMsec());
+        _slowCard.Update(!_menu.Visible && !_settings.Visible && !_welcome.Visible && !_failure.Visible, _quality == Quality.Low && ViewSettings.Furniture == ViewSettings.FurnitureDetail.Basic);
         _clockSeconds += delta;
         PlayKeys();
         // The rig moves at the game's pace (still when paused).
@@ -401,6 +425,13 @@ public partial class Live : Node3D
         _festival.Step((float)delta);
         _scenery.Step((float)delta);
         KeepUnderTop();
+        FitFloorPicker();
+        _build.KeepAbove(_status.Position.Y);
+        var bottom = _build.Active ? _build.StripTop : _status.Position.Y;
+        _choices.KeepNewsAbove(bottom, _pickerPanel.Visible ? _pickerPanel.Size.X + 24 : 14);
+        _choices.KeepCardsAbove(bottom);
+        _choices.NewsVisible = !_build.PopupOpen;
+        _build.KeepLeftOf(_pickerPanel.Visible ? _pickerPanel.Size.X + 14 : 0);
         Pulse();
         if (NoHud) _hud.Visible = false;
         // A bridge (re)connected: it needs the game settings it acts on.
@@ -472,6 +503,7 @@ public partial class Live : Node3D
             else if (type == "terrain")
             {
                 _terrain.Set(msg.RootElement);
+                OnSurface(_terrain);
                 // The flat ring was a stand-in.
                 _ground.Mesh = null;
             }
@@ -555,6 +587,8 @@ public partial class Live : Node3D
             _hole.UpdateLamps(cam.GlobalPosition, focus - above, focus + below, _rig?.CutPlane ?? default);
         }
         _hole.ShowEdges = _rig?.Walking != true;
+        _hole.ShowFixtures = _rig?.Walking == true;
+        _hole.DetailedFurniture = ViewSettings.DrawsModels(_rig?.Walking == true);
         WatchShowMe();
         UpdateViewBar();
         ApplyViewToShaders();
@@ -627,7 +661,7 @@ public partial class Live : Node3D
         if (sceneFloor != Cut || ViewSettings.Plan && !_planSeen) SendView();
         var t0 = Time.GetTicksMsec();
         _hole.Build(scene);
-        _hole.SetNight(1 - _light);
+        _hole.SetNight(1 - _roomLight);
         GD.Print($"Scene built: {_hole.Chunks} chunks, {_hole.Lamps} lamps in {Time.GetTicksMsec() - t0} ms");
         if (!_framed && _rig != null)
         {
@@ -695,13 +729,24 @@ public partial class Live : Node3D
         var pos = new Vector3(sunDir.X * 100, Mathf.Max(5, sunDir.Y * 100), sunDir.Z * 100);
         _sun.LookAtFromPosition(pos, Vector3.Zero, Vector3.Up);
         _sun.LightEnergy = (0.15f + 2.0f * _light) * (1 - 0.7f * storm);
+        // A floor in view has the rock above it lifted away, but it's still underground (T-101): the sun lights
+        // only the land, and the rooms are lit from inside, by their lamps and ceiling lights in the hour's mode
+        // (#305), plus the daylight down the shaft. On foot below ground is underground too.
+        var underFloor = Cut ?? (_rig?.Walking == true && GetViewport().GetCamera3D() is Camera3D cam && CameraRig.FloorAt(cam.GlobalPosition.Y) is var f1 && f1 >= 1 ? f1 : null);
+        var under = underFloor != null;
+        _roomLight = under ? 0 : _light;
+        _sun.LightCullMask = under ? SurfaceLayer : SunLayers;
+        ShaftDaylight(underFloor, storm);
+        // The lights switch by the clock, whatever the weather outside: on after dawn, down at dusk, rooms dark after midnight.
+        var mode = under ? Lighting.Indoor.At(f) : Lighting.Indoor.Mode.Surface;
+        _hole.SetMode(mode);
         var env = _env.Environment;
         // Nights stay readable: as the sky darkens, the ambient light turns to the dust's dim glow, never black.
-        env.AmbientLightEnergy = (0.12f + 0.16f * _light) * (1 - 0.4f * storm);
-        env.AmbientLightSkyContribution = Graphics.SkyShare * Mathf.Lerp(0.35f, 1f, _light);
-        _glow.LightEnergy = 0.35f * (1 - _light) * (1 - 0.5f * storm);
-        // The colour boost suits daylight; at night it pushes dark red regolith to pure red.
-        env.AdjustmentSaturation = Mathf.Lerp(0.75f, 1.2f, _light);
+        env.AmbientLightEnergy = (0.12f + 0.16f * _roomLight) * (1 - 0.4f * storm);
+        env.AmbientLightSkyContribution = Graphics.SkyShare * Mathf.Lerp(0.35f, 1f, _roomLight);
+        _glow.LightEnergy = 0.35f * (1 - _roomLight) * (1 - 0.5f * storm);
+        // The colour boost suits daylight (and the warm ceiling lights of an underground day); at night it pushes dark red regolith to pure red.
+        env.AdjustmentSaturation = Mathf.Lerp(0.75f, 1.2f, Mathf.Max(_roomLight, mode == Lighting.Indoor.Mode.Day ? Lighting.Indoor.DayColour : 0));
         // The sky by the hour: its light, and where the sun is (stars come out as it goes).
         if (env.Sky.SkyMaterial is ShaderMaterial sky)
         {
@@ -709,7 +754,24 @@ public partial class Live : Node3D
             sky.SetShaderParameter("sun_dir", sunDir);
             sky.SetShaderParameter("star_turn", starTurn);
         }
-        _hole.SetNight(1 - _light);
+        _hole.SetNight(1 - _roomLight);
+    }
+
+    /// <summary>Daylight down the shaft onto the floor in view (none with every floor showing: the sun does that), by the hour and the storm.</summary>
+    void ShaftDaylight(int? floor, float storm)
+    {
+        _shaftDay.Visible = floor != null && _light > 0;
+        if (floor is not int f) return;
+        _shaftDay.Position = new Vector3(0, -3 - (f - 0.5f) * _shape.FloorHeightM, 0);
+        _shaftDay.OmniRange = _shape.ShaftRadiusM + ShaftDayReach;
+        _shaftDay.LightEnergy = ShaftDayEnergy * _light * (1 - 0.7f * storm);
+    }
+
+    /// <summary>Put the land on the surface layer, so the sun still lights it while a floor is in view.</summary>
+    static void OnSurface(Node n)
+    {
+        if (n is VisualInstance3D v) v.Layers |= SurfaceLayer;
+        foreach (var c in n.GetChildren()) OnSurface(c);
     }
 
     /// <summary>
@@ -870,6 +932,17 @@ public partial class Live : Node3D
         if (_rig != null) _rig.Miniature = _quality == Quality.Low || Dev.Off("miniature") ? 0 : ViewSettings.Miniature;
     }
 
+    /// <summary>The slow-game card's one click (#391): the Low level and simple furniture shapes, both kept for next time.</summary>
+    void LightenGraphics()
+    {
+        _quality = Quality.Low;
+        Graphics.Save(_quality);
+        ApplyQuality();
+        ViewSettings.Furniture = ViewSettings.FurnitureDetail.Basic;
+        ViewSettings.Save();
+        _build.Toast("Graphics: Low, simple furniture");
+    }
+
     /// <summary>The next graphics level round (F2 or the HUD button), kept for next time.</summary>
     void CycleQuality()
     {
@@ -962,8 +1035,10 @@ public partial class Live : Node3D
     /// <summary>The View bar: the cameras, then walls down and room colours (as the web's View mode).</summary>
     void BuildViewBar(VBoxContainer rows)
     {
-        var bar = new HBoxContainer();
-        bar.AddThemeConstantOverride("separation", 4);
+        // Wrapping, as the top bar's rows, in a narrow window.
+        var bar = new HFlowContainer();
+        bar.AddThemeConstantOverride("h_separation", 4);
+        bar.AddThemeConstantOverride("v_separation", 4);
         rows.AddChild(bar);
         var label = Text("View", 14, new Color("#c9b29c"));
         bar.AddChild(label);
@@ -1340,6 +1415,45 @@ public partial class Live : Node3D
         var dropColor = drop.GetProperty("warn").GetBoolean() ? new Color("#f4b860") : new Color("#f3e6d8");
         _drop.AddThemeColorOverride("font_color", dropColor);
         _dropIcon.Modulate = dropColor;
+        if (m.TryGetProperty("weather", out var weather)) SetWeather(weather);
+    }
+
+    /// <summary>The weather chip's text, and its card's lines (rebuilt only when they change), as the web's (view/weatherCard.ts).</summary>
+    void SetWeather(JsonElement w)
+    {
+        var chip = w.GetProperty("chip");
+        _weatherChip.Text = chip.GetProperty("text").GetString();
+        _weatherChip.TooltipText = chip.GetProperty("tip").GetString();
+        var key = w.GetRawText();
+        if (key == _weatherKey) return;
+        _weatherKey = key;
+        foreach (var c in _weatherRows.GetChildren())
+        {
+            _weatherRows.RemoveChild(c);
+            c.QueueFree();
+        }
+        _weatherRows.AddChild(Text(w.GetProperty("title").GetString()!, 15, new Color("#e07a3f")));
+        _weatherRows.AddChild(Text(w.GetProperty("place").GetString()!, 12, new Color("#a88d7c")));
+        var grid = new GridContainer { Columns = 2 };
+        grid.AddThemeConstantOverride("h_separation", 10);
+        grid.AddThemeConstantOverride("v_separation", 3);
+        foreach (var r in w.GetProperty("rows").EnumerateArray())
+        {
+            grid.AddChild(Text(r.GetProperty("label").GetString()!, 13, new Color("#a88d7c")));
+            grid.AddChild(Text(r.GetProperty("value").GetString()!, 13, new Color("#f0e0d0")));
+        }
+        _weatherRows.AddChild(grid);
+        // Unwrapped: the card is as wide as its widest line, and a wrapped label would measure tall before its first layout.
+        _weatherRows.AddChild(Text(w.GetProperty("note").GetString()!, 12, new Color("#a88d7c")));
+        Callable.From(_weatherCard.ResetSize).CallDeferred();
+    }
+
+    void ToggleWeather()
+    {
+        _weatherCard.Visible = !_weatherCard.Visible;
+        if (!_weatherCard.Visible) return;
+        _weatherCard.Position = _weatherCard.Position with { X = _weatherChip.GlobalPosition.X };
+        _weatherCard.ResetSize();
     }
 
     /// <summary>What needs you first, as the web's: a few chips, trouble first, each opening what it's about; nothing when all is well.</summary>
@@ -1556,6 +1670,7 @@ public partial class Live : Node3D
                 break;
             case Key.Escape when _menu.Visible: if (!_menu.Over) _menu.Close(); break; // a game that's over has nothing to go back to
             case Key.Escape when _map.Open: ToggleMap(); break;
+            case Key.Escape when _weatherCard.Visible: _weatherCard.Visible = false; break;
             case Key.M when !_build.Active: ToggleMap(); break;
             case Key.N when !_build.Active: _network.Toggle(); break;
             case Key.P when !_build.Active: _colony.Toggle(); break;
@@ -1689,13 +1804,18 @@ public partial class Live : Node3D
     {
         var layer = _hud = new CanvasLayer();
         AddChild(layer);
-        var top = _topPanel = new PanelContainer { Position = new Vector2(10, 10) };
+        // Along the top edge, the window's width: its rows wrap when the window's too narrow for them (#224).
+        var top = _topPanel = new PanelContainer();
         top.AddThemeStyleboxOverride("panel", Panel());
+        top.SetAnchorsPreset(Control.LayoutPreset.TopWide);
+        top.OffsetLeft = top.OffsetTop = 10;
+        top.OffsetRight = -10;
         layer.AddChild(top);
         var rows = new VBoxContainer();
         top.AddChild(rows);
-        var bar = new HBoxContainer();
-        bar.AddThemeConstantOverride("separation", 14);
+        var bar = new HFlowContainer();
+        bar.AddThemeConstantOverride("h_separation", 14);
+        bar.AddThemeConstantOverride("v_separation", 4);
         rows.AddChild(bar);
         _title = Text("Downtown Mars", 20, new Color("#e8834a"));
         _title.Name = "hole";
@@ -1711,6 +1831,18 @@ public partial class Live : Node3D
         bar.AddChild(_clock);
         _sunDial = new SunDial();
         bar.AddChild(_sunDial);
+        _weatherChip = new Button { Name = "weather", FocusMode = Control.FocusModeEnum.None, ExpandIcon = false };
+        _weatherChip.AddThemeFontSizeOverride("font_size", 14);
+        _weatherChip.AddThemeConstantOverride("icon_max_width", 16);
+        Icons.WhenReady(() => _weatherChip.Icon = Icons.Get("weather"));
+        _weatherChip.Pressed += ToggleWeather;
+        bar.AddChild(_weatherChip);
+        _weatherCard.SetMeta("under_top", true);
+        _weatherCard.AddThemeStyleboxOverride("panel", Panel());
+        _weatherRows.CustomMinimumSize = new Vector2(300, 0);
+        _weatherRows.AddThemeConstantOverride("separation", 4);
+        _weatherCard.AddChild(_weatherRows);
+        _hud.AddChild(_weatherCard);
         var speeds = new HBoxContainer { Name = "speed" };
         bar.AddChild(speeds);
         foreach (var sp in Speeds)
@@ -1777,9 +1909,13 @@ public partial class Live : Node3D
         bar.AddChild(_qualityButton);
 
         _status = Text("", 13, new Color(1, 0.93f, 0.85f, 0.85f));
-        _status.SetAnchorsPreset(Control.LayoutPreset.BottomLeft);
-        _status.Position = new Vector2(12, -52);
+        // Along the bottom edge, wrapping in a narrow window, growing up from it (#224).
+        _status.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
+        _status.OffsetLeft = 12;
+        _status.OffsetRight = -12;
+        _status.OffsetTop = _status.OffsetBottom = -10;
         _status.GrowVertical = Control.GrowDirection.Begin;
+        _status.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         layer.AddChild(_status);
 
         _waiting = Text("", 20, new Color("#f3e6d8"));
@@ -1792,11 +1928,12 @@ public partial class Live : Node3D
 
         var pickerPanel = _pickerPanel = new PanelContainer();
         pickerPanel.AddThemeStyleboxOverride("panel", Panel());
+        // On the right edge; FitFloorPicker makes it as tall as its floors and centres it below the top bar.
         pickerPanel.SetAnchorsPreset(Control.LayoutPreset.CenterRight);
         pickerPanel.GrowHorizontal = Control.GrowDirection.Begin;
-        pickerPanel.Position = new Vector2(-70, -200);
+        pickerPanel.OffsetLeft = pickerPanel.OffsetRight = -10;
         layer.AddChild(pickerPanel);
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(56, 420), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        var scroll = _pickerScroll = new ScrollContainer { CustomMinimumSize = new Vector2(56, 0), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         pickerPanel.AddChild(scroll);
         _floorPicker = new VBoxContainer();
         scroll.AddChild(_floorPicker);
@@ -1806,7 +1943,8 @@ public partial class Live : Node3D
         cutPanel.AddThemeStyleboxOverride("panel", Panel());
         cutPanel.SetAnchorsPreset(Control.LayoutPreset.CenterRight);
         cutPanel.GrowHorizontal = Control.GrowDirection.Begin;
-        cutPanel.Position = new Vector2(-150, -60);
+        cutPanel.GrowVertical = Control.GrowDirection.Both;
+        cutPanel.OffsetLeft = cutPanel.OffsetRight = -10;
         layer.AddChild(cutPanel);
         var cutRows = new VBoxContainer();
         cutRows.AddThemeConstantOverride("separation", 6);
@@ -1851,7 +1989,12 @@ public partial class Live : Node3D
     void BuildFloorPicker()
     {
         _pickerFloors = _shape.Floors;
-        foreach (var c in _floorPicker.GetChildren()) c.QueueFree();
+        // Out at once, so the picker sizes to the new floors this frame.
+        foreach (var c in _floorPicker.GetChildren())
+        {
+            _floorPicker.RemoveChild(c);
+            c.QueueFree();
+        }
         for (var f = 0; f <= _shape.Floors; f++)
         {
             var floor = f == 0 ? (int?)null : f;
@@ -1861,6 +2004,32 @@ public partial class Live : Node3D
             _floorPicker.AddChild(b);
         }
     }
+
+    /// <summary>
+    /// The floor picker as tall as its floors (#224), centred on the right edge in the space below the top
+    /// bar; a hole too deep for the window scrolls instead.
+    /// </summary>
+    void FitFloorPicker()
+    {
+        var view = GetViewport().GetVisibleRect().Size.Y;
+        var top = _topPanel.Position.Y + _topPanel.Size.Y + 10;
+        var bottom = view - PickerBottomClear;
+        var frame = _pickerPanel.GetThemeStylebox("panel").GetMinimumSize().Y;
+        var h = Mathf.Max(0, Mathf.Min(_floorPicker.GetCombinedMinimumSize().Y, bottom - top - frame));
+        if (!Mathf.IsEqualApprox(_pickerScroll.CustomMinimumSize.Y, h)) _pickerScroll.CustomMinimumSize = new Vector2(56, h);
+        // Centred on the window's middle when there's room, else pushed down clear of the top bar.
+        var total = h + frame;
+        var y0 = Mathf.Clamp(view / 2 - total / 2, top, Mathf.Max(top, bottom - total));
+        var offset = y0 - view / 2;
+        if (!Mathf.IsEqualApprox(_pickerPanel.OffsetTop, offset) || !Mathf.IsEqualApprox(_pickerPanel.OffsetBottom, offset + total))
+        {
+            _pickerPanel.OffsetTop = offset;
+            _pickerPanel.OffsetBottom = offset + total;
+        }
+    }
+
+    /// <summary>The floor picker keeps this clear of the window's bottom edge (the status lines and the build strip).</summary>
+    const float PickerBottomClear = 70;
 
     static Label Text(string text, int size, Color color)
     {

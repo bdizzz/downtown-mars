@@ -145,6 +145,7 @@ describe("a belt ship in distress", () => {
     expect(s.notables.at(-1)!.role).toBe("belt pilot");
     expect(s.resources.electronics).toBeCloseTo(electronics + 15);
     expect(s.events!.landingTick).toBe(s.tick);
+    expect(s.milestones!.find((m) => m.id === "good_neighbors")?.day).not.toBeNull();
   });
 
   it("sent supplies, it sends thanks later", () => {
@@ -218,6 +219,7 @@ describe("celebrations", () => {
     const s = hole();
     s.layout.hole.floors = 12;
     delete s.events;
+    delete s.milestones;
     stepEventsOnly(s);
     expect(s.events!.pending).toHaveLength(0);
     expect(s.events!.celebrated).toEqual(expect.arrayContaining(["floor_5", "floor_10"]));

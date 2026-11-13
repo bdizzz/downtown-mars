@@ -11,6 +11,26 @@ public static class ViewSettings
 {
     const string File = "user://settings.cfg";
 
+    /// <summary>
+    /// Where the Blender-made furniture models draw (#391), as the web's FurnitureDetail (view/graphics.ts) and in its order
+    /// (the numbers are the options in data/settings.json): never, in first person only, or in every view.
+    /// </summary>
+    public enum FurnitureDetail { Basic, FirstPerson, Everywhere }
+
+    /// <summary>Furniture detail: detailed everywhere by default.</summary>
+    public static FurnitureDetail Furniture { get; set; } = FurnitureDetail.Everywhere;
+
+    /// <summary>Does this choice draw the models in this view (walking or not)?</summary>
+    public static bool DrawsModels(bool walking) => Furniture == FurnitureDetail.Everywhere || (Furniture == FurnitureDetail.FirstPerson && walking);
+
+    /// <summary>One step lighter (everywhere, then on foot, then simple shapes), or null from the lightest.</summary>
+    public static FurnitureDetail? LighterFurniture() => Furniture switch
+    {
+        FurnitureDetail.Everywhere => FurnitureDetail.FirstPerson,
+        FurnitureDetail.FirstPerson => FurnitureDetail.Basic,
+        _ => null,
+    };
+
     public static Overview Camera { get; set; } = Overview.Iso;
     public static bool WallsDown { get; set; }
     public static bool RoomColors { get; set; } = true;
@@ -35,6 +55,11 @@ public static class ViewSettings
     /// </summary>
     public static float CutAngle { get; set; } = CutMax;
     public const float CutMin = 60, CutMax = 180, CutStep = 15;
+    /// <summary>
+    /// The room panel's sections the player has opened or closed (F-019), by section id, as the web's
+    /// (ui/settings.ts useOpenSections): remembered per section, not per room. One not in here follows the panel's model.
+    /// </summary>
+    public static readonly System.Collections.Generic.Dictionary<string, bool> PanelSections = new();
     /// <summary>A cut angle in range, in whole degrees.</summary>
     public static float ClampCut(float deg) => Mathf.Round(Mathf.Clamp(deg, CutMin, CutMax));
 
@@ -63,9 +88,14 @@ public static class ViewSettings
         Autosave = (bool)cfg.GetValue("game", "autosave", true);
         ColorBlind = (bool)cfg.GetValue("game", "color_blind", false);
         UiScale = (float)cfg.GetValue("game", "ui_scale", 1f);
-        LookSpeed = Mathf.Clamp((float)cfg.GetValue("controls", "look_speed", 1f), 0.25f, 2);
+        LookSpeed = Mathf.Clamp((float)cfg.GetValue("controls", "look_speed", 1f), 0.25f, 3);
         Miniature = Mathf.Clamp((float)cfg.GetValue("graphics", "miniature", 0.4f), 0, 1);
         CutAngle = ClampCut((float)cfg.GetValue("view", "cut_angle", CutMax));
+        var furniture = (FurnitureDetail)(int)cfg.GetValue("graphics", "furniture", (int)FurnitureDetail.Everywhere);
+        Furniture = System.Enum.IsDefined(furniture) ? furniture : FurnitureDetail.Everywhere;
+        PanelSections.Clear();
+        if (cfg.HasSection("panel_sections"))
+            foreach (var id in cfg.GetSectionKeys("panel_sections")) PanelSections[id] = (bool)cfg.GetValue("panel_sections", id, false);
     }
 
     /// <summary>A test run (a screenshot or a benchmark): nothing it changes is kept.</summary>
@@ -89,6 +119,8 @@ public static class ViewSettings
         cfg.SetValue("game", "ui_scale", UiScale);
         cfg.SetValue("controls", "look_speed", LookSpeed);
         cfg.SetValue("graphics", "miniature", Miniature);
+        cfg.SetValue("graphics", "furniture", (int)Furniture);
+        foreach (var (id, open) in PanelSections) cfg.SetValue("panel_sections", id, open);
         cfg.Save(File);
     }
 }

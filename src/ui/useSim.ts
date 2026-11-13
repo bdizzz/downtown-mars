@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CommandResult, SimCommand } from "../sim/commands";
+import { currentDifficulty, setDifficulty, type Level } from "../sim/difficulty";
 import type { SaveSummary } from "../sim/save";
 import type { Snapshot } from "../sim/snapshot";
 import type { FromWorker, RouteAction, ToWorker } from "../worker/protocol";
@@ -24,10 +25,14 @@ export function useSim() {
         if (layout && effects) lastLayout.current = { layout, effects };
         if (history !== undefined) lastHistory.current = history;
         if (!lastLayout.current) return;
-        // Conditions change every tick, but the layout only comes when it changes: put them back on its rooms.
+        // Prices and thresholds the UI shows come from the same data the sim scales (F-014).
+        if (rest.difficulty !== currentDifficulty()) setDifficulty(rest.difficulty);
+        // Conditions and farms' harvest cycles change every tick, but the layout only comes when it changes: put them back on its rooms.
         for (const r of lastLayout.current.layout.rooms) {
           const c = rest.conditions[r.id];
           if (c !== undefined) r.condition = c;
+          const g = rest.growth[r.id];
+          if (g) r.growth = g;
         }
         setSnapshot({ ...rest, ...lastLayout.current, history: lastHistory.current });
         setSpeedState(msg.speed);
@@ -78,7 +83,7 @@ export function useSim() {
   );
 
   const newGame = useCallback(
-    async (): Promise<CommandResult> => (await ask<Extract<Reply, { type: "loaded" }>>((id) => ({ type: "newGame", id }))).result,
+    async (difficulty?: Level): Promise<CommandResult> => (await ask<Extract<Reply, { type: "loaded" }>>((id) => ({ type: "newGame", id, difficulty }))).result,
     [ask],
   );
 

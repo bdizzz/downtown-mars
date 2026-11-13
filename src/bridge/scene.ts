@@ -4,12 +4,14 @@ import { canDig, diggingFloor } from "../sim/digging";
 import type { SimState } from "../sim/state";
 import { buildLayout, disposeLayout } from "../render3d/rooms3d";
 import { floorAtY } from "../render3d/cylinder";
+import { overheadLights, type Overhead } from "../view/overheads";
 import type { Lamp } from "../render3d/lights3d";
-import type { Placed } from "../view/furnish";
+import { cropStagesKey, type Placed } from "../view/furnish";
 import { occupied, type RoomSpots } from "../render3d/people3d";
 import { gameTime } from "../sim/clock";
 import { tubeRuns, type TubeRun } from "../view/gallery";
 import { grimeLevel } from "../view/grime";
+import { refitRooms } from "../view/roomFinish";
 
 // The hole's 3D scene for the Godot viewer, built by the web game's own code (render3d/rooms3d.ts),
 // so both draw the same rooms, walls, doors, windows, tubes and corridors. Triangles are merged by
@@ -64,7 +66,10 @@ export interface SceneMessage {
   floors: number;
   materials: SceneMaterial[];
   chunks: SceneChunk[];
-  lamps: Omit<Lamp, "px" | "pz">[];
+  /** Each with the room it stands in, so a room's lights switch together (#305). */
+  lamps: (Omit<Lamp, "px" | "pz"> & { room: number })[];
+  /** Ceiling lights (#305): one per room cell and per stretch of corridor, which Godot lights by the hour. */
+  overheads: Overhead[];
   /** Room labels: centred in the room and fitted inside its walls (view/labelFit.ts), as lines in a box of width × height metres; hoverOnly ones show only while their room is hovered or picked. */
   labels: { text: string; lines: string[]; x: number; y: number; z: number; width: number; height: number; hoverOnly: boolean; roomId: number }[];
   /** Furniture: item ids and accent colours, and per item placed [item, accent, x, y, z, turn] (indexes into those two lists). */
@@ -75,7 +80,13 @@ export interface SceneMessage {
 /** What decides the scene: when it changes, build again. */
 export function sceneKey(state: SimState, gameId: number, topFloor: number | null, roomColors = true): string {
   const grime = state.layout.rooms.map(grimeLevel).join("");
-  return `${gameId}:${state.holeId}:${state.layout.version}:${drillFloor(state)}:${topFloor}:${roomColors}:${grime}`;
+  const refits = [...refitting(state)].join(",");
+  return `${gameId}:${state.holeId}:${state.layout.version}:${drillFloor(state)}:${topFloor}:${roomColors}:${grime}:${refits}:${cropStagesKey(state.layout)}`;
+}
+
+/** Rooms being refitted, whose walls carry the hazard band (their materials end in ":refit"). */
+function refitting(state: SimState): Set<number> {
+  return refitRooms(state.construction?.queue ?? [], state.layout.rooms);
 }
 
 function drillFloor(state: SimState): number | null {
@@ -163,7 +174,8 @@ export function buildPeople(state: SimState, spots: RoomSpots[]): PeopleMessage 
 export function buildScene(state: SimState, gameId: number, topFloor: number | null, roomColors = true): { message: SceneMessage; spots: RoomSpots[] } {
   const t0 = performance.now();
   const layout = state.layout;
-  const group = buildLayout(layout, drillFloor(state), COLORS, topFloor, roomColors, grimeLevel);
+  const refits = refitting(state);
+  const group = buildLayout(layout, drillFloor(state), COLORS, topFloor, roomColors, grimeLevel, (r) => refits.has(r.id));
   group.updateMatrixWorld(true);
 
   const materials: SceneMaterial[] = [];
@@ -200,12 +212,13 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     if (o.userData.furniture && o.userData.placed) furnitureGroups.push(o);
   });
   for (const g of furnitureGroups) {
-    for (const l of (g.userData.lamps as Lamp[] | undefined) ?? []) lamps.push({ x: l.x, y: l.y, z: l.z, floor: l.floor, color: l.color, reach: l.reach, strength: l.strength });
+    for (const l of (g.userData.lamps as Lamp[] | undefined) ?? []) lamps.push({ x: l.x, y: l.y, z: l.z, floor: l.floor, color: l.color, reach: l.reach, strength: l.strength, room: l.room ?? -1 });
     if (g.userData.people) spots.push(g.userData.people as RoomSpots);
     const accent = indexIn(accents, g.userData.accent as string);
     // A wall hanging carries its wall (as rooms3d.ts hangTag): normal, bottom and top, and the point on it behind the item.
     for (const p of g.userData.placed as (Placed & { hang?: { nx: number; nz: number; at: [number, number, number]; y0: number; y1: number; ax: number; az: number } })[]) {
-      const base = [indexIn(items, p.item), accent, round(p.x), round(p.y), round(p.z), round(p.turn)];
+      // A crop's planter at a growth stage goes as "item#stage" (Godot's Furniture.cs builds that stage's look).
+      const base = [indexIn(items, p.stage === undefined ? p.item : `${p.item}#${p.stage}`), accent, round(p.x), round(p.y), round(p.z), round(p.turn)];
       placed.push(p.hang ? [...base, round(p.hang.nx), round(p.hang.nz), round(p.hang.y0), round(p.hang.y1), round(p.hang.ax), round(p.hang.az), ...p.hang.at.map(round)] : base);
     }
     g.removeFromParent();
@@ -221,6 +234,8 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     }
     const mesh = o as THREE.Mesh | THREE.LineSegments;
     if (!(mesh instanceof THREE.Mesh || mesh instanceof THREE.LineSegments) || !mesh.visible) return;
+    // The plates under the floors (#262) aren't sent yet: see PLAN-GODOT.md, Status and next.
+    if (mesh.userData.plate) return;
     const material = Array.isArray(mesh.material) ? mesh.material[0]! : mesh.material;
     // Not drawn, only there to pick (the ledge where no gallery tube is built); and the web's
     // fake light pools: Godot has real lights.
@@ -309,6 +324,7 @@ export function buildScene(state: SimState, gameId: number, topFloor: number | n
     materials,
     chunks,
     lamps,
+    overheads: overheadLights(layout),
     labels,
     furniture: { items, accents, placed },
     buildMs: performance.now() - t0,

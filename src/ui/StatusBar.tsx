@@ -128,5 +128,20 @@ export function StatusBar({ info, snapshot, notice, overlay, view, tool }: Props
   if (!notice && overlay && snapshot && info?.pick.kind === "slot") {
     text = `${effectsHere(snapshot, info.pick) || "no effects here"} · ${text}`;
   }
-  return <footer className={`status${bad ? " bad" : ""}`}>{text}</footer>;
+  // What it says on the left, a part at a time; where the pointer is on the right, out of the way.
+  const place = !notice && info && hole ? where(info, hole) : "";
+  const main = place && text.endsWith(place) ? text.slice(0, -place.length).replace(/ · $/, "") : text;
+  const parts = main.split(" · ").filter(Boolean);
+  return (
+    <footer className={`status${bad ? " bad" : ""}`}>
+      <span className="status-main">
+        {parts.map((p, i) => (
+          <span key={i} className={p.startsWith("⚠") ? "warn" : undefined}>
+            {p}
+          </span>
+        ))}
+      </span>
+      {place && <span className="status-place">{place}</span>}
+    </footer>
+  );
 }

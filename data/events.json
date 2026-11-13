@@ -1,5 +1,5 @@
 {
-  "_note": "Events with choices (docs/PLAN-M14.md). Triggers live in src/sim/events.ts; everything else is here. An event waits patienceDays for an answer, then its `ignored` effect happens. Effects: resources (added; negative is a cost, and a choice you can't afford is greyed out), mood (happiness for everyone, easing off over its days), message, deposit (the hole gains it), openCavity (the lava tube's cells, dug free), holdDrillDays, conditionFloorAbove (condition lost by the rooms on the floor above the find), colonists, notableRole (one of the newcomers becomes a notable with that role), followUp (an effect some days later), celebrate (propose a celebration for that milestone), festival, landing (the lander comes down on the pad), ventAir (the air's O2 above the target vented to the planet, lost for good). Placeholders: {floor}, {ship}, {milestone}, {o2}.",
+  "_note": "Events with choices (docs/PLAN-M14.md). Triggers live in src/sim/events.ts; everything else is here. An event waits patienceDays for an answer, then its `ignored` effect happens. Effects: resources (added; negative is a cost, and a choice you can't afford is greyed out), mood (happiness for everyone, easing off over its days), message, deposit (the hole gains it), openCavity (the lava tube's cells, dug free), holdDrillDays, conditionFloorAbove (condition lost by the rooms on the floor above the find), colonists, notableRole (one of the newcomers becomes a notable with that role), followUp (an effect some days later), celebrate (propose a celebration for that milestone), festival, landing (the lander comes down on the pad), ventAir (the air's O2 above the target vented to the planet, lost for good). Depth limits (#390, sim/depth.ts, data/depth.json): limit (soft or hard) marks the events the drill raises at a hidden limit; waits: the card has no timer and the drill holds until it's answered. repairDrill (pay the drill's repair, data/depth.json, and dig on), capHole (cap the hole for good, named by that ending), scrapDrill (half the drill's materials back), crateDrill (crate the drill for this hole's next seed kit), unlock (a room gate, such as geothermal). Placeholders: {floor}, {ship}, {milestone}, {o2}, {plaque}, and in hints {repair}, {scrap} and {crate} (the drill's costs, from depth.json).",
   "checkEveryTicks": 10,
   "discoveries": {
     "chance": 0.45,
@@ -15,20 +15,7 @@
     "cavityCells": 3
   },
   "celebrations": {
-    "_note": "Milestones a hole celebrates, once each: check is population (at least `at` people), born (at least `at` children born), floors (at least `at` floors dug) or domed; event milestones come only from an event's `celebrate`. A festival costs `feast` meals (or rations, if meals run short), lifts everyone for `days`, and the first `workDays` run at `productivity`.",
-    "milestones": [
-      { "id": "first_birth", "check": "born", "at": 1, "title": "the first child born on Mars" },
-      { "id": "pop_50", "check": "population", "at": 50, "title": "fifty people" },
-      { "id": "pop_100", "check": "population", "at": 100, "title": "a hundred people" },
-      { "id": "pop_200", "check": "population", "at": 200, "title": "two hundred people" },
-      { "id": "pop_300", "check": "population", "at": 300, "title": "three hundred people" },
-      { "id": "pop_500", "check": "population", "at": 500, "title": "five hundred people" },
-      { "id": "floor_5", "check": "floors", "at": 5, "title": "five floors down" },
-      { "id": "floor_10", "check": "floors", "at": 10, "title": "ten floors down" },
-      { "id": "floor_20", "check": "floors", "at": 20, "title": "twenty floors down" },
-      { "id": "dome", "check": "domed", "title": "the dome over the shaft" },
-      { "id": "microfossils", "check": "event", "title": "life on Mars, once" }
-    ],
+    "_note": "The milestones a hole celebrates are those with celebrate: true in data/milestones.json, once each. A festival costs `feast` meals (or rations, if meals run short), lifts everyone for `days`, and the first `workDays` run at `productivity`.",
     "festival": { "feast": 30, "mood": 8, "days": 2, "workDays": 1, "productivity": 0.8 }
   },
   "beltShip": {
@@ -80,7 +67,7 @@
       "patienceDays": 0.5,
       "ignored": { "mood": { "amount": -5, "days": 4 }, "message": "The {ship} went quiet. Nobody answered her, and people know it." },
       "choices": [
-        { "id": "rescue", "label": "Bring them down", "hint": "30 oxygen and 30 water. Her six crew join us, with their salvage (15 electronics, 10 machinery); their pilot becomes a notable.", "needsPad": true, "resources": { "o2": -30, "water": -30, "electronics": 15, "machinery": 10 }, "colonists": 6, "notableRole": "belt pilot", "landing": true, "mood": { "amount": 4, "days": 4 }, "message": "The {ship} came down on our pad: six belters, safe, and their salvage. Everyone turned out to see." },
+        { "id": "rescue", "label": "Bring them down", "hint": "30 oxygen and 30 water. Her six crew join us, with their salvage (15 electronics, 10 machinery); their pilot becomes a notable.", "needsPad": true, "resources": { "o2": -30, "water": -30, "electronics": 15, "machinery": 10 }, "colonists": 6, "notableRole": "belt pilot", "landing": true, "celebrate": "good_neighbors", "mood": { "amount": 4, "days": 4 }, "message": "The {ship} came down on our pad: six belters, safe, and their salvage. Everyone turned out to see." },
         { "id": "supplies", "label": "Send supplies up", "hint": "60 oxygen and 60 water. They limp on, and the belt doesn't forget: a thank-you drop in 10–15 months.", "resources": { "o2": -60, "water": -60 }, "mood": { "amount": 2, "days": 3 }, "followUp": { "days": [10, 15], "effect": { "resources": { "electronics": 20, "machinery": 15 }, "landing": true, "message": "A drop from the belt, with thanks from the crew we helped: 20 electronics, 15 machinery." } }, "message": "Supplies went up to the {ship}. She limps on toward Ceres." },
         { "id": "ignore", "label": "Ignore the call", "hint": "Keep what we have. People won't like it (−5 happiness).", "mood": { "amount": -5, "days": 4 }, "message": "We let the {ship} go. People are quiet about it." }
       ]
@@ -149,6 +136,154 @@
       "choices": [
         { "id": "study", "label": "Stop and study them", "hint": "The drill stops for 2 months. Everyone's thrilled (+10 happiness), and it's worth a celebration.", "holdDrillDays": 2, "mood": { "amount": 10, "days": 5 }, "celebrate": "microfossils", "message": "Life on Mars, once: the microfossils from floor {floor} are being studied." },
         { "id": "dig", "label": "Dig on", "hint": "No time lost; the scientists sulk (−5 happiness).", "mood": { "amount": -5, "days": 3 }, "message": "The drill digs on past the microfossils. The scientists are not pleased." }
+      ]
+    },
+    {
+      "id": "drill_breakdown",
+      "title": "The drill has broken down",
+      "text": "Floor {floor}: the drill's main bearing has seized, and the gearbox with it. The crew can rebuild it, or call it a day for this hole.",
+      "patienceDays": 1,
+      "waits": true,
+      "limit": "soft",
+      "ignored": {},
+      "choices": [
+        { "id": "go", "label": "Repair it and dig on", "hint": "Rebuild the bearing and the gearbox ({repair}).", "repairDrill": true, "message": "The drill is rebuilt and turning again below floor {floor}." },
+        { "id": "scrap", "label": "Stop here, and scrap the drill", "hint": "The hole is capped for good: no more floors. The drill is broken down for parts ({scrap}).", "scrapDrill": true, "capHole": "drill_breakdown" },
+        { "id": "crate", "label": "Stop here, and crate the drill", "hint": "The hole is capped for good. The drill is crated for this hole's next seed kit: that kit needs {crate} less.", "crateDrill": true, "capHole": "drill_breakdown" }
+      ]
+    },
+    {
+      "id": "hard_basalt",
+      "title": "A layer of hard basalt",
+      "text": "Floor {floor}: the cutterhead has hit a sheet of basalt, harder than anything above it. The bit is worn to a stub.",
+      "patienceDays": 1,
+      "waits": true,
+      "limit": "soft",
+      "ignored": {},
+      "choices": [
+        { "id": "go", "label": "Fit a new bit and dig on", "hint": "A new cutter bit, for basalt ({repair}).", "repairDrill": true, "message": "A new bit is on, and the drill grinds on into the basalt below floor {floor}." },
+        { "id": "scrap", "label": "Stop here, and scrap the drill", "hint": "The hole is capped for good: no more floors. The drill is broken down for parts ({scrap}).", "scrapDrill": true, "capHole": "hard_basalt" },
+        { "id": "crate", "label": "Stop here, and crate the drill", "hint": "The hole is capped for good. The drill is crated for this hole's next seed kit: that kit needs {crate} less.", "crateDrill": true, "capHole": "hard_basalt" }
+      ]
+    },
+    {
+      "id": "groundwater",
+      "title": "Groundwater in the bore",
+      "text": "Floor {floor}: water is flooding in faster than the drill can clear it. Pumps would keep it dry; or the bore could be sealed here.",
+      "patienceDays": 1,
+      "waits": true,
+      "limit": "soft",
+      "ignored": {},
+      "choices": [
+        { "id": "go", "label": "Pump it and dig on", "hint": "Pumps to keep the bore dry ({repair}).", "repairDrill": true, "message": "The pumps are running and the bore below floor {floor} is dry enough to dig." },
+        { "id": "scrap", "label": "Stop here, and scrap the drill", "hint": "The hole is capped for good: no more floors. The drill is broken down for parts ({scrap}).", "scrapDrill": true, "capHole": "groundwater" },
+        { "id": "crate", "label": "Stop here, and crate the drill", "hint": "The hole is capped for good. The drill is crated for this hole's next seed kit: that kit needs {crate} less.", "crateDrill": true, "capHole": "groundwater" }
+      ]
+    },
+    {
+      "id": "tremors",
+      "title": "Tremors",
+      "text": "Floor {floor}: the ground keeps shaking, and the bore walls are cracking. Shoring would make it safe to go deeper.",
+      "patienceDays": 1,
+      "waits": true,
+      "limit": "soft",
+      "ignored": {},
+      "choices": [
+        { "id": "go", "label": "Reinforce the shaft and dig on", "hint": "Steel shoring down the bore ({repair}).", "repairDrill": true, "message": "The shaft is shored up below floor {floor}, and the drill digs on." },
+        { "id": "scrap", "label": "Stop here, and scrap the drill", "hint": "The hole is capped for good: no more floors. The drill is broken down for parts ({scrap}).", "scrapDrill": true, "capHole": "tremors" },
+        { "id": "crate", "label": "Stop here, and crate the drill", "hint": "The hole is capped for good. The drill is crated for this hole's next seed kit: that kit needs {crate} less.", "crateDrill": true, "capHole": "tremors" }
+      ]
+    },
+    {
+      "id": "geothermal_pocket",
+      "title": "A geothermal pocket",
+      "text": "Floor {floor}: the drill has broken into hot, unstable rock. Going deeper would risk the whole hole: this is as far as it goes. But the heat down there could be put to work.",
+      "patienceDays": 1,
+      "waits": true,
+      "limit": "hard",
+      "ignored": {},
+      "choices": [
+        { "id": "repurpose", "label": "Turn the drill into a geothermal plant", "hint": "The drill's pumps and casing become a heat well: this hole can build a geothermal plant, the only way to get one. Everyone's proud of it (+4 happiness).", "capHole": "geothermal_pocket", "unlock": "geothermal", "mood": { "amount": 4, "days": 3 }, "message": "The drill on floor {floor} becomes a heat well: a geothermal plant can be built here." },
+        { "id": "scrap", "label": "Deconstruct the drill", "hint": "The drill is broken down for parts ({scrap}).", "scrapDrill": true, "capHole": "geothermal_pocket" },
+        { "id": "crate", "label": "Crate the drill", "hint": "The drill is crated for this hole's next seed kit: that kit needs {crate} less.", "crateDrill": true, "capHole": "geothermal_pocket" }
+      ]
+    },
+    {
+      "id": "deep_reservoir",
+      "title": "A deep reservoir",
+      "text": "Floor {floor}: the drill has broken into a reservoir of ancient water, too deep and too wide to drill through. This is the bottom of the hole.",
+      "patienceDays": 1,
+      "waits": true,
+      "limit": "hard",
+      "ignored": {},
+      "choices": [
+        { "id": "repurpose", "label": "Turn the drill into a deep water pump", "hint": "The drill's string becomes a pump: the hole gains the aquifer (deep well pumps), and 300 water now.", "capHole": "deep_reservoir", "deposit": "aquifer", "resources": { "water": 300 }, "message": "The drill on floor {floor} is a deep water pump now, drawing on the reservoir below." },
+        { "id": "scrap", "label": "Deconstruct the drill", "hint": "The drill is broken down for parts ({scrap}).", "scrapDrill": true, "capHole": "deep_reservoir" },
+        { "id": "crate", "label": "Crate the drill", "hint": "The drill is crated for this hole's next seed kit: that kit needs {crate} less.", "crateDrill": true, "capHole": "deep_reservoir" }
+      ]
+    },
+    {
+      "id": "brine_lake",
+      "title": "A brine lake",
+      "text": "Floor {floor}: under the rock, a lake of salty brine, thick with minerals. The drill can't go through it.",
+      "patienceDays": 1,
+      "waits": true,
+      "limit": "hard",
+      "ignored": {},
+      "choices": [
+        { "id": "repurpose", "label": "Turn the drill into a brine works", "hint": "The drill pumps the brine up and boils it down: 80 ore, 80 silica and 120 water now.", "capHole": "brine_lake", "resources": { "ore": 80, "silica": 80, "water": 120 }, "message": "The drill on floor {floor} pumps brine up for its salts and minerals." },
+        { "id": "scrap", "label": "Deconstruct the drill", "hint": "The drill is broken down for parts ({scrap}).", "scrapDrill": true, "capHole": "brine_lake" },
+        { "id": "crate", "label": "Crate the drill", "hint": "The drill is crated for this hole's next seed kit: that kit needs {crate} less.", "crateDrill": true, "capHole": "brine_lake" }
+      ]
+    },
+    {
+      "id": "magma_chamber",
+      "title": "An old magma chamber",
+      "text": "Floor {floor}: the drill has broken into a great hollow where magma once pooled, long cold. Below it, the rock is too broken to drill.",
+      "patienceDays": 1,
+      "waits": true,
+      "limit": "hard",
+      "ignored": {},
+      "choices": [
+        { "id": "repurpose", "label": "Open up the chamber", "hint": "A big run of empty space on floor {floor}, dug out for free, ready to build in. The drill's lights are left up in the vault.", "capHole": "magma_chamber", "openCavity": true, "message": "The old magma chamber on floor {floor} is opened up: a cavern to build in." },
+        { "id": "scrap", "label": "Deconstruct the drill", "hint": "The drill is broken down for parts ({scrap}).", "scrapDrill": true, "capHole": "magma_chamber" },
+        { "id": "crate", "label": "Crate the drill", "hint": "The drill is crated for this hole's next seed kit: that kit needs {crate} less.", "crateDrill": true, "capHole": "magma_chamber" }
+      ]
+    },
+    {
+      "id": "fault_line",
+      "title": "A fault line",
+      "text": "Floor {floor}: the drill has reached a fault in the crust. The rock shifts under the bit; drilling on would bring the shaft down. There's nothing down here but bad luck.",
+      "patienceDays": 1,
+      "waits": true,
+      "limit": "hard",
+      "ignored": {},
+      "choices": [
+        { "id": "scrap", "label": "Deconstruct the drill", "hint": "The drill is broken down for parts ({scrap}).", "scrapDrill": true, "capHole": "fault_line" },
+        { "id": "crate", "label": "Crate the drill", "hint": "The drill is crated for this hole's next seed kit: that kit needs {crate} less.", "crateDrill": true, "capHole": "fault_line" }
+      ]
+    },
+    {
+      "id": "stop_drilling",
+      "title": "Stop drilling for good?",
+      "text": "The crew can stop the drill here, at floor {floor}, and cap the hole: no more floors, ever. It can't be undone.",
+      "patienceDays": 1,
+      "ignored": { "message": "The drill carries on." },
+      "choices": [
+        { "id": "scrap", "label": "Cap it, and scrap the drill", "hint": "No more floors. The drill is broken down for parts ({scrap}).", "scrapDrill": true, "capHole": "stopped" },
+        { "id": "crate", "label": "Cap it, and crate the drill", "hint": "No more floors. The drill is crated for this hole's next seed kit: that kit needs {crate} less.", "crateDrill": true, "capHole": "stopped" },
+        { "id": "keep", "label": "Keep drilling", "hint": "Nothing changes.", "message": "The drill carries on." }
+      ]
+    },
+    {
+      "id": "capping",
+      "title": "The capping of {milestone}",
+      "text": "The dig is done. A plaque goes up at the top of the shaft: “{plaque}”. People want to mark the end of it.",
+      "patienceDays": 1,
+      "ignored": { "mood": { "amount": 1, "days": 1 }, "message": "The hole is capped with a quiet toast or two." },
+      "choices": [
+        { "id": "festival", "label": "Throw a festival", "hint": "A feast (30 meals, or rations), lanterns in the shaft, and a month of slow work (80%). Everyone's lifted (+8 happiness, easing off over two months).", "festival": true, "message": "A festival for the capping! Lanterns are going up the shaft." },
+        { "id": "toast", "label": "Raise a toast", "hint": "A small lift (+2 happiness for a couple of months).", "mood": { "amount": 2, "days": 2 }, "message": "A toast to the end of the dig." }
       ]
     }
   ]

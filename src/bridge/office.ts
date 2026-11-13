@@ -55,7 +55,7 @@ export function office(state: SimState, snap: Snapshot): OfficeMessage {
         about: n ? `${n.role} · ${n.traits.join(", ")} · loyalty ${n.loyalty}` : "",
         title: v.title,
         text: v.text,
-        leaves: `Leaves in ${days(v.leavesTick - state.tick)}`,
+        leaves: v.leavesTick !== undefined ? `Leaves in ${days(v.leavesTick - state.tick)}` : "",
         cause: v.cause ?? null,
         spot: v.cause ? withFloor(snap, causeSpot(snap, v.cause)) : null,
         choices: visitDef(v.kind).choices.map((c) => {

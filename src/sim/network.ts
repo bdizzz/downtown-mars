@@ -1,3 +1,4 @@
+import type { LandingKit } from "./config";
 import raw from "../../data/network.json";
 
 /** Network-wide settings from data/network.json. */
@@ -11,9 +12,11 @@ export const network = raw as unknown as {
   roverKmPerDay: number;
   /** Before the map unlocks, deposits this close to a hole are known. */
   scoutRadiusDeg: number;
-  firstSite: { minLat: number; maxLat: number; extraDepositRadiusDeg: number };
+  firstSite: { minLat: number; maxLat: number; tries: number; extraDepositRadiusDeg: number };
   seedKit: {
     goods: Record<string, number>;
+    /** Rooms the kit brings ready-made, set up on arrival alongside the landing kit's. */
+    setsUp: LandingKit["ring"];
     volunteers: number;
     /** A parent never sends so many that fewer than this stay. */
     minStayBehind: number;

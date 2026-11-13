@@ -1,3 +1,4 @@
+import { endingName } from "../sim/depth";
 import { applyCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { deserialize, serialize, summarize } from "../sim/save";
@@ -12,6 +13,7 @@ import { soilAt } from "../sim/map";
 import { network } from "../sim/network";
 import { createWorld, holeById, networkMessages, type World } from "../sim/world";
 import { stepWorld } from "../sim/worldstep";
+import { isLevel, setDifficulty } from "../sim/difficulty";
 import type { FromWorker, ToWorker, WireSnapshot } from "./protocol";
 
 /**
@@ -50,6 +52,10 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       culture: h.culture,
       cultureTarget: cultureTarget(h, config),
       domed: !!h.layout.domed,
+      milestones: (h.milestones ?? []).map((m) => ({ ...m })),
+      floors: h.layout.hole.floors,
+      shaftRadiusM: h.layout.hole.shaftRadiusM,
+      ...(h.depth?.capped ? { capped: { floors: h.depth.capped.floors, identity: endingName(h.depth.capped.ending) } } : {}),
       ...(h.failed ? { failed: { days: daysLasted(h, config), peak: h.failed.peak } } : {}),
     }));
   }
@@ -123,6 +129,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       leavingFor: destination(world, hole)?.name ?? null,
       relations: relationViews(),
       mapUnlocked: world.mapUnlocked,
+      difficulty: world.difficulty ?? "normal",
       gameOver: !!world.over,
       // News from every hole, so nothing elsewhere goes unnoticed.
       messages: networkMessages(world, config.messages.keep),
@@ -166,6 +173,8 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
 
   function replaceWorld(next: World): void {
     world = next;
+    // A loaded game brings its own level; a new one has just set it.
+    setDifficulty(world.difficulty ?? "normal");
     activeHoleId = world.holes[0]!.holeId;
     gameId++;
     tickDebt = 0;
@@ -174,7 +183,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
   function onMessage(msg: ToWorker): void {
     switch (msg.type) {
       case "setSpeed":
-        if (config.speeds.includes(msg.speed)) speed = msg.speed;
+        if (config.speeds.includes(msg.speed) || msg.speed === config.slowSpeed) speed = msg.speed;
         break;
       case "advance": {
         const ticks = Math.max(0, Math.min(365, msg.days)) * config.ticksPerDay;
@@ -215,7 +224,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       }
       case "newGame":
         // Each new game gets its own seed, so the map (and everything else random) differs.
-        replaceWorld(createWorld(config, (Math.random() * 0xffffffff) >>> 0 || 1));
+        replaceWorld(createWorld(config, (Math.random() * 0xffffffff) >>> 0 || 1, isLevel(msg.difficulty) ? msg.difficulty : "normal"));
         speed = 1;
         reply({ type: "loaded", id: msg.id, result: { ok: true } });
         break;

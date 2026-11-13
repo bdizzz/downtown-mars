@@ -4,6 +4,7 @@ import { points, seriesMeta } from "../ui/trends";
 import { barItems, GROUPS, needs, topExtras, type BarItem, type Need, type TopExtras } from "../view/hudItems";
 import { ICONS, iconSvg, type IconId } from "../view/icons";
 import { monthsText } from "../view/months";
+import { weatherCard, type WeatherCard } from "../view/weatherCard";
 
 // The top of the Godot viewer's screen, as the web's (view/hudItems.ts): the resource grid's cells,
 // each with its tooltip and the lines of its two-day sparkline, what needs you first, and the drill
@@ -19,6 +20,8 @@ export interface HudMessage {
   needs: Need[];
   /** People waiting at the office. */
   officeWaiting: number;
+  /** The local weather report: the chip (the air outside) and the card it opens. */
+  weather: WeatherCard;
 }
 
 /** "Last 2 months", or "Last 5 hours" early on, for a span of ticks. */
@@ -46,6 +49,7 @@ export function hudMessage(s: Snapshot): HudMessage {
     extras: topExtras(s),
     needs: needs(s, groups.flat()),
     officeWaiting: s.office.waiting.length,
+    weather: weatherCard(s),
   };
 }
 

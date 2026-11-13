@@ -1,6 +1,9 @@
+import { variety, type Growth, type Variety } from "./food";
 import { maintenanceView, type MaintenanceView } from "./condition";
+import { currentDifficulty, type Level } from "./difficulty";
 import { airView, type AirView } from "./air";
-import { daylight, fullSunIn, stormDue, stormLevel } from "./weather";
+import { temperatureView, type TemperatureView } from "./temperature";
+import { daylight, fullSunIn, stormDue, stormLevel, weatherReport, type WeatherReport } from "./weather";
 import { gameTime, type GameTime } from "./clock";
 import type { SimConfig } from "./config";
 import { canDig, diggingFloor, drillSpeed, ticksToDig } from "./digging";
@@ -8,7 +11,7 @@ import { beds, padReady } from "./earth";
 import { capacities, powerFlow, type Population, type RoomStatus } from "./economy";
 import type { EffectField } from "./effects";
 import type { Deposit, DepositKind } from "./mapgeo";
-import { hasStagingBay, kitProgress } from "./founding";
+import { hasStagingBay, kitGoods, kitProgress } from "./founding";
 import { afterglow, afterglowDaysLeft, type Happiness } from "./happiness";
 import { diagnose, type Diagnosis } from "./diagnosis";
 import type { History } from "./history";
@@ -23,9 +26,11 @@ import type { Message } from "./messages";
 import type { Notable } from "./notables";
 import { ordinanceSlots } from "./ordinances";
 import type { Office } from "./visits";
-import { choiceRefusal, eventDef, eventMood, type PendingEvent } from "./events";
+import { choiceHint, choiceRefusal, eventDef, eventMood, type PendingEvent } from "./events";
+import { milestoneData, progress, type ReachedMilestone } from "./milestones";
+import { drillStopped, endingName, plaque, stopRefusal } from "./depth";
 import type { Layout } from "./placement";
-import type { SimState } from "./state";
+import type { GuideState, SimState } from "./state";
 
 export interface DrillView {
   active: boolean;
@@ -39,11 +44,22 @@ export interface DrillView {
   holdUntil: number | null;
   /** When it last struck something (the rig shudders for a moment). */
   struckTick: number | null;
+  /** Stopped at a hidden depth limit, waiting for the player (held), or done for good (capped) (#390). */
+  stopped: "held" | "capped" | null;
+  /** The player can ask to stop drilling for good. */
+  canStop: boolean;
+  /** How the hole ended, once capped: its final depth, its name from the ending ("the geothermal hole") and the plaque. */
+  capped: { floors: number; ending: string; name: string; plaque: string } | null;
+  /** When the last omen of a limit came (the drill strains), and the last that shook the ground. */
+  omenTick: number | null;
+  tremorTick: number | null;
 }
 
 /** An event waiting for an answer, with its choices and whether each can be picked now. */
 export interface EventView extends PendingEvent {
   choices: { id: string; label: string; hint: string; refusal: string | null }[];
+  /** No timer: it waits for an answer (the drill at a depth limit). */
+  waits: boolean;
 }
 
 export interface ConvoyView {
@@ -103,6 +119,13 @@ export interface HoleSummary {
   domed?: boolean;
   /** The hole has failed (T-162): how many days it lasted, and the most people it had. */
   failed?: { days: number; peak: number };
+  /** Milestones that hole has reached, with the day (F-005), for the network section of the milestones panel. */
+  milestones: ReachedMilestone[];
+  /** Floors dug, and the shaft's radius, for the records (#413). */
+  floors: number;
+  shaftRadiusM?: number;
+  /** The hole is capped (#390): its final depth and its name from how it ended ("the geothermal hole"). */
+  capped?: { floors: number; identity: string };
 }
 
 // What the views get to see: the hole being looked at, in full, plus a line
@@ -118,12 +141,23 @@ export interface Snapshot {
   deposits: Deposit[];
   /** Whether the whole map is known yet. */
   mapUnlocked: boolean;
+  /** The game's difficulty (F-014); the worker fills it in. The main thread scales its data to it. */
+  difficulty: Level;
   /** What the hole you're looking at sits on. */
   holeDeposits: DepositKind[];
   /** Deposits and unlocks together, for which rooms this hole can build. */
   holeGates: string[];
   /** This hole's seed kit: gathered so far against what a kit needs. */
-  kit: { loaded: Record<string, number>; progress: number; hasBay: boolean; gathering: boolean };
+  kit: {
+    loaded: Record<string, number>;
+    progress: number;
+    hasBay: boolean;
+    gathering: boolean;
+    /** What the kit needs here: less a crated drill's materials, if one's waiting (#411). */
+    wants: Record<string, number>;
+    /** Crated drills from this hole, waiting for its next kit. */
+    crates: number;
+  };
   /** Founding convoys on their way; the worker fills these in. */
   convoys: ConvoyView[];
   /** Every trade route in the network; the worker fills these in. */
@@ -142,6 +176,8 @@ export interface Snapshot {
   capacities: Record<string, number>;
   /** The air as a mix: living volume (m³), O2 and CO2 as % of it. */
   air: AirView;
+  /** Each floor's temperature, its heat budget and the thermostat, °C (#393). */
+  temperature: TemperatureView;
   /** Smoothed net change per game day. */
   rates: Record<string, number>;
   /** Power is a flow, so show what's made and used rather than a net rate. */
@@ -165,9 +201,11 @@ export interface Snapshot {
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
   earth: { ticksToDrop: number; waiting: boolean; padReady: boolean; landed: number };
-  /** Dust storms: how hard one is blowing (0 clear to 1), and the days until a forecast one arrives. */
-  /** The storm (0..1) and days until one forecast; the sun's share of full strength on the solar arrays, and days until it's full again. */
-  weather: { storm: number; dueInDays: number | null; daylight: number; fullSunInDays: number };
+  /**
+   * The storm (0..1) and days until one forecast; the sun's share of full strength on the solar arrays,
+   * and days until it's full again; and the local weather report outside (flavour only).
+   */
+  weather: { storm: number; dueInDays: number | null; daylight: number; fullSunInDays: number; report: WeatherReport };
   /** Room condition and upkeep: the overall condition, the queue, and what each service room is repairing. */
   maintenance: MaintenanceView;
   /**
@@ -176,6 +214,8 @@ export interface Snapshot {
    * version moves, so it's sent on its own and put back on the rooms there.
    */
   conditions: Record<number, number>;
+  /** Each farm's harvest cycle, which moves every tick: the main thread puts it back on the rooms it keeps (food.ts). */
+  growth: Record<number, Growth>;
   beds: number;
   messages: Message[];
   happiness: Happiness;
@@ -189,12 +229,30 @@ export interface Snapshot {
   office: Office;
   /** The deputy's tips already shown (view/tips.ts). */
   tipsSeen: string[];
+  /** The guided tutorial's progress, or null when not guided. */
+  guide: GuideState | null;
   ordinances: string[];
   ordinanceSlots: number;
   /** Per-day flows by resource, averaged over recent days, for the flow diagram. */
   flows: Flows;
   /** Events waiting for an answer (PLAN-M14), what they're doing to everyone's mood, a festival on, and the last event landing. */
   events: { pending: EventView[]; mood: number; festival: { startTick: number; untilTick: number } | null; landingTick: number | null };
+  /** Milestones this hole has reached, in the order reached, with the game day (null: an older save's, day unknown). The catalog is data/milestones.json. */
+  milestones: ReachedMilestone[];
+  /** How far along each counted milestone not yet reached is (people, floors, children born…), for the panel. */
+  milestoneProgress: Record<string, number>;
+  /** Raw food by type (crop id, or mixed stores), and the food variety from the meals eaten over the last month (food.ts). */
+  food: { types: Record<string, number>; variety: Variety | null };
+}
+
+function milestoneProgress(state: SimState): Record<string, number> {
+  const reached = new Set((state.milestones ?? []).map((m) => m.id));
+  const out: Record<string, number> = {};
+  for (const m of milestoneData.milestones) {
+    const p = reached.has(m.id) ? null : progress(state, m);
+    if (p !== null) out[m.id] = p;
+  }
+  return out;
 }
 
 function eventsView(state: SimState): Snapshot["events"] {
@@ -203,7 +261,8 @@ function eventsView(state: SimState): Snapshot["events"] {
   return {
     pending: (ev?.pending ?? []).map((e) => ({
       ...e,
-      choices: eventDef(e.kind).choices.map((c) => ({ id: c.id, label: c.label, hint: c.hint.replaceAll("{floor}", String(e.floor ?? "")), refusal: choiceRefusal(state, c, pad) })),
+      choices: eventDef(e.kind).choices.map((c) => ({ id: c.id, label: c.label, hint: choiceHint(c.hint, e), refusal: choiceRefusal(state, c, pad) })),
+      waits: !!eventDef(e.kind).waits,
     })),
     mood: eventMood(state),
     festival: ev?.festival && ev.festival.untilTick > state.tick ? ev.festival : null,
@@ -221,9 +280,10 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     holes: [],
     deposits: [],
     mapUnlocked: false,
+    difficulty: currentDifficulty(),
     holeDeposits: state.deposits ?? [],
     holeGates: holeGates(state),
-    kit: { loaded: state.kit ?? {}, progress: kitProgress(state), hasBay: hasStagingBay(state), gathering: state.gatheringKit },
+    kit: { loaded: state.kit ?? {}, progress: kitProgress(state), hasBay: hasStagingBay(state), gathering: state.gatheringKit, wants: kitGoods(state), crates: state.depth?.crates ?? 0 },
     convoys: [],
     routes: [],
     relations: [],
@@ -239,10 +299,16 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
       ticksLeft: floor ? (needed - state.drill.progress) / drillSpeed(state) : 0,
       holdUntil: state.drill.holdUntil !== undefined && state.drill.holdUntil > state.tick ? state.drill.holdUntil : null,
       struckTick: state.events?.struckTick ?? null,
+      stopped: drillStopped(state),
+      canStop: !stopRefusal(state),
+      capped: state.depth?.capped ? { floors: state.depth.capped.floors, ending: state.depth.capped.ending, name: endingName(state.depth.capped.ending), plaque: plaque(state) } : null,
+      omenTick: state.depth?.omenTick ?? null,
+      tremorTick: state.depth?.tremorTick ?? null,
     },
     resources: state.resources,
     capacities: capacities(state, cfg),
     air: airView(state, cfg),
+    temperature: temperatureView(state, cfg),
     rates: state.rates,
     power: powerFlow(state, cfg),
     population: state.population,
@@ -270,9 +336,10 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
       padReady: padReady(state),
       landed: state.earth.landed ?? 0,
     },
-    weather: { storm: stormLevel(state, cfg), dueInDays: stormDue(state, cfg), daylight: daylight(state, cfg), fullSunInDays: fullSunIn(state, cfg) },
+    weather: { storm: stormLevel(state, cfg), dueInDays: stormDue(state, cfg), daylight: daylight(state, cfg), fullSunInDays: fullSunIn(state, cfg), report: weatherReport(state, cfg) },
     maintenance: maintenanceView(state),
     conditions: Object.fromEntries(state.layout.rooms.filter((r) => r.condition !== undefined).map((r) => [r.id, r.condition!])),
+    growth: Object.fromEntries(state.layout.rooms.filter((r) => r.growth).map((r) => [r.id, { ...r.growth! }])),
     beds: beds(state),
     messages: state.messages,
     happiness: state.happiness,
@@ -282,9 +349,13 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     notables: state.notables,
     office: state.office,
     tipsSeen: state.tipsSeen ?? [],
+    guide: state.guide ?? null,
     ordinances: state.ordinances,
     ordinanceSlots: ordinanceSlots(state),
     flows: averageFlows(state, cfg),
     events: eventsView(state),
+    milestones: (state.milestones ?? []).map((m) => ({ ...m })),
+    milestoneProgress: milestoneProgress(state),
+    food: { types: { ...(state.food?.types ?? {}) }, variety: variety(state) },
   };
 }

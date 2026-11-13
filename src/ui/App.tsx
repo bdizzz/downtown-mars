@@ -1,9 +1,10 @@
+import { setTemperatureUnits } from "../view/temperature";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import type { HoverInfo, Tool } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import { roomDef, roomDefs } from "../sim/rooms";
-import { BARE_ROCK, BuildStrip, buildTool } from "./BuildPalette";
+import { BARE_ROCK, BuildRail, buildTool, ToolBar } from "./BuildPalette";
 import { CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, shapesFor } from "../view/buildCatalog";
 import { ChartsStrip, Dock, MODE_KEYS, ViewStrip, type Chart, type Mode } from "./Dock";
 import { corridors } from "../sim/corridors";
@@ -16,6 +17,8 @@ import { NetworkPanel } from "./NetworkPanel";
 import { PeoplePanel } from "./PeoplePanel";
 import { ConstructionPanel } from "./ConstructionPanel";
 import { MaintenancePanel } from "./MaintenancePanel";
+import { DirectoryPanel } from "./DirectoryPanel";
+import { MilestonesPanel } from "./MilestonesPanel";
 import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
@@ -26,8 +29,11 @@ import { TrendsPanel } from "./TrendsPanel";
 import { WhyPanel, type WhyTab } from "./WhyPanel";
 import type { Spot } from "../view/reachView";
 import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
+import { fetchDevGame, type DevGame } from "./devGames";
 import { StatusBar } from "./StatusBar";
-import { Tutorial } from "./Tutorial";
+import { GuidedTutorial, Tutorial } from "./Tutorial";
+import { guideStep, nextGuide, startGuide, stepMet, stepSpeed } from "./guided";
+import { config } from "../sim/config";
 import { TipCard } from "./TipCard";
 import { dueTip } from "../view/tips";
 import { Welcome } from "./Welcome";
@@ -44,7 +50,8 @@ import {
   type TutorialStep,
   type UiFlags,
 } from "./tutorialGoals";
-import { play, setAudioSettings, unlockAudio } from "../audio/sound";
+import { cue } from "../audio/cues";
+import { setAudioSettings, unlockAudio } from "../audio/sound";
 import { applySystemBar, canHideSystemBar } from "./systemBar";
 import { useSettings } from "./settings";
 import { installConsole } from "./devConsole";
@@ -56,8 +63,10 @@ import { BuildConfirm } from "./BuildConfirm";
 import { useSim } from "./useSim";
 import { useSounds } from "./useSounds";
 import { bootStep } from "./boot";
+import { SlowCard } from "./SlowCard";
 import { UpdateBanner } from "./UpdateBanner";
 import { presetOf } from "../view/graphics";
+import { revealFor } from "./reveal";
 
 const NOTICE_MS = 3000;
 /** How deep the showcase behind the title is dug, for a player with no autosave (only its first floor shows). */
@@ -102,13 +111,13 @@ export function App() {
    */
   const lookFloor = previewFloor !== undefined && !walking ? previewFloor : viewFloor;
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
-  const [panel, setPanel] = useState<"office" | "why" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | null>(null);
+  const [panel, setPanel] = useState<"office" | "why" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory" | "milestones" | null>(null);
   const officeOpen = panel === "office";
   /** The series Trends opens on (a resource clicked in the bar at the top). */
   const [trendKey, setTrendKey] = useState("happiness");
   /** Phones: the top bar's drop-down (speeds, needs, resources) is open. Only its toggle closes it. */
   const [hudOpen, setHudOpen] = useState(false);
-  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends") => {
+  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory" | "milestones") => {
     setPanel((cur) => (cur === p ? null : p));
     setSelected(null);
   };
@@ -152,8 +161,10 @@ export function App() {
   const seenFailed = useRef<{ gameId: number; ids: Set<number>; over: boolean }>({ gameId: -1, ids: new Set(), over: false });
   const resumeSpeed = useRef(1);
   const [tutorialOn, setTutorialOn] = useState(() => !tutorialHidden());
-  const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false, sawThreeD: false });
+  const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false, sawThreeD: false, sawTemperature: false });
   const [settings, updateSettings] = useSettings();
+  // Every temperature on screen reads in the player's units (view/temperature.ts).
+  setTemperatureUnits(settings.celsius ? "C" : "F");
   /**
    * The cutaway always shows the whole hole, from the surface down, with no floor picker. The picked
    * floor is kept as it was, so leaving the cutaway goes back to it.
@@ -234,13 +245,13 @@ export function App() {
       if (!result.ok) {
         if (!quiet) {
           flash(result.reason);
-          play("refuse");
+          cue("refused");
         }
       } else if (result.roomId !== undefined) {
         undoStack.current.push(result.roomId);
         setCanUndo(true);
-        play("build");
-      } else if (cmd.type === "demolish") play("demolish");
+        cue("built");
+      } else if (cmd.type === "demolish") cue("demolished");
     },
     [send, flash],
   );
@@ -250,7 +261,7 @@ export function App() {
     setCanUndo(undoStack.current.length > 0);
     if (roomId === undefined) return;
     const result = await send({ type: "undoBuild", roomId });
-    if (result.ok) play("demolish");
+    if (result.ok) cue("demolished");
     if (!result.ok) {
       flash(result.reason);
       undoStack.current = []; // older ones are older still
@@ -266,6 +277,8 @@ export function App() {
   }, [tool, viewFloor, settings.view, settings.view3d.camera]);
 
   // The lining rooms are built in (T-038): bare rock each time Build opens, then kept while placing room after room.
+  /** A build group's number key, for the rail (1–7). */
+  const [railJump, setRailJump] = useState<{ group: number; n: number } | null>(null);
   const [lining, setLining] = useState(BARE_ROCK);
   useEffect(() => {
     if (mode === "build") setLining(BARE_ROCK);
@@ -344,6 +357,13 @@ export function App() {
       const { data, summary } = await save();
       downloadSave({ data, summary, savedAt: Date.now() });
     },
+    onLoadDev: async (game: DevGame) => {
+      const text = await fetchDevGame(game);
+      if (text === null) return setMenuError(`Couldn't fetch the ${game.name} dev game.`);
+      const r = await load(text);
+      if (r.ok) startPlaying(true);
+      else setMenuError(r.reason);
+    },
     onImport: async () => {
       const text = await pickSaveFile();
       if (text === null) return;
@@ -400,16 +420,20 @@ export function App() {
     lastDay.current = null;
     undoStack.current = [];
     setCanUndo(false);
-    setFlags({ sawNoise: false, openedFlows: false, sawThreeD: false });
+    setFlags({ sawNoise: false, openedFlows: false, sawThreeD: false, sawTemperature: false });
   }, [gameId]);
 
   // The tutorial watches for things only the UI knows about.
   useEffect(() => {
     if (overlay === "noise") setFlags((f) => (f.sawNoise ? f : { ...f, sawNoise: true }));
+    if (overlay === "temperature") setFlags((f) => (f.sawTemperature ? f : { ...f, sawTemperature: true }));
   }, [overlay]);
   useEffect(() => {
     if (panel === "flows") setFlags((f) => (f.openedFlows ? f : { ...f, openedFlows: true }));
   }, [panel]);
+  useEffect(() => {
+    if (selected !== null) setFlags((f) => (f.inspectedRoom ? f : { ...f, inspectedRoom: true }));
+  }, [selected]);
   useEffect(() => {
     if (settings.view === "3d") setFlags((f) => (f.sawThreeD ? f : { ...f, sawThreeD: true }));
   }, [settings.view]);
@@ -418,8 +442,52 @@ export function App() {
   const met = snapshot ? metGoals(snapshot, flags) : null;
   const step = met ? advanceStep(tutorialStep, met) : tutorialStep;
   if (step !== tutorialStep) setTutorialStep(step);
-  const shown = met && tutorialOn ? shownGoal(step, met) : -1;
-  const highlight = shown >= 0 && !met![shown] ? tutorial.goals[shown]!.highlight : null;
+  // The guided tutorial (F-007, T-083), when the player picked it on the welcome card: one step at a
+  // time, its progress in the save. Its card replaces the regular tutorial's while it runs.
+  const guide = snapshot?.guide ?? null;
+  const gStep = guide ? guideStep(guide) : null;
+  const gMet = !!(gStep && snapshot && stepMet(gStep, snapshot, flags));
+  // The floor picker step (T-085) has you click F1. A view without the picker (Unrolled, the
+  // cutaway, kept from an earlier game) can't be left yet, so the step moves on by itself there.
+  const pickerOff = settings.view === "2d" || cutaway;
+  useEffect(() => {
+    if (gStep?.check === "floor1" && pickerOff) setFlags((f) => (f.pickedFloor1 ? f : { ...f, pickedFloor1: true }));
+  }, [gStep?.check, pickerOff]);
+  // A met step moves on by itself, once (the snapshot with the next step can take a moment to come).
+  const sentGuide = useRef<string | null>(null);
+  useEffect(() => {
+    if (!guide || !gMet) return;
+    const key = `${gameId}:${guide.step}`;
+    if (sentGuide.current === key) return;
+    sentGuide.current = key;
+    send({ type: "setGuide", guide: nextGuide(guide) });
+  }, [guide, gMet, gameId, send]);
+  // Each step sets the pace as it starts: paused to read, or slow. After that the speed is the player's.
+  const pacedGuide = useRef<string | null>(null);
+  useEffect(() => {
+    if (!guide || menu || welcome || failure) return;
+    const key = `${gameId}:${guide.step}`;
+    if (pacedGuide.current === key) return;
+    pacedGuide.current = key;
+    setSpeed(stepSpeed(gStep));
+  }, [guide, gStep, gameId, menu, welcome, failure, setSpeed]);
+  /** What of the interface shows: in the guided tutorial, only what it has unlocked (T-084). */
+  // Keyed on the guide's content: the snapshot brings a new guide object every time.
+  const guideKey = guide ? `${guide.step}|${guide.unlocked.join()}` : "";
+  const reveal = useMemo(() => revealFor(guide), [guideKey]);
+  const shown = met && tutorialOn && !guide ? shownGoal(step, met) : -1;
+  const wantedHighlight = gStep ? (gMet ? null : gStep.highlight) : shown >= 0 && !met![shown] ? tutorial.goals[shown]!.highlight : null;
+  // With the office open, its button has done its job: no pulse, and the guided card stops pointing
+  // at it and covering the visit.
+  const highlight = wantedHighlight === "hud:office" && panel === "office" ? null : wantedHighlight;
+  // The office step, in either tutorial (T-080): with nobody waiting, someone comes to say hello, so
+  // there's always a visit to answer. The greeter never leaves, so this can't repeat; the sim sends
+  // no one if the office already has company.
+  const officeStep = gStep ? !gMet && gStep.check === "visit" : shown >= 0 && !met![shown] && tutorial.goals[shown]!.id === "visit";
+  const officeEmpty = !!snapshot && snapshot.office.waiting.length === 0;
+  useEffect(() => {
+    if (officeStep && officeEmpty && !menu && !welcome) send({ type: "greet" });
+  }, [officeStep, officeEmpty, menu, welcome, send]);
   /** The deputy's one-time tip, when a problem first shows up (F-018); it covers the tutorial's card while it's up. */
   const tip = snapshot && settings.tips ? dueTip(snapshot) : null;
   // A tip's Show me goes with it, if its problem goes first.
@@ -472,14 +540,19 @@ export function App() {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       // The modes' keys work anywhere: V, C and M open (or close) View, Charts and Map;
       // B opens Build (inside Build, B is the battery bank's key).
+      // In the guided tutorial, only the modes it has shown you (T-084).
       const toggle = (m: Mode) => setMode(mode === m ? null : m);
-      if (e.code === MODE_KEYS.view) return toggle("view");
-      if (e.code === MODE_KEYS.charts) return toggle("charts");
-      if (e.code === MODE_KEYS.map) return toggle("map");
-      if (e.code === MODE_KEYS.build && mode !== "build") {
+      const has = (m: Mode) => reveal.shown(`mode:${m}`);
+      if (e.code === MODE_KEYS.view && has("view")) return toggle("view");
+      if (e.code === MODE_KEYS.charts && has("charts")) return toggle("charts");
+      if (e.code === MODE_KEYS.map && has("map")) return toggle("map");
+      if (e.code === MODE_KEYS.build && mode !== "build" && has("build")) {
         if (!walking) setMode("build");
         return;
       }
+      // 1–7 open the build rail's groups from anywhere (again to close).
+      const digit = /^Digit[1-9]$/.test(e.code) ? Number(e.code.slice(5)) : 0;
+      if (digit && has("build") && !walking && !mapOpen) return setRailJump((j) => ({ group: digit - 1, n: (j?.n ?? 0) + 1 }));
       // [ and ] step through the holes.
       const next = e.code === "BracketRight" || e.key === "]";
       const prev = e.code === "BracketLeft" || e.key === "[";
@@ -491,7 +564,7 @@ export function App() {
       // Page Up / Page Down, or the up and down arrows, step through floors in the plan and 3D views
       // (up is toward the surface). Walking, the arrows walk: the 3D view takes them first.
       const floorKey = { PageUp: -1, PageDown: 1, ArrowUp: -1, ArrowDown: 1 }[e.code];
-      if (floorKey && snapshot && settings.view !== "2d" && !cutaway) {
+      if (floorKey && snapshot && settings.view !== "2d" && !cutaway && reveal.shown("hud:floors")) {
         e.preventDefault();
         stepFloor(floorKey);
       }
@@ -499,15 +572,15 @@ export function App() {
       if (mode !== "build" || walking) return;
       if (e.code === "KeyR") rotate();
       const letter = e.key.toUpperCase();
-      if (letter === CORRIDOR_KEY) takeTool((t) => (t?.kind === "corridor" ? null : { kind: "corridor", finish: lastFinish, erase: false }));
-      if (letter === DEMOLISH_KEY) takeTool((t) => (t?.kind === "demolish" ? null : { kind: "demolish" }));
+      if (letter === CORRIDOR_KEY && reveal.shown("tool:corridors")) takeTool((t) => (t?.kind === "corridor" ? null : { kind: "corridor", finish: lastFinish, erase: false }));
+      if (letter === DEMOLISH_KEY && reveal.shown("tool:demolish")) takeTool((t) => (t?.kind === "demolish" ? null : { kind: "demolish" }));
       const room = Object.entries(HOTKEYS).find(([, k]) => k === letter)?.[0];
-      const def = room ? roomDefs.find((d) => d.id === room && d.buildable) : undefined;
+      const def = room ? roomDefs.find((d) => d.id === room && d.buildable && reveal.shown(`room:${d.id}`)) : undefined;
       if (def) takeTool((t) => (t?.kind === "build" && t.room === def.id ? null : buildTool(def)));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, helpOpen, welcome, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking, cutaway]);
+  }, [menu, helpOpen, welcome, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking, cutaway, reveal]);
 
   /** Charts → Trends on a series. */
   const showTrend = (key: string) => {
@@ -523,6 +596,13 @@ export function App() {
     setPanel("why");
     setSelected(null);
   };
+  /** From the directory: open a room's panel and bring its floor into view. */
+  const goToRoom = (id: number) => {
+    setSelected(id);
+    setPanel(null);
+    const room = snapshot?.layout.rooms.find((r) => r.id === id);
+    if (room?.at.kind === "ring" && settings.view !== "2d" && !walking) setViewFloor(room.at.floor);
+  };
   /** Show me: light up the rooms and homes, and bring the focus's floor into view. */
   const showMe = (id: string | null, spot: Spot | null) => {
     setSpotlight(id && spot ? { id, spot } : null);
@@ -530,18 +610,80 @@ export function App() {
     if (room?.at.kind === "ring" && settings.view !== "2d" && !walking) setViewFloor(room.at.floor);
   };
 
+  // The deputy's card (a tip, else the tutorial's goal) sits above the dock's mode buttons, stacked with
+  // the dock so a tall strip can never run under it. On phones it's at the top of the view instead,
+  // clear of the dock. The guided tutorial's card is there too until it has something to point at;
+  // then it places itself beside that (ui/anchor.ts).
+  const narrow = matchMedia("(max-width: 760px)").matches;
+  const deputyCard = (
+    <>
+      {snapshot && tip && !menu && !welcome && (
+      <div style={{ display: walking ? "none" : "contents" }}>
+        <TipCard
+          s={snapshot}
+          tip={tip}
+          shown={spotlight?.id === `tip:${tip.id}`}
+          onShow={showMe}
+          onSeen={() => {
+            if (spotlight?.id === `tip:${tip.id}`) setSpotlight(null);
+            onCommand({ type: "seeTip", id: tip.id });
+          }}
+          onOff={() => {
+            if (spotlight?.id === `tip:${tip.id}`) setSpotlight(null);
+            updateSettings({ tips: false });
+          }}
+        />
+      </div>
+    )}
+      {snapshot && !tip && guide && !menu && !welcome && (
+      <div style={{ display: walking ? "none" : "contents" }}>
+        <GuidedTutorial
+          s={snapshot}
+          guide={guide}
+          met={gMet}
+          paused={speed === 0}
+          highlight={highlight}
+          onButton={() => {
+            // A step to read moves on (and the next sets its pace); otherwise carry on, slowly.
+            if (gStep && !gStep.check) send({ type: "setGuide", guide: nextGuide(guide) });
+            else setSpeed(config.slowSpeed);
+          }}
+          onLeave={() => {
+            send({ type: "setGuide", guide: null });
+            if (speed === config.slowSpeed) setSpeed(1);
+          }}
+        />
+      </div>
+    )}
+      {snapshot && !tip && !guide && tutorialOn && !menu && !welcome && (
+      // Out of the way in first person, but kept (folded or open, on the same step) for when you're back.
+      <div style={{ display: walking ? "none" : "contents" }}>
+        <Tutorial
+          s={snapshot}
+          met={met!}
+          step={step}
+          onStep={setTutorialStep}
+          onHide={() => {
+            setTutorialOn(false);
+            setTutorialHidden(true);
+          }}
+        />
+      </div>
+    )}
+    </>
+  );
+
   return (
     <div
       className={`app${settings.colorBlind ? " color-blind" : ""}${welcome ? " welcoming" : ""}${titling ? " titling" : ""}${hudOpen ? " hud-open" : ""}`}
       style={{ "--ui-scale": settings.uiScale } as React.CSSProperties}
     >
-      {/* Build mode: a thin yellow frame round the screen, so it's always clear you're building. Clicks go through it. */}
-      {mode === "build" && <div className="build-frame" aria-hidden="true" />}
       <Hud
         snapshot={snapshot}
         speed={speed}
         setSpeed={setSpeed}
         setDrill={(active) => onCommand({ type: "setDrill", active })}
+        stopDrill={() => onCommand({ type: "stopDrilling" })}
         toggleOffice={() => togglePanel("office")}
         setActiveHole={setActiveHole}
         highlight={highlight}
@@ -550,27 +692,26 @@ export function App() {
         keysEnabled={!menu}
         open={hudOpen}
         setOpen={setHudOpen}
+        reveal={reveal}
       />
-      <ResourceBar s={snapshot} onTrend={openTrend} />
+      {reveal.shown("hud:resources") && (
+        <ResourceBar s={snapshot} onTrend={openTrend} fresh={reveal.fresh("hud:resources")} quiet={!settings.allResources && reveal.all} />
+      )}
       <div className="main">
         <div className="view">
           {snapshot && (
-            <Dock mode={mode} setMode={setMode} walking={walking} highlight={highlight} jobs={snapshot.construction.jobs.length}>
+            <Dock mode={mode} setMode={setMode} highlight={highlight} jobs={snapshot.construction.jobs.length} reveal={reveal} aside={narrow ? null : deputyCard}>
               {mode === "build" && (
-                <BuildStrip
+                <ToolBar
                   tool={tool}
                   lining={lining}
                   setLining={setLining}
-                  lastFinish={lastFinish}
                   setTool={(t) => (setTool(t), setSelected(null))}
                   resources={snapshot.resources}
                   highlight={highlight}
                   deposits={snapshot.holeGates}
                   rotate={rotate}
-                  canUndo={canUndo}
-                  undo={undo}
-                  dome={snapshot.layout.domed ? "built" : snapshot.construction.jobs.some((j) => j.kind === "dome") ? "building" : "none"}
-                  onBuildDome={() => onCommand({ type: "buildDome" })}
+                  reveal={reveal}
                 />
               )}
               {mode === "view" && (
@@ -582,44 +723,33 @@ export function App() {
                   overlay={overlay}
                   setOverlay={setOverlay}
                   highlight={highlight}
+                  reveal={reveal}
                 />
               )}
-              {mode === "charts" && <ChartsStrip s={snapshot} chart={chart} toggle={togglePanel} highlight={highlight} />}
+              {mode === "charts" && <ChartsStrip s={snapshot} chart={chart} toggle={togglePanel} highlight={highlight} reveal={reveal} />}
             </Dock>
           )}
-          {snapshot && tip && !menu && !welcome && (
-            <div style={{ display: walking ? "none" : "contents" }}>
-              <TipCard
-                s={snapshot}
-                tip={tip}
-                shown={spotlight?.id === `tip:${tip.id}`}
-                onShow={showMe}
-                onSeen={() => {
-                  if (spotlight?.id === `tip:${tip.id}`) setSpotlight(null);
-                  onCommand({ type: "seeTip", id: tip.id });
-                }}
-                onOff={() => {
-                  if (spotlight?.id === `tip:${tip.id}`) setSpotlight(null);
-                  updateSettings({ tips: false });
-                }}
-              />
-            </div>
+          {/* Building: the rail down the left edge, always there to open (not while walking, or over the map). */}
+          {snapshot && !walking && !mapOpen && reveal.shown("mode:build") && (
+            <BuildRail
+              active={mode === "build"}
+              setActive={(on) => setMode(on ? "build" : null)}
+              tool={tool}
+              setTool={(t) => (setTool(t), setSelected(null))}
+              lining={lining}
+              lastFinish={lastFinish}
+              resources={snapshot.resources}
+              highlight={highlight}
+              deposits={snapshot.holeGates}
+              canUndo={canUndo}
+              undo={undo}
+              dome={snapshot.layout.domed ? "built" : snapshot.construction.jobs.some((j) => j.kind === "dome") ? "building" : "none"}
+              onBuildDome={() => onCommand({ type: "buildDome" })}
+              reveal={reveal}
+              jump={railJump}
+            />
           )}
-          {snapshot && !tip && tutorialOn && !menu && !welcome && (
-            // Out of the way in first person, but kept (folded or open, on the same step) for when you're back.
-            <div style={{ display: walking ? "none" : "contents" }}>
-              <Tutorial
-                s={snapshot}
-                met={met!}
-                step={step}
-                onStep={setTutorialStep}
-                onHide={() => {
-                  setTutorialOn(false);
-                  setTutorialHidden(true);
-                }}
-              />
-            </div>
-          )}
+          {narrow && deputyCard}
           <Messages s={snapshot} />
           <EventCards s={snapshot} onCommand={onCommand} />
           {snapshot && mapOpen && (
@@ -635,12 +765,17 @@ export function App() {
               }}
             />
           )}
-          {snapshot && settings.view !== "2d" && !mapOpen && !cutaway && !mouseLook && (
+          {snapshot && settings.view !== "2d" && !mapOpen && !cutaway && !mouseLook && reveal.shown("hud:floors") && (
             <FloorPicker
               floors={floorCount}
               floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
               allowAll={settings.view === "3d" && !walking}
-              onPick={setViewFloor}
+              onPick={(f) => {
+                setViewFloor(f);
+                // The guided tutorial has you pick F1 (T-085).
+                if (f === 1) setFlags((fl) => (fl.pickedFloor1 ? fl : { ...fl, pickedFloor1: true }));
+              }}
+              highlight={highlight}
               preview={walking ? undefined : previewFloor}
               onPreview={walking || !settings.floorHoverPreview ? () => {} : setPreviewFloor}
             />
@@ -690,7 +825,7 @@ export function App() {
             onCancel={() => setTool(null)}
             selected={selected}
             onSelect={(id) => (setSelected(id), id !== null && setPanel(null))}
-            onInvalid={(reason) => (flash(reason), play("refuse"))}
+            onInvalid={(reason) => (flash(reason), cue("refused"))}
             colorBlind={settings.colorBlind}
             mode={settings.view}
             graphics={settings.graphics}
@@ -726,6 +861,8 @@ export function App() {
         {snapshot && panel === "maintenance" && (
           <MaintenancePanel s={snapshot} onSelect={(id) => (setSelected(id), setPanel(null))} onClose={() => setPanel(null)} />
         )}
+        {snapshot && panel === "directory" && <DirectoryPanel s={snapshot} onSelect={goToRoom} onClose={() => setPanel(null)} />}
+        {snapshot && panel === "milestones" && <MilestonesPanel s={snapshot} onClose={() => setPanel(null)} />}
         {snapshot && panel === "construction" && (
           <ConstructionPanel s={snapshot} onCommand={onCommand} onSelect={(id) => (setSelected(id), setPanel(null))} onClose={() => setPanel(null)} />
         )}
@@ -755,9 +892,11 @@ export function App() {
       )}
       {welcome && (
         <Welcome
-          onClose={() => {
+          onClose={(guided) => {
             setWelcome(false);
-            setSpeed(resumeSpeed.current);
+            // The guided tutorial sets its own pace once its first step comes back in a snapshot.
+            if (guided) send({ type: "setGuide", guide: startGuide() });
+            else setSpeed(resumeSpeed.current);
           }}
         />
       )}
@@ -773,6 +912,7 @@ export function App() {
       )}
       {helpOpen && <Help onClose={() => setHelpOpen(false)} />}
       <UpdateBanner saveFirst={titling ? null : () => saveTo("autosave")} />
+      <SlowCard graphics={settings.graphics} onGraphics={(graphics) => updateSettings({ graphics })} active={!menu && !welcome && settings.view === "3d"} />
     </div>
   );
 }

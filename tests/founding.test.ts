@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { airPct } from "../src/sim/air";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
-import { foundHole, foundingRefusal, kitProgress } from "../src/sim/founding";
+import { foundHole, foundingRefusal, kitGoods, kitProgress } from "../src/sim/founding";
+import { depthData } from "../src/sim/depth";
 import { network } from "../src/sim/network";
 import { deserialize, serialize } from "../src/sim/save";
 import { createWorld, type World } from "../src/sim/world";
@@ -65,6 +66,21 @@ describe("the staging bay", () => {
 });
 
 describe("founding", () => {
+  it("a crated drill from a capped hole rides with the next kit, which needs the drill's share less, once (#411)", () => {
+    const w = ready();
+    const home = w.holes[0]!;
+    home.depth = { limits: [], capped: { tick: 0, floors: 1, ending: "stopped" }, crates: 1 };
+    const less = kitGoods(home);
+    for (const [id, v] of Object.entries(network.seedKit.goods)) expect(less[id] ?? 0).toBe(Math.max(0, v - (depthData.drill[id] ?? 0)));
+    gather(w);
+    expect(kitProgress(home)).toBeGreaterThan(0.99);
+    expect(home.kit.metal ?? 0).toBeLessThanOrEqual(less.metal! + 1e-6);
+    expect(foundHole(w, config, home.holeId, site)).toEqual({ ok: true });
+    expect(w.convoys[0]!.cratedDrill).toBe(true);
+    expect(home.depth.crates).toBe(0);
+    expect(kitGoods(home)).toEqual(network.seedKit.goods);
+  });
+
   it("sends a convoy that becomes a new hole on arrival", () => {
     const w = ready();
     gather(w);
@@ -108,18 +124,18 @@ describe("landing kits (T-164)", () => {
   it("a new game's first hole starts with air, water and power built and working, a corridor carved to what nothing else reaches", () => {
     const w = createWorld(config, 42);
     const home = w.holes[0]!;
-    expect(ringRooms(w, 0)).toEqual(["battery_bank", "electrolyzer", "entrance", "life_support", "water_recycler", "water_tank", "water_tank"]);
+    expect(ringRooms(w, 0)).toEqual(["battery_bank", "electrolyzer", "entrance", "heater", "life_support", "water_recycler", "water_tank", "water_tank"]);
     const kit = home.layout.rooms.filter((r) => r.at.kind === "ring");
     expect(kit.every((r) => r.connected && !r.planned && !r.building)).toBe(true);
     expect(kit.filter((r) => r.type === "water_tank").map((r) => r.holds ?? "water").sort()).toEqual(["grayWater", "water"]);
   });
 
-  it("a founded hole starts with just the entrance and a battery", () => {
+  it("a founded hole starts with just the entrance and a battery, and the heater its seed kit brought", () => {
     const w = ready();
     gather(w);
     foundHole(w, config, 1, site);
     while (w.convoys.length) stepWorld(w, config);
-    expect(ringRooms(w, 1)).toEqual(["battery_bank", "entrance"]);
+    expect(ringRooms(w, 1)).toEqual(["battery_bank", "entrance", "heater"]);
   });
 });
 

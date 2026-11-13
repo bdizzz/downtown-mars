@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -43,6 +43,29 @@ function gitBranch(): Plugin {
 }
 
 /**
+ * The dev saves in public/ (npm run saves) are for the dev server, PR previews
+ * (the menu's "Load a dev game…", #351) and the Godot viewer: leave them out of
+ * release builds, which would otherwise copy them in.
+ */
+function dropDevSaves(): Plugin {
+  let outDir = "dist";
+  return {
+    name: "drop-dev-saves",
+    apply: (_config, env) => env.command === "build" && !/^\d+$/.test(process.env.VITE_PR_NUMBER ?? ""),
+    configResolved(c) {
+      outDir = c.build.outDir;
+    },
+    closeBundle() {
+      try {
+        for (const f of readdirSync(outDir)) if (/^dev-save.*\.json$/.test(f)) rmSync(`${outDir}/${f}`);
+      } catch {
+        // No output folder (a library or SSR build elsewhere): nothing to drop.
+      }
+    },
+  };
+}
+
+/**
  * A PR's preview build (the preview workflow sets VITE_PR_NUMBER): the page
  * title, the home-screen title and the installed app's name read
  * "#N · Downtown Mars", so preview tabs stand apart from the real game and
@@ -77,7 +100,7 @@ const appVersion = `v${pkg.version} · ${commit()}`;
  * background and waits; the game offers it (ui/UpdateBanner.tsx) and only
  * swaps when the player says so. version.json, left out of the cache, says
  * which version is waiting. PR previews get no service worker, and the main
- * game's leaves pr-preview/ alone (they share its origin and path). The dev
+ * game's leaves preview/ alone (they share its origin and path). The dev
  * server has none.
  */
 function offline(): Plugin[] {
@@ -100,7 +123,7 @@ function offline(): Plugin[] {
         globPatterns: ["**/*.{js,css,html,svg,png,jpg,webmanifest}"],
         // The map of Mars is the biggest file (about 2 MB).
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-        navigateFallbackDenylist: [/\/pr-preview\//],
+        navigateFallbackDenylist: [/\/preview\//],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
@@ -202,7 +225,7 @@ function saveGodotScene(): Plugin {
 export default defineConfig({
   // Relative paths, so the build runs from any folder (itch.io serves games from a sub-path).
   base: "./",
-  plugins: [react(), saveLayouts(), saveGodotScene(), gitBranch(), prTitle(), ...offline()],
+  plugins: [react(), saveLayouts(), saveGodotScene(), gitBranch(), prTitle(), dropDevSaves(), ...offline()],
   worker: { format: "es" },
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),

@@ -162,6 +162,18 @@ describe("rooms", () => {
     expect(spec.makes.o2).toBe(roomDef("farm").makes.o2);
   });
 
+  it("what a farm grows counts toward the first harvest once it's in; its byproducts don't", () => {
+    const s = createInitialState(config);
+    build(s, "farm", ring(1, 1, 1, 4));
+    days(s, 2); // potatoes take 2.5 months
+    expect(s.harvested ?? 0).toBe(0);
+    days(s, 0.6);
+    // 12 a month for 2.5 months, with its long-grow bonus: at most 12 × 2.5 × 1.08.
+    expect(s.harvested).toBeGreaterThan(25);
+    expect(s.harvested).toBeLessThanOrEqual(32.41);
+    expect(s.milestones!.some((m) => m.id === "first_harvest")).toBe(true);
+  });
+
   it("a farm keeps growing food when oxygen storage is full", () => {
     const s = createInitialState(config);
     const farm = build(s, "farm", ring(1, 1, 1, 4));

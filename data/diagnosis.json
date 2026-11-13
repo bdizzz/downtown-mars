@@ -1,13 +1,13 @@
 {
-  "_note": "What's hurting (or helping) a hole's health and happiness, cause by cause (F-018; src/sim/diagnosis.ts). health: what drains the hole's health meter, by the keys of population.healthDrain. happiness: the parts of every home's noise, comfort and wellbeing (happiness.ts homeParts), plus afterglow, events and base. text says what it is, fix what to do about it (left out where there's nothing to do). Placeholders: {met} a need's % met, {pct} the air's %, {health} the hole's health, {homes} how many homes feel it ('1 home', '3 homes'). homesFrom: the least a home's part (in points) must cost it to count as feeling it. label: the part's short name in a home's breakdown ('view +1'). field: the neighbour effect behind it, whose source rooms the home panel and the \"Why?\" panel name. shared: felt by everyone alike, so the \"Why?\" panel has nothing to Show me. factors: the happiness factors' names, in the Trends band and the home panel; mood is the afterglow and recent events, felt by all.",
+  "_note": "What's hurting (or helping) a hole's health and happiness, cause by cause (F-018; src/sim/diagnosis.ts). health: what drains the hole's health meter, by the keys of population.healthDrain. happiness: the parts of every home's noise, comfort and wellbeing (happiness.ts homeParts), plus afterglow, events and base. text says what it is, fix what to do about it (left out where there's nothing to do). Placeholders: {met} a need's % met, {pct} the air's %, {health} the hole's health, {homes} how many homes feel it ('1 home', '3 homes'). homesFrom: the least a home's part (in points) must cost it to count as feeling it. label: the part's short name in a home's breakdown ('view +1'). detail: beside the label on a hover card's ledger, the figure behind it ('40% met'). field: the neighbour effect behind it, whose source rooms the home panel and the \"Why?\" panel name. shared: felt by everyone alike, so the \"Why?\" panel has nothing to Show me. factors: the happiness factors' names, in the Trends band and the home panel; mood is the afterglow and recent events, felt by all.",
   "homesFrom": 1,
   "factors": { "noise": "Noise", "comfort": "Comfort", "health": "Wellbeing", "mood": "Mood" },
   "health": {
-    "water": { "label": "water", "text": "Water: people get {met}% of what they need", "fix": "More water: a water recycler for the gray water, a deep well pump, or bigger water tanks." },
-    "meals": { "label": "meals", "text": "Meals: people get {met}% of what they need", "fix": "People eat only cooked meals: a galley or kitchen cooks raw food (from farms) or Earth rations into them." },
-    "sanitation": { "label": "sanitation", "text": "Sanitation: {met}% of people have a restroom", "fix": "Build restrooms near the homes, or homes with their own bathroom." },
-    "o2": { "label": "thin oxygen", "text": "Oxygen thin: {pct}% of the air", "fix": "More oxygen: an electrolyzer (it needs water and power), a CO2 scrubber, or farms." },
-    "co2": { "label": "CO2", "text": "CO2 high: {pct}% of the air", "fix": "A CO2 scrubber, or farms to breathe it in. Both need power." }
+    "water": { "label": "water", "detail": "{met}% met", "text": "Water: people get {met}% of what they need", "fix": "More water: a water recycler for the gray water, a deep well pump, or bigger water tanks." },
+    "meals": { "label": "meals", "detail": "{met}% met", "text": "Meals: people get {met}% of what they need", "fix": "People eat only cooked meals: a galley or kitchen cooks raw food (from farms) or Earth rations into them." },
+    "sanitation": { "label": "sanitation", "detail": "{met}% have one", "text": "Sanitation: {met}% of people have a restroom", "fix": "Build restrooms near the homes, or homes with their own bathroom." },
+    "o2": { "label": "thin oxygen", "detail": "{pct}% of the air", "text": "Oxygen thin: {pct}% of the air", "fix": "More oxygen: an electrolyzer (it needs water and power), a CO2 scrubber, or farms." },
+    "co2": { "label": "CO2", "detail": "{pct}% of the air", "text": "CO2 high: {pct}% of the air", "fix": "A CO2 scrubber, or farms to breathe it in. Both need power." }
   },
   "happiness": {
     "base": { "label": "life on Mars", "factor": "base", "text": "Life on Mars" },
@@ -22,8 +22,10 @@
     "grief": { "shared": true, "label": "grief", "factor": "comfort", "text": "Grief for the dead with no resting place", "fix": "A crypt to lay them to rest." },
     "sharedWear": { "shared": true, "label": "worn shared rooms", "factor": "comfort", "text": "Worn shared rooms", "fix": "More maintenance and cleaning services." },
     "sharedLining": { "shared": true, "label": "lined shared rooms", "factor": "comfort", "text": "Lined shared rooms" },
+    "variety": { "shared": true, "label": "meal variety", "factor": "comfort", "text": "Meal variety: how many kinds of food go into the meals", "fix": "Grow more kinds of crop: a galley cooks up to four kinds into each meal, and the more kinds, the better (rations are always poor fare)." },
     "noSeat": { "label": "no galley seat", "factor": "comfort", "text": "No seat at a galley within reach: {homes}", "fix": "A galley or canteen near the homes, or a bigger one." },
     "noRestroom": { "label": "no restroom", "factor": "comfort", "text": "No restroom within reach: {homes}", "fix": "Restrooms within 6 steps of the homes." },
+    "temperature": { "label": "temperature", "factor": "comfort", "text": "Cold or overheated homes: {homes}", "fix": "Heaters warm a floor (one holds a small hole's dug-out floor at 65 °F); bigger floors, colder sites and a warmer thermostat need more. Radiators cool floors that industry overheats." },
     "homeless": { "shared": true, "label": "homeless", "factor": "comfort", "text": "Homeless colonists", "fix": "Build more homes." },
     "ownComfort": { "label": "the home itself", "factor": "comfort", "text": "The homes themselves (bunk dorms are cramped; studios, flats and suites roomy)", "fix": "Roomier homes: studios, flats or suites rather than bunk dorms." },
     "windows": { "label": "view", "factor": "comfort", "text": "Windows with a view" },

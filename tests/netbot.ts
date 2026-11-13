@@ -160,7 +160,8 @@ function childExport(child: SimState): string {
   return child.deposits.includes("silica") ? "silica" : child.deposits.includes("ore") ? "ore" : "water";
 }
 
-export function runNetwork(days: number, seed = config.seed, found = true) {
+/** `onDay` is called at the end of each game day (saves.ts writes the dev saves from it). */
+export function runNetwork(days: number, seed = config.seed, found = true, onDay?: (world: World, day: number) => void) {
   const world = createWorld(config, seed);
   const home = world.holes[0]!;
   const plan = planFor(config.landingKits.newGame);
@@ -265,6 +266,7 @@ export function runNetwork(days: number, seed = config.seed, found = true) {
         born: world.holes.reduce((n, h) => n + (h.population.born ?? 0), 0),
         beds: world.holes.map((h) => beds(h)).join("/"),
       });
+      onDay?.(world, world.tick / config.ticksPerDay);
     }
   }
   return {

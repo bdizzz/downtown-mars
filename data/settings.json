@@ -1,5 +1,6 @@
 {
   "_comment": "The settings, in the order the menu shows them, read by the web (src/ui/settingsTable.ts) and Godot (SettingsSheet). Each row: id, section, name, a one-line hint, its control (toggle, slider, select or button), and for sliders min/max/step, for selects options (or none: the view fills them in). `only` keeps a row to one of the two (web or godot); `when` shows it only where it applies (installedAndroid: the app installed on Android). Defaults for the plain settings; graphics take theirs from the preset.",
+  "fps": { "_comment": "The frame rate watch (#391), read by the web (src/view/fps.ts) and Godot (Fps.cs): one reading a second, the last `history` kept; 'low' is the middle of the last `seconds` readings under `low` (Settings advises), 'veryLow' under `veryLow` (the game itself offers one click to lighter graphics).", "history": 120, "seconds": 20, "low": 30, "veryLow": 10 },
   "sections": [
     { "id": "game", "name": "Game" },
     { "id": "display", "name": "Display" },
@@ -13,8 +14,12 @@
     { "id": "tips", "section": "game", "name": "Tips", "hint": "The deputy explains a problem the first time it shows up", "control": "toggle", "default": true },
 
     { "id": "fullscreen", "section": "display", "name": "Full screen", "hint": "Hide the phone's status and navigation bars", "control": "toggle", "default": true, "only": "web", "when": "installedAndroid" },
+    { "id": "celsius", "section": "display", "name": "Temperatures in °C", "hint": "Off: temperatures show in °F", "control": "toggle", "default": false, "only": "web" },
+    { "id": "allResources", "section": "display", "name": "Show every resource", "hint": "Off: the top bar shows the vitals and what needs a look; Stock opens the rest", "control": "toggle", "default": false, "only": "web" },
     { "id": "graphics.quality", "section": "display", "name": "Graphics", "hint": "Low for slower machines; Ultra adds bounced light", "control": "select", "only": "godot" },
     { "id": "graphics.preset", "section": "display", "name": "Graphics", "hint": "Low for slower machines; changing an effect makes it custom", "control": "select", "only": "web" },
+    { "id": "graphics.furniture", "section": "display", "name": "Furniture", "hint": "Detailed models cost more; simple shapes suit slower machines", "control": "select",
+      "options": [{ "value": 0, "name": "Simple shapes" }, { "value": 1, "name": "Detailed on foot" }, { "value": 2, "name": "Detailed everywhere" }] },
     { "id": "graphics.pixelRatio", "section": "display", "name": "Sharpness", "hint": "Sharper costs more on high-resolution screens", "control": "select", "only": "web",
       "options": [{ "value": 1, "name": "Standard" }, { "value": 1.5, "name": "Sharp" }, { "value": 2, "name": "Sharpest" }] },
     { "id": "graphics.lamps", "section": "display", "name": "Lamp light", "hint": "Lamps, fires and grow lights light the rooms around them", "control": "slider", "min": 0, "max": 1, "step": 0.1, "only": "web" },
@@ -28,11 +33,12 @@
     { "id": "graphics.life", "section": "display", "name": "Colonists and dust", "hint": "People walking the galleries, dust in the air", "control": "toggle", "only": "web" },
 
     { "id": "volume", "section": "sound", "name": "Volume", "hint": "Everything the game plays", "control": "slider", "min": 0, "max": 1, "step": 0.05, "default": 0.6, "only": "web" },
-    { "id": "sfx", "section": "sound", "name": "Sound effects", "hint": "Clicks, building, landings and alerts", "control": "toggle", "default": true, "only": "web" },
-    { "id": "ambient", "section": "sound", "name": "Ambient sound", "hint": "The rumble of rock and air, and the machines' hum", "control": "toggle", "default": true, "only": "web" },
+    { "id": "music", "section": "sound", "name": "Music", "hint": "The soundtrack", "control": "slider", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "only": "web" },
+    { "id": "effects", "section": "sound", "name": "Sound effects", "hint": "Clicks, building, landings and alerts", "control": "slider", "min": 0, "max": 1, "step": 0.05, "default": 1, "only": "web" },
+    { "id": "ambience", "section": "sound", "name": "Ambience", "hint": "The rumble of rock and air, and the machines' hum", "control": "slider", "min": 0, "max": 1, "step": 0.05, "default": 1, "only": "web" },
 
     { "id": "floorHoverPreview", "section": "controls", "name": "Preview floors on hover", "hint": "Pointing at a floor in the floor picker shows it", "control": "toggle", "default": false, "only": "web" },
-    { "id": "lookSpeed", "section": "controls", "name": "Mouse look speed", "hint": "How fast the mouse turns your head in first person", "control": "slider", "min": 0.25, "max": 2, "step": 0.05, "default": 1 },
+    { "id": "lookSpeed", "section": "controls", "name": "Mouse look speed", "hint": "How fast the mouse turns your head in first person", "control": "slider", "min": 0.25, "max": 3, "step": 0.05, "default": 1 },
     { "id": "keys", "section": "controls", "name": "Keys and gestures", "hint": "Every key and what fingers do (also ?)", "control": "button" },
 
     { "id": "uiScale", "section": "access", "name": "Interface size", "hint": "Panels and text, not the view", "control": "select", "default": 1,

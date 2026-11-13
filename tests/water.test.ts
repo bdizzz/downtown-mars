@@ -3,6 +3,7 @@ import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
 import { capacities, clearsWaste, roomSpec } from "../src/sim/economy";
 import { LABELS } from "../src/sim/ledger";
+import { hasReached, milestoneData, passed } from "../src/sim/milestones";
 import type { Location } from "../src/sim/placement";
 import { roomName } from "../src/sim/roomName";
 import { roomDef } from "../src/sim/rooms";
@@ -141,5 +142,20 @@ describe("water tanks", () => {
     const galley = build(s, "galley", ring(1, 1, 3));
     expect(applyCommand(s, { type: "setHolds", roomId: tank.id, holds: "o2" }).ok).toBe(false);
     expect(applyCommand(s, { type: "setHolds", roomId: galley.id, holds: "grayWater" }).ok).toBe(false);
+  });
+});
+
+describe("the closed loop milestone (T-060)", () => {
+  const loop = milestoneData.milestones.find((m) => m.id === "closed_loop")!;
+
+  it("a hole with a recycler keeping up closes its loop; without one it doesn't", () => {
+    const s = hole();
+    s.resources.water = 200;
+    days(s, 1);
+    expect(passed(s, loop)).toBe(false);
+    build(s, "water_recycler", ring(1, 2, 3, 4));
+    days(s, 2);
+    expect(passed(s, loop)).toBe(true);
+    expect(hasReached(s, "closed_loop")).toBe(true);
   });
 });

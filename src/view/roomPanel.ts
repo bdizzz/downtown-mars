@@ -1,3 +1,6 @@
+import { cropMakes, farmCrop, harvestProgress, harvestSize } from "../sim/food";
+import { cropDefs } from "../sim/resources";
+import { monthsText } from "./months";
 import { config } from "../sim/config";
 import { amenityFelt, reachOf } from "../sim/amenities";
 import { holding, mainOutput, roomSpec } from "../sim/economy";
@@ -5,7 +8,7 @@ import { effectName, effectOnRoom, FIELD_TYPES } from "../sim/effects";
 import { DIAGNOSIS } from "../sim/diagnosis";
 import { crowdedAir } from "../sim/happiness";
 import { network } from "../sim/network";
-import { canLine, liningOf, liningText, MATERIALS, refitPlan, refitRefusal, type Finish, type Material } from "../sim/materials";
+import { canLine, flooringOf, floorPlan, floorRefusal, liningOf, liningText, MATERIALS, refitPlan, refitRefusal, type Finish, type Material } from "../sim/materials";
 import type { RoomInstance } from "../sim/placement";
 import { roomName } from "../sim/roomName";
 import { roomDef } from "../sim/rooms";
@@ -13,23 +16,92 @@ import { allows, contentsOf, spaceOf, STORABLE, usedSpace } from "../sim/storage
 import type { Snapshot } from "../sim/snapshot";
 import { glazedWalls, sunlight, windowComfort, type Across } from "../sim/windows";
 import { dining, hoursText, num, ordinal, resName, signed } from "../ui/format";
+import { CONDITION, hasCondition } from "../sim/condition";
+import { isIcon, type IconId } from "./icons";
 import { reachSteps, reachTints } from "./reachView";
+import { formatTemperature, formatTemperatureChange } from "./temperature";
+import { comfortAt, referenceCells, type FloorHeat } from "../sim/temperature";
+import { roomState, roomTone, statusWord, type Tone } from "./roomState";
 
-// What the room panel says about a room, as rows of text: shared by the web's inspector
-// (ui/Inspector.tsx) and the Godot viewer's (bridge/inspect.ts), so both say the same.
+// What the room panel says about a room: shared by the web's inspector (ui/Inspector.tsx) and the
+// Godot viewer's (bridge/inspect.ts), so both say the same. `panelModel` is the whole panel as data
+// (status, headline, alerts, glance, sections: docs/PLAN-M18.md §7); `panelRows` the flat rows.
 
-/** A line of the panel: an optional label (dimmed), its text, and whether it's a warning. */
+/** A meter from 0 to max (condition, staff), and a signed one from −range to +range (noise −1.6 of 3). */
+export interface Meter {
+  value: number;
+  max: number;
+}
+export interface Signed {
+  value: number;
+  range: number;
+}
+
+/**
+ * A line of the panel: an optional label (dimmed), its text (short: the label, icon and tone carry the rest),
+ * whether it's a warning, and the longer version as a tooltip where there's more to say. A row of resources
+ * (uses, makes) also has them as chips, which the viewers draw instead of the text.
+ */
 export interface Row {
   k?: string;
   text: string;
   warn?: boolean;
+  icon?: IconId;
+  tone?: Tone;
+  signed?: Signed;
+  tip?: string;
+  chips?: Chip[];
+}
+
+export type SectionId = "work" | "home" | "serves" | "surroundings" | "building" | "kit" | "storage";
+
+/** An icon and a short value, with what it is (its label) and maybe a meter, a tone and a longer tip. */
+export interface Chip {
+  icon: IconId;
+  value: string;
+  label: string;
+  tone?: Tone;
+  meter?: Meter;
+  signed?: Signed;
+  tip?: string;
+  section?: SectionId;
+}
+
+/** A warning raised to the top of the panel, naming the section it comes from. */
+export interface Alert {
+  text: string;
+  tone: "warn" | "bad";
+  section: SectionId;
+  action?: "connect";
+  /** The row's longer version, when it has one. */
+  tip?: string;
+}
+
+export interface Section {
+  id: SectionId;
+  title: string;
+  icon: IconId;
+  open: boolean;
+  rows: Row[];
+  chips?: Chip[];
+}
+
+export interface PanelModel {
+  status: { text: string; tone: Tone; tip: string };
+  headline: Chip[];
+  alerts: Alert[];
+  glance: Chip[];
+  sections: Section[];
 }
 
 type Room = Snapshot["layout"]["rooms"][number];
 
+/** A resource as a chip: its icon (machinery for one without its own) and amount. */
+const resourceChip = (id: string, v: number): Chip => ({ icon: isIcon(id) ? id : "machinery", value: num(v), label: resName(id) });
+
 const flows = (label: string, f: Record<string, number>): Row | null => {
   const entries = Object.entries(f).filter(([, v]) => v > 0);
-  return entries.length ? { k: label, text: entries.map(([id, v]) => `${resName(id)} ${num(v)}`).join(", ") } : null;
+  return entries.length ? { k: label, text: entries.map(([id, v]) => `${resName(id)} ${num(v)}`).join(", "), chips: entries.map(([id, v]) => resourceChip(id, v)) } : null;
 };
 
 /** A service's or amenity's reach on foot: the homes within it (tinted on the map when no overlay is on). */
@@ -37,8 +109,8 @@ export function reachesRow(s: Snapshot, room: Room): Row | null {
   const tints = reachTints(s.layout, room.id);
   if (!tints) return null;
   const within = tints.filter((t) => t.steps !== null).sort((a, b) => a.steps! - b.steps!);
-  const names = within.length ? `: ${within.slice(0, 4).map((t) => `${roomName(t.room)} ${Math.max(1, Math.round(t.steps!))}`).join(", ")}${within.length > 4 ? "…" : ""}` : "";
-  return { k: "Reaches", text: `${within.length} of ${tints.length} ${tints.length === 1 ? "home" : "homes"} within ${reachSteps(room.type)} steps${names}` };
+  const names = within.map((t) => `${roomName(t.room)} ${Math.max(1, Math.round(t.steps!))} steps`).join(", ");
+  return { k: "Reaches", text: `${within.length} of ${tints.length} ${tints.length === 1 ? "home" : "homes"} within ${reachSteps(room.type)} steps`, ...(names ? { tip: names } : {}) };
 }
 
 /** The hole's restroom coverage, for a restroom's panel. */
@@ -62,26 +134,37 @@ export function withinReachRows(s: Snapshot, room: Room): Row[] {
   const seated = s.population.servedByHome?.[room.id];
   const felt = amenityFelt(s, room);
   const rows: Row[] = [];
-  if (seated !== undefined) rows.push({ k: "Meals", text: seated >= 0.98 ? "a seat for everyone within reach" : `${Math.round(seated * 100)}% seated within reach; the rest eat on the go`, warn: seated < 0.98 });
+  if (seated !== undefined)
+    rows.push(
+      seated >= 0.98
+        ? { k: "Meals", text: "a seat for everyone", warn: false }
+        : { k: "Meals", text: `${Math.round(seated * 100)}% seated`, tip: `${Math.round(seated * 100)}% have a seat at a galley or canteen within reach; the rest eat on the go`, warn: true },
+    );
   const wc = s.population.sanitationByHome?.[room.id];
   if (roomDef(room.type).ownBathroom) rows.push({ k: "Restroom", text: "its own bathroom" });
   else if (wc !== undefined)
-    rows.push({
-      k: "Restroom",
-      text:
-        wc >= 0.98
-          ? "a place for everyone within reach"
-          : `${Math.round((1 - wc) * 100)}% without one within ${reachOf("restroom")} steps: comfort ${signed(-(1 - wc) * config.happiness.noRestroomComfort)}`,
-      warn: wc < 0.98,
-    });
+    rows.push(
+      wc >= 0.98
+        ? { k: "Restroom", text: "a place for everyone", warn: false }
+        : {
+            k: "Restroom",
+            text: `${Math.round((1 - wc) * 100)}% without one`,
+            tip: `${Math.round((1 - wc) * 100)}% without one within ${reachOf("restroom")} steps: comfort ${signed(-(1 - wc) * config.happiness.noRestroomComfort)}`,
+            warn: true,
+          },
+    );
   const care = careRow(s, room);
   if (care) rows.push(care);
-  rows.push({
-    k: "On foot",
-    text: felt.from.length
-      ? felt.from.map((f) => `${roomDef(f.type).name} ${Math.max(1, Math.round(f.steps))} steps (${[f.comfort ? `comfort ${signed(f.comfort)}` : "", f.health ? `wellbeing ${signed(f.health)}` : ""].filter(Boolean).join(", ")})`).join(" · ")
-      : "no park, plaza, gym or restroom in reach",
-  });
+  const steps = (f: (typeof felt.from)[number]) => `${roomDef(f.type).name} ${Math.max(1, Math.round(f.steps))}`;
+  rows.push(
+    felt.from.length
+      ? {
+          k: "On foot",
+          text: `${felt.from.slice(0, 3).map(steps).join(", ")}${felt.from.length > 3 ? "…" : ""} steps`,
+          tip: felt.from.map((f) => `${steps(f)} steps (${[f.comfort ? `comfort ${signed(f.comfort)}` : "", f.health ? `wellbeing ${signed(f.health)}` : ""].filter(Boolean).join(", ")})`).join(" · "),
+        }
+      : { k: "On foot", text: "nothing in reach", tip: "No park, plaza, gym or restroom within walking distance" },
+  );
   return rows;
 }
 
@@ -91,7 +174,7 @@ const ACROSS: Record<Across, string> = { shaft: "the shaft", corridor: "a corrid
 export function windowsRow(s: Snapshot, room: Room): Row | null {
   const walls = glazedWalls(s.layout, room);
   const home = !!roomDef(room.type).houses;
-  if (!walls.length) return home ? { k: "Windows", text: "none yet: add them with Build → Corridors → Windows, on a wall facing the shaft, a corridor or a plaza" } : null;
+  if (!walls.length) return home ? { k: "Windows", text: "none yet", tip: "Add them with Build → Corridors → Windows, on a wall facing the shaft, a corridor or a plaza" } : null;
   const onto = [...new Set(walls.map((w) => ACROSS[w.across]))].join(", ");
   const sun = sunlight(s.layout, room, config) > 0 ? ", and the sun gets in" : "";
   return { k: "Windows", text: `onto ${onto}${home ? `: ${signed(windowComfort(s.layout, room, config))} comfort` : ""}${sun}` };
@@ -134,13 +217,18 @@ export function factorRows(s: Snapshot, roomId: number): Row[] {
       .map(([id, pts]) => ({ id, def: DIAGNOSIS.happiness[id], v: pts / weight }))
       .filter((p) => p.def?.factor === factor && Math.abs(p.v) >= 0.05)
       .sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
-    const text = parts.map(({ id, def, v }) => {
+    // Noise has one part, its neighbours: just name them.
+    const named = parts.length === 1 && parts[0]!.id === "noise";
+    const full = parts.map(({ id, def, v }) => {
       const from = def!.field ? sourcesText(s, roomId, def!.field) : "";
-      // Noise has one part, its neighbours: just name them.
-      if (parts.length === 1 && id === "noise") return from;
-      return `${def!.label ?? id} ${signed(v)}${from ? ` (${from})` : ""}`;
+      return named ? from : `${def!.label ?? id} ${signed(v)}${from ? ` (${from})` : ""}`;
     });
-    rows.push({ k: DIAGNOSIS.factors[factor] ?? factor, text: `${signed(total)}${text.length && text[0] ? ` = ${text.join(", ")}` : ""}`, warn: total <= -1 });
+    // The row says the biggest two parts; the tooltip all of them, with the rooms behind each.
+    const short = named ? [sourcesText(s, roomId, parts[0]!.def!.field!, 2)] : parts.slice(0, 2).map(({ id, def, v }) => `${def!.label ?? id} ${signed(v)}`);
+    const sum = (list: string[], more = false) => (Math.abs(total) < 0.05 && !parts.length ? "none" : `${signed(total)}${list.length && list[0] ? ` = ${list.join(", ")}${more ? "…" : ""}` : ""}`);
+    const text = sum(short, !named && parts.length > 2);
+    const tip = sum(full);
+    rows.push({ k: DIAGNOSIS.factors[factor] ?? factor, text, ...(tip !== text ? { tip } : {}), warn: total <= -1 });
   }
   return rows;
 }
@@ -152,7 +240,7 @@ export function homeRows(s: Snapshot, roomId: number, capacity: number): Row[] {
   const trend = pool.target > pool.happiness + 1 ? " ↑" : pool.target < pool.happiness - 1 ? " ↓" : "";
   return [
     { k: "Residents", text: `${pool.residents} / ${capacity}` },
-    { k: "Happiness", text: `${Math.round(pool.happiness)}${trend} (heading for ${Math.round(pool.target)})`, warn: pool.happiness < 50 },
+    { k: "Happiness", text: `${Math.round(pool.happiness)}${trend}${trend ? `, heading for ${Math.round(pool.target)}` : ", steady"}`, warn: pool.happiness < 50 },
     ...factorRows(s, roomId),
   ];
 }
@@ -203,10 +291,9 @@ export interface RefitOption {
 /** The linings a built room could be refitted in (every one but its own), or null if it can't have one. */
 export function refitOptions(s: Snapshot, room: RoomInstance): RefitOption[] | null {
   if (!canLine(room) || room.planned || room.building) return null;
-  const queued = s.construction.jobs.find((j) => j.roomId === room.id && j.to);
+  // A queued refit of the walls or the floor: the new one replaces it.
+  const queued = s.construction.jobs.find((j) => j.roomId === room.id && j.kind === "upgrade");
   const own = liningOf(room);
-  // Whole amounts as they are ("brick 16", "6 h"), not "16.0".
-  const amount = (v: number) => (Number.isInteger(v) ? String(v) : num(v));
   return MATERIALS.walls
     .filter((w) => w !== own)
     .map((w) => {
@@ -225,6 +312,40 @@ export function refitOptions(s: Snapshot, room: RoomInstance): RefitOption[] | n
     });
 }
 
+/** Whole amounts as they are ("brick 16", "6 h"), not "16.0". */
+const amount = (v: number) => (Number.isInteger(v) ? String(v) : num(v));
+
+/** A floor a room could have laid (flooring null: back to matching the walls), what it gives, costs and takes, and why not (null when it can). */
+export interface FloorOption {
+  flooring: string | null;
+  name: string;
+  text: string;
+  refusal: string | null;
+}
+
+/** The floors a built room could have instead of its own (T-037), or null if it can't have one. Its walls stay as they are. */
+export function floorOptions(s: Snapshot, room: RoomInstance): FloorOption[] | null {
+  if (!canLine(room) || room.planned || room.building) return null;
+  const queued = s.construction.jobs.find((j) => j.roomId === room.id && j.kind === "upgrade");
+  const own = flooringOf(room);
+  const out: FloorOption[] = [];
+  // Taking a floor up is free and at once (as is calling off one queued).
+  if (own || queued?.flooring)
+    out.push({ flooring: null, name: "Matches the walls", text: `Matches the walls (${liningText({ ...room, flooring: undefined })}) · free, at once`, refusal: null });
+  for (const f of MATERIALS.floorings) {
+    if (f === own) continue;
+    const plan = floorPlan(room, f)!;
+    const pay = Object.entries(plan.cost).map(([r, v]) => `${resName(r).toLowerCase()} ${amount(v)}`);
+    out.push({
+      flooring: f.id,
+      name: f.name,
+      text: `${liningText({ ...room, flooring: f.id })} · ${pay.length ? pay.join(", ") : "free"} · ${amount(plan.work)} h of work`,
+      refusal: queued?.flooring === f.id ? "being laid now" : floorRefusal(room, plan, s.resources, queued?.paid),
+    });
+  }
+  return out;
+}
+
 /** Who's repairing a room, or where it is in the maintenance queue ("" when neither). */
 export function conditionNote(s: Snapshot, roomId: number, repairing?: { done: number; work: number }): string {
   const lane = s.maintenance.lanes.find((l) => l.target === roomId);
@@ -238,54 +359,373 @@ export function conditionNote(s: Snapshot, roomId: number, repairing?: { done: n
 
 /** The seed kit at a staging bay: how far along, what's in it, the button's label (null when it's ready), and a note. */
 export function seedKitInfo(s: Snapshot): { progress: number; goods: string; button: string | null; note: string } {
-  const goods = Object.entries(network.seedKit.goods)
+  const goods = Object.entries(s.kit.wants ?? network.seedKit.goods)
     .map(([id, want]) => `${resName(id)} ${num(s.kit.loaded[id] ?? 0)}/${want}`)
     .join(" · ");
+  // A capped hole's crated drill (#411) rides with the next kit, so the kit needs less.
+  const crate = s.kit.crates ? ` A crated drill is waiting in store: it goes with this kit, so the kit needs less.` : "";
   const button = s.kit.progress < 0.999 ? (s.kit.gathering ? "Stop gathering" : s.kit.progress > 0 ? "Resume gathering" : "Gather a seed kit") : null;
   const note = s.kit.gathering
     ? "The bay's crew is moving goods into the kit, never leaving less than a reserve in store."
     : s.kit.progress >= 0.999
       ? `Ready. Pick a site on the map (M) and send ${network.seedKit.volunteers} volunteers to found a new hole.`
       : "The bay stands idle, its crew free for other work, until you ask for a kit.";
-  return { progress: s.kit.progress, goods, button, note };
+  return { progress: s.kit.progress, goods, button, note: note + crate };
+}
+
+/** A row of the panel, where today's flat list puts it (before or after the seed kit) and the section it belongs in. */
+interface Entry {
+  part: "before" | "after";
+  section: SectionId;
+  row: Row;
+}
+
+/** Each row label's icon, where it has one. */
+const ROW_ICONS: Record<string, IconId> = {
+  Staff: "workers",
+  Harvest: "rawFood",
+  Residents: "colonists",
+  Houses: "colonists",
+  Happiness: "happiness",
+  Noise: "noise",
+  Comfort: "comfort",
+  Wellbeing: "health",
+  Teaches: "school",
+  "Cares for": "clinic",
+  "Restroom for": "restroom",
+  Restroom: "restroom",
+  Seats: "seat",
+  Meals: "meals",
+  Walls: "walls",
+  Windows: "window",
+  Crowded: "air",
+  Temperature: "temperature",
+  Heats: "temperature",
+  Cools: "temperature",
+  Thermostat: "temperature",
+  "Within reach": "clinic",
+  "On foot": "reach",
+  Reaches: "reach",
+  "Felt here": "smell",
+  Bothers: "alert",
+};
+
+/** The floor a ring room sits on, and its heat budget; null on the surface. */
+export function floorHeatOf(s: Snapshot, room: RoomInstance): FloorHeat | null {
+  if (room.at.kind !== "ring") return null;
+  return s.temperature.floors[room.at.floor - 1] ?? null;
+}
+
+/** What makes up a floor's temperature, in words (#393). */
+export function temperatureTip(f: FloorHeat): string {
+  const parts = [`rests at ${formatTemperature(f.rest)}`];
+  if (f.body >= 0.05) parts.push(`people ${formatTemperatureChange(f.body)}`);
+  if (f.waste >= 0.05) parts.push(`machines ${formatTemperatureChange(f.waste)}`);
+  if (f.heating >= 0.05) parts.push(`heaters ${formatTemperatureChange(f.heating)}`);
+  if (f.cooling >= 0.05) parts.push(`radiators ${formatTemperatureChange(-f.cooling)}`);
+  const heading = Math.abs(f.target - f.now) >= 0.5 ? `, heading for ${formatTemperature(f.target)}` : "";
+  return `Floor ${f.floor}: ${formatTemperature(f.now)}${heading}. It ${parts.join(", ")}; thermostat ${formatTemperature(f.setpoint)}${f.override ? " (this floor's own)" : ""}.`;
+}
+
+/** A floor's temperature as a row: a home warns when it's cold or hot enough to cost comfort. */
+export function temperatureRow(s: Snapshot, room: RoomInstance): Row | null {
+  const f = floorHeatOf(s, room);
+  if (!f) return null;
+  const felt = comfortAt(f.now, config);
+  const cold = f.now < f.setpoint - 1 && f.heatersFull < f.setpoint - (f.rest + f.body + f.waste) - 0.5;
+  const text = `${formatTemperature(f.now)}${Math.abs(f.target - f.now) >= 0.5 ? ` → ${formatTemperature(f.target)}` : ""}`;
+  const warn = !!roomDef(room.type).houses && felt < -0.5;
+  return { k: "Temperature", text, tip: temperatureTip(f) + (cold ? " Its heaters can't reach the thermostat: more heaters, or a heating plant." : ""), ...(warn ? { warn } : {}) };
+}
+
+/** A heater's or radiator's rows: what it can do, and how hard it's working. */
+function climateRows(s: Snapshot, room: RoomInstance): Row[] {
+  const def = roomDef(room.type);
+  const f = floorHeatOf(s, room);
+  if ((!def.heats && !def.cools) || !f) return [];
+  const t = s.temperature;
+  const share = def.heats ? (f.heatersFull > 0 ? f.heating / f.heatersFull : 0) : f.radiatorsFull > 0 ? f.cooling / f.radiatorsFull : 0;
+  const lift = def.heats ?? def.cools ?? 0;
+  return [
+    {
+      k: def.heats ? "Heats" : "Cools",
+      text: `${formatTemperatureChange(def.heats ? lift : -lift)} at full power`,
+      tip: `On a small hole's floor dug out across its rings (${referenceCells(config)} cells); this floor has ${f.cells}, so ${formatTemperatureChange(def.heats ? f.heatersFull : -f.radiatorsFull)} from all its ${def.heats ? "heaters" : "radiators"}.`,
+    },
+    {
+      k: "Working",
+      text: `${Math.round(share * 100)}% of full power`,
+      tip: `${def.heats ? "Heaters work only as hard as it takes to hold the thermostat" : "Radiators work only as hard as it takes to bring the floor down to the thermostat"}: ${formatTemperature(f.setpoint)}${f.override ? ` on this floor (the hole's is ${formatTemperature(t.setpoint)})` : ""}.`,
+    },
+  ];
+}
+
+/** Every row of the panel, in the order today's flat list has them, each tagged with its section. */
+function panelEntries(s: Snapshot, room: RoomInstance): Entry[] {
+  const def = roomDef(room.type);
+  const spec = roomSpec(room, config);
+  const st = s.roomStatus[room.id];
+  const ring = room.at.kind === "ring";
+  const tagged = (part: Entry["part"], section: SectionId, rows: (Row | null)[]): Entry[] => rows.filter((r): r is Row => !!r).map((row) => ({ part, section, row }));
+  const entries = [
+    ...tagged("before", "work", [
+      spec.staff > 0 ? { k: "Staff", text: `${st?.staff ?? 0} / ${spec.staff}` } : null,
+      flows("Uses/month", spec.uses),
+      flows("Makes/month", spec.makes),
+      harvestRow(room),
+      flows("Scrubs/month", spec.scrubs),
+      flows("Stores", spec.stores),
+      ...climateRows(s, room),
+    ]),
+    ...tagged("after", "home", def.houses ? homeRows(s, room.id, def.houses) : []),
+    ...tagged("after", "serves", [
+      def.teaches
+        ? { k: "Teaches", text: `up to ${def.teaches} children`, tip: `${s.care.school.who} children in the hole, ${s.care.school.missing > 0 ? `${num(s.care.school.missing)} without a place` : "all with a place"}` }
+        : null,
+      def.rests ? { k: "Rests", text: `up to ${def.rests}`, tip: `${s.rest.interred} laid to rest here, ${s.rest.space} places left` } : null,
+      def.caresForElders
+        ? { k: "Cares for", text: `up to ${def.caresForElders} elders`, tip: `${s.care.elders.who} elders in the hole, ${s.care.elders.missing > 0 ? `${num(s.care.elders.missing)} without care` : "all cared for"}` }
+        : null,
+      spec.sanitation > 0 ? { k: "Restroom for", text: `${num(spec.sanitation)} people within ${def.reach ?? 0} steps`, tip: `Across the hole, ${sanitation(s)}` } : null,
+      spec.serves > 0 ? { k: "Seats", text: `${num(spec.serves)} diners`, tip: `Across the hole: ${dining(s)}` } : null,
+    ]),
+    ...tagged("after", "building", [canLine(room) ? { k: "Walls", text: liningText(room) } : null]),
+    ...tagged("after", "surroundings", [
+      ring ? temperatureRow(s, room) : null,
+      ring && !def.public ? windowsRow(s, room) : null,
+      def.houses && crowdedAir(s, room) < -0.01
+        ? { k: "Crowded", text: `air ${signed(crowdedAir(s, room))}`, tip: `More than ${config.effects.crowding.perCell} people to a cell gets stuffy`, warn: true }
+        : null,
+    ]),
+    ...tagged("after", "home", def.houses ? withinReachRows(s, room) : []),
+    ...tagged("after", "serves", [reachesRow(s, room)]),
+    ...tagged("after", "surroundings", [ring ? feltRow(s, room) : null, ...(ring ? feltByRows(s, room.id) : [])]),
+  ];
+  for (const { row } of entries) {
+    const icon = row.k ? ROW_ICONS[row.k] : undefined;
+    if (icon) row.icon = icon;
+    if (row.warn) row.tone = "warn";
+  }
+  return entries;
 }
 
 /**
  * The panel's rows after its controls at the top (construction, condition, storage, connect): staff and
  * flows (`before`), then (after the seed kit, if any) what it does for the hole and what reaches it (`after`).
+ * The same rows `panelModel` sorts into sections, in the order the viewers draw them today.
  */
 export function panelRows(s: Snapshot, room: RoomInstance): { before: Row[]; after: Row[] } {
+  const entries = panelEntries(s, room);
+  const part = (p: Entry["part"]) => entries.filter((e) => e.part === p).map((e) => e.row);
+  return { before: part("before"), after: part("after") };
+}
+
+/** Each section's title and icon, in the order the panel shows them. */
+const SECTIONS: Record<SectionId, { title: string; icon: IconId }> = {
+  work: { title: "Work", icon: "workers" },
+  home: { title: "Home", icon: "colonists" },
+  serves: { title: "Serves", icon: "reach" },
+  surroundings: { title: "Surroundings", icon: "air" },
+  building: { title: "Building", icon: "walls" },
+  kit: { title: "Seed kit", icon: "crate" },
+  storage: { title: "Storage", icon: "crate" },
+};
+
+/** The neighbour effects as felt (and a home's factors) run −3..+3. */
+const FELT_RANGE = 3;
+const FELT_ICONS: Record<string, IconId> = { noise: "noise", smell: "smell", health: "health", comfort: "comfort", airQuality: "air" };
+
+const signedTone = (v: number): Tone => (v <= -1 ? "bad" : v < -0.05 ? "warn" : v >= 0.05 ? "good" : "idle");
+const shareChip = (icon: IconId, label: string, v: number, section: SectionId): Chip => ({
+  icon,
+  label,
+  value: v >= 0.98 ? "✓" : `${Math.round(v * 100)}%`,
+  tone: v >= 0.98 ? "good" : "warn",
+  meter: { value: v, max: 1 },
+  section,
+});
+
+/** The room's few numbers that matter most: staff and main output, a home's residents and happiness, a store's fill. */
+function headlineChips(s: Snapshot, room: RoomInstance): Chip[] {
   const def = roomDef(room.type);
   const spec = roomSpec(room, config);
+  const chips: Chip[] = [];
+  if (def.houses) {
+    const pool = s.happiness.pools.find((p) => p.roomId === room.id);
+    const residents = pool?.residents ?? 0;
+    chips.push({ icon: "colonists", label: "Residents", value: `${residents}/${def.houses}`, meter: { value: residents, max: def.houses }, section: "home" });
+    if (pool) {
+      const trend = pool.target > pool.happiness + 1 ? " ↑" : pool.target < pool.happiness - 1 ? " ↓" : "";
+      chips.push({
+        icon: "happiness",
+        label: "Happiness",
+        value: `${Math.round(pool.happiness)}${trend}`,
+        tone: pool.happiness < 50 ? "bad" : "good",
+        meter: { value: pool.happiness, max: 100 },
+        tip: `Heading for ${Math.round(pool.target)}`,
+        section: "home",
+      });
+    }
+    return chips;
+  }
+  if (spec.staff > 0) {
+    const staff = s.roomStatus[room.id]?.staff ?? 0;
+    chips.push({ icon: "workers", label: "Staff", value: `${staff}/${spec.staff}`, ...(staff < spec.staff ? { tone: "warn" as const } : {}), meter: { value: staff, max: spec.staff }, section: "work" });
+  }
+  const out = mainOutput(room, config);
+  if (out) chips.push({ icon: isIcon(out) ? out : "machinery", label: resName(out), value: `${num(spec.makes[out] ?? 0)}/mo`, section: "work" });
+  const harvest = harvestInfo(room);
+  if (harvest && !room.planned && !room.building) {
+    chips.push({
+      icon: isIcon(harvest.makes) ? harvest.makes : "rawFood",
+      label: "Next harvest",
+      value: `${Math.round(harvest.share * 100)}%`,
+      ...(harvest.slowed ? { tone: "warn" as const } : {}),
+      meter: { value: harvest.share, max: 1 },
+      tip: harvest.text,
+      section: "work",
+    });
+  }
+  const store = storageInfo(room);
+  if (store) chips.push({ icon: "crate", label: "Storage", value: `${num(store.used)}/${store.space}`, meter: { value: store.used, max: store.space }, section: "storage" });
+  else if (!out) {
+    // A tank: what it holds, and how much.
+    const held = Object.entries(spec.stores).find(([, v]) => v > 0);
+    if (held) chips.push({ icon: isIcon(held[0]) ? held[0] : "crate", label: resName(held[0]), value: num(held[1]), tip: `Stores ${num(held[1])} ${resName(held[0]).toLowerCase()}`, section: "work" });
+  }
+  return chips;
+}
+
+/** The at-a-glance band: condition, what's felt here (a home: its factors, meals and restroom), and a service's reach. */
+function glanceChips(s: Snapshot, room: RoomInstance): Chip[] {
+  const def = roomDef(room.type);
+  const chips: Chip[] = [];
+  if (!room.planned && !room.building && hasCondition(room)) {
+    const v = room.condition ?? 1;
+    const note = conditionNote(s, room.id, room.repair);
+    chips.push({
+      icon: "condition",
+      label: "Condition",
+      value: `${Math.round(v * 100)}%`,
+      tone: v <= 0 ? "bad" : v < CONDITION.wornBelow ? "warn" : "good",
+      meter: { value: v, max: 1 },
+      ...(note ? { tip: note } : {}),
+      section: "building",
+    });
+  }
+  const pool = def.houses ? s.happiness.pools.find((p) => p.roomId === room.id) : undefined;
+  if (pool) {
+    // Each factor's breakdown, with the rooms behind it, as its tooltip.
+    const parts = new Map(factorRows(s, room.id).map((r) => [r.k, r.tip ?? r.text]));
+    for (const f of ["comfort", "noise", "health"] as const) {
+      const v = pool.factors[f];
+      const label = DIAGNOSIS.factors[f] ?? f;
+      const tip = parts.get(label);
+      chips.push({ icon: FELT_ICONS[f]!, label, value: Math.abs(v) < 0.05 ? "0" : signed(v), tone: signedTone(v), signed: { value: v, range: FELT_RANGE }, ...(tip ? { tip } : {}), section: "home" });
+    }
+    const seated = s.population.servedByHome?.[room.id];
+    if (seated !== undefined) chips.push(shareChip("meals", "Meals", seated, "home"));
+    const wc = s.population.sanitationByHome?.[room.id];
+    if (!def.ownBathroom && wc !== undefined) chips.push(shareChip("restroom", "Restroom", wc, "home"));
+  } else if (room.at.kind === "ring") {
+    for (const t of FIELD_TYPES) {
+      const v = effectOnRoom(s.effects, t, room);
+      if (Math.abs(v) < 0.05) continue;
+      chips.push({ icon: FELT_ICONS[t] ?? "air", label: effectName(t), value: signed(v), tone: signedTone(v), signed: { value: v, range: FELT_RANGE }, section: "surroundings" });
+    }
+  }
+  const f = floorHeatOf(s, room);
+  if (f && !room.planned) {
+    const felt = comfortAt(f.now, config);
+    chips.push({ icon: "temperature", label: "Temperature", value: formatTemperature(f.now), tone: felt <= -1 ? "bad" : felt < 0 ? "warn" : "good", tip: temperatureTip(f), section: "surroundings" });
+  }
+  const tints = reachTints(s.layout, room.id);
+  if (tints) {
+    const within = tints.filter((t) => t.steps !== null).length;
+    chips.push({ icon: "reach", label: "Reach", value: `${within}/${tints.length} homes`, meter: { value: within, max: tints.length }, section: "serves" });
+  }
+  return chips;
+}
+
+/** A section with no rows still shows when it holds the room's controls (crop, priority, construction, demolish, the kit, storage). */
+function hasControls(id: SectionId, room: RoomInstance, queued: boolean): boolean {
+  const def = roomDef(room.type);
+  if (id === "work") return roomSpec(room, config).staff > 0 || !!def.growsCrops || !!holding(room) || fillsTanks(room) || !!def.heats || !!def.cools;
+  if (id === "building") return !!def.buildable || canLine(room) || queued;
+  if (id === "kit") return !!def.stagesSeedKit;
+  if (id === "storage") return !!storageInfo(room);
+  return false;
+}
+
+/** Is a section open before the player opens or closes it? Its kind of room's own, and any holding a warning. */
+function openByDefault(id: SectionId, room: RoomInstance, rows: Row[], queued: boolean): boolean {
+  const def = roomDef(room.type);
+  if (rows.some((r) => r.warn)) return true;
+  if (id === "work") return roomSpec(room, config).staff > 0 || !!def.heats || !!def.cools;
+  if (id === "home") return !!def.houses;
+  if (id === "serves") return !def.houses;
+  // A blueprint, or a room (or its refit) in the construction queue.
+  if (id === "building") return room.planned || !!room.building || queued;
+  return id === "kit" || id === "storage";
+}
+
+/** The whole room panel as data (docs/PLAN-M18.md §7), for both viewers to draw. */
+export function panelModel(s: Snapshot, room: RoomInstance): PanelModel {
   const st = s.roomStatus[room.id];
-  const before: (Row | null)[] = [
-    spec.staff > 0 ? { k: "Staff", text: `${st?.staff ?? 0} / ${spec.staff}` } : null,
-    flows("Uses/month", spec.uses),
-    flows("Makes/month", spec.makes),
-    flows("Scrubs/month", spec.scrubs),
-    flows("Stores", spec.stores),
-  ];
-  const after: (Row | null)[] = [
-    ...(def.houses ? homeRows(s, room.id, def.houses) : []),
-    def.teaches
-      ? { k: "Teaches", text: `up to ${def.teaches} children · ${s.care.school.who} in the hole, ${s.care.school.missing > 0 ? `${num(s.care.school.missing)} without a place` : "all with a place"}` }
-      : null,
-    def.rests ? { k: "Rests", text: `up to ${def.rests} · ${s.rest.interred} laid to rest here, ${s.rest.space} places left` } : null,
-    def.caresForElders
-      ? { k: "Cares for", text: `up to ${def.caresForElders} elders · ${s.care.elders.who} in the hole, ${s.care.elders.missing > 0 ? `${num(s.care.elders.missing)} without care` : "all cared for"}` }
-      : null,
-    spec.sanitation > 0 ? { k: "Restroom for", text: `${num(spec.sanitation)} people from homes within ${def.reach ?? 0} steps · ${sanitation(s)}` } : null,
-    spec.serves > 0 ? { k: "Seats", text: `${num(spec.serves)} diners · ${dining(s)}` } : null,
-    canLine(room) ? { k: "Walls", text: liningText(room) } : null,
-    room.at.kind === "ring" && !def.public ? windowsRow(s, room) : null,
-    def.houses && crowdedAir(s, room) < -0.01 ? { k: "Crowded", text: `air ${signed(crowdedAir(s, room))}: more than ${config.effects.crowding.perCell} to a cell gets stuffy`, warn: true } : null,
-    ...(def.houses ? withinReachRows(s, room) : []),
-    reachesRow(s, room),
-    room.at.kind === "ring" ? feltRow(s, room) : null,
-    ...(room.at.kind === "ring" ? feltByRows(s, room.id) : []),
-  ];
-  const keep = (rows: (Row | null)[]) => rows.filter((r): r is Row => !!r);
-  return { before: keep(before), after: keep(after) };
+  const entries = panelEntries(s, room);
+  const job = room.building ? s.construction.jobs.find((j) => j.roomId === room.id) : undefined;
+  const tone = roomTone(room, st);
+  const status = { text: statusWord(room, st, job?.progress), tone, tip: roomState(s.layout, room, st) };
+
+  const queued = !!constructionInfo(s, room.id);
+  const sections: Section[] = (Object.keys(SECTIONS) as SectionId[])
+    .map((id) => ({ id, rows: entries.filter((e) => e.section === id).map((e) => e.row) }))
+    .filter(({ id, rows }) => rows.length > 0 || hasControls(id, room, queued))
+    .map(({ id, rows }) => ({ id, ...SECTIONS[id], open: openByDefault(id, room, rows, queued), rows }));
+
+  // The room's own state first (cut off, short of an input, slowed), then every warning row.
+  const alerts: Alert[] = [];
+  if (!room.planned && !room.building && !room.connected) alerts.push({ text: status.tip, tone: "bad", section: "building", ...(room.at.kind === "ring" ? { action: "connect" as const } : {}) });
+  else if (tone === "bad" || tone === "warn") alerts.push({ text: status.tip, tone, section: "work" });
+  for (const { section, row } of entries) if (row.warn) alerts.push({ text: row.k ? `${row.k}: ${row.text}` : row.text, tone: "warn", section, ...(row.tip ? { tip: row.tip } : {}) });
+
+  return { status, headline: headlineChips(s, room), alerts, glance: glanceChips(s, room), sections };
+}
+
+/** A farm's harvest: how far along, what it should bring and when, in words; null for other rooms. */
+export function harvestInfo(room: RoomInstance): { share: number; makes: string; slowed: boolean; text: string } | null {
+  const crop = farmCrop(room);
+  if (!crop) return null;
+  const makes = cropMakes(crop);
+  const perMonth = roomSpec(room, config).makes[makes] ?? 0;
+  const h = harvestProgress(room, perMonth)!;
+  const what = resName(makes).toLowerCase();
+  const when = h.monthsLeft < 0.05 ? "any moment" : `in ${monthsText(h.monthsLeft, true)}`;
+  const text = h.slowed
+    ? `About ${num(h.expected)} ${what} ${when}, short of a full ${num(h.full)}: the farm has been slowed this cycle`
+    : `About ${num(h.expected)} ${what} ${when}, all at once (every ${monthsText(crop.growMonths, true)})`;
+  return { share: h.share, makes, slowed: h.slowed, text };
+}
+
+function harvestRow(room: RoomInstance): Row | null {
+  if (room.planned || room.building) return null;
+  const h = harvestInfo(room);
+  if (!h) return null;
+  return { k: "Harvest", text: `${Math.round(h.share * 100)}% grown`, tip: h.text };
+}
+
+/**
+ * The crops a farm can grow, each with its harvest on this farm and how long it takes: shared by the
+ * web's crop picker and the Godot viewer's (through the bridge).
+ */
+export function cropOptions(room: RoomInstance): { id: string; label: string }[] {
+  const current = farmCrop(room);
+  // Its size: a deep farm makes more than the catalog's L farm.
+  const scale = current ? (roomSpec(room, config).makes[cropMakes(current)] ?? current.yield) / current.yield : 1;
+  return cropDefs.map((c) => {
+    const what = cropMakes(c) === "rawFood" ? c.group : resName(cropMakes(c)).toLowerCase();
+    return { id: c.id, label: `${c.name} (${what}): ${num(harvestSize(c, c.yield * scale))} every ${monthsText(c.growMonths, true)}` };
+  });
 }
 
 /** Stop at: the output a room can stand by on, and a suggested level (a little over what's in store). */

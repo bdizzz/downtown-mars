@@ -12,6 +12,8 @@ import { daylightOutput, stormOutput } from "./weather";
 import { conditionOf, conditionOutput, isCleanable, maintenanceQueue } from "./condition";
 import { MATERIALS, refitting } from "./materials";
 import type { CareState } from "./care";
+import { ate, bank, cooked, cropMakes, farmCrop, reconcileFood, stepHarvests } from "./food";
+import { powerShare } from "./temperature";
 import { airAmount, airHealthLosses, airNeeds, breathe, o2Wanted, releaseTanks, splitMade, storeInTanks } from "./air";
 
 // The per-tick economy: staff the rooms, run them, feed the colonists, cap
@@ -45,6 +47,12 @@ export interface Population {
   birthProgress?: number;
   /** Children born in this hole, ever. */
   born?: number;
+  /** Children who grew up in this hole, ever (missing in older saves). */
+  grownUp?: number;
+  /** The latest generation born here: arrivals are the first, their children the second (missing in older saves: 1). */
+  generation?: number;
+  /** Elders who passed away in this hole, ever (missing in older saves). */
+  passedAway?: number;
   /** The dead laid to rest in this hole's crypts, which stay full for good. */
   interred?: number;
   /** Dead with no resting place, fading daily; weighs on comfort. */
@@ -189,7 +197,7 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   const res = state.resources;
   const caps = capacities(state, cfg);
   const rooms = state.layout.rooms.filter(isActive).sort(priorityOrder(cfg));
-  const specs = new Map(rooms.map((r) => [r.id, roomSpec(r, cfg)]));
+  const specs = new Map(rooms.map((r) => [r.id, withPowerShare(roomSpec(r, cfg), state, r)]));
   const status: Record<number, RoomStatus> = {};
 
   // 1. Staff, highest priority first. Rooms the player stood down take no one.
@@ -244,6 +252,8 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
     else runRoom(r, standby(r) ? idleSpec(specs.get(r.id)!) : specs.get(r.id)!, status[r.id]!, state, caps, cfg, dt, mod, standby(r));
   }
   state.roomStatus = status;
+  // Farms' counters move on, and full ones bring in their harvests.
+  stepHarvests(state, cfg, rooms);
   // What's made above the target goes into a pressurizing dome and the gas tanks, before anyone breathes it.
   storeInTanks(state, cfg, caps);
 
@@ -258,6 +268,13 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
       res[id] = cap;
     }
   }
+  reconcileFood(state);
+}
+
+/** Heaters and radiators draw power by how hard their floor needs them (temperature.ts). */
+function withPowerShare(spec: RoomSpec, state: SimState, room: RoomInstance): RoomSpec {
+  const share = powerShare(state, room);
+  return share === 1 || spec.uses.power === undefined ? spec : { ...spec, uses: { ...spec.uses, power: spec.uses.power * share } };
 }
 
 /** A room standing by: only its power, and nothing made. */
@@ -393,16 +410,27 @@ function runRoom(
     }
   }
   const label = roomDef(room.type).name;
+  // What a farm grows goes toward its next harvest, not into the stores (food.ts).
+  const farmed = farmCrop(room);
+  const crop = farmed ? cropMakes(farmed) : null;
+  // A kitchen's meals take their quality from the raw food it cooks; rations make poor ones.
+  const cooks = !!spec.makes.meals && spec.uses.rawFood !== undefined;
+  const before = cooks ? { raw: res.rawFood ?? 0, rations: res.rations ?? 0 } : null;
   // A top-up room's inputs show where its O2 went next: new space, breathed air, the reserve.
   const o2Before = res.o2 ?? 0;
   const then = topUp ? splitMade(state, cfg, (spec.makes.o2 ?? 0) * rate * dt * airShare, o2Before) : [];
   for (const [id, perDay] of Object.entries(spec.uses)) consume(state, id, perDay * rate * dt * (forAir(id) ? airShare : 1), subs[id] ?? [], label, forAir(id) ? then : []);
   for (const [id, perDay] of Object.entries(spec.makes)) {
     const made = perDay * rate * dt * (topUp && resourceDef(id).air ? airShare : 1);
+    if (id === crop) {
+      bank(room, made);
+      continue;
+    }
     res[id] = (res[id] ?? 0) + made;
     record(state, id, "in", label, made);
     noteMade(state, id, made, room.id);
   }
+  if (before) cooked(state, (spec.makes.meals ?? 0) * rate * dt, before.raw - (res.rawFood ?? 0), before.rations - (res.rations ?? 0));
   for (const [id, perDay] of Object.entries(spec.scrubs)) {
     const take = Math.min(perDay * rate * dt, Math.max(0, (res[id] ?? 0) - scrubFloor(state, id, cfg)));
     res[id] = (res[id] ?? 0) - take;
@@ -436,6 +464,7 @@ function stepColonists(state: SimState, cfg: SimConfig, dt: number, mod: Modifie
     res[id] = (res[id] ?? 0) - got;
     record(state, id, "out", id === "water" ? LABELS.household : LABELS.colonists, got);
     met[id] = want > 0 ? got / want : 1;
+    if (id === "meals") ate(state, got, dt);
   }
   // The water people drink and wash with comes straight back as gray water.
   const used = weight * (c.needsPerDay.water ?? 0) * (mod.needsMultiplier.water ?? 1) * dt * (met.water ?? 1);
@@ -479,7 +508,7 @@ export function powerFlow(state: SimState, cfg: SimConfig): { made: number; used
   for (const room of state.layout.rooms) {
     const st = state.roomStatus[room.id];
     if (!st) continue;
-    const spec = roomSpec(room, cfg);
+    const spec = withPowerShare(roomSpec(room, cfg), state, room);
     made += (spec.makes.power ?? 0) * st.rate;
     used += (spec.uses.power ?? 0) * st.rate;
   }

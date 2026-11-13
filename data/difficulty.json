@@ -1,0 +1,14 @@
+{
+  "_note": "Difficulty (F-014, T-122): chosen for a new game and saved with it, never changed later. Each level multiplies the game's numbers at the start of the game (src/sim/difficulty.ts rescales the data in place, from the values in the other data files); normal is all 1, today's game. Knobs: startingStock (the landing stock); buildCost (rooms, corridors, linings and floors, bulkheads, windows, the shaft dome); buildTime (building hours of rooms, corridors, linings and the dome); digTime (the drill's floors and excavating a room's rock); decay (rooms' wear per day); health (health lost to unmet needs, poor sanitation and bad air); happiness (everyone's base happiness); hazards (dust storms and breakdowns, how often); eventSeverity (what an event's bad outcomes cost: lost resources, low mood, wear); unlocks (the population a hole needs for each unlock); deadlines (how long an event waits for an answer; later, F-011's move-out); rescue (the chance Earth sends colonists to a dwindling hole). Rough first values; T-125 tunes them by playing.",
+  "default": "normal",
+  "levels": [
+    { "id": "easy", "name": "Easy", "hint": "New to the game or to city builders: more to start with, cheaper and quicker building, gentler setbacks. Turns on the guided tutorial." },
+    { "id": "normal", "name": "Normal", "hint": "The game as designed." },
+    { "id": "hard", "name": "Hard", "hint": "For a challenge: less to start with, dearer and slower building, rooms wear faster, harsher setbacks, and no help from Earth when a hole dwindles." }
+  ],
+  "factors": {
+    "easy": { "startingStock": 1.5, "buildCost": 0.75, "buildTime": 0.75, "digTime": 0.75, "decay": 0.6, "health": 0.6, "happiness": 1.1, "hazards": 0.6, "eventSeverity": 0.6, "unlocks": 0.75, "deadlines": 1.5, "rescue": 1.5 },
+    "normal": { "startingStock": 1, "buildCost": 1, "buildTime": 1, "digTime": 1, "decay": 1, "health": 1, "happiness": 1, "hazards": 1, "eventSeverity": 1, "unlocks": 1, "deadlines": 1, "rescue": 1 },
+    "hard": { "startingStock": 0.75, "buildCost": 1.25, "buildTime": 1.25, "digTime": 1.25, "decay": 1.4, "health": 1.3, "happiness": 0.92, "hazards": 1.5, "eventSeverity": 1.3, "unlocks": 1.25, "deadlines": 0.75, "rescue": 0 }
+  }
+}

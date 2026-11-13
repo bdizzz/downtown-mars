@@ -17,6 +17,20 @@ export interface CardLine {
   tone?: "k" | "good" | "bad";
 }
 
+/** A fact on the card: a short label and its value, or the resources it's about as amounts. */
+export interface CardFact {
+  label: string;
+  text?: string;
+  amounts?: Record<string, number>;
+}
+
+/** What the room does to those around it, as a chip: "Noise −2", with the longer version as its tip. */
+export interface CardEffect {
+  text: string;
+  tip: string;
+  tone: "good" | "bad";
+}
+
 export interface CardContent {
   name: string;
   /** "Medium", and for a surface room how many slots it takes; the ring rooms' shape is added by whoever shows it. */
@@ -24,7 +38,14 @@ export interface CardContent {
   surface: boolean;
   /** Each cost, and whether the stocks are short of it. */
   cost: { text: string; short: boolean }[];
+  /** The whole card as lines of text (the Godot viewer's palette). */
   lines: CardLine[];
+  /** The same, in parts (the web's card): the cost as amounts, work-hours, short facts, effects as chips, and the few notes worth a sentence. */
+  amounts: Record<string, number>;
+  workHours: number;
+  facts: CardFact[];
+  effects: CardEffect[];
+  notes: CardLine[];
 }
 
 function effectText(e: EffectDef): string {
@@ -78,7 +99,41 @@ export function roomCard(def: RoomDef, resources: Record<string, number>, siteNo
         ? { text: "Needs a gallery tube, a corridor or a plaza along one side.", tone: "k" }
         : null,
   ];
+  const fact = (label: string, v: number | undefined, text = v === undefined ? "" : String(v)): CardFact | null => (v ? { label, text } : null);
+  const facts: (CardFact | null)[] = [
+    fact("Staff", def.staff),
+    Object.keys(def.uses).length > 0 ? { label: "Uses", amounts: def.uses } : null,
+    Object.keys(def.makes).length > 0 ? { label: "Makes", amounts: def.makes } : null,
+    def.stores ? { label: "Holds", amounts: def.stores } : null,
+    fact("Houses", def.houses),
+    fact("Storage", def.storage, `${def.storage} units`),
+    fact("Seats", def.serves, `${def.serves}${def.reach ? ` · homes within ${def.reach} steps` : ""}`),
+    fact("Restroom", def.sanitation, `${def.sanitation} people · within ${def.reach ?? 0} steps`),
+    fact("Care", def.cares),
+    fact("Crews", def.constructionBandwidth, `+${def.constructionBandwidth} construction bandwidth`),
+    fact("Ordinances", def.ordinanceSlots, `${def.ordinanceSlots} slots`),
+    (def.floors ?? 1) > 1 ? { label: "Floors", text: `Spans ${def.floors}, linking them` } : null,
+  ];
+  const effects: CardEffect[] = [
+    ...(def.amenity?.comfort ? [{ text: `Comfort ${signed(def.amenity.comfort)}`, tip: `For homes within ${def.amenity.reach} steps on foot, less further off (the nearest of each kind counts)`, tone: "good" as const }] : []),
+    ...(def.amenity?.health ? [{ text: `Wellbeing ${signed(def.amenity.health)}`, tip: `For homes within ${def.amenity.reach} steps on foot, less further off (the nearest of each kind counts)`, tone: "good" as const }] : []),
+    ...def.effects.map((e): CardEffect => {
+      const text = effectText(e);
+      return { text: text.split(/ for |, | in /)[0]!, tip: text, tone: e.strength < 0 ? "bad" : "good" };
+    }),
+  ];
+  const notes: (CardLine | null)[] = [
+    def.ownBathroom ? { text: "Own bathroom: no restroom needed", tone: "good" } : null,
+    !def.serves && def.makes.meals ? { text: "Cooks but seats no one: pair it with a canteen", tone: "k" } : null,
+    def.public ? { text: "Walk-through: neighbours open onto it", tone: "good" } : null,
+    siteNote ? { text: `${siteNote}.`, tone: "bad" } : null,
+  ];
   return {
+    amounts: cost,
+    workHours: roomWork(def.id),
+    facts: facts.filter((f): f is CardFact => !!f),
+    effects,
+    notes: notes.filter((l): l is CardLine => !!l),
     name: def.name,
     size: `${SIZE_NAMES[def.size]}${def.size === "surface" && def.surfaceSlots ? ` · ${def.surfaceSlots} surface ${def.surfaceSlots === 1 ? "slot" : "slots"}` : ""}`,
     surface: def.size === "surface",

@@ -1,6 +1,6 @@
 # Build the web game and publish it to GitHub Pages on every push to main.
 # Pages serves the gh-pages branch: main's build at the root, and each open
-# PR's preview under pr-preview/ (see preview.yml), which this leaves alone.
+# PR's preview under preview/ (see preview.yml), which this leaves alone.
 name: Pages
 
 on:

@@ -8,7 +8,8 @@ namespace DowntownMars;
 /// <summary>
 /// The land round the hole, as the bridge sends it (src/bridge/terrain.ts, the web's own terrain3d.ts):
 /// the ground rolling away from the pad in the regolith surface, the boulders as one MultiMesh, and the
-/// horizon's mountains, mesas or hills, both faceted as the web's. The ground takes the colour the map
+/// horizon: its far ridge and the massifs, mesas, plateaus, hills and crater rims in front of it (T-016),
+/// all faceted as the web's. The ground takes the colour the map
 /// shows at the site (T-073), and the site's latitude sets the sun's path and the stars (T-020, Live.cs).
 /// </summary>
 public partial class Terrain : Node3D
@@ -87,5 +88,9 @@ public partial class Terrain : Node3D
         AddChild(new MultiMeshInstance3D { Multimesh = mm, Name = "Boulders" });
         var horizon = m.GetProperty("horizon");
         AddChild(new MeshInstance3D { Mesh = Mesh(horizon.GetProperty("mesh"), Land(Plain.Make(new Color(horizon.GetProperty("color").GetString()!), 1, flat: true))), Name = "Horizon", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        if (!m.TryGetProperty("landforms", out var landforms)) return;
+        var n = 0;
+        foreach (var f in landforms.EnumerateArray())
+            AddChild(new MeshInstance3D { Mesh = Mesh(f.GetProperty("mesh"), Land(Plain.Make(new Color(f.GetProperty("color").GetString()!), 1, flat: true))), Name = $"Landform{n++}", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
     }
 }

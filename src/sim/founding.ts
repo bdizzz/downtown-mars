@@ -2,6 +2,7 @@ import type { CommandResult } from "./commands";
 import type { SimConfig } from "./config";
 import { isActive } from "./economy";
 import { record } from "./ledger";
+import { crateDiscount, useCrate } from "./depth";
 
 /** The ledger label for goods going into, and arriving with, a seed kit. */
 export const SEED_KIT = "Seed kit";
@@ -32,13 +33,29 @@ export interface Convoy {
   volunteers: number;
   /** Who they are: adult cohorts, youngest first. */
   people: Cohort[];
+  /** They carry the old drill of a capped hole (#411). */
+  cratedDrill?: boolean;
 }
 
 const kitCfg = () => network.seedKit;
 
+/**
+ * What a seed kit gathered here needs: the kit's goods, less a crated drill's materials if a capped hole
+ * left one here (#411). Goods a crate covers entirely drop out.
+ */
+export function kitGoods(hole: SimState): Record<string, number> {
+  const off = crateDiscount(hole);
+  return Object.fromEntries(
+    Object.entries(kitCfg().goods)
+      .map(([id, want]) => [id, Math.max(0, want - (off[id] ?? 0))] as const)
+      .filter(([, want]) => want > 0),
+  );
+}
+
 /** How full the seed kit is, 0..1, averaged over its goods. */
 export function kitProgress(hole: SimState): number {
-  const goods = Object.entries(kitCfg().goods);
+  const goods = Object.entries(kitGoods(hole));
+  if (!goods.length) return 1;
   return goods.reduce((sum, [id, want]) => sum + Math.min(1, (hole.kit?.[id] ?? 0) / want), 0) / goods.length;
 }
 
@@ -55,7 +72,8 @@ export function stepStaging(hole: SimState, cfg: SimConfig): void {
   if (rate <= 0) return;
   const k = kitCfg();
   hole.kit ??= {};
-  for (const [id, want] of Object.entries(k.goods)) {
+  const goods = kitGoods(hole);
+  for (const [id, want] of Object.entries(goods)) {
     const have = hole.kit[id] ?? 0;
     if (have >= want) continue;
     const perTick = (want / (k.fillDays * cfg.ticksPerDay)) * rate;
@@ -72,7 +90,7 @@ export function stepStaging(hole: SimState, cfg: SimConfig): void {
       left -= take;
     }
   }
-  if (Object.entries(k.goods).every(([id, want]) => (hole.kit[id] ?? 0) >= want - 1e-9)) {
+  if (Object.entries(goods).every(([id, want]) => (hole.kit[id] ?? 0) >= want - 1e-9)) {
     hole.gatheringKit = false;
     postMessage(hole, cfg, "The seed kit is ready. Pick a site on the map (M) and send a convoy.", "good");
   }
@@ -117,10 +135,13 @@ export function foundHole(world: World, cfg: SimConfig, fromHoleId: number, site
   };
   from.kit = {};
   from.gatheringKit = false; // the next kit waits until the player asks
+  // A crated drill rides with the kit: the new hole's drill (#411). The next kit needs it all again.
+  if (useCrate(from)) convoy.cratedDrill = true;
   convoy.people = takeAdults(from, k.volunteers);
   world.convoys.push(convoy);
   const days = ((convoy.arriveTick - convoy.departTick) / cfg.ticksPerDay).toFixed(1);
-  postMessage(from, cfg, `${k.volunteers} volunteers set off to found ${name}: ${days} months by convoy.`, "good");
+  const drill = convoy.cratedDrill ? `, with ${from.name}'s old drill in a crate` : "";
+  postMessage(from, cfg, `${k.volunteers} volunteers set off to found ${name}${drill}: ${days} months by convoy.`, "good");
   return { ok: true };
 }
 
@@ -133,7 +154,7 @@ export function stepConvoys(world: World, cfg: SimConfig): void {
       site: c.site,
       deposits: depositsAt(world.map, c.site),
       seed: holeSeed(world.seed, c.id),
-    }, cfg.landingKits.laterHoles);
+    }, cfg.landingKits.laterHoles, kitCfg().setsUp ?? []);
     hole.tick = world.tick;
     // They start with what they brought, not Earth's starter stock. The crew seals what
     // they blast out and fills it with air; the kit's oxygen goes into tanks if there are

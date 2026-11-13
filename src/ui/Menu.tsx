@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { DEV_GAMES, devGameLabel, devGamesShown, type DevGame } from "./devGames";
 import { describeSave, readSave, SLOTS, slotLabel, type Slot } from "./saves";
 import type { Settings } from "./settings";
 import { SettingsView } from "./SettingsView";
@@ -15,6 +16,8 @@ interface Props {
   onLoad: (slot: Slot) => void;
   onExport: () => void;
   onImport: () => void;
+  /** Load one of the pre-built dev games (#351); offered on the dev server and in PR previews. */
+  onLoadDev: (game: DevGame) => void;
   onQuitToTitle: () => void;
   error: string | null;
   tutorial: boolean;
@@ -27,7 +30,7 @@ interface Props {
 }
 
 type Confirm = { text: string; yes: string; run: () => void } | null;
-type View = "main" | "save" | "load" | "settings";
+type View = "main" | "save" | "load" | "dev" | "settings";
 
 const FOCUSABLE = "button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex='-1'])";
 
@@ -52,6 +55,7 @@ export function Menu(props: Props) {
 
   const back = () => {
     if (confirm) setConfirm(null);
+    else if (view === "dev") setView("load");
     else if (view !== "main") setView("main");
     else if (inGame) onResume();
   };
@@ -97,7 +101,7 @@ export function Menu(props: Props) {
     return () => window.removeEventListener("keydown", on);
   }, []);
 
-  const heading = confirm ? null : view === "settings" ? "Settings" : view === "save" ? "Save to…" : view === "load" ? "Load…" : inGame ? "Paused" : null;
+  const heading = confirm ? null : view === "settings" ? "Settings" : view === "save" ? "Save to…" : view === "load" ? "Load…" : view === "dev" ? "Load a dev game" : inGame ? "Paused" : null;
 
   return (
     <div className={`menu-backdrop${inGame ? "" : ` title-backdrop${props.still ? " mars-dusk" : ""}`}`}>
@@ -174,6 +178,23 @@ export function Menu(props: Props) {
               <button onClick={onImport}>Import save file…</button>
             </div>
           </>
+        ) : view === "dev" ? (
+          <div className="menu-slots">
+            {DEV_GAMES.map((game) => (
+              <button
+                key={game.name}
+                onClick={() =>
+                  inGame ? ask(`Load the ${game.name} dev game? Unsaved progress is lost.`, "Load", () => props.onLoadDev(game)) : props.onLoadDev(game)
+                }
+              >
+                {devGameLabel(game)}
+                <span className="sub">{game.what}</span>
+              </button>
+            ))}
+            <button className="menu-back" onClick={() => setView("load")}>
+              Back
+            </button>
+          </div>
         ) : (
           <div className="menu-slots">
             {(view === "save" ? SLOTS.filter((s) => s !== "autosave") : SLOTS).map((slot) => {
@@ -193,6 +214,12 @@ export function Menu(props: Props) {
                 </button>
               );
             })}
+            {view === "load" && devGamesShown() && (
+              <button onClick={() => setView("dev")}>
+                Load a dev game…
+                <span className="sub">A pre-built game, early to late (dev and previews only)</span>
+              </button>
+            )}
             <button className="menu-back" onClick={() => setView("main")}>
               Back
             </button>

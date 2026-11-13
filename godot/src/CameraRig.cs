@@ -101,7 +101,7 @@ public partial class CameraRig : Node3D
     /// First person turning, radians a point at a look speed of 1 (ViewSettings.LookSpeed): with mouse look, and
     /// by dragging. The web's WALK, per CSS pixel. Points, not the window's pixels, which are twice as many on a Retina screen.
     /// </summary>
-    const float LookTurn = 0.0035f, DragTurn = 0.004f;
+    const float LookTurn = 0.006f, DragTurn = 0.007f;
     readonly CanvasLayer _crosshair = new() { Visible = false };
     // Free view.
     Vector3 _target;

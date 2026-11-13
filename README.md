@@ -1,5 +1,5 @@
 >[!NOTE]
-> ***Play the game in your browser here:*** https://bdizzz.github.io/downtown-mars/
+> ***Play the game in your browser here:*** https://mars.bryon.site/
 
 
 ![A floor of the hole from above: homes, storage, a galley and furnaces in rings round the shaft](docs/images/downtown_mars_title.jpg)
@@ -28,7 +28,7 @@ Working on the game? [docs/WORKFLOW.md](docs/WORKFLOW.md) shows how a playtest n
 - **Build** homes, galleys, farms, CO2 scrubbers and electrolyzers, workshops and more in rings around the shaft, joined by glass gallery tubes, corridors and stairs.
 - **Mind the neighbours.** Rooms spread noise, smell, comfort and health. Air and smell travel the corridors, and people only use what they can walk to.
 - **Keep people going.** Watch oxygen, water, food and power; ride out dust storms; repair rooms as they wear; answer colonists at the office; decide what to do when the drill strikes something.
-- **Grow.** Better homes unlock as the colony grows. At 50 colonists the map opens: send a convoy to found another hole and trade between them.
+- **Grow.** Better homes unlock as the colony grows. At 50 colonists the map opens: send a convoy to found another hole and trade between them. **Charts → Milestones** keeps the record: the first harvest, the first Martian adult, five floors down, and what's still ahead.
 
 New games open with a short welcome card, then a tutorial from your deputy. The [player's guide](docs/GUIDE.md) covers everything in detail.
 
@@ -50,7 +50,7 @@ Being underground also helps with Mars's other problems: temperature swings of m
 
 ## Playing
 
-The latest `main` is playable at **https://bdizzz.github.io/downtown-mars/** (rebuilt on every push), and each open pull request at `…/downtown-mars/pr-preview/pr-<N>/` (linked from the PR, with saves of its own). To run it locally (Node 24; `nvm use` picks it up from `.nvmrc`):
+The latest `main` is playable at **https://mars.bryon.site/** (rebuilt on every push), and each open pull request at `…/preview/<N>/` (linked from the PR, with saves of its own). To run it locally (Node 24; `nvm use` picks it up from `.nvmrc`):
 
 ```bash
 npm install
@@ -62,6 +62,7 @@ The essentials:
 | Key | Does |
 | --- | --- |
 | B V C M | Build, View, Charts and Map |
+| 1 – 7 | Open a group on the build rail: Access, Homes, Food & water, Air & power, Community, Industry, Storage (again to close) |
 | Space | Pause / resume |
 | − + | Slower / faster |
 | R, Z, X | Rotate, corridor tool, demolish (in Build) |
@@ -79,10 +80,12 @@ The game autosaves every month (one game day) in your browser. Use the menu to s
 npm test              # simulation tests
 npm run playtest      # scripted first month, printed day by day
 npm run playtest:net  # scripted first hour across two holes
+npm run saves         # rebuild the dev saves in public/
 npm run package       # build and zip for a playtest upload
 ```
 
 - **CI:** GitHub Actions type-checks and tests every PR and push to `main` (`.github/workflows/ci.yml`), and publishes each push to `main` to GitHub Pages (`pages.yml`). Dependabot opens one grouped PR a week for npm packages and one for Actions.
+- **Dev saves:** `public/dev-save-early.json` (month 6, 26 people), `-mid` (month 31, one hole furnished, 68 people), `-network` (month 61, two holes trading by rover) and `-late` (month 121, two holes, 133 people), checked in. Open one from the menu's **Load… → Load a dev game…** (on the dev server and in PR previews; #351), with **Import save file…**, or in Godot with `--load=`. `npm run saves` replays the network bot (`tests/netbot.ts`) on the default seed and writes them again: rerun it when the game moves on (`-- --probe=160` prints how the holes fare, to re-pick the moments). Release builds leave them out; PR previews keep them.
 - **Packaging:** `npm run package` writes `release/downtown-mars-v<version>.zip` with `index.html` at the top. To publish on itch.io, create an HTML project, upload the zip, and tick "This file will be played in the browser". Nothing is uploaded automatically.
 - **Home-screen install:** `public/manifest.webmanifest` makes the web game installable; its icons in `public/icons/` (and the logotype's borehole, `public/hole.svg`) are drawn by `node scripts/icons.mjs` (rerun after changing the drawing, and commit the files).
 - **Offline and updates:** built games register a service worker (`vite-plugin-pwa` in `vite.config.ts`, `offline()`) that precaches the build and caches the typeface; `ui/UpdateBanner.tsx` offers a new build when one is waiting. The dev server and PR previews have none. To try it, `npm run build && npx vite preview`.
@@ -136,7 +139,7 @@ The viewer has the web game's views (Free view, Cutaway, first person, the plan 
 
 ### Furnishing tool
 
-Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture models (Catalogue) and lay out the template for any room type and shape (Templates). Drag items in the plan, set their wall, offsets, turn, repeat and priority, and save: the tool writes `data/layouts.json`. **Overview** shows every template side by side. Models are built in `scripts/furniture.mjs` (`node scripts/furniture.mjs` writes `data/furniture.json`); see `docs/FURNITURE.md`.
+Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture models (Catalogue) and lay out the template for any room type and shape (Templates). Drag items in the plan, set their wall, offsets, turn, repeat and priority, and save: the tool writes `data/layouts.json`. **Overview** shows every template side by side. Models are built in `scripts/furniture.mjs` (`node scripts/furniture.mjs` writes `data/furniture.json`); a few also have a detailed version made in Blender for first person (`models/`, `npm run models`); see `docs/FURNITURE.md`.
 
 ## Credits
 

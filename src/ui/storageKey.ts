@@ -1,5 +1,5 @@
 // Every localStorage key the game uses. A PR's preview build is served from
-// the same origin as the main game (bdizzz.github.io), so the preview
+// the same origin as the main game (mars.bryon.site), so the preview
 // workflow sets VITE_STORAGE_PREFIX to keep its saves and settings apart.
 // The bridge imports some of the UI modules under plain Node, where
 // import.meta.env doesn't exist, hence the guard.

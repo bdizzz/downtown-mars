@@ -1,3 +1,5 @@
+import { replant } from "./food";
+import { setThermostat } from "./temperature";
 import { ROOM_NAME_MAX } from "./roomName";
 import { airVolume } from "./air";
 import { hasCondition } from "./condition";
@@ -13,17 +15,18 @@ import { capacities, mainOutput } from "./economy";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, CORRIDORS, finishFor, isFinish, recomputeAccess, routeToRoom, shortfall, totalCost } from "./corridors";
 import { edgeById, outsideEdges } from "./edges";
 import { setRoomWindows, wallOf, windowCost, windowRefusal } from "./windows";
-import { domeRefusal, dropCorridors, dropRefit, dropRelines, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueRefit, queueReline, queueRoom, type SegmentRefit } from "./construction";
+import { domeRefusal, dropCorridors, dropRefit, dropRelines, dropRoomJobs, finishAll, openDomeWhenFull, prioritize, queueCorridors, queueDome, queueExtension, queueFill, queueFloor, queueRefit, queueReline, queueRoom, type SegmentRefit } from "./construction";
 import { addAdults, holeGates, syncCount, unlock, UNLOCK_GATES } from "./people";
 import { allowsRefusal, setAllows } from "./storage";
-import { answerVisit } from "./visits";
+import { answerVisit, greet } from "./visits";
 import { answerEvent, consoleEvent } from "./events";
+import { askToStop, isCapped, stopRefusal } from "./depth";
 import { padReady } from "./earth";
 import { roomDef } from "./rooms";
-import { buildLiningCost, canLine, corridorRefitPlan, corridorRefitRefusal, flooringDef, liningOf, MATERIALS, refitPlan, refitRefusal, refitWords, type WallStep } from "./materials";
+import { buildLiningCost, canLine, corridorRefitPlan, corridorRefitRefusal, flooringDef, floorPlan, floorRefusal, floorWords, liningOf, MATERIALS, refitPlan, refitRefusal, refitWords, type WallStep } from "./materials";
 import type { RoomInstance } from "./placement";
 import { buildShowcase } from "./showcase";
-import type { SimState } from "./state";
+import type { GuideState, SimState } from "./state";
 import type { DepositKind } from "./mapgeo";
 
 export type SimCommand =
@@ -37,17 +40,25 @@ export type SimCommand =
   | { type: "demolish"; roomId: number }
   | { type: "undoBuild"; roomId: number }
   | { type: "setDrill"; active: boolean }
+  /** Ask to stop drilling for good: a card to confirm it, and say what becomes of the drill (#390). */
+  | { type: "stopDrilling" }
   | { type: "setCrop"; roomId: number; crop: string }
   /** What a tank holds: clean, gray water or tailings; O2 or CO2. */
   | { type: "setHolds"; roomId: number; holds: string }
   /** The hole-wide tank fill: electrolyzers fill the O2 tanks this far (0..1) once the air is at its target. */
   | { type: "setTankFill"; fill: number }
+  /** The thermostat, °C: the whole hole's, or one floor's (celsius null puts that floor back on the hole's). */
+  | { type: "setThermostat"; celsius: number | null; floor?: number }
   | { type: "setPriority"; roomId: number; priority: Priority }
   /** Pause a room, or have it stop while its main output is at or above stopAt (null clears it). */
   | { type: "setRoomControl"; roomId: number; paused?: boolean; stopAt?: number | null }
   | { type: "answerVisit"; visitId: number; choice: string }
+  /** The tutorial's office step (T-080): someone comes to say hello, if nobody's waiting. */
+  | { type: "greet" }
   /** The deputy's tip (view/tips.ts) has been read: it won't show again. */
   | { type: "seeTip"; id: string }
+  /** Start, move on or leave (null) the guided tutorial; its `calm` holds off storms and events. */
+  | { type: "setGuide"; guide: GuideState | null }
   /** Answer an event (a find, a ship, a celebration) with one of its choices. */
   | { type: "answerEvent"; eventId: number; choice: string }
   | { type: "setOrdinance"; id: string; enacted: boolean }
@@ -85,6 +96,8 @@ export type SimCommand =
   | { type: "consoleLining"; roomId: number; material?: string; finish?: string; flooring?: string | null }
   /** Refit a room's walls in another lining (bare rock strips it, salvaging part of the old one), through the construction queue. */
   | { type: "upgradeRoom"; roomId: number; material: string; finish?: string }
+  /** Lay a new floor in a room, its walls untouched, through the construction queue (T-037). Null takes it out, back to matching the walls: free and at once. */
+  | { type: "upgradeFloor"; roomId: number; flooring: string | null }
   /** Refit built corridor segments in a lining, as rooms are, through the construction queue. Skips those that can't be (in it already, not built); the rest go all or none, like a snaked chain. */
   | { type: "refitCorridors"; edges: string[]; material: string; finish?: string }
   /** Fit sealed bulkheads across built corridor segments (on), or take them out (off, free). */
@@ -339,6 +352,35 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       layout.version++;
       return { ok: true };
     }
+    case "upgradeFloor": {
+      const room = layout.rooms.find((r) => r.id === cmd.roomId);
+      if (!room) return { ok: false, reason: "No such room" };
+      // One refit at a time, walls or floor: a new one replaces any still queued, which is refunded.
+      const queued = state.construction?.queue.find((j) => j.kind === "upgrade" && j.roomId === room.id);
+      if (cmd.flooring === null) {
+        // Back to matching the walls: the panels come up free and at once, and a floor still queued is called off.
+        if (!canLine(room)) return { ok: false, reason: `${roomDef(room.type).name} can't have a new floor` };
+        if (!room.flooring && !queued?.flooring) return { ok: false, reason: "Its floor matches the walls already" };
+        if (queued?.flooring) dropRefit(state, queued);
+        delete room.flooring;
+        layout.version++;
+        return { ok: true };
+      }
+      const f = flooringDef(cmd.flooring);
+      if (!f) return { ok: false, reason: `No flooring "${cmd.flooring}": ${MATERIALS.floorings.map((x) => x.id).join(", ")}` };
+      if (queued?.flooring === f.id) return { ok: false, reason: `Already being floored ${floorWords(f)}` };
+      const plan = floorPlan(room, f);
+      const refusal = floorRefusal(room, plan, state.resources, queued?.paid);
+      if (refusal || !plan) return { ok: false, reason: refusal ?? "Nothing to do" };
+      if (queued) dropRefit(state, queued);
+      for (const [r, v] of Object.entries(plan.cost)) {
+        state.resources[r] = (state.resources[r] ?? 0) - v;
+        record(state, r, "out", CONSTRUCTION, v);
+      }
+      queueFloor(state, room, plan, config);
+      layout.version++;
+      return { ok: true };
+    }
     case "refitCorridors": {
       const to = MATERIALS.walls.find((w) => w.material === cmd.material && w.finish === (cmd.finish ?? "base"));
       if (!to) return { ok: false, reason: `No lining "${cmd.material}" (${cmd.finish ?? "base"})` };
@@ -550,8 +592,15 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       return drawCorridors(state, path, cmd.finish, true);
     }
     case "setDrill":
+      if (isCapped(state)) return { ok: false, reason: "The hole is capped: the drill's done for good" };
       state.drill.active = cmd.active;
       return { ok: true };
+    case "stopDrilling": {
+      const refusal = stopRefusal(state);
+      if (refusal) return { ok: false, reason: refusal };
+      askToStop(state, config);
+      return { ok: true };
+    }
     case "renameRoom": {
       const room = layout.rooms.find((r) => r.id === cmd.roomId);
       if (!room) return { ok: false, reason: "No such room" };
@@ -566,6 +615,8 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       const room = layout.rooms.find((r) => r.id === cmd.roomId);
       if (!room || !roomDef(room.type).growsCrops) return { ok: false, reason: "Only farms grow crops" };
       if (!isCrop(cmd.crop)) return { ok: false, reason: `Unknown crop "${cmd.crop}"` };
+      // A new crop starts its harvest cycle over.
+      if (room.crop !== cmd.crop) replant(room);
       room.crop = cmd.crop;
       layout.version++;
       return { ok: true };
@@ -587,10 +638,23 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       state.air!.tankFill = Math.max(0, Math.min(1, cmd.fill));
       return { ok: true };
     }
+    case "setThermostat": {
+      if (cmd.celsius !== null && !Number.isFinite(cmd.celsius)) return { ok: false, reason: "The thermostat must be a number" };
+      if (cmd.floor === undefined && cmd.celsius === null) return { ok: false, reason: "The hole's thermostat needs a temperature" };
+      if (cmd.floor !== undefined && (!Number.isInteger(cmd.floor) || cmd.floor < 1 || cmd.floor > state.layout.hole.floors)) return { ok: false, reason: "No such floor" };
+      setThermostat(state, config, cmd.celsius, cmd.floor);
+      return { ok: true };
+    }
     case "answerVisit":
       return answerVisit(state, config, cmd.visitId, cmd.choice);
+    case "greet":
+      return greet(state, config);
     case "seeTip":
       if (!(state.tipsSeen ??= []).includes(cmd.id)) state.tipsSeen.push(cmd.id);
+      return { ok: true };
+    case "setGuide":
+      if (cmd.guide === null) delete state.guide;
+      else state.guide = { step: Math.max(0, Math.floor(cmd.guide.step)), unlocked: [...new Set(cmd.guide.unlocked)], calm: !!cmd.guide.calm };
       return { ok: true };
     case "answerEvent":
       return answerEvent(state, config, cmd.eventId, cmd.choice, padReady(state));

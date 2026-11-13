@@ -107,7 +107,7 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 
 **Diet variety:** kitchens combine crops into meals. Colonists want staples, protein and produce; a varied diet gives health and comfort bonuses, and a monotonous one gives penalties.
 
-**As built:** potatoes, soybeans, wheat, barley, leafy greens, mushrooms, algae and fiber hemp (`data/crops.json`). A crop's `makes` names what it yields when that isn't raw food: hemp makes `fiber`, a dry good kept in storage like other materials. Grow time and switching costs aren't modelled.
+**As built:** potatoes, soybeans, wheat, barley, leafy greens, mushrooms, algae and fiber hemp (`data/crops.json`). A crop's `makes` names what it yields when that isn't raw food: hemp makes `fiber`, a dry good kept in storage like other materials. **Grow time** (#375): each crop has `growMonths` (greens and algae 1.5, mushrooms 2, potatoes and barley 2.5, wheat and soybeans 3, hemp 4); the yield above is the monthly average, and it comes in whole harvests, yield × grow time × a long-grow bonus (0 at 1.5 months to +20% at 4). Switching crops costs the cycle under way. **Diet variety** is built as meal quality by the number of crops (food types) in each meal, not by staple/protein/produce groups; the per-crop bonuses (bread, greens, algae's blandness) aren't.
 
 ## Water and air
 
@@ -121,6 +121,9 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 | Electrolyzer ★ | M | 1 | Water 25 (gone for good: split into oxygen), power 2 | O2 500, only while the air wants it (below 21%, the tank fill, a dome's shaft); water only for what it makes; stands by otherwise | Noise −1 r1 | M 5, Mc 2, E 1 | Start |
 | Gas tank | S | 0 | — | Stores 200 of O2 or CO2 (the player picks; O2 by default): ballast both ways for the air | — | M 10 | Start |
 | Ventilation hub | S | 1 | Power 2 | — | Air quality +2 r2, noise −1 r1 | M 8, Mc 1 | Start |
+| Heater ★ | S | 0 | Power up to 4 (by the thermostat) | Heat: lifts a small hole's dug-out floor 12.5 °C (≈ 23 °F) at full power, up to the thermostat (#393) | — | M 8, E 2 | Start |
+| Heating plant ★ | M | 0 | Power up to 7 | Heat: 27 °C on the same floor; the heater's bigger size | Noise −1 r1 | M 15, Mc 2, E 3 | Start |
+| Radiator ★ | S | 0 | Power up to 3 | Cooling: takes 12.5 °C off its floor, down to the thermostat, piping it to the surface | — | M 12, Mc 1 | Start |
 
 ## Waste
 
@@ -137,7 +140,7 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Solar array | Surface | 1 | — | Power 20 by day, none at night (10 on average), less in storms | — | M 10, E 4 | Start |
 | Battery bank | S | 0 | — | Stores 50 power | — | M 5, E 5 | Start |
-| Geothermal plant | L | 3 | Water 2 | Power 25 | Noise −1 r1, heat +1 r1 | M 30, Mc 8, E 4 | Depth 15 floors |
+| Geothermal plant | L | 3 | Water 2 | Power 25 | Noise −1 r1, heat +1 r1 | M 30, Mc 8, E 4 | A geothermal pocket at the bottom of the hole (#390): the `geothermal` gate, the only way |
 | Reactor | H | 8 | Water 4 | Power 100 | Noise −2 r2, comfort −2 r3 | M 60, Mc 15, E 15 | Mid-game milestone |
 
 ## Industry and construction
@@ -145,8 +148,8 @@ Each farm grows one crop at a time, chosen by the player. Some feed people, othe
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Excavator bay (as built) | M | 3 | Power 3 | Digs the shaft faster: +50% drill speed at full staff, so its rock comes up sooner | Noise −2 r2 | M 10, Mc 3 | Start |
-| Brickworks | M | 3 | Rock 6, water 1, power 2 | Brick 4; its water back as 75% gray, 25% tailings | Noise −1 r1, air quality −1 r1 | R 15, M 5, Mc 1 | Pop 50 |
-| Smelter | L | 5 | Ore 6, power 6 | Metal 3 | Noise −2 r2, heat +1 r2, air quality −1 r2 | B 20, M 10, Mc 3 | Ore site |
+| Brickworks | M | 3 | Rock 6, water 1, power 2 | Brick 4, CO2 1.5 (#396); its water back as 75% gray, 25% tailings | Noise −1 r1, air quality −1 r1 | R 15, M 5, Mc 1 | Pop 50 |
+| Smelter | L | 5 | Ore 6, power 6 | Metal 3, CO2 3 (#396) | Noise −2 r2, heat +1 r2, air quality −1 r2 | B 20, M 10, Mc 3 | Ore site |
 | Machine shop | M | 4 | Metal 3, power 3 | Machinery 1 | Noise −2 r2 | B 15, M 10, Mc 2 | Pop 200 |
 | Electronics fab | M | 4 | Metal 1, silicon wafers 1, water 2, power 4 | Electronics 1; its water back as half gray, half tailings | — | M 15, Mc 3, E 2 | Pop 500 |
 | Reinforcement frame | S | 0 | — | — | Cave-in risk −2 r2 | M 10 | Depth 8 floors |
@@ -162,8 +165,8 @@ These rooms turn raw resources into construction materials, consumer goods, pipe
 
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Concrete plant | M | 3 | Rock 5, water 2, power 2 | Marscrete 4; its water back as half gray, half tailings | Noise −2 r2, air quality −1 r1 | R 15, M 5, Mc 1 | Pop 100 |
-| Glassworks | M | 3 | Rock 4, power 4 | Glass 2 | Noise −1 r1, air quality −1 r1 (heat not built yet) | B 10, M 5, Mc 1 | Pop 200 |
+| Concrete plant | M | 3 | Rock 5, water 2, power 2 | Marscrete 4, CO2 1.5 (#396); its water back as half gray, half tailings | Noise −2 r2, air quality −1 r1 | R 15, M 5, Mc 1 | Pop 100 |
+| Glassworks | M | 3 | Rock 4, power 4 | Glass 2, CO2 1.5 (#396) | Noise −1 r1, air quality −1 r1 (heat not built yet) | B 10, M 5, Mc 1 | Pop 200 |
 | Chemical plant | L | 5 | CO2 4, water 2, power 5 | Plastics 2, methane 2 | Noise −1 r1, air quality −2 r2 | M 20, Mc 4, E 2 | Pop 300 |
 | Mycelium vat | M | 2 | Organic waste 3, water 2, power 1 | Mycelium composite 3 (a wood substitute) | Smell −1 r1 | R 10, M 5 | Pop 150 |
 | Textile mill | M | 3 | Fiber 4 or plastics 2, power 2 | Textiles 3 | Noise −1 r1 | B 10, M 5, Mc 2 | Pop 150 |
@@ -173,7 +176,7 @@ These rooms turn raw resources into construction materials, consumer goods, pipe
 | Appliance assembly | M | 4 | Metal 1, plastics 1, electronics 1, power 2 | Appliances 1 | Noise −1 r1 | M 10, Mc 2, E 2 | Pop 500 |
 | Pipe mill | M | 4 | Metal 4, power 3 | Pipe segments 2 | Noise −2 r2 | B 15, M 10, Mc 2 | Map mode |
 | Vehicle works | L | 8 | Metal 6, machinery 2, electronics 2, power 4 | 1 rover every 3 days | Noise −2 r2 | B 30, M 20, Mc 5, E 3 | Map mode |
-| Silicon refinery | L | 5 | Silica 6, water 2, power 6 | Silicon wafers 2; its water back as half gray, half tailings | Heat +1 r2, noise −1 r1 | B 20, M 15, Mc 4 | Silica site or imports |
+| Silicon refinery | L | 5 | Silica 6, water 2, power 6 | Silicon wafers 2, CO2 2 (#396); its water back as half gray, half tailings | Heat +1 r2, noise −1 r1 | B 20, M 15, Mc 4 | Silica site or imports |
 
 **How the new outputs are used**
 

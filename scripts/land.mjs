@@ -5,8 +5,10 @@
 //   node scripts/land.mjs [target ...] [--merge] [--force] [--dry-run] [--json]
 //
 // target:
-//   T-017, t17, 17, F-001, f1  the ticket's (or feature's) t-017-… / f-001-… branch
-//   #10                         that PR's branch
+//   212, #212                   issue 212's 212-… branch (a bare number is also tried as T-0NN)
+//   T-017, t17, 17, F-001, f1  an old id: its issue's branch (142-…, through docs/ticket-ids.json),
+//                               or an older t-017-… / f-001-… one
+//   #10                         that PR's branch, when 10 is a PR
 //   <branch>                    that branch (a feature's own feature/f-0NN-… branch is
 //                               only ever landed by name or PR, and merges with a
 //                               merge commit so its tasks' commits are kept)
@@ -16,7 +18,14 @@
 // --force    remove a worktree even if it has uncommitted changes, and drop a
 //            named branch whose PR was closed without merging
 // --dry-run  say what would happen, change nothing
-// --json     print { landed, skipped, open, notes } for the skill
+// --json     print { landed, skipped, open, notes } for the skill (landed lists the issues it closed)
+//
+// The board is GitHub issues (F-020). A PR into main closes its issue itself
+// ("Closes #N"); GitHub only does that on the default branch, so a task merged
+// into a feature's branch has its issue closed here. And once main has no
+// docs/tickets/ any more, a branch that still edits ticket files (from before
+// the move) has those edits dropped first: main is merged in keeping the
+// deletion, and that's pushed, so its CI runs again before it lands.
 //
 // It never touches main, pr-assets or a worktree a live Claude session holds,
 // and never loses uncommitted work without --force. Dev servers are found the
@@ -24,12 +33,13 @@
 // inside the worktree.
 
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 
 const KEEP = new Set(["main", "HEAD", "pr-assets"]);
 
-const sh = (cmd) => execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+// The PR list (with bodies) is a few hundred KB and grows; give it room.
+const sh = (cmd) => execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 << 20 }).trim();
 const quiet = (cmd) => {
   try {
     return sh(cmd);
@@ -146,9 +156,25 @@ const inMain = (ref) => ok(`git merge-base --is-ancestor "${ref}" origin/main`);
 const trees = worktrees();
 const local = quiet("git for-each-ref --format='%(refname:short)' refs/heads").split("\n").filter(Boolean);
 const remote = quiet("git for-each-ref --format='%(refname:lstrip=3)' refs/remotes/origin").split("\n").filter(Boolean);
-const prs = JSON.parse(
-  quiet("gh pr list --state all --limit 200 --json number,headRefName,state,title,url") || "[]",
-);
+/**
+ * Every PR. Without them nothing here can be judged (a merged branch would
+ * look like one still in flight), so if GitHub can't be reached, after one
+ * retry for a passing blip, stop rather than go on as if there were none.
+ */
+function pullRequests() {
+  const cmd = "gh pr list --state all --limit 1000 --json number,headRefName,baseRefName,state,title,url,body";
+  let why = "";
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return JSON.parse(sh(cmd));
+    } catch (e) {
+      why = `${e.stderr ?? ""}`.trim().split("\n")[0] || e.message;
+      if (attempt === 1) execSync("sleep 3");
+    }
+  }
+  fail(`Can't reach GitHub to list the PRs (${why}). Nothing was changed; try /land again in a moment.`);
+}
+const prs = pullRequests();
 const prFor = (branch) => {
   const mine = prs.filter((p) => p.headRefName === branch);
   return mine.find((p) => p.state === "OPEN") ?? mine.find((p) => p.state === "MERGED") ?? mine[0] ?? null;
@@ -172,17 +198,26 @@ for (const it of items.values()) {
 
 // --- Which ones to land -----------------------------------------------------
 
+/** Issue numbers by old id (T-017 → 142), from the move to issues. */
+const IDS = JSON.parse(readFileSync(new URL("../docs/ticket-ids.json", import.meta.url), "utf8"));
+
 function resolveTarget(t) {
   if (/^#\d+$/.test(t)) {
     const pr = prs.find((p) => p.number === Number(t.slice(1)));
-    if (!pr) fail(`No PR ${t}.`);
-    return [pr.headRefName];
+    if (pr) return [pr.headRefName];
+    // Not a PR: an issue, built on its 212-… branch.
+    const names = [...items.keys()].filter((n) => n.startsWith(`${t.slice(1)}-`));
+    if (!names.length) fail(`No PR ${t}, and no ${t.slice(1)}-… branch for an issue ${t}.`);
+    return names;
   }
   const m = /^([tf])?-?0*(\d+)$/i.exec(t);
   if (m) {
-    const prefix = `${(m[1] ?? "t").toLowerCase()}-${m[2].padStart(3, "0")}-`;
-    const names = [...items.keys()].filter((n) => n.startsWith(prefix));
-    if (!names.length) fail(`Nothing to land for ${t}: no ${prefix}… branch, worktree or PR.`);
+    // Most likely first: a bare number is an issue, then an old ticket id.
+    const old = `${(m[1] ?? "t").toUpperCase()}-${m[2].padStart(3, "0")}`;
+    const prefixes = [...(m[1] ? [] : [`${m[2]}-`]), ...(IDS[old] ? [`${IDS[old]}-`] : []), `${old.toLowerCase()}-`];
+    const keys = [...items.keys()];
+    const names = prefixes.map((p) => keys.filter((n) => n.startsWith(p))).find((x) => x.length) ?? [];
+    if (!names.length) fail(`Nothing to land for ${t}: no ${prefixes.join(" or ")}… branch, worktree or PR.`);
     return names;
   }
   if (items.has(t)) return [t];
@@ -210,6 +245,55 @@ function ciState(n) {
   return { ci, draft: !!v.isDraft, mergeState: v.mergeStateStatus ?? "UNKNOWN" };
 }
 
+/**
+ * Once its base has no docs/tickets/ (the board moved to issues), a branch that
+ * still changes ticket files gets main merged in keeping the deletion, and any
+ * ticket files it adds removed, in a throwaway worktree, then pushed. Returns
+ * null if there was nothing to drop, else what happened.
+ */
+function dropTickets(branch, base) {
+  if (ok(`git cat-file -e "origin/${base}:docs/tickets"`)) return null;
+  const from = quiet(`git merge-base "origin/${base}" "origin/${branch}"`);
+  if (!from || !quiet(`git diff --name-only "${from}" "origin/${branch}" -- docs/tickets`)) return null;
+  if (dry) return { pushed: false, why: "would drop its docs/tickets/ changes (the board is on issues now) and push" };
+  const dir = join(commonDir, "..", ".tracker", `land-${branch.replace(/[^\w.-]+/g, "-")}`);
+  if (existsSync(dir)) quiet(`git worktree remove --force "${dir}"`);
+  sh(`git worktree add --quiet --detach "${dir}" "origin/${branch}"`);
+  try {
+    const git = (c) => sh(`git -C "${dir}" ${c}`);
+    if (!ok(`git -C "${dir}" merge --no-edit --quiet origin/${base}`)) {
+      const conflicts = quiet(`git -C "${dir}" diff --name-only --diff-filter=U`).split("\n").filter(Boolean);
+      const others = conflicts.filter((f) => !f.startsWith("docs/tickets/"));
+      if (others.length) {
+        quiet(`git -C "${dir}" merge --abort`);
+        return { pushed: false, why: `merging ${base} conflicts outside docs/tickets/ too (${others.join(", ")}); sort that out on the branch first` };
+      }
+    }
+    if (existsSync(join(dir, "docs", "tickets")) || quiet(`git -C "${dir}" ls-files -u -- docs/tickets`)) git("rm -r --quiet --force -- docs/tickets");
+    // A clean merge has already committed; finish a conflicted one, or commit the removal.
+    if (ok(`git -C "${dir}" rev-parse -q --verify MERGE_HEAD`) || quiet(`git -C "${dir}" diff --cached --name-only`))
+      git(`commit --quiet -m "chore: merge ${base}, keeping docs/tickets/ deleted (the board is on issues)"`);
+    git(`push --quiet origin "HEAD:refs/heads/${branch}"`);
+    return { pushed: true, why: `dropped its docs/tickets/ changes (the board is on issues now) and pushed; /land again once CI passes` };
+  } finally {
+    quiet(`git worktree remove --force "${dir}"`);
+  }
+}
+
+/**
+ * The issues a PR settles: those its body closes ("Closes #212"), else the one
+ * its branch names (212-…, or t-0NN-… through docs/ticket-ids.json on its base).
+ */
+function issuesOf(pr) {
+  const closes = [...(pr.body ?? "").matchAll(/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi)].map((m) => Number(m[1]));
+  if (closes.length) return [...new Set(closes)];
+  const n = /^(\d+)-/.exec(pr.headRefName)?.[1];
+  if (n) return [Number(n)];
+  const old = /^t-(\d+)-/.exec(pr.headRefName)?.[1];
+  const ids = old ? JSON.parse(quiet(`git show "origin/${pr.baseRefName}:docs/ticket-ids.json"`) || "{}") : {};
+  return old && ids[`T-${old.padStart(3, "0")}`] ? [ids[`T-${old.padStart(3, "0")}`]] : [];
+}
+
 const gone = new Set(); // branches already deleted as another item's worktree-… sibling
 
 for (const it of items.values()) {
@@ -233,6 +317,11 @@ for (const it of items.values()) {
       open.push(row);
       continue;
     }
+    const dropped = dropTickets(it.name, pr.baseRefName);
+    if (dropped) {
+      skipped.push({ branch: it.name, why: `PR #${pr.number}: ${dropped.why}` });
+      continue;
+    }
     if (s.draft || s.ci === "failing" || s.ci === "pending" || !["CLEAN", "HAS_HOOKS", "UNSTABLE"].includes(s.mergeState)) {
       skipped.push({ branch: it.name, why: `PR #${pr.number} isn't ready to merge (CI ${s.ci}, ${s.draft ? "draft, " : ""}${s.mergeState.toLowerCase()})` });
       continue;
@@ -240,6 +329,13 @@ for (const it of items.values()) {
     // A feature's own branch keeps its tasks' commits: a merge commit, not a squash.
     if (!dry) sh(`gh pr merge ${pr.number} ${it.name.startsWith("feature/") ? "--merge" : "--squash"}`);
     it.merged = true;
+    // GitHub closes "Closes #N" issues only on merges into main.
+    if (pr.baseRefName !== "main") {
+      it.closed = issuesOf(pr);
+      for (const n of it.closed)
+        if (!dry && !ok(`gh issue close ${n} --reason completed --comment "Merged into ${pr.baseRefName} in #${pr.number}."`))
+          notes.push(`couldn't close issue #${n}`);
+    }
   } else if (pr?.state === "CLOSED") {
     if (!isNamed || !force) {
       skipped.push({ branch: it.name, why: `PR #${pr.number} was closed without merging; /land it with --force to drop the branch` });
@@ -256,7 +352,7 @@ for (const it of items.values()) {
   }
 
   // Land it.
-  const done = { branch: it.name, pr: pr?.number ?? null, merged: !!it.merged, stopped: [], worktree: null, branches: [] };
+  const done = { branch: it.name, pr: pr?.number ?? null, merged: !!it.merged, closed: it.closed ?? [], stopped: [], worktree: null, branches: [] };
   const w = it.tree;
   if (w) {
     const running = servers(w.dir);
@@ -331,6 +427,7 @@ if (json) {
   for (const d of landed) {
     const bits = [
       d.merged && "merged",
+      d.closed.length && `closed ${d.closed.map((n) => `#${n}`).join(", ")}`,
       d.stopped.length && `stopped server on ${d.stopped.map((p) => `:${p}`).join(", ")}`,
       d.worktree && "removed worktree",
       d.branches.length && `deleted ${d.branches.join(", ")}`,

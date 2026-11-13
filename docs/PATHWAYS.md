@@ -27,7 +27,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Storage:** each tank holds one kind (clean, gray or tailings), chosen by the player. When gray water has nowhere to go it overflows, lost for good, with a warning to build a recycler; rooms never stall for it (T-148).
 - **Lost to:** electrolyzers, tailings, the recycler's few percent, and overflow, all in the water ledger.
 
-**As built (T-005):** the loop above, with a room's split in `rooms.json` (`returnsWater`, default `economy.waterReturns` in `config.json`: all gray). The recycler runs before water users each tick, so they drain into the room it frees. The pod holds 250 gray water to ride out the first days. The Flows panel shows each user's clean water out and gray water back, and says how much gray water is overflowing. Restrooms still give sanitation but no longer handle water (T-006 makes them an amenity).
+**As built (T-005):** the loop above, with a room's split in `rooms.json` (`returnsWater`, default `economy.waterReturns` in `config.json`: all gray). The recycler runs before water users each tick, so they drain into the room it frees. The pod holds 250 gray water to ride out the first days. The Flows panel shows each user's clean water out and gray water back, and says how much gray water is overflowing. Restrooms still give sanitation but no longer handle water (T-006 makes them an amenity). The **closed water loop** milestone (T-060) is reached in a month when treatment returns more than the loop loses for good.
 
 ## Air
 
@@ -49,7 +49,7 @@ Each pathway follows one resource family from its source to the rooms that use i
 - **Served by:** canteens, galleys, bars, hotels.
 - **Eaten by:** colonists (1 a day) and tourists. Kitchen scraps return to composters, mycelium vats and mushroom crops.
 
-**As built:** farms (crop chosen per farm, named after it) → raw food → galley → meals. The galley cooks Earth rations when there's no raw food. Diet variety doesn't count yet. Galley and kitchen scraps go to the composter. **Seating:** a galley cooks and seats 25; a kitchen cooks 40 but seats no one, so it pairs with a canteen (seats 60, comfort +1 around it). Diners without a seat cost everyone a little comfort. No cultured meat lab or food groups yet.
+**As built:** farms (crop chosen per farm, named after it) → whole harvests every 1.5–4 months → raw food, kept by type (one per crop) → galley → meals of up to four types (poor, average, good or great) → food variety, felt on comfort (#375). The galley cooks Earth rations when there's no raw food; those meals are always poor. Galley and kitchen scraps go to the composter. **Seating:** a galley cooks and seats 25; a kitchen cooks 40 but seats no one, so it pairs with a canteen (seats 60, comfort +1 around it). Diners without a seat cost everyone a little comfort. No cultured meat lab or food groups yet.
 
 ## Construction materials
 

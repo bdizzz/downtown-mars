@@ -11,7 +11,9 @@ namespace DowntownMars;
 /// each item from its parts (boxes, cylinders, spheres), one surface per kind of part (plain,
 /// glowing, growing, water). Every copy of an item in the hole is one MultiMesh instance, its
 /// room's accent colour in the instance's custom data, so the whole hole's furniture is a few
-/// hundred draw calls at most.
+/// hundred draw calls at most. In first person, items with a Blender-made model (#360,
+/// public/models/fp.bin from scripts/models.mjs, read the first time you go into first person)
+/// draw it instead of their parts, near the camera; every other view draws the parts.
 /// </summary>
 public class Furniture
 {
@@ -38,7 +40,23 @@ public class Furniture
 
     readonly Dictionary<string, string> _colors = new();
     readonly Dictionary<string, JsonElement> _items = new();
-    readonly Dictionary<(string, bool), Mesh?> _meshes = new();
+    /// <summary>A crop's growth stages (data/growth.json, as src/view/furnish.ts): each one's size for growing parts, and whether produce shows.</summary>
+    readonly List<(float scale, bool produce)> _stages = new();
+    readonly HashSet<string> _growing = new(), _produce = new();
+    /// <summary>Items made in Blender (#357), first person only (#360): public/models/fp.bin, read when first needed.</summary>
+    Dictionary<string, FpSlot[]>? _fp;
+    bool _fpTried, _detailed;
+    /// <summary>One material's worth of a first-person model: its colour, whether it glows, and its triangles (as view/models.ts).</summary>
+    record FpSlot(string C, bool Glow, float[] V, float[] N, float[]? Shade, int[] I, int Tex, float[]? Uv);
+    /// <summary>The models' fine textures (#361): grey tiles, one layer each, sampled by the shader where a slot names one.</summary>
+    Texture2DArray? _fpTextures;
+    enum Lod { Near, Far, Fp }
+    readonly Dictionary<(string, Lod), Mesh?> _meshes = new();
+    /// <summary>The batches last built (item, its placed copies), the node they're under, and which show only in or out of first person.</summary>
+    readonly List<(string item, List<float[]> list, MultiMeshInstance3D near)> _batches = new();
+    Color[] _accents = Array.Empty<Color>();
+    Node3D? _root;
+    readonly List<(MultiMeshInstance3D fp, MultiMeshInstance3D parts)> _fpPairs = new();
     readonly Dictionary<Kind, ShaderMaterial> _materials = new();
 
     /// <summary>Wall hangings, for walls down: each instance, where it stands, and its wall face (normal, where it stands, bottom and top, the point behind it).</summary>
@@ -51,6 +69,10 @@ public class Furniture
         using var doc = JsonDocument.Parse(System.IO.File.ReadAllText(path));
         foreach (var c in doc.RootElement.GetProperty("colors").EnumerateObject()) _colors[c.Name] = c.Value.GetString()!;
         foreach (var i in doc.RootElement.GetProperty("items").EnumerateObject()) _items[i.Name] = i.Value.Clone();
+        using var growth = JsonDocument.Parse(System.IO.File.ReadAllText(ProjectSettings.GlobalizePath("res://") + "../data/growth.json"));
+        foreach (var s in growth.RootElement.GetProperty("stages").EnumerateArray()) _stages.Add((s.GetProperty("scale").GetSingle(), s.GetProperty("produce").GetBoolean()));
+        foreach (var c in growth.RootElement.GetProperty("growing").EnumerateArray()) _growing.Add(c.GetString()!);
+        foreach (var c in growth.RootElement.GetProperty("produce").EnumerateArray()) _produce.Add(c.GetString()!);
         var shader = new Shader { Code = ShaderCode };
         _materials[Kind.Plain] = Make(shader, 0.8f, 0.05f, 0, 0);
         _materials[Kind.Glow] = Make(shader, 0.4f, 0, GlowDay, 0);
@@ -109,6 +131,123 @@ public class Furniture
         return rise <= 0 || most * (y1 - y0) * 0.85f > (len - 2f) * rise;
     }
 
+    /// <summary>
+    /// Draw the detailed models or not (#391: Live sets it from the furniture setting and the camera): items with a
+    /// model swap their near parts for it. The models are read the first time they're wanted (never under "simple
+    /// shapes"; DM_FX=nomodels leaves them out), and added to the furniture already built.
+    /// </summary>
+    public bool Detailed
+    {
+        get => _detailed;
+        set
+        {
+            if (value == _detailed) return;
+            _detailed = value;
+            if (value && !_fpTried)
+            {
+                _fpTried = true;
+                (_fp, _fpTextures) = LoadFp();
+                if (_fpTextures != null) foreach (var m in _materials.Values) m.SetShaderParameter("fp_textures", _fpTextures);
+                if (_fp != null && _root != null) foreach (var (item, list, near) in _batches) AddFp(item, list, near);
+            }
+            foreach (var (fp, parts) in _fpPairs)
+            {
+                fp.Visible = value;
+                parts.Visible = !value;
+            }
+        }
+    }
+
+    /// <summary>public/models/fp.bin (its format is in scripts/models.mjs), or null if it's missing, unreadable or switched off.</summary>
+    static (Dictionary<string, FpSlot[]>?, Texture2DArray?) LoadFp()
+    {
+        var path = ProjectSettings.GlobalizePath("res://") + "../public/models/fp.bin";
+        if (Dev.Off("models") || !System.IO.File.Exists(path)) return (null, null);
+        try
+        {
+            var buf = System.IO.File.ReadAllBytes(path);
+            if (System.Text.Encoding.ASCII.GetString(buf, 0, 4) != "DMFP" || BitConverter.ToUInt32(buf, 4) != 3) throw new Exception("not a version 3 fp.bin");
+            var len = (int)BitConverter.ToUInt32(buf, 8);
+            using var header = JsonDocument.Parse(new ReadOnlyMemory<byte>(buf, 12, len));
+            // The streams (#371; the format is in scripts/models.mjs): textures, positions, normals, shade, uv, triangles.
+            var tx = header.RootElement.GetProperty("textures");
+            var size = tx.GetProperty("size").GetInt32();
+            var names = tx.GetProperty("names").EnumerateArray().Select(n => n.GetString()!).ToArray();
+            var items = header.RootElement.GetProperty("items").EnumerateObject().ToArray();
+            var slots = items.SelectMany(it => it.Value.GetProperty("slots").EnumerateArray()).ToArray();
+            var allVerts = slots.Sum(s => s.GetProperty("verts").GetInt32());
+            var uvVerts = slots.Where(s => s.TryGetProperty("uv", out _)).Sum(s => s.GetProperty("verts").GetInt32());
+            var texAt = 12 + len;
+            var pos = texAt + names.Length * size * size;
+            var nrm = pos + allVerts * 6;
+            var shd = nrm + allVerts * 2;
+            var uvs = shd + allVerts;
+            var tri = uvs + uvVerts * 4;
+            var models = new Dictionary<string, FpSlot[]>();
+            foreach (var item in items)
+            {
+                var box = item.Value.GetProperty("box").EnumerateArray().Select(b => b.GetSingle()).ToArray();
+                models[item.Name] = item.Value.GetProperty("slots").EnumerateArray().Select(s =>
+                {
+                    var verts = s.GetProperty("verts").GetInt32();
+                    var tris = s.GetProperty("tris").GetInt32();
+                    var v = new float[verts * 3];
+                    for (var k = 0; k < v.Length; k++, pos += 2) v[k] = box[k % 3] + BitConverter.ToUInt16(buf, pos) * ((box[3 + k % 3] - box[k % 3]) / 65535f);
+                    var n = new float[verts * 3];
+                    for (var k = 0; k < verts; k++, nrm += 2)
+                    {
+                        // Octahedral: two signed bytes back to a unit vector.
+                        float x = Math.Max(-1f, (sbyte)buf[nrm] / 127f), y = Math.Max(-1f, (sbyte)buf[nrm + 1] / 127f), z = 1 - Math.Abs(x) - Math.Abs(y);
+                        if (z < 0) (x, y) = ((1 - Math.Abs(y)) * (x < 0 ? -1 : 1), (1 - Math.Abs(x)) * (y < 0 ? -1 : 1));
+                        var l = MathF.Sqrt(x * x + y * y + z * z);
+                        if (l == 0) l = 1;
+                        (n[k * 3], n[k * 3 + 1], n[k * 3 + 2]) = (x / l, y / l, z / l);
+                    }
+                    var shade = new float[verts];
+                    for (var k = 0; k < verts; k++) shade[k] = buf[shd++] / 255f;
+                    float[]? uv = null;
+                    if (s.TryGetProperty("uv", out var ur))
+                    {
+                        var r = ur.EnumerateArray().Select(a => a.GetSingle()).ToArray();
+                        uv = new float[verts * 2];
+                        for (var k = 0; k < uv.Length; k++, uvs += 2) uv[k] = r[k % 2] + BitConverter.ToUInt16(buf, uvs) * ((r[2 + k % 2] - r[k % 2]) / 65535f);
+                    }
+                    var idx = new int[tris * 3];
+                    for (int k = 0, next = 0; k < idx.Length; k++)
+                    {
+                        var b = buf[tri++];
+                        var at = b < 255 ? next - b : BitConverter.ToUInt16(buf, tri);
+                        if (b == 255) tri += 2;
+                        idx[k] = at;
+                        next = Math.Max(next, at + 1);
+                    }
+                    var tex = s.TryGetProperty("tex", out var t) ? t.GetInt32() : -1;
+                    return new FpSlot(s.GetProperty("c").GetString()!, s.TryGetProperty("glow", out var g) && g.GetBoolean(),
+                        v, n, shade, idx, uv == null ? -1 : tex, tex >= 0 ? uv : null);
+                }).ToArray();
+            }
+            if (tri != buf.Length) throw new Exception($"{buf.Length - tri} bytes left over");
+            var layers = new Godot.Collections.Array<Image>();
+            for (var k = 0; k < names.Length; k++)
+            {
+                var px = new byte[size * size];
+                Buffer.BlockCopy(buf, texAt + k * size * size, px, 0, px.Length);
+                var img = Image.CreateFromData(size, size, false, Image.Format.L8, px);
+                img.GenerateMipmaps();
+                layers.Add(img);
+            }
+            var textures = new Texture2DArray();
+            textures.CreateFromImages(layers);
+            GD.Print($"First-person furniture: {models.Count} models and {names.Length} textures from public/models/fp.bin");
+            return (models, textures);
+        }
+        catch (Exception e)
+        {
+            GD.PushWarning($"public/models/fp.bin didn't load ({e.Message}); first person draws the code-built parts");
+            return (null, null);
+        }
+    }
+
     public void SetNight(float night) => _materials[Kind.Glow].SetShaderParameter("glow", GlowDay + night * GlowNight);
 
     /// <summary>The scene's furniture: { items, accents, placed: [item, accent, x, y, z, turn] }.</summary>
@@ -129,59 +268,127 @@ public class Furniture
             if (!byItem.TryGetValue(key, out var list)) byItem[key] = list = new();
             list.Add(v);
         }
+        _root = root;
+        _accents = accents;
+        _batches.Clear();
+        _fpPairs.Clear();
         foreach (var ((item, _, _), list) in byItem)
         {
-            foreach (var far in new[] { false, true })
-            {
-                var mesh = MeshFor(items[item], far);
-                if (mesh == null) continue;
-                var mm = new MultiMesh
-                {
-                    TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
-                    UseCustomData = true,
-                    Mesh = mesh,
-                    InstanceCount = list.Count,
-                };
-                for (var i = 0; i < list.Count; i++)
-                {
-                    var v = list[i];
-                    var at = new Transform3D(new Basis(Vector3.Up, v[5]), new Vector3(v[2], v[3], v[4]));
-                    mm.SetInstanceTransform(i, at);
-                    mm.SetInstanceCustomData(i, accents[(int)v[1]]);
-                    if (v.Length >= 15) _hung.Add(new Hung(mm, i, at, new Vector2(v[6], v[7]), new Vector3(v[12], v[13], v[14]), v[8], v[9], new Vector2(v[10], v[11]), false));
-                }
-                root.AddChild(new MultiMeshInstance3D
-                {
-                    Multimesh = mm,
-                    Name = items[item] + (far ? " far" : ""),
-                    VisibilityRangeBegin = far ? FarFrom : 0,
-                    VisibilityRangeEnd = far ? 0 : FarFrom,
-                    CastShadow = far ? GeometryInstance3D.ShadowCastingSetting.Off : GeometryInstance3D.ShadowCastingSetting.On,
-                });
-            }
+            var id = items[item];
+            if (MeshFor(id, Lod.Near) is not { } nearMesh) continue;
+            var near = Batch(nearMesh, list, id, false, true);
+            root.AddChild(near);
+            if (MeshFor(id, Lod.Far) is { } farMesh) root.AddChild(Batch(farMesh, list, id + " far", true, true));
+            _batches.Add((id, list, near));
+            if (_fp != null) AddFp(id, list, near);
         }
         return root;
+    }
+
+    /// <summary>A batch of one item's copies as a MultiMesh: near (to FarFrom metres) or far (from there, casting no shadow).</summary>
+    MultiMeshInstance3D Batch(Mesh mesh, List<float[]> list, string name, bool far, bool hang)
+    {
+        var mm = new MultiMesh
+        {
+            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+            UseCustomData = true,
+            Mesh = mesh,
+            InstanceCount = list.Count,
+        };
+        for (var i = 0; i < list.Count; i++)
+        {
+            var v = list[i];
+            var at = new Transform3D(new Basis(Vector3.Up, v[5]), new Vector3(v[2], v[3], v[4]));
+            mm.SetInstanceTransform(i, at);
+            mm.SetInstanceCustomData(i, _accents[(int)v[1]]);
+            if (hang && v.Length >= 15) _hung.Add(new Hung(mm, i, at, new Vector2(v[6], v[7]), new Vector3(v[12], v[13], v[14]), v[8], v[9], new Vector2(v[10], v[11]), false));
+        }
+        return new MultiMeshInstance3D
+        {
+            Multimesh = mm,
+            Name = name,
+            VisibilityRangeBegin = far ? FarFrom : 0,
+            VisibilityRangeEnd = far ? 0 : FarFrom,
+            CastShadow = far ? GeometryInstance3D.ShadowCastingSetting.Off : GeometryInstance3D.ShadowCastingSetting.On,
+        };
+    }
+
+    /// <summary>A batch's first-person copy, if its item has a model: shown in first person in place of its near parts.</summary>
+    void AddFp(string item, List<float[]> list, MultiMeshInstance3D near)
+    {
+        if (_root == null || MeshFor(item, Lod.Fp) is not { } mesh) return;
+        var fp = Batch(mesh, list, item + " fp", false, false);
+        fp.Visible = _detailed;
+        near.Visible = !_detailed;
+        _root.AddChild(fp);
+        _fpPairs.Add((fp, near));
     }
 
     /// <summary>The floor a height is on (src/render3d/cylinder.ts floorAtY, with the crust 3 m and floors 4 m).</summary>
     static int FloorAt(float y) => Mathf.FloorToInt((-y - 3) / 4) + 1;
 
-    /// <summary>An item's mesh, one surface per kind of part; vertex colour alpha 0 marks accent-coloured parts.</summary>
-    Mesh? MeshFor(string id, bool far)
+    /// <summary>
+    /// A part's size at a crop's growth stage, as src/view/furnish.ts stageScale: growing parts at the stage's
+    /// size, produce only when it shows (0: left out), everything else as it is.
+    /// </summary>
+    float StageScale(string c, int stage)
     {
-        if (_meshes.TryGetValue((id, far), out var cached)) return cached;
-        if (!_items.TryGetValue(id, out var def)) return _meshes[(id, far)] = null;
-        var byKind = new Dictionary<Kind, (List<Vector3> v, List<Vector3> n, List<Color> c, List<Vector2> uv)>();
-        foreach (var part in def.GetProperty("parts").EnumerateArray())
+        if (stage < 0 || stage >= _stages.Count) return 1;
+        if (_produce.Contains(c)) return _stages[stage].produce ? 1 : 0;
+        return _growing.Contains(c) ? _stages[stage].scale : 1;
+    }
+
+    /// <summary>Shrinks the vertices added since `from` toward their foot (the bottom of their bounds, in the middle), as furniture3d.ts does.</summary>
+    static void Shrink(List<Vector3> verts, int from, float k)
+    {
+        if (k >= 1 || from >= verts.Count) return;
+        var (min, max) = (verts[from], verts[from]);
+        for (var i = from; i < verts.Count; i++) (min, max) = (min.Min(verts[i]), max.Max(verts[i]));
+        var foot = new Vector3((min.X + max.X) / 2, min.Y, (min.Z + max.Z) / 2);
+        for (var i = from; i < verts.Count; i++) verts[i] = foot + (verts[i] - foot) * k;
+    }
+
+    /// <summary>An item's mesh, one surface per kind of part; vertex colour alpha 0 marks accent-coloured parts. A crop's planter at a growth stage comes as "item#stage".</summary>
+    Mesh? MeshFor(string key, Lod lod)
+    {
+        if (_meshes.TryGetValue((key, lod), out var cached)) return cached;
+        var hash = key.IndexOf('#');
+        var id = hash < 0 ? key : key[..hash];
+        var stage = hash < 0 ? -1 : int.Parse(key[(hash + 1)..]);
+        if (!_items.TryGetValue(id, out var def)) return _meshes[(key, lod)] = null;
+        var far = lod == Lod.Far;
+        var byKind = new Dictionary<Kind, (List<Vector3> v, List<Vector3> n, List<Color> c, List<Vector2> uv, List<Vector2> uv2)>();
+        if (lod == Lod.Fp)
+        {
+            // Only items with a model have a first-person copy; the rest show their near parts in first person too.
+            if (_fp == null || !_fp.TryGetValue(Dev.FpStress ?? id, out var model)) return _meshes[(key, lod)] = null;
+            foreach (var slot in model)
+            {
+                var c = slot.C;
+                var k = StageScale(c, stage);
+                if (k <= 0) continue;
+                var kind = slot.Glow ? Kind.Glow : PlantColors.Contains(c) ? Kind.Plant : c == "water" ? Kind.Water : Kind.Plain;
+                var color = c == "accent" ? new Color(1, 1, 1, 0) : new Color(_colors.GetValueOrDefault(c, "#ff00ff")).SrgbToLinear() with { A = 1 };
+                if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new(), new(), new());
+                var start = s.v.Count;
+                AddSlot(slot, color, PartMats.GetValueOrDefault(c, 0), s.v, s.n, s.c, s.uv, s.uv2);
+                Shrink(s.v, start, k);
+            }
+        }
+        else foreach (var part in def.GetProperty("parts").EnumerateArray())
         {
             var c = part.GetProperty("c").GetString()!;
             if (far && part.GetProperty("z").EnumerateArray().Max(x => x.GetSingle()) < FarSmallest) continue;
+            var k = StageScale(c, stage);
+            if (k <= 0) continue;
             var kind = part.TryGetProperty("glow", out var g) && g.GetBoolean() ? Kind.Glow : PlantColors.Contains(c) ? Kind.Plant : c == "water" ? Kind.Water : Kind.Plain;
             var color = c == "accent" ? new Color(1, 1, 1, 0) : new Color(_colors.GetValueOrDefault(c, "#ff00ff")).SrgbToLinear() with { A = 1 };
-            if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new(), new());
+            if (!byKind.TryGetValue(kind, out var s)) byKind[kind] = s = (new(), new(), new(), new(), new());
+            var start = s.v.Count;
             AddPart(part, color, PartMats.GetValueOrDefault(c, 0), s.v, s.n, s.c, s.uv, far);
+            Shrink(s.v, start, k);
         }
-        if (byKind.Count == 0) return _meshes[(id, far)] = null;
+        if (byKind.Count == 0) return _meshes[(key, lod)] = null;
         var mesh = new ArrayMesh();
         foreach (var (kind, s) in byKind)
         {
@@ -191,10 +398,32 @@ public class Furniture
             arrays[(int)Mesh.ArrayType.Normal] = s.n.ToArray();
             arrays[(int)Mesh.ArrayType.Color] = s.c.ToArray();
             arrays[(int)Mesh.ArrayType.TexUV] = s.uv.ToArray();
+            if (s.uv2.Count == s.v.Count && s.uv2.Count > 0) arrays[(int)Mesh.ArrayType.TexUV2] = s.uv2.ToArray();
             mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
             mesh.SurfaceSetMaterial(mesh.GetSurfaceCount() - 1, _materials[kind]);
         }
-        return _meshes[(id, far)] = mesh;
+        return _meshes[(key, lod)] = mesh;
+    }
+
+    /// <summary>
+    /// One slot of a Blender-made model (public/models/fp.bin): its triangles as they are, the baked shade in UV.y.
+    /// A textured slot (#361) puts 10 + its texture's layer in UV.x, in place of its colour's pattern, and where
+    /// on the texture each vertex is in UV2. glTF winds front faces counter-clockwise, Godot clockwise, so each
+    /// triangle is turned over.
+    /// </summary>
+    static void AddSlot(FpSlot slot, Color color, int mat, List<Vector3> verts, List<Vector3> norms, List<Color> cols, List<Vector2> uvs, List<Vector2> uvs2)
+    {
+        var (v, n, shade, idx) = (slot.V, slot.N, slot.Shade, slot.I);
+        if (slot.Tex >= 0) mat = 10 + slot.Tex;
+        for (var t = 0; t < idx.Length; t += 3)
+            foreach (var k in new[] { idx[t], idx[t + 2], idx[t + 1] })
+            {
+                verts.Add(new Vector3(v[k * 3], v[k * 3 + 1], v[k * 3 + 2]));
+                norms.Add(new Vector3(n[k * 3], n[k * 3 + 1], n[k * 3 + 2]));
+                cols.Add(color);
+                uvs.Add(new Vector2(mat, shade?[k] ?? 1));
+                uvs2.Add(slot.Uv != null ? new Vector2(slot.Uv[k * 2], slot.Uv[k * 2 + 1]) : Vector2.Zero);
+            }
     }
 
     /// <summary>One part: a unit shape scaled, turned (degrees, X then Y then Z as three.js's "XYZ"), and moved to its centre.</summary>
@@ -236,7 +465,7 @@ public class Furniture
                 verts.Add(v);
                 norms.Add(n);
                 cols.Add(color);
-                uvs.Add(new Vector2(mat, 0));
+                uvs.Add(new Vector2(mat, 1));
             }
         }
     }
@@ -365,7 +594,7 @@ public class Furniture
     }
 
     /// <summary>
-    /// Furniture's surface: its part's colour, or (vertex alpha 0) its room's accent from the instance;
+    /// Furniture's surface: its part's colour, or (vertex alpha 0) its room's accent from the instance, darkened by a model's baked shade (UV.y);
     /// glowing parts light up in their own colour; growing ones sway a little, more toward their tops.
     /// </summary>
     const string ShaderCode = @"
@@ -375,13 +604,19 @@ uniform float roughness = 0.8;
 uniform float metallic = 0.05;
 uniform float glow = 0.0;
 uniform float sway = 0.0;
+// The first-person models' fine textures (#361): a slot with one has 10 + its layer in UV.x, its place in UV2.
+uniform sampler2DArray fp_textures : filter_linear_mipmap_anisotropic, repeat_enable;
+varying vec2 fpuv;
 varying vec3 tint;
 varying vec3 wpos;
 varying float mat;
+varying float shade;
 void vertex() {
     tint = mix(INSTANCE_CUSTOM.rgb, COLOR.rgb, COLOR.a);
     wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
     mat = UV.x;
+    shade = UV.y;
+    fpuv = UV2;
     if (sway > 0.0) {
         vec3 w = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
         float h = max(0.0, VERTEX.y);
@@ -432,8 +667,9 @@ vec2 part_tone(vec3 p, float m) {
 }
 void fragment() {
     if (cut_away(wpos)) discard;
-    vec2 t = part_tone(wpos, mat);
-    ALBEDO = tint * t.x;
+    vec2 t = mat > 9.5 ? vec2(1.0, 0.0) : part_tone(wpos, mat);
+    ALBEDO = tint * t.x * shade;
+    if (mat > 9.5) ALBEDO *= texture(fp_textures, vec3(fpuv, floor(mat - 10.0 + 0.5))).r * 2.0;
     ROUGHNESS = clamp(roughness + t.y, 0.05, 1.0);
     METALLIC = mat > 2.5 && mat < 3.5 ? max(metallic, 0.5) : metallic;
     EMISSION = tint * glow;

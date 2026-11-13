@@ -7,11 +7,13 @@ import { postMessage } from "./messages";
 import { capacities } from "./economy";
 import { resourceDef } from "./resources";
 import { addNotable } from "./notables";
-import { addAdults, hash01 } from "./people";
+import { addAdults, hash01, unlock, type UnlockGate } from "./people";
 import { airAmount, airPct } from "./air";
 import { record } from "./ledger";
+import { hasReached, milestoneData, milestoneDef, milestonesOf, reachMilestone, trackMilestones } from "./milestones";
 import type { Cell } from "./placement";
 import type { SimState } from "./state";
+import { capHole, crateDrill, depthData, digOn, goodsText, repairCost, scrapReturn } from "./depth";
 
 // Events with choices (PLAN-M14): the drill strikes something, a ship calls
 // for help, a milestone is reached. An event waits as a card for an answer,
@@ -38,7 +40,7 @@ export interface EventEffect {
   notableRole?: string;
   /** Something that happens later: an effect after a number of days, picked between the two. */
   followUp?: { days: [number, number]; effect: EventEffect };
-  /** Propose a celebration for this milestone. */
+  /** Reach this milestone (data/milestones.json), proposing its celebration if it has one. */
   celebrate?: string;
   /** Hold a festival. */
   festival?: boolean;
@@ -46,6 +48,16 @@ export interface EventEffect {
   landing?: boolean;
   /** Vent the air's O2 above the target to the planet, lost for good (PLAN-M16). */
   ventAir?: boolean;
+  /** Pay the drill's repair (data/depth.json) and dig on past a soft limit (#390). */
+  repairDrill?: boolean;
+  /** Cap the hole for good, named by this ending (data/depth.json `endings`). */
+  capHole?: string;
+  /** Break the drill down: half its materials back. */
+  scrapDrill?: boolean;
+  /** Crate the drill for this hole's next seed kit. */
+  crateDrill?: boolean;
+  /** Unlock a room gate here (geothermal: the geothermal plant). */
+  unlock?: string;
 }
 
 export interface EventChoice extends EventEffect {
@@ -61,6 +73,10 @@ export interface EventDef {
   title: string;
   text: string;
   patienceDays: number;
+  /** No timer: the card waits until it's answered (the drill at a depth limit). */
+  waits?: boolean;
+  /** Raised by the drill at a hidden depth limit (#390). */
+  limit?: "soft" | "hard";
   ignored: EventEffect;
   choices: EventChoice[];
 }
@@ -80,7 +96,12 @@ export interface PendingEvent {
   ship?: string;
   milestone?: string;
   o2?: string;
+  /** The capping ceremony's plaque. */
+  plaque?: string;
 }
+
+/** A waiting card's "expiry": far enough off never to come, and still a 32-bit tick for the Godot viewer. */
+export const NEVER = 2_000_000_000;
 
 interface Mood {
   amount: number;
@@ -110,11 +131,9 @@ export interface EventsState {
   o2HighSince?: number;
 }
 
-type EventsData = typeof eventData;
 export const eventData = raw as unknown as {
   checkEveryTicks: number;
   celebrations: {
-    milestones: { id: string; check: "population" | "born" | "floors" | "domed" | "event"; at?: number; title: string }[];
     festival: { feast: number; mood: number; days: number; workDays: number; productivity: number };
   };
   beltShip: { fromDay: number; chancePerDay: number; cooldownDays: number; names: string[] };
@@ -144,27 +163,11 @@ export function createEvents(seed: number): EventsState {
 /** The hole's events, made on first use (older saves have none: milestones they've already passed aren't news). */
 export function eventsOf(state: SimState): EventsState {
   if (!state.events) {
+    const reached = milestonesOf(state).map((m) => m.id);
     state.events = createEvents(state.holeId * 7919 + 17);
-    state.events.celebrated = eventData.celebrations.milestones.filter((m) => reached(state, m)).map((m) => m.id);
+    state.events.celebrated = reached;
   }
   return state.events;
-}
-
-type Milestone = EventsData["celebrations"]["milestones"][number];
-
-function reached(state: SimState, m: Milestone): boolean {
-  switch (m.check) {
-    case "population":
-      return state.population.count >= (m.at ?? 0);
-    case "born":
-      return (state.population.born ?? 0) >= (m.at ?? 1);
-    case "floors":
-      return state.layout.hole.floors >= (m.at ?? 0);
-    case "domed":
-      return !!state.layout.domed;
-    case "event":
-      return false;
-  }
 }
 
 /** A die for an event: 0..1, the same every time for the same hole, seed and things asked about. */
@@ -177,7 +180,16 @@ function fill(text: string, e: Partial<PendingEvent>): string {
     .replaceAll("{floor}", String(e.floor ?? ""))
     .replaceAll("{ship}", e.ship ?? "")
     .replaceAll("{milestone}", e.milestone ?? "")
-    .replaceAll("{o2}", e.o2 ?? "");
+    .replaceAll("{o2}", e.o2 ?? "")
+    .replaceAll("{plaque}", e.plaque ?? "");
+}
+
+/** A choice's hint, with the floor and the drill's costs filled in. */
+export function choiceHint(hint: string, e: Partial<PendingEvent>): string {
+  return fill(hint, e)
+    .replaceAll("{repair}", goodsText(repairCost()))
+    .replaceAll("{scrap}", goodsText(scrapReturn()))
+    .replaceAll("{crate}", goodsText(depthData.drill));
 }
 
 /** Raise an event: a card waiting for an answer. */
@@ -191,7 +203,7 @@ export function raiseEvent(state: SimState, cfg: SimConfig, kind: string, extra:
     title: fill(def.title, extra),
     text: fill(def.text, extra),
     arrivedTick: state.tick,
-    expiresTick: state.tick + Math.round(def.patienceDays * cfg.ticksPerDay),
+    expiresTick: def.waits ? NEVER : state.tick + Math.round(def.patienceDays * cfg.ticksPerDay),
   };
   ev.pending.push(pending);
   ev.lastTick[kind] = state.tick;
@@ -207,6 +219,9 @@ export function choiceRefusal(state: SimState, choice: EventChoice, padWorks: bo
   }
   for (const [id, v] of Object.entries(choice.resources ?? {})) {
     if (v < 0 && (state.resources[id] ?? 0) + v < -1e-9) return `Not enough ${id}`;
+  }
+  if (choice.repairDrill) {
+    for (const [id, v] of Object.entries(repairCost())) if ((state.resources[id] ?? 0) < v - 1e-9) return `Needs ${goodsText(repairCost())}`;
   }
   return null;
 }
@@ -265,6 +280,16 @@ export function applyEffect(state: SimState, cfg: SimConfig, e: EventEffect, at:
     ev.followUps.push({ dueTick: state.tick + Math.round(days * day), effect: e.followUp.effect, kind: at.kind ?? "" });
   }
   if (e.landing) ev.landingTick = state.tick;
+  if (e.repairDrill) {
+    for (const [id, v] of Object.entries(repairCost())) state.resources[id] = Math.max(0, (state.resources[id] ?? 0) - v);
+    digOn(state, cfg);
+  }
+  if (e.scrapDrill) {
+    const back = scrapReturn();
+    for (const [id, v] of Object.entries(back)) state.resources[id] = Math.min(caps[id] ?? Infinity, (state.resources[id] ?? 0) + v);
+  }
+  if (e.crateDrill) crateDrill(state, cfg);
+  if (e.unlock) unlock(state, e.unlock as UnlockGate);
   if (e.ventAir) {
     const target = airAmount(state, cfg, cfg.air.o2Target);
     const vented = (state.resources.o2 ?? 0) - target;
@@ -283,9 +308,14 @@ export function applyEffect(state: SimState, cfg: SimConfig, e: EventEffect, at:
     ev.festival = { startTick: state.tick, untilTick: state.tick + Math.round(f.days * day) };
     ev.moods.push({ amount: f.mood, startTick: state.tick, untilTick: ev.festival.untilTick });
   }
-  if (e.celebrate) celebrate(state, cfg, e.celebrate);
+  if (e.celebrate) {
+    reachMilestone(state, cfg, e.celebrate);
+    if (milestoneDef(e.celebrate)?.celebrate) celebrate(state, cfg, e.celebrate);
+  }
   if (e.message) postMessage(state, cfg, fill(e.message, at), (e.mood?.amount ?? 0) < 0 ? "warn" : "good");
   if (lost.length) postMessage(state, cfg, `No storage space for ${lost.join(", ")}: it was left behind.`, "warn");
+  // Last, so the ceremony's card follows the news of how it ended.
+  if (e.capHole) capHole(state, cfg, e.capHole);
 }
 
 /** Work slows during a festival's first day(s): a factor on productivity. */
@@ -301,7 +331,7 @@ function celebrate(state: SimState, cfg: SimConfig, milestone: string): void {
   const ev = eventsOf(state);
   if (ev.celebrated.includes(milestone)) return;
   ev.celebrated.push(milestone);
-  const title = eventData.celebrations.milestones.find((m) => m.id === milestone)?.title ?? milestone;
+  const title = milestoneDef(milestone)?.title ?? milestone;
   raiseEvent(state, cfg, "celebration", { milestone: title });
 }
 
@@ -319,8 +349,8 @@ export function eventMood(state: SimState): number {
 
 // ---- drill discoveries ----
 
-/** A run of solid rock on a floor for a lava tube: up to `cells` slots side by side in ring 2 or 3. */
-function cavityOn(state: SimState, floor: number, cells: number): Cell[] | null {
+/** A run of solid rock on a floor for a lava tube (or a magma chamber): up to `cells` slots side by side in ring 2 or 3. */
+export function cavityOn(state: SimState, floor: number, cells: number): Cell[] | null {
   const hole = state.layout.hole;
   const rock = (c: Cell) => !isOpen(state.layout, c) && !state.layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot];
   for (const ring of [2, 3]) {
@@ -342,6 +372,8 @@ function cavityOn(state: SimState, floor: number, cells: number): Cell[] | null 
 
 /** The drill finished a floor: perhaps it struck something. */
 export function rollDiscovery(state: SimState, cfg: SimConfig, floor: number): void {
+  // Not during the guided tutorial's calm start; the first floor after it still always strikes something.
+  if (state.guide?.calm) return;
   const d = eventData.discoveries;
   const ev = eventsOf(state);
   const first = ev.found.length === 0 && !ev.lastTick.discovery;
@@ -396,14 +428,19 @@ export function stepEvents(state: SimState, cfg: SimConfig): void {
     applyEffect(state, cfg, f.effect, { kind: f.kind });
   }
   ev.moods = ev.moods.filter((m) => state.tick < m.untilTick);
-  // Milestones reached: one celebration proposed at a time.
-  if (!ev.pending.some((e) => e.kind === "celebration")) {
-    const next = eventData.celebrations.milestones.find((m) => !ev.celebrated.includes(m.id) && reached(state, m));
+  // Milestones reached are news, and some are worth a celebration: one proposed at a time.
+  trackMilestones(state, cfg);
+  // The guided tutorial's calm start (T-083): nothing new happens to the player until its basics are
+  // done. Celebrations wait (the milestone stays reached), and so do belt ships. Warnings about the
+  // player's own air and water still come.
+  const calm = !!state.guide?.calm;
+  if (!calm && !ev.pending.some((e) => e.kind === "celebration")) {
+    const next = milestoneData.milestones.find((m) => m.celebrate && !ev.celebrated.includes(m.id) && hasReached(state, m.id));
     if (next) celebrate(state, cfg, next.id);
   }
   checkAir(state, cfg);
   checkGrayOverflow(state, cfg);
-  if (state.tick % cfg.ticksPerDay === 0) dailyEvents(state, cfg);
+  if (!calm && state.tick % cfg.ticksPerDay === 0) dailyEvents(state, cfg);
 }
 
 function o2Text(state: SimState, cfg: SimConfig): string {

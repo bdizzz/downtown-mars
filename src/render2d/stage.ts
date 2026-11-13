@@ -1,3 +1,4 @@
+import { temperatureTint } from "../view/temperature";
 import { UI_FONT } from "../view/font";
 import { roomLabel } from "../sim/roomName";
 import { crewsAt, crewsKey } from "../view/crews";
@@ -16,7 +17,7 @@ import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
 import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
-import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
+import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
 import type { Happiness } from "../sim/happiness";
@@ -139,6 +140,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let heat = HEAT.normal;
   let field: EffectField | null = null;
   let happiness: Happiness | null = null;
+  /** Each floor's temperature, °C, for the temperature overlay. */
+  let temps: { floor: number; now: number }[] = [];
   let digKey = "";
   let tool: Tool = null;
   let hoverKey = "";
@@ -185,6 +188,26 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
   }
 
+  /** Every dug cell in its floor's colour: cold blue, comfortable green, hot red. */
+  function drawTemperature(): void {
+    if (!layout) return;
+    const h = layout.hole;
+    for (const f of temps) {
+      const { color, alpha } = temperatureTint(f.now);
+      layout.open?.[f.floor - 1]?.forEach((slots, ri) => {
+        const ring = ri + 1;
+        if (ring > h.unlockedRings) return;
+        const n = h.ringSlots[ring - 1]!;
+        const y = ringTop(f.floor, ring, h.ringSlots.length);
+        slots.forEach((v, slot) => {
+          if (v !== 1) return;
+          const [x0, x1] = slotX(slot, n);
+          fieldCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2).fill({ color, alpha });
+        });
+      });
+    }
+  }
+
   /** Each room in its condition's colour, green to red. */
   function drawCondition(): void {
     if (!layout) return;
@@ -207,6 +230,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     if (!overlayType) return drawReach();
     if (overlayType === "happiness") return drawHappiness();
     if (overlayType === "condition") return drawCondition();
+    if (overlayType === "temperature") return drawTemperature();
     if (!layout || !field || !overlayType) return;
     const grid = field[overlayType];
     if (!grid) return;
@@ -871,15 +895,21 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   let shift = false;
 
   /** The border nearest a world point, if it's in a ring. */
-  function edgeAt(x: number, y: number): Edge | null {
+  /** Where a point of the unrolled view is on its floor: rings out from the shaft wall, and the angle in turns. */
+  function pointAt(x: number, y: number): (ChainPoint & { floor: number }) | null {
     if (!layout) return null;
     const h = layout.hole;
     const p = pick(h, x, y);
     // Over the shaft band: the gallery edge there.
-    if (p.kind === "gallery") return nearestEdge(h, p.floor, -0.1, x / TURN_W, config.geometry.roomDepthM);
+    if (p.kind === "gallery") return { floor: p.floor, rings: -0.1, turn: x / TURN_W };
     if (p.kind !== "slot") return null;
     const v = (y - ringTop(p.floor, p.ring, h.ringSlots.length)) / RING_H;
-    return nearestEdge(h, p.floor, p.ring - 1 + v, x / TURN_W, config.geometry.roomDepthM);
+    return { floor: p.floor, rings: p.ring - 1 + v, turn: x / TURN_W };
+  }
+
+  function edgeAt(x: number, y: number): Edge | null {
+    const p = pointAt(x, y);
+    return layout && p ? nearestEdge(layout.hole, p.floor, p.rings, p.turn, config.geometry.roomDepthM) : null;
   }
 
   function hoverInfo(): HoverInfo | null {
@@ -915,7 +945,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
   function snake(): void {
     if (!layout) return;
-    const next = extendChain(layout, chain, edgeUnderPointer(), chainErase);
+    const next = extendChain(layout, chain, edgeUnderPointer(), chainErase, pointer ? pointAt(...screenToWorld(pointer)) : null);
     if (next === chain) return;
     chain = next;
     hoverKey = "";
@@ -1109,7 +1139,13 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         drawDig(l.hole, drill);
         updateDigLabel(drill);
       }
-      const ck = overlayType === "condition" ? conditionKey(snapshot.layout.rooms) : "";
+      const ck =
+        overlayType === "condition"
+          ? conditionKey(snapshot.layout.rooms)
+          : overlayType === "temperature"
+            ? snapshot.temperature.floors.map((f) => `${Math.round(f.now)}/${f.cells}`).join(",")
+            : "";
+      temps = snapshot.temperature.floors;
       if (snapshot.effects !== field || (overlayType === "happiness" && snapshot.happiness.pools !== happiness?.pools) || ck !== conditionShown) {
         conditionShown = ck;
         field = snapshot.effects;

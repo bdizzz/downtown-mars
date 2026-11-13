@@ -4,8 +4,8 @@ import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
 import * as THREE from "three";
-import { loweredAt, openingsOf, outlineGeometry, rockAlong, rockFaces, shapeKey, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
-import { floorSpan, ringRadii, slotAngles } from "../src/render3d/cylinder";
+import { ceilings, loweredAt, openingsOf, outlineGeometry, rockAlong, rockFaces, shapeKey, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
+import { floorSpan, ringRadii, slotAngles, WALL_T } from "../src/render3d/cylinder";
 import { corridorJoints, corridors } from "../src/sim/corridors";
 import { DOOR, doorways } from "../src/view/doors";
 import { setRoomWindows, shaftBorders } from "../src/sim/windows";
@@ -188,8 +188,8 @@ describe("solid walls", () => {
     const top = floorSpan(1)[1];
     // Signed distance from the border line, into each room.
     const faceAt = (ps: typeof pa, side: 1 | -1) => ps.filter((p) => Math.abs(p.y - top) < 1e-6).map((p) => side * p.r * Math.sin(p.a - border)).filter((d) => Math.abs(d) < 0.5);
-    expect(Math.max(...faceAt(pa, 1).filter((d) => d < -1e-6))).toBeCloseTo(-0.125, 2);
-    expect(Math.max(...faceAt(pb, -1).filter((d) => d < -1e-6))).toBeCloseTo(-0.125, 2);
+    expect(Math.max(...faceAt(pa, 1).filter((d) => d < -1e-6))).toBeCloseTo(-WALL_T / 2, 2);
+    expect(Math.max(...faceAt(pb, -1).filter((d) => d < -1e-6))).toBeCloseTo(-WALL_T / 2, 2);
   });
 
   it("stand centred on a corridor's edge, with a face on the corridor side", () => {
@@ -205,8 +205,9 @@ describe("solid walls", () => {
     expect(before).toBeCloseTo(r0, 4);
     const walls = pts.filter((p) => p.y > floorSpan(1)[0] + 0.5);
     const radii = [...new Set(walls.map((p) => p.r.toFixed(3)))].map(Number).filter((r) => r < r0 + 2);
-    expect(radii).toContain(Number((r0 + 1.375).toFixed(3)));
-    expect(radii).toContain(Number((r0 + 1.625).toFixed(3)));
+    const hall = corridors.widthM / 2;
+    expect(radii).toContain(Number((r0 + hall - WALL_T / 2).toFixed(3)));
+    expect(radii).toContain(Number((r0 + hall + WALL_T / 2).toFixed(3)));
   });
 
   it("have a top: wall pieces at the ceiling between the two faces", () => {
@@ -287,7 +288,7 @@ describe("windows", () => {
     l.corridors["R1.1.2"] = "rock"; // along its left side
     const [b0, b1] = span();
     // Back to where the side wall meets the shaft face (r = 10): half a corridor and half a wall from the border, where there was only half a wall.
-    expect(b0 - a0).toBeCloseTo(Math.asin(1.625 / 10) - Math.asin(0.125 / 10), 6);
+    expect(b0 - a0).toBeCloseTo(Math.asin((corridors.widthM / 2 + WALL_T / 2) / 10) - Math.asin(WALL_T / 2 / 10), 6);
     expect(b1).toBeCloseTo(a1, 9);
     // The windows stay inside the room's walls.
     const geo = roomGeometry(l, room.cells);
@@ -734,5 +735,125 @@ describe("rock faces where corridors turn (T-145)", () => {
     }
     expect(reach).toBeGreaterThan(corner - 0.2);
     expect(reach).toBeLessThan(corner - notch + 1e-6);
+  });
+});
+
+describe("outlines across split walls (#336)", () => {
+  it("draw no line down a flat wall where its pieces don't share corners", () => {
+    // Two quads side by side, the right one cut in two at half height: a T-junction at (1, 1).
+    const quad = (x0: number, y0: number, x1: number, y1: number) => [x0, y0, 0, x1, y0, 0, x1, y1, 0, x0, y0, 0, x1, y1, 0, x0, y1, 0];
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute([...quad(0, 0, 1, 2), ...quad(1, 0, 2, 1), ...quad(1, 1, 2, 2)], 3));
+    const ep = outlineGeometry(geo).getAttribute("position");
+    const lines: number[][] = [];
+    for (let i = 0; i < ep.count; i += 2) lines.push([ep.getX(i), ep.getY(i), ep.getX(i + 1), ep.getY(i + 1)]);
+    // Only the rim: nothing along x = 1 or y = 1 inside it.
+    expect(lines.some(([x0, , x1]) => x0 === 1 && x1 === 1)).toBe(false);
+    expect(lines.some(([x0, y0, x1, y1]) => y0 === 1 && y1 === 1 && x0! > 0 && x1! > 0 && x0! < 2 && x1! < 2)).toBe(false);
+    const length = lines.reduce((sum, [x0, y0, x1, y1]) => sum + Math.hypot(x1! - x0!, y1! - y0!), 0);
+    expect(length).toBeCloseTo(8);
+  });
+});
+
+describe("first person: ceilings and closed corridors (#340)", () => {
+  /** Upright triangles (walls) with every corner passing `test`. */
+  const upright = (pos: ArrayLike<number>, test: (x: number, z: number) => boolean) => {
+    let n = 0;
+    for (let i = 0; i < pos.length; i += 9) {
+      const ys = [pos[i + 1]!, pos[i + 4]!, pos[i + 7]!];
+      if (Math.max(...ys) - Math.min(...ys) < 1) continue;
+      if ([0, 3, 6].every((k) => test(pos[i + k]!, pos[i + k + 2]!))) n++;
+    }
+    return n;
+  };
+  const polar = (x: number, z: number) => [Math.hypot(x, z), (Math.atan2(z, x) + 2 * Math.PI) % (2 * Math.PI)] as const;
+
+  it("ceilings face down under every floor, hidden until you walk", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const [ceiling] = ceilings(l, null, 0x553322) as THREE.Mesh[];
+    expect(ceiling!.visible).toBe(false);
+    expect(ceiling!.userData.ceiling).toBe(true);
+    const pos = ceiling!.geometry.getAttribute("position");
+    const heights = new Set<number>();
+    const tri = new THREE.Triangle();
+    const normal = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i += 3) {
+      tri.setFromAttributeAndIndices(pos, i, i + 1, i + 2).getNormal(normal);
+      expect(normal.y).toBeLessThan(-0.99);
+      heights.add(Math.round(pos.getY(i) * 100) / 100);
+    }
+    // One just under each floor's top.
+    expect([...heights].sort((a, b) => b - a)).toEqual([1, 2, 3].map((f) => Math.round((floorSpan(f)[1] - 0.04) * 100) / 100));
+  });
+
+  it("closes a corridor's end where it stops in rock, but not where it opens onto dug-out space", () => {
+    const l = createLayout(createHole(10, 2, 3, config.geometry));
+    // Through solid rock, out across ring 2 at slot border 3: it stops at circle 2, with ring 3 beyond.
+    l.corridors["R2.2.3"] = "rock";
+    const a = (3 / l.hole.ringSlots[1]!) * 2 * Math.PI;
+    const rc = ringRadii(l.hole, 2)[1];
+    const half = corridors.widthM / 2;
+    const end = (pos: number[]) =>
+      upright(pos, (x, z) => {
+        const [r, t] = polar(x, z);
+        return Math.abs(r - rc - 0.01) < 1e-3 && Math.abs(t - a) * r < half + 1e-3;
+      });
+    expect(end(rockFaces(l, null))).toBeGreaterThan(0);
+    // Dig out what's beyond, and the corridor opens onto it.
+    openCells(l, Array.from({ length: l.hole.ringSlots[2]! }, (_, slot) => ({ floor: 2, ring: 3, slot })));
+    expect(end(rockFaces(l, null))).toBe(0);
+  });
+
+  it("closes the step where a room's wall along a corridor meets the rock beside it", () => {
+    // A clinic on ring 2 with a corridor along its outer side and on past it, through the rock to its right.
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const placed = placeRoom(l, "clinic", ring(2, 2, 1));
+    const room = l.rooms.find((x) => x.id === placed.id)!;
+    for (const slot of [1, 2]) for (const e of cellEdges(l.hole, { floor: 2, ring: 2, slot })) if (e.kind === "arc" && e.circle === 2) l.corridors[e.id] = "rock";
+    const pos = roomGeometry(l, room.cells, 0.06, true, false, null, [], undefined, true).getAttribute("position").array as Float32Array;
+    // At the clinic's right side: from the corridor's edge (where the rock's face stands) out to the wall's
+    // outer face, half a wall into the corridor.
+    const side = slotAngles(1, l.hole.ringSlots[1]!)[1];
+    const edge = ringRadii(l.hole, 2)[1] - corridors.widthM / 2;
+    const cap = upright(pos, (x, z) => {
+      const [r, t] = polar(x, z);
+      return Math.abs(t - side) * r < 0.02 && r > edge - 0.02 && r < edge + WALL_T / 2 + 0.02;
+    });
+    expect(cap).toBeGreaterThan(0);
+  });
+
+  it("closes the end of the wall a public room shares with its neighbour, where it opens onto a corridor", () => {
+    // A tiny plaza (no wall onto the corridor) beside a clinic, a corridor along both their outer sides.
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const placed = placeRoom(l, "tiny_plaza", ring(2, 2, 1));
+    expect(placeRoom(l, "clinic", ring(2, 2, 2)).ok).toBe(true);
+    const plaza = l.rooms.find((x) => x.id === placed.id)!;
+    for (const slot of [1, 2]) for (const e of cellEdges(l.hole, { floor: 2, ring: 2, slot })) if (e.kind === "arc" && e.circle === 2) l.corridors[e.id] = "rock";
+    const pos = roomGeometry(l, plaza.cells, 0.06, true, true, null, [], undefined, true).getAttribute("position").array as Float32Array;
+    // Along the corridor's edge, across the plaza's half of the wall: from the border in by half a wall.
+    const side = slotAngles(1, l.hole.ringSlots[1]!)[1];
+    const edge = ringRadii(l.hole, 2)[1] - corridors.widthM / 2;
+    const end = upright(pos, (x, z) => {
+      const [r, t] = polar(x, z);
+      return Math.abs(r - edge) < 0.02 && (side - t) * r > -0.02 && (side - t) * r < WALL_T / 2 + 0.02;
+    });
+    expect(end).toBeGreaterThan(0);
+  });
+
+  it("closes it too where a public room on ring 1 opens onto its gallery tube", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    for (const e of galleryEdges(l.hole, 2)) l.corridors[e.id] = "gallery";
+    const placed = placeRoom(l, "tiny_plaza", ring(2, 1, 1));
+    expect(placeRoom(l, "clinic", ring(2, 1, 2)).ok).toBe(true);
+    const plaza = l.rooms.find((x) => x.id === placed.id)!;
+    const pos = roomGeometry(l, plaza.cells, 0.06, true, true, null, [], undefined, true).getAttribute("position").array as Float32Array;
+    // Along the shaft wall's line, across the plaza's half of the wall it shares with the clinic.
+    const side = slotAngles(1, l.hole.ringSlots[0]!)[1];
+    const shaft = ringRadii(l.hole, 1)[0];
+    const end = upright(pos, (x, z) => {
+      const [r, t] = polar(x, z);
+      return Math.abs(r - shaft) < 0.02 && (side - t) * r > -0.02 && (side - t) * r < WALL_T / 2 + 0.02;
+    });
+    expect(end).toBeGreaterThan(0);
   });
 });

@@ -5,6 +5,7 @@ import { powerFlow } from "./economy";
 import { DIAGNOSIS, happinessByFactor } from "./diagnosis";
 import { beds } from "./earth";
 import { resourceDefs } from "./resources";
+import { averageTemperature, coldestTemperature, temperatureOf } from "./temperature";
 import type { SimState } from "./state";
 
 // How the hole has been doing over time, for the charts: once a game hour,
@@ -15,7 +16,7 @@ import type { SimState } from "./state";
 // without randomness, so it never changes anything else.
 
 /** Series beyond the resources (whose series are their ids). */
-export const VITALS = ["population", "beds", "happiness", "health", "condition", "employed", "workers", "powerMade", "powerUsed", "o2Pct", "co2Pct", "airVolume"] as const;
+export const VITALS = ["population", "beds", "happiness", "health", "condition", "employed", "workers", "powerMade", "powerUsed", "o2Pct", "co2Pct", "airVolume", "tempAverage", "tempColdest", "thermostat"] as const;
 export type Vital = (typeof VITALS)[number];
 
 export interface History {
@@ -40,7 +41,7 @@ export interface History {
 export const DRAIN_SERIES = Object.keys(DIAGNOSIS.health).map((id) => `drain:${id}`);
 export const MOOD_SERIES = Object.keys(DIAGNOSIS.factors).map((id) => `mood:${id}`);
 /** Series a save from before them never had: padded with gaps (NaN, null once saved), not zeros, so the chart shows nothing for that stretch. */
-const GAPPED = new Set([...DRAIN_SERIES, ...MOOD_SERIES]);
+const GAPPED = new Set<string>([...DRAIN_SERIES, ...MOOD_SERIES, "tempAverage", "tempColdest", "thermostat"]);
 
 /** Every series recorded, in order: vitals, causes, then resources. */
 export function seriesIds(): string[] {
@@ -68,6 +69,9 @@ export function sample(state: SimState, cfg: SimConfig): Record<string, number> 
     o2Pct: airPct(state, cfg, "o2"),
     co2Pct: airPct(state, cfg, "co2"),
     airVolume: airVolume(state, cfg),
+    tempAverage: averageTemperature(state),
+    tempColdest: coldestTemperature(state),
+    thermostat: temperatureOf(state, cfg).setpoint,
   };
   const drain = state.population.healthDrain ?? {};
   for (const id of Object.keys(DIAGNOSIS.health)) out[`drain:${id}`] = Math.max(0, drain[id] ?? 0);

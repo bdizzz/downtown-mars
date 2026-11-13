@@ -17,7 +17,9 @@ namespace DowntownMars;
 public partial class HudBar : HFlowContainer
 {
     static readonly Color Muted = new("#a8927e"), Value = new("#f3e6d8"), Warn = new("#f4b860"), Bad = new("#ff8a6c"), Full = new("#8fc0ea"),
-        Up = new("#9fd28a"), Down = new("#f08070"), Glow = new("#ffd27a");
+        Up = new("#9fd28a"), Down = new("#f08070"), Glow = new("#ffd27a"),
+        // The web's --tone-good, --tone-bad and --accent, for the ledger.
+        Good = new("#9fd28a"), ToneBad = new("#ff7a5c"), Accent = new("#e07a3f");
 
     /// <summary>A trend clicked: open Charts → Trends on it.</summary>
     public Action<string>? Clicked { get; set; }
@@ -211,6 +213,8 @@ public partial class HudBar : HFlowContainer
             }
             Line($"{_data.GetProperty("title").GetString()} · {_data.GetProperty("value").GetString()}", 15, Value);
             foreach (var n in _data.GetProperty("notes").EnumerateArray()) Line(n.GetString()!, 13, new Color("#e0cfbd"));
+            var hasWhy = _data.TryGetProperty("why", out var why);
+            if (hasWhy) Ledger(rows, why);
             var lines = _data.GetProperty("spark").EnumerateArray()
                 .Select(l => (new Color(l.GetProperty("color").GetString()!), l.GetProperty("dashed").GetBoolean(), l.GetProperty("label").GetString()!, l.GetProperty("values").EnumerateArray().Select(v => v.GetSingle()).ToArray()))
                 .ToList();
@@ -225,8 +229,73 @@ public partial class HudBar : HFlowContainer
             else Line("History builds up hour by hour · click for Trends", 12, Muted);
             // Godot sizes the tooltip to this once it's shown; size the panel with it.
             panel.Ready += () => panel.CallDeferred(Control.MethodName.ResetSize);
-            panel.CustomMinimumSize = new Vector2(244, 0);
+            panel.CustomMinimumSize = new Vector2(hasWhy ? 284 : 244, 0);
             return panel;
+        }
+
+        /// <summary>
+        /// The card's reasons as a ledger, as the web's WhyLedger: where it's heading, then each cause's points,
+        /// a bar for its weight and its name, under "Pulling it down" and "Lifting it", and the fix in a box.
+        /// </summary>
+        static void Ledger(VBoxContainer rows, JsonElement why)
+        {
+            Label Text(string text, int size, Color color)
+            {
+                var l = new Label { Text = text };
+                l.AddThemeFontSizeOverride("font_size", size);
+                l.AddThemeColorOverride("font_color", color);
+                return l;
+            }
+            rows.AddChild(new HSeparator());
+            rows.AddChild(Text(why.GetProperty("head").GetString()!, 13, Value));
+            foreach (var g in why.GetProperty("groups").EnumerateArray())
+            {
+                rows.AddChild(Text(g.GetProperty("title").GetString()!.ToUpperInvariant(), 10, Muted));
+                foreach (var r in g.GetProperty("rows").EnumerateArray())
+                {
+                    var tone = r.GetProperty("tone").GetString() == "good" ? Good : ToneBad;
+                    var line = new HBoxContainer();
+                    line.AddThemeConstantOverride("separation", 6);
+                    var amount = Text(r.GetProperty("amount").GetString()!, 12, tone);
+                    amount.HorizontalAlignment = HorizontalAlignment.Right;
+                    amount.CustomMinimumSize = new Vector2(34, 0);
+                    line.AddChild(amount);
+                    line.AddChild(new WhyBar(r.GetProperty("share").GetSingle(), tone) { CustomMinimumSize = new Vector2(32, 5), SizeFlagsVertical = SizeFlags.ShrinkCenter });
+                    line.AddChild(Text(r.GetProperty("label").GetString()!, 12, Value));
+                    if (r.TryGetProperty("detail", out var detail)) line.AddChild(Text($"· {detail.GetString()}", 12, Muted));
+                    rows.AddChild(line);
+                }
+            }
+            if (!why.TryGetProperty("fix", out var fix)) return;
+            var box = new PanelContainer();
+            box.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+            {
+                BgColor = new Color(Accent, 0.12f), BorderColor = Accent, BorderWidthLeft = 2,
+                CornerRadiusTopRight = 4, CornerRadiusBottomRight = 4,
+                ContentMarginLeft = 7, ContentMarginRight = 7, ContentMarginTop = 4, ContentMarginBottom = 4,
+            });
+            var text = new RichTextLabel { BbcodeEnabled = true, FitContent = true, ScrollActive = false, CustomMinimumSize = new Vector2(240, 0) };
+            text.AddThemeFontSizeOverride("normal_font_size", 12);
+            text.AddThemeFontSizeOverride("bold_font_size", 12);
+            text.AddThemeColorOverride("default_color", Value);
+            text.Text = $"[b][color=#{Accent.ToHtml(false)}]Fix[/color][/b] {fix.GetString()}";
+            box.AddChild(text);
+            rows.AddChild(box);
+        }
+    }
+
+    /// <summary>A ledger row's bar: a dim track, filled from the left by its share of the biggest shown.</summary>
+    partial class WhyBar : Control
+    {
+        readonly float _share;
+        readonly Color _color;
+
+        public WhyBar(float share, Color color) => (_share, _color) = (share, color);
+
+        public override void _Draw()
+        {
+            DrawRect(new Rect2(Vector2.Zero, Size), new Color(1, 1, 1, 0.06f));
+            DrawRect(new Rect2(Vector2.Zero, new Vector2(Size.X * Math.Max(0.08f, _share), Size.Y)), _color);
         }
     }
 

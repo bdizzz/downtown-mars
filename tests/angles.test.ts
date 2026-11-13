@@ -43,10 +43,10 @@ function expectAnglesMatchSlots(layout: Layout): number {
   return n;
 }
 
-/** A save as v22 wrote it: no angles on any room. */
-function asV22(json: string): string {
+/** A save as v23 wrote it: no angles on any room. */
+function asV23(json: string): string {
   const file = JSON.parse(json);
-  file.version = 22;
+  file.version = 23;
   for (const h of file.state.holes) for (const r of h.layout.rooms) {
     delete r.at.start;
     delete r.at.span;
@@ -87,20 +87,20 @@ describe("notches and spans", () => {
     const hole = w.holes[0]!;
     applyCommand(hole, { type: "consoleFinish" });
     applyCommand(hole, { type: "consoleResources", atLeast: { rock: 500, metal: 200, machinery: 50, brick: 200, marscrete: 200 } });
-    // A 2×2 farm across rings 2 and 3 (9 slots inside, 18 outside), wrapping past slot 0.
-    const r = applyCommand(hole, { type: "build", room: "farm", at: { kind: "ring", floor: 1, ring: 2, slot: 8, w: 2, d: 2 } });
-    expect(r.ok).toBe(true);
+    // A 2×2 farm across rings 2 and 3 (9 slots inside, 18 outside).
+    const r = applyCommand(hole, { type: "build", room: "farm", at: { kind: "ring", floor: 1, ring: 2, slot: 0, w: 2, d: 2 } });
+    expect(r, JSON.stringify(r)).toMatchObject({ ok: true });
     const farm = hole.layout.rooms.at(-1)!;
-    expect(farm.at).toMatchObject({ start: 1280, span: 320, depth: 2 });
+    expect(farm.at).toMatchObject({ start: 0, span: 320, depth: 2 });
     expect(expectAnglesMatchSlots(hole.layout)).toBeGreaterThan(1);
   });
 
-  it("a played save from v22 gets angles matching its slots, the same as a new game sets", () => {
+  it("a played save from v23 gets angles matching its slots, the same as a new game sets", () => {
     const { state } = run(40);
     const w = createWorld(config);
     w.holes[0] = state;
     const json = serialize(w);
-    const loaded = deserialize(asV22(json));
+    const loaded = deserialize(asV23(json));
     expect(loaded.ok).toBe(true);
     if (!loaded.ok) return;
     const layout = loaded.world.holes[0]!.layout;

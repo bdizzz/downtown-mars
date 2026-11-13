@@ -16,9 +16,11 @@ export const VIEW_MODES: { id: ViewMode; name: string; hint: string }[] = [
 ];
 
 export interface Settings {
+  /** Master volume; the three below are buses under it (src/audio/sound.ts). */
   volume: number;
-  sfx: boolean;
-  ambient: boolean;
+  music: number;
+  effects: number;
+  ambience: number;
   /** 1 = normal. */
   uiScale: number;
   /** Orange/blue instead of red/green in overlays. */
@@ -26,6 +28,10 @@ export interface Settings {
   autosave: boolean;
   /** The deputy's one-time tips when a problem first shows up (F-018). */
   tips: boolean;
+  /** Temperatures in °C rather than °F (#397). */
+  celsius: boolean;
+  /** The resource bar shows every stock all the time; off (quiet), the vitals and whatever needs a look, the rest behind its Stock button. */
+  allResources: boolean;
   /** Pointing at a floor in the floor picker shows it before you click. */
   floorHoverPreview: boolean;
   /** First person: how fast the mouse turns the head, 1 = normal (WALK in stage3d.ts, the same in Godot). */
@@ -42,12 +48,15 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   volume: defaultOf("volume", "number"),
-  sfx: defaultOf("sfx", "boolean"),
-  ambient: defaultOf("ambient", "boolean"),
+  music: defaultOf("music", "number"),
+  effects: defaultOf("effects", "number"),
+  ambience: defaultOf("ambience", "number"),
   uiScale: defaultOf("uiScale", "number"),
   colorBlind: defaultOf("colorBlind", "boolean"),
   autosave: defaultOf("autosave", "boolean"),
   tips: defaultOf("tips", "boolean"),
+  celsius: defaultOf("celsius", "boolean"),
+  allResources: defaultOf("allResources", "boolean"),
   floorHoverPreview: defaultOf("floorHoverPreview", "boolean"),
   lookSpeed: defaultOf("lookSpeed", "number"),
   fullscreen: defaultOf("fullscreen", "boolean"),
@@ -70,7 +79,7 @@ function cleanView3d(raw: Partial<View3d> | undefined): View3d {
     }
   }
   // The Shaft and Top cameras are gone (T-052): either falls back to Free view; an old xray flag is dropped.
-  return { camera: isCamera(v.camera) ? v.camera : DEFAULT_VIEW3D.camera, wallsDown: !!v.wallsDown, roomColors: v.roomColors ?? DEFAULT_VIEW3D.roomColors, flows: !!v.flows, cutAngle: clampCutAngle(v.cutAngle) };
+  return { camera: isCamera(v.camera) ? v.camera : DEFAULT_VIEW3D.camera, wallsDown: !!v.wallsDown, roomColors: v.roomColors ?? DEFAULT_VIEW3D.roomColors, roomTints: v.roomTints ?? DEFAULT_VIEW3D.roomTints, flows: !!v.flows, cutAngle: clampCutAngle(v.cutAngle) };
 }
 
 const KEY = storageKey("settings");
@@ -78,11 +87,13 @@ const KEY = storageKey("settings");
 export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
-    const stored = raw ? (JSON.parse(raw) as Partial<Settings> & { quality3d?: "high" | "low" }) : {};
+    const stored = raw ? (JSON.parse(raw) as Partial<Settings> & { quality3d?: "high" | "low"; sfx?: boolean; ambient?: boolean }) : {};
     // Before graphics settings there was one "3D detail" choice: low becomes the low preset.
-    const graphics = stored.graphics ? cleanGraphics(stored.graphics) : stored.quality3d === "low" ? GRAPHICS_PRESETS.low : DEFAULT_GRAPHICS;
-    const { quality3d: _old, ...rest } = stored;
-    const s: Settings = { ...DEFAULT_SETTINGS, ...rest, graphics, view3d: cleanView3d(stored.view3d) };
+    const graphics = stored.graphics ? cleanGraphics(stored.graphics) : stored.quality3d === "low" ? cleanGraphics(GRAPHICS_PRESETS.low) : DEFAULT_GRAPHICS;
+    // Sound effects and ambience were on/off switches (T-066): off becomes silent, on the default.
+    const { quality3d: _old, sfx, ambient, ...rest } = stored;
+    const sound = { effects: sfx === false ? 0 : DEFAULT_SETTINGS.effects, ambience: ambient === false ? 0 : DEFAULT_SETTINGS.ambience };
+    const s: Settings = { ...DEFAULT_SETTINGS, ...sound, ...rest, graphics, view3d: cleanView3d(stored.view3d) };
     return VIEW_MODES.some((m) => m.id === s.view) ? s : { ...s, view: DEFAULT_SETTINGS.view };
   } catch {
     return DEFAULT_SETTINGS;
@@ -95,6 +106,36 @@ function saveSettings(s: Settings): void {
   } catch {
     // Not persisted; fine for this session.
   }
+}
+
+/**
+ * The room panel's sections the player has opened or closed (F-019): remembered per section, not per
+ * room, so closing Surroundings once keeps it closed on every room. A section not in here opens or
+ * stays closed as the panel's model says.
+ */
+export type OpenSections = Partial<Record<string, boolean>>;
+const SECTIONS_KEY = storageKey("panelSections");
+
+function loadOpenSections(): OpenSections {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SECTIONS_KEY) ?? "{}") as unknown;
+    return raw && typeof raw === "object" ? (raw as OpenSections) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function useOpenSections() {
+  const [open, setOpen] = useState<OpenSections>(loadOpenSections);
+  useEffect(() => {
+    try {
+      localStorage.setItem(SECTIONS_KEY, JSON.stringify(open));
+    } catch {
+      // Not persisted; fine for this session.
+    }
+  }, [open]);
+  const set = useCallback((id: string, on: boolean) => setOpen((o) => ({ ...o, [id]: on })), []);
+  return [open, set] as const;
 }
 
 export function useSettings() {

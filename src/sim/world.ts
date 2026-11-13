@@ -6,6 +6,7 @@ import type { Route } from "./rovers";
 import type { Relation } from "./culture";
 import type { Migration } from "./migration";
 import { network } from "./network";
+import { setDifficulty, type Level } from "./difficulty";
 import { createInitialState, type SimState } from "./state";
 
 // The world: shared time and every hole. Each hole is a SimState that the
@@ -31,6 +32,8 @@ export interface World {
   migrations: Migration[];
   /** Every hole has failed (T-162): the game is over, and time stops. Its save can't be played on. */
   over?: { tick: number };
+  /** Chosen for a new game, never changed (F-014); absent in older saves, which are normal. */
+  difficulty?: Level;
 }
 
 export { network };
@@ -46,7 +49,9 @@ export function nextHoleName(world: Pick<World, "holes">): string {
   return network.holeNames.find((n) => !used.has(n)) ?? `Hole ${world.holes.length + 1}`;
 }
 
-export function createWorld(cfg: SimConfig, seed = cfg.seed): World {
+/** A new game at a difficulty: the data is scaled to it first, so the landing stock is too. */
+export function createWorld(cfg: SimConfig, seed = cfg.seed, difficulty: Level = "normal"): World {
+  setDifficulty(difficulty);
   const map = generateMap(seed);
   const site = chooseFirstSite(map, seed);
   const first = createInitialState(cfg, {
@@ -56,7 +61,7 @@ export function createWorld(cfg: SimConfig, seed = cfg.seed): World {
     deposits: depositsAt(map, site),
     seed: holeSeed(seed, 1),
   }, cfg.landingKits.newGame);
-  return { seed, tick: 0, holes: [first], nextHoleId: 2, map, mapUnlocked: false, convoys: [], routes: [], nextRouteId: 1, relations: {}, migrations: [] };
+  return { seed, tick: 0, holes: [first], nextHoleId: 2, map, mapUnlocked: false, convoys: [], routes: [], nextRouteId: 1, relations: {}, migrations: [], ...(difficulty !== "normal" ? { difficulty } : {}) };
 }
 
 export function totalPopulation(world: World): number {

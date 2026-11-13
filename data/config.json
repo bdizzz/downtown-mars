@@ -3,6 +3,7 @@
   "startHour": 6,
   "ticksPerSecondAt1x": 2,
   "speeds": [0, 1, 2, 4],
+  "slowSpeed": 0.5,
   "snapshotsPerSecond": 20,
   "maxTicksPerFrame": 64,
   "seed": 1,
@@ -14,7 +15,7 @@
     "floorHeightM": 4,
     "surfaceDepthM": 3,
     "galleryWidthM": 2,
-    "wallThicknessM": 0.25,
+    "wallThicknessM": 0.5,
     "pairedRings": true,
     "nestedPairs": true,
     "surfaceSlots": 12
@@ -44,7 +45,7 @@
     "maxFloors": 40
   },
   "startingStock": {
-    "rations": 100, "water": 240, "soil": 40,
+    "rations": 180, "water": 240, "soil": 40,
     "rock": 160, "brick": 20, "metal": 60, "machinery": 10, "electronics": 10, "glass": 100
   },
   "colonists": {
@@ -95,6 +96,27 @@
       "sunset": 18,
       "twilightHours": 2,
       "affects": ["solar_array"]
+    },
+    "report": {
+      "_note": "The local weather report (T-074): flavour only, outside the hole. Highs and lows run from the equator's to the poles' by the cosine of the latitude, colder with height; dust narrows the day's swing.",
+      "equatorHighC": 15,
+      "equatorLowC": -78,
+      "poleHighC": -105,
+      "poleLowC": -125,
+      "frostPointC": -125,
+      "coolingPerKmC": 1.5,
+      "warmestHour": 14,
+      "stormHighDropC": 25,
+      "stormLowRiseC": 20,
+      "datumPressureMbar": 6.1,
+      "scaleHeightKm": 11.1,
+      "tideShare": 0.02,
+      "tidePeakHour": 8,
+      "calmWindMs": 2,
+      "afternoonWindMs": [4, 12],
+      "stormWindMs": 25,
+      "clearTau": [0.3, 0.9],
+      "stormTau": 4.5
     }
   },
   "earth": {
@@ -125,6 +147,29 @@
     "productivityAtZero": 0.75,
     "productivityFullAt": 50
   },
+  "temperature": {
+    "_note": "Each floor's temperature (#393, sim/temperature.ts), all in °C (the UI shows °F by default). Floor 1's resting temperature is rolled per hole from a band set by its latitude: restBands' bands, straight-line by latitude between them and on past the first toward the equator, never above restCapC (50 °F). The starter's band (20-25°) is 40-45 °F, the poles' 0-15 °F. Deeper floors rest a little warmer. Heat is measured against a reference floor, a small hole's floor dug out across its unlocked rings: a heater's `heats` is how far it lifts that floor at full power; smaller floors lift more, bigger ones less (never counting fewer than minCells cells). Heaters warm a floor at their lift a game day each (more heaters, faster); with no heat, a floor drifts toward rest at driftPerDayC. Body heat is per person on the floor (living or working there); waste heat per point of a running room's heat effect. Comfort bands are the comfort factor a home feels by its floor's temperature, the first band its temperature is below.",
+    "restBands": [
+      { "lat": 22.5, "lowC": 4.4, "highC": 7.2 },
+      { "lat": 90, "lowC": -17.8, "highC": -9.4 }
+    ],
+    "restCapC": 10,
+    "depthWarmingPerFloorC": 0.15,
+    "setpointC": 18.3,
+    "setpointRangeC": [10, 30],
+    "minCells": 4,
+    "driftPerDayC": 6.25,
+    "bodyHeatPerPersonC": 0.03,
+    "wasteHeatPerStrengthC": 8,
+    "comfort": [
+      { "belowC": 4.4, "comfort": -2.5 },
+      { "belowC": 10, "comfort": -1.25 },
+      { "belowC": 15.6, "comfort": -0.25 },
+      { "belowC": 26.7, "comfort": 0.5 },
+      { "belowC": 32.2, "comfort": -1 },
+      { "belowC": 1000, "comfort": -2 }
+    ]
+  },
   "messages": { "keep": 20 },
   "failure": { "emptyDays": 0.5 },
   "effects": {
@@ -144,8 +189,12 @@
   "dome": { "population": 300, "cost": { "glass": 200, "metal": 120, "machinery": 20, "electronics": 10 }, "workHours": 240, "atriumComfort": 0.5, "air": 0.5 },
   "history": { "everyTicks": 10, "recentDays": 10, "maxDays": 2000 },
   "unlocks": { "cargoPopulation": 100, "homes": { "basic": 50, "standard": 100, "luxury": 200 }, "cleaningPopulation": 150, "rooms": { "brickworks": 50, "leisure": 50, "recycling": 100, "hospital": 300, "reclaimer": 150, "spiralStair": 200, "plaza": 500 } },
+  "corridorTool": {
+    "_note": "Snaking corridors: a border joins the chain only once the pointer is this far along it from the chain's end.",
+    "commitAlong": 0.25
+  },
   "landingKits": {
-    "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. A ring room's holds sets what a tank holds; the crew lays a corridor along the fronts of rooms nothing reaches, and the shortest spoke in to it.",
+    "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. The full kit brings a heater for floor 1 (#403); a founded hole's seed kit brings one, set up on arrival (founding.ts). A ring room's holds sets what a tank holds; the crew lays a corridor along the fronts of rooms nothing reaches, and the shortest spoke in to it.",
     "newGame": "full",
     "laterHoles": "bare",
     "bare": {
@@ -172,7 +221,8 @@
         { "room": "water_tank", "floor": 1, "ring": 3, "slot": 5, "holds": "grayWater" },
         { "room": "electrolyzer", "floor": 1, "ring": 3, "slot": 6 },
         { "room": "life_support", "floor": 1, "ring": 3, "slot": 8 },
-        { "room": "water_recycler", "floor": 1, "ring": 3, "slot": 12 }
+        { "room": "water_recycler", "floor": 1, "ring": 3, "slot": 12 },
+        { "room": "heater", "floor": 1, "ring": 3, "slot": 16 }
       ]
     }
   }

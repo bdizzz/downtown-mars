@@ -4,6 +4,7 @@ import type { Flows } from "../sim/ledger";
 import type { Snapshot } from "../sim/snapshot";
 import { FLOW_TABS, flowColor, river, waterNote } from "../view/flows";
 import { num } from "./format";
+import { PanelHeader } from "./PanelHeader";
 
 // River-style flow diagrams: for each resource, where it comes from (left),
 // where it goes (right), per day averaged over recent days. A use that says
@@ -133,12 +134,7 @@ export function FlowPanel({ s, onClose }: { s: Snapshot; onClose: () => void }) 
 
   return (
     <aside className={twoStep ? "inspector flows wide" : "inspector flows"}>
-      <header>
-        <h2>Flows</h2>
-        <button onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </header>
+      <PanelHeader title="Flows" help={`Per game day, averaged over the last ${config.economy.ledgerDays} days. Overflow is what was made or delivered with nowhere to store it.`} onClose={onClose} />
       <nav className="tabs">
         {FLOW_TABS.map((t) => (
           <button key={t.id} className={t.id === tab ? "on" : ""} onClick={() => setTab(t.id)}>
@@ -146,10 +142,6 @@ export function FlowPanel({ s, onClose }: { s: Snapshot; onClose: () => void }) 
           </button>
         ))}
       </nav>
-      <p className="k">
-        Per game day, averaged over the last {config.economy.ledgerDays} days. Overflow is what was made or delivered with nowhere
-        to store it.
-      </p>
       {tab === "water" && note !== null && <p>{note}</p>}
       {current.resources.map((r) => (
         <River key={r} resource={r} flows={s.flows[r]} stock={s.resources[r] ?? 0} />

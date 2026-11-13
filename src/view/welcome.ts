@@ -11,10 +11,13 @@ export interface WelcomeCard {
   /** Each paragraph as runs of text, every other one bold (the data's **…**), starting plain. */
   paragraphs: string[][];
   button: string;
+  /** The second way in: the guided tutorial (F-007, T-083), and a line on what it is. */
+  guidedButton: string;
+  guidedNote: string;
 }
 
 export function welcomeCard(): WelcomeCard {
   const w = raw.welcome;
   const fill = (t: string) => t.replaceAll("{colonists}", String(config.colonists.start));
-  return { type: "welcome", title: w.title, paragraphs: w.paragraphs.map((p) => fill(p).split("**")), button: w.button };
+  return { type: "welcome", title: w.title, paragraphs: w.paragraphs.map((p) => fill(p).split("**")), button: w.button, guidedButton: w.guidedButton, guidedNote: w.guidedNote };
 }

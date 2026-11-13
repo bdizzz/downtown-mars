@@ -12,14 +12,15 @@ import { ARC_STEPS, FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openS
 import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef, hasBulkhead } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
-import { FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
+import { cropStage, FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
 import { isMounted, itemDef } from "../view/furniture";
 import { onCorridorAt } from "../view/walk";
 import { DOOR, doorways, type Doorway } from "../view/doors";
 import { glazedWalls } from "../sim/windows";
 import { tubeAt } from "../view/gallery";
-import { finishMaterial, isSurfaceLook, withFloor, withFresnel, withGrime, withRefit, withRock, withSurface, type SurfaceLook } from "./surfaces";
+import { finishMaterial, isFlooringLook, isSurfaceLook, withFloor, withFlooring, withFresnel, withGrime, withRefit, withRock, withRoomFlooring, withSurface, type SurfaceLook } from "./surfaces";
 import { roomLook, type Finish } from "../view/roomFinish";
+import { flooringOf } from "../sim/materials";
 import { lampsOf, lightPools } from "./lights3d";
 import { withCondensation } from "./details3d";
 import { spotsOf, type RoomSpots } from "./people3d";
@@ -29,6 +30,7 @@ const SOCIAL = new Set(["housing", "public", "admin", "circulation"]);
 /** Rooms outside those categories where people gather: they sit about in them, not only work. */
 const SOCIAL_ROOMS = new Set(["galley", "canteen", "elder_care", "gym"]);
 import { centreOf, disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow, type HangTag } from "./furniture3d";
+import { fpModelFor, modelsKey } from "../view/models";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
 // no room faces it, plus props on the surface. Rebuilt whenever the layout
@@ -699,6 +701,8 @@ interface Stretch {
   prim: Prim;
   /** A wall stands here (not a side onto the room's own cells, nor a public room's open side). */
   wall: boolean;
+  /** No wall because a public room opens onto a corridor (or its gallery tube) here: the walls either side end at it. */
+  opens?: boolean;
   kind: WallKind;
   /** A radial step where a corridor starts or stops partway along a side. */
   step: boolean;
@@ -766,6 +770,31 @@ interface SolidCell {
   face: (key: string, floor: number) => Face;
 }
 
+/** How far behind its line a cap across a wall's end stands (m), so a rock face on the line wins. */
+const CAP_BACK = 0.01;
+
+/** Does corridor `id` stop at its end nearest `corner` (radius, angle), with no other corridor meeting it there? */
+function deadEnd(layout: Layout, id: string, [r, a]: [number, number]): boolean {
+  const hole = layout.hole;
+  const e = edgeById(hole, id);
+  if (!e) return false;
+  const ends = edgeVertices(hole, e);
+  const gap = ends.map((v) => {
+    const [, circle, f] = v.split("|");
+    const [p, q] = f!.split("/").map(Number);
+    const [rv, av] = [hole.shaftRadiusM + Number(circle) * RING_D, (p! / q!) * TAU];
+    return Math.hypot(rv * Math.cos(av) - r * Math.cos(a), rv * Math.sin(av) - r * Math.sin(a));
+  });
+  const v = ends[gap[0]! <= gap[1]! ? 0 : 1];
+  // Not at an end at all: partway along, where it runs on past the corner.
+  if (Math.min(...gap) > corridors.widthM) return false;
+  for (const other of Object.keys(layout.corridors ?? {})) {
+    const o = other === id ? null : edgeById(hole, other);
+    if (o && edgeVertices(hole, o).includes(v!)) return false;
+  }
+  return true;
+}
+
 /**
  * A cell's walls as solid slabs, WALL_T thick, centred on its edge lines (and
  * on a corridor's line where one runs). The cell's outline is offset into the
@@ -825,6 +854,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
     list.push({
       prim: { arc: true, r: p.rr0, s: 1 },
       wall: innerWall(p),
+      opens: c.ring === inner && (onGallery || (publicRoom && p.innerHall)),
       kind: kindOf(edgeAt(innerArcs, mid), p.innerHall),
       step: false,
       cut: { side: 1, across: (a) => fromFace(radially(p.rr0, -1)(a)), face: face(`${c.floor}:in:${p.rr0.toFixed(2)}`, c.floor) },
@@ -837,6 +867,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
   list.push({
     prim: { arc: false, theta: s1, d: base.openRight && base.hallRight ? -HALL : 0, s: -1 },
     wall: base.openRight && !(publicRoom && base.hallRight),
+    opens: base.openRight && publicRoom && base.hallRight,
     kind: kindOf(edgeById(hole, rightId) ?? undefined, base.hallRight),
     step: false,
     cut: { side: -1, across: fromFace(turning(cMid, s1 - (base.openRight && base.hallRight ? HALL / cMid : 0), 1)), face: newFace(c.floor) },
@@ -849,6 +880,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
     list.push({
       prim: { arc: true, r: p.rr1, s: -1 },
       wall: outerWall(p),
+      opens: c.ring === outer && publicRoom && p.outerHall,
       kind: kindOf(edgeAt(outerArcs, mid), p.outerHall),
       step: false,
       cut: { side: -1, across: (a) => fromFace(radially(p.rr1, 1)(a)), face: face(`${c.floor}:out:${p.rr1.toFixed(2)}`, c.floor) },
@@ -861,6 +893,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
   list.push({
     prim: { arc: false, theta: s0, d: base.openLeft && base.hallLeft ? HALL : 0, s: 1 },
     wall: base.openLeft && !(publicRoom && base.hallLeft),
+    opens: base.openLeft && publicRoom && base.hallLeft,
     kind: kindOf(edgeById(hole, leftId) ?? undefined, base.hallLeft),
     step: false,
     cut: { side: 1, across: fromFace(turning(cMid, s0 + (base.openLeft && base.hallLeft ? HALL / cMid : 0), -1)), face: newFace(c.floor) },
@@ -898,6 +931,38 @@ function solidWalls(pos: number[], s: SolidCell): void {
     const outerFace = (st.wall && OUTER[st.kind].face) || capOnly;
     // Onto a lined corridor, the outer face is the corridor's: in its lining.
     const outer = (st.kind === "hall" && hallFaces(layout, parts, st.hall)) || pos;
+    // A corridor's (or empty space's) wall stands half its thickness proud of its line. Where the wall
+    // beside it has no outer face (rock or a room across that one supplies it, on the line), close the
+    // step between the two at the corner, or a slit shows down it into the hollow behind (#340). Set a
+    // centimetre behind the line, so a rock face on it stands in front rather than flickering through.
+    // Where the corridor stops, its end is closed right across instead (`corridorEnds`).
+    // Where a public room opens onto a corridor beside it, the wall ends there: close its end, across its
+    // thickness, or from the corridor you see into it (between the halves of a wall shared with a neighbour).
+    if (st.wall) {
+      for (const [k, pi, po] of [[(i - 1 + list.length) % list.length, pIn, pOut], [j, qIn, qOut]] as const) {
+        if (!list[k]!.opens) continue;
+        const along = outsides[k]!;
+        if (along.arc) {
+          const [a0, a1] = sorted(pi[1], po[1]);
+          if (a1 - a0 > 1e-6) curvedFace(pos, along.r, a0, a1, floorBase, y1, follow);
+        } else if (Math.abs(pi[0] - po[0]) > 1e-6) sideWall(pos, ...pi, ...po, floorBase, y1, follow);
+      }
+    }
+    if (st.wall && OUTER[st.kind].d !== 0) {
+      for (const [k, end] of [[(i - 1 + list.length) % list.length, false], [j, true]] as const) {
+        const nb = list[k]!;
+        if (!nb.wall || OUTER[nb.kind].face) continue;
+        const along = shifted(outsides[k]!, -CAP_BACK);
+        const on = (p: Prim): [number, number] => (end ? meet(p, along) : meet(along, p));
+        const corner = on(pout);
+        if (st.kind === "hall" && st.hall && deadEnd(layout, st.hall, corner)) continue;
+        const far = on(st.prim);
+        if (along.arc) {
+          const [a0, a1] = sorted(corner[1], far[1]);
+          if (a1 - a0 > 1e-6) curvedFace(outer, along.r, a0, a1, floorBase, y1, follow);
+        } else if (Math.abs(corner[0] - far[0]) > 1e-6) sideWall(outer, ...corner, ...far, floorBase, y1, follow);
+      }
+    }
     if (pin.arc && pout.arc) {
       const rangeIn = sorted(pIn[1], qIn[1]);
       const rangeOut = sorted(pOut[1], qOut[1]);
@@ -1190,6 +1255,20 @@ export function rockFaces(layout: Layout, topFloor: number | null, halls?: Openi
           if (p.innerHall) curvedFace(onto(arcAt(ring - 1, mid)), p.rr0, ...pieceAt(cut, p, p.rr0), y0, y1, { side: -1 });
           if (p.outerHall) curvedFace(onto(arcAt(ring, mid)), p.rr1, ...pieceAt(cut, p, p.rr1), y0, y1, { side: 1 });
         }
+        // Steps where a corridor starts or stops partway along (a joint's notch, say): a face across, toward
+        // the piece cut back further, or a slit shows up the corner into the hollow rock (#340).
+        cut.pieces.forEach((q, k) => {
+          const p = cut.pieces[k - 1];
+          if (!p) return;
+          if (Math.abs(p.rr0 - q.rr0) > 1e-9) {
+            const hall = q.rr0 > p.rr0 ? q : p;
+            sideWall(onto(arcAt(ring - 1, (hall.b0 + hall.b1) / 2)), Math.min(p.rr0, q.rr0), q.b0, Math.max(p.rr0, q.rr0), q.b0, y0, y1, { side: hall === q ? 1 : -1 });
+          }
+          if (Math.abs(p.rr1 - q.rr1) > 1e-9) {
+            const hall = q.rr1 < p.rr1 ? q : p;
+            sideWall(onto(arcAt(ring, (hall.b0 + hall.b1) / 2)), Math.min(p.rr1, q.rr1), q.b0, Math.max(p.rr1, q.rr1), q.b0, y0, y1, { side: hall === q ? 1 : -1 });
+          }
+        });
         const first = cut.pieces[0];
         const last = cut.pieces.at(-1);
         if (cut.hallLeft && first) sideWall(onto(`R${floor}.${ring}.${slot}`), first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y1, { side: -1 });
@@ -1223,7 +1302,60 @@ export function rockFaces(layout: Layout, topFloor: number | null, halls?: Openi
       }
     });
   }
+  corridorEnds(layout, topFloor, (id) => hallFaces(layout, halls, id) ?? pos);
   return pos;
+}
+
+/**
+ * Where a corridor stops with no other meeting it, a face across its end, so
+ * nothing shows past it into the hollow rock (#340): a room beside it walls
+ * only its own side, and rock faces stand only where rock meets dug-out space.
+ * Only where what's beyond is rock or a room (dug-out space beyond is open to
+ * the corridor), and a centimetre into it, so a face already on the line
+ * (rock's, onto a room beside) stands in front rather than flickering through.
+ */
+function corridorEnds(layout: Layout, topFloor: number | null, onto: (id: string) => number[]): void {
+  const hole = layout.hole;
+  const meeting = new Map<string, number>();
+  const ends: [string, Edge][] = [];
+  for (const id of Object.keys(layout.corridors ?? {})) {
+    const e = edgeById(hole, id);
+    if (!e) continue;
+    for (const v of edgeVertices(hole, e)) meeting.set(v, (meeting.get(v) ?? 0) + 1);
+    if (!isGalleryEdge(e) && e.floor <= hole.floors && (topFloor === null || e.floor >= topFloor)) ends.push([id, e]);
+  }
+  const shut = (floor: number, ring: number, a: number) => {
+    if (ring < 1 || ring > hole.unlockedRings) return true;
+    const n = hole.ringSlots[ring - 1]!;
+    const c = { floor, ring, slot: (((Math.floor((a / TAU) * n) % n) + n) % n) };
+    return !!layout.grid[floor - 1]?.[ring - 1]?.[c.slot] || !isOpen(layout, c);
+  };
+  const NUDGE = 1e-4;
+  for (const [id, e] of ends) {
+    const [y0, y1] = floorSpan(e.floor);
+    const [v0, v1] = edgeVertices(hole, e);
+    for (const [v, far] of [[v0, -1], [v1, 1]] as const) {
+      const [, circle] = v.split("|").map(Number);
+      // Onto the shaft (a gallery's, or open to it), or met by another corridor: nothing to close.
+      if (circle === 0 || meeting.get(v) !== 1) continue;
+      const rc = hole.shaftRadiusM + circle! * RING_D;
+      if (e.kind === "radial") {
+        // Out past the circle it stops at (far +1) or in.
+        const a = (e.index / hole.ringSlots[e.ring - 1]!) * TAU;
+        const ring = far === 1 ? e.ring + 1 : e.ring - 1;
+        const half = HALL / rc;
+        if (!shut(e.floor, ring, a - half + NUDGE) || !shut(e.floor, ring, a + half - NUDGE)) continue;
+        curvedFace(onto(id), rc + far * CAP_BACK, a - half, a + half, y0, y1, { side: -far as 1 | -1 });
+      } else {
+        // On round past the line it stops at (far +1, toward larger angles) or back.
+        const a = (far === 1 ? e.a1 : e.a0) * TAU;
+        const past = a + (far * NUDGE) / rc;
+        if (!shut(e.floor, e.circle, past) || !shut(e.floor, e.circle + 1, past)) continue;
+        const at = a + (far * CAP_BACK) / rc;
+        sideWall(onto(id), rc - HALL, at, rc + HALL, at, y0, y1, { side: -far as 1 | -1 });
+      }
+    }
+  }
 }
 
 /**
@@ -1285,12 +1417,15 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
   const def = roomDef(room.type);
   g.userData.people = { roomId: room.id, spots: spotsOf(fitted), accent, social: SOCIAL.has(def.category) || SOCIAL_ROOMS.has(room.type) } satisfies RoomSpots;
   // Its lamps: pooled on the floor always, and for the stage to light the nearest.
-  const lamps = lampsOf(fitted);
+  const lamps = lampsOf(fitted).map((l) => ({ ...l, room: room.id }));
   g.userData.lamps = lamps;
   const pools = lightPools(lamps);
   if (pools) g.add(pools);
-  // Far away: coarser copies of both, made when first needed.
-  g.userData.far = () => [...furnitureMeshes(standing, accent, undefined, "far").children, ...(hungAs ? furnitureMeshes(hanging, accent, hungAs, "far").children : [])];
+  // Far away: coarser copies of both, made when first needed; in first person, close up, Blender-made models where items have them (#360).
+  const copy = (detail: "far" | "fp") => () => [...furnitureMeshes(standing, accent, undefined, detail).children, ...(hungAs ? furnitureMeshes(hanging, accent, hungAs, detail).children : [])];
+  g.userData.far = copy("far");
+  g.userData.fp = copy("fp");
+  g.userData.hasFp = () => fitted.some((f) => fpModelFor(f.item));
   return g;
 }
 
@@ -1373,7 +1508,7 @@ function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, col
   // Stairs and elevators are furnished on several floors: above a chosen floor, theirs go too.
   // A farm's crop changes what grows in its planters.
   // Each room varies its template its own way (furnish.ts), so its id is part of the key.
-  const key = `furniture:${room.id}:${shapeKey}:${topFloor ?? "all"}:${room.crop ?? ""}`;
+  const key = `furniture:${room.id}:${shapeKey}:${topFloor ?? "all"}:${room.crop ?? ""}:${roomDef(room.type).growsCrops ? cropStage(room) : ""}:${modelsKey()}`;
   let g = furnitureCache.get(key);
   if (!g) {
     const fitted = furnish(layout, room).filter((f) => topFloor === null || f.floor >= topFloor);
@@ -1614,47 +1749,130 @@ export function loweredAt(hit: THREE.Intersection, cam: THREE.Vector3): boolean 
   return hit.point.y > y0 + (y1 - y0) * WALLS_DOWN.stub + 1e-3;
 }
 
+/** Outline creases: where the faces either side of a line turn by more than this. */
+const CREASE = Math.cos((30 * Math.PI) / 180);
+/** How close a corner must be to a line to split it (m), and the grid it's looked up on. */
+const ON_LINE = 2e-3;
+const CORNER_GRID = 1;
+
 /**
- * A room's outline, with each segment knowing the walls it borders, so the
- * outline drops with them. Segments are matched to the triangles they came from.
+ * A room's outline: its creases and open edges, with each segment knowing the
+ * walls it borders, so the outline drops with them. Where a window or door
+ * splits a wall into pieces, the pieces beside it don't share the split's
+ * corners (a T-junction), so every triangle side is first split at any corner
+ * lying along it; otherwise the seam reads as an open edge and draws a dark
+ * line down a flat wall (#336).
  */
 export function outlineGeometry(geo: THREE.BufferGeometry): THREE.EdgesGeometry {
-  const edges = new THREE.EdgesGeometry(geo, 30);
+  const edges = new THREE.EdgesGeometry();
   const pos = geo.getAttribute("position");
   const walls = geo.getAttribute("aWall");
   const faceAt = geo.getAttribute("aFace");
-  if (!walls) return edges;
-  const key = (x: number, y: number, z: number) => `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
-  const vkey = (i: number) => key(pos.getX(i), pos.getY(i), pos.getZ(i));
-  const pair = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
-  // Every triangle side on a wall: the walls it belongs to.
-  const bySide = new Map<string, number[][]>();
-  for (let t = 0; t < pos.count; t += 3) {
-    if (walls.getX(t) === 0 && walls.getY(t) === 0) continue;
-    const w = [walls.getX(t), walls.getY(t), walls.getZ(t), walls.getW(t), faceAt?.getX(t) ?? 0, faceAt?.getY(t) ?? 0, faceAt?.getZ(t) ?? 0];
-    const k = [vkey(t), vkey(t + 1), vkey(t + 2)];
-    for (const [a, b] of [[0, 1], [1, 2], [2, 0]] as const) {
-      const id = pair(k[a]!, k[b]!);
-      const list = bySide.get(id) ?? [];
-      // One entry per wall face: its pieces all agree.
-      if (!list.some((x) => x[0] === w[0] && x[1] === w[1] && x[4] === w[4] && x[5] === w[5] && x[6] === w[6])) list.push(w);
-      bySide.set(id, list);
+  // Corners, welded where they're within a couple of millimetres (pieces cut at the same line
+  // don't always land on exactly the same float, and −0 must meet 0 where a ring closes).
+  const xyz: number[] = [];
+  const cell = (v: number) => Math.floor(v / CORNER_GRID);
+  const hash = (x: number, y: number, z: number) => (x * 73856093) ^ (y * 19349663) ^ (z * 83492791);
+  const grid = new Map<number, number[]>();
+  /** Every corner in the cells from (x0, y0, z0) to (x1, y1, z1), metres, padded by the welding distance. */
+  const near = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, visit: (id: number) => void) => {
+    for (let x = cell(Math.min(x0, x1) - ON_LINE); x <= cell(Math.max(x0, x1) + ON_LINE); x++)
+      for (let y = cell(Math.min(y0, y1) - ON_LINE); y <= cell(Math.max(y0, y1) + ON_LINE); y++)
+        for (let z = cell(Math.min(z0, z1) - ON_LINE); z <= cell(Math.max(z0, z1) + ON_LINE); z++) for (const id of grid.get(hash(x, y, z)) ?? []) visit(id);
+  };
+  const exact = new Map<string, number>();
+  const corner = (i: number): number => {
+    const [x, y, z] = [pos.getX(i), pos.getY(i), pos.getZ(i)];
+    const k = `${x},${y},${z}`;
+    let found = exact.get(k) ?? -1;
+    if (found < 0)
+      near(x, y, z, x, y, z, (id) => {
+        if (found < 0 && (xyz[3 * id]! - x) ** 2 + (xyz[3 * id + 1]! - y) ** 2 + (xyz[3 * id + 2]! - z) ** 2 < ON_LINE * ON_LINE) found = id;
+      });
+    if (found < 0) {
+      found = xyz.length / 3;
+      xyz.push(x, y, z);
+      const h = hash(cell(x), cell(y), cell(z));
+      const list = grid.get(h) ?? [];
+      list.push(found);
+      grid.set(h, list);
     }
+    exact.set(k, found);
+    return found;
+  };
+  const tris: { k: [number, number, number]; n: THREE.Vector3; t: number }[] = [];
+  const tri = new THREE.Triangle();
+  const v = (id: number, out: THREE.Vector3) => out.set(xyz[3 * id]!, xyz[3 * id + 1]!, xyz[3 * id + 2]!);
+  for (let t = 0; t < pos.count; t += 3) {
+    const k: [number, number, number] = [corner(t), corner(t + 1), corner(t + 2)];
+    if (k[0] === k[1] || k[1] === k[2] || k[2] === k[0]) continue;
+    v(k[0], tri.a), v(k[1], tri.b), v(k[2], tri.c);
+    tris.push({ k, n: tri.getNormal(new THREE.Vector3()), t });
   }
-  const ep = edges.getAttribute("position");
+  // Every triangle side (each once), split at the corners along it.
+  const splits = new Map<string, number[]>();
+  const along = (a: number, b: number): number[] => {
+    const id = `${a}|${b}`;
+    let stops = splits.get(id);
+    if (stops) return stops;
+    const [ax, ay, az] = [xyz[3 * a]!, xyz[3 * a + 1]!, xyz[3 * a + 2]!];
+    const [dx, dy, dz] = [xyz[3 * b]! - ax, xyz[3 * b + 1]! - ay, xyz[3 * b + 2]! - az];
+    const len2 = dx * dx + dy * dy + dz * dz;
+    const on: [number, number][] = [];
+    near(ax, ay, az, ax + dx, ay + dy, az + dz, (c) => {
+      if (c === a || c === b) return;
+      const [px, py, pz] = [xyz[3 * c]! - ax, xyz[3 * c + 1]! - ay, xyz[3 * c + 2]! - az];
+      const u = (px * dx + py * dy + pz * dz) / len2;
+      if (u <= 0 || u >= 1) return;
+      if ((px - u * dx) ** 2 + (py - u * dy) ** 2 + (pz - u * dz) ** 2 < ON_LINE * ON_LINE) on.push([u, c]);
+    });
+    stops = [a, ...on.sort((p, q) => p[0] - q[0]).map(([, c]) => c), b];
+    splits.set(id, stops);
+    return stops;
+  };
+  // Each piece of a side, by the triangles on it.
+  const pieces = new Map<string, { a: number; b: number; tris: number[] }>();
+  tris.forEach(({ k }, ti) => {
+    for (const [p0, p1] of [[k[0], k[1]], [k[1], k[2]], [k[2], k[0]]] as const) {
+      const stops = p0 < p1 ? along(p0, p1) : along(p1, p0);
+      for (let i = 0; i + 1 < stops.length; i++) {
+        const [p, q] = stops[i]! < stops[i + 1]! ? [stops[i]!, stops[i + 1]!] : [stops[i + 1]!, stops[i]!];
+        const id = `${p}|${q}`;
+        const piece = pieces.get(id) ?? { a: p, b: q, tris: [] };
+        piece.tris.push(ti);
+        pieces.set(id, piece);
+      }
+    }
+  });
+  const wallOf = (t: number) =>
+    walls && !(walls.getX(t) === 0 && walls.getY(t) === 0)
+      ? [walls.getX(t), walls.getY(t), walls.getZ(t), walls.getW(t), faceAt?.getX(t) ?? 0, faceAt?.getY(t) ?? 0, faceAt?.getZ(t) ?? 0]
+      : null;
   const kept: number[] = [];
   const a1: number[] = [];
   const a2: number[] = [];
   const f1: number[] = [];
   const f2: number[] = [];
-  for (let i = 0; i < ep.count; i += 2) {
-    const id = pair(key(ep.getX(i), ep.getY(i), ep.getZ(i)), key(ep.getX(i + 1), ep.getY(i + 1), ep.getZ(i + 1)));
-    const [w1, w2] = bySide.get(id) ?? [];
+  for (const { a, b, tris: on } of pieces.values()) {
+    // A line where the surface turns, or an open edge; not a seam across a flat face.
+    const n0 = tris[on[0]!]!.n;
+    if (on.length > 1 && on.every((ti) => tris[ti]!.n.dot(n0) > CREASE)) continue;
+    if (!walls) {
+      kept.push(...xyz.slice(3 * a, 3 * a + 3), ...xyz.slice(3 * b, 3 * b + 3));
+      continue;
+    }
+    // The walls it borders, one entry per wall face: its pieces all agree.
+    const list: number[][] = [];
+    for (const ti of on) {
+      const w = wallOf(tris[ti]!.t);
+      if (w && !list.some((x) => x[0] === w[0] && x[1] === w[1] && x[4] === w[4] && x[5] === w[5] && x[6] === w[6])) list.push(w);
+    }
+    const [w1, w2] = list;
     // Only the lines a wall makes (its top, its corners, where it meets the floor). The floor's own rim runs a
     // hairline past the walls, and would otherwise hang in the air at the top of a lowered wall on the floor below.
     if (!w1) continue;
-    for (let j = 0; j < 2; j++) {
-      kept.push(ep.getX(i + j), ep.getY(i + j), ep.getZ(i + j));
+    for (const c of [a, b]) {
+      kept.push(...xyz.slice(3 * c, 3 * c + 3));
       a1.push(...w1.slice(0, 4));
       a2.push(w2?.[0] ?? 0, w2?.[1] ?? 0);
       f1.push(...w1.slice(4));
@@ -1662,6 +1880,7 @@ export function outlineGeometry(geo: THREE.BufferGeometry): THREE.EdgesGeometry 
     }
   }
   edges.setAttribute("position", new THREE.Float32BufferAttribute(kept, 3));
+  if (!walls) return edges;
   edges.setAttribute("aWall", new THREE.Float32BufferAttribute(a1, 4));
   edges.setAttribute("aWall2", new THREE.Float32BufferAttribute(a2, 2));
   edges.setAttribute("aFace", new THREE.Float32BufferAttribute(f1, 3));
@@ -1695,15 +1914,19 @@ export function disposeRoomMaterials(): void {
   disposeFurnitureMaterials();
 }
 
-/** A room's walls and floor in the material it's built from, with walls down (and the refit band while it's being refitted). */
-function finishWallMaterial(finish: Finish, grime = 0, refit = false): THREE.Material {
-  return wallMaterial(`finish:${finish}:${grime}${refit ? ":refit" : ""}`, () => {
-    const m = withGrime(finishMaterial(finish), grime);
+/**
+ * A room's walls and floor in the material it's built from, with walls down (and the refit band while it's
+ * being refitted). A floor upgrade (T-037) lays its own floor over it. Names end `:<flooring>` when there's one.
+ */
+function finishWallMaterial(finish: Finish, grime = 0, refit = false, flooring?: string): THREE.Material {
+  const own = isFlooringLook(flooring) ? flooring : null;
+  return wallMaterial(`finish:${finish}:${grime}${refit ? ":refit" : ""}${own ? `:${own}` : ""}`, () => {
+    const m = withGrime(own ? withFlooring(finishMaterial(finish), own, 0) : finishMaterial(finish), grime);
     return refit ? withRefit(m) : m;
   });
 }
 
-function roomMaterial(color: number, planned: boolean, building = false, floor: Finish = "rock", grime = 0, refit = false): THREE.Material {
+function roomMaterial(color: number, planned: boolean, building = false, floor: Finish = "rock", grime = 0, refit = false, flooring?: string): THREE.Material {
   // Under construction: the room's colour through semi-opaque diagonal stripes.
   if (building) {
     return wallMaterial(`building:${color}`, () =>
@@ -1720,8 +1943,11 @@ function roomMaterial(color: number, planned: boolean, building = false, floor: 
         side: THREE.DoubleSide,
       }),
     );
-  return wallMaterial(`room:${color}:false:${floor}:${grime}${refit ? ":refit" : ""}`, () => {
-    const m = withGrime(withFloor(new THREE.MeshStandardMaterial({ color, roughness: 0.75, side: THREE.DoubleSide }), floor), grime);
+  // A floor upgrade instead of the walls' material underfoot, tinted the same.
+  const own = isFlooringLook(flooring) ? flooring : null;
+  return wallMaterial(`room:${color}:false:${floor}:${grime}${refit ? ":refit" : ""}${own ? `:${own}` : ""}`, () => {
+    const base = new THREE.MeshStandardMaterial({ color, roughness: 0.75, side: THREE.DoubleSide });
+    const m = withGrime(own ? withRoomFlooring(base, own) : withFloor(base, floor), grime);
     return refit ? withRefit(m) : m;
   });
 }
@@ -1734,8 +1960,8 @@ export function statusBadge(icon: string): THREE.Sprite {
   return sprite;
 }
 
-/** Outlines for rooms in trouble: amber when slowed (staff, morale, the weather), red when short of what they run on, grey when paused. */
-const TROUBLE_EDGE = { warn: 0xf0a030, bad: 0xe0503a, idle: 0x9a9a9a } as const;
+/** Rooms in trouble, in colour (as tints over their walls, or with room tints off as outlines): amber when slowed (staff, morale, the weather), red when short of what they run on, grey when paused. */
+export const TROUBLE_EDGE = { warn: 0xf0a030, bad: 0xe0503a, idle: 0x9a9a9a } as const;
 const troubleEdges = new Map<string, THREE.LineBasicMaterial>();
 export function troubleEdgeMaterial(level: keyof typeof TROUBLE_EDGE): THREE.LineBasicMaterial {
   let m = troubleEdges.get(level);
@@ -1954,6 +2180,10 @@ export function buildLayout(
   if (seals.length) group.add(...seals);
   const empty = emptySpace(layout, topFloor);
   if (empty.length) group.add(...empty);
+  const plates = floorPlates(layout, topFloor, colors.rock);
+  if (plates.length) group.add(...plates);
+  const over = ceilings(layout, topFloor, colors.rock);
+  if (over.length) group.add(...over);
 
   for (const whole of layout.rooms) {
     // Above the chosen floor there's nothing; tall rooms keep only the part at or below it.
@@ -1998,7 +2228,8 @@ export function buildLayout(
     const finish = roomLook(whole);
     const grime = grimeOf(whole);
     const refit = !room.planned && !room.building && refitting(whole);
-    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(finish, grime, refit) : roomMaterial(color, room.planned, !!room.building, finish, grime, refit));
+    const flooring = flooringOf(whole)?.id;
+    const mesh = new THREE.Mesh(shape.geo, shown ? finishWallMaterial(finish, grime, refit, flooring) : roomMaterial(color, room.planned, !!room.building, finish, grime, refit, flooring));
     mesh.userData = { pickable: true, roomId: room.id, cached: true };
     group.add(mesh);
     // Its walls' tops: bare rock once it's built, whatever it's made of or coloured (a plan keeps the room's look).
@@ -2104,6 +2335,88 @@ function emptySpace(layout: Layout, topFloor: number | null): THREE.Object3D[] {
   floorMesh.userData = { pickable: true, empty: true };
   const pillarMesh = new THREE.Mesh(geometry(pillars), material("pillar", () => new THREE.MeshStandardMaterial({ color: PILLAR.color, roughness: 0.9 })));
   return [floorMesh, pillarMesh];
+}
+
+/** How far under a floor its plate lies (metres): enough to stay clear of the floors on it at a distance. */
+const PLATE_DROP = 0.04;
+
+/**
+ * The slab over `floor`'s cells at height y, cut away where a room runs on up
+ * through it (to the floor above, or for floor 1, to the surface) and at stair
+ * wells. Its pieces face down, as floors do.
+ */
+function slabOver(layout: Layout, floor: number, y: number, pos: number[]): void {
+  const hole = layout.hole;
+  const key = (ring: number, slot: number) => `${ring}.${slot}`;
+  const through = new Set<string>();
+  const wells: FloorHole[] = [];
+  for (const room of layout.rooms) {
+    if (room.at.kind === "surface" || !room.cells.some((c) => c.floor === floor)) continue;
+    const def = roomDef(room.type);
+    if (def.stacks) {
+      wells.push(...stairWells(layout, room).filter((w) => w.floor === floor - 1));
+      continue;
+    }
+    const above = new Set(room.cells.filter((c) => c.floor === floor - 1).map((c) => key(c.ring, c.slot)));
+    // On floor 1, what reaches the surface (airlocks, cargo lifts) stays open to it.
+    const surface = floor === 1 && (!!def.cargoShaft || !!def.surfaceLink);
+    for (const c of room.cells) if (c.floor === floor && (surface || above.has(key(c.ring, c.slot)))) through.add(key(c.ring, c.slot));
+  }
+  for (let ring = 1; ring <= hole.unlockedRings; ring++) {
+    const n = hole.ringSlots[ring - 1]!;
+    const [r0, r1] = ringRadii(hole, ring);
+    for (let slot = 0; slot < n; slot++) {
+      if (through.has(key(ring, slot))) continue;
+      const [a0, a1] = slotAngles(slot, n);
+      const inCell = wells.filter((w) => w.r0 < r1 && w.r1 > r0 && angleOverlap(w.a0, w.a1, a0, a1));
+      // A piece takes one well; with more in one cell, leave it open rather than cover one.
+      if (inCell.length > 1) continue;
+      floorPiece(pos, r0, r1, [a0, a1], [a0, a1], y, inCell[0]);
+    }
+  }
+}
+
+/**
+ * Under every floor, a plate of rock just below what's laid on it, so a
+ * hairline seam where two floors meet (a room's and a corridor's, two rings')
+ * shows rock rather than the floor below (#262). It runs from the shaft wall to
+ * the last ring, cut away where a room runs through to the floor below and at
+ * stair wells. Only its top is drawn: from below, ceilings are as they were.
+ */
+export function floorPlates(layout: Layout, topFloor: number | null, rockColor: number): THREE.Object3D[] {
+  const pos: number[] = [];
+  // The plate under a floor is the slab over the one below it.
+  for (let floor = topFloor ?? 1; floor <= layout.hole.floors; floor++) slabOver(layout, floor + 1, floorSpan(floor)[0] - PLATE_DROP, pos);
+  if (!pos.length) return [];
+  // Floor pieces face down (see `flatPiece`): turn each triangle over, so the plate faces up.
+  for (let i = 0; i < pos.length; i += 9) for (let k = 0; k < 3; k++) [pos[i + 3 + k], pos[i + 6 + k]] = [pos[i + 6 + k]!, pos[i + 3 + k]!];
+  const plate = new THREE.Mesh(geometry(pos), material(`plate:${rockColor}`, () => new THREE.MeshStandardMaterial({ color: rockColor, roughness: 0.95 })));
+  plate.userData = { plate: true };
+  return [plate];
+}
+
+/**
+ * Ceilings, for first person only (#340): rooms and corridors have none, so the
+ * overhead camera can see in, and walking you'd look up at the sky (floor 1) or
+ * the dark where rock would be. So each floor gets a rock ceiling facing down,
+ * just under the floor above (back to back with its plate) or the crust, open
+ * where a room runs on up and at stair wells. The stage shows it only while
+ * walking (`userData.ceiling`); from above, its back face isn't drawn anyway.
+ */
+export function ceilings(layout: Layout, topFloor: number | null, rockColor: number): THREE.Object3D[] {
+  const pos: number[] = [];
+  for (let floor = topFloor ?? 1; floor <= layout.hole.floors; floor++) slabOver(layout, floor, floorSpan(floor)[1] - PLATE_DROP, pos);
+  if (!pos.length) return [];
+  const ceiling = new THREE.Mesh(geometry(pos), material(`ceiling:${rockColor}`, () => withRock(new THREE.MeshStandardMaterial({ color: rockColor, roughness: 0.95 }))));
+  ceiling.userData = { ceiling: true };
+  ceiling.visible = false;
+  return [ceiling];
+}
+
+/** Do two spans of angle overlap, either way round the circle? */
+function angleOverlap(a0: number, a1: number, b0: number, b1: number): boolean {
+  const shift = Math.round(((b0 + b1) / 2 - (a0 + a1) / 2) / TAU) * TAU;
+  return a0 + shift < b1 && a1 + shift > b0;
 }
 
 /** Where a ring room meets the rim, above its floor-1 cells: the angle, and just outside the shaft's edge. */

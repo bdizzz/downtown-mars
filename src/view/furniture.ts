@@ -73,7 +73,7 @@ export function isFurnished(roomType: string): boolean {
 }
 
 /** A part's colour as a hex string: its named colour, or the room's accent. */
-export function partColor(part: Part, accent: string): string {
+export function partColor(part: Pick<Part, "c">, accent: string): string {
   return part.c === "accent" ? accent : (furniture.colors[part.c] ?? "#ff00ff");
 }
 

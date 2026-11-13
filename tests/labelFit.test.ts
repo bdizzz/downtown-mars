@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import type { Cell } from "../src/sim/placement";
-import { ringRadii, slotAngles, TAU } from "../src/render3d/cylinder";
+import { ringRadii, slotAngles, TAU, WALL_T } from "../src/render3d/cylinder";
 import { badgeAbove, BADGE_M, fitLabel, labelSpot, labelY, LINE_M, roughMeasure } from "../src/view/labelFit";
 
 const hole = createHole(10, 3, 3, config.geometry);
 /** As rooms3d: half a corridor and half a wall in from each edge line. */
-const WALL_IN = 1.5 + 0.125;
+const WALL_IN = 1.5 + WALL_T / 2;
 
 /** Is (x, y, z) inside the room of these cells (one floor, one ring), at least `inset` from every wall? */
 function inside(cells: Cell[], x: number, z: number, inset: number): boolean {

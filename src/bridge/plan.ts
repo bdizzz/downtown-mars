@@ -134,7 +134,7 @@ export function planFieldKey(state: SimState, floor: number, v: FieldView, effec
 
 export function planFieldMessage(state: SimState, floor: number, v: FieldView): PlanFieldMessage {
   const g = new GraphicsContext();
-  drawField(g, state.layout, floor, { overlay: v.overlay, field: state.effects.field, happiness: state.happiness, heat: v.colorBlind ? HEAT.colorBlind : HEAT.normal, selected: v.selected, spot: v.spot });
+  drawField(g, state.layout, floor, { overlay: v.overlay, field: state.effects.field, happiness: state.happiness, heat: v.colorBlind ? HEAT.colorBlind : HEAT.normal, selected: v.selected, spot: v.spot, temps: state.temperature?.floors.map((now, i) => ({ floor: i + 1, now })) });
   const ops = record(g);
   g.destroy();
   const progress = progressLabels(state.layout, floor, queueView(state).jobs).map((p) => ({ x: r2(p.x), y: r2(p.y), text: p.text }));

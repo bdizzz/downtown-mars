@@ -7,6 +7,7 @@ import { stepRoutes } from "./rovers";
 import { loadFactor, noteDelivery, stepCulture } from "./culture";
 import { stepArrivals, stepMigration } from "./migration";
 import { step } from "./step";
+import { trackNetworkMilestones } from "./milestones";
 import { totalPopulation, type World } from "./world";
 
 /**
@@ -28,6 +29,7 @@ export function stepWorld(world: World, cfg: SimConfig): void {
     (from, to, res, n) => noteDelivery(world, from, to, res, n),
   );
   stepArrivals(world, cfg);
+  trackNetworkMilestones(world.holes, cfg);
   if (world.tick % cfg.ticksPerDay === 0) {
     stepCulture(world, cfg);
     stepMigration(world, cfg);

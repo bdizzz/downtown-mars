@@ -15,14 +15,16 @@ interface Props {
   onPreview: (floor: number | null | undefined) => void;
   /** The floor being previewed, if any. */
   preview: number | null | undefined;
+  /** Tutorial highlight: "hud:floors" pulses F1, for the guided tutorial to have you pick it. */
+  highlight?: string | null;
 }
 
-export function FloorPicker({ floors, floor, allowAll, onPick, onPreview, preview }: Props) {
+export function FloorPicker({ floors, floor, allowAll, onPick, onPreview, preview, highlight }: Props) {
   const list = Array.from({ length: floors }, (_, i) => i + 1);
   const button = (f: number | null, label: string, title: string) => (
     <button
       key={f ?? "all"}
-      className={`${floor === f ? "on" : ""}${preview === f && floor !== f ? " preview" : ""}`}
+      className={`${floor === f ? "on" : ""}${preview === f && floor !== f ? " preview" : ""}${highlight === "hud:floors" && f === 1 ? " pulse" : ""}`}
       onMouseEnter={() => onPreview(f)}
       onClick={() => {
         onPick(f);
@@ -34,7 +36,7 @@ export function FloorPicker({ floors, floor, allowAll, onPick, onPreview, previe
     </button>
   );
   return (
-    <div className="floor-picker" role="group" aria-label="Floor" onMouseLeave={() => onPreview(undefined)}>
+    <div className="floor-picker" data-hud="floors" data-anchor="side" role="group" aria-label="Floor" onMouseLeave={() => onPreview(undefined)}>
       {allowAll && button(null, "Surface", "The surface and every floor")}
       {list.map((f) => button(f, `F${f}`, `Floor ${f} (↑ ↓ or Page Up / Page Down)`))}
     </div>

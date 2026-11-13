@@ -20,6 +20,8 @@ export interface Lamp {
   color: string;
   reach: number;
   strength: number;
+  /** The room it lights, so a room's lights switch mode together (#305); none outside a room. */
+  room?: number;
 }
 
 const POOL = {
@@ -90,7 +92,9 @@ export function lightPools(lamps: Lamp[]): THREE.Mesh | null {
   const uv: number[] = [];
   const col: number[] = [];
   const c = new THREE.Color();
-  for (const l of lamps) {
+  // Which lamp each pool is, so setPoolLevels can dim it.
+  const of: number[] = [];
+  for (const [li, l] of lamps.entries()) {
     const floorY = floorSpan(l.floor)[0] + POOL.lift;
     const above = l.y - floorY;
     // A lamp high up spreads its light thinner.
@@ -98,6 +102,7 @@ export function lightPools(lamps: Lamp[]): THREE.Mesh | null {
     if (k <= 0) continue;
     const r = l.reach * POOL.size;
     c.set(l.color).multiplyScalar(k);
+    of.push(li);
     const corners: [number, number, number, number][] = [
       [-r, -r, 0, 0],
       [r, -r, 1, 0],
@@ -118,8 +123,23 @@ export function lightPools(lamps: Lamp[]): THREE.Mesh | null {
   geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
   const mesh = new THREE.Mesh(geo, material());
   mesh.userData.pool = true;
+  mesh.userData.poolOf = of;
+  mesh.userData.poolColors = Float32Array.from(col);
   mesh.renderOrder = 1;
   return mesh;
+}
+
+/** Brighten or dim each lamp's pool: `level(i)` for the i-th lamp it was made from (1 as made, 0 out). */
+export function setPoolLevels(mesh: THREE.Mesh, level: (lamp: number) => number): void {
+  const of = mesh.userData.poolOf as number[];
+  const base = mesh.userData.poolColors as Float32Array;
+  const attr = mesh.geometry.getAttribute("color") as THREE.BufferAttribute;
+  const out = attr.array as Float32Array;
+  of.forEach((li, q) => {
+    const k = level(li);
+    for (let i = q * 18; i < q * 18 + 18; i++) out[i] = base[i]! * k;
+  });
+  attr.needsUpdate = true;
 }
 
 /**

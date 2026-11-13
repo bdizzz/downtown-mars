@@ -1,3 +1,5 @@
+import { cropMakes, farmCrop, migrateFood } from "./food";
+import { roomSpec } from "./economy";
 import { setRoomWindows, shaftBorders } from "./windows";
 import { refreshEffects } from "./effects";
 import { createLedger } from "./ledger";
@@ -20,7 +22,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 23;
+export const SAVE_VERSION = 24;
 
 type Raw = Record<string, unknown>;
 
@@ -213,8 +215,21 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       return { ...h, layout };
     }),
   }),
-  // v23: every ring room has an angle range in notches alongside its slots (F-004, T-039).
+  // v23: crops grow in harvest cycles, and food is kept by type (#375). Farms start halfway through
+  // a cycle; the raw food in store is split across the crops grown.
   22: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const hole = { ...h } as unknown as SimState;
+      migrateFood(hole, (room) => {
+        const crop = farmCrop(room);
+        return crop ? (roomSpec(room, config).makes[cropMakes(crop)] ?? 0) : 0;
+      });
+      return hole as unknown as Raw;
+    }),
+  }),
+  // v24: every ring room has an angle range in notches alongside its slots (F-004, T-039).
+  23: (s) => ({
     ...s,
     holes: (s.holes as Raw[]).map((h) => {
       const layout = h.layout as Layout;

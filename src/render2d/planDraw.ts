@@ -1,3 +1,4 @@
+import { temperatureTint } from "../view/temperature";
 import type { FillInput, GraphicsContext } from "pixi.js";
 import { config } from "../sim/config";
 import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
@@ -410,7 +411,7 @@ export const FIELD_MAX = 3;
 export const FIELD_ALPHA = 0.7;
 
 export interface FieldOptions {
-  /** noise, smell, health, comfort, airQuality, happiness or condition; null for none. */
+  /** noise, smell, health, comfort, airQuality, happiness, condition or temperature; null for none. */
   overlay: string | null;
   field: EffectField | null;
   happiness: Happiness | null;
@@ -420,6 +421,8 @@ export interface FieldOptions {
   selected: number | null;
   /** With no overlay on and no reach to show, what Show me points at (the "Why?" panel). */
   spot?: Spot | null;
+  /** Each floor's temperature, °C, for the temperature overlay. */
+  temps?: { floor: number; now: number }[];
 }
 
 /** The overlay on a floor, each cell tinted: an effect field, the homes' happiness, rooms' condition, or a service's reach. */
@@ -440,6 +443,16 @@ export function drawField(g: GraphicsContext, layout: Layout, floor: number, o: 
     for (const { room, color } of conditionTints(layout.rooms)) {
       for (const c of onFloor(room.cells)) g.poly(cellSector(h, c, 0.15)).fill({ color, alpha: CONDITION_ALPHA });
     }
+    return;
+  }
+  if (o.overlay === "temperature") {
+    const now = o.temps?.find((f) => f.floor === floor)?.now;
+    if (now === undefined) return;
+    const { color, alpha } = temperatureTint(now);
+    layout.open?.[floor - 1]?.forEach((slots, ri) => {
+      if (ri + 1 > h.unlockedRings) return;
+      slots.forEach((v, slot) => v === 1 && g.poly(cellSector(h, { ring: ri + 1, slot }, 0.15)).fill({ color, alpha }));
+    });
     return;
   }
   if (o.overlay === "happiness") {

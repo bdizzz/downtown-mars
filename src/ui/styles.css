@@ -1,9 +1,25 @@
 :root {
+  /* The palette: warm dark Mars. Surfaces from the deepest well up to a raised button. */
   --bg: #1a0f0d;
+  --well: #1c100d;
   --panel: #2a1814;
+  --raised: #33201a;
+  --hover: #3f271f;
+  /* Edges: the dark outer line every panel has, the bronze frame inside it, and its highlight. */
+  --line: #0b0605;
+  --edge: #5c4033;
+  --edge-hi: #a07a5c;
   --text: #f0e0d0;
   --muted: #a88d7c;
   --accent: #e07a3f;
+  --accent-hi: #ffb070;
+  --ink: #1a0f0d;
+  /* Headings, labels and buttons that name things are set in the display face. */
+  --font-display: "Chakra Petch", "Space Grotesk", system-ui, sans-serif;
+  /* A panel's face, the bevel that lifts it, and the shadow under anything floating over the view. */
+  --face: linear-gradient(180deg, #33201a 0%, #27160f 100%);
+  --bevel: inset 0 1px 0 rgba(255, 214, 180, 0.12), inset 0 0 0 1px rgba(160, 122, 92, 0.16);
+  --float: 0 8px 28px rgba(0, 0, 0, 0.55);
   font-family: "Space Grotesk", system-ui, sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -46,25 +62,14 @@ html, body, #root { margin: 0; height: 100%; }
 .status.bad { color: #f08a70; }
 .main { flex: 1; min-height: 0; display: flex; }
 .main .pixi-host { flex: 1; }
-.room-btn {
-  display: flex; align-items: center; gap: 8px;
-  background: transparent; color: var(--text); font: inherit; font-size: 13px;
-  border: 1px solid transparent; border-radius: 4px; padding: 4px 6px; cursor: pointer; text-align: left;
-}
-.room-btn:hover { background: #3a241d; }
-.room-btn.on { border-color: var(--accent); background: #3a241d; }
-.room-btn .name { flex: 1; }
-.room-btn .size { color: var(--muted); font-size: 11px; }
-.room-btn .swatch { width: 10px; height: 10px; border-radius: 2px; background: var(--cat); }
 kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-size: 10px; }
 .stock, .drill { font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 8px; }
 .drill button {
   background: transparent; color: var(--text); font: inherit; font-size: 12px;
   border: 1px solid var(--muted); border-radius: 4px; padding: 2px 8px; cursor: pointer;
 }
-.room-btn.short .name { color: var(--muted); }
 .inspector {
-  width: 240px; flex-shrink: 0; overflow-y: auto; background: var(--panel);
+  width: 240px; flex-shrink: 0; overflow-y: auto; overflow-x: hidden; background: var(--panel);
   border-left: 1px solid #000; padding: 10px 12px; font-size: 13px;
   display: flex; flex-direction: column; gap: 6px;
 }
@@ -75,7 +80,7 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .inspector .k { color: var(--muted); margin-right: 4px; }
 .inspector .warn { color: #ff9a7c; }
 .inspector label { display: flex; align-items: center; gap: 6px; }
-.inspector select { background: #1a0f0d; color: var(--text); border: 1px solid var(--muted); border-radius: 4px; font: inherit; padding: 2px 4px; flex: 1; }
+.inspector select { background: #1a0f0d; color: var(--text); border: 1px solid var(--muted); border-radius: 4px; font: inherit; padding: 2px 4px; flex: 1; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
 .inspector .danger {
   margin-top: 8px; background: transparent; color: #f08a70; border: 1px solid #f08a70;
   border-radius: 4px; padding: 4px; font: inherit; cursor: pointer;
@@ -100,6 +105,11 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .event-card.belt_ship { border-left-color: #6fb0ff; }
 .event-card.gas_pocket { border-left-color: #ff7a5c; }
 .event-card.celebration { border-left-color: #f2c84b; }
+.event-card.capping { border-left-color: #f2c84b; }
+/* The drill at a hidden depth limit (#390): it waits for the answer. */
+.event-card.drill_breakdown, .event-card.hard_basalt, .event-card.groundwater, .event-card.tremors,
+.event-card.geothermal_pocket, .event-card.deep_reservoir, .event-card.brine_lake, .event-card.magma_chamber,
+.event-card.fault_line, .event-card.stop_drilling { border-left-color: #c9a27a; }
 @keyframes event-in { from { transform: translateX(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
 .msg {
   background: rgba(30, 17, 13, 0.92); border: 1px solid #000; border-left: 3px solid var(--muted); padding: 6px 4px 6px 10px; border-radius: 4px; font-size: 13px;
@@ -222,6 +232,14 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 label.set-row { cursor: pointer; }
 .set-text { display: flex; flex-direction: column; min-width: 0; }
 .set-name { font-size: 14px; }
+.set-fps { align-items: flex-start; }
+.set-fps > .set-text { flex: 1; gap: 4px; }
+.set-fps .set-hint { white-space: normal; }
+.fps-chart { width: 100%; max-width: 360px; height: 56px; background: #ffffff08; border-radius: 4px; }
+.fps-line { stroke: var(--accent, #e8a86b); stroke-width: 1.5; }
+.fps-low { stroke: #ffffff30; stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.fps-advice { font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
+.fps-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .set-hint { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .set-ctl { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .set-ctl input[type="range"] { width: 140px; accent-color: var(--accent); }
@@ -247,23 +265,6 @@ label.set-row { cursor: pointer; }
   .set-row.set-slider > .set-ctl { flex-basis: 100%; }
   .set-ctl input[type="range"] { flex: 1; width: auto; }
 }
-.room-btn kbd { opacity: 0.7; }
-.room-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.room-card {
-  border-top: 1px solid #000; background: #22130f; padding: 8px 10px; font-size: 12px;
-  display: flex; flex-direction: column; gap: 3px; max-height: 45%; overflow-y: auto;
-}
-.room-card h3 { margin: 0; font-size: 14px; }
-.room-card p { margin: 0; }
-.room-card .k { color: var(--muted); }
-.room-card .cost { display: flex; flex-wrap: wrap; gap: 4px 8px; }
-.room-card .cost .short { color: #ff7a5c; }
-.room-card .bad { color: #ff9a7c; }
-.room-card .good { color: #9fcf86; }
-.room-card .rotate {
-  margin-left: 6px; background: transparent; color: var(--text); font: inherit; font-size: 11px;
-  border: 1px solid var(--muted); border-radius: 3px; padding: 0 5px; cursor: pointer;
-}
 .flows { width: 340px; }
 .flows.wide { width: 480px; }
 .flows .tabs { display: flex; gap: 2px; flex-wrap: wrap; }
@@ -279,6 +280,11 @@ label.set-row { cursor: pointer; }
 .river svg .lbl.halo { stroke: var(--panel); stroke-width: 3px; paint-order: stroke; stroke-linejoin: round; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(224, 122, 63, 0.9); } 50% { box-shadow: 0 0 0 4px rgba(224, 122, 63, 0); } }
 .pulse { animation: pulse 1.4s ease-in-out infinite; border-color: var(--accent) !important; border-radius: 4px; }
+/* Just revealed by the guided tutorial (T-084): fades in with a soft glow that settles, once. */
+@keyframes reveal-in { 0% { opacity: 0; box-shadow: 0 0 0 0 rgba(255, 214, 150, 0); } 30% { opacity: 1; box-shadow: 0 0 14px 3px rgba(255, 214, 150, 0.55); } 100% { box-shadow: 0 0 0 0 rgba(255, 214, 150, 0); } }
+.fresh { animation: reveal-in 2.4s ease-out; border-radius: 4px; }
+.fresh.pulse { animation: reveal-in 2.4s ease-out, pulse 1.4s ease-in-out 2.4s infinite; }
+@media (prefers-reduced-motion: reduce) { .fresh, .fresh.pulse { animation: none; } }
 .tutorial {
   position: absolute; right: 12px; bottom: 10px; z-index: 3; width: 300px;
   background: rgba(30, 17, 13, 0.96); border: 1px solid #000; border-left: 3px solid var(--accent);
@@ -300,6 +306,27 @@ label.set-row { cursor: pointer; }
 .tutorial .progress button.now { background-color: #8a5a40; padding: 2px 0; }
 .tutorial .progress button.done { background-color: var(--accent); }
 .tutorial .tick { color: var(--accent); }
+/* The guided tutorial's steps go in order, so its dots are just a progress bar, not buttons. */
+.tutorial.guided .progress span { flex: 1; height: 4px; margin: 4px 0; background: #3a241d; border-radius: 2px; }
+.tutorial.guided .progress span.now { background: #8a5a40; }
+.tutorial.guided .progress span.done { background: var(--accent); }
+.tutorial.guided .primary { align-self: flex-start; }
+/* The guided card next to what its step is about (ui/anchor.ts), with a small arrow to it. The
+   wrapper is placed in real pixels; the card inside keeps the interface-size zoom. */
+.guide-anchor { position: fixed; z-index: 12; transition: left 0.2s ease, top 0.2s ease; }
+/* A set width: the fixed wrapper shrinks to fit near the screen's edge, and a share of it would squeeze the card. */
+.guide-anchor .tutorial.anchored { position: relative; inset: auto; width: min(300px, calc(100vw - 24px)); }
+.guide-arrow {
+  position: absolute; width: 12px; height: 12px; background: var(--accent);
+  transform: translateX(-50%) rotate(45deg); pointer-events: none;
+}
+.guide-anchor.below .guide-arrow { top: -6px; }
+.guide-anchor.above .guide-arrow { bottom: -6px; }
+/* Beside a target down the side of the screen: the arrow on the card's near edge, pointing at it. */
+.guide-anchor.left .guide-arrow, .guide-anchor.right .guide-arrow { transform: translateY(-50%) rotate(45deg); }
+.guide-anchor.left .guide-arrow { right: -6px; }
+.guide-anchor.right .guide-arrow { left: -6px; }
+@media (prefers-reduced-motion: reduce) { .guide-anchor { transition: none; } }
 .tutorial-pill {
   position: absolute; right: 12px; bottom: 10px; z-index: 3; background: rgba(30, 17, 13, 0.96);
   color: var(--text); border: 1px solid var(--accent); border-radius: 12px; padding: 4px 12px; font: inherit; font-size: 12px; cursor: pointer;
@@ -462,25 +489,6 @@ label.set-row { cursor: pointer; }
 /* Pointed at: shown for now, kept with a click. */
 .floor-picker button.preview { border-color: var(--muted); border-style: dashed; }
 
-/* Corridor finishes, in the Access popup */
-.finishes { display: flex; flex-direction: column; gap: 2px; }
-.finishes .finish { display: grid; grid-template-columns: 14px 1fr auto; align-items: center; gap: 6px; text-align: left; background: #2f1c16; color: var(--text); border: 1px solid transparent; border-radius: 4px; padding: 3px 6px; font: inherit; font-size: 12px; cursor: pointer; }
-.finishes .finish.on { border-color: var(--accent); }
-.finishes .finish.short { opacity: 0.55; }
-.finishes .finish .chip { width: 12px; height: 12px; border-radius: 2px; border: 2px solid; }
-.finishes .finish.erase { grid-template-columns: 1fr auto; }
-.finishes .finish.erase.on { border-color: #e0503a; color: #e0503a; }
-.finishes p.k { margin: 2px 0 0; font-size: 11px; }
-/* The building material picker (T-038): a row of linings above a category's rooms. */
-.linings { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; max-width: 560px; font-size: 11px; }
-.linings > .k { margin-right: 2px; }
-.linings .lining { display: inline-flex; align-items: center; gap: 4px; background: #2f1c16; color: var(--text); border: 1px solid transparent; border-radius: 4px; padding: 2px 6px; font: inherit; cursor: pointer; }
-.linings .lining.on { border-color: var(--accent); }
-.linings .lining.short { opacity: 0.55; }
-.linings .lining:disabled { opacity: 0.35; cursor: default; }
-.linings .lining .chip { width: 10px; height: 10px; border-radius: 2px; border: 2px solid; }
-.linings .note { flex-basis: 100%; }
-
 /* Confirming a snaked corridor */
 .corridor-confirm {
   position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); z-index: 6;
@@ -560,31 +568,9 @@ label.set-row { cursor: pointer; }
 .dock-btn:disabled { opacity: 0.4; cursor: not-allowed; background: transparent; }
 .dock-btn kbd { opacity: 0.7; }
 .dock-btn.demolish { color: #f08a70; }
-.dock-btn.category .swatch { width: 9px; height: 9px; border-radius: 2px; background: var(--cat); }
-.dock-btn.category.open { background: #3a241d; border-color: var(--muted); }
-.dock-section { display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; }
 .dock-label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 4px 0 2px; }
 .dock-sep { width: 1px; align-self: stretch; background: #4a3027; margin: 0 6px; }
 .dock-hint { color: var(--muted); font-size: 11px; margin-left: auto; padding-left: 8px; }
-/* A category's rooms pop up above it; groups in the right half open leftward, so they stay on screen. */
-.dock-group { position: relative; }
-.dock-popup {
-  position: absolute; bottom: calc(100% + 11px); left: -4px; z-index: 7; width: max-content; max-width: min(620px, 80vw);
-  display: flex; flex-direction: column; gap: 6px;
-  background: rgba(30, 17, 13, 0.97); border: 1px solid #000; border-radius: 6px; padding: 6px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
-}
-.dock-group.leftward .dock-popup { left: auto; right: -4px; }
-.dock-popup-row { display: flex; flex-wrap: wrap; gap: 3px; }
-.dock-popup .room-btn { background: #2f1c16; }
-.dock-popup .room-btn:hover { background: #3a241d; }
-/* A room's details, above its category's popup: out of the popup's layout, so showing them never shifts its buttons. */
-.dock-card {
-  position: absolute; bottom: calc(100% + 6px); left: 0; width: 320px; max-width: 80vw; z-index: 1;
-  border: 1px solid #000; border-radius: 6px; overflow: hidden; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
-}
-.dock-group.leftward .dock-card { left: auto; right: 0; }
-.dock-card .room-card { border-top: none; max-height: 260px; }
 
 /* Maintenance */
 .maintenance h3 { font-size: 13px; margin: 10px 0 2px; }
@@ -592,9 +578,6 @@ label.set-row { cursor: pointer; }
 .maintenance .condition-bar > .repair { position: absolute; left: 0; bottom: 0; height: 2px; background: #fff; opacity: 0.8; }
 .inspector .condition .bar { height: 6px; background: #0006; border-radius: 3px; overflow: hidden; margin: -2px 0 6px; }
 .inspector .condition .bar > div { height: 100%; }
-
-/* Build mode's frame round the screen: never in the way of a click. */
-.build-frame { position: fixed; inset: 6px; border: 4px solid #f2c53d; border-radius: 10px; pointer-events: none; z-index: 900; box-shadow: 0 0 12px #f2c53d55; }
 
 /* A room's name with its floor badge */
 .room-name { white-space: nowrap; }
@@ -612,6 +595,23 @@ label.set-row { cursor: pointer; }
 }
 .res-tip strong { font-size: 13px; }
 .res-tip .tip-note { color: var(--muted); }
+/* A card's reasons as a ledger (Happiness): points, a bar for the weight, the cause's name */
+.res-tip .tip-why { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; padding-top: 6px; border-top: 1px solid #ffffff14; }
+.res-tip .why-head { font-weight: 600; }
+.res-tip .why-group { display: flex; flex-direction: column; gap: 2px; }
+.res-tip .why-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.res-tip .why-row { display: grid; grid-template-columns: 34px 32px 1fr; align-items: center; gap: 6px; line-height: 1.3; }
+.res-tip .why-amt { font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; }
+.res-tip .why-row.bad .why-amt { color: var(--tone-bad); }
+.res-tip .why-row.good .why-amt { color: var(--tone-good); }
+.res-tip .why-bar { height: 5px; border-radius: 3px; background: #ffffff10; overflow: hidden; }
+.res-tip .why-bar i { display: block; height: 100%; border-radius: 3px; }
+.res-tip .why-row.bad .why-bar i { background: var(--tone-bad); }
+.res-tip .why-row.good .why-bar i { background: var(--tone-good); }
+.res-tip.wide { width: 260px; }
+.res-tip .why-label em { font-style: normal; color: var(--muted); white-space: nowrap; }
+.res-tip .why-fix { padding: 4px 7px; border-radius: 4px; background: #e07a3f1f; border-left: 2px solid var(--accent); line-height: 1.35; }
+.res-tip .why-fix b { color: var(--accent); margin-right: 2px; }
 .res-tip .spark { margin-top: 4px; }
 .res-tip .tip-foot { color: var(--muted); font-size: 11px; }
 .res-tip .tip-legend { display: flex; gap: 10px; font-size: 11px; }
@@ -662,10 +662,6 @@ label.set-row { cursor: pointer; }
 /* Trends: the band of causes under Health and Happiness. */
 .cause-band { margin-top: 6px; }
 .cause-band .trend-readout span { font-size: 11px; }
-.finish .chip.windows { background: linear-gradient(90deg, #9fd2ff 0 45%, #3b3f45 45% 55%, #9fd2ff 55%); border-color: #5a7a96; }
-.finish .chip.bulkhead { background: repeating-linear-gradient(135deg, #e0a03a 0 3px, #3b3f45 3px 6px); border-color: #3b3f45; }
-/* The refit tool: three linings side by side; a fine finish's chip has a pale inner rule. */
-.finish .chip.refit { background: linear-gradient(90deg, #8a6650 0 33%, #a45a3e 33% 66%, #b9c2c9 66%); border-color: #5c4031; }
 .finish .chip.fine, .lining .chip.fine { box-shadow: inset 0 0 0 1px rgba(255, 240, 210, 0.7); }
 
 /* ---- Phones and tablets ---- */
@@ -689,7 +685,8 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 @media (pointer: coarse) {
   .speeds button, .menu-btn, .office-btn, .drill button { padding: 6px 12px; }
   .dock-btn { padding: 6px 10px; }
-  .room-btn { padding: 7px 8px; }
+  .tile { padding: 8px 8px; }
+  .rail-btn { min-height: 48px; }
   .floor-picker button { padding: 6px 10px; }
   .menu button { padding: 11px 12px; min-height: 44px; }
   .menu .menu-links button { padding: 12px 0; }
@@ -703,7 +700,7 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   .cam-reset { padding: 4px 10px; }
   .cam-zoom { width: 36px; height: 32px; font-size: 16px; }
   /* No keyboard: hide the key hints. */
-  .dock-btn kbd, .room-btn kbd, .mode-btn kbd { display: none; }
+  .dock-btn kbd, .tile kbd, .mode-btn kbd, .tool-bar kbd, .rail-btn kbd { display: none; }
 }
 
 /* Narrow screens (phones, and tablets in portrait): the 3D view first, panels as sheets over its bottom. */
@@ -734,7 +731,6 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   .dock-modes { margin-left: 0; justify-content: space-between; }
   .mode-btn { flex: 1; min-width: 0; padding: 4px 4px; }
   .dock-hint { display: none; }
-  .dock-card .room-card { max-height: 28vh; }
   /* Up top, clear of the dock (whose height changes with what it shows). */
   .tutorial, .tutorial-pill { right: 6px; top: 36px; bottom: auto; }
   .event-cards { left: 6px; top: 32px; }
@@ -770,6 +766,8 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .welcome h2 { font-size: 25px; color: var(--accent); }
 .welcome p { margin: 0; font-size: 16.5px; line-height: 1.5; }
 .welcome button.primary { margin-top: 6px; font-size: 16.5px; text-align: center; }
+.welcome .welcome-guided { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.welcome .welcome-guided .k { color: var(--muted); font-size: 12.5px; }
 /* Behind the welcome card and the title, only Mars and the hole: the rest of the interface comes in when they're closed. */
 .app.welcoming > :not(.main):not(.menu-backdrop):not(.update-banner), .app.welcoming .view > :not(.pixi-host), .app.welcoming .pixi-host > :not(canvas),
 .app.titling > :not(.main):not(.menu-backdrop):not(.update-banner), .app.titling .view > :not(.pixi-host), .app.titling .pixi-host > :not(canvas), .app.titling .main > :not(.view) { display: none; }
@@ -795,6 +793,27 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .drill.paused { color: var(--muted); }
 .drill button { font-size: 10px; padding: 1px 6px; }
 .drop.warn { color: #f4b860; }
+/* The local weather report (T-074): the air outside as a chip, and its card dropping down below. */
+.weather { position: relative; display: inline-flex; }
+.weather-chip {
+  display: inline-flex; align-items: center; gap: 4px; font: inherit; font-size: 13px; font-variant-numeric: tabular-nums;
+  white-space: nowrap; color: var(--text); background: none; border: 1px solid #ffffff20; border-radius: 12px; padding: 1px 8px 1px 5px; cursor: pointer;
+}
+.weather-chip:hover, .weather-chip[aria-expanded="true"] { background: #ffffff12; border-color: #ffffff40; }
+.weather-card {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 30; width: 290px; max-width: calc(100vw - 32px);
+  background: var(--panel); border: 1px solid #f0e0d030; border-radius: 8px; padding: 10px 12px; box-shadow: 0 6px 20px #000a;
+  font-size: 12.5px; box-sizing: border-box; white-space: normal;
+}
+/* Phones: across the screen between the gutters, just under the chip (--below, measured in Hud.tsx). */
+@media (max-width: 639px) { .weather-card { position: fixed; top: var(--below); left: 16px; right: 16px; width: auto; max-width: none; } }
+.weather-card h3 { margin: 0; font-size: 14px; color: var(--accent); }
+.weather-place { color: var(--muted); margin: 2px 0 8px; }
+.weather-card dl { margin: 0; display: grid; gap: 4px; }
+.weather-card dl > div { display: grid; grid-template-columns: 64px 1fr; gap: 8px; }
+.weather-card dt { color: var(--muted); }
+.weather-card dd { margin: 0; font-variant-numeric: tabular-nums; }
+.weather-card p { margin: 8px 0 0; color: var(--muted); font-style: italic; }
 .office-btn {
   display: inline-flex; align-items: center; gap: 5px;
   background: transparent; color: var(--text); font: inherit; font-size: 13px;
@@ -884,4 +903,591 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .update-banner button:disabled { opacity: 0.6; cursor: default; }
 .update-banner .update-later { background: none; color: var(--text); border-color: transparent; padding: 4px 6px; opacity: 0.7; }
 .update-banner .update-later:hover { opacity: 1; }
+
+/* The frame rate has been very low for a while (#391): a card at the bottom of the game with a one-click fix. */
+.slow-card {
+  position: fixed; bottom: calc(44px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 20;
+  display: flex; align-items: center; gap: 10px; max-width: calc(100% - 32px); box-sizing: border-box;
+  background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; padding: 6px 8px 6px 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5); font-size: 13.5px;
+}
+.slow-card button { font: inherit; border-radius: 5px; padding: 4px 12px; cursor: pointer; border: 1px solid var(--accent); white-space: nowrap; }
+.slow-card button.primary { background: var(--accent); color: #1a0f0d; font-weight: 600; }
+.slow-card .slow-later { background: none; color: var(--text); border-color: transparent; padding: 4px 6px; opacity: 0.7; }
+.slow-card .slow-later:hover { opacity: 1; }
+@media (max-width: 560px) { .slow-card { flex-wrap: wrap; } }
 .tutorial .tip-actions { display: flex; gap: 6px; }
+/* Charts → Directory (T-149): floors from the surface down, their rooms with a status dot. */
+.directory { width: 300px; }
+.directory > * { flex-shrink: 0; }
+.directory h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 10px 0 2px; display: flex; align-items: center; gap: 6px; }
+.dir-search, .dir-filters select { font: inherit; font-size: 12px; background: #2f1c16; color: var(--text); border: 1px solid #000; border-radius: 4px; padding: 3px 6px; }
+.dir-filters { display: flex; gap: 6px; align-items: center; }
+.dir-filters select { flex: 1; min-width: 0; }
+.dir-floor { display: flex; flex-direction: column; }
+.dir-room {
+  display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 6px;
+  background: transparent; color: var(--text); border: 1px solid transparent; border-radius: 4px;
+  font: inherit; font-size: 12px; padding: 2px 4px; cursor: pointer; text-align: left;
+}
+.dir-room:hover { background: #ffffff0c; }
+.dir-room .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dir-room .dot { width: 8px; height: 8px; border-radius: 50%; background: #7fd67f; }
+.dir-room .dot.building { background: #6ab0e0; }
+.dir-room .dot.worn { background: #e6b33c; }
+.dir-room .dot.stalled { background: #ff6a5a; }
+
+/* Milestones panel (F-005) */
+.milestones { width: 300px; }
+.milestones > * { flex-shrink: 0; }
+.milestones h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 10px 0 2px; display: flex; justify-content: space-between; }
+.milestones h3 .k { text-transform: none; letter-spacing: 0; }
+.ms-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 13px; color: var(--muted); }
+.ms-row.done { color: var(--text); }
+.ms-row .mark { width: 14px; text-align: center; }
+.ms-row.done .mark { color: var(--accent); }
+.ms-row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-progress { display: flex; align-items: center; gap: 4px; }
+.ms-progress .bar { width: 48px; height: 4px; background: #0006; border-radius: 2px; overflow: hidden; }
+.ms-progress .bar > span { display: block; height: 100%; background: var(--accent); opacity: 0.7; }
+.ms-hole { margin-bottom: 6px; }
+.ms-hole p { font-size: 13px; }
+
+/* The room panel (F-019, docs/PLAN-M18.md): a status pill and headline chips, the alerts band, folding sections.
+   The five tones are named once here; godot/src/Inspector.cs uses the same hex values. */
+:root {
+  --tone-good: #9fd28a;
+  --tone-idle: #a8927e;
+  --tone-warn: #f0a030;
+  --tone-bad: #ff7a5c;
+  --tone-info: #7fb0e0;
+}
+.room-panel .tone-good { --tone: var(--tone-good); }
+.room-panel .tone-idle { --tone: var(--tone-idle); }
+.room-panel .tone-warn { --tone: var(--tone-warn); }
+.room-panel .tone-bad { --tone: var(--tone-bad); }
+.room-panel .tone-info { --tone: var(--tone-info); }
+.room-panel .headline { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.room-panel .pill {
+  color: #1a0f0d; background: var(--tone, var(--tone-idle)); border-radius: 999px;
+  padding: 1px 8px; font-size: 12px; font-weight: 600; cursor: default;
+}
+.room-panel .chip {
+  display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 4px;
+  background: #0004; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--tone, var(--text)); cursor: default;
+}
+.room-panel .alerts { display: flex; flex-direction: column; gap: 3px; border-top: 1px solid #0006; border-bottom: 1px solid #0006; padding: 5px 0; }
+.room-panel .alert { display: flex; align-items: center; gap: 5px; color: var(--tone); font-size: 12px; }
+.room-panel .alert .text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-panel .alert .to { background: none; border: none; color: var(--muted); font: inherit; font-size: 11px; cursor: pointer; padding: 0; white-space: nowrap; }
+.room-panel .alert .to:hover { color: var(--text); }
+.room-panel .alert .connect {
+  background: transparent; color: var(--text); border: 1px solid var(--tone); border-radius: 4px;
+  font: inherit; font-size: 11px; padding: 1px 6px; cursor: pointer;
+}
+.room-panel .fold { border-top: 1px solid #0005; }
+.room-panel .fold-head {
+  display: flex; align-items: center; gap: 5px; width: 100%; background: none; border: none; color: var(--text);
+  font: inherit; font-weight: 600; padding: 5px 0; cursor: pointer; text-align: left;
+}
+.room-panel .fold-head:hover { color: #fff; }
+.room-panel .fold-head .title { flex: 1; }
+.room-panel .fold-head .chev { color: var(--muted); transition: transform 0.12s; }
+.room-panel .fold.open .fold-head .chev { transform: rotate(90deg); }
+.room-panel .fold-head .count { color: var(--muted); font-weight: 400; font-size: 12px; }
+.room-panel .fold-head .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tone); }
+.room-panel .fold-body { display: flex; flex-direction: column; gap: 4px; padding: 0 0 6px 2px; }
+.room-panel .row { display: flex; gap: 5px; align-items: baseline; }
+.room-panel .row > .ico { color: var(--muted); flex-shrink: 0; position: relative; top: 2px; }
+.room-panel .row.tone-warn, .room-panel .row.tone-bad { color: var(--tone); }
+.room-panel .row.tone-warn > .ico, .room-panel .row.tone-bad > .ico { color: var(--tone); }
+.room-panel .row.has-tip { cursor: help; }
+.room-panel .row .chips { display: inline-flex; flex-wrap: wrap; gap: 3px; vertical-align: middle; }
+.room-panel .row .chips .chip { padding: 0 5px; }
+/* At a glance: chips with a meter under them, filled from the left, or (signed) from the middle out. */
+.room-panel .glance { display: flex; flex-wrap: wrap; gap: 4px; }
+.room-panel .chip.glance { display: inline-grid; grid-template-columns: auto auto; column-gap: 3px; row-gap: 2px; align-items: center; padding: 2px 6px 3px; }
+.room-panel .chip.glance .meter { grid-column: 1 / -1; }
+.room-panel .meter { position: relative; display: block; height: 3px; min-width: 34px; background: #0006; border-radius: 2px; overflow: hidden; }
+.room-panel .meter > span { position: absolute; top: 0; bottom: 0; left: 0; background: var(--tone, var(--text)); border-radius: 2px; }
+.room-panel .meter.signed::after { content: ""; position: absolute; left: calc(50% - 0.5px); top: 0; bottom: 0; width: 1px; background: var(--muted); }
+
+/* ================================================================================================
+   The game's chrome. One look for everything that sits over the view: framed panels with a bevel
+   and bronze corner ticks, headings in the display face, raised buttons, joined button sets. The
+   rules above lay things out; these give them their finish, so they come last.
+   ================================================================================================ */
+
+/* ---- Panels: anything floating over the view ---- */
+.panel, .dock-strip, .dock-modes, .rail, .floor-picker, .tutorial, .event-card, .corridor-confirm, .weather-card, .res-tip, .update-banner, .menu {
+  background: var(--face); border: 1px solid var(--line); border-radius: 6px;
+  box-shadow: var(--bevel), var(--float);
+}
+/* Bronze ticks on two corners: the frame of a panel that matters. */
+.panel, .menu { position: relative; }
+.flyout-panel::before, .build-card::before, .menu::before, .corridor-confirm::before,
+.flyout-panel::after, .build-card::after, .menu::after, .corridor-confirm::after {
+  content: ""; position: absolute; width: 10px; height: 10px; pointer-events: none; border: 0 solid var(--edge-hi); opacity: 0.8;
+}
+.flyout-panel::before, .build-card::before, .menu::before, .corridor-confirm::before { top: 3px; left: 3px; border-top-width: 2px; border-left-width: 2px; border-top-left-radius: 3px; }
+.flyout-panel::after, .build-card::after, .menu::after, .corridor-confirm::after { bottom: 3px; right: 3px; border-bottom-width: 2px; border-right-width: 2px; border-bottom-right-radius: 3px; }
+.tutorial, .event-card { border-left: 3px solid var(--accent); }
+.tutorial-pill { background: var(--face); box-shadow: var(--bevel), var(--float); font-family: var(--font-display); letter-spacing: 0.04em; }
+
+/* A panel's heading: the display face, small caps, a rule that fades out under it. */
+.panel-head, .inspector > header, .site-panel > header {
+  display: flex; align-items: center; gap: 6px; padding-bottom: 6px; margin-bottom: 2px;
+  border-bottom: 1px solid transparent; border-image: linear-gradient(90deg, var(--accent), rgba(224, 122, 63, 0.15) 70%, transparent) 1;
+}
+.panel-head h2, .inspector > header h2, .site-panel > header h3, .menu h2, .map-screen h2, .corridor-confirm h3, .weather-card h3 {
+  margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.panel-head h2, .inspector > header h2, .site-panel > header h3 { flex: 1; min-width: 0; }
+.menu h2 { font-size: 17px; color: var(--accent-hi); }
+.welcome h2 { text-transform: none; letter-spacing: 0.02em; font-size: 25px; }
+.panel-head > .ico { color: var(--accent); }
+/* Section headings inside panels: one style everywhere. */
+.office h3, .network h3, .people h3, .trends h3, .why h3, .directory h3, .milestones h3, .maintenance h3, .site-panel h4, .settings-body h3, .tiles h3 {
+  font-family: var(--font-display); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+}
+.trends h3.trend-title, .why h3.why-head { font-family: inherit; }
+
+/* The side panels (the room, the office, the charts): docked to the right, framed on their inner edge. */
+.inspector {
+  width: 264px; padding: 10px 12px 14px; gap: 7px; background: linear-gradient(180deg, #2f1c16, #24140f);
+  border-left: 1px solid var(--line); box-shadow: inset 1px 0 0 rgba(160, 122, 92, 0.22), -6px 0 18px rgba(0, 0, 0, 0.3);
+  scrollbar-width: thin; scrollbar-color: var(--edge) transparent;
+}
+.office, .people, .construction, .directory, .milestones { width: 310px; }
+.inspector > header button, .site-panel > header button, .map-screen header > button, .icon-btn {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex-shrink: 0; padding: 0;
+  background: transparent; color: var(--muted); border: 1px solid transparent; border-radius: 4px; font-size: 16px; line-height: 1; cursor: pointer;
+}
+.inspector > header button:hover, .site-panel > header button:hover, .map-screen header > button:hover, .icon-btn:hover { color: var(--text); background: var(--hover); border-color: var(--line); }
+.inspector > header .rename-btn { width: auto; height: auto; border: none; }
+
+/* The ? in a panel's heading, and the explanation it folds open. */
+.inspector > header .help-btn { font-family: var(--font-display); font-size: 12px; font-weight: 600; border-color: var(--edge); border-radius: 50%; width: 18px; height: 18px; }
+.inspector > header .help-btn.on { color: var(--ink); background: var(--accent); border-color: var(--accent); }
+.panel-help { margin: 0; padding: 6px 8px; font-size: 12px; line-height: 1.4; color: var(--muted); background: var(--well); border: 1px solid var(--line); border-left: 2px solid var(--accent); border-radius: 4px; }
+
+/* ---- Buttons ---- */
+/* The raised button: everything you press that isn't a tab, a tile or a link. */
+.btn, .menu button, .choice, .ordinance button, .drill button, .office-btn, .menu-btn, .pause-btn, .hud-toggle, .cam-reset, .cam-zoom,
+.corridor-confirm button, .storage button, .under-construction button, .construction button.up, .update-banner button, .walk-stairs button,
+.inspector .danger, .room-panel .alert .connect, .why-show, .found-btn, .network .new-route button.primary {
+  background: linear-gradient(180deg, var(--hover), var(--raised)); color: var(--text); font: inherit;
+  border: 1px solid var(--line); border-radius: 4px; box-shadow: inset 0 1px 0 rgba(255, 214, 180, 0.14); cursor: pointer;
+}
+.btn:hover:not(:disabled), .menu button:hover:not(:disabled), .choice:hover:not(:disabled), .ordinance button:hover:not(:disabled), .drill button:hover, .office-btn:hover, .menu-btn:hover,
+.pause-btn:hover, .hud-toggle:hover, .cam-reset:hover, .cam-zoom:hover, .corridor-confirm button:hover:not(:disabled), .storage button:hover, .under-construction button:hover {
+  border-color: var(--edge-hi); filter: brightness(1.12); color: var(--text);
+}
+.btn:active:not(:disabled), .menu button:active:not(:disabled), .choice:active:not(:disabled), .mode-btn:active, .rail-btn:active:not(:disabled) { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5); transform: translateY(1px); }
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
+.btn.sm { padding: 2px 8px; }
+.btn.ghost { background: transparent; box-shadow: none; border-color: transparent; color: var(--muted); }
+.btn.ghost:hover:not(:disabled) { background: var(--hover); border-color: var(--line); filter: none; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* The main action of a card or menu. */
+.primary, .menu button.primary, .corridor-confirm button.primary, .update-banner button.primary, .found-btn, .network .new-route button.primary, .office-btn.waiting, .why-show.on {
+  background: linear-gradient(180deg, #f39152, #cf6a30); color: var(--ink); border-color: #7a3a16; font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.45), 0 1px 0 rgba(0, 0, 0, 0.4);
+}
+.found-btn:disabled { background: var(--raised); color: var(--muted); border-color: var(--line); box-shadow: none; }
+.menu button { font-family: var(--font-display); letter-spacing: 0.03em; }
+.menu button .sub, .menu .set-ctl button { font-family: "Space Grotesk", system-ui, sans-serif; letter-spacing: 0; }
+.menu .menu-links button, .menu .settings-tabs button { background: none; box-shadow: none; }
+.menu .settings-tabs button { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+.inspector .danger { color: #ffa48c; border-color: #6d2a1c; background: linear-gradient(180deg, #4a211a, #381812); padding: 5px; }
+.inspector .danger:hover { border-color: #f08a70; filter: brightness(1.15); }
+.why-show, .why-trend, .room-panel .alert .connect { color: var(--accent-hi); }
+.why-trend { background: none; }
+
+/* Keys: little keycaps. */
+kbd {
+  display: inline-block; min-width: 1.1em; text-align: center; font-family: var(--font-display); font-size: 10px; font-weight: 600; line-height: 1.35;
+  color: var(--muted); background: var(--well); border: 1px solid var(--edge); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px;
+}
+
+/* Joined button sets: speeds, tabs, a tool's choices. One well, the chosen one raised and lit. */
+.seg, .speeds, .flows .tabs {
+  display: inline-flex; gap: 0; align-self: flex-start; padding: 2px; background: var(--well); border: 1px solid var(--line); border-radius: 5px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5); overflow: visible;
+}
+.flows .tabs { flex-wrap: wrap; }
+.seg button, .speeds button, .flows .tabs button {
+  display: inline-flex; align-items: center; gap: 5px; background: transparent; color: var(--muted); border: 1px solid transparent; border-radius: 3px;
+  font: inherit; font-size: 12px; padding: 2px 9px; margin: 0; cursor: pointer; white-space: nowrap;
+}
+.seg button + button, .speeds button + button { border-left-color: transparent; margin-left: 0; }
+.speeds button:first-child, .speeds button:last-child { border-radius: 3px; }
+.seg button:hover:not(:disabled), .speeds button:hover, .flows .tabs button:hover { color: var(--text); background: var(--raised); }
+.seg button.on, .speeds button.on, .flows .tabs button.on {
+  background: linear-gradient(180deg, #f39152, #cf6a30); color: var(--ink); border-color: #7a3a16; font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.4);
+}
+.seg button.short { opacity: 0.55; }
+.seg button:disabled { opacity: 0.3; cursor: not-allowed; }
+.seg .chip { width: 10px; height: 10px; border-radius: 2px; border: 2px solid; flex-shrink: 0; }
+.speeds button { padding: 3px 10px; font-family: var(--font-display); font-weight: 600; }
+.speeds button .ico { margin: 0 -2px; }
+/* An on/off choice beside a set. */
+.toggle {
+  display: inline-flex; align-items: center; gap: 5px; background: var(--well); color: var(--muted); font: inherit; font-size: 12px; white-space: nowrap;
+  border: 1px solid var(--line); border-radius: 5px; padding: 3px 9px; cursor: pointer; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.toggle::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #0008; box-shadow: inset 0 0 0 1px var(--edge); }
+.toggle:hover:not(:disabled) { color: var(--text); }
+.toggle.on { color: var(--text); border-color: var(--edge-hi); }
+.toggle.on::before { background: var(--accent-hi); box-shadow: 0 0 6px var(--accent); }
+.toggle.erase.on { color: #ffa48c; border-color: #a04030; }
+.toggle.erase.on::before { background: #ff7a5c; box-shadow: 0 0 6px #ff4a2e; }
+.toggle:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Form controls in panels. */
+.inspector select, .set-ctl select, .network .new-route select, .dir-search, .dir-filters select, .hole-picker, .inspector .controls input[type="number"], .inspector input.rename {
+  background: var(--well); color: var(--text); border: 1px solid var(--line); border-radius: 4px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.inspector select:focus-visible, .set-ctl select:focus-visible, .dir-search:focus-visible { outline: 1px solid var(--accent); }
+.inspector input[type="checkbox"], .storage input[type="checkbox"] { accent-color: var(--accent); }
+:focus-visible { outline: 2px solid #ffd2a8; outline-offset: 1px; }
+
+/* ---- Resources as chips: an icon and an amount ---- */
+.amounts { display: inline-flex; flex-wrap: wrap; gap: 2px 7px; align-items: center; font-variant-numeric: tabular-nums; }
+.amount { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.amount .ico { color: var(--muted); }
+.amount.short, .amount.short .ico { color: #ff8a6c; }
+.k { color: var(--muted); }
+
+/* ---- The top bar ---- */
+.hud {
+  gap: 6px 10px; padding: 5px 10px; background: linear-gradient(180deg, #37221b, #2a1814);
+  border-bottom: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255, 214, 180, 0.1); position: relative; z-index: 9;
+}
+.menu-btn { padding: 4px 6px; }
+.hole-name, .hole-picker { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; font-size: 14px; }
+.hole-name { color: var(--accent-hi); padding: 1px 8px; background: var(--well); border: 1px solid var(--line); border-radius: 4px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5); }
+.hole-picker { color: var(--accent-hi); padding: 2px 4px; }
+.clock { font-family: var(--font-display); font-weight: 500; font-size: 13.5px; letter-spacing: 0.02em; min-width: 0; }
+.drill, .drop { color: var(--muted); font-size: 12.5px; }
+.drill .ico, .drop .ico { color: var(--text); }
+.drill button { display: inline-flex; padding: 1px 3px; }
+.office-btn { padding: 3px 10px; font-family: var(--font-display); font-weight: 600; letter-spacing: 0.04em; }
+.office-btn.waiting { animation: beckon 2.4s ease-in-out infinite; }
+@keyframes beckon { 50% { box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.45), 0 0 10px rgba(224, 122, 63, 0.8); } }
+@media (prefers-reduced-motion: reduce) { .office-btn.waiting { animation: none; } }
+.tick { font-size: 11px; opacity: 0.6; }
+.need, .need-count, .weather-chip { font-size: 12px; }
+
+/* ---- The resource bar: a darker shelf under the top bar ---- */
+.resbar {
+  gap: 3px 6px; padding: 4px 10px; align-items: center; background: linear-gradient(180deg, #1f120e, #1b0f0c);
+  border-bottom: 1px solid var(--line); box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45), 0 3px 10px rgba(0, 0, 0, 0.35); position: relative; z-index: 8;
+}
+.resbar .group { background: rgba(255, 220, 190, 0.035); border: 1px solid rgba(160, 122, 92, 0.22); border-radius: 4px; padding: 1px 3px 1px 0; }
+.group-label { font-family: var(--font-display); font-size: 9px; letter-spacing: 0.1em; background: rgba(160, 122, 92, 0.14); border-right-color: rgba(160, 122, 92, 0.22); border-radius: 3px 0 0 3px; }
+.res { padding: 1px 4px; }
+/* Quiet: only what's worth a look; Stock opens the rest. */
+.stock-btn {
+  display: inline-flex; align-items: center; gap: 5px; font: inherit; font-family: var(--font-display); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); background: transparent; border: 1px solid rgba(160, 122, 92, 0.3); border-radius: 4px; padding: 2px 8px; cursor: pointer;
+}
+.stock-btn:hover, .stock-btn[aria-expanded="true"] { color: var(--text); border-color: var(--edge-hi); background: var(--raised); }
+.stock-btn .n { color: var(--text); font-family: "Space Grotesk", system-ui, sans-serif; letter-spacing: 0; }
+
+/* ---- The dock: modes at the bottom right, the open mode's strip beside them ---- */
+.dock-strip { padding: 6px 8px; gap: 4px 6px; min-height: 30px; }
+.dock-modes { padding: 4px; gap: 3px; }
+.dock-modes[hidden] { display: none; }
+.mode-btn {
+  min-width: 62px; padding: 5px 8px 4px; gap: 3px; background: linear-gradient(180deg, var(--hover), var(--raised)); border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255, 214, 180, 0.14); font-family: var(--font-display); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 4px;
+}
+.mode-btn:hover { border-color: var(--edge-hi); }
+.mode-btn .ico { color: var(--accent-hi); }
+.mode-btn.on { background: linear-gradient(180deg, #f39152, #cf6a30); border-color: #7a3a16; color: var(--ink); box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.45), 0 0 12px rgba(224, 122, 63, 0.45); }
+.mode-btn.on .ico, .mode-btn.on kbd { color: var(--ink); }
+.mode-btn.on kbd { background: rgba(26, 15, 13, 0.15); border-color: rgba(26, 15, 13, 0.4); }
+.mode-btn kbd { margin-left: 2px; }
+.dock-btn { border-radius: 4px; padding: 3px 9px; color: var(--muted); }
+.dock-btn:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.dock-btn.on { color: var(--accent-hi); border-color: var(--accent); background: rgba(224, 122, 63, 0.14); }
+.dock-label { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.1em; }
+.dock-sep { background: linear-gradient(180deg, transparent, var(--edge), transparent); margin: 0 4px; }
+.dock-hint { font-size: 11.5px; }
+.dock-hint.bad { color: #ff9a7c; margin-left: 0; }
+
+/* ---- Building: the rail down the left edge, a group's tiles beside it, the tool bar ---- */
+.build-rail { position: absolute; left: 10px; top: 10px; bottom: 64px; z-index: 6; display: flex; align-items: flex-start; gap: 8px; pointer-events: none; zoom: var(--ui-scale, 1); }
+.build-rail > .rail { pointer-events: auto; }
+.rail { display: flex; flex-direction: column; gap: 3px; padding: 4px; max-height: 100%; overflow-y: auto; scrollbar-width: none; box-sizing: border-box; }
+.build-rail.active .rail { border-color: #7a3a16; box-shadow: var(--bevel), 0 0 0 1px rgba(224, 122, 63, 0.55), 0 0 16px rgba(224, 122, 63, 0.3), var(--float); }
+.rail-btn {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 58px; min-height: 46px; flex-shrink: 0;
+  background: linear-gradient(180deg, var(--hover), var(--raised)); color: var(--text); border: 1px solid var(--line); border-radius: 4px;
+  box-shadow: inset 0 1px 0 rgba(255, 214, 180, 0.14); padding: 4px 2px 3px; font: inherit; cursor: pointer;
+}
+.rail-btn .label { font-family: var(--font-display); font-size: 9px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; line-height: 1.1; text-align: center; color: var(--muted); }
+.rail-btn .ico { color: var(--cat, var(--muted)); filter: brightness(1.25); }
+.rail-btn:hover:not(:disabled) { border-color: var(--edge-hi); }
+.rail-btn:hover:not(:disabled) .label { color: var(--text); }
+/* In hand: a bar of its colour down its inner edge. Open: lit, and joined to its list. */
+.rail-btn.on::after { content: ""; position: absolute; right: -1px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: var(--accent-hi); box-shadow: 0 0 6px var(--accent); }
+.rail-btn.open { background: linear-gradient(180deg, #f39152, #cf6a30); border-color: #7a3a16; box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.45); }
+.rail-btn.open .label, .rail-btn.open .ico { color: var(--ink); filter: none; }
+.rail-btn.tool { min-height: 40px; background: transparent; box-shadow: none; border-color: transparent; }
+.rail-btn.tool .ico { color: var(--muted); filter: none; }
+.rail-btn.tool:hover:not(:disabled) { background: var(--hover); border-color: var(--line); }
+.rail-btn.demolish .ico, .rail-btn.demolish .label { color: #f08a70; }
+.rail-btn.demolish.on { background: #4a211a; border-color: #f08a70; }
+.rail-btn.demolish.on::after { display: none; }
+.rail-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+/* A group's number key, in its corner. */
+.rail-btn kbd { position: absolute; top: 2px; right: 2px; min-width: 0; padding: 0 3px; font-size: 8.5px; line-height: 1.25; border-bottom-width: 1px; opacity: 0.75; }
+.rail-btn.open kbd { color: var(--ink); background: rgba(26, 15, 13, 0.15); border-color: rgba(26, 15, 13, 0.4); }
+/* Keys on a lit button. */
+.primary kbd { color: var(--ink); background: rgba(26, 15, 13, 0.15); border-color: rgba(26, 15, 13, 0.4); }
+.rail-sep { height: 1px; margin: 3px 4px; background: linear-gradient(90deg, transparent, var(--edge), transparent); flex-shrink: 0; }
+/* As tall as the rail's space, so its list can scroll within it and the card can be placed against it; only the panel and the card take clicks. */
+.build-flyout { position: relative; display: flex; align-items: flex-start; align-self: stretch; min-height: 0; pointer-events: none; }
+.build-flyout > * { pointer-events: auto; }
+.flyout-panel { width: 264px; max-height: 100%; display: flex; flex-direction: column; padding: 8px 8px 6px; box-sizing: border-box; font-size: 13px; animation: flyout-in 0.14s ease-out; }
+@keyframes flyout-in { from { opacity: 0; transform: translateX(-8px); } }
+@media (prefers-reduced-motion: reduce) { .flyout-panel { animation: none; } }
+.tiles { overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 2px; position: relative; scrollbar-width: thin; scrollbar-color: var(--edge) transparent; margin-right: -4px; padding-right: 4px; }
+.tiles section { display: flex; flex-direction: column; gap: 2px; }
+.tiles h3 { margin: 7px 0 1px 2px; display: flex; align-items: center; gap: 6px; }
+.tiles h3::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--cat); }
+.tiles section:first-child h3 { margin-top: 2px; }
+.tile {
+  display: flex; align-items: center; gap: 7px; width: 100%; box-sizing: border-box; min-height: 30px; text-align: left;
+  background: rgba(255, 220, 190, 0.04); color: var(--text); font: inherit; font-size: 13px;
+  border: 1px solid transparent; border-left: 3px solid var(--cat); border-radius: 3px; padding: 4px 6px 4px 7px; cursor: pointer;
+}
+.tile:hover { background: var(--hover); border-color: var(--line); border-left-color: var(--cat); }
+.tile.on { background: rgba(224, 122, 63, 0.2); border-color: var(--accent); border-left-color: var(--accent-hi); box-shadow: inset 0 0 12px rgba(224, 122, 63, 0.15); }
+.tile .swatch { display: none; }
+.tile .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.tile .amounts { font-size: 11.5px; flex-wrap: nowrap; color: var(--muted); gap: 5px; }
+.tile .k { font-size: 10.5px; }
+.tile.short .name { color: var(--muted); }
+.tile[aria-disabled="true"] { cursor: not-allowed; }
+/* A family's sizes on its tile: which one it'll hand you. */
+.tile .variants { display: inline-flex; gap: 1px; font-family: var(--font-display); font-size: 9.5px; font-weight: 600; }
+.tile .variants i { font-style: normal; padding: 0 3px; border-radius: 2px; color: var(--muted); background: #0004; }
+.tile .variants i.now { color: var(--ink); background: var(--cat); }
+/* The details of the tile under the pointer, beside the list and level with it. */
+.panel.build-card { position: absolute; left: calc(100% + 8px); width: 270px; padding: 9px 11px; box-sizing: border-box; pointer-events: none; z-index: 1; animation: card-in 0.1s ease-out; }
+@keyframes card-in { from { opacity: 0; } }
+.room-card { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.room-card p { margin: 0; }
+.room-card header { display: flex; align-items: baseline; gap: 7px; padding-bottom: 5px; border-bottom: 1px solid transparent; border-image: linear-gradient(90deg, var(--cat), transparent) 1; }
+.room-card header .swatch { width: 9px; height: 9px; border-radius: 2px; background: var(--cat); flex-shrink: 0; align-self: center; }
+.room-card h3 { margin: 0; flex: 1; font-family: var(--font-display); font-size: 14px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.room-card .size { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.room-card .price { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
+.room-card .price .k { font-size: 11.5px; margin-left: auto; }
+.room-card .facts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; padding: 6px 8px; background: var(--well); border: 1px solid var(--line); border-radius: 4px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45); }
+.room-card .facts > div { display: contents; }
+.room-card .facts dt { color: var(--muted); font-size: 11px; font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; align-self: center; }
+.room-card .facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.room-card .fx { display: flex; flex-wrap: wrap; gap: 4px; }
+.fx-chip { font-size: 11.5px; padding: 1px 7px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.fx-chip.good { color: var(--tone-good); border-color: #9fd28a55; background: #9fd28a14; }
+.fx-chip.bad { color: var(--tone-bad); border-color: #ff7a5c55; background: #ff7a5c14; }
+.room-card .note { font-size: 12px; line-height: 1.35; }
+.room-card .note.good { color: var(--tone-good); }
+.room-card .note.bad { color: var(--tone-bad); }
+/* The tool bar: what's in hand, and the choices that go with it. */
+.tool-bar { gap: 6px 10px; border-color: #7a3a16; box-shadow: var(--bevel), 0 0 0 1px rgba(224, 122, 63, 0.4), var(--float); animation: toolbar-in 0.14s ease-out; }
+@keyframes toolbar-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .tool-bar, .build-card { animation: none; } }
+.tool-name { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-display); font-size: 13.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; padding-right: 4px; }
+.tool-name .swatch { width: 10px; height: 10px; border-radius: 2px; background: var(--cat); }
+.tool-name.danger { color: #f08a70; }
+.tool-group { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.tool-cost { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.tool-cost.short { color: #ff8a6c; }
+.tool-bar .done { margin-left: auto; }
+.tool-bar .dock-hint { margin-left: 0; padding-left: 0; flex: 1 1 80px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Clear of the rail. */
+.cam-readout, .event-cards { left: 90px; }
+.event-cards { top: 40px; }
+
+/* ---- What floats over the view ---- */
+/* The "Why?" panel: causes as a list of figures; where each comes from and its fix fold open under it. */
+.why-list { gap: 4px; }
+.why-item { --tone: var(--tone-bad); border: 1px solid var(--line); border-left: 3px solid var(--tone); border-radius: 4px; padding: 0; background: var(--well); gap: 0; }
+.why-item.good { --tone: var(--tone-good); border-left-color: var(--tone); }
+.why-top { display: flex; align-items: center; gap: 6px; padding: 4px 6px; }
+.why-what { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 7px; background: none; border: none; color: var(--text); font: inherit; font-size: 13px; text-align: left; padding: 0; cursor: pointer; }
+.why-what:disabled { cursor: default; }
+.why-what > span:not(.ico) { flex: 1; min-width: 0; }
+.why-what .chev { color: var(--muted); align-self: center; transition: transform 0.12s; }
+.why-item.open .why-what .chev { transform: rotate(90deg); }
+.why-amount { min-width: 34px; text-align: right; font-weight: 700; color: var(--tone, var(--text)); }
+.why-from { margin: 0; padding: 0 8px 5px 47px; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+.why .why-fix { margin: 0 6px 6px; padding: 4px 7px; border-radius: 4px; background: #e07a3f1f; border-left: 2px solid var(--accent); font-size: 12px; line-height: 1.35; color: var(--text); }
+.why .why-fix b { color: var(--accent-hi); margin-right: 3px; font-family: var(--font-display); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+.why .why-show { align-self: center; flex-shrink: 0; }
+.why .why-show.eye { display: inline-flex; padding: 3px 6px; }
+.why-home .why-amount { display: inline-block; min-width: 24px; margin-right: 4px; color: var(--text); }
+/* Dialogs never run off the screen: they scroll inside it. */
+.menu { max-height: calc(100dvh - 32px); overflow-y: auto; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: var(--edge) transparent; }
+/* The controls: wide enough that a line of help is a line. */
+.help { width: min(820px, 100%); }
+.help-cols { grid-template-columns: 1.7fr 1fr; gap: 4px 28px; }
+.help dl { gap: 5px; }
+.help dt { min-width: 128px; flex-shrink: 0; }
+.help dd { line-height: 1.35; }
+.help .primary { align-self: flex-start; }
+@media (max-width: 560px) { .help-cols { grid-template-columns: 1fr; } }
+/* The deputy's tip: what's wrong and its buttons on one row; the steps fold open from How?. */
+.tutorial .tip-actions { align-items: center; flex-wrap: wrap; gap: 6px 8px; }
+.tutorial .tip-actions .link { align-self: center; }
+.tutorial .tip-actions .link:last-child { margin-left: auto; }
+.tutorial .tip-actions .link.how { color: var(--accent-hi); }
+/* A storage room's goods: switches, two to a row. */
+.storage .all { align-items: center; gap: 6px; margin: 4px 0; }
+.storage .all .k { font-size: 12px; margin: 0; }
+.storage .goods { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.storage .goods .good {
+  position: relative; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 5px; margin: 0; padding: 3px 6px; font-size: 12px;
+  background: var(--well); border: 1px solid var(--line); border-radius: 3px;
+}
+.storage .goods .good:hover { border-color: var(--edge-hi); }
+.storage .goods .good input { position: absolute; opacity: 0; pointer-events: none; }
+.storage .goods .good:has(input:focus-visible) { outline: 2px solid #ffd2a8; outline-offset: 1px; }
+.storage .goods .good .swatch { width: 9px; height: 9px; }
+.storage .goods .good .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.storage .goods .good.off { opacity: 1; color: var(--muted); background: transparent; border-style: dashed; border-color: rgba(160, 122, 92, 0.3); }
+.storage .goods .good.off .swatch { background: transparent !important; box-shadow: inset 0 0 0 1px var(--muted); }
+.storage .goods .good.off .name { text-decoration: line-through; text-decoration-color: rgba(168, 141, 124, 0.5); }
+/* The status line: what the pointer's on, a part at a time, and where that is at the far end. */
+.status { display: flex; align-items: center; gap: 12px; min-height: 18px; }
+.status-main { flex: 1; min-width: 0; display: flex; overflow: hidden; }
+.status-main > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; max-width: 100%; }
+.status-main > span + span { margin-left: 9px; padding-left: 9px; border-left: 1px solid var(--edge); flex-shrink: 1; }
+.status-main > span:first-child { color: var(--text); }
+.status.bad .status-main > span:first-child, .status-main > .warn { color: #ff9a7c; }
+.status-place { flex-shrink: 0; color: var(--muted); font-size: 11.5px; opacity: 0.85; }
+/* The top bar's alerts keep to one line of their own: side by side at their full width when there's room, on the bar's second row when there isn't, shortened only as a last resort. */
+.needs { flex: 1 1 auto; flex-wrap: nowrap; min-width: 140px; overflow: hidden; }
+.need { min-width: 0; flex-shrink: 1; }
+.need:not(.more) { display: inline-block; overflow: hidden; text-overflow: ellipsis; }
+.need:not(.more) > .ico { vertical-align: -3px; margin-right: 4px; }
+/* The View strip: the camera, what shows, and the overlay, each a group with room between them. */
+.view-strip { gap: 6px 16px; }
+.view-strip .seg { flex-wrap: wrap; }
+/* A decision waiting (an event's card, down the left) comes first: it sits over the deputy's card, keeps clear of the dock, and the toasts narrow to leave it room. */
+.event-cards { z-index: 5; max-height: calc(100% - 120px); overflow-y: auto; scrollbar-width: thin; }
+.view:has(.event-card) .messages { max-width: max(0px, calc(100% - 510px)); overflow: hidden; }
+/* The floor picker owns the right edge: toasts and the deputy's card keep clear of it. */
+.messages, .tutorial, .tutorial-pill { right: 84px; }
+/* The dock is a grid: the open mode's strip and the mode buttons along the bottom, and above them, at the
+   right, the deputy's card. Stacked, so a strip of any height never runs under the card. */
+.dock { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+.dock > .dock-strip { grid-row: 2; grid-column: 1; }
+.dock > .dock-modes { grid-row: 2; grid-column: 2; margin-left: 0; }
+.dock-aside { grid-row: 1; grid-column: 1 / -1; justify-self: end; margin-right: 74px; display: flex; flex-direction: column; align-items: flex-end; }
+.dock-aside:empty { display: none; }
+/* Over the map, the deputy's card steps aside: the globe has the view. */
+.view:has(.map-screen) .dock-aside { display: none; }
+/* Only the card takes clicks: beside it, they go through to the view. */
+.dock > .dock-aside { pointer-events: none; }
+.dock-aside .tutorial, .dock-aside .tutorial-pill { pointer-events: auto; }
+.dock-aside .tutorial, .dock-aside .tutorial-pill { position: static; zoom: 1; }
+.messages { max-width: min(380px, calc(100% - 190px)); font-size: 12.5px; }
+.msg { background: var(--face); border: 1px solid var(--line); border-left: 3px solid var(--muted); border-radius: 4px; box-shadow: var(--bevel), 0 4px 14px rgba(0, 0, 0, 0.4); padding: 6px 4px 6px 10px; }
+.msg.good { border-left-color: #8fcf6f; }
+.msg.warn { border-left-color: #ff7a5c; }
+.cam-readout { background: rgba(26, 15, 13, 0.8); border: 1px solid var(--line); font-family: var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; font-size: 11px; }
+.cam-wedge, .cam-reset { text-transform: none; letter-spacing: 0; font-family: "Space Grotesk", system-ui, sans-serif; }
+.floor-picker { padding: 3px; gap: 2px; background: var(--face); }
+.floor-picker button { background: transparent; font-family: var(--font-display); font-weight: 600; font-size: 11.5px; letter-spacing: 0.04em; color: var(--muted); padding: 3px 9px; border-radius: 3px; }
+.floor-picker button:hover { background: var(--hover); color: var(--text); }
+.floor-picker button.on { background: linear-gradient(180deg, #f39152, #cf6a30); border-color: #7a3a16; color: var(--ink); }
+.event-card .title, .visit .title { font-family: var(--font-display); letter-spacing: 0.03em; }
+.visit { background: var(--well); border-color: var(--line); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45); }
+.status {
+  padding: 4px 12px; font-size: 12px; background: linear-gradient(180deg, #24140f, #1c100d); border-top: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(160, 122, 92, 0.18); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.corridor-confirm { background: var(--face); border-color: #7a3a16; padding: 12px 14px; }
+/* Clear of a tool bar two rows deep. */
+.corridor-confirm { bottom: 100px; }
+/* The dev server's tick counter: tucked in the bar's corner, never taking a row of its own. */
+.tick { position: absolute; right: 10px; bottom: 0; margin: 0; font-size: 9.5px; line-height: 1; pointer-events: none; }
+.menu { padding: 22px; }
+.map-screen header, .map-screen footer { background: linear-gradient(180deg, #37221b, #2a1814); }
+.site-panel { background: linear-gradient(180deg, #2f1c16, #24140f); box-shadow: inset 1px 0 0 rgba(160, 122, 92, 0.22); }
+/* The room panel: a status pill, figures at a glance as labelled tiles, the two worst alerts, then its sections as shelves. */
+.room-panel .fold { border-top: 1px solid rgba(160, 122, 92, 0.2); }
+.room-panel .fold-head { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 0; }
+.room-panel .fold-body { gap: 5px; padding: 0 0 8px; }
+.room-panel .chip { background: var(--well); border: 1px solid var(--line); }
+.room-panel .pill { font-family: var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; font-size: 11px; padding: 2px 10px; }
+.room-panel .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.room-panel .stat {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 4px 6px 5px; cursor: default;
+  background: var(--well); border: 1px solid var(--line); border-radius: 4px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.room-panel .stat-k { font-family: var(--font-display); font-size: 9px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-panel .stat-v { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--tone, var(--text)); white-space: nowrap; }
+.room-panel .stat .meter { min-width: 0; }
+.room-panel .alerts { border: none; padding: 0; gap: 3px; }
+.room-panel .alert { padding: 3px 7px; border-radius: 4px; border-left: 3px solid var(--tone); background: color-mix(in srgb, var(--tone) 10%, transparent); }
+.room-panel .alerts .more { align-self: flex-start; background: none; border: none; color: var(--muted); font: inherit; font-size: 11px; padding: 0 0 0 10px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.room-panel .alerts .more:hover { color: var(--text); }
+/* Rows as a table: icon, label, value; a breakdown's causes on a quieter line under its figure. */
+.room-panel .row { display: grid; grid-template-columns: 14px 78px minmax(0, 1fr); column-gap: 6px; align-items: baseline; line-height: 1.35; }
+.room-panel .row.wide .v { grid-column: 2 / -1; }
+.room-panel .row .k { margin: 0; font-size: 12px; }
+.room-panel .row .v b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.room-panel .row .v small { display: block; font-size: 11.5px; color: var(--muted); }
+.room-panel .row.tone-warn .v small, .room-panel .row.tone-bad .v small { color: inherit; opacity: 0.8; }
+/* The room's controls: a label, then the choice. */
+.room-panel .field, .room-panel label:has(select), .room-panel label:has(input[type="range"]) { display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding-left: 20px; }
+.room-panel .field .k, .room-panel label .k { margin: 0; font-size: 12px; }
+.room-panel .field .seg { align-self: center; }
+.room-panel .field .seg button { padding: 2px 6px; font-size: 11.5px; flex: 1; justify-content: center; }
+.room-panel input[type="range"] { accent-color: var(--accent); min-width: 0; }
+.inspector .controls { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-left: 20px; margin: 2px 0; }
+.choices { display: flex; flex-direction: column; gap: 3px; }
+.choices > .btn { align-self: flex-start; }
+.choices > .btn .chev { transition: transform 0.12s; color: var(--muted); }
+.choices > .btn.on .chev { transform: rotate(90deg); }
+.choice-list { display: flex; flex-direction: column; gap: 2px; padding: 3px; background: var(--well); border: 1px solid var(--line); border-radius: 4px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45); }
+.choice-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 0 8px; text-align: left; background: transparent; color: var(--text); font: inherit; font-size: 12px;
+  border: 1px solid transparent; border-radius: 3px; padding: 3px 6px; cursor: pointer;
+}
+.choice-row:hover:not(:disabled) { background: var(--hover); border-color: var(--edge); }
+.choice-row .name { font-weight: 500; }
+.choice-row .takes { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.choice-row .gain { grid-column: 1 / -1; font-size: 11px; color: var(--tone-good); }
+.choice-row .gain.no { color: var(--tone-bad); }
+.choice-row:disabled { cursor: not-allowed; }
+.choice-row:disabled .name, .choice-row:disabled .takes { opacity: 0.5; }
+
+/* ---- Phones ---- */
+@media (max-width: 760px) {
+  .build-rail { left: 6px; top: 32px; bottom: 70px; gap: 6px; }
+  .rail-btn { width: 44px; min-height: 42px; }
+  .rail-btn .label { display: none; }
+  .build-flyout { flex-direction: column-reverse; gap: 6px; flex: 1; min-width: 0; }
+  .flyout-panel { width: min(264px, calc(100vw - 72px)); max-height: 60%; }
+  .build-card { position: static; width: min(264px, calc(100vw - 72px)); }
+  .cam-readout, .event-cards { left: 62px; }
+  .tool-bar .dock-hint { display: none; }
+  .inspector { width: auto; }
+  .view:has(.event-card) .messages { display: none; }
+  .needs { flex-wrap: wrap; overflow: visible; }
+  .status-place { display: none; }
+  .messages, .tutorial, .tutorial-pill { right: 6px; }
+  .dock { display: flex; align-items: stretch; }
+  .messages { max-width: calc(100% - 70px); }
+  /* Beside the rail, not under it. */
+  .tutorial, .event-cards { width: min(300px, calc(100% - 74px)); }
+}

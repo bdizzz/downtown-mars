@@ -42,6 +42,8 @@ describe("flow ledger", () => {
 
   it("names where things come from and go", () => {
     const s = colony();
+    // Few enough rations that Earth's drop tops them up.
+    s.resources.rations = 60;
     for (let i = 0; i < 4 * config.ticksPerDay; i++) step(s, config);
     const f = averageFlows(s, config);
     expect(Object.keys(f.o2!.in)).toEqual(expect.arrayContaining(["CO2 scrubber", "Electrolyzer"]));

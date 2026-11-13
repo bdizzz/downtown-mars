@@ -21,7 +21,7 @@ import { hudMessage, iconsMessage } from "./hud";
 import { tutorialMessage } from "./tutorial";
 import { tipMessage, whyMessage } from "./why";
 import type { Spot } from "../view/reachView";
-import { advanceStep, FOLLOW, metGoals, pickGoal } from "../ui/tutorialGoals";
+import { advanceStep, FOLLOW, metGoals, pickGoal, shownGoal, tutorial } from "../ui/tutorialGoals";
 import { planFieldKey, planFieldMessage, planKey, planMessage, type FieldView } from "./plan";
 import { terrainKey, terrainMessage } from "./terrain";
 import { welcomeCard } from "../view/welcome";
@@ -269,7 +269,8 @@ function sendWhy(snap = host.snapshot()): void {
     for (const c of clients) c.write(tip + "\n");
   }
 }
-let tutorialFlags = { sawNoise: false, openedFlows: false, sawThreeD: true };
+// Godot has no temperature overlay yet (#401): its tutorial step counts as met.
+let tutorialFlags = { sawNoise: false, openedFlows: false, sawThreeD: true, sawTemperature: true };
 /** The step the tutorial's card is on (ui/tutorialGoals.ts), moved on as goals are met. */
 let tutorialStep = FOLLOW;
 
@@ -277,6 +278,12 @@ let tutorialStep = FOLLOW;
 function sendTutorial(snap = host.snapshot()): void {
   const met = metGoals(snap, tutorialFlags);
   tutorialStep = advanceStep(tutorialStep, met);
+  // The office step (T-080), as on the web: with nobody waiting, someone comes to say hello. The
+  // greeter never leaves, so this sends once; the sim adds no one if the office has company.
+  const at = shownGoal(tutorialStep, met);
+  if (at >= 0 && !met[at] && tutorial.goals[at]!.id === "visit" && snap.office.waiting.length === 0) {
+    host.onMessage({ type: "command", id: 0, command: { type: "greet" } });
+  }
   const tut = JSON.stringify(tutorialMessage(snap, met, tutorialStep));
   if (tut === sentTutorial) return;
   sentTutorial = tut;
@@ -465,7 +472,7 @@ const server = createServer((socket) => {
         } else if (msg.type === "autosave") {
           dailyAutosave = msg.on;
         } else if (msg.type === "tutorialFlags") {
-          tutorialFlags = { sawNoise: msg.sawNoise, openedFlows: msg.openedFlows, sawThreeD: msg.sawThreeD };
+          tutorialFlags = { sawNoise: msg.sawNoise, openedFlows: msg.openedFlows, sawThreeD: msg.sawThreeD, sawTemperature: true };
         } else if (msg.type === "spotlight") {
           fieldView.spot = msg.spot;
           sendScene();

@@ -22,13 +22,18 @@ export interface CropDef {
   group: "staple" | "protein" | "produce" | "material";
   /** What it yields, when not raw food (fiber hemp makes fiber). */
   makes?: string;
+  /** What a farm makes a month, on average: it comes in whole harvests (food.ts). */
   yield: number;
+  /** Months (game days) from planting to harvest. */
+  growMonths: number;
   water: number;
   power: number;
 }
 
 export const resourceDefs: ResourceDef[] = rawResources.resources as ResourceDef[];
 export const cropDefs: CropDef[] = rawCrops.crops as CropDef[];
+/** The bonus on a harvest for a long grow time: 0 at fromMonths, rising to max at toMonths. */
+export const longGrowBonus: { fromMonths: number; toMonths: number; max: number } = rawCrops.longGrowBonus;
 
 const resById = new Map(resourceDefs.map((r) => [r.id, r]));
 const cropById = new Map(cropDefs.map((c) => [c.id, c]));

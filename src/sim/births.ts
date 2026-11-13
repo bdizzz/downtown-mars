@@ -29,6 +29,11 @@ export function birthsPerDay(state: SimState): number {
   return countStage(state, "adult") * people.births.perAdultPerDay;
 }
 
+/** A newborn is a generation after the adults: after the latest of them, if any were born here. */
+export function newbornGeneration(state: SimState): number {
+  return 1 + Math.max(1, ...state.population.cohorts.filter((c) => c.stage === "adult").map((c) => c.gen ?? 1));
+}
+
 export function stepBirths(state: SimState, cfg: SimConfig): void {
   const pop = state.population;
   if (birthBlockers(state).length) return;
@@ -38,9 +43,11 @@ export function stepBirths(state: SimState, cfg: SimConfig): void {
   // Everyone born the same day grows up together.
   const today = Math.floor(state.tick / cfg.ticksPerDay);
   const until = (today * cfg.ticksPerDay) + people.child.days * cfg.ticksPerDay;
-  const cohort = pop.cohorts.find((c) => c.stage === "child" && c.until === until);
+  const gen = newbornGeneration(state);
+  const cohort = pop.cohorts.find((c) => c.stage === "child" && c.until === until && (c.gen ?? 1) === gen);
   if (cohort) cohort.count += 1;
-  else pop.cohorts.push({ stage: "child", count: 1, until });
+  else pop.cohorts.push({ stage: "child", count: 1, until, gen });
+  pop.generation = Math.max(pop.generation ?? 1, gen);
   syncCount(state);
   pop.born = (pop.born ?? 0) + 1;
   unlock(state, "children");

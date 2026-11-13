@@ -20,6 +20,8 @@ export interface RoomDef {
   name: string;
   short: string;
   category: string;
+  /** Sizes or grades of one thing (storeroom, warehouse, depot) share a family: one tile in the build menu, with a picker. */
+  family?: string;
   size: RoomSize;
   surfaceSlots?: number;
   staff: number;
@@ -79,7 +81,7 @@ export interface RoomDef {
   /** Elders it looks after. */
   caresForElders?: number;
   /** Not buildable until the hole has reached this (see UNLOCKS in costs.ts). */
-  unlockedBy?: "children" | "elders" | "cargo" | "basicHomes" | "standardHomes" | "luxuryHomes" | "cleaning" | RoomUnlock;
+  unlockedBy?: "children" | "elders" | "cargo" | "basicHomes" | "standardHomes" | "luxuryHomes" | "cleaning" | "geothermal" | RoomUnlock;
   /** A service room that repairs other rooms' condition: any room, or only the people-heavy (cleanable) ones. */
   maintains?: "all" | "cleanable";
   /** Units of storage for dry goods (data/storage.json). */
@@ -112,10 +114,16 @@ export interface RoomDef {
   enablesBirths?: boolean;
   /** Rovers this room provides for trade routes. */
   rovers?: number;
+  /** A heater: °C it lifts the reference floor at full power (temperature.ts). Its power use follows the thermostat. */
+  heats?: number;
+  /** A radiator: °C it takes off the reference floor at full power, piping the heat to the surface. Its power use follows the thermostat. */
+  cools?: number;
 }
 
 // JSON imports widen literal types, so the shape is checked in tests/rooms.test.ts.
 export const roomDefs: RoomDef[] = raw.rooms as unknown as RoomDef[];
+/** Each family's name, for its tile in the build menu. */
+export const roomFamilies: Record<string, string> = raw.families;
 
 const byId = new Map(roomDefs.map((r) => [r.id, r]));
 

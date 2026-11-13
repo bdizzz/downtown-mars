@@ -1,3 +1,4 @@
+import { varietyComfort } from "./food";
 import type { SimConfig } from "./config";
 import { isActive } from "./economy";
 import { effectOnRoom } from "./effects";
@@ -13,6 +14,7 @@ import { postMessage } from "./messages";
 import { config } from "./config";
 import { amenityFelt, updateDining, updateSanitation } from "./amenities";
 import { eventMood, festivalWork } from "./events";
+import { temperatureComfort } from "./temperature";
 
 // Happiness from three factors (noise, comfort, health), each −3..+3, felt
 // where colonists live. Each home's happiness eases toward its target, and a
@@ -104,12 +106,16 @@ export function homeParts(state: SimState, room: RoomInstance | null, cfg: SimCo
   // Lined ones (brick, metal) lift everyone a little; a home's own lining, its residents.
   add("sharedWear", "comfort", -sharedWear(state) * CONDITION.happiness.sharedComfort);
   add("sharedLining", "comfort", sharedLiningComfort(state));
+  // How varied the meals have been this past month (food.ts).
+  add("variety", "comfort", varietyComfort(state));
   // Diners without a seat at a galley or canteen within reach eat on the go;
   // and those without a restroom within reach (or a bathroom at home) go without.
   const seated = room ? (pop.servedByHome?.[room.id] ?? pop.served ?? 1) : (pop.servedHomeless ?? pop.served ?? 1);
   const sanitation = room ? (pop.sanitationByHome?.[room.id] ?? 1) : (pop.sanitationHomeless ?? 1);
   add("noSeat", "comfort", -(1 - seated) * h.unservedComfort);
   add("noRestroom", "comfort", -(1 - sanitation) * h.noRestroomComfort);
+  // Cold homes (or hot ones): the floor's temperature (temperature.ts).
+  add("temperature", "comfort", temperatureComfort(state, room, cfg));
   if (!room) {
     add("homeless", "comfort", h.homelessComfort);
     return parts;

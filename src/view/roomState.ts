@@ -25,6 +25,8 @@ export function limitText(limit: string | undefined): string {
   if (limit === "twilight") return "low sun: easing through dawn or dusk";
   // A dust storm dims the solar arrays (weather.ts).
   if (limit === "storm") return "dimmed by the dust storm";
+  // An ordinance (quiet hours) slows noisy rooms (economy.ts).
+  if (limit === "ordinance") return "slowed by an ordinance: noisy rooms work slower";
   if (limit.startsWith("stocked:")) return `standing by: ${resName(limit.slice(8)).toLowerCase()} stocked`;
   if (limit.startsWith("full:")) return `idling: ${resName(limit.slice(5)).toLowerCase()} storage full`;
   // Air rooms stand by when the air doesn't need them (economy.ts): the electrolyzer once
@@ -67,4 +69,51 @@ export function roomState(layout: Layout, room: RoomInstance, st: RoomStatus | u
   if (st?.limit?.startsWith("stocked:")) return `Standing by: ${resName(st.limit.slice(8)).toLowerCase()} is stocked to ${num(room.stopAt ?? 0)}`;
   if (st) return `Running at ${Math.round(st.rate * 100)}%${st.limit ? ` · ${limitText(st.limit)}` : ""}`;
   return "";
+}
+
+/** The five colors the room panel speaks in (F-019): running, idle by choice, slowed, stopped or cut off, not built yet. */
+export type Tone = "good" | "idle" | "warn" | "bad" | "info";
+
+/** Limits that are a room resting by design, not a problem (the ones `isProblem` lets pass). */
+const RESTING = ["paused", "kit", "standby", "night", "twilight"];
+const RESTING_PREFIX = ["stocked:", "full:", "air:", "clear:"];
+/** Limits that slow a room without stopping it. */
+const SLOWED = ["staff", "morale", "worn", "refit", "storm", "ordinance"];
+
+/** A room's status color: the pill in the panel's header, and (later) the 3D view's labels. */
+export function roomTone(room: { planned: boolean; building?: unknown; connected: boolean }, st: { rate: number; limit?: string } | undefined): Tone {
+  if (room.planned || room.building) return "info";
+  if (!room.connected) return "bad";
+  if (!st) return "idle";
+  const limit = st.limit;
+  if (!limit) return st.rate < 0.999 ? "warn" : "good";
+  if (RESTING.includes(limit) || RESTING_PREFIX.some((p) => limit.startsWith(p))) return "idle";
+  // At full rate a leftover limit holds nothing back (as isProblem has it).
+  if (st.rate >= 0.999) return "good";
+  if (SLOWED.includes(limit)) return "warn";
+  // Broken, or short of an input.
+  return "bad";
+}
+
+/** The status pill's few words: "Running", "Short of water", "Building 40%" (the full sentence is `roomState`). */
+export function statusWord(room: RoomInstance, st: RoomStatus | undefined, progress?: number): string {
+  if (room.planned) return "Blueprint";
+  if (room.building) return progress === undefined ? "Building" : `Building ${Math.round(progress * 100)}%`;
+  if (!room.connected) return "Cut off";
+  if (!st) return "";
+  const limit = st.limit;
+  if (!limit || roomTone(room, st) === "good") return "Running";
+  if (limit === "paused") return "Paused";
+  if (limit === "kit") return "Idle";
+  if (limit === "night") return "Night";
+  if (limit === "twilight") return "Low sun";
+  if (limit === "storm") return "Dimmed";
+  if (limit === "staff") return "Short of staff";
+  if (limit === "morale" || limit === "worn" || limit === "ordinance") return "Slowed";
+  if (limit === "refit") return "Refitting";
+  if (limit === "broken") return "Broken";
+  if (limit === "standby" || limit.startsWith("stocked:") || limit.startsWith("air:")) return "Standing by";
+  if (limit.startsWith("full:")) return "Storage full";
+  if (limit.startsWith("clear:")) return "Keeping up";
+  return `Short of ${nameOf(limit)}`;
 }

@@ -1,6 +1,7 @@
 import type { CommandResult, SimCommand } from "../sim/commands";
 import type { SaveSummary } from "../sim/save";
 import type { Snapshot } from "../sim/snapshot";
+import type { Level } from "../sim/difficulty";
 
 export type ToWorker =
   | { type: "setSpeed"; speed: number }
@@ -9,7 +10,7 @@ export type ToWorker =
   | { type: "command"; id: number; command: SimCommand }
   | { type: "save"; id: number }
   | { type: "load"; id: number; data: string }
-  | { type: "newGame"; id: number }
+  | { type: "newGame"; id: number; difficulty?: Level }
   | { type: "setActiveHole"; holeId: number }
   | { type: "found"; id: number; site: { lat: number; lon: number } }
   | { type: "route"; id: number; action: RouteAction };
