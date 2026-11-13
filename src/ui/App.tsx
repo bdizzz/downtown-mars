@@ -683,6 +683,7 @@ export function App() {
         speed={speed}
         setSpeed={setSpeed}
         setDrill={(active) => onCommand({ type: "setDrill", active })}
+        stopDrill={() => onCommand({ type: "stopDrilling" })}
         toggleOffice={() => togglePanel("office")}
         setActiveHole={setActiveHole}
         highlight={highlight}

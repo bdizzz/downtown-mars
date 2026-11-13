@@ -178,6 +178,12 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       g.fillStyle = "#fff";
       g.font = `700 ${Math.round(13 * S)}px ${UI_FONT}`;
       g.fillText(h.name, x, y - 10 * S);
+      // A capped hole carries its name from how it ended (#412), under the dot.
+      if (h.capped) {
+        g.fillStyle = "#e8d8c4";
+        g.font = `italic 500 ${Math.round(11 * S)}px ${UI_FONT}`;
+        g.fillText(h.capped.identity, x, y + 20 * S);
+      }
     }
     setVersion((v) => v + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps

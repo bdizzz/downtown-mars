@@ -473,8 +473,8 @@ export function gameDuration(ticks: number): string {
 }
 
 export interface TopExtras {
-  /** The drill: the floor it's on and how far, with a pause button; or at its deepest. */
-  drill: { text: string; tip: string; active: boolean; canPause: boolean };
+  /** The drill: the floor it's on and how far, with a pause button; held at a depth limit; capped; or at its deepest. canStop: offer to stop drilling for good (#390). */
+  drill: { text: string; tip: string; active: boolean; canPause: boolean; canStop: boolean };
   /** The next Earth supply drop. */
   drop: { text: string; tip: string; warn: boolean };
 }
@@ -482,9 +482,13 @@ export interface TopExtras {
 export function topExtras(s: Snapshot): TopExtras {
   const d = s.drill;
   return {
-    drill: d.floor
-      ? { text: `F${d.floor} ${Math.floor(d.progress * 100)}%`, tip: `The drill, on floor ${d.floor}: ${gameDuration(d.ticksLeft)} left${d.active ? "" : " (paused)"}`, active: d.active, canPause: true }
-      : { text: "Max", tip: "The drill is at its deepest", active: false, canPause: false },
+    drill: d.capped
+      ? { text: "Capped", tip: `${d.capped.name.charAt(0).toUpperCase()}${d.capped.name.slice(1)}: capped at ${d.capped.floors} floors. The drill's done here for good.`, active: false, canPause: false, canStop: false }
+      : d.stopped === "held"
+        ? { text: "Stopped", tip: "The drill has stopped: a decision about it is waiting", active: false, canPause: false, canStop: false }
+        : d.floor
+          ? { text: `F${d.floor} ${Math.floor(d.progress * 100)}%`, tip: `The drill, on floor ${d.floor}: ${gameDuration(d.ticksLeft)} left${d.active ? "" : " (paused)"}`, active: d.active, canPause: true, canStop: d.canStop }
+          : { text: "Max", tip: "The drill is at its deepest", active: false, canPause: false, canStop: d.canStop },
     drop: s.earth.waiting
       ? { text: "Waiting", tip: "A supply drop is waiting: the landing pad needs staff and power", warn: true }
       : { text: gameDuration(s.earth.ticksToDrop), tip: `The next Earth supply drop, in ${gameDuration(s.earth.ticksToDrop)}`, warn: false },

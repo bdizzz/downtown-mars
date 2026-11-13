@@ -8,11 +8,12 @@ import { DEFAULT_SETTINGS, loadSettings } from "../src/ui/settings";
 // T-066: audio buses and one table of what sounds when.
 
 const msg = (tick: number, text: string, kind: Message["kind"] = "info"): Message => ({ tick, text, kind });
-const snap = (gameId: number, messages: Message[], floors: number) => ({ gameId, messages, layout: { hole: { floors }, rooms: [] } }) as unknown as Snapshot;
+const snap = (gameId: number, messages: Message[], floors: number, omenTick: number | null = null) =>
+  ({ gameId, messages, layout: { hole: { floors }, rooms: [] }, drill: { omenTick } }) as unknown as Snapshot;
 
 describe("sound cues", () => {
   it("every happening plays a known effect, and every message rule names a happening", () => {
-    const sfx = ["click", "build", "demolish", "refuse", "landing", "chime", "alert", "floor"];
+    const sfx = ["click", "build", "demolish", "refuse", "landing", "chime", "alert", "floor", "strain"];
     for (const v of Object.values(raw.happenings)) expect(v === null || sfx.includes(v)).toBe(true);
     for (const r of raw.messages) expect(r.is in raw.happenings).toBe(true);
   });
@@ -30,6 +31,12 @@ describe("sound cues", () => {
     expect(happeningsSince(before, now)).toEqual(["supplyDrop", "floorDug"]);
     expect(happeningsSince(before, snap(2, now.messages, 3))).toEqual([]);
     expect(happeningsSince(null, now)).toEqual([]);
+  });
+
+  it("the drill strains at a new omen of a depth limit (#408), once", () => {
+    const before = heard(snap(1, [], 4, 100));
+    expect(happeningsSince(before, snap(1, [], 4, 100))).toEqual([]);
+    expect(happeningsSince(before, snap(1, [], 4, 300))).toEqual(["omen"]);
   });
 });
 

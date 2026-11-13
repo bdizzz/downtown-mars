@@ -15,6 +15,17 @@ const ICON: Record<string, string> = {
   microfossils: "✶",
   belt_ship: "🛰",
   celebration: "✦",
+  drill_breakdown: "⚙",
+  hard_basalt: "⬢",
+  groundwater: "💧",
+  tremors: "〰",
+  geothermal_pocket: "♨",
+  deep_reservoir: "💧",
+  brine_lake: "◇",
+  magma_chamber: "◠",
+  fault_line: "⚠",
+  stop_drilling: "■",
+  capping: "✦",
 };
 
 const left = (ticks: number) => {
@@ -44,7 +55,7 @@ export function EventCards({ s, onCommand }: { s: Snapshot | null; onCommand: (c
               <span className="hint">{c.refusal ?? c.hint}</span>
             </button>
           ))}
-          <p className="k">Decide within {left(e.expiresTick - s.tick)}</p>
+          <p className="k">{e.waits ? "The drill waits for your answer" : <>Decide within {left(e.expiresTick - s.tick)}</>}</p>
         </div>
       ))}
     </div>

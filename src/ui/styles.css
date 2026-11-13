@@ -105,6 +105,11 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .event-card.belt_ship { border-left-color: #6fb0ff; }
 .event-card.gas_pocket { border-left-color: #ff7a5c; }
 .event-card.celebration { border-left-color: #f2c84b; }
+.event-card.capping { border-left-color: #f2c84b; }
+/* The drill at a hidden depth limit (#390): it waits for the answer. */
+.event-card.drill_breakdown, .event-card.hard_basalt, .event-card.groundwater, .event-card.tremors,
+.event-card.geothermal_pocket, .event-card.deep_reservoir, .event-card.brine_lake, .event-card.magma_chamber,
+.event-card.fault_line, .event-card.stop_drilling { border-left-color: #c9a27a; }
 @keyframes event-in { from { transform: translateX(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
 .msg {
   background: rgba(30, 17, 13, 0.92); border: 1px solid #000; border-left: 3px solid var(--muted); padding: 6px 4px 6px 10px; border-radius: 4px; font-size: 13px;

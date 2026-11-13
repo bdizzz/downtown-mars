@@ -1,3 +1,4 @@
+import { endingName } from "../sim/depth";
 import { applyCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { deserialize, serialize, summarize } from "../sim/save";
@@ -52,6 +53,9 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       cultureTarget: cultureTarget(h, config),
       domed: !!h.layout.domed,
       milestones: (h.milestones ?? []).map((m) => ({ ...m })),
+      floors: h.layout.hole.floors,
+      shaftRadiusM: h.layout.hole.shaftRadiusM,
+      ...(h.depth?.capped ? { capped: { floors: h.depth.capped.floors, identity: endingName(h.depth.capped.ending) } } : {}),
       ...(h.failed ? { failed: { days: daysLasted(h, config), peak: h.failed.peak } } : {}),
     }));
   }

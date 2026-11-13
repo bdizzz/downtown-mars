@@ -2,7 +2,7 @@
 // The AudioContext is created on the first user gesture, as browsers require.
 // Three buses under the master volume: music, effects and ambience, each with its own slider.
 
-export type Sfx = "click" | "build" | "demolish" | "refuse" | "landing" | "chime" | "alert" | "floor";
+export type Sfx = "click" | "build" | "demolish" | "refuse" | "landing" | "chime" | "alert" | "floor" | "strain";
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -174,6 +174,12 @@ export function play(sfx: Sfx): void {
     case "floor":
       tone(55, 0.6, "sine", 0.35, 0, 40);
       noise(0.5, 0.35, 200);
+      break;
+    case "strain":
+      // The drill straining (an omen of a depth limit, #408): a low groan that sags, and grinding.
+      tone(95, 1.4, "sawtooth", 0.07, 0, 62);
+      tone(47, 1.6, "sine", 0.25, 0.1, 38);
+      noise(1.3, 0.4, 260);
       break;
   }
 }

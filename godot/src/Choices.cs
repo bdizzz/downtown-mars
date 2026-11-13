@@ -208,7 +208,9 @@ public partial class Choices : Node
         }
         foreach (var e in pending.EnumerateArray())
             if (_countdowns.TryGetValue(e.GetProperty("id").GetInt32(), out var label))
-                label.Text = $"Decide within {Left(e.GetProperty("expiresTick").GetInt32() - tick)}";
+                label.Text = e.TryGetProperty("waits", out var w) && w.ValueKind == JsonValueKind.True
+                    ? "The drill waits for your answer"
+                    : $"Decide within {Left(e.GetProperty("expiresTick").GetInt32() - tick)}";
     }
 
     string _newsKey = "";
