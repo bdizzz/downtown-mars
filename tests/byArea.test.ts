@@ -10,6 +10,7 @@ import { createInitialState, type SimState } from "../src/sim/state";
 import { clickWith, commitBuild, fillAt, handleAt, hoverInfoFor, dragProposal, onProposal } from "../src/view/interaction";
 import type { Pick, RoomProposal, Tool } from "../src/view/types";
 import { roomWork } from "../src/sim/construction";
+import { distancesFromCells } from "../src/sim/paths";
 
 // F-004 (PLAN-M17): rooms sized by area and placed by angle, with snapping, handles and fill rooms.
 
@@ -76,6 +77,34 @@ describe("a room's size is an area", () => {
     expect(ok(range.max + 1)).toMatchObject({ ok: false, reason: expect.stringMatching(/^Too big: up to \d+ m²$/) });
     // An old slot-shaped room is taken as it is.
     expect(checkPlacement(l, "galley", { kind: "ring", floor: 1, ring: 2, start: 0, span: 160, fixed: true }).ok).toBe(true);
+  });
+});
+
+describe("a room at any angle meets what's there partway along", () => {
+  it("a ring-1 room opens onto the gallery tube, though its ends fall inside the tube's pieces", () => {
+    const s = createInitialState(config);
+    const check = checkPlacement(s.layout, "galley", { kind: "ring", floor: 1, ring: 1, start: 417 });
+    expect(check).toMatchObject({ ok: true });
+    expect(check.ok && check.unconnected).toBeFalsy();
+    // In ring 3 behind solid rock, with nothing reaching it: it says so.
+    expect(checkPlacement(s.layout, "galley", { kind: "ring", floor: 1, ring: 3, start: 1260 })).toMatchObject({ ok: true, unconnected: true });
+    // Hovering changed nothing: no corridor was cut for a room that isn't there.
+    expect(s.layout.corridorSplits).toBeUndefined();
+    const before = Object.keys(s.layout.corridors).length;
+    expect(applyCommand(s, { type: "build", room: "galley", at: { kind: "ring", floor: 1, ring: 1, start: 417 } }).ok).toBe(true);
+    expect(s.layout.rooms.at(-1)!.connected).toBe(true);
+    // Built, the tube is cut at its ends.
+    expect(Object.keys(s.layout.corridors).length).toBeGreaterThan(before);
+  });
+
+  it("what it would reach on foot is found before it's built", () => {
+    const s = createInitialState(config);
+    s.drill.active = false;
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: { kind: "ring", floor: 1, ring: 1, start: 700 } });
+    applyCommand(s, { type: "consoleFinish" });
+    const dorm = s.layout.rooms.at(-1)!;
+    const cells = [{ floor: 1, ring: 1, a0: 417, a1: 570 }];
+    expect(distancesFromCells(s.layout, cells, "walk").has(dorm.id)).toBe(true);
   });
 });
 
@@ -184,7 +213,7 @@ describe("snapping", () => {
     expect((placed.start % 40 === 0 || (placed.start + placed.span) % 40 === 0)).toBe(true);
     expect(placed.span).toBe(92);
     // So rooms on different rings, placed apart, still tend to share an end.
-    const other = snap(l, "galley", 3, 628);
+    const other = snap(l, "galley", 3, 596);
     expect([placed.start, placed.start + placed.span].some((x) => x === other.start || x === other.start + other.span)).toBe(true);
   });
 

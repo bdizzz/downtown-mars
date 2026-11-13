@@ -259,6 +259,49 @@ export function fillAt(layout: Layout, resources: Record<string, number>, tool: 
   return true;
 }
 
+/**
+ * What to mark on a room being placed: the two side walls of a proposal that's down (its handles, as
+ * radial edge ids), and the lines it snapped to (ticks: an angle, across its rings and the one either side).
+ */
+export function placingMarks(layout: Layout, tool: Tool, info: HoverInfo): { handles: string[]; ticks: { floor: number; notch: number; ring0: number; ring1: number }[] } {
+  const at = info.at;
+  if (tool?.kind !== "build" || !at || at.kind !== "ring") return { handles: [], ticks: [] };
+  const depth = at.depth ?? 1;
+  const span = at.span ?? 0;
+  const rings = layout.hole.ringSlots.length;
+  const handles: string[] = [];
+  if (tool.proposal) {
+    for (let r = at.ring; r < at.ring + depth; r++) handles.push(`R${at.floor}.${r}.${((at.start % N) + N) % N}`, `R${at.floor}.${r}.${(at.start + span) % N}`);
+  }
+  // A tick is a thin line across the room's rings and the one either side: what it lined up with.
+  const ticks = (info.ticks ?? []).map((t) => ({ floor: at.floor, notch: ((t % N) + N) % N, ring0: Math.max(1, at.ring - 1), ring1: Math.min(rings, at.ring + depth) }));
+  return { handles, ticks };
+}
+
+/** Tells a double click (or double tap) from two clicks: the second within this long and this near the first. */
+export class DoubleClick {
+  private last = { t: -Infinity, x: 0, y: 0 };
+  /** Note a click; true if it's the second of a double. */
+  click(x: number, y: number, now = performance.now()): boolean {
+    const double = now - this.last.t < 350 && Math.hypot(x - this.last.x, y - this.last.y) < 12;
+    this.last = double ? { t: -Infinity, x, y } : { t: now, x, y };
+    return double;
+  }
+}
+
+/**
+ * A click with the current tool; with a fill room in hand, the second click of a double click fills the
+ * gap under the pointer wall to wall instead (PLAN-M17). The first click's proposal is dropped for it.
+ */
+export function clickOrFill(layout: Layout, resources: Record<string, number>, tool: Tool, info: HoverInfo, opts: StageOptions, gates: string[], double: boolean): void {
+  if (double && tool?.kind === "build" && roomDef(tool.room).fill && info.pick.kind === "slot") {
+    const { proposal: _dropped, ...bare } = tool;
+    opts.onProposeRoom?.(null);
+    if (fillAt(layout, resources, bare, info.pick, opts, gates)) return;
+  }
+  clickWith(layout, tool, info, opts);
+}
+
 /** With the corridor tool, dragging draws (or erases, or refits) a corridor along every border it crosses. */
 export function paints(tool: Tool): boolean {
   return tool?.kind === "corridor" && !tool.bulkhead && !tool.windows;

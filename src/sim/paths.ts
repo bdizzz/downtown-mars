@@ -1,8 +1,8 @@
 import { config } from "./config";
 import { hasBulkhead, openTo } from "./corridors";
-import { cellEdges, edgeById, edgeLengthM, edgeVertices, galleryEdges, outsideEdges } from "./edges";
+import { cellEdges, edgeById, edgeLengthM, edgeVertices, galleryEdges, outsideEdges, type Edge } from "./edges";
 import { deadEnds } from "./deadEnds";
-import { areaOf, cellWidthM, emptyCells } from "./space";
+import { areaOf, cellWidthM, contains, emptyCells } from "./space";
 import type { Hole } from "./geometry";
 import type { Cell, Layout, RoomInstance } from "./placement";
 import { roomDef } from "./rooms";
@@ -184,9 +184,26 @@ export function distancesFromCells(layout: Layout, cells: Cell[], mode: PathMode
   const half = roomLength(layout.hole, cells) / 2;
   const seeds: [string, number][] = [];
   const seed = (k: string) => seeds.push([k, half + paths.nodes.get(k)!.length / 2]);
-  for (const e of outsideEdges(layout, cells)) for (const k of paths.byEdge.get(e.id) ?? []) seed(k);
+  for (const e of outsideEdges(layout, cells)) for (const k of nodesAlong(paths, layout, e)) seed(k);
   for (const d of deadEnds(layout, cells)) if (paths.nodes.has(`c:${d.corridor}`)) seed(`c:${d.corridor}`);
   return walkOut(paths, seeds, -1, mode, maxM);
+}
+
+/**
+ * The walkable pieces along an edge. A room that isn't built yet has its own ends, so its borders may be
+ * only part of the edges as they stand: whatever runs along the edge's middle counts.
+ */
+function nodesAlong(paths: Paths, layout: Layout, e: Edge): string[] {
+  const exact = paths.byEdge.get(e.id);
+  if (exact || e.kind === "radial") return exact ?? [];
+  const mid = (e.from + e.to) / 2;
+  const out: string[] = [];
+  for (const [id, keys] of paths.byEdge) {
+    if (!id.startsWith(`A${e.floor}.${e.circle}.`)) continue;
+    const other = edgeById(layout.hole, id);
+    if (other?.kind === "arc" && contains({ a0: other.from, a1: other.to }, mid)) out.push(...keys);
+  }
+  return out;
 }
 
 /** Dijkstra from some nodes at given costs, to every room within `maxM`. */

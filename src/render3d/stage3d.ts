@@ -9,7 +9,7 @@ import { roomDef } from "../sim/rooms";
 import { cropStagesKey } from "../view/furnish";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
-import { aimKeyFor, clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
+import { aimKeyFor, clickOrFill, clickWith, DoubleClick, dragProposal, edgeHoverFor, placingMarks, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
@@ -1236,6 +1236,18 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (info.check.ok && spots.length) surfaceSpotTint(info.check.surfaceCells, HOVER.ok, SPOTS.hover);
       if (info.check.surfaceCells.length) surfaceMarker(info.check.surfaceCells, color);
       if (info.check.ok && cells.length) drawHalo(tool.room, cells);
+      // What it snapped to (a tick on each line), and a proposal's side walls: handles to drag.
+      const marks = placingMarks(layout, tool, info);
+      for (const t of marks.ticks) {
+        const a = notchRad(t.notch);
+        const y = floorSpan(t.floor)[1] + 0.05;
+        const [rIn] = ringRadii(layout.hole, t.ring0);
+        const [, rOut] = ringRadii(layout.hole, t.ring1);
+        const tick = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(rIn * Math.cos(a), y, rIn * Math.sin(a)), new THREE.Vector3(rOut * Math.cos(a), y, rOut * Math.sin(a))]), lines(HOVER.hover));
+        tick.renderOrder = 11;
+        overlay.add(tick);
+      }
+      for (const id of marks.handles) ghostEdge(id, info.handle ? HOVER.hover : color);
       // Extending stairs or an elevator: a plus floating on the piece being added.
       if (info.check.ok && info.check.merges && p.kind === "slot") {
         const [a0, a1] = cellAngles(info.check.cells.find((c) => c.floor === p.floor) ?? p);
@@ -1408,6 +1420,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!force && !changed) return;
     hoverKey = key;
     drawOverlay(info);
+    // Over a proposal's side wall: it can be dragged.
+    if (!drag) canvas.style.cursor = info?.handle || handle ? "ew-resize" : "";
     // A forced refresh redraws; the UI only hears about a hover that changed.
     if (changed) opts.onHover?.(info);
   }
@@ -1706,6 +1720,21 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // ---- input ----
 
   let drag: { x: number; y: number; moved: number } | null = null;
+  /** A proposed room's side wall being dragged (PLAN-M17). */
+  let handle: "start" | "end" | null = null;
+  const doubles = new DoubleClick();
+
+  /** Where the pointer's ray crosses a floor's mid-height, as a pick on that floor (for dragging a handle past the room). */
+  function pickOnFloor(floor: number, ring: number): Pick | null {
+    if (!pointer) return null;
+    const ray = rayAt(pointer.clientX, pointer.clientY);
+    const [y0, y1] = floorSpan(floor);
+    const t = rayPlane(ray, new THREE.Plane(new THREE.Vector3(0, 1, 0), -(y0 + y1) / 2));
+    if (t === null) return null;
+    const at = ray.at(t, new THREE.Vector3());
+    const angle = (((Math.atan2(at.z, at.x) / TAU) % 1) + 1) % 1;
+    return { kind: "slot", floor, ring, a0: 0, a1: 1, locked: false, digging: false, angle: angle * 360 };
+  }
 
   // Fingers: two pinch, twist and pan; a long press shows the hover; with a tool, tap to aim, tap again to act.
   const touches = new Touches();
@@ -1772,6 +1801,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       snake();
       return;
     }
+    // On a proposed room's side wall: drag it, rather than the view.
+    if (tool?.kind === "build" && tool.proposal && layout && view.mode !== "walk") {
+      const info = hoverInfo();
+      if (info?.handle) {
+        handle = info.handle;
+        canvas.style.cursor = "ew-resize";
+        return;
+      }
+    }
     drag = { x: e.clientX, y: e.clientY, moved: 0 };
     longPress.start(e);
   };
@@ -1801,6 +1839,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     shift = e.shiftKey;
     if (snaking) {
       snake();
+      return;
+    }
+    if (handle && layout && tool?.kind === "build" && tool.proposal) {
+      const p = pickOnFloor(tool.proposal.floor, tool.proposal.ring);
+      const next = p && dragProposal(layout, tool, handle, p);
+      if (next && (next.start !== tool.proposal.start || next.span !== tool.proposal.span)) opts.onProposeRoom?.(next);
       return;
     }
     if (!drag) {
@@ -1835,12 +1879,18 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
     if (view.mode === "walk" && locked()) return;
     pointer = e;
+    if (handle) {
+      handle = null;
+      if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+      refreshHover(true);
+      return;
+    }
     const finger = isTouch(e);
     if (drag && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && layout && !longPress.fired) {
       const info = hoverInfo();
       if (finger) refreshHover();
       // A finger can't hover first: with a tool, the first tap shows where it lands.
-      if (info && (!finger || aim.tap(tool, aimKeyFor(info, tool, layout)))) clickWith(layout, tool, info, opts);
+      if (info && (!finger || aim.tap(tool, aimKeyFor(info, tool, layout)))) clickOrFill(layout, resources, tool, info, opts, latest?.holeGates ?? [], doubles.click(e.clientX, e.clientY));
     }
     drag = null;
     if (snaking) endSnake();

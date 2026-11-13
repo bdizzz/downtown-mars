@@ -18,7 +18,7 @@ import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
 import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
+import { clickOrFill, DoubleClick, dragProposal, edgeHoverFor, placingMarks, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
@@ -739,6 +739,14 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       for (const row of cellRows(h, cells)) {
         overlayCtx.rect(...rowRect(h, row)).fill({ color, alpha: 0.35 }).stroke({ color, width: 3 });
       }
+      // What it snapped to (a tick on each line), and a proposal's side walls: handles to drag.
+      const marks = placingMarks(layout, tool, info);
+      for (const t of marks.ticks) {
+        const x = (t.notch / NOTCHES) * TURN_W;
+        const y0 = ringTop(t.floor, t.ring0, h.ringSlots.length);
+        overlayCtx.moveTo(x, y0).lineTo(x, ringTop(t.floor, t.ring1, h.ringSlots.length) + RING_H).stroke({ color: C.hover, width: 2, alpha: 0.9 });
+      }
+      for (const id of marks.handles) ghostEdge(id, info.handle ? C.hover : color, null, 0.9);
       // Extending stairs or an elevator: a plus on the piece being added.
       if (info.check.ok && info.check.merges && p.kind === "slot") {
         const [x0, x1] = cellX(info.check.cells.find((c) => c.floor === p.floor) ?? p);
@@ -864,6 +872,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
   const canvas = app.canvas;
   let drag: { x: number; y: number; moved: number } | null = null;
+  /** A proposed room's side wall being dragged (PLAN-M17). */
+  let handle: "start" | "end" | null = null;
+  const doubles = new DoubleClick();
   let pointer: { clientX: number; clientY: number } | null = null;
 
   function screenToWorld(e: { clientX: number; clientY: number }): [number, number] {
@@ -945,10 +956,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
 
   /** By finger, with a tool, the first tap only aims (shows the ghost); a second on the same spot acts. */
-  function click(finger = false): void {
+  function click(finger = false, double = false): void {
     const info = hoverInfo();
     if (finger) refreshHover();
-    if (info && layout && (!finger || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickWith(layout, tool, info, opts);
+    if (info && layout && (!finger || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickOrFill(layout, resources, tool, info, opts, deposits, double);
   }
 
   // Fingers: one pans, two pinch and pan (the unrolled rings don't turn); a long press shows the hover.
@@ -1000,6 +1011,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       return;
     }
     drag = { x: e.clientX, y: e.clientY, moved: 0 };
+    // On a proposed room's side wall: the drag moves that wall.
+    handle = (tool?.kind === "build" && tool.proposal && hoverInfo()?.handle) || null;
     longPress.start(e);
   };
   const onPointerMove = (e: PointerEvent) => {
@@ -1014,6 +1027,14 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     pointer = e;
     shift = e.shiftKey;
     if (snaking) snake();
+    if (drag && handle && layout && tool?.kind === "build" && tool.proposal) {
+      drag.moved += Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y);
+      const [x, y] = screenToWorld(e);
+      const next = dragProposal(layout, tool, handle, pick(layout, x, y));
+      if (next && (next.start !== tool.proposal.start || next.span !== tool.proposal.span)) opts.onProposeRoom?.(next);
+      applyCamera();
+      return;
+    }
     if (drag) {
       const dx = e.clientX - drag.x;
       const dy = e.clientY - drag.y;
@@ -1036,7 +1057,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
     pointer = e;
     const finger = isTouch(e);
-    if (drag && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && !longPress.fired) click(finger);
+    if (!handle && drag && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && !longPress.fired) click(finger, doubles.click(e.clientX, e.clientY));
+    handle = null;
     drag = null;
     if (snaking) endSnake();
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);

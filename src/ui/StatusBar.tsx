@@ -3,6 +3,7 @@ import type { ViewMode } from "./settings";
 import type { HoverInfo, Tool } from "../view/types";
 import { reachSummary } from "../view/reachView";
 import type { Hole } from "../sim/geometry";
+import { areaAt } from "../sim/placement";
 import { overlapNotches, piecesIn, type Cell } from "../sim/space";
 import { effectAt, effectName, FIELD_TYPES } from "../sim/effects";
 import type { Snapshot } from "../sim/snapshot";
@@ -117,7 +118,11 @@ export function StatusBar({ info, snapshot, notice, overlay, view, tool }: Props
       const lost = (info.check.strands?.rooms.length ?? 0) + (info.check.strands?.corridors.length ?? 0);
       if (d) bad = true;
       const over = d ? `⚠ Fills in ${d} corridor ${d === 1 ? "segment" : "segments"}${lost ? `, cutting off ${lost} more` : ""} · ` : "";
-      text = `${over}${note}${cutOff}${blueprint}${digs}${onFoot ? `On foot: ${onFoot} · ` : ""}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
+      // Its floor area as it would be built, and (once it's down) how to build or drop it.
+      const at = info.at?.kind === "ring" ? info.at : null;
+      const area = at ? `${Math.round(areaAt(snapshot.layout.hole, { ring: at.ring, depth: at.depth ?? 1, span: at.span ?? 0 }))} m² · ` : "";
+      const down = tool?.kind === "build" && tool.proposal ? `${finger ? "Tap" : "Click"} it again${finger ? "" : " (or Enter)"} to build · drag a side wall to resize · ` : "";
+      text = `${down}${area}${over}${note}${cutOff}${blueprint}${digs}${onFoot ? `On foot: ${onFoot} · ` : ""}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
     } else if (info.room) {
       const blueprint = info.room.planned ? " (blueprint)" : "";
       const st = snapshot?.roomStatus[info.room.id];

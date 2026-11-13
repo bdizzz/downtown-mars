@@ -300,10 +300,27 @@ function bothCover(a: Cell, b: Cell, from: number, to: number): boolean {
   return false;
 }
 
-/** Would a room on these cells be connected as things stand? For the placement preview. */
+/**
+ * Would a room on these cells be connected as things stand? For the placement preview. Worked out on a
+ * copy with the room in it, so the borders are cut at its own ends as they will be (a room at any angle
+ * meets corridors partway along them).
+ */
 export function wouldConnect(layout: Layout, cells: Cell[]): boolean {
-  const { sets, publicEdges } = network(layout);
-  return opensOnto(layout, cells, sets, publicEdges);
+  const ghost: RoomInstance = { id: -1, type: "bunk_dorm", at: { kind: "surface", slot: 0 }, cells, surfaceCells: [], connected: false, planned: false, priority: "normal" };
+  const copy: Layout = {
+    ...layout,
+    version: layout.version + 1,
+    rooms: [...layout.rooms.map((r) => ({ ...r })), ghost],
+    corridors: { ...layout.corridors },
+    ...(layout.corridorsBuilding ? { corridorsBuilding: { ...layout.corridorsBuilding } } : {}),
+    ...(layout.corridorsFilling ? { corridorsFilling: { ...layout.corridorsFilling } } : {}),
+    ...(layout.corridorsRelining ? { corridorsRelining: { ...layout.corridorsRelining } } : {}),
+    ...(layout.corridorLinked ? { corridorLinked: { ...layout.corridorLinked } } : {}),
+    ...(layout.bulkheads ? { bulkheads: { ...layout.bulkheads } } : {}),
+    corridorSplits: {},
+  };
+  const { sets, publicEdges } = network(copy);
+  return opensOnto(copy, cells, sets, publicEdges);
 }
 
 /** Do corridors run along the whole border between two cells? (They soak up noise and smell.) */
