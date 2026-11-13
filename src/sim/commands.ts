@@ -1,4 +1,5 @@
 import { replant } from "./food";
+import { setThermostat } from "./temperature";
 import { ROOM_NAME_MAX } from "./roomName";
 import { airVolume } from "./air";
 import { hasCondition } from "./condition";
@@ -43,6 +44,8 @@ export type SimCommand =
   | { type: "setHolds"; roomId: number; holds: string }
   /** The hole-wide tank fill: electrolyzers fill the O2 tanks this far (0..1) once the air is at its target. */
   | { type: "setTankFill"; fill: number }
+  /** The thermostat, °C: the whole hole's, or one floor's (celsius null puts that floor back on the hole's). */
+  | { type: "setThermostat"; celsius: number | null; floor?: number }
   | { type: "setPriority"; roomId: number; priority: Priority }
   /** Pause a room, or have it stop while its main output is at or above stopAt (null clears it). */
   | { type: "setRoomControl"; roomId: number; paused?: boolean; stopAt?: number | null }
@@ -623,6 +626,13 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       if (!Number.isFinite(cmd.fill)) return { ok: false, reason: "Tank fill must be a number" };
       airVolume(state, config);
       state.air!.tankFill = Math.max(0, Math.min(1, cmd.fill));
+      return { ok: true };
+    }
+    case "setThermostat": {
+      if (cmd.celsius !== null && !Number.isFinite(cmd.celsius)) return { ok: false, reason: "The thermostat must be a number" };
+      if (cmd.floor === undefined && cmd.celsius === null) return { ok: false, reason: "The hole's thermostat needs a temperature" };
+      if (cmd.floor !== undefined && (!Number.isInteger(cmd.floor) || cmd.floor < 1 || cmd.floor > state.layout.hole.floors)) return { ok: false, reason: "No such floor" };
+      setThermostat(state, config, cmd.celsius, cmd.floor);
       return { ok: true };
     }
     case "answerVisit":

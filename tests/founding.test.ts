@@ -108,18 +108,18 @@ describe("landing kits (T-164)", () => {
   it("a new game's first hole starts with air, water and power built and working, a corridor carved to what nothing else reaches", () => {
     const w = createWorld(config, 42);
     const home = w.holes[0]!;
-    expect(ringRooms(w, 0)).toEqual(["battery_bank", "electrolyzer", "entrance", "life_support", "water_recycler", "water_tank", "water_tank"]);
+    expect(ringRooms(w, 0)).toEqual(["battery_bank", "electrolyzer", "entrance", "heater", "life_support", "water_recycler", "water_tank", "water_tank"]);
     const kit = home.layout.rooms.filter((r) => r.at.kind === "ring");
     expect(kit.every((r) => r.connected && !r.planned && !r.building)).toBe(true);
     expect(kit.filter((r) => r.type === "water_tank").map((r) => r.holds ?? "water").sort()).toEqual(["grayWater", "water"]);
   });
 
-  it("a founded hole starts with just the entrance and a battery", () => {
+  it("a founded hole starts with just the entrance and a battery, and the heater its seed kit brought", () => {
     const w = ready();
     gather(w);
     foundHole(w, config, 1, site);
     while (w.convoys.length) stepWorld(w, config);
-    expect(ringRooms(w, 1)).toEqual(["battery_bank", "entrance"]);
+    expect(ringRooms(w, 1)).toEqual(["battery_bank", "entrance", "heater"]);
   });
 });
 

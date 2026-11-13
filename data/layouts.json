@@ -63,6 +63,33 @@
       {"item":"intercom","wall":"left","x":1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
     ],
+    "heater:1x1": [
+      {"item":"furnace","wall":"back","y":0.1},
+      {"item":"pipe_manifold","wall":"left","y":0.1},
+      {"item":"duct_riser","wall":"right","y":0.1},
+      {"item":"safety_sign","wall":"back","x":2.2},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":3}},
+      {"item":"air_vent","wall":"right","x":1,"repeat":{"every":0.5,"max":1}}
+    ],
+    "heating_plant:2x1": [
+      {"item":"furnace","wall":"back","x":-3,"y":0.1},
+      {"item":"furnace","wall":"back","x":3,"y":0.1},
+      {"item":"pipe_manifold","wall":"left","y":0.1},
+      {"item":"big_fan","wall":"right","y":0.1},
+      {"item":"console","wall":"front","x":-4,"y":0.1},
+      {"item":"readout_panel","wall":"right","x":-1.2},
+      {"item":"safety_sign","wall":"back","x":0},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":5}},
+      {"item":"work_light","wall":"back","x":1,"repeat":{"every":4,"max":2}}
+    ],
+    "radiator:1x1": [
+      {"item":"big_fan","wall":"back","y":0.1},
+      {"item":"pipe_run","wall":"left","y":0.1},
+      {"item":"pipe_manifold","wall":"right","y":0.1},
+      {"item":"safety_sign","wall":"back","x":2.2},
+      {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":3}},
+      {"item":"air_vent","wall":"right","x":1,"repeat":{"every":0.5,"max":1}}
+    ],
     "battery_bank:1x1": [
       {"item":"inverter","wall":"left","y":0.1},
       {"item":"console","wall":"right","y":0.1},
@@ -1455,7 +1482,6 @@
       {"item":"duct_riser","wall":"left","y":0.1},
       {"item":"duct_riser","wall":"right","y":0.1},
       {"item":"filter_column","wall":"front","x":-1.6,"y":0.2,"repeat":{"every":1,"max":2}},
-      {"item":"gauge_panel","wall":"left","x":1.2},
       {"item":"readout_panel","wall":"right","x":-1.2},
       {"item":"safety_sign","wall":"back","x":2.2},
       {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":3}},

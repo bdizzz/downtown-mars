@@ -8,7 +8,8 @@
     "storage": "Storage",
     "basic_home": "Basic home",
     "standard_home": "Standard home",
-    "luxury_home": "Luxury home"
+    "luxury_home": "Luxury home",
+    "heater": "Heater"
   },
   "rooms": [
     {
@@ -628,6 +629,78 @@
       "buildable": true
     },
     {
+      "id": "heater",
+      "name": "Heater",
+      "short": "Heater",
+      "family": "heater",
+      "category": "air",
+      "size": "S",
+      "staff": 0,
+      "uses": {
+        "power": 4
+      },
+      "makes": {},
+      "heats": 12.5,
+      "priority": "high",
+      "effects": [],
+      "cost": {
+        "metal": 8,
+        "electronics": 2
+      },
+      "buildable": true,
+      "buildHours": 8
+    },
+    {
+      "id": "heating_plant",
+      "name": "Heating plant",
+      "short": "Heat plant",
+      "family": "heater",
+      "category": "air",
+      "size": "M",
+      "staff": 0,
+      "uses": {
+        "power": 7
+      },
+      "makes": {},
+      "heats": 27,
+      "priority": "high",
+      "effects": [
+        {
+          "type": "noise",
+          "strength": -1,
+          "radius": 1
+        }
+      ],
+      "cost": {
+        "metal": 15,
+        "machinery": 2,
+        "electronics": 3
+      },
+      "buildable": true,
+      "buildHours": 16
+    },
+    {
+      "id": "radiator",
+      "name": "Radiator",
+      "short": "Radiator",
+      "category": "air",
+      "size": "S",
+      "staff": 0,
+      "uses": {
+        "power": 3
+      },
+      "makes": {},
+      "cools": 12.5,
+      "priority": "high",
+      "effects": [],
+      "cost": {
+        "metal": 12,
+        "machinery": 1
+      },
+      "buildable": true,
+      "buildHours": 10
+    },
+    {
       "id": "ventilation_hub",
       "name": "Ventilation hub",
       "short": "Vent",
@@ -816,8 +889,10 @@
         "power": 6
       },
       "makes": {
-        "metal": 3
+        "metal": 3,
+        "co2": 3
       },
+      "byproducts": ["co2"],
       "requiresDeposit": "ore",
       "effects": [
         {
@@ -886,8 +961,10 @@
         "power": 6
       },
       "makes": {
-        "wafers": 2
+        "wafers": 2,
+        "co2": 2
       },
+      "byproducts": ["co2"],
       "returnsWater": {
         "grayWater": 0.5,
         "tailings": 0.5
@@ -1098,8 +1175,10 @@
         "power": 2
       },
       "makes": {
-        "marscrete": 4
+        "marscrete": 4,
+        "co2": 1.5
       },
+      "byproducts": ["co2"],
       "returnsWater": {
         "grayWater": 0.5,
         "tailings": 0.5
@@ -1137,8 +1216,10 @@
         "power": 2
       },
       "makes": {
-        "brick": 4
+        "brick": 4,
+        "co2": 1.5
       },
+      "byproducts": ["co2"],
       "returnsWater": {
         "grayWater": 0.75,
         "tailings": 0.25
@@ -1176,8 +1257,10 @@
         "power": 3
       },
       "makes": {
-        "glass": 3
+        "glass": 3,
+        "co2": 1.5
       },
+      "byproducts": ["co2"],
       "effects": [
         {
           "type": "noise",

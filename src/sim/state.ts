@@ -1,7 +1,7 @@
 import type { FoodState } from "./food";
 import { createEvents, type EventsState } from "./events";
 import { fillAir, type AirState } from "./air";
-import type { LandingKitName, SimConfig } from "./config";
+import type { LandingKit, LandingKitName, SimConfig } from "./config";
 import type { ReachedMilestone } from "./milestones";
 import type { Drill } from "./digging";
 import type { HoleFailure } from "./failure";
@@ -27,6 +27,7 @@ import { culture, type Culture } from "./culture";
 import { addAdults } from "./people";
 import { createConstruction, type ConstructionState } from "./construction";
 import { settleStorage } from "./storage";
+import { createTemperature, type TemperatureState } from "./temperature";
 
 /** Where a hole is on Mars, in degrees. */
 export interface Site {
@@ -116,6 +117,8 @@ export interface SimState {
   peakPopulation?: number;
   /** When the hole last emptied, while it stays empty. */
   emptySince?: number;
+  /** Each floor's temperature and the thermostat (#393, temperature.ts; absent in older saves until the first tick). */
+  temperature?: TemperatureState;
   /** Set when the hole has failed: empty, with no one to let newcomers in (T-162). For good. */
   failed?: HoleFailure;
 }
@@ -133,6 +136,8 @@ export function createInitialState(
   cfg: SimConfig,
   who: HoleIdentity = { holeId: 1, name: "Bradbury", site: null, deposits: [], seed: cfg.seed },
   kitName: LandingKitName = "bare",
+  /** Rooms brought besides the kit's (a seed kit's heater), set up the same way. */
+  extras: LandingKit["ring"] = [],
 ): SimState {
   const kit = cfg.landingKits[kitName];
   const h = cfg.starterHole;
@@ -145,7 +150,7 @@ export function createInitialState(
   for (const k of kit.surface) {
     must(placeRoom(layout, k.room, { kind: "surface", slot: k.slot }, cfg), k.room);
   }
-  for (const k of kit.ring) {
+  for (const k of [...kit.ring, ...extras]) {
     const [w, d] = cfg.shapes[roomDef(k.room).size as keyof SimConfig["shapes"]]![0]!;
     const placed = must(placeRoom(layout, k.room, { kind: "ring", floor: k.floor, ring: k.ring, slot: k.slot, w, d }, cfg), k.room);
     // The kit's rooms come with their space blasted out, wherever they stand.
@@ -201,6 +206,7 @@ export function createInitialState(
     foundedTick: 0,
     events: createEvents(who.seed),
     milestones: [],
+    temperature: createTemperature(who.site?.lat ?? null, who.seed, cfg),
   };
   // The landing crew sealed the hole and made its air: O2 at the target, CO2 at the scrub floor.
   fillAir(state, cfg);

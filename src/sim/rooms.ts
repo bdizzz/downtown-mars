@@ -114,6 +114,10 @@ export interface RoomDef {
   enablesBirths?: boolean;
   /** Rovers this room provides for trade routes. */
   rovers?: number;
+  /** A heater: °C it lifts the reference floor at full power (temperature.ts). Its power use follows the thermostat. */
+  heats?: number;
+  /** A radiator: °C it takes off the reference floor at full power, piping the heat to the surface. Its power use follows the thermostat. */
+  cools?: number;
 }
 
 // JSON imports widen literal types, so the shape is checked in tests/rooms.test.ts.

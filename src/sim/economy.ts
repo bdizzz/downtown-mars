@@ -13,6 +13,7 @@ import { conditionOf, conditionOutput, isCleanable, maintenanceQueue } from "./c
 import { MATERIALS, refitting } from "./materials";
 import type { CareState } from "./care";
 import { ate, bank, cooked, cropMakes, farmCrop, reconcileFood, stepHarvests } from "./food";
+import { powerShare } from "./temperature";
 import { airAmount, airHealthLosses, airNeeds, breathe, o2Wanted, releaseTanks, splitMade, storeInTanks } from "./air";
 
 // The per-tick economy: staff the rooms, run them, feed the colonists, cap
@@ -196,7 +197,7 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
   const res = state.resources;
   const caps = capacities(state, cfg);
   const rooms = state.layout.rooms.filter(isActive).sort(priorityOrder(cfg));
-  const specs = new Map(rooms.map((r) => [r.id, roomSpec(r, cfg)]));
+  const specs = new Map(rooms.map((r) => [r.id, withPowerShare(roomSpec(r, cfg), state, r)]));
   const status: Record<number, RoomStatus> = {};
 
   // 1. Staff, highest priority first. Rooms the player stood down take no one.
@@ -268,6 +269,12 @@ export function stepEconomy(state: SimState, cfg: SimConfig): void {
     }
   }
   reconcileFood(state);
+}
+
+/** Heaters and radiators draw power by how hard their floor needs them (temperature.ts). */
+function withPowerShare(spec: RoomSpec, state: SimState, room: RoomInstance): RoomSpec {
+  const share = powerShare(state, room);
+  return share === 1 || spec.uses.power === undefined ? spec : { ...spec, uses: { ...spec.uses, power: spec.uses.power * share } };
 }
 
 /** A room standing by: only its power, and nothing made. */
@@ -501,7 +508,7 @@ export function powerFlow(state: SimState, cfg: SimConfig): { made: number; used
   for (const room of state.layout.rooms) {
     const st = state.roomStatus[room.id];
     if (!st) continue;
-    const spec = roomSpec(room, cfg);
+    const spec = withPowerShare(roomSpec(room, cfg), state, room);
     made += (spec.makes.power ?? 0) * st.rate;
     used += (spec.uses.power ?? 0) * st.rate;
   }

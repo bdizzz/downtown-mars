@@ -31,7 +31,9 @@ describe("ninety minutes of people", () => {
     // and full beds; over six seeds 6–15 born (10–15 before). Was 10. The air mix (T-026) dips
     // health while the holes dig, and births wait on it.
     // The air loop (T-031): over six seeds 4–16 born; this seed founds its child early and sits at 4. Was 5.
-    expect(born).toBeGreaterThanOrEqual(4);
+    // Temperature (#393): the starter moves to 20-25° north and heavy industry breathes out CO2; over six seeds
+    // 3–4 born by day 90 (3–4 without the industry's CO2 too), this seed 3. Was 4.
+    expect(born).toBeGreaterThanOrEqual(3);
     const children = net.world.holes.reduce((n, h) => n + h.population.cohorts.filter((c) => c.stage === "child").reduce((k, c) => k + c.count, 0), 0);
     expect(children).toBeLessThan(born); // the earliest have grown up
   });
@@ -68,7 +70,9 @@ describe("ninety minutes of people", () => {
   it("keeps the child hole alive", () => {
     // Only "alive" while the air mix (T-026) on the water loop (T-005) starved it. Restored (T-031): the child builds
     // its electrolyzer first, a gray tank and a recycler early, and over six seeds ends at 36–52 people, five of six healthy.
+    // Temperature (#393): over six seeds the child ends at 36–53 people, all healthy; this seed 40 (51 without
+    // the industry's CO2, which costs its parent a little more scrubbing while it gathers the kit). Was more than 50.
     expect(child!.population.health).toBeGreaterThan(50);
-    expect(child!.population.count).toBeGreaterThan(50);
+    expect(child!.population.count).toBeGreaterThan(35);
   });
 });
