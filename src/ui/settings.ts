@@ -28,6 +28,8 @@ export interface Settings {
   autosave: boolean;
   /** The deputy's one-time tips when a problem first shows up (F-018). */
   tips: boolean;
+  /** Temperatures in °C rather than °F (#397). */
+  celsius: boolean;
   /** The resource bar shows every stock all the time; off (quiet), the vitals and whatever needs a look, the rest behind its Stock button. */
   allResources: boolean;
   /** Pointing at a floor in the floor picker shows it before you click. */
@@ -53,6 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   colorBlind: defaultOf("colorBlind", "boolean"),
   autosave: defaultOf("autosave", "boolean"),
   tips: defaultOf("tips", "boolean"),
+  celsius: defaultOf("celsius", "boolean"),
   allResources: defaultOf("allResources", "boolean"),
   floorHoverPreview: defaultOf("floorHoverPreview", "boolean"),
   lookSpeed: defaultOf("lookSpeed", "number"),

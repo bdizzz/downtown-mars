@@ -34,6 +34,8 @@ function hole(): SimState {
   const s = createInitialState(config);
   s.drill.active = false;
   Object.assign(s.resources, { rock: 900, brick: 300, metal: 300, machinery: 60, electronics: 60, glass: 100 });
+  // Warm (as if heated), so the cold doesn't push comfort to its floor and hide the difference.
+  s.temperature!.floors = [20];
   return s;
 }
 

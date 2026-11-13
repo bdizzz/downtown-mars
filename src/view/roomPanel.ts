@@ -19,6 +19,8 @@ import { dining, hoursText, num, ordinal, resName, signed } from "../ui/format";
 import { CONDITION, hasCondition } from "../sim/condition";
 import { isIcon, type IconId } from "./icons";
 import { reachSteps, reachTints } from "./reachView";
+import { formatTemperature, formatTemperatureChange } from "./temperature";
+import { comfortAt, referenceCells, type FloorHeat } from "../sim/temperature";
 import { roomState, roomTone, statusWord, type Tone } from "./roomState";
 
 // What the room panel says about a room: shared by the web's inspector (ui/Inspector.tsx) and the
@@ -395,12 +397,66 @@ const ROW_ICONS: Record<string, IconId> = {
   Walls: "walls",
   Windows: "window",
   Crowded: "air",
+  Temperature: "temperature",
+  Heats: "temperature",
+  Cools: "temperature",
+  Thermostat: "temperature",
   "Within reach": "clinic",
   "On foot": "reach",
   Reaches: "reach",
   "Felt here": "smell",
   Bothers: "alert",
 };
+
+/** The floor a ring room sits on, and its heat budget; null on the surface. */
+export function floorHeatOf(s: Snapshot, room: RoomInstance): FloorHeat | null {
+  if (room.at.kind !== "ring") return null;
+  return s.temperature.floors[room.at.floor - 1] ?? null;
+}
+
+/** What makes up a floor's temperature, in words (#393). */
+export function temperatureTip(f: FloorHeat): string {
+  const parts = [`rests at ${formatTemperature(f.rest)}`];
+  if (f.body >= 0.05) parts.push(`people ${formatTemperatureChange(f.body)}`);
+  if (f.waste >= 0.05) parts.push(`machines ${formatTemperatureChange(f.waste)}`);
+  if (f.heating >= 0.05) parts.push(`heaters ${formatTemperatureChange(f.heating)}`);
+  if (f.cooling >= 0.05) parts.push(`radiators ${formatTemperatureChange(-f.cooling)}`);
+  const heading = Math.abs(f.target - f.now) >= 0.5 ? `, heading for ${formatTemperature(f.target)}` : "";
+  return `Floor ${f.floor}: ${formatTemperature(f.now)}${heading}. It ${parts.join(", ")}; thermostat ${formatTemperature(f.setpoint)}${f.override ? " (this floor's own)" : ""}.`;
+}
+
+/** A floor's temperature as a row: a home warns when it's cold or hot enough to cost comfort. */
+export function temperatureRow(s: Snapshot, room: RoomInstance): Row | null {
+  const f = floorHeatOf(s, room);
+  if (!f) return null;
+  const felt = comfortAt(f.now, config);
+  const cold = f.now < f.setpoint - 1 && f.heatersFull < f.setpoint - (f.rest + f.body + f.waste) - 0.5;
+  const text = `${formatTemperature(f.now)}${Math.abs(f.target - f.now) >= 0.5 ? ` → ${formatTemperature(f.target)}` : ""}`;
+  const warn = !!roomDef(room.type).houses && felt < -0.5;
+  return { k: "Temperature", text, tip: temperatureTip(f) + (cold ? " Its heaters can't reach the thermostat: more heaters, or a heating plant." : ""), ...(warn ? { warn } : {}) };
+}
+
+/** A heater's or radiator's rows: what it can do, and how hard it's working. */
+function climateRows(s: Snapshot, room: RoomInstance): Row[] {
+  const def = roomDef(room.type);
+  const f = floorHeatOf(s, room);
+  if ((!def.heats && !def.cools) || !f) return [];
+  const t = s.temperature;
+  const share = def.heats ? (f.heatersFull > 0 ? f.heating / f.heatersFull : 0) : f.radiatorsFull > 0 ? f.cooling / f.radiatorsFull : 0;
+  const lift = def.heats ?? def.cools ?? 0;
+  return [
+    {
+      k: def.heats ? "Heats" : "Cools",
+      text: `${formatTemperatureChange(def.heats ? lift : -lift)} at full power`,
+      tip: `On a small hole's floor dug out across its rings (${referenceCells(config)} cells); this floor has ${f.cells}, so ${formatTemperatureChange(def.heats ? f.heatersFull : -f.radiatorsFull)} from all its ${def.heats ? "heaters" : "radiators"}.`,
+    },
+    {
+      k: "Working",
+      text: `${Math.round(share * 100)}% of full power`,
+      tip: `${def.heats ? "Heaters work only as hard as it takes to hold the thermostat" : "Radiators work only as hard as it takes to bring the floor down to the thermostat"}: ${formatTemperature(f.setpoint)}${f.override ? ` on this floor (the hole's is ${formatTemperature(t.setpoint)})` : ""}.`,
+    },
+  ];
+}
 
 /** Every row of the panel, in the order today's flat list has them, each tagged with its section. */
 function panelEntries(s: Snapshot, room: RoomInstance): Entry[] {
@@ -417,6 +473,7 @@ function panelEntries(s: Snapshot, room: RoomInstance): Entry[] {
       harvestRow(room),
       flows("Scrubs/month", spec.scrubs),
       flows("Stores", spec.stores),
+      ...climateRows(s, room),
     ]),
     ...tagged("after", "home", def.houses ? homeRows(s, room.id, def.houses) : []),
     ...tagged("after", "serves", [
@@ -432,6 +489,7 @@ function panelEntries(s: Snapshot, room: RoomInstance): Entry[] {
     ]),
     ...tagged("after", "building", [canLine(room) ? { k: "Walls", text: liningText(room) } : null]),
     ...tagged("after", "surroundings", [
+      ring ? temperatureRow(s, room) : null,
       ring && !def.public ? windowsRow(s, room) : null,
       def.houses && crowdedAir(s, room) < -0.01
         ? { k: "Crowded", text: `air ${signed(crowdedAir(s, room))}`, tip: `More than ${config.effects.crowding.perCell} people to a cell gets stuffy`, warn: true }
@@ -574,6 +632,11 @@ function glanceChips(s: Snapshot, room: RoomInstance): Chip[] {
       chips.push({ icon: FELT_ICONS[t] ?? "air", label: effectName(t), value: signed(v), tone: signedTone(v), signed: { value: v, range: FELT_RANGE }, section: "surroundings" });
     }
   }
+  const f = floorHeatOf(s, room);
+  if (f && !room.planned) {
+    const felt = comfortAt(f.now, config);
+    chips.push({ icon: "temperature", label: "Temperature", value: formatTemperature(f.now), tone: felt <= -1 ? "bad" : felt < 0 ? "warn" : "good", tip: temperatureTip(f), section: "surroundings" });
+  }
   const tints = reachTints(s.layout, room.id);
   if (tints) {
     const within = tints.filter((t) => t.steps !== null).length;
@@ -585,7 +648,7 @@ function glanceChips(s: Snapshot, room: RoomInstance): Chip[] {
 /** A section with no rows still shows when it holds the room's controls (crop, priority, construction, demolish, the kit, storage). */
 function hasControls(id: SectionId, room: RoomInstance, queued: boolean): boolean {
   const def = roomDef(room.type);
-  if (id === "work") return roomSpec(room, config).staff > 0 || !!def.growsCrops || !!holding(room) || fillsTanks(room);
+  if (id === "work") return roomSpec(room, config).staff > 0 || !!def.growsCrops || !!holding(room) || fillsTanks(room) || !!def.heats || !!def.cools;
   if (id === "building") return !!def.buildable || canLine(room) || queued;
   if (id === "kit") return !!def.stagesSeedKit;
   if (id === "storage") return !!storageInfo(room);
@@ -596,7 +659,7 @@ function hasControls(id: SectionId, room: RoomInstance, queued: boolean): boolea
 function openByDefault(id: SectionId, room: RoomInstance, rows: Row[], queued: boolean): boolean {
   const def = roomDef(room.type);
   if (rows.some((r) => r.warn)) return true;
-  if (id === "work") return roomSpec(room, config).staff > 0;
+  if (id === "work") return roomSpec(room, config).staff > 0 || !!def.heats || !!def.cools;
   if (id === "home") return !!def.houses;
   if (id === "serves") return !def.houses;
   // A blueprint, or a room (or its refit) in the construction queue.

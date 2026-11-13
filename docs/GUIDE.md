@@ -176,6 +176,21 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 - Smell travels the same way, and leaks into the room next door as well.
 - The entrance's airlock lets in Mars dust, fouling the air down the corridors from it, twice as badly in a dust storm.
 - **Bulkheads** (the corridor tool's Bulkhead button: click a corridor, 2 metal) seal a corridor against air and smell; people pass through.
+- **Heavy industry breathes out CO2** too: a smelter about as much as three people, a silicon refinery two, a glassworks, brickworks or concrete plant one and a half. A busy industrial hole needs more scrubbers.
+
+## Temperature
+
+Every floor has a **temperature**, one number for the whole floor. Temperatures show in **°F** (Settings → Display → **Temperatures in °C** to switch).
+
+- **The rock is cold.** With nothing warming it, a floor **rests** at the site's temperature: about **40–45 °F** at 20–25° latitude (where every new game's first hole sits), as low as **0–15 °F** toward the poles, and warmer toward the equator, but never above **50 °F**. Each floor down rests a little warmer.
+- **People and machines warm it.** Everyone living or working on a floor adds a little; rooms that run hot (smelters, the silicon refinery) add a lot. A crowded or industrial floor partly heats itself.
+- **Heaters** (Build → Air & power) turn power into heat, up to the **thermostat**. One heater holds a small hole's floor, dug out across its three rings, at about **65 °F**; a bigger floor, a colder site or a warmer thermostat needs two, or a **heating plant** (M, about twice a heater's heat). A heater only draws the power it needs to hold the thermostat, and all of it while the floor is still warming. More heaters warm a floor faster: one takes about a month from rest to 65 °F.
+- **Radiators** pipe heat out to panels on the surface, bringing a floor that industry has overheated down to the thermostat.
+- **Without power** (heaters lose it after life support and before industry), a floor cools slowly back to rest, over about two months.
+- **The thermostat** is one setting for the whole hole: a slider in any heater's or radiator's panel. Tick **Floor N only** to give that floor its own (a cooler floor for industry, say). Lower it to save power, at a cost to comfort.
+- **Comfort.** Homes feel their floor's temperature: the **60s and 70s °F** are a small lift, the **50s** a little off, the **40s** a real cost, and colder is miserable; **80 °F and up** is too hot. The Why? panel lists it as *temperature*.
+- **Seeing it:** the **Temperature overlay** (View → Overlay) tints each floor cold blue, comfortable green or hot red; every room's panel shows its floor's temperature and what makes it up (on hover); Charts → Trends → Air → **Temperature** has the floors' average and the coldest against the thermostat.
+- A new game's landing kit brings a heater for floor 1, and so does a founded hole's seed kit.
 
 ## People
 
@@ -333,7 +348,7 @@ The game autosaves every month in your browser. Use the menu to save to a slot, 
 
 **The menu** (Esc, or ☰): **Resume** first, then Save, Load, New game, Settings, Help and **Quit to title** two by two, with exporting and importing a save file as links underneath. Quitting to the title (or starting a new game) asks first: progress since the last autosave is lost. On the title, **Continue** loads the autosave. On the dev server and in a PR's preview build, **Load…** also offers **Load a dev game…**: four pre-built games (early, mid, network, late) to jump straight to a stage for testing. A loaded game (Continue, Load or an imported file) starts **paused**, so you can look around first; a new game starts at 1×.
 
-**Settings** come in five sections: **Game** (autosave, the tutorial, the deputy's tips), **Display** (full screen in the installed Android app, the 3D graphics preset, furniture detail, sharpness and each effect, and a chart of the recent frame rate), **Sound** (a volume for everything, then one each for music, sound effects and ambience; music starts at half, and there's no soundtrack yet), **Controls** (preview floors on hover, the keys) and **Accessibility** (interface size, colour-blind overlays). Each setting is one row: its name, a one-line hint, and a switch, slider or list. On a wide screen the sections are tabs; on a phone they stack, and sliders take a line of their own.
+**Settings** come in five sections: **Game** (autosave, the tutorial, the deputy's tips), **Display** (full screen in the installed Android app, temperatures in °C rather than °F, the 3D graphics preset, furniture detail, sharpness and each effect, and a chart of the recent frame rate), **Sound** (a volume for everything, then one each for music, sound effects and ambience; music starts at half, and there's no soundtrack yet), **Controls** (preview floors on hover, the keys) and **Accessibility** (interface size, colour-blind overlays). Each setting is one row: its name, a one-line hint, and a switch, slider or list. On a wide screen the sections are tabs; on a phone they stack, and sliders take a line of their own.
 
 **By keyboard:** the menu opens with its first button ready. ↑ ↓ and Tab move (Tab stays inside the menu), Enter or Space acts, Esc goes back a step and then resumes. In Settings, ← → change section, sliders take ← →, switches flip with Enter or Space. Wherever you are, a ring shows what has the keyboard. On a touch screen every button, switch and list is at least a fingertip (44 px) tall.
 

@@ -7,7 +7,7 @@ import { run } from "./bot";
 import { construction } from "../src/sim/construction";
 import { storage } from "../src/sim/storage";
 
-const flags = { sawNoise: true, openedFlows: true, sawThreeD: true };
+const flags = { sawNoise: true, openedFlows: true, sawThreeD: true, sawTemperature: true };
 
 // Played with construction time and storage limits, as in the game (each test file has its own copy of the setting).
 construction.instant = false;

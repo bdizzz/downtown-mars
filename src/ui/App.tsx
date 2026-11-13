@@ -1,3 +1,4 @@
+import { setTemperatureUnits } from "../view/temperature";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import type { HoverInfo, Tool } from "../view/types";
@@ -160,8 +161,10 @@ export function App() {
   const seenFailed = useRef<{ gameId: number; ids: Set<number>; over: boolean }>({ gameId: -1, ids: new Set(), over: false });
   const resumeSpeed = useRef(1);
   const [tutorialOn, setTutorialOn] = useState(() => !tutorialHidden());
-  const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false, sawThreeD: false });
+  const [flags, setFlags] = useState<UiFlags>({ sawNoise: false, openedFlows: false, sawThreeD: false, sawTemperature: false });
   const [settings, updateSettings] = useSettings();
+  // Every temperature on screen reads in the player's units (view/temperature.ts).
+  setTemperatureUnits(settings.celsius ? "C" : "F");
   /**
    * The cutaway always shows the whole hole, from the surface down, with no floor picker. The picked
    * floor is kept as it was, so leaving the cutaway goes back to it.
@@ -417,12 +420,13 @@ export function App() {
     lastDay.current = null;
     undoStack.current = [];
     setCanUndo(false);
-    setFlags({ sawNoise: false, openedFlows: false, sawThreeD: false });
+    setFlags({ sawNoise: false, openedFlows: false, sawThreeD: false, sawTemperature: false });
   }, [gameId]);
 
   // The tutorial watches for things only the UI knows about.
   useEffect(() => {
     if (overlay === "noise") setFlags((f) => (f.sawNoise ? f : { ...f, sawNoise: true }));
+    if (overlay === "temperature") setFlags((f) => (f.sawTemperature ? f : { ...f, sawTemperature: true }));
   }, [overlay]);
   useEffect(() => {
     if (panel === "flows") setFlags((f) => (f.openedFlows ? f : { ...f, openedFlows: true }));

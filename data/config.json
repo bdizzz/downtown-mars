@@ -146,6 +146,29 @@
     "productivityAtZero": 0.75,
     "productivityFullAt": 50
   },
+  "temperature": {
+    "_note": "Each floor's temperature (#393, sim/temperature.ts), all in °C (the UI shows °F by default). Floor 1's resting temperature is rolled per hole from a band set by its latitude: restBands' bands, straight-line by latitude between them and on past the first toward the equator, never above restCapC (50 °F). The starter's band (20-25°) is 40-45 °F, the poles' 0-15 °F. Deeper floors rest a little warmer. Heat is measured against a reference floor, a small hole's floor dug out across its unlocked rings: a heater's `heats` is how far it lifts that floor at full power; smaller floors lift more, bigger ones less (never counting fewer than minCells cells). Heaters warm a floor at their lift a game day each (more heaters, faster); with no heat, a floor drifts toward rest at driftPerDayC. Body heat is per person on the floor (living or working there); waste heat per point of a running room's heat effect. Comfort bands are the comfort factor a home feels by its floor's temperature, the first band its temperature is below.",
+    "restBands": [
+      { "lat": 22.5, "lowC": 4.4, "highC": 7.2 },
+      { "lat": 90, "lowC": -17.8, "highC": -9.4 }
+    ],
+    "restCapC": 10,
+    "depthWarmingPerFloorC": 0.15,
+    "setpointC": 18.3,
+    "setpointRangeC": [10, 30],
+    "minCells": 4,
+    "driftPerDayC": 6.25,
+    "bodyHeatPerPersonC": 0.03,
+    "wasteHeatPerStrengthC": 8,
+    "comfort": [
+      { "belowC": 4.4, "comfort": -2.5 },
+      { "belowC": 10, "comfort": -1.25 },
+      { "belowC": 15.6, "comfort": -0.25 },
+      { "belowC": 26.7, "comfort": 0.5 },
+      { "belowC": 32.2, "comfort": -1 },
+      { "belowC": 1000, "comfort": -2 }
+    ]
+  },
   "messages": { "keep": 20 },
   "failure": { "emptyDays": 0.5 },
   "effects": {
@@ -170,7 +193,7 @@
     "commitAlong": 0.25
   },
   "landingKits": {
-    "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. A ring room's holds sets what a tank holds; the crew lays a corridor along the fronts of rooms nothing reaches, and the shortest spoke in to it.",
+    "_note": "What the landing crew sets up before the game starts (T-164). A new game's first hole gets newGame's kit, so a newcomer's air, water and power already work; holes founded later get laterHoles' (their seed kit brings the rest). Difficulty (F-014) will give hard the bare kit, and offer it on normal as a veteran start. The full kit brings a heater for floor 1 (#403); a founded hole's seed kit brings one, set up on arrival (founding.ts). A ring room's holds sets what a tank holds; the crew lays a corridor along the fronts of rooms nothing reaches, and the shortest spoke in to it.",
     "newGame": "full",
     "laterHoles": "bare",
     "bare": {
@@ -197,7 +220,8 @@
         { "room": "water_tank", "floor": 1, "ring": 3, "slot": 5, "holds": "grayWater" },
         { "room": "electrolyzer", "floor": 1, "ring": 3, "slot": 6 },
         { "room": "life_support", "floor": 1, "ring": 3, "slot": 8 },
-        { "room": "water_recycler", "floor": 1, "ring": 3, "slot": 12 }
+        { "room": "water_recycler", "floor": 1, "ring": 3, "slot": 12 },
+        { "room": "heater", "floor": 1, "ring": 3, "slot": 16 }
       ]
     }
   }

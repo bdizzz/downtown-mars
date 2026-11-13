@@ -14,6 +14,7 @@
     { "id": "tips", "section": "game", "name": "Tips", "hint": "The deputy explains a problem the first time it shows up", "control": "toggle", "default": true },
 
     { "id": "fullscreen", "section": "display", "name": "Full screen", "hint": "Hide the phone's status and navigation bars", "control": "toggle", "default": true, "only": "web", "when": "installedAndroid" },
+    { "id": "celsius", "section": "display", "name": "Temperatures in °C", "hint": "Off: temperatures show in °F", "control": "toggle", "default": false, "only": "web" },
     { "id": "allResources", "section": "display", "name": "Show every resource", "hint": "Off: the top bar shows the vitals and what needs a look; Stock opens the rest", "control": "toggle", "default": false, "only": "web" },
     { "id": "graphics.quality", "section": "display", "name": "Graphics", "hint": "Low for slower machines; Ultra adds bounced light", "control": "select", "only": "godot" },
     { "id": "graphics.preset", "section": "display", "name": "Graphics", "hint": "Low for slower machines; changing an effect makes it custom", "control": "select", "only": "web" },

@@ -17,6 +17,7 @@ import type { SimState } from "./state";
 import { stepHistory } from "./history";
 import { stepFailure } from "./failure";
 import { settleStorage } from "./storage";
+import { stepTemperature } from "./temperature";
 
 // Advance the simulation by one fixed tick. Mutates state in place.
 export function step(state: SimState, cfg: SimConfig): void {
@@ -27,6 +28,8 @@ export function step(state: SimState, cfg: SimConfig): void {
   // A dust storm drives more dust through the airlocks (the dome's are better sealed).
   state.effects = refreshEffects(state.layout, state.effects, dustNow(state.layout.domed ? 0 : stormLevel(state, cfg)));
   stepEconomy(state, cfg);
+  // Floors warm and cool by what's running on them, heaters by the power they got.
+  stepTemperature(state, cfg);
   openDomeWhenFull(state, cfg);
   stepCondition(state, cfg);
   stepConstruction(state, cfg);

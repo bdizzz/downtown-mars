@@ -38,6 +38,7 @@ Every hole starts as a small shaft; rooms are carved into its wall, then floors 
 - **Coordinates:** every room sits at (floor, slot around the ring, distance outward). Each floor is a loop with no edges, so neighbors exist along the ring, above/below, and radially.
 - **Digging cost rises with depth.** At some point starting a new hole beats digging deeper.
 - **Depth is double-edged:** deeper floors are costlier but better shielded from radiation and warmer, making them prime housing. Shallow floors suit noisy industry.
+  **As built (#393):** each floor has a temperature. Deeper floors rest only a little warmer (0.15 °C a floor, never above 50 °F); what really warms a floor is heaters, people and industry. See "Decided for temperature" in `DECISIONS.md`.
 - **Diameter is chosen per hole.** Wider holes fit more rooms per floor, produce more and house more colonists, but cost more to dig.
 - **The shaft is the spine.** Elevator capacity and commute time make distance from the center a real cost. Gravity helps: waste flows down, clean water is pumped up.
 - **Excavated rock is a resource:** bricks, radiation shielding, or trade goods, so digging partly pays for itself.

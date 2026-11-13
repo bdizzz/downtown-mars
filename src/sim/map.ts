@@ -70,23 +70,34 @@ export function generateMap(seed: number): MapState {
 }
 
 /**
- * The first hole's site: on northern-lowland ice (water to survive), with ore
- * or silica underneath (something to grow on, but not everything). If the
- * map doesn't happen to put either there, a small deposit is added, so the
- * design's "survives alone, can't grow alone" always holds.
+ * The first hole's site: at 20-25° north (#395), so its first floor always
+ * rests at 40-45 °F, with ice underneath (water to survive) and ore or silica
+ * (something to grow on, but not everything). Of a few spots along the band,
+ * one on ore, else the lowest without silica; ice sits further north on
+ * this map, so a small deposit of it, and of ore if there's none, is added,
+ * and the design's "survives alone, can't grow alone" always holds. (Ore is
+ * rare this far south; a silica start is a later hole's.)
  */
 export function chooseFirstSite(map: MapState, seed: number): { lat: number; lon: number } {
   const rand = rng(seed ^ 0xf1257);
   const fs = network.firstSite;
-  const ice = map.deposits.filter((d) => d.kind === "ice");
-  const lowland = ice.filter((d) => d.lat >= fs.minLat && d.lat <= fs.maxLat);
-  const pool = lowland.length ? lowland : ice.filter((d) => Math.abs(d.lat) < 75);
-  const pick = pool[Math.floor(rand() * pool.length)] ?? ice[0];
-  const site = pick ? { lat: pick.lat, lon: pick.lon } : { lat: 45, lon: 185 };
+  // Of a few spots along the band: one on ore if there is one (metal to build with), else the
+  // lowest without silica, where ore is planted.
+  let site = { lat: (fs.minLat + fs.maxLat) / 2, lon: 185 };
+  let best = -Infinity;
+  for (let i = 0; i < fs.tries; i++) {
+    const spot = { lat: fs.minLat + rand() * (fs.maxLat - fs.minLat), lon: rand() * 360 };
+    const here = depositsAt(map, spot);
+    const score = (here.includes("ore") ? 2e5 : here.includes("silica") ? 0 : 1e5) - elevationAt(spot.lat, spot.lon);
+    if (score > best) {
+      best = score;
+      site = spot;
+    }
+  }
   const under = depositsAt(map, site);
   if (!under.includes("ice")) map.deposits.push({ kind: "ice", ...site, radiusDeg: fs.extraDepositRadiusDeg });
   if (!under.includes("ore") && !under.includes("silica")) {
-    map.deposits.push({ kind: rand() < 0.5 ? "ore" : "silica", ...site, radiusDeg: fs.extraDepositRadiusDeg });
+    map.deposits.push({ kind: "ore", ...site, radiusDeg: fs.extraDepositRadiusDeg });
   }
   return site;
 }

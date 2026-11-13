@@ -82,6 +82,8 @@ export interface SeriesMeta {
   whole?: boolean;
   /** Places after the point, for series that move in small steps (the air's %). */
   decimals?: number;
+  /** Recorded in °C, shown in the player's units (#402). */
+  temperature?: boolean;
 }
 
 /** A series' value as text: whole for counts, its own decimals if it has them, else the usual rounding. */
@@ -180,6 +182,23 @@ export const SERIES: SeriesMeta[] = [
     ],
   },
   { key: "airVolume", label: "Living volume", group: "Air", unit: "m³", lines: [{ id: "airVolume", label: "Living volume", color: "#8ab0c0" }] },
+  {
+    key: "temperature",
+    label: "Temperature",
+    group: "Air",
+    temperature: true,
+    hideWhenEmpty: true,
+    lines: [
+      { id: "tempAverage", label: "Average floor", color: "#e0a050" },
+      { id: "tempColdest", label: "Coldest floor", color: "#4a8fe0" },
+      { id: "thermostat", label: "Thermostat", color: "#a88d7c", dashed: true },
+    ],
+    refs: [
+      { at: config.temperature.comfort[2]!.belowC, label: "comfortable" },
+      { at: config.temperature.comfort[1]!.belowC, label: "cold" },
+      { at: config.temperature.comfort[3]!.belowC, label: "too hot" },
+    ],
+  },
   res("water", "Water", cat("water"), false),
   res("grayWater", "Water", "#8aa0a8"),
   res("tailings", "Water", "#7a6a5e"),

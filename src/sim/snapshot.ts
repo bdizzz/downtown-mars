@@ -2,6 +2,7 @@ import { variety, type Growth, type Variety } from "./food";
 import { maintenanceView, type MaintenanceView } from "./condition";
 import { currentDifficulty, type Level } from "./difficulty";
 import { airView, type AirView } from "./air";
+import { temperatureView, type TemperatureView } from "./temperature";
 import { daylight, fullSunIn, stormDue, stormLevel, weatherReport, type WeatherReport } from "./weather";
 import { gameTime, type GameTime } from "./clock";
 import type { SimConfig } from "./config";
@@ -149,6 +150,8 @@ export interface Snapshot {
   capacities: Record<string, number>;
   /** The air as a mix: living volume (m³), O2 and CO2 as % of it. */
   air: AirView;
+  /** Each floor's temperature, its heat budget and the thermostat, °C (#393). */
+  temperature: TemperatureView;
   /** Smoothed net change per game day. */
   rates: Record<string, number>;
   /** Power is a flow, so show what's made and used rather than a net rate. */
@@ -273,6 +276,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     resources: state.resources,
     capacities: capacities(state, cfg),
     air: airView(state, cfg),
+    temperature: temperatureView(state, cfg),
     rates: state.rates,
     power: powerFlow(state, cfg),
     population: state.population,

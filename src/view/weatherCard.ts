@@ -1,3 +1,4 @@
+import { formatTemperature } from "./temperature";
 import type { Snapshot } from "../sim/snapshot";
 import type { WeatherReport } from "../sim/weather";
 import { monthsText } from "./months";
@@ -24,8 +25,8 @@ export interface WeatherCard {
   note: string;
 }
 
-/** "−42 °C", with a real minus sign. */
-export const degrees = (c: number) => `${Math.round(c) < 0 ? "−" : ""}${Math.abs(Math.round(c))} °C`;
+/** "−44 °F" (or °C, by the player's setting), with a real minus sign. */
+export const degrees = (c: number) => formatTemperature(c);
 
 const clock = (hour: number) => `${String(Math.floor(hour)).padStart(2, "0")}:${String(Math.round((hour % 1) * 60)).padStart(2, "0")}`;
 

@@ -220,6 +220,12 @@
       "highlight": "overlay:noise"
     },
     {
+      "id": "temperature",
+      "text": "Floor 1 is cut from cold rock: 40-some °F at this latitude. The landing kit's heater warms it to the thermostat. Turn on the temperature overlay to see which floors are cold.",
+      "hint": "View, at the bottom right, then Temperature under Overlay. Click the heater to set the thermostat; bigger floors need more heaters.",
+      "highlight": "overlay:temperature"
+    },
+    {
       "id": "drop",
       "text": "We're running. Speed things up and wait for Earth's first supply drop.",
       "hint": "Press 2× or 4×. Space pauses.",
@@ -314,6 +320,12 @@
       "causes": ["happiness:noSeat"],
       "text": "Some people have nowhere to sit down to eat near home. Each galley seats so many, within a short walk.",
       "hint": "Another galley or a canteen near the homes, or a bigger one."
+    },
+    {
+      "id": "cold",
+      "causes": ["happiness:temperature"],
+      "text": "Some homes are cold. People can put up with the 50s °F, but the 40s wear on them, and colder is miserable.",
+      "hint": "A heater (in Build, under Air & power) warms its floor up to the thermostat; one holds a small floor at 65 °F, so bigger floors need two. Too hot by industry? A radiator cools it."
     },
     {
       "id": "crowding",
