@@ -284,7 +284,7 @@ describe("the views", () => {
     expect(rows.find((r) => r.k === "Temperature")?.text).toMatch(/°F/);
     expect(rows.find((r) => r.k === "Heats")?.text).toMatch(/^\+\d+ °F at full power/);
     expect(rows.find((r) => r.k === "Working")?.text).toMatch(/% of full power/);
-    expect(rows.find((r) => r.k === "Thermostat")).toBeDefined();
+    expect(rows.find((r) => r.k === "Working")?.tip).toMatch(/°F/);
     expect(m.sections.find((x) => x.id === "work")?.open).toBe(true);
     expect(m.glance.some((c) => c.label === "Temperature")).toBe(true);
   });

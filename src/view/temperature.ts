@@ -18,7 +18,8 @@ export function temperatureUnits(): TemperatureUnits {
 
 /** °C as the player reads it: "65 °F" or "18 °C". */
 export function formatTemperature(celsius: number, u: TemperatureUnits = units): string {
-  return `${Math.round(inUnits(celsius, u))} °${u}`;
+  const v = Math.round(inUnits(celsius, u));
+  return `${v < 0 ? "−" : ""}${Math.abs(v)} °${u}`;
 }
 
 /** °C in the player's units, as a number. */

@@ -450,8 +450,11 @@ function climateRows(s: Snapshot, room: RoomInstance): Row[] {
       text: `${formatTemperatureChange(def.heats ? lift : -lift)} at full power`,
       tip: `On a small hole's floor dug out across its rings (${referenceCells(config)} cells); this floor has ${f.cells}, so ${formatTemperatureChange(def.heats ? f.heatersFull : -f.radiatorsFull)} from all its ${def.heats ? "heaters" : "radiators"}.`,
     },
-    { k: "Working", text: `${Math.round(share * 100)}% of full power`, tip: def.heats ? "Heaters work only as hard as it takes to hold the thermostat." : "Radiators work only as hard as it takes to bring the floor down to the thermostat." },
-    { k: "Thermostat", text: `${formatTemperature(f.setpoint)}${f.override ? " (this floor)" : ""}`, tip: `The hole's thermostat is ${formatTemperature(t.setpoint)}.` },
+    {
+      k: "Working",
+      text: `${Math.round(share * 100)}% of full power`,
+      tip: `${def.heats ? "Heaters work only as hard as it takes to hold the thermostat" : "Radiators work only as hard as it takes to bring the floor down to the thermostat"}: ${formatTemperature(f.setpoint)}${f.override ? ` on this floor (the hole's is ${formatTemperature(t.setpoint)})` : ""}.`,
+    },
   ];
 }
 
