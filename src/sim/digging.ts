@@ -1,4 +1,5 @@
 import { rollDiscovery } from "./events";
+import { depthOf, drillStopped, reachedFloor } from "./depth";
 import type { SimConfig } from "./config";
 import { shaftSlots, yieldRock } from "./excavation";
 import { blueprintReady } from "./construction";
@@ -45,8 +46,9 @@ export function diggingFloor(state: SimState): number {
   return state.layout.hole.floors + 1;
 }
 
+/** The drill has a floor to dig: not past the absolute ceiling, not held at a depth limit, not capped (#390). */
 export function canDig(state: SimState, cfg: SimConfig): boolean {
-  return diggingFloor(state) <= cfg.digging.maxFloors;
+  return diggingFloor(state) <= cfg.digging.maxFloors && !drillStopped(state);
 }
 
 export function stepDigging(state: SimState, cfg: SimConfig): void {
@@ -72,6 +74,8 @@ export function stepDigging(state: SimState, cfg: SimConfig): void {
   recomputeAccess(layout);
   layout.version++;
   state.drill.progress = 0;
-  // Perhaps it struck something on the way.
-  rollDiscovery(state, cfg, floor);
+  // A hidden depth limit, or an omen of one; otherwise perhaps it struck something on the way.
+  depthOf(state, cfg);
+  reachedFloor(state, cfg, floor);
+  if (!drillStopped(state)) rollDiscovery(state, cfg, floor);
 }

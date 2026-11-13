@@ -116,7 +116,7 @@ export function holeGates(state: SimState): string[] {
 }
 
 /** Everything a hole can reach that unlocks rooms. */
-export const UNLOCK_GATES = ["children", "elders", "cargo", "basicHomes", "standardHomes", "luxuryHomes", "cleaning", "brickworks", "leisure", "recycling", "hospital", "reclaimer", "spiralStair", "plaza", "dome"] as const;
+export const UNLOCK_GATES = ["children", "elders", "cargo", "basicHomes", "standardHomes", "luxuryHomes", "cleaning", "brickworks", "leisure", "recycling", "hospital", "reclaimer", "spiralStair", "plaza", "dome", "geothermal"] as const;
 export type UnlockGate = (typeof UNLOCK_GATES)[number];
 
 /** Record that a hole has reached something that unlocks rooms (first child, first elder). */

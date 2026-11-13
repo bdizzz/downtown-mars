@@ -29,6 +29,7 @@ function unlockText(gate: string): string {
   const at = (n: number) => `Unlocks at ${n} colonists in this hole`;
   if (gate === "children") return "Unlocks with the first child born here";
   if (gate === "elders") return "Unlocks when the first colonists retire";
+  if (gate === "geothermal") return "Only where the drill strikes a geothermal pocket";
   if (gate === "cargo") return at(u.cargoPopulation);
   if (gate === "basicHomes") return at(u.homes.basic);
   if (gate === "standardHomes") return at(u.homes.standard);

@@ -11,7 +11,7 @@ import { beds, padReady } from "./earth";
 import { capacities, powerFlow, type Population, type RoomStatus } from "./economy";
 import type { EffectField } from "./effects";
 import type { Deposit, DepositKind } from "./mapgeo";
-import { hasStagingBay, kitProgress } from "./founding";
+import { hasStagingBay, kitGoods, kitProgress } from "./founding";
 import { afterglow, afterglowDaysLeft, type Happiness } from "./happiness";
 import { diagnose, type Diagnosis } from "./diagnosis";
 import type { History } from "./history";
@@ -26,8 +26,9 @@ import type { Message } from "./messages";
 import type { Notable } from "./notables";
 import { ordinanceSlots } from "./ordinances";
 import type { Office } from "./visits";
-import { choiceRefusal, eventDef, eventMood, type PendingEvent } from "./events";
+import { choiceHint, choiceRefusal, eventDef, eventMood, type PendingEvent } from "./events";
 import { milestoneData, progress, type ReachedMilestone } from "./milestones";
+import { drillStopped, endingName, plaque, stopRefusal } from "./depth";
 import type { Layout } from "./placement";
 import type { GuideState, SimState } from "./state";
 
@@ -43,11 +44,22 @@ export interface DrillView {
   holdUntil: number | null;
   /** When it last struck something (the rig shudders for a moment). */
   struckTick: number | null;
+  /** Stopped at a hidden depth limit, waiting for the player (held), or done for good (capped) (#390). */
+  stopped: "held" | "capped" | null;
+  /** The player can ask to stop drilling for good. */
+  canStop: boolean;
+  /** How the hole ended, once capped: its final depth, its name from the ending ("the geothermal hole") and the plaque. */
+  capped: { floors: number; ending: string; name: string; plaque: string } | null;
+  /** When the last omen of a limit came (the drill strains), and the last that shook the ground. */
+  omenTick: number | null;
+  tremorTick: number | null;
 }
 
 /** An event waiting for an answer, with its choices and whether each can be picked now. */
 export interface EventView extends PendingEvent {
   choices: { id: string; label: string; hint: string; refusal: string | null }[];
+  /** No timer: it waits for an answer (the drill at a depth limit). */
+  waits: boolean;
 }
 
 export interface ConvoyView {
@@ -109,6 +121,11 @@ export interface HoleSummary {
   failed?: { days: number; peak: number };
   /** Milestones that hole has reached, with the day (F-005), for the network section of the milestones panel. */
   milestones: ReachedMilestone[];
+  /** Floors dug, and the shaft's radius, for the records (#413). */
+  floors: number;
+  shaftRadiusM?: number;
+  /** The hole is capped (#390): its final depth and its name from how it ended ("the geothermal hole"). */
+  capped?: { floors: number; identity: string };
 }
 
 // What the views get to see: the hole being looked at, in full, plus a line
@@ -131,7 +148,16 @@ export interface Snapshot {
   /** Deposits and unlocks together, for which rooms this hole can build. */
   holeGates: string[];
   /** This hole's seed kit: gathered so far against what a kit needs. */
-  kit: { loaded: Record<string, number>; progress: number; hasBay: boolean; gathering: boolean };
+  kit: {
+    loaded: Record<string, number>;
+    progress: number;
+    hasBay: boolean;
+    gathering: boolean;
+    /** What the kit needs here: less a crated drill's materials, if one's waiting (#411). */
+    wants: Record<string, number>;
+    /** Crated drills from this hole, waiting for its next kit. */
+    crates: number;
+  };
   /** Founding convoys on their way; the worker fills these in. */
   convoys: ConvoyView[];
   /** Every trade route in the network; the worker fills these in. */
@@ -235,7 +261,8 @@ function eventsView(state: SimState): Snapshot["events"] {
   return {
     pending: (ev?.pending ?? []).map((e) => ({
       ...e,
-      choices: eventDef(e.kind).choices.map((c) => ({ id: c.id, label: c.label, hint: c.hint.replaceAll("{floor}", String(e.floor ?? "")), refusal: choiceRefusal(state, c, pad) })),
+      choices: eventDef(e.kind).choices.map((c) => ({ id: c.id, label: c.label, hint: choiceHint(c.hint, e), refusal: choiceRefusal(state, c, pad) })),
+      waits: !!eventDef(e.kind).waits,
     })),
     mood: eventMood(state),
     festival: ev?.festival && ev.festival.untilTick > state.tick ? ev.festival : null,
@@ -256,7 +283,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     difficulty: currentDifficulty(),
     holeDeposits: state.deposits ?? [],
     holeGates: holeGates(state),
-    kit: { loaded: state.kit ?? {}, progress: kitProgress(state), hasBay: hasStagingBay(state), gathering: state.gatheringKit },
+    kit: { loaded: state.kit ?? {}, progress: kitProgress(state), hasBay: hasStagingBay(state), gathering: state.gatheringKit, wants: kitGoods(state), crates: state.depth?.crates ?? 0 },
     convoys: [],
     routes: [],
     relations: [],
@@ -272,6 +299,11 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
       ticksLeft: floor ? (needed - state.drill.progress) / drillSpeed(state) : 0,
       holdUntil: state.drill.holdUntil !== undefined && state.drill.holdUntil > state.tick ? state.drill.holdUntil : null,
       struckTick: state.events?.struckTick ?? null,
+      stopped: drillStopped(state),
+      canStop: !stopRefusal(state),
+      capped: state.depth?.capped ? { floors: state.depth.capped.floors, ending: state.depth.capped.ending, name: endingName(state.depth.capped.ending), plaque: plaque(state) } : null,
+      omenTick: state.depth?.omenTick ?? null,
+      tremorTick: state.depth?.tremorTick ?? null,
     },
     resources: state.resources,
     capacities: capacities(state, cfg),

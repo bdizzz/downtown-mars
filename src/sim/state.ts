@@ -28,6 +28,7 @@ import { addAdults } from "./people";
 import { createConstruction, type ConstructionState } from "./construction";
 import { settleStorage } from "./storage";
 import { createTemperature, type TemperatureState } from "./temperature";
+import { rollDepth, type DepthState } from "./depth";
 
 /** Where a hole is on Mars, in degrees. */
 export interface Site {
@@ -119,6 +120,8 @@ export interface SimState {
   emptySince?: number;
   /** Each floor's temperature and the thermostat (#393, temperature.ts; absent in older saves until the first tick). */
   temperature?: TemperatureState;
+  /** The hidden depth limits, and the cap once the drill's done for good (#390, depth.ts; older saves roll theirs on load). */
+  depth?: DepthState;
   /** Set when the hole has failed: empty, with no one to let newcomers in (T-162). For good. */
   failed?: HoleFailure;
 }
@@ -207,6 +210,7 @@ export function createInitialState(
     events: createEvents(who.seed),
     milestones: [],
     temperature: createTemperature(who.site?.lat ?? null, who.seed, cfg),
+    depth: rollDepth(who.seed, who.holeId, who.deposits, h.floors, cfg),
   };
   // The landing crew sealed the hole and made its air: O2 at the target, CO2 at the scrub floor.
   fillAir(state, cfg);

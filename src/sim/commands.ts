@@ -20,6 +20,7 @@ import { addAdults, holeGates, syncCount, unlock, UNLOCK_GATES } from "./people"
 import { allowsRefusal, setAllows } from "./storage";
 import { answerVisit, greet } from "./visits";
 import { answerEvent, consoleEvent } from "./events";
+import { askToStop, isCapped, stopRefusal } from "./depth";
 import { padReady } from "./earth";
 import { roomDef } from "./rooms";
 import { buildLiningCost, canLine, corridorRefitPlan, corridorRefitRefusal, flooringDef, floorPlan, floorRefusal, floorWords, liningOf, MATERIALS, refitPlan, refitRefusal, refitWords, type WallStep } from "./materials";
@@ -39,6 +40,8 @@ export type SimCommand =
   | { type: "demolish"; roomId: number }
   | { type: "undoBuild"; roomId: number }
   | { type: "setDrill"; active: boolean }
+  /** Ask to stop drilling for good: a card to confirm it, and say what becomes of the drill (#390). */
+  | { type: "stopDrilling" }
   | { type: "setCrop"; roomId: number; crop: string }
   /** What a tank holds: clean, gray water or tailings; O2 or CO2. */
   | { type: "setHolds"; roomId: number; holds: string }
@@ -589,8 +592,15 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       return drawCorridors(state, path, cmd.finish, true);
     }
     case "setDrill":
+      if (isCapped(state)) return { ok: false, reason: "The hole is capped: the drill's done for good" };
       state.drill.active = cmd.active;
       return { ok: true };
+    case "stopDrilling": {
+      const refusal = stopRefusal(state);
+      if (refusal) return { ok: false, reason: refusal };
+      askToStop(state, config);
+      return { ok: true };
+    }
     case "renameRoom": {
       const room = layout.rooms.find((r) => r.id === cmd.roomId);
       if (!room) return { ok: false, reason: "No such room" };
