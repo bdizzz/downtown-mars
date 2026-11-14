@@ -11,6 +11,8 @@ export interface DevGame {
   day: number;
   /** One line for the menu: what's in it. */
   what: string;
+  /** Which scripted player writes it: the network bot unless told (tests/netbot.ts), or "area", the by-area player (tests/areabot.ts). */
+  bot?: "area";
 }
 
 /** In order of play. scripts/saves.ts writes these from the network bot's run. */
@@ -19,6 +21,7 @@ export const DEV_GAMES: readonly DevGame[] = [
   { name: "mid", day: 30, what: "one hole, furnished, windows, a few events seen" },
   { name: "network", day: 60, what: "two holes, a few days after founding, rovers running both ways" },
   { name: "late", day: 120, what: "as big as the bots get while both holes are healthy" },
+  { name: "area", day: 20, what: "one hole laid out by area: the same rooms on rings 1 to 3, a farm two rings deep, a stretched plaza", bot: "area" },
 ];
 
 /** Whether this build offers the dev games: the dev server, or a PR's preview build (a function, so Node scripts can import the list). */

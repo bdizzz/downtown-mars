@@ -11,7 +11,7 @@ import type { SimState } from "../src/sim/state";
 import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
 import { ensureStairs, quarry, adapt, tendStorage, tendUpkeep, tendWindows, tendEvents } from "./adaptive";
-import { planFor, VISIT_ANSWERS } from "./bot";
+import { planFor, VISIT_ANSWERS, type PlanAt } from "./bot";
 import { beds } from "../src/sim/earth";
 import { stageCounts } from "../src/sim/people";
 import { ringAt } from "./spots";
@@ -24,7 +24,7 @@ import { ringAt } from "./spots";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const surface = (slot: number): Spot => ({ kind: "surface", slot });
-type Plan = { room: string; at: Spot; crop?: string; stopAt?: number; holds?: string };
+type Plan = { room: string; at: PlanAt; crop?: string; stopAt?: number; holds?: string };
 
 /** Once the map opens: industry for the kit, then get ready to found and trade. */
 export const HOME_EXTRA: Plan[] = [
@@ -94,7 +94,12 @@ function builder(plan: Plan[]) {
     step(hole: SimState, day: number) {
       for (let k = 0; k < pending.length; ) {
         const p = pending[k]!;
-        const r = applyCommand(hole, { type: "build", room: p.room, at: p.at });
+        const at = typeof p.at === "function" ? p.at(hole, p.room) : p.at;
+        if (!at) {
+          k++;
+          continue;
+        }
+        const r = applyCommand(hole, { type: "build", room: p.room, at });
         if (!r.ok) {
           // Short of rock: dig some out while waiting.
           if (/more rock/.test(r.reason)) quarry(hole);
