@@ -688,7 +688,7 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 
 /* Fingers: bigger targets for the buttons used most. */
 @media (pointer: coarse) {
-  .speeds button, .menu-btn, .office-btn, .drill button { padding: 6px 12px; }
+  .speeds button, .menu-btn, .drill button { padding: 6px 12px; }
   .dock-btn { padding: 6px 10px; }
   .tile { padding: 8px 8px; }
   .rail-btn { min-height: 48px; }
@@ -717,7 +717,6 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   .group-label { width: 64px; box-sizing: border-box; padding: 0 5px; font-size: 8.5px; }
   .res { min-width: 54px; }
   .res .ico svg { width: 14px; height: 14px; }
-  .office-btn .office-label { display: none; }
   .clock { font-size: 13px; }
   .speeds button { padding: 4px 9px; }
   .needs { order: 10; flex-basis: 100%; }
@@ -821,13 +820,6 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .weather-card dt { color: var(--muted); }
 .weather-card dd { margin: 0; font-variant-numeric: tabular-nums; }
 .weather-card p { margin: 8px 0 0; color: var(--muted); font-style: italic; }
-.office-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  background: transparent; color: var(--text); font: inherit; font-size: 13px;
-  border: 1px solid var(--muted); border-radius: 4px; padding: 2px 8px; cursor: pointer;
-}
-.office-btn.waiting { border-color: var(--accent); background: var(--accent); color: #1a0f0d; font-weight: 600; }
-.office-btn .badge { background: #1a0f0d; color: var(--accent); border-radius: 8px; padding: 0 5px; font-size: 11px; line-height: 15px; }
 /* The grid's sections (colony, life, food, materials), each its own panel with a small label, so
    you find the section first and then the cell; cells at least a fixed width so numbers don't
    shuffle their neighbours. */
@@ -886,7 +878,7 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   .hud .hud-more .needs { flex: 1 1 100%; }
   /* Left out: the sun dial, and a waiting drop (the "Drop waiting" chip says it). */
   .hud .sundial, .hud .drop.warn { display: none; }
-  .hud .office-btn { margin-left: auto; }
+  .hud .hud-toggle { margin-left: auto; }
   .app:not(.hud-open) .resbar { display: none; }
 }
 @media (pointer: coarse) and (max-width: 639px) {
@@ -1080,13 +1072,13 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 
 /* ---- Buttons ---- */
 /* The raised button: everything you press that isn't a tab, a tile or a link. */
-.btn, .menu button, .choice, .ordinance button, .drill button, .office-btn, .menu-btn, .pause-btn, .hud-toggle, .cam-reset, .cam-zoom,
+.btn, .menu button, .choice, .ordinance button, .drill button, .menu-btn, .pause-btn, .hud-toggle, .cam-reset, .cam-zoom,
 .corridor-confirm button, .storage button, .under-construction button, .construction button.up, .update-banner button, .walk-stairs button,
 .inspector .danger, .room-panel .alert .connect, .why-show, .found-btn, .network .new-route button.primary {
   background: linear-gradient(180deg, var(--hover), var(--raised)); color: var(--text); font: inherit;
   border: 1px solid var(--line); border-radius: 4px; box-shadow: inset 0 1px 0 rgba(255, 214, 180, 0.14); cursor: pointer;
 }
-.btn:hover:not(:disabled), .menu button:hover:not(:disabled), .choice:hover:not(:disabled), .ordinance button:hover:not(:disabled), .drill button:hover, .office-btn:hover, .menu-btn:hover,
+.btn:hover:not(:disabled), .menu button:hover:not(:disabled), .choice:hover:not(:disabled), .ordinance button:hover:not(:disabled), .drill button:hover, .menu-btn:hover,
 .pause-btn:hover, .hud-toggle:hover, .cam-reset:hover, .cam-zoom:hover, .corridor-confirm button:hover:not(:disabled), .storage button:hover, .under-construction button:hover {
   border-color: var(--edge-hi); filter: brightness(1.12); color: var(--text);
 }
@@ -1097,7 +1089,7 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 .btn.ghost:hover:not(:disabled) { background: var(--hover); border-color: var(--line); filter: none; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 /* The main action of a card or menu. */
-.primary, .menu button.primary, .corridor-confirm button.primary, .update-banner button.primary, .found-btn, .network .new-route button.primary, .office-btn.waiting, .why-show.on {
+.primary, .menu button.primary, .corridor-confirm button.primary, .update-banner button.primary, .found-btn, .network .new-route button.primary, .why-show.on {
   background: linear-gradient(180deg, #f39152, #cf6a30); color: var(--ink); border-color: #7a3a16; font-weight: 600;
   box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.45), 0 1px 0 rgba(0, 0, 0, 0.4);
 }
@@ -1180,10 +1172,6 @@ kbd {
 .drill, .drop { color: var(--muted); font-size: 12.5px; }
 .drill .ico, .drop .ico { color: var(--text); }
 .drill button { display: inline-flex; padding: 1px 3px; }
-.office-btn { padding: 3px 10px; font-family: var(--font-display); font-weight: 600; letter-spacing: 0.04em; }
-.office-btn.waiting { animation: beckon 2.4s ease-in-out infinite; }
-@keyframes beckon { 50% { box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.45), 0 0 10px rgba(224, 122, 63, 0.8); } }
-@media (prefers-reduced-motion: reduce) { .office-btn.waiting { animation: none; } }
 .tick { font-size: 11px; opacity: 0.6; }
 .need, .need-count, .weather-chip { font-size: 12px; }
 
@@ -1213,6 +1201,10 @@ kbd {
 }
 .mode-btn:hover { border-color: var(--edge-hi); }
 .mode-btn .ico { color: var(--accent-hi); }
+/* The office (#457): not a mode, but beside them; someone waiting beckons, its count in the badge. */
+.mode-btn.office-mode.waiting { border-color: var(--accent); animation: beckon 2.4s ease-in-out infinite; }
+@keyframes beckon { 50% { box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.45), 0 0 10px rgba(224, 122, 63, 0.8); } }
+@media (prefers-reduced-motion: reduce) { .mode-btn.office-mode.waiting { animation: none; } }
 .mode-btn.on { background: linear-gradient(180deg, #f39152, #cf6a30); border-color: #7a3a16; color: var(--ink); box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.45), 0 0 12px rgba(224, 122, 63, 0.45); }
 .mode-btn.on .ico, .mode-btn.on kbd { color: var(--ink); }
 .mode-btn.on kbd { background: rgba(26, 15, 13, 0.15); border-color: rgba(26, 15, 13, 0.4); }
@@ -1479,8 +1471,13 @@ kbd {
 .choice-row:disabled { cursor: not-allowed; }
 .choice-row:disabled .name, .choice-row:disabled .takes { opacity: 0.5; }
 
+/* Build's dock button is for phones only (#457): wider screens keep the rail out and open by its groups. */
+.mode-btn.phone-mode { display: none; }
 /* ---- Phones ---- */
 @media (max-width: 760px) {
+  /* The rail folds away until Build is on, opened from its dock button. */
+  .mode-btn.phone-mode { display: flex; }
+  .build-rail:not(.active) { display: none; }
   .build-rail { left: 6px; top: 32px; bottom: 70px; gap: 6px; }
   .rail-btn { width: 44px; min-height: 42px; }
   .rail-btn .label { display: none; }

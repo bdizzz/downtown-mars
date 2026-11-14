@@ -105,10 +105,10 @@ function WeatherChip({ snapshot, className }: { snapshot: Snapshot; className: s
   );
 }
 
-// The top bar: the menu, where and when you are, speed, what needs you first, the drill, the next
-// supply drop and the office. Everything else lives in the dock's modes. Each element has a stable
+// The top bar: the menu, where and when you are, speed, what needs you first, the drill and the
+// next supply drop. Everything else lives in the dock, the office's button beside its modes (#457). Each element has a stable
 // id (data-hud, view/hudItems.ts HUD_IDS) for the tutorial. On phones (T-106) the bar is one short
-// row: the menu, the hole, a pause/play toggle, how many things need you, the office and a chevron;
+// row: the menu, the hole, a pause/play toggle, how many things need you and a chevron;
 // the rest (.hud-more, and the resource grid below) drops down from the chevron and stays down
 // until it's closed. On wider screens .hud-more is display: contents and changes nothing.
 export function Hud({ snapshot, speed, setSpeed, setDrill, stopDrill, toggleOffice, setActiveHole, openMenu, openTrend, keysEnabled, highlight, open: drawer, setOpen, reveal = SHOW_ALL }: Props) {
@@ -147,7 +147,6 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, stopDrill, toggleOffi
     if ("office" in n.open) toggleOffice();
     else openTrend(n.open.trend);
   };
-  const waiting = snapshot?.office.waiting.length ?? 0;
   const worst = list.some((n) => n.level === "bad") ? " bad" : "";
   return (
     <header className={`hud${drawer ? " open" : ""}`}>
@@ -233,13 +232,6 @@ export function Hud({ snapshot, speed, setSpeed, setDrill, stopDrill, toggleOffi
         </span>
       )}
       </span>
-      {snapshot && shown("office") && (
-        <button className={`office-btn${waiting ? " waiting" : ""}${pulse("office")}`} data-hud="office" onClick={toggleOffice} title="The office: visits, promises, ordinances and notables (O)">
-          <Icon id="office" />
-          <span className="office-label">Office</span>
-          {waiting ? <span className="badge">{waiting}</span> : null}
-        </button>
-      )}
       <button className="phone-only hud-toggle" onClick={() => setOpen(!drawer)} aria-expanded={drawer} aria-controls="hud-more" title={drawer ? "Hide the clock, speeds and resources" : "Show the clock, speeds and resources"}>
         {drawer ? "Hide stats" : "Show stats"}
         <span className="chev" aria-hidden="true">▾</span>
