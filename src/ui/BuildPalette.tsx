@@ -5,7 +5,7 @@ import type { Tool } from "../view/types";
 import { config } from "../sim/config";
 import { missingCost, siteRefusal, withExtra } from "../sim/costs";
 import { roomDef, roomDefs, type RoomDef } from "../sim/rooms";
-import { BUILD_GROUPS, buildTiles, CATEGORY_NAMES, CORRIDOR_KEY, DEMOLISH_KEY, groupOf, HOTKEYS, depthsOf, areaOf, unitsFor, SNAP_KEY, variantLabel, type BuildGroup, type BuildTile } from "../view/buildCatalog";
+import { BUILD_GROUPS, buildTiles, CORRIDOR_KEY, DEMOLISH_KEY, groupOf, groupOfRoom, HOTKEYS, depthsOf, areaOf, unitsFor, SNAP_KEY, sectionInfo, surfaceOnly, variantLabel, type BuildGroup, type BuildTile } from "../view/buildCatalog";
 import { SIZE_NAMES } from "../view/roomCard";
 import { RoomCard } from "./RoomCard";
 import { Amounts } from "./Cost";
@@ -124,7 +124,7 @@ interface RailProps {
 
 /** The group a tool belongs to: its room's, or Access for corridors. */
 function groupOfTool(tool: Tool): string | null {
-  if (tool?.kind === "build") return groupOf(roomDef(tool.room).category)?.id ?? null;
+  if (tool?.kind === "build") return groupOfRoom(roomDef(tool.room))?.id ?? null;
   if (tool?.kind === "corridor") return groupOf("circulation")?.id ?? null;
   return null;
 }
@@ -147,13 +147,19 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
   const corridorsShown = reveal.shown("tool:corridors");
   const domeShown = reveal.shown("room:shaft_dome");
   const selected = tool?.kind === "build" ? tool.room : null;
-  const corridorOn = tool?.kind === "corridor";
+  // The corridor tool, and the bulkhead and window tools that are its modes, each a tile of its own (#454).
+  const bulkheadShown = reveal.shown("tool:bulkhead");
+  const windowsShown = reveal.shown("tool:windows");
+  const bulkheadOn = tool?.kind === "corridor" && !!tool.bulkhead;
+  const windowsOn = tool?.kind === "corridor" && !!tool.windows;
+  const corridorOn = tool?.kind === "corridor" && !bulkheadOn && !windowsOn;
   if (selected && roomDef(selected).family) lastVariant[roomDef(selected).family!] = selected;
 
-  // A group shows once it has something in it: a tile, or (Access) the corridor tool, or (Community) the dome.
-  const groups = BUILD_GROUPS.map((g) => [g, tiles.filter((t) => g.categories.includes(t.category))] as const).filter(
-    ([g, ts]) => ts.length || (g.categories.includes("circulation") && corridorsShown) || (g.categories.includes("public") && domeShown),
-  );
+  /** Tools (not rooms) listed in a section: the corridor tool, bulkheads and windows, the dome. */
+  const toolsIn = (section: string) =>
+    section === "circulation" ? corridorsShown : section === "seals" ? bulkheadShown || windowsShown : section === "public" ? domeShown : false;
+  // A group shows once it has something in it: a tile, or a tool.
+  const groups = BUILD_GROUPS.map((g) => [g, tiles.filter((t) => g.sections.includes(t.section))] as const).filter(([g, ts]) => ts.length || g.sections.some(toolsIn));
   const pick = (id: string | null) => {
     setOpen(id);
     setHovered(null);
@@ -194,9 +200,11 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
   }, []);
 
   const wantsTile = (t: BuildTile) => t.members.some((m) => highlight === `room:${m.id}` && m.id !== selected);
-  const wanted = (g: BuildGroup, ts: readonly BuildTile[]) => ts.some(wantsTile) || (g.categories.includes("circulation") && highlight === "tool:corridors" && !corridorOn);
+  const access = (g: BuildGroup) => g.sections.includes("circulation");
+  const toolWanted = (highlight === "tool:corridors" && !corridorOn) || (highlight === "tool:bulkhead" && !bulkheadOn) || (highlight === "tool:windows" && !windowsOn);
+  const wanted = (g: BuildGroup, ts: readonly BuildTile[]) => ts.some(wantsTile) || (access(g) && toolWanted);
   const fresh = (g: BuildGroup, ts: readonly BuildTile[]) =>
-    ts.some((t) => t.members.some((m) => reveal.fresh(`room:${m.id}`))) || (g.categories.includes("circulation") && reveal.fresh("tool:corridors"));
+    ts.some((t) => t.members.some((m) => reveal.fresh(`room:${m.id}`))) || (access(g) && ["corridors", "bulkhead", "windows"].some((id) => reveal.fresh(`tool:${id}`)));
   /** Where the pointer's tile sits in the list, so its card floats level with it (above it, in the lower half of the screen). */
   const over = (id: string) => (e: React.MouseEvent<HTMLElement>) => {
     const el = e.currentTarget;
@@ -223,10 +231,10 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
             <button
               key={g.id}
               className={`rail-btn${isOpen ? " open" : ""}${toolGroup === g.id ? " on" : ""}${wanted(g, ts) && !isOpen ? " pulse" : ""}${fresh(g, ts) && !isOpen ? " fresh" : ""}`}
-              style={catColor(g.categories[0]!)}
+              style={catColor(sectionInfo(g.sections[0]!).color)}
               onClick={() => toggle(g.id)}
               aria-expanded={isOpen}
-              title={`${g.name}: ${g.categories.map((c) => CATEGORY_NAMES[c] ?? c).join(", ").toLowerCase()} (${BUILD_GROUPS.indexOf(g) + 1})`}
+              title={`${g.name}: ${g.sections.map((c) => sectionInfo(c).name).join(", ").toLowerCase()} (${BUILD_GROUPS.indexOf(g) + 1})`}
             >
               <Icon id={g.icon} size={20} />
               <span className="label">{g.name}</span>
@@ -265,25 +273,51 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
               </button>
             </header>
             <div className="tiles" ref={list} onScroll={out}>
-              {current[0].categories.map((cat) => {
-                const ts = current[1].filter((t) => t.category === cat);
+              {current[0].sections.map((cat) => {
+                const ts = current[1].filter((t) => t.section === cat);
                 const corridor = cat === "circulation" && corridorsShown;
                 const domed = cat === "public" && domeShown;
-                if (!ts.length && !corridor && !domed) return null;
+                const seals = cat === "seals";
+                if (!ts.length && !toolsIn(cat)) return null;
+                const info = sectionInfo(cat);
                 return (
-                  <section key={cat} style={catColor(cat)}>
-                    {current[0].categories.length > 1 && <h3>{CATEGORY_NAMES[cat] ?? cat}</h3>}
+                  <section key={cat} style={catColor(info.color)}>
+                    {current[0].sections.filter((c) => c === cat || current[1].some((t) => t.section === c) || toolsIn(c)).length > 1 && <h3>{info.name}</h3>}
                     {corridor && (
                       <button
                         className={`tile${corridorOn ? " on" : ""}${highlight === "tool:corridors" && !corridorOn ? " pulse" : ""}${freshClass(reveal, "tool:corridors")}`}
                         onClick={() => setTool(corridorOn ? null : { kind: "corridor", finish: lastFinish, erase: false })}
-                        title="Carve corridors along the borders between rooms, back to the gallery. Bulkheads, windows and refits are in its tool bar."
+                        title="Carve corridors along the borders between rooms, back to the gallery. Refitting them in another lining is in its tool bar."
                       >
                         <span className="swatch" />
                         <span className="name">Corridors</span>
                         <span className="k">per 10 m</span>
                         <Amounts amounts={finishDef(lastFinish).cost} have={resources} />
                         <kbd>{CORRIDOR_KEY}</kbd>
+                      </button>
+                    )}
+                    {seals && bulkheadShown && (
+                      <button
+                        className={`tile${bulkheadOn ? " on" : ""}${highlight === "tool:bulkhead" && !bulkheadOn ? " pulse" : ""}${freshClass(reveal, "tool:bulkhead")}`}
+                        onClick={() => setTool(bulkheadOn ? null : { kind: "corridor", finish: lastFinish, erase: false, bulkhead: true })}
+                        title={`${corridors.bulkhead.hint}. Click a built corridor to fit one; with Erase, to take one out, free.`}
+                      >
+                        <span className="swatch" />
+                        <span className="name">{corridors.bulkhead.name}</span>
+                        <span className="k">each</span>
+                        <Amounts amounts={corridors.bulkhead.cost} have={resources} />
+                      </button>
+                    )}
+                    {seals && windowsShown && (
+                      <button
+                        className={`tile${windowsOn ? " on" : ""}${highlight === "tool:windows" && !windowsOn ? " pulse" : ""}${freshClass(reveal, "tool:windows")}`}
+                        onClick={() => setTool(windowsOn ? null : { kind: "corridor", finish: lastFinish, erase: false, windows: true })}
+                        title="Put windows in a room's wall, where it faces the shaft, a corridor or a walk-through room: a home's comfort goes up. Click a wall to glaze it all; with Erase, to take them out, free."
+                      >
+                        <span className="swatch" />
+                        <span className="name">Windows</span>
+                        <span className="k">per 10 m</span>
+                        <Amounts amounts={config.windows.costPer10m} have={resources} />
                       </button>
                     )}
                     {domed && (
@@ -308,12 +342,18 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
                         <button
                           key={tile.id}
                           className={`tile${on ? " on" : ""}${missing ? " short" : ""}${wantsTile(tile) ? " pulse" : ""}${tile.members.some((m) => reveal.fresh(`room:${m.id}`)) ? " fresh" : ""}`}
+                          style={tile.category !== info.color ? catColor(tile.category) : undefined}
                           onClick={() => setTool(on ? null : buildTool(def))}
                           onMouseEnter={over(def.id)}
                           onMouseLeave={out}
                         >
                           <span className="swatch" />
                           <span className="name">{tile.name}</span>
+                          {surfaceOnly(def) && (
+                            <span className="surface-mark" title="Surface only: built on the ground beside the shaft, not dug into the hole" aria-label="Surface only">
+                              <Icon id="surface" size={12} />
+                            </span>
+                          )}
                           {tile.members.length > 1 && (
                             <span className="variants" title={tile.members.map((m) => m.name).join(", ")}>
                               {tile.members.map((m) => (
@@ -430,8 +470,6 @@ function CorridorBar({ tool, setTool, resources, reveal = SHOW_ALL }: Pick<BarPr
   const refitCost = (id: string) => Object.fromEntries(Object.entries(liningCost(liningById(id)!)).map(([r, v]) => [r, Math.round(v * per10m * 10) / 10]));
   const modes = [
     { id: "draw", name: "Draw", shown: true, tip: "Carve corridors: drag along the borders between rooms", to: { ...plain, erase: false } as Tool },
-    { id: "bulkhead", name: corridors.bulkhead.name, shown: has("bulkhead"), tip: `${corridors.bulkhead.hint}. Click a built corridor to fit one; with Erase, to take one out, free.`, to: { ...plain, bulkhead: true, erase: false } as Tool },
-    { id: "windows", name: "Windows", shown: has("windows"), tip: "Put windows in a room's wall, where it faces the shaft, a corridor or a walk-through room: a home's comfort goes up. Click a wall to glaze it all; with Erase, to take them out, free.", to: { ...plain, windows: true, erase: false } as Tool },
     { id: "refit", name: "Refit", shown: has("refit"), tip: "Refit built corridors in another lining, as rooms are. Click a corridor or drag along several. Back to bare rock salvages half the old lining.", to: { ...plain, erase: false, refit: lastRefit } as Tool },
   ].filter((m) => m.shown);
   const hint =
@@ -442,7 +480,7 @@ function CorridorBar({ tool, setTool, resources, reveal = SHOW_ALL }: Pick<BarPr
     : "Drag along the borders between rooms";
   return (
     <>
-      {modes.length > 1 && (
+      {modes.length > 1 && (mode === "draw" || mode === "refit") && (
         <span className="seg" role="group" aria-label="Corridor tool">
           {modes.map((m) => (
             <button key={m.id} className={mode === m.id ? "on" : ""} title={m.tip} onClick={() => setTool(m.to)} aria-pressed={mode === m.id}>
@@ -508,11 +546,13 @@ export function ToolBar({ tool, setTool, resources, rotate, highlight, deposits,
     );
   }
   if (tool.kind === "corridor") {
+    // Bulkheads and windows are the corridor tool in another mode, but tiles of their own on the rail (#454).
+    const name = tool.bulkhead ? corridors.bulkhead.name : tool.windows ? "Windows" : "Corridors";
     return (
-      <div className="dock-strip tool-bar" role="toolbar" aria-label="Corridors" style={catColor("circulation")}>
+      <div className="dock-strip tool-bar" role="toolbar" aria-label={name} style={catColor("circulation")}>
         <span className="tool-name">
           <span className="swatch" />
-          Corridors
+          {name}
         </span>
         <CorridorBar tool={tool} setTool={setTool} resources={resources} reveal={reveal} />
         {done}

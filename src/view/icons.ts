@@ -73,6 +73,9 @@ export const ICONS = {
   community: '<circle cx="5.5" cy="5" r="2"/><circle cx="11" cy="6" r="1.5"/><path d="M1.5 13c0-2.5 1.8-4 4-4s4 1.5 4 4M10 9.6c.3-.1.7-.1 1-.1 1.9 0 3.5 1.2 3.5 3.5"/>',
   stock: '<path d="M2 4.5h12M2 8h12M2 11.5h12"/><circle cx="5" cy="4.5" r="1.2" fill="currentColor"/><circle cx="10.5" cy="8" r="1.2" fill="currentColor"/><circle cx="7" cy="11.5" r="1.2" fill="currentColor"/>',
   corridor: '<path d="M2 5.5h8.5a2 2 0 0 1 2 2V14M2 9.5h6.5V14"/>',
+  // On the surface: a sun on the horizon (build tiles for rooms that go beside the shaft, #454).
+  surface: '<path d="M1.5 11.5h13M4.5 11.5a3.5 3.5 0 0 1 7 0M8 3v2M3.4 5l1.3 1.3M12.6 5l-1.3 1.3M1.5 14h13"/>',
+  bulkhead: '<rect x="2.5" y="2" width="11" height="12" rx="2"/><circle cx="8" cy="8" r="2.5"/><path d="M8 5.5v5M5.5 8h5"/>',
 } as const;
 
 export type IconId = keyof typeof ICONS;
