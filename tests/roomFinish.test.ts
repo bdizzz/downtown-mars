@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { RoomInstance } from "../src/sim/placement";
 import { roomFinish, roomLook } from "../src/view/roomFinish";
+import { ringAt } from "./spots";
 
 const room = (type: string, lining: Partial<RoomInstance> = {}): RoomInstance =>
-  ({ id: 1, type, at: { kind: "ring", floor: 1, ring: 1, slot: 0, w: 1, d: 1 }, cells: [], ...lining }) as RoomInstance;
+  ({ id: 1, type, at: ringAt(1, 1, 0), cells: [], ...lining }) as RoomInstance;
 
 describe("what a room is built from", () => {
   it("is the building material its cost uses most, or rock", () => {

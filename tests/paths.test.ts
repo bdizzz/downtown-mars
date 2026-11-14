@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { applyCommand } from "../src/sim/commands";
-import { galleryEdges, radialEdge, arcAt } from "../src/sim/edges";
-import { ensureFloors, type Location } from "../src/sim/placement";
+import { radialEdge, arcAt } from "../src/sim/edges";
+import { ensureFloors, type Spot } from "../src/sim/placement";
 import { buildPaths, distancesFrom, distancesFromCells, pathsFor, STEP_M, stepsBetween } from "../src/sim/paths";
 import { reachSummary, reachTints } from "../src/view/reachView";
 import { createInitialState, type SimState } from "../src/sim/state";
+import { ringAt, cellAt } from "./spots";
+import { tubeAt } from "./spots";
+import { notchOf } from "./spots";
 
 // Milestone 11, step 4: the sealed network as a graph with distances.
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
 /** Two dug floors; floor 2 is rock but for what's built on it. */
 function deep(): SimState {
@@ -20,7 +23,7 @@ function deep(): SimState {
   Object.assign(s.resources, { rock: 900, brick: 300, metal: 300, machinery: 60, electronics: 60 });
   return s;
 }
-function build(s: SimState, room: string, at: Location): number {
+function build(s: SimState, room: string, at: Spot): number {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return r.roomId!;
@@ -30,7 +33,7 @@ function corridors(s: SimState, ids: string[]): void {
   if (!r.ok) throw new Error(r.reason);
 }
 const finish = (s: SimState) => applyCommand(s, { type: "consoleFinish" });
-const tubes = (s: SimState, floor: number, slots: number[]) => slots.map((i) => galleryEdges(s.layout.hole, floor)[i]!.id);
+const tubes = (s: SimState, floor: number, slots: number[]) => slots.map((i) => tubeAt(s.layout, floor, i).id);
 
 describe("the network graph", () => {
   it("measures walks along gallery tubes, longer for rooms further apart", () => {
@@ -66,11 +69,11 @@ describe("the network graph", () => {
     build(s, "galley", ring(2, 1, 3));
     const clinic = build(s, "clinic", ring(2, 1, 4));
     // A corridor on each side of the galley: the dorm's right side and the clinic's left.
-    corridors(s, [radialEdge(s.layout.hole, 2, 1, 3).id, radialEdge(s.layout.hole, 2, 1, 4).id]);
+    corridors(s, [radialEdge(2, 1, notchOf(1, 3)).id, radialEdge(2, 1, notchOf(1, 4)).id]);
     finish(s);
     expect(stepsBetween(s.layout, dorm, clinic)).toBeNull();
     // A corridor round the back of the galley joins them.
-    corridors(s, [arcAt(s.layout.hole, 2, 1, 3.5 / 9)!.id]);
+    corridors(s, [arcAt(s.layout, 2, 1, 3.5 / 9)!.id]);
     finish(s);
     expect(stepsBetween(s.layout, dorm, clinic)).not.toBeNull();
   });
@@ -131,7 +134,7 @@ describe("seeing distances", () => {
     build(s, "clinic", ring(1, 1, 3));
     build(s, "bunk_dorm", ring(1, 1, 5, 2));
     finish(s);
-    const cells = [{ floor: 1, ring: 1, slot: 1 }];
+    const cells = [cellAt(1, 1, 1)];
     expect(reachSummary(s.layout, "bunk_dorm", cells)).toMatch(/Clinic \d+/);
     expect(reachSummary(s.layout, "galley", cells)).toMatch(/reaches 1 of 1 home within 8 steps/);
     expect(distancesFromCells(s.layout, cells, "walk").size).toBeGreaterThan(0);

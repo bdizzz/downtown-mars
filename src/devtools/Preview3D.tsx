@@ -66,7 +66,7 @@ export function Preview3D({ layout, room, floor, fitted, accent }: { layout: Lay
     v.scene.add(shell);
     const box = new THREE.Box3().setFromObject(shell);
     const centre = box.getCenter(new THREE.Vector3());
-    const key = `${room.type}:${room.cells.map((c) => `${c.ring}.${c.slot}`).join(",")}`;
+    const key = `${room.type}:${room.cells.map((c) => `${c.ring}.${c.a0}-${c.a1}`).join(",")}`;
     if (key !== v.key) {
       v.key = key;
       // From the shaft side, looking out at the back wall (where most things stand).

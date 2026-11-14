@@ -1,20 +1,25 @@
 import { config, type SimConfig } from "./config";
-import { checkPlacement, type CheckResult, type Layout, type Location } from "./placement";
+import { areaScale, checkPlacement, unitsOf, type CheckResult, type Layout, type Spot } from "./placement";
 import { resourceDef } from "./resources";
 import type { DepositKind } from "./mapgeo";
 import { roomDef } from "./rooms";
 import { buildLiningCost, type WallStep } from "./materials";
 
+/** A cost times a fill room's share of its target area (1 for any other room), to a tenth. */
+export function scaled(cost: Record<string, number>, scale: number): Record<string, number> {
+  return scale === 1 ? { ...cost } : Object.fromEntries(Object.entries(cost).map(([id, v]) => [id, Math.round(v * scale * 10) / 10]));
+}
+
 /** A room's cost plus anything on top (a lining to build it in). */
-export function withExtra(type: string, extra: Record<string, number> = {}): Record<string, number> {
-  const cost = { ...roomDef(type).cost };
+export function withExtra(type: string, extra: Record<string, number> = {}, scale = 1): Record<string, number> {
+  const cost = scaled(roomDef(type).cost, scale);
   for (const [id, v] of Object.entries(extra)) cost[id] = (cost[id] ?? 0) + v;
   return cost;
 }
 
 /** What's missing to pay for a room (and anything on top, `extra`), e.g. "Needs 15 more metal", or null if affordable. */
-export function missingCost(resources: Record<string, number>, type: string, extra: Record<string, number> = {}): string | null {
-  const short = Object.entries(withExtra(type, extra))
+export function missingCost(resources: Record<string, number>, type: string, extra: Record<string, number> = {}, scale = 1): string | null {
+  const short = Object.entries(withExtra(type, extra, scale))
     .map(([id, amt]) => [id, Math.ceil(amt - Math.floor(resources[id] ?? 0))] as const)
     .filter(([, gap]) => gap > 0);
   if (!short.length) return null;
@@ -57,7 +62,7 @@ export function checkBuild(
   layout: Layout,
   resources: Record<string, number>,
   type: string,
-  at: Location,
+  at: Spot,
   cfg: SimConfig = config,
   gates: string[] = [],
   lining?: WallStep | null,
@@ -66,17 +71,17 @@ export function checkBuild(
   if (!check.ok) return check;
   const site = siteRefusal(type, gates);
   if (site) return { ok: false, reason: site, cells: check.cells, surfaceCells: check.surfaceCells };
-  const missing = missingCost(resources, type, buildLiningCost(type, at, check.cells.length, lining));
+  const missing = missingCost(resources, type, buildLiningCost(type, check.at, unitsOf(layout.hole, check.cells), lining), areaScale(layout.hole, type, check.at, cfg));
   return missing ? { ok: false, reason: missing, cells: check.cells, surfaceCells: check.surfaceCells } : check;
 }
 
-export function charge(resources: Record<string, number>, type: string): void {
-  for (const [id, amt] of Object.entries(roomDef(type).cost)) resources[id] = (resources[id] ?? 0) - amt;
+export function charge(resources: Record<string, number>, type: string, scale = 1): void {
+  for (const [id, amt] of Object.entries(scaled(roomDef(type).cost, scale))) resources[id] = (resources[id] ?? 0) - amt;
 }
 
 /** The ledger label for building (and, negatively, for refunds). */
 export const CONSTRUCTION = "Construction";
 
-export function refund(resources: Record<string, number>, type: string, fraction: number): void {
-  for (const [id, amt] of Object.entries(roomDef(type).cost)) resources[id] = (resources[id] ?? 0) + amt * fraction;
+export function refund(resources: Record<string, number>, type: string, fraction: number, scale = 1): void {
+  for (const [id, amt] of Object.entries(scaled(roomDef(type).cost, scale))) resources[id] = (resources[id] ?? 0) + amt * fraction;
 }

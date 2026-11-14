@@ -1,12 +1,12 @@
 import raw from "../../data/corridors.json";
 import materialsJson from "../../data/materials.json";
-import type { SimConfig } from "./config";
-import { cellEdges, edgeById, edgeLengthM, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, sharedEdges, type Edge } from "./edges";
-import { ringSize, type Hole } from "./geometry";
+import { config, type SimConfig } from "./config";
+import { cellEdges, edgeById, edgeLengthM, edgeSides, edgeVertices, floorEdges, galleryEdges, isGalleryEdge, outsideEdges, sharedEdges, type Edge } from "./edges";
+import type { Hole } from "./geometry";
 import { resourceDef } from "./resources";
 import { roomDef } from "./rooms";
 import type { Cell, Layout, RoomInstance } from "./placement";
-import { emptyCells } from "./excavation";
+import { cellKey, contains, emptyCells, touch, type Piece } from "./space";
 import { deadEnds } from "./deadEnds";
 
 // Corridors run along the borders between cells, carved out of the rooms and
@@ -71,7 +71,7 @@ export function isFinish(id: string): boolean {
   return corridors.finishes.some((f) => f.id === id);
 }
 
-const roomIdAt = (layout: Layout, c: Cell | null) => (c ? (layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] ?? 0) : 0);
+const roomIdAt = (c: Cell | null) => (c as Piece | null)?.room ?? 0;
 
 /** Why a corridor can't go on this edge, or null if it can. */
 export function corridorRefusal(layout: Layout, edgeId: string): string | null {
@@ -83,9 +83,9 @@ export function corridorRefusal(layout: Layout, edgeId: string): string | null {
   // A gallery tube hangs on the shaft wall, beside whatever ring 1 has there.
   if (isGalleryEdge(e)) return null;
   // Through rock is fine, but only where the hole reaches: both sides in unlocked rings.
-  const sides = edgeSides(hole, e);
+  const sides = edgeSides(layout, e);
   if (sides.some((c) => !c || c.ring > hole.unlockedRings)) return `Ring ${hole.unlockedRings + 1}+ needs reinforcement frames`;
-  const [a, b] = sides.map((c) => roomIdAt(layout, c));
+  const [a, b] = sides.map((c) => roomIdAt(c));
   if (a && a === b) return "That's the middle of a room";
   return null;
 }
@@ -157,7 +157,7 @@ function network(layout: Layout): { sets: Sets; publicEdges: Map<string, number>
   // Under the dome, the shaft is air: every floor's gallery is open walkway, built or not.
   if (layout.domed) {
     for (let f = 1; f <= hole.floors; f++) {
-      for (const e of galleryEdges(hole, f)) {
+      for (const e of galleryEdges(layout, f)) {
         join(sets, hole, e);
         if (!layout.corridors[e.id]) publicEdges.set(e.id, 0);
       }
@@ -166,7 +166,7 @@ function network(layout: Layout): { sets: Sets; publicEdges: Map<string, number>
   for (const room of layout.rooms) {
     if (room.planned || room.building || room.at.kind !== "ring" || !roomDef(room.type).public) continue;
     let first: string | null = null;
-    for (const e of outsideEdges(hole, openTo(room))) {
+    for (const e of outsideEdges(layout, openTo(room))) {
       join(sets, hole, e);
       publicEdges.set(e.id, room.id);
       const [v0] = edgeVertices(hole, e);
@@ -177,10 +177,10 @@ function network(layout: Layout): { sets: Sets; publicEdges: Map<string, number>
     if (first && roomDef(room.type).surfaceLink) sets.union(first, SURFACE);
   }
   // Old saves: the shaft still links every floor's shaft wall to the surface.
-  if (layout.openShaft) for (let f = 1; f <= hole.floors; f++) for (const e of galleryEdges(hole, f)) sets.union(edgeVertices(hole, e)[0], SURFACE);
+  if (layout.openShaft) for (let f = 1; f <= hole.floors; f++) for (const e of galleryEdges(layout, f)) sets.union(edgeVertices(hole, e)[0], SURFACE);
   // Empty space (excavated, no room) is walk-through too, one cell at a time.
   for (const cell of emptyCells(layout)) {
-    for (const e of cellEdges(hole, cell)) {
+    for (const e of cellEdges(layout, cell)) {
       join(sets, hole, e);
       if (!publicEdges.has(e.id)) publicEdges.set(e.id, 0);
     }
@@ -198,7 +198,7 @@ export function openTo(room: RoomInstance): Cell[] {
 /** Does this group of cells open onto a reachable gallery, corridor or public room (or a corridor that ends against its wall)? */
 function opensOnto(layout: Layout, cells: Cell[], sets: Sets, publicEdges: Map<string, number>): boolean {
   const shaft = sets.find(SURFACE);
-  const along = outsideEdges(layout.hole, cells).some((e) => {
+  const along = outsideEdges(layout, cells).some((e) => {
     if (!layout.corridors[e.id] && !publicEdges.has(e.id)) return false;
     return sets.find(edgeVertices(layout.hole, e)[0]) === shaft;
   });
@@ -245,6 +245,8 @@ export function bulkheadRefusal(layout: Layout, edgeId: string, on = true): stri
 /** Recompute which rooms and corridors reach the shaft. */
 export function recomputeAccess(layout: Layout): void {
   layout.corridors ??= {};
+  // Whatever just changed (a room, a corridor), the pieces and cuts are worked out afresh.
+  touch(layout);
   // A bulkhead goes with its corridor.
   for (const id of Object.keys(layout.bulkheads ?? {})) if (!layout.corridors[id]) delete layout.bulkheads![id];
   const { linked, connected, floors } = computeAccess(layout);
@@ -269,24 +271,56 @@ export function strandedBy(layout: Layout, removed: string[]): { rooms: number[]
   };
 }
 
-/** Corridors lying inside a group of cells (between two of them): what a room placed there would fill in. */
+/**
+ * Corridors lying inside a group of cells (between two of them, or crossing one): what a room placed
+ * there would fill in. One only partly inside counts: it's cut at the room's wall once the room is there.
+ */
 export function corridorsInside(layout: Layout, cells: Cell[]): string[] {
-  const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
-  const own = new Set(cells.map(key));
-  const out = new Set<string>();
-  for (const c of cells) {
-    for (const e of cellEdges(layout.hole, c)) {
-      if (!layout.corridors[e.id]) continue;
-      if (edgeSides(layout.hole, e).every((x) => x && own.has(key(x)))) out.add(e.id);
+  const out: string[] = [];
+  for (const id of Object.keys(layout.corridors)) {
+    const e = edgeById(layout.hole, id);
+    if (!e) continue;
+    if (e.kind === "radial") {
+      // Strictly inside a cell's range (not along its end).
+      if (cells.some((c) => c.floor === e.floor && c.ring === e.ring && e.angle !== c.a0 && contains({ a0: c.a0, a1: c.a1 }, e.angle))) out.push(id);
+      continue;
     }
+    // On a circle with the group's cells on both sides, somewhere along it.
+    const inner = cells.filter((c) => c.floor === e.floor && c.ring === e.circle);
+    const outer = cells.filter((c) => c.floor === e.floor && c.ring === e.circle + 1);
+    const hit = inner.some((c) => outer.some((o) => bothCover(c, o, e.from, e.to)));
+    if (hit) out.push(id);
   }
-  return [...out];
+  return out;
 }
 
-/** Would a room on these cells be connected as things stand? For the placement preview. */
+/** Do two cells both cover some stretch of the range from → to? */
+function bothCover(a: Cell, b: Cell, from: number, to: number): boolean {
+  for (let x = from + 0.5; x < to; x += 1) if (contains(a, x) && contains(b, x)) return true;
+  return false;
+}
+
+/**
+ * Would a room on these cells be connected as things stand? For the placement preview. Worked out on a
+ * copy with the room in it, so the borders are cut at its own ends as they will be (a room at any angle
+ * meets corridors partway along them).
+ */
 export function wouldConnect(layout: Layout, cells: Cell[]): boolean {
-  const { sets, publicEdges } = network(layout);
-  return opensOnto(layout, cells, sets, publicEdges);
+  const ghost: RoomInstance = { id: -1, type: "bunk_dorm", at: { kind: "surface", slot: 0 }, cells, surfaceCells: [], connected: false, planned: false, priority: "normal" };
+  const copy: Layout = {
+    ...layout,
+    version: layout.version + 1,
+    rooms: [...layout.rooms.map((r) => ({ ...r })), ghost],
+    corridors: { ...layout.corridors },
+    ...(layout.corridorsBuilding ? { corridorsBuilding: { ...layout.corridorsBuilding } } : {}),
+    ...(layout.corridorsFilling ? { corridorsFilling: { ...layout.corridorsFilling } } : {}),
+    ...(layout.corridorsRelining ? { corridorsRelining: { ...layout.corridorsRelining } } : {}),
+    ...(layout.corridorLinked ? { corridorLinked: { ...layout.corridorLinked } } : {}),
+    ...(layout.bulkheads ? { bulkheads: { ...layout.bulkheads } } : {}),
+    corridorSplits: {},
+  };
+  const { sets, publicEdges } = network(copy);
+  return opensOnto(copy, cells, sets, publicEdges);
 }
 
 /** Do corridors run along the whole border between two cells? (They soak up noise and smell.) */
@@ -298,31 +332,22 @@ export function corridorBetween(layout: Layout, a: Cell, b: Cell): boolean {
     break;
   }
   if (!any) return false;
-  const shared = sharedEdges(layout.hole, a, b);
+  const shared = sharedEdges(layout, a, b);
   return shared.length > 0 && shared.every((e) => layout.corridors[e.id]);
 }
 
 // ---- routing ----
 
 /** Every edge on a floor, by the vertices at its ends. */
-function floorGraph(hole: Hole, floor: number): Map<string, { e: Edge; to: string }[]> {
+function floorGraph(layout: Layout, floor: number): Map<string, { e: Edge; to: string }[]> {
+  const hole = layout.hole;
   const adj = new Map<string, { e: Edge; to: string }[]>();
-  const add = (e: Edge) => {
+  for (const e of floorEdges(layout, floor)) {
     const [a, b] = edgeVertices(hole, e);
     if (!adj.has(a)) adj.set(a, []);
     if (!adj.has(b)) adj.set(b, []);
     adj.get(a)!.push({ e, to: b });
     adj.get(b)!.push({ e, to: a });
-  };
-  const seen = new Set<string>();
-  for (let ring = 1; ring <= hole.ringSlots.length; ring++) {
-    for (let slot = 0; slot < ringSize(hole, ring); slot++) {
-      for (const e of cellEdges(hole, { floor, ring, slot })) {
-        if (seen.has(e.id)) continue;
-        seen.add(e.id);
-        add(e);
-      }
-    }
   }
   return adj;
 }
@@ -341,8 +366,8 @@ export function routeToRoom(layout: Layout, room: RoomInstance, cfg: SimConfig):
   const shaft = sets.find(SURFACE);
   const walkable = (e: Edge) => !!layout.corridors[e.id] || publicEdges.has(e.id);
   const usable = (e: Edge) => walkable(e) || corridorRefusal(layout, e.id) === null;
-  const goal = new Set(outsideEdges(hole, room.cells).map((e) => e.id));
-  const adj = floorGraph(hole, floor);
+  const goal = new Set(outsideEdges(layout, room.cells).map((e) => e.id));
+  const adj = floorGraph(layout, floor);
 
   // Dijkstra from every vertex already linked to the surface.
   const dist = new Map<string, number>();
@@ -394,22 +419,20 @@ export function routeToRoom(layout: Layout, room: RoomInstance, cfg: SimConfig):
  */
 export function migrateCorridorRooms(layout: Layout): void {
   layout.corridors ??= {};
-  const hole = layout.hole;
   const old = layout.rooms.filter((r) => r.type === "corridor");
-  const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
-  const oldCells = new Set(old.flatMap((r) => r.cells.map(key)));
+  const add: string[] = [];
   for (const room of old) {
-    for (const cell of room.cells) {
-      for (const e of cellEdges(hole, cell)) {
-        const other = edgeSides(hole, e).find((c) => !c || key(c) !== key(cell)) ?? null;
-        const spoke = e.kind === "radial" && cell.ring === 1;
-        const otherRoom = other ? layout.grid[other.floor - 1]?.[other.ring - 1]?.[other.slot] : 0;
-        if (spoke || (other && (oldCells.has(key(other)) || otherRoom))) layout.corridors[e.id] = corridors.defaultFinish;
+    for (const c of room.cells) {
+      for (const e of cellEdges(layout, c)) {
+        const other = edgeSides(layout, e).find((x) => !x || cellKey(x) !== cellKey(c)) ?? null;
+        const spoke = e.kind === "radial" && c.ring === 1;
+        if (spoke || (other && roomIdAt(other))) add.push(e.id);
       }
-      layout.grid[cell.floor - 1]![cell.ring - 1]![cell.slot] = 0;
     }
   }
   layout.rooms = layout.rooms.filter((r) => r.type !== "corridor");
+  for (const id of add) layout.corridors[id] = corridors.defaultFinish;
+  layout.version++;
   recomputeAccess(layout);
 }
 
@@ -437,9 +460,8 @@ export function corridorJoints(layout: Layout): Map<string, Joint> {
     if (!e) continue;
     const [v0, v1] = edgeVertices(hole, e);
     for (const v of [v0, v1]) {
-      const [floor, circle, f] = v.split("|");
-      const [p, q] = f!.split("/").map(Number);
-      const k = kinds.get(v) ?? { radial: false, arc: false, finish, floor: Number(floor), circle: Number(circle), turn: p! / q! };
+      const [floor, circle, notch] = v.split("|");
+      const k = kinds.get(v) ?? { radial: false, arc: false, finish, floor: Number(floor), circle: Number(circle), turn: Number(notch) / config.geometry.notchesPerTurn };
       if (e.kind === "radial") k.radial = true;
       else k.arc = true;
       kinds.set(v, k);

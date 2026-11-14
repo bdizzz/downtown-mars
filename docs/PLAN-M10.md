@@ -4,7 +4,7 @@ Goal: rooms in the 3D view look lived in. Each room type has a short list of ite
 
 Decided Sep 28, 2026 (Bryon):
 - **Items are code-built low-poly models.** Each is a small list of simple shapes (boxes, cylinders, spheres) with colours, in `data/furniture.json`, assembled at runtime like the surface props. There are no asset files, and the data carries over to Godot.
-- **Templates are anchored to walls.** There's one template per room type and shape (for example `bunk_dorm:2x1`). Each item is pinned to a wall (back, front, left or right) or the centre, with offsets in metres. Items keep their size and stay against their wall as the room stretches from ring 1 to ring 6. What doesn't fit in a small room is left out, in the template's priority order.
+- **Templates are anchored to walls.** There's one template per room type and shape (for example `bunk_dorm:2x1`; since F-004, `bunk_dorm:M`, and `farm:L2` for two rings deep). Each item is pinned to a wall (back, front, left or right) or the centre, with offsets in metres. Items keep their size and stay against their wall as the room stretches from ring 1 to ring 6. What doesn't fit in a small room is left out, in the template's priority order.
 - **A dev tool** places items into templates and saves them into the project files.
 
 ## Defaults (chosen, not yet confirmed)

@@ -4,14 +4,15 @@ import { applyCommand } from "../src/sim/commands";
 import { corridors, hasBulkhead } from "../src/sim/corridors";
 import { cellEdges, galleryEdges } from "../src/sim/edges";
 import { computeEffects, effectOnRoom } from "../src/sim/effects";
-import { ensureFloors, type Location } from "../src/sim/placement";
+import { ensureFloors, type Spot } from "../src/sim/placement";
 import { stepsBetween } from "../src/sim/paths";
 import { createInitialState, type SimState } from "../src/sim/state";
+import { ringAt, cellAt } from "./spots";
 
 // Milestone 12: bulkheads, sealed doors across corridors. People pass; air and smell don't.
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
-function build(s: SimState, room: string, at: Location): number {
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
+function build(s: SimState, room: string, at: Spot): number {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return r.roomId!;
@@ -29,7 +30,7 @@ function setup() {
   const dorm = build(s, "bunk_dorm", ring(2, 1, 1, 2));
   const works = build(s, "brickworks", ring(2, 1, 5, 2));
   // Tubes from the dorm to the brickworks.
-  const tubes = galleryEdges(s.layout.hole, 2).slice(1, 7).map((e) => e.id);
+  const tubes = galleryEdges(s.layout, 2).slice(1, 7).map((e) => e.id);
   expect(applyCommand(s, { type: "drawCorridors", edges: tubes, finish: "rock" }).ok).toBe(true);
   finish(s);
   return { s, dorm, works, tubes };
@@ -39,7 +40,7 @@ describe("bulkheads", () => {
   it("can't go in a gallery tube, or where there's no corridor", () => {
     const { s, tubes } = setup();
     expect(applyCommand(s, { type: "setBulkhead", edges: [tubes[2]!], on: true })).toMatchObject({ ok: false, reason: expect.stringMatching(/Gallery tubes/) });
-    expect(applyCommand(s, { type: "setBulkhead", edges: ["R2.2.3"], on: true })).toMatchObject({ ok: false, reason: expect.stringMatching(/none here/) });
+    expect(applyCommand(s, { type: "setBulkhead", edges: ["R2.2.480"], on: true })).toMatchObject({ ok: false, reason: expect.stringMatching(/none here/) });
   });
 
   it("stop air but not people, cost metal, and come out free", () => {
@@ -52,7 +53,7 @@ describe("bulkheads", () => {
     // Floor 2 is rock: a dorm and a brickworks, joined only by a corridor along the back of ring 1.
     const works = build(s, "brickworks", ring(2, 1, 2, 2));
     const dorm = build(s, "bunk_dorm", ring(2, 1, 6, 2));
-    const back = [3, 4, 5, 6].flatMap((slot) => cellEdges(s.layout.hole, { floor: 2, ring: 1, slot }).filter((e) => e.kind === "arc" && e.circle === 1).map((e) => e.id));
+    const back = [3, 4, 5, 6].flatMap((slot) => cellEdges(s.layout, cellAt(2, 1, slot)).filter((e) => e.kind === "arc" && e.circle === 1).map((e) => e.id));
     expect(applyCommand(s, { type: "drawCorridors", edges: back, finish: "rock" }).ok).toBe(true);
     finish(s);
     expect(stepsBetween(s.layout, dorm, works, "walk")).not.toBeNull();
@@ -74,12 +75,12 @@ describe("bulkheads", () => {
     const s = createInitialState(config);
     s.drill.active = false;
     Object.assign(s.resources, { rock: 900, metal: 300 });
-    expect(applyCommand(s, { type: "drawCorridors", edges: ["R1.2.4"], finish: "rock" }).ok).toBe(true);
+    expect(applyCommand(s, { type: "drawCorridors", edges: ["R1.2.640"], finish: "rock" }).ok).toBe(true);
     finish(s);
-    expect(applyCommand(s, { type: "setBulkhead", edges: ["R1.2.4"], on: true }).ok).toBe(true);
-    expect(hasBulkhead(s.layout, "R1.2.4")).toBe(true);
-    expect(applyCommand(s, { type: "removeCorridors", edges: ["R1.2.4"] }).ok).toBe(true);
+    expect(applyCommand(s, { type: "setBulkhead", edges: ["R1.2.640"], on: true }).ok).toBe(true);
+    expect(hasBulkhead(s.layout, "R1.2.640")).toBe(true);
+    expect(applyCommand(s, { type: "removeCorridors", edges: ["R1.2.640"] }).ok).toBe(true);
     finish(s);
-    expect(s.layout.bulkheads?.["R1.2.4"]).toBeUndefined();
+    expect(s.layout.bulkheads?.["R1.2.640"]).toBeUndefined();
   });
 });

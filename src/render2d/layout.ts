@@ -1,4 +1,7 @@
+import { config } from "../sim/config";
 import type { Hole } from "../sim/geometry";
+import type { Layout } from "../sim/placement";
+import { pieceAt } from "../sim/space";
 import type { Pick } from "../view/types";
 
 export type { Pick };
@@ -35,9 +38,17 @@ export function slotX(slot: number, n: number): [number, number] {
   return [(slot / n) * TURN_W, ((slot + 1) / n) * TURN_W];
 }
 
+const NOTCHES = config.geometry.notchesPerTurn;
+
+/** A cell's span along x: its angles (notches) as a share of the turn. It may run past TURN_W; the next copy shows it. */
+export function cellX(c: { a0: number; a1: number }): [number, number] {
+  return [(c.a0 / NOTCHES) * TURN_W, (c.a1 / NOTCHES) * TURN_W];
+}
+
 
 /** What sits at world point (x, y)? x may be any value; it wraps. */
-export function pick(hole: Hole, x: number, y: number): Pick {
+export function pick(layout: Layout, x: number, y: number): Pick {
+  const hole = layout.hole;
   const turn = (((x / TURN_W) % 1) + 1) % 1;
   const angle = turn * 360;
   if (y < SURFACE_H) return y >= 0 ? { kind: "surface", angle } : { kind: "rock" };
@@ -53,7 +64,7 @@ export function pick(hole: Hole, x: number, y: number): Pick {
   const ring = Math.floor((inBand - GALLERY_H) / RING_H) + 1;
   if (ring > maxRings) return { kind: "rock" }; // the gap between floors
 
-  const n = hole.ringSlots[ring - 1]!;
-  const slot = Math.min(Math.floor(turn * n), n - 1);
-  return { kind: "slot", floor, ring, slot, locked: ring > hole.unlockedRings, digging, angle };
+  const piece = pieceAt(layout, floor, ring, turn * NOTCHES);
+  if (!piece) return { kind: "rock" };
+  return { kind: "slot", floor, ring, a0: piece.a0, a1: piece.a1, locked: ring > hole.unlockedRings, digging, angle };
 }

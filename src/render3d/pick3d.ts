@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { Hole } from "../sim/geometry";
+import type { Layout } from "../sim/placement";
 import type { Pick } from "../view/types";
 import { floorSpan, pickAt, RING_D, TAU } from "./cylinder";
 
@@ -33,9 +34,9 @@ export function rayPlane(ray: THREE.Ray, plane: THREE.Plane): number | null {
 }
 
 /** A pick for a point just past where the ray meets something at distance t. */
-export function pickPast(hole: Hole, ray: THREE.Ray, t: number): Pick {
+export function pickPast(layout: Layout, ray: THREE.Ray, t: number): Pick {
   const p = ray.at(t + NUDGE, new THREE.Vector3());
-  return pickAt(hole, p.x, p.y, p.z);
+  return pickAt(layout, p.x, p.y, p.z);
 }
 
 /** A surface pick at the point's angle around the shaft. */

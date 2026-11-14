@@ -28,7 +28,7 @@ const ALIASES = {
   "local elevator": "elevator",
   "tank": "water_tank",
   "admin desk": null,
-  "empty room": "empty_room_m",
+  "empty room": "empty_room_s",
 };
 
 /** Ladder rungs built under another name (family|size → room id). */

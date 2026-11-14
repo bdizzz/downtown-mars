@@ -8,8 +8,12 @@ import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
 import { airlock, headframe, surfaceBuilding } from "./surface3d";
-import { ARC_STEPS, FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
-import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
+import { ARC_STEPS, FLOOR_H, floorSpan, notchRad, RIG_DROP, WALL_T, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, cellAngles, slotAngles, TAU } from "./cylinder";
+import { config as simConfig } from "../sim/config";
+import { overlap, pieceAt as spacePieceAt, piecesIn, piecesOn, roomIdAt } from "../sim/space";
+
+const NOTCHES = simConfig.geometry.notchesPerTurn;
+import { arcPieces, cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef, hasBulkhead } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
 import { cropStage, FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
@@ -199,7 +203,13 @@ function arcAngles(a0: number, a1: number): number[] {
 /** An arc's corners: ARC_STEPS equal steps, or (`grid`) on the hole-wide grid. */
 function arcCorners(a0: number, a1: number, grid: boolean): number[] {
   if (grid) return a0 <= a1 ? arcAngles(a0, a1) : arcAngles(a1, a0).reverse();
-  return Array.from({ length: ARC_STEPS + 1 }, (_, i) => a0 + ((a1 - a0) * i) / ARC_STEPS);
+  const steps = arcSteps(a0, a1);
+  return Array.from({ length: steps + 1 }, (_, i) => a0 + ((a1 - a0) * i) / steps);
+}
+
+/** How many flat steps an arc is drawn in: ARC_STEPS, and more for a wide one (a room may take a quarter of the ring), so none turns more than 10°. */
+function arcSteps(a0: number, a1: number): number {
+  return Math.max(ARC_STEPS, Math.ceil(Math.abs(a1 - a0) / (TAU / 36) - 1e-9));
 }
 
 function curvedFace(pos: number[], r: number, a0: number, a1: number, y0: number, y1: number, cut?: Cut, grid = false): void {
@@ -257,9 +267,10 @@ function curvedFaceWithOpenings(pos: number[], r: number, a0: number, a1: number
 /** A flat band between radii r0 and r1, in ARC_STEPS equal steps, or (`grid`, for whole cells) on the hole-wide grid. */
 function flatRing(pos: number[], r0: number, r1: number, a0: number, a1: number, y: number, grid = false): void {
   if (grid) return flatPiece(pos, r0, r1, [a0, a1], [a0, a1], y);
-  for (let i = 0; i < ARC_STEPS; i++) {
-    const b0 = a0 + ((a1 - a0) * i) / ARC_STEPS;
-    const b1 = a0 + ((a1 - a0) * (i + 1)) / ARC_STEPS;
+  const steps = arcSteps(a0, a1);
+  for (let i = 0; i < steps; i++) {
+    const b0 = a0 + ((a1 - a0) * i) / steps;
+    const b1 = a0 + ((a1 - a0) * (i + 1)) / steps;
     push(pos, at(r0, b0, y), at(r1, b0, y), at(r1, b1, y), at(r0, b0, y), at(r1, b1, y), at(r0, b1, y));
     tag(pos, 6);
   }
@@ -414,22 +425,24 @@ function carveCell(
   hallRight: boolean;
 } {
   const hole = layout.hole;
-  const key = (x: Cell) => `${x.floor}:${x.ring}:${x.slot}`;
+  const key = (x: Cell) => `${x.floor}:${x.ring}:${x.a0}`;
   const hall = (id: string) => carve && !!layout.corridors?.[id];
-  const n = hole.ringSlots[c.ring - 1]!;
-  const [s0, s1] = slotAngles(c.slot, n);
+  const [s0, s1] = cellAngles(c);
   const [r0, r1] = ringRadii(hole, c.ring);
   const rMid = (r0 + r1) / 2;
-  const hallLeft = hall(`R${c.floor}.${c.ring}.${c.slot}`);
-  const hallRight = hall(`R${c.floor}.${c.ring}.${(c.slot + 1) % n}`);
-  const openLeft = !own.has(key({ ...c, slot: (c.slot - 1 + n) % n }));
-  const openRight = !own.has(key({ ...c, slot: (c.slot + 1) % n }));
+  const hallLeft = hall(`R${c.floor}.${c.ring}.${c.a0}`);
+  const hallRight = hall(`R${c.floor}.${c.ring}.${c.a1 % NOTCHES}`);
+  // A cell is the room's whole run on its ring: its sides are open unless it goes all the way round.
+  void own;
+  void key;
+  const openLeft = c.a1 - c.a0 < NOTCHES;
+  const openRight = openLeft;
   // Each open side stands parallel to its border, pulled back by a fixed distance (half a corridor, or the inset).
   const left = (r: number) => s0 + (openLeft ? sideAngle(hallLeft ? HALL : inset, r) : 0);
   const right = (r: number) => s1 - (openRight ? sideAngle(hallRight ? HALL : inset, r) : 0);
   const a0 = left(rMid);
   const a1 = right(rMid);
-  const arcs = cellEdges(hole, c).filter((e): e is ArcEdge => e.kind === "arc");
+  const arcs = cellEdges(layout, c).filter((e): e is ArcEdge => e.kind === "arc");
   // Where corridors turn, the joint's square fills the outer corner: a side piece without a corridor
   // gives up a half-corridor notch next to it (unless the cell's own side there is a corridor, which carves it anyway).
   const cornerHall = (angle: number) => (Math.abs(angle - s0) < 1e-9 ? hallLeft : Math.abs(angle - s1) < 1e-9 ? hallRight : false);
@@ -608,7 +621,7 @@ function wallOpenings(open: RoomOpenings, cell: Cell, edges: { id: string; s0: n
   const panes: Span[] = [];
   let door: { s: number; half: number } | null = null;
   for (const e of edges) {
-    const d = open.doors.find((x) => x.edge === e.id && x.cell.floor === cell.floor && x.cell.ring === cell.ring && x.cell.slot === cell.slot);
+    const d = open.doors.find((x) => x.edge === e.id && x.cell.floor === cell.floor && x.cell.ring === cell.ring && x.cell.a0 === cell.a0);
     const at = d ? (d.side === "left" || d.side === "right" ? d.r : d.angle) : null;
     const half = d ? (d.side === "left" || d.side === "right" ? d.half : d.half) : 0;
     if (d && at !== null) {
@@ -806,14 +819,13 @@ function deadEnd(layout: Layout, id: string, [r, a]: [number, number]): boolean 
 function solidWalls(pos: number[], s: SolidCell): void {
   const { layout, cell: c, inner, outer, publicRoom, onGallery, base, open, parts, y0, y1, radially, turning, face } = s;
   const hole = layout.hole;
-  const key = (x: Cell) => `${x.floor}:${x.ring}:${x.slot}`;
-  const n = hole.ringSlots[c.ring - 1]!;
-  const [s0, s1] = slotAngles(c.slot, n);
+  const key = (x: Cell) => `${x.floor}:${x.ring}:${x.a0}`;
+  const [s0, s1] = cellAngles(c);
   const [cr0, cr1] = ringRadii(hole, c.ring);
   const cMid = (cr0 + cr1) / 2;
   const floorBase = floorSpan(c.floor)[0];
   const arcsOn = (circle: number) =>
-    cellEdges(hole, c)
+    cellEdges(layout, c)
       .filter((e): e is ArcEdge => e.kind === "arc" && e.circle === circle)
       .map((e) => ({ id: e.id, s0: Math.max(e.a0 * TAU, s0), s1: Math.min(e.a1 * TAU, s1), e }));
   const kindOf = (e: Edge | undefined, hall: boolean): WallKind => {
@@ -821,9 +833,9 @@ function solidWalls(pos: number[], s: SolidCell): void {
     if (!e) return "shared";
     // A tube's wall is centred on its edge like a corridor's; with no tube, the face is flush with the shaft wall.
     if (isGalleryEdge(e)) return layout.corridors?.[e.id] ? "open" : "flush";
-    const other = edgeSides(hole, e).find((x) => x && key(x) !== key(c));
+    const other = edgeSides(layout, e).find((x) => x && key(x) !== key(c));
     if (!other || other.ring > hole.unlockedRings) return "shared";
-    if (layout.grid[other.floor - 1]?.[other.ring - 1]?.[other.slot]) return "shared";
+    if (roomIdAt(layout, other)) return "shared";
     return isOpen(layout, other) ? "open" : "shared";
   };
   // The floor's pieces, split again wherever what's across the inner or outer side changes.
@@ -862,8 +874,8 @@ function solidWalls(pos: number[], s: SolidCell): void {
       ...(p.innerHall ? { hall: edgeAt(innerArcs, mid)?.id } : {}),
     });
   });
-  const leftId = `R${c.floor}.${c.ring}.${c.slot}`;
-  const rightId = `R${c.floor}.${c.ring}.${(c.slot + 1) % n}`;
+  const leftId = `R${c.floor}.${c.ring}.${c.a0}`;
+  const rightId = `R${c.floor}.${c.ring}.${c.a1 % NOTCHES}`;
   list.push({
     prim: { arc: false, theta: s1, d: base.openRight && base.hallRight ? -HALL : 0, s: -1 },
     wall: base.openRight && !(publicRoom && base.hallRight),
@@ -1078,7 +1090,7 @@ export function roomGeometry(
   parts?: OpeningParts,
   solid = false,
 ): THREE.BufferGeometry {
-  const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+  const key = (c: Cell) => `${c.floor}:${c.ring}:${c.a0}`;
   const own = new Set(cells.map(key));
   const rings = cells.map((c) => c.ring);
   const inner = Math.min(...rings);
@@ -1097,14 +1109,13 @@ export function roomGeometry(
     y0 += inset;
     // Walls reach the floor above, whose rock (or on floor 1, the crust) closes the room over.
     // A public room on a gallery tube has no wall there: it runs right up to the tube. Without one, it's walled off from the shaft.
-    const tube = galleryEdges(layout.hole, c.floor)[c.slot];
-    const onGallery = publicRoom && c.ring === 1 && !!tube && !!layout.corridors?.[tube.id];
+    const onGallery = publicRoom && c.ring === 1 && arcPieces(layout, c.floor, 0, c.a0, c.a1).some((t) => !!layout.corridors?.[t.id]);
     const cut = carveCell(layout, c, own, inner, outer, inset, carve, onGallery, joints);
     // The floor runs out to the cell's edges (only the walls keep the hairline), so no gap shows between two rooms.
     const floorCut = carveCell(layout, c, own, inner, outer, 0, carve, onGallery, joints);
     // What's across each wall: the room past it, looked for from the wall outward (through a corridor alongside).
     const [cr0, cr1] = ringRadii(layout.hole, c.ring);
-    const [s0, s1] = slotAngles(c.slot, layout.hole.ringSlots[c.ring - 1]!);
+    const [s0, s1] = cellAngles(c);
     const base = floorSpan(c.floor)[0];
     const beyond = (r: number, a: number, ux: number, uz: number) => roomBeyond(layout, own, c.floor, r * Math.cos(a), r * Math.sin(a), ux, uz);
     /** Out from a curved wall at radius r (outward +1, inward −1). */
@@ -1115,7 +1126,7 @@ export function roomGeometry(
     const inWall = (wallCut: Cut): Cut => ({ ...wallCut, y0: base, y1: base + FLOOR_H, face: faceOf(wallCut), follows: true });
     // The borders along each curved face, as angle ranges within this cell.
     const arcsOn = (circle: number) =>
-      cellEdges(layout.hole, c)
+      cellEdges(layout, c)
         .filter((e): e is ArcEdge => e.kind === "arc" && e.circle === circle)
         .map((e) => ({ id: e.id, s0: Math.max(e.a0 * TAU, s0), s1: Math.min(e.a1 * TAU, s1) }));
     /** A curved face with its openings cut, and its glass and door frame. */
@@ -1192,12 +1203,11 @@ export function roomGeometry(
     }
     const first = cut.pieces[0];
     const last = cut.pieces.at(-1);
-    const n = layout.hole.ringSlots[c.ring - 1]!;
     if (!solid && cut.openLeft && first && !(publicRoom && cut.hallLeft)) {
-      side(`R${c.floor}.${c.ring}.${c.slot}`, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), { side: 1, across: turning((first.rr0 + first.rr1) / 2, cut.left((first.rr0 + first.rr1) / 2), -1), face: newFace(c.floor) });
+      side(`R${c.floor}.${c.ring}.${c.a0}`, first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), { side: 1, across: turning((first.rr0 + first.rr1) / 2, cut.left((first.rr0 + first.rr1) / 2), -1), face: newFace(c.floor) });
     }
     if (!solid && cut.openRight && last && !(publicRoom && cut.hallRight)) {
-      side(`R${c.floor}.${c.ring}.${(c.slot + 1) % n}`, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), { side: -1, across: turning((last.rr0 + last.rr1) / 2, cut.right((last.rr0 + last.rr1) / 2), 1), face: newFace(c.floor) });
+      side(`R${c.floor}.${c.ring}.${c.a1 % NOTCHES}`, last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), { side: -1, across: turning((last.rr0 + last.rr1) / 2, cut.right((last.rr0 + last.rr1) / 2), 1), face: newFace(c.floor) });
     }
     const well = wells.find((w) => w.floor === c.floor);
     for (const p of floorCut.pieces) floorPiece(pos, p.rr0, p.rr1, pieceAt(floorCut, p, p.rr0), pieceAt(floorCut, p, p.rr1), y0, well);
@@ -1218,37 +1228,41 @@ export function rockFaces(layout: Layout, topFloor: number | null, halls?: Openi
   const hole = layout.hole;
   const pos = tagged();
   const joints = new Set(corridorJoints(layout).keys());
-  const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+  const key = (c: Cell) => `${c.floor}:${c.ring}:${c.a0}`;
   const rock = (c: Cell | null) =>
-    !c || c.floor < 1 || c.floor > hole.floors || (!layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] && !isOpen(layout, c));
+    !c || c.floor < 1 || c.floor > hole.floors || (!roomIdAt(layout, c) && !isOpen(layout, c));
   // The crust's underside: the ceiling over whatever's dug out on floor 1. Only with every floor
   // showing: with a floor picked, everything above it (the crust too) is lifted away to look in.
   if (hole.floors >= 1 && topFloor === null) {
     const y = floorSpan(1)[1];
-    hole.ringSlots.forEach((n, ri) => {
+    hole.ringSlots.forEach((_, ri) => {
       const [r0, r1] = ringRadii(hole, ri + 1);
-      for (let slot = 0; slot < n; slot++) {
-        if (rock({ floor: 1, ring: ri + 1, slot })) continue;
-        const [s0, s1] = slotAngles(slot, n);
+      for (const c of piecesOn(layout, 1, ri + 1)) {
+        if (rock(c)) continue;
+        const [s0, s1] = cellAngles(c);
         flatRing(pos, r0, r1, s0, s1, y, true);
       }
     });
   }
   for (let floor = topFloor ?? 1; floor <= hole.floors; floor++) {
     const [y0, y1] = floorSpan(floor);
-    hole.ringSlots.forEach((n, ri) => {
+    hole.ringSlots.forEach((_, ri) => {
       const ring = ri + 1;
       const [r0, r1] = ringRadii(hole, ring);
-      for (let slot = 0; slot < n; slot++) {
-        const c = { floor, ring, slot };
+      for (const c of piecesOn(layout, floor, ring)) {
         if (!rock(c)) continue;
-        const [s0, s1] = slotAngles(slot, n);
+        const slot = c.a0;
         // A ceiling over whatever's been dug out below.
-        if (floor < hole.floors && !rock({ floor: floor + 1, ring, slot })) flatRing(pos, r0, r1, s0, s1, y0, true);
+        if (floor < hole.floors) {
+          for (const under of piecesIn(layout, { ...c, floor: floor + 1 })) {
+            if (rock(under)) continue;
+            for (const [lo, hi] of overlap(c, under)) flatRing(pos, r0, r1, notchRad(lo), notchRad(hi), y0, true);
+          }
+        }
         // Corridors carved into it: rock walls half a corridor back, facing the corridor.
         const cut = carveCell(layout, c, new Set([key(c)]), ring, ring, 0, true, false, joints);
         // A lined corridor's walls are in its lining (T-142), found by the middle of each face.
-        const arcAt = (circle: number, a: number) => cellEdges(hole, c).find((e) => e.kind === "arc" && e.circle === circle && a >= e.a0 * TAU - 1e-9 && a < e.a1 * TAU - 1e-9)?.id;
+        const arcAt = (circle: number, a: number) => cellEdges(layout, c).find((e) => e.kind === "arc" && e.circle === circle && a >= e.a0 * TAU - 1e-9 && a < e.a1 * TAU - 1e-9)?.id;
         const onto = (edgeId: string | undefined) => hallFaces(layout, halls, edgeId) ?? pos;
         for (const p of cut.pieces) {
           const mid = (p.b0 + p.b1) / 2;
@@ -1272,13 +1286,13 @@ export function rockFaces(layout: Layout, topFloor: number | null, halls?: Openi
         const first = cut.pieces[0];
         const last = cut.pieces.at(-1);
         if (cut.hallLeft && first) sideWall(onto(`R${floor}.${ring}.${slot}`), first.rr0, cut.left(first.rr0), first.rr1, cut.left(first.rr1), y0, y1, { side: -1 });
-        if (cut.hallRight && last) sideWall(onto(`R${floor}.${ring}.${(slot + 1) % n}`), last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y1, { side: 1 });
+        if (cut.hallRight && last) sideWall(onto(`R${floor}.${ring}.${c.a1 % NOTCHES}`), last.rr0, cut.right(last.rr0), last.rr1, cut.right(last.rr1), y0, y1, { side: 1 });
         // A face on each border with something dug out beyond it (and no corridor there, which carves instead).
         // Only where the rock still reaches the border: where corridors turn at its corner, the joint's square
         // notches it back, and a face on the border line would stand across the corridor (T-145).
-        for (const e of cellEdges(hole, c)) {
+        for (const e of cellEdges(layout, c)) {
           if (layout.corridors?.[e.id]) continue;
-          const [a, b] = edgeSides(hole, e);
+          const [a, b] = edgeSides(layout, e);
           const beyondFirst = !!a && key(a) !== key(c);
           const other = beyondFirst ? a : b;
           if (!other || key(other) === key(c) || rock(other)) continue;
@@ -1326,9 +1340,8 @@ function corridorEnds(layout: Layout, topFloor: number | null, onto: (id: string
   }
   const shut = (floor: number, ring: number, a: number) => {
     if (ring < 1 || ring > hole.unlockedRings) return true;
-    const n = hole.ringSlots[ring - 1]!;
-    const c = { floor, ring, slot: (((Math.floor((a / TAU) * n) % n) + n) % n) };
-    return !!layout.grid[floor - 1]?.[ring - 1]?.[c.slot] || !isOpen(layout, c);
+    const c = spacePieceAt(layout, floor, ring, (a / TAU) * NOTCHES);
+    return !c || !!c.room || !c.open;
   };
   const NUDGE = 1e-4;
   for (const [id, e] of ends) {
@@ -1341,7 +1354,7 @@ function corridorEnds(layout: Layout, topFloor: number | null, onto: (id: string
       const rc = hole.shaftRadiusM + circle! * RING_D;
       if (e.kind === "radial") {
         // Out past the circle it stops at (far +1) or in.
-        const a = (e.index / hole.ringSlots[e.ring - 1]!) * TAU;
+        const a = e.turn * TAU;
         const ring = far === 1 ? e.ring + 1 : e.ring - 1;
         const half = HALL / rc;
         if (!shut(e.floor, ring, a - half + NUDGE) || !shut(e.floor, ring, a + half - NUDGE)) continue;
@@ -1371,16 +1384,15 @@ export function rockAlong(layout: Layout, angle: number): { floor: number; r0: n
   const out: { floor: number; r0: number; r1: number }[] = [];
   for (let floor = 1; floor <= hole.floors + 1; floor++) {
     for (let ring = 1; ring <= hole.unlockedRings; ring++) {
-      const n = hole.ringSlots[ring - 1]!;
-      const slot = Math.min(Math.floor((a / TAU) * n), n - 1);
-      const c = { floor, ring, slot };
-      if (floor <= hole.floors && (layout.grid[floor - 1]?.[ring - 1]?.[slot] || isOpen(layout, c))) continue;
-      const cut = carveCell(layout, c, new Set([`${floor}:${ring}:${slot}`]), ring, ring, 0, true, false, joints);
+      const c = spacePieceAt(layout, floor, ring, (a / TAU) * NOTCHES);
+      if (!c) continue;
+      if (floor <= hole.floors && (c.room || c.open)) continue;
+      const cut = carveCell(layout, c, new Set([`${floor}:${ring}:${c.a0}`]), ring, ring, 0, true, false, joints);
       const p = cut.pieces.find((q, i) => a >= (i === 0 ? -Infinity : q.b0) && a < (i === cut.pieces.length - 1 ? Infinity : q.b1));
       if (!p) continue;
       // A corridor along a side carves the rock back half a corridor from it: square to the border, so
       // along the cut the rock starts only where it's that far from the border.
-      const [s0, s1] = slotAngles(slot, n);
+      const [s0, s1] = cellAngles(c);
       let r0 = p.rr0;
       if (cut.hallLeft) r0 = Math.max(r0, HALL / Math.max(1e-6, Math.sin(a - s0)));
       if (cut.hallRight) r0 = Math.max(r0, HALL / Math.max(1e-6, Math.sin(s1 - a)));
@@ -1461,7 +1473,7 @@ function hangTag(layout: Layout, room: RoomInstance, f: Fitted, faces: (FaceTag 
   // The wall stands the fitting gap beyond the fitted floor's edge. Past it: is there a room?
   const wall = dist + FIT.wallGap;
   const [ax, az] = [f.x - n[0] * wall, f.z - n[1] * wall];
-  const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+  const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.a0}`));
   const [y0, y1] = floorSpan(f.floor);
   // Its face: on its floor, facing the same way there, standing nearest the point.
   let best: FaceTag | null = null;
@@ -1538,11 +1550,11 @@ function roomBeyond(layout: Layout, own: Set<string>, floor: number, x: number, 
     if (onCorridorAt(layout, floor, px, pz)) continue;
     const ring = Math.floor((r - hole.shaftRadiusM) / depth) + 1;
     if (ring > hole.unlockedRings) return null;
-    const n = hole.ringSlots[ring - 1]!;
     const turn = (((Math.atan2(pz, px) / TAU) % 1) + 1) % 1;
-    const c = { floor, ring, slot: Math.min(Math.floor(turn * n), n - 1) };
-    if (own.has(`${c.floor}:${c.ring}:${c.slot}`)) continue;
-    return layout.grid[floor - 1]?.[ring - 1]?.[c.slot] || isOpen(layout, c) ? t - WALLS_DOWN.step : null;
+    const c = spacePieceAt(layout, floor, ring, turn * NOTCHES);
+    if (!c) return null;
+    if (own.has(`${c.floor}:${c.ring}:${c.a0}`)) continue;
+    return c.room || c.open ? t - WALLS_DOWN.step : null;
   }
   return null;
 }
@@ -1557,20 +1569,18 @@ const HALL = corridors.widthM / 2;
  */
 export function shaftFaces(layout: Layout, room: RoomInstance): { a0: number; a1: number; y0: number; r: number; floor: number }[] {
   const hole = layout.hole;
-  const n = hole.ringSlots[0]!;
   const [r0] = ringRadii(hole, 1);
-  const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
   // The side walls stand parallel to their borders: where they meet the shaft face, at r0.
-  const pullBack = (c: Cell, slot: number, edge: number) => {
-    if (own.has(`${c.floor}:1:${(slot + n) % n}`)) return 0; // the room carries on: no wall here
-    return sideAngle(layout.corridors?.[`R${c.floor}.1.${edge % n}`] ? HALL + WALL_HALF : WALL_HALF, r0);
+  const pullBack = (c: Cell, edge: number) => {
+    if (c.a1 - c.a0 >= NOTCHES) return 0; // the room goes all the way round: no wall here
+    return sideAngle(layout.corridors?.[`R${c.floor}.1.${edge % NOTCHES}`] ? HALL + WALL_HALF : WALL_HALF, r0);
   };
   return room.cells
     .filter((c) => c.ring === 1)
     .map((c) => {
-      const [s0, s1] = slotAngles(c.slot, n);
-      const a0 = s0 + pullBack(c, c.slot - 1, c.slot);
-      const a1 = s1 - pullBack(c, c.slot + 1, c.slot + 1);
+      const [s0, s1] = cellAngles(c);
+      const a0 = s0 + pullBack(c, c.a0);
+      const a1 = s1 - pullBack(c, c.a1);
       return { a0, a1, y0: floorSpan(c.floor)[0], r: r0, floor: c.floor };
     });
 }
@@ -2071,7 +2081,7 @@ function roomShape(layout: Layout, room: RoomInstance): Shape & { key: string } 
 /** What a room's cached shape depends on: everything that changes its geometry, and nothing else. */
 export function shapeKey(layout: Layout, room: RoomInstance): { key: string; open: RoomOpenings | null } {
   // Corridors along its sides, and turns at its corners, change its shape, so they're part of the key.
-  const outside = outsideEdges(layout.hole, room.cells);
+  const outside = outsideEdges(layout, room.cells);
   const joints = corridorJoints(layout);
   const halls = [
     // With each one's lining, which the walls' faces onto it are drawn in.
@@ -2082,18 +2092,18 @@ export function shapeKey(layout: Layout, room: RoomInstance): { key: string; ope
   // stands its full thickness, with a face past the line, but onto a room it's only its own half. So a
   // room (2) and empty space (1) must count apart, or a wall built for empty space stays when a room fills
   // it, its face on the new room's wall face, and the two flicker through each other (T-079).
-  const around = neighborCells(layout.hole, room.cells)
-    .map((c) => (layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] ? 2 : isOpen(layout, c) ? 1 : 0))
-    .join("");
+  const around = neighborCells(layout, room.cells)
+    .map((c) => `${c.ring}.${c.a0}-${c.a1}${roomIdAt(layout, c) ? 2 : isOpen(layout, c) ? 1 : 0}`)
+    .join(",");
   // A room, once it's more than a plan, has its windows and doors cut through.
   const open = openingsOf(layout, room);
   const cut = open
     ? [
-        ...open.doors.map((d) => `${d.edge}/${d.cell.ring}.${d.cell.slot}`),
+        ...open.doors.map((d) => `${d.edge}/${d.cell.ring}.${d.cell.a0}`),
         ...[...open.windows].map(([e, w]) => `${e}=${w.bottom}-${w.top}`),
       ].join(",")
     : "shut";
-  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${cut}`;
+  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.a0}-${c.a1}`).join(",")}:${halls}:${around}:${cut}`;
   return { key, open };
 }
 
@@ -2130,17 +2140,16 @@ export function buildLayout(
   const wall = tagged();
   for (let floor = topFloor ?? 1; floor <= lastFloor; floor++) {
     const [y0, y1] = floorSpan(floor);
-    for (let slot = 0; slot < n1; slot++) {
-      const id = layout.grid[floor - 1]?.[0]?.[slot];
-      const room = id ? layout.rooms.find((r) => r.id === id) : undefined;
+    for (const piece of piecesOn(layout, floor, 1)) {
+      const room = piece.room ? layout.rooms.find((r) => r.id === piece.room) : undefined;
       if (room && !room.planned) continue;
       // Dug-out empty space opens right onto a gallery tube; with none, it's walled off from the shaft.
-      if (!room && floor <= hole.floors && isOpen(layout, { floor, ring: 1, slot }) && tubeAt(layout, floor, slot)) continue;
+      if (!room && floor <= hole.floors && piece.open && tubeAt(layout, piece)) continue;
       // A corridor's mouth: the wall stops half a corridor short of the spoke on either side.
-      const [s0, s1] = slotAngles(slot, n1);
-      const mouth = (i: number) => (layout.corridors?.[`R${floor}.1.${i % n1}`] ? HALL / hole.shaftRadiusM : 0);
-      const a0 = s0 + mouth(slot);
-      const a1 = s1 - mouth(slot + 1);
+      const [s0, s1] = cellAngles(piece);
+      const mouth = (notch: number) => (layout.corridors?.[`R${floor}.1.${notch % NOTCHES}`] ? HALL / hole.shaftRadiusM : 0);
+      const a0 = s0 + mouth(piece.a0);
+      const a1 = s1 - mouth(piece.a1);
       // The last floor's wall reaches half a floor lower, round the drill rig (drawn that far down).
       const bottom = floor === lastFloor ? y0 - RIG_DROP : y0;
       if (a1 > a0) curvedFace(wall, hole.shaftRadiusM, a0, a1, bottom, y1, { side: -1 }); // open toward the shaft
@@ -2316,12 +2325,10 @@ function emptySpace(layout: Layout, topFloor: number | null): THREE.Object3D[] {
   for (let floor = topFloor ?? 1; floor <= hole.floors; floor++) {
     const [y0, y1] = floorSpan(floor);
     for (let ring = 1; ring <= hole.unlockedRings; ring++) {
-      const n = hole.ringSlots[ring - 1]!;
       const [r0, r1] = ringRadii(hole, ring);
-      for (let slot = 0; slot < n; slot++) {
-        const c = { floor, ring, slot };
-        if (!isOpen(layout, c) || layout.grid[floor - 1]?.[ring - 1]?.[slot]) continue;
-        const [a0, a1] = slotAngles(slot, n);
+      for (const c of piecesOn(layout, floor, ring)) {
+        if (!c.open || c.room) continue;
+        const [a0, a1] = cellAngles(c);
         // Edge to edge: no crack between two empty cells, or onto the gallery tube.
         flatRing(floorPos, r0, r1, a0, a1, y0 + 0.02, true);
         for (const r of [r0 + PILLAR.inset, r1 - PILLAR.inset]) {
@@ -2357,17 +2364,16 @@ function slabOver(layout: Layout, floor: number, y: number, pos: number[]): void
       wells.push(...stairWells(layout, room).filter((w) => w.floor === floor - 1));
       continue;
     }
-    const above = new Set(room.cells.filter((c) => c.floor === floor - 1).map((c) => key(c.ring, c.slot)));
+    const above = new Set(room.cells.filter((c) => c.floor === floor - 1).map((c) => key(c.ring, c.a0)));
     // On floor 1, what reaches the surface (airlocks, cargo lifts) stays open to it.
     const surface = floor === 1 && (!!def.cargoShaft || !!def.surfaceLink);
-    for (const c of room.cells) if (c.floor === floor && (surface || above.has(key(c.ring, c.slot)))) through.add(key(c.ring, c.slot));
+    for (const c of room.cells) if (c.floor === floor && (surface || above.has(key(c.ring, c.a0)))) through.add(key(c.ring, c.a0));
   }
   for (let ring = 1; ring <= hole.unlockedRings; ring++) {
-    const n = hole.ringSlots[ring - 1]!;
     const [r0, r1] = ringRadii(hole, ring);
-    for (let slot = 0; slot < n; slot++) {
-      if (through.has(key(ring, slot))) continue;
-      const [a0, a1] = slotAngles(slot, n);
+    for (const c of piecesOn(layout, floor, ring)) {
+      if (through.has(key(ring, c.a0))) continue;
+      const [a0, a1] = cellAngles(c);
       const inCell = wells.filter((w) => w.r0 < r1 && w.r1 > r0 && angleOverlap(w.a0, w.a1, a0, a1));
       // A piece takes one well; with more in one cell, leave it open rather than cover one.
       if (inCell.length > 1) continue;
@@ -2427,7 +2433,7 @@ function rimSpot(layout: Layout, room: RoomInstance): { a: number; r: number } {
   let z = 0;
   let r = 0;
   for (const c of top) {
-    const [a0, a1] = slotAngles(c.slot, hole.ringSlots[c.ring - 1]!);
+    const [a0, a1] = cellAngles(c);
     const a = (a0 + a1) / 2;
     const [r0, r1] = ringRadii(hole, c.ring);
     x += Math.cos(a);
@@ -2462,8 +2468,8 @@ const GHOST_LIFT = 0.08;
 export function corridorGhostY(layout: Layout, e: Edge): number {
   const [y0, y1] = floorSpan(e.floor);
   const hole = layout.hole;
-  const rock = (c: Cell | null) => !!c && c.ring <= hole.unlockedRings && !layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] && !isOpen(layout, c);
-  const inRock = !layout.corridors[e.id] && !isGalleryEdge(e) && edgeSides(hole, e).some(rock);
+  const rock = (c: Cell | null) => !!c && c.ring <= hole.unlockedRings && !roomIdAt(layout, c) && !isOpen(layout, c);
+  const inRock = !layout.corridors[e.id] && !isGalleryEdge(e) && edgeSides(layout, e).some(rock);
   return (inRock ? y1 : y0) + GHOST_LIFT;
 }
 
@@ -2623,7 +2629,7 @@ function galleryTubes(layout: Layout, digFloor: number | null, topFloor: number 
   for (let floor = topFloor ?? 1; floor <= last; floor++) {
     const y0 = floorSpan(floor)[0];
     const yf = y0 + LEDGE_THICKNESS;
-    for (const [slot, e] of galleryEdges(hole, floor).entries()) {
+    for (const e of galleryEdges(layout, floor)) {
       const a0 = e.a0 * TAU;
       const a1 = e.a1 * TAU;
       // Under the dome the shaft is air: an open ledge all the way round, with a railing and lamps, no glass.
@@ -2655,9 +2661,9 @@ function galleryTubes(layout: Layout, digFloor: number | null, topFloor: number 
       // Its slab's back edge, and (where the cell behind is open to it: empty space or a walk-through room)
       // a strip of rock over its roof up to the ceiling, so nothing shows past it from inside the floor.
       curvedFace(floorPos, R, a0, a1, y0, yf);
-      const behind = layout.grid[floor - 1]?.[0]?.[slot];
-      const room = behind ? layout.rooms.find((r) => r.id === behind) : undefined;
-      const open = room ? !room.planned && roomDef(room.type).public : floor <= hole.floors && isOpen(layout, { floor, ring: 1, slot });
+      const back = spacePieceAt(layout, floor, 1, (e.from + e.to) / 2);
+      const room = back?.room ? layout.rooms.find((r) => r.id === back.room) : undefined;
+      const open = room ? !room.planned && roomDef(room.type).public : floor <= hole.floors && !!back?.open;
       if (open) curvedFace(header, R, a0, a1, top, floorSpan(floor)[1]);
       // Ribs: a post on the glass and a beam across the roof, every so often along the arc.
       const len = (a1 - a0) * rOpen;
@@ -2705,15 +2711,13 @@ function floorCap(layout: Layout, floor: number): THREE.Object3D[] {
   const joints = new Set(corridorJoints(layout).keys());
   const open: number[] = [];
   const locked: number[] = [];
-  hole.ringSlots.forEach((n, ri) => {
+  hole.ringSlots.forEach((_, ri) => {
     const ring = ri + 1;
-    for (let slot = 0; slot < n; slot++) {
-      const id = layout.grid[floor - 1]?.[ri]?.[slot];
+    for (const c of piecesOn(layout, floor, ring)) {
       // Rooms, and dug-out empty space (its own floor and pillars), have no lid.
-      if (id || isOpen(layout, { floor, ring, slot })) continue;
+      if (c.room || c.open) continue;
       // The cap has no lid over corridors: it's carved like a room, by half a corridor on each side one runs.
-      const c = { floor, ring, slot };
-      const cut = carveCell(layout, c, new Set([`${floor}:${ring}:${slot}`]), ring, ring, 0, true, false, joints);
+      const cut = carveCell(layout, c, new Set([`${floor}:${ring}:${c.a0}`]), ring, ring, 0, true, false, joints);
       for (const p of cut.pieces) {
         const inside = pieceAt(cut, p, p.rr0);
         const outside = pieceAt(cut, p, p.rr1);

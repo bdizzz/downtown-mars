@@ -71,7 +71,7 @@
       "water": 160,
       "soil": 20
     },
-    "setsUp": [{ "room": "heater", "floor": 1, "ring": 2, "slot": 2 }],
+    "setsUp": [{ "room": "heater", "floor": 1, "ring": 2, "start": 320 }],
     "volunteers": 12,
     "minStayBehind": 20,
     "fillDays": 3,

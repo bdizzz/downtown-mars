@@ -6,14 +6,15 @@ import { step } from "../src/sim/step";
 import { computeEffects, dustNow, effectAt, effectOnRoom } from "../src/sim/effects";
 import { crowdedAir, homeFactors, updateHappiness } from "../src/sim/happiness";
 import { setAdults } from "../src/sim/people";
-import { ensureFloors, type Location } from "../src/sim/placement";
+import { ensureFloors, type Spot } from "../src/sim/placement";
 import { galleryEdges } from "../src/sim/edges";
+import { ringAt, cellAt } from "./spots";
 
 // Air quality: a neighbor effect with a baseline that goes stale ring by ring
 // away from the shaft. Industry fouls it, ventilation hubs and parks freshen it,
 // and it's felt at home as health.
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const byRing = config.effects.airQualityByRing;
 
 function hole(): SimState {
@@ -23,7 +24,7 @@ function hole(): SimState {
   Object.assign(s.resources, { rock: 2000, metal: 2000, brick: 2000, machinery: 500, electronics: 500 });
   return s;
 }
-function build(s: SimState, room: string, at: Location): number {
+function build(s: SimState, room: string, at: Spot): number {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return r.roomId!;
@@ -34,7 +35,7 @@ describe("air quality", () => {
   it("goes stale ring by ring away from the shaft", () => {
     const s = hole();
     const field = computeEffects(s.layout);
-    for (let r = 1; r <= s.layout.hole.unlockedRings; r++) expect(effectAt(field, "airQuality", { floor: 1, ring: r, slot: 4 })).toBe(byRing[r - 1]);
+    for (let r = 1; r <= s.layout.hole.unlockedRings; r++) expect(effectAt(field, "airQuality", cellAt(1, r, 4))).toBe(byRing[r - 1]);
   });
 
   it("a ventilation hub freshens the rooms along the network from it, not through walls", () => {
@@ -46,7 +47,7 @@ describe("air quality", () => {
     const hub = build(s, "ventilation_hub", ring(2, 1, 1));
     const dorm = build(s, "bunk_dorm", ring(2, 1, 4, 2));
     const behind = build(s, "clinic", ring(2, 2, 1));
-    const tubes = galleryEdges(s.layout.hole, 2).slice(1, 6).map((e) => e.id);
+    const tubes = galleryEdges(s.layout, 2).slice(1, 6).map((e) => e.id);
     expect(applyCommand(s, { type: "drawCorridors", edges: tubes, finish: "rock" }).ok).toBe(true);
     applyCommand(s, { type: "consoleFinish" });
     const field = computeEffects(s.layout);

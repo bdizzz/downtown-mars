@@ -4,21 +4,24 @@ import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
 import { capacities } from "../src/sim/economy";
 import { openCells } from "../src/sim/excavation";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { roomDef } from "../src/sim/rooms";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { ringAt, cellAt } from "./spots";
+import { GRID } from "./spots";
+import { areaOf } from "../src/sim/space";
 
 // The air loop (PLAN-M16 steps 3, 4 and 6; T-028, T-029, T-031): the CO2 scrubber turns breath back
 // into oxygen, the electrolyzer makes new air from water only as the hole grows, and gas tanks are
 // ballast both ways.
 
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const days = (s: SimState, n: number) => {
   for (let i = 0; i < n * config.ticksPerDay; i++) step(s, config);
 };
-const build = (s: SimState, room: string, at: Location) => {
+const build = (s: SimState, room: string, at: Spot) => {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   if (at.kind === "ring" && at.ring > 1) applyCommand(s, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
@@ -43,10 +46,10 @@ describe("the air loop", () => {
     // Scrubbing turns what's breathed back into oxygen: the electrolyzer stands by.
     expect(electrolyzerWater(s)).toBeLessThan(0.5);
     expect(airPct(s, config, "o2")).toBeGreaterThan(config.air.o2Target - 0.3);
-    // Dig out four cells: 1,600 m³ of new air to make, at 21%.
-    openCells(s.layout, [0, 1, 2, 3].map((slot) => ({ floor: 1, ring: 3, slot })));
+    // Dig out four pieces of ring 3: about 1,950 m³ of new air to make, at 21%.
+    openCells(s.layout, [0, 1, 2, 3].map((slot) => (cellAt(1, 3, slot))));
     days(s, 2);
-    const want = 1600 * config.air.unitsPerM3 * (config.air.o2Target / 100);
+    const want = areaOf(GRID, [0, 1, 2, 3].map((slot) => cellAt(1, 3, slot))) * config.geometry.floorHeightM * config.air.unitsPerM3 * (config.air.o2Target / 100);
     const el = roomDef("electrolyzer");
     const split = s.ledger.days.slice(-2).reduce((a, d) => a + (d.water?.out.Electrolyzer ?? 0), 0);
     const newSpace = s.ledger.days.slice(-2).reduce((a, d) => a + (d.water?.then?.Electrolyzer?.["Air for new space"] ?? 0), 0);
@@ -76,7 +79,7 @@ describe("gas tanks", () => {
     expect(s.resources.o2Tank).toBeCloseTo(150, 0);
     expect(airPct(s, config, "o2")).toBeCloseTo(config.air.o2Target, 1);
     // Dig a cell: the tanks cover it first, so the electrolyzer splits less water.
-    openCells(s.layout, [{ floor: 1, ring: 3, slot: 0 }]);
+    openCells(s.layout, [cellAt(1, 3, 0)]);
     step(s, config);
     expect(s.resources.o2Tank).toBe(0);
     expect(s.ledger.current.o2Tank?.out["Into the air"]).toBeCloseTo(150, 0);

@@ -5,6 +5,7 @@ import { holeGates } from "../src/sim/people";
 import { capacities } from "../src/sim/economy";
 import { createInitialState } from "../src/sim/state";
 import { construction } from "../src/sim/construction";
+import { ringAt } from "./spots";
 
 /** With construction taking time (the test setup makes it instant). */
 function withConstruction(f: () => void) {
@@ -72,7 +73,7 @@ describe("console commands", () => {
     withConstruction(() => {
       const s = createInitialState(config);
       Object.assign(s.resources, { rock: 500, metal: 200, brick: 200 });
-      const r = applyCommand(s, { type: "build", room: "galley", at: { kind: "ring", floor: 1, ring: 1, slot: 3, w: 1, d: 1 } });
+      const r = applyCommand(s, { type: "build", room: "galley", at: ringAt(1, 1, 3) });
       expect(r.ok).toBe(true);
       const room = s.layout.rooms.find((x) => x.id === (r.ok ? r.roomId : -1))!;
       expect(room.building).toBe(true);

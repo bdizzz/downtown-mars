@@ -3,6 +3,7 @@ import { corridors } from "./corridors";
 import { edgeById, edgeLengthM } from "./edges";
 import { LABELS, record } from "./ledger";
 import type { Layout } from "./placement";
+import { openArea } from "./space";
 import { needsWeight } from "./people";
 import type { SimState } from "./state";
 
@@ -65,7 +66,7 @@ export function shaftVolume(layout: Layout, cfg: SimConfig): number {
 function dugVolume(layout: Layout, cfg: SimConfig): number {
   const g = cfg.geometry;
   const floors = Math.min(layout.hole.floors, layout.open?.length ?? 0);
-  let volume = openCellCount(layout) * g.slotWidthM * g.roomDepthM * g.floorHeightM;
+  let volume = openArea(layout) * g.floorHeightM;
   for (const id of Object.keys(layout.corridors ?? {})) {
     if (layout.corridorsBuilding?.[id] !== undefined) continue;
     const e = edgeById(layout.hole, id);
@@ -75,17 +76,11 @@ function dugVolume(layout: Layout, cfg: SimConfig): number {
   return volume;
 }
 
-function openCellCount(layout: Layout): number {
-  const floors = Math.min(layout.hole.floors, layout.open?.length ?? 0);
-  let n = 0;
-  for (let f = 0; f < floors; f++) for (const ring of layout.open![f]!) for (const v of ring) if (v === 1) n++;
-  return n;
-}
 
 /** The hole's living volume, redone only when cells open or corridors come and go. */
 export function airVolume(state: SimState, cfg: SimConfig): number {
   const l = state.layout;
-  const key = `${l.version}|${l.hole.floors}|${openCellCount(l)}|${Object.keys(l.corridors ?? {}).length}|${Object.keys(l.corridorsBuilding ?? {}).length}|${l.domed ? 1 : 0}`;
+  const key = `${l.version}|${l.hole.floors}|${Math.round(openArea(l))}|${Object.keys(l.corridors ?? {}).length}|${Object.keys(l.corridorsBuilding ?? {}).length}|${l.domed ? 1 : 0}`;
   if (state.air?.key !== key) {
     const dug = dugVolume(l, cfg);
     const was = state.air;

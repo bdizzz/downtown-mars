@@ -19,8 +19,8 @@ import type { Population, RoomStatus } from "./economy";
 import { createHole } from "./geometry";
 import { createLayout, placeRoom, type Layout } from "./placement";
 import { openCells } from "./excavation";
+import { cell } from "./space";
 import type { DepositKind } from "./mapgeo";
-import { roomDef } from "./rooms";
 import { galleryEdges, outsideEdges } from "./edges";
 import { corridors, recomputeAccess, routeToRoom } from "./corridors";
 import { culture, type Culture } from "./culture";
@@ -147,29 +147,28 @@ export function createInitialState(
   const layout = createLayout(createHole(h.shaftRadiusM, h.floors, h.unlockedRings, cfg.geometry), cfg);
   // The landing crew has blasted out floor 1's first ring (and the kit's rooms); the rest is rock.
   for (let ring = 1; ring <= h.openRings; ring++) {
-    openCells(layout, Array.from({ length: layout.hole.ringSlots[ring - 1]! }, (_, slot) => ({ floor: 1, ring, slot })));
+    openCells(layout, [cell(1, ring, 0, cfg.geometry.notchesPerTurn)]);
   }
 
   for (const k of kit.surface) {
     must(placeRoom(layout, k.room, { kind: "surface", slot: k.slot }, cfg), k.room);
   }
   for (const k of [...kit.ring, ...extras]) {
-    const [w, d] = cfg.shapes[roomDef(k.room).size as keyof SimConfig["shapes"]]![0]!;
-    const placed = must(placeRoom(layout, k.room, { kind: "ring", floor: k.floor, ring: k.ring, slot: k.slot, w, d }, cfg), k.room);
+    const placed = must(placeRoom(layout, k.room, { kind: "ring", floor: k.floor, ring: k.ring, start: k.start }, cfg), k.room);
     // The kit's rooms come with their space blasted out, wherever they stand.
     if (placed.ok) openCells(layout, placed.cells);
     const room = layout.rooms.find((r) => "id" in placed && r.id === placed.id);
     if (room && k.holds) room.holds = k.holds;
   }
   // Floor 1's gallery comes built, all the way round the shaft.
-  for (const e of galleryEdges(layout.hole, 1)) layout.corridors[e.id] = corridors.gallery.id;
+  for (const e of galleryEdges(layout, 1)) layout.corridors[e.id] = corridors.gallery.id;
   recomputeAccess(layout);
   // Kit rooms nothing reaches (deeper than ring 2) get a corridor along their fronts, and
   // the shortest spoke carved out to it: one line in, rather than a spoke to each.
   for (const room of layout.rooms) {
     if (room.connected || room.at.kind !== "ring") continue;
     const ring = room.at.ring;
-    for (const e of outsideEdges(layout.hole, room.cells)) if (e.kind === "arc" && e.circle === ring - 1) layout.corridors[e.id] = corridors.defaultFinish;
+    for (const e of outsideEdges(layout, room.cells)) if (e.kind === "arc" && e.circle === ring - 1) layout.corridors[e.id] = corridors.defaultFinish;
   }
   recomputeAccess(layout);
   for (const room of layout.rooms) {

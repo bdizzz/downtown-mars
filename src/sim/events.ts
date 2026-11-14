@@ -1,5 +1,7 @@
 import raw from "../../data/events.json";
-import type { SimConfig } from "./config";
+import { config, type SimConfig } from "./config";
+import { slotNotch } from "./geometry";
+import { cell, piecesIn } from "./space";
 import { recomputeAccess } from "./corridors";
 import { openCells, isOpen } from "./excavation";
 import type { DepositKind } from "./mapgeo";
@@ -349,10 +351,12 @@ export function eventMood(state: SimState): number {
 
 // ---- drill discoveries ----
 
-/** A run of solid rock on a floor for a lava tube (or a magma chamber): up to `cells` slots side by side in ring 2 or 3. */
+const N = config.geometry.notchesPerTurn;
+
+/** A run of solid rock on a floor for a lava tube (or a magma chamber): up to `cells` pieces of the grid side by side in ring 2 or 3. */
 export function cavityOn(state: SimState, floor: number, cells: number): Cell[] | null {
   const hole = state.layout.hole;
-  const rock = (c: Cell) => !isOpen(state.layout, c) && !state.layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot];
+  const rock = (c: Cell) => piecesIn(state.layout, c).every((p) => !p.open && !p.room);
   for (const ring of [2, 3]) {
     if (ring > hole.unlockedRings) continue;
     const n = hole.ringSlots[ring - 1]!;
@@ -360,7 +364,7 @@ export function cavityOn(state: SimState, floor: number, cells: number): Cell[] 
     for (let k = 0; k < n; k++) {
       const run: Cell[] = [];
       for (let i = 0; i < cells; i++) {
-        const c = { floor, ring, slot: (start + k + i) % n };
+        const c = cell(floor, ring, slotNotch((start + k + i) % n, n, N), slotNotch(1, n, N));
         if (!rock(c)) break;
         run.push(c);
       }

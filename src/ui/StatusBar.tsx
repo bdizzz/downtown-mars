@@ -3,6 +3,8 @@ import type { ViewMode } from "./settings";
 import type { HoverInfo, Tool } from "../view/types";
 import { reachSummary } from "../view/reachView";
 import type { Hole } from "../sim/geometry";
+import { areaAt } from "../sim/placement";
+import { overlapNotches, piecesIn, type Cell } from "../sim/space";
 import { effectAt, effectName, FIELD_TYPES } from "../sim/effects";
 import type { Snapshot } from "../sim/snapshot";
 import { num, resName, signed } from "./format";
@@ -11,9 +13,7 @@ import { construction } from "../sim/construction";
 import { config } from "../sim/config";
 import { touchFirst } from "../view/touch";
 
-const deg = (turns: number) => `${Math.round(turns * 360)}°`;
-
-function where(info: HoverInfo, hole: Hole): string {
+function where(info: HoverInfo, _hole: Hole): string {
   const p = info.pick;
   switch (p.kind) {
     case "surface":
@@ -23,10 +23,9 @@ function where(info: HoverInfo, hole: Hole): string {
     case "rock":
       return "Solid rock";
     case "slot": {
-      const n = hole.ringSlots[p.ring - 1]!;
       const lock = p.locked ? " · locked (needs reinforcement frames)" : "";
       const dig = p.digging ? " (being dug)" : "";
-      return `Floor ${p.floor}${dig} · ring ${p.ring} · slot ${p.slot + 1} of ${n} · ${deg(p.slot / n)}–${deg((p.slot + 1) / n)}${lock}`;
+      return `Floor ${p.floor}${dig} · ring ${p.ring} · ${Math.round(p.angle)}°${lock}`;
     }
   }
 }
@@ -43,7 +42,7 @@ interface Props {
 }
 
 /** "noise −1.3 · health +0.7" for a slot, skipping effects that are ~0. */
-function effectsHere(s: Snapshot, cell: { floor: number; ring: number; slot: number }): string {
+function effectsHere(s: Snapshot, cell: Cell): string {
   return FIELD_TYPES.map((t) => [t, effectAt(s.effects, t, cell)] as const)
     .filter(([, v]) => Math.abs(v) >= 0.05)
     .map(([t, v]) => `${effectName(t)} ${signed(v)}`)
@@ -51,9 +50,12 @@ function effectsHere(s: Snapshot, cell: { floor: number; ring: number; slot: num
 }
 
 /** Average effects over some cells: what a room placed there would live with. */
-function feltOver(s: Snapshot, cells: { floor: number; ring: number; slot: number }[]): string {
-  if (!cells.length) return "";
-  return FIELD_TYPES.map((t) => [t, cells.reduce((sum, c) => sum + effectAt(s.effects, t, c), 0) / cells.length] as const)
+function feltOver(s: Snapshot, cells: Cell[]): string {
+  // The pieces under them as things stand (a room being placed isn't one yet), by how much of each it covers.
+  const under = cells.flatMap((c) => piecesIn(s.layout, c).map((p) => [p, overlapNotches(p, c)] as const));
+  const total = under.reduce((sum, [, w]) => sum + w, 0);
+  if (!total) return "";
+  return FIELD_TYPES.map((t) => [t, under.reduce((sum, [p, w]) => sum + effectAt(s.effects, t, p) * w, 0) / total] as const)
     .filter(([, v]) => Math.abs(v) >= 0.05)
     .map(([t, v]) => `${effectName(t)} ${signed(v)}`)
     .join(", ");
@@ -109,14 +111,18 @@ export function StatusBar({ info, snapshot, notice, overlay, view, tool }: Props
       // Solid rock is dug out first: time, and rock coming up.
       const rock = info.check.rock ?? 0;
       const digs = rock
-        ? `Digs out ${rock} ${rock === 1 ? "cell" : "cells"} of rock first: ${num(rock * construction.excavationHoursPerSlot)} h, +${num(rock * config.digging.rockPerSlot)} rock · `
+        ? `Digs out ${rock} m² of rock first: ${num((rock / 100) * construction.excavationHoursPer100m2)} h, +${num((rock / 100) * config.digging.rockPer100m2)} rock · `
         : "";
       const note = info.check.note ? `＋ ${info.check.note} · ` : "";
       const d = info.check.destroys?.length ?? 0;
       const lost = (info.check.strands?.rooms.length ?? 0) + (info.check.strands?.corridors.length ?? 0);
       if (d) bad = true;
       const over = d ? `⚠ Fills in ${d} corridor ${d === 1 ? "segment" : "segments"}${lost ? `, cutting off ${lost} more` : ""} · ` : "";
-      text = `${over}${note}${cutOff}${blueprint}${digs}${onFoot ? `On foot: ${onFoot} · ` : ""}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
+      // Its floor area as it would be built, and (once it's down) how to build or drop it.
+      const at = info.at?.kind === "ring" ? info.at : null;
+      const area = at ? `${Math.round(areaAt(snapshot.layout.hole, { ring: at.ring, depth: at.depth ?? 1, span: at.span ?? 0 }))} m² · ` : "";
+      const down = tool?.kind === "build" && tool.proposal ? `${finger ? "Tap" : "Click"} it again${finger ? "" : " (or Enter)"} to build · drag a side wall to resize · ` : "";
+      text = `${down}${area}${over}${note}${cutOff}${blueprint}${digs}${onFoot ? `On foot: ${onFoot} · ` : ""}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
     } else if (info.room) {
       const blueprint = info.room.planned ? " (blueprint)" : "";
       const st = snapshot?.roomStatus[info.room.id];

@@ -10,5 +10,5 @@
     "surface": 12
   },
   "corridorHoursPer10m": 1.5,
-  "excavationHoursPerSlot": 3
+  "excavationHoursPer100m2": 3
 }

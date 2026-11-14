@@ -11,7 +11,7 @@ describe("ceiling lights", () => {
   const lights = overheadLights(s.layout);
 
   it("puts one in each cell of every finished room", () => {
-    const cells = s.layout.rooms.filter((r) => !r.planned && !r.building).reduce((n, r) => n + new Set(r.cells.map((c) => `${c.ring}:${c.slot}`)).size, 0);
+    const cells = s.layout.rooms.filter((r) => !r.planned && !r.building).reduce((n, r) => n + new Set(r.cells.map((c) => `${c.ring}:${c.a0}`)).size, 0);
     expect(cells).toBeGreaterThan(0);
     expect(lights.filter((l) => l.kind === "room")).toHaveLength(cells);
   });

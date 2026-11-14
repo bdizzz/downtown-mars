@@ -3,7 +3,7 @@ import furnitureData from "../../data/furniture.json";
 import type { SimConfig } from "./config";
 import { isActive } from "./economy";
 import { postMessage } from "./messages";
-import type { RoomInstance } from "./placement";
+import { roomUnits, type RoomInstance } from "./placement";
 import { roomDef, type RoomSize } from "./rooms";
 import { liningWear } from "./materials";
 import { roomRef } from "./roomName";
@@ -187,7 +187,7 @@ export function overallCondition(state: SimState): number {
   let sum = 0;
   let weight = 0;
   for (const r of wearing(state)) {
-    const w = Math.max(1, r.cells.length || r.surfaceCells.length);
+    const w = roomUnits(r);
     sum += conditionOf(r) * w;
     weight += w;
   }

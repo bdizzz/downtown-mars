@@ -5,11 +5,12 @@ import { createLayout, placeRoom } from "../src/sim/placement";
 import { furnish } from "../src/view/furnish";
 import { cropDefs } from "../src/sim/resources";
 import { isItem } from "../src/view/furniture";
+import { ringAt } from "./spots";
 
 describe("farm furniture shows the crop", () => {
   it("swaps planters and racks for the crop's, in the same places", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = placeRoom(layout, "farm", { kind: "ring", floor: 1, ring: 2, slot: 0, w: 4, d: 1 });
+    const r = placeRoom(layout, "farm", ringAt(1, 2, 0, 4));
     const room = layout.rooms.find((x) => x.id === (r as { id: number }).id)!;
     room.crop = "leafyGreens";
     const greens = furnish(layout, room);

@@ -12,7 +12,8 @@ import { culture } from "./culture";
 import { addAdults } from "./people";
 import { corridors, migrateCorridorRooms, recomputeAccess } from "./corridors";
 import { galleryEdges } from "./edges";
-import { ensureFloors, placeRoom, type Layout } from "./placement";
+import { ensureFloors, placeRoom, slotSpot, type Layout } from "./placement";
+import { holeToAngles } from "./legacySlots";
 import { openCells } from "./excavation";
 import { fillAir } from "./air";
 import { setAllows } from "./storage";
@@ -22,7 +23,10 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 23;
+export const SAVE_VERSION = 25;
+
+/** The first version kept by angle (F-004): older saves are turned from slots to angles before anything else. */
+const ANGLES_VERSION = 25;
 
 type Raw = Record<string, unknown>;
 
@@ -108,10 +112,13 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       ensureFloors(layout);
       for (const r of layout.rooms) if (!r.planned) openCells(layout, [...r.cells, ...(r.pendingCells ?? [])]);
       layout.openShaft = true;
-      const slot = layout.grid[0]?.[0]?.findIndex((id) => !id) ?? -1;
-      if (slot >= 0 && !layout.rooms.some((r) => r.type === "entrance")) {
-        const placed = placeRoom(layout, "entrance", { kind: "ring", floor: 1, ring: 1, slot, w: 1, d: 1 });
-        if (placed.ok) openCells(layout, placed.cells);
+      if (!layout.rooms.some((r) => r.type === "entrance")) {
+        for (let slot = 0; slot < layout.hole.ringSlots[0]!; slot++) {
+          const placed = placeRoom(layout, "entrance", slotSpot(layout.hole, 1, 1, slot));
+          if (!placed.ok) continue;
+          openCells(layout, placed.cells);
+          break;
+        }
       }
       return { ...h, layout };
     }),
@@ -122,7 +129,7 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
     holes: (s.holes as Raw[]).map((h) => {
       const layout = h.layout as Layout;
       layout.corridors ??= {};
-      for (let f = 1; f <= layout.hole.floors; f++) for (const e of galleryEdges(layout.hole, f)) layout.corridors[e.id] ??= corridors.gallery.id;
+      for (let f = 1; f <= layout.hole.floors; f++) for (const e of galleryEdges(layout, f)) layout.corridors[e.id] ??= corridors.gallery.id;
       recomputeAccess(layout);
       return { ...h, layout };
     }),
@@ -228,6 +235,10 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       return hole as unknown as Raw;
     }),
   }),
+  // v24: every ring room got an angle range alongside its slots (F-004, step 1).
+  23: (s) => s,
+  // v25: everything is kept by angle (PLAN-M17): rooms, what's dug, corridors, windows. Done up front (holeToAngles).
+  24: (s) => s,
 };
 
 /** A copy of a record with one key renamed (a resource that changed its id). */
@@ -289,6 +300,7 @@ export function deserialize(json: string): LoadResult {
   if (file.game !== "downtown-mars" || !file.state) return { ok: false, reason: "That file isn't a Downtown Mars save." };
   let version = file.version ?? 0;
   let raw = file.state as unknown as Raw;
+  if (version < ANGLES_VERSION && Array.isArray(raw.holes)) raw = { ...raw, holes: (raw.holes as Raw[]).map(holeToAngles) };
   while (version < SAVE_VERSION && MIGRATIONS[version]) raw = MIGRATIONS[version++]!(raw);
   if (version !== SAVE_VERSION) {
     return { ok: false, reason: `That save is from a different version (save v${file.version}, game v${SAVE_VERSION}).` };

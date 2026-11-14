@@ -4,8 +4,10 @@ import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { CRUST, FLOOR_H, polar, ringRadii, slotAngles } from "../src/render3d/cylinder";
 import { inCarvedRegion, pickPast, rayCylinder, rayPlane, surfacePickAt } from "../src/render3d/pick3d";
+import { createLayout } from "../src/sim/placement";
 
 const hole = createHole(10, 3, 3, config.geometry);
+const layout = createLayout(hole);
 const ray = (from: [number, number, number], to: [number, number, number]) => {
   const o = new THREE.Vector3(...from);
   return new THREE.Ray(o, new THREE.Vector3(...to).sub(o).normalize());
@@ -32,7 +34,7 @@ describe("3D picking", () => {
     const [a0, a1] = slotAngles(3, n);
     const target = polar(ringRadii(hole, 1)[0], (a0 + a1) / 2, -FLOOR_H * 1.5 - CRUST);
     const r = ray([0, -FLOOR_H * 1.5 - CRUST, 0], target);
-    expect(pickPast(hole, r, rayCylinder(r, 10)!)).toMatchObject({ kind: "slot", floor: 2, ring: 1, slot: 3 });
+    expect(pickPast(layout, r, rayCylinder(r, 10)!)).toMatchObject({ kind: "slot", floor: 2, ring: 1, a0: 480, a1: 640 });
   });
 
   it("the cutaway plane gives cells on the section, in any ring", () => {
@@ -41,7 +43,7 @@ describe("3D picking", () => {
     const t = rayPlane(r, plane)!;
     const p = r.at(t, new THREE.Vector3());
     expect(inCarvedRegion(hole, p)).toBe(true);
-    expect(pickPast(hole, r, t)).toMatchObject({ kind: "slot", floor: 3, ring: 3 });
+    expect(pickPast(layout, r, t)).toMatchObject({ kind: "slot", floor: 3, ring: 3 });
   });
 
   it("the surface pick uses the angle around the shaft", () => {

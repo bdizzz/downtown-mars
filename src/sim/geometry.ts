@@ -70,3 +70,40 @@ export function overlappingSlots(hole: Hole, fromRing: number, slot: number, toR
   for (let k = first; k <= last; k++) out.push(wrapSlot(k, m));
   return out;
 }
+
+// Angles (F-004, PLAN-M17): whole notches, `notchesPerTurn` a turn, so edges
+// meet exactly and rooms on different rings line up exactly. A ring room's
+// angle range is [start, start + span), wrapping at a turn.
+
+export function wrapNotch(a: number, notches: number): number {
+  return ((a % notches) + notches) % notches;
+}
+
+/** Inner and outer radius of a ring, metres. */
+export function ringRadii(shaftRadiusM: number, ring: number, geo: GeometryConfig): [number, number] {
+  return [shaftRadiusM + (ring - 1) * geo.roomDepthM, shaftRadiusM + ring * geo.roomDepthM];
+}
+
+/** The notch a slot boundary falls on (rounded, the same way on both sides of it). */
+export function slotNotch(slot: number, n: number, notches: number): number {
+  return Math.round((slot * notches) / n);
+}
+
+/** Start and span, in notches, of w slots from `slot` in a ring of n slots. */
+export function slotsToAngles(slot: number, w: number, n: number, notches: number): { start: number; span: number } {
+  const s = wrapSlot(slot, n);
+  const start = slotNotch(s, n, notches);
+  return { start: wrapNotch(start, notches), span: slotNotch(s + w, n, notches) - start };
+}
+
+/** Floor area, m², of `span` notches across `depth` rings from `ring` outward. */
+export function spanArea(shaftRadiusM: number, ring: number, depth: number, span: number, geo: GeometryConfig): number {
+  const [rIn] = ringRadii(shaftRadiusM, ring, geo);
+  const [, rOut] = ringRadii(shaftRadiusM, ring + depth - 1, geo);
+  return ((span / geo.notchesPerTurn) * 2 * Math.PI * (rOut * rOut - rIn * rIn)) / 2;
+}
+
+/** The whole number of notches nearest to `area` m² across `depth` rings from `ring` outward. */
+export function spanForArea(shaftRadiusM: number, ring: number, depth: number, area: number, geo: GeometryConfig): number {
+  return Math.round(area / spanArea(shaftRadiusM, ring, depth, 1, geo));
+}

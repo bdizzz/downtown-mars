@@ -78,7 +78,7 @@ describe("first month playthrough, from the full landing kit", () => {
   it("starts with the kit's air, water and power rooms working", () => {
     const first = log[0]!;
     expect(first.o2).toBeGreaterThan(15);
-    expect(plan.some((p) => p.room === "life_support" && p.at.kind === "ring" && p.at.floor === 1)).toBe(false);
+    expect(plan.some((p) => p.room === "life_support" && typeof p.at !== "function" && p.at.kind === "ring" && p.at.floor === 1)).toBe(false);
   });
 
   it("finishes tier 2 within about two weeks", () => {

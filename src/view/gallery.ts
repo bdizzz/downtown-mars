@@ -1,4 +1,4 @@
-import { galleryEdges } from "../sim/edges";
+import { arcAt, arcPieces, galleryEdges } from "../sim/edges";
 import type { Layout } from "../sim/placement";
 
 // Gallery tubes as runs: on each floor, the stretches of shaft wall where
@@ -18,7 +18,7 @@ export interface TubeRun {
 export function tubeRuns(layout: Layout): TubeRun[] {
   const out: TubeRun[] = [];
   for (let floor = 1; floor <= layout.hole.floors; floor++) {
-    const edges = galleryEdges(layout.hole, floor);
+    const edges = galleryEdges(layout, floor);
     const built = edges.map((e) => !!layout.domed || (!!layout.corridors?.[e.id] && layout.corridorsBuilding?.[e.id] === undefined));
     if (built.every(Boolean)) {
       out.push({ floor, t0: 0, t1: 1, full: true });
@@ -46,16 +46,15 @@ export function tubeRuns(layout: Layout): TubeRun[] {
   return out;
 }
 
-/** Is there a gallery tube (built, or being built) along ring 1's slot on this floor? */
-export function tubeAt(layout: Layout, floor: number, slot: number): boolean {
+/** Is there a gallery tube (built, or being built) along some of a ring-1 cell's front on this floor? */
+export function tubeAt(layout: Layout, c: { floor: number; a0: number; a1: number }): boolean {
   if (layout.domed) return true; // the shaft is air: open walkway all round
-  const e = galleryEdges(layout.hole, floor)[slot];
-  return !!e && !!layout.corridors?.[e.id];
+  return arcPieces(layout, c.floor, 0, c.a0, c.a1).some((e) => !!layout.corridors?.[e.id]);
 }
 
 /** The same, by angle (radians) round the shaft. */
 export function tubeAtAngle(layout: Layout, floor: number, angle: number): boolean {
-  const n = layout.hole.ringSlots[0]!;
-  const turn = (((angle / (2 * Math.PI)) % 1) + 1) % 1;
-  return tubeAt(layout, floor, Math.min(n - 1, Math.floor(turn * n)));
+  if (layout.domed) return true;
+  const e = arcAt(layout, floor, 0, angle / (2 * Math.PI));
+  return !!e && !!layout.corridors?.[e.id];
 }

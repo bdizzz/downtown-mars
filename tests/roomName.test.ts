@@ -4,6 +4,7 @@ import { applyCommand } from "../src/sim/commands";
 import { createInitialState } from "../src/sim/state";
 import { roomLabel, roomName, roomRef } from "../src/sim/roomName";
 import { plainText } from "../src/ui/RoomName";
+import { ringAt } from "./spots";
 
 function hole() {
   const s = createInitialState(config);
@@ -14,7 +15,7 @@ function hole() {
 describe("room names", () => {
   it("can be renamed, trimmed and capped; an empty name goes back to the usual one", () => {
     const s = hole();
-    const r = applyCommand(s, { type: "build", room: "bunk_dorm", at: { kind: "ring", floor: 1, ring: 1, slot: 3, w: 2, d: 1 } });
+    const r = applyCommand(s, { type: "build", room: "bunk_dorm", at: ringAt(1, 1, 3, 2) });
     const room = s.layout.rooms.find((x) => x.id === (r.ok ? r.roomId : -1))!;
     expect(roomName(room)).toBe("Bunk dorm");
     expect(roomLabel(room)).toBe("Dorm");
@@ -32,7 +33,7 @@ describe("room names", () => {
 
   it("names a farm for its crop, and follows the crop when it changes, unless the player named it", () => {
     const s = hole();
-    const r = applyCommand(s, { type: "build", room: "farm", at: { kind: "ring", floor: 1, ring: 1, slot: 3, w: 4, d: 1 } });
+    const r = applyCommand(s, { type: "build", room: "farm", at: ringAt(1, 1, 3, 4) });
     const farm = s.layout.rooms.find((x) => x.id === (r.ok ? r.roomId : -1))!;
     expect(roomName(farm)).toBe("Potato farm");
     applyCommand(s, { type: "setCrop", roomId: farm.id, crop: "soybeans" });
@@ -44,7 +45,7 @@ describe("room names", () => {
 
   it("puts rooms in messages as tokens, readable as plain text too", () => {
     const s = hole();
-    const r = applyCommand(s, { type: "build", room: "galley", at: { kind: "ring", floor: 1, ring: 1, slot: 3, w: 1, d: 1 } });
+    const r = applyCommand(s, { type: "build", room: "galley", at: ringAt(1, 1, 3) });
     const galley = s.layout.rooms.find((x) => x.id === (r.ok ? r.roomId : -1))!;
     expect(plainText(`${roomRef(galley)} built.`)).toBe("Galley (floor 1) built.");
   });

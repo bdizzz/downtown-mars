@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
 import { roomSpec } from "../src/sim/economy";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
@@ -10,15 +10,17 @@ import { setAdults } from "../src/sim/people";
 import { roomDef } from "../src/sim/rooms";
 import { airAmount, airPct, fillAir } from "../src/sim/air";
 import { openCells } from "../src/sim/excavation";
+import { ringAt, cellAt } from "./spots";
+import { spanRange } from "../src/sim/placement";
 
 // No Earth drops here: these tests are about what the hole does on its own.
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const days = (s: SimState, n: number) => {
   for (let i = 0; i < n * config.ticksPerDay; i++) step(s, config);
 };
-const build = (s: SimState, room: string, at: Location) => {
+const build = (s: SimState, room: string, at: Spot) => {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return s.layout.rooms[s.layout.rooms.length - 1]!;
@@ -31,9 +33,10 @@ function criticalSet(): SimState {
   build(s, "bunk_dorm", ring(1, 1, 1, 2));
   build(s, "galley", ring(1, 1, 3));
   build(s, "restroom", ring(1, 1, 4));
-  const ls = build(s, "life_support", ring(1, 2, 9, 4));
-  build(s, "water_tank", ring(1, 2, 8));
-  const el = build(s, "electrolyzer", ring(1, 2, 4, 2));
+  // In ring 2, at their target areas (a room's size is an area: PLAN-M17).
+  const ls = build(s, "life_support", { kind: "ring", floor: 1, ring: 2, start: 0 });
+  build(s, "water_tank", { kind: "ring", floor: 1, ring: 2, start: 1280 });
+  const el = build(s, "electrolyzer", { kind: "ring", floor: 1, ring: 2, start: 640 });
   for (const room of [ls, el]) {
     const c = applyCommand(s, { type: "connectRoom", roomId: room.id, finish: "rock" });
     if (!c.ok) throw new Error(c.reason);
@@ -131,17 +134,21 @@ describe("rooms", () => {
     expect(s.population.needsMet.meals).toBe(1);
   });
 
-  it("a deep 2×2 farm's wedge scales output by slots covered", () => {
+  it("what a room does doesn't depend on its exact floor area: a farm makes the same wide, deep, or at either end of its leeway", () => {
     const s = createInitialState(config);
-    // Rings 1 and 2 are a pair with the same slots, so a 2×2 is exactly 4 cells.
-    const farm = build(s, "farm", ring(1, 1, 1, 2, 2));
-    expect(farm.cells).toHaveLength(4);
-    expect(roomSpec(farm, config).makes.rawFood).toBeCloseTo(12);
-    expect(roomSpec(farm, config).staff).toBe(roomDef("farm").staff);
-    // Across a pair boundary (ring 2 into ring 3, which has more slots) the wedge widens and output scales.
-    const deep = build(s, "farm", ring(1, 2, 4, 2, 2));
-    expect(deep.cells.length).toBeGreaterThan(4);
-    expect(roomSpec(deep, config).makes.rawFood).toBeCloseTo((12 * deep.cells.length) / 4);
+    const wide = build(s, "farm", { kind: "ring", floor: 1, ring: 1, start: 160, depth: 1 });
+    expect(roomSpec(wide, config).makes.rawFood).toBeCloseTo(12);
+    expect(roomSpec(wide, config).staff).toBe(roomDef("farm").staff);
+    // Two rings deep, a clean wedge across rings 2 and 3; and one 15% over its 400 m².
+    const deep = build(s, "farm", { kind: "ring", floor: 1, ring: 2, start: 0, depth: 2 });
+    expect(deep.cells).toHaveLength(2);
+    expect(roomSpec(deep, config).makes.rawFood).toBeCloseTo(12);
+    const range = spanRange(s.layout.hole, "farm", 2, 2);
+    const big = build(s, "farm", { kind: "ring", floor: 1, ring: 2, start: 400, span: range.max, depth: 2 });
+    expect(roomSpec(big, config).makes.rawFood).toBeCloseTo(12);
+    // An old slot-shaped room (a save from before rooms went by area) makes the same too.
+    const old = build(s, "farm", ring(1, 1, 5, 4));
+    expect(roomSpec(old, config).makes.rawFood).toBeCloseTo(12);
   });
 
   it("crop choice changes yield", () => {
@@ -219,7 +226,7 @@ describe("rooms", () => {
     const owedBefore = s.air?.owed ?? 0;
     expect(owedBefore).toBe(0);
     // Dig a cell: 400 m³ more to fill, at 21%.
-    openCells(s.layout, [{ floor: 1, ring: 3, slot: 0 }]);
+    openCells(s.layout, [cellAt(1, 3, 0)]);
     s.layout.version++;
     days(s, 1);
     const then = s.ledger.days.at(-1)!.water?.then?.Electrolyzer ?? {};

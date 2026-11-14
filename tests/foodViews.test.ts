@@ -10,12 +10,13 @@ import { cropStage, cropStagesKey, furnish, GROWTH, growsCrop, stageScale } from
 import { furnitureMeshes } from "../src/render3d/furniture3d";
 import { barItems, varietyNote } from "../src/view/hudItems";
 import { cropOptions, harvestInfo, panelModel } from "../src/view/roomPanel";
+import { ringAt } from "./spots";
 
 // The views of harvest cycles and food variety (#378, #379, #380, #381, #383).
 
 function farm(crop: string): { layout: ReturnType<typeof createLayout>; room: RoomInstance } {
   const layout = createLayout(createHole(10, 3, 3, config.geometry));
-  const r = placeRoom(layout, "farm", { kind: "ring", floor: 1, ring: 2, slot: 0, w: 4, d: 1 });
+  const r = placeRoom(layout, "farm", ringAt(1, 2, 0, 4));
   const room = layout.rooms.find((x) => x.id === (r as { id: number }).id)!;
   room.crop = crop;
   return { layout, room };
@@ -73,7 +74,7 @@ describe("crop growth stages in 3D (#379)", () => {
 describe("the farm's panel and the crop picker (#378)", () => {
   it("shows the next harvest's progress, size and when it comes", () => {
     const s = createInitialState(config);
-    const r = applyCommand(s, { type: "build", room: "farm", at: { kind: "ring", floor: 1, ring: 1, slot: 1, w: 4, d: 1 } });
+    const r = applyCommand(s, { type: "build", room: "farm", at: ringAt(1, 1, 1, 4) });
     expect(r.ok).toBe(true);
     const room = s.layout.rooms.at(-1)!;
     room.building = false;

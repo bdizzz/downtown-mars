@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { capacities } from "../src/sim/economy";
-import type { Location, RoomInstance } from "../src/sim/placement";
+import type { Spot, RoomInstance } from "../src/sim/placement";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
@@ -11,8 +11,9 @@ import { freeSpace, isStorable, roomFill, settleStorage, STORABLE, storageCaps, 
 import { createWorld } from "../src/sim/world";
 import { withStorage } from "./worlds";
 import { distancesFrom, pathsFor } from "../src/sim/paths";
+import { ringAt } from "./spots";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const pod = (s: SimState) => s.layout.rooms.find((r) => r.type === "landing_pod")!;
 const roomOf = (s: SimState, id: number) => s.layout.rooms.find((r) => r.id === id)!;
 
@@ -23,7 +24,7 @@ function fresh(): SimState {
   return s;
 }
 
-function build(s: SimState, room: string, at: Location): RoomInstance {
+function build(s: SimState, room: string, at: Spot): RoomInstance {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(r.reason);
   // Its cost comes out of storage now, not mixed in with the goods a test adds.

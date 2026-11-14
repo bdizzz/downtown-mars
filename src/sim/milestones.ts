@@ -1,6 +1,7 @@
 import raw from "../../data/milestones.json";
 import { gameTime } from "./clock";
 import { config, type SimConfig } from "./config";
+import { ringOpen } from "./space";
 import { LABELS } from "./ledger";
 import { postMessage } from "./messages";
 import { resourceDef } from "./resources";
@@ -110,8 +111,7 @@ export function fullRing(state: SimState): boolean {
   for (let f = 0; f < Math.min(hole.floors, open?.length ?? 0); f++) {
     for (let r = 0; r < hole.unlockedRings; r++) {
       if (f === 0 && r < config.starterHole.openRings) continue;
-      const row = open![f]![r];
-      if (row && row.length === hole.ringSlots[r] && row.every((v) => v === 1)) return true;
+      if (ringOpen(state.layout, f + 1, r + 1)) return true;
     }
   }
   return false;

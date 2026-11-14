@@ -5,7 +5,7 @@ import type { Tool } from "../view/types";
 import { config } from "../sim/config";
 import { missingCost, siteRefusal, withExtra } from "../sim/costs";
 import { roomDef, roomDefs, type RoomDef } from "../sim/rooms";
-import { BUILD_GROUPS, buildTiles, CORRIDOR_KEY, DEMOLISH_KEY, groupOf, groupOfRoom, HOTKEYS, sectionInfo, shapesFor, surfaceOnly, variantLabel, type BuildGroup, type BuildTile } from "../view/buildCatalog";
+import { BUILD_GROUPS, buildTiles, CORRIDOR_KEY, DEMOLISH_KEY, groupOf, groupOfRoom, HOTKEYS, depthsOf, areaOf, unitsFor, SNAP_KEY, sectionInfo, surfaceOnly, variantLabel, type BuildGroup, type BuildTile } from "../view/buildCatalog";
 import { SIZE_NAMES } from "../view/roomCard";
 import { RoomCard } from "./RoomCard";
 import { Amounts } from "./Cost";
@@ -24,21 +24,16 @@ import { freshClass, SHOW_ALL, type Reveal } from "./reveal";
 /** The lining rooms are built in unless another is picked (T-038). */
 export const BARE_ROCK = liningId(MATERIALS.walls[0]!);
 
-/** Cells a room of this shape takes (for what its lining costs). */
-function cellsOf(def: RoomDef, shape: [number, number]): number {
-  return shape[0] * shape[1] * (def.floors ?? 1);
-}
-
 /** Rooms in the hole's rings that take a lining (not surface buildings, stairs, lifts or empty rooms). */
 function canLineType(def: RoomDef): boolean {
   return def.size !== "surface" && !MATERIALS.exempt.includes(def.id) && !def.excavationOnly;
 }
 
-/** What building a room in this lining adds to its cost, by its first shape (or its shape in hand). Nothing for rooms that can't be lined. */
-function liningExtra(def: RoomDef, lining: string, shape = shapesFor(def)[0]!): Record<string, number> {
+/** What building a room in this lining adds to its cost, by its floor area. Nothing for rooms that can't be lined. */
+function liningExtra(def: RoomDef, lining: string): Record<string, number> {
   const step = liningById(lining);
   if (!step || lining === BARE_ROCK || !canLineType(def)) return {};
-  return Object.fromEntries(Object.entries(liningCost(step)).map(([r, v]) => [r, v * cellsOf(def, shape)]));
+  return Object.fromEntries(Object.entries(liningCost(step)).map(([r, v]) => [r, v * unitsFor(def)]));
 }
 
 const costWords = (cost: Record<string, number>) =>
@@ -49,7 +44,7 @@ const costWords = (cost: Record<string, number>) =>
 const catColor = (category: string) => ({ "--cat": cssColor(CATEGORY_COLORS[category] ?? 0x888888) }) as React.CSSProperties;
 
 export function buildTool(def: RoomDef): Tool {
-  return { kind: "build", room: def.id, shape: shapesFor(def)[0]! };
+  return { kind: "build", room: def.id, depth: depthsOf(def)[0]! };
 }
 
 /** The member of each family last picked, this session: its tile picks it up again. */
@@ -385,8 +380,8 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
                   def={shownDef}
                   resources={resources}
                   siteNote={siteRefusal(shownDef.id, deposits) ?? missingCost(resources, shownDef.id, liningExtra(shownDef, lining))}
-                  shape={tool?.kind === "build" && tool.room === shownDef.id ? tool.shape : shapesFor(shownDef)[0]!}
-                  extra={liningExtra(shownDef, lining, tool?.kind === "build" && tool.room === shownDef.id ? tool.shape : undefined)}
+                  depth={tool?.kind === "build" && tool.room === shownDef.id ? tool.depth : depthsOf(shownDef)[0]!}
+                  extra={liningExtra(shownDef, lining)}
                 />
               ) : (
                 <DomeCard dome={dome} deposits={deposits} resources={resources} />
@@ -567,8 +562,9 @@ export function ToolBar({ tool, setTool, resources, rotate, highlight, deposits,
   const def = roomDef(tool.room);
   const tile = shownTiles(reveal).find((t) => t.members.some((m) => m.id === def.id));
   const lined = canLineType(def);
-  const shapes = shapesFor(def);
-  const extra = liningExtra(def, lining, tool.shape);
+  const depths = depthsOf(def);
+  const extra = liningExtra(def, lining);
+  const snapping = tool.snap !== false;
   const refusal = siteRefusal(def.id, deposits) ?? missingCost(resources, def.id, extra);
   return (
     <div className="dock-strip tool-bar" role="toolbar" aria-label={def.name} style={catColor(def.category)}>
@@ -595,14 +591,29 @@ export function ToolBar({ tool, setTool, resources, rotate, highlight, deposits,
         </span>
       )}
       {def.size !== "surface" && (
-        <button className="btn sm" onClick={rotate} disabled={shapes.length < 2} title={shapes.length < 2 ? "This room only goes one way round" : "Turn it the other way round (R)"}>
+        <button className="btn sm" onClick={rotate} disabled={depths.length < 2} title={depths.length < 2 ? "This room only goes one way round" : "Turn it the other way round: one ring deep, or two (R)"}>
           <Icon id="rotate" size={13} />
-          {tool.shape[0]}×{tool.shape[1]}
-          {shapes.length > 1 && <kbd>R</kbd>}
+          {areaOf(def)} m²{tool.depth > 1 ? ` · ${tool.depth} deep` : ""}
+          {depths.length > 1 && <kbd>R</kbd>}
+        </button>
+      )}
+      {def.size !== "surface" && !def.stacks && (
+        <button
+          className={`btn sm${snapping ? " on" : ""}`}
+          onClick={() => setTool({ ...tool, snap: !snapping })}
+          aria-pressed={snapping}
+          title={
+            snapping
+              ? `Snapping is on: the room lines up with its neighbours and with room ends on the next rings, within ${Math.round(config.placement.leeway * 100)}% of its size. Click to place it exactly where you point (${SNAP_KEY})`
+              : `Snapping is off: the room goes exactly where you point, at exactly its size. Click to line it up with its neighbours (${SNAP_KEY})`
+          }
+        >
+          Snap {snapping ? "on" : "off"}
+          <kbd>{SNAP_KEY}</kbd>
         </button>
       )}
       {lined && reveal.shown("tool:linings") && (
-        <WallPicker value={lining} onPick={setLining} resources={resources} costOf={(id) => liningExtra(def, id, tool.shape)} per="on its cost, no extra build time" />
+        <WallPicker value={lining} onPick={setLining} resources={resources} costOf={(id) => liningExtra(def, id)} per="on its cost, no extra build time" />
       )}
       <span className="dock-sep" />
       <span className={`tool-cost${refusal ? " short" : ""}`} title={refusal ?? "What it costs, walls and all"}>

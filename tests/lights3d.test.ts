@@ -8,10 +8,11 @@ import { itemDef } from "../src/view/furniture";
 import { furnitureGroup } from "../src/render3d/rooms3d";
 import { floorSpan } from "../src/render3d/cylinder";
 import { LampLights, lampsOf, lightPools } from "../src/render3d/lights3d";
+import { ringAt } from "./spots";
 
 function flat() {
   const layout = createLayout(createHole(10, 3, 3, config.geometry));
-  const r = placeRoom(layout, "flat", { kind: "ring", floor: 1, ring: 2, slot: 3, w: 1, d: 1 });
+  const r = placeRoom(layout, "flat", ringAt(1, 2, 3));
   if (!r.ok) throw new Error(r.reason);
   const room = layout.rooms.find((x) => x.id === r.id)!;
   return { layout, room, fitted: furnish(layout, room) };

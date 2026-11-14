@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
-import { ensureFloors, roomAt, type Location } from "../src/sim/placement";
+import { ensureFloors, roomAt, type Spot } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { openShaftRadius, ringRadii, slotAngles } from "../src/render3d/cylinder";
 import { clear, drinkHere, drinkSpots, flights, footing, footingNear, OPEN, regionAt, stairLift, stairsHere, step, walkable } from "../src/view/walk";
 import { doorways } from "../src/view/doors";
 import { furnish, isFlat } from "../src/view/furnish";
 import { allRock } from "./worlds";
+import { ringAt, cellAt } from "./spots";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
 function site(): SimState {
   const s = createInitialState(config);
@@ -44,7 +45,7 @@ describe("walking in first person", () => {
     const s = site();
     applyCommand(s, { type: "build", room: "tiny_plaza", at: ring(1, 1, 3) });
     applyCommand(s, { type: "build", room: "galley", at: ring(1, 1, 4) });
-    const galley = roomAt(s.layout, { floor: 1, ring: 1, slot: 4 })!;
+    const galley = roomAt(s.layout, cellAt(1, 1, 4))!;
     const r = applyCommand(s, { type: "build", room: "water_tank", at: ring(1, 1, 5) });
     if (r.ok) applyCommand(s, { type: "demolish", roomId: r.roomId! });
     expect(regionAt(s.layout, 1, ...mid(s, 1, 3))).toBe(OPEN);
@@ -56,7 +57,7 @@ describe("walking in first person", () => {
     const s = site();
     const h = s.layout.hole;
     applyCommand(s, { type: "build", room: "galley", at: ring(1, 1, 4) });
-    const room = roomAt(s.layout, { floor: 1, ring: 1, slot: 4 })!;
+    const room = roomAt(s.layout, cellAt(1, 1, 4))!;
     const [door] = doorways(s.layout, room);
     expect(door).toBeDefined();
     // Walk straight out from the gallery at an angle: returns how far out it got.
@@ -80,11 +81,11 @@ describe("walking in first person", () => {
     const s = site();
     const h = s.layout.hole;
     applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 2, 3, 2) });
-    applyCommand(s, { type: "drawCorridors", edges: ["R1.2.3"], finish: "rock" });
+    applyCommand(s, { type: "drawCorridors", edges: ["R1.2.480"], finish: "rock" });
     applyCommand(s, { type: "consoleFinish" });
-    const room = roomAt(s.layout, { floor: 1, ring: 2, slot: 3 })!;
+    const room = roomAt(s.layout, cellAt(1, 2, 3))!;
     const [door] = doorways(s.layout, room);
-    expect(door).toMatchObject({ side: "left", edge: "R1.2.3" });
+    expect(door).toMatchObject({ side: "left", edge: "R1.2.480" });
     // From the corridor's middle, straight across the wall into the room.
     const b = slotAngles(3, h.ringSlots[1]!)[0];
     const n = [-Math.sin(b), Math.cos(b)];
@@ -101,7 +102,7 @@ describe("walking in first person", () => {
   it("bumps into furniture, but walks over rugs", () => {
     const s = site();
     applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 4, 2) });
-    const room = roomAt(s.layout, { floor: 1, ring: 1, slot: 4 })!;
+    const room = roomAt(s.layout, cellAt(1, 1, 4))!;
     const items = furnish(s.layout, room);
     const standing = items.find((f) => !isFlat(f.item))!;
     expect(walkable(s.layout, 1, standing.x, standing.z)).toBe(true);
@@ -113,7 +114,7 @@ describe("walking in first person", () => {
   it("corridors are walkable, through rock or along a room's side", () => {
     const s = site();
     // A spoke through the rock of ring 3, at the start of slot 6.
-    applyCommand(s, { type: "drawCorridors", edges: ["R1.3.6"], finish: "rock" });
+    applyCommand(s, { type: "drawCorridors", edges: ["R1.3.480"], finish: "rock" });
     const h = s.layout.hole;
     const [a] = slotAngles(6, h.ringSlots[2]!);
     const [r0, r1] = ringRadii(h, 3);
@@ -132,7 +133,7 @@ describe("walking in first person", () => {
     expect(footing(s.layout, 2, g, 0.5)).toBeNull();
     expect(footingNear(s.layout, 2, g, 0.5)?.floor).toBe(1);
     // A spoke through the rock of ring 3, far from the gallery spot: that's where you stand.
-    applyCommand(s, { type: "drawCorridors", edges: ["R2.3.6"], finish: "rock" });
+    applyCommand(s, { type: "drawCorridors", edges: ["R2.3.480"], finish: "rock" });
     const spot = footingNear(s.layout, 2, g, 0.5)!;
     expect(spot.floor).toBe(2);
     expect(clear(s.layout, 2, spot.x, spot.z)).toBe(true);
@@ -209,7 +210,7 @@ describe("stairs in first person", () => {
     s.layout.hole.floors = 3;
     ensureFloors(s.layout);
     allRock(s.layout);
-    const at = (floor: number) => ({ kind: "ring" as const, floor, ring: 1, slot: 4, w: 1, d: 1 });
+    const at = (floor: number) => (ringAt(floor, 1, 4));
     applyCommand(s, { type: "build", room: "stairwell", at: at(1) });
     applyCommand(s, { type: "build", room: "stairwell", at: at(2) });
     // Built, the extension too (it waits in the queue otherwise).

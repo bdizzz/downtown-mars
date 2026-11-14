@@ -4,7 +4,7 @@ import { createStage } from "../render2d/stage";
 import { createPlanStage } from "../render2d/plan";
 import type { ViewMode } from "./settings";
 import type { View3d } from "../view/cameras";
-import type { HoverInfo, Graphics, PendingBuild, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
+import type { HoverInfo, Graphics, PendingBuild, Proposal, RoomProposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import type { SimCommand } from "../sim/commands";
 import type { Snapshot } from "../sim/snapshot";
 import type { Spot } from "../view/reachView";
@@ -27,6 +27,7 @@ interface Props {
   /** A snaked corridor chain waiting for confirmation, shown until answered. */
   proposal: Proposal | null;
   onPropose: (p: Proposal) => void;
+  onProposeRoom: (p: RoomProposal | null) => void;
   /** A warning to outline in red (corridors to be filled in, what they'd cut off). */
   warning: Warning | null;
   onConfirmBuild: (b: PendingBuild) => void;
@@ -58,12 +59,12 @@ const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => P
 };
 
 /** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
-export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed, showcase = false, spotlight = null }: Props) {
+export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, onProposeRoom, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed, showcase = false, spotlight = null }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
-  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle });
-  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle };
+  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, onProposeRoom, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle });
+  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, onProposeRoom, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle };
   const lookSpeedRef = useRef(lookSpeed);
   const showcaseRef = useRef(showcase);
   const spotlightRef = useRef(spotlight);
@@ -79,6 +80,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
       onInvalid: (reason) => props.current.onInvalid(reason),
       onError: (message) => props.current.onViewError(message),
       onPropose: (p) => props.current.onPropose(p),
+      onProposeRoom: (p) => props.current.onProposeRoom(p),
       onConfirmBuild: (b) => props.current.onConfirmBuild(b),
       onWalking: (w) => props.current.onWalking(w),
       onMouseLook: (on) => props.current.onMouseLook?.(on),

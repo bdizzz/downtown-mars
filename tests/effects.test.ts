@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { computeEffects, effectAt, effectOnRoom, falloff, previewEffects } from "../src/sim/effects";
 import { createHole } from "../src/sim/geometry";
-import { createLayout, placeRoom, type Layout, type Location } from "../src/sim/placement";
+import { createLayout, placeRoom, type Layout, type Spot } from "../src/sim/placement";
+import { ringAt, cellAt } from "./spots";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
-const cell = (floor: number, r: number, slot: number) => ({ floor, ring: r, slot });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
+const cell = (floor: number, r: number, slot: number) => (cellAt(floor, r, slot));
 
 function layout(floors = 3): Layout {
   return createLayout(createHole(10, floors, 3, config.geometry));
@@ -24,7 +25,7 @@ describe("effect field", () => {
     const l = layout();
     placeRoom(l, "life_support", ring(1, 1, 0, 4)); // slots 0–3
     const f = computeEffects(l);
-    expect(effectAt(f, "noise", cell(1, 1, 2))).toBeCloseTo(-2);
+    expect(effectAt(f, "noise", cell(1, 1, 0))).toBeCloseTo(-2); // the room itself, one piece from slot 0
     expect(effectAt(f, "noise", cell(1, 1, 4))).toBeCloseTo(-4 / 3);
     expect(effectAt(f, "noise", cell(1, 1, 5))).toBeCloseTo(-2 / 3);
     expect(effectAt(f, "noise", cell(1, 1, 6))).toBe(0);
@@ -55,7 +56,7 @@ describe("effect field", () => {
     placeRoom(open, "life_support", ring(1, 1, 0, 4)); // slots 0–3
     const walled = layout();
     placeRoom(walled, "life_support", ring(1, 1, 0, 4));
-    walled.corridors["R1.1.4"] = "rock"; // between slot 3 and slot 4
+    walled.corridors["R1.1.640"] = "rock"; // between slot 3 and slot 4
     const a = computeEffects(open);
     const b = computeEffects(walled);
     expect(effectAt(a, "noise", cell(1, 1, 4))).toBeCloseTo(-4 / 3);
@@ -66,7 +67,7 @@ describe("effect field", () => {
   it("corridors don't block comfort", () => {
     const l = layout();
     placeRoom(l, "flat", ring(1, 1, 0)); // comfort +1 r1 for its neighbours
-    l.corridors["R1.1.1"] = "rock";
+    l.corridors["R1.1.160"] = "rock";
     const f = computeEffects(l);
     expect(effectAt(f, "comfort", cell(1, 1, 1))).toBeCloseTo(1 / 2);
   });
@@ -88,7 +89,7 @@ describe("effect field", () => {
     expect(effectAt(f, "comfort", cell(1, 1, 5))).toBe(0);
   });
 
-  it("averages over a room's cells", () => {
+  it("a wide room feels what reaches its middle: the average over its floor", () => {
     const l = layout();
     placeRoom(l, "life_support", ring(1, 1, 0, 4));
     const dorm = placeRoom(l, "bunk_dorm", ring(1, 1, 4, 2));

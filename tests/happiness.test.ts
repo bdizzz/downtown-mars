@@ -3,16 +3,17 @@ import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
 import { productivity, updateHappiness } from "../src/sim/happiness";
 import { setRoomWindows, shaftBorders, windowComfort } from "../src/sim/windows";
-import { galleryEdges } from "../src/sim/edges";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { ringAt } from "./spots";
+import { tubeAt } from "./spots";
 
 // No Earth drops or digging noise in the numbers.
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
-function withRooms(rooms: [string, Location][]): SimState {
+function withRooms(rooms: [string, Spot][]): SimState {
   const s = createInitialState(config);
   s.drill.active = false;
   s.resources.metal = 500;
@@ -74,7 +75,7 @@ describe("happiness", () => {
     const sun = config.windows.sun.comfort;
     expect(inner!.factors.comfort - outer!.factors.comfort).toBeCloseTo(config.windows.view.tube + sun);
     // Take the tube away from in front of one of its two cells: halfway between, along the wall.
-    delete s.layout.corridors[galleryEdges(s.layout.hole, 1)[home.cells[0]!.slot]!.id];
+    delete s.layout.corridors[tubeAt(s.layout, 1, 1).id];
     updateHappiness(s, config, true);
     [inner, outer] = dorms();
     const half = (config.windows.view.shaft + config.windows.view.tube) / 2 + sun;

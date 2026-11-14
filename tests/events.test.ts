@@ -9,6 +9,7 @@ import { airAmount, airPct } from "../src/sim/air";
 import { isOpen } from "../src/sim/excavation";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { cellAt } from "./spots";
 
 // Milestone 14: events with choices, starting with what the drill strikes.
 
@@ -63,7 +64,7 @@ describe("drill discoveries", () => {
     s.layout.hole.floors = 3;
     rollDiscovery(s, config, 3); // the first roll always strikes; force a lava tube instead
     s.events!.pending = [];
-    const cells = [{ floor: 1, ring: 2, slot: 4 }, { floor: 1, ring: 2, slot: 5 }];
+    const cells = [cellAt(1, 2, 4), cellAt(1, 2, 5)];
     raiseEvent(s, config, "lava_tube", { floor: 1, cells });
     expect(cells.every((c) => !isOpen(s.layout, c))).toBe(true);
     expect(answer(s, "open").ok).toBe(true);

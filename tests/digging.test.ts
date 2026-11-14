@@ -5,8 +5,9 @@ import { rockPerFloor, ticksToDig } from "../src/sim/digging";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { ringAt } from "./spots";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1) => ({ kind: "ring" as const, floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1) => (ringAt(floor, r, slot, w, d));
 const run = (s: ReturnType<typeof createInitialState>, ticks: number) => {
   for (let i = 0; i < ticks; i++) step(s, config);
 };

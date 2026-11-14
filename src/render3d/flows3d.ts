@@ -4,7 +4,7 @@ import type { SimConfig } from "../sim/config";
 import { roomSpec, type RoomStatus } from "../sim/economy";
 import type { Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
-import { floorSpan, ringRadii, slotAngles, TAU } from "./cylinder";
+import { floorSpan, ringRadii, cellAngles, TAU } from "./cylinder";
 
 // Resource flows as pipes: an overlay, switched on from View. Each network
 // (power, water, air, food) has a riser in the shaft; every room that makes
@@ -71,9 +71,9 @@ function roomEnd(layout: Layout, room: RoomInstance, k: number): { at: THREE.Vec
     const r = hole.shaftRadiusM + PIPE.surfaceRing;
     return { at: new THREE.Vector3(r * Math.cos(angle), PIPE.surfaceY + k * PIPE.gap, r * Math.sin(angle)), angle, floor: 0 };
   }
-  const c = [...room.cells].sort((a, b) => a.floor - b.floor || a.ring - b.ring || a.slot - b.slot)[0];
+  const c = [...room.cells].sort((a, b) => a.floor - b.floor || a.ring - b.ring || a.a0 - b.a0)[0];
   if (!c) return null;
-  const [a0, a1] = slotAngles(c.slot, hole.ringSlots[c.ring - 1]!);
+  const [a0, a1] = cellAngles(c);
   const [r0, r1] = ringRadii(hole, c.ring);
   const angle = (a0 + a1) / 2;
   const r = (r0 + r1) / 2;

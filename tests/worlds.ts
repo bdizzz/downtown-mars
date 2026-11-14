@@ -8,6 +8,8 @@ import { createWorld, type World } from "../src/sim/world";
 import { stepWorld } from "../src/sim/worldstep";
 import { setAdults } from "../src/sim/people";
 import { recomputeAccess, type Layout } from "../src/sim/placement";
+import { ringAt } from "./spots";
+import { openCells } from "../src/sim/space";
 
 const site = { lat: -5, lon: 140 };
 
@@ -21,7 +23,7 @@ export function twoHoles(): World {
   w.mapUnlocked = true;
   home.kit = { ...(home.kit ?? {}) };
   // Skip the staging: hand the kit over directly.
-  const r = applyCommand(home, { type: "build", room: "staging_bay", at: { kind: "ring", floor: 1, ring: 1, slot: 1, w: 4, d: 1 } });
+  const r = applyCommand(home, { type: "build", room: "staging_bay", at: ringAt(1, 1, 1, 4) });
   if (!r.ok) throw new Error(r.reason);
   Object.assign(home.kit, { o2: 60, machinery: 6, electronics: 4, metal: 40, brick: 20, rations: 80, water: 160, soil: 20 });
   const f = foundHole(w, config, home.holeId, site);
@@ -57,7 +59,9 @@ export function withStorage(): void {
 
 /** Every cell without a room back to solid rock (no empty space to walk through). */
 export function allRock(layout: Layout): void {
-  layout.open = layout.open?.map((floor, f) => floor.map((ring, ri) => ring.map((_, slot) => (layout.grid[f]?.[ri]?.[slot] ? 1 : 0))));
+  layout.open = layout.open?.map((floor) => floor.map(() => []));
+  for (const r of layout.rooms) if (!r.planned) openCells(layout, [...r.cells, ...(r.pendingCells ?? [])]);
+  layout.version++;
   recomputeAccess(layout);
 }
 
@@ -68,9 +72,9 @@ export function allRock(layout: Layout): void {
  */
 export function clearRingOne(layout: Layout): void {
   for (const r of layout.rooms.filter((x) => x.at.kind === "ring" && x.cells.some((c) => c.floor === 1 && c.ring === 1))) {
-    for (const c of r.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = 0;
     layout.rooms = layout.rooms.filter((x) => x !== r);
   }
   layout.openShaft = true;
+  layout.version++;
   recomputeAccess(layout);
 }

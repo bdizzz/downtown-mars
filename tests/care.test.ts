@@ -5,8 +5,9 @@ import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { ringAt } from "./spots";
 
-const at = (slot: number) => ({ kind: "ring" as const, floor: 1, ring: 1, slot, w: 2, d: 1 });
+const at = (slot: number) => (ringAt(1, 1, slot, 2));
 
 function withKids(children: number, elders = 0): SimState {
   const s = createInitialState(config);

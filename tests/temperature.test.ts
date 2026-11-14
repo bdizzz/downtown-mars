@@ -3,7 +3,7 @@ import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
 import { openCells } from "../src/sim/excavation";
 import { homeParts, updateHappiness } from "../src/sim/happiness";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { roomDef } from "../src/sim/rooms";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
@@ -11,6 +11,7 @@ import { step } from "../src/sim/step";
 import { comfortAt, floorHeats, referenceCells, restBand } from "../src/sim/temperature";
 import { createWorld } from "../src/sim/world";
 import { config as cfg0 } from "../src/sim/config";
+import { ringAt, cellAt } from "./spots";
 
 // #393: each floor has a temperature. It rests where the rock is (by latitude and
 // depth), body heat and waste heat lift it, heaters bring it up to the thermostat
@@ -20,7 +21,7 @@ import { config as cfg0 } from "../src/sim/config";
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
 const F = (c: number) => (c * 9) / 5 + 32;
 const C = (f: number) => ((f - 32) * 5) / 9;
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const day = (s: SimState, days = 1) => {
   for (let i = 0; i < days * config.ticksPerDay; i++) step(s, config);
 };
@@ -32,14 +33,14 @@ function hole(): SimState {
   Object.assign(s.resources, { rock: 900, brick: 300, metal: 300, machinery: 60, electronics: 60, glass: 100 });
   const h = s.layout.hole;
   const cells = [];
-  for (let r = 1; r <= 3; r++) for (let slot = 0; slot < h.ringSlots[r - 1]!; slot++) cells.push({ floor: 1, ring: r, slot });
+  for (let r = 1; r <= 3; r++) for (let slot = 0; slot < h.ringSlots[r - 1]!; slot++) cells.push(cellAt(1, r, slot));
   openCells(s.layout, cells);
   // Power to spare: a heater's draw is the question here, not whether the battery lasts the night.
   s.resources.power = 50;
   return s;
 }
 
-function build(s: SimState, room: string, at: Location): number {
+function build(s: SimState, room: string, at: Spot): number {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   applyCommand(s, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
@@ -104,7 +105,7 @@ describe("heaters", () => {
     const s = hole();
     applyCommand(s, { type: "setThermostat", celsius: 30 });
     build(s, "heater", ring(1, 2, 2));
-    expect(floor1(s).cells).toBe(referenceCells(config));
+    expect(floor1(s).cells).toBeCloseTo(referenceCells(config));
     const start = floor1(s).now;
     powered(s, 0.5);
     expect(floor1(s).now).toBeGreaterThan(start + 3); // well on its way

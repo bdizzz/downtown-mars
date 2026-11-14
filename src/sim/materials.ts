@@ -4,7 +4,7 @@ import type { SimConfig } from "./config";
 import { shortfall } from "./corridors";
 import { isActive } from "./economy";
 import { edgeById, edgeLengthM, isGalleryEdge } from "./edges";
-import type { Layout, Location, RoomInstance } from "./placement";
+import { roomUnits, type Layout, type Location, type RoomInstance, type Spot } from "./placement";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
@@ -80,7 +80,7 @@ export function canLine(room: RoomInstance): boolean {
 }
 
 /** Can a room of this type, going here, have a lining? (canLine, before it's placed.) */
-export function canLineAt(type: string, at: Location): boolean {
+export function canLineAt(type: string, at: Location | Spot): boolean {
   return at.kind === "ring" && !MATERIALS.exempt.includes(type) && !roomDef(type).excavationOnly;
 }
 
@@ -164,11 +164,11 @@ export function liningCost(step: WallStep): Record<string, number> {
 
 /**
  * What building a room straight in a lining adds to its cost (T-038): the
- * lining from bare rock, per cell, as a refit from bare rock charges. No work
+ * lining from bare rock, per 100 m² of floor, as a refit from bare rock charges. No work
  * is added: it goes in with the room. Nothing for bare rock, or for a room
  * that can't be lined.
  */
-export function buildLiningCost(type: string, at: Location, cells: number, step: WallStep | null | undefined): Record<string, number> {
+export function buildLiningCost(type: string, at: Location | Spot, cells: number, step: WallStep | null | undefined): Record<string, number> {
   if (!step || step === MATERIALS.walls[0] || !canLineAt(type, at)) return {};
   return times(liningCost(step), Math.max(1, cells));
 }
@@ -198,7 +198,7 @@ export interface RefitPlan {
 
 /** Refitting a room from its lining to another, per cell times its cells. Null if it's the lining the room has. */
 export function refitPlan(room: RoomInstance, to: WallStep): RefitPlan | null {
-  return refitBetween(liningOf(room), to, Math.max(1, room.cells.length));
+  return refitBetween(liningOf(room), to, roomUnits(room));
 }
 
 /**
@@ -247,7 +247,7 @@ export interface FloorPlan {
 /** Laying a flooring in a room, per cell times its cells. Null if it has that floor already. The walls aren't touched. */
 export function floorPlan(room: RoomInstance, f: FlooringDef): FloorPlan | null {
   if (flooringOf(room)?.id === f.id) return null;
-  const n = Math.max(1, room.cells.length);
+  const n = roomUnits(room);
   return { flooring: f, cost: times(f.cost, n), work: f.work * n };
 }
 

@@ -3,14 +3,15 @@ import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
 import { updateHappiness } from "../src/sim/happiness";
 import { modifiers } from "../src/sim/ordinances";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { setAdults } from "../src/sim/people";
 import { visitDef } from "../src/sim/visits";
+import { ringAt } from "./spots";
 
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const hours = (s: SimState, n: number) => {
   for (let i = 0; i < n * 10; i++) step(s, config);
 };
@@ -21,7 +22,7 @@ function rich(): SimState {
   Object.assign(s.resources, { metal: 500, rock: 500, brick: 500, machinery: 50, electronics: 50 });
   return s;
 }
-const build = (s: SimState, room: string, at: Location) => {
+const build = (s: SimState, room: string, at: Spot) => {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return s.layout.rooms.at(-1)!;

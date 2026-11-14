@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { config } from "../sim/config";
 import { createHole } from "../sim/geometry";
-import { createLayout, placeRoom, type Layout, type RoomInstance } from "../sim/placement";
+import { createLayout, depthsFor, placeRoom, targetArea, type Layout, type RoomInstance } from "../sim/placement";
+import { spanArea } from "../sim/geometry";
+import { touch } from "../sim/space";
 import { roomDef } from "../sim/rooms";
-import { fit, frameOf, layouts, unplace, type Fitted, type Frame, type Placement, type Template, type Wall } from "../view/furnish";
+import { fit, frameOf, layouts, templateKey, unplace, type Fitted, type Frame, type Placement, type Template, type Wall } from "../view/furnish";
 import { furniture, itemDef } from "../view/furniture";
 import { Preview3D } from "./Preview3D";
 import { accentFor } from "./scene";
 
-// The template editor: one room type and shape at a time, previewed in any
+// The template editor: one room type and depth at a time, previewed in any
 // ring (and with corridors along its sides), in a top-down plan you can drag
 // items around in, and in 3D. Save writes data/layouts.json through the dev
 // server.
@@ -17,32 +19,26 @@ const WALLS: Wall[] = ["back", "front", "left", "right", "center"];
 const SNAP = 0.1;
 const snap = (v: number) => Math.round(v / SNAP) * SNAP;
 
-/** The shapes a room of this type can take ("2x1", ...). */
-function shapesOf(type: string): [number, number][] {
-  const size = roomDef(type).size;
-  return ((config.shapes as Record<string, [number, number][]>)[size] ?? [[1, 1]]).map(([w, d]) => [w, d]);
-}
-
 /**
- * A hole with one room of this type and shape in the given ring, on floor 2
- * of three dug floors (so a cargo elevator's stop works, and stairs or an
- * elevator reach floor 3), with corridors along its sides if asked.
+ * A hole with one room of this type in the given ring, `depth` rings deep, on floor 2 of three dug
+ * floors (so a cargo elevator's stop works, and stairs or an elevator reach floor 3), with corridors
+ * along its sides if asked. `area` is a multiple of its target area (1: exactly its target), anywhere
+ * in its leeway; `target` tries another target area altogether, m² (before it's saved to rooms.json).
  */
-export function sampleRoom(type: string, [w, d]: [number, number], ring: number, halls: { left: boolean; right: boolean }): { layout: Layout; room: RoomInstance } | null {
+export function sampleRoom(type: string, depth: number, ring: number, halls: { left: boolean; right: boolean }, area = 1, target?: number): { layout: Layout; room: RoomInstance } | null {
   const layout = createLayout(createHole(10, 3, 6, config.geometry));
-  const r = Math.min(ring, 7 - d);
-  const placed = placeRoom(layout, type, { kind: "ring", floor: 2, ring: r, slot: 0, w, d });
+  const r = Math.min(ring, 7 - depth);
+  const per = spanArea(layout.hole.shaftRadiusM, r, depth, 1, config.geometry);
+  const span = Math.max(1, Math.round(((target ?? targetArea(type)) * area) / per));
+  const placed = placeRoom(layout, type, { kind: "ring", floor: 2, ring: r, start: 0, span, depth, fixed: true });
   if (!placed.ok) return null;
   const room = layout.rooms.find((x) => x.id === placed.id)!;
-  for (const f of new Set(room.cells.map((c) => c.floor))) {
-    for (let k = r; k < r + d; k++) {
-      // Corridors along the room's sides, ring by ring (the outer rings' slots under the room's angle range).
-      const slots = room.cells.filter((c) => c.floor === f && c.ring === k).map((c) => c.slot);
-      const m = layout.hole.ringSlots[k - 1]!;
-      if (halls.left && slots.length) layout.corridors[`R${f}.${k}.${Math.min(...slots)}`] = "rock";
-      if (halls.right && slots.length) layout.corridors[`R${f}.${k}.${(Math.max(...slots) + 1) % m}`] = "rock";
-    }
+  // Corridors along the room's sides, on every floor and ring it covers.
+  for (const c of room.cells) {
+    if (halls.left) layout.corridors[`R${c.floor}.${c.ring}.${c.a0}`] = "rock";
+    if (halls.right) layout.corridors[`R${c.floor}.${c.ring}.${c.a1 % config.geometry.notchesPerTurn}`] = "rock";
   }
+  touch(layout);
   return { layout, room };
 }
 
@@ -51,9 +47,13 @@ type Role = "" | "top" | "bottom";
 
 export function TemplateEditor({ room: type }: { room: string }) {
   const [templates, setTemplates] = useState<Record<string, Template>>(() => structuredClone(layouts.templates));
-  const shapes = shapesOf(type);
-  const [shapeIdx, setShapeIdx] = useState(0);
-  const shape = shapes[Math.min(shapeIdx, shapes.length - 1)]!;
+  const depths = depthsFor(type);
+  const [depthIdx, setDepthIdx] = useState(0);
+  const depth = depths[Math.min(depthIdx, depths.length - 1)]!;
+  // How big the previewed room is, as a share of its target area (anywhere in its leeway), and the target itself.
+  const [area, setArea] = useState(1);
+  const [target, setTarget] = useState(() => targetArea(type));
+  const leeway = config.placement.leeway;
   const [ring, setRing] = useState(1);
   const [halls, setHalls] = useState({ left: false, right: false });
   const [selected, setSelected] = useState<number | null>(null);
@@ -62,17 +62,19 @@ export function TemplateEditor({ room: type }: { room: string }) {
   // Stairs and elevators span floors: each role (top floor, bottom floor) may have its own template.
   const stacks = !!roomDef(type).stacks;
   const [role, setRole] = useState<Role>("");
-  const base = `${type}:${shape[0]}x${shape[1]}`;
+  const base = templateKey(type, depth);
   const key = stacks && role ? `${base}:${role}` : base;
   const template = templates[key] ?? [];
 
   useEffect(() => {
-    setShapeIdx(0);
+    setDepthIdx(0);
+    setArea(1);
+    setTarget(targetArea(type));
     setRole("");
     setSelected(null);
   }, [type]);
 
-  const sample = useMemo(() => sampleRoom(type, shape, ring, halls), [type, shape[0], shape[1], ring, halls.left, halls.right]);
+  const sample = useMemo(() => sampleRoom(type, depth, ring, halls, area, target), [type, depth, ring, halls.left, halls.right, area, target]);
   // The floor to preview: a stack spans floors 2 (top) and 3 (bottom); "any floor" shows one without its own template.
   const floor = !stacks ? undefined : role === "top" ? 2 : role === "bottom" ? 3 : templates[`${base}:bottom`] ? 2 : 3;
   const frame = sample ? frameOf(sample.layout, sample.room, floor) : null;
@@ -99,6 +101,13 @@ export function TemplateEditor({ room: type }: { room: string }) {
     update(template.filter((_, j) => j !== i));
     setSelected(null);
   };
+  /** Set this room type's target area: written to data/rooms.json (cleared when it's the size's own). */
+  const saveArea = async () => {
+    const own = config.sizes[roomDef(type).size as "S"];
+    const res = await fetch("/__dev/room-area", { method: "POST", body: JSON.stringify({ room: type, area: target === own ? null : target }) });
+    setStatus(res.ok ? `Target area ${target} m² saved to data/rooms.json` : `Not saved: ${await res.text()}`);
+  };
+
   const save = async () => {
     setStatus("Saving…");
     const res = await fetch("/__dev/layouts", { method: "POST", body: JSON.stringify(templates) });
@@ -116,11 +125,30 @@ export function TemplateEditor({ room: type }: { room: string }) {
           Template <code>{key}</code>
         </h2>
         <div className="dev-row">
-          {shapes.map((s, i) => (
-            <button key={i} className={i === shapeIdx ? "on" : ""} onClick={() => setShapeIdx(i)}>
-              {s[0]}×{s[1]}
+          {depths.map((d, i) => (
+            <button key={i} className={i === depthIdx ? "on" : ""} onClick={() => setDepthIdx(i)} title="How many rings deep the room is">
+              {d === 1 ? "1 ring deep" : `${d} rings deep`}
             </button>
           ))}
+        </div>
+        <div className="dev-row" title={`A room may be built anywhere within ${Math.round(leeway * 100)}% of its target area: check the template at both ends`}>
+          Area{" "}
+          <input type="range" min={1 - leeway} max={1 + leeway} step={0.01} value={area} onChange={(e) => setArea(Number(e.target.value))} />
+          <span className="k">
+            {Math.round(target * area)} m² ({area > 1 ? "+" : ""}
+            {Math.round((area - 1) * 100)}%)
+          </span>
+          <button onClick={() => setArea(1)} disabled={area === 1}>
+            Target
+          </button>
+        </div>
+        <div className="dev-row" title="This room type's target floor area. Its size's area unless set here; saved to data/rooms.json as `area`.">
+          Target{" "}
+          <input type="number" min={20} max={2000} step={5} value={target} style={{ width: "5em" }} onChange={(e) => setTarget(Math.max(20, Number(e.target.value) || 0))} />
+          <span className="k">m² (size {roomDef(type).size}: {config.sizes[roomDef(type).size as "S"] ?? "?"})</span>
+          <button className={target !== targetArea(type) ? "on" : ""} onClick={saveArea} disabled={target === targetArea(type)}>
+            Save area
+          </button>
         </div>
         {stacks && (
           <div className="dev-row">
@@ -138,7 +166,7 @@ export function TemplateEditor({ room: type }: { room: string }) {
         <div className="dev-row">
           Ring{" "}
           {[1, 2, 3, 4, 5, 6].map((r) => (
-            <button key={r} className={r === ring ? "on" : ""} onClick={() => setRing(r)} disabled={r + shape[1] - 1 > 6}>
+            <button key={r} className={r === ring ? "on" : ""} onClick={() => setRing(r)} disabled={r + depth - 1 > 6}>
               {r}
             </button>
           ))}

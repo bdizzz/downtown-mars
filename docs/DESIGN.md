@@ -36,6 +36,8 @@ This doc is the design target; the game builds toward it. Milestones 1–12 are 
 Every hole starts as a small shaft; rooms are carved into its wall, then floors stack downward and rooms expand outward from the cylinder.
 
 - **Coordinates:** every room sits at (floor, slot around the ring, distance outward). Each floor is a loop with no edges, so neighbors exist along the ring, above/below, and radially.
+
+**As built (F-004, PLAN-M17):** there are no slots. A room is an angle range in notches (1,440 a turn) on its ring, sized by a target area (S 100, M 200, L 400, H 800 m²), so the same room is the same size on every ring. Space is kept as angle intervals and cut into pieces for effects, air and walking; corridors are whole edge pieces cut wherever something meets them.
 - **Digging cost rises with depth.** At some point starting a new hole beats digging deeper.
 - **Depth is double-edged:** deeper floors are costlier but better shielded from radiation and warmer, making them prime housing. Shallow floors suit noisy industry.
   **As built (#393):** each floor has a temperature. Deeper floors rest only a little warmer (0.15 °C a floor, never above 50 °F); what really warms a floor is heaters, people and industry. See "Decided for temperature" in `DECISIONS.md`.
@@ -81,6 +83,8 @@ Every spoke costs a ring 1 slot, the prime shaft-view real estate, so players wa
 ### Room shapes
 
 Large rooms can be laid out wide (along the ring), deep (across rings) or tall (up floors). Most choose their shape; a few have fixed minimums.
+
+**As built:** an L room is one ring deep or two, the same area either way (R turns it). The wedge bonus below isn't built: a room's output doesn't depend on its exact area.
 
 - **Flexible:** most L and H rooms let the player pick an orientation within their slot count, e.g. an 8-slot hive block as 4 wide × 2 rings or 4 wide × 2 floors.
 - **Naturally deep:** industrial complexes, deep reservoirs and distribution hubs suit spanning rings. Placing them in outer rings keeps their noise far from the shaft.

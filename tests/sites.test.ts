@@ -1,4 +1,4 @@
-import { shaftSlots } from "../src/sim/excavation";
+import { shaftUnits } from "../src/sim/excavation";
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { depositsAt } from "../src/sim/map";
@@ -36,7 +36,7 @@ describe("regional digging", () => {
     const got = (id: string) => (hole.resources[id] ?? 0) - (before[id] ?? 0);
     const mineral = hole.deposits.includes("ore") ? "ore" : "silica";
     // The drill digs the shaft only: its area in slots × the yield per slot, for one floor.
-    expect(got(mineral)).toBeCloseTo(shaftSlots(hole.layout, config) * config.digging.depositYieldsPerSlot[mineral]![mineral]!, 1);
+    expect(got(mineral)).toBeCloseTo(shaftUnits(hole.layout) * config.digging.depositYieldsPer100m2[mineral]![mineral]!, 1);
     expect(hole.ledger.days.concat([hole.ledger.current]).some((d) => (d.water?.in.Digging ?? 0) > 0)).toBe(true);
   });
 });

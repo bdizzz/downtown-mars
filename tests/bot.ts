@@ -1,12 +1,13 @@
 import { QUALITIES, variety } from "../src/sim/food";
 import { applyCommand, type SimCommand } from "../src/sim/commands";
 import { config, type LandingKitName } from "../src/sim/config";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { LABELS } from "../src/sim/ledger";
 import { makeSnapshot } from "../src/sim/snapshot";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { ensureStairs, quarry, tendStorage, tendUpkeep, tendWindows, tendLinings, tendEvents } from "./adaptive";
+import { ringAt } from "./spots";
 
 // A scripted player for the first month, following DESIGN.md "First 30
 // minutes": the critical set on day 1, then tier 2 as drops and digging pay
@@ -15,10 +16,12 @@ import { ensureStairs, quarry, tendStorage, tendUpkeep, tendWindows, tendLinings
 // strictly in order, waiting until the next item fits and is affordable, and
 // answers office visits sensibly. Used by the playthrough test and dev tools.
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
-const surface = (slot: number): Location => ({ kind: "surface", slot });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
+const surface = (slot: number): Spot => ({ kind: "surface", slot });
 
-type Plan = { room: string; at: Location; crop?: string; holds?: string };
+/** Where a plan item goes: a spot, or (placing by area) a function that finds one in the hole as it stands, null while there's none. */
+export type PlanAt = Spot | ((s: SimState, room: string) => Spot | null);
+export type Plan = { room: string; at: PlanAt; crop?: string; holds?: string };
 
 export const PLAN: Plan[] = [
   // Tier 1: the critical set on floor 1.
@@ -63,7 +66,7 @@ export const PLAN: Plan[] = [
 export function planFor(kit: LandingKitName, plan: Plan[] = PLAN): Plan[] {
   const brought = config.landingKits[kit].ring.map((k) => `${k.room}/${k.holds ?? ""}`);
   return plan.filter((p) => {
-    const i = p.at.kind === "ring" && p.at.floor === 1 ? brought.indexOf(`${p.room}/${p.holds ?? ""}`) : -1;
+    const i = typeof p.at !== "function" && p.at.kind === "ring" && p.at.floor === 1 ? brought.indexOf(`${p.room}/${p.holds ?? ""}`) : -1;
     if (i >= 0) brought.splice(i, 1);
     return i < 0;
   });
@@ -115,10 +118,10 @@ export interface Day {
   farms: string;
 }
 
-/** Plays `days` from a landing kit (the bare one unless told otherwise), building the plan less what the kit brings. */
-export function run(days: number, kit: LandingKitName = "bare"): { state: SimState; log: Day[]; builtAt: Record<number, number>; plan: Plan[] } {
-  const s = createInitialState(config, undefined, kit);
-  const PLAN = planFor(kit);
+/** Plays `days` from a landing kit (the bare one unless told otherwise), building the plan less what the kit brings (or the plan given, from `start` if given: a world's first hole). */
+export function run(days: number, kit: LandingKitName = "bare", plan?: Plan[], start?: SimState): { state: SimState; log: Day[]; builtAt: Record<number, number>; plan: Plan[] } {
+  const s = start ?? createInitialState(config, undefined, kit);
+  const PLAN = plan ?? planFor(kit);
   const log: Day[] = [];
   const builtAt: Record<number, number> = {};
   let next = 0;
@@ -130,7 +133,9 @@ export function run(days: number, kit: LandingKitName = "bare"): { state: SimSta
     if (t % 10 === 0) {
       while (next < PLAN.length) {
         const p = PLAN[next]!;
-        const r = cmd({ type: "build", room: p.room, at: p.at });
+        const at = typeof p.at === "function" ? p.at(s, p.room) : p.at;
+        if (!at) break;
+        const r = cmd({ type: "build", room: p.room, at });
         if (!r.ok) {
           // Short of rock: dig some out while waiting.
           if (/more rock/.test(r.reason)) quarry(s);

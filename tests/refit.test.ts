@@ -4,16 +4,17 @@ import { applyCommand } from "../src/sim/commands";
 import { finishAll, queueView, stepConstruction } from "../src/sim/construction";
 import { homeFactors } from "../src/sim/happiness";
 import { liningOf, MATERIALS, refitPlan, refitting, wallStep } from "../src/sim/materials";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { withConstructionTime } from "./worlds";
+import { ringAt } from "./spots";
 
 // Refits (T-033, docs/PLAN-M15.md "Upgrading"): a room's walls changed to any
 // other lining through the construction queue, paid on commit, at half output
 // while the crews work, and salvaging part of the old lining when it comes out.
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
 function hole(): SimState {
   const s = createInitialState(config);
@@ -21,7 +22,7 @@ function hole(): SimState {
   Object.assign(s.resources, { rock: 2000, metal: 2000, brick: 2000, glass: 100, machinery: 500, electronics: 500, water: 2000, rations: 2000 });
   return s;
 }
-function build(s: SimState, type: string, at: Location): number {
+function build(s: SimState, type: string, at: Spot): number {
   const r = applyCommand(s, { type: "build", room: type, at });
   if (!r.ok) throw new Error(`${type}: ${r.reason}`);
   finishAll(s, config);

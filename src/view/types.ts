@@ -1,7 +1,7 @@
 import type { View3d } from "./cameras";
 import type { Graphics } from "./graphics";
 import type { SimCommand } from "../sim/commands";
-import type { CheckResult, Location, RoomInstance } from "../sim/placement";
+import type { CheckResult, Location, RoomInstance, Spot as PlaceSpot } from "../sim/placement";
 import type { Snapshot } from "../sim/snapshot";
 import type { Spot } from "./reachView";
 
@@ -9,16 +9,25 @@ import type { Spot } from "./reachView";
 // Stage, and turn pointer input into the same Picks and commands, so the
 // React UI never needs to know which one is showing.
 
-/** What's under the pointer. angle is in degrees around the shaft. */
+/**
+ * What's under the pointer. angle is in degrees around the shaft. In the rings ("slot") it's the piece
+ * under the pointer (space.ts): a room's part of the ring, a stretch of empty space, or rock, from a0 to
+ * a1 in notches.
+ */
 export type Pick =
   | { kind: "surface"; angle: number }
   | { kind: "gallery"; floor: number; angle: number; digging: boolean }
-  | { kind: "slot"; floor: number; ring: number; slot: number; locked: boolean; digging: boolean; angle: number }
+  | { kind: "slot"; floor: number; ring: number; a0: number; a1: number; locked: boolean; digging: boolean; angle: number }
   | { kind: "rock" };
 
 export type Tool =
   /** `lining`: build it straight in that lining ("brick_fine", see materials.ts liningId); absent is bare rock. */
-  | { kind: "build"; room: string; shape: [number, number]; lining?: string }
+  /**
+   * `depth`: how many rings deep (R turns an L room the other way). `snap`: off (false) puts the room at the
+   * pointer at exactly its target area (PLAN-M17). `proposal`: a room put down but not yet committed, its side
+   * walls on handles to drag; a second click on it (or Enter) builds it, Escape drops it.
+   */
+  | { kind: "build"; room: string; depth: number; lining?: string; snap?: boolean; proposal?: RoomProposal }
   | { kind: "demolish" }
   /**
    * Draw corridors along borders, in a finish; with erase, remove them. With bulkhead, fit (or take out)
@@ -27,6 +36,9 @@ export type Tool =
    */
   | { kind: "corridor"; finish: string; erase: boolean; bulkhead?: boolean; windows?: boolean; refit?: string }
   | null;
+
+/** A ring room put down to be adjusted before it's built: where it would go. */
+export type RoomProposal = Extract<Location, { kind: "ring" }>;
 
 /** The border under the pointer, with the corridor tool. */
 export interface EdgeHover {
@@ -52,6 +64,11 @@ export interface HoverInfo {
   pick: Pick;
   room?: RoomInstance;
   check?: CheckResult;
+  /** With a build tool: where the room would go (the proposal, if one is down), and what it snapped to (angles to tick, in notches). */
+  at?: PlaceSpot;
+  ticks?: number[];
+  /** The pointer is on one of the proposal's side walls: it can be dragged. */
+  handle?: "start" | "end";
   edge?: EdgeHover;
 }
 
@@ -65,7 +82,7 @@ export interface Proposal {
 /** A room waiting on the player's say-so because it would fill in corridors. */
 export interface PendingBuild {
   room: string;
-  at: Location;
+  at: PlaceSpot;
   destroys: string[];
   strands: { rooms: number[]; corridors: string[] };
   /** The lining it's to be built in, as the build command takes it. */
@@ -84,6 +101,8 @@ export interface StageOptions {
   onConfirmBuild?: (b: PendingBuild) => void;
   /** A corridor chain was snaked out and the button released: ask the player to confirm it. */
   onPropose?: (p: Proposal) => void;
+  /** A ring room was put down (or its handles dragged, or it was dropped: null): keep it on the build tool until it's committed. */
+  onProposeRoom?: (p: RoomProposal | null) => void;
   onHover?: (info: HoverInfo | null) => void;
   /** quiet: a failure isn't worth telling the player about (e.g. painting over existing rooms). */
   onCommand?: (cmd: SimCommand, quiet?: boolean) => void;

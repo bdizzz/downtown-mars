@@ -73,7 +73,7 @@ export function directory(s: Snapshot, filter: DirFilter = NO_FILTER): DirFloor[
     list.push({ room, row: { id: room.id, name, category: def.category, size: SIZE_NAMES[def.size] ?? def.size, status, why } });
     floors.set(f, list);
   }
-  const key = (r: RoomInstance) => (r.at.kind === "ring" ? r.at.ring * 1000 + r.at.slot : r.at.slot);
+  const key = (r: RoomInstance) => (r.at.kind === "ring" ? r.at.ring * 10000 + r.at.start : r.at.slot);
   return [...floors.entries()]
     .sort(([a], [b]) => (a ?? 0) - (b ?? 0))
     .map(([floor, list]) => ({ floor, rooms: list.sort((a, b) => key(a.room) - key(b.room) || a.room.id - b.room.id).map((x) => x.row) }));

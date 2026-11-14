@@ -120,7 +120,7 @@ add(constructionRaw, "corridorHoursPer10m", "buildTime");
 add(cfg.dome, "workHours", "buildTime");
 
 add(cfg.digging, "ticksForFirstFloor", "digTime", "whole");
-add(constructionRaw, "excavationHoursPerSlot", "digTime");
+add(constructionRaw, "excavationHoursPer100m2", "digTime");
 
 add(conditionRaw, "decayPerDay", "decay");
 

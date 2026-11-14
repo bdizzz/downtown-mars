@@ -1,6 +1,6 @@
 import type { Hole } from "../sim/geometry";
 import type { Cell } from "../sim/placement";
-import { floorSpan, ringRadii, slotAngles, TAU } from "../render3d/cylinder";
+import { floorSpan, ringRadii, cellAngles, TAU } from "../render3d/cylinder";
 
 // A room's label, centred on its floor and fitted inside its walls (T-077).
 // Labels face the camera, which turns and tilts but never rolls: a label's
@@ -47,17 +47,15 @@ export function labelSpot(hole: Hole, cells: Cell[], wallInM: number): LabelSpot
   const here = cells.filter((c) => c.floor === floor);
   const rings = [...new Set(here.map((c) => c.ring))].sort((a, b) => a - b);
   // Angles relative to the first cell's middle, so a room across the seam doesn't wrap.
-  const n0 = hole.ringSlots[here[0]!.ring - 1]!;
-  const [f0, f1] = slotAngles(here[0]!.slot, n0);
+  const [f0, f1] = cellAngles(here[0]!);
   const ref = (f0 + f1) / 2;
   const rel = (a: number) => ((((a - ref) % TAU) + TAU + Math.PI) % TAU) - Math.PI;
   const span = (ring: number): [number, number] => {
-    const n = hole.ringSlots[ring - 1]!;
     let lo = Infinity;
     let hi = -Infinity;
     for (const c of here) {
       if (c.ring !== ring) continue;
-      const [s0, s1] = slotAngles(c.slot, n);
+      const [s0, s1] = cellAngles(c);
       const mid = rel((s0 + s1) / 2);
       lo = Math.min(lo, mid - (s1 - s0) / 2);
       hi = Math.max(hi, mid + (s1 - s0) / 2);

@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
-import { checkPlacement, ensureFloors, type Location } from "../src/sim/placement";
+import { checkPlacement, ensureFloors, type Spot } from "../src/sim/placement";
 import { floorLinked } from "../src/sim/corridors";
 import { galleryEdges } from "../src/sim/edges";
 import { checkBuild } from "../src/sim/costs";
 import { holeGates, setAdults, unlock } from "../src/sim/people";
 import { step } from "../src/sim/step";
 import { createInitialState, type SimState } from "../src/sim/state";
+import { ringAt } from "./spots";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 
 /** A hole with three dug floors, and the means to build. */
 function deep(): SimState {
@@ -20,7 +21,7 @@ function deep(): SimState {
   Object.assign(s.resources, { rock: 400, brick: 200, metal: 200, machinery: 50, electronics: 50 });
   return s;
 }
-const build = (s: SimState, room: string, at: Location) => {
+const build = (s: SimState, room: string, at: Spot) => {
   const r = applyCommand(s, { type: "build", room, at });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return s.layout.rooms.find((x) => x.id === r.roomId)!;
@@ -57,7 +58,7 @@ describe("the entrance, and stairs down", () => {
     expect(floorLinked(s.layout, 3)).toBe(true);
     expect(g3.connected).toBe(false);
     // Gallery tubes along the shaft wall from the stairs to the room.
-    const tubes = galleryEdges(s.layout.hole, 3).filter((e) => e.a0 >= 3 / 9 - 1e-9 && e.a1 <= 6 / 9 + 1e-9).map((e) => e.id);
+    const tubes = galleryEdges(s.layout, 3).filter((e) => e.a0 >= 3 / 9 - 1e-9 && e.a1 <= 6 / 9 + 1e-9).map((e) => e.id);
     expect(applyCommand(s, { type: "drawCorridors", edges: tubes, finish: "rock" }).ok).toBe(true);
     applyCommand(s, { type: "consoleFinish" });
     expect(s.layout.rooms.find((r) => r.id === g3.id)!.connected).toBe(true);
@@ -75,7 +76,7 @@ describe("the entrance, and stairs down", () => {
     const s = deep();
     const g3 = build(s, "galley", ring(3, 1, 3));
     // As migrated: an old save's floors have their galleries, and the shaft links them.
-    for (const e of galleryEdges(s.layout.hole, 3)) s.layout.corridors[e.id] = "gallery";
+    for (const e of galleryEdges(s.layout, 3)) s.layout.corridors[e.id] = "gallery";
     s.layout.openShaft = true;
     applyCommand(s, { type: "setDrill", active: false });
     applyCommand(s, { type: "build", room: "water_tank", at: ring(1, 1, 6) }); // anything that recomputes access

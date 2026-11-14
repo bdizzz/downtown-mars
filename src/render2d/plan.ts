@@ -6,10 +6,11 @@ import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js
 import { previewEffects, type EffectField } from "../sim/effects";
 import type { Happiness } from "../sim/happiness";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
+import { covers, floorPieces } from "../sim/space";
 import { roomDef } from "../sim/rooms";
 import type { DrillView } from "../sim/snapshot";
-import { floorSpan, pickAt, ringRadii } from "../render3d/cylinder";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
+import { floorSpan, notchRad, pickAt, ringRadii } from "../render3d/cylinder";
+import { clickOrFill, clickWith, DoubleClick, dragProposal, edgeHoverFor, placingMarks, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
@@ -17,7 +18,7 @@ import { drawGlyph, drawPlus } from "./art";
 import { constructionStripes, corridorStrip } from "./corridorArt";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import { HEAT } from "./palette";
-import { BAND, C, FIELD_MAX, PX, RING_D, TAU, cellSector, drawBase, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, type ProgressJob } from "./planDraw";
+import { BAND, C, FIELD_MAX, PX, RING_D, TAU, cellSector, drawBase, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, xy, type ProgressJob } from "./planDraw";
 
 // The plan view: one floor seen from above, drawn flat. The shaft in the
 // middle, the gallery ledge around it, then each ring as a band of slots.
@@ -97,13 +98,11 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
     const grid = previewEffects(layout, type, cells)[main.type]?.[floor - 1];
     if (!grid) return;
-    const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
-    grid.forEach((slots, ri) =>
-      slots.forEach((v, slot) => {
-        if (Math.abs(v) < 0.05 || own.has(`${floor}:${ri + 1}:${slot}`)) return;
-        overlayCtx.poly(cellSector(layout!.hole, { ring: ri + 1, slot }, 0.15)).fill({ color: v < 0 ? heat.bad : heat.good, alpha: Math.min(1, Math.abs(v) / FIELD_MAX) * 0.6 });
-      }),
-    );
+    for (const piece of floorPieces(layout, floor)) {
+      const v = grid[piece.ring - 1]?.[piece.a0] ?? 0;
+      if (Math.abs(v) < 0.05 || covers(cells, floor, piece.ring, (piece.a0 + piece.a1) / 2)) continue;
+      overlayCtx.poly(cellSector(layout.hole, piece, 0.15)).fill({ color: v < 0 ? heat.bad : heat.good, alpha: Math.min(1, Math.abs(v) / FIELD_MAX) * 0.6 });
+    }
   }
 
   function markRoom(room: RoomInstance, color: number): void {
@@ -160,6 +159,14 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       if (info.check.ok && cells.length) drawHalo(tool.room, cells);
       for (const c of cells) overlayCtx.poly(cellSector(h, c, 0.15)).fill({ color, alpha: 0.35 });
       if (cells.length) outlineCells(overlayCtx, h, cells, color, 3);
+      // What it snapped to (a tick on each line), and a proposal's side walls: handles to drag.
+      const marks = placingMarks(layout, tool, info);
+      for (const t of marks.ticks) {
+        if (t.floor !== floor) continue;
+        const a = notchRad(t.notch);
+        overlayCtx.moveTo(...xy(ringRadii(h, t.ring0)[0], a)).lineTo(...xy(ringRadii(h, t.ring1)[1], a)).stroke({ color: C.hover, width: 2, alpha: 0.9 });
+      }
+      for (const id of marks.handles) ghostEdge(id, info.handle ? C.hover : color, null, 0.9);
       if (info.check.ok && info.check.merges && cells.length) {
         const centre = roomCentre(h, cells);
         drawPlus(overlayCtx, centre.x, centre.y, Math.min(24, centre.size * 0.6), color);
@@ -245,6 +252,9 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   const canvas = app.canvas;
   let pointer: { clientX: number; clientY: number } | null = null;
   let drag: { x: number; y: number; moved: number } | null = null;
+  /** A proposed room's side wall being dragged (PLAN-M17). */
+  let handle: "start" | "end" | null = null;
+  const doubles = new DoubleClick();
 
   function screenToPlan(e: { clientX: number; clientY: number }): [number, number] {
     const r = canvas.getBoundingClientRect();
@@ -261,7 +271,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     const [px, py] = screenToPlan(pointer);
     // Mid-height of this floor, in the same metres as the 3D view.
     const [y0, y1] = floorSpan(floor);
-    return pickAt(layout.hole, px / PX, (y0 + y1) / 2, py / PX);
+    return pickAt(layout, px / PX, (y0 + y1) / 2, py / PX);
   }
 
   /** Shift erases with the corridor tool. */
@@ -277,7 +287,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
 
   function edgeHere(): Edge | null {
     const p = pointHere();
-    return layout && p ? nearestEdge(layout.hole, floor, p.rings, p.turn, RING_D) : null;
+    return layout && p ? nearestEdge(layout, floor, p.rings, p.turn, RING_D) : null;
   }
 
   function hoverInfo(): HoverInfo | null {
@@ -388,6 +398,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       return;
     }
     drag = { x: e.clientX, y: e.clientY, moved: 0 };
+    // On a proposed room's side wall: the drag moves that wall.
+    handle = (tool?.kind === "build" && tool.proposal && hoverInfo()?.handle) || null;
     longPress.start(e);
   };
   const onPointerMove = (e: PointerEvent) => {
@@ -403,6 +415,13 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     shift = e.shiftKey;
     if (snaking) {
       snake();
+      return;
+    }
+    if (drag && handle && layout && tool?.kind === "build" && tool.proposal) {
+      drag.moved += Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y);
+      const next = dragProposal(layout, tool, handle, pickHere());
+      if (next && (next.start !== tool.proposal.start || next.span !== tool.proposal.span)) opts.onProposeRoom?.(next);
+      refreshHover();
       return;
     }
     if (drag) {
@@ -425,12 +444,13 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     }
     pointer = e;
     const finger = isTouch(e);
-    if (drag && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && layout && !longPress.fired) {
+    if (!handle && drag && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && layout && !longPress.fired) {
       const info = hoverInfo();
       if (finger) refreshHover();
       // A finger can't hover first: with a tool, the first tap shows where it lands.
-      if (info && (!finger || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickWith(layout, tool, info, opts);
+      if (info && (!finger || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickOrFill(layout, resources, tool, info, opts, gates, doubles.click(e.clientX, e.clientY));
     }
+    handle = null;
     drag = null;
     if (snaking) endSnake();
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);

@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config, type SimConfig } from "../src/sim/config";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { setAdults } from "../src/sim/people";
+import { ringAt } from "./spots";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const noDelays: SimConfig = { ...config, earth: { ...config.earth, delayChance: 0 } };
 const ticks = (s: SimState, n: number, cfg = noDelays) => {
   for (let i = 0; i < n; i++) step(s, cfg);

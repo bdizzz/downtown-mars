@@ -5,6 +5,7 @@ import { holeGates, setAdults, stepUnlocks } from "../src/sim/people";
 import { roomDef } from "../src/sim/rooms";
 import { createInitialState } from "../src/sim/state";
 import { allRock } from "./worlds";
+import { ringAt } from "./spots";
 
 const SLOTS = { S: 1, M: 2 } as const;
 const perSlot = (id: string) => roomDef(id).houses! / SLOTS[roomDef(id).size as "S" | "M"];
@@ -30,7 +31,7 @@ describe("apartments", () => {
     s.drill.active = false;
     allRock(s.layout);
     Object.assign(s.resources, { rock: 500, brick: 500, metal: 500, electronics: 500 });
-    const at = { kind: "ring" as const, floor: 1, ring: 1, slot: 3, w: 1, d: 1 };
+    const at = ringAt(1, 1, 3);
     const refused = applyCommand(s, { type: "build", room: "studio", at });
     expect(refused.ok).toBe(false);
     expect(!refused.ok && refused.reason).toMatch(/50 colonists/);
@@ -40,6 +41,6 @@ describe("apartments", () => {
     expect(holeGates(s)).toContain("basicHomes");
     expect(holeGates(s)).not.toContain("standardHomes");
     expect(applyCommand(s, { type: "build", room: "studio", at }).ok).toBe(true);
-    expect(applyCommand(s, { type: "build", room: "suite", at: { ...at, slot: 5 } }).ok).toBe(false);
+    expect(applyCommand(s, { type: "build", room: "suite", at: ringAt(1, 1, 5) }).ok).toBe(false);
   });
 });

@@ -6,8 +6,9 @@ import { recomputeAccess, shortfall } from "./corridors";
 import { edgeById, edgeLengthM } from "./edges";
 import { isActive } from "./economy";
 import { postMessage } from "./messages";
-import type { Cell, Layout, RoomInstance } from "./placement";
+import { areaScale, type Cell, type Layout, type RoomInstance } from "./placement";
 import { openCells, rockCells, yieldRock } from "./excavation";
+import { areaOf, circleCuts } from "./space";
 import { record } from "./ledger";
 import { flooringDef, floorWords, refitVerb, refitWords, wallStep, type Finish, type FloorPlan, type Material, type RefitPlan } from "./materials";
 import { resourceDef } from "./resources";
@@ -30,7 +31,7 @@ export const construction = raw as unknown as {
   hoursBySize: Record<string, number>;
   corridorHoursPer10m: number;
   /** Work-hours to dig out one slot of solid rock, before building. */
-  excavationHoursPerSlot: number;
+  excavationHoursPer100m2: number;
 };
 
 export interface Job {
@@ -66,8 +67,9 @@ export function createConstruction(): ConstructionState {
 }
 
 /** Work-hours to build a room. */
-export function roomWork(type: string): number {
+export function roomWork(type: string, scale = 1): number {
   const def = roomDef(type);
+  if (scale !== 1) return roomWork(type) * scale;
   return def.buildHours ?? construction.hoursBySize[def.size] ?? construction.hoursBySize.S!;
 }
 
@@ -99,23 +101,45 @@ function add(state: SimState, job: Omit<Job, "id" | "done">): Job | null {
   return full;
 }
 
+/** Work-hours to dig these cells out: by floor area. */
+function digHours(layout: Layout, cells: Cell[]): number {
+  return (areaOf(layout.hole, cells) / 100) * construction.excavationHoursPer100m2;
+}
+
+/**
+ * Rock to dig, in the order it's dug: each stretch cut into parts of about 100 m², so a big room opens up
+ * a part at a time as the work goes (and what's dug stays dug if it's cancelled partway).
+ */
+function digOrder(layout: Layout, rock: Cell[]): Cell[] {
+  const out: Cell[] = [];
+  for (const c of rock) {
+    const n = Math.max(1, Math.round(areaOf(layout.hole, [c]) / 100));
+    for (let i = 0; i < n; i++) {
+      const a0 = c.a0 + Math.round(((c.a1 - c.a0) * i) / n);
+      const a1 = c.a0 + Math.round(((c.a1 - c.a0) * (i + 1)) / n);
+      if (a1 > a0) out.push({ floor: c.floor, ring: c.ring, a0, a1 });
+    }
+  }
+  return out;
+}
+
 /** The excavation part of a job for these cells: the rock ones, and their hours. */
 function digFor(state: SimState, cells: Cell[]): { dig?: number; digCells?: Cell[] } {
-  const rock = rockCells(state.layout, cells);
-  return rock.length ? { dig: rock.length * construction.excavationHoursPerSlot, digCells: rock } : {};
+  const rock = digOrder(state.layout, rockCells(state.layout, cells));
+  return rock.length ? { dig: digHours(state.layout, rock), digCells: rock } : {};
 }
 
 /** Dig these cells out at once, with their rock (sandbox, and blueprints when their floor is dug). */
 export function excavateNow(state: SimState, cells: Cell[], cfg: SimConfig): void {
   const rock = rockCells(state.layout, cells);
   openCells(state.layout, rock);
-  yieldRock(state, cfg, rock.length);
+  yieldRock(state, cfg, areaOf(state.layout.hole, rock) / 100);
 }
 
 /** A room just committed: excavated if need be, then under construction until its job is done. */
 export function queueRoom(state: SimState, room: RoomInstance, cfg: SimConfig): void {
-  const dig = room.planned ? { dig: room.cells.length * construction.excavationHoursPerSlot, digCells: room.cells } : digFor(state, room.cells);
-  const job = add(state, { kind: "room", roomId: room.id, work: (dig.dig ?? 0) + roomWork(room.type), ...dig });
+  const dig = room.planned ? { dig: digHours(state.layout, room.cells), digCells: digOrder(state.layout, room.cells) } : digFor(state, room.cells);
+  const job = add(state, { kind: "room", roomId: room.id, work: (dig.dig ?? 0) + roomWork(room.type, areaScale(state.layout.hole, room.type, room.at)), ...dig });
   if (job) room.building = true;
   else if (!room.planned) finishInstantly(state, room, cfg);
 }
@@ -139,10 +163,36 @@ export function queueExtension(state: SimState, room: RoomInstance, cells: Cell[
     excavateNow(state, cells, cfg);
     return;
   }
-  const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+  const key = (c: Cell) => `${c.floor}:${c.ring}`;
   const fresh = new Set(cells.map(key));
   room.pendingCells = [...(room.pendingCells ?? []), ...room.cells.filter((c) => fresh.has(key(c)))];
   room.cells = room.cells.filter((c) => !fresh.has(key(c)));
+}
+
+/**
+ * Corridors whose border has been cut since (a room's end now meets it, a corridor crosses it) are
+ * kept as their parts (space.ts): the jobs on them follow, each part with its share of what was paid.
+ */
+export function followSplits(state: SimState): void {
+  // Make sure the layout's pieces are up to date, so anything due to split has.
+  circleCuts(state.layout, 1, 0);
+  const splits = state.layout.corridorSplits;
+  if (!splits) return;
+  const expand = (id: string): string[] => (splits[id] ? splits[id]!.flatMap(expand) : [id]);
+  const share = (by?: Record<string, Record<string, number>>) => {
+    for (const id of Object.keys(by ?? {})) {
+      const parts = expand(id);
+      if (parts.length === 1 && parts[0] === id) continue;
+      for (const p of parts) by![p] = Object.fromEntries(Object.entries(by![id]!).map(([r, v]) => [r, v / parts.length]));
+      delete by![id];
+    }
+  };
+  for (const j of state.construction?.queue ?? []) {
+    if (j.edges) j.edges = j.edges.flatMap(expand);
+    share(j.paidBy);
+    share(j.salvageBy);
+  }
+  delete state.layout.corridorSplits;
 }
 
 /** Corridors just carved: waiting for the crews. */
@@ -277,6 +327,7 @@ function finishReline(state: SimState, edges: string[], to: { material: Material
  * them given back. A refit left with nothing to do is dropped.
  */
 export function dropRelines(state: SimState, edges: string[]): void {
+  followSplits(state);
   const c = state.construction;
   if (!c) return;
   const gone = new Set(edges);
@@ -320,8 +371,15 @@ function excavate(state: SimState, job: Job, before: number, cfg: SimConfig): vo
   if (!job.dig || !job.digCells) return;
   const dug = Math.min(job.done, job.dig) - Math.min(before, job.dig);
   if (dug <= 0) return;
-  yieldRock(state, cfg, dug / construction.excavationHoursPerSlot, undefined, job.roomId);
-  const cells = Math.min(job.digCells.length, Math.floor(Math.min(job.done, job.dig) / construction.excavationHoursPerSlot + 1e-9));
+  yieldRock(state, cfg, dug / construction.excavationHoursPer100m2, undefined, job.roomId);
+  // The cells whose hours are done, in order.
+  let hours = 0;
+  let cells = 0;
+  for (const c of job.digCells) {
+    hours += digHours(state.layout, [c]);
+    if (hours > Math.min(job.done, job.dig) + 1e-9) break;
+    cells++;
+  }
   const fresh = rockCells(state.layout, job.digCells.slice(0, cells));
   if (!fresh.length) return;
   openCells(state.layout, fresh);
@@ -330,10 +388,9 @@ function excavate(state: SimState, job: Job, before: number, cfg: SimConfig): vo
 
 /** Take a room out of the layout, leaving what's been dug as empty space. */
 function removeRoom(layout: Layout, room: RoomInstance): void {
-  for (const c of room.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = 0;
   layout.rooms = layout.rooms.filter((r) => r !== room);
-  recomputeAccess(layout);
   layout.version++;
+  recomputeAccess(layout);
 }
 
 function finish(state: SimState, job: Job, cfg: SimConfig): void {
@@ -412,6 +469,7 @@ export function domeQueued(state: SimState): boolean {
 
 /** Each tick: bandwidth goes to the first job that can be worked, any left over to the next. */
 export function stepConstruction(state: SimState, cfg: SimConfig): void {
+  followSplits(state);
   const c = state.construction;
   if (!c?.queue.length) return;
   let budget = (bandwidth(state) * 24) / cfg.ticksPerDay;
@@ -449,6 +507,7 @@ export function dropRoomJobs(state: SimState, roomId: number): void {
 
 /** Corridors taken off the plan before they were built: out of their job. Returns those that were pending. */
 export function dropCorridors(state: SimState, edges: string[], cfg: SimConfig): string[] {
+  followSplits(state);
   const layout = state.layout;
   const c = state.construction;
   const pending = edges.filter((id) => layout.corridorsBuilding?.[id] !== undefined);

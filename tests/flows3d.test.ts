@@ -5,6 +5,7 @@ import { applyCommand } from "../src/sim/commands";
 import { createInitialState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { flowRooms, Flows, FLOW_NETS } from "../src/render3d/flows3d";
+import { ringAt } from "./spots";
 
 function hole() {
   const s = createInitialState(config);
@@ -15,8 +16,8 @@ function hole() {
     return r.roomId!;
   };
   const solar = build("solar_array", { kind: "surface", slot: 6 });
-  const galley = build("galley", { kind: "ring", floor: 1, ring: 1, slot: 3, w: 1, d: 1 });
-  const dorm = build("bunk_dorm", { kind: "ring", floor: 1, ring: 1, slot: 4, w: 2, d: 1 });
+  const galley = build("galley", ringAt(1, 1, 3));
+  const dorm = build("bunk_dorm", ringAt(1, 1, 4, 2));
   for (let i = 0; i < 3; i++) step(s, config);
   return { s, solar, galley, dorm };
 }

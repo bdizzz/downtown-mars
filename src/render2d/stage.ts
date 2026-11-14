@@ -7,16 +7,18 @@ import { roomTints, type Spot } from "../view/reachView";
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
-import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
+import { type Cell, type Layout, type RoomInstance } from "../sim/placement";
+import { covers, piecesOn } from "../sim/space";
+
+const NOTCHES = config.geometry.notchesPerTurn;
 import { doorsOnFloor } from "../view/doors";
 import { glazedWalls } from "../sim/windows";
-import { isOpen } from "../sim/excavation";
 import { edgeById, edgeSides, galleryEdges, isGalleryEdge, nearestEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
 import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
+import { clickOrFill, DoubleClick, dragProposal, edgeHoverFor, placingMarks, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
@@ -31,7 +33,7 @@ import {
   floorTop,
   pick,
   ringTop,
-  slotX,
+  cellX,
   worldHeight,
 } from "./layout";
 
@@ -194,16 +196,15 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     const h = layout.hole;
     for (const f of temps) {
       const { color, alpha } = temperatureTint(f.now);
-      layout.open?.[f.floor - 1]?.forEach((slots, ri) => {
+      layout.open?.[f.floor - 1]?.forEach((_, ri) => {
         const ring = ri + 1;
         if (ring > h.unlockedRings) return;
-        const n = h.ringSlots[ring - 1]!;
         const y = ringTop(f.floor, ring, h.ringSlots.length);
-        slots.forEach((v, slot) => {
-          if (v !== 1) return;
-          const [x0, x1] = slotX(slot, n);
+        for (const piece of piecesOn(layout!, f.floor, ring)) {
+          if (!piece.open) continue;
+          const [x0, x1] = cellX(piece);
           fieldCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2).fill({ color, alpha });
-        });
+        }
       });
     }
   }
@@ -237,11 +238,11 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     const h = layout.hole;
     grid.forEach((rings, fi) => {
       for (let ring = 1; ring <= h.unlockedRings; ring++) {
-        const n = h.ringSlots[ring - 1]!;
         const y = ringTop(fi + 1, ring, h.ringSlots.length);
-        rings[ring - 1]!.forEach((v, slot) => {
+        piecesOn(layout!, fi + 1, ring).forEach((piece: { a0: number; a1: number }) => {
+          const v = rings[ring - 1]?.[piece.a0] ?? 0;
           if (Math.abs(v) < 0.05) return;
-          const [x0, x1] = slotX(slot, n);
+          const [x0, x1] = cellX(piece);
           const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA;
           fieldCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2).fill({ color: v < 0 ? heat.bad : heat.good, alpha });
         });
@@ -321,7 +322,6 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
       for (let ring = 1; ring <= maxRings; ring++) {
         const y = ringTop(floor, ring, maxRings);
-        const n = h.ringSlots[ring - 1]!;
         const locked = ring > h.unlockedRings;
         if (locked) {
           holeCtx.rect(0, y, TURN_W, RING_H).fill(C.locked);
@@ -330,12 +330,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
           }
           holeCtx.stroke({ color: C.hatch, width: 2 });
         }
-        for (let slot = 0; slot < n; slot++) {
-          const [x0, x1] = slotX(slot, n);
-          const r = holeCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2);
-          if (locked) r.stroke({ color: C.slotEdge, width: 1 });
-          else r.fill(C.slot).stroke({ color: C.slotEdge, width: 2 });
-        }
+        // The ring as one band: rooms go anywhere along it, by angle.
+        const r = holeCtx.rect(1, y + 1, TURN_W - 2, RING_H - 2);
+        if (locked) r.stroke({ color: C.slotEdge, width: 1 });
+        else r.fill(C.slot).stroke({ color: C.slotEdge, width: 2 });
       }
     }
     // Seam line at 0° through every floor.
@@ -356,27 +354,15 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   }
 
   /** One rect per ring row the cells cover (per floor, for tall rooms). x may run past TURN_W; the next copy shows it. */
-  function cellRows(h: Hole, cells: Cell[]): { floor: number; ring: number; x0: number; x1: number; first: boolean; last: boolean }[] {
+  function cellRows(_h: Hole, cells: Cell[]): { floor: number; ring: number; x0: number; x1: number; first: boolean; last: boolean }[] {
     const out = [];
     for (const floor of [...new Set(cells.map((c) => c.floor))].sort((a, b) => a - b)) {
       const here = cells.filter((c) => c.floor === floor);
       const rings = [...new Set(here.map((c) => c.ring))].sort((a, b) => a - b);
       for (const ring of rings) {
-        const n = h.ringSlots[ring - 1]!;
-        const slots = new Set(here.filter((c) => c.ring === ring).map((c) => c.slot));
-        for (const s of slots) {
-          if (slots.has((s - 1 + n) % n) && slots.size < n) continue; // not the start of a run
-          let len = 1;
-          while (len < n && slots.has((s + len) % n)) len++;
-          out.push({
-            floor,
-            ring,
-            x0: (s / n) * TURN_W,
-            x1: ((s + len) / n) * TURN_W,
-            first: ring === rings[0],
-            last: ring === rings[rings.length - 1],
-          });
-          if (slots.size === n) break;
+        for (const c of here.filter((x) => x.ring === ring)) {
+          const [x0, x1] = cellX(c);
+          out.push({ floor, ring, x0, x1, first: ring === rings[0], last: ring === rings[rings.length - 1] });
         }
       }
     }
@@ -402,14 +388,12 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     const h = l.hole;
     for (let floor = 1; floor <= h.floors; floor++) {
       for (let ring = 1; ring <= h.unlockedRings; ring++) {
-        const n = h.ringSlots[ring - 1]!;
         const y = ringTop(floor, ring, h.ringSlots.length);
-        for (let slot = 0; slot < n; slot++) {
-          const c = { floor, ring, slot };
-          if (roomAt(l, c)) continue;
-          const [x0, x1] = slotX(slot, n);
-          if (isOpen(l, c)) drawEmptySpace(roomsCtx, x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2, C.empty);
-          else drawRockCell(roomsCtx, x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2, C.rockCell, (floor * 64 + ring) * 512 + slot);
+        for (const c of piecesOn(l, floor, ring)) {
+          if (c.room) continue;
+          const [x0, x1] = cellX(c);
+          if (c.open) drawEmptySpace(roomsCtx, x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2, C.empty);
+          else drawRockCell(roomsCtx, x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2, C.rockCell, (floor * 64 + ring) * 2048 + c.a0);
         }
       }
     }
@@ -444,7 +428,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       for (const row of rows) {
         let [x, y, w, hh] = rowRect(l.hole, row);
         // Public rooms on a gallery tube have no wall there: they open right onto it.
-        const open = def.public && row.ring === 1 && galleryEdges(l.hole, row.floor).some((e) => l.corridors[e.id] && e.a0 * TURN_W >= row.x0 - 0.5 && e.a1 * TURN_W <= row.x1 + 0.5);
+        const open = def.public && row.ring === 1 && galleryEdges(l, row.floor).some((e) => l.corridors[e.id] && e.a0 * TURN_W >= row.x0 - 0.5 && e.a1 * TURN_W <= row.x1 + 0.5);
         if (open) [y, hh] = [y - 3, hh + 3];
         const r = roomsCtx.rect(x, y, w, hh);
         if (room.planned) r.fill({ color, alpha: 0.3 }).stroke({ color, width: 2 });
@@ -488,12 +472,12 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
    */
   function drawWindows(l: Layout, room: RoomInstance): void {
     const h = l.hole;
-    const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+    const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.a0}`));
     for (const { edge: e } of glazedWalls(l, room)) {
       if (isGalleryEdge(e)) continue;
       const b = bandOf(h, e);
-      const [a] = edgeSides(h, e);
-      const first = !!a && own.has(`${a.floor}:${a.ring}:${a.slot}`);
+      const [a] = edgeSides(l, e);
+      const first = !!a && own.has(`${a.floor}:${a.ring}:${a.a0}`);
       // Out from the border to the room's side: past the corridor's half, if one runs here.
       const off = l.corridors[e.id] ? BAND / 2 : 0;
       const door = doorsOnFloor(l, e.floor).some((d) => d.edge === e.id && d.roomId === room.id);
@@ -567,9 +551,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       }
       // Doors into the rooms on either side that open onto it here (public rooms are open anyway); ring 1's frontage has its own onto a tube.
       if (isGalleryEdge(e)) continue;
-      const [a, z] = edgeSides(h, e);
+      const [a, z] = edgeSides(l, e);
       const doors = doorsOnFloor(l, e.floor).filter((d) => d.edge === id);
-      const opens = (c: Cell | null) => !!c && doors.some((d) => d.cell.ring === c.ring && d.cell.slot === c.slot);
+      const opens = (c: Cell | null) => !!c && doors.some((d) => d.cell.ring === c.ring && d.cell.a0 === c.a0);
       if (b.along === "v") {
         const y = b.y + RING_H / 2 - 7;
         if (opens(a)) roomsCtx.rect(b.x - 3, y, 3, 14).fill(C.door);
@@ -623,14 +607,13 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       if (row.ring === 1) {
         // Shaft windows, with the door onto the gallery in the middle. They keep clear of
         // corridors carved along either end, so they move with the room's walls.
-        const n = h.ringSlots[0]!;
-        const startSlot = Math.round((row.x0 / TURN_W) * n) % n;
-        const endSlot = Math.round((row.x1 / TURN_W) * n) % n;
-        const cut = (slot: number) => (l.corridors[`R${row.floor}.1.${slot}`] ? BAND / 2 : 0);
+        const startSlot = Math.round((row.x0 / TURN_W) * NOTCHES) % NOTCHES;
+        const endSlot = Math.round((row.x1 / TURN_W) * NOTCHES) % NOTCHES;
+        const cut = (notch: number) => (l.corridors[`R${row.floor}.1.${notch}`] ? BAND / 2 : 0);
         const xs = x + cut(startSlot);
         const xe = x + w - cut(endSlot);
         // The tubes along this stretch of wall: the door goes in the middle of them.
-        const tubes = galleryEdges(h, row.floor).filter((e) => l.corridors[e.id] && e.a0 * TURN_W >= row.x0 - 0.5 && e.a1 * TURN_W <= row.x1 + 0.5);
+        const tubes = galleryEdges(l, row.floor).filter((e) => l.corridors[e.id] && e.a0 * TURN_W >= row.x0 - 0.5 && e.a1 * TURN_W <= row.x1 + 0.5);
         // The room's door onto them, where the 3D view cuts it.
         const door = doorsOnFloor(l, row.floor).find((d) => d.side === "inner" && d.cell.ring === 1 && tubes.some((t) => t.id === d.edge));
         const mid = door ? (door.angle / (Math.PI * 2)) * TURN_W : null;
@@ -756,10 +739,17 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       for (const row of cellRows(h, cells)) {
         overlayCtx.rect(...rowRect(h, row)).fill({ color, alpha: 0.35 }).stroke({ color, width: 3 });
       }
+      // What it snapped to (a tick on each line), and a proposal's side walls: handles to drag.
+      const marks = placingMarks(layout, tool, info);
+      for (const t of marks.ticks) {
+        const x = (t.notch / NOTCHES) * TURN_W;
+        const y0 = ringTop(t.floor, t.ring0, h.ringSlots.length);
+        overlayCtx.moveTo(x, y0).lineTo(x, ringTop(t.floor, t.ring1, h.ringSlots.length) + RING_H).stroke({ color: C.hover, width: 2, alpha: 0.9 });
+      }
+      for (const id of marks.handles) ghostEdge(id, info.handle ? C.hover : color, null, 0.9);
       // Extending stairs or an elevator: a plus on the piece being added.
       if (info.check.ok && info.check.merges && p.kind === "slot") {
-        const n = h.ringSlots[p.ring - 1]!;
-        const [x0, x1] = slotX(p.slot, n);
+        const [x0, x1] = cellX(info.check.cells.find((c) => c.floor === p.floor) ?? p);
         drawPlus(overlayCtx, (x0 + x1) / 2, ringTop(p.floor, p.ring, h.ringSlots.length) + RING_H / 2, 18, color);
       }
       if (info.check.surfaceCells.length) {
@@ -774,8 +764,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
 
     if (p.kind === "slot" && highlightsSlot(layout, p, building)) {
-      const n = h.ringSlots[p.ring - 1]!;
-      const [x0, x1] = slotX(p.slot, n);
+      const [x0, x1] = cellX(p);
       const y = ringTop(p.floor, p.ring, h.ringSlots.length);
       overlayCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2).fill({ color: C.hover, alpha: 0.15 }).stroke({ color: C.hover, width: 3 });
     } else if (p.kind === "gallery") {
@@ -794,14 +783,13 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
     const grid = previewEffects(layout, type, cells)[main.type];
     if (!grid) return;
-    const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
     const h = layout.hole;
     grid.forEach((rings, fi) =>
       rings.forEach((slots, ri) => {
-        const n = h.ringSlots[ri]!;
-        slots.forEach((v, slot) => {
-          if (Math.abs(v) < 0.05 || own.has(`${fi + 1}:${ri + 1}:${slot}`)) return;
-          const [x0, x1] = slotX(slot, n);
+        piecesOn(layout!, fi + 1, ri + 1).forEach((piece) => {
+          const v = slots[piece.a0] ?? 0;
+          if (Math.abs(v) < 0.05 || covers(cells, fi + 1, ri + 1, (piece.a0 + piece.a1) / 2)) return;
+          const [x0, x1] = cellX(piece);
           const y = ringTop(fi + 1, ri + 1, h.ringSlots.length);
           const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA;
           overlayCtx.rect(x0 + 1, y + 1, x1 - x0 - 2, RING_H - 2).fill({ color: v < 0 ? heat.bad : heat.good, alpha });
@@ -884,6 +872,9 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
   const canvas = app.canvas;
   let drag: { x: number; y: number; moved: number } | null = null;
+  /** A proposed room's side wall being dragged (PLAN-M17). */
+  let handle: "start" | "end" | null = null;
+  const doubles = new DoubleClick();
   let pointer: { clientX: number; clientY: number } | null = null;
 
   function screenToWorld(e: { clientX: number; clientY: number }): [number, number] {
@@ -899,7 +890,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   function pointAt(x: number, y: number): (ChainPoint & { floor: number }) | null {
     if (!layout) return null;
     const h = layout.hole;
-    const p = pick(h, x, y);
+    const p = pick(layout!, x, y);
     // Over the shaft band: the gallery edge there.
     if (p.kind === "gallery") return { floor: p.floor, rings: -0.1, turn: x / TURN_W };
     if (p.kind !== "slot") return null;
@@ -909,13 +900,13 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
   function edgeAt(x: number, y: number): Edge | null {
     const p = pointAt(x, y);
-    return layout && p ? nearestEdge(layout.hole, p.floor, p.rings, p.turn, config.geometry.roomDepthM) : null;
+    return layout && p ? nearestEdge(layout, p.floor, p.rings, p.turn, config.geometry.roomDepthM) : null;
   }
 
   function hoverInfo(): HoverInfo | null {
     if (!layout || !pointer) return null;
     const [x, y] = screenToWorld(pointer);
-    const p = pick(layout.hole, x, y);
+    const p = pick(layout, x, y);
     if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, p, edgeAt(x, y), shift);
     return hoverInfoFor(layout, resources, tool, p, deposits);
   }
@@ -965,10 +956,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
 
   /** By finger, with a tool, the first tap only aims (shows the ghost); a second on the same spot acts. */
-  function click(finger = false): void {
+  function click(finger = false, double = false): void {
     const info = hoverInfo();
     if (finger) refreshHover();
-    if (info && layout && (!finger || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickWith(layout, tool, info, opts);
+    if (info && layout && (!finger || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickOrFill(layout, resources, tool, info, opts, deposits, double);
   }
 
   // Fingers: one pans, two pinch and pan (the unrolled rings don't turn); a long press shows the hover.
@@ -1020,6 +1011,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       return;
     }
     drag = { x: e.clientX, y: e.clientY, moved: 0 };
+    // On a proposed room's side wall: the drag moves that wall.
+    handle = (tool?.kind === "build" && tool.proposal && hoverInfo()?.handle) || null;
     longPress.start(e);
   };
   const onPointerMove = (e: PointerEvent) => {
@@ -1034,6 +1027,14 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     pointer = e;
     shift = e.shiftKey;
     if (snaking) snake();
+    if (drag && handle && layout && tool?.kind === "build" && tool.proposal) {
+      drag.moved += Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y);
+      const [x, y] = screenToWorld(e);
+      const next = dragProposal(layout, tool, handle, pick(layout, x, y));
+      if (next && (next.start !== tool.proposal.start || next.span !== tool.proposal.span)) opts.onProposeRoom?.(next);
+      applyCamera();
+      return;
+    }
     if (drag) {
       const dx = e.clientX - drag.x;
       const dy = e.clientY - drag.y;
@@ -1056,7 +1057,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
     pointer = e;
     const finger = isTouch(e);
-    if (drag && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && !longPress.fired) click(finger);
+    if (!handle && drag && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && !longPress.fired) click(finger, doubles.click(e.clientX, e.clientY));
+    handle = null;
     drag = null;
     if (snaking) endSnake();
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);

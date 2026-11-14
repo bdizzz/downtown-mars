@@ -3,21 +3,22 @@ import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
 import { cooked, drawFood, FOOD, harvestBonus, harvestProgress, harvestSize, reconcileFood, variety, varietyComfort } from "../src/sim/food";
 import { homeParts } from "../src/sim/happiness";
-import type { Location } from "../src/sim/placement";
+import type { Spot } from "../src/sim/placement";
 import { cropDef } from "../src/sim/resources";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 import { createWorld } from "../src/sim/world";
+import { ringAt } from "./spots";
 
 // Harvest cycles and food variety (#375).
 
 const config: SimConfig = { ...baseConfig, earth: { ...baseConfig.earth, firstDropDay: 1e6 } };
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 const days = (s: SimState, n: number) => {
   for (let i = 0; i < Math.round(n * config.ticksPerDay); i++) step(s, config);
 };
-const build = (s: SimState, room: string, at: Location) => {
+const build = (s: SimState, room: string, at: Spot) => {
   const r = applyCommand(s, { type: "build", room, at, confirmed: true });
   if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   return s.layout.rooms[s.layout.rooms.length - 1]!;

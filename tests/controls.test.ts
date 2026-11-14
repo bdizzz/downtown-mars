@@ -3,6 +3,7 @@ import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { createInitialState } from "../src/sim/state";
 import { step } from "../src/sim/step";
+import { ringAt } from "./spots";
 
 /** A hole on ore with a smelter and a machine shop, well stocked. */
 function industrial() {
@@ -10,7 +11,7 @@ function industrial() {
   s.drill.active = false;
   s.earth.nextDropTick = 1e9;
   Object.assign(s.resources, { metal: 100, machinery: 20, electronics: 20, ore: 100 });
-  const shop = applyCommand(s, { type: "build", room: "machine_shop", at: { kind: "ring", floor: 1, ring: 1, slot: 1, w: 2, d: 1 } });
+  const shop = applyCommand(s, { type: "build", room: "machine_shop", at: ringAt(1, 1, 1, 2) });
   if (!shop.ok) throw new Error(shop.reason);
   return { s, shop: shop.roomId! };
 }
@@ -50,14 +51,14 @@ describe("room controls", () => {
 
   it("refuses 'stop at' on a room with nothing to stock", () => {
     const s = createInitialState(config);
-    const dorm = applyCommand(s, { type: "build", room: "bunk_dorm", at: { kind: "ring", floor: 1, ring: 1, slot: 1, w: 2, d: 1 } });
+    const dorm = applyCommand(s, { type: "build", room: "bunk_dorm", at: ringAt(1, 1, 1, 2) });
     expect(applyCommand(s, { type: "setRoomControl", roomId: dorm.ok ? dorm.roomId! : 0, stopAt: 10 }).ok).toBe(false);
   });
 
   it("a staging bay stands idle, crew free, until you ask for a kit", () => {
     const { s } = industrial();
     Object.assign(s.resources, { metal: 150, brick: 60 });
-    const bay = applyCommand(s, { type: "build", room: "staging_bay", at: { kind: "ring", floor: 1, ring: 1, slot: 3, w: 4, d: 1 } });
+    const bay = applyCommand(s, { type: "build", room: "staging_bay", at: ringAt(1, 1, 3, 4) });
     if (!bay.ok) throw new Error(bay.reason);
     for (let i = 0; i < 50; i++) step(s, config);
     expect(s.roomStatus[bay.roomId!]).toMatchObject({ staff: 0, limit: "kit" });

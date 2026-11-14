@@ -1,7 +1,7 @@
 import { config } from "../sim/config";
 import { corridorRefusal } from "../sim/corridors";
-import { cellEdges, edgeById, edgeVertices, type Edge } from "../sim/edges";
-import { ringSize, type Hole } from "../sim/geometry";
+import { edgeById, edgeVertices, floorEdges, type Edge } from "../sim/edges";
+import { type Hole } from "../sim/geometry";
 import type { Layout } from "../sim/placement";
 
 // Snaking a corridor: while the player drags with the corridor tool, the
@@ -57,27 +57,21 @@ function otherEnd(hole: Hole, e: Edge, v: string): string {
 }
 
 /** Every edge on a floor, by the vertices at its ends (built once per layout version and floor). */
-const graphs = new Map<string, Map<string, Edge[]>>();
+const graphs = new WeakMap<Layout, { version: number; floors: Map<number, Map<string, Edge[]>> }>();
 function floorGraph(layout: Layout, floor: number): Map<string, Edge[]> {
-  const key = `${layout.hole.ringSlots.join(",")}:${floor}`;
-  let adj = graphs.get(key);
+  const key = floor;
+  let byFloor = graphs.get(layout);
+  if (!byFloor || byFloor.version !== layout.version) graphs.set(layout, (byFloor = { version: layout.version, floors: new Map() }));
+  let adj = byFloor.floors.get(key);
   if (adj) return adj;
   adj = new Map();
-  const seen = new Set<string>();
-  const hole = layout.hole;
-  for (let ring = 1; ring <= hole.ringSlots.length; ring++) {
-    for (let slot = 0; slot < ringSize(hole, ring); slot++) {
-      for (const e of cellEdges(hole, { floor, ring, slot })) {
-        if (seen.has(e.id)) continue;
-        seen.add(e.id);
-        for (const v of edgeVertices(hole, e)) {
-          if (!adj.has(v)) adj.set(v, []);
-          adj.get(v)!.push(e);
-        }
-      }
+  for (const e of floorEdges(layout, floor)) {
+    for (const v of edgeVertices(layout.hole, e)) {
+      if (!adj.has(v)) adj.set(v, []);
+      adj.get(v)!.push(e);
     }
   }
-  graphs.set(key, adj);
+  byFloor.floors.set(key, adj);
   return adj;
 }
 

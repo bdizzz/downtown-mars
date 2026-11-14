@@ -1,4 +1,4 @@
-import { overlappingSlots, ringSize, wrapSlot } from "./geometry";
+import { cellKey, pieceAt, piecesIn, spaceOf } from "./space";
 import type { Cell, Layout, RoomInstance } from "./placement";
 import { roomDef, type EffectDef, type EffectType } from "./rooms";
 import { distancesFrom, pathsFor, STEP_M } from "./paths";
@@ -18,14 +18,16 @@ import { config } from "./config";
 // the stronger counts. Air quality also has a baseline by ring: the further
 // from the air trunk in the shaft wall, the staler.
 
+const N = config.geometry.notchesPerTurn;
+
 export const FIELD_TYPES: EffectType[] = ["noise", "smell", "health", "comfort", "airQuality"];
 
 /** How each effect reads in text ("air −1.2"). The health effect reads as wellbeing, so Health means only the hole's meter (F-018). */
 export const EFFECT_NAMES: Record<string, string> = { noise: "noise", smell: "smell", health: "wellbeing", comfort: "comfort", airQuality: "air" };
 export const effectName = (t: string) => EFFECT_NAMES[t] ?? t;
 
-/** field[type][floor - 1][ring - 1][slot] */
-export type EffectField = Record<string, number[][][]>;
+/** field[type][floor - 1][ring - 1][a0]: an effect on each piece, by the notch its piece starts at (space.ts). */
+export type EffectField = Record<string, Record<number, number>[][]>;
 
 export interface Effects {
   version: number;
@@ -36,26 +38,51 @@ export interface Effects {
 
 function emptyField(layout: Layout): EffectField {
   const field: EffectField = {};
-  for (const t of FIELD_TYPES) field[t] = layout.grid.map((floor) => floor.map((ring) => ring.map(() => 0)));
+  const pieces = spaceOf(layout).pieces;
+  for (const t of FIELD_TYPES) field[t] = pieces.map((floor) => floor.map((ring) => Object.fromEntries(ring.map((p) => [p.a0, 0]))));
   return field;
 }
 
-/** Cells one step away: along the ring, across rings by angle, and straight up and down. */
+/** A piece's width in steps: a step is one piece of its ring's grid (about 10 m), as a slot was. */
+function widthSteps(layout: Layout, c: Cell): number {
+  return ((c.a1 - c.a0) * (layout.hole.ringSlots[c.ring - 1] ?? 1)) / N;
+}
+
+/**
+ * How far it is from one piece to a neighbour, in steps: along the ring, between their middles
+ * (half of each), so a wide room's middle is further from its neighbour than a small one's, and what
+ * reaches it is what it would feel averaged over its floor. The source room's own pieces count one
+ * step wide whatever their size: an effect starts at the room's walls. Across rings or between
+ * floors is one step.
+ */
+function stepCost(layout: Layout, from: Cell, to: Cell, fromSource: boolean): number {
+  if (from.floor !== to.floor || from.ring !== to.ring) return 1;
+  return ((fromSource ? 1 : widthSteps(layout, from)) + widthSteps(layout, to)) / 2;
+}
+
+/** Fading with distance, for distances that needn't be whole steps: full strength at the source, nothing from a step past the radius. */
+function fade(strength: number, radius: number, distance: number): number {
+  return distance >= radius + 1 ? 0 : strength * (1 - distance / (radius + 1));
+}
+
+/** Pieces one step away: along the ring, across rings by angle, and straight up and down. */
 export function stepNeighbors(layout: Layout, c: Cell): Cell[] {
-  const hole = layout.hole;
-  const n = ringSize(hole, c.ring);
-  const out: Cell[] = [
-    { ...c, slot: wrapSlot(c.slot - 1, n) },
-    { ...c, slot: wrapSlot(c.slot + 1, n) },
-  ];
+  const out = new Map<string, Cell>();
+  const add = (p: Cell | null) => {
+    if (p && !(p.floor === c.floor && p.ring === c.ring && p.a0 === c.a0)) out.set(cellKey(p), p);
+  };
+  add(pieceAt(layout, c.floor, c.ring, c.a0 - 0.5));
+  add(pieceAt(layout, c.floor, c.ring, c.a1 + 0.5));
   for (const r of [c.ring - 1, c.ring + 1]) {
-    if (r < 1 || r > hole.ringSlots.length) continue;
-    for (const s of overlappingSlots(hole, c.ring, c.slot, r)) out.push({ floor: c.floor, ring: r, slot: s });
+    if (r < 1 || r > layout.hole.ringSlots.length) continue;
+    for (const p of piecesIn(layout, { ...c, ring: r })) add(p);
   }
+  const floors = spaceOf(layout).pieces.length;
   for (const f of [c.floor - 1, c.floor + 1]) {
-    if (f >= 1 && f <= layout.grid.length) out.push({ ...c, floor: f });
+    if (f < 1 || f > floors) continue;
+    for (const p of piecesIn(layout, { ...c, floor: f })) add(p);
   }
-  return out;
+  return [...out.values()];
 }
 
 /** Falloff: full strength at the source, dropping by 1/(radius+1) per step. */
@@ -67,34 +94,51 @@ function blocks(layout: Layout, from: Cell, to: Cell, type: EffectType): boolean
   return corridorCfg.blocksEffects.includes(type) && corridorBetween(layout, from, to);
 }
 
-const cellKey = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
 
-/** One effect by nearness, out to `reach` steps: each cell it gets to, and how much. */
+/**
+ * One effect by nearness, out to `reach` steps: each piece it gets to, and how much. It spreads
+ * from the room's own pieces through neighbouring ones, the cheapest way to each.
+ */
 function nearness(layout: Layout, cells: Cell[], eff: EffectDef, reach: number): Map<string, [Cell, number]> {
   const out = new Map<string, [Cell, number]>();
-  const seen = new Set(cells.map(cellKey));
-  let frontier = cells;
-  for (let d = 0; d <= reach && frontier.length; d++) {
+  const dist = new Map<string, number>();
+  let frontier: Cell[] = [];
+  // The room's pieces as they stand (a room being placed isn't there yet: whatever its cells cover).
+  for (const c of cells) {
+    for (const p of piecesIn(layout, c)) {
+      if (dist.has(cellKey(p))) continue;
+      dist.set(cellKey(p), 0);
+      frontier.push(p);
+    }
+  }
+  while (frontier.length) {
     const next: Cell[] = [];
     for (const c of frontier) {
-      out.set(cellKey(c), [c, falloff(eff.strength, eff.radius, d)]);
+      const d = dist.get(cellKey(c))!;
       for (const nb of stepNeighbors(layout, c)) {
         const k = cellKey(nb);
-        if (seen.has(k)) continue;
+        const nd = d + stepCost(layout, c, nb, d === 0);
+        if (nd >= reach + 1 - 1e-9 || nd >= (dist.get(k) ?? Infinity) - 1e-9) continue;
         // A corridor between them soaks it up; it may still get there another way.
         if (blocks(layout, c, nb, eff.type)) continue;
-        seen.add(k);
+        dist.set(k, nd);
         next.push(nb);
       }
     }
     frontier = next;
   }
+  const cellOf = new Map<string, Cell>();
+  for (const f of spaceOf(layout).pieces) for (const ring of f) for (const p of ring) if (dist.has(cellKey(p))) cellOf.set(cellKey(p), p);
+  for (const [k, d] of dist) out.set(k, [cellOf.get(k)!, d > reach + 1e-9 && reach < eff.radius ? 0 : fade(eff.strength, eff.radius, d)]);
   return out;
 }
 
 function addTo(field: EffectField, type: string, got: Map<string, [Cell, number]>): void {
   const grid = field[type]!;
-  for (const [c, v] of got.values()) grid[c.floor - 1]![c.ring - 1]![c.slot]! += v;
+  for (const [c, v] of got.values()) {
+    const row = grid[c.floor - 1]?.[c.ring - 1];
+    if (row) row[c.a0] = (row[c.a0] ?? 0) + v;
+  }
 }
 
 /** Everything a room radiates, by nearness only (the halo while placing, before it's on the network). */
@@ -180,7 +224,7 @@ export function previewEffects(layout: Layout, type: string, cells: Cell[]): Eff
   const ghost: RoomInstance = {
     id: -1,
     type,
-    at: { kind: "ring", floor: cells[0]?.floor ?? 1, ring: cells[0]?.ring ?? 1, slot: cells[0]?.slot ?? 0, w: 1, d: 1 },
+    at: { kind: "ring", floor: cells[0]?.floor ?? 1, ring: cells[0]?.ring ?? 1, start: cells[0]?.a0 ?? 0, span: (cells[0]?.a1 ?? 1) - (cells[0]?.a0 ?? 0), depth: 1 },
     cells,
     surfaceCells: [],
     connected: true,
@@ -197,7 +241,11 @@ export function computeEffects(layout: Layout, dust = 1): EffectField {
   const byRing = config.effects.airQualityByRing;
   // Under the dome the shaft is one big shared volume of air: fresher everywhere.
   const dome = layout.domed ? config.dome.air : 0;
-  field.airQuality!.forEach((floor) => floor.forEach((ring, r) => ring.fill((byRing[r] ?? byRing.at(-1) ?? 0) + dome)));
+  field.airQuality!.forEach((floor) =>
+    floor.forEach((ring, r) => {
+      for (const a0 of Object.keys(ring)) ring[Number(a0)] = (byRing[r] ?? byRing.at(-1) ?? 0) + dome;
+    }),
+  );
   const rooms = new Map(layout.rooms.map((r) => [r.id, r]));
   for (const room of layout.rooms) {
     if (room.planned || room.building || room.at.kind !== "ring") continue;
@@ -219,7 +267,7 @@ export function dustNow(storm: number): number {
 }
 
 export function effectAt(field: EffectField, type: string, c: Cell): number {
-  return field[type]?.[c.floor - 1]?.[c.ring - 1]?.[c.slot] ?? 0;
+  return field[type]?.[c.floor - 1]?.[c.ring - 1]?.[c.a0] ?? 0;
 }
 
 /** Average of an effect over a room's cells, for the inspector and happiness. */

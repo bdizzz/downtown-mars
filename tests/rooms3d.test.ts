@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { cellEdges, galleryEdges } from "../src/sim/edges";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
-import { createLayout, placeRoom, type Location } from "../src/sim/placement";
+import { createLayout, placeRoom, type Spot } from "../src/sim/placement";
 import * as THREE from "three";
 import { ceilings, loweredAt, openingsOf, outlineGeometry, rockAlong, rockFaces, shapeKey, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
 import { floorSpan, ringRadii, slotAngles, WALL_T } from "../src/render3d/cylinder";
@@ -10,8 +10,9 @@ import { corridorJoints, corridors } from "../src/sim/corridors";
 import { DOOR, doorways } from "../src/view/doors";
 import { setRoomWindows, shaftBorders } from "../src/sim/windows";
 import { openCells } from "../src/sim/excavation";
+import { ringAt, cellAt } from "./spots";
 
-const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
+const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Spot => (ringAt(floor, r, slot, w, d));
 // Each curved face is split into 4 arc steps of 2 triangles; a radial side is 2 triangles.
 const CURVED = 4 * 2;
 const SIDE = 2;
@@ -42,13 +43,13 @@ describe("3D room geometry", () => {
     expect(triangles(geo)).toBe(2 * CURVED + 2 * SIDE + flat(...slotAngles(0, layout.hole.ringSlots[0]!)));
   });
 
-  it("a wide room has no walls between its own slots", () => {
+  it("a wide room is one piece: no walls inside it", () => {
     const r = placeRoom(layout, "life_support", ring(2, 1, 3, 4));
     const room = layout.rooms.find((x) => x.id === r.id)!;
     const geo = roomGeometry(layout, room.cells);
     expect(upright(geo)).toBe(4 * 2 * CURVED + 2 * SIDE);
     const n = layout.hole.ringSlots[0]!;
-    expect(triangles(geo)).toBe(4 * 2 * CURVED + 2 * SIDE + [3, 4, 5, 6].reduce((sum, slot) => sum + flat(...slotAngles(slot, n)), 0));
+    expect(triangles(geo)).toBe(4 * 2 * CURVED + 2 * SIDE + flat(slotAngles(3, n)[0], slotAngles(6, n)[1])); // one floor, from end to end
   });
 
   it("floors keep their arcs on the hole-wide grid, so rooms in neighbouring rings meet without a seam (T-019)", () => {
@@ -116,7 +117,7 @@ describe("carved by corridors", () => {
     const r = placeRoom(l, "clinic", ring(1, 1, 1));
     const room = l.rooms.find((x) => x.id === r.id)!;
     const before = extent(roomGeometry(l, room.cells));
-    l.corridors["R1.1.1"] = "rock"; // its left side
+    l.corridors["R1.1.160"] = "rock"; // its left side
     const geo = roomGeometry(l, room.cells);
     const after = extent(geo);
     expect(after.maxA).toBeCloseTo(before.maxA, 6);
@@ -140,7 +141,7 @@ describe("carved by corridors", () => {
     const r = placeRoom(l, "flat", ring(1, 2, 1)); // ring-2 slot 1: ring 3 beyond has more slots, so its outer side is in pieces
     const room = l.rooms.find((x) => x.id === r.id)!;
     const plain = roomGeometry(l, room.cells);
-    l.corridors["A1.2.1/9"] = "metal"; // the first piece of its outer side
+    l.corridors["A1.2.160-240"] = "metal"; // the first piece of its outer side
     const carved = roomGeometry(l, room.cells);
     expect(extent(carved).maxR).toBeCloseTo(extent(plain).maxR, 6); // the rest of the side is untouched
     expect(carved.getAttribute("position").count).toBeGreaterThan(plain.getAttribute("position").count); // a step wall
@@ -155,10 +156,10 @@ describe("public rooms", () => {
     const walled = upright(roomGeometry(l, room.cells)); // as a private room would be
     // No tube along it yet: the shaft side keeps its wall.
     expect(upright(roomGeometry(l, room.cells, undefined, true, true))).toBe(walled);
-    for (const e of galleryEdges(l.hole, 1)) l.corridors[e.id] = "gallery";
+    for (const e of galleryEdges(l, 1)) l.corridors[e.id] = "gallery";
     const open = upright(roomGeometry(l, room.cells, undefined, true, true));
     expect(walled - open).toBe(CURVED); // no inner wall onto the gallery
-    l.corridors["R1.1.2"] = "metal"; // its left side
+    l.corridors["R1.1.320"] = "metal"; // its left side
     expect(upright(roomGeometry(l, room.cells, undefined, true, true))).toBe(open - SIDE);
     // A private room keeps its wall on a corridor side.
     expect(upright(roomGeometry(l, room.cells))).toBe(walled);
@@ -198,7 +199,7 @@ describe("solid walls", () => {
     const room = l.rooms.find((x) => x.id === roomId)!;
     const [r0] = ringRadii(l.hole, 2);
     const before = Math.min(...points(solid(l, room.cells)).map((p) => p.r));
-    const innerEdge = cellEdges(l.hole, room.cells[0]!).find((e) => e.kind === "arc" && e.circle === 1)!;
+    const innerEdge = cellEdges(l, room.cells[0]!).find((e) => e.kind === "arc" && e.circle === 1)!;
     l.corridors[innerEdge.id] = "rock";
     const pts = points(solid(l, room.cells));
     // Without a corridor, the inner wall's half reaches the border; with one, it stands half a corridor back, half a wall either side.
@@ -285,7 +286,7 @@ describe("windows", () => {
       return [Math.min(...faces.map((f) => f.a0)), Math.max(...faces.map((f) => f.a1))];
     };
     const [a0, a1] = span();
-    l.corridors["R1.1.2"] = "rock"; // along its left side
+    l.corridors["R1.1.320"] = "rock"; // along its left side
     const [b0, b1] = span();
     // Back to where the side wall meets the shaft face (r = 10): half a corridor and half a wall from the border, where there was only half a wall.
     expect(b0 - a0).toBeCloseTo(Math.asin((corridors.widthM / 2 + WALL_T / 2) / 10) - Math.asin(WALL_T / 2 / 10), 6);
@@ -296,7 +297,7 @@ describe("windows", () => {
     let minA = Infinity;
     for (let i = 0; i < pos.count; i++) minA = Math.min(minA, Math.atan2(pos.getZ(i), pos.getX(i)));
     expect(b0).toBeGreaterThanOrEqual(minA - 1e-9);
-    delete l.corridors["R1.1.2"];
+    delete l.corridors["R1.1.320"];
     expect(span()[0]).toBeCloseTo(a0, 9);
   });
 });
@@ -321,7 +322,7 @@ describe("doors and windows", () => {
     const room = l.rooms.find((x) => x.id === r.id)!;
     // No gallery tube along it: all window, no door.
     expect(doorways(l, room)).toEqual([]);
-    for (const e of galleryEdges(l.hole, 1)) l.corridors[e.id] = "gallery";
+    for (const e of galleryEdges(l, 1)) l.corridors[e.id] = "gallery";
     setRoomWindows(room, shaftBorders(l, room), true);
     const [door] = doorways(l, room);
     const r0 = ringRadii(l.hole, 1)[0];
@@ -343,9 +344,9 @@ describe("doors and windows", () => {
     const r = placeRoom(l, "life_support", ring(1, 2, 2, 2, 2)); // rings 2–3, no shaft face
     const room = l.rooms.find((x) => x.id === r.id)!;
     expect(doorways(l, room)).toEqual([]);
-    l.corridors["R1.2.2"] = "rock"; // along its left side, on ring 2
+    l.corridors["R1.2.320"] = "rock"; // along its left side, on ring 2
     const [door] = doorways(l, room);
-    expect(door).toMatchObject({ side: "left", edge: "R1.2.2" });
+    expect(door).toMatchObject({ side: "left", edge: "R1.2.320" });
     const parts = { glass: [] as number[], frames: [] as number[] };
     const solid = triangles(roomGeometry(l, room.cells));
     const cut = triangles(roomGeometry(l, room.cells, undefined, true, false, openingsOf(l, room), [], parts));
@@ -358,9 +359,9 @@ describe("doors and windows", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     const r = placeRoom(l, "depot", ring(1, 3, 0, 4)); // ring 3, slots 0–3 of 18
     const room = l.rooms.find((x) => x.id === r.id)!;
-    l.corridors["R1.2.1"] = "rock"; // a spoke through ring 2, ending on its inner wall where its cells 1 and 2 meet
+    l.corridors["R1.2.160"] = "rock"; // a spoke through ring 2, ending on its inner wall where its cells 1 and 2 meet
     const [door] = doorways(l, room);
-    expect(door).toMatchObject({ side: "inner", cell: { ring: 3, slot: 1 } });
+    expect(door).toMatchObject({ side: "inner", cell: { ring: 3, a0: 0 } });
     const base = floorSpan(1)[0];
     const solid = roomGeometry(l, room.cells);
     const cut = roomGeometry(l, room.cells, undefined, true, false, openingsOf(l, room));
@@ -379,22 +380,22 @@ describe("corridor corners", () => {
     const room = l.rooms.find((x) => x.id === r.id)!;
     const plain = roomGeometry(l, room.cells);
     // A turn at the corner above-left of slot 5's inner side... far from the clinic: no change.
-    l.corridors["R1.2.7"] = "rock";
-    l.corridors["A1.1.7/9"] = "rock";
+    l.corridors["R1.2.1120"] = "rock";
+    l.corridors["A1.1.1120-1280"] = "rock";
     expect(roomGeometry(l, room.cells).getAttribute("position").count).toBe(plain.getAttribute("position").count);
     // A turn at the clinic's outer-right corner (angle 5/9 on circle 1), made of corridors that don't run along the clinic.
-    l.corridors["R1.2.5"] = "rock"; // out along ring 2 from that corner
-    l.corridors["A1.1.5/9"] = "rock"; // along the next cell's outer side
+    l.corridors["R1.2.800"] = "rock"; // out along ring 2 from that corner
+    l.corridors["A1.1.800-960"] = "rock"; // along the next cell's outer side
     const notched = roomGeometry(l, room.cells);
     expect(notched.getAttribute("position").count).toBeGreaterThan(plain.getAttribute("position").count);
   });
 
   it("finds turns, not straight runs", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    l.corridors["R1.1.3"] = "rock";
-    l.corridors["R1.2.3"] = "rock"; // straight on outward
+    l.corridors["R1.1.480"] = "rock";
+    l.corridors["R1.2.480"] = "rock"; // straight on outward
     expect(corridorJoints(l).size).toBe(0);
-    l.corridors["A1.1.1/3"] = "rock"; // and a turn along the circle
+    l.corridors["A1.1.480-640"] = "rock"; // and a turn along the circle
     expect(corridorJoints(l).size).toBe(1);
   });
 });
@@ -499,7 +500,7 @@ describe("walls down, across a corridor", () => {
     const placed = placeRoom(layout, "clinic", ring(2, 2, 1));
     const near = layout.rooms.find((x) => x.id === placed.id)!;
     if (galley) expect(placeRoom(layout, "galley", ring(2, 3, 2)).ok).toBe(true);
-    for (const e of cellEdges(layout.hole, near.cells[0]!)) if (e.kind === "arc" && e.circle === 2) layout.corridors[e.id] = "rock";
+    for (const e of cellEdges(layout, near.cells[0]!)) if (e.kind === "arc" && e.circle === 2) layout.corridors[e.id] = "rock";
     const geo = roomGeometry(layout, near.cells);
     const pos = geo.getAttribute("position");
     const walls = geo.getAttribute("aWall");
@@ -590,7 +591,7 @@ describe("walls down, across a corridor", () => {
     const placed = placeRoom(layout, "life_support", ring(2, 2, 3, 4));
     const room = layout.rooms.find((x) => x.id === placed.id)!;
     expect(placeRoom(layout, "galley", ring(2, 3, 6)).ok).toBe(true);
-    for (const c of room.cells) for (const e of cellEdges(layout.hole, c)) if (e.kind === "arc" && e.circle === 2) layout.corridors[e.id] = "rock";
+    for (const c of room.cells) for (const e of cellEdges(layout, c)) if (e.kind === "arc" && e.circle === 2) layout.corridors[e.id] = "rock";
     const geo = roomGeometry(layout, room.cells, undefined, true, false, null, [], undefined, true);
     const pos = geo.getAttribute("position");
     const walls = geo.getAttribute("aWall");
@@ -634,7 +635,7 @@ describe("walls down, across a corridor", () => {
   it("a ring-1 wall behind a gallery tube stays up from inside the room", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
     const placed = placeRoom(layout, "clinic", ring(2, 1, 0));
-    for (const e of galleryEdges(layout.hole, 2)) layout.corridors[e.id] = "gallery";
+    for (const e of galleryEdges(layout, 2)) layout.corridors[e.id] = "gallery";
     const geo = roomGeometry(layout, layout.rooms.find((x) => x.id === placed.id)!.cells);
     const walls = geo.getAttribute("aWall");
     const pos = geo.getAttribute("position");
@@ -694,7 +695,7 @@ describe("the cutaway's cut through the rock (T-109)", () => {
     // Deeper floors, and the floor being dug under them, are rock all the way across the rings.
     for (let floor = 2; floor <= l.hole.floors + 1; floor++) expect(spans(floor)).toHaveLength(3);
     // A corridor round the clinic's back carves half its width out of the ring-2 rock behind it.
-    const back = cellEdges(l.hole, { floor: 1, ring: 1, slot: 0 }).find((e) => e.kind === "arc" && e.circle === 1)!;
+    const back = cellEdges(l, cellAt(1, 1, 0)).find((e) => e.kind === "arc" && e.circle === 1)!;
     l.corridors[back.id] = "rock";
     expect(spans(1)[0]!.r0).toBeCloseTo(ringRadii(l.hole, 2)[0] + corridors.widthM / 2);
   });
@@ -703,7 +704,7 @@ describe("the cutaway's cut through the rock (T-109)", () => {
 describe("a room's cached shape (T-079)", () => {
   it("is rebuilt when a room fills the empty space beside it, whose wall is thicker than a shared one", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    openCells(l, Array.from({ length: l.hole.ringSlots[0]! }, (_, slot) => ({ floor: 1, ring: 1, slot })));
+    openCells(l, Array.from({ length: l.hole.ringSlots[0]! }, (_, slot) => (cellAt(1, 1, slot))));
     placeRoom(l, "entrance", ring(1, 1, 3));
     const entrance = l.rooms.find((r) => r.type === "entrance")!;
     const solid = () => roomGeometry(l, entrance.cells, undefined, true, true, null, [], undefined, true).getAttribute("position").count;
@@ -720,8 +721,8 @@ describe("rock faces where corridors turn (T-145)", () => {
     const l = createLayout(createHole(10, 1, 3, config.geometry)); // one floor, and no crust: just the walls
     placeRoom(l, "clinic", ring(1, 1, 4)); // ring-1 slot 4, ring-2 rock behind it
     // Out along the clinic's right side, then round along circle 1: a turn at the clinic's outer-right corner.
-    l.corridors["R1.1.5"] = "rock";
-    l.corridors["A1.1.5/9"] = "rock";
+    l.corridors["R1.1.800"] = "rock";
+    l.corridors["A1.1.800-960"] = "rock";
     const corner = (5 / 9) * Math.PI * 2;
     const r = ringRadii(l.hole, 2)[0];
     const notch = corridors.widthM / 2 / r;
@@ -789,7 +790,7 @@ describe("first person: ceilings and closed corridors (#340)", () => {
   it("closes a corridor's end where it stops in rock, but not where it opens onto dug-out space", () => {
     const l = createLayout(createHole(10, 2, 3, config.geometry));
     // Through solid rock, out across ring 2 at slot border 3: it stops at circle 2, with ring 3 beyond.
-    l.corridors["R2.2.3"] = "rock";
+    l.corridors["R2.2.480"] = "rock";
     const a = (3 / l.hole.ringSlots[1]!) * 2 * Math.PI;
     const rc = ringRadii(l.hole, 2)[1];
     const half = corridors.widthM / 2;
@@ -800,7 +801,7 @@ describe("first person: ceilings and closed corridors (#340)", () => {
       });
     expect(end(rockFaces(l, null))).toBeGreaterThan(0);
     // Dig out what's beyond, and the corridor opens onto it.
-    openCells(l, Array.from({ length: l.hole.ringSlots[2]! }, (_, slot) => ({ floor: 2, ring: 3, slot })));
+    openCells(l, Array.from({ length: l.hole.ringSlots[2]! }, (_, slot) => (cellAt(2, 3, slot))));
     expect(end(rockFaces(l, null))).toBe(0);
   });
 
@@ -809,7 +810,7 @@ describe("first person: ceilings and closed corridors (#340)", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     const placed = placeRoom(l, "clinic", ring(2, 2, 1));
     const room = l.rooms.find((x) => x.id === placed.id)!;
-    for (const slot of [1, 2]) for (const e of cellEdges(l.hole, { floor: 2, ring: 2, slot })) if (e.kind === "arc" && e.circle === 2) l.corridors[e.id] = "rock";
+    for (const slot of [1, 2]) for (const e of cellEdges(l, cellAt(2, 2, slot))) if (e.kind === "arc" && e.circle === 2) l.corridors[e.id] = "rock";
     const pos = roomGeometry(l, room.cells, 0.06, true, false, null, [], undefined, true).getAttribute("position").array as Float32Array;
     // At the clinic's right side: from the corridor's edge (where the rock's face stands) out to the wall's
     // outer face, half a wall into the corridor.
@@ -828,7 +829,7 @@ describe("first person: ceilings and closed corridors (#340)", () => {
     const placed = placeRoom(l, "tiny_plaza", ring(2, 2, 1));
     expect(placeRoom(l, "clinic", ring(2, 2, 2)).ok).toBe(true);
     const plaza = l.rooms.find((x) => x.id === placed.id)!;
-    for (const slot of [1, 2]) for (const e of cellEdges(l.hole, { floor: 2, ring: 2, slot })) if (e.kind === "arc" && e.circle === 2) l.corridors[e.id] = "rock";
+    for (const slot of [1, 2]) for (const e of cellEdges(l, cellAt(2, 2, slot))) if (e.kind === "arc" && e.circle === 2) l.corridors[e.id] = "rock";
     const pos = roomGeometry(l, plaza.cells, 0.06, true, true, null, [], undefined, true).getAttribute("position").array as Float32Array;
     // Along the corridor's edge, across the plaza's half of the wall: from the border in by half a wall.
     const side = slotAngles(1, l.hole.ringSlots[1]!)[1];
@@ -842,7 +843,7 @@ describe("first person: ceilings and closed corridors (#340)", () => {
 
   it("closes it too where a public room on ring 1 opens onto its gallery tube", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    for (const e of galleryEdges(l.hole, 2)) l.corridors[e.id] = "gallery";
+    for (const e of galleryEdges(l, 2)) l.corridors[e.id] = "gallery";
     const placed = placeRoom(l, "tiny_plaza", ring(2, 1, 1));
     expect(placeRoom(l, "clinic", ring(2, 1, 2)).ok).toBe(true);
     const plaza = l.rooms.find((x) => x.id === placed.id)!;

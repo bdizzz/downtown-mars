@@ -5,6 +5,8 @@ import type { RoomUnlock } from "./rooms";
 export interface GeometryConfig {
   slotWidthM: number;
   roomDepthM: number;
+  /** Angles are whole notches, this many a turn (F-004): 1,440 divides by 9, 16, 18 and 36. */
+  notchesPerTurn: number;
   maxRings: number;
   /** Height of one floor, used by the 3D view. */
   floorHeightM: number;
@@ -41,8 +43,21 @@ export interface SimConfig {
   maxTicksPerFrame: number;
   seed: number;
   geometry: GeometryConfig & { surfaceSlots: number };
-  /** Allowed [wide, deep] shapes per room size. */
-  shapes: Partial<Record<"S" | "M" | "L" | "H", [number, number][]>>;
+  /** A room's target floor area by size, m² (F-004); a room type may set its own. */
+  sizes: Partial<Record<"S" | "M" | "L" | "H", number>>;
+  /** How many rings deep each size may be. */
+  depths: Partial<Record<"S" | "M" | "L" | "H", number[]>>;
+  /** Placing by area (PLAN-M17). */
+  placement: {
+    /** How far from its target area a room may be (0.15 is ±15%). */
+    leeway: number;
+    /** A fill room's range, as multiples of its target area, and the most of a turn it may take. */
+    fill: { min: number; max: number; maxTurn: number };
+    /** How near an end must be to snap, in metres along the ring's middle. */
+    snapM: number;
+    /** The shared grid ends snap to last, in notches. */
+    gridNotches: number;
+  };
   starterHole: {
     shaftRadiusM: number;
     floors: number;
@@ -58,9 +73,9 @@ export interface SimConfig {
     slowFromFloor: number;
     slowFactor: number;
     /** Rock yielded per slot dug out: the shaft's area by the drill, a room's cells by excavation. */
-    rockPerSlot: number;
+    rockPer100m2: number;
     /** Extra yield per slot when the hole sits on a deposit, e.g. ore → { ore: 0.4 }. */
-    depositYieldsPerSlot: Record<string, Record<string, number>>;
+    depositYieldsPer100m2: Record<string, Record<string, number>>;
     maxFloors: number;
   };
   startingStock: Record<string, number>;
@@ -264,8 +279,8 @@ export type LandingKitName = "full" | "bare";
 
 export interface LandingKit {
   surface: { room: string; slot: number }[];
-  /** `holds` sets what a tank holds (its first choice if left out). */
-  ring: { room: string; floor: number; ring: number; slot: number; holds?: string }[];
+  /** Ring rooms go at their start angle, in notches, with their target area. `holds` sets what a tank holds (its first choice if left out). */
+  ring: { room: string; floor: number; ring: number; start: number; holds?: string }[];
 }
 
 // JSON imports widen tuples to arrays, so cast via unknown; tests check the values.
