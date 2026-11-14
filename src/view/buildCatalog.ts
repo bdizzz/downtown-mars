@@ -63,26 +63,68 @@ export function shapesFor(def: RoomDef): [number, number][] {
 
 // ---- The web's build rail: a few groups down the left edge, each a short list of tiles ----
 
-/** A group on the build rail: several categories under one icon, so there are seven things to scan, not fifteen. */
+/**
+ * A heading inside a group's list. Usually one room category, but the rail groups for the player,
+ * not for the sim (whose categories set wear and wall materials), so a section can be its own:
+ * "meals" splits the eating rooms from the food category's farms (#454).
+ */
+export interface BuildSection {
+  id: string;
+  name: string;
+  /** The category whose colour its heading takes. */
+  color: string;
+}
+
+/** A group on the build rail: several sections under one icon, so there are seven things to scan, not fifteen. */
 export interface BuildGroup {
   id: string;
   name: string;
   icon: IconId;
-  categories: string[];
+  /** Its sections, in order: room categories (CATEGORY_NAMES), or rail-only ones from RAIL_SECTIONS. */
+  sections: string[];
 }
 
+/** Sections the rail adds that aren't room categories. */
+export const RAIL_SECTIONS: Record<string, BuildSection> = {
+  meals: { id: "meals", name: "Meals", color: "food" },
+  seals: { id: "seals", name: "Bulkheads and windows", color: "circulation" },
+};
+
+/** Rooms the rail shows under another section than their category's (#454). */
+export const ROOM_SECTION: Record<string, string> = {
+  galley: "meals",
+  kitchen: "meals",
+  canteen: "meals",
+  restroom: "housing",
+  admin_office: "services",
+};
+
 export const BUILD_GROUPS: BuildGroup[] = [
-  { id: "access", name: "Access", icon: "stairs", categories: ["circulation", "excavation"] },
-  { id: "homes", name: "Homes", icon: "home", categories: ["housing"] },
-  { id: "food", name: "Food & water", icon: "rawFood", categories: ["food", "water"] },
-  { id: "air", name: "Air & power", icon: "power", categories: ["air", "power"] },
-  { id: "community", name: "Community", icon: "community", categories: ["public", "health", "admin"] },
-  { id: "industry", name: "Industry", icon: "machinery", categories: ["industry", "construction", "services"] },
-  { id: "storage", name: "Storage", icon: "crate", categories: ["storage", "logistics"] },
+  { id: "access", name: "Access", icon: "stairs", sections: ["circulation", "seals", "excavation"] },
+  { id: "homes", name: "Homes", icon: "home", sections: ["housing"] },
+  { id: "food", name: "Food", icon: "rawFood", sections: ["food", "meals"] },
+  { id: "utilities", name: "Utilities", icon: "power", sections: ["power", "water", "air"] },
+  { id: "community", name: "Community", icon: "community", sections: ["services", "public", "health"] },
+  { id: "industry", name: "Industry", icon: "machinery", sections: ["industry", "construction"] },
+  { id: "storage", name: "Storage", icon: "crate", sections: ["storage", "logistics"] },
 ];
 
-/** The group a category sits in. */
-export const groupOf = (category: string): BuildGroup | undefined => BUILD_GROUPS.find((g) => g.categories.includes(category));
+/** A section's heading and colour. */
+export function sectionInfo(id: string): BuildSection {
+  return RAIL_SECTIONS[id] ?? { id, name: CATEGORY_NAMES[id] ?? id, color: id };
+}
+
+/** The section a room shows under on the rail. */
+export const sectionOf = (def: RoomDef): string => ROOM_SECTION[def.id] ?? def.category;
+
+/** The group a section (a category, mostly) sits in. */
+export const groupOf = (section: string): BuildGroup | undefined => BUILD_GROUPS.find((g) => g.sections.includes(section));
+
+/** The group a room sits in. */
+export const groupOfRoom = (def: RoomDef): BuildGroup | undefined => groupOf(sectionOf(def));
+
+/** Rooms built on the ground beside the shaft, not dug into the hole: their tiles carry a marker. */
+export const surfaceOnly = (def: RoomDef): boolean => def.size === "surface";
 
 /** One tile in a group's list: a room, or a family of them (sizes or grades of one thing) behind one tile. */
 export interface BuildTile {
@@ -90,6 +132,8 @@ export interface BuildTile {
   id: string;
   name: string;
   category: string;
+  /** The section it lists under (its category, unless ROOM_SECTION moves it). */
+  section: string;
   /** The rooms behind it, smallest or plainest first; one for a room with no family. */
   members: RoomDef[];
 }
@@ -101,7 +145,7 @@ export function buildTiles(defs: readonly RoomDef[]): BuildTile[] {
     const family = def.family;
     const tile = family ? tiles.find((t) => t.id === family) : undefined;
     if (tile) tile.members.push(def);
-    else tiles.push({ id: family ?? def.id, name: family ? (roomFamilies[family] ?? def.name) : def.name, category: def.category, members: [def] });
+    else tiles.push({ id: family ?? def.id, name: family ? (roomFamilies[family] ?? def.name) : def.name, category: def.category, section: sectionOf(def), members: [def] });
   }
   // A family with one member showing (the guided tutorial, say) is just that room.
   return tiles.map((t) => (t.members.length === 1 ? { ...t, name: t.members[0]!.name } : t));

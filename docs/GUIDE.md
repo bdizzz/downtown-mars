@@ -56,7 +56,7 @@ Open a group on the **build rail** down the left edge (or press B), pick a room 
 
 ### Windows
 
-- Rooms start without windows. The corridor tool's **Windows** mode puts them in, a whole wall at a click, on walls facing the shaft, a corridor or a walk-through room. Hover a wall: the room's half of the corridor along it lights up green where windows can go, with the cost and the comfort they'd give.
+- Rooms start without windows. **Windows** (Build → Access) puts them in, a whole wall at a click, on walls facing the shaft, a corridor or a walk-through room. Hover a wall: the room's half of the corridor along it lights up green where windows can go, with the cost and the comfort they'd give.
 - Windows cost glass (2 per 10 m of wall); the landing kit brings 100. Shift-click takes them out.
 - A home looking out over the shaft gets +1.5 comfort (a wall of glass where no tube runs), +1 behind a tube, less onto a plaza or a corridor, and a little more for each other glazed wall.
 - Windows onto the shaft let the sun in too: +0.5 comfort on floor 1, less each floor down, none below floor 10. In 3D, around midday, sunlight falls down the shaft (still visible in Free view with a floor picked), lights the gallery tubes and pools on the floor inside rooms with windows onto the shaft, fainter the deeper they are.
@@ -174,10 +174,10 @@ Water goes round in a loop. Everything that uses clean water (people, galleys, f
 - It goes stale away from the air trunk in the shaft wall (ring 3 starts at −1).
 - Smelters, brickworks and concrete plants foul it for the rooms down the corridors from them, fading with every step.
 - At home, stale air costs wellbeing (and so happiness). Crowded homes get stuffy.
-- **Ventilation hubs** (Build → Air & power) scrub and freshen the air for the rooms along the network from them, and parks help a little.
+- **Ventilation hubs** (Build → Utilities) scrub and freshen the air for the rooms along the network from them, and parks help a little.
 - Smell travels the same way, and leaks into the room next door as well.
 - The entrance's airlock lets in Mars dust, fouling the air down the corridors from it, twice as badly in a dust storm.
-- **Bulkheads** (the corridor tool's Bulkhead button: click a corridor, 2 metal) seal a corridor against air and smell; people pass through.
+- **Bulkheads** (Build → Access → Bulkhead: click a corridor, 2 metal) seal a corridor against air and smell; people pass through.
 - **Heavy industry breathes out CO2** too: a smelter about as much as three people, a silicon refinery two, a glassworks, brickworks or concrete plant one and a half. A busy industrial hole needs more scrubbers.
 
 ## Temperature
@@ -186,7 +186,7 @@ Every floor has a **temperature**, one number for the whole floor. Temperatures 
 
 - **The rock is cold.** With nothing warming it, a floor **rests** at the site's temperature: about **40–45 °F** at 20–25° latitude (where every new game's first hole sits), as low as **0–15 °F** toward the poles, and warmer toward the equator, but never above **50 °F**. Each floor down rests a little warmer.
 - **People and machines warm it.** Everyone living or working on a floor adds a little; rooms that run hot (smelters, the silicon refinery) add a lot. A crowded or industrial floor partly heats itself.
-- **Heaters** (Build → Air & power) turn power into heat, up to the **thermostat**. One heater holds a small hole's floor, dug out across its three rings, at about **65 °F**; a bigger floor, a colder site or a warmer thermostat needs two, or a **heating plant** (M, about twice a heater's heat). A heater only draws the power it needs to hold the thermostat, and all of it while the floor is still warming. More heaters warm a floor faster: one takes about a month from rest to 65 °F.
+- **Heaters** (Build → Utilities) turn power into heat, up to the **thermostat**. One heater holds a small hole's floor, dug out across its three rings, at about **65 °F**; a bigger floor, a colder site or a warmer thermostat needs two, or a **heating plant** (M, about twice a heater's heat). A heater only draws the power it needs to hold the thermostat, and all of it while the floor is still warming. More heaters warm a floor faster: one takes about a month from rest to 65 °F.
 - **Radiators** pipe heat out to panels on the surface, bringing a floor that industry has overheated down to the thermostat.
 - **Without power** (heaters lose it after life support and before industry), a floor cools slowly back to rest, over about two months.
 - **The thermostat** is one setting for the whole hole: a slider in any heater's or radiator's panel. Tick **Floor N only** to give that floor its own (a cooler floor for industry, say). Lower it to save power, at a cost to comfort.
@@ -242,7 +242,7 @@ Every floor has a **temperature**, one number for the whole floor. Temperatures 
 
 Four buttons at the bottom right, as in SimCity. B, V, M and C open them from anywhere. Pick the open mode again to close it; Esc steps back one thing at a time.
 
-- **Build** is the rail down the left edge: seven groups (Access, Homes, Food & water, Air & power, Community, Industry, Storage), then Demolish and Undo. Open a group and its rooms list beside it, each with its cost, and the details of the one you point at: cost and build time, a short table (staff, what it uses and makes), and what it does to its neighbours as chips. Rooms that are sizes or grades of one thing (storeroom, warehouse and depot; the three plazas; empty rooms; stairs; lifts; each tier of home) share one tile. While something is in hand a **tool bar** runs along the bottom with just its choices: the size (for a family), which way round (R), the walls, and what it all costs; for corridors, what the tool does (Draw, Bulkhead, Windows, Refit), the finish, and Erase. **Done** (or Esc, or right-click) puts it down. Only Build places rooms and corridors. The rooms' keys (and Z for corridors, X to demolish, R to rotate) work only in Build; outside it, bare rock doesn't light up under the pointer.
+- **Build** is the rail down the left edge: seven groups (Access, Homes, Food, Utilities, Community, Industry, Storage), then Demolish and Undo. Open a group and its rooms list beside it, each with its cost, and the details of the one you point at: cost and build time, a short table (staff, what it uses and makes), and what it does to its neighbours as chips. Rooms that are sizes or grades of one thing (storeroom, warehouse and depot; the three plazas; empty rooms; stairs; lifts; each tier of home) share one tile. While something is in hand a **tool bar** runs along the bottom with just its choices: the size (for a family), which way round (R), the walls, and what it all costs; for corridors, Draw or Refit, the finish, and Erase. Bulkheads and windows are tiles of their own under Access. Food lists farms first, then the rooms people eat in (Meals); the restroom sits with the homes. Utilities lists power first, then water and air; Community opens with Services (the admin office, maintenance, cleaning). A small sun on the horizon marks rooms built only on the surface (the solar array, the landing pad, the rover depot). **Done** (or Esc, or right-click) puts it down. Only Build places rooms and corridors. The rooms' keys (and Z for corridors, X to demolish, R to rotate) work only in Build; outside it, bare rock doesn't light up under the pointer.
 - **The resource bar** is quiet by default: the colony's vitals, life support, what you're eating, and any stock that's short, in trouble or full. **Stock** shows the rest until you close it again; **Settings → Display → Show every resource** keeps them all showing.
 - **View** is three groups: **Camera** (one at a time: the 3D cameras, Plan, Unrolled), **Show** (switches for the 3D views: Walls down, Colours, Tints, Flows) and **Overlay** (one at a time, or Off).
   - **Tints** (on by default) marks rooms by tinting their walls and floor: brighter when pointed at or picked, pulsing when in trouble. Off, they're outlined in those colours instead.
@@ -294,7 +294,7 @@ New games open in 3D, in Free view. Everything you can do in 2D works in 3D.
 | Key | Action |
 | --- | --- |
 | B V C M | Build, View, Charts and Map modes (anywhere) |
-| 1 – 7 | Open a group on the build rail: Access, Homes, Food & water, Air & power, Community, Industry, Storage (again to close) |
+| 1 – 7 | Open a group on the build rail: Access, Homes, Food, Utilities, Community, Industry, Storage (again to close) |
 | Space | Pause / resume, at the speed you had |
 | − + | Slower / faster (1×, 2×, 4×); from paused, starts one step from the speed you had |
 | Esc | Put down the tool, close a panel or mode, or open the menu (in the menu, Esc goes back a step, then resumes) |
