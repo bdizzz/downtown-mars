@@ -96,14 +96,15 @@ export const ROOM_SECTION: Record<string, string> = {
   kitchen: "meals",
   canteen: "meals",
   restroom: "housing",
+  admin_office: "services",
 };
 
 export const BUILD_GROUPS: BuildGroup[] = [
   { id: "access", name: "Access", icon: "stairs", sections: ["circulation", "seals", "excavation"] },
   { id: "homes", name: "Homes", icon: "home", sections: ["housing"] },
   { id: "food", name: "Food", icon: "rawFood", sections: ["food", "meals"] },
-  { id: "utilities", name: "Utilities", icon: "power", sections: ["water", "air", "power"] },
-  { id: "community", name: "Community", icon: "community", sections: ["public", "health", "admin", "services"] },
+  { id: "utilities", name: "Utilities", icon: "power", sections: ["power", "water", "air"] },
+  { id: "community", name: "Community", icon: "community", sections: ["services", "public", "health"] },
   { id: "industry", name: "Industry", icon: "machinery", sections: ["industry", "construction"] },
   { id: "storage", name: "Storage", icon: "crate", sections: ["storage", "logistics"] },
 ];

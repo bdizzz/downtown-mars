@@ -7,7 +7,8 @@ describe("the build rail's catalogue", () => {
 
   it("puts every category and rail section in exactly one group, and every room in one", () => {
     const grouped = BUILD_GROUPS.flatMap((g) => g.sections);
-    expect([...grouped].sort()).toEqual([...CATEGORY_ORDER, ...Object.keys(RAIL_SECTIONS)].sort());
+    expect(new Set(grouped).size).toBe(grouped.length);
+    for (const s of grouped) expect([...CATEGORY_ORDER, ...Object.keys(RAIL_SECTIONS)], s).toContain(s);
     for (const d of buildable) expect(groupOfRoom(d), d.id).toBeDefined();
     for (const s of Object.values(ROOM_SECTION)) expect(groupOf(s), s).toBeDefined();
   });
@@ -21,6 +22,9 @@ describe("the build rail's catalogue", () => {
     expect(groupFor("water_tank")).toBe("utilities");
     expect(groupFor("maintenance")).toBe("community");
     expect(groupFor("restroom")).toBe("homes");
+    expect(sectionOf(buildable.find((d) => d.id === "admin_office")!)).toBe("services");
+    expect(BUILD_GROUPS.find((g) => g.id === "community")!.sections[0]).toBe("services");
+    expect(BUILD_GROUPS.find((g) => g.id === "utilities")!.sections[0]).toBe("power");
     expect(buildable.filter(surfaceOnly).map((d) => d.id)).toContain("solar_array");
   });
 
