@@ -73,15 +73,12 @@ tests/        # Vitest: sim units plus scripted playthroughs (bots)
 
 ## Core spatial model
 
-- A hole has a **diameter** and a stack of **floors**, dug by the drill. Each floor has up to 6 **rings** of room slots around the shaft; ring 1 faces the shaft. Only rings 1–3 are open so far.
-- A room's position is **(floor, ring, slot)**. Rings are loops with no edges, so slot indices wrap.
-- **Slots per ring** grow with radius (room depth d = slot width w = 10 m, shaft radius R):
-  `slots(n) = round(2π · (R + (n − 0.5) · d) / w)`
-  The starter hole is R = 10 m: rings 1–3 have 9, 16 and 22 slots. Adjacency across rings is by angular overlap.
-- **Room footprints** have width (slots), depth (rings) and height (floors). Sizes: S = 1 slot, M = 2, L = 4, H = 8 (H not built yet).
-- **Space is dug:** every slot is rock until a room (or an empty room) is excavated there.
-- **Access:** the shaft is open to Mars. **Corridors run along the edges** between rooms (and between rooms and rock), not in slots; along the shaft wall they're glass **gallery tubes** (floor 1 starts with one all the way round; deeper floors get what the player builds). Every room needs a tube, corridor or walk-through room along one side. People reach floor 1 through the entrance, and deeper floors by stairs and elevators.
-- **Neighbor effects** (noise, smell, health, comfort) radiate from rooms with a strength (−3 to +3) and radius in slots, falling off with distance, along the ring, across rings and between floors; corridors block noise. **Airborne effects** (air quality, smell) ride the network instead, fading per step. **Amenities and services** (parks, plazas, gyms, galleys, clinics, schools) count by walking distance in steps (10 m).
+- A hole has a **diameter** and a stack of **floors**, dug by the drill. Each floor has up to 6 **rings** (10 m deep) around the shaft; ring 1 faces the shaft. Only rings 1–3 are open so far.
+- **Rooms are sized by area and placed by angle** (F-004, `docs/PLAN-M17.md`). Angles are whole **notches**, 1,440 a turn. A ring room is `(floor, ring, depth, start, span)`: its innermost ring, how many rings deep, and its angle range, wrapping at a turn; it takes the same angles on every ring it covers (a wedge). Sizes are **target areas**: S 100, M 200, L 400, H 800 m² (`config.sizes`; a type may set its own `area`), so an S room is about 10 m wide at its middle on any ring. A room may be ±15% of its target (`placement.leeway`); **fill rooms** (Empty space, tiny and small plazas, the park) stretch from 50% to 300%, at most a quarter turn, and cost by area.
+- **Space is kept as intervals** (`sim/space.ts`): per floor and ring, what's dug as merged angle ranges, and **pieces** where anything starts or ends (a room's part of a ring, empty space, rock cut on the ring's old grid of about 10 m: 9, 9, 18 pieces round the starter hole). Pieces are what effects, air and walking go over. Everything is rock until dug.
+- **Placing** snaps (on by default, the . key): fill a gap, sit against a neighbour, line up with a room end on the ring inside or outside, then a shared 10° grid (`sim/snap.ts`). A ring room goes down as a proposal with handles on its side walls; a second click (or Enter) builds it. Old saves keep their rooms' exact angles and old areas.
+- **Access:** the shaft is open to Mars. **Corridors run along the edges** between pieces (rooms, empty space, rock), as whole edge pieces cut wherever something meets them (ids like `A1.0.320-480` and `R1.2.1280`, in notches); along the shaft wall they're glass **gallery tubes** (floor 1 starts with one all the way round; deeper floors get what the player builds). Every room needs a tube, corridor or walk-through room along one side. People reach floor 1 through the entrance, and deeper floors by stairs and elevators.
+- **Neighbor effects** (noise, smell, health, comfort) radiate from rooms with a strength (−3 to +3) and radius in steps of about 10 m, falling off with distance between pieces' middles, along the ring, across rings and between floors; corridors block noise. **Airborne effects** (air quality, smell) ride the network instead, fading per step. **Amenities and services** (parks, plazas, gyms, galleys, clinics, schools) count by walking distance in steps (10 m).
 
 ## Where things stand (Oct 4, 2026)
 

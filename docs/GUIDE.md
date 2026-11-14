@@ -44,7 +44,15 @@ Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists
 
 ## Building
 
-Open a group on the **build rail** down the left edge (or press B), pick a room from its list (or press its key: room keys work only in Build), then click a slot. Green means it fits; red says why not. With a surface room in hand (solar arrays, the landing pad), every free spot round the hole it fits on is tinted faintly green on the ground, and the one under the pointer brighter.
+Open a group on the **build rail** down the left edge (or press B), pick a room from its list (or press its key: room keys work only in Build), then click in a ring. Green means it fits; red says why not.
+
+**Rooms are sized by area,** not by slots: a small room is 100 m², a medium 200, a large 400, the same on every ring, so a galley on ring 3 is furnished much as one on ring 1. Rooms go at any angle round the ring.
+
+- **Snapping** (on to start; the toggle on the tool bar, or the **.** key) lines a room up as you point: it fills a gap it fits exactly, sits against a neighbour so no sliver is left, lines its ends up with a room's end on the ring inside or outside (so a corridor can run straight across), and failing that keeps to a 10° grid. A thin line marks what it snapped to. A room may stretch or shrink up to 15% to make a snap. Off, the room goes exactly where you point, at exactly its size.
+- **A click puts the room down** without building it: drag either side wall to stretch or shrink it, click it again (or press Enter) to build it, click elsewhere to move it, Esc to take it back. Stairs, elevators and surface buildings are built at once.
+- **Fill rooms** (Empty space, the tiny and small plazas, the park) stretch from half to three times their size, up to a quarter of the way round, and cost by the floor they take (their effects don't grow). With one in hand, **double-click a gap** to fill it wall to wall.
+- **R** turns a large room the other way: one ring deep, or two.
+- Rooms from saves made before rooms went by area keep their exact place and size (a ring-2 room from then is 175 m²). With a surface room in hand (solar arrays, the landing pad), every free spot round the hole it fits on is tinted faintly green on the ground, and the one under the pointer brighter.
 
 ### Tubes and corridors
 
@@ -91,12 +99,12 @@ Pause any staffed room, or have it stop at a stock level, from its Work section.
 
 - The drill only sinks the shaft. In 3D a big boring machine sits at the bottom of the hole, riding down as it digs: a turning cutterhead, grippers braced on the bore, a conveyor lifting spoil into a skip, and the hoist cable and power line up the shaft. The top of the shaft is lined with a concrete collar that rises into a rim round the hole, with a railed walkway on top (the shaft dome stands on it). On the rim, lattice towers hold a gantry over the hole with a sheave for each cable, and a winch at either end winds them in. The cables follow the drill down. It's only for looks.
 - The first floors go quickly; from floor 4 on, each floor takes twice as long (`digging.slowFromFloor`, `slowFactor`).
-- A new hole starts with only ring 1 of floor 1 dug out (and the landing kit's rooms and corridor in rings 2 and 3). Every other slot is solid rock until it's dug out.
-- A room placed on rock is excavated first (3 hours a slot, bringing up its rock and whatever the hole sits on), then built.
+- A new hole starts with only ring 1 of floor 1 dug out (and the landing kit's rooms and corridor in rings 2 and 3). Everything else is solid rock until it's dug out.
+- A room placed on rock is excavated first (3 hours per 100 m², bringing up its rock and whatever the hole sits on), then built.
 - An **excavator bay** (Build → Industry) speeds the drill: half as fast again at full staff, each, so floors and their rock come sooner. It's noisy.
 - **Every hole has a bottom, and you won't know where.** Each hole goes 5 to 20 floors (the first at least 8), with one or two hard patches on the way. Nothing tells you the depth; a floor or two before each the drill strains, the rock runs warm or a tremor shakes the shaft. At a **hard patch** (the drill breaks down, basalt, groundwater, tremors) the drill stops and waits for you, with no timer: pay for a repair, a new bit, pumps or shoring (1 machinery, 6 metal, 1 electronics) and dig on, or stop there for good. At the **bottom** the place itself says why (a geothermal pocket, a deep reservoir, a brine lake, an old magma chamber, a fault line), and the drill can become something useful: a heat well (the only way to get a geothermal plant), a deep water pump, a brine works, a cavern opened up to build in. Or **scrap** the drill for half its materials (2 machinery, 12 metal, 1 electronics), or **crate** it for the next seed kit gathered at this hole, which then needs 4 machinery, 24 metal and 2 electronics less.
 - **Capping a hole** is for good: no more floors, ever. The square button beside the drill's pause in the top bar asks to stop drilling at any time (a card confirms it). Capping brings a ceremony (a festival or a toast), a plaque with the final depth, and a name from how it ended ("the geothermal hole"), shown in the Network panel and on the map. The top bar's drill then reads *Capped*. Hitting bottom is a nudge to found the next hole.
-- **Empty rooms** (Build → Access) dig ahead for rock and space. Dug-out space with nothing in it has pillars and no walls, and is walk-through like a plaza; demolishing a room leaves it.
+- **Empty space** (Build → Access) digs ahead for rock and space: a fill room, so stretch it (or double-click a gap) to dig as much as you like at a go. Dug-out space with nothing in it has pillars and no walls, and is walk-through like a plaza; demolishing a room leaves it.
 
 ## Getting in and out
 
@@ -312,7 +320,10 @@ New games open in 3D, in Free view. Everything you can do in 2D works in 3D.
 
 | Key | Action |
 | --- | --- |
-| R | Rotate the room you're placing |
+| R | Turn the room you're placing: one ring deep or two |
+| . | Snapping on and off |
+| Enter | Build the room you've put down |
+| Double-click | With a fill room (Empty space, a plaza, the park): fill the gap wall to wall |
 | Z | Corridor tool (drag to snake a corridor, confirm on release; Shift fills in) |
 | X | Demolish |
 | D G F T Y W L K A B S P | Dorm, galley, farm, tank, recycler, restroom, CO2 scrubber, clinic, admin office, battery, solar, landing pad |

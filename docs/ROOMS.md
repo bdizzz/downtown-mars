@@ -5,6 +5,7 @@ Every room with its footprint, staff, inputs, outputs, neighbor effects, build c
 **Legend**
 
 - **Size:** S = 1 slot, M = 2 slots, L = 4 slots, H = 8 slots (usually 2+ floors); L and H rooms can be laid out wide, deep or tall; Surface and Shaft rooms sit outside the ring.
+- **As built (F-004, PLAN-M17):** sizes are target floor areas, S 100, M 200, L 400, H 800 m² (a slot here means 100 m²), placed at any angle within ±15%; L may be one ring deep or two. What a room does doesn't change with its exact area. Fill rooms (Empty space, which replaced the three empty rooms; tiny and small plazas; the park) stretch 50–300% and cost by area.
 - **Amounts** are per game day. Effects run from −3 to +3, with radius r in slots (r0 = the room itself).
 - **Build cost:** R = rock, B = brick, M = metal, Mc = machinery, E = electronics.
 - **(parked)** after a name: set aside, not planned, but kept here so it can come back. ROOM-STATUS.md says why (F-015).

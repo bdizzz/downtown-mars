@@ -403,3 +403,21 @@ Talked through with Bryon (Nov 12) and built as one PR (#394–#406).
 - **The kits:** the full landing kit brings a heater (ring 3, slot 16), and a founded hole's seed kit brings one ready-made (`network.seedKit.setsUp`, ring 2, slot 2); the bare kit, which unit tests build on, has none. The heater costs a new game power: over the first days the battery fills about 1.7 a month rather than 4.2, with no room going dark. The tutorial gets a step to turn on the overlay, and the deputy a tip for cold homes.
 - **Not now:** ventilation networks, venting to cool, heat between floors. Later: insulation as a lining upgrade (M15), geothermal plants giving heat (#390), the Godot viewer's overlay, thermostat and setting.
 - The people playthrough's bars eased (born 4 → 3, the child above 50 → 35 people): over six seeds 3–4 born and 36–53 people, with or without the industry's CO2.
+
+## Decided for rooms by area (Nov 13–14, F-004 / #109)
+
+Planned in `PLAN-M17.md` (Bryon's answers Oct 6, the grid snap Nov 13), built as one PR on `feature/f-004-rooms-by-area` (#165–#175).
+
+- **Notches, not finer slots:** angles are whole notches, 1,440 a turn, the same on every ring, so ends line up exactly across rings and old slot boundaries convert exactly. A shared 10° grid (`placement.gridNotches` 40) is snapping's last resort, so rooms placed apart still tend to share ends for straight crossings.
+- **What a room does doesn't scale with its area.** A galley seats 25 at 88 m² or 115; an old deep 2×2 farm that made 1.5× now makes 1× (`economy.ts`). Fill rooms cost and take work by area; their effects and reach don't grow.
+- **Linings, floors, condition weight and crowding count in units of 100 m²** (`unitsOf`, rounded, at least one a floor), so an S room is 1, an M 2, an L 4, whatever its exact area.
+- **Rock and empty space are cut on the old ring grid** (9, 9, 18 round the starter hole), no piece under 3 m beside a room. Effects fade by the distance between pieces' middles, in steps of a grid piece, the source room's own pieces counting one step wide: a wide room feels about the average over its floor, as when it was several cells.
+- **Corridors are whole edge pieces.** When a room's end (or a new corridor) cuts one, it becomes its parts with the same finish and work under way (`space.ts` resplit, construction jobs follow); a bulkhead stays on the part its middle was on.
+- **A room not yet built is checked on a copy with it in**, so it meets corridors partway along them (access, reach on foot).
+- **A ring room goes down as a proposal** with handles on its side walls; a second click or Enter builds it, Esc takes it back. Stairs, elevators and surface rooms build at once. A click where it can't go at all (over a room, a locked ring) says why and puts nothing down.
+- **The snap key is .** (every letter is a room's or a mode's). In Godot's cutaway, . zooms instead.
+- **The unrolled view keeps equal angle per ring**, not the plan's mid-radius length, so rooms that line up across rings still look lined up there.
+- **The three empty rooms are one, "Empty space"** (`empty_room_s`, a fill room); old saves' medium and large empty rooms become it.
+- **Old saves are turned from slots to angles first,** before any other migration (`sim/legacySlots.ts`, save v25): rooms keep their exact angles and old areas; corridors, bulkheads, windows and jobs get notch ids. The dev saves in `public/` stay at v22 to keep that path tested.
+- **Tests still lay rooms out on the old grid** (`tests/spots.ts`: `ringAt`, `cellAt`, the `fixed` flag on a spot); placing by area has its own tests (`tests/byArea.test.ts`).
+
