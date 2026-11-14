@@ -5,7 +5,7 @@ import type { Placed } from "./furnish";
 import { itemDef } from "./furniture";
 import { roomLook, type Finish } from "./roomFinish";
 
-// The office scene: what stands in the administrator's office, shown as a still 3D room in place
+// The office scene: what stands in the administrator's office, shown as a still 3D room, in first person, in place
 // of the hole while the office panel is open (render3d/office3d.ts draws it). The room, the camera
 // and every piece are in data/office.json. The furniture that's always there is its `base`; the
 // rest are keepsakes, each of which turns up once the hole has a finished room of the right kind,
@@ -38,7 +38,7 @@ export interface Keepsake {
 
 export const office = raw as unknown as {
   room: { width: number; depth: number; height: number; front: number; wallGap: number };
-  camera: { at: [number, number, number]; look: [number, number, number]; fov: number; aspect: number };
+  camera: { at: [number, number, number]; look: [number, number, number]; fov: number; aspect: number; maxFov: number };
   lights: {
     sky: string;
     ground: string;

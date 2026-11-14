@@ -22,6 +22,14 @@ describe("the office scene", () => {
     for (const t of everyRoom) expect(types.has(t), t).toBe(true);
   });
 
+  it("stands the eye at head height, looking near level", () => {
+    const { at, look } = office.camera;
+    expect(at[1]).toBeGreaterThanOrEqual(1.6);
+    expect(at[1]).toBeLessThanOrEqual(1.85);
+    const pitch = Math.atan2(look[1] - at[1], Math.hypot(look[0] - at[0], look[2] - at[2]));
+    expect(Math.abs(pitch)).toBeLessThan((5 * Math.PI) / 180);
+  });
+
   it("gains a keepsake when the hole finishes a room of its kind, and not before", () => {
     const bare = officeLook({ rooms: [] });
     expect(bare.keepsakes).toEqual([]);

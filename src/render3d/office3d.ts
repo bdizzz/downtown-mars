@@ -9,7 +9,7 @@ import { finishMaterial, isFlooringLook, withFlooring } from "./surfaces";
 // The office scene: a still 3D room drawn over the hole while the office panel is open (what's in
 // it: view/officeScene.ts and data/office.json). It's built from the colony's own pieces: the
 // furniture meshes and materials the rooms use, and the wall and floor finishes the admin office is
-// lined with. A renderer of its own, one fixed camera, and a frame drawn only when something changes
+// lined with. A renderer of its own, one fixed camera at eye level (first person), and a frame drawn only when something changes
 // (the pieces, or the size of the view), so it costs nothing while it's up.
 
 /**
@@ -108,7 +108,7 @@ export function createOfficeScene(host: HTMLElement): OfficeScene {
     if (!w) return;
     renderer.setSize(w, h);
     camera.aspect = w / h;
-    camera.fov = camera.aspect >= office.camera.aspect ? office.camera.fov : (Math.atan(halfWidth / camera.aspect) * 360) / Math.PI;
+    camera.fov = camera.aspect >= office.camera.aspect ? office.camera.fov : Math.min(office.camera.maxFov, (Math.atan(halfWidth / camera.aspect) * 360) / Math.PI);
     camera.updateProjectionMatrix();
     render();
   });
