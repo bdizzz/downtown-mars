@@ -321,6 +321,14 @@ describe("placing in the views", () => {
     expect(w.s.layout.rooms.some((r) => r.type === "galley" && r.at.kind === "ring" && r.at.start === proposal.start)).toBe(true);
   });
 
+  it("a click where the room can't go puts nothing down: it says why", () => {
+    const w = world();
+    // Over the entrance (0–153 on ring 1).
+    w.click(pickAt(w.s, 1, 60));
+    expect(w.tool().proposal).toBeUndefined();
+    expect(w.said.at(-1)).toMatch(/^Overlaps/);
+  });
+
   it("a click elsewhere moves the proposal; its side walls are handles to drag", () => {
     const w = world();
     w.click(pickAt(w.s, 2, 300));

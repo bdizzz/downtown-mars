@@ -216,6 +216,12 @@ export function clickWith(layout: Layout, tool: Tool, info: HoverInfo, opts: Sta
     }
     // A ring room goes down as a proposal first, its side walls on handles; stairs, elevators and surface rooms are built at once.
     if (placed.at.kind === "ring" && proposes(tool) && opts.onProposeRoom) {
+      // Not where it can't go at all (over a room, a locked ring): say why. Short of stock is said when it's built.
+      const fits = checkPlacement(layout, tool.room, placed.at);
+      if (!fits.ok) {
+        opts.onInvalid?.(fits.reason);
+        return;
+      }
       opts.onProposeRoom({ kind: "ring", floor: placed.at.floor, ring: placed.at.ring, depth: placed.at.depth ?? 1, start: placed.at.start, span: placed.at.span ?? 1 });
       return;
     }

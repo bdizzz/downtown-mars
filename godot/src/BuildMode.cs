@@ -11,14 +11,14 @@ namespace DowntownMars;
 /// Building from Godot, by the web game's rules (the bridge's build.ts): a strip of categories along
 /// the bottom (B opens it), each popping up its rooms; choosing one puts it in hand, and the pointer
 /// shows a ghost of where it would go, green or red, with its cost or why not. Click to build, R turns
-/// it (cycles its shapes), Esc or a right click puts it down. Access holds the corridor tool (Z): click
+/// it (one ring deep or two), Esc or a right click puts it down. Access holds the corridor tool (Z): click
 /// a border, or drag a chain along borders and confirm it, to carve corridors in a finish (or fit
 /// bulkheads or windows); Shift erases. Demolish (X) takes down the room clicked; Undo (⌘Z) takes back
 /// the last room placed.
 /// </summary>
 public partial class BuildMode : Node3D
 {
-    record Room(string Id, string Name, string Category, int[][] Shapes, bool Surface, string Cost, string? Key, string? Locked, string? Short, JsonElement Card, bool Lineable, JsonElement? InLining);
+    record Room(string Id, string Name, string Category, int[] Depths, int? Area, bool Fill, bool Stacks, bool Surface, string Cost, string? Key, string? Locked, string? Short, JsonElement Card, bool Lineable, JsonElement? InLining);
 
     readonly Action<object> _send;
     readonly PanelContainer _strip = new();
@@ -80,7 +80,22 @@ public partial class BuildMode : Node3D
     public bool CanUndo { set => _undoButton.Disabled = !value; }
     /// <summary>Dragging paints corridors (not for bulkheads or windows, which go one wall at a time).</summary>
     public bool Painting => Corridor != null && !_bulkhead && !_windows;
-    int _shape;
+    /// <summary>Which of the room in hand's depths (in rings) it's placed at: R turns an L room the other way.</summary>
+    int _depth;
+    /// <summary>Snapping (PLAN-M17): on, a room lines up with its neighbours and room ends on the next rings, within its leeway; off, it sits exactly where pointed. The . key.</summary>
+    public bool Snap { get; private set; } = true;
+    /// <summary>A ring room put down but not yet built (the bridge's "proposed"): its side walls are handles; a click on it, or Enter, builds it.</summary>
+    object? _proposal;
+    public bool HasProposal => _proposal != null;
+    /// <summary>The proposal's side wall under the pointer, as last hovered ("start" or "end"), if any: pressing there drags it.</summary>
+    public string? HandleUnder { get; private set; }
+    /// <summary>The side wall being dragged, while the button's held.</summary>
+    string? _dragging;
+    public bool DraggingHandle => _dragging != null;
+    readonly MeshInstance3D _handles = new() { Name = "Handles", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+    readonly MeshInstance3D _ticks = new() { Name = "Ticks", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+    readonly StandardMaterial3D _handle = Ghost(new Color(1f, 0.85f, 0.55f, 0.85f)), _handleHot = Ghost(new Color(1f, 1f, 0.85f, 1f)), _tick = Ghost(new Color(1f, 0.95f, 0.8f, 0.95f));
+    readonly Button _snapButton = new() { ToggleMode = true, ButtonPressed = true, FocusMode = Control.FocusModeEnum.None };
     public bool Active => _strip.Visible;
     /// <summary>Where the strip's top edge is now, in the window, for what sits above it (the news).</summary>
     public float StripTop => _strip.Position.Y;
@@ -99,6 +114,8 @@ public partial class BuildMode : Node3D
         AddChild(_chain);
         AddChild(_spots);
         AddChild(_spot);
+        AddChild(_handles);
+        AddChild(_ticks);
 
         _strip.AddThemeStyleboxOverride("panel", Live.Panel());
         // Centred on the bottom edge, its width set by FitStrip: as wide as its buttons, or the window.
@@ -117,7 +134,10 @@ public partial class BuildMode : Node3D
         _row.AddChild(_demolishButton);
         _undoButton.Pressed += () => UndoPressed?.Invoke();
         _row.AddChild(_undoButton);
-        var hint = new Label { Text = "R rotates · Esc or right-click cancels", VerticalAlignment = VerticalAlignment.Center };
+        _snapButton.Pressed += ToggleSnap;
+        _row.AddChild(_snapButton);
+        ShowSnap();
+        var hint = new Label { Text = "R turns it · click it again or Enter builds · drag a side wall · Esc or right-click cancels", VerticalAlignment = VerticalAlignment.Center };
         Style(hint, 12, new Color("#a8927e"));
         _row.AddChild(hint);
 
@@ -321,6 +341,7 @@ public partial class BuildMode : Node3D
         _demolishButton.ButtonPressed = false;
         _ghost.Visible = false;
         _spots.Visible = _spot.Visible = false;
+        DropProposal();
         ClearHalo();
         _tip.Visible = false;
         RefreshRooms();
@@ -337,7 +358,10 @@ public partial class BuildMode : Node3D
             r.GetProperty("id").GetString()!,
             r.GetProperty("name").GetString()!,
             r.GetProperty("category").GetString()!,
-            r.GetProperty("shapes").EnumerateArray().Select(s => s.EnumerateArray().Select(x => x.GetInt32()).ToArray()).ToArray(),
+            r.GetProperty("depths").EnumerateArray().Select(x => x.GetInt32()).ToArray(),
+            r.TryGetProperty("area", out var ar) ? ar.GetInt32() : null,
+            r.TryGetProperty("fill", out var fl) && fl.GetBoolean(),
+            r.TryGetProperty("stacks", out var st) && st.GetBoolean(),
             r.GetProperty("surface").GetBoolean(),
             r.GetProperty("cost").GetString()!,
             r.TryGetProperty("key", out var k) ? k.GetString() : null,
@@ -543,9 +567,9 @@ public partial class BuildMode : Node3D
         }
         var card = room.Card;
         Line(card.GetProperty("name").GetString()!, 17, new Color("#e8834a"));
-        var shape = room.Shapes[Tool == room.Id ? _shape : 0];
-        var size = card.GetProperty("size").GetString() + (card.GetProperty("surface").GetBoolean() ? "" : $" · {shape[0]} wide × {shape[1]} deep");
-        Line(room.Shapes.Length > 1 && Tool == room.Id ? size + "  ·  R turns it" : size, 13, Tones["k"]);
+        var depth = room.Depths[Tool == room.Id ? Math.Min(_depth, room.Depths.Length - 1) : 0];
+        var size = card.GetProperty("size").GetString() + (card.GetProperty("surface").GetBoolean() ? "" : $" · {room.Area} m²" + (depth > 1 ? $" · {depth} rings deep" : "")) + (room.Fill ? " · stretches to fill a gap" : "");
+        Line(room.Depths.Length > 1 && Tool == room.Id ? size + "  ·  R turns it" : size, 13, Tones["k"]);
         // The cost, what the stocks are short of in red.
         var cost = new RichTextLabel { BbcodeEnabled = true, FitContent = true, ScrollActive = false, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(320, 0), MouseFilter = Control.MouseFilterEnum.Ignore };
         cost.AddThemeFontSizeOverride("normal_font_size", 14);
@@ -738,7 +762,8 @@ public partial class BuildMode : Node3D
         Demolishing = false;
         _demolishButton.ButtonPressed = false;
         Tool = Tool == id ? null : id;
-        _shape = 0;
+        _depth = 0;
+        DropProposal();
         _spots.Visible = _spot.Visible = false;
         if (SurfaceTool) _send(new Dictionary<string, object> { ["type"] = "spots", ["room"] = Tool! });
         if (Tool == null) Drop();
@@ -766,7 +791,9 @@ public partial class BuildMode : Node3D
     public void Rotate()
     {
         var r = _palette.FirstOrDefault(r => r.Id == Tool);
-        if (r != null) _shape = (_shape + 1) % r.Shapes.Length;
+        if (r != null) _depth = (_depth + 1) % r.Depths.Length;
+        // Turned the other way: what was put down goes, the room stays in hand.
+        DropProposal();
         ShowCard();
     }
 
@@ -789,7 +816,78 @@ public partial class BuildMode : Node3D
     object ToolJson()
     {
         var r = _palette.First(r => r.Id == Tool);
-        return new Dictionary<string, object> { ["room"] = r.Id, ["shape"] = r.Shapes[_shape], ["lining"] = _lining };
+        var tool = new Dictionary<string, object> { ["room"] = r.Id, ["depth"] = r.Depths[Math.Min(_depth, r.Depths.Length - 1)], ["lining"] = _lining, ["snap"] = Snap };
+        if (_proposal != null) tool["proposal"] = _proposal;
+        return tool;
+    }
+
+    /// <summary>The . key and the strip's button: snapping on and off, without putting the room down.</summary>
+    public void ToggleSnap()
+    {
+        Snap = !Snap;
+        ShowSnap();
+        _lastHover = null;
+    }
+
+    void ShowSnap()
+    {
+        _snapButton.ButtonPressed = Snap;
+        _snapButton.Text = Snap ? "Snap on [.]" : "Snap off [.]";
+        _snapButton.TooltipText = Snap
+            ? "Snapping is on: a room lines up with its neighbours and with room ends on the next rings, within 15% of its size. Click to place it exactly where you point (.)"
+            : "Snapping is off: a room goes exactly where you point, at exactly its size. Click to line it up with its neighbours (.)";
+    }
+
+    /// <summary>The bridge's "proposed": the room in hand's proposal, put down, moved or dragged (or null, once it's built).</summary>
+    public void Proposed(JsonElement msg)
+    {
+        if (Tool == null) return;
+        var p = msg.GetProperty("proposal");
+        _proposal = p.ValueKind == JsonValueKind.Object ? JsonSerializer.Deserialize<object>(p.GetRawText()) : null;
+        if (_proposal == null) HideMarks();
+    }
+
+    /// <summary>Esc with a room put down: it goes, and the room stays in hand. False if there was none.</summary>
+    public bool DropProposal()
+    {
+        var had = _proposal != null;
+        _proposal = null;
+        _dragging = null;
+        HandleUnder = null;
+        HideMarks();
+        return had;
+    }
+
+    void HideMarks()
+    {
+        _handles.Visible = _ticks.Visible = false;
+        HandleUnder = null;
+    }
+
+    /// <summary>Pressed on a proposal's side wall: drag it until the button's let go.</summary>
+    public bool StartHandleDrag()
+    {
+        if (_proposal == null || HandleUnder == null) return false;
+        _dragging = HandleUnder;
+        return true;
+    }
+
+    public void DragHandle(Vector3 at)
+    {
+        if (_dragging == null || Tool == null) return;
+        if (_clock - _lastHoverAt < 0.04) return;
+        _lastHoverAt = _clock;
+        _send(new Dictionary<string, object> { ["type"] = "dragHandle", ["tool"] = ToolJson(), ["side"] = _dragging, ["at"] = new[] { at.X, at.Y, at.Z } });
+    }
+
+    public void EndHandleDrag() => _dragging = null;
+
+    /// <summary>Enter: build the room that's down, if one is.</summary>
+    public bool Commit(Vector3 at)
+    {
+        if (_proposal == null || Tool == null) return false;
+        _send(new Dictionary<string, object> { ["type"] = "place", ["tool"] = ToolJson(), ["at"] = new[] { at.X, at.Y, at.Z }, ["commit"] = true });
+        return true;
     }
 
     Vector3? _lastHover;
@@ -808,7 +906,7 @@ public partial class BuildMode : Node3D
         else _send(new Dictionary<string, object> { ["type"] = "hover", ["tool"] = ToolJson(), ["at"] = new[] { at.X, at.Y, at.Z } });
     }
 
-    public void Place(Vector3 at)
+    public void Place(Vector3 at, bool twice = false)
     {
         if (Corridor != null)
         {
@@ -816,7 +914,7 @@ public partial class BuildMode : Node3D
             return;
         }
         if (Tool == null) return;
-        _send(new Dictionary<string, object> { ["type"] = "place", ["tool"] = ToolJson(), ["at"] = new[] { at.X, at.Y, at.Z } });
+        _send(new Dictionary<string, object> { ["type"] = "place", ["tool"] = ToolJson(), ["at"] = new[] { at.X, at.Y, at.Z }, ["double"] = twice });
     }
 
     /// <summary>The bridge's answer to a hover: ok or not, the cost and a note, and the footprint.</summary>
@@ -856,6 +954,34 @@ public partial class BuildMode : Node3D
             _spots.Visible = SurfaceTool;
         }
         if (msg.TryGetProperty("spot", out var one)) _spot.Mesh = TriMesh(one.GetString()!, _spotHover);
+        // Placing by area: the proposal's side walls (handles, brighter under the pointer), and ticks on what it snapped to.
+        HandleUnder = msg.TryGetProperty("handle", out var hu) ? hu.GetString() : null;
+        if (msg.TryGetProperty("handles", out var hs) && _proposal != null)
+        {
+            _handles.Mesh = TriMesh(hs.GetString()!, HandleUnder != null || _dragging != null ? _handleHot : _handle);
+            _handles.Visible = true;
+        }
+        else _handles.Visible = false;
+        if (msg.TryGetProperty("ticks", out var tk))
+        {
+            var f = MemoryMarshal.Cast<byte, float>(Convert.FromBase64String(tk.GetString()!)).ToArray();
+            var pts = new Vector3[f.Length / 3];
+            for (var i = 0; i < pts.Length; i++) pts[i] = new Vector3(f[i * 3], f[i * 3 + 1], f[i * 3 + 2]);
+            var arrays = new Godot.Collections.Array();
+            arrays.Resize((int)Mesh.ArrayType.Max);
+            arrays[(int)Mesh.ArrayType.Vertex] = pts;
+            var mesh = new ArrayMesh();
+            if (pts.Length > 1)
+            {
+                mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Lines, arrays);
+                mesh.SurfaceSetMaterial(0, _tick);
+            }
+            _ticks.Mesh = mesh;
+            _ticks.Visible = pts.Length > 1;
+        }
+        else _ticks.Visible = false;
+        // Its floor area, as it would be built.
+        if (msg.TryGetProperty("area", out var area)) _tip.Text = $"{area.GetInt32()} m² · {_tip.Text}" + (_proposal != null ? "\nClick it again (or Enter) to build · drag a side wall" : "");
         _spot.Visible = SurfaceTool && msg.TryGetProperty("spot", out _);
         ShowHalo(msg);
     }

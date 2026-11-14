@@ -5,17 +5,18 @@ import { holeGates } from "../sim/people";
 import { roomDefs } from "../sim/rooms";
 import type { SimCommand } from "../sim/commands";
 import type { SimState } from "../sim/state";
-import type { Location } from "../sim/placement";
-import { floorSpan, pickAt, RING_D, TAU } from "../render3d/cylinder";
+import { areaAt, areaScale, unitsOf } from "../sim/placement";
+import { covers, spaceOf } from "../sim/space";
+import { floorSpan, notchRad, pickAt, RING_D, ringRadii, TAU } from "../render3d/cylinder";
 import { corridorGhostY, corridorStripGeometry, roomGeometry } from "../render3d/rooms3d";
 import { corridors } from "../sim/corridors";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import { roomSide } from "../sim/windows";
 import { EMPTY_CHAIN, extendChain, type Chain } from "../view/corridorPlan";
 import { proposalSummary, type ProposalSummary } from "../view/corridorProposal";
-import type { Proposal } from "../view/types";
-import { CATEGORY_NAMES, CATEGORY_ORDER, HOTKEYS, shapesFor } from "../view/buildCatalog";
-import { corridorCommand, edgeHoverFor, liningFields, locationFor, surfaceSpots } from "../view/interaction";
+import type { Pick, Proposal, RoomProposal, StageOptions, Tool } from "../view/types";
+import { areaOf, CATEGORY_NAMES, CATEGORY_ORDER, depthsOf, HOTKEYS, unitsFor } from "../view/buildCatalog";
+import { clickOrFill, commitBuild, corridorCommand, dragProposal, edgeHoverFor, hoverInfoFor, placingMarks, surfaceSpots } from "../view/interaction";
 import { buildLiningCost, canLineAt, liningById, liningCost, liningId, MATERIALS, type WallStep } from "../sim/materials";
 import { surfaceSpotGeometry } from "../render3d/scenery3d";
 import { resName } from "../ui/format";
@@ -34,8 +35,14 @@ export interface PaletteRoom {
   id: string;
   name: string;
   category: string;
-  /** Its shapes, [width in slots, depth in rings]; surface rooms have one. */
-  shapes: [number, number][];
+  /** How many rings deep it may be (R turns it the other way); a surface room has one. */
+  depths: number[];
+  /** Its target floor area, m² (nothing for a surface room). */
+  area?: number;
+  /** A fill room: stretches to close a gap, and a double click fills one. */
+  fill?: boolean;
+  /** Stairs or an elevator: built at once, onto a stack (no proposal). */
+  stacks?: boolean;
   surface: boolean;
   cost: string;
   key?: string;
@@ -53,8 +60,7 @@ export interface PaletteRoom {
 /** What building a room (its first shape) in a lining adds to its cost. */
 function liningExtraFor(type: string, lining: WallStep): Record<string, number> {
   if (roomDef(type).size === "surface") return {};
-  const [w, d] = shapesFor(roomDef(type))[0]!;
-  return buildLiningCost(type, { kind: "ring", floor: 1, ring: 1, slot: 0, w, d }, w * d * (roomDef(type).floors ?? 1), lining);
+  return buildLiningCost(type, { kind: "ring", floor: 1, ring: 1, start: 0 }, unitsFor(roomDef(type)), lining);
 }
 
 export interface PaletteMessage {
@@ -78,7 +84,7 @@ export function palette(state: SimState): PaletteMessage {
   const rooms = roomDefs
     .filter((d) => d.buildable)
     .map((d) => {
-      const lineable = d.size !== "surface" && canLineAt(d.id, { kind: "ring", floor: 1, ring: 1, slot: 0, w: 1, d: 1 });
+      const lineable = d.size !== "surface" && canLineAt(d.id, { kind: "ring", floor: 1, ring: 1, start: 0 });
       const inLining = lineable
         ? Object.fromEntries(
             MATERIALS.walls.slice(1).map((w) => {
@@ -92,7 +98,10 @@ export function palette(state: SimState): PaletteMessage {
         id: d.id,
         name: d.name,
         category: d.category,
-        shapes: shapesFor(d),
+        depths: depthsOf(d),
+        ...(areaOf(d) !== null ? { area: areaOf(d)! } : {}),
+        ...(d.fill ? { fill: true } : {}),
+        ...(d.stacks ? { stacks: true } : {}),
         surface: d.size === "surface",
         cost: costText(d.cost),
         ...(HOTKEYS[d.id] ? { key: HOTKEYS[d.id] } : {}),
@@ -135,13 +144,30 @@ export function paletteKey(state: SimState): string {
 
 export interface BuildTool {
   room: string;
-  shape: [number, number];
+  /** How many rings deep (an L room turned the other way is 2). */
+  depth: number;
   /** The lining to build it in (a liningId; absent or "rock": bare rock). */
   lining?: string;
+  /** Snapping: off (false) puts the room at the pointer at exactly its target area (PLAN-M17). */
+  snap?: boolean;
+  /** A room put down but not yet built: its side walls are handles; a click on it (or Enter) builds it. */
+  proposal?: RoomProposal;
 }
 
-function locate(state: SimState, tool: BuildTool, at: [number, number, number]): Location | null {
-  return locationFor(pickAt(state.layout.hole, ...at), { kind: "build", room: tool.room, shape: tool.shape }, state.layout);
+const webTool = (tool: BuildTool): Extract<Tool, { kind: "build" }> => ({
+  kind: "build",
+  room: tool.room,
+  depth: tool.depth ?? 1,
+  ...(tool.lining ? { lining: tool.lining } : {}),
+  ...(tool.snap === false ? { snap: false } : {}),
+  ...(tool.proposal ? { proposal: tool.proposal } : {}),
+});
+
+/** A pick for a world point: what's there, or (off the hole) at least its angle on a floor and ring, for dragging a handle. */
+function pickFor(state: SimState, at: [number, number, number], on?: { floor: number; ring: number }): Pick {
+  if (!on) return pickAt(state.layout, ...at);
+  const angle = ((((Math.atan2(at[2], at[0]) / TAU) % 1) + 1) % 1) * 360;
+  return { kind: "slot", floor: on.floor, ring: on.ring, a0: 0, a1: 1, locked: false, digging: false, angle };
 }
 
 export interface HoveredMessage {
@@ -154,6 +180,14 @@ export interface HoveredMessage {
   ghost?: string;
   /** Its strongest effect on the cells round it, as the web's halo: bands of cells (triangles, as the ghost) in a colour and opacity. */
   halo?: { color: string; alpha: number; tris: string }[];
+  /** A ring room: its floor area as it would be built, m², and where it would go (the proposal, when one is down). */
+  area?: number;
+  at?: RoomProposal;
+  /** A proposal is down: its two side walls as strips to draw (triangles, as the ghost), and the one under the pointer, if either. */
+  handles?: string;
+  handle?: "start" | "end";
+  /** What it snapped to: a line across the rings at each angle, as segments (float32 x y z x y z, base64). */
+  ticks?: string;
   /** A surface room: every spot it could go, tinted faintly, and the one pointed at, stronger (triangles, as the ghost; T-107). */
   spots?: string;
   spot?: string;
@@ -187,18 +221,18 @@ function halo(state: SimState, type: string, cells: Cell[]): HoveredMessage["hal
   const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
   const grid = previewEffects(state.layout, type, cells)[main.type];
   if (!grid) return undefined;
-  const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.a0}`));
   const bands = new Map<number, Cell[]>();
-  grid.forEach((rings, fi) =>
-    rings.forEach((slots, ri) =>
-      slots.forEach((v, slot) => {
-        if (Math.abs(v) < 0.05 || own.has(`${fi + 1}:${ri + 1}:${slot}`)) return;
+  for (const rings of spaceOf(state.layout).pieces) {
+    for (const list of rings) {
+      for (const piece of list) {
+        const v = grid[piece.floor - 1]?.[piece.ring - 1]?.[piece.a0] ?? 0;
+        if (Math.abs(v) < 0.05 || covers(cells, piece.floor, piece.ring, (piece.a0 + piece.a1) / 2)) continue;
         const band = Math.round(v * 3) / 3;
         if (!bands.has(band)) bands.set(band, []);
-        bands.get(band)!.push({ floor: fi + 1, ring: ri + 1, slot });
-      }),
-    ),
-  );
+        bands.get(band)!.push(piece);
+      }
+    }
+  }
   const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
   return [...bands].map(([v, list]) => {
     const pos: number[] = [];
@@ -214,16 +248,35 @@ function halo(state: SimState, type: string, cells: Cell[]): HoveredMessage["hal
   });
 }
 
+/** Edges as strips on their floor (triangles, as the ghost): a proposal's handles. */
+function stripTris(state: SimState, ids: string[]): string {
+  const pos: number[] = [];
+  for (const id of ids) {
+    const e = edgeById(state.layout.hole, id);
+    if (!e) continue;
+    const geo = corridorStripGeometry(state.layout, e, floorSpan(e.floor)[1] + 0.06);
+    const g = geo.index ? geo.toNonIndexed() : geo;
+    const a = (g.getAttribute("position") as THREE.BufferAttribute).array;
+    for (let i = 0; i < a.length; i++) pos.push(a[i]!);
+    geo.dispose();
+    g.dispose();
+  }
+  return b64(pos);
+}
+
 export function hover(state: SimState, tool: BuildTool, at: [number, number, number]): HoveredMessage {
-  const where = locate(state, tool, at);
+  const web = webTool(tool);
+  const info = hoverInfoFor(state.layout, state.resources, web, pickFor(state, at), holeGates(state));
+  const where = info.at;
+  const check = info.check;
   const def = roomDefs.find((d) => d.id === tool.room);
   let cost = def ? costText(def.cost) : "";
   const all = def?.size === "surface" ? { spots: spots(state, tool.room).tris } : {};
-  if (!where) return { type: "hovered", ok: false, text: def?.size === "surface" ? "Goes on the surface" : "Point at a slot in the hole", cost, ...all };
+  if (!where || !check) return { type: "hovered", ok: false, text: def?.size === "surface" ? "Goes on the surface" : "Point at a ring of the hole", cost, ...all };
   const lining = liningById(tool.lining);
-  const check = checkBuild(state.layout, state.resources, tool.room, where, config, holeGates(state), lining);
-  const extra = buildLiningCost(tool.room, where, check.cells.length, lining);
-  if (Object.keys(extra).length) cost = costText(withExtra(tool.room, extra));
+  const scale = check.ok ? areaScale(state.layout.hole, tool.room, check.at) : 1;
+  const extra = buildLiningCost(tool.room, where, unitsOf(state.layout.hole, check.cells), lining);
+  if (Object.keys(extra).length || scale !== 1) cost = costText(withExtra(tool.room, extra, scale));
   let text = check.ok ? (check.note ?? (check.planned ? "A blueprint: builds when its floor is dug" : check.unconnected ? "No corridor reaches it yet: it won't work until one does" : "")) : check.reason;
   if (check.ok && check.destroys?.length) text = `Cuts through ${check.destroys.length} corridor segment${check.destroys.length > 1 ? "s" : ""}`;
   let ghost: string | undefined;
@@ -236,20 +289,78 @@ export function hover(state: SimState, tool: BuildTool, at: [number, number, num
   }
   const glow = check.ok && check.cells.length ? halo(state, tool.room, check.cells) : undefined;
   const spot = check.ok && check.surfaceCells.length ? { spot: spotTris(state, check.surfaceCells) } : {};
-  return { type: "hovered", ok: check.ok, text, cost, ...(ghost ? { ghost } : {}), ...(glow?.length ? { halo: glow } : {}), ...all, ...spot };
+  // Placing by area: its size, a proposal's handles, and a tick on what it snapped to.
+  const ring = where.kind === "ring" ? { kind: "ring" as const, floor: where.floor, ring: where.ring, depth: where.depth ?? 1, start: where.start, span: where.span ?? 0 } : null;
+  const marks = placingMarks(state.layout, web, info);
+  const ticks: number[] = [];
+  for (const t of marks.ticks) {
+    const a = notchRad(t.notch);
+    const y = floorSpan(t.floor)[1] + 0.05;
+    const [rIn] = ringRadii(state.layout.hole, t.ring0);
+    const [, rOut] = ringRadii(state.layout.hole, t.ring1);
+    ticks.push(rIn * Math.cos(a), y, rIn * Math.sin(a), rOut * Math.cos(a), y, rOut * Math.sin(a));
+  }
+  return {
+    type: "hovered",
+    ok: check.ok,
+    text,
+    cost,
+    ...(ghost ? { ghost } : {}),
+    ...(glow?.length ? { halo: glow } : {}),
+    ...all,
+    ...spot,
+    ...(ring ? { area: Math.round(areaAt(state.layout.hole, ring)), at: ring } : {}),
+    ...(marks.handles.length ? { handles: stripTris(state, marks.handles) } : {}),
+    ...(info.handle ? { handle: info.handle } : {}),
+    ...(ticks.length ? { ticks: b64(ticks) } : {}),
+  };
 }
 
-/** The command for a click with the tool: build it, or (cutting through corridors) only once confirmed; or why not. */
-export function place(state: SimState, tool: BuildTool, at: [number, number, number], confirmed: boolean): { command?: SimCommand; confirm?: string; refusal?: string } {
-  const where = locate(state, tool, at);
-  if (!where) return { refusal: "Point at a slot in the hole" };
-  const check = checkBuild(state.layout, state.resources, tool.room, where, config, holeGates(state), liningById(tool.lining));
-  if (!check.ok) return { refusal: check.reason };
-  if (check.destroys?.length && !confirmed) {
-    const stranded = check.strands?.rooms.length ?? 0;
-    return { confirm: `This cuts through ${check.destroys.length} corridor segment${check.destroys.length > 1 ? "s" : ""}${stranded ? `, cutting off ${stranded} room${stranded > 1 ? "s" : ""}` : ""}. Build it anyway?` };
-  }
-  return { command: { type: "build", room: tool.room, at: where, ...(confirmed ? { confirmed: true } : {}), ...liningFields(tool.lining) } };
+export interface Placed {
+  command?: SimCommand;
+  confirm?: string;
+  refusal?: string;
+  /** The room in hand's proposal after the click: put down (or moved), or dropped (null) once it's built. Absent: unchanged. */
+  proposal?: RoomProposal | null;
+}
+
+/**
+ * A click with the tool, by the web's rules (view/interaction.ts clickOrFill): a ring room goes down as a
+ * proposal first, and a click on it builds it (cutting through corridors, only once confirmed); stairs and
+ * surface rooms are built at once; a double click with a fill room fills the gap. Or why not.
+ */
+export function place(state: SimState, tool: BuildTool, at: [number, number, number], confirmed: boolean, double = false, commit = false): Placed {
+  const web = webTool(tool);
+  const pick = pickFor(state, at);
+  const out: Placed = {};
+  const opts: StageOptions = {
+    onCommand: (command) => (out.command = command),
+    onInvalid: (reason) => (out.refusal = reason),
+    onProposeRoom: (p) => (out.proposal = p),
+    onConfirmBuild: (b) => {
+      if (confirmed) {
+        out.command = { type: "build", room: b.room, at: b.at, confirmed: true, ...(b.material ? { material: b.material, finish: b.finish } : {}) };
+        return;
+      }
+      const stranded = b.strands.rooms.length;
+      out.confirm = `This cuts through ${b.destroys.length} corridor segment${b.destroys.length > 1 ? "s" : ""}${stranded ? `, cutting off ${stranded} room${stranded > 1 ? "s" : ""}` : ""}. Build it anyway?`;
+    },
+  };
+  const gates = holeGates(state);
+  const info = hoverInfoFor(state.layout, state.resources, web, pick, gates);
+  // Answering "build it anyway?" (or Enter): the proposal itself, wherever the pointer has gone.
+  if (web.proposal && (confirmed || commit)) commitBuild(web, { ...info, at: web.proposal, check: checkBuild(state.layout, state.resources, web.room, web.proposal, config, gates, liningById(web.lining)) }, opts);
+  else clickOrFill(state.layout, state.resources, web, info, opts, gates, double);
+  // Asked to confirm: the proposal stays down until it's answered.
+  if (out.confirm) delete out.proposal;
+  if (!out.command && !out.confirm && !out.refusal && out.proposal === undefined && !info.check) out.refusal = "Point at a ring of the hole";
+  return out;
+}
+
+/** A proposal with one side wall dragged to a world point (view/interaction.ts dragProposal). */
+export function dragHandle(state: SimState, tool: BuildTool, side: "start" | "end", at: [number, number, number]): RoomProposal | null {
+  if (!tool.proposal) return null;
+  return dragProposal(state.layout, webTool(tool), side, pickFor(state, at, tool.proposal));
 }
 
 // ---- corridors, bulkheads and windows: the border under the pointer ----
@@ -264,11 +375,11 @@ export interface CorridorTool {
 /** The border nearest a world point, as the web view finds it (stage3d.ts edgeAtPick). */
 function edgeAt(state: SimState, at: [number, number, number]) {
   const hole = state.layout.hole;
-  const p = pickAt(hole, ...at);
+  const p = pickAt(state.layout, ...at);
   if (p.kind !== "slot" && p.kind !== "gallery") return { pick: p, edge: null, point: null };
   const rings = Math.max(0.001, (Math.hypot(at[0], at[2]) - hole.shaftRadiusM) / RING_D);
   const point = { rings, turn: Math.atan2(at[2], at[0]) / TAU };
-  return { pick: p, edge: nearestEdge(hole, p.floor, point.rings, point.turn, RING_D), point };
+  return { pick: p, edge: nearestEdge(state.layout, p.floor, point.rings, point.turn, RING_D), point };
 }
 
 export interface EdgeHoveredMessage {

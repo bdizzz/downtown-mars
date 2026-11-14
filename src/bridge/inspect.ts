@@ -10,6 +10,7 @@ import { roomName } from "../sim/roomName";
 import { outlineGeometry, roomGeometry } from "../render3d/rooms3d";
 import { pickAt } from "../render3d/cylinder";
 import { resName } from "../ui/format";
+import { roomIdAt } from "../sim/space";
 
 // The Godot viewer's room panel: what was clicked, what that room is and how it's doing, and its
 // controls, as the web's inspector (ui/Inspector.tsx) has them (the rows from view/roomPanel.ts, shared
@@ -52,9 +53,9 @@ export interface InspectedMessage {
 
 /** The room at a world point (as the web view picks), or null. */
 export function roomAtPoint(state: SimState, [x, y, z]: [number, number, number]): number | null {
-  const pick = pickAt(state.layout.hole, x, y, z);
+  const pick = pickAt(state.layout, x, y, z);
   if (pick.kind !== "slot") return null;
-  return state.layout.grid[pick.floor - 1]?.[pick.ring - 1]?.[pick.slot] || null;
+  return roomIdAt(state.layout, pick) || null;
 }
 
 export function inspect(state: SimState, s: Snapshot, roomId: number | null): InspectedMessage {

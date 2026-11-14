@@ -9,7 +9,7 @@ import { gameTime } from "../sim/clock";
 import { stepWorld } from "../sim/worldstep";
 import type { RoomSpots } from "../render3d/people3d";
 import { inspect, roomAtPoint } from "./inspect";
-import { answerProposal, chainedMessage, chainEnd, chainStep, edgeCommand, edgeHover, hover, newChainState, palette, paletteKey, place, spots as surfaceSpotsMessage, type BuildTool, type CorridorTool } from "./build";
+import { answerProposal, chainedMessage, chainEnd, chainStep, dragHandle, edgeCommand, edgeHover, hover, newChainState, palette, paletteKey, place, spots as surfaceSpotsMessage, type BuildTool, type CorridorTool } from "./build";
 import { walkMap } from "./walkmap";
 import { dayOf, isSlot, readSlot, savesList, slotFailed, writeSlot } from "./saves";
 import { office, officeKey } from "./office";
@@ -178,7 +178,10 @@ type BridgeMessage =
   | { type: "pick"; at: [number, number, number] | null }
   /** Building: what placing the tool's room at a world point would do, and doing it. */
   | { type: "hover"; tool: BuildTool; at: [number, number, number] }
-  | { type: "place"; tool: BuildTool; at: [number, number, number]; confirmed?: boolean }
+  /** A click with a room in hand (double: the second of a double click, which fills a gap with a fill room; commit: Enter, building the proposal that's down). Answered with a command sent, a notice, and "proposed" when the room in hand's proposal changes. */
+  | { type: "place"; tool: BuildTool; at: [number, number, number]; confirmed?: boolean; double?: boolean; commit?: boolean }
+  /** Dragging a proposed room's side wall to a point: answered with { type: "proposed", proposal }. */
+  | { type: "dragHandle"; tool: BuildTool; side: "start" | "end"; at: [number, number, number] }
   /** A room picked: where it could go on the surface (answered with { type: "spots" }; T-107). */
   | { type: "spots"; room: string }
   /** Corridors, bulkheads and windows: what the tool would do at the border nearest a point, and doing it (a click, or painting on a drag). */
@@ -401,10 +404,19 @@ const server = createServer((socket) => {
           // The surface is hidden with a floor picked: nothing to tint up there.
           send(topFloor === null ? surfaceSpotsMessage(host.active(), msg.room) : { type: "spots", tris: "" });
         } else if (msg.type === "place") {
-          const r = place(host.active(), msg.tool, msg.at, !!msg.confirmed);
+          const r = place(host.active(), msg.tool, msg.at, !!msg.confirmed, !!msg.double, !!msg.commit);
           if (r.command) host.onMessage({ type: "command", id: commandId++, command: r.command });
-          else send({ type: "notice", text: r.refusal ?? r.confirm, ...(r.confirm ? { confirm: { tool: msg.tool, at: msg.at } } : {}) });
-          send(hovered(msg.tool, msg.at));
+          else if (r.refusal || r.confirm) send({ type: "notice", text: r.refusal ?? r.confirm, ...(r.confirm ? { confirm: { tool: msg.tool, at: msg.at } } : {}) });
+          // The room in hand's proposal: put down, moved, or dropped now it's built.
+          const tool = r.proposal === undefined ? msg.tool : { ...msg.tool, proposal: r.proposal ?? undefined };
+          if (r.proposal !== undefined) send({ type: "proposed", proposal: r.proposal });
+          send(hovered(tool, msg.at));
+        } else if (msg.type === "dragHandle") {
+          const proposal = dragHandle(host.active(), msg.tool, msg.side, msg.at);
+          if (proposal) {
+            send({ type: "proposed", proposal });
+            send(hovered({ ...msg.tool, proposal }, msg.at));
+          }
         } else if (msg.type === "edgeHover") {
           send(edgeHover(host.active(), msg.tool, msg.at));
         } else if (msg.type === "edge") {

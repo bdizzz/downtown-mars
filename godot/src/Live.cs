@@ -60,6 +60,8 @@ public partial class Live : Node3D
     int _speedBeforeMenu = 1;
     int _commandId = 1;
     Vector2 _pressAt;
+    /// <summary>The press was the second of a double click: with a fill room in hand, it fills the gap.</summary>
+    bool _doubleClick;
     bool _pressed;
     CameraRig? _rig;
     WorldEnvironment _env = null!;
@@ -538,6 +540,7 @@ public partial class Live : Node3D
             else if (type == "hovered" || type == "edgeHovered") _build.Hovered(msg.RootElement);
             else if (type == "notice") _build.Notice(msg.RootElement);
             else if (type == "spots") _build.Spots(msg.RootElement);
+            else if (type == "proposed") _build.Proposed(msg.RootElement);
             else if (type == "saves") _menu.SetSaves(msg.RootElement);
             else if (type == "trends") _charts.SetTrends(msg.RootElement);
             else if (type == "map") _map.SetMap(msg.RootElement);
@@ -596,7 +599,7 @@ public partial class Live : Node3D
         // With the corridor tool, a left drag paints (the right one still turns the camera).
         if (_rig != null)
         {
-            _rig.LeftDragTurns = !_build.Painting;
+            _rig.LeftDragTurns = !_build.Painting && !_build.DraggingHandle && _build.HandleUnder == null;
             _rig.KeysMove = !_build.Active;
         }
         AskForMaps();
@@ -1548,7 +1551,7 @@ public partial class Live : Node3D
         }
         if (_build.HasTool)
         {
-            if (FloorPoint(at) is Vector3 p) _build.Place(p);
+            if (FloorPoint(at) is Vector3 p) _build.Place(p, _doubleClick);
             return;
         }
         if ((RoomPoint(at) ?? FloorPoint(at)) is Vector3 q) _bridge.Send(new Dictionary<string, object> { ["type"] = "inspect", ["at"] = new[] { q.X, q.Y, q.Z } });
@@ -1620,6 +1623,8 @@ public partial class Live : Node3D
             _build.Hover(over, motion.Position);
             // Dragging with the corridor tool paints along the borders crossed.
             if (_build.Chaining && (motion.ButtonMask & MouseButtonMask.Left) != 0) _build.Paint(over);
+            // Dragging a proposed room's side wall.
+            if (_build.DraggingHandle && (motion.ButtonMask & MouseButtonMask.Left) != 0) _build.DragHandle(over);
         }
         if (e is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: false } && _build.HasTool) _build.Drop();
         // Clicks pick a room; drags turn the camera (CameraRig), so tell them apart by how far the pointer moved.
@@ -1629,12 +1634,20 @@ public partial class Live : Node3D
             {
                 _pressAt = mb.Position;
                 _pressed = true;
+                _doubleClick = mb.DoubleClick;
+                // On a proposed room's side wall: the drag moves that wall, not the camera.
+                if (_build.StartHandleDrag()) return;
                 // The corridor tool snakes a chain from here while the button's held.
                 if (_build.Painting && FloorPoint(mb.Position) is Vector3 from) _build.ChainStart(from);
             }
             else if (_pressed)
             {
                 _pressed = false;
+                if (_build.DraggingHandle)
+                {
+                    _build.EndHandleDrag();
+                    return;
+                }
                 if (_build.Chaining)
                 {
                     if (FloorPoint(mb.Position) is Vector3 to) _build.ChainEnd(to);
@@ -1676,6 +1689,7 @@ public partial class Live : Node3D
             case Key.P when !_build.Active: _colony.Toggle(); break;
             case Key.Escape when _colony.Open: _colony.Toggle(false); break;
             case Key.Escape when _network.Open: _network.Toggle(false); break;
+            case Key.Escape when _build.HasProposal: _build.DropProposal(); break;
             case Key.Escape when _build.HasTool: _build.Drop(); break;
             case Key.Escape when _build.Active: _build.Toggle(false); break;
             case Key.Escape when _inspector.Open: Inspect(null); break;
@@ -1687,6 +1701,8 @@ public partial class Live : Node3D
             case Key.Escape: _menu.Open(); break;
             case Key.B when !_build.Active: _build.Toggle(true); break;
             case Key.R when _build.HasTool: _build.Rotate(); break;
+            case Key.Enter or Key.KpEnter when _build.HasProposal && _pointer is Vector2 ptr && FloorPoint(ptr) is Vector3 here: _build.Commit(here); break;
+            case Key.Period when _build.Tool != null && !InCutaway: _build.ToggleSnap(); break;
             case Key.X when _rig?.Walking != true: _build.ToggleDemolish(); break;
             case Key.Space when _rig?.Walking != true: SetSpeed(_speed == 0 ? _resumeSpeed : 0); break;
             case Key.Key1: SetSpeed(1); break;
