@@ -25,8 +25,10 @@ export const MODE_KEYS: Record<Mode, string> = { build: "KeyB", view: "KeyV", ma
 /** The office's key (outside Build, where O is the smelter's). */
 export const OFFICE_KEY = "KeyO";
 
-// Build has no button here: its rail runs down the left edge (ui/BuildPalette.tsx), and B opens it.
-const MODES: { id: Mode; name: string; icon: IconId; hint: string }[] = [
+// Build's rail runs down the left edge (ui/BuildPalette.tsx), and B opens it. On phones the rail
+// stays folded away until Build is on, so Build gets a button here too, shown only on phones.
+const MODES: { id: Mode; name: string; icon: IconId; hint: string; phoneOnly?: boolean }[] = [
+  { id: "build", name: "Build", icon: "build", hint: "Rooms, corridors, demolish and undo (B)", phoneOnly: true },
   { id: "view", name: "View", icon: "eye", hint: "Cameras, the plan and unrolled views, walls down and overlays (V)" },
   { id: "map", name: "Map", icon: "globe", hint: "The planet: terrain, deposits and your holes (M)" },
   { id: "charts", name: "Charts", icon: "charts", hint: "People, trends, flows, your network, the construction and maintenance queues, a directory of every room, and milestones (C)" },
@@ -85,7 +87,7 @@ export function Dock({ mode, setMode, highlight, jobs, office, reveal = SHOW_ALL
         {modes.map((m) => (
           <button
             key={m.id}
-            className={`mode-btn${mode === m.id ? " on" : ""}${wanted === m.id && mode !== m.id ? " pulse" : ""}${freshClass(reveal, `mode:${m.id}`)}`}
+            className={`mode-btn${m.phoneOnly ? " phone-mode" : ""}${mode === m.id ? " on" : ""}${wanted === m.id && mode !== m.id ? " pulse" : ""}${freshClass(reveal, `mode:${m.id}`)}`}
             onClick={() => setMode(mode === m.id ? null : m.id)}
             title={m.hint}
             aria-pressed={mode === m.id}

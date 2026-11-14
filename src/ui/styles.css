@@ -1471,8 +1471,13 @@ kbd {
 .choice-row:disabled { cursor: not-allowed; }
 .choice-row:disabled .name, .choice-row:disabled .takes { opacity: 0.5; }
 
+/* Build's dock button is for phones only (#457): wider screens keep the rail out and open by its groups. */
+.mode-btn.phone-mode { display: none; }
 /* ---- Phones ---- */
 @media (max-width: 760px) {
+  /* The rail folds away until Build is on, opened from its dock button. */
+  .mode-btn.phone-mode { display: flex; }
+  .build-rail:not(.active) { display: none; }
   .build-rail { left: 6px; top: 32px; bottom: 70px; gap: 6px; }
   .rail-btn { width: 44px; min-height: 42px; }
   .rail-btn .label { display: none; }

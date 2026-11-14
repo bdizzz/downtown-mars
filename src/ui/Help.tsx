@@ -40,8 +40,8 @@ const TOUCH: [string, string][] = [
   ["Drag", "3D: turn round the hole (Free view: drag up and down to tilt). Plan and Unrolled: pan. With the corridor tool: draw"],
   ["Two fingers", "Pinch to zoom, twist to turn, move together to pan (in the side-on views, to go up and down)"],
   ["Stick", "First person: the stick bottom left walks (all the way runs); drag elsewhere to look; ▲ ▼ take the stairs; ☕ grabs a hot drink at a kitchenette or serving counter"],
-  ["Build", "The rail down the left; tap the view to fold a room list away"],
-  ["Modes", "The office, View, Map and Charts along the bottom"],
+  ["Build", "On a phone, the Build button along the bottom brings out the rail down the left (again to put it away); tap the view to fold a room list away"],
+  ["Modes", "The office, View, Map and Charts along the bottom (and Build, on a phone)"],
 ];
 
 export function Help({ onClose }: { onClose: () => void }) {
