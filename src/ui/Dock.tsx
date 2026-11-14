@@ -26,7 +26,7 @@ export const MODE_KEYS: Record<Mode, string> = { build: "KeyB", view: "KeyV", ma
 export const OFFICE_KEY = "KeyO";
 
 // Build's rail runs down the left edge (ui/BuildPalette.tsx), and B opens it. On phones the rail
-// stays folded away until Build is on, so Build gets a button here too, shown only on phones.
+// stays folded away until Build is on, so Build gets a button here too, far left, shown only on phones.
 const MODES: { id: Mode; name: string; icon: IconId; hint: string; phoneOnly?: boolean }[] = [
   { id: "build", name: "Build", icon: "build", hint: "Rooms, corridors, demolish and undo (B)", phoneOnly: true },
   { id: "view", name: "View", icon: "eye", hint: "Cameras, the plan and unrolled views, walls down and overlays (V)" },
@@ -64,11 +64,28 @@ export function Dock({ mode, setMode, highlight, jobs, office, reveal = SHOW_ALL
   const wanted = modeFor(highlight);
   const modes = MODES.filter((m) => reveal.shown(`mode:${m.id}`));
   const showOffice = !!office && reveal.shown("hud:office");
+  const modeButton = (m: (typeof MODES)[number]) => (
+    <button
+      key={m.id}
+      className={`mode-btn${m.phoneOnly ? " phone-mode" : ""}${mode === m.id ? " on" : ""}${wanted === m.id && mode !== m.id ? " pulse" : ""}${freshClass(reveal, `mode:${m.id}`)}`}
+      onClick={() => setMode(mode === m.id ? null : m.id)}
+      title={m.hint}
+      aria-pressed={mode === m.id}
+    >
+      <Icon id={m.icon} size={18} />
+      <span>
+        {m.name} <kbd>{MODE_KEYS[m.id].slice(3)}</kbd>
+      </span>
+      {m.id === "charts" && jobs > 0 && <span className="badge" title="Construction jobs waiting">{jobs}</span>}
+    </button>
+  );
   return (
     <div className="dock">
       {aside && <div className="dock-aside">{aside}</div>}
       {children}
       <div className="dock-modes" role="toolbar" aria-label="Modes" hidden={!modes.length && !showOffice}>
+        {/* Build (phones only) on the far left, then the office, then the other modes. */}
+        {modes.filter((m) => m.phoneOnly).map(modeButton)}
         {office && showOffice && (
           <button
             className={`mode-btn office-mode${office.open ? " on" : ""}${office.waiting && !office.open ? " waiting" : ""}${highlight === "hud:office" && !office.open ? " pulse" : ""}${freshClass(reveal, "hud:office")}`}
@@ -84,21 +101,7 @@ export function Dock({ mode, setMode, highlight, jobs, office, reveal = SHOW_ALL
             {office.waiting > 0 && <span className="badge" title={`${office.waiting} waiting to see you`}>{office.waiting}</span>}
           </button>
         )}
-        {modes.map((m) => (
-          <button
-            key={m.id}
-            className={`mode-btn${m.phoneOnly ? " phone-mode" : ""}${mode === m.id ? " on" : ""}${wanted === m.id && mode !== m.id ? " pulse" : ""}${freshClass(reveal, `mode:${m.id}`)}`}
-            onClick={() => setMode(mode === m.id ? null : m.id)}
-            title={m.hint}
-            aria-pressed={mode === m.id}
-          >
-            <Icon id={m.icon} size={18} />
-            <span>
-              {m.name} <kbd>{MODE_KEYS[m.id].slice(3)}</kbd>
-            </span>
-            {m.id === "charts" && jobs > 0 && <span className="badge" title="Construction jobs waiting">{jobs}</span>}
-          </button>
-        ))}
+        {modes.filter((m) => !m.phoneOnly).map(modeButton)}
       </div>
     </div>
   );
