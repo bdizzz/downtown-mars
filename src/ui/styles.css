@@ -128,6 +128,11 @@ kbd { border: 1px solid var(--muted); border-radius: 3px; padding: 0 3px; font-s
 .legend i.bad { background: #ff4a2e; }
 .legend i.good { background: #5fe07a; margin-left: 6px; }
 .office { width: 300px; }
+/* The office's room, over the view while its panel is open: above the canvas, under everything laid over the view. */
+.office-scene { position: absolute; inset: 0; z-index: 1; background: #1a0f0d; opacity: 0; transition: opacity 0.35s ease; }
+.office-scene.ready { opacity: 1; }
+.office-scene canvas { display: block; width: 100%; height: 100%; }
+@media (prefers-reduced-motion: reduce) { .office-scene { transition: none; } }
 .office h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 10px 0 2px; }
 .office h3 .k { text-transform: none; letter-spacing: 0; margin-left: 6px; }
 .visit { border: 1px solid #000; background: #22130f; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
@@ -720,6 +725,8 @@ body { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
   .clock { min-width: 0; }
   .tick { display: none; }
   .main { position: relative; }
+  /* The office's room keeps to what shows above its panel. */
+  .office-scene { bottom: 45%; }
   .inspector {
     position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; width: auto !important; max-height: 55%;
     border-left: none; border-top: 1px solid #000; border-radius: 10px 10px 0 0; box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.5);

@@ -22,6 +22,7 @@ import { MilestonesPanel } from "./MilestonesPanel";
 import { Menu } from "./Menu";
 import { Messages } from "./Messages";
 import { Office } from "./Office";
+import { OfficeScene } from "./OfficeScene";
 import { EventCards } from "./EventCards";
 import { ViewHost } from "./ViewHost";
 import { ResourceBar } from "./ResourceBar";
@@ -841,6 +842,8 @@ export function App() {
             overlay={overlay}
             spotlight={spotlight?.spot ?? null}
           />
+          {/* The office is a place: its room stands in for the hole while its panel is open (Show me brings the hole back). */}
+          {snapshot && officeOpen && !spotlight && <OfficeScene layout={snapshot.layout} />}
         </div>
         {snapshot && officeOpen && <Office s={snapshot} onCommand={onCommand} shown={spotlight?.id ?? null} onShow={showMe} onClose={() => setPanel(null)} />}
         {snapshot && panel === "why" && (

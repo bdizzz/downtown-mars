@@ -65,7 +65,7 @@ src/
   ui/         # React panels and overlays
   audio/      # synthesized sound
   devtools/   # the furnishing tool (?furnish)
-data/         # rooms.json, crops.json, condition.json, furniture.json, layouts.json ...
+data/         # rooms.json, crops.json, condition.json, furniture.json, layouts.json, office.json ...
 docs/         # design docs, catalogs and milestone plans
 scripts/      # furniture models, room status, elevation data, packaging
 tests/        # Vitest: sim units plus scripted playthroughs (bots)
