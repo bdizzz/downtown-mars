@@ -10,6 +10,7 @@ const GENERAL: [string, string][] = [
   ["V", "View mode: cameras, plan and unrolled views, overlays"],
   ["C", "Charts mode: people, flows, network, construction"],
   ["M", "Map mode: the planet"],
+  ["O", "The office: visits, promises, ordinances and notables (outside Build, where O is the smelter)"],
   ["Space", "Pause / resume, at the speed you had"],
   ["− +", "Slower / faster (1×, 2×, 4×)"],
   ["Esc", "Put down the tool, close a panel or mode, or open the menu"],
@@ -40,7 +41,7 @@ const TOUCH: [string, string][] = [
   ["Two fingers", "Pinch to zoom, twist to turn, move together to pan (in the side-on views, to go up and down)"],
   ["Stick", "First person: the stick bottom left walks (all the way runs); drag elsewhere to look; ▲ ▼ take the stairs; ☕ grabs a hot drink at a kitchenette or serving counter"],
   ["Build", "The rail down the left; tap the view to fold a room list away"],
-  ["Modes", "View, Map and Charts along the bottom"],
+  ["Modes", "The office, View, Map and Charts along the bottom"],
 ];
 
 export function Help({ onClose }: { onClose: () => void }) {

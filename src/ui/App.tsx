@@ -6,7 +6,7 @@ import type { SimCommand } from "../sim/commands";
 import { roomDef, roomDefs } from "../sim/rooms";
 import { BARE_ROCK, BuildRail, buildTool, ToolBar } from "./BuildPalette";
 import { CORRIDOR_KEY, DEMOLISH_KEY, HOTKEYS, shapesFor } from "../view/buildCatalog";
-import { ChartsStrip, Dock, MODE_KEYS, ViewStrip, type Chart, type Mode } from "./Dock";
+import { ChartsStrip, Dock, MODE_KEYS, OFFICE_KEY, ViewStrip, type Chart, type Mode } from "./Dock";
 import { corridors } from "../sim/corridors";
 import { FlowPanel } from "./FlowPanel";
 import { Help } from "./Help";
@@ -547,6 +547,8 @@ export function App() {
       if (e.code === MODE_KEYS.view && has("view")) return toggle("view");
       if (e.code === MODE_KEYS.charts && has("charts")) return toggle("charts");
       if (e.code === MODE_KEYS.map && has("map")) return toggle("map");
+      // O opens (or closes) the office, outside Build (where O is the smelter's).
+      if (e.code === OFFICE_KEY && mode !== "build" && snapshot && reveal.shown("hud:office")) return togglePanel("office");
       if (e.code === MODE_KEYS.build && mode !== "build" && has("build")) {
         if (!walking) setMode("build");
         return;
@@ -701,7 +703,9 @@ export function App() {
       <div className="main">
         <div className="view">
           {snapshot && (
-            <Dock mode={mode} setMode={setMode} highlight={highlight} jobs={snapshot.construction.jobs.length} reveal={reveal} aside={narrow ? null : deputyCard}>
+            <Dock mode={mode} setMode={setMode} highlight={highlight} jobs={snapshot.construction.jobs.length}
+              office={{ open: officeOpen, waiting: snapshot.office.waiting.length, toggle: () => togglePanel("office") }}
+              reveal={reveal} aside={narrow ? null : deputyCard}>
               {mode === "build" && (
                 <ToolBar
                   tool={tool}

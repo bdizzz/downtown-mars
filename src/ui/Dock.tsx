@@ -14,13 +14,16 @@ import type { IconId } from "../view/icons";
 // chosen mode's options in a strip along the bottom. Choosing the open mode
 // again closes it, so no mode is open at all. Build mode is the only one that
 // places rooms and corridors; it opens from its rail down the left edge, and
-// its strip here is the tool bar, there while something is in hand.
+// its strip here is the tool bar, there while something is in hand. The office sits with the modes
+// (#457) but isn't one: its button opens and closes the office panel, and lights while it's open.
 
 export type Mode = "build" | "view" | "map" | "charts";
 export type Chart = "people" | "flows" | "network" | "construction" | "maintenance" | "trends" | "directory" | "milestones";
 
 /** Each mode's key, anywhere in the game (as KeyboardEvent codes). */
 export const MODE_KEYS: Record<Mode, string> = { build: "KeyB", view: "KeyV", map: "KeyM", charts: "KeyC" };
+/** The office's key (outside Build, where O is the smelter's). */
+export const OFFICE_KEY = "KeyO";
 
 // Build has no button here: its rail runs down the left edge (ui/BuildPalette.tsx), and B opens it.
 const MODES: { id: Mode; name: string; icon: IconId; hint: string }[] = [
@@ -47,20 +50,38 @@ interface DockProps {
   jobs: number;
   /** Which modes show (the guided tutorial's unlocks, T-084). */
   reveal?: Reveal;
+  /** The office button beside the modes: whether its panel is open, who's waiting, and its toggle. */
+  office?: { open: boolean; waiting: number; toggle: () => void };
   /** What sits above the mode buttons: the deputy's card. */
   aside?: React.ReactNode;
   children?: React.ReactNode;
 }
 
 /** The mode buttons, and whatever strip the open mode shows. */
-export function Dock({ mode, setMode, highlight, jobs, reveal = SHOW_ALL, aside, children }: DockProps) {
+export function Dock({ mode, setMode, highlight, jobs, office, reveal = SHOW_ALL, aside, children }: DockProps) {
   const wanted = modeFor(highlight);
   const modes = MODES.filter((m) => reveal.shown(`mode:${m.id}`));
+  const showOffice = !!office && reveal.shown("hud:office");
   return (
     <div className="dock">
       {aside && <div className="dock-aside">{aside}</div>}
       {children}
-      <div className="dock-modes" role="toolbar" aria-label="Modes" hidden={!modes.length}>
+      <div className="dock-modes" role="toolbar" aria-label="Modes" hidden={!modes.length && !showOffice}>
+        {office && showOffice && (
+          <button
+            className={`mode-btn office-mode${office.open ? " on" : ""}${office.waiting && !office.open ? " waiting" : ""}${highlight === "hud:office" && !office.open ? " pulse" : ""}${freshClass(reveal, "hud:office")}`}
+            data-hud="office"
+            onClick={office.toggle}
+            title="The office: visits, promises, ordinances and notables (O)"
+            aria-pressed={office.open}
+          >
+            <Icon id="office" size={18} />
+            <span>
+              Office <kbd>{OFFICE_KEY.slice(3)}</kbd>
+            </span>
+            {office.waiting > 0 && <span className="badge" title={`${office.waiting} waiting to see you`}>{office.waiting}</span>}
+          </button>
+        )}
         {modes.map((m) => (
           <button
             key={m.id}
