@@ -86,6 +86,21 @@ public partial class Terrain : Node3D
 
     ShaderMaterial? _ground;
 
+    static Texture2D? _detail;
+    static bool _detailTried;
+
+    /// <summary>The land's rock-detail map (#497), the web's own (public/textures/land-rock.jpg, made in Blender); null if it can't be read.</summary>
+    static Texture2D? Detail()
+    {
+        if (_detailTried) return _detail;
+        _detailTried = true;
+        var path = ProjectSettings.GlobalizePath("res://") + "../public/textures/land-rock.jpg";
+        var image = Image.LoadFromFile(path);
+        if (image == null || image.IsEmpty()) return null;
+        image.GenerateMipmaps();
+        return _detail = ImageTexture.CreateFromImage(image);
+    }
+
     /// <summary>
     /// The far shadows on the ground (#497, the web's FAR_SHADOW in surfaces.ts): the sun's shadow map reaches
     /// 200 m, so a canyon's walls, a crater's rim, the horizon and the landforms cast theirs by a march toward the
@@ -149,7 +164,15 @@ public partial class Terrain : Node3D
             var colored = mesh.TryGetProperty("colors", out _);
             var material = Plain.Make(new Color(f.GetProperty("color").GetString()!), 1, vertexColors: colored, flat: true);
             // The land's rock (#497): bedded on mesas, walls and crater rims, weathered on the rest.
-            if (mesh.TryGetProperty("heights", out _)) material.SetShaderParameter("land_rock", f.TryGetProperty("layered", out var l) && l.GetBoolean() ? 2 : 1);
+            if (mesh.TryGetProperty("heights", out _))
+            {
+                material.SetShaderParameter("land_rock", f.TryGetProperty("layered", out var l) && l.GetBoolean() ? 2 : 1);
+                if (Detail() is Texture2D detail)
+                {
+                    material.SetShaderParameter("land_detail", detail);
+                    material.SetShaderParameter("land_detail_on", true);
+                }
+            }
             AddChild(new MeshInstance3D { Mesh = Mesh(mesh, Land(material)), Name = $"Landform{n++}", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
         }
     }

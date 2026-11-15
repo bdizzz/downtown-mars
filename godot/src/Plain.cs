@@ -51,6 +51,11 @@ uniform bool flat_shade = false;
 // The land's rock far off (#497, the web's withLandRock): 0 none, 1 weathered, 2 layered in beds. UV.x is how far
 // up its landform each vertex stands (0 foot, 1 top).
 uniform int land_rock = 0;
+// Its detail map (#497, made in Blender: public/textures/land-rock.jpg): laminations, fractures and grain as a
+// normal (rg) and a cavity (b), laid on from three sides every land_detail_scale metres (and a third of that).
+uniform sampler2D land_detail : filter_linear_mipmap, repeat_enable;
+uniform bool land_detail_on = false;
+uniform float land_detail_scale = 26.0;
 // Room outlines: each vertex's room (id + 1, CUSTOM1.z), tinted by its trouble (room_tint) or the hover.
 uniform bool room_lines = false;
 // Lines lying on a surface (room outlines on wall caps and floors) come this far toward the camera, metres, so they aren't lost in it.
@@ -88,6 +93,15 @@ vec3 land_tone(vec3 p, vec3 n, float h, bool layered) {{
 	c *= mix(1.0, mix(0.84, 1.05, streak), 1.0 - smoothstep(0.3, 0.6, up));
 	return c * mix(0.9, 1.07, fbm3(p * 0.05)) * mix(0.94, 1.05, noise3(p * 0.6));
 }}
+vec3 land_detail_at(vec3 p, vec3 w, float scale) {{
+	return texture(land_detail, p.zy / scale).rgb * w.x + texture(land_detail, p.xz / scale).rgb * w.y + texture(land_detail, p.xy / scale).rgb * w.z;
+}}
+vec3 land_detail_tilt(vec3 p, vec3 w, float scale) {{
+	vec2 dx = texture(land_detail, p.zy / scale).rg * 2.0 - 1.0;
+	vec2 dy = texture(land_detail, p.xz / scale).rg * 2.0 - 1.0;
+	vec2 dz = texture(land_detail, p.xy / scale).rg * 2.0 - 1.0;
+	return w.x * vec3(0.0, dx.y, dx.x) + w.y * vec3(dy.x, 0.0, dy.y) + w.z * vec3(dz.x, dz.y, 0.0);
+}}
 void vertex() {{
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vcolor = COLOR;
@@ -102,7 +116,18 @@ void fragment() {{
 	vec3 c = albedo.rgb * (use_vertex_color ? vcolor.rgb : vec3(1.0));
 	float alpha = albedo.a;
 	if (grain > 0.0) c *= mix(1.0 - 0.08 * grain, 1.0 + 0.03 * grain, noise3(wpos * 4.0));
-	if (land_rock > 0) c *= land_tone(wpos, normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz), vland, land_rock > 1);
+	if (land_rock > 0) {{
+		vec3 wn = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+		c *= land_tone(wpos, wn, vland, land_rock > 1);
+		if (land_detail_on) {{
+			vec3 w = pow(abs(wn), vec3(4.0));
+			w /= (w.x + w.y + w.z + 1e-5);
+			float cav = land_detail_at(wpos, w, land_detail_scale).b * 0.6 + land_detail_at(wpos, w, land_detail_scale / 3.0).b * 0.4;
+			c *= mix(0.72, 1.12, cav);
+			vec3 tilt = land_detail_tilt(wpos, w, land_detail_scale) + land_detail_tilt(wpos, w, land_detail_scale / 3.0) * 0.5;
+			NORMAL = normalize(NORMAL + (VIEW_MATRIX * vec4(tilt, 0.0)).xyz * 0.55);
+		}}
+	}}
 	if (room > 0.5) {{
 		int id = int(room + 0.5) - 1;
 		vec4 tint = texelFetch(room_tint, ivec2(id % 256, id / 256), 0);
