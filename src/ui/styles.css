@@ -1162,8 +1162,15 @@ kbd {
 /* ---- The top bar ---- */
 .hud {
   gap: 6px 10px; padding: 5px 10px; background: linear-gradient(180deg, #37221b, #2a1814);
-  border-bottom: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255, 214, 180, 0.1); position: relative; z-index: 9;
+  border-bottom: 1px solid var(--line); box-shadow: inset 0 1px 0 rgba(255, 214, 180, 0.1); position: relative;
 }
+/* The top bar and the resource grid float over the 3D view (#453): its canvas runs on up under them (by --top-h,
+   their height, measured in App.tsx), so when the bar gains or loses a row the canvas keeps its size and never
+   blanks; the 3D camera centres its picture on what shows below the bar. What sits in the canvas's corner moves down with it. */
+.topbar { position: relative; z-index: 9; flex-shrink: 0; }
+.view > .pixi-host.under-bar { position: absolute; left: 0; right: 0; bottom: 0; top: calc(-1 * var(--top-h, 0px)); }
+.under-bar .cam-readout { top: calc(10px + var(--top-h, 0px) / var(--ui-scale, 1)); }
+.under-bar .walk-crosshair { top: calc(50% + var(--top-h, 0px) / 2); }
 .menu-btn { padding: 4px 6px; }
 .hole-name, .hole-picker { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; font-size: 14px; }
 .hole-name { color: var(--accent-hi); padding: 1px 8px; background: var(--well); border: 1px solid var(--line); border-radius: 4px; box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5); }
@@ -1372,8 +1379,30 @@ kbd {
 .status-main > span:first-child { color: var(--text); }
 .status.bad .status-main > span:first-child, .status-main > .warn { color: #ff9a7c; }
 .status-place { flex-shrink: 0; color: var(--muted); font-size: 11.5px; opacity: 0.85; }
-/* The top bar's alerts keep to one line of their own: side by side at their full width when there's room, on the bar's second row when there isn't, shortened only as a last resort. */
-.needs { flex: 1 1 auto; flex-wrap: nowrap; min-width: 140px; overflow: hidden; }
+/* The top bar's rows are fixed by its width (#453), never by what's in them, so nothing hops between rows as the
+   numbers change: wide, one row, the alerts filling what's left; middling, the alerts get a second row of their own
+   (gone while there are none); narrower, the weather, the alerts, the drill and the drop make the second row.
+   The alerts fill their space and shorten to fit, never wrapping. Measured on the bar itself (a container query),
+   so the UI scale moves the breakpoints with it. Phones have their own drop-down bar (below 640px). */
+.needs { flex: 1 1 0; flex-wrap: nowrap; min-width: 0; overflow: hidden; }
+.hud { container-type: inline-size; }
+.hud .hole-name, .hud .hole-picker { min-width: 0; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 640px) {
+  /* The break between the rows: a zero-height item a whole row wide, between the first row (order 0) and the second (order 2). */
+  .hud::after { content: ""; order: 1; flex-basis: 100%; height: 0; }
+  .hud { flex-wrap: wrap; row-gap: 0; }
+  @container (max-width: 1149px) {
+    .hud .needs { order: 2; flex-basis: 100%; margin-top: 5px; }
+    .hud .needs.calm { display: none; }
+  }
+  @container (max-width: 959px) {
+    .hud .weather, .hud .drill, .hud .drop { order: 2; margin-top: 5px; }
+    .hud .needs { flex-basis: 0; }
+    /* Kept while empty, so the drill and the drop stay put at the right. */
+    .hud .needs.calm { display: flex; }
+  }
+  @container (min-width: 1150px) { .hud::after { display: none; } }
+}
 .need { min-width: 0; flex-shrink: 1; }
 .need:not(.more) { display: inline-block; overflow: hidden; text-overflow: ellipsis; }
 .need:not(.more) > .ico { vertical-align: -3px; margin-right: 4px; }
