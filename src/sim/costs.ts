@@ -65,9 +65,9 @@ export function checkBuild(
   const check = checkPlacement(layout, type, at, cfg);
   if (!check.ok) return check;
   const site = siteRefusal(type, gates);
-  if (site) return { ok: false, reason: site, cells: check.cells, surfaceCells: check.surfaceCells };
+  if (site) return { ok: false, reason: site, cells: check.cells, surfaceCells: check.surfaceCells, surfaceRing: check.surfaceRing };
   const missing = missingCost(resources, type, buildLiningCost(type, at, check.cells.length, lining));
-  return missing ? { ok: false, reason: missing, cells: check.cells, surfaceCells: check.surfaceCells } : check;
+  return missing ? { ok: false, reason: missing, cells: check.cells, surfaceCells: check.surfaceCells, surfaceRing: check.surfaceRing } : check;
 }
 
 export function charge(resources: Record<string, number>, type: string): void {

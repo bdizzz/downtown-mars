@@ -12,7 +12,7 @@ const wide = roomDefs.find((r) => r.size === "surface" && (r.surfaceSlots ?? 1) 
 describe("surfaceSpots", () => {
   it("is every slot on an empty surface, and nothing for a room inside the hole", () => {
     const l = layout();
-    expect(surfaceSpots(l, "solar_array")).toEqual([...Array(l.surface.length).keys()]);
+    expect(surfaceSpots(l, "solar_array")).toEqual(l.surface.flatMap((row, i) => row.map((_, slot) => ({ ring: i + 1, slot }))));
     expect(surfaceSpots(l, "clinic")).toEqual([]);
   });
 
@@ -21,10 +21,13 @@ describe("surfaceSpots", () => {
     // Taken: 0–1 and 3–4, leaving slot 2 alone between them.
     expect(placeRoom(l, wide.id, { kind: "surface", slot: 0 }).ok).toBe(true);
     expect(placeRoom(l, wide.id, { kind: "surface", slot: 3 }).ok).toBe(true);
-    expect(surfaceSpots(l, "solar_array")).toContain(2);
-    const spots = surfaceSpots(l, wide.id);
+    const ring1 = (room: string) => surfaceSpots(l, room).filter((s) => s.ring === 1).map((s) => s.slot);
+    expect(ring1("solar_array")).toContain(2);
+    const spots = ring1(wide.id);
     expect(spots).not.toContain(2);
     for (const s of [0, 1, 3, 4]) expect(spots).not.toContain(s);
     expect(spots).toContain(5);
+    // The outer rings are untouched.
+    expect(surfaceSpots(l, wide.id)).toContainEqual({ ring: 2, slot: 0 });
   });
 });

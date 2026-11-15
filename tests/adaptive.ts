@@ -83,8 +83,10 @@ export function quarry(hole: SimState): boolean {
 export function placeAnywhere(hole: SimState, room: string, crop?: string): boolean {
   const def = roomDef(room);
   if (def.size === "surface") {
-    for (let slot = 0; slot < hole.layout.surface.length; slot++) {
-      if (applyCommand(hole, { type: "build", room, at: { kind: "surface", slot } }).ok) return true;
+    for (const [i, row] of hole.layout.surface.entries()) {
+      for (let slot = 0; slot < row.length; slot++) {
+        if (applyCommand(hole, { type: "build", room, at: { kind: "surface", ring: i + 1, slot } }).ok) return true;
+      }
     }
     return false;
   }

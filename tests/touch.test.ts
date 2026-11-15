@@ -67,7 +67,7 @@ describe("tap to aim on the surface", () => {
     const layout = createLayout(createHole(10, 2, 3, config.geometry));
     const tool = { kind: "build", room: "solar_array", shape: [1, 1] } as unknown as Tool;
     const at = (angle: number) => hoverInfoFor(layout, {}, tool, { kind: "surface", angle });
-    const width = 360 / layout.surface.length;
+    const width = 360 / layout.surface[0]!.length;
     const aim = new TapToAim();
     expect(aim.tap(tool, aimKeyFor(at(width * 5.2), tool, layout))).toBe(false);
     expect(aim.tap(tool, aimKeyFor(at(width * 5.7), tool, layout))).toBe(true);

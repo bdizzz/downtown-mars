@@ -12,7 +12,7 @@ import { culture } from "./culture";
 import { addAdults } from "./people";
 import { corridors, migrateCorridorRooms, recomputeAccess } from "./corridors";
 import { galleryEdges } from "./edges";
-import { ensureFloors, placeRoom, type Layout } from "./placement";
+import { ensureFloors, placeRoom, surfaceGrid, type Layout } from "./placement";
 import { openCells } from "./excavation";
 import { fillAir } from "./air";
 import { setAllows } from "./storage";
@@ -22,7 +22,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 23;
+export const SAVE_VERSION = 24;
 
 type Raw = Record<string, unknown>;
 
@@ -226,6 +226,17 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
         return crop ? (roomSpec(room, config).makes[cropMakes(crop)] ?? 0) : 0;
       });
       return hole as unknown as Raw;
+    }),
+  }),
+  // v24: the surface is rings of building spots (T-108). The old single ring is ring 1; the outer rings start empty.
+  23: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const layout = h.layout as Omit<Layout, "surface"> & { surface: number[] | number[][] };
+      if (Array.isArray(layout.surface[0])) return h;
+      const rings = surfaceGrid(layout.hole);
+      rings[0] = layout.surface as number[];
+      return { ...h, layout: { ...layout, surface: rings } };
     }),
   }),
 };

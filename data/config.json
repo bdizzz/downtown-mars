@@ -17,7 +17,10 @@
     "wallThicknessM": 0.5,
     "pairedRings": true,
     "nestedPairs": true,
-    "surfaceSlots": 12
+    "surfaceSlots": 12,
+    "surfaceRings": 3,
+    "surfaceRingM": 16,
+    "surfaceRingDepthM": 20
   },
   "shapes": {
     "S": [[1, 1]],
