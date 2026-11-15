@@ -37,7 +37,7 @@ export function NewsletterCard({ issue, onClose }: { issue: NewsIssue; onClose: 
           <p className="np-drop">{n.lead.text}</p>
         </section>
         {(n.stories.length > 0 || n.letters.length > 0) && (
-          <div className="np-cols">
+          <div className={`np-cols${n.stories.length + n.letters.length === 1 ? " one" : ""}`}>
             {n.stories.map((st, i) => (
               <section key={i} className="np-story">
                 <div className="kicker">{st.kicker}</div>
@@ -59,7 +59,7 @@ export function NewsletterCard({ issue, onClose }: { issue: NewsIssue; onClose: 
           </div>
         )}
         {n.fluff.length > 0 && (
-          <div className="np-cols np-fluff">
+          <div className={`np-cols np-fluff${n.fluff.length === 1 ? " one" : ""}`}>
             {n.fluff.map((st, i) => (
               <section key={`f${i}`} className="np-story">
                 <div className="kicker">{st.kicker}</div>

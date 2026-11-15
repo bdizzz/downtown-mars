@@ -1586,3 +1586,5 @@ kbd {
   content: ""; position: absolute; inset: 3px; pointer-events: none; mix-blend-mode: multiply; opacity: 0.35;
   background: radial-gradient(circle, rgba(36, 26, 20, 0.6) 0.6px, transparent 0.9px) 0 0 / 3px 3px;
 }
+/* A lone story or letter spans the page rather than leaving the second column empty. */
+.newsletter .np-cols.one { column-count: 1; }
