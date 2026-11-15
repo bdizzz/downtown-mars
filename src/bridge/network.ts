@@ -2,6 +2,7 @@ import elevationData from "../../data/mars-elevation.json";
 import { culture } from "../sim/culture";
 import { network } from "../sim/network";
 import { resourceDef } from "../sim/resources";
+import { siteTrait } from "../sim/sites";
 import type { Snapshot } from "../sim/snapshot";
 import { num } from "../ui/format";
 import { DEPOSIT_STYLE, holeColor, phaseText, siteReport, type Elevation } from "../view/network";
@@ -19,7 +20,9 @@ export interface MapMessage {
   locked: string | null;
   legend: { kind: string; name: string; color: string; hint: string }[];
   deposits: { kind: string; lat: number; lon: number; radiusDeg: number; color: string }[];
-  holes: { id: number; name: string; lat: number; lon: number; color: string; here: boolean }[];
+  holes: { id: number; name: string; lat: number; lon: number; color: string; here: boolean; trait: string | null }[];
+  /** How near a hole a place counts as that hole's site, degrees (its own trait, or none, rather than the place's; siteTraitFor). */
+  holeSiteDeg: number;
   convoys: { from: Place | null; to: Place; progress: number; label: string }[];
   routes: { from: Place; to: Place; at: number | null; outbound: boolean }[];
   migrations: { from: Place; to: Place; at: number }[];
@@ -34,7 +37,8 @@ export function mapView(s: Snapshot): MapMessage {
     locked: s.mapUnlocked ? null : `Only the ground near your holes is known yet. The map opens at ${network.mapUnlockPopulation} colonists (you have ${pop}).`,
     legend: Object.entries(DEPOSIT_STYLE).map(([kind, d]) => ({ kind, name: d.name, color: d.color, hint: d.hint })),
     deposits: s.deposits.map((d) => ({ kind: d.kind, lat: d.lat, lon: d.lon, radiusDeg: d.radiusDeg, color: DEPOSIT_STYLE[d.kind].color })),
-    holes: s.holes.flatMap((h) => (h.site ? [{ id: h.id, name: h.capped ? `${h.name} · ${h.capped.identity}` : h.name, lat: h.site.lat, lon: h.site.lon, color: holeColor(s, h.id), here: h.id === s.holeId }] : [])),
+    holes: s.holes.flatMap((h) => (h.site ? [{ id: h.id, name: h.capped ? `${h.name} · ${h.capped.identity}` : h.name, lat: h.site.lat, lon: h.site.lon, color: holeColor(s, h.id), here: h.id === s.holeId, trait: siteTrait(h.trait)?.name ?? null }] : [])),
+    holeSiteDeg: network.seedKit.minSpacingDeg / 2,
     convoys: s.convoys.map((c) => ({ from: c.from, to: c.to, progress: Math.min(1, Math.max(0, c.progress)), label: `${c.name} · ${c.daysLeft.toFixed(1)} d` })),
     routes: s.routes.flatMap((r) => {
       const a = siteOf(r.fromHoleId);
@@ -57,6 +61,8 @@ export interface SiteMessage {
   lon: number;
   where: string;
   near: string;
+  /** The site's trait (#430): what a hole founded here would have, or the hole's own; null for an ordinary site. */
+  trait: { name: string; blurb: string; eases: string; stresses: string } | null;
   ground: { name: string; color: string; text: string }[] | null;
   distances: string[];
   checks: { ok: boolean; text: string }[];
@@ -71,6 +77,7 @@ export function siteView(s: Snapshot, site: Place): SiteMessage {
     ...site,
     where: r.where,
     near: r.near,
+    trait: r.trait ? { name: r.trait.name, blurb: r.trait.blurb, eases: r.trait.eases, stresses: r.trait.stresses } : null,
     ground: r.known ? r.deposits.map((k) => ({ name: DEPOSIT_STYLE[k].name, color: DEPOSIT_STYLE[k].color, text: DEPOSIT_STYLE[k].hint.split(": ")[1] ?? "" })) : null,
     distances: r.distances,
     checks: r.checks.map(([ok, text]) => ({ ok, text })),
