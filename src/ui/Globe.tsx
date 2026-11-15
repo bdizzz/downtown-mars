@@ -2,16 +2,19 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { Touches } from "../view/touch";
 
-// The planet as a globe: the map (an equirectangular canvas) wrapped on a
-// sphere. Drag to spin it; let go and it coasts, slowing to a stop. Scroll
-// to zoom. Pointing and clicking find the latitude and longitude under the
-// pointer, as the flat map did.
+// The planet as a globe, from real data (#499): its colour (USGS's Viking mosaic, shaded by MOLA's relief,
+// data/mars-relief.jpg) on a sphere raised by its heights (MOLA, public/map/height.png, exaggerated so they
+// show) and lit; sharper tiles (public/map/tiles/, 32 px a degree) laid over the part in view as you zoom in;
+// the IAU's names, the biggest that fit at each zoom, as labels; and over it all, what the game draws (the
+// map canvas: deposits, holes, convoys, routes). All made by scripts/build-map.py and build-names.mjs.
+// Drag to spin it; let go and it coasts, slowing to a stop. Scroll to zoom. Pointing and clicking find the
+// latitude and longitude under the pointer, on the raised ground.
 
 export type LatLon = { lat: number; lon: number };
 
 const GLOBE = {
   /** Camera distance, in globe radii: where it starts, and how close and far it goes. */
-  distance: { start: 3.7, min: 1.6, max: 6 },
+  distance: { start: 3.7, min: 1.16, max: 6 },
   /** Radians of spin per pixel dragged, and per pixel scrolled sideways (at the starting distance). */
   drag: 0.006,
   scrollSpin: 0.004,
@@ -25,11 +28,83 @@ const GLOBE = {
   maxTilt: (80 * Math.PI) / 180,
   /** A press that moves more than this (pixels) is a drag, not a click. */
   clickSlop: 5,
-  atmosphere: 0xe07a3f,
+  /**
+   * The atmosphere (#499): how thick its haze band looks (in radii: Mars's dust and ice hazes reach some 50 km,
+   * 1.5%, shown a little thicker), its dust low down and its ice hazes higher up, how bright the band, and the
+   * veil of dust over the disc's edge.
+   */
+  atmosphere: { thickness: 0.025, dust: 0xe6c3a0, high: 0xd8e6f4, glow: 1.05, veil: 0.35 },
+  /**
+   * The relief: how much the heights are exaggerated (a radius is 3,396 km, so Olympus Mons' 21 km would be
+   * a 0.6% bump), and the height map's range (metres, its 0 and 255; as build-map.py writes it).
+   */
+  relief: { exaggerate: 10, min: -8500, max: 21500, radiusM: 3396190 },
+  /** The tiles: how many degrees each covers and the grid of them, from what distance they're laid on, and how many to keep loaded. */
+  tiles: { deg: 15, rows: 12, cols: 24, within: 2.7, keep: 80 },
+  /** The names: how big on screen (px) a feature must be to be named, the most at once, and their fonts. */
+  names: { minPx: 40, most: 30 },
 };
 
+/** Big regions get the wide-spaced capitals of a map's regional names. */
+const REGION_KINDS = new Set(["terra", "planitia", "planum", "vastitas", "palus"]);
+
+type Name = { name: string; kind: string; km: number; lat: number; lon: number };
+
+/**
+ * The globe's surface shader: each vertex lifted by the height there (read from the height map at its own
+ * latitude and longitude, so the sphere, the tiles and the overlay all follow the same ground), and each
+ * pixel's normal tilted by the height map's slopes, so the relief catches the light.
+ */
+function withRelief<T extends THREE.Material>(m: T, u: { height: { value: THREE.Texture | null }; on: { value: number } }, lift: number): T {
+  m.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, { reliefHeight: u.height, reliefOn: u.on });
+    const common = /* glsl */ `
+      uniform sampler2D reliefHeight;
+      uniform float reliefOn;
+      const float RELIEF_SCALE = ${(((GLOBE.relief.max - GLOBE.relief.min) / GLOBE.relief.radiusM) * GLOBE.relief.exaggerate).toFixed(6)};
+      const float RELIEF_ZERO = ${(-GLOBE.relief.min / (GLOBE.relief.max - GLOBE.relief.min)).toFixed(6)};
+      vec2 reliefUv(vec3 d) {
+        float lon = atan(d.z, -d.x);
+        return vec2(fract(lon / 6.2831853), asin(clamp(d.y, -1.0, 1.0)) / 3.1415927 + 0.5);
+      }
+      float reliefAt(vec2 uv) { return (texture2D(reliefHeight, uv).r - RELIEF_ZERO) * RELIEF_SCALE * reliefOn; }
+    `;
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", `#include <common>\n${common}\nvarying vec3 vReliefDir;\nvarying vec3 vReliefUp;\nvarying vec3 vReliefEast;\nvarying vec3 vReliefNorth;`)
+      .replace(
+        "#include <begin_vertex>",
+        `#include <begin_vertex>
+        vec3 rd = normalize(position);
+        vReliefDir = rd;
+        transformed = rd * (${(1 + lift).toFixed(4)} + reliefAt(reliefUv(rd)));
+        vec3 east = normalize(vec3(rd.z, 0.0, -rd.x) + vec3(1e-5, 0.0, 0.0));
+        vReliefUp = normalize(normalMatrix * rd);
+        vReliefEast = normalize(normalMatrix * east);
+        vReliefNorth = normalize(normalMatrix * cross(rd, east));`,
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", `#include <common>\n${common}\nvarying vec3 vReliefDir;\nvarying vec3 vReliefUp;\nvarying vec3 vReliefEast;\nvarying vec3 vReliefNorth;`)
+      .replace(
+        "#include <normal_fragment_begin>",
+        `#include <normal_fragment_begin>
+        {
+          vec2 uv = reliefUv(normalize(vReliefDir));
+          vec2 px = vec2(1.0 / 1440.0, 1.0 / 720.0);
+          float c = max(0.08, cos((uv.y - 0.5) * 3.1415927));
+          float gx = (reliefAt(uv + vec2(px.x, 0.0)) - reliefAt(uv - vec2(px.x, 0.0))) / (2.0 * px.x * 6.2831853 * c);
+          float gy = (reliefAt(uv + vec2(0.0, px.y)) - reliefAt(uv - vec2(0.0, px.y))) / (2.0 * px.y * 3.1415927);
+          normal = normalize(vReliefUp - gx * vReliefEast - gy * vReliefNorth);
+        }`,
+      );
+  };
+  m.customProgramCacheKey = () => `relief-${lift}`;
+  return m;
+}
+
 interface Props {
-  /** The map to wrap: 2:1, longitude 0 at the left edge, north at the top. */
+  /** The planet's own picture (data/mars-relief.jpg): 2:1, longitude 0 at the left edge, north at the top. */
+  relief: HTMLCanvasElement;
+  /** What the game draws over it, the same shape, transparent elsewhere. */
   map: HTMLCanvasElement;
   /** Bumped whenever the map canvas has been redrawn. */
   version: number;
@@ -44,7 +119,7 @@ function facing(at: LatLon): { yaw: number; tilt: number } {
   return { yaw: Math.PI / 2 - (at.lon * Math.PI) / 180, tilt: (at.lat * Math.PI) / 180 };
 }
 
-export function Globe({ map, version, focus, onHover, onPick }: Props) {
+export function Globe({ relief, map, version, focus, onHover, onPick }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const textureRef = useRef<THREE.CanvasTexture | null>(null);
   const redraw = useRef<() => void>(() => {});
@@ -63,20 +138,189 @@ export function Globe({ map, version, focus, onHover, onPick }: Props) {
     sun.position.set(-3, 2, 4);
     scene.add(sun);
 
-    const texture = new THREE.CanvasTexture(map);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    textureRef.current = texture;
-    const globe = new THREE.Mesh(new THREE.SphereGeometry(1, 128, 64), new THREE.MeshStandardMaterial({ map: texture, roughness: 1 }));
+    const anisotropy = renderer.capabilities.getMaxAnisotropy();
+    // The heights, for the relief: on once loaded (the globe is a plain ball till then), and read here too, for pointing.
+    const reliefU = { height: { value: null as THREE.Texture | null }, on: { value: 0 } };
+    let heights: { data: Uint8ClampedArray; w: number; h: number } | null = null;
+    new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}map/height.png`, (tex) => {
+      tex.colorSpace = THREE.NoColorSpace;
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.magFilter = THREE.LinearFilter;
+      reliefU.height.value = tex;
+      reliefU.on.value = 1;
+      const img = tex.image as HTMLImageElement;
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      const g = c.getContext("2d")!;
+      g.drawImage(img, 0, 0);
+      heights = { data: g.getImageData(0, 0, c.width, c.height).data, w: c.width, h: c.height };
+      dirty = true;
+    });
+    const planet = new THREE.CanvasTexture(relief);
+    planet.colorSpace = THREE.SRGBColorSpace;
+    planet.anisotropy = anisotropy;
+    const globe = new THREE.Mesh(new THREE.SphereGeometry(1, 384, 192), withRelief(new THREE.MeshStandardMaterial({ map: planet, roughness: 1 }), reliefU, 0));
     globe.rotation.order = "XYZ";
     scene.add(globe);
-    // A thin glowing haze round the rim: brightest at the edge, facing away from you.
+    // What the game draws, just above the ground and following it.
+    const texture = new THREE.CanvasTexture(map);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = anisotropy;
+    textureRef.current = texture;
+    const overlay = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 384, 192),
+      withRelief(new THREE.MeshStandardMaterial({ map: texture, roughness: 1, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }), reliefU, 0.0016),
+    );
+    globe.add(overlay);
+
+    // The tiles: a patch of sphere each, laid over the part in view once you're close enough.
+    const T = GLOBE.tiles;
+    const tileMat = new Map<string, THREE.MeshStandardMaterial>();
+    const tileMesh = new Map<string, THREE.Mesh>();
+    const loading = new Set<string>();
+    const used: string[] = [];
+    // Each tile's patch is made where it lies (the relief reads each vertex's own latitude and longitude).
+    const tileGeo = new Map<string, THREE.SphereGeometry>();
+    const geoFor = (key: string, row: number, col: number) => {
+      let g = tileGeo.get(key);
+      if (!g) {
+        const d = (T.deg * Math.PI) / 180;
+        g = new THREE.SphereGeometry(1, 24, 24, col * d, d, row * d, d);
+        tileGeo.set(key, g);
+      }
+      return g;
+    };
+    const centre = new THREE.Vector3();
+    const updateTiles = () => {
+      const near = spin.distance < T.within;
+      globe.updateMatrixWorld();
+      // How far round the sphere you can see from here, and a margin.
+      const reach = Math.acos(Math.min(1, 1 / spin.distance)) + 0.25;
+      const want = new Set<string>();
+      if (near) {
+        for (let row = 0; row < T.rows; row++) {
+          for (let col = 0; col < T.cols; col++) {
+            const lat = ((90 - (row + 0.5) * T.deg) * Math.PI) / 180;
+            const lon = (((col + 0.5) * T.deg) * Math.PI) / 180;
+            centre.set(-Math.cos(lon) * Math.cos(lat), Math.sin(lat), Math.sin(lon) * Math.cos(lat)).applyMatrix4(globe.matrixWorld);
+            // Facing the camera (on +z), within what can be seen, with the tile's own half-width.
+            if (Math.acos(Math.max(-1, Math.min(1, centre.z))) < reach + 0.19) want.add(`${row}_${col}`);
+          }
+        }
+      }
+      for (const [key, mesh] of tileMesh) {
+        if (!want.has(key)) {
+          globe.remove(mesh);
+          tileMesh.delete(key);
+        }
+      }
+      for (const key of want) {
+        if (tileMesh.has(key)) continue;
+        const mat = tileMat.get(key);
+        const [row, col] = key.split("_").map(Number) as [number, number];
+        if (mat) {
+          const mesh = new THREE.Mesh(geoFor(key, row, col), mat);
+          globe.add(mesh);
+          tileMesh.set(key, mesh);
+          continue;
+        }
+        if (loading.has(key)) continue;
+        loading.add(key);
+        new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}map/tiles/${key}.jpg`, (tex) => {
+          loading.delete(key);
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = anisotropy;
+          tileMat.set(key, withRelief(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }), reliefU, 0.0006));
+          used.push(key);
+          // Keep the most recent; let the oldest go.
+          while (used.length > T.keep) {
+            const old = used.shift()!;
+            if (tileMesh.has(old) || want.has(old)) continue;
+            const m = tileMat.get(old);
+            m?.map?.dispose();
+            m?.dispose();
+            tileMat.delete(old);
+            tileGeo.get(old)?.dispose();
+            tileGeo.delete(old);
+          }
+          dirty = true;
+          tilesDirty = true;
+        });
+      }
+    };
+    let tilesDirty = true;
+
+    // The names: labels over the globe, the biggest that fit at this zoom and face you, none overlapping.
+    const nameLayer = document.createElement("div");
+    nameLayer.className = "globe-names";
+    el.appendChild(nameLayer);
+    let names: Name[] = [];
+    import("../../data/mars-names.json").then((mod) => {
+      names = ((mod.default ?? mod) as { names: Name[] }).names;
+      dirty = true;
+    });
+    const pool: HTMLSpanElement[] = [];
+    const at = new THREE.Vector3();
+    const updateNames = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      const focal = h / 2 / Math.tan(((camera.fov / 2) * Math.PI) / 180);
+      const height = spin.distance - 1;
+      const boxes: [number, number, number, number][] = [];
+      let n = 0;
+      for (const f of names) {
+        if (n >= GLOBE.names.most) break;
+        const px = ((f.km / 2 / 3389.5) * focal) / height;
+        if (px < GLOBE.names.minPx) break;
+        const lat = (f.lat * Math.PI) / 180;
+        const lon = (f.lon * Math.PI) / 180;
+        at.set(-Math.cos(lon) * Math.cos(lat), Math.sin(lat), Math.sin(lon) * Math.cos(lat)).applyMatrix4(globe.matrixWorld);
+        if (at.z < 0.25) continue;
+        at.project(camera);
+        const x = (at.x * 0.5 + 0.5) * w;
+        const y = (-at.y * 0.5 + 0.5) * h;
+        if (x < 0 || y < 0 || x > w || y > h) continue;
+        const region = REGION_KINDS.has(f.kind);
+        const bw = f.name.length * (region ? 9 : 7) + 10;
+        const box: [number, number, number, number] = [x - bw / 2, y - 9, x + bw / 2, y + 9];
+        if (boxes.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1])) continue;
+        boxes.push(box);
+        const span = pool[n] ?? nameLayer.appendChild(document.createElement("span"));
+        pool[n] = span;
+        span.textContent = f.name;
+        span.className = region ? "region" : "";
+        span.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`;
+        span.style.display = "";
+        n++;
+      }
+      for (let i = n; i < pool.length; i++) pool[i]!.style.display = "none";
+    };
+    // The atmosphere, as Mars's looks from orbit: a thin band of haze hugging the limb, butterscotch dust low
+    // down turning to the pale blue-white of the ice hazes higher up, lit only where the sun reaches and fading
+    // out over the night side; and a faint veil of dust over the disc toward its edge, softening the limb.
+    const A = GLOBE.atmosphere;
+    const sunward = sun.position.clone().normalize();
+    const airVertex = `varying vec3 vN; varying vec3 vV; varying vec3 vDir;
+      void main() { vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = normalize(-mv.xyz);
+        vDir = normalize((modelMatrix * vec4(position, 1.0)).xyz); gl_Position = projectionMatrix * mv; }`;
+    const airUniforms = { dust: { value: new THREE.Color(A.dust) }, high: { value: new THREE.Color(A.high) }, sun: { value: sunward } };
+    // How lit the air is: full on the day side, gone a little past the terminator.
+    const lit = `float lit = smoothstep(-0.25, 0.45, dot(vDir, sun));`;
     const haze = new THREE.Mesh(
-      new THREE.SphereGeometry(1.06, 64, 32),
+      new THREE.SphereGeometry(1 + A.thickness, 96, 48),
       new THREE.ShaderMaterial({
-        uniforms: { color: { value: new THREE.Color(GLOBE.atmosphere) } },
-        vertexShader: `varying vec3 vN; varying vec3 vV; void main() { vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
-        fragmentShader: `uniform vec3 color; varying vec3 vN; varying vec3 vV; void main() { float f = pow(1.0 - abs(dot(vN, vV)), 3.0); gl_FragColor = vec4(color, f * 0.8); }`,
+        uniforms: airUniforms,
+        vertexShader: airVertex,
+        // Seen from inside the shell's back: 0 at the shell's own silhouette, rising to the planet's limb.
+        fragmentShader: `uniform vec3 dust; uniform vec3 high; uniform vec3 sun; varying vec3 vN; varying vec3 vV; varying vec3 vDir;
+          void main() {
+            ${lit}
+            float g = max(0.0, -dot(vN, vV)) / ${Math.sqrt(1 - 1 / (1 + A.thickness) ** 2).toFixed(4)};
+            float alt = 1.0 - clamp(g, 0.0, 1.0);
+            float f = pow(1.0 - alt, 1.6) * lit * ${A.glow.toFixed(2)};
+            gl_FragColor = vec4(mix(dust, high, smoothstep(0.05, 0.6, alt)), f);
+          }`,
         transparent: true,
         blending: THREE.AdditiveBlending,
         side: THREE.BackSide,
@@ -84,6 +328,18 @@ export function Globe({ map, version, focus, onHover, onPick }: Props) {
       }),
     );
     scene.add(haze);
+    const veil = new THREE.Mesh(
+      new THREE.SphereGeometry(1.003, 96, 48),
+      new THREE.ShaderMaterial({
+        uniforms: airUniforms,
+        vertexShader: airVertex,
+        fragmentShader: `uniform vec3 dust; uniform vec3 high; uniform vec3 sun; varying vec3 vN; varying vec3 vV; varying vec3 vDir;
+          void main() { ${lit} float f = pow(1.0 - max(0.0, dot(vN, vV)), 4.0) * lit * ${A.veil.toFixed(2)}; gl_FragColor = vec4(dust, f); }`,
+        transparent: true,
+        depthWrite: false,
+      }),
+    );
+    scene.add(veil);
 
     const start = facing(focus);
     const spin = { yaw: start.yaw, tilt: start.tilt, vYaw: 0, vTilt: 0, distance: GLOBE.distance.start };
@@ -115,22 +371,49 @@ export function Globe({ map, version, focus, onHover, onPick }: Props) {
         spin.vTilt *= k;
         place();
       }
-      if (dirty) {
+      if (dirty || tilesDirty) {
         dirty = false;
+        tilesDirty = false;
+        updateTiles();
         renderer.render(scene, camera);
+        updateNames();
       }
       frame = requestAnimationFrame(loop);
     };
     frame = requestAnimationFrame(loop);
 
-    // What's under the pointer: the map's latitude and longitude there, or null off the globe.
+    // What's under the pointer: the map's latitude and longitude there, or null off the globe. The ground is
+    // raised, so the ray meets a sphere at the height found where it last met, a few times over.
     const ray = new THREE.Raycaster();
+    const R = GLOBE.relief;
+    const liftAt = (d: THREE.Vector3) => {
+      if (!heights) return 0;
+      const u = (((Math.atan2(d.z, -d.x) / (Math.PI * 2)) % 1) + 1) % 1;
+      const v = 0.5 - Math.asin(Math.max(-1, Math.min(1, d.y))) / Math.PI;
+      const x = Math.min(heights.w - 1, Math.floor(u * heights.w));
+      const y = Math.min(heights.h - 1, Math.floor(v * heights.h));
+      const m = R.min + (heights.data[(y * heights.w + x) * 4]! / 255) * (R.max - R.min);
+      return (m / R.radiusM) * R.exaggerate;
+    };
+    const local = new THREE.Ray();
+    const inverse = new THREE.Matrix4();
+    const hit = new THREE.Vector3();
     const latLonAt = (e: PointerEvent | MouseEvent): LatLon | null => {
       const r = renderer.domElement.getBoundingClientRect();
       ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
-      const hit = ray.intersectObject(globe)[0];
-      if (!hit?.uv) return null;
-      return { lat: hit.uv.y * 180 - 90, lon: hit.uv.x * 360 };
+      globe.updateMatrixWorld();
+      local.copy(ray.ray).applyMatrix4(inverse.copy(globe.matrixWorld).invert());
+      let radius = 1;
+      let found = false;
+      for (let i = 0; i < 4; i++) {
+        if (!local.intersectSphere(new THREE.Sphere(new THREE.Vector3(), radius), hit)) break;
+        found = true;
+        radius = 1 + liftAt(hit.clone().normalize());
+      }
+      if (!found) return null;
+      const d = hit.normalize();
+      const lon = (((Math.atan2(d.z, -d.x) * 180) / Math.PI) % 360 + 360) % 360;
+      return { lat: (Math.asin(Math.max(-1, Math.min(1, d.y))) * 180) / Math.PI, lon };
     };
 
     const canvas = renderer.domElement;
@@ -240,8 +523,20 @@ export function Globe({ map, version, focus, onHover, onPick }: Props) {
       canvas.removeEventListener("wheel", onWheel);
       globe.geometry.dispose();
       (globe.material as THREE.Material).dispose();
+      overlay.geometry.dispose();
+      (overlay.material as THREE.Material).dispose();
+      planet.dispose();
+      reliefU.height.value?.dispose();
+      for (const m of tileMat.values()) {
+        m.map?.dispose();
+        m.dispose();
+      }
+      for (const g of tileGeo.values()) g.dispose();
+      nameLayer.remove();
       haze.geometry.dispose();
       (haze.material as THREE.Material).dispose();
+      veil.geometry.dispose();
+      (veil.material as THREE.Material).dispose();
       texture.dispose();
       textureRef.current = null;
       renderer.dispose();

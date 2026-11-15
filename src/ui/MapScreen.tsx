@@ -1,15 +1,16 @@
 import { UI_FONT } from "../view/font";
 import { useEffect, useMemo, useState } from "react";
 import { Globe } from "./Globe";
-import { DEPOSIT_KINDS, depositsAt, features, ICE_CAP_REFUSAL, nearestFeature, onIceCap, wrapLon, type DepositKind } from "../sim/mapgeo";
+import { DEPOSIT_KINDS, depositsAt, ICE_CAP_REFUSAL, nearestFeature, onIceCap, wrapLon, type DepositKind } from "../sim/mapgeo";
 import { network } from "../sim/network";
 import { DEPOSIT_STYLE, siteReport, siteTraitFor, type Elevation } from "../view/network";
 import type { Snapshot } from "../sim/snapshot";
 import reliefUrl from "../../data/mars-relief.jpg?url";
 
-// The planet from above: MOLA shaded relief at 8 px a degree (data/mars-relief.jpg, drawn by
-// scripts/build-relief.mjs; loaded when the map first opens), the game's deposits, named features,
-// and where the holes are. Heights under the pointer come from the game's 1° grid.
+// The planet from above, as a globe (Globe.tsx): its real colour, shaded by MOLA's relief
+// (data/mars-relief.jpg, sharper tiles as you zoom, made by scripts/build-map.py; loaded when the map first
+// opens), raised by its heights, with the IAU's names; and over it, in this canvas, the game's deposits and
+// where the holes, convoys and routes are. Heights under the pointer come from the game's 1° grid.
 
 export type SitePick = { lat: number; lon: number };
 
@@ -70,7 +71,8 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
     if (!image) return;
     const g = canvas.getContext("2d")!;
     g.imageSmoothingEnabled = true;
-    g.drawImage(image, 0, 0, size.w, size.h);
+    // The planet itself is the globe's own (Globe.tsx, from data/mars-relief.jpg); this canvas holds only what the game draws on it.
+    g.clearRect(0, 0, size.w, size.h);
     const pxPerDeg = size.w / 360;
     for (const d of s.deposits) {
       if (!shown[d.kind]) continue;
@@ -83,16 +85,8 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       g.fill();
       g.stroke();
     }
-    // Names of the places on the planet.
-    g.font = `600 ${Math.round(12 * S)}px ${UI_FONT}`;
+    // The places' names are the globe's (#499: the IAU's, by zoom), as crisp labels over it.
     g.textAlign = "center";
-    for (const f of features) {
-      const [x, y] = toXY(f.lat, f.lon);
-      g.fillStyle = "rgba(20,10,8,0.55)";
-      g.fillText(f.name, x + 1, y + 1);
-      g.fillStyle = "#f6efe6";
-      g.fillText(f.name, x, y);
-    }
     if (site) {
       const [x, y] = toXY(site.lat, site.lon);
       g.strokeStyle = "#e07a3f";
@@ -236,7 +230,7 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
         {!image ? (
           <p className="k">Loading the planet…</p>
         ) : (
-          <Globe map={canvas} version={version} focus={focus} onHover={setHover} onPick={(p) => !onIceCap(p) && onSite(p)} />
+          <Globe relief={image} map={canvas} version={version} focus={focus} onHover={setHover} onPick={(p) => !onIceCap(p) && onSite(p)} />
         )}
       </div>
       {site && <SitePanel s={s} site={site} elevation={elevation} onClear={() => onSite(null)} onFound={() => onFound(site)} />}
@@ -244,7 +238,7 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       <footer className="k">
         {info
           ? `${info.where} · ${Math.round(info.elevation).toLocaleString()} m · ${info.near}${info.deposits.length ? ` · ${info.deposits.map((k) => DEPOSIT_STYLE[k].name.toLowerCase()).join(", ")}` : ""}${info.trait && !info.ice ? ` · ${info.trait.name.toLowerCase()} site` : ""}${info.ice ? ` · ${ICE_CAP_REFUSAL}` : ""}`
-          : "Elevation: NASA Mars Global Surveyor MOLA. Deposits differ every game."}
+          : "Colour: USGS Viking mosaic. Elevation: NASA MGS MOLA. Names: IAU. Deposits differ every game."}
       </footer>
     </div>
   );

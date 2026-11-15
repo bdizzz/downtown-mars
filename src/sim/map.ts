@@ -1,5 +1,6 @@
 import elevationData from "../../data/mars-elevation.json";
-import { degreesApart, DEPOSIT_KINDS, depositsAt, mapColor, rgbHex, wrapLon, type Deposit, type DepositKind, type MapState } from "./mapgeo";
+import soilData from "../../data/mars-soil.json";
+import { degreesApart, DEPOSIT_KINDS, depositsAt, rgbHex, wrapLon, type Deposit, type DepositKind, type MapState } from "./mapgeo";
 import { network } from "./network";
 
 export * from "./mapgeo";
@@ -19,9 +20,23 @@ export function elevationAt(lat: number, lon: number): number {
   return elev.elevation[y * elev.width + x]! * elev.unitMeters;
 }
 
-/** The map's colour at a site, unlit (#rrggbb): the soil the 3D ground leans toward there. */
+// The planet's real colour (#499): the Viking colour mosaic, unshaded, on a 2° grid (scripts/build-map.py).
+const soilGrid = soilData as { degreesPerCell: number; width: number; height: number; rgb: string };
+const soilBytes = Uint8Array.from(atob(soilGrid.rgb), (c) => c.charCodeAt(0));
+
+/** The map's colour at a site, unlit (#rrggbb): the planet's real colour there, which the 3D ground leans toward. */
 export function soilAt(site: { lat: number; lon: number }): string {
-  return rgbHex(mapColor(elevationAt(site.lat, site.lon), site.lat));
+  const { width: w, height: h, degreesPerCell: d } = soilGrid;
+  // Between the four nearest cells' middles, wrapping round in longitude.
+  const fx = wrapLon(site.lon) / d - 0.5;
+  const fy = Math.min(h - 1, Math.max(0, (90 - site.lat) / d - 0.5));
+  const x0 = Math.floor(fx);
+  const y0 = Math.floor(fy);
+  const tx = fx - x0;
+  const ty = fy - y0;
+  const at = (x: number, y: number, k: number) => soilBytes[(Math.min(h - 1, y) * w + (((x % w) + w) % w)) * 3 + k]!;
+  const c = [0, 1, 2].map((k) => (at(x0, y0, k) * (1 - tx) + at(x0 + 1, y0, k) * tx) * (1 - ty) + (at(x0, y0 + 1, k) * (1 - tx) + at(x0 + 1, y0 + 1, k) * tx) * ty);
+  return rgbHex(c as [number, number, number]);
 }
 
 /** How likely each kind is at a place, from latitude and elevation. */

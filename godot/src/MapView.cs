@@ -17,6 +17,8 @@ namespace DowntownMars;
 public partial class MapView : Node3D
 {
     const float R = 10, MarsKm = 3389.5f;
+    /// <summary>The names (#499): the smallest feature named, and how far off (globe units a km of its size) its name shows.</summary>
+    const float NameMinKm = 60, NameRangePerKm = 0.047f;
     const uint Layer = 1 << 10;
     const int TexW = 4096, TexH = 2048;
 
@@ -137,17 +139,27 @@ public partial class MapView : Node3D
                 _traits.Add((t.GetProperty("name").GetString()!, Num("absLatMin"), Num("absLatMax"), w.TryGetProperty("near", out var n) ? n.GetString() : null, Num("nearDeg") ?? 0));
             }
         _relief = Relief();
-        foreach (var f in _features)
-        {
-            var label = new Label3D
+        // The IAU's names (#499, data/mars-names.json, the web's): each shows only once the camera is close enough
+        // for its feature to be a fair size on screen (as the web's globe: about 40 px across), the big regions in
+        // wide-spaced capitals; the smallest (under 60 km) are left off.
+        using (var doc = JsonDocument.Parse(System.IO.File.ReadAllText(root + "mars-names.json")))
+            foreach (var f in doc.RootElement.GetProperty("names").EnumerateArray())
             {
-                Text = f.name, Layers = Layer, FontSize = 40, PixelSize = 0.0035f, OutlineSize = 8,
-                Modulate = new Color("#f6efe6"), OutlineModulate = new Color(0.08f, 0.04f, 0.03f, 0.7f),
-                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = false,
-            };
-            label.Position = At(f.lat, f.lon, R * 1.004f);
-            AddChild(label);
-        }
+                var km = f.GetProperty("km").GetSingle();
+                if (km < NameMinKm) break;
+                var kind = f.GetProperty("kind").GetString();
+                var region = kind is "terra" or "planitia" or "planum" or "vastitas" or "palus";
+                var name = f.GetProperty("name").GetString()!;
+                var label = new Label3D
+                {
+                    Text = region ? string.Join(" ", name.ToUpperInvariant().ToCharArray()) : name, Layers = Layer, FontSize = region ? 34 : 36, PixelSize = 0.0035f, OutlineSize = 8,
+                    Modulate = region ? new Color(1f, 0.925f, 0.84f, 0.86f) : new Color("#f6efe6"), OutlineModulate = new Color(0.08f, 0.04f, 0.03f, 0.7f),
+                    Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = false,
+                    VisibilityRangeEnd = km * NameRangePerKm,
+                };
+                label.Position = At(f.GetProperty("lat").GetSingle(), f.GetProperty("lon").GetSingle(), R * 1.004f);
+                AddChild(label);
+            }
     }
 
     float ElevationAt(float lat, float lon)
@@ -160,8 +172,8 @@ public partial class MapView : Node3D
     static float Wrap(float lon) => ((lon % 360) + 360) % 360;
 
     /// <summary>
-    /// The shaded relief (data/mars-relief.jpg, 8 px a degree, drawn by scripts/build-relief.mjs as the
-    /// web's map uses it: coloured by height, lit from the north-west, the polar caps), as big as the texture.
+    /// The planet's picture (data/mars-relief.jpg, 4096 × 2048: its real colour from USGS's Viking mosaic, shaded
+    /// by MOLA's relief, #499, made by scripts/build-map.py; the web's own), as big as the texture.
     /// </summary>
     Image Relief()
     {
@@ -353,7 +365,7 @@ public partial class MapView : Node3D
     {
         if (GlobeAt(screen) is not var (lat, lon))
         {
-            _footer.Text = "Elevation: NASA Mars Global Surveyor MOLA. Deposits differ every game.";
+            _footer.Text = "Colour: USGS Viking mosaic. Elevation: NASA MGS MOLA. Names: IAU. Deposits differ every game.";
             return;
         }
         var near = _features.Select(f => (f.name, km: Km(lat, lon, f.lat, f.lon))).MinBy(f => f.km);
@@ -595,7 +607,7 @@ public partial class MapView : Node3D
         _footer.GrowHorizontal = Control.GrowDirection.Both;
         _footer.GrowVertical = Control.GrowDirection.Begin;
         _footer.Position = new Vector2(0, -90);
-        _footer.Text = "Elevation: NASA Mars Global Surveyor MOLA. Deposits differ every game.";
+        _footer.Text = "Colour: USGS Viking mosaic. Elevation: NASA MGS MOLA. Names: IAU. Deposits differ every game.";
         _ui.AddChild(_footer);
     }
 
