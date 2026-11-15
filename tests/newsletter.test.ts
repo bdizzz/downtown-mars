@@ -124,6 +124,12 @@ describe("newsletter", () => {
     expect(seen.size).toBe(Object.keys(raw.fluff).length);
   });
 
+  it("rolls a different tagline under the masthead from issue to issue", () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed < 200; seed++) seen.add(writeNewsletter({ ...blank(), seed }).tagline);
+    expect(seen.size).toBe(raw.taglines.length);
+  });
+
   it("every grumble and praise template fills", () => {
     for (const cause of Object.keys(raw.grumble.causes)) {
       const issue = { ...blank(), grumble: { name: "Ana Ruiz", role: "worker", trait: "Hothead", cause: `happiness:${cause}` } };

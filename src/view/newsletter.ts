@@ -41,7 +41,7 @@ interface VoiceDef {
 
 const DATA = raw as unknown as {
   name: string;
-  tagline: string;
+  taglines: string[];
   price: string;
   printed: string;
   weather: { storm: string; clear: string };
@@ -194,7 +194,8 @@ export function writeNewsletter(issue: NewsIssue): Newsletter {
   letter(issue.praise, DATA.praise);
   return {
     name: DATA.name,
-    tagline: DATA.tagline,
+    // Its own die, so the rest of the issue reads as it did before taglines rotated.
+    tagline: DATA.taglines[Math.floor(hash01(issue.seed, 7777) * DATA.taglines.length)]!,
     dateline: `No. ${issue.no} · ${monthLabel(issue.day)}`,
     hole: issue.hole,
     population: issue.population,
