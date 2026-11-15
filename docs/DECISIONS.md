@@ -404,6 +404,14 @@ Talked through with Bryon (Nov 12) and built as one PR (#394–#406).
 - **Not now:** ventilation networks, venting to cool, heat between floors. Later: insulation as a lining upgrade (M15), geothermal plants giving heat (#390), the Godot viewer's overlay, thermostat and setting.
 - The people playthrough's bars eased (born 4 → 3, the child above 50 → 35 people): over six seeds 3–4 born and 36–53 people, with or without the industry's CO2.
 
+## Decided for surface rings (Nov 14, #233)
+
+- **Three surface rings, open from the start** (Bryon, Oct 10), with room for six later (`geometry.surfaceRings` in `data/config.json`). Ring 1 keeps its 12 spots, so old saves load with their surface rooms on ring 1 (save v24 turns the flat `layout.surface` into one array per ring, and a surface room's `at.ring`, absent meaning 1).
+- **Sized like underground rings:** spots per ring scale with radius (`round(12 · r_n / r_1)`), rings 20 m apart (`surfaceRingDepthM`), so 12, 21 and 30.
+- **Nothing to connect** (Bryon, Oct 10): any free spot on any ring will do. The game lays a cable from the rim to each surface building on its own, drawn in 3D (and so in Godot) but not simulated, and not pickable, so pointing at one picks the ground.
+- **The ground stays flat and clear of boulders** out past the last ring, so buildings there stand level.
+- **The unrolled 2D view** stacks the outer rings above ring 1 in the surface strip, each on a faint ground line, as if further off; the plan view still shows floors only.
+
 ## Decided for the office scene (Nov 14, a first pass)
 
 - **The office is a place.** While the office panel is open, a still 3D room stands in for the hole (web only so far): one fixed camera, in first person (Bryon, Nov 14: at eye level, 1.7 m, looking near level with the game's first-person feel, so the walls and furniture fill the view rather than floor or ceiling; the room is 10 m by 7 m and 3.4 m high to suit), drawn once and again only when what's in it changes, so it costs nothing while it's up. The sim keeps running behind it. **Show me** on a visit takes the room away so the hole shows, and brings it back when turned off. Without WebGL nothing is drawn and the hole stays in view.

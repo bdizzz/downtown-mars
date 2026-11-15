@@ -365,6 +365,8 @@ Power travels down the shaft, so a failing surface array affects the whole hole.
 
 **Surface:** each hole has a limited footprint for solar arrays, a landing pad and a rover depot, exposed to storms and radiation. Rovers carry trade between holes along visible map routes, with travel time and storm disruption.
 
+**As built (#233):** the footprint is rings of building spots round the rim, like the floors' rings: three open from the start, room for six. Ring 1 has 12 spots, 16 m out from the shaft's edge; each further ring is 20 m further out, with spots in proportion to its radius (21, then 30), so a spot stays about as wide. Surface rooms sit at (surface ring, slot) and need no corridor; a cable from the rim to each is laid automatically and drawn, but isn't a game object.
+
 ## Research, money and commerce
 
 Unlocks come from milestones, money changes form across three eras, and shops and offices rise and fall with it.

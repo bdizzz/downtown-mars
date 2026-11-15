@@ -46,6 +46,8 @@ Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists
 
 Open a group on the **build rail** down the left edge (or press B), pick a room from its list (or press its key: room keys work only in Build), then click a slot. Green means it fits; red says why not. With a surface room in hand (solar arrays, the landing pad), every free spot round the hole it fits on is tinted faintly green on the ground, and the one under the pointer brighter.
 
+**Surface rings:** the ground round the rim has three rings of building spots, all open from the start: 12 spots on the ring nearest the shaft, 21 on the next and 30 on the outermost, each spot about as wide. A surface building can go on any free spot on any ring, with nothing to connect: the colonists lay a cable from the rim out to it along the ground. In the unrolled view the outer rings stand above the first, as if further off.
+
 ### Tubes and corridors
 
 - The shaft itself is open to Mars. People get about in a sealed network of **gallery tubes** (glass walkways along the shaft wall), corridors, plazas and stairs.
