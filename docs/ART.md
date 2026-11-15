@@ -47,6 +47,19 @@ Everything standing on the surface is one outfit's kit, built to match the shaft
 - **Loading:** plain HTML and CSS in `index.html`, so it shows before any code: the logotype over a **painted Mars dusk** (a violet-black sky with a few stars falling to a rust horizon glow, two ranges of hill silhouettes, a warm-rimmed hole in the ground), and a thin bar (`ui/boot.ts` moves it as each part of startup finishes), then a 0.6 s fade into the title.
 - **The title:** the hole's first floor in Free view, lower and farther out than in play, drifting round slowly at dusk (low warm light, windows aglow), with no HUD. On wide screens the logotype and menu sit on the left over a soft dark gradient and the picture shifts right to put the hole beside them; on narrow ones they're centred over a vignette. Phones, low graphics and the flat views get the painted dusk instead (`.mars-dusk`). The borehole O turns once every four minutes.
 
+## Voice (Nov 14, #425)
+
+The words are part of the look. The tagline is a pun ("Hole sweet hole"), and the rest of the game should sound like it comes from the same place: a small, tired, fond crew at the bottom of a hole.
+
+- **Warm and dry.** Like a good deputy: on your side, a little wry, never panicked. "Stomachs are rumbling", not "FOOD SHORTAGE".
+- **A pun is allowed**, one at a time, and never instead of the information.
+- **Never at the player's expense.** The joke is on Mars, the drill, the scientists or the stew, not on the player's choices. Bad news can be gentle; deaths are never a punchline.
+- **Instructions stay plain.** Hints, costs and "how to fix it" say exactly what to do, with the numbers. The warmth goes around them: in the opening line of a tip, an event's story, the outcome message.
+- **People are named.** A notable said it, a baby has a name, the galley crew are grumbling. The Hole Truth (#424, `data/newsletter.json`) leans on this most.
+- **Short.** One clause of flavour per line at most; the player is busy.
+
+Where it lives: the deputy's tips (`data/tutorial.json`), office visits (`data/visits.json`), events and their outcomes (`data/events.json`), the newsletter (`data/newsletter.json`) and a few of the sim's own messages (dust storms, supply drops).
+
 ## Readability rules
 
 These matter more than style, because the game is a placement puzzle.

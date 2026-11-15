@@ -36,11 +36,11 @@ export function stepWeather(state: SimState, cfg: SimConfig): void {
   if (storm) {
     if (!storm.started && state.tick >= storm.start) {
       storm.started = true;
-      postMessage(state, cfg, "A dust storm has blown in: the solar arrays are making much less.", "warn");
+      postMessage(state, cfg, "A dust storm has blown in: the solar arrays are making much less, and everyone's finding grit in their tea.", "warn");
     }
     if (state.tick >= storm.end) {
       ws.storm = undefined;
-      postMessage(state, cfg, "The dust storm has passed.", "good");
+      postMessage(state, cfg, "The dust storm has passed. Time to sweep up.", "good");
     }
     return;
   }

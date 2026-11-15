@@ -30,12 +30,12 @@
     "cooldownDays": 3,
     "warnEveryDays": 1,
     "label": "Vented",
-    "warning": "Fire risk: the air's at {o2} oxygen. Anything that sparks burns hotter."
+    "warning": "Fire risk: the air's at {o2} oxygen. Anything that sparks burns hotter, so maybe hold off on the birthday candles."
   },
   "grayOverflow": {
     "_note": "Full gray-water tanks (T-148): rooms keep running and the gray water that doesn't fit is lost for good. This warning, at most once every warnEveryDays.",
     "warnEveryDays": 3,
-    "warning": "Gray water overflowing: the tanks are full and water is being lost for good. Build a water recycler, or a tank set to hold gray water."
+    "warning": "The gray water tanks are full to the brim, and the overflow is lost for good. Build a water recycler, or set a tank to hold gray water."
   },
   "events": [
     {
@@ -43,10 +43,10 @@
       "title": "Too much oxygen",
       "text": "The air's at {o2} oxygen, and there's nowhere left to store it. The fire crews are nervous.",
       "patienceDays": 1,
-      "ignored": { "message": "Nobody decided about the oxygen: it's held, and the fire risk stays." },
+      "ignored": { "message": "Nobody decided about the oxygen, so it stays, and so does the fire risk. The fire crews have started bringing extinguishers to lunch." },
       "choices": [
         { "id": "vent", "label": "Vent the excess", "hint": "Oxygen back to 21%. What's vented is lost to the planet for good.", "ventAir": true, "message": "The excess oxygen is vented to the planet. The air's back to 21%." },
-        { "id": "hold", "label": "Hold it", "hint": "Keep it, and build gas tanks for it instead. The fire-risk warning stays.", "message": "The oxygen is held. The fire crews are keeping an eye on it." }
+        { "id": "hold", "label": "Hold it", "hint": "Keep it, and build gas tanks for it instead. The fire-risk warning stays.", "message": "The oxygen is held. The fire crews are keeping a very close eye on it." }
       ]
     },
     {
@@ -67,8 +67,8 @@
       "patienceDays": 0.5,
       "ignored": { "mood": { "amount": -5, "days": 4 }, "message": "The {ship} went quiet. Nobody answered her, and people know it." },
       "choices": [
-        { "id": "rescue", "label": "Bring them down", "hint": "30 oxygen and 30 water. Her six crew join us, with their salvage (15 electronics, 10 machinery); their pilot becomes a notable.", "needsPad": true, "resources": { "o2": -30, "water": -30, "electronics": 15, "machinery": 10 }, "colonists": 6, "notableRole": "belt pilot", "landing": true, "celebrate": "good_neighbors", "mood": { "amount": 4, "days": 4 }, "message": "The {ship} came down on our pad: six belters, safe, and their salvage. Everyone turned out to see." },
-        { "id": "supplies", "label": "Send supplies up", "hint": "60 oxygen and 60 water. They limp on, and the belt doesn't forget: a thank-you drop in 10–15 months.", "resources": { "o2": -60, "water": -60 }, "mood": { "amount": 2, "days": 3 }, "followUp": { "days": [10, 15], "effect": { "resources": { "electronics": 20, "machinery": 15 }, "landing": true, "message": "A drop from the belt, with thanks from the crew we helped: 20 electronics, 15 machinery." } }, "message": "Supplies went up to the {ship}. She limps on toward Ceres." },
+        { "id": "rescue", "label": "Bring them down", "hint": "30 oxygen and 30 water. Her six crew join us, with their salvage (15 electronics, 10 machinery); their pilot becomes a notable.", "needsPad": true, "resources": { "o2": -30, "water": -30, "electronics": 15, "machinery": 10 }, "colonists": 6, "notableRole": "belt pilot", "landing": true, "celebrate": "good_neighbors", "mood": { "amount": 4, "days": 4 }, "message": "The {ship} came down on our pad: six belters, safe, and their salvage. Everyone turned out to see, and somebody brought snacks." },
+        { "id": "supplies", "label": "Send supplies up", "hint": "60 oxygen and 60 water. They limp on, and the belt doesn't forget: a thank-you drop in 10–15 months.", "resources": { "o2": -60, "water": -60 }, "mood": { "amount": 2, "days": 3 }, "followUp": { "days": [10, 15], "effect": { "resources": { "electronics": 20, "machinery": 15 }, "landing": true, "message": "A drop from the belt, with thanks from the crew we helped: 20 electronics, 15 machinery." } }, "message": "Supplies went up to the {ship}. She limps on toward Ceres, waving." },
         { "id": "ignore", "label": "Ignore the call", "hint": "Keep what we have. People won't like it (−5 happiness).", "mood": { "amount": -5, "days": 4 }, "message": "We let the {ship} go. People are quiet about it." }
       ]
     },
@@ -77,9 +77,9 @@
       "title": "The drill struck water",
       "text": "Floor {floor}: the cutterhead broke into a layer of wet rock, and water is seeping into the bore. An aquifer, right under us.",
       "patienceDays": 2,
-      "ignored": { "message": "Nobody decided about the aquifer on floor {floor}: the drill crew sealed it and carried on." },
+      "ignored": { "message": "Nobody decided about the aquifer on floor {floor}, so the drill crew sealed it and carried on, a little damp." },
       "choices": [
-        { "id": "tap", "label": "Tap it", "hint": "The hole gains the aquifer (deep well pumps), and 150 water now.", "deposit": "aquifer", "resources": { "water": 150 }, "message": "The aquifer on floor {floor} is tapped: deep well pumps can draw on it." },
+        { "id": "tap", "label": "Tap it", "hint": "The hole gains the aquifer (deep well pumps), and 150 water now.", "deposit": "aquifer", "resources": { "water": 150 }, "message": "The aquifer on floor {floor} is tapped: deep well pumps can draw on it. The showers are cautiously optimistic." },
         { "id": "seal", "label": "Seal it pristine", "hint": "Leave Mars's water untouched. Everyone's a little proud (+4 happiness for a few months).", "mood": { "amount": 4, "days": 3 }, "message": "The aquifer on floor {floor} is sealed, untouched. People are proud of that." }
       ]
     },
@@ -88,9 +88,9 @@
       "title": "A rich ore vein",
       "text": "Floor {floor}: the spoil coming up the conveyor is heavy and dark. The drill has cut a vein of iron ore.",
       "patienceDays": 2,
-      "ignored": { "message": "The ore vein on floor {floor} was left alone." },
+      "ignored": { "message": "The ore vein on floor {floor} was left alone. It'll keep: it's waited a few billion years already." },
       "choices": [
-        { "id": "work", "label": "Work the vein", "hint": "The hole gains the ore deposit (smelters; digging brings up ore), and 60 ore now.", "deposit": "ore", "resources": { "ore": 60 }, "message": "The ore vein on floor {floor} is being worked." },
+        { "id": "work", "label": "Work the vein", "hint": "The hole gains the ore deposit (smelters; digging brings up ore), and 60 ore now.", "deposit": "ore", "resources": { "ore": 60 }, "message": "The ore vein on floor {floor} is being worked. The smelter crew are rolling up their sleeves." },
         { "id": "leave", "label": "Leave it", "hint": "Nothing changes." }
       ]
     },
@@ -99,9 +99,9 @@
       "title": "A bed of silica sand",
       "text": "Floor {floor}: the drill is bringing up fine pale sand. Silica: the stuff of glass and wafers.",
       "patienceDays": 2,
-      "ignored": { "message": "The silica bed on floor {floor} was left alone." },
+      "ignored": { "message": "The silica bed on floor {floor} was left alone, sand and all." },
       "choices": [
-        { "id": "work", "label": "Work the bed", "hint": "The hole gains the silica deposit (digging brings up silica), and 60 silica now.", "deposit": "silica", "resources": { "silica": 60 }, "message": "The silica bed on floor {floor} is being worked." },
+        { "id": "work", "label": "Work the bed", "hint": "The hole gains the silica deposit (digging brings up silica), and 60 silica now.", "deposit": "silica", "resources": { "silica": 60 }, "message": "The silica bed on floor {floor} is being worked. Glass, here we come." },
         { "id": "leave", "label": "Leave it", "hint": "Nothing changes." }
       ]
     },
@@ -110,9 +110,9 @@
       "title": "A lava tube",
       "text": "Floor {floor}: the drill broke into a hollow. An old lava tube runs off from the shaft, smooth-walled and dry.",
       "patienceDays": 2,
-      "ignored": { "message": "The lava tube on floor {floor} was left: the crew walled it off." },
+      "ignored": { "message": "Nobody claimed the lava tube on floor {floor}, so the crew walled it off. Someone's already telling ghost stories about it." },
       "choices": [
-        { "id": "open", "label": "Open it up", "hint": "A run of empty space on floor {floor}, dug out for free, ready to build in.", "openCavity": true, "message": "The lava tube on floor {floor} is opened up: free space to build in." },
+        { "id": "open", "label": "Open it up", "hint": "A run of empty space on floor {floor}, dug out for free, ready to build in.", "openCavity": true, "message": "The lava tube on floor {floor} is open: free space to build in, no digging required." },
         { "id": "mine", "label": "Mine its walls", "hint": "200 rock from its walls; the space stays rock.", "resources": { "rock": 200 }, "message": "The lava tube's walls on floor {floor} are mined for rock." }
       ]
     },
@@ -121,10 +121,10 @@
       "title": "Gas in the bore",
       "text": "Floor {floor}: the drill has opened a pocket of gas. The sensors are complaining and the crew wants to know how careful to be.",
       "patienceDays": 1,
-      "ignored": { "holdDrillDays": 1, "message": "With nobody deciding, the drill crew vented the gas slowly: a month lost." },
+      "ignored": { "holdDrillDays": 1, "message": "With nobody deciding, the drill crew played it safe and vented the gas slowly: a month lost, nobody hurt." },
       "choices": [
         { "id": "vent", "label": "Vent it slowly", "hint": "Safe, but the drill loses a month.", "holdDrillDays": 1, "message": "The gas on floor {floor} is vented slowly: the drill is back at it next month." },
-        { "id": "push", "label": "Push through", "hint": "Keep drilling: the rooms on the floor above lose 20 condition to the fumes, and people are rattled (−4 happiness for a few months).", "conditionFloorAbove": 20, "mood": { "amount": -4, "days": 3 }, "message": "The drill pushed through the gas on floor {floor}. The floor above smells of it." }
+        { "id": "push", "label": "Push through", "hint": "Keep drilling: the rooms on the floor above lose 20 condition to the fumes, and people are rattled (−4 happiness for a few months).", "conditionFloorAbove": 20, "mood": { "amount": -4, "days": 3 }, "message": "The drill pushed through the gas on floor {floor}. The floor above smells like a bad egg having a bad day." }
       ]
     },
     {
@@ -132,10 +132,10 @@
       "title": "Microfossils!",
       "text": "Floor {floor}: in the spoil, under a hand lens, tiny ordered shapes. Something lived here once. The scientists want the drill stopped.",
       "patienceDays": 2,
-      "ignored": { "mood": { "amount": -5, "days": 3 }, "message": "Nobody stopped the drill for the microfossils, and the scientists are sulking." },
+      "ignored": { "mood": { "amount": -5, "days": 3 }, "message": "Nobody stopped the drill for the microfossils. The scientists are sulking, loudly, in the galley." },
       "choices": [
         { "id": "study", "label": "Stop and study them", "hint": "The drill stops for 2 months. Everyone's thrilled (+10 happiness), and it's worth a celebration.", "holdDrillDays": 2, "mood": { "amount": 10, "days": 5 }, "celebrate": "microfossils", "message": "Life on Mars, once: the microfossils from floor {floor} are being studied." },
-        { "id": "dig", "label": "Dig on", "hint": "No time lost; the scientists sulk (−5 happiness).", "mood": { "amount": -5, "days": 3 }, "message": "The drill digs on past the microfossils. The scientists are not pleased." }
+        { "id": "dig", "label": "Dig on", "hint": "No time lost; the scientists sulk (−5 happiness).", "mood": { "amount": -5, "days": 3 }, "message": "The drill digs on past the microfossils. The scientists have started a petition." }
       ]
     },
     {
