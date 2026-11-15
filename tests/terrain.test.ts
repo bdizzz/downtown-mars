@@ -188,8 +188,10 @@ describe("a canyon in the Godot viewer, through the bridge (#497)", () => {
 });
 
 describe("the pieces sculpted in Blender (#497)", () => {
-  it("decode to unit-frame shapes with their baked shade", async () => {
-    const { piece } = await import("../src/render3d/landPieces");
+  it("decode from public/models/land.bin to unit-frame shapes with their baked shade", async () => {
+    const { piece, setPieces } = await import("../src/render3d/landPieces");
+    const { readFileSync } = await import("node:fs");
+    setPieces(readFileSync("public/models/land.bin"));
     for (const name of ["mesa_a", "butte_b", "mound", "buttress_c"] as const) {
       const p = piece(name);
       expect(p.indices.length % 3).toBe(0);

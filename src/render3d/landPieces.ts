@@ -1,28 +1,13 @@
 import * as THREE from "three";
-import made from "../../models/land/pieces.json";
 
 // The land's hero pieces (#497), sculpted in Blender (models/land/land.py: mesas and buttes worn back in
-// beds, a crater's tiered mound, buttresses for a canyon's walls) and committed as models/land/pieces.json,
-// so the game and the bridge read them as they are and the build never runs Blender. Each is in its own unit
+// beds, a crater's tiered mound, buttresses for a canyon's walls) and committed as public/models/land.bin, so
+// the build never runs Blender. The 3D view fetches the file as it starts (until it's in, the land is drawn
+// from its code-built shapes, then built again); the bridge reads it from disk. Each piece is in its own unit
 // frame: a radial piece's footprint has radius 1, a buttress is 2 wide with its face toward -z; y runs from
 // the ground (0) to its top (1).
 
 export type PieceName = "mesa_a" | "mesa_b" | "butte_a" | "butte_b" | "mound" | "buttress_a" | "buttress_b" | "buttress_c";
-
-interface Packed {
-  min: number[];
-  max: number[];
-  positions: string;
-  shade: string;
-  indices: string;
-}
-
-const PIECES = (made as unknown as { pieces: Record<PieceName, Packed> }).pieces;
-
-function bytes(b64: string): Uint8Array {
-  if (typeof atob === "function") return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-  return new Uint8Array(Buffer.from(b64, "base64"));
-}
 
 /** A piece's shape in its unit frame: where each vertex is, how dark its baked occlusion leaves it (0 to 1), and its triangles. */
 export interface Piece {
@@ -31,28 +16,43 @@ export interface Piece {
   indices: Uint16Array;
 }
 
-const cache = new Map<PieceName, Piece>();
+let pieces: Map<PieceName, Piece> | null = null;
+
+/** Whether the pieces are in (the land uses them only then). */
+export const piecesReady = (): boolean => pieces !== null;
+
+/** Read land.bin (see models/land/land.py for its layout). */
+export function setPieces(buffer: ArrayBuffer | Uint8Array): void {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (String.fromCharCode(...bytes.subarray(0, 4)) !== "DMLP") throw new Error("land.bin: not a land pieces file");
+  const headLength = view.getUint32(4, true);
+  const header = JSON.parse(new TextDecoder().decode(bytes.subarray(8, 8 + headLength))) as {
+    pieces: Record<PieceName, { min: number[]; max: number[]; vertices: number; triangles: number; offset: number }>;
+  };
+  const body = 8 + headLength;
+  const out = new Map<PieceName, Piece>();
+  for (const [name, p] of Object.entries(header.pieces) as [PieceName, (typeof header.pieces)[PieceName]][]) {
+    let at = body + p.offset;
+    const positions = new Float32Array(p.vertices * 3);
+    for (let i = 0; i < positions.length; i++, at += 2) {
+      const k = i % 3;
+      positions[i] = p.min[k]! + (view.getUint16(at, true) / 65535) * (p.max[k]! - p.min[k]!);
+    }
+    const shade = new Float32Array(p.vertices);
+    for (let i = 0; i < p.vertices; i++) shade[i] = bytes[at + i]! / 255;
+    at += p.vertices + (p.vertices % 2);
+    const indices = new Uint16Array(p.triangles * 3);
+    for (let i = 0; i < indices.length; i++, at += 2) indices[i] = view.getUint16(at, true);
+    out.set(name, { positions, shade, indices });
+  }
+  pieces = out;
+}
 
 export function piece(name: PieceName): Piece {
-  const hit = cache.get(name);
-  if (hit) return hit;
-  const p = PIECES[name];
-  const q = bytes(p.positions);
-  const view = new DataView(q.buffer, q.byteOffset, q.byteLength);
-  const positions = new Float32Array(q.byteLength / 2);
-  for (let i = 0; i < positions.length; i++) {
-    const k = i % 3;
-    positions[i] = p.min[k]! + (view.getUint16(i * 2, true) / 65535) * (p.max[k]! - p.min[k]!);
-  }
-  const s = bytes(p.shade);
-  const shade = Float32Array.from(s, (v) => v / 255);
-  const ib = bytes(p.indices);
-  const iv = new DataView(ib.buffer, ib.byteOffset, ib.byteLength);
-  const indices = new Uint16Array(ib.byteLength / 2);
-  for (let i = 0; i < indices.length; i++) indices[i] = iv.getUint16(i * 2, true);
-  const made = { positions, shade, indices };
-  cache.set(name, made);
-  return made;
+  const p = pieces?.get(name);
+  if (!p) throw new Error(`land piece ${name} isn't loaded`);
+  return p;
 }
 
 /**

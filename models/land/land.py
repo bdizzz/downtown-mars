@@ -9,11 +9,14 @@ then cut down to a few thousand triangles (the Decimate modifier), with ambient 
 vertex (rays against the piece itself). Also a tileable rock-detail map for the land's rock shader: fine
 laminations, fractures and grain as a height, turned into a normal (red, green) and a cavity (blue).
 
-Writes models/land/pieces.json (the game reads it; the build never runs Blender) and
-public/textures/land-rock.jpg. Pieces are in their own unit frame: x and z across (a radial piece's footprint
+Writes public/models/land.bin (the game fetches it with the 3D view, the bridge reads it from disk; the build
+never runs Blender) and public/textures/land-rock.jpg. land.bin: "DMLP", the header's length (uint32), the
+header as JSON (each piece's box and where its arrays start), then each piece's arrays, little-endian:
+positions as uint16 across its box (x, y, z a vertex), shade as a byte a vertex (padded to an even length),
+triangles as uint16 indices.
+Pieces are in their own unit frame: x and z across (a radial piece's footprint
 has radius 1; a buttress is 2 wide, x from -1 to 1, its face toward -z), y up from 0 (the ground) to 1 (its top).
 """
-import base64
 import json
 import math
 import os
@@ -255,18 +258,14 @@ def finish(name, verts, faces):
         for i in range(3):
             q += struct.pack("<H", round((p[i] - lo[i]) / max(1e-9, hi[i] - lo[i]) * 65535))
     shade = bytes(round(max(0, min(1, s)) * 255) for s in ao)
+    if len(shade) % 2:
+        shade += b"\x00"
     idx = bytearray()
     for t in tris:
         idx += struct.pack("<HHH", *t)
     print(f"{name}: {len(pos)} vertices, {len(tris)} triangles")
     bpy.data.objects.remove(obj)
-    return {
-        "min": [round(v, 5) for v in lo],
-        "max": [round(v, 5) for v in hi],
-        "positions": base64.b64encode(bytes(q)).decode(),
-        "shade": base64.b64encode(shade).decode(),
-        "indices": base64.b64encode(bytes(idx)).decode(),
-    }
+    return {"min": [round(v, 5) for v in lo], "max": [round(v, 5) for v in hi], "vertices": len(pos), "triangles": len(tris), "data": bytes(q) + shade + bytes(idx)}
 
 
 # ---- the rock-detail map ----
@@ -356,12 +355,19 @@ def main():
         "buttress_b": buttress("buttress_b", 7),
         "buttress_c": buttress("buttress_c", 8),
     }
-    out = {"_note": "Made by models/land/land.py in Blender (#497); see its header. Quantised: positions as uint16 across min..max, shade as a byte, triangles as uint16 indices.", "pieces": pieces}
-    with open(os.path.join(HERE, "pieces.json"), "w") as f:
-        json.dump(out, f, separators=(",", ":"))
+    header = {"note": "Made by models/land/land.py in Blender (#497); see its header.", "pieces": {}}
+    body = bytearray()
+    for name, p in pieces.items():
+        header["pieces"][name] = {"min": p["min"], "max": p["max"], "vertices": p["vertices"], "triangles": p["triangles"], "offset": len(body)}
+        body += p["data"]
+    head = json.dumps(header, separators=(",", ":")).encode()
+    head += b" " * (-len(head) % 4)
+    os.makedirs(os.path.join(ROOT, "public", "models"), exist_ok=True)
+    with open(os.path.join(ROOT, "public", "models", "land.bin"), "wb") as f:
+        f.write(b"DMLP" + struct.pack("<I", len(head)) + head + bytes(body))
     os.makedirs(os.path.join(ROOT, "public", "textures"), exist_ok=True)
     detail_map(os.path.join(ROOT, "public", "textures", "land-rock.jpg"))
-    print("wrote models/land/pieces.json and public/textures/land-rock.jpg")
+    print("wrote public/models/land.bin and public/textures/land-rock.jpg")
 
 
 main()

@@ -1,5 +1,8 @@
 import * as THREE from "three";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { buildTerrain, GROUND_BASE, siteSeed, soilTint } from "../render3d/terrain3d";
+import { setPieces } from "../render3d/landPieces";
 import { soilAt } from "../sim/map";
 import { siteLatitude } from "../view/sunPath";
 import type { SimState } from "../sim/state";
@@ -11,6 +14,14 @@ import type { SimState } from "../sim/state";
 // The ground's colour leans toward the map's at the site (T-073), and the site's latitude sets the
 // sun's path and the stars' turning (T-020, view/sunPath.ts; Godot's Live.cs does the same sums).
 // Sent once per hole.
+
+// The land's sculpted pieces (#497), from disk: public/models/land.bin is two levels up from here, whether this
+// runs as src/bridge/terrain.ts or bundled as godot/.bridge/main.js. Without it, the land is code-built.
+try {
+  setPieces(readFileSync(fileURLToPath(new URL("../../public/models/land.bin", import.meta.url))));
+} catch {
+  // Code-built land.
+}
 
 const b64f = (a: ArrayLike<number>) => Buffer.from(new Float32Array(a).buffer).toString("base64");
 const b64i = (a: ArrayLike<number>) => Buffer.from(new Uint32Array(a).buffer).toString("base64");

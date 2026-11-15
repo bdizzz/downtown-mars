@@ -3,7 +3,7 @@ import { config } from "../sim/config";
 import mapData from "../../data/mars-map.json";
 import { traitAt } from "../sim/sites";
 import { FAR_SHADOW, withFarShadow, withLandRock } from "./surfaces";
-import { placedGeometry, type PieceName } from "./landPieces";
+import { piecesReady, placedGeometry, type PieceName } from "./landPieces";
 
 // The land around the hole: the ground rolls away from a flat pad at the rim
 // (where surface buildings stand) in undulations and ridges, pocked with
@@ -370,7 +370,7 @@ export function buildTerrain(rim: number, seed: number, groundMaterial: THREE.Ma
   const skylineAt = skyline(style, seed);
   group.add(horizon(skylineAt, tint));
   if (walls) group.add(wallMesh(walls, seed, heightAt, soil));
-  if (walls?.kind === "canyon") group.add(buttresses(walls, seed, heightAt, soil));
+  if (walls?.kind === "canyon" && piecesReady()) group.add(buttresses(walls, seed, heightAt, soil));
   const forms = landforms(style, seed, rim, heightAt, tint);
   for (const f of forms) group.add(f.mesh);
   if (style === "volcano") for (const f of lavaFlows(seed, rim, heightAt, soil)) group.add(f);
@@ -797,9 +797,11 @@ function landforms(style: HorizonStyle, seed: number, rim: number, heightAt: (x:
       segments: spec.segments,
     };
     const prof = profile(kind, rand);
+    // A sculpted piece once they're in (picked either way, so the land after is the same).
     const hero = HERO[kind];
-    const made = hero
-      ? heroLandform(hero[Math.floor(rand() * hero.length)]!, shape, heightAt, hazed(color, distance))
+    const pick = rand();
+    const made = hero && piecesReady()
+      ? heroLandform(hero[Math.floor(pick * hero.length)]!, shape, heightAt, hazed(color, distance))
       : landform(shape, prof, noise2(seed + 211 + k * 31), heightAt, hazed(color, distance), LAYERED.has(kind));
     made.mesh.name = "landform";
     // A crater's rim is a ring, not a solid: it casts no far shadow of its own.
