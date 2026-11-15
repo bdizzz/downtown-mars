@@ -75,6 +75,19 @@ const TITLE_SHOWCASE_FLOORS = 2;
 
 export function App() {
   const { snapshot, speed, setSpeed, setActiveHole, send, found, route, save, load, newGame, advance } = useSim();
+  // The top bar's height, kept on the app as --top-h (no re-render), so the 3D view's canvas can run on under it (#453).
+  const appRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const top = topRef.current;
+    const app = appRef.current;
+    if (!top || !app) return;
+    const measure = () => app.style.setProperty("--top-h", `${top.getBoundingClientRect().height}px`);
+    const ro = new ResizeObserver(measure);
+    ro.observe(top);
+    measure();
+    return () => ro.disconnect();
+  }, []);
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [tool, setTool] = useState<Tool>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -678,9 +691,12 @@ export function App() {
 
   return (
     <div
+      ref={appRef}
       className={`app${settings.colorBlind ? " color-blind" : ""}${welcome ? " welcoming" : ""}${titling ? " titling" : ""}${hudOpen ? " hud-open" : ""}`}
       style={{ "--ui-scale": settings.uiScale } as React.CSSProperties}
     >
+      {/* The top bar floats over the 3D view (#453): its height, as --top-h, lets the canvas run on under it. */}
+      <div className="topbar" ref={topRef}>
       <Hud
         snapshot={snapshot}
         speed={speed}
@@ -700,6 +716,7 @@ export function App() {
       {reveal.shown("hud:resources") && (
         <ResourceBar s={snapshot} onTrend={openTrend} fresh={reveal.fresh("hud:resources")} quiet={!settings.allResources && reveal.all} />
       )}
+      </div>
       <div className="main">
         <div className="view">
           {snapshot && (

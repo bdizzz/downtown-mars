@@ -729,11 +729,20 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     saved: { theta: cam.theta, iso: cam.iso, isoElev: cam.isoElev, panX: cam.panX, panZ: cam.panZ },
     still: typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches,
   };
-  /** The showcase's framing: pulled back and low, and on wide screens moved right of the title. */
+  /** How far the top bar covers the canvas (px): the canvas runs on under the bar so the bar can change height
+   *  without resizing it, which would clear it to black for a frame (#453). The framing centres on the rest. */
+  let barInset = 0;
+  function measureBarInset(): number {
+    const above = host.parentElement;
+    return above ? Math.max(0, Math.round(above.getBoundingClientRect().top - host.getBoundingClientRect().top)) : 0;
+  }
+  /** The framing: centred below the top bar; behind the title, pulled back and low, and on wide screens moved right of it. */
   function frameShowcase(): void {
     const w = host.clientWidth;
     const h = host.clientHeight;
-    if (showcase.on && w >= SHOWCASE.wideFrom) camera.setViewOffset(w, h, -w * SHOWCASE.shift, 0, w, h);
+    const dx = showcase.on && w >= SHOWCASE.wideFrom ? -w * SHOWCASE.shift : 0;
+    const dy = -barInset / 2;
+    if (dx || dy) camera.setViewOffset(w, h, dx, dy, w, h);
     else camera.clearViewOffset();
     if (!showcase.on || view.mode !== "iso") return;
     cam.isoElev = SHOWCASE.elev;
@@ -2018,21 +2027,32 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
   setWallsDown(view.wallsDown);
 
+  // The canvas's own size, and the view around it: when only the top bar changes height, the view moves but the
+  // canvas keeps its size, so it isn't resized (and cleared); only the framing follows the bar (#453).
+  let sized = { w: 0, h: 0 };
   const resize = new ResizeObserver(() => {
     const w = host.clientWidth;
     const h = host.clientHeight;
     if (!w || !h) return;
-    renderer.setSize(w, h);
-    look.resize();
-    camera.aspect = w / h;
+    const inset = measureBarInset();
+    const resized = w !== sized.w || h !== sized.h;
+    if (!resized && inset === barInset) return;
+    barInset = inset;
+    if (resized) {
+      sized = { w, h };
+      renderer.setSize(w, h);
+      look.resize();
+      camera.aspect = w / h;
+    }
     frameShowcase();
     camera.updateProjectionMatrix();
     // The framing depends on the screen's shape: redo it until the player zooms.
-    if (cutawayFitted) fitCutaway();
+    if (resized && cutawayFitted) fitCutaway();
     applyCamera();
     dirty = true;
   });
   resize.observe(host);
+  if (host.parentElement) resize.observe(host.parentElement);
 
   // Ambient life (dust, walkers) animates at up to 30 fps; camera moves and
   // sim changes still render on the next frame.
