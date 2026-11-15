@@ -1,5 +1,5 @@
 {
-  "_note": "How the map colours Mars, shared by scripts/build-relief.mjs (the map image) and the game (each site's soil, and where the ice is).",
+  "_note": "Where the ice is, how far a site's ground leans to its soil colour, and the sky's default latitude. The height ramp coloured the map until #499 (now the planet's real colour, scripts/build-map.py); it's kept for mapColor.",
   "ramp": {
     "_note": "Colour by elevation (metres, then sRGB): deep basins dark, plains rust, heights pale.",
     "stops": [
