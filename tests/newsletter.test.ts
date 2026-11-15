@@ -92,10 +92,11 @@ describe("newsletter", () => {
   });
 
   it("has fun sections too: the neighbour of the month, and more on a quiet month, all filled in", () => {
-    const featured = { name: "Mei Tanaka", role: "scientist", traits: ["Cautious", "Martian-born"] };
+    const featured = { id: 3, name: "Mei Tanaka", role: "scientist", traits: ["Cautious", "Martian-born"] };
     const busy = writeNewsletter({ ...blank(), born: 2, bornEver: 5, featured });
     expect(busy.fluff[0]!.kicker).toBe(raw.fluff.profile.kicker);
     expect(busy.fluff[0]!.text).toContain(raw.fluff.profile.traits.Cautious);
+    expect(busy.fluff[0]!.who?.id).toBe(3);
     expect(busy.fluff).toHaveLength(1 + raw.fluffPerIssue);
     const quiet = writeNewsletter({ ...blank(), featured });
     expect(quiet.fluff).toHaveLength(1 + raw.fluffQuiet);

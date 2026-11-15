@@ -5,6 +5,7 @@ import type { NewsIssue, NewsVoice } from "../sim/newsletter";
 import { hash01 } from "../sim/people";
 import { roomDef } from "../sim/rooms";
 import { monthLabel } from "./months";
+import type { PortraitPerson } from "./portrait";
 
 // The Hole Truth (#424): one month's facts (sim/newsletter.ts) written up as a newsletter from the
 // templates in data/newsletter.json. The issue's own seed rolls the dice, so it reads the same every
@@ -68,6 +69,8 @@ export interface NewsStory {
   /** Empty for an event's outcome, which is told in the game's own words. */
   head: string;
   text: string;
+  /** Whose photo runs beside it (the neighbour of the month). */
+  who?: PortraitPerson;
 }
 
 export interface NewsLetter {
@@ -239,7 +242,7 @@ function writeFluff(issue: NewsIssue, quiet: boolean, pick: <U>(l: U[]) => U): N
   if (f && p) {
     const v2: Vars = { ...v, name: f.name, role: f.role, spot: pick(p.spots ?? [""]) };
     const traits = f.traits.map((t) => p.traits?.[t]).filter((t): t is string => !!t);
-    out.push({ kicker: p.kicker, head: f.name, text: [fill(pick(p.intro ?? []), v2), ...traits, fill(pick(p.outro ?? []), v2)].join(" ") });
+    out.push({ kicker: p.kicker, head: f.name, who: f, text: [fill(pick(p.intro ?? []), v2), ...traits, fill(pick(p.outro ?? []), v2)].join(" ") });
   }
   const want = (quiet ? DATA.fluffQuiet : DATA.fluffPerIssue) + (out.length ? 0 : 1);
   for (const id of pickSome(Object.keys(F).filter((k) => k !== "profile"), want, pick)) {

@@ -2,6 +2,7 @@ import type { NewsIssue } from "../sim/newsletter";
 import type { Snapshot } from "../sim/snapshot";
 import { monthLabel } from "../view/months";
 import { NEWSLETTER_NAME, writeNewsletter } from "../view/newsletter";
+import { portraitSvg } from "../view/portrait";
 import { PanelHeader } from "./PanelHeader";
 
 // The Hole Truth (#424): each month's newsletter opens as a card over the game, which keeps running
@@ -63,6 +64,11 @@ export function NewsletterCard({ issue, onClose }: { issue: NewsIssue; onClose: 
               <section key={`f${i}`} className="np-story">
                 <div className="kicker">{st.kicker}</div>
                 {st.head && <h4>{st.head}</h4>}
+                {st.who && (
+                  <figure className="np-photo">
+                    <span aria-hidden="true" dangerouslySetInnerHTML={{ __html: portraitSvg(st.who, 96) }} />
+                  </figure>
+                )}
                 <p>{st.text}</p>
               </section>
             ))}

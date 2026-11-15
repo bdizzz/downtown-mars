@@ -61,7 +61,7 @@ export interface NewsIssue {
   grumble: NewsVoice | null;
   praise: NewsVoice | null;
   /** The neighbour of the month: a notable profiled for fun (absent in issues from before it). */
-  featured?: { name: string; role: string; traits: string[] } | null;
+  featured?: { id: number; name: string; role: string; traits: string[] } | null;
 }
 
 /** The counters at the month's start, and what's been tallied since. */
@@ -157,7 +157,7 @@ function writeIssue(state: SimState, cfg: SimConfig, nl: NewsletterState): NewsI
   const quoted = new Set([grumble?.name, praise?.name]);
   const others = state.notables.slice(1).filter((n) => !quoted.has(n.name));
   const pickFeatured = others[Math.floor(hash01(seed, 9) * others.length)];
-  const featured = pickFeatured ? { name: pickFeatured.name, role: pickFeatured.role, traits: [...pickFeatured.traits] } : null;
+  const featured = pickFeatured ? { id: pickFeatured.id, name: pickFeatured.name, role: pickFeatured.role, traits: [...pickFeatured.traits] } : null;
   const storm = state.weather?.storm;
   const festival = ev?.festival;
   return {
