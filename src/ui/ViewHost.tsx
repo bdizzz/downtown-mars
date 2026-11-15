@@ -170,5 +170,6 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
     stageRef.current?.setWarning(warning);
   }, [warning]);
 
-  return <div ref={hostRef} className="pixi-host" />;
+  // The 3D view runs on under the top bar, so the bar changing height never resizes (and blanks) its canvas (#453).
+  return <div ref={hostRef} className={`pixi-host${mode === "3d" ? " under-bar" : ""}`} />;
 }
