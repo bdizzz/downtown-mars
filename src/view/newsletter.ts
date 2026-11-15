@@ -4,7 +4,6 @@ import { milestoneDef } from "../sim/milestones";
 import type { NewsIssue, NewsVoice } from "../sim/newsletter";
 import { hash01 } from "../sim/people";
 import { roomDef } from "../sim/rooms";
-import { monthLabel } from "./months";
 import type { PortraitPerson } from "./portrait";
 
 // The Hole Truth (#424): one month's facts (sim/newsletter.ts) written up as a newsletter from the
@@ -83,7 +82,7 @@ export interface NewsLetter {
 export interface Newsletter {
   name: string;
   tagline: string;
-  /** "No. 4 · Month 4". */
+  /** "Issue No. 4" (an issue a month, so the month would only repeat it). */
   dateline: string;
   /** The masthead's ears and the strip under it. */
   hole: string;
@@ -196,7 +195,7 @@ export function writeNewsletter(issue: NewsIssue): Newsletter {
     name: DATA.name,
     // Its own die, so the rest of the issue reads as it did before taglines rotated.
     tagline: DATA.taglines[Math.floor(hash01(issue.seed, 7777) * DATA.taglines.length)]!,
-    dateline: `No. ${issue.no} · ${monthLabel(issue.day)}`,
+    dateline: `Issue No. ${issue.no}`,
     hole: issue.hole,
     population: issue.population,
     weather: issue.storm ? DATA.weather.storm : DATA.weather.clear,

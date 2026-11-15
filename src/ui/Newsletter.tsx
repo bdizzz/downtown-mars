@@ -1,6 +1,5 @@
 import type { NewsIssue } from "../sim/newsletter";
 import type { Snapshot } from "../sim/snapshot";
-import { monthLabel } from "../view/months";
 import { NEWSLETTER_NAME, writeNewsletter } from "../view/newsletter";
 import { portraitSvg } from "../view/portrait";
 import { PanelHeader } from "./PanelHeader";
@@ -103,7 +102,7 @@ export function NewsPanel({ s, onOpen, onClose }: { s: Snapshot; onOpen: (no: nu
         <button key={i.no} className="news-row" onClick={() => onOpen(i.no)}>
           <span className="name">{writeNewsletter(i).lead.head || writeNewsletter(i).lead.text}</span>
           <span className="k">
-            No. {i.no} · {monthLabel(i.day)}
+            Issue No. {i.no}
           </span>
         </button>
       ))}
