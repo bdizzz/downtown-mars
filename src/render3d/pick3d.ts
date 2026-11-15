@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import type { Hole } from "../sim/geometry";
+import { surfaceRingAt, type Hole } from "../sim/geometry";
+import { config } from "../sim/config";
 import type { Pick } from "../view/types";
 import { floorSpan, pickAt, RING_D, TAU } from "./cylinder";
 
@@ -38,10 +39,10 @@ export function pickPast(hole: Hole, ray: THREE.Ray, t: number): Pick {
   return pickAt(hole, p.x, p.y, p.z);
 }
 
-/** A surface pick at the point's angle around the shaft. */
-export function surfacePickAt(point: THREE.Vector3): Pick {
+/** A surface pick at the point's angle around the shaft, on the surface ring its distance out falls in. */
+export function surfacePickAt(hole: Hole, point: THREE.Vector3): Pick {
   const turn = (((Math.atan2(point.z, point.x) / TAU) % 1) + 1) % 1;
-  return { kind: "surface", angle: turn * 360 };
+  return { kind: "surface", angle: turn * 360, ring: surfaceRingAt(hole.shaftRadiusM, Math.hypot(point.x, point.z), config.geometry) };
 }
 
 /** Is a point inside the carved part of the hole: dug floors (and the one being dug), unlocked rings? */

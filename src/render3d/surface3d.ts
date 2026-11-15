@@ -1,5 +1,7 @@
 import * as THREE from "three";
-import type { Layout, RoomInstance } from "../sim/placement";
+import { surfaceRingOf, type Layout, type RoomInstance } from "../sim/placement";
+import { config } from "../sim/config";
+import { surfaceRingRadiusM } from "../sim/geometry";
 import { bevelBox, KIT_COLOR } from "./collar3d";
 import { hazardTexture } from "./drillRig";
 import { COLLAR_REACH, TAU } from "./cylinder";
@@ -13,8 +15,23 @@ import { finishMaterial } from "./surfaces";
 // palette. Each building is built in local space with +x pointing out from the
 // shaft, and placed by the caller.
 
-/** How far from the rim surface buildings stand (metres out from the shaft's edge). */
-export const SURFACE_RING_M = 16;
+/** How far from the rim the first surface ring's buildings stand (metres out from the shaft's edge). */
+export const SURFACE_RING_M = config.geometry.surfaceRingM;
+
+/** Where a run of surface slots on a surface ring sits: the angle of its middle and its span (radians), and its radius (metres from the shaft's centre). */
+export function surfacePlace(layout: Layout, slots: number[], ring = 1): { mid: number; span: number; r: number } {
+  const total = layout.surface[ring - 1]?.length ?? layout.surface[0]!.length;
+  // Slots are consecutive but may wrap; start from the one without a predecessor.
+  const set = new Set(slots);
+  const start = slots.find((s) => !set.has((s - 1 + total) % total)) ?? slots[0] ?? 0;
+  const span = (slots.length / total) * TAU;
+  return { mid: (start / total) * TAU + span / 2, span, r: surfaceRingRadiusM(layout.hole.shaftRadiusM, ring, config.geometry) };
+}
+
+/** Where a surface room sits round the rim (see `surfacePlace`). */
+export function roomSurfacePlace(layout: Layout, room: RoomInstance): { mid: number; span: number; r: number } {
+  return surfacePlace(layout, room.surfaceCells, surfaceRingOf(room.at));
+}
 
 /** A material made once per key (rooms3d's cache, so they're freed with the rest). */
 export type MaterialCache = (key: string, make: () => THREE.Material) => THREE.Material;
@@ -141,13 +158,9 @@ function kit(g: THREE.Group, material: MaterialCache, color: number) {
 
 type Kit = ReturnType<typeof kit>;
 
-/** A surface room, on its slots round the rim: centred on them, `SURFACE_RING_M` out. */
+/** A surface room, on its slots round the rim: centred on them, on its surface ring. */
 export function surfaceBuilding(room: RoomInstance, layout: Layout, color: number, material: MaterialCache): THREE.Object3D {
-  const total = layout.surface.length;
-  const span = (room.surfaceCells.length / total) * TAU;
-  const start = (Math.min(...room.surfaceCells) / total) * TAU;
-  const mid = start + span / 2;
-  const r = layout.hole.shaftRadiusM + SURFACE_RING_M;
+  const { mid, r } = roomSurfacePlace(layout, room);
   const g = new THREE.Group();
   g.position.set(r * Math.cos(mid), 0, r * Math.sin(mid));
   g.rotation.y = -mid;
@@ -160,6 +173,39 @@ export function surfaceBuilding(room: RoomInstance, layout: Layout, color: numbe
     k.plinth(8, 8);
     k.door(3, k.block(6, 3, 6, 0, KIT.plinthH), 0);
   }
+  return g;
+}
+
+/** A surface building's cable: lying on the ground on low sleepers, from the collar's edge out to a junction box at the building. */
+const CABLE = { radius: 0.07, lift: 0.12, sleeperEvery: 3, box: [0.5, 0.45, 0.4] as const, standOff: 4.6 };
+
+/**
+ * The cable the colonists lay from the shaft's rim out to a surface building (T-108): power and data,
+ * straight out along the ground with no player action. Not pickable, so pointing at it picks the ground.
+ */
+export function surfaceCable(room: RoomInstance, layout: Layout, material: MaterialCache): THREE.Object3D {
+  const { mid, r } = roomSurfacePlace(layout, room);
+  const from = layout.hole.shaftRadiusM + COLLAR_REACH;
+  const to = r - CABLE.standOff;
+  const g = new THREE.Group();
+  g.name = "cable";
+  g.rotation.y = -mid;
+  if (to <= from) return g;
+  const cable = material("prop:cable", () => new THREE.MeshStandardMaterial({ color: KIT_COLOR.cable, roughness: 0.8 }));
+  const dark = material("prop:cableBox", () => new THREE.MeshStandardMaterial({ color: KIT_COLOR.dark, roughness: 0.6, metalness: 0.4 }));
+  const run = new THREE.Mesh(new THREE.CylinderGeometry(CABLE.radius, CABLE.radius, to - from, 6), cable);
+  run.rotation.z = Math.PI / 2;
+  run.position.set((from + to) / 2, CABLE.lift, 0);
+  g.add(run);
+  for (let x = from + CABLE.sleeperEvery / 2; x < to; x += CABLE.sleeperEvery) {
+    const sleeper = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.5), dark);
+    sleeper.position.set(x, 0.04, 0);
+    g.add(sleeper);
+  }
+  const [bw, bh, bd] = CABLE.box;
+  const box = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), dark);
+  box.position.set(to, bh / 2, 0);
+  g.add(box);
   return g;
 }
 

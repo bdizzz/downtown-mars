@@ -1,9 +1,11 @@
 import * as THREE from "three";
 import { softDot } from "./effects3d";
 import type { Hole } from "../sim/geometry";
-import type { Layout } from "../sim/placement";
+import type { Layout, SurfaceSpot } from "../sim/placement";
+import { config } from "../sim/config";
+import { surfaceRingRadiusM } from "../sim/geometry";
 import { COLLAR_TOP, floorSpan, openShaftRadius, TAU } from "./cylinder";
-import { SURFACE_RING_M } from "./surface3d";
+import { roomSurfacePlace } from "./surface3d";
 import { KIT_COLOR } from "./collar3d";
 import { hazardTexture } from "./drillRig";
 
@@ -40,17 +42,21 @@ export function makeDome(hole: Hole): THREE.Group {
   return g;
 }
 
-/** The band of ground surface buildings stand on, either side of where they're placed (metres out from the rim). */
-const SPOT = { from: SURFACE_RING_M - 10, to: SURFACE_RING_M + 10, gap: 0.6, lift: 0.1 };
+/** Surface spots drawn a little apart so they read, just above the ground. */
+const SPOT = { gap: 0.6, lift: 0.1 };
 
 /**
- * Surface slots as patches of ground (T-107): one flat sector of the band per slot, a little apart so the
- * slots read, just above the ground. `total` is how many surface slots there are round the hole.
+ * Surface spots as patches of ground (T-107): one flat sector of its ring's band per spot, the band
+ * reaching half a ring's depth either side of where buildings stand (T-108). `ringSlots[ring - 1]` is how
+ * many spots that ring has round the hole.
  */
-export function surfaceSpotGeometry(hole: Hole, total: number, slots: number[]): THREE.BufferGeometry {
-  const r0 = hole.shaftRadiusM + SPOT.from;
-  const r1 = hole.shaftRadiusM + SPOT.to;
-  const parts = slots.map((s) => {
+export function surfaceSpotGeometry(hole: Hole, ringSlots: number[], spots: SurfaceSpot[]): THREE.BufferGeometry {
+  const half = config.geometry.surfaceRingDepthM / 2;
+  const parts = spots.map(({ ring, slot: s }) => {
+    const mid = surfaceRingRadiusM(hole.shaftRadiusM, ring, config.geometry);
+    const r0 = mid - half + SPOT.gap / 2;
+    const r1 = mid + half - SPOT.gap / 2;
+    const total = ringSlots[ring - 1]!;
     const gap = SPOT.gap / r0;
     const a0 = (s / total) * TAU + gap / 2;
     const a1 = ((s + 1) / total) * TAU - gap / 2;
@@ -156,9 +162,7 @@ export function placeLander(lander: THREE.Group, layout: Layout, t: number | nul
     lander.visible = false;
     return;
   }
-  const total = layout.surface.length;
-  const mid = ((Math.min(...pad.surfaceCells) + pad.surfaceCells.length / 2) / total) * TAU;
-  const r = layout.hole.shaftRadiusM + SURFACE_RING_M;
+  const { mid, r } = roomSurfacePlace(layout, pad);
   const ease = 1 - (1 - t) * (1 - t);
   lander.visible = true;
   lander.position.set(r * Math.cos(mid), 0.5 + LANDER.startHeight * (1 - ease), r * Math.sin(mid));

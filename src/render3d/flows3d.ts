@@ -3,6 +3,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import type { SimConfig } from "../sim/config";
 import { roomSpec, type RoomStatus } from "../sim/economy";
 import type { Layout, RoomInstance } from "../sim/placement";
+import { roomSurfacePlace } from "./surface3d";
 import { roomDef } from "../sim/rooms";
 import { floorSpan, ringRadii, slotAngles, TAU } from "./cylinder";
 
@@ -66,8 +67,8 @@ function arc(r: number, y: number, from: number, to: number): THREE.Vector3[] {
 function roomEnd(layout: Layout, room: RoomInstance, k: number): { at: THREE.Vector3; angle: number; floor: number } | null {
   const hole = layout.hole;
   if (room.at.kind === "surface") {
-    const total = layout.surface.length;
-    const angle = ((Math.min(...room.surfaceCells) + room.surfaceCells.length / 2) / total) * TAU;
+    // Pipes reach a surface room on the first ring; further out, they meet its cable at the rim's ring (T-108).
+    const angle = roomSurfacePlace(layout, room).mid;
     const r = hole.shaftRadiusM + PIPE.surfaceRing;
     return { at: new THREE.Vector3(r * Math.cos(angle), PIPE.surfaceY + k * PIPE.gap, r * Math.sin(angle)), angle, floor: 0 };
   }

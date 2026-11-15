@@ -13,7 +13,7 @@ namespace DowntownMars;
 /// </summary>
 public partial class Scenery : Node3D
 {
-    const float StartHeight = 60, SurfaceRing = 16, FloorH = 4, Crust = 3, Gallery = 2;
+    const float StartHeight = 60, SurfaceRing = 16, SurfaceRingDepth = 20, FloorH = 4, Crust = 3, Gallery = 2;
     const int Motes = 260;
     const float Fall = 0.25f, MoteSize = 0.12f;
 
@@ -151,9 +151,10 @@ void fragment() {
         var since = landingTick.ValueKind == JsonValueKind.Number ? tick - landingTick.GetInt32() : float.PositiveInfinity;
         float? eventT = since < _descentTicks + 240 / 4f ? Math.Min(1, since / _descentTicks) : null;
         float? t = landing ? 1 - e.GetProperty("ticksToDrop").GetSingle() / _descentTicks : eventT;
-        if (_pad is float mid && t is float tt && fromAbove)
+        if (_pad is var (mid, ring) && t is float tt && fromAbove)
         {
-            var r = hole.ShaftRadiusM + SurfaceRing;
+            // Surface rings as data/config.json's geometry (surfaceRingM, surfaceRingDepthM; T-108).
+            var r = hole.ShaftRadiusM + SurfaceRing + (ring - 1) * SurfaceRingDepth;
             var ease = 1 - (1 - tt) * (1 - tt);
             _lander.Position = new Vector3(r * Mathf.Cos(mid), 0.5f + StartHeight * (1 - ease), r * Mathf.Sin(mid));
             _flame.Visible = tt < 0.97f;
@@ -172,19 +173,24 @@ void fragment() {
         SyncDust(hole);
     }
 
-    float? _pad;
+    (float Mid, int Ring)? _pad;
     bool _dustShown;
 
-    /// <summary>The middle of the landing pad round the rim (radians), or null with no pad.</summary>
-    static float? PadAngle(JsonElement layout)
+    /// <summary>The middle of the landing pad round the rim (radians) and its surface ring, or null with no pad.</summary>
+    static (float Mid, int Ring)? PadAngle(JsonElement layout)
     {
-        var total = layout.GetProperty("surface").GetArrayLength();
         foreach (var room in layout.GetProperty("rooms").EnumerateArray())
         {
             if (room.GetProperty("type").GetString() != "landing_pad") continue;
             var cells = room.GetProperty("surfaceCells").EnumerateArray().Select(c => c.GetInt32()).ToArray();
             if (cells.Length == 0) return null;
-            return (cells.Min() + cells.Length / 2f) / total * Mathf.Tau;
+            var at = room.GetProperty("at");
+            var ring = at.TryGetProperty("ring", out var rg) ? rg.GetInt32() : 1;
+            var total = layout.GetProperty("surface")[ring - 1].GetArrayLength();
+            // Slots run on round the ring and may wrap: start from the one without a predecessor.
+            var set = cells.ToHashSet();
+            var start = cells.FirstOrDefault(c => !set.Contains((c - 1 + total) % total), cells[0]);
+            return ((start + cells.Length / 2f) / total * Mathf.Tau, ring);
         }
         return null;
     }

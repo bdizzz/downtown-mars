@@ -1,5 +1,5 @@
 import { config } from "../sim/config";
-import type { Hole } from "../sim/geometry";
+import { surfaceRingAt, type Hole } from "../sim/geometry";
 import type { Pick } from "../view/types";
 
 // Where (floor, ring, slot) sits in 3D, in metres. The shaft's axis is the y
@@ -78,7 +78,7 @@ export function polar(r: number, angle: number, y: number): [number, number, num
 export function pickAt(hole: Hole, x: number, y: number, z: number): Pick {
   const turn = (((Math.atan2(z, x) / TAU) % 1) + 1) % 1;
   const angle = turn * 360;
-  if (y >= 0) return { kind: "surface", angle };
+  if (y >= 0) return { kind: "surface", angle, ring: surfaceRingAt(hole.shaftRadiusM, Math.hypot(x, z), config.geometry) };
   // The crust between the surface and floor 1.
   if (y > -CRUST) return { kind: "rock" };
 

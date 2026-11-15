@@ -7,7 +7,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
-import { airlock, headframe, surfaceBuilding } from "./surface3d";
+import { airlock, headframe, surfaceBuilding, surfaceCable } from "./surface3d";
 import { ARC_STEPS, FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
 import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef, hasBulkhead } from "../sim/corridors";
@@ -2195,6 +2195,7 @@ export function buildLayout(
       const prop = surfaceBuilding(room, layout, color, material);
       prop.traverse((o) => (o.userData = { pickable: true, roomId: room.id, surface: true }));
       group.add(prop);
+      group.add(surfaceCable(room, layout, material));
       continue;
     }
     // A cargo elevator: a dark shaft down through the floors above its stop, and the stop itself as a room.
