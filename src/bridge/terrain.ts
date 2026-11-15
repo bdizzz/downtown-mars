@@ -15,14 +15,17 @@ import type { SimState } from "../sim/state";
 const b64f = (a: ArrayLike<number>) => Buffer.from(new Float32Array(a).buffer).toString("base64");
 const b64i = (a: ArrayLike<number>) => Buffer.from(new Uint32Array(a).buffer).toString("base64");
 
-/** A mesh as positions and normals (float32), its colours if it has them (RGB float32, #497: a canyon's beds), and, when indexed, indices (uint32). */
+/** A mesh as positions and normals (float32), its colours and heights if it has them (#497: RGB and one float a vertex), and, when indexed, indices (uint32). */
 function meshData(geo: THREE.BufferGeometry) {
   if (!geo.getAttribute("normal")) geo.computeVertexNormals();
   const colors = geo.getAttribute("color");
+  const heights = geo.getAttribute("landH");
   return {
     positions: b64f(geo.getAttribute("position").array),
     normals: b64f(geo.getAttribute("normal").array),
     ...(colors ? { colors: b64f(colors.array) } : {}),
+    // How far up its landform each vertex stands (0 foot, 1 top), for the rock's beds (#497, withLandRock).
+    ...(heights ? { heights: b64f(heights.array) } : {}),
     ...(geo.index ? { indices: b64i(geo.index.array) } : {}),
   };
 }
@@ -39,7 +42,12 @@ export interface TerrainMessage {
   /** The far ridge all the way round. */
   horizon: { mesh: ReturnType<typeof meshData>; color: string };
   /** The massifs, mesas, plateaus, hills and crater rims in front of it, each its own colour (paler the farther off); a canyon's walls too, coloured face by face (`colors`, with white as the colour). */
-  landforms: { mesh: ReturnType<typeof meshData>; color: string }[];
+  landforms: { mesh: ReturnType<typeof meshData>; color: string; layered?: boolean }[];
+  /**
+   * What casts the far shadows (#497, the web's FAR_SHADOW): the skyline by angle round the circle from -π (how
+   * far out it starts and how high it stands, float32 pairs) and the biggest landforms ([x, z, radius, top]).
+   */
+  shadows: { occluder: string; forms: [number, number, number, number][] };
 }
 
 export const terrainKey = (state: SimState) => `${state.holeId}:${state.layout.hole.shaftRadiusM}:${state.site?.lat}:${state.site?.lon}:${state.name}`;
@@ -65,7 +73,7 @@ export function terrainMessage(state: SimState): TerrainMessage {
     } else if (o instanceof THREE.Mesh && o !== t.ground) {
       const part = { mesh: meshData(o.geometry), color: `#${(o.material as THREE.MeshStandardMaterial).color.getHexString()}` };
       if (o.name === "horizon") horizon = part;
-      else landforms.push(part);
+      else landforms.push(o.userData.layered ? { ...part, layered: true } : part);
     }
   });
   const message: TerrainMessage = {
@@ -78,6 +86,7 @@ export function terrainMessage(state: SimState): TerrainMessage {
     rocks: rocks!,
     horizon: horizon!,
     landforms,
+    shadows: { occluder: b64f(t.shadows.occluder), forms: t.shadows.forms },
   };
   t.group.traverse((o) => {
     if (o instanceof THREE.Mesh) {

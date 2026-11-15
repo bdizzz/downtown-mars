@@ -97,8 +97,8 @@ describe("the land by the kind of place (#497)", () => {
   });
 
   it("a crater's rim stands all round; a basin's edge is low all round", () => {
-    const rim = skyline(at({ lat: -5.4, lon: 137.8 }));
-    expect(Math.min(...rim)).toBeGreaterThan(50);
+    const rim = skyline(at({ lat: -5.4, lon: 137.8 }), "walls");
+    expect(Math.min(...rim)).toBeGreaterThan(80);
     const basin = skyline(at({ lat: -42, lon: 70 }));
     expect(Math.max(...basin)).toBeLessThan(15);
   });
@@ -116,14 +116,13 @@ describe("the land by the kind of place (#497)", () => {
     expect(volcano[(peak + 18) % 36]!).toBeLessThan(40);
   });
 
-  it("a canyon's walls are layered: their faces look in toward the hole, coloured by bed, dusty on the ledges", () => {
+  it("a canyon's walls face the hole, and say how far up them each point stands, for the beds", () => {
     const walls = at({ lat: -12, lon: 295 }).group.children.find((o) => o.name === "walls") as THREE.Mesh;
     const g = walls.geometry;
     const p = g.getAttribute("position");
-    const c = g.getAttribute("color");
+    const h = g.getAttribute("landH");
     let inward = 0;
     let faces = 0;
-    const shades = new Set<string>();
     for (let i = 0; i < p.count; i += 3) {
       const a = new THREE.Vector3().fromBufferAttribute(p, i);
       const u = new THREE.Vector3().fromBufferAttribute(p, i + 1).sub(a);
@@ -132,10 +131,36 @@ describe("the land by the kind of place (#497)", () => {
       if (n.lengthSq() < 1e-9) continue;
       faces++;
       if (n.x * a.x + n.z * a.z < 0 || n.y > 0) inward++;
-      shades.add(`${c.getX(i).toFixed(2)},${c.getY(i).toFixed(2)},${c.getZ(i).toFixed(2)}`);
     }
     expect(inward / faces).toBeGreaterThan(0.97);
-    expect(shades.size).toBeGreaterThan(20);
+    const hs = Array.from(h.array as Float32Array);
+    expect(Math.min(...hs)).toBeLessThan(0);
+    expect(Math.max(...hs)).toBeCloseTo(1, 2);
+  });
+
+  it("a canyon has a landslide below one wall and dunes on its floor; a crater dunes too; a volcano lava flows", () => {
+    const canyon = at({ lat: -12, lon: 295 });
+    // The landslide's lobe and the dunes lift the floor well above the plain's rolls somewhere.
+    let most = 0;
+    for (let r = 400; r < 1100; r += 10) for (let a = 0; a < Math.PI * 2; a += 0.01) most = Math.max(most, canyon.heightAt(r * Math.cos(a), r * Math.sin(a)));
+    expect(most).toBeGreaterThan(25);
+    const flows = (t: ReturnType<typeof buildTerrain>) => t.group.children.filter((o) => o.name === "landform").length;
+    const volcano = at({ lat: 18.6, lon: 226.2 });
+    // Lava domes and a crater (4–5), plus 3–4 flows.
+    expect(flows(volcano)).toBeGreaterThanOrEqual(7);
+  });
+
+  it("casts far shadows: walls where they stand, the horizon elsewhere, and the biggest landforms", () => {
+    const t = at({ lat: -12, lon: 295 });
+    const starts = Array.from({ length: 512 }, (_, j) => t.shadows.occluder[j * 2]!);
+    // Walls about a kilometre out on two sides; the horizon at 1.5 km down the canyon's line.
+    expect(Math.min(...starts)).toBeLessThan(1300);
+    expect(Math.max(...starts)).toBeGreaterThan(1400);
+    expect(t.shadows.forms.length).toBeGreaterThan(0);
+    for (const [, , r, top] of t.shadows.forms) {
+      expect(r).toBeGreaterThan(0);
+      expect(top).toBeGreaterThan(20);
+    }
   });
 
   it("highlands are crowded with crater rims and plateaus; a canyon floor with mesas", () => {
@@ -153,9 +178,10 @@ describe("a canyon in the Godot viewer, through the bridge (#497)", () => {
     const m = terrainMessage(s);
     expect(m.style).toBe("canyon");
     expect(m.horizon.mesh.colors).toBeUndefined();
+    // The walls, coloured by the rock and hazed; every landform says how far up it each vertex stands.
     const colored = m.landforms.filter((f) => f.mesh.colors);
-    // The walls, and the mesas on the floor.
-    expect(colored.length).toBeGreaterThanOrEqual(2);
+    expect(colored.length).toBe(1);
     for (const f of colored) expect(Buffer.from(f.mesh.colors!, "base64").length).toBe(Buffer.from(f.mesh.positions, "base64").length);
+    for (const f of m.landforms) expect(Buffer.from(f.mesh.heights!, "base64").length * 3).toBe(Buffer.from(f.mesh.positions, "base64").length);
   });
 });
