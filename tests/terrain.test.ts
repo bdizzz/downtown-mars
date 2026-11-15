@@ -72,9 +72,9 @@ describe("the land round a hole", () => {
 describe("the land by the kind of place (#497)", () => {
   const mat = new THREE.MeshStandardMaterial();
   const at = (site: { lat: number; lon: number }) => buildTerrain(10, siteSeed(site, ""), mat, null, site);
-  /** The skyline's height in 36 directions: the highest point of the horizon ridge in each 10°. */
-  const skyline = (t: ReturnType<typeof buildTerrain>) => {
-    const p = (t.group.children.find((o) => o.name === "horizon") as THREE.Mesh).geometry.getAttribute("position");
+  /** The skyline's height in 36 directions: the highest point of the horizon ridge (or the canyon's walls) in each 10°. */
+  const skyline = (t: ReturnType<typeof buildTerrain>, part = "horizon") => {
+    const p = (t.group.children.find((o) => o.name === part) as THREE.Mesh).geometry.getAttribute("position");
     const top = new Array<number>(36).fill(0);
     for (let i = 0; i < p.count; i++) {
       const k = Math.floor(((Math.atan2(p.getZ(i), p.getX(i)) + Math.PI) / (Math.PI * 2)) * 36) % 36;
@@ -104,7 +104,7 @@ describe("the land by the kind of place (#497)", () => {
   });
 
   it("a canyon has high walls on two sides and opens at the ends; a volcano rises on one side only", () => {
-    const canyon = skyline(at({ lat: -12, lon: 295 }));
+    const canyon = skyline(at({ lat: -12, lon: 295 }), "walls");
     expect(Math.max(...canyon)).toBeGreaterThan(120);
     expect(Math.min(...canyon)).toBeLessThan(30);
     // Walls opposite each other: the highest direction's far side is high too.
@@ -116,8 +116,46 @@ describe("the land by the kind of place (#497)", () => {
     expect(volcano[(peak + 18) % 36]!).toBeLessThan(40);
   });
 
+  it("a canyon's walls are layered: their faces look in toward the hole, coloured by bed, dusty on the ledges", () => {
+    const walls = at({ lat: -12, lon: 295 }).group.children.find((o) => o.name === "walls") as THREE.Mesh;
+    const g = walls.geometry;
+    const p = g.getAttribute("position");
+    const c = g.getAttribute("color");
+    let inward = 0;
+    let faces = 0;
+    const shades = new Set<string>();
+    for (let i = 0; i < p.count; i += 3) {
+      const a = new THREE.Vector3().fromBufferAttribute(p, i);
+      const u = new THREE.Vector3().fromBufferAttribute(p, i + 1).sub(a);
+      const v = new THREE.Vector3().fromBufferAttribute(p, i + 2).sub(a);
+      const n = u.cross(v);
+      if (n.lengthSq() < 1e-9) continue;
+      faces++;
+      if (n.x * a.x + n.z * a.z < 0 || n.y > 0) inward++;
+      shades.add(`${c.getX(i).toFixed(2)},${c.getY(i).toFixed(2)},${c.getZ(i).toFixed(2)}`);
+    }
+    expect(inward / faces).toBeGreaterThan(0.97);
+    expect(shades.size).toBeGreaterThan(20);
+  });
+
   it("highlands are crowded with crater rims and plateaus; a canyon floor with mesas", () => {
     expect(landforms(at({ lat: -40, lon: 210 }))).toBeGreaterThanOrEqual(6);
     expect(landforms(at({ lat: -12, lon: 295 }))).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe("a canyon in the Godot viewer, through the bridge (#497)", () => {
+  it("sends the walls with their colours among the landforms, and the horizon on its own", async () => {
+    const { terrainMessage } = await import("../src/bridge/terrain");
+    const { createInitialState } = await import("../src/sim/state");
+    const { config } = await import("../src/sim/config");
+    const s = createInitialState(config, { holeId: 2, name: "Valles", site: { lat: -12, lon: 295 }, deposits: [], seed: 5 });
+    const m = terrainMessage(s);
+    expect(m.style).toBe("canyon");
+    expect(m.horizon.mesh.colors).toBeUndefined();
+    const colored = m.landforms.filter((f) => f.mesh.colors);
+    // The walls, and the mesas on the floor.
+    expect(colored.length).toBeGreaterThanOrEqual(2);
+    for (const f of colored) expect(Buffer.from(f.mesh.colors!, "base64").length).toBe(Buffer.from(f.mesh.positions, "base64").length);
   });
 });

@@ -21,7 +21,7 @@ public partial class Terrain : Node3D
     static float[] Floats(JsonElement e) => MemoryMarshal.Cast<byte, float>(Convert.FromBase64String(e.GetString()!)).ToArray();
     static int[] Ints(JsonElement e) => MemoryMarshal.Cast<byte, int>(Convert.FromBase64String(e.GetString()!)).ToArray();
 
-    /// <summary>A mesh from positions, normals and (if any) indices; three.js winds counter-clockwise, Godot clockwise.</summary>
+    /// <summary>A mesh from positions, normals, (if any) colours and (if any) indices; three.js winds counter-clockwise, Godot clockwise.</summary>
     static ArrayMesh Mesh(JsonElement m, Material material)
     {
         var p = Floats(m.GetProperty("positions"));
@@ -32,6 +32,14 @@ public partial class Terrain : Node3D
         {
             verts[i] = new Vector3(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]);
             norms[i] = new Vector3(n[i * 3], n[i * 3 + 1], n[i * 3 + 2]);
+        }
+        // Colours face by face (#497: a canyon's beds), linear as three.js keeps them, as Plain's shader multiplies them in.
+        Color[]? cols = null;
+        if (m.TryGetProperty("colors", out var ce))
+        {
+            var c = Floats(ce);
+            cols = new Color[verts.Length];
+            for (var i = 0; i < cols.Length; i++) cols[i] = new Color(c[i * 3], c[i * 3 + 1], c[i * 3 + 2]);
         }
         var arrays = new Godot.Collections.Array();
         arrays.Resize((int)Godot.Mesh.ArrayType.Max);
@@ -49,8 +57,10 @@ public partial class Terrain : Node3D
             {
                 (verts[i + 1], verts[i + 2]) = (verts[i + 2], verts[i + 1]);
                 (norms[i + 1], norms[i + 2]) = (norms[i + 2], norms[i + 1]);
+                if (cols != null) (cols[i + 1], cols[i + 2]) = (cols[i + 2], cols[i + 1]);
             }
         }
+        if (cols != null) arrays[(int)Godot.Mesh.ArrayType.Color] = cols;
         var mesh = new ArrayMesh();
         mesh.AddSurfaceFromArrays(Godot.Mesh.PrimitiveType.Triangles, arrays);
         mesh.SurfaceSetMaterial(0, material);
@@ -91,6 +101,10 @@ public partial class Terrain : Node3D
         if (!m.TryGetProperty("landforms", out var landforms)) return;
         var n = 0;
         foreach (var f in landforms.EnumerateArray())
-            AddChild(new MeshInstance3D { Mesh = Mesh(f.GetProperty("mesh"), Land(Plain.Make(new Color(f.GetProperty("color").GetString()!), 1, flat: true))), Name = $"Landform{n++}", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        {
+            var mesh = f.GetProperty("mesh");
+            var colored = mesh.TryGetProperty("colors", out _);
+            AddChild(new MeshInstance3D { Mesh = Mesh(mesh, Land(Plain.Make(new Color(f.GetProperty("color").GetString()!), 1, vertexColors: colored, flat: true))), Name = $"Landform{n++}", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        }
     }
 }
