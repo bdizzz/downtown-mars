@@ -81,7 +81,7 @@ describe("newsletter", () => {
     for (const i of s.newsletter!.issues) {
       const a = writeNewsletter(i);
       expect(writeNewsletter(i)).toEqual(a);
-      const all = [a.lead, ...a.stories].map((x) => x.head + x.text).join(" ") + a.letters.map((l) => l.intro + l.quote).join(" ") + a.filler;
+      const all = [a.lead, ...a.stories].map((x) => x.head + x.text).join(" ") + a.letters.map((l) => l.intro + l.quote).join(" ") + a.notices.join(" ") + a.fluff.map((x) => x.head + x.text).join(" ");
       expect(all).not.toMatch(/\{\w+\}/);
     }
   });
@@ -89,6 +89,28 @@ describe("newsletter", () => {
   it("a quiet month that's a hard one doesn't pretend all's well", () => {
     const n = writeNewsletter({ ...blank(), health: 10 });
     expect(raw.stories.quiet.rough).toContain(n.lead.text);
+  });
+
+  it("has fun sections too: the neighbour of the month, and more on a quiet month, all filled in", () => {
+    const featured = { name: "Mei Tanaka", role: "scientist", traits: ["Cautious", "Martian-born"] };
+    const busy = writeNewsletter({ ...blank(), born: 2, bornEver: 5, featured });
+    expect(busy.fluff[0]!.kicker).toBe(raw.fluff.profile.kicker);
+    expect(busy.fluff[0]!.text).toContain(raw.fluff.profile.traits.Cautious);
+    expect(busy.fluff).toHaveLength(1 + raw.fluffPerIssue);
+    const quiet = writeNewsletter({ ...blank(), featured });
+    expect(quiet.fluff).toHaveLength(1 + raw.fluffQuiet);
+    expect(new Set(quiet.fluff.map((f) => f.kicker)).size).toBe(quiet.fluff.length);
+    expect(quiet.notices).toHaveLength(raw.notices);
+    // Many seeds: every section and notice comes up, with nothing left unfilled.
+    const seen = new Set<string>();
+    for (let seed = 1; seed < 400; seed++) {
+      const n = writeNewsletter({ ...blank(), seed, featured });
+      for (const f of n.fluff) {
+        seen.add(f.kicker);
+        expect(f.text).not.toMatch(/\{\w+\}/);
+      }
+    }
+    expect(seen.size).toBe(Object.keys(raw.fluff).length);
   });
 
   it("every grumble and praise template fills", () => {

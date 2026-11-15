@@ -1,5 +1,5 @@
 {
-  "_note": "The Hole Truth, the colony's monthly newsletter (#424). The sim keeps the month's facts (src/sim/newsletter.ts): keep is how many back issues a hole holds, maxOutcomes how many event outcomes an issue reprints, grumblePoints and praisePoints how many happiness points a cause must cost (or give) before a notable grumbles (or praises) it. The words are src/view/newsletter.ts's: each story is a list of templates, one picked by the issue's dice. Placeholders: {hole} the hole's name, {n} a count, {w} a count in words, {name} a notable, {role} their job, {trait} one of their traits, {baby} a newborn's first name and {family} a family name (both from data/notables.json), {room} a room's name, {rooms} a list of them, {floor} the deepest floor, {milestone} a milestone's title, {find} what the drill struck (from `finds`, by event id), {pop} the population, {happy} the average happiness. A quiet month reads `rough` instead when health or happiness is below roughBelow. Headlines come from the month's biggest story, in the order of `order`. Voice (docs/ART.md, Voice): warm, dry, a pun allowed, never at the player's expense.",
+  "_note": "The Hole Truth, the colony's monthly newsletter (#424). The sim keeps the month's facts (src/sim/newsletter.ts): keep is how many back issues a hole holds, maxOutcomes how many event outcomes an issue reprints, grumblePoints and praisePoints how many happiness points a cause must cost (or give) before a notable grumbles (or praises) it. The words are src/view/newsletter.ts's: each story is a list of templates, one picked by the issue's dice. Just for fun (`fluff`): the neighbour of the month (a notable the sim picks, `profile`) and, by the dice, fluffPerIssue other sections (fluffQuiet on a quiet month); their placeholders are {name} a made-up colonist and {job} theirs (from `jobs`), {a} and {b} two floors, {x} and {y} a winning and losing score, {w} a small number in words, {crop} (from the section crops list), {spot}. `notices` of the `fillers` go at the bottom. Placeholders: {hole} the hole's name, {n} a count, {w} a count in words, {name} a notable, {role} their job, {trait} one of their traits, {baby} a newborn's first name and {family} a family name (both from data/notables.json), {room} a room's name, {rooms} a list of them, {floor} the deepest floor, {milestone} a milestone's title, {find} what the drill struck (from `finds`, by event id), {pop} the population, {happy} the average happiness. A quiet month reads `rough` instead when health or happiness is below roughBelow. Headlines come from the month's biggest story, in the order of `order`. Voice (docs/ART.md, Voice): warm, dry, a pun allowed, never at the player's expense.",
   "name": "The Hole Truth",
   "tagline": "All the news that fits the shaft",
   "price": "One ration",
@@ -181,6 +181,102 @@
     "gas_pocket": "a pocket of gas",
     "microfossils": "microfossils, the traces of something that lived here once"
   },
+
+  "notices": 2,
+  "fluffPerIssue": 2,
+  "fluffQuiet": 3,
+  "jobs": ["hydroponics tech", "airlock warden", "drill hand", "galley cook", "scrubber mechanic", "dust sweeper", "pad controller", "brick layer", "night-shift medic", "water tech", "solar wrangler", "storeroom clerk"],
+  "fluff": {
+    "overheard": {
+      "kicker": "Overheard in the galley",
+      "items": [
+        "\"I told my mum on Earth I live in a hole. She said 'I know, I've seen your room.'\"",
+        "\"If you squint at the shaft lights at night it looks like a city. If you squint harder it looks like a shaft.\"",
+        "\"Low gravity's great until you sneeze and end up in the next corridor.\"",
+        "\"I've started naming the rocks I dig out. I've stopped telling people that.\"",
+        "\"The algae smoothie is better if you don't think about it. Or drink it.\"",
+        "\"Does anyone else's airlock sigh when it closes, or is mine just tired?\"",
+        "\"I'm not saying the stew's thick, but my spoon is still standing up in it from Tuesday.\"",
+        "\"My plants are doing better than me and frankly they deserve it.\"",
+        "\"Someone put a tiny sign on the drill saying 'Hello, my name is Gerald'. It's stuck.\"",
+        "\"Sunset's blue here. I've been here two years and it still gets me.\""
+      ],
+      "by": ["{name}, {job}", "a {job} who asked not to be named", "{name}, overheard by the coffee urn"]
+    },
+    "sports": {
+      "kicker": "Sports",
+      "items": [
+        "Low-gravity basketball: the Floor {a} Diggers beat the Floor {b} Drillers {x}–{y}. Three players are still on the ceiling.",
+        "The corridor relay was won by Floor {a} for the {w} month running. Floor {b} have lodged a complaint about 'suspiciously good shoes'.",
+        "Shaft-ball semi-final: Floor {a} {x}, Floor {b} {y}. The ball has not been recovered.",
+        "The monthly slow-walk race was won in a record time of 'eventually'. All entrants were commended for their composure.",
+        "Darts night was cancelled after a dart was found to still be in flight. Organisers estimate it will land Thursday.",
+        "Floor {a}'s tug-of-war team beat Floor {b} by pulling slightly harder and then everyone falling over very slowly."
+      ]
+    },
+    "stars": {
+      "kicker": "Stars over the shaft",
+      "items": [
+        "Phobos rising: a good month for new beginnings, and for checking your oxygen. Lucky room: the galley.",
+        "Deimos in the doorway: someone you've ignored has a good idea. It's probably the drill crew. Listen once.",
+        "Olympus ascendant: aim high this month. Not literally; the ceiling's rock.",
+        "The Dust Devil: things get stirred up. Keep a broom handy and your opinions to yourself.",
+        "Valles Marineris: a long, deep month. Bring a snack.",
+        "Earthrise: you'll think of home this month. Write to someone. The delay's only twenty minutes."
+      ]
+    },
+    "trivia": {
+      "kicker": "Did you know?",
+      "items": [
+        "A day on Mars (a sol) is 24 hours and 39 minutes. That's 39 extra minutes a day to be late in.",
+        "Olympus Mons is about three times the height of Everest, and so wide you couldn't see its top from its edge.",
+        "Sunsets on Mars are blue: the fine dust scatters blue light forward, toward the sun.",
+        "Mars has two moons, Phobos and Deimos, both about the size of a small city. Phobos is slowly falling toward us. Not this month.",
+        "Valles Marineris would stretch across the whole of North America.",
+        "Mars has the biggest dust storms in the solar system: some cover the whole planet for weeks.",
+        "You'd weigh about 38% of your Earth weight here. Please stop jumping off the gallery to prove it.",
+        "Mars is red because of rust: iron oxide in the dust. The whole planet needs a good scrub."
+      ]
+    },
+    "recipe": {
+      "kicker": "From the galley",
+      "items": [
+        "Recipe of the month: {crop} surprise. Take {crop}. Add more {crop}. The surprise is that it's {crop}.",
+        "The galley crew's tip: {crop} goes with everything, if you're brave and very hungry.",
+        "Chef's special this month is {crop} three ways: boiled, mashed and 'regretfully'.",
+        "Try {crop} fritters: a crowd-pleaser, mostly because the crowd has no other options."
+      ],
+      "crops": ["potato", "soybean", "barley", "algae", "mushroom", "leafy green"]
+    },
+    "ask": {
+      "kicker": "Ask the deputy",
+      "items": [
+        "Q: My neighbour hums while they work. All day. — Hummed Out, Floor {a}\nA: Hum back, a third lower. Harmony is a form of peace.",
+        "Q: Is it normal to miss rain? — Dry on Floor {a}\nA: Very. Stand under the shower and close your eyes. Don't stay long; it's metered.",
+        "Q: Someone keeps eating my labelled yoghurt. — Furious, Floor {a}\nA: We don't have yoghurt. Please see the clinic.",
+        "Q: How deep will we go? — Curious, Floor {a}\nA: Deep enough, and then a little further. The drill decides, mostly.",
+        "Q: Can I keep a pet? — Lonely, Floor {a}\nA: The algae vats are technically pets. Name one."
+      ]
+    },
+    "profile": {
+      "kicker": "Neighbour of the month",
+      "intro": ["This month we meet {name}, our {role}.", "Say hello to {name}, the colony's {role}."],
+      "traits": {
+        "Populist": "Always on the side of the many, and happy to say so at length.",
+        "Cautious": "Checks the airlock seals twice and the stew three times.",
+        "Industrialist": "Believes there's no problem a bigger smelter can't fix.",
+        "Idealist": "Still thinks we can make Mars kinder than Earth. Might be right.",
+        "Greedy": "Keeps a careful tally of who owes them a ration. It's a long list.",
+        "Charismatic": "Can talk a crowd into anything, including double shifts.",
+        "Hothead": "Has opinions, and they arrive at full volume.",
+        "Pragmatist": "Prefers what works to what's pretty, and usually gets it.",
+        "Earth Loyalist": "Keeps Earth time on one watch, just in case.",
+        "Martian-born": "Never seen a blue sky, and is sick of being asked about it."
+      },
+      "outro": ["Favourite spot: {spot}.", "Can usually be found near {spot}.", "Ask them about {spot} sometime; you'll be there a while."],
+      "spots": ["the gallery at sunset", "the warm end of the galley", "the farm's grow lights", "the drill platform", "the airlock window", "the quiet corner by the scrubbers"]
+    }
+  },
   "fillers": [
     "Lost: one left glove, near the airlock. Answers to 'glove'.",
     "Reminder: the shaft is not a rubbish chute. It is a very long way down, and someone has to fetch it.",
@@ -191,7 +287,19 @@
     "Reminder from maintenance: please don't lick the condensation.",
     "This month's sunrise was rated four stars by the people with windows. Everyone else has to take their word for it.",
     "Gravity remains at 38%. Please continue to enjoy it responsibly.",
-    "The elevator suggestion box is full. Please stop suggesting stairs."
+    "The elevator suggestion box is full. Please stop suggesting stairs.",
+    "Reminder: the emergency oxygen masks are not party hats. Even at parties.",
+    "Book club this month: the airlock manual. Spoiler: it's about doors.",
+    "Free to a good home: one sourdough starter, Earth-born, extremely needy.",
+    "The farm would like everyone to stop talking to the potatoes. It's going to their heads.",
+    "Choir practice moves to the shaft this month, for the echo. Earplugs are available at the clinic.",
+    "Missing: one sock, grey. Last seen entering the laundry. Presumed happy.",
+    "The quiet room is for quiet. Whispering 'is this quiet enough?' does not count as quiet.",
+    "Lost: a sense of direction, somewhere on floor 2. If found, please point it at the galley.",
+    "Night shift reminds day shift that 'good morning' at 03:00 is a matter of opinion.",
+    "Movie night: the one about the man stranded on Mars. Again. By popular demand. Again.",
+    "Will swap two water rations for one honest opinion of my poetry. No takers last month.",
+    "The airlock would like to remind you that it is not a revolving door."
   ],
   "sign": ["Dig well. Breathe easy.", "Hole sweet hole.", "Keep your boots dusted and your hatches shut.", "See you next month, same hole, same time."],
   "numbers": ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"]

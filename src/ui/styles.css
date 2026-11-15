@@ -1570,3 +1570,8 @@ kbd {
   background: var(--well); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; color: var(--text); cursor: pointer;
 }
 .news-panel .news-row:hover { background: var(--hover); }
+/* The fun sections: set off by a rule, the ask-the-deputy Q and A on lines of their own. */
+.newsletter .np-fluff { border-top: 2px solid var(--np-rule); padding-top: 8px; }
+.newsletter .np-fluff p { white-space: pre-line; font-size: 13px; }
+.newsletter .np-fluff h4 { margin: 1px 0 3px; font-size: 16px; }
+.newsletter .np-filler p { font-size: 12px; margin-top: 3px; }

@@ -60,6 +60,8 @@ export interface NewsIssue {
   /** A grumble, and a good word, when there's something to say. */
   grumble: NewsVoice | null;
   praise: NewsVoice | null;
+  /** The neighbour of the month: a notable profiled for fun (absent in issues from before it). */
+  featured?: { name: string; role: string; traits: string[] } | null;
 }
 
 /** The counters at the month's start, and what's been tallied since. */
@@ -151,6 +153,11 @@ function writeIssue(state: SimState, cfg: SimConfig, nl: NewsletterState): NewsI
   let praise = best && best[1] >= newsletterData.praisePoints ? voice(state, seed, `happiness:${best[0]}`, 2) : null;
   if (praise && grumble && praise.name === grumble.name) praise = voice(state, seed, praise.cause, 3);
   if (praise && grumble && praise.name === grumble.name) praise = null;
+  // The neighbour of the month: someone not already quoted (nor the deputy).
+  const quoted = new Set([grumble?.name, praise?.name]);
+  const others = state.notables.slice(1).filter((n) => !quoted.has(n.name));
+  const pickFeatured = others[Math.floor(hash01(seed, 9) * others.length)];
+  const featured = pickFeatured ? { name: pickFeatured.name, role: pickFeatured.role, traits: [...pickFeatured.traits] } : null;
   const storm = state.weather?.storm;
   const festival = ev?.festival;
   return {
@@ -178,6 +185,7 @@ function writeIssue(state: SimState, cfg: SimConfig, nl: NewsletterState): NewsI
     newNotables: state.notables.filter((n) => !m.notables.includes(n.id)).map((n) => n.name),
     grumble,
     praise,
+    featured,
   };
 }
 

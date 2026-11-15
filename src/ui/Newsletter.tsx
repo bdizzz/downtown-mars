@@ -57,9 +57,23 @@ export function NewsletterCard({ issue, onClose }: { issue: NewsIssue; onClose: 
             ))}
           </div>
         )}
-        <p className="np-filler">
-          <span className="kicker">Notices</span> {n.filler}
-        </p>
+        {n.fluff.length > 0 && (
+          <div className="np-cols np-fluff">
+            {n.fluff.map((st, i) => (
+              <section key={`f${i}`} className="np-story">
+                <div className="kicker">{st.kicker}</div>
+                {st.head && <h4>{st.head}</h4>}
+                <p>{st.text}</p>
+              </section>
+            ))}
+          </div>
+        )}
+        <div className="np-filler">
+          <span className="kicker">Notices</span>
+          {n.notices.map((t, i) => (
+            <p key={i}>{t}</p>
+          ))}
+        </div>
         <footer>
           <span className="np-sign">{n.sign}</span>
           <button className="np-close" autoFocus onClick={onClose}>

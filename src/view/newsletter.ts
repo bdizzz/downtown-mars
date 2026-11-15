@@ -19,6 +19,18 @@ interface StoryDef {
   one?: string[];
   many?: string[];
 }
+/** A section that's just for fun: items picked by the dice, some with a byline. */
+interface FluffDef {
+  kicker: string;
+  items?: string[];
+  by?: string[];
+  crops?: string[];
+  /** The neighbour of the month. */
+  intro?: string[];
+  traits?: Record<string, string>;
+  outro?: string[];
+  spots?: string[];
+}
 interface VoiceDef {
   kicker: string;
   intro: string[];
@@ -38,6 +50,11 @@ const DATA = raw as unknown as {
   praise: VoiceDef;
   finds: Record<string, string>;
   fillers: string[];
+  notices: number;
+  fluffPerIssue: number;
+  fluffQuiet: number;
+  jobs: string[];
+  fluff: Record<string, FluffDef>;
   sign: string[];
   numbers: string[];
   roughBelow: number;
@@ -77,8 +94,10 @@ export interface Newsletter {
   /** The rest, briefly. */
   stories: NewsStory[];
   letters: NewsLetter[];
-  /** A small notice at the bottom. */
-  filler: string;
+  /** Just for fun, not news: the neighbour of the month, sports, the stars, galley gossip… */
+  fluff: NewsStory[];
+  /** Small notices at the bottom. */
+  notices: string[];
   sign: string;
 }
 
@@ -182,9 +201,55 @@ export function writeNewsletter(issue: NewsIssue): Newsletter {
     lead: stories[0]!,
     stories: stories.slice(1),
     letters,
-    filler: pick(DATA.fillers),
+    fluff: writeFluff(issue, stories.length === 1 && !issue.outcomes.length && stories[0]!.kicker === DATA.stories.quiet!.kicker, pick),
+    notices: pickSome(DATA.fillers, DATA.notices, pick),
     sign: pick(DATA.sign),
   };
+}
+
+/** n different items from a list, by the dice. */
+function pickSome<T>(list: T[], n: number, pick: <U>(l: U[]) => U): T[] {
+  const left = [...list];
+  const out: T[] = [];
+  while (out.length < n && left.length) out.push(left.splice(left.indexOf(pick(left)), 1)[0]!);
+  return out;
+}
+
+/** The fun sections: the neighbour of the month (when there's one), then a few others, more on a quiet month. */
+function writeFluff(issue: NewsIssue, quiet: boolean, pick: <U>(l: U[]) => U): NewsStory[] {
+  const F = DATA.fluff;
+  const out: NewsStory[] = [];
+  const floors = Math.max(2, issue.depth);
+  const a = 1 + Math.floor(pick([...Array(floors).keys()]));
+  let b = 1 + Math.floor(pick([...Array(floors).keys()]));
+  if (b === a) b = (a % floors) + 1;
+  const hi = 60 + Math.floor(pick([...Array(60).keys()]));
+  const v: Vars = {
+    hole: issue.hole,
+    name: `${pick(notables.firstNames)} ${pick(notables.lastNames)}`,
+    job: pick(DATA.jobs),
+    a,
+    b,
+    x: hi,
+    y: hi - 1 - Math.floor(pick([...Array(30).keys()])),
+    w: words(2 + Math.floor(pick([0, 1, 2, 3]))),
+  };
+  const f = issue.featured;
+  const p = F.profile;
+  if (f && p) {
+    const v2: Vars = { ...v, name: f.name, role: f.role, spot: pick(p.spots ?? [""]) };
+    const traits = f.traits.map((t) => p.traits?.[t]).filter((t): t is string => !!t);
+    out.push({ kicker: p.kicker, head: f.name, text: [fill(pick(p.intro ?? []), v2), ...traits, fill(pick(p.outro ?? []), v2)].join(" ") });
+  }
+  const want = (quiet ? DATA.fluffQuiet : DATA.fluffPerIssue) + (out.length ? 0 : 1);
+  for (const id of pickSome(Object.keys(F).filter((k) => k !== "profile"), want, pick)) {
+    const def = F[id]!;
+    const v2: Vars = { ...v, crop: pick(def.crops ?? [""]) };
+    let text = fill(pick(def.items ?? []), v2);
+    if (def.by) text += ` (${fill(pick(def.by), v2)})`;
+    out.push({ kicker: def.kicker, head: "", text });
+  }
+  return out;
 }
 
 /** The issue whose card should open by itself now: the latest, if it hasn't been read. */
