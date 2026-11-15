@@ -9,6 +9,7 @@ import { countStage, needsWeight, type Cohort } from "./people";
 import { storageCaps } from "./storage";
 import { noteMade } from "./origins";
 import { daylightOutput, stormOutput } from "./weather";
+import { traitOutput } from "./sites";
 import { conditionOf, conditionOutput, isCleanable, maintenanceQueue } from "./condition";
 import { MATERIALS, refitting } from "./materials";
 import type { CareState } from "./care";
@@ -342,6 +343,12 @@ function runRoom(
   if (storm < 1) {
     rate *= storm;
     limit ??= "storm";
+  }
+  // A site trait (#430) eases or stresses some kinds of room here.
+  const site = traitOutput(state, room.type);
+  if (site !== 1) {
+    rate *= site;
+    if (site < 1) limit ??= "site";
   }
   if (mod.noisyRoomOutput < 1 && roomDef(room.type).effects.some((e) => e.type === "noise")) {
     rate *= mod.noisyRoomOutput;

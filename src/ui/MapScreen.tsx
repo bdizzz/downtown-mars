@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Globe } from "./Globe";
 import { DEPOSIT_KINDS, depositsAt, features, ICE_CAP_REFUSAL, nearestFeature, onIceCap, wrapLon, type DepositKind } from "../sim/mapgeo";
 import { network } from "../sim/network";
-import { DEPOSIT_STYLE, siteReport, type Elevation } from "../view/network";
+import { DEPOSIT_STYLE, siteReport, siteTraitFor, type Elevation } from "../view/network";
 import type { Snapshot } from "../sim/snapshot";
 import reliefUrl from "../../data/mars-relief.jpg?url";
 
@@ -205,8 +205,9 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       near: near.km < 600 ? near.feature.name : `${Math.round(near.km)} km from ${near.feature.name}`,
       deposits: depositsAt({ deposits: s.deposits }, hover),
       ice: onIceCap(hover),
+      trait: siteTraitFor(s, hover),
     };
-  }, [hover, s.deposits, elevation]);
+  }, [hover, s.deposits, s.holes, elevation]);
 
   return (
     <div className="map-screen" role="dialog" aria-label="Map of Mars">
@@ -242,7 +243,7 @@ export function MapScreen({ s, onClose, site, onSite, onFound }: Props) {
       </div>
       <footer className="k">
         {info
-          ? `${info.where} · ${Math.round(info.elevation).toLocaleString()} m · ${info.near}${info.deposits.length ? ` · ${info.deposits.map((k) => DEPOSIT_STYLE[k].name.toLowerCase()).join(", ")}` : ""}${info.ice ? ` · ${ICE_CAP_REFUSAL}` : ""}`
+          ? `${info.where} · ${Math.round(info.elevation).toLocaleString()} m · ${info.near}${info.deposits.length ? ` · ${info.deposits.map((k) => DEPOSIT_STYLE[k].name.toLowerCase()).join(", ")}` : ""}${info.trait && !info.ice ? ` · ${info.trait.name.toLowerCase()} site` : ""}${info.ice ? ` · ${ICE_CAP_REFUSAL}` : ""}`
           : "Elevation: NASA Mars Global Surveyor MOLA. Deposits differ every game."}
       </footer>
     </div>
@@ -273,6 +274,20 @@ function SitePanel({
       </header>
       <p>{report.where}</p>
       <p className="k">{report.near}</p>
+      <h4>The site</h4>
+      {report.trait ? (
+        <div className="trait">
+          <p>
+            <b>{report.trait.name}.</b> <span className="k">{report.trait.blurb}</span>
+          </p>
+          <ul>
+            <li className="eases">▲ {report.trait.eases}</li>
+            <li className="stresses">▼ {report.trait.stresses}</li>
+          </ul>
+        </div>
+      ) : (
+        <p className="k">An ordinary site: nothing eased, nothing stressed.</p>
+      )}
       <h4>In the ground</h4>
       {!report.known ? (
         <p className="k">Not scouted yet.</p>

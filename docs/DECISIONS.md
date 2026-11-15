@@ -412,6 +412,18 @@ Talked through with Bryon (Nov 12) and built as one PR (#394–#406).
 - **The ground stays flat and clear of boulders** out past the last ring, so buildings there stand level.
 - **The unrolled 2D view** stacks the outer rings above ring 1 in the surface strip, each on a faint ground line, as if further off; the plan view still shows floors only.
 
+## Decided for site traits (Nov 14, #430 / #485–#487)
+
+- **Only later holes get a trait, fixed by place** (Bryon): the first hole has none; a hole founded later takes the trait of where it is, never rolled, so the founding map can show it before you pick. Stored on the hole when it's founded (`trait` in its state), so it never changes; older saves' holes have none. No save version bump: the field is optional.
+- **In data** (`data/sites.json`): each trait has where it's found (distance from the equator, or nearness to a kind of named feature in `mars-features.json`), tried in order, first match wins, and its effects: a room kind's output as a multiple (`output`), goods per slot dug (`digYields`), a shift and a new cap for floor 1's resting temperature (`restC`, `restCapC`), and the dust storms' chance and length as multiples. `sim/sites.ts` needs no elevation data, so the map works it out on the main thread.
+- **The first three** (my defaults for #486, each pairing a different ease with a different stress):
+  - **Geothermal**, within 9° of a volcano (wins over equatorial on Tharsis): rest +12 °C, capped at 19 °C (66 °F) rather than 10 °C, so floors rest near the 65 °F thermostat; water recyclers at 0.8 (hard, mineral-laden water).
+  - **Ice**, 50° and more from the equator: 5 water per slot dug, on top of any ice deposit's 2.5; solar arrays at 0.85 (the low sun). 0.75 sank the network bot's child: a founded hole runs on its solar arrays alone, and at a quarter less it browned out early, its recycler stopped and health never came back.
+  - **Equatorial**, within 15° of the equator: solar arrays at 1.3; storms twice as likely a day and 1.5× as long.
+- **The bots** (seed 1, the only one of three that founds within 90 days; its child's natural site is equatorial): the child forced to each trait ends at 52 people with no trait, 51 geothermal, 51 equatorial and 52 ice (dipping to half health around day 55 before it recovers). Long-game balance with the player adapting (more arrays at an ice site, fewer heaters at a geothermal one) isn't covered by the bots.
+- A room slowed by its site shows **slower here** (limit `site`), counted as running, not as trouble: it's the place, not something to fix.
+- **Not yet:** more traits (#488), the Godot viewer (#489), and anything a trait changes beyond these knobs (deposits, events, culture).
+
 ## Decided for the office scene (Nov 14, a first pass)
 
 - **The office is a place.** While the office panel is open, a still 3D room stands in for the hole (web only so far): one fixed camera, in first person (Bryon, Nov 14: at eye level, 1.7 m, looking near level with the game's first-person feel, so the walls and furniture fill the view rather than floor or ceiling; the room is 10 m by 7 m and 3.4 m high to suit), drawn once and again only when what's in it changes, so it costs nothing while it's up. The sim keeps running behind it. **Show me** on a visit takes the room away so the hole shows, and brings it back when turned off. Without WebGL nothing is drawn and the hole stays in view.

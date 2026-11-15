@@ -4,6 +4,7 @@ import type { SimConfig } from "./config";
 import { elevationAt } from "./map";
 import { postMessage } from "./messages";
 import type { SimState } from "./state";
+import { traitOf } from "./sites";
 
 // The weather: day and night, and dust storms. Solar arrays make nothing by night, and ease up to
 // full output through the dawn and back down through dusk (`daylight`).
@@ -47,10 +48,12 @@ export function stepWeather(state: SimState, cfg: SimConfig): void {
   // Once a day, a chance of a storm on the way; none while the guided tutorial's start is calm.
   if (state.tick % tpd !== 0 || state.guide?.calm) return;
   const day = state.tick / tpd;
-  if (day < w.earliestDay || roll(state, day, 0) >= w.chancePerDay) return;
+  // A site trait (#430) can bring storms more often, and longer.
+  const site = traitOf(state)?.effects;
+  if (day < w.earliestDay || roll(state, day, 0) >= w.chancePerDay * (site?.stormChance ?? 1)) return;
   const between = ([a, b]: [number, number], r: number) => a + (b - a) * r;
   const start = state.tick + Math.round(between(w.warningDays, roll(state, day, 1)) * tpd);
-  const end = start + Math.round(between(w.lastsDays, roll(state, day, 2)) * tpd);
+  const end = start + Math.round(between(w.lastsDays, roll(state, day, 2)) * (site?.stormLength ?? 1) * tpd);
   ws.storm = { start, end };
   const days = Math.round((start - state.tick) / tpd);
   postMessage(state, cfg, `Dust storm forecast in about ${days} ${days === 1 ? "month" : "months"}: charge the batteries, and expect little from the solar arrays while it blows.`, "warn");

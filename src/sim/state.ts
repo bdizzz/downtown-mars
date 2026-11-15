@@ -55,6 +55,8 @@ export interface SimState {
   site: Site | null;
   /** What's in the ground here: digging yields it, and regional rooms need it. */
   deposits: DepositKind[];
+  /** The site's trait (#430, data/sites.json), set when a later hole is founded; the first hole has none. */
+  trait?: string;
   /** Goods loaded into the staging bay's seed kit so far. */
   kit: Record<string, number>;
   /** Milestones that unlock rooms: "children" (first birth), "elders" (first retirement). */

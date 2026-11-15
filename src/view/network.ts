@@ -1,5 +1,6 @@
 import { degreesApart, depositsAt, distanceKm, ICE_CAP_REFUSAL, nearestFeature, onIceCap, wrapLon, type DepositKind } from "../sim/mapgeo";
 import { network } from "../sim/network";
+import { siteTrait, traitAt, type SiteTrait } from "../sim/sites";
 import type { RouteView, Snapshot } from "../sim/snapshot";
 import { num } from "../ui/format";
 import { monthsText } from "./months";
@@ -44,9 +45,21 @@ export interface SiteReport {
   /** Scouted: near a hole, or the map is open. */
   known: boolean;
   deposits: DepositKind[];
+  /** The trait a hole founded here would have (#430); none at an existing hole's site without one (the first hole's). */
+  trait: SiteTrait | null;
   distances: string[];
   checks: [boolean, string][];
   ready: boolean;
+}
+
+/**
+ * A place's site trait (#430): a hole's own where there's one already (the first hole has none),
+ * else the trait a hole founded there would take.
+ */
+export function siteTraitFor(s: Pick<Snapshot, "holes">, site: { lat: number; lon: number }): SiteTrait | null {
+  const hole = s.holes.find((h) => h.site && degreesApart(h.site, site) < network.seedKit.minSpacingDeg / 2);
+  if (hole) return siteTrait(hole.trait) ?? null;
+  return traitAt(site) ?? null;
 }
 
 /** A site: where it is, what's in the ground, how far from each hole, and what founding a hole there still needs. */
@@ -69,6 +82,7 @@ export function siteReport(s: Snapshot, site: { lat: number; lon: number }, elev
     near: near.km < 600 ? `At ${near.feature.name}` : `${Math.round(near.km).toLocaleString()} km from ${near.feature.name}`,
     known: s.mapUnlocked || s.holes.some((h) => h.site && degreesApart(h.site, site) <= network.scoutRadiusDeg),
     deposits: depositsAt({ deposits: s.deposits }, site),
+    trait: siteTraitFor(s, site),
     distances: s.holes
       .filter((h) => h.site)
       .map((h) => {
