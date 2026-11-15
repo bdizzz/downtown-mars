@@ -24,7 +24,7 @@ export interface NewsVoice {
 export interface NewsIssue {
   /** Issue number, from 1 for the hole's first. */
   no: number;
-  /** The month it covers (gameTime day). */
+  /** The month it covers (gameTime day): from publishHour that day to publishHour the next. */
   day: number;
   hole: string;
   /** For the view's dice: the same words every time this issue is read. */
@@ -90,16 +90,27 @@ export interface NewsletterState {
 
 export const newsletterData = raw as unknown as {
   keep: number;
+  /** The hour each issue comes out, the morning after its month ends. */
+  publishHour: number;
   maxOutcomes: number;
   /** A cause must cost (or give) this many happiness points to be grumbled (or praised) about. */
   grumblePoints: number;
   praisePoints: number;
 };
 
+/**
+ * The paper's month: the game's month, but turning at publishHour (6:00) rather than midnight, so the
+ * paper comes out with the morning. A milestone keeps its calendar month, so one reached before 6:00
+ * on a month's first day reads in the next issue.
+ */
+function paperDay(tick: number, cfg: SimConfig): number {
+  return gameTime(Math.max(0, tick - Math.round((newsletterData.publishHour / 24) * cfg.ticksPerDay)), cfg).day;
+}
+
 function markNow(state: SimState, cfg: SimConfig): NewsMark {
   const pop = state.population;
   return {
-    day: gameTime(state.tick, cfg).day,
+    day: paperDay(state.tick, cfg),
     tick: state.tick,
     population: pop.count,
     born: pop.born ?? 0,
@@ -178,7 +189,7 @@ function writeIssue(state: SimState, cfg: SimConfig, nl: NewsletterState): NewsI
     floors: Math.max(0, state.layout.hole.floors - m.floors),
     depth: state.layout.hole.floors,
     finds: (ev?.found ?? []).slice(m.found),
-    milestones: (state.milestones ?? []).filter((r) => r.day !== null && r.day >= m.day && r.day < gameTime(state.tick, cfg).day).map((r) => r.id),
+    milestones: (state.milestones ?? []).filter((r) => r.day !== null && r.day >= m.day && r.day < paperDay(state.tick, cfg)).map((r) => r.id),
     festival: !!festival && festival.startTick >= m.tick,
     storm: !!storm?.started && storm.start < state.tick && storm.end > m.tick,
     outcomes: m.outcomes,
@@ -192,7 +203,7 @@ function writeIssue(state: SimState, cfg: SimConfig, nl: NewsletterState): NewsI
 /** Once a month turns: the month just gone becomes an issue, and the new one starts counting. */
 export function stepNewsletter(state: SimState, cfg: SimConfig): void {
   if (state.failed) return;
-  const today = gameTime(state.tick, cfg).day;
+  const today = paperDay(state.tick, cfg);
   const nl = state.newsletter;
   if (!nl) {
     state.newsletter = { mark: markNow(state, cfg), issues: [], next: 1, read: 0 };

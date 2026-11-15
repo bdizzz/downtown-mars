@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import raw from "../data/newsletter.json";
 import { applyCommand } from "../src/sim/commands";
+import { gameTime } from "../src/sim/clock";
 import { config } from "../src/sim/config";
 import { newsBuilt, newsOutcome, stepNewsletter } from "../src/sim/newsletter";
 import { deserialize, serialize } from "../src/sim/save";
@@ -37,6 +38,15 @@ describe("newsletter", () => {
     turnMonth(s);
     expect(s.newsletter!.issues).toHaveLength(1);
     expect(s.newsletter!.issues[0]!.no).toBe(1);
+  });
+
+  it("comes out at 6:00 in the morning, not at midnight", () => {
+    const s = hole();
+    stepNewsletter(s, config);
+    turnMonth(s);
+    const t = gameTime(s.tick, config);
+    expect(t.hour).toBe(raw.publishHour);
+    expect(t.minute).toBe(0);
   });
 
   it("reports what happened in the month: births, rooms, outcomes", () => {
