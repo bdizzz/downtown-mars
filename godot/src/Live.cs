@@ -729,6 +729,7 @@ public partial class Live : Node3D
         var pos = new Vector3(sunDir.X * 100, Mathf.Max(5, sunDir.Y * 100), sunDir.Z * 100);
         _sun.LookAtFromPosition(pos, Vector3.Zero, Vector3.Up);
         _sun.LightEnergy = (0.15f + 2.0f * _light) * (1 - 0.7f * storm);
+        _terrain.SetSun(sunDir, _light * (1 - 0.7f * storm));
         // A floor in view has the rock above it lifted away, but it's still underground (T-101): the sun lights
         // only the land, and the rooms are lit from inside, by their lamps and ceiling lights in the hour's mode
         // (#305), plus the daylight down the shaft. On foot below ground is underground too.
@@ -755,6 +756,34 @@ public partial class Live : Node3D
             sky.SetShaderParameter("star_turn", starTurn);
         }
         _hole.SetNight(1 - _roomLight);
+        // Aerial perspective over the land (#497, the web's LOOK.aerial in look.ts): clear for the first couple of
+        // hundred metres, then the dust in the air between, in the sky's colour at the horizon by the hour, thicker
+        // and browner in a storm. Depth fog, so the hole and its rooms close by stay clear.
+        // A slice open uses the same fog for its own haze (UpdateSlice), and has it while it's open.
+        _aerialOn = !under;
+        _aerialColor = AerialNight.Lerp(AerialDay, _light).Lerp(AerialStorm, storm * 0.7f);
+        _aerialDensity = Mathf.Lerp(0.48f, 0.92f, storm);
+        if (!Sliced) Aerial(env);
+    }
+
+    static readonly Color AerialDay = new("#d9a47c"), AerialNight = new("#1c1016"), AerialStorm = new("#8a5838");
+    bool _aerialOn;
+    Color _aerialColor = AerialDay;
+    float _aerialDensity = 0.48f;
+
+    /// <summary>The aerial perspective's fog (#497), as last worked out by the hour and the storm.</summary>
+    void Aerial(Godot.Environment env)
+    {
+        env.FogEnabled = _aerialOn;
+        env.FogMode = Godot.Environment.FogModeEnum.Depth;
+        env.FogDepthBegin = 300;
+        env.FogDepthEnd = 2200;
+        env.FogDepthCurve = 0.7f;
+        env.FogSkyAffect = 0;
+        env.FogSunScatter = 0;
+        env.FogLightEnergy = 1;
+        env.FogLightColor = _aerialColor;
+        env.FogDensity = _aerialDensity;
     }
 
     /// <summary>Daylight down the shaft onto the floor in view (none with every floor showing: the sun does that), by the hour and the storm.</summary>
@@ -1172,7 +1201,9 @@ public partial class Live : Node3D
         // Past the cut-out, a haze in the backdrop's earth covers the distance and the sky (the web's
         // backdrop turns to earth instead), from the far side of the fade on, easing in as it opens.
         var env = _env.Environment;
-        env.FogEnabled = sliced;
+        // Not sliced: the fog is the aerial perspective's (#497).
+        if (!sliced) Aerial(env);
+        else env.FogEnabled = true;
         if (sliced && GetViewport().GetCamera3D() is Camera3D eye)
         {
             // From the eye to the far side of the rock wall, at the surface.

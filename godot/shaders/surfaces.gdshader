@@ -143,6 +143,45 @@ vec2 regolith_tone(vec3 p) {
 	return vec2(shade, broad * 0.5 + fine * 0.3 + pebble * 0.2);
 }
 
+// The far shadows on the ground (#497, the web's FAR_SHADOW_GLSL): march toward the sun; where the ray passes
+// under the skyline (by angle: how far out it starts, how high it stands) or through a landform, it's shaded.
+uniform bool far_shadow = false;
+uniform sampler2D far_occluder : filter_linear, repeat_enable;
+uniform vec4 far_forms[8];
+uniform vec3 far_sun = vec3(0.0, 1.0, 0.0);
+uniform float far_strength = 0.0;
+float far_lit(vec3 p) {
+	if (!far_shadow || far_sun.y <= 0.0 || far_strength <= 0.0) return 1.0;
+	vec3 d = normalize(far_sun);
+	float lit = 1.0;
+	for (int i = 1; i <= 22; i++) {
+		float t = float(i * i) * 4.5;
+		vec3 q = p + d * t;
+		if (q.y > 420.0) break;
+		vec2 o = texture(far_occluder, vec2(atan(q.z, q.x) / 6.2831853 + 0.5, 0.5)).rg;
+		if (length(q.xz) > o.r) lit = min(lit, smoothstep(-10.0, 10.0, q.y - o.g));
+		for (int k = 0; k < 8; k++) {
+			vec4 f = far_forms[k];
+			if (f.z > 0.0 && distance(q.xz, f.xy) < f.z) lit = min(lit, smoothstep(-6.0, 6.0, q.y - f.w));
+		}
+		if (lit <= 0.0) break;
+	}
+	return lit;
+}
+
+// The wind's work on the ground (#497), as the web's regolithTone: clear of the pad round the hole, patches of
+// dark basalt sand rippled across the wind, fainter ripples on the open dust, and pale streaks along the wind.
+vec3 regolith_wind(vec3 p) {
+	float away = smoothstep(70.0, 150.0, length(p.xz));
+	vec2 w = vec2(dot(p.xz, vec2(0.94, 0.34)), dot(p.xz, vec2(-0.34, 0.94)));
+	float sand = smoothstep(0.58, 0.7, srf_fbm(vec3(p.x * 0.0055, 3.0, p.z * 0.0055) + srf_fbm(p * 0.02) * 0.6)) * away;
+	float ripple = 0.5 + 0.5 * sin(w.x * 2.4 + srf_noise(vec3(w * 0.08, 1.0)) * 6.0);
+	vec3 c = mix(vec3(1.0), vec3(0.64, 0.6, 0.61) * mix(0.92, 1.05, ripple), sand);
+	c *= 1.0 + 0.04 * sin(w.x * 1.3 + srf_noise(vec3(w * 0.05, 7.0)) * 5.0) * (1.0 - sand) * away;
+	float streak = smoothstep(0.6, 0.76, srf_fbm(vec3(w.x * 0.0016, 5.0, w.y * 0.02)));
+	return mix(c, c * vec3(1.15, 1.1, 1.04), streak * (1.0 - sand) * away);
+}
+
 vec2 brick_tone(vec3 p, vec3 n) {
 	vec2 uv = surface_uv(p, n);
 	if (abs(n.y) > 0.7) {
@@ -370,7 +409,13 @@ void fragment() {
 	float metal = metallic;
 	vec4 t = vec4(1.0);
 	float relief = 0.6;
-	if (look == 2) { t = regolith_tone(wpos).xxxy; relief = 2.0; }
+	if (look == 2) {
+		t = regolith_tone(wpos).xxxy;
+		t.rgb *= regolith_wind(wpos);
+		// No light() of our own to cut only the sun's: darken by how strong it is instead.
+		t.rgb *= mix(1.0, far_lit(wpos), 0.6 * far_strength);
+		relief = 2.0;
+	}
 	else if (is_floor && (look == 0 || own_floor)) {
 		// A room's floor: its material's (or floor upgrade's) pattern and colour, tinted by the room's (or the walls'), with its sheen.
 		t = lining_tone(floor_look, wpos, n);
