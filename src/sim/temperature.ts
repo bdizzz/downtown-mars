@@ -19,6 +19,8 @@ import type { SimState } from "./state";
 export interface TemperatureState {
   /** Floor 1's resting temperature, °C, rolled when the hole was founded. */
   rest: number;
+  /** The resting temperature's cap, °C, when a site trait raises it (#430); config's otherwise. */
+  restCap?: number;
   /** Each floor's temperature now, °C (index 0 is floor 1). */
   floors: number[];
   /** Each floor's heaters' share of full power, 0..1, as asked for this tick (worked out last tick). */
@@ -98,7 +100,7 @@ export function temperatureOf(state: SimState, cfg: SimConfig): TemperatureState
 
 /** A floor's resting temperature, °C. */
 export function floorRest(t: TemperatureState, floor: number, cfg: SimConfig): number {
-  return Math.min(cfg.temperature.restCapC, t.rest + (floor - 1) * cfg.temperature.depthWarmingPerFloorC);
+  return Math.min(t.restCap ?? cfg.temperature.restCapC, t.rest + (floor - 1) * cfg.temperature.depthWarmingPerFloorC);
 }
 
 /** A floor's thermostat, °C. */

@@ -25,6 +25,8 @@ export function limitText(limit: string | undefined): string {
   if (limit === "twilight") return "low sun: easing through dawn or dusk";
   // A dust storm dims the solar arrays (weather.ts).
   if (limit === "storm") return "dimmed by the dust storm";
+  // A site trait (#430) slows some kinds of room at this hole (sites.ts).
+  if (limit === "site") return "slower here: the site works against it";
   // An ordinance (quiet hours) slows noisy rooms (economy.ts).
   if (limit === "ordinance") return "slowed by an ordinance: noisy rooms work slower";
   if (limit.startsWith("stocked:")) return `standing by: ${resName(limit.slice(8)).toLowerCase()} stocked`;
@@ -51,7 +53,7 @@ function nameOf(id: string): string {
 /** Idling because output storage is full is fine; shortages and missing access aren't. */
 export function isProblem(room: { planned: boolean; connected: boolean }, st: { rate: number; limit?: string } | undefined): boolean {
   if (!room.planned && !room.connected) return true;
-  return !!st && st.rate < 0.999 && !st.limit?.startsWith("full:") && !st.limit?.startsWith("air:") && st.limit !== "paused" && st.limit !== "kit" && st.limit !== "standby" && st.limit !== "night" && st.limit !== "twilight" && !st.limit?.startsWith("stocked:") && !st.limit?.startsWith("clear:");
+  return !!st && st.rate < 0.999 && !st.limit?.startsWith("full:") && !st.limit?.startsWith("air:") && st.limit !== "paused" && st.limit !== "kit" && st.limit !== "standby" && st.limit !== "night" && st.limit !== "twilight" && st.limit !== "site" && !st.limit?.startsWith("stocked:") && !st.limit?.startsWith("clear:");
 }
 
 /** The room's state in a line: a blueprint, building, cut off, paused, standing by, or running (and what holds it back). */
@@ -108,6 +110,7 @@ export function statusWord(room: RoomInstance, st: RoomStatus | undefined, progr
   if (limit === "night") return "Night";
   if (limit === "twilight") return "Low sun";
   if (limit === "storm") return "Dimmed";
+  if (limit === "site") return "Running";
   if (limit === "staff") return "Short of staff";
   if (limit === "morale" || limit === "worn" || limit === "ordinance") return "Slowed";
   if (limit === "refit") return "Refitting";

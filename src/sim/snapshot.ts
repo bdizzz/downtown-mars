@@ -109,6 +109,8 @@ export interface HoleSummary {
   soil: string | null;
   /** What that hole sits on. */
   deposits: DepositKind[];
+  /** Its site's trait (#430, data/sites.json), if it has one; the first hole never does. */
+  trait?: string;
   /** Working rovers (from rover depots). */
   rovers: number;
   /** Tradeable stock, for choosing routes. */

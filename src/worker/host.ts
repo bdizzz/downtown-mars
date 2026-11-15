@@ -45,6 +45,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       population: h.population.count,
       waiting: h.office.waiting.length,
       site: h.site,
+      ...(h.trait ? { trait: h.trait } : {}),
       soil: h.site ? soilAt(h.site) : null,
       deposits: h.deposits ?? [],
       rovers: roversAt(h),

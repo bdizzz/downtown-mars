@@ -17,6 +17,8 @@ import { foundFrom } from "./culture";
 import { createInitialState, type Site, type SimState } from "./state";
 import { fillAir, intoTanks } from "./air";
 import { holeById, holeSeed, nextHoleName, type World } from "./world";
+import { siteTrait, traitAt } from "./sites";
+import { temperatureOf } from "./temperature";
 
 // Founding new holes: a staging bay gathers a seed kit from its hole's
 // stores; when it's full, the kit and a band of volunteers set off by convoy
@@ -111,6 +113,18 @@ export function foundingRefusal(world: World, from: SimState, site: Site): strin
   return null;
 }
 
+/** Give a hole its site's trait (#430), and what it changes from the start: the resting temperature. */
+export function applyTrait(hole: SimState, id: string, cfg: SimConfig): void {
+  const trait = siteTrait(id);
+  if (!trait) return;
+  hole.trait = id;
+  const t = temperatureOf(hole, cfg);
+  const e = trait.effects;
+  if (e.restCapC !== undefined) t.restCap = e.restCapC;
+  if (e.restC) t.rest = Math.min(t.restCap ?? cfg.temperature.restCapC, t.rest + e.restC);
+  t.floors = []; // every floor starts at its new resting temperature
+}
+
 export function travelTicks(from: Site, to: Site, cfg: SimConfig): number {
   return Math.max(1, Math.round((distanceKm(from, to) / network.roverKmPerDay) * cfg.ticksPerDay));
 }
@@ -156,6 +170,9 @@ export function stepConvoys(world: World, cfg: SimConfig): void {
       seed: holeSeed(world.seed, c.id),
     }, cfg.landingKits.laterHoles, kitCfg().setsUp ?? []);
     hole.tick = world.tick;
+    // The site's trait (#430): later holes take their place's, fixed by where they are.
+    const trait = traitAt(c.site);
+    if (trait) applyTrait(hole, trait.id, cfg);
     // They start with what they brought, not Earth's starter stock. The crew seals what
     // they blast out and fills it with air; the kit's oxygen goes into tanks if there are
     // any (a landing kit has none), and into the air on top.
@@ -178,7 +195,8 @@ export function stepConvoys(world: World, cfg: SimConfig): void {
     if (parent) foundFrom(world, parent, hole);
     // The deputy's tips are the player's: a new hole doesn't explain them again.
     if (parent?.tipsSeen) hole.tipsSeen = [...parent.tipsSeen];
-    const msg = `The convoy reached ${c.name}. A new hole is founded, ${Math.round(distanceKm(parent?.site ?? c.site, c.site)).toLocaleString()} km from ${parent?.name ?? "home"}.`;
+    const where = trait ? ` It's a ${trait.name.toLowerCase()} site: ${trait.eases.split(": ")[0]!.toLowerCase()} comes easy, ${trait.stresses.split(": ")[0]!.toLowerCase()} is the worry.` : "";
+    const msg = `The convoy reached ${c.name}. A new hole is founded, ${Math.round(distanceKm(parent?.site ?? c.site, c.site)).toLocaleString()} km from ${parent?.name ?? "home"}.${where}`;
     // Posted once, in the new hole; the network-wide feed shows it everywhere.
     postMessage(hole, cfg, msg, "good");
   }
