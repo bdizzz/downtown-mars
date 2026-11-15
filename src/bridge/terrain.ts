@@ -1,5 +1,8 @@
 import * as THREE from "three";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { buildTerrain, GROUND_BASE, siteSeed, soilTint } from "../render3d/terrain3d";
+import { setPieces } from "../render3d/landPieces";
 import { soilAt } from "../sim/map";
 import { siteLatitude } from "../view/sunPath";
 import type { SimState } from "../sim/state";
@@ -12,15 +15,28 @@ import type { SimState } from "../sim/state";
 // sun's path and the stars' turning (T-020, view/sunPath.ts; Godot's Live.cs does the same sums).
 // Sent once per hole.
 
+// The land's sculpted pieces (#497), from disk: public/models/land.bin is two levels up from here, whether this
+// runs as src/bridge/terrain.ts or bundled as godot/.bridge/main.js. Without it, the land is code-built.
+try {
+  setPieces(readFileSync(fileURLToPath(new URL("../../public/models/land.bin", import.meta.url))));
+} catch {
+  // Code-built land.
+}
+
 const b64f = (a: ArrayLike<number>) => Buffer.from(new Float32Array(a).buffer).toString("base64");
 const b64i = (a: ArrayLike<number>) => Buffer.from(new Uint32Array(a).buffer).toString("base64");
 
-/** A mesh as positions and normals (float32) and, when indexed, indices (uint32). */
+/** A mesh as positions and normals (float32), its colours and heights if it has them (#497: RGB and one float a vertex), and, when indexed, indices (uint32). */
 function meshData(geo: THREE.BufferGeometry) {
   if (!geo.getAttribute("normal")) geo.computeVertexNormals();
+  const colors = geo.getAttribute("color");
+  const heights = geo.getAttribute("landH");
   return {
     positions: b64f(geo.getAttribute("position").array),
     normals: b64f(geo.getAttribute("normal").array),
+    ...(colors ? { colors: b64f(colors.array) } : {}),
+    // How far up its landform each vertex stands (0 foot, 1 top), for the rock's beds (#497, withLandRock).
+    ...(heights ? { heights: b64f(heights.array) } : {}),
     ...(geo.index ? { indices: b64i(geo.index.array) } : {}),
   };
 }
@@ -36,8 +52,13 @@ export interface TerrainMessage {
   rocks: { mesh: ReturnType<typeof meshData>; color: string; transforms: string };
   /** The far ridge all the way round. */
   horizon: { mesh: ReturnType<typeof meshData>; color: string };
-  /** The massifs, mesas, plateaus, hills and crater rims in front of it, each its own colour (paler the farther off). */
-  landforms: { mesh: ReturnType<typeof meshData>; color: string }[];
+  /** The massifs, mesas, plateaus, hills and crater rims in front of it, each its own colour (paler the farther off); a canyon's walls too, coloured face by face (`colors`, with white as the colour). */
+  landforms: { mesh: ReturnType<typeof meshData>; color: string; layered?: boolean }[];
+  /**
+   * What casts the far shadows (#497, the web's FAR_SHADOW): the skyline by angle round the circle from -π (how
+   * far out it starts and how high it stands, float32 pairs) and the biggest landforms ([x, z, radius, top]).
+   */
+  shadows: { occluder: string; forms: [number, number, number, number][] };
 }
 
 export const terrainKey = (state: SimState) => `${state.holeId}:${state.layout.hole.shaftRadiusM}:${state.site?.lat}:${state.site?.lon}:${state.name}`;
@@ -45,7 +66,7 @@ export const terrainKey = (state: SimState) => `${state.holeId}:${state.layout.h
 export function terrainMessage(state: SimState): TerrainMessage {
   const ground = new THREE.MeshStandardMaterial();
   const soil = state.site ? soilAt(state.site) : null;
-  const t = buildTerrain(state.layout.hole.shaftRadiusM, siteSeed(state.site, state.name), ground, soil);
+  const t = buildTerrain(state.layout.hole.shaftRadiusM, siteSeed(state.site, state.name), ground, soil, state.site ?? null);
   let rocks: TerrainMessage["rocks"] | null = null;
   let horizon: TerrainMessage["horizon"] | null = null;
   const landforms: TerrainMessage["landforms"] = [];
@@ -62,8 +83,8 @@ export function terrainMessage(state: SimState): TerrainMessage {
       rocks = { mesh: meshData(o.geometry.index ? o.geometry.toNonIndexed() : o.geometry), color: `#${(o.material as THREE.MeshStandardMaterial).color.getHexString()}`, transforms: b64f(out) };
     } else if (o instanceof THREE.Mesh && o !== t.ground) {
       const part = { mesh: meshData(o.geometry), color: `#${(o.material as THREE.MeshStandardMaterial).color.getHexString()}` };
-      if (o.name === "landform") landforms.push(part);
-      else horizon = part;
+      if (o.name === "horizon") horizon = part;
+      else landforms.push(o.userData.layered ? { ...part, layered: true } : part);
     }
   });
   const message: TerrainMessage = {
@@ -76,6 +97,7 @@ export function terrainMessage(state: SimState): TerrainMessage {
     rocks: rocks!,
     horizon: horizon!,
     landforms,
+    shadows: { occluder: b64f(t.shadows.occluder), forms: t.shadows.forms },
   };
   t.group.traverse((o) => {
     if (o instanceof THREE.Mesh) {

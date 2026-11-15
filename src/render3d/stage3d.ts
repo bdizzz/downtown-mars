@@ -20,7 +20,8 @@ import { recordFrame } from "../view/fps";
 import { Look, type LookLike } from "./look";
 import { clampCutAngle, CUT_ANGLE, DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { intersectGlobalClipping } from "./wedgeClip";
-import { makeSlice, withCutRock, withRegolith, withRock, withSlice } from "./surfaces";
+import { piecesReady, setPieces } from "./landPieces";
+import { FAR_SHADOW, LAND_DETAIL, makeSlice, withCutRock, withFarShadow, withRegolith, withRock, withSlice } from "./surfaces";
 import { RoomEffects, type FxView } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { behindSlab, clippedAway, slabBelow, type Slab } from "./cull3d";
@@ -233,7 +234,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const view = { mode: DEFAULT_VIEW3D.camera as Mode, wallsDown: DEFAULT_VIEW3D.wallsDown, roomColors: DEFAULT_VIEW3D.roomColors, roomTints: DEFAULT_VIEW3D.roomTints, flows: DEFAULT_VIEW3D.flows, cutAngle: DEFAULT_VIEW3D.cutAngle };
   // Free view with a floor picked slices the land open through the hole's axis: the near half's gone.
   const slice = makeSlice({ ...SLICE, earth: C.earth });
-  const groundMat = withSlice(withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 })), slice, "land");
+  const groundMat = withSlice(withFarShadow(withRegolith(new THREE.MeshStandardMaterial({ color: C.ground, roughness: 1 }))), slice, "land");
   // The cutaway takes a wedge out of the hole, centred on the camera: what's past both of these planes
   // through the shaft's axis goes (wedgeClip.ts). A flat cut (180°) is the two the same, facing away from
   // the camera. The WebGPU experiment can't intersect them, so it keeps the flat cut.
@@ -570,6 +571,32 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** Sunlight down the shaft at midday, and where the sun is. */
   const shaftLight = new LightShaft();
   const sunDir = new THREE.Vector3(0, 1, 0);
+  // The far shadows (#497) follow the same sun.
+  FAR_SHADOW.fsSun.value = sunDir;
+  // The land's sculpted pieces (#497, made in Blender): the land is built again once they're in.
+  if (!piecesReady()) {
+    fetch(`${import.meta.env.BASE_URL}models/land.bin`)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+      .then((b) => {
+        setPieces(b);
+        terrainKey = "";
+        dirty = true;
+      })
+      .catch(() => {
+        // Code-built land, then.
+      });
+  }
+  // The land's rock-detail map (#497, made in Blender): the rock looks as before until it's in.
+  if (!LAND_DETAIL.landDetail.value) {
+    new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}textures/land-rock.jpg`, (tex) => {
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.colorSpace = THREE.NoColorSpace;
+      tex.anisotropy = 4;
+      LAND_DETAIL.landDetail.value = tex;
+      LAND_DETAIL.landDetailOn.value = 1;
+      dirty = true;
+    });
+  }
   /** Where it lands: on the gallery tubes, the bottom of the hole, and in rooms with windows onto the shaft. */
   const sunPools = new SunPools();
   /**
@@ -2274,6 +2301,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
     // Shadows: the sun's down the shaft (a finer map at full).
     const shadows = graphics.shadows > 0 && !webgpu;
+    FAR_SHADOW.fsOn.value = graphics.shadows > 0 ? 1 : 0;
     renderer.shadowMap.enabled = shadows;
     setSunShadow();
     const size = graphics.shadows >= 1 ? SUN_SHADOW.mapSize : SUN_SHADOW.mapSize / 2;
@@ -2625,7 +2653,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         }
         // The ground takes the colour the map shows at the site (T-073).
         groundMat.color.setHex(soilTint(C.ground, here?.soil ?? null));
-        terrain = buildTerrain(snapshot.layout.hole.shaftRadiusM, siteSeed(here?.site ?? null, snapshot.holeName), groundMat, here?.soil ?? null);
+        terrain = buildTerrain(snapshot.layout.hole.shaftRadiusM, siteSeed(here?.site ?? null, snapshot.holeName), groundMat, here?.soil ?? null, here?.site ?? null);
         // Boulders and the horizon go with the slice too (the ground already does).
         const wrapped = new Set<THREE.Material>([groundMat]);
         terrain.group.traverse((o) => {

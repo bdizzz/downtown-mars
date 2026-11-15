@@ -106,13 +106,26 @@ const ROCK_GLSL = /* glsl */ `
   vec3 rockTone(vec3 p, vec3 n) { return rockShade(rockBroad(p) * rockFine(p, n)); }
 `;
 
-/** The surface's dust: broad soft mottling, fine grain and scattered pebbles, no layers. */
+/**
+ * The surface's dust: broad soft mottling, fine grain and scattered pebbles, no layers; and the wind's work
+ * (#497), clear of the pad round the hole: patches of dark basalt sand tens of metres across, rippled across
+ * the wind; fainter ripples on the open dust; and pale streaks of dust drawn out along the wind.
+ */
 const REGOLITH_GLSL = /* glsl */ `
   vec3 regolithTone(vec3 p, vec3 n) {
     float shade = mix(0.9, 1.07, srfFbm(p * 0.12));
     shade *= mix(0.94, 1.04, srfNoise(p * 4.0));
     shade *= 1.0 - 0.12 * smoothstep(0.8, 0.88, srfNoise(p * 1.9 + 5.0));
-    return vec3(shade * 1.01, shade, shade * 0.98);
+    vec3 c = vec3(shade * 1.01, shade, shade * 0.98);
+    float away = smoothstep(70.0, 150.0, length(p.xz));
+    // In the wind's frame (from the west-south-west): along it (x) and across it (y).
+    vec2 w = vec2(dot(p.xz, vec2(0.94, 0.34)), dot(p.xz, vec2(-0.34, 0.94)));
+    float sand = smoothstep(0.58, 0.7, srfFbm(vec3(p.x * 0.0055, 3.0, p.z * 0.0055) + srfFbm(p * 0.02) * 0.6)) * away;
+    float ripple = 0.5 + 0.5 * sin(w.x * 2.4 + srfNoise(vec3(w * 0.08, 1.0)) * 6.0);
+    c = mix(c, c * vec3(0.64, 0.6, 0.61) * mix(0.92, 1.05, ripple), sand);
+    c *= 1.0 + 0.04 * sin(w.x * 1.3 + srfNoise(vec3(w * 0.05, 7.0)) * 5.0) * (1.0 - sand) * away;
+    float streak = smoothstep(0.6, 0.76, srfFbm(vec3(w.x * 0.0016, 5.0, w.y * 0.02)));
+    return mix(c, c * vec3(1.15, 1.1, 1.04), streak * (1.0 - sand) * away);
   }
 `;
 
@@ -447,6 +460,177 @@ export function withSlice<T extends THREE.Material>(m: T, slice: Slice, role: Sl
       );
   };
   m.customProgramCacheKey = () => `${prevKey}|slice-${role}`;
+  return m;
+}
+
+/**
+ * The land's rock (#497): the landforms, a canyon's or crater's walls and lava flows, far off. Each vertex says
+ * how far up its landform it stands (`landH`, 0 at the foot to 1 at the top). Faces that look up gather pale
+ * dust; steep ones carry dark streaks down them; fine grain and broad mottling over all. Layered rock (mesas,
+ * walls, crater rims and mounds) is also bedded by height: beds a few metres thick, tilted and wandering a
+ * little, pale, mid and dark in no set order with thin seams between, a darker caprock at the top and a pale
+ * talus at the foot. The base colour (the material's or the vertices') carries the site's soil and the haze.
+ */
+const LAND_ROCK_GLSL = /* glsl */ `
+  varying float vLandH;
+  vec3 landTone(vec3 p, vec3 n, float h) {
+    float up = abs(n.y);
+    vec3 c = vec3(1.0);
+#ifdef DM_LAYERED
+    float s = (p.y + (srfFbm(p * 0.0025) - 0.5) * 16.0 + dot(p.xz, vec2(0.0055, 0.0032))) / 6.5;
+    float bed = floor(s);
+    float r = srfHash(vec3(bed, 1.7, 9.1));
+    vec3 tone = r < 0.3 ? vec3(1.3, 1.2, 1.07) : r < 0.68 ? vec3(1.0) : vec3(0.72, 0.68, 0.66);
+    tone *= mix(0.84, 1.0, smoothstep(0.0, 0.07, fract(s)));
+    tone = mix(tone, vec3(0.6, 0.56, 0.55), smoothstep(0.9, 0.96, h));
+    tone = mix(tone, vec3(1.16, 1.08, 1.0), 1.0 - smoothstep(0.14, 0.24, h));
+    c = tone;
+#endif
+    // Dust settles where the rock looks up.
+    c = mix(c, vec3(1.24, 1.13, 1.0), smoothstep(0.55, 0.85, up) * 0.85);
+    // Dark streaks down steep faces, as dust and seeps leave them.
+    float streak = srfNoise(vec3(p.x * 0.09, p.y * 0.004, p.z * 0.09));
+    c *= mix(1.0, mix(0.84, 1.05, streak), 1.0 - smoothstep(0.3, 0.6, up));
+    // Grain across metres, and broad mottling.
+    return c * mix(0.9, 1.07, srfFbm(p * 0.05)) * mix(0.94, 1.05, srfNoise(p * 0.6));
+  }
+`;
+
+/**
+ * The rock-detail map (#497, made in Blender by models/land/land.py): fine laminations, fractures and grain,
+ * tiling every `scale` metres (and again at a third of that), as a normal (red, green) and a cavity (blue).
+ * Laid on the land's rock from three sides at once (triplanar), so nothing needs unwrapping. Shared by every
+ * land material; the stage loads the map (it starts off, and the rock looks as before until it's in).
+ */
+export const LAND_DETAIL = {
+  landDetail: { value: null as THREE.Texture | null },
+  landDetailOn: { value: 0 },
+  landDetailScale: { value: 26 },
+};
+
+const LAND_DETAIL_GLSL = /* glsl */ `
+  uniform sampler2D landDetail;
+  uniform float landDetailOn;
+  uniform float landDetailScale;
+  // The map from three sides, weighted by which way the face looks: its normal's tilt (xy) and cavity (z).
+  vec3 landDetailAt(vec3 p, vec3 n, float scale) {
+    vec3 w = pow(abs(n), vec3(4.0));
+    w /= (w.x + w.y + w.z + 1e-5);
+    vec3 x = texture2D(landDetail, p.zy / scale).rgb;
+    vec3 y = texture2D(landDetail, p.xz / scale).rgb;
+    vec3 z = texture2D(landDetail, p.xy / scale).rgb;
+    return x * w.x + y * w.y + z * w.z;
+  }
+  // The tilt it gives the surface, in the world: each side's map laid in its own plane.
+  vec3 landDetailNormal(vec3 p, vec3 n) {
+    vec3 w = pow(abs(n), vec3(4.0));
+    w /= (w.x + w.y + w.z + 1e-5);
+    vec2 dx = texture2D(landDetail, p.zy / landDetailScale).rg * 2.0 - 1.0 + (texture2D(landDetail, p.zy / (landDetailScale / 3.0)).rg * 2.0 - 1.0) * 0.5;
+    vec2 dy = texture2D(landDetail, p.xz / landDetailScale).rg * 2.0 - 1.0 + (texture2D(landDetail, p.xz / (landDetailScale / 3.0)).rg * 2.0 - 1.0) * 0.5;
+    vec2 dz = texture2D(landDetail, p.xy / landDetailScale).rg * 2.0 - 1.0 + (texture2D(landDetail, p.xy / (landDetailScale / 3.0)).rg * 2.0 - 1.0) * 0.5;
+    return w.x * vec3(0.0, dx.y, dx.x) + w.y * vec3(dy.x, 0.0, dy.y) + w.z * vec3(dz.x, dz.y, 0.0);
+  }
+  float landCavity(vec3 p, vec3 n) {
+    float c = landDetailAt(p, n, landDetailScale).b * 0.6 + landDetailAt(p, n, landDetailScale / 3.0).b * 0.4;
+    return mix(1.0, mix(0.72, 1.12, c), landDetailOn);
+  }
+`;
+
+/** Rock for the land far off (#497), bedded when `layered`: see LAND_ROCK_GLSL. Reads the geometry's `landH`. */
+export function withLandRock<T extends THREE.Material>(m: T, layered: boolean): T {
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    Object.assign(shader.uniforms, LAND_DETAIL);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute float landH;\nvarying float vLandH;\nvarying vec3 vLandPos;\nvarying vec3 vLandNormal;")
+      .replace(
+        "#include <project_vertex>",
+        "vLandH = landH;\n#ifdef USE_INSTANCING\nvLandPos = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\nvLandNormal = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * objectNormal);\n#else\nvLandPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvLandNormal = normalize(mat3(modelMatrix) * objectNormal);\n#endif\n#include <project_vertex>",
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>\n${layered ? "#define DM_LAYERED\n" : ""}varying vec3 vLandPos;\nvarying vec3 vLandNormal;\n${NOISE_GLSL}\n${LAND_ROCK_GLSL}\n${LAND_DETAIL_GLSL}`,
+      )
+      .replace(
+        "#include <color_fragment>",
+        "#include <color_fragment>\ndiffuseColor.rgb *= landTone(vLandPos, normalize(vLandNormal), vLandH) * landCavity(vLandPos, normalize(vLandNormal));",
+      )
+      // The map's fractures and laminations tilt the light (in view space, as three's normal is here).
+      .replace(
+        "#include <normal_fragment_maps>",
+        "#include <normal_fragment_maps>\nif (landDetailOn > 0.5) normal = normalize(normal + (viewMatrix * vec4(landDetailNormal(vLandPos, normalize(vLandNormal)), 0.0)).xyz * 0.55);",
+      );
+  };
+  m.customProgramCacheKey = () => `${prevKey}|land-rock-${layered}`;
+  return m;
+}
+
+/**
+ * Shadows cast across the land from far off (#497): the sun's shadow map reaches a few hundred metres, so the
+ * long shadows of a canyon's walls, a crater's rim, the horizon and the landforms are traced here instead. A
+ * fragment marches toward the sun; where its ray passes under the skyline (a ring of what stands round, by
+ * angle: how far out it starts and how high it stands, `occluder`) or through a landform (`forms`, up to
+ * eight: x, z, radius, top), the sun's direct light is cut, softly. Shared by every material that takes it, and
+ * filled in by buildTerrain for the land in view; `sun` is the stage's own vector toward the sun.
+ */
+export const FAR_SHADOW = {
+  fsOn: { value: 1 },
+  fsSun: { value: new THREE.Vector3(0, 1, 0) },
+  fsOccluder: { value: null as THREE.Texture | null },
+  fsForms: { value: Array.from({ length: 8 }, () => new THREE.Vector4(0, 0, 0, 0)) },
+};
+
+const FAR_SHADOW_GLSL = /* glsl */ `
+  uniform float fsOn;
+  uniform vec3 fsSun;
+  uniform sampler2D fsOccluder;
+  uniform vec4 fsForms[8];
+  varying vec3 vFsPos;
+  float farShadow(vec3 p) {
+    if (fsOn < 0.5 || fsSun.y <= 0.0) return 1.0;
+    vec3 d = normalize(fsSun);
+    float lit = 1.0;
+    for (int i = 1; i <= 22; i++) {
+      float t = float(i * i) * 4.5;
+      vec3 q = p + d * t;
+      if (q.y > 420.0) break;
+      float a = atan(q.z, q.x);
+      vec4 o = texture2D(fsOccluder, vec2(a / 6.2831853 + 0.5, 0.5));
+      if (length(q.xz) > o.r) lit = min(lit, smoothstep(-10.0, 10.0, q.y - o.g));
+      for (int k = 0; k < 8; k++) {
+        vec4 f = fsForms[k];
+        if (f.z > 0.0 && distance(q.xz, f.xy) < f.z) lit = min(lit, smoothstep(-6.0, 6.0, q.y - f.w));
+      }
+      if (lit <= 0.0) break;
+    }
+    return lit;
+  }
+`;
+
+/** Let the far shadows (FAR_SHADOW) fall on this material: they cut the direct light only. */
+export function withFarShadow<T extends THREE.Material>(m: T): T {
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey();
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    Object.assign(shader.uniforms, FAR_SHADOW);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vFsPos;")
+      .replace(
+        "#include <project_vertex>",
+        "#ifdef USE_INSTANCING\nvFsPos = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\n#else\nvFsPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#endif\n#include <project_vertex>",
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", `#include <common>\n${FAR_SHADOW_GLSL}`)
+      .replace(
+        "#include <lights_fragment_end>",
+        "#include <lights_fragment_end>\n{ float fsLit = farShadow(vFsPos); reflectedLight.directDiffuse *= fsLit; reflectedLight.directSpecular *= fsLit; }",
+      );
+  };
+  m.customProgramCacheKey = () => `${prevKey}|far-shadow`;
   return m;
 }
 

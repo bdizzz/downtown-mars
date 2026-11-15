@@ -37,10 +37,20 @@ const LOOK = {
    */
   /** A dust storm: haze turns dusty and thick, and reaches far things from anywhere. */
   storm: { color: 0x8a5838, density: 0.05, clear: 4, max: 0.88 },
+  /**
+   * Aerial perspective over the land (#497): the dust in the air between the camera and anything out on the
+   * surface, from wherever it's seen. Clear for `clear` metres, then thickening by `density` a metre, up to
+   * `max`, in the colour of the sky at the horizon (by day, and by night), and thicker in a storm (`storm`
+   * times the density at full). It washes out far shadows and contrast as well as colour.
+   */
+  aerial: { clear: 300, density: 0.0008, max: 0.48, day: 0xd9a47c, night: 0x1c1016, storm: 3 },
   mood: { night: [0.72, 0.8, 1.02] as const, lamp: [1.07, 0.93, 0.78] as const, from: 2, deep: 22 },
   /** The lamp-lit cave reflected by shiny floors, metal and glass. */
   environment: 0.55,
 };
+
+const AERIAL_DAY = new THREE.Color(LOOK.aerial.day);
+const STORM_DUST = new THREE.Color(LOOK.storm.color);
 
 /** Renders the scene into its own target, keeping its depth for later passes, then hands the colour on. */
 class ScenePass extends Pass {
@@ -155,6 +165,10 @@ const HazeShader = {
     lampTint: { value: new THREE.Vector3(...LOOK.mood.lamp) },
     moodFrom: { value: LOOK.mood.from },
     moodDeep: { value: LOOK.mood.deep },
+    aerialColor: { value: new THREE.Color(LOOK.aerial.day) },
+    aerialDensity: { value: LOOK.aerial.density },
+    aerialClear: { value: LOOK.aerial.clear },
+    aerialMost: { value: LOOK.aerial.max },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -177,6 +191,10 @@ const HazeShader = {
     uniform vec3 lampTint;
     uniform float moodFrom;
     uniform float moodDeep;
+    uniform vec3 aerialColor;
+    uniform float aerialDensity;
+    uniform float aerialClear;
+    uniform float aerialMost;
     varying vec2 vUv;
     void main() {
       vec4 base = texture2D(tDiffuse, vUv);
@@ -189,7 +207,10 @@ const HazeShader = {
       float below = max(0.0, focusY - world.y);
       float far = max(0.0, length(view.xyz) - clear) * byDistance;
       float f = (1.0 - exp(-below * depthDensity - far * density)) * amount;
-      vec3 c = mix(base.rgb, color, clamp(f, 0.0, most));
+      // The dust in the air over the land, out on the surface (#497).
+      float aerial = (1.0 - exp(-max(0.0, length(view.xyz) - aerialClear) * aerialDensity)) * aerialMost * smoothstep(-6.0, 0.0, world.y) * amount;
+      vec3 c = mix(base.rgb, aerialColor, aerial);
+      c = mix(c, color, clamp(f, 0.0, most));
       // The mood: the hour's light near the surface, the lamps' deeper down.
       float lamps = smoothstep(moodFrom, moodDeep, -world.y);
       vec3 tint = mix(mix(nightTint, vec3(1.0), daylight), lampTint, lamps);
@@ -350,11 +371,25 @@ export class Look implements LookLike {
     u.density!.value = LOOK.haze.density + (LOOK.storm.density - LOOK.haze.density) * level;
     u.clear!.value = LOOK.haze.clear + (LOOK.storm.clear - LOOK.haze.clear) * level;
     u.most!.value = LOOK.haze.max + (LOOK.storm.max - LOOK.haze.max) * level;
+    this.setAerial();
+  }
+
+  private daylight = 1;
+
+  /** The air's colour and thickness over the land: the sky's at the horizon by the hour, browner and thicker in a storm. */
+  private setAerial(): void {
+    const u = this.haze.uniforms;
+    const a = LOOK.aerial;
+    (u.aerialColor!.value as THREE.Color).set(a.night).lerp(AERIAL_DAY, this.daylight).lerp(STORM_DUST, this.storm * 0.7);
+    u.aerialDensity!.value = a.density * (1 + (a.storm - 1) * this.storm);
+    u.aerialMost!.value = a.max + (0.92 - a.max) * this.storm;
   }
 
   /** Daylight, 0 (night) to 1 (noon), for the mood near the surface. */
   setDaylight(light: number): void {
     this.haze.uniforms.daylight!.value = light;
+    this.daylight = light;
+    this.setAerial();
   }
 
   /**

@@ -21,7 +21,7 @@ public partial class Terrain : Node3D
     static float[] Floats(JsonElement e) => MemoryMarshal.Cast<byte, float>(Convert.FromBase64String(e.GetString()!)).ToArray();
     static int[] Ints(JsonElement e) => MemoryMarshal.Cast<byte, int>(Convert.FromBase64String(e.GetString()!)).ToArray();
 
-    /// <summary>A mesh from positions, normals and (if any) indices; three.js winds counter-clockwise, Godot clockwise.</summary>
+    /// <summary>A mesh from positions, normals, (if any) colours and (if any) indices; three.js winds counter-clockwise, Godot clockwise.</summary>
     static ArrayMesh Mesh(JsonElement m, Material material)
     {
         var p = Floats(m.GetProperty("positions"));
@@ -32,6 +32,14 @@ public partial class Terrain : Node3D
         {
             verts[i] = new Vector3(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]);
             norms[i] = new Vector3(n[i * 3], n[i * 3 + 1], n[i * 3 + 2]);
+        }
+        // Colours face by face (#497: a canyon's beds), linear as three.js keeps them, as Plain's shader multiplies them in.
+        Color[]? cols = null;
+        if (m.TryGetProperty("colors", out var ce))
+        {
+            var c = Floats(ce);
+            cols = new Color[verts.Length];
+            for (var i = 0; i < cols.Length; i++) cols[i] = new Color(c[i * 3], c[i * 3 + 1], c[i * 3 + 2]);
         }
         var arrays = new Godot.Collections.Array();
         arrays.Resize((int)Godot.Mesh.ArrayType.Max);
@@ -49,7 +57,19 @@ public partial class Terrain : Node3D
             {
                 (verts[i + 1], verts[i + 2]) = (verts[i + 2], verts[i + 1]);
                 (norms[i + 1], norms[i + 2]) = (norms[i + 2], norms[i + 1]);
+                if (cols != null) (cols[i + 1], cols[i + 2]) = (cols[i + 2], cols[i + 1]);
             }
+        }
+        if (cols != null) arrays[(int)Godot.Mesh.ArrayType.Color] = cols;
+        // How far up its landform each vertex stands (#497), for the rock's beds: in UV.x.
+        if (m.TryGetProperty("heights", out var he))
+        {
+            var h = Floats(he);
+            var uv = new Vector2[verts.Length];
+            for (var i = 0; i < uv.Length; i++) uv[i] = new Vector2(h[i], 0);
+            if (!m.TryGetProperty("indices", out _))
+                for (var i = 0; i + 2 < uv.Length; i += 3) (uv[i + 1], uv[i + 2]) = (uv[i + 2], uv[i + 1]);
+            arrays[(int)Godot.Mesh.ArrayType.TexUV] = uv;
         }
         var mesh = new ArrayMesh();
         mesh.AddSurfaceFromArrays(Godot.Mesh.PrimitiveType.Triangles, arrays);
@@ -64,6 +84,53 @@ public partial class Terrain : Node3D
         return m;
     }
 
+    ShaderMaterial? _ground;
+
+    static Texture2D? _detail;
+    static bool _detailTried;
+
+    /// <summary>The land's rock-detail map (#497), the web's own (public/textures/land-rock.jpg, made in Blender); null if it can't be read.</summary>
+    static Texture2D? Detail()
+    {
+        if (_detailTried) return _detail;
+        _detailTried = true;
+        var path = ProjectSettings.GlobalizePath("res://") + "../public/textures/land-rock.jpg";
+        var image = Image.LoadFromFile(path);
+        if (image == null || image.IsEmpty()) return null;
+        image.GenerateMipmaps();
+        return _detail = ImageTexture.CreateFromImage(image);
+    }
+
+    /// <summary>
+    /// The far shadows on the ground (#497, the web's FAR_SHADOW in surfaces.ts): the sun's shadow map reaches
+    /// 200 m, so a canyon's walls, a crater's rim, the horizon and the landforms cast theirs by a march toward the
+    /// sun in the ground's shader (surfaces.gdshader `far_lit`), against the skyline by angle and the landforms.
+    /// </summary>
+    void FarShadows(JsonElement m, Material ground)
+    {
+        _ground = ground as ShaderMaterial;
+        if (_ground == null || !m.TryGetProperty("shadows", out var sh)) return;
+        var o = Floats(sh.GetProperty("occluder"));
+        var image = Image.CreateFromData(o.Length / 2, 1, false, Image.Format.Rgf, MemoryMarshal.AsBytes(o.AsSpan()).ToArray());
+        _ground.SetShaderParameter("far_occluder", ImageTexture.CreateFromImage(image));
+        var forms = new Vector4[8];
+        var k = 0;
+        foreach (var f in sh.GetProperty("forms").EnumerateArray())
+        {
+            if (k >= 8) break;
+            forms[k++] = new Vector4(f[0].GetSingle(), f[1].GetSingle(), f[2].GetSingle(), f[3].GetSingle());
+        }
+        _ground.SetShaderParameter("far_forms", forms);
+        _ground.SetShaderParameter("far_shadow", true);
+    }
+
+    /// <summary>Where the sun is (toward it) and how strong its direct light is, 0 to 1, for the far shadows.</summary>
+    public void SetSun(Vector3 toward, float strength)
+    {
+        _ground?.SetShaderParameter("far_sun", toward);
+        _ground?.SetShaderParameter("far_strength", strength);
+    }
+
     public void Set(JsonElement m)
     {
         foreach (var c in GetChildren()) c.QueueFree();
@@ -72,6 +139,7 @@ public partial class Terrain : Node3D
         var groundMaterial = Looks.For("rock:ground", new Color(m.GetProperty("groundColor").GetString()!), 1, 0, false)!;
         Land(groundMaterial);
         AddChild(new MeshInstance3D { Mesh = Mesh(m.GetProperty("ground"), groundMaterial), Name = "Ground" });
+        FarShadows(m, groundMaterial);
         var rocks = m.GetProperty("rocks");
         var t = Floats(rocks.GetProperty("transforms"));
         var mm = new MultiMesh
@@ -91,6 +159,21 @@ public partial class Terrain : Node3D
         if (!m.TryGetProperty("landforms", out var landforms)) return;
         var n = 0;
         foreach (var f in landforms.EnumerateArray())
-            AddChild(new MeshInstance3D { Mesh = Mesh(f.GetProperty("mesh"), Land(Plain.Make(new Color(f.GetProperty("color").GetString()!), 1, flat: true))), Name = $"Landform{n++}", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        {
+            var mesh = f.GetProperty("mesh");
+            var colored = mesh.TryGetProperty("colors", out _);
+            var material = Plain.Make(new Color(f.GetProperty("color").GetString()!), 1, vertexColors: colored, flat: true);
+            // The land's rock (#497): bedded on mesas, walls and crater rims, weathered on the rest.
+            if (mesh.TryGetProperty("heights", out _))
+            {
+                material.SetShaderParameter("land_rock", f.TryGetProperty("layered", out var l) && l.GetBoolean() ? 2 : 1);
+                if (Detail() is Texture2D detail)
+                {
+                    material.SetShaderParameter("land_detail", detail);
+                    material.SetShaderParameter("land_detail_on", true);
+                }
+            }
+            AddChild(new MeshInstance3D { Mesh = Mesh(mesh, Land(material)), Name = $"Landform{n++}", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+        }
     }
 }
