@@ -57,7 +57,12 @@ public partial class MapView : Node3D
     const string IceCap = "Ice cap: can't dig here";
     bool OnIceCap(float lat) => lat >= _capNorth || lat <= -_capSouth;
     int _ew, _eh;
-    readonly List<(string name, float lat, float lon)> _features = new();
+    readonly List<(string name, float lat, float lon, string kind)> _features = new();
+    /// <summary>Site traits (#430, data/sites.json): name and where, tried in order, the first match wins (sim/sites.ts traitAt).</summary>
+    readonly List<(string name, float? absLatMin, float? absLatMax, string? near, float nearDeg)> _traits = new();
+    /// <summary>The holes' sites and their own traits (from the bridge's map): near one, a place shows that hole's (siteTraitFor).</summary>
+    List<(float lat, float lon, string? trait)> _holeTraits = new();
+    float _holeSiteDeg;
     List<(string kind, float lat, float lon, float r)> _deposits = new();
     readonly Dictionary<string, string> _depositNames = new();
 
@@ -123,7 +128,14 @@ public partial class MapView : Node3D
         }
         using (var doc = JsonDocument.Parse(System.IO.File.ReadAllText(root + "mars-features.json")))
             foreach (var f in doc.RootElement.GetProperty("features").EnumerateArray())
-                _features.Add((f.GetProperty("name").GetString()!, f.GetProperty("lat").GetSingle(), f.GetProperty("lon").GetSingle()));
+                _features.Add((f.GetProperty("name").GetString()!, f.GetProperty("lat").GetSingle(), f.GetProperty("lon").GetSingle(), f.GetProperty("kind").GetString()!));
+        using (var doc = JsonDocument.Parse(System.IO.File.ReadAllText(root + "sites.json")))
+            foreach (var t in doc.RootElement.GetProperty("traits").EnumerateArray())
+            {
+                var w = t.GetProperty("where");
+                float? Num(string k) => w.TryGetProperty(k, out var v) ? v.GetSingle() : null;
+                _traits.Add((t.GetProperty("name").GetString()!, Num("absLatMin"), Num("absLatMax"), w.TryGetProperty("near", out var n) ? n.GetString() : null, Num("nearDeg") ?? 0));
+            }
         _relief = Relief();
         foreach (var f in _features)
         {
@@ -346,7 +358,24 @@ public partial class MapView : Node3D
         }
         var near = _features.Select(f => (f.name, km: Km(lat, lon, f.lat, f.lon))).MinBy(f => f.km);
         var here = _deposits.Where(d => Degrees(lat, lon, d.lat, d.lon) <= d.r).Select(d => _depositNames.GetValueOrDefault(d.kind, d.kind).ToLower()).Distinct().ToList();
-        _footer.Text = $"{Math.Abs(lat):0.0}°{(lat >= 0 ? "N" : "S")} {lon:0.0}°E · {ElevationAt(lat, lon):#,0} m · {(near.km < 600 ? near.name : $"{near.km:#,0} km from {near.name}")}{(here.Count > 0 ? " · " + string.Join(", ", here) : "")}{(OnIceCap(lat) ? " · " + IceCap : "")}";
+        var trait = OnIceCap(lat) ? null : TraitAt(lat, lon);
+        _footer.Text = $"{Math.Abs(lat):0.0}°{(lat >= 0 ? "N" : "S")} {lon:0.0}°E · {ElevationAt(lat, lon):#,0} m · {(near.km < 600 ? near.name : $"{near.km:#,0} km from {near.name}")}{(here.Count > 0 ? " · " + string.Join(", ", here) : "")}{(trait != null ? $" · {trait.ToLower()} site" : "")}{(OnIceCap(lat) ? " · " + IceCap : "")}";
+    }
+
+    /// <summary>A place's trait name, as the web's siteTraitFor: a hole's own near one, else the first trait whose where matches, else none.</summary>
+    string? TraitAt(float lat, float lon)
+    {
+        foreach (var h in _holeTraits)
+            if (Degrees(lat, lon, h.lat, h.lon) < _holeSiteDeg) return h.trait;
+        var a = Math.Abs(lat);
+        foreach (var t in _traits)
+        {
+            if (t.absLatMin is float min && a < min) continue;
+            if (t.absLatMax is float max && a > max) continue;
+            if (t.near != null && !_features.Any(f => f.kind == t.near && Degrees(lat, lon, f.lat, f.lon) <= t.nearDeg)) continue;
+            return t.name;
+        }
+        return null;
     }
 
     static float Degrees(float lat1, float lon1, float lat2, float lon2) => Mathf.RadToDeg(At(lat1, lon1, 1).AngleTo(At(lat2, lon2, 1)));
@@ -368,6 +397,9 @@ public partial class MapView : Node3D
                     Apply();
                 }
         }
+        _holeTraits = m.GetProperty("holes").EnumerateArray()
+            .Select(h => (h.GetProperty("lat").GetSingle(), h.GetProperty("lon").GetSingle(), h.TryGetProperty("trait", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null)).ToList();
+        _holeSiteDeg = m.TryGetProperty("holeSiteDeg", out var hd) ? hd.GetSingle() : 0;
         var deposits = m.GetProperty("deposits");
         var key = deposits.GetRawText();
         if (key != _depositsKey)
@@ -478,6 +510,15 @@ public partial class MapView : Node3D
         _siteRows.AddChild(head);
         _siteRows.AddChild(Text(s.GetProperty("where").GetString()!, 14, Body));
         _siteRows.AddChild(Text(s.GetProperty("near").GetString()!, 12, Muted));
+        // The site's trait (#430), as the web's map: what it eases and what it stresses.
+        _siteRows.AddChild(Text("The site", 15, Body));
+        if (s.TryGetProperty("trait", out var trait) && trait.ValueKind == JsonValueKind.Object)
+        {
+            _siteRows.AddChild(Text($"{trait.GetProperty("name").GetString()}. {trait.GetProperty("blurb").GetString()}", 12, Body));
+            _siteRows.AddChild(Text($"▲ {trait.GetProperty("eases").GetString()}", 12, new Color("#9fcf86")));
+            _siteRows.AddChild(Text($"▼ {trait.GetProperty("stresses").GetString()}", 12, new Color("#e0a060")));
+        }
+        else _siteRows.AddChild(Text("An ordinary site: nothing eased, nothing stressed.", 12, Muted));
         _siteRows.AddChild(Text("In the ground", 15, Body));
         var ground = s.GetProperty("ground");
         if (ground.ValueKind != JsonValueKind.Array) _siteRows.AddChild(Text("Not scouted yet.", 12, Muted));

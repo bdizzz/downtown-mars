@@ -412,7 +412,7 @@ Talked through with Bryon (Nov 12) and built as one PR (#394–#406).
 - **The ground stays flat and clear of boulders** out past the last ring, so buildings there stand level.
 - **The unrolled 2D view** stacks the outer rings above ring 1 in the surface strip, each on a faint ground line, as if further off; the plan view still shows floors only.
 
-## Decided for site traits (Nov 14, #430 / #485–#487)
+## Decided for site traits (Nov 14–15, #430 / #485–#489)
 
 - **Only later holes get a trait, fixed by place** (Bryon): the first hole has none; a hole founded later takes the trait of where it is, never rolled, so the founding map can show it before you pick. Stored on the hole when it's founded (`trait` in its state), so it never changes; older saves' holes have none. No save version bump: the field is optional.
 - **In data** (`data/sites.json`): each trait has where it's found (distance from the equator, or nearness to a kind of named feature in `mars-features.json`), tried in order, first match wins, and its effects: a room kind's output as a multiple (`output`), goods per slot dug (`digYields`), a shift and a new cap for floor 1's resting temperature (`restC`, `restCapC`), and the dust storms' chance and length as multiples. `sim/sites.ts` needs no elevation data, so the map works it out on the main thread.
@@ -422,7 +422,14 @@ Talked through with Bryon (Nov 12) and built as one PR (#394–#406).
   - **Equatorial**, within 15° of the equator: solar arrays at 1.3; storms twice as likely a day and 1.5× as long.
 - **The bots** (seed 1, the only one of three that founds within 90 days; its child's natural site is equatorial): the child forced to each trait ends at 52 people with no trait, 51 geothermal, 51 equatorial and 52 ice (dipping to half health around day 55 before it recovers). Long-game balance with the player adapting (more arrays at an ice site, fewer heaters at a geothermal one) isn't covered by the bots.
 - A room slowed by its site shows **slower here** (limit `site`), counted as running, not as trouble: it's the place, not something to fix.
-- **Not yet:** more traits (#488), the Godot viewer (#489), and anything a trait changes beyond these knobs (deposits, events, culture).
+- **Four more** (#488, Nov 15, my defaults; each from a kind of feature on the map that had none, no new knobs). In order: geothermal, crater lake, canyon, ice, basin, highland, equatorial, so a feature beats the plain latitude bands, and ice beats a basin's far rim:
+  - **Crater lake**, within 4° of Gale or Jezero (old lakebeds): 1.5 soil per slot dug; solar arrays at 0.9 (the rim's shade).
+  - **Canyon**, within 8° of Valles Marineris or Noctis Labyrinthus: 2 ore per slot dug (an ore deposit's worth); floors rest 6 °C colder (cold air pools).
+  - **Basin**, within 15° of Hellas, Argyre or Isidis: floors rest 5 °C warmer, capped at 13 °C (the thicker air); storms 1.5× as likely and 1.25× as long.
+  - **Highland**, within 12° of Syrtis Major, Arabia, Cimmeria, Sirenum or Tempe: 2 silica per slot dug; water recyclers at 0.85 (the dry crust).
+  - Plains stay ordinary (Meridiani is equatorial), so about 40% of Mars has no trait: ice 24%, equatorial 22%, highland 5%, basin 4%, geothermal 3.5%, canyon 1%, crater 0.2%, by area.
+  - **The bots** (seed 1 over 90 days, its child forced to each): 55 people with no trait; crater 55, canyon 52, basin 55, highland 55 (and the first three 52–55 as before). Lowest child health 76 for each of the new four. The highland's water ends at about half a plain hole's, and the crater's soil about double; the canyon's ore about double.
+- **Not yet:** anything a trait changes beyond these knobs (deposits, events, culture).
 
 ## Decided for the office scene (Nov 14, a first pass)
 

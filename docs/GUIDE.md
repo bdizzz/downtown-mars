@@ -239,8 +239,12 @@ Every floor has a **temperature**, one number for the whole floor. Temperatures 
 - **Each site looks like where it is:** its ground takes the colour the map shows there, so a hole in a dark lowland basin sits on dark red-brown dust and one high on Tharsis on pale tan, and the sun and stars move for its latitude (below).
 - **Each later site has a trait** (the first hole never does), fixed by where it is and shown in the map's site panel (and under the pointer) before you send the convoy. It eases one system and stresses another:
   - **Geothermal** (within about 9° of a volcano, the Tharsis and Elysium peaks): floors rest near 65 °F, so heaters are rarely needed, but the hard water slows water recyclers by a fifth.
+  - **Crater lake** (by Gale and Jezero, old lakebeds): every slot dug brings up 1.5 soil from the clay, but the rim shades the solar arrays, a tenth less.
+  - **Canyon** (in Valles Marineris and Noctis Labyrinthus): every slot dug brings up 2 ore from the layered walls, but cold air pools there and floors rest 6 °C (11 °F) colder.
   - **Ice** (50° and further from the equator): every slot dug brings up 5 water, ice deposit or not, but solar arrays make 15% less under the low sun.
-  - **Equatorial** (within 15° of the equator): solar arrays make a third more, but dust storms come twice as often and blow half again as long.
+  - **Basin** (in Hellas, Argyre and Isidis): the thicker air keeps floors 5 °C (9 °F) warmer, but dust storms come half again as often and blow a quarter longer.
+  - **Highland** (the old cratered terrae: Syrtis Major, Arabia, Cimmeria, Sirenum, Tempe): every slot dug brings up 2 silica, but the dry crust makes water recyclers 15% slower.
+  - **Equatorial** (within 15° of the equator, anywhere none of the above is): solar arrays make a third more, but dust storms come twice as often and blow half again as long.
   A site that's none of these is ordinary. The new hole's arrival message names its trait, and a slowed room's panel says the site is working against it.
 - With two holes, a **rover depot** gives a hole 2 rovers, and the **Network** panel sets up trade routes between holes.
 

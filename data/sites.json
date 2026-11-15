@@ -15,6 +15,30 @@
       }
     },
     {
+      "id": "crater",
+      "name": "Crater lake",
+      "blurb": "An old crater lake, long dry: its bed is soft clay, good for growing, but the rim keeps the sun off the arrays half the day.",
+      "eases": "Soil: every slot dug brings up 1.5 soil from the old lakebed's clay",
+      "stresses": "Power: the crater rim shades the solar arrays, a tenth less",
+      "where": { "near": "crater", "nearDeg": 4 },
+      "effects": {
+        "digYields": { "soil": 1.5 },
+        "output": { "solar_array": 0.9 }
+      }
+    },
+    {
+      "id": "canyon",
+      "name": "Canyon",
+      "blurb": "Down in a great canyon: the walls are layered with ore, but the cold air sinks and pools on the floor.",
+      "eases": "Metal: every slot dug brings up 2 ore from the layered walls",
+      "stresses": "Heat: cold air pools in the canyon, so floors rest 6 °C (11 °F) colder",
+      "where": { "near": "canyon", "nearDeg": 8 },
+      "effects": {
+        "digYields": { "ore": 2 },
+        "restC": -6
+      }
+    },
+    {
       "id": "ice",
       "name": "Ice",
       "blurb": "Ground ice under the high latitudes: digging brings up water, but the sun sits low.",
@@ -24,6 +48,32 @@
       "effects": {
         "digYields": { "water": 5 },
         "output": { "solar_array": 0.85 }
+      }
+    },
+    {
+      "id": "basin",
+      "name": "Basin",
+      "blurb": "Deep in an impact basin: the thicker air holds the warmth, and the dust storms brew right overhead.",
+      "eases": "Heat: the thicker air keeps floors 5 °C (9 °F) warmer",
+      "stresses": "Dust: storms come half again as often and blow a quarter longer",
+      "where": { "near": "basin", "nearDeg": 15 },
+      "effects": {
+        "restC": 5,
+        "restCapC": 13,
+        "stormChance": 1.5,
+        "stormLength": 1.25
+      }
+    },
+    {
+      "id": "highland",
+      "name": "Highland",
+      "blurb": "Old cratered highlands: the crust is full of glassy sand, but the ground is bone dry.",
+      "eases": "Glass: every slot dug brings up 2 silica",
+      "stresses": "Water: the dry crust makes water recyclers 15% slower",
+      "where": { "near": "highland", "nearDeg": 12 },
+      "effects": {
+        "digYields": { "silica": 2 },
+        "output": { "water_recycler": 0.85 }
       }
     },
     {
