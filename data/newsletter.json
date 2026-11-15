@@ -4,7 +4,7 @@
   "tagline": "All the news that fits the shaft",
   "price": "One ration",
   "weather": { "storm": "Dust storm", "clear": "Clear, dusty" },
-  "printed": "Printed on recycled regolith fibre · Please return to the galley when read",
+  "printed": "Physical copies are precious · Please return to the galley when read",
   "keep": 24,
   "roughBelow": 40,
   "maxOutcomes": 3,
