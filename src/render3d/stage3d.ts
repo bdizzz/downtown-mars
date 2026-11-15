@@ -2625,7 +2625,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         }
         // The ground takes the colour the map shows at the site (T-073).
         groundMat.color.setHex(soilTint(C.ground, here?.soil ?? null));
-        terrain = buildTerrain(snapshot.layout.hole.shaftRadiusM, siteSeed(here?.site ?? null, snapshot.holeName), groundMat, here?.soil ?? null);
+        terrain = buildTerrain(snapshot.layout.hole.shaftRadiusM, siteSeed(here?.site ?? null, snapshot.holeName), groundMat, here?.soil ?? null, here?.site ?? null);
         // Boulders and the horizon go with the slice too (the ground already does).
         const wrapped = new Set<THREE.Material>([groundMat]);
         terrain.group.traverse((o) => {

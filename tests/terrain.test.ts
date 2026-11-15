@@ -68,3 +68,56 @@ describe("the land round a hole", () => {
     }
   });
 });
+
+describe("the land by the kind of place (#497)", () => {
+  const mat = new THREE.MeshStandardMaterial();
+  const at = (site: { lat: number; lon: number }) => buildTerrain(10, siteSeed(site, ""), mat, null, site);
+  /** The skyline's height in 36 directions: the highest point of the horizon ridge in each 10°. */
+  const skyline = (t: ReturnType<typeof buildTerrain>) => {
+    const p = (t.group.children.find((o) => o.name === "horizon") as THREE.Mesh).geometry.getAttribute("position");
+    const top = new Array<number>(36).fill(0);
+    for (let i = 0; i < p.count; i++) {
+      const k = Math.floor(((Math.atan2(p.getZ(i), p.getX(i)) + Math.PI) / (Math.PI * 2)) * 36) % 36;
+      top[k] = Math.max(top[k]!, p.getY(i));
+    }
+    return top;
+  };
+  const landforms = (t: ReturnType<typeof buildTerrain>) => t.group.children.filter((o) => o.name === "landform").length;
+
+  it("follows the place: Gale a crater, Valles a canyon, Hellas a basin, Sirenum highland, Olympus a volcano", () => {
+    expect(at({ lat: -5.4, lon: 137.8 }).style).toBe("crater");
+    expect(at({ lat: -12, lon: 295 }).style).toBe("canyon");
+    expect(at({ lat: -42, lon: 70 }).style).toBe("basin");
+    expect(at({ lat: -40, lon: 210 }).style).toBe("highland");
+    expect(at({ lat: 18.6, lon: 226.2 }).style).toBe("volcano");
+    // Elsewhere (ice, equatorial, ordinary), as before: by the site's seed alone.
+    for (const site of [{ lat: 65, lon: 30 }, { lat: -5, lon: 170 }, { lat: 35, lon: 0 }]) {
+      expect(at(site).style).toBe(horizonStyle(siteSeed(site, "")));
+    }
+  });
+
+  it("a crater's rim stands all round; a basin's edge is low all round", () => {
+    const rim = skyline(at({ lat: -5.4, lon: 137.8 }));
+    expect(Math.min(...rim)).toBeGreaterThan(50);
+    const basin = skyline(at({ lat: -42, lon: 70 }));
+    expect(Math.max(...basin)).toBeLessThan(15);
+  });
+
+  it("a canyon has high walls on two sides and opens at the ends; a volcano rises on one side only", () => {
+    const canyon = skyline(at({ lat: -12, lon: 295 }));
+    expect(Math.max(...canyon)).toBeGreaterThan(120);
+    expect(Math.min(...canyon)).toBeLessThan(30);
+    // Walls opposite each other: the highest direction's far side is high too.
+    const hi = canyon.indexOf(Math.max(...canyon));
+    expect(Math.max(...[-2, -1, 0, 1, 2].map((d) => canyon[(hi + 18 + d + 36) % 36]!))).toBeGreaterThan(100);
+    const volcano = skyline(at({ lat: 18.6, lon: 226.2 }));
+    const peak = volcano.indexOf(Math.max(...volcano));
+    expect(volcano[peak]!).toBeGreaterThan(200);
+    expect(volcano[(peak + 18) % 36]!).toBeLessThan(40);
+  });
+
+  it("highlands are crowded with crater rims and plateaus; a canyon floor with mesas", () => {
+    expect(landforms(at({ lat: -40, lon: 210 }))).toBeGreaterThanOrEqual(6);
+    expect(landforms(at({ lat: -12, lon: 295 }))).toBeGreaterThanOrEqual(5);
+  });
+});

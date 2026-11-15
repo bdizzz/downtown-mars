@@ -45,7 +45,7 @@ export const terrainKey = (state: SimState) => `${state.holeId}:${state.layout.h
 export function terrainMessage(state: SimState): TerrainMessage {
   const ground = new THREE.MeshStandardMaterial();
   const soil = state.site ? soilAt(state.site) : null;
-  const t = buildTerrain(state.layout.hole.shaftRadiusM, siteSeed(state.site, state.name), ground, soil);
+  const t = buildTerrain(state.layout.hole.shaftRadiusM, siteSeed(state.site, state.name), ground, soil, state.site ?? null);
   let rocks: TerrainMessage["rocks"] | null = null;
   let horizon: TerrainMessage["horizon"] | null = null;
   const landforms: TerrainMessage["landforms"] = [];

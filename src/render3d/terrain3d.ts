@@ -1,18 +1,22 @@
 import * as THREE from "three";
 import { config } from "../sim/config";
 import mapData from "../../data/mars-map.json";
+import { traitAt } from "../sim/sites";
 
 // The land around the hole: the ground rolls away from a flat pad at the rim
 // (where surface buildings stand) in undulations and ridges, pocked with
 // craters and scattered with boulders; toward the horizon, landforms of their
 // own at several distances (mountain massifs, mesas and buttes, plateaus,
 // domed hills and the raised rims of big craters) in front of a far ridge of
-// mountains, low ground or hills, depending on the site. All of it is real
+// mountains, low ground or hills, depending on the site. A site by a named
+// feature (#497, its trait's place: sim/sites.ts) shows it: a crater's rim
+// wall all round, a canyon's walls, a basin's flat floor, cratered highlands,
+// a shield volcano. All of it is real
 // geometry, so it turns, shades with the sun and shifts with the camera, and
 // the farther it stands the paler and dustier it is. The same site always gets
 // the same land.
 
-export type HorizonStyle = "mountains" | "mesas" | "hills";
+export type HorizonStyle = "mountains" | "mesas" | "hills" | "crater" | "canyon" | "basin" | "highland" | "volcano";
 type LandformKind = "massif" | "mesa" | "butte" | "plateau" | "dome" | "crater";
 
 /** Sizes in metres. */
@@ -51,7 +55,21 @@ const LAND = {
     mountains: { massif: [4, 6], plateau: [1, 1], crater: [1, 2] },
     mesas: { mesa: [3, 6], plateau: [1, 1], crater: [2, 3] },
     hills: { dome: [3, 5], plateau: [1, 1], crater: [2, 3] },
+    // By the place (#497). In a crater lake: its central peak and a few low hills on the old lakebed (the rim is the skyline).
+    crater: { massif: [1, 1], dome: [2, 3] },
+    // On a canyon's floor: the mesas and buttes the walls wore back from.
+    canyon: { mesa: [4, 6], plateau: [1, 1] },
+    // A basin's wide floor: little stands up from it.
+    basin: { dome: [1, 2], crater: [1, 2] },
+    // Old highlands: crater on crater, and the plateaus between.
+    highland: { crater: [4, 6], plateau: [2, 3] },
+    // By a volcano (its shield is the skyline): lava domes and a cinder cone or so.
+    volcano: { dome: [3, 4], crater: [1, 1] },
   } as Record<HorizonStyle, Partial<Record<LandformKind, [number, number]>>>,
+  /** How rough the near ground is, by style (1 elsewhere): a lakebed's and a basin's floors are flatter, the highlands' more broken. */
+  ground: { crater: 0.45, basin: 0.4, highland: 1.4 } as Partial<Record<HorizonStyle, number>>,
+  /** The near ground's craters, as a multiple of `craters.count` (1 elsewhere). */
+  craterCount: { highland: 2, basin: 0.6, crater: 0.6 } as Partial<Record<HorizonStyle, number>>,
   /** Of the mesas, this share are narrow buttes. */
   buttes: 0.35,
   /** Aerial perspective: the farthest land leans this far toward the dust of the sky at the horizon. */
@@ -117,8 +135,16 @@ const smoothstep = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-/** Which horizon a site has: from where it is, or (before it has a place on the map) its name. */
-export function horizonStyle(seed: number): HorizonStyle {
+/** The land by the kind of place a site is (#497): the trait its place on the map would give a hole (sim/sites.ts). */
+const PLACE_STYLE: Partial<Record<string, HorizonStyle>> = { geothermal: "volcano", crater: "crater", canyon: "canyon", basin: "basin", highland: "highland" };
+
+/**
+ * Which horizon a site has: by a named feature, the place's own (#497); otherwise from where it is, or
+ * (before it has a place on the map) its name, one of mountains, mesas or hills.
+ */
+export function horizonStyle(seed: number, site: { lat: number; lon: number } | null = null): HorizonStyle {
+  const place = site ? PLACE_STYLE[traitAt(site)?.id ?? ""] : undefined;
+  if (place) return place;
   const r = random(seed ^ 0x9e3779b9)();
   return r < 0.36 ? "mountains" : r < 0.66 ? "mesas" : "hills";
 }
@@ -140,14 +166,15 @@ export interface Terrain {
   heightAt: (x: number, z: number) => number;
 }
 
-/** The land around a hole of this rim radius, for this site, its boulders and horizon tinted by its soil. */
-export function buildTerrain(rim: number, seed: number, groundMaterial: THREE.Material, soil: string | null = null): Terrain {
-  const style = horizonStyle(seed);
+/** The land around a hole of this rim radius, for this site (by its seed, and where it is), its boulders and horizon tinted by its soil. */
+export function buildTerrain(rim: number, seed: number, groundMaterial: THREE.Material, soil: string | null = null, site: { lat: number; lon: number } | null = null): Terrain {
+  const style = horizonStyle(seed, site);
+  const rough = LAND.ground[style] ?? 1;
   const rand = random(seed);
   const roll = noise2(seed + 11);
   const ridge = noise2(seed + 23);
   // Craters: a few, of all sizes, clear of the pad.
-  const craters = Array.from({ length: LAND.craters.count }, () => {
+  const craters = Array.from({ length: Math.round(LAND.craters.count * (LAND.craterCount[style] ?? 1)) }, () => {
     const radius = LAND.craters.min + (LAND.craters.max - LAND.craters.min) * rand() ** 2;
     const d = rim + LAND.pad + LAND.blend + radius + rand() * 800;
     const a = rand() * Math.PI * 2;
@@ -163,6 +190,7 @@ export function buildTerrain(rim: number, seed: number, groundMaterial: THREE.Ma
     // Ridges: the creases of a noise, sharpened.
     const rv = 1 - Math.abs(ridge(x / LAND.ridge.size, z / LAND.ridge.size) * 2 - 1);
     h += rv ** 3 * LAND.ridge.height;
+    h *= rough;
     h += smoothstep(300, LAND.reach, d) * LAND.rise;
     for (const c of craters) {
       const t = Math.hypot(x - c.x, z - c.z) / c.radius;
@@ -228,12 +256,42 @@ export function buildTerrain(rim: number, seed: number, groundMaterial: THREE.Ma
   return { group, ground, style, heightAt };
 }
 
-/** The far skyline's height at an angle, for a style: jagged peaks, low broken ground (behind the mesas), or soft hills. */
+/**
+ * The far skyline's height at an angle, for a style: jagged peaks, low broken ground (behind the mesas), soft
+ * hills; or, by the place (#497), a crater's rim wall, a canyon's two walls, a basin's far low edge, battered
+ * highland, or a volcano's shield rising on one side.
+ */
 function skyline(style: HorizonStyle, seed: number): (a: number) => number {
   const n = noise2(seed + 101);
   // Noise round a circle, so the skyline joins up where it started.
   const ring = (a: number, f: number) => n(Math.cos(a) * f + 50, Math.sin(a) * f + 50);
+  // A direction of its own per site: the canyon's line, the volcano's summit.
+  const axis = random(seed + 307)() * Math.PI * 2;
+  const off = (a: number) => Math.atan2(Math.sin(a - axis), Math.cos(a - axis));
   if (style === "hills") return (a) => 10 + 34 * (ring(a, 2) * 0.7 + ring(a, 5) * 0.3);
+  // The rim all round, level-ish, notched here and there, slumped in places.
+  if (style === "crater") return (a) => 75 + 40 * ring(a, 1.5) + 12 * ring(a, 6) + 5 * (1 - Math.abs(ring(a, 18) * 2 - 1));
+  // Walls either side, cut by side canyons into buttresses; open ends down the canyon's line, where low ground shows.
+  if (style === "canyon") {
+    return (a) => {
+      const side = smoothstep(0.3, 0.75, Math.abs(Math.sin(off(a))));
+      const spurs = (1 - Math.abs(ring(a, 16) * 2 - 1)) ** 1.5;
+      const wall = 130 + 60 * ring(a, 3) + 45 * spurs;
+      return 8 + 10 * ring(a, 4) + side * wall;
+    };
+  }
+  if (style === "basin") return (a) => 3 + 9 * (ring(a, 2) * 0.6 + ring(a, 7) * 0.4);
+  // Low hills, worn and broken, with the odd crater rim's bump.
+  if (style === "highland") return (a) => 14 + 26 * ring(a, 3) + 14 * (1 - Math.abs(ring(a, 9) * 2 - 1)) ** 2;
+  // A shield volcano: a long gentle rise to a broad summit (a caldera's notch at the top), and plains elsewhere.
+  if (style === "volcano") {
+    return (a) => {
+      const o = off(a);
+      const shield = Math.exp(-(o * o) / 0.9);
+      const caldera = 1 - 0.12 * Math.exp(-(o * o) / 0.01);
+      return 10 + 12 * ring(a, 4) + 260 * shield * caldera * (0.9 + 0.1 * ring(a, 10));
+    };
+  }
   if (style === "mountains") {
     return (a) => {
       let h = 0;
