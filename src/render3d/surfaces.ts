@@ -496,24 +496,73 @@ const LAND_ROCK_GLSL = /* glsl */ `
   }
 `;
 
+/**
+ * The rock-detail map (#497, made in Blender by models/land/land.py): fine laminations, fractures and grain,
+ * tiling every `scale` metres (and again at a third of that), as a normal (red, green) and a cavity (blue).
+ * Laid on the land's rock from three sides at once (triplanar), so nothing needs unwrapping. Shared by every
+ * land material; the stage loads the map (it starts off, and the rock looks as before until it's in).
+ */
+export const LAND_DETAIL = {
+  landDetail: { value: null as THREE.Texture | null },
+  landDetailOn: { value: 0 },
+  landDetailScale: { value: 26 },
+};
+
+const LAND_DETAIL_GLSL = /* glsl */ `
+  uniform sampler2D landDetail;
+  uniform float landDetailOn;
+  uniform float landDetailScale;
+  // The map from three sides, weighted by which way the face looks: its normal's tilt (xy) and cavity (z).
+  vec3 landDetailAt(vec3 p, vec3 n, float scale) {
+    vec3 w = pow(abs(n), vec3(4.0));
+    w /= (w.x + w.y + w.z + 1e-5);
+    vec3 x = texture2D(landDetail, p.zy / scale).rgb;
+    vec3 y = texture2D(landDetail, p.xz / scale).rgb;
+    vec3 z = texture2D(landDetail, p.xy / scale).rgb;
+    return x * w.x + y * w.y + z * w.z;
+  }
+  // The tilt it gives the surface, in the world: each side's map laid in its own plane.
+  vec3 landDetailNormal(vec3 p, vec3 n) {
+    vec3 w = pow(abs(n), vec3(4.0));
+    w /= (w.x + w.y + w.z + 1e-5);
+    vec2 dx = texture2D(landDetail, p.zy / landDetailScale).rg * 2.0 - 1.0 + (texture2D(landDetail, p.zy / (landDetailScale / 3.0)).rg * 2.0 - 1.0) * 0.5;
+    vec2 dy = texture2D(landDetail, p.xz / landDetailScale).rg * 2.0 - 1.0 + (texture2D(landDetail, p.xz / (landDetailScale / 3.0)).rg * 2.0 - 1.0) * 0.5;
+    vec2 dz = texture2D(landDetail, p.xy / landDetailScale).rg * 2.0 - 1.0 + (texture2D(landDetail, p.xy / (landDetailScale / 3.0)).rg * 2.0 - 1.0) * 0.5;
+    return w.x * vec3(0.0, dx.y, dx.x) + w.y * vec3(dy.x, 0.0, dy.y) + w.z * vec3(dz.x, dz.y, 0.0);
+  }
+  float landCavity(vec3 p, vec3 n) {
+    float c = landDetailAt(p, n, landDetailScale).b * 0.6 + landDetailAt(p, n, landDetailScale / 3.0).b * 0.4;
+    return mix(1.0, mix(0.72, 1.12, c), landDetailOn);
+  }
+`;
+
 /** Rock for the land far off (#497), bedded when `layered`: see LAND_ROCK_GLSL. Reads the geometry's `landH`. */
 export function withLandRock<T extends THREE.Material>(m: T, layered: boolean): T {
   const prev = m.onBeforeCompile;
   const prevKey = m.customProgramCacheKey();
   m.onBeforeCompile = (shader, renderer) => {
     prev.call(m, shader, renderer);
+    Object.assign(shader.uniforms, LAND_DETAIL);
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nattribute float landH;\nvarying float vLandH;\nvarying vec3 vLandPos;\nvarying vec3 vLandNormal;")
       .replace(
         "#include <project_vertex>",
-        "vLandH = landH;\nvLandPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvLandNormal = normalize(mat3(modelMatrix) * objectNormal);\n#include <project_vertex>",
+        "vLandH = landH;\n#ifdef USE_INSTANCING\nvLandPos = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\nvLandNormal = normalize(mat3(modelMatrix) * mat3(instanceMatrix) * objectNormal);\n#else\nvLandPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvLandNormal = normalize(mat3(modelMatrix) * objectNormal);\n#endif\n#include <project_vertex>",
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        `#include <common>\n${layered ? "#define DM_LAYERED\n" : ""}varying vec3 vLandPos;\nvarying vec3 vLandNormal;\n${NOISE_GLSL}\n${LAND_ROCK_GLSL}`,
+        `#include <common>\n${layered ? "#define DM_LAYERED\n" : ""}varying vec3 vLandPos;\nvarying vec3 vLandNormal;\n${NOISE_GLSL}\n${LAND_ROCK_GLSL}\n${LAND_DETAIL_GLSL}`,
       )
-      .replace("#include <color_fragment>", "#include <color_fragment>\ndiffuseColor.rgb *= landTone(vLandPos, normalize(vLandNormal), vLandH);");
+      .replace(
+        "#include <color_fragment>",
+        "#include <color_fragment>\ndiffuseColor.rgb *= landTone(vLandPos, normalize(vLandNormal), vLandH) * landCavity(vLandPos, normalize(vLandNormal));",
+      )
+      // The map's fractures and laminations tilt the light (in view space, as three's normal is here).
+      .replace(
+        "#include <normal_fragment_maps>",
+        "#include <normal_fragment_maps>\nif (landDetailOn > 0.5) normal = normalize(normal + (viewMatrix * vec4(landDetailNormal(vLandPos, normalize(vLandNormal)), 0.0)).xyz * 0.55);",
+      );
   };
   m.customProgramCacheKey = () => `${prevKey}|land-rock-${layered}`;
   return m;
@@ -570,7 +619,10 @@ export function withFarShadow<T extends THREE.Material>(m: T): T {
     Object.assign(shader.uniforms, FAR_SHADOW);
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vFsPos;")
-      .replace("#include <project_vertex>", "vFsPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#include <project_vertex>");
+      .replace(
+        "#include <project_vertex>",
+        "#ifdef USE_INSTANCING\nvFsPos = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\n#else\nvFsPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#endif\n#include <project_vertex>",
+      );
     shader.fragmentShader = shader.fragmentShader
       .replace("#include <common>", `#include <common>\n${FAR_SHADOW_GLSL}`)
       .replace(

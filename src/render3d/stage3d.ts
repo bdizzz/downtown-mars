@@ -20,7 +20,7 @@ import { recordFrame } from "../view/fps";
 import { Look, type LookLike } from "./look";
 import { clampCutAngle, CUT_ANGLE, DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { intersectGlobalClipping } from "./wedgeClip";
-import { FAR_SHADOW, makeSlice, withCutRock, withFarShadow, withRegolith, withRock, withSlice } from "./surfaces";
+import { FAR_SHADOW, LAND_DETAIL, makeSlice, withCutRock, withFarShadow, withRegolith, withRock, withSlice } from "./surfaces";
 import { RoomEffects, type FxView } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { behindSlab, clippedAway, slabBelow, type Slab } from "./cull3d";
@@ -572,6 +572,17 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const sunDir = new THREE.Vector3(0, 1, 0);
   // The far shadows (#497) follow the same sun.
   FAR_SHADOW.fsSun.value = sunDir;
+  // The land's rock-detail map (#497, made in Blender): the rock looks as before until it's in.
+  if (!LAND_DETAIL.landDetail.value) {
+    new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}textures/land-rock.jpg`, (tex) => {
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.colorSpace = THREE.NoColorSpace;
+      tex.anisotropy = 4;
+      LAND_DETAIL.landDetail.value = tex;
+      LAND_DETAIL.landDetailOn.value = 1;
+      dirty = true;
+    });
+  }
   /** Where it lands: on the gallery tubes, the bottom of the hole, and in rooms with windows onto the shaft. */
   const sunPools = new SunPools();
   /**

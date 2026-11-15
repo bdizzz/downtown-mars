@@ -3,6 +3,7 @@ import { config } from "../sim/config";
 import mapData from "../../data/mars-map.json";
 import { traitAt } from "../sim/sites";
 import { FAR_SHADOW, withFarShadow, withLandRock } from "./surfaces";
+import { placedGeometry, type PieceName } from "./landPieces";
 
 // The land around the hole: the ground rolls away from a flat pad at the rim
 // (where surface buildings stand) in undulations and ridges, pocked with
@@ -353,7 +354,8 @@ export function buildTerrain(rim: number, seed: number, groundMaterial: THREE.Ma
       }
     }
   }
-  const rockMat = withFarShadow(new THREE.MeshStandardMaterial({ color: soilTint(COLORS.rock, soil), roughness: 1, flatShading: true }));
+  // Weathered and detailed as the land's rock (#497): close by the hole, the detail map shows most here.
+  const rockMat = withFarShadow(withLandRock(new THREE.MeshStandardMaterial({ color: soilTint(COLORS.rock, soil), roughness: 1, flatShading: true }), false));
   const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), rockMat, places.length);
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -368,6 +370,7 @@ export function buildTerrain(rim: number, seed: number, groundMaterial: THREE.Ma
   const skylineAt = skyline(style, seed);
   group.add(horizon(skylineAt, tint));
   if (walls) group.add(wallMesh(walls, seed, heightAt, soil));
+  if (walls?.kind === "canyon") group.add(buttresses(walls, seed, heightAt, soil));
   const forms = landforms(style, seed, rim, heightAt, tint);
   for (const f of forms) group.add(f.mesh);
   if (style === "volcano") for (const f of lavaFlows(seed, rim, heightAt, soil)) group.add(f);
@@ -793,11 +796,109 @@ function landforms(style: HorizonStyle, seed: number, rim: number, heightAt: (x:
       lean: kind === "massif" || kind === "dome" ? [(rand() - 0.5) * 0.5, (rand() - 0.5) * 0.5] : [0, 0],
       segments: spec.segments,
     };
-    const made = landform(shape, profile(kind, rand), noise2(seed + 211 + k * 31), heightAt, hazed(color, distance), LAYERED.has(kind));
+    const prof = profile(kind, rand);
+    const hero = HERO[kind];
+    const made = hero
+      ? heroLandform(hero[Math.floor(rand() * hero.length)]!, shape, heightAt, hazed(color, distance))
+      : landform(shape, prof, noise2(seed + 211 + k * 31), heightAt, hazed(color, distance), LAYERED.has(kind));
     made.mesh.name = "landform";
     // A crater's rim is a ring, not a solid: it casts no far shadow of its own.
     return { mesh: made.mesh, x: shape.x, z: shape.z, radius: kind === "crater" ? 0 : radius * Math.min(1, shape.stretch), top: made.top };
   });
+}
+
+/** The landforms sculpted in Blender (#497, landPieces.ts), by kind: one of these, at random, in place of the profile. */
+const HERO: Partial<Record<LandformKind, PieceName[]>> = { mesa: ["mesa_a", "mesa_b"], butte: ["butte_a", "butte_b"], mound: ["mound"] };
+
+/** Where a landform's foot sits: the lowest ground under it, so no edge floats. */
+function footOf(s: { x: number; z: number; radius: number }, heightAt: (x: number, z: number) => number): number {
+  let base = heightAt(s.x, s.z);
+  for (let j = 0; j < 12; j++) {
+    const a = (j / 12) * Math.PI * 2;
+    base = Math.min(base, heightAt(s.x + s.radius * Math.cos(a), s.z + s.radius * Math.sin(a)));
+  }
+  return base;
+}
+
+/** A sculpted landform (#497): the piece stretched to its footprint, turned, stood on the ground and scaled to its height. */
+function heroLandform(
+  name: PieceName,
+  s: { x: number; z: number; radius: number; height: number; stretch: number; turn: number },
+  heightAt: (x: number, z: number) => number,
+  color: number,
+): { mesh: THREE.Mesh; top: number } {
+  const base = footOf(s, heightAt);
+  const cos = Math.cos(s.turn);
+  const sin = Math.sin(s.turn);
+  const geo = placedGeometry(name, (x, y, z) => {
+    const lx = x * s.radius * s.stretch;
+    const lz = z * s.radius;
+    return [s.x + lx * cos - lz * sin, base + y * s.height, s.z + lx * sin + lz * cos];
+  });
+  const mesh = new THREE.Mesh(geo, withFarShadow(withLandRock(new THREE.MeshStandardMaterial({ color, vertexColors: true, roughness: 1, flatShading: true }), true)));
+  mesh.userData.layered = true;
+  return { mesh, top: base + s.height };
+}
+
+/**
+ * Buttresses along a canyon's walls (#497): spurs of rock sculpted in Blender, set along the walls' feet a
+ * couple of hundred metres apart (jittered, mixed among three), standing a little proud of the swept wall so
+ * the cliff line breaks up into spurs and the gullies between them; none in the landslide's scar. One mesh.
+ */
+const BUTTRESS = { spacing: 210, halfWidth: 115, depth: 165, proud: 25, height: [0.82, 1.0] } as const;
+
+function buttresses(w: Walls, seed: number, heightAt: (x: number, z: number) => number, soil: string | null): THREE.Mesh {
+  const rand = random(seed + 457);
+  const names: PieceName[] = ["buttress_a", "buttress_b", "buttress_c"];
+  const parts: THREE.BufferGeometry[] = [];
+  let a = rand() * 0.05;
+  while (a < Math.PI * 2) {
+    const foot = w.foot(a);
+    const step = BUTTRESS.spacing / foot;
+    const at = a + (rand() - 0.5) * step * 0.4;
+    a += step;
+    // Only where the wall stands full height either side, so no buttress outstands a tapering wall.
+    if (Math.min(w.side(at - step * 0.6), w.side(at), w.side(at + step * 0.6)) < 0.97) continue;
+    if (w.slide && Math.abs(angleOff(at, w.slide.at)) < w.slide.half * 0.9) continue;
+    const c = Math.cos(at);
+    const s = Math.sin(at);
+    const r0 = foot - BUTTRESS.proud;
+    const base = heightAt(r0 * c, r0 * s) - 2;
+    const height = w.height(at) * (BUTTRESS.height[0] + (BUTTRESS.height[1] - BUTTRESS.height[0]) * rand());
+    const flip = rand() < 0.5 ? -1 : 1;
+    parts.push(
+      placedGeometry(names[Math.floor(rand() * names.length)]!, (x, y, z) => {
+        // Across the wall (along its tangent) and out from the hole, from the buttress's foot.
+        const across = x * flip * BUTTRESS.halfWidth;
+        const out = r0 + z * BUTTRESS.depth;
+        return [out * c - across * s, base + y * height, out * s + across * c];
+      }),
+    );
+  }
+  const geo = mergeGeometries(parts);
+  const mid = (w.foot(0) + w.foot(Math.PI)) / 2;
+  const mesh = new THREE.Mesh(geo, withLandRock(new THREE.MeshStandardMaterial({ color: hazed(soilTint(WALLS.canyon.color, soil), mid), vertexColors: true, roughness: 1, flatShading: true }), true));
+  mesh.name = "landform";
+  mesh.userData.layered = true;
+  return mesh;
+}
+
+/** Non-indexed geometries with the same attributes, end to end. */
+function mergeGeometries(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  const out = new THREE.BufferGeometry();
+  for (const name of ["position", "normal", "color", "landH"]) {
+    const size = parts[0]?.getAttribute(name)?.itemSize ?? 3;
+    const total = parts.reduce((n, p) => n + p.getAttribute(name).array.length, 0);
+    const arr = new Float32Array(total);
+    let at = 0;
+    for (const p of parts) {
+      arr.set(p.getAttribute(name).array as Float32Array, at);
+      at += p.getAttribute(name).array.length;
+    }
+    out.setAttribute(name, new THREE.BufferAttribute(arr, size));
+  }
+  for (const p of parts) p.dispose();
+  return out;
 }
 
 /** The mesas on a canyon's floor (#497): how far out, and their size against elsewhere. */

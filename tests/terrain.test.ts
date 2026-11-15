@@ -178,10 +178,35 @@ describe("a canyon in the Godot viewer, through the bridge (#497)", () => {
     const m = terrainMessage(s);
     expect(m.style).toBe("canyon");
     expect(m.horizon.mesh.colors).toBeUndefined();
-    // The walls, coloured by the rock and hazed; every landform says how far up it each vertex stands.
+    // The walls (coloured by the rock and hazed), the buttresses and the sculpted mesas (their baked shade);
+    // every landform says how far up it each vertex stands.
     const colored = m.landforms.filter((f) => f.mesh.colors);
-    expect(colored.length).toBe(1);
+    expect(colored.length).toBeGreaterThanOrEqual(3);
     for (const f of colored) expect(Buffer.from(f.mesh.colors!, "base64").length).toBe(Buffer.from(f.mesh.positions, "base64").length);
     for (const f of m.landforms) expect(Buffer.from(f.mesh.heights!, "base64").length * 3).toBe(Buffer.from(f.mesh.positions, "base64").length);
+  });
+});
+
+describe("the pieces sculpted in Blender (#497)", () => {
+  it("decode to unit-frame shapes with their baked shade", async () => {
+    const { piece } = await import("../src/render3d/landPieces");
+    for (const name of ["mesa_a", "butte_b", "mound", "buttress_c"] as const) {
+      const p = piece(name);
+      expect(p.indices.length % 3).toBe(0);
+      expect(Math.max(...p.indices)).toBeLessThan(p.positions.length / 3);
+      const ys = p.positions.filter((_, i) => i % 3 === 1);
+      expect(Math.max(...ys)).toBeGreaterThan(0.95);
+      expect(Math.max(...ys)).toBeLessThan(1.12);
+      expect(Math.min(...p.shade)).toBeGreaterThan(0);
+      expect(Math.min(...p.shade)).toBeLessThan(0.9);
+    }
+  });
+
+  it("stand in for mesas and the crater's mound, and line a canyon's walls", () => {
+    const mat = new THREE.MeshStandardMaterial();
+    const canyon = buildTerrain(10, siteSeed({ lat: -12, lon: 295 }, ""), mat, null, { lat: -12, lon: 295 });
+    const shaded = canyon.group.children.filter((o) => o.name === "landform" && (o as THREE.Mesh).geometry.getAttribute("color"));
+    // The mesas on its floor, and the buttresses (one mesh).
+    expect(shaded.length).toBeGreaterThanOrEqual(3);
   });
 });
