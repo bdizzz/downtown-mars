@@ -35,7 +35,7 @@
   "grayOverflow": {
     "_note": "Full gray-water tanks (T-148): rooms keep running and the gray water that doesn't fit is lost for good. This warning, at most once every warnEveryDays.",
     "warnEveryDays": 3,
-    "warning": "The gray water tanks are full to the brim, and the overflow is lost for good. Build a water recycler, or set a tank to hold gray water."
+    "warning": "Gray water overflowing: the tanks are full to the brim, and what spills is lost for good. Build a water recycler, or set a tank to hold gray water."
   },
   "events": [
     {

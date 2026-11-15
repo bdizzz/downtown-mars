@@ -33,6 +33,8 @@ export interface NewsIssue {
   /** People more (or fewer) than at the month's start. */
   change: number;
   happiness: number;
+  /** The hole's health, 0..100. */
+  health: number;
   born: number;
   /** Born here ever, after this month (1 means this month's was the first). */
   bornEver: number;
@@ -159,6 +161,7 @@ function writeIssue(state: SimState, cfg: SimConfig, nl: NewsletterState): NewsI
     population: pop.count,
     change: pop.count - m.population,
     happiness: Math.round(state.happiness.average),
+    health: Math.round(pop.health),
     born: (pop.born ?? 0) - m.born,
     bornEver: pop.born ?? 0,
     passedAway: (pop.passedAway ?? 0) - m.passedAway,

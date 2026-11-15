@@ -14,6 +14,8 @@ interface StoryDef {
   kicker: string;
   head: string[];
   text?: string[];
+  /** A quiet month that's a hard one. */
+  rough?: string[];
   one?: string[];
   many?: string[];
 }
@@ -27,6 +29,9 @@ interface VoiceDef {
 const DATA = raw as unknown as {
   name: string;
   tagline: string;
+  price: string;
+  printed: string;
+  weather: { storm: string; clear: string };
   order: string[];
   stories: Record<string, StoryDef>;
   grumble: VoiceDef;
@@ -35,6 +40,7 @@ const DATA = raw as unknown as {
   fillers: string[];
   sign: string[];
   numbers: string[];
+  roughBelow: number;
 };
 
 export const NEWSLETTER_NAME = DATA.name;
@@ -42,6 +48,7 @@ export const NEWSLETTER_NAME = DATA.name;
 export interface NewsStory {
   /** The section it's in ("Births", "What the drill found"). */
   kicker: string;
+  /** Empty for an event's outcome, which is told in the game's own words. */
   head: string;
   text: string;
 }
@@ -58,6 +65,13 @@ export interface Newsletter {
   tagline: string;
   /** "No. 4 · Month 4". */
   dateline: string;
+  /** The masthead's ears and the strip under it. */
+  hole: string;
+  population: number;
+  /** The weather ear: "Dust storm" or "Clear, dusty". */
+  weather: string;
+  price: string;
+  printed: string;
   /** The month's biggest story. */
   lead: NewsStory;
   /** The rest, briefly. */
@@ -127,7 +141,7 @@ export function writeNewsletter(issue: NewsIssue): Newsletter {
     const n = counts[id] ?? 0;
     if (!n) continue;
     const def = DATA.stories[id]!;
-    const v: Vars = { ...vars, n, N: capital(words(n)) };
+    const v: Vars = { ...vars, n, N: capital(words(n)), w: words(n) };
     if (id === "find") {
       v.find = DATA.finds[issue.finds[0]!] ?? "something";
     }
@@ -135,15 +149,17 @@ export function writeNewsletter(issue: NewsIssue): Newsletter {
     if (id === "notables") v.name = issue.newNotables[0]!;
     if (id === "outcome") {
       // The game's own words for how things turned out, one story each.
-      for (const text of issue.outcomes) stories.push({ kicker: def.kicker, head: pick(def.head), text });
+      for (const text of issue.outcomes) stories.push({ kicker: def.kicker, head: "", text });
       continue;
     }
     const texts = (n === 1 ? def.one : def.many) ?? def.text ?? [];
-    stories.push({ kicker: def.kicker, head: fill(pick(def.head), v), text: fill(pick(texts), v) });
+    stories.push({ kicker: def.kicker, head: capital(fill(pick(def.head), v)), text: fill(pick(texts), v) });
   }
   if (!stories.length) {
     const q = DATA.stories.quiet!;
-    stories.push({ kicker: q.kicker, head: fill(pick(q.head), vars), text: fill(pick(q.text!), vars) });
+    const rough = Math.min(issue.health ?? 100, issue.happiness) < DATA.roughBelow;
+    const head = rough ? `A hard month in ${issue.hole}` : fill(pick(q.head), vars);
+    stories.push({ kicker: q.kicker, head, text: fill(pick(rough ? q.rough! : q.text!), vars) });
   }
   const letters: NewsLetter[] = [];
   const letter = (who: NewsVoice | null, def: VoiceDef) => {
@@ -158,6 +174,11 @@ export function writeNewsletter(issue: NewsIssue): Newsletter {
     name: DATA.name,
     tagline: DATA.tagline,
     dateline: `No. ${issue.no} · ${monthLabel(issue.day)}`,
+    hole: issue.hole,
+    population: issue.population,
+    weather: issue.storm ? DATA.weather.storm : DATA.weather.clear,
+    price: DATA.price,
+    printed: DATA.printed,
     lead: stories[0]!,
     stories: stories.slice(1),
     letters,

@@ -86,6 +86,11 @@ describe("newsletter", () => {
     }
   });
 
+  it("a quiet month that's a hard one doesn't pretend all's well", () => {
+    const n = writeNewsletter({ ...blank(), health: 10 });
+    expect(raw.stories.quiet.rough).toContain(n.lead.text);
+  });
+
   it("every grumble and praise template fills", () => {
     for (const cause of Object.keys(raw.grumble.causes)) {
       const issue = { ...blank(), grumble: { name: "Ana Ruiz", role: "worker", trait: "Hothead", cause: `happiness:${cause}` } };
@@ -120,7 +125,7 @@ describe("newsletter", () => {
 
 function blank() {
   return {
-    no: 1, day: 3, hole: "Bradbury", seed: 42, population: 10, change: 0, happiness: 60,
+    no: 1, day: 3, hole: "Bradbury", seed: 42, population: 10, change: 0, happiness: 60, health: 100,
     born: 0, bornEver: 0, passedAway: 0, grownUp: 0, arrivals: 0, built: {}, floors: 0, depth: 3,
     finds: [], milestones: [], festival: false, storm: false, outcomes: [], newNotables: [], grumble: null, praise: null,
   };

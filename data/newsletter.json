@@ -1,8 +1,12 @@
 {
-  "_note": "The Hole Truth, the colony's monthly newsletter (#424). The sim keeps the month's facts (src/sim/newsletter.ts): keep is how many back issues a hole holds, maxOutcomes how many event outcomes an issue reprints, grumblePoints and praisePoints how many happiness points a cause must cost (or give) before a notable grumbles (or praises) it. The words are src/view/newsletter.ts's: each story is a list of templates, one picked by the issue's dice. Placeholders: {hole} the hole's name, {n} a count, {N} a count in words, {name} a notable, {role} their job, {trait} one of their traits, {baby} a newborn's first name and {family} a family name (both from data/notables.json), {room} a room's name, {rooms} a list of them, {floor} the deepest floor, {milestone} a milestone's title, {find} what the drill struck (from `finds`, by event id), {pop} the population, {happy} the average happiness. Headlines come from the month's biggest story, in the order of `order`. Voice (docs/ART.md, Voice): warm, dry, a pun allowed, never at the player's expense.",
+  "_note": "The Hole Truth, the colony's monthly newsletter (#424). The sim keeps the month's facts (src/sim/newsletter.ts): keep is how many back issues a hole holds, maxOutcomes how many event outcomes an issue reprints, grumblePoints and praisePoints how many happiness points a cause must cost (or give) before a notable grumbles (or praises) it. The words are src/view/newsletter.ts's: each story is a list of templates, one picked by the issue's dice. Placeholders: {hole} the hole's name, {n} a count, {w} a count in words, {name} a notable, {role} their job, {trait} one of their traits, {baby} a newborn's first name and {family} a family name (both from data/notables.json), {room} a room's name, {rooms} a list of them, {floor} the deepest floor, {milestone} a milestone's title, {find} what the drill struck (from `finds`, by event id), {pop} the population, {happy} the average happiness. A quiet month reads `rough` instead when health or happiness is below roughBelow. Headlines come from the month's biggest story, in the order of `order`. Voice (docs/ART.md, Voice): warm, dry, a pun allowed, never at the player's expense.",
   "name": "The Hole Truth",
   "tagline": "All the news that fits the shaft",
+  "price": "One ration",
+  "weather": { "storm": "Dust storm", "clear": "Clear, dusty" },
+  "printed": "Printed on recycled regolith fibre · Please return to the galley when read",
   "keep": 24,
+  "roughBelow": 40,
   "maxOutcomes": 3,
   "grumblePoints": 2,
   "praisePoints": 2,
@@ -25,7 +29,7 @@
       ],
       "many": [
         "{N} children were born this month, among them {baby} {family}. The clinic asks that everyone please stop asking the newborns about their career plans.",
-        "A busy month at the clinic: {N} births, including little {baby} {family}. Lullabies may be heard through the corridors at odd hours."
+        "A busy month at the clinic: {w} births, including little {baby} {family}. Lullabies may be heard through the corridors at odd hours."
       ]
     },
     "arrivals": {
@@ -34,7 +38,7 @@
       "text": [
         "{N} new colonists settled in this month. If you see someone staring at the shaft for a long time, they're new. Say hello.",
         "{N} newcomers joined {hole}. They've been shown the galley, the restrooms and which elevator sticks, in that order.",
-        "We welcome {N} new neighbours. They report the trip was long, the landing bumpy and the welcome warm."
+        "We welcome {w} new neighbours. They report the trip was long, the landing bumpy and the welcome warm."
       ]
     },
     "passings": {
@@ -42,7 +46,7 @@
       "head": ["We remember", "Fond farewells"],
       "text": [
         "{N} of our elders passed away this month. They helped dig the place we live in, and they'll be missed.",
-        "This month we said goodbye to {N} of our elders. Raise a cup to them at the galley tonight."
+        "This month we said goodbye to {w} of our elders. Raise a cup to them at the galley tonight."
       ]
     },
     "grownUp": {
@@ -57,11 +61,11 @@
       "kicker": "Down the hole",
       "head": ["Deeper we go", "The drill digs in", "Floor {floor}, going down"],
       "text": [
-        "The drill finished {N} new floor this month: {hole} now goes down {floor} floors. Elevator music remains under review.",
+        "The drill finished {w} new floor this month: {hole} now goes down {floor} floors. Elevator music remains under review.",
         "{hole} is now {floor} floors deep. The drill crew would like it noted that they're not boring, they're boring."
       ],
       "many": [
-        "The drill finished {N} new floors this month: {hole} now goes down {floor} floors. Elevator music remains under review."
+        "The drill finished {w} new floors this month: {hole} now goes down {floor} floors. Elevator music remains under review."
       ]
     },
     "rooms": {
@@ -72,7 +76,7 @@
         "The crews finished a new {room} this month, on time and only a little dusty."
       ],
       "many": [
-        "The crews finished {N} rooms this month: {rooms}. Somewhere, a foreman is finally sitting down.",
+        "The crews finished {w} rooms this month: {rooms}. Somewhere, a foreman is finally sitting down.",
         "{N} rooms opened this month: {rooms}. The hole is getting roomier, so to speak."
       ]
     },
@@ -110,7 +114,7 @@
     },
     "outcome": {
       "kicker": "In other news",
-      "head": ["In other news"]
+      "head": []
     },
     "notables": {
       "kicker": "Who's who",
@@ -124,6 +128,10 @@
         "Nothing much happened this month, which on Mars is exactly what you want. {pop} people, all still breathing.",
         "A quiet month. The air held, the lights stayed on and nobody fell down the shaft. We call that a win.",
         "Slow news month. The editor considered running a story about the new mop in the galley, but decided against it."
+      ],
+      "rough": [
+        "Not much news this month, and not much cheer either. People are tired and worried. Better days are a fix or two away; your deputy has notes.",
+        "Nothing to celebrate this month. Chins up: the hole has been through worse, and so has Mars."
       ]
     }
   },

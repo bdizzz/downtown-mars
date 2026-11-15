@@ -227,6 +227,7 @@ Every floor has a **temperature**, one number for the whole floor. Temperatures 
   - **Milestones** are news when the hole reaches them, and each hole remembers the month it did (see Milestones, under Charts). The big ones can be celebrated. A festival costs a feast and a slow month of work, lifts everyone for two months, and strings lights along the galleries with lanterns rising up the shaft; or just raise a toast.
   - Gains need storage space, like Earth's drops.
 - **News:** the latest few messages stack up in a corner of the view and fade over a month. Click a message's × to close it straight away.
+- **The Hole Truth,** the colony's newsletter, comes out at the end of every month and opens as a card over the game (which keeps running behind it). It leads with the month's biggest story (a first birth, a milestone, a festival, what the drill struck) and runs the rest briefly: newborns by name, newcomers, elders remembered, children grown up, new floors, new rooms, storms and how events turned out. A notable writes in about what bothers people most, another about what they like, and there's a small notice at the bottom. A quiet month says so; a hard one doesn't pretend otherwise. **Close** puts it away; Charts → **The Hole Truth** keeps the last two years of back issues. None come during the guided tutorial's calm start.
 
 ## More holes
 

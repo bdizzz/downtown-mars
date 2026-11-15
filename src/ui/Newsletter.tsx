@@ -12,40 +12,61 @@ export function NewsletterCard({ issue, onClose }: { issue: NewsIssue; onClose: 
   return (
     <div className="newsletter-wrap">
       <article className="newsletter" role="dialog" aria-label={`${n.name}, ${n.dateline}`}>
-        <header>
+        <div className="np-sync" aria-hidden="true">
+          <span>E-PAPER · {n.hole.toUpperCase()} NET</span>
+          <span className="np-dot">synced</span>
+        </div>
+        <header className="np-mast">
+          <div className="np-ear">
+            <b>Pop.</b> {n.population}
+          </div>
           <h2>{n.name}</h2>
-          <div className="k tagline">
-            {n.tagline} · {n.dateline}
+          <div className="np-ear right">
+            <b>Weather</b> {n.weather}
           </div>
         </header>
-        <section className="lead">
+        <div className="np-strip">
+          <span>{n.dateline}</span>
+          <span className="np-tag">{n.tagline}</span>
+          <span>{n.price}</span>
+        </div>
+        <section className="np-lead">
           <div className="kicker">{n.lead.kicker}</div>
-          <h3>{n.lead.head}</h3>
-          <p>{n.lead.text}</p>
+          {n.lead.head && <h3>{n.lead.head}</h3>}
+          <p className="np-drop">{n.lead.text}</p>
         </section>
-        {n.stories.map((st, i) => (
-          <section key={i} className="story">
-            <div className="kicker">{st.kicker}</div>
-            <p>
-              <strong>{st.head}.</strong> {st.text}
-            </p>
-          </section>
-        ))}
-        {n.letters.map((l, i) => (
-          <section key={`l${i}`} className="story letter">
-            <div className="kicker">{l.kicker}</div>
-            <p>
-              <span className="k">{l.intro}</span> {l.quote}
-            </p>
-          </section>
-        ))}
-        <p className="filler k">{n.filler}</p>
+        {(n.stories.length > 0 || n.letters.length > 0) && (
+          <div className="np-cols">
+            {n.stories.map((st, i) => (
+              <section key={i} className="np-story">
+                <div className="kicker">{st.kicker}</div>
+                <p>
+                  {st.head && <strong>{st.head}. </strong>}
+                  {st.text}
+                </p>
+              </section>
+            ))}
+            {n.letters.map((l, i) => (
+              <section key={`l${i}`} className="np-story np-letter">
+                <div className="kicker">{l.kicker}</div>
+                <p className="np-intro">{l.intro}</p>
+                <p>
+                  <em>{l.quote}</em>
+                </p>
+              </section>
+            ))}
+          </div>
+        )}
+        <p className="np-filler">
+          <span className="kicker">Notices</span> {n.filler}
+        </p>
         <footer>
-          <span className="k sign">{n.sign}</span>
-          <button className="primary" autoFocus onClick={onClose}>
-            Close
+          <span className="np-sign">{n.sign}</span>
+          <button className="np-close" autoFocus onClick={onClose}>
+            Fold it up
           </button>
         </footer>
+        <div className="np-printed">{n.printed}</div>
       </article>
     </div>
   );
@@ -60,7 +81,7 @@ export function NewsPanel({ s, onOpen, onClose }: { s: Snapshot; onOpen: (no: nu
       {!issues.length && <p className="k">The first issue comes out at the end of the month.</p>}
       {issues.map((i) => (
         <button key={i.no} className="news-row" onClick={() => onOpen(i.no)}>
-          <span className="name">{writeNewsletter(i).lead.head}</span>
+          <span className="name">{writeNewsletter(i).lead.head || writeNewsletter(i).lead.text}</span>
           <span className="k">
             No. {i.no} · {monthLabel(i.day)}
           </span>
