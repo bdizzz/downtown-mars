@@ -497,7 +497,7 @@ export function App() {
   const tip = snapshot && settings.tips ? dueTip(snapshot) : null;
   // The newsletter: a back issue picked from its list, else this month's until it's read.
   const newsIssue = snapshot
-    ? ((newsOpen !== null ? snapshot.newsletter.issues.find((i) => i.no === newsOpen) : null) ?? (newsOpen === null ? unreadIssue(snapshot) : null))
+    ? ((newsOpen !== null ? snapshot.newsletter.issues.find((i) => i.no === newsOpen) : null) ?? (newsOpen === null && settings.newspaper ? unreadIssue(snapshot) : null))
     : null;
   // A tip's Show me goes with it, if its problem goes first.
   useEffect(() => {
@@ -931,9 +931,9 @@ export function App() {
           issue={newsIssue}
           onClose={() => {
             setNewsOpen(null);
-            // Closing the latest, however it was opened, marks it read.
+            // Closing the latest, however it was opened, marks it read (an older back issue leaves it new).
             const latest = snapshot?.newsletter.issues.at(-1);
-            if (latest && latest.no > (snapshot?.newsletter.read ?? 0)) onCommand({ type: "readNewsletter", no: latest.no });
+            if (latest && newsIssue.no === latest.no && latest.no > (snapshot?.newsletter.read ?? 0)) onCommand({ type: "readNewsletter", no: latest.no });
           }}
         />
       )}

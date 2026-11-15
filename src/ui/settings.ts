@@ -28,6 +28,8 @@ export interface Settings {
   autosave: boolean;
   /** The deputy's one-time tips when a problem first shows up (F-018). */
   tips: boolean;
+  /** The Hole Truth opens by itself each month (#424); off, new issues wait under Charts. */
+  newspaper: boolean;
   /** Temperatures in °C rather than °F (#397). */
   celsius: boolean;
   /** The resource bar shows every stock all the time; off (quiet), the vitals and whatever needs a look, the rest behind its Stock button. */
@@ -55,6 +57,7 @@ export const DEFAULT_SETTINGS: Settings = {
   colorBlind: defaultOf("colorBlind", "boolean"),
   autosave: defaultOf("autosave", "boolean"),
   tips: defaultOf("tips", "boolean"),
+  newspaper: defaultOf("newspaper", "boolean"),
   celsius: defaultOf("celsius", "boolean"),
   allResources: defaultOf("allResources", "boolean"),
   floorHoverPreview: defaultOf("floorHoverPreview", "boolean"),

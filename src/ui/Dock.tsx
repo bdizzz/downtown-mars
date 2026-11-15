@@ -1,4 +1,4 @@
-import { NEWSLETTER_NAME } from "../view/newsletter";
+import { NEWSLETTER_NAME, unreadIssue } from "../view/newsletter";
 import { TEMPERATURE_COLORS } from "../view/temperature";
 import { FLOW_NETS } from "../render3d/flows3d";
 import type React from "react";
@@ -283,7 +283,7 @@ export function ChartsStrip({ s, chart, toggle, highlight, reveal = SHOW_ALL }: 
       )}
       {btn("directory", "Directory", "Every floor and the rooms on it: find one and jump to it")}
       {btn("milestones", s ? `Milestones · ${s.milestones.length}` : "Milestones", "What this hole has achieved, and what's still ahead")}
-      {btn("news", NEWSLETTER_NAME, "The colony's monthly newsletter: this month's issue and the back issues")}
+      {btn("news", s && unreadIssue(s) ? `${NEWSLETTER_NAME} · new` : NEWSLETTER_NAME, "The colony's monthly newsletter: this month's issue and the back issues")}
     </div>
   );
 }
