@@ -44,7 +44,7 @@ describe("the guided tutorial's data", () => {
 
   it("unlocks only interface elements that exist", () => {
     const modes = ["build", "view", "charts", "map"];
-    const charts = ["people", "flows", "network", "construction", "maintenance", "trends", "directory", "milestones"];
+    const charts = ["people", "flows", "network", "construction", "maintenance", "trends", "directory", "milestones", "news"];
     const views = ["cameras", "2d", "see"];
     const tools = ["corridors", "demolish", "linings", "bulkhead", "windows", "refit"];
     for (const s of guided.steps) {

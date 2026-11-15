@@ -1,3 +1,4 @@
+import { NEWSLETTER_NAME, unreadIssue } from "../view/newsletter";
 import { TEMPERATURE_COLORS } from "../view/temperature";
 import { FLOW_NETS } from "../render3d/flows3d";
 import type React from "react";
@@ -18,7 +19,7 @@ import type { IconId } from "../view/icons";
 // (#457) but isn't one: its button opens and closes the office panel, and lights while it's open.
 
 export type Mode = "build" | "view" | "map" | "charts";
-export type Chart = "people" | "flows" | "network" | "construction" | "maintenance" | "trends" | "directory" | "milestones";
+export type Chart = "people" | "flows" | "network" | "construction" | "maintenance" | "trends" | "directory" | "milestones" | "news";
 
 /** Each mode's key, anywhere in the game (as KeyboardEvent codes). */
 export const MODE_KEYS: Record<Mode, string> = { build: "KeyB", view: "KeyV", map: "KeyM", charts: "KeyC" };
@@ -282,6 +283,7 @@ export function ChartsStrip({ s, chart, toggle, highlight, reveal = SHOW_ALL }: 
       )}
       {btn("directory", "Directory", "Every floor and the rooms on it: find one and jump to it")}
       {btn("milestones", s ? `Milestones · ${s.milestones.length}` : "Milestones", "What this hole has achieved, and what's still ahead")}
+      {btn("news", s && unreadIssue(s) ? `${NEWSLETTER_NAME} · new` : NEWSLETTER_NAME, "The colony's monthly newsletter: this month's issue and the back issues")}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { stepNewsletter } from "./newsletter";
 import type { SimConfig } from "./config";
 import { stepDigging } from "./digging";
 import { stepEarth } from "./earth";
@@ -48,4 +49,6 @@ export function step(state: SimState, cfg: SimConfig): void {
   stepLedger(state, cfg);
   stepHistory(state, cfg);
   stepFailure(state, cfg);
+  // Last: the month's news is everything that happened in it.
+  stepNewsletter(state, cfg);
 }

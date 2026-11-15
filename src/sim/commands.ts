@@ -1,3 +1,4 @@
+import { readNewsletter } from "./newsletter";
 import { replant } from "./food";
 import { setThermostat } from "./temperature";
 import { ROOM_NAME_MAX } from "./roomName";
@@ -57,6 +58,8 @@ export type SimCommand =
   | { type: "greet" }
   /** The deputy's tip (view/tips.ts) has been read: it won't show again. */
   | { type: "seeTip"; id: string }
+  /** The newsletter's issue (#424) has been read: its card won't open by itself again. */
+  | { type: "readNewsletter"; no: number }
   /** Start, move on or leave (null) the guided tutorial; its `calm` holds off storms and events. */
   | { type: "setGuide"; guide: GuideState | null }
   /** Answer an event (a find, a ship, a celebration) with one of its choices. */
@@ -651,6 +654,9 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       return greet(state, config);
     case "seeTip":
       if (!(state.tipsSeen ??= []).includes(cmd.id)) state.tipsSeen.push(cmd.id);
+      return { ok: true };
+    case "readNewsletter":
+      readNewsletter(state, cmd.no);
       return { ok: true };
     case "setGuide":
       if (cmd.guide === null) delete state.guide;

@@ -1,3 +1,4 @@
+import { newsArrivals } from "./newsletter";
 import type { SimConfig } from "./config";
 import { culture as cultureCfg } from "./culture";
 import { beds } from "./earth";
@@ -85,6 +86,7 @@ export function stepArrivals(world: World, cfg: SimConfig): void {
       for (const a of cultureCfg.axes) to.culture[a.id] += (from.culture[a.id] - to.culture[a.id]) * share;
     }
     addCohorts(to, mv.people);
+    newsArrivals(to, n);
     postMessage(to, cfg, `${n} ${n === 1 ? "colonist has" : "colonists have"} arrived from ${from?.name ?? "another hole"} to settle here.`, "good");
   }
 }

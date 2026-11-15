@@ -1,3 +1,4 @@
+import type { NewsletterState } from "./newsletter";
 import type { FoodState } from "./food";
 import { createEvents, type EventsState } from "./events";
 import { fillAir, type AirState } from "./air";
@@ -122,6 +123,8 @@ export interface SimState {
   temperature?: TemperatureState;
   /** The hidden depth limits, and the cap once the drill's done for good (#390, depth.ts; older saves roll theirs on load). */
   depth?: DepthState;
+  /** The Hole Truth, the monthly newsletter: this month's tally and the back issues (#424, newsletter.ts; absent until the first month turns). */
+  newsletter?: NewsletterState;
   /** Set when the hole has failed: empty, with no one to let newcomers in (T-162). For good. */
   failed?: HoleFailure;
 }

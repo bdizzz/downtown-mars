@@ -143,7 +143,7 @@
         "text": "Charts tell you how things are going. Flows shows where everything comes from and where it goes: let's look at water.",
         "hint": "Click Charts at the bottom right, then Flows, and the Water tab.",
         "highlight": "hud:flows",
-        "unlocks": ["mode:charts", "chart:flows", "chart:trends", "chart:people", "chart:construction"],
+        "unlocks": ["mode:charts", "chart:flows", "chart:trends", "chart:people", "chart:construction", "chart:news"],
         "pace": "slow",
         "clip": "read-flows"
       },
@@ -276,67 +276,67 @@
     {
       "id": "bulkheads",
       "causes": ["happiness:smell", "happiness:airQuality"],
-      "text": "Smell and stale air ride the corridors, the way they would in a ship. That's what bulkheads are for: a sealed door on a corridor stops them getting past.",
+      "text": "Something's wafting. Smell and stale air ride the corridors, the way they would on a ship. That's what bulkheads are for: a sealed door on a corridor stops them getting past.",
       "hint": "In Build (B), open Access and pick Bulkhead, then click the corridor between the smelly rooms (galleys, farms, composters, smelters) and the homes. Show me lights up who's making it and who's feeling it."
     },
     {
       "id": "restrooms",
       "causes": ["health:sanitation", "happiness:noRestroom"],
-      "text": "People need a restroom within a short walk of home. Fewer than half with one and the hole's health starts to slide.",
+      "text": "A delicate matter: people need a restroom within a short walk of home. Fewer than half with one and the hole's health starts to slide.",
       "hint": "In Build (B), press W. Put restrooms near the homes: about 6 steps at most."
     },
     {
       "id": "scrubbers",
       "causes": ["health:co2"],
-      "text": "We're breathing out more CO2 than we take back, and above 1% of the air it starts making people ill.",
+      "text": "We're breathing out more CO2 than we take back. Above 1% of the air it starts making people ill, and grumpy well before that.",
       "hint": "In Build (B), press L for a CO2 scrubber. Farms breathe it in too. Both need power."
     },
     {
       "id": "oxygen",
       "causes": ["health:o2"],
-      "text": "The air's getting thin. Below 18% oxygen people start to suffer.",
+      "text": "The air's getting thin, and I'd like to keep breathing it. Below 18% oxygen people start to suffer.",
       "hint": "An electrolyzer (in Build, under Utilities) splits water into oxygen; a CO2 scrubber turns CO2 back into it. Every room you dig is more air to fill."
     },
     {
       "id": "meals",
       "causes": ["health:meals"],
-      "text": "People are going hungry. They eat only cooked meals: rations and crops need a galley or kitchen to cook them.",
+      "text": "Stomachs are rumbling. People eat only cooked meals: rations and crops need a galley or kitchen to cook them.",
       "hint": "In Build (B), press G for a galley. Farms grow raw food for it; Earth sends rations."
     },
     {
       "id": "water",
       "causes": ["health:water"],
-      "text": "We're short of water, and people get ill without it.",
+      "text": "We're running dry, and people get ill without water. On Mars, every drop counts.",
       "hint": "A water recycler brings gray water back; tanks hold more of what Earth sends. Flows (under Charts) shows where it goes."
     },
     {
       "id": "clinics",
       "causes": ["happiness:noClinic"],
-      "text": "Some homes have no clinic within reach. Knowing help is close makes people feel safer.",
+      "text": "Some homes have no clinic within reach. Nobody plans to sprain an ankle, but knowing help is close makes people feel safer.",
       "hint": "In Build (B), press K. A clinic covers homes within about 10 steps; a bigger one reaches further."
     },
     {
       "id": "galley_seats",
       "causes": ["happiness:noSeat"],
-      "text": "Some people have nowhere to sit down to eat near home. Each galley seats so many, within a short walk.",
+      "text": "Some people are eating standing up: there's nowhere to sit near home. Each galley seats so many, within a short walk.",
       "hint": "Another galley or a canteen near the homes, or a bigger one."
     },
     {
       "id": "cold",
       "causes": ["happiness:temperature"],
-      "text": "Some homes are cold. People can put up with the 50s °F, but the 40s wear on them, and colder is miserable.",
+      "text": "Some homes are chilly. People can put up with the 50s °F, but the 40s wear on them, and colder is miserable. Socks only go so far.",
       "hint": "A heater (in Build, under Utilities) warms its floor up to the thermostat; one holds a small floor at 65 °F, so bigger floors need two. Too hot by industry? A radiator cools it."
     },
     {
       "id": "crowding",
       "causes": ["happiness:crowding"],
-      "text": "Homes are crowded: too many people sharing the air in too little space.",
+      "text": "Homes are getting cosy, and not the good kind: too many people sharing the air in too little space.",
       "hint": "More homes, so fewer share each one. Roomier homes (studios, flats) help too."
     },
     {
       "id": "noise",
       "causes": ["happiness:noise"],
-      "text": "Noise is keeping people up. It travels through rock to the rooms around it, but stops at a corridor.",
+      "text": "Noise is keeping people up, and tired people are cranky people. It travels through rock to the rooms around it, but stops at a corridor.",
       "hint": "Move noisy rooms (scrubbers, pumps, workshops) away from homes or put a corridor between them. The Noise overlay (View) shows where it reaches."
     }
   ]

@@ -36,6 +36,8 @@ import { GuidedTutorial, Tutorial } from "./Tutorial";
 import { guideStep, nextGuide, startGuide, stepMet, stepSpeed } from "./guided";
 import { config } from "../sim/config";
 import { TipCard } from "./TipCard";
+import { NewsletterCard, NewsPanel } from "./Newsletter";
+import { unreadIssue } from "../view/newsletter";
 import { dueTip } from "../view/tips";
 import { Welcome } from "./Welcome";
 import { FailureCard } from "./FailureCard";
@@ -125,17 +127,19 @@ export function App() {
    */
   const lookFloor = previewFloor !== undefined && !walking ? previewFloor : viewFloor;
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
-  const [panel, setPanel] = useState<"office" | "why" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory" | "milestones" | null>(null);
+  const [panel, setPanel] = useState<"office" | "why" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory" | "milestones" | "news" | null>(null);
   const officeOpen = panel === "office";
   /** The series Trends opens on (a resource clicked in the bar at the top). */
   const [trendKey, setTrendKey] = useState("happiness");
   /** Phones: the top bar's drop-down (speeds, needs, resources) is open. Only its toggle closes it. */
   const [hudOpen, setHudOpen] = useState(false);
-  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory" | "milestones") => {
+  const togglePanel = (p: "office" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory" | "milestones" | "news") => {
     setPanel((cur) => (cur === p ? null : p));
     setSelected(null);
   };
   const chart: Chart | null = panel && panel !== "office" && panel !== "why" ? panel : null;
+  /** The Hole Truth (#424): a back issue opened from its list; otherwise the latest opens by itself until it's read. */
+  const [newsOpen, setNewsOpen] = useState<number | null>(null);
   /** The "Why?" panel's tab, and what its Show me lights up (F-018). */
   const [whyTab, setWhyTab] = useState<WhyTab>("health");
   const [spotlight, setSpotlight] = useState<{ id: string; spot: Spot } | null>(null);
@@ -504,6 +508,24 @@ export function App() {
   }, [officeStep, officeEmpty, menu, welcome, send]);
   /** The deputy's one-time tip, when a problem first shows up (F-018); it covers the tutorial's card while it's up. */
   const tip = snapshot && settings.tips ? dueTip(snapshot) : null;
+  // The newsletter: a back issue picked from its list, else this month's until it's read.
+  const newsIssue = snapshot
+    ? ((newsOpen !== null ? snapshot.newsletter.issues.find((i) => i.no === newsOpen) : null) ?? (newsOpen === null && settings.newspaper ? unreadIssue(snapshot) : null))
+    : null;
+  // The game waits while the paper is open, however it opened, and carries on at the speed it had when it's
+  // folded up (still paused, if it was). A menu, the welcome or a failure card taking over keeps their own pause.
+  const newsShown = !!newsIssue && !menu && !welcome && !failure;
+  const newsResume = useRef<number | null>(null);
+  useEffect(() => {
+    if (newsShown && newsResume.current === null) {
+      newsResume.current = speed;
+      setSpeed(0);
+    } else if (!newsShown && newsResume.current !== null) {
+      const back = newsResume.current;
+      newsResume.current = null;
+      if (!menu && !welcome && !failure) setSpeed(back);
+    }
+  }, [newsShown, speed, setSpeed, menu, welcome, failure]);
   // A tip's Show me goes with it, if its problem goes first.
   useEffect(() => {
     if (spotlight?.id.startsWith("tip:") && spotlight.id !== `tip:${tip?.id}`) setSpotlight(null);
@@ -887,6 +909,7 @@ export function App() {
         )}
         {snapshot && panel === "directory" && <DirectoryPanel s={snapshot} onSelect={goToRoom} onClose={() => setPanel(null)} />}
         {snapshot && panel === "milestones" && <MilestonesPanel s={snapshot} onClose={() => setPanel(null)} />}
+        {snapshot && panel === "news" && <NewsPanel s={snapshot} onOpen={setNewsOpen} onClose={() => setPanel(null)} />}
         {snapshot && panel === "construction" && (
           <ConstructionPanel s={snapshot} onCommand={onCommand} onSelect={(id) => (setSelected(id), setPanel(null))} onClose={() => setPanel(null)} />
         )}
@@ -931,6 +954,17 @@ export function App() {
             setFailure(null);
             if (failure.kind === "over") setMenu("title");
             else setSpeed(resumeSpeed.current);
+          }}
+        />
+      )}
+      {newsIssue && !menu && !welcome && !failure && (
+        <NewsletterCard
+          issue={newsIssue}
+          onClose={() => {
+            setNewsOpen(null);
+            // Closing the latest, however it was opened, marks it read (an older back issue leaves it new).
+            const latest = snapshot?.newsletter.issues.at(-1);
+            if (latest && newsIssue.no === latest.no && latest.no > (snapshot?.newsletter.read ?? 0)) onCommand({ type: "readNewsletter", no: latest.no });
           }}
         />
       )}

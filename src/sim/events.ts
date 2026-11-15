@@ -1,3 +1,4 @@
+import { newsArrivals, newsOutcome } from "./newsletter";
 import raw from "../../data/events.json";
 import type { SimConfig } from "./config";
 import { recomputeAccess } from "./corridors";
@@ -269,7 +270,10 @@ export function applyEffect(state: SimState, cfg: SimConfig, e: EventEffect, at:
       r.condition = Math.max(0, (r.condition ?? 1) - e.conditionFloorAbove / 100);
     }
   }
-  if (e.colonists) addAdults(state, e.colonists, cfg);
+  if (e.colonists) {
+    addAdults(state, e.colonists, cfg);
+    newsArrivals(state, e.colonists);
+  }
   if (e.notableRole) {
     const n = addNotable(state);
     if (n) n.role = e.notableRole;
@@ -312,7 +316,10 @@ export function applyEffect(state: SimState, cfg: SimConfig, e: EventEffect, at:
     reachMilestone(state, cfg, e.celebrate);
     if (milestoneDef(e.celebrate)?.celebrate) celebrate(state, cfg, e.celebrate);
   }
-  if (e.message) postMessage(state, cfg, fill(e.message, at), (e.mood?.amount ?? 0) < 0 ? "warn" : "good");
+  if (e.message) {
+    postMessage(state, cfg, fill(e.message, at), (e.mood?.amount ?? 0) < 0 ? "warn" : "good");
+    newsOutcome(state, fill(e.message, at));
+  }
   if (lost.length) postMessage(state, cfg, `No storage space for ${lost.join(", ")}: it was left behind.`, "warn");
   // Last, so the ceremony's card follows the news of how it ended.
   if (e.capHole) capHole(state, cfg, e.capHole);

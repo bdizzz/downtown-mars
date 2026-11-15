@@ -24,6 +24,7 @@ import type { Culture } from "./culture";
 import { averageFlows, type Flows } from "./ledger";
 import type { Message } from "./messages";
 import type { Notable } from "./notables";
+import type { NewsIssue } from "./newsletter";
 import { ordinanceSlots } from "./ordinances";
 import type { Office } from "./visits";
 import { choiceHint, choiceRefusal, eventDef, eventMood, type PendingEvent } from "./events";
@@ -229,6 +230,8 @@ export interface Snapshot {
   office: Office;
   /** The deputy's tips already shown (view/tips.ts). */
   tipsSeen: string[];
+  /** The Hole Truth (#424): the back issues, oldest first, and the latest the player has read. */
+  newsletter: { issues: NewsIssue[]; read: number };
   /** The guided tutorial's progress, or null when not guided. */
   guide: GuideState | null;
   ordinances: string[];
@@ -349,6 +352,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     notables: state.notables,
     office: state.office,
     tipsSeen: state.tipsSeen ?? [],
+    newsletter: { issues: state.newsletter?.issues ?? [], read: state.newsletter?.read ?? 0 },
     guide: state.guide ?? null,
     ordinances: state.ordinances,
     ordinanceSlots: ordinanceSlots(state),

@@ -1,4 +1,5 @@
 import { roomName, roomRef } from "./roomName";
+import { newsBuilt } from "./newsletter";
 import { shaftFull, startPressurizing } from "./air";
 import raw from "../../data/construction.json";
 import { config, type SimConfig } from "./config";
@@ -356,7 +357,10 @@ function finish(state: SimState, job: Job, cfg: SimConfig): void {
     postMessage(state, cfg, `${roomDef(room.type).name} dug out.`);
     return;
   }
-  if (job.kind === "room" && room) room.building = false;
+  if (job.kind === "room" && room) {
+    room.building = false;
+    newsBuilt(state, room.type);
+  }
   if (job.kind === "extend" && room) {
     room.cells = [...room.cells, ...(room.pendingCells ?? [])].sort((a, b) => a.floor - b.floor);
     delete room.pendingCells;

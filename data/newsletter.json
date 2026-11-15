@@ -1,0 +1,448 @@
+{
+  "_note": "The Hole Truth, the colony's monthly newsletter (#424). The sim keeps the month's facts (src/sim/newsletter.ts): keep is how many back issues a hole holds, publishHour the hour each issue comes out (the paper's month turns then, not at midnight), maxOutcomes how many event outcomes an issue reprints, grumblePoints and praisePoints how many happiness points a cause must cost (or give) before a notable grumbles (or praises) it. The words are src/view/newsletter.ts's: each story is a list of templates, one picked by the issue's dice. Just for fun (`fluff`): the neighbour of the month (a notable the sim picks, `profile`) and, by the dice, fluffPerIssue other sections (fluffQuiet on a quiet month); their placeholders are {name} a made-up colonist and {job} theirs (from `jobs`), {a} and {b} two floors, {x} and {y} a winning and losing score, {w} a small number in words, {crop} (from the section crops list), {spot}. `notices` of the `fillers` go at the bottom. Placeholders: {hole} the hole's name, {n} a count, {w} a count in words, {name} a notable, {role} their job, {trait} one of their traits, {baby} a newborn's first name and {family} a family name (both from data/notables.json), {room} a room's name, {rooms} a list of them, {floor} the deepest floor, {milestone} a milestone's title, {find} what the drill struck (from `finds`, by event id), {pop} the population, {happy} the average happiness. A quiet month reads `rough` instead when health or happiness is below roughBelow. Each issue rolls one of `taglines` for under the masthead. Headlines come from the month's biggest story, in the order of `order`. Voice (docs/ART.md, Voice): warm, dry, a pun allowed, never at the player's expense.",
+  "name": "The Hole Truth",
+  "taglines": [
+    "All the news that fits the shaft",
+    "Ground-breaking news, every month",
+    "Digging up the dirt since Month 1",
+    "The deepest news on Mars",
+    "Hole-heartedly yours",
+    "News from the bottom of the shaft",
+    "Read all about it, then pass it down",
+    "Down to earth, more or less",
+    "Mars's most in-depth reporting",
+    "Printed under pressure (about 1 atmosphere)"
+  ],
+  "price": "One ration",
+  "weather": { "storm": "Dust storm", "clear": "Clear, dusty" },
+  "printed": "Physical copies are precious · Please return to the galley when read",
+  "keep": 24,
+  "publishHour": 6,
+  "roughBelow": 40,
+  "maxOutcomes": 3,
+  "grumblePoints": 2,
+  "praisePoints": 2,
+  "order": ["firstBirth", "milestone", "festival", "find", "births", "arrivals", "passings", "grownUp", "floors", "rooms", "storm", "outcome", "notables"],
+  "stories": {
+    "firstBirth": {
+      "kicker": "Born on Mars",
+      "head": ["It's a Martian!", "{hole} welcomes its first native", "First cry heard below the surface"],
+      "text": [
+        "{baby} {family} arrived this month, the first person ever born in {hole}. Both parents report the delivery was 'mostly gravity-assisted.' Children don't work, but they will want a school.",
+        "Meet {baby} {family}, {hole}'s first child born on Mars. The clinic staff have already been asked about the view upstairs. A school will be wanted before long."
+      ]
+    },
+    "births": {
+      "kicker": "Births",
+      "head": ["Small arrivals", "The nursery fills up", "More little Martians"],
+      "one": [
+        "Welcome to {baby} {family}, born this month. The clinic reports one tired but very happy family.",
+        "{baby} {family} joined us this month, weighing in at about a third of what they'd weigh on Earth."
+      ],
+      "many": [
+        "{N} children were born this month, among them {baby} {family}. The clinic asks that everyone please stop asking the newborns about their career plans.",
+        "A busy month at the clinic: {w} births, including little {baby} {family}. Lullabies may be heard through the corridors at odd hours."
+      ]
+    },
+    "arrivals": {
+      "kicker": "Newcomers",
+      "head": ["Fresh faces in the corridors", "New neighbours", "The welcome mat gets dusty"],
+      "text": [
+        "{N} new colonists settled in this month. If you see someone staring at the shaft for a long time, they're new. Say hello.",
+        "{N} newcomers joined {hole}. They've been shown the galley, the restrooms and which elevator sticks, in that order.",
+        "We welcome {w} new neighbours. They report the trip was long, the landing bumpy and the welcome warm."
+      ]
+    },
+    "passings": {
+      "kicker": "Remembered",
+      "head": ["We remember", "Fond farewells"],
+      "text": [
+        "{N} of our elders passed away this month. They helped dig the place we live in, and they'll be missed.",
+        "This month we said goodbye to {w} of our elders. Raise a cup to them at the galley tonight."
+      ]
+    },
+    "grownUp": {
+      "kicker": "Coming of age",
+      "head": ["Grown up and clocking in", "Fresh hands on the job"],
+      "text": [
+        "{N} of our children came of age this month and joined the workforce. Their first complaint about the shift roster is expected any day now.",
+        "{N} young Martians grew up this month. They've never seen a blue sky and they don't seem to mind."
+      ]
+    },
+    "floors": {
+      "kicker": "Down the hole",
+      "head": ["Deeper we go", "The drill digs in", "Floor {floor}, going down"],
+      "text": [
+        "The drill finished {w} new floor this month: {hole} now goes down {floor} floors. Elevator music remains under review.",
+        "{hole} is now {floor} floors deep. The drill crew would like it noted that they're not boring, they're boring."
+      ],
+      "many": [
+        "The drill finished {w} new floors this month: {hole} now goes down {floor} floors. Elevator music remains under review."
+      ]
+    },
+    "rooms": {
+      "kicker": "Open for business",
+      "head": ["Ribbon cutting", "New doors open", "Fresh paint on the rock"],
+      "one": [
+        "A new {room} opened its doors this month. Early reviews are positive, if you don't count the smell of fresh sealant.",
+        "The crews finished a new {room} this month, on time and only a little dusty."
+      ],
+      "many": [
+        "The crews finished {w} rooms this month: {rooms}. Somewhere, a foreman is finally sitting down.",
+        "{N} rooms opened this month: {rooms}. The hole is getting roomier, so to speak."
+      ]
+    },
+    "find": {
+      "kicker": "What the drill found",
+      "head": ["The drill strikes {find}", "Something down there", "A find on floor {floor}"],
+      "text": [
+        "The drill struck {find} this month. The crew have filed their report and are already arguing about what to name it.",
+        "News from the bottom of the hole: the drill hit {find}. The scientists are thrilled; the drill crew are just glad it wasn't their lunchbox."
+      ]
+    },
+    "milestone": {
+      "kicker": "Milestone",
+      "head": ["{milestone}!", "A milestone for {hole}"],
+      "text": [
+        "{hole} reached a milestone this month: {milestone}. Someone suggested a party. Someone always does.",
+        "Mark your calendars: this month {hole} reached {milestone}. The deputy has asked for it to be written down somewhere permanent, so here it is."
+      ]
+    },
+    "festival": {
+      "kicker": "Festival",
+      "head": ["Party in the hole", "A feast below the dust", "{hole} celebrates"],
+      "text": [
+        "The festival went off with a bang (the good kind). Turnout was excellent and the meals ran out at exactly the right moment.",
+        "This month's festival was a hit. Work slowed for a day, smiles didn't. Leftovers are, as ever, a myth."
+      ]
+    },
+    "storm": {
+      "kicker": "Weather",
+      "head": ["Dust gets in everywhere", "Storm passes over"],
+      "text": [
+        "A dust storm blew through this month. The solar arrays sulked, the batteries held, and the airlocks are still finding grit.",
+        "Weather report: dusty, then dustier, then fine. The storm's gone, but check your boots."
+      ]
+    },
+    "outcome": {
+      "kicker": "In other news",
+      "head": []
+    },
+    "notables": {
+      "kicker": "Who's who",
+      "head": ["A new name to know"],
+      "text": ["{name} joined the colony this month and is already making themselves known. Watch this space."]
+    },
+    "quiet": {
+      "kicker": "All quiet",
+      "head": ["A quiet month in {hole}", "Nothing to report (and that's good news)", "Steady as she digs"],
+      "text": [
+        "Nothing much happened this month, which on Mars is exactly what you want. {pop} people, all still breathing.",
+        "A quiet month. The air held, the lights stayed on and nobody fell down the shaft. We call that a win.",
+        "Slow news month. The editor considered running a story about the new mop in the galley, but decided against it."
+      ],
+      "rough": [
+        "Not much news this month, and not much cheer either. People are tired and worried. Better days are a fix or two away; your deputy has notes.",
+        "Nothing to celebrate this month. Chins up: the hole has been through worse, and so has Mars."
+      ]
+    }
+  },
+  "grumble": {
+    "kicker": "Letters to the editor",
+    "intro": ["{name}, {role}, writes in:", "From {name}, our {role}:", "{name} ({role}) has a bone to pick:"],
+    "causes": {
+      "noise": ["\"I can hear the machinery through my pillow. I'd like a quieter neighbour, or a thicker wall, or both.\""],
+      "smell": ["\"Something smells, and it isn't me. Could someone shut a door between us and wherever that's coming from?\""],
+      "crowding": ["\"I share my home with more people than I've met. A few more homes, please.\""],
+      "homeless": ["\"Some of us are sleeping in the corridors. It's a lovely corridor. It's not a bed.\""],
+      "airQuality": ["\"The air's stale where I live. I don't need much, just air that hasn't been breathed already.\""],
+      "variety": ["\"Same meal again. I'm not complaining. I'm noting it, for the record, loudly.\""],
+      "noSeat": ["\"There's nowhere to sit at mealtimes. I eat standing up like a horse.\""],
+      "noRestroom": ["\"The nearest restroom is a long walk. A long, urgent walk.\""],
+      "temperature": ["\"Is it me, or is it cold enough down here to keep the milk fresh? I don't have any milk.\""],
+      "noClinic": ["\"If I sprain an ankle, where do I go? Asking for a friend. The friend is my ankle.\""],
+      "schooling": ["\"The kids need a school. I love them, but they've started teaching each other.\""],
+      "elderCare": ["\"Our elders deserve somewhere comfortable to spend their days.\""],
+      "grief": ["\"We have nowhere to lay our dead to rest. It weighs on all of us.\""],
+      "homeWear": ["\"My home's seen better days. So have I, but I can't be repaired by a maintenance crew.\""],
+      "sharedWear": ["\"The common rooms are getting shabby. A bit of upkeep wouldn't go amiss.\""],
+      "holeHealth": ["\"People are feeling poorly. I think it's the water, or the meals, or both. Someone should look.\""]
+    },
+    "default": ["\"Things could be better around here. I'm not saying how. I'm saying they could.\""]
+  },
+  "praise": {
+    "kicker": "Good word",
+    "intro": ["{name}, {role}, says:", "Overheard from {name}:"],
+    "causes": {
+      "windows": ["\"I've got a window on the shaft. I could watch the dust settle all day, and some days I do.\""],
+      "amenityComfort": ["\"The park's lovely this time of year. Every time of year, actually. There aren't seasons down here.\""],
+      "amenityHealth": ["\"Went to the gym. Felt great. Will never shut up about it.\""],
+      "neighbourComfort": ["\"Good neighbours make a good hole. Ours are great.\""],
+      "ownComfort": ["\"I like my home. It's warm, it's mine, and the rock doesn't talk back.\""],
+      "lining": ["\"Whoever finished my walls did a lovely job. I'd tip them if we had money.\""],
+      "sharedLining": ["\"The common rooms look smart these days. Somebody's been busy.\""],
+      "temperature": ["\"Nice and toasty down here. Mars can keep its weather.\""]
+    },
+    "default": ["\"Honestly? I like it here.\""]
+  },
+  "finds": {
+    "aquifer": "water",
+    "ore_vein": "a rich vein of iron ore",
+    "silica_bed": "a bed of silica sand",
+    "lava_tube": "an old lava tube",
+    "gas_pocket": "a pocket of gas",
+    "microfossils": "microfossils, the traces of something that lived here once"
+  },
+
+  "notices": 2,
+  "fluffPerIssue": 2,
+  "fluffQuiet": 3,
+  "jobs": ["hydroponics tech", "airlock warden", "drill hand", "galley cook", "scrubber mechanic", "dust sweeper", "pad controller", "brick layer", "night-shift medic", "water tech", "solar wrangler", "storeroom clerk"],
+  "fluff": {
+    "overheard": {
+      "kicker": "Overheard in the galley",
+      "items": [
+        "\"I told my mum on Earth I live in a hole. She said 'I know, I've seen your room.'\"",
+        "\"If you squint at the shaft lights at night it looks like a city. If you squint harder it looks like a shaft.\"",
+        "\"Low gravity's great until you sneeze and end up in the next corridor.\"",
+        "\"I've started naming the rocks I dig out. I've stopped telling people that.\"",
+        "\"The algae smoothie is better if you don't think about it. Or drink it.\"",
+        "\"Does anyone else's airlock sigh when it closes, or is mine just tired?\"",
+        "\"I'm not saying the stew's thick, but my spoon is still standing up in it from Tuesday.\"",
+        "\"My plants are doing better than me and frankly they deserve it.\"",
+        "\"Someone put a tiny sign on the drill saying 'Hello, my name is Gerald'. It's stuck.\"",
+        "\"Sunset's blue here. I've been here two years and it still gets me.\""
+      ],
+      "by": ["{name}, {job}", "a {job} who asked not to be named", "{name}, overheard by the coffee urn"]
+    },
+    "sports": {
+      "kicker": "Sports",
+      "items": [
+        "Low-gravity basketball: the Floor {a} Diggers beat the Floor {b} Drillers {x}–{y}. Three players are still on the ceiling.",
+        "The corridor relay was won by Floor {a} for the {w} month running. Floor {b} have lodged a complaint about 'suspiciously good shoes'.",
+        "Shaft-ball semi-final: Floor {a} {x}, Floor {b} {y}. The ball has not been recovered.",
+        "The monthly slow-walk race was won in a record time of 'eventually'. All entrants were commended for their composure.",
+        "Darts night was cancelled after a dart was found to still be in flight. Organisers estimate it will land Thursday.",
+        "Floor {a}'s tug-of-war team beat Floor {b} by pulling slightly harder and then everyone falling over very slowly."
+      ]
+    },
+    "stars": {
+      "kicker": "Stars over the shaft",
+      "items": [
+        "Phobos rising: a good month for new beginnings, and for checking your oxygen. Lucky room: the galley.",
+        "Deimos in the doorway: someone you've ignored has a good idea. It's probably the drill crew. Listen once.",
+        "Olympus ascendant: aim high this month. Not literally; the ceiling's rock.",
+        "The Dust Devil: things get stirred up. Keep a broom handy and your opinions to yourself.",
+        "Valles Marineris: a long, deep month. Bring a snack.",
+        "Earthrise: you'll think of home this month. Write to someone. The delay's only twenty minutes."
+      ]
+    },
+    "trivia": {
+      "kicker": "Did you know?",
+      "items": [
+        "A day on Mars (a sol) is 24 hours and 39 minutes. That's 39 extra minutes a day to be late in.",
+        "Olympus Mons is about three times the height of Everest, and so wide you couldn't see its top from its edge.",
+        "Sunsets on Mars are blue: the fine dust scatters blue light forward, toward the sun.",
+        "Mars has two moons, Phobos and Deimos, both about the size of a small city. Phobos is slowly falling toward us. Not this month.",
+        "Valles Marineris would stretch across the whole of North America.",
+        "Mars has the biggest dust storms in the solar system: some cover the whole planet for weeks.",
+        "You'd weigh about 38% of your Earth weight here. Please stop jumping off the gallery to prove it.",
+        "Mars is red because of rust: iron oxide in the dust. The whole planet needs a good scrub."
+      ]
+    },
+    "recipe": {
+      "kicker": "From the galley",
+      "items": [
+        "Recipe of the month: {crop} surprise. Take {crop}. Add more {crop}. The surprise is that it's {crop}.",
+        "The galley crew's tip: {crop} goes with everything, if you're brave and very hungry.",
+        "Chef's special this month is {crop} three ways: boiled, mashed and 'regretfully'.",
+        "Try {crop} fritters: a crowd-pleaser, mostly because the crowd has no other options."
+      ],
+      "crops": ["potato", "soybean", "barley", "algae", "mushroom", "leafy green"]
+    },
+    "ask": {
+      "kicker": "Ask the deputy",
+      "items": [
+        "Q: My neighbour hums while they work. All day. — Hummed Out, Floor {a}\nA: Hum back, a third lower. Harmony is a form of peace.",
+        "Q: Is it normal to miss rain? — Dry on Floor {a}\nA: Very. Stand under the shower and close your eyes. Don't stay long; it's metered.",
+        "Q: Someone keeps eating my labelled yoghurt. — Furious, Floor {a}\nA: We don't have yoghurt. Please see the clinic.",
+        "Q: How deep will we go? — Curious, Floor {a}\nA: Deep enough, and then a little further. The drill decides, mostly.",
+        "Q: Can I keep a pet? — Lonely, Floor {a}\nA: The algae vats are technically pets. Name one."
+      ]
+    },
+    "profile": {
+      "kicker": "Neighbour of the month",
+      "intro": ["This month we meet {name}, our {role}.", "Say hello to {name}, the colony's {role}."],
+      "traits": {
+        "Populist": "Always on the side of the many, and happy to say so at length.",
+        "Cautious": "Checks the airlock seals twice and the stew three times.",
+        "Industrialist": "Believes there's no problem a bigger smelter can't fix.",
+        "Idealist": "Still thinks we can make Mars kinder than Earth. Might be right.",
+        "Greedy": "Keeps a careful tally of who owes them a ration. It's a long list.",
+        "Charismatic": "Can talk a crowd into anything, including double shifts.",
+        "Hothead": "Has opinions, and they arrive at full volume.",
+        "Pragmatist": "Prefers what works to what's pretty, and usually gets it.",
+        "Earth Loyalist": "Keeps Earth time on one watch, just in case.",
+        "Martian-born": "Never seen a blue sky, and is sick of being asked about it."
+      },
+      "outro": ["Favourite spot: {spot}.", "Can usually be found near {spot}.", "Ask them about {spot} sometime; you'll be there a while."],
+      "spots": ["the gallery at sunset", "the warm end of the galley", "the farm's grow lights", "the drill platform", "the airlock window", "the quiet corner by the scrubbers"]
+    }
+  },
+  "fillers": [
+    "Lost: one left glove, near the airlock. Answers to 'glove'.",
+    "Reminder: the shaft is not a rubbish chute. It is a very long way down, and someone has to fetch it.",
+    "The galley reports that Tuesday's mystery stew has been solved. It was beans.",
+    "Found: one wrench, slightly scorched. Owner may collect from the workshop, and explain.",
+    "For trade: one Earth novel, read eleven times. Ending still sad.",
+    "Wanted: a name for the drill. 'The Drill' has been ruled out as 'unimaginative' by the drill crew.",
+    "Reminder from maintenance: please don't lick the condensation.",
+    "This month's sunrise was rated four stars by the people with windows. Everyone else has to take their word for it.",
+    "Gravity remains at 38%. Please continue to enjoy it responsibly.",
+    "The elevator suggestion box is full. Please stop suggesting stairs.",
+    "Reminder: the emergency oxygen masks are not party hats. Even at parties.",
+    "Book club this month: the airlock manual. Spoiler: it's about doors.",
+    "Free to a good home: one sourdough starter, Earth-born, extremely needy.",
+    "The farm would like everyone to stop talking to the potatoes. It's going to their heads.",
+    "Choir practice moves to the shaft this month, for the echo. Earplugs are available at the clinic.",
+    "Missing: one sock, grey. Last seen entering the laundry. Presumed happy.",
+    "The quiet room is for quiet. Whispering 'is this quiet enough?' does not count as quiet.",
+    "Lost: a sense of direction, somewhere on floor 2. If found, please point it at the galley.",
+    "Night shift reminds day shift that 'good morning' at 03:00 is a matter of opinion.",
+    "Movie night: the one about the man stranded on Mars. Again. By popular demand. Again.",
+    "Will swap two water rations for one honest opinion of my poetry. No takers last month.",
+    "The airlock would like to remind you that it is not a revolving door.",
+    "Lost: one helmet visor, scratched. If found, please describe what you can see through it.",
+    "Found: a single boot, size 11, near the airlock. We'd like to know how you got home.",
+    "Lost: the instructions for the new scrubber. The scrubber is fine. We are not.",
+    "Found: a tiny screwdriver in the galley's soup pot. It has been washed. The soup has not.",
+    "Lost: track of time. Last seen around month two. Answers to \"what day is it?\"",
+    "Found: one harmonica, behind the water tanks. Please collect it before somebody learns it.",
+    "Lost: a bet about the drill. Winner please stop mentioning it.",
+    "Found: a note reading \"back in 5 min\", dated three weeks ago. Are you all right?",
+    "Lost: one lucky pebble from Earth. It looks like every other pebble, which is the problem.",
+    "Found: a knitted cosy shaped like the dome. Nobody knows what it is for. We love it.",
+    "Lost: patience, on floor 3, during the corridor queue. Please return it to the queue.",
+    "Found: one perfectly good potato in the elevator. The farm has been informed and is investigating.",
+    "Lost: a hairbrush. In low gravity, the hair has opinions. Please help.",
+    "Found: a love letter under a bench in the gallery. Unsigned. The galley is very curious.",
+    "Lost: the TV remote for the common room. The TV is now permanently on the weather.",
+    "For trade: one set of Earth playing cards, missing the seven of clubs. Seven of clubs also wanted.",
+    "For trade: two hours of my shift for one hour of yours. Fine print available.",
+    "For trade: a hand-drawn map of the hole, slightly out of date. Mostly where the rooms used to be.",
+    "For trade: one very nice rock. Very nice. Look at it. Look at it.",
+    "For trade: homemade hot sauce, made from what we're calling peppers. Strength: legal.",
+    "For trade: lessons in juggling. In 38% gravity everyone is a juggler. Lessons are mostly confidence.",
+    "For trade: one Earth guitar, two strings missing. Plays one and a half songs.",
+    "For trade: a jigsaw puzzle of the night sky, 1,000 pieces, all black. Seven pieces missing. Probably.",
+    "For trade: knitted socks. Every pair different. Every sock, frankly, different.",
+    "For trade: my bunk by the noisy pump for your bunk by anything else.",
+    "For trade: a dried flower from the first farm harvest. Sentimental value: high. Smell: fading.",
+    "Wanted: anyone who knows how to fix a zipper. Asking for my whole wardrobe.",
+    "Wanted: a fourth for cards on Tuesdays. Must be able to lose gracefully. We do.",
+    "Wanted: one patient listener for my theory about the dust. It's a long theory.",
+    "Wanted: a name for the galley's cat-shaped mop. Current front-runner: Sir Wipes-a-Lot.",
+    "Wanted: anyone with a working pencil sharpener, or a strong opinion about pencils.",
+    "Wanted: a volunteer to taste-test the new algae bread. The last volunteer is fine. Mostly.",
+    "Wanted: a second pair of hands for the mural on floor 2. First pair is tired.",
+    "Wanted: one good joke, clean, for the clinic's waiting room. The current one is about a duck.",
+    "Wanted: old Earth photographs, any kind. The school is making a wall of \"places we came from\".",
+    "Wanted: a recipe that makes barley taste like anything other than barley.",
+    "Wanted: the person who keeps leaving one sock on the gallery railing. We just want to talk.",
+    "Reminder: the gallery glass is not a mirror. It is, however, very reflective at night. Act accordingly.",
+    "Reminder: please don't feed the drill. It doesn't need snacks and it's getting ideas.",
+    "Reminder: the airlock's \"cycle\" button is not a light switch. Please stop testing it.",
+    "Reminder: the elevator holds eight people or one piano. We do not have a piano. Please stop asking.",
+    "Reminder: the water recycler's output is clean. It's fine. It's all fine. Drink up.",
+    "Reminder: running in the corridors is allowed in low gravity but please, not on the ceiling.",
+    "Reminder: the shaft echoes. Whatever you said on the gallery last night, floor 4 heard it.",
+    "Reminder: do not leave food out on floor 1. The dust gets it first.",
+    "Reminder: helmets on the hooks, not on the heads of the statues. Especially not that statue.",
+    "Reminder: the fire extinguishers are not for cooling your drink. Even in summer. We don't have summer.",
+    "Reminder: the farm lights are for plants. Sunbathing under them is \"frowned on\" and \"slightly crispy\".",
+    "Reminder: the airlock window is for looking out. It is not for leaving notes for Mars.",
+    "Reminder: all shower songs are now subject to a two-verse limit. We're out of warm water and patience.",
+    "Reminder: quiet hours start at 22:00. Snoring is exempt but under review.",
+    "Reminder: please label anything you put in the shared fridge. \"Mine\" is not a label.",
+    "Maintenance apologises for the noise on floor 2. It was a pipe. The pipe has been spoken to.",
+    "Maintenance asks that whoever drew a face on the main valve please draw a happier one.",
+    "Maintenance reports the squeaky hatch on floor 3 has been oiled. It now sighs instead.",
+    "Maintenance would like it known that the hum in the walls is normal. It's a nice hum. Hum along.",
+    "Maintenance confirms the flickering light in corridor 4 is a fault and not, as reported, a ghost.",
+    "Maintenance has found the source of the smell. Maintenance would rather not say.",
+    "Maintenance has replaced the dripping tap in the galley. The new tap also drips, but in tune.",
+    "Maintenance will be testing the alarms on the first of the month. Please panic only a little.",
+    "Maintenance would like its ladder back. You know who you are. The ladder knows too.",
+    "The book club is reading the colony's safety manual again, by popular demand of the safety officer.",
+    "The knitting circle meets Thursdays. Bring needles, yarn and something to say about the drill crew.",
+    "Choir auditions this week. Can't sing? Neither can we. Come anyway.",
+    "Chess club reports a thrilling month: one game, still going.",
+    "The astronomy club meets on the top gallery every clear night. So, most nights.",
+    "The gardening club would like to remind everyone the farm is not a club. It is a farm. But you're welcome.",
+    "The film club's next screening is a documentary about Earth's oceans. Bring tissues and a towel.",
+    "The poetry club's open mic was a success. Haikus about dust were especially well received.",
+    "The board games club has lost the dice again. All games now settled by staring contest.",
+    "The running club now runs laps of the gallery. Nine laps a kilometre. Bring water.",
+    "The drama club presents: \"The Airlock\", a play in one act. Mostly waiting.",
+    "The painting club needs more red. It doesn't need more red. Everything here is red.",
+    "The language club is learning Earth sign language and also how to say \"pass the salt\" in it.",
+    "The yoga group meets at dawn. In low gravity, \"downward dog\" has become \"drifting dog\".",
+    "The comedy night was cancelled due to a lack of funny business. We'll try again next month.",
+    "Correction: last month's issue said the drill was \"boring\". The drill crew would like it noted it is \"very interesting\".",
+    "Correction: the recipe for barley surprise left out the barley. The surprise was that it worked.",
+    "Correction: the new homes on floor 2 are \"cosy\", not \"small\". The editor apologises.",
+    "Correction: we wrongly reported the farm's potatoes as \"the size of a fist\". They are the size of a small fist.",
+    "Correction: the galley is not open \"all hours\". It is open \"most hours, with a sigh\".",
+    "Correction: last month's horoscope was meant for Deimos, not Phobos. Sorry to everyone who did their laundry.",
+    "Apology: to whoever was in the elevator during the power cut. We heard the singing. It was lovely.",
+    "Apology: the editor would like to apologise for last month's pun about rocks. It was in poor taste. Like rocks.",
+    "Apology: the clinic regrets running out of lollipops. Brave patients will be given a sticker instead.",
+    "The galley announces Taco Tuesday, now with no tacos. Bring your own imagination.",
+    "The galley's new sign reads \"Food\". Customer feedback: \"accurate\".",
+    "The galley would like to clarify that the mystery meat contains no meat. That was the mystery.",
+    "The galley's suggestion box has been emptied. Suggestion one was \"more food\". Noted.",
+    "The galley has introduced a second spice. Please pace yourselves.",
+    "The farm reports a record month. The record is for most times someone asked \"is it ripe yet?\"",
+    "The farm thanks everyone for their compost. Please stop adding letters.",
+    "The farm's tomatoes are not tomatoes. They are \"aspirational\". Please stop asking.",
+    "The farm reminds visitors to say hello to the plants. It does seem to help. Don't ask how.",
+    "The clinic reminds everyone to stretch. Low gravity is lovely, until you go back to the gym.",
+    "The clinic is offering free check-ups this month. And free advice: drink more water.",
+    "The clinic notes a rise in stubbed toes on floor 3. Please turn the lights on at night.",
+    "The school's science fair winner: \"Why is everything red?\" by a very determined seven-year-old.",
+    "The school's art show is on in the gallery. Most pieces are of the drill. Some are of the drill crew.",
+    "The school asks parents to stop doing their children's homework. The handwriting gives it away.",
+    "The school's spelling bee was won with \"regolith\". The runner-up spelled it \"red-oh-lith\".",
+    "Birthday wishes this month to everyone born in a month. That's everyone. Happy birthday.",
+    "Congratulations to the drill crew on 1,000 hours without an incident. Last month's incident is not counted.",
+    "Congratulations to the farm on its first ripe strawberry, which was shared among forty people. Very thinly.",
+    "Thank you to whoever fixed the lock on the storeroom. Please let us know the new code.",
+    "Thank you to the night shift, who keep the lights on while the rest of us sleep. Literally.",
+    "Thank you to the anonymous baker who left muffins on floor 2. Please do it again.",
+    "Thank you to the person who reorganised the storeroom alphabetically. \"Air\" is now first.",
+    "Weather forecast: dusty. Long-range forecast: dusty, with a chance of dusty.",
+    "Forecast: temperatures between \"brisk\" and \"your eyebrows freezing\". Stay inside.",
+    "Sky watch: Earth will be visible in the evening sky this month. Wave. They can't see you. Wave anyway.",
+    "Sky watch: Phobos will cross the sun at noon on the 14th. Do not look directly at it. Look at it indirectly.",
+    "Sky watch: the dust will make the sunset extra blue this week. Bring a friend and a blanket.",
+    "Today's word: \"regolith\". Use it in a sentence: \"I've got regolith in my sandwich again.\"",
+    "Thought for the month: every great hole starts with a single shovel.",
+    "Thought for the month: home is where the hatch is.",
+    "Thought for the month: the best time to dig was a month ago. The second best time is now.",
+    "Lost and found is now in the storeroom, under \"L\", between \"Ladders\" and \"Lettuce\".",
+    "Lost: the colony's only tape measure. Everything is now measured in \"about this big\".",
+    "Found: an old Earth coin, worth nothing here. Kept as a lucky charm by the finder unless claimed.",
+    "Found: one beanie with a pom-pom, very fluffy. The pom-pom has been named Gerald Jr.",
+    "The suggestion box suggests more suggestion boxes.",
+    "Please return all borrowed cups to the galley. There are now three cups left and a very sad galley crew.",
+    "The common room's sofa has been reupholstered in \"Mars red\". It was already Mars red. It's redder now.",
+    "A reminder that the shaft is beautiful at night. Take a moment. The hole will still be here.",
+    "For trade: one Earth umbrella. Never used here. Never will be. Still can't let it go.",
+    "Wanted: anyone who remembers the words to the colony song. Or anyone who remembers there being a colony song.",
+    "Reminder: please wipe your boots twice at the airlock: once for the dust, once for the person who mops.",
+    "The welcome committee would like newcomers to know: the stairs are on the left, the galley is on the right, and nobody knows what the door in the middle is for.",
+    "Found: a drawing of the hole, labelled \"home\", in crayon. It's going on the galley wall."
+  ],
+  "sign": ["Dig well. Breathe easy.", "Hole sweet hole.", "Keep your boots dusted and your hatches shut.", "See you next month, same hole, same time."],
+  "numbers": ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"]
+}
