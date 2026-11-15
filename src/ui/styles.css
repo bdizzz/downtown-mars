@@ -1577,7 +1577,7 @@ kbd {
 .newsletter .np-filler p { font-size: 12px; margin-top: 3px; }
 /* The neighbour of the month's photo: their portrait, printed in sepia halftone on the newsprint. */
 .newsletter .np-photo {
-  float: left; width: 80px; height: 80px; margin: 3px 10px 4px 0; padding: 0;
+  float: right; width: 80px; height: 80px; margin: 3px 0 4px 10px; padding: 0;
   border: 1px solid var(--np-rule); box-shadow: 1px 1px 0 rgba(42, 30, 23, 0.25); position: relative; overflow: hidden;
 }
 .newsletter .np-photo span, .newsletter .np-photo svg { display: block; width: 100%; height: 100%; }
