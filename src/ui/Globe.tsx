@@ -28,7 +28,12 @@ const GLOBE = {
   maxTilt: (80 * Math.PI) / 180,
   /** A press that moves more than this (pixels) is a drag, not a click. */
   clickSlop: 5,
-  atmosphere: 0xe07a3f,
+  /**
+   * The atmosphere (#499): how thick its haze band looks (in radii: Mars's dust and ice hazes reach some 50 km,
+   * 1.5%, shown a little thicker), its dust low down and its ice hazes higher up, how bright the band, and the
+   * veil of dust over the disc's edge.
+   */
+  atmosphere: { thickness: 0.025, dust: 0xe6c3a0, high: 0xd8e6f4, glow: 1.05, veil: 0.35 },
   /**
    * The relief: how much the heights are exaggerated (a radius is 3,396 km, so Olympus Mons' 21 km would be
    * a 0.6% bump), and the height map's range (metres, its 0 and 255; as build-map.py writes it).
@@ -291,13 +296,31 @@ export function Globe({ relief, map, version, focus, onHover, onPick }: Props) {
       }
       for (let i = n; i < pool.length; i++) pool[i]!.style.display = "none";
     };
-    // A thin glowing haze round the rim: brightest at the edge, facing away from you.
+    // The atmosphere, as Mars's looks from orbit: a thin band of haze hugging the limb, butterscotch dust low
+    // down turning to the pale blue-white of the ice hazes higher up, lit only where the sun reaches and fading
+    // out over the night side; and a faint veil of dust over the disc toward its edge, softening the limb.
+    const A = GLOBE.atmosphere;
+    const sunward = sun.position.clone().normalize();
+    const airVertex = `varying vec3 vN; varying vec3 vV; varying vec3 vDir;
+      void main() { vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = normalize(-mv.xyz);
+        vDir = normalize((modelMatrix * vec4(position, 1.0)).xyz); gl_Position = projectionMatrix * mv; }`;
+    const airUniforms = { dust: { value: new THREE.Color(A.dust) }, high: { value: new THREE.Color(A.high) }, sun: { value: sunward } };
+    // How lit the air is: full on the day side, gone a little past the terminator.
+    const lit = `float lit = smoothstep(-0.25, 0.45, dot(vDir, sun));`;
     const haze = new THREE.Mesh(
-      new THREE.SphereGeometry(1.06, 64, 32),
+      new THREE.SphereGeometry(1 + A.thickness, 96, 48),
       new THREE.ShaderMaterial({
-        uniforms: { color: { value: new THREE.Color(GLOBE.atmosphere) } },
-        vertexShader: `varying vec3 vN; varying vec3 vV; void main() { vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
-        fragmentShader: `uniform vec3 color; varying vec3 vN; varying vec3 vV; void main() { float f = pow(1.0 - abs(dot(vN, vV)), 3.0); gl_FragColor = vec4(color, f * 0.8); }`,
+        uniforms: airUniforms,
+        vertexShader: airVertex,
+        // Seen from inside the shell's back: 0 at the shell's own silhouette, rising to the planet's limb.
+        fragmentShader: `uniform vec3 dust; uniform vec3 high; uniform vec3 sun; varying vec3 vN; varying vec3 vV; varying vec3 vDir;
+          void main() {
+            ${lit}
+            float g = max(0.0, -dot(vN, vV)) / ${Math.sqrt(1 - 1 / (1 + A.thickness) ** 2).toFixed(4)};
+            float alt = 1.0 - clamp(g, 0.0, 1.0);
+            float f = pow(1.0 - alt, 1.6) * lit * ${A.glow.toFixed(2)};
+            gl_FragColor = vec4(mix(dust, high, smoothstep(0.05, 0.6, alt)), f);
+          }`,
         transparent: true,
         blending: THREE.AdditiveBlending,
         side: THREE.BackSide,
@@ -305,6 +328,18 @@ export function Globe({ relief, map, version, focus, onHover, onPick }: Props) {
       }),
     );
     scene.add(haze);
+    const veil = new THREE.Mesh(
+      new THREE.SphereGeometry(1.003, 96, 48),
+      new THREE.ShaderMaterial({
+        uniforms: airUniforms,
+        vertexShader: airVertex,
+        fragmentShader: `uniform vec3 dust; uniform vec3 high; uniform vec3 sun; varying vec3 vN; varying vec3 vV; varying vec3 vDir;
+          void main() { ${lit} float f = pow(1.0 - max(0.0, dot(vN, vV)), 4.0) * lit * ${A.veil.toFixed(2)}; gl_FragColor = vec4(dust, f); }`,
+        transparent: true,
+        depthWrite: false,
+      }),
+    );
+    scene.add(veil);
 
     const start = facing(focus);
     const spin = { yaw: start.yaw, tilt: start.tilt, vYaw: 0, vTilt: 0, distance: GLOBE.distance.start };
@@ -500,6 +535,8 @@ export function Globe({ relief, map, version, focus, onHover, onPick }: Props) {
       nameLayer.remove();
       haze.geometry.dispose();
       (haze.material as THREE.Material).dispose();
+      veil.geometry.dispose();
+      (veil.material as THREE.Material).dispose();
       texture.dispose();
       textureRef.current = null;
       renderer.dispose();
