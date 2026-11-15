@@ -19,11 +19,11 @@
       "name": "Ice",
       "blurb": "Ground ice under the high latitudes: digging brings up water, but the sun sits low.",
       "eases": "Water: every slot dug brings up water",
-      "stresses": "Power: solar arrays make a quarter less under the low sun",
+      "stresses": "Power: solar arrays make 15% less under the low sun",
       "where": { "absLatMin": 50 },
       "effects": {
         "digYields": { "water": 5 },
-        "output": { "solar_array": 0.75 }
+        "output": { "solar_array": 0.85 }
       }
     },
     {
