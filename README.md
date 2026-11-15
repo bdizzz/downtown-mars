@@ -145,5 +145,9 @@ Run `npm run dev` and open `http://localhost:5173/?furnish` to see the furniture
 
 Mars elevation: NASA Mars Global Surveyor, Mars Orbiter Laser Altimeter (MOLA) Mission Experiment Gridded Data Records (PDS Geosciences Node), public domain.
 
-- `MEGT90N000EB` (16 px/degree): `scripts/build-relief.mjs` draws the map's shaded relief, `data/mars-relief.jpg`, at 8 px a degree.
+- `MEGT90N000FB` (32 px/degree): `scripts/build-map.py` shades the map with it (`data/mars-relief.jpg` and the zoom tiles in `public/map/tiles/`) and makes the globe's relief (`public/map/height.png`).
 - `MEGT90N000CB` (4 px/degree): `scripts/build-elevation.mjs` averages it to 1° for the game's own grid, `data/mars-elevation.json`.
+
+Mars colour: USGS Astrogeology Science Center, Viking colour mosaic of Mars (`Mars_Viking_ClrMosaic_global_925m`), public domain: the map's colour and each site's soil (`scripts/build-map.py`).
+
+Mars names: the IAU's Gazetteer of Planetary Nomenclature (USGS Astrogeology), public domain: the names on the map's globe (`scripts/build-names.mjs`, `data/mars-names.json`).
