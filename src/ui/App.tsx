@@ -499,6 +499,20 @@ export function App() {
   const newsIssue = snapshot
     ? ((newsOpen !== null ? snapshot.newsletter.issues.find((i) => i.no === newsOpen) : null) ?? (newsOpen === null && settings.newspaper ? unreadIssue(snapshot) : null))
     : null;
+  // The game waits while the paper is open, however it opened, and carries on at the speed it had when it's
+  // folded up (still paused, if it was). A menu, the welcome or a failure card taking over keeps their own pause.
+  const newsShown = !!newsIssue && !menu && !welcome && !failure;
+  const newsResume = useRef<number | null>(null);
+  useEffect(() => {
+    if (newsShown && newsResume.current === null) {
+      newsResume.current = speed;
+      setSpeed(0);
+    } else if (!newsShown && newsResume.current !== null) {
+      const back = newsResume.current;
+      newsResume.current = null;
+      if (!menu && !welcome && !failure) setSpeed(back);
+    }
+  }, [newsShown, speed, setSpeed, menu, welcome, failure]);
   // A tip's Show me goes with it, if its problem goes first.
   useEffect(() => {
     if (spotlight?.id.startsWith("tip:") && spotlight.id !== `tip:${tip?.id}`) setSpotlight(null);

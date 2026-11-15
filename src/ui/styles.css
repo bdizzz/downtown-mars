@@ -1496,7 +1496,7 @@ kbd {
   /* Beside the rail, not under it. */
   .tutorial, .event-cards { width: min(300px, calc(100% - 74px)); }
 }
-/* The Hole Truth (#424): the monthly newsletter, a card over the game (which keeps running behind it).
+/* The Hole Truth (#424): the monthly newsletter, a card over the game, which waits while it's open.
    A newspaper on Mars: cream newsprint gone a little rusty with dust, a blackletter masthead, serif
    columns, and a faint e-paper sheen and sync strip to say it's printed a century or two from now. */
 .newsletter-wrap {

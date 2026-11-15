@@ -5,8 +5,8 @@ import { NEWSLETTER_NAME, writeNewsletter } from "../view/newsletter";
 import { portraitSvg } from "../view/portrait";
 import { PanelHeader } from "./PanelHeader";
 
-// The Hole Truth (#424): each month's newsletter opens as a card over the game, which keeps running
-// behind it; Charts → The Hole Truth lists the back issues. The words: view/newsletter.ts.
+// The Hole Truth (#424): each month's newsletter opens as a card over the game, which waits while it's
+// open (App.tsx); Charts → The Hole Truth lists the back issues. The words: view/newsletter.ts.
 
 export function NewsletterCard({ issue, onClose }: { issue: NewsIssue; onClose: () => void }) {
   const n = writeNewsletter(issue);
