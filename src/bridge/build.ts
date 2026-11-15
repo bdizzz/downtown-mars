@@ -5,7 +5,7 @@ import { holeGates } from "../sim/people";
 import { roomDefs } from "../sim/rooms";
 import type { SimCommand } from "../sim/commands";
 import type { SimState } from "../sim/state";
-import type { Location } from "../sim/placement";
+import type { Location, SurfaceSpot } from "../sim/placement";
 import { floorSpan, pickAt, RING_D, TAU } from "../render3d/cylinder";
 import { corridorGhostY, corridorStripGeometry, roomGeometry } from "../render3d/rooms3d";
 import { corridors } from "../sim/corridors";
@@ -167,8 +167,8 @@ export interface SpotsMessage {
 }
 
 /** Surface slots as patches of ground, as triangles (render3d/scenery3d.ts surfaceSpotGeometry). */
-function spotTris(state: SimState, slots: number[]): string {
-  const geo = surfaceSpotGeometry(state.layout.hole, state.layout.surface.length, slots);
+function spotTris(state: SimState, spots: SurfaceSpot[]): string {
+  const geo = surfaceSpotGeometry(state.layout.hole, state.layout.surface.map((row) => row.length), spots);
   const tris = b64((geo.getAttribute("position") as THREE.BufferAttribute).array);
   geo.dispose();
   return tris;
@@ -235,7 +235,8 @@ export function hover(state: SimState, tool: BuildTool, at: [number, number, num
     g.dispose();
   }
   const glow = check.ok && check.cells.length ? halo(state, tool.room, check.cells) : undefined;
-  const spot = check.ok && check.surfaceCells.length ? { spot: spotTris(state, check.surfaceCells) } : {};
+  const ring = check.surfaceRing ?? 1;
+  const spot = check.ok && check.surfaceCells.length ? { spot: spotTris(state, check.surfaceCells.map((slot) => ({ ring, slot }))) } : {};
   return { type: "hovered", ok: check.ok, text, cost, ...(ghost ? { ghost } : {}), ...(glow?.length ? { halo: glow } : {}), ...all, ...spot };
 }
 

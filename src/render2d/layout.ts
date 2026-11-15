@@ -1,4 +1,5 @@
 import type { Hole } from "../sim/geometry";
+import { config } from "../sim/config";
 import type { Pick } from "../view/types";
 
 export type { Pick };
@@ -13,6 +14,19 @@ export const GALLERY_H = 16;
 export const RING_H = 48;
 export const FLOOR_GAP = 10;
 export const UNDUG_H = 160; // rock shown below the deepest floor
+/** The ground at the foot of the surface strip, and how far up each further surface ring is drawn (T-108). */
+export const SURFACE_GROUND_H = 10;
+export const SURFACE_RING_H = 36;
+
+/** Where a surface ring's buildings stand in the surface strip: ring 1 on the ground, outer rings stacked above, as if further off. */
+export function surfaceRingBase(ring: number): number {
+  return SURFACE_H - SURFACE_GROUND_H - (ring - 1) * SURFACE_RING_H;
+}
+
+/** The surface ring drawn at height y in the surface strip. */
+export function surfaceRingAtY(y: number, rings = config.geometry.surfaceRings): number {
+  return Math.min(rings, Math.max(1, Math.floor((SURFACE_H - SURFACE_GROUND_H - y) / SURFACE_RING_H) + 1));
+}
 
 export function bandHeight(maxRings: number): number {
   return GALLERY_H + maxRings * RING_H + FLOOR_GAP;
@@ -40,7 +54,7 @@ export function slotX(slot: number, n: number): [number, number] {
 export function pick(hole: Hole, x: number, y: number): Pick {
   const turn = (((x / TURN_W) % 1) + 1) % 1;
   const angle = turn * 360;
-  if (y < SURFACE_H) return y >= 0 ? { kind: "surface", angle } : { kind: "rock" };
+  if (y < SURFACE_H) return y >= 0 ? { kind: "surface", angle, ring: surfaceRingAtY(y) } : { kind: "rock" };
 
   const maxRings = hole.ringSlots.length;
   const band = bandHeight(maxRings);

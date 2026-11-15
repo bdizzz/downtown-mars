@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { config } from "../sim/config";
 import mapData from "../../data/mars-map.json";
 
 // The land around the hole: the ground rolls away from a flat pad at the rim
@@ -15,9 +16,12 @@ export type HorizonStyle = "mountains" | "mesas" | "hills";
 type LandformKind = "massif" | "mesa" | "butte" | "plateau" | "dome" | "crater";
 
 /** Sizes in metres. */
+/** The surface rings' outer edge, metres out from the rim (T-108): the ground stays flat, and clear of boulders, out past it. */
+const RINGS_OUT = config.geometry.surfaceRingM + (config.geometry.surfaceRings - 0.5) * config.geometry.surfaceRingDepthM;
+
 const LAND = {
-  /** Flat around the rim, then easing into the terrain over `blend`. */
-  pad: 45,
+  /** Flat around the rim, out past the surface rings, then easing into the terrain over `blend`. */
+  pad: Math.max(45, RINGS_OUT + 4),
   blend: 60,
   /** The ground reaches this far out, to meet the horizon. */
   reach: 1700,
@@ -29,7 +33,7 @@ const LAND = {
   /** The land rises a little toward the horizon. */
   rise: 18,
   craters: { count: 14, min: 5, max: 70, depth: 0.22, rim: 0.08 },
-  rocks: { count: 320, min: 0.25, max: 2.2, near: 50, far: 900 },
+  rocks: { count: 320, min: 0.25, max: 2.2, near: Math.max(50, RINGS_OUT + 6), far: 900 },
   /** The horizon ring: where its ridge line runs, and how finely. */
   horizon: { radius: 1500, segments: 720 },
   /** Landforms in front of it, by kind: how far out, how wide (their footprint's radius) and how tall, and how many facets round. */

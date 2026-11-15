@@ -4,7 +4,7 @@ import { LABEL_LAYER } from "./labelLayer";
 import * as THREE from "three";
 import { previewEffects } from "../sim/effects";
 import type { Hole } from "../sim/geometry";
-import type { Cell, Layout, RoomInstance } from "../sim/placement";
+import { surfaceRingOf, type Cell, type Layout, type RoomInstance, type SurfaceSpot } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { cropStagesKey } from "../view/furnish";
 import type { Snapshot } from "../sim/snapshot";
@@ -35,7 +35,7 @@ import { CRUST, FLOOR_H, floorAtY, floorSpan, openShaftRadius, shaftCollarRadius
 import { isoFitDistance } from "./isoReach";
 import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
-import { setPanelDust } from "./surface3d";
+import { roomSurfacePlace, setPanelDust, surfacePlace } from "./surface3d";
 import { refitRooms } from "../view/roomFinish";
 import { buildLayout, corridorGhostY, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, statusBadge, TROUBLE_EDGE, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, makeDome, makeLander, placeLander, surfaceSpotGeometry } from "./scenery3d";
@@ -967,7 +967,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       // With walls down, a lowered wall isn't there: pick the room behind it.
       if (loweredAt(hit, camera.position)) continue;
       // The cap over a chosen floor: pick the cell just under it.
-      if (u.surface) offer(hit.distance, () => surfacePickAt(hit.point));
+      if (u.surface) offer(hit.distance, () => surfacePickAt(h, hit.point));
       // A corridor floor, or a room's floor seen from above (rooms have no ceilings):
       // what's just above it, on its floor, not the floor below.
       else if (u.hall || u.empty || (u.roomId !== undefined && Math.abs(hit.face?.normal.y ?? 0) > 0.9 && ray.direction.y < 0)) {
@@ -980,7 +980,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const tGround = rayPlane(ray, ground);
     const groundPick = (): Pick => {
       const p = ray.at(tGround!, new THREE.Vector3());
-      return Math.hypot(p.x, p.z) > h.shaftRadiusM ? surfacePickAt(p) : { kind: "rock" };
+      return Math.hypot(p.x, p.z) > h.shaftRadiusM ? surfacePickAt(h, p) : { kind: "rock" };
     };
     // With a floor chosen, the surface is hidden: nothing up there to pick.
     const surfaceShown = cut() === null;
@@ -1117,11 +1117,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     overlay.add(mesh);
   }
 
-  function surfaceMarker(slots: number[], color: number): void {
+  function surfaceMarker(slots: number[], ring: number, color: number): void {
     if (!layout || !hole) return;
-    const total = layout.surface.length;
-    const mid = ((Math.min(...slots) + slots.length / 2) / total) * TAU;
-    const r = hole.shaftRadiusM + 16;
+    const { mid, r } = surfacePlace(layout, slots, ring);
     const disc = new THREE.Mesh(new THREE.CircleGeometry(4 + 3 * slots.length, 32), solid(color, 0.35));
     disc.rotation.x = -Math.PI / 2;
     disc.position.set(r * Math.cos(mid), 0.15, r * Math.sin(mid));
@@ -1129,17 +1127,17 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
 
   /** Surface slots tinted on the ground (T-107): under the buildings and boulders round them, unlike the ghosts. */
-  function surfaceSpotTint(slots: number[], color: number, opacity: number): void {
+  function surfaceSpotTint(slots: SurfaceSpot[], color: number, opacity: number): void {
     if (!layout || !slots.length) return;
     const m = overlayMat(`spot:${color}:${opacity}`, () => new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }));
-    const mesh = new THREE.Mesh(surfaceSpotGeometry(layout.hole, layout.surface.length, slots), m);
+    const mesh = new THREE.Mesh(surfaceSpotGeometry(layout.hole, layout.surface.map((row) => row.length), slots), m);
     mesh.renderOrder = 8;
     overlay.add(mesh);
   }
 
   /** Mark a room: a tint over its walls (brighter for the selection than the hover; a tool's red or green), or with room tints off its outline in that colour. */
   function markRoom(room: RoomInstance, color: number): void {
-    if (room.at.kind === "surface") return surfaceMarker(room.surfaceCells, color);
+    if (room.at.kind === "surface") return surfaceMarker(room.surfaceCells, surfaceRingOf(room.at), color);
     if (view.roomTints) {
       const mat = color === HOVER.hover ? tintMaterial(0xffffff, TINT.hover, true) : color === HOVER.selected ? tintMaterial(0xffffff, TINT.selected, true) : tintMaterial(color, TINT.tool);
       if (tintRoom("mark", room.id, mat)) return;
@@ -1241,8 +1239,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const cells = info.check.cells.length ? info.check.cells : p.kind === "slot" ? [p as Cell] : [];
       fillCells(cells, color, 0.4);
       if (!view.roomTints) outline(cells, color);
-      if (info.check.ok && spots.length) surfaceSpotTint(info.check.surfaceCells, HOVER.ok, SPOTS.hover);
-      if (info.check.surfaceCells.length) surfaceMarker(info.check.surfaceCells, color);
+      const ring = info.check.surfaceRing ?? 1;
+      if (info.check.ok && spots.length) surfaceSpotTint(info.check.surfaceCells.map((slot) => ({ ring, slot })), HOVER.ok, SPOTS.hover);
+      if (info.check.surfaceCells.length) surfaceMarker(info.check.surfaceCells, ring, color);
       if (info.check.ok && cells.length) drawHalo(tool.room, cells);
       // Extending stairs or an elevator: a plus floating on the piece being added.
       if (info.check.ok && info.check.merges && p.kind === "slot") {
@@ -1309,9 +1308,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         if (room.at.kind === "surface") {
           // The surface is hidden with a floor picked: nothing to tint there.
           if (cut() !== null) continue;
-          const total = l.surface.length;
-          const mid = ((Math.min(...room.surfaceCells) + room.surfaceCells.length / 2) / total) * TAU;
-          const r = l.hole.shaftRadiusM + 16;
+          const { mid, r } = roomSurfacePlace(l, room);
           const disc = new THREE.Mesh(new THREE.CircleGeometry(8, 32), solid(color, CONDITION_ALPHA));
           disc.rotation.x = -Math.PI / 2;
           disc.position.set(r * Math.cos(mid), 0.2, r * Math.sin(mid));
@@ -1354,9 +1351,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         if (room.at.kind === "surface") {
           if (cut() !== null) continue;
           const color = v < 0 ? heat.bad : heat.good;
-          const total = l.surface.length;
-          const mid = ((Math.min(...room.surfaceCells) + room.surfaceCells.length / 2) / total) * TAU;
-          const r = l.hole.shaftRadiusM + 16;
+          const { mid, r } = roomSurfacePlace(l, room);
           const disc = new THREE.Mesh(new THREE.CircleGeometry(8, 32), solid(color, Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA));
           disc.rotation.x = -Math.PI / 2;
           disc.position.set(r * Math.cos(mid), 0.2, r * Math.sin(mid));

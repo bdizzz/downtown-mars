@@ -1,6 +1,6 @@
 import type { Growth } from "./food";
 import { config, type Priority, type SimConfig } from "./config";
-import { overlappingSlots, ringSize, wrapSlot, type Hole } from "./geometry";
+import { overlappingSlots, ringSize, surfaceRingSlots, wrapSlot, type Hole } from "./geometry";
 import { corridorsInside, recomputeAccess, strandedBy, wouldConnect } from "./corridors";
 import { isRoomType, roomDef } from "./rooms";
 import { rockCells } from "./excavation";
@@ -18,7 +18,19 @@ export interface Cell {
 
 export type Location =
   | { kind: "ring"; floor: number; ring: number; slot: number; w: number; d: number }
-  | { kind: "surface"; slot: number };
+  /** On the surface: a slot of a surface ring (1 is nearest the rim; absent means 1, as in older saves). */
+  | { kind: "surface"; slot: number; ring?: number };
+
+/** The surface ring a surface location is on. */
+export function surfaceRingOf(at: Location): number {
+  return at.kind === "surface" ? (at.ring ?? 1) : 0;
+}
+
+/** A spot on the surface: a slot of a ring. */
+export interface SurfaceSpot {
+  ring: number;
+  slot: number;
+}
 
 export interface RoomInstance {
   id: number;
@@ -26,7 +38,7 @@ export interface RoomInstance {
   at: Location;
   /** Ring cells covered (empty for surface rooms). */
   cells: Cell[];
-  /** Surface slots covered (empty for ring rooms). */
+  /** Surface slots covered, on its surface ring (`at.ring`; empty for ring rooms). */
   surfaceCells: number[];
   /** Reachable from the surface, through the entrance. Surface rooms always are. */
   connected: boolean;
@@ -84,8 +96,8 @@ export interface Layout {
   open?: number[][][];
   /** Old saves (v14 and older): the shaft still links every floor, as it did before stairs mattered. */
   openShaft?: boolean;
-  /** surface[slot] = room id, or 0 if empty. */
-  surface: number[];
+  /** surface[ring - 1][slot] = room id, or 0 if empty: the rings of building spots round the rim (T-108). */
+  surface: number[][];
   nextRoomId: number;
   /** Corridors along the borders between cells: edge id (see edges.ts) → finish. */
   corridors: Record<string, string>;
@@ -110,6 +122,8 @@ export type CheckResult =
       ok: true;
       cells: Cell[];
       surfaceCells: number[];
+      /** The surface ring its surface cells are on (surface rooms only). */
+      surfaceRing?: number;
       planned: boolean;
       /** No corridor reaches it yet: it can go here, but won't work until one does. */
       unconnected?: boolean;
@@ -123,7 +137,7 @@ export type CheckResult =
       destroys?: string[];
       strands?: { rooms: number[]; corridors: string[] };
     }
-  | { ok: false; reason: string; cells: Cell[]; surfaceCells: number[] };
+  | { ok: false; reason: string; cells: Cell[]; surfaceCells: number[]; surfaceRing?: number };
 
 const EPS = 1e-9;
 
@@ -133,12 +147,22 @@ export function createLayout(hole: Hole, cfg: SimConfig = config): Layout {
     hole,
     rooms: [],
     grid: [],
-    surface: new Array(cfg.geometry.surfaceSlots).fill(0),
+    surface: surfaceGrid(hole, cfg),
     nextRoomId: 1,
     corridors: {},
   };
   ensureFloors(layout);
   return layout;
+}
+
+/** Empty surface rings, as many as are open, each sized for its radius. */
+export function surfaceGrid(hole: Hole, cfg: SimConfig = config): number[][] {
+  return Array.from({ length: cfg.geometry.surfaceRings }, (_, i) => new Array(surfaceRingSlots(hole.shaftRadiusM, i + 1, cfg.geometry)).fill(0));
+}
+
+/** The id of the room on a surface spot, or 0. */
+export function surfaceRoomId(layout: Layout, spot: SurfaceSpot): number {
+  return layout.surface[spot.ring - 1]?.[spot.slot] ?? 0;
 }
 
 /** Grow the grid to cover every dug floor plus the one being dug. */
@@ -199,12 +223,15 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
 
   if (at.kind === "surface") {
     if (def.size !== "surface") return { ok: false, reason: `${def.name} goes inside the hole`, ...none };
-    const n = layout.surface.length;
+    const row = layout.surface[surfaceRingOf(at) - 1];
+    if (!row) return { ok: false, reason: "Not a building spot", ...none };
+    const n = row.length;
     const width = def.surfaceSlots ?? 1;
     const surfaceCells = Array.from({ length: width }, (_, i) => wrapSlot(at.slot + i, n));
-    const hit = surfaceCells.map((s) => layout.surface[s]).find((id) => id);
-    if (hit) return { ok: false, reason: `Overlaps ${nameOf(layout, hit)}`, cells: [], surfaceCells };
-    return { ok: true, cells: [], surfaceCells, planned: false };
+    const hit = surfaceCells.map((s) => row[s]).find((id) => id);
+    const surfaceRing = surfaceRingOf(at);
+    if (hit) return { ok: false, reason: `Overlaps ${nameOf(layout, hit)}`, cells: [], surfaceCells, surfaceRing };
+    return { ok: true, cells: [], surfaceCells, surfaceRing, planned: false };
   }
 
   if (def.size === "surface") return { ok: false, reason: `${def.name} goes on the surface`, ...none };
@@ -333,7 +360,7 @@ export function placeRoom(layout: Layout, type: string, at: Location, cfg: SimCo
     ...(def.defaultCrop ? { crop: def.defaultCrop } : {}),
   });
   for (const c of check.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = id;
-  for (const s of check.surfaceCells) layout.surface[s] = id;
+  for (const s of check.surfaceCells) layout.surface[surfaceRingOf(at) - 1]![s] = id;
   recomputeAccess(layout);
   layout.version++;
   return { ...check, id };
@@ -346,7 +373,7 @@ export function demolishRoom(layout: Layout, id: number): { ok: true } | { ok: f
   if (!def.buildable) return { ok: false, reason: `The ${def.name.toLowerCase()} can't be demolished` };
   // What was dug stays dug: the room's cells are empty space now (a blueprint's rock stays rock).
   for (const c of room.cells) layout.grid[c.floor - 1]![c.ring - 1]![c.slot] = 0;
-  for (const s of room.surfaceCells) layout.surface[s] = 0;
+  for (const s of room.surfaceCells) layout.surface[surfaceRingOf(room.at) - 1]![s] = 0;
   layout.rooms = layout.rooms.filter((r) => r.id !== id);
   recomputeAccess(layout);
   layout.version++;

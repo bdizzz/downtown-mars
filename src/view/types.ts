@@ -9,9 +9,9 @@ import type { Spot } from "./reachView";
 // Stage, and turn pointer input into the same Picks and commands, so the
 // React UI never needs to know which one is showing.
 
-/** What's under the pointer. angle is in degrees around the shaft. */
+/** What's under the pointer. angle is in degrees around the shaft; on the surface, ring is the surface ring (absent: 1). */
 export type Pick =
-  | { kind: "surface"; angle: number }
+  | { kind: "surface"; angle: number; ring?: number }
   | { kind: "gallery"; floor: number; angle: number; digging: boolean }
   | { kind: "slot"; floor: number; ring: number; slot: number; locked: boolean; digging: boolean; angle: number }
   | { kind: "rock" };

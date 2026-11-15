@@ -1,7 +1,7 @@
 import type { SimCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { checkBuild } from "../sim/costs";
-import { checkPlacement, roomAt, type Layout, type Location } from "../sim/placement";
+import { checkPlacement, roomAt, surfaceRoomId, type Layout, type Location, type SurfaceSpot } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { isOpen } from "../sim/excavation";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, shortfall } from "../sim/corridors";
@@ -14,28 +14,36 @@ import type { EdgeHover, HoverInfo, Pick, Proposal, StageOptions, Tool } from ".
 // actions. Both views use these, so building, demolishing and selecting
 // behave the same in 2D and 3D; each view only has to produce a Pick.
 
-export function surfaceSlotAt(angle: number, layout: Layout): number {
-  return Math.floor((angle / 360) * layout.surface.length) % layout.surface.length;
+/** The surface spot at an angle on a surface ring (ring 1 if not given). */
+export function surfaceSpotAt(angle: number, layout: Layout, ring = 1): SurfaceSpot {
+  const r = Math.min(Math.max(1, ring), layout.surface.length);
+  const n = layout.surface[r - 1]!.length;
+  return { ring: r, slot: Math.floor((angle / 360) * n) % n };
 }
 
 /**
- * The surface slots a surface room could go on (T-107): every slot in a run of free ones wide enough for it.
- * Empty for a room that goes inside the hole.
+ * The surface spots a surface room could go on (T-107), on every surface ring (T-108): every slot in a
+ * run of free ones wide enough for it. Empty for a room that goes inside the hole.
  */
-export function surfaceSpots(layout: Layout, room: string): number[] {
+export function surfaceSpots(layout: Layout, room: string): SurfaceSpot[] {
   if (roomDef(room).size !== "surface") return [];
-  const spots = new Set<number>();
-  for (let slot = 0; slot < layout.surface.length; slot++) {
-    const check = checkPlacement(layout, room, { kind: "surface", slot });
-    if (check.ok) check.surfaceCells.forEach((s) => spots.add(s));
-  }
-  return [...spots].sort((a, b) => a - b);
+  const out: SurfaceSpot[] = [];
+  layout.surface.forEach((row, i) => {
+    const ring = i + 1;
+    const spots = new Set<number>();
+    for (let slot = 0; slot < row.length; slot++) {
+      const check = checkPlacement(layout, room, { kind: "surface", ring, slot });
+      if (check.ok) check.surfaceCells.forEach((s) => spots.add(s));
+    }
+    for (const slot of [...spots].sort((a, b) => a - b)) out.push({ ring, slot });
+  });
+  return out;
 }
 
 /** Where the current build tool would put its room, for this pick. */
 export function locationFor(p: Pick, t: Extract<Tool, { kind: "build" }>, layout: Layout): Location | null {
   if (roomDef(t.room).size === "surface") {
-    return p.kind === "surface" ? { kind: "surface", slot: surfaceSlotAt(p.angle, layout) } : null;
+    return p.kind === "surface" ? { kind: "surface", ...surfaceSpotAt(p.angle, layout, p.ring) } : null;
   }
   if (p.kind !== "slot") return null;
   return { kind: "ring", floor: p.floor, ring: p.ring, slot: p.slot, w: t.shape[0], d: t.shape[1] };
@@ -50,7 +58,7 @@ export function hoverInfoFor(layout: Layout, resources: Record<string, number>, 
   }
   if (p.kind === "slot") info.room = roomAt(layout, p);
   if (p.kind === "surface") {
-    const id = layout.surface[surfaceSlotAt(p.angle, layout)];
+    const id = surfaceRoomId(layout, surfaceSpotAt(p.angle, layout, p.ring));
     info.room = layout.rooms.find((r) => r.id === id);
   }
   return info;
@@ -132,7 +140,7 @@ export function hoverKeyFor(info: HoverInfo | null, tool: Tool, layoutVersion: n
  */
 export function aimKeyFor(info: HoverInfo, tool: Tool, layout: Layout): string {
   const p = info.pick;
-  const pick: Pick = p.kind === "surface" ? { ...p, angle: surfaceSlotAt(p.angle, layout) } : p;
+  const pick: Pick = p.kind === "surface" ? { ...p, angle: surfaceSpotAt(p.angle, layout, p.ring).slot } : p;
   return hoverKeyFor({ ...info, pick }, tool, 0, null);
 }
 

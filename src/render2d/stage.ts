@@ -7,7 +7,7 @@ import { roomTints, type Spot } from "../view/reachView";
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import type { Hole } from "../sim/geometry";
 import { config } from "../sim/config";
-import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placement";
+import { roomAt, surfaceRingOf, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { doorsOnFloor } from "../view/doors";
 import { glazedWalls } from "../sim/windows";
 import { isOpen } from "../sim/excavation";
@@ -32,6 +32,7 @@ import {
   pick,
   ringTop,
   slotX,
+  surfaceRingBase,
   worldHeight,
 } from "./layout";
 
@@ -167,6 +168,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       skyCtx.circle(x, SURFACE_H - 60 - light * (SURFACE_H - 80), 12).fill(C.sun);
     }
     drawHills(skyCtx, TURN_W, groundY, mix(C.hillsNight, C.hillsDay, light));
+    // The outer surface rings' ground, further off (T-108): faint lines their buildings stand on.
+    for (let ring = config.geometry.surfaceRings; ring > 1; ring--) skyCtx.rect(0, surfaceRingBase(ring), TURN_W, 3).fill({ color: C.ground, alpha: 0.55 });
     skyCtx.rect(0, groundY, TURN_W, GROUND_H).fill(C.ground);
     skyCtx.rect(0, groundY, 2, GROUND_H).fill(C.seam); // 0° marker
   }
@@ -183,7 +186,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const v = ((pool.happiness - 50) / 50) * FIELD_MAX;
       const alpha = Math.min(1, Math.abs(v) / FIELD_MAX) * FIELD_ALPHA;
       const color = v < 0 ? heat.bad : heat.good;
-      if (room.at.kind === "surface") fieldCtx.rect(...surfaceRect(room.surfaceCells, layout.surface.length)).fill({ color, alpha });
+      if (room.at.kind === "surface") fieldCtx.rect(...surfaceRect(layout, room.surfaceCells, surfaceRingOf(room.at))).fill({ color, alpha });
       else for (const row of cellRows(layout.hole, room.cells)) fieldCtx.rect(...rowRect(layout.hole, row)).fill({ color, alpha });
     }
   }
@@ -212,7 +215,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   function drawCondition(): void {
     if (!layout) return;
     for (const { room, color } of conditionTints(layout.rooms)) {
-      if (room.at.kind === "surface") fieldCtx.rect(...surfaceRect(room.surfaceCells, layout.surface.length)).fill({ color, alpha: CONDITION_ALPHA });
+      if (room.at.kind === "surface") fieldCtx.rect(...surfaceRect(layout, room.surfaceCells, surfaceRingOf(room.at))).fill({ color, alpha: CONDITION_ALPHA });
       else for (const row of cellRows(layout.hole, room.cells)) fieldCtx.rect(...rowRect(layout.hole, row)).fill({ color, alpha: CONDITION_ALPHA });
     }
   }
@@ -291,7 +294,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     if (!e.padReady || e.waiting || e.ticksToDrop > descent) return;
     const pad = s.layout.rooms.find((r) => r.type === "landing_pad");
     if (!pad) return;
-    const [px, py, pw] = surfaceRect(pad.surfaceCells, s.layout.surface.length);
+    const [px, py, pw] = surfaceRect(s.layout, pad.surfaceCells, surfaceRingOf(pad.at));
     const t = 1 - e.ticksToDrop / descent; // 0 high up .. 1 touching down
     const w = 26;
     const h = 22;
@@ -389,12 +392,14 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     return [row.x0 + 2, top, row.x1 - row.x0 - 4, bottom - top];
   }
 
-  function surfaceRect(slots: number[], total: number): [number, number, number, number] {
+  /** A run of slots on a surface ring, in the surface strip: ring 1 on the ground, outer rings above (T-108). */
+  function surfaceRect(l: Layout, slots: number[], ring: number): [number, number, number, number] {
+    const total = l.surface[ring - 1]?.length ?? l.surface[0]!.length;
     const w = TURN_W / total;
     // Slots are consecutive but may wrap; start from the one without a predecessor.
     const set = new Set(slots);
     const start = slots.find((s) => !set.has((s - 1 + total) % total)) ?? slots[0]!;
-    return [start * w + 3, SURFACE_H - GROUND_H - SURFACE_ROOM_H, slots.length * w - 6, SURFACE_ROOM_H];
+    return [start * w + 3, surfaceRingBase(ring) - SURFACE_ROOM_H, slots.length * w - 6, SURFACE_ROOM_H];
   }
 
   /** Every cell of the dug floors that isn't a room: solid rock, or dug-out empty space with pillars. */
@@ -423,12 +428,13 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const def = roomDef(room.type);
       const color = CATEGORY_COLORS[def.category] ?? C.label;
       if (room.at.kind === "surface") {
-        const [x, , w] = surfaceRect(room.surfaceCells, l.surface.length);
-        if (room.type === "solar_array") drawSolarArray(roomsCtx, x, w, groundY, color);
-        else if (room.type === "landing_pad") drawLandingPad(roomsCtx, x, w, groundY, color);
-        else if (room.type === "landing_pod") drawPod(roomsCtx, x, w, groundY, color);
-        else if (room.type === "rover_depot") drawRoverDepot(roomsCtx, x, w, groundY, color);
-        else roomsCtx.rect(...surfaceRect(room.surfaceCells, l.surface.length)).fill(color);
+        const base = surfaceRingBase(surfaceRingOf(room.at));
+        const [x, , w] = surfaceRect(l, room.surfaceCells, surfaceRingOf(room.at));
+        if (room.type === "solar_array") drawSolarArray(roomsCtx, x, w, base, color);
+        else if (room.type === "landing_pad") drawLandingPad(roomsCtx, x, w, base, color);
+        else if (room.type === "landing_pod") drawPod(roomsCtx, x, w, base, color);
+        else if (room.type === "rover_depot") drawRoverDepot(roomsCtx, x, w, base, color);
+        else roomsCtx.rect(...surfaceRect(l, room.surfaceCells, surfaceRingOf(room.at))).fill(color);
         continue;
       }
       // A cargo elevator's shaft: a dark column with its cables down to the stop.
@@ -681,7 +687,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         },
       });
       if (room.at.kind === "surface") {
-        const [x, y] = surfaceRect(room.surfaceCells, l.surface.length);
+        const [x, y] = surfaceRect(l, room.surfaceCells, surfaceRingOf(room.at));
         text.position.set(x + 5, y + 4);
       } else {
         const row = cellRows(l.hole, room.cells)[0]!;
@@ -696,7 +702,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   function outlineRoom(room: RoomInstance, color: number, width: number): void {
     if (!layout) return;
     if (room.at.kind === "surface") {
-      overlayCtx.rect(...surfaceRect(room.surfaceCells, layout.surface.length)).stroke({ color, width });
+      overlayCtx.rect(...surfaceRect(layout, room.surfaceCells, surfaceRingOf(room.at))).stroke({ color, width });
     } else {
       for (const row of cellRows(layout.hole, room.cells)) overlayCtx.rect(...rowRect(layout.hole, row)).stroke({ color, width });
     }
@@ -763,7 +769,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         drawPlus(overlayCtx, (x0 + x1) / 2, ringTop(p.floor, p.ring, h.ringSlots.length) + RING_H / 2, 18, color);
       }
       if (info.check.surfaceCells.length) {
-        overlayCtx.rect(...surfaceRect(info.check.surfaceCells, layout.surface.length)).fill({ color, alpha: 0.35 }).stroke({ color, width: 3 });
+        overlayCtx.rect(...surfaceRect(layout, info.check.surfaceCells, info.check.surfaceRing ?? 1)).fill({ color, alpha: 0.35 }).stroke({ color, width: 3 });
       }
       return;
     }

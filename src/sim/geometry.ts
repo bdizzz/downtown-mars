@@ -1,4 +1,4 @@
-import type { GeometryConfig } from "./config";
+import type { GeometryConfig, SurfaceGeometry } from "./config";
 
 // Rings are numbered from 1 (facing the shaft). Slots are numbered from 0 and
 // wrap, since each ring is a loop. Positions around a ring are measured in
@@ -69,4 +69,22 @@ export function overlappingSlots(hole: Hole, fromRing: number, slot: number, toR
   const out: number[] = [];
   for (let k = first; k <= last; k++) out.push(wrapSlot(k, m));
   return out;
+}
+
+/** How far a surface ring's buildings stand from the shaft's centre, metres (ring 1 is nearest the rim). */
+export function surfaceRingRadiusM(shaftRadiusM: number, ring: number, geo: SurfaceGeometry): number {
+  return shaftRadiusM + geo.surfaceRingM + (ring - 1) * geo.surfaceRingDepthM;
+}
+
+/** Spots in surface ring n: the first ring's count, scaled by radius as underground rings are, so spots stay about as wide. */
+export function surfaceRingSlots(shaftRadiusM: number, ring: number, geo: SurfaceGeometry): number {
+  const r1 = surfaceRingRadiusM(shaftRadiusM, 1, geo);
+  return Math.round((geo.surfaceSlots * surfaceRingRadiusM(shaftRadiusM, ring, geo)) / r1);
+}
+
+/** Which surface ring a point this far from the shaft's centre falls in, clamped to the open ones. */
+export function surfaceRingAt(shaftRadiusM: number, radiusM: number, geo: SurfaceGeometry): number {
+  const first = shaftRadiusM + geo.surfaceRingM;
+  const ring = Math.round((radiusM - first) / geo.surfaceRingDepthM) + 1;
+  return Math.min(geo.surfaceRings, Math.max(1, ring));
 }

@@ -28,6 +28,18 @@ export interface GeometryConfig {
   nestedPairs?: boolean;
 }
 
+/** The rings of building spots round the rim on the surface (T-108). */
+export interface SurfaceGeometry {
+  /** Spots in the first surface ring; outer rings have more, by radius. */
+  surfaceSlots: number;
+  /** Surface rings open to build on (room for up to six). */
+  surfaceRings: number;
+  /** How far out from the shaft's edge the first ring's buildings stand, metres. */
+  surfaceRingM: number;
+  /** How far apart the surface rings are (each ring's depth), metres. */
+  surfaceRingDepthM: number;
+}
+
 export type Priority = "critical" | "high" | "normal" | "low";
 
 export interface SimConfig {
@@ -40,7 +52,7 @@ export interface SimConfig {
   snapshotsPerSecond: number;
   maxTicksPerFrame: number;
   seed: number;
-  geometry: GeometryConfig & { surfaceSlots: number };
+  geometry: GeometryConfig & SurfaceGeometry;
   /** Allowed [wide, deep] shapes per room size. */
   shapes: Partial<Record<"S" | "M" | "L" | "H", [number, number][]>>;
   starterHole: {

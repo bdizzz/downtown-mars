@@ -45,6 +45,6 @@ describe("3D picking", () => {
   });
 
   it("the surface pick uses the angle around the shaft", () => {
-    expect(surfacePickAt(new THREE.Vector3(0, 0, 30))).toMatchObject({ kind: "surface", angle: 90 });
+    expect(surfacePickAt(hole, new THREE.Vector3(0, 0, 30))).toMatchObject({ kind: "surface", angle: 90 });
   });
 });
