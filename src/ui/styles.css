@@ -400,6 +400,10 @@ label.set-row { cursor: pointer; }
 .globe { position: absolute; inset: 0; cursor: grab; }
 .globe:active { cursor: grabbing; }
 .globe canvas { display: block; }
+/* The IAU's names over the globe (#499): crisp at every zoom, wide-spaced capitals for the big regions. */
+.globe-names { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.globe-names span { position: absolute; left: 0; top: 0; white-space: nowrap; font-size: 11px; font-weight: 600; line-height: 1; color: #f6efe6; text-shadow: 0 1px 2px rgba(20, 10, 8, 0.85), 0 0 4px rgba(20, 10, 8, 0.6); }
+.globe-names span.region { font-size: 12px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255, 236, 214, 0.86); }
 .map-screen footer { padding: 6px 14px; font-size: 12px; background: var(--panel); border-top: 1px solid #000; zoom: var(--ui-scale, 1); }
 .map-locked { margin: 0; padding: 6px 14px; font-size: 12px; background: #2a1814; color: #ffcf9f; border-bottom: 1px solid #000; zoom: var(--ui-scale, 1); }
 .map-body { flex: 1; min-height: 0; display: flex; }

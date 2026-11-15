@@ -15,12 +15,15 @@ const close = (a: Vec3, b: Vec3) => a.forEach((v, i) => expect(v).toBeCloseTo(b[
 const deg = (r: number) => (r * 180) / Math.PI;
 
 describe("a site's soil and ice (T-073)", () => {
-  it("takes the map's colour: dark in the lowlands, pale on the heights", () => {
-    const hellas = soilAt({ lat: -42.4, lon: 70.5 });
-    const arcadia = soilAt({ lat: 46, lon: 192 });
+  it("takes the planet's real colour (#499): dark Syrtis Major and Acidalia, bright dusty Tharsis and Hellas", () => {
+    const syrtis = soilAt({ lat: 9, lon: 69 });
+    const acidalia = soilAt({ lat: 47, lon: 330 });
     const tharsis = soilAt({ lat: 1, lon: 247 });
-    expect(lum(hellas)).toBeLessThan(lum(arcadia));
-    expect(lum(arcadia)).toBeLessThan(lum(tharsis));
+    const hellas = soilAt({ lat: -42.4, lon: 70.5 });
+    for (const dark of [syrtis, acidalia]) for (const bright of [tharsis, hellas]) expect(lum(dark)).toBeLessThan(lum(bright) * 0.8);
+    // Rust where it's bright: red the strongest channel.
+    const n = parseInt(tharsis.slice(1), 16);
+    expect(n >> 16).toBeGreaterThan(n & 255);
   });
 
   it("whitens toward the poles, as the map does", () => {
@@ -29,12 +32,12 @@ describe("a site's soil and ice (T-073)", () => {
   });
 
   it("tints the ground toward it, softened so it stays Mars", () => {
-    const dark = soilTint(GROUND_BASE, soilAt({ lat: -42.4, lon: 70.5 }));
+    const dark = soilTint(GROUND_BASE, soilAt({ lat: 9, lon: 69 }));
     const pale = soilTint(GROUND_BASE, soilAt({ lat: 1, lon: 247 }));
     expect(dark).not.toBe(pale);
     expect(soilTint(GROUND_BASE, null)).toBe(GROUND_BASE);
-    // Still red: red stays the strongest channel even in the deepest basin.
-    const c = soilTint(GROUND_BASE, soilAt({ lat: -42.4, lon: 70.5 }));
+    // Still red: red stays the strongest channel even on the darkest, greyest ground.
+    const c = soilTint(GROUND_BASE, soilAt({ lat: 9, lon: 69 }));
     expect(c >> 16).toBeGreaterThan(c & 255);
   });
 

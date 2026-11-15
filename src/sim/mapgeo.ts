@@ -71,8 +71,8 @@ export const onIceCap = (site: { lat: number }) => site.lat >= CAPS.north || sit
 export const ICE_CAP_REFUSAL = "Ice cap: can't dig here";
 
 /**
- * The map's colour at a place (sRGB, 0..255), as scripts/build-relief.mjs draws it but without its
- * lighting: by elevation (metres), whitened toward the polar caps.
+ * Mars coloured by height (sRGB, 0..255): by elevation (metres), whitened toward the polar caps. The map
+ * drew this until #499 (now it shows the planet's real colour, and a site's soil follows that: soilAt).
  */
 export function mapColor(elevationM: number, lat: number): RGB {
   let c: RGB = RAMP[RAMP.length - 1]![1];
