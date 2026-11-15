@@ -1496,3 +1496,31 @@ kbd {
   /* Beside the rail, not under it. */
   .tutorial, .event-cards { width: min(300px, calc(100% - 74px)); }
 }
+/* The Hole Truth (#424): the monthly newsletter, a card over the game (which keeps running behind it). */
+.newsletter-wrap {
+  position: fixed; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center;
+  padding: 16px; pointer-events: none;
+}
+.newsletter {
+  pointer-events: auto; width: min(480px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; box-sizing: border-box;
+  background: var(--face); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--float), var(--bevel);
+  padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; scrollbar-color: var(--edge) transparent;
+}
+.newsletter header { text-align: center; border-bottom: 2px double var(--edge); padding-bottom: 8px; }
+.newsletter h2 { margin: 0; font-family: var(--font-display); font-size: 24px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-hi); }
+.newsletter .tagline { font-size: 12px; font-style: italic; }
+.newsletter .kicker { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+.newsletter h3 { margin: 2px 0 4px; font-size: 18px; }
+.newsletter p { margin: 0; line-height: 1.45; }
+.newsletter .story { border-top: 1px solid rgba(160, 122, 92, 0.22); padding-top: 8px; }
+.newsletter .story p { font-size: 14px; }
+.newsletter .letter p { font-style: italic; }
+.newsletter .letter .k { font-style: normal; }
+.newsletter .filler { font-size: 12px; border-top: 1px dashed rgba(160, 122, 92, 0.3); padding-top: 8px; }
+.newsletter footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.newsletter .sign { font-style: italic; font-size: 12px; }
+.news-panel .news-row {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; text-align: left;
+  background: var(--well); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; color: var(--text); cursor: pointer;
+}
+.news-panel .news-row:hover { background: var(--hover); }

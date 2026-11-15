@@ -1,0 +1,173 @@
+import raw from "../../data/newsletter.json";
+import notables from "../../data/notables.json";
+import { milestoneDef } from "../sim/milestones";
+import type { NewsIssue, NewsVoice } from "../sim/newsletter";
+import { hash01 } from "../sim/people";
+import { roomDef } from "../sim/rooms";
+import { monthLabel } from "./months";
+
+// The Hole Truth (#424): one month's facts (sim/newsletter.ts) written up as a newsletter from the
+// templates in data/newsletter.json. The issue's own seed rolls the dice, so it reads the same every
+// time it's opened. Shared by the web's card (ui/Newsletter.tsx) and the Godot viewer's.
+
+interface StoryDef {
+  kicker: string;
+  head: string[];
+  text?: string[];
+  one?: string[];
+  many?: string[];
+}
+interface VoiceDef {
+  kicker: string;
+  intro: string[];
+  causes: Record<string, string[]>;
+  default: string[];
+}
+
+const DATA = raw as unknown as {
+  name: string;
+  tagline: string;
+  order: string[];
+  stories: Record<string, StoryDef>;
+  grumble: VoiceDef;
+  praise: VoiceDef;
+  finds: Record<string, string>;
+  fillers: string[];
+  sign: string[];
+  numbers: string[];
+};
+
+export const NEWSLETTER_NAME = DATA.name;
+
+export interface NewsStory {
+  /** The section it's in ("Births", "What the drill found"). */
+  kicker: string;
+  head: string;
+  text: string;
+}
+
+export interface NewsLetter {
+  kicker: string;
+  /** Who's writing ("Ana Ruiz, organizer, writes in:"). */
+  intro: string;
+  quote: string;
+}
+
+export interface Newsletter {
+  name: string;
+  tagline: string;
+  /** "No. 4 · Month 4". */
+  dateline: string;
+  /** The month's biggest story. */
+  lead: NewsStory;
+  /** The rest, briefly. */
+  stories: NewsStory[];
+  letters: NewsLetter[];
+  /** A small notice at the bottom. */
+  filler: string;
+  sign: string;
+}
+
+type Vars = Record<string, string | number>;
+
+function fill(text: string, v: Vars): string {
+  return text.replace(/\{(\w+)\}/g, (m, k: string) => (k in v ? String(v[k]) : m));
+}
+
+const words = (n: number) => DATA.numbers[n] ?? String(n);
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const lower = (s: string) => (s.length > 1 && s[1] === s[1]!.toLowerCase() ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+
+/** "a galley, two homes and a clinic". */
+function roomList(built: Record<string, number>): string {
+  const parts = Object.entries(built).map(([type, n]) => {
+    const name = lower(roomDef(type).name);
+    return n === 1 ? `${/^[aeiou]/i.test(name) ? "an" : "a"} ${name}` : `${words(n)} ${name.endsWith("s") ? name : `${name}s`}`;
+  });
+  return parts.length < 2 ? (parts[0] ?? "") : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
+}
+
+/** Write up an issue. */
+export function writeNewsletter(issue: NewsIssue): Newsletter {
+  let salt = 0;
+  const pick = <T>(list: T[]): T => list[Math.floor(hash01(issue.seed, ++salt) * list.length)]!;
+  const baby = pick(notables.firstNames);
+  const family = pick(notables.lastNames);
+  const firstBuilt = Object.keys(issue.built)[0];
+  const builtCount = Object.values(issue.built).reduce((s, n) => s + n, 0);
+  const vars: Vars = {
+    hole: issue.hole,
+    pop: issue.population,
+    happy: issue.happiness,
+    floor: issue.depth,
+    baby,
+    family,
+    room: firstBuilt ? lower(roomDef(firstBuilt).name) : "",
+    rooms: roomList(issue.built),
+  };
+  const firstBirth = issue.born > 0 && issue.bornEver === issue.born;
+  const milestones = issue.milestones.map((id) => milestoneDef(id)?.title ?? id).filter((t) => !(firstBirth && t === milestoneDef("first_birth")?.title));
+  const counts: Record<string, number> = {
+    firstBirth: firstBirth ? 1 : 0,
+    births: firstBirth ? 0 : issue.born,
+    arrivals: issue.arrivals,
+    passings: issue.passedAway,
+    grownUp: issue.grownUp,
+    floors: issue.floors,
+    rooms: builtCount,
+    find: issue.finds.length,
+    milestone: milestones.length,
+    festival: issue.festival ? 1 : 0,
+    storm: issue.storm ? 1 : 0,
+    outcome: issue.outcomes.length,
+    notables: issue.newNotables.length,
+  };
+  const stories: NewsStory[] = [];
+  for (const id of DATA.order) {
+    const n = counts[id] ?? 0;
+    if (!n) continue;
+    const def = DATA.stories[id]!;
+    const v: Vars = { ...vars, n, N: capital(words(n)) };
+    if (id === "find") {
+      v.find = DATA.finds[issue.finds[0]!] ?? "something";
+    }
+    if (id === "milestone") v.milestone = milestones.join(" and ");
+    if (id === "notables") v.name = issue.newNotables[0]!;
+    if (id === "outcome") {
+      // The game's own words for how things turned out, one story each.
+      for (const text of issue.outcomes) stories.push({ kicker: def.kicker, head: pick(def.head), text });
+      continue;
+    }
+    const texts = (n === 1 ? def.one : def.many) ?? def.text ?? [];
+    stories.push({ kicker: def.kicker, head: fill(pick(def.head), v), text: fill(pick(texts), v) });
+  }
+  if (!stories.length) {
+    const q = DATA.stories.quiet!;
+    stories.push({ kicker: q.kicker, head: fill(pick(q.head), vars), text: fill(pick(q.text!), vars) });
+  }
+  const letters: NewsLetter[] = [];
+  const letter = (who: NewsVoice | null, def: VoiceDef) => {
+    if (!who) return;
+    const cause = who.cause.split(":")[1] ?? "";
+    const v: Vars = { ...vars, name: who.name, role: who.role, trait: who.trait };
+    letters.push({ kicker: def.kicker, intro: fill(pick(def.intro), v), quote: fill(pick(def.causes[cause] ?? def.default), v) });
+  };
+  letter(issue.grumble, DATA.grumble);
+  letter(issue.praise, DATA.praise);
+  return {
+    name: DATA.name,
+    tagline: DATA.tagline,
+    dateline: `No. ${issue.no} · ${monthLabel(issue.day)}`,
+    lead: stories[0]!,
+    stories: stories.slice(1),
+    letters,
+    filler: pick(DATA.fillers),
+    sign: pick(DATA.sign),
+  };
+}
+
+/** The issue whose card should open by itself now: the latest, if it hasn't been read. */
+export function unreadIssue(s: { newsletter: { issues: NewsIssue[]; read: number } }): NewsIssue | null {
+  const latest = s.newsletter.issues.at(-1);
+  return latest && latest.no > s.newsletter.read ? latest : null;
+}

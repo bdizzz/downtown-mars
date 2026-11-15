@@ -1,0 +1,190 @@
+{
+  "_note": "The Hole Truth, the colony's monthly newsletter (#424). The sim keeps the month's facts (src/sim/newsletter.ts): keep is how many back issues a hole holds, maxOutcomes how many event outcomes an issue reprints, grumblePoints and praisePoints how many happiness points a cause must cost (or give) before a notable grumbles (or praises) it. The words are src/view/newsletter.ts's: each story is a list of templates, one picked by the issue's dice. Placeholders: {hole} the hole's name, {n} a count, {N} a count in words, {name} a notable, {role} their job, {trait} one of their traits, {baby} a newborn's first name and {family} a family name (both from data/notables.json), {room} a room's name, {rooms} a list of them, {floor} the deepest floor, {milestone} a milestone's title, {find} what the drill struck (from `finds`, by event id), {pop} the population, {happy} the average happiness. Headlines come from the month's biggest story, in the order of `order`. Voice (docs/ART.md, Voice): warm, dry, a pun allowed, never at the player's expense.",
+  "name": "The Hole Truth",
+  "tagline": "All the news that fits the shaft",
+  "keep": 24,
+  "maxOutcomes": 3,
+  "grumblePoints": 2,
+  "praisePoints": 2,
+  "order": ["firstBirth", "milestone", "festival", "find", "births", "arrivals", "passings", "grownUp", "floors", "rooms", "storm", "outcome", "notables"],
+  "stories": {
+    "firstBirth": {
+      "kicker": "Born on Mars",
+      "head": ["It's a Martian!", "{hole} welcomes its first native", "First cry heard below the surface"],
+      "text": [
+        "{baby} {family} arrived this month, the first person ever born in {hole}. Both parents report the delivery was 'mostly gravity-assisted.' Children don't work, but they will want a school.",
+        "Meet {baby} {family}, {hole}'s first child born on Mars. The clinic staff have already been asked about the view upstairs. A school will be wanted before long."
+      ]
+    },
+    "births": {
+      "kicker": "Births",
+      "head": ["Small arrivals", "The nursery fills up", "More little Martians"],
+      "one": [
+        "Welcome to {baby} {family}, born this month. The clinic reports one tired but very happy family.",
+        "{baby} {family} joined us this month, weighing in at about a third of what they'd weigh on Earth."
+      ],
+      "many": [
+        "{N} children were born this month, among them {baby} {family}. The clinic asks that everyone please stop asking the newborns about their career plans.",
+        "A busy month at the clinic: {N} births, including little {baby} {family}. Lullabies may be heard through the corridors at odd hours."
+      ]
+    },
+    "arrivals": {
+      "kicker": "Newcomers",
+      "head": ["Fresh faces in the corridors", "New neighbours", "The welcome mat gets dusty"],
+      "text": [
+        "{N} new colonists settled in this month. If you see someone staring at the shaft for a long time, they're new. Say hello.",
+        "{N} newcomers joined {hole}. They've been shown the galley, the restrooms and which elevator sticks, in that order.",
+        "We welcome {N} new neighbours. They report the trip was long, the landing bumpy and the welcome warm."
+      ]
+    },
+    "passings": {
+      "kicker": "Remembered",
+      "head": ["We remember", "Fond farewells"],
+      "text": [
+        "{N} of our elders passed away this month. They helped dig the place we live in, and they'll be missed.",
+        "This month we said goodbye to {N} of our elders. Raise a cup to them at the galley tonight."
+      ]
+    },
+    "grownUp": {
+      "kicker": "Coming of age",
+      "head": ["Grown up and clocking in", "Fresh hands on the job"],
+      "text": [
+        "{N} of our children came of age this month and joined the workforce. Their first complaint about the shift roster is expected any day now.",
+        "{N} young Martians grew up this month. They've never seen a blue sky and they don't seem to mind."
+      ]
+    },
+    "floors": {
+      "kicker": "Down the hole",
+      "head": ["Deeper we go", "The drill digs in", "Floor {floor}, going down"],
+      "text": [
+        "The drill finished {N} new floor this month: {hole} now goes down {floor} floors. Elevator music remains under review.",
+        "{hole} is now {floor} floors deep. The drill crew would like it noted that they're not boring, they're boring."
+      ],
+      "many": [
+        "The drill finished {N} new floors this month: {hole} now goes down {floor} floors. Elevator music remains under review."
+      ]
+    },
+    "rooms": {
+      "kicker": "Open for business",
+      "head": ["Ribbon cutting", "New doors open", "Fresh paint on the rock"],
+      "one": [
+        "A new {room} opened its doors this month. Early reviews are positive, if you don't count the smell of fresh sealant.",
+        "The crews finished a new {room} this month, on time and only a little dusty."
+      ],
+      "many": [
+        "The crews finished {N} rooms this month: {rooms}. Somewhere, a foreman is finally sitting down.",
+        "{N} rooms opened this month: {rooms}. The hole is getting roomier, so to speak."
+      ]
+    },
+    "find": {
+      "kicker": "What the drill found",
+      "head": ["The drill strikes {find}", "Something down there", "A find on floor {floor}"],
+      "text": [
+        "The drill struck {find} this month. The crew have filed their report and are already arguing about what to name it.",
+        "News from the bottom of the hole: the drill hit {find}. The scientists are thrilled; the drill crew are just glad it wasn't their lunchbox."
+      ]
+    },
+    "milestone": {
+      "kicker": "Milestone",
+      "head": ["{milestone}!", "A milestone for {hole}"],
+      "text": [
+        "{hole} reached a milestone this month: {milestone}. Someone suggested a party. Someone always does.",
+        "Mark your calendars: this month {hole} reached {milestone}. The deputy has asked for it to be written down somewhere permanent, so here it is."
+      ]
+    },
+    "festival": {
+      "kicker": "Festival",
+      "head": ["Party in the hole", "A feast below the dust", "{hole} celebrates"],
+      "text": [
+        "The festival went off with a bang (the good kind). Turnout was excellent and the meals ran out at exactly the right moment.",
+        "This month's festival was a hit. Work slowed for a day, smiles didn't. Leftovers are, as ever, a myth."
+      ]
+    },
+    "storm": {
+      "kicker": "Weather",
+      "head": ["Dust gets in everywhere", "Storm passes over"],
+      "text": [
+        "A dust storm blew through this month. The solar arrays sulked, the batteries held, and the airlocks are still finding grit.",
+        "Weather report: dusty, then dustier, then fine. The storm's gone, but check your boots."
+      ]
+    },
+    "outcome": {
+      "kicker": "In other news",
+      "head": ["In other news"]
+    },
+    "notables": {
+      "kicker": "Who's who",
+      "head": ["A new name to know"],
+      "text": ["{name} joined the colony this month and is already making themselves known. Watch this space."]
+    },
+    "quiet": {
+      "kicker": "All quiet",
+      "head": ["A quiet month in {hole}", "Nothing to report (and that's good news)", "Steady as she digs"],
+      "text": [
+        "Nothing much happened this month, which on Mars is exactly what you want. {pop} people, all still breathing.",
+        "A quiet month. The air held, the lights stayed on and nobody fell down the shaft. We call that a win.",
+        "Slow news month. The editor considered running a story about the new mop in the galley, but decided against it."
+      ]
+    }
+  },
+  "grumble": {
+    "kicker": "Letters to the editor",
+    "intro": ["{name}, {role}, writes in:", "From {name}, our {role}:", "{name} ({role}) has a bone to pick:"],
+    "causes": {
+      "noise": ["\"I can hear the machinery through my pillow. I'd like a quieter neighbour, or a thicker wall, or both.\""],
+      "smell": ["\"Something smells, and it isn't me. Could someone shut a door between us and wherever that's coming from?\""],
+      "crowding": ["\"I share my home with more people than I've met. A few more homes, please.\""],
+      "homeless": ["\"Some of us are sleeping in the corridors. It's a lovely corridor. It's not a bed.\""],
+      "airQuality": ["\"The air's stale where I live. I don't need much, just air that hasn't been breathed already.\""],
+      "variety": ["\"Same meal again. I'm not complaining. I'm noting it, for the record, loudly.\""],
+      "noSeat": ["\"There's nowhere to sit at mealtimes. I eat standing up like a horse.\""],
+      "noRestroom": ["\"The nearest restroom is a long walk. A long, urgent walk.\""],
+      "temperature": ["\"Is it me, or is it cold enough down here to keep the milk fresh? I don't have any milk.\""],
+      "noClinic": ["\"If I sprain an ankle, where do I go? Asking for a friend. The friend is my ankle.\""],
+      "schooling": ["\"The kids need a school. I love them, but they've started teaching each other.\""],
+      "elderCare": ["\"Our elders deserve somewhere comfortable to spend their days.\""],
+      "grief": ["\"We have nowhere to lay our dead to rest. It weighs on all of us.\""],
+      "homeWear": ["\"My home's seen better days. So have I, but I can't be repaired by a maintenance crew.\""],
+      "sharedWear": ["\"The common rooms are getting shabby. A bit of upkeep wouldn't go amiss.\""],
+      "holeHealth": ["\"People are feeling poorly. I think it's the water, or the meals, or both. Someone should look.\""]
+    },
+    "default": ["\"Things could be better around here. I'm not saying how. I'm saying they could.\""]
+  },
+  "praise": {
+    "kicker": "Good word",
+    "intro": ["{name}, {role}, says:", "Overheard from {name}:"],
+    "causes": {
+      "windows": ["\"I've got a window on the shaft. I could watch the dust settle all day, and some days I do.\""],
+      "amenityComfort": ["\"The park's lovely this time of year. Every time of year, actually. There aren't seasons down here.\""],
+      "amenityHealth": ["\"Went to the gym. Felt great. Will never shut up about it.\""],
+      "neighbourComfort": ["\"Good neighbours make a good hole. Ours are great.\""],
+      "ownComfort": ["\"I like my home. It's warm, it's mine, and the rock doesn't talk back.\""],
+      "lining": ["\"Whoever finished my walls did a lovely job. I'd tip them if we had money.\""],
+      "sharedLining": ["\"The common rooms look smart these days. Somebody's been busy.\""],
+      "temperature": ["\"Nice and toasty down here. Mars can keep its weather.\""]
+    },
+    "default": ["\"Honestly? I like it here.\""]
+  },
+  "finds": {
+    "aquifer": "water",
+    "ore_vein": "a rich vein of iron ore",
+    "silica_bed": "a bed of silica sand",
+    "lava_tube": "an old lava tube",
+    "gas_pocket": "a pocket of gas",
+    "microfossils": "microfossils, the traces of something that lived here once"
+  },
+  "fillers": [
+    "Lost: one left glove, near the airlock. Answers to 'glove'.",
+    "Reminder: the shaft is not a rubbish chute. It is a very long way down, and someone has to fetch it.",
+    "The galley reports that Tuesday's mystery stew has been solved. It was beans.",
+    "Found: one wrench, slightly scorched. Owner may collect from the workshop, and explain.",
+    "For trade: one Earth novel, read eleven times. Ending still sad.",
+    "Wanted: a name for the drill. 'The Drill' has been ruled out as 'unimaginative' by the drill crew.",
+    "Reminder from maintenance: please don't lick the condensation.",
+    "This month's sunrise was rated four stars by the people with windows. Everyone else has to take their word for it.",
+    "Gravity remains at 38%. Please continue to enjoy it responsibly.",
+    "The elevator suggestion box is full. Please stop suggesting stairs."
+  ],
+  "sign": ["Dig well. Breathe easy.", "Hole sweet hole.", "Keep your boots dusted and your hatches shut.", "See you next month, same hole, same time."],
+  "numbers": ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"]
+}
