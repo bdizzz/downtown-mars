@@ -9,7 +9,7 @@ import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 import { hasPostEffects, type Graphics } from "../view/graphics";
 import { TiltShiftPass } from "./tiltShift";
 import { LABEL_LAYER, labelDepth } from "./labelLayer";
-import { applyRetroTuning, initRetroTuning, onRetroTuning, retroGrid, retroShader, retroTuning, snapVertices, UpscaleShader, type RetroStyle } from "./lookRetro";
+import { applyRetroTuning, bandLighting, initRetroTuning, onRetroTuning, retroGrid, retroShader, retroTuning, snapVertices, upscaleShader, type RetroStyle } from "./lookRetro";
 
 // The 3D view's look: what's drawn after the scene, scaled by the graphics
 // settings. The scene renders once (antialiased, with its depth kept), then:
@@ -344,13 +344,14 @@ export class Look implements LookLike {
       // The same effects, on the small picture; then the repaint and the upscale. No tilt-shift: blur fights the pixels.
       initRetroTuning(retroStyle);
       snapVertices(retroTuning.wobble);
+      bandLighting(retroTuning.celBands);
       const repaint = new ShaderPass(retroShader());
       repaint.uniforms.tDepth!.value = this.scenePass.target.depthTexture;
-      applyRetroTuning(repaint.uniforms, retroTuning);
-      const upscale = new ShaderPass(UpscaleShader);
+      const upscale = new ShaderPass(upscaleShader());
+      applyRetroTuning(repaint.uniforms, upscale.uniforms, retroTuning);
       // Live tuning from the panel: new uniforms, and a new size when the pixels change.
       const unsubscribe = onRetroTuning(() => {
-        applyRetroTuning(repaint.uniforms, retroTuning);
+        applyRetroTuning(repaint.uniforms, upscale.uniforms, retroTuning);
         if (this.retro && retroTuning.pixel !== this.retro.pixel) this.resize();
       });
       this.retro = { repaint, upscale, labels: new LabelPass(scene, camera, this.scenePass.target.depthTexture!), size: new THREE.Vector2(), pixel: retroTuning.pixel, unsubscribe };
@@ -454,7 +455,10 @@ export class Look implements LookLike {
       this.composer.setSize(g.w, g.h);
       this.scenePass.setSize(g.w, g.h);
       this.retro.repaint.uniforms.resolution!.value.set(g.w, g.h);
-      this.retro.upscale.uniforms.uvScale!.value.set(px.x / (g.w * g.scale), px.y / (g.h * g.scale));
+      const up = this.retro.upscale.uniforms;
+      up.lowSize!.value.set(g.w, g.h);
+      up.screen!.value.set(px.x, px.y);
+      up.scale!.value = g.scale;
       this.retro.size.set(g.w * g.scale, g.h * g.scale);
       return;
     }
@@ -473,6 +477,10 @@ export class Look implements LookLike {
       const r = this.retro.repaint.uniforms;
       r.cameraNear!.value = this.camera.near;
       r.cameraFar!.value = this.camera.far;
+      r.projectionInverse!.value.copy(this.camera.projectionMatrixInverse);
+      r.cameraWorld!.value.copy(this.camera.matrixWorld);
+      // Metres one small-picture pixel spans per metre away.
+      r.pixelAngle!.value = (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2)) / Math.max(1, r.resolution!.value.y);
       this.composer.render();
       this.retro.labels.drawTo(this.renderer, null, this.retro.size.x, this.retro.size.y);
       return;

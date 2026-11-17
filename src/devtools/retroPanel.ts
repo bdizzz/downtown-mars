@@ -1,54 +1,117 @@
 import { paletteSubset, RETRO_PALETTE, RETRO_PRESETS, retroTuning, setRetroTuning, type RetroStyle, type RetroTuning } from "../render3d/lookRetro";
 
-// The retro look's tuning panel (#503): sliders for every number in the repaint,
-// shown in the corner whenever the game runs with ?look=snes or ?look=ps1. Changes
-// apply at once and are kept per browser; "Copy" puts the values on the clipboard
-// as JSON, ready to paste into data/retro.json as a preset.
+// The looks' tuning panel (#503): a control for every number in the repaint and
+// the upscale, shown in the corner whenever the game runs with ?look=<preset>.
+// Changes apply at once and are kept per browser; "Copy" puts the values on the
+// clipboard as JSON, ready to paste into data/retro.json as a preset. Section
+// titles fold their section away.
 
+type When = (t: RetroTuning) => boolean;
 type Control =
-  | { key: keyof RetroTuning; label: string; kind: "range"; min: number; max: number; step: number; when?: (t: RetroTuning) => boolean; note?: string }
-  | { key: keyof RetroTuning; label: string; kind: "select"; options: string[]; when?: (t: RetroTuning) => boolean }
-  | { key: keyof RetroTuning; label: string; kind: "check"; when?: (t: RetroTuning) => boolean };
+  | { key: keyof RetroTuning; label: string; kind: "range"; min: number; max: number; step: number; when?: When; note?: string }
+  | { key: keyof RetroTuning; label: string; kind: "select"; options: string[]; when?: When }
+  | { key: keyof RetroTuning; label: string; kind: "check"; when?: When; note?: string }
+  | { key: keyof RetroTuning; label: string; kind: "colour"; when?: When };
+
+const colourMode: When = (t) => t.render === "colour";
+const lines: When = (t) => t.render === "lines";
+const reduced: When = (t) => t.render === "colour" && t.colours !== "full";
+const edges: When = (t) => t.outlines || t.render === "lines";
 
 const SECTIONS: { title: string; controls: Control[] }[] = [
   {
     title: "Pixels",
-    controls: [{ key: "pixel", label: "Pixel size", kind: "range", min: 1, max: 12, step: 0.5 }],
+    controls: [
+      { key: "pixel", label: "Pixel size", kind: "range", min: 0.5, max: 16, step: 0.5 },
+      { key: "smooth", label: "Smooth (N64)", kind: "check" },
+    ],
+  },
+  {
+    title: "Render",
+    controls: [
+      { key: "render", label: "Draw", kind: "select", options: ["colour", "lines"] },
+      { key: "paper", label: "Paper", kind: "colour", when: (t) => t.render === "lines" || t.ascii },
+      { key: "ink", label: "Ink", kind: "colour", when: (t) => t.render === "lines" || (t.ascii && t.asciiMono) },
+      { key: "fill", label: "Shading", kind: "range", min: 0, max: 1, step: 0.02, when: lines },
+      { key: "grid", label: "Grid (m)", kind: "range", min: 0, max: 40, step: 1, when: lines, note: "0 = no grid" },
+    ],
   },
   {
     title: "Colour",
     controls: [
-      { key: "colours", label: "Colours", kind: "select", options: ["palette", "bits"] },
-      { key: "paletteSize", label: "Palette size", kind: "range", min: 2, max: RETRO_PALETTE.length, step: 1, when: (t) => t.colours === "palette" },
-      { key: "bits", label: "Bits / channel", kind: "range", min: 1, max: 8, step: 1, when: (t) => t.colours === "bits" },
       { key: "brightness", label: "Brightness", kind: "range", min: 0.5, max: 2, step: 0.05 },
       { key: "contrast", label: "Contrast", kind: "range", min: 0.5, max: 2, step: 0.05 },
       { key: "saturation", label: "Saturation", kind: "range", min: 0, max: 2, step: 0.05 },
+      { key: "colours", label: "Colours", kind: "select", options: ["full", "palette", "bits"], when: colourMode },
+      { key: "paletteSize", label: "Palette size", kind: "range", min: 2, max: RETRO_PALETTE.length, step: 1, when: (t) => colourMode(t) && t.colours === "palette" },
+      { key: "bits", label: "Bits / channel", kind: "range", min: 1, max: 8, step: 1, when: (t) => colourMode(t) && t.colours === "bits" },
     ],
   },
   {
     title: "Dither",
     controls: [
-      { key: "pattern", label: "Pattern", kind: "select", options: ["off", "bayer2", "bayer4", "bayer8", "ps1"] },
-      { key: "dither", label: "Strength", kind: "range", min: 0, max: 0.3, step: 0.005 },
+      { key: "pattern", label: "Pattern", kind: "select", options: ["off", "bayer2", "bayer4", "bayer8", "ps1"], when: reduced },
+      { key: "dither", label: "Strength", kind: "range", min: 0, max: 0.3, step: 0.005, when: reduced },
+      { key: "stableDither", label: "Pin to world", kind: "check", when: reduced, note: "stops the crawl as the camera moves" },
+    ],
+  },
+  {
+    title: "Paint",
+    controls: [{ key: "paint", label: "Brush radius", kind: "range", min: 0, max: 6, step: 1, note: "0 = off · heavy at small pixel sizes" }],
+  },
+  {
+    title: "Fog",
+    controls: [
+      { key: "fog", label: "Fog", kind: "range", min: 0, max: 1, step: 0.02 },
+      { key: "fogNear", label: "From (m)", kind: "range", min: 0, max: 300, step: 5 },
+      { key: "fogFar", label: "To (m)", kind: "range", min: 10, max: 1000, step: 10 },
+      { key: "fogColour", label: "Colour", kind: "colour" },
     ],
   },
   {
     title: "Outlines",
     controls: [
-      { key: "outlines", label: "Outlines", kind: "check" },
-      { key: "silhouette", label: "Silhouette at", kind: "range", min: 0.005, max: 0.3, step: 0.005, when: (t) => t.outlines },
-      { key: "silhouetteDark", label: "Silhouette dark", kind: "range", min: 0, max: 1, step: 0.02, when: (t) => t.outlines },
-      { key: "crease", label: "Crease at", kind: "range", min: 0, max: 0.3, step: 0.005, when: (t) => t.outlines, note: "0 = no creases" },
-      { key: "creaseDark", label: "Crease dark", kind: "range", min: 0, max: 1, step: 0.02, when: (t) => t.outlines },
-      { key: "creaseRange", label: "Crease range (m)", kind: "range", min: 10, max: 500, step: 10, when: (t) => t.outlines },
+      { key: "outlines", label: "Outlines", kind: "check", when: colourMode },
+      { key: "outlineWidth", label: "Width", kind: "range", min: 1, max: 4, step: 0.5, when: edges },
+      { key: "silhouette", label: "Silhouette at", kind: "range", min: 0.005, max: 0.3, step: 0.005, when: edges },
+      { key: "silhouetteDark", label: "Silhouette dark", kind: "range", min: 0, max: 1, step: 0.02, when: (t) => t.outlines && colourMode(t) },
+      { key: "crease", label: "Crease at", kind: "range", min: 0, max: 0.3, step: 0.005, when: edges, note: "0 = no creases" },
+      { key: "creaseDark", label: "Crease dark", kind: "range", min: 0, max: 1, step: 0.02, when: (t) => t.outlines && colourMode(t) },
+      { key: "creaseRange", label: "Crease range (m)", kind: "range", min: 10, max: 500, step: 10, when: edges },
     ],
   },
   {
-    title: "Wobble",
-    controls: [{ key: "wobble", label: "Vertex snap", kind: "range", min: 0, max: 320, step: 10, note: "0 = off · applies on reload" }],
+    title: "ASCII",
+    controls: [
+      { key: "ascii", label: "Characters", kind: "check", note: "one per pixel: try pixel size 6–10" },
+      { key: "asciiMono", label: "One colour", kind: "check", when: (t) => t.ascii },
+    ],
+  },
+  {
+    title: "CRT",
+    controls: [
+      { key: "crt", label: "Monitor", kind: "check" },
+      { key: "curvature", label: "Curvature", kind: "range", min: 0, max: 0.3, step: 0.01, when: (t) => t.crt },
+      { key: "scanlines", label: "Scanlines", kind: "range", min: 0, max: 1, step: 0.05, when: (t) => t.crt },
+      { key: "mask", label: "Phosphor mask", kind: "range", min: 0, max: 1, step: 0.05, when: (t) => t.crt },
+      { key: "aberration", label: "Colour fringe", kind: "range", min: 0, max: 3, step: 0.1, when: (t) => t.crt },
+      { key: "glow", label: "Glow", kind: "range", min: 0, max: 2, step: 0.05, when: (t) => t.crt },
+      { key: "vignette", label: "Vignette", kind: "range", min: 0, max: 1, step: 0.05, when: (t) => t.crt },
+    ],
+  },
+  {
+    title: "On reload",
+    controls: [
+      { key: "wobble", label: "Vertex snap", kind: "range", min: 0, max: 320, step: 10, note: "PS1 wobble · 0 = off" },
+      { key: "celBands", label: "Cel bands", kind: "range", min: 0, max: 6, step: 1, note: "hard bands of light · 0 = off" },
+    ],
   },
 ];
+
+/** Changing these shows or hides other controls. */
+const SWITCHES = new Set<keyof RetroTuning>(["render", "colours", "outlines", "ascii", "asciiMono", "crt"]);
+/** Sections folded away (for the page's life). */
+const folded = new Set<string>();
 
 const CSS = `
 .retro-panel { position: fixed; left: 76px; top: 96px; z-index: 50; width: 268px; max-height: calc(100vh - 150px); overflow: auto;
@@ -60,7 +123,7 @@ const CSS = `
 .retro-panel button:hover { background: #5e3a2c; }
 .retro-panel .body { padding: 4px 10px 10px; }
 .retro-panel.closed .body { display: none; }
-.retro-panel h4 { margin: 10px 0 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #b8906c; }
+.retro-panel h4 { cursor: pointer; user-select: none; margin: 10px 0 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #b8906c; }
 .retro-panel .row { display: grid; grid-template-columns: 96px 1fr 44px; align-items: center; gap: 6px; margin: 3px 0; }
 .retro-panel .row input[type=range] { width: 100%; accent-color: #e07a3f; }
 .retro-panel .row select { background: #2e1c1c; color: #f2e4d4; border: 1px solid #5e3a2c; border-radius: 4px; font: inherit; grid-column: span 2; }
@@ -68,7 +131,9 @@ const CSS = `
 .retro-panel .note { margin: -2px 0 4px 102px; font-size: 10px; color: #9a8070; }
 .retro-panel .swatches { display: flex; flex-wrap: wrap; gap: 2px; margin: 4px 0 2px; }
 .retro-panel .swatches span { width: 14px; height: 14px; border-radius: 2px; }
-.retro-panel .presets { display: flex; gap: 6px; margin-top: 10px; }
+.retro-panel .presets { display: flex; align-items: center; gap: 6px; margin: 6px 0 2px; }
+.retro-panel .presets select { flex: 1; background: #2e1c1c; color: #f2e4d4; border: 1px solid #5e3a2c; border-radius: 4px; font: inherit; }
+.retro-panel .row input[type=color] { grid-column: span 2; width: 100%; height: 20px; padding: 0; border: 1px solid #5e3a2c; background: none; }
 `;
 
 /** Show the panel; returns a function that removes it. */
@@ -83,7 +148,7 @@ export function mountRetroPanel(style: RetroStyle): () => void {
 
   const header = document.createElement("header");
   const title = document.createElement("b");
-  title.textContent = `RETRO · ${style.toUpperCase()}`;
+  title.textContent = `LOOK · ${style.toUpperCase()}`;
   const copy = button("Copy", async () => {
     const text = JSON.stringify(retroTuning, null, 1).replace(/\n\s*/g, " ");
     try {
@@ -153,30 +218,42 @@ export function mountRetroPanel(style: RetroStyle): () => void {
     body.replaceChildren();
     for (const section of SECTIONS) {
       const shown = section.controls.filter((c) => !c.when || c.when(retroTuning));
+      if (!shown.length) continue;
       const h = document.createElement("h4");
-      h.textContent = section.title;
+      const isFolded = folded.has(section.title);
+      h.textContent = `${isFolded ? "▸" : "▾"} ${section.title}`;
+      h.addEventListener("click", () => {
+        if (isFolded) folded.delete(section.title);
+        else folded.add(section.title);
+        render();
+      });
       body.append(h);
+      if (isFolded) continue;
       for (const c of shown) body.append(...row(c));
-      if (section.title === "Colour" && retroTuning.colours === "palette") {
+      if (section.title === "Colour" && colourMode(retroTuning) && retroTuning.colours === "palette") {
         swatches.className = "swatches";
         fillSwatches();
         body.append(swatches);
       }
     }
+    // Start again from any preset (its on-reload settings need a reload to show).
     const presets = document.createElement("div");
     presets.className = "presets";
+    const pick = document.createElement("select");
+    for (const name of Object.keys(RETRO_PRESETS)) pick.append(new Option(name, name, false, name === style));
     presets.append(
-      document.createTextNode("Reset to "),
-      button("SNES", () => change({ ...RETRO_PRESETS.snes })),
-      button("PS1", () => change({ ...RETRO_PRESETS.ps1 })),
+      document.createTextNode("Preset"),
+      pick,
+      button("Load", () => change({ ...RETRO_PRESETS[pick.value]! })),
+      button("Reload", () => location.reload()),
     );
-    body.append(presets);
+    body.prepend(presets);
   };
 
   const change = (c: Partial<RetroTuning>) => {
     // Rebuild only when what's shown changes (a mode, the outlines, a preset), never mid-drag.
     const keys = Object.keys(c);
-    const relayout = keys.length > 1 || keys[0] === "colours" || keys[0] === "outlines";
+    const relayout = keys.length > 1 || SWITCHES.has(keys[0] as keyof RetroTuning);
     setRetroTuning(style, c);
     if (relayout) render();
     else if (keys[0] === "paletteSize") fillSwatches();
@@ -214,12 +291,24 @@ export function mountRetroPanel(style: RetroStyle): () => void {
       for (const o of c.options) sel.append(new Option(o, o, false, retroTuning[c.key] === o));
       sel.addEventListener("change", () => change({ [c.key]: sel.value }));
       r.append(sel);
+    } else if (c.kind === "colour") {
+      const pickColour = document.createElement("input");
+      pickColour.type = "color";
+      pickColour.value = `#${String(retroTuning[c.key]).padStart(6, "0")}`;
+      pickColour.addEventListener("input", () => change({ [c.key]: pickColour.value.slice(1) }));
+      r.append(pickColour);
     } else {
       const box = document.createElement("input");
       box.type = "checkbox";
       box.checked = !!retroTuning[c.key];
       box.addEventListener("change", () => change({ [c.key]: box.checked }));
       r.append(box);
+      if (c.note) {
+        const n = document.createElement("div");
+        n.className = "note";
+        n.textContent = c.note;
+        out.push(n);
+      }
     }
     return out;
   }

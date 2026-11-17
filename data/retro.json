@@ -1,21 +1,32 @@
 {
-  "_doc": "Retro looks for the 3D view (#503), an experiment behind ?look=snes or ?look=ps1 (src/render3d/lookRetro.ts), tuned live in its panel. pixel: CSS pixels per chunky pixel (rounded to whole screen pixels); colours: 'palette' (the nearest of the first paletteSize colours picked from palette, in OKLab) or 'bits' (bits per channel); dither: the dither's spread in sRGB (0 to 1); pattern: off, bayer2, bayer4, bayer8 or ps1 (the PlayStation's 4x4 table); outlines: dark lines where depth jumps (silhouette: how far behind the neighbour must be, as a share of the distance) or bends (crease, on 1/depth, 0 off, drawn to creaseRange metres), and how dark each makes the pixel; brightness, contrast, saturation: applied before the colours are reduced; wobble: snap vertices to a coarse screen grid, this many steps across the screen's height (0 off; takes effect on reload).",
+  "_doc": "Looks for the 3D view (#503), an experiment behind ?look=<preset> (src/render3d/lookRetro.ts), tuned live in its panel (src/devtools/retroPanel.ts). Each preset is `base` with its own changes. pixel: CSS pixels per chunky pixel (rounded to whole screen pixels); smooth: blur the picture as it's scaled up (N64) rather than keep hard blocks; render: 'colour' (the scene) or 'lines' (edges in ink on paper, with `fill` of the scene's shading and a world grid every `grid` metres, 0 off); colours: 'full', 'palette' (the nearest of paletteSize colours picked from palette, in OKLab) or 'bits' (bits per channel); brightness, contrast, saturation: before the colours are reduced; paint: a Kuwahara filter's radius in pixels, for brush strokes (0 off); fog: how much distance fades to fogColour, from fogNear to fogFar metres; pattern: the dither (off, bayer2, bayer4, bayer8, ps1), dither its spread in sRGB, stableDither pins it to the world so it doesn't crawl; outlines: dark lines where depth jumps (silhouette: how far behind the neighbour must be, as a share of the distance) or bends (crease, on 1/depth, 0 off, to creaseRange metres), how dark each, outlineWidth in pixels; ascii: each pixel drawn as a character by its brightness, in its own colour or in ink (asciiMono), on paper; crt: a curved monitor (curvature) with scanlines, a phosphor mask, colour fringes (aberration), glow and vignette; wobble: snap vertices to a coarse screen grid, this many steps across the screen (0 off); celBands: light in this many hard bands (0 off). wobble and celBands take effect on reload.",
   "palette": [
     "0e0a0c", "1f1418", "2e1c1c", "45282a", "5e3a2c", "7a4a32", "9a5a36", "b8703c",
     "d48a4a", "e8a862", "f4c88a", "fbe6c0", "fff8ec", "6a1e1e", "9c2e22", "c84a2e",
     "5a2a3e", "8a4a5a", "c08a8a", "1e3a2a", "3a6a3a", "6a9a4a", "a8c86a", "1a2440",
     "2c4068", "4a6a9a", "7aa0c8", "b8d4e8", "4a4448", "7a7276", "aaa2a0", "ffd84a"
   ],
+  "base": {
+    "pixel": 4, "smooth": false, "render": "colour",
+    "colours": "full", "paletteSize": 32, "bits": 5,
+    "brightness": 1, "contrast": 1, "saturation": 1, "paint": 0,
+    "fog": 0, "fogNear": 20, "fogFar": 200, "fogColour": "8a6a5a",
+    "pattern": "bayer4", "dither": 0, "stableDither": false,
+    "outlines": false, "outlineWidth": 1, "silhouette": 0.05, "silhouetteDark": 0.22, "crease": 0.04, "creaseDark": 0.6, "creaseRange": 150,
+    "paper": "17396b", "ink": "e8f0ff", "fill": 0, "grid": 0,
+    "ascii": false, "asciiMono": false,
+    "crt": false, "curvature": 0.08, "scanlines": 0.35, "mask": 0.2, "aberration": 0.5, "glow": 0.3, "vignette": 0.4,
+    "wobble": 0, "celBands": 0
+  },
   "presets": {
-    "snes": {
-      "pixel": 4, "colours": "palette", "paletteSize": 32, "bits": 5, "dither": 0.09, "pattern": "bayer4",
-      "outlines": true, "silhouette": 0.05, "crease": 0.04, "silhouetteDark": 0.22, "creaseDark": 0.6, "creaseRange": 150,
-      "brightness": 1.15, "contrast": 1, "saturation": 1.1, "wobble": 0
-    },
-    "ps1": {
-      "pixel": 4, "colours": "bits", "paletteSize": 32, "bits": 5, "dither": 0.031, "pattern": "ps1",
-      "outlines": false, "silhouette": 0.05, "crease": 0, "silhouetteDark": 0.22, "creaseDark": 0.6, "creaseRange": 150,
-      "brightness": 1.1, "contrast": 1, "saturation": 1, "wobble": 120
-    }
+    "snes": { "colours": "palette", "dither": 0.09, "outlines": true, "brightness": 1.15, "saturation": 1.1 },
+    "crt": { "pixel": 3, "colours": "palette", "dither": 0.09, "outlines": true, "brightness": 1.25, "saturation": 1.15, "crt": true },
+    "ps1": { "colours": "bits", "pattern": "ps1", "dither": 0.031, "brightness": 1.1, "crease": 0, "wobble": 120 },
+    "n64": { "pixel": 3, "smooth": true, "colours": "bits", "pattern": "bayer2", "dither": 0.02, "brightness": 1.1, "fog": 0.6, "fogNear": 30, "fogFar": 250 },
+    "cel": { "pixel": 0.5, "outlines": true, "outlineWidth": 2, "silhouetteDark": 0.1, "crease": 0.06, "creaseDark": 0.45, "saturation": 1.15, "celBands": 3 },
+    "painterly": { "pixel": 1.5, "smooth": true, "paint": 4, "saturation": 1.15, "contrast": 1.05 },
+    "blueprint": { "pixel": 1, "render": "lines", "fill": 0.12, "grid": 10, "crease": 0.03, "creaseRange": 300 },
+    "vector": { "pixel": 1, "render": "lines", "paper": "020604", "ink": "4dff88", "crease": 0.03, "creaseRange": 300, "crt": true, "glow": 0.8, "scanlines": 0.25, "curvature": 0.06, "aberration": 0.3 },
+    "ascii": { "pixel": 7, "ascii": true, "paper": "000000", "brightness": 1.2, "saturation": 1.2 }
   }
 }

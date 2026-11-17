@@ -106,12 +106,23 @@ Every notable has a flat vector headshot (`src/view/portrait.ts`, palettes and o
 
 ## Retro looks (experiment, Nov 17, #503)
 
-Behind a URL flag, the 3D view can be drawn as an old console would: `?look=snes` or `?look=ps1` (`render3d/lookRetro.ts`, numbers in `data/retro.json`). With either flag, a tuning panel (`devtools/retroPanel.ts`, draggable by its header) has a slider for every number: pixel size, colour mode with palette size (a spread-out pick from the 32) or bits per channel, brightness, contrast and saturation before the colours are cut, dither pattern and strength, outlines with their thresholds and darkness, and the wobble (on reload). Changes apply at once and are kept per browser; **Copy** puts them on the clipboard as JSON for a preset in `data/retro.json`. The usual effects (AO, haze, glow, grade) run on a small picture, which is then repainted and scaled up by a whole number with no smoothing; labels draw afterwards at full size.
+Behind a URL flag, the 3D view can be drawn in other styles: `?look=<preset>` (`render3d/lookRetro.ts`, numbers in `data/retro.json`, each preset the `base` with its own changes). The usual effects (AO, haze, glow, grade) run on a small picture, which is repainted and then scaled up to the screen; labels draw afterwards at full size.
 
-- **SNES:** chunky pixels 4 CSS pixels wide; dark outlines where depth jumps (silhouettes) or bends (creases, from the curvature of 1/depth, to 150 m); every pixel snapped to a 32-colour Mars palette (nearest in OKLab) with 4×4 Bayer dithering.
-- **PS1:** the same size; 15-bit colour (5 bits a channel) with the PlayStation's own 4×4 dither table; no outlines; vertices snapped to a coarse screen grid for the wobble (patched into three's shared `project_vertex`, so it also moves shadows).
+| Preset | What it does |
+| --- | --- |
+| `snes` | Chunky pixels, outlines at silhouettes and creases, a 32-colour Mars palette (nearest in OKLab) with 4×4 Bayer dither |
+| `crt` | The SNES look on a curved CRT: scanlines, phosphor mask, colour fringes, glow, vignette |
+| `ps1` | 15-bit colour with the PlayStation's dither table, wobbly vertices |
+| `n64` | Smooth (blurred) upscaling, 15-bit colour, light dither, distance fog |
+| `cel` | Full resolution, light in 3 hard bands, thick ink outlines |
+| `painterly` | A Kuwahara filter: flat areas smear into brush strokes, edges stay sharp |
+| `blueprint` | Only edges, white on blueprint blue, a faint shading fill and a 10 m grid on every surface |
+| `vector` | Glowing green edges on black, on a CRT |
+| `ascii` | Each block drawn as a character (` .:-=+*#%@`) picked by its brightness, in its own colour |
 
-Not done: no tilt-shift (blur fights the pixels); dither crawls as the camera moves (snapping the camera to whole pixels would fix it in Free view); the procedural surface textures turn to noise at this size; a dust storm's haze dithers the whole screen between two reds.
+With any of them, a tuning panel (`devtools/retroPanel.ts`, draggable by its header, sections folding by their titles) has a control for every number: pixel size and smoothing; colour or lines (paper, ink, shading, grid); brightness, contrast, saturation; full colour, a palette size (a spread-out pick from the 32) or bits per channel; dither pattern, strength, and pinning it to the world (cells a power of two metres across on each surface, so it doesn't crawl as the camera moves); brush radius; fog; outlines (width, thresholds, darkness); ASCII; the CRT's parts; and, on reload, the PS1 wobble and cel bands (both patched into three's shared shader code before materials compile). Changes apply at once and are kept per browser and preset; **Copy** puts them on the clipboard as JSON for a preset in `data/retro.json`; **Preset → Load** starts again from any preset.
+
+Not done: labels don't follow the CRT's curve; the procedural surface textures turn to noise at large pixel sizes; a dust storm's haze dithers the whole screen; painterly at small pixel sizes is heavy on the GPU.
 
 ## What a real artist would make
 

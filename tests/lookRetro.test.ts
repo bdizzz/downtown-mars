@@ -5,7 +5,8 @@ describe("retro looks (#503)", () => {
   it("reads the style from the address", () => {
     expect(retroStyleFrom("?look=snes")).toBe("snes");
     expect(retroStyleFrom("?foo=1&look=ps1")).toBe("ps1");
-    expect(retroStyleFrom("?look=n64")).toBeNull();
+    expect(retroStyleFrom("?look=blueprint")).toBe("blueprint");
+    expect(retroStyleFrom("?look=gameboy")).toBeNull();
     expect(retroStyleFrom("")).toBeNull();
   });
 
@@ -28,7 +29,16 @@ describe("retro looks (#503)", () => {
     expect(p.length).toBeGreaterThan(8);
     for (const h of p) expect(h).toMatch(/^[0-9a-f]{6}$/);
     expect(new Set(p).size).toBe(p.length);
-    expect(RETRO_PRESETS.snes.paletteSize).toBeLessThanOrEqual(p.length);
+    expect(RETRO_PRESETS.snes!.paletteSize).toBeLessThanOrEqual(p.length);
+  });
+
+  it("fills every preset out from the base, with the base's kinds of values", () => {
+    const base = RETRO_PRESETS.snes!;
+    for (const [name, p] of Object.entries(RETRO_PRESETS)) {
+      expect(Object.keys(p).sort(), name).toEqual(Object.keys(base).sort());
+      for (const k of Object.keys(base) as (keyof typeof base)[]) expect(typeof p[k], `${name}.${k}`).toBe(typeof base[k]);
+    }
+    expect(Object.keys(RETRO_PRESETS)).toEqual(expect.arrayContaining(["snes", "ps1", "n64", "cel", "painterly", "blueprint", "vector", "ascii", "crt"]));
   });
 
   it("picks smaller palettes spread out, starting from the darkest", () => {
