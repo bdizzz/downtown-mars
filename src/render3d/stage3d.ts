@@ -29,6 +29,7 @@ import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
 import { IndoorLights } from "./indoorLights";
 import { modeAt } from "../view/lightModes";
 import lighting from "../../data/lighting.json";
+import { retroStyleFrom } from "./lookRetro";
 import { createSky } from "./sky3d";
 import { siteLatitude, starTurn, sunDirection } from "../view/sunPath";
 import { buildTerrain, GROUND_BASE, siteSeed, soilTint, type Terrain } from "./terrain3d";
@@ -189,7 +190,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // What's drawn over the scene (occlusion, haze, glow, grading), per the graphics settings.
   const look: LookLike = webgpu
     ? new (await import("./lookGpu")).GpuLook(renderer as unknown as import("three/webgpu").WebGPURenderer, scene, camera)
-    : new Look(renderer, scene, camera);
+    : new Look(renderer, scene, camera, retroStyleFrom(location.search));
 
   const hemi = new THREE.HemisphereLight(0xffe6cc, 0x2a1510, 1.1);
   scene.add(hemi);

@@ -9,6 +9,7 @@ import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 import { hasPostEffects, type Graphics } from "../view/graphics";
 import { TiltShiftPass } from "./tiltShift";
 import { LABEL_LAYER, labelDepth } from "./labelLayer";
+import { RETRO, retroGrid, retroShader, snapVertices, UpscaleShader, type RetroStyle } from "./lookRetro";
 
 // The 3D view's look: what's drawn after the scene, scaled by the graphics
 // settings. The scene renders once (antialiased, with its depth kept), then:
@@ -60,11 +61,12 @@ class ScenePass extends Pass {
   constructor(
     private scene: THREE.Scene,
     private camera: THREE.Camera,
+    samples = 4,
   ) {
     super();
     const depthTexture = new THREE.DepthTexture(1, 1);
     depthTexture.type = THREE.UnsignedIntType;
-    this.target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4, depthTexture });
+    this.target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples, depthTexture });
   }
 
   setSize(w: number, h: number): void {
@@ -107,6 +109,11 @@ class LabelPass extends Pass {
   }
 
   render(renderer: THREE.WebGLRenderer, _writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget): void {
+    this.drawTo(renderer, this.renderToScreen ? null : readBuffer, readBuffer.width, readBuffer.height);
+  }
+
+  /** Draw the labels into a target (null: the screen) of this size in pixels, which the scene's depth covers. */
+  drawTo(renderer: THREE.WebGLRenderer, target: THREE.WebGLRenderTarget | null, w: number, h: number): void {
     const { scene, camera } = this;
     const background = scene.background;
     const autoClear = renderer.autoClear;
@@ -116,8 +123,8 @@ class LabelPass extends Pass {
     camera.layers.set(LABEL_LAYER);
     labelDepth.tSceneDepth.value = this.depth;
     labelDepth.sceneDepthOn.value = 1;
-    labelDepth.sceneSize.value.set(readBuffer.width, readBuffer.height);
-    renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
+    labelDepth.sceneSize.value.set(w, h);
+    renderer.setRenderTarget(target);
     // The buffer's own depth holds only the full-screen passes'; the scene's depth texture decides instead.
     renderer.clearDepth();
     renderer.render(scene, camera);
@@ -313,14 +320,18 @@ export class Look implements LookLike {
   private tilt: TiltShiftPass;
   private grade: ShaderPass;
   private envTexture: THREE.Texture | null = null;
+  /** The retro experiment (#503): its repaint, its upscale to the screen, and the labels drawn after at full size. */
+  private retro: { style: RetroStyle; repaint: ShaderPass; upscale: ShaderPass; labels: LabelPass; size: THREE.Vector2 } | null = null;
 
   constructor(
     private renderer: THREE.WebGLRenderer,
     private scene: THREE.Scene,
     private camera: THREE.PerspectiveCamera,
+    retroStyle: RetroStyle | null = null,
   ) {
     this.composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType }));
-    this.scenePass = new ScenePass(scene, camera);
+    // Retro: no antialiasing, so edges stay as hard steps.
+    this.scenePass = new ScenePass(scene, camera, retroStyle ? 0 : 4);
     this.ao = new SceneAOPass(scene, camera, 1, 1);
     this.ao.setGBuffer(this.scenePass.target.depthTexture!);
     this.ao.updateGtaoMaterial(LOOK.ao);
@@ -329,6 +340,17 @@ export class Look implements LookLike {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), LOOK.bloom.strength, LOOK.bloom.radius, LOOK.bloom.threshold);
     this.tilt = new TiltShiftPass(this.scenePass.target.depthTexture!, camera);
     this.grade = new ShaderPass(GradeShader);
+    if (retroStyle) {
+      // The same effects, on the small picture; then the repaint and the upscale. No tilt-shift: blur fights the pixels.
+      snapVertices(RETRO[retroStyle].wobble);
+      const repaint = new ShaderPass(retroShader(retroStyle));
+      repaint.uniforms.tDepth!.value = this.scenePass.target.depthTexture;
+      const upscale = new ShaderPass(UpscaleShader);
+      this.retro = { style: retroStyle, repaint, upscale, labels: new LabelPass(scene, camera, this.scenePass.target.depthTexture!), size: new THREE.Vector2() };
+      for (const p of [this.scenePass, this.ao, this.haze, this.bloom, new OutputPass(), this.grade, repaint, upscale]) this.composer.addPass(p);
+      for (const t of [this.composer.renderTarget1, this.composer.renderTarget2, this.scenePass.target]) t.texture.minFilter = t.texture.magFilter = THREE.NearestFilter;
+      return;
+    }
     for (const p of [this.scenePass, this.ao, this.haze, this.bloom, this.tilt, new LabelPass(scene, camera, this.scenePass.target.depthTexture!), new OutputPass(), this.grade]) this.composer.addPass(p);
   }
 
@@ -415,6 +437,18 @@ export class Look implements LookLike {
 
   /** Match the canvas: call after the renderer's size or pixel ratio changes. */
   resize(): void {
+    if (this.retro) {
+      // The small picture, scaled up by a whole number to cover the screen; the labels draw at the screen's own size.
+      const px = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+      const g = retroGrid(px.x, px.y, RETRO[this.retro.style].height);
+      this.composer.setPixelRatio(1);
+      this.composer.setSize(g.w, g.h);
+      this.scenePass.setSize(g.w, g.h);
+      this.retro.repaint.uniforms.resolution!.value.set(g.w, g.h);
+      this.retro.upscale.uniforms.uvScale!.value.set(px.x / (g.w * g.scale), px.y / (g.h * g.scale));
+      this.retro.size.set(g.w * g.scale, g.h * g.scale);
+      return;
+    }
     const css = this.renderer.getSize(new THREE.Vector2());
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.composer.setSize(css.x, css.y);
@@ -423,6 +457,17 @@ export class Look implements LookLike {
   }
 
   render(): void {
+    if (this.retro) {
+      const u = this.haze.uniforms;
+      u.projectionInverse!.value.copy(this.camera.projectionMatrixInverse);
+      u.cameraWorld!.value.copy(this.camera.matrixWorld);
+      const r = this.retro.repaint.uniforms;
+      r.cameraNear!.value = this.camera.near;
+      r.cameraFar!.value = this.camera.far;
+      this.composer.render();
+      this.retro.labels.drawTo(this.renderer, null, this.retro.size.x, this.retro.size.y);
+      return;
+    }
     if (!this.graphics || !hasPostEffects(this.graphics)) {
       this.renderer.render(this.scene, this.camera);
       return;

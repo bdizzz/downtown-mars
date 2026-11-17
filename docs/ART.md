@@ -104,6 +104,15 @@ Every notable has a flat vector headshot (`src/view/portrait.ts`, palettes and o
 | Health / Admin / Power / Logistics / Access | `#d48092` / `#c9a456` / `#e0bf4a` / `#a08fb0` / `#9a8574` |
 | Excavation / Industry / Public / Construction / Storage / Services | `#7a6a5e` / `#b48a6a` / `#d9a870` / `#d98c3a` / `#9c8a6a` / `#5aa89c` |
 
+## Retro looks (experiment, Nov 17, #503)
+
+Behind a URL flag, the 3D view can be drawn as an old console would: `?look=snes` or `?look=ps1` (`render3d/lookRetro.ts`, numbers in `data/retro.json`). The usual effects (AO, haze, glow, grade) run on a small picture, which is then repainted and scaled up by a whole number with no smoothing; labels draw afterwards at full size.
+
+- **SNES:** 224 chunky pixels tall; dark outlines where depth jumps (silhouettes) or bends (creases, from the curvature of 1/depth, to 150 m); every pixel snapped to a 32-colour Mars palette (nearest in OKLab) with 4×4 Bayer dithering.
+- **PS1:** 240 pixels tall; 15-bit colour (5 bits a channel) with the PlayStation's own 4×4 dither table; no outlines; vertices snapped to a coarse screen grid for the wobble (patched into three's shared `project_vertex`, so it also moves shadows).
+
+Not done: no tilt-shift (blur fights the pixels); dither crawls as the camera moves (snapping the camera to whole pixels would fix it in Free view); the procedural surface textures turn to noise at this size; a dust storm's haze dithers the whole screen between two reds.
+
 ## What a real artist would make
 
 - **Room interiors** per type and size (S, M, L; wide and deep variants of L), with 3–4 frames of idle life: steam from the galley, a turning fan in life support, sprouts that sway in farms.
