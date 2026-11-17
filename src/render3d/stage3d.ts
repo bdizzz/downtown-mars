@@ -191,6 +191,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const look: LookLike = webgpu
     ? new (await import("./lookGpu")).GpuLook(renderer as unknown as import("three/webgpu").WebGPURenderer, scene, camera)
     : new Look(renderer, scene, camera, retroStyleFrom(location.search));
+  // The retro look's tuning panel (#503), while trying it out.
+  // (A stage disposed before the panel's code arrives never shows it.)
+  let closeRetroPanel: (() => void) | null = null;
+  let stageGone = false;
+  const retroStyle = !webgpu && retroStyleFrom(location.search);
+  if (retroStyle) void import("../devtools/retroPanel").then((m) => !stageGone && (closeRetroPanel = m.mountRetroPanel(retroStyle)));
 
   const hemi = new THREE.HemisphereLight(0xffe6cc, 0x2a1510, 1.1);
   scene.add(hemi);
@@ -2877,6 +2883,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         m.dispose();
       });
       look.dispose();
+      stageGone = true;
+      closeRetroPanel?.();
       skyDome.dispose();
       renderer.dispose();
       canvas.remove();

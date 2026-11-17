@@ -106,10 +106,10 @@ Every notable has a flat vector headshot (`src/view/portrait.ts`, palettes and o
 
 ## Retro looks (experiment, Nov 17, #503)
 
-Behind a URL flag, the 3D view can be drawn as an old console would: `?look=snes` or `?look=ps1` (`render3d/lookRetro.ts`, numbers in `data/retro.json`). The usual effects (AO, haze, glow, grade) run on a small picture, which is then repainted and scaled up by a whole number with no smoothing; labels draw afterwards at full size.
+Behind a URL flag, the 3D view can be drawn as an old console would: `?look=snes` or `?look=ps1` (`render3d/lookRetro.ts`, numbers in `data/retro.json`). With either flag, a tuning panel (`devtools/retroPanel.ts`, draggable by its header) has a slider for every number: pixel size, colour mode with palette size (a spread-out pick from the 32) or bits per channel, brightness, contrast and saturation before the colours are cut, dither pattern and strength, outlines with their thresholds and darkness, and the wobble (on reload). Changes apply at once and are kept per browser; **Copy** puts them on the clipboard as JSON for a preset in `data/retro.json`. The usual effects (AO, haze, glow, grade) run on a small picture, which is then repainted and scaled up by a whole number with no smoothing; labels draw afterwards at full size.
 
-- **SNES:** 224 chunky pixels tall; dark outlines where depth jumps (silhouettes) or bends (creases, from the curvature of 1/depth, to 150 m); every pixel snapped to a 32-colour Mars palette (nearest in OKLab) with 4×4 Bayer dithering.
-- **PS1:** 240 pixels tall; 15-bit colour (5 bits a channel) with the PlayStation's own 4×4 dither table; no outlines; vertices snapped to a coarse screen grid for the wobble (patched into three's shared `project_vertex`, so it also moves shadows).
+- **SNES:** chunky pixels 4 CSS pixels wide; dark outlines where depth jumps (silhouettes) or bends (creases, from the curvature of 1/depth, to 150 m); every pixel snapped to a 32-colour Mars palette (nearest in OKLab) with 4×4 Bayer dithering.
+- **PS1:** the same size; 15-bit colour (5 bits a channel) with the PlayStation's own 4×4 dither table; no outlines; vertices snapped to a coarse screen grid for the wobble (patched into three's shared `project_vertex`, so it also moves shadows).
 
 Not done: no tilt-shift (blur fights the pixels); dither crawls as the camera moves (snapping the camera to whole pixels would fix it in Free view); the procedural surface textures turn to noise at this size; a dust storm's haze dithers the whole screen between two reds.
 

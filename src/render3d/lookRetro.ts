@@ -10,28 +10,74 @@ import retro from "../../data/retro.json";
 //         standing in for the gradients the palette can't hold.
 //   ps1   15-bit colour (5 bits a channel) with the PlayStation's own 4x4 dither,
 //         no outlines, and vertices snapped to a coarse screen grid (the wobble).
-// The labels are drawn afterwards at full resolution, so text stays readable.
+// Every number is live: the tuning panel (devtools/retroPanel.ts) changes
+// `retroTuning`, and the look picks it up on the next frame. The labels are
+// drawn afterwards at full resolution, so text stays readable.
 
 export type RetroStyle = "snes" | "ps1";
+export type RetroPattern = "off" | "bayer2" | "bayer4" | "bayer8" | "ps1";
 
-interface Outline {
+export interface RetroTuning {
+  /** CSS pixels per chunky pixel (rounded to whole screen pixels). */
+  pixel: number;
+  colours: "palette" | "bits";
+  /** How many of the palette's colours to use, picked to spread out (paletteSubset). */
+  paletteSize: number;
+  /** Bits per channel, in "bits" mode. */
+  bits: number;
+  /** The dither's spread, in sRGB (0 to 1). */
+  dither: number;
+  pattern: RetroPattern;
+  outlines: boolean;
   silhouette: number;
   crease: number;
   silhouetteDark: number;
   creaseDark: number;
   creaseRange: number;
-}
-
-interface RetroSettings {
-  height: number;
-  outline: Outline | null;
-  dither: number;
-  palette?: string[];
-  bits?: number;
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  /** Vertex snapping steps across the screen's height (0 off); takes effect on reload. */
   wobble: number;
 }
 
-export const RETRO = retro as unknown as Record<RetroStyle, RetroSettings>;
+export const RETRO_PALETTE: readonly string[] = retro.palette;
+export const RETRO_PRESETS = retro.presets as Record<RetroStyle, RetroTuning>;
+export const PALETTE_MAX = 32;
+const PATTERNS: RetroPattern[] = ["off", "bayer2", "bayer4", "bayer8", "ps1"];
+
+const STORE = "dm.retroTuning";
+
+/** The tuning in use, shared by the look and the panel; saved per browser so a reload keeps it. */
+export const retroTuning: RetroTuning = { ...RETRO_PRESETS.snes };
+const listeners = new Set<() => void>();
+
+/** Start from a style's preset, or what was saved for it last time. */
+export function initRetroTuning(style: RetroStyle): void {
+  Object.assign(retroTuning, RETRO_PRESETS[style]);
+  try {
+    const saved = JSON.parse(localStorage.getItem(`${STORE}.${style}`) ?? "null") as Partial<RetroTuning> | null;
+    if (saved) for (const k of Object.keys(retroTuning) as (keyof RetroTuning)[]) if (typeof saved[k] === typeof retroTuning[k]) (retroTuning as unknown as Record<string, unknown>)[k] = saved[k];
+  } catch {
+    // No storage: the preset it is.
+  }
+}
+
+/** Change some of the tuning, save it, and tell the look. */
+export function setRetroTuning(style: RetroStyle, change: Partial<RetroTuning>): void {
+  Object.assign(retroTuning, change);
+  try {
+    localStorage.setItem(`${STORE}.${style}`, JSON.stringify(retroTuning));
+  } catch {
+    // Not saved; it still applies.
+  }
+  for (const f of listeners) f();
+}
+
+export function onRetroTuning(f: () => void): () => void {
+  listeners.add(f);
+  return () => listeners.delete(f);
+}
 
 /** The retro style a page's address asks for (?look=snes or ?look=ps1), or null. */
 export function retroStyleFrom(search: string): RetroStyle | null {
@@ -39,14 +85,10 @@ export function retroStyleFrom(search: string): RetroStyle | null {
   return v === "snes" || v === "ps1" ? v : null;
 }
 
-/**
- * The small picture for a screen: how many screen pixels each chunky pixel
- * covers (a whole number, so they're all the same size), and the picture's
- * size, just big enough to cover the screen at that scale.
- */
-export function retroGrid(screenW: number, screenH: number, height: number): { scale: number; w: number; h: number } {
-  const scale = Math.max(1, Math.round(screenH / height));
-  return { scale, w: Math.max(1, Math.ceil(screenW / scale)), h: Math.max(1, Math.ceil(screenH / scale)) };
+/** The small picture for a screen at `scale` screen pixels a chunky pixel: just big enough to cover it. */
+export function retroGrid(screenW: number, screenH: number, scale: number): { scale: number; w: number; h: number } {
+  const s = Math.max(1, Math.round(scale));
+  return { scale: s, w: Math.max(1, Math.ceil(screenW / s)), h: Math.max(1, Math.ceil(screenH / s)) };
 }
 
 function srgbToLinear(v: number): number {
@@ -69,6 +111,30 @@ export function oklab(hex: string): [number, number, number] {
   ];
 }
 
+/**
+ * `n` of the palette's colours, spread as far apart as they go: the darkest, then
+ * again and again the colour furthest (in OKLab) from those already picked.
+ */
+export function paletteSubset(palette: readonly string[], n: number): string[] {
+  const labs = palette.map(oklab);
+  const count = Math.max(1, Math.min(palette.length, Math.round(n)));
+  let first = 0;
+  labs.forEach((c, i) => c[0] < labs[first]![0] && (first = i));
+  const picked = [first];
+  const nearest = labs.map((c) => dist(c, labs[first]!));
+  while (picked.length < count) {
+    let far = -1;
+    nearest.forEach((d, i) => !picked.includes(i) && (far < 0 || d > nearest[far]!) && (far = i));
+    picked.push(far);
+    labs.forEach((c, i) => (nearest[i] = Math.min(nearest[i]!, dist(c, labs[far]!))));
+  }
+  return picked.map((i) => palette[i]!);
+}
+
+function dist(a: number[], b: number[]): number {
+  return (a[0]! - b[0]!) ** 2 + (a[1]! - b[1]!) ** 2 + (a[2]! - b[2]!) ** 2;
+}
+
 const vertexShader = /* glsl */ `
   varying vec2 vUv;
   void main() {
@@ -77,25 +143,27 @@ const vertexShader = /* glsl */ `
   }`;
 
 /** The repaint, at the small picture's size, on colour that's already tone mapped and in sRGB. */
-export function retroShader(style: RetroStyle) {
-  const s = RETRO[style];
-  const palette = s.palette ?? [];
-  const o = s.outline;
+export function retroShader() {
   return {
-    name: `Retro-${style}`,
-    defines: { PALETTE_SIZE: palette.length, OUTLINE: o ? 1 : 0, PS1: style === "ps1" ? 1 : 0 },
+    name: "Retro",
+    defines: { PALETTE_MAX },
     uniforms: {
       tDiffuse: { value: null },
       tDepth: { value: null as THREE.Texture | null },
       resolution: { value: new THREE.Vector2(1, 1) },
       cameraNear: { value: 0.1 },
       cameraFar: { value: 1000 },
-      outline: { value: new THREE.Vector4(o?.silhouette ?? 0, o?.crease ?? 0, o?.silhouetteDark ?? 1, o?.creaseDark ?? 1) },
-      creaseRange: { value: o?.creaseRange ?? 0 },
-      dither: { value: s.dither },
-      bits: { value: s.bits ?? 8 },
-      paletteLab: { value: palette.map((h) => new THREE.Vector3(...oklab(h))) },
-      paletteRgb: { value: palette.map((h) => new THREE.Color().setRGB(((parseInt(h, 16) >> 16) & 255) / 255, ((parseInt(h, 16) >> 8) & 255) / 255, (parseInt(h, 16) & 255) / 255, THREE.LinearSRGBColorSpace)) },
+      outlineOn: { value: 1 },
+      outline: { value: new THREE.Vector4() },
+      creaseRange: { value: 0 },
+      grade: { value: new THREE.Vector3(1, 1, 1) },
+      mode: { value: 0 },
+      pattern: { value: 2 },
+      dither: { value: 0 },
+      bits: { value: 5 },
+      paletteSize: { value: 0 },
+      paletteLab: { value: Array.from({ length: PALETTE_MAX }, () => new THREE.Vector3()) },
+      paletteRgb: { value: Array.from({ length: PALETTE_MAX }, () => new THREE.Vector3()) },
     },
     vertexShader,
     fragmentShader: /* glsl */ `
@@ -104,14 +172,17 @@ export function retroShader(style: RetroStyle) {
       uniform vec2 resolution;
       uniform float cameraNear;
       uniform float cameraFar;
+      uniform float outlineOn;
       uniform vec4 outline;
       uniform float creaseRange;
+      uniform vec3 grade;
+      uniform int mode;
+      uniform int pattern;
       uniform float dither;
       uniform float bits;
-      #if PALETTE_SIZE > 0
-        uniform vec3 paletteLab[PALETTE_SIZE];
-        uniform vec3 paletteRgb[PALETTE_SIZE];
-      #endif
+      uniform int paletteSize;
+      uniform vec3 paletteLab[PALETTE_MAX];
+      uniform vec3 paletteRgb[PALETTE_MAX];
       varying vec2 vUv;
 
       float viewZ(vec2 uv) {
@@ -119,9 +190,23 @@ export function retroShader(style: RetroStyle) {
         return cameraNear * cameraFar / (cameraFar - d * (cameraFar - cameraNear));
       }
 
-      // Ordered dither, 0 to 1, from a 4x4 Bayer matrix.
+      // Ordered dither thresholds, 0 to 1, from Bayer matrices.
       float bayer2(vec2 a) { a = floor(a); return fract(dot(a, vec2(0.5, a.y * 0.75))); }
       float bayer4(vec2 a) { return bayer2(0.5 * a) * 0.25 + bayer2(a); }
+      float bayer8(vec2 a) { return bayer4(0.5 * a) * 0.25 + bayer2(a); }
+
+      // The dither offset for this pixel, about -0.5 to 0.5.
+      float threshold(vec2 px) {
+        if (pattern == 1) return bayer2(px) - 0.5 + 1.0 / 8.0;
+        if (pattern == 2) return bayer4(px) - 0.5 + 1.0 / 32.0;
+        if (pattern == 3) return bayer8(px) - 0.5 + 1.0 / 128.0;
+        if (pattern == 4) {
+          // The PlayStation's table, in eighths of a step.
+          const mat4 table = mat4(-4.0, 0.0, -3.0, 1.0, 2.0, -2.0, 3.0, -1.0, -3.0, 1.0, -4.0, 0.0, 3.0, -1.0, 2.0, -2.0);
+          return table[int(mod(px.y, 4.0))][int(mod(px.x, 4.0))] / 8.0;
+        }
+        return 0.0;
+      }
 
       vec3 toLinear(vec3 c) {
         return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
@@ -141,7 +226,13 @@ export function retroShader(style: RetroStyle) {
         vec3 c = texture2D(tDiffuse, vUv).rgb;
         vec2 px = floor(vUv * resolution);
 
-        #if OUTLINE
+        // Brightness, contrast and saturation, before the colours are reduced.
+        c *= grade.x;
+        c = (c - 0.5) * grade.y + 0.5;
+        float luma = dot(c, vec3(0.299, 0.587, 0.114));
+        c = clamp(mix(vec3(luma), c, grade.z), 0.0, 1.0);
+
+        if (outlineOn > 0.5) {
           vec2 t = 1.0 / resolution;
           float zc = viewZ(vUv);
           if (zc < cameraFar * 0.98) {
@@ -152,40 +243,56 @@ export function retroShader(style: RetroStyle) {
             if ((far - zc) / zc > outline.x) {
               // The near side of a jump in depth: a silhouette.
               c *= outline.z;
-            } else if ((zc - near) / zc <= outline.x && zc < creaseRange) {
+            } else if (outline.y > 0.0 && (zc - near) / zc <= outline.x && zc < creaseRange) {
               // Where a surface bends: 1/depth is flat across a flat surface, so its curvature finds the creases.
               float ic = 1.0 / zc;
               float bend = (abs(1.0 / zl + 1.0 / zr - 2.0 * ic) + abs(1.0 / zd + 1.0 / zu - 2.0 * ic)) / ic;
               if (bend > outline.y) c *= outline.w;
             }
           }
-        #endif
+        }
 
-        #if PS1
-          // The PlayStation's dither table, in 8-bit steps, then truncated to 5 bits a channel.
-          const mat4 table = mat4(-4.0, 0.0, -3.0, 1.0, 2.0, -2.0, 3.0, -1.0, -3.0, 1.0, -4.0, 0.0, 3.0, -1.0, 2.0, -2.0);
-          int x = int(mod(px.x, 4.0));
-          int y = int(mod(px.y, 4.0));
-          float stepSize = exp2(8.0 - bits);
-          vec3 c8 = clamp(floor(c * 255.0 + 0.5) + table[y][x] * dither, 0.0, 255.0);
-          vec3 q = floor(c8 / stepSize);
-          // Back to 8 bits the way the hardware did: the top bits repeated into the bottom.
-          c = (q * stepSize + floor(q / exp2(bits - (8.0 - bits)))) / 255.0;
-        #elif PALETTE_SIZE > 0
-          c = clamp(c + (bayer4(px) - 0.5 + 1.0 / 32.0) * dither, 0.0, 1.0);
+        c = clamp(c + threshold(px) * dither, 0.0, 1.0);
+        if (mode == 1) {
+          // So many bits a channel, rounded to the nearest level.
+          float levels = exp2(bits) - 1.0;
+          c = floor(c * levels + 0.5) / levels;
+        } else if (paletteSize > 0) {
           vec3 lab = toOklab(toLinear(c));
           float best = 1e9;
           vec3 pick = c;
-          for (int i = 0; i < PALETTE_SIZE; i++) {
+          for (int i = 0; i < PALETTE_MAX; i++) {
+            if (i >= paletteSize) break;
             vec3 d = lab - paletteLab[i];
             float e = dot(d, d);
             if (e < best) { best = e; pick = paletteRgb[i]; }
           }
           c = pick;
-        #endif
+        }
         gl_FragColor = vec4(c, 1.0);
       }`,
   };
+}
+
+/** Set the repaint's uniforms from the tuning. */
+export function applyRetroTuning(u: Record<string, THREE.IUniform>, t: RetroTuning): void {
+  u.outlineOn!.value = t.outlines ? 1 : 0;
+  (u.outline!.value as THREE.Vector4).set(t.silhouette, t.crease, t.silhouetteDark, t.creaseDark);
+  u.creaseRange!.value = t.creaseRange;
+  (u.grade!.value as THREE.Vector3).set(t.brightness, t.contrast, t.saturation);
+  u.mode!.value = t.colours === "bits" ? 1 : 0;
+  u.pattern!.value = Math.max(0, PATTERNS.indexOf(t.pattern));
+  u.dither!.value = t.dither;
+  u.bits!.value = t.bits;
+  const colours = paletteSubset(RETRO_PALETTE, t.paletteSize);
+  u.paletteSize!.value = colours.length;
+  const labs = u.paletteLab!.value as THREE.Vector3[];
+  const rgbs = u.paletteRgb!.value as THREE.Vector3[];
+  colours.forEach((h, i) => {
+    labs[i]!.set(...oklab(h));
+    const n = parseInt(h, 16);
+    rgbs[i]!.set(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+  });
 }
 
 /** Scales the small picture up to the screen, each pixel a block of whole screen pixels. */

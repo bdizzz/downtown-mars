@@ -9,7 +9,7 @@ import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
 import { hasPostEffects, type Graphics } from "../view/graphics";
 import { TiltShiftPass } from "./tiltShift";
 import { LABEL_LAYER, labelDepth } from "./labelLayer";
-import { RETRO, retroGrid, retroShader, snapVertices, UpscaleShader, type RetroStyle } from "./lookRetro";
+import { applyRetroTuning, initRetroTuning, onRetroTuning, retroGrid, retroShader, retroTuning, snapVertices, UpscaleShader, type RetroStyle } from "./lookRetro";
 
 // The 3D view's look: what's drawn after the scene, scaled by the graphics
 // settings. The scene renders once (antialiased, with its depth kept), then:
@@ -321,7 +321,7 @@ export class Look implements LookLike {
   private grade: ShaderPass;
   private envTexture: THREE.Texture | null = null;
   /** The retro experiment (#503): its repaint, its upscale to the screen, and the labels drawn after at full size. */
-  private retro: { style: RetroStyle; repaint: ShaderPass; upscale: ShaderPass; labels: LabelPass; size: THREE.Vector2 } | null = null;
+  private retro: { repaint: ShaderPass; upscale: ShaderPass; labels: LabelPass; size: THREE.Vector2; pixel: number; unsubscribe: () => void } | null = null;
 
   constructor(
     private renderer: THREE.WebGLRenderer,
@@ -342,11 +342,18 @@ export class Look implements LookLike {
     this.grade = new ShaderPass(GradeShader);
     if (retroStyle) {
       // The same effects, on the small picture; then the repaint and the upscale. No tilt-shift: blur fights the pixels.
-      snapVertices(RETRO[retroStyle].wobble);
-      const repaint = new ShaderPass(retroShader(retroStyle));
+      initRetroTuning(retroStyle);
+      snapVertices(retroTuning.wobble);
+      const repaint = new ShaderPass(retroShader());
       repaint.uniforms.tDepth!.value = this.scenePass.target.depthTexture;
+      applyRetroTuning(repaint.uniforms, retroTuning);
       const upscale = new ShaderPass(UpscaleShader);
-      this.retro = { style: retroStyle, repaint, upscale, labels: new LabelPass(scene, camera, this.scenePass.target.depthTexture!), size: new THREE.Vector2() };
+      // Live tuning from the panel: new uniforms, and a new size when the pixels change.
+      const unsubscribe = onRetroTuning(() => {
+        applyRetroTuning(repaint.uniforms, retroTuning);
+        if (this.retro && retroTuning.pixel !== this.retro.pixel) this.resize();
+      });
+      this.retro = { repaint, upscale, labels: new LabelPass(scene, camera, this.scenePass.target.depthTexture!), size: new THREE.Vector2(), pixel: retroTuning.pixel, unsubscribe };
       for (const p of [this.scenePass, this.ao, this.haze, this.bloom, new OutputPass(), this.grade, repaint, upscale]) this.composer.addPass(p);
       for (const t of [this.composer.renderTarget1, this.composer.renderTarget2, this.scenePass.target]) t.texture.minFilter = t.texture.magFilter = THREE.NearestFilter;
       return;
@@ -440,7 +447,9 @@ export class Look implements LookLike {
     if (this.retro) {
       // The small picture, scaled up by a whole number to cover the screen; the labels draw at the screen's own size.
       const px = this.renderer.getDrawingBufferSize(new THREE.Vector2());
-      const g = retroGrid(px.x, px.y, RETRO[this.retro.style].height);
+      const css = this.renderer.getSize(new THREE.Vector2());
+      this.retro.pixel = retroTuning.pixel;
+      const g = retroGrid(px.x, px.y, retroTuning.pixel * (px.y / Math.max(1, css.y)));
       this.composer.setPixelRatio(1);
       this.composer.setSize(g.w, g.h);
       this.scenePass.setSize(g.w, g.h);
@@ -479,6 +488,7 @@ export class Look implements LookLike {
   }
 
   dispose(): void {
+    this.retro?.unsubscribe();
     this.composer.dispose();
     this.scenePass.dispose();
     this.ao.dispose();

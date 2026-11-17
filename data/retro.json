@@ -1,22 +1,21 @@
 {
-  "_doc": "Retro looks for the 3D view (#503), an experiment behind ?look=snes or ?look=ps1 (src/render3d/lookRetro.ts). height: the picture's height in chunky pixels (it's scaled up by a whole number to fill the screen); outline: dark lines where depth jumps (silhouette, how far behind the neighbour must be, as a share of the distance) or bends (crease, on 1/depth), and how dark each makes the pixel, and how far (m) creases are drawn (depth gets too coarse beyond); dither: snes, the ordered (Bayer 4x4) dither's spread in sRGB (0 to 1), ps1, a scale on the PlayStation's own dither table; palette: the colours a pixel may take (snes), or bits per channel (ps1); wobble: snap vertices to a coarse screen grid, this many steps across the screen's height (0 off).",
-  "snes": {
-    "height": 224,
-    "outline": { "silhouette": 0.05, "crease": 0.04, "silhouetteDark": 0.22, "creaseDark": 0.6, "creaseRange": 150 },
-    "dither": 0.09,
-    "palette": [
-      "0e0a0c", "1f1418", "2e1c1c", "45282a", "5e3a2c", "7a4a32", "9a5a36", "b8703c",
-      "d48a4a", "e8a862", "f4c88a", "fbe6c0", "fff8ec", "6a1e1e", "9c2e22", "c84a2e",
-      "5a2a3e", "8a4a5a", "c08a8a", "1e3a2a", "3a6a3a", "6a9a4a", "a8c86a", "1a2440",
-      "2c4068", "4a6a9a", "7aa0c8", "b8d4e8", "4a4448", "7a7276", "aaa2a0", "ffd84a"
-    ],
-    "wobble": 0
-  },
-  "ps1": {
-    "height": 240,
-    "outline": null,
-    "dither": 1,
-    "bits": 5,
-    "wobble": 120
+  "_doc": "Retro looks for the 3D view (#503), an experiment behind ?look=snes or ?look=ps1 (src/render3d/lookRetro.ts), tuned live in its panel. pixel: CSS pixels per chunky pixel (rounded to whole screen pixels); colours: 'palette' (the nearest of the first paletteSize colours picked from palette, in OKLab) or 'bits' (bits per channel); dither: the dither's spread in sRGB (0 to 1); pattern: off, bayer2, bayer4, bayer8 or ps1 (the PlayStation's 4x4 table); outlines: dark lines where depth jumps (silhouette: how far behind the neighbour must be, as a share of the distance) or bends (crease, on 1/depth, 0 off, drawn to creaseRange metres), and how dark each makes the pixel; brightness, contrast, saturation: applied before the colours are reduced; wobble: snap vertices to a coarse screen grid, this many steps across the screen's height (0 off; takes effect on reload).",
+  "palette": [
+    "0e0a0c", "1f1418", "2e1c1c", "45282a", "5e3a2c", "7a4a32", "9a5a36", "b8703c",
+    "d48a4a", "e8a862", "f4c88a", "fbe6c0", "fff8ec", "6a1e1e", "9c2e22", "c84a2e",
+    "5a2a3e", "8a4a5a", "c08a8a", "1e3a2a", "3a6a3a", "6a9a4a", "a8c86a", "1a2440",
+    "2c4068", "4a6a9a", "7aa0c8", "b8d4e8", "4a4448", "7a7276", "aaa2a0", "ffd84a"
+  ],
+  "presets": {
+    "snes": {
+      "pixel": 4, "colours": "palette", "paletteSize": 32, "bits": 5, "dither": 0.09, "pattern": "bayer4",
+      "outlines": true, "silhouette": 0.05, "crease": 0.04, "silhouetteDark": 0.22, "creaseDark": 0.6, "creaseRange": 150,
+      "brightness": 1.15, "contrast": 1, "saturation": 1.1, "wobble": 0
+    },
+    "ps1": {
+      "pixel": 4, "colours": "bits", "paletteSize": 32, "bits": 5, "dither": 0.031, "pattern": "ps1",
+      "outlines": false, "silhouette": 0.05, "crease": 0, "silhouetteDark": 0.22, "creaseDark": 0.6, "creaseRange": 150,
+      "brightness": 1.1, "contrast": 1, "saturation": 1, "wobble": 120
+    }
   }
 }
