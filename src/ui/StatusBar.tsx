@@ -2,6 +2,7 @@ import { roomName } from "../sim/roomName";
 import type { ViewMode } from "./settings";
 import type { HoverInfo, Tool } from "../view/types";
 import { reachSummary } from "../view/reachView";
+import { placementLegend } from "../view/interaction";
 import type { Hole } from "../sim/geometry";
 import { effectAt, effectName, FIELD_TYPES } from "../sim/effects";
 import type { Snapshot } from "../sim/snapshot";
@@ -40,6 +41,8 @@ interface Props {
   overlay: string | null;
   /** Which view is showing: the plan zooms with the wheel. */
   view: ViewMode;
+  /** The halo's colours follow it, and so does the legend that names them. */
+  colorBlind?: boolean;
 }
 
 /** "noise −1.3 · health +0.7" for a slot, skipping effects that are ~0. */
@@ -59,7 +62,7 @@ function feltOver(s: Snapshot, cells: { floor: number; ring: number; slot: numbe
     .join(", ");
 }
 
-export function StatusBar({ info, snapshot, notice, overlay, view, tool }: Props) {
+export function StatusBar({ info, snapshot, notice, overlay, view, tool, colorBlind = false }: Props) {
   const hole = snapshot?.layout.hole;
   const finger = touchFirst();
   const drag = view === "3d" ? "drag to turn" : "drag to pan";
@@ -116,7 +119,9 @@ export function StatusBar({ info, snapshot, notice, overlay, view, tool }: Props
       const lost = (info.check.strands?.rooms.length ?? 0) + (info.check.strands?.corridors.length ?? 0);
       if (d) bad = true;
       const over = d ? `⚠ Fills in ${d} corridor ${d === 1 ? "segment" : "segments"}${lost ? `, cutting off ${lost} more` : ""} · ` : "";
-      text = `${over}${note}${cutOff}${blueprint}${digs}${onFoot ? `On foot: ${onFoot} · ` : ""}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
+      // What the green ghost and the tint round it mean, from the same source that draws the tint (#438).
+      const legend = tool?.kind === "build" ? `${placementLegend(tool.room, colorBlind)} · ` : "";
+      text = `${over}${note}${cutOff}${blueprint}${digs}${legend}${onFoot ? `On foot: ${onFoot} · ` : ""}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
     } else if (info.room) {
       const blueprint = info.room.planned ? " (blueprint)" : "";
       const st = snapshot?.roomStatus[info.room.id];

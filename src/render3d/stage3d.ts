@@ -5,11 +5,10 @@ import * as THREE from "three";
 import { previewEffects } from "../sim/effects";
 import type { Hole } from "../sim/geometry";
 import { surfaceRingOf, type Cell, type Layout, type RoomInstance, type SurfaceSpot } from "../sim/placement";
-import { roomDef } from "../sim/rooms";
 import { cropStagesKey } from "../view/furnish";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
-import { aimKeyFor, clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
+import { aimKeyFor, clickWith, haloEffect, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
@@ -1193,9 +1192,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** The room's strongest effect, spread the way the sim spreads it, as tinted cells. */
   function drawHalo(type: string, cells: Cell[]): void {
     if (!layout) return;
-    const effects = roomDef(type).effects.filter((e) => !e.residentsOnly && e.radius > 0);
-    if (!effects.length) return;
-    const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
+    const main = haloEffect(type);
+    if (!main) return;
     const grid = previewEffects(layout, type, cells)[main.type];
     if (!grid) return;
     const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
@@ -2089,7 +2087,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // The framing depends on the screen's shape: redo it until the player zooms.
     if (resized && cutawayFitted) fitCutaway();
     applyCamera();
-    dirty = true;
+    // Resizing clears the canvas, and the observer runs after this frame's animation callback, so the
+    // browser would paint the cleared (black) canvas before the next one: draw now instead (#437).
+    if (resized) {
+      dirty = false;
+      drawFrame();
+    } else dirty = true;
   });
   resize.observe(host);
   if (host.parentElement) resize.observe(host.parentElement);
