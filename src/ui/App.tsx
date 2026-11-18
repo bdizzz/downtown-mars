@@ -30,7 +30,7 @@ import { TrendsPanel } from "./TrendsPanel";
 import { WhyPanel, type WhyTab } from "./WhyPanel";
 import type { Spot } from "../view/reachView";
 import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
-import { fetchDevGame, type DevGame } from "./devGames";
+import { fetchDevGame, fetchGameAt, gameFromUrl, type DevGame } from "./devGames";
 import { StatusBar } from "./StatusBar";
 import { GuidedTutorial, Tutorial } from "./Tutorial";
 import { guideStep, nextGuide, startGuide, stepMet, stepSpeed } from "./guided";
@@ -205,6 +205,21 @@ export function App() {
     // A failed game's autosave can't be loaded (T-162), so it gets the showcase too.
     const auto = readSave("autosave");
     const showcase = () => send({ type: "consoleShowcase", floors: TITLE_SHOWCASE_FLOORS });
+    // `?game=mid` (or a save's path) opens that game at once, paused, with no title (#518): for testing and screenshots.
+    const asked = gameFromUrl(location.search);
+    if (asked) {
+      void fetchGameAt(asked)
+        .then((text) => (text === null ? { ok: false as const, reason: `Couldn't fetch ${asked}.` } : load(text)))
+        .then((r) => {
+          if (!live) return;
+          if (r.ok) setMenu(null);
+          else setMenuError(r.reason);
+          setSceneLoaded(true);
+        });
+      return () => {
+        live = false;
+      };
+    }
     void (auto && !auto.summary.failed ? load(auto.data).then((r) => (r.ok ? r : showcase())) : showcase()).then(() => live && setSceneLoaded(true));
     return () => {
       live = false;
