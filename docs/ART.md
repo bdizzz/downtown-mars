@@ -106,7 +106,7 @@ Every notable has a flat vector headshot (`src/view/portrait.ts`, palettes and o
 
 ## Retro looks (experiment, Nov 17, #503)
 
-Behind a URL flag, the 3D view can be drawn in other styles: `?look=<preset>` (`render3d/lookRetro.ts`, numbers in `data/retro.json`, each preset the `base` with its own changes). The usual effects (AO, haze, glow, grade) run on a small picture, which is repainted and then scaled up to the screen; labels draw afterwards at full size.
+The 3D view can be drawn in other styles, picked in Settings → Display → **Look** (`graphics.style`, **Standard** by default; it switches live) or forced with `?look=<preset>` (`render3d/lookRetro.ts`, numbers in `data/retro.json`, each preset the `base` with its own changes). The usual effects (AO, haze, glow, grade) run on a small picture, which is repainted and then scaled up to the screen; labels draw afterwards at full size.
 
 | Preset | What it does |
 | --- | --- |
@@ -120,7 +120,7 @@ Behind a URL flag, the 3D view can be drawn in other styles: `?look=<preset>` (`
 | `vector` | Glowing green edges on black, on a CRT |
 | `ascii` | Each block drawn as a character (` .:-=+*#%@`) picked by its brightness, in its own colour |
 
-With any of them, a tuning panel (`devtools/retroPanel.ts`, draggable by its header, sections folding by their titles) has a control for every number: pixel size and smoothing; colour or lines (paper, ink, shading, grid); brightness, contrast, saturation; full colour, a palette size (a spread-out pick from the 32) or bits per channel; dither pattern, strength, and pinning it to the world (cells a power of two metres across on each surface, so it doesn't crawl as the camera moves); brush radius; fog; outlines (width, thresholds, darkness); ASCII; the CRT's parts; and, on reload, the PS1 wobble and cel bands (both patched into three's shared shader code before materials compile). Changes apply at once and are kept per browser and preset; **Copy** puts them on the clipboard as JSON for a preset in `data/retro.json`; **Preset → Load** starts again from any preset.
+With any of them, **Look tuning** in the same settings (off by default; always on with `?look=`) shows a tuning panel (`devtools/retroPanel.ts`, draggable by its header, sections folding by their titles) with a control for every number: pixel size and smoothing; colour or lines (paper, ink, shading, grid); brightness, contrast, saturation; full colour, a palette size (a spread-out pick from the 32) or bits per channel; dither pattern, strength, and pinning it to the world (cells a power of two metres across on each surface, so it doesn't crawl as the camera moves); brush radius; fog; outlines (width, thresholds, darkness); ASCII; the CRT's parts; and, on reload, the PS1 wobble and cel bands (both patched into three's shared shader code before materials first compile, so switching looks mid-game adds or removes them only after a reload). Changes apply at once and are kept per browser and preset; **Copy** puts them on the clipboard as JSON for a preset in `data/retro.json`; **Preset → Load** starts again from any preset.
 
 Not done: labels don't follow the CRT's curve; the procedural surface textures turn to noise at large pixel sizes; a dust storm's haze dithers the whole screen; painterly at small pixel sizes is heavy on the GPU.
 

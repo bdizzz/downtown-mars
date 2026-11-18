@@ -99,7 +99,7 @@ export function SettingsView({ settings, update, onBack, onKeys, tutorial, onTut
 
 type Ctx = Pick<Props, "settings" | "update" | "onKeys" | "tutorial" | "onTutorial">;
 
-type GraphicsKey = Exclude<keyof Graphics, "furniture" | "pixelRatio" | "life" | "reflections">;
+type GraphicsKey = Exclude<keyof Graphics, "furniture" | "pixelRatio" | "life" | "reflections" | "style" | "styleTuning">;
 
 /** What each row reads and sets. A new setting in the table gets a line here. */
 function bind(row: SettingRow, { settings, update, tutorial, onTutorial }: Ctx): { value: number | boolean; set: (v: number | boolean) => void } | null {
@@ -111,8 +111,9 @@ function bind(row: SettingRow, { settings, update, tutorial, onTutorial }: Ctx):
     case "graphics.pixelRatio":
       return { value: g.pixelRatio, set: (v) => setG({ pixelRatio: v as Graphics["pixelRatio"] }) };
     case "graphics.reflections":
+    case "graphics.styleTuning":
     case "graphics.life": {
-      const k = row.id === "graphics.life" ? "life" : "reflections";
+      const k = row.id === "graphics.life" ? "life" : row.id === "graphics.styleTuning" ? "styleTuning" : "reflections";
       return { value: g[k], set: (v) => setG({ [k]: v }) };
     }
     default: {
@@ -171,6 +172,20 @@ function Row({ row, ctx }: { row: SettingRow; ctx: Ctx }) {
         {FURNITURE_DETAILS.map((f) => (
           <option key={f.id} value={f.id} title={f.hint}>
             {f.name}
+          </option>
+        ))}
+      </select>,
+    );
+  }
+  if (row.id === "graphics.style") {
+    // The look (#503): its options and names from the table.
+    const g = ctx.settings.graphics;
+    const options = (row as unknown as { options?: { value: string; name: string }[] }).options ?? [];
+    return wrap(
+      <select id={id} value={g.style} aria-describedby={`${id}-hint`} onChange={(e) => ctx.update({ graphics: { ...g, style: e.target.value } })}>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.name}
           </option>
         ))}
       </select>,

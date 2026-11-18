@@ -320,18 +320,27 @@ export class Look implements LookLike {
   private tilt: TiltShiftPass;
   private grade: ShaderPass;
   private envTexture: THREE.Texture | null = null;
-  /** The retro experiment (#503): its repaint, its upscale to the screen, and the labels drawn after at full size. */
+  private labels: LabelPass;
+  private output = new OutputPass();
+  /**
+   * The look (#503): null for the game's own, or a retro or drawn style, whose
+   * repaint and upscale (made on first use) follow the small picture, with the
+   * labels drawn after at full size. `forced` is the address's ?look=, which wins
+   * over the settings.
+   */
+  private style: RetroStyle | null = null;
   private retro: { repaint: ShaderPass; upscale: ShaderPass; labels: LabelPass; size: THREE.Vector2; pixel: number; unsubscribe: () => void } | null = null;
+  /** Once a frame is drawn, materials have compiled, so the wobble and cel bands can't be patched in any more. */
+  private rendered = false;
 
   constructor(
     private renderer: THREE.WebGLRenderer,
     private scene: THREE.Scene,
     private camera: THREE.PerspectiveCamera,
-    retroStyle: RetroStyle | null = null,
+    private forced: RetroStyle | null = null,
   ) {
     this.composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType }));
-    // Retro: no antialiasing, so edges stay as hard steps.
-    this.scenePass = new ScenePass(scene, camera, retroStyle ? 0 : 4);
+    this.scenePass = new ScenePass(scene, camera);
     this.ao = new SceneAOPass(scene, camera, 1, 1);
     this.ao.setGBuffer(this.scenePass.target.depthTexture!);
     this.ao.updateGtaoMaterial(LOOK.ao);
@@ -340,31 +349,64 @@ export class Look implements LookLike {
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), LOOK.bloom.strength, LOOK.bloom.radius, LOOK.bloom.threshold);
     this.tilt = new TiltShiftPass(this.scenePass.target.depthTexture!, camera);
     this.grade = new ShaderPass(GradeShader);
-    if (retroStyle) {
+    this.labels = new LabelPass(scene, camera, this.scenePass.target.depthTexture!);
+    this.setStyle(forced, true);
+  }
+
+  /** The retro or drawn style showing, or null for the game's own look. */
+  get retroStyle(): RetroStyle | null {
+    return this.style;
+  }
+
+  /** Switch the look: rebuild the chain of passes, with or without the repaint and the upscale. */
+  private setStyle(style: RetroStyle | null, first = false): void {
+    if (style === this.style && !first) return;
+    this.style = style;
+    let chain: Pass[];
+    if (style) {
+      initRetroTuning(style);
+      // These change the scene's own shaders, so only before anything has compiled (on reload).
+      if (!this.rendered) {
+        snapVertices(retroTuning.wobble);
+        bandLighting(retroTuning.celBands);
+      }
+      const r = this.retroParts();
+      applyRetroTuning(r.repaint.uniforms, r.upscale.uniforms, retroTuning);
       // The same effects, on the small picture; then the repaint and the upscale. No tilt-shift: blur fights the pixels.
-      initRetroTuning(retroStyle);
-      snapVertices(retroTuning.wobble);
-      bandLighting(retroTuning.celBands);
-      const repaint = new ShaderPass(retroShader());
-      repaint.uniforms.tDepth!.value = this.scenePass.target.depthTexture;
-      const upscale = new ShaderPass(upscaleShader());
-      applyRetroTuning(repaint.uniforms, upscale.uniforms, retroTuning);
-      // Live tuning from the panel: new uniforms, and a new size when the pixels change.
-      const unsubscribe = onRetroTuning(() => {
-        applyRetroTuning(repaint.uniforms, upscale.uniforms, retroTuning);
-        if (this.retro && retroTuning.pixel !== this.retro.pixel) this.resize();
-      });
-      this.retro = { repaint, upscale, labels: new LabelPass(scene, camera, this.scenePass.target.depthTexture!), size: new THREE.Vector2(), pixel: retroTuning.pixel, unsubscribe };
-      for (const p of [this.scenePass, this.ao, this.haze, this.bloom, new OutputPass(), this.grade, repaint, upscale]) this.composer.addPass(p);
-      for (const t of [this.composer.renderTarget1, this.composer.renderTarget2, this.scenePass.target]) t.texture.minFilter = t.texture.magFilter = THREE.NearestFilter;
-      return;
+      chain = [this.scenePass, this.ao, this.haze, this.bloom, this.output, this.grade, r.repaint, r.upscale];
+    } else {
+      chain = [this.scenePass, this.ao, this.haze, this.bloom, this.tilt, this.labels, this.output, this.grade];
     }
-    for (const p of [this.scenePass, this.ao, this.haze, this.bloom, this.tilt, new LabelPass(scene, camera, this.scenePass.target.depthTexture!), new OutputPass(), this.grade]) this.composer.addPass(p);
+    // Retro: no antialiasing, so edges stay as hard steps.
+    const samples = style ? 0 : 4;
+    if (this.scenePass.target.samples !== samples) {
+      this.scenePass.target.samples = samples;
+      this.scenePass.target.dispose();
+    }
+    this.composer.passes.length = 0;
+    for (const p of chain) this.composer.addPass(p);
+    if (!first) this.resize();
+  }
+
+  private retroParts(): NonNullable<Look["retro"]> {
+    if (this.retro) return this.retro;
+    const repaint = new ShaderPass(retroShader());
+    repaint.uniforms.tDepth!.value = this.scenePass.target.depthTexture;
+    const upscale = new ShaderPass(upscaleShader());
+    // Live tuning from the panel: new uniforms, and a new size when the pixels change.
+    const unsubscribe = onRetroTuning(() => {
+      if (!this.style || !this.retro) return;
+      applyRetroTuning(repaint.uniforms, upscale.uniforms, retroTuning);
+      if (retroTuning.pixel !== this.retro.pixel) this.resize();
+    });
+    this.retro = { repaint, upscale, labels: new LabelPass(this.scene, this.camera, this.scenePass.target.depthTexture!), size: new THREE.Vector2(), pixel: retroTuning.pixel, unsubscribe };
+    return this.retro;
   }
 
   /** Apply graphics settings: which effects run and how strongly, the resolution, and reflections. */
   setGraphics(g: Graphics): void {
     this.graphics = g;
+    this.setStyle(this.forced ?? (g.style === "standard" ? null : g.style));
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, g.pixelRatio));
     this.ao.enabled = g.ao > 0;
     this.ao.blendIntensity = g.ao;
@@ -445,7 +487,7 @@ export class Look implements LookLike {
 
   /** Match the canvas: call after the renderer's size or pixel ratio changes. */
   resize(): void {
-    if (this.retro) {
+    if (this.style && this.retro) {
       // The small picture, scaled up by a whole number to cover the screen; the labels draw at the screen's own size.
       const px = this.renderer.getDrawingBufferSize(new THREE.Vector2());
       const css = this.renderer.getSize(new THREE.Vector2());
@@ -470,7 +512,8 @@ export class Look implements LookLike {
   }
 
   render(): void {
-    if (this.retro) {
+    this.rendered = true;
+    if (this.style && this.retro) {
       const u = this.haze.uniforms;
       u.projectionInverse!.value.copy(this.camera.projectionMatrixInverse);
       u.cameraWorld!.value.copy(this.camera.matrixWorld);

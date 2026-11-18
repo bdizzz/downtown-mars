@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import settings from "../data/settings.json";
+import { cleanGraphics, DEFAULT_GRAPHICS, LOOK_STYLES } from "../src/view/graphics";
 import { oklab, paletteSubset, RETRO_PALETTE, RETRO_PRESETS, retroGrid, retroStyleFrom } from "../src/render3d/lookRetro";
 
 describe("retro looks (#503)", () => {
@@ -48,5 +50,19 @@ describe("retro looks (#503)", () => {
     expect(paletteSubset(RETRO_PALETTE, 8)).toHaveLength(8);
     expect(new Set(paletteSubset(RETRO_PALETTE, 32)).size).toBe(32);
     expect(paletteSubset(RETRO_PALETTE, 99)).toHaveLength(RETRO_PALETTE.length);
+  });
+
+  it("offers every look in Settings, Standard first and by default", () => {
+    expect(DEFAULT_GRAPHICS.style).toBe("standard");
+    expect(DEFAULT_GRAPHICS.styleTuning).toBe(false);
+    const row = (settings.settings as { id: string; options?: { value: unknown }[] }[]).find((r) => r.id === "graphics.style")!;
+    expect(row.options!.map((o) => o.value)).toEqual(LOOK_STYLES);
+    expect(LOOK_STYLES).toEqual(["standard", ...Object.keys(RETRO_PRESETS)]);
+  });
+
+  it("keeps a saved look only if it still exists", () => {
+    expect(cleanGraphics({ style: "blueprint" }).style).toBe("blueprint");
+    expect(cleanGraphics({ style: "gameboy" }).style).toBe("standard");
+    expect(cleanGraphics({}).styleTuning).toBe(false);
   });
 });

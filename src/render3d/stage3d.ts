@@ -191,12 +191,21 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const look: LookLike = webgpu
     ? new (await import("./lookGpu")).GpuLook(renderer as unknown as import("three/webgpu").WebGPURenderer, scene, camera)
     : new Look(renderer, scene, camera, retroStyleFrom(location.search));
-  // The retro look's tuning panel (#503), while trying it out.
-  // (A stage disposed before the panel's code arrives never shows it.)
+  // The look's tuning panel (#503): shown for a retro or drawn look when the settings ask, or always with ?look=.
+  // (It's loaded on first use; a stage disposed, or a look changed, before it arrives doesn't show it.)
   let closeRetroPanel: (() => void) | null = null;
+  let panelFor: string | null = null;
   let stageGone = false;
-  const retroStyle = !webgpu && retroStyleFrom(location.search);
-  if (retroStyle) void import("../devtools/retroPanel").then((m) => !stageGone && (closeRetroPanel = m.mountRetroPanel(retroStyle)));
+  const lookForced = !webgpu && !!retroStyleFrom(location.search);
+  function showRetroPanel(): void {
+    const style = look instanceof Look ? look.retroStyle : null;
+    const want = style && (lookForced || graphics.styleTuning) ? style : null;
+    if (want === panelFor) return;
+    closeRetroPanel?.();
+    closeRetroPanel = null;
+    panelFor = want;
+    if (want) void import("../devtools/retroPanel").then((m) => !stageGone && panelFor === want && (closeRetroPanel = m.mountRetroPanel(want)));
+  }
 
   const hemi = new THREE.HemisphereLight(0xffe6cc, 0x2a1510, 1.1);
   scene.add(hemi);
@@ -2305,6 +2314,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   function applyGraphics(): void {
     look.setGraphics(graphics);
+    showRetroPanel();
     lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
     // Shadows: the sun's down the shaft (a finer map at full).
     const shadows = graphics.shadows > 0 && !webgpu;

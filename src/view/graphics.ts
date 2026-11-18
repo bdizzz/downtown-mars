@@ -2,6 +2,11 @@
 // laptop can scale them down. Presets set everything at once; changing one
 // effect makes the settings "custom". Amounts run from 0 (off) to 1 (full).
 
+import retro from "../../data/retro.json";
+
+/** The looks (#503, an experiment): the game's own, or one of the retro and drawn styles in data/retro.json. */
+export const LOOK_STYLES: readonly string[] = ["standard", ...Object.keys(retro.presets)];
+
 /**
  * Where the better, Blender-made furniture (#357, public/models/fp.bin) is drawn (#391):
  * `basic` never (the chunky code-built shapes everywhere, and fp.bin is never fetched),
@@ -54,12 +59,16 @@ export interface Graphics {
   lamps: number;
   /** Shadows: the sun's, down the shaft and on the surface (sharper at full). */
   shadows: number;
+  /** The look (#503): "standard", or a retro or drawn style (LOOK_STYLES). Not part of the presets. */
+  style: string;
+  /** Show the look's tuning panel, with a slider for its every number. */
+  styleTuning: boolean;
 }
 
 export type Preset = "low" | "medium" | "high";
 
 /** What a preset sets: everything but the furniture choice, which stays as the player chose it. */
-export type PresetSettings = Omit<Graphics, "furniture">;
+export type PresetSettings = Omit<Graphics, "furniture" | "style" | "styleTuning">;
 
 export const GRAPHICS_PRESETS: Record<Preset, PresetSettings> = {
   low: { pixelRatio: 1, life: false, reflections: false, ao: 0, bloom: 0, haze: 0, tiltShift: 0, grade: 0, lamps: 0, shadows: 0 },
@@ -73,7 +82,7 @@ export const PRESET_NAMES: { id: Preset; name: string; hint: string }[] = [
   { id: "high", name: "High", hint: "Everything, at full sharpness" },
 ];
 
-export const DEFAULT_GRAPHICS: Graphics = { ...GRAPHICS_PRESETS.high, furniture: DEFAULT_FURNITURE };
+export const DEFAULT_GRAPHICS: Graphics = { ...GRAPHICS_PRESETS.high, furniture: DEFAULT_FURNITURE, style: "standard", styleTuning: false };
 
 /** The next preset down, or null from the lowest. */
 export function lowerPreset(p: Preset | "custom"): Preset | null {
@@ -107,5 +116,7 @@ export function cleanGraphics(raw: Partial<Graphics> | undefined): Graphics {
     grade: amount(g.grade, DEFAULT_GRAPHICS.grade),
     lamps: amount(g.lamps, DEFAULT_GRAPHICS.lamps),
     shadows: amount(g.shadows, DEFAULT_GRAPHICS.shadows),
+    style: typeof g.style === "string" && LOOK_STYLES.includes(g.style) ? g.style : DEFAULT_GRAPHICS.style,
+    styleTuning: typeof g.styleTuning === "boolean" ? g.styleTuning : DEFAULT_GRAPHICS.styleTuning,
   };
 }
