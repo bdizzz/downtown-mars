@@ -25,6 +25,9 @@ export const LABELS = {
   colonists: "Colonists",
   digging: "Digging",
   earth: "Earth drops",
+  /** Trade rovers, "Rover from Bradbury" and "Rover to Bradbury" (rovers.ts). */
+  roverFrom: "Rover from",
+  roverTo: "Rover to",
   excavation: "Excavation",
   /** People's own water: drinking, washing, cooking at home. */
   household: "Drinking and washing",
