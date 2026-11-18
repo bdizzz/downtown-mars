@@ -10,6 +10,14 @@ Goal: every colonist is a person with a home, a job, an age, needs, traits, rela
 - **Homes and jobs assign themselves.** The player sees people but doesn't move them. Each person keeps the walk between work and bed short; a person only takes a free bed (nobody is turned out); now and then two people swap beds when both gain, and only after both have been better off for a few days, so beds don't churn.
 - **Money per person waits for currency**, as the after-the-break rooms do.
 
+Later the same day, on the three things that don't scale (see "Heading off the hangups"):
+
+- **Saves move to IndexedDB now**, packed and gzipped, in one task, before people are in them. localStorage keeps only settings and the slot list.
+- **Route searches are per room, never per person**, on a binary heap.
+- **Saves hold only what can't be rebuilt**: who someone is, their home, job, household and age. Commutes, needs and happiness are worked out again on load.
+- **The snapshot carries totals, never people**, and the cohorts come out of it now, as a small task of its own.
+- **Speed tests in CI are generous** (about 5× today's numbers), so only big jumps fail; size tests (save, snapshot) are strict.
+
 ## Where it stands today
 
 - **Cohorts** (`sim/people.ts`): a hole's colonists are a few groups of `{ stage, count, until, gen }`, five people each when they arrive (`data/people.json` `cohortSize`). A cohort moves on as a whole: children grow up, adults retire, elders pass away. `population.count` is their sum. The dev saves have 6 to 25 cohorts a hole.
@@ -52,9 +60,34 @@ Placing 60 walkers along people's routes is about a microsecond at any size.
 1. **People are cheap to hold and update.** About 41 bytes a person as packed arrays. The monthly needs update reads each person's home, job and galley values (worked out per room, as now) and adds their own parts; it's a tenth of a millisecond at 10,000.
 2. **The route search's queue doesn't scale.** `paths.ts` keeps its queue as a sorted array, re-sorted on every step ("Small graphs: a sorted array does fine"). That's true today, but at 10,000 people it's 35–45× slower than a binary heap (5–7 ms against 0.15 ms a search). With a heap, a search from every workplace is affordable; without one it isn't. A small, separate fix that helps the current game too.
 3. **Assignment must be incremental.** Placing every person from scratch is half a second at 10,000 (one route search a workplace, then each of its staff into the nearest free bed). That's fine once, but not every time the layout changes. Assignments are saved, so loading needs none; a new room, a closed room or a new person only touches the people it affects (one search, a few moves).
-4. **Saves outgrow localStorage.** Saves are plain JSON in localStorage (`ui/saves.ts`), which holds about 5 MB an origin across all slots. The late dev save is 220 KB for two holes; one hole of 10,000 people adds 616 KB, and a network of big holes passes the limit. Pack each column as base64 of its typed array, gzip the save with the browser's `CompressionStream`, and move it to IndexedDB if it's still big. (Godot's bridge saves to files and doesn't have the limit.)
+4. **Saves outgrow localStorage.** Saves are plain JSON in localStorage (`ui/saves.ts`), which holds about 5 MB an origin across all slots. The late dev save is 220 KB for two holes; one hole of 10,000 people adds 616 KB, and a network of big holes passes the limit. Pack each column as base64 of its typed array, gzip the save with the browser's `CompressionStream`, and keep it in IndexedDB. (Godot's bridge saves to files and doesn't have the limit.)
 5. **The snapshot can't carry people.** The worker posts a snapshot of the hole in view 20 times a second, and today it includes the population whole (cohorts and all). People stay in the worker: the snapshot carries counts, the 60 walkers' people and the person the player has open; the people list is asked for when the panel opens.
 6. **A full work→home table is too big across many holes.** Keeping each workplace's distance to every home is 4.8 MB a hole at 10,000. Keeping only the nearest 64 homes a workplace (enough for a swap to find a partner) is about 0.4 MB a hole.
+
+## Heading off the hangups
+
+Each of the three becomes a rule here and a test in CI, so the question of scale doesn't rest on anyone remembering it.
+
+### Route searches
+
+- **The rule:** route searches are per room, never per person. A person reads a cached distance; a search runs only when the layout changes, and only from the rooms it touches. Searches then grow with rooms (hundreds), not people (thousands).
+- **The fix:** `paths.ts`'s queue becomes a binary heap. Distances come out the same, so today's tests prove nothing changed. It goes first, as its own task, and speeds up the current game's amenity and care searches too.
+- **The test:** a synthetic 10,000-person hole, a search from every workplace, inside a generous time limit (about 5× today's). A per-person search added later turns CI red.
+
+### Saves
+
+- **What's saved:** only what can't be rebuilt. Identity (name, traits, generation), birth and next-stage ticks, home, job, galley and household. Commutes, needs and happiness are worked out again on load, as the path caches are now. That's about 25 bytes a person.
+- **How:** each column as base64 of its typed array, not a JSON list of numbers; the whole save gzipped with the browser's `CompressionStream` (and `DecompressionStream` to load). A 10,000-person hole should come to 100–150 KB (the benchmark measured 126 KB gzipped for the fuller 41-byte record as JSON).
+- **Where:** IndexedDB, which holds hundreds of megabytes; localStorage keeps only settings and the list of slots. Old saves are copied across the first time the game loads, and left in place until the copy reads back. Saving becomes asynchronous (compression is anyway), so the save and load paths in `ui/saves.ts` become async; that's done once, while saves are small.
+- **The test:** a bot game grown to a fixed size must save under a set size, exactly.
+- **Godot:** the bridge saves to files and isn't affected; it reads the same packed format.
+
+### The snapshot
+
+- **The rule:** the snapshot carries totals (counts by stage, average happiness and its causes, births, the upcoming stage changes as a short summary), never a list of people. The cohorts come out of it now, before any people exist.
+- **People on request:** the worker answers two new messages: a page of the people list (sort, filter, offset, 50 rows) when the people panel is open, and one person's card when a walker or a row is clicked. The bridge answers the same messages for Godot.
+- **Walkers:** the 60 people behind them are picked again once a game day; the snapshot carries their ids, not their records.
+- **The test:** the snapshot's size is the same at 50 people as at 10,000.
 
 ## What each person holds
 
@@ -130,19 +163,21 @@ What can't be checked by benchmark: long-game balance, and how the game feels wi
 
 ## Revised breakdown for #521
 
-The proposed tasks mostly hold. The changes: two new small tasks that the numbers ask for, before the shadow step, and sharper scopes for three others.
+The proposed tasks mostly hold. The changes: three new tasks the numbers ask for, before people go into the sim, and sharper scopes for the rest.
 
-1. **New (S): route searches on a binary heap** (`sim/paths.ts`). No behaviour change; 35–45× faster at 10,000 people. Independent: it can go first, or in parallel with anything.
-2. **New (M): packed, compressed saves** (`sim/save.ts`, `ui/saves.ts`): typed-array columns as base64, the save gzipped with `CompressionStream`, IndexedDB if needed; old saves still load. Needed before people are in saves.
-3. **#523 Individuals beside cohorts, in shadow mode** (L): as proposed, held as packed columns; counts must match the cohorts; people in the save; the snapshot carries counts only. Add a perf test: 10,000 people in a hole, a year of ticks, inside a time budget.
-4. **#524 Homes and jobs assign themselves** (L): as proposed, incremental (only who a change touches), with each workplace's nearest 64 homes cached for swaps.
-5. **#525 Routes as cached distances** (M): as proposed, reusing `walkFrom` for food and an unbounded search for work; commute weighted zero at first.
-6. **#526 Needs per person** (L): as proposed.
-7. **#527 Households and relatives** (M): as proposed.
-8. **#528 See a person** (M): as proposed; the person card and list are asked for from the worker, not carried in every snapshot.
-9. **#529 Retire cohorts** (L): as proposed; DECISIONS.md reversed here; notables drawn from real people; migration retuned.
-10. **#530 Godot** (M): as proposed.
+1. **#532 Route searches on a binary heap** (S, new) (`sim/paths.ts`). No behaviour change; 35–45× faster at 10,000 people; the speed test; the per-room rule in DECISIONS.md. Independent: it can go first.
+2. **#533 Saves in IndexedDB, packed and gzipped** (M, new) (`sim/save.ts`, `ui/saves.ts`): async save and load, old localStorage saves copied across, a helper to pack typed-array columns, the save-size test. Before #523.
+3. **#534 Totals, not cohorts, in the snapshot** (S, new) (`sim/snapshot.ts`, its readers in `ui/` and `bridge/`): the snapshot-size test. Before #523.
+4. **#523 Individuals beside cohorts, in shadow mode** (L): held as packed columns; counts must match the cohorts; people saved with the packing helper, only what can't be rebuilt. A perf test: 10,000 people in a hole, a year of ticks, inside a generous time limit. Blocked by #533 and #534.
+5. **#524 Homes and jobs assign themselves** (L): incremental (only who a change touches), with each workplace's nearest 64 homes cached for swaps. Blocked by #532.
+6. **#525 Routes as cached distances** (M): reusing `walkFrom` for food and one search a workplace for work; commute weighted zero at first. Blocked by #532.
+7. **#526 Needs per person** (L): as proposed; worked out again on load, not saved.
+8. **#527 Households and relatives** (M): as proposed.
+9. **#528 See a person** (M): the people page and person card as worker messages, not in the snapshot.
+10. **#529 Retire cohorts** (L): as proposed; DECISIONS.md reversed here; notables drawn from real people; migration retuned.
+11. **#530 Godot** (M): the bridge answers the same people messages.
 
 ## Notes as built
 
 - Nov 18: the plan and the benchmark (`scripts/bench-people.ts`, `scripts/bench-people.mjs`). The benchmark is throwaway: it can be deleted once #523's perf test exists.
+- Nov 18, later: decisions on the three hangups (saves to IndexedDB now; per-room route searches; totals-only snapshot; generous speed tests, strict size tests) and three new tasks, #532–#534.
