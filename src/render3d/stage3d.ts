@@ -645,6 +645,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   /** Real time (ms) the sim last moved; walkers stop when the game is paused. */
   let lastTickChange = 0;
   let lastTick = -1;
+  /** How long after a tick the game still counts as running: a little over the gap between ticks at its slowest pace. */
+  const runningMs = (1250 / config.ticksPerSecondAt1x) / Math.min(config.slowSpeed, ...config.speeds.filter((v) => v > 0));
   let hole: Hole | null = null;
   let holeKey = "";
   /** The boring machine at the bottom of the shaft, rebuilt for another hole's width. */
@@ -2141,7 +2143,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (graphics.life && hole && ambient >= 1 / AMBIENT_FPS) {
       dust.step(ambient);
       // Colonists, sparks and steam move only while the game runs.
-      if (performance.now() - lastTickChange < 400 || showcase.on) {
+      if (performance.now() - lastTickChange < runningMs || showcase.on) {
         people.step(ambient);
         grit.step(ambient, camera.position);
         shaftLight.step(ambient);

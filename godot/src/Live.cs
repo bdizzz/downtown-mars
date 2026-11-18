@@ -433,6 +433,7 @@ public partial class Live : Node3D
         _choices.NewsVisible = !_build.PopupOpen;
         _build.KeepLeftOf(_pickerPanel.Visible ? _pickerPanel.Size.X + 14 : 0);
         Pulse();
+        Beckon();
         if (NoHud) _hud.Visible = false;
         // A bridge (re)connected: it needs the game settings it acts on.
         if (_bridge.Connected != _wasConnected)
@@ -532,7 +533,7 @@ public partial class Live : Node3D
             {
                 _choices.SetOffice(msg.RootElement);
                 _officeButton.Text = _choices.Waiting > 0 ? $"Office · {_choices.Waiting}" : "Office";
-                _officeButton.AddThemeColorOverride("font_color", _choices.Waiting > 0 ? new Color("#f0a030") : new Color("#f3e6d8"));
+                _officeButton.AddThemeColorOverride("font_color", new Color("#f3e6d8"));
             }
             else if (type == "palette") _build.SetPalette(msg.RootElement);
             else if (type == "hovered" || type == "edgeHovered") _build.Hovered(msg.RootElement);
@@ -1412,6 +1413,36 @@ public partial class Live : Node3D
         }
         var w = 0.5f + 0.5f * Mathf.Sin((float)_clockSeconds * 5);
         foreach (var c in _pulsed) c.Modulate = new Color(1, 0.72f + 0.28f * w, 0.35f + 0.65f * w);
+    }
+
+    StyleBoxFlat? _beckonBox;
+    static readonly Color BeckonTeal = new("#6fd6c8");
+
+    /// <summary>Someone waiting at the office: a teal ring round its button, breathing slowly, as the web's (#510).</summary>
+    void Beckon()
+    {
+        var on = _choices.Waiting > 0 && !_choices.OfficeOpen;
+        if (!on)
+        {
+            if (_beckonBox == null) return;
+            foreach (var st in new[] { "normal", "hover", "pressed" }) _officeButton.RemoveThemeStyleboxOverride(st);
+            _beckonBox = null;
+            return;
+        }
+        if (_beckonBox == null)
+        {
+            var b = _officeButton.GetThemeStylebox("normal");
+            _beckonBox = b is StyleBoxFlat f ? (StyleBoxFlat)f.Duplicate() : new StyleBoxFlat { BgColor = new Color("#33201a") };
+            foreach (var side in new[] { Side.Left, Side.Top, Side.Right, Side.Bottom }) _beckonBox.SetContentMargin(side, b.GetContentMargin(side));
+            foreach (var st in new[] { "normal", "hover", "pressed" }) _officeButton.AddThemeStyleboxOverride(st, _beckonBox);
+        }
+        var w = 0.5f - 0.5f * Mathf.Cos((float)_clockSeconds * Mathf.Tau / 2.4f);
+        var width = 1 + (int)Mathf.Round(2 * w);
+        _beckonBox.SetBorderWidthAll(width);
+        _beckonBox.SetExpandMarginAll(width);
+        _beckonBox.BorderColor = new Color(BeckonTeal, 0.55f + 0.4f * w);
+        _beckonBox.ShadowColor = new Color(BeckonTeal, 0.45f * w);
+        _beckonBox.ShadowSize = (int)Mathf.Round(8 * w);
     }
 
     // ---- the top bar ----
