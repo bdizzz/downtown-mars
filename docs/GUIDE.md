@@ -359,7 +359,7 @@ Each install opens the build it was installed from, so a PR preview added to the
 
 ## Saving
 
-The game autosaves every month in your browser. Use the menu to save to a slot, or export a save file to keep it somewhere safe.
+The game autosaves every month in your browser. Use the menu to save to a slot, or export a save file to keep it somewhere safe. Saves are kept compressed in the browser's database (IndexedDB), which has room for hundreds of megabytes; saves from older versions move there by themselves the first time the game opens. An exported file is plain JSON, as before.
 
 ## The menu and settings
 
