@@ -1,11 +1,11 @@
 ---
 name: build
-description: Implement one ticket from the Downtown Mars playtest board end to end — check open PRs for overlap, branch from a fresh main in a worktree, build, test, update docs, push and open a PR. Or, given a feature (F-001), write or revise its plan as a doc-only PR. Use when Bryon types /build, with a ticket id (T-012, #212, or shorthand like t12), a feature id (F-001, f1), a description, or nothing to pick from the menu.
+description: Implement one ticket from the Downtown Mars playtest board end to end — check open PRs for overlap, branch from a fresh main in a worktree, build, test, update docs, push and open a PR. Or, given a feature (F-001), write or revise its plan as a doc-only PR. Use when Bryon types /build, with a ticket id (T-012, #212, or shorthand like t12), a feature id (F-001, f1), a description, or nothing to pick from the menu. Add "ship" to have the PR merge itself once CI passes.
 ---
 
-# /build [#N … | feature #N | description]
+# /build [#N … | feature #N | description] [ship]
 
-One ticket, one branch, one PR (several ids only if Bryon lists them together; they share a branch and PR named after the first). Tickets are GitHub issues labeled `task` (features: `feature`). Their live state comes from GitHub: a pushed branch for the ticket means in flight, an open PR means in review, a merged PR (or the issue closed) means done. So the branch name matters.
+One ticket, one branch, one PR (several ids only if Bryon lists them together; they share a branch and PR named after the first). With **ship** (`/build 212 ship`), the PR merges by itself once CI passes (step 6): for small changes Bryon trusts without trying them first. `/batch` starts several builds at once, each in a session of its own. Tickets are GitHub issues labeled `task` (features: `feature`). Their live state comes from GitHub: a pushed branch for the ticket means in flight, an open PR means in review, a merged PR (or the issue closed) means done. So the branch name matters.
 
 **Ids and branch names.** Everything goes by issue number (`#212`) and builds on `212-<slug>`, the name GitHub's own "Create a branch" gives. The old ids from before the move to issues (`T-080`, `F-004`) still work as aliases, through `docs/ticket-ids.json`: `t80`, `T-080` and `f4` find their issue, and a bare `212` is issue 212. Use `#N` in the session title, commits and PR. Older branches (`t-080-…`, `f-004-…`) are still recognised, but new ones are always `<N>-<slug>`.
 
@@ -51,8 +51,8 @@ The branch is `<N>-<slug>` (e.g. `212-drill-button-hidden`). Its **base** is mai
 
 - **A feature branch behind main**: bring main in first with `node scripts/board.mjs sync #109` (merges `origin/main` into the feature branch in a throwaway worktree and pushes it). If it reports a conflict, stop and tell Bryon which files; nothing was pushed.
 
-- If this session is in the main checkout (`git rev-parse --git-dir` equals `--git-common-dir`), don't build there; it's where Bryon takes notes and plays. Load `EnterWorktree` (ToolSearch `select:EnterWorktree`) and enter a worktree named after the branch.
-- In the worktree: `git fetch origin <base>` and `git switch -c <branch> origin/<base>`. If that fails because the worktree's branch already has commits of its own, stop and ask. (In an app-made worktree, use the `sync_with_base_branch` tool to bring in main later, not `git merge`.)
+- If this session is in the main checkout (`git rev-parse --git-dir` equals `--git-common-dir`), don't build there; it's where Bryon takes notes and plays. Load `EnterWorktree` (ToolSearch `select:EnterWorktree`) and enter a worktree named after the branch. (Sessions the desktop app starts usually begin in a worktree of their own already, on a `claude/…` branch.)
+- In the worktree: `git fetch origin <base>` and `git switch -c <branch> origin/<base>`. If that fails because the worktree's branch already has commits of its own, stop and ask. Leave the app's `claude/…` branch where it is: the app checks it out again if the session is resumed, and `/land` deletes it once it's in main. To bring in main later, `git fetch origin <base> && git merge origin/<base>`.
 - **Claim it**: `git push -u origin <branch>` (the pushed branch is what shows the ticket as in flight on every machine), then `node scripts/board.mjs log <id> "building on <branch>"`, a comment on the issue.
 - Install packages if `node_modules` is missing (`npm install`).
 
@@ -65,6 +65,7 @@ Work as CLAUDE.md says: brain and face, data in JSON, deterministic sim. Read on
 - `npm test` (unit tests and the scripted playthroughs). For `src/bridge` changes also `npx tsc --noEmit -p tsconfig.node.json`; for Godot, `cd godot && dotnet build` and a test run as in "Testing the viewer" in `docs/PLAN-GODOT.md`.
 - Browser check for anything visible: start the dev server with preview_start and use **http://[::1]:5173**, never `localhost:5173`, so Bryon's own saves aren't touched. Take a screenshot of the change for the PR.
 - If something can't be checked (a long-game balance effect, say), say so in the PR rather than skipping it silently.
+- **Review the diff** before opening the PR: run the `code-review` skill at `low` on the branch (`git diff origin/<base>...`). Fix what it confirms, in this PR; anything out of scope goes in the PR description as a note, not a fix. Skip it for doc-only changes.
 
 ## 6. Docs, commit, PR
 
@@ -87,7 +88,9 @@ Work as CLAUDE.md says: brain and face, data in JSON, deterministic sim. Read on
   )"
   ```
 - The PR's number only exists once it's open, so fill it into the preview link straight after: read the body (`gh pr view <N> --json body --jq .body`), swap `PRNUM` for the number, and `gh pr edit <N> --body-file <file>`. Keep the description current if review changes what the PR does.
-- Bind the PR with the ccd_pr tools (`get_status`, then `bind_pr` if needed), and finish with the PR link (for a feature-branch task, say it merges into that branch, not main), its preview (`https://mars.bryon.site/preview/<N>/`, live a few minutes after the push), anything Bryon should look at when reviewing, and that `/land <id>` merges it and cleans up once he's happy.
+- Bind the PR with the ccd_pr tools (`get_status`, then `bind_pr` if needed). Its CI shows there; offer Auto-fix if it fails.
+- **ship**: then `node scripts/land.mjs '#<PR number>' --merge` (the `#` makes it the PR, not an issue). CI has only just started, so it turns on auto-merge, and GitHub squash-merges the PR when CI passes; that closes the issue, and the app archives this session. It also reports this worktree as skipped (this session is still in it), which is expected. Say it'll merge by itself instead of offering `/try`. Never do this without `ship` in the request.
+- Finish with the PR link (for a feature-branch task, say it merges into that branch, not main), its preview (`https://mars.bryon.site/preview/<N>/`, live a few minutes after the push), anything Bryon should look at when reviewing, and that `/land <id>` merges it and cleans up once he's happy.
 
 If Bryon closes the PR without merging, the ticket goes back to ready on its own (its issue is still open), but the remote branch must go too, or it will keep showing as in flight: `/land <id>` with his OK to drop it.
 
