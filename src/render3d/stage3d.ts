@@ -29,6 +29,7 @@ import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
 import { IndoorLights } from "./indoorLights";
 import { modeAt } from "../view/lightModes";
 import lighting from "../../data/lighting.json";
+import { retroStyleFrom } from "./lookRetro";
 import { createSky } from "./sky3d";
 import { siteLatitude, starTurn, sunDirection } from "../view/sunPath";
 import { buildTerrain, GROUND_BASE, siteSeed, soilTint, type Terrain } from "./terrain3d";
@@ -189,7 +190,22 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // What's drawn over the scene (occlusion, haze, glow, grading), per the graphics settings.
   const look: LookLike = webgpu
     ? new (await import("./lookGpu")).GpuLook(renderer as unknown as import("three/webgpu").WebGPURenderer, scene, camera)
-    : new Look(renderer, scene, camera);
+    : new Look(renderer, scene, camera, retroStyleFrom(location.search));
+  // The look's tuning panel (#503): shown for a retro or drawn look when the settings ask, or always with ?look=.
+  // (It's loaded on first use; a stage disposed, or a look changed, before it arrives doesn't show it.)
+  let closeRetroPanel: (() => void) | null = null;
+  let panelFor: string | null = null;
+  let stageGone = false;
+  const lookForced = !webgpu && !!retroStyleFrom(location.search);
+  function showRetroPanel(): void {
+    const style = look instanceof Look ? look.retroStyle : null;
+    const want = style && (lookForced || graphics.styleTuning) ? style : null;
+    if (want === panelFor) return;
+    closeRetroPanel?.();
+    closeRetroPanel = null;
+    panelFor = want;
+    if (want) void import("../devtools/retroPanel").then((m) => !stageGone && panelFor === want && (closeRetroPanel = m.mountRetroPanel(want)));
+  }
 
   const hemi = new THREE.HemisphereLight(0xffe6cc, 0x2a1510, 1.1);
   scene.add(hemi);
@@ -2298,6 +2314,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   function applyGraphics(): void {
     look.setGraphics(graphics);
+    showRetroPanel();
     lampLights.setCount(Math.round(graphics.lamps * LAMP_LIGHTS.most));
     // Shadows: the sun's down the shaft (a finer map at full).
     const shadows = graphics.shadows > 0 && !webgpu;
@@ -2876,6 +2893,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         m.dispose();
       });
       look.dispose();
+      stageGone = true;
+      closeRetroPanel?.();
       skyDome.dispose();
       renderer.dispose();
       canvas.remove();

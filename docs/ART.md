@@ -104,6 +104,26 @@ Every notable has a flat vector headshot (`src/view/portrait.ts`, palettes and o
 | Health / Admin / Power / Logistics / Access | `#d48092` / `#c9a456` / `#e0bf4a` / `#a08fb0` / `#9a8574` |
 | Excavation / Industry / Public / Construction / Storage / Services | `#7a6a5e` / `#b48a6a` / `#d9a870` / `#d98c3a` / `#9c8a6a` / `#5aa89c` |
 
+## Retro looks (experiment, Nov 17, #503)
+
+The 3D view can be drawn in other styles, picked in Settings → Display → **Look** (`graphics.style`, **Standard** by default; it switches live) or forced with `?look=<preset>` (`render3d/lookRetro.ts`, numbers in `data/retro.json`, each preset the `base` with its own changes). The usual effects (AO, haze, glow, grade) run on a small picture, which is repainted and then scaled up to the screen; labels draw afterwards at full size.
+
+| Preset | What it does |
+| --- | --- |
+| `snes` | Chunky pixels, outlines at silhouettes and creases, a 32-colour Mars palette (nearest in OKLab) with 4×4 Bayer dither |
+| `crt` | The SNES look on a curved CRT: scanlines, phosphor mask, colour fringes, glow, vignette |
+| `ps1` | 15-bit colour with the PlayStation's dither table, wobbly vertices |
+| `n64` | Smooth (blurred) upscaling, 15-bit colour, light dither, distance fog |
+| `cel` | Full resolution, light in 3 hard bands, thick ink outlines |
+| `painterly` | A Kuwahara filter: flat areas smear into brush strokes, edges stay sharp |
+| `blueprint` | Only edges, white on blueprint blue, a faint shading fill and a 10 m grid on every surface |
+| `vector` | Glowing green edges on black, on a CRT |
+| `ascii` | Each block drawn as a character (` .:-=+*#%@`) picked by its brightness, in its own colour |
+
+With any of them, **Look tuning** in the same settings (off by default; always on with `?look=`) shows a tuning panel (`devtools/retroPanel.ts`, draggable by its header, sections folding by their titles) with a control for every number: pixel size and smoothing; colour or lines (paper, ink, shading, grid); brightness, contrast, saturation; full colour, a palette size (a spread-out pick from the 32) or bits per channel; dither pattern, strength, and pinning it to the world (cells a power of two metres across on each surface, so it doesn't crawl as the camera moves); brush radius; fog; outlines (width, thresholds, darkness); ASCII; the CRT's parts; and, on reload, the PS1 wobble and cel bands (both patched into three's shared shader code before materials first compile, so switching looks mid-game adds or removes them only after a reload). Changes apply at once and are kept per browser and preset; **Copy** puts them on the clipboard as JSON for a preset in `data/retro.json`; **Preset → Load** starts again from any preset.
+
+Not done: labels don't follow the CRT's curve; the procedural surface textures turn to noise at large pixel sizes; a dust storm's haze dithers the whole screen; painterly at small pixel sizes is heavy on the GPU.
+
 ## What a real artist would make
 
 - **Room interiors** per type and size (S, M, L; wide and deep variants of L), with 3–4 frames of idle life: steam from the galley, a turning fan in life support, sprouts that sway in farms.
