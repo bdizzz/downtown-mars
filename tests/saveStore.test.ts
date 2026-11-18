@@ -51,7 +51,7 @@ describe("packing typed-array columns", () => {
     const text = packColumn(column);
     expect(text).toMatch(/^[A-Za-z0-9+/]*=*$/);
     const back = unpackColumn(text, column.constructor as never);
-    expect([...(back as ArrayLike<number>)]).toEqual([...column]);
+    expect(Array.from(back as ArrayLike<number>)).toEqual([...column]);
     expect(back.constructor).toBe(column.constructor);
   });
 
