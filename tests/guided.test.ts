@@ -125,9 +125,9 @@ describe("the guided tutorial's steps", () => {
     expect(stepSpeed({ ...guided.steps[0]!, pace: "read" })).toBe(0);
     expect(stepSpeed({ ...guided.steps[0]!, pace: "slow" })).toBe(config.slowSpeed);
     expect(stepSpeed(null)).toBe(1);
-    expect(config.slowSpeed).toBeLessThan(1);
-    // + from the slow pace goes to 1×, not past it.
-    expect(nextSpeed(config.slowSpeed, 1)).toBe(1);
+    // The slow pace is 1× since #509 halved the clock; a pace below 1× still steps up to 1×, not past it.
+    expect(config.slowSpeed).toBeLessThanOrEqual(1);
+    expect(nextSpeed(0.5, 1)).toBe(1);
   });
 
   it("are met by their checks; a step to read never is", () => {

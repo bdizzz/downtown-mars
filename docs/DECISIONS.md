@@ -97,7 +97,7 @@ These sections were brought in line with the catalogs, both in this kit and in t
 
 Each milestone plan has the details, under "Notes as built".
 
-- **Tick model:** 240 ticks a game day; 1× is 2 ticks a second (so a day is 2 minutes), with 2× and 4× (`data/config.json`). Resources are one pool per hole, no pathing. Neighbor effects are a per-slot field rebuilt when the layout changes (`PLAN.md`).
+- **Tick model:** 240 ticks a game day; 1× is 1 tick a second (so a day, a month to the player, is 4 minutes), with 2× and 4× (`data/config.json`). Halved from 2 ticks a second in Nov 2026 (#509): time felt too fast, so the new 4× runs like the old 2×. The sim's balance is per tick and didn't change; the guided tutorial's slow pace became plain 1×, the same real pace it had before. Resources are one pool per hole, no pathing. Neighbor effects are a per-slot field rebuilt when the layout changes (`PLAN.md`).
 - **Rings:** only rings 1–3 are open. Rings 4–6 and their unlocks (reinforcement frames, the excavation milestone) aren't built yet.
 - **Build UI:** four modes as in SimCity (Build, View, Map, Charts); Build has a strip of room categories. Room keys work only in Build. A yellow frame shows Build is on (`PLAN-M2.md`, `PLAN-M6.md`, `PLAN-M10.md`).
 - **Save format:** autosave every game day in the browser, save slots, and export to a file (`PLAN-M2.md`).
