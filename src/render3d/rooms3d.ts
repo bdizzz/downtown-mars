@@ -2057,11 +2057,11 @@ function drawLabel(lines: string[], color: string, alert = false): { material: T
   };
   // The dark outer line, then the face inside it.
   plate(0, 10);
-  ctx.fillStyle = planned ? "rgba(11, 6, 5, 0.3)" : "rgba(11, 6, 5, 0.55)";
+  ctx.fillStyle = planned ? "rgba(11, 6, 5, 0.18)" : "rgba(11, 6, 5, 0.35)";
   ctx.fill();
   const face = ctx.createLinearGradient(0, 0, 0, h);
-  face.addColorStop(0, planned ? "rgba(51, 32, 26, 0.3)" : "rgba(58, 37, 29, 0.6)");
-  face.addColorStop(1, planned ? "rgba(34, 19, 14, 0.3)" : "rgba(33, 18, 13, 0.6)");
+  face.addColorStop(0, planned ? "rgba(51, 32, 26, 0.18)" : "rgba(58, 37, 29, 0.38)");
+  face.addColorStop(1, planned ? "rgba(34, 19, 14, 0.18)" : "rgba(33, 18, 13, 0.38)");
   plate(2, 8);
   ctx.fillStyle = face;
   ctx.fill();
