@@ -9,8 +9,10 @@ namespace DowntownMars;
 /// <summary>
 /// Charts, as the web's: Trends (ui/TrendsPanel.tsx), one series up close over two days, ten days or
 /// the whole game, as amounts or change per day, with every series below as a sparkline to pick; and
-/// Flows (ui/FlowPanel.tsx), each resource's sources and uses as a river. The bridge works out the
-/// numbers (src/bridge/charts.ts); this draws them. Refreshed every couple of seconds while open.
+/// Flows (ui/FlowPanel.tsx), each resource's sources and uses as a river; and Milestones
+/// (ui/MilestonesPanel.tsx), what the hole has reached and what's ahead, by group, then the network's
+/// records and the other holes'. The bridge works out the numbers (src/bridge/charts.ts) and the
+/// milestones' text (view/milestones.ts, as the web's); this draws them. Refreshed every couple of seconds while open.
 /// </summary>
 public partial class Charts : Node
 {
@@ -71,6 +73,7 @@ public partial class Charts : Node
     {
         _asked = _clock;
         if (_tab == "trends") _send(new Dictionary<string, object> { ["type"] = "trends", ["key"] = _key, ["range"] = _range, ["mode"] = _mode });
+        else if (_tab == "milestones") _send(new Dictionary<string, object> { ["type"] = "milestones" });
         else _send(new Dictionary<string, object> { ["type"] = "flows", ["tab"] = _flowTab });
     }
 
@@ -82,7 +85,7 @@ public partial class Charts : Node
             c.QueueFree();
         }
         var head = new HBoxContainer();
-        foreach (var (id, name) in new[] { ("trends", "Trends"), ("flows", "Flows") })
+        foreach (var (id, name) in new[] { ("trends", "Trends"), ("flows", "Flows"), ("milestones", "Milestones") })
         {
             var b = new Button { Text = name, ToggleMode = true, ButtonPressed = _tab == id, FocusMode = Control.FocusModeEnum.None };
             b.Pressed += () =>
@@ -205,6 +208,102 @@ public partial class Charts : Node
             river.CustomMinimumSize = new Vector2(river.TwoStep ? 460 : 340, river.Height);
             _rows.AddChild(river);
         }
+    }
+
+    /// <summary>The bridge's milestones (view/milestones.ts milestonesView): by group, reached then ahead; records; the other holes.</summary>
+    public void SetMilestones(JsonElement m)
+    {
+        if (_tab != "milestones") return;
+        Clear();
+        _rows.AddChild(Text($"Milestones · {m.GetProperty("reached").GetInt32()} of {m.GetProperty("total").GetInt32()}", 18, Title));
+        foreach (var g in m.GetProperty("groups").EnumerateArray())
+        {
+            var reached = g.GetProperty("reached");
+            var ahead = g.GetProperty("ahead");
+            var n = reached.GetArrayLength();
+            _rows.AddChild(Text($"{g.GetProperty("label").GetString()}  {n}/{n + ahead.GetArrayLength()}", 16, Title));
+            foreach (var r in reached.EnumerateArray()) _rows.AddChild(MilestoneRow(r));
+            foreach (var r in ahead.EnumerateArray()) _rows.AddChild(MilestoneRow(r));
+        }
+        var records = m.GetProperty("records");
+        if (records.GetArrayLength() > 0)
+        {
+            _rows.AddChild(Text("Records", 16, Title));
+            foreach (var r in records.EnumerateArray()) _rows.AddChild(Pair(r.GetProperty("label").GetString()!, r.GetProperty("value").GetString()!));
+        }
+        var network = m.GetProperty("network");
+        if (network.GetArrayLength() > 0)
+        {
+            _rows.AddChild(Text("Network", 16, Title));
+            foreach (var h in network.EnumerateArray())
+            {
+                var got = h.GetProperty("reached");
+                var count = got.GetArrayLength();
+                _rows.AddChild(Text($"{h.GetProperty("name").GetString()} · {(count > 0 ? $"{count} reached" : "none yet")}", 13, Body));
+                foreach (var r in got.EnumerateArray()) _rows.AddChild(MilestoneRow(r));
+            }
+        }
+    }
+
+    /// <summary>One milestone: ★ reached, with when; ☆ ahead, with its progress bar and its hint underneath.</summary>
+    static Control MilestoneRow(JsonElement r)
+    {
+        var done = r.TryGetProperty("when", out var when);
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 0);
+        var row = new HBoxContainer();
+        var mark = new Label { Text = done ? "★" : "☆" };
+        mark.AddThemeColorOverride("font_color", done ? Title : Muted);
+        row.AddChild(mark);
+        var name = new Label { Text = r.GetProperty("title").GetString()!, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, AutowrapMode = TextServer.AutowrapMode.WordSmart };
+        name.AddThemeFontSizeOverride("font_size", 13);
+        name.AddThemeColorOverride("font_color", done ? Body : Muted);
+        row.AddChild(name);
+        if (done && when.GetString() is { Length: > 0 } w)
+        {
+            var at = new Label { Text = w };
+            at.AddThemeFontSizeOverride("font_size", 12);
+            at.AddThemeColorOverride("font_color", Muted);
+            row.AddChild(at);
+        }
+        if (r.TryGetProperty("progress", out var p))
+        {
+            var value = p.GetProperty("value").GetDouble();
+            var of = p.GetProperty("at").GetDouble();
+            var bar = new ProgressBar { MaxValue = of, Value = Math.Min(value, of), ShowPercentage = false, CustomMinimumSize = new Vector2(60, 6), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter };
+            bar.AddThemeStyleboxOverride("background", new StyleBoxFlat { BgColor = new Color(Muted, 0.25f), CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3, CornerRadiusBottomLeft = 3, CornerRadiusBottomRight = 3 });
+            bar.AddThemeStyleboxOverride("fill", new StyleBoxFlat { BgColor = Title, CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3, CornerRadiusBottomLeft = 3, CornerRadiusBottomRight = 3 });
+            row.AddChild(bar);
+            var k = new Label { Text = $"{value}/{of}" };
+            k.AddThemeFontSizeOverride("font_size", 12);
+            k.AddThemeColorOverride("font_color", Muted);
+            row.AddChild(k);
+        }
+        box.AddChild(row);
+        if (!done && r.TryGetProperty("hint", out var hint) && hint.GetString() is { Length: > 0 } h)
+        {
+            var l = Text(h, 11, Muted);
+            l.CustomMinimumSize = new Vector2(320, 0);
+            var indent = new MarginContainer();
+            indent.AddThemeConstantOverride("margin_left", 20);
+            indent.AddChild(l);
+            box.AddChild(indent);
+        }
+        return box;
+    }
+
+    static HBoxContainer Pair(string label, string value)
+    {
+        var row = new HBoxContainer();
+        var l = new Label { Text = label, SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        l.AddThemeFontSizeOverride("font_size", 13);
+        l.AddThemeColorOverride("font_color", Body);
+        row.AddChild(l);
+        var v = new Label { Text = value, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(180, 0), HorizontalAlignment = HorizontalAlignment.Right };
+        v.AddThemeFontSizeOverride("font_size", 12);
+        v.AddThemeColorOverride("font_color", Muted);
+        row.AddChild(v);
+        return row;
     }
 
     // ---- drawing ----

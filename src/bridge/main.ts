@@ -14,6 +14,7 @@ import { walkMap } from "./walkmap";
 import { dayOf, isSlot, readSlot, savesList, slotFailed, writeSlot } from "./saves";
 import { office, officeKey } from "./office";
 import { flows, trends } from "./charts";
+import { milestonesView } from "../view/milestones";
 import { mapView, networkView, siteView } from "./network";
 import { constructionView, maintenanceViewOf, peopleView } from "./colony";
 import { rigKey, rigMessage } from "./rig";
@@ -204,6 +205,8 @@ type BridgeMessage =
   /** Charts (charts.ts): trends for a series over a range (amounts, or change per day), and a flow tab's rivers. */
   | { type: "trends"; key: string; range: "2d" | "10d" | "all"; mode: "amount" | "rate" }
   | { type: "flows"; tab: string }
+  /** Charts → Milestones: the web's panel text (view/milestones.ts milestonesView). */
+  | { type: "milestones" }
   /** The network (network.ts): what the map shows, the network panel, and a site's report. */
   | { type: "map" }
   /** The colony panels (colony.ts): people, the construction queue, upkeep. */
@@ -426,6 +429,8 @@ const server = createServer((socket) => {
           send(trends(host.active(), msg.key, msg.range, msg.mode));
         } else if (msg.type === "flows") {
           send(flows(host.active(), msg.tab));
+        } else if (msg.type === "milestones") {
+          send({ type: "milestones", ...milestonesView(host.snapshot()) });
         } else if (msg.type === "saves") {
           send(savesList());
         } else if (msg.type === "saveSlot") {
