@@ -38,3 +38,29 @@ export async function fetchDevGame(g: DevGame): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * The game the address asks to open straight into (#518), skipping the title: `?game=mid` for a dev
+ * game, or `?game=saves/my-game.json` for a save file served by the same server (public/). The file's
+ * address, or null when there's no such parameter, it names nothing, or this build doesn't offer dev games.
+ */
+export function gameFromUrl(search: string, shown = devGamesShown()): string | null {
+  const want = new URLSearchParams(search).get("game")?.trim();
+  if (!want || !shown) return null;
+  const base = import.meta.env?.BASE_URL ?? "/";
+  const dev = DEV_GAMES.find((g) => g.name === want.toLowerCase());
+  if (dev) return `${base}dev-save-${dev.name}.json`;
+  // Only a path on this server: no scheme, no other host, no climbing out.
+  if (!/\.json$/i.test(want) || /[:\\]|^\/\/|(^|\/)\.\.(\/|$)/.test(want)) return null;
+  return want.startsWith("/") ? want : `${base}${want}`;
+}
+
+/** The save file at that address, as text; null when it can't be fetched. */
+export async function fetchGameAt(url: string): Promise<string | null> {
+  try {
+    const r = await fetch(url, { cache: "no-store" });
+    return r.ok ? await r.text() : null;
+  } catch {
+    return null;
+  }
+}
