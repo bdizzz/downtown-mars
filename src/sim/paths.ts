@@ -187,33 +187,119 @@ export function distancesFromCells(layout: Layout, cells: Cell[], mode: PathMode
   return walkOut(paths, seeds, -1, mode, maxM);
 }
 
-/** Dijkstra from some nodes at given costs, to every room within `maxM`. */
+/**
+ * The graph as flat arrays, for searching: nodes by number, each one's links
+ * in one run of `to`/`cost`. Route searches run from every home and workplace,
+ * and string-keyed maps (with a sorted array as the queue) were 35–45× slower
+ * at thousands of people (#532). Built once per graph, on its first search.
+ */
+interface Compiled {
+  index: Map<string, number>;
+  roomId: Int32Array;
+  through: Uint8Array;
+  /** Node i's links are start[i] .. start[i + 1]. */
+  start: Int32Array;
+  to: Int32Array;
+  cost: Float64Array;
+  /** The link carries air: an air link into a node without a bulkhead. */
+  air: Uint8Array;
+}
+
+const compiled = new WeakMap<Paths, Compiled>();
+
+function compile(paths: Paths): Compiled {
+  const hit = compiled.get(paths);
+  if (hit) return hit;
+  const keys = [...paths.nodes.keys()];
+  const index = new Map(keys.map((k, i) => [k, i]));
+  const n = keys.length;
+  const roomId = new Int32Array(n);
+  const through = new Uint8Array(n);
+  const start = new Int32Array(n + 1);
+  keys.forEach((k, i) => {
+    const node = paths.nodes.get(k)!;
+    roomId[i] = node.roomId;
+    through[i] = node.through ? 1 : 0;
+    start[i + 1] = start[i]! + (paths.links.get(k)?.length ?? 0);
+  });
+  const to = new Int32Array(start[n]!);
+  const cost = new Float64Array(start[n]!);
+  const air = new Uint8Array(start[n]!);
+  keys.forEach((k, i) => {
+    (paths.links.get(k) ?? []).forEach((l, j) => {
+      const e = start[i]! + j;
+      to[e] = index.get(l.to)!;
+      cost[e] = l.cost;
+      air[e] = l.air && !paths.nodes.get(l.to)!.airtight ? 1 : 0;
+    });
+  });
+  const c = { index, roomId, through, start, to, cost, air };
+  compiled.set(paths, c);
+  return c;
+}
+
+/** Dijkstra from some nodes at given costs, to every room within `maxM`, on a binary heap. */
 function walkOut(paths: Paths, seeds: [string, number][], roomId: number, mode: PathMode, maxM: number): Map<number, number> {
-  const dist = new Map<string, number>();
-  const queue: [number, string][] = [];
-  for (const [k, d] of seeds) {
-    if (d > maxM || d >= (dist.get(k) ?? Infinity)) continue;
-    dist.set(k, d);
-    queue.push([d, k]);
+  const g = compile(paths);
+  const dist = new Float64Array(g.roomId.length).fill(Infinity);
+  const heapD = new Float64Array(g.to.length + seeds.length + 1);
+  const heapN = new Int32Array(heapD.length);
+  let size = 0;
+  const push = (d: number, k: number) => {
+    let i = size++;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (heapD[p]! <= d) break;
+      heapD[i] = heapD[p]!;
+      heapN[i] = heapN[p]!;
+      i = p;
+    }
+    heapD[i] = d;
+    heapN[i] = k;
+  };
+  const pop = (): number => {
+    const top = heapN[0]!;
+    const d = heapD[--size]!;
+    const k = heapN[size]!;
+    let i = 0;
+    for (;;) {
+      let c = 2 * i + 1;
+      if (c >= size) break;
+      if (c + 1 < size && heapD[c + 1]! < heapD[c]!) c++;
+      if (heapD[c]! >= d) break;
+      heapD[i] = heapD[c]!;
+      heapN[i] = heapN[c]!;
+      i = c;
+    }
+    heapD[i] = d;
+    heapN[i] = k;
+    return top;
+  };
+  for (const [key, d] of seeds) {
+    const k = g.index.get(key)!;
+    if (d > maxM || d >= dist[k]!) continue;
+    dist[k] = d;
+    push(d, k);
   }
   const out = new Map<number, number>();
-  while (queue.length) {
-    // Small graphs: a sorted array does fine as a queue.
-    queue.sort((a, b) => a[0] - b[0]);
-    const [d, k] = queue.shift()!;
-    if (d > (dist.get(k) ?? Infinity)) continue;
-    const node = paths.nodes.get(k)!;
-    if (node.roomId && node.roomId !== roomId) {
-      out.set(node.roomId, Math.min(out.get(node.roomId) ?? Infinity, d));
+  const airOnly = mode === "air";
+  while (size) {
+    const d = heapD[0]!;
+    const k = pop();
+    if (d > dist[k]!) continue;
+    const id = g.roomId[k]!;
+    if (id && id !== roomId) {
+      out.set(id, Math.min(out.get(id) ?? Infinity, d));
       // A private room is somewhere to arrive, not a way through.
-      if (!node.through) continue;
+      if (!g.through[k]) continue;
     }
-    for (const l of paths.links.get(k) ?? []) {
-      if (mode === "air" && (!l.air || paths.nodes.get(l.to)!.airtight)) continue;
-      const nd = d + l.cost;
-      if (nd > maxM || nd >= (dist.get(l.to) ?? Infinity)) continue;
-      dist.set(l.to, nd);
-      queue.push([nd, l.to]);
+    for (let e = g.start[k]!; e < g.start[k + 1]!; e++) {
+      if (airOnly && !g.air[e]) continue;
+      const t = g.to[e]!;
+      const nd = d + g.cost[e]!;
+      if (nd > maxM || nd >= dist[t]!) continue;
+      dist[t] = nd;
+      push(nd, t);
     }
   }
   return out;
