@@ -5,7 +5,10 @@ import { raiseEvent, stepEvents } from "../src/sim/events";
 import { LABELS, type FlowEntry } from "../src/sim/ledger";
 import { newbornGeneration } from "../src/sim/births";
 import { openCells } from "../src/sim/excavation";
-import { fullRing, hasReached, milestoneData, milestonesOf, passed, progress } from "../src/sim/milestones";
+import { fullRing, hasReached, linkedHoles, milestoneData, milestonesOf, mostApart, passed, progress, trackNetworkMilestones } from "../src/sim/milestones";
+import { dailyGaps, stepEarth } from "../src/sim/earth";
+import { step } from "../src/sim/step";
+import { tiersHolding } from "../src/sim/sufficiency";
 import { stepAging } from "../src/sim/people";
 import { milestonesView } from "../src/view/milestones";
 import { deserialize, serialize } from "../src/sim/save";
@@ -242,5 +245,161 @@ describe("the milestones panel", () => {
         ],
       },
     ]);
+  });
+});
+
+// #183: self-sufficiency, judged from what the hole makes against its people's needs.
+describe("self-sufficiency", () => {
+  /** A hole that has run a little, so its pad works: Earth covers its shortfall. */
+  const running = (): SimState => {
+    const s = createInitialState(config);
+    s.drill.active = false;
+    for (let i = 0; i < 20; i++) step(s, config);
+    delete s.sufficiency;
+    s.milestones = [];
+    return s;
+  };
+  /** The same needs met in full by rovers from Gale, a day. */
+  const supplied = (s: SimState, scale = 1) => {
+    const gaps = dailyGaps(s, config);
+    const rover = `${LABELS.roverFrom} Gale`;
+    s.ledger.days = [Object.fromEntries(Object.entries(gaps).map(([id, v]) => [id, { in: { [rover]: v * scale }, out: {} }]))];
+  };
+  const fed = { ...config, colonists: { ...config.colonists, needsPerDay: { water: 0, meals: 0 } }, air: { ...config.air, breathPerDay: 0 } };
+
+  it("a starter hole is alive with Earth's help: its pad brings what it lacks", () => {
+    const s = running();
+    expect([...tiersHolding(s, config)]).toEqual(["earth"]);
+  });
+
+  it("without a working pad, nothing covers the shortfall", () => {
+    const s = running();
+    s.layout.rooms = s.layout.rooms.filter((r) => r.type !== "landing_pad");
+    expect(tiersHolding(s, config).size).toBe(0);
+  });
+
+  it("rovers bringing what's short hold the trade tier, net of what goes the other way", () => {
+    const s = running();
+    supplied(s);
+    expect([...tiersHolding(s, config)].sort()).toEqual(["earth", "trade"]);
+    supplied(s, 0.5);
+    expect(tiersHolding(s, config).has("trade")).toBe(false);
+    supplied(s);
+    s.ledger.days[0]!.water!.out[`${LABELS.roverTo} Gale`] = dailyGaps(s, config).water!;
+    expect(tiersHolding(s, config).has("trade")).toBe(false);
+  });
+
+  it("with nothing short, the hole is self-sufficient, and so fine with help too", () => {
+    const s = running();
+    expect([...tiersHolding(s, fed)].sort()).toEqual(["alone", "earth", "trade"]);
+  });
+
+  it("a room held back for want of power, an empty hole or a failed one holds none", () => {
+    const s = running();
+    const pod = s.layout.rooms.find((r) => r.type === "landing_pad")!;
+    s.roomStatus[pod.id] = { ...s.roomStatus[pod.id]!, limit: "power" };
+    expect(tiersHolding(s, fed).size).toBe(0);
+    const empty = running();
+    empty.population.cohorts = [];
+    empty.population.count = 0;
+    expect(tiersHolding(empty, fed).size).toBe(0);
+  });
+
+  it("counts once it has held for a month, and starts over if it slips", () => {
+    const s = running();
+    s.tick = 10 * day;
+    stepEvents(s, config);
+    expect(s.sufficiency).toEqual({ earth: 10 * day });
+    s.tick += day / 2;
+    stepEvents(s, config);
+    expect(hasReached(s, "alive_with_earth")).toBe(false);
+    s.layout.rooms = s.layout.rooms.filter((r) => r.type !== "landing_pad");
+    stepEvents(s, config);
+    expect(s.sufficiency).toEqual({});
+    const t = running();
+    t.tick = 10 * day;
+    stepEvents(t, config);
+    t.tick += day;
+    stepEvents(t, config);
+    expect(hasReached(t, "alive_with_earth")).toBe(true);
+    expect(t.messages.some((m) => m.text === "Milestone: alive, with Earth's help.")).toBe(true);
+  });
+
+  it("a year on our own: twelve months with no drop, and people still here", () => {
+    const s = hole();
+    const year = milestoneData.milestones.find((m) => m.id === "year_alone")!;
+    s.earth.lastDropTick = 0;
+    s.tick = 11 * day;
+    expect(progress(s, year)).toBe(11);
+    expect(passed(s, year)).toBe(false);
+    s.tick = 12 * day;
+    expect(passed(s, year)).toBe(true);
+    s.population.count = 0;
+    expect(passed(s, year)).toBe(false);
+  });
+
+  it("the clock for a year on our own starts with the hole, and again at each drop", () => {
+    const w = createWorld(config, 42);
+    const s = w.holes[0]!;
+    s.tick = 5 * day;
+    stepEarth(s, config);
+    expect(s.earth.lastDropTick).toBe(5 * day);
+  });
+});
+
+// #184: network milestones.
+describe("network milestones", () => {
+  const two = () => {
+    const a = hole();
+    const b = hole();
+    b.holeId = 2;
+    b.parentHoleId = a.holeId;
+    return { a, b };
+  };
+  const route = (fromHoleId: number, toHoleId: number) => ({ fromHoleId, toHoleId });
+
+  it("a kit sent goes to the hole that founded another", () => {
+    const { a, b } = two();
+    trackNetworkMilestones({ holes: [a, b], routes: [] }, config);
+    expect(hasReached(a, "kit_sent")).toBe(true);
+    expect(hasReached(b, "kit_sent")).toBe(false);
+  });
+
+  it("the first trade route, reached in the hole whose rover set out, once for the network", () => {
+    const { a, b } = two();
+    const w = { holes: [a, b], routes: [route(2, 1)] as never[] };
+    trackNetworkMilestones(w, config);
+    expect(hasReached(b, "first_route")).toBe(true);
+    w.routes.push(route(1, 2) as never);
+    trackNetworkMilestones(w, config);
+    expect(hasReached(a, "first_route")).toBe(false);
+  });
+
+  it("holes linked counts the biggest group joined by routes, either way", () => {
+    expect(linkedHoles([route(1, 2), route(3, 4), route(4, 5), route(2, 1)]).sort()).toEqual([3, 4, 5]);
+    expect(linkedHoles([route(1, 2), route(3, 4), route(2, 3)]).sort()).toEqual([1, 2, 3, 4]);
+    const holes = [1, 2, 3].map((id) => Object.assign(hole(), { holeId: id }));
+    trackNetworkMilestones({ holes, routes: [route(1, 2)] as never[] }, config);
+    expect(holes.some((h) => hasReached(h, "linked_3"))).toBe(false);
+    trackNetworkMilestones({ holes, routes: [route(1, 2), route(3, 2)] as never[] }, config);
+    expect(hasReached(holes[2]!, "linked_3")).toBe(true);
+  });
+
+  it("drifting apart: one hole's culture clearly different from every other's", () => {
+    const { a, b } = two();
+    const c = Object.assign(hole(), { holeId: 3 });
+    trackNetworkMilestones({ holes: [a, b, c], routes: [] }, config);
+    expect([a, b, c].some((h) => hasReached(h, "drifting_apart"))).toBe(false);
+    c.culture = { work: 0.8, order: -0.8, identity: 0.6, openness: -0.6 };
+    expect(mostApart([a, b, c].map((h) => ({ id: h.holeId, culture: h.culture })))!.id).toBe(3);
+    trackNetworkMilestones({ holes: [a, b, c], routes: [] }, config);
+    expect(hasReached(c, "drifting_apart")).toBe(true);
+  });
+
+  it("the network's count in every hole's panel, with progress", () => {
+    const w = createWorld(config, 42);
+    const snap = { ...makeSnapshot(w.holes[0]!, config), routes: [route(1, 2)] as never[] };
+    const net = milestonesView(snap).groups.find((g) => g.id === "network")!;
+    expect(net.ahead.find((r) => r.id === "linked_3")!.progress).toEqual({ value: 2, at: 3 });
   });
 });

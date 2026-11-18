@@ -57,6 +57,14 @@ describe("first hour, two holes", () => {
     expect(last.deliveredHome > 0 || fromChild.length > 0).toBe(true);
   });
 
+  it("reaches the network milestones: a kit sent home, the first trade route (#184)", () => {
+    const ids = (h: typeof home) => (h!.milestones ?? []).map((m) => m.id);
+    expect(ids(home)).toContain("kit_sent");
+    expect(ids(child)).not.toContain("kit_sent");
+    expect([...ids(home), ...ids(child)]).toContain("first_route");
+    expect(ids(home)).toContain("alive_with_earth");
+  });
+
   it("keeps pace with staying solo by the end of the hour, despite sending 12 away", () => {
     // Both players build what's short after their opening; the gap opens later (see people-playthrough).
     expect(last.total).toBeGreaterThan(solo.log.at(-1)!.total * 0.95);

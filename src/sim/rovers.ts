@@ -2,7 +2,7 @@ import type { CommandResult } from "./commands";
 import type { SimConfig } from "./config";
 import { isActive } from "./economy";
 import { travelTicks } from "./founding";
-import { record } from "./ledger";
+import { LABELS, record } from "./ledger";
 import { resourceDef, resourceDefs } from "./resources";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
@@ -112,7 +112,7 @@ export function stepRoutes(
       const load = Math.min(want, from.resources[route.resource] ?? 0);
       if (load < Math.min(1, want)) continue; // wait for goods
       from.resources[route.resource] = (from.resources[route.resource] ?? 0) - load;
-      record(from, route.resource, "out", `Rover to ${to.name}`, load);
+      record(from, route.resource, "out", `${LABELS.roverTo} ${to.name}`, load);
       route.cargo = load;
       route.phase = "outbound";
       route.legStartTick = world.tick;
@@ -120,7 +120,7 @@ export function stepRoutes(
     } else if (route.phase === "outbound") {
       // Anything past the destination's storage is lost as overflow by the economy, like an Earth drop.
       to.resources[route.resource] = (to.resources[route.resource] ?? 0) + route.cargo;
-      record(to, route.resource, "in", `Rover from ${from.name}`, route.cargo);
+      record(to, route.resource, "in", `${LABELS.roverFrom} ${from.name}`, route.cargo);
       onDelivery(from, to, route.resource, route.cargo);
       route.cargo = 0;
       route.phase = "returning";

@@ -3,6 +3,7 @@ import type { FoodState } from "./food";
 import { createEvents, type EventsState } from "./events";
 import { fillAir, type AirState } from "./air";
 import type { LandingKit, LandingKitName, SimConfig } from "./config";
+import type { SufficiencyState } from "./sufficiency";
 import type { ReachedMilestone } from "./milestones";
 import type { Drill } from "./digging";
 import type { HoleFailure } from "./failure";
@@ -115,6 +116,8 @@ export interface SimState {
   food?: FoodState;
   /** Milestones reached, with the day (F-005, data/milestones.json; absent in older saves until the first check). */
   milestones?: ReachedMilestone[];
+  /** When each self-sufficiency tier began to hold, while it does (#183, sufficiency.ts; absent in older saves until the first check). */
+  sufficiency?: SufficiencyState;
   /** The living volume, cached (air.ts; absent in older saves until the first tick). */
   air?: AirState;
   /** The most people this hole has had (failure.ts; absent in older saves until the first tick). */

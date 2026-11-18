@@ -548,6 +548,7 @@ public partial class Live : Node3D
             else if (type == "colonyConstruction") _colony.SetConstruction(msg.RootElement);
             else if (type == "colonyMaintenance") _colony.SetMaintenance(msg.RootElement);
             else if (type == "flows") _charts.SetFlows(msg.RootElement);
+            else if (type == "milestones") _charts.SetMilestones(msg.RootElement);
             else if (type == "saved") _menu.Saved(msg.RootElement);
             else if (type == "loaded")
             {

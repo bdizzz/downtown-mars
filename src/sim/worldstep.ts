@@ -29,7 +29,7 @@ export function stepWorld(world: World, cfg: SimConfig): void {
     (from, to, res, n) => noteDelivery(world, from, to, res, n),
   );
   stepArrivals(world, cfg);
-  trackNetworkMilestones(world.holes, cfg);
+  trackNetworkMilestones(world, cfg);
   if (world.tick % cfg.ticksPerDay === 0) {
     stepCulture(world, cfg);
     stepMigration(world, cfg);

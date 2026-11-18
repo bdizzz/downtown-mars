@@ -284,14 +284,14 @@ describe("holes capped milestones (#413)", () => {
     const a = hole();
     const b = hole();
     b.holeId = 2;
-    trackNetworkMilestones([a, b], config);
+    trackNetworkMilestones({ holes: [a, b], routes: [] }, config);
     expect(hasReached(a, "holes_capped_1") || hasReached(b, "holes_capped_1")).toBe(false);
     b.depth = { limits: [], capped: { tick: 10, floors: 6, ending: "stopped" } };
-    trackNetworkMilestones([a, b], config);
+    trackNetworkMilestones({ holes: [a, b], routes: [] }, config);
     expect(hasReached(b, "holes_capped_1")).toBe(true);
     expect(hasReached(a, "holes_capped_1")).toBe(false);
     a.depth = { limits: [], capped: { tick: 20, floors: 9, ending: "fault_line" } };
-    trackNetworkMilestones([a, b], config);
+    trackNetworkMilestones({ holes: [a, b], routes: [] }, config);
     expect(hasReached(a, "holes_capped_1")).toBe(false); // already reached in b
     expect(hasReached(a, "holes_capped_3")).toBe(false);
   });

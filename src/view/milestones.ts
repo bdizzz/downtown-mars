@@ -1,4 +1,4 @@
-import { milestoneData, NETWORK_CHECKS, type MilestoneDef, type ReachedMilestone } from "../sim/milestones";
+import { linkedHoles, milestoneData, NETWORK_CHECKS, type MilestoneDef, type ReachedMilestone } from "../sim/milestones";
 import type { Snapshot } from "../sim/snapshot";
 import { monthLabel } from "./months";
 
@@ -56,13 +56,18 @@ function reachedRow(m: MilestoneDef, r: ReachedMilestone): MilestoneRow {
 
 /** The panel, for the hole being looked at. */
 export function milestonesView(s: Snapshot): MilestonesView {
-  // The network's milestones (holes capped) count wherever they were reached.
+  // The network's milestones (holes capped, routes, holes linked, drifting apart) count wherever they were reached.
   const isNetwork = (id: string) => NETWORK_CHECKS.includes(milestoneData.milestones.find((m) => m.id === id)?.check ?? "event");
   const own = s.milestones.filter((r) => !isNetwork(r.id));
   const shared = s.holes.flatMap((h) => h.milestones ?? []).filter((r) => isNetwork(r.id));
   const mine = [...own, ...shared.filter((r, i) => shared.findIndex((x) => x.id === r.id) === i)];
   const reached = new Map(mine.map((r) => [r.id, r]));
-  const cappedCount = s.holes.filter((h) => h.capped).length;
+  // How far along the network's counted ones are.
+  const networkProgress: Partial<Record<MilestoneDef["check"], number>> = {
+    holesCapped: s.holes.filter((h) => h.capped).length,
+    tradeRoutes: s.routes.length,
+    holesLinked: linkedHoles(s.routes).length,
+  };
   const groups = milestoneData.groups.map((g) => {
     const defs = milestoneData.milestones.filter((m) => m.group === g.id);
     return {
@@ -73,7 +78,7 @@ export function milestonesView(s: Snapshot): MilestonesView {
       ahead: defs
         .filter((m) => !reached.has(m.id))
         .map((m) => {
-          const value = NETWORK_CHECKS.includes(m.check) ? cappedCount : s.milestoneProgress[m.id];
+          const value = NETWORK_CHECKS.includes(m.check) ? networkProgress[m.check] : s.milestoneProgress[m.id];
           return {
             id: m.id,
             title: capital(m.title),
