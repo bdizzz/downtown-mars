@@ -7,9 +7,10 @@ using Godot;
 namespace DowntownMars;
 
 /// <summary>
-/// The map of Mars, as the web's (ui/MapScreen.tsx and Globe.tsx): a globe wearing MOLA relief
-/// (data/mars-relief.jpg, the web's own; heights from data/mars-elevation.json), the deposits you know of, named
-/// features, your holes, convoys, routes with their rovers, and colonists moving. Drag to turn, wheel
+/// The map of Mars, as the web's (ui/MapScreen.tsx and Globe.tsx): a globe wearing the planet's real colour
+/// (data/mars-relief.jpg, the web's own) on ground raised by MOLA's heights (public/map/height.png), sharper tiles
+/// (public/map/tiles/) laid over the part in view as you zoom in, a thin atmosphere on the limb, the deposits you
+/// know of, the IAU's names, your holes, convoys, routes with their rovers, and colonists moving. Drag to turn, wheel
 /// to zoom; the pointer's place shows at the bottom; a click picks a site, whose report (from the
 /// bridge's network.ts) says what's there and whether a hole can be founded, with the button to send
 /// a convoy. Drawn on its own render layer with its own camera, far from the hole.
@@ -17,10 +18,26 @@ namespace DowntownMars;
 public partial class MapView : Node3D
 {
     const float R = 10, MarsKm = 3389.5f;
-    /// <summary>The names (#499): the smallest feature named, and how far off (globe units a km of its size) its name shows.</summary>
-    const float NameMinKm = 60, NameRangePerKm = 0.047f;
+    /// <summary>The names, as the web's GLOBE.names: how big on screen (px) a feature must be to be named, and the most at once.</summary>
+    const float NameMinPx = 40;
+    const int NameMost = 30;
     const uint Layer = 1 << 10;
     const int TexW = 4096, TexH = 2048;
+    /// <summary>
+    /// The relief, as the web's GLOBE.relief: the heights exaggerated tenfold (a radius is 3,396 km, so Olympus
+    /// Mons' 21 km would be a 0.6% bump), and the height map's range in metres (its 0 and 255, as build-map.py writes it).
+    /// </summary>
+    const float Exaggerate = 10, HeightMin = -8500, HeightMax = 21500, RadiusM = 3396190;
+    /// <summary>The tiles, as the web's GLOBE.tiles: degrees each, laid on within 2.7 radii, up to 80 kept, a few read from disk a frame.</summary>
+    const int TileDeg = 15, TileRows = 180 / TileDeg, TileCols = 360 / TileDeg, TileKeep = 80, TileLoadsPerFrame = 3;
+    const float TileWithin = 2.7f;
+    /// <summary>The base sphere's grid: a tile's square is exactly 16 × 16 of its cells, so a tile's corners sit on its vertices.</summary>
+    const int SphereW = 384, SphereH = 192, TileSeg = 16;
+    /// <summary>The atmosphere, as the web's GLOBE.atmosphere: its thickness (radii), dust low down and ice haze up high, the band's brightness and the veil's.</summary>
+    const float AirThickness = 0.025f, AirGlow = 1.05f, AirVeil = 0.35f;
+    static readonly Color AirDust = new("#e6c3a0"), AirHigh = new("#d8e6f4");
+    /// <summary>Where the sun sits seen from the camera (as the web's, which turns the globe under a fixed camera and sun).</summary>
+    static readonly Vector3 SunFromCamera = new Vector3(-3, 2, 4).Normalized();
 
     readonly Action<object> _send;
     readonly Camera3D _cam = new() { Fov = 40, CullMask = Layer, Current = false };
@@ -28,9 +45,20 @@ public partial class MapView : Node3D
     readonly Node3D _marks = new();
     readonly MeshInstance3D _lines = new() { Layers = Layer, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
     readonly MeshInstance3D _pick = new() { Layers = Layer, Visible = false };
-    readonly StandardMaterial3D _globeMaterial = new() { Roughness = 1 };
-    Image _relief = null!;
+    readonly ShaderMaterial _globeMaterial = new();
+    readonly DirectionalLight3D _sun = new() { LightEnergy = 1.1f, LightCullMask = Layer, ShadowEnabled = false };
+    readonly ShaderMaterial _haze = new(), _veil = new();
+    Shader _globeShader = null!;
+    /// <summary>The deposits, painted on a clear planet-sized layer the base sphere and every tile wear over their colour.</summary>
+    ImageTexture? _overlay;
+    /// <summary>The heights (public/map/height.png, 1440 × 720, 8-bit), for the shader and for lifting the marks and pointing.</summary>
+    Image _height = null!;
+    ImageTexture _heightTex = null!;
+    readonly Dictionary<string, MeshInstance3D> _tiles = new();
+    readonly List<string> _tileOrder = new();
     float _yaw, _pitch = 0.3f, _dist = 34;
+    /// <summary>How close the camera comes, in radii (as the web's: 1.16, was 1.25), now there's relief and tiles to see.</summary>
+    const float MinDistance = 1.16f;
     string _depositsKey = "";
     (float lat, float lon)? _site;
     Vector2? _press;
@@ -69,7 +97,7 @@ public partial class MapView : Node3D
     readonly Dictionary<string, string> _depositNames = new();
 
     public bool Open => _ui.Visible;
-    public string Describe() => $"yaw={Mathf.RadToDeg(_yaw):0} dist={_dist:0.0}";
+    public string Describe() => $"yaw={Mathf.RadToDeg(_yaw):0} dist={_dist:0.0} tiles={TilesShown} names={_namePool.Count(l => l.Visible)} at={LatLon(_cam.Position).lat:0},{LatLon(_cam.Position).lon:0}";
     /// <summary>The render layer the map is drawn on (the hole's cameras and lights leave it out).</summary>
     public const uint MapLayer = Layer;
     public Action? Closed { get; set; }
@@ -95,13 +123,17 @@ public partial class MapView : Node3D
             AmbientLightEnergy = 0.55f,
             TonemapMode = Godot.Environment.ToneMapper.Filmic,
         };
-        var sun = new DirectionalLight3D { LightEnergy = 1.1f, LightCullMask = Layer, ShadowEnabled = false };
-        AddChild(sun);
-        sun.LookAtFromPosition(new Vector3(-30, 20, 30), Vector3.Zero, Vector3.Up);
+        // The sun turns with the camera, as the web's stays put while the globe turns under it.
+        AddChild(_sun);
 
         LoadData();
-        _globe.Mesh = Sphere();
+        _globe.Mesh = Patch(90, -90, 0, 360, SphereW, SphereH, false);
+        _globe.ExtraCullMargin = R * Lift(HeightMax);
+        _globeShader = GD.Load<Shader>("res://shaders/globe.gdshader");
+        _globeMaterial.Shader = _globeShader;
+        Relief(_globeMaterial, _reliefImage, 0);
         _globe.MaterialOverride = _globeMaterial;
+        BuildAir();
         _pick.Mesh = new TorusMesh { InnerRadius = 0.18f, OuterRadius = 0.26f, Rings = 24, RingSegments = 6 };
         _pick.MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color("#e07a3f"), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded };
 
@@ -138,28 +170,66 @@ public partial class MapView : Node3D
                 float? Num(string k) => w.TryGetProperty(k, out var v) ? v.GetSingle() : null;
                 _traits.Add((t.GetProperty("name").GetString()!, Num("absLatMin"), Num("absLatMax"), w.TryGetProperty("near", out var n) ? n.GetString() : null, Num("nearDeg") ?? 0));
             }
-        _relief = Relief();
-        // The IAU's names (#499, data/mars-names.json, the web's): each shows only once the camera is close enough
-        // for its feature to be a fair size on screen (as the web's globe: about 40 px across), the big regions in
-        // wide-spaced capitals; the smallest (under 60 km) are left off.
+        _reliefImage = ImageTexture.CreateFromImage(Relief());
+        _height = Image.LoadFromFile(ProjectSettings.GlobalizePath("res://") + "../public/map/height.png");
+        _height.Convert(Image.Format.L8);
+        _heightTex = ImageTexture.CreateFromImage(_height);
+        // The IAU's names (#499, data/mars-names.json, the web's), biggest first.
         using (var doc = JsonDocument.Parse(System.IO.File.ReadAllText(root + "mars-names.json")))
             foreach (var f in doc.RootElement.GetProperty("names").EnumerateArray())
             {
-                var km = f.GetProperty("km").GetSingle();
-                if (km < NameMinKm) break;
                 var kind = f.GetProperty("kind").GetString();
-                var region = kind is "terra" or "planitia" or "planum" or "vastitas" or "palus";
-                var name = f.GetProperty("name").GetString()!;
-                var label = new Label3D
-                {
-                    Text = region ? string.Join(" ", name.ToUpperInvariant().ToCharArray()) : name, Layers = Layer, FontSize = region ? 34 : 36, PixelSize = 0.0035f, OutlineSize = 8,
-                    Modulate = region ? new Color(1f, 0.925f, 0.84f, 0.86f) : new Color("#f6efe6"), OutlineModulate = new Color(0.08f, 0.04f, 0.03f, 0.7f),
-                    Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = false,
-                    VisibilityRangeEnd = km * NameRangePerKm,
-                };
-                label.Position = At(f.GetProperty("lat").GetSingle(), f.GetProperty("lon").GetSingle(), R * 1.004f);
-                AddChild(label);
+                _names.Add((f.GetProperty("name").GetString()!, kind is "terra" or "planitia" or "planum" or "vastitas" or "palus",
+                    f.GetProperty("km").GetSingle(), f.GetProperty("lat").GetSingle(), f.GetProperty("lon").GetSingle()));
             }
+    }
+
+    readonly List<(string name, bool region, float km, float lat, float lon)> _names = new();
+    readonly Control _nameLayer = new() { MouseFilter = Control.MouseFilterEnum.Ignore };
+    readonly List<Label> _namePool = new();
+
+    /// <summary>
+    /// The names, as the web's: flat labels over the globe, the biggest features that would be at least 40 px
+    /// across at this zoom and face the camera, at most 30, none overlapping, the big regions in spaced capitals.
+    /// </summary>
+    void UpdateNames()
+    {
+        var size = GetViewport().GetVisibleRect().Size;
+        var focal = size.Y / 2 / MathF.Tan(Mathf.DegToRad(_cam.Fov / 2));
+        var height = _dist / R - 1;
+        var toward = _cam.Position.Normalized();
+        var boxes = new List<Rect2>();
+        var n = 0;
+        foreach (var f in _names)
+        {
+            if (n >= NameMost) break;
+            if (f.km / 2 / MarsKm * focal / height < NameMinPx) break;
+            if (At(f.lat, f.lon, 1).Dot(toward) < 0.25f) continue;
+            var at = _cam.UnprojectPosition(GlobalPosition + Ground(f.lat, f.lon, 0.004f));
+            if (at.X < 0 || at.Y < 0 || at.X > size.X || at.Y > size.Y) continue;
+            var bw = f.name.Length * (f.region ? 9 : 7) + 10;
+            var box = new Rect2(at.X - bw / 2f, at.Y - 9, bw, 18);
+            if (boxes.Any(b => b.Intersects(box))) continue;
+            boxes.Add(box);
+            if (n == _namePool.Count)
+            {
+                var made = new Label { MouseFilter = Control.MouseFilterEnum.Ignore };
+                made.AddThemeConstantOverride("outline_size", 4);
+                made.AddThemeColorOverride("font_outline_color", new Color(0.08f, 0.04f, 0.03f, 0.75f));
+                made.AddThemeColorOverride("font_shadow_color", new Color(0.08f, 0.04f, 0.03f, 0.85f));
+                made.AddThemeConstantOverride("shadow_offset_y", 1);
+                _nameLayer.AddChild(made);
+                _namePool.Add(made);
+            }
+            var label = _namePool[n++];
+            label.Text = f.region ? string.Join(" ", f.name.ToUpperInvariant().ToCharArray()) : f.name;
+            label.AddThemeFontSizeOverride("font_size", f.region ? 12 : 11);
+            label.AddThemeColorOverride("font_color", f.region ? new Color(1f, 0.925f, 0.84f, 0.86f) : new Color("#f6efe6"));
+            label.ResetSize();
+            label.Position = at - label.Size / 2;
+            label.Visible = true;
+        }
+        for (var i = n; i < _namePool.Count; i++) _namePool[i].Visible = false;
     }
 
     float ElevationAt(float lat, float lon)
@@ -183,10 +253,47 @@ public partial class MapView : Node3D
         return img;
     }
 
-    /// <summary>The relief with the deposits painted on (as the web's ellipses, wider toward the poles).</summary>
+    ImageTexture _reliefImage = null!;
+
+    /// <summary>A layer's material: its colour, the heights and the deposits' overlay, and how far over the ground it sits.</summary>
+    void Relief(ShaderMaterial m, Texture2D albedo, float lift)
+    {
+        m.SetShaderParameter("albedo_tex", albedo);
+        m.SetShaderParameter("height_tex", _heightTex);
+        m.SetShaderParameter("overlay_tex", _overlay);
+        m.SetShaderParameter("radius", R);
+        m.SetShaderParameter("relief_scale", (HeightMax - HeightMin) / RadiusM * Exaggerate);
+        m.SetShaderParameter("relief_zero", -HeightMin / (HeightMax - HeightMin));
+        m.SetShaderParameter("relief_on", 1f);
+        m.SetShaderParameter("height_px", new Vector2(1f / _height.GetWidth(), 1f / _height.GetHeight()));
+        m.SetShaderParameter("lift", lift);
+    }
+
+    /// <summary>How far a height (metres) raises the ground, in radii, exaggerated as the shader does.</summary>
+    static float Lift(float m) => m / RadiusM * Exaggerate;
+
+    /// <summary>The height map's metres at a place (nearest pixel, as the web's pointing reads it).</summary>
+    float HeightAt(float lat, float lon)
+    {
+        int w = _height.GetWidth(), h = _height.GetHeight();
+        var x = Math.Clamp((int)(Wrap(lon) / 360 * w), 0, w - 1);
+        var y = Math.Clamp((int)((90 - lat) / 180 * h), 0, h - 1);
+        return HeightMin + _height.GetPixel(x, y).R * (HeightMax - HeightMin);
+    }
+
+    /// <summary>A point on the raised ground, a little above it (in radii), for the marks, lines and names.</summary>
+    Vector3 Ground(float lat, float lon, float above) => At(lat, lon, R * (1 + above + Lift(HeightAt(lat, lon))));
+
+    Vector3 Ground(Vector3 dir, float above)
+    {
+        var (lat, lon) = LatLon(dir);
+        return Ground(lat, lon, above);
+    }
+
+    /// <summary>The deposits (as the web's ellipses, wider toward the poles), on the clear overlay over the planet.</summary>
     void Paint(JsonElement deposits)
     {
-        var img = (Image)_relief.Duplicate();
+        var img = Image.CreateEmpty(TexW, TexH, false, Image.Format.Rgba8);
         var pxPerDeg = TexW / 360f;
         foreach (var d in deposits.EnumerateArray())
         {
@@ -202,12 +309,22 @@ public partial class MapView : Node3D
                     float dx = (xi - cx) / rx, dy = (y - cy) / ry, q = MathF.Sqrt(dx * dx + dy * dy);
                     if (q > 1.02f) continue;
                     var edge = q > 0.94f;
+                    // Over whatever's painted there already, as the web's did on the planet's own colour.
                     var under = img.GetPixel(x, y);
-                    img.SetPixel(x, y, under.Lerp(color, edge ? 0.9f : 0.33f));
+                    var a = edge ? 0.9f : 0.33f;
+                    var outA = a + under.A * (1 - a);
+                    var rgb = (new Vector3(color.R, color.G, color.B) * a + new Vector3(under.R, under.G, under.B) * under.A * (1 - a)) / outA;
+                    img.SetPixel(x, y, new Color(rgb.X, rgb.Y, rgb.Z, outA));
                 }
         }
         img.GenerateMipmaps();
-        _globeMaterial.AlbedoTexture = ImageTexture.CreateFromImage(img);
+        if (_overlay == null)
+        {
+            _overlay = ImageTexture.CreateFromImage(img);
+            _globeMaterial.SetShaderParameter("overlay_tex", _overlay);
+            foreach (var t in _tiles.Values) ((ShaderMaterial)t.MaterialOverride).SetShaderParameter("overlay_tex", _overlay);
+        }
+        else _overlay.Update(img);
     }
 
     // ---- the globe's geometry: lat/lon as the texture's, east to the right seen from outside ----
@@ -224,20 +341,27 @@ public partial class MapView : Node3D
         return (Mathf.RadToDeg(MathF.Asin(n.Y)), Wrap(Mathf.RadToDeg(MathF.Atan2(-n.Z, n.X))));
     }
 
-    static ArrayMesh Sphere()
+    /// <summary>
+    /// A patch of sphere from one latitude to another (north first) and one longitude to another (east of the
+    /// first), on a grid of w × h cells. UV2 is the whole planet's (for the heights and the overlay); UV is the
+    /// same, or the patch's own square for a tile.
+    /// </summary>
+    static ArrayMesh Patch(float lat0, float lat1, float lon0, float lon1, int w, int h, bool ownUv)
     {
-        const int w = 128, h = 64;
         var verts = new List<Vector3>();
         var norms = new List<Vector3>();
         var uvs = new List<Vector2>();
+        var uv2s = new List<Vector2>();
         for (var j = 0; j <= h; j++)
             for (var i = 0; i <= w; i++)
             {
-                float lat = 90 - 180f * j / h, lon = 360f * i / w;
+                float lat = lat0 + (lat1 - lat0) * j / h, lon = lon0 + (lon1 - lon0) * i / w;
                 var p = At(lat, lon);
                 verts.Add(p);
                 norms.Add(p.Normalized());
-                uvs.Add(new Vector2((float)i / w, (float)j / h));
+                var whole = new Vector2(lon / 360, (90 - lat) / 180);
+                uv2s.Add(whole);
+                uvs.Add(ownUv ? new Vector2((float)i / w, (float)j / h) : whole);
             }
         var index = new List<int>();
         for (var j = 0; j < h; j++)
@@ -252,11 +376,95 @@ public partial class MapView : Node3D
         arrays[(int)Mesh.ArrayType.Vertex] = verts.ToArray();
         arrays[(int)Mesh.ArrayType.Normal] = norms.ToArray();
         arrays[(int)Mesh.ArrayType.TexUV] = uvs.ToArray();
+        arrays[(int)Mesh.ArrayType.TexUV2] = uv2s.ToArray();
         arrays[(int)Mesh.ArrayType.Index] = index.ToArray();
         var mesh = new ArrayMesh();
         mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
         return mesh;
     }
+
+    // ---- the atmosphere ----
+
+    /// <summary>The air, as the web's: a thin band of haze hugging the limb, and a faint veil of dust over the disc's edge.</summary>
+    void BuildAir()
+    {
+        void Air(ShaderMaterial m, string shader, float r)
+        {
+            m.Shader = GD.Load<Shader>(shader);
+            m.SetShaderParameter("dust", AirDust);
+            m.SetShaderParameter("high", AirHigh);
+            AddChild(new MeshInstance3D
+            {
+                Mesh = new SphereMesh { Radius = r, Height = r * 2, RadialSegments = 96, Rings = 48 },
+                MaterialOverride = m,
+                Layers = Layer,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            });
+        }
+        Air(_haze, "res://shaders/globe_haze.gdshader", R * (1 + AirThickness));
+        _haze.SetShaderParameter("edge", MathF.Sqrt(1 - 1 / ((1 + AirThickness) * (1 + AirThickness))));
+        _haze.SetShaderParameter("glow", AirGlow);
+        Air(_veil, "res://shaders/globe_veil.gdshader", R * 1.003f);
+        _veil.SetShaderParameter("strength", AirVeil);
+    }
+
+    // ---- the tiles ----
+
+    /// <summary>
+    /// The tiles (public/map/tiles/<row>_<col>.jpg, 15° squares at 32 px a degree, from the north and from 0°E), as
+    /// the web's: once the camera is within 2.7 radii, those facing it within what can be seen from there are laid
+    /// over the base sphere, a hair above it; the 80 most recent are kept.
+    /// </summary>
+    void UpdateTiles()
+    {
+        var want = new HashSet<string>();
+        if (_dist < R * TileWithin)
+        {
+            var toward = _cam.Position.Normalized();
+            var reach = MathF.Acos(Math.Min(1, R / _dist)) + 0.25f;
+            for (var row = 0; row < TileRows; row++)
+                for (var col = 0; col < TileCols; col++)
+                    if (At(90 - (row + 0.5f) * TileDeg, (col + 0.5f) * TileDeg, 1).AngleTo(toward) < reach + 0.19f) want.Add($"{row}_{col}");
+        }
+        foreach (var (key, tile) in _tiles) tile.Visible = want.Contains(key);
+        var loads = 0;
+        foreach (var key in want)
+        {
+            if (_tiles.ContainsKey(key)) continue;
+            if (loads++ >= TileLoadsPerFrame) break;
+            var path = ProjectSettings.GlobalizePath("res://") + $"../public/map/tiles/{key}.jpg";
+            if (!System.IO.File.Exists(path)) continue;
+            var img = Image.LoadFromFile(path);
+            img.GenerateMipmaps();
+            var parts = key.Split('_');
+            int row = int.Parse(parts[0]), col = int.Parse(parts[1]);
+            var m = new ShaderMaterial { Shader = _globeShader };
+            Relief(m, ImageTexture.CreateFromImage(img), 0.0006f);
+            var mesh = new MeshInstance3D
+            {
+                Mesh = Patch(90 - row * TileDeg, 90 - (row + 1) * TileDeg, col * TileDeg, (col + 1) * TileDeg, TileSeg, TileSeg, true),
+                MaterialOverride = m,
+                Layers = Layer,
+                ExtraCullMargin = R * Lift(HeightMax),
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            };
+            AddChild(mesh);
+            _tiles[key] = mesh;
+            _tileOrder.Add(key);
+            // Keep the most recent; let the oldest out of view go.
+            while (_tileOrder.Count > TileKeep)
+            {
+                var old = _tileOrder.Find(k => !want.Contains(k));
+                if (old == null) break;
+                _tileOrder.Remove(old);
+                _tiles[old].QueueFree();
+                _tiles.Remove(old);
+            }
+        }
+    }
+
+    /// <summary>How many tiles are laid on now (for test runs).</summary>
+    public int TilesShown => _tiles.Values.Count(t => t.Visible);
 
     // ---- open and close ----
 
@@ -268,6 +476,7 @@ public partial class MapView : Node3D
         _faceHome = on && focus == null;
         Visible = on;
         _ui.Visible = on;
+        _nameLayer.Visible = on;
         _cam.Current = on;
         if (on)
         {
@@ -287,6 +496,8 @@ public partial class MapView : Node3D
     public override void _Process(double delta)
     {
         if (!Visible) return;
+        UpdateTiles();
+        UpdateNames();
         _clock += delta;
         if (_clock - _asked > 1)
         {
@@ -301,19 +512,35 @@ public partial class MapView : Node3D
         var dir = new Vector3(MathF.Cos(_pitch) * MathF.Cos(_yaw), MathF.Sin(_pitch), -MathF.Cos(_pitch) * MathF.Sin(_yaw));
         _cam.Position = dir * _dist;
         _cam.LookAt(GlobalPosition, Vector3.Up);
+        var sun = _cam.Basis * SunFromCamera;
+        _sun.Basis = Basis.LookingAt(-sun, Mathf.Abs(sun.Y) > 0.99f ? Vector3.Forward : Vector3.Up);
+        _haze.SetShaderParameter("sun_dir", sun);
+        _veil.SetShaderParameter("sun_dir", sun);
     }
 
-    /// <summary>Where on the globe a screen point is, or null off it.</summary>
+    /// <summary>
+    /// Where on the globe a screen point is, or null off it. The ground is raised, so the ray meets a sphere at
+    /// the height found where it last met, a few times over (as the web's).
+    /// </summary>
     (float lat, float lon)? GlobeAt(Vector2 screen)
     {
         var from = _cam.ProjectRayOrigin(screen) - GlobalPosition;
         var dir = _cam.ProjectRayNormal(screen);
-        var b = from.Dot(dir);
-        var c = from.LengthSquared() - R * R;
-        var disc = b * b - c;
-        if (disc < 0) return null;
-        var t = -b - MathF.Sqrt(disc);
-        return t < 0 ? null : LatLon(from + dir * t);
+        var radius = R;
+        Vector3? hit = null;
+        for (var i = 0; i < 4; i++)
+        {
+            var b = from.Dot(dir);
+            var c = from.LengthSquared() - radius * radius;
+            var disc = b * b - c;
+            if (disc < 0) break;
+            var t = -b - MathF.Sqrt(disc);
+            if (t < 0) break;
+            hit = from + dir * t;
+            var (la, lo) = LatLon(hit.Value);
+            radius = R * (1 + Lift(HeightAt(la, lo)));
+        }
+        return hit is Vector3 h ? LatLon(h) : null;
     }
 
     public void HandleInput(InputEvent e)
@@ -336,7 +563,7 @@ public partial class MapView : Node3D
         {
             if (Math.Abs(scroll.X) > Math.Abs(scroll.Y)) _yaw += scroll.X * 0.003f * (_dist - R) / 24;
             else _dist *= MathF.Exp(scroll.Y * 0.0015f);
-            _dist = Math.Clamp(_dist / zoom, R * 1.25f, R * 5);
+            _dist = Math.Clamp(_dist / zoom, R * MinDistance, R * 5);
             Apply();
         }
         if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left } mb)
@@ -354,7 +581,7 @@ public partial class MapView : Node3D
     public void PickSite(float lat, float lon)
     {
         _site = (lat, lon);
-        _pick.Position = At(lat, lon, R * 1.003f);
+        _pick.Position = Ground(lat, lon, 0.003f);
         _pick.Basis = Basis.LookingAt(-_pick.Position.Normalized(), Mathf.Abs(lat) > 80 ? Vector3.Forward : Vector3.Up) * new Basis(Vector3.Right, Mathf.Pi / 2);
         _pick.Visible = true;
         _send(new Dictionary<string, object> { ["type"] = "site", ["lat"] = lat, ["lon"] = lon });
@@ -439,13 +666,13 @@ public partial class MapView : Node3D
             {
                 if (dashed && i % 2 == 1) continue;
                 im.SurfaceSetColor(color);
-                im.SurfaceAddVertex(pa.Slerp(pb, (float)i / steps).Normalized() * R * 1.004f);
+                im.SurfaceAddVertex(Ground(pa.Slerp(pb, (float)i / steps), 0.004f));
                 im.SurfaceSetColor(color);
-                im.SurfaceAddVertex(pa.Slerp(pb, (float)(i + 1) / steps).Normalized() * R * 1.004f);
+                im.SurfaceAddVertex(Ground(pa.Slerp(pb, (float)(i + 1) / steps), 0.004f));
             }
         }
         (float lat, float lon) Place(JsonElement p) => (p.GetProperty("lat").GetSingle(), p.GetProperty("lon").GetSingle());
-        Vector3 Along((float lat, float lon) a, (float lat, float lon) b, float t) => At(a.lat, a.lon, 1).Slerp(At(b.lat, b.lon, 1), t).Normalized() * R * 1.006f;
+        Vector3 Along((float lat, float lon) a, (float lat, float lon) b, float t) => Ground(At(a.lat, a.lon, 1).Slerp(At(b.lat, b.lon, 1), t), 0.006f);
 
         foreach (var r in m.GetProperty("routes").EnumerateArray())
         {
@@ -462,16 +689,17 @@ public partial class MapView : Node3D
             var b = Place(c.GetProperty("to"));
             Arc(a, b, new Color("#e07a3f"), true);
             Dot(Along(a, b, c.GetProperty("progress").GetSingle()), new Color("#e07a3f"), 0.09f);
-            Tag(At(b.lat, b.lon, R * 1.02f), c.GetProperty("label").GetString()!, new Color("#ffffff"));
+            Tag(Ground(b.lat, b.lon, 0.02f), c.GetProperty("label").GetString()!, new Color("#ffffff"));
         }
         foreach (var mg in m.GetProperty("migrations").EnumerateArray())
             Dot(Along(Place(mg.GetProperty("from")), Place(mg.GetProperty("to")), mg.GetProperty("at").GetSingle()), new Color("#b48ad8"), 0.07f);
         foreach (var h in m.GetProperty("holes").EnumerateArray())
         {
-            var p = At(h.GetProperty("lat").GetSingle(), h.GetProperty("lon").GetSingle(), R * 1.004f);
+            float hl = h.GetProperty("lat").GetSingle(), hn = h.GetProperty("lon").GetSingle();
+            var p = Ground(hl, hn, 0.004f);
             var here = h.GetProperty("here").GetBoolean();
             Dot(p, here ? new Color("#e07a3f") : new Color("#f6efe6"), 0.14f);
-            Tag(p.Normalized() * R * 1.03f, h.GetProperty("name").GetString()!, here ? new Color("#ffd8b8") : new Color("#ffffff"), 52);
+            Tag(Ground(hl, hn, 0.03f), h.GetProperty("name").GetString()!, here ? new Color("#ffd8b8") : new Color("#ffffff"), 52);
         }
         if (any) im.SurfaceEnd();
         _lines.Mesh = any ? im : null;
@@ -493,7 +721,8 @@ public partial class MapView : Node3D
     {
         _marks.AddChild(new Label3D
         {
-            Text = text, Position = at, Layers = Layer, FontSize = size, PixelSize = 0.004f, OutlineSize = 10,
+            // The same size on screen however close (as at the camera's starting distance), now the camera comes in to 1.16 radii.
+            Text = text, Position = at, Layers = Layer, FontSize = size, PixelSize = 0.004f / 24, FixedSize = true, OutlineSize = 10,
             Modulate = color, OutlineModulate = new Color(0.1f, 0.05f, 0.04f, 0.85f), Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
             Offset = new Vector2(0, 36),
         });
@@ -571,6 +800,11 @@ public partial class MapView : Node3D
         _ui.MouseFilter = Control.MouseFilterEnum.Ignore;
         _ui.Visible = false;
         hud.AddChild(_ui);
+        // The names lie under the HUD and the map's panels, as the web's sit on the globe.
+        _nameLayer.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _nameLayer.Visible = false;
+        hud.AddChild(_nameLayer);
+        hud.MoveChild(_nameLayer, 0);
         var top = _topPanel = new PanelContainer { Position = new Vector2(10, 100) };
         top.AddThemeStyleboxOverride("panel", Live.Panel());
         _ui.AddChild(top);
