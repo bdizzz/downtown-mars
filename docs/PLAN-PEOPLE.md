@@ -181,3 +181,4 @@ The proposed tasks mostly hold. The changes: three new tasks the numbers ask for
 
 - Nov 18: the plan and the benchmark (`scripts/bench-people.ts`, `scripts/bench-people.mjs`). The benchmark is throwaway: it can be deleted once #523's perf test exists.
 - Nov 18, later: decisions on the three hangups (saves to IndexedDB now; per-room route searches; totals-only snapshot; generous speed tests, strict size tests) and three new tasks, #532–#534.
+- Nov 18, #534: the snapshot's `population` is now a `PopulationView` (`sim/snapshot.ts`): everything in `Population` but the cohorts and the birth progress. No view read the cohorts, so nothing else moved; the per-home maps (`servedByHome`, `sanitationByHome`, `care.byHome`) stay, since they grow with rooms, not people. `upcoming` stays a summary of at most five lines. `tests/snapshotSize.test.ts` holds the snapshot to the same size at 50 people as at 10,000 (it was 84 KB bigger with the cohorts in).
