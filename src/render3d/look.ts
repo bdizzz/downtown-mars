@@ -124,6 +124,10 @@ class LabelPass extends Pass {
     labelDepth.tSceneDepth.value = this.depth;
     labelDepth.sceneDepthOn.value = 1;
     labelDepth.sceneSize.value.set(w, h);
+    if (camera instanceof THREE.PerspectiveCamera) {
+      labelDepth.cameraNear.value = camera.near;
+      labelDepth.cameraFar.value = camera.far;
+    }
     renderer.setRenderTarget(target);
     // The buffer's own depth holds only the full-screen passes'; the scene's depth texture decides instead.
     renderer.clearDepth();

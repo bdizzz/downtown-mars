@@ -1,4 +1,4 @@
-import { UI_FONT } from "../view/font";
+import { LABEL_FONT } from "../view/font";
 import { LABEL_LAYER, testsSceneDepth } from "./labelLayer";
 import { roomLabel } from "../sim/roomName";
 import { BADGE_M, fitLabel, LABEL_PX, labelBox, labelSpot, labelY, LINE_M, roughMeasure } from "../view/labelFit";
@@ -44,6 +44,10 @@ const WINDOW_WALL = { bottom: 0.35, top: 3.55 };
 /** The door's frame: how wide, and its colour. */
 const DOOR_FRAME = { width: corridors.door.frameM, color: 0x2a1a14 };
 const LABEL = { heightM: LINE_M };
+/** A planned room's label text (muted, as the UI's secondary text): its plate is drawn see-through. */
+const PLANNED_TEXT = "#d0b6a2";
+/** A built room's label text. */
+const LABEL_TEXT = "#f6e8d8";
 const GLOW = { windowBoost: 5 };
 
 export interface RoomColors {
@@ -1975,12 +1979,7 @@ const labelCache = new Map<string, { material: THREE.SpriteMaterial; aspect: num
 
 /** A name floating in its room, readable from across the shaft: one line, LABEL.heightM tall, unless `size` says otherwise. */
 function label(text: string, color: string, lines: string[] = [text], size?: { widthM: number; heightM: number }): THREE.Sprite {
-  const key = `${lines.join("\n")}|${color}`;
-  let cached = labelCache.get(key);
-  if (!cached) {
-    cached = drawLabel(lines, color);
-    labelCache.set(key, cached);
-  }
+  const cached = labelLook(lines, color, false);
   const sprite = new THREE.Sprite(cached.material);
   if (size) sprite.scale.set(size.widthM, size.heightM, 1);
   else sprite.scale.set(LABEL.heightM * cached.aspect, LABEL.heightM, 1);
@@ -1989,34 +1988,119 @@ function label(text: string, color: string, lines: string[] = [text], size?: { w
   return sprite;
 }
 
+/** A label's material and shape, drawn once per text, colour and alert. */
+function labelLook(lines: string[], color: string, alert: boolean): { material: THREE.SpriteMaterial; aspect: number } {
+  const key = `${lines.join("\n")}|${color}${alert ? "|!" : ""}`;
+  let cached = labelCache.get(key);
+  if (!cached) {
+    cached = drawLabel(lines, color, alert);
+    labelCache.set(key, cached);
+  }
+  return cached;
+}
+
+/**
+ * Put a caution sign inside a room's label, before its name, or take it out (#516): a room slowed or short.
+ * The label widens for it, shrinking only if that would take it past its room's walls (view/labelFit.ts).
+ * Returns false for a label that can't take one (shown only on hover), which keeps a badge over it instead.
+ */
+export function setLabelAlert(sprite: THREE.Sprite, on: boolean): boolean {
+  const d = sprite.userData as { lines?: string[]; color?: string; widthM?: number; heightM?: number; clearM?: number; hoverOnly?: boolean };
+  if (!d.lines || !d.color || !d.heightM || !d.widthM || d.hoverOnly) return false;
+  const look = labelLook(d.lines, d.color, on);
+  sprite.material = look.material;
+  let h = d.heightM;
+  let w = h * look.aspect;
+  // As far from its centre as the label reaches at any angle: kept within its room's, or its plain size's if that was already more.
+  const reach = Math.hypot(w, h) / 2;
+  const allowed = Math.max(d.clearM ?? Infinity, Math.hypot(d.widthM, d.heightM) / 2);
+  if (reach > allowed) {
+    w *= allowed / reach;
+    h *= allowed / reach;
+  }
+  sprite.scale.set(w, h, 1);
+  return true;
+}
+
 /** How wide a line of label text is, in canvas pixels (view/labelFit.ts sizes labels by it). */
 let measureCtx: CanvasRenderingContext2D | null = null;
 function measureLabel(line: string): number {
   measureCtx ??= document.createElement("canvas").getContext("2d");
   if (!measureCtx) return roughMeasure(line);
-  measureCtx.font = `600 ${LABEL_PX.font}px ${UI_FONT}`;
+  measureCtx.font = `600 ${LABEL_PX.font}px ${LABEL_FONT}`;
+  measureCtx.letterSpacing = LABEL_TRACK;
   // No canvas to measure with (the bridge, in Node): a rough width.
   return measureCtx.measureText(line).width || roughMeasure(line);
 }
 
-function drawLabel(lines: string[], color: string): { material: THREE.SpriteMaterial; aspect: number } {
+/** Letter spacing on label text, as the UI's display face is set. */
+const LABEL_TRACK = "1px";
+
+/**
+ * A label's plate, in the colours of the game's own panels (ui/styles.css): a dark
+ * outer line, a warm face, a bronze frame with a lit top edge and an ember tick under
+ * the name. A planned room's plate is see-through with a dashed frame: not built yet.
+ */
+function drawLabel(lines: string[], color: string, alert = false): { material: THREE.SpriteMaterial; aspect: number } {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d")!;
   const [w, h] = labelBox(lines, measureLabel);
-  canvas.width = Math.ceil(w);
+  // Room for the caution sign before the name.
+  const icon = alert ? LABEL_PX.font + LABEL_PX.padX / 2 : 0;
+  canvas.width = Math.ceil(w + icon);
   canvas.height = h;
-  ctx.font = `600 ${LABEL_PX.font}px ${UI_FONT}`;
-  ctx.fillStyle = "rgba(20, 10, 8, 0.72)";
-  ctx.beginPath();
-  ctx.roundRect(0, 0, canvas.width, canvas.height, 12);
+  const W = canvas.width;
+  const planned = color === PLANNED_TEXT;
+  const plate = (inset: number, r: number) => {
+    ctx.beginPath();
+    ctx.roundRect(inset, inset, W - 2 * inset, h - 2 * inset, r);
+  };
+  // The dark outer line, then the face inside it.
+  plate(0, 10);
+  ctx.fillStyle = planned ? "rgba(11, 6, 5, 0.18)" : "rgba(11, 6, 5, 0.35)";
   ctx.fill();
-  ctx.fillStyle = color;
+  const face = ctx.createLinearGradient(0, 0, 0, h);
+  face.addColorStop(0, planned ? "rgba(51, 32, 26, 0.18)" : "rgba(58, 37, 29, 0.38)");
+  face.addColorStop(1, planned ? "rgba(34, 19, 14, 0.18)" : "rgba(33, 18, 13, 0.38)");
+  plate(2, 8);
+  ctx.fillStyle = face;
+  ctx.fill();
+  // The bronze frame, and the light catching its top edge.
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = planned ? "rgba(160, 122, 92, 0.75)" : "rgba(122, 88, 66, 0.85)";
+  if (planned) ctx.setLineDash([8, 6]);
+  plate(3, 7);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  if (!planned) {
+    ctx.strokeStyle = "rgba(255, 214, 180, 0.22)";
+    ctx.beginPath();
+    ctx.moveTo(12, 5);
+    ctx.lineTo(W - 12, 5);
+    ctx.stroke();
+    // The ember tick under the name, as the UI marks what's lit.
+    const tick = Math.min(W * 0.3, 64);
+    ctx.fillStyle = "#e07a3f";
+    ctx.fillRect((W - tick) / 2, h - 5, tick, 2);
+  }
+  ctx.font = `600 ${LABEL_PX.font}px ${LABEL_FONT}`;
+  ctx.letterSpacing = LABEL_TRACK;
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
-  lines.forEach((line, i) => ctx.fillText(line, canvas.width / 2, LABEL_PX.padY + LABEL_PX.font / 2 + 2 + i * LABEL_PX.lineGap));
+  // A soft drop under the letters, so they stay crisp over the bright frame.
+  ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+  ctx.shadowOffsetY = 2;
+  ctx.shadowBlur = 3;
+  if (alert) {
+    ctx.fillStyle = "#ffb070";
+    ctx.fillText("⚠", LABEL_PX.padX + LABEL_PX.font / 2, h / 2 + 2);
+  }
+  ctx.fillStyle = color;
+  lines.forEach((line, i) => ctx.fillText(line, (W + icon) / 2, LABEL_PX.padY + LABEL_PX.font / 2 + 2 + i * LABEL_PX.lineGap));
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  return { material: testsSceneDepth(new THREE.SpriteMaterial({ map: tex, depthTest: true, depthWrite: false, transparent: true })), aspect: canvas.width / canvas.height };
+  tex.anisotropy = 4;
+  return { material: testsSceneDepth(new THREE.SpriteMaterial({ map: tex, depthTest: true, depthWrite: false, transparent: true })), aspect: W / h };
 }
 
 /**
@@ -2270,10 +2354,10 @@ export function buildLayout(
       const name = roomLabel(whole);
       const text = room.connected ? name : `${name} ⚠`;
       const fit = fitLabel(text, measureLabel, spot);
-      const sprite = label(text, room.planned ? "#d8c0ae" : "#f6efe6", fit.lines, fit);
+      const sprite = label(text, room.planned ? PLANNED_TEXT : LABEL_TEXT, fit.lines, fit);
       sprite.position.set(spot.x, labelY(spot, fit), spot.z);
       sprite.visible = !fit.hoverOnly;
-      sprite.userData = { label: true, cached: true, roomId: room.id, text: name, lines: fit.lines, widthM: fit.widthM, heightM: fit.heightM, hoverOnly: fit.hoverOnly };
+      sprite.userData = { label: true, cached: true, roomId: room.id, text: name, lines: fit.lines, widthM: fit.widthM, heightM: fit.heightM, hoverOnly: fit.hoverOnly, color: room.planned ? PLANNED_TEXT : LABEL_TEXT, clearM: spot.clearM };
       group.add(sprite);
     }
   }
