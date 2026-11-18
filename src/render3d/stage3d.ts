@@ -39,7 +39,7 @@ import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick
 import { config } from "../sim/config";
 import { roomSurfacePlace, setPanelDust, surfacePlace } from "./surface3d";
 import { refitRooms } from "../view/roomFinish";
-import { buildLayout, corridorGhostY, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, statusBadge, TROUBLE_EDGE, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
+import { buildLayout, corridorGhostY, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, setLabelAlert, statusBadge, TROUBLE_EDGE, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, makeDome, makeLander, placeLander, surfaceSpotGeometry } from "./scenery3d";
 import { makeDrillRig, type DrillRig } from "./drillRig";
 import { makeCollar } from "./collar3d";
@@ -561,7 +561,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     badges.clear();
     for (const [id, t] of troubles) {
       const at = roomLabels.get(id);
-      if ((t.level !== "warn" && t.level !== "bad") || !at) continue;
+      if (!at) continue;
+      const alert = t.level === "warn" || t.level === "bad";
+      // The caution sign sits inside the label (#516); only a label shown on hover alone keeps a badge over it.
+      if (setLabelAlert(at as THREE.Sprite, alert) || !alert) continue;
       const b = statusBadge("⚠");
       b.position.copy(at.position).add(new THREE.Vector3(0, badgeAbove((at.userData.heightM as number | undefined) ?? LINE_M), 0));
       badges.add(b);
