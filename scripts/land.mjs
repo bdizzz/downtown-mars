@@ -1,6 +1,7 @@
-// Land a branch after its PR: merge it (if asked and CI is green), stop its
-// dev servers, remove its worktree, delete its local and remote branches, and
-// bring the main checkout up to date. /land runs this.
+// Land a branch after its PR: merge it (if asked and CI is green, or turn on
+// auto-merge while CI is still running), stop its dev servers, remove its
+// worktree, delete its local and remote branches, and bring the main checkout
+// up to date. /land runs this.
 //
 //   node scripts/land.mjs [target ...] [--merge] [--force] [--dry-run] [--json]
 //
@@ -14,23 +15,34 @@
 //                               merge commit so its tasks' commits are kept)
 //   (nothing)                   sweep: everything whose PR is merged, plus leftover
 //                               branches and clean worktrees already in origin/main
-// --merge    a named target whose PR is still open: squash-merge it if CI passed
+// --merge    a named target whose PR is still open: squash-merge it if CI passed,
+//            or turn on GitHub's auto-merge if CI is still running (main's
+//            ruleset makes CI pass first; GitHub merges it when it does)
 // --force    remove a worktree even if it has uncommitted changes, and drop a
 //            named branch whose PR was closed without merging
 // --dry-run  say what would happen, change nothing
-// --json     print { landed, skipped, open, notes } for the skill (landed lists the issues it closed)
+// --json     print { landed, skipped, open, notes } for the skill (landed lists
+//            the issues it closed; open lists auto-merges it turned on)
 //
 // The board is GitHub issues (F-020). A PR into main closes its issue itself
 // ("Closes #N"); GitHub only does that on the default branch, so a task merged
-// into a feature's branch has its issue closed here. And once main has no
-// docs/tickets/ any more, a branch that still edits ticket files (from before
-// the move) has those edits dropped first: main is merged in keeping the
-// deletion, and that's pushed, so its CI runs again before it lands.
+// into a feature's branch has its issue closed here, whether it merged now or
+// earlier (by auto-merge, say). And once main has no docs/tickets/ any more, a
+// branch that still edits ticket files (from before the move) has those edits
+// dropped first: main is merged in keeping the deletion, and that's pushed, so
+// its CI runs again before it lands.
 //
-// It never touches main, pr-assets or a worktree a live Claude session holds,
-// and never loses uncommitted work without --force. Dev servers are found the
-// same way /try finds them: a listening process whose working directory is
-// inside the worktree.
+// Worktrees: the desktop app makes its own (`.claude/worktrees/<slug>-<6 hex>`),
+// archives a session when its PR closes, and reuses the folder for later
+// sessions, so those are left to it: their servers are stopped and their
+// branches deleted, but the folder stays. Other worktrees (/try --checkout's,
+// the CLI's EnterWorktree ones) are removed as before.
+//
+// It never touches main, pr-assets or a worktree a live Claude session is in
+// (a git lock with a live pid, or a running `claude` process whose working
+// directory is inside it), and never loses uncommitted work without --force.
+// Dev servers are found the same way /try finds them: a listening process whose
+// working directory is inside the worktree, Claude's own processes aside.
 
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -109,13 +121,22 @@ function liveLock(w) {
 
 const inside = (path, dir) => resolve(path) === resolve(dir) || resolve(path).startsWith(resolve(dir) + sep);
 
-/** Listening processes whose working directory is inside dir: [{ pid, port }]. */
+/**
+ * A Claude Code session's own process (it listens on a port of its own, for
+ * the app and its tools). Never a dev server, and never to be stopped: the app
+ * doesn't lock its worktrees, so this is how a live session there is seen.
+ */
+const CLAUDE = /(^|\/)claude$/i;
+
+/** Listening processes whose working directory is inside dir, Claude's aside: [{ pid, port }]. */
 function servers(dir) {
   const found = new Map();
   let pid = null;
-  for (const line of quiet("lsof -nP -iTCP -sTCP:LISTEN -Fpn").split("\n")) {
+  let cmd = "";
+  for (const line of quiet("lsof -nP -iTCP -sTCP:LISTEN -Fpcn").split("\n")) {
     if (line.startsWith("p")) pid = line.slice(1);
-    else if (line.startsWith("n") && pid && !found.has(pid)) {
+    else if (line.startsWith("c")) cmd = line.slice(1);
+    else if (line.startsWith("n") && pid && !found.has(pid) && !CLAUDE.test(cmd)) {
       const cwd = (quiet(`lsof -a -p ${pid} -d cwd -Fn`).split("\n").find((l) => l.startsWith("n")) ?? "").slice(1);
       if (cwd && inside(cwd, dir)) found.set(pid, Number(line.slice(line.lastIndexOf(":") + 1)));
     }
@@ -148,7 +169,23 @@ function busy(dir) {
   return out;
 }
 
-const dirty = (dir) => quiet(`git -C "${dir}" status --porcelain`).split("\n").filter(Boolean);
+/** A Claude session still running inside dir: "a Claude session (pid N)", or null. */
+function liveSession(w) {
+  const lock = liveLock(w);
+  if (lock) return `a Claude session (pid ${lock})`;
+  const claude = busy(w.dir).find((p) => CLAUDE.test(p.split(" ")[0]));
+  return claude ? `a Claude session (pid ${claude.split(" ").pop()})` : null;
+}
+
+/** Made by the desktop app for a session (`<slug>-<6 hex>`): the app removes or reuses it, not us. */
+const appTree = (w) => /-[0-9a-f]{6}$/.test(w.dir.split(sep).pop());
+
+// Untracked Godot .uid files don't count: the viewer writes them on its first
+// import, in branches from before they were committed, and makes them again.
+const dirty = (dir) =>
+  quiet(`git -C "${dir}" status --porcelain`)
+    .split("\n")
+    .filter((l) => l && !/^\?\? godot\/.*\.uid$/.test(l));
 const inMain = (ref) => ok(`git merge-base --is-ancestor "${ref}" origin/main`);
 
 // --- What exists -----------------------------------------------------------
@@ -322,19 +359,24 @@ for (const it of items.values()) {
       skipped.push({ branch: it.name, why: `PR #${pr.number}: ${dropped.why}` });
       continue;
     }
-    if (s.draft || s.ci === "failing" || s.ci === "pending" || !["CLEAN", "HAS_HOOKS", "UNSTABLE"].includes(s.mergeState)) {
+    // A feature's own branch keeps its tasks' commits: a merge commit, not a squash.
+    const how = it.name.startsWith("feature/") ? "--merge" : "--squash";
+    const ready = s.ci === "passing" || s.ci === "none";
+    if (!s.draft && ready && ["CLEAN", "HAS_HOOKS", "UNSTABLE"].includes(s.mergeState)) {
+      if (!dry) sh(`gh pr merge ${pr.number} ${how}`);
+      it.merged = true;
+    } else if (!s.draft && s.ci !== "failing" && !["DIRTY", "UNKNOWN"].includes(s.mergeState)) {
+      // CI still running (main's ruleset shows that as BLOCKED): let GitHub merge
+      // it when CI passes. Everything else waits for a sweep after the merge.
+      if (!dry && !ok(`gh pr merge ${pr.number} ${how} --auto`)) {
+        skipped.push({ branch: it.name, why: `PR #${pr.number}: couldn't turn on auto-merge (CI ${s.ci}, ${s.mergeState.toLowerCase()})` });
+        continue;
+      }
+      open.push({ ...row, autoMerge: true });
+      continue;
+    } else {
       skipped.push({ branch: it.name, why: `PR #${pr.number} isn't ready to merge (CI ${s.ci}, ${s.draft ? "draft, " : ""}${s.mergeState.toLowerCase()})` });
       continue;
-    }
-    // A feature's own branch keeps its tasks' commits: a merge commit, not a squash.
-    if (!dry) sh(`gh pr merge ${pr.number} ${it.name.startsWith("feature/") ? "--merge" : "--squash"}`);
-    it.merged = true;
-    // GitHub closes "Closes #N" issues only on merges into main.
-    if (pr.baseRefName !== "main") {
-      it.closed = issuesOf(pr);
-      for (const n of it.closed)
-        if (!dry && !ok(`gh issue close ${n} --reason completed --comment "Merged into ${pr.baseRefName} in #${pr.number}."`))
-          notes.push(`couldn't close issue #${n}`);
     }
   } else if (pr?.state === "CLOSED") {
     if (!isNamed || !force) {
@@ -351,10 +393,28 @@ for (const it of items.values()) {
     }
   }
 
+  // GitHub closes "Closes #N" issues only on merges into main: close a feature
+  // task's issues ourselves, whether it merged just now or earlier (auto-merge).
+  if ((it.merged || pr?.state === "MERGED") && pr.baseRefName !== "main") {
+    it.closed = issuesOf(pr).filter((n) => it.merged || quiet(`gh issue view ${n} --json state --jq .state`) === "OPEN");
+    for (const n of it.closed)
+      if (!dry && !ok(`gh issue close ${n} --reason completed --comment "Merged into ${pr.baseRefName} in #${pr.number}."`))
+        notes.push(`couldn't close issue #${n}`);
+  }
+
   // Land it.
   const done = { branch: it.name, pr: pr?.number ?? null, merged: !!it.merged, closed: it.closed ?? [], stopped: [], worktree: null, branches: [] };
   const w = it.tree;
   if (w) {
+    // A live session first, before stopping anything: it may have servers of its own running.
+    const session = liveSession(w);
+    if (session) {
+      // A sweep passing a session's fresh worktree (no PR yet) isn't news.
+      if (pr || isNamed)
+        skipped.push({ branch: it.name, why: `${session} still working in ${w.dir}; archive that session (the app does once its PR closes), then /land again` });
+      landed.push(done);
+      continue;
+    }
     const running = servers(w.dir);
     for (const s of running) {
       if (!dry) stop(s.pid);
@@ -363,17 +423,15 @@ for (const it of items.values()) {
     if (running.length && !dry) execSync("sleep 1"); // let them exit before looking for anything else
     // In a dry run the servers are still up, so their npm and node don't count.
     const others = busy(w.dir).filter((p) => !(dry && running.length && /^(node|npm) /.test(p)));
-    const lock = liveLock(w);
-    const live = lock ? `a Claude session (pid ${lock})` : others.length ? others.join(", ") : null;
     const changes = dirty(w.dir);
-    if (live) {
-      // A sweep passing a session's fresh worktree (no PR yet) isn't news.
-      if (pr || isNamed) skipped.push({ branch: it.name, why: `${live} still working in ${w.dir}; close or archive that session, then /land again` });
+    const app = appTree(w);
+    if (others.length) {
+      skipped.push({ branch: it.name, why: `${others.join(", ")} still running in ${w.dir}; stop it, then /land again` });
       landed.push(done);
       continue;
     }
     if (inside(here, w.dir)) {
-      skipped.push({ branch: it.name, why: `this session is inside ${w.dir}; leave the worktree first` });
+      skipped.push({ branch: it.name, why: `this session is inside ${w.dir}; run /land from another session, or let the app tidy it when it archives this one` });
       landed.push(done);
       continue;
     }
@@ -382,11 +440,18 @@ for (const it of items.values()) {
       landed.push(done);
       continue;
     }
-    if (!dry) {
-      if (w.locked) quiet(`git worktree unlock "${w.dir}"`);
-      sh(`git worktree remove ${changes.length ? "--force " : ""}"${w.dir}"`);
+    if (app) {
+      // The app's folder stays for it to reuse or clean up; just let go of the branch.
+      if (w.branch && !dry) sh(`git -C "${w.dir}" switch --quiet --detach ${changes.length ? "--discard-changes " : ""}`);
+      done.worktree = null;
+    } else {
+      if (!dry) {
+        if (w.locked) quiet(`git worktree unlock "${w.dir}"`);
+        // Forced: anything left is either nothing, stray .uid files, or discarded by --force.
+        sh(`git worktree remove --force "${w.dir}"`);
+      }
+      done.worktree = w.dir;
     }
-    done.worktree = w.dir;
   }
   for (const b of [it.local ? it.name : null, it.sibling].filter((b) => b && !gone.has(b))) {
     if (b.startsWith("(detached)")) continue;
@@ -435,6 +500,9 @@ if (json) {
     if (bits.length) console.log(`landed ${d.branch}${d.pr ? ` (#${d.pr})` : ""}: ${bits.join("; ")}${would}`);
   }
   for (const s of skipped) console.log(`skipped ${s.branch}: ${s.why}`);
-  for (const o of open) console.log(`open    ${o.branch} (#${o.pr}): CI ${o.ci}, ${o.mergeState.toLowerCase()}${o.draft ? ", draft" : ""}`);
+  for (const o of open)
+    console.log(
+      `open    ${o.branch} (#${o.pr}): CI ${o.ci}, ${o.mergeState.toLowerCase()}${o.draft ? ", draft" : ""}${o.autoMerge ? `; auto-merge ${dry ? "would be " : ""}on, merges when CI passes` : ""}`,
+    );
   for (const n of notes) console.log(n);
 }
