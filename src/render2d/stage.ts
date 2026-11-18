@@ -16,7 +16,7 @@ import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
 import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
+import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
@@ -795,9 +795,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
    */
   function drawHalo(type: string, cells: Cell[]): void {
     if (!layout) return;
-    const effects = roomDef(type).effects.filter((e) => !e.residentsOnly && e.radius > 0);
-    if (!effects.length) return;
-    const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
+    const main = haloEffect(type);
+    if (!main) return;
     const grid = previewEffects(layout, type, cells)[main.type];
     if (!grid) return;
     const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));

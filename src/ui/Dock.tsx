@@ -2,6 +2,7 @@ import { NEWSLETTER_NAME, unreadIssue } from "../view/newsletter";
 import { TEMPERATURE_COLORS } from "../view/temperature";
 import { FLOW_NETS } from "../render3d/flows3d";
 import type React from "react";
+import { useLayoutEffect, useRef } from "react";
 import type { Snapshot } from "../sim/snapshot";
 import { FIELD_TYPES } from "../sim/effects";
 import { CAMERAS, type View3d } from "../view/cameras";
@@ -80,8 +81,25 @@ export function Dock({ mode, setMode, highlight, jobs, office, reveal = SHOW_ALL
       {m.id === "charts" && jobs > 0 && <span className="badge" title="Construction jobs waiting">{jobs}</span>}
     </button>
   );
+  // How much of the view's bottom the dock takes, so the side panels, which float over the view, end
+  // above it and never cover the mode buttons or the deputy's card (#439).
+  const dockRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const dock = dockRef.current;
+    const main = dock?.closest<HTMLElement>(".main");
+    if (!dock || !main) return;
+    const measure = () => main.style.setProperty("--dock-clear", `${Math.max(0, Math.round(main.getBoundingClientRect().bottom - dock.getBoundingClientRect().top))}px`);
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(dock);
+    watch.observe(main);
+    return () => {
+      watch.disconnect();
+      main.style.removeProperty("--dock-clear");
+    };
+  }, []);
   return (
-    <div className="dock">
+    <div className="dock" ref={dockRef}>
       {aside && <div className="dock-aside">{aside}</div>}
       {children}
       <div className="dock-modes" role="toolbar" aria-label="Modes" hidden={!modes.length && !showOffice}>

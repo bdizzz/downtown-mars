@@ -6,10 +6,9 @@ import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js
 import { previewEffects, type EffectField } from "../sim/effects";
 import type { Happiness } from "../sim/happiness";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
-import { roomDef } from "../sim/rooms";
 import type { DrillView } from "../sim/snapshot";
 import { floorSpan, pickAt, ringRadii } from "../render3d/cylinder";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor } from "../view/interaction";
+import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
@@ -92,9 +91,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
 
   function drawHalo(type: string, cells: Cell[]): void {
     if (!layout) return;
-    const effects = roomDef(type).effects.filter((e) => !e.residentsOnly && e.radius > 0);
-    if (!effects.length) return;
-    const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
+    const main = haloEffect(type);
+    if (!main) return;
     const grid = previewEffects(layout, type, cells)[main.type]?.[floor - 1];
     if (!grid) return;
     const own = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));

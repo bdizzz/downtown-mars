@@ -1493,8 +1493,9 @@ kbd {
 /* The room's controls: a label, then the choice. */
 .room-panel .field, .room-panel label:has(select), .room-panel label:has(input[type="range"]) { display: grid; grid-template-columns: 78px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding-left: 20px; }
 .room-panel .field .k, .room-panel label .k { margin: 0; font-size: 12px; }
-.room-panel .field .seg { align-self: center; }
-.room-panel .field .seg button { padding: 2px 6px; font-size: 11.5px; flex: 1; justify-content: center; }
+/* A field's buttons take the value and the end columns, and share them evenly, so none runs off the edge (#440). */
+.room-panel .field .seg { align-self: center; grid-column: 2 / -1; display: flex; min-width: 0; }
+.room-panel .field .seg button { padding: 2px 3px; font-size: 11.5px; flex: 1 1 auto; min-width: 0; justify-content: center; }
 .room-panel input[type="range"] { accent-color: var(--accent); min-width: 0; }
 .inspector .controls { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-left: 20px; margin: 2px 0; }
 .choices { display: flex; flex-direction: column; gap: 3px; }
@@ -1631,3 +1632,21 @@ kbd {
 }
 /* A lone story or letter spans the page rather than leaving the second column empty. */
 .newsletter .np-cols.one { column-count: 1; }
+
+/*
+ * The top-right corner at desktop sizes (#439): each thing has a home of its own, and opening a side panel
+ * moves none of them. Toasts sit top centre; the floor picker keeps the right edge; the deputy's card and the
+ * mode buttons keep the bottom right. The side panels float over the view (so it never resizes) between the
+ * floor picker's rail and the dock, which Dock.tsx measures into --dock-clear.
+ */
+@media (min-width: 761px) {
+  .main { position: relative; }
+  .main > .inspector {
+    --rail: 10px;
+    position: absolute; top: calc(10px / var(--ui-scale, 1)); right: calc(var(--rail) / var(--ui-scale, 1));
+    bottom: calc((var(--dock-clear, 0px) + 8px) / var(--ui-scale, 1)); z-index: 7; max-height: none;
+    border: 1px solid var(--line); border-radius: 8px; box-shadow: inset 1px 0 0 rgba(160, 122, 92, 0.22), 0 8px 28px rgba(0, 0, 0, 0.45);
+  }
+  .main:has(.floor-picker) > .inspector { --rail: 92px; }
+  .messages { left: 50%; right: auto; transform: translateX(-50%); align-items: center; }
+}

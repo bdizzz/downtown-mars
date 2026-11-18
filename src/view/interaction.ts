@@ -3,12 +3,35 @@ import { config } from "../sim/config";
 import { checkBuild } from "../sim/costs";
 import { checkPlacement, roomAt, surfaceRoomId, type Layout, type Location, type SurfaceSpot } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
+import { effectName } from "../sim/effects";
 import { isOpen } from "../sim/excavation";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, shortfall } from "../sim/corridors";
 import type { Edge } from "../sim/edges";
 import { glazedAcross, glazedOnWall, roomForWindows, wallOf, windowComfort, windowCost, windowRefusal } from "../sim/windows";
 import { corridorRefitPlan, corridorRefitRefusal, liningById, MATERIALS } from "../sim/materials";
 import type { EdgeHover, HoverInfo, Pick, Proposal, StageOptions, Tool } from "./types";
+
+/**
+ * The effect a room in hand shows round itself while being placed (the halo): its strongest one that
+ * spreads past its own walls. Null if it spreads none.
+ */
+export function haloEffect(type: string): { type: string; strength: number } | null {
+  const effects = roomDef(type).effects.filter((e) => !e.residentsOnly && e.radius > 0);
+  if (!effects.length) return null;
+  const main = effects.reduce((a, b) => (Math.abs(b.strength) > Math.abs(a.strength) ? b : a));
+  return { type: main.type, strength: main.strength };
+}
+
+/**
+ * What the colours mean while placing a room (#438): "Green: fits · Red round it: the smell it spreads".
+ * The halo's colours follow the colour-blind setting (orange and blue instead of red and green).
+ */
+export function placementLegend(type: string, colorBlind = false): string {
+  const halo = haloEffect(type);
+  if (!halo) return "Green: fits";
+  const tint = halo.strength < 0 ? (colorBlind ? "Orange" : "Red") : colorBlind ? "Blue" : "Green";
+  return `Green: fits · ${tint} round it: the ${effectName(halo.type).toLowerCase()} it spreads`;
+}
 
 // The rules for turning "what's under the pointer" into hover info and
 // actions. Both views use these, so building, demolishing and selecting

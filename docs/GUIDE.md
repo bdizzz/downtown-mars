@@ -44,7 +44,7 @@ Start a new game and follow your deputy's tutorial, or dive in. Twenty colonists
 
 ## Building
 
-Open a group on the **build rail** down the left edge (or press B), pick a room from its list (or press its key: room keys work only in Build), then click a slot. Green means it fits; red says why not. With a surface room in hand (solar arrays, the landing pad), every free spot round the hole it fits on is tinted faintly green on the ground, and the one under the pointer brighter.
+Open a group on the **build rail** down the left edge (or press B), pick a room from its list (or press its key: room keys work only in Build), then click a slot. Green means it fits; red says why not. Round a room that spreads something, its strongest effect is tinted on the cells nearby, red for bad (a galley's smell) and green for good (orange and blue with colour-blind colours on); the line at the bottom names it ("Green: fits · Red round it: the smell it spreads"). With a surface room in hand (solar arrays, the landing pad), every free spot round the hole it fits on is tinted faintly green on the ground, and the one under the pointer brighter.
 
 **Surface rings:** the ground round the rim has three rings of building spots, all open from the start: 12 spots on the ring nearest the shaft, 21 on the next and 30 on the outermost, each spot about as wide. A surface building can go on any free spot on any ring, with nothing to connect: the colonists lay a cable from the rim out to it along the ground. In the unrolled view the outer rings stand above the first, as if further off.
 
@@ -270,7 +270,7 @@ Buttons at the bottom right, as in SimCity: the **Office**, then View, Map and C
   - **Discoveries:** life on Mars, once (microfossils, studied).
   - Older saves count what they'd already passed (and a working farm as the first harvest) as reached, month unknown.
 
-The floor picker stays on the right (except in Cutaway, which shows every floor).
+The floor picker stays on the right (except in Cutaway, which shows every floor). Side panels (a room, Why?, Charts, the office) float over the view beside it, ending above the dock, so opening one moves nothing: messages stay top centre, the floor picker on the right edge, the deputy's card and the mode buttons bottom right.
 
 ### The plan
 
