@@ -2,7 +2,7 @@
 
 How a playtest note becomes a merged change: the stages, which skill runs each, and why it's done this way. The skills live in `.claude/skills/` and lean on three scripts: `scripts/board.mjs` (the notes inbox, and tickets and the board on GitHub Issues), `scripts/try.mjs` (running a branch) and `scripts/land.mjs` (merging and cleaning up).
 
-Think of it as a restaurant: notes are orders scribbled on a pad, tickets are the order slips pinned on the rail, each `/build` is one cook at their own station, `/try` is the tasting, and `/land` sends the plate out and wipes the station.
+Think of it as a restaurant: notes are orders scribbled on a pad, tickets are the order slips pinned on the rail, each `/build` is one cook at their own station (`/batch` hands slips to several cooks at once), `/try` is the tasting, and `/land` sends the plate out and wipes the station.
 
 ## The flow
 
@@ -13,7 +13,7 @@ flowchart LR
   ingest --> answer{Open<br/>questions?}
   answer -- yes --> reply[Bryon answers] --> pick
   answer -- no --> pick["/board · /deps<br/>pick one"]
-  pick --> build["/build #N<br/>worktree, branch, PR"]
+  pick --> build["/build #N<br/>or /batch for several"]
   build --> try["/try<br/>web · godot · both"]
   try -- feedback --> fix[Fixed on the same PR] --> try
   try -- happy --> land["/land<br/>merge, clean up"]
@@ -24,9 +24,9 @@ flowchart LR
 2. **Ingest.** `/ingest` turns the waiting notes into tickets (issues labeled `task`) with a size (S, M, L), the likely files, an approach and any open questions; big items become features (labeled `feature`, below). Each note is filed away with what it became (local ones in `.tracker/notes-done.md`, GitHub ones closed with a comment), and each ticket names the notes it came from and quotes the local ones. The notes from before the move to issues are in `docs/notes-archive.md`.
 3. **Answer.** Tickets with open questions (unticked boxes under "Open questions") show as "needs answers". Answer them in one reply (to `/ingest`, `/board` or `/build`), and they become ready.
 4. **Pick.** `/board` lists features, then what's ready, needs answers, blocked, in flight and in review. `/deps` draws the dependency tree. Ask for "a quick win" or "the oldest" if nothing in particular calls.
-5. **Build.** `/build #N` checks open PRs for overlap, makes a branch (`212-…`) from a fresh `origin/main` in its own worktree, claims the ticket by pushing that branch and commenting on the issue, builds it, runs `npm test`, checks it in the browser on `[::1]:5173` (so the main game's saves aren't touched), updates the docs, and opens a PR that `Closes #N`, with a link to its playable preview.
+5. **Build.** `/build #N` checks open PRs for overlap, makes a branch (`212-…`) from a fresh `origin/main` in its own worktree, claims the ticket by pushing that branch and commenting on the issue, builds it, runs `npm test`, checks it in the browser on `[::1]:5173` (so the main game's saves aren't touched), reviews its own diff (the `code-review` skill, at low), updates the docs, and opens a PR that `Closes #N`, with a link to its playable preview. `/build #N ship` also turns on auto-merge, for small changes that don't need trying first. `/batch` starts several builds at once, one desktop-app session per ticket, after checking they won't touch the same files.
 6. **Try.** `/try #N web|godot|both` starts that worktree's dev server (a port from 5174) or Godot viewer (a bridge port from 7980, scratch saves) in the Terminal panel, and says what to look at. Or play the PR preview on any device. Feedback given afterwards goes on the PR as a checklist and gets fixed on the same branch.
-7. **Land.** `/land #N` squash-merges the PR if CI is green (which closes the issue), stops its servers, removes its worktree, deletes its branches, updates main and shows what's ready next. `/land` alone sweeps up anything already merged.
+7. **Land.** `/land #N` squash-merges the PR if CI is green (which closes the issue), or turns on auto-merge if CI is still running, so GitHub merges it once CI passes. It stops the branch's servers, deletes its branches, updates main and shows what's ready next. The app archives the session when its PR closes and tidies its worktree. `/land` alone sweeps up anything already merged.
 
 ### Features
 
@@ -45,7 +45,8 @@ For items too big for one ticket (a new system, a milestone's worth):
 | `/ingest` | Notes are waiting (the board says so) | `/ingest` |
 | `/board` | Choosing what's next, answering questions, agreeing a feature | `/board`, "agree #109" |
 | `/deps` | Seeing what's blocked on what | `/deps 14` (keep done tickets on it for 14 days) |
-| `/build` | Building a ticket, or planning a feature | `/build 212`, `/build quick win`, `/build #113` |
+| `/build` | Building a ticket, or planning a feature | `/build 212`, `/build quick win`, `/build #113`, `/build 437 ship` |
+| `/batch` | Several tickets at once, each in its own session | `/batch 3`, `/batch quick wins`, `/batch #437 #438` |
 | `/try` | Playing a branch before it merges, then giving feedback | `/try 212 both`, then "make it brighter" |
 | `/land` | A PR is good to merge, or to tidy up after merges | `/land 212`, `/land` |
 
@@ -60,6 +61,8 @@ Ids: tickets and features go by issue number (`#212`, or just `212`). The old id
 - **CI** (`.github/workflows/ci.yml`) type-checks and tests every PR and push to main. **Previews** (`preview.yml`) publish each PR to `https://mars.bryon.site/preview/N/`, rebuilt on every push and removed when the PR closes, with their own saves and the PR number in the tab title (`#N · Downtown Mars`). **Pages** (`pages.yml`) publishes main.
 - **Commits** follow Conventional Commits (`fix(render3d): … (#212)`; see CLAUDE.md, "Commit messages"), and PR titles do too.
 - **The main checkout** is for playing and taking notes; builds happen in worktrees under `.claude/worktrees/`.
+- **Who tidies what.** The desktop app makes a worktree per session (`<slug>-<6 hex>`, on a `claude/…` branch, which `/build` then branches from), archives the session when its PR merges or closes (Settings: auto-archive on PR close), and reuses the folder for later sessions; its own storage cleanup removes old ones. GitHub deletes a PR's branch when it merges, and main's "CI must pass" ruleset holds auto-merges until CI is green. `land.mjs` does the rest: merging, closing feature tasks' issues, stopping dev servers, deleting leftover local branches and removing worktrees the app didn't make. It never stops a live session: a running `claude` process inside a worktree counts as one, since the app doesn't lock its worktrees.
+- **Godot's `.uid` files are committed.** Godot writes one beside every script and shader; uncommitted, they made every worktree that ran the viewer look dirty to `/land`.
 
 ## Why it's done this way
 
@@ -73,5 +76,6 @@ Ids: tickets and features go by issue number (`#212`, or just `212`). The old id
 - **Features are planned before they're split**, so their tasks share one agreed design and each still lands as a small PR that leaves the game working.
 - **Previews and `/try`** let a change be played before it merges, on a phone or the desktop, without disturbing the main game or its saves.
 - **Feedback goes on the PR**, so the fix stays with the change it belongs to, and the PR records what was asked for.
-- **`/land` does the cleanup**, so worktrees, branches and dev servers don't pile up.
+- **`/land` does the cleanup the app and GitHub don't**, so branches and dev servers don't pile up, and it leaves the app's worktrees to the app rather than fighting over them.
+- **`/batch` checks for overlap before it fans out**, so parallel sessions don't produce PRs that conflict with each other.
 - **Conventional Commits** keep the history readable at a glance.
