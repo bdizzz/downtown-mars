@@ -1216,9 +1216,16 @@ kbd {
 .mode-btn:hover { border-color: var(--edge-hi); }
 .mode-btn .ico { color: var(--accent-hi); }
 /* The office (#457): not a mode, but beside them; someone waiting beckons, its count in the badge. */
-.mode-btn.office-mode.waiting { border-color: var(--accent); animation: beckon 2.4s ease-in-out infinite; }
-@keyframes beckon { 50% { box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.45), 0 0 10px rgba(224, 122, 63, 0.8); } }
-@media (prefers-reduced-motion: reduce) { .mode-btn.office-mode.waiting { animation: none; } }
+.mode-btn.office-mode { --beckon: 111, 214, 200; }
+/* A teal ring, which no other chrome uses (the tutorial's pulse is orange, #510), breathing slowly. */
+.mode-btn.office-mode.waiting { border-color: rgb(var(--beckon)); color: var(--text); animation: beckon 2.4s ease-in-out infinite; }
+@keyframes beckon {
+  0%, 100% { box-shadow: var(--bevel), 0 0 0 1px rgba(var(--beckon), 0.55), 0 0 0 0 rgba(var(--beckon), 0); }
+  50% { box-shadow: var(--bevel), 0 0 0 3px rgba(var(--beckon), 0.95), 0 0 14px 2px rgba(var(--beckon), 0.45); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mode-btn.office-mode.waiting { animation: none; box-shadow: var(--bevel), 0 0 0 2px rgba(var(--beckon), 0.9); }
+}
 .mode-btn.on { background: linear-gradient(180deg, #f39152, #cf6a30); border-color: #7a3a16; color: var(--ink); box-shadow: inset 0 1px 0 rgba(255, 236, 214, 0.45), 0 0 12px rgba(224, 122, 63, 0.45); }
 .mode-btn.on .ico, .mode-btn.on kbd { color: var(--ink); }
 .mode-btn.on kbd { background: rgba(26, 15, 13, 0.15); border-color: rgba(26, 15, 13, 0.4); }
