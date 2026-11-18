@@ -6,6 +6,9 @@ import { postMessage } from "./messages";
 import { resourceDef } from "./resources";
 import { roomDef, roomDefs } from "./rooms";
 import type { SimState } from "./state";
+import { cultureGap, type Culture } from "./culture";
+import { heldMonths, stepSufficiency, type Tier } from "./sufficiency";
+import type { World } from "./world";
 
 // Milestones (F-005): one catalog of what a hole can achieve, tracked per hole
 // with the day each was reached. Some also propose a celebration (events.ts).
@@ -23,6 +26,12 @@ export type MilestoneCheck =
   | "domed"
   | "closedLoop"
   | "holesCapped"
+  | "selfSufficient"
+  | "noDrops"
+  | "founded"
+  | "tradeRoutes"
+  | "holesLinked"
+  | "culturesApart"
   | "event";
 
 export interface MilestoneDef {
@@ -35,6 +44,11 @@ export interface MilestoneDef {
   at?: number;
   /** closedLoop: the resources that make up the loop (clean and gray water). */
   loop?: string[];
+  /** selfSufficient: which tier (sufficiency.ts), held for `months` game months. */
+  tier?: Tier;
+  months?: number;
+  /** culturesApart: how far one hole's culture must be from every other's (culture.ts cultureGap, 0 to 2). */
+  gap?: number;
   /** Reaching it proposes a celebration. */
   celebrate?: boolean;
 }
@@ -76,6 +90,8 @@ export function progress(state: SimState, m: MilestoneDef): number | null {
     case "passedAway":
       // Older saves kept only those laid in a crypt.
       return pop.passedAway ?? pop.interred ?? 0;
+    case "noDrops":
+      return monthsWithoutDrops(state);
     default:
       return null;
   }
@@ -98,10 +114,24 @@ export function passed(state: SimState, m: MilestoneDef): boolean {
       return !!state.layout.domed;
     case "closedLoop":
       return closedLoop(state, m.loop ?? []);
-    case "holesCapped": // the network's: trackNetworkMilestones reaches them
+    case "selfSufficient":
+      return heldMonths(state, config, m.tier ?? "alone") >= (m.months ?? 1);
+    case "noDrops":
+      return state.population.count > 0 && !state.failed && monthsWithoutDrops(state) >= (m.at ?? 1);
+    case "founded": // these need the world: trackNetworkMilestones reaches them
+    case "holesCapped":
+    case "tradeRoutes":
+    case "holesLinked":
+    case "culturesApart":
     case "event":
       return false;
   }
+}
+
+/** Whole game months since the last supply drop landed (or the hole began). */
+function monthsWithoutDrops(state: SimState): number {
+  const last = state.earth.lastDropTick;
+  return last === undefined ? 0 : Math.floor((state.tick - last) / config.ticksPerDay);
 }
 
 /** Is every slot of some floor's ring dug out, beyond the rings the landing crew blasted out of floor 1? */
@@ -179,24 +209,65 @@ export function reachMilestone(state: SimState, cfg: SimConfig, id: string): boo
   return true;
 }
 
-/** The network's milestones: holes capped, all told (#413). */
-export const NETWORK_CHECKS: MilestoneCheck[] = ["holesCapped"];
+/** The network's milestones (#413, #184): reached once for the whole network, and counted in every hole's panel. */
+export const NETWORK_CHECKS: MilestoneCheck[] = ["holesCapped", "tradeRoutes", "holesLinked", "culturesApart"];
+
+/** The biggest group of holes joined by trade routes, either way: their ids, oldest route first. */
+export function linkedHoles(routes: { fromHoleId: number; toHoleId: number }[]): number[] {
+  const groups: Set<number>[] = [];
+  for (const r of routes) {
+    const touching = groups.filter((g) => g.has(r.fromHoleId) || g.has(r.toHoleId));
+    const merged = new Set<number>([r.fromHoleId, r.toHoleId, ...touching.flatMap((g) => [...g])]);
+    for (const g of touching) groups.splice(groups.indexOf(g), 1);
+    groups.push(merged);
+  }
+  return [...groups.reduce<Set<number>>((a, b) => (b.size > a.size ? b : a), new Set())];
+}
+
+/** The hole whose culture is furthest from the nearest other's, and how far (null with fewer than two holes). */
+export function mostApart(holes: { id: number; culture: Culture }[]): { id: number; gap: number } | null {
+  if (holes.length < 2) return null;
+  let best: { id: number; gap: number } | null = null;
+  for (const a of holes) {
+    const gap = Math.min(...holes.filter((b) => b !== a).map((b) => cultureGap(a.culture, b.culture)));
+    if (!best || gap > best.gap) best = { id: a.id, gap };
+  }
+  return best;
+}
 
 /**
- * The network's milestones, once a day or so from the world's step: each is reached once for the whole
- * network, in the hole that got it there (the latest capped), and counts as reached in every hole's panel.
+ * The milestones that need the whole world, from the world's step. A kit sent is the hole's own, reached
+ * by the hole that founded another. The network's are reached once, in the hole that got it there: the
+ * latest capped, the one whose rover set out, the one that drifted apart.
  */
-export function trackNetworkMilestones(holes: SimState[], cfg: SimConfig): void {
+export function trackNetworkMilestones(world: Pick<World, "holes" | "routes">, cfg: SimConfig): void {
+  const { holes, routes } = world;
+  const live = holes.filter((h) => !h.failed && h.population.count > 0);
   const capped = holes.filter((h) => h.depth?.capped).sort((a, b) => a.depth!.capped!.tick - b.depth!.capped!.tick);
+  const linked = routes.length ? linkedHoles(routes) : [];
+  const apart = mostApart(live.map((h) => ({ id: h.holeId, culture: h.culture })));
+  const hole = (id: number | undefined) => holes.find((h) => h.holeId === id);
   for (const m of milestoneData.milestones) {
-    if (m.check !== "holesCapped" || capped.length < (m.at ?? 1)) continue;
-    if (holes.some((h) => hasReached(h, m.id))) continue;
-    reachMilestone(capped.at(-1)!, cfg, m.id);
+    if (m.check === "founded") {
+      for (const h of holes) {
+        if (!hasReached(h, m.id) && holes.filter((c) => c.parentHoleId === h.holeId).length >= (m.at ?? 1)) reachMilestone(h, cfg, m.id);
+      }
+      continue;
+    }
+    if (!NETWORK_CHECKS.includes(m.check) || holes.some((h) => hasReached(h, m.id))) continue;
+    let by: SimState | undefined;
+    if (m.check === "holesCapped" && capped.length >= (m.at ?? 1)) by = capped.at(-1);
+    else if (m.check === "tradeRoutes" && routes.length >= (m.at ?? 1)) by = hole(routes.at(-1)!.fromHoleId);
+    else if (m.check === "holesLinked" && linked.length >= (m.at ?? 2)) {
+      by = hole(routes.filter((r) => linked.includes(r.fromHoleId)).at(-1)?.fromHoleId);
+    } else if (m.check === "culturesApart" && apart && apart.gap >= (m.gap ?? 1)) by = hole(apart.id);
+    if (by) reachMilestone(by, cfg, m.id);
   }
 }
 
 /** Every milestone passed since the last check is reached now. */
 export function trackMilestones(state: SimState, cfg: SimConfig): void {
+  stepSufficiency(state, cfg);
   for (const m of milestoneData.milestones) {
     if (!hasReached(state, m.id) && passed(state, m)) reachMilestone(state, cfg, m.id);
   }

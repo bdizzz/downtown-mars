@@ -23,6 +23,8 @@ export interface EarthState {
   waiting: boolean;
   /** Drops landed so far (absent in older saves). */
   landed?: number;
+  /** When the last drop landed, or the hole began (absent in older saves until the next step): for "a year on our own". */
+  lastDropTick?: number;
 }
 
 export function createEarth(cfg: SimConfig): EarthState {
@@ -85,6 +87,7 @@ export function dailyGaps(state: SimState, cfg: SimConfig): Record<string, numbe
 export function stepEarth(state: SimState, cfg: SimConfig): void {
   const e = state.earth;
   const ec = cfg.earth;
+  e.lastDropTick ??= state.tick;
   // A failed hole has no one to open the airlock (T-162).
   if (state.tick < e.nextDropTick || state.failed) return;
 
@@ -109,6 +112,7 @@ export function stepEarth(state: SimState, cfg: SimConfig): void {
 
   e.nextDropTick = state.tick + ec.intervalDays * cfg.ticksPerDay;
   e.landed = (e.landed ?? 0) + 1;
+  e.lastDropTick = state.tick;
   e.delayed = false;
   e.waiting = false;
 }
