@@ -2,7 +2,7 @@
 > ***Play the game in your browser here:*** https://mars.bryon.site/
 
 
-![A floor of the hole from above: homes, storage, a galley and furnaces in rings round the shaft](docs/images/downtown_mars_title.jpg)
+![Downtown Mars key art: the hole cut open, floors of rooms round the shaft, a drill at the bottom](docs/images/downtown_mars_title.jpg)
 
 # Downtown Mars
 *Hole sweet hole.*
@@ -15,12 +15,16 @@ Working on the game? [docs/WORKFLOW.md](docs/WORKFLOW.md) shows how a playtest n
 
 | | |
 | --- | --- |
-| ![The hole sliced open, twelve floors of rooms round the shaft](docs/images/cutaway.jpg) | ![A floor at night, lit by lamps and furnaces](docs/images/night.jpg) |
-| **Cutaway:** twelve floors of rooms, sliced open | **Night:** lamps, furnaces and grow lights |
-| ![A floor straight from above](docs/images/top.jpg) | ![Mars as a globe, with the colony and the deposits found so far](docs/images/globe.jpg) |
-| **Top:** a floor as a plan you can build on | **The map:** NASA's elevation data, deposits and sites for new holes |
+| ![The hole sliced open: floors of furnished rooms round the glass-walled shaft, the lander on the surface above](docs/images/cutaway.jpg) | ![A floor at night, lit by lamps and the smelter's furnaces](docs/images/night.jpg) |
+| **Cutaway:** the whole hole, sliced open | **Night:** lamps, furnaces and night lights |
+| ![A floor in Free view: plazas and a park round the shaft, homes, workshops and storage in the rings beyond](docs/images/floor.jpg) | ![A dormitory in first person: rows of bunk beds and lockers](docs/images/firstperson.jpg) |
+| **Free view:** a floor from above, to build on | **First person:** walk the tubes and into any room |
+| ![A floor as the 2D plan, rooms in rings round the shaft with their names and icons](docs/images/plan.jpg) | ![Mars as a globe, with two holes joined by a rover route and the deposits found so far](docs/images/globe.jpg) |
+| **Plan:** a floor as a flat map | **The map:** real Mars, deposits and sites for new holes |
 
-![The interface: resources along the top, a room's panel, and the build card for a galley with its smell spreading in red](docs/images/interface.jpg)
+![The interface: resources along the top, the build rail with Food open, a clinic's panel with the homes it reaches, event cards and the deputy's tip](docs/images/interface.jpg)
+
+The shots are from the web game (the interface, first person and the map) and the Godot viewer (the rest), in November 2026.
 
 ## What you do
 
@@ -116,7 +120,7 @@ Changes go through the simulation like any command and show in the flow report a
 
 ### The Godot viewer (experiment)
 
-A desktop viewer in Godot 4 and C# (`godot/`, Mac for now) that draws the same game: the sim runs in Node and talks to the viewer over a local socket. See `docs/PLAN-GODOT.md`. It needs Godot .NET 4.7 and the .NET SDK. (The screenshots above are from it.)
+A desktop viewer in Godot 4 and C# (`godot/`, Mac for now) that draws the same game: the sim runs in Node and talks to the viewer over a local socket. See `docs/PLAN-GODOT.md`. It needs Godot .NET 4.7 and the .NET SDK. (Most of the screenshots above are from it.)
 
 ```bash
 cd godot && dotnet build && godot-mono --path .
