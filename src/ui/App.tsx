@@ -29,7 +29,7 @@ import { ResourceBar } from "./ResourceBar";
 import { TrendsPanel } from "./TrendsPanel";
 import { WhyPanel, type WhyTab } from "./WhyPanel";
 import type { Spot } from "../view/reachView";
-import { downloadSave, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
+import { downloadSave, openSaves, pickSaveFile, readSave, slotLabel, writeSave, type Slot } from "./saves";
 import { fetchDevGame, fetchGameAt, gameFromUrl, type DevGame } from "./devGames";
 import { StatusBar } from "./StatusBar";
 import { GuidedTutorial, Tutorial } from "./Tutorial";
@@ -202,13 +202,14 @@ export function App() {
   const [sceneLoaded, setSceneLoaded] = useState(false);
   useEffect(() => {
     let live = true;
-    // A failed game's autosave can't be loaded (T-162), so it gets the showcase too.
-    const auto = readSave("autosave");
+    // Opening the saves copies any from before #533 out of localStorage, so it comes first either way.
+    const saves = openSaves();
     const showcase = () => send({ type: "consoleShowcase", floors: TITLE_SHOWCASE_FLOORS });
     // `?game=mid` (or a save's path) opens that game at once, paused, with no title (#518): for testing and screenshots.
     const asked = gameFromUrl(location.search);
     if (asked) {
-      void fetchGameAt(asked)
+      void saves
+        .then(() => fetchGameAt(asked))
         .then((text) => (text === null ? { ok: false as const, reason: `Couldn't fetch ${asked}.` } : load(text)))
         .then((r) => {
           if (!live) return;
@@ -220,7 +221,11 @@ export function App() {
         live = false;
       };
     }
-    void (auto && !auto.summary.failed ? load(auto.data).then((r) => (r.ok ? r : showcase())) : showcase()).then(() => live && setSceneLoaded(true));
+    // A failed game's autosave can't be loaded (T-162), so it gets the showcase too.
+    void saves
+      .then(() => readSave("autosave"))
+      .then((auto) => (auto && !auto.summary.failed ? load(auto.data).then((r) => (r.ok ? r : showcase())) : showcase()))
+      .then(() => live && setSceneLoaded(true));
     return () => {
       live = false;
     };
@@ -358,8 +363,7 @@ export function App() {
   const saveTo = useCallback(
     async (slot: Slot) => {
       const { data, summary } = await save();
-      const ok = writeSave(slot, { data, summary, savedAt: Date.now() });
-      return ok;
+      return writeSave(slot, { data, summary, savedAt: Date.now() });
     },
     [save],
   );
@@ -379,7 +383,7 @@ export function App() {
       } else setMenuError("Couldn't save: this browser isn't letting the game use storage. Try Export instead.");
     },
     onLoad: async (slot: Slot) => {
-      const stored = readSave(slot);
+      const stored = await readSave(slot);
       if (!stored) return setMenuError(`${slotLabel(slot)} is empty.`);
       const r = await load(stored.data);
       // A loaded game starts paused (T-146); play resumes at the speed you had.

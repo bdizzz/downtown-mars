@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { DEV_GAMES, devGameLabel, devGamesShown, type DevGame } from "./devGames";
-import { describeSave, readSave, SLOTS, slotLabel, type Slot } from "./saves";
+import { describeSave, listSaves, SLOTS, slotLabel, type Slot } from "./saves";
 import type { Settings } from "./settings";
 import { SettingsView } from "./SettingsView";
 import { APP_VERSION, useGitBranch } from "./version";
@@ -40,8 +40,8 @@ export function Menu(props: Props) {
   const [confirm, setConfirm] = useState<Confirm>(null);
   const box = useRef<HTMLDivElement>(null);
   const branch = useGitBranch();
-  // Re-read storage on every render: saves change underneath us.
-  const saves = Object.fromEntries(SLOTS.map((s) => [s, readSave(s)])) as Record<Slot, ReturnType<typeof readSave>>;
+  // Re-read the slot list on every render: saves change underneath us.
+  const saves = listSaves();
   // A failed game's autosave is kept to look back on, not continued (T-162).
   const auto = saves.autosave?.summary.failed ? null : saves.autosave;
   const inGame = mode === "pause";
