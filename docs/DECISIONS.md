@@ -91,6 +91,7 @@ These sections were brought in line with the catalogs, both in this kit and in t
 
 ## Standing rules easy to miss
 
+- **Route searches are per room, never per person** (#521, #532). A colonist reads a cached distance (`walkFrom`, or one search a workplace); searches run only when the layout changes, and only from the rooms it touches, so they grow with rooms, not people. `sim/paths.ts` searches flat arrays on a binary heap; `tests/routeSpeed.test.ts` times a search from every workplace of a 10,000-person hole and fails on a big jump, such as a search per person.
 - Each water tank holds only one type of water: clean, gray or tailings, chosen by the player like a farm's crop (from Bryon's early room list; choosable since T-005).
 
 ## Decided while building (Sep 27–30)
