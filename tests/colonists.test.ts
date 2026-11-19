@@ -151,7 +151,7 @@ describe("colonists in shadow mode (#523)", () => {
 });
 
 /** A hole with two studios apart and a workplace beside each, every bed taken. */
-function twoStudios(): { s: SimState; c: Colonists; a: number; b: number; nearA: number; nearB: number } {
+function twoStudios(): { s: SimState; c: Colonists; a: number; b: number; nearA: number; nearB: number; pod: number } {
   const s = createInitialState(config);
   s.drill.active = false;
   s.earth.nextDropTick = 1e9;
@@ -177,15 +177,17 @@ function twoStudios(): { s: SimState; c: Colonists; a: number; b: number; nearA:
     c.gainDays[i] = 0;
     c.gainWith[i] = -1;
   }
-  return { s, c, a, b, nearA, nearB };
+  // Every home as nice as the next, unless a test says otherwise.
+  for (const p of s.happiness.pools) p.base = 50;
+  return { s, c, a, b, nearA, nearB, pod };
 }
 
 describe("homes and jobs assign themselves (#524)", () => {
   it("two workers who'd both gain swap beds, but only after gaining for a few days running", () => {
     const { s, c, a, b, nearA, nearB } = twoStudios();
-    const gain = walkM(s.layout, nearB, a) - walkM(s.layout, nearB, b);
-    expect(gain).toBeGreaterThanOrEqual(people.colonists.assign.swapGainM);
-    expect(walkM(s.layout, nearA, b) - walkM(s.layout, nearA, a)).toBeGreaterThanOrEqual(people.colonists.assign.swapGainM);
+    const { metresPerPoint, swapGainPoints } = people.colonists.assign;
+    expect((walkM(s.layout, nearB, a) - walkM(s.layout, nearB, b)) / metresPerPoint).toBeGreaterThanOrEqual(swapGainPoints);
+    expect((walkM(s.layout, nearA, b) - walkM(s.layout, nearA, a)) / metresPerPoint).toBeGreaterThanOrEqual(swapGainPoints);
     const days = people.colonists.assign.swapAfterDays;
     for (let d = 1; d < days; d++) {
       improveHomes(s, c);
@@ -221,6 +223,27 @@ describe("homes and jobs assign themselves (#524)", () => {
     expect(c.home.filter((h) => h === a)).toHaveLength(0);
   });
 
+  it("a nicer home is worth a longer walk, at metresPerPoint metres a point, and no further", () => {
+    const pick = (nicerBy: number) => {
+      const { s, c, a, b, nearB, pod } = twoStudios();
+      // Person 0 (works beside B) sleeps in the pod, the worst home; a bed is free in each studio.
+      c.home[0] = pod;
+      c.home[10] = -1;
+      c.home[5] = -1;
+      for (const p of s.happiness.pools) p.base = p.roomId === pod ? 0 : p.roomId === a ? 50 + nicerBy : 50;
+      const further = walkM(s.layout, nearB, a) - walkM(s.layout, nearB, b);
+      improveHomes(s, c);
+      return { home: c.home[0], a, b, worth: further / people.colonists.assign.metresPerPoint };
+    };
+    // A is the longer walk: worth it only if it's nicer by more than the walk costs.
+    const { worth } = pick(0);
+    expect(worth).toBeGreaterThan(1);
+    const far = pick(worth + 1);
+    expect(far.home).toBe(far.a);
+    const near = pick(worth - 1);
+    expect(near.home).toBe(near.b);
+  });
+
   it("the homeless take free beds, a worker the one nearest their job", () => {
     const { s, c, b, nearB } = twoStudios();
     for (let i = 0; i < 10; i++) c.home[i] = -1;
@@ -245,6 +268,7 @@ describe("routes and needs per person (#525, #526)", () => {
   });
 
   it("the hole's happiness is its people's average", () => {
+    updateHappiness(h, config);
     const mean = c.happiness.reduce((a, b) => a + b, 0) / c.happiness.length;
     expect(h.happiness.average).toBeCloseTo(mean, 6);
   });

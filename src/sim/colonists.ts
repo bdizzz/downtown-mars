@@ -3,7 +3,7 @@ import type { SimConfig } from "./config";
 import { isActive } from "./economy";
 import { packColumn, unpackColumn, type Column } from "./pack";
 import { distancesFrom, pathsFor, STEP_M } from "./paths";
-import type { Layout, RoomInstance } from "./placement";
+import type { Layout } from "./placement";
 import peopleData from "../../data/people.json";
 import { hash01, type Cohort, type Stage } from "./people";
 import { roomDef } from "./rooms";
@@ -240,23 +240,28 @@ export function nameOf(c: Colonists, i: number): string {
 // --- Walking distances ----------------------------------------------------
 
 /** Each room's metres on foot to every room it can reach, kept until the layout changes. */
-const routes = new WeakMap<Layout, { version: number; from: Map<number, Map<number, number>>; homes: Map<number, number[]>; food: Map<number, number> }>();
+const routes = new WeakMap<
+  Layout,
+  { version: number; from: Map<number, Map<number, number>>; homes: Map<number, number[]>; food: Map<number, number>; doors: Map<number, number | null> }
+>();
 
 function routeCache(layout: Layout) {
   let hit = routes.get(layout);
   if (!hit || hit.version !== layout.version) {
-    hit = { version: layout.version, from: new Map(), homes: new Map(), food: new Map() };
+    hit = { version: layout.version, from: new Map(), homes: new Map(), food: new Map(), doors: doorsOf(layout) };
     routes.set(layout, hit);
   }
   return hit;
 }
 
-/** A room on the surface (the landing pod) is walked to through the entrance. */
-function doorOf(layout: Layout, room: RoomInstance | undefined): number | null {
-  if (!room) return null;
-  if (room.at.kind !== "surface") return room.id;
-  const door = layout.rooms.find((r) => r.at.kind === "ring" && roomDef(r.type).surfaceLink && !roomDef(r.type).cargoShaft);
-  return door?.id ?? null;
+/** Where each room is walked to from: itself, or for one on the surface (the landing pod) the entrance. */
+function doorsOf(layout: Layout): Map<number, number | null> {
+  const entrance = layout.rooms.find((r) => r.at.kind === "ring" && roomDef(r.type).surfaceLink && !roomDef(r.type).cargoShaft)?.id ?? null;
+  return new Map(layout.rooms.map((r) => [r.id, r.at.kind === "surface" ? entrance : r.id]));
+}
+
+function doorOf(layout: Layout, roomId: number): number | null {
+  return routeCache(layout).doors.get(roomId) ?? null;
 }
 
 /** Metres on foot from a room to every room it can reach, however far. One search per room, never per person. */
@@ -264,7 +269,7 @@ export function routesFrom(layout: Layout, roomId: number): Map<number, number> 
   const hit = routeCache(layout);
   let d = hit.from.get(roomId);
   if (!d) {
-    const door = doorOf(layout, layout.rooms.find((r) => r.id === roomId));
+    const door = doorOf(layout, roomId);
     d = door === null ? new Map() : distancesFrom(pathsFor(layout), door, "walk");
     hit.from.set(roomId, d);
   }
@@ -274,7 +279,7 @@ export function routesFrom(layout: Layout, roomId: number): Map<number, number> 
 /** Metres on foot between two rooms (Infinity if there's no way). */
 export function walkM(layout: Layout, from: number, to: number): number {
   if (from === to) return 0;
-  const target = doorOf(layout, layout.rooms.find((r) => r.id === to));
+  const target = doorOf(layout, to);
   if (target === null) return Infinity;
   const d = routesFrom(layout, from).get(target);
   return d === undefined ? Infinity : d;
@@ -361,7 +366,7 @@ function assignJobs(state: SimState, c: Colonists): void {
     const vacancies = want.get(room)! - (holders.get(room)?.length ?? 0);
     if (vacancies <= 0 || !free.length) continue;
     const d = routesFrom(layout, room);
-    const door = (h: number) => doorOf(layout, layout.rooms.find((r) => r.id === h));
+    const door = (h: number) => doorOf(layout, h);
     const dist = (i: number) => {
       const h = c.home[i]!;
       if (h === NONE) return Infinity;
@@ -390,57 +395,100 @@ function homeBeds(state: SimState): Map<number, number> {
   return beds;
 }
 
-/** How good each home is, as of the last happiness update (0 for a home that's new since). */
-function homeTargets(state: SimState): Map<number, number> {
-  return new Map(state.happiness.pools.map((p) => [p.roomId, p.target]));
+/** How nice each home is, in happiness points, as of the last happiness update: its own target, before its residents' walks (0 for a home that's new since). */
+function niceness(state: SimState): Map<number, number> {
+  return new Map(state.happiness.pools.map((p) => [p.roomId, p.base ?? p.target]));
 }
 
 /**
- * Beds: whoever's home closed is homeless, and the homeless take free beds,
- * oldest first: a worker the one nearest their job, anyone else the best one
- * free. Nobody is ever turned out of a bed to make room.
+ * What a bed is worth to person i, in happiness points: how nice the home is,
+ * less their walk to work at `metresPerPoint` (a worker will walk that much
+ * further for each point nicer). Without a job, only the home counts.
  */
-function assignHomes(state: SimState, c: Colonists): void {
-  const layout = state.layout;
-  const beds = homeBeds(state);
-  const used = new Map<number, number>();
+function bedScore(layout: Layout, c: Colonists, i: number, home: number, nice: Map<number, number>): number {
+  const j = c.job[i]!;
+  const walk = j === NONE ? 0 : walkM(layout, j, home);
+  return (nice.get(home) ?? 0) - walk / C.assign.metresPerPoint;
+}
+
+/** Free beds by home, and the homes with one, nicest first (ties: the older room). */
+function freeBeds(state: SimState, c: Colonists, nice: Map<number, number>): { left: Map<number, number>; open: number[] } {
+  const left = new Map<number, number>();
+  for (const r of state.layout.rooms) {
+    const houses = roomDef(r.type).houses ?? 0;
+    if (houses > 0 && isActive(r)) left.set(r.id, houses);
+  }
   for (let i = 0; i < c.id.length; i++) {
     const h = c.home[i]!;
     if (h === NONE) continue;
-    const n = used.get(h) ?? 0;
-    if (!beds.has(h) || n >= beds.get(h)!) {
+    const n = left.get(h);
+    // A closed home, or one over its beds (those listed last go): homeless.
+    if (n === undefined || n <= 0) {
       c.home[i] = NONE;
       c.routesStale = true;
       continue;
     }
-    used.set(h, n + 1);
+    left.set(h, n - 1);
   }
-  let spare = 0;
-  for (const [h, n] of beds) spare += n - (used.get(h) ?? 0);
-  if (spare <= 0) return;
-  const target = homeTargets(state);
-  const free = () => [...beds.keys()].filter((h) => (used.get(h) ?? 0) < beds.get(h)!);
-  for (let i = 0; i < c.id.length && spare > 0; i++) {
-    if (c.home[i] !== NONE) continue;
-    const open = free();
-    const j = c.job[i]!;
-    let best = open[0]!;
-    if (j !== NONE) {
-      let bestM = Infinity;
-      for (const h of open) {
-        const m = walkM(layout, j, h);
-        if (m < bestM || (m === bestM && ((target.get(h) ?? 0) > (target.get(best) ?? 0) || ((target.get(h) ?? 0) === (target.get(best) ?? 0) && h < best)))) {
-          bestM = m;
-          best = h;
-        }
-      }
-    } else {
-      for (const h of open) if ((target.get(h) ?? 0) > (target.get(best) ?? 0) || ((target.get(h) ?? 0) === (target.get(best) ?? 0) && h < best)) best = h;
+  const open = [...left.keys()].filter((h) => left.get(h)! > 0).sort((a, b) => (nice.get(b) ?? 0) - (nice.get(a) ?? 0) || a - b);
+  return { left, open };
+}
+
+/** The free bed worth most to person i, and what it's worth (the nicest first among equals). */
+function bestFreeBed(layout: Layout, c: Colonists, i: number, open: number[], left: Map<number, number>, nice: Map<number, number>, except = NONE): { home: number; score: number } {
+  let home = NONE;
+  let score = -Infinity;
+  for (const h of open) {
+    if (h === except || left.get(h)! <= 0) continue;
+    // Without a job, the nicest free one is the best: open is nicest first.
+    if (c.job[i] === NONE) return { home: h, score: nice.get(h) ?? 0 };
+    const v = bedScore(layout, c, i, h, nice);
+    if (v > score) {
+      score = v;
+      home = h;
     }
-    c.home[i] = best;
-    used.set(best, (used.get(best) ?? 0) + 1);
-    spare--;
-    c.routesStale = true;
+  }
+  return { home, score };
+}
+
+function takeBed(c: Colonists, i: number, home: number, open: number[], left: Map<number, number>): void {
+  const was = c.home[i]!;
+  if (was !== NONE) left.set(was, (left.get(was) ?? 0) + 1);
+  left.set(home, left.get(home)! - 1);
+  c.home[i] = home;
+  c.routesStale = true;
+  if (was !== NONE && !open.includes(was)) open.push(was);
+}
+
+/**
+ * Beds: whoever's home closed is homeless, and the homeless take free beds,
+ * oldest first, each the one worth most to them (bedScore). Nobody is ever
+ * turned out of a bed to make room.
+ */
+function assignHomes(state: SimState, c: Colonists): void {
+  if (!c.home.includes(NONE) && c.id.length) {
+    // Quick check: nobody's homeless, so only closed homes matter.
+    const beds = homeBeds(state);
+    const used = new Map<number, number>();
+    let ok = true;
+    for (const h of c.home) {
+      const n = (used.get(h) ?? 0) + 1;
+      used.set(h, n);
+      if (n > (beds.get(h) ?? 0)) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) return;
+  }
+  const nice = niceness(state);
+  const { left, open } = freeBeds(state, c, nice);
+  if (!open.length) return;
+  for (let i = 0; i < c.id.length; i++) {
+    if (c.home[i] !== NONE) continue;
+    const { home } = bestFreeBed(state.layout, c, i, open, left, nice);
+    if (home === NONE) break;
+    takeBed(c, i, home, open, left);
   }
 }
 
@@ -452,50 +500,39 @@ function commuteOf(layout: Layout, c: Colonists, i: number, home = c.home[i]!): 
 }
 
 /**
- * Once a day, beds get closer to work. A worker moves into a free bed that's
- * clearly nearer their job. Then each worker looks at a few homes nearer their
- * job for someone who'd gain as much by trading beds; a pair who'd both have
- * gained for `swapAfterDays` days running swap. Nobody else moves.
+ * Once a day, people trade up. Anyone moves into a free bed worth at least
+ * `moveGainPoints` more to them (bedScore: a nicer home, a shorter walk to
+ * work, or both, at `metresPerPoint`). Then each worker looks at a few homes
+ * worth more to them (from the nearest to their job, and the nicest) for
+ * someone who'd gain as much by trading beds; a pair who'd both have gained
+ * `swapGainPoints` for `swapAfterDays` days running swap. Nobody else moves.
  */
 export function improveHomes(state: SimState, c: Colonists): void {
   const layout = state.layout;
   const a = C.assign;
-  const beds = homeBeds(state);
-  const used = new Map<number, number>();
-  for (const h of c.home) if (h !== NONE) used.set(h, (used.get(h) ?? 0) + 1);
-  // Free beds nearer work.
-  for (let i = 0; i < c.id.length; i++) {
+  const nice = niceness(state);
+  const { left, open } = freeBeds(state, c, nice);
+  // Free beds worth more.
+  for (let i = 0; i < c.id.length && open.length; i++) {
     const h = c.home[i]!;
-    const j = c.job[i]!;
-    if (h === NONE || j === NONE) continue;
-    const now = walkM(layout, j, h);
-    let best = NONE;
-    let bestM = now - a.moveGainM;
-    for (const cand of nearestHomes(layout, j)) {
-      if (cand === h || (used.get(cand) ?? 0) >= (beds.get(cand) ?? 0)) continue;
-      const m = walkM(layout, j, cand);
-      if (m < bestM) {
-        bestM = m;
-        best = cand;
-      }
-    }
-    if (best === NONE) continue;
-    used.set(h, used.get(h)! - 1);
-    used.set(best, (used.get(best) ?? 0) + 1);
-    c.home[i] = best;
+    if (h === NONE) continue;
+    const now = bedScore(layout, c, i, h, nice);
+    const best = bestFreeBed(layout, c, i, open, left, nice, h);
+    if (best.home === NONE || best.score - now < a.moveGainPoints) continue;
+    takeBed(c, i, best.home, open, left);
     c.gainDays[i] = 0;
     c.gainWith[i] = NONE;
-    c.routesStale = true;
   }
   // Pairs who'd both gain by trading beds.
   const byHome = new Map<number, number[]>();
   for (let i = 0; i < c.id.length; i++) {
     const h = c.home[i]!;
-    if (h === NONE || c.job[i] === NONE) continue;
+    if (h === NONE) continue;
     const list = byHome.get(h);
     if (list) list.push(i);
     else byHome.set(h, [i]);
   }
+  const nicest = [...byHome.keys()].sort((x, y) => (nice.get(y) ?? 0) - (nice.get(x) ?? 0) || x - y).slice(0, a.swapLooks);
   const paired = new Set<number>();
   const swaps: [number, number][] = [];
   for (let i = 0; i < c.id.length; i++) {
@@ -503,20 +540,21 @@ export function improveHomes(state: SimState, c: Colonists): void {
     const h = c.home[i]!;
     const j = c.job[i]!;
     if (h === NONE || j === NONE) continue;
-    const now = walkM(layout, j, h);
+    const now = bedScore(layout, c, i, h, nice);
+    // Where to look: the homes worth most to them, from those nearest their job and the nicest.
+    const looks = [...new Set([...nearestHomes(layout, j), ...nicest])]
+      .filter((x) => x !== h && byHome.has(x))
+      .map((x) => ({ x, gain: bedScore(layout, c, i, x, nice) - now }))
+      .filter((x) => x.gain >= a.swapGainPoints)
+      .sort((p, q) => q.gain - p.gain || p.x - q.x)
+      .slice(0, a.swapLooks);
     let partner = NONE;
     let bestGain = 0;
-    let looked = 0;
-    for (const cand of nearestHomes(layout, j)) {
-      if (looked >= a.swapLooks) break;
-      if (cand === h) continue;
-      const gainA = now - walkM(layout, j, cand);
-      if (gainA < a.swapGainM) break; // nearest first: the rest are no nearer
-      looked++;
-      for (const k of byHome.get(cand) ?? []) {
-        if (paired.has(k)) continue;
-        const gainB = commuteOf(layout, c, k) - commuteOf(layout, c, k, h);
-        if (gainB < a.swapGainM) continue;
+    for (const { x, gain: gainA } of looks) {
+      for (const k of byHome.get(x)!) {
+        if (paired.has(k) || k === i) continue;
+        const gainB = bedScore(layout, c, k, h, nice) - bedScore(layout, c, k, x, nice);
+        if (!(gainB >= a.swapGainPoints)) continue;
         if (gainA + gainB > bestGain || (gainA + gainB === bestGain && c.id[k]! < c.id[partner]!)) {
           bestGain = gainA + gainB;
           partner = k;

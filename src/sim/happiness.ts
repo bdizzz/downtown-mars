@@ -34,6 +34,8 @@ export interface HousingPool {
   happiness: number;
   target: number;
   factors: Factors;
+  /** Its target before its residents' own walks: how nice the home itself is (what people weigh a bed by, colonists.ts; missing in old saves until the next update). */
+  base?: number;
   /** What makes up its target, in happiness points per cause (partPoints; missing in old saves until the next update). */
   points?: Record<string, number>;
 }
@@ -269,11 +271,12 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
     const parts = homeParts(state, room, cfg);
     const factors = sumParts(parts, cfg);
     const extra = ownOf(room.id);
-    const target = clamp(targetHappiness(factors, cfg) + glow + ownPoints(extra), 0, 100);
+    const base = clamp(targetHappiness(factors, cfg) + glow, 0, 100);
+    const target = clamp(base + ownPoints(extra), 0, 100);
     const old = prev.get(room.id);
     const points = partPoints(parts, cfg);
     for (const p of extra) points[p.id] = p.value * h.weights[p.factor];
-    return { roomId: room.id, capacity: roomDef(room.type).houses!, residents: residents.get(room.id) ?? 0, happiness: old?.happiness ?? target, target, factors, points: tidy(points) };
+    return { roomId: room.id, capacity: roomDef(room.type).houses!, residents: residents.get(room.id) ?? 0, happiness: old?.happiness ?? target, target, base, factors, points: tidy(points) };
   });
 
   const ease = settle ? 1 : Math.min(1, h.updateEveryTicks / (h.easeDays * cfg.ticksPerDay));

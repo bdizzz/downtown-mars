@@ -48,7 +48,7 @@ export const people = raw as unknown as {
   colonists: {
     arrivalAgeDays: [number, number];
     elderAgeDays: [number, number];
-    assign: { moveGainM: number; swapGainM: number; swapAfterDays: number; swapLooks: number; nearestHomes: number };
+    assign: { metresPerPoint: number; moveGainPoints: number; swapGainPoints: number; swapAfterDays: number; swapLooks: number; nearestHomes: number };
     commute: { freeM: number; comfortPerStep: number; worstComfort: number };
     foodWalk: { freeM: number; comfortPerStep: number; worstComfort: number };
   };

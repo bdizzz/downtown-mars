@@ -122,7 +122,7 @@ Bunk dorms from the start, then better homes as the hole grows:
 
 Each tier houses fewer people per slot and costs more, but its residents are more comfortable, and the finer tiers cheer their neighbours too.
 
-People find their own beds; you build the homes, not move anyone. A newcomer takes a free bed: a worker the one nearest their job, anyone else the best one free. Nobody is ever turned out of a bed. Once a month a worker moves into a free bed that's clearly nearer work, and two workers who'd each live nearer their jobs by trading swap beds, once trading has looked good for five months running. Homes near the workplaces fill first, so put homes where people work.
+People find their own beds; you build the homes, not move anyone. Each weighs a bed by how nice the home is against the walk to work: a home one comfort step nicer (8 happiness points) is worth 40 m more walking, and no more. A newcomer takes the free bed worth most to them (without a job, simply the nicest). Nobody is ever turned out of a bed. Once a month people move into a free bed that's clearly better for them, and two who'd each be better off trading swap beds, once trading has looked good for five months running. So a fine home near the workplaces fills first, and a fine home far from them still draws people, just less.
 
 ## Health and happiness
 
