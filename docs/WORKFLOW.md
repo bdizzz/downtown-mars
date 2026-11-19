@@ -21,12 +21,22 @@ flowchart LR
 ```
 
 1. **Play and note.** While playing, `/note <text>` adds the text, word for word, to a local inbox (`.tracker/inbox.md`, gitignored) as `L-12`. Away from the machine, a note can come straight from GitHub instead (the phone app, the web, the Note issue template): any open issue that isn't a ticket or feature counts. Nothing else happens, so it's quick and never breaks the flow of play.
-2. **Ingest.** `/ingest` turns the waiting notes into tickets (issues labeled `task`) with a size (S, M, L), the likely files, an approach and any open questions; big items become features (labeled `feature`, below). Each note is filed away with what it became (local ones in `.tracker/notes-done.md`, GitHub ones closed with a comment), and each ticket names the notes it came from and quotes the local ones. The notes from before the move to issues are in `docs/notes-archive.md`.
+2. **Ingest.** `/ingest` turns the waiting notes into tickets (issues labeled `task`) with a size (S, M, L), the likely files, an approach, a **delight** line and any open questions; big items become features (labeled `feature`, below). The delight line (`## Delight`) says what new decision or delight the player gets, or "none", which is fine: most fixes are. Notes capture friction, so tickets drift towards fixing it; `/board` prints how many ready and open tickets add a delight ("Delight: 3 of 12 ready, 9 of 40 open"), a quick check that the game is getting more fun, not only smoother. Each note is filed away with what it became (local ones in `.tracker/notes-done.md`, GitHub ones closed with a comment), and each ticket names the notes it came from and quotes the local ones. The notes from before the move to issues are in `docs/notes-archive.md`.
 3. **Answer.** Tickets with open questions (unticked boxes under "Open questions") show as "needs answers". Answer them in one reply (to `/ingest`, `/board` or `/build`), and they become ready.
 4. **Pick.** `/board` lists features, then what's ready, needs answers, blocked, in flight and in review. `/deps` draws the dependency tree. Ask for "a quick win" or "the oldest" if nothing in particular calls.
-5. **Build.** `/build #N` checks open PRs for overlap, makes a branch (`212-…`) from a fresh `origin/main` in its own worktree, claims the ticket by pushing that branch and commenting on the issue, builds it, runs `npm test`, checks it in the browser on `[::1]:5173` (so the main game's saves aren't touched), reviews its own diff (the `code-review` skill, at low), updates the docs, and opens a PR that `Closes #N`, with a link to its playable preview. `/build #N ship` also turns on auto-merge, for small changes that don't need trying first. `/batch` starts several builds at once, one desktop-app session per ticket, after checking they won't touch the same files.
+5. **Build.** `/build #N` checks open PRs for overlap, makes a branch (`212-…`) from a fresh `origin/main` in its own worktree, claims the ticket by pushing that branch and commenting on the issue, builds it, runs `npm test`, checks it in the browser on `[::1]:5173` (so the main game's saves aren't touched), reviews its own diff (the `code-review` skill, at low), updates the docs, bumps the version (below), and opens a PR that `Closes #N`, with a link to its playable preview. `/build #N ship` also turns on auto-merge, for small changes that don't need trying first. `/batch` starts several builds at once, one desktop-app session per ticket, after checking they won't touch the same files.
 6. **Try.** `/try #N web|godot|both` starts that worktree's dev server (a port from 5174) or Godot viewer (a bridge port from 7980, scratch saves) in the Terminal panel, and says what to look at. Or play the PR preview on any device. Feedback given afterwards goes on the PR as a checklist and gets fixed on the same branch.
 7. **Land.** `/land #N` squash-merges the PR if CI is green (which closes the issue), or turns on auto-merge if CI is still running, so GitHub merges it once CI passes. It stops the branch's servers, deletes its branches, updates main and shows what's ready next. The app archives the session when its PR closes and tidies its worktree. `/land` alone sweeps up anything already merged.
+
+### Versions
+
+The game's version is `version` in `package.json` (the menu shows it as `v0.3.1 · <commit>`). Bryon's rule, from Nov 19:
+
+- **Every ticket's PR bumps the patch version** (0.3.0 → 0.3.1), once per PR.
+- **The minor version** (0.3.11 → 0.4.0) when a PR bumps the save version (`SAVE_VERSION` in `src/sim/save.ts`), or finishes the last open task of a feature.
+- **Major versions** are Bryon's, rarely and by hand.
+
+`/build` makes the bump in the PR, so its preview shows the new number. Parallel PRs all bump from the same number, and two identical bumps merge cleanly into one, so `/land` checks before merging: if main's version has moved on since the PR branched, it merges main in, makes the PR's bump again on top of main's (same kind), pushes, and lets auto-merge finish once CI passes again. One gap: two `ship` PRs whose auto-merges land at nearly the same moment (after `/land` armed them) can still land on one number; bump main by hand if that happens.
 
 ### Features
 
@@ -78,4 +88,6 @@ Ids: tickets and features go by issue number (`#212`, or just `212`). The old id
 - **Feedback goes on the PR**, so the fix stays with the change it belongs to, and the PR records what was asked for.
 - **`/land` does the cleanup the app and GitHub don't**, so branches and dev servers don't pile up, and it leaves the app's worktrees to the app rather than fighting over them.
 - **`/batch` checks for overlap before it fans out**, so parallel sessions don't produce PRs that conflict with each other.
+- **The version bumps in each PR, and `/land` re-bumps on merge**, so a preview shows the number it will ship as, and parallel PRs still get a number each.
+- **Every ticket says what delight it adds**, so a board full of friction fixes is visible as one.
 - **Conventional Commits** keep the history readable at a glance.

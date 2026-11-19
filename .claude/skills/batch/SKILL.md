@@ -20,6 +20,7 @@ Each ticket still gets the full `/build`: its own branch, worktree, PR and previ
 3. **Overlap**, the same quick conceptual check `/build` does (step 2 there), but across the batch too:
    - against open PRs: `gh pr list --state open --json number,title,headRefName,files --jq '.[] | {number, title, headRefName, files: [.files[].path]}'`
    - against each other: the same files, the same data file or the same system means they'd conflict.
+   Every PR bumps `package.json`'s version; that line doesn't count as overlap (`/land` re-bumps whichever lands second).
    Two Ready tickets that overlap but **belong together** (tasks of one feature touching the same files, a bug and its follow-up) go to **one** session as `/build #a #b`, the way Bryon has bundled them before (#183 + #184 + #186). Otherwise keep the first and leave the other for the next batch.
 4. If Bryon named the tickets, go on. If you picked them, show the list in one line each (`#437 S` title, and any bundles), and what you left out and why, then start them unless he says otherwise in the same breath. Ask only if something is genuinely unclear.
 

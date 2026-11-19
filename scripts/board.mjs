@@ -387,6 +387,25 @@ const breakdown = (f) =>
     .filter((l) => l.startsWith("- "))
     .map((l) => ({ line: l.slice(2), ticket: l.match(/→\s*(T-\d+|#\d+)/)?.[1] ?? null }));
 const lastHistory = (t) => t.since;
+/**
+ * What new decision or delight a ticket gives the player, from its "## Delight"
+ * section (#431): "yes" when it names one, "none" when it says none, null when
+ * it doesn't say (tickets from before the line).
+ */
+function delight(t) {
+  const text = section(t, "Delight").trim();
+  if (!text) return null;
+  return /^none\b/i.test(text) ? "none" : "yes";
+}
+/** "Delight: 3 of 12 ready, 9 of 40 open (25 don't say)." over the open tickets; null if none are open. */
+function delightLine(rows) {
+  const open = rows.filter((r) => !["done", "dropped"].includes(r.state));
+  if (!open.length) return null;
+  const ready = open.filter((r) => r.state === "ready");
+  const yes = (rs) => rs.filter((r) => delight(r.t) === "yes").length;
+  const unsaid = open.filter((r) => delight(r.t) === null).length;
+  return `Delight: ${yes(ready)} of ${ready.length} ready, ${yes(open)} of ${open.length} open${unsaid ? ` (${unsaid} don't say)` : ""}.`;
+}
 
 // ---- GitHub reads -----------------------------------------------------------
 
@@ -577,6 +596,8 @@ function writeBoard({ gh, rows, features }) {
     }
     out += "\n";
   }
+  const d = delightLine(rows);
+  if (d) out += `${d} A ticket's \`## Delight\` line says what new decision or delight it gives the player.\n`;
   writeFileSync(BOARD, out);
 }
 
@@ -760,6 +781,8 @@ async function menu() {
     }
   }
   if (!b.rows.some((r) => !["done", "dropped"].includes(r.state)) && !feats.length) lines.push("Nothing open on the board.");
+  const d = delightLine(b.rows);
+  if (d) lines.push("", d);
   const done = b.rows.filter((r) => r.state === "done").length;
   const featuresDone = b.features.filter((x) => x.state === "done").length;
   lines.push("", `${done} done${featuresDone ? ` (and ${plural(featuresDone, "feature")})` : ""}. Full board: ${BOARD}`);

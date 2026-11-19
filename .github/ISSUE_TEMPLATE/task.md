@@ -13,6 +13,9 @@ Anything that helps whoever builds it: where the code is, related tickets or dec
 ## Approach
 A likely way to do it, and what "done" looks like. Brief; the build session decides.
 
+## Delight
+What new decision or delight the player gets from this, in a line. "none" is fine: plenty of good tickets only fix friction.
+
 ## Docs to update
 Which docs the PR should change. Leave out if none.
 

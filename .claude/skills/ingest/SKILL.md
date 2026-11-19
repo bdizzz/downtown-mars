@@ -31,6 +31,9 @@ Turns the waiting notes into **tickets** (and, for items too big to build withou
    ## Approach
    A likely way to do it, and what "done" looks like. Brief; the build session decides.
 
+   ## Delight
+   What new decision or delight the player gets, in a line ("you choose which crew to send", "the dome lights up at dusk"), or "none". Be honest: most fixes and polish are "none", and that's fine.
+
    ## Docs to update
    Which docs the PR should change, e.g. "DECISIONS.md: dust no longer affects gyms", "GUIDE.md: Drilling". Leave out if none.
 
@@ -43,6 +46,6 @@ Turns the waiting notes into **tickets** (and, for items too big to build withou
 
    Sizes are for picking quick wins, so be honest: if it touches the sim and the UI and needs tests, it isn't an S. Something that would be an XL is usually a feature instead (4b).
 
-   **4b. Features.** `node scripts/board.mjs new feature "<title>" --notes 208` with its sections on stdin (the shape is `.github/ISSUE_TEMPLATE/feature.md`): `## Goal` (what Bryon wants and why, quoting him where it matters), `## Design` (what's decided so far, his ideas as he gave them, the context a task would need), `## Breakdown` ("Proposed; becomes tasks once this feature is agreed.", then one `- [ ]` line per likely task in build order, each small enough for one PR; a rough first cut is fine, /build refines it) and `## Open questions`. It starts as a draft; its tasks become tickets only once Bryon agrees it.
+   **4b. Features.** `node scripts/board.mjs new feature "<title>" --notes 208` with its sections on stdin (the shape is `.github/ISSUE_TEMPLATE/feature.md`): `## Goal` (what Bryon wants and why, quoting him where it matters), `## Design` (what's decided so far, his ideas as he gave them, the context a task would need), `## Delight` (as for tickets), `## Breakdown` ("Proposed; becomes tasks once this feature is agreed.", then one `- [ ]` line per likely task in build order, each small enough for one PR; a rough first cut is fine, /build refines it) and `## Open questions`. It starts as a draft; its tasks become tickets only once Bryon agrees it.
 5. `node scripts/board.mjs ingest-done`. It files away every waiting note that a ticket or feature lists, with what it became ("→ #214, #215"): local ones move to `notes-done.md`, GitHub ones are closed with that comment. Notes added while you worked stay in the inbox for next time. If it lists a note as still waiting that should have become something, fix that (`log … --notes`, or `close-note`) and run it again.
-6. Summarize in a few lines: the tickets and features made or updated (id, size, title; for a feature, its proposed breakdown in a line), notes closed with no ticket and why, then **the open questions**, numbered, so Bryon can answer them in one reply. When he answers: fold the answers into the tickets (`body` / `set-body`: tick the questions, update Problem/Approach), then `node scripts/board.mjs log <id> "questions answered"`.
+6. Summarize in a few lines: the tickets and features made or updated (id, size, title, and its delight if it has one; for a feature, its proposed breakdown in a line), notes closed with no ticket and why, then **the open questions**, numbered, so Bryon can answer them in one reply. When he answers: fold the answers into the tickets (`body` / `set-body`: tick the questions, update Problem/Approach), then `node scripts/board.mjs log <id> "questions answered"`.

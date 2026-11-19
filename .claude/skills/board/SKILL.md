@@ -9,7 +9,7 @@ description: Show the Downtown Mars playtest board (features, ready, needs answe
 2. Show it as **markdown tables**, not a code block, rebuilt from the output (keep every row and its wording; don't summarize):
    - **Features**: Feature · State · Title · Tasks (the line under each feature: its tasks' states, branch or PR). No age column here either.
    - Then one table per group in the output's order (Ready, Needs answers, Blocked, In flight, In review), each under a short bold heading with its count: Ticket · Size · Title · Notes (feature, what it waits on, PR or branch; blank if none). Leave out the age the output prints after each title. Leave out empty groups.
-   - The "N done" line and the BOARD.md path as one line after the tables, so he can open the full view.
+   - The "Delight: …" line (how many ready and open tickets give the player a new decision or delight, from their `## Delight` lines), then the "N done" line and the BOARD.md path as one line after the tables, so he can open the full view.
 3. Point out only what needs him:
    - notes waiting ("run /ingest")
    - tickets or features under "Needs answers": offer to go through their questions now

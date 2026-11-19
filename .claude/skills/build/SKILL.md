@@ -70,6 +70,11 @@ Work as CLAUDE.md says: brain and face, data in JSON, deterministic sim. Read on
 ## 6. Docs, commit, PR
 
 - Update the docs the ticket lists under "Docs to update", plus whatever the change makes stale: "Notes as built" in the relevant plan, `docs/GUIDE.md` for player-visible changes, `docs/DECISIONS.md` for design decisions, and `node scripts/room-status.mjs` if rooms changed. The README only if its short overview changes.
+- **Bump the version** (`version` in `package.json`, which Vite stamps into the menu; `package-lock.json` carries it twice too): `npm version <kind> --no-git-tag-version`, committed with the change. The kind:
+  - **minor** (0.3.11 → 0.4.0) when the PR bumps the save version (`SAVE_VERSION` in `src/sim/save.ts`), or the ticket is its feature's last open task (`show` on the feature: every other task done);
+  - **patch** (0.3.0 → 0.3.1) for every other ticket, docs and workflow ones included;
+  - **major**: never. That's Bryon's, by hand.
+  One bump per PR, however many tickets it closes. Parallel PRs all bump from the same number; `/land` makes the bump again on top of main's version if another PR landed first, so don't chase main for it. A feature's plan PR doesn't bump.
 - There's no ticket to mark done: the PR's `Closes #N` closes the issue when it merges into main, and `/land` closes it when it merges into a feature branch.
 - Commit in small logical steps, in the Conventional Commits format from CLAUDE.md ("Commit messages"), e.g. `fix(ui): keep the drill button clear of the room panel (#212)`, ending each message with the attribution line from the system reminder. `git push`.
 - Open the PR. Bryon is the only reviewer, so keep it short. `#N` is the ticket's issue number (`show` prints it; for several tickets, a `Closes` line each):
