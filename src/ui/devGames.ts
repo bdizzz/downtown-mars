@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { isDevBuild } from "./devBuild";
 // The dev games (#351): the dev saves in public/ (T-013, written by `npm run saves`),
 // offered in the menu's Load… screen so a tester can jump to a game at a given stage
 // without hunting for a file or playing for an hour. The dev server and PR previews
@@ -21,11 +22,8 @@ export const DEV_GAMES: readonly DevGame[] = [
   { name: "late", day: 120, what: "as big as the bots get while both holes are healthy" },
 ];
 
-/** Whether this build offers the dev games: the dev server, or a PR's preview build (a function, so Node scripts can import the list). */
-export function devGamesShown(): boolean {
-  const env = import.meta.env;
-  return !!env && (env.DEV || /^\d+$/.test(String(env.VITE_PR_NUMBER ?? "")));
-}
+/** Whether this build offers the dev games: the dev server, or a PR's preview build. */
+export const devGamesShown = isDevBuild;
 
 export const devGameLabel = (g: DevGame): string => g.name[0]!.toUpperCase() + g.name.slice(1);
 
