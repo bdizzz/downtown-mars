@@ -14,16 +14,20 @@ let humGain: GainNode | null = null;
 let noiseBuffer: AudioBuffer | null = null;
 
 export interface AudioSettings {
+  /** Off (a dev build until the player opts in, #539): no audio context is made, nothing plays. */
+  soundOn: boolean;
   volume: number;
   music: number;
   effects: number;
   ambience: number;
 }
 
-const settings: AudioSettings = { volume: 0.6, music: 0.5, effects: 1, ambience: 1 };
+// Off until the settings arrive, so a dev build never makes a sound before the player opts in.
+const settings: AudioSettings = { soundOn: false, volume: 0.6, music: 0.5, effects: 1, ambience: 1 };
 
 /** Call from a user gesture (click, key) to unlock audio. Safe to call repeatedly. */
 export function unlockAudio(): void {
+  if (!settings.soundOn) return;
   if (ctx) {
     if (ctx.state === "suspended") void ctx.resume();
     return;
@@ -47,6 +51,7 @@ export function unlockAudio(): void {
 }
 
 export function setAudioSettings(s: AudioSettings): void {
+  settings.soundOn = s.soundOn;
   settings.volume = s.volume;
   settings.music = s.music;
   settings.effects = s.effects;
@@ -61,6 +66,12 @@ export function musicOutput(): GainNode | null {
 
 function applySettings(): void {
   if (!ctx || !master || !musicBus || !sfxBus || !ambientBus) return;
+  // Turned off again: stop the context altogether (turning it back on resumes it).
+  if (!settings.soundOn) {
+    if (ctx.state === "running") void ctx.suspend();
+    return;
+  }
+  if (ctx.state === "suspended") void ctx.resume();
   const t = ctx.currentTime;
   master.gain.setTargetAtTime(settings.volume, t, 0.05);
   musicBus.gain.setTargetAtTime(settings.music, t, 0.3);

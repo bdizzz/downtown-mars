@@ -245,6 +245,12 @@ export function App() {
 
   useSounds(snapshot);
   useEffect(() => setAudioSettings(settings), [settings]);
+  // Turning sound on in a dev build (#539) is itself a tap, so audio can start straight away.
+  const soundWasOn = useRef(settings.soundOn);
+  useEffect(() => {
+    if (settings.soundOn && !soundWasOn.current) unlockAudio();
+    soundWasOn.current = settings.soundOn;
+  }, [settings.soundOn]);
   // The installed app's system bar: full screen needs a tap, so it's asked for when the
   // setting changes (a tap on the switch) and on any tap while it's on but not yet hidden
   // (the first after launch, or after the phone's back gesture left full screen).

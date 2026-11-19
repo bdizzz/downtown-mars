@@ -1,5 +1,6 @@
 import raw from "../../data/settings.json";
 import { canHideSystemBar } from "./systemBar";
+import { isDevBuild } from "./devBuild";
 
 // The settings as one table (data/settings.json): which section each sits in,
 // its name, a one-line hint and its control. The settings screen draws from it;
@@ -28,6 +29,7 @@ export interface SettingRow {
 /** Rows that apply only on some devices. */
 const WHEN = {
   installedAndroid: canHideSystemBar,
+  devBuild: isDevBuild,
 };
 
 export const SECTIONS = raw.sections as { id: SectionId; name: string }[];

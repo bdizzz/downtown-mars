@@ -3,6 +3,7 @@ import { cleanGraphics, DEFAULT_GRAPHICS, GRAPHICS_PRESETS, type Graphics } from
 import { clampCutAngle, DEFAULT_VIEW3D, isCamera, type View3d } from "../view/cameras";
 import { storageKey } from "./storageKey";
 import { defaultOf } from "./settingsTable";
+import { isDevBuild } from "./devBuild";
 
 // Player preferences, kept in browser storage. Reading or writing storage
 // can fail (private windows, blocked storage); the game then just uses the
@@ -16,6 +17,11 @@ export const VIEW_MODES: { id: ViewMode; name: string; hint: string }[] = [
 ];
 
 export interface Settings {
+  /**
+   * Sound at all (#539): a dev or test build starts silent, with no audio context, until the player
+   * turns this on in Settings; a release build has it always on (its row is hidden there).
+   */
+  soundOn: boolean;
   /** Master volume; the three below are buses under it (src/audio/sound.ts). */
   volume: number;
   music: number;
@@ -49,6 +55,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  soundOn: !isDevBuild(),
   volume: defaultOf("volume", "number"),
   music: defaultOf("music", "number"),
   effects: defaultOf("effects", "number"),
@@ -97,6 +104,8 @@ export function loadSettings(): Settings {
     const { quality3d: _old, sfx, ambient, ...rest } = stored;
     const sound = { effects: sfx === false ? 0 : DEFAULT_SETTINGS.effects, ambience: ambient === false ? 0 : DEFAULT_SETTINGS.ambience };
     const s: Settings = { ...DEFAULT_SETTINGS, ...sound, ...rest, graphics, view3d: cleanView3d(stored.view3d) };
+    // A release build always plays sound; the switch is only for dev and test builds.
+    if (!isDevBuild()) s.soundOn = true;
     return VIEW_MODES.some((m) => m.id === s.view) ? s : { ...s, view: DEFAULT_SETTINGS.view };
   } catch {
     return DEFAULT_SETTINGS;
