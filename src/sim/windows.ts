@@ -112,12 +112,25 @@ export function windowRefusal(room: RoomInstance | null | undefined, edges: stri
   return null;
 }
 
+/**
+ * The windows a room comes with, free (#505): a stairwell's walls onto the
+ * shaft, on every floor it spans, once it's built. Worked out, not stored, so
+ * a stack that grows a floor gets its glass too.
+ */
+export function builtInWindows(layout: Layout, room: RoomInstance): string[] {
+  const def = roomDef(room.type);
+  if (def.builtInWindows !== "shaft" || room.at.kind !== "ring" || room.planned || room.building) return [];
+  return shaftBorders(layout, room);
+}
+
 /** A room's windows that see something (a corridor filled in, or a plaza gone, leaves them blind), with what's across each. */
 export function glazedWalls(layout: Layout, room: RoomInstance): { edge: Edge; across: Across }[] {
-  if (!room.windows?.length || !glazable(room)) return [];
+  const built = builtInWindows(layout, room);
+  const bought = glazable(room) ? (room.windows ?? []) : [];
+  if (!built.length && !bought.length) return [];
   const own = ownCells(room);
   const out: { edge: Edge; across: Across }[] = [];
-  for (const id of room.windows) {
+  for (const id of new Set([...bought, ...built])) {
     const e = edgeById(layout.hole, id);
     if (!e) continue;
     const across = viewAcross(layout, e, own);

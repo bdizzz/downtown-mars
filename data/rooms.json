@@ -1561,7 +1561,8 @@
       "stacks": true,
       "stackNoun": "stairs",
       "buildHours": 8,
-      "family": "stairs"
+      "family": "stairs",
+      "builtInWindows": "shaft"
     },
     {
       "id": "spiral_stair",

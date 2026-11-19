@@ -289,7 +289,7 @@ The main shaft elevator is the spine, but stairs and extra elevators relieve it.
 
 | Room | Size | Staff | Uses | Makes | Neighbor effects | Build cost | Unlock |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Stairwell | S, spans 2–3 floors | 0 | — | Slow, cheap link between nearby floors; health +1 for regular users | — | R 8 | Start |
+| Stairwell | S, spans 2–3 floors | 0 | — | Slow, cheap link between nearby floors; health +1 for regular users. Comes with windows, free, in its walls onto the shaft (#505) | — | R 8 | Start |
 | Spiral stair (as built) | S, spans 2 floors | 0 | — | Compact decorative link; taken like an elevator in first person, not walked | Comfort +1 r1 | B 6, M 4 | Pop 200 |
 | Grand staircase | M, spans 2–3 floors | 0 | — | High-capacity link inside plazas | Comfort +1 r2 | B 20, glass 5 | First plaza |
 | Escalator (parked) | M, spans 1–2 floors | 0 | Power 1 | Fast, high capacity for short trips; boosts shops at both ends | Noise −1 r1 | M 10, Mc 2 | Pop 500 |
