@@ -1,3 +1,4 @@
+import { currentDifficulty, difficultyLine } from "../sim/difficulty";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -46,6 +47,8 @@ export interface SavesMessage {
   folder: string;
   /** `failed`: every hole failed (T-162), so it can't be loaded to play on. */
   slots: { slot: Slot; label: string; text: string | null; failed: boolean }[];
+  /** The game's difficulty, as a line for the game menu (F-014): it can't be changed. */
+  difficulty: string;
 }
 
 /** A slot holds a game in which every hole failed (T-162): kept to look back on, not played on. */
@@ -62,6 +65,7 @@ export function savesList(): SavesMessage {
   return {
     type: "saves",
     folder: dir,
+    difficulty: difficultyLine(currentDifficulty()),
     slots: SLOTS.map((slot) => {
       let text: string | null = null;
       let failed = false;

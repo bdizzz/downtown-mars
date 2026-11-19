@@ -25,6 +25,7 @@ import type { Spot } from "../view/reachView";
 import { advanceStep, FOLLOW, metGoals, pickGoal, shownGoal, tutorial } from "../ui/tutorialGoals";
 import { planFieldKey, planFieldMessage, planKey, planMessage, type FieldView } from "./plan";
 import { terrainKey, terrainMessage } from "./terrain";
+import { isLevel } from "../sim/difficulty";
 import { welcomeCard } from "../view/welcome";
 import { nextFailureCard, type FailureCard } from "../view/failure";
 import type { Snapshot } from "../sim/snapshot";
@@ -218,7 +219,7 @@ type BridgeMessage =
   /** First person: a floor's walking map (walkmap.ts). */
   | { type: "walkmap"; floor: number }
   /** The new game's welcome card was read (it's sent until then, to every viewer that connects). */
-  | { type: "welcomeSeen" }
+  | { type: "welcomeSeen"; difficulty?: string; veteran?: boolean }
   /** The failure card on screen (view/failure.ts) was read. */
   | { type: "failureSeen" };
 
@@ -451,6 +452,12 @@ const server = createServer((socket) => {
           } else send({ type: "notice", text: "Nothing saved there" });
         } else if (msg.type === "welcomeSeen") {
           welcomePending = false;
+          // The game behind the card is a normal one: another level (or a veteran start) makes it
+          // again on the same map before it runs (T-124), as the web does.
+          if (isLevel(msg.difficulty) && (msg.difficulty !== "normal" || msg.veteran)) {
+            host.onMessage({ type: "newGame", id: commandId++, difficulty: msg.difficulty, veteran: !!msg.veteran, sameSeed: true });
+            lastDay = dayOf(host.world());
+          }
         } else if (msg.type === "failureSeen") {
           failureCard = null;
         } else if (msg.type === "quit") {

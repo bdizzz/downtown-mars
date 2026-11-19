@@ -6,7 +6,7 @@ import type { Route } from "./rovers";
 import type { Relation } from "./culture";
 import type { Migration } from "./migration";
 import { network } from "./network";
-import { setDifficulty, type Level } from "./difficulty";
+import { landingKitFor, setDifficulty, type Level } from "./difficulty";
 import { createInitialState, type SimState } from "./state";
 
 // The world: shared time and every hole. Each hole is a SimState that the
@@ -49,8 +49,11 @@ export function nextHoleName(world: Pick<World, "holes">): string {
   return network.holeNames.find((n) => !used.has(n)) ?? `Hole ${world.holes.length + 1}`;
 }
 
-/** A new game at a difficulty: the data is scaled to it first, so the landing stock is too. */
-export function createWorld(cfg: SimConfig, seed = cfg.seed, difficulty: Level = "normal"): World {
+/**
+ * A new game at a difficulty: the data is scaled to it first, so the landing stock is too. The first
+ * hole lands with the level's kit (hard the bare one), or the bare kit for a veteran start (T-123).
+ */
+export function createWorld(cfg: SimConfig, seed = cfg.seed, difficulty: Level = "normal", veteran = false): World {
   setDifficulty(difficulty);
   const map = generateMap(seed);
   const site = chooseFirstSite(map, seed);
@@ -60,7 +63,7 @@ export function createWorld(cfg: SimConfig, seed = cfg.seed, difficulty: Level =
     site,
     deposits: depositsAt(map, site),
     seed: holeSeed(seed, 1),
-  }, cfg.landingKits.newGame);
+  }, difficulty === "normal" && !veteran ? cfg.landingKits.newGame : landingKitFor(difficulty, veteran));
   return { seed, tick: 0, holes: [first], nextHoleId: 2, map, mapUnlocked: false, convoys: [], routes: [], nextRouteId: 1, relations: {}, migrations: [], ...(difficulty !== "normal" ? { difficulty } : {}) };
 }
 

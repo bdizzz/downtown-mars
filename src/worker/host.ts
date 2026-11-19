@@ -225,8 +225,9 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       }
       case "newGame":
         // Each new game gets its own seed, so the map (and everything else random) differs.
-        replaceWorld(createWorld(config, (Math.random() * 0xffffffff) >>> 0 || 1, isLevel(msg.difficulty) ? msg.difficulty : "normal"));
-        speed = 1;
+        replaceWorld(createWorld(config, msg.sameSeed ? world.seed : (Math.random() * 0xffffffff) >>> 0 || 1, isLevel(msg.difficulty) ? msg.difficulty : "normal", !!msg.veteran));
+        // Made again behind the welcome card, it stays as paused as the one it replaces.
+        if (!msg.sameSeed) speed = 1;
         reply({ type: "loaded", id: msg.id, result: { ok: true } });
         break;
     }

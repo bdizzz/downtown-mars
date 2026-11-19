@@ -83,7 +83,8 @@ export function useSim() {
   );
 
   const newGame = useCallback(
-    async (difficulty?: Level): Promise<CommandResult> => (await ask<Extract<Reply, { type: "loaded" }>>((id) => ({ type: "newGame", id, difficulty }))).result,
+    async (opts: { difficulty?: Level; veteran?: boolean; sameSeed?: boolean } = {}): Promise<CommandResult> =>
+      (await ask<Extract<Reply, { type: "loaded" }>>((id) => ({ type: "newGame", id, ...opts }))).result,
     [ask],
   );
 
