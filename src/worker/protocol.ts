@@ -10,7 +10,8 @@ export type ToWorker =
   | { type: "command"; id: number; command: SimCommand }
   | { type: "save"; id: number }
   | { type: "load"; id: number; data: string }
-  | { type: "newGame"; id: number; difficulty?: Level }
+  /** A new game; `sameSeed` keeps the map and luck of the game being replaced (the welcome card's picker, T-123). */
+  | { type: "newGame"; id: number; difficulty?: Level; veteran?: boolean; sameSeed?: boolean }
   | { type: "setActiveHole"; holeId: number }
   | { type: "found"; id: number; site: { lat: number; lon: number } }
   | { type: "route"; id: number; action: RouteAction };

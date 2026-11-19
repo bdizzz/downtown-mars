@@ -944,6 +944,7 @@ export function App() {
           still={titleStill}
           {...menuActions}
           error={menuError}
+          difficulty={snapshot?.difficulty}
           tutorial={tutorialOn}
           onTutorial={(on) => {
             setTutorialOn(on);
@@ -958,8 +959,13 @@ export function App() {
       )}
       {welcome && (
         <Welcome
-          onClose={(guided) => {
+          onClose={async ({ difficulty, veteran, guided }) => {
             setWelcome(false);
+            // The game behind the card is a normal one; another level (or a veteran start) makes it again
+            // on the same map, before a single tick has run (T-123).
+            if (difficulty !== "normal" || veteran) {
+              await newGame({ difficulty, veteran, sameSeed: true });
+            }
             // The guided tutorial sets its own pace once its first step comes back in a snapshot.
             if (guided) send({ type: "setGuide", guide: startGuide() });
             else setSpeed(resumeSpeed.current);

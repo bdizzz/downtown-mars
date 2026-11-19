@@ -130,7 +130,8 @@ export function run(days: number, kit: LandingKitName = "bare"): { state: SimSta
     if (t % 10 === 0) {
       while (next < PLAN.length) {
         const p = PLAN[next]!;
-        const r = cmd({ type: "build", room: p.room, at: p.at });
+        // Confirmed: a corridor the bot carved earlier may cross the spot (slower building on hard, T-125); the room fills it in.
+        const r = cmd({ type: "build", room: p.room, at: p.at, confirmed: true });
         if (!r.ok) {
           // Short of rock: dig some out while waiting.
           if (/more rock/.test(r.reason)) quarry(s);

@@ -75,7 +75,7 @@ Bryon, Oct 2, 2026: carry on, Mac only for now (no Windows export yet). Chosen: 
 
 ### Status and next (Oct 4, 2026)
 
-The viewer plays the whole game: every camera (Free view, Cutaway, first person) and the plan with its overlays; building with the room card and effect halo, corridor chains, demolish and undo; the room panel; the HUD with its tooltips; office, charts, map, network and colony panels; the tutorial, help and settings; saves shared with the web.
+The viewer plays the whole game: every camera (Free view, Cutaway, first person) and the plan with its overlays; building with the room card and effect halo, corridor chains, demolish and undo; the room panel; the HUD with its tooltips; office, charts, map, network and colony panels; the tutorial, help and settings; saves shared with the web. New games ask for a difficulty on the welcome card, as the web; the web's guided tutorial (and so easy's tick box for it) isn't in the viewer yet.
 
 Still to do, roughly in order of value:
 

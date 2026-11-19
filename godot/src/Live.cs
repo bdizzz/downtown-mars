@@ -320,9 +320,19 @@ public partial class Live : Node3D
         _welcome = new Welcome { Name = "Welcome" };
         _welcome.Shown = open =>
         {
+            // Read: say so first, with the difficulty picked (T-124), so a remade game is in place before it runs.
+            if (!open)
+            {
+                var seen = new Dictionary<string, object> { ["type"] = "welcomeSeen" };
+                if (_welcome.Level != null)
+                {
+                    seen["difficulty"] = _welcome.Level;
+                    seen["veteran"] = _welcome.Veteran;
+                }
+                _bridge.Send(seen);
+            }
             SetSpeed(open ? 0 : 1);
             _hud.Visible = !open && !NoHud;
-            if (!open) _bridge.Send(new Dictionary<string, object> { ["type"] = "welcomeSeen" });
         };
         var welcomeLayer = new CanvasLayer { Layer = 2, Name = "WelcomeLayer" };
         AddChild(welcomeLayer);

@@ -9,7 +9,8 @@ import roomsJson from "../data/rooms.json";
 import { config } from "../src/sim/config";
 import { CONDITION } from "../src/sim/condition";
 import { missingCost, siteRefusal } from "../src/sim/costs";
-import { DIFFICULTY, factor, knobValues, LEVELS, setDifficulty, currentDifficulty, type Knob } from "../src/sim/difficulty";
+import { DIFFICULTY, difficultyLine, factor, knobValues, landingKitFor, LEVELS, setDifficulty, currentDifficulty, type Knob } from "../src/sim/difficulty";
+import { welcomeCard } from "../src/view/welcome";
 import { ticksToDig } from "../src/sim/digging";
 import { roomDef, roomDefs, roomFamilies } from "../src/sim/rooms";
 import { construction } from "../src/sim/construction";
@@ -134,5 +135,49 @@ describe("difficulty (T-122)", () => {
     expect(currentDifficulty()).toBe("normal");
     host.onMessage({ type: "load", id: 4, data: saved?.type === "saved" ? saved.data : "" });
     expect(currentDifficulty()).toBe("hard");
+  });
+
+  it("each level lands with its kit: hard the bare one, normal the full one or a veteran start (T-123)", () => {
+    expect(landingKitFor("easy")).toBe("full");
+    expect(landingKitFor("normal")).toBe("full");
+    expect(landingKitFor("normal", true)).toBe("bare");
+    expect(landingKitFor("hard")).toBe("bare");
+    // Only normal offers the veteran start.
+    expect(landingKitFor("easy", true)).toBe("full");
+    const rooms = (w: ReturnType<typeof createWorld>) => w.holes[0]!.layout.rooms.length;
+    const full = rooms(createWorld(config, 5));
+    expect(rooms(createWorld(config, 5, "normal", true))).toBeLessThan(full);
+    expect(rooms(createWorld(config, 5, "hard"))).toBe(rooms(createWorld(config, 5, "normal", true)));
+    expect(rooms(createWorld(config, 5, "easy"))).toBe(full);
+  });
+
+  it("easy's bigger landing stock all fits in the pod (T-125)", () => {
+    for (const level of LEVELS) {
+      const w = createWorld(config, 5, level);
+      const r = w.holes[0]!.resources;
+      for (const [id, n] of Object.entries(config.startingStock)) if (n > 0) expect(r[id], `${level} ${id}`).toBeGreaterThan(0);
+    }
+  });
+
+  it("the welcome card offers the levels, easy ticking the guided tutorial and normal the veteran start", () => {
+    const d = welcomeCard().difficulty;
+    expect(d.picked).toBe("normal");
+    expect(d.levels.map((l) => l.id)).toEqual(LEVELS);
+    expect(d.levels.find((l) => l.id === "easy")!.guided).toBe(true);
+    expect(d.levels.filter((l) => l.veteran).map((l) => l.id)).toEqual(["normal"]);
+    expect(difficultyLine("hard")).toContain("Hard");
+  });
+
+  it("the welcome card's pick makes the game again on the same map, still paused (T-123)", () => {
+    const replies: FromWorker[] = [];
+    const host = createSimHost((m) => replies.push(m));
+    host.onMessage({ type: "newGame", id: 1 });
+    host.onMessage({ type: "setSpeed", speed: 0 });
+    const seed = host.world().seed;
+    host.onMessage({ type: "newGame", id: 2, difficulty: "hard", sameSeed: true });
+    expect(host.world().seed).toBe(seed);
+    expect(host.world().difficulty).toBe("hard");
+    const snap = replies.filter((m) => m.type === "snapshot").at(-1);
+    expect(snap?.type === "snapshot" && snap.speed).toBe(0);
   });
 });

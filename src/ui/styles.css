@@ -1650,3 +1650,15 @@ kbd {
   .main:has(.floor-picker) > .inspector { --rail: 92px; }
   .messages { left: 50%; right: auto; transform: translateX(-50%); align-items: center; }
 }
+
+/* The welcome card's difficulty picker (F-014, T-123). */
+.welcome .welcome-difficulty { border: 1px solid rgba(160, 122, 92, 0.35); border-radius: 8px; padding: 10px 12px 12px; margin: 4px 0 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.welcome .welcome-difficulty legend { padding: 0 6px; color: var(--muted); font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+.welcome .welcome-levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.welcome .welcome-levels button { text-align: center; }
+.welcome .welcome-levels button.on { border-color: var(--accent); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.welcome .welcome-hint { font-size: 14px; color: var(--muted); min-height: 2.9em; }
+.welcome .welcome-option { display: flex; gap: 8px; align-items: flex-start; font-size: 15px; cursor: pointer; }
+.welcome .welcome-option input { margin-top: 3px; accent-color: var(--accent); }
+.welcome .welcome-option .k { display: block; color: var(--muted); font-size: 12.5px; }
+.menu-difficulty { margin: -4px 0 4px; color: var(--muted); font-size: 12.5px; }

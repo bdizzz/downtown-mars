@@ -15,6 +15,8 @@ public partial class GameMenu : Control
     readonly Action<object> _send;
     readonly VBoxContainer _rows = new();
     readonly Label _folder = new();
+    /// <summary>The game's difficulty (F-014), shown under the title; it can't be changed.</summary>
+    readonly Label _difficulty = new() { AutowrapMode = TextServer.AutowrapMode.WordSmart, HorizontalAlignment = HorizontalAlignment.Center };
     readonly FileDialog _import = new() { FileMode = FileDialog.FileModeEnum.OpenFile, Access = FileDialog.AccessEnum.Filesystem, Filters = new[] { "*.json ; Downtown Mars saves" }, Title = "Import a save file", UseNativeDialog = true };
     readonly FileDialog _export = new() { FileMode = FileDialog.FileModeEnum.SaveFile, Access = FileDialog.AccessEnum.Filesystem, Filters = new[] { "*.json ; Downtown Mars saves" }, Title = "Export the game", UseNativeDialog = true };
     readonly ConfirmationDialog _confirmNew = new() { Title = "New game?", DialogText = "Start a new colony? The current game is lost unless it's saved.", OkButtonText = "New game" };
@@ -110,6 +112,7 @@ public partial class GameMenu : Control
             _slots.Add((s.GetProperty("slot").GetString()!, s.GetProperty("label").GetString()!, s.GetProperty("text").ValueKind == JsonValueKind.String ? s.GetProperty("text").GetString() : null,
                 s.TryGetProperty("failed", out var failed) && failed.GetBoolean()));
         _folder.Text = $"Saves are kept in {msg.GetProperty("folder").GetString()}";
+        _difficulty.Text = msg.TryGetProperty("difficulty", out var d) ? d.GetString() : "";
         Build();
         if (Visible) Refocus();
     }
@@ -135,13 +138,16 @@ public partial class GameMenu : Control
         foreach (var c in _rows.GetChildren())
         {
             _rows.RemoveChild(c);
-            if (c != _folder) c.QueueFree();
+            if (c != _folder && c != _difficulty) c.QueueFree();
         }
         _first = null;
         var title = new Label { Text = "Downtown Mars", HorizontalAlignment = HorizontalAlignment.Center };
         title.AddThemeFontSizeOverride("font_size", 26);
         title.AddThemeColorOverride("font_color", new Color("#e8834a"));
         _rows.AddChild(title);
+        _difficulty.AddThemeFontSizeOverride("font_size", 13);
+        _difficulty.AddThemeColorOverride("font_color", new Color("#b8a490"));
+        _rows.AddChild(_difficulty);
         if (!_over) Add("Resume", () => Close());
         Heading("Save");
         foreach (var (slot, label, text, _) in _slots)

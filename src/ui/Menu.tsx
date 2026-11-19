@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { difficultyLine, type Level } from "../sim/difficulty";
 import { DEV_GAMES, devGameLabel, devGamesShown, type DevGame } from "./devGames";
 import { describeSave, listSaves, SLOTS, slotLabel, type Slot } from "./saves";
 import type { Settings } from "./settings";
@@ -20,6 +21,8 @@ interface Props {
   onLoadDev: (game: DevGame) => void;
   onQuitToTitle: () => void;
   error: string | null;
+  /** The game's difficulty, shown while paused; it can't be changed (F-014). */
+  difficulty?: Level;
   tutorial: boolean;
   onTutorial: (on: boolean) => void;
   settings: Settings;
@@ -114,6 +117,7 @@ export function Menu(props: Props) {
         aria-label={heading ?? "Downtown Mars"}
       >
         {heading && <h2>{heading}</h2>}
+        {inGame && view === "main" && !confirm && props.difficulty && <p className="menu-difficulty">{difficultyLine(props.difficulty)}</p>}
 
         {error && (
           <p className="menu-error" role="alert">

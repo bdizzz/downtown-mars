@@ -6,6 +6,7 @@ import corridorsRaw from "../../data/corridors.json";
 import eventsRaw from "../../data/events.json";
 import materialsRaw from "../../data/materials.json";
 import roomsRaw from "../../data/rooms.json";
+import type { LandingKitName } from "./config";
 
 // Difficulty (F-014): easy, normal or hard, chosen for a new game and saved
 // with it. Each level is a set of multipliers (data/difficulty.json) on the
@@ -19,9 +20,22 @@ import roomsRaw from "../../data/rooms.json";
 export type Level = "easy" | "normal" | "hard";
 export type Knob = keyof (typeof raw.factors)["normal"];
 
+export interface LevelInfo {
+  id: Level;
+  name: string;
+  hint: string;
+  /** The landing kit its new game gets. */
+  kit: LandingKitName;
+  /** Offers the bare kit instead, as a veteran start. */
+  veteran: boolean;
+  /** The guided tutorial is ticked to begin with. */
+  guided: boolean;
+}
+
 export const DIFFICULTY = raw as unknown as {
   default: Level;
-  levels: { id: Level; name: string; hint: string }[];
+  picker: { label: string; veteran: string; veteranNote: string; guided: string; shown: string };
+  levels: LevelInfo[];
   factors: Record<Level, Record<Knob, number>>;
 };
 
@@ -31,13 +45,28 @@ export function isLevel(v: unknown): v is Level {
   return typeof v === "string" && (LEVELS as string[]).includes(v);
 }
 
+export function levelInfo(level: Level): LevelInfo {
+  return DIFFICULTY.levels.find((l) => l.id === level)!;
+}
+
+/** The landing kit a new game at a level gets: the level's own, or the bare kit for a veteran start where it's offered. */
+export function landingKitFor(level: Level, veteran = false): LandingKitName {
+  const l = levelInfo(level);
+  return veteran && l.veteran ? "bare" : l.kit;
+}
+
+/** "Difficulty: Hard. …", shown in the game (the pause menu), where it can't be changed. */
+export function difficultyLine(level: Level): string {
+  return DIFFICULTY.picker.shown.replace("{level}", levelInfo(level).name);
+}
+
 /** A level's multiplier for one knob. */
 export function factor(level: Level, knob: Knob): number {
   return DIFFICULTY.factors[level][knob];
 }
 
-/** How a scaled number is kept: whole (costs, thresholds, ticks), at most 1 (a chance), or as it comes. */
-type Keep = "whole" | "chance" | "exact";
+/** How a scaled number is kept: whole (costs, thresholds, ticks), at most 1 (a chance), whole and never below as written (room), or as it comes. */
+type Keep = "whole" | "chance" | "room" | "exact";
 
 interface Target {
   obj: Record<string, number>;
@@ -100,6 +129,9 @@ const mat = materialsRaw as unknown as { walls: Obj[]; floorings: Obj[] };
 const cor = corridorsRaw as unknown as { gallery: { cost: Obj }; bulkhead: { cost: Obj }; finishes: { cost: Obj }[] };
 
 addAll(cfg.startingStock, "startingStock", "whole");
+// The landing pod holds the landing stock: on easy it holds the more there is (or the extra is thrown
+// away the moment the game starts, T-125), and on hard it keeps its room.
+add((roomsRaw.rooms as Obj[]).find((r) => r.id === "landing_pod"), "storage", "startingStock", "room");
 
 for (const r of roomsRaw.rooms as Obj[]) {
   addAll(r.cost, "buildCost", "whole");
@@ -161,6 +193,7 @@ export function setDifficulty(level: Level = "normal"): void {
     }
     const v = t.base * f;
     // A cost or threshold that's there stays at least 1, so nothing turns free by rounding.
-    t.obj[t.key] = t.keep === "whole" ? (t.base > 0 ? Math.max(1, Math.round(v)) : Math.round(v)) : t.keep === "chance" ? Math.min(1, v) : v;
+    t.obj[t.key] =
+      t.keep === "whole" ? (t.base > 0 ? Math.max(1, Math.round(v)) : Math.round(v)) : t.keep === "chance" ? Math.min(1, v) : t.keep === "room" ? Math.max(t.base, Math.round(v)) : v;
   }
 }
