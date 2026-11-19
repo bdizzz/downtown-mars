@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { setAdults } from "../src/sim/people";
 import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
 import { diagnose } from "../src/sim/diagnosis";
@@ -31,9 +32,9 @@ function withRooms(rooms: [string, Location][]): SimState {
     const c = applyCommand(s, { type: "connectRoom", roomId: r.roomId!, finish: "rock" });
     if (!c.ok) throw new Error(`${room}: ${c.reason}`);
   }
-  s.population.count = s.happiness.pools.reduce((n, p) => n + p.capacity, 0) || s.population.count;
+  setAdults(s, s.happiness.pools.reduce((n, p) => n + p.capacity, 0) || s.population.count, config);
   updateHappiness(s, config, true);
-  s.population.count = s.happiness.pools.reduce((n, p) => n + p.capacity, 0);
+  setAdults(s, s.happiness.pools.reduce((n, p) => n + p.capacity, 0), config);
   updateHappiness(s, config, true);
   return s;
 }

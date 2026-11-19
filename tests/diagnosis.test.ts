@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { setAdults } from "../src/sim/people";
 import { applyCommand } from "../src/sim/commands";
 import { airAmount } from "../src/sim/air";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
@@ -79,7 +80,7 @@ describe("diagnosis: happiness", () => {
   it("names the noise next door, and the home that hears it", () => {
     const s = withRooms([["life_support", ring(1, 1, 1, 4)], ["bunk_dorm", ring(1, 1, 5, 2)]]);
     const dorm = s.layout.rooms.find((r) => r.type === "bunk_dorm")!;
-    s.population.count = s.happiness.pools.reduce((n, p) => n + p.capacity, 0);
+    setAdults(s, s.happiness.pools.reduce((n, p) => n + p.capacity, 0), config);
     updateHappiness(s, config, true);
     const noise = diagnose(s, config).happiness.causes.find((c) => c.id === "noise")!;
     expect(noise.amount).toBeLessThan(0);
@@ -89,7 +90,7 @@ describe("diagnosis: happiness", () => {
 
   it("names the homeless when there aren't enough beds", () => {
     const s = createInitialState(config);
-    s.population.count = s.happiness.pools.reduce((n, p) => n + p.capacity, 0) + 10;
+    setAdults(s, s.happiness.pools.reduce((n, p) => n + p.capacity, 0) + 10, config);
     updateHappiness(s, config, true);
     const d = diagnose(s, config).happiness;
     const homeless = d.causes.find((c) => c.id === "homeless")!;
@@ -99,7 +100,7 @@ describe("diagnosis: happiness", () => {
 
   it("the causes add up to where happiness is heading", () => {
     const s = withRooms([["life_support", ring(1, 1, 1, 4)], ["bunk_dorm", ring(1, 1, 5, 2)]]);
-    s.population.count = 12;
+    setAdults(s, 12, config);
     updateHappiness(s, config, true);
     const h = s.happiness;
     const glow = h.afterglow ?? 0;

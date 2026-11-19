@@ -82,12 +82,21 @@ describe("happiness", () => {
     expect(windowComfort(s.layout, home, config)).toBeCloseTo(half);
   });
 
-  it("colonists move into the best homes first", () => {
+  it("colonists keep their beds, and newcomers with no job take the best free one", () => {
     const s = withRooms([["bunk_dorm", ring(1, 1, 1, 2)]]);
     const total = s.happiness.pools.reduce((n, p) => n + p.residents, 0);
     expect(total).toBe(20);
-    const best = [...s.happiness.pools].sort((a, b) => b.target - a.target)[0]!;
-    expect(best.residents).toBe(Math.min(best.capacity, 20));
+    // Nobody is turned out of a bed: the landing pod's people stay put when a better home opens.
+    const before = s.colonists!.home.slice();
+    updateHappiness(s, config, true);
+    expect(s.colonists!.home).toEqual(before);
+    // A child born now (no job) takes a bed in the best home with one free.
+    const best = s.happiness.pools.filter((p) => p.residents < p.capacity).sort((a, b) => b.target - a.target || a.roomId - b.roomId)[0]!;
+    s.population.cohorts.push({ stage: "child", count: 1, until: s.tick + 1e6 });
+    s.population.count += 1;
+    updateHappiness(s, config, true);
+    const child = s.colonists!.stage.indexOf(0);
+    expect(s.colonists!.home[child]).toBe(best.roomId);
   });
 
   it("eases toward a new target instead of jumping", () => {

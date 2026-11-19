@@ -27,6 +27,15 @@ export interface PeopleReport {
   upcoming: string[];
 }
 
+/** How far people walk, on average: bed to work, and bed to the nearest galley (#525). */
+function walks(s: Snapshot): string {
+  const n = s.happiness.needs;
+  if (!n || (!n.commuteM && !n.foodM)) return "—";
+  const m = (x: number) => `${Math.round(x / 10) * 10} m`;
+  const parts = [n.commuteM ? `${m(n.commuteM)} to work` : "", n.foodM ? `${m(n.foodM)} to a galley` : ""].filter(Boolean);
+  return `about ${parts.join(", ")}: people take beds near their work, and swap now and then to get nearer`;
+}
+
 export function peopleReport(s: Snapshot): PeopleReport {
   const b = s.births;
   const school = s.care.school;
@@ -56,6 +65,7 @@ export function peopleReport(s: Snapshot): PeopleReport {
         text: !clinic || clinic.who === 0 ? "—" : clinic.missing > 0.5 ? `${num(clinic.missing)} of ${clinic.who} without a clinic within reach: health suffers` : "everyone has a clinic within reach",
       },
       { label: "Meals", text: dining(s) },
+      { label: "Walks", text: walks(s) },
     ],
     departed: s.rest.composting
       ? "Under Return to the soil, the dead become soil for the farms."

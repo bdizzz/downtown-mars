@@ -38,6 +38,8 @@
     "airQuality": { "label": "stale air", "field": "airQuality", "factor": "health", "text": "Stale air in {homes}", "fix": "Stale air rides the corridors too: a bulkhead keeps it in with the industry (smelters). A ventilation hub or green space freshens it; outer rings are staler." },
     "crowding": { "label": "crowding", "factor": "health", "text": "Crowded: {homes}", "fix": "More homes, so fewer people share each one." },
     "neighbourHealth": { "label": "neighbours", "field": "health", "factor": "health", "text": "Healthy or unhealthy neighbours", "fix": "Keep homes away from industry and near clinics." },
-    "amenityHealth": { "label": "gyms", "factor": "health", "text": "Gyms nearby" }
+    "amenityHealth": { "label": "gyms", "factor": "health", "text": "Gyms nearby" },
+    "commute": { "label": "commute", "factor": "comfort", "text": "Long walks to work: {homes}", "fix": "Homes nearer the workplaces, or workplaces nearer the homes: people take the bed nearest their job, and swap to get nearer." },
+    "foodWalk": { "label": "walk to a galley", "factor": "comfort", "text": "Long walks to a galley: {homes}", "fix": "A galley or canteen nearer the homes." }
   }
 }
