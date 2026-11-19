@@ -63,7 +63,7 @@ One migration, in step 2, with a version bump:
 - **Ring 2's slots double:** a room at slot s, width w becomes slot 2s, width 2w (same angles, same place). Radial edge ids on ring 2 double their index (`R{floor}.2.{i}` → `.{2i}`). Arc pieces on circle 1 (between rings 1 and 2) are cut at the new ring-2 boundaries, so a corridor on one old piece becomes two with the same finish and jobs. Circle 2's cuts don't change. Bulkheads, windows, doors and construction jobs follow their edges.
 - **Rooms bigger than their standard footprint shrink in place** to it, keeping the end with their door. The freed slots stay dug as empty space. (Open question 1.) Step 3 reuses the same rule when room widths change.
 - **The ring-2/3 boundary moves out** from 30 m to 31.6 m. Ring 3's rooms get shallower and refit their furniture by themselves.
-- The dev saves in `public/` are re-saved at the new version. One old one stays at its version to keep the migration path tested.
+- The dev saves in `public/` are migrated and re-saved at the new version in step 2, then regrown from scratch in step 4.
 
 ## Steps
 
@@ -72,8 +72,15 @@ Each is one PR and leaves the game working.
 1. **Per-ring radii on the hole** (M). `hole.ringRadiiM` and `ringRadii` in `sim/geometry.ts`, with every fixed-depth use moved over: sim, 3D, 2D, bridge, Godot's scenery. Still 10 m each, so nothing changes on screen. Tests check that each ring's radii match today's.
 2. **Equal-area rings at 9-18-18** (L, breaking save). `geometry.ringSlots` and `equalAreaRings` in data; the migration above; dev saves re-saved; the landing kits re-placed (ring 2 slot numbers double); playthrough bars checked. Docs: `CLAUDE.md` core spatial model, `DESIGN.md`, `DECISIONS.md`, `GUIDE.md`.
 3. **Rooms sized by ideal area** (L). Widths in `rooms.json`, 3-slot rooms, output by own footprint, size classes re-picked, templates for the new shapes, existing rooms shrunk, `ROOMS.md` updated, playthroughs and balance checked.
-4. **Busier templates, utilities and services** (M). Heater, radiator, ventilation hub, gas tank, battery bank, storeroom, waste storage, site office, cleaning service, maintenance.
-5. **Busier templates, the rest** (M). Kitchen, hospital, gym, machine shop, brickworks, glassworks, crypt, restroom, stairs and elevators, plazas and the park.
+4. **Rebuild the dev saves** (M). Steps 2 and 3 only migrate the dev saves, so they're old layouts squeezed onto the new grid. This step regrows them:
+   - Lay out the network bot's opening plans and the landing kits for 9-18-18 and the new room sizes. They still name grid slots (`tests/adaptive.ts`, `tests/netbot.ts`, `config.landingKits`).
+   - Rerun `npm run saves`, and check with `--probe` that the moments in `src/ui/devGames.ts` (early, mid, network, late) still land on healthy, interesting games, moving the days if not.
+   - Keep one save at the old version as a fixture, so the migration stays tested (`tests/devSaves.test.ts`).
+   - Retake any README or GUIDE screenshots taken from them.
+
+   It comes before the template passes so those can be checked on grown games.
+5. **Busier templates, utilities and services** (M). Heater, radiator, ventilation hub, gas tank, battery bank, storeroom, waste storage, site office, cleaning service, maintenance.
+6. **Busier templates, the rest** (M). Kitchen, hospital, gym, machine shop, brickworks, glassworks, crypt, restroom, stairs and elevators, plazas and the park.
 
 ## Open questions
 
