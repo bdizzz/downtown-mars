@@ -123,6 +123,34 @@ describe("windows", () => {
     expect(windowComfort(s.layout, roomOf(s, lab))).toBeCloseTo(config.windows.view.public);
   });
 
+  it("stairwells come glazed onto the shaft, free, on every floor they span (#505)", () => {
+    const s = site();
+    s.layout.hole.floors = 3;
+    ensureFloors(s.layout);
+    const glass = s.resources.glass;
+    const stairs = build(s, "stairwell", ring(1, 1, 4));
+    // While it's going up, no glass yet.
+    expect(glazedWalls(s.layout, { ...roomOf(s, stairs), building: true })).toEqual([]);
+    const shaftSide = (id: number) => glazedWalls(s.layout, roomOf(s, id)).filter((w) => w.across === "shaft").map((w) => w.edge.floor);
+    expect(shaftSide(stairs)).toEqual([1, 2]);
+    // Free: no glass spent, and nothing kept on the room (they're worked out, not bought).
+    expect(s.resources.glass).toBe(glass);
+    expect(roomOf(s, stairs).windows).toBeUndefined();
+    // Where no tube runs in front, a wall of glass onto the open shaft.
+    expect(openingsOf(s.layout, roomOf(s, stairs))!.windows.get(galleryEdges(s.layout.hole, 2)[4]!.id)).toBeDefined();
+    // Extended a floor down: the new floor's shaft wall is glazed too.
+    expect(applyCommand(s, { type: "build", room: "stairwell", at: ring(2, 1, 4) }).ok).toBe(true);
+    applyCommand(s, { type: "consoleFinish" });
+    expect(shaftSide(stairs)).toEqual([1, 2, 3]);
+    // Still no buying or selling them with the windows tool: a walk-through room.
+    const edge = galleryEdges(s.layout.hole, 1)[4]!.id;
+    expect(applyCommand(s, { type: "setWindows", roomId: stairs, edges: [edge], on: false }).ok).toBe(false);
+    // Off the shaft (ring 2), none.
+    const inner = build(s, "stairwell", ring(1, 2, 8));
+    applyCommand(s, { type: "consoleFinish" });
+    expect(glazedWalls(s.layout, roomOf(s, inner))).toEqual([]);
+  });
+
   it("keep furniture off the glass: a glazed wall isn't solid", () => {
     const s = site();
     const dorm = build(s, "bunk_dorm", ring(1, 1, 1, 2));

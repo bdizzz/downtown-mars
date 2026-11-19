@@ -108,6 +108,8 @@ export interface RoomDef {
   excavationOnly?: boolean;
   /** Walk-through: every side counts as a corridor, so neighbours open onto it. */
   public?: boolean;
+  /** Comes glazed, free: "shaft" puts windows in every wall it has onto the shaft, on every floor, once it's built (stairwells, #505). */
+  builtInWindows?: "shaft";
   /** Moves people between floors in a car: people ride it, air doesn't (elevators). */
   lift?: boolean;
   /** A working one lets colonists have children. */
