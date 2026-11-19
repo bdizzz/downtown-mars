@@ -10,6 +10,9 @@ What Bryon wants and why, in a few sentences. Quote his phrasing where it matter
 ## Design
 What's decided so far, his ideas as he gave them, and the context a task would need.
 
+## Delight
+What new decision or delight the player gets from this, in a line, or "none".
+
 ## Breakdown
 Proposed; becomes tasks once this feature is agreed.
 - [ ] One line per likely task, in build order, each small enough for one PR.

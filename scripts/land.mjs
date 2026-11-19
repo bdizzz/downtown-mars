@@ -32,6 +32,14 @@
 // dropped first: main is merged in keeping the deletion, and that's pushed, so
 // its CI runs again before it lands.
 //
+// Versions (#431): each ticket's PR bumps package.json's version (patch, or
+// minor for a feature's last task or a save-version bump). Parallel PRs all
+// bump from the same number, and two identical bumps merge cleanly into one,
+// so before merging, a PR whose base has moved to a new version since it
+// branched is brought up to date: main merged in, and its bump made again on
+// top of main's version (same kind: patch, minor or major), then pushed and
+// auto-merged once CI passes again.
+//
 // Worktrees: the desktop app makes its own (`.claude/worktrees/<slug>-<6 hex>`),
 // archives a session when its PR closes, and reuses the folder for later
 // sessions, so those are left to it: their servers are stopped and their
@@ -45,7 +53,7 @@
 // working directory is inside the worktree, Claude's own processes aside.
 
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 
 const KEEP = new Set(["main", "HEAD", "pr-assets"]);
@@ -317,6 +325,71 @@ function dropTickets(branch, base) {
   }
 }
 
+/** package.json's version at a ref, or null. */
+const versionAt = (ref) => {
+  try {
+    return JSON.parse(sh(`git show "${ref}:package.json"`)).version ?? null;
+  } catch {
+    return null;
+  }
+};
+const parts = (v) => v.split(".").map(Number);
+/** Which part a bump from → to changed: "major", "minor", "patch", or null if none. */
+function bumpKind(from, to) {
+  const [a, b] = [parts(from), parts(to)];
+  return a[0] !== b[0] ? "major" : a[1] !== b[1] ? "minor" : a[2] !== b[2] ? "patch" : null;
+}
+function bump(v, kind) {
+  const [M, m, p] = parts(v);
+  return kind === "major" ? `${M + 1}.0.0` : kind === "minor" ? `${M}.${m + 1}.0` : `${M}.${m}.${p + 1}`;
+}
+/** Set the version in a checkout's package.json and package-lock.json (its root and packages[""]), keeping their formatting. */
+function setVersion(dir, v) {
+  for (const [file, n] of [["package.json", 1], ["package-lock.json", 2]]) {
+    const path = join(dir, file);
+    if (!existsSync(path)) continue;
+    let left = n;
+    writeFileSync(path, readFileSync(path, "utf8").replace(/"version": "[^"]*"/g, (m) => (left-- > 0 ? `"version": "${v}"` : m)));
+  }
+}
+
+/**
+ * A PR that bumped the version from a base that has bumped it too since
+ * (another PR landed first) gets its bump made again on top: in a throwaway
+ * worktree, the branch takes the base's version (so the version lines merge
+ * cleanly), the base is merged in, the version is bumped from the base's by
+ * the same kind, and that's pushed. Returns null if nothing needed doing, else
+ * { pushed, why }.
+ */
+function rebump(branch, base) {
+  const from = quiet(`git merge-base "origin/${base}" "origin/${branch}"`);
+  const [was, mine, theirs] = [versionAt(from), versionAt(`origin/${branch}`), versionAt(`origin/${base}`)];
+  if (!was || !mine || !theirs) return null;
+  const kind = bumpKind(was, mine);
+  if (!kind || theirs === was) return null; // no bump of its own, or the base hasn't moved
+  const target = bump(theirs, kind);
+  if (dry) return { pushed: false, why: `would merge ${base} in and re-bump ${mine} → ${target} (${base} is at ${theirs}), then push` };
+  const dir = join(commonDir, "..", ".tracker", `land-${branch.replace(/[^\w.-]+/g, "-")}`);
+  if (existsSync(dir)) quiet(`git worktree remove --force "${dir}"`);
+  sh(`git worktree add --quiet --detach "${dir}" "origin/${branch}"`);
+  try {
+    const git = (c) => sh(`git -C "${dir}" ${c}`);
+    setVersion(dir, theirs);
+    git(`commit --quiet --allow-empty -am "chore: take ${base}'s version before merging it"`);
+    if (!ok(`git -C "${dir}" merge --no-edit --quiet origin/${base}`)) {
+      const conflicts = quiet(`git -C "${dir}" diff --name-only --diff-filter=U`).split("\n").filter(Boolean);
+      quiet(`git -C "${dir}" merge --abort`);
+      return { pushed: false, why: `merging ${base} to re-bump the version conflicts (${conflicts.join(", ")}); merge ${base} into the branch first` };
+    }
+    setVersion(dir, target);
+    git(`commit --quiet -am "chore: bump the version to ${target} (${base} is at ${theirs})"`);
+    git(`push --quiet origin "HEAD:refs/heads/${branch}"`);
+    return { pushed: true, why: mine === target ? `merged ${base} in (its ${theirs} and this ${mine} clashed)` : `re-bumped ${mine} → ${target} on top of ${base}'s ${theirs}` };
+  } finally {
+    quiet(`git worktree remove --force "${dir}"`);
+  }
+}
+
 /**
  * The issues a PR settles: those its body closes ("Closes #212"), else the one
  * its branch names (212-…, or t-0NN-… through docs/ticket-ids.json on its base).
@@ -361,6 +434,17 @@ for (const it of items.values()) {
     }
     // A feature's own branch keeps its tasks' commits: a merge commit, not a squash.
     const how = it.name.startsWith("feature/") ? "--merge" : "--squash";
+    const rebumped = !s.draft && s.ci !== "failing" ? rebump(it.name, pr.baseRefName) : null;
+    if (rebumped) {
+      // A new push: CI runs again, so leave the merge to GitHub once it passes.
+      if (!rebumped.pushed || (!dry && !ok(`gh pr merge ${pr.number} ${how} --auto`))) {
+        skipped.push({ branch: it.name, why: `PR #${pr.number}: ${rebumped.pushed ? `${rebumped.why}, but couldn't turn on auto-merge` : rebumped.why}` });
+        continue;
+      }
+      notes.push(`PR #${pr.number}: ${rebumped.why}`);
+      open.push({ ...row, ci: "pending", autoMerge: true });
+      continue;
+    }
     const ready = s.ci === "passing" || s.ci === "none";
     if (!s.draft && ready && ["CLEAN", "HAS_HOOKS", "UNSTABLE"].includes(s.mergeState)) {
       if (!dry) sh(`gh pr merge ${pr.number} ${how}`);
