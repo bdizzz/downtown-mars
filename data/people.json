@@ -48,5 +48,33 @@
     "griefPerUnrested": 0.3,
     "griefMaxComfort": -1.5,
     "griefFadePerDay": 0.1
+  },
+  "colonists": {
+    "_note": "Individual colonists (#521, src/sim/colonists.ts). Ages are game days (a day is a month). assign: jobs go to the unemployed who live nearest; beds to the homeless, a worker's nearest their job; once a day a worker moves into a free bed at least moveGainM nearer work, and two workers swap beds after both would have gained at least swapGainM for swapAfterDays days running (each looks at the swapLooks nearest homes nearer their job, from the nearestHomes nearest it). commute and foodWalk: comfort lost to a long walk to work or to the galley, nothing up to freeM metres, then comfortPerStep for each 10 m step past it, down to worstComfort.",
+    "arrivalAgeDays": [
+      240,
+      420
+    ],
+    "elderAgeDays": [
+      780,
+      960
+    ],
+    "assign": {
+      "moveGainM": 10,
+      "swapGainM": 10,
+      "swapAfterDays": 5,
+      "swapLooks": 8,
+      "nearestHomes": 64
+    },
+    "commute": {
+      "freeM": 60,
+      "comfortPerStep": -0.05,
+      "worstComfort": -0.5
+    },
+    "foodWalk": {
+      "freeM": 60,
+      "comfortPerStep": -0.03,
+      "worstComfort": -0.25
+    }
   }
 }

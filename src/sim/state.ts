@@ -27,6 +27,7 @@ import { galleryEdges, outsideEdges } from "./edges";
 import { corridors, recomputeAccess, routeToRoom } from "./corridors";
 import { culture, type Culture } from "./culture";
 import { addAdults } from "./people";
+import type { Colonists } from "./colonists";
 import { createConstruction, type ConstructionState } from "./construction";
 import { settleStorage } from "./storage";
 import { createTemperature, type TemperatureState } from "./temperature";
@@ -75,6 +76,8 @@ export interface SimState {
   /** Smoothed net change per game day, by resource id. */
   rates: Record<string, number>;
   population: Population;
+  /** Every colonist, one by one (#521, colonists.ts): kept in step with the cohorts, in shadow mode (absent in older saves until the first tick). */
+  colonists?: Colonists;
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
   earth: EarthState;

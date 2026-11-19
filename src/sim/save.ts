@@ -10,6 +10,7 @@ import { depositsAt, generateMap, type MapState } from "./map";
 import { network } from "./network";
 import { culture } from "./culture";
 import { addAdults } from "./people";
+import { packColonists, unpackColonists, type PackedColonists } from "./colonists";
 import { corridors, migrateCorridorRooms, recomputeAccess } from "./corridors";
 import { galleryEdges } from "./edges";
 import { ensureFloors, placeRoom, surfaceGrid, type Layout } from "./placement";
@@ -22,7 +23,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 24;
+export const SAVE_VERSION = 25;
 
 type Raw = Record<string, unknown>;
 
@@ -239,6 +240,9 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       return { ...h, layout: { ...layout, surface: rings } };
     }),
   }),
+  // v25: colonists one by one (#523). Older holes have none saved: they're made from the cohorts on
+  // the first tick, and find jobs and beds then.
+  24: (s) => ({ ...s, holes: (s.holes as Raw[]).map(({ colonists: _, ...h }) => h) }),
 };
 
 /** A copy of a record with one key renamed (a resource that changed its id). */
@@ -262,7 +266,8 @@ export interface SaveSummary {
   failed?: boolean;
 }
 
-type StoredHole = Omit<SimState, "effects">;
+/** A hole as saved: no effect field (rebuilt on load), and its people packed. */
+type StoredHole = Omit<SimState, "effects" | "colonists"> & { colonists?: PackedColonists };
 interface SaveFile {
   game: "downtown-mars";
   version: number;
@@ -280,7 +285,7 @@ export function summarize(world: World, cfg: SimConfig): SaveSummary {
 }
 
 export function serialize(world: World): string {
-  const holes = world.holes.map(({ effects: _, ...rest }) => rest);
+  const holes = world.holes.map(({ effects: _, colonists, ...rest }): StoredHole => (colonists ? { ...rest, colonists: packColonists(colonists) } : rest));
   const file: SaveFile = { game: "downtown-mars", version: SAVE_VERSION, state: { ...world, holes } };
   return JSON.stringify(file);
 }
@@ -310,6 +315,6 @@ export function deserialize(json: string): LoadResult {
     if (unknown) return { ok: false, reason: `That save has a room this version doesn't know: "${unknown.type}".` };
   }
   if (state.over) return { ok: false, reason: FAILED_SAVE };
-  const holes = state.holes.map((h) => ({ ...h, effects: refreshEffects(h.layout, null) }) as SimState);
+  const holes = state.holes.map(({ colonists, ...h }) => ({ ...h, ...(colonists ? { colonists: unpackColonists(colonists) } : {}), effects: refreshEffects(h.layout, null) }) as SimState);
   return { ok: true, world: { ...state, holes } };
 }

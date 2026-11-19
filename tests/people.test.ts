@@ -35,7 +35,10 @@ describe("cohorts", () => {
     const s = createInitialState(config);
     const youngest = Math.max(...s.population.cohorts.map((c) => c.until));
     const taken = takeAdults(s, 3);
-    expect(taken).toEqual([{ stage: "adult", count: 3, until: youngest }]);
+    expect(taken).toMatchObject([{ stage: "adult", count: 3, until: youngest }]);
+    // They go as themselves: three people, taken out of the hole's own.
+    expect(taken[0]!.members).toHaveLength(3);
+    expect(s.colonists!.id).toHaveLength(config.colonists.start - 3);
     expect(s.population.count).toBe(config.colonists.start - 3);
   });
 
