@@ -131,6 +131,20 @@ export interface HoleSummary {
   capped?: { floors: number; identity: string };
 }
 
+/**
+ * The hole's people as totals: the count, health, needs met, places at
+ * galleys, restrooms and care, births and the dead. Never the cohorts (or,
+ * later, the people themselves): the snapshot goes out 20 times a second and
+ * must stay the same size however many live here (PLAN-PEOPLE.md, #534).
+ */
+export type PopulationView = Omit<Population, "cohorts" | "birthProgress">;
+
+/** The population without its cohorts, for the snapshot. */
+export function populationView(pop: Population): PopulationView {
+  const { cohorts: _cohorts, birthProgress: _birthProgress, ...totals } = pop;
+  return totals;
+}
+
 // What the views get to see: the hole being looked at, in full, plus a line
 // for every hole. Plain data, safe to structured-clone.
 export interface Snapshot {
@@ -185,7 +199,8 @@ export interface Snapshot {
   rates: Record<string, number>;
   /** Power is a flow, so show what's made and used rather than a net rate. */
   power: { made: number; used: number };
-  population: Population;
+  /** Totals only, never a list of people (#534). */
+  population: PopulationView;
   /** Head counts by life stage. */
   stages: Record<Stage, number>;
   /** Places for children and elders. */
@@ -199,7 +214,7 @@ export interface Snapshot {
   leavingFor: string | null;
   /** The construction queue, in order, and the hole's bandwidth. */
   construction: { bandwidth: number; jobs: JobView[] };
-  /** Cohorts moving on next, soonest first. */
+  /** The next few stage changes, soonest first: a short summary, at most five lines. */
   upcoming: { stage: Stage; count: number; daysLeft: number }[];
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
@@ -316,7 +331,7 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
     temperature: temperatureView(state, cfg),
     rates: state.rates,
     power: powerFlow(state, cfg),
-    population: state.population,
+    population: populationView(state.population),
     stages: stageCounts(state),
     care: { school: schoolCoverage(state), elders: elderCoverage(state) },
     migrations: [],
