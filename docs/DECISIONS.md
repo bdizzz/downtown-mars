@@ -24,7 +24,7 @@ When documents disagree, trust them in this order:
 - Story: Earth-sponsored start, then independence (with player choices) or Earth collapse, then self-reliance.
 
 **Simulation scale**
-- Colonists run as **pools** (cohorts) plus up to ~20 named **notables** per hole. Holes range from a few dozen to 10,000+ people.
+- Colonists run as **pools** (cohorts) plus up to ~20 named **notables** per hole. Holes range from a few dozen to 10,000+ people. *Being reversed (#521): every colonist is now a person beside the cohorts, in shadow mode (#523); the cohorts go in #529.*
 
 **Views and tech**
 - 2D unrolled view and 3D cylinder, switchable, drawing the same data. Build 2D first.
@@ -92,6 +92,9 @@ These sections were brought in line with the catalogs, both in this kit and in t
 ## Standing rules easy to miss
 
 - **Route searches are per room, never per person** (#521, #532). A colonist reads a cached distance (`walkFrom`, or one search a workplace); searches run only when the layout changes, and only from the rooms it touches, so they grow with rooms, not people. `sim/paths.ts` searches flat arrays on a binary heap; `tests/routeSpeed.test.ts` times a search from every workplace of a 10,000-person hole and fails on a big jump, such as a search per person.
+- **People follow the cohorts until #529** (#523). Each tick the people are brought in step with the cohorts (`sim/colonists.ts`): a cohort that moves on takes its people, one that shrinks loses its newest, one that grows gains new people. Cohorts have ids, and people carry theirs. Volunteers and migrants travel as themselves (`Cohort.members`). Person ids are unique across the network: the hole they first appeared in × 1,000,000, plus a count. In memory people are plain number columns, so a state copies like any other; saves pack the saved columns into typed arrays (`sim/pack.ts`), and commutes, needs and happiness are worked out again on load.
+- **Beds and jobs assign themselves (#524), and beds don't follow happiness any more.** Homes used to fill best first every 10 ticks; now who lives where is the people's own, and a home's residents are counted from them. Jobs follow economy.ts's staffing exactly (it still decides how many each room gets, by priority): a room short of staff takes the unemployed who live nearest, and one that needs fewer lets go of whoever lives furthest. The homeless take free beds, a worker the one nearest their job, anyone else the best free one. Once a day a worker moves into a free bed at least 10 m nearer work, and two workers swap beds after both would have gained 10 m or more for 5 days running (`data/people.json` `colonists.assign`). Nobody is turned out of a bed except when their home closes.
+- **Happiness is each person's (#526).** A person's own parts sit on top of their home's: the walk to work and the walk to the nearest galley (#525), each free up to 60 m, then a little comfort for every step past it, at most −0.5 and −0.25 (4 and 2 points). They aren't held to the factor's ±3 with the home's parts. A home's target counts its residents' own parts on average, so the hole's average (residents × each home's happiness) is exactly its people's mean, and the thresholds that read it (births at 50, migration below 45) read the same. On the bots over three seeds this landed within a few points of before.
 - Each water tank holds only one type of water: clean, gray or tailings, chosen by the player like a farm's crop (from Bryon's early room list; choosable since T-005).
 
 ## Decided while building (Sep 27–30)
