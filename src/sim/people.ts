@@ -5,6 +5,8 @@ import { postMessage } from "./messages";
 import { ordinanceDef } from "./ordinances";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
+import { addMembers, reconcileColonists, takeMembers, type Member } from "./colonists";
+import { config } from "./config";
 
 // A hole's colonists as a few cohorts: a life stage, a head count, and the
 // tick they move on (children grow up, adults grow old, elders pass away).
@@ -20,6 +22,10 @@ export interface Cohort {
   until: number;
   /** Generation: arrivals are the first, children born to them the second (missing: 1). */
   gen?: number;
+  /** Its people find it by this (colonists.ts); set the first time they're brought in step (missing until then). */
+  id?: number;
+  /** Who they are, while they travel to another hole (a convoy, migrants); never kept in a hole's cohorts. */
+  members?: Member[];
 }
 
 export const people = raw as unknown as {
@@ -38,6 +44,13 @@ export const people = raw as unknown as {
     maxPerDay: number;
     minAdultsLeft: number;
     culturePull: number;
+  };
+  colonists: {
+    arrivalAgeDays: [number, number];
+    elderAgeDays: [number, number];
+    assign: { metresPerPoint: number; moveGainPoints: number; swapGainPoints: number; swapAfterDays: number; swapLooks: number; nearestHomes: number };
+    commute: { freeM: number; comfortPerStep: number; worstComfort: number };
+    foodWalk: { freeM: number; comfortPerStep: number; worstComfort: number };
   };
 };
 
@@ -82,14 +95,24 @@ export function addAdults(state: SimState, n: number, cfg: SimConfig): void {
   syncCount(state);
 }
 
-/** Add cohorts that already exist (volunteers or migrants arriving). */
+/** Add cohorts that already exist (volunteers or migrants arriving), and the people in them. */
 export function addCohorts(state: SimState, cohorts: Cohort[]): void {
-  for (const c of cohorts) if (c.count > 0) state.population.cohorts.push({ ...c });
+  const pop = state.population;
+  for (const c of cohorts) {
+    if (c.count <= 0) continue;
+    const { id: _id, members, ...rest } = c;
+    const id = (pop.nextCohortId = Math.max(pop.nextCohortId ?? 1, ...pop.cohorts.map((k) => (k.id ?? 0) + 1)));
+    pop.nextCohortId = id + 1;
+    pop.cohorts.push({ ...rest, id });
+    if (members?.length) addMembers(state, id, members.slice(0, c.count));
+  }
   syncCount(state);
 }
 
 /** Take up to n adults, youngest first (the longest working span left). Returns who left. */
 export function takeAdults(state: SimState, n: number): Cohort[] {
+  // Everyone in step first, so the people who go are real ones (cohorts may have changed this tick).
+  reconcileColonists(state, config);
   const taken: Cohort[] = [];
   const adults = state.population.cohorts.filter((c) => c.stage === "adult").sort((a, b) => b.until - a.until);
   for (const c of adults) {
@@ -97,7 +120,10 @@ export function takeAdults(state: SimState, n: number): Cohort[] {
     const k = Math.min(n, c.count);
     c.count -= k;
     n -= k;
-    taken.push({ ...c, count: k });
+    // The people go too, as themselves (colonists.ts).
+    const { id, members: _m, ...rest } = c;
+    const members = id !== undefined ? takeMembers(state, id, k) : [];
+    taken.push({ ...rest, count: k, ...(members.length ? { members } : {}) });
   }
   state.population.cohorts = state.population.cohorts.filter((c) => c.count > 0);
   syncCount(state);

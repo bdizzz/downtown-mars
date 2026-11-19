@@ -167,10 +167,12 @@ describe("save size", () => {
   // plain and gzipped, against limits about 5% over what it measured (Nov 18: 206,934 bytes plain,
   // 42,706 gzipped). If a change grows saves past them, look at why before raising them:
   // whatever can be rebuilt on load shouldn't be saved.
+  // Nov 19, #523: the people (91, packed) add 4,916 bytes plain and 2,206 gzipped, all of it who they
+  // are, where they sleep and work; limits raised by as much, to 5% over 213,386 and 45,291.
   construction.instant = false;
   storageRules.unlimited = false;
-  const LIMIT_PLAIN = 218_000;
-  const LIMIT_GZIPPED = 45_000;
+  const LIMIT_PLAIN = 224_000;
+  const LIMIT_GZIPPED = 47_500;
   const { world } = runNetwork(60);
 
   it("a 60-day two-hole game saves under its limits", async () => {

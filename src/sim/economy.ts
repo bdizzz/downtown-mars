@@ -44,6 +44,8 @@ export interface Population {
   /** Everyone, all stages: kept in step with cohorts (see people.ts). */
   count: number;
   cohorts: Cohort[];
+  /** The next cohort's id (colonists.ts; missing in older saves). */
+  nextCohortId?: number;
   /** Fraction of the next birth accumulated so far. */
   birthProgress?: number;
   /** Children born in this hole, ever. */

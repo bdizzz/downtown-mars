@@ -15,6 +15,7 @@ import { config } from "./config";
 import { amenityFelt, updateDining, updateSanitation } from "./amenities";
 import { eventMood, festivalWork } from "./events";
 import { temperatureComfort } from "./temperature";
+import { commuteComfort, foodWalkComfort, syncColonists } from "./colonists";
 
 // Happiness from three factors (noise, comfort, health), each −3..+3, felt
 // where colonists live. Each home's happiness eases toward its target, and a
@@ -33,8 +34,21 @@ export interface HousingPool {
   happiness: number;
   target: number;
   factors: Factors;
+  /** Its target before its residents' own walks: how nice the home itself is (what people weigh a bed by, colonists.ts; missing in old saves until the next update). */
+  base?: number;
   /** What makes up its target, in happiness points per cause (partPoints; missing in old saves until the next update). */
   points?: Record<string, number>;
+}
+
+/** The hole's people's own needs on average (#526), each a factor (−3..+3), and their walks in metres. */
+export interface Needs {
+  comfort: number;
+  fed: number;
+  health: number;
+  /** Metres from bed to work, over those with both. */
+  commuteM: number;
+  /** Metres from bed to the nearest galley, over those with a bed. */
+  foodM: number;
 }
 
 export interface Happiness {
@@ -48,6 +62,8 @@ export interface Happiness {
   afterglow?: number;
   /** What makes up the average, in points per cause, weighted by who feels it (homes and the homeless; missing in old saves until the next update). */
   points?: Record<string, number>;
+  /** The people's own needs on average (missing in old saves until the next update). */
+  needs?: Needs;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -202,11 +218,15 @@ export function createHappiness(): Happiness {
 }
 
 /**
- * Move people into the best homes, then ease each home's happiness toward
- * its target. With `settle`, jump straight to the targets (for a new game).
+ * Bring the people in step (their beds and jobs, colonists.ts), then ease each
+ * home's happiness toward its target, and work out each person's own. With
+ * `settle`, jump straight to the targets (for a new game).
  */
 export function updateHappiness(state: SimState, cfg: SimConfig, settle = false): void {
   const h = cfg.happiness;
+  // Everyone in step with the cohorts, with a job and a bed if there's one for them (colonists.ts).
+  syncColonists(state, cfg);
+  const c = state.colonists!;
   // Seats, restrooms and care within reach, shared out by where people lived at the last update.
   updateDining(state, cfg);
   updateSanitation(state);
@@ -214,30 +234,59 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
   const prev = new Map(state.happiness.pools.map((p) => [p.roomId, p]));
   const homes = state.layout.rooms.filter((r) => isActive(r) && (roomDef(r.type).houses ?? 0) > 0);
 
+  // Each person's own parts (#525, #526): their walk to work and to the galley, in comfort.
+  const own = new Array<number>(c.id.length);
+  const ownParts = (i: number) => ({ commute: commuteComfort(c.workM[i]!), foodWalk: foodWalkComfort(c.foodM[i]!) });
+  // Who lives where: the people's own beds, and the average of their own parts there.
+  const residents = new Map<number, number>();
+  const ownSum = new Map<number, { commute: number; foodWalk: number }>();
+  let homeless = 0;
+  for (let i = 0; i < c.id.length; i++) {
+    const home = c.home[i]!;
+    const p = ownParts(i);
+    own[i] = (p.commute + p.foodWalk) * h.weights.comfort;
+    if (home < 0) homeless++;
+    residents.set(home, (residents.get(home) ?? 0) + 1);
+    const sum = ownSum.get(home) ?? { commute: 0, foodWalk: 0 };
+    sum.commute += p.commute;
+    sum.foodWalk += p.foodWalk;
+    ownSum.set(home, sum);
+  }
+  /** The own parts of a home's residents (or the homeless's: home −1), on average, as parts of its comfort. */
+  const ownOf = (home: number): Part[] => {
+    const n = residents.get(home) ?? 0;
+    const sum = ownSum.get(home);
+    if (!n || !sum) return [];
+    const out: Part[] = [];
+    if (sum.commute) out.push({ id: "commute", factor: "comfort", value: sum.commute / n });
+    if (sum.foodWalk) out.push({ id: "foodWalk", factor: "comfort", value: sum.foodWalk / n });
+    return out;
+  };
+  /** Those parts in points, on top of the home's (they aren't held to the factor's limit with the rest). */
+  const ownPoints = (parts: Part[]) => parts.reduce((sum, p) => sum + p.value * h.weights[p.factor], 0);
+
   // The afterglow, and how recent events have left everyone feeling.
   const glow = afterglow(state, cfg) + eventMood(state);
   const pools: HousingPool[] = homes.map((room) => {
     const parts = homeParts(state, room, cfg);
     const factors = sumParts(parts, cfg);
-    const target = clamp(targetHappiness(factors, cfg) + glow, 0, 100);
+    const extra = ownOf(room.id);
+    const base = clamp(targetHappiness(factors, cfg) + glow, 0, 100);
+    const target = clamp(base + ownPoints(extra), 0, 100);
     const old = prev.get(room.id);
-    return { roomId: room.id, capacity: roomDef(room.type).houses!, residents: 0, happiness: old?.happiness ?? target, target, factors, points: tidy(partPoints(parts, cfg)) };
+    const points = partPoints(parts, cfg);
+    for (const p of extra) points[p.id] = p.value * h.weights[p.factor];
+    return { roomId: room.id, capacity: roomDef(room.type).houses!, residents: residents.get(room.id) ?? 0, happiness: old?.happiness ?? target, target, base, factors, points: tidy(points) };
   });
-
-  // Best homes fill first; ties go to the older room so people don't shuffle.
-  let left = state.population.count;
-  for (const p of [...pools].sort((a, b) => b.target - a.target || a.roomId - b.roomId)) {
-    p.residents = Math.min(p.capacity, left);
-    left -= p.residents;
-  }
 
   const ease = settle ? 1 : Math.min(1, h.updateEveryTicks / (h.easeDays * cfg.ticksPerDay));
   for (const p of pools) p.happiness += (p.target - p.happiness) * ease;
 
   const homelessParts = homeParts(state, null, cfg);
-  const homelessTarget = clamp(targetHappiness(sumParts(homelessParts, cfg), cfg) + glow, 0, 100);
+  const homelessExtra = ownOf(-1);
+  const homelessTarget = clamp(targetHappiness(sumParts(homelessParts, cfg), cfg) + glow + ownPoints(homelessExtra), 0, 100);
   const pop = state.population.count;
-  const total = pools.reduce((s, p) => s + p.residents * p.happiness, 0) + left * homelessTarget;
+  const total = pools.reduce((s, p) => s + p.residents * p.happiness, 0) + homeless * homelessTarget;
   const average = pop > 0 ? total / pop : 50;
 
   // The causes across the hole, weighted by how many feel each.
@@ -246,10 +295,55 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
     for (const [id, v] of Object.entries(pts)) points[id] = (points[id] ?? 0) + (v * n) / Math.max(1, pop);
   };
   for (const p of pools) if (p.residents > 0) weigh(p.points ?? {}, p.residents);
-  if (left > 0) weigh(partPoints(homelessParts, cfg), left);
+  if (homeless > 0) {
+    const pts = partPoints(homelessParts, cfg);
+    for (const p of homelessExtra) pts[p.id] = p.value * h.weights[p.factor];
+    weigh(pts, homeless);
+  }
+
+  // Each person (#526): their home's happiness, give or take how their own walks compare with their neighbours';
+  // and their own needs, from their home's factors and their own parts. The hole's numbers are their averages.
+  const byRoom = new Map(pools.map((p) => [p.roomId, p]));
+  const homelessFactors = sumParts(homelessParts, cfg);
+  const seatedAt = (home: number) => (home < 0 ? (state.population.servedHomeless ?? 1) : (state.population.servedByHome?.[home] ?? 1));
+  const needs: Needs = { comfort: 0, fed: 0, health: 0, commuteM: 0, foodM: 0 };
+  let commuters = 0;
+  let housed = 0;
+  const lim = h.factorLimit;
+  const meanOwnAt = new Map<number, number>();
+  for (let i = 0; i < c.id.length; i++) {
+    const home = c.home[i]!;
+    const pool = byRoom.get(home);
+    let meanOwn = meanOwnAt.get(home);
+    if (meanOwn === undefined) meanOwnAt.set(home, (meanOwn = ownPoints(ownOf(home))));
+    const base = pool ? pool.happiness : homelessTarget;
+    c.happiness[i] = clamp(base + own[i]! - meanOwn, 0, 100);
+    const f = pool ? pool.factors : homelessFactors;
+    const p = ownParts(i);
+    c.comfort[i] = clamp(f.comfort + p.commute + p.foodWalk, -lim, lim);
+    c.health[i] = f.health;
+    c.fed[i] = clamp(-(1 - seatedAt(home)) * h.unservedComfort + p.foodWalk, -lim, lim);
+    needs.comfort += c.comfort[i]!;
+    needs.fed += c.fed[i]!;
+    needs.health += c.health[i]!;
+    if (c.job[i]! >= 0 && home >= 0) {
+      commuters++;
+      needs.commuteM += c.workM[i]!;
+    }
+    if (home >= 0 && c.food[i]! >= 0) {
+      housed++;
+      needs.foodM += c.foodM[i]!;
+    }
+  }
+  const people = Math.max(1, c.id.length);
+  needs.comfort /= people;
+  needs.fed /= people;
+  needs.health /= people;
+  needs.commuteM = commuters ? needs.commuteM / commuters : 0;
+  needs.foodM = housed ? needs.foodM / housed : 0;
 
   // A festival's day off slows work as well.
-  state.happiness = { pools, homeless: left, average, productivity: productivity(average, cfg) * festivalWork(state, cfg), afterglow: glow, points: tidy(points) };
+  state.happiness = { pools, homeless, average, productivity: productivity(average, cfg) * festivalWork(state, cfg), afterglow: glow, points: tidy(points), needs };
 }
 
 export function stepHappiness(state: SimState, cfg: SimConfig): void {

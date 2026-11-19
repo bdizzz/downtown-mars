@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { setAdults } from "../src/sim/people";
 import { config } from "../src/sim/config";
 import { makeSnapshot, type Snapshot } from "../src/sim/snapshot";
 import { createInitialState } from "../src/sim/state";
@@ -142,7 +143,7 @@ describe("why health and happiness move (T-172)", () => {
 
   it("the Happiness card says where it's heading and the biggest pulls", () => {
     const st = createInitialState(config);
-    st.population.count = st.happiness.pools.reduce((n, p) => n + p.capacity, 0) + 10;
+    setAdults(st, st.happiness.pools.reduce((n, p) => n + p.capacity, 0) + 10, config);
     st.population.health = 3;
     updateHappiness(st, config, true);
     const why = cell(makeSnapshot(st, config), "res:happiness").why!;

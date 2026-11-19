@@ -137,11 +137,11 @@ export interface HoleSummary {
  * later, the people themselves): the snapshot goes out 20 times a second and
  * must stay the same size however many live here (PLAN-PEOPLE.md, #534).
  */
-export type PopulationView = Omit<Population, "cohorts" | "birthProgress">;
+export type PopulationView = Omit<Population, "cohorts" | "birthProgress" | "nextCohortId">;
 
 /** The population without its cohorts, for the snapshot. */
 export function populationView(pop: Population): PopulationView {
-  const { cohorts: _cohorts, birthProgress: _birthProgress, ...totals } = pop;
+  const { cohorts: _cohorts, birthProgress: _birthProgress, nextCohortId: _next, ...totals } = pop;
   return totals;
 }
 
