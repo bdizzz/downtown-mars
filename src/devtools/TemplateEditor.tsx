@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { config } from "../sim/config";
 import { createHole } from "../sim/geometry";
-import { createLayout, placeRoom, type Layout, type RoomInstance } from "../sim/placement";
+import { createLayout, placeRoom, roomShapes, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { fit, frameOf, layouts, unplace, type Fitted, type Frame, type Placement, type Template, type Wall } from "../view/furnish";
 import { furniture, itemDef } from "../view/furniture";
@@ -19,8 +19,8 @@ const snap = (v: number) => Math.round(v / SNAP) * SNAP;
 
 /** The shapes a room of this type can take ("2x1", ...). */
 function shapesOf(type: string): [number, number][] {
-  const size = roomDef(type).size;
-  return ((config.shapes as Record<string, [number, number][]>)[size] ?? [[1, 1]]).map(([w, d]) => [w, d]);
+  const shapes = roomShapes(roomDef(type));
+  return shapes.length ? shapes.map(([w, d]) => [w, d]) : [[1, 1]];
 }
 
 /**

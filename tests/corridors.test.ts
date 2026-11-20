@@ -211,7 +211,7 @@ describe("stairs", () => {
     const stairs = build(s, "stairwell", ring(1, 1, 4));
     expect(new Set(stairs.cells.map((c) => c.floor))).toEqual(new Set([1, 2]));
     // On floor 2, a dorm in ring 2 right behind the stairwell's floor-2 cell.
-    const dorm = build(s, "bunk_dorm", ring(2, 2, 4, 2));
+    const dorm = build(s, "bunk_dorm", ring(2, 2, 8, 2));
     // The stairwell's floor-2 sides count as corridors, so the dorm behind it is connected.
     expect(s.layout.rooms.find((r) => r.id === dorm.id)!.connected).toBe(true);
     // A stairwell whose lower floor isn't dug yet is refused.
@@ -318,7 +318,7 @@ describe("placing a room over corridors", () => {
   it("flags what filling them in would cut off", () => {
     const s = rich();
     // A spoke at slot 3 out to ring 2, then along to a clinic in ring 2 behind slot 3.
-    const clinic = build(s, "clinic", ring(1, 2, 3));
+    const clinic = build(s, "clinic", ring(1, 2, 6));
     draw(s, ["R1.1.3", "A1.1.1/3"]);
     expect(s.layout.rooms.find((r) => r.id === clinic.id)!.connected).toBe(true);
     const check = checkPlacement(s.layout, "bunk_dorm", ring(1, 1, 2, 2));

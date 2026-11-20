@@ -69,8 +69,8 @@ describe("the network graph", () => {
     corridors(s, [radialEdge(s.layout.hole, 2, 1, 3).id, radialEdge(s.layout.hole, 2, 1, 4).id]);
     finish(s);
     expect(stepsBetween(s.layout, dorm, clinic)).toBeNull();
-    // A corridor round the back of the galley joins them.
-    corridors(s, [arcAt(s.layout.hole, 2, 1, 3.5 / 9)!.id]);
+    // A corridor round the back of the galley joins them (two arc pieces: ring 2 has two slots behind it).
+    corridors(s, [arcAt(s.layout.hole, 2, 1, 3.25 / 9)!.id, arcAt(s.layout.hole, 2, 1, 3.75 / 9)!.id]);
     finish(s);
     expect(stepsBetween(s.layout, dorm, clinic)).not.toBeNull();
   });

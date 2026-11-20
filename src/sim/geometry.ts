@@ -18,8 +18,13 @@ export interface Hole {
   ringRadiiM: number[];
 }
 
-/** slots(n) = round(2π · (R + (n − 0.5) · d) / w) */
+/**
+ * Slots in ring n. With `ringSlots` in data (#548), it's that list; otherwise the old formula,
+ * slots(n) = round(2π · (R + (n − 0.5) · d) / w), with paired and nested rings if set.
+ */
 export function slotsInRing(shaftRadiusM: number, ring: number, geo: GeometryConfig): number {
+  const listed = geo.ringSlots?.[ring - 1];
+  if (listed !== undefined) return listed;
   // Paired rings: an even ring has the same slots as the odd ring inside it.
   if (geo.pairedRings && ring % 2 === 0) return slotsInRing(shaftRadiusM, ring - 1, geo);
   const midRadius = shaftRadiusM + (ring - 0.5) * geo.roomDepthM;
@@ -42,9 +47,33 @@ export function createHole(
   return { shaftRadiusM, floors, unlockedRings, ringSlots, ringRadiiM: ringRadiiFor(shaftRadiusM, geo) };
 }
 
-/** Every circle's radius for a hole of this shaft radius: the shaft wall, then each ring's outer face. */
+/**
+ * Every circle's radius for a hole of this shaft radius: the shaft wall, then each ring's outer face.
+ * Equal-area rings (#548): ring 1 is `roomDepthM` deep, and each ring after it as deep as it takes for its
+ * slots to cover the same area as a ring-1 slot. Otherwise every ring is `roomDepthM` deep.
+ */
 export function ringRadiiFor(shaftRadiusM: number, geo: GeometryConfig, rings = geo.maxRings): number[] {
-  return Array.from({ length: rings + 1 }, (_, k) => shaftRadiusM + k * geo.roomDepthM);
+  if (!geo.equalAreaRings) return flatRingRadii(shaftRadiusM, geo.roomDepthM, rings);
+  const slots = (ring: number) => slotsInRing(shaftRadiusM, ring, geo);
+  const r1 = shaftRadiusM + geo.roomDepthM;
+  const area = (Math.PI * (r1 * r1 - shaftRadiusM * shaftRadiusM)) / slots(1);
+  const radii = [shaftRadiusM];
+  for (let k = 1; k <= rings; k++) {
+    const r = radii[k - 1]!;
+    radii.push(Math.sqrt(r * r + (slots(k) * area) / Math.PI));
+  }
+  return radii;
+}
+
+/** Every ring the same depth: how holes were before equal-area rings (and what saves from before #547 assumed). */
+export function flatRingRadii(shaftRadiusM: number, depthM: number, rings: number): number[] {
+  return Array.from({ length: rings + 1 }, (_, k) => shaftRadiusM + k * depthM);
+}
+
+/** The floor area of one slot of a ring, m² (the same on every ring, with equal-area rings). */
+export function slotAreaM2(hole: Hole, ring: number): number {
+  const [r0, r1] = ringRadii(hole, ring);
+  return (Math.PI * (r1 * r1 - r0 * r0)) / ringSize(hole, ring);
 }
 
 /** Circle k's radius (0 is the shaft wall, k the outer face of ring k). A fractional k falls between, in proportion. */

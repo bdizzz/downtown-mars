@@ -15,8 +15,8 @@
     "surfaceDepthM": 3,
     "galleryWidthM": 2,
     "wallThicknessM": 0.5,
-    "pairedRings": true,
-    "nestedPairs": true,
+    "ringSlots": [9, 18, 18, 36, 36, 36],
+    "equalAreaRings": true,
     "surfaceSlots": 12,
     "surfaceRings": 3,
     "surfaceRingM": 16,
@@ -207,7 +207,7 @@
       ],
       "ring": [
         { "room": "entrance", "floor": 1, "ring": 1, "slot": 0 },
-        { "room": "battery_bank", "floor": 1, "ring": 2, "slot": 7 }
+        { "room": "battery_bank", "floor": 1, "ring": 2, "slot": 14 }
       ]
     },
     "full": {
@@ -218,7 +218,7 @@
       ],
       "ring": [
         { "room": "entrance", "floor": 1, "ring": 1, "slot": 0 },
-        { "room": "battery_bank", "floor": 1, "ring": 2, "slot": 7 },
+        { "room": "battery_bank", "floor": 1, "ring": 2, "slot": 14 },
         { "room": "water_tank", "floor": 1, "ring": 3, "slot": 4 },
         { "room": "water_tank", "floor": 1, "ring": 3, "slot": 5, "holds": "grayWater" },
         { "room": "electrolyzer", "floor": 1, "ring": 3, "slot": 6 },

@@ -1,5 +1,5 @@
 import type { SimConfig } from "./config";
-import type { RoomInstance } from "./placement";
+import { standardSlots, type RoomInstance } from "./placement";
 import { LABELS, record } from "./ledger";
 import { modifiers, type Modifiers } from "./ordinances";
 import { cropDef, resourceDef, resourceDefs } from "./resources";
@@ -101,7 +101,7 @@ export function roomSpec(room: RoomInstance, cfg: SimConfig): RoomSpec {
   }
   // Clean water comes back as wastewater as it's used.
   for (const [id, share] of Object.entries(waterReturns(def.returnsWater, cfg))) makes[id] = (makes[id] ?? 0) + (uses.water ?? 0) * share;
-  const nominal = cfg.economy.nominalSlots[def.size] ?? 1;
+  const nominal = standardSlots(def, cfg);
   const k = room.at.kind === "ring" ? room.cells.length / nominal : 1;
   const scale = (r: Record<string, number>) => Object.fromEntries(Object.entries(r).map(([id, v]) => [id, v * k]));
   return {

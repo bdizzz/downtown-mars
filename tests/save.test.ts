@@ -9,6 +9,8 @@ const run = (w: World, ticks: number) => {
   for (let i = 0; i < ticks; i++) stepWorld(w, config);
 };
 const first = (w: World) => w.holes[0]!;
+/** A save from before #547 and #548: 10 m rings at 9-9-18. */
+const oldGrid = Object.values(import.meta.glob<string>("./fixtures/save-v22-mid.json", { query: "?raw", import: "default", eager: true }))[0]!;
 
 /** An old single-hole save file, as versions 1 and 2 wrote them. */
 function oldSave(w: World, version: 1 | 2): string {
@@ -45,12 +47,11 @@ describe("saves", () => {
     expect(loaded.ok && first(loaded.world).effects.field.noise![0]![0]![2]).toBe(noise);
   });
 
-  it("gives a save from before ring radii its 10 m rings (#547)", () => {
-    const w = createWorld(config);
-    const file = JSON.parse(serialize(w));
-    for (const h of file.state.holes) delete h.layout.hole.ringRadiiM;
-    const loaded = deserialize(JSON.stringify(file));
-    expect(loaded.ok && first(loaded.world).layout.hole.ringRadiiM).toEqual(first(w).layout.hole.ringRadiiM);
+  it("gives a save from before ring radii its 10 m rings (#547), then moves it onto equal-area rings (#548)", () => {
+    const file = JSON.parse(oldGrid);
+    expect(file.state.holes[0].layout.hole.ringRadiiM).toBeUndefined();
+    const loaded = deserialize(oldGrid);
+    expect(loaded.ok && first(loaded.world).layout.hole.ringRadiiM).toEqual(first(createWorld(config)).layout.hole.ringRadiiM);
   });
 
   it("refuses garbage, other games and other versions", () => {

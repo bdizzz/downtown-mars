@@ -4,18 +4,19 @@ import { cellEdges, circleCuts, edgeById, edgeLengthM, edgeSides, edgeVertices, 
 import { createHole, ringSize } from "../src/sim/geometry";
 import { footprint } from "../src/sim/placement";
 
-const hole = createHole(10, 3, 3, config.geometry); // ring slots 9, 16, 22, ...
+const hole = createHole(10, 3, 3, config.geometry); // ring slots 9, 18, 18, 36, ... (#548)
 const D = config.geometry.roomDepthM;
 
 describe("the edge grid", () => {
   it("cuts each circle at the slot boundaries of the rings on both sides", () => {
-    // Between the rings of a pair (1 and 2) the slots line up: one cut per slot.
-    expect(circleCuts(hole, 1)).toHaveLength(ringSize(hole, 1));
-    // Between pairs (ring 2, 9 slots, and ring 3, 18) every ring-2 border runs on into ring 3:
-    // the circle is cut only where ring 3's slots meet, and those crossings are four-way.
+    // Ring 2 has twice ring 1's slots (9 and 18): every ring-1 border runs on into ring 2, so the circle
+    // between them is cut only where ring 2's slots meet, and every other crossing is four-way.
+    expect(circleCuts(hole, 1)).toHaveLength(ringSize(hole, 2));
+    expect(ringSize(hole, 2) % ringSize(hole, 1)).toBe(0);
+    // Rings 2 and 3 have the same slots (18): they line up, one cut per slot, every crossing four-way.
     const cuts = circleCuts(hole, 2);
     expect(cuts.length).toBe(ringSize(hole, 3));
-    expect(ringSize(hole, 3) % ringSize(hole, 2)).toBe(0);
+    expect(ringSize(hole, 3)).toBe(ringSize(hole, 2));
     const turns = cuts.map(([p, q]) => p / q);
     expect([...turns].sort((a, b) => a - b)).toEqual(turns);
   });
@@ -89,7 +90,8 @@ describe("the edge grid", () => {
   });
 
   it("measures edges", () => {
-    expect(edgeLengthM(hole, edgeById(hole, "R1.2.3")!)).toBe(D);
+    expect(edgeLengthM(hole, edgeById(hole, "R1.1.3")!)).toBe(D);
+    expect(edgeLengthM(hole, edgeById(hole, "R1.2.3")!)).toBeCloseTo(Math.sqrt(1000) - 20); // ring 2 is 11.6 m deep
     const total = circleCuts(hole, 1).reduce((s, f) => s + edgeLengthM(hole, edgeById(hole, `A1.1.${f.join("/")}`)!), 0);
     expect(total).toBeCloseTo(2 * Math.PI * (10 + D));
   });

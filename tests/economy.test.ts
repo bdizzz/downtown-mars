@@ -133,15 +133,15 @@ describe("rooms", () => {
 
   it("a deep 2×2 farm's wedge scales output by slots covered", () => {
     const s = createInitialState(config);
-    // Rings 1 and 2 are a pair with the same slots, so a 2×2 is exactly 4 cells.
-    const farm = build(s, "farm", ring(1, 1, 1, 2, 2));
+    // Rings 2 and 3 have the same slots, so a 2×2 there is exactly 4 cells.
+    const farm = build(s, "farm", ring(1, 2, 4, 2, 2));
     expect(farm.cells).toHaveLength(4);
     expect(roomSpec(farm, config).makes.rawFood).toBeCloseTo(12);
     expect(roomSpec(farm, config).staff).toBe(roomDef("farm").staff);
-    // Across a pair boundary (ring 2 into ring 3, which has more slots) the wedge widens and output scales.
-    const deep = build(s, "farm", ring(1, 2, 4, 2, 2));
-    expect(deep.cells.length).toBeGreaterThan(4);
-    expect(roomSpec(deep, config).makes.rawFood).toBeCloseTo((12 * deep.cells.length) / 4);
+    // From ring 1 into ring 2 (twice the slots) the wedge widens to 2 + 4 cells, and output scales.
+    const deep = build(s, "farm", ring(1, 1, 5, 2, 2));
+    expect(deep.cells).toHaveLength(6);
+    expect(roomSpec(deep, config).makes.rawFood).toBeCloseTo((12 * 6) / 4);
   });
 
   it("crop choice changes yield", () => {

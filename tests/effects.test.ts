@@ -42,10 +42,11 @@ describe("effect field", () => {
     const l = layout();
     placeRoom(l, "concrete_plant", ring(1, 1, 0, 2)); // noise −2 r2, slots 0–1
     const f = computeEffects(l);
-    // Rings 1 and 2 share their slots: ring 1 slot 0 sits right on ring 2 slot 0.
+    // Ring 2 has twice ring 1's slots: ring 1 slots 0–1 (0°–80°) sit right on ring 2 slots 0–3.
     expect(effectAt(f, "noise", cell(1, 2, 0))).toBeCloseTo(-4 / 3);
-    expect(effectAt(f, "noise", cell(1, 2, 2))).toBeCloseTo(-2 / 3);
-    // Ring 3 has more slots: ring 2 slot 0 (0°–40°) overlaps several of them.
+    expect(effectAt(f, "noise", cell(1, 2, 3))).toBeCloseTo(-4 / 3);
+    expect(effectAt(f, "noise", cell(1, 2, 4))).toBeCloseTo(-2 / 3);
+    // Rings 2 and 3 share their slots: one more step out.
     expect(effectAt(f, "noise", cell(1, 3, 0))).toBeCloseTo(-2 / 3);
     expect(effectAt(f, "noise", cell(1, 3, 1))).toBeCloseTo(-2 / 3);
   });

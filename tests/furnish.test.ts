@@ -27,7 +27,7 @@ describe("fitting furniture into a room", () => {
   // Floor 1's gallery tube, so ring-1 rooms have a door onto it.
   for (const e of galleryEdges(layout.hole, 1)) layout.corridors[e.id] = "gallery";
   const near = room(layout, "bunk_dorm", ring(1, 1, 0, 2)); // ring 1: narrow, with a door on the shaft
-  const far = room(layout, "bunk_dorm", ring(1, 2, 3, 2)); // ring 2: the same slots as ring 1, further out, so wider
+  const far = room(layout, "bunk_dorm", ring(1, 3, 4, 2)); // ring 3: wider slots than ring 1 (equal area, so shallower)
 
   it("keeps every item inside the walls and a walking aisle apart", () => {
     for (const r of [near, far]) {
@@ -46,8 +46,12 @@ describe("fitting furniture into a room", () => {
   });
 
   it("fills a wider room with more of a repeated item", () => {
-    const count = (r: typeof near) => fit(frameOf(layout, r)!, DORM).filter((i) => i.item === "bunk_bed").length;
-    expect(count(far)).toBeGreaterThan(count(near));
+    // Ring 2's back wall (2 of 18 slots at 31.6 m) is shorter than ring 3's (2 of 18 at 40 m).
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const narrow = room(l, "bunk_dorm", ring(1, 2, 0, 2));
+    const wide = room(l, "bunk_dorm", ring(1, 3, 4, 2));
+    const count = (r: typeof near) => fit(frameOf(l, r)!, DORM).filter((i) => i.item === "bunk_bed").length;
+    expect(count(wide)).toBeGreaterThan(count(narrow));
   });
 
   it("faces items away from their wall", () => {

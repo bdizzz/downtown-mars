@@ -13,10 +13,12 @@ import { addAdults } from "./people";
 import { packColonists, unpackColonists, type PackedColonists } from "./colonists";
 import { corridors, migrateCorridorRooms, recomputeAccess } from "./corridors";
 import { galleryEdges } from "./edges";
-import { ringRadiiFor, type Hole } from "./geometry";
+import { createHole, flatRingRadii, type Hole } from "./geometry";
+import { construction } from "./construction";
+import { regridJobsAndEvents, regridLayout, shrinkOversized } from "./regrid";
 import { ensureFloors, placeRoom, surfaceGrid, type Layout } from "./placement";
 import { openCells } from "./excavation";
-import { fillAir } from "./air";
+import { airVolume, fillAir } from "./air";
 import { setAllows } from "./storage";
 import type { World } from "./world";
 
@@ -24,7 +26,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 25;
+export const SAVE_VERSION = 26;
 
 type Raw = Record<string, unknown>;
 
@@ -244,17 +246,62 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
   // v25: colonists one by one (#523). Older holes have none saved: they're made from the cohorts on
   // the first tick, and find jobs and beds then.
   24: (s) => ({ ...s, holes: (s.holes as Raw[]).map(({ colonists: _, ...h }) => h) }),
+  // v26: equal-area rings at 9-18-18 (#548). Every old slot becomes as many new ones as its ring gained (ring 2's
+  // double), at the same angles; corridors, bulkheads, windows, jobs and events follow. Rooms bigger than their
+  // standard footprint shrink in place, keeping their door end; the slots they free stay dug, as empty space.
+  25: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const hole = h as unknown as SimState;
+      const layout = hole.layout;
+      const old = layout.hole;
+      const before = hole.resources && hole.air ? airVolume(hole, config) : 0;
+      regridLayout(layout, createHole(old.shaftRadiusM, old.floors, old.unlockedRings, config.geometry));
+      regridJobsAndEvents(old, layout, hole.construction?.queue ?? [], hole.events?.pending ?? []);
+      shrinkOversized(layout);
+      shrinkJobs(hole);
+      recomputeAccess(layout);
+      // The same space measures a little differently on the new radii: the air keeps its mix, owing nothing for it.
+      if (before > 0 && hole.air) {
+        const owed = hole.air.owed;
+        delete hole.air.dug;
+        const ratio = airVolume(hole, config) / before;
+        hole.air.owed = owed;
+        for (const gas of ["o2", "co2"]) if (hole.resources[gas] !== undefined) hole.resources[gas] *= ratio;
+      }
+      return hole as unknown as Raw;
+    }),
+  }),
 };
 
+/** After rooms shrink, their jobs dig out only the cells they still cover. */
+function shrinkJobs(hole: SimState): void {
+  const hours = construction.excavationHoursPerSlot;
+  for (const job of hole.construction?.queue ?? []) {
+    if (!job.digCells || !job.dig || job.roomId === undefined) continue;
+    const room = hole.layout.rooms.find((r) => r.id === job.roomId);
+    if (!room) continue;
+    const own = new Set([...room.cells, ...(room.pendingCells ?? [])].map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+    const cells = job.digCells.filter((c) => own.has(`${c.floor}:${c.ring}:${c.slot}`));
+    if (cells.length === job.digCells.length) continue;
+    const dig = cells.length * hours;
+    const less = job.dig - dig;
+    job.done = job.done < job.dig ? (job.done * dig) / job.dig : Math.max(dig, job.done - less);
+    job.work -= less;
+    job.dig = dig;
+    job.digCells = cells;
+  }
+}
+
 /**
- * Saves from before #547 carry no ring radii: every ring was 10 m deep, as `ringRadiiFor` still builds them.
+ * Saves from before #547 carry no ring radii: every ring was 10 m deep (`flatRingRadii`).
  * Filled in before the migrations run (some measure edges), on the single hole of a pre-v3 save or each of a world's.
  */
 function withRingRadii(raw: Raw): void {
   const holes = Array.isArray(raw.holes) ? (raw.holes as Raw[]) : [raw];
   for (const h of holes) {
     const hole = (h.layout as { hole?: Partial<Hole> } | undefined)?.hole;
-    if (hole && !hole.ringRadiiM && typeof hole.shaftRadiusM === "number") hole.ringRadiiM = ringRadiiFor(hole.shaftRadiusM, config.geometry, hole.ringSlots?.length);
+    if (hole && !hole.ringRadiiM && typeof hole.shaftRadiusM === "number") hole.ringRadiiM = flatRingRadii(hole.shaftRadiusM, config.geometry.roomDepthM, hole.ringSlots?.length ?? config.geometry.maxRings);
   }
 }
 

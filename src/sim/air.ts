@@ -65,6 +65,8 @@ export function shaftVolume(layout: Layout, cfg: SimConfig): number {
 function dugVolume(layout: Layout, cfg: SimConfig): number {
   const g = cfg.geometry;
   const floors = Math.min(layout.hole.floors, layout.open?.length ?? 0);
+  // A cell counts as a nominal slot (slot width × ring 1's depth): with equal-area rings (#548) every cell is the
+  // same size, so this is one scale for all of them, the one the air's numbers are tuned to.
   let volume = openCellCount(layout) * g.slotWidthM * g.roomDepthM * g.floorHeightM;
   for (const id of Object.keys(layout.corridors ?? {})) {
     if (layout.corridorsBuilding?.[id] !== undefined) continue;
