@@ -19,7 +19,7 @@ function nursery(): SimState {
     if (!r.ok) throw new Error(`${room}: ${r.reason}`);
   };
   build("clinic", 1);
-  build("bunk_dorm", 2);
+  build("bunk_dorm", 2, 2);
   return s;
 }
 

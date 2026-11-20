@@ -39,7 +39,7 @@ const step = (material: string, finish: string) => MATERIALS.walls.find((w) => w
 describe("room linings", () => {
   it("every room starts as bare rock", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     expect(liningOf(room(s, dorm)).name).toBe("Bare rock");
     expect(liningWear(room(s, dorm))).toBe(1);
     expect(liningText(room(s, dorm))).toBe("Bare rock");
@@ -47,7 +47,7 @@ describe("room linings", () => {
 
   it("a home lined from the console gets the comfort and wears slower", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     const before = homeFactors(s, room(s, dorm), config).comfort;
     expect(applyCommand(s, { type: "consoleLining", roomId: dorm, material: "brick" }).ok).toBe(true);
     expect(room(s, dorm).material).toBe("brick");
@@ -60,7 +60,7 @@ describe("room linings", () => {
     expect(liningText(room(s, dorm))).toMatch(/^Inlaid metal, fibre-composite panels floor: comfort \+1\.25, wears 30% slower$/);
 
     // Wear: brick against bare rock, side by side.
-    const bare = build(s, "bunk_dorm", ring(1, 1, 6, 1));
+    const bare = build(s, "bunk_dorm", ring(1, 1, 6, 2));
     applyCommand(s, { type: "consoleLining", roomId: dorm, material: "brick" });
     wear(s, 10);
     expect(1 - conditionOf(room(s, dorm))).toBeCloseTo((1 - conditionOf(room(s, bare))) * step("brick", "base").wear, 5);
@@ -82,7 +82,7 @@ describe("room linings", () => {
     expect(liningWear(room(s, smelter))).toBeCloseTo(1 - (1 - step("metal", "base").wear) * 2, 5);
     expect(sharedLiningComfort(s)).toBe(0);
 
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 5, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 5, 2));
     const galley = build(s, "galley", ring(1, 1, 3));
     const restroom = build(s, "restroom", ring(1, 1, 4));
     const before = homeFactors(s, room(s, dorm), config).comfort;
@@ -107,7 +107,7 @@ describe("room linings", () => {
     expect(canLine(entrance)).toBe(false);
     expect(canLine(pod)).toBe(false);
     expect(applyCommand(s, { type: "consoleLining", roomId: entrance.id, material: "brick" }).ok).toBe(false);
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     expect(applyCommand(s, { type: "consoleLining", roomId: dorm, material: "gold" }).ok).toBe(false);
     expect(applyCommand(s, { type: "consoleLining", roomId: dorm, flooring: "carpet" }).ok).toBe(false);
     expect(room(s, dorm).material).toBeUndefined();
@@ -117,7 +117,7 @@ describe("room linings", () => {
     const w = createWorld(config, 7);
     const s = w.holes[0]!;
     Object.assign(s.resources, { rock: 2000, metal: 2000, brick: 2000, machinery: 500, electronics: 500 });
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     applyCommand(s, { type: "consoleLining", roomId: dorm, material: "brick", finish: "fine" });
     applyCommand(s, { type: "consoleLining", roomId: dorm, flooring: "fibre_panels" });
     const back = deserialize(serialize(w));

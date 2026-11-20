@@ -179,7 +179,7 @@
     "airborne": { "airQuality": { "leak": 0 }, "smell": { "leak": 1 } },
     "stepsPerRadius": 3,
     "dust": { "stormFactor": 2 },
-    "crowding": { "perCell": 13, "air": 0.15 }
+    "crowding": { "perCell": 5, "air": 0.15 }
   },
   "windows": {
     "costPer10m": { "glass": 2 },

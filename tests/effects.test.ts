@@ -83,7 +83,7 @@ describe("effect field", () => {
   it("blueprints and residents-only effects don't radiate", () => {
     const l = layout(1);
     placeRoom(l, "life_support", ring(2, 1, 0, 3)); // floor 2 is being dug: a blueprint
-    placeRoom(l, "bunk_dorm", ring(1, 1, 5, 1)); // comfort −1 for its own residents only
+    placeRoom(l, "bunk_dorm", ring(1, 1, 5, 2)); // comfort −1 for its own residents only
     const f = computeEffects(l);
     expect(effectAt(f, "noise", cell(1, 1, 0))).toBe(0);
     expect(effectAt(f, "comfort", cell(1, 1, 5))).toBe(0);

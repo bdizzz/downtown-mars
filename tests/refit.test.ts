@@ -146,7 +146,7 @@ describe("the upgradeRoom command", () => {
 
   it("demolishing the room refunds its refit", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     const brick = s.resources.brick!;
     expect(upgrade(s, dorm, "brick").ok).toBe(true);
     expect(applyCommand(s, { type: "demolish", roomId: dorm }).ok).toBe(true);

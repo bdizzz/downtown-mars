@@ -128,7 +128,7 @@ describe("room condition", () => {
 
   it("makes residents of a worn home, and everyone around worn shared rooms, less comfortable", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     const galley = build(s, "galley", ring(1, 1, 5));
     // Its own shaft windows (no tube in front), so its comfort isn't already at the floor.
     for (const slot of [3, 4]) delete s.layout.corridors[galleryEdges(s.layout.hole, 1)[slot]!.id];

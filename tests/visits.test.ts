@@ -31,7 +31,7 @@ const build = (s: SimState, room: string, at: Location) => {
 function noisyDorm(): SimState {
   const s = rich();
   build(s, "life_support", ring(1, 1, 1, 3));
-  build(s, "bunk_dorm", ring(1, 1, 4, 1));
+  build(s, "bunk_dorm", ring(1, 1, 4, 2));
   setAdults(s, 36, config);
   updateHappiness(s, config, true);
   return s;

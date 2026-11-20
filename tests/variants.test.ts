@@ -26,8 +26,8 @@ describe("room variety", () => {
   });
 
   it("only ever swaps in what that kind of room may have", () => {
-    const { out } = rooms("bunk_dorm", 3, 1);
-    for (const r of out) for (const p of varied(templateFor("bunk_dorm", 1, 1)!, r)) expect(itemsFor("bunk_dorm")).toContain(p.item);
+    const { out } = rooms("bunk_dorm", 3, 2);
+    for (const r of out) for (const p of varied(templateFor("bunk_dorm", 2, 1)!, r)) expect(itemsFor("bunk_dorm")).toContain(p.item);
   });
 
   it("leaves stairs exactly as they are", () => {

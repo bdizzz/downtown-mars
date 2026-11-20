@@ -43,7 +43,7 @@ describe("Earth supply drops", () => {
     const s = start();
     ticks(s, firstDrop);
     expect(s.population.count).toBe(20); // the pod is full
-    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 1) });
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 2) });
     for (let i = 0; i < config.earth.intervalDays * config.ticksPerDay; i++) {
       s.population.health = 100; // this hole has no galley or life support; beds are the point here
       ticks(s, 1);
@@ -53,7 +53,7 @@ describe("Earth supply drops", () => {
 
   it("sends nobody into a hole whose people are in poor health", () => {
     const s = start();
-    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 1) });
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 2) });
     for (let i = 0; i < firstDrop; i++) {
       s.population.health = config.earth.colonistsNeedHealth - 10;
       ticks(s, 1);
@@ -105,7 +105,7 @@ describe("Earth supply drops", () => {
 
   it("sizes the top-ups for the colonists who just arrived", () => {
     const s = start();
-    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 1) });
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 2) });
     s.resources.rations = 0;
     ticks(s, firstDrop);
     const food = (s.resources.rations ?? 0) + (s.resources.meals ?? 0) + (s.resources.rawFood ?? 0);

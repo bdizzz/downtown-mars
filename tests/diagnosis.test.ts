@@ -78,7 +78,7 @@ describe("diagnosis: health", () => {
 
 describe("diagnosis: happiness", () => {
   it("names the noise next door, and the home that hears it", () => {
-    const s = withRooms([["life_support", ring(1, 1, 1, 3)], ["bunk_dorm", ring(1, 1, 5, 1)]]);
+    const s = withRooms([["life_support", ring(1, 1, 1, 3)], ["bunk_dorm", ring(1, 1, 5, 2)]]);
     const dorm = s.layout.rooms.find((r) => r.type === "bunk_dorm")!;
     setAdults(s, s.happiness.pools.reduce((n, p) => n + p.capacity, 0), config);
     updateHappiness(s, config, true);
@@ -99,7 +99,7 @@ describe("diagnosis: happiness", () => {
   });
 
   it("the causes add up to where happiness is heading", () => {
-    const s = withRooms([["life_support", ring(1, 1, 1, 3)], ["bunk_dorm", ring(1, 1, 5, 1)]]);
+    const s = withRooms([["life_support", ring(1, 1, 1, 3)], ["bunk_dorm", ring(1, 1, 5, 2)]]);
     setAdults(s, 12, config);
     updateHappiness(s, config, true);
     const h = s.happiness;

@@ -44,7 +44,7 @@ describe("air quality", () => {
     // Floor 2 is rock but for what's built: a dorm some way along a gallery tube from the hub,
     // and a clinic right behind the hub, walled off from it with no way round.
     const hub = build(s, "ventilation_hub", ring(2, 1, 1));
-    const dorm = build(s, "bunk_dorm", ring(2, 1, 4, 1));
+    const dorm = build(s, "bunk_dorm", ring(2, 1, 4, 2));
     const behind = build(s, "clinic", ring(2, 2, 1));
     const tubes = galleryEdges(s.layout.hole, 2).slice(1, 6).map((e) => e.id);
     expect(applyCommand(s, { type: "drawCorridors", edges: tubes, finish: "rock" }).ok).toBe(true);
@@ -57,18 +57,18 @@ describe("air quality", () => {
 
   it("industry fouls it, a park freshens it", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 4, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     const base = effectOnRoom(computeEffects(s.layout), "airQuality", room(s, dorm));
     build(s, "concrete_plant", ring(1, 1, 5, 2));
     const fouled = effectOnRoom(computeEffects(s.layout), "airQuality", room(s, dorm));
     expect(fouled).toBeLessThan(base);
-    build(s, "park", ring(1, 1, 1, 3));
+    build(s, "park", ring(1, 2, 5, 3));
     expect(effectOnRoom(computeEffects(s.layout), "airQuality", room(s, dorm))).toBeGreaterThan(fouled);
   });
 
   it("is felt at home as health", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     step(s, config);
     const fresh = homeFactors(s, room(s, dorm), config).health;
     build(s, "brickworks", ring(1, 1, 5, 2));
@@ -106,14 +106,14 @@ describe("crowding", () => {
   it("makes a packed home stuffy, which costs its people health", () => {
     const s = hole();
     setAdults(s, 36, config);
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     applyCommand(s, { type: "consoleFinish" });
     updateHappiness(s, config, true);
     updateHappiness(s, config, true);
     const full = s.happiness.pools.find((p) => p.roomId === dorm)!;
     expect(full.residents).toBe(16);
     const c = config.effects.crowding;
-    expect(crowdedAir(s, room(s, dorm))).toBeCloseTo(-(16 / 1 - c.perCell) * c.air, 5);
+    expect(crowdedAir(s, room(s, dorm))).toBeCloseTo(-(16 / 2 - c.perCell) * c.air, 5);
     // The same dorm half empty isn't crowded.
     full.residents = 8;
     expect(crowdedAir(s, room(s, dorm))).toBe(0);

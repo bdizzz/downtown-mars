@@ -72,7 +72,7 @@ describe("windows", () => {
     ensureFloors(s.layout);
     const { floors } = config.windows.sun;
     const at = (floor: number) => {
-      const dorm = build(s, "bunk_dorm", ring(floor, 1, 4, 1));
+      const dorm = build(s, "bunk_dorm", ring(floor, 1, 4, 2));
       expect(glaze(s, dorm, galleryEdges(s.layout.hole, floor)[4]!.id).ok).toBe(true);
       return sunlight(s.layout, roomOf(s, dorm));
     };
@@ -81,7 +81,7 @@ describe("windows", () => {
     expect(at(floors + 1)).toBe(0);
     expect(at(floors + 2)).toBe(0);
     // A lab looking onto a corridor: a view, no sun.
-    const lab = build(s, "bunk_dorm", ring(1, 2, 8, 1));
+    const lab = build(s, "bunk_dorm", ring(1, 2, 8, 2));
     const corridor = radialEdge(s.layout.hole, 1, 2, 8);
     s.layout.corridors[corridor.id] = "rock";
     expect(glaze(s, lab, corridor.id).ok).toBe(true);
@@ -99,7 +99,7 @@ describe("windows", () => {
 
   it("only where there's something across: a corridor or a plaza, not rock; never in a walk-through room", () => {
     const s = site();
-    const lab = build(s, "bunk_dorm", ring(1, 2, 3, 1));
+    const lab = build(s, "bunk_dorm", ring(1, 2, 3, 2));
     const side = radialEdge(s.layout.hole, 1, 2, 3).id;
     // Rock along its left side: refused.
     expect(glaze(s, lab, side).ok).toBe(false);
@@ -109,14 +109,14 @@ describe("windows", () => {
     expect(glazedWalls(s.layout, roomOf(s, lab)).map((w) => w.across)).toEqual(["corridor"]);
     expect(windowComfort(s.layout, roomOf(s, lab))).toBeCloseTo(config.windows.view.corridor);
     // A plaza on its other side: a better view, and the extra wall counts a little.
-    const plaza = build(s, "tiny_plaza", ring(1, 2, 4));
+    const plaza = build(s, "tiny_plaza", ring(1, 2, 5));
     applyCommand(s, { type: "consoleFinish" });
-    const right = radialEdge(s.layout.hole, 1, 2, 4).id;
+    const right = radialEdge(s.layout.hole, 1, 2, 5).id;
     expect(glaze(s, lab, right).ok).toBe(true);
     expect(windowComfort(s.layout, roomOf(s, lab))).toBeCloseTo(config.windows.view.public + config.windows.extraWall);
     // The plaza itself is open: no windows for it, and its border goes to the dorm.
     expect(applyCommand(s, { type: "setWindows", roomId: plaza, edges: [right], on: true }).ok).toBe(false);
-    expect(roomForWindows(s.layout, right, { floor: 1, ring: 2, slot: 4 })?.id).toBe(lab);
+    expect(roomForWindows(s.layout, right, { floor: 1, ring: 2, slot: 5 })?.id).toBe(lab);
     // Fill the corridor in: those windows go blind (no view, no glass), the plaza's stay.
     applyCommand(s, { type: "removeCorridors", edges: [side] });
     applyCommand(s, { type: "consoleFinish" });
@@ -208,7 +208,7 @@ describe("windows", () => {
   it("old saves keep the shaft windows they had", () => {
     const w = createWorld(config, 42);
     const hole = w.holes[0]!;
-    const dorm = build(hole, "bunk_dorm", ring(1, 1, 2, 1));
+    const dorm = build(hole, "bunk_dorm", ring(1, 1, 2, 2));
     const old = JSON.parse(serialize(w));
     old.version = 16;
     for (const h of old.state.holes) for (const r of h.layout.rooms) delete r.windows;

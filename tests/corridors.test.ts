@@ -45,7 +45,7 @@ describe("where corridors can go", () => {
 
   it("costs its finish by length, and costs the same again to fill in", () => {
     const s = rich();
-    build(s, "bunk_dorm", ring(1, 1, 0, 1));
+    build(s, "bunk_dorm", ring(1, 1, 0, 2));
     const brick = s.resources.brick!;
     expect(draw(s, ["R1.1.0"], "brick").ok).toBe(true);
     const cost = corridors.finishes.find((f) => f.id === "brick")!.cost.brick!; // a radial edge is 10 m
@@ -64,7 +64,7 @@ describe("where corridors can go", () => {
 
   it("refuses what it can't afford", () => {
     const s = rich();
-    build(s, "bunk_dorm", ring(1, 1, 0, 1));
+    build(s, "bunk_dorm", ring(1, 1, 0, 2));
     s.resources.metal = 0;
     expect(draw(s, ["R1.1.0"], "metal")).toMatchObject({ ok: false, reason: expect.stringMatching(/Needs .* metal/) });
   });
@@ -74,7 +74,7 @@ describe("access", () => {
   it("ring 1 rooms open onto the gallery; deeper rooms need a linked corridor", () => {
     const s = rich();
     const galley = build(s, "galley", ring(1, 1, 0));
-    const dorm = build(s, "bunk_dorm", ring(1, 2, 0, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 2, 0, 2));
     expect(galley.connected).toBe(true);
     expect(dorm.connected).toBe(false);
     // A spoke beside the galley reaches the gallery; an arc along the dorm's inner side joins it.
@@ -87,7 +87,7 @@ describe("access", () => {
 
   it("a corridor that doesn't reach the shaft isn't linked", () => {
     const s = rich();
-    const dorm = build(s, "bunk_dorm", ring(1, 2, 4, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 2, 4, 2));
     const e = outsideEdges(s.layout.hole, dorm.cells).find((x) => x.kind === "arc" && x.circle === 2)!;
     draw(s, [e.id]);
     expect(s.layout.corridorLinked?.[e.id]).toBe(false);
@@ -97,7 +97,7 @@ describe("access", () => {
   it("removing a corridor strands what was behind it", () => {
     const s = rich();
     build(s, "galley", ring(1, 1, 0));
-    const dorm = build(s, "bunk_dorm", ring(1, 2, 0, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 2, 0, 2));
     expect(applyCommand(s, { type: "connectRoom", roomId: dorm.id, finish: "rock" }).ok).toBe(true);
     expect(s.layout.rooms.find((r) => r.id === dorm.id)!.connected).toBe(true);
     applyCommand(s, { type: "removeCorridors", edges: Object.keys(s.layout.corridors) });
@@ -107,7 +107,7 @@ describe("access", () => {
   it("a public room counts every side as a corridor", () => {
     const s = rich();
     build(s, "small_plaza", ring(1, 1, 0, 2));
-    const dorm = build(s, "bunk_dorm", ring(1, 2, 0, 1)); // right behind the plaza
+    const dorm = build(s, "bunk_dorm", ring(1, 2, 0, 2)); // right behind the plaza
     expect(dorm.connected).toBe(true);
     expect(Object.values(s.layout.corridors).filter((f) => f !== "gallery")).toHaveLength(0);
   });
@@ -147,7 +147,7 @@ describe("connecting a room", () => {
   it("uses existing corridors for free", () => {
     const s = rich();
     build(s, "galley", ring(1, 1, 0));
-    const a = build(s, "bunk_dorm", ring(1, 2, 0, 1));
+    const a = build(s, "bunk_dorm", ring(1, 2, 0, 2));
     applyCommand(s, { type: "connectRoom", roomId: a.id, finish: "rock" });
     const before = Object.keys(s.layout.corridors).length;
     const b = build(s, "clinic", ring(1, 2, 2)); // next to the first dorm
@@ -162,7 +162,7 @@ describe("corridors and effects", () => {
     const s = rich();
     s.unlocks = ["standardHomes"];
     build(s, "life_support", ring(1, 1, 0, 3)); // noise −2 r2, slots 0–3
-    build(s, "bunk_dorm", ring(1, 1, 4, 1));
+    build(s, "bunk_dorm", ring(1, 1, 4, 2));
     build(s, "flat", ring(1, 1, 6)); // comfort +1 r1 for its neighbours
     const before = effectAt(computeEffects(s.layout), "noise", { floor: 1, ring: 1, slot: 4 });
     draw(s, ["R1.1.4"]); // between the life support and the dorm
@@ -187,7 +187,7 @@ describe("old saves", () => {
     layout.grid[0][0][1] = id;
     const dormId = layout.nextRoomId++;
     const dormCells = [{ floor: 1, ring: 2, slot: 1 }, { floor: 1, ring: 2, slot: 2 }];
-    layout.rooms.push({ id: dormId, type: "bunk_dorm", at: ring(1, 2, 1, 1), cells: dormCells, surfaceCells: [], connected: true, planned: false, priority: "normal" });
+    layout.rooms.push({ id: dormId, type: "bunk_dorm", at: ring(1, 2, 1, 2), cells: dormCells, surfaceCells: [], connected: true, planned: false, priority: "normal" });
     for (const c of dormCells) layout.grid[0][1][c.slot] = dormId;
     const loaded = deserialize(JSON.stringify(file));
     expect(loaded.ok).toBe(true);
@@ -211,7 +211,7 @@ describe("stairs", () => {
     const stairs = build(s, "stairwell", ring(1, 1, 4));
     expect(new Set(stairs.cells.map((c) => c.floor))).toEqual(new Set([1, 2]));
     // On floor 2, a dorm in ring 2 right behind the stairwell's floor-2 cell.
-    const dorm = build(s, "bunk_dorm", ring(2, 2, 8, 1));
+    const dorm = build(s, "bunk_dorm", ring(2, 2, 8, 2));
     // The stairwell's floor-2 sides count as corridors, so the dorm behind it is connected.
     expect(s.layout.rooms.find((r) => r.id === dorm.id)!.connected).toBe(true);
     // A stairwell whose lower floor isn't dug yet is refused.

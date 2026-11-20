@@ -73,8 +73,8 @@
       "name": "Bunk dorm",
       "short": "Dorm",
       "category": "housing",
-      "size": "S",
-      "w": 1,
+      "size": "M",
+      "w": 2,
       "staff": 0,
       "uses": {
         "power": 1

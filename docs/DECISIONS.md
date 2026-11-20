@@ -479,5 +479,5 @@ Talked through with Bryon (Nov 12) and built as one PR (#394–#406).
 - Rings 1–3 have 9, 18 and 18 slots, each ring as deep as equal-area slots need (10, 11.6, 8.4 m). A room is the same size on every ring.
 - Each room has its own width in slots (`w`), from its ideal area (`docs/ROOM-AREAS.md`, ring-1 column); 3-slot rooms are allowed. Output scales by a room's own standard footprint.
 - Old saves: each old slot becomes the new slots at its angles; rooms bigger than their kind's shape shrink in place, keeping their door end, and the freed slots stay dug. Smaller ones (a 2-slot park, now 3) are left, working in proportion.
-- Crowding's threshold went from 5 to 13 people per cell, so a full one-slot dorm of 16 is as stuffy as the two-slot one was.
+- The bunk dorm is two slots, not one (Bryon, Nov 20, in #555). Crowding stays at 5 people per cell, so a full dorm (8 a cell) is stuffy as before; the one-slot dorm with a threshold of 13 is not to be revived.
 - Air volume still counts each cell as a nominal 100 m²: every cell is the same size now, and the air's numbers are tuned to that scale.

@@ -278,7 +278,7 @@ describe("solid walls", () => {
 describe("windows", () => {
   it("pull back with the wall when a corridor is carved along a side, and return when it's gone", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 1)); // ring-1 slots 2–3
+    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 2)); // ring-1 slots 2–3
     const room = l.rooms.find((x) => x.id === r.id)!;
     const span = (): [number, number] => {
       const faces = shaftFaces(l, room);
@@ -317,7 +317,7 @@ describe("doors and windows", () => {
 
   it("cut the doorway and the window band through a private room's shaft face", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 1));
+    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 2));
     const room = l.rooms.find((x) => x.id === r.id)!;
     // No gallery tube along it: all window, no door.
     expect(doorways(l, room)).toEqual([]);
