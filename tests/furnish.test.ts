@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, roomShapes, type Layout, type Location } from "../src/sim/placement";
-import { FIT, fit, frameOf, furnish, furnishedFloors, inside, layouts, place, templateFor, tooClose, unplace, type Template } from "../src/view/furnish";
-import { isFurnished, itemDef, itemsFor } from "../src/view/furniture";
+import { FIT, fit, frameOf, furnish, furnishedFloors, inside, isFlat, layouts, place, templateFor, tooClose, unplace, type Template } from "../src/view/furnish";
+import { isFurnished, isMounted, itemDef, itemsFor } from "../src/view/furniture";
 import { roomDef, roomDefs } from "../src/sim/rooms";
 import { galleryEdges } from "../src/sim/edges";
 
@@ -204,5 +204,33 @@ describe("the templates", () => {
       }
       t.forEach((p, i) => expect(used.has(i), `${key} #${i} ${p.item} never fits`).toBe(true));
     }
+  });
+});
+
+describe("busier templates (#551, #552)", () => {
+  // Rooms whose job is smaller than their slot: a core that does the job, plus fillers that repeat,
+  // so the floor reads as busy on every ring (docs/PLAN-M19.md). About 25% covered, 15-20% for the
+  // open rooms; the storeroom's shelving aisles and the crypt's thin niche walls sit a little under.
+  const BUSY = [
+    "heater", "radiator", "ventilation_hub", "gas_tank", "battery_bank", "waste_storage", "site_office", "cleaning_service", "maintenance",
+    "kitchen", "hospital", "gym", "machine_shop", "brickworks", "glassworks", "restroom", "stairwell", "spiral_stair", "elevator", "cargo_elevator",
+  ];
+  const OPEN = ["storeroom", "crypt", "tiny_plaza", "small_plaza", "plaza", "park"];
+  const covered = (type: string, r: number) => {
+    const [w, d] = roomShapes(roomDef(type))[0]!;
+    const layout = createLayout(createHole(10, 3, 3, config.geometry));
+    for (const e of galleryEdges(layout.hole, 1)) layout.corridors[e.id] = "gallery";
+    const placed = placeRoom(layout, type, { kind: "ring", floor: 2, ring: r, slot: 0, w, d });
+    expect(placed.ok, `${type} in ring ${r}`).toBe(true);
+    const frame = frameOf(layout, layout.rooms.find((x) => x.id === placed.id)!)!;
+    const standing = fit(frame, templateFor(type, w, d)!).filter((i) => !isFlat(i.item) && !isMounted(i.item) && !itemDef(i.item).opening);
+    return standing.reduce((n, i) => n + itemDef(i.item).size[0] * itemDef(i.item).size[1], 0) / frame.area;
+  };
+
+  it.each(BUSY)("%s covers at least a fifth of its floor on rings 1-3", (type) => {
+    for (const r of [1, 2, 3]) expect(covered(type, r), `${type} in ring ${r}`).toBeGreaterThanOrEqual(0.2);
+  });
+  it.each(OPEN)("%s covers at least 15% of its floor on rings 1-3", (type) => {
+    for (const r of [1, 2, 3]) expect(covered(type, r), `${type} in ring ${r}`).toBeGreaterThanOrEqual(0.15);
   });
 });

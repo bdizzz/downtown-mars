@@ -68,16 +68,27 @@
       {"item":"duct_riser","wall":"right","y":0.1},
       {"item":"safety_sign","wall":"back","x":2.2},
       {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":3}},
-      {"item":"air_vent","wall":"right","x":1,"repeat":{"every":0.5,"max":1}}
+      {"item":"air_vent","wall":"right","x":1,"repeat":{"every":0.5,"max":1}},
+      {"item":"big_tank","wall":"left","x":2.4,"y":0.1},
+      {"item":"pump","wall":"right","x":2,"y":0.1,"repeat":{"every":1.8,"max":3}},
+      {"item":"valve_panel","wall":"back","x":3.2,"y":0.1,"repeat":{"every":1.6,"max":4}},
+      {"item":"console","wall":"front","x":2.4,"y":0.2},
+      {"item":"pipe_run","wall":"center","y":-1.2,"repeat":{"every":3.4,"max":3}},
+      {"item":"barrel_group","wall":"front","x":-2.4,"y":0.3,"repeat":{"every":1.6,"max":2}},
+      {"item":"tool_cart","wall":"center","x":2.2,"y":0.6},
+      {"item":"valve_panel","wall":"center","y":-2.6,"x":0.8,"repeat":{"every":1.6}},
+      {"item":"pump","wall":"center","y":2.4,"x":0.8,"repeat":{"every":1.7}},
+      {"item":"barrel_group","wall":"center","x":0,"y":0.2,"repeat":{"every":1.7}},
+      {"item":"pump","wall":"center","x":0,"y":1.8,"repeat":{"every":1.65}}
     ],
     "heating_plant:1x1": [
       {"item":"furnace","wall":"back","x":-1.5,"y":0.1},
       {"item":"furnace","wall":"back","x":3,"y":0.1},
       {"item":"pipe_manifold","wall":"left","y":0.1},
       {"item":"big_fan","wall":"right","y":0.1},
-      {"item":"console","wall":"front","x":-2.0,"y":0.1},
+      {"item":"console","wall":"front","x":-2,"y":0.1},
       {"item":"readout_panel","wall":"right","x":-1.2},
-      {"item":"safety_sign","wall":"back","x":0.0},
+      {"item":"safety_sign","wall":"back","x":0},
       {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":5}},
       {"item":"work_light","wall":"back","x":0.5,"repeat":{"every":4,"max":2}}
     ],
@@ -87,7 +98,19 @@
       {"item":"pipe_manifold","wall":"right","y":0.1},
       {"item":"safety_sign","wall":"back","x":2.2},
       {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":3}},
-      {"item":"air_vent","wall":"right","x":1,"repeat":{"every":0.5,"max":1}}
+      {"item":"air_vent","wall":"right","x":1,"repeat":{"every":0.5,"max":1}},
+      {"item":"radiator_panel","wall":"center","y":0.4,"repeat":{"every":1.4}},
+      {"item":"radiator_panel","wall":"center","y":-1.4,"repeat":{"every":1.4}},
+      {"item":"pump","wall":"left","x":2.2,"y":0.1,"repeat":{"every":1.8,"max":2}},
+      {"item":"valve_panel","wall":"right","x":2.2,"y":0.1,"repeat":{"every":1.6,"max":3}},
+      {"item":"pipe_run","wall":"back","x":3.6,"y":0.1,"repeat":{"every":3.4,"max":3}},
+      {"item":"pipe_run","wall":"front","x":2.4,"y":0.2,"repeat":{"every":3.4,"max":2}},
+      {"item":"radiator_panel","wall":"center","y":2.4,"repeat":{"every":2}},
+      {"item":"radiator_panel","wall":"center","y":-3,"turn":180,"repeat":{"every":2}},
+      {"item":"radiator_panel","wall":"back","x":-2.5,"y":0.1},
+      {"item":"radiator_panel","wall":"left","x":0.95,"y":0.1,"repeat":{"every":1.9}},
+      {"item":"radiator_panel","wall":"back","x":2.5,"y":0.1},
+      {"item":"pipe_run","wall":"center","x":0,"y":-0.2,"turn":90,"repeat":{"every":0.75}}
     ],
     "battery_bank:1x1": [
       {"item":"inverter","wall":"left","y":0.1},
@@ -110,7 +133,16 @@
       {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
       {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"battery_rack","wall":"center","y":-1.6,"x":0.85,"repeat":{"every":1.7}},
+      {"item":"battery_rack","wall":"center","y":2,"x":0.85,"turn":180,"repeat":{"every":1.7}},
+      {"item":"battery_rack","wall":"left","x":2,"y":0.1,"repeat":{"every":1.6,"max":3}},
+      {"item":"inverter","wall":"right","x":-1.8,"y":0.1,"repeat":{"every":1.2,"max":2}},
+      {"item":"battery_rack","wall":"center","x":0.88,"y":-3,"repeat":{"every":1.75}},
+      {"item":"inverter","wall":"center","x":0,"y":-1.4,"turn":90,"repeat":{"every":1}},
+      {"item":"inverter","wall":"center","x":0.5,"y":1.8,"turn":90,"repeat":{"every":1}},
+      {"item":"battery_rack","wall":"front","x":-0.5,"y":0.3},
+      {"item":"inverter","wall":"center","x":0,"y":2.2,"turn":90,"repeat":{"every":1}}
     ],
     "brickworks:2x1": [
       {"item":"kiln","wall":"back","x":-2.8,"y":0.1},
@@ -128,7 +160,16 @@
       {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
       {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"brick_press","wall":"center","x":-2.2,"y":-0.2},
+      {"item":"brick_pallet","wall":"center","y":1.6,"repeat":{"every":1.5},"snug":true},
+      {"item":"brick_pallet","wall":"back","x":0,"y":0.2,"repeat":{"every":1.4},"snug":true},
+      {"item":"drying_rack","wall":"left","x":2,"y":0.1,"repeat":{"every":1.25,"max":3}},
+      {"item":"bag_stack","wall":"front","x":-5.6,"y":0.3,"repeat":{"every":1.5,"max":3}},
+      {"item":"ore_bin","wall":"right","x":2.4,"y":0.2,"repeat":{"every":1.8,"max":2}},
+      {"item":"conveyor","wall":"center","y":-2.2,"x":4},
+      {"item":"cargo_crate","wall":"front","x":5.6,"y":0.3,"repeat":{"every":1.5,"max":2}},
+      {"item":"bag_stack","wall":"center","x":0,"y":-2.2,"turn":90,"repeat":{"every":1.35}}
     ],
     "bunk_dorm:1x1": [
       {"item":"bunk_bed","wall":"back","y":0.1,"turn":-90,"repeat":{"every":1.6,"max":8}},
@@ -198,10 +239,16 @@
       {"item":"first_aid_kit","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
       {"item":"safety_sign","wall":"left","repeat":{"every":0.5,"max":1}},
       {"item":"safety_sign","wall":"right","repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"cargo_crate","wall":"left","x":2,"y":0.1,"repeat":{"every":1.4,"max":3},"snug":true},
+      {"item":"pallet_rack","wall":"right","x":2,"y":0.1,"turn":0},
+      {"item":"crate_stack","wall":"front","x":2.4,"y":0.1},
+      {"item":"barrel_group","wall":"front","x":-2.4,"y":0.3},
+      {"item":"barrel_group","wall":"center","x":0.85,"y":1,"repeat":{"every":1.7}},
+      {"item":"cargo_crate","wall":"center","x":0,"y":-2.6,"repeat":{"every":1.6}}
     ],
     "cleaning_service:1x1": [
-      {"item":"laundry_machine","wall":"back","x":-1.0,"y":0.05,"repeat":{"every":0.8,"max":4},"snug":true},
+      {"item":"laundry_machine","wall":"back","x":-1,"y":0.05,"repeat":{"every":0.8,"max":4},"snug":true},
       {"item":"sink_basin","wall":"back","x":2.4,"y":0.1},
       {"item":"drying_rack","wall":"left","y":0.1},
       {"item":"mop_rack","wall":"right","y":0.05},
@@ -216,7 +263,18 @@
       {"item":"air_vent","wall":"right","repeat":{"every":2.6,"max":2}},
       {"item":"first_aid_kit","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"intercom","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
-      {"item":"wall_lamp","wall":"back","x":0.35,"repeat":{"every":1.4,"max":4}}
+      {"item":"wall_lamp","wall":"back","x":0.35,"repeat":{"every":1.4,"max":4}},
+      {"item":"cleaning_cart","wall":"center","x":0.7,"y":1.2,"repeat":{"every":1.3}},
+      {"item":"shelf_unit","wall":"back","x":-3.6,"y":0.1,"repeat":{"every":1.5,"max":3}},
+      {"item":"drying_rack","wall":"left","x":1.8,"y":0.1,"repeat":{"every":1.3,"max":3}},
+      {"item":"mop_rack","wall":"right","x":1.8,"y":0.05,"repeat":{"every":1.4,"max":3}},
+      {"item":"laundry_machine","wall":"front","x":-2.6,"y":0.2,"repeat":{"every":0.8,"max":3},"snug":true},
+      {"item":"table","wall":"center","y":-1.6,"x":1.6},
+      {"item":"shelf_unit","wall":"center","y":-0.2,"x":0.75,"repeat":{"every":1.5},"snug":true},
+      {"item":"laundry_machine","wall":"center","y":2.4,"repeat":{"every":0.8,"max":6},"snug":true},
+      {"item":"shelf_unit","wall":"center","x":0,"y":-2.2,"turn":90,"repeat":{"every":0.85}},
+      {"item":"cleaning_cart","wall":"center","x":0.45,"y":-3.4,"turn":90,"repeat":{"every":0.9}},
+      {"item":"cleaning_cart","wall":"center","x":0,"y":3.4,"repeat":{"every":1.3}}
     ],
     "clinic:1x1": [
       {"item":"med_cabinet","wall":"left","y":0.1},
@@ -256,7 +314,7 @@
       {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":8}},
       {"item":"cable_tray","wall":"left","repeat":{"every":2,"max":8}},
       {"item":"cable_tray","wall":"right","repeat":{"every":2,"max":8}},
-      {"item":"work_light","wall":"back","x":1.0,"repeat":{"every":4,"max":2}},
+      {"item":"work_light","wall":"back","x":1,"repeat":{"every":4,"max":2}},
       {"item":"work_light","wall":"left","x":2,"repeat":{"every":4,"max":2}},
       {"item":"work_light","wall":"right","x":2,"repeat":{"every":4,"max":2}},
       {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
@@ -293,8 +351,8 @@
     "construction_office:1x1": [
       {"item":"tool_wall","wall":"left"},
       {"item":"shelf_unit","wall":"right","x":1.5,"y":0.1},
-      {"item":"water_cooler","wall":"front","x":2.0,"y":0.2},
-      {"item":"cargo_crate","wall":"front","x":-2.0,"y":0.3,"repeat":{"every":1.4,"max":2},"snug":true},
+      {"item":"water_cooler","wall":"front","x":2,"y":0.2},
+      {"item":"cargo_crate","wall":"front","x":-2,"y":0.3,"repeat":{"every":1.4,"max":2},"snug":true},
       {"item":"desk","wall":"back","y":0.1,"repeat":{"every":3.2,"max":4}},
       {"item":"office_chair","wall":"back","y":1,"turn":180,"repeat":{"every":3.2,"max":4},"snug":true},
       {"item":"blueprint_table","wall":"center","y":-1.2,"repeat":{"every":3.2,"max":3}},
@@ -382,7 +440,14 @@
       {"item":"wall_textile","wall":"front","x":0.55,"repeat":{"every":2.2,"max":3}},
       {"item":"wall_lamp","wall":"left","x":0.7,"repeat":{"every":1.4,"max":5}},
       {"item":"wall_lamp","wall":"right","x":0.7,"repeat":{"every":1.4,"max":5}},
-      {"item":"air_vent","wall":"front","repeat":{"every":3,"max":1}}
+      {"item":"air_vent","wall":"front","repeat":{"every":3,"max":1}},
+      {"item":"niche_wall","wall":"center","y":2.2,"x":1.75,"repeat":{"every":3.45},"turn":180},
+      {"item":"bench","wall":"center","y":-2.2,"turn":180,"repeat":{"every":2.3}},
+      {"item":"plant_pot","wall":"front","x":-2.8,"y":0.3,"repeat":{"every":5.6,"max":2}},
+      {"item":"candle_stand","wall":"center","y":1.4,"x":2.4,"repeat":{"every":1.2,"max":4}},
+      {"item":"plant_pot","wall":"center","x":0,"y":3.4,"repeat":{"every":1.2}},
+      {"item":"bench","wall":"center","x":0.43,"y":-0.2,"turn":90,"repeat":{"every":0.85}},
+      {"item":"bench","wall":"front","x":1.08,"y":0.3,"repeat":{"every":2.15}}
     ],
     "deep_well_pump:1x1": [
       {"item":"well_head","wall":"center","y":0.6},
@@ -397,7 +462,7 @@
       {"item":"safety_sign","wall":"back","repeat":{"every":3,"max":4}},
       {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":8}},
       {"item":"cable_tray","wall":"left","repeat":{"every":2,"max":8}},
-      {"item":"work_light","wall":"back","x":1.0,"repeat":{"every":4,"max":2}},
+      {"item":"work_light","wall":"back","x":1,"repeat":{"every":4,"max":2}},
       {"item":"work_light","wall":"left","x":2,"repeat":{"every":4,"max":2}},
       {"item":"work_light","wall":"right","x":2,"repeat":{"every":4,"max":2}},
       {"item":"pipe_manifold","wall":"back","repeat":{"every":0.5,"max":1}},
@@ -528,7 +593,20 @@
       {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"bench","wall":"center","x":-2.2,"y":-1.6,"turn":180},
+      {"item":"bench","wall":"center","x":2.2,"y":-1.6,"turn":180},
+      {"item":"planter_tree","wall":"back","x":-3.4,"y":0.1},
+      {"item":"planter_tree","wall":"back","x":3.4,"y":0.1},
+      {"item":"vending_machine","wall":"left","x":2.4,"y":0.1},
+      {"item":"cart","wall":"right","x":2.4,"y":0.2,"repeat":{"every":1.6,"max":2}},
+      {"item":"kiosk","wall":"front","x":2.4,"y":0.3},
+      {"item":"plant_pot","wall":"front","x":-2.4,"y":0.3},
+      {"item":"plant_pot","wall":"left","x":-2.4,"y":0.3},
+      {"item":"planter_tree","wall":"front","x":-0.5,"y":0.3},
+      {"item":"plant_pot","wall":"center","x":0,"y":-1,"turn":90,"repeat":{"every":1.05}},
+      {"item":"plant_pot","wall":"center","x":0,"y":0.6,"repeat":{"every":1.2}},
+      {"item":"bench","wall":"back","x":1.08,"y":0.1,"repeat":{"every":2.15}}
     ],
     "elevator:1x1:bottom": [
       {"item":"elevator_car","wall":"center","y":1.5},
@@ -545,7 +623,16 @@
       {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"bench","wall":"center","x":-2.2,"y":-1.6,"turn":180},
+      {"item":"bench","wall":"center","x":2.2,"y":-1.6,"turn":180},
+      {"item":"planter_tree","wall":"back","x":-3.4,"y":0.1},
+      {"item":"planter_tree","wall":"back","x":3.4,"y":0.1},
+      {"item":"vending_machine","wall":"left","x":2.4,"y":0.1},
+      {"item":"cart","wall":"right","x":2.4,"y":0.2,"repeat":{"every":1.6,"max":2}},
+      {"item":"kiosk","wall":"front","x":2.4,"y":0.3},
+      {"item":"plant_pot","wall":"front","x":-2.4,"y":0.3},
+      {"item":"plant_pot","wall":"left","x":-2.4,"y":0.3}
     ],
     "entrance:1x1": [
       {"item":"decon_arch","wall":"center","y":-0.2},
@@ -736,7 +823,14 @@
       {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
       {"item":"fire_extinguisher","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"first_aid_kit","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"glass_rack","wall":"center","y":1.2,"repeat":{"every":2.1}},
+      {"item":"glass_rack","wall":"back","x":0,"y":0.1,"repeat":{"every":2}},
+      {"item":"ore_bin","wall":"center","x":-2,"y":-1.8,"repeat":{"every":2,"max":2}},
+      {"item":"workbench","wall":"center","x":3,"y":-1.6},
+      {"item":"glass_rack","wall":"left","x":2,"y":0.1,"repeat":{"every":2,"max":2}},
+      {"item":"bag_stack","wall":"front","x":-5.6,"y":0.3,"repeat":{"every":1.5,"max":3}},
+      {"item":"glass_rack","wall":"center","x":0,"y":-0.2,"repeat":{"every":1.95}}
     ],
     "gym:2x1": [
       {"item":"treadmill","wall":"back","x":-3.2,"y":0.2,"repeat":{"every":1.2,"max":3}},
@@ -754,7 +848,17 @@
       {"item":"wall_clock","wall":"right","x":-1.4},
       {"item":"notice_board","wall":"right","x":1.4},
       {"item":"fire_extinguisher","wall":"right","x":1.6,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"treadmill","wall":"back","x":-6.8,"y":0.2,"repeat":{"every":1.2,"max":4}},
+      {"item":"exercise_bike","wall":"back","x":5.4,"y":0.2,"repeat":{"every":1,"max":4}},
+      {"item":"weight_bench","wall":"center","x":2.2,"y":-2,"turn":90,"repeat":{"every":2.2,"max":2}},
+      {"item":"dumbbell_rack","wall":"right","x":1.8,"y":0.1,"repeat":{"every":1.7,"max":2}},
+      {"item":"punching_bag","wall":"left","x":2.2,"y":0.2,"repeat":{"every":1.2,"max":2}},
+      {"item":"treadmill","wall":"center","x":-3,"y":1,"repeat":{"every":1.2,"max":3}},
+      {"item":"exercise_bike","wall":"center","x":2.6,"y":1.2,"repeat":{"every":1,"max":4}},
+      {"item":"locker","wall":"front","x":-4.2,"y":0.1,"repeat":{"every":0.65,"max":4},"snug":true},
+      {"item":"exercise_bike","wall":"center","x":0,"y":-0.2,"turn":90,"repeat":{"every":1.55}},
+      {"item":"treadmill","wall":"center","x":0.57,"y":-2.2,"repeat":{"every":1.15}}
     ],
     "hospital:2x2": [
       {"item":"reception_desk","wall":"center","x":-2,"y":-2.6},
@@ -778,7 +882,14 @@
       {"item":"intercom","wall":"left","x":1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"fire_extinguisher","wall":"left","x":2.6,"repeat":{"every":0.5,"max":1}},
       {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":5}},
-      {"item":"medical_bed","wall":"center","x":2,"y":-2.4,"turn":90,"repeat":{"every":2.6,"max":3}}
+      {"item":"medical_bed","wall":"center","x":2,"y":-2.4,"turn":90,"repeat":{"every":2.6,"max":3}},
+      {"item":"medical_bed","wall":"center","y":1.2,"turn":90,"repeat":{"every":2.6}},
+      {"item":"monitor_stand","wall":"center","y":2.4,"x":0.9,"repeat":{"every":2.6},"snug":true},
+      {"item":"med_cabinet","wall":"left","x":2,"y":0.1,"repeat":{"every":1.3,"max":3}},
+      {"item":"med_cabinet","wall":"right","x":2.4,"y":0.1,"repeat":{"every":1.3,"max":3}},
+      {"item":"cart","wall":"front","x":7,"y":0.3,"repeat":{"every":1.6,"max":3}},
+      {"item":"partition","wall":"center","y":1.2,"x":1.3,"turn":90,"repeat":{"every":2.6},"snug":true},
+      {"item":"chair","wall":"front","x":-9,"y":0.3,"repeat":{"every":0.7,"max":4},"snug":true}
     ],
     "hospital:4x1": [
       {"item":"reception_desk","wall":"center","x":-2,"y":-2.6},
@@ -801,24 +912,39 @@
       {"item":"earth_photo","wall":"front","x":1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"intercom","wall":"left","x":1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"fire_extinguisher","wall":"left","x":2.6,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":5}}
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":5}},
+      {"item":"medical_bed","wall":"center","y":1.2,"turn":90,"repeat":{"every":2.6}},
+      {"item":"monitor_stand","wall":"center","y":2.4,"x":0.9,"repeat":{"every":2.6},"snug":true},
+      {"item":"med_cabinet","wall":"left","x":2,"y":0.1,"repeat":{"every":1.3,"max":3}},
+      {"item":"med_cabinet","wall":"right","x":2.4,"y":0.1,"repeat":{"every":1.3,"max":3}},
+      {"item":"cart","wall":"front","x":7,"y":0.3,"repeat":{"every":1.6,"max":3}},
+      {"item":"partition","wall":"center","y":1.2,"x":1.3,"turn":90,"repeat":{"every":2.6},"snug":true},
+      {"item":"chair","wall":"front","x":-9,"y":0.3,"repeat":{"every":0.7,"max":4},"snug":true},
+      {"item":"medical_bed","wall":"center","x":1.3,"y":-1,"repeat":{"every":2.6}},
+      {"item":"medical_bed","wall":"back","x":1.3,"y":0.1,"repeat":{"every":2.6}},
+      {"item":"med_cabinet","wall":"center","x":0,"y":-2.6,"repeat":{"every":1.55}}
     ],
     "kitchen:1x1": [
       {"item":"stove_counter","wall":"back","x":-1.2,"y":0.1,"repeat":{"every":2.2,"max":2},"snug":true},
-      {"item":"prep_counter","wall":"back","x":1.0,"y":0.1,"repeat":{"every":2.2,"max":2},"snug":true},
+      {"item":"prep_counter","wall":"back","x":1,"y":0.1,"repeat":{"every":2.2,"max":2},"snug":true},
       {"item":"fridge","wall":"left","y":0.1,"repeat":{"every":1,"max":2},"snug":true},
       {"item":"dishwasher","wall":"right","y":0.1},
-      {"item":"stock_kettle","wall":"center","x":-1.0,"y":-0.3,"repeat":{"every":1.6,"max":2}},
+      {"item":"stock_kettle","wall":"center","x":-1,"y":-0.3,"repeat":{"every":1.6,"max":2}},
       {"item":"shelf_unit","wall":"front","x":-1.8,"y":0.1},
       {"item":"water_dispenser","wall":"front","x":1.8,"y":0.1},
       {"item":"trash_bin","wall":"front","x":0.75,"y":0.2},
       {"item":"notice_board","wall":"left","x":-1.6},
       {"item":"wall_clock","wall":"right","x":1.2},
-      {"item":"safety_sign","wall":"back","x":0.0},
+      {"item":"safety_sign","wall":"back","x":0},
       {"item":"utensil_rack","wall":"back","x":-2.2,"repeat":{"every":1.8,"max":2}},
       {"item":"fire_extinguisher","wall":"left","x":1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"first_aid_kit","wall":"right","x":-1.6,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":2.6,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":2.6,"max":3}},
+      {"item":"stove_counter","wall":"center","y":0.6,"repeat":{"every":2.15,"max":3},"snug":true},
+      {"item":"fridge","wall":"right","x":1.2,"y":0.1,"repeat":{"every":1,"max":3},"snug":true},
+      {"item":"shelf_unit","wall":"left","x":2.2,"y":0.1,"repeat":{"every":1.5,"max":3},"snug":true},
+      {"item":"tray_rack","wall":"front","x":2.8,"y":0.1,"repeat":{"every":0.7,"max":2},"snug":true},
+      {"item":"fridge","wall":"center","x":0.63,"y":-2.2,"repeat":{"every":1.25}}
     ],
     "life_support:3x1": [
       {"item":"big_fan","wall":"left","y":0.1},
@@ -829,7 +955,7 @@
       {"item":"scrubber_unit","wall":"back","y":0.1,"repeat":{"every":3.2,"max":8}},
       {"item":"scrubber_unit","wall":"center","y":0.6,"turn":180,"repeat":{"every":3.2,"max":6}},
       {"item":"gas_bottles","wall":"front","x":-2.25,"y":0.3,"repeat":{"every":2,"max":6}},
-      {"item":"pipe_run","wall":"front","x":3.0,"y":0.3,"repeat":{"every":3.6,"max":3}},
+      {"item":"pipe_run","wall":"front","x":3,"y":0.3,"repeat":{"every":3.6,"max":3}},
       {"item":"gauge_panel","wall":"left","repeat":{"every":2.4,"max":3}},
       {"item":"readout_panel","wall":"right","repeat":{"every":2.4,"max":3}},
       {"item":"safety_sign","wall":"back","repeat":{"every":3,"max":4}},
@@ -850,13 +976,13 @@
       {"item":"electrolysis_stack","wall":"back","y":0.1,"repeat":{"every":3.4,"max":4}},
       {"item":"big_tank","wall":"left","y":0.2},
       {"item":"gas_bottles","wall":"right","y":0.2,"repeat":{"every":1.6,"max":3}},
-      {"item":"console","wall":"center","x":-1.0,"y":-0.6},
-      {"item":"pipe_run","wall":"front","x":2.0,"y":0.3,"repeat":{"every":3.6,"max":2}},
+      {"item":"console","wall":"center","x":-1,"y":-0.6},
+      {"item":"pipe_run","wall":"front","x":2,"y":0.3,"repeat":{"every":3.6,"max":2}},
       {"item":"gauge_panel","wall":"left","x":-2.6},
       {"item":"readout_panel","wall":"right","x":2.4},
       {"item":"safety_sign","wall":"back","repeat":{"every":4,"max":3}},
       {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":8}},
-      {"item":"work_light","wall":"back","x":1.0,"repeat":{"every":4,"max":2}},
+      {"item":"work_light","wall":"back","x":1,"repeat":{"every":4,"max":2}},
       {"item":"pipe_manifold","wall":"front","repeat":{"every":0.5,"max":1}},
       {"item":"fire_extinguisher","wall":"front","x":0.45,"repeat":{"every":0.5,"max":1}},
       {"item":"first_aid_kit","wall":"right","x":-1.8,"repeat":{"every":0.5,"max":1}},
@@ -871,7 +997,18 @@
       {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":3}},
       {"item":"work_light","wall":"back","x":1,"repeat":{"every":4,"max":1}},
       {"item":"fire_extinguisher","wall":"front","x":0.9,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"right","x":1,"repeat":{"every":0.5,"max":1}}
+      {"item":"air_vent","wall":"right","x":1,"repeat":{"every":0.5,"max":1}},
+      {"item":"gas_bottles","wall":"back","x":3,"y":0.1,"repeat":{"every":1.5}},
+      {"item":"gas_bottles","wall":"left","x":1.6,"y":0.1,"repeat":{"every":1.5,"max":4}},
+      {"item":"pump","wall":"right","x":1.6,"y":0.1},
+      {"item":"valve_panel","wall":"right","x":3.4,"y":0.1,"repeat":{"every":1.4,"max":3}},
+      {"item":"gas_bottles","wall":"front","x":2.4,"y":0.2,"repeat":{"every":1.5,"max":2}},
+      {"item":"gas_bottles","wall":"center","y":-2.4,"x":0.8,"repeat":{"every":1.6}},
+      {"item":"gas_bottles","wall":"center","x":0.48,"y":0.6,"turn":90,"repeat":{"every":0.95}},
+      {"item":"gas_bottles","wall":"center","x":0,"y":-2.2,"turn":90,"repeat":{"every":0.95}},
+      {"item":"pump","wall":"center","x":0,"y":2.6,"turn":90,"repeat":{"every":1.15}},
+      {"item":"gas_bottles","wall":"center","x":0,"y":2.6,"repeat":{"every":1.65}},
+      {"item":"gas_bottles","wall":"center","x":0,"y":-1.8,"repeat":{"every":1.65}}
     ],
     "machine_shop:2x1": [
       {"item":"tool_wall","wall":"left"},
@@ -897,7 +1034,21 @@
       {"item":"fire_extinguisher","wall":"front","x":1.2,"repeat":{"every":0.5,"max":1}},
       {"item":"first_aid_kit","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"air_vent","wall":"left","repeat":{"every":3,"max":2}},
-      {"item":"air_vent","wall":"right","repeat":{"every":3,"max":2}}
+      {"item":"air_vent","wall":"right","repeat":{"every":3,"max":2}},
+      {"item":"lathe","wall":"back","x":3.6,"y":0.1,"repeat":{"every":2.6,"max":2}},
+      {"item":"drill_press","wall":"back","x":-6.4,"y":0.1},
+      {"item":"printer_3d","wall":"right","x":-1.4,"y":0.1,"repeat":{"every":1.3,"max":2},"snug":true},
+      {"item":"shelf_unit","wall":"front","x":-6,"y":0.1,"repeat":{"every":1.5,"max":3}},
+      {"item":"ingot_rack","wall":"center","y":1.4,"repeat":{"every":2.4,"max":4}},
+      {"item":"cargo_crate","wall":"center","y":-2.6,"x":5,"repeat":{"every":1.6,"max":3}},
+      {"item":"parts_rack","wall":"left","x":-1.8,"y":0.05,"repeat":{"every":1.25,"max":2},"snug":true},
+      {"item":"workbench","wall":"center","y":-2.4,"repeat":{"every":3}},
+      {"item":"lathe","wall":"center","y":2.4,"repeat":{"every":3}},
+      {"item":"welding_station","wall":"right","x":2.4,"y":0.1},
+      {"item":"parts_rack","wall":"center","x":0.45,"y":1,"turn":90,"repeat":{"every":0.9}},
+      {"item":"drill_press","wall":"center","x":0,"y":-2.2,"turn":90,"repeat":{"every":1.05}},
+      {"item":"drill_press","wall":"center","x":0.57,"y":2.6,"repeat":{"every":1.15}},
+      {"item":"drill_press","wall":"center","x":0.57,"y":-0.6,"repeat":{"every":1.15}}
     ],
     "maintenance:1x1": [
       {"item":"parts_rack","wall":"left","y":0.05},
@@ -915,14 +1066,25 @@
       {"item":"tool_board","wall":"left","repeat":{"every":0.5,"max":1}},
       {"item":"tool_board","wall":"right","repeat":{"every":0.5,"max":1}},
       {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":8}},
-      {"item":"work_light","wall":"back","x":1.0,"repeat":{"every":4,"max":2}},
+      {"item":"work_light","wall":"back","x":1,"repeat":{"every":4,"max":2}},
       {"item":"work_light","wall":"left","x":2,"repeat":{"every":4,"max":2}},
       {"item":"work_light","wall":"right","x":2,"repeat":{"every":4,"max":2}},
       {"item":"whiteboard","wall":"front","x":-0.6,"repeat":{"every":0.5,"max":1}},
       {"item":"fire_extinguisher","wall":"front","x":0.6,"repeat":{"every":0.5,"max":1}},
       {"item":"first_aid_kit","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"air_vent","wall":"left","repeat":{"every":3,"max":2}},
-      {"item":"air_vent","wall":"right","repeat":{"every":3,"max":2}}
+      {"item":"air_vent","wall":"right","repeat":{"every":3,"max":2}},
+      {"item":"parts_rack","wall":"left","x":1.6,"y":0.05,"repeat":{"every":1.25,"max":4},"snug":true},
+      {"item":"parts_rack","wall":"right","x":1.6,"y":0.05,"repeat":{"every":1.25,"max":4},"snug":true},
+      {"item":"drill_press","wall":"back","x":-3.6,"y":0.1},
+      {"item":"welding_station","wall":"center","x":2.4,"y":1.6},
+      {"item":"workbench","wall":"center","y":1.6,"x":-1.6},
+      {"item":"shelf_unit","wall":"center","y":-2.2,"x":1.8,"repeat":{"every":1.5,"max":2}},
+      {"item":"parts_rack","wall":"center","y":1.4,"x":0.65,"repeat":{"every":1.5},"snug":true},
+      {"item":"repair_stand","wall":"center","x":0,"y":3,"repeat":{"every":1.55}},
+      {"item":"repair_stand","wall":"center","x":0,"y":-0.6,"turn":90,"repeat":{"every":1.05}},
+      {"item":"shelf_unit","wall":"center","x":0,"y":-3.4,"repeat":{"every":1.75}},
+      {"item":"parts_rack","wall":"back","x":0.5,"y":0.1}
     ],
     "park:2x1": [
       {"item":"lawn","wall":"center","x":-3.2,"y":0.4},
@@ -942,12 +1104,17 @@
       {"item":"wall_lamp","wall":"left","x":-1},
       {"item":"wall_planter","wall":"right","x":1},
       {"item":"earth_photo","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"planter_tree","wall":"center","y":2.6,"x":0,"repeat":{"every":4.2}},
+      {"item":"planter_tree","wall":"center","y":-2.2,"x":2,"repeat":{"every":6.4}},
+      {"item":"shrub","wall":"front","y":0.3,"x":1.2,"repeat":{"every":2.6}},
+      {"item":"flower_bed","wall":"center","y":0.4,"x":-2,"repeat":{"every":5.2}},
+      {"item":"bench","wall":"center","y":-0.8,"x":5.6,"turn":180,"repeat":{"every":7}}
     ],
     "park:3x1": [
       {"item":"lawn","wall":"center","x":-4.8,"y":0.4},
       {"item":"lawn","wall":"center","x":4.8,"y":0.4},
-      {"item":"fountain","wall":"center","x":0.0,"y":0.2},
+      {"item":"fountain","wall":"center","x":0,"y":0.2},
       {"item":"planter_tree","wall":"center","x":-6.9,"y":1.4},
       {"item":"planter_tree","wall":"center","x":6.9,"y":-1.2},
       {"item":"flower_bed","wall":"back","x":-3.6,"y":0.2,"repeat":{"every":2.4,"max":3}},
@@ -962,14 +1129,20 @@
       {"item":"wall_lamp","wall":"left","x":-1},
       {"item":"wall_planter","wall":"right","x":1},
       {"item":"earth_photo","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"planter_tree","wall":"center","y":2.6,"x":0,"repeat":{"every":4.2}},
+      {"item":"planter_tree","wall":"center","y":-2.2,"x":2,"repeat":{"every":6.4}},
+      {"item":"shrub","wall":"front","y":0.3,"x":1.2,"repeat":{"every":2.6}},
+      {"item":"flower_bed","wall":"center","y":0.4,"x":-2,"repeat":{"every":5.2}},
+      {"item":"bench","wall":"center","y":-0.8,"x":5.6,"turn":180,"repeat":{"every":7}},
+      {"item":"flower_bed","wall":"center","x":0.53,"y":3.4,"turn":90,"repeat":{"every":1.05}}
     ],
     "recycling_center:3x1": [
       {"item":"conveyor","wall":"center","y":-0.4,"repeat":{"every":3.2,"max":5}},
       {"item":"sorting_bins","wall":"back","y":0.1,"repeat":{"every":3.2,"max":5}},
       {"item":"baler","wall":"left","y":0.2},
       {"item":"baler","wall":"right","y":0.2},
-      {"item":"scrap_pile","wall":"front","x":-6.0,"y":0.3,"repeat":{"every":3,"max":3}},
+      {"item":"scrap_pile","wall":"front","x":-6,"y":0.3,"repeat":{"every":3,"max":3}},
       {"item":"pallet_jack","wall":"front","x":4.88,"y":0.3},
       {"item":"barrel_group","wall":"right","x":2.6,"y":0.2},
       {"item":"console","wall":"left","x":2.6,"y":0.1},
@@ -1050,7 +1223,12 @@
       {"item":"air_vent","wall":"right","repeat":{"every":2.6,"max":2}},
       {"item":"first_aid_kit","wall":"left","x":-1.8,"repeat":{"every":0.5,"max":1}},
       {"item":"intercom","wall":"right","x":1.8,"repeat":{"every":0.5,"max":1}},
-      {"item":"wall_lamp","wall":"back","x":0.7,"repeat":{"every":1.4,"max":4}}
+      {"item":"wall_lamp","wall":"back","x":0.7,"repeat":{"every":1.4,"max":4}},
+      {"item":"shower_stall","wall":"left","x":2.4,"y":0.05,"repeat":{"every":1.15,"max":3},"snug":true},
+      {"item":"toilet_stall","wall":"center","y":1.6,"turn":180,"repeat":{"every":1.15},"snug":true},
+      {"item":"locker","wall":"front","x":-1.2,"y":0.1,"repeat":{"every":0.65,"max":3},"snug":true},
+      {"item":"bench","wall":"center","x":0,"y":-1.4,"turn":90,"repeat":{"every":0.85}},
+      {"item":"toilet_stall","wall":"center","x":0,"y":-2.6,"turn":90,"repeat":{"every":1.9}}
     ],
     "school:2x1": [
       {"item":"chalkboard","wall":"back"},
@@ -1149,7 +1327,18 @@
       {"item":"family_photos","wall":"front","x":-1.6,"repeat":{"every":2.4,"max":2}},
       {"item":"intercom","wall":"front","x":0.5,"repeat":{"every":0.5,"max":1}},
       {"item":"fire_extinguisher","wall":"left","x":2,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}}
+      {"item":"air_vent","wall":"back","x":0.8,"repeat":{"every":3.2,"max":3}},
+      {"item":"blueprint_table","wall":"center","y":1.2,"x":-1.4},
+      {"item":"suit_locker","wall":"right","x":2.2,"y":0.05,"repeat":{"every":1.05,"max":3},"snug":true},
+      {"item":"shelf_unit","wall":"back","x":4.2,"y":0.1,"repeat":{"every":1.5,"max":3}},
+      {"item":"cargo_crate","wall":"front","x":-2.4,"y":0.3},
+      {"item":"filing_cabinet","wall":"left","x":2.4,"y":0.1,"repeat":{"every":0.55,"max":4},"snug":true},
+      {"item":"desk","wall":"center","y":-2.6,"repeat":{"every":2.2,"max":3}},
+      {"item":"cargo_crate","wall":"center","y":2.6,"x":-2.6,"repeat":{"every":1.5,"max":2}},
+      {"item":"shelf_unit","wall":"center","y":2.8,"x":0.75,"repeat":{"every":1.6,"max":4}},
+      {"item":"suit_locker","wall":"center","x":0,"y":1,"repeat":{"every":1.35}},
+      {"item":"suit_locker","wall":"center","x":0,"y":-1,"turn":90,"repeat":{"every":1.15}},
+      {"item":"filing_cabinet","wall":"front","x":0.43,"y":0.3,"repeat":{"every":0.85}}
     ],
     "small_plaza:2x1": [
       {"item":"fountain","wall":"center"},
@@ -1173,7 +1362,14 @@
       {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"planter_tree","wall":"center","x":-5.5,"y":2.6},
+      {"item":"planter_tree","wall":"center","x":5.5,"y":-2.4},
+      {"item":"flower_bed","wall":"back","x":-2.4,"y":0.3,"repeat":{"every":4.8}},
+      {"item":"shrub","wall":"front","x":2,"y":0.3,"repeat":{"every":4}},
+      {"item":"table","wall":"center","x":-3.2,"y":-2.4},
+      {"item":"chair","wall":"center","x":-3.2,"y":-3.2,"snug":true},
+      {"item":"bench","wall":"center","x":0.43,"y":2.6,"turn":90,"repeat":{"every":0.85}}
     ],
     "smelter:2x2": [
       {"item":"console","wall":"right","y":0.1},
@@ -1296,7 +1492,13 @@
       {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"bench","wall":"right","x":2.6,"y":0.1},
+      {"item":"suit_locker","wall":"left","x":2.6,"y":0.05},
+      {"item":"vending_machine","wall":"back","x":2.6,"y":0.1},
+      {"item":"cargo_crate","wall":"front","x":2.4,"y":0.3},
+      {"item":"plant_pot","wall":"back","x":0,"y":0.1,"repeat":{"every":1.2}},
+      {"item":"suit_locker","wall":"front","x":0.68,"y":0.3,"repeat":{"every":1.35}}
     ],
     "stairwell:1x1:bottom": [
       {"item":"stair_flight","wall":"center","x":-1.85,"mirror":"even"},
@@ -1312,7 +1514,11 @@
       {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"bench","wall":"right","x":2.6,"y":0.1},
+      {"item":"suit_locker","wall":"left","x":2.6,"y":0.05},
+      {"item":"vending_machine","wall":"back","x":2.6,"y":0.1},
+      {"item":"cargo_crate","wall":"front","x":2.4,"y":0.3}
     ],
     "stairwell:1x1:top": [
       {"item":"stair_landing","wall":"center","x":-1.85,"snug":true,"mirror":"odd"},
@@ -1328,7 +1534,11 @@
       {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"bench","wall":"right","x":2.6,"y":0.1},
+      {"item":"suit_locker","wall":"left","x":2.6,"y":0.05},
+      {"item":"vending_machine","wall":"back","x":2.6,"y":0.1},
+      {"item":"cargo_crate","wall":"front","x":2.4,"y":0.3}
     ],
     "storeroom:1x1": [
       {"item":"barrel_group","wall":"front","x":-2.5,"y":0.3},
@@ -1349,7 +1559,12 @@
       {"item":"first_aid_kit","wall":"left","x":1.2,"repeat":{"every":0.5,"max":1}},
       {"item":"safety_sign","wall":"left","repeat":{"every":0.5,"max":1}},
       {"item":"safety_sign","wall":"right","repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"shelf_unit","wall":"left","y":0.05,"repeat":{"every":1.42},"snug":true},
+      {"item":"shelf_unit","wall":"right","y":0.05,"repeat":{"every":1.42},"snug":true},
+      {"item":"shelf_unit","wall":"center","y":2.4,"repeat":{"every":1.42},"snug":true},
+      {"item":"cargo_crate","wall":"front","x":1.4,"y":0.3,"repeat":{"every":1.5,"max":3}},
+      {"item":"pallet_jack","wall":"center","y":-2.8}
     ],
     "studio:1x1": [
       {"item":"kitchenette","wall":"left","x":-1.2,"y":0.05},
@@ -1440,7 +1655,14 @@
       {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"left","repeat":{"every":0.5,"max":1}},
       {"item":"wall_planter","wall":"right","repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"planter_tree","wall":"center","x":-3,"y":2.4},
+      {"item":"planter_tree","wall":"center","x":3,"y":2.4},
+      {"item":"flower_bed","wall":"front","x":-2.6,"y":0.3,"repeat":{"every":5.2,"max":2}},
+      {"item":"kiosk","wall":"left","x":2,"y":0.3},
+      {"item":"shrub","wall":"right","x":2,"y":0.3,"repeat":{"every":1.2,"max":2}},
+      {"item":"shrub","wall":"back","x":0,"y":0.1,"repeat":{"every":1.2}},
+      {"item":"shrub","wall":"center","x":0.53,"y":-3,"turn":90,"repeat":{"every":1.05}}
     ],
     "ventilation_hub:1x1": [
       {"item":"big_fan","wall":"back","y":0.1},
@@ -1452,7 +1674,18 @@
       {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":3}},
       {"item":"work_light","wall":"back","x":1,"repeat":{"every":4,"max":1}},
       {"item":"air_vent","wall":"left","x":-1,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"right","x":1,"repeat":{"every":0.5,"max":1}}
+      {"item":"air_vent","wall":"right","x":1,"repeat":{"every":0.5,"max":1}},
+      {"item":"big_fan","wall":"back","x":2.2,"y":0.1,"repeat":{"every":2.2,"max":4}},
+      {"item":"filter_column","wall":"center","y":-0.2,"x":0.85,"repeat":{"every":1.7}},
+      {"item":"shelf_unit","wall":"left","x":2,"y":0.1,"repeat":{"every":1.6,"max":3}},
+      {"item":"console","wall":"front","x":2.2,"y":0.2},
+      {"item":"duct_riser","wall":"center","y":1.8,"repeat":{"every":2.4}},
+      {"item":"big_fan","wall":"center","y":-1.8,"x":1.05,"turn":180,"repeat":{"every":2.1}},
+      {"item":"filter_column","wall":"center","x":0,"y":3.4,"repeat":{"every":1.45}},
+      {"item":"big_fan","wall":"right","x":-2.5,"y":0.1},
+      {"item":"shelf_unit","wall":"center","x":0,"y":3,"repeat":{"every":1.75}},
+      {"item":"big_fan","wall":"center","x":0,"y":-2.6,"turn":90,"repeat":{"every":1.05}},
+      {"item":"duct_riser","wall":"center","x":0,"y":1.8,"repeat":{"every":1.3}}
     ],
     "warehouse:2x1": [
       {"item":"pallet_jack","wall":"front","x":4,"y":0.3},
@@ -1487,7 +1720,18 @@
       {"item":"cable_tray","wall":"back","repeat":{"every":2,"max":3}},
       {"item":"work_light","wall":"back","x":1,"repeat":{"every":4,"max":1}},
       {"item":"fire_extinguisher","wall":"right","x":1.2,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}}
+      {"item":"air_vent","wall":"front","repeat":{"every":0.5,"max":1}},
+      {"item":"dumpster","wall":"back","x":3.2,"y":0.1,"repeat":{"every":2}},
+      {"item":"sorting_bins","wall":"center","y":-0.6,"x":1.55,"repeat":{"every":3.1}},
+      {"item":"dumpster","wall":"right","x":1.8,"y":0.1,"repeat":{"every":2,"max":3}},
+      {"item":"barrel_group","wall":"center","y":1.6,"x":0.85,"repeat":{"every":1.7}},
+      {"item":"bag_stack","wall":"front","x":-2.6,"y":0.3,"repeat":{"every":1.5,"max":2}},
+      {"item":"dumpster","wall":"center","y":-2.4,"x":1.1,"repeat":{"every":2.2}},
+      {"item":"dumpster","wall":"center","x":0,"y":-0.6,"repeat":{"every":2.2}},
+      {"item":"dumpster","wall":"center","x":0,"y":1,"repeat":{"every":2.2}},
+      {"item":"dumpster","wall":"center","x":1.1,"y":2.2,"repeat":{"every":2.2}},
+      {"item":"dumpster","wall":"center","x":0,"y":1.4,"repeat":{"every":2.2}},
+      {"item":"dumpster","wall":"center","x":0,"y":-2.2,"repeat":{"every":2.2}}
     ],
     "water_recycler:3x1": [
       {"item":"console","wall":"left","y":0.1},
@@ -1607,13 +1851,13 @@
     ],
     "excavator_bay:3x1": [
       {"item":"excavator","wall":"center","x":-6.75,"y":0.6},
-      {"item":"excavator","wall":"center","x":3.0,"y":0.6,"turn":20},
+      {"item":"excavator","wall":"center","x":3,"y":0.6,"turn":20},
       {"item":"ore_bin","wall":"back","x":9.75,"y":0.1},
       {"item":"conveyor","wall":"back","x":-1.5,"y":0.1},
       {"item":"tool_wall","wall":"left"},
       {"item":"tool_cart","wall":"right","y":0.3},
       {"item":"console","wall":"front","x":7.5,"y":0.05},
-      {"item":"barrel_group","wall":"front","x":-9.0,"y":0.3},
+      {"item":"barrel_group","wall":"front","x":-9,"y":0.3},
       {"item":"pallet_jack","wall":"front","x":2.25,"y":0.4},
       {"item":"safety_sign","wall":"back","repeat":{"every":4,"max":3}},
       {"item":"chart_board","wall":"front","x":-3.75},
@@ -1650,7 +1894,12 @@
       {"item":"intercom","wall":"left","x":-1,"repeat":{"every":0.5,"max":1}},
       {"item":"fire_extinguisher","wall":"right","x":-1.6,"repeat":{"every":0.5,"max":1}},
       {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"planter_tree","wall":"center","y":3,"x":-10,"repeat":{"every":8}},
+      {"item":"kiosk","wall":"center","x":-6,"y":-2.8,"repeat":{"every":12,"max":3}},
+      {"item":"shrub","wall":"back","y":0.3,"x":2.2,"repeat":{"every":4.5}},
+      {"item":"flower_bed","wall":"center","x":0.53,"y":-0.2,"turn":90,"repeat":{"every":1.05}},
+      {"item":"shrub","wall":"center","x":0.53,"y":1.8,"turn":90,"repeat":{"every":1.05}}
     ],
     "plaza:2x2": [
       {"item":"fountain","wall":"center"},
@@ -1678,7 +1927,10 @@
       {"item":"intercom","wall":"left","x":-1,"repeat":{"every":0.5,"max":1}},
       {"item":"fire_extinguisher","wall":"right","x":-1.6,"repeat":{"every":0.5,"max":1}},
       {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"planter_tree","wall":"center","y":3,"x":-10,"repeat":{"every":8}},
+      {"item":"kiosk","wall":"center","x":-6,"y":-2.8,"repeat":{"every":12,"max":3}},
+      {"item":"shrub","wall":"back","y":0.3,"x":2.2,"repeat":{"every":4.5}}
     ],
     "spiral_stair:1x1": [
       {"item":"spiral_stair","wall":"center","x":-1.5},
@@ -1692,7 +1944,15 @@
       {"item":"intercom","wall":"left","x":-1,"repeat":{"every":0.5,"max":1}},
       {"item":"fire_extinguisher","wall":"right","x":-1.6,"repeat":{"every":0.5,"max":1}},
       {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"bench","wall":"right","x":2.6,"y":0.1},
+      {"item":"suit_locker","wall":"left","x":2.6,"y":0.05},
+      {"item":"vending_machine","wall":"back","x":2.6,"y":0.1},
+      {"item":"plant_pot","wall":"back","x":-2.6,"y":0.3},
+      {"item":"bench","wall":"center","x":1.8,"y":-1.6,"turn":180},
+      {"item":"cargo_crate","wall":"front","x":2.4,"y":0.3},
+      {"item":"plant_pot","wall":"center","x":0.6,"y":-3,"repeat":{"every":1.2}},
+      {"item":"plant_pot","wall":"center","x":0.6,"y":3.4,"repeat":{"every":1.2}}
     ],
     "spiral_stair:1x1:top": [
       {"item":"spiral_well","wall":"center","x":-1.5},
@@ -1707,7 +1967,13 @@
       {"item":"intercom","wall":"left","x":-1,"repeat":{"every":0.5,"max":1}},
       {"item":"fire_extinguisher","wall":"right","x":-1.6,"repeat":{"every":0.5,"max":1}},
       {"item":"first_aid_kit","wall":"left","x":1.6,"repeat":{"every":0.5,"max":1}},
-      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}}
+      {"item":"air_vent","wall":"back","repeat":{"every":3,"max":3}},
+      {"item":"bench","wall":"right","x":2.6,"y":0.1},
+      {"item":"suit_locker","wall":"left","x":2.6,"y":0.05},
+      {"item":"vending_machine","wall":"back","x":2.6,"y":0.1},
+      {"item":"plant_pot","wall":"back","x":-2.6,"y":0.3},
+      {"item":"bench","wall":"center","x":1.8,"y":-1.6,"turn":180},
+      {"item":"cargo_crate","wall":"front","x":2.4,"y":0.3}
     ]
   }
 }
