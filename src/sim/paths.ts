@@ -65,7 +65,6 @@ const roomLength = (cells: number) => STEP_M * Math.sqrt(Math.max(1, cells));
 /** Build the graph for a layout. Prefer `pathsFor`, which keeps it until the layout changes. */
 export function buildPaths(layout: Layout): Paths {
   const hole = layout.hole;
-  const depth = config.geometry.roomDepthM;
   const nodes = new Map<string, Node>();
   const links = new Map<string, Link[]>();
   const byRoom = new Map<number, string[]>();
@@ -90,7 +89,7 @@ export function buildPaths(layout: Layout): Paths {
     const e = edgeById(hole, id);
     if (!e || e.floor > hole.floors) continue;
     const key = `c:${id}`;
-    add(key, { roomId: 0, floor: e.floor, length: edgeLengthM(hole, e, depth), through: true, airtight: hasBulkhead(layout, id) });
+    add(key, { roomId: 0, floor: e.floor, length: edgeLengthM(hole, e), through: true, airtight: hasBulkhead(layout, id) });
     for (const v of edgeVertices(hole, e)) index(byVertex, v, key);
     index(byEdge, id, key);
   }
@@ -100,7 +99,7 @@ export function buildPaths(layout: Layout): Paths {
       for (const e of galleryEdges(hole, f)) {
         const key = `c:${e.id}`;
         if (nodes.has(key)) continue;
-        add(key, { roomId: 0, floor: f, length: edgeLengthM(hole, e, depth), through: true });
+        add(key, { roomId: 0, floor: f, length: edgeLengthM(hole, e), through: true });
         for (const v of edgeVertices(hole, e)) index(byVertex, v, key);
         index(byEdge, e.id, key);
       }

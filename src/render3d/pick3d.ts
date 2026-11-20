@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { surfaceRingAt, type Hole } from "../sim/geometry";
+import { type Hole, outerRadius, surfaceRingAt } from "../sim/geometry";
 import { config } from "../sim/config";
 import type { Pick } from "../view/types";
-import { floorSpan, pickAt, RING_D, TAU } from "./cylinder";
+import { floorSpan, pickAt, TAU } from "./cylinder";
 
 // Pure picking math for the 3D view: where a ray meets the shapes the hole
 // is made of. Kept apart from rendering so it can be tested without WebGL.
@@ -49,5 +49,5 @@ export function surfacePickAt(hole: Hole, point: THREE.Vector3): Pick {
 export function inCarvedRegion(hole: Hole, p: THREE.Vector3): boolean {
   const r = Math.hypot(p.x, p.z);
   const bottom = floorSpan(hole.floors + 1)[0];
-  return p.y < 0 && p.y > bottom && r >= hole.shaftRadiusM && r <= hole.shaftRadiusM + hole.unlockedRings * RING_D;
+  return p.y < 0 && p.y > bottom && r >= hole.shaftRadiusM && r <= outerRadius(hole);
 }

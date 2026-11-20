@@ -13,6 +13,7 @@ import { addAdults } from "./people";
 import { packColonists, unpackColonists, type PackedColonists } from "./colonists";
 import { corridors, migrateCorridorRooms, recomputeAccess } from "./corridors";
 import { galleryEdges } from "./edges";
+import { ringRadiiFor, type Hole } from "./geometry";
 import { ensureFloors, placeRoom, surfaceGrid, type Layout } from "./placement";
 import { openCells } from "./excavation";
 import { fillAir } from "./air";
@@ -245,6 +246,18 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
   24: (s) => ({ ...s, holes: (s.holes as Raw[]).map(({ colonists: _, ...h }) => h) }),
 };
 
+/**
+ * Saves from before #547 carry no ring radii: every ring was 10 m deep, as `ringRadiiFor` still builds them.
+ * Filled in before the migrations run (some measure edges), on the single hole of a pre-v3 save or each of a world's.
+ */
+function withRingRadii(raw: Raw): void {
+  const holes = Array.isArray(raw.holes) ? (raw.holes as Raw[]) : [raw];
+  for (const h of holes) {
+    const hole = (h.layout as { hole?: Partial<Hole> } | undefined)?.hole;
+    if (hole && !hole.ringRadiiM && typeof hole.shaftRadiusM === "number") hole.ringRadiiM = ringRadiiFor(hole.shaftRadiusM, config.geometry, hole.ringSlots?.length);
+  }
+}
+
 /** A copy of a record with one key renamed (a resource that changed its id). */
 function renameKey(r: Raw, from: string, to: string): Raw {
   if (!(from in r)) return r;
@@ -305,6 +318,7 @@ export function deserialize(json: string): LoadResult {
   if (file.game !== "downtown-mars" || !file.state) return { ok: false, reason: "That file isn't a Downtown Mars save." };
   let version = file.version ?? 0;
   let raw = file.state as unknown as Raw;
+  withRingRadii(raw);
   while (version < SAVE_VERSION && MIGRATIONS[version]) raw = MIGRATIONS[version++]!(raw);
   if (version !== SAVE_VERSION) {
     return { ok: false, reason: `That save is from a different version (save v${file.version}, game v${SAVE_VERSION}).` };

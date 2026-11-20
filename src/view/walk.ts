@@ -1,13 +1,13 @@
 import { corridors } from "../sim/corridors";
 import { cellEdges, galleryEdges, isGalleryEdge, type Edge } from "../sim/edges";
 import { isOpen } from "../sim/excavation";
-import type { Hole } from "../sim/geometry";
 import { roomAt, type Layout, type RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
-import { FLOOR_H, openShaftRadius, RING_D, TAU, WALL_T } from "../render3d/cylinder";
+import { FLOOR_H, openShaftRadius, TAU, WALL_T } from "../render3d/cylinder";
 import { doorsOnFloor, inDoorway } from "./doors";
 import { furnish, isFlat } from "./furnish";
 import { isMounted, itemDef } from "./furniture";
+import { circleRadius, outerRadius, ringAt, ringRadii } from "../sim/geometry";
 
 // Walking a floor in first person: where a colonist can stand. Open ground is
 // the gallery tubes along the shaft wall (not over the railing), public rooms (plazas,
@@ -42,7 +42,7 @@ export function regionAt(layout: Layout, floor: number, x: number, z: number): R
   const door = doorAt(layout, floor, r, a);
   if (door) return door;
   if (r < hole.shaftRadiusM) return inTube(layout, floor, a) ? OPEN : null; // a gallery tube, or open shaft
-  const ring = Math.floor((r - hole.shaftRadiusM) / RING_D) + 1;
+  const ring = ringAt(hole, r);
   if (ring > hole.unlockedRings) return null;
   const turn = (((a / TAU) % 1) + 1) % 1;
   const n = hole.ringSlots[ring - 1]!;
@@ -93,7 +93,7 @@ export function onCorridorAt(layout: Layout, floor: number, x: number, z: number
   const hole = layout.hole;
   const r = Math.hypot(x, z);
   if (r < hole.shaftRadiusM || floor < 1 || floor > hole.floors) return false;
-  const ring = Math.floor((r - hole.shaftRadiusM) / RING_D) + 1;
+  const ring = ringAt(hole, r);
   if (ring > hole.unlockedRings) return false;
   const turn = (((Math.atan2(z, x) / TAU) % 1) + 1) % 1;
   const n = hole.ringSlots[ring - 1]!;
@@ -108,7 +108,7 @@ function onCorridor(layout: Layout, e: Edge, r: number, a: number): boolean {
   if (isGalleryEdge(e)) return false;
   const hole = layout.hole;
   if (e.kind === "radial") {
-    const [r0, r1] = [hole.shaftRadiusM + (e.ring - 1) * RING_D, hole.shaftRadiusM + e.ring * RING_D];
+    const [r0, r1] = ringRadii(hole, e.ring);
     const d = angleDiff(a, e.turn * TAU);
     const along = r * Math.cos(d);
     return Math.abs(r * Math.sin(d)) <= HALL && along >= r0 - HALL && along <= r1 + HALL;
@@ -122,7 +122,6 @@ function onCorridor(layout: Layout, e: Edge, r: number, a: number): boolean {
   return t <= a1;
 }
 
-const circleRadius = (hole: Hole, circle: number) => hole.shaftRadiusM + circle * RING_D;
 const angleDiff = (a: number, b: number) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
 /**
@@ -154,7 +153,7 @@ export function footing(layout: Layout, floor: number, x: number, z: number): [n
   if (clear(layout, floor, x, z)) return [x, z];
   const hole = layout.hole;
   if (floor < 1 || floor > hole.floors) return null;
-  const outer = hole.shaftRadiusM + hole.unlockedRings * RING_D;
+  const outer = outerRadius(hole);
   let best: [number, number] | null = null;
   let bestScore = Infinity;
   for (let r = openShaftRadius(hole) + FOOTING_STEP / 2; r < outer; r += FOOTING_STEP) {
@@ -393,7 +392,7 @@ export function stairsHere(layout: Layout, floor: number, x: number, z: number):
   const hole = layout.hole;
   const r = Math.hypot(x, z);
   if (r < hole.shaftRadiusM) return null;
-  const ring = Math.floor((r - hole.shaftRadiusM) / RING_D) + 1;
+  const ring = ringAt(hole, r);
   if (ring > hole.unlockedRings) return null;
   const turn = (((Math.atan2(z, x) / TAU) % 1) + 1) % 1;
   const n = hole.ringSlots[ring - 1]!;

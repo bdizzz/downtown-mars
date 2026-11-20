@@ -5,7 +5,8 @@ import { roomSpec, type RoomStatus } from "../sim/economy";
 import type { Layout, RoomInstance } from "../sim/placement";
 import { roomSurfacePlace } from "./surface3d";
 import { roomDef } from "../sim/rooms";
-import { floorSpan, ringRadii, slotAngles, TAU } from "./cylinder";
+import { floorSpan, slotAngles, TAU } from "./cylinder";
+import { ringRadii } from "../sim/geometry";
 
 // Resource flows as pipes: an overlay, switched on from View. Each network
 // (power, water, air, food) has a riser in the shaft; every room that makes

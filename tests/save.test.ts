@@ -45,6 +45,14 @@ describe("saves", () => {
     expect(loaded.ok && first(loaded.world).effects.field.noise![0]![0]![2]).toBe(noise);
   });
 
+  it("gives a save from before ring radii its 10 m rings (#547)", () => {
+    const w = createWorld(config);
+    const file = JSON.parse(serialize(w));
+    for (const h of file.state.holes) delete h.layout.hole.ringRadiiM;
+    const loaded = deserialize(JSON.stringify(file));
+    expect(loaded.ok && first(loaded.world).layout.hole.ringRadiiM).toEqual(first(w).layout.hole.ringRadiiM);
+  });
+
   it("refuses garbage, other games and other versions", () => {
     expect(deserialize("not json")).toMatchObject({ ok: false });
     expect(deserialize('{"game":"other"}')).toMatchObject({ ok: false });

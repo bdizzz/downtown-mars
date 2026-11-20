@@ -73,11 +73,11 @@ export function roomWork(type: string): number {
 }
 
 /** Work-hours to carve corridors: by length. */
-export function corridorWork(layout: Layout, edges: string[], cfg: SimConfig): number {
+export function corridorWork(layout: Layout, edges: string[], _cfg: SimConfig): number {
   let metres = 0;
   for (const id of edges) {
     const e = edgeById(layout.hole, id);
-    if (e) metres += edgeLengthM(layout.hole, e, cfg.geometry.roomDepthM);
+    if (e) metres += edgeLengthM(layout.hole, e);
   }
   return (metres / 10) * construction.corridorHoursPer10m;
 }

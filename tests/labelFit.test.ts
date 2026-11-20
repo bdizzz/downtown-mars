@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
-import { createHole } from "../src/sim/geometry";
+import { createHole, ringRadii } from "../src/sim/geometry";
 import type { Cell } from "../src/sim/placement";
-import { ringRadii, slotAngles, TAU, WALL_T } from "../src/render3d/cylinder";
+import { slotAngles, TAU, WALL_T } from "../src/render3d/cylinder";
 import { badgeAbove, BADGE_M, fitLabel, labelSpot, labelY, LINE_M, roughMeasure } from "../src/view/labelFit";
 
 const hole = createHole(10, 3, 3, config.geometry);

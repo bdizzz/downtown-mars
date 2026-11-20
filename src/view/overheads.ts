@@ -1,7 +1,8 @@
-import { floorSpan, GALLERY_W, ringRadii, RING_D, TAU } from "../render3d/cylinder";
+import { floorSpan, GALLERY_W, TAU } from "../render3d/cylinder";
 import { edgeById, edgeLengthM } from "../sim/edges";
 import type { Layout } from "../sim/placement";
 import lighting from "../../data/lighting.json";
+import { circleRadius, ringRadii } from "../sim/geometry";
 
 // The Godot viewer's ceiling lights (#305): where they hang, for the bridge to send with the scene.
 
@@ -51,8 +52,8 @@ export function overheadLights(layout: Layout): Overhead[] {
       continue;
     }
     // Along an arc, as many as fit at the spacing (a short piece between cuts may have none); circle 0 is the gallery tube.
-    const n = Math.round(edgeLengthM(hole, e, RING_D) / corridorSpacingM);
-    const r = e.circle === 0 ? hole.shaftRadiusM - GALLERY_W / 2 : hole.shaftRadiusM + e.circle * RING_D;
+    const n = Math.round(edgeLengthM(hole, e) / corridorSpacingM);
+    const r = e.circle === 0 ? hole.shaftRadiusM - GALLERY_W / 2 : circleRadius(hole, e.circle);
     for (let i = 0; i < n; i++) at(r, e.a0 + ((i + 0.5) / n) * (e.a1 - e.a0), e.floor, -1);
   }
   return out;

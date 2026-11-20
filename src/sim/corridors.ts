@@ -91,8 +91,8 @@ export function corridorRefusal(layout: Layout, edgeId: string): string | null {
 }
 
 /** What a corridor on this edge costs, in the finish. */
-export function corridorCost(hole: Hole, e: Edge, finish: string, cfg: SimConfig): Record<string, number> {
-  const scale = edgeLengthM(hole, e, cfg.geometry.roomDepthM) / 10;
+export function corridorCost(hole: Hole, e: Edge, finish: string, _cfg: SimConfig): Record<string, number> {
+  const scale = edgeLengthM(hole, e) / 10;
   return Object.fromEntries(Object.entries(finishDef(finishFor(e, finish)).cost).map(([id, v]) => [id, Math.max(0.1, Math.round(v * scale * 10) / 10)]));
 }
 
@@ -333,7 +333,7 @@ function floorGraph(hole: Hole, floor: number): Map<string, { e: Edge; to: strin
  * from anything linked to the shaft to one of the room's own sides.
  * Returns null if there's no way, or [] if it's already connected.
  */
-export function routeToRoom(layout: Layout, room: RoomInstance, cfg: SimConfig): string[] | null {
+export function routeToRoom(layout: Layout, room: RoomInstance, _cfg: SimConfig): string[] | null {
   if (room.connected || room.at.kind !== "ring") return room.at.kind === "ring" ? [] : null;
   const hole = layout.hole;
   const floor = room.at.floor;
@@ -361,7 +361,7 @@ export function routeToRoom(layout: Layout, room: RoomInstance, cfg: SimConfig):
     if (d > (dist.get(v) ?? Infinity) || (best && d >= best.cost)) continue;
     for (const { e, to } of adj.get(v) ?? []) {
       if (!usable(e)) continue;
-      const step = walkable(e) ? 0 : edgeLengthM(hole, e, cfg.geometry.roomDepthM);
+      const step = walkable(e) ? 0 : edgeLengthM(hole, e);
       if (goal.has(e.id)) {
         if (!best || d + step < best.cost) best = { cost: d + step, at: v, e };
         continue;

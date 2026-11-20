@@ -10,6 +10,12 @@ export interface Hole {
   unlockedRings: number;
   /** ringSlots[ring - 1] = number of slots in that ring, for all maxRings rings. */
   ringSlots: number[];
+  /**
+   * The radius of each circle between rings, metres, for all maxRings rings: ringRadiiM[0] is the shaft wall,
+   * ringRadiiM[k] the outer face of ring k. Each ring has its own depth (#547), so nothing should assume a fixed
+   * one: go through ringRadii, circleRadius and ringAt.
+   */
+  ringRadiiM: number[];
 }
 
 /** slots(n) = round(2π · (R + (n − 0.5) · d) / w) */
@@ -33,7 +39,58 @@ export function createHole(
   geo: GeometryConfig,
 ): Hole {
   const ringSlots = Array.from({ length: geo.maxRings }, (_, i) => slotsInRing(shaftRadiusM, i + 1, geo));
-  return { shaftRadiusM, floors, unlockedRings, ringSlots };
+  return { shaftRadiusM, floors, unlockedRings, ringSlots, ringRadiiM: ringRadiiFor(shaftRadiusM, geo) };
+}
+
+/** Every circle's radius for a hole of this shaft radius: the shaft wall, then each ring's outer face. */
+export function ringRadiiFor(shaftRadiusM: number, geo: GeometryConfig, rings = geo.maxRings): number[] {
+  return Array.from({ length: rings + 1 }, (_, k) => shaftRadiusM + k * geo.roomDepthM);
+}
+
+/** Circle k's radius (0 is the shaft wall, k the outer face of ring k). A fractional k falls between, in proportion. */
+export function circleRadius(hole: Hole, circle: number): number {
+  const radii = hole.ringRadiiM;
+  const last = radii.length - 1;
+  const k = Math.max(0, Math.min(last - 1, Math.floor(circle)));
+  return radii[k]! + (circle - k) * (radii[k + 1]! - radii[k]!);
+}
+
+/** Inner and outer radius of a ring. Ring 1's inner face is the shaft wall. */
+export function ringRadii(hole: Hole, ring: number): [number, number] {
+  return [circleRadius(hole, ring - 1), circleRadius(hole, ring)];
+}
+
+/** How deep a ring is, metres. */
+export function ringDepth(hole: Hole, ring: number): number {
+  const [r0, r1] = ringRadii(hole, ring);
+  return r1 - r0;
+}
+
+/** The radius halfway through a ring. */
+export function ringMidRadius(hole: Hole, ring: number): number {
+  return circleRadius(hole, ring - 0.5);
+}
+
+/**
+ * How far out from the shaft wall a radius is, in rings: 0 at the wall, 1 at ring 1's outer face, 1.5 halfway
+ * through ring 2. The inverse of circleRadius; inside the wall it's negative, in ring 1's proportion.
+ */
+export function ringsAt(hole: Hole, radiusM: number): number {
+  const radii = hole.ringRadiiM;
+  const last = radii.length - 1;
+  let k = 0;
+  while (k < last - 1 && radiusM >= radii[k + 1]!) k++;
+  return k + (radiusM - radii[k]!) / (radii[k + 1]! - radii[k]!);
+}
+
+/** The ring a radius falls in (1 from the shaft wall out); 0 or less inside it, past the last ring beyond. */
+export function ringAt(hole: Hole, radiusM: number): number {
+  return Math.floor(ringsAt(hole, radiusM)) + 1;
+}
+
+/** The outer face of the hole's open rings (or of `rings` rings), metres from the axis. */
+export function outerRadius(hole: Hole, rings = hole.unlockedRings): number {
+  return circleRadius(hole, rings);
 }
 
 export function ringSize(hole: Hole, ring: number): number {

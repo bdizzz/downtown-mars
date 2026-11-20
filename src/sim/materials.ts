@@ -299,11 +299,11 @@ export function relining(layout: Layout, edgeId: string): boolean {
 }
 
 /** Refitting one corridor segment: as a room's walls, a 10 m segment counting as `corridor.perSegment` cells. Costs to a tenth. */
-export function corridorRefitPlan(layout: Layout, edgeId: string, to: WallStep, cfg: SimConfig): RefitPlan | null {
+export function corridorRefitPlan(layout: Layout, edgeId: string, to: WallStep, _cfg: SimConfig): RefitPlan | null {
   const e = edgeById(layout.hole, edgeId);
   const from = corridorLining(layout, edgeId);
   if (!e || !from) return null;
-  const n = (edgeLengthM(layout.hole, e, cfg.geometry.roomDepthM) / 10) * MATERIALS.corridor.perSegment;
+  const n = (edgeLengthM(layout.hole, e) / 10) * MATERIALS.corridor.perSegment;
   const plan = refitBetween(from, to, n);
   if (!plan) return null;
   const cost = Object.fromEntries(Object.entries(plan.cost).map(([r, v]) => [r, Math.max(0.1, Math.round(v * 10) / 10)]));

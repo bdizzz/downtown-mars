@@ -149,7 +149,7 @@ public partial class CameraRig : Node3D
         Apply();
     }
 
-    float Outer => _meta.Hole.ShaftRadiusM + _meta.Hole.UnlockedRings * 10;
+    float Outer => _meta.Hole.OuterRadius;
 
     /// <summary>
     /// How far out Free view may zoom, as the web's (render3d/isoReach.ts): every ring the hole can have, open
@@ -157,8 +157,7 @@ public partial class CameraRig : Node3D
     /// </summary>
     float IsoMax()
     {
-        var rings = _meta.Hole.RingSlots.Length > 0 ? _meta.Hole.RingSlots.Length : 6;
-        var radius = (_meta.Hole.ShaftRadiusM + rings * 10) * Margin;
+        var radius = _meta.Hole.AllRingsRadius * Margin;
         var aspect = IsInsideTree() ? GetViewport().GetVisibleRect().Size.Aspect() : 1.6f;
         return Mathf.Max(5, IsoFitDistance(radius, _pitch, _cam.Fov, aspect));
     }
@@ -222,7 +221,7 @@ public partial class CameraRig : Node3D
         _meta = meta;
         Fit();
         var h = meta.Hole;
-        var outer = h.ShaftRadiusM + h.UnlockedRings * 10;
+        var outer = h.OuterRadius;
         // As the web game's Free view: over the picked floor (or the surface), a little past the middle, from 1.6 radii back.
         var floorY = meta.Cut is int f ? -3 - f * h.FloorHeightM : 0;
         _target = new Vector3(0, floorY, -outer * 0.12f);

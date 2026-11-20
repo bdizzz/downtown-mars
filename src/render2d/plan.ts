@@ -7,7 +7,7 @@ import { previewEffects, type EffectField } from "../sim/effects";
 import type { Happiness } from "../sim/happiness";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import type { DrillView } from "../sim/snapshot";
-import { floorSpan, pickAt, ringRadii } from "../render3d/cylinder";
+import { floorSpan, pickAt } from "../render3d/cylinder";
 import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
@@ -16,7 +16,8 @@ import { drawGlyph, drawPlus } from "./art";
 import { constructionStripes, corridorStrip } from "./corridorArt";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import { HEAT } from "./palette";
-import { BAND, C, FIELD_MAX, PX, RING_D, TAU, cellSector, drawBase, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, type ProgressJob } from "./planDraw";
+import { BAND, C, FIELD_MAX, PX, TAU, cellSector, drawBase, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, type ProgressJob } from "./planDraw";
+import { ringRadii, ringsAt } from "../sim/geometry";
 
 // The plan view: one floor seen from above, drawn flat. The shaft in the
 // middle, the gallery ledge around it, then each ring as a band of slots.
@@ -270,12 +271,12 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   function pointHere(): ChainPoint | null {
     if (!layout || !pointer) return null;
     const [px, py] = screenToPlan(pointer);
-    return { rings: (Math.hypot(px, py) / PX - layout.hole.shaftRadiusM) / RING_D, turn: Math.atan2(py, px) / TAU };
+    return { rings: ringsAt(layout.hole, Math.hypot(px, py) / PX), turn: Math.atan2(py, px) / TAU };
   }
 
   function edgeHere(): Edge | null {
     const p = pointHere();
-    return layout && p ? nearestEdge(layout.hole, floor, p.rings, p.turn, RING_D) : null;
+    return layout && p ? nearestEdge(layout.hole, floor, p.rings, p.turn) : null;
   }
 
   function hoverInfo(): HoverInfo | null {

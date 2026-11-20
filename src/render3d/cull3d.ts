@@ -3,8 +3,9 @@ import type { Cell, Layout } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { edgeById, isGalleryEdge } from "../sim/edges";
 import { corridors } from "../sim/corridors";
-import { floorSpan, RING_D, ringRadii, slotAngles } from "./cylinder";
+import { floorSpan, slotAngles } from "./cylinder";
 import { corridorStripGeometry } from "./rooms3d";
+import { outerRadius, ringRadii } from "../sim/geometry";
 
 // Skipping what the camera can't see (#262). Three.js already skips what's
 // outside the view, but most of what it draws that can't be seen is in view,
@@ -110,7 +111,7 @@ export function slabBelow(layout: Layout, floor: number): Slab {
     geo.dispose();
     (building ? openings : fromBelow).push(...pieces);
   }
-  return { y, shaft: hole.shaftRadiusM + MARGIN, rim: hole.shaftRadiusM + hole.unlockedRings * RING_D - MARGIN, openings, fromBelow };
+  return { y, shaft: hole.shaftRadiusM + MARGIN, rim: outerRadius(hole) - MARGIN, openings, fromBelow };
 }
 
 /**

@@ -645,6 +645,7 @@ public partial class Live : Node3D
             Floors = h.GetProperty("floors").GetInt32(),
             RingSlots = h.GetProperty("ringSlots").EnumerateArray().Select(x => x.GetInt32()).ToArray(),
             UnlockedRings = h.GetProperty("unlockedRings").GetInt32(),
+            RingRadiiM = h.TryGetProperty("ringRadiiM", out var radii) ? radii.EnumerateArray().Select(x => x.GetSingle()).ToArray() : Array.Empty<float>(),
             FloorHeightM = 4,
         };
         _people.SetHole(_shape);
@@ -1850,7 +1851,7 @@ public partial class Live : Node3D
         if (Dev.Off("occluders")) return;
         const int segments = 48;
         var r0 = _shape.ShaftRadiusM - 2;
-        var r1 = _shape.ShaftRadiusM + _shape.RingSlots.Length * 10;
+        var r1 = _shape.CircleRadius(_shape.RingSlots.Length);
         // Floors above a picked one aren't there, so neither are their slabs.
         for (var f = Cut ?? 1; f <= _shape.Floors; f++)
         {

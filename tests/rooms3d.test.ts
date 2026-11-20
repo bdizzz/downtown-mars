@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { cellEdges, galleryEdges } from "../src/sim/edges";
 import { config } from "../src/sim/config";
-import { createHole } from "../src/sim/geometry";
+import { createHole, ringRadii } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
 import * as THREE from "three";
 import { ceilings, loweredAt, openingsOf, outlineGeometry, rockAlong, rockFaces, shapeKey, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
-import { floorSpan, ringRadii, slotAngles, WALL_T } from "../src/render3d/cylinder";
+import { floorSpan, slotAngles, WALL_T } from "../src/render3d/cylinder";
 import { corridorJoints, corridors } from "../src/sim/corridors";
 import { DOOR, doorways } from "../src/view/doors";
 import { setRoomWindows, shaftBorders } from "../src/sim/windows";

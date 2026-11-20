@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
-import { createHole, overlappingSlots, slotsInRing, wrapSlot } from "../src/sim/geometry";
+import { circleRadius, createHole, outerRadius, overlappingSlots, ringAt, ringDepth, ringRadii, ringsAt, slotsInRing, wrapSlot } from "../src/sim/geometry";
 
 // The general formula, each ring on its own (the game pairs them; see below).
 const geo = { ...config.geometry, pairedRings: false };
@@ -72,5 +72,33 @@ describe("angular overlap across rings", () => {
   it("the last slot overlaps across the 0° seam correctly", () => {
     // ring 1 slot 8 spans 320°–360°; ring 2 slot 15 spans 337.5°–360°.
     expect(overlappingSlots(hole, 1, 8, 2)).toEqual([14, 15]);
+  });
+});
+
+describe("ring radii (#547)", () => {
+  const hole = createHole(10, 3, 3, config.geometry);
+
+  it("match the fixed 10 m rings from before", () => {
+    expect(hole.ringRadiiM).toEqual([10, 20, 30, 40, 50, 60, 70]);
+    expect([1, 2, 3].map((r) => ringRadii(hole, r))).toEqual([[10, 20], [20, 30], [30, 40]]);
+    expect([1, 2, 3, 4, 5, 6].map((r) => ringDepth(hole, r))).toEqual([10, 10, 10, 10, 10, 10]);
+    expect(outerRadius(hole)).toBe(40);
+    expect(outerRadius(hole, 6)).toBe(70);
+  });
+
+  it("go both ways between radius and rings", () => {
+    expect(circleRadius(hole, 1.5)).toBe(25);
+    expect(ringsAt(hole, 25)).toBe(1.5);
+    expect(ringsAt(hole, 8)).toBe(-0.2); // inside the shaft wall, in ring 1's proportion
+    expect([10, 19.9, 20, 39.9, 75].map((r) => ringAt(hole, r))).toEqual([1, 1, 2, 3, 7]);
+    expect(ringAt(hole, 9)).toBeLessThanOrEqual(0);
+  });
+
+  it("follow each ring's own depth", () => {
+    const deep = { ...hole, ringRadiiM: [10, 20, 31.6, 40, 52.9, 63.2, 72.1] };
+    expect(ringDepth(deep, 2)).toBeCloseTo(11.6);
+    expect(ringAt(deep, 31)).toBe(2);
+    expect(ringsAt(deep, 31.6)).toBe(2);
+    expect(circleRadius(deep, 2.5)).toBeCloseTo(35.8);
   });
 });

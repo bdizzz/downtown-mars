@@ -5,7 +5,7 @@ import { crewsAt, crewsKey } from "../view/crews";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
 import { roomTints, type Spot } from "../view/reachView";
 import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
-import type { Hole } from "../sim/geometry";
+import { ringsAt, type Hole } from "../sim/geometry";
 import { config } from "../sim/config";
 import { roomAt, surfaceRingOf, type Cell, type Layout, type RoomInstance } from "../sim/placement";
 import { doorsOnFloor } from "../view/doors";
@@ -601,7 +601,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
         const x = (d.angle / (Math.PI * 2)) * TURN_W;
         const top = ringTop(floor, d.cell.ring, maxRings);
         if (d.side === "inner" || d.side === "outer") roomsCtx.rect(x - 7, d.side === "inner" ? top : top + RING_H - 3, 14, 3).fill(C.door);
-        else roomsCtx.rect(d.side === "left" ? x : x - 3, top + ((d.r - h.shaftRadiusM) / config.geometry.roomDepthM - (d.cell.ring - 1)) * RING_H - 7, 3, 14).fill(C.door);
+        else roomsCtx.rect(d.side === "left" ? x : x - 3, top + (ringsAt(h, d.r) - (d.cell.ring - 1)) * RING_H - 7, 3, 14).fill(C.door);
       }
     }
   }
@@ -914,7 +914,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
 
   function edgeAt(x: number, y: number): Edge | null {
     const p = pointAt(x, y);
-    return layout && p ? nearestEdge(layout.hole, p.floor, p.rings, p.turn, config.geometry.roomDepthM) : null;
+    return layout && p ? nearestEdge(layout.hole, p.floor, p.rings, p.turn) : null;
   }
 
   function hoverInfo(): HoverInfo | null {

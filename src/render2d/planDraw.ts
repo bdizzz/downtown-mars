@@ -10,7 +10,7 @@ import { roomAt, type Cell, type Layout, type RoomInstance } from "../sim/placem
 import { roomLabel } from "../sim/roomName";
 import { roomDef } from "../sim/rooms";
 import { glazedWalls } from "../sim/windows";
-import { openShaftRadius, ringRadii, slotAngles } from "../render3d/cylinder";
+import { openShaftRadius, slotAngles } from "../render3d/cylinder";
 import { doorsOnFloor } from "../view/doors";
 import { tubeAt } from "../view/gallery";
 import { roomLook } from "../view/roomFinish";
@@ -21,6 +21,7 @@ import type { EffectField } from "../sim/effects";
 import type { Happiness } from "../sim/happiness";
 import { CONDITION_ALPHA, conditionTints } from "../view/conditionView";
 import { roomTints, type Spot } from "../view/reachView";
+import { circleRadius, ringDepth, ringRadii } from "../sim/geometry";
 
 // The plan view's drawing: one floor seen from above, drawn flat, onto a Pixi GraphicsContext. The
 // web's plan stage (plan.ts) draws with it, and so does the Godot viewer's bridge (src/bridge/plan.ts),
@@ -60,7 +61,6 @@ export const PX = 7;
 /** Margin of rock shown around the outermost ring, in metres. */
 export const RIM_M = 8;
 export const ARC_STEP = 0.05; // radians per segment when drawing arcs as polylines
-export const RING_D = config.geometry.roomDepthM;
 export const TAU = Math.PI * 2;
 /** A corridor's width on the plan: its true 3 m. */
 export const BAND = corridors.widthM * PX;
@@ -288,7 +288,7 @@ export function stripOf(h: Hole, e: Edge): { at: (t: number) => [number, number]
     const a = e.turn * TAU;
     const [r0] = ringRadii(h, e.ring);
     const dir: [number, number] = [Math.cos(a), Math.sin(a)];
-    return { at: (t) => xy(r0 + t / PX, a), normal: () => [-dir[1], dir[0]], len: RING_D * PX, mid: (RING_D * PX) / 2 };
+    return { at: (t) => xy(r0 + t / PX, a), normal: () => [-dir[1], dir[0]], len: ringDepth(h, e.ring) * PX, mid: (ringDepth(h, e.ring) * PX) / 2 };
   }
   const r = ringRadii(h, e.circle)[1];
   const a0 = e.a0 * TAU;
@@ -352,7 +352,7 @@ export function drawCorridors(g: GraphicsContext, l: Layout, floor: number): voi
   // Square joints where corridors turn, so the outer edges meet in a clean corner.
   for (const joint of corridorJoints(l).values()) {
     if (joint.floor !== floor || joint.circle === 0) continue;
-    const r = h.shaftRadiusM + joint.circle * RING_D;
+    const r = circleRadius(h, joint.circle);
     const a = joint.turn * TAU;
     const half = BAND / 2 / PX;
     corridorStrip(g, (t) => xy(r - half + t / PX, a), () => [-Math.sin(a), Math.cos(a)], BAND, BAND, joint.finish, joint.floor > h.floors ? 0.45 : 1);

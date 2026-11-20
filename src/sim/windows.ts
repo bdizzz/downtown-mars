@@ -97,7 +97,7 @@ function glazable(room: RoomInstance): boolean {
 
 /** What windows along these borders cost: by length, a part-started 10 m counting whole. */
 export function windowCost(layout: Layout, edges: Edge[], cfg: SimConfig = config): Record<string, number> {
-  const m = edges.reduce((s, e) => s + edgeLengthM(layout.hole, e, cfg.geometry.roomDepthM), 0);
+  const m = edges.reduce((s, e) => s + edgeLengthM(layout.hole, e), 0);
   const steps = Math.max(1, Math.ceil(m / 10 - 1e-9));
   return Object.fromEntries(Object.entries(cfg.windows.costPer10m).map(([id, v]) => [id, v * steps]));
 }
@@ -169,7 +169,7 @@ export function windowComfort(layout: Layout, room: RoomInstance, cfg: SimConfig
   const walls: { edge: Edge; len: number; sum: number }[] = [];
   for (const { edge, across } of glazed) {
     const view = across === "shaft" ? (behindTube(layout, edge) ? w.view.tube : w.view.shaft) : w.view[across];
-    const len = edgeLengthM(layout.hole, edge, cfg.geometry.roomDepthM);
+    const len = edgeLengthM(layout.hole, edge);
     const wall = walls.find((x) => sameWall(x.edge, edge));
     if (wall) {
       wall.len += len;

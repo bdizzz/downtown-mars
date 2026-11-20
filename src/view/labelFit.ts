@@ -1,6 +1,7 @@
 import type { Hole } from "../sim/geometry";
 import type { Cell } from "../sim/placement";
-import { floorSpan, ringRadii, slotAngles, TAU } from "../render3d/cylinder";
+import { floorSpan, slotAngles, TAU } from "../render3d/cylinder";
+import { ringRadii } from "../sim/geometry";
 
 // A room's label, centred on its floor and fitted inside its walls (T-077).
 // Labels face the camera, which turns and tilts but never rolls: a label's
