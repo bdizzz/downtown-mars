@@ -5,10 +5,11 @@ import { corridors } from "../sim/corridors";
 import { edgeById } from "../sim/edges";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
-import { floorSpan, ringRadii, slotAngles, WALL_T } from "../render3d/cylinder";
+import { floorSpan, slotAngles, WALL_T } from "../render3d/cylinder";
 import { doorways, sideOf, type Doorway } from "./doors";
 import { glazedWalls, ownSide } from "../sim/windows";
 import { isFurnished, isItem, isMounted, itemDef, itemsFor } from "./furniture";
+import { ringRadii } from "../sim/geometry";
 
 // Laying furniture out in a room. A template (data/layouts.json) is a list of
 // placements for one room type and shape, in priority order. Each is pinned

@@ -210,6 +210,18 @@ public class HoleShape
     public int[] RingSlots { get; set; } = Array.Empty<int>();
     public int UnlockedRings { get; set; } = 3;
     public float FloorHeightM { get; set; } = 4;
+    /// <summary>Each circle's radius between rings (0 is the shaft wall, k ring k's outer face), as sim/geometry.ts (#547). Empty from an old export: 10 m rings.</summary>
+    public float[] RingRadiiM { get; set; } = Array.Empty<float>();
+
+    /// <summary>Circle k's radius: the shaft wall at 0, ring k's outer face at k.</summary>
+    public float CircleRadius(int circle) =>
+        circle >= 0 && circle < RingRadiiM.Length ? RingRadiiM[circle] : ShaftRadiusM + circle * 10;
+
+    /// <summary>The outer face of the open rings.</summary>
+    public float OuterRadius => CircleRadius(UnlockedRings);
+
+    /// <summary>The outer face of every ring, open or not.</summary>
+    public float AllRingsRadius => CircleRadius(RingSlots.Length > 0 ? RingSlots.Length : 6);
 }
 
 public class Lamp

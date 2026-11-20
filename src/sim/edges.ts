@@ -1,4 +1,4 @@
-import { ringSize, wrapSlot, type Hole } from "./geometry";
+import { circleRadius, ringDepth, ringMidRadius, ringSize, wrapSlot, type Hole } from "./geometry";
 import type { Cell } from "./placement";
 
 // The borders between cells on a floor, where corridors run.
@@ -181,9 +181,9 @@ export function sharedEdges(hole: Hole, a: Cell, b: Cell): Edge[] {
 }
 
 /** An edge's length in metres, for costs. */
-export function edgeLengthM(hole: Hole, e: Edge, ringDepthM: number): number {
-  if (e.kind === "radial") return ringDepthM;
-  return (e.a1 - e.a0) * 2 * Math.PI * (hole.shaftRadiusM + e.circle * ringDepthM);
+export function edgeLengthM(hole: Hole, e: Edge): number {
+  if (e.kind === "radial") return ringDepth(hole, e.ring);
+  return (e.a1 - e.a0) * 2 * Math.PI * circleRadius(hole, e.circle);
 }
 
 /**
@@ -192,7 +192,7 @@ export function edgeLengthM(hole: Hole, e: Edge, ringDepthM: number): number {
  * wall in rings (0 at the wall, 1 at the outer edge of ring 1), `turn` the
  * angle in turns. Just inside the shaft wall (down to `galleryRings` in), it's ring 1's gallery side.
  */
-export function nearestEdge(hole: Hole, floor: number, rings: number, turn: number, ringDepthM: number, galleryRings = 0.3): Edge | null {
+export function nearestEdge(hole: Hole, floor: number, rings: number, turn: number, galleryRings = 0.3): Edge | null {
   if (rings < 0 && rings >= -galleryRings) return arcAt(hole, floor, 0, turn);
   if (rings < 0 || rings >= hole.ringSlots.length) return null;
   const ring = Math.floor(rings) + 1;
@@ -201,7 +201,8 @@ export function nearestEdge(hole: Hole, floor: number, rings: number, turn: numb
   const t = ((turn % 1) + 1) % 1;
   const slot = Math.min(n - 1, Math.floor(t * n));
   const u = t * n - slot;
-  const radius = hole.shaftRadiusM + (ring - 0.5) * ringDepthM;
+  const ringDepthM = ringDepth(hole, ring);
+  const radius = ringMidRadius(hole, ring);
   const slotM = (2 * Math.PI * radius) / n;
   const options: [number, () => Edge | null][] = [
     [u * slotM, () => radialEdge(hole, floor, ring, slot)],

@@ -3,11 +3,12 @@ import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
 import { ensureFloors, roomAt, type Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
-import { openShaftRadius, ringRadii, slotAngles } from "../src/render3d/cylinder";
+import { openShaftRadius, slotAngles } from "../src/render3d/cylinder";
 import { clear, drinkHere, drinkSpots, flights, footing, footingNear, OPEN, regionAt, stairLift, stairsHere, step, walkable } from "../src/view/walk";
 import { doorways } from "../src/view/doors";
 import { furnish, isFlat } from "../src/view/furnish";
 import { allRock } from "./worlds";
+import { ringRadii } from "../src/sim/geometry";
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 

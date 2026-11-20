@@ -6,7 +6,7 @@ import { roomDefs } from "../sim/rooms";
 import type { SimCommand } from "../sim/commands";
 import type { SimState } from "../sim/state";
 import type { Location, SurfaceSpot } from "../sim/placement";
-import { floorSpan, pickAt, RING_D, TAU } from "../render3d/cylinder";
+import { floorSpan, pickAt, TAU } from "../render3d/cylinder";
 import { corridorGhostY, corridorStripGeometry, roomGeometry } from "../render3d/rooms3d";
 import { corridors } from "../sim/corridors";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
@@ -25,6 +25,7 @@ import { roomDef } from "../sim/rooms";
 import type { Cell } from "../sim/placement";
 import { CATEGORY_COLORS, cssColor, HEAT } from "../render2d/palette";
 import { FIELD_MAX } from "../render2d/planDraw";
+import { ringsAt } from "../sim/geometry";
 
 // Building from the Godot viewer, by the web game's rules (view/interaction.ts, sim/costs.ts): the
 // palette of rooms and whether each can be built here and now; what placing one at the pointer
@@ -267,9 +268,9 @@ function edgeAt(state: SimState, at: [number, number, number]) {
   const hole = state.layout.hole;
   const p = pickAt(hole, ...at);
   if (p.kind !== "slot" && p.kind !== "gallery") return { pick: p, edge: null, point: null };
-  const rings = Math.max(0.001, (Math.hypot(at[0], at[2]) - hole.shaftRadiusM) / RING_D);
+  const rings = Math.max(0.001, ringsAt(hole, Math.hypot(at[0], at[2])));
   const point = { rings, turn: Math.atan2(at[2], at[0]) / TAU };
-  return { pick: p, edge: nearestEdge(hole, p.floor, point.rings, point.turn, RING_D), point };
+  return { pick: p, edge: nearestEdge(hole, p.floor, point.rings, point.turn), point };
 }
 
 export interface EdgeHoveredMessage {

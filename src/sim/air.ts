@@ -70,7 +70,7 @@ function dugVolume(layout: Layout, cfg: SimConfig): number {
     if (layout.corridorsBuilding?.[id] !== undefined) continue;
     const e = edgeById(layout.hole, id);
     if (!e || e.floor > floors) continue;
-    volume += edgeLengthM(layout.hole, e, g.roomDepthM) * corridors.widthM * g.floorHeightM;
+    volume += edgeLengthM(layout.hole, e) * corridors.widthM * g.floorHeightM;
   }
   return volume;
 }

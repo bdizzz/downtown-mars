@@ -32,7 +32,7 @@ import { retroStyleFrom } from "./lookRetro";
 import { createSky } from "./sky3d";
 import { siteLatitude, starTurn, sunDirection } from "../view/sunPath";
 import { buildTerrain, GROUND_BASE, siteSeed, soilTint, type Terrain } from "./terrain3d";
-import { CRUST, FLOOR_H, floorAtY, floorSpan, openShaftRadius, shaftCollarRadius, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { CRUST, FLOOR_H, floorAtY, floorSpan, openShaftRadius, shaftCollarRadius, slotAngles, TAU } from "./cylinder";
 import { isoFitDistance } from "./isoReach";
 import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
@@ -64,6 +64,7 @@ import { createWalkPad } from "./joystick";
 import { drinkHere, footing, footingNear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 import { createDrink } from "./drink3d";
 import { fpLoaded, loadFpModels, setModelsEnabled } from "../view/models";
+import { outerRadius as holeOuterRadius, ringRadii, ringsAt } from "../sim/geometry";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Three
 // cameras: Free view, over one floor and off to one side (its id is "iso");
@@ -349,7 +350,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const f = view.mode === "walk" ? hole?.floors ?? null : cut();
     rockWall.visible = !!hole && view.mode !== "cutaway" && f !== null;
     if (!rockWall.visible || !hole) return;
-    const r = hole.shaftRadiusM + hole.unlockedRings * RING_D + ROCK_FLUSH;
+    const r = holeOuterRadius(hole) + ROCK_FLUSH;
     rockWall.scale.set(r, -floorSpan(f!)[0] + SHELL_MARGIN, r);
   }
 
@@ -361,7 +362,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function updateSection(): void {
     const underground = sliced();
     const out = new THREE.Vector3(Math.cos(cam.theta), 0, Math.sin(cam.theta));
-    const r = hole ? hole.shaftRadiusM + hole.unlockedRings * RING_D + ROCK_FLUSH : 0;
+    const r = hole ? holeOuterRadius(hole) + ROCK_FLUSH : 0;
     // Free view's cut runs where the rings look widest: square to the camera (where it really is, panned or
     // not), through the points where its sightlines graze the rock wall, r²/D toward it from the axis.
     let offset = 0;
@@ -383,7 +384,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // Each side of the cut: the cutaway's wedge, or Free view's flat cut, square to `out` and `offset` toward it.
     const sides = underground ? cutSides(Math.PI).map((side) => ({ ...side, keep: out.clone().negate(), along: new THREE.Vector3(-out.z * side.sign, 0, out.x * side.sign) })) : cutSides();
     // Underground the face starts at the wall, where the cut meets it; the cutaway's past the backdrop.
-    const inner = underground ? Math.sqrt(Math.max(0, r * r - offset * offset)) : hole.shaftRadiusM + hole.unlockedRings * RING_D + SHELL_MARGIN;
+    const inner = underground ? Math.sqrt(Math.max(0, r * r - offset * offset)) : holeOuterRadius(hole) + SHELL_MARGIN;
     // Underground, no slab under the hole (the rooms below the picked floor stay in view), and the face
     // stops at the picked floor's cap: below it, past the faded ground, there's only the backdrop.
     const deep = underground ? SECTION.bottom : floorSpan(hole.floors + 1)[0] - SHELL_MARGIN;
@@ -440,7 +441,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const p = (d: number, y: number) => [d * side.along.x + side.keep.x * CUT_FACE_BACK, y, d * side.along.z + side.keep.z * CUT_FACE_BACK];
       pos.push(...p(d0, y1), ...p(d1, y1), ...p(d1, y0), ...p(d0, y1), ...p(d1, y0), ...p(d0, y0));
     };
-    const rings = hole.shaftRadiusM + hole.unlockedRings * RING_D;
+    const rings = holeOuterRadius(hole);
     const digBottom = floorSpan(hole.floors + 1)[0];
     const seam = wedgeSeam(sides);
     for (const side of sides) {
@@ -801,7 +802,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   /** The outer edge of the unlocked rings. */
   function outerRadius(): number {
-    return hole ? ringRadii(hole, hole.unlockedRings)[1] : 40;
+    return hole ? holeOuterRadius(hole) : 40;
   }
 
   /** How far out Free view may zoom: all the rings' footprint, padded, just inside the view (isoReach.ts). */
@@ -930,7 +931,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // A rock backdrop the cutaway shows behind the rooms: the inside of a
     // cylinder around the whole hole, closed at the bottom.
     // Only the unlocked rings are carved; the backdrop sits just past them.
-    const rOuter = R + h.unlockedRings * RING_D + SHELL_MARGIN;
+    const rOuter = holeOuterRadius(h) + SHELL_MARGIN;
     const deep = -dy0 + SHELL_MARGIN;
     shell = new THREE.Group();
     const wall = new THREE.Mesh(new THREE.CylinderGeometry(rOuter, rOuter, deep, 96, 1, true), withRock(new THREE.MeshStandardMaterial({ color: C.rockDark, roughness: 1, side: THREE.BackSide })));
@@ -1433,13 +1434,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function edgeAtPick(p: Pick): Edge | null {
     const at = pickedPoint();
     if (!hole || !at || (p.kind !== "slot" && p.kind !== "gallery")) return null;
-    return nearestEdge(hole, p.floor, at.rings, at.turn, RING_D);
+    return nearestEdge(hole, p.floor, at.rings, at.turn);
   }
 
   /** Where the last pick landed on its floor: rings out from the shaft wall, and the angle in turns. */
   function pickedPoint(): ChainPoint | null {
     if (!hole || !pickedAt) return null;
-    const rings = Math.max(0.001, (Math.hypot(pickedAt.x, pickedAt.z) - hole.shaftRadiusM) / RING_D);
+    const rings = Math.max(0.001, ringsAt(hole, Math.hypot(pickedAt.x, pickedAt.z)));
     return { rings, turn: Math.atan2(pickedAt.z, pickedAt.x) / TAU };
   }
 
@@ -2275,7 +2276,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function fitSunShadow(): void {
     const h = latest?.layout.hole;
     if (!h) return;
-    const half = h.shaftRadiusM + h.ringSlots.length * RING_D + SUN_SHADOW.margin;
+    const half = holeOuterRadius(h, h.ringSlots.length) + SUN_SHADOW.margin;
     const cam = sun.shadow.camera;
     cam.left = cam.bottom = -half;
     cam.right = cam.top = half;
@@ -2511,7 +2512,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
             const glb = (await new GLTFExporter().parseAsync(parts, { binary: true, onlyVisible: true })) as ArrayBuffer;
             const h = layout!.hole;
             const meta = {
-              hole: { shaftRadiusM: h.shaftRadiusM, floors: h.floors, ringSlots: h.ringSlots, unlockedRings: h.unlockedRings, floorHeightM: FLOOR_H },
+              hole: { shaftRadiusM: h.shaftRadiusM, floors: h.floors, ringSlots: h.ringSlots, ringRadiiM: h.ringRadiiM, unlockedRings: h.unlockedRings, floorHeightM: FLOOR_H },
               // The floor picked when exported (everything above it was hidden), or null with every floor showing.
               cut: cut(),
               lamps: lampList.map((l) => ({ x: l.x, y: l.y, z: l.z, floor: l.floor, color: l.color, reach: l.reach, strength: l.strength })),

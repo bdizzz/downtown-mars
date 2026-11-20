@@ -5,6 +5,7 @@ import { HEAT } from "../render2d/palette";
 import { queueView } from "../sim/construction";
 import { config } from "../sim/config";
 import { canDig, diggingFloor, ticksToDig } from "../sim/digging";
+import { outerRadius } from "../sim/geometry";
 import { conditionKey } from "../view/conditionView";
 import { reachKey, type Spot } from "../view/reachView";
 import type { SimState } from "../sim/state";
@@ -94,7 +95,7 @@ export function planMessage(state: SimState, floor: number, roomColors: boolean)
   });
   const ops = record(g);
   g.destroy();
-  return { type: "plan", holeId: state.holeId, floor, px: PX, outer: l.hole.shaftRadiusM + l.hole.unlockedRings * 10, ops, markers };
+  return { type: "plan", holeId: state.holeId, floor, px: PX, outer: outerRadius(l.hole), ops, markers };
 }
 
 /** Over the plan, as the web's: the overlay's tints (or a selected service's reach), and each room under construction's progress. */

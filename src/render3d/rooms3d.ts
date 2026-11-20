@@ -8,7 +8,7 @@ import { neighborCells, type Cell, type Layout, type RoomInstance } from "../sim
 import { roomDef } from "../sim/rooms";
 import { CATEGORY_COLORS } from "../render2d/palette";
 import { airlock, headframe, surfaceBuilding, surfaceCable } from "./surface3d";
-import { ARC_STEPS, FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, RING_D, ringRadii, slotAngles, TAU } from "./cylinder";
+import { ARC_STEPS, FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openShaftRadius, RAIL_HEIGHT, slotAngles, TAU } from "./cylinder";
 import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef, hasBulkhead } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
@@ -31,6 +31,7 @@ const SOCIAL = new Set(["housing", "public", "admin", "circulation"]);
 const SOCIAL_ROOMS = new Set(["galley", "canteen", "elder_care", "gym"]);
 import { centreOf, disposeFurniture, disposeFurnitureMaterials, furnitureMeshes, setFurnitureGlow, type HangTag } from "./furniture3d";
 import { fpModelFor, modelsKey } from "../view/models";
+import { circleRadius, ringAt, ringRadii } from "../sim/geometry";
 
 // Rooms as solid wedges carved into the rock, plus the shaft wall wherever
 // no room faces it, plus props on the surface. Rebuilt whenever the layout
@@ -438,7 +439,7 @@ function carveCell(
   // gives up a half-corridor notch next to it (unless the cell's own side there is a corridor, which carves it anyway).
   const cornerHall = (angle: number) => (Math.abs(angle - s0) < 1e-9 ? hallLeft : Math.abs(angle - s1) < 1e-9 ? hallRight : false);
   const sides = (circle: number) => {
-    const r = hole.shaftRadiusM + circle * (ringRadii(hole, 1)[1] - ringRadii(hole, 1)[0]);
+    const r = circleRadius(hole, circle);
     const notch = HALL / r;
     return arcs
       .filter((e) => e.circle === circle)
@@ -786,7 +787,7 @@ function deadEnd(layout: Layout, id: string, [r, a]: [number, number]): boolean 
   const gap = ends.map((v) => {
     const [, circle, f] = v.split("|");
     const [p, q] = f!.split("/").map(Number);
-    const [rv, av] = [hole.shaftRadiusM + Number(circle) * RING_D, (p! / q!) * TAU];
+    const [rv, av] = [circleRadius(hole, Number(circle)), (p! / q!) * TAU];
     return Math.hypot(rv * Math.cos(av) - r * Math.cos(a), rv * Math.sin(av) - r * Math.sin(a));
   });
   const v = ends[gap[0]! <= gap[1]! ? 0 : 1];
@@ -1289,7 +1290,7 @@ export function rockFaces(layout: Layout, topFloor: number | null, halls?: Openi
           // The open side is toward smaller angles (or inward) when it's the edge's first side.
           const side = beyondFirst ? -1 : 1;
           if (e.kind === "arc") {
-            const r = hole.shaftRadiusM + e.circle * RING_D;
+            const r = circleRadius(hole, e.circle);
             const inward = e.circle === ring - 1;
             for (const p of cut.pieces) {
               if (inward ? p.innerHall : p.outerHall) continue;
@@ -1342,7 +1343,7 @@ function corridorEnds(layout: Layout, topFloor: number | null, onto: (id: string
       const [, circle] = v.split("|").map(Number);
       // Onto the shaft (a gallery's, or open to it), or met by another corridor: nothing to close.
       if (circle === 0 || meeting.get(v) !== 1) continue;
-      const rc = hole.shaftRadiusM + circle! * RING_D;
+      const rc = circleRadius(hole, circle!);
       if (e.kind === "radial") {
         // Out past the circle it stops at (far +1) or in.
         const a = (e.index / hole.ringSlots[e.ring - 1]!) * TAU;
@@ -1533,14 +1534,13 @@ function roomFurniture(layout: Layout, room: RoomInstance, shapeKey: string, col
  */
 function roomBeyond(layout: Layout, own: Set<string>, floor: number, x: number, z: number, ux: number, uz: number): number | null {
   const hole = layout.hole;
-  const depth = ringRadii(hole, 1)[1] - ringRadii(hole, 1)[0];
   for (let t = WALLS_DOWN.step; t <= WALLS_DOWN.reach; t += WALLS_DOWN.step) {
     const px = x + ux * t;
     const pz = z + uz * t;
     const r = Math.hypot(px, pz);
     if (r < hole.shaftRadiusM) return null;
     if (onCorridorAt(layout, floor, px, pz)) continue;
-    const ring = Math.floor((r - hole.shaftRadiusM) / depth) + 1;
+    const ring = ringAt(hole, r);
     if (ring > hole.unlockedRings) return null;
     const n = hole.ringSlots[ring - 1]!;
     const turn = (((Math.atan2(pz, px) / TAU) % 1) + 1) % 1;
@@ -2604,7 +2604,7 @@ function corridorFloors(layout: Layout, topFloor: number | null): THREE.Object3D
   // Square joints where corridors turn, so the outer edges meet in a clean corner.
   for (const joint of corridorJoints(layout).values()) {
     if (joint.floor > hole.floors + 1 || joint.circle === 0 || (topFloor !== null && joint.floor < topFloor)) continue;
-    const r = hole.shaftRadiusM + joint.circle * (ringRadii(hole, 1)[1] - ringRadii(hole, 1)[0]);
+    const r = circleRadius(hole, joint.circle);
     const a = joint.turn * TAU;
     const key = `${joint.finish}:true:false`;
     const pos: number[] = [];
@@ -2655,7 +2655,7 @@ function bulkheadGates(layout: Layout, topFloor: number | null): THREE.Object3D[
       a = e.turn * TAU;
       turn = -a - Math.PI / 2; // across a spoke: along the circle
     } else {
-      r = hole.shaftRadiusM + e.circle * RING_D;
+      r = circleRadius(hole, e.circle);
       a = ((e.a0 + e.a1) / 2) * TAU;
       turn = -a; // across an arc: outward
     }

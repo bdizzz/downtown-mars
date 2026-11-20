@@ -34,7 +34,7 @@ export function proposalSummary(proposal: Proposal, layout: Layout, resources: R
   for (const id of segments) {
     const e = edgeById(layout.hole, id);
     if (!e) continue;
-    length += edgeLengthM(layout.hole, e, config.geometry.roomDepthM);
+    length += edgeLengthM(layout.hole, e);
     const f = proposal.erase ? layout.corridors[id]! : finish;
     for (const [r, v] of Object.entries(corridorCost(layout.hole, e, f, config))) cost[r] = (cost[r] ?? 0) + v;
   }
@@ -66,7 +66,7 @@ function refitSummary(edges: string[], layout: Layout, resources: Record<string,
   const cost: Record<string, number> = {};
   const salvage: Record<string, number> = {};
   for (const { id, plan } of plans) {
-    length += edgeLengthM(layout.hole, edgeById(layout.hole, id)!, config.geometry.roomDepthM);
+    length += edgeLengthM(layout.hole, edgeById(layout.hole, id)!);
     work += plan.work;
     for (const [r, v] of Object.entries(plan.cost)) cost[r] = Math.round(((cost[r] ?? 0) + v) * 10) / 10;
     for (const [r, v] of Object.entries(plan.salvage)) salvage[r] = (salvage[r] ?? 0) + v;

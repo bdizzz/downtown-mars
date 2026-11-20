@@ -79,18 +79,18 @@ describe("the edge grid", () => {
 
   it("picks the nearest border inside a cell", () => {
     const slot = 1 / ringSize(hole, 2);
-    expect(nearestEdge(hole, 1, 1.5, slot * 0.05, D)!.id).toBe("R1.2.0"); // near the left side
-    expect(nearestEdge(hole, 1, 1.95, slot * 0.5, D)!).toMatchObject({ kind: "arc", circle: 2 }); // near the outer edge
-    expect(nearestEdge(hole, 1, 1.05, slot * 0.5, D)!).toMatchObject({ kind: "arc", circle: 1 }); // near the inner edge
+    expect(nearestEdge(hole, 1, 1.5, slot * 0.05)!.id).toBe("R1.2.0"); // near the left side
+    expect(nearestEdge(hole, 1, 1.95, slot * 0.5)!).toMatchObject({ kind: "arc", circle: 2 }); // near the outer edge
+    expect(nearestEdge(hole, 1, 1.05, slot * 0.5)!).toMatchObject({ kind: "arc", circle: 1 }); // near the inner edge
     // In ring 1 near the shaft wall, or just over it on the shaft side: the gallery edge.
-    expect(nearestEdge(hole, 1, 0.02, 0.5 / ringSize(hole, 1), D)!).toMatchObject({ kind: "arc", circle: 0 });
-    expect(nearestEdge(hole, 1, -0.1, 0.5 / ringSize(hole, 1), D)!).toMatchObject({ kind: "arc", circle: 0 });
-    expect(nearestEdge(hole, 1, -1, 0.5 / ringSize(hole, 1), D)).toBeNull();
+    expect(nearestEdge(hole, 1, 0.02, 0.5 / ringSize(hole, 1))!).toMatchObject({ kind: "arc", circle: 0 });
+    expect(nearestEdge(hole, 1, -0.1, 0.5 / ringSize(hole, 1))!).toMatchObject({ kind: "arc", circle: 0 });
+    expect(nearestEdge(hole, 1, -1, 0.5 / ringSize(hole, 1))).toBeNull();
   });
 
   it("measures edges", () => {
-    expect(edgeLengthM(hole, edgeById(hole, "R1.2.3")!, D)).toBe(D);
-    const total = circleCuts(hole, 1).reduce((s, f) => s + edgeLengthM(hole, edgeById(hole, `A1.1.${f.join("/")}`)!, D), 0);
+    expect(edgeLengthM(hole, edgeById(hole, "R1.2.3")!)).toBe(D);
+    const total = circleCuts(hole, 1).reduce((s, f) => s + edgeLengthM(hole, edgeById(hole, `A1.1.${f.join("/")}`)!), 0);
     expect(total).toBeCloseTo(2 * Math.PI * (10 + D));
   });
 });

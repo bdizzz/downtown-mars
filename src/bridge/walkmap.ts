@@ -1,6 +1,7 @@
 import type { SimState } from "../sim/state";
-import { RING_D, openShaftRadius } from "../render3d/cylinder";
+import { openShaftRadius } from "../render3d/cylinder";
 import { DRINK_REACH, WALKER_RADIUS, FURNITURE_CLEARANCE, drinkSpots, flights, obstacles, regionAt, type DrinkSpot } from "../view/walk";
+import { outerRadius } from "../sim/geometry";
 
 // A floor's walking map for the Godot viewer: the web's walk rules (view/walk.ts) sampled on a
 // grid, so Godot can walk a colonist's way (in rooms through their doors, along corridors and the
@@ -41,7 +42,7 @@ export function walkMap(state: SimState, floor: number): WalkMapMessage {
   const layout = state.layout;
   const hole = layout.hole;
   const inner = openShaftRadius(hole);
-  const half = hole.shaftRadiusM + hole.unlockedRings * RING_D + 1;
+  const half = outerRadius(hole) + 1;
   const size = Math.ceil((2 * half) / CELL);
   const regions = ["", "open"];
   const index = new Map<string, number>([["open", 1]]);

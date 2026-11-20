@@ -4,7 +4,8 @@ import { edgeLengthM, galleryEdges, isGalleryEdge, outsideEdges, type Edge } fro
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { ownSide, viewAcross, type Across } from "../sim/windows";
-import { RING_D, ringRadii, slotAngles, WALL_T } from "../render3d/cylinder";
+import { slotAngles, WALL_T } from "../render3d/cylinder";
+import { ringRadii } from "../sim/geometry";
 
 // A private room's doors: one on each of its floors, wherever it opens onto
 // something walkable: a gallery tube along its shaft face first, else the
@@ -116,7 +117,7 @@ export function doorways(layout: Layout, room: RoomInstance): Doorway[] {
     // Otherwise: the best border it opens onto (a corridor, then a walk-through room), the longest first,
     // the door slid along it if it would come too near a corner.
     const options = outsideEdges(hole, cells)
-      .map((e) => ({ e, kind: acrossEdge(layout, e, own), len: edgeLengthM(hole, e, RING_D) }))
+      .map((e) => ({ e, kind: acrossEdge(layout, e, own), len: edgeLengthM(hole, e) }))
       .filter((o): o is { e: Edge; kind: "corridor" | "public"; len: number } => o.kind === "corridor" || o.kind === "public")
       .filter((o) => o.len >= FITS)
       .sort((a, b) => RANK[a.kind] - RANK[b.kind] || b.len - a.len || (a.e.id < b.e.id ? -1 : 1));

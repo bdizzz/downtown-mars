@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
-import { createHole } from "../src/sim/geometry";
-import { ARC_STEPS, CRUST, FLOOR_H, floorSpan, openShaftRadius, pickAt, polar, ringRadii, shaftCollarRadius, slotAngles, TAU } from "../src/render3d/cylinder";
+import { createHole, ringRadii } from "../src/sim/geometry";
+import { ARC_STEPS, CRUST, FLOOR_H, floorSpan, openShaftRadius, pickAt, polar, shaftCollarRadius, slotAngles, TAU } from "../src/render3d/cylinder";
 import { pick as pick2d, slotX, TURN_W } from "../src/render2d/layout";
 
 const hole = createHole(10, 3, 3, config.geometry);

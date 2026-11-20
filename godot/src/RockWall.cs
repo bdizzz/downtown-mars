@@ -26,14 +26,14 @@ public partial class RockWall : MeshInstance3D
     }
 
     /// <summary>The wall's radius: just past the unlocked rings, where the cutaway's backdrop sits.</summary>
-    public static float Radius(HoleShape hole) => hole.ShaftRadiusM + hole.UnlockedRings * 10 + Flush;
+    public static float Radius(HoleShape hole) => hole.OuterRadius + Flush;
 
     /// <summary>Shown down to the bottom of this floor (null: hidden). In Free view's cut-out the shader leaves out its near side.</summary>
     public void Show(HoleShape hole, int? floor)
     {
         Visible = floor != null;
         if (floor == null) return;
-        var key = $"{hole.ShaftRadiusM}:{hole.UnlockedRings}:{floor}";
+        var key = $"{hole.ShaftRadiusM}:{hole.OuterRadius}:{floor}";
         if (key == _key) return;
         _key = key;
         var r = Radius(hole);

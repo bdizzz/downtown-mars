@@ -46,10 +46,10 @@ public partial class Cutaway : Node3D
     /// <summary>Built for the hole's size.</summary>
     void Build(HoleShape h, bool wedge)
     {
-        var key = $"{h.ShaftRadiusM}:{h.UnlockedRings}:{h.Floors}:{wedge}";
+        var key = $"{h.ShaftRadiusM}:{h.OuterRadius}:{h.Floors}:{wedge}";
         if (key == _key) return;
         _key = key;
-        var rOuter = h.ShaftRadiusM + h.UnlockedRings * 10 + Margin;
+        var rOuter = h.OuterRadius + Margin;
         var deep = (h.Floors + 1) * FloorH + Crust + Margin;
         // The backdrop: the cylinder's inside, and its floor.
         var verts = new List<Vector3>();
@@ -64,7 +64,7 @@ public partial class Cutaway : Node3D
         _shell.Mesh = Mesh(verts);
         _shell.MaterialOverride = Rock();
         // The cut face, in its own frame: u along the cut (x), y up; Show turns each half to its side of the cut.
-        var inner = h.ShaftRadiusM + h.UnlockedRings * 10 + Margin;
+        var inner = h.OuterRadius + Margin;
         var seam = wedge ? Seam : 0;
         var left = new List<Vector3>();
         var right = new List<Vector3>();
@@ -102,7 +102,7 @@ public partial class Cutaway : Node3D
         var key = $"{_key}:{edges[0]}:{edges[1]}";
         if (key == _crustKey) return;
         _crustKey = key;
-        var inner = h.ShaftRadiusM + h.UnlockedRings * 10 + Margin;
+        var inner = h.OuterRadius + Margin;
         var step = Mathf.Tau / (Mathf.Max(1, h.RingSlots.Length > 0 ? h.RingSlots[0] : 1) * ArcSteps);
         float Collar(float angle)
         {

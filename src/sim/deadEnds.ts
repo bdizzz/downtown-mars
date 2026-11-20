@@ -1,7 +1,6 @@
 import raw from "../../data/corridors.json";
-import { config } from "./config";
 import { cellEdges, edgeSides, edgeVertices, isGalleryEdge, outsideEdges, type Edge } from "./edges";
-import { ringSize } from "./geometry";
+import { circleRadius, ringDepth, ringSize } from "./geometry";
 import type { Cell, Layout } from "./placement";
 
 // A corridor that runs straight at a room and stops against its wall (say a
@@ -16,7 +15,6 @@ import type { Cell, Layout } from "./placement";
 const data = raw as unknown as { widthM: number; door: { widthM: number; cornerClearM: number; frameM: number } };
 const HALL = data.widthM / 2;
 const HALF = data.door.widthM / 2;
-const DEPTH = config.geometry.roomDepthM;
 
 export interface DeadEnd {
   /** The corridor that ends against the wall. */
@@ -52,7 +50,7 @@ function ends(layout: Layout, e: Edge): [End, End] {
 }
 
 const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
-const circleR = (layout: Layout, circle: number) => layout.hole.shaftRadiusM + circle * DEPTH;
+const circleR = (layout: Layout, circle: number) => circleRadius(layout.hole, circle);
 /** The shortest way round from turn b to turn a, in turns: −½ to ½. */
 const turnDiff = (a: number, b: number) => {
   const d = (((a - b) % 1) + 1) % 1;
@@ -107,7 +105,8 @@ export function doorAlong(layout: Layout, cells: Cell[], wall: Edge): number | n
     return x === null ? null : (((mid + x / (2 * Math.PI * r)) % 1) + 1) % 1;
   }
   const mid = circleR(layout, wall.ring - 0.5);
-  const x = place(-DEPTH / 2, DEPTH / 2, corners.filter((c) => sameTurn(c.turn, wall.turn)).map((c) => circleR(layout, c.circle) - mid), Infinity);
+  const half = ringDepth(layout.hole, wall.ring) / 2;
+  const x = place(-half, half, corners.filter((c) => sameTurn(c.turn, wall.turn)).map((c) => circleR(layout, c.circle) - mid), Infinity);
   return x === null ? null : mid + x;
 }
 

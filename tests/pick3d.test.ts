@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
-import { createHole } from "../src/sim/geometry";
-import { CRUST, FLOOR_H, polar, ringRadii, slotAngles } from "../src/render3d/cylinder";
+import { createHole, ringRadii } from "../src/sim/geometry";
+import { CRUST, FLOOR_H, polar, slotAngles } from "../src/render3d/cylinder";
 import { inCarvedRegion, pickPast, rayCylinder, rayPlane, surfacePickAt } from "../src/render3d/pick3d";
 
 const hole = createHole(10, 3, 3, config.geometry);
