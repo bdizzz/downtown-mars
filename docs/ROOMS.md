@@ -1,4 +1,5 @@
 # Room catalog
+> **Sizes (#549):** each room's width in slots is now `w` in `data/rooms.json` (1–4), from its ideal area in `docs/ROOM-AREAS.md`; that list is the truth where this catalog's S/M/L column disagrees.
 
 Every room with its footprint, staff, inputs, outputs, neighbor effects, build cost and unlock. All numbers are first-pass starting points for balancing; ★ marks rooms in the first playable version.
 
