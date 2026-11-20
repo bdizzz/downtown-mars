@@ -2,6 +2,7 @@ import { config } from "../sim/config";
 import { roomWork } from "../sim/construction";
 import { withExtra } from "../sim/costs";
 import { effectName } from "../sim/effects";
+import { standardSlots } from "../sim/placement";
 import { resourceDef } from "../sim/resources";
 import type { EffectDef, RoomDef } from "../sim/rooms";
 import { num, resName, signed } from "../ui/format";
@@ -10,6 +11,13 @@ import { num, resName, signed } from "../ui/format";
 // the web's build palette (ui/RoomCard.tsx) and the Godot viewer's (through the bridge's palette).
 
 export const SIZE_NAMES: Record<string, string> = { S: "Small", M: "Medium", L: "Large", H: "Huge", surface: "Surface" };
+
+/** After the size's name: how many slots it takes (#549), on the surface or in the rings. */
+function sizeNote(def: RoomDef): string {
+  const slots = (n: number, where = "") => ` · ${n}${where} ${n === 1 ? "slot" : "slots"}`;
+  if (def.size === "surface") return def.surfaceSlots ? slots(def.surfaceSlots, " surface") : "";
+  return slots(standardSlots(def));
+}
 
 /** A line of the card, and its tone: dimmed (k), a plus (good), a minus (bad), or plain. */
 export interface CardLine {
@@ -135,7 +143,7 @@ export function roomCard(def: RoomDef, resources: Record<string, number>, siteNo
     effects,
     notes: notes.filter((l): l is CardLine => !!l),
     name: def.name,
-    size: `${SIZE_NAMES[def.size]}${def.size === "surface" && def.surfaceSlots ? ` · ${def.surfaceSlots} surface ${def.surfaceSlots === 1 ? "slot" : "slots"}` : ""}`,
+    size: `${SIZE_NAMES[def.size]}${sizeNote(def)}`,
     surface: def.size === "surface",
     cost: Object.keys(cost).length ? Object.entries(cost).map(([id, amt]) => ({ text: `${resourceDef(id).name} ${amt}`, short: (resources[id] ?? 0) < amt })) : [{ text: "Free", short: false }],
     lines: lines.filter((l): l is CardLine => !!l),

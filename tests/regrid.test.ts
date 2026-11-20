@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { edgeById, outsideEdges } from "../src/sim/edges";
-import { roomShapes, type RoomInstance } from "../src/sim/placement";
+import { roomShapes, standardSlots, type RoomInstance } from "../src/sim/placement";
 import { roomDef } from "../src/sim/rooms";
 import { deserialize } from "../src/sim/save";
 
@@ -40,7 +40,10 @@ describe("moving old saves onto 9-18-18 rings (#548)", () => {
         const oldN = before[i]!.layout.hole.ringSlots[room.at.ring - 1]!;
         const from = (((room.at.slot / n - was.at.slot! / oldN) % 1) + 1) % 1;
         expect(from + room.at.w / n).toBeLessThanOrEqual(was.at.w! / oldN + 1e-9);
-        expect(roomShapes(roomDef(room.type)).some(([w, d]) => w === (room.at as { w: number }).w && d === (room.at as { d: number }).d)).toBe(true);
+        // A shape its kind may take, or smaller than its kind's (#549: a 2-slot park, now 3): left as it was.
+        const at = room.at;
+        const allowed = roomShapes(roomDef(room.type)).some(([w, d]) => w === at.w && d === at.d);
+        expect(allowed || room.cells.length < standardSlots(roomDef(room.type)), `${room.type} ${at.w}x${at.d}`).toBe(true);
       }
       checkGrid(layout.rooms, layout.grid, layout.open ?? []);
       // Every corridor is a real edge on the new grid, and none were lost.

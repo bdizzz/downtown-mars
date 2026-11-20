@@ -25,38 +25,38 @@ export const PLAN: Plan[] = [
   // Tier 1: the critical set on floor 1.
   { room: "galley", at: ring(1, 1, 2) },
   { room: "restroom", at: ring(1, 1, 3) },
-  { room: "bunk_dorm", at: ring(1, 1, 4, 2) },
+  { room: "bunk_dorm", at: ring(1, 1, 4, 1) },
   { room: "water_tank", at: ring(1, 1, 6) },
-  { room: "life_support", at: ring(1, 2, 6, 4) },
-  { room: "electrolyzer", at: ring(1, 2, 16, 2) },
+  { room: "life_support", at: ring(1, 2, 6, 3) },
+  { room: "electrolyzer", at: ring(1, 2, 16, 1) },
   // Construction crews, so the rest doesn't take forever.
   { room: "site_office", at: ring(1, 1, 1) },
   // Tier 2: weaning off Earth, mostly on floor 2. Water first: used water fills the pod's gray tank in days.
-  { room: "water_recycler", at: ring(2, 2, 16, 4) },
+  { room: "water_recycler", at: ring(2, 2, 16, 3) },
   { room: "farm", at: ring(2, 1, 0, 4), crop: "potatoes" },
   { room: "farm", at: ring(2, 1, 4, 4), crop: "soybeans" },
   { room: "solar_array", at: surface(5) },
   { room: "clinic", at: ring(3, 1, 0) },
   // On floor 2: the full landing kit's corridor crosses floor 1's ring 2 here.
-  { room: "admin_office", at: ring(2, 2, 8, 2) },
+  { room: "admin_office", at: ring(2, 2, 8, 1) },
   // Growth: homes and services for arrivals, on floor 3.
-  { room: "bunk_dorm", at: ring(3, 1, 1, 2) },
+  { room: "bunk_dorm", at: ring(3, 1, 1, 1) },
   { room: "galley", at: ring(3, 1, 3) },
   { room: "restroom", at: ring(3, 1, 4) },
   { room: "solar_array", at: surface(6) },
-  { room: "life_support", at: ring(3, 2, 6, 4) },
+  { room: "life_support", at: ring(3, 2, 6, 3) },
   // One recycler treats about 35 people's water; a second before the gray tanks back up.
-  { room: "water_recycler", at: ring(3, 2, 16, 4) },
-  { room: "bunk_dorm", at: ring(3, 1, 5, 2) },
+  { room: "water_recycler", at: ring(3, 2, 16, 3) },
+  { room: "bunk_dorm", at: ring(3, 1, 5, 1) },
   { room: "restroom", at: ring(3, 1, 7) },
   { room: "solar_array", at: surface(7) },
   // Keep up as the hole passes 50: food, water storage, air, on floor 4.
   { room: "galley", at: ring(4, 1, 0) },
   { room: "water_tank", at: ring(4, 1, 1) },
   { room: "water_tank", at: ring(4, 1, 2), holds: "grayWater" },
-  { room: "life_support", at: ring(4, 2, 2, 4) },
+  { room: "life_support", at: ring(4, 2, 2, 3) },
   { room: "solar_array", at: surface(8) },
-  { room: "bunk_dorm", at: ring(4, 1, 3, 2) },
+  { room: "bunk_dorm", at: ring(4, 1, 3, 1) },
   { room: "restroom", at: ring(4, 1, 5) },
 ];
 

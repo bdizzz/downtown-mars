@@ -26,7 +26,7 @@ describe("excavator bay", () => {
   it("speeds the drill once it's running, by its boost at full staff", () => {
     const s = hole();
     expect(drillSpeed(s)).toBe(1);
-    const r = applyCommand(s, { type: "build", room: "excavator_bay", at: ring(1, 1, 2, 2) });
+    const r = applyCommand(s, { type: "build", room: "excavator_bay", at: ring(1, 1, 2, 3) });
     if (!r.ok) throw new Error(r.reason);
     for (let i = 0; i < 5; i++) step(s, config);
     const rate = s.roomStatus[r.roomId!]?.rate ?? 0;
@@ -37,7 +37,7 @@ describe("excavator bay", () => {
   it("digs a floor sooner, with the same rock", () => {
     const dig = (bay: boolean) => {
       const s = hole();
-      if (bay) applyCommand(s, { type: "build", room: "excavator_bay", at: ring(1, 1, 2, 2) });
+      if (bay) applyCommand(s, { type: "build", room: "excavator_bay", at: ring(1, 1, 2, 3) });
       s.drill.active = true;
       const rock0 = s.resources.rock!;
       let ticks = 0;

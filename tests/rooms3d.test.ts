@@ -43,7 +43,7 @@ describe("3D room geometry", () => {
   });
 
   it("a wide room has no walls between its own slots", () => {
-    const r = placeRoom(layout, "life_support", ring(2, 1, 3, 4));
+    const r = placeRoom(layout, "depot", ring(2, 1, 3, 4));
     const room = layout.rooms.find((x) => x.id === r.id)!;
     const geo = roomGeometry(layout, room.cells);
     expect(upright(geo)).toBe(4 * 2 * CURVED + 2 * SIDE);
@@ -278,7 +278,7 @@ describe("solid walls", () => {
 describe("windows", () => {
   it("pull back with the wall when a corridor is carved along a side, and return when it's gone", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 2)); // ring-1 slots 2–3
+    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 1)); // ring-1 slots 2–3
     const room = l.rooms.find((x) => x.id === r.id)!;
     const span = (): [number, number] => {
       const faces = shaftFaces(l, room);
@@ -317,7 +317,7 @@ describe("doors and windows", () => {
 
   it("cut the doorway and the window band through a private room's shaft face", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 2));
+    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 1));
     const room = l.rooms.find((x) => x.id === r.id)!;
     // No gallery tube along it: all window, no door.
     expect(doorways(l, room)).toEqual([]);
@@ -340,7 +340,7 @@ describe("doors and windows", () => {
 
   it("cut a door into a side wall where a corridor runs along it and no tube does", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = placeRoom(l, "life_support", ring(1, 2, 2, 2, 2)); // rings 2–3, no shaft face
+    const r = placeRoom(l, "depot", ring(1, 2, 2, 2, 2)); // rings 2–3, no shaft face
     const room = l.rooms.find((x) => x.id === r.id)!;
     expect(doorways(l, room)).toEqual([]);
     l.corridors["R1.2.2"] = "rock"; // along its left side, on ring 2
@@ -564,7 +564,7 @@ describe("walls down, across a corridor", () => {
 
   it("judges a curved wall as one face, across all its cells", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
-    const placed = placeRoom(layout, "life_support", ring(2, 2, 3, 4));
+    const placed = placeRoom(layout, "depot", ring(2, 2, 3, 4));
     const geo = roomGeometry(layout, layout.rooms.find((x) => x.id === placed.id)!.cells);
     const pos = geo.getAttribute("position");
     const walls = geo.getAttribute("aWall");
@@ -587,7 +587,7 @@ describe("walls down, across a corridor", () => {
 
   it("judges a solid wall as one slab: its faces, top and reveals together", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
-    const placed = placeRoom(layout, "life_support", ring(2, 2, 3, 4));
+    const placed = placeRoom(layout, "depot", ring(2, 2, 3, 4));
     const room = layout.rooms.find((x) => x.id === placed.id)!;
     expect(placeRoom(layout, "galley", ring(2, 3, 6)).ok).toBe(true);
     for (const c of room.cells) for (const e of cellEdges(layout.hole, c)) if (e.kind === "arc" && e.circle === 2) layout.corridors[e.id] = "rock";
@@ -611,7 +611,7 @@ describe("walls down, across a corridor", () => {
   it("drops a wide curved wall when any of it is seen from behind", () => {
     // Four of ring 1's nine slots: its back wall curves through 160°.
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
-    const placed = placeRoom(layout, "life_support", ring(2, 1, 0, 4));
+    const placed = placeRoom(layout, "depot", ring(2, 1, 0, 4));
     expect(placed.ok ? "" : placed.reason).toBe("");
     const geo = roomGeometry(layout, layout.rooms.find((x) => x.id === placed.id)!.cells);
     const pos = geo.getAttribute("position");

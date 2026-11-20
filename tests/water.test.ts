@@ -47,7 +47,7 @@ describe("the water loop", () => {
   });
 
   it("the electrolyzer is a true sink: the water it splits for oxygen is gone", () => {
-    expect(roomSpec({ ...build(hole(), "electrolyzer", ring(1, 2, 3, 2)) }, config).makes.grayWater).toBeUndefined();
+    expect(roomSpec({ ...build(hole(), "electrolyzer", ring(1, 2, 3, 1)) }, config).makes.grayWater).toBeUndefined();
   });
 
   it("industry sends some of its water to tailings", () => {
@@ -83,7 +83,7 @@ describe("the water loop", () => {
   it("the recycler drains gray water first, so nothing overflows while it keeps up", () => {
     const s = hole();
     const galley = build(s, "galley", ring(1, 1, 2));
-    build(s, "water_recycler", ring(1, 2, 3, 4));
+    build(s, "water_recycler", ring(1, 2, 3, 3));
     s.resources.grayWater = capacities(s, config).grayWater!;
     s.resources.water = 100;
     step(s, config);
@@ -98,7 +98,7 @@ describe("the water loop", () => {
     expect(makes.soil).toBeGreaterThan(0);
     // A full soil store doesn't stop it: the sludge is a byproduct.
     const s = hole();
-    const rec = build(s, "water_recycler", ring(1, 2, 3, 4));
+    const rec = build(s, "water_recycler", ring(1, 2, 3, 3));
     Object.assign(s.resources, { grayWater: 100, water: 0, soil: capacities(s, config).soil ?? 0 });
     step(s, config);
     expect(s.roomStatus[rec.id]?.rate).toBeGreaterThan(0);
@@ -106,7 +106,7 @@ describe("the water loop", () => {
 
   it("a recycler that has treated all the gray water there is is keeping up, not short (T-164)", () => {
     const s = hole();
-    const rec = build(s, "water_recycler", ring(1, 2, 3, 4));
+    const rec = build(s, "water_recycler", ring(1, 2, 3, 3));
     applyCommand(s, { type: "consoleFinish" });
     Object.assign(s.resources, { grayWater: 0.01 });
     step(s, config);
@@ -153,7 +153,7 @@ describe("the closed loop milestone (T-060)", () => {
     s.resources.water = 200;
     days(s, 1);
     expect(passed(s, loop)).toBe(false);
-    build(s, "water_recycler", ring(1, 2, 3, 4));
+    build(s, "water_recycler", ring(1, 2, 3, 3));
     days(s, 2);
     expect(passed(s, loop)).toBe(true);
     expect(hasReached(s, "closed_loop")).toBe(true);

@@ -73,7 +73,8 @@
       "name": "Bunk dorm",
       "short": "Dorm",
       "category": "housing",
-      "size": "M",
+      "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {
         "power": 1
@@ -99,6 +100,7 @@
       "short": "Studio",
       "category": "housing",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {
         "power": 0.5
@@ -128,6 +130,7 @@
       "short": "Apt",
       "category": "housing",
       "size": "M",
+      "w": 2,
       "staff": 0,
       "uses": {
         "power": 1
@@ -150,6 +153,7 @@
       "short": "Flat",
       "category": "housing",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {
         "power": 1
@@ -184,6 +188,7 @@
       "short": "Family",
       "category": "housing",
       "size": "M",
+      "w": 2,
       "staff": 0,
       "uses": {
         "power": 2
@@ -218,6 +223,7 @@
       "short": "Suite",
       "category": "housing",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {
         "power": 1.5
@@ -252,6 +258,7 @@
       "short": "Residence",
       "category": "housing",
       "size": "M",
+      "w": 2,
       "staff": 1,
       "uses": {
         "power": 3
@@ -286,6 +293,7 @@
       "short": "Galley",
       "category": "food",
       "size": "S",
+      "w": 1,
       "staff": 2,
       "uses": {
         "rawFood": 25,
@@ -321,7 +329,8 @@
       "name": "Kitchen",
       "short": "Kitchen",
       "category": "food",
-      "size": "M",
+      "size": "S",
+      "w": 1,
       "staff": 4,
       "uses": {
         "rawFood": 40,
@@ -358,6 +367,7 @@
       "short": "Canteen",
       "category": "food",
       "size": "M",
+      "w": 2,
       "staff": 3,
       "uses": {},
       "makes": {},
@@ -383,6 +393,7 @@
       "short": "Farm",
       "category": "food",
       "size": "L",
+      "w": 4,
       "staff": 5,
       "uses": {
         "water": 4,
@@ -416,6 +427,7 @@
       "short": "Tank",
       "category": "water",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {},
       "makes": {},
@@ -439,7 +451,8 @@
       "name": "Water recycler",
       "short": "Recycler",
       "category": "water",
-      "size": "L",
+      "size": "M",
+      "w": 3,
       "staff": 3,
       "uses": {
         "grayWater": 80,
@@ -477,6 +490,7 @@
       "short": "Reclaimer",
       "category": "water",
       "size": "M",
+      "w": 2,
       "staff": 3,
       "uses": {
         "tailings": 20,
@@ -513,6 +527,7 @@
       "short": "WC",
       "category": "water",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {},
       "makes": {},
@@ -540,7 +555,8 @@
       "name": "CO2 scrubber",
       "short": "Scrubber",
       "category": "air",
-      "size": "L",
+      "size": "M",
+      "w": 3,
       "staff": 3,
       "uses": {
         "power": 5
@@ -578,7 +594,8 @@
       "name": "Electrolyzer",
       "short": "Electrol.",
       "category": "air",
-      "size": "M",
+      "size": "S",
+      "w": 1,
       "staff": 1,
       "uses": {
         "water": 25,
@@ -612,6 +629,7 @@
       "short": "Gas tank",
       "category": "air",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {},
       "makes": {},
@@ -635,6 +653,7 @@
       "family": "heater",
       "category": "air",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {
         "power": 4
@@ -656,7 +675,8 @@
       "short": "Heat plant",
       "family": "heater",
       "category": "air",
-      "size": "M",
+      "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {
         "power": 7
@@ -685,6 +705,7 @@
       "short": "Radiator",
       "category": "air",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {
         "power": 3
@@ -706,6 +727,7 @@
       "short": "Vent",
       "category": "air",
       "size": "S",
+      "w": 1,
       "staff": 1,
       "uses": {
         "power": 2
@@ -736,6 +758,7 @@
       "short": "Clinic",
       "category": "health",
       "size": "S",
+      "w": 1,
       "staff": 2,
       "uses": {
         "power": 1,
@@ -764,6 +787,7 @@
       "short": "Hospital",
       "category": "health",
       "size": "L",
+      "w": 4,
       "staff": 10,
       "uses": {
         "power": 4,
@@ -793,6 +817,7 @@
       "short": "Gym",
       "category": "health",
       "size": "M",
+      "w": 2,
       "staff": 1,
       "uses": {
         "water": 1,
@@ -816,7 +841,8 @@
       "name": "Admin office",
       "short": "Admin",
       "category": "admin",
-      "size": "M",
+      "size": "S",
+      "w": 1,
       "staff": 2,
       "uses": {
         "power": 1
@@ -836,6 +862,7 @@
       "short": "Battery",
       "category": "power",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {},
       "makes": {},
@@ -854,7 +881,8 @@
       "name": "Deep well pump",
       "short": "Well",
       "category": "water",
-      "size": "M",
+      "size": "S",
+      "w": 1,
       "staff": 2,
       "uses": {
         "power": 4
@@ -883,6 +911,7 @@
       "short": "Smelter",
       "category": "industry",
       "size": "L",
+      "w": 4,
       "staff": 5,
       "uses": {
         "ore": 6,
@@ -925,6 +954,7 @@
       "short": "Machines",
       "category": "industry",
       "size": "M",
+      "w": 2,
       "staff": 4,
       "uses": {
         "metal": 3,
@@ -954,6 +984,7 @@
       "short": "Refinery",
       "category": "industry",
       "size": "L",
+      "w": 4,
       "staff": 5,
       "uses": {
         "silica": 6,
@@ -996,6 +1027,7 @@
       "short": "Fab",
       "category": "industry",
       "size": "M",
+      "w": 2,
       "staff": 4,
       "uses": {
         "metal": 1,
@@ -1025,6 +1057,7 @@
       "short": "Staging",
       "category": "logistics",
       "size": "L",
+      "w": 4,
       "staff": 2,
       "uses": {},
       "makes": {},
@@ -1070,6 +1103,7 @@
       "short": "School",
       "category": "health",
       "size": "M",
+      "w": 2,
       "staff": 3,
       "uses": {
         "power": 1
@@ -1097,6 +1131,7 @@
       "short": "Elders",
       "category": "health",
       "size": "M",
+      "w": 2,
       "staff": 3,
       "uses": {
         "power": 1
@@ -1118,7 +1153,8 @@
       "name": "Composter",
       "short": "Compost",
       "category": "food",
-      "size": "M",
+      "size": "S",
+      "w": 1,
       "staff": 2,
       "uses": {
         "organicWaste": 4,
@@ -1146,7 +1182,8 @@
       "name": "Crypt",
       "short": "Crypt",
       "category": "health",
-      "size": "M",
+      "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {
         "power": 1
@@ -1168,6 +1205,7 @@
       "short": "Concrete",
       "category": "industry",
       "size": "M",
+      "w": 2,
       "staff": 3,
       "uses": {
         "rock": 5,
@@ -1209,6 +1247,7 @@
       "short": "Bricks",
       "category": "industry",
       "size": "M",
+      "w": 2,
       "staff": 3,
       "uses": {
         "rock": 6,
@@ -1251,6 +1290,7 @@
       "short": "Glass",
       "category": "industry",
       "size": "M",
+      "w": 2,
       "staff": 2,
       "uses": {
         "rock": 4,
@@ -1285,7 +1325,8 @@
       "name": "Recycling center",
       "short": "Recycling",
       "category": "industry",
-      "size": "L",
+      "size": "M",
+      "w": 3,
       "staff": 4,
       "uses": {
         "solidWaste": 6,
@@ -1321,6 +1362,7 @@
       "short": "Empty",
       "category": "excavation",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {},
       "makes": {},
@@ -1338,6 +1380,7 @@
       "short": "Empty",
       "category": "excavation",
       "size": "M",
+      "w": 2,
       "staff": 0,
       "uses": {},
       "makes": {},
@@ -1355,6 +1398,7 @@
       "short": "Empty",
       "category": "excavation",
       "size": "L",
+      "w": 4,
       "staff": 0,
       "uses": {},
       "makes": {},
@@ -1372,6 +1416,7 @@
       "short": "Plaza",
       "category": "public",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {},
       "makes": {},
@@ -1400,6 +1445,7 @@
       "short": "Plaza",
       "category": "public",
       "size": "M",
+      "w": 2,
       "staff": 0,
       "uses": {
         "power": 1
@@ -1430,6 +1476,7 @@
       "short": "Plaza",
       "category": "public",
       "size": "L",
+      "w": 4,
       "staff": 0,
       "uses": {
         "power": 2
@@ -1461,6 +1508,7 @@
       "short": "Park",
       "category": "public",
       "size": "M",
+      "w": 3,
       "staff": 1,
       "uses": {
         "water": 2,
@@ -1501,6 +1549,7 @@
       "short": "Lounge",
       "category": "public",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {
         "power": 0.5
@@ -1526,6 +1575,7 @@
       "short": "Entry",
       "category": "circulation",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {},
       "makes": {},
@@ -1548,6 +1598,7 @@
       "short": "Stairs",
       "category": "circulation",
       "size": "S",
+      "w": 1,
       "floors": 2,
       "staff": 0,
       "uses": {},
@@ -1570,6 +1621,7 @@
       "short": "Spiral",
       "category": "circulation",
       "size": "S",
+      "w": 1,
       "floors": 2,
       "stacks": true,
       "stackNoun": "the spiral stair",
@@ -1600,6 +1652,7 @@
       "short": "Lift",
       "category": "circulation",
       "size": "S",
+      "w": 1,
       "floors": 2,
       "stacks": true,
       "stackNoun": "the elevator",
@@ -1632,6 +1685,7 @@
       "short": "Cargo",
       "category": "circulation",
       "size": "S",
+      "w": 1,
       "staff": 1,
       "uses": {
         "power": 3
@@ -1669,6 +1723,7 @@
       "short": "Site",
       "category": "construction",
       "size": "S",
+      "w": 1,
       "staff": 2,
       "uses": {
         "power": 1
@@ -1688,7 +1743,8 @@
       "name": "Maintenance",
       "short": "Maint",
       "category": "services",
-      "size": "M",
+      "size": "S",
+      "w": 1,
       "staff": 2,
       "uses": {
         "power": 1,
@@ -1715,7 +1771,8 @@
       "name": "Cleaning service",
       "short": "Cleaners",
       "category": "services",
-      "size": "M",
+      "size": "S",
+      "w": 1,
       "staff": 3,
       "uses": {
         "power": 1,
@@ -1737,7 +1794,8 @@
       "name": "Construction office",
       "short": "Builders",
       "category": "construction",
-      "size": "M",
+      "size": "S",
+      "w": 1,
       "staff": 4,
       "uses": {
         "power": 1
@@ -1765,6 +1823,7 @@
       "short": "Yard",
       "category": "construction",
       "size": "L",
+      "w": 4,
       "staff": 8,
       "uses": {
         "power": 2
@@ -1792,6 +1851,7 @@
       "short": "Excav",
       "category": "construction",
       "size": "M",
+      "w": 3,
       "staff": 3,
       "uses": {
         "power": 3
@@ -1818,6 +1878,7 @@
       "short": "Store",
       "category": "storage",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {},
       "makes": {},
@@ -1837,6 +1898,7 @@
       "short": "Warehouse",
       "category": "storage",
       "size": "M",
+      "w": 2,
       "staff": 1,
       "uses": {},
       "makes": {},
@@ -1856,6 +1918,7 @@
       "short": "Depot",
       "category": "storage",
       "size": "L",
+      "w": 4,
       "staff": 2,
       "uses": {
         "power": 1
@@ -1884,6 +1947,7 @@
       "short": "Waste",
       "category": "storage",
       "size": "S",
+      "w": 1,
       "staff": 0,
       "uses": {},
       "makes": {},

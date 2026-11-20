@@ -18,6 +18,7 @@ const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location =>
 function hole(): SimState {
   const s = createInitialState(config);
   s.drill.active = false;
+  s.unlocks = ["basicHomes"];
   Object.assign(s.resources, { rock: 2000, metal: 2000, brick: 2000, glass: 100, machinery: 500, electronics: 500, water: 2000, rations: 2000 });
   return s;
 }
@@ -37,9 +38,9 @@ function finishRefit(s: SimState, id: number) {
 }
 
 describe("refit pricing", () => {
-  // An M dorm is 2 cells.
+  // A two-slot home (an apartment) is 2 cells.
   const s = hole();
-  const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+  const dorm = build(s, "apartment", ring(1, 1, 3, 2));
   const plan = (from: [string, string], to: [string, string]) => {
     line(s, dorm, ...from);
     return refitPlan(room(s, dorm), wallStep(to[0], to[1]))!;
@@ -73,7 +74,7 @@ describe("refit pricing", () => {
 describe("with construction time off", () => {
   it("a refit is done at once", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     expect(upgrade(s, dorm, "brick", "fine").ok).toBe(true);
     expect(liningOf(room(s, dorm)).name).toBe("Patterned brick");
     expect(s.construction?.queue ?? []).toHaveLength(0);
@@ -85,13 +86,13 @@ describe("the upgradeRoom command", () => {
 
   it("charges on commit, queues a refit and lines the room when done, with a fresh condition", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     room(s, dorm).condition = 0.4;
     const brick = s.resources.brick!;
     expect(upgrade(s, dorm, "brick").ok).toBe(true);
     expect(s.resources.brick).toBe(brick - 16);
     expect(room(s, dorm).material).toBeUndefined();
-    expect(queueView(s).jobs.find((j) => j.roomId === dorm)).toMatchObject({ kind: "upgrade", lead: "Refit", note: "in brick", label: "Refit Bunk dorm in brick" });
+    expect(queueView(s).jobs.find((j) => j.roomId === dorm)).toMatchObject({ kind: "upgrade", lead: "Refit", note: "in brick", label: "Refit Apartment in brick" });
     finishRefit(s, dorm);
     expect(liningOf(room(s, dorm)).name).toBe("Brick");
     expect(room(s, dorm).condition).toBe(1);
@@ -100,12 +101,12 @@ describe("the upgradeRoom command", () => {
 
   it("strips a brick dorm back to rock and gets brick back when it's done", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     line(s, dorm, "brick");
     const brick = s.resources.brick!;
     expect(upgrade(s, dorm, "rock").ok).toBe(true);
     expect(s.resources.brick).toBe(brick);
-    expect(queueView(s).jobs.find((j) => j.roomId === dorm)?.label).toBe("Strip Bunk dorm back to bare rock");
+    expect(queueView(s).jobs.find((j) => j.roomId === dorm)?.label).toBe("Strip Apartment back to bare rock");
     finishRefit(s, dorm);
     expect(room(s, dorm).material).toBeUndefined();
     expect(s.resources.brick).toBe(brick + 8);
@@ -114,7 +115,7 @@ describe("the upgradeRoom command", () => {
 
   it("cancelling refunds in full and leaves the lining", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     line(s, dorm, "brick");
     const metal = s.resources.metal!;
     const brick = s.resources.brick!;
@@ -128,7 +129,7 @@ describe("the upgradeRoom command", () => {
 
   it("one refit at a time: a new one replaces the queued one, refunding it", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     const brick = s.resources.brick!;
     const metal = s.resources.metal!;
     expect(upgrade(s, dorm, "brick").ok).toBe(true);
@@ -145,7 +146,7 @@ describe("the upgradeRoom command", () => {
 
   it("demolishing the room refunds its refit", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3));
     const brick = s.resources.brick!;
     expect(upgrade(s, dorm, "brick").ok).toBe(true);
     expect(applyCommand(s, { type: "demolish", roomId: dorm }).ok).toBe(true);
@@ -155,7 +156,7 @@ describe("the upgradeRoom command", () => {
 
   it("refuses rooms that can't have a lining, unbuilt rooms and what it can't afford", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     const stairs = s.layout.rooms.find((r) => r.type === "entrance")!;
     expect(upgrade(s, stairs.id, "brick")).toMatchObject({ ok: false });
     expect(upgrade(s, dorm, "rock")).toMatchObject({ ok: false, reason: "It's bare rock already" });
@@ -171,7 +172,7 @@ describe("while a refit is under way", () => {
   withConstructionTime();
   it("only once crews start, the room runs at half output and a home's comfort dips", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     const galley = build(s, "galley", ring(1, 1, 2));
     for (let i = 0; i < 20; i++) step(s, config);
     const rate = s.roomStatus[galley]!.rate;
@@ -213,7 +214,7 @@ describe("the upgradeFloor command", () => {
   it("lays fibre panels in a brick home without touching its walls, for fibre 3 a cell and 1.5 h a cell", () => {
     const s = hole();
     s.resources.fiber = 100;
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     line(s, dorm, "brick");
     room(s, dorm).condition = 0.6;
     const before = homeFactors(s, room(s, dorm), config).comfort;
@@ -221,7 +222,7 @@ describe("the upgradeFloor command", () => {
     expect(s.resources.fiber).toBe(94);
     expect(refitJob(s, dorm)).toMatchObject({ flooring: "fibre_panels", work: 3, paid: { fiber: 6 } });
     expect(refitJob(s, dorm)?.to).toBeUndefined();
-    expect(queueView(s).jobs.find((j) => j.roomId === dorm)).toMatchObject({ lead: "Refloor", note: "with fibre-composite panels", label: "Refloor Bunk dorm with fibre-composite panels" });
+    expect(queueView(s).jobs.find((j) => j.roomId === dorm)).toMatchObject({ lead: "Refloor", note: "with fibre-composite panels", label: "Refloor Apartment with fibre-composite panels" });
     expect(room(s, dorm).flooring).toBeUndefined();
     finishRefit(s, dorm);
     expect(room(s, dorm)).toMatchObject({ material: "brick", flooring: "fibre_panels", condition: 0.6 });
@@ -232,7 +233,7 @@ describe("the upgradeFloor command", () => {
   it("the panels stay when the walls change", () => {
     const s = hole();
     s.resources.fiber = 100;
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     expect(floor(s, dorm, "fibre_panels").ok).toBe(true);
     finishRefit(s, dorm);
     expect(upgrade(s, dorm, "metal").ok).toBe(true);
@@ -243,7 +244,7 @@ describe("the upgradeFloor command", () => {
   it("taking the panels up is free and at once; a queued floor is called off and refunded", () => {
     const s = hole();
     s.resources.fiber = 100;
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     expect(floor(s, dorm, null)).toMatchObject({ ok: false, reason: "Its floor matches the walls already" });
     expect(floor(s, dorm, "fibre_panels").ok).toBe(true);
     expect(floor(s, dorm, "fibre_panels")).toMatchObject({ ok: false, reason: "Already being floored with fibre-composite panels" });
@@ -261,7 +262,7 @@ describe("the upgradeFloor command", () => {
   it("one refit at a time, walls or floor: each replaces the other, refunding it", () => {
     const s = hole();
     s.resources.fiber = 100;
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     const brick = s.resources.brick!;
     expect(upgrade(s, dorm, "brick").ok).toBe(true);
     expect(floor(s, dorm, "fibre_panels").ok).toBe(true);
@@ -275,7 +276,7 @@ describe("the upgradeFloor command", () => {
   it("cancelling refunds the fibre, and refuses what it can't afford or can't floor", () => {
     const s = hole();
     s.resources.fiber = 100;
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     expect(floor(s, dorm, "fibre_panels").ok).toBe(true);
     expect(applyCommand(s, { type: "cancelJob", jobId: refitJob(s, dorm)!.id }).ok).toBe(true);
     expect(s.resources.fiber).toBe(100);
@@ -291,7 +292,7 @@ describe("with construction time off, a floor", () => {
   it("is laid at once", () => {
     const s = hole();
     s.resources.fiber = 100;
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "apartment", ring(1, 1, 3, 2));
     expect(floor(s, dorm, "fibre_panels").ok).toBe(true);
     expect(room(s, dorm).flooring).toBe("fibre_panels");
   });

@@ -43,7 +43,7 @@ describe("Earth supply drops", () => {
     const s = start();
     ticks(s, firstDrop);
     expect(s.population.count).toBe(20); // the pod is full
-    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 2) });
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 1) });
     for (let i = 0; i < config.earth.intervalDays * config.ticksPerDay; i++) {
       s.population.health = 100; // this hole has no galley or life support; beds are the point here
       ticks(s, 1);
@@ -53,7 +53,7 @@ describe("Earth supply drops", () => {
 
   it("sends nobody into a hole whose people are in poor health", () => {
     const s = start();
-    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 2) });
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 1) });
     for (let i = 0; i < firstDrop; i++) {
       s.population.health = config.earth.colonistsNeedHealth - 10;
       ticks(s, 1);
@@ -64,20 +64,24 @@ describe("Earth supply drops", () => {
 
   // T-161: a dwindling hole in poor health still gets a few replacements, some of the time.
   const rescue = config.earth.rescue;
-  const poorHealthDrops = (s: SimState, drops: number) => {
+  /** Drops into a hole in poor health; how many brought replacements (counted as they land: newer messages can push theirs out). */
+  const poorHealthDrops = (s: SimState, drops: number): number => {
+    let rescues = 0;
     for (let i = 0; i < firstDrop + (drops - 1) * config.earth.intervalDays * config.ticksPerDay; i++) {
       s.population.health = config.earth.colonistsNeedHealth - 20;
+      const was = s.population.count;
       ticks(s, 1);
+      if (s.population.count > was) rescues++;
     }
+    return rescues;
   };
 
   it("sends a dwindling hole replacements now and then, whatever its health", () => {
     const s = start();
     setAdults(s, 10, config);
-    poorHealthDrops(s, 6);
-    const rescues = s.messages.filter((m) => /replacement colonists/.test(m.text));
-    expect(rescues.length).toBeGreaterThan(0);
-    expect(rescues.length).toBeLessThan(6); // half of drops, not every one
+    const rescues = poorHealthDrops(s, 6);
+    expect(rescues).toBeGreaterThan(0);
+    expect(rescues).toBeLessThan(6); // half of drops, not every one
     expect(s.population.count).toBeGreaterThanOrEqual(10 + rescue.colonists);
     expect(s.population.count).toBeLessThan(rescue.belowPopulation + rescue.colonists);
   });
@@ -101,7 +105,7 @@ describe("Earth supply drops", () => {
 
   it("sizes the top-ups for the colonists who just arrived", () => {
     const s = start();
-    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 2) });
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 1, 1) });
     s.resources.rations = 0;
     ticks(s, firstDrop);
     const food = (s.resources.rations ?? 0) + (s.resources.meals ?? 0) + (s.resources.rawFood ?? 0);

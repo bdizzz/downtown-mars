@@ -131,9 +131,10 @@ function arcPiecesBetween(hole: Hole, e: Edge & { kind: "arc" }): Edge[] {
 }
 
 /**
- * Rooms wider than any shape their kind allows at their depth shrink in place to the widest that fits, keeping
- * the end with their doors (the most corridors and walk-through neighbours along it). The freed slots stay dug,
- * as empty space. Returns the rooms that shrank.
+ * Rooms covering more than any shape their kind allows shrink in place to the biggest that fits inside what they
+ * covered, keeping the part with their doors (the most corridors and walk-through neighbours along it). A deep
+ * room whose kind has no deep shape any more becomes one ring deep. The freed slots stay dug, as empty space.
+ * Rooms smaller than their kind's shape are left as they are (they work in proportion). Returns the rooms that shrank.
  */
 export function shrinkOversized(layout: Layout, cfg: SimConfig = config): RoomInstance[] {
   const shrunk: RoomInstance[] = [];
@@ -144,28 +145,24 @@ export function shrinkOversized(layout: Layout, cfg: SimConfig = config): RoomIn
     if (def.size === "surface") continue;
     const shapes = roomShapes(def, cfg);
     if (shapes.some(([w, d]) => w === at.w && d === at.d)) continue;
-    const fits = shapes.filter(([w, d]) => d === at.d && w < at.w).sort((a, b) => b[0] - a[0])[0];
-    if (!fits) continue;
-    shrinkRoom(layout, room, fits[0]);
-    shrunk.push(room);
+    if (shrinkRoom(layout, room, shapes)) shrunk.push(room);
   }
   if (shrunk.length) layout.version++;
   return shrunk;
 }
 
-/** Shrink a ring room to `w` slots along its ring, keeping the part of it with the most ways in. */
-export function shrinkRoom(layout: Layout, room: RoomInstance, w: number): void {
+const cellKey = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
+
+/** Shrink a ring room to the biggest of these shapes that fits inside it, where it has the most ways in. */
+export function shrinkRoom(layout: Layout, room: RoomInstance, shapes: [number, number][]): boolean {
   const at = room.at;
-  if (at.kind !== "ring" || w >= at.w) return;
+  if (at.kind !== "ring") return false;
   const hole = layout.hole;
-  const n = hole.ringSlots[at.ring - 1]!;
-  const floorsOf = (cells: Cell[]) => [...new Set(cells.map((c) => c.floor))].sort((a, b) => a - b);
-  const floors = floorsOf(room.cells);
-  const pending = floorsOf(room.pendingCells ?? []);
   const anchor = at.floor;
-  const doors = (slot: number) => {
-    const cells = footprint(hole, anchor, at.ring, slot, w, at.d);
-    const own = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+  const own = new Set(room.cells.map(cellKey));
+  const mine = room.cells.filter((c) => c.floor === anchor);
+  const cellsOf = (ring: number, slot: number, w: number, d: number) => footprint(hole, anchor, ring, slot, w, d);
+  const doors = (cells: Cell[]) => {
     let score = 0;
     for (const e of outsideEdges(hole, cells)) {
       if (layout.corridors[e.id]) score += 2;
@@ -173,35 +170,45 @@ export function shrinkRoom(layout: Layout, room: RoomInstance, w: number): void 
     }
     // A walk-through neighbour (a plaza, a stairwell) is a way in too, but not the room's own freed part.
     for (const c of cells) {
+      const n = hole.ringSlots[c.ring - 1]!;
       for (const s of [wrapSlot(c.slot - 1, n), wrapSlot(c.slot + 1, n)]) {
         const id = layout.grid[c.floor - 1]?.[c.ring - 1]?.[s];
-        if (id && id !== room.id && !own.has(`${c.floor}:${c.ring}:${s}`) && roomDef(layout.rooms.find((r) => r.id === id)?.type ?? "entrance").public) score += 2;
+        if (!id || own.has(`${c.floor}:${c.ring}:${s}`)) continue;
+        const other = layout.rooms.find((r) => r.id === id);
+        if (other && roomDef(other.type).public) score += 2;
       }
     }
     return score;
   };
-  let best = at.slot;
-  let bestScore = -1;
-  for (let off = 0; off <= at.w - w; off++) {
-    const slot = wrapSlot(at.slot + off, n);
-    const score = doors(slot);
-    if (score > bestScore) [best, bestScore] = [slot, score];
+  const bySize = [...shapes].sort((a, b) => b[0] * b[1] - a[0] * a[1]);
+  for (const [w, d] of bySize) {
+    let best: { ring: number; slot: number; score: number } | null = null;
+    for (const c of mine) {
+      if (c.ring + d - 1 > hole.ringSlots.length) continue;
+      const cells = cellsOf(c.ring, c.slot, w, d);
+      if (cells.length >= mine.length || !cells.every((x) => own.has(cellKey(x)))) continue;
+      const score = doors(cells);
+      if (!best || score > best.score) best = { ring: c.ring, slot: c.slot, score };
+    }
+    if (!best) continue;
+    const floors = (cells: Cell[]) => [...new Set(cells.map((c) => c.floor))].sort((a, b) => a - b);
+    const on = (fs: number[]) => fs.flatMap((f) => footprint(hole, f, best!.ring, best!.slot, w, d));
+    const cells = on(floors(room.cells));
+    const keep = new Set(cells.map(cellKey));
+    for (const c of room.cells) {
+      if (keep.has(cellKey(c))) continue;
+      const row = layout.grid[c.floor - 1]?.[c.ring - 1];
+      if (row && row[c.slot] === room.id) row[c.slot] = 0;
+    }
+    if (room.pendingCells) room.pendingCells = on(floors(room.pendingCells));
+    room.at = { ...at, ring: best.ring, slot: best.slot, w, d };
+    room.cells = cells;
+    if (room.windows) {
+      const walls = new Set(outsideEdges(hole, cells).map((e) => e.id));
+      room.windows = room.windows.filter((id) => walls.has(id));
+      if (!room.windows.length) delete room.windows;
+    }
+    return true;
   }
-  const nextAt = { ...at, slot: best, w };
-  const cellsOn = (fs: number[]) => fs.flatMap((f) => footprint(hole, f, at.ring, best, w, at.d));
-  const cells = cellsOn(floors);
-  const keep = new Set(cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
-  for (const c of room.cells) {
-    if (keep.has(`${c.floor}:${c.ring}:${c.slot}`)) continue;
-    const row = layout.grid[c.floor - 1]?.[c.ring - 1];
-    if (row && row[c.slot] === room.id) row[c.slot] = 0;
-  }
-  if (room.pendingCells) room.pendingCells = cellsOn(pending);
-  room.at = nextAt;
-  room.cells = cells;
-  if (room.windows) {
-    const walls = new Set(outsideEdges(hole, cells).map((e) => e.id));
-    room.windows = room.windows.filter((id) => walls.has(id));
-    if (!room.windows.length) delete room.windows;
-  }
+  return false;
 }

@@ -59,9 +59,9 @@ describe("clinic care within reach", () => {
     s.drill.active = false;
     Object.assign(s.resources, { rock: 900, brick: 300, metal: 300, machinery: 60, electronics: 60 });
     setAdults(s, 52, config);
-    const near = build(s, "bunk_dorm", ring(1, 1, 1, 2));
+    const near = build(s, "bunk_dorm", ring(1, 1, 1, 1));
     const clinic = build(s, "clinic", ring(1, 1, 3));
-    const far = build(s, "bunk_dorm", ring(1, 1, 6, 2));
+    const far = build(s, "bunk_dorm", ring(1, 1, 6, 1));
     applyCommand(s, { type: "consoleFinish" });
     const dNear = stepsBetween(s.layout, near, clinic)!;
     const dFar = stepsBetween(s.layout, far, clinic)!;

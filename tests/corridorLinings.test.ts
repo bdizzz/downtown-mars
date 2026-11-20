@@ -142,13 +142,13 @@ describe("the refit tool", () => {
 describe("marscrete linings", () => {
   it("sits between smoothed rock and brick, and rooms can be refitted in it", () => {
     const s = hole();
-    const r = applyCommand(s, { type: "build", room: "bunk_dorm", at: { kind: "ring", floor: 1, ring: 1, slot: 3, w: 2, d: 1 } });
+    const r = applyCommand(s, { type: "build", room: "bunk_dorm", at: { kind: "ring", floor: 1, ring: 1, slot: 3, w: 1, d: 1 } });
     if (!r.ok) throw new Error(r.reason);
     finishAll(s, config);
     const marscrete = s.resources.marscrete!;
     expect(applyCommand(s, { type: "upgradeRoom", roomId: r.roomId!, material: "marscrete", finish: "fine" }).ok).toBe(true);
-    // Marscrete 12 and polished 4 more, a cell, for 2 cells.
-    expect(s.resources.marscrete).toBe(marscrete - 32);
+    // Marscrete 12 and polished 4 more, a cell, for its one cell.
+    expect(s.resources.marscrete).toBe(marscrete - 16);
     const dorm = s.layout.rooms.find((x) => x.id === r.roomId)!;
     expect(liningOf(dorm).name).toBe("Polished marscrete");
     const comfort = (m: string, f = "base") => wallStep(m, f).comfort;

@@ -197,7 +197,7 @@ describe("construction offices", () => {
     step(s, config);
     expect(bandwidth(s)).toBeCloseTo(construction.baseBandwidth + 1 * s.roomStatus[office.id]!.rate);
     // A bigger office adds more.
-    build(s, "construction_office", ring(1, 1, 3, 2));
+    build(s, "construction_office", ring(1, 1, 3, 1));
     hours(s, roomWork("construction_office") / bandwidth(s) + 0.5);
     step(s, config);
     expect(bandwidth(s)).toBeGreaterThan(construction.baseBandwidth + 3);
@@ -210,10 +210,10 @@ describe("construction offices", () => {
   it("speed the queue up", () => {
     const slow = site();
     const fast = site();
-    build(fast, "construction_office", ring(1, 1, 5, 2));
+    build(fast, "construction_office", ring(1, 1, 5, 1));
     hours(fast, roomWork("construction_office") + 0.5); // the office is up and staffed
-    const a = build(slow, "life_support", ring(1, 1, 1, 4));
-    const b = build(fast, "life_support", ring(1, 1, 1, 4));
+    const a = build(slow, "life_support", ring(1, 1, 1, 3));
+    const b = build(fast, "life_support", ring(1, 1, 1, 3));
     hours(slow, 12);
     hours(fast, 12);
     const progress = (s: SimState, id: number) => s.construction.queue.find((j) => j.roomId === id)?.done ?? Infinity; // done: gone from the queue

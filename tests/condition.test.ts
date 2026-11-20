@@ -81,11 +81,11 @@ describe("room condition", () => {
     const s = hole();
     const rooms = [build(s, "galley", ring(1, 1, 3)), build(s, "restroom", ring(1, 1, 4)), build(s, "clinic", ring(1, 1, 5))];
     rooms.forEach((id, i) => (room(s, id).condition = 0.2 + i * 0.1));
-    const m1 = build(s, "maintenance", ring(1, 1, 6, 2));
+    const m1 = build(s, "maintenance", ring(1, 1, 6, 1));
     step(s, config);
     // One lane: the worst.
     expect(maintenanceView(s).lanes.map((l) => l.target)).toEqual([rooms[0]]);
-    const m2 = build(s, "maintenance", ring(1, 2, 1, 2));
+    const m2 = build(s, "maintenance", ring(1, 2, 1, 1));
     step(s, config);
     expect(new Set(maintenanceView(s).lanes.map((l) => l.target))).toEqual(new Set([rooms[0], rooms[1]]));
     for (let i = 0; i < 3 * tpd && conditionOf(room(s, rooms[0]!)) < 1; i++) step(s, config);
@@ -100,7 +100,7 @@ describe("room condition", () => {
     const b = build(s, "restroom", ring(1, 1, 4));
     room(s, a).condition = 0.4;
     room(s, b).condition = 0.2;
-    const m = build(s, "maintenance", ring(1, 1, 6, 2));
+    const m = build(s, "maintenance", ring(1, 1, 6, 1));
     for (let i = 0; i < 20; i++) step(s, config);
     expect(maintenanceView(s).lanes[0]!.target).toBe(b);
     const done = room(s, b).repair!.done;
@@ -120,7 +120,7 @@ describe("room condition", () => {
     const galley = build(s, "galley", ring(1, 1, 3));
     battery.condition = 0.1;
     room(s, galley).condition = 0.5;
-    build(s, "cleaning_service", ring(1, 1, 6, 2));
+    build(s, "cleaning_service", ring(1, 1, 6, 1));
     step(s, config);
     expect(maintenanceView(s).lanes[0]!.target).toBe(galley);
     expect(maintenanceView(s).lanes[0]!.kind).toBe("cleanable");
@@ -128,7 +128,7 @@ describe("room condition", () => {
 
   it("makes residents of a worn home, and everyone around worn shared rooms, less comfortable", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 1));
     const galley = build(s, "galley", ring(1, 1, 5));
     // Its own shaft windows (no tube in front), so its comfort isn't already at the floor.
     for (const slot of [3, 4]) delete s.layout.corridors[galleryEdges(s.layout.hole, 1)[slot]!.id];
@@ -156,8 +156,8 @@ describe("room condition", () => {
 
   it("unlocks the cleaning service at the population milestone", () => {
     const s = hole();
-    expect(applyCommand(s, { type: "build", room: "cleaning_service", at: ring(1, 1, 6, 2) }).ok).toBe(false);
+    expect(applyCommand(s, { type: "build", room: "cleaning_service", at: ring(1, 1, 6, 1) }).ok).toBe(false);
     s.unlocks = ["cleaning"];
-    expect(applyCommand(s, { type: "build", room: "cleaning_service", at: ring(1, 1, 6, 2) }).ok).toBe(true);
+    expect(applyCommand(s, { type: "build", room: "cleaning_service", at: ring(1, 1, 6, 1) }).ok).toBe(true);
   });
 });

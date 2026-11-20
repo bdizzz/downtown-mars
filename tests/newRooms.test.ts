@@ -46,7 +46,7 @@ describe("dining", () => {
   it("seats as many diners as the galleys and canteens within reach hold; the rest eat on the go, less comfortably", () => {
     const s = hole();
     setAdults(s, 40, config);
-    build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    build(s, "bunk_dorm", ring(1, 1, 3, 1));
     build(s, "galley", ring(1, 1, 5));
     settle(s);
     expect(s.population.seats).toBeCloseTo(25, 5);
@@ -63,7 +63,7 @@ describe("dining", () => {
   it("serves the nearest homes first", () => {
     const s = hole();
     setAdults(s, 36, config);
-    const near = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const near = build(s, "bunk_dorm", ring(1, 1, 3, 1));
     build(s, "galley", ring(1, 1, 5));
     settle(s);
     // The dorm beside the galley is seated in full; the pod's people, further off, get what's left.
@@ -75,7 +75,7 @@ describe("dining", () => {
   it("a kitchen cooks more than a galley, falls back on rations, and seats no one", () => {
     const s = hole();
     setAdults(s, 20, config);
-    const kitchen = build(s, "kitchen", ring(1, 1, 3, 2));
+    const kitchen = build(s, "kitchen", ring(1, 1, 3, 1));
     const meals0 = s.resources.meals ?? 0;
     settle(s);
     expect(s.roomStatus[kitchen]!.rate).toBeGreaterThan(0);
@@ -98,19 +98,19 @@ describe("health and leisure", () => {
   it("a gym lifts health and a park comfort, for the homes within walking reach", () => {
     const s = hole();
     setAdults(s, 20, config);
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 1));
     step(s, config);
     const before = amenityFelt(s, room(s, dorm));
     expect(before.comfort + before.health).toBe(0);
     build(s, "gym", ring(1, 1, 1, 2));
-    build(s, "park", ring(1, 1, 5, 2));
+    build(s, "park", ring(1, 1, 5, 3));
     step(s, config);
     const after = amenityFelt(s, room(s, dorm));
     expect(after.health).toBeGreaterThan(0);
     expect(after.comfort).toBeGreaterThan(0);
     expect(after.from.map((f) => f.type).sort()).toEqual(["gym", "park"]);
     // A second park nearby adds nothing: the nearest of each kind counts.
-    build(s, "park", ring(1, 2, 3, 2));
+    build(s, "park", ring(1, 2, 3, 3));
     applyCommand(s, { type: "consoleFinish" });
     step(s, config);
     expect(amenityFelt(s, room(s, dorm)).comfort).toBeCloseTo(after.comfort, 5);
@@ -119,7 +119,7 @@ describe("health and leisure", () => {
   it("a park is walk-through and makes a little oxygen", () => {
     const s = hole();
     setAdults(s, 20, config);
-    const park = build(s, "park", ring(1, 1, 3, 2));
+    const park = build(s, "park", ring(1, 1, 3, 3));
     step(s, config);
     expect(s.roomStatus[park]!.rate).toBeGreaterThan(0);
     expect(roomDef("park").public).toBe(true);
@@ -153,7 +153,7 @@ describe("materials and waste", () => {
   it("a recycling center turns solid waste into metal and brick", () => {
     const s = hole();
     setAdults(s, 20, config);
-    const rc = build(s, "recycling_center", ring(1, 1, 1, 4));
+    const rc = build(s, "recycling_center", ring(1, 1, 1, 3));
     s.resources.solidWaste = 80;
     step(s, config);
     expect(s.roomStatus[rc]!.rate).toBe(1);

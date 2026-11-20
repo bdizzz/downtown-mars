@@ -57,12 +57,12 @@ describe("placement rules", () => {
   });
 
   it("ring 1 rooms open onto the gallery", () => {
-    expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 2)).ok).toBe(true);
+    expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 1)).ok).toBe(true);
   });
 
   it("ring 2 rooms can go down before a corridor reaches them, flagged as unconnected", () => {
-    expect(checkPlacement(layout, "bunk_dorm", ring(1, 2, 0, 2))).toMatchObject({ ok: true, unconnected: true });
-    expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 2))).not.toHaveProperty("unconnected");
+    expect(checkPlacement(layout, "bunk_dorm", ring(1, 2, 0, 1))).toMatchObject({ ok: true, unconnected: true });
+    expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 1))).not.toHaveProperty("unconnected");
   });
 
   it("rejects overlaps, locked rings, undug floors and bad shapes", () => {

@@ -35,19 +35,19 @@ export const HOME_EXTRA: Plan[] = [
 
 /** The child: the critical set (the electrolyzer first, for the air its rooms dilute), then its own rovers, water and food. */
 export const CHILD_PLAN: Plan[] = [
-  { room: "electrolyzer", at: ring(1, 2, 16, 2) },
+  { room: "electrolyzer", at: ring(1, 2, 16, 1) },
   { room: "galley", at: ring(1, 1, 2) },
   { room: "restroom", at: ring(1, 1, 3) },
   { room: "rover_depot", at: surface(8) },
   // Earth refills clean water; the pod alone holds too little gray until the recycler comes.
   { room: "water_tank", at: ring(1, 1, 6), holds: "grayWater" },
-  { room: "life_support", at: ring(1, 2, 6, 4) },
+  { room: "life_support", at: ring(1, 2, 6, 3) },
   { room: "site_office", at: ring(1, 1, 1) },
   // Gray water fills the pod's tank in days: a recycler before the galley stalls.
-  { room: "water_recycler", at: ring(1, 3, 10, 4) },
+  { room: "water_recycler", at: ring(1, 3, 10, 3) },
   { room: "solar_array", at: surface(5) },
   { room: "farm", at: ring(2, 1, 0, 4), crop: "potatoes" },
-  { room: "bunk_dorm", at: ring(1, 1, 4, 2) },
+  { room: "bunk_dorm", at: ring(1, 1, 4, 1) },
   { room: "clinic", at: ring(1, 1, 7) },
 ];
 
