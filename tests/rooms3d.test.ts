@@ -4,7 +4,7 @@ import { config } from "../src/sim/config";
 import { createHole, ringRadii } from "../src/sim/geometry";
 import { createLayout, placeRoom, type Location } from "../src/sim/placement";
 import * as THREE from "three";
-import { ceilings, loweredAt, openingsOf, outlineGeometry, rockAlong, rockFaces, shapeKey, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
+import { ceilings, FIELD_FLOOR, fieldGeometry, loweredAt, openingsOf, outlineGeometry, rockAlong, rockFaces, shapeKey, roomGeometry, setWallsDown, shaftFaces, stairWells, WALLS_DOWN } from "../src/render3d/rooms3d";
 import { floorSpan, slotAngles, WALL_T } from "../src/render3d/cylinder";
 import { corridorJoints, corridors } from "../src/sim/corridors";
 import { DOOR, doorways } from "../src/view/doors";
@@ -855,5 +855,63 @@ describe("first person: ceilings and closed corridors (#340)", () => {
       return Math.abs(r - shaft) < 0.02 && (side - t) * r > -0.02 && (side - t) * r < WALL_T / 2 + 0.02;
     });
     expect(end).toBeGreaterThan(0);
+  });
+});
+
+describe("overlay tints (#559, #560)", () => {
+  const l = createLayout(createHole(10, 3, 3, config.geometry));
+  const cells = [1, 2, 3].map((floor) => ({ floor, ring: 1, slot: 0 }));
+  const ys = (g: THREE.BufferGeometry) => {
+    const p = g.getAttribute("position");
+    return Array.from({ length: p.count }, (_, i) => p.getY(i));
+  };
+
+  it("leaves out the floors above the one picked", () => {
+    const g = fieldGeometry(l, cells, -0.04, 2)!;
+    expect(Math.max(...ys(g))).toBeLessThanOrEqual(floorSpan(2)[1] + 1e-6);
+    expect(fieldGeometry(l, [cells[0]!], -0.04, 2)).toBeNull();
+  });
+
+  it("lies over the rooms' floors, not under them", () => {
+    const g = fieldGeometry(l, cells, -0.04, null)!;
+    const low = Math.min(...ys(g));
+    expect(low).toBeCloseTo(floorSpan(3)[0] + FIELD_FLOOR, 6);
+    // Every floor's tint is up off its base, over a room's floor (6 cm) and a corridor's (5 cm).
+    for (const y of ys(g)) for (const f of [1, 2, 3]) expect(Math.abs(y - (floorSpan(f)[0] - 0.04))).toBeGreaterThan(1e-3);
+    expect(FIELD_FLOOR).toBeGreaterThan(0.06);
+  });
+});
+
+describe("a corridor ending at the open shaft (#570)", () => {
+  const glassOf = (l: ReturnType<typeof createLayout>) => {
+    const parts = { glass: [] as number[], frames: [] as number[], halls: new Map() };
+    rockFaces(l, null, parts as Parameters<typeof rockFaces>[2]);
+    return parts.glass;
+  };
+  const setup = () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    placeRoom(l, "bunk_dorm", ring(1, 1, 1));
+    placeRoom(l, "bunk_dorm", ring(1, 1, 2));
+    l.corridors["R1.1.2"] = "rock"; // between them, out from the shaft
+    return l;
+  };
+
+  it("gets a window across its end where no tube runs", () => {
+    const l = setup();
+    const glass = glassOf(l);
+    expect(glass.length).toBeGreaterThan(0);
+    // At the shaft wall, across the corridor's line.
+    const a = (2 / l.hole.ringSlots[0]!) * Math.PI * 2;
+    const r0 = ringRadii(l.hole, 1)[0];
+    for (let i = 0; i < glass.length; i += 3) {
+      expect(Math.abs(Math.hypot(glass[i]!, glass[i + 2]!) - r0)).toBeLessThan(0.1);
+      expect(Math.abs(Math.atan2(glass[i + 2]!, glass[i]!) - a)).toBeLessThan(corridors.widthM / r0);
+    }
+  });
+
+  it("stays open onto a gallery tube", () => {
+    const l = setup();
+    for (const e of galleryEdges(l.hole, 1)) l.corridors[e.id] = "gallery";
+    expect(glassOf(l)).toEqual([]);
   });
 });

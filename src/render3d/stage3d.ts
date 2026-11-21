@@ -38,7 +38,7 @@ import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick
 import { config } from "../sim/config";
 import { roomSurfacePlace, setPanelDust, surfacePlace } from "./surface3d";
 import { refitRooms } from "../view/roomFinish";
-import { buildLayout, corridorGhostY, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, setLabelAlert, statusBadge, TROUBLE_EDGE, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
+import { buildLayout, corridorGhostY, corridorStripGeometry, rockAlong, disposeLayout, disposeRoomMaterials, loweredAt, fieldGeometry, outlineGeometry, roomGeometry, setNightGlow, setWallsDown, setLabelAlert, statusBadge, TROUBLE_EDGE, troubleEdgeMaterial, withWallsDown } from "./rooms3d";
 import { Dust, makeDome, makeLander, placeLander, surfaceSpotGeometry } from "./scenery3d";
 import { makeDrillRig, type DrillRig } from "./drillRig";
 import { makeCollar } from "./collar3d";
@@ -145,10 +145,10 @@ const FIELD_ALPHA = 0.55;
 const HEADLAMP = { walk: 36, above: 1.2, behind: 1.5 };
 /** The sun's shadow: map size at full setting, how far its box reaches (from 100 m up), the margin round the rings, and how far (radians) it moves before shadows are redrawn. */
 const SUN_SHADOW = { mapSize: 2048, far: 450, margin: 12, redrawAngle: 0.02, boost: 2.4 };
-/** Overlay tints lie on the rooms' own floors and walls: pulled toward the camera so they win the depth test. */
 /** Bounds of what may be culled are grown this much (metres): shaders move some of it (sway, walls lowered, hangings). */
 const CULL_SLACK = 0.3;
 
+/** Overlay tints lie on the rooms' own floors and walls: pulled toward the camera so they win the depth test. */
 const OVERLAY_OFFSET = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 };
 
 export async function createStage3D(host: HTMLElement, opts: StageOptions = {}): Promise<Stage> {
@@ -1101,7 +1101,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     for (const job of s.construction.jobs) {
       const room = job.roomId !== undefined ? s.layout.rooms.find((r) => r.id === job.roomId) : undefined;
       if (!room || room.at.kind !== "ring") continue;
-      const cells = (job.kind === "extend" ? (room.pendingCells ?? []) : room.cells).filter((c) => cf === null || c.floor >= cf);
+      const cells = (job.kind === "extend" ? (room.pendingCells ?? []) : room.cells).filter((c) => cf === null || c.floor === cf);
       const c = cells[0];
       if (!c) continue;
       const n = h.ringSlots[c.ring - 1]!;
@@ -1325,6 +1325,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     scene.add(fieldGroup);
     dirty = true;
     const l = s.layout;
+    const top = cut();
+    /** A tint over cells, leaving out the floors above the one picked (#559). */
+    const addField = (cells: Cell[], mat: THREE.Material) => {
+      const geo = fieldGeometry(l, cells, FIELD_OUTSET, top);
+      if (geo) fieldGroup.add(new THREE.Mesh(geo, mat));
+    };
     // No overlay on, and a service or amenity selected: the homes it reaches on foot, and those it doesn't; else what Show me points at.
     if (!overlayType) {
       const byLook = new Map<string, Cell[]>();
@@ -1337,7 +1343,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         const mat = overlayMat(`r:${k}`, () =>
           withWallsDown(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, depthWrite: false, side: THREE.DoubleSide, ...OVERLAY_OFFSET })),
         );
-        fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET, false), mat));
+        addField(cells, mat);
       }
       return;
     }
@@ -1366,7 +1372,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         const mat = overlayMat(`c:${color}`, () =>
           withWallsDown(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: CONDITION_ALPHA, depthWrite: false, side: THREE.DoubleSide, ...OVERLAY_OFFSET })),
         );
-        fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET, false), mat));
+        addField(cells, mat);
       }
       return;
     }
@@ -1386,7 +1392,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         const mat = overlayMat(`t:${k}`, () =>
           withWallsDown(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, depthWrite: false, side: THREE.DoubleSide, ...OVERLAY_OFFSET })),
         );
-        fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET, false), mat));
+        addField(cells, mat);
       }
       return;
     }
@@ -1419,7 +1425,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const mat = overlayMat(`f:${color}:${alpha}`, () =>
         withWallsDown(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: alpha, depthWrite: false, side: THREE.DoubleSide, ...OVERLAY_OFFSET })),
       );
-      fieldGroup.add(new THREE.Mesh(roomGeometry(l, cells, FIELD_OUTSET, false), mat));
+      addField(cells, mat);
     }
   }
 
