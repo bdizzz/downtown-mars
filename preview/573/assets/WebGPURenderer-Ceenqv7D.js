@@ -1,1 +1,0 @@
-export{t as WebGPURenderer}from"./pixi-Ch12FOb1.js";
