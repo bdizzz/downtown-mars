@@ -45,7 +45,7 @@ describe("cohorts", () => {
   it("Earth's arrivals are adults", () => {
     const s = createInitialState(config);
     s.drill.active = false;
-    applyCommand(s, { type: "build", room: "bunk_dorm", at: { kind: "ring", floor: 1, ring: 1, slot: 1, w: 2, d: 1 } });
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: { kind: "ring", floor: 1, ring: 1, slot: 1, w: 1, d: 1 } });
     for (let i = 0; i < 5 * day; i++) step(s, config);
     const st = stageCounts(s);
     expect(st.adult).toBe(s.population.count);

@@ -22,17 +22,17 @@ describe("falloff", () => {
 describe("effect field", () => {
   it("life support's noise (−2, r2) spreads along the ring", () => {
     const l = layout();
-    placeRoom(l, "life_support", ring(1, 1, 0, 4)); // slots 0–3
+    placeRoom(l, "life_support", ring(1, 1, 0, 3)); // slots 0–2
     const f = computeEffects(l);
     expect(effectAt(f, "noise", cell(1, 1, 2))).toBeCloseTo(-2);
-    expect(effectAt(f, "noise", cell(1, 1, 4))).toBeCloseTo(-4 / 3);
-    expect(effectAt(f, "noise", cell(1, 1, 5))).toBeCloseTo(-2 / 3);
-    expect(effectAt(f, "noise", cell(1, 1, 6))).toBe(0);
+    expect(effectAt(f, "noise", cell(1, 1, 3))).toBeCloseTo(-4 / 3);
+    expect(effectAt(f, "noise", cell(1, 1, 4))).toBeCloseTo(-2 / 3);
+    expect(effectAt(f, "noise", cell(1, 1, 5))).toBe(0);
   });
 
   it("travels between floors: directly above is one step", () => {
     const l = layout();
-    placeRoom(l, "life_support", ring(2, 1, 0, 4));
+    placeRoom(l, "life_support", ring(2, 1, 0, 3));
     const f = computeEffects(l);
     expect(effectAt(f, "noise", cell(1, 1, 0))).toBeCloseTo(-4 / 3);
     expect(effectAt(f, "noise", cell(3, 1, 0))).toBeCloseTo(-4 / 3);
@@ -42,25 +42,26 @@ describe("effect field", () => {
     const l = layout();
     placeRoom(l, "concrete_plant", ring(1, 1, 0, 2)); // noise −2 r2, slots 0–1
     const f = computeEffects(l);
-    // Rings 1 and 2 share their slots: ring 1 slot 0 sits right on ring 2 slot 0.
+    // Ring 2 has twice ring 1's slots: ring 1 slots 0–1 (0°–80°) sit right on ring 2 slots 0–3.
     expect(effectAt(f, "noise", cell(1, 2, 0))).toBeCloseTo(-4 / 3);
-    expect(effectAt(f, "noise", cell(1, 2, 2))).toBeCloseTo(-2 / 3);
-    // Ring 3 has more slots: ring 2 slot 0 (0°–40°) overlaps several of them.
+    expect(effectAt(f, "noise", cell(1, 2, 3))).toBeCloseTo(-4 / 3);
+    expect(effectAt(f, "noise", cell(1, 2, 4))).toBeCloseTo(-2 / 3);
+    // Rings 2 and 3 share their slots: one more step out.
     expect(effectAt(f, "noise", cell(1, 3, 0))).toBeCloseTo(-2 / 3);
     expect(effectAt(f, "noise", cell(1, 3, 1))).toBeCloseTo(-2 / 3);
   });
 
   it("a corridor along the border soaks up noise instead of passing it across", () => {
     const open = layout();
-    placeRoom(open, "life_support", ring(1, 1, 0, 4)); // slots 0–3
+    placeRoom(open, "life_support", ring(1, 1, 0, 3)); // slots 0–2
     const walled = layout();
-    placeRoom(walled, "life_support", ring(1, 1, 0, 4));
-    walled.corridors["R1.1.4"] = "rock"; // between slot 3 and slot 4
+    placeRoom(walled, "life_support", ring(1, 1, 0, 3));
+    walled.corridors["R1.1.3"] = "rock"; // between slot 2 and slot 3
     const a = computeEffects(open);
     const b = computeEffects(walled);
-    expect(effectAt(a, "noise", cell(1, 1, 4))).toBeCloseTo(-4 / 3);
+    expect(effectAt(a, "noise", cell(1, 1, 3))).toBeCloseTo(-4 / 3);
     // Across the corridor, only the long way round (via ring 2) still reaches.
-    expect(effectAt(b, "noise", cell(1, 1, 4))).toBeGreaterThan(effectAt(a, "noise", cell(1, 1, 4)));
+    expect(effectAt(b, "noise", cell(1, 1, 3))).toBeGreaterThan(effectAt(a, "noise", cell(1, 1, 3)));
   });
 
   it("corridors don't block comfort", () => {
@@ -81,8 +82,8 @@ describe("effect field", () => {
 
   it("blueprints and residents-only effects don't radiate", () => {
     const l = layout(1);
-    placeRoom(l, "life_support", ring(2, 1, 0, 4)); // floor 2 is being dug: a blueprint
-    placeRoom(l, "bunk_dorm", ring(1, 1, 5, 2)); // comfort −1 for its own residents only
+    placeRoom(l, "life_support", ring(2, 1, 0, 3)); // floor 2 is being dug: a blueprint
+    placeRoom(l, "bunk_dorm", ring(1, 1, 5, 1)); // comfort −1 for its own residents only
     const f = computeEffects(l);
     expect(effectAt(f, "noise", cell(1, 1, 0))).toBe(0);
     expect(effectAt(f, "comfort", cell(1, 1, 5))).toBe(0);
@@ -90,8 +91,8 @@ describe("effect field", () => {
 
   it("averages over a room's cells", () => {
     const l = layout();
-    placeRoom(l, "life_support", ring(1, 1, 0, 4));
-    const dorm = placeRoom(l, "bunk_dorm", ring(1, 1, 4, 2));
+    placeRoom(l, "life_support", ring(1, 1, 0, 3));
+    const dorm = placeRoom(l, "apartment", ring(1, 1, 3, 2)); // slots 3–4: one and two steps off
     const room = l.rooms.find((r) => r.id === dorm.id)!;
     expect(effectOnRoom(computeEffects(l), "noise", room)).toBeCloseTo(-1);
   });

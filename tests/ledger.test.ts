@@ -16,8 +16,8 @@ function colony(): SimState {
   for (const [room, at] of [
     ["galley", ring(1, 1, 2)],
     ["restroom", ring(1, 1, 3)],
-    ["life_support", ring(1, 2, 3, 4)],
-    ["electrolyzer", ring(1, 2, 8, 2)],
+    ["life_support", ring(1, 2, 3, 3)],
+    ["electrolyzer", ring(1, 2, 8, 1)],
   ] as const) {
     const r = applyCommand(s, { type: "build", room, at });
     if (!r.ok) throw new Error(`${room}: ${r.reason}`);

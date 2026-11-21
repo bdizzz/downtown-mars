@@ -118,7 +118,7 @@ describe("the shaft dome", () => {
   it("pressurizes its shaft before it opens, from the O2 reserve and the electrolyzers, so the air holds", () => {
     const s = hole();
     s.unlocks = ["dome"];
-    const el = build(s, "electrolyzer", ring(1, 1, 5, 2));
+    const el = build(s, "electrolyzer", ring(1, 1, 5, 1));
     const tank = build(s, "gas_tank", ring(1, 1, 7));
     finish(s);
     // The tanks hold some reserve; with construction instant the dome seals at once.

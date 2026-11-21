@@ -4,7 +4,7 @@ import { config } from "../src/sim/config";
 import { corridors } from "../src/sim/corridors";
 import { deadEnds } from "../src/sim/deadEnds";
 import { arcAt, radialEdge } from "../src/sim/edges";
-import { createHole } from "../src/sim/geometry";
+import { circleRadius, createHole, ringSize } from "../src/sim/geometry";
 import { createLayout, ensureFloors, placeRoom, roomAt, type Location } from "../src/sim/placement";
 import { stepsBetween } from "../src/sim/paths";
 import { createInitialState, type SimState } from "../src/sim/state";
@@ -39,20 +39,22 @@ function draw(s: SimState, ids: string[]): void {
 const room = (s: SimState, id: number) => s.layout.rooms.find((r) => r.id === id)!;
 
 /**
- * On floor 1: from the gallery, a spoke out through rings 1 and 2 (paired: they have the
- * same slots) that stops at circle 2, at ring-2 slot boundary `index`.
+ * On floor 1: from the gallery, a spoke out through rings 1 and 2 that stops at circle 2, from ring-1 slot
+ * boundary `index` (ring 2 has twice the slots, so it runs on along ring 2's boundary 2 × index).
  */
 function spokeTo(s: SimState, index: number): string {
   const h = s.layout.hole;
-  const spoke = radialEdge(h, 1, 2, index).id;
+  const spoke = radialEdge(h, 1, 2, (index * ringSize(h, 2)) / ringSize(h, 1)).id;
   draw(s, [radialEdge(h, 1, 1, index).id, spoke]);
   return spoke;
 }
 /** Ring 3 (18 slots in the starter hole) at its inner face, circle 2. */
-const circle2 = (s: SimState) => s.layout.hole.shaftRadiusM + 2 * config.geometry.roomDepthM;
+const circle2 = (s: SimState) => circleRadius(s.layout.hole, 2);
+/** The old formula's rings, unpaired (9, 16, 22), each 10 m deep: short arc pieces and near-miss corners. */
+const unpaired = { ...config.geometry, ringSlots: undefined, equalAreaRings: false, pairedRings: false };
 
 describe("a corridor dead-ending on a room's wall", () => {
-  // A wide ring-3 room, slots 4–7 of 18 (turns 2/9 to 4/9). Ring 2's boundary 3 of 9 (turn 1/3) is
+  // A wide ring-3 room, slots 4–7 of 18 (turns 2/9 to 4/9). Ring 2's boundary 6 of 18 (turn 1/3) is
   // in the middle of its inner wall, where its cells 5 and 6 meet.
   it("connects the room, and the walking graph reaches it", () => {
     const s = site();
@@ -110,8 +112,8 @@ describe("a corridor dead-ending on a room's wall", () => {
   it("works on a side wall too: a curved corridor running into a deep room's side", () => {
     const s = site();
     const h = s.layout.hole;
-    // Rings 2–3, from ring 2 slot 4 (turn 4/9). A corridor round circle 2 from the spoke at 1/3 ends on its side.
-    const depot = build(s, "depot", ring(1, 2, 4, 2, 2));
+    // Rings 2–3, from ring 2 slot 8 (turn 4/9). A corridor round circle 2 from the spoke at 1/3 ends on its side.
+    const depot = build(s, "depot", ring(1, 2, 8, 2, 2));
     spokeTo(s, 3);
     const run = [arcAt(h, 1, 2, 0.36)!.id, arcAt(h, 1, 2, 0.42)!.id];
     draw(s, run);
@@ -129,7 +131,7 @@ describe("a corridor dead-ending on a room's wall", () => {
 
   it("slides the door away from a corner close by, keeping its opening a metre clear", () => {
     // Unpaired rings (9, 16, 22): ring 2's boundary 3/16 = 0.1875 is about 1.07 m from ring 3's 4/22 = 0.1818.
-    const l = createLayout(createHole(10, 1, 3, { ...config.geometry, pairedRings: false }));
+    const l = createLayout(createHole(10, 1, 3, unpaired));
     const id = placeRoom(l, "depot", ring(1, 3, 4, 4)).id!;
     l.corridors[radialEdge(l.hole, 1, 2, 3).id] = "rock";
     const [door] = doorways(l, l.rooms.find((r) => r.id === id)!);
@@ -141,7 +143,7 @@ describe("a corridor dead-ending on a room's wall", () => {
 
   it("keeps every door's opening a metre from the room's corners", () => {
     // Unpaired rings cut circle 1 into short pieces: a corridor along one by a corner slides its door along.
-    const l = createLayout(createHole(10, 1, 3, { ...config.geometry, pairedRings: false }));
+    const l = createLayout(createHole(10, 1, 3, unpaired));
     const id = placeRoom(l, "depot", ring(1, 2, 5, 4)).id!;
     const r = l.rooms.find((x) => x.id === id)!;
     // Ring 2 slots 5–8 of 16: the inner wall's first piece, 2.6 m from the corner at 5/16 to ring 1's 3/9.

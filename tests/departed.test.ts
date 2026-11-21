@@ -6,7 +6,7 @@ import { cryptSpace, people, RETURN_TO_SOIL } from "../src/sim/people";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 
-const at = (slot: number) => ({ kind: "ring" as const, floor: 1, ring: 1, slot, w: 2, d: 1 });
+const at = (slot: number) => ({ kind: "ring" as const, floor: 1, ring: 1, slot, w: 1, d: 1 });
 
 /** A hole with a few elders about to pass away. */
 function elders(n = 3): SimState {

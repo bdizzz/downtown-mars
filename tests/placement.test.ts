@@ -25,16 +25,16 @@ describe("footprint", () => {
     expect(footprint(hole(), 1, 1, 7, 4, 1).map((c) => c.slot)).toEqual([7, 8, 0, 1]);
   });
 
-  it("a deep room in a ring pair lines up slot for slot", () => {
-    const cells = footprint(hole(), 1, 1, 0, 2, 2);
-    expect(cells.filter((c) => c.ring === 1).map((c) => c.slot)).toEqual([0, 1]);
+  it("a deep room over rings with the same slots lines up slot for slot", () => {
+    const cells = footprint(hole(), 1, 2, 0, 2, 2);
     expect(cells.filter((c) => c.ring === 2).map((c) => c.slot)).toEqual([0, 1]);
+    expect(cells.filter((c) => c.ring === 3).map((c) => c.slot)).toEqual([0, 1]);
   });
 
-  it("a deep room across a pair boundary widens into a wedge", () => {
-    // Ring 2 slots 0–1 span 0°–80°; ring 3 has twice the slots (18), so exactly four of them.
-    const cells = footprint(hole(), 1, 2, 0, 2, 2);
-    expect(cells.filter((c) => c.ring === 3).map((c) => c.slot)).toEqual([0, 1, 2, 3]);
+  it("a deep room into a ring with more slots widens into a wedge", () => {
+    // Ring 1 slots 0–1 span 0°–80°; ring 2 has twice the slots (18), so exactly four of them.
+    const cells = footprint(hole(), 1, 1, 0, 2, 2);
+    expect(cells.filter((c) => c.ring === 2).map((c) => c.slot)).toEqual([0, 1, 2, 3]);
   });
 
   it("neighbouring deep rooms never claim the same outer slot", () => {
@@ -57,12 +57,12 @@ describe("placement rules", () => {
   });
 
   it("ring 1 rooms open onto the gallery", () => {
-    expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 2)).ok).toBe(true);
+    expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 1)).ok).toBe(true);
   });
 
   it("ring 2 rooms can go down before a corridor reaches them, flagged as unconnected", () => {
-    expect(checkPlacement(layout, "bunk_dorm", ring(1, 2, 0, 2))).toMatchObject({ ok: true, unconnected: true });
-    expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 2))).not.toHaveProperty("unconnected");
+    expect(checkPlacement(layout, "bunk_dorm", ring(1, 2, 0, 1))).toMatchObject({ ok: true, unconnected: true });
+    expect(checkPlacement(layout, "bunk_dorm", ring(1, 1, 0, 1))).not.toHaveProperty("unconnected");
   });
 
   it("rejects overlaps, locked rings, undug floors and bad shapes", () => {

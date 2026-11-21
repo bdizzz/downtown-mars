@@ -80,7 +80,7 @@ describe("walking in first person", () => {
   it("goes in through a side door from a corridor running along a room with no shaft face", () => {
     const s = site();
     const h = s.layout.hole;
-    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 2, 3, 2) });
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 2, 3, 1) });
     applyCommand(s, { type: "drawCorridors", edges: ["R1.2.3"], finish: "rock" });
     applyCommand(s, { type: "consoleFinish" });
     const room = roomAt(s.layout, { floor: 1, ring: 2, slot: 3 })!;
@@ -101,7 +101,7 @@ describe("walking in first person", () => {
 
   it("bumps into furniture, but walks over rugs", () => {
     const s = site();
-    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 4, 2) });
+    applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 4, 1) });
     const room = roomAt(s.layout, { floor: 1, ring: 1, slot: 4 })!;
     const items = furnish(s.layout, room);
     const standing = items.find((f) => !isFlat(f.item))!;
@@ -194,7 +194,7 @@ describe("grabbing a drink in first person (T-139)", () => {
   it("at a home's kitchenette, but not in a room with nothing to drink", () => {
     // Fresh sites: a layout's spots are worked out once (the game gets a new layout with every snapshot).
     const dorm = site();
-    expect(applyCommand(dorm, { type: "build", room: "bunk_dorm", at: ring(1, 1, 4, 2) }).ok).toBe(true);
+    expect(applyCommand(dorm, { type: "build", room: "bunk_dorm", at: ring(1, 1, 4, 1) }).ok).toBe(true);
     expect(drinkSpots(dorm.layout, 1)).toHaveLength(0);
     const home = site();
     home.unlocks = ["basicHomes"];

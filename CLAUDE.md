@@ -76,10 +76,8 @@ tests/        # Vitest: sim units plus scripted playthroughs (bots)
 
 - A hole has a **diameter** and a stack of **floors**, dug by the drill. Each floor has up to 6 **rings** of room slots around the shaft; ring 1 faces the shaft. Only rings 1–3 are open so far.
 - A room's position is **(floor, ring, slot)**. Rings are loops with no edges, so slot indices wrap.
-- **Slots per ring** grow with radius (room depth d = slot width w = 10 m, shaft radius R):
-  `slots(n) = round(2π · (R + (n − 0.5) · d) / w)`
-  The starter hole is R = 10 m: rings 1–3 have 9, 16 and 22 slots. Adjacency across rings is by angular overlap.
-- **Room footprints** have width (slots), depth (rings) and height (floors). Sizes: S = 1 slot, M = 2, L = 4, H = 8 (H not built yet).
+- **Equal-area rings** (#548): slot counts come from data (`geometry.ringSlots`: 9, 18 and 18 for rings 1–3, then 36s), and each ring is as deep as it takes for every slot to cover a ring-1 slot's area (about 105 m²): 10, 11.6 and 8.4 m, outer wall still at 40 m. Radii live on the hole (`hole.ringRadiiM`; go through `ringRadii`). Adjacency across rings is by angular overlap; ring 1's borders all run on into ring 2, and rings 2–3 line up slot for slot.
+- **Room footprints** have width (slots), depth (rings) and height (floors). Each room's width is its own (`w` in `rooms.json`: 1, 2, 3 or 4, #549), the same on every ring; its size class (S 1, M 2–3, L 4) is the tier for build and repair hours.
 - **Space is dug:** every slot is rock until a room (or an empty room) is excavated there.
 - **Access:** the shaft is open to Mars. **Corridors run along the edges** between rooms (and between rooms and rock), not in slots; along the shaft wall they're glass **gallery tubes** (floor 1 starts with one all the way round; deeper floors get what the player builds). Every room needs a tube, corridor or walk-through room along one side. People reach floor 1 through the entrance, and deeper floors by stairs and elevators.
 - **Neighbor effects** (noise, smell, health, comfort) radiate from rooms with a strength (−3 to +3) and radius in slots, falling off with distance, along the ring, across rings and between floors; corridors block noise. **Airborne effects** (air quality, smell) ride the network instead, fading per step. **Amenities and services** (parks, plazas, gyms, galleys, clinics, schools) count by walking distance in steps (10 m).

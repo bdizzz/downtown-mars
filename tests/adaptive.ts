@@ -13,7 +13,7 @@ import { freeSpace, spaceOf, storageRooms } from "../src/sim/storage";
 import { countStage, cryptSpace } from "../src/sim/people";
 import type { SimState } from "../src/sim/state";
 import { floorLinked } from "../src/sim/corridors";
-import { footprint, type RoomInstance } from "../src/sim/placement";
+import { footprint, roomShapes, type RoomInstance } from "../src/sim/placement";
 import { missingCost } from "../src/sim/costs";
 import { effectOnRoom } from "../src/sim/effects";
 import { crowdedAir } from "../src/sim/happiness";
@@ -90,7 +90,7 @@ export function placeAnywhere(hole: SimState, room: string, crop?: string): bool
     }
     return false;
   }
-  const [w, d] = config.shapes[def.size as keyof typeof config.shapes]![0]!;
+  const [w, d] = roomShapes(def)[0]!;
   // Ring 1 of the shallowest floor with room; failing that, ring 2 behind it, with a corridor carved to it.
   for (const ring of [1, 2]) {
     const slots = hole.layout.hole.ringSlots[ring - 1]!;
@@ -205,7 +205,7 @@ function shortHome(hole: SimState, need: Need): RoomInstance | undefined {
  */
 function placeNear(hole: SimState, type: string, home: RoomInstance): boolean {
   if (home.at.kind !== "ring") return false;
-  const [w, d] = config.shapes[roomDef(type).size as keyof typeof config.shapes]![0]!;
+  const [w, d] = roomShapes(roomDef(type))[0]!;
   const angle = (home.at.slot + 0.5) / hole.layout.hole.ringSlots[home.at.ring - 1]!;
   const byAngle = (ring: number) => {
     const n = hole.layout.hole.ringSlots[ring - 1]!;

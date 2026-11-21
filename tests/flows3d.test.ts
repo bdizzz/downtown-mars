@@ -16,7 +16,7 @@ function hole() {
   };
   const solar = build("solar_array", { kind: "surface", slot: 6 });
   const galley = build("galley", { kind: "ring", floor: 1, ring: 1, slot: 3, w: 1, d: 1 });
-  const dorm = build("bunk_dorm", { kind: "ring", floor: 1, ring: 1, slot: 4, w: 2, d: 1 });
+  const dorm = build("bunk_dorm", { kind: "ring", floor: 1, ring: 1, slot: 4, w: 1, d: 1 });
   for (let i = 0; i < 3; i++) step(s, config);
   return { s, solar, galley, dorm };
 }

@@ -10,7 +10,7 @@ function hole(): { layout: Layout; status: Record<number, RoomStatus> } {
   const layout = createLayout(createHole(10, 4, 3, config.geometry));
   const status: Record<number, RoomStatus> = {};
   for (const [type, floor, ring] of [["smelter", 1, 1], ["life_support", 2, 2]] as const) {
-    const r = placeRoom(layout, type, { kind: "ring", floor, ring, slot: 2, w: 4, d: 1 });
+    const r = placeRoom(layout, type, { kind: "ring", floor, ring, slot: 2, w: type === "smelter" ? 4 : 3, d: 1 });
     if (!r.ok) throw new Error(r.reason);
     status[r.id!] = { rate: 1 } as RoomStatus;
   }

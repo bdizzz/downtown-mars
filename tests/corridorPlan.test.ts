@@ -14,9 +14,8 @@ function town(): SimState {
   Object.assign(s.resources, { rock: 999, brick: 999, metal: 999 });
   const battery = s.layout.rooms.find((r) => r.type === "battery_bank")!;
   applyCommand(s, { type: "demolish", roomId: battery.id });
-  for (let slot = 0; slot < s.layout.hole.ringSlots[0]!; slot++) {
-    applyCommand(s, { type: "build", room: "water_tank", at: ring(1, 1, slot) });
-    applyCommand(s, { type: "build", room: "water_tank", at: ring(1, 2, slot) });
+  for (const r of [1, 2]) {
+    for (let slot = 0; slot < s.layout.hole.ringSlots[r - 1]!; slot++) applyCommand(s, { type: "build", room: "water_tank", at: ring(1, r, slot) });
   }
   return s;
 }
@@ -38,15 +37,15 @@ function continuous(s: SimState, chain: Chain): boolean {
 describe("snaking a corridor", () => {
   it("grows along the borders the pointer crosses, as one continuous chain", () => {
     const s = town();
-    // Out along the spoke at slot 3, then along the ring-1/ring-2 circle.
-    const c = walk(s, ["R1.1.3", "R1.2.3", "A1.2.1/3"]);
-    expect(c.edges).toEqual(["R1.1.3", "R1.2.3", "A1.2.1/3"]);
+    // Out along the spoke at ring 1's slot 3 (ring 2's 6: the same line), then along the ring-2/ring-3 circle.
+    const c = walk(s, ["R1.1.3", "R1.2.6", "A1.2.1/3"]);
+    expect(c.edges).toEqual(["R1.1.3", "R1.2.6", "A1.2.1/3"]);
     expect(continuous(s, c)).toBe(true);
   });
 
   it("retracing trims it back, and it can then set off another way", () => {
     const s = town();
-    let c = walk(s, ["R1.1.3", "R1.2.3", "A1.2.1/3"]);
+    let c = walk(s, ["R1.1.3", "R1.2.6", "A1.2.1/3"]);
     c = extendChain(s.layout, c, e(s, "R1.1.3"), false); // back to the start
     expect(c.edges).toEqual(["R1.1.3"]);
     c = extendChain(s.layout, c, e(s, "A1.1.1/3"), false); // along the other circle instead
@@ -56,16 +55,16 @@ describe("snaking a corridor", () => {
 
   it("fills in the gap when the pointer skips ahead", () => {
     const s = town();
-    const c = walk(s, ["R1.1.3", "A1.1.4/9"]); // skipped the arc piece at 3/9
-    expect(c.edges).toEqual(["R1.1.3", "A1.1.1/3", "A1.1.4/9"]);
+    const c = walk(s, ["R1.1.3", "A1.1.7/18"]); // skipped the arc piece at 6/18
+    expect(c.edges).toEqual(["R1.1.3", "A1.1.1/3", "A1.1.7/18"]);
     expect(continuous(s, c)).toBe(true);
   });
 
   it("never branches: a border off the side of the chain is ignored", () => {
     const s = town();
-    const c = walk(s, ["R1.1.3", "R1.2.3", "A1.2.1/3", "A1.1.1/3"]);
+    const c = walk(s, ["R1.1.3", "R1.2.6", "A1.2.1/3", "A1.1.1/3"]);
     // A1.1.1/3 starts at the chain's middle vertex, not its end: it would branch, so the chain stays put.
-    expect(c.edges).toEqual(["R1.1.3", "R1.2.3", "A1.2.1/3"]);
+    expect(c.edges).toEqual(["R1.1.3", "R1.2.6", "A1.2.1/3"]);
   });
 
   it("crosses rock, but not locked rings; erasing only follows existing corridors", () => {
@@ -73,8 +72,8 @@ describe("snaking a corridor", () => {
     expect(walk(s, ["R1.3.5"]).edges).toEqual(["R1.3.5"]); // rock both sides: fine
     expect(walk(s, ["R1.4.5"]).edges).toEqual([]); // a locked ring
     const t = town();
-    applyCommand(t, { type: "drawCorridors", edges: ["R1.1.3", "R1.2.3"], finish: "rock" });
-    expect(walk(t, ["R1.1.3", "R1.2.3", "A1.2.1/3"], true).edges).toEqual(["R1.1.3", "R1.2.3"]);
+    applyCommand(t, { type: "drawCorridors", edges: ["R1.1.3", "R1.2.6"], finish: "rock" });
+    expect(walk(t, ["R1.1.3", "R1.2.6", "A1.2.1/3"], true).edges).toEqual(["R1.1.3", "R1.2.6"]);
   });
 });
 
@@ -89,22 +88,22 @@ describe("snaking steadily (T-104)", () => {
   it("a wobble back over a turn trims to the turn, but never sets off a third way from there", () => {
     const s = town();
     // Out along the spoke at slot 3, then a turn onto the ring-2/ring-3 circle.
-    let c = walk(s, ["R1.1.3", "R1.2.3", "A1.2.1/3"]);
-    c = extendChain(s.layout, c, e(s, "R1.2.3"), false); // the wobble: back over the turn
-    expect(c.edges).toEqual(["R1.1.3", "R1.2.3"]);
+    let c = walk(s, ["R1.1.3", "R1.2.6", "A1.2.1/3"]);
+    c = extendChain(s.layout, c, e(s, "R1.2.6"), false); // the wobble: back over the turn
+    expect(c.edges).toEqual(["R1.1.3", "R1.2.6"]);
     // Neither straight on outward, nor the other way round the circle.
-    expect(extendChain(s.layout, c, e(s, "R1.3.6"), false).edges).toEqual(["R1.1.3", "R1.2.3"]);
-    expect(extendChain(s.layout, c, e(s, "A1.2.5/18"), false).edges).toEqual(["R1.1.3", "R1.2.3"]);
+    expect(extendChain(s.layout, c, e(s, "R1.3.6"), false).edges).toEqual(["R1.1.3", "R1.2.6"]);
+    expect(extendChain(s.layout, c, e(s, "A1.2.5/18"), false).edges).toEqual(["R1.1.3", "R1.2.6"]);
     // The way it went before: fine.
     c = extendChain(s.layout, c, e(s, "A1.2.1/3"), false);
-    expect(c.edges).toEqual(["R1.1.3", "R1.2.3", "A1.2.1/3"]);
+    expect(c.edges).toEqual(["R1.1.3", "R1.2.6", "A1.2.1/3"]);
     expect(continuous(s, c)).toBe(true);
   });
 
   it("retracing further back than the turn frees it again", () => {
     const s = town();
-    let c = walk(s, ["R1.1.3", "R1.2.3", "A1.2.1/3"]);
-    c = extendChain(s.layout, c, e(s, "R1.2.3"), false);
+    let c = walk(s, ["R1.1.3", "R1.2.6", "A1.2.1/3"]);
+    c = extendChain(s.layout, c, e(s, "R1.2.6"), false);
     c = extendChain(s.layout, c, e(s, "R1.1.3"), false); // further back, past the turn
     c = extendChain(s.layout, c, e(s, "A1.1.1/3"), false);
     expect(c.edges).toEqual(["R1.1.3", "A1.1.1/3"]);
@@ -118,8 +117,8 @@ describe("snaking steadily (T-104)", () => {
     expect(extendChain(s.layout, c, e(s, "A1.1.1/3"), false, along(s, "A1.1.1/3", 0.1)).edges).toEqual(["R1.1.3"]);
     expect(extendChain(s.layout, c, e(s, "A1.1.1/3"), false, along(s, "A1.1.1/3", 0.3)).edges).toEqual(["R1.1.3", "A1.1.1/3"]);
     // The other way round, the arc ends there: measured from that end.
-    expect(extendChain(s.layout, c, e(s, "A1.1.2/9"), false, along(s, "A1.1.2/9", 0.1, 1)).edges).toEqual(["R1.1.3"]);
-    expect(extendChain(s.layout, c, e(s, "A1.1.2/9"), false, along(s, "A1.1.2/9", 0.3, 1)).edges).toEqual(["R1.1.3", "A1.1.2/9"]);
+    expect(extendChain(s.layout, c, e(s, "A1.1.5/18"), false, along(s, "A1.1.5/18", 0.1, 1)).edges).toEqual(["R1.1.3"]);
+    expect(extendChain(s.layout, c, e(s, "A1.1.5/18"), false, along(s, "A1.1.5/18", 0.3, 1)).edges).toEqual(["R1.1.3", "A1.1.5/18"]);
   });
 
   it("jitter through a crossing commits nothing", () => {
@@ -128,13 +127,13 @@ describe("snaking steadily (T-104)", () => {
     let c = start;
     // Wobbling round the crossing of slot 3's spoke and the ring-1/ring-2 circle: just past it each way.
     for (let i = 0; i < 4; i++) {
-      c = extendChain(s.layout, c, e(s, "R1.2.3"), false, along(s, "R1.2.3", 0.08));
+      c = extendChain(s.layout, c, e(s, "R1.2.6"), false, along(s, "R1.2.6", 0.08));
       c = extendChain(s.layout, c, e(s, "A1.1.1/3"), false, along(s, "A1.1.1/3", 0.05));
-      c = extendChain(s.layout, c, e(s, "A1.1.2/9"), false, along(s, "A1.1.2/9", 0.1, 1));
+      c = extendChain(s.layout, c, e(s, "A1.1.5/18"), false, along(s, "A1.1.5/18", 0.1, 1));
     }
     expect(c).toBe(start);
     // Then off along the spoke for real.
-    c = extendChain(s.layout, c, e(s, "R1.2.3"), false, along(s, "R1.2.3", 0.4));
-    expect(c.edges).toEqual(["R1.1.3", "R1.2.3"]);
+    c = extendChain(s.layout, c, e(s, "R1.2.6"), false, along(s, "R1.2.6", 0.4));
+    expect(c.edges).toEqual(["R1.1.3", "R1.2.6"]);
   });
 });

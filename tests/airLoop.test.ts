@@ -29,8 +29,8 @@ function colony(): SimState {
   const s = createInitialState(config);
   s.drill.active = false;
   build(s, "galley", ring(1, 1, 2));
-  build(s, "life_support", ring(1, 2, 3, 4));
-  build(s, "electrolyzer", ring(1, 2, 8, 2));
+  build(s, "life_support", ring(1, 2, 3, 3));
+  build(s, "electrolyzer", ring(1, 2, 8, 1));
   fillAir(s, config);
   return s;
 }
@@ -85,7 +85,7 @@ describe("gas tanks", () => {
   it("when full, leave the extra in the air: that's how oxygen climbs too high", () => {
     const s = colony();
     build(s, "gas_tank", ring(1, 1, 5));
-    s.resources.o2 = airAmount(s, config, 25);
+    s.resources.o2 = airAmount(s, config, 26);
     step(s, config);
     expect(s.resources.o2Tank).toBe(200);
     expect(airPct(s, config, "o2")).toBeGreaterThan(config.air.o2High);

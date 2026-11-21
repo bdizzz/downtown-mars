@@ -1,5 +1,5 @@
-import { config } from "../sim/config";
 import { roomFamilies, type RoomDef } from "../sim/rooms";
+import { roomShapes } from "../sim/placement";
 import type { IconId } from "./icons";
 
 // The build palette's catalogue, shared by the web's Build strip (ui/BuildPalette.tsx) and the
@@ -58,7 +58,8 @@ export const CATEGORY_NAMES: Record<string, string> = {
 
 export function shapesFor(def: RoomDef): [number, number][] {
   if (def.size === "surface") return [[1, 1]];
-  return config.shapes[def.size] ?? [[1, 1]];
+  const shapes = roomShapes(def);
+  return shapes.length ? shapes : [[1, 1]];
 }
 
 // ---- The web's build rail: a few groups down the left edge, each a short list of tiles ----

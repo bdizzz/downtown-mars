@@ -26,7 +26,7 @@ function setup() {
   ensureFloors(s.layout);
   s.unlocks = ["brickworks"];
   Object.assign(s.resources, { rock: 900, brick: 300, metal: 300, machinery: 60 });
-  const dorm = build(s, "bunk_dorm", ring(2, 1, 1, 2));
+  const dorm = build(s, "bunk_dorm", ring(2, 1, 1, 1));
   const works = build(s, "brickworks", ring(2, 1, 5, 2));
   // Tubes from the dorm to the brickworks.
   const tubes = galleryEdges(s.layout.hole, 2).slice(1, 7).map((e) => e.id);
@@ -51,7 +51,7 @@ describe("bulkheads", () => {
     Object.assign(s.resources, { rock: 900, brick: 300, metal: 300, machinery: 60 });
     // Floor 2 is rock: a dorm and a brickworks, joined only by a corridor along the back of ring 1.
     const works = build(s, "brickworks", ring(2, 1, 2, 2));
-    const dorm = build(s, "bunk_dorm", ring(2, 1, 6, 2));
+    const dorm = build(s, "bunk_dorm", ring(2, 1, 6, 1));
     const back = [3, 4, 5, 6].flatMap((slot) => cellEdges(s.layout.hole, { floor: 2, ring: 1, slot }).filter((e) => e.kind === "arc" && e.circle === 1).map((e) => e.id));
     expect(applyCommand(s, { type: "drawCorridors", edges: back, finish: "rock" }).ok).toBe(true);
     finish(s);

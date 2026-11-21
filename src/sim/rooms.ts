@@ -23,6 +23,8 @@ export interface RoomDef {
   /** Sizes or grades of one thing (storeroom, warehouse, depot) share a family: one tile in the build menu, with a picker. */
   family?: string;
   size: RoomSize;
+  /** Width in slots, one ring deep (#549): its standard footprint, the same on every ring. Absent: its size's. */
+  w?: number;
   surfaceSlots?: number;
   staff: number;
   uses: Record<string, number>;

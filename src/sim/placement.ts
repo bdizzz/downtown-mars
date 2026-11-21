@@ -2,7 +2,7 @@ import type { Growth } from "./food";
 import { config, type Priority, type SimConfig } from "./config";
 import { overlappingSlots, ringSize, surfaceRingSlots, wrapSlot, type Hole } from "./geometry";
 import { corridorsInside, recomputeAccess, strandedBy, wouldConnect } from "./corridors";
-import { isRoomType, roomDef } from "./rooms";
+import { isRoomType, roomDef, type RoomDef } from "./rooms";
 import { rockCells } from "./excavation";
 
 // Where rooms can go. A ring room is anchored at its innermost ring and
@@ -215,6 +215,21 @@ export function roomAt(layout: Layout, c: Cell): RoomInstance | undefined {
   return id ? layout.rooms.find((r) => r.id === id) : undefined;
 }
 
+/**
+ * The [wide, deep] shapes a room may take: its own width one ring deep (rooms.json `w`, #549), plus any deep
+ * shape of its size class covering the same slots (a 4-wide room may also be 2×2). Without a `w`, its size's.
+ */
+export function roomShapes(def: RoomDef, cfg: SimConfig = config): [number, number][] {
+  const bySize = (cfg.shapes as Record<string, [number, number][]>)[def.size] ?? [];
+  if (!def.w) return bySize;
+  return [[def.w, 1], ...bySize.filter(([w, d]) => d > 1 && w * d === def.w)];
+}
+
+/** Slots a room covers at its standard size (one ring deep): what its numbers in rooms.json are for. */
+export function standardSlots(def: RoomDef, cfg: SimConfig = config): number {
+  return def.w ?? cfg.economy.nominalSlots[def.size] ?? 1;
+}
+
 export function checkPlacement(layout: Layout, type: string, at: Location, cfg: SimConfig = config): CheckResult {
   const none = { cells: [], surfaceCells: [] };
   if (!isRoomType(type)) return { ok: false, reason: `Unknown room "${type}"`, ...none };
@@ -235,7 +250,7 @@ export function checkPlacement(layout: Layout, type: string, at: Location, cfg: 
   }
 
   if (def.size === "surface") return { ok: false, reason: `${def.name} goes on the surface`, ...none };
-  const shapes = (cfg.shapes as Record<string, [number, number][]>)[def.size] ?? [];
+  const shapes = roomShapes(def, cfg);
   if (!shapes.some(([w, d]) => w === at.w && d === at.d)) {
     return { ok: false, reason: `${def.name} can't be ${at.w}×${at.d}`, ...none };
   }

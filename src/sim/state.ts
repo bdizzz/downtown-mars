@@ -19,7 +19,7 @@ import type { MaintenanceState } from "./condition";
 import type { History } from "./history";
 import type { Population, RoomStatus } from "./economy";
 import { createHole } from "./geometry";
-import { createLayout, placeRoom, type Layout } from "./placement";
+import { createLayout, placeRoom, roomShapes, type Layout } from "./placement";
 import { openCells } from "./excavation";
 import type { DepositKind } from "./mapgeo";
 import { roomDef } from "./rooms";
@@ -165,7 +165,7 @@ export function createInitialState(
     must(placeRoom(layout, k.room, { kind: "surface", slot: k.slot }, cfg), k.room);
   }
   for (const k of [...kit.ring, ...extras]) {
-    const [w, d] = cfg.shapes[roomDef(k.room).size as keyof SimConfig["shapes"]]![0]!;
+    const [w, d] = roomShapes(roomDef(k.room), cfg)[0]!;
     const placed = must(placeRoom(layout, k.room, { kind: "ring", floor: k.floor, ring: k.ring, slot: k.slot, w, d }, cfg), k.room);
     // The kit's rooms come with their space blasted out, wherever they stand.
     if (placed.ok) openCells(layout, placed.cells);

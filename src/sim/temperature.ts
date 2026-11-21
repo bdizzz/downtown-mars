@@ -1,6 +1,6 @@
 import type { SimConfig } from "./config";
 import { slotsInRing } from "./geometry";
-import type { RoomInstance } from "./placement";
+import { standardSlots, type RoomInstance } from "./placement";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
@@ -132,9 +132,9 @@ function byFloor(room: RoomInstance): Map<number, number> {
   return out;
 }
 
-/** How much of a size's nominal a room covers (a deep wedge covers more), as economy.ts scales its numbers. */
+/** How much of its standard footprint a room covers (a deep wedge covers more), as economy.ts scales its numbers. */
 function scaleOf(room: RoomInstance, cfg: SimConfig): number {
-  const nominal = cfg.economy.nominalSlots[roomDef(room.type).size] ?? 1;
+  const nominal = standardSlots(roomDef(room.type), cfg);
   return room.at.kind === "ring" ? room.cells.length / nominal : 1;
 }
 

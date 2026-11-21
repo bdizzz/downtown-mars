@@ -26,6 +26,13 @@ export interface GeometryConfig {
    * borders meet in four-way crossings.
    */
   nestedPairs?: boolean;
+  /** Slots in each ring, from ring 1 out (#548). Set, it replaces the formula and the pairing rules above. */
+  ringSlots?: number[];
+  /**
+   * Each ring is as deep as it takes for its slots to have a ring-1 slot's area (`roomDepthM` sets ring 1's
+   * depth), so a room is the same size on every ring (#548).
+   */
+  equalAreaRings?: boolean;
 }
 
 /** The rings of building spots round the rim on the surface (T-108). */

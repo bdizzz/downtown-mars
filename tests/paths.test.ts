@@ -35,7 +35,7 @@ const tubes = (s: SimState, floor: number, slots: number[]) => slots.map((i) => 
 describe("the network graph", () => {
   it("measures walks along gallery tubes, longer for rooms further apart", () => {
     const s = deep();
-    const dorm = build(s, "bunk_dorm", ring(2, 1, 1, 2));
+    const dorm = build(s, "bunk_dorm", ring(2, 1, 1, 1));
     const near = build(s, "clinic", ring(2, 1, 3));
     const far = build(s, "galley", ring(2, 1, 6));
     corridors(s, tubes(s, 2, [1, 2, 3, 4, 5, 6]));
@@ -50,7 +50,7 @@ describe("the network graph", () => {
 
   it("has no way across a gap in the tubes", () => {
     const s = deep();
-    const dorm = build(s, "bunk_dorm", ring(2, 1, 1, 2));
+    const dorm = build(s, "bunk_dorm", ring(2, 1, 1, 1));
     const clinic = build(s, "clinic", ring(2, 1, 5));
     corridors(s, tubes(s, 2, [1, 2, 4, 5]));
     finish(s);
@@ -62,15 +62,15 @@ describe("the network graph", () => {
 
   it("never walks through a private room: corridors on both its sides don't join through it", () => {
     const s = deep();
-    const dorm = build(s, "bunk_dorm", ring(2, 1, 1, 2));
+    const dorm = build(s, "bunk_dorm", ring(2, 1, 2));
     build(s, "galley", ring(2, 1, 3));
     const clinic = build(s, "clinic", ring(2, 1, 4));
     // A corridor on each side of the galley: the dorm's right side and the clinic's left.
     corridors(s, [radialEdge(s.layout.hole, 2, 1, 3).id, radialEdge(s.layout.hole, 2, 1, 4).id]);
     finish(s);
     expect(stepsBetween(s.layout, dorm, clinic)).toBeNull();
-    // A corridor round the back of the galley joins them.
-    corridors(s, [arcAt(s.layout.hole, 2, 1, 3.5 / 9)!.id]);
+    // A corridor round the back of the galley joins them (two arc pieces: ring 2 has two slots behind it).
+    corridors(s, [arcAt(s.layout.hole, 2, 1, 3.25 / 9)!.id, arcAt(s.layout.hole, 2, 1, 3.75 / 9)!.id]);
     finish(s);
     expect(stepsBetween(s.layout, dorm, clinic)).not.toBeNull();
   });
@@ -98,7 +98,7 @@ describe("the network graph", () => {
 
   it("counts a step as about a room across, and stops at a reach", () => {
     const s = deep();
-    const dorm = build(s, "bunk_dorm", ring(2, 1, 1, 2));
+    const dorm = build(s, "bunk_dorm", ring(2, 1, 1, 1));
     const clinic = build(s, "clinic", ring(2, 1, 6));
     corridors(s, tubes(s, 2, [1, 2, 3, 4, 5, 6]));
     finish(s);
@@ -116,7 +116,7 @@ describe("the network graph", () => {
 describe("seeing distances", () => {
   it("tints the homes a service reaches, and those it doesn't", () => {
     const s = deep();
-    const near = build(s, "bunk_dorm", ring(1, 1, 1, 2));
+    const near = build(s, "bunk_dorm", ring(1, 1, 1, 1));
     const clinic = build(s, "clinic", ring(1, 1, 3));
     finish(s);
     const tints = reachTints(s.layout, clinic)!;
@@ -129,7 +129,7 @@ describe("seeing distances", () => {
   it("says in the placement preview what a home would reach, and what a service would", () => {
     const s = deep();
     build(s, "clinic", ring(1, 1, 3));
-    build(s, "bunk_dorm", ring(1, 1, 5, 2));
+    build(s, "bunk_dorm", ring(1, 1, 5, 1));
     finish(s);
     const cells = [{ floor: 1, ring: 1, slot: 1 }];
     expect(reachSummary(s.layout, "bunk_dorm", cells)).toMatch(/Clinic \d+/);

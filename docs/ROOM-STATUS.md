@@ -13,24 +13,24 @@ Every room the catalog (ROOMS.md) describes, and whether it's in the game (`data
 | Farm | Food | L | Built | `farm` (L) |  |  |
 | Farm atrium | Food | H | Described | — | H-size (8-slot, 2-floor) rooms; a depth unlock | C |
 | Cultured meat lab | Food | S | Described | — | Food groups in the diet; research lab unlock | C |
-| Kitchen | Food | M | Built | `kitchen` (M) |  |  |
+| Kitchen | Food | M | Built (other size) | `kitchen` (S) |  |  |
 | Canteen | Food | M | Built | `canteen` (M) |  |  |
 | Galley | Food | S | Built | `galley` (S) |  |  |
 | Brewery | Food | M | Described | — | Beer as a resource (barley is already a crop) | B |
 | Water tank | Water and air | S | Built | `water_tank` (S) |  |  |
-| Deep well pump | Water and air | M | Built | `deep_well_pump` (M) |  |  |
-| Water recycler | Water and air | L | Built | `water_recycler` (L) |  |  |
+| Deep well pump | Water and air | M | Built (other size) | `deep_well_pump` (S) |  |  |
+| Water recycler | Water and air | L | Built (other size) | `water_recycler` (M) |  |  |
 | Tailings reclaimer | Water and air | M | Built | `tailings_reclaimer` (M) |  |  |
 | CO2 scrubber  (id `life_support`) | Water and air | L | Described | — | Not assessed yet | ? |
-| Electrolyzer | Water and air | M | Built | `electrolyzer` (M) |  |  |
+| Electrolyzer | Water and air | M | Built (other size) | `electrolyzer` (S) |  |  |
 | Gas tank | Water and air | S | Built | `gas_tank` (S) |  |  |
 | Ventilation hub | Water and air | S | Built | `ventilation_hub` (S) |  |  |
 | Heater | Water and air | S | Built | `heater` (S) |  |  |
-| Heating plant | Water and air | M | Built | `heating_plant` (M) |  |  |
+| Heating plant | Water and air | M | Built (other size) | `heating_plant` (S) |  |  |
 | Radiator | Water and air | S | Built | `radiator` (S) |  |  |
 | Restroom | Waste | S | Built | `restroom` (S) |  |  |
-| Composter | Waste | M | Built | `composter` (M) |  |  |
-| Recycling center | Waste | L | Built | `recycling_center` (L) |  |  |
+| Composter | Waste | M | Built (other size) | `composter` (S) |  |  |
+| Recycling center | Waste | L | Built (other size) | `recycling_center` (M) |  |  |
 | Waste storage | Waste | S | Built | `waste_storage` (S) |  |  |
 | Solar array | Power | Surface | Built | `solar_array` (Surface) |  |  |
 | Battery bank | Power | S | Built | `battery_bank` (S) |  |  |
@@ -44,7 +44,7 @@ Every room the catalog (ROOMS.md) describes, and whether it's in the game (`data
 | Reinforcement frame | Industry and construction | S | Described | — | Cave-in risk, and unlocking rings 4–6 | C |
 | Staging bay | Industry and construction | L | Built | `staging_bay` (L) |  |  |
 | Site office | Industry and construction | S | Built | `site_office` (S) |  |  |
-| Construction office | Industry and construction | M | Built | `construction_office` (M) |  |  |
+| Construction office | Industry and construction | M | Built (other size) | `construction_office` (S) |  |  |
 | Construction yard | Industry and construction | L | Built | `construction_yard` (L) |  |  |
 | Empty room | Industry and construction | S, M or L | Built as empty room | `empty_room_m` (M) |  |  |
 | Concrete plant | Materials, goods and vehicles | M | Built | `concrete_plant` (M) |  |  |
@@ -59,8 +59,8 @@ Every room the catalog (ROOMS.md) describes, and whether it's in the game (`data
 | Pipe mill | Materials, goods and vehicles | M | Described | — | Pipelines between holes | C |
 | Vehicle works | Materials, goods and vehicles | L | Described | — | Rovers as a made good (today the rover depot provides them) | C |
 | Silicon refinery | Materials, goods and vehicles | L | Built | `silicon_refinery` (L) |  |  |
-| Maintenance | Services | M | Built | `maintenance` (M) |  |  |
-| Cleaning service | Services | M | Built | `cleaning_service` (M) |  |  |
+| Maintenance | Services | M | Built (other size) | `maintenance` (S) |  |  |
+| Cleaning service | Services | M | Built (other size) | `cleaning_service` (S) |  |  |
 | Clinic | Health, education and care | S | Built | `clinic` (S) |  |  |
 | Hospital | Health, education and care | L | Built | `hospital` (L) |  |  |
 | School | Health, education and care | M | Built | `school` (M) |  |  |
@@ -69,8 +69,8 @@ Every room the catalog (ROOMS.md) describes, and whether it's in the game (`data
 | Park | Health, education and care | M | Built | `park` (M) |  |  |
 | Running track | Health, education and care | L, or a full floor ring | Described | — | Entertainment as a happiness factor | C |
 | Research lab | Health, education and care | M | Described | — | Milestones it speeds up | C |
-| Crypt | Health, education and care | M | Built | `crypt` (M) |  |  |
-| Administration office | Administration and commerce | M | Built | `admin_office` (M) |  |  |
+| Crypt | Health, education and care | M | Built (other size) | `crypt` (S) |  |  |
+| Administration office | Administration and commerce | M | Built (other size) | `admin_office` (S) |  |  |
 | Office | Administration and commerce | M | Described | — | The coordination penalty it cancels, and services | C |
 | Shop | Administration and commerce | S | Described | — | Goods and currency | C |
 | Market hall | Administration and commerce | L | Described | — | Goods and currency | C |

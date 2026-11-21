@@ -236,7 +236,7 @@ describe("comfort", () => {
 
   it("homes feel their floor's temperature", () => {
     const s = hole();
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 1, 2));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 1, 1));
     const room = s.layout.rooms.find((r) => r.id === dorm)!;
     s.temperature!.floors = [C(40)];
     updateHappiness(s, config, true);

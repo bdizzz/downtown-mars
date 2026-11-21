@@ -43,7 +43,7 @@ describe("3D room geometry", () => {
   });
 
   it("a wide room has no walls between its own slots", () => {
-    const r = placeRoom(layout, "life_support", ring(2, 1, 3, 4));
+    const r = placeRoom(layout, "depot", ring(2, 1, 3, 4));
     const room = layout.rooms.find((x) => x.id === r.id)!;
     const geo = roomGeometry(layout, room.cells);
     expect(upright(geo)).toBe(4 * 2 * CURVED + 2 * SIDE);
@@ -137,10 +137,10 @@ describe("carved by corridors", () => {
 
   it("a corridor along part of a side carves just that part, with a step", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = placeRoom(l, "flat", ring(1, 2, 1)); // ring-2 slot 1: ring 3 beyond has more slots, so its outer side is in pieces
+    const r = placeRoom(l, "flat", ring(1, 1, 1)); // ring-1 slot 1: ring 2 beyond has twice the slots, so its outer side is in pieces
     const room = l.rooms.find((x) => x.id === r.id)!;
     const plain = roomGeometry(l, room.cells);
-    l.corridors["A1.2.1/9"] = "metal"; // the first piece of its outer side
+    l.corridors["A1.1.1/9"] = "metal"; // the first piece of its outer side
     const carved = roomGeometry(l, room.cells);
     expect(extent(carved).maxR).toBeCloseTo(extent(plain).maxR, 6); // the rest of the side is untouched
     expect(carved.getAttribute("position").count).toBeGreaterThan(plain.getAttribute("position").count); // a step wall
@@ -278,7 +278,7 @@ describe("solid walls", () => {
 describe("windows", () => {
   it("pull back with the wall when a corridor is carved along a side, and return when it's gone", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 2)); // ring-1 slots 2–3
+    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 1)); // ring-1 slots 2–3
     const room = l.rooms.find((x) => x.id === r.id)!;
     const span = (): [number, number] => {
       const faces = shaftFaces(l, room);
@@ -317,7 +317,7 @@ describe("doors and windows", () => {
 
   it("cut the doorway and the window band through a private room's shaft face", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 2));
+    const r = placeRoom(l, "bunk_dorm", ring(1, 1, 2, 1));
     const room = l.rooms.find((x) => x.id === r.id)!;
     // No gallery tube along it: all window, no door.
     expect(doorways(l, room)).toEqual([]);
@@ -340,7 +340,7 @@ describe("doors and windows", () => {
 
   it("cut a door into a side wall where a corridor runs along it and no tube does", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = placeRoom(l, "life_support", ring(1, 2, 2, 2, 2)); // rings 2–3, no shaft face
+    const r = placeRoom(l, "depot", ring(1, 2, 2, 2, 2)); // rings 2–3, no shaft face
     const room = l.rooms.find((x) => x.id === r.id)!;
     expect(doorways(l, room)).toEqual([]);
     l.corridors["R1.2.2"] = "rock"; // along its left side, on ring 2
@@ -358,7 +358,7 @@ describe("doors and windows", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     const r = placeRoom(l, "depot", ring(1, 3, 0, 4)); // ring 3, slots 0–3 of 18
     const room = l.rooms.find((x) => x.id === r.id)!;
-    l.corridors["R1.2.1"] = "rock"; // a spoke through ring 2, ending on its inner wall where its cells 1 and 2 meet
+    l.corridors["R1.2.2"] = "rock"; // a spoke through ring 2, ending on its inner wall where its cells 1 and 2 meet
     const [door] = doorways(l, room);
     expect(door).toMatchObject({ side: "inner", cell: { ring: 3, slot: 1 } });
     const base = floorSpan(1)[0];
@@ -379,11 +379,11 @@ describe("corridor corners", () => {
     const room = l.rooms.find((x) => x.id === r.id)!;
     const plain = roomGeometry(l, room.cells);
     // A turn at the corner above-left of slot 5's inner side... far from the clinic: no change.
-    l.corridors["R1.2.7"] = "rock";
+    l.corridors["R1.2.14"] = "rock";
     l.corridors["A1.1.7/9"] = "rock";
     expect(roomGeometry(l, room.cells).getAttribute("position").count).toBe(plain.getAttribute("position").count);
     // A turn at the clinic's outer-right corner (angle 5/9 on circle 1), made of corridors that don't run along the clinic.
-    l.corridors["R1.2.5"] = "rock"; // out along ring 2 from that corner
+    l.corridors["R1.2.10"] = "rock"; // out along ring 2 from that corner
     l.corridors["A1.1.5/9"] = "rock"; // along the next cell's outer side
     const notched = roomGeometry(l, room.cells);
     expect(notched.getAttribute("position").count).toBeGreaterThan(plain.getAttribute("position").count);
@@ -392,7 +392,7 @@ describe("corridor corners", () => {
   it("finds turns, not straight runs", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     l.corridors["R1.1.3"] = "rock";
-    l.corridors["R1.2.3"] = "rock"; // straight on outward
+    l.corridors["R1.2.6"] = "rock"; // straight on outward (ring 2's boundary 6 of 18 is ring 1's 3 of 9)
     expect(corridorJoints(l).size).toBe(0);
     l.corridors["A1.1.1/3"] = "rock"; // and a turn along the circle
     expect(corridorJoints(l).size).toBe(1);
@@ -468,7 +468,7 @@ describe("walls down, with neighbours", () => {
     const placed = placeRoom(layout, "clinic", ring(2, 2, 1));
     expect(placed.ok ? "" : placed.reason).toBe("");
     const near = layout.rooms.find((x) => x.id === placed.id)!;
-    const behind = placeRoom(layout, "galley", ring(2, 3, 2)); // ring 3, behind slot 1's outer wall
+    const behind = placeRoom(layout, "galley", ring(2, 3, 1)); // ring 3, behind slot 1's outer wall
     expect(behind.ok ? "" : behind.reason).toBe("");
     const geo = roomGeometry(layout, near.cells);
     const pos = geo.getAttribute("position");
@@ -498,7 +498,7 @@ describe("walls down, across a corridor", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
     const placed = placeRoom(layout, "clinic", ring(2, 2, 1));
     const near = layout.rooms.find((x) => x.id === placed.id)!;
-    if (galley) expect(placeRoom(layout, "galley", ring(2, 3, 2)).ok).toBe(true);
+    if (galley) expect(placeRoom(layout, "galley", ring(2, 3, 1)).ok).toBe(true);
     for (const e of cellEdges(layout.hole, near.cells[0]!)) if (e.kind === "arc" && e.circle === 2) layout.corridors[e.id] = "rock";
     const geo = roomGeometry(layout, near.cells);
     const pos = geo.getAttribute("position");
@@ -564,7 +564,7 @@ describe("walls down, across a corridor", () => {
 
   it("judges a curved wall as one face, across all its cells", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
-    const placed = placeRoom(layout, "life_support", ring(2, 2, 3, 4));
+    const placed = placeRoom(layout, "depot", ring(2, 2, 3, 4));
     const geo = roomGeometry(layout, layout.rooms.find((x) => x.id === placed.id)!.cells);
     const pos = geo.getAttribute("position");
     const walls = geo.getAttribute("aWall");
@@ -587,7 +587,7 @@ describe("walls down, across a corridor", () => {
 
   it("judges a solid wall as one slab: its faces, top and reveals together", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
-    const placed = placeRoom(layout, "life_support", ring(2, 2, 3, 4));
+    const placed = placeRoom(layout, "depot", ring(2, 2, 3, 4));
     const room = layout.rooms.find((x) => x.id === placed.id)!;
     expect(placeRoom(layout, "galley", ring(2, 3, 6)).ok).toBe(true);
     for (const c of room.cells) for (const e of cellEdges(layout.hole, c)) if (e.kind === "arc" && e.circle === 2) layout.corridors[e.id] = "rock";
@@ -611,7 +611,7 @@ describe("walls down, across a corridor", () => {
   it("drops a wide curved wall when any of it is seen from behind", () => {
     // Four of ring 1's nine slots: its back wall curves through 160°.
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
-    const placed = placeRoom(layout, "life_support", ring(2, 1, 0, 4));
+    const placed = placeRoom(layout, "depot", ring(2, 1, 0, 4));
     expect(placed.ok ? "" : placed.reason).toBe("");
     const geo = roomGeometry(layout, layout.rooms.find((x) => x.id === placed.id)!.cells);
     const pos = geo.getAttribute("position");

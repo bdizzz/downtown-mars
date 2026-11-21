@@ -30,8 +30,8 @@ const build = (s: SimState, room: string, at: Location) => {
 /** 36 colonists, so the noisy dorm fills once the pod is full. */
 function noisyDorm(): SimState {
   const s = rich();
-  build(s, "life_support", ring(1, 1, 1, 4));
-  build(s, "bunk_dorm", ring(1, 1, 5, 2));
+  build(s, "life_support", ring(1, 1, 1, 3));
+  build(s, "bunk_dorm", ring(1, 1, 4, 1));
   setAdults(s, 36, config);
   updateHappiness(s, config, true);
   return s;
@@ -131,7 +131,7 @@ describe("ordinances", () => {
     const s = rich();
     expect(applyCommand(s, { type: "setOrdinance", id: "water_rationing", enacted: true })).toEqual({ ok: true });
     expect(applyCommand(s, { type: "setOrdinance", id: "ration_cards", enacted: true })).toMatchObject({ ok: false });
-    build(s, "admin_office", ring(1, 1, 3, 2));
+    build(s, "admin_office", ring(1, 1, 3, 1));
     step(s, config); // the office needs staff before it counts
     expect(applyCommand(s, { type: "setOrdinance", id: "ration_cards", enacted: true })).toEqual({ ok: true });
   });

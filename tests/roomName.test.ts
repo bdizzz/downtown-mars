@@ -14,7 +14,7 @@ function hole() {
 describe("room names", () => {
   it("can be renamed, trimmed and capped; an empty name goes back to the usual one", () => {
     const s = hole();
-    const r = applyCommand(s, { type: "build", room: "bunk_dorm", at: { kind: "ring", floor: 1, ring: 1, slot: 3, w: 2, d: 1 } });
+    const r = applyCommand(s, { type: "build", room: "bunk_dorm", at: { kind: "ring", floor: 1, ring: 1, slot: 3, w: 1, d: 1 } });
     const room = s.layout.rooms.find((x) => x.id === (r.ok ? r.roomId : -1))!;
     expect(roomName(room)).toBe("Bunk dorm");
     expect(roomLabel(room)).toBe("Dorm");

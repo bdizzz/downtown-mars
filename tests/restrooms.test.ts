@@ -43,9 +43,9 @@ describe("restrooms within reach", () => {
   it("covers a home within reach on foot and not one further off, and the far one feels it", () => {
     const s = hole();
     setAdults(s, 52, config);
-    const near = build(s, "bunk_dorm", ring(1, 1, 1, 2));
+    const near = build(s, "bunk_dorm", ring(1, 1, 1, 1));
     const wc = build(s, "restroom", ring(1, 1, 3));
-    const far = build(s, "bunk_dorm", ring(1, 1, 6, 2));
+    const far = build(s, "bunk_dorm", ring(1, 1, 6, 1));
     applyCommand(s, { type: "consoleFinish" });
     const dNear = stepsBetween(s.layout, near, wc)!;
     const dFar = stepsBetween(s.layout, far, wc)!;

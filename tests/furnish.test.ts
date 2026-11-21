@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
-import { createLayout, placeRoom, type Layout, type Location } from "../src/sim/placement";
+import { createLayout, placeRoom, roomShapes, type Layout, type Location } from "../src/sim/placement";
 import { FIT, fit, frameOf, furnish, furnishedFloors, inside, layouts, place, templateFor, tooClose, unplace, type Template } from "../src/view/furnish";
 import { isFurnished, itemDef, itemsFor } from "../src/view/furniture";
 import { roomDef, roomDefs } from "../src/sim/rooms";
@@ -26,8 +26,9 @@ describe("fitting furniture into a room", () => {
   const layout = createLayout(createHole(10, 3, 3, config.geometry));
   // Floor 1's gallery tube, so ring-1 rooms have a door onto it.
   for (const e of galleryEdges(layout.hole, 1)) layout.corridors[e.id] = "gallery";
-  const near = room(layout, "bunk_dorm", ring(1, 1, 0, 2)); // ring 1: narrow, with a door on the shaft
-  const far = room(layout, "bunk_dorm", ring(1, 2, 3, 2)); // ring 2: the same slots as ring 1, further out, so wider
+  // Two-slot rooms (a dorm is one slot since #549; DORM fits any room).
+  const near = room(layout, "apartment", ring(1, 1, 0, 2)); // ring 1: narrow, with a door on the shaft
+  const far = room(layout, "apartment", ring(1, 3, 4, 2)); // ring 3: wider slots than ring 1 (equal area, so shallower)
 
   it("keeps every item inside the walls and a walking aisle apart", () => {
     for (const r of [near, far]) {
@@ -46,8 +47,12 @@ describe("fitting furniture into a room", () => {
   });
 
   it("fills a wider room with more of a repeated item", () => {
-    const count = (r: typeof near) => fit(frameOf(layout, r)!, DORM).filter((i) => i.item === "bunk_bed").length;
-    expect(count(far)).toBeGreaterThan(count(near));
+    // Ring 2's back wall (2 of 18 slots at 31.6 m) is shorter than ring 3's (2 of 18 at 40 m).
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const narrow = room(l, "bunk_dorm", ring(1, 2, 0, 1));
+    const wide = room(l, "bunk_dorm", ring(1, 3, 4, 1));
+    const count = (r: typeof near) => fit(frameOf(l, r)!, DORM).filter((i) => i.item === "bunk_bed").length;
+    expect(count(wide)).toBeGreaterThan(count(narrow));
   });
 
   it("faces items away from their wall", () => {
@@ -75,7 +80,7 @@ describe("fitting furniture into a room", () => {
 
   it("keeps a side doorway clear too, where a corridor runs along a wall", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const lab = room(l, "bunk_dorm", ring(1, 2, 3, 2));
+    const lab = room(l, "bunk_dorm", ring(1, 2, 3, 1));
     l.corridors["R1.2.3"] = "rock"; // along its left side
     const frame = frameOf(l, lab)!;
     expect(frame.doors).toHaveLength(1);
@@ -96,7 +101,7 @@ describe("fitting furniture into a room", () => {
 
   it("gives up space to a corridor along a side", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = room(l, "bunk_dorm", ring(1, 2, 3, 2));
+    const r = room(l, "bunk_dorm", ring(1, 2, 3, 1));
     const before = frameOf(l, r)!.left(17);
     l.corridors["R1.2.3"] = "rock";
     expect(frameOf(l, r)!.left(17)).toBeGreaterThan(before);
@@ -104,18 +109,18 @@ describe("fitting furniture into a room", () => {
 
   it("furnishes only built rooms that have a template", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = room(l, "bunk_dorm", ring(1, 1, 0, 2));
-    expect(furnish(l, r, { "bunk_dorm:2x1": DORM }).length).toBeGreaterThan(0);
+    const r = room(l, "bunk_dorm", ring(1, 1, 0, 1));
+    expect(furnish(l, r, { "bunk_dorm:1x1": DORM }).length).toBeGreaterThan(0);
     expect(furnish(l, r, {})).toEqual([]);
     r.building = true;
-    expect(furnish(l, r, { "bunk_dorm:2x1": DORM })).toEqual([]);
+    expect(furnish(l, r, { "bunk_dorm:1x1": DORM })).toEqual([]);
   });
 });
 
 describe("rugs", () => {
   it("lie under what stands on them, and don't crowd the room", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = room(layout, "bunk_dorm", ring(1, 2, 0, 2));
+    const r = room(layout, "bunk_dorm", ring(1, 2, 0, 1));
     const items = fit(frameOf(layout, r)!, [{ item: "rug", wall: "center" }, { item: "table", wall: "center" }]);
     expect(items.map((i) => i.item)).toEqual(["rug", "table"]);
   });
@@ -124,7 +129,7 @@ describe("rugs", () => {
 describe("dragging in the editor", () => {
   it("unplace undoes place, for every wall", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = room(layout, "bunk_dorm", ring(1, 2, 0, 2));
+    const r = room(layout, "bunk_dorm", ring(1, 2, 0, 1));
     const frame = frameOf(layout, r)!;
     for (const wall of ["back", "front", "left", "right", "center"] as const) {
       const p = { item: "table", wall, x: 0.7, y: 0.4 };
@@ -151,12 +156,17 @@ describe("turned items", () => {
 });
 
 describe("the templates", () => {
-  const shapes = config.shapes as Record<string, [number, number][]>;
+  /** Templates for a shape a room can no longer take, kept for old saves' rooms (#549: 2-slot parks and excavator bays, now 3). */
+  const legacy = (key: string) => {
+    const [type, shape] = key.split(":") as [string, string];
+    const [w, d] = shape.split("x").map(Number) as [number, number];
+    return !roomShapes(roomDef(type)).some(([sw, sd]) => sw === w && sd === d);
+  };
 
   it("cover every furnished room type in every shape, with that room's own items", () => {
     for (const def of roomDefs) {
       if (!isFurnished(def.id)) continue;
-      for (const [w, d] of shapes[def.size] ?? []) {
+      for (const [w, d] of roomShapes(def)) {
         const t = templateFor(def.id, w, d);
         expect(t, `${def.id}:${w}x${d}`).not.toBeNull();
         for (const p of t!) expect(itemsFor(def.id), `${def.id}: ${p.item}`).toContain(p.item);
@@ -169,7 +179,9 @@ describe("the templates", () => {
   });
 
   it("furnish a room in every ring it can go in, and every placement fits somewhere", () => {
+    expect(Object.keys(layouts.templates).filter(legacy).sort()).toEqual(["excavator_bay:2x1", "park:2x1"]);
     for (const [key, t] of Object.entries(layouts.templates)) {
+      if (legacy(key)) continue;
       const [type, shape] = key.split(":") as [string, string];
       const [w, d] = shape.split("x").map(Number) as [number, number];
       const used = new Set<number>();

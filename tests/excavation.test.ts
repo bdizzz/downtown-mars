@@ -61,8 +61,8 @@ describe("excavation and empty space", () => {
     const r = applyCommand(s, { type: "build", room: "clinic", at: ring(1, 3, 4) });
     const room = s.layout.rooms.find((x) => x.id === (r.ok ? r.roomId : 0))!;
     expect(room.connected).toBe(false);
-    // Dig out the cells between it and the gallery (ring 3 slot 4 sits against slot 2 of rings 2 and 1).
-    openCells(s.layout, [{ floor: 1, ring: 1, slot: 2 }, { floor: 1, ring: 2, slot: 2 }]);
+    // Dig out the cells between it and the gallery (ring 3 slot 4 sits against ring 2 slot 4, then ring 1 slot 2).
+    openCells(s.layout, [{ floor: 1, ring: 1, slot: 2 }, { floor: 1, ring: 2, slot: 4 }]);
     recomputeAccess(s.layout);
     expect(room.connected).toBe(true);
   });
@@ -71,7 +71,7 @@ describe("excavation and empty space", () => {
     const w = createWorld(config, 42);
     const back = deserialize(serialize(w));
     expect(back.ok && back.world.holes[0]!.layout.open).toEqual(w.holes[0]!.layout.open);
-    expect(SAVE_VERSION).toBe(25);
+    expect(SAVE_VERSION).toBe(26);
     const old = JSON.parse(serialize(w));
     old.version = 14;
     for (const h of old.state.holes) delete h.layout.open;

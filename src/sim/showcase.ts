@@ -2,7 +2,7 @@ import { config } from "./config";
 import { recomputeAccess } from "./corridors";
 import { cellEdges, edgeSides, galleryEdges } from "./edges";
 import { openCells } from "./excavation";
-import { ensureFloors, placeRoom, roomAt, type Location } from "./placement";
+import { ensureFloors, placeRoom, roomAt, roomShapes, type Location } from "./placement";
 import { roomDefs } from "./rooms";
 import type { SimState } from "./state";
 
@@ -43,8 +43,7 @@ export function buildShowcase(state: SimState, floors: number): { rooms: number 
         // The next type that fits here, trying a few.
         for (let tries = 0; tries < types.length; tries++) {
           const type = types[(next + tries) % types.length]!;
-          const size = roomDefs.find((d) => d.id === type)!.size as keyof typeof config.shapes;
-          const [w, d] = config.shapes[size]![0]!;
+          const [w, d] = roomShapes(roomDefs.find((d) => d.id === type)!)[0]!;
           const at: Location = { kind: "ring", floor, ring, slot, w, d };
           const r = placeRoom(layout, type, at);
           if (!r.ok) continue;

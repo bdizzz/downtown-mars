@@ -14,9 +14,10 @@ describe("3D cell geometry", () => {
     expect(slotAngles(4, n)[1]).toBeCloseTo(slotAngles(5, n)[0]);
   });
 
-  it("rings stack outward from the shaft wall, 10 m deep", () => {
+  it("rings stack outward from the shaft wall, each as deep as equal-area slots need", () => {
     expect(ringRadii(hole, 1)).toEqual([10, 20]);
-    expect(ringRadii(hole, 3)).toEqual([30, 40]);
+    expect(ringRadii(hole, 3)[0]).toBeCloseTo(31.62, 2);
+    expect(ringRadii(hole, 3)[1]).toBeCloseTo(40, 9);
     expect(openShaftRadius(hole)).toBe(8);
   });
 
