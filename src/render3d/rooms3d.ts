@@ -1058,6 +1058,32 @@ function solidWalls(pos: number[], s: SolidCell): void {
   });
 }
 
+/** How far above its floor's base an overlay tint lies: over the rooms' floors (INSET) and corridors' (5 cm), so it can't lose the depth test to them from any angle (#560). */
+export const FIELD_FLOOR = 0.1;
+
+/**
+ * An overlay's tint over cells: the cells' floors and walls, `outset` out in front of the rock,
+ * with the floor lifted to FIELD_FLOOR. With `topFloor`, the floors above it (hidden) are left
+ * out, as the rooms are (#559). Null when nothing is left to tint.
+ */
+export function fieldGeometry(layout: Layout, cells: Cell[], outset: number, topFloor: number | null): THREE.BufferGeometry | null {
+  const shown = topFloor === null ? cells : cells.filter((c) => c.floor >= topFloor);
+  if (!shown.length) return null;
+  const geo = roomGeometry(layout, shown, outset, false);
+  // The floor (and the walls' feet with it) is drawn at base + outset: up to FIELD_FLOOR instead.
+  const bases = [...new Set(shown.map((c) => floorSpan(c.floor)[0] + outset))];
+  const lift = FIELD_FLOOR - outset;
+  const pos = geo.getAttribute("position");
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i);
+    if (bases.some((b) => Math.abs(y - b) < 1e-4)) pos.setY(i, y + lift);
+  }
+  pos.needsUpdate = true;
+  geo.computeBoundingBox();
+  geo.computeBoundingSphere();
+  return geo;
+}
+
 /**
  * One room: a floor and walls for every cell, without the faces its own cells
  * share, and no ceiling, so you can always see in. It's inset a few
@@ -1307,8 +1333,24 @@ export function rockFaces(layout: Layout, topFloor: number | null, halls?: Openi
       }
     });
   }
-  corridorEnds(layout, topFloor, (id) => hallFaces(layout, halls, id) ?? pos);
+  corridorEnds(layout, topFloor, (id) => hallFaces(layout, halls, id) ?? pos, halls?.glass);
   return pos;
+}
+
+/** The frame left round a corridor's shaft-end window, each side (metres). */
+const SHAFT_END_FRAME = 0.15;
+
+/**
+ * A corridor's end onto the open shaft (#570): a face across it at radius `r`, `half` radians either
+ * side of `a`, with a window cut in it (heights `span` above the floor's base) and glass set in it.
+ */
+function shaftEnd(pos: number[], glass: number[], r: number, a: number, half: number, base: number, span: { bottom: number; top: number }, side: 1 | -1): void {
+  const y1 = base + FLOOR_H;
+  const m = SHAFT_END_FRAME / r;
+  const hole = { a0: a - half + m, a1: a + half - m, y0: base + span.bottom, y1: base + span.top };
+  const cut: Cut = { side, y0: base, y1 };
+  curvedFaceWithOpenings(pos, r, a - half, a + half, base, y1, cut, [hole]);
+  curvedFace(glass, r + side * WINDOW.inset, hole.a0, hole.a1, hole.y0, hole.y1, { ...cut, face: faceOf(cut), follows: true });
 }
 
 /**
@@ -1319,7 +1361,7 @@ export function rockFaces(layout: Layout, topFloor: number | null, halls?: Openi
  * the corridor), and a centimetre into it, so a face already on the line
  * (rock's, onto a room beside) stands in front rather than flickering through.
  */
-function corridorEnds(layout: Layout, topFloor: number | null, onto: (id: string) => number[]): void {
+function corridorEnds(layout: Layout, topFloor: number | null, onto: (id: string) => number[], glass?: number[]): void {
   const hole = layout.hole;
   const meeting = new Map<string, number>();
   const ends: [string, Edge][] = [];
@@ -1341,9 +1383,14 @@ function corridorEnds(layout: Layout, topFloor: number | null, onto: (id: string
     const [v0, v1] = edgeVertices(hole, e);
     for (const [v, far] of [[v0, -1], [v1, 1]] as const) {
       const [, circle] = v.split("|").map(Number);
-      // Onto the shaft (a gallery's, or open to it), or met by another corridor: nothing to close.
-      if (circle === 0 || meeting.get(v) !== 1) continue;
+      // Met by another corridor (a gallery tube, at the shaft): nothing to close.
+      if (meeting.get(v) !== 1) continue;
       const rc = circleRadius(hole, circle!);
+      if (circle === 0) {
+        // Onto the open shaft, with no tube: a wall of windows across the end, as a room's shaft face has (#570).
+        if (glass && e.kind === "radial") shaftEnd(onto(id), glass, rc + far * CAP_BACK, (e.index / hole.ringSlots[e.ring - 1]!) * TAU, HALL / rc, y0, layout.domed ? WINDOW : WINDOW_WALL, -far as 1 | -1);
+        continue;
+      }
       if (e.kind === "radial") {
         // Out past the circle it stops at (far +1) or in.
         const a = (e.index / hole.ringSlots[e.ring - 1]!) * TAU;
@@ -2250,6 +2297,8 @@ export function buildLayout(
   const glass = wallMaterial("glass", () =>
     withFresnel(withCondensation(new THREE.MeshStandardMaterial({ color: WINDOW.color, emissive: 0x2a3f55, roughness: 0.1, metalness: 0.3, transparent: true, opacity: WINDOW.opacity, depthWrite: false, side: THREE.DoubleSide }))),
   );
+  // Corridors ending at the open shaft: their window walls' glass (#570).
+  if (carved.glass.length) group.add(new THREE.Mesh(geometry(carved.glass), glass));
   const doorFrame = wallMaterial("door", () => new THREE.MeshStandardMaterial({ color: DOOR_FRAME.color, roughness: 0.9, side: THREE.DoubleSide }));
   const strandedLine = wallMaterial(`stranded:${colors.stranded}`, () => new THREE.LineBasicMaterial({ color: colors.stranded })) as THREE.LineBasicMaterial;
   const edgeLine = wallMaterial("edges", () => new THREE.LineBasicMaterial({ color: 0x1a0f0d, transparent: true, opacity: 0.5 })) as THREE.LineBasicMaterial;
