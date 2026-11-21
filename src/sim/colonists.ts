@@ -1037,6 +1037,24 @@ export interface PackedColonists {
   columns: Record<SavedKey, string>;
 }
 
+/**
+ * Straight after a load, before the first tick works them out again: each
+ * person's happiness and needs as their home's (saved with the hole), so a
+ * paused game's people panel doesn't read 50 for everyone.
+ */
+export function seedFromHomes(state: SimState): void {
+  const c = state.colonists;
+  if (!c) return;
+  refreshRoutes(state, c);
+  const pools = new Map(state.happiness.pools.map((p) => [p.roomId, p]));
+  for (let i = 0; i < c.id.length; i++) {
+    const p = pools.get(c.home[i]!);
+    c.happiness[i] = p?.happiness ?? state.happiness.average;
+    c.comfort[i] = p?.factors.comfort ?? 0;
+    c.health[i] = p?.factors.health ?? 0;
+  }
+}
+
 export function packColonists(c: Colonists): PackedColonists {
   const columns = {} as Record<SavedKey, string>;
   for (const [k, type] of Object.entries(SAVED) as [SavedKey, (typeof SAVED)[SavedKey]][]) {

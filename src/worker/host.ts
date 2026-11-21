@@ -13,6 +13,7 @@ import { soilAt } from "../sim/map";
 import { network } from "../sim/network";
 import { createWorld, holeById, networkMessages, type World } from "../sim/world";
 import { stepWorld } from "../sim/worldstep";
+import { peoplePage, personView } from "../sim/personView";
 import { isLevel, setDifficulty } from "../sim/difficulty";
 import type { FromWorker, ToWorker, WireSnapshot } from "./protocol";
 
@@ -206,6 +207,12 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
         reply({ type: "commandResult", id: msg.id, result });
         break;
       }
+      case "people":
+        reply({ type: "people", id: msg.id, page: peoplePage(active(), config, msg.query) });
+        return;
+      case "person":
+        reply({ type: "person", id: msg.id, person: personView(active(), config, msg.personId) });
+        return;
       case "command":
         // Applied between ticks, so building works while paused.
         reply({ type: "commandResult", id: msg.id, result: applyCommand(active(), msg.command) });

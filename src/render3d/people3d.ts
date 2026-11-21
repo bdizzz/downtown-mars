@@ -5,11 +5,12 @@ import { itemDef } from "../view/furniture";
 import { floorSpan, LEDGE_THICKNESS, openShaftRadius, TAU } from "./cylinder";
 
 // Colonists as little figures: legs, a body in their clothes' colour, and a
-// head. Some walk the galleries, bobbing as they go; the rest are where the
-// furniture puts them: at work posts in rooms that are staffed, asleep in
-// beds at night, sitting about in the evening. Purely cosmetic: who's where
-// follows the clock and each room's staff, never the simulation. Every pose
-// is one instanced mesh, so a crowd costs a few draw calls.
+// head. Some walk the galleries, bobbing as they go: those are real people
+// (#528), the ones the snapshot's `walkers` names, so a click on one opens
+// their card. The rest are where the furniture puts them: at work posts in
+// rooms that are staffed, asleep in beds at night, sitting about in the
+// evening, following the clock and each room's staff. Every pose is one
+// instanced mesh, so a crowd costs a few draw calls.
 
 /** Sizes in metres, times in game hours, speeds in metres per real second. */
 const FIGURE = {
@@ -175,6 +176,8 @@ interface Gallery {
   clothes: number;
   skin: number;
   phase: number;
+  /** The person they are (snapshot.walkers), if there's one for them. */
+  personId: number | null;
 }
 
 export class People {
@@ -182,6 +185,8 @@ export class People {
   private bodies: Record<Pose, THREE.InstancedMesh>;
   private heads: THREE.InstancedMesh;
   private walkers: Gallery[] = [];
+  /** Where each walker shown was last put, for picking one with a click. */
+  private shownAt: { id: number; x: number; y: number; z: number }[] = [];
   private seated: { spot: Spot; clothes: number; skin: number }[] = [];
   private hole: Hole | null = null;
   private topFloor: number | null = null;
@@ -211,12 +216,16 @@ export class People {
   private runsKey = "";
 
   /** Match the gallery crowd to the colony: more people, more walkers, spread over the gallery tubes (runs of them, in turns). */
-  sync(hole: Hole, population: number, runs: { floor: number; t0: number; t1: number; full: boolean }[]): void {
+  sync(hole: Hole, population: number, runs: { floor: number; t0: number; t1: number; full: boolean }[], people: number[] = []): void {
     // Short runs don't get walkers: there's hardly anywhere to go.
     const usable = runs.filter((r) => (r.t1 - r.t0) * TAU * openShaftRadius(hole) >= 4);
     const want = usable.length ? Math.min(FIGURE.walkers.max, Math.ceil(population / FIGURE.walkers.perColonists)) : 0;
     const key = JSON.stringify(usable);
-    if (this.hole === hole && this.walkers.length === want && key === this.runsKey) return;
+    if (this.hole === hole && this.walkers.length === want && key === this.runsKey) {
+      // The same walkers, perhaps other people today.
+      this.walkers.forEach((w, i) => (w.personId = people[i] ?? null));
+      return;
+    }
     this.hole = hole;
     this.runsKey = key;
     let s = (population * 131 + hole.floors) >>> 0 || 1;
@@ -244,8 +253,10 @@ export class People {
       clothes: FIGURE.clothes[Math.floor(rand() * FIGURE.clothes.length)]!,
       skin: FIGURE.skin[Math.floor(rand() * FIGURE.skin.length)]!,
       phase: rand() * TAU,
+      personId: null,
       };
     });
+    this.walkers.forEach((w, i) => (w.personId = people[i] ?? null));
     this.place();
   }
 
@@ -253,6 +264,20 @@ export class People {
   setRooms(people: { spot: Spot; clothes: number; skin: number }[]): void {
     this.seated = people;
     this.place();
+  }
+
+  /** The person whose walker the ray passes nearest (within a body's width), if any: the nearest along the ray. */
+  pick(ray: THREE.Ray): number | null {
+    let best: { id: number; t: number } | null = null;
+    const p = new THREE.Vector3();
+    for (const w of this.shownAt) {
+      // The body's middle, about a metre up.
+      p.set(w.x, w.y + 0.95, w.z);
+      if (ray.distanceSqToPoint(p) > 0.45 * 0.45) continue;
+      const t = p.sub(ray.origin).dot(ray.direction);
+      if (t > 0 && (!best || t < best.t)) best = { id: w.id, t };
+    }
+    return best?.id ?? null;
   }
 
   /** Hide everyone above a chosen floor. */
@@ -302,6 +327,7 @@ export class People {
       this.heads.setColorAt(h, this.c.set(skin));
     };
     const up = new THREE.Vector3(0, 1, 0);
+    this.shownAt = [];
     if (this.hole) {
       for (const w of this.walkers) {
         if (!this.shows(w.floor)) continue;
@@ -313,6 +339,7 @@ export class People {
         const facing = Math.atan2(-Math.sin(w.angle) * Math.sign(w.speed), Math.cos(w.angle) * Math.sign(w.speed));
         this.q.setFromEuler(new THREE.Euler(0, facing, Math.sin(stride) * FIGURE.walkers.sway, "YXZ"));
         this.m.compose(this.v.set(r * Math.cos(w.angle), y + bob, r * Math.sin(w.angle)), this.q, new THREE.Vector3(1, 1, 1));
+        if (w.personId !== null) this.shownAt.push({ id: w.personId, x: r * Math.cos(w.angle), y, z: r * Math.sin(w.angle) });
         put("stand", this.m, w.clothes, w.skin);
       }
     }

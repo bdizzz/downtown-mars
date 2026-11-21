@@ -17,6 +17,8 @@ interface Props {
   onCancel: () => void;
   selected: number | null;
   onSelect: (roomId: number | null) => void;
+  /** A walker was clicked (3D): open their card. */
+  onPerson?: (personId: number) => void;
   onInvalid: (reason: string) => void;
   overlay: string | null;
   colorBlind: boolean;
@@ -58,12 +60,12 @@ const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => P
 };
 
 /** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
-export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed, showcase = false, spotlight = null }: Props) {
+export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onPerson, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed, showcase = false, spotlight = null }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
-  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle });
-  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle };
+  const props = useRef({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onPerson, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle });
+  props.current = { snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onPerson, onInvalid, overlay, colorBlind, graphics, view3d, building, floor, proposal, onPropose, warning, onConfirmBuild, onViewError, onWalking, onMouseLook, onCutAngle };
   const lookSpeedRef = useRef(lookSpeed);
   const showcaseRef = useRef(showcase);
   const spotlightRef = useRef(spotlight);
@@ -76,6 +78,7 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
       onCommand: (c, quiet) => props.current.onCommand(c, quiet),
       onCancel: () => props.current.onCancel(),
       onSelect: (id) => props.current.onSelect(id),
+      onPerson: (id) => props.current.onPerson?.(id),
       onInvalid: (reason) => props.current.onInvalid(reason),
       onError: (message) => props.current.onViewError(message),
       onPropose: (p) => props.current.onPropose(p),

@@ -487,6 +487,27 @@ label.set-row { cursor: pointer; }
 .people .checks li { color: #e0503a; }
 .people .checks li.ok { color: #7cc47a; }
 .people .upcoming li { padding: 1px 0; }
+/* The people list and a person's card (#528) */
+.people button.link { background: none; border: none; color: var(--text); padding: 0; font: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted; }
+.people button.back { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.people .finder { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.people .finder input { flex: 1 1 100%; min-width: 0; }
+.people .finder select { flex: 1 1 0; min-width: 0; }
+.people .roster li { display: flex; flex-direction: column; padding: 3px 0; border-bottom: 1px solid #ffffff10; }
+.people .roster .k { font-size: 12px; }
+.people .pager { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.people .facts { margin: 6px 0; font-size: 13px; }
+.people .facts div { display: grid; grid-template-columns: 76px 1fr; gap: 6px; padding: 1px 0; }
+.people .facts dt { color: var(--muted); }
+.people .facts dd { margin: 0; }
+.people .need { display: grid; grid-template-columns: 76px 1fr 34px; align-items: center; gap: 6px; font-size: 13px; padding: 2px 0; }
+.people .need .meter { position: relative; height: 8px; border-radius: 4px; background: #0005; overflow: hidden; }
+.people .need .meter::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #ffffff40; }
+.people .need .meter i { position: absolute; top: 0; bottom: 0; }
+.people .need .meter i.high { background: #7cc47a; }
+.people .need .meter i.low { background: #e0503a; }
+.people .reasons li.ok { color: #7cc47a; }
+.people .reasons li.warn { color: #e0a03a; }
 
 /* View switch in the HUD */
 

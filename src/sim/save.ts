@@ -9,7 +9,7 @@ import { config, type SimConfig } from "./config";
 import { depositsAt, generateMap, type MapState } from "./map";
 import { network } from "./network";
 import { culture } from "./culture";
-import { colonistsFromCohorts, membersFromCohorts, packColonists, unpackColonists, type LegacyCohort, type PackedColonists } from "./colonists";
+import { colonistsFromCohorts, membersFromCohorts, packColonists, seedFromHomes, unpackColonists, type LegacyCohort, type PackedColonists } from "./colonists";
 import { corridors, migrateCorridorRooms, recomputeAccess } from "./corridors";
 import { galleryEdges } from "./edges";
 import { createHole, flatRingRadii, type Hole } from "./geometry";
@@ -396,5 +396,6 @@ export function deserialize(json: string): LoadResult {
   }
   if (state.over) return { ok: false, reason: FAILED_SAVE };
   const holes = state.holes.map(({ colonists, ...h }) => ({ ...h, ...(colonists ? { colonists: unpackColonists(colonists) } : {}), effects: refreshEffects(h.layout, null) }) as SimState);
+  for (const h of holes) seedFromHomes(h);
   return { ok: true, world: { ...state, holes } };
 }

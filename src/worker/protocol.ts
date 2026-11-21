@@ -2,6 +2,7 @@ import type { CommandResult, SimCommand } from "../sim/commands";
 import type { SaveSummary } from "../sim/save";
 import type { Snapshot } from "../sim/snapshot";
 import type { Level } from "../sim/difficulty";
+import type { PeoplePage, PeopleQuery, PersonView } from "../sim/personView";
 
 export type ToWorker =
   | { type: "setSpeed"; speed: number }
@@ -14,7 +15,11 @@ export type ToWorker =
   | { type: "newGame"; id: number; difficulty?: Level; veteran?: boolean; sameSeed?: boolean }
   | { type: "setActiveHole"; holeId: number }
   | { type: "found"; id: number; site: { lat: number; lon: number } }
-  | { type: "route"; id: number; action: RouteAction };
+  | { type: "route"; id: number; action: RouteAction }
+  /** A page of the people list (#528): asked for while the people panel is open, never sent unasked. */
+  | { type: "people"; id: number; query: PeopleQuery }
+  /** One person's card, by their id. */
+  | { type: "person"; id: number; personId: number };
 
 export type RouteAction =
   | { kind: "add"; fromHoleId: number; toHoleId: number; resource: string; amountPerTrip: number }
@@ -37,4 +42,7 @@ export type FromWorker =
   | { type: "snapshot"; snapshot: WireSnapshot; speed: number }
   | { type: "commandResult"; id: number; result: CommandResult }
   | { type: "saved"; id: number; data: string; summary: SaveSummary }
-  | { type: "loaded"; id: number; result: CommandResult };
+  | { type: "loaded"; id: number; result: CommandResult }
+  | { type: "people"; id: number; page: PeoplePage }
+  /** Null if they've left the hole in view, or passed away. */
+  | { type: "person"; id: number; person: PersonView | null };
