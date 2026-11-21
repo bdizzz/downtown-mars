@@ -31,6 +31,7 @@ export function RoomCard({ def, resources, shape, siteNote, extra }: Props) {
           {!card.surface && ` · ${shape[0]}×${shape[1]}`}
         </span>
       </header>
+      {card.blurb && <p className="blurb">{card.blurb}</p>}
       <p className="price">
         <Amounts amounts={card.amounts} have={resources} />
         <span className="k">{card.workHours} work-hours</span>

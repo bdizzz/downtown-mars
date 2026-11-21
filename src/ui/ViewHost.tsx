@@ -50,6 +50,8 @@ interface Props {
   showcase?: boolean;
   /** Show me, from the "Why?" panel: rooms and homes to tint, and one to face (null: none). */
   spotlight?: Spot | null;
+  /** While the office is open (#568): the camera is put back where it was when this goes off. */
+  holdCamera?: boolean;
 }
 
 const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => Promise<Stage>> = {
@@ -60,7 +62,7 @@ const CREATE: Record<Props["mode"], (host: HTMLElement, opts: StageOptions) => P
 };
 
 /** Hosts whichever view is chosen, and hands it the same state and callbacks either way. */
-export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onPerson, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed, showcase = false, spotlight = null }: Props) {
+export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selected, onSelect, onPerson, onInvalid, overlay, colorBlind, mode, floor, proposal, onPropose, warning, onConfirmBuild, graphics, view3d, building, onViewError, onWalking, onMouseLook, onCutAngle, lookSpeed, showcase = false, spotlight = null, holdCamera = false }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Stage | null>(null);
   // Latest props, read by the stage's callbacks without recreating it.
@@ -138,6 +140,10 @@ export function ViewHost({ snapshot, tool, onHover, onCommand, onCancel, selecte
   useEffect(() => {
     stageRef.current?.setSpotlight?.(spotlight);
   }, [spotlight]);
+
+  useEffect(() => {
+    stageRef.current?.holdCamera?.(holdCamera);
+  }, [holdCamera]);
 
   useEffect(() => {
     stageRef.current?.setColorBlind(colorBlind);

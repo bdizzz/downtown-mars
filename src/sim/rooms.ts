@@ -19,6 +19,8 @@ export interface RoomDef {
   id: string;
   name: string;
   short: string;
+  /** One sentence for the build menu's card: what the room does and what it does for the hole (#571). */
+  blurb: string;
   category: string;
   /** Sizes or grades of one thing (storeroom, warehouse, depot) share a family: one tile in the build menu, with a picker. */
   family?: string;

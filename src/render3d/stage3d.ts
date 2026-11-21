@@ -31,6 +31,7 @@ import lighting from "../../data/lighting.json";
 import { retroStyleFrom } from "./lookRetro";
 import { createSky } from "./sky3d";
 import { siteLatitude, starTurn, sunDirection } from "../view/sunPath";
+import { DayClock, smoothDayFraction } from "../view/dayClock";
 import { buildTerrain, GROUND_BASE, siteSeed, soilTint, type Terrain } from "./terrain3d";
 import { CRUST, FLOOR_H, floorAtY, floorSpan, openShaftRadius, shaftCollarRadius, slotAngles, TAU } from "./cylinder";
 import { isoFitDistance } from "./isoReach";
@@ -144,7 +145,7 @@ const FIELD_ALPHA = 0.55;
 /** The camera's headlamp, walking: how strong, and where it rides (metres above and behind the eye). */
 const HEADLAMP = { walk: 36, above: 1.2, behind: 1.5 };
 /** The sun's shadow: map size at full setting, how far its box reaches (from 100 m up), the margin round the rings, and how far (radians) it moves before shadows are redrawn. */
-const SUN_SHADOW = { mapSize: 2048, far: 450, margin: 12, redrawAngle: 0.02, boost: 2.4 };
+const SUN_SHADOW = { mapSize: 2048, far: 450, margin: 12, redrawAngle: 0.004, boost: 2.4 };
 /** Bounds of what may be culled are grown this much (metres): shaders move some of it (sway, walls lowered, hangings). */
 const CULL_SLACK = 0.3;
 
@@ -650,6 +651,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   let lastTick = -1;
   /** How long after a tick the game still counts as running: a little over the gap between ticks at its slowest pace. */
   const runningMs = (1250 / config.ticksPerSecondAt1x) / Math.min(config.slowSpeed, ...config.speeds.filter((v) => v > 0));
+  /** The sun's own clock (#567): ticks are keyframes, and the sun, sky and shadows glide between them. Over an hour's ticks at once snaps. */
+  const dayClock = new DayClock({ tickMs: 1000 / config.ticksPerSecondAt1x, maxTickMs: runningMs, snapTicks: config.ticksPerDay / 24 });
+  /** Where the view's clock stood (ticks) when the sky was last set. */
+  let skyAt = -1;
   let hole: Hole | null = null;
   let holeKey = "";
   /** The boring machine at the bottom of the shaft, rebuilt for another hole's width. */
@@ -769,6 +774,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     panX: 0,
     panZ: 0,
   };
+  /** Where the camera was when the office opened (#568), put back when it closes. */
+  let heldCam: typeof cam | null = null;
   /** Where each camera starts: what Reset camera goes back to (Free view's distance and the fitted views are worked out from the hole). */
   const camHome = { ...cam };
   /** Behind the title: drifting at dusk, and where the camera was pointing when it started (put back after). */
@@ -951,7 +958,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
 
   function updateSky(s: Snapshot): void {
-    const f = showcase.on ? SHOWCASE.dusk : s.time.dayFraction;
+    skyAt = dayClock.at(performance.now());
+    const f = showcase.on ? SHOWCASE.dusk : smoothDayFraction(s.time.dayFraction, s.tick - skyAt, config.ticksPerDay);
     const light = f > 0.25 && f < 0.75 ? Math.sin((Math.PI * (f - 0.25)) / 0.5) : 0;
     // Behind the sky dome, in case anything peeks past it (earth, with a floor picked).
     skyColor = new THREE.Color(C.nightSky).lerp(new THREE.Color(C.daySky), light);
@@ -2131,6 +2139,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (latest) updateSky(latest);
       dirty = true;
     }
+    // The sun glides on between ticks (#567).
+    if (latest && !showcase.on && dayClock.at(performance.now()) !== skyAt) updateSky(latest);
     if (walkFrame(dt)) {
       applyCamera();
       updateReadout();
@@ -2558,7 +2568,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         layoutKey = "";
         fieldKey = "";
         selected = null;
+        dayClock.reset();
       }
+      dayClock.keyframe(snapshot.tick, performance.now());
       const key = JSON.stringify(snapshot.layout.hole);
       if (key !== holeKey) {
         holeKey = key;
@@ -2822,6 +2834,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       }
       if (latest) stage.update(latest);
       dirty = true;
+    },
+    holdCamera(on) {
+      if (on) heldCam ??= { ...cam };
+      else if (heldCam) {
+        Object.assign(cam, heldCam);
+        heldCam = null;
+        applyCamera();
+        dirty = true;
+      }
     },
     setWarning(w) {
       warning = w;

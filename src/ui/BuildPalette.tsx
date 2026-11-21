@@ -180,18 +180,24 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
   useEffect(() => {
     if (toolGroup) pick(toolGroup);
   }, [toolGroup]);
-  /** Open a group (turning Build on), or close the open one (and Build off, with nothing in hand). */
+  /** Leave Build (#561): the list folds and the tool in hand goes; rooms already placed stay planned. */
+  const exit = () => {
+    pick(null);
+    setActive(false);
+  };
+  /** Open a group (turning Build on), or close the open one, which ends Build too, tool in hand or not (#561). */
   const toggle = (id: string) => {
     if (open !== id) {
       setActive(true);
       pick(id);
-    } else {
-      pick(null);
-      if (!tool) setActive(false);
-    }
+    } else exit();
   };
-  // A group's number key.
+  // A group's number key. Only a fresh press: the rail comes back after the office, the map or walking
+  // with the last press still in hand, and mustn't replay it.
+  const jumpSeen = useRef(jump?.n);
   useEffect(() => {
+    if (jumpSeen.current === jump?.n) return;
+    jumpSeen.current = jump?.n;
     const g = jump ? BUILD_GROUPS[jump.group] : undefined;
     if (g && groups.some(([x]) => x.id === g.id)) toggle(g.id);
   }, [jump?.n]);
@@ -266,6 +272,12 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
           <Icon id="undo" size={18} />
           <span className="label">Undo</span>
         </button>
+        {active && (
+          <button className="rail-btn tool exit-build" onClick={exit} title="Leave Build: rooms already placed stay planned (Esc)">
+            <Icon id="close" size={18} />
+            <span className="label">Exit build</span>
+          </button>
+        )}
       </div>
       {current && (
         <div className="build-flyout">
@@ -273,7 +285,7 @@ export function BuildRail({ active, setActive, tool, setTool, resources, canUndo
             <header className="panel-head">
               <Icon id={current[0].icon} size={15} />
               <h2>{current[0].name}</h2>
-              <button className="icon-btn" onClick={() => (pick(null), !tool && setActive(false))} aria-label="Close" title="Close (Esc)">
+              <button className="icon-btn" onClick={exit} aria-label="Close" title="Close and leave Build">
                 <Icon id="close" size={13} />
               </button>
             </header>
