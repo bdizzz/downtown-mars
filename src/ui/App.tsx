@@ -57,7 +57,9 @@ import {
 import { cue } from "../audio/cues";
 import { setAudioSettings, unlockAudio } from "../audio/sound";
 import { applySystemBar, canHideSystemBar } from "./systemBar";
-import { useSettings } from "./settings";
+import { useSettings, type ViewMode } from "./settings";
+import type { View3d } from "../view/cameras";
+import { Icon } from "./Icon";
 import { installConsole } from "./devConsole";
 import { FloorPicker, shownFloor } from "./FloorPicker";
 import { CorridorConfirm } from "./CorridorConfirm";
@@ -132,6 +134,8 @@ export function App() {
   const [person, setPerson] = useState<number | null>(null);
   const [panel, setPanel] = useState<"office" | "why" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory" | "milestones" | "news" | null>(null);
   const officeOpen = panel === "office";
+  /** The view as it was when the office opened (#568): leaving puts it back (the 3D camera's angle is held by the view itself). */
+  const beforeOffice = useRef<{ view: ViewMode; camera: View3d["camera"]; floor: number | null } | null>(null);
   /** The series Trends opens on (a resource clicked in the bar at the top). */
   const [trendKey, setTrendKey] = useState("happiness");
   /** Phones: the top bar's drop-down (speeds, needs, resources) is open. Only its toggle closes it. */
@@ -194,6 +198,23 @@ export function App() {
   useEffect(() => {
     if (cutaway) setPreviewFloor(undefined);
   }, [cutaway]);
+  // The office is somewhere you go (#568): no building or floor picking there, and leaving it (its button, Esc,
+  // the office toggle or another panel) puts the view, camera and floor back as they were.
+  useEffect(() => {
+    if (officeOpen) {
+      beforeOffice.current = { view: settings.view, camera: settings.view3d.camera, floor: viewFloor };
+      setPreviewFloor(undefined);
+      setMode(null);
+      return;
+    }
+    const was = beforeOffice.current;
+    if (!was) return;
+    beforeOffice.current = null;
+    setViewFloor(was.floor);
+    if (was.view !== settings.view || was.camera !== settings.view3d.camera) updateSettings({ view: was.view, view3d: { ...settings.view3d, camera: was.camera } });
+    // Only the office's opening and closing matter here, not the settings it reads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [officeOpen]);
   const [helpOpen, setHelpOpen] = useState(false);
   const mapOpen = mode === "map";
 
@@ -612,6 +633,8 @@ export function App() {
       if (e.code === MODE_KEYS.map && has("map")) return toggle("map");
       // O opens (or closes) the office, outside Build (where O is the smelter's).
       if (e.code === OFFICE_KEY && mode !== "build" && snapshot && reveal.shown("hud:office")) return togglePanel("office");
+      // Nothing is built from the office (#568): Build's key and the rail's numbers wait until you've left.
+      if (officeOpen && (e.code === MODE_KEYS.build || /^Digit[1-9]$/.test(e.code))) return;
       if (e.code === MODE_KEYS.build && mode !== "build" && has("build")) {
         if (!walking) setMode("build");
         return;
@@ -630,7 +653,7 @@ export function App() {
       // Page Up / Page Down, or the up and down arrows, step through floors in the plan and 3D views
       // (up is toward the surface). Walking, the arrows walk: the 3D view takes them first.
       const floorKey = { PageUp: -1, PageDown: 1, ArrowUp: -1, ArrowDown: 1 }[e.code];
-      if (floorKey && snapshot && settings.view !== "2d" && !cutaway && reveal.shown("hud:floors")) {
+      if (floorKey && snapshot && settings.view !== "2d" && !cutaway && !officeOpen && reveal.shown("hud:floors")) {
         e.preventDefault();
         stepFloor(floorKey);
       }
@@ -646,7 +669,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, helpOpen, welcome, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking, cutaway, reveal]);
+  }, [menu, helpOpen, welcome, mapOpen, mode, setMode, takeTool, tool, selected, panel, openMenu, undo, rotate, settings.view, updateSettings, snapshot, setActiveHole, stepFloor, lastFinish, walking, cutaway, reveal, officeOpen]);
 
   /** Charts → Trends on a series. */
   const showTrend = (key: string) => {
@@ -802,7 +825,18 @@ export function App() {
             </Dock>
           )}
           {/* Building: the rail down the left edge, always there to open (not while walking, or over the map). */}
-          {snapshot && !walking && !mapOpen && reveal.shown("mode:build") && (
+          {/* In the office, the rail's place holds the way out (#568). */}
+          {snapshot && officeOpen && !walking && !mapOpen && (
+            <div className="build-rail office-leave" data-anchor="side">
+              <div className="rail" role="toolbar" aria-label="Office">
+                <button className="rail-btn" onClick={() => setPanel(null)} title="Leave the office: back to the hole as you left it (Esc)">
+                  <Icon id="close" size={20} />
+                  <span className="label">Leave office</span>
+                </button>
+              </div>
+            </div>
+          )}
+          {snapshot && !officeOpen && !walking && !mapOpen && reveal.shown("mode:build") && (
             <BuildRail
               active={mode === "build"}
               setActive={(on) => setMode(on ? "build" : null)}
@@ -837,7 +871,7 @@ export function App() {
               }}
             />
           )}
-          {snapshot && settings.view !== "2d" && !mapOpen && !cutaway && !mouseLook && reveal.shown("hud:floors") && (
+          {snapshot && settings.view !== "2d" && !mapOpen && !cutaway && !mouseLook && !officeOpen && reveal.shown("hud:floors") && (
             <FloorPicker
               floors={floorCount}
               floor={shownFloor(viewFloor, floorCount, settings.view === "plan")}
@@ -913,6 +947,7 @@ export function App() {
             }}
             overlay={overlay}
             spotlight={spotlight?.spot ?? null}
+            holdCamera={officeOpen}
           />
           {/* The office is a place: its room stands in for the hole while its panel is open (Show me brings the hole back). */}
           {snapshot && officeOpen && !spotlight && <OfficeScene layout={snapshot.layout} />}

@@ -134,6 +134,8 @@ export interface Stage {
   setShowcase?(on: boolean): void;
   /** Show me (the "Why?" panel): tint these rooms and homes while no overlay is on, and (3D) turn to face the focus. null: none. */
   setSpotlight?(spot: Spot | null): void;
+  /** Hold the camera (#568): on remembers where it is, off puts it back there (the office's Show me turns it meanwhile). Views with nothing to hold ignore it. */
+  holdCamera?(on: boolean): void;
   destroy(): void;
 }
 

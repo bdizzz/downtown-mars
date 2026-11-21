@@ -1,7 +1,7 @@
 {
   "name": "downtown-mars",
   "private": true,
-  "version": "0.6.1",
+  "version": "0.6.3",
   "type": "module",
   "engines": {
     "node": "^24.0.0 || >=26.0.0"

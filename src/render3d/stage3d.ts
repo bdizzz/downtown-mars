@@ -774,6 +774,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     panX: 0,
     panZ: 0,
   };
+  /** Where the camera was when the office opened (#568), put back when it closes. */
+  let heldCam: typeof cam | null = null;
   /** Where each camera starts: what Reset camera goes back to (Free view's distance and the fitted views are worked out from the hole). */
   const camHome = { ...cam };
   /** Behind the title: drifting at dusk, and where the camera was pointing when it started (put back after). */
@@ -2826,6 +2828,15 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       }
       if (latest) stage.update(latest);
       dirty = true;
+    },
+    holdCamera(on) {
+      if (on) heldCam ??= { ...cam };
+      else if (heldCam) {
+        Object.assign(cam, heldCam);
+        heldCam = null;
+        applyCamera();
+        dirty = true;
+      }
     },
     setWarning(w) {
       warning = w;

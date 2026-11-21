@@ -546,6 +546,9 @@ public partial class BuildMode : Node3D
         var shape = room.Shapes[Tool == room.Id ? _shape : 0];
         var size = card.GetProperty("size").GetString() + (card.GetProperty("surface").GetBoolean() ? "" : $" · {shape[0]} wide × {shape[1]} deep");
         Line(room.Shapes.Length > 1 && Tool == room.Id ? size + "  ·  R turns it" : size, 13, Tones["k"]);
+        // What the room is for, in a sentence (#571).
+        if (card.TryGetProperty("blurb", out var blurb) && blurb.GetString() is { Length: > 0 } b)
+            Line(b, 13, new Color("#f3e6d8"));
         // The cost, what the stocks are short of in red.
         var cost = new RichTextLabel { BbcodeEnabled = true, FitContent = true, ScrollActive = false, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(320, 0), MouseFilter = Control.MouseFilterEnum.Ignore };
         cost.AddThemeFontSizeOverride("normal_font_size", 14);
