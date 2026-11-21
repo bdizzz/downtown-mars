@@ -184,7 +184,9 @@ export function peoplePage(state: SimState, cfg: SimConfig, q: PeopleQuery): Peo
     commute: (a, b) => c.workM[b]! - c.workM[a]!,
     name: (a, b) => nameOf(c, a).localeCompare(nameOf(c, b)),
   };
-  rows.sort((a, b) => by[q.sort](a, b) || c.id[a]! - c.id[b]!);
+  // The sort comes from the viewer (a worker or bridge message): only the known ones.
+  const cmp = Object.hasOwn(by, q.sort) ? by[q.sort] : by.happiness;
+  rows.sort((a, b) => cmp(a, b) || c.id[a]! - c.id[b]!);
   const offset = Math.max(0, Math.min(q.offset, Math.max(0, rows.length - 1)));
   const homes = new Map<number, string | null>();
   const name = (id: number) => {
