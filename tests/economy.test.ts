@@ -28,7 +28,7 @@ const build = (s: SimState, room: string, at: Location) => {
 function criticalSet(): SimState {
   const s = createInitialState(config);
   s.drill.active = false; // keep the numbers about the economy
-  build(s, "bunk_dorm", ring(1, 1, 1, 1));
+  build(s, "bunk_dorm", ring(1, 1, 1, 2));
   build(s, "galley", ring(1, 1, 3));
   build(s, "restroom", ring(1, 1, 4));
   const ls = build(s, "life_support", ring(1, 2, 9, 3));

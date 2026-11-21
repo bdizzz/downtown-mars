@@ -50,7 +50,7 @@ describe("room controls", () => {
 
   it("refuses 'stop at' on a room with nothing to stock", () => {
     const s = createInitialState(config);
-    const dorm = applyCommand(s, { type: "build", room: "bunk_dorm", at: { kind: "ring", floor: 1, ring: 1, slot: 1, w: 1, d: 1 } });
+    const dorm = applyCommand(s, { type: "build", room: "bunk_dorm", at: { kind: "ring", floor: 1, ring: 1, slot: 1, w: 2, d: 1 } });
     expect(applyCommand(s, { type: "setRoomControl", roomId: dorm.ok ? dorm.roomId! : 0, stopAt: 10 }).ok).toBe(false);
   });
 

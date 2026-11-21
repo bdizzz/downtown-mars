@@ -39,7 +39,7 @@ function withRooms(rooms: [string, Location][]): SimState {
   return s;
 }
 
-const noisy = () => withRooms([["life_support", ring(1, 1, 1, 3)], ["bunk_dorm", ring(1, 1, 5, 1)]]);
+const noisy = () => withRooms([["life_support", ring(1, 1, 1, 3)], ["bunk_dorm", ring(1, 1, 4, 2)]]);
 
 describe("effect sources", () => {
   it("names the room behind the noise in a home, adding up to the noise it feels", () => {

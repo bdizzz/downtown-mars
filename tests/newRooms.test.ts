@@ -46,7 +46,7 @@ describe("dining", () => {
   it("seats as many diners as the galleys and canteens within reach hold; the rest eat on the go, less comfortably", () => {
     const s = hole();
     setAdults(s, 40, config);
-    build(s, "bunk_dorm", ring(1, 1, 3, 1));
+    build(s, "bunk_dorm", ring(1, 1, 3, 2));
     build(s, "galley", ring(1, 1, 5));
     settle(s);
     expect(s.population.seats).toBeCloseTo(25, 5);
@@ -63,7 +63,7 @@ describe("dining", () => {
   it("serves the nearest homes first", () => {
     const s = hole();
     setAdults(s, 36, config);
-    const near = build(s, "bunk_dorm", ring(1, 1, 3, 1));
+    const near = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     build(s, "galley", ring(1, 1, 5));
     settle(s);
     // The dorm beside the galley is seated in full; the pod's people, further off, get what's left.
@@ -98,7 +98,7 @@ describe("health and leisure", () => {
   it("a gym lifts health and a park comfort, for the homes within walking reach", () => {
     const s = hole();
     setAdults(s, 20, config);
-    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 1));
+    const dorm = build(s, "bunk_dorm", ring(1, 1, 3, 2));
     step(s, config);
     const before = amenityFelt(s, room(s, dorm));
     expect(before.comfort + before.health).toBe(0);

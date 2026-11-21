@@ -44,15 +44,15 @@ describe("happiness", () => {
   });
 
   it("a dorm next to life support is less happy than one across the ring", () => {
-    const near = withRooms([["life_support", ring(1, 1, 1, 3)], ["bunk_dorm", ring(1, 1, 5, 1)]]);
-    const far = withRooms([["life_support", ring(1, 1, 1, 3)], ["bunk_dorm", ring(1, 1, 6, 1)]]);
+    const near = withRooms([["life_support", ring(1, 1, 1, 3)], ["bunk_dorm", ring(1, 1, 5, 2)]]);
+    const far = withRooms([["life_support", ring(1, 1, 1, 3)], ["bunk_dorm", ring(1, 1, 6, 2)]]);
     expect(pool(near, "bunk_dorm").factors.noise).toBeLessThan(pool(far, "bunk_dorm").factors.noise);
     expect(pool(near, "bunk_dorm").target).toBeLessThan(pool(far, "bunk_dorm").target);
   });
 
   it("a clinic nearby lifts health", () => {
-    const without = withRooms([["bunk_dorm", ring(1, 1, 1, 1)]]);
-    const withClinic = withRooms([["bunk_dorm", ring(1, 1, 1, 1)], ["clinic", ring(1, 1, 3)]]);
+    const without = withRooms([["bunk_dorm", ring(1, 1, 1, 2)]]);
+    const withClinic = withRooms([["bunk_dorm", ring(1, 1, 1, 2)], ["clinic", ring(1, 1, 3)]]);
     step(withClinic, config); // let the clinic get staff
     updateHappiness(withClinic, config, true);
     expect(pool(withClinic, "bunk_dorm").factors.health).toBeGreaterThan(pool(without, "bunk_dorm").factors.health);
@@ -85,7 +85,7 @@ describe("happiness", () => {
   });
 
   it("colonists keep their beds, and newcomers with no job take the best free one", () => {
-    const s = withRooms([["bunk_dorm", ring(1, 1, 1, 1)]]);
+    const s = withRooms([["bunk_dorm", ring(1, 1, 1, 2)]]);
     const total = s.happiness.pools.reduce((n, p) => n + p.residents, 0);
     expect(total).toBe(20);
     // Nobody is turned out of a bed: the landing pod's people stay put when a better home opens.
@@ -102,7 +102,7 @@ describe("happiness", () => {
   });
 
   it("eases toward a new target instead of jumping", () => {
-    const s = withRooms([["bunk_dorm", ring(1, 1, 5, 1)]]);
+    const s = withRooms([["bunk_dorm", ring(1, 1, 5, 2)]]);
     const before = pool(s, "bunk_dorm").happiness;
     applyCommand(s, { type: "build", room: "life_support", at: ring(1, 1, 1, 3) });
     for (let i = 0; i < config.happiness.updateEveryTicks; i++) step(s, config);

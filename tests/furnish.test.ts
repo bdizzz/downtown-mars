@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { createHole } from "../src/sim/geometry";
 import { createLayout, placeRoom, roomShapes, type Layout, type Location } from "../src/sim/placement";
-import { FIT, fit, frameOf, furnish, furnishedFloors, inside, layouts, place, templateFor, tooClose, unplace, type Template } from "../src/view/furnish";
-import { isFurnished, itemDef, itemsFor } from "../src/view/furniture";
+import { FIT, fit, frameOf, furnish, furnishedFloors, inside, isFlat, layouts, place, templateFor, tooClose, unplace, type Template } from "../src/view/furnish";
+import { isFurnished, isMounted, itemDef, itemsFor } from "../src/view/furniture";
 import { roomDef, roomDefs } from "../src/sim/rooms";
 import { galleryEdges } from "../src/sim/edges";
 
@@ -49,8 +49,8 @@ describe("fitting furniture into a room", () => {
   it("fills a wider room with more of a repeated item", () => {
     // Ring 2's back wall (2 of 18 slots at 31.6 m) is shorter than ring 3's (2 of 18 at 40 m).
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const narrow = room(l, "bunk_dorm", ring(1, 2, 0, 1));
-    const wide = room(l, "bunk_dorm", ring(1, 3, 4, 1));
+    const narrow = room(l, "bunk_dorm", ring(1, 2, 0, 2));
+    const wide = room(l, "bunk_dorm", ring(1, 3, 4, 2));
     const count = (r: typeof near) => fit(frameOf(l, r)!, DORM).filter((i) => i.item === "bunk_bed").length;
     expect(count(wide)).toBeGreaterThan(count(narrow));
   });
@@ -80,7 +80,7 @@ describe("fitting furniture into a room", () => {
 
   it("keeps a side doorway clear too, where a corridor runs along a wall", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const lab = room(l, "bunk_dorm", ring(1, 2, 3, 1));
+    const lab = room(l, "bunk_dorm", ring(1, 2, 3, 2));
     l.corridors["R1.2.3"] = "rock"; // along its left side
     const frame = frameOf(l, lab)!;
     expect(frame.doors).toHaveLength(1);
@@ -101,7 +101,7 @@ describe("fitting furniture into a room", () => {
 
   it("gives up space to a corridor along a side", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = room(l, "bunk_dorm", ring(1, 2, 3, 1));
+    const r = room(l, "bunk_dorm", ring(1, 2, 3, 2));
     const before = frameOf(l, r)!.left(17);
     l.corridors["R1.2.3"] = "rock";
     expect(frameOf(l, r)!.left(17)).toBeGreaterThan(before);
@@ -109,18 +109,18 @@ describe("fitting furniture into a room", () => {
 
   it("furnishes only built rooms that have a template", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = room(l, "bunk_dorm", ring(1, 1, 0, 1));
-    expect(furnish(l, r, { "bunk_dorm:1x1": DORM }).length).toBeGreaterThan(0);
+    const r = room(l, "bunk_dorm", ring(1, 1, 0, 2));
+    expect(furnish(l, r, { "bunk_dorm:2x1": DORM }).length).toBeGreaterThan(0);
     expect(furnish(l, r, {})).toEqual([]);
     r.building = true;
-    expect(furnish(l, r, { "bunk_dorm:1x1": DORM })).toEqual([]);
+    expect(furnish(l, r, { "bunk_dorm:2x1": DORM })).toEqual([]);
   });
 });
 
 describe("rugs", () => {
   it("lie under what stands on them, and don't crowd the room", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = room(layout, "bunk_dorm", ring(1, 2, 0, 1));
+    const r = room(layout, "bunk_dorm", ring(1, 2, 0, 2));
     const items = fit(frameOf(layout, r)!, [{ item: "rug", wall: "center" }, { item: "table", wall: "center" }]);
     expect(items.map((i) => i.item)).toEqual(["rug", "table"]);
   });
@@ -129,7 +129,7 @@ describe("rugs", () => {
 describe("dragging in the editor", () => {
   it("unplace undoes place, for every wall", () => {
     const layout = createLayout(createHole(10, 3, 3, config.geometry));
-    const r = room(layout, "bunk_dorm", ring(1, 2, 0, 1));
+    const r = room(layout, "bunk_dorm", ring(1, 2, 0, 2));
     const frame = frameOf(layout, r)!;
     for (const wall of ["back", "front", "left", "right", "center"] as const) {
       const p = { item: "table", wall, x: 0.7, y: 0.4 };
@@ -204,5 +204,33 @@ describe("the templates", () => {
       }
       t.forEach((p, i) => expect(used.has(i), `${key} #${i} ${p.item} never fits`).toBe(true));
     }
+  });
+});
+
+describe("busier templates (#551, #552)", () => {
+  // Rooms whose job is smaller than their slot: a core that does the job, plus fillers that repeat,
+  // so the floor reads as busy on every ring (docs/PLAN-M19.md). About 25% covered, 15-20% for the
+  // open rooms; the storeroom's shelving aisles and the crypt's thin niche walls sit a little under.
+  const BUSY = [
+    "heater", "radiator", "ventilation_hub", "gas_tank", "battery_bank", "waste_storage", "site_office", "cleaning_service", "maintenance",
+    "kitchen", "hospital", "gym", "machine_shop", "brickworks", "glassworks", "restroom", "stairwell", "spiral_stair", "elevator", "cargo_elevator",
+  ];
+  const OPEN = ["storeroom", "crypt", "tiny_plaza", "small_plaza", "plaza", "park"];
+  const covered = (type: string, r: number) => {
+    const [w, d] = roomShapes(roomDef(type))[0]!;
+    const layout = createLayout(createHole(10, 3, 3, config.geometry));
+    for (const e of galleryEdges(layout.hole, 1)) layout.corridors[e.id] = "gallery";
+    const placed = placeRoom(layout, type, { kind: "ring", floor: 2, ring: r, slot: 0, w, d });
+    expect(placed.ok, `${type} in ring ${r}`).toBe(true);
+    const frame = frameOf(layout, layout.rooms.find((x) => x.id === placed.id)!)!;
+    const standing = fit(frame, templateFor(type, w, d)!).filter((i) => !isFlat(i.item) && !isMounted(i.item) && !itemDef(i.item).opening);
+    return standing.reduce((n, i) => n + itemDef(i.item).size[0] * itemDef(i.item).size[1], 0) / frame.area;
+  };
+
+  it.each(BUSY)("%s covers at least a fifth of its floor on rings 1-3", (type) => {
+    for (const r of [1, 2, 3]) expect(covered(type, r), `${type} in ring ${r}`).toBeGreaterThanOrEqual(0.2);
+  });
+  it.each(OPEN)("%s covers at least 15% of its floor on rings 1-3", (type) => {
+    for (const r of [1, 2, 3]) expect(covered(type, r), `${type} in ring ${r}`).toBeGreaterThanOrEqual(0.15);
   });
 });

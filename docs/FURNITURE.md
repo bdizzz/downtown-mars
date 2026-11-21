@@ -132,6 +132,15 @@ Colours keep their effects: `fire` dances, `glow` screens flicker, small glowing
 
 Every item in `data/furniture.json` has a model (#367), and `tests/models.test.ts` checks that: a new item needs its `models/<item>.py` too, or the test fails.
 
+## Busy templates: a core and fillers (#551, #552)
+
+Since equal-area rings (#545), a slot is about 96 m² of usable floor on every ring, and many rooms' jobs are smaller than that (a heater, a restroom, a stairwell). Those rooms keep their slot and get a template in two parts:
+
+- **The core:** the furniture that does the job (the furnace, the toilet stalls, the stair), placed first.
+- **Fillers:** furniture that belongs there and repeats (pumps and valve panels, parts racks, shelving, niche walls, benches and planters), placed after the core and the wall hangings, with a high `max` or none, so the fitter keeps adding rows until the walls or the crowding cap stop it.
+
+The target is about **25% of the floor** covered by standing furniture on rings 1–3, or 15–20% for open rooms (plazas, the park). The storeroom (shelving aisles) and the crypt (thin niche walls) sit a little under. `tests/furnish.test.ts` ("busier templates") keeps the utilities, services, workshops, kitchen, hospital, gym, restroom, stairs and elevators at 20% or more, and the open rooms at 15% or more. Fillers were laid out by a greedy pass that tried rows of each room's own items along every wall and through the centre, and kept whichever addition raised the emptiest ring's coverage most. Rows through the middle should start half a step off centre, so the core item there doesn't block the whole row. A few new item kinds went into rooms that lacked them (in `scripts/furniture.mjs`'s `rooms`), plus one new model, the **radiator bank** (`radiator_panel`, models/radiator_panel.py).
+
 ## By room
 
 | Room | Size | Items |

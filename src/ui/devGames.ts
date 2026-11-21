@@ -19,7 +19,7 @@ export const DEV_GAMES: readonly DevGame[] = [
   { name: "early", day: 5, what: "the first rooms and corridors" },
   { name: "mid", day: 30, what: "one hole, furnished, windows, a few events seen" },
   { name: "network", day: 60, what: "two holes, a few days after founding, rovers running both ways" },
-  { name: "late", day: 120, what: "as big as the bots get while both holes are healthy" },
+  { name: "late", day: 115, what: "as big as the bots get while both holes are healthy" },
 ];
 
 /** Whether this build offers the dev games: the dev server, or a PR's preview build. */

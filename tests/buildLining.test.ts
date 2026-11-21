@@ -30,13 +30,13 @@ describe("building in a lining", () => {
 
   it("costs the room plus the lining from bare rock, takes only the room's build time, and comes out lined", () => {
     const plain = hole();
-    const a = applyCommand(plain, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 1) });
+    const a = applyCommand(plain, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 2) });
     const s = hole();
     const brick = s.resources.brick!;
-    // A dorm is 1 cell: patterned brick is brick 8 + 4 a cell.
-    const b = applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 1), material: "brick", finish: "fine" });
+    // A dorm is 2 cells: patterned brick is brick 12 a cell.
+    const b = applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 2), material: "brick", finish: "fine" });
     expect(a.ok && b.ok).toBe(true);
-    expect(plain.resources.brick! - s.resources.brick!).toBe(12);
+    expect(plain.resources.brick! - s.resources.brick!).toBe(24);
     expect(s.resources.brick).toBeLessThan(brick);
     // The same job as the bare-rock dorm's: no refit work on top, and no refit queued.
     expect(job(s, (b as { roomId: number }).roomId)!.work).toBe(job(plain, (a as { roomId: number }).roomId)!.work);
@@ -54,7 +54,7 @@ describe("building in a lining", () => {
       expect(lined.resources).toEqual(plain.resources);
       expect(lined.layout.rooms.at(-1)!.material).toBeUndefined();
     };
-    same("bunk_dorm", ring(1, 1, 3, 1), "rock");
+    same("bunk_dorm", ring(1, 1, 3, 2), "rock");
     // Empty rooms (like stairs) can't be lined: the picker can stay on metal while placing them.
     same("empty_room_s", ring(1, 2, 3), "metal");
   });
@@ -62,10 +62,10 @@ describe("building in a lining", () => {
   it("refuses what it can't afford, naming the lining's shortfall", () => {
     const s = hole();
     s.resources.metal = 2;
-    const r = applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 1), material: "metal" });
+    const r = applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 2), material: "metal" });
     expect(r.ok).toBe(false);
     expect(r.ok ? "" : r.reason).toMatch(/more metal/);
-    expect(applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 1), material: "gold" })).toMatchObject({ ok: false });
+    expect(applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 2), material: "gold" })).toMatchObject({ ok: false });
   });
 
   // The bridge (src/bridge, type-checked apart) spreads the same fields into its build command.
@@ -78,7 +78,7 @@ describe("building in a lining", () => {
 
   it("the room card shows one total: the room's cost with the lining's added in", () => {
     const dorm = roomDef("bunk_dorm");
-    const extra = buildLiningCost("bunk_dorm", ring(1, 1, 3, 1), 2, wallStep("brick", "base"));
+    const extra = buildLiningCost("bunk_dorm", ring(1, 1, 3, 2), 2, wallStep("brick", "base"));
     expect(roomCard(dorm, { rock: 20, brick: 10 }, null, extra).cost).toEqual([
       { text: "Rock 20", short: false },
       { text: "Brick 16", short: true },
@@ -89,12 +89,12 @@ describe("building in a lining", () => {
   it("undo and cancelling give the lining back too", () => {
     const s = hole();
     const brick = s.resources.brick!;
-    const r = applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 1), material: "brick" });
+    const r = applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 2), material: "brick" });
     expect(r.ok).toBe(true);
     const id = (r as { roomId: number }).roomId;
     expect(applyCommand(s, { type: "cancelJob", jobId: job(s, id)!.id }).ok).toBe(true);
     expect(s.resources.brick).toBe(brick);
-    const again = applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 1), material: "brick" });
+    const again = applyCommand(s, { type: "build", room: "bunk_dorm", at: ring(1, 1, 3, 2), material: "brick" });
     expect(applyCommand(s, { type: "undoBuild", roomId: (again as { roomId: number }).roomId }).ok).toBe(true);
     expect(s.resources.brick).toBe(brick);
   });

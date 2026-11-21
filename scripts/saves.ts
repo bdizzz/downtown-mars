@@ -8,7 +8,7 @@ import { runNetwork } from "../tests/netbot";
 
 // The dev saves (T-013): the network bot on the default seed, saved at the
 // end of a few days worth opening. Rerun after the game moves on (npm run saves),
-// and check the moments still suit with --probe: past day 120 or so the bot's
+// and check the moments still suit with --probe: past day 115 or so the bot's
 // home hole runs short of water and declines, so "late" stops there, with both
 // holes healthy.
 

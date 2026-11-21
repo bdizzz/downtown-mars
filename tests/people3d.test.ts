@@ -18,7 +18,7 @@ function room(type: string, w = 1) {
 
 describe("colonists in 3D", () => {
   it("find seats, beds and work posts in the furniture", () => {
-    const dorm = room("bunk_dorm");
+    const dorm = room("bunk_dorm", 2);
     expect(dorm.spots.spots.filter((s) => s.kind === "bed").length).toBeGreaterThanOrEqual(8);
     expect(dorm.spots.social).toBe(true);
     const galley = room("galley");
@@ -28,7 +28,7 @@ describe("colonists in 3D", () => {
   });
 
   it("sleep at night, work their posts as staffed, and sit about by day", () => {
-    const dorm = room("bunk_dorm").spots;
+    const dorm = room("bunk_dorm", 2).spots;
     const galley = room("galley").spots;
     const beds = dorm.spots.filter((s) => s.kind === "bed").length;
     const at = (hour: number, staff: number, pop: number) => occupied([dorm, galley], hour, (id) => (id === galley.roomId ? staff : 0), pop);
@@ -47,7 +47,7 @@ describe("colonists in 3D", () => {
   });
 
   it("place figures: walkers on the galleries, and sitters, sleepers and workers in rooms, hidden above a chosen floor", () => {
-    const dorm = room("bunk_dorm");
+    const dorm = room("bunk_dorm", 2);
     const people = new People();
     // No gallery tubes: nobody strolling the shaft.
     people.sync(dorm.layout.hole, 30, []);

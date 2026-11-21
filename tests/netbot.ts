@@ -47,7 +47,7 @@ export const CHILD_PLAN: Plan[] = [
   { room: "water_recycler", at: ring(1, 3, 10, 3) },
   { room: "solar_array", at: surface(5) },
   { room: "farm", at: ring(2, 1, 0, 4), crop: "potatoes" },
-  { room: "bunk_dorm", at: ring(1, 1, 4, 1) },
+  { room: "bunk_dorm", at: ring(1, 1, 4, 2) },
   { room: "clinic", at: ring(1, 1, 7) },
 ];
 

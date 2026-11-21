@@ -26,7 +26,7 @@ It swapped the slot grid for free angles (1,440 notches a turn), with S/M/L fixe
 ### Worked examples
 
 - **Galley, serves 25.** 4 dining tables (2.4 × 1.95 m with chairs) seat 24–32. Each needs about 1.2 m of aisle around it: about 11 m² each, 45 m² in all. A cook's line along one wall (stove, two prep counters, fridge, shelving, a 5 m serving counter) is about 11 m long and 2 m deep with its working aisle, plus a queue: about 30 m². **About 75 m².** That's a fair fit on ring 1 (96), but more than double on ring 2 (161).
-- **Bunk dorm, sleeps 16.** 8 bunks (2 × 1 m) with footlockers, at the template's 2.5 m spacing and about 3.2 m deep including the aisle: about 64 m². Lockers, a table and stools, and an entry: about 30 m². **About 95 m².** Today it's an M, 193–321 m²: the empty room in the screenshot.
+- **Bunk dorm, sleeps 16.** 8 bunks (2 × 1 m) with footlockers, at the template's 2.5 m spacing and about 3.2 m deep including the aisle: about 64 m². Lockers, a table and stools, and an entry: about 30 m². **About 95 m².** Today it's an M, 193–321 m²: the empty room in the screenshot. *As built:* one slot in #549, then back to two (about 210 m²) in #555, at Bryon's call: eight bunks with privacy screens rather than packed in.
 - **Restroom.** 6 toilet stalls in a row (about 7 × 3 m with the aisle), 3 showers, 2 sinks, 3 washing machines, a bench. **About 45 m².** A slot is 2–3.5× that on every ring.
 - **Clinic.** 4 beds behind partitions (about 36 m²), a scanner with clearance (about 17 m²), a desk and waiting area (about 12 m²). **About 70 m².**
 - **Heater.** A 2.7 × 2.5 m furnace with 1 m of service space round it, plus a duct riser. **About 25 m²**, a quarter of the smallest slot.
