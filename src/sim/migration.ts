@@ -63,7 +63,13 @@ export function stepMigration(world: World, cfg: SimConfig): void {
     const n = Math.min(m.maxPerDay, Math.ceil(adults * m.sharePerDay), room, adults - m.minAdultsLeft);
     if (n <= 0) continue;
     // Whole households: one bigger than today's share still goes, alone, if there's room for it.
-    const leaving = takeHouseholds(from, unhappiestAdults(colonistsOf(from)), n, room);
+    const c = colonistsOf(from);
+    const order = unhappiestAdults(c);
+    // Never below the adults who must stay: a household with more adults than can go waits.
+    const first = order.length ? c.household[order[0]!]! : -1;
+    let firstAdults = 0;
+    for (let i = 0; i < c.id.length; i++) if (c.household[i] === first && c.stage[i] === 1) firstAdults++;
+    const leaving = takeHouseholds(from, order, n, adults - firstAdults >= m.minAdultsLeft ? room : n);
     if (!leaving.length) continue;
     from.population.count = from.colonists!.id.length;
     world.migrations.push({
