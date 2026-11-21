@@ -4,6 +4,7 @@ import { currentDifficulty, setDifficulty, type Level } from "../sim/difficulty"
 import type { SaveSummary } from "../sim/save";
 import type { Snapshot } from "../sim/snapshot";
 import type { FromWorker, RouteAction, ToWorker } from "../worker/protocol";
+import type { PeoplePage, PeopleQuery, PersonView } from "../sim/personView";
 
 type Reply = Extract<FromWorker, { id: number }>;
 
@@ -107,5 +108,17 @@ export function useSim() {
     [ask],
   );
 
-  return { snapshot, speed, setSpeed, setActiveHole, send, found, route, save, load, newGame, advance };
+  /** A page of the people list (#528). */
+  const people = useCallback(
+    async (query: PeopleQuery): Promise<PeoplePage> => (await ask<Extract<Reply, { type: "people" }>>((id) => ({ type: "people", id, query }))).page,
+    [ask],
+  );
+
+  /** One person's card (null: they're not in the hole in view). */
+  const person = useCallback(
+    async (personId: number): Promise<PersonView | null> => (await ask<Extract<Reply, { type: "person" }>>((id) => ({ type: "person", id, personId }))).person,
+    [ask],
+  );
+
+  return { snapshot, speed, setSpeed, setActiveHole, send, found, route, save, load, newGame, advance, people, person };
 }

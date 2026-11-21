@@ -16,7 +16,7 @@ import { office, officeKey } from "./office";
 import { flows, trends } from "./charts";
 import { milestonesView } from "../view/milestones";
 import { mapView, networkView, siteView } from "./network";
-import { constructionView, maintenanceViewOf, peopleView } from "./colony";
+import { constructionView, maintenanceViewOf, peopleView, type PeopleAsk } from "./colony";
 import { rigKey, rigMessage } from "./rig";
 import { hudMessage, iconsMessage } from "./hud";
 import { tutorialMessage } from "./tutorial";
@@ -211,7 +211,7 @@ type BridgeMessage =
   /** The network (network.ts): what the map shows, the network panel, and a site's report. */
   | { type: "map" }
   /** The colony panels (colony.ts): people, the construction queue, upkeep. */
-  | { type: "colony"; tab: "people" | "construction" | "maintenance" }
+  | ({ type: "colony"; tab: "people" | "construction" | "maintenance" } & PeopleAsk)
   | { type: "network" }
   | { type: "site"; lat: number; lon: number }
   /** The viewer that started this bridge is closing: autosave and stop. */
@@ -419,7 +419,7 @@ const server = createServer((socket) => {
           send(edgeHover(host.active(), msg.tool, msg.at));
         } else if (msg.type === "colony") {
           const s = host.snapshot();
-          send(msg.tab === "construction" ? constructionView(s) : msg.tab === "maintenance" ? maintenanceViewOf(s) : peopleView(s));
+          send(msg.tab === "construction" ? constructionView(s) : msg.tab === "maintenance" ? maintenanceViewOf(s) : peopleView(s, host.active(), msg));
         } else if (msg.type === "map") {
           send(mapView(host.snapshot()));
         } else if (msg.type === "network") {

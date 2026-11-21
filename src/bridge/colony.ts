@@ -3,6 +3,10 @@ import { roomFloor, roomName } from "../sim/roomName";
 import type { Snapshot } from "../sim/snapshot";
 import { hoursText, num } from "../ui/format";
 import { peopleReport } from "../view/colony";
+import { config } from "../sim/config";
+import { peoplePage, personView, type PeopleQuery } from "../sim/personView";
+import type { SimState } from "../sim/state";
+import { FILTERS, pageText, personCard, rowText, SORTS, type CardText } from "../view/personCard";
 import { conditionColor } from "../view/conditionView";
 
 // The colony panels for the Godot viewer, as the web's (ui/PeoplePanel.tsx, ConstructionPanel.tsx,
@@ -19,14 +23,38 @@ function roomRef(s: Snap, id: number): { id: number; name: string } {
   return { id, name: `${roomName(room)} (${f === null ? "surface" : `F${f}`})` };
 }
 
+/** What the viewer's people tab asks for besides the report (#530): a page of the list, and the person whose card is open. */
+export interface PeopleAsk {
+  query?: PeopleQuery;
+  person?: number | null;
+}
+
 export interface PeopleMessage {
   type: "colonyPeople";
   stages: { child: number; adult: number; elder: number };
   report: ReturnType<typeof peopleReport>;
+  /** The list (#528), as the web's: each row's name and line; the page and its range. */
+  list: { rows: { id: number; name: string; detail: string }[]; offset: number; pageSize: number; total: number; range: string };
+  sorts: { id: string; label: string }[];
+  filters: { id: string; label: string }[];
+  /** The open person's card, in the web's words; null if none is open, or they've gone. */
+  card: (CardText & { id: number }) | null;
 }
 
-export function peopleView(s: Snap): PeopleMessage {
-  return { type: "colonyPeople", stages: { child: s.stages.child, adult: s.stages.adult, elder: s.stages.elder }, report: peopleReport(s) };
+const DEFAULT_QUERY: PeopleQuery = { sort: "happiness", filter: "all", search: "", offset: 0 };
+
+export function peopleView(s: Snap, state: SimState, ask: PeopleAsk = {}): PeopleMessage {
+  const page = peoplePage(state, config, { ...DEFAULT_QUERY, ...ask.query });
+  const p = ask.person != null ? personView(state, config, ask.person) : null;
+  return {
+    type: "colonyPeople",
+    stages: { child: s.stages.child, adult: s.stages.adult, elder: s.stages.elder },
+    report: peopleReport(s),
+    list: { rows: page.rows.map((r) => ({ id: r.id, ...rowText(r) })), offset: page.offset, pageSize: page.pageSize, total: page.total, range: pageText(page.total, page.offset, page.rows.length) },
+    sorts: SORTS,
+    filters: FILTERS,
+    card: p ? { id: p.id, ...personCard(p) } : null,
+  };
 }
 
 export interface ConstructionMessage {

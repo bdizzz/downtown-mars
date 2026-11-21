@@ -1,6 +1,5 @@
 {
-  "_note": "Life stages, births, aging and migration (DESIGN.md, Population growth). Days are game days; a game day is a real minute at 1x.",
-  "cohortSize": 5,
+  "_note": "Life stages, births, aging and migration (DESIGN.md, Population growth). Days are game days; a game day is a real minute at 1x. Every colonist is a person of their own (src/sim/colonists.ts, #521).",
   "adult": {
     "workSpanDays": [
       60,
@@ -19,7 +18,7 @@
     "needsFactor": 1
   },
   "births": {
-    "_note": "Births need a working clinic, a happy enough hole and a free bed.",
+    "_note": "Births need a working clinic, a happy enough hole, a free bed and a couple. Each birth goes to one couple (colonists.family.roomyBirthWeight).",
     "minHappiness": 50,
     "perAdultPerDay": 0.006
   },
@@ -34,7 +33,7 @@
     "uncaredHealth": -1.5
   },
   "migration": {
-    "_note": "Once a day, adults in an unhappy hole may leave for a clearly happier one with free beds. They travel at rover speed.",
+    "_note": "Once a day, adults in an unhappy hole may leave for a clearly happier one with free beds, the unhappiest first, each with their household (children and elders too). sharePerDay and maxPerDay count people; a household bigger than maxPerDay still goes, alone, if there's room for it. They travel at rover speed.",
     "leaveBelow": 45,
     "happierBy": 10,
     "sharePerDay": 0.05,
@@ -71,6 +70,15 @@
       "freeM": 60,
       "comfortPerStep": -0.05,
       "worstComfort": -0.5
+    },
+    "family": {
+      "_note": "Households (#527). coupleShare: of adults arriving together, the share who come as a couple with the one before. pairChancePerDay: two single adults sharing a home pair up, each day. kinPoints: a bed is worth this many happiness points more where some of their household sleeps. roomyBirthWeight: a couple with a free bed at home is this much likelier (on top of 1) to have the next child. griefComfort: the comfort a death costs each of their kin (household, partner, parents and children), fading to nothing over griefDays.",
+      "coupleShare": 0.6,
+      "pairChancePerDay": 0.08,
+      "kinPoints": 4,
+      "roomyBirthWeight": 1,
+      "griefComfort": -2,
+      "griefDays": 6
     },
     "foodWalk": {
       "freeM": 60,

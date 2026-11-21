@@ -11,7 +11,8 @@ namespace DowntownMars;
 /// school, care and meals, the departed, who's moving on next), Construction (the queue, with how far
 /// along and when, to move a job to the front or cancel it) and Maintenance (overall condition, what
 /// each crew is repairing, and the queue, worst first). From the bridge's colony.ts. A room's name
-/// opens its panel.
+/// opens its panel. People also lists everyone, to search, filter, sort and page, and a name opens
+/// that person's card (#530, the web's PeoplePanel and PersonCard, in the same words).
 /// </summary>
 public partial class ColonyPanel : Node
 {
@@ -20,6 +21,13 @@ public partial class ColonyPanel : Node
     readonly VBoxContainer _rows = new();
     string _tab = "people";
     double _clock, _asked;
+    // The people list's query, and whose card is open (null: the list). The finder's controls are kept
+    // across redraws, so typing in the search box isn't lost when the panel refreshes.
+    string _sort = "happiness", _filter = "all", _search = "";
+    int _offset;
+    int? _person;
+    HBoxContainer? _finder;
+    LineEdit? _searchBox;
     int _id = 5_000_000;
 
     public Action? Opened { get; set; }
@@ -58,7 +66,20 @@ public partial class ColonyPanel : Node
     void Ask()
     {
         _asked = _clock;
-        _send(new Dictionary<string, object> { ["type"] = "colony", ["tab"] = _tab });
+        var msg = new Dictionary<string, object> { ["type"] = "colony", ["tab"] = _tab };
+        if (_tab == "people")
+        {
+            msg["query"] = new Dictionary<string, object> { ["sort"] = _sort, ["filter"] = _filter, ["search"] = _search, ["offset"] = _offset };
+            if (_person is int p) msg["person"] = p;
+        }
+        _send(msg);
+    }
+
+    /// <summary>Open a person's card in the People tab (a click on someone, by id).</summary>
+    public void ShowPerson(int id)
+    {
+        _person = id;
+        Toggle(true, "people");
     }
 
     public override void _Process(double delta)
@@ -80,7 +101,7 @@ public partial class ColonyPanel : Node
         foreach (var c in _rows.GetChildren())
         {
             _rows.RemoveChild(c);
-            c.QueueFree();
+            if (c != _finder) c.QueueFree();
         }
         var head = new HBoxContainer();
         foreach (var (id, name) in new[] { ("people", "People"), ("construction", "Construction"), ("maintenance", "Maintenance") })
@@ -127,10 +148,108 @@ public partial class ColonyPanel : Node
         return back;
     }
 
+    /// <summary>The search box and the filter and sort pickers, made once and kept.</summary>
+    HBoxContainer Finder(JsonElement m)
+    {
+        if (_finder != null) return _finder;
+        _finder = new HBoxContainer();
+        _searchBox = new LineEdit { PlaceholderText = "Find by name", CustomMinimumSize = new Vector2(130, 0), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        _searchBox.TextChanged += t =>
+        {
+            _search = t;
+            _offset = 0;
+            Ask();
+        };
+        _finder.AddChild(_searchBox);
+        foreach (var (key, list) in new[] { ("filter", m.GetProperty("filters")), ("sort", m.GetProperty("sorts")) })
+        {
+            var pick = new OptionButton { FocusMode = Control.FocusModeEnum.None };
+            var ids = list.EnumerateArray().Select(o => o.GetProperty("id").GetString()!).ToList();
+            foreach (var o in list.EnumerateArray()) pick.AddItem(o.GetProperty("label").GetString()!);
+            pick.Selected = ids.IndexOf(key == "filter" ? _filter : _sort);
+            pick.ItemSelected += i =>
+            {
+                if (key == "filter") _filter = ids[(int)i];
+                else _sort = ids[(int)i];
+                _offset = 0;
+                Ask();
+            };
+            _finder.AddChild(pick);
+        }
+        return _finder;
+    }
+
+    /// <summary>A person's name as a link to their card.</summary>
+    Button PersonLink(int id, string text)
+    {
+        var b = new Button { Text = text, Flat = true, FocusMode = Control.FocusModeEnum.None, Alignment = HorizontalAlignment.Left, TooltipText = "Who they are" };
+        b.AddThemeColorOverride("font_color", new Color("#ffd8b8"));
+        b.Pressed += () =>
+        {
+            _person = id;
+            Ask();
+        };
+        return b;
+    }
+
+    /// <summary>One person's card, as the web's PersonCard.</summary>
+    void SetCard(JsonElement card)
+    {
+        Start(card.GetProperty("name").GetString()!);
+        var back = new Button { Text = "← Everyone", Flat = true, FocusMode = Control.FocusModeEnum.None, Alignment = HorizontalAlignment.Left };
+        back.Pressed += () =>
+        {
+            _person = null;
+            Ask();
+        };
+        _rows.AddChild(back);
+        _rows.AddChild(Text(card.GetProperty("subtitle").GetString()!, 13, Muted));
+        foreach (var f in card.GetProperty("facts").EnumerateArray())
+        {
+            var row = new HBoxContainer();
+            row.AddChild(Sized(Text(f.GetProperty("label").GetString()!, 13, Muted), 80));
+            var text = f.GetProperty("text").GetString()!;
+            if (f.TryGetProperty("roomId", out var room))
+            {
+                var link = new Button { Text = text, Flat = true, FocusMode = Control.FocusModeEnum.None, Alignment = HorizontalAlignment.Left, TooltipText = "Show it" };
+                link.AddThemeColorOverride("font_color", new Color("#ffd8b8"));
+                var id = room.GetInt32();
+                link.Pressed += () => ShowRoom?.Invoke(id);
+                row.AddChild(link);
+            }
+            else row.AddChild(Sized(Text(text, 13, Body), 260));
+            _rows.AddChild(row);
+        }
+        _rows.AddChild(Text("Needs", 15, Body));
+        foreach (var n in card.GetProperty("needs").EnumerateArray())
+        {
+            var share = n.GetProperty("share").GetSingle();
+            _rows.AddChild(Text($"{n.GetProperty("label").GetString()} {n.GetProperty("text").GetString()}", 12, Muted));
+            _rows.AddChild(Bar(share, share < 0.5f ? new Color("#e0503a") : new Color("#7cc47a")));
+        }
+        var reasons = card.GetProperty("reasons");
+        if (reasons.GetArrayLength() > 0)
+        {
+            _rows.AddChild(Text("Why they feel this way", 15, Body));
+            foreach (var r in reasons.EnumerateArray()) _rows.AddChild(Text(r.GetProperty("text").GetString()!, 13, r.GetProperty("good").GetBoolean() ? Good : Warn));
+        }
+        _rows.AddChild(Text("Family here", 15, Body));
+        var family = card.GetProperty("family");
+        if (family.GetArrayLength() == 0) _rows.AddChild(Text("No family in this hole.", 12, Muted));
+        foreach (var f in family.EnumerateArray()) _rows.AddChild(PersonLink(f.GetProperty("id").GetInt32(), f.GetProperty("text").GetString()!));
+        if (card.GetProperty("note").ValueKind == JsonValueKind.String) _rows.AddChild(Text(card.GetProperty("note").GetString()!, 13, Warn));
+    }
+
     public void SetPeople(JsonElement m)
     {
         if (_tab != "people") return;
+        if (_person != null && m.GetProperty("card").ValueKind == JsonValueKind.Object)
+        {
+            SetCard(m.GetProperty("card"));
+            return;
+        }
         Start("People");
+        if (_person != null) _rows.AddChild(Text("They're no longer in this hole.", 12, Muted));
         var st = m.GetProperty("stages");
         int child = st.GetProperty("child").GetInt32(), adult = st.GetProperty("adult").GetInt32(), elder = st.GetProperty("elder").GetInt32();
         float total = Math.Max(1, child + adult + elder);
@@ -159,6 +278,33 @@ public partial class ColonyPanel : Node
         if (r.GetProperty("grief").ValueKind == JsonValueKind.String) _rows.AddChild(Text(r.GetProperty("grief").GetString()!, 13, Warn));
         _rows.AddChild(Text("Coming up", 15, Body));
         foreach (var u in r.GetProperty("upcoming").EnumerateArray()) _rows.AddChild(Text(u.GetString()!, 13, Body));
+        // Everyone, one by one.
+        _rows.AddChild(Text("Everyone", 15, Body));
+        _rows.AddChild(Finder(m));
+        var list = m.GetProperty("list");
+        foreach (var row in list.GetProperty("rows").EnumerateArray())
+        {
+            _rows.AddChild(PersonLink(row.GetProperty("id").GetInt32(), row.GetProperty("name").GetString()!));
+            _rows.AddChild(Text(row.GetProperty("detail").GetString()!, 12, Muted));
+        }
+        int offset = list.GetProperty("offset").GetInt32(), size = list.GetProperty("pageSize").GetInt32(), listed = list.GetProperty("total").GetInt32();
+        var pager = new HBoxContainer();
+        var prev = new Button { Text = "‹", Disabled = offset == 0, FocusMode = Control.FocusModeEnum.None };
+        prev.Pressed += () =>
+        {
+            _offset = Math.Max(0, offset - size);
+            Ask();
+        };
+        var next = new Button { Text = "›", Disabled = offset + size >= listed, FocusMode = Control.FocusModeEnum.None };
+        next.Pressed += () =>
+        {
+            _offset = offset + size;
+            Ask();
+        };
+        pager.AddChild(prev);
+        pager.AddChild(Sized(Text(list.GetProperty("range").GetString()!, 12, Muted), 120));
+        pager.AddChild(next);
+        _rows.AddChild(pager);
     }
 
     public void SetConstruction(JsonElement m)

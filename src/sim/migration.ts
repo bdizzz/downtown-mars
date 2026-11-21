@@ -5,18 +5,20 @@ import { beds } from "./earth";
 import { travelTicks } from "./founding";
 import { postMessage } from "./messages";
 import { ordinanceDef } from "./ordinances";
-import { addCohorts, countStage, people, takeAdults, type Cohort } from "./people";
+import { colonistsOf, takeHouseholds, unhappiestAdults, type Member } from "./colonists";
+import { countStage, people, welcome } from "./people";
 import type { SimState } from "./state";
 import { holeById, type World } from "./world";
 
 // Soft failure: colonists in an unhappy hole leave for a clearly happier one
-// with room for them, a few at a time, rather than suffering in place. They
-// travel at rover speed and bring their culture with them.
+// with room for them, a few at a time, rather than suffering in place: the
+// unhappiest first, each with their household (#527). They travel at rover
+// speed, arrive as the same people, and bring their culture with them.
 
 export interface Migration {
   fromHoleId: number;
   toHoleId: number;
-  people: Cohort[];
+  people: Member[];
   departTick: number;
   arriveTick: number;
 }
@@ -25,7 +27,7 @@ export function closedBorders(hole: SimState): boolean {
   return hole.ordinances.some((id) => ordinanceDef(id).closedBorders);
 }
 
-const heads = (cs: Cohort[]) => cs.reduce((n, c) => n + c.count, 0);
+const heads = (ms: Member[]) => ms.length;
 
 /** Beds a hole has free, counting people already on their way there. */
 function roomFor(world: World, hole: SimState): number {
@@ -57,9 +59,19 @@ export function stepMigration(world: World, cfg: SimConfig): void {
     const to = destination(world, from);
     if (!to) continue;
     const adults = countStage(from, "adult");
-    const n = Math.min(m.maxPerDay, Math.ceil(adults * m.sharePerDay), roomFor(world, to), adults - m.minAdultsLeft);
+    const room = roomFor(world, to);
+    const n = Math.min(m.maxPerDay, Math.ceil(adults * m.sharePerDay), room, adults - m.minAdultsLeft);
     if (n <= 0) continue;
-    const leaving = takeAdults(from, n);
+    // Whole households: one bigger than today's share still goes, alone, if there's room for it.
+    const c = colonistsOf(from);
+    const order = unhappiestAdults(c);
+    // Never below the adults who must stay: a household with more adults than can go waits.
+    const first = order.length ? c.household[order[0]!]! : -1;
+    let firstAdults = 0;
+    for (let i = 0; i < c.id.length; i++) if (c.household[i] === first && c.stage[i] === 1) firstAdults++;
+    const leaving = takeHouseholds(from, order, n, adults - firstAdults >= m.minAdultsLeft ? room : n);
+    if (!leaving.length) continue;
+    from.population.count = from.colonists!.id.length;
     world.migrations.push({
       fromHoleId: from.holeId,
       toHoleId: to.holeId,
@@ -67,7 +79,8 @@ export function stepMigration(world: World, cfg: SimConfig): void {
       departTick: world.tick,
       arriveTick: world.tick + travelTicks(from.site!, to.site!, cfg),
     });
-    postMessage(from, cfg, `${n} ${n === 1 ? "colonist has" : "colonists have"} left for ${to.name}, looking for a happier life.`, "warn");
+    const left = leaving.length;
+    postMessage(from, cfg, `${left} ${left === 1 ? "colonist has" : "colonists have"} left for ${to.name}, looking for a happier life.`, "warn");
   }
 }
 
@@ -85,7 +98,7 @@ export function stepArrivals(world: World, cfg: SimConfig): void {
       const share = (n / Math.max(1, to.population.count + n)) * people.migration.culturePull;
       for (const a of cultureCfg.axes) to.culture[a.id] += (from.culture[a.id] - to.culture[a.id]) * share;
     }
-    addCohorts(to, mv.people);
+    welcome(to, mv.people, cfg);
     newsArrivals(to, n);
     postMessage(to, cfg, `${n} ${n === 1 ? "colonist has" : "colonists have"} arrived from ${from?.name ?? "another hole"} to settle here.`, "good");
   }

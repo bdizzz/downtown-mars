@@ -1888,6 +1888,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     pointer = e;
     const finger = isTouch(e);
     if (drag && drag.moved <= (finger ? TAP_SLOP : CLICK_SLOP) && layout && !longPress.fired) {
+      // With no tool, a click on a walker opens who they are (#528), over the room behind them.
+      const who = !tool && graphics.life && people.group.visible ? people.pick(rayAt(e.clientX, e.clientY)) : null;
+      if (who !== null) {
+        opts.onPerson?.(who);
+        drag = null;
+        if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+        return;
+      }
       const info = hoverInfo();
       if (finger) refreshHover();
       // A finger can't hover first: with a tool, the first tap shows where it lands.
@@ -2697,7 +2705,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         tubesFor = `${gameId}:${snapshot.layout.version}`;
         tubes = tubeRuns(snapshot.layout);
       }
-      people.sync(snapshot.layout.hole, snapshot.population.count, tubes);
+      people.sync(snapshot.layout.hole, snapshot.population.count, tubes, snapshot.walkers);
       // The weather: a storm on load shows at once; after that it eases in and out.
       if (stormTarget === null) applyStorm(snapshot.weather.storm);
       stormTarget = snapshot.weather.storm;

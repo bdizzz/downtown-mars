@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
-import { colonistStages, improveHomes, walkM, type Colonists } from "../src/sim/colonists";
+import { assignHomes, colonistStages, improveHomes, kinGriefComfort, takeVolunteers, walkM, type Colonists } from "../src/sim/colonists";
 import { isActive } from "../src/sim/economy";
 import { updateHappiness } from "../src/sim/happiness";
-import { people, setAdults, stageCounts, takeAdults, unlock } from "../src/sim/people";
+import { people, setAdults, stageCounts, unlock } from "../src/sim/people";
 import type { Location } from "../src/sim/placement";
 import { roomDef } from "../src/sim/rooms";
 import { deserialize, serialize } from "../src/sim/save";
@@ -14,18 +14,25 @@ import type { World } from "../src/sim/world";
 import { runNetwork } from "./netbot";
 import { twoHoles } from "./worlds";
 
-// Individual colonists (#523–#526, docs/PLAN-PEOPLE.md): people beside the
-// cohorts, in shadow mode; homes and jobs that assign themselves; routes as
-// cached distances; and needs per person.
+// Individual colonists (#523–#529, docs/PLAN-PEOPLE.md): every person on
+// their own (the cohorts are gone); homes and jobs that assign themselves;
+// routes as cached distances; needs per person; households.
 
 const ring = (floor: number, r: number, slot: number, w = 1, d = 1): Location => ({ kind: "ring", floor, ring: r, slot, w, d });
 
-/** Everyone's checks, for one hole: the people match the cohorts, and their jobs and beds are sound. */
+/** Everyone's checks, for one hole: the head count is the people's, families point both ways, and jobs and beds are sound. */
 function checkHole(h: SimState): void {
   const c = h.colonists!;
-  // Shadow mode: the same people at each stage as the cohorts say.
-  expect(colonistStages(h)).toEqual(stageCounts(h));
+  const st = colonistStages(h);
+  expect(st.child + st.adult + st.elder).toBe(h.population.count);
   expect(c.id.length).toBe(h.population.count);
+  for (let i = 0; i < c.id.length; i++) {
+    if (c.partner[i]! < 0) continue;
+    const j = c.id.indexOf(c.partner[i]!);
+    expect(j).toBeGreaterThanOrEqual(0);
+    expect(c.partner[j]).toBe(c.id[i]);
+    expect(c.household[j]).toBe(c.household[i]);
+  }
   // Jobs follow the staffing exactly; only adults work.
   const jobs = new Map<number, number>();
   for (let i = 0; i < c.id.length; i++) {
@@ -47,7 +54,7 @@ function checkHole(h: SimState): void {
   if (free > 0) expect(c.home.filter((x) => x < 0)).toHaveLength(0);
 }
 
-describe("colonists in shadow mode (#523)", () => {
+describe("colonists (#523, #529)", () => {
   // Ninety days of the two-hole bot: births, aging, Earth's arrivals, volunteers founding a hole.
   const days: { world: World; day: number }[] = [];
   const seen = new Map<number, number>(); // id → holeId it was last in
@@ -63,7 +70,7 @@ describe("colonists in shadow mode (#523)", () => {
     if (day % 10 === 0) days.push({ world, day });
   });
 
-  it("keeps the same people at each stage as the cohorts, every day, in every hole", () => {
+  it("counts its people, and keeps their families and beds sound, in every hole", () => {
     for (const h of net.world.holes) checkHole(h);
   });
 
@@ -95,29 +102,27 @@ describe("colonists in shadow mode (#523)", () => {
     const s = createInitialState(config);
     const c = s.colonists!;
     const before = new Map(c.id.map((id, i) => [id, [c.first[i], c.last[i], c.born[i], c.traitA[i], c.traitB[i]]]));
-    const taken = takeAdults(s, 4);
-    const members = taken.flatMap((t) => t.members ?? []);
+    const members = takeVolunteers(s, 4);
     expect(members).toHaveLength(4);
     for (const m of members) expect([m.first, m.last, m.born, m.traitA, m.traitB]).toEqual(before.get(m.id));
     for (const m of members) expect(c.id).not.toContain(m.id);
   });
 
-  it("a cohort that moves on takes its people with it, and elders who pass away are gone", () => {
+  it("each person moves on at their own time, and elders who pass away are gone", () => {
     const s = createInitialState(config);
     s.drill.active = false;
-    const ids = s.colonists!.id.slice();
-    // Bring the first cohort's retirement to the next tick.
-    const first = s.population.cohorts[0]!;
-    first.until = s.tick + 1;
-    step(s, config);
     const c = s.colonists!;
-    const retired = ids.filter((id) => c.stage[c.id.indexOf(id)] === 2);
-    expect(retired).toHaveLength(first.count);
-    // Now they pass away.
-    first.until = s.tick + 1;
+    const id = c.id[0]!;
+    c.until[0] = s.tick + 1;
+    c.rev = (c.rev ?? 0) + 1;
     step(s, config);
-    for (const id of retired) expect(s.colonists!.id).not.toContain(id);
-    expect(colonistStages(s)).toEqual(stageCounts(s));
+    expect(c.stage[c.id.indexOf(id)]).toBe(2);
+    expect(colonistStages(s)).toEqual({ child: 0, adult: config.colonists.start - 1, elder: 1 });
+    c.until[c.id.indexOf(id)] = s.tick + 1;
+    c.rev = (c.rev ?? 0) + 1;
+    step(s, config);
+    expect(c.id).not.toContain(id);
+    expect(s.population.count).toBe(config.colonists.start - 1);
   });
 
   it("saves keep who everyone is, where they sleep and work; the rest is worked out again", () => {
@@ -128,7 +133,7 @@ describe("colonists in shadow mode (#523)", () => {
     for (const [i, h] of w.holes.entries()) {
       const a = h.colonists!;
       const b = back.world.holes[i]!.colonists!;
-      for (const k of ["id", "cohort", "stage", "born", "until", "gen", "first", "last", "traitA", "traitB", "home", "job"] as const) expect(b[k]).toEqual(a[k]);
+      for (const k of ["id", "stage", "born", "until", "gen", "first", "last", "traitA", "traitB", "household", "partner", "parentA", "parentB", "mourned", "home", "job"] as const) expect(b[k]).toEqual(a[k]);
       // Routes come back from the layout.
       step(back.world.holes[i]!, config);
     }
@@ -140,11 +145,17 @@ describe("colonists in shadow mode (#523)", () => {
   it("old saves get their people from their cohorts", () => {
     const file = JSON.parse(serialize(net.world)) as { version: number; state: { holes: Record<string, unknown>[] } };
     file.version = 24;
-    for (const h of file.state.holes) delete h.colonists;
+    for (const h of file.state.holes) {
+      delete h.colonists;
+      const pop = h.population as { count: number; cohorts?: unknown[] };
+      pop.cohorts = [{ stage: "adult", count: pop.count - 2, until: 1e9 }, { stage: "child", count: 2, until: 1e9, gen: 2 }];
+    }
     const back = deserialize(JSON.stringify(file));
     expect(back.ok).toBe(true);
     if (!back.ok) return;
     const h = back.world.holes[0]!;
+    expect(colonistStages(h).child).toBe(2);
+    expect((h.population as unknown as { cohorts?: unknown }).cohorts).toBeUndefined();
     step(h, config);
     checkHole(h);
   });
@@ -169,6 +180,11 @@ function twoStudios(): { s: SimState; c: Colonists; a: number; b: number; nearA:
   setAdults(s, 30, config); // the pod's 20 beds and both studios' 5
   updateHappiness(s, config, true);
   const c = s.colonists!;
+  // Everyone single, so kin under one roof don't weigh on who moves (#527).
+  for (let i = 0; i < c.id.length; i++) {
+    c.partner[i] = -1;
+    c.household[i] = c.id[i]!;
+  }
   const pod = s.layout.rooms.find((r) => r.type === "landing_pod")!.id;
   // Five in studio A who work beside B, five in B who work beside A; the rest fill the pod, out of work.
   for (let i = 0; i < c.id.length; i++) {
@@ -181,6 +197,51 @@ function twoStudios(): { s: SimState; c: Colonists; a: number; b: number; nearA:
   for (const p of s.happiness.pools) p.base = 50;
   return { s, c, a, b, nearA, nearB, pod };
 }
+
+describe("households (#527)", () => {
+  it("someone homeless takes a free bed where their family sleeps, over an equal one elsewhere", () => {
+    for (const kin of [true, false]) {
+      const { s, c, a, pod } = twoStudios();
+      // Person 4 leaves studio A's bed and their job; one bed in the pod is free too.
+      c.home[4] = -1;
+      c.job[4] = -1;
+      c.home[29] = -1;
+      if (kin) c.household[4] = c.household[0]!;
+      assignHomes(s, c);
+      expect(c.home[4]).toBe(kin ? a : pod);
+    }
+  });
+
+  it("singles sharing a home pair up now and then, and make a household of their own", () => {
+    const s = createInitialState(config);
+    s.drill.active = false;
+    s.earth.nextDropTick = 1e9;
+    const c = s.colonists!;
+    for (let i = 0; i < c.id.length; i++) {
+      c.partner[i] = -1;
+      c.household[i] = c.id[i]!;
+    }
+    for (let i = 0; i < 30 * config.ticksPerDay; i++) step(s, config);
+    const paired = c.id.filter((_, i) => c.partner[i]! >= 0);
+    expect(paired.length).toBeGreaterThan(0);
+    checkHole(s);
+  });
+
+  it("kin grieve hard, and briefly", () => {
+    const s = createInitialState(config);
+    const c = s.colonists!;
+    const { griefComfort, griefDays } = people.colonists.family;
+    c.mourned[0] = s.tick;
+    expect(kinGriefComfort(c, 0, s.tick, config)).toBeCloseTo(griefComfort);
+    expect(kinGriefComfort(c, 0, s.tick + (griefDays / 2) * config.ticksPerDay, config)).toBeCloseTo(griefComfort / 2);
+    expect(kinGriefComfort(c, 0, s.tick + griefDays * config.ticksPerDay, config)).toBe(0);
+    expect(kinGriefComfort(c, 1, s.tick, config)).toBe(0);
+    // It shows in their own comfort and among the hole's causes.
+    updateHappiness(s, config, true);
+    expect(c.comfort[0]).toBeLessThan(c.comfort[1]!);
+    expect(s.happiness.points?.kinGrief ?? 0).toBeLessThan(0);
+  });
+});
 
 describe("homes and jobs assign themselves (#524)", () => {
   it("two workers who'd both gain swap beds, but only after gaining for a few days running", () => {

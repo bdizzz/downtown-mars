@@ -16,6 +16,7 @@ import { afterglow, afterglowDaysLeft, type Happiness } from "./happiness";
 import { diagnose, type Diagnosis } from "./diagnosis";
 import type { History } from "./history";
 import { cryptSpace, holeGates, stageCounts, type Stage } from "./people";
+import { upcomingStages, walkerIds } from "./colonists";
 import { ordinanceDef } from "./ordinances";
 import { elderCoverage, schoolCoverage, type Coverage } from "./care";
 import { birthBlockers, birthsPerDay } from "./births";
@@ -137,11 +138,11 @@ export interface HoleSummary {
  * later, the people themselves): the snapshot goes out 20 times a second and
  * must stay the same size however many live here (PLAN-PEOPLE.md, #534).
  */
-export type PopulationView = Omit<Population, "cohorts" | "birthProgress" | "nextCohortId">;
+export type PopulationView = Omit<Population, "birthProgress">;
 
-/** The population without its cohorts, for the snapshot. */
+/** The population's totals, for the snapshot. */
 export function populationView(pop: Population): PopulationView {
-  const { cohorts: _cohorts, birthProgress: _birthProgress, nextCohortId: _next, ...totals } = pop;
+  const { birthProgress: _birthProgress, ...totals } = pop;
   return totals;
 }
 
@@ -216,6 +217,8 @@ export interface Snapshot {
   construction: { bandwidth: number; jobs: JobView[] };
   /** The next few stage changes, soonest first: a short summary, at most five lines. */
   upcoming: { stage: Stage; count: number; daysLeft: number }[];
+  /** The people behind the 3D walkers (at most 60 ids, picked again each day): a click on one opens their card (#528). */
+  walkers: number[];
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
   earth: { ticksToDrop: number; waiting: boolean; padReady: boolean; landed: number };
@@ -344,10 +347,8 @@ export function makeSnapshot(state: SimState, cfg: SimConfig): Snapshot {
       composting: state.ordinances.some((id) => ordinanceDef(id).composeDead),
     },
     births: { blockers: birthBlockers(state), perDay: birthsPerDay(state), born: state.population.born ?? 0 },
-    upcoming: [...state.population.cohorts]
-      .sort((a, b) => a.until - b.until)
-      .slice(0, 5)
-      .map((c) => ({ stage: c.stage, count: c.count, daysLeft: Math.max(0, (c.until - state.tick) / cfg.ticksPerDay) })),
+    upcoming: upcomingStages(state, cfg),
+    walkers: walkerIds(state, cfg),
     workforce: state.workforce,
     roomStatus: state.roomStatus,
     earth: {

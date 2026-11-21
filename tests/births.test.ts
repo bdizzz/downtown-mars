@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { birthBlockers, birthsPerDay } from "../src/sim/births";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
-import { people, setAdults, stageCounts } from "../src/sim/people";
+import { addPeopleAt, people, setAdults, stageCounts } from "../src/sim/people";
 import { createInitialState, type SimState } from "../src/sim/state";
 import { step } from "../src/sim/step";
 
@@ -52,25 +52,44 @@ describe("births", () => {
     expect(s.population.born).toBeGreaterThanOrEqual(Math.floor(expected) - 1);
     expect(stageCounts(s).child).toBe(s.population.born);
     expect(s.messages.some((m) => /first child is born/.test(m.text))).toBe(true);
+    // Each child is born to a couple, into their household, with the first parent's last name.
+    const c = s.colonists!;
+    for (let i = 0; i < c.id.length; i++) {
+      if (c.stage[i] !== 0) continue;
+      const a = c.id.indexOf(c.parentA[i]!);
+      const b = c.id.indexOf(c.parentB[i]!);
+      expect(a).toBeGreaterThanOrEqual(0);
+      expect(c.partner[a]).toBe(c.id[b]);
+      expect(c.household[i]).toBe(c.household[a]);
+      expect(c.last[i]).toBe(c.last[a]);
+      expect(c.gen[i]).toBe(1 + Math.max(c.gen[a]!, c.gen[b]!));
+    }
   });
 
-  it("children of the same day share a cohort, and grow into working adults", () => {
+  it("need a couple", () => {
+    const s = nursery();
+    const c = s.colonists!;
+    for (let i = 0; i < c.id.length; i++) c.partner[i] = -1;
+    run(s, 2);
+    expect(birthBlockers(s)).toEqual(["No couples yet"]);
+  });
+
+  it("children grow into working adults, each with their own span", () => {
     const s = nursery();
     setAdults(s, 20, config);
-    s.population.cohorts.push({ stage: "child", count: 3, until: s.tick + 5 });
-    s.population.count += 3;
+    addPeopleAt(s, "child", 3, config, s.tick + 5);
     run(s, 6);
     const st = stageCounts(s);
     expect(st.adult).toBeGreaterThanOrEqual(23);
     expect(s.messages.some((m) => /grown up on Mars/.test(m.text))).toBe(true);
-    const grownUp = s.population.cohorts.filter((c) => c.stage === "adult").map((c) => c.until - s.tick);
+    const c = s.colonists!;
+    const grownUp = c.until.filter((_, i) => c.stage[i] === 1).map((u) => u - s.tick);
     expect(Math.max(...grownUp)).toBeLessThanOrEqual(people.adult.workSpanDays[1] * day);
   });
 
   it("stop when the beds run out", () => {
     const s = nursery();
-    s.population.cohorts.push({ stage: "child", count: 16, until: 1e9 });
-    s.population.count += 16;
+    addPeopleAt(s, "child", 16, config, 1e9);
     run(s, 2);
     expect(birthBlockers(s)).toContain("No free beds");
     const born = s.population.born ?? 0;

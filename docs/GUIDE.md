@@ -207,8 +207,9 @@ Every floor has a **temperature**, one number for the whole floor. Temperatures 
 - Everyone starts as a working adult. Only adults work.
 - With a clinic and a happy hole, children are born (they need a school). Adults eventually retire as elders (who want elder care), and elders pass away in time: build a crypt, or enact Return to the soil.
 - Clinics, schools and elder care serve the homes within about 10 steps, nearest first. A home too far from one (or last in line at a full one) goes without, and feels it. A clinic nearby also lifts its neighbours' wellbeing.
-- Every colonist is a person, with a name, an age, two traits, a bed and (for adults) a job: the nearest jobs go to whoever lives nearest. You can't open one yet; that's coming.
-- The **People** panel shows what's holding births back, and how far people walk on average, to work and to a galley. Colonists in a miserable hole move to a happier one, taking who they are with them.
+- Every colonist is a person, with a name, an age, two traits, a bed and (for adults) a job: the nearest jobs go to whoever lives nearest. Some arrive as couples, and singles who share a home sometimes pair up. Children are born to couples, into their family, and take a parent's last name. Families like to sleep under one roof, and when someone dies their family grieves for a few months.
+- **Click a walker** on the galleries in the 3D view to see who they are: their age, home and work (click either to show it), walks, needs, traits, family in the hole and what's lifting or weighing on them most. The **People** panel lists **everyone**, to search by name, filter (unhappy, no bed, out of work, children, elders, mourning) and sort; a name opens their card. It also shows what's holding births back, and how far people walk on average, to work and to a galley. Colonists in a miserable hole move to a happier one, the unhappiest first, each with their whole family, taking who they are with them.
+- A few colonists are **notables**: the people who come to your office and get quoted in the newsletter. Their role comes from their work (a clinic's staff are doctors), and they stay notable as long as they live in the hole.
 
 ## Condition and maintenance
 

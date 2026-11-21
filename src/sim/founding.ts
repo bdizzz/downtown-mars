@@ -8,7 +8,8 @@ import { crateDiscount, useCrate } from "./depth";
 export const SEED_KIT = "Seed kit";
 import { degreesApart, depositsAt, distanceKm, ICE_CAP_REFUSAL, onIceCap } from "./mapgeo";
 import { postMessage } from "./messages";
-import { addCohorts, countStage, takeAdults, type Cohort } from "./people";
+import { takeVolunteers, type Member } from "./colonists";
+import { countStage, syncCount, welcome } from "./people";
 import { network } from "./network";
 import { createNotables } from "./notables";
 import { capacities } from "./economy";
@@ -33,8 +34,8 @@ export interface Convoy {
   arriveTick: number;
   goods: Record<string, number>;
   volunteers: number;
-  /** Who they are: adult cohorts, youngest first. */
-  people: Cohort[];
+  /** Who they are: adults, singles first, then the youngest. */
+  people: Member[];
   /** They carry the old drill of a capped hole (#411). */
   cratedDrill?: boolean;
 }
@@ -151,7 +152,8 @@ export function foundHole(world: World, cfg: SimConfig, fromHoleId: number, site
   from.gatheringKit = false; // the next kit waits until the player asks
   // A crated drill rides with the kit: the new hole's drill (#411). The next kit needs it all again.
   if (useCrate(from)) convoy.cratedDrill = true;
-  convoy.people = takeAdults(from, k.volunteers);
+  convoy.people = takeVolunteers(from, k.volunteers);
+  syncCount(from);
   world.convoys.push(convoy);
   const days = ((convoy.arriveTick - convoy.departTick) / cfg.ticksPerDay).toFixed(1);
   const drill = convoy.cratedDrill ? `, with ${from.name}'s old drill in a crate` : "";
@@ -185,8 +187,8 @@ export function stepConvoys(world: World, cfg: SimConfig): void {
       hole.resources[id] = (hole.resources[id] ?? 0) + got;
       record(hole, id, "in", SEED_KIT, got);
     }
-    hole.population.cohorts = [];
-    addCohorts(hole, c.people);
+    hole.colonists = undefined;
+    welcome(hole, c.people, cfg);
     hole.notables = [];
     createNotables(hole);
     hole.earth.nextDropTick = world.tick + hole.earth.nextDropTick;
