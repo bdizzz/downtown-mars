@@ -1,3 +1,4 @@
+import { addPeopleAt } from "../src/sim/people";
 import { describe, expect, it } from "vitest";
 import { careFactors, elderCoverage, schoolCoverage } from "../src/sim/care";
 import { updateHappiness } from "../src/sim/happiness";
@@ -13,8 +14,8 @@ function withKids(children: number, elders = 0): SimState {
   s.drill.active = false;
   s.earth.nextDropTick = 1e9;
   Object.assign(s.resources, { brick: 100, metal: 100 });
-  s.population.cohorts.push({ stage: "child", count: children, until: 1e9 }, { stage: "elder", count: elders, until: 1e9 });
-  s.population.count += children + elders;
+  addPeopleAt(s, "child", children, config, 1e9);
+  addPeopleAt(s, "elder", elders, config, 1e9);
   return s;
 }
 

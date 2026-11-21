@@ -8,6 +8,7 @@ import { stepEconomy, updateRates } from "./economy";
 import { dustNow, refreshEffects } from "./effects";
 import { stepHappiness } from "./happiness";
 import { syncColonists } from "./colonists";
+import { refreshNotables } from "./notables";
 import { stepLedger } from "./ledger";
 import { stepVisits } from "./visits";
 import { stepEvents } from "./events";
@@ -42,8 +43,9 @@ export function step(state: SimState, cfg: SimConfig): void {
   stepGrief(state, cfg);
   stepBirths(state, cfg);
   stepUnlocks(state, cfg);
-  // Everyone in step with the cohorts, with a job and a bed (colonists.ts).
+  // Everyone with a job and a bed (colonists.ts); once a day, notables who've gone replaced from the people.
   syncColonists(state, cfg);
+  if (state.tick % cfg.ticksPerDay === 0) refreshNotables(state);
   stepHappiness(state, cfg);
   stepVisits(state, cfg);
   stepEvents(state, cfg);

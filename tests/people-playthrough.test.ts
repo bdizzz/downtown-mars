@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { runNetwork } from "./netbot";
+import { stageCounts } from "../src/sim/people";
 import { construction } from "../src/sim/construction";
 import { storage } from "../src/sim/storage";
 
@@ -34,12 +35,12 @@ describe("ninety minutes of people", () => {
     // Temperature (#393): the starter moves to 20-25° north and heavy industry breathes out CO2; over six seeds
     // 3–4 born by day 90 (3–4 without the industry's CO2 too), this seed 3. Was 4.
     expect(born).toBeGreaterThanOrEqual(3);
-    const children = net.world.holes.reduce((n, h) => n + h.population.cohorts.filter((c) => c.stage === "child").reduce((k, c) => k + c.count, 0), 0);
+    const children = net.world.holes.reduce((n, h) => n + stageCounts(h).child, 0);
     expect(children).toBeLessThan(born); // the earliest have grown up
   });
 
   it("sees its first elders retire, and schools its children", () => {
-    const elders = home!.population.cohorts.filter((c) => c.stage === "elder").reduce((n, c) => n + c.count, 0);
+    const elders = stageCounts(home!).elder;
     expect(elders).toBeGreaterThan(0);
     expect(home!.unlocks).toContain("elders");
     // Any hole with more than a couple of children has a school. Was: somewhere in the network (with drill finds since
@@ -48,7 +49,7 @@ describe("ninety minutes of people", () => {
     // five of six other seeds build one (all six before), with births 6–13 (5–12 before).
     // Solar by day only (batteries carry the night): over six seeds births land at 9–11 and three seeds end with a
     // hole of three children whose school waits on free hands. Was more than two.
-    const kids = (h: (typeof net.world.holes)[number]) => h.population.cohorts.filter((c) => c.stage === "child").reduce((n, c) => n + c.count, 0);
+    const kids = (h: (typeof net.world.holes)[number]) => stageCounts(h).child;
     for (const h of net.world.holes) if (kids(h) > 3) expect(h.layout.rooms.some((r) => r.type === "school"), h.name).toBe(true);
   });
 

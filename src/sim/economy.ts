@@ -5,7 +5,7 @@ import { modifiers, type Modifiers } from "./ordinances";
 import { cropDef, resourceDef, resourceDefs } from "./resources";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
-import { countStage, needsWeight, type Cohort } from "./people";
+import { countStage, needsWeight } from "./people";
 import { storageCaps } from "./storage";
 import { noteMade } from "./origins";
 import { daylightOutput, stormOutput } from "./weather";
@@ -41,11 +41,8 @@ export interface RoomStatus {
 }
 
 export interface Population {
-  /** Everyone, all stages: kept in step with cohorts (see people.ts). */
+  /** Everyone, all stages: kept in step with the people (colonists.ts, people.ts syncCount). */
   count: number;
-  cohorts: Cohort[];
-  /** The next cohort's id (colonists.ts; missing in older saves). */
-  nextCohortId?: number;
   /** Fraction of the next birth accumulated so far. */
   birthProgress?: number;
   /** Children born in this hole, ever. */

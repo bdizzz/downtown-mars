@@ -123,7 +123,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       migrations: world.migrations.map((m) => ({
         from: m.fromHoleId,
         to: m.toHoleId,
-        count: m.people.reduce((n, c) => n + c.count, 0),
+        count: m.people.length,
         progress: (world.tick - m.departTick) / Math.max(1, m.arriveTick - m.departTick),
         daysLeft: (m.arriveTick - world.tick) / config.ticksPerDay,
       })),

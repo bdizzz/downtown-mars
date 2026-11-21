@@ -15,7 +15,7 @@ import { config } from "./config";
 import { amenityFelt, updateDining, updateSanitation } from "./amenities";
 import { eventMood, festivalWork } from "./events";
 import { temperatureComfort } from "./temperature";
-import { commuteComfort, foodWalkComfort, syncColonists } from "./colonists";
+import { commuteComfort, foodWalkComfort, kinGriefComfort, syncColonists } from "./colonists";
 
 // Happiness from three factors (noise, comfort, health), each −3..+3, felt
 // where colonists live. Each home's happiness eases toward its target, and a
@@ -224,7 +224,7 @@ export function createHappiness(): Happiness {
  */
 export function updateHappiness(state: SimState, cfg: SimConfig, settle = false): void {
   const h = cfg.happiness;
-  // Everyone in step with the cohorts, with a job and a bed if there's one for them (colonists.ts).
+  // Everyone with a job and a bed if there's one for them (colonists.ts).
   syncColonists(state, cfg);
   const c = state.colonists!;
   // Seats, restrooms and care within reach, shared out by where people lived at the last update.
@@ -234,22 +234,23 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
   const prev = new Map(state.happiness.pools.map((p) => [p.roomId, p]));
   const homes = state.layout.rooms.filter((r) => isActive(r) && (roomDef(r.type).houses ?? 0) > 0);
 
-  // Each person's own parts (#525, #526): their walk to work and to the galley, in comfort.
+  // Each person's own parts (#525–#527): their walk to work and to the galley, and grief for kin, in comfort.
   const own = new Array<number>(c.id.length);
-  const ownParts = (i: number) => ({ commute: commuteComfort(c.workM[i]!), foodWalk: foodWalkComfort(c.foodM[i]!) });
+  const ownParts = (i: number) => ({ commute: commuteComfort(c.workM[i]!), foodWalk: foodWalkComfort(c.foodM[i]!), kinGrief: kinGriefComfort(c, i, state.tick, cfg) });
   // Who lives where: the people's own beds, and the average of their own parts there.
   const residents = new Map<number, number>();
-  const ownSum = new Map<number, { commute: number; foodWalk: number }>();
+  const ownSum = new Map<number, { commute: number; foodWalk: number; kinGrief: number }>();
   let homeless = 0;
   for (let i = 0; i < c.id.length; i++) {
     const home = c.home[i]!;
     const p = ownParts(i);
-    own[i] = (p.commute + p.foodWalk) * h.weights.comfort;
+    own[i] = (p.commute + p.foodWalk + p.kinGrief) * h.weights.comfort;
     if (home < 0) homeless++;
     residents.set(home, (residents.get(home) ?? 0) + 1);
-    const sum = ownSum.get(home) ?? { commute: 0, foodWalk: 0 };
+    const sum = ownSum.get(home) ?? { commute: 0, foodWalk: 0, kinGrief: 0 };
     sum.commute += p.commute;
     sum.foodWalk += p.foodWalk;
+    sum.kinGrief += p.kinGrief;
     ownSum.set(home, sum);
   }
   /** The own parts of a home's residents (or the homeless's: home −1), on average, as parts of its comfort. */
@@ -260,6 +261,7 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
     const out: Part[] = [];
     if (sum.commute) out.push({ id: "commute", factor: "comfort", value: sum.commute / n });
     if (sum.foodWalk) out.push({ id: "foodWalk", factor: "comfort", value: sum.foodWalk / n });
+    if (sum.kinGrief) out.push({ id: "kinGrief", factor: "comfort", value: sum.kinGrief / n });
     return out;
   };
   /** Those parts in points, on top of the home's (they aren't held to the factor's limit with the rest). */
@@ -320,7 +322,7 @@ export function updateHappiness(state: SimState, cfg: SimConfig, settle = false)
     c.happiness[i] = clamp(base + own[i]! - meanOwn, 0, 100);
     const f = pool ? pool.factors : homelessFactors;
     const p = ownParts(i);
-    c.comfort[i] = clamp(f.comfort + p.commute + p.foodWalk, -lim, lim);
+    c.comfort[i] = clamp(f.comfort + p.commute + p.foodWalk + p.kinGrief, -lim, lim);
     c.health[i] = f.health;
     c.fed[i] = clamp(-(1 - seatedAt(home)) * h.unservedComfort + p.foodWalk, -lim, lim);
     needs.comfort += c.comfort[i]!;

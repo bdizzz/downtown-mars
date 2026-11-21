@@ -1,3 +1,4 @@
+import { addPeopleAt } from "../src/sim/people";
 import { describe, expect, it } from "vitest";
 import { careFactors } from "../src/sim/care";
 import { applyCommand } from "../src/sim/commands";
@@ -15,8 +16,7 @@ function elders(n = 3): SimState {
   s.earth.nextDropTick = 1e9;
   Object.assign(s.resources, { brick: 100, rock: 100, metal: 50 });
   s.unlocks = ["elders"];
-  s.population.cohorts.push({ stage: "elder", count: n, until: 3 });
-  s.population.count += n;
+  addPeopleAt(s, "elder", n, config, 3);
   return s;
 }
 

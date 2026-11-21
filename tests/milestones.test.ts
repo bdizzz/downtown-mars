@@ -1,3 +1,4 @@
+import { addPeopleAt } from "../src/sim/people";
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
@@ -158,7 +159,7 @@ describe("life milestones", () => {
 
   it("the first Martian adult: a child born here grows up", () => {
     const s = hole();
-    s.population.cohorts.push({ stage: "child", count: 2, until: s.tick, gen: 2 });
+    addPeopleAt(s, "child", 2, config, s.tick, 2);
     expect(passed(s, def("martian_adult"))).toBe(false);
     stepAging(s, config);
     expect(s.population.grownUp).toBe(2);
@@ -170,7 +171,7 @@ describe("life milestones", () => {
     const s = hole();
     expect(newbornGeneration(s)).toBe(2);
     expect(passed(s, def("third_generation"))).toBe(false);
-    s.population.cohorts.push({ stage: "adult", count: 2, until: s.tick + 100 * day, gen: 2 });
+    addPeopleAt(s, "adult", 2, config, s.tick + 100 * day, 2);
     expect(newbornGeneration(s)).toBe(3);
     s.population.generation = 3;
     expect(passed(s, def("third_generation"))).toBe(true);
@@ -178,7 +179,7 @@ describe("life milestones", () => {
 
   it("laid to rest: the first elder passes away", () => {
     const s = hole();
-    s.population.cohorts.push({ stage: "elder", count: 1, until: s.tick });
+    addPeopleAt(s, "elder", 1, config, s.tick);
     expect(passed(s, def("laid_to_rest"))).toBe(false);
     stepAging(s, config);
     expect(s.population.passedAway).toBe(1);
@@ -300,7 +301,7 @@ describe("self-sufficiency", () => {
     s.roomStatus[pod.id] = { ...s.roomStatus[pod.id]!, limit: "power" };
     expect(tiersHolding(s, fed).size).toBe(0);
     const empty = running();
-    empty.population.cohorts = [];
+    empty.colonists = undefined;
     empty.population.count = 0;
     expect(tiersHolding(empty, fed).size).toBe(0);
   });
