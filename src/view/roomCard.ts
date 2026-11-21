@@ -41,6 +41,8 @@ export interface CardEffect {
 
 export interface CardContent {
   name: string;
+  /** One sentence on what the room is for, under the name (#571). */
+  blurb: string;
   /** "Medium", and for a surface room how many slots it takes; the ring rooms' shape is added by whoever shows it. */
   size: string;
   surface: boolean;
@@ -143,6 +145,7 @@ export function roomCard(def: RoomDef, resources: Record<string, number>, siteNo
     effects,
     notes: notes.filter((l): l is CardLine => !!l),
     name: def.name,
+    blurb: def.blurb,
     size: `${SIZE_NAMES[def.size]}${sizeNote(def)}`,
     surface: def.size === "surface",
     cost: Object.keys(cost).length ? Object.entries(cost).map(([id, amt]) => ({ text: `${resourceDef(id).name} ${amt}`, short: (resources[id] ?? 0) < amt })) : [{ text: "Free", short: false }],

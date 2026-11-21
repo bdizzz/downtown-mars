@@ -1,4 +1,6 @@
 # Room catalog
+> **Blurbs (#571):** each room in `data/rooms.json` carries a `blurb`: one sentence on what it does and what it does for the hole, shown under the name on the build menu's room card (web and Godot). A new room needs one (`tests/roomBlurb.test.ts` checks).
+
 > **Sizes (#549):** each room's width in slots is now `w` in `data/rooms.json` (1–4), from its ideal area in `docs/ROOM-AREAS.md`; that list is the truth where this catalog's S/M/L column disagrees.
 
 Every room with its footprint, staff, inputs, outputs, neighbor effects, build cost and unlock. All numbers are first-pass starting points for balancing; ★ marks rooms in the first playable version.
