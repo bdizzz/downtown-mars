@@ -64,7 +64,8 @@ interface DockProps {
 /** The mode buttons, and whatever strip the open mode shows. */
 export function Dock({ mode, setMode, highlight, jobs, office, reveal = SHOW_ALL, aside, children }: DockProps) {
   const wanted = modeFor(highlight);
-  const modes = MODES.filter((m) => reveal.shown(`mode:${m.id}`));
+  // In the office there's no building (#568): its rail gives way to Leave office, so the phones' Build button goes too.
+  const modes = MODES.filter((m) => reveal.shown(`mode:${m.id}`) && !(m.id === "build" && office?.open));
   const showOffice = !!office && reveal.shown("hud:office");
   const modeButton = (m: (typeof MODES)[number]) => (
     <button
