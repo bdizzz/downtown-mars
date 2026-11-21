@@ -76,7 +76,7 @@ export interface SimState {
   /** Smoothed net change per game day, by resource id. */
   rates: Record<string, number>;
   population: Population;
-  /** Every colonist, one by one (#521, colonists.ts): kept in step with the cohorts, in shadow mode (absent in older saves until the first tick). */
+  /** Every colonist, one by one (#521, colonists.ts): the only record of who lives here. */
   colonists?: Colonists;
   workforce: { total: number; employed: number };
   roomStatus: Record<number, RoomStatus>;
@@ -203,7 +203,7 @@ export function createInitialState(
     drill: { active: true, progress: 0 },
     resources: { ...cfg.startingStock },
     rates: {},
-    population: { count: 0, cohorts: [], health: 100, needsMet: {}, sanitation: 1 },
+    population: { count: 0, health: 100, needsMet: {}, sanitation: 1 },
     workforce: { total: cfg.colonists.start, employed: 0 },
     roomStatus: {},
     earth: createEarth(cfg),

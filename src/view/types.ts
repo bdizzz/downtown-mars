@@ -89,6 +89,8 @@ export interface StageOptions {
   onCommand?: (cmd: SimCommand, quiet?: boolean) => void;
   onCancel?: () => void;
   onSelect?: (roomId: number | null) => void;
+  /** A walker was clicked: open their card (#528). The 3D view only. */
+  onPerson?: (personId: number) => void;
   /** A click where the room can't go: say why. */
   onInvalid?: (reason: string) => void;
   /** The view broke after starting (e.g. lost its graphics context). */

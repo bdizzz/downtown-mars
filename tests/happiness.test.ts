@@ -1,3 +1,4 @@
+import { addPeopleAt } from "../src/sim/people";
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config as baseConfig, type SimConfig } from "../src/sim/config";
@@ -94,8 +95,7 @@ describe("happiness", () => {
     expect(s.colonists!.home).toEqual(before);
     // A child born now (no job) takes a bed in the best home with one free.
     const best = s.happiness.pools.filter((p) => p.residents < p.capacity).sort((a, b) => b.target - a.target || a.roomId - b.roomId)[0]!;
-    s.population.cohorts.push({ stage: "child", count: 1, until: s.tick + 1e6 });
-    s.population.count += 1;
+    addPeopleAt(s, "child", 1, config, s.tick + 1e6);
     updateHappiness(s, config, true);
     const child = s.colonists!.stage.indexOf(0);
     expect(s.colonists!.home[child]).toBe(best.roomId);

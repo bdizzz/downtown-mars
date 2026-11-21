@@ -9,8 +9,7 @@ import { config, type SimConfig } from "./config";
 import { depositsAt, generateMap, type MapState } from "./map";
 import { network } from "./network";
 import { culture } from "./culture";
-import { addAdults } from "./people";
-import { packColonists, unpackColonists, type PackedColonists } from "./colonists";
+import { colonistsFromCohorts, membersFromCohorts, packColonists, seedFromHomes, unpackColonists, type LegacyCohort, type PackedColonists } from "./colonists";
 import { corridors, migrateCorridorRooms, recomputeAccess } from "./corridors";
 import { galleryEdges } from "./edges";
 import { createHole, flatRingRadii, type Hole } from "./geometry";
@@ -26,7 +25,7 @@ import type { World } from "./world";
 // effect field). Bump the version whenever the shape changes, and add a
 // migration from the previous version so old saves keep working.
 
-export const SAVE_VERSION = 26;
+export const SAVE_VERSION = 27;
 
 type Raw = Record<string, unknown>;
 
@@ -66,9 +65,10 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
     ...s,
     holes: (s.holes as Raw[]).map((h) => {
       const pop = h.population as { count: number };
-      const hole = { ...h, population: { ...pop, count: 0, cohorts: [] } } as unknown as SimState;
-      addAdults(hole, pop.count, config);
-      return hole as unknown as Raw;
+      // Groups of five, as cohorts were then, each with the same working span.
+      const until = ((h.tick as number | undefined) ?? 0) + 120 * config.ticksPerDay;
+      const cohorts = Array.from({ length: Math.ceil(pop.count / 5) }, (_, i) => ({ stage: "adult", count: Math.min(5, pop.count - i * 5), until }));
+      return { ...h, population: { ...pop, cohorts } };
     }),
     convoys: ((s.convoys as Raw[] | undefined) ?? []).map((c) => ({
       ...c,
@@ -272,6 +272,25 @@ const MIGRATIONS: Record<number, (s: Raw) => Raw> = {
       return hole as unknown as Raw;
     }),
   }),
+  // v27: the cohorts are gone (#529): everyone is a person of their own. Holes saved with people keep them (with
+  // no families yet: each their own household); older ones get people made from their cohorts. Travellers
+  // (convoys, migrants) become people too, made on arrival if they didn't carry who they were.
+  26: (s) => ({
+    ...s,
+    holes: (s.holes as Raw[]).map((h) => {
+      const pop = h.population as { cohorts?: LegacyCohort[]; nextCohortId?: number };
+      const { cohorts = [], nextCohortId: _n, ...rest } = pop;
+      const hole = { ...h, population: rest } as unknown as SimState & { colonists?: unknown };
+      if (!hole.colonists) {
+        const c = colonistsFromCohorts(hole, config, cohorts);
+        (hole as unknown as Raw).colonists = packColonists(c);
+        hole.population.count = c.id.length;
+      }
+      return hole as unknown as Raw;
+    }),
+    convoys: ((s.convoys as Raw[] | undefined) ?? []).map((c) => ({ ...c, people: membersFromCohorts((c.people as LegacyCohort[] | undefined) ?? []) })),
+    migrations: ((s.migrations as Raw[] | undefined) ?? []).map((m) => ({ ...m, people: membersFromCohorts((m.people as LegacyCohort[] | undefined) ?? []) })),
+  }),
 };
 
 /** After rooms shrink, their jobs dig out only the cells they still cover. */
@@ -377,5 +396,6 @@ export function deserialize(json: string): LoadResult {
   }
   if (state.over) return { ok: false, reason: FAILED_SAVE };
   const holes = state.holes.map(({ colonists, ...h }) => ({ ...h, ...(colonists ? { colonists: unpackColonists(colonists) } : {}), effects: refreshEffects(h.layout, null) }) as SimState);
+  for (const h of holes) seedFromHomes(h);
   return { ok: true, world: { ...state, holes } };
 }

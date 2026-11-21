@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { config } from "../src/sim/config";
 import { destination, stepArrivals, stepMigration } from "../src/sim/migration";
-import { stageCounts } from "../src/sim/people";
+import { addPeopleAt, stageCounts } from "../src/sim/people";
 import { twoHoles } from "./worlds";
 
 /** Bradbury miserable, Gale content. */
@@ -51,9 +51,33 @@ describe("migration", () => {
   it("doesn't overfill the destination, counting people already on the road", () => {
     const { w, home, gale } = unhappyHome();
     for (let d = 0; d < 10; d++) stepMigration(w, config);
-    const onRoad = w.migrations.reduce((n, m) => n + m.people.reduce((k, c) => k + c.count, 0), 0);
+    const onRoad = w.migrations.reduce((n, m) => n + m.people.length, 0);
     expect(gale.population.count + onRoad).toBeLessThanOrEqual(20); // the pod's beds
     expect(home.population.count).toBeGreaterThan(0);
+  });
+
+  it("the unhappiest leave first, with their whole household, and arrive as themselves", () => {
+    const { w, home, gale } = unhappyHome();
+    const c = home.colonists!;
+    // Make one household the unhappiest: a couple with a child.
+    const [a, b] = [0, 1];
+    c.partner[a] = c.id[b]!;
+    c.partner[b] = c.id[a]!;
+    c.household[a] = c.household[b] = c.id[a]!;
+    const [kid] = addPeopleAt(home, "child", 1, config, 1e9);
+    c.household[c.id.indexOf(kid!)] = c.id[a]!;
+    c.happiness[a] = 0;
+    const family = [c.id[a]!, c.id[b]!, kid!];
+    stepMigration(w, config);
+    const leaving = w.migrations.flatMap((m) => m.people.map((p) => p.id));
+    for (const id of family) {
+      expect(leaving).toContain(id);
+      expect(home.colonists!.id).not.toContain(id);
+    }
+    w.tick = Math.max(...w.migrations.map((m) => m.arriveTick));
+    stepArrivals(w, config);
+    for (const id of family) expect(gale.colonists!.id).toContain(id);
+    expect(gale.population.count).toBe(gale.colonists!.id.length);
   });
 
   it("migrants bring some of their culture", () => {

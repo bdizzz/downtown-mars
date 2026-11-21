@@ -21,7 +21,11 @@ describe("snapshot size", () => {
     expect(large.population.count).toBe(10_000);
     // Only the digits of the counts and the upcoming days may differ.
     const size = (x: unknown) => JSON.stringify(x).length;
-    expect(Math.abs(size(large) - size(small))).toBeLessThan(64);
+    // The walkers' people are at most 60 ids, however many live here (#528).
+    expect(small.walkers.length).toBe(50);
+    expect(large.walkers.length).toBe(60);
+    const bare = (x: typeof small) => ({ ...x, walkers: [] });
+    expect(Math.abs(size(bare(large)) - size(bare(small)))).toBeLessThan(64);
     expect(Math.abs(size(large.population) - size(small.population))).toBeLessThan(16);
   });
 

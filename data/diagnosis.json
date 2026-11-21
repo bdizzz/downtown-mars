@@ -40,6 +40,7 @@
     "neighbourHealth": { "label": "neighbours", "field": "health", "factor": "health", "text": "Healthy or unhealthy neighbours", "fix": "Keep homes away from industry and near clinics." },
     "amenityHealth": { "label": "gyms", "factor": "health", "text": "Gyms nearby" },
     "commute": { "label": "commute", "factor": "comfort", "text": "Long walks to work: {homes}", "fix": "Homes nearer the workplaces, or workplaces nearer the homes: people take the bed nearest their job, and swap to get nearer." },
-    "foodWalk": { "label": "walk to a galley", "factor": "comfort", "text": "Long walks to a galley: {homes}", "fix": "A galley or canteen nearer the homes." }
+    "foodWalk": { "label": "walk to a galley", "factor": "comfort", "text": "Long walks to a galley: {homes}", "fix": "A galley or canteen nearer the homes." },
+    "kinGrief": { "label": "grief for family", "factor": "comfort", "text": "Mourning someone in the family: {homes}", "fix": "Nothing to fix: grief for family is hard, and passes in a few months." }
   }
 }

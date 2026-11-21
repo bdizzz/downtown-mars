@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { applyCommand } from "../src/sim/commands";
 import { config } from "../src/sim/config";
-import { needsWeight, people, stageCounts, takeAdults } from "../src/sim/people";
+import { takeVolunteers } from "../src/sim/colonists";
+import { addPeopleAt, needsWeight, people, stageCounts } from "../src/sim/people";
 import { deserialize, serialize } from "../src/sim/save";
 import { createInitialState } from "../src/sim/state";
 import { step } from "../src/sim/step";
@@ -9,37 +10,48 @@ import { createWorld } from "../src/sim/world";
 
 const day = config.ticksPerDay;
 
-describe("cohorts", () => {
-  it("the game starts with working adults only, in groups with their own spans", () => {
+describe("people", () => {
+  it("the game starts with working adults only, each with their own span, some as couples", () => {
     const s = createInitialState(config);
     expect(stageCounts(s)).toEqual({ child: 0, adult: config.colonists.start, elder: 0 });
     expect(s.population.count).toBe(config.colonists.start);
-    expect(s.population.cohorts).toHaveLength(Math.ceil(config.colonists.start / people.cohortSize));
+    const c = s.colonists!;
     const [lo, hi] = people.adult.workSpanDays;
-    for (const c of s.population.cohorts) {
-      expect(c.until).toBeGreaterThanOrEqual(lo * day);
-      expect(c.until).toBeLessThanOrEqual(hi * day);
+    for (const until of c.until) {
+      expect(until).toBeGreaterThanOrEqual(lo * day);
+      expect(until).toBeLessThanOrEqual(hi * day);
     }
-    expect(new Set(s.population.cohorts.map((c) => c.until)).size).toBeGreaterThan(1);
+    expect(new Set(c.until).size).toBeGreaterThan(config.colonists.start / 2);
+    // Couples share a household and point at each other.
+    const paired = c.partner.filter((p) => p >= 0).length;
+    expect(paired).toBeGreaterThan(0);
+    for (let i = 0; i < c.id.length; i++) {
+      if (c.partner[i]! < 0) continue;
+      const j = c.id.indexOf(c.partner[i]!);
+      expect(c.partner[j]).toBe(c.id[i]);
+      expect(c.household[j]).toBe(c.household[i]);
+    }
   });
 
   it("only adults staff rooms", () => {
     const s = createInitialState(config);
-    s.population.cohorts.push({ stage: "child", count: 10, until: 1e9 });
-    s.population.count += 10;
+    addPeopleAt(s, "child", 10, config, 1e9);
     step(s, config);
     expect(s.workforce.total).toBe(config.colonists.start);
   });
 
-  it("volunteers are the youngest adults", () => {
+  it("volunteers are single adults first, then the youngest", () => {
     const s = createInitialState(config);
-    const youngest = Math.max(...s.population.cohorts.map((c) => c.until));
-    const taken = takeAdults(s, 3);
-    expect(taken).toMatchObject([{ stage: "adult", count: 3, until: youngest }]);
-    // They go as themselves: three people, taken out of the hole's own.
-    expect(taken[0]!.members).toHaveLength(3);
+    const c = s.colonists!;
+    const singles = c.id.filter((_, i) => c.partner[i]! < 0).length;
+    const taken = takeVolunteers(s, 3);
+    expect(taken).toHaveLength(3);
+    expect(taken.every((m) => m.stage === 1 && m.partner < 0 && m.household === m.id)).toBe(true);
+    if (singles >= 3) {
+      const left = c.until.filter((_, i) => c.partner[i]! < 0);
+      for (const m of taken) for (const u of left) expect(m.until).toBeGreaterThanOrEqual(u);
+    }
     expect(s.colonists!.id).toHaveLength(config.colonists.start - 3);
-    expect(s.population.count).toBe(config.colonists.start - 3);
   });
 
   it("Earth's arrivals are adults", () => {
@@ -56,42 +68,53 @@ describe("cohorts", () => {
     const w = createWorld(config);
     const file = JSON.parse(serialize(w));
     file.version = 9;
-    for (const h of file.state.holes) h.population = { count: 33, health: 90, needsMet: {}, sanitation: 1 };
+    for (const h of file.state.holes) {
+      h.population = { count: 33, health: 90, needsMet: {}, sanitation: 1 };
+      delete h.colonists;
+    }
     const loaded = deserialize(JSON.stringify(file));
     expect(loaded.ok && stageCounts(loaded.world.holes[0]!)).toEqual({ child: 0, adult: 33, elder: 0 });
+    expect(loaded.ok && loaded.world.holes[0]!.population.count).toBe(33);
   });
 });
 
 describe("aging", () => {
-  it("adults retire into elders at the end of their span, and elders pass away after theirs", () => {
+  it("adults retire into elders at the end of their span, and elders pass away after theirs, mourned by kin", () => {
     const s = createInitialState(config);
     s.drill.active = false;
     s.earth.nextDropTick = 1e9;
-    const first = Math.min(...s.population.cohorts.map((c) => c.until));
-    s.population.cohorts.forEach((c) => (c.until -= first - 5)); // bring retirement close
+    const c = s.colonists!;
+    const first = Math.min(...c.until);
+    for (let i = 0; i < c.until.length; i++) c.until[i]! -= first - 5; // bring retirement close
+    c.rev = (c.rev ?? 0) + 1;
     for (let i = 0; i < 6; i++) step(s, config);
     const st = stageCounts(s);
     expect(st.elder).toBeGreaterThan(0);
     expect(st.adult + st.elder).toBe(config.colonists.start);
-    expect(s.messages.at(-1)?.text).toMatch(/first colonists have retired/);
+    expect(s.messages.some((m) => /first colonists have retired/.test(m.text))).toBe(true);
     step(s, config);
     expect(s.workforce.total).toBe(st.adult); // elders don't work
-    const elder = s.population.cohorts.find((c) => c.stage === "elder")!;
+    const i = c.stage.indexOf(2);
     const [lo, hi] = people.elder.days;
-    expect(elder.until - s.tick).toBeGreaterThanOrEqual(lo * day - 10);
-    expect(elder.until - s.tick).toBeLessThanOrEqual(hi * day);
+    expect(c.until[i]! - s.tick).toBeGreaterThanOrEqual(lo * day - 10);
+    expect(c.until[i]! - s.tick).toBeLessThanOrEqual(hi * day);
     const before = s.population.count;
-    const leaving = elder.count;
-    elder.until = s.tick + 1;
+    const id = c.id[i]!;
+    const kin = c.id.filter((_, j) => j !== i && c.household[j] === c.household[i]);
+    c.until[i] = s.tick + 1;
+    c.rev = (c.rev ?? 0) + 1;
     step(s, config);
-    expect(s.population.count).toBe(before - leaving);
+    expect(s.population.count).toBe(before - 1);
+    expect(c.id).not.toContain(id);
     expect(s.messages.at(-1)?.text).toMatch(/passed away peacefully/);
+    for (const k of kin) expect(c.mourned[c.id.indexOf(k)]).toBe(s.tick);
   });
 
   it("children need less than adults", () => {
     const a = createInitialState(config);
     const b = createInitialState(config);
-    b.population.cohorts = [{ stage: "child", count: config.colonists.start, until: 1e9 }];
+    b.colonists = undefined;
+    addPeopleAt(b, "child", config.colonists.start, config, 1e9);
     expect(needsWeight(b)).toBeCloseTo(needsWeight(a) * people.child.needsFactor);
   });
 });

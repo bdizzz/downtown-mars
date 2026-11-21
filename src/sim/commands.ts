@@ -420,7 +420,7 @@ function apply(state: SimState, cmd: SimCommand): CommandResult {
       return { ok: true };
     }
     case "consolePeople":
-      state.population.cohorts = [];
+      state.colonists = undefined;
       addAdults(state, Math.max(0, Math.round(cmd.count)), config);
       syncCount(state);
       return { ok: true };

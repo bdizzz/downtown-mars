@@ -13,6 +13,7 @@ import { soilAt } from "../sim/map";
 import { network } from "../sim/network";
 import { createWorld, holeById, networkMessages, type World } from "../sim/world";
 import { stepWorld } from "../sim/worldstep";
+import { peoplePage, personView } from "../sim/personView";
 import { isLevel, setDifficulty } from "../sim/difficulty";
 import type { FromWorker, ToWorker, WireSnapshot } from "./protocol";
 
@@ -123,7 +124,7 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
       migrations: world.migrations.map((m) => ({
         from: m.fromHoleId,
         to: m.toHoleId,
-        count: m.people.reduce((n, c) => n + c.count, 0),
+        count: m.people.length,
         progress: (world.tick - m.departTick) / Math.max(1, m.arriveTick - m.departTick),
         daysLeft: (m.arriveTick - world.tick) / config.ticksPerDay,
       })),
@@ -206,6 +207,12 @@ export function createSimHost(reply: (msg: FromWorker) => void) {
         reply({ type: "commandResult", id: msg.id, result });
         break;
       }
+      case "people":
+        reply({ type: "people", id: msg.id, page: peoplePage(active(), config, msg.query) });
+        return;
+      case "person":
+        reply({ type: "person", id: msg.id, person: personView(active(), config, msg.personId) });
+        return;
       case "command":
         // Applied between ticks, so building works while paused.
         reply({ type: "commandResult", id: msg.id, result: applyCommand(active(), msg.command) });

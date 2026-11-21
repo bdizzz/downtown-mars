@@ -5,31 +5,16 @@ import { postMessage } from "./messages";
 import { ordinanceDef } from "./ordinances";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
-import { addMembers, reconcileColonists, takeMembers, type Member } from "./colonists";
-import { config } from "./config";
+import { addAtStage, ageColonists, arriveAdults, colonistStages, colonistWeight, headCount, replaceAdults, welcomeMembers, type Member } from "./colonists";
 
-// A hole's colonists as a few cohorts: a life stage, a head count, and the
-// tick they move on (children grow up, adults grow old, elders pass away).
-// Cheap at any size, and deterministic: spans come from a hash of the hole,
-// the tick and the cohort's place, not from the hole's random stream.
+// A hole's people (#521): every colonist is a person of their own
+// (colonists.ts), and this file keeps the hole-wide side of them: the head
+// count, arrivals, aging and the dead. Deterministic: every roll comes from a
+// hash of the hole and the person, not from the hole's random stream.
 
 export type Stage = "child" | "adult" | "elder";
 
-export interface Cohort {
-  stage: Stage;
-  count: number;
-  /** Tick this cohort moves to its next stage (or, for elders, passes away). */
-  until: number;
-  /** Generation: arrivals are the first, children born to them the second (missing: 1). */
-  gen?: number;
-  /** Its people find it by this (colonists.ts); set the first time they're brought in step (missing until then). */
-  id?: number;
-  /** Who they are, while they travel to another hole (a convoy, migrants); never kept in a hole's cohorts. */
-  members?: Member[];
-}
-
 export const people = raw as unknown as {
-  cohortSize: number;
   adult: { workSpanDays: [number, number] };
   child: { days: number; needsFactor: number };
   elder: { days: [number, number]; needsFactor: number };
@@ -49,6 +34,7 @@ export const people = raw as unknown as {
     arrivalAgeDays: [number, number];
     elderAgeDays: [number, number];
     assign: { metresPerPoint: number; moveGainPoints: number; swapGainPoints: number; swapAfterDays: number; swapLooks: number; nearestHomes: number };
+    family: { coupleShare: number; pairChancePerDay: number; kinPoints: number; roomyBirthWeight: number; griefComfort: number; griefDays: number };
     commute: { freeM: number; comfortPerStep: number; worstComfort: number };
     foodWalk: { freeM: number; comfortPerStep: number; worstComfort: number };
   };
@@ -71,69 +57,41 @@ export function spanTicks([lo, hi]: [number, number], cfg: SimConfig, ...seed: n
 }
 
 export function countStage(state: SimState, stage: Stage): number {
-  return state.population.cohorts.reduce((n, c) => n + (c.stage === stage ? c.count : 0), 0);
+  return colonistStages(state)[stage];
 }
 
 export function stageCounts(state: SimState): Record<Stage, number> {
-  return { child: countStage(state, "child"), adult: countStage(state, "adult"), elder: countStage(state, "elder") };
+  return colonistStages(state);
 }
 
-/** Keep the head count everything else reads in step with the cohorts. */
+/** Keep the head count everything else reads in step with the people. */
 export function syncCount(state: SimState): void {
-  state.population.count = state.population.cohorts.reduce((n, c) => n + c.count, 0);
+  state.population.count = headCount(state);
 }
 
-/** New working adults (from Earth, a convoy, or migration), in groups with their own working spans. */
+/** New working adults (from Earth, an event, a new game), some of them couples. */
 export function addAdults(state: SimState, n: number, cfg: SimConfig): void {
-  const size = people.cohortSize;
-  for (let i = 0; n > 0; i++) {
-    const count = Math.min(size, n);
-    n -= count;
-    const until = state.tick + spanTicks(people.adult.workSpanDays, cfg, state.holeId, state.tick, i, state.population.cohorts.length);
-    state.population.cohorts.push({ stage: "adult", count, until });
-  }
+  arriveAdults(state, cfg, n);
   syncCount(state);
 }
 
-/** Add cohorts that already exist (volunteers or migrants arriving), and the people in them. */
-export function addCohorts(state: SimState, cohorts: Cohort[]): void {
-  const pop = state.population;
-  for (const c of cohorts) {
-    if (c.count <= 0) continue;
-    const { id: _id, members, ...rest } = c;
-    const id = (pop.nextCohortId = Math.max(pop.nextCohortId ?? 1, ...pop.cohorts.map((k) => (k.id ?? 0) + 1)));
-    pop.nextCohortId = id + 1;
-    pop.cohorts.push({ ...rest, id });
-    if (members?.length) addMembers(state, id, members.slice(0, c.count));
-  }
+/** People arriving from another hole (volunteers, migrants), as themselves. */
+export function welcome(state: SimState, members: Member[], cfg: SimConfig): void {
+  welcomeMembers(state, cfg, members);
   syncCount(state);
 }
 
-/** Take up to n adults, youngest first (the longest working span left). Returns who left. */
-export function takeAdults(state: SimState, n: number): Cohort[] {
-  // Everyone in step first, so the people who go are real ones (cohorts may have changed this tick).
-  reconcileColonists(state, config);
-  const taken: Cohort[] = [];
-  const adults = state.population.cohorts.filter((c) => c.stage === "adult").sort((a, b) => b.until - a.until);
-  for (const c of adults) {
-    if (n <= 0) break;
-    const k = Math.min(n, c.count);
-    c.count -= k;
-    n -= k;
-    // The people go too, as themselves (colonists.ts).
-    const { id, members: _m, ...rest } = c;
-    const members = id !== undefined ? takeMembers(state, id, k) : [];
-    taken.push({ ...rest, count: k, ...(members.length ? { members } : {}) });
-  }
-  state.population.cohorts = state.population.cohorts.filter((c) => c.count > 0);
+/** n single people at a stage (tests, the console): their next stage at `until`, or rolled as usual. Returns their ids. */
+export function addPeopleAt(state: SimState, stage: Stage, n: number, cfg: SimConfig, until?: number, gen = 1): number[] {
+  const ids = addAtStage(state, cfg, stage, n, until, gen);
   syncCount(state);
-  return taken;
+  return ids;
 }
 
-/** For tests and old saves: exactly n adults, with the usual spread of working spans. */
+/** For tests and the console: exactly n adults, with the usual spread of working spans. */
 export function setAdults(state: SimState, n: number, cfg: SimConfig): void {
-  state.population.cohorts = state.population.cohorts.filter((c) => c.stage !== "adult");
-  addAdults(state, n, cfg);
+  replaceAdults(state, cfg, n);
+  syncCount(state);
 }
 
 /** What a hole has for rooms that need something: deposits under it, and stages reached. */
@@ -153,34 +111,14 @@ export function unlock(state: SimState, what: UnlockGate): void {
 
 /** Colonists weighted by what they eat, drink and breathe: children need less. */
 export function needsWeight(state: SimState): number {
-  return state.population.cohorts.reduce(
-    (n, c) => n + c.count * (c.stage === "child" ? people.child.needsFactor : c.stage === "elder" ? people.elder.needsFactor : 1),
-    0,
-  );
+  return colonistWeight(state);
 }
 
-/** Cohorts whose time has come move on: adults retire into elders, and elders pass away. */
+/** People whose time has come move on: children grow up, adults retire into elders, and elders pass away. */
 export function stepAging(state: SimState, cfg: SimConfig): void {
-  const due = state.population.cohorts.filter((c) => c.until <= state.tick);
-  if (!due.length) return;
-  let retired = 0;
-  let passed = 0;
-  let grown = 0;
-  for (const c of due) {
-    if (c.stage === "child") {
-      c.stage = "adult";
-      c.until = state.tick + spanTicks(people.adult.workSpanDays, cfg, state.holeId, state.tick, c.count, 3);
-      grown += c.count;
-    } else if (c.stage === "adult") {
-      c.stage = "elder";
-      c.until = state.tick + spanTicks(people.elder.days, cfg, state.holeId, state.tick, c.count, 7);
-      retired += c.count;
-    } else if (c.stage === "elder") {
-      passed += c.count;
-      c.count = 0;
-    }
-  }
-  state.population.cohorts = state.population.cohorts.filter((c) => c.count > 0);
+  const { grown, retired, passed: names } = ageColonists(state, cfg);
+  const passed = names.length;
+  if (!grown && !retired && !passed) return;
   syncCount(state);
   state.population.grownUp = (state.population.grownUp ?? 0) + grown;
   state.population.passedAway = (state.population.passedAway ?? 0) + passed;
@@ -205,7 +143,8 @@ export function stepAging(state: SimState, cfg: SimConfig): void {
   }
   if (passed) {
     const where = layToRest(state, passed);
-    postMessage(state, cfg, `${passed} ${passed === 1 ? "elder has" : "elders have"} passed away peacefully, after a long life on Mars. ${where}`);
+    const who = passed === 1 ? `${names[0]} has` : passed === 2 ? `${names[0]} and ${names[1]} have` : `${passed} elders have`;
+    postMessage(state, cfg, `${who} passed away peacefully, after a long life on Mars. Their family mourns them. ${where}`);
   }
 }
 

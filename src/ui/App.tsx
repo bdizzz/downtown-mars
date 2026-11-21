@@ -15,6 +15,7 @@ import { Inspector } from "./Inspector";
 import { MapScreen, type SitePick } from "./MapScreen";
 import { NetworkPanel } from "./NetworkPanel";
 import { PeoplePanel } from "./PeoplePanel";
+import { PersonCard } from "./PersonCard";
 import { ConstructionPanel } from "./ConstructionPanel";
 import { MaintenancePanel } from "./MaintenancePanel";
 import { DirectoryPanel } from "./DirectoryPanel";
@@ -76,7 +77,7 @@ const NOTICE_MS = 3000;
 const TITLE_SHOWCASE_FLOORS = 2;
 
 export function App() {
-  const { snapshot, speed, setSpeed, setActiveHole, send, found, route, save, load, newGame, advance } = useSim();
+  const { snapshot, speed, setSpeed, setActiveHole, send, found, route, save, load, newGame, advance, people, person: loadPerson } = useSim();
   // The top bar's height, kept on the app as --top-h (no re-render), so the 3D view's canvas can run on under it (#453).
   const appRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
@@ -127,6 +128,8 @@ export function App() {
    */
   const lookFloor = previewFloor !== undefined && !walking ? previewFloor : viewFloor;
   // The right-hand panel: the office or the flow diagram; the room inspector shows when neither is open.
+  /** The person whose card is open in the people panel (#528), if any. */
+  const [person, setPerson] = useState<number | null>(null);
   const [panel, setPanel] = useState<"office" | "why" | "flows" | "network" | "people" | "construction" | "maintenance" | "trends" | "directory" | "milestones" | "news" | null>(null);
   const officeOpen = panel === "office";
   /** The series Trends opens on (a resource clicked in the bar at the top). */
@@ -894,6 +897,7 @@ export function App() {
             onCancel={() => setTool(null)}
             selected={selected}
             onSelect={(id) => (setSelected(id), id !== null && setPanel(null))}
+            onPerson={(id) => (setSelected(null), setPerson(id), setPanel("people"))}
             onInvalid={(reason) => (flash(reason), cue("refused"))}
             colorBlind={settings.colorBlind}
             mode={settings.view}
@@ -927,7 +931,18 @@ export function App() {
           />
         )}
         {snapshot && panel === "flows" && <FlowPanel s={snapshot} onClose={() => setPanel(null)} />}
-        {snapshot && panel === "people" && <PeoplePanel s={snapshot} onClose={() => setPanel(null)} />}
+        {snapshot && panel === "people" && person === null && <PeoplePanel s={snapshot} list={people} onPerson={setPerson} onClose={() => setPanel(null)} />}
+        {snapshot && panel === "people" && person !== null && (
+          <PersonCard
+            personId={person}
+            load={loadPerson}
+            tick={snapshot.tick}
+            onPerson={setPerson}
+            onRoom={(id) => (setPerson(null), goToRoom(id))}
+            onBack={() => setPerson(null)}
+            onClose={() => (setPerson(null), setPanel(null))}
+          />
+        )}
         {snapshot && panel === "trends" && <TrendsPanel key={trendKey} s={snapshot} initial={trendKey} onClose={() => setPanel(null)} />}
         {snapshot && panel === "maintenance" && (
           <MaintenancePanel s={snapshot} onSelect={(id) => (setSelected(id), setPanel(null))} onClose={() => setPanel(null)} />

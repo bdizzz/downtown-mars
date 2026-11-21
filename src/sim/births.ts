@@ -2,13 +2,14 @@ import type { SimConfig } from "./config";
 import { beds } from "./earth";
 import { isActive } from "./economy";
 import { postMessage } from "./messages";
-import { countStage, people, syncCount, unlock } from "./people";
+import { bornTo, colonistsOf, couples, nameOf } from "./colonists";
+import { countStage, hash01, people, syncCount, unlock } from "./people";
 import { roomDef } from "./rooms";
 import type { SimState } from "./state";
 
 // Births: colonists have children once a hole can look after them. A working
-// clinic, a happy enough hole and a free bed; then adults have children at a
-// steady rate, gathered into one cohort per day.
+// clinic, a happy enough hole, a free bed and a couple; then adults have
+// children at a steady rate, each born to one of the couples (colonists.ts).
 
 /** Why births are held back right now, if they are. Empty when they're on. */
 export function birthBlockers(state: SimState): string[] {
@@ -21,6 +22,7 @@ export function birthBlockers(state: SimState): string[] {
   if (happy < people.births.minHappiness) out.push(`Happiness ${Math.round(happy)} is below ${people.births.minHappiness}`);
   if (beds(state) <= state.population.count) out.push("No free beds");
   if (countStage(state, "adult") < 2) out.push("Too few adults");
+  else if (!couples(colonistsOf(state)).length) out.push("No couples yet");
   return out;
 }
 
@@ -31,7 +33,10 @@ export function birthsPerDay(state: SimState): number {
 
 /** A newborn is a generation after the adults: after the latest of them, if any were born here. */
 export function newbornGeneration(state: SimState): number {
-  return 1 + Math.max(1, ...state.population.cohorts.filter((c) => c.stage === "adult").map((c) => c.gen ?? 1));
+  const c = colonistsOf(state);
+  let gen = 1;
+  for (let i = 0; i < c.id.length; i++) if (c.stage[i] === 1) gen = Math.max(gen, c.gen[i]!);
+  return 1 + gen;
 }
 
 export function stepBirths(state: SimState, cfg: SimConfig): void {
@@ -40,18 +45,14 @@ export function stepBirths(state: SimState, cfg: SimConfig): void {
   pop.birthProgress = (pop.birthProgress ?? 0) + birthsPerDay(state) / cfg.ticksPerDay;
   if (pop.birthProgress < 1) return;
   pop.birthProgress -= 1;
-  // Everyone born the same day grows up together.
-  const today = Math.floor(state.tick / cfg.ticksPerDay);
-  const until = (today * cfg.ticksPerDay) + people.child.days * cfg.ticksPerDay;
-  const gen = newbornGeneration(state);
-  const cohort = pop.cohorts.find((c) => c.stage === "child" && c.until === until && (c.gen ?? 1) === gen);
-  if (cohort) cohort.count += 1;
-  else pop.cohorts.push({ stage: "child", count: 1, until, gen });
-  pop.generation = Math.max(pop.generation ?? 1, gen);
+  const row = bornTo(state, cfg, hash01(state.holeId, state.tick, pop.born ?? 0, 31));
+  if (row < 0) return;
+  const c = colonistsOf(state);
+  pop.generation = Math.max(pop.generation ?? 1, c.gen[row]!);
   syncCount(state);
   pop.born = (pop.born ?? 0) + 1;
   unlock(state, "children");
   if (pop.born === 1) {
-    postMessage(state, cfg, `The first child is born in ${state.name}! Children don't work; they'll want a school.`, "good");
+    postMessage(state, cfg, `The first child is born in ${state.name}: ${nameOf(c, row)}! Children don't work; they'll want a school.`, "good");
   }
 }
