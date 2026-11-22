@@ -38,6 +38,8 @@ The game's version is `version` in `package.json` (the menu shows it as `v0.3.1 
 
 `/build` makes the bump in the PR, so its preview shows the new number. Parallel PRs all bump from the same number, and two identical bumps merge cleanly into one, so `/land` checks before merging: if main's version has moved on since the PR branched, it merges main in, makes the PR's bump again on top of main's (same kind), pushes, and lets auto-merge finish once CI passes again. One gap: two `ship` PRs whose auto-merges land at nearly the same moment (after `/land` armed them) can still land on one number; bump main by hand if that happens.
 
+**Releases** (#580) go by minor version, not patch. When a push to main reaches a new major.minor, the Release workflow (`.github/workflows/release.yml`, `scripts/release.mjs`) tags that commit (`v0.7.0`) and publishes a GitHub release: titled from the commit's summary, with notes grouped by Conventional Commit type (breaking, features, fixes, performance, other) since the last release, a compare link, and the packaged web build (`downtown-mars-v0.7.0.zip`) to download. A minor that never got a release (the first run's backfill, or a missed run) is tagged where it began, without the zip. `node scripts/release.mjs` prints what it would release, without publishing. The tags make old versions easy to reach: `git diff v0.5.0 v0.6.0`, or `git bisect` between them.
+
 ### Features
 
 For items too big for one ticket (a new system, a milestone's worth):
