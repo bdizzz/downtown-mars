@@ -1,0 +1,1 @@
+export{r as CanvasRenderer}from"./pixi-Ch12FOb1.js";
