@@ -359,6 +359,10 @@ export interface Slice {
   earth: { value: THREE.Color };
   tint: { value: number };
   tintDepth: { value: number };
+  /** With the surface kept, the cut face darkens at least this much toward the backdrop, out in the sun as it is. */
+  keptShade: { value: number };
+  /** 1: keep the surface (#558, an experiment): nothing thins out with distance, so the land runs on to the horizon. */
+  keep: { value: number };
 }
 
 export interface SliceLook {
@@ -368,6 +372,7 @@ export interface SliceLook {
   earth: number;
   tint: number;
   tintDepth: number;
+  keptShade: number;
 }
 
 export function makeSlice(look: SliceLook): Slice {
@@ -383,6 +388,8 @@ export function makeSlice(look: SliceLook): Slice {
     earth: { value: new THREE.Color(look.earth) },
     tint: { value: look.tint },
     tintDepth: { value: look.tintDepth },
+    keptShade: { value: look.keptShade },
+    keep: { value: 0 },
   };
 }
 
@@ -393,12 +400,14 @@ export function makeSlice(look: SliceLook): Slice {
  */
 export type SliceRole = "land" | "wall" | "face" | "ground";
 
-const SLICE_UNIFORMS = ["On", "Amount", "Offset", "Radius", "FadeFrom", "FadeTo", "Edge", "Tint", "TintDepth"].map((u) => `uniform float slice${u};`).join("\n") + "\nuniform vec2 sliceDir;\nuniform vec3 sliceEarth;";
+const SLICE_UNIFORMS = ["On", "Amount", "Offset", "Radius", "FadeFrom", "FadeTo", "Edge", "Tint", "TintDepth", "Keep", "KeptShade"].map((u) => `uniform float slice${u};`).join("\n") + "\nuniform vec2 sliceDir;\nuniform vec3 sliceEarth;";
 
 const SLICE_GLSL = /* glsl */ `
   // A stipple threshold per pixel (interleaved gradient noise): fine, even, and steady as the camera moves.
   float sliceStipple() { return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))); }
   float sliceFade(vec3 p) { return smoothstep(sliceRadius + sliceFadeFrom, sliceRadius + sliceFadeTo, length(p.xz)); }
+  // The land and its cut face thin out with distance, unless the surface is kept (#558): then they run on to the horizon.
+  float sliceFar(vec3 p) { return sliceKeep > 0.5 ? 0.0 : sliceFade(p); }
   // Smooth noise over metres, for the crumbling edge.
   float sliceHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float sliceNoise(vec2 p) {
@@ -407,6 +416,8 @@ const SLICE_GLSL = /* glsl */ `
   }
   // How much crumbles away at d metres from the cut (1 at it, 0 past the edge), ragged by the noise at q.
   float sliceCrumble(float d, vec2 q) {
+    // Keeping the surface (#558), the sky's behind the cut, and would show through its crumbs: a clean cut.
+    if (sliceKeep > 0.5) return 0.0;
     float rough = sliceNoise(q * 0.35) * 0.65 + sliceNoise(q * 1.3) * 0.35;
     return 1.0 - smoothstep(0.0, sliceEdge, d - (rough - 0.5) * sliceEdge);
   }
@@ -418,11 +429,11 @@ const SLICE_GLSL = /* glsl */ `
 const SLICE_CUT: Record<SliceRole, string> = {
   // The near half and the land over the rings dissolve away; the rest thins out with distance and crumbles by the cut.
   land: `(dot(vSlicePos.xz, sliceDir) > sliceOffset || length(vSlicePos.xz) < sliceRadius) ? n < sliceAmount
-    : n < max(sliceFade(vSlicePos), sliceCrumble(sliceOffset - dot(vSlicePos.xz, sliceDir), vSlicePos.xz)) * sliceAmount`,
+    : n < max(sliceFar(vSlicePos), sliceCrumble(sliceOffset - dot(vSlicePos.xz, sliceDir), vSlicePos.xz)) * sliceAmount`,
   // The near half dissolves away.
   wall: "dot(vSlicePos.xz, sliceDir) > sliceOffset && n < sliceAmount",
   // Dissolves in, thinning out with distance and crumbling along its top.
-  face: "n > sliceAmount || n < max(sliceFade(vSlicePos), sliceCrumble(-vSlicePos.y, vec2(vSlicePos.x + vSlicePos.z, vSlicePos.y)))",
+  face: "n > sliceAmount || n < max(sliceFar(vSlicePos), sliceCrumble(-vSlicePos.y, vec2(vSlicePos.x + vSlicePos.z, vSlicePos.y)))",
   // Thins out with distance.
   ground: "n < sliceFade(vSlicePos) * sliceAmount",
 };
@@ -445,6 +456,8 @@ export function withSlice<T extends THREE.Material>(m: T, slice: Slice, role: Sl
       sliceEarth: slice.earth,
       sliceTint: slice.tint,
       sliceTintDepth: slice.tintDepth,
+      sliceKeep: slice.keep,
+      sliceKeptShade: slice.keptShade,
     });
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vSlicePos;")
@@ -456,7 +469,7 @@ export function withSlice<T extends THREE.Material>(m: T, slice: Slice, role: Sl
     if (role === "wall" || role === "face")
       shader.fragmentShader = shader.fragmentShader.replace(
         "#include <fog_fragment>",
-        "#include <fog_fragment>\nif (sliceOn > 0.5) gl_FragColor.rgb = mix(gl_FragColor.rgb, sliceEarth, sliceDarken(vSlicePos));",
+        `#include <fog_fragment>\nif (sliceOn > 0.5) gl_FragColor.rgb = mix(gl_FragColor.rgb, sliceEarth, ${role === "face" ? "max(sliceDarken(vSlicePos), sliceKeep * sliceKeptShade)" : "sliceDarken(vSlicePos)"});`,
       );
   };
   m.customProgramCacheKey = () => `${prevKey}|slice-${role}`;
