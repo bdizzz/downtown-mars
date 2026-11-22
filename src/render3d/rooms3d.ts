@@ -12,6 +12,7 @@ import { ARC_STEPS, FLOOR_H, floorSpan, RIG_DROP, WALL_T, LEDGE_THICKNESS, openS
 import { cellEdges, edgeById, edgeSides, edgeVertices, galleryEdges, isGalleryEdge, outsideEdges, vertexKey, type ArcEdge, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, finishDef, hasBulkhead } from "../sim/corridors";
 import { isOpen } from "../sim/excavation";
+import { joinsOpen, openSpaceAt } from "../view/openSpace";
 import { cropStage, FIT, frameOf, furnish, roomRoll, type Fitted } from "../view/furnish";
 import { isMounted, itemDef } from "../view/furniture";
 import { onCorridorAt } from "../view/walk";
@@ -385,6 +386,9 @@ interface Piece {
   rr1: number;
   innerHall: boolean;
   outerHall: boolean;
+  /** Open space across (#564): no wall, and the floor runs to the line. */
+  innerJoin?: boolean;
+  outerJoin?: boolean;
 }
 
 /**
@@ -394,7 +398,9 @@ interface Piece {
  * sides may be cut into pieces (outer rings have more slots), each with or
  * without a corridor, so the cell is split where that changes. Without
  * `carve`, corridors are ignored. `openInner` leaves the inner side where it
- * is (a public room onto the gallery).
+ * is (a public room onto the gallery). Where `joins` says the cell across is
+ * open space the room runs into (#564), a side is no side at all, as onto the
+ * room's own cells.
  */
 function carveCell(
   layout: Layout,
@@ -406,6 +412,7 @@ function carveCell(
   carve: boolean,
   openInner = false,
   joints: Set<string> = new Set(),
+  joins: (other: Cell) => boolean = () => false,
 ): {
   a0: number;
   a1: number;
@@ -417,6 +424,9 @@ function carveCell(
   openRight: boolean;
   hallLeft: boolean;
   hallRight: boolean;
+  /** Open space across a side (#564): no side there. */
+  joinLeft: boolean;
+  joinRight: boolean;
 } {
   const hole = layout.hole;
   const key = (x: Cell) => `${x.floor}:${x.ring}:${x.slot}`;
@@ -427,8 +437,12 @@ function carveCell(
   const rMid = (r0 + r1) / 2;
   const hallLeft = hall(`R${c.floor}.${c.ring}.${c.slot}`);
   const hallRight = hall(`R${c.floor}.${c.ring}.${(c.slot + 1) % n}`);
-  const openLeft = !own.has(key({ ...c, slot: (c.slot - 1 + n) % n }));
-  const openRight = !own.has(key({ ...c, slot: (c.slot + 1) % n }));
+  const leftCell = { ...c, slot: (c.slot - 1 + n) % n };
+  const rightCell = { ...c, slot: (c.slot + 1) % n };
+  const joinLeft = !own.has(key(leftCell)) && !hallLeft && joins(leftCell);
+  const joinRight = !own.has(key(rightCell)) && !hallRight && joins(rightCell);
+  const openLeft = !own.has(key(leftCell)) && !joinLeft;
+  const openRight = !own.has(key(rightCell)) && !joinRight;
   // Each open side stands parallel to its border, pulled back by a fixed distance (half a corridor, or the inset).
   const left = (r: number) => s0 + (openLeft ? sideAngle(hallLeft ? HALL : inset, r) : 0);
   const right = (r: number) => s1 - (openRight ? sideAngle(hallRight ? HALL : inset, r) : 0);
@@ -438,7 +452,8 @@ function carveCell(
   // Where corridors turn, the joint's square fills the outer corner: a side piece without a corridor
   // gives up a half-corridor notch next to it (unless the cell's own side there is a corridor, which carves it anyway).
   const cornerHall = (angle: number) => (Math.abs(angle - s0) < 1e-9 ? hallLeft : Math.abs(angle - s1) < 1e-9 ? hallRight : false);
-  const sides = (circle: number) => {
+  const across = (e: ArcEdge) => edgeSides(hole, e).find((x) => x && key(x) !== key(c)) ?? null;
+  const sides = (circle: number): { b0: number; b1: number; hall: boolean; join?: boolean }[] => {
     const r = circleRadius(hole, circle);
     const notch = HALL / r;
     return arcs
@@ -447,6 +462,8 @@ function carveCell(
         const b0 = e.a0 * TAU;
         const b1 = e.a1 * TAU;
         if (hall(e.id) || !carve) return [{ b0, b1, hall: hall(e.id) }];
+        const other = across(e);
+        if (other && joins(other)) return [{ b0, b1, hall: false, join: true }];
         const atStart = joints.has(vertexKey(c.floor, circle, e.from)) && !cornerHall(b0);
         const atEnd = joints.has(vertexKey(c.floor, circle, e.to)) && !cornerHall(b1);
         if (!atStart && !atEnd) return [{ b0, b1, hall: false }];
@@ -462,10 +479,11 @@ function carveCell(
   const innerSides = c.ring > 1 ? sides(c.ring - 1) : [];
   const outerSides = sides(c.ring);
   // Only split where a corridor starts or stops; an uncarved side stays one piece.
-  const carved = [...innerSides, ...outerSides].some((p) => p.hall);
+  const carved = [...innerSides, ...outerSides].some((p) => p.hall || p.join);
   const cutAt = carved ? [...innerSides, ...outerSides].flatMap((p) => [p.b0, p.b1]) : [];
   const cuts = [...new Set([a0, a1, ...cutAt].filter((b) => b >= a0 && b <= a1))].sort((x, y) => x - y);
   const hallAt = (list: { b0: number; b1: number; hall: boolean }[], b: number) => list.some((p) => b >= p.b0 - 1e-9 && b < p.b1 - 1e-9 && p.hall);
+  const joinAt = (list: { b0: number; b1: number; join?: boolean }[], b: number) => list.some((p) => b >= p.b0 - 1e-9 && b < p.b1 - 1e-9 && p.join);
   const pieces: Piece[] = [];
   for (let k = 0; k + 1 < cuts.length; k++) {
     const b0 = cuts[k]!;
@@ -474,11 +492,13 @@ function carveCell(
     const mid = (b0 + b1) / 2;
     const innerHall = hallAt(innerSides, mid);
     const outerHall = hallAt(outerSides, mid);
-    const rr0 = r0 + (c.ring === inner && !openInner ? (innerHall ? HALL : inset) : 0);
-    const rr1 = r1 - (c.ring === outer ? (outerHall ? HALL : inset) : 0);
-    pieces.push({ b0, b1, rr0, rr1, innerHall, outerHall });
+    const innerJoin = c.ring === inner && joinAt(innerSides, mid);
+    const outerJoin = c.ring === outer && joinAt(outerSides, mid);
+    const rr0 = r0 + (c.ring === inner && !openInner && !innerJoin ? (innerHall ? HALL : inset) : 0);
+    const rr1 = r1 - (c.ring === outer && !outerJoin ? (outerHall ? HALL : inset) : 0);
+    pieces.push({ b0, b1, rr0, rr1, innerHall, outerHall, ...(innerJoin ? { innerJoin } : {}), ...(outerJoin ? { outerJoin } : {}) });
   }
-  return { a0, a1, left, right, pieces, openLeft, openRight, hallLeft, hallRight };
+  return { a0, a1, left, right, pieces, openLeft, openRight, hallLeft, hallRight, joinLeft, joinRight };
 }
 
 /**
@@ -840,8 +860,8 @@ function solidWalls(pos: number[], s: SolidCell): void {
     return cuts.slice(1).map((b1, i) => ({ ...p, b0: cuts[i]!, b1 }));
   });
   const edgeAt = (list: typeof innerArcs, a: number) => list.find((x) => a >= x.s0 - 1e-9 && a < x.s1 - 1e-9)?.e;
-  const innerWall = (p: Piece) => c.ring === inner && !onGallery && !(publicRoom && p.innerHall);
-  const outerWall = (p: Piece) => c.ring === outer && !(publicRoom && p.outerHall);
+  const innerWall = (p: Piece) => c.ring === inner && !onGallery && !(publicRoom && p.innerHall) && !p.innerJoin;
+  const outerWall = (p: Piece) => c.ring === outer && !(publicRoom && p.outerHall) && !p.outerJoin;
   // What's across is looked for from a wall's face on the room's side, out through the wall (and any corridor beyond).
   const fromFace = (reach: number | null) => (reach == null ? null : reach + WALL_HALF);
   const step = (theta: number, r: number, sd: 1 | -1, wall: boolean): Stretch => ({
@@ -859,7 +879,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
     list.push({
       prim: { arc: true, r: p.rr0, s: 1 },
       wall: innerWall(p),
-      opens: c.ring === inner && (onGallery || (publicRoom && p.innerHall)),
+      opens: c.ring === inner && (onGallery || (publicRoom && p.innerHall) || !!p.innerJoin),
       kind: kindOf(edgeAt(innerArcs, mid), p.innerHall),
       step: false,
       cut: { side: 1, across: (a) => fromFace(radially(p.rr0, -1)(a)), face: face(`${c.floor}:in:${p.rr0.toFixed(2)}`, c.floor) },
@@ -872,7 +892,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
   list.push({
     prim: { arc: false, theta: s1, d: base.openRight && base.hallRight ? -HALL : 0, s: -1 },
     wall: base.openRight && !(publicRoom && base.hallRight),
-    opens: base.openRight && publicRoom && base.hallRight,
+    opens: (base.openRight && publicRoom && base.hallRight) || base.joinRight,
     kind: kindOf(edgeById(hole, rightId) ?? undefined, base.hallRight),
     step: false,
     cut: { side: -1, across: fromFace(turning(cMid, s1 - (base.openRight && base.hallRight ? HALL / cMid : 0), 1)), face: newFace(c.floor) },
@@ -885,7 +905,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
     list.push({
       prim: { arc: true, r: p.rr1, s: -1 },
       wall: outerWall(p),
-      opens: c.ring === outer && publicRoom && p.outerHall,
+      opens: c.ring === outer && ((publicRoom && p.outerHall) || !!p.outerJoin),
       kind: kindOf(edgeAt(outerArcs, mid), p.outerHall),
       step: false,
       cut: { side: -1, across: (a) => fromFace(radially(p.rr1, 1)(a)), face: face(`${c.floor}:out:${p.rr1.toFixed(2)}`, c.floor) },
@@ -898,7 +918,7 @@ function solidWalls(pos: number[], s: SolidCell): void {
   list.push({
     prim: { arc: false, theta: s0, d: base.openLeft && base.hallLeft ? HALL : 0, s: 1 },
     wall: base.openLeft && !(publicRoom && base.hallLeft),
-    opens: base.openLeft && publicRoom && base.hallLeft,
+    opens: (base.openLeft && publicRoom && base.hallLeft) || base.joinLeft,
     kind: kindOf(edgeById(hole, leftId) ?? undefined, base.hallLeft),
     step: false,
     cut: { side: 1, across: fromFace(turning(cMid, s0 + (base.openLeft && base.hallLeft ? HALL / cMid : 0), -1)), face: newFace(c.floor) },
@@ -1108,9 +1128,12 @@ export function roomGeometry(
   wells: FloorHole[] = [],
   parts?: OpeningParts,
   solid = false,
+  joinOpen = false,
 ): THREE.BufferGeometry {
   const key = (c: Cell) => `${c.floor}:${c.ring}:${c.slot}`;
   const own = new Set(cells.map(key));
+  // A built walk-through room runs straight into open space beside it, with no wall between (#564).
+  const joins = joinOpen && carve ? (x: Cell) => !own.has(key(x)) && openSpaceAt(layout, x) : undefined;
   const rings = cells.map((c) => c.ring);
   const inner = Math.min(...rings);
   const outer = Math.max(...rings);
@@ -1130,9 +1153,9 @@ export function roomGeometry(
     // A public room on a gallery tube has no wall there: it runs right up to the tube. Without one, it's walled off from the shaft.
     const tube = galleryEdges(layout.hole, c.floor)[c.slot];
     const onGallery = publicRoom && c.ring === 1 && !!tube && !!layout.corridors?.[tube.id];
-    const cut = carveCell(layout, c, own, inner, outer, inset, carve, onGallery, joints);
+    const cut = carveCell(layout, c, own, inner, outer, inset, carve, onGallery, joints, joins);
     // The floor runs out to the cell's edges (only the walls keep the hairline), so no gap shows between two rooms.
-    const floorCut = carveCell(layout, c, own, inner, outer, 0, carve, onGallery, joints);
+    const floorCut = carveCell(layout, c, own, inner, outer, 0, carve, onGallery, joints, joins);
     // What's across each wall: the room past it, looked for from the wall outward (through a corridor alongside).
     const [cr0, cr1] = ringRadii(layout.hole, c.ring);
     const [s0, s1] = slotAngles(c.slot, layout.hole.ringSlots[c.ring - 1]!);
@@ -1206,10 +1229,10 @@ export function roomGeometry(
       // A piece's ends move with radius where a side stands parallel to a corridor.
       const inside = pieceAt(cut, p, p.rr0);
       const outside = pieceAt(cut, p, p.rr1);
-      if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall)) {
+      if (c.ring === inner && !onGallery && !(publicRoom && p.innerHall) && !p.innerJoin) {
         curved(p.rr0, inside, c.ring - 1, { side: 1, across: radially(p.rr0, -1), face: face(`${c.floor}:in:${p.rr0.toFixed(2)}`, c.floor) }, -1);
       }
-      if (c.ring === outer && !(publicRoom && p.outerHall)) curved(p.rr1, outside, c.ring, { side: -1, across: radially(p.rr1, 1), face: face(`${c.floor}:out:${p.rr1.toFixed(2)}`, c.floor) }, 1);
+      if (c.ring === outer && !(publicRoom && p.outerHall) && !p.outerJoin) curved(p.rr1, outside, c.ring, { side: -1, across: radially(p.rr1, 1), face: face(`${c.floor}:out:${p.rr1.toFixed(2)}`, c.floor) }, 1);
       // A step where a corridor starts or stops partway along a side.
       if (prev) {
         // The room is on the side of whichever piece reaches further in (or out).
@@ -1483,7 +1506,7 @@ export function furnitureGroup(layout: Layout, room: RoomInstance, fitted: Fitte
 
 /** A room's wall faces, resolved (as its walls are drawn), for its hangings to go with. */
 function wallFaces(layout: Layout, room: RoomInstance): (FaceTag & { floor: number })[] {
-  const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, null, [], undefined, true);
+  const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, null, [], undefined, true, joinsOpen(room));
   const faces = (geo.userData.faces ?? []) as (FaceTag & { floor: number })[];
   geo.dispose();
   return faces;
@@ -2181,7 +2204,7 @@ function roomShape(layout: Layout, room: RoomInstance): Shape & { key: string } 
   let shape = shapeCache.get(key);
   if (!shape) {
     const parts: OpeningParts = { glass: tagged(), frames: tagged(), tops: tagged(), halls: new Map() };
-    const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, open, stairWells(layout, room), parts, true);
+    const geo = roomGeometry(layout, room.cells, INSET, true, !!roomDef(room.type).public, open, stairWells(layout, room), parts, true, joinsOpen(room));
     const halls = [...parts.halls!].filter(([, pos]) => pos.length).map(([lining, pos]): [SurfaceLook, THREE.BufferGeometry] => [lining, geometry(pos)]);
     // The outline goes round the corridor faces too, as when they were the room's.
     const whole = halls.length ? mergeGeometries([geo, ...halls.map(([, g]) => g)]) : null;
@@ -2213,8 +2236,9 @@ export function shapeKey(layout: Layout, room: RoomInstance): { key: string; ope
   // stands its full thickness, with a face past the line, but onto a room it's only its own half. So a
   // room (2) and empty space (1) must count apart, or a wall built for empty space stays when a room fills
   // it, its face on the new room's wall face, and the two flicker through each other (T-079).
+  // Open space beside a built walk-through room takes its wall away (#564), so it counts apart too (3).
   const around = neighborCells(layout.hole, room.cells)
-    .map((c) => (layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] ? 2 : isOpen(layout, c) ? 1 : 0))
+    .map((c) => (openSpaceAt(layout, c) && layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] ? 3 : layout.grid[c.floor - 1]?.[c.ring - 1]?.[c.slot] ? 2 : isOpen(layout, c) ? 1 : 0))
     .join("");
   // A room, once it's more than a plan, has its windows and doors cut through.
   const open = openingsOf(layout, room);
@@ -2224,7 +2248,7 @@ export function shapeKey(layout: Layout, room: RoomInstance): { key: string; ope
         ...[...open.windows].map(([e, w]) => `${e}=${w.bottom}-${w.top}`),
       ].join(",")
     : "shut";
-  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${cut}`;
+  const key = `${room.id}:${layout.hole.shaftRadiusM}:${room.cells.map((c) => `${c.floor}.${c.ring}.${c.slot}`).join(",")}:${halls}:${around}:${cut}:${joinsOpen(room) ? "joins" : ""}`;
   return { key, open };
 }
 
