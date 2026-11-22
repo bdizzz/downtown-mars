@@ -915,3 +915,65 @@ describe("a corridor ending at the open shaft (#570)", () => {
     expect(glassOf(l)).toEqual([]);
   });
 });
+
+describe("open space (#564)", () => {
+  const solidOf = (l: ReturnType<typeof createLayout>, room: { cells: Parameters<typeof roomGeometry>[1] }, joins: boolean) =>
+    roomGeometry(l, room.cells, undefined, true, true, null, [], undefined, true, joins);
+  /** Wall-top points of a side wall's face on the radial border at `slot`, from the room on side `side` (1: the room below the border's angle). */
+  const sideFace = (l: ReturnType<typeof createLayout>, g: THREE.BufferGeometry, ring: number, slot: number, side: 1 | -1) => {
+    const border = slotAngles(slot, l.hole.ringSlots[ring - 1]!)[0];
+    const [r0, r1] = ringRadii(l.hole, ring);
+    const top = floorSpan(1)[1];
+    const pos = g.getAttribute("position");
+    return Array.from({ length: pos.count }, (_, i) => ({ r: Math.hypot(pos.getX(i), pos.getZ(i)), a: Math.atan2(pos.getZ(i), pos.getX(i)), y: pos.getY(i) }))
+      .filter((p) => Math.abs(p.y - top) < 1e-6 && p.r > r0 && p.r < r1)
+      .map((p) => side * p.r * Math.sin(p.a - border))
+      // A side wall's face, half a wall in from the border.
+      .filter((d) => Math.abs(d + WALL_T / 2) < 1e-3);
+  };
+  const place = (l: ReturnType<typeof createLayout>, type: string, at: Location) => {
+    const id = placeRoom(l, type, at).id;
+    return l.rooms.find((x) => x.id === id)!;
+  };
+
+  it("a stairwell beside a plaza has no wall between them; beside a private room it keeps one", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const stair = place(l, "stairwell", ring(1, 2, 2));
+    const plaza = place(l, "tiny_plaza", ring(1, 2, 3));
+    expect(sideFace(l, solidOf(l, stair, true), 2, 3, 1)).toEqual([]);
+    expect(sideFace(l, solidOf(l, plaza, true), 2, 3, -1)).toEqual([]);
+    // Still a plan: walled, like any room.
+    plaza.planned = true;
+    expect(sideFace(l, solidOf(l, stair, true), 2, 3, 1).length).toBeGreaterThan(0);
+    plaza.planned = false;
+    // A private room on its other side keeps the wall.
+    place(l, "flat", ring(1, 2, 1));
+    expect(sideFace(l, solidOf(l, stair, true), 2, 2, -1).length).toBeGreaterThan(0);
+  });
+
+  it("runs into dug-out empty space, across a ring too, with no wall", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const plaza = place(l, "tiny_plaza", ring(1, 2, 4));
+    openCells(l, [{ floor: 1, ring: 2, slot: 5 }, { floor: 1, ring: 3, slot: 4 }]);
+    const walled = triangles(solidOf(l, plaza, false));
+    const open = solidOf(l, plaza, true);
+    expect(sideFace(l, open, 2, 5, 1)).toEqual([]);
+    expect(triangles(open)).toBeLessThan(walled);
+    // The outer wall is gone too: nothing stands near the outer border.
+    const [, r1] = ringRadii(l.hole, 2);
+    const pos = open.getAttribute("position");
+    const top = floorSpan(1)[1];
+    const near = Array.from({ length: pos.count }, (_, i) => ({ r: Math.hypot(pos.getX(i), pos.getZ(i)), y: pos.getY(i) })).filter((p) => Math.abs(p.y - top) < 1e-6 && p.r < r1 - 1e-6 && p.r > r1 - 0.5);
+    expect(near).toEqual([]);
+  });
+
+  it("counts open space apart in the shape key, so the walls come down when a neighbour is finished", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const stair = place(l, "stairwell", ring(1, 2, 2));
+    const plaza = place(l, "tiny_plaza", ring(1, 2, 3));
+    plaza.building = true;
+    const before = shapeKey(l, stair).key;
+    plaza.building = false;
+    expect(shapeKey(l, stair).key).not.toBe(before);
+  });
+});
