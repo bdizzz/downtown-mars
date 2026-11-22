@@ -1,4 +1,5 @@
 import { roomName } from "../sim/roomName";
+import { roomDef } from "../sim/rooms";
 import type { ViewMode } from "./settings";
 import type { HoverInfo, Tool } from "../view/types";
 import { reachSummary } from "../view/reachView";
@@ -121,7 +122,13 @@ export function StatusBar({ info, snapshot, notice, overlay, view, tool, colorBl
       const over = d ? `⚠ Fills in ${d} corridor ${d === 1 ? "segment" : "segments"}${lost ? `, cutting off ${lost} more` : ""} · ` : "";
       // What the green ghost and the tint round it mean, from the same source that draws the tint (#438).
       const legend = tool?.kind === "build" ? `${placementLegend(tool.room, colorBlind)} · ` : "";
-      text = `${over}${note}${cutOff}${blueprint}${digs}${legend}${onFoot ? `On foot: ${onFoot} · ` : ""}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
+      // A ghost marker (#520): what a click builds, and what it costs.
+      const ghost = info.stack
+        ? `${finger ? "Tap" : "Click"} to build ${roomDef(info.stack.room).name.toLowerCase()} here: ${Object.entries(roomDef(info.stack.room).cost)
+            .map(([id, v]) => `${num(v)} ${resName(id).toLowerCase()}`)
+            .join(", ")} · `
+        : "";
+      text = `${ghost}${over}${note}${cutOff}${blueprint}${digs}${legend}${onFoot ? `On foot: ${onFoot} · ` : ""}${felt ? `Felt here: ${felt} · ` : ""}${text}`;
     } else if (info.room) {
       const blueprint = info.room.planned ? " (blueprint)" : "";
       const st = snapshot?.roomStatus[info.room.id];
