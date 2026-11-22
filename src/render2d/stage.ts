@@ -4,7 +4,7 @@ import { roomLabel } from "../sim/roomName";
 import { crewsAt, crewsKey } from "../view/crews";
 import { CONDITION_ALPHA, conditionKey, conditionTints } from "../view/conditionView";
 import { roomTints, type Spot } from "../view/reachView";
-import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
+import { AlphaFilter, Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import { ringsAt, type Hole } from "../sim/geometry";
 import { config } from "../sim/config";
 import { roomAt, surfaceRingOf, type Cell, type Layout, type RoomInstance } from "../sim/placement";
@@ -116,6 +116,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
   const digCtx = new GraphicsContext();
   const roomsCtx = new GraphicsContext();
   const overlayCtx = new GraphicsContext();
+  // Corridor mode's map (#556): each colour drawn solid on a layer of its own, faded as a whole, so strips that meet don't darken where they overlap.
+  const mapBuiltCtx = new GraphicsContext();
+  const mapOpenCtx = new GraphicsContext();
+  const mapLayer = (ctx: GraphicsContext, alpha: number) => Object.assign(new Graphics(ctx), { filters: [new AlphaFilter({ alpha })] });
   const landerCtx = new GraphicsContext();
   const buildCtx = new GraphicsContext();
   const fieldCtx = new GraphicsContext();
@@ -719,19 +723,21 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     overlayCtx.rect(b.x, b.y, w, hh).fill({ color, alpha }).stroke({ color, width: 2.5 });
   }
 
-  /** A border in corridor mode's map: its band filled faintly, no outline (#556). */
-  function mapEdge(id: string, color: number, alpha: number): void {
+  /** A border in corridor mode's map, filled solid on its layer (#556). */
+  function mapEdge(ctx: GraphicsContext, id: string, color: number): void {
     const e = layout && edgeById(layout.hole, id);
     if (!e) return;
     const b = bandOf(layout!.hole, e);
     const [w, hh] = b.along === "h" ? [b.len, BAND] : [BAND, b.len];
-    overlayCtx.rect(b.x, b.y, w, hh).fill({ color, alpha });
+    ctx.rect(b.x, b.y, w, hh).fill({ color, alpha: 1 });
   }
 
   /** The floor corridor mode's map was last drawn on: it stays there while the pointer is off the floors. */
   let mapFloorLast: number | null = null;
   function drawOverlay(info: HoverInfo | null): void {
     overlayCtx.clear();
+    mapBuiltCtx.clear();
+    mapOpenCtx.clear();
     if (!layout) return;
     const sel = selected !== null ? layout.rooms.find((r) => r.id === selected) : undefined;
     if (sel) outlineRoom(sel, C.selected, 3);
@@ -752,8 +758,8 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     if (mapFloorLast !== null) {
       const skip = new Set([...(shown?.edges ?? []), ...(info?.edge ? [info.edge.id] : [])]);
       const map = corridorMap(layout, tool, mapFloorLast);
-      for (const id of map.open) if (!skip.has(id)) mapEdge(id, C.ok, MAP.open);
-      for (const id of map.built) if (!skip.has(id)) ghostEdge(id, MAP.built, null, MAP.builtAlpha);
+      for (const id of map.open) if (!skip.has(id)) mapEdge(mapOpenCtx, id, C.ok);
+      for (const id of map.built) if (!skip.has(id)) mapEdge(mapBuiltCtx, id, MAP.built);
     }
     if (shown?.edges.length) {
       for (const id of shown.edges) {
@@ -799,7 +805,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       return;
     }
 
-    if (p.kind === "slot" && highlightsSlot(layout, p, building)) {
+    if (p.kind === "slot" && highlightsSlot(layout, p, building, tool)) {
       const n = h.ringSlots[p.ring - 1]!;
       const [x0, x1] = slotX(p.slot, n);
       const y = ringTop(p.floor, p.ring, h.ringSlots.length);
@@ -860,7 +866,7 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const copy = new Container();
       copy.addChild(new Graphics(skyCtx), new Graphics(holeCtx), new Graphics(digCtx), new Graphics(roomsCtx), new Graphics(fieldCtx));
       copy.addChild(layout ? roomLabels(layout) : new Container());
-      copy.addChild(new Graphics(landerCtx), new Graphics(buildCtx), new Container(), new Graphics(overlayCtx));
+      copy.addChild(new Graphics(landerCtx), new Graphics(buildCtx), new Container(), mapLayer(mapBuiltCtx, MAP.builtAlpha), mapLayer(mapOpenCtx, MAP.open), new Graphics(overlayCtx));
       buildKey = ""; // the new copy needs its progress labels
       copy.x = world.children.length * TURN_W;
       world.addChild(copy);

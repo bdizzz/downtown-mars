@@ -5,7 +5,8 @@ import { corridors } from "../src/sim/corridors";
 import { galleryEdges, radialEdge, type Edge } from "../src/sim/edges";
 import { ensureFloors, type Location } from "../src/sim/placement";
 import { createInitialState, type SimState } from "../src/sim/state";
-import { clickWith, corridorMap, demolishHoverFor, hoverInfoFor } from "../src/view/interaction";
+import { clickWith, corridorMap, demolishHoverFor, edgeHoverFor, highlightsSlot, hoverInfoFor, spokeEnds } from "../src/view/interaction";
+import { arcAt } from "../src/sim/edges";
 import type { Pick } from "../src/view/types";
 import type { SimCommand } from "../src/sim/commands";
 
@@ -53,6 +54,37 @@ describe("corridor mode's map (#556)", () => {
     expect(corridorMap(s.layout, { kind: "corridor", finish: "rock", erase: false, windows: true }, 2)).toEqual({ open: [], built: [] });
     expect(corridorMap(s.layout, { kind: "demolish" }, 2)).toEqual({ open: [], built: [] });
     expect(corridorMap(s.layout, null, 2)).toEqual({ open: [], built: [] });
+  });
+});
+
+describe("corridor mode stays inside the unlocked rings (#556)", () => {
+  it("points at nothing past them, and doesn't light the slot either", () => {
+    const s = site();
+    const tool = { kind: "corridor", finish: "rock", erase: false } as const;
+    const out = s.layout.hole.unlockedRings + 1;
+    const far = radialEdge(s.layout.hole, 2, out, 0);
+    expect(edgeHoverFor(s.layout, s.resources, tool, slot(2, out, 0), far, false).edge).toBeUndefined();
+    // The outer edge of the last open ring borders a locked one: nothing there either.
+    const rim = arcAt(s.layout.hole, 2, s.layout.hole.unlockedRings, 0)!;
+    expect(edgeHoverFor(s.layout, s.resources, tool, slot(2, out - 1, 0), rim, false).edge).toBeUndefined();
+    const inside = radialEdge(s.layout.hole, 2, 1, 3);
+    expect(edgeHoverFor(s.layout, s.resources, tool, slot(2, 1, 3), inside, false).edge?.id).toBe(inside.id);
+    expect(highlightsSlot(s.layout, { kind: "slot", floor: 2, ring: out, slot: 0, locked: true, digging: false, angle: 0 }, true, tool)).toBe(false);
+  });
+});
+
+describe("the map's spokes stop short of the arcs they meet (#556)", () => {
+  it("trims an end only where an arc in the map covers it", () => {
+    const s = site();
+    const hole = s.layout.hole;
+    const spoke = radialEdge(hole, 2, 2, 4);
+    const outer = arcAt(hole, 2, 2, spoke.turn + 1e-6)!;
+    expect(spokeEnds(s.layout, [spoke.id]).get(spoke.id)).toEqual([false, false]);
+    expect(spokeEnds(s.layout, [spoke.id, outer.id]).get(spoke.id)).toEqual([false, true]);
+    // The arc ending at the spoke counts as much as the one starting there.
+    const before = arcAt(hole, 2, 1, spoke.turn - 1e-6)!;
+    expect(spokeEnds(s.layout, [spoke.id, before.id]).get(spoke.id)).toEqual([true, false]);
+    expect(spokeEnds(s.layout, [outer.id]).size).toBe(0);
   });
 });
 

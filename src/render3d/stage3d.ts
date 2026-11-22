@@ -4,11 +4,12 @@ import { LABEL_LAYER } from "./labelLayer";
 import * as THREE from "three";
 import { previewEffects } from "../sim/effects";
 import type { Hole } from "../sim/geometry";
+import { corridors as corridorDefs } from "../sim/corridors";
 import { surfaceRingOf, type Cell, type Layout, type RoomInstance, type SurfaceSpot } from "../sim/placement";
 import { cropStagesKey } from "../view/furnish";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
-import { aimKeyFor, clickWith, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, haloEffect, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
+import { aimKeyFor, clickWith, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, spokeEnds, haloEffect, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
 import { edgeById, nearestEdgeAt, type Edge } from "../sim/edges";
@@ -1332,20 +1333,53 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
    * A border highlighted on its floor, where the corridor is (or will be), outlined so it reads against any finish.
    * Given a room (the windows tool's), only the half on that room's side.
    */
-  function ghostEdge(id: string, color: number, room?: RoomInstance, alpha = 0.55, outlined = true): void {
+  function ghostEdge(id: string, color: number, room?: RoomInstance): void {
     if (!layout) return;
     const e = edgeById(layout.hole, id);
     if (!e) return;
     // On the rock's top where it runs through uncut rock (T-169); on the floor for a room's windows, and when walking.
     const y = room || view.mode === "walk" ? floorSpan(e.floor)[0] + 0.08 : corridorGhostY(layout, e);
     const side = room ? (roomSide(layout, room, e) ?? undefined) : undefined;
-    const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y, side), solid(color, alpha));
+    const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y, side), solid(color, 0.55));
     strip.renderOrder = 9;
     overlay.add(strip);
-    if (!outlined) return;
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(strip.geometry), lines(color));
     edges.renderOrder = 10;
     overlay.add(edges);
+  }
+
+  /**
+   * Corridor mode's map in one colour (#556): every strip in one mesh, in one even shade. Arcs meet end to end;
+   * a spoke stops short where it runs into an arc that's drawn too (`ends`), so no strip lies over another.
+   */
+  function mapStrips(ids: string[], ends: Map<string, [boolean, boolean]>, color: number, alpha: number): void {
+    if (!layout || !ids.length) return;
+    const hall = corridorDefs.widthM / 2;
+    const pos: number[] = [];
+    for (const id of ids) {
+      const e = edgeById(layout.hole, id);
+      if (!e) continue;
+      const y = corridorGhostY(layout, e);
+      if (e.kind === "radial") {
+        const [inner, outer] = ends.get(id) ?? [false, false];
+        const [ra, rb] = ringRadii(layout.hole, e.ring);
+        const r0 = ra + (inner ? hall : 0);
+        const r1 = rb - (outer ? hall : 0);
+        const a = e.turn * TAU;
+        const [cx, cz, px, pz] = [Math.cos(a), Math.sin(a), -Math.sin(a) * hall, Math.cos(a) * hall];
+        const p = (r: number, side: number) => [r * cx + px * side, y, r * cz + pz * side];
+        pos.push(...p(r0, -1), ...p(r1, -1), ...p(r1, 1), ...p(r0, -1), ...p(r1, 1), ...p(r0, 1));
+      } else {
+        const geo = corridorStripGeometry(layout, e, y);
+        pos.push(...Array.from(geo.getAttribute("position").array as ArrayLike<number>));
+        geo.dispose();
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    const mesh = new THREE.Mesh(geo, solid(color, alpha));
+    mesh.renderOrder = 8;
+    overlay.add(mesh);
   }
 
   /** What the overlay was last drawn for, to redraw it when the rooms are rebuilt (their tints go with them). */
@@ -1386,8 +1420,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (mapFloor !== null) {
       const skip = new Set([...(shown?.edges ?? []), ...(info?.edge ? [info.edge.id] : [])]);
       const map = corridorMap(layout, tool, mapFloor);
-      for (const id of map.open) if (!skip.has(id)) ghostEdge(id, HOVER.ok, undefined, MAP.open, false);
-      for (const id of map.built) if (!skip.has(id)) ghostEdge(id, MAP.built, undefined, MAP.builtAlpha);
+      const ends = spokeEnds(layout, [...map.open, ...map.built]);
+      mapStrips(map.built.filter((id) => !skip.has(id)), ends, MAP.built, MAP.builtAlpha);
+      mapStrips(map.open.filter((id) => !skip.has(id)), ends, HOVER.ok, MAP.open);
     }
     if (shown?.edges.length) {
       for (const id of shown.edges) ghostEdge(id, shown.erase ? HOVER.bad : layout.corridors[id] ? HOVER.hover : HOVER.ok);
@@ -1430,7 +1465,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (info.room.id !== selected || tool?.kind === "demolish") markRoom(info.room, tool?.kind === "demolish" ? HOVER.bad : HOVER.hover);
       return;
     }
-    if (p.kind === "slot" && highlightsSlot(layout, p, building)) {
+    if (p.kind === "slot" && highlightsSlot(layout, p, building, tool)) {
       if (view.roomTints) fillCells([p as Cell], HOVER.hover, TINT.slot);
       else outline([p as Cell], HOVER.hover);
     }

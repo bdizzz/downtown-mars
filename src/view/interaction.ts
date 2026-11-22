@@ -5,8 +5,8 @@ import { checkPlacement, roomAt, surfaceRoomId, type Layout, type Location, type
 import { roomDef } from "../sim/rooms";
 import { effectName } from "../sim/effects";
 import { isOpen } from "../sim/excavation";
-import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, shortfall } from "../sim/corridors";
-import { cellEdges, isGalleryEdge, type Edge } from "../sim/edges";
+import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, inUnlockedRings, shortfall } from "../sim/corridors";
+import { arcAt, cellEdges, edgeById, isGalleryEdge, type Edge } from "../sim/edges";
 import { ringSize } from "../sim/geometry";
 import { glazedAcross, glazedOnWall, roomForWindows, wallOf, windowComfort, windowCost, windowRefusal } from "../sim/windows";
 import { corridorRefitPlan, corridorRefitRefusal, liningById, MATERIALS } from "../sim/materials";
@@ -91,7 +91,8 @@ export function hoverInfoFor(layout: Layout, resources: Record<string, number>, 
 /** Hover info for the corridor tool: the border under the pointer, and what drawing (or erasing) it would do. */
 export function edgeHoverFor(layout: Layout, resources: Record<string, number>, tool: Extract<Tool, { kind: "corridor" }>, p: Pick, edge: Edge | null, erase: boolean): HoverInfo {
   const info: HoverInfo = { pick: p };
-  if (!edge) return info;
+  // Past the rings opened so far there's nothing to point at (#556).
+  if (!edge || !inUnlockedRings(layout.hole, edge)) return info;
   const finish = layout.corridors[edge.id];
   const removing = erase || tool.erase;
   if (tool.windows) return windowHover(layout, resources, p, edge, removing);
@@ -146,7 +147,29 @@ export function demolishHoverFor(layout: Layout, resources: Record<string, numbe
 }
 
 /** How corridor mode's map is drawn (#556), in every view: how faint the open borders are, and the tint on built corridors. */
-export const CORRIDOR_MAP = { open: 0.14, built: 0x8fd0ff, builtAlpha: 0.32 };
+export const CORRIDOR_MAP = { open: 0.07, built: 0x8fd0ff, builtAlpha: 0.2 };
+
+/**
+ * For drawing the map in one even shade (#556): which ends of each spoke (radial border) in `ids` run into
+ * an arc border that's also in `ids`, so the spoke can stop short there rather than overlap the arc's strip.
+ * [inner, outer], keyed by the spoke's id; arcs aren't listed (they meet end to end without overlapping).
+ */
+export function spokeEnds(layout: Layout, ids: Iterable<string>): Map<string, [boolean, boolean]> {
+  const hole = layout.hole;
+  const set = new Set(ids);
+  const ε = 1e-6;
+  const covered = (floor: number, circle: number, turn: number) =>
+    [turn + ε, turn - ε].some((t) => {
+      const arc = arcAt(hole, floor, circle, ((t % 1) + 1) % 1);
+      return !!arc && set.has(arc.id);
+    });
+  const out = new Map<string, [boolean, boolean]>();
+  for (const id of set) {
+    const e = edgeById(hole, id);
+    if (e?.kind === "radial") out.set(id, [covered(e.floor, e.ring - 1, e.turn), covered(e.floor, e.ring, e.turn)]);
+  }
+  return out;
+}
 
 /**
  * Corridor mode's map of a floor (#556): the borders a new corridor could go along (drawn faintly) and the
@@ -193,9 +216,11 @@ export function corridorCommand(tool: Tool, edge: EdgeHover | undefined): SimCom
 
 /**
  * Does an empty slot under the pointer light up? Dug-out space always does;
- * bare rock only in Build mode, where it's somewhere to put a room.
+ * bare rock only in Build mode, where it's somewhere to put a room. Never with the
+ * corridor tool, which points at borders, not slots (#556).
  */
-export function highlightsSlot(layout: Layout, p: Extract<Pick, { kind: "slot" }>, building: boolean): boolean {
+export function highlightsSlot(layout: Layout, p: Extract<Pick, { kind: "slot" }>, building: boolean, tool: Tool = null): boolean {
+  if (tool?.kind === "corridor") return false;
   return building || isOpen(layout, p);
 }
 
