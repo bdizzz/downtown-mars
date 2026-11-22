@@ -53,6 +53,8 @@ export interface HoverInfo {
   room?: RoomInstance;
   check?: CheckResult;
   edge?: EdgeHover;
+  /** Over a ghost marker with nothing in hand (#520): the stair or elevator piece a click builds. */
+  stack?: { room: string; at: Location };
 }
 
 /** A snaked chain of corridors waiting for the player to confirm: to carve, (erase) to fill in, or (refit) to refit in a lining. */
