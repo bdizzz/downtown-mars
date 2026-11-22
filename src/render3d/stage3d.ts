@@ -348,10 +348,11 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const rockWall = new THREE.Mesh(rockWallGeo, withSlice(withRock(new THREE.MeshStandardMaterial({ color: C.rock, roughness: 1, side: THREE.BackSide })), slice, "wall"));
   rockWall.visible = false;
   scene.add(rockWall);
-  // Keeping the surface (#558): the front of the hole below the floor in view, the part of the wall the cut
-  // takes away, seen from outside as cut rock, so the floors below stay behind it. Out of the sun's reckoning,
-  // as the cut face is.
-  const ROCK_FRONT_DEPTH = 900;
+  // Keeping the surface (#558): the front of the hole from the floor in view's ceiling down, the part of the wall
+  // the cut takes away, seen from outside as cut rock: the floor's outer layer (in front of its outer rooms'
+  // walls, `proud` metres out so their outer faces stay behind it) and, below, hiding the floors below. Out of
+  // the sun's reckoning, as the cut face is.
+  const ROCK_FRONT = { depth: 900, proud: 0.35 };
   const rockFront = new THREE.Mesh(rockWallGeo, withSlice(withRock(new THREE.MeshStandardMaterial({ color: C.rock, roughness: 1 })), slice, "front"));
   rockFront.visible = false;
   rockFront.castShadow = rockFront.receiveShadow = false;
@@ -379,8 +380,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (!rockWall.visible || !hole) return;
     const r = holeOuterRadius(hole) + ROCK_FLUSH;
     rockWall.scale.set(r, -floorSpan(f!)[0] + SHELL_MARGIN, r);
-    rockFront.position.y = floorSpan(f!)[0];
-    rockFront.scale.set(r, ROCK_FRONT_DEPTH, r);
+    rockFront.position.y = floorSpan(f!)[1];
+    rockFront.scale.set(r + ROCK_FRONT.proud, ROCK_FRONT.depth, r + ROCK_FRONT.proud);
   }
 
   /**
