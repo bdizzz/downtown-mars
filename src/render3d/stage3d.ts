@@ -20,7 +20,7 @@ import { Look, type LookLike } from "./look";
 import { clampCutAngle, CUT_ANGLE, DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { intersectGlobalClipping } from "./wedgeClip";
 import { piecesReady, setPieces } from "./landPieces";
-import { FAR_SHADOW, LAND_DETAIL, makeSlice, sliceJag, withCutRock, withFarShadow, withRegolith, withRock, withSlice } from "./surfaces";
+import { FAR_SHADOW, LAND_DETAIL, makeSlice, sliceJag, sliceShadow, type SliceRole, withCutRock, withFarShadow, withRegolith, withRock, withSlice } from "./surfaces";
 import { RoomEffects, type FxView } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { behindSlab, clippedAway, slabBelow, type Slab } from "./cull3d";
@@ -2297,7 +2297,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function updateShadows(): void {
     if (!renderer.shadowMap.enabled) return;
     setSunShadow();
-    const key = `${layoutGroup.uuid}:${terrain?.group.uuid}:${rig?.group.uuid}:${holeGroup.uuid}:${cut()}:${keptSurface()}`;
+    const key = `${layoutGroup.uuid}:${terrain?.group.uuid}:${rig?.group.uuid}:${holeGroup.uuid}:${cut()}:${keptSurface() ? Math.round(Math.atan2(slice.dir.value.y, slice.dir.value.x) / SUN_SHADOW.redrawAngle / 10) : "-"}`;
     const sunMoved = sun.position.clone().normalize().angleTo(shadowSun) > SUN_SHADOW.redrawAngle;
     if (key === shadowKey && !sunMoved) return;
     if (key !== shadowKey) {
@@ -2309,6 +2309,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         // Ceilings (on foot only) cast none, or the shadows would change with the camera.
         m.castShadow = !seeThrough && !m.userData.ceiling;
         m.receiveShadow = true;
+        // What the slice cuts away casts no shadow either.
+        const role = !Array.isArray(mat) && (mat.userData.sliceRole as SliceRole | undefined);
+        if (role) m.customDepthMaterial = sliceShadow(slice, role);
       });
       // Keeping the surface (#558), the cut face (and the rock front under the floor) is no rock the sun
       // knows of: it neither casts nor takes shadows, so it shades evenly (the land's shadow would darken it, the hole's opening light it in patches).

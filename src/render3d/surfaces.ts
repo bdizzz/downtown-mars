@@ -510,6 +510,22 @@ export function withSlice<T extends THREE.Material>(m: T, slice: Slice, role: Sl
       );
   };
   m.customProgramCacheKey = () => `${prevKey}|slice-${role}`;
+  m.userData.sliceRole = role;
+  return m;
+}
+
+const sliceShadows = new Map<string, THREE.MeshDepthMaterial>();
+
+/**
+ * What a sliced material casts in the sun's shadow map (#558): the same cut, so what's cut away casts no shadow
+ * (the land over the hole and the near half of the wall would otherwise shade the rooms while unseen).
+ */
+export function sliceShadow(slice: Slice, role: SliceRole): THREE.MeshDepthMaterial {
+  let m = sliceShadows.get(role);
+  if (!m) {
+    m = withSlice(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }), slice, role);
+    sliceShadows.set(role, m);
+  }
   return m;
 }
 
