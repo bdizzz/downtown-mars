@@ -1382,7 +1382,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const spots = tool?.kind === "build" && cut() === null && view.mode !== "walk" ? surfaceSpots(layout, tool.room) : [];
     surfaceSpotTint(spots, HOVER.ok, SPOTS.faint);
     // Where stairs and elevators could reach a floor further: faint outlines, the one under the pointer below.
-    if (showsStackSpots()) for (const g of stackSpots(layout, cut()!)) stackGhost(g.type, g.cells);
+    if (showsStackSpots(true)) for (const g of stackSpots(layout, cut()!)) stackGhost(g.type, g.cells);
     // Walking, what's under the pointer isn't outlined (a click still picks it).
     if (!info || view.mode === "walk") return;
     const p = info.pick;
@@ -1568,9 +1568,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     return hoverInfoFor(layout, resources, tool, p, latest?.holeGates ?? []);
   }
 
-  /** Ghost markers where stairs and elevators could grow (#520): in Build mode with nothing in hand, on the floor picked in Free view. */
-  function showsStackSpots(): boolean {
-    return building && !tool && view.mode === "iso" && cut() !== null;
+  /**
+   * Ghost markers where stairs and elevators could grow (#520), on the floor picked in Free view, in Build mode:
+   * with nothing in hand they can be clicked to build; with a room in hand (`drawn`) they're only shown.
+   */
+  function showsStackSpots(drawn = false): boolean {
+    const hand = !tool || (drawn && tool.kind === "build");
+    return building && hand && view.mode === "iso" && cut() !== null;
   }
 
   /** A click: on a ghost marker it builds there; otherwise whatever the tool does. */

@@ -145,8 +145,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       }
       return;
     }
-    // Where stairs and elevators could reach this floor, in Build mode with nothing in hand (#520): faint, the hovered one below.
-    if (building && !tool) drawStackSpots(overlayCtx, layout, floor);
+    // Where stairs and elevators could reach this floor, in Build mode, with nothing or a room in hand (#520): faint, the hovered one below.
+    if (building && (!tool || tool.kind === "build")) drawStackSpots(overlayCtx, layout, floor);
     if (!info) return;
     const p = info.pick;
     if (info.stack && info.check) {
