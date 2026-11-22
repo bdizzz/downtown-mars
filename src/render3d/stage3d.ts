@@ -1372,6 +1372,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         if (r) markRoom(r, HOVER.bad);
       }
     }
+    // Where stairs and elevators could reach a floor further: faint outlines, the one under the pointer below.
+    if (showsStackSpots(true)) for (const g of stackSpots(layout, cut()!)) stackGhost(g.type, g.cells);
     // A snaked chain (while dragging, or waiting for confirmation): every border highlighted.
     const shown = snaking ? proposalFor(tool, chain.edges, chainErase) : proposal;
     if (shown?.edges.length) {
@@ -1381,8 +1383,6 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // A surface room in hand: every spot it could go, faintly, the surface showing (T-107). The one under the pointer, stronger, below.
     const spots = tool?.kind === "build" && cut() === null && view.mode !== "walk" ? surfaceSpots(layout, tool.room) : [];
     surfaceSpotTint(spots, HOVER.ok, SPOTS.faint);
-    // Where stairs and elevators could reach a floor further: faint outlines, the one under the pointer below.
-    if (showsStackSpots(true)) for (const g of stackSpots(layout, cut()!)) stackGhost(g.type, g.cells);
     // Walking, what's under the pointer isn't outlined (a click still picks it).
     if (!info || view.mode === "walk") return;
     const p = info.pick;
@@ -1570,10 +1570,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   /**
    * Ghost markers where stairs and elevators could grow (#520), on the floor picked in Free view, in Build mode:
-   * with nothing in hand they can be clicked to build; with a room in hand (`drawn`) they're only shown.
+   * with nothing in hand they can be clicked to build; with a room or the corridor tool in hand (`drawn`) they're only shown.
    */
   function showsStackSpots(drawn = false): boolean {
-    const hand = !tool || (drawn && tool.kind === "build");
+    const hand = !tool || (drawn && (tool.kind === "build" || tool.kind === "corridor"));
     return building && hand && view.mode === "iso" && cut() !== null;
   }
 
