@@ -107,6 +107,21 @@ describe("fitting furniture into a room", () => {
     expect(frameOf(l, r)!.left(17)).toBeGreaterThan(before);
   });
 
+  it("keeps a public room's floor and furniture as they were when a corridor runs along it (#564)", () => {
+    const l = createLayout(createHole(10, 3, 3, config.geometry));
+    const r = room(l, "small_plaza", ring(1, 2, 3, 2));
+    const before = furnish(l, r);
+    expect(before.length).toBeGreaterThan(0);
+    const frame = frameOf(l, r)!;
+    l.corridors["R1.2.3"] = "rock";
+    l.corridors["R1.2.5"] = "rock";
+    expect(frameOf(l, r)!.left(17)).toBeCloseTo(frame.left(17), 9);
+    // Everything on the floor stays put; only what hung on the walls now gone comes down.
+    const standing = (list: typeof before) => list.filter((f) => !isMounted(f.item));
+    expect(standing(furnish(l, r))).toEqual(standing(before));
+    expect(frameOf(l, r)!.solid.left).toBe(false);
+  });
+
   it("furnishes only built rooms that have a template", () => {
     const l = createLayout(createHole(10, 3, 3, config.geometry));
     const r = room(l, "bunk_dorm", ring(1, 1, 0, 2));

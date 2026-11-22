@@ -137,3 +137,19 @@ describe("seeing distances", () => {
     expect(distancesFromCells(s.layout, cells, "walk").size).toBeGreaterThan(0);
   });
 });
+
+describe("open space (#564)", () => {
+  it("walks and carries air through a run of empty rooms and a stairwell beside a plaza", () => {
+    const s = deep();
+    const clinic = build(s, "clinic", ring(2, 1, 1));
+    build(s, "empty_room_s", ring(2, 1, 2));
+    build(s, "empty_room_s", ring(2, 1, 3));
+    build(s, "stairwell", ring(1, 1, 4));
+    build(s, "tiny_plaza", ring(2, 1, 5));
+    const galley = build(s, "galley", ring(2, 1, 6));
+    finish(s);
+    // No corridors on floor 2: the clinic reaches the galley through the dug-out space, the stairs and the plaza.
+    expect(stepsBetween(s.layout, clinic, galley)).not.toBeNull();
+    expect(stepsBetween(s.layout, clinic, galley, "air")).not.toBeNull();
+  });
+});

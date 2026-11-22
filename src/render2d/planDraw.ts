@@ -2,7 +2,7 @@ import { temperatureTint } from "../view/temperature";
 import type { FillInput, GraphicsContext } from "pixi.js";
 import { config } from "../sim/config";
 import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
-import { edgeById, edgeSides, isGalleryEdge, type Edge } from "../sim/edges";
+import { cellEdges, edgeById, edgeSides, isGalleryEdge, type ArcEdge, type Edge } from "../sim/edges";
 import { isOpen } from "../sim/excavation";
 import type { Hole } from "../sim/geometry";
 import { canLine, liningOf, MATERIALS } from "../sim/materials";
@@ -14,6 +14,7 @@ import { openShaftRadius, slotAngles } from "../render3d/cylinder";
 import { doorsOnFloor } from "../view/doors";
 import { tubeAt } from "../view/gallery";
 import { roomLook } from "../view/roomFinish";
+import { joinsOpen, openSpaceAt } from "../view/openSpace";
 import { shade, tint } from "./art";
 import { corridorStrip } from "./corridorArt";
 import { CATEGORY_COLORS } from "./palette";
@@ -215,11 +216,14 @@ export function drawRooms(g: GraphicsContext, l: Layout, floor: number, opts: Ro
       else g.poly(poly).fill(color);
     }
     // Under construction: an orange outline, like tape around the works.
+    // A built walk-through room has no wall onto open space beside it (#564), so no line there.
+    const mine = new Set(room.cells.map((c) => `${c.floor}:${c.ring}:${c.slot}`));
+    const joins = joinsOpen(room) ? (x: Cell) => !mine.has(`${x.floor}:${x.ring}:${x.slot}`) && openSpaceAt(l, x) : undefined;
     if (room.building) outlineCells(g, h, cells, C.build, 2.5, !!def.public);
-    else outlineCells(g, h, cells, room.connected ? shade(color, 0.45) : C.bad, room.connected ? 1.5 : 3, !!def.public);
+    else outlineCells(g, h, cells, room.connected ? shade(color, 0.45) : C.bad, room.connected ? 1.5 : 3, !!def.public, 0, joins);
     // A lined room: a thin border inside its edge in the lining's colour (with room colours off, the fill already says it).
     const accent = !room.planned && !room.building && opts.roomColors !== false ? liningAccent(room) : null;
-    if (accent !== null) outlineCells(g, h, cells, tint(accent, 0.25), 2, !!def.public, 0.9);
+    if (accent !== null) outlineCells(g, h, cells, tint(accent, 0.25), 2, !!def.public, 0.9, joins);
     const waiting = onFloor(room.pendingCells ?? []);
     if (waiting.length) {
       for (const c of waiting) g.poly(cellSector(h, c)).fill({ color, alpha: 0.4 }).poly(cellSector(h, c)).fill(opts.stripes);
@@ -367,7 +371,17 @@ export function drawCorridors(g: GraphicsContext, l: Layout, floor: number): voi
 
 
 /** The outline of a group of cells: arcs on the ring edges they don't share, sides where the next slot isn't theirs. */
-export function outlineCells(g: GraphicsContext, h: Hole, cells: Cell[], color: number, width: number, openToShaft = false, inset = 0): void {
+export function outlineCells(
+  g: GraphicsContext,
+  h: Hole,
+  cells: Cell[],
+  color: number,
+  width: number,
+  openToShaft = false,
+  inset = 0,
+  /** Open space across (#564): no wall, so no line there either. */
+  joins: (other: Cell) => boolean = () => false,
+): void {
   const own = new Set(cells.map((c) => `${c.ring}:${c.slot}`));
   const rings = cells.map((c) => c.ring);
   const inner = Math.min(...rings);
@@ -378,21 +392,37 @@ export function outlineCells(g: GraphicsContext, h: Hole, cells: Cell[], color: 
     let [a0, a1] = slotAngles(c.slot, n);
     let [r0, r1] = ringRadii(h, c.ring);
     // Inset (metres): the outline drawn that far inside the room's edges.
-    const before = own.has(`${c.ring}:${(c.slot - 1 + n) % n}`);
-    const after = own.has(`${c.ring}:${(c.slot + 1) % n}`);
+    const before = own.has(`${c.ring}:${(c.slot - 1 + n) % n}`) || joins({ ...c, slot: (c.slot - 1 + n) % n });
+    const after = own.has(`${c.ring}:${(c.slot + 1) % n}`) || joins({ ...c, slot: (c.slot + 1) % n });
     const da = inset / ((r0 + r1) / 2);
     if (!before) a0 += da;
     if (!after) a1 -= da;
     if (c.ring === inner) r0 += inset;
     if (c.ring === outer) r1 -= inset;
-    const arc = (r: number) => {
-      const steps = Math.max(1, Math.ceil((a1 - a0) / ARC_STEP));
-      g.moveTo(...xy(r, a0));
-      for (let i = 1; i <= steps; i++) g.lineTo(...xy(r, a0 + ((a1 - a0) * i) / steps));
+    const stroke = (r: number, b0: number, b1: number) => {
+      const steps = Math.max(1, Math.ceil((b1 - b0) / ARC_STEP));
+      g.moveTo(...xy(r, b0));
+      for (let i = 1; i <= steps; i++) g.lineTo(...xy(r, b0 + ((b1 - b0) * i) / steps));
       g.stroke(style);
     };
-    if (c.ring === inner && !(openToShaft && c.ring === 1)) arc(r0 + 0.15);
-    if (c.ring === outer) arc(r1 - 0.15);
+    // Along each border on the circle, except where open space is across it.
+    const arc = (r: number, circle: number) => {
+      const shut = cellEdges(h, c)
+        .filter((e): e is ArcEdge => e.kind === "arc" && e.circle === circle)
+        .filter((e) => !edgeSides(h, e).some((x) => x && x.ring !== c.ring && joins(x)))
+        .map((e) => [Math.max(a0, e.a0 * TAU), Math.min(a1, e.a1 * TAU)] as const)
+        .filter(([b0, b1]) => b1 - b0 > 1e-9);
+      // Runs of borders side by side are one line.
+      const runs: [number, number][] = [];
+      for (const [b0, b1] of shut) {
+        const last = runs.at(-1);
+        if (last && Math.abs(last[1] - b0) < 1e-9) last[1] = b1;
+        else runs.push([b0, b1]);
+      }
+      for (const [b0, b1] of runs) stroke(r, b0, b1);
+    };
+    if (c.ring === inner && !(openToShaft && c.ring === 1)) arc(r0 + 0.15, c.ring - 1);
+    if (c.ring === outer) arc(r1 - 0.15, c.ring);
     if (!before) g.moveTo(...xy(r0, a0)).lineTo(...xy(r1, a0)).stroke(style);
     if (!after) g.moveTo(...xy(r0, a1)).lineTo(...xy(r1, a1)).stroke(style);
   }
