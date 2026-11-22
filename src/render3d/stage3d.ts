@@ -1568,9 +1568,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     return hoverInfoFor(layout, resources, tool, p, latest?.holeGates ?? []);
   }
 
-  /** Ghost markers where stairs and elevators could grow (#520): with nothing in hand, on the floor picked in Free view. */
+  /** Ghost markers where stairs and elevators could grow (#520): in Build mode with nothing in hand, on the floor picked in Free view. */
   function showsStackSpots(): boolean {
-    return !tool && view.mode === "iso" && cut() !== null;
+    return building && !tool && view.mode === "iso" && cut() !== null;
   }
 
   /** A click: on a ghost marker it builds there; otherwise whatever the tool does. */
