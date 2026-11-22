@@ -20,7 +20,7 @@ import { Look, type LookLike } from "./look";
 import { clampCutAngle, CUT_ANGLE, DEFAULT_VIEW3D, type Camera, type View3d } from "../view/cameras";
 import { intersectGlobalClipping } from "./wedgeClip";
 import { piecesReady, setPieces } from "./landPieces";
-import { FAR_SHADOW, LAND_DETAIL, makeSlice, withCutRock, withFarShadow, withRegolith, withRock, withSlice } from "./surfaces";
+import { FAR_SHADOW, LAND_DETAIL, makeSlice, sliceJag, withCutRock, withFarShadow, withRegolith, withRock, withSlice } from "./surfaces";
 import { RoomEffects, type FxView } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { behindSlab, clippedAway, slabBelow, type Slab } from "./cull3d";
@@ -114,10 +114,12 @@ const ROCK_FLUSH = 0.05;
  * Free view's cut-out round the picked floor (surfaces.ts withSlice): the land and its cut face thin out
  * between these distances past the rings (metres) into the dark backdrop; where land meets the cut,
  * both crumble over `edge` metres; the cut rock darkens toward the backdrop by up to `tint`, fully by
- * `tintDepth` metres down (keeping the surface, #558, by `keptShade` at least); and opening it takes `seconds`. The cut runs where the rings look widest;
+ * `tintDepth` metres down; and opening it takes `seconds`. Keeping the surface (#558), the cut face darkens by
+ * `keptShade` at least, and the cut is jagged (surfaces.ts sliceJag) by up to `jag` metres either way, the land
+ * and the rock wall reaching `jagLap` past it to meet the face's coarser mesh. The cut runs where the rings look widest;
  * with the camera over the wall (nearer than `nearest` radii), as if it were that far out.
  */
-const SLICE = { fadeFrom: 6, fadeTo: 45, edge: 5, tint: 0.7, tintDepth: 30, keptShade: 0.45, seconds: 0.5, nearest: 1.05 };
+const SLICE = { fadeFrom: 6, fadeTo: 45, edge: 5, tint: 0.7, tintDepth: 30, keptShade: 0.45, jag: 2.5, jagLap: 0.35, seconds: 0.5, nearest: 1.05 };
 /**
  * Behind the title (T-090): Free view drifting round a floor (radians a second), always at dusk (the hour, as a
  * share of the day: low warm light, windows aglow), pulled back to `distance` of the farthest zoom and a little
@@ -289,21 +291,27 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   // below the sliced-away land there's earth, not sky. It leaves a gap for the
   // hole's own section (the backdrop behind the rooms), but not for the crust above floor 1: that's
   // rock all the way in to the shaft wall.
-  const SECTION = { reach: 1700, bottom: -900, samples: 120, tuck: 0.01 };
-  const sectionPos = new Float32Array(3 * 2 * (SECTION.samples + 1) * 2 + 3 * 8 + 3 * 8);
+  // Each strip is `rows` deep (denser near the top), so a jagged cut (#558) can wander as it goes down.
+  const SECTION = { reach: 1700, bottom: -900, samples: 240, rows: 14, tuck: 0.01 };
+  /** Vertices in one strip: a column of rows+1 at each sample. */
+  const STRIP = (SECTION.samples + 1) * (SECTION.rows + 1);
+  const sectionPos = new Float32Array(3 * 2 * STRIP + 3 * 8 + 3 * 8);
   const sectionGeo = new THREE.BufferGeometry();
   sectionGeo.setAttribute("position", new THREE.BufferAttribute(sectionPos, 3));
   {
-    // Two strips (one each side of the cut) of top/bottom pairs, the slab under the hole (half each side), then the crust either side of the shaft.
+    // Two strips (one each side of the cut) of columns, top to bottom, the slab under the hole (half each side), then the crust either side of the shaft.
     const idx: number[] = [];
-    const n = SECTION.samples + 1;
-    for (const base of [0, 2 * n]) {
+    const col = SECTION.rows + 1;
+    for (const base of [0, STRIP]) {
       for (let i = 0; i < SECTION.samples; i++) {
-        const a = base + 2 * i;
-        idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3);
+        for (let j = 0; j < SECTION.rows; j++) {
+          const a = base + i * col + j;
+          const b = a + col;
+          idx.push(a, a + 1, b, b, a + 1, b + 1);
+        }
       }
     }
-    const slab = 4 * n;
+    const slab = 2 * STRIP;
     for (const a of [slab, slab + 4, slab + 8, slab + 12]) idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3);
     sectionGeo.setIndex(idx);
   }
@@ -376,7 +384,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // Opening the slice (not moving between floors): it dissolves in.
     if (opening && slice.on.value < 0.5) slice.amount.value = 0;
     slice.on.value = opening ? 1 : 0;
-    slice.keep.value = keptSurface() ? 1 : 0;
+    const kept = keptSurface();
+    slice.keep.value = kept ? 1 : 0;
+    slice.jag.value = kept ? SLICE.jag : 0;
+    slice.jagLap.value = kept ? SLICE.jagLap : 0;
     slice.dir.value.set(out.x, out.z);
     slice.offset.value = offset;
     slice.radius.value = r;
@@ -389,34 +400,48 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const inner = underground ? Math.sqrt(Math.max(0, r * r - offset * offset)) : holeOuterRadius(hole) + SHELL_MARGIN;
     // Underground, no slab under the hole (the rooms below the picked floor stay in view), and the face
     // stops at the picked floor's cap: below it, past the faded ground, there's only the backdrop. Keeping
-    // the surface (#558), the backdrop is the sky, so the face runs on down, and under the picked floor too.
-    const kept = keptSurface();
-    const deep = underground ? (kept ? floorSpan(cut()!)[1] : SECTION.bottom) : floorSpan(hole.floors + 1)[0] - SHELL_MARGIN;
+    // the surface (#558), the backdrop is the sky, so the face runs on down; and a slab stands in front of
+    // the hole under the picked floor, from its floor down, hiding the floors below it.
+    const deep = underground ? (kept ? floorSpan(cut()!)[0] : SECTION.bottom) : floorSpan(hole.floors + 1)[0] - SHELL_MARGIN;
     const bottom = underground && !kept ? floorSpan(cut()!)[1] : SECTION.bottom;
     const n = SECTION.samples + 1;
     let k = 0;
-    /** `d` metres out along a side of the cut, a hair to its kept side so the clip planes don't take it. */
-    const put = (side: CutSide, d: number, y: number) => {
-      sectionPos[k++] = d * side.along.x + out.x * offset + side.keep.x * CUT_FACE_BACK;
+    /** `d` metres out along a side of the cut and `off` toward the camera, a hair to its kept side so the clip planes don't take it. */
+    const put = (side: CutSide, d: number, y: number, off = offset) => {
+      sectionPos[k++] = d * side.along.x + out.x * off + side.keep.x * CUT_FACE_BACK;
       sectionPos[k++] = y;
-      sectionPos[k++] = d * side.along.z + out.z * offset + side.keep.z * CUT_FACE_BACK;
+      sectionPos[k++] = d * side.along.z + out.z * off + side.keep.z * CUT_FACE_BACK;
     };
-    const ground = (side: CutSide, d: number) => (terrain ? terrain.heightAt(d * side.along.x + out.x * offset, d * side.along.z + out.z * offset) : 0);
+    const ground = (side: CutSide, d: number, off = offset) => (terrain ? terrain.heightAt(d * side.along.x + out.x * off, d * side.along.z + out.z * off) : 0);
+    /** How far the jagged cut stands off its line here (0 unless the surface is kept). */
+    const jag = (side: CutSide, d: number, y: number) => slice.jag.value * sliceJag(d * side.sign, y);
+    /** How deep the face is seen: the picked floor's floor (or, in the cutaway, the hole's bottom). */
+    const lowest = underground ? floorSpan(cut()!)[0] : deep;
     for (const side of sides) {
       for (let i = 0; i < n; i++) {
         // Denser near the hole, where the ground is seen close up.
-        const d = inner + (SECTION.reach - inner) * (i / SECTION.samples) ** 2;
-        put(side, d, ground(side, d));
-        put(side, d, bottom);
+        const d0 = inner + (SECTION.reach - inner) * (i / SECTION.samples) ** 2;
+        const top = ground(side, d0, offset + jag(side, d0, 0));
+        for (let j = 0; j <= SECTION.rows; j++) {
+          // Rows evenly down to the picked floor (where the face is seen), then one on to the bottom. Jagged,
+          // the face stands off its line, and its first column follows the wall, where the jagged cut meets it.
+          const y = j < SECTION.rows ? top + (Math.max(bottom, lowest) - top) * (j / (SECTION.rows - 1)) : bottom;
+          // (The last row runs straight down from the one above, so the long face below doesn't lean.)
+          const off = offset + jag(side, d0, Math.max(y, lowest));
+          const d = i === 0 ? Math.sqrt(Math.max(0, r * r - off * off)) : d0;
+          put(side, d, y, off);
+        }
       }
     }
-    // The slab under the hole, from the axis out to the strips on each side.
+    // The slab under the hole, from the axis out to the strips on each side; keeping the surface, in front of the hole.
     const seam = wedgeSeam(sides);
+    const slabOff = kept ? r + CUT_FACE_BACK * 4 : offset;
+    const slabOut = kept ? r : inner;
     for (const side of sides) {
-      put(side, -seam, deep);
-      put(side, -seam, SECTION.bottom);
-      put(side, inner, deep);
-      put(side, inner, SECTION.bottom);
+      put(side, -seam, deep, slabOff);
+      put(side, -seam, SECTION.bottom, slabOff);
+      put(side, slabOut, deep, slabOff);
+      put(side, slabOut, SECTION.bottom, slabOff);
     }
     // The crust over floor 1, from the shaft wall out to the strips (underground, the strips start at the wall).
     // The wall is drawn in flat steps, so the face starts where the cut meets them, tucked just behind.
@@ -2263,7 +2288,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function updateShadows(): void {
     if (!renderer.shadowMap.enabled) return;
     setSunShadow();
-    const key = `${layoutGroup.uuid}:${terrain?.group.uuid}:${rig?.group.uuid}:${holeGroup.uuid}:${cut()}`;
+    const key = `${layoutGroup.uuid}:${terrain?.group.uuid}:${rig?.group.uuid}:${holeGroup.uuid}:${cut()}:${keptSurface()}`;
     const sunMoved = sun.position.clone().normalize().angleTo(shadowSun) > SUN_SHADOW.redrawAngle;
     if (key === shadowKey && !sunMoved) return;
     if (key !== shadowKey) {
@@ -2276,6 +2301,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         m.castShadow = !seeThrough && !m.userData.ceiling;
         m.receiveShadow = true;
       });
+      // Keeping the surface (#558), the cut face is no rock the sun knows of: it neither casts nor takes
+      // shadows, so it shades evenly (the land's shadow would darken it, the hole's opening light it in patches).
+      section.castShadow = section.receiveShadow = !keptSurface();
       // Not the sky, nor colonists (who move between redraws).
       skyDome.mesh.castShadow = skyDome.mesh.receiveShadow = false;
       people.group.traverse((o) => (o.castShadow = false));

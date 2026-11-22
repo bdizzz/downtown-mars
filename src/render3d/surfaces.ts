@@ -363,7 +363,36 @@ export interface Slice {
   keptShade: { value: number };
   /** 1: keep the surface (#558, an experiment): nothing thins out with distance, so the land runs on to the horizon. */
   keep: { value: number };
+  /** How far (metres) the cut wanders either side of its line, jagged (0: straight). See `sliceJag`. */
+  jag: { value: number };
+  /** How far the land and the wall reach past the jagged cut, so they always meet the face's coarser mesh. */
+  jagLap: { value: number };
 }
+
+/**
+ * The jagged cut (#558): how far the cut stands off its straight line, at `s` metres along it and height `y`,
+ * as a share of `jag` (-1 to 1). A few waves of different lengths, so it reads as broken rock, not a wave.
+ * The land's and the wall's edges (in their shaders) and the cut face's mesh (stage3d.ts) all follow it.
+ */
+const JAG_WAVES: { along: number; up: number; phase: number; weight: number }[] = [
+  { along: 0.13, up: 0.07, phase: 0.0, weight: 0.35 },
+  { along: 0.37, up: -0.19, phase: 1.7, weight: 0.3 },
+  { along: 0.81, up: 0.41, phase: 4.1, weight: 0.2 },
+  { along: 1.9, up: -0.9, phase: 2.6, weight: 0.15 },
+];
+
+export function sliceJag(s: number, y: number): number {
+  let j = 0;
+  for (const w of JAG_WAVES) j += w.weight * Math.sin(w.along * s + w.up * y + w.phase);
+  return j;
+}
+
+const JAG_GLSL = `float sliceJag(vec2 xz, float y) {
+    float s = dot(xz, vec2(-sliceDir.y, sliceDir.x));
+    return sliceJagAmount * (${JAG_WAVES.map((w) => `${w.weight.toFixed(3)} * sin(${w.along.toFixed(3)} * s + ${w.up.toFixed(3)} * y + ${w.phase.toFixed(3)})`).join(" + ")});
+  }
+  // Where the cut runs at this point: its line, jagged, with the land and wall reaching a little past it.
+  float sliceLine(vec3 p) { return sliceOffset + sliceJag(p.xz, p.y) + sliceJagLap; }`;
 
 export interface SliceLook {
   fadeFrom: number;
@@ -390,6 +419,8 @@ export function makeSlice(look: SliceLook): Slice {
     tintDepth: { value: look.tintDepth },
     keptShade: { value: look.keptShade },
     keep: { value: 0 },
+    jag: { value: 0 },
+    jagLap: { value: 0 },
   };
 }
 
@@ -400,9 +431,10 @@ export function makeSlice(look: SliceLook): Slice {
  */
 export type SliceRole = "land" | "wall" | "face" | "ground";
 
-const SLICE_UNIFORMS = ["On", "Amount", "Offset", "Radius", "FadeFrom", "FadeTo", "Edge", "Tint", "TintDepth", "Keep", "KeptShade"].map((u) => `uniform float slice${u};`).join("\n") + "\nuniform vec2 sliceDir;\nuniform vec3 sliceEarth;";
+const SLICE_UNIFORMS = ["On", "Amount", "Offset", "Radius", "FadeFrom", "FadeTo", "Edge", "Tint", "TintDepth", "Keep", "KeptShade", "JagAmount", "JagLap"].map((u) => `uniform float slice${u};`).join("\n") + "\nuniform vec2 sliceDir;\nuniform vec3 sliceEarth;";
 
 const SLICE_GLSL = /* glsl */ `
+  ${JAG_GLSL}
   // A stipple threshold per pixel (interleaved gradient noise): fine, even, and steady as the camera moves.
   float sliceStipple() { return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))); }
   float sliceFade(vec3 p) { return smoothstep(sliceRadius + sliceFadeFrom, sliceRadius + sliceFadeTo, length(p.xz)); }
@@ -428,14 +460,14 @@ const SLICE_GLSL = /* glsl */ `
 /** When a fragment goes, by role (n is its stipple threshold). */
 const SLICE_CUT: Record<SliceRole, string> = {
   // The near half and the land over the rings dissolve away; the rest thins out with distance and crumbles by the cut.
-  land: `(dot(vSlicePos.xz, sliceDir) > sliceOffset || length(vSlicePos.xz) < sliceRadius) ? n < sliceAmount
+  land: `(dot(vSlicePos.xz, sliceDir) > sliceLine(vSlicePos) || length(vSlicePos.xz) < sliceRadius) ? n < sliceAmount
     : n < max(sliceFar(vSlicePos), sliceCrumble(sliceOffset - dot(vSlicePos.xz, sliceDir), vSlicePos.xz)) * sliceAmount`,
   // The near half dissolves away.
-  wall: "dot(vSlicePos.xz, sliceDir) > sliceOffset && n < sliceAmount",
+  wall: "dot(vSlicePos.xz, sliceDir) > sliceLine(vSlicePos) && n < sliceAmount",
   // Dissolves in, thinning out with distance and crumbling along its top.
   face: "n > sliceAmount || n < max(sliceFar(vSlicePos), sliceCrumble(-vSlicePos.y, vec2(vSlicePos.x + vSlicePos.z, vSlicePos.y)))",
-  // Thins out with distance.
-  ground: "n < sliceFade(vSlicePos) * sliceAmount",
+  // Thins out with distance; keeping the surface (#558), its near half past the wall goes too, as it stands in front of the cut face.
+  ground: "(sliceKeep > 0.5 && length(vSlicePos.xz) > sliceRadius && dot(vSlicePos.xz, sliceDir) > sliceLine(vSlicePos)) || n < sliceFade(vSlicePos) * sliceAmount",
 };
 
 /** Let a slice cut this material, in this role. */
@@ -458,6 +490,8 @@ export function withSlice<T extends THREE.Material>(m: T, slice: Slice, role: Sl
       sliceTintDepth: slice.tintDepth,
       sliceKeep: slice.keep,
       sliceKeptShade: slice.keptShade,
+      sliceJagAmount: slice.jag,
+      sliceJagLap: slice.jagLap,
     });
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vSlicePos;")
