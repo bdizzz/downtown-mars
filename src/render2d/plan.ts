@@ -2,22 +2,22 @@ import { UI_FONT } from "../view/font";
 import { crewsAt, crewsKey } from "../view/crews";
 import { conditionKey } from "../view/conditionView";
 import { reachKey, type Spot } from "../view/reachView";
-import { Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
+import { AlphaFilter, Application, Container, Graphics, GraphicsContext, Text } from "pixi.js";
 import { previewEffects, type EffectField } from "../sim/effects";
 import type { Happiness } from "../sim/happiness";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import type { DrillView } from "../sim/snapshot";
 import { floorSpan, pickAt } from "../render3d/cylinder";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect } from "../view/interaction";
+import { clickWith, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, mapJoints, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
 import { drawGlyph, drawPlus } from "./art";
 import { constructionStripes, corridorStrip } from "./corridorArt";
-import { edgeById, nearestEdge, type Edge } from "../sim/edges";
+import { edgeById, nearestEdge, nearestEdgeAt, type Edge } from "../sim/edges";
 import { HEAT } from "./palette";
 import { stackClick, stackHover } from "../view/stackSpots";
-import { BAND, C, FIELD_MAX, PX, TAU, cellSector, drawBase, drawStackSpots, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, type ProgressJob } from "./planDraw";
+import { BAND, C, FIELD_MAX, PX, TAU, cellSector, sector, drawBase, drawStackSpots, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, type ProgressJob } from "./planDraw";
 import { ringRadii, ringsAt } from "../sim/geometry";
 
 // The plan view: one floor seen from above, drawn flat. The shaft in the
@@ -46,7 +46,11 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   const world = new Container();
   let labels = new Container();
   const progressLabels = new Container();
-  world.addChild(new Graphics(baseCtx), new Graphics(roomsCtx), new Graphics(fieldCtx), labels, progressLabels, new Graphics(overlayCtx));
+  // Corridor mode's map (#556): each colour drawn solid on a layer of its own, faded as a whole, so strips that meet don't darken where they overlap.
+  const mapBuiltCtx = new GraphicsContext();
+  const mapOpenCtx = new GraphicsContext();
+  const mapLayer = (ctx: GraphicsContext, alpha: number) => Object.assign(new Graphics(ctx), { filters: [new AlphaFilter({ alpha })] });
+  world.addChild(new Graphics(baseCtx), new Graphics(roomsCtx), new Graphics(fieldCtx), labels, progressLabels, mapLayer(mapBuiltCtx, MAP.builtAlpha), mapLayer(mapOpenCtx, MAP.open), new Graphics(overlayCtx));
   const caption = new Text({ text: "", style: { fontFamily: UI_FONT, fill: C.label, fontSize: 13, fontWeight: "700" } });
   caption.position.set(10, 8);
   app.stage.addChild(world, caption);
@@ -121,8 +125,18 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     overlayCtx.poly(poly).fill({ color, alpha }).stroke({ color, width: 2.5 });
   }
 
+  /** A border in corridor mode's map, filled solid on its layer (#556). */
+  function mapEdge(ctx: GraphicsContext, id: string, color: number): void {
+    const e = layout && edgeById(layout.hole, id);
+    if (!e || e.floor !== floor) return;
+    const s = stripOf(layout!.hole, e);
+    ctx.poly(corridorStrip(ctx, s.at, s.normal, s.len, BAND, "rock", 0)).fill({ color, alpha: 1 });
+  }
+
   function drawOverlay(info: HoverInfo | null): void {
     overlayCtx.clear();
+    mapBuiltCtx.clear();
+    mapOpenCtx.clear();
     if (!layout) return;
     const h = layout.hole;
     const sel = selected !== null ? layout.rooms.find((r) => r.id === selected) : undefined;
@@ -139,6 +153,19 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     if (building && (!tool || tool.kind === "build" || tool.kind === "corridor")) drawStackSpots(overlayCtx, layout, floor);
     // A snaked chain (while dragging, or waiting for confirmation): every border on this floor highlighted.
     const shown = snaking ? proposalFor(tool, chain.edges, chainErase) : proposal;
+    // Corridor mode (#556): where corridors could go on this floor, faintly, and those already there, tinted.
+    const skip = new Set([...(shown?.edges ?? []), ...(info?.edge ? [info.edge.id] : [])]);
+    const map = corridorMap(layout, tool, floor);
+    for (const id of map.open) if (!skip.has(id)) mapEdge(mapOpenCtx, id, C.ok);
+    for (const id of map.built) if (!skip.has(id)) mapEdge(mapBuiltCtx, id, MAP.built);
+    // Square joints where spokes meet rings' borders, as the corridors' own turns, and the walk-through rooms tinted as corridors.
+    const hall = BAND / PX / 2;
+    for (const j of mapJoints(layout, map.open, map.built).joints) {
+      const r = ringRadii(layout.hole, j.circle)[1];
+      const a = j.turn * TAU;
+      (j.built ? mapBuiltCtx : mapOpenCtx).poly(sector(r - hall, r + hall, a - hall / r, a + hall / r)).fill({ color: j.built ? MAP.built : C.ok, alpha: 1 });
+    }
+    for (const c of map.publicCells) mapBuiltCtx.poly(cellSector(layout.hole, c)).fill({ color: MAP.built, alpha: 1 });
     if (shown?.edges.length) {
       for (const id of shown.edges) {
         if (shown.erase) ghostEdge(id, C.bad, null, 0.35);
@@ -183,7 +210,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       if (info.room.id !== selected || tool?.kind === "demolish") markRoom(info.room, tool?.kind === "demolish" ? C.bad : C.hover);
       return;
     }
-    if (p.kind === "slot" && highlightsSlot(layout, p, building)) overlayCtx.poly(cellSector(h, p, 0.15)).fill({ color: C.hover, alpha: 0.15 }).stroke({ color: C.hover, width: 2 });
+    if (p.kind === "slot" && highlightsSlot(layout, p, building, tool)) overlayCtx.poly(cellSector(h, p, 0.15)).fill({ color: C.hover, alpha: 0.15 }).stroke({ color: C.hover, width: 2 });
     else if (p.kind === "gallery") {
       overlayCtx.circle(0, 0, h.shaftRadiusM * PX).stroke({ color: C.hover, width: 2 });
     }
@@ -296,6 +323,10 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   function hoverInfo(): HoverInfo | null {
     if (!layout || !pointer) return null;
     if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, pickHere(), edgeHere(), shift);
+    if (tool?.kind === "demolish") {
+      const at = pointHere();
+      return demolishHoverFor(layout, resources, pickHere(), at ? nearestEdgeAt(layout.hole, floor, at.rings, at.turn) : null);
+    }
     if (building && !tool) {
       const ghost = stackHover(layout, resources, pickHere(), gates);
       if (ghost) return ghost;
