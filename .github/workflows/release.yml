@@ -1,0 +1,41 @@
+# Publish a GitHub release whenever main reaches a new minor version (#580).
+# Every PR bumps the patch, so only the first commit of each major.minor gets
+# a tag (v0.7.0) and a release: notes grouped from the commit subjects since
+# the last one, plus the packaged web build to download. Minors that were
+# missed (the first run's backfill) get a tag and notes, without the zip.
+# See scripts/release.mjs and docs/WORKFLOW.md "Versions".
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One at a time, never cancelled, so two quick merges can't race for a tag.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the whole history and its tags, to find where each minor began
+      - id: check
+        run: node scripts/release.mjs --check >> "$GITHUB_OUTPUT"
+      - if: steps.check.outputs.zip == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - if: steps.check.outputs.zip == 'true'
+        run: npm ci && npm run package
+      - run: node scripts/release.mjs --publish
+        env:
+          GH_TOKEN: ${{ github.token }}

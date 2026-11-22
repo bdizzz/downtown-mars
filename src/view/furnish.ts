@@ -149,24 +149,25 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
   const n = hole.ringSlots[room.at.ring - 1]!;
   const a0 = slotAngles(room.at.slot, n)[0];
   const a1 = a0 + (room.at.w / n) * Math.PI * 2;
-  // What runs along each side: a corridor pulls that wall back by half its width.
+  // What runs along each side: a corridor pulls that wall back by half its width. A public room
+  // has no wall there and keeps its full floor, so its furniture stays put when a corridor comes (#564).
+  const open = !!roomDef(room.type).public;
   const hall = (id: string) => !!layout.corridors?.[id];
-  let left = WALL;
-  let right = WALL;
-  let front = WALL;
-  let back = WALL;
+  const halls = { left: false, right: false, front: false, back: false };
   for (const c of cells) {
     const m = hole.ringSlots[c.ring - 1]!;
-    if (!own.has(key({ ...c, slot: (c.slot - 1 + m) % m })) && hall(`R${floor}.${c.ring}.${c.slot}`)) left = HALL;
-    if (!own.has(key({ ...c, slot: (c.slot + 1) % m })) && hall(`R${floor}.${c.ring}.${(c.slot + 1) % m}`)) right = HALL;
+    if (!own.has(key({ ...c, slot: (c.slot - 1 + m) % m })) && hall(`R${floor}.${c.ring}.${c.slot}`)) halls.left = true;
+    if (!own.has(key({ ...c, slot: (c.slot + 1) % m })) && hall(`R${floor}.${c.ring}.${(c.slot + 1) % m}`)) halls.right = true;
   }
   for (const id of Object.keys(layout.corridors ?? {})) {
     const e = id.startsWith(`A${floor}.`) ? edgeById(hole, id) : null;
     if (!e || e.kind !== "arc" || !overlaps(e.a0 * TAU, e.a1 * TAU, a0, a1)) continue;
     // A gallery tube runs in the shaft, outside the room's front wall: it takes nothing from the room.
-    if (e.circle === inner - 1 && e.circle > 0) front = HALL;
-    if (e.circle === outer) back = HALL;
+    if (e.circle === inner - 1 && e.circle > 0) halls.front = true;
+    if (e.circle === outer) halls.back = true;
   }
+  const pull = (side: keyof typeof halls) => (halls[side] && !open ? HALL : WALL);
+  const [left, right, front, back] = [pull("left"), pull("right"), pull("front"), pull("back")];
   const g = FIT.wallGap;
   const rIn = ringRadii(hole, inner)[0] + front + g;
   const rOut = ringRadii(hole, outer)[1] - back - g;
@@ -175,7 +176,6 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
   const doors = doorways(layout, room)
     .filter((d) => d.floor === floor)
     .map((d) => keepClear(d));
-  const open = !!roomDef(room.type).public;
   // Which walls have windows in them on this floor.
   const glass = new Set(
     glazedWalls(layout, room)
@@ -201,10 +201,10 @@ export function frameOf(layout: Layout, room: RoomInstance, onFloor?: number): F
     floor,
     solid: {
       // A public room's open sides, ring 1's front onto the shaft on a public room, and glazed walls aren't.
-      front: !(open && (front === HALL || inner === 1)) && !glass.has("inner"),
-      back: !(open && back === HALL) && !glass.has("outer"),
-      left: !(open && left === HALL) && !glass.has("left"),
-      right: !(open && right === HALL) && !glass.has("right"),
+      front: !(open && (halls.front || inner === 1)) && !glass.has("inner"),
+      back: !(open && halls.back) && !glass.has("outer"),
+      left: !(open && halls.left) && !glass.has("left"),
+      right: !(open && halls.right) && !glass.has("right"),
     },
   };
 }

@@ -35,6 +35,7 @@ import { DayClock, smoothDayFraction } from "../view/dayClock";
 import { buildTerrain, GROUND_BASE, siteSeed, soilTint, type Terrain } from "./terrain3d";
 import { CRUST, FLOOR_H, floorAtY, floorSpan, openShaftRadius, shaftCollarRadius, slotAngles, TAU } from "./cylinder";
 import { isoFitDistance } from "./isoReach";
+import { stackClick, stackHover, stackSpots } from "../view/stackSpots";
 import { inCarvedRegion, NUDGE, pickPast, rayPlane, surfacePickAt } from "./pick3d";
 import { config } from "../sim/config";
 import { roomSurfacePlace, setPanelDust, surfacePlace } from "./surface3d";
@@ -99,6 +100,12 @@ const ISO_PAN = { speed: 0.6, minSpeed: 12, reach: 1.3 };
  * Zooming out stops once every ring the hole can have (open or not) fits the view, with `pad` to spare.
  */
 const ISO = { start: 1.6, min: 12, pad: 1.1, elev: 0.75, minElev: 0.3, maxElev: 1.4, lookPast: 0.12 };
+/**
+ * Free view while placing a room or corridor (#507): it glides over `seconds` to look straight down
+ * (`elev` radians, just short of vertical) on the floor's centre, far enough out to fit the unlocked
+ * rings with `pad` to spare, and glides back to where it was once placing ends.
+ */
+const TOP_DOWN = { elev: 1.53, pad: 1.12, seconds: 0.45 };
 /** First person: how finely and how far to look for room to stand on another floor (m), eye height off the floor, walking and running speed (m/s), how fast dragging (or, locked, the mouse) turns the head, and Q/E turning (rad/s). */
 // Turning (radians a pixel) at the settings' look speed of 1: by dragging, and with mouse look. Godot's are the same, per point.
 const WALK = { eye: 1.8, speed: 4.5, run: 10, turn: 0.007, lookTurn: 0.006, keyTurn: 1.8 };
@@ -131,6 +138,8 @@ const SHOWCASE = { turn: 0.04, dusk: 0.715, distance: 0.72, elev: 0.55, wideFrom
 type Mode = Camera;
 
 const HOVER = { ok: 0x7fd67f, bad: 0xe0503a, hover: 0xffe2b0, selected: 0xffffff };
+/** The faint outline of a ghost marker, where stairs or an elevator could reach a floor further (#520). */
+const STACK_GHOST = 0x8fb8c8;
 /**
  * Tints laid over a room's own walls and floor (#337), in place of a recoloured outline: hover and the
  * selection brighten them (added light, the selection more), a tool's red or green tints them, an empty
@@ -815,7 +824,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     /** Free view: how far the view has been panned (WASD), in metres across the ground. */
     panX: 0,
     panZ: 0,
+    /** Free view: how far toward looking straight down at the floor's centre (0 to 1), for placing (#507). */
+    top: 0,
   };
+  /** Placing (#507): Free view's pose before it went top-down (null when it isn't), and the glide in progress. */
+  let topSaved: typeof cam | null = null;
+  let topGlide: { from: typeof cam; to: typeof cam; t: number } | null = null;
   /** Where the camera was when the office opened (#568), put back when it closes. */
   let heldCam: typeof cam | null = null;
   /** Where each camera starts: what Reset camera goes back to (Free view's distance and the fitted views are worked out from the hole). */
@@ -874,7 +888,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function clampCamera(): void {
     cam.out = Math.min(CUTAWAY.max, Math.max(CUTAWAY.min, cam.out));
     // Free view's distance stays 0 ("not set yet") until the mode is first used and sizes it to the floor.
-    cam.isoElev = Math.min(ISO.maxElev, Math.max(ISO.minElev, cam.isoElev));
+    cam.isoElev = Math.min(topSaved || topGlide ? TOP_DOWN.elev : ISO.maxElev, Math.max(ISO.minElev, cam.isoElev));
     if (cam.iso) cam.iso = Math.min(isoMax(), Math.max(ISO.min, cam.iso));
     walker.pitch = Math.min(MAX_PITCH, Math.max(-MAX_PITCH, walker.pitch));
     const bottom = -depth() + EYE_HEIGHT;
@@ -916,7 +930,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       camera.position.copy(out).multiplyScalar(cam.iso * Math.cos(cam.isoElev)).setY(y + cam.iso * Math.sin(cam.isoElev));
       camera.position.x += cam.panX;
       camera.position.z += cam.panZ;
-      const past = outerRadius() * ISO.lookPast;
+      const past = outerRadius() * ISO.lookPast * (1 - cam.top);
       camera.lookAt(-out.x * past + cam.panX, y, -out.z * past + cam.panZ);
     } else {
       // First person. On a flight of stairs, as high up it as you've climbed.
@@ -1201,6 +1215,93 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     return plusMat;
   }
 
+  /** Ghost badges (#520), one per kind: a dark disc ringed in the ghost colour, with steps (stairs) or a lift car. */
+  const ghostMats = new Map<string, THREE.SpriteMaterial>();
+  function ghostBadge(type: string): THREE.SpriteMaterial {
+    const kind = type === "elevator" ? "lift" : type === "spiral_stair" ? "spiral" : "stairs";
+    let m = ghostMats.get(kind);
+    if (m) return m;
+    const c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const g = c.getContext("2d")!;
+    const ink = `#${STACK_GHOST.toString(16).padStart(6, "0")}`;
+    g.fillStyle = "rgba(26, 15, 13, 0.75)";
+    g.strokeStyle = ink;
+    g.lineWidth = 3;
+    g.setLineDash([6, 4]);
+    g.beginPath();
+    g.arc(32, 32, 28, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.setLineDash([]);
+    g.lineWidth = 4;
+    g.lineCap = g.lineJoin = "round";
+    g.beginPath();
+    if (kind === "lift") {
+      g.strokeRect(22, 14, 20, 36);
+      for (const [y0, y1] of [[30, 22], [34, 42]] as const) {
+        g.moveTo(26, y0);
+        g.lineTo(32, y1);
+        g.lineTo(38, y0);
+      }
+    } else if (kind === "spiral") {
+      g.moveTo(32, 32);
+      for (let i = 1; i <= 24; i++) {
+        const a = (i / 24) * Math.PI * 3;
+        const r = 2 + (i / 24) * 16;
+        g.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r);
+      }
+    } else {
+      // Steps going down.
+      g.moveTo(16, 18);
+      for (let i = 0; i < 4; i++) {
+        g.lineTo(16 + 8 * (i + 1), 18 + 8 * i);
+        g.lineTo(16 + 8 * (i + 1), 18 + 8 * (i + 1));
+      }
+    }
+    g.stroke();
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    m = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true, opacity: 0.85 });
+    ghostMats.set(kind, m);
+    return m;
+  }
+
+  /** A ghost marker (#520): a faint wash and a dashed outline over the spot, and a badge saying stairs or lift. */
+  function stackGhost(type: string, cells: Cell[]): void {
+    if (!layout || !cells.length) return;
+    fillCells(cells, STACK_GHOST, 0.12);
+    const geo = roomGeometry(layout, cells);
+    const edges = new THREE.LineSegments(outlineGeometry(geo), overlayMat(`dash:${STACK_GHOST}`, () => withWallsDown(new THREE.LineDashedMaterial({ color: STACK_GHOST, dashSize: 1.6, gapSize: 1, depthTest: false, transparent: true }))));
+    edges.computeLineDistances();
+    edges.renderOrder = 10;
+    overlay.add(edges);
+    geo.dispose();
+    spriteOver(cells[0]!, ghostBadge(type), 5, true);
+  }
+
+  /** A plus floating over a slot: the piece being added to stairs or an elevator. */
+  function plusOver(p: Cell): void {
+    spriteOver(p, plusMaterial(), 2.2);
+  }
+
+  /** A sprite floating mid-height over a slot, kept sharp on the label layer. */
+  function spriteOver(p: Cell, mat: THREE.SpriteMaterial, size: number, centred = false): void {
+    if (!layout) return;
+    const n = layout.hole.ringSlots[p.ring - 1]!;
+    const [a0, a1] = slotAngles(p.slot, n);
+    const [r0, r1] = ringRadii(layout.hole, p.ring);
+    const [y0, y1] = floorSpan(p.floor);
+    const a = (a0 + a1) / 2;
+    const r = p.ring === 1 && !centred ? r0 - 0.4 : (r0 + r1) / 2;
+    const plus = new THREE.Sprite(mat);
+    plus.scale.set(size, size, 1);
+    plus.position.set(r * Math.cos(a), (y0 + y1) / 2, r * Math.sin(a));
+    plus.renderOrder = 11;
+    plus.layers.set(LABEL_LAYER);
+    overlay.add(plus);
+  }
+
   function outline(cells: Cell[], color: number): void {
     if (!layout || !cells.length) return;
     const geo = roomGeometry(layout, cells);
@@ -1315,6 +1416,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         if (r) markRoom(r, HOVER.bad);
       }
     }
+    // Where stairs and elevators could reach a floor further: faint outlines, the one under the pointer below.
+    if (showsStackSpots(true)) for (const g of stackSpots(layout, cut()!)) stackGhost(g.type, g.cells);
     // A snaked chain (while dragging, or waiting for confirmation): every border highlighted.
     const shown = snaking ? proposalFor(tool, chain.edges, chainErase) : proposal;
     if (shown?.edges.length) {
@@ -1333,6 +1436,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       for (const id of w?.edges ?? [info.edge.id]) ghostEdge(id, info.edge.refusal || info.edge.erase ? HOVER.bad : HOVER.ok, room);
       return;
     }
+    if (info.stack && info.check && p.kind === "slot") {
+      const color = info.check.ok ? HOVER.ok : HOVER.bad;
+      const cells = info.check.cells.filter((c) => c.floor === p.floor);
+      fillCells(cells, color, 0.4);
+      outline(cells, color);
+      if (info.check.ok) plusOver(p);
+      return;
+    }
     if (tool?.kind === "build" && info.check) {
       const color = info.check.ok ? HOVER.ok : HOVER.bad;
       const cells = info.check.cells.length ? info.check.cells : p.kind === "slot" ? [p as Cell] : [];
@@ -1343,20 +1454,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       if (info.check.surfaceCells.length) surfaceMarker(info.check.surfaceCells, ring, color);
       if (info.check.ok && cells.length) drawHalo(tool.room, cells);
       // Extending stairs or an elevator: a plus floating on the piece being added.
-      if (info.check.ok && info.check.merges && p.kind === "slot") {
-        const n = layout.hole.ringSlots[p.ring - 1]!;
-        const [a0, a1] = slotAngles(p.slot, n);
-        const [r0, r1] = ringRadii(layout.hole, p.ring);
-        const [y0, y1] = floorSpan(p.floor);
-        const a = (a0 + a1) / 2;
-        const r = p.ring === 1 ? r0 - 0.4 : (r0 + r1) / 2;
-        const plus = new THREE.Sprite(plusMaterial());
-        plus.scale.set(2.2, 2.2, 1);
-        plus.position.set(r * Math.cos(a), (y0 + y1) / 2, r * Math.sin(a));
-        plus.renderOrder = 11;
-        plus.layers.set(LABEL_LAYER);
-        overlay.add(plus);
-      }
+      if (info.check.ok && info.check.merges && p.kind === "slot") plusOver(p);
       return;
     }
     if (info.room) {
@@ -1507,12 +1605,32 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     rayAt(pointer.clientX, pointer.clientY);
     const p = pickRay(raycaster.ray);
     if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, p, edgeAtPick(p), shift);
+    if (showsStackSpots()) {
+      const ghost = stackHover(layout, resources, p, latest?.holeGates ?? []);
+      if (ghost) return ghost;
+    }
     return hoverInfoFor(layout, resources, tool, p, latest?.holeGates ?? []);
+  }
+
+  /**
+   * Ghost markers where stairs and elevators could grow (#520), on the floor picked in Free view, in Build mode:
+   * with nothing in hand they can be clicked to build; with a room or the corridor tool in hand (`drawn`) they're only shown.
+   */
+  function showsStackSpots(drawn = false): boolean {
+    const hand = !tool || (drawn && (tool.kind === "build" || tool.kind === "corridor"));
+    return building && hand && view.mode === "iso" && cut() !== null;
+  }
+
+  /** A click: on a ghost marker it builds there; otherwise whatever the tool does. */
+  function clickOn(info: HoverInfo): void {
+    if (!layout) return;
+    if (info.stack) stackClick(info, opts);
+    else clickWith(layout, tool, info, opts);
   }
 
   function refreshHover(force = false): void {
     const info = hoverInfo();
-    const key = hoverKeyFor(info, tool, layout?.version ?? -1, selected) + view.mode + building;
+    const key = hoverKeyFor(info, tool, layout?.version ?? -1, selected) + view.mode + building + cut();
     const changed = key !== hoverKey;
     if (!force && !changed) return;
     hoverKey = key;
@@ -1552,7 +1670,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     else if (done.edges.length === 1 && layout) {
       const info = hoverInfo();
       // By finger, a single border is aimed first, like a room.
-      if (info && (!fingerDown || aim.tap(tool, aimKeyFor(info, tool, layout)))) clickWith(layout, tool, info, opts);
+      if (info && (!fingerDown || aim.tap(tool, aimKeyFor(info, tool, layout)))) clickOn(info);
     }
     refreshHover(true);
   }
@@ -1636,6 +1754,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   /** Switching camera mode: set the new one up, and rebuild if what's hidden changed. */
   function enterMode(before: Mode): void {
+    if (before === "iso" && view.mode !== "iso") dropTopDown();
     if (view.mode === "iso" && !cam.iso) cam.iso = outerRadius() * ISO.start;
     if (view.mode === "cutaway" && cutawayFitted) fitCutaway();
     if (view.mode === "walk" && before !== "walk") placeWalker();
@@ -1747,6 +1866,62 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       cam.panX *= most / far;
       cam.panZ *= most / far;
     }
+  }
+
+  // ---- Placing (#507): Free view looks straight down, then goes back ----
+
+  /** Is a room or corridor in hand? */
+  function isPlacing(t: Tool): boolean {
+    return t?.kind === "build" || t?.kind === "corridor";
+  }
+
+  /** Start gliding Free view to a pose (only the parts Free view uses move). */
+  function glideTo(to: typeof cam): void {
+    topGlide = { from: { ...cam }, to, t: 0 };
+    dirty = true;
+  }
+
+  /** Placing started or ended: in Free view, go top-down (keeping where it was), or back there. */
+  function placingChanged(on: boolean): void {
+    if (on && !topSaved && view.mode === "iso" && !showcase.on && cam.iso) {
+      topSaved = { ...cam };
+      const dist = isoFitDistance(outerRadius() * TOP_DOWN.pad, TOP_DOWN.elev, FOV, camera.aspect);
+      glideTo({ ...cam, isoElev: TOP_DOWN.elev, iso: Math.max(ISO.min, dist), panX: 0, panZ: 0, top: 1 });
+    } else if (!on && topSaved) {
+      const back = topSaved;
+      topSaved = null;
+      glideTo(back);
+    }
+  }
+
+  /** One frame of the glide: returns true if the camera moved. It lands exactly on its pose. */
+  function topFrame(dt: number): boolean {
+    if (!topGlide) return false;
+    const g = topGlide;
+    g.t = Math.min(1, g.t + dt / TOP_DOWN.seconds);
+    const k = g.t * g.t * (3 - 2 * g.t);
+    const mix = (a: number, b: number) => a + (b - a) * k;
+    // The heading turns the short way round.
+    const dTheta = Math.atan2(Math.sin(g.to.theta - g.from.theta), Math.cos(g.to.theta - g.from.theta));
+    cam.theta = g.from.theta + dTheta * k;
+    cam.iso = mix(g.from.iso, g.to.iso);
+    cam.isoElev = mix(g.from.isoElev, g.to.isoElev);
+    cam.panX = mix(g.from.panX, g.to.panX);
+    cam.panZ = mix(g.from.panZ, g.to.panZ);
+    cam.top = mix(g.from.top, g.to.top);
+    if (g.t >= 1) {
+      Object.assign(cam, g.to);
+      topGlide = null;
+    }
+    return true;
+  }
+
+  /** Left Free view mid-placing: put its pose back at once, so coming back to it finds it as it was. */
+  function dropTopDown(): void {
+    if (topGlide && !topSaved) Object.assign(cam, topGlide.to);
+    else if (topSaved) Object.assign(cam, topSaved);
+    topSaved = null;
+    topGlide = null;
   }
 
   // ---- Reset camera: back to where the current view starts ----
@@ -1866,7 +2041,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     if (view.mode === "walk" && locked()) {
       pointer = centre();
       const info = layout ? hoverInfo() : null;
-      if (info && layout) clickWith(layout, tool, info, opts);
+      if (info && layout) clickOn(info);
       return;
     }
 
@@ -1957,7 +2132,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       const info = hoverInfo();
       if (finger) refreshHover();
       // A finger can't hover first: with a tool, the first tap shows where it lands.
-      if (info && (!finger || aim.tap(tool, aimKeyFor(info, tool, layout)))) clickWith(layout, tool, info, opts);
+      if (info && (!finger || aim.tap(tool, aimKeyFor(info, tool, layout)))) clickOn(info);
     }
     drag = null;
     if (snaking) endSnake();
@@ -2190,6 +2365,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       updateReadout();
     }
     if (isoFrame(dt)) applyCamera();
+    if (topFrame(dt)) applyCamera();
     if (showcase.on) {
       frameShowcase();
       if (!showcase.still) cam.theta += SHOWCASE.turn * dt;
@@ -2870,6 +3046,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       refreshHover(); // affordability or the layout may have changed
     },
     setTool(t: Tool) {
+      if (isPlacing(t) !== isPlacing(tool)) placingChanged(isPlacing(t));
       tool = t;
       refreshHover(true);
     },
@@ -2995,6 +3172,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       overlayMats.forEach((m) => m.dispose());
       plusMat?.map?.dispose();
       plusMat?.dispose();
+      ghostMats.forEach((m) => {
+        m.map?.dispose();
+        m.dispose();
+      });
       percentMats.forEach((m) => {
         m.map?.dispose();
         m.dispose();

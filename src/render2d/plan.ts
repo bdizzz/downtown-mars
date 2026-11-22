@@ -16,7 +16,8 @@ import { drawGlyph, drawPlus } from "./art";
 import { constructionStripes, corridorStrip } from "./corridorArt";
 import { edgeById, nearestEdge, type Edge } from "../sim/edges";
 import { HEAT } from "./palette";
-import { BAND, C, FIELD_MAX, PX, TAU, cellSector, drawBase, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, type ProgressJob } from "./planDraw";
+import { stackClick, stackHover } from "../view/stackSpots";
+import { BAND, C, FIELD_MAX, PX, TAU, cellSector, drawBase, drawStackSpots, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, type ProgressJob } from "./planDraw";
 import { ringRadii, ringsAt } from "../sim/geometry";
 
 // The plan view: one floor seen from above, drawn flat. The shaft in the
@@ -134,6 +135,8 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
         if (r) markRoom(r, C.bad);
       }
     }
+    // Where stairs and elevators could reach this floor, in Build mode, with nothing, a room or the corridor tool in hand (#520): faint, the hovered one below.
+    if (building && (!tool || tool.kind === "build" || tool.kind === "corridor")) drawStackSpots(overlayCtx, layout, floor);
     // A snaked chain (while dragging, or waiting for confirmation): every border on this floor highlighted.
     const shown = snaking ? proposalFor(tool, chain.edges, chainErase) : proposal;
     if (shown?.edges.length) {
@@ -146,6 +149,17 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     }
     if (!info) return;
     const p = info.pick;
+    if (info.stack && info.check) {
+      const color = info.check.ok ? C.ok : C.bad;
+      const cells = onFloor(info.check.cells);
+      for (const c of cells) overlayCtx.poly(cellSector(h, c, 0.15)).fill({ color, alpha: 0.35 });
+      if (cells.length) outlineCells(overlayCtx, h, cells, color, 3);
+      if (info.check.ok && cells.length) {
+        const centre = roomCentre(h, cells);
+        drawPlus(overlayCtx, centre.x, centre.y, Math.min(24, centre.size * 0.6), color);
+      }
+      return;
+    }
     if (info.edge) {
       const color = info.edge.refusal || info.edge.erase ? C.bad : C.ok;
       const preview = !info.edge.erase && !info.edge.refusal && tool?.kind === "corridor" && !info.edge.windows ? tool.finish : null;
@@ -282,7 +296,18 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   function hoverInfo(): HoverInfo | null {
     if (!layout || !pointer) return null;
     if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, pickHere(), edgeHere(), shift);
+    if (building && !tool) {
+      const ghost = stackHover(layout, resources, pickHere(), gates);
+      if (ghost) return ghost;
+    }
     return hoverInfoFor(layout, resources, tool, pickHere(), gates);
+  }
+
+  /** A click: on a ghost marker it builds there; otherwise whatever the tool does. */
+  function clickOn(info: HoverInfo): void {
+    if (!layout) return;
+    if (info.stack) stackClick(info, opts);
+    else clickWith(layout, tool, info, opts);
   }
 
   function refreshHover(force = false): void {
@@ -320,7 +345,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     else if (done.edges.length === 1 && layout) {
       const info = hoverInfo();
       // By finger, a single border is aimed first, like a room.
-      if (info && (!fingerDown || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickWith(layout, tool, info, opts);
+      if (info && (!fingerDown || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickOn(info);
     }
     refreshHover(true);
   }
@@ -428,7 +453,7 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
       const info = hoverInfo();
       if (finger) refreshHover();
       // A finger can't hover first: with a tool, the first tap shows where it lands.
-      if (info && (!finger || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickWith(layout, tool, info, opts);
+      if (info && (!finger || aim.tap(tool, hoverKeyFor(info, tool, 0, null)))) clickOn(info);
     }
     drag = null;
     if (snaking) endSnake();
