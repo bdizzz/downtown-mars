@@ -1,0 +1,1 @@
+export{n as WebGLRenderer}from"./pixi-Ch12FOb1.js";
