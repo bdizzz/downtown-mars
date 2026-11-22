@@ -126,7 +126,7 @@ const ROCK_FLUSH = 0.05;
  * and the rock wall reaching `jagLap` past it to meet the face's coarser mesh. The cut runs where the rings look widest;
  * with the camera over the wall (nearer than `nearest` radii), as if it were that far out.
  */
-const SLICE = { fadeFrom: 6, fadeTo: 45, edge: 5, tint: 0.7, tintDepth: 30, keptShade: 0.45, jag: 2.5, jagLap: 0.35, seconds: 0.5, nearest: 1.05 };
+const SLICE = { fadeFrom: 6, fadeTo: 45, edge: 5, tint: 0.7, tintDepth: 30, keptShade: 0.45, jag: 1.4, jagLap: 0.35, seconds: 0.5, nearest: 1.05 };
 /**
  * Behind the title (T-090): Free view drifting round a floor (radians a second), always at dusk (the hour, as a
  * share of the day: low warm light, windows aglow), pulled back to `distance` of the farthest zoom and a little
@@ -304,7 +304,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const SECTION = { reach: 1700, bottom: -900, samples: 240, rows: 14, tuck: 0.01 };
   /** Vertices in one strip: a column of rows+1 at each sample. */
   const STRIP = (SECTION.samples + 1) * (SECTION.rows + 1);
-  const sectionPos = new Float32Array(3 * 2 * STRIP + 3 * 8 + 3 * 8);
+  // ... and, keeping the surface (#558), a floor of rock at the bottom of it all, so looking down past the cut
+  // there's rock, not the sky's underside.
+  const sectionPos = new Float32Array(3 * 2 * STRIP + 3 * 8 + 3 * 8 + 3 * 4);
   const sectionGeo = new THREE.BufferGeometry();
   sectionGeo.setAttribute("position", new THREE.BufferAttribute(sectionPos, 3));
   {
@@ -321,7 +323,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       }
     }
     const slab = 2 * STRIP;
-    for (const a of [slab, slab + 4, slab + 8, slab + 12]) idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3);
+    for (const a of [slab, slab + 4, slab + 8, slab + 12, slab + 16]) idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3);
     sectionGeo.setIndex(idx);
   }
   // The cutaway's cut face, through the land and the rings alike, is one piece of freshly cut rock;
@@ -451,7 +453,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     };
     const ground = (side: CutSide, d: number, off = offset) => (terrain ? terrain.heightAt(d * side.along.x + out.x * off, d * side.along.z + out.z * off) : 0);
     /** How far the jagged cut stands off its line here (0 unless the surface is kept). */
-    const jag = (side: CutSide, d: number, y: number) => slice.jag.value * sliceJag(d * side.sign, y);
+    const jag = (side: CutSide, d: number, y: number) =>
+      slice.jag.value * sliceJag(d * side.along.x + out.x * offset, d * side.along.z + out.z * offset, y);
     /** How deep the face is seen: the picked floor's floor (or, in the cutaway, the hole's bottom). */
     const lowest = underground ? floorSpan(cut()!)[0] : deep;
     for (const side of sides) {
@@ -486,6 +489,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         put(side, d, ground(side, d));
         put(side, d, -CRUST);
       }
+    }
+    // The floor of rock under it all, keeping the surface (otherwise folded away to nothing).
+    for (const [a, b] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
+      const reach = kept ? SECTION.reach : 0;
+      sectionPos[k++] = a * reach;
+      sectionPos[k++] = SECTION.bottom;
+      sectionPos[k++] = b * reach;
     }
     sectionGeo.attributes.position!.needsUpdate = true;
     sectionGeo.computeVertexNormals();

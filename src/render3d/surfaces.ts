@@ -370,29 +370,35 @@ export interface Slice {
 }
 
 /**
- * The jagged cut (#558): how far the cut stands off its straight line, at `s` metres along it and height `y`,
- * as a share of `jag` (-1 to 1). A few waves of different lengths, so it reads as broken rock, not a wave.
- * The land's and the wall's edges (in their shaders) and the cut face's mesh (stage3d.ts) all follow it.
+ * The jagged cut (#558): how far the cut stands off its straight line where the line crosses the ground at
+ * (x, z), at height `y`, as a share of `jag` (-1 to 1). A few waves of different lengths running different ways
+ * across the ground, so it reads as broken rock, not a wave; and as the cut turns or moves with the camera, it
+ * runs through other ground and breaks differently, as if that ground were being opened up. The land's and
+ * the wall's edges (in their shaders) and the cut face's mesh (stage3d.ts) all follow it.
  */
-const JAG_WAVES: { along: number; up: number; phase: number; weight: number }[] = [
-  { along: 0.13, up: 0.07, phase: 0.0, weight: 0.35 },
-  { along: 0.37, up: -0.19, phase: 1.7, weight: 0.3 },
-  { along: 0.81, up: 0.41, phase: 4.1, weight: 0.2 },
-  { along: 1.9, up: -0.9, phase: 2.6, weight: 0.15 },
+const JAG_WAVES: { k: number; angle: number; up: number; phase: number; weight: number }[] = [
+  { k: 0.13, angle: 0.3, up: 0.07, phase: 0.0, weight: 0.35 },
+  { k: 0.37, angle: 1.9, up: -0.19, phase: 1.7, weight: 0.3 },
+  { k: 0.81, angle: 3.4, up: 0.41, phase: 4.1, weight: 0.2 },
+  { k: 1.9, angle: 5.1, up: -0.9, phase: 2.6, weight: 0.15 },
 ];
 
-export function sliceJag(s: number, y: number): number {
+export function sliceJag(x: number, z: number, y: number): number {
   let j = 0;
-  for (const w of JAG_WAVES) j += w.weight * Math.sin(w.along * s + w.up * y + w.phase);
+  for (const w of JAG_WAVES) j += w.weight * Math.sin(w.k * (Math.cos(w.angle) * x + Math.sin(w.angle) * z) + w.up * y + w.phase);
   return j;
 }
 
+const num = (v: number) => v.toFixed(4);
 const JAG_GLSL = `float sliceJag(vec2 xz, float y) {
-    float s = dot(xz, vec2(-sliceDir.y, sliceDir.x));
-    return sliceJagAmount * (${JAG_WAVES.map((w) => `${w.weight.toFixed(3)} * sin(${w.along.toFixed(3)} * s + ${w.up.toFixed(3)} * y + ${w.phase.toFixed(3)})`).join(" + ")});
+    return sliceJagAmount * (${JAG_WAVES.map((w) => `${num(w.weight)} * sin(${num(w.k * Math.cos(w.angle))} * xz.x + ${num(w.k * Math.sin(w.angle))} * xz.y + ${num(w.up)} * y + ${num(w.phase)})`).join(" + ")});
   }
-  // Where the cut runs at this point: its line, jagged, with the land and wall reaching a little past it.
-  float sliceLine(vec3 p) { return sliceOffset + sliceJag(p.xz, p.y) + sliceJagLap; }`;
+  // Where the cut runs at this point: its line, jagged by the ground where the straight line passes level with
+  // the point, with the land and wall reaching a little past it.
+  float sliceLine(vec3 p) {
+    vec2 onLine = p.xz + sliceDir * (sliceOffset - dot(p.xz, sliceDir));
+    return sliceOffset + sliceJag(onLine, p.y) + sliceJagLap;
+  }`;
 
 export interface SliceLook {
   fadeFrom: number;
