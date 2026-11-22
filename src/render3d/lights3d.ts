@@ -72,9 +72,17 @@ function poolDot(): THREE.Texture {
   return poolTexture;
 }
 
+/**
+ * How far from the hole's axis a pool may light (metres): the outer rooms' walls, past which is rock (#558).
+ * A pool is a square round its lamp, so near an outer wall it would reach out through the rock and show from
+ * outside. The stage sets it to the hole's outer radius.
+ */
+export const POOL_EDGE = { value: Infinity };
+
 let poolMaterial: THREE.MeshBasicMaterial | null = null;
 function material(): THREE.MeshBasicMaterial {
-  poolMaterial ??= new THREE.MeshBasicMaterial({
+  if (poolMaterial) return poolMaterial;
+  const m = new THREE.MeshBasicMaterial({
     map: poolDot(),
     vertexColors: true,
     transparent: true,
@@ -83,7 +91,18 @@ function material(): THREE.MeshBasicMaterial {
     polygonOffset: true,
     polygonOffsetFactor: -2,
   });
-  return poolMaterial;
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.poolEdge = POOL_EDGE;
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec2 vPoolXZ;")
+      .replace("#include <project_vertex>", "vPoolXZ = (modelMatrix * vec4(transformed, 1.0)).xz;\n#include <project_vertex>");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nvarying vec2 vPoolXZ;\nuniform float poolEdge;")
+      .replace("#include <clipping_planes_fragment>", "#include <clipping_planes_fragment>\nif (length(vPoolXZ) > poolEdge) discard;");
+  };
+  m.customProgramCacheKey = () => "pool-edge";
+  poolMaterial = m;
+  return m;
 }
 
 /** One mesh of light pools on the floor, one per lamp, or null when there are none. */

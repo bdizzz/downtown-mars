@@ -24,7 +24,7 @@ import { FAR_SHADOW, LAND_DETAIL, makeSlice, sliceJag, sliceShadow, type SliceRo
 import { RoomEffects, type FxView } from "./effects3d";
 import { FURNITURE_LOD, showDetail } from "./furniture3d";
 import { behindSlab, clippedAway, slabBelow, type Slab } from "./cull3d";
-import { LAMP_LIGHTS, LampLights, type Lamp } from "./lights3d";
+import { LAMP_LIGHTS, LampLights, POOL_EDGE, type Lamp } from "./lights3d";
 import { IndoorLights } from "./indoorLights";
 import { modeAt } from "../view/lightModes";
 import lighting from "../../data/lighting.json";
@@ -350,13 +350,20 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   scene.add(rockWall);
   // Keeping the surface (#558): the front of the hole from the floor in view's ceiling down, the part of the wall
   // the cut takes away, seen from outside as cut rock: the floor's outer layer (in front of its outer rooms'
-  // walls, `proud` metres out so their outer faces stay behind it) and, below, hiding the floors below. Out of
+  // walls, `proud` metres out so their outer faces stay behind it, with a top reaching `overWall` in over them)
+  // and, below, hiding the floors below. Out of
   // the sun's reckoning, as the cut face is.
-  const ROCK_FRONT = { depth: 900, proud: 0.35 };
+  const ROCK_FRONT = { depth: 900, proud: 0.35, overWall: 0.05 };
   const rockFront = new THREE.Mesh(rockWallGeo, withSlice(withRock(new THREE.MeshStandardMaterial({ color: C.rock, roughness: 1 })), slice, "front"));
   rockFront.visible = false;
   rockFront.castShadow = rockFront.receiveShadow = false;
   scene.add(rockFront);
+  // Its top, over the gap between it and the outer rooms' walls (and their tops' outer halves), at the ceiling.
+  const rockFrontTop = new THREE.Mesh(new THREE.BufferGeometry(), rockFront.material);
+  rockFrontTop.visible = false;
+  rockFrontTop.castShadow = rockFrontTop.receiveShadow = false;
+  scene.add(rockFrontTop);
+  let rockFrontTopFor = "";
 
   // The rock past the open rings at the cut floor: its own copies of rooms3d's materials, so Free view's
   // cut-out can fade it into the backdrop with the land (or far off, the two hazes wouldn't match).
@@ -375,13 +382,22 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   function updateRockWall(): void {
     // The cutaway has its own backdrop (the shell), the full depth of the hole.
     const f = view.mode === "walk" ? hole?.floors ?? null : cut();
+    // No lamp's pool lights past the outer rooms' walls, into the rock.
+    if (hole) POOL_EDGE.value = holeOuterRadius(hole);
     rockWall.visible = !!hole && view.mode !== "cutaway" && f !== null;
-    rockFront.visible = rockWall.visible && keptSurface();
+    rockFront.visible = rockFrontTop.visible = rockWall.visible && keptSurface();
     if (!rockWall.visible || !hole) return;
     const r = holeOuterRadius(hole) + ROCK_FLUSH;
     rockWall.scale.set(r, -floorSpan(f!)[0] + SHELL_MARGIN, r);
     rockFront.position.y = floorSpan(f!)[1];
     rockFront.scale.set(r + ROCK_FRONT.proud, ROCK_FRONT.depth, r + ROCK_FRONT.proud);
+    rockFrontTop.position.y = floorSpan(f!)[1];
+    const topFor = `${r}`;
+    if (topFor !== rockFrontTopFor) {
+      rockFrontTopFor = topFor;
+      rockFrontTop.geometry.dispose();
+      rockFrontTop.geometry = new THREE.RingGeometry(r - ROCK_FLUSH - ROCK_FRONT.overWall, r + ROCK_FRONT.proud, 96).rotateX(-Math.PI / 2);
+    }
   }
 
   /**
@@ -2493,7 +2509,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
       // Keeping the surface (#558), the cut face (and the rock front under the floor) is no rock the sun
       // knows of: it neither casts nor takes shadows, so it shades evenly (the land's shadow would darken it, the hole's opening light it in patches).
       section.castShadow = section.receiveShadow = !keptSurface();
-      rockFront.castShadow = rockFront.receiveShadow = false;
+      rockFront.castShadow = rockFront.receiveShadow = rockFrontTop.castShadow = rockFrontTop.receiveShadow = false;
       // Not the sky, nor colonists (who move between redraws).
       skyDome.mesh.castShadow = skyDome.mesh.receiveShadow = false;
       people.group.traverse((o) => (o.castShadow = false));
@@ -2543,6 +2559,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   /** The sky with every floor showing; earth below ground (Free view's cut-out darkening into it as it opens). */
   function applyBackground(): void {
+    // Free view's cut-out (not keeping the surface): the floors below fade into the earth behind them.
+    look.setBackdrop(sliced() && !keptSurface() ? C.earth : null);
     if (cut() === null || keptSurface()) scene.background = skyColor;
     else if (sliced()) scene.background = skyColor.clone().lerp(new THREE.Color(C.earth), slice.on.value > 0.5 ? slice.amount.value : 1);
     else scene.background = new THREE.Color(C.earth);

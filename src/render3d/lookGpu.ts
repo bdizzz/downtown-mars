@@ -99,6 +99,7 @@ export class GpuLook implements LookLike {
   }
   setStorm(): void {}
   setDaylight(): void {}
+  setBackdrop(): void {}
   setView(): void {}
   resize(): void {}
   render(): void {
