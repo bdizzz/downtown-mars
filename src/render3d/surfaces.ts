@@ -429,7 +429,7 @@ export function makeSlice(look: SliceLook): Slice {
  * goes; it darkens with depth), the cut face (it fades, crumbles at the top and darkens), or the ground
  * at the cut floor past the rings (it only fades, so far off it's the backdrop, as the land above is).
  */
-export type SliceRole = "land" | "wall" | "face" | "ground";
+export type SliceRole = "land" | "wall" | "face" | "ground" | "front";
 
 const SLICE_UNIFORMS = ["On", "Amount", "Offset", "Radius", "FadeFrom", "FadeTo", "Edge", "Tint", "TintDepth", "Keep", "KeptShade", "JagAmount", "JagLap"].map((u) => `uniform float slice${u};`).join("\n") + "\nuniform vec2 sliceDir;\nuniform vec3 sliceEarth;";
 
@@ -466,6 +466,9 @@ const SLICE_CUT: Record<SliceRole, string> = {
   wall: "dot(vSlicePos.xz, sliceDir) > sliceLine(vSlicePos) && n < sliceAmount",
   // Dissolves in, thinning out with distance and crumbling along its top.
   face: "n > sliceAmount || n < max(sliceFar(vSlicePos), sliceCrumble(-vSlicePos.y, vec2(vSlicePos.x + vSlicePos.z, vSlicePos.y)))",
+  // Keeping the surface (#558): the front of the hole below the floor in view, which only the cut-away part of the
+  // wall keeps (just past the jagged cut, to meet the face).
+  front: "dot(vSlicePos.xz, sliceDir) < sliceLine(vSlicePos) - 2.0 * sliceJagLap",
   // Thins out with distance; keeping the surface (#558), its near half past the wall goes too, as it stands in front of the cut face.
   ground: "(sliceKeep > 0.5 && length(vSlicePos.xz) > sliceRadius && dot(vSlicePos.xz, sliceDir) > sliceLine(vSlicePos)) || n < sliceFade(vSlicePos) * sliceAmount",
 };
@@ -500,10 +503,10 @@ export function withSlice<T extends THREE.Material>(m: T, slice: Slice, role: Sl
       .replace("#include <common>", `#include <common>\nvarying vec3 vSlicePos;\n${SLICE_UNIFORMS}\n${SLICE_GLSL}`)
       .replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>\nif (sliceOn > 0.5) { float n = sliceStipple(); if (${SLICE_CUT[role]}) discard; }`);
     // The cut rock recedes into the dark, once lit.
-    if (role === "wall" || role === "face")
+    if (role === "wall" || role === "face" || role === "front")
       shader.fragmentShader = shader.fragmentShader.replace(
         "#include <fog_fragment>",
-        `#include <fog_fragment>\nif (sliceOn > 0.5) gl_FragColor.rgb = mix(gl_FragColor.rgb, sliceEarth, ${role === "face" ? "max(sliceDarken(vSlicePos), sliceKeep * sliceKeptShade)" : "sliceDarken(vSlicePos)"});`,
+        `#include <fog_fragment>\nif (sliceOn > 0.5) gl_FragColor.rgb = mix(gl_FragColor.rgb, sliceEarth, ${role !== "wall" ? "max(sliceDarken(vSlicePos), sliceKeep * sliceKeptShade)" : "sliceDarken(vSlicePos)"});`,
       );
   };
   m.customProgramCacheKey = () => `${prevKey}|slice-${role}`;

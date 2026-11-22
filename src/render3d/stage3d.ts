@@ -339,6 +339,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   const rockWall = new THREE.Mesh(rockWallGeo, withSlice(withRock(new THREE.MeshStandardMaterial({ color: C.rock, roughness: 1, side: THREE.BackSide })), slice, "wall"));
   rockWall.visible = false;
   scene.add(rockWall);
+  // Keeping the surface (#558): the front of the hole below the floor in view, the part of the wall the cut
+  // takes away, seen from outside as cut rock, so the floors below stay behind it. Out of the sun's reckoning,
+  // as the cut face is.
+  const ROCK_FRONT_DEPTH = 900;
+  const rockFront = new THREE.Mesh(rockWallGeo, withSlice(withRock(new THREE.MeshStandardMaterial({ color: C.rock, roughness: 1 })), slice, "front"));
+  rockFront.visible = false;
+  rockFront.castShadow = rockFront.receiveShadow = false;
+  scene.add(rockFront);
 
   // The rock past the open rings at the cut floor: its own copies of rooms3d's materials, so Free view's
   // cut-out can fade it into the backdrop with the land (or far off, the two hazes wouldn't match).
@@ -358,9 +366,12 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     // The cutaway has its own backdrop (the shell), the full depth of the hole.
     const f = view.mode === "walk" ? hole?.floors ?? null : cut();
     rockWall.visible = !!hole && view.mode !== "cutaway" && f !== null;
+    rockFront.visible = rockWall.visible && keptSurface();
     if (!rockWall.visible || !hole) return;
     const r = holeOuterRadius(hole) + ROCK_FLUSH;
     rockWall.scale.set(r, -floorSpan(f!)[0] + SHELL_MARGIN, r);
+    rockFront.position.y = floorSpan(f!)[0];
+    rockFront.scale.set(r, ROCK_FRONT_DEPTH, r);
   }
 
   /**
@@ -400,9 +411,9 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const inner = underground ? Math.sqrt(Math.max(0, r * r - offset * offset)) : holeOuterRadius(hole) + SHELL_MARGIN;
     // Underground, no slab under the hole (the rooms below the picked floor stay in view), and the face
     // stops at the picked floor's cap: below it, past the faded ground, there's only the backdrop. Keeping
-    // the surface (#558), the backdrop is the sky, so the face runs on down; and a slab stands in front of
-    // the hole under the picked floor, from its floor down, hiding the floors below it.
-    const deep = underground ? (kept ? floorSpan(cut()!)[0] : SECTION.bottom) : floorSpan(hole.floors + 1)[0] - SHELL_MARGIN;
+    // the surface (#558), the backdrop is the sky, so the face runs on down (and the rock front, under the
+    // picked floor, hides the floors below).
+    const deep = underground ? SECTION.bottom : floorSpan(hole.floors + 1)[0] - SHELL_MARGIN;
     const bottom = underground && !kept ? floorSpan(cut()!)[1] : SECTION.bottom;
     const n = SECTION.samples + 1;
     let k = 0;
@@ -433,15 +444,13 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         }
       }
     }
-    // The slab under the hole, from the axis out to the strips on each side; keeping the surface, in front of the hole.
+    // The slab under the hole, from the axis out to the strips on each side.
     const seam = wedgeSeam(sides);
-    const slabOff = kept ? r + CUT_FACE_BACK * 4 : offset;
-    const slabOut = kept ? r : inner;
     for (const side of sides) {
-      put(side, -seam, deep, slabOff);
-      put(side, -seam, SECTION.bottom, slabOff);
-      put(side, slabOut, deep, slabOff);
-      put(side, slabOut, SECTION.bottom, slabOff);
+      put(side, -seam, deep);
+      put(side, -seam, SECTION.bottom);
+      put(side, inner, deep);
+      put(side, inner, SECTION.bottom);
     }
     // The crust over floor 1, from the shaft wall out to the strips (underground, the strips start at the wall).
     // The wall is drawn in flat steps, so the face starts where the cut meets them, tucked just behind.
@@ -2301,9 +2310,10 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
         m.castShadow = !seeThrough && !m.userData.ceiling;
         m.receiveShadow = true;
       });
-      // Keeping the surface (#558), the cut face is no rock the sun knows of: it neither casts nor takes
-      // shadows, so it shades evenly (the land's shadow would darken it, the hole's opening light it in patches).
+      // Keeping the surface (#558), the cut face (and the rock front under the floor) is no rock the sun
+      // knows of: it neither casts nor takes shadows, so it shades evenly (the land's shadow would darken it, the hole's opening light it in patches).
       section.castShadow = section.receiveShadow = !keptSurface();
+      rockFront.castShadow = rockFront.receiveShadow = false;
       // Not the sky, nor colonists (who move between redraws).
       skyDome.mesh.castShadow = skyDome.mesh.receiveShadow = false;
       people.group.traverse((o) => (o.castShadow = false));
