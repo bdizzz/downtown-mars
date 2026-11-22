@@ -8,10 +8,10 @@ import { surfaceRingOf, type Cell, type Layout, type RoomInstance, type SurfaceS
 import { cropStagesKey } from "../view/furnish";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
-import { aimKeyFor, clickWith, haloEffect, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
+import { aimKeyFor, clickWith, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, haloEffect, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
-import { edgeById, nearestEdge, type Edge } from "../sim/edges";
+import { edgeById, nearestEdgeAt, type Edge } from "../sim/edges";
 import { roomSide } from "../sim/windows";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { DEFAULT_GRAPHICS, drawsDetailedFurniture, type Graphics } from "../view/graphics";
@@ -1231,16 +1231,17 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
    * A border highlighted on its floor, where the corridor is (or will be), outlined so it reads against any finish.
    * Given a room (the windows tool's), only the half on that room's side.
    */
-  function ghostEdge(id: string, color: number, room?: RoomInstance): void {
+  function ghostEdge(id: string, color: number, room?: RoomInstance, alpha = 0.55, outlined = true): void {
     if (!layout) return;
     const e = edgeById(layout.hole, id);
     if (!e) return;
     // On the rock's top where it runs through uncut rock (T-169); on the floor for a room's windows, and when walking.
     const y = room || view.mode === "walk" ? floorSpan(e.floor)[0] + 0.08 : corridorGhostY(layout, e);
     const side = room ? (roomSide(layout, room, e) ?? undefined) : undefined;
-    const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y, side), solid(color, 0.55));
+    const strip = new THREE.Mesh(corridorStripGeometry(layout, e, y, side), solid(color, alpha));
     strip.renderOrder = 9;
     overlay.add(strip);
+    if (!outlined) return;
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(strip.geometry), lines(color));
     edges.renderOrder = 10;
     overlay.add(edges);
@@ -1248,6 +1249,8 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   /** What the overlay was last drawn for, to redraw it when the rooms are rebuilt (their tints go with them). */
   let shownHover: HoverInfo | null = null;
+  /** The floor corridor mode's map was last drawn on: it stays there while the pointer is off the floors. */
+  let mapFloorLast: number | null = null;
   function drawOverlay(info: HoverInfo | null): void {
     shownHover = info;
     clearTints("mark");
@@ -1273,6 +1276,16 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     }
     // A snaked chain (while dragging, or waiting for confirmation): every border highlighted.
     const shown = snaking ? proposalFor(tool, chain.edges, chainErase) : proposal;
+    // Corridor mode (#556): on the floor in view (or under the pointer), where corridors could go, faintly, and those already there, tinted.
+    const pick = info?.pick;
+    if (pick && "floor" in pick) mapFloorLast = pick.floor;
+    const mapFloor = view.mode === "walk" ? null : (cut() ?? mapFloorLast);
+    if (mapFloor !== null) {
+      const skip = new Set([...(shown?.edges ?? []), ...(info?.edge ? [info.edge.id] : [])]);
+      const map = corridorMap(layout, tool, mapFloor);
+      for (const id of map.open) if (!skip.has(id)) ghostEdge(id, HOVER.ok, undefined, MAP.open, false);
+      for (const id of map.built) if (!skip.has(id)) ghostEdge(id, MAP.built, undefined, MAP.builtAlpha);
+    }
     if (shown?.edges.length) {
       for (const id of shown.edges) ghostEdge(id, shown.erase ? HOVER.bad : layout.corridors[id] ? HOVER.hover : HOVER.ok);
       return;
@@ -1446,9 +1459,14 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
 
   /** The border nearest the point the last pick landed on. */
   function edgeAtPick(p: Pick): Edge | null {
+    return edgeNearPick(p)?.edge ?? null;
+  }
+
+  /** As edgeAtPick, with how far off the border the pick landed, in metres. */
+  function edgeNearPick(p: Pick): { edge: Edge; m: number } | null {
     const at = pickedPoint();
     if (!hole || !at || (p.kind !== "slot" && p.kind !== "gallery")) return null;
-    return nearestEdge(hole, p.floor, at.rings, at.turn);
+    return nearestEdgeAt(hole, p.floor, at.rings, at.turn);
   }
 
   /** Where the last pick landed on its floor: rings out from the shaft wall, and the angle in turns. */
@@ -1463,6 +1481,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     rayAt(pointer.clientX, pointer.clientY);
     const p = pickRay(raycaster.ray);
     if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, p, edgeAtPick(p), shift);
+    if (tool?.kind === "demolish") return demolishHoverFor(layout, resources, p, edgeNearPick(p));
     return hoverInfoFor(layout, resources, tool, p, latest?.holeGates ?? []);
   }
 

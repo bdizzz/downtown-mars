@@ -193,7 +193,15 @@ export function edgeLengthM(hole: Hole, e: Edge): number {
  * angle in turns. Just inside the shaft wall (down to `galleryRings` in), it's ring 1's gallery side.
  */
 export function nearestEdge(hole: Hole, floor: number, rings: number, turn: number, galleryRings = 0.3): Edge | null {
-  if (rings < 0 && rings >= -galleryRings) return arcAt(hole, floor, 0, turn);
+  return nearestEdgeAt(hole, floor, rings, turn, galleryRings)?.edge ?? null;
+}
+
+/** As nearestEdge, with how far the point is from it, in metres (demolish lets a room win away from its walls, #557). */
+export function nearestEdgeAt(hole: Hole, floor: number, rings: number, turn: number, galleryRings = 0.3): { edge: Edge; m: number } | null {
+  if (rings < 0 && rings >= -galleryRings) {
+    const edge = arcAt(hole, floor, 0, turn);
+    return edge ? { edge, m: -rings * ringDepth(hole, 1) } : null;
+  }
   if (rings < 0 || rings >= hole.ringSlots.length) return null;
   const ring = Math.floor(rings) + 1;
   const v = rings - (ring - 1);
@@ -211,7 +219,8 @@ export function nearestEdge(hole: Hole, floor: number, rings: number, turn: numb
   ];
   options.push([v * ringDepthM, () => arcAt(hole, floor, ring - 1, t)]);
   options.sort((a, b) => a[0] - b[0]);
-  return options[0]![1]();
+  const edge = options[0]![1]();
+  return edge ? { edge, m: options[0]![0] } : null;
 }
 
 /** The arc piece of a circle at an angle. */

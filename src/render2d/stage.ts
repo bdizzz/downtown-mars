@@ -11,12 +11,12 @@ import { roomAt, surfaceRingOf, type Cell, type Layout, type RoomInstance } from
 import { doorsOnFloor } from "../view/doors";
 import { glazedWalls } from "../sim/windows";
 import { isOpen } from "../sim/excavation";
-import { edgeById, edgeSides, galleryEdges, isGalleryEdge, nearestEdge, type Edge } from "../sim/edges";
+import { edgeById, edgeSides, galleryEdges, isGalleryEdge, nearestEdge, nearestEdgeAt, type Edge } from "../sim/edges";
 import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
 import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect } from "../view/interaction";
+import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
@@ -719,6 +719,17 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     overlayCtx.rect(b.x, b.y, w, hh).fill({ color, alpha }).stroke({ color, width: 2.5 });
   }
 
+  /** A border in corridor mode's map: its band filled faintly, no outline (#556). */
+  function mapEdge(id: string, color: number, alpha: number): void {
+    const e = layout && edgeById(layout.hole, id);
+    if (!e) return;
+    const b = bandOf(layout!.hole, e);
+    const [w, hh] = b.along === "h" ? [b.len, BAND] : [BAND, b.len];
+    overlayCtx.rect(b.x, b.y, w, hh).fill({ color, alpha });
+  }
+
+  /** The floor corridor mode's map was last drawn on: it stays there while the pointer is off the floors. */
+  let mapFloorLast: number | null = null;
   function drawOverlay(info: HoverInfo | null): void {
     overlayCtx.clear();
     if (!layout) return;
@@ -735,6 +746,15 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     }
     // A snaked chain (while dragging, or waiting for confirmation): every border highlighted.
     const shown = snaking ? proposalFor(tool, chain.edges, chainErase) : proposal;
+    // Corridor mode (#556): on the floor under the pointer, where corridors could go, faintly, and those already there, tinted.
+    const pick = info?.pick;
+    if (pick && "floor" in pick) mapFloorLast = pick.floor;
+    if (mapFloorLast !== null) {
+      const skip = new Set([...(shown?.edges ?? []), ...(info?.edge ? [info.edge.id] : [])]);
+      const map = corridorMap(layout, tool, mapFloorLast);
+      for (const id of map.open) if (!skip.has(id)) mapEdge(id, C.ok, MAP.open);
+      for (const id of map.built) if (!skip.has(id)) ghostEdge(id, MAP.built, null, MAP.builtAlpha);
+    }
     if (shown?.edges.length) {
       for (const id of shown.edges) {
         const existing = !!layout.corridors[id];
@@ -922,6 +942,10 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
     const [x, y] = screenToWorld(pointer);
     const p = pick(layout.hole, x, y);
     if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, p, edgeAt(x, y), shift);
+    if (tool?.kind === "demolish") {
+      const at = pointAt(x, y);
+      return demolishHoverFor(layout, resources, p, at ? nearestEdgeAt(layout.hole, at.floor, at.rings, at.turn) : null);
+    }
     return hoverInfoFor(layout, resources, tool, p, deposits);
   }
 

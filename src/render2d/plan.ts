@@ -8,13 +8,13 @@ import type { Happiness } from "../sim/happiness";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import type { DrillView } from "../sim/snapshot";
 import { floorSpan, pickAt } from "../render3d/cylinder";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect } from "../view/interaction";
+import { clickWith, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
 import { drawGlyph, drawPlus } from "./art";
 import { constructionStripes, corridorStrip } from "./corridorArt";
-import { edgeById, nearestEdge, type Edge } from "../sim/edges";
+import { edgeById, nearestEdge, nearestEdgeAt, type Edge } from "../sim/edges";
 import { HEAT } from "./palette";
 import { BAND, C, FIELD_MAX, PX, TAU, cellSector, drawBase, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, type ProgressJob } from "./planDraw";
 import { ringRadii, ringsAt } from "../sim/geometry";
@@ -120,6 +120,14 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     overlayCtx.poly(poly).fill({ color, alpha }).stroke({ color, width: 2.5 });
   }
 
+  /** A border in corridor mode's map: its strip filled faintly, no outline (#556). */
+  function mapEdge(id: string, color: number, alpha: number): void {
+    const e = layout && edgeById(layout.hole, id);
+    if (!e || e.floor !== floor) return;
+    const s = stripOf(layout!.hole, e);
+    overlayCtx.poly(corridorStrip(overlayCtx, s.at, s.normal, s.len, BAND, "rock", 0)).fill({ color, alpha });
+  }
+
   function drawOverlay(info: HoverInfo | null): void {
     overlayCtx.clear();
     if (!layout) return;
@@ -136,6 +144,11 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     }
     // A snaked chain (while dragging, or waiting for confirmation): every border on this floor highlighted.
     const shown = snaking ? proposalFor(tool, chain.edges, chainErase) : proposal;
+    // Corridor mode (#556): where corridors could go on this floor, faintly, and those already there, tinted.
+    const skip = new Set([...(shown?.edges ?? []), ...(info?.edge ? [info.edge.id] : [])]);
+    const map = corridorMap(layout, tool, floor);
+    for (const id of map.open) if (!skip.has(id)) mapEdge(id, C.ok, MAP.open);
+    for (const id of map.built) if (!skip.has(id)) ghostEdge(id, MAP.built, null, MAP.builtAlpha);
     if (shown?.edges.length) {
       for (const id of shown.edges) {
         if (shown.erase) ghostEdge(id, C.bad, null, 0.35);
@@ -282,6 +295,10 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
   function hoverInfo(): HoverInfo | null {
     if (!layout || !pointer) return null;
     if (tool?.kind === "corridor") return edgeHoverFor(layout, resources, tool, pickHere(), edgeHere(), shift);
+    if (tool?.kind === "demolish") {
+      const at = pointHere();
+      return demolishHoverFor(layout, resources, pickHere(), at ? nearestEdgeAt(layout.hole, floor, at.rings, at.turn) : null);
+    }
     return hoverInfoFor(layout, resources, tool, pickHere(), gates);
   }
 
