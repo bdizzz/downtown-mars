@@ -9,10 +9,10 @@ import { surfaceRingOf, type Cell, type Layout, type RoomInstance, type SurfaceS
 import { cropStagesKey } from "../view/furnish";
 import type { Snapshot } from "../sim/snapshot";
 import { HEAT } from "../render2d/palette";
-import { aimKeyFor, clickWith, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, spokeEnds, haloEffect, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
+import { aimKeyFor, clickWith, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, mapJoints, haloEffect, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, surfaceSpots } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import { tubeRuns, type TubeRun } from "../view/gallery";
-import { edgeById, nearestEdgeAt, type Edge } from "../sim/edges";
+import { edgeById, edgeSides, edgeVertices, nearestEdgeAt, type Edge } from "../sim/edges";
 import { roomSide } from "../sim/windows";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { DEFAULT_GRAPHICS, drawsDetailedFurniture, type Graphics } from "../view/graphics";
@@ -67,7 +67,7 @@ import { createWalkPad } from "./joystick";
 import { drinkHere, footing, footingNear, stairLift, stairsHere, step as walkStep } from "../view/walk";
 import { createDrink } from "./drink3d";
 import { fpLoaded, loadFpModels, setModelsEnabled } from "../view/models";
-import { outerRadius as holeOuterRadius, ringRadii, ringsAt } from "../sim/geometry";
+import { circleRadius, outerRadius as holeOuterRadius, ringRadii, ringsAt } from "../sim/geometry";
 
 // The 3D view: the same hole as the 2D view, as a real cylinder. Three
 // cameras: Free view, over one floor and off to one side (its id is "iso");
@@ -1349,37 +1349,90 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
   }
 
   /**
-   * Corridor mode's map in one colour (#556): every strip in one mesh, in one even shade. Arcs meet end to end;
-   * a spoke stops short where it runs into an arc that's drawn too (`ends`), so no strip lies over another.
+   * Corridor mode's map (#556), in two even shades: green where corridors could go, blue for the corridors and
+   * walk-through rooms already there. Nothing lies over anything else, so neither shade darkens anywhere: the
+   * borders stop short of the square joints where spokes meet rings' borders (mapJoints), and a border along a
+   * walk-through room draws only its half outside the room, which is tinted in its place.
    */
-  function mapStrips(ids: string[], ends: Map<string, [boolean, boolean]>, color: number, alpha: number): void {
-    if (!layout || !ids.length) return;
+  function drawMap(map: { open: string[]; built: string[]; publicCells: Cell[] }, floor: number, skip: Set<string>): void {
+    if (!layout) return;
+    const hole = layout.hole;
     const hall = corridorDefs.widthM / 2;
-    const pos: number[] = [];
-    for (const id of ids) {
-      const e = edgeById(layout.hole, id);
-      if (!e) continue;
-      const y = corridorGhostY(layout, e);
-      if (e.kind === "radial") {
-        const [inner, outer] = ends.get(id) ?? [false, false];
-        const [ra, rb] = ringRadii(layout.hole, e.ring);
-        const r0 = ra + (inner ? hall : 0);
-        const r1 = rb - (outer ? hall : 0);
-        const a = e.turn * TAU;
-        const [cx, cz, px, pz] = [Math.cos(a), Math.sin(a), -Math.sin(a) * hall, Math.cos(a) * hall];
-        const p = (r: number, side: number) => [r * cx + px * side, y, r * cz + pz * side];
-        pos.push(...p(r0, -1), ...p(r1, -1), ...p(r1, 1), ...p(r0, -1), ...p(r1, 1), ...p(r0, 1));
-      } else {
-        const geo = corridorStripGeometry(layout, e, y);
-        pos.push(...Array.from(geo.getAttribute("position").array as ArrayLike<number>));
-        geo.dispose();
+    const open = map.open.filter((id) => !skip.has(id));
+    const built = map.built.filter((id) => !skip.has(id));
+    const { joints, trims } = mapJoints(layout, open, built);
+    const key = (c: Cell) => `${c.ring}:${c.slot}`;
+    const pub = new Set(map.publicCells.map(key));
+    const isPub = (c: Cell | null) => !!c && pub.has(key(c));
+    const pos = { open: [] as number[], built: [] as number[] };
+    /** A flat patch of a ring: radii r0–r1, angles a0–a1 (radians). */
+    const patch = (out: number[], r0: number, r1: number, a0: number, a1: number, y: number) => {
+      const steps = Math.max(1, Math.ceil((a1 - a0) / 0.04));
+      const p = (r: number, a: number) => [r * Math.cos(a), y, r * Math.sin(a)];
+      for (let i = 0; i < steps; i++) {
+        const b0 = a0 + ((a1 - a0) * i) / steps;
+        const b1 = a0 + ((a1 - a0) * (i + 1)) / steps;
+        out.push(...p(r0, b0), ...p(r1, b0), ...p(r1, b1), ...p(r0, b0), ...p(r1, b1), ...p(r0, b1));
+      }
+    };
+    /** Each crossing's height: the lowest of the borders meeting there (on the floor, unless all run through rock). */
+    const vertexY = new Map<string, number>();
+    for (const [ids, out] of [[built, pos.built], [open, pos.open]] as const) {
+      for (const id of ids) {
+        const e = edgeById(hole, id);
+        if (!e) continue;
+        const [s0, s1] = edgeSides(hole, e).map(isPub);
+        if (s0 && s1) continue;
+        // Along a walk-through room, only the half on the other side (side 0: the lower slot, or the inner ring).
+        const [lo, hi] = s0 ? [0, 1] : s1 ? [-1, 0] : [-1, 1];
+        const [t0, t1] = trims.get(id) ?? [false, false];
+        const y = corridorGhostY(layout, e);
+        for (const v of edgeVertices(hole, e)) vertexY.set(v, Math.min(vertexY.get(v) ?? Infinity, y));
+        if (e.kind === "radial") {
+          const [ra, rb] = ringRadii(hole, e.ring);
+          const r0 = ra + (t0 ? hall : 0);
+          const r1 = rb - (t1 ? hall : 0);
+          const a = e.turn * TAU;
+          const [cx, cz, px, pz] = [Math.cos(a), Math.sin(a), -Math.sin(a) * hall, Math.cos(a) * hall];
+          const p = (r: number, side: number) => [r * cx + px * side, y, r * cz + pz * side];
+          out.push(...p(r0, lo), ...p(r1, lo), ...p(r1, hi), ...p(r0, lo), ...p(r1, hi), ...p(r0, hi));
+        } else {
+          const r = circleRadius(hole, e.circle);
+          patch(out, r + lo * hall, r + hi * hall, e.a0 * TAU + (t0 ? hall / r : 0), e.a1 * TAU - (t1 ? hall / r : 0), y);
+        }
       }
     }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    const mesh = new THREE.Mesh(geo, solid(color, alpha));
-    mesh.renderOrder = 8;
-    overlay.add(mesh);
+    // The joints, a quarter at a time, leaving out a quarter over a walk-through room (it's tinted already).
+    const cellAt = (ring: number, turn: number): Cell => {
+      const n = hole.ringSlots[ring - 1] ?? 1;
+      return { floor, ring, slot: Math.floor((((turn % 1) + 1) % 1) * n) % n };
+    };
+    for (const j of joints) {
+      if (j.floor !== floor) continue;
+      const r = circleRadius(hole, j.circle);
+      const a = j.turn * TAU;
+      const da = hall / r;
+      const y = vertexY.get(j.key) ?? floorSpan(floor)[0] + 0.08;
+      const out = j.built ? pos.built : pos.open;
+      for (const [ring, r0, r1] of [[j.circle, r - hall, r], [j.circle + 1, r, r + hall]] as const) {
+        for (const [dt, a0, a1] of [[-1e-6, a - da, a], [1e-6, a, a + da]] as const) {
+          if (!isPub(cellAt(ring, j.turn + dt))) patch(out, r0, r1, a0, a1, y);
+        }
+      }
+    }
+    for (const c of map.publicCells) {
+      const n = hole.ringSlots[c.ring - 1]!;
+      const [r0, r1] = ringRadii(hole, c.ring);
+      patch(pos.built, r0, r1, (c.slot / n) * TAU, ((c.slot + 1) / n) * TAU, floorSpan(floor)[0] + 0.08);
+    }
+    for (const [list, color, alpha] of [[pos.built, MAP.built, MAP.builtAlpha], [pos.open, HOVER.ok, MAP.open]] as const) {
+      if (!list.length) continue;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(list, 3));
+      const mesh = new THREE.Mesh(geo, solid(color, alpha));
+      mesh.renderOrder = 8;
+      overlay.add(mesh);
+    }
   }
 
   /** What the overlay was last drawn for, to redraw it when the rooms are rebuilt (their tints go with them). */
@@ -1419,10 +1472,7 @@ export async function createStage3D(host: HTMLElement, opts: StageOptions = {}):
     const mapFloor = view.mode === "walk" ? null : (cut() ?? mapFloorLast);
     if (mapFloor !== null) {
       const skip = new Set([...(shown?.edges ?? []), ...(info?.edge ? [info.edge.id] : [])]);
-      const map = corridorMap(layout, tool, mapFloor);
-      const ends = spokeEnds(layout, [...map.open, ...map.built]);
-      mapStrips(map.built.filter((id) => !skip.has(id)), ends, MAP.built, MAP.builtAlpha);
-      mapStrips(map.open.filter((id) => !skip.has(id)), ends, HOVER.ok, MAP.open);
+      drawMap(corridorMap(layout, tool, mapFloor), mapFloor, skip);
     }
     if (shown?.edges.length) {
       for (const id of shown.edges) ghostEdge(id, shown.erase ? HOVER.bad : layout.corridors[id] ? HOVER.hover : HOVER.ok);

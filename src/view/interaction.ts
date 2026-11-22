@@ -1,12 +1,12 @@
 import type { SimCommand } from "../sim/commands";
 import { config } from "../sim/config";
 import { checkBuild } from "../sim/costs";
-import { checkPlacement, roomAt, surfaceRoomId, type Layout, type Location, type SurfaceSpot } from "../sim/placement";
+import { checkPlacement, roomAt, surfaceRoomId, type Cell, type Layout, type Location, type SurfaceSpot } from "../sim/placement";
 import { roomDef } from "../sim/rooms";
 import { effectName } from "../sim/effects";
 import { isOpen } from "../sim/excavation";
 import { bulkheadRefusal, corridorCost, corridorRefusal, corridors, inUnlockedRings, shortfall } from "../sim/corridors";
-import { arcAt, cellEdges, edgeById, isGalleryEdge, type Edge } from "../sim/edges";
+import { cellEdges, edgeById, edgeVertices, isGalleryEdge, type Edge } from "../sim/edges";
 import { ringSize } from "../sim/geometry";
 import { glazedAcross, glazedOnWall, roomForWindows, wallOf, windowComfort, windowCost, windowRefusal } from "../sim/windows";
 import { corridorRefitPlan, corridorRefitRefusal, liningById, MATERIALS } from "../sim/materials";
@@ -149,35 +149,59 @@ export function demolishHoverFor(layout: Layout, resources: Record<string, numbe
 /** How corridor mode's map is drawn (#556), in every view: how faint the open borders are, and the tint on built corridors. */
 export const CORRIDOR_MAP = { open: 0.07, built: 0x8fd0ff, builtAlpha: 0.2 };
 
+/** A square joint where a spoke meets a ring's border, drawn once over the crossing (#556); `built` if a built corridor meets there. */
+export interface MapJoint {
+  /** Its vertex, as edgeVertices names it. */
+  key: string;
+  floor: number;
+  circle: number;
+  turn: number;
+  built: boolean;
+}
+
 /**
- * For drawing the map in one even shade (#556): which ends of each spoke (radial border) in `ids` run into
- * an arc border that's also in `ids`, so the spoke can stop short there rather than overlap the arc's strip.
- * [inner, outer], keyed by the spoke's id; arcs aren't listed (they meet end to end without overlapping).
+ * For drawing the map in one even shade, with no notches (#556). As the scene squares off a corridor's turns
+ * (corridorJoints), every crossing where a spoke meets a ring's border gets a joint, and the borders meeting
+ * there stop short of it, so nothing lies over anything else. On the shaft wall there are no joints: a spoke
+ * just stops short of the gallery tube. `trims` gives, for each border, which of its ends stop short, as
+ * edgeVertices orders them (a spoke's inner end first; an arc's start first).
  */
-export function spokeEnds(layout: Layout, ids: Iterable<string>): Map<string, [boolean, boolean]> {
+export function mapJoints(layout: Layout, open: string[], built: string[]): { joints: MapJoint[]; trims: Map<string, [boolean, boolean]> } {
   const hole = layout.hole;
-  const set = new Set(ids);
-  const ε = 1e-6;
-  const covered = (floor: number, circle: number, turn: number) =>
-    [turn + ε, turn - ε].some((t) => {
-      const arc = arcAt(hole, floor, circle, ((t % 1) + 1) % 1);
-      return !!arc && set.has(arc.id);
-    });
-  const out = new Map<string, [boolean, boolean]>();
-  for (const id of set) {
-    const e = edgeById(hole, id);
-    if (e?.kind === "radial") out.set(id, [covered(e.floor, e.ring - 1, e.turn), covered(e.floor, e.ring, e.turn)]);
+  const builtSet = new Set(built);
+  const at = new Map<string, MapJoint & { radial: boolean; arc: boolean }>();
+  const edges = [...open, ...built].flatMap((id) => edgeById(hole, id) ?? []);
+  for (const e of edges) {
+    for (const v of edgeVertices(hole, e)) {
+      const [floor, circle, f] = v.split("|");
+      const [p, q] = f!.split("/").map(Number);
+      const k = at.get(v) ?? { key: v, floor: Number(floor), circle: Number(circle), turn: p! / q!, built: false, radial: false, arc: false };
+      if (e.kind === "radial") k.radial = true;
+      else k.arc = true;
+      if (builtSet.has(e.id)) k.built = true;
+      at.set(v, k);
+    }
   }
-  return out;
+  const joints: MapJoint[] = [];
+  for (const k of at.values()) if (k.radial && k.arc && k.circle > 0) joints.push({ key: k.key, floor: k.floor, circle: k.circle, turn: k.turn, built: k.built });
+  const trims = new Map<string, [boolean, boolean]>();
+  for (const e of edges) {
+    const ends = edgeVertices(hole, e).map((v) => {
+      const k = at.get(v)!;
+      return k.radial && k.arc && (k.circle > 0 || e.kind === "radial");
+    });
+    trims.set(e.id, [ends[0]!, ends[1]!]);
+  }
+  return { joints, trims };
 }
 
 /**
  * Corridor mode's map of a floor (#556): the borders a new corridor could go along (drawn faintly) and the
- * corridors already there (tinted). Erasing, refitting and bulkheads act on corridors already there, so they
+ * corridors already there, and the walk-through rooms (tinted). Erasing, refitting and bulkheads act on corridors already there, so they
  * show only those; the windows tool shows neither.
  */
-export function corridorMap(layout: Layout, tool: Tool, floor: number): { open: string[]; built: string[] } {
-  if (tool?.kind !== "corridor" || tool.windows) return { open: [], built: [] };
+export function corridorMap(layout: Layout, tool: Tool, floor: number): { open: string[]; built: string[]; publicCells: Cell[] } {
+  if (tool?.kind !== "corridor" || tool.windows) return { open: [], built: [], publicCells: [] };
   const hole = layout.hole;
   const all = new Map<string, Edge>();
   for (let ring = 1; ring <= Math.min(hole.unlockedRings, hole.ringSlots.length); ring++) {
@@ -186,7 +210,9 @@ export function corridorMap(layout: Layout, tool: Tool, floor: number): { open: 
   const built = [...all.keys()].filter((id) => layout.corridors[id]);
   const drawing = !tool.erase && !tool.refit && !tool.bulkhead;
   const open = drawing ? [...all.keys()].filter((id) => !corridorRefusal(layout, id)) : [];
-  return { open, built };
+  // Walk-through rooms (plazas, stairs, lifts, the entrance, empty rooms) carry people between corridors: shaded as corridors are.
+  const publicCells = layout.rooms.filter((r) => !r.planned && roomDef(r.type).public).flatMap((r) => r.cells.filter((c) => c.floor === floor));
+  return { open, built, publicCells };
 }
 
 /** Hover info for the windows tool: the wall of a room under the pointer, and what glazing (or clearing) it would do. */

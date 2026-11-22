@@ -8,7 +8,7 @@ import type { Happiness } from "../sim/happiness";
 import type { Cell, Layout, RoomInstance } from "../sim/placement";
 import type { DrillView } from "../sim/snapshot";
 import { floorSpan, pickAt } from "../render3d/cylinder";
-import { clickWith, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect } from "../view/interaction";
+import { clickWith, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, mapJoints, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Pick, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
@@ -17,7 +17,7 @@ import { constructionStripes, corridorStrip } from "./corridorArt";
 import { edgeById, nearestEdge, nearestEdgeAt, type Edge } from "../sim/edges";
 import { HEAT } from "./palette";
 import { stackClick, stackHover } from "../view/stackSpots";
-import { BAND, C, FIELD_MAX, PX, TAU, cellSector, drawBase, drawStackSpots, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, type ProgressJob } from "./planDraw";
+import { BAND, C, FIELD_MAX, PX, TAU, cellSector, sector, drawBase, drawStackSpots, drawField as drawFieldOn, drawRooms, outlineCells, progressLabels as progressAt, roomCentre, stripOf, type ProgressJob } from "./planDraw";
 import { ringRadii, ringsAt } from "../sim/geometry";
 
 // The plan view: one floor seen from above, drawn flat. The shaft in the
@@ -158,6 +158,14 @@ export async function createPlanStage(host: HTMLElement, opts: StageOptions = {}
     const map = corridorMap(layout, tool, floor);
     for (const id of map.open) if (!skip.has(id)) mapEdge(mapOpenCtx, id, C.ok);
     for (const id of map.built) if (!skip.has(id)) mapEdge(mapBuiltCtx, id, MAP.built);
+    // Square joints where spokes meet rings' borders, as the corridors' own turns, and the walk-through rooms tinted as corridors.
+    const hall = BAND / PX / 2;
+    for (const j of mapJoints(layout, map.open, map.built).joints) {
+      const r = ringRadii(layout.hole, j.circle)[1];
+      const a = j.turn * TAU;
+      (j.built ? mapBuiltCtx : mapOpenCtx).poly(sector(r - hall, r + hall, a - hall / r, a + hall / r)).fill({ color: j.built ? MAP.built : C.ok, alpha: 1 });
+    }
+    for (const c of map.publicCells) mapBuiltCtx.poly(cellSector(layout.hole, c)).fill({ color: MAP.built, alpha: 1 });
     if (shown?.edges.length) {
       for (const id of shown.edges) {
         if (shown.erase) ghostEdge(id, C.bad, null, 0.35);

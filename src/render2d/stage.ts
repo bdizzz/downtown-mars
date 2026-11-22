@@ -16,7 +16,7 @@ import { corridorJoints, corridors, hasBulkhead } from "../sim/corridors";
 import { constructionStripes, corridorBand } from "./corridorArt";
 import { roomDef } from "../sim/rooms";
 import { previewEffects, type EffectField } from "../sim/effects";
-import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor } from "../view/interaction";
+import { clickWith, edgeHoverFor, highlightsSlot, hoverInfoFor, hoverKeyFor, followsCorridors, paints, proposalFor, haloEffect, CORRIDOR_MAP as MAP, corridorMap, demolishHoverFor, mapJoints } from "../view/interaction";
 import { EMPTY_CHAIN, extendChain, type Chain, type ChainPoint } from "../view/corridorPlan";
 import type { HoverInfo, Proposal, Stage, StageOptions, Tool, Warning } from "../view/types";
 import { isTouch, LongPress, TAP_SLOP, TapToAim, Touches, type Gesture } from "../view/touch";
@@ -760,6 +760,12 @@ export async function createStage(host: HTMLElement, opts: StageOptions = {}): P
       const map = corridorMap(layout, tool, mapFloorLast);
       for (const id of map.open) if (!skip.has(id)) mapEdge(mapOpenCtx, id, C.ok);
       for (const id of map.built) if (!skip.has(id)) mapEdge(mapBuiltCtx, id, MAP.built);
+      // Square joints where spokes meet rings' borders, as the corridors' own turns, and the walk-through rooms tinted as corridors.
+      for (const j of mapJoints(layout, map.open, map.built).joints) {
+        const y = ringTop(j.floor, j.circle, h.ringSlots.length) + RING_H - BAND / 2;
+        (j.built ? mapBuiltCtx : mapOpenCtx).rect(j.turn * TURN_W - BAND / 2, y, BAND, BAND).fill({ color: j.built ? MAP.built : C.ok, alpha: 1 });
+      }
+      for (const row of cellRows(h, map.publicCells)) mapBuiltCtx.rect(...rowRect(h, row)).fill({ color: MAP.built, alpha: 1 });
     }
     if (shown?.edges.length) {
       for (const id of shown.edges) {
